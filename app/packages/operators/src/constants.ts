@@ -22,3 +22,13 @@ export enum RiskLevel {
   HIGH = "high",
   DANGEROUS = "dangerous",
 }
+export enum OperatorSurface {
+  DATASET_SAMPLES_GRID = "dataset_samples_grid",
+  DATASET_SAMPLE_MODAL = "dataset_sample_modal",
+  ALL = "ALL",
+}
+
+export const FALLBACK_OPERATOR_SURFACES = [
+  OperatorSurface.DATASET_SAMPLES_GRID,
+  OperatorSurface.DATASET_SAMPLE_MODAL,
+];

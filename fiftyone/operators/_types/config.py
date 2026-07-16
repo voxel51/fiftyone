@@ -16,3 +16,11 @@ class RiskLevel(Enum):
     MEDIUM = "medium"
     HIGH = "high"
     DANGEROUS = "dangerous"
+
+
+class OperatorSurface(Enum):
+    """Surface on which an operator can be used or is currently active."""
+
+    DATASET_SAMPLES_GRID = "dataset_samples_grid"
+    DATASET_SAMPLE_MODAL = "dataset_sample_modal"
+    ALL = "ALL"

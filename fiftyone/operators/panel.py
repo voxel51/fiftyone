@@ -6,13 +6,88 @@ FiftyOne panels.
 |
 """
 
+from typing import Iterable, List, Optional, Union
+
 import pydash
 
 import fiftyone.operators.types as types
-from fiftyone.operators.operator import OperatorConfig, Operator
+from fiftyone.operators.operator import (
+    OperatorConfig,
+    Operator,
+    _normalize_surfaces,
+)
+from fiftyone.operators.types import OperatorSurface
 from typing_extensions import Literal
 
-PANEL_SURFACE = Literal["grid", "modal", "grid modal"]
+PANEL_SURFACE = Literal[
+    "grid",
+    "modal",
+    "portal",
+    "grid modal",
+    "grid portal",
+    "modal portal",
+    "grid modal portal",
+]
+
+_PANEL_TO_OPERATOR_SURFACES = {
+    "grid": (OperatorSurface.DATASET_SAMPLES_GRID,),
+    "modal": (OperatorSurface.DATASET_SAMPLE_MODAL,),
+    "portal": (None),
+}
+_OPERATOR_TO_PANEL_SURFACE = {
+    OperatorSurface.DATASET_SAMPLES_GRID: "grid",
+    OperatorSurface.DATASET_SAMPLE_MODAL: "modal",
+}
+
+
+def _normalize_panel_surfaces(
+    surfaces: Union[
+        PANEL_SURFACE, Iterable[Union[str, OperatorSurface]], None
+    ],
+) -> str:
+    """Returns the panel surfaces as a space-separated string, which is what
+    the App reads to place the panel.
+    """
+    if surfaces is None:
+        return "grid"
+
+    if not isinstance(surfaces, str):
+        surfaces = " ".join(
+            _OPERATOR_TO_PANEL_SURFACE[s]
+            for s in _normalize_surfaces(surfaces)
+        )
+
+    normalized = []
+    for surface in surfaces.split():
+        if surface not in _PANEL_TO_OPERATOR_SURFACES:
+            raise ValueError(
+                "Invalid panel surface '%s'. Valid values are: %s"
+                % (surface, list(_PANEL_TO_OPERATOR_SURFACES))
+            )
+
+        if surface not in normalized:
+            normalized.append(surface)
+
+    return " ".join(normalized)
+
+
+def _to_operator_surfaces(
+    panel_surfaces: str,
+) -> Optional[List[OperatorSurface]]:
+    """Returns the operator surfaces the panel is available on, or ``None`` if
+    it is not restricted to any.
+    """
+    normalized = []
+    for surface in panel_surfaces.split():
+        operator_surfaces = _PANEL_TO_OPERATOR_SURFACES[surface]
+        if operator_surfaces is None:
+            return None
+
+        for operator_surface in operator_surfaces:
+            if operator_surface not in normalized:
+                normalized.append(operator_surface)
+
+    return normalized
 
 
 class PanelConfig(OperatorConfig):
@@ -28,7 +103,11 @@ class PanelConfig(OperatorConfig):
             in dark mode
         allow_multiple (False): whether to allow multiple instances of the
             panel to be opened
-        surfaces ("grid"): the surfaces on which the panel can be displayed
+        surfaces ("grid"): the surfaces on which the panel can be displayed.
+            Either a space-separated string of ``"grid"``, ``"modal"``, and/or
+            ``"portal"``, or a list of :class:`OperatorSurface` values (or
+            their string equivalents). A ``"portal"`` panel is not placed in a
+            space; a consumer renders it explicitly
         help_markdown (None): a markdown string to display in the panel's help
             tooltip
         category (Category): the category id of the panel
@@ -48,7 +127,9 @@ class PanelConfig(OperatorConfig):
         light_icon=None,
         dark_icon=None,
         allow_multiple=False,
-        surfaces: PANEL_SURFACE = "grid",
+        surfaces: Union[
+            PANEL_SURFACE, Iterable[Union[str, OperatorSurface]]
+        ] = "grid",
         priority=None,
         **kwargs
     ):
@@ -61,7 +142,8 @@ class PanelConfig(OperatorConfig):
         self.dark_icon = dark_icon
         self.allow_multiple = allow_multiple
         self.unlisted = True
-        self.surfaces = surfaces
+        self.panel_surfaces = _normalize_panel_surfaces(surfaces)
+        self.surfaces = _to_operator_surfaces(self.panel_surfaces)
         self.category = category
         self.alpha = alpha
         self.beta = beta
@@ -84,7 +166,11 @@ class PanelConfig(OperatorConfig):
             "allow_multiple": self.allow_multiple,
             "on_startup": self.on_startup,
             "unlisted": self.unlisted,
-            "surfaces": self.surfaces,
+            "surfaces": (
+                None
+                if self.surfaces is None
+                else [s.value for s in self.surfaces]
+            ),
             "priority": self.priority,
         }
 
@@ -124,7 +210,7 @@ class Panel(Operator):
             "icon": self.config.icon,
             "dark_icon": self.config.dark_icon,
             "light_icon": self.config.light_icon,
-            "surfaces": self.config.surfaces,
+            "surfaces": self.config.panel_surfaces,
             "category": self.config.category,
             "alpha": self.config.alpha,
             "beta": self.config.beta,

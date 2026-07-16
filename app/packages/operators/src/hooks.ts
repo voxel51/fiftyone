@@ -1,9 +1,8 @@
-import { pluginsLoaderAtom } from "@fiftyone/plugins";
-import * as fos from "@fiftyone/state";
+import { getContextSelector, pluginsLoaderAtom } from "@fiftyone/plugins";
 import { debounce, isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
-import { RESOLVE_PLACEMENTS_TTL } from "./constants";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { OperatorSurface, RESOLVE_PLACEMENTS_TTL } from "./constants";
 import {
   ExecutionContext,
   fetchRemotePlacements,
@@ -12,26 +11,17 @@ import {
 } from "./operators";
 import {
   activePanelsEventCountAtom,
+  getActiveSurface,
   operatorPlacementsAtom,
   operatorThrottledContext,
   operatorsInitializedAtom,
-  useCurrentSample,
 } from "./state";
 
 function useOperatorThrottledContextSetter() {
-  const datasetName = useRecoilValue(fos.datasetName);
-  const view = useRecoilValue(fos.view);
-  const viewName = useRecoilValue(fos.viewName);
-  const extendedStages = useRecoilValue(fos.extendedStages);
-  const filters = useRecoilValue(fos.filters);
-  const selectedSamples = useRecoilValue(fos.selectedSamples);
-  const sampleSelectionStyle = useRecoilValue(fos.sampleSelectionStyle);
-  const selectedLabels = useRecoilValue(fos.selectedLabels);
-  const groupSlice = useRecoilValue(fos.groupSlice);
-  const currentSample = useCurrentSample();
+  const contextSelector = getContextSelector("operators");
+  const context = useRecoilValue(contextSelector);
   const setContext = useSetRecoilState(operatorThrottledContext);
-  const spaces = useRecoilValue(fos.sessionSpaces);
-  const workspaceName = spaces._name;
+
   const setThrottledContext = useMemo(() => {
     return debounce(
       (context) => {
@@ -43,35 +33,8 @@ function useOperatorThrottledContextSetter() {
   }, [setContext]);
 
   useEffect(() => {
-    setThrottledContext({
-      datasetName,
-      view,
-      extendedStages,
-      filters,
-      selectedSamples,
-      sampleSelectionStyle,
-      selectedLabels,
-      currentSample,
-      viewName,
-      groupSlice,
-      spaces,
-      workspaceName,
-    });
-  }, [
-    setThrottledContext,
-    datasetName,
-    view,
-    extendedStages,
-    filters,
-    selectedSamples,
-    sampleSelectionStyle,
-    selectedLabels,
-    currentSample,
-    viewName,
-    groupSlice,
-    spaces,
-    workspaceName,
-  ]);
+    setThrottledContext(context);
+  }, [context, setThrottledContext]);
 }
 
 export function useOperatorPlacementsResolver() {
@@ -163,4 +126,22 @@ export function useFirstExistingUri(uris: string[]) {
     const exists = Boolean(existingUri);
     return { firstExistingUri: existingUri, exists };
   }, [availableOperators, uris]);
+}
+
+export function useExecutableOperatorsURIs(surface?: OperatorSurface) {
+  const allOperators = useMemo(() => listLocalAndRemoteOperators(), []);
+  const computedSurface = useMemo(
+    () => surface ?? getActiveSurface(),
+    [surface],
+  );
+  return useMemo(() => {
+    const uris = allOperators.allOperators
+      .filter((op) => op.surfaces.includes(computedSurface))
+      .map((op) => op.uri);
+    return uris;
+  }, [allOperators, computedSurface]);
+}
+
+export function useCanIExecuteOperators(uris: string[]) {
+  // todo
 }

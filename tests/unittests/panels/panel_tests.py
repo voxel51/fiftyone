@@ -9,7 +9,7 @@ from fiftyone.operators.panel import (
     PanelRefData,
     WriteOnlyError,
 )
-from fiftyone.operators.types import Object, Property
+from fiftyone.operators.types import Object, OperatorSurface, Property
 
 
 def simulate_event(panel, mock_ctx, event_name):
@@ -103,6 +103,81 @@ def test_build_register_panel_params_from_panel(panel):
     assert params["allow_duplicates"] is False
     assert params["on_load"].endswith("#on_load")
     assert params["on_change"].endswith("#on_change")
+
+
+GRID = OperatorSurface.DATASET_SAMPLES_GRID
+MODAL = OperatorSurface.DATASET_SAMPLE_MODAL
+
+
+@pytest.mark.parametrize(
+    "surfaces,expected",
+    [
+        ("grid", [GRID]),
+        ("modal", [MODAL]),
+        ("grid modal", [GRID, MODAL]),
+        # a portal panel is rendered anywhere a consumer places it, so it is
+        # restricted to no surface in particular
+        ("portal", None),
+        ("grid portal", None),
+        ("modal portal", None),
+        ("grid modal portal", None),
+    ],
+)
+def test_panel_config_surfaces_string(surfaces, expected):
+    config = PanelConfig(name="p", label="P", surfaces=surfaces)
+    assert config.surfaces == expected
+
+
+def test_portal_panel_operator_is_unrestricted_on_the_wire():
+    config = PanelConfig(name="p", label="P", surfaces="portal")
+    assert config.to_json()["surfaces"] is None
+
+
+@pytest.mark.parametrize(
+    "surfaces",
+    ["grid", "modal", "portal", "grid portal", "grid modal portal"],
+)
+def test_panel_surfaces_reach_the_app_unchanged(surfaces):
+    # the App places the panel by this string; a portal has no operator
+    # surface, so it survives only if the string is passed through verbatim
+    class PortalPanel(MockPanel):
+        @property
+        def config(self):
+            return PanelConfig(name="p", label="P", surfaces=surfaces)
+
+    assert PortalPanel().resolve_panel_config()["surfaces"] == surfaces
+
+
+@pytest.mark.parametrize("kwargs", [{}, {"surfaces": None}])
+def test_panel_config_surfaces_default_is_grid(kwargs):
+    config = PanelConfig(name="p", label="P", **kwargs)
+    assert config.surfaces == [GRID]
+    assert config.panel_surfaces == "grid"
+
+
+def test_panel_config_surfaces_accepts_operator_surfaces():
+    config = PanelConfig(name="p", label="P", surfaces=[MODAL])
+    assert config.surfaces == [MODAL]
+    assert config.panel_surfaces == "modal"
+
+
+def test_panel_config_surfaces_deduplicates():
+    config = PanelConfig(name="p", label="P", surfaces="grid grid")
+    assert config.surfaces == [GRID]
+    assert config.panel_surfaces == "grid"
+
+
+def test_panel_config_invalid_surface_raises():
+    with pytest.raises(ValueError):
+        PanelConfig(name="p", label="P", surfaces="main")
+
+
+def test_panel_config_to_json_surfaces_are_operator_surfaces():
+    config = PanelConfig(name="p", label="P", surfaces="grid modal")
+    assert config.to_json()["surfaces"] == [
+        "dataset_samples_grid",
+        "dataset_sample_modal",
+    ]
 
 
 def test_panel_execute(panel, mock_ctx):

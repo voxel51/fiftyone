@@ -22,6 +22,7 @@ import {
 } from "recoil";
 import {
   BROWSER_CONTROL_KEYS,
+  OperatorSurface,
   RESOLVE_INPUT_VALIDATION_TTL,
   RESOLVE_TYPE_TTL,
 } from "./constants";
@@ -40,6 +41,7 @@ import { OperatorPromptType, Places } from "./types";
 import { OperatorExecutorOptions } from "./ts";
 import { generateOperatorSessionId, optimizeCtx } from "./utils";
 import { ValidationContext } from "./validation";
+import { getContextSelector } from "@fiftyone/plugins/src/context";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -91,51 +93,12 @@ export const usePromptOperatorInput = () => {
   return prompt;
 };
 
-const globalContextSelector = selector({
-  key: "globalContext",
-  get: ({ get }) => {
-    const modal = !!get(fos.modal);
-    const datasetName = get(fos.datasetName);
-    const view = get(fos.view);
-    const extended = get(fos.extendedStages);
-    const filters = get(fos.filters);
-    const selectedSamples = get(fos.selectedSamples);
-    const sampleSelectionStyle = get(fos.sampleSelectionStyle);
-    const labelSelectionStyle = get(fos.labelSelectionStyle);
-    const selectedLabels = get(fos.selectedLabels);
-    const viewName = get(fos.viewName);
-    const extendedSelection = get(fos.extendedSelection);
-    const groupSlice = get(fos.groupSlice);
-    const queryPerformance = get(fos.queryPerformance);
-    const spaces = get(fos.sessionSpaces);
-    const workspaceName = spaces?._name;
-    const activeFields = get(fos.activeFields({ modal }));
-
-    return {
-      datasetName,
-      view,
-      extended,
-      filters,
-      selectedSamples,
-      sampleSelectionStyle,
-      labelSelectionStyle,
-      selectedLabels,
-      viewName,
-      extendedSelection,
-      groupSlice,
-      queryPerformance,
-      spaces,
-      workspaceName,
-      activeFields,
-    };
-  },
-});
-
 const currentContextSelector = selectorFamily({
   key: "currentContextSelector",
   get:
     (operatorName) =>
     ({ get }) => {
+      const globalContextSelector = getContextSelector("operators");
       const globalContext = get(globalContextSelector);
       const params = get(currentOperatorParamsSelector(operatorName));
       return {
@@ -146,6 +109,7 @@ const currentContextSelector = selectorFamily({
 });
 
 export function useGlobalExecutionContext(): ExecutionContext {
+  const globalContextSelector = getContextSelector("operators");
   const globalCtx = useRecoilValue(globalContextSelector);
   const ctx = useMemo(() => {
     return new ExecutionContext({}, globalCtx);
@@ -199,6 +163,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         workspaceName,
         promptId,
         activeFields,
+        activeSurface: getActiveSurface(),
       },
       hooks,
     );
@@ -800,10 +765,32 @@ export const availableOperators = selector({
         icon: operator.config.icon,
         darkIcon: operator.config.darkIcon,
         lightIcon: operator.config.lightIcon,
+        surfaces: operator.config.surfaces,
       };
     });
   },
 });
+
+export function isOnSurface(
+  surfaces: OperatorSurface[] | undefined,
+  surface: OperatorSurface,
+) {
+  return (
+    !surfaces ||
+    surfaces.includes(surface) ||
+    surfaces.includes(OperatorSurface.ALL)
+  );
+}
+
+export function assertOnSurface(
+  uri: string,
+  surfaces: OperatorSurface[] | undefined,
+  surface: OperatorSurface,
+) {
+  if (!isOnSurface(surfaces, surface)) {
+    throw new Error(`Operator "${uri}" is not supported on this surface`);
+  }
+}
 
 export const operatorBrowserVisibleState = atom({
   key: "operatorBrowserVisibleState",
@@ -842,26 +829,33 @@ function sortResults(results, recentlyUsedOperators) {
     });
 }
 
-export const operatorBrowserChoices = selector({
+export const operatorBrowserChoices = selectorFamily({
   key: "operatorBrowserChoices",
-  get: ({ get }) => {
-    const allChoices = get(availableOperators);
-    const query = get(operatorBrowserQueryState);
-    let results = [...allChoices];
-    results = results.filter(({ unlisted }) => !unlisted);
-    if (query && query.length > 0) {
-      results = filterChoicesByQuery(query, results);
-    }
-    return sortResults(results, get(recentlyUsedOperatorsState));
-  },
+  get:
+    (surface: OperatorSurface) =>
+    ({ get }) => {
+      const allChoices = get(availableOperators);
+      const query = get(operatorBrowserQueryState);
+      let results = [...allChoices];
+      results = results.filter(({ unlisted }) => !unlisted);
+      results = results.filter(({ surfaces }) =>
+        isOnSurface(surfaces, surface),
+      );
+      if (query && query.length > 0) {
+        results = filterChoicesByQuery(query, results);
+      }
+      return sortResults(results, get(recentlyUsedOperatorsState));
+    },
 });
-export const operatorDefaultChoice = selector({
+export const operatorDefaultChoice = selectorFamily({
   key: "operatorDefaultChoice",
-  get: ({ get }) => {
-    const choices = get(operatorBrowserChoices);
-    const firstOperatorName = choices?.[0]?.value;
-    return firstOperatorName || null;
-  },
+  get:
+    (surface: OperatorSurface) =>
+    ({ get }) => {
+      const choices = get(operatorBrowserChoices(surface));
+      const firstOperatorName = choices?.[0]?.value;
+      return firstOperatorName || null;
+    },
 });
 export const operatorChoiceState = atom({
   key: "operatorChoiceState",
@@ -884,12 +878,48 @@ export function useCurrentSample() {
   return currentSample.state === "hasValue" ? currentSample.contents : null;
 }
 
+let activeSurface: OperatorSurface = OperatorSurface.DATASET_SAMPLES_GRID;
+
+export function getActiveSurface(): OperatorSurface {
+  return activeSurface;
+}
+
+export function setActiveSurface(surface: OperatorSurface) {
+  activeSurface = surface;
+}
+
+/**
+ * Declares the surface operators are executed from while the calling component
+ * is mounted. The value rides along on every operator request as
+ * `active_surface`.
+ *
+ * @param surface the surface to activate on mount
+ * @param restore whether to restore the previously active surface on unmount
+ */
+export function useSetActiveSurface(surface: OperatorSurface, restore = false) {
+  useEffect(() => {
+    const previous = getActiveSurface();
+    const owns = previous !== surface;
+
+    if (owns) {
+      setActiveSurface(surface);
+    }
+
+    return () => {
+      if (owns && restore) {
+        setActiveSurface(previous);
+      }
+    };
+  }, [surface, restore]);
+}
+
 export function useOperatorBrowser() {
   const [isVisible, setIsVisible] = useRecoilState(operatorBrowserVisibleState);
   const [query, setQuery] = useRecoilState(operatorBrowserQueryState);
   const [selected, setSelected] = useRecoilState(operatorChoiceState);
-  const defaultSelected = useRecoilValue(operatorDefaultChoice);
-  const choices = useRecoilValue(operatorBrowserChoices);
+  const activeSurface = getActiveSurface();
+  const defaultSelected = useRecoilValue(operatorDefaultChoice(activeSurface));
+  const choices = useRecoilValue(operatorBrowserChoices(activeSurface));
   const promptForInput = usePromptOperatorInput();
   const isOperatorPaletteOpened = useRecoilValue(operatorPaletteOpened);
   const editingField = useRecoilValue(fos.editingFieldAtom);
@@ -1135,8 +1165,13 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         return;
       }
 
-      const { delegationTarget, requestDelegation, skipOutput, callback } =
-        options || {};
+      const {
+        delegationTarget,
+        requestDelegation,
+        skipOutput,
+        callback,
+        surface,
+      } = options || {};
       setIsExecuting(true);
       const { params, ...currentContext } = await state.snapshot.getPromise(
         currentContextSelector(uri),
@@ -1144,7 +1179,11 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
 
       const ctx = new ExecutionContext(
         paramOverrides || params,
-        { ...currentContext, currentSample },
+        {
+          ...currentContext,
+          currentSample,
+          activeSurface: surface ?? getActiveSurface(),
+        },
         hooks,
       );
       ctx.state = state;
@@ -1153,6 +1192,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
       try {
         ctx.hooks = hooks;
         ctx.state = state;
+        assertOnSurface(uri, operator.config?.surfaces, ctx.activeSurface);
         const result = await executeOperatorWithContext(uri, ctx);
         setNeedsOutput(
           skipOutput ? false : await operator.needsOutput(ctx, result),

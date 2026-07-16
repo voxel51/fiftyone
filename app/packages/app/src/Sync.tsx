@@ -3,7 +3,11 @@
  */
 
 import { Loading } from "@fiftyone/components";
-import { usePlugins } from "@fiftyone/plugins";
+import {
+  usePlugins,
+  setContextHook,
+  setContextSelector,
+} from "@fiftyone/plugins";
 import {
   Writer,
   setDataset,
@@ -49,6 +53,8 @@ export const SessionContext = React.createContext<Session>(SESSION_DEFAULT);
 
 const Plugins = ({ children }: { children: React.ReactNode }) => {
   const plugins = usePlugins();
+  setContextSelector("operators", fos.operatorContextSelector);
+  setContextHook("spaces", fos.useSpacesContext);
   if (plugins.isLoading) return <Loading>Pixelating...</Loading>;
   return <>{children}</>;
 };

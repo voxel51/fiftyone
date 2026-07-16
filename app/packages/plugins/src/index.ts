@@ -235,3 +235,5 @@ export type {
   SampleRendererRenderContext,
   SampleRendererSampleLike,
 } from "./sample-renderer";
+
+export * from "./context";

@@ -5,7 +5,12 @@ import { spaceNodeFromJSON } from "@fiftyone/spaces/src/utils";
 import type { SelectionStyle, SelectionType } from "@fiftyone/state";
 import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
-import { QueueItemStatus, RiskLevel } from "./constants";
+import {
+  FALLBACK_OPERATOR_SURFACES,
+  OperatorSurface,
+  QueueItemStatus,
+  RiskLevel,
+} from "./constants";
 import * as types from "./types";
 import { ExecutionCallback, OperatorExecutorOptions } from "./ts";
 import { stringifyError } from "./utils";
@@ -90,6 +95,7 @@ export type RawContext = {
   selectedLabels: any[];
   currentSample: string;
   viewName: string;
+  activeSurface: OperatorSurface;
   delegationTarget: string;
   requestDelegation: boolean;
   state: CallbackInterface;
@@ -163,6 +169,9 @@ export class ExecutionContext {
   }
   public get activeFields(): string[] {
     return this._currentContext.activeFields;
+  }
+  public get activeSurface(): OperatorSurface {
+    return this._currentContext.activeSurface;
   }
   getCurrentPanelId(): string | null {
     return this.params.panel_id || this.currentPanel?.id || null;
@@ -257,6 +266,7 @@ export type OperatorConfigOptions = {
   skipInput?: boolean;
   skipOutput?: boolean;
   riskLevel?: RiskLevel;
+  surfaces?: OperatorSurface[];
 };
 export class OperatorConfig {
   public name: string;
@@ -276,6 +286,7 @@ export class OperatorConfig {
   public skipInput: boolean;
   public skipOutput: boolean;
   public riskLevel: RiskLevel = RiskLevel.LOW;
+  public surfaces: OperatorSurface[];
 
   constructor(options: OperatorConfigOptions) {
     this.name = options.name;
@@ -297,6 +308,7 @@ export class OperatorConfig {
     this.skipInput = options.skipInput || false;
     this.skipOutput = options.skipOutput || false;
     this.riskLevel = options.riskLevel || RiskLevel.LOW;
+    this.surfaces = options.surfaces;
   }
   static fromJSON(json) {
     return new OperatorConfig({
@@ -317,6 +329,7 @@ export class OperatorConfig {
       skipInput: json.skip_input,
       skipOutput: json.skip_output,
       riskLevel: json.risk_level,
+      surfaces: json.surfaces,
     });
   }
 }
@@ -347,6 +360,9 @@ export class Operator {
   }
   get riskLevel() {
     return this.config.riskLevel || RiskLevel.LOW;
+  }
+  get surfaces() {
+    return this.config.surfaces || FALLBACK_OPERATOR_SURFACES;
   }
   async needsUserInput(ctx: ExecutionContext) {
     const inputs = await this.resolveInput(ctx);
@@ -615,6 +631,7 @@ async function executeOperatorAsGenerator(
     "/operators/execute/generator",
     {
       current_sample: currentContext.currentSample,
+      active_surface: currentContext.activeSurface,
       dataset_name: currentContext.datasetName,
       delegation_target: currentContext.delegationTarget,
       extended: currentContext.extended,
@@ -780,6 +797,7 @@ export async function executeOperatorWithContext(
         "/operators/execute",
         {
           current_sample: currentContext.currentSample,
+          active_surface: currentContext.activeSurface,
           dataset_name: currentContext.datasetName,
           delegation_target: currentContext.delegationTarget,
           extended: currentContext.extended,
@@ -884,6 +902,7 @@ export async function resolveRemoteType(
     "/operators/resolve-type",
     {
       current_sample: currentContext.currentSample,
+      active_surface: currentContext.activeSurface,
       dataset_name: currentContext.datasetName,
       delegation_target: currentContext.delegationTarget,
       extended: currentContext.extended,
@@ -962,6 +981,7 @@ export async function resolveExecutionOptions(
     "/operators/resolve-execution-options",
     {
       current_sample: currentContext.currentSample,
+      active_surface: currentContext.activeSurface,
       dataset_name: currentContext.datasetName,
       delegation_target: currentContext.delegationTarget,
       extended: currentContext.extended,
@@ -1004,6 +1024,7 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
       filters: currentContext.filters,
       ...formatSelectionPayload(currentContext),
       current_sample: currentContext.currentSample,
+      active_surface: currentContext.activeSurface,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
       query_performance: currentContext.queryPerformance,

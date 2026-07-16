@@ -1,4 +1,4 @@
-export { OPERATOR_PROMPT_AREAS, RiskLevel } from "./constants";
+export { OPERATOR_PROMPT_AREAS, OperatorSurface, RiskLevel } from "./constants";
 export { useFirstExistingUri } from "./hooks";
 export { useOperators, useRefreshOperators } from "./loader";
 export { default as OperatorBrowser } from "./OperatorBrowser";
@@ -22,11 +22,14 @@ export {
   registerOperator,
 } from "./operators";
 export {
+  getActiveSurface,
+  setActiveSurface,
   useGlobalExecutionContext,
   useOperatorBrowser,
   useOperatorExecutor,
   useOperatorPlacements,
   usePromptOperatorInput,
+  useSetActiveSurface,
 } from "./state";
 export * as types from "./types";
 export {

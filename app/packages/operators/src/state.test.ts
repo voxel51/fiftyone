@@ -1,9 +1,15 @@
 import { act, renderHook } from "@testing-library/react";
 import React, { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { OperatorSurface } from "./constants";
 import {
   OperatorExecutionOption,
+  assertOnSurface,
+  getActiveSurface,
+  isOnSurface,
+  setActiveSurface,
   useOperatorPromptSubmitOptions,
+  useSetActiveSurface,
 } from "./state";
 
 vi.mock("recoil", () => ({
@@ -75,6 +81,187 @@ vi.mock("./utils", () => ({
 vi.mock("./validation", () => ({
   ValidationContext: vi.fn(),
 }));
+
+describe("isOnSurface", () => {
+  const GRID = OperatorSurface.DATASET_SAMPLES_GRID;
+  const MODAL = OperatorSurface.DATASET_SAMPLE_MODAL;
+
+  it("includes an operator declared on the surface", () => {
+    expect(isOnSurface([GRID, MODAL], MODAL)).toBe(true);
+    expect(isOnSurface([GRID], GRID)).toBe(true);
+  });
+
+  it("excludes an operator not declared on the surface", () => {
+    expect(isOnSurface([GRID], MODAL)).toBe(false);
+    expect(isOnSurface([MODAL], GRID)).toBe(false);
+  });
+
+  it("excludes an operator that declares no surfaces", () => {
+    expect(isOnSurface([], GRID)).toBe(false);
+    expect(isOnSurface([], MODAL)).toBe(false);
+  });
+
+  it("includes an operator with undeclared surfaces, rather than hiding it", () => {
+    expect(isOnSurface(undefined, GRID)).toBe(true);
+    expect(isOnSurface(undefined, MODAL)).toBe(true);
+  });
+
+  it("includes an operator declared on all surfaces", () => {
+    expect(isOnSurface([OperatorSurface.ALL], GRID)).toBe(true);
+    expect(isOnSurface([OperatorSurface.ALL], MODAL)).toBe(true);
+  });
+});
+
+describe("assertOnSurface", () => {
+  const GRID = OperatorSurface.DATASET_SAMPLES_GRID;
+  const MODAL = OperatorSurface.DATASET_SAMPLE_MODAL;
+  const URI = "@voxel51/operators/example";
+
+  it("does not throw when the operator declares the surface", () => {
+    expect(() => assertOnSurface(URI, [GRID, MODAL], MODAL)).not.toThrow();
+  });
+
+  it("does not throw when the operator declares no surfaces", () => {
+    expect(() => assertOnSurface(URI, undefined, MODAL)).not.toThrow();
+  });
+
+  it("throws when the operator is not available on the surface", () => {
+    expect(() => assertOnSurface(URI, [GRID], MODAL)).toThrow();
+  });
+
+  it("names the operator in the error", () => {
+    expect(() => assertOnSurface(URI, [GRID], MODAL)).toThrow(
+      `Operator "${URI}" is not supported on this surface`,
+    );
+  });
+});
+
+describe("activeSurface", () => {
+  beforeEach(() => {
+    setActiveSurface(OperatorSurface.DATASET_SAMPLES_GRID);
+  });
+
+  it("defaults to the grid surface", () => {
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLES_GRID);
+  });
+
+  it("returns the surface that was last set", () => {
+    setActiveSurface(OperatorSurface.DATASET_SAMPLE_MODAL);
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLE_MODAL);
+  });
+
+  it("is shared globally, so a set is visible to every reader", () => {
+    setActiveSurface(OperatorSurface.DATASET_SAMPLE_MODAL);
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLE_MODAL);
+  });
+});
+
+describe("useSetActiveSurface", () => {
+  beforeEach(() => {
+    setActiveSurface(OperatorSurface.DATASET_SAMPLES_GRID);
+  });
+
+  it("activates the given surface on mount", () => {
+    renderHook(() => useSetActiveSurface(OperatorSurface.DATASET_SAMPLE_MODAL));
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLE_MODAL);
+  });
+
+  it("restores the previous surface on unmount when restore is true", () => {
+    const { unmount } = renderHook(() =>
+      useSetActiveSurface(OperatorSurface.DATASET_SAMPLE_MODAL, true),
+    );
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLE_MODAL);
+
+    unmount();
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLES_GRID);
+  });
+
+  it("leaves the surface in place on unmount when restore is false", () => {
+    const { unmount } = renderHook(() =>
+      useSetActiveSurface(OperatorSurface.DATASET_SAMPLE_MODAL, false),
+    );
+    unmount();
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLE_MODAL);
+  });
+
+  it("does not restore by default", () => {
+    const { unmount } = renderHook(() =>
+      useSetActiveSurface(OperatorSurface.DATASET_SAMPLE_MODAL),
+    );
+    unmount();
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLE_MODAL);
+  });
+
+  it("restores whatever was active at mount, not the default", () => {
+    setActiveSurface(OperatorSurface.DATASET_SAMPLE_MODAL);
+    const { unmount } = renderHook(() =>
+      useSetActiveSurface(OperatorSurface.DATASET_SAMPLES_GRID, true),
+    );
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLES_GRID);
+
+    unmount();
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLE_MODAL);
+  });
+
+  it("does not touch the surface when it is already active", () => {
+    setActiveSurface(OperatorSurface.DATASET_SAMPLE_MODAL);
+    const { unmount } = renderHook(() =>
+      useSetActiveSurface(OperatorSurface.DATASET_SAMPLE_MODAL, true),
+    );
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLE_MODAL);
+
+    unmount();
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLE_MODAL);
+  });
+
+  it("survives a double mount of the same surface unmounting out of order", () => {
+    // first declaration owns the transition grid -> modal
+    const first = renderHook(() =>
+      useSetActiveSurface(OperatorSurface.DATASET_SAMPLE_MODAL, true),
+    );
+    // second declares the surface that is already active, so it owns nothing
+    const second = renderHook(() =>
+      useSetActiveSurface(OperatorSurface.DATASET_SAMPLE_MODAL, true),
+    );
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLE_MODAL);
+
+    // unmounting out of order must not strand the surface on modal
+    first.unmount();
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLES_GRID);
+
+    second.unmount();
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLES_GRID);
+  });
+
+  it("restores once when the same surface is declared twice", () => {
+    const first = renderHook(() =>
+      useSetActiveSurface(OperatorSurface.DATASET_SAMPLE_MODAL, true),
+    );
+    const second = renderHook(() =>
+      useSetActiveSurface(OperatorSurface.DATASET_SAMPLE_MODAL, true),
+    );
+
+    second.unmount();
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLE_MODAL);
+
+    first.unmount();
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLES_GRID);
+  });
+
+  it("re-activates and restores across a surface change", () => {
+    const { rerender, unmount } = renderHook(
+      ({ surface }) => useSetActiveSurface(surface, true),
+      { initialProps: { surface: OperatorSurface.DATASET_SAMPLE_MODAL } },
+    );
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLE_MODAL);
+
+    rerender({ surface: OperatorSurface.DATASET_SAMPLES_GRID });
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLES_GRID);
+
+    unmount();
+    expect(getActiveSurface()).toBe(OperatorSurface.DATASET_SAMPLES_GRID);
+  });
+});
 
 describe("useOperatorPromptSubmitOptions", () => {
   let mockExecute: ReturnType<typeof vi.fn>;

@@ -4,8 +4,8 @@ import {
   type PlotRegistration,
   subscribeToRegistry,
   useActivePlugins,
+  useContextHook,
 } from "@fiftyone/plugins";
-import * as fos from "@fiftyone/state";
 import {
   useCallback,
   useContext,
@@ -133,11 +133,8 @@ export function useSpaceNodes(spaceId: string) {
 export function usePanels(
   predicate?: (panel: SpacePanelRegistration) => boolean,
 ) {
-  const schema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
-  );
-  const dataset = useRecoilValue(fos.dataset);
-  const ctx = useMemo(() => ({ schema, dataset }), [schema, dataset]);
+  const useContext = useContextHook("spaces");
+  const ctx = useContext();
   const plots = useActivePlugins(PluginComponentType.Plot, ctx);
   const panels = useActivePlugins(PluginComponentType.Panel, ctx);
 

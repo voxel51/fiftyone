@@ -1,3 +1,4 @@
+import { OperatorSurface } from "../constants";
 import { ExecutionContext, OperatorResult } from "../operators";
 
 export type ExecutionCallbackOptions = { ctx: ExecutionContext };
@@ -16,6 +17,8 @@ export type OperatorExecutorOptions = {
   skipOutput?: boolean;
   callback?: ExecutionCallback;
   skipErrorNotification?: boolean;
+  // overrides the most recently active surface
+  surface?: OperatorSurface;
 };
 
 export type ParamsType = Record<string, any>;

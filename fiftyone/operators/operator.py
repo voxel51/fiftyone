@@ -6,8 +6,8 @@ FiftyOne operators.
 |
 """
 
-from typing import Union
-from .types import PromptView, RiskLevel
+from typing import Iterable, List, Union
+from .types import PromptView, RiskLevel, OperatorSurface
 
 BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"
 
@@ -34,6 +34,39 @@ def _normalize_risk_level(
         )
 
     return risk_level
+
+
+def _normalize_surfaces(
+    surfaces: Union[Iterable[Union[str, OperatorSurface]], None],
+) -> List[OperatorSurface]:
+    if surfaces is None:
+        return [
+            OperatorSurface.DATASET_SAMPLES_GRID,
+            OperatorSurface.DATASET_SAMPLE_MODAL,
+        ]
+
+    return [_normalize_surface(surface) for surface in surfaces]
+
+
+def _normalize_surface(
+    surface: Union[str, OperatorSurface],
+) -> OperatorSurface:
+    if isinstance(surface, str):
+        try:
+            return OperatorSurface[surface.upper()]
+        except KeyError as err:
+            raise ValueError(
+                "Invalid surface '%s'. Valid values are: %s"
+                % (surface, [s.value for s in OperatorSurface])
+            ) from err
+
+    if not isinstance(surface, OperatorSurface):
+        raise ValueError(
+            "Invalid surface '%s'. Must be a string or OperatorSurface enum."
+            % surface
+        )
+
+    return surface
 
 
 class OperatorConfig(object):
@@ -75,6 +108,12 @@ class OperatorConfig(object):
             this operator is mainly used by guardrail systems of an agent to
             classify tool calls. If ``None``, the operator defaults to
             :attr:`RiskLevel.DANGEROUS`
+        surfaces (None): a list of :class:`OperatorSurface` values (or their
+            string equivalents) on which the operator should be available. If
+            ``None``, the operator is made available on both
+            :attr:`OperatorSurface.DATASET_SAMPLES_GRID` and
+            :attr:`OperatorSurface.DATASET_SAMPLE_MODAL`. An empty list makes
+            the operator available on no surface
     """
 
     def __init__(
@@ -99,6 +138,7 @@ class OperatorConfig(object):
         allow_distributed_execution=False,  # Enterprise only
         rerunnable=True,
         risk_level=RiskLevel.DANGEROUS,
+        surfaces=None,
         **kwargs
     ):
         self.name = name
@@ -127,6 +167,7 @@ class OperatorConfig(object):
                 resolve_execution_options_on_change
             )
         self.kwargs = kwargs  # unused, placeholder for future extensibility
+        self.surfaces = _normalize_surfaces(surfaces)
 
     @property
     def risk_level(self):
@@ -155,6 +196,7 @@ class OperatorConfig(object):
             "resolve_execution_options_on_change": self.resolve_execution_options_on_change,
             "allow_distributed_execution": self.allow_distributed_execution,
             "risk_level": self.risk_level.value,
+            "surfaces": [s.value for s in self.surfaces],
         }
 
 
