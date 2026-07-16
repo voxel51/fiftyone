@@ -307,6 +307,10 @@ export class KeypointOverlay
     return this._relativeBoundsCache;
   }
 
+  isInteracting(): boolean {
+    return this.dragPointIndex !== null;
+  }
+
   isDragging(): boolean {
     return this.dragPointIndex !== null;
   }
