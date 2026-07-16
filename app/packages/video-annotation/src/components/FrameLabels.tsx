@@ -708,6 +708,14 @@ function decorateObjectTrack({
       onSelect: () => actions.deleteTrack(track.id, fieldPath),
     },
     {
+      // deletes only the frame captured when the menu opened (see onContextMenu);
+      // a no-op when the track has no occurrence on that frame
+      label: "Delete current frame",
+      destructive: true,
+      onSelect: () =>
+        actions.trimTrack(track.id, [splitFrameRef.current], fieldPath),
+    },
+    {
       // splits at the frame captured when the menu opened (see onContextMenu)
       label: "Split at playhead",
       onSelect: () =>
