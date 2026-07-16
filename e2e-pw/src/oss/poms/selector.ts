@@ -27,9 +27,9 @@ export class SelectorPom {
   }
 
   async openResults() {
-    const promise = await this.eventUtils.arm(`selector-results-${this.title}`);
+    const results = await this.eventUtils.arm(`selector-results-${this.title}`);
     await this.input.focus();
-    await promise;
+    await results.received;
   }
 
   async closeResults() {
