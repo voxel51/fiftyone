@@ -1,27 +1,27 @@
 // Geist font faces
 @font-face
-  font-display: swap
+  font-display: block
   font-family: 'Geist'
   font-style: normal
   font-weight: 400
   src: url('../fonts/geist-v3-latin-regular.woff2') format('woff2')
 
 @font-face
-  font-display: swap
+  font-display: block
   font-family: 'Geist'
   font-style: normal
   font-weight: 500
   src: url('../fonts/geist-v3-latin-500.woff2') format('woff2')
 
 @font-face
-  font-display: swap
+  font-display: block
   font-family: 'Geist'
   font-style: normal
   font-weight: 600
   src: url('../fonts/geist-v3-latin-600.woff2') format('woff2')
 
 @font-face
-  font-display: swap
+  font-display: block
   font-family: 'Geist'
   font-style: normal
   font-weight: 700
@@ -30,29 +30,50 @@
 
 // Geist Mono font faces
 @font-face
-  font-display: swap
+  font-display: block
   font-family: 'Geist Mono'
   font-style: normal
   font-weight: 400
   src: url('../fonts/geist-mono-v3-latin-regular.woff2') format('woff2')
 
 @font-face
-  font-display: swap
+  font-display: block
   font-family: 'Geist Mono'
   font-style: normal
   font-weight: 500
   src: url('../fonts/geist-mono-v3-latin-500.woff2') format('woff2')
 
 @font-face
-  font-display: swap
+  font-display: block
   font-family: 'Geist Mono'
   font-style: normal
   font-weight: 600
   src: url('../fonts/geist-mono-v3-latin-600.woff2') format('woff2')
 
 @font-face
-  font-display: swap
+  font-display: block
   font-family: 'Geist Mono'
   font-style: normal
   font-weight: 700
   src: url('../fonts/geist-mono-v3-latin-700.woff2') format('woff2')
+
+
+// Metric-compatible fallback faces: sized so the system font occupies the
+// same space as Geist, keeping layout stable while fonts load (no reflow
+// while the woff2 files load). Overrides computed from the font metrics
+// (next/font method).
+@font-face
+  font-family: 'Geist Fallback'
+  src: local('Arial')
+  size-adjust: 105.71%
+  ascent-override: 95.07%
+  descent-override: 27.91%
+  line-gap-override: 0%
+
+@font-face
+  font-family: 'Geist Mono Fallback'
+  src: local('Courier New')
+  size-adjust: 99.98%
+  ascent-override: 100.52%
+  descent-override: 29.5%
+  line-gap-override: 0%
