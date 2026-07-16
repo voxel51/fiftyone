@@ -13,7 +13,7 @@ export interface Columns extends Bounds {
   /** True if any point carried a z and flattening was off */
   hasZ: boolean;
   ids: string[];
-  labelIndex: Uint16Array;
+  labelIndex: Uint32Array;
   labelKeys: string[];
 }
 
@@ -31,7 +31,8 @@ export function buildColumns(
   const ys = new Float32Array(n);
   const zs = new Float32Array(n);
   const ids = new Array<string>(n);
-  const labelIndex = new Uint16Array(n);
+  // u32: u16 would silently wrap (and recycle colors) past 65535 labels
+  const labelIndex = new Uint32Array(n);
   const labelKeys: string[] = [];
   const indexByLabel = new Map<string, number>();
   let hasZ = false;
@@ -64,6 +65,13 @@ export function buildColumns(
       indexByLabel.set(key, index);
     }
     labelIndex[i] = index;
+  }
+
+  if (n === 0) {
+    // Infinite bounds would poison the camera's framing; a unit box is
+    // an arbitrary-but-finite stand-in until real data arrives
+    xMin = yMin = zMin = 0;
+    xMax = yMax = zMax = 1;
   }
 
   return {

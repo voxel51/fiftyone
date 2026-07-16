@@ -92,6 +92,33 @@ describe("useHoverInfo", () => {
     expect(result.current.hover).toBeNull();
   });
 
+  // The guard must be the FULL request identity: same index, previous
+  // run — the stale response used to land because only the index matched
+  it("drops an in-flight response that resolves after a run change", async () => {
+    let resolveInfo: (value: ReturnType<typeof info>) => void = () => undefined;
+    vi.mocked(fetchSampleInfo).mockImplementationOnce(
+      () => new Promise((resolve) => (resolveInfo = resolve)),
+    );
+    const { result, rerender } = renderHook(
+      ({ brainKey }: { brainKey: string }) =>
+        useHoverInfo("ds", brainKey, null, mediaUrl),
+      { initialProps: { brainKey: "viz" } },
+    );
+
+    act(() => result.current.handleHover(hit(1)));
+    rerender({ brainKey: "viz2" });
+    // Same index, new run: hover the new run's point 1 with a pending
+    // fetch, then let the OLD run's response arrive
+    vi.mocked(fetchSampleInfo).mockImplementationOnce(
+      () => new Promise(() => undefined),
+    );
+    act(() => result.current.handleHover(hit(1)));
+    await act(async () => {
+      resolveInfo(info(1));
+    });
+    expect(result.current.hover).toBeNull();
+  });
+
   it("clears the card when the run changes", async () => {
     vi.mocked(fetchSampleInfo).mockResolvedValue(info(1));
     const { result, rerender } = renderHook(

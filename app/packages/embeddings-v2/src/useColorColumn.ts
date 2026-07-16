@@ -41,6 +41,8 @@ export function useColorColumn(
 
   // Color-by field choices depend on the run (patches vs samples)
   useEffect(() => {
+    // The previous run's fields must not populate the new run's menu
+    setChoices([]);
     if (!datasetName || !run) return undefined;
     let stale = false;
     fetchColorByChoices(datasetName, run.patchesField)
@@ -55,6 +57,8 @@ export function useColorColumn(
     setColors(null);
     setValues(null);
     setMeta(null);
+    // A stale failure must not banner over a later successful field
+    setError(null);
     if (!datasetName || !brainKey || !colorField) {
       setLoading(false);
       return undefined;

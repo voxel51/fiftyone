@@ -102,6 +102,39 @@ describe("useSelectionBridge", () => {
     expect(fetchLassoStage).not.toHaveBeenCalled();
   });
 
+  // Responses must apply in request order: a slow first lasso resolving
+  // after a quick second one used to overwrite the newer selection
+  it("ignores a lasso response that arrives after a newer lasso", async () => {
+    const stage = (count: number) => ({
+      _cls: "S",
+      kwargs: { n: count },
+      count,
+    });
+    let resolveFirst: (v: ReturnType<typeof stage>) => void = () => undefined;
+    vi.mocked(fetchLassoStage)
+      .mockClear()
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (resolveFirst = resolve)),
+      )
+      .mockResolvedValueOnce(stage(2));
+    const setOverrideStage = vi.fn();
+    const { result } = renderHook(() =>
+      useSelectionBridge(options({ setOverrideStage })),
+    );
+
+    act(() => result.current.handleSelection([0], null));
+    act(() => result.current.handleSelection([0, 1], null));
+    await waitFor(() => expect(result.current.selectionCount).toBe(2));
+
+    await act(async () => {
+      resolveFirst(stage(1));
+    });
+    // The newer selection stands
+    expect(result.current.selectionCount).toBe(2);
+    expect(setOverrideStage).toHaveBeenCalledTimes(1);
+    expect(setOverrideStage).toHaveBeenCalledWith({ S: { n: 2 } });
+  });
+
   it("toggles a sample on plain click", () => {
     const opts = options();
     const { result } = renderHook(() => useSelectionBridge(opts));

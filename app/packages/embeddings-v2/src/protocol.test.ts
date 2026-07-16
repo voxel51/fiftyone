@@ -32,6 +32,16 @@ describe("parseHeader", () => {
     });
   });
 
+  // Version exists for exactly this: newer layouts must fail loudly,
+  // not decode as garbage
+  it("rejects an unsupported version", () => {
+    const buffer = new ArrayBuffer(16);
+    const view = new DataView(buffer);
+    view.setUint32(0, MAGIC, true);
+    view.setUint16(4, 2, true);
+    expect(() => parseHeader(buffer)).toThrow(/version/i);
+  });
+
   it("rejects a bad magic", () => {
     const buffer = makeColumn(DTYPE_F32, 1, 1, new Uint8Array(4));
     new DataView(buffer).setUint32(0, 0xdeadbeef, true);

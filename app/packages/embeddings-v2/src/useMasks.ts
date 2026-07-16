@@ -27,6 +27,15 @@ export function useMasks(
   const [masks, setMasks] = useState<Masks | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // A run switch invalidates the wire order itself — the previous
+  // run's masks must not style the new run's points for even a frame.
+  // (Filter/view changes deliberately keep the old mask until the new
+  // one lands: same wire order, no flash.)
+  useEffect(() => {
+    setMasks(null);
+    setError(null);
+  }, [datasetName, brainKey]);
+
   useEffect(() => {
     if (!datasetName || !brainKey) {
       setMasks(null);

@@ -33,6 +33,15 @@ describe("buildColumns", () => {
     expect(cols.zMax).toBe(0);
   });
 
+  // Infinite bounds would poison the camera framing downstream
+  it("normalizes empty datasets to finite bounds", () => {
+    const cols = buildColumns([]);
+    expect(cols.n).toBe(0);
+    expect(Number.isFinite(cols.xMin)).toBe(true);
+    expect(Number.isFinite(cols.xMax)).toBe(true);
+    expect(cols.xMax).toBeGreaterThan(cols.xMin);
+  });
+
   it("accumulates bounds in the same pass", () => {
     const cols = buildColumns([point(-1, 10, 3), point(7, -2, -4)]);
     expect(cols.xMin).toBe(-1);

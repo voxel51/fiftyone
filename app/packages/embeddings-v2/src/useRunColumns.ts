@@ -39,6 +39,9 @@ export function useRunColumns(
     if (loadingKeyRef.current === loadKey) return undefined;
     loadingKeyRef.current = loadKey;
     let stale = false;
+    // The previous run's points must not linger while the new one
+    // loads (and a failed load must not strand them either)
+    setLoaded(null);
     setError(null);
     (async () => {
       // run-info first: reports n AND warms the server's results cache,
@@ -49,6 +52,13 @@ export function useRunColumns(
       const total = info.n;
       const ids: IdColumn = new Uint8Array(total * 12);
       const points: EmbeddingPoint[] = [];
+
+      // A zero-point run has no chunks: publish the empty columns or
+      // the loading spinner never resolves
+      if (total === 0) {
+        setLoaded({ brainKey, points: [], ids, total });
+        return;
+      }
 
       for (let offset = 0; offset < total; offset += CHUNK) {
         const slice = { offset, limit: Math.min(CHUNK, total - offset) };

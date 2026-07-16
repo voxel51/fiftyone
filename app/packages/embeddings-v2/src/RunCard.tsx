@@ -108,6 +108,7 @@ export function RunCard({
         <div
           className="emb-run-card-trail"
           onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
         >
           {status && (
             <Pill

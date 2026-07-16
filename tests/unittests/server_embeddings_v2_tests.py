@@ -558,6 +558,29 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         self.assertTrue(res["filepath"].endswith("clip.mp4"))
 
     @drop_datasets
+    def test_negative_slices_are_rejected(self):
+        # Python's negative slicing would "work" and return unrelated
+        # wire-order rows — a protocol violation must raise instead
+        dataset, _ = _make_samples_run()
+        base = {"datasetName": dataset.name, "brainKey": "viz"}
+
+        for bad in ({"offset": -1}, {"limit": -5}):
+            with self.assertRaises(ValueError):
+                v2.EmbeddingsV2Geometry._post_sync(None, {**base, **bad})
+
+    @drop_datasets
+    def test_invalid_lasso_indices_are_rejected(self):
+        # Negative indices silently select from the end of the arrays
+        dataset, points = _make_samples_run()
+        base = {"datasetName": dataset.name, "brainKey": "viz", "view": []}
+
+        for bad in ([-1], [len(points)], [[0, 1]]):
+            with self.assertRaises(ValueError):
+                v2.EmbeddingsV2LassoStage._post_sync(
+                    None, {**base, "indices": bad}
+                )
+
+    @drop_datasets
     def test_unknown_brain_key_raises(self):
         dataset = fo.Dataset()
         dataset.add_sample(fo.Sample(filepath="/tmp/a.png"))

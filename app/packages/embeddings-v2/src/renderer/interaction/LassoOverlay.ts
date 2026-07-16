@@ -23,6 +23,7 @@ export class LassoOverlay {
   private readonly listeners = new AbortController();
   private polygon: Polygon = [];
   private drawing = false;
+  private pointerId: number | null = null;
 
   constructor(container: HTMLElement, callbacks: LassoCallbacks) {
     const ns = "http://www.w3.org/2000/svg";
@@ -51,10 +52,11 @@ export class LassoOverlay {
     container.addEventListener(
       "pointerdown",
       (event) => {
-        if (!callbacks.shouldStart(event)) return;
+        if (this.drawing || !callbacks.shouldStart(event)) return;
         event.stopPropagation();
         event.preventDefault();
         this.drawing = true;
+        this.pointerId = event.pointerId;
         this.polygon = [[event.offsetX, event.offsetY]];
         container.setPointerCapture(event.pointerId);
       },
@@ -63,7 +65,7 @@ export class LassoOverlay {
     container.addEventListener(
       "pointermove",
       (event) => {
-        if (!this.drawing) return;
+        if (!this.drawing || event.pointerId !== this.pointerId) return;
         event.stopPropagation();
         const [lastX, lastY] = this.polygon[this.polygon.length - 1];
         const dx = event.offsetX - lastX;
@@ -81,9 +83,10 @@ export class LassoOverlay {
     container.addEventListener(
       "pointerup",
       (event) => {
-        if (!this.drawing) return;
+        if (!this.drawing || event.pointerId !== this.pointerId) return;
         event.stopPropagation();
         this.drawing = false;
+        this.pointerId = null;
         const polygon = this.polygon;
         this.polygon = [];
         this.path.setAttribute("d", "");
@@ -92,6 +95,20 @@ export class LassoOverlay {
           event.offsetX,
           event.offsetY,
         );
+      },
+      { capture: true, signal },
+    );
+    // A cancelled gesture (touch scroll takeover, capture loss) is
+    // neither a lasso nor a click: abandon silently or `drawing` leaks
+    // and suppresses hover forever
+    container.addEventListener(
+      "pointercancel",
+      (event) => {
+        if (!this.drawing || event.pointerId !== this.pointerId) return;
+        this.drawing = false;
+        this.pointerId = null;
+        this.polygon = [];
+        this.path.setAttribute("d", "");
       },
       { capture: true, signal },
     );

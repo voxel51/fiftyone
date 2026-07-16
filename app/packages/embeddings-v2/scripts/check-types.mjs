@@ -38,14 +38,17 @@ try {
   }
 }
 
-const localDiagnostics = output
-  .split("\n")
+const lines = output.split("\n");
+const localDiagnostics = lines
   // Workspace source dependencies still surface in this package check, so only
   // fail diagnostics owned by the embeddings-v2 package boundary.
   .filter((line) => localDiagnosticPattern.test(line));
+// Config-level failures (broken tsconfig, bad flags) carry no file prefix
+// and must not read as success
+const globalDiagnostics = lines.filter((line) => /^error TS\d+:/.test(line));
 
-if (localDiagnostics.length) {
-  console.error(localDiagnostics.join("\n"));
+if (localDiagnostics.length || globalDiagnostics.length) {
+  console.error([...globalDiagnostics, ...localDiagnostics].join("\n"));
   process.exit(1);
 }
 

@@ -10,6 +10,7 @@
 import { getFetchFunction } from "@fiftyone/utilities";
 
 export const MAGIC = 0x464f4531; // "FOE1"
+export const VERSION = 1;
 export const HEADER_BYTES = 16;
 
 export const DTYPE_F32 = 1;
@@ -47,8 +48,14 @@ export function parseHeader(buffer: ArrayBuffer): ColumnHeader {
   if (magic !== MAGIC) {
     throw new Error(`Bad column magic: 0x${magic.toString(16)}`);
   }
+  // The version exists for exactly this: decoding a column laid out by
+  // a newer server would be silent corruption, not an error
+  const version = view.getUint16(4, true);
+  if (version !== VERSION) {
+    throw new Error(`Unsupported column version ${version}`);
+  }
   return {
-    version: view.getUint16(4, true),
+    version,
     dtype: view.getUint8(6),
     width: view.getUint8(7),
     n: view.getUint32(8, true),

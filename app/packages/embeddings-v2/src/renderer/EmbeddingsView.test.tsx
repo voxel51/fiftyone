@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { render, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EmbeddingsView } from "./EmbeddingsView";
 import type { EmbeddingPoint } from "./types";
 
@@ -22,6 +22,12 @@ class MockChart {
   }
 }
 vi.mock("./EmbeddingsChart", () => ({ EmbeddingsChart: MockChart }));
+
+// Stale instances let a test observe the PREVIOUS test's chart before
+// its own lazy import resolves
+beforeEach(() => {
+  instances.length = 0;
+});
 
 const POINTS: EmbeddingPoint[] = [
   { id: "a", x: 0, y: 0, label: null },

@@ -107,6 +107,19 @@ describe("useRunColumns", () => {
     expect(result.current.loaded).toBeNull();
   });
 
+  // No chunks means no publishes — the empty run must still resolve or
+  // the loading spinner never leaves
+  it("publishes an empty run immediately", async () => {
+    vi.mocked(fetchRunInfo).mockResolvedValue(info(0));
+    vi.mocked(fetchGeometry).mockClear();
+    const { result } = renderHook(() => useRunColumns("ds", "empty"));
+
+    await waitFor(() => expect(result.current.loaded).not.toBeNull());
+    expect(result.current.loaded?.points).toEqual([]);
+    expect(result.current.loaded?.total).toBe(0);
+    expect(fetchGeometry).not.toHaveBeenCalled();
+  });
+
   it("does nothing without a run selected", () => {
     vi.mocked(fetchRunInfo).mockClear();
     renderHook(() => useRunColumns("ds", null));

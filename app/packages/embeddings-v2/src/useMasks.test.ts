@@ -95,6 +95,25 @@ describe("useMasks", () => {
     expect(result.current.visibleCount).toBe(2);
   });
 
+  // A run switch changes the wire order itself; yesterday's mask must
+  // not style today's points while the replacement is in flight
+  it("drops masks the moment the run changes", async () => {
+    vi.mocked(fetchMasks).mockResolvedValue(
+      masks({ visible: new Uint8Array([1, 0, 1, 1]) }),
+    );
+    const { result, rerender } = renderHook(
+      ({ key }: { key: string }) => useMasks("ds", key, [], null, 4),
+      { initialProps: { key: "viz" } },
+    );
+    await waitFor(() => expect(result.current.visibleMask).not.toBeNull());
+
+    vi.mocked(fetchMasks).mockImplementationOnce(
+      () => new Promise(() => undefined),
+    );
+    rerender({ key: "viz2" });
+    expect(result.current.visibleMask).toBeNull();
+  });
+
   it("clears masks when no run is selected", async () => {
     vi.mocked(fetchMasks).mockClear();
     const { result } = renderHook(() => useMasks("ds", null, [], null, 0));

@@ -21,7 +21,7 @@ export function useHoverInfo(
   handleHover: (hit: HoverHit | null) => void;
 } {
   const [hover, setHover] = useState<HoverContent | null>(null);
-  const hoverIndexRef = useRef<number | null>(null);
+  const hoverKeyRef = useRef<string | null>(null);
   const infoCache = useRef(new Map<string, SampleInfo>());
 
   // A new run reorders the wire, invalidating cached indices
@@ -31,15 +31,18 @@ export function useHoverInfo(
   }, [datasetName, brainKey]);
 
   const handleHover = (hit: HoverHit | null) => {
-    hoverIndexRef.current = hit?.index ?? null;
     if (!hit || !datasetName || !brainKey) {
+      hoverKeyRef.current = null;
       setHover(null);
       return;
     }
-    const key = `${brainKey}::${colorField ?? ""}::${hit.index}`;
+    // The FULL request identity: a response for the same index but a
+    // previous dataset/run/field must not land on the current hover
+    const key = `${datasetName}::${brainKey}::${colorField ?? ""}::${hit.index}`;
+    hoverKeyRef.current = key;
     const apply = (info: SampleInfo) => {
-      // The pointer may have moved on while the info resolved
-      if (hoverIndexRef.current !== hit.index) return;
+      // The pointer (or the run) may have moved on while this resolved
+      if (hoverKeyRef.current !== key) return;
 
       let value: HoverContent["value"] = null;
       if (info.value !== null && info.value !== undefined) {

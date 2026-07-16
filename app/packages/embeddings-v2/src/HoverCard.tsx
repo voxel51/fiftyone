@@ -43,21 +43,27 @@ export default function HoverCard({
   containerHeight: number;
 }) {
   const { hit, src, value, filename } = content;
-  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const [settled, setSettled] = useState<{ src: string; ok: boolean } | null>(
+    null,
+  );
 
-  // Preload off-DOM; the card appears only once the image is ready
+  // Preload off-DOM; the card appears only once the image is ready — or
+  // has failed, in which case the metadata still shows (an unloadable
+  // thumbnail must not suppress the value/filename lines)
   useEffect(() => {
     if (!src) return undefined;
     let stale = false;
     const image = new Image();
-    image.onload = () => !stale && setLoadedSrc(src);
+    image.onload = () => !stale && setSettled({ src, ok: true });
+    image.onerror = () => !stale && setSettled({ src, ok: false });
     image.src = src;
     return () => {
       stale = true;
     };
   }, [src]);
 
-  if (src && loadedSrc !== src) return null;
+  if (src && settled?.src !== src) return null;
+  const showImage = src !== null && settled?.ok === true;
 
   // Flip the card's quadrant so it stays inside the plot container
   const flipX = hit.x > containerWidth / 2;
@@ -75,7 +81,9 @@ export default function HoverCard({
         })`,
       }}
     >
-      {src && <img key={src} src={src} alt="" className="emb-hover-image" />}
+      {showImage && (
+        <img key={src} src={src} alt="" className="emb-hover-image" />
+      )}
       {value && (
         <div className="emb-hover-value">
           {value.swatch && (

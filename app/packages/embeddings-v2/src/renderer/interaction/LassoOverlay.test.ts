@@ -52,6 +52,45 @@ describe("LassoOverlay", () => {
     fire(container, "pointerup", { offsetX: last[0], offsetY: last[1] });
   };
 
+  // A cancelled gesture (touch takeover, capture loss) must abandon the
+  // draw without completing — and must release the drawing flag, which
+  // used to leak and suppress hover forever
+  it("abandons the draw on pointercancel", () => {
+    fire(container, "pointerdown", { offsetX: 0, offsetY: 0 });
+    fire(container, "pointermove", { offsetX: 20, offsetY: 0 });
+    expect(overlay.isDrawing()).toBe(true);
+
+    fire(container, "pointercancel");
+    expect(overlay.isDrawing()).toBe(false);
+    expect(onComplete).not.toHaveBeenCalled();
+
+    // The next gesture starts clean
+    drag([
+      [0, 0],
+      [30, 0],
+      [30, 30],
+      [0, 30],
+    ]);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  // A second pointer (other mouse button path, stray touch) must not
+  // steer or terminate another pointer's lasso
+  it("ignores moves and releases from other pointers", () => {
+    fire(container, "pointerdown", { offsetX: 0, offsetY: 0, pointerId: 1 });
+    fire(container, "pointermove", { offsetX: 20, offsetY: 0, pointerId: 2 });
+    fire(container, "pointerup", { offsetX: 20, offsetY: 0, pointerId: 2 });
+    expect(overlay.isDrawing()).toBe(true);
+    expect(onComplete).not.toHaveBeenCalled();
+
+    fire(container, "pointermove", { offsetX: 20, offsetY: 0, pointerId: 1 });
+    fire(container, "pointermove", { offsetX: 20, offsetY: 20, pointerId: 1 });
+    fire(container, "pointerup", { offsetX: 20, offsetY: 20, pointerId: 1 });
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    const [polygon] = onComplete.mock.calls[0];
+    expect(polygon).toHaveLength(3);
+  });
+
   it("delivers the polygon for a real lasso drag", () => {
     drag([
       [0, 0],

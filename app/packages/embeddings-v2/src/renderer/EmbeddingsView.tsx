@@ -39,6 +39,9 @@ export interface EmbeddingsViewProps {
   /** A plain click on empty space, after the chart clears its selection
    * — for hosts with layers of their own to clear */
   onBackgroundClick?: () => void;
+  /** The lazy renderer chunk (or an injected camera) failed to load —
+   * without this the chart is a permanently blank surface */
+  onError?: (error: Error) => void;
   /** Debounced hover hit, or null the moment hovering breaks */
   onHover?: (hit: HoverHit | null) => void;
   /** Render the built-in tooltip (default). Hosts with their own hover
@@ -86,6 +89,7 @@ export const EmbeddingsView = forwardRef<
     onPointClick,
     onBackgroundClick,
     onHover,
+    onError,
     tooltip = true,
     mode,
     zCamera,
@@ -97,6 +101,7 @@ export const EmbeddingsView = forwardRef<
   const onPointClickRef = useRef(onPointClick);
   const onBackgroundClickRef = useRef(onBackgroundClick);
   const onHoverRef = useRef(onHover);
+  const onErrorRef = useRef(onError);
   // Captured once: the chart is constructed a single time per mount
   const zCameraRef = useRef(zCamera);
   const [chart, setChart] = useState<EmbeddingsChart | null>(null);
@@ -107,7 +112,8 @@ export const EmbeddingsView = forwardRef<
     onPointClickRef.current = onPointClick;
     onBackgroundClickRef.current = onBackgroundClick;
     onHoverRef.current = onHover;
-  }, [onSelection, onPointClick, onBackgroundClick, onHover]);
+    onErrorRef.current = onError;
+  }, [onSelection, onPointClick, onBackgroundClick, onHover, onError]);
 
   useImperativeHandle(
     ref,
@@ -155,6 +161,9 @@ export const EmbeddingsView = forwardRef<
       .catch((error) => {
         // eslint-disable-next-line no-console
         console.error("Failed to load the embeddings renderer", error);
+        onErrorRef.current?.(
+          error instanceof Error ? error : new Error(String(error)),
+        );
       });
     return () => {
       disposed = true;

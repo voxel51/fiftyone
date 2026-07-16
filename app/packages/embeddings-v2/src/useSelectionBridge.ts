@@ -62,9 +62,13 @@ export function useSelectionBridge({
 } {
   const [error, setError] = useState<string | null>(null);
   const [selectionCount, setSelectionCount] = useState<number | null>(null);
+  // Monotonic lasso-request id: a slow older response must not
+  // overwrite a newer selection (or resurrect one that was cleared)
+  const lassoSeq = useRef(0);
 
   // Stable because the Esc effect below depends on it
   const clearAll = useCallback(() => {
+    lassoSeq.current++;
     resetExtended();
     setSelectedSamples(new Map());
     setSelectionCount(null);
@@ -116,6 +120,7 @@ export function useSelectionBridge({
     polygon?: Array<[number, number]> | null,
   ) => {
     if (!datasetName || !brainKey) return;
+    const seq = ++lassoSeq.current;
     if (!indices.length) {
       resetExtended();
       setSelectionCount(null);
@@ -124,10 +129,11 @@ export function useSelectionBridge({
     const selection = polygon?.length ? { polygon } : { indices };
     fetchLassoStage(datasetName, brainKey, view, selection)
       .then((stage) => {
+        if (seq !== lassoSeq.current) return;
         setOverrideStage({ [stage._cls]: stage.kwargs });
         setSelectionCount(stage.count ?? indices.length);
       })
-      .catch((e) => setError(String(e)));
+      .catch((e) => seq === lassoSeq.current && setError(String(e)));
   };
 
   // Plain click toggles the sample in the App's selection. For patches

@@ -11,13 +11,15 @@ import { FloatingPanel } from "./FloatingPanel";
 import "./panel.css";
 import type { ColorMeta } from "./protocol";
 
+const FLOAT_FORMAT = new Intl.NumberFormat(undefined, {
+  maximumSignificantDigits: 3,
+});
+
 /** Compact display for a ramp endpoint: integers verbatim, floats to
  * three significant digits (uniqueness-style scores read as "0.512") */
 export function formatRampValue(value: number): string {
   if (Number.isInteger(value)) return value.toLocaleString();
-  return new Intl.NumberFormat(undefined, {
-    maximumSignificantDigits: 3,
-  }).format(value);
+  return FLOAT_FORMAT.format(value);
 }
 
 export function ContinuousLegend({

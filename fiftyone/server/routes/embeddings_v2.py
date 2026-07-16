@@ -26,6 +26,7 @@ determines where the column ends, so no delimiter is needed.
 import json
 import logging
 import struct
+import threading
 from collections import OrderedDict
 
 import numpy as np
@@ -256,8 +257,9 @@ class EmbeddingsV2Masks(HTTPEndpoint):
         n = len(results.points)
         flags = 0
 
-        # Visible: membership in the view (stages only, no filters)
-        if stages:
+        # Visible: membership in the view (stages only, no filters).
+        # Group slices scope visibility too, even with no view stages
+        if stages or slices:
             view = fosv.get_view(
                 dataset,
                 stages=stages,
@@ -455,20 +457,25 @@ EmbeddingsV2Routes = [
 # switching revisits few fields, so a small cap covers it
 _COLOR_CACHE_MAX = 8
 _color_cache = OrderedDict()
+# Route handlers run on a thread pool; unsynchronized get/move_to_end
+# can race an eviction into a KeyError
+_color_cache_lock = threading.Lock()
 
 
 def _color_cache_get(key):
-    body = _color_cache.get(key)
-    if body is not None:
-        _color_cache.move_to_end(key)
+    with _color_cache_lock:
+        body = _color_cache.get(key)
+        if body is not None:
+            _color_cache.move_to_end(key)
 
-    return body
+        return body
 
 
 def _color_cache_put(key, body):
-    _color_cache[key] = body
-    while len(_color_cache) > _COLOR_CACHE_MAX:
-        _color_cache.popitem(last=False)
+    with _color_cache_lock:
+        _color_cache[key] = body
+        while len(_color_cache) > _COLOR_CACHE_MAX:
+            _color_cache.popitem(last=False)
 
 
 def _build_color_body(dataset, results, field_path):
@@ -539,7 +546,12 @@ def _slice(array, data):
         return array
 
     start = int(offset or 0)
-    stop = start + int(limit) if limit is not None else None
+    length = int(limit) if limit is not None else None
+    # Negative values would silently slice from the wrong end
+    if start < 0 or (length is not None and length < 0):
+        raise ValueError("offset and limit must be non-negative")
+
+    stop = start + length if length is not None else None
     return array[start:stop]
 
 
@@ -725,7 +737,18 @@ def _resolve_selection(data, results):
 
     indices = data.get("indices", None)
     if indices is not None:
-        return np.asarray(indices, dtype=int)
+        matched = np.asarray(indices, dtype=int)
+        n = len(results.points)
+        # Negative values silently select from the end; >= n raises an
+        # opaque IndexError downstream — reject both here
+        if matched.ndim != 1 or (
+            matched.size and ((matched < 0) | (matched >= n)).any()
+        ):
+            raise ValueError(
+                f"indices must be a flat list of ints in [0, {n})"
+            )
+
+        return matched
 
     raise ValueError("Either 'polygon' or 'indices' is required")
 

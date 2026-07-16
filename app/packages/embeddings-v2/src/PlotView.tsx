@@ -219,6 +219,7 @@ export default function PlotView({
   });
 
   const [mode, setMode] = useState<InteractionMode>("explore");
+  const [rendererError, setRendererError] = useState<string | null>(null);
 
   // The legend has no state of its own: which classes are on derives
   // from the App's sidebar filter for the color-by field, and clicks
@@ -272,7 +273,8 @@ export default function PlotView({
     [colorField],
   );
 
-  const error = loadError ?? colorError ?? masksError ?? selectionError;
+  const error =
+    loadError ?? rendererError ?? colorError ?? masksError ?? selectionError;
 
   const colorOptions = useMemo(
     () => [
@@ -441,6 +443,7 @@ export default function PlotView({
             onSelection={handleLasso}
             onPointClick={mode === "select" ? handlePointClick : undefined}
             onBackgroundClick={handleBackgroundClick}
+            onError={(e) => setRendererError(e.message)}
             onHover={handleHover}
           />
         )}

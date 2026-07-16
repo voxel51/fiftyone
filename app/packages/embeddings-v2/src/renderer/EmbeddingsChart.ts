@@ -142,6 +142,8 @@ export class EmbeddingsChart {
   private width = 0;
   private height = 0;
   private renderQueued = false;
+  private rafHandle: number | null = null;
+  private disposed = false;
 
   constructor(
     container: HTMLElement,
@@ -344,7 +346,10 @@ export class EmbeddingsChart {
     const array = visibleAttribute.array as Uint8Array;
     if (mask) {
       array.set(mask);
-      this.visibleMask = mask;
+      // Point hit-tests at the chart-owned copy the GPU renders from —
+      // holding the caller's array would let later caller mutations
+      // desynchronize picking from what's drawn
+      this.visibleMask = array;
     } else {
       array.fill(1);
       this.visibleMask = null;
@@ -428,6 +433,12 @@ export class EmbeddingsChart {
 
   /** Full teardown; forceContextLoss releases the GL context immediately */
   destroy(): void {
+    // A queued frame after disposal would render with disposed GL state
+    this.disposed = true;
+    if (this.rafHandle !== null) {
+      cancelAnimationFrame(this.rafHandle);
+      this.rafHandle = null;
+    }
     this.picker.destroy();
     this.lasso.destroy();
     this.clicks.destroy();
@@ -556,9 +567,10 @@ export class EmbeddingsChart {
 
   /** Coalesce render requests into one render per animation frame */
   private requestRender(): void {
-    if (this.renderQueued) return;
+    if (this.renderQueued || this.disposed) return;
     this.renderQueued = true;
-    requestAnimationFrame(() => {
+    this.rafHandle = requestAnimationFrame(() => {
+      this.rafHandle = null;
       this.renderQueued = false;
       this.render();
     });
