@@ -1,4 +1,4 @@
-import { Button, Size, Variant } from "@voxel51/voodo";
+import { Button, IconName, Size, Variant } from "@voxel51/voodo";
 import React from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
@@ -7,10 +7,6 @@ import {
   usePlayhead,
 } from "../../lib/playback/use-playback-state";
 import PlayheadTime from "../Playhead/PlayheadTime";
-import {
-  PauseIcon,
-  PlayIcon,
-} from "../TimelineControls/timeline-controls-icons";
 import { clamp } from "../../lib/playback/utils";
 import styles from "./SimplePlaybackBar.module.css";
 
@@ -116,7 +112,7 @@ const SimplePlaybackBar: React.FC = () => {
         data-testid="simple-playback-bar-play-pause"
         // React 18/19 type mismatch on FC<{}>.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        leadingIcon={(hasPlayIntent ? PauseIcon : PlayIcon) as any}
+        leadingIcon={hasPlayIntent ? IconName.Pause : IconName.Play}
         onClick={hasPlayIntent ? pause : play}
         aria-label={hasPlayIntent ? "Pause" : "Play"}
         aria-pressed={hasPlayIntent}

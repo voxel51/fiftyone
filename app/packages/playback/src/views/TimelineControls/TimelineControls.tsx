@@ -21,7 +21,6 @@ import {
 import LoopBounds from "../Loop/LoopBounds";
 import PlayheadTime from "../Playhead/PlayheadTime";
 import SpeedControl from "./SpeedControl";
-import { PauseIcon, PlayIcon } from "./timeline-controls-icons";
 import styles from "./TimelineControls.module.css";
 
 export interface TimelineControlsProps {
@@ -135,7 +134,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         variant={Variant.Icon}
         size={Size.Xs}
         data-testid="timeline-controls-play-pause"
-        leadingIcon={hasPlayIntent ? PauseIcon : PlayIcon}
+        leadingIcon={hasPlayIntent ? IconName.Pause : IconName.Play}
         aria-label={hasPlayIntent ? "Pause" : "Play"}
         aria-pressed={hasPlayIntent}
         onClick={hasPlayIntent ? pause : play}
