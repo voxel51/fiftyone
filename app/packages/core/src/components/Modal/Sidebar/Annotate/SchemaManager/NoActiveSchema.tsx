@@ -1,7 +1,7 @@
 import {
+  ArrowRightIcon,
   Button,
-  Icon,
-  IconName,
+  EditIcon,
   Size,
   Text,
   TextColor,
@@ -15,8 +15,7 @@ const NoActiveSchema = () => {
   const setTab = useSetSchemaEditorGUIJSONToggle();
   return (
     <CenteredEmptyState>
-      <Icon
-        name={IconName.Edit}
+      <EditIcon
         size={Size.Xl}
         style={{ color: "var(--color-brand-accent)", marginBottom: 16 }}
       />
@@ -35,11 +34,7 @@ const NoActiveSchema = () => {
         onClick={() => setTab("other")}
       >
         Select fields to import{" "}
-        <Icon
-          name={IconName.ArrowRight}
-          size={Size.Md}
-          style={{ marginLeft: 4 }}
-        />
+        <ArrowRightIcon size={Size.Md} style={{ marginLeft: 4 }} />
       </Button>
     </CenteredEmptyState>
   );

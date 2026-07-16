@@ -1,4 +1,4 @@
-import { Icon, IconName, Size } from "@voxel51/voodo";
+import { FullscreenIcon, Size } from "@voxel51/voodo";
 import { OrthographicCamera } from "@react-three/drei";
 import type { CSSProperties, ReactNode } from "react";
 import { useMemo, useState } from "react";
@@ -211,11 +211,7 @@ export function ImagePanel({
             title="Recenter the image view"
             type="button"
           >
-            <Icon
-              name={IconName.Fullscreen}
-              size={Size.Xs}
-              style={styles.resetButtonIcon}
-            />
+            <FullscreenIcon size={Size.Xs} style={styles.resetButtonIcon} />
           </button>
         </div>
       ) : null}

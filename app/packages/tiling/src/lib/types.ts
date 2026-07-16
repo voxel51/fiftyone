@@ -1,5 +1,5 @@
-import type { IconName } from "@voxel51/voodo";
-import type { ComponentType, ReactNode } from "react";
+import type { IconProps } from "@voxel51/voodo";
+import type { ComponentType, FC, ReactNode } from "react";
 import type { MosaicNode } from "react-mosaic-component";
 
 /**
@@ -9,7 +9,7 @@ import type { MosaicNode } from "react-mosaic-component";
 export interface RegisteredTile {
   type: string;
   typeLabel: string;
-  icon: IconName | ReactNode;
+  icon: FC<IconProps> | ReactNode;
   Tile: ComponentType;
 }
 

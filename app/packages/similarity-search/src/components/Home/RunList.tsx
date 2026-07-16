@@ -1,13 +1,17 @@
 import {
+  AddIcon,
   Align,
   Button,
   Checkbox,
   Heading,
   HeadingLevel,
-  Icon,
-  IconName,
+  ImageSearchIcon,
   Justify,
+  NotesIcon,
+  RefreshIcon,
   RichList,
+  SearchIcon,
+  SettingsIcon,
   Size,
   Stack,
   Text,
@@ -47,15 +51,8 @@ function QueryTypeIcon({ queryType }: { queryType: string }) {
   if (queryType === QueryType.Upload) {
     return <FileUploadOutlined sx={{ fontSize: 18 }} />;
   }
-  return (
-    <Icon
-      name={
-        queryType === QueryType.Text ? IconName.Search : IconName.ImageSearch
-      }
-      size={Size.Xl}
-      color={TextColor.Primary}
-    />
-  );
+  const QueryIcon = queryType === QueryType.Text ? SearchIcon : ImageSearchIcon;
+  return <QueryIcon size={Size.Xl} color={TextColor.Primary} />;
 }
 
 function RunName({
@@ -327,7 +324,7 @@ export default function RunList({
               <Button
                 size={Size.Md}
                 variant={Variant.Borderless}
-                leadingIcon={IconName.Refresh}
+                leadingIcon={RefreshIcon}
                 onClick={onRefresh}
               />
             </Tooltip>
@@ -337,7 +334,7 @@ export default function RunList({
               <Button
                 variant={selectMode ? Variant.Secondary : Variant.Borderless}
                 size={Size.Md}
-                leadingIcon={IconName.Notes}
+                leadingIcon={NotesIcon}
                 onClick={onToggleSelectMode}
               />
             </Tooltip>
@@ -346,7 +343,7 @@ export default function RunList({
             <Button
               size={Size.Md}
               variant={Variant.Borderless}
-              leadingIcon={IconName.Settings}
+              leadingIcon={SettingsIcon}
               onClick={onSettings}
             />
           </Tooltip>
@@ -361,7 +358,7 @@ export default function RunList({
               <Button
                 variant={Variant.Primary}
                 size={Size.Sm}
-                leadingIcon={IconName.Add}
+                leadingIcon={AddIcon}
                 onClick={onNewSearch}
                 disabled={brainKeys.length === 0}
               >

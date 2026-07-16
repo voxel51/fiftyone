@@ -3,17 +3,12 @@
  */
 
 import { useTheme } from "@fiftyone/components";
-import {
-  Clickable,
-  Icon,
-  IconName,
-  Size,
-  Text,
-  TextVariant,
-} from "@voxel51/voodo";
+import { Clickable, Size, Text, TextVariant } from "@voxel51/voodo";
+import type { IconProps } from "@voxel51/voodo";
+import type { FC } from "react";
 
 interface ComponentTypeButtonProps {
-  icon: IconName;
+  icon: FC<IconProps>;
   label: string;
   isSelected: boolean;
   onClick: () => void;
@@ -30,6 +25,7 @@ const ComponentTypeButton = ({
   disabled = false,
 }: ComponentTypeButtonProps) => {
   const theme = useTheme();
+  const IconComponent = icon;
 
   return (
     <div style={{ flex: 1, opacity: disabled ? 0.5 : 1 }}>
@@ -51,8 +47,7 @@ const ComponentTypeButton = ({
             cursor: disabled ? "not-allowed" : "pointer",
           }}
         >
-          <Icon
-            name={icon}
+          <IconComponent
             size={Size.Md}
             color={isSelected ? theme.voxel[500] : undefined}
           />

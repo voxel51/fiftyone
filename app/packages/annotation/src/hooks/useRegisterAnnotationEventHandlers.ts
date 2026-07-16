@@ -1,11 +1,23 @@
 import { useAnnotationEventHandler } from "./useAnnotationEventHandler";
 import { INDEFINITE_TOAST_TIMEOUT, useActivityToast } from "@fiftyone/state";
 import { useCallback } from "react";
-import { IconName, Variant } from "@voxel51/voodo";
+import type { FC } from "react";
+import {
+  CheckIcon,
+  ErrorIcon,
+  Spinner,
+  Variant,
+  type IconProps,
+} from "@voxel51/voodo";
 import {
   usePersistenceEventHandler,
   usePersistenceRetryController,
 } from "../persistence";
+
+// `Spinner` is a standalone voodo component rather than one of the generated
+// icon components; cast so it can be used where an icon (`FC<IconProps>`) is
+// expected. Its props (`size`, `className`, `style`) are compatible.
+const SpinnerIcon = Spinner as FC<IconProps>;
 
 /**
  * Hook which registers global annotation event handlers.
@@ -33,7 +45,7 @@ export const useRegisterAnnotationEventHandlers = () => {
       // silence notifications when unhealthy
       if (!retryController.isUnhealthy) {
         setConfig({
-          iconName: IconName.Spinner,
+          icon: SpinnerIcon,
           message: "Saving changes...",
           variant: Variant.Secondary,
           timeout: INDEFINITE_TOAST_TIMEOUT,
@@ -46,7 +58,7 @@ export const useRegisterAnnotationEventHandlers = () => {
     "annotation:persistenceSuccess",
     useCallback(() => {
       setConfig({
-        iconName: IconName.Check,
+        icon: CheckIcon,
         message: "Changes saved successfully",
         variant: Variant.Success,
       });
@@ -63,7 +75,7 @@ export const useRegisterAnnotationEventHandlers = () => {
 
         if (retryController.isUnhealthy) {
           setConfig({
-            iconName: IconName.Error,
+            icon: ErrorIcon,
             message:
               "We couldn’t save your work. Please refresh the page and try again.",
             variant: Variant.Danger,
@@ -71,7 +83,7 @@ export const useRegisterAnnotationEventHandlers = () => {
           });
         } else {
           setConfig({
-            iconName: IconName.Error,
+            icon: ErrorIcon,
             message: "Unable to save changes. Please try again.",
             variant: Variant.Danger,
           });

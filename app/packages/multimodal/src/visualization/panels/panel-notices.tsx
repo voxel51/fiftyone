@@ -1,5 +1,17 @@
-import { Icon, IconColor, IconName, Size } from "@voxel51/voodo";
-import { useState, type CSSProperties, type PointerEvent } from "react";
+import {
+  ErrorIcon,
+  IconColor,
+  InfoIcon,
+  Size,
+  WarningIcon,
+  type IconProps,
+} from "@voxel51/voodo";
+import {
+  useState,
+  type CSSProperties,
+  type FC,
+  type PointerEvent,
+} from "react";
 
 import {
   VISUALIZATION_HUD_BACKGROUND_COLOR,
@@ -35,6 +47,7 @@ export function PanelNotices({
     return null;
   }
   const severity = worstSeverity(notices);
+  const SeverityIcon = NOTICE_SEVERITY_ICON[severity];
 
   return (
     <div onPointerDown={stopSceneInteraction} style={styles.root}>
@@ -60,9 +73,8 @@ export function PanelNotices({
         title={`${expanded ? "Hide" : "Show"} ${scope} notices`}
         type="button"
       >
-        <Icon
+        <SeverityIcon
           color={NOTICE_SEVERITY_ICON_COLOR[severity]}
-          name={NOTICE_SEVERITY_ICON[severity]}
           size={Size.Xs}
           style={styles.icon}
         />
@@ -89,10 +101,10 @@ const HUD_BORDER_RADIUS_PX = 4;
 const HUD_FONT_SIZE_PX = 11;
 const HUD_OFFSET_PX = 8;
 
-const NOTICE_SEVERITY_ICON: Record<PanelNoticeSeverity, IconName> = {
-  error: IconName.Error,
-  info: IconName.Info,
-  warning: IconName.Warning,
+const NOTICE_SEVERITY_ICON: Record<PanelNoticeSeverity, FC<IconProps>> = {
+  error: ErrorIcon,
+  info: InfoIcon,
+  warning: WarningIcon,
 };
 
 const NOTICE_SEVERITY_ICON_COLOR: Record<PanelNoticeSeverity, IconColor> = {

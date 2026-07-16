@@ -7,7 +7,7 @@ import {
   MuiVisibilityOutlinedIcon as VisibilityOutlined,
 } from "@fiftyone/components";
 import styled from "styled-components";
-import { Icon, IconName, Size } from "@voxel51/voodo";
+import { EmbeddingsIcon, Size } from "@voxel51/voodo";
 
 export const Container = styled.div`
   display: flex;
@@ -67,7 +67,7 @@ export const Polyline = ({ fill }: { fill: string }) => {
 export const Keypoint = ({ fill }: { fill: string }) => {
   return (
     <Container style={{ color: fill }}>
-      <Icon name={IconName.Embeddings} size={Size.Md} />
+      <EmbeddingsIcon size={Size.Md} />
     </Container>
   );
 };

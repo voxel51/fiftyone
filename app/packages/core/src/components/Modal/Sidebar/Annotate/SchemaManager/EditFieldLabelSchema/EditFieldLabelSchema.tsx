@@ -2,9 +2,9 @@ import { scrollable } from "@fiftyone/components";
 import {
   Anchor,
   Button,
-  Icon,
-  IconName,
+  InfoIcon,
   Orientation,
+  RefreshIcon,
   Size,
   Spacing,
   Stack,
@@ -108,11 +108,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
               disabled={!!labelSchema.appliedOntology}
               onClick={labelSchema.scan}
             >
-              <Icon
-                name={IconName.Refresh}
-                size={Size.Md}
-                style={{ marginRight: 4 }}
-              />
+              <RefreshIcon size={Size.Md} style={{ marginRight: 4 }} />
               Scan
             </Button>
             {isLargeDataset && (
@@ -126,7 +122,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
                 anchor={Anchor.Bottom}
                 portal
               >
-                <Icon name={IconName.Info} size={Size.Md} />
+                <InfoIcon size={Size.Md} />
               </Tooltip>
             )}
           </span>

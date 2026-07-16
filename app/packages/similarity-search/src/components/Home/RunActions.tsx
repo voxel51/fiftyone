@@ -1,7 +1,11 @@
 import {
   Align,
   Button,
-  IconName,
+  ChevronBottomIcon,
+  ChevronTopIcon,
+  ContentCopyIcon,
+  DeleteIcon,
+  GridViewIcon,
   Orientation,
   Size,
   Spacing,
@@ -56,7 +60,7 @@ export default function RunActions({
             aria-label="Show results"
             size={Size.Md}
             variant={Variant.Borderless}
-            leadingIcon={IconName.GridView}
+            leadingIcon={GridViewIcon}
             onClick={stop(() => onApply(run.run_id))}
             disabled={run.status !== RunStatus.Completed}
           />
@@ -75,7 +79,7 @@ export default function RunActions({
               aria-label="Clone search"
               size={Size.Md}
               variant={Variant.Borderless}
-              leadingIcon={IconName.ContentCopy}
+              leadingIcon={ContentCopyIcon}
               onClick={stop(() => onClone(run.run_id))}
               disabled={isUpload}
             />
@@ -86,7 +90,7 @@ export default function RunActions({
             aria-label="Delete"
             size={Size.Md}
             variant={Variant.Borderless}
-            leadingIcon={IconName.Delete}
+            leadingIcon={DeleteIcon}
             onClick={stop(() => onDelete(run.run_id))}
           />
         </Tooltip>
@@ -98,9 +102,7 @@ export default function RunActions({
               aria-label={isExpanded ? "Collapse" : "Show prompts"}
               size={Size.Md}
               variant={Variant.Borderless}
-              leadingIcon={
-                isExpanded ? IconName.ChevronTop : IconName.ChevronBottom
-              }
+              leadingIcon={isExpanded ? ChevronTopIcon : ChevronBottomIcon}
               onClick={stop(() => onToggleExpand(run))}
             />
           </Tooltip>

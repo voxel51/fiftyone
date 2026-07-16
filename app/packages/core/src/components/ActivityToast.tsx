@@ -1,5 +1,5 @@
 import { useActivityToast } from "@fiftyone/state";
-import { Icon, ActivityToast as VoodoActivityToast } from "@voxel51/voodo";
+import { ActivityToast as VoodoActivityToast } from "@voxel51/voodo";
 
 /**
  * Wrapper for VOODO's ActivityToast which manages toast state.
@@ -9,9 +9,7 @@ export const ActivityToast = () => {
   return (
     <VoodoActivityToast
       open={open}
-      icon={({ ...props }) =>
-        config.iconName ? <Icon name={config.iconName} {...props} /> : null
-      }
+      icon={config.icon}
       message={config.message}
       variant={config.variant}
     />

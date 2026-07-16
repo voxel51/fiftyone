@@ -5,10 +5,12 @@ import {
 } from "../../lib/playback/use-playback-state";
 import {
   Button,
+  ChevronBottomIcon,
+  ChevronRightIcon,
   ContextMenu,
-  IconName,
   MenuSeparator,
   MenuTextItem,
+  PinIcon,
   Size,
   Text,
   TextColor,
@@ -451,9 +453,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                   variant={Variant.Icon}
                   size={Size.Xs}
                   data-testid={`timeline-track-expand-${id}`}
-                  leadingIcon={
-                    expanded ? IconName.ChevronBottom : IconName.ChevronRight
-                  }
+                  leadingIcon={expanded ? ChevronBottomIcon : ChevronRightIcon}
                   aria-label={
                     expanded ? "Collapse sub-tracks" : "Expand sub-tracks"
                   }
@@ -484,7 +484,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
               variant={Variant.Icon}
               size={Size.Xs}
               data-testid={`timeline-track-pin-${id}`}
-              leadingIcon={IconName.Pin}
+              leadingIcon={PinIcon}
               aria-label={pinned ? "Unpin track" : "Pin track"}
               aria-pressed={pinned}
               className={clsx(styles.pinButton, {

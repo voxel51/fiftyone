@@ -2,14 +2,14 @@ import React from "react";
 
 // ---------------------------------------------------------------------------
 // TEMPORARY: inline split icons, mirroring tiling-header-icons.tsx.
-// `IconName` does not include split variants yet. When it does, replace
-// these with the design-system names and delete this file.
+// voodo does not export split icon variants yet. When it does, replace
+// these with the design-system icon components and delete this file.
 //
 // Cast as `React.FC` so they satisfy voodo's `Button.leadingIcon`
-// (`IconName | FC<{}>`). The `as unknown as React.FC` is needed because
+// (`FC<IconProps>`). The `as unknown as React.FC` is needed because
 // voodo's published types were compiled against React 17, whose FC generic
 // diverges from React 18's on the children constraint.
-// TODO: Remove as unknown as React.FC once Icons are part of Voodoo
+// TODO: Remove as unknown as React.FC once these icons are part of Voodoo
 // ---------------------------------------------------------------------------
 
 /** A rectangle split by a vertical center line — new pane to the right. */
@@ -64,8 +64,8 @@ export const SplitTileIcon = ((): React.ReactElement => (
 
 /**
  * Four corners pointing inward — the inverse action while a tile is expanded
- * to fullscreen. Replace with a Voodoo IconName when the design system exposes
- * a fullscreen-exit glyph.
+ * to fullscreen. Replace with Voodoo's fullscreen-exit icon component once
+ * its glyph matches this one.
  */
 export const FullscreenExitIcon = ((): React.ReactElement => (
   <svg

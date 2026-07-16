@@ -2,14 +2,14 @@ import React from "react";
 
 // ---------------------------------------------------------------------------
 // TEMPORARY: inline sidebar-toggle icons.
-// `IconName` does not include sidebar variants yet. When it does, replace
-// these with the design-system names and delete this file.
+// voodo does not export sidebar icon variants yet. When it does, replace
+// these with the design-system icon components and delete this file.
 //
 // Cast as `React.FC` so they satisfy voodo's `Button.leadingIcon`
-// (`IconName | FC<{}>`). The `as unknown as React.FC` is needed because
+// (`FC<IconProps>`). The `as unknown as React.FC` is needed because
 // voodo's published types were compiled against React 17, whose FC generic
 // diverges from React 18's on the children constraint.
-// TODO: Remove as unknown as React.FC once Icons are part of Voodoo
+// TODO: Remove as unknown as React.FC once these icons are part of Voodoo
 // ---------------------------------------------------------------------------
 
 /** A rectangle with a vertical bar near the LEFT edge — implies a left panel. */

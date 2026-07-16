@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import type { FC } from "react";
 import { atom, useAtom } from "jotai";
-import { IconName, Variant } from "@voxel51/voodo";
+import { CheckIcon, Variant, type IconProps } from "@voxel51/voodo";
 
 /**
  * Timeout value which will cause the activity toast to remain open indefinitely.
@@ -12,9 +13,9 @@ export const INDEFINITE_TOAST_TIMEOUT = -1;
  */
 export type ActivityToastConfig = {
   /**
-   * Name of the icon to display in the toast.
+   * Icon component to display in the toast.
    */
-  iconName: IconName;
+  icon: FC<IconProps>;
 
   /**
    * Message to display in the toast.
@@ -62,9 +63,9 @@ export interface IActivityToast {
   /**
    * Set the icon for the toast.
    *
-   * @param iconName Icon name
+   * @param icon Icon component
    */
-  setIconName(iconName: IconName): void;
+  setIcon(icon: FC<IconProps>): void;
 
   /**
    * Set the message for the toast.
@@ -91,7 +92,7 @@ export interface IActivityToast {
 const DEFAULT_VISIBILITY_TIMEOUT = 2000;
 
 const toastConfigAtom = atom<ActivityToastConfig>({
-  iconName: IconName.Check,
+  icon: CheckIcon,
   message: "",
   variant: Variant.Success,
   timeout: DEFAULT_VISIBILITY_TIMEOUT,
@@ -127,7 +128,7 @@ export const useActivityToast = (): IActivityToast => {
       config,
       open,
       setConfig,
-      setIconName: (iconName) => setConfig((prev) => ({ ...prev, iconName })),
+      setIcon: (icon) => setConfig((prev) => ({ ...prev, icon })),
       setMessage: (message) => setConfig((prev) => ({ ...prev, message })),
       setTimeout: (timeout) => setConfig((prev) => ({ ...prev, timeout })),
       setVariant: (variant) => setConfig((prev) => ({ ...prev, variant })),

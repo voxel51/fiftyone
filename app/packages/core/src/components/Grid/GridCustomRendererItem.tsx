@@ -8,7 +8,7 @@ import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { TemporalTagGridOverlay } from "@fiftyone/multimodal/adapters/mcap/react/TemporalTagGridOverlay";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
-import OpenInFullIcon from "@mui/icons-material/OpenInFull";
+import { MuiOpenInFullIcon as OpenInFullIcon } from "@fiftyone/components";
 import { Checkbox } from "@mui/material";
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";

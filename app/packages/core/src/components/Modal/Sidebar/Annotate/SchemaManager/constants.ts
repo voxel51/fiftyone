@@ -13,7 +13,18 @@ import {
   OBJECT_ID_FIELD,
   STRING_FIELD,
 } from "@fiftyone/utilities";
-import { IconName } from "@voxel51/voodo";
+import {
+  CheckboxIcon,
+  DateRangeIcon,
+  JSONIcon,
+  RadioIcon,
+  SearchIcon,
+  SliderIcon,
+  TextIcon,
+  ToggleIcon,
+} from "@voxel51/voodo";
+import type { IconProps } from "@voxel51/voodo";
+import type { FC } from "react";
 
 // Tab IDs for GUI/JSON toggle
 export const TAB_GUI = "gui" as const;
@@ -173,57 +184,55 @@ export const ATTRIBUTE_TYPE_OPTIONS = Object.entries(ATTRIBUTE_TYPE_LABELS).map(
 
 export const COMPONENT_OPTIONS: Record<
   string,
-  Array<{ id: string; label: string; icon: IconName }>
+  Array<{ id: string; label: string; icon: FC<IconProps> }>
 > = {
   // STR_COMPONENTS = {dropdown, radio, text}
   str: [
-    { id: "text", label: "Text", icon: IconName.Text },
-    { id: "radio", label: "Radio", icon: IconName.Radio },
-    { id: "dropdown", label: "Dropdown", icon: IconName.Search },
+    { id: "text", label: "Text", icon: TextIcon },
+    { id: "radio", label: "Radio", icon: RadioIcon },
+    { id: "dropdown", label: "Dropdown", icon: SearchIcon },
   ],
   // FLOAT_INT_COMPONENTS = {dropdown, radio, slider, text}
   int: [
-    { id: "text", label: "Text", icon: IconName.Text },
-    { id: "slider", label: "Slider", icon: IconName.Slider },
-    { id: "radio", label: "Radio", icon: IconName.Radio },
-    { id: "dropdown", label: "Dropdown", icon: IconName.Search },
+    { id: "text", label: "Text", icon: TextIcon },
+    { id: "slider", label: "Slider", icon: SliderIcon },
+    { id: "radio", label: "Radio", icon: RadioIcon },
+    { id: "dropdown", label: "Dropdown", icon: SearchIcon },
   ],
   float: [
-    { id: "text", label: "Text", icon: IconName.Text },
-    { id: "slider", label: "Slider", icon: IconName.Slider },
-    { id: "radio", label: "Radio", icon: IconName.Radio },
-    { id: "dropdown", label: "Dropdown", icon: IconName.Search },
+    { id: "text", label: "Text", icon: TextIcon },
+    { id: "slider", label: "Slider", icon: SliderIcon },
+    { id: "radio", label: "Radio", icon: RadioIcon },
+    { id: "dropdown", label: "Dropdown", icon: SearchIcon },
   ],
   // BOOL_COMPONENTS = {checkbox, toggle}
   bool: [
-    { id: "toggle", label: "Toggle", icon: IconName.Toggle },
-    { id: "checkbox", label: "Checkbox", icon: IconName.Checkbox },
+    { id: "toggle", label: "Toggle", icon: ToggleIcon },
+    { id: "checkbox", label: "Checkbox", icon: CheckboxIcon },
   ],
   // DATE_DATETIME_COMPONENTS = {datepicker}
-  date: [{ id: "datepicker", label: "Date picker", icon: IconName.DateRange }],
-  datetime: [
-    { id: "datepicker", label: "Date picker", icon: IconName.DateRange },
-  ],
+  date: [{ id: "datepicker", label: "Date picker", icon: DateRangeIcon }],
+  datetime: [{ id: "datepicker", label: "Date picker", icon: DateRangeIcon }],
   // DICT_COMPONENTS = {json}
-  dict: [{ id: "json", label: "JSON editor", icon: IconName.JSON }],
+  dict: [{ id: "json", label: "JSON editor", icon: JSONIcon }],
   // ID_COMPONENTS = {text} - for existing ObjectIdField/UUIDField attributes
-  id: [{ id: "text", label: "Text", icon: IconName.Text }],
+  id: [{ id: "text", label: "Text", icon: TextIcon }],
   // STR_LIST_COMPONENTS = {checkboxes, dropdown, text}
   "list<str>": [
-    { id: "checkboxes", label: "Checkboxes", icon: IconName.Checkbox },
-    { id: "dropdown", label: "Dropdown", icon: IconName.Search },
-    { id: "text", label: "Text", icon: IconName.Text },
+    { id: "checkboxes", label: "Checkboxes", icon: CheckboxIcon },
+    { id: "dropdown", label: "Dropdown", icon: SearchIcon },
+    { id: "text", label: "Text", icon: TextIcon },
   ],
   // FLOAT_INT_LIST_COMPONENTS = {checkboxes, dropdown, text}
   "list<int>": [
-    { id: "checkboxes", label: "Checkboxes", icon: IconName.Checkbox },
-    { id: "dropdown", label: "Dropdown", icon: IconName.Search },
-    { id: "text", label: "Text", icon: IconName.Text },
+    { id: "checkboxes", label: "Checkboxes", icon: CheckboxIcon },
+    { id: "dropdown", label: "Dropdown", icon: SearchIcon },
+    { id: "text", label: "Text", icon: TextIcon },
   ],
   "list<float>": [
-    { id: "checkboxes", label: "Checkboxes", icon: IconName.Checkbox },
-    { id: "dropdown", label: "Dropdown", icon: IconName.Search },
-    { id: "text", label: "Text", icon: IconName.Text },
+    { id: "checkboxes", label: "Checkboxes", icon: CheckboxIcon },
+    { id: "dropdown", label: "Dropdown", icon: SearchIcon },
+    { id: "text", label: "Text", icon: TextIcon },
   ],
 };
 

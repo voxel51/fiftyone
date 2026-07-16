@@ -8,8 +8,8 @@ import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
   Button,
-  Icon,
-  IconName,
+  EditIcon,
+  InfoIcon,
   Pill,
   RichList,
   Size,
@@ -54,8 +54,7 @@ const FieldActions = ({ path }: { path: string }) => {
         data-cy="edit"
         onClick={() => setField(path)}
       >
-        <Icon
-          name={IconName.Edit}
+        <EditIcon
           size={Size.Md}
           className={textColorClass(TextColor.Secondary)}
         />
@@ -180,7 +179,7 @@ const ActiveFieldsSection = () => {
             anchor={Anchor.Bottom}
             portal
           >
-            <Icon name={IconName.Info} size={Size.Md} />
+            <InfoIcon size={Size.Md} />
           </Tooltip>
           <Pill size={Size.Md}>0</Pill>
           <div style={{ flex: 1 }} />
@@ -218,7 +217,7 @@ const ActiveFieldsSection = () => {
           anchor={Anchor.Top}
           portal
         >
-          <Icon name={IconName.Info} size={Size.Md} />
+          <InfoIcon size={Size.Md} />
         </Tooltip>
         <Pill size={Size.Md}>{fields.length}</Pill>
         <div style={{ flex: 1 }} />

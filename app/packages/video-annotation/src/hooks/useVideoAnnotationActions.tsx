@@ -1,6 +1,6 @@
 import type { ToolbarActionGroup } from "@fiftyone/components";
 import { useModalSample } from "@fiftyone/state";
-import { Icon, IconName, Size } from "@voxel51/voodo";
+import { AddIcon, Size, UnfoldMoreIcon } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { frameAt, usePlayhead } from "@fiftyone/playback";
@@ -137,7 +137,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
           {
             id: "create-temporal-detection",
             label: "New TD",
-            icon: <Icon name={IconName.Add} size={Size.Sm} />,
+            icon: <AddIcon size={Size.Sm} />,
             tooltip: canCreateTd
               ? `Create a TemporalDetection on \`${tdFieldPath}\``
               : "No TemporalDetections field on this dataset",
@@ -173,7 +173,7 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
           {
             id: "split-track",
             label: "Split",
-            icon: <Icon name={IconName.UnfoldMore} size={Size.Sm} />,
+            icon: <UnfoldMoreIcon size={Size.Sm} />,
             tooltip: canSplit
               ? "Split the selected track at this frame"
               : selectedIds.length === 1 && !selectionIsInstanceTrack

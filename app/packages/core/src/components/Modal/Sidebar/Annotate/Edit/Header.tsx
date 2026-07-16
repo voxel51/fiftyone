@@ -5,7 +5,13 @@ import { Round } from "../Actions";
 import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import { MuiWestIcon as Back } from "@fiftyone/components";
 import { Box, Menu, MenuItem, Stack } from "@mui/material";
-import { Clickable, Icon, IconName, Size, Text } from "@voxel51/voodo";
+import {
+  Clickable,
+  DeleteIcon,
+  MoreVerticalIcon,
+  Size,
+  Text,
+} from "@voxel51/voodo";
 import { DETECTION } from "@fiftyone/utilities";
 import { ItemLeft, ItemRight } from "../Components";
 import { ICONS } from "../Icons";
@@ -94,7 +100,7 @@ const LabelHamburgerMenu = () => {
     <>
       <Clickable onClick={() => setOpen(true)}>
         <Box ref={anchor} sx={{ p: 0.5 }} data-cy="label-menu-trigger">
-          <Icon name={IconName.MoreVertical} size={Size.Md} />
+          <MoreVerticalIcon size={Size.Md} />
         </Box>
       </Clickable>
 
@@ -120,7 +126,7 @@ const LabelHamburgerMenu = () => {
             data-cy="label-menu-delete"
           >
             <Stack direction="row" gap={1} alignItems="center">
-              <Icon name={IconName.Delete} size={Size.Md} />
+              <DeleteIcon size={Size.Md} />
               <Text>{deleteCommand.descriptor.label}</Text>
             </Stack>
           </MenuItem>

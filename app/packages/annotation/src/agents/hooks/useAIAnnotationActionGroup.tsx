@@ -1,7 +1,7 @@
 import { ToolbarActionGroup } from "@fiftyone/components";
 import { usePointSelection } from "./usePointSelection";
 import { useMemo } from "react";
-import { Icon, IconName } from "@voxel51/voodo";
+import { AIIcon } from "@voxel51/voodo";
 import { useAgentSelector } from "./useAgentSelector";
 import { useAnnotationAgent } from "./useAnnotationAgent";
 import { InferenceCapability } from "../types";
@@ -23,7 +23,7 @@ export const useAIAnnotationActionGroup = (): ToolbarActionGroup => {
       isHidden: false,
       actions: [
         {
-          icon: <Icon name={IconName.AI} />,
+          icon: <AIIcon />,
           id: "ai-annotation-point-selection",
           isActive: pointSelection.isActive,
           isDisabled: ![

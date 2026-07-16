@@ -1,6 +1,6 @@
 // Shared providers + tile-registry helper for PlaybackTiles tests.
 
-import { IconName } from "@voxel51/voodo";
+import { GridViewIcon } from "@voxel51/voodo";
 import {
   TileIdScope,
   TilingProvider,
@@ -30,7 +30,7 @@ export const RegisterTiles: React.FC<{ entries: TileRegistration[] }> = ({
       const entry: RegisteredTile = {
         type: e.type,
         typeLabel: e.typeLabel ?? e.type,
-        icon: IconName.GridView,
+        icon: GridViewIcon,
         Tile: e.Tile ?? DummyTile,
       };
       return registerTile(entry);

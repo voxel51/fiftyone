@@ -3,11 +3,11 @@
  */
 
 import {
+  AddIcon,
   Align,
   Button,
+  DeleteIcon,
   FormField,
-  Icon,
-  IconName,
   Input,
   Justify,
   Orientation,
@@ -101,8 +101,7 @@ const ValuesList = ({
           borderless
           onClick={() => handleDeleteValue(index)}
         >
-          <Icon
-            name={IconName.Delete}
+          <DeleteIcon
             size={Size.Md}
             className={textColorClass(TextColor.Secondary)}
           />
@@ -136,9 +135,7 @@ const ValuesList = ({
             <Button
               variant={Variant.Borderless}
               onClick={handleAddValue}
-              leadingIcon={() => (
-                <Icon name={IconName.Add} size={Size.Sm} className="size-5" />
-              )}
+              leadingIcon={() => <AddIcon size={Size.Sm} className="size-5" />}
             >
               Add
             </Button>

@@ -1,8 +1,8 @@
 import {
+  AddIcon,
   Button,
   Dropdown,
   DropdownAnchor,
-  IconName,
   Size,
   Text,
   TextColor,
@@ -39,7 +39,7 @@ const TilingZeroState: React.FC<TilingZeroStateProps> = ({ addTileMenu }) => (
         <Button
           variant={Variant.Secondary}
           size={Size.Md}
-          leadingIcon={IconName.Add}
+          leadingIcon={AddIcon}
           data-testid="tiling-zero-state-add-tile"
         >
           Add tile

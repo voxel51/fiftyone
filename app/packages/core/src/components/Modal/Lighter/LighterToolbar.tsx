@@ -1,7 +1,14 @@
 import { useLighter } from "@fiftyone/lighter";
 import { ANNOTATE_SHORTCUTS } from "./annotateActions";
 import * as fos from "@fiftyone/state";
-import { IconName, Orientation, Spacing, Stack } from "@voxel51/voodo";
+import {
+  AddIcon,
+  InfoIcon,
+  Orientation,
+  RemoveIcon,
+  Spacing,
+  Stack,
+} from "@voxel51/voodo";
 import { useCallback } from "react";
 import styled from "styled-components";
 import { shortcutToHelpItems } from "../utils";
@@ -47,18 +54,18 @@ export const LighterToolbar = () => {
         <Stack orientation={Orientation.Row} spacing={Spacing.Md}>
           <ToolbarButton
             tooltip="Zoom out"
-            icon={IconName.Remove}
+            icon={RemoveIcon}
             onClick={zoomOut}
           />
           <ToolbarButton
             tooltip="Zoom in"
-            icon={IconName.Add}
+            icon={AddIcon}
             onClick={zoomIn}
             testId="zoom-in"
           />
           <ToolbarButton
             tooltip="Shortcuts & help"
-            icon={IconName.Info}
+            icon={InfoIcon}
             onClick={handleHelp}
           />
         </Stack>

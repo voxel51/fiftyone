@@ -1,14 +1,15 @@
 import {
   Button,
   Divider,
-  Icon,
-  IconName,
+  ExitWorkspaceIcon,
+  ExternalLinkIcon,
   Input,
   InputType,
   Size,
   Text,
   TextColor,
   TextVariant,
+  UploadIcon,
   Variant,
 } from "@voxel51/voodo";
 import React, { useCallback, useRef, useState } from "react";
@@ -177,7 +178,7 @@ const AnyMcapViewer: React.FC = () => {
                 data-testid="any-mcap-unmount"
                 onClick={clearActive}
                 size={Size.Xs}
-                leadingIcon={IconName.ExitWorkspace}
+                leadingIcon={ExitWorkspaceIcon}
                 variant={Variant.Secondary}
               >
                 Unmount recording
@@ -219,7 +220,7 @@ const AnyMcapViewer: React.FC = () => {
             tabIndex={0}
           >
             <div className={styles.dropZoneIcon}>
-              <Icon name={IconName.Upload} size={Size.Lg} />
+              <UploadIcon size={Size.Lg} />
             </div>
             <Text className={styles.dropZoneTitle} variant={TextVariant.Lg}>
               Drag &amp; drop an MCAP file
@@ -255,7 +256,7 @@ const AnyMcapViewer: React.FC = () => {
             <Input
               aria-label="Remote MCAP URL"
               error={error?.target === "url"}
-              icon={IconName.ExternalLink}
+              icon={ExternalLinkIcon}
               onChange={(event) => {
                 setUrlInput(event.target.value);
                 if (error?.target === "url") {

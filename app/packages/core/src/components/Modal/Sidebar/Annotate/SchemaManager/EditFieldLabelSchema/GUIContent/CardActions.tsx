@@ -5,8 +5,9 @@
 
 import {
   Button,
-  Icon,
-  IconName,
+  CheckIcon,
+  CloseIcon,
+  DeleteIcon,
   Orientation,
   Size,
   Spacing,
@@ -37,8 +38,7 @@ const CardActions = ({
 }: CardActionsProps) => (
   <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
     <Button variant={Variant.Icon} borderless onClick={onCancel}>
-      <Icon
-        name={IconName.Close}
+      <CloseIcon
         size={Size.Md}
         className={textColorClass(TextColor.Secondary)}
       />
@@ -47,8 +47,7 @@ const CardActions = ({
       <>
         {onDelete && (
           <Button variant={Variant.Icon} borderless onClick={onDelete}>
-            <Icon
-              name={IconName.Delete}
+            <DeleteIcon
               size={Size.Md}
               className={textColorClass(TextColor.Secondary)}
             />
@@ -60,8 +59,7 @@ const CardActions = ({
           onClick={canSave ? onSave : undefined}
           disabled={!canSave}
         >
-          <Icon
-            name={IconName.Check}
+          <CheckIcon
             size={Size.Md}
             className={textColorClass(TextColor.Secondary)}
           />

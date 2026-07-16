@@ -2,9 +2,9 @@ import {
   Align,
   Card,
   CardBackground,
-  Icon,
+  ErrorIcon,
   IconColor,
-  IconName,
+  InfoIcon,
   Orientation,
   Size,
   Spacing,
@@ -12,15 +12,17 @@ import {
   Text,
   TextColor,
   TextVariant,
+  WarningIcon,
+  type IconProps,
 } from "@voxel51/voodo";
-import React from "react";
+import React, { type FC } from "react";
 import type { McapHealthNotice, McapHealthSeverity } from "./mcap-health";
 import styles from "./McapNoticeStrip.module.css";
 
-const SEVERITY_ICON: Record<McapHealthSeverity, IconName> = {
-  error: IconName.Error,
-  info: IconName.Info,
-  warning: IconName.Warning,
+const SEVERITY_ICON: Record<McapHealthSeverity, FC<IconProps>> = {
+  error: ErrorIcon,
+  info: InfoIcon,
+  warning: WarningIcon,
 };
 
 const SEVERITY_ICON_COLOR: Record<McapHealthSeverity, IconColor> = {
@@ -51,35 +53,37 @@ const McapNoticeStrip: React.FC<{
   return (
     <Card background={CardBackground.Secondary} compact outlined>
       <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
-        {notices.map((notice) => (
-          <Stack
-            align={Align.Start}
-            key={notice.id}
-            orientation={Orientation.Row}
-            spacing={Spacing.Sm}
-          >
-            <span className={styles.iconSlot}>
-              <Icon
-                color={SEVERITY_ICON_COLOR[notice.severity]}
-                name={SEVERITY_ICON[notice.severity]}
-                size={Size.Sm}
-              />
-            </span>
-            <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-              <Text
-                color={SEVERITY_TEXT_COLOR[notice.severity]}
-                variant={TextVariant.Sm}
-              >
-                {notice.message}
-              </Text>
-              {notice.detail ? (
-                <Text color={TextColor.Secondary} variant={TextVariant.Xs}>
-                  {notice.detail}
+        {notices.map((notice) => {
+          const SeverityIcon = SEVERITY_ICON[notice.severity];
+          return (
+            <Stack
+              align={Align.Start}
+              key={notice.id}
+              orientation={Orientation.Row}
+              spacing={Spacing.Sm}
+            >
+              <span className={styles.iconSlot}>
+                <SeverityIcon
+                  color={SEVERITY_ICON_COLOR[notice.severity]}
+                  size={Size.Sm}
+                />
+              </span>
+              <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+                <Text
+                  color={SEVERITY_TEXT_COLOR[notice.severity]}
+                  variant={TextVariant.Sm}
+                >
+                  {notice.message}
                 </Text>
-              ) : null}
+                {notice.detail ? (
+                  <Text color={TextColor.Secondary} variant={TextVariant.Xs}>
+                    {notice.detail}
+                  </Text>
+                ) : null}
+              </Stack>
             </Stack>
-          </Stack>
-        ))}
+          );
+        })}
       </Stack>
     </Card>
   );

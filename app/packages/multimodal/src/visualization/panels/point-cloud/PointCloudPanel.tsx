@@ -1,4 +1,4 @@
-import { Icon, IconName, Size } from "@voxel51/voodo";
+import { FullscreenIcon, Size } from "@voxel51/voodo";
 import { useThree } from "@react-three/fiber";
 import {
   useCallback,
@@ -546,11 +546,7 @@ export function PointCloudPanel({
               title="Recenter the view on the current scene"
               type="button"
             >
-              <Icon
-                name={IconName.Fullscreen}
-                size={Size.Xs}
-                style={styles.controlIcon}
-              />
+              <FullscreenIcon size={Size.Xs} style={styles.controlIcon} />
             </button>
           ) : null}
         </div>

@@ -1,5 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import TextRotationAngleupIcon from "@mui/icons-material/TextRotationAngleup";
+import { MuiTextRotationAngleupIcon as TextRotationAngleupIcon } from "@fiftyone/components";
 import { IconButton } from "@mui/material";
 import type { MouseEvent } from "react";
 import { ActionItem } from "../containers";

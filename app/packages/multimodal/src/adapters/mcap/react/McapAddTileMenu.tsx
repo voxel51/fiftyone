@@ -27,11 +27,12 @@ const McapAddTileMenu: React.FC = () => {
         const definition = getMcapTileDefinition(type);
         if (!definition) return null;
         const Tile = definition.Tile;
+        const TileIcon = definition.icon;
         return (
           <MenuIconTextItem
             key={type}
             data-testid={`mcap-add-tile-${type === MCAP_TILE_TYPE.RAW ? "message" : type}`}
-            icon={definition.icon}
+            icon={<TileIcon />}
             text={definition.typeLabel}
             onClick={() => {
               addTile(

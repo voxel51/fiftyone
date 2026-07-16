@@ -1,6 +1,6 @@
 import { useAnnotationController } from "@fiftyone/annotation";
 import { Stack } from "@mui/material";
-import { Button, Clickable, Icon, IconName, Size } from "@voxel51/voodo";
+import { Button, Clickable, EditIcon, Size } from "@voxel51/voodo";
 import { FC, ReactNode } from "react";
 import useCanAnnotate from "./useCanAnnotate";
 import { useCanAnnotateField } from "./useCanAnnotateField";
@@ -15,8 +15,6 @@ type QuickEditEntryProps = {
   path: string;
   type?: QuickEditActionType;
 };
-
-const EditIcon = ({ ...props }) => <Icon name={IconName.Edit} {...props} />;
 
 /**
  * Inner component that uses annotation-dependent hooks.

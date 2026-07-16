@@ -1,16 +1,11 @@
-import {
-  Anchor,
-  Clickable,
-  Icon,
-  IconName,
-  Size,
-  Tooltip,
-} from "@voxel51/voodo";
+import { Anchor, Clickable, Size, Tooltip } from "@voxel51/voodo";
+import type { IconProps } from "@voxel51/voodo";
+import type { FC } from "react";
 import styled from "styled-components";
 
 export interface ToolbarButtonProps {
   tooltip: string;
-  icon: IconName;
+  icon: FC<IconProps>;
   onClick: () => void;
   /** Optional data-testid for e2e tests */
   testId?: string;
@@ -26,14 +21,14 @@ const ButtonWrapper = styled.span`
 
 const ToolbarButton = ({
   tooltip,
-  icon,
+  icon: IconComponent,
   onClick,
   testId,
 }: ToolbarButtonProps) => (
   <Tooltip content={tooltip} anchor={Anchor.Top} portal aria-label={tooltip}>
     <ButtonWrapper>
       <Clickable onClick={onClick} data-testid={testId}>
-        <Icon name={icon} size={Size.Lg} />
+        <IconComponent size={Size.Lg} />
       </Clickable>
     </ButtonWrapper>
   </Tooltip>

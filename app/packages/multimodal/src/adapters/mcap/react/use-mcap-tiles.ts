@@ -1,6 +1,14 @@
 import { useTileRegistry } from "@fiftyone/tiling";
-import { IconName } from "@voxel51/voodo";
-import { useEffect } from "react";
+import {
+  EmbeddingsIcon,
+  GridViewIcon,
+  InsightsIcon,
+  JSONIcon,
+  LogsIcon,
+  PolylineIcon,
+  type IconProps,
+} from "@voxel51/voodo";
+import { createElement, useEffect, type FC } from "react";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
 import Mcap3dTile from "./Mcap3dTile";
 import McapImageTile from "./McapImageTile";
@@ -28,32 +36,32 @@ const TILE_BY_TYPE: Record<
   McapTileType,
   {
     typeLabel: string;
-    icon: IconName;
+    icon: FC<IconProps>;
     Tile: React.ComponentType<McapTileProps>;
     sourceTypes: readonly string[];
   }
 > = {
   [MCAP_TILE_TYPE.IMAGE]: {
     typeLabel: "Image",
-    icon: IconName.GridView,
+    icon: GridViewIcon,
     Tile: McapImageTile,
     sourceTypes: [MCAP_SOURCE_TYPE.IMAGE],
   },
   [MCAP_TILE_TYPE.LOG]: {
     typeLabel: "Logs",
-    icon: IconName.Logs,
+    icon: LogsIcon,
     Tile: McapLogConsoleTile,
     sourceTypes: [MCAP_SOURCE_TYPE.LOG],
   },
   [MCAP_TILE_TYPE.MAP]: {
     typeLabel: "Map",
-    icon: IconName.Polyline,
+    icon: PolylineIcon,
     Tile: McapMapTile,
     sourceTypes: [MCAP_SOURCE_TYPE.LOCATION],
   },
   [MCAP_TILE_TYPE.THREE_D]: {
     typeLabel: "3D",
-    icon: IconName.Embeddings,
+    icon: EmbeddingsIcon,
     Tile: Mcap3dTile,
     sourceTypes: [
       MCAP_SOURCE_TYPE.MAP_LAYER,
@@ -68,7 +76,7 @@ const TILE_BY_TYPE: Record<
   // enumerates numeric fields independently of scene sources.
   [MCAP_TILE_TYPE.PLOT]: {
     typeLabel: "Plot",
-    icon: IconName.Insights,
+    icon: InsightsIcon,
     Tile: McapPlotTile,
     sourceTypes: Object.values(MCAP_SOURCE_TYPE),
   },
@@ -77,7 +85,7 @@ const TILE_BY_TYPE: Record<
   // has any source at all; its settings sidebar lists every topic.
   [MCAP_TILE_TYPE.RAW]: {
     typeLabel: "Message",
-    icon: IconName.JSON,
+    icon: JSONIcon,
     Tile: McapRawMessageTile,
     sourceTypes: Object.values(MCAP_SOURCE_TYPE),
   },
@@ -95,7 +103,7 @@ function isKnownTileType(type: string): type is McapTileType {
  * a build with more tile kinds).
  */
 export function getMcapTileDefinition(type: string): {
-  icon: IconName;
+  icon: FC<IconProps>;
   typeLabel: string;
   Tile: React.ComponentType<McapTileProps>;
 } | null {
@@ -132,7 +140,9 @@ export function useMcapTiles(): void {
       return registerTile({
         type,
         typeLabel: entry.typeLabel,
-        icon: entry.icon,
+        // The registry stores rendered nodes, so instantiate the icon
+        // component here (this module is .ts, hence no JSX).
+        icon: createElement(entry.icon),
         Tile: entry.Tile,
       });
     });

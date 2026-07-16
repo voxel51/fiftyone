@@ -1,7 +1,7 @@
 import {
   Align,
   Button,
-  IconName,
+  DeleteIcon,
   Justify,
   Size,
   Stack,
@@ -76,7 +76,7 @@ export default function BulkActionBar({
             <Button
               size={Size.Sm}
               variant={Variant.Danger}
-              leadingIcon={IconName.Delete}
+              leadingIcon={DeleteIcon}
               onClick={handleConfirm}
             >
               Confirm Delete
@@ -104,7 +104,7 @@ export default function BulkActionBar({
             <Button
               size={Size.Sm}
               variant={Variant.Danger}
-              leadingIcon={IconName.Delete}
+              leadingIcon={DeleteIcon}
               onClick={handleDeleteClick}
             >
               Delete

@@ -3,7 +3,8 @@
  * Separates business logic from rendering.
  */
 
-import { IconName } from "@voxel51/voodo";
+import type { IconProps } from "@voxel51/voodo";
+import type { FC } from "react";
 import { useCallback, useMemo } from "react";
 import {
   COMPONENT_OPTIONS,
@@ -38,7 +39,7 @@ interface UseAttributeFormResult {
   isTaxonomyEligible: boolean;
   whenPreview: { condition: string; suffix: string | null } | null;
   supportsDefault: boolean;
-  componentOptions: Array<{ id: string; label: string; icon: IconName }>;
+  componentOptions: Array<{ id: string; label: string; icon: FC<IconProps> }>;
 
   // Visibility flags
   showValues: boolean;

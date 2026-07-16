@@ -2,12 +2,12 @@ import React from "react";
 
 // ---------------------------------------------------------------------------
 // TEMPORARY: inline Play/Pause SVG icons.
-// The design-system `IconName` enum does not include Play/Pause. When it
-// does, replace usages of these with `IconName.Play` / `IconName.Pause`
-// and delete this file.
+// voodo now exports `PlayIcon` / `PauseIcon` components; replace usages of
+// these with the design-system components (once the glyphs match) and
+// delete this file.
 //
 // Typed as plain `FC` so they slot into voodo's `Button.leadingIcon`
-// (which expects `IconName | FC<{}>`) without a cast.
+// (which expects `FC<IconProps>`) without a cast.
 // ---------------------------------------------------------------------------
 
 // Decorative — the surrounding button's `aria-label` already names the

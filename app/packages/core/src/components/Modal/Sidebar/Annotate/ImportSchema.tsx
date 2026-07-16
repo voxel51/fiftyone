@@ -1,8 +1,7 @@
 import { MuiIconFont } from "@fiftyone/components";
 import {
   Button,
-  Icon,
-  IconName,
+  InfoIcon,
   Orientation,
   Size,
   Spacing,
@@ -153,7 +152,7 @@ const ImportSchema = (
       {alertMessage && (
         <AlertWrapper>
           <AlertBox>
-            <Icon name={IconName.Info} size={Size.Md} />
+            <InfoIcon size={Size.Md} />
             <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
               {alertMessage}
             </Text>

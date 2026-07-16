@@ -8,8 +8,10 @@ import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
   Button,
-  Icon,
-  IconName,
+  ChevronBottomIcon,
+  ChevronTopIcon,
+  EditIcon,
+  InfoIcon,
   Pill,
   RichList,
   Size,
@@ -75,8 +77,7 @@ const HiddenFieldActions = ({
                 data-cy={"edit"}
                 onClick={() => setField(path)}
               >
-                <Icon
-                  name={IconName.Edit}
+                <EditIcon
                   size={Size.Md}
                   className={textColorClass(TextColor.Secondary)}
                 />
@@ -166,9 +167,9 @@ const HiddenFieldsSection = () => {
             Hidden fields
           </Text>
           {expanded ? (
-            <Icon name={IconName.ChevronTop} size={Size.Md} />
+            <ChevronTopIcon size={Size.Md} />
           ) : (
-            <Icon name={IconName.ChevronBottom} size={Size.Md} />
+            <ChevronBottomIcon size={Size.Md} />
           )}
         </CollapsibleHeader>
         <Tooltip
@@ -180,7 +181,7 @@ const HiddenFieldsSection = () => {
           anchor={Anchor.Top}
           portal
         >
-          <Icon name={IconName.Info} size={Size.Md} />
+          <InfoIcon size={Size.Md} />
         </Tooltip>
         <Pill size={Size.Md}>{fields.length}</Pill>
       </GUISectionHeader>

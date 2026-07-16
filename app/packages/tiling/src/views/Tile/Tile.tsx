@@ -1,6 +1,7 @@
 import {
   Button,
-  IconName,
+  CloseIcon,
+  FullscreenIcon,
   Size,
   Text,
   TextColor,
@@ -66,9 +67,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
   highlighted = false,
 }) => {
   const fullscreenLabel = isFullscreen ? "Exit fullscreen" : "Fullscreen";
-  const fullscreenIcon = isFullscreen
-    ? FullscreenExitIcon
-    : IconName.Fullscreen;
+  const fullscreenIcon = isFullscreen ? FullscreenExitIcon : FullscreenIcon;
   const [editing, setEditing] = useState(false);
   const [draftTitle, setDraftTitle] = useState(title);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -236,7 +235,7 @@ export const TileHeader: React.FC<TileHeaderProps> = ({
           variant={Variant.Borderless}
           size={Size.Xs}
           data-testid="tile-header-close"
-          leadingIcon={IconName.Close}
+          leadingIcon={CloseIcon}
           onClick={onClose}
           aria-label="Close"
           title="Close"

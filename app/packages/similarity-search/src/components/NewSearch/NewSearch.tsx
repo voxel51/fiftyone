@@ -1,14 +1,16 @@
 import {
   Align,
+  ArrowLeftIcon,
   Button,
   FormField,
   Heading,
   HeadingLevel,
-  IconName,
+  ImageSearchIcon,
   Input,
   InputType,
   Justify,
   RadioGroup,
+  SearchIcon,
   Select,
   Size,
   Stack,
@@ -89,7 +91,7 @@ export default function NewSearch({
         <Button
           size={Size.Md}
           variant={Variant.Borderless}
-          leadingIcon={IconName.ArrowLeft}
+          leadingIcon={ArrowLeftIcon}
           onClick={onBack}
         />
         <Heading level={HeadingLevel.H2}>
@@ -190,7 +192,7 @@ export default function NewSearch({
                   : Variant.Secondary
               }
               size={Size.Sm}
-              leadingIcon={IconName.ImageSearch}
+              leadingIcon={ImageSearchIcon}
               onClick={() => form.setQueryType(QueryType.Image)}
               style={{ flex: 1 }}
             >
@@ -219,7 +221,7 @@ export default function NewSearch({
                     : Variant.Secondary
                 }
                 size={Size.Sm}
-                leadingIcon={IconName.Search}
+                leadingIcon={SearchIcon}
                 onClick={() => form.setQueryType(QueryType.Text)}
                 style={{ flex: 1 }}
               >

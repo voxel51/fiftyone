@@ -18,10 +18,13 @@ export const DefaultAddTileMenuItems: React.FC = () => {
     <>
       {types.map((entry) => {
         const TileComponent = entry.Tile;
+        // Registered icons are component references; render them so they
+        // satisfy MenuIconTextItem's ReactNode `icon` prop.
+        const EntryIcon = entry.icon;
         return (
           <MenuIconTextItem
             key={entry.type}
-            icon={entry.icon}
+            icon={typeof EntryIcon === "function" ? <EntryIcon /> : EntryIcon}
             text={entry.typeLabel}
             onClick={() => {
               addTile(

@@ -1,5 +1,11 @@
-import { Icon, IconName, Size } from "@voxel51/voodo";
-import React, { useEffect, useRef } from "react";
+import {
+  AddIcon,
+  FullscreenIcon,
+  RemoveIcon,
+  Size,
+  type IconProps,
+} from "@voxel51/voodo";
+import React, { useEffect, useRef, type FC } from "react";
 import uPlot, { type AlignedData } from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { CLICK_DRAG_TOLERANCE_PX } from "../interaction";
@@ -491,18 +497,14 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     <div className={styles.root} data-testid="timeseries-chart">
       <div className={styles.plot} ref={plotRef}>
         <div className={styles.controls}>
+          <ChartControl icon={AddIcon} label="Zoom in" onClick={handleZoomIn} />
           <ChartControl
-            icon={IconName.Add}
-            label="Zoom in"
-            onClick={handleZoomIn}
-          />
-          <ChartControl
-            icon={IconName.Remove}
+            icon={RemoveIcon}
             label="Zoom out"
             onClick={handleZoomOut}
           />
           <ChartControl
-            icon={IconName.Fullscreen}
+            icon={FullscreenIcon}
             label="Reset zoom"
             onClick={handleResetZoom}
           />
@@ -513,13 +515,13 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
 };
 
 interface ChartControlProps {
-  readonly icon: IconName;
+  readonly icon: FC<IconProps>;
   readonly label: string;
   readonly onClick: () => void;
 }
 
 const ChartControl: React.FC<ChartControlProps> = ({
-  icon,
+  icon: ControlIcon,
   label,
   onClick,
 }) => (
@@ -531,7 +533,7 @@ const ChartControl: React.FC<ChartControlProps> = ({
     title={label}
     type="button"
   >
-    <Icon className={styles.controlIcon} name={icon} size={Size.Xs} />
+    <ControlIcon className={styles.controlIcon} size={Size.Xs} />
   </button>
 );
 

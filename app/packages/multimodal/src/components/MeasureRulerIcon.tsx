@@ -1,6 +1,6 @@
 /**
  * Diagonal ruler glyph shared by the point-cloud and map measure toggles —
- * voodo's IconName has no ruler. Decorative: host buttons carry the
+ * voodo's icon set has no ruler. Decorative: host buttons carry the
  * accessible label.
  */
 export default function MeasureRulerIcon() {

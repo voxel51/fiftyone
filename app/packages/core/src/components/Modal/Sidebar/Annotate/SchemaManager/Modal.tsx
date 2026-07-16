@@ -1,7 +1,8 @@
 import {
   Button,
-  Icon,
-  IconName,
+  ChevronBottomIcon,
+  ChevronTopIcon,
+  CloseIcon,
   Orientation,
   Size,
   Spacing,
@@ -146,17 +147,9 @@ const SchemaManagerFooter = () => {
           onClick={onMove}
         >
           {isMovingToVisible ? (
-            <Icon
-              name={IconName.ChevronTop}
-              size={Size.Md}
-              style={{ marginRight: 4 }}
-            />
+            <ChevronTopIcon size={Size.Md} style={{ marginRight: 4 }} />
           ) : (
-            <Icon
-              name={IconName.ChevronBottom}
-              size={Size.Md}
-              style={{ marginRight: 4 }}
-            />
+            <ChevronBottomIcon size={Size.Md} style={{ marginRight: 4 }} />
           )}
           Move {selectedCount} to {isMovingToVisible ? "visible" : "hidden"}{" "}
           fields
@@ -206,8 +199,7 @@ const Modal = () => {
             onClick={() => closeSchemaManager()}
             style={{ marginRight: "14px" }}
           >
-            <Icon
-              name={IconName.Close}
+            <CloseIcon
               size={Size.Lg}
               className={textColorClass(TextColor.Secondary)}
             />

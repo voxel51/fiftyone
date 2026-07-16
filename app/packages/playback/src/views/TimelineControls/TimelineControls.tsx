@@ -3,7 +3,14 @@ import {
   KnownContexts,
   useKeyBindings,
 } from "@fiftyone/commands";
-import { Button, IconName, Size, Spinner, Variant } from "@voxel51/voodo";
+import {
+  Button,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  Size,
+  Spinner,
+  Variant,
+} from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { type ReactNode } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
@@ -127,7 +134,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         variant={Variant.Icon}
         size={Size.Xs}
         data-testid="timeline-controls-step-back"
-        leadingIcon={IconName.ChevronLeft}
+        leadingIcon={ChevronLeftIcon}
         aria-label="Step back"
         onClick={stepBack}
       />
@@ -144,7 +151,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         variant={Variant.Icon}
         size={Size.Xs}
         data-testid="timeline-controls-step-forward"
-        leadingIcon={IconName.ChevronRight}
+        leadingIcon={ChevronRightIcon}
         aria-label="Step forward"
         onClick={stepForward}
       />

@@ -145,8 +145,9 @@ vi.mock("uplot", () => ({
 }));
 
 vi.mock("@voxel51/voodo", () => ({
-  Icon: ({ name }: { readonly name: string }) => <span>{name}</span>,
-  IconName: { Add: "add", Fullscreen: "fullscreen", Remove: "remove" },
+  AddIcon: () => <span>add</span>,
+  FullscreenIcon: () => <span>fullscreen</span>,
+  RemoveIcon: () => <span>remove</span>,
   Size: { Xs: "xs" },
 }));
 

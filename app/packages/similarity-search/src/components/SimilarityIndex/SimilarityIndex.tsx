@@ -1,10 +1,12 @@
 import { constants } from "@fiftyone/utilities";
 import {
+  AddIcon,
   Align,
+  ArrowLeftIcon,
   Button,
-  Icon,
+  CheckIcon,
+  CloseIcon,
   IconColor,
-  IconName,
   Justify,
   RichList,
   Size,
@@ -79,13 +81,11 @@ export default function SimilarityIndex({
                 <Text variant={TextVariant.Md} color={TextColor.Secondary}>
                   Supports text queries?
                 </Text>
-                <Icon
-                  name={bk.supports_prompts ? IconName.Check : IconName.Close}
-                  size={Size.Sm}
-                  color={
-                    bk.supports_prompts ? IconColor.Success : IconColor.Error
-                  }
-                />
+                {bk.supports_prompts ? (
+                  <CheckIcon size={Size.Sm} color={IconColor.Success} />
+                ) : (
+                  <CloseIcon size={Size.Sm} color={IconColor.Destructive} />
+                )}
               </Stack>
               {bk.embeddings_field && (
                 <Text variant={TextVariant.Md} color={TextColor.Secondary}>
@@ -120,7 +120,7 @@ export default function SimilarityIndex({
             aria-label="Back to similarity searches"
             size={Size.Md}
             variant={Variant.Borderless}
-            leadingIcon={IconName.ArrowLeft}
+            leadingIcon={ArrowLeftIcon}
             onClick={onBack}
           />
         </Tooltip>
@@ -144,7 +144,7 @@ export default function SimilarityIndex({
             <Button
               variant={Variant.Primary}
               size={Size.Sm}
-              leadingIcon={IconName.Add}
+              leadingIcon={AddIcon}
               onClick={onAddIndex}
             >
               Similarity Index
