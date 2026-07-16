@@ -52,9 +52,23 @@
   .sidebar-primary-item:has(#searchbox)
     display: none
 
+  a.reference
+    font-weight: 400
+
 /* Secondary Sidebar */
 .bd-sidebar-secondary
   padding-top: 95px
+
+  a.nav-link
+
+    code, .pre
+      max-width: 100%
+      white-space: normal
+      overflow-wrap: anywhere
+
+  .toc-entry a.nav-link.active,
+  .toc-entry a.nav-link[aria-current="true"]
+    box-shadow: none
 
 .sidebar-secondary-item
   border: 0
@@ -71,7 +85,7 @@
       li
         a.nav-link
           color: var(--pst-color-text-base)
-          font-weight: 500
+          font-weight: 400
           border-radius: 8px
           position: relative
           padding-left: 8px
@@ -95,7 +109,7 @@
               left: -8px
               top: 50%
               transform: translateY(-50%)
-        
+
 @media (min-width: 960px)
   dialog.bd-sidebar-primary
     display: none
