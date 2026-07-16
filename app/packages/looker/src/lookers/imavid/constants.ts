@@ -6,4 +6,21 @@ export const MAX_FRAME_SAMPLES_CACHE_SIZE = 500;
 export const LOOK_AHEAD_MULTIPLIER = 4;
 export const ANIMATION_CANCELED_ID = -1;
 
+// hover dwell required before starting a thumbnail's frame-stream fetch, so scrolling
+// past tiles or tiles mounting under a stationary cursor never floods the server
+export const HOVER_FETCH_INTENT_MS = 200;
+
+// first fetch off the poster stays small for a quick start, but large enough to give the first
+// full-batch refill time to land before the seed window drains (avoids an early re-buffer)
+export const INITIAL_LOOK_AHEAD_FRAMES = 50;
+
+// per-request fetch floor. Responses carry field JSON + media URLS only
+// (~1KB/frame — images download separately), so large batches are cheap and
+// every batch boundary is a potential playback stall
+export const STREAM_BATCH_FRAMES = 250;
+
+// after draining the buffer, resume playback only once this much runway is
+// rebuffered — resuming per-frame stutters at the buffered edge
+export const REBUFFER_RUNWAY_FRAMES = 30;
+
 export const IMAVID_PLAYBACK_RATE_LOCAL_STORAGE_KEY = "fo-imavid-playback-rate";

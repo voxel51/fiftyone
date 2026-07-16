@@ -188,7 +188,51 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
           setValue={(value) => setMode(value ? "video" : "pagination")}
         />
       )}
+      {isOrderedDynamicGroup && !modal && mode === "video" && (
+        <ImaVidFrameRate />
+      )}
     </>
+  );
+};
+
+// Persisted to localStorage per (dataset, group-by), not on the dataset.
+const ImaVidFrameRate = () => {
+  const [fps, setFps] = useRecoilState(fos.dynamicGroupsTargetFrameRate);
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        columnGap: "0.5rem",
+        padding: "0.25rem 0.5rem",
+      }}
+    >
+      <label htmlFor="imavid-fps-input" style={{ fontSize: "0.9rem" }}>
+        Playback frame rate (fps)
+      </label>
+      <input
+        id="imavid-fps-input"
+        type="number"
+        min={1}
+        max={60}
+        value={fps}
+        onChange={(e) => {
+          const value = Number(e.target.value);
+          if (Number.isFinite(value)) {
+            setFps(Math.min(60, Math.max(1, value)));
+          }
+        }}
+        style={{
+          width: "3.5rem",
+          textAlign: "right",
+          background: "transparent",
+          color: "inherit",
+          border: "1px solid rgba(255,255,255,0.2)",
+          borderRadius: "3px",
+        }}
+      />
+    </div>
   );
 };
 

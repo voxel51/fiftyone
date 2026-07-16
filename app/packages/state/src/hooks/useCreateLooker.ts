@@ -1,5 +1,6 @@
 import {
   AbstractLooker,
+  type DynamicGroupPoster,
   FO_LABEL_TOGGLED_EVENT,
   FrameLooker,
   ImaVidLooker,
@@ -12,6 +13,7 @@ import {
 } from "@fiftyone/looker";
 import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
 import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid/store";
+import type { ModalSampleExtendedWithImage } from "@fiftyone/looker/src/lookers/imavid/ima-vid-frame-samples";
 import type { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
 import {
   EMBEDDED_DOCUMENT_FIELD,
@@ -24,13 +26,18 @@ import {
 } from "@fiftyone/utilities";
 import { useEffect, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
 import { sampleSelectionStyle, selectedSamples } from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
+import { filters } from "../recoil/filters";
+import { groupSlice, hasGroupSlices, modalGroupSlice } from "../recoil/groups";
 import * as schemaAtoms from "../recoil/schema";
-import { datasetName, dynamicGroupsTargetFrameRate } from "../recoil/selectors";
+import {
+  datasetId,
+  datasetName,
+  dynamicGroupsTargetFrameRate,
+} from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { getSampleSrc, resolveSelectionIcon } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
@@ -45,7 +52,6 @@ export default <T extends AbstractLooker<BaseState>>(
   enableTimeline?: boolean,
 ) => {
   const abortControllerRef = useRef(new AbortController());
-  const environment = useRelayEnvironment();
   const selected = useRecoilValue(selectedSamples);
   const style = useRecoilValue(sampleSelectionStyle);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
@@ -211,53 +217,120 @@ export default <T extends AbstractLooker<BaseState>>(
         }
 
         if (create === ImaVidLooker) {
-          const totalFrameCountPromise = getPromise(
-            dynamicGroupsElementCount({ value: sample._group }),
-          );
-          const page = snapshot
-            .getLoadable(
-              dynamicGroupAtoms.dynamicGroupPageSelector({
-                value: sample._group,
-                modal: isModal,
-              }),
-            )
-            .valueMaybe();
-
           const firstFrameNumber = isModal
             ? (snapshot
                 .getLoadable(dynamicGroupAtoms.dynamicGroupCurrentElementIndex)
                 .valueMaybe() ?? 1)
             : 1;
 
-          const imavidKey = snapshot
-            .getLoadable(
-              dynamicGroupAtoms.imaVidStoreKey({
-                groupByFieldValue: sample._group,
-                modal: isModal,
-              }),
-            )
-            .valueOrThrow();
-
           const thisSampleId = sample._id as string;
-          const imavidPartitionKey = `${thisSampleId}-${mediaField}`;
-          if (!ImaVidFramesControllerStore.has(imavidPartitionKey)) {
-            ImaVidFramesControllerStore.set(
-              imavidPartitionKey,
-              new ImaVidFramesController({
-                environment,
+          // dynamic-group fields (_group value, _group_count) ride on the poster;
+          // view it through the shared type instead of ad-hoc inline casts
+          const poster = sample as Sample & DynamicGroupPoster;
+          // guard rather than assert so a missing field can't silently build the
+          // controller from `undefined`
+          const groupValue = poster._group ?? "";
+          // sample-level caches key on the bare sample `_id` — no media-field or
+          // grid/modal suffix — so grid hover and the modal resolve the SAME
+          // controller and the modal reuses the frames the grid already buffered
+          const imavidPartitionKey = thisSampleId;
+          let controller = ImaVidFramesControllerStore.get(imavidPartitionKey);
+          if (!controller) {
+            // a nested dynamic group's frames span slices; scope the stream to
+            // the poster's slice like the relay pager did
+            const slice = snapshot
+              .getLoadable(isModal ? modalGroupSlice : groupSlice)
+              .valueMaybe();
+            const sliceFilter =
+              slice != null
+                ? {
+                    group: {
+                      slice,
+                      ...(snapshot.getLoadable(hasGroupSlices).valueMaybe()
+                        ? { slices: [slice] }
+                        : {}),
+                    },
+                  }
+                : undefined;
+
+            // playback draws only media + overlays (sidebar values render on
+            // settle from the modal's own sample); stream just those paths
+            const streamFields = [
+              ...(snapshot
+                .getLoadable(schemaAtoms.labelPaths({ expanded: false }))
+                .valueMaybe() ?? []),
+              "tags",
+              mediaField,
+            ];
+
+            controller = new ImaVidFramesController({
+              firstFrameNumber,
+              targetFrameRate: dynamicGroupsTargetFrameRateValue,
+              datasetId: snapshot.getLoadable(datasetId).valueMaybe() ?? "",
+              groupValue,
+              view,
+              filters: snapshot.getLoadable(filters).valueMaybe() ?? {},
+              filter: sliceFilter,
+              fields: streamFields,
+            });
+
+            // seed the poster frame from already-loaded grid data so the looker
+            // renders without a sample fetch; the image is adopted from the
+            // tile's own <img> on load (never re-downloaded), the rest streams
+            // on play/hover
+            if (!controller.store.frameIndex.has(firstFrameNumber)) {
+              // synthetic poster seed from grid data: type-check the fields we
+              // populate, then assert the full store shape (aspectRatio/typename
+              // are absent here and unused by the frame store's consumers)
+              const posterSeed: Partial<ModalSampleExtendedWithImage> = {
+                id: thisSampleId,
+                sample,
+                urls: rawUrls,
+                image: null,
+              };
+              controller.store.samples.set(
+                thisSampleId,
+                posterSeed as ModalSampleExtendedWithImage,
+              );
+              controller.store.frameIndex.set(firstFrameNumber, thisSampleId);
+              controller.store.reverseFrameIndex.set(
+                thisSampleId,
                 firstFrameNumber,
-                page,
-                targetFrameRate: dynamicGroupsTargetFrameRateValue,
-                totalFrameCountPromise,
-                key: imavidKey,
-              }),
-            );
+              );
+            }
+
+            ImaVidFramesControllerStore.set(imavidPartitionKey, controller);
+          }
+
+          // narrowed so the count closure below is type-safe
+          const frameStoreController = controller;
+
+          // seed the group length from the poster's `_group_count` so the timeline shows
+          // the real total immediately; a cold modal lacking the field fetches it once
+          if (frameStoreController.totalFrameCount == null) {
+            const posterGroupCount = poster._group_count;
+            (window as { __foImavidDebug?: boolean }).__foImavidDebug &&
+              console.debug("[imavid] poster seed", {
+                sampleId: thisSampleId,
+                group: poster._group,
+                posterGroupCount,
+                hasGroupCountField: "_group_count" in (sample as object),
+              });
+            if (posterGroupCount != null) {
+              frameStoreController.setTotalFrameCount(posterGroupCount);
+            } else if (isModal) {
+              getPromise(
+                dynamicGroupsElementCount({
+                  value: groupValue,
+                  modal: true,
+                }),
+              ).then((count) => frameStoreController.setTotalFrameCount(count));
+            }
           }
 
           config = {
             ...config,
-            frameStoreController:
-              ImaVidFramesControllerStore.get(imavidPartitionKey),
+            frameStoreController,
             frameRate: dynamicGroupsTargetFrameRateValue,
             firstFrameNumber: isModal
               ? (snapshot

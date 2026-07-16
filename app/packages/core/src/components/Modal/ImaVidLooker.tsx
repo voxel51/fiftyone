@@ -2,15 +2,13 @@ import { useTheme } from "@fiftyone/components";
 import { ImaVidLooker } from "@fiftyone/looker";
 import type { FoTimelineConfig } from "@fiftyone/playback";
 import {
-  PLAYHEAD_STATE_BUFFERING,
-  PLAYHEAD_STATE_PAUSED,
-  PLAYHEAD_STATE_PLAYING,
+  updateTimelineConfigAtom,
   useCreateTimeline,
   useDefaultTimelineNameImperative,
-  useTimeline,
 } from "@fiftyone/playback";
 import { Timeline } from "@fiftyone/playback/src/views/Timeline/Timeline";
 import * as fos from "@fiftyone/state";
+import { jotaiStore } from "@fiftyone/state/src/jotai";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
 import type { BufferRange } from "@fiftyone/utilities";
 import React, {
@@ -162,6 +160,14 @@ export const ImaVidLookerReact = React.memo(
       );
     }, [ref]);
 
+    const mountedRef = useRef(true);
+    useEffect(() => {
+      mountedRef.current = true;
+      return () => {
+        mountedRef.current = false;
+      };
+    }, []);
+
     const loadRange = React.useCallback(
       async (range: Readonly<BufferRange>) => {
         const storeBufferManager =
@@ -184,44 +190,32 @@ export const ImaVidLookerReact = React.memo(
           return;
         }
 
-        // if looker is playing, don't change playhead to buffering status
-        // we indicate buffering status in status bar
-        if (getPlayHeadState() !== PLAYHEAD_STATE_PLAYING) {
-          setPlayHeadState(PLAYHEAD_STATE_BUFFERING);
+        const controller = imaVidLookerRef.current.frameStoreController;
+        controller.enqueueFetch(unprocessedBufferRange);
+        controller.resumeFetch();
+
+        // the timeline gates its playhead on this promise: resolving before the
+        // frames are drawable advances the frame counter over a frozen canvas
+        const total = controller.totalFrameCount;
+        const target: BufferRange = [
+          unprocessedBufferRange[0],
+          total != null
+            ? Math.min(unprocessedBufferRange[1], total)
+            : unprocessedBufferRange[1],
+        ];
+        while (!controller.storeBufferManager.containsRange(target)) {
+          // bail if the modal unmounted or the looker was reset/swapped out —
+          // otherwise this polls a dead controller forever
+          if (
+            !mountedRef.current ||
+            imaVidLookerRef.current?.frameStoreController !== controller
+          ) {
+            return;
+          }
+          // self-heal a stranded queue while waiting
+          controller.resumeFetch();
+          await new Promise((resolve) => setTimeout(resolve, 250));
         }
-
-        imaVidLookerRef.current.frameStoreController.enqueueFetch(
-          unprocessedBufferRange,
-        );
-
-        imaVidLookerRef.current.frameStoreController.resumeFetch();
-
-        return new Promise<void>((resolve) => {
-          const fetchMoreListener = (e: CustomEvent) => {
-            if (
-              e.detail.id === imaVidLookerRef.current.frameStoreController.key
-            ) {
-              if (storeBufferManager.containsRange(unprocessedBufferRange)) {
-                // if we were buffering, set playhead state to playing
-                if (getPlayHeadState() === PLAYHEAD_STATE_BUFFERING) {
-                  setPlayHeadState(PLAYHEAD_STATE_PAUSED);
-                }
-
-                resolve();
-
-                window.removeEventListener(
-                  "fetchMore",
-                  fetchMoreListener as EventListener,
-                );
-              }
-            }
-          };
-
-          window.addEventListener(
-            "fetchMore",
-            fetchMoreListener as EventListener,
-          );
-        });
       },
       [],
     );
@@ -233,35 +227,37 @@ export const ImaVidLookerReact = React.memo(
     const { getName } = useDefaultTimelineNameImperative();
     const timelineName = React.useMemo(() => getName(), [getName]);
 
-    const [totalFrameCount, setTotalFrameCount] = useState<number | null>(null);
+    // shared controller may already carry the group's length from a grid hover.
+    const initialFrameCount =
+      (looker as ImaVidLooker)?.frameStoreController?.totalFrameCount ?? null;
 
-    const totalFrameCountRef = useRef<number | null>(null);
+    const [totalFrameCount, setTotalFrameCount] = useState<number | null>(
+      initialFrameCount,
+    );
+
+    const totalFrameCountRef = useRef<number | null>(initialFrameCount);
+
+    // true while the group is still streaming frames; drives the buffering indicator.
+    const [isBuffering, setIsBuffering] = useState<boolean>(true);
 
     const timelineCreationConfig = useMemo(() => {
-      // todo: not working because it's resolved in a promise later
-      // maybe emit event to update the total frames
-      if (!totalFrameCount) {
-        return undefined;
-      }
-
+      // unknown count → `streaming` mode against buffered frames; real total fills in async.
+      const streaming = totalFrameCount == null;
       return {
         loop: (looker as ImaVidLooker).options.loop,
         targetFrameRate: dynamicGroupsTargetFrameRate,
-        totalFrames: totalFrameCount,
+        totalFrames: totalFrameCount ?? 1,
+        streaming,
       } as FoTimelineConfig;
-    }, [totalFrameCount, (looker as ImaVidLooker).options.loop]);
+    }, [
+      totalFrameCount,
+      dynamicGroupsTargetFrameRate,
+      (looker as ImaVidLooker).options.loop,
+    ]);
 
     const readyWhen = useCallback(async () => {
-      return new Promise<void>((resolve) => {
-        // hack: wait for total frame count to be resolved
-        let intervalId;
-        intervalId = setInterval(() => {
-          if (totalFrameCountRef.current) {
-            clearInterval(intervalId);
-            resolve();
-          }
-        }, 10);
-      });
+      // resolve immediately — controls must not wait on the group's length.
+      return Promise.resolve();
     }, []);
 
     const onAnimationStutter = useCallback(() => {
@@ -278,17 +274,10 @@ export const ImaVidLookerReact = React.memo(
       name: timelineName,
       config: timelineCreationConfig,
       waitUntilInitialized: readyWhen,
-      // using this mechanism to resume fetch if it was paused
-      // ideally we have control of fetch in this component but can't do that yet
-      // since imavid is part of the grid too
+      // resumes fetch if it was paused
       onAnimationStutter,
     });
 
-    const { setPlayHeadState, getPlayHeadState } = useTimeline(timelineName);
-
-    /**
-     * This effect subscribes to the timeline.
-     */
     useEffect(() => {
       if (isTimelineInitialized) {
         subscribe({
@@ -324,23 +313,54 @@ export const ImaVidLookerReact = React.memo(
       }
     }, [isTimelineInitialized, loadRange, renderFrame, subscribe]);
 
-    /**
-     * This effect sets the total frame count by polling the frame store controller.
-     */
+    // Poll for the group's true frame count (arrives async), syncing the timeline's
+    // playable extent to buffered frames until it lands.
     useEffect(() => {
-      // hack: poll every 10ms for total frame count
-      // replace with event listener or callback
-      let intervalId = setInterval(() => {
-        const totalFrameCount =
-          imaVidLookerRef.current.frameStoreController.totalFrameCount;
-        if (totalFrameCount) {
-          setTotalFrameCount(totalFrameCount);
-          clearInterval(intervalId);
+      let lastTarget = 0;
+      const intervalId = setInterval(() => {
+        const controller = imaVidLookerRef.current?.frameStoreController;
+        if (!controller) {
+          return;
         }
-      }, 10);
+        const real = controller.totalFrameCount ?? null;
+        const buffers = controller.storeBufferManager?.buffers ?? [];
+        const bufferedMax = buffers.reduce(
+          (max, range) => (range ? Math.max(max, range[1]) : max),
+          0,
+        );
+
+        if (real) {
+          if (real !== lastTarget) {
+            lastTarget = real;
+            jotaiStore.set(updateTimelineConfigAtom, {
+              name: timelineName,
+              configDelta: { totalFrames: real },
+            });
+            setTotalFrameCount(real);
+            totalFrameCountRef.current = real;
+          }
+        } else if (bufferedMax && bufferedMax !== lastTarget) {
+          // length unknown — grow the bar with buffered frames until the stream reveals it.
+          lastTarget = bufferedMax;
+          jotaiStore.set(updateTimelineConfigAtom, {
+            name: timelineName,
+            configDelta: { totalFrames: bufferedMax },
+          });
+        }
+
+        // buffering means the playhead is genuinely stalled waiting on the
+        // current frame — NOT that the whole group is cached. Windowed
+        // look-ahead never caches the whole group, so the old `bufferedMax >=
+        // real` test pinned the bar on forever with no fetch behind it.
+        const playhead =
+          imaVidLookerRef.current?.state?.currentFrameNumber ?? 1;
+        const stalled =
+          controller.storeBufferManager.getRangeIndexForFrame(playhead) === -1;
+        setIsBuffering(stalled);
+      }, 100);
 
       return () => clearInterval(intervalId);
-    }, [looker]);
+    }, [looker, timelineName]);
 
     useImavidModalSelectiveRendering(id, looker);
 
@@ -352,7 +372,9 @@ export const ImaVidLookerReact = React.memo(
           position: "relative",
           display: "flex",
           flexDirection: "column",
-          overflowX: "hidden",
+          // `overflow-x: hidden` alone forces overflow-y to `auto`, showing a stray
+          // scrollbar on sub-pixel overflow; hide both axes (the canvas doesn't scroll).
+          overflow: "hidden",
         }}
       >
         <div
@@ -366,6 +388,46 @@ export const ImaVidLookerReact = React.memo(
             position: "relative",
           }}
         />
+        {isBuffering && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: "42px",
+              right: "10px",
+              zIndex: 2,
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
+              padding: "2px 6px",
+              borderRadius: "3px",
+              background: "rgba(0,0,0,0.55)",
+            }}
+          >
+            <span
+              style={{
+                width: "10px",
+                height: "10px",
+                border: "2px solid rgba(255,255,255,0.25)",
+                borderTopColor: "#ff6d04",
+                borderRadius: "50%",
+                display: "inline-block",
+                animation: "imavid-buffer-spin 0.8s linear infinite",
+              }}
+            />
+            <span
+              style={{
+                fontSize: "11px",
+                color: "#bbb",
+                fontFamily: "ui-monospace, Menlo, monospace",
+              }}
+            >
+              buffering…
+            </span>
+            <style>
+              {"@keyframes imavid-buffer-spin{to{transform:rotate(360deg)}}"}
+            </style>
+          </div>
+        )}
         <Timeline
           name={timelineName}
           style={{

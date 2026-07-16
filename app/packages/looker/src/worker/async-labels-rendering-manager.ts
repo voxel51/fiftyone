@@ -148,6 +148,44 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
 
   const filteredSample = pluckRelevant(job.sample);
 
+  // a mask bitmap/buffer already transferred to a worker is detached — it
+  // carries no data and fails structured clone, so drop it from the payload.
+  // Reachable when a persistent, id-keyed store re-posts a sample whose mask
+  // was transferred by an earlier repaint (e.g. resize during hover playback)
+  const sanitizeDetachedPayloads = (
+    value: unknown,
+    seen = new Set<object>(),
+  ) => {
+    if (!value || typeof value !== "object" || seen.has(value as object)) {
+      return;
+    }
+    seen.add(value as object);
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        sanitizeDetachedPayloads(item, seen);
+      }
+      return;
+    }
+    const obj = value as Record<string, unknown>;
+    for (const key of Object.keys(obj)) {
+      const child = obj[key];
+      if (typeof ImageBitmap !== "undefined" && child instanceof ImageBitmap) {
+        if (child.width === 0) {
+          delete obj[key];
+        }
+        continue;
+      }
+      if (ArrayBuffer.isView(child)) {
+        if (child.buffer.byteLength === 0) {
+          delete obj[key];
+        }
+        continue;
+      }
+      sanitizeDetachedPayloads(child, seen);
+    }
+  };
+  sanitizeDetachedPayloads(filteredSample);
+
   const workerArgs: ProcessSample & { method: "processSample" } = {
     method: "processSample",
     sample: filteredSample as ProcessSample["sample"],

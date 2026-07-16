@@ -1,4 +1,5 @@
 import * as fos from "@fiftyone/state";
+import { VECTOR_FIELD } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { selectorFamily, useRecoilValue } from "recoil";
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
@@ -43,6 +44,12 @@ export const PathEntryCounts = ({ modal, path }: PathEntryCountsProps) => {
   const hasFilters = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
   const queryPerformance = useRecoilValue(fos.queryPerformance) && !modal;
   const shown = useRecoilValue(showEntryCounts({ modal, path }));
+  const field = useRecoilValue(fos.field(path));
+
+  // vectors are unsupported for filtering/aggregation; list them without counts
+  if (field?.ftype === VECTOR_FIELD || field?.subfield === VECTOR_FIELD) {
+    return null;
+  }
 
   // empty path means we are showing grid sample count which is always allowed
   // Temporal tags aren't sample fields, so there's no per-sample field count

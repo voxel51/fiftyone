@@ -1,4 +1,5 @@
 export * from "./abstract";
+export { resetImaVidStores } from "./imavid/store";
 export * from "./frame";
 export * from "./image";
 export * from "./imavid";

@@ -1,9 +1,9 @@
-import { zoomAspectRatio } from "@fiftyone/looker";
+import { resetImaVidStores, zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import type { ID, Response } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import type { Schema } from "@fiftyone/utilities";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import type { VariablesOf } from "react-relay";
 import { fetchQuery, useRelayEnvironment } from "react-relay";
@@ -76,6 +76,15 @@ const useSpotlightPager = ({
     /** Track already requested pages */
     clearRecords;
     return new Set();
+  }, [clearRecords]);
+
+  // imavid controllers/frames are keyed by bare `_id` and survive detach; a
+  // view/filter/dataset change re-keys their content, so dump them with the grid
+  const frameResetRef = useRef(clearRecords);
+  useEffect(() => {
+    if (frameResetRef.current === clearRecords) return;
+    frameResetRef.current = clearRecords;
+    resetImaVidStores();
   }, [clearRecords]);
 
   const page = useRecoilCallback(

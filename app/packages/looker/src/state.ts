@@ -108,6 +108,14 @@ export type Sample = {
   last_modified_at?: { datetime: number };
 } & GenericLabel;
 
+// Fields an ordered dynamic-group (GroupBy) view adds to its poster sample.
+// Kept off `Sample` itself: primitive members there break `extends Sample`
+// against the GenericLabel index signature. Intersect at the call site instead.
+export type DynamicGroupPoster = {
+  _group?: string;
+  _group_count?: number;
+};
+
 export interface LabelData {
   labelId: string;
   field: string;
@@ -441,6 +449,11 @@ export interface ImaVidState extends BaseState {
    * true if the seek bar is being hovered
    */
   seekBarHovering: boolean;
+  /**
+   * true once the pointer has moved over this looker (a deliberate hover, not a
+   * scroll-by); gates the per-group frame-stream fetch.
+   */
+  hoverProbed: boolean;
 }
 
 export interface ThreeDState extends BaseState {

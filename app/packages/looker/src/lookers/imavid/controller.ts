@@ -1,64 +1,98 @@
-import * as foq from "@fiftyone/relay";
+import { fetchSamples, type ModalSample } from "@fiftyone/state";
 import { BufferManager } from "@fiftyone/utilities";
-import { Environment, Subscription, fetchQuery } from "relay-runtime";
 import { BufferRange, ImaVidState, StateUpdate } from "../../state";
-import { BUFFERS_REFRESH_TIMEOUT_YIELD } from "./constants";
 import {
-  ImaVidFrameSamples,
-  ModalSampleExtendedWithImage,
-} from "./ima-vid-frame-samples";
-import { ImaVidStore } from "./store";
-
-const BUFFER_METADATA_FETCHING = "fetching";
+  BUFFERS_REFRESH_TIMEOUT_YIELD,
+  INITIAL_LOOK_AHEAD_FRAMES,
+  STREAM_BATCH_FRAMES,
+} from "./constants";
+import { ImaVidFrameSamples } from "./ima-vid-frame-samples";
 
 export class ImaVidFramesController {
   private mediaField = "filepath";
-  private subscription: Subscription;
   private targetFrameRate: number;
   private timeoutId: number;
 
   public fetchBufferManager = new BufferManager();
+  // every window POSTed to /samples in this controller's lifetime; a covered
+  // window is never re-POSTed — rows persist in the shared sample store, frames
+  // whose image load was aborted are re-fetched image-only, and only frames
+  // whose rows were evicted (or whose POST failed) are made re-POSTable
+  private requestedBufferManager = new BufferManager();
   public isFetching = false;
+  // synchronous re-entrancy guard: executeFetch's render synchronously calls back into resumeFetch, which would recurse to a stack overflow
+  private executing = false;
+  private streamEpoch = 0;
   public storeBufferManager: BufferManager;
-  public totalFrameCount: number;
+  // undefined until the group's length is known, revealed by the stream or seeded via setTotalFrameCount
+  public totalFrameCount: number | undefined;
 
   private updateImaVidState: StateUpdate<ImaVidState>;
 
+  private frameSamples: ImaVidFrameSamples;
+
   constructor(
     private readonly config: {
-      environment: Environment;
       firstFrameNumber: number;
-      // todo: remove any
-      page: any;
-      key: string;
-      totalFrameCountPromise: Promise<number>;
       targetFrameRate: number;
+      datasetId: string;
+      // dynamic group-by value identifying this group's ordered frames
+      groupValue: string;
+      view: unknown;
+      filters?: unknown;
+      // group slice filter (e.g. {group: {slice}}) scoping a nested dynamic
+      // group's frame stream to one slice
+      filter?: unknown;
+      // playback renders only media + overlays; stream just these paths
+      fields?: string[];
     },
   ) {
     this.storeBufferManager = new BufferManager([
       [config.firstFrameNumber, config.firstFrameNumber],
     ]);
-    config.totalFrameCountPromise.then((frameCount) => {
-      this.totalFrameCount = frameCount;
-    });
     this.targetFrameRate = config.targetFrameRate;
+    this.frameSamples = new ImaVidFrameSamples(this.storeBufferManager);
   }
 
   public setImaVidStateUpdater(updater: StateUpdate<ImaVidState>) {
     this.updateImaVidState = updater;
   }
 
+  // seed the group's length from a count the client already has; never overwrites a known count
+  public setTotalFrameCount(count: number) {
+    const accepted = Boolean(count && this.totalFrameCount == null);
+    (window as { __foImavidDebug?: boolean }).__foImavidDebug &&
+      console.debug(
+        "[imavid] setTotalFrameCount",
+        {
+          group: this.key,
+          offered: count,
+          current: this.totalFrameCount,
+          accepted,
+        },
+        new Error("call site").stack,
+      );
+    if (accepted) {
+      this.totalFrameCount = count;
+      this.updateImaVidState?.({ totalFrames: count });
+    }
+  }
+
   public resumeFetch() {
-    if (this.isFetching) {
+    // a running pass schedules its own continuation, so only start when idle; below we preempt the pending poll timer to pick up the new range now
+    if (this.executing) {
       return;
     }
 
+    window.clearTimeout(this.timeoutId);
     this.executeFetch();
   }
 
   public pauseFetch(updateBuffering = true) {
+    // cancels in-flight fetchMore loops between chunks — an abandoned hover
+    // must stop streaming instead of running its whole range to completion
+    this.streamEpoch += 1;
     window.clearTimeout(this.timeoutId);
-    this.subscription?.unsubscribe();
     this.fetchBufferManager.reset();
     this.isFetching = false;
     if (updateBuffering) {
@@ -72,82 +106,136 @@ export class ImaVidFramesController {
   }
 
   public enqueueFetch(frameRange: Readonly<BufferRange>) {
-    this.fetchBufferManager.addNewRange(frameRange);
+    // frame numbers are integral; fractional ranges corrupt the frame index
+    // (fractional keys never match the integer playhead) and the REST payload
+    this.fetchBufferManager.addNewRange([
+      Math.floor(frameRange[0]),
+      Math.ceil(frameRange[1]),
+    ] as BufferRange);
   }
 
   private async executeFetch() {
-    let totalUnfetchedRanges = 0;
-    let totalFetchingRanges = 0;
-    const unfetchedRanges = [];
-
-    const fetchingRanges = []; // remove
-
-    for (let i = 0; i < this.fetchBufferManager.buffers.length; ++i) {
-      const range = this.fetchBufferManager.buffers[i];
-
-      if (!range) {
-        continue;
-      }
-
-      if (
-        this.fetchBufferManager.getMetadataForBufferRange(i) ===
-        BUFFER_METADATA_FETCHING
-      ) {
-        totalFetchingRanges += 1;
-        fetchingRanges.push(range); // remove
-      } else {
-        totalUnfetchedRanges += 1;
-        unfetchedRanges.push(range);
-      }
-    }
-
-    // end recursion condition
-    if (totalUnfetchedRanges === 0 && totalFetchingRanges === 0) {
-      this.pauseFetch();
+    if (this.executing) {
       return;
     }
+    this.executing = true;
+    try {
+      // drain the queue up front; ranges enqueued mid-pass run on the next tick
+      const queued = this.fetchBufferManager.buffers.filter(Boolean);
+      this.fetchBufferManager.reset();
 
-    this.isFetching = true;
+      if (queued.length === 0) {
+        this.pauseFetch();
+        return;
+      }
 
-    if (totalFetchingRanges > 0 && totalUnfetchedRanges === 0) {
+      this.isFetching = true;
+
+      // partition each queued window frame-by-frame: drawable frames are done,
+      // never-requested frames are POSTed, requested frames missing only their
+      // image (load aborted mid-flight) are refilled image-only from the stored
+      // row, and requested frames whose rows were evicted are made re-POSTable.
+      // multiple enqueuers (grid look-ahead, modal timeline) overlap freely —
+      // no window ever hits the network twice
+      const toPost: BufferRange[] = [];
+      const imageRefills: number[] = [];
+      for (const range of queued) {
+        let runStart: number | null = null;
+        for (let frame = range[0]; frame <= range[1] + 1; ++frame) {
+          let post = false;
+          if (frame <= range[1]) {
+            if (this.storeBufferManager.isValueInBuffer(frame)) {
+              post = false;
+            } else if (this.requestedBufferManager.isValueInBuffer(frame)) {
+              const sampleId = this.store.frameIndex.get(frame);
+              const sample = sampleId
+                ? this.store.samples.get(sampleId)
+                : undefined;
+              if (sample) {
+                if (!sample.image) {
+                  imageRefills.push(frame);
+                } else {
+                  // drawable but unregistered (e.g. adopted image) — self-heal
+                  this.storeBufferManager.addNewRange([frame, frame]);
+                }
+              } else {
+                this.requestedBufferManager.removeBufferValue(frame);
+                post = true;
+              }
+            } else {
+              post = true;
+            }
+          }
+          if (post && runStart === null) {
+            runStart = frame;
+          } else if (!post && runStart !== null) {
+            toPost.push([runStart, frame - 1]);
+            runStart = null;
+          }
+        }
+      }
+
+      if (toPost.length === 0 && imageRefills.length === 0) {
+        this.pauseFetch();
+        return;
+      }
+
+      this.updateImaVidState?.({ buffering: true });
+
+      const work: Promise<unknown>[] = toPost.map((range) => {
+        this.requestedBufferManager.addNewRange(range);
+        // frame range is 1-based; REST `after` is a skip, so `after = start - 1` returns frame `start` first
+        return this.fetchMore(range[0] - 1, range[1] - range[0] + 1).catch(
+          (reason) => {
+            console.error(`couldn't fetch buffer range ${range}: ${reason}`);
+            // a failed window becomes re-POSTable at the next look-ahead's
+            // cadence — never a tight 0ms retry loop that storms the backend
+            for (let frame = range[0]; frame <= range[1]; ++frame) {
+              this.requestedBufferManager.removeBufferValue(frame);
+            }
+          },
+        );
+      });
+      if (imageRefills.length) {
+        work.push(this.refillImages(imageRefills));
+      }
+      await Promise.allSettled(work);
+
+      // ranges enqueued during the fetch (e.g. the look-ahead as playback advanced) run on
+      // the next tick; only idle-poll once caught up so a depleting buffer never waits long
+      const hasPending = this.fetchBufferManager.buffers.some(Boolean);
       this.timeoutId = window.setTimeout(
         this.executeFetch.bind(this),
-        BUFFERS_REFRESH_TIMEOUT_YIELD,
+        hasPending ? 0 : BUFFERS_REFRESH_TIMEOUT_YIELD,
       );
-      return;
+    } finally {
+      this.executing = false;
     }
+  }
 
-    this.updateImaVidState({ buffering: true });
-
-    const fetchPromises = unfetchedRanges.map((range, index) => {
-      this.fetchBufferManager.addMetadataToBufferRange(
-        index,
-        BUFFER_METADATA_FETCHING,
-      );
-
-      // subtract/add by two because 1) cursor is one based and 2) cursor here translates to "after" the cursor
-      return this.fetchMore(range[0] - 2, range[1] - range[0] + 2).finally(
-        () => {
-          this.fetchBufferManager.removeMetadataFromBufferRange(index);
-        },
-      );
-    });
-
-    const results = await Promise.allSettled(fetchPromises);
-
-    results.forEach((result, index) => {
-      if (result.status === "rejected") {
-        console.error(
-          `couldn't fetch buffer range ${this.fetchBufferManager.buffers[index]}: ${result.reason}`,
-        );
-      } else {
-        this.fetchBufferManager.removeRangeAtIndex(index);
-      }
-    });
-
-    this.timeoutId = window.setTimeout(
-      this.executeFetch.bind(this),
-      BUFFERS_REFRESH_TIMEOUT_YIELD,
+  /** Re-fetch ONLY the images for frames whose rows are already stored. */
+  private async refillImages(frameNumbers: number[]) {
+    await Promise.allSettled(
+      frameNumbers.map((frameNumber) => {
+        const sampleId = this.store.frameIndex.get(frameNumber);
+        const sample = sampleId ? this.store.samples.get(sampleId) : undefined;
+        if (!sampleId || !sample) {
+          return Promise.resolve();
+        }
+        return this.store
+          .fetchImageForSample(sampleId, sample.urls, this.mediaField)
+          .then(() => {
+            if (this.store.samples.get(sampleId)?.image) {
+              this.storeBufferManager.addNewRange([frameNumber, frameNumber]);
+            }
+          });
+      }),
+    );
+    window.dispatchEvent(
+      new CustomEvent("fetchMore", {
+        detail: { id: this.key },
+        bubbles: false,
+      }),
     );
   }
 
@@ -159,27 +247,12 @@ export class ImaVidFramesController {
     return this.storeBufferManager.totalFramesInBuffer === 0;
   }
 
-  private get environment() {
-    return this.config.environment;
-  }
-
-  private get page() {
-    return this.config.page;
-  }
-
   public get key() {
-    return this.config.key;
+    return this.config.groupValue;
   }
 
   public get store() {
-    if (!ImaVidStore.has(this.key)) {
-      ImaVidStore.set(
-        this.key,
-        new ImaVidFrameSamples(this.storeBufferManager),
-      );
-    }
-
-    return ImaVidStore.get(this.key);
+    return this.frameSamples;
   }
 
   public setFrameRate(newFrameRate: number) {
@@ -199,107 +272,156 @@ export class ImaVidFramesController {
   }
 
   public async fetchMore(cursor: number, count: number) {
-    const variables = this.page(cursor, count);
+    // integral windows only; see enqueueFetch
+    cursor = Math.floor(cursor);
+    count = Math.ceil(count);
+    // stream the range in chunks, publishing each before fetching the next so
+    // playback starts as soon as the first frames arrive. The first chunk is
+    // deliberately small: fast first paint, while the rest of the range keeps
+    // streaming in the same request (no serial second fetch to wait on)
+    const pendingImageBatches: Promise<unknown>[] = [];
+    const epoch = this.streamEpoch;
+    let offset = 0;
+    while (offset < count) {
+      let chunkCount = Math.min(
+        offset === 0 ? INITIAL_LOOK_AHEAD_FRAMES : STREAM_BATCH_FRAMES,
+        count - offset,
+      );
+      // absorb a tiny remainder into this chunk instead of a follow-up sliver request
+      if (count - offset - chunkCount < 10) {
+        chunkCount = count - offset;
+      }
+      const chunkCursor = cursor + offset;
+      offset += chunkCount;
 
-    const fetchUid = `${this.key}-${cursor}-${variables.count}`;
-
-    return new Promise<void>((resolve, _reject) => {
-      // do a gql query here, get samples, update store
-      this.subscription = fetchQuery<foq.paginateSamplesQuery>(
-        this.environment,
-        foq.paginateSamples,
-        variables,
-        {
-          fetchPolicy: "store-or-network",
-          networkCacheConfig: {
-            transactionId: fetchUid,
-          },
-        },
-      ).subscribe({
-        next: (data) => {
-          if (data?.samples?.edges?.length) {
-            // map of frame index to sample id resolved by image fetching promise
-            // (insertion order preserved)
-            const imageFetchPromisesMap: Map<
-              number,
-              Promise<string>
-            > = new Map();
-
-            // update store
-            for (const { cursor, node } of data.samples.edges) {
-              if (!node) {
-                continue;
-              }
-
-              const sample = {
-                ...node,
-                image: null,
-              } as ModalSampleExtendedWithImage;
-              const sampleId = sample.sample["_id"] as string;
-
-              if (sample.__typename !== "ImageSample") {
-                throw new Error("only image samples supported");
-              }
-
-              // offset by one because cursor is zero based and frame index is one based
-              const frameIndex = Number(cursor) + 1;
-
-              this.store.samples.set(sampleId, sample);
-
-              imageFetchPromisesMap.set(
-                frameIndex,
-                this.store.fetchImageForSample(
-                  sampleId,
-                  sample["urls"],
-                  this.mediaField,
-                ),
-              );
-            }
-
-            const frameIndices = imageFetchPromisesMap.keys();
-            const imageFetchPromises = imageFetchPromisesMap.values();
-
-            Promise.all(imageFetchPromises)
-              .then((sampleIds) => {
-                for (let i = 0; i < sampleIds.length; i++) {
-                  const frameIndex = frameIndices.next().value;
-                  const sampleId = sampleIds[i];
-                  this.store.frameIndex.set(frameIndex, sampleId);
-                  this.store.reverseFrameIndex.set(sampleId, frameIndex);
-                }
-                resolve();
-              })
-              .then(() => {
-                const newRange = [
-                  Number(data.samples.edges[0].cursor) + 1,
-                  Number(
-                    data.samples.edges[data.samples.edges.length - 1].cursor,
-                  ) + 1,
-                ] as BufferRange;
-
-                this.storeBufferManager.addNewRange(newRange);
-
-                window.dispatchEvent(
-                  new CustomEvent("fetchMore", {
-                    detail: {
-                      id: this.key,
-                    },
-                    bubbles: false,
-                  }),
-                );
-              });
-          }
-        },
+      (window as { __foImavidDebug?: boolean }).__foImavidDebug &&
+        console.debug("[imavid] fetchMore chunk", {
+          group: this.key,
+          after: chunkCursor,
+          count: chunkCount,
+          requestedRange: `[${cursor + 1}, ${cursor + count}]`,
+          totalFrameCount: this.totalFrameCount,
+        });
+      const rows = await fetchSamples({
+        datasetId: this.config.datasetId,
+        dynamicGroup: this.config.groupValue,
+        after: chunkCursor > 0 ? chunkCursor : undefined,
+        count: chunkCount,
+        view: this.config.view,
+        filters: this.config.filters,
+        filter: this.config.filter,
+        fields: this.config.fields,
+        // frames inherit the poster's aspect ratio — never open each frame's media
+        skipMetadata: true,
       });
-      // todo: see if environment.retain() is applicable here,
-      // since fetchQuery() doesn't retain data after request completes
-      // reference: https://relay.dev/docs/api-reference/fetch-query/
-    });
+
+      if (rows.length < chunkCount && this.totalFrameCount == null) {
+        // a short page ends at the group's last frame; reveal the length from the stream
+        const revealed = chunkCursor + rows.length;
+        if (revealed) {
+          this.totalFrameCount = revealed;
+          this.updateImaVidState?.({ totalFrames: revealed });
+        }
+      }
+
+      // pause cancels the stream between chunks: rows that already arrived are
+      // kept (re-POSTing them would be a duplicate) with their images deferred
+      // to the refill pass on the next enqueue, and no further chunks POST
+      const cancelled = epoch !== this.streamEpoch;
+
+      if (rows.length) {
+        const imageFetchPromisesMap = new Map<number, Promise<string>>();
+        for (let i = 0; i < rows.length; ++i) {
+          const row = rows[i];
+          const sampleId = row.id;
+          const frameNumber = chunkCursor + i + 1;
+          this.store.samples.set(sampleId, {
+            id: sampleId,
+            sample: row.fields,
+            urls: row.urls,
+            image: null,
+          } as unknown as ModalSample & { image: HTMLImageElement | null });
+          // index at row time so a frame whose image load aborts can be
+          // refilled image-only (drawability stays gated on the image via
+          // storeBufferManager)
+          this.store.frameIndex.set(frameNumber, sampleId);
+          this.store.reverseFrameIndex.set(sampleId, frameNumber);
+          if (!cancelled) {
+            imageFetchPromisesMap.set(
+              frameNumber,
+              this.store.fetchImageForSample(
+                sampleId,
+                row.urls,
+                this.mediaField,
+              ),
+            );
+          }
+        }
+
+        // mark each frame drawable as its image resolves; do NOT await here —
+        // the next chunk's POST runs concurrently with this chunk's image
+        // downloads, roughly doubling stream throughput
+        const perFramePromises: Promise<void>[] = [];
+        for (const [frameNumber, imagePromise] of imageFetchPromisesMap) {
+          perFramePromises.push(
+            imagePromise.then((sampleId) => {
+              if (!this.store.samples.get(sampleId)?.image) {
+                // evicted, or its image load was aborted mid-flight (detach);
+                // left unbuffered so a later pass refills the image (never a
+                // re-POST) instead of indexing a hole the playhead can't draw
+                return;
+              }
+              // buffered the moment THIS frame is drawable — the loader bar and
+              // runway math track reality instead of jumping per chunk
+              this.storeBufferManager.addNewRange([frameNumber, frameNumber]);
+            }),
+          );
+        }
+        pendingImageBatches.push(
+          Promise.all(perFramePromises).then(() => {
+            // publish this chunk so the looker repaints/resumes from it
+            window.dispatchEvent(
+              new CustomEvent("fetchMore", {
+                detail: { id: this.key },
+                bubbles: false,
+              }),
+            );
+          }),
+        );
+      }
+
+      // a short page is the group's end
+      if (cancelled || rows.length < chunkCount) {
+        break;
+      }
+    }
+
+    // settle before resolving so executeFetch's queue lifecycle stays correct
+    await Promise.allSettled(pendingImageBatches);
   }
 
+  /**
+   * Detach (tile hidden/recycled by the grid): stop fetching and settle
+   * in-flight image loads, but KEEP buffered frames — this controller is
+   * shared by grid hover and the modal (keyed by sample `_id`), so re-attach
+   * must replay from buffer, never refetch from frame 1.
+   */
+  public suspend() {
+    this.pauseFetch(false);
+    this.frameSamples.abortInFlightImages();
+    this.fetchBufferManager.reset();
+  }
+
+  /** Full teardown (view/filter/dataset change): buffers are re-keyed, drop everything. */
   public destroy() {
     this.pauseFetch();
-    this.storeBufferManager.reset();
+    // clear indexes and unregister from the shared eviction fanout (also aborts
+    // in-flight image loads, settling their promises) — otherwise this dead
+    // instance lingers in frameSampleInstances and grows the eviction cost
+    this.frameSamples.reset();
+    // re-arm the abort signal so a revived controller's future fetches still work
+    this.frameSamples.abortInFlightImages();
     this.fetchBufferManager.reset();
+    this.requestedBufferManager.reset();
   }
 }

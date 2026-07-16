@@ -7,7 +7,34 @@ import type { RegisteredWriter } from "./registerWriter";
 
 import { setSample } from "@fiftyone/relay";
 import { env } from "@fiftyone/utilities";
+import type { IEnvironment } from "relay-runtime";
 import { commitMutation } from "relay-runtime";
+
+let lastSetSample = "";
+
+/**
+ * Commit `setSample` unless it exactly repeats the previous commit — the
+ * writer and the history side-effect both fire on modal transitions, and the
+ * session only needs to hear each change once.
+ */
+export const commitSetSampleIfChanged = (
+  environment: IEnvironment,
+  variables: { groupId?: string; id?: string; subscription: string },
+) => {
+  const key = JSON.stringify([
+    variables.groupId ?? null,
+    variables.id ?? null,
+    variables.subscription,
+  ]);
+  if (key === lastSetSample) {
+    return;
+  }
+  lastSetSample = key;
+  commitMutation<setSampleMutation>(environment, {
+    mutation: setSample,
+    variables,
+  });
+};
 
 export const handleGroupId = (search: URLSearchParams, groupId?: string) => {
   if (groupId) {
@@ -49,13 +76,10 @@ const onSetSample: RegisteredWriter<"modalSelector"> =
 
     if (env().VITE_NO_STATE) return;
 
-    commitMutation<setSampleMutation>(environment, {
-      mutation: setSample,
-      variables: {
-        groupId: selector?.groupId,
-        id: selector?.id,
-        subscription,
-      },
+    commitSetSampleIfChanged(environment, {
+      groupId: selector?.groupId,
+      id: selector?.id,
+      subscription,
     });
   };
 

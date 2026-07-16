@@ -1,4 +1,4 @@
-import { test as base } from "src/oss/fixtures";
+import { expect, test as base } from "src/oss/fixtures";
 import { GridActionsRowPom } from "src/oss/poms/action-row/grid-actions-row";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
@@ -102,6 +102,39 @@ test.beforeEach(async ({ page, fiftyoneLoader, grid }) => {
 
   await grid.assert.isEntryCountTextEqualTo("2 groups");
   await grid.assert.isLookerCountEqualTo(2);
+});
+
+test("opening the modal does not re-request media", async ({
+  modal,
+  grid,
+  page,
+}) => {
+  // passive network observer; browser-cache hits do not emit this event, so
+  // every entry is a real transfer — the same semantics as the dupe guard
+  const mediaRequests = new Map<string, number>();
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.endsWith("/media")) {
+      const filepath = url.searchParams.get("filepath") ?? request.url();
+      mediaRequests.set(filepath, (mediaRequests.get(filepath) ?? 0) + 1);
+    }
+  });
+
+  await grid.openFirstSample();
+  await modal.waitForSampleLoadDomAttribute();
+  await modal.imavid.waitUntilFrameTextIs("1 / 150");
+
+  // the modal must reuse the poster frame the grid tile already downloaded
+  expect(mediaRequests.get("/tmp/ima-vid-1-1.png") ?? 0).toBe(0);
+
+  // stream through look-ahead buffering, then verify every frame's media was
+  // transferred at most once
+  await modal.imavid.playUntilFrames("20 / 150");
+
+  const repeated = [...mediaRequests.entries()].filter(
+    ([, count]) => count > 1,
+  );
+  expect(repeated).toEqual([]);
 });
 
 test("check modal playback and tagging behavior", async ({ modal, grid }) => {

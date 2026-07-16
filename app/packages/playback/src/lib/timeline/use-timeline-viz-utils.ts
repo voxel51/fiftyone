@@ -34,7 +34,9 @@ export const useTimelineVizUtils = (name?: TimelineName) => {
         Math.ceil((newSeekValue / 100) * config.totalFrames),
         1,
       );
-      setFrameNumber({ name: timelineName, newFrameNumber });
+      // seeks paint the playhead under the click immediately; the canvas
+      // catches up when the target frame's data lands
+      setFrameNumber({ name: timelineName, newFrameNumber, immediate: true });
     },
     [setFrameNumber, timelineName, config?.totalFrames],
   );

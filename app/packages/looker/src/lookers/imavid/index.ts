@@ -86,6 +86,23 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     super.destroy();
   }
 
+  detach() {
+    // a thumbnail detached mid-hover (grid recycling during scroll) never
+    // receives mouseleave, so it would re-attach stuck in the playing state —
+    // which keeps its tag chips cleared and overlays disabled
+    this.updater(({ playing, config: { thumbnail } }) =>
+      thumbnail && playing
+        ? {
+            playing: false,
+            disableOverlays: false,
+            hoverProbed: false,
+            currentFrameNumber: 1,
+          }
+        : {},
+    );
+    super.detach();
+  }
+
   dispatchImpliedEvents(
     previousState: Readonly<ImaVidState>,
     state: Readonly<ImaVidState>,
@@ -129,6 +146,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
       buffering: false,
       bufferManager: new BufferManager([[FIRST_FRAME, FIRST_FRAME]]),
       seekBarHovering: false,
+      hoverProbed: false,
       SHORTCUTS: IMAVID_SHORTCUTS,
     };
   }
@@ -338,7 +356,9 @@ export const getSampleWithResettedMasks = (
       if (value._cls === DETECTIONS) {
         newSample[field] = {
           ...value,
-          detections: value.detections.map(getFieldWithMaskResetted),
+          detections: (
+            value as { detections: Record<string, unknown>[] }
+          ).detections.map(getFieldWithMaskResetted),
         };
       } else if (
         (value._cls === DETECTION ||

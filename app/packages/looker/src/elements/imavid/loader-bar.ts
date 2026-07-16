@@ -12,8 +12,7 @@ export class LoaderBar extends BaseElement<ImaVidState> {
   createHTMLElement() {
     const element = document.createElement("div");
     element.classList.add(lookerLoader);
-    element.innerText = "loaderbar";
-    element.attributes["data-cy"] = "imavid-loader-bar";
+    element.setAttribute("data-cy", "imavid-loader-bar");
     return element;
   }
 

@@ -20,9 +20,56 @@ const BASE64_BLACK_IMAGE =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAABNJREFUCB1jZGBg+A/EDEwgAgQADigBA//q6GsAAAAASUVORK5CYII=";
 
 export type ModalSampleExtendedWithImage = ModalSample & {
-  image: HTMLImageElement;
+  image: HTMLImageElement | null;
 };
+
+// every live frame-samples instance, so an eviction from the shared store below
+// can drop the sample from each controller's per-group frame index + buffer
+const frameSampleInstances = new Set<ImaVidFrameSamples>();
+
+// A SINGLE sample cache shared by every imavid controller (grid + modal), keyed
+// by the bare sample `_id`. Frames fetched (and decoded images) for grid hover
+// are reused by the modal — and vice-versa — with no backend re-fetch. Bounded by
+// the same count/byte limits the old per-controller cache used.
+export const ImaVidSampleStore = new LRUCache<
+  SampleId,
+  ModalSampleExtendedWithImage
+>({
+  max: MAX_FRAME_STREAM_SIZE,
+  maxSize: MAX_FRAME_STREAM_SIZE_BYTES,
+  noDisposeOnSet: true,
+  // count the image too (encoded JPEG ≈ w*h/8); entries are re-set after the
+  // image attaches so the byte budget tracks real memory, not just field JSON
+  sizeCalculation: (data) =>
+    Math.max(
+      1,
+      Math.ceil(
+        sizeBytesEstimate(data.sample) +
+          (data.image?.naturalWidth
+            ? (data.image.naturalWidth * data.image.naturalHeight) / 8
+            : 0),
+      ),
+    ),
+  dispose: (_data, sampleId, reason) => {
+    if (reason === "evict") {
+      // real LRU pressure (count or byte budget) — sustained streams of these
+      // mean the frame JSON is too heavy for the budget (inline masks)
+      console.debug(
+        "[imavid] store evict",
+        sampleId,
+        `${ImaVidSampleStore.size} entries`,
+        `${Math.round(ImaVidSampleStore.calculatedSize / 1e6)}MB`,
+      );
+    }
+    // an evicted sample is no longer buffered for any controller that indexed it
+    for (const instance of frameSampleInstances) {
+      instance.forget(sampleId);
+    }
+  },
+});
+
 export class ImaVidFrameSamples {
+  // the shared, `_id`-keyed sample store (same instance for every controller)
   public readonly samples: LRUCache<SampleId, ModalSampleExtendedWithImage>;
 
   public readonly frameIndex: Map<number, SampleId>;
@@ -30,33 +77,38 @@ export class ImaVidFrameSamples {
 
   private readonly storeBufferManager: BufferManager;
 
-  private readonly abortController: AbortController;
+  // scopes in-flight image listeners; replaced on abort so a revived
+  // controller's future fetches get a live signal
+  private abortController: AbortController;
+
+  // one download per sample at a time — a refill pass racing the original
+  // fetch must join it, not issue a second media request
+  private readonly inFlightImageFetches = new Map<SampleId, Promise<string>>();
 
   constructor(storeBufferManager: BufferManager) {
     this.storeBufferManager = storeBufferManager;
     this.abortController = new AbortController();
 
-    this.samples = new LRUCache<SampleId, ModalSampleExtendedWithImage>({
-      dispose: (_modal, sampleId) => {
-        // remove it from the frame index
-        const frameNumber = this.reverseFrameIndex.get(sampleId);
-        if (frameNumber !== undefined) {
-          this.frameIndex.delete(frameNumber);
-        }
-        // remove from reverse frame index
-        this.reverseFrameIndex.delete(sampleId);
-
-        // remove from store buffer manager
-        this.storeBufferManager.removeBufferValue(frameNumber);
-      },
-      max: MAX_FRAME_STREAM_SIZE,
-      maxSize: MAX_FRAME_STREAM_SIZE_BYTES,
-      noDisposeOnSet: true,
-      sizeCalculation: (data) => sizeBytesEstimate(data.sample),
-    });
+    this.samples = ImaVidSampleStore;
 
     this.frameIndex = new Map<number, string>();
     this.reverseFrameIndex = new Map<string, number>();
+
+    frameSampleInstances.add(this);
+  }
+
+  /**
+   * Drop a sample from THIS controller's frame index + buffer. Called when the
+   * shared store evicts it, so a controller never reports a frame as buffered
+   * whose data is gone.
+   */
+  forget(sampleId: SampleId) {
+    const frameNumber = this.reverseFrameIndex.get(sampleId);
+    if (frameNumber !== undefined) {
+      this.frameIndex.delete(frameNumber);
+      this.storeBufferManager.removeBufferValue(frameNumber);
+    }
+    this.reverseFrameIndex.delete(sampleId);
   }
 
   getSampleAtFrame(frameNumber: number) {
@@ -68,34 +120,67 @@ export class ImaVidFrameSamples {
     return this.samples.get(sampleId);
   }
 
+  /**
+   * Cancel every in-flight image download (teardown / view switch): the
+   * browser drops the network fetch, each pending promise settles, and future
+   * fetches attach to a fresh signal.
+   */
+  abortInFlightImages() {
+    this.abortController.abort();
+    this.abortController = new AbortController();
+  }
+
   async fetchImageForSample(
     sampleId: string,
     urls: ModalSample["urls"],
     mediaField: string,
   ): Promise<string> {
+    if (this.samples.get(sampleId)?.image) {
+      return sampleId;
+    }
+    const inFlight = this.inFlightImageFetches.get(sampleId);
+    if (inFlight) {
+      return inFlight;
+    }
+
     const normalizedUrls = getNormalizedUrls(urls);
     const image = new Image();
     const source = getSampleSrc(normalizedUrls[mediaField]);
+    const signal = this.abortController.signal;
 
-    return new Promise((resolve) => {
+    const promise = new Promise<string>((resolve) => {
+      // teardown: cancel the download and settle so no fetch loop ever awaits
+      // a dead image
+      signal.addEventListener(
+        "abort",
+        () => {
+          image.src = "";
+          resolve(sampleId);
+        },
+        { once: true },
+      );
       image.addEventListener(
         "load",
         () => {
           const sample = this.samples.get(sampleId);
 
           if (!sample) {
-            // sample was removed from the cache, this shouldn't happen...
-            // but if it does, it might be because the cache was cleared
-            // todo: handle this case better
-            console.error(
-              "Sample was removed from cache before image loaded",
+            // evicted (or store reset) while the image was in flight — routine
+            // under memory pressure / view churn. MUST still resolve: an
+            // unsettled promise wedges the chunk's Promise.all and strands the
+            // controller's fetch loop. The frame refetches when the playhead
+            // nears it (runway-gated).
+            console.debug(
+              "[imavid] sample evicted before image loaded",
               sampleId,
             );
-            image.src = BASE64_BLACK_IMAGE;
+            resolve(sampleId);
             return;
           }
 
           sample.image = image;
+          // re-set so the LRU's byte accounting includes the image
+          this.samples.set(sampleId, sample);
           resolve(sampleId);
         },
         { signal: this.abortController?.signal },
@@ -111,15 +196,22 @@ export class ImaVidFrameSamples {
             source,
           );
 
-          // use a placeholder blank black image to not block animation
-          // setting src should trigger the load event
+          // placeholder so a failed image never blocks animation; resolve so
+          // the chunk's Promise.all never hangs on a failed url
           image.src = BASE64_BLACK_IMAGE;
+          resolve(sampleId);
         },
         { signal: this.abortController?.signal },
       );
 
       image.src = source;
     });
+
+    const tracked = promise.finally(() => {
+      this.inFlightImageFetches.delete(sampleId);
+    });
+    this.inFlightImageFetches.set(sampleId, tracked);
+    return tracked;
   }
 
   /**
@@ -171,16 +263,11 @@ export class ImaVidFrameSamples {
    * Reset the masks for all samples to the given render status.
    */
   resetMasks(renderStatus: string = RENDER_STATUS_PENDING) {
-    const size = this.samples.size;
-    let counter = 0;
-    for (const [_sampleId, sample] of this.samples.entries()) {
-      this.resetMaskForSample(sample, renderStatus);
-      counter++;
-
-      // LRU cache has a bug where .entries(), .keys(), .values()
-      // returns an infinite loop generator
-      if (counter > size) {
-        break;
+    // only this controller's frames — the sample store is shared across controllers
+    for (const sampleId of this.reverseFrameIndex.keys()) {
+      const sample = this.samples.get(sampleId);
+      if (sample) {
+        this.resetMaskForSample(sample, renderStatus);
       }
     }
   }
@@ -212,7 +299,10 @@ export class ImaVidFrameSamples {
     for (const [_field, value] of Object.entries(sample.sample)) {
       if (typeof value === "object" && value !== null && "_cls" in value) {
         if (value._cls === DETECTIONS) {
-          for (const detection of value.detections) {
+          const { detections } = value as {
+            detections: Record<string, unknown>[];
+          };
+          for (const detection of detections) {
             if (checkMask(detection)) {
               return true;
             }
@@ -233,7 +323,9 @@ export class ImaVidFrameSamples {
   reset() {
     this.frameIndex.clear();
     this.reverseFrameIndex.clear();
-    this.samples.clear();
+    // do NOT clear the shared sample store — other controllers reuse its entries
+    // by `_id` and it self-bounds via LRU; just stop receiving eviction callbacks
+    frameSampleInstances.delete(this);
     this.storeBufferManager.reset();
     this.abortController.abort();
   }

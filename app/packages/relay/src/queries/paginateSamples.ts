@@ -51,6 +51,7 @@ export default r(graphql`
     $hint: String
     $dynamicGroup: BSON = null
     $maxQueryTime: Int
+    $skipMetadata: Boolean = false
   ) {
     samples(
       dataset: $dataset
@@ -66,6 +67,7 @@ export default r(graphql`
       hint: $hint
       dynamicGroup: $dynamicGroup
       maxQueryTime: $maxQueryTime
+      skipMetadata: $skipMetadata
     ) {
       __typename
       ... on QueryTimeout {
