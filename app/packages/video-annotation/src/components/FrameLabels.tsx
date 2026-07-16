@@ -571,9 +571,11 @@ function useTrackDecorator({
  * only at mount) bootstraps from the real frame-track list; later recolors
  * update through the live `tracks` prop and preserve the user's pin state.
  */
-export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
-  sample,
-}) => {
+export const FrameLabelsTracks: React.FC<{
+  sample?: ModalSample;
+  /** Cap on the timeline drawer body (px); it scrolls internally past this. */
+  maxSize?: number;
+}> = ({ sample, maxSize }) => {
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
 
@@ -665,6 +667,7 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
         decorateTrack={decorateTrack}
         extraControls={<VideoAnnotationToolbar />}
         loaded={timelineLoaded}
+        maxSize={maxSize}
       />
     </TrackProvider>
   );
