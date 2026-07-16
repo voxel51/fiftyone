@@ -53,7 +53,6 @@
     "oss/specs/display-options.spec.ts": 3.9,
     "oss/specs/dynamic-embedded-documents-segmentation.spec.ts": 3.7,
     "oss/specs/dynamic-groups.spec.ts": 20.4,
-    "oss/specs/embeddings.spec.ts": 5.3,
     "oss/specs/field-visibility.spec.ts": 45.1,
     "oss/specs/fo3d-camera-init.spec.ts": 43.6,
     "oss/specs/fo3d-pcd-stl.spec.ts": 9.8,

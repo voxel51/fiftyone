@@ -7,6 +7,10 @@ const IGNORE = new Set([
   "triage",
   "enterprise-sync",
   "e2e-comment-suites",
+  // enterprise plumbing jobs, not suites; report-to-oss also runs after the
+  // refresh job, so its row could never settle
+  "report-to-oss",
+  "oss-merged-check",
 ]);
 
 export function buildSuiteRows(jobs) {
@@ -25,12 +29,11 @@ export function buildSuiteRows(jobs) {
       ? "❌"
       : js.some((j) => j.status !== "completed")
         ? "⏳"
-        : js.every((j) => j.conclusion === "skipped")
-          ? "⊘ skipped"
-          : js.some((j) => j.conclusion === "cancelled")
-            ? "🚫 cancelled"
-            : "✅";
+        : js.some((j) => j.conclusion === "cancelled")
+          ? "🚫 cancelled"
+          : "✅";
   return [...groups.entries()]
     .sort()
+    .filter(([, js]) => !js.every((j) => j.conclusion === "skipped"))
     .map(([name, js]) => `| ${name} | ${icon(js)} |`);
 }
