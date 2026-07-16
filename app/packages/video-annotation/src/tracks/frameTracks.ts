@@ -1,4 +1,4 @@
-import type { AnnotationEngine } from "@fiftyone/annotation";
+import { addressIdOf, type AnnotationEngine } from "@fiftyone/annotation";
 import type { Track, TrackEvent } from "@fiftyone/playback";
 import type { LabelData } from "@fiftyone/utilities";
 import { isEqual } from "lodash";
@@ -136,12 +136,6 @@ export interface BuildPerInstanceTracksInput {
    */
   dynamicAttributes?: string[];
 }
-
-/** Track identity is `instance._id`; fall back to the doc `_id` (legacy). */
-const addressIdOf = (label: LabelData): string => {
-  const instance = label.instance as { _id?: string } | undefined;
-  return instance?._id ?? label._id;
-};
 
 const labelOf = (label: LabelData): string =>
   (label.label as string | undefined) || "unknown";
