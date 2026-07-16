@@ -130,6 +130,8 @@ export function useSelectionBridge({
     fetchLassoStage(datasetName, brainKey, view, selection)
       .then((stage) => {
         if (seq !== lassoSeq.current) return;
+        // A stale failure banner must not outlive the success after it
+        setError(null);
         setOverrideStage({ [stage._cls]: stage.kwargs });
         setSelectionCount(stage.count ?? indices.length);
       })

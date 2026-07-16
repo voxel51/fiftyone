@@ -462,7 +462,7 @@ _color_cache = OrderedDict()
 _color_cache_lock = threading.Lock()
 
 
-def _color_cache_get(key):
+def _color_cache_get(key) -> bytes | None:
     with _color_cache_lock:
         body = _color_cache.get(key)
         if body is not None:
@@ -471,7 +471,7 @@ def _color_cache_get(key):
         return body
 
 
-def _color_cache_put(key, body):
+def _color_cache_put(key, body) -> None:
     with _color_cache_lock:
         _color_cache[key] = body
         while len(_color_cache) > _COLOR_CACHE_MAX:
@@ -544,6 +544,14 @@ def _slice(array, data):
     limit = data.get("limit", None)
     if offset is None and limit is None:
         return array
+
+    for name, value in (("offset", offset), ("limit", limit)):
+        # Validate BEFORE coercion: int() would truncate fractions into
+        # a silently different slice
+        if value is not None and (
+            not isinstance(value, (int, float)) or value != int(value)
+        ):
+            raise ValueError(f"{name} must be an integer")
 
     start = int(offset or 0)
     length = int(limit) if limit is not None else None
@@ -737,7 +745,15 @@ def _resolve_selection(data, results):
 
     indices = data.get("indices", None)
     if indices is not None:
-        matched = np.asarray(indices, dtype=int)
+        raw = np.asarray(indices)
+        # Validate BEFORE the int cast: it would truncate fractions to
+        # neighboring, unintended points
+        if raw.dtype.kind not in "iu" and not (
+            raw.dtype.kind == "f" and (raw == np.floor(raw)).all()
+        ):
+            raise ValueError("indices must be integers")
+
+        matched = raw.astype(int)
         n = len(results.points)
         # Negative values silently select from the end; >= n raises an
         # opaque IndexError downstream — reject both here

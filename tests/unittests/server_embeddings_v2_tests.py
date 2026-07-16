@@ -564,7 +564,13 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         dataset, _ = _make_samples_run()
         base = {"datasetName": dataset.name, "brainKey": "viz"}
 
-        for bad in ({"offset": -1}, {"limit": -5}):
+        for bad in (
+            {"offset": -1},
+            {"limit": -5},
+            # Fractions must reject, not truncate into a different slice
+            {"offset": 0.5},
+            {"limit": 1.5},
+        ):
             with self.assertRaises(ValueError):
                 v2.EmbeddingsV2Geometry._post_sync(None, {**base, **bad})
 
@@ -574,7 +580,7 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         dataset, points = _make_samples_run()
         base = {"datasetName": dataset.name, "brainKey": "viz", "view": []}
 
-        for bad in ([-1], [len(points)], [[0, 1]]):
+        for bad in ([-1], [len(points)], [[0, 1]], [1.5]):
             with self.assertRaises(ValueError):
                 v2.EmbeddingsV2LassoStage._post_sync(
                     None, {**base, "indices": bad}

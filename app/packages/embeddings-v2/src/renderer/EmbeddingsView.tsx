@@ -161,6 +161,7 @@ export const EmbeddingsView = forwardRef<
       .catch((error) => {
         // eslint-disable-next-line no-console
         console.error("Failed to load the embeddings renderer", error);
+        if (disposed) return;
         onErrorRef.current?.(
           error instanceof Error ? error : new Error(String(error)),
         );
