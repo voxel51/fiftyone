@@ -124,6 +124,9 @@ jobs:
     permissions:
       contents: read
       checks: read
+      # the comment's sibling-suite table reads the run's jobs; public repos
+      # allow this implicitly but private fiftyone-teams requires the grant
+      actions: read
       # job containers pull the prebaked CI images (private in fiftyone-teams)
       packages: read
       # the e2e verdict job upserts the authoritative e2e results comment
@@ -162,6 +165,55 @@ jobs:
         ${{ (github.base_ref == 'develop' ||
         startsWith(github.base_ref, 'feat/'))
         && '["3.10", "3.12"]' || '["3.10", "3.11", "3.12"]' }}
+
+  e2e-comment-suites:
+    # The authoritative e2e comment freezes its sibling-suite rows when the
+    # e2e verdict posts it, so suites that outlast e2e (test-windows) show ⏳
+    # forever; re-render the rows once every suite has concluded.
+    runs-on: ubuntu-latest
+    needs: [modified-files, build, lint, test, test-windows, e2e]
+    if: >-
+      always() &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      contains(fromJSON('["success", "failure"]'), needs.e2e.result)
+    permissions:
+      contents: read
+      # reads the run's jobs; implicit on public repos, required on private
+      # fiftyone-teams
+      actions: read
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: e2e-pw/scripts
+      - name: Refresh suite rows on the e2e comment
+        run: |
+          case "$GITHUB_REPOSITORY" in
+            */fiftyone-teams) FLAVOR=FOE ;;
+            *) FLAVOR=OSS ;;
+          esac
+          CID=$(gh api --paginate \
+            "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments?per_page=100" \
+            --jq ".[] | select(.body | contains(\"e2e-authoritative-report:$FLAVOR\")) | .id" \
+            | head -1)
+          if [ -z "$CID" ]; then
+            echo "no authoritative e2e comment to refresh"
+            exit 0
+          fi
+          gh api \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
+            > run-jobs.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CID" --jq .body > body.md
+          node e2e-pw/scripts/refresh-suite-rows.mjs run-jobs.json body.md > new-body.md
+          if cmp -s body.md new-body.md; then
+            echo "suite rows already final"
+            exit 0
+          fi
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$CID" \
+            -F body=@new-body.md
 
   all-tests:
     runs-on: ubuntu-latest

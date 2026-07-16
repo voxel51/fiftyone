@@ -11,6 +11,8 @@
 
 import { readFileSync, readdirSync } from "node:fs";
 
+import { buildSuiteRows } from "./suite-rows.mjs";
+
 // The synced copy of this suite runs in fiftyone-teams too; flavor-scoped
 // markers and headings let the OSS and FOE comments coexist on the OSS PR.
 const FLAVOR = (process.env.GITHUB_REPOSITORY ?? "").endsWith("fiftyone-teams")
@@ -94,39 +96,11 @@ if (!Number.isNaN(startedAt)) {
 }
 
 // one row per sibling suite in the run (build, lint, unit tests, ...)
-const suiteRows = [];
+let suiteRows = [];
 if (jobsPath) {
   try {
     const jobs = JSON.parse(readFileSync(jobsPath, "utf8")).jobs ?? [];
-    const groups = new Map();
-    const ignore = new Set([
-      "all-tests",
-      "modified-files",
-      "triage",
-      "enterprise-sync",
-    ]);
-    for (const job of jobs) {
-      const group = job.name.includes(" / ")
-        ? job.name.split(" / ")[0]
-        : job.name;
-      if (ignore.has(group) || group === "e2e") {
-        continue;
-      }
-      groups.set(group, [...(groups.get(group) ?? []), job]);
-    }
-    const icon = (js) =>
-      js.some((j) => j.conclusion === "failure")
-        ? "❌"
-        : js.some((j) => j.status !== "completed")
-          ? "⏳"
-          : js.every((j) => j.conclusion === "skipped")
-            ? "⊘ skipped"
-            : js.some((j) => j.conclusion === "cancelled")
-              ? "🚫 cancelled"
-              : "✅";
-    for (const [name, js] of [...groups.entries()].sort()) {
-      suiteRows.push(`| ${name} | ${icon(js)} |`);
-    }
+    suiteRows = buildSuiteRows(jobs);
   } catch {
     // jobs are informational; the e2e verdict never depends on them
   }
