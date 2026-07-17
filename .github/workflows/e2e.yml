@@ -40,7 +40,7 @@ jobs:
             );
             const existing = comments.find((c) => c.body.includes(marker));
             if (existing) {
-              const banner = `> ⏳ e2e running for \`${sha}\` — [run](${runUrl}). Results below are from an earlier run.`;
+              const banner = `> ⏳ CI running for \`${sha}\` — [run](${runUrl}). Results below are from an earlier run.`;
               const lines = existing.body
                 .split('\n')
                 .filter((l) => !l.startsWith('> ⏳'));
@@ -56,7 +56,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: `${marker}\n> ⏳ e2e running for \`${sha}\` — [run](${runUrl}).`,
+                body: `${marker}\n> ⏳ CI running for \`${sha}\` — [run](${runUrl}).`,
               });
             }
 
