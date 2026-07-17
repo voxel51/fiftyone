@@ -3,11 +3,7 @@
  */
 
 import { Loading } from "@fiftyone/components";
-import {
-  usePlugins,
-  setContextHook,
-  setContextSelector,
-} from "@fiftyone/plugins";
+import PluginsRuntime from "@fiftyone/plugins/src/Runtime";
 import {
   Writer,
   setDataset,
@@ -51,14 +47,6 @@ import useWriters from "./useWriters";
 
 export const SessionContext = React.createContext<Session>(SESSION_DEFAULT);
 
-const Plugins = ({ children }: { children: React.ReactNode }) => {
-  const plugins = usePlugins();
-  setContextSelector("operators", fos.operatorContextSelector);
-  setContextHook("spaces", fos.useSpacesContext);
-  if (plugins.isLoading) return <Loading>Pixelating...</Loading>;
-  return <>{children}</>;
-};
-
 const Sync = ({ children }: { children?: React.ReactNode }) => {
   const environment = useRelayEnvironment();
   const subscription = useRecoilValue(stateSubscription);
@@ -100,7 +88,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
             });
           }}
         >
-          <Plugins>{children}</Plugins>
+          <PluginsRuntime>{children}</PluginsRuntime>
         </Writer>
       )}
     </SessionContext.Provider>

@@ -10,5 +10,6 @@ export enum SPACE_TYPES {
 }
 
 export enum PANEL_AREA {
-  GRID_SIDEBAR_RIGHT = "grid-sidebar-right",
+  SIDEBAR_RIGHT = "sidebar-right",
+  GRID_SIDEBAR_RIGHT = SIDEBAR_RIGHT,
 }

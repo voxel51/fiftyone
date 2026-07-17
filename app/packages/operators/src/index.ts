@@ -37,3 +37,4 @@ export {
   useTriggerPanelEvent,
 } from "./usePanelEvent";
 export { validate } from "./validation";
+export { operatorToIOSchema } from "./OperatorIOComponent/utils";

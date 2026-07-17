@@ -1,5 +1,6 @@
 import { getContextSelector, pluginsLoaderAtom } from "@fiftyone/plugins";
-import { debounce, isEqual } from "lodash";
+import debounce from "lodash/debounce";
+import isEqual from "lodash/isEqual";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { OperatorSurface, RESOLVE_PLACEMENTS_TTL } from "./constants";
@@ -12,6 +13,7 @@ import {
 import {
   activePanelsEventCountAtom,
   getActiveSurface,
+  isOnSurface,
   operatorPlacementsAtom,
   operatorThrottledContext,
   operatorsInitializedAtom,
@@ -64,7 +66,6 @@ export function useOperatorPlacementsResolver() {
     }
     if (
       !isEqual(lastContext.current, context) &&
-      context?.datasetName &&
       operatorsInitialized &&
       pluginsLoaderState === "ready"
     ) {
@@ -136,12 +137,21 @@ export function useExecutableOperatorsURIs(surface?: OperatorSurface) {
   );
   return useMemo(() => {
     const uris = allOperators.allOperators
-      .filter((op) => op.surfaces.includes(computedSurface))
+      .filter(
+        (op) =>
+          op.config.canExecute &&
+          isOnSurface(op.config.surfaces, computedSurface),
+      )
       .map((op) => op.uri);
     return uris;
   }, [allOperators, computedSurface]);
 }
 
 export function useCanIExecuteOperators(uris: string[]) {
-  // todo
+  const executableUris = useExecutableOperatorsURIs();
+
+  return useMemo(
+    () => uris.every((uri) => executableUris.includes(uri)),
+    [executableUris, uris],
+  );
 }

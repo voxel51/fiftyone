@@ -4,8 +4,8 @@ import { usePanelStatePartial } from "@fiftyone/spaces";
 import { BUILT_IN_PANEL_PRIORITY_CONST } from "@fiftyone/utilities";
 import { Box, Button } from "@mui/material";
 import { useEffect, useState } from "react";
-import { SchemaIOComponent } from "../../SchemaIO";
-import { TabsView } from "../../SchemaIO/components";
+import { SchemaIOComponent } from "@fiftyone/core/src/plugins/SchemaIO";
+import { TabsView } from "@fiftyone/core/src/plugins/SchemaIO/components";
 import { log, operatorToIOSchema } from "../utils";
 import {
   basic as basicSchema,

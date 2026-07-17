@@ -263,7 +263,7 @@ class OpenPanel extends Operator {
       throw new Error(`Panel with name ${name} does not exist`);
     }
     const scope = isModalOpen ? PANEL_SURFACE.MODAL : PANEL_SURFACE.GRID;
-    if (!isPanelOnSurface(panel, scope)) {
+    if (!isPanelOnSurface(panel, scope) && !force) {
       throw new Error(
         `Panel with name ${name} cannot be opened in a ${scope} surface`,
       );

@@ -329,7 +329,7 @@ export class OperatorConfig {
       skipInput: json.skip_input,
       skipOutput: json.skip_output,
       riskLevel: json.risk_level,
-      surfaces: json.surfaces,
+      surfaces: json.surfaces ?? undefined,
     });
   }
 }
