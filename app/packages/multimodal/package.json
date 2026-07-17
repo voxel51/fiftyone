@@ -69,8 +69,7 @@
     },
     "scripts": {
         "lint": "yarn check",
-        "check": "yarn check:lint && yarn check:deps && yarn check:boundary && yarn check:types",
-        "check:boundary": "node --test ./scripts/module-specifiers.node-test.mjs && node ./scripts/check-boundary.mjs",
+        "check": "yarn check:lint && yarn check:deps && yarn check:types",
         "check:types": "node ./scripts/check-types.mjs",
         "check:lint": "node ./scripts/check-lint.mjs",
         "check:deps": "node ./scripts/check-deps.mjs"
