@@ -43,10 +43,9 @@ export interface TimelineWithTracksProps {
   className?: string;
   /**
    * Whether the drawer starts open. Mount-time only — user toggles thereafter
-   * persist until the next remount. Defaults to `true` so the annotation
-   * surface shows the timeline immediately; the mcap modal passes `false` when
-   * opened from a temporal-tag filter so only the pinned (filtered) tracks show.
-   * @default true
+   * persist until the next remount. Defaults closed; callers that want the
+   * timeline visible immediately (e.g. the annotation surface) pass `true`.
+   * @default false
    */
   defaultDrawerOpen?: boolean;
   /** Controlled open state for the tracks drawer. */
@@ -97,7 +96,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   labelWidth: requestedLabelWidth = TIMELINE_LABEL_WIDTH,
   maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
-  defaultDrawerOpen = true,
+  defaultDrawerOpen = false,
   drawerOpen: controlledDrawerOpen,
   onDrawerOpenChange,
   rulerOverlay,
@@ -110,11 +109,9 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   const tracks = useTracks();
   const { pinnedIds, togglePin } = useTrackPinning();
   const { seekSnapped } = usePlayback();
-  // Drawer starts open by default: the annotation surface remounts on each
-  // entry to annotate mode (sample change / mode toggle), so an initial-`true`
-  // covers the "make the timeline visible immediately" case without a
-  // tracks-length effect. Callers opened from a temporal-tag filter pass
-  // `defaultDrawerOpen={false}` so only the pinned (filtered) tracks show.
+  // Uncontrolled open state, seeded once from `defaultDrawerOpen`. The
+  // annotation surface remounts on each entry to annotate mode, so passing
+  // `true` there shows the timeline immediately without a tracks-length effect.
   // User-initiated collapses/expands persist until the next remount.
   const [uncontrolledDrawerOpen, setUncontrolledDrawerOpen] =
     useState(defaultDrawerOpen);
