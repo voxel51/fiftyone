@@ -266,20 +266,25 @@ jobs:
               // A rerun of failed jobs leaves the prior attempt's check run
               // completed while its workflow run is live again; the next
               // attempt's check run doesn't exist until its needs finish.
+              // Any non-completed sibling check run from the same workflow
+              // run reveals the rerun.
               let rerunning = false;
               if (prior && !inFlight) {
-                const runId = (prior.details_url ?? '').match(/\/runs\/(\d+)\//)?.[1];
-                if (runId) {
-                  try {
-                    const { data: run } = await github.rest.actions.getWorkflowRun({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      run_id: Number(runId),
-                    });
-                    rerunning = run.status !== 'completed';
-                  } catch {
-                    // actions: read may be unavailable; mirror as before
-                  }
+                const runPath = (prior.details_url ?? '').match(/\/runs\/\d+\//)?.[0];
+                if (runPath) {
+                  const siblings = await github.paginate(github.rest.checks.listForRef, {
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    ref: context.payload.pull_request.head.sha,
+                    filter: 'all',
+                    per_page: 100,
+                  });
+                  rerunning = siblings.some(
+                    (c) =>
+                      c.status !== 'completed' &&
+                      !isSelf(c) &&
+                      (c.details_url ?? '').includes(runPath),
+                  );
                 }
               }
               if (prior && !inFlight && !rerunning) {
