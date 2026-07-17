@@ -55,6 +55,9 @@
   a.reference
     font-weight: 400
 
+  .toctree-l1 a.reference
+    font-weight: 500
+
 /* Secondary Sidebar */
 .bd-sidebar-secondary
   padding-top: 95px
@@ -84,8 +87,8 @@
     ul
       li
         a.nav-link
-          color: var(--pst-color-text-base)
-          font-weight: 400
+          color: #181A1A99
+          font-weight: 500
           border-radius: 8px
           position: relative
           padding-left: 8px
@@ -97,6 +100,7 @@
 
           &.active
             box-shadow: none
+            color: var(--pst-color-text-base)
 
             &:not(:has(+ ul .nav-link.active))::before
               content: ''
@@ -109,6 +113,9 @@
               left: -8px
               top: 50%
               transform: translateY(-50%)
+
+nav.bd-links p.caption
+  padding-left: 8px
 
 @media (min-width: 960px)
   dialog.bd-sidebar-primary
