@@ -394,6 +394,10 @@ describe("MCAP frame transform store", () => {
     const summary = store.summarizeGraph(new Set(["base_link", "wheel"]));
 
     expect(summary.roots).toEqual(["map", "odom"]);
+    expect(summary.components).toEqual([
+      ["base_link", "map"],
+      ["odom", "wheel"],
+    ]);
     expect(summary.tfConnectedFrameIds).toEqual([
       "base_link",
       "map",
@@ -406,6 +410,27 @@ describe("MCAP frame transform store", () => {
       odom: 1,
       wheel: 1,
     });
+  });
+
+  it("changes topology revision only when a new transform edge appears", () => {
+    const store = new McapFrameTransformStore();
+    expect(store.topologyRevision()).toBe(0);
+
+    store.addDynamic([sample("map", "base_link", { x: 0, y: 0, z: 0 }, 10n)], {
+      endTimeNs: 10n,
+      startTimeNs: 10n,
+    });
+    expect(store.topologyRevision()).toBe(1);
+
+    store.addDynamic([sample("map", "base_link", { x: 1, y: 0, z: 0 }, 20n)], {
+      endTimeNs: 20n,
+      startTimeNs: 20n,
+    });
+    store.addStatic([sample("map", "base_link", { x: 0, y: 0, z: 0 })]);
+    expect(store.topologyRevision()).toBe(1);
+
+    store.addStatic([sample("base_link", "lidar", { x: 0, y: 0, z: 0 })]);
+    expect(store.topologyRevision()).toBe(2);
   });
 
   it("falls back deterministically when every frame is in a cycle", () => {

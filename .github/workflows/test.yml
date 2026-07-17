@@ -16,6 +16,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          # yarn install runs PR-controlled lifecycle scripts
+          persist-credentials: false
           submodules: true
           sparse-checkout: |
             /*
@@ -48,6 +50,15 @@ jobs:
   test-python:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
+    # The prebaked image (built by build-ci-images.yml) carries the matching
+    # Python plus fiftyone's dependency tree and ffmpeg, so test jobs skip
+    # all toolchain setup.
+    container:
+      # fiftyone-teams overrides the image name via repo var (superset deps)
+      image: ${{ vars.FIFTYONE_TEST_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-test' }}:${{ matrix.python }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     env:
       FIFTYONE_DO_NOT_TRACK: true
       # Assuming no pytest should take more than 60 seconds
@@ -65,33 +76,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          # yarn install runs PR-controlled lifecycle scripts
+          persist-credentials: false
           sparse-checkout: |
             /*
             !/docs/**
           sparse-checkout-cone-mode: false
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python }}
-      - name: Setup (UV)
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: ${{ matrix.python }}
-          # TODO: we are unsure if cache is working correctly here
-          enable-cache: true
-          cache-dependency-glob: |
-            requirements/common.txt
-            requirements/github.txt
-            requirements/test.txt
-      - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
-        uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          large-packages: false # e2e test failed when `true`
-      - name: Install requirements
-        run: |
-          uv pip install --system -U wheel setuptools
-          uv pip install --system -r requirements/github.txt
       - name: Install fiftyone
+        # dependencies are baked into the image; this only builds fiftyone
+        # itself from the PR's source (plus any deps added since the last
+        # image build)
         run: |
           uv pip install --system '.[multimodal]' -r requirements/github.txt
       - name: Configure
@@ -99,9 +93,6 @@ jobs:
         run: |
           python tests/utils/setup_config.py
           python tests/utils/github_actions_flags.py
-
-      - name: Setup FFmpeg
-        uses: ./.github/actions/setup-ffmpeg
 
       # Important: use pytest_wrapper.py instead of pytest directly to ensure
       # that services shut down cleanly and do not conflict with steps later in

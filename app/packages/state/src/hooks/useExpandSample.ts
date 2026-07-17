@@ -38,10 +38,10 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           return;
         }
 
-        const hasGroupSlices = await snapshot.getPromise(
-          groupAtoms.hasGroupSlices,
-        );
-        const groupField = await snapshot.getPromise(groupAtoms.groupField);
+        const [hasGroupSlices, groupField] = await Promise.all([
+          snapshot.getPromise(groupAtoms.hasGroupSlices),
+          snapshot.getPromise(groupAtoms.groupField),
+        ]);
 
         const iter = async (request: Promise<ID | undefined>) => {
           const id = await request;
@@ -103,13 +103,14 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
         const hasNext = Boolean(await cursor.next(1, true));
         const hasPrevious = Boolean(await cursor.next(-1, true));
 
-        setModalState({
+        await setModalState({
           next,
           peek,
           previous,
-        })
-          .then(() => iter(Promise.resolve(item.id)))
-          .then((data) => setExpandedSample({ ...data, hasNext, hasPrevious }));
+        });
+
+        const data = await iter(Promise.resolve(item.id));
+        await setExpandedSample({ ...data, hasNext, hasPrevious });
       },
     [setExpandedSample, setModalState],
   );

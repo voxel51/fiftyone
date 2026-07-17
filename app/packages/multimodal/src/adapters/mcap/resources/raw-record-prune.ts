@@ -227,6 +227,48 @@ function isNumericTypedArray(value: object): value is NumericTypedArray {
 }
 
 /**
+ * Serializes a complete decoded record for an explicit user export. This
+ * stays separate from the bounded inspector tree so large arrays and strings
+ * cross the worker boundary only when the user asks to copy the message.
+ */
+export function rawRecordToJsonText(record: Record<string, unknown>): string {
+  return JSON.stringify(record, fullJsonReplacer, 2);
+}
+
+function fullJsonReplacer(_key: string, value: unknown): unknown {
+  if (value === undefined) {
+    return null;
+  }
+  if (typeof value === "bigint") {
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) ? parsed : value.toString();
+  }
+  if (typeof value === "number" && !Number.isFinite(value)) {
+    return String(value);
+  }
+  if (typeof value === "function" || typeof value === "symbol") {
+    return String(value);
+  }
+  if (typeof value !== "object" || value === null) {
+    return value;
+  }
+  if (isInt64Like(value)) {
+    const text = String(value);
+    const parsed = Number(text);
+    return Number.isSafeInteger(parsed) ? parsed : text;
+  }
+  if (ArrayBuffer.isView(value)) {
+    if (value instanceof DataView) {
+      return Array.from(
+        new Uint8Array(value.buffer, value.byteOffset, value.byteLength),
+      );
+    }
+    return Array.from(value as NumericTypedArray | Uint8Array);
+  }
+  return value;
+}
+
+/**
  * Reconstructs plain JSON-ish data from a pruned node tree — the copy
  * payload. Truncations stay legible: cut arrays gain a trailing marker
  * string, cut objects a `"…"` key, bytes render as a summary string.

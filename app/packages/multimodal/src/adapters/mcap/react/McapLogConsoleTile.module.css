@@ -54,16 +54,31 @@
       transparent
     );
   color: inherit;
+  box-sizing: border-box;
   cursor: pointer;
   display: grid;
   font: inherit;
   grid-template-columns: 74px 54px minmax(120px, 0.28fr) minmax(0, 1fr);
   gap: 10px;
+  height: 30px;
   line-height: 1.45;
   min-height: 30px;
   padding: 5px 10px;
   text-align: left;
   width: 100%;
+}
+
+.virtualSpacer {
+  min-width: 0;
+  position: relative;
+  width: 100%;
+}
+
+.virtualRows {
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
 }
 
 .row:hover,

@@ -7,7 +7,7 @@ on:
     # it can land (no `synchronize` fires on an auto-retarget). No `closed`:
     # nothing here runs on it, and its no-op run races the suite still testing
     # the just-merged SHA, leaving a spurious red X on the merged PR.
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
 
 concurrency:
   # A PR title/body edit is a no-op run (run-ci=false). It gets its own group:
@@ -24,6 +24,8 @@ permissions:
   contents: read
   pull-requests: read
   checks: read
+  # job containers pull the prebaked CI images (private in fiftyone-teams)
+  packages: read
 
 jobs:
   modified-files:
@@ -110,15 +112,25 @@ jobs:
 
   e2e:
     needs: modified-files
+    # Drafts skip the e2e suite (mirroring enterprise-sync); it runs when
+    # the PR is marked ready for review. all-tests treats skipped as green.
     if: >-
-      needs.modified-files.outputs.heavy == 'true' && (
+      needs.modified-files.outputs.heavy == 'true' &&
+      github.event.pull_request.draft != true && (
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.e2e-changes == 'true' ||
       needs.modified-files.outputs.fiftyone-changes == 'true')
     uses: ./.github/workflows/e2e.yml
-    secrets:
-      docker-username: ${{ secrets.RO_DOCKERHUB_USERNAME }}
-      docker-password: ${{ secrets.RO_DOCKERHUB_PAT }}
+    permissions:
+      contents: read
+      checks: read
+      # the comment's sibling-suite table reads the run's jobs; public repos
+      # allow this implicitly but private fiftyone-teams requires the grant
+      actions: read
+      # job containers pull the prebaked CI images (private in fiftyone-teams)
+      packages: read
+      # the e2e verdict job upserts the authoritative e2e results comment
+      pull-requests: write
 
   lint:
     needs: modified-files
@@ -153,6 +165,55 @@ jobs:
         ${{ (github.base_ref == 'develop' ||
         startsWith(github.base_ref, 'feat/'))
         && '["3.10", "3.13"]' || '["3.10", "3.11", "3.12", "3.13"]' }}
+
+  e2e-comment-suites:
+    # The authoritative e2e comment freezes its sibling-suite rows when the
+    # e2e verdict posts it, so suites that outlast e2e (test-windows) show ⏳
+    # forever; re-render the rows once every suite has concluded.
+    runs-on: ubuntu-latest
+    needs: [modified-files, build, lint, test, test-windows, e2e]
+    if: >-
+      always() &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      contains(fromJSON('["success", "failure"]'), needs.e2e.result)
+    permissions:
+      contents: read
+      # reads the run's jobs; implicit on public repos, required on private
+      # fiftyone-teams
+      actions: read
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: e2e-pw/scripts
+      - name: Refresh suite rows on the e2e comment
+        run: |
+          case "$GITHUB_REPOSITORY" in
+            */fiftyone-teams) FLAVOR=FOE ;;
+            *) FLAVOR=OSS ;;
+          esac
+          CID=$(gh api --paginate \
+            "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments?per_page=100" \
+            --jq ".[] | select(.body | contains(\"e2e-authoritative-report:$FLAVOR\")) | .id" \
+            | head -1)
+          if [ -z "$CID" ]; then
+            echo "no authoritative e2e comment to refresh"
+            exit 0
+          fi
+          gh api \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
+            > run-jobs.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CID" --jq .body > body.md
+          node e2e-pw/scripts/refresh-suite-rows.mjs run-jobs.json body.md > new-body.md
+          if cmp -s body.md new-body.md; then
+            echo "suite rows already final"
+            exit 0
+          fi
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$CID" \
+            -F body=@new-body.md
 
   all-tests:
     runs-on: ubuntu-latest
@@ -191,10 +252,18 @@ jobs:
                 filter: 'all',
                 per_page: 100,
               });
+              // Never mirror while another suite run is in flight — a
+              // stale completed green (e.g. a draft-era run whose e2e was
+              // skipped) must not shadow the run actually testing this SHA.
+              const isSelf = (c) =>
+                (c.details_url ?? '').includes(`/runs/${context.runId}/`);
+              const inFlight = data.check_runs.some(
+                (c) => c.status !== 'completed' && !isSelf(c),
+              );
               const prior = data.check_runs
                 .filter((c) => c.status === 'completed')
                 .sort((a, b) => new Date(b.started_at) - new Date(a.started_at))[0];
-              if (prior) {
+              if (prior && !inFlight) {
                 if (prior.conclusion === 'success') {
                   core.info('Mirroring the previous all-tests result: success');
                 } else {
@@ -209,6 +278,21 @@ jobs:
               core.info('No completed all-tests for this commit yet — waiting for the run testing it.');
               await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
             }
+      - name: Fail when a draft deferred the e2e suite
+        # A draft run must not publish a successful merge-authoritative
+        # aggregate for a SHA whose e2e never ran; it goes green after
+        # ready_for_review.
+        if: >-
+          env.NO_OP != 'true' &&
+          github.event.pull_request.draft == true &&
+          needs.e2e.result == 'skipped' &&
+          needs.modified-files.outputs.heavy == 'true' && (
+          needs.modified-files.outputs.app-changes == 'true' ||
+          needs.modified-files.outputs.e2e-changes == 'true' ||
+          needs.modified-files.outputs.fiftyone-changes == 'true')
+        run: |
+          echo "draft PR — e2e deferred until ready_for_review"
+          exit 1
       - name: Aggregate suite results
         if: env.NO_OP != 'true'
         run: sh -c ${{

@@ -1,0 +1,27 @@
+name: "Free Disk Space"
+description: >-
+  Remove preinstalled software the build doesn't need to reclaim disk space on
+  GitHub-hosted Ubuntu runners. Replaces jlumbroso/free-disk-space, which is
+  unmaintained and emits deprecated `set-output` warnings.
+
+runs:
+  using: "composite"
+  steps:
+    - name: Free disk space (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        echo "Disk space before cleanup:"
+        df -h /
+
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc /usr/local/.ghcup
+        sudo docker image prune --all --force || true
+        sudo swapoff -a || true
+        sudo rm -f /mnt/swapfile
+
+        echo "Disk space after cleanup:"
+        df -h /

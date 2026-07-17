@@ -1,11 +1,12 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 
 import type { RawImageVisualization } from "../../decoders";
 import { VISUALIZATION_KIND } from "../visualization-registry";
 import type { ImageTextureHandle } from "./base-2d-scene";
 import { useImageTextureLease } from "./use-image-texture-lease";
+import { VideoTextureWaitError } from "./video-texture";
 
 const leases = vi.hoisted(() => [] as TestLease[]);
 
@@ -23,7 +24,36 @@ interface TestLease {
 }
 
 describe("useImageTextureLease", () => {
+  afterEach(() => {
+    leases.length = 0;
+    vi.restoreAllMocks();
+  });
+
+  it("classifies expected decoder waits without inspecting message text", async () => {
+    leases.push({
+      promise: Promise.reject(
+        new VideoTextureWaitError("Decoder prerequisites pending"),
+      ),
+      release: vi.fn(),
+    });
+
+    const rendered = renderHook(() =>
+      useImageTextureLease({ frame: rawFrame(), identity: 1 }),
+    );
+
+    await waitFor(() => expect(rendered.result.current.status).toBe("error"));
+    expect(rendered.result.current.errorKind).toBe("waiting");
+    expect(rendered.result.current.errorMessage).toBe(
+      "Decoder prerequisites pending",
+    );
+  });
+
   it("commits a replacement before releasing the previously visible texture", async () => {
+    const animationFrames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    });
     const first = deferred<ImageTextureHandle>();
     const second = deferred<ImageTextureHandle>();
     const handlesAtRelease: Array<ImageTextureHandle | null> = [];
@@ -61,7 +91,13 @@ describe("useImageTextureLease", () => {
       expect(rendered.result.current.handle).toBe(secondHandle),
     );
 
+    expect(handlesAtRelease).toEqual([]);
+    act(() => animationFrames.shift()?.(0));
+    expect(handlesAtRelease).toEqual([]);
+    act(() => animationFrames.shift()?.(16));
     expect(handlesAtRelease).toEqual([secondHandle]);
+
+    rendered.unmount();
   });
 });
 

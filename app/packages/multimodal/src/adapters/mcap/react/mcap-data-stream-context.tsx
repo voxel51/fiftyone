@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
+import type { McapDecodedMessage } from "../types";
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import type { McapTopicCache } from "./mcap-topic-cache";
 
@@ -27,6 +28,15 @@ export interface McapDataStream {
   /** Read access to the timeline index — ordered ticks plus
    *  `nearestTick(timeSec)` / `secToNs(timeSec)`. */
   readonly getTimelineIndex: () => McapTimelineIndex | null;
+
+  /** Reads one decoded topic range for consumers that need ordered history
+   *  rather than the latest synchronized frame (notably H.264 decoder
+   *  runway reconstruction after a paused seek or late subscription). */
+  readonly readTopicMessages?: (request: {
+    readonly endTimeNs: bigint;
+    readonly startTimeNs: bigint;
+    readonly topic: string;
+  }) => Promise<readonly McapDecodedMessage[]>;
 }
 
 interface McapDataStreamContextValue {
@@ -50,9 +60,23 @@ const McapDataStreamContext = createContext<McapDataStreamContextValue>({
  */
 export const McapDataStreamProvider: React.FC<{
   children: React.ReactNode;
-}> = ({ children }) => {
+  /**
+   * When supplied, hides a previously published handle synchronously until it
+   * belongs to this source. This lets a persistent UI shell swap recordings
+   * without exposing the outgoing source for one effect tick.
+   */
+  expectedSourceKey?: string | null;
+}> = ({ children, expectedSourceKey }) => {
   const [dataStream, setDataStream] = useState<McapDataStream | null>(null);
-  const value = useMemo(() => ({ dataStream, setDataStream }), [dataStream]);
+  const visibleDataStream =
+    expectedSourceKey === undefined ||
+    dataStream?.sourceKey === expectedSourceKey
+      ? dataStream
+      : null;
+  const value = useMemo(
+    () => ({ dataStream: visibleDataStream, setDataStream }),
+    [visibleDataStream],
+  );
   return (
     <McapDataStreamContext.Provider value={value}>
       {children}

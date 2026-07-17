@@ -1,16 +1,6 @@
-import { useTiling } from "@fiftyone/tiling";
-import { useStreamValues } from "@fiftyone/playback";
+import { TileIdScope, useTiling } from "@fiftyone/tiling";
 import {
-  Align,
-  Card,
-  CardBackground,
-  Icon,
-  IconColor,
-  IconName,
-  Orientation,
   Size,
-  Spacing,
-  Stack,
   Text,
   TextColor,
   TextVariant,
@@ -25,34 +15,49 @@ import React, {
   useState,
 } from "react";
 import type { StreamInventory } from "../../../schemas/v1";
-import { useSceneSourcesByType } from "../../../scene-inventory";
-import type { PointCloudVisualization } from "../../../decoders";
-import { MAX_POINT_CLOUD_RENDER_POINTS } from "../../../decoders";
-import { MCAP_SOURCE_TYPE } from "../scene-sources";
-import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 import {
   type McapPlaybackFidelityMode,
   type McapTemporalPolicySettings,
   useMcapPlaybackSettings,
   useMcapTemporalPolicySettings,
 } from "./mcap-modal-settings";
-import McapSidebarGroup from "./McapSidebarGroup";
+import {
+  useMcapTileSettings,
+  type McapTileSettingsRegistration,
+} from "./mcap-tile-settings-context";
 import McapPerformanceStats from "./McapPerformanceStats";
+import {
+  McapSceneStatusStrip,
+  usePointCloudSamplingSummary,
+} from "./McapSceneStatus";
+import McapSceneWorldSettings from "./McapSceneWorldSettings";
+import { McapSettingsNumberField } from "./McapSettingsNumberField";
+import McapSidebarGroup from "./McapSidebarGroup";
 import styles from "./McapSettingsSidebar.module.css";
+import { McapTileStreamNoticeStrip } from "./McapTileStreamState";
 import McapTopicsSettings from "./McapTopicsSettings";
 
 type ActiveSettingsTab = "panel" | "scene" | "topics";
 
 /**
- * MCAP-specific left sidebar. Panel settings stay on an explicit tab while
- * scene-wide settings are available without stealing focus from the active
- * panel.
+ * MCAP-specific left sidebar. Each tab is one scope of the viewer's
+ * information hierarchy and shows only that scope's facts:
+ *
+ * - **Scene** — the shared world and its time: scene-wide status, the
+ *   coordinate system (world frame, up axis), playback time semantics, and
+ *   opt-in diagnostics. Nothing here reaches into a single tile.
+ * - **Topics** — the recording's catalog: what streams exist and what can
+ *   be opened from them.
+ * - **\<focused tile\>** — everything about one view: its stream status,
+ *   camera, layers, and appearance. Content comes from the tile-settings
+ *   registry when the focused tile registered one, else from the legacy
+ *   tiling DOM slot.
  */
 const McapSettingsSidebar: React.FC<{
   readonly topics?: readonly StreamInventory[];
 }> = ({ topics = [] }) => {
   const { focusedTileId, setSettingsSlotEl, tiles } = useTiling();
-  const sampling = usePointCloudSamplingState();
+  const registeredPanelSettings = useMcapTileSettings(focusedTileId);
   const focusedTile =
     focusedTileId && tiles[focusedTileId] ? tiles[focusedTileId] : null;
   const focusedTileTitle = focusedTile?.title ?? null;
@@ -87,7 +92,7 @@ const McapSettingsSidebar: React.FC<{
         id: "scene",
         data: {
           label: "Scene",
-          content: <GlobalSceneSettings sampling={sampling} />,
+          content: <GlobalSceneSettings />,
         },
       },
       {
@@ -95,12 +100,10 @@ const McapSettingsSidebar: React.FC<{
         data: {
           label: "Topics",
           content: (
-            <TopicsSettingsContent sampling={sampling}>
-              <McapTopicsSettings
-                onTopicActionStart={suppressNextPanelAutoSwitch}
-                topics={topics}
-              />
-            </TopicsSettingsContent>
+            <McapTopicsSettings
+              onTopicActionStart={suppressNextPanelAutoSwitch}
+              topics={topics}
+            />
           ),
         },
       },
@@ -112,7 +115,11 @@ const McapSettingsSidebar: React.FC<{
         data: {
           label: focusedTileTitle,
           content: (
-            <PanelSettingsContent sampling={sampling} slotRef={slotRef} />
+            <PanelSettingsContent
+              registration={registeredPanelSettings}
+              slotRef={slotRef}
+              tileId={focusedTileId}
+            />
           ),
         },
       });
@@ -120,8 +127,9 @@ const McapSettingsSidebar: React.FC<{
 
     return nextTabs;
   }, [
+    focusedTileId,
     focusedTileTitle,
-    sampling,
+    registeredPanelSettings,
     slotRef,
     suppressNextPanelAutoSwitch,
     topics,
@@ -160,120 +168,55 @@ const McapSettingsSidebar: React.FC<{
   );
 };
 
-function TopicsSettingsContent({
-  children,
-  sampling,
-}: {
-  readonly children: React.ReactNode;
-  readonly sampling: PointCloudSamplingState | null;
-}) {
-  return (
-    <div className={styles.root}>
-      <PointCloudSamplingWarning sampling={sampling} />
-      {children}
-    </div>
-  );
-}
-
+/**
+ * The focused tile's settings, framed by the sidebar: registry-backed
+ * tiles render as ordinary children — inside a `TileIdScope` so their
+ * tileId-scoped hooks resolve, below the tile's stream-status strip when
+ * the registration declares stream topics — while tiles that still use the
+ * tiling portal get the DOM slot they expect. Exactly one of the two is
+ * mounted at a time.
+ */
 function PanelSettingsContent({
-  sampling,
+  registration,
   slotRef,
+  tileId,
 }: {
-  readonly sampling: PointCloudSamplingState | null;
+  readonly registration: McapTileSettingsRegistration | null;
   readonly slotRef: (el: HTMLDivElement | null) => void;
+  readonly tileId: string | null;
 }) {
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
-      <PointCloudSamplingWarning sampling={sampling} />
-      <div ref={slotRef} />
+      {registration && tileId ? (
+        <TileIdScope tileId={tileId}>
+          {registration.streamTopics?.length ? (
+            <McapTileStreamNoticeStrip topics={registration.streamTopics} />
+          ) : null}
+          {registration.content}
+        </TileIdScope>
+      ) : (
+        <div ref={slotRef} />
+      )}
     </div>
   );
 }
 
-function GlobalSceneSettings({
-  sampling,
-}: {
-  readonly sampling: PointCloudSamplingState | null;
-}) {
+/**
+ * The Scene tab: status first, then the world's coordinate system, then how
+ * playback interprets time, then opt-in diagnostics last — configuration
+ * reads top-down from "is the scene healthy" to "how do I debug it".
+ */
+function GlobalSceneSettings() {
+  const sampling = usePointCloudSamplingSummary();
+
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
-      <PointCloudSamplingWarning sampling={sampling} />
-      <McapPerformanceStats sampling={sampling} />
+      <McapSceneStatusStrip sampling={sampling} />
+      <McapSceneWorldSettings />
       <PlaybackFidelitySettings />
       <TimeResolutionSettings />
+      <McapPerformanceStats sampling={sampling} />
     </div>
-  );
-}
-
-interface PointCloudSamplingState {
-  readonly sampledCloudCount: number;
-  readonly largestFinitePointCount: number;
-}
-
-function usePointCloudSamplingState(): PointCloudSamplingState | null {
-  const pointCloudSources = useSceneSourcesByType(MCAP_SOURCE_TYPE.POINT_CLOUD);
-  const topicIds = useMemo(
-    () => pointCloudSources.map((source) => source.id),
-    [pointCloudSources],
-  );
-  const frames =
-    useStreamValues<McapTopicPlaybackFrame<PointCloudVisualization> | null>(
-      topicIds,
-    );
-
-  let sampledCloudCount = 0;
-  let largestFinitePointCount = 0;
-  for (const playbackFrame of frames) {
-    const payload = playbackFrame?.frame.renderPayload;
-    if (!payload || payload.finitePointCount <= payload.sampledPointCount) {
-      continue;
-    }
-    sampledCloudCount++;
-    largestFinitePointCount = Math.max(
-      largestFinitePointCount,
-      payload.finitePointCount,
-    );
-  }
-
-  return sampledCloudCount > 0
-    ? { largestFinitePointCount, sampledCloudCount }
-    : null;
-}
-
-function PointCloudSamplingWarning({
-  sampling,
-}: {
-  readonly sampling: PointCloudSamplingState | null;
-}) {
-  if (!sampling) return null;
-
-  const description =
-    sampling.sampledCloudCount === 1
-      ? `Showing ${MAX_POINT_CLOUD_RENDER_POINTS.toLocaleString()} of ${sampling.largestFinitePointCount.toLocaleString()} points.`
-      : `${sampling.sampledCloudCount.toLocaleString()} point clouds exceed the ${MAX_POINT_CLOUD_RENDER_POINTS.toLocaleString()}-point display limit.`;
-
-  return (
-    <Card background={CardBackground.Secondary} compact outlined>
-      <Stack
-        align={Align.Start}
-        orientation={Orientation.Row}
-        spacing={Spacing.Sm}
-      >
-        <Icon
-          color={IconColor.Warning}
-          name={IconName.Warning}
-          size={Size.Sm}
-        />
-        <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-          <Text color={TextColor.Warning} variant={TextVariant.Sm}>
-            Point cloud sampled for display
-          </Text>
-          <Text color={TextColor.Secondary} variant={TextVariant.Xs}>
-            {description}
-          </Text>
-        </Stack>
-      </Stack>
-    </Card>
   );
 }
 
@@ -293,11 +236,11 @@ function PlaybackFidelitySettings() {
       <div className={styles.controlStack}>
         <label className={styles.controlRow}>
           <ControlLabel
-            label="Between samples"
-            tooltip="Smooth interpolates continuous signals — transforms and 2D/3D label geometry — between recorded samples for fluid playback. As recorded never synthesizes: every signal holds its latest recorded sample, so the scene only shows values that exist in the recording."
+            label="Between messages"
+            tooltip="Smooth interpolates continuous signals — transforms and 2D/3D label geometry — between recorded messages for fluid playback. As recorded never synthesizes: every signal holds its latest recorded message, so the scene only shows values that exist in the recording."
           />
           <select
-            aria-label="Between samples"
+            aria-label="Between messages"
             className={styles.modeSelect}
             onChange={(event) =>
               setFidelityMode(event.target.value as McapPlaybackFidelityMode)
@@ -374,7 +317,7 @@ function TemporalPolicySettings({
               onChange={(transformGapWarningMs) =>
                 onUpdate({ transformGapWarningMs })
               }
-              tooltip="Shows a 3D warning when a rendered transform interpolates across a wider gap than this. Rendering continues if the max interpolation gap allows it. Enter 0 to disable the warning."
+              tooltip="Shows a warning when a rendered transform interpolates across a wider gap than this. Rendering continues if the max interpolation gap allows it. Enter 0 to disable the warning."
               value={policy.transformGapWarningMs}
             />
             <PolicyNumberInput
@@ -407,19 +350,15 @@ function PolicyNumberInput({
   return (
     <label className={styles.controlRow}>
       <ControlLabel label={label} tooltip={tooltip} />
-      <span className={styles.numberInputWrap}>
-        <input
-          aria-label={label}
-          className={styles.numberInput}
-          max={60_000}
-          min={0}
-          onChange={(event) => onChange(Number(event.target.value))}
-          step={1}
-          type="number"
-          value={value}
-        />
-        <span className={styles.unitLabel}>ms</span>
-      </span>
+      <McapSettingsNumberField
+        ariaLabel={label}
+        max={60_000}
+        min={0}
+        onCommit={onChange}
+        step={50}
+        unit="ms"
+        value={value}
+      />
     </label>
   );
 }

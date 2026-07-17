@@ -6,7 +6,7 @@ import descriptor from "protobufjs/ext/descriptor";
 import { describe, expect, it, vi } from "vitest";
 import {
   enumerateMcapNumericFields,
-  jsonNumericFieldsFromSamples,
+  numericFieldsFromSamples,
   walkProtobufNumericFields,
   walkRosNumericFields,
 } from "./numeric-fields";
@@ -136,9 +136,9 @@ describe("walkProtobufNumericFields", () => {
   });
 });
 
-describe("jsonNumericFieldsFromSamples", () => {
+describe("numericFieldsFromSamples", () => {
   it("unions numeric and boolean leaves across samples", () => {
-    const fields = jsonNumericFieldsFromSamples([
+    const fields = numericFieldsFromSamples([
       { speed: 1.5, pose: { x: 1, name: "a" }, ok: true },
       { speed: 2.5, battery: 88 },
     ]);
@@ -150,12 +150,18 @@ describe("jsonNumericFieldsFromSamples", () => {
     ]);
   });
 
-  it("skips arrays, strings, and nulls", () => {
-    expect(
-      jsonNumericFieldsFromSamples([
-        { ranges: [1, 2, 3], label: "x", missing: null },
-      ]),
-    ).toEqual([]);
+  it("bounds indexed array leaves and skips strings and nulls", () => {
+    const fields = numericFieldsFromSamples([
+      { ranges: Array.from({ length: 55 }, (_, index) => index) },
+      { label: "x", missing: null },
+    ]);
+
+    expect(fields).toHaveLength(50);
+    expect(fields[0]).toEqual({ path: "ranges.0", valueType: "number" });
+    expect(fields.at(-1)).toEqual({
+      path: "ranges.49",
+      valueType: "number",
+    });
   });
 });
 
@@ -279,6 +285,66 @@ describe("enumerateMcapNumericFields", () => {
     ]);
   });
 
+  it("samples indexed leaves for repeated protobuf numeric fields", async () => {
+    const root = Root.fromJSON({
+      nested: {
+        test: {
+          nested: {
+            RobotState: {
+              fields: {
+                position: { id: 1, rule: "repeated", type: "double" },
+                sequence: { id: 2, type: "uint64" },
+              },
+            },
+          },
+        },
+      },
+    });
+    const type = root.lookupType("test.RobotState");
+    const reader = createReader({
+      channelsById: new Map([
+        [
+          1,
+          createChannel({
+            id: 1,
+            messageEncoding: "protobuf",
+            topic: "/left-arm-state",
+          }),
+        ],
+      ]),
+      readMessages: vi.fn(async function* () {
+        yield createMessage(
+          type
+            .encode(type.create({ position: [-0.48, 0.71, 0.7], sequence: 2 }))
+            .finish(),
+        );
+      }),
+      schemasById: new Map([
+        [
+          3,
+          createSchema(protobufDescriptorData(root), {
+            name: "test.RobotState",
+          }),
+        ],
+      ]),
+    });
+
+    expect(await enumerateMcapNumericFields(reader)).toEqual([
+      {
+        availability: "ready",
+        encoding: "protobuf",
+        fields: [
+          { path: "sequence", valueType: "uint64" },
+          { path: "position.0", valueType: "number" },
+          { path: "position.1", valueType: "number" },
+          { path: "position.2", valueType: "number" },
+        ],
+        sampled: true,
+        topic: "/left-arm-state",
+      },
+    ]);
+  });
+
   it("marks decodable schemas with no numeric leaves", async () => {
     const reader = createReader({
       channelsById: new Map([
@@ -347,12 +413,12 @@ describe("enumerateMcapNumericFields", () => {
     ]);
   });
 
-  it("walks ROS schemas without reading messages", async () => {
-    const readMessages = vi.fn(
-      (): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> => {
-        throw new Error("ROS schema enumeration should not sample messages");
-      },
-    );
+  it("walks ROS schemas and samples declared arrays", async () => {
+    const readMessages = vi.fn(async function* () {
+      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
+        yield message;
+      }
+    });
     const reader = createReader({
       channelsById: new Map([
         [
@@ -418,6 +484,7 @@ describe("enumerateMcapNumericFields", () => {
           { path: "speed", valueType: "float64" },
           { path: "armed", valueType: "bool" },
         ],
+        sampled: true,
         topic: "/idl",
       },
       {
@@ -430,6 +497,7 @@ describe("enumerateMcapNumericFields", () => {
           { path: "linear.y", valueType: "float64" },
           { path: "linear.z", valueType: "float64" },
         ],
+        sampled: true,
         topic: "/ros1",
       },
       {
@@ -442,10 +510,11 @@ describe("enumerateMcapNumericFields", () => {
           { path: "linear.y", valueType: "float64" },
           { path: "linear.z", valueType: "float64" },
         ],
+        sampled: true,
         topic: "/ros2",
       },
     ]);
-    expect(readMessages).not.toHaveBeenCalled();
+    expect(readMessages).toHaveBeenCalledTimes(3);
   });
 
   it("degrades an unparseable ROS schema to no fields", async () => {

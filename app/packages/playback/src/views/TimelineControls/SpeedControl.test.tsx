@@ -5,24 +5,39 @@ import {
   render,
   screen,
 } from "@testing-library/react";
+import { useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { MAX_SPEED } from "../../lib/constants";
+import { achievedSpeedAtom } from "../../lib/playback/atoms";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
+import { usePlaybackStore } from "../../lib/playback/playback-store-context";
 import SpeedControl from "./SpeedControl";
 
 // Kept in sync with the component; drag math is asserted in terms of it.
 const PX_PER_DOUBLING = 130;
 
-function renderSpeed(defaultSpeed?: number) {
+function renderSpeed(defaultSpeed?: number, achievedSpeed?: number) {
   return render(
     <PlaybackProvider
       duration={10}
       stepInterval={1 / 30}
       defaultSpeed={defaultSpeed}
     >
+      {achievedSpeed !== undefined ? (
+        <AchievedSpeedHarness value={achievedSpeed} />
+      ) : null}
       <SpeedControl />
     </PlaybackProvider>,
   );
+}
+
+function AchievedSpeedHarness({ value }: { readonly value: number }) {
+  const store = usePlaybackStore();
+  // This effect publishes the requested achieved rate into the test store.
+  useEffect(() => {
+    store.set(achievedSpeedAtom, value);
+  }, [store, value]);
+  return null;
 }
 
 const field = () =>
@@ -59,6 +74,21 @@ describe("SpeedControl", () => {
   it("reflects a non-default initial speed", () => {
     renderSpeed(2);
     expect(field().value).toBe("2×");
+  });
+
+  it("shows the achieved rate when requested speed is under-delivered", () => {
+    renderSpeed(4, 3.1);
+
+    const achievedRate = screen.getByTestId("timeline-controls-achieved-speed");
+    expect(achievedRate.textContent).toBe("actual 3.1×");
+    expect(achievedRate.title).toBe("Requested 4×; currently achieving 3.1×");
+    expect(achievedRate.getAttribute("aria-live")).toBe("polite");
+  });
+
+  it("does not add noise when achieved speed is close to requested", () => {
+    renderSpeed(4, 3.8);
+
+    expect(screen.queryByTestId("timeline-controls-achieved-speed")).toBeNull();
   });
 
   it("is read-only until clicked, then editable", () => {

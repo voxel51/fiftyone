@@ -32,6 +32,28 @@ class ColorSchemeTests(unittest.TestCase):
         self.assertIsInstance(d["_id"], dict)
         assert color_scheme == also_color_scheme
 
+    def test_color_scheme_temporal_tags(self):
+        temporal_tags = {
+            "fieldColor": "#ff6d04",
+            "valueColors": [{"value": "pedestrian", "color": "#3b82f6"}],
+        }
+        color_scheme = fo.ColorScheme(temporal_tags=temporal_tags)
+
+        self.assertEqual(color_scheme.temporal_tags, temporal_tags)
+
+        # temporal tag colors survive a serialization round-trip
+        d = color_scheme.to_dict()
+        also_color_scheme = fo.ColorScheme.from_dict(d)
+
+        self.assertEqual(also_color_scheme.temporal_tags, temporal_tags)
+        assert color_scheme == also_color_scheme
+
+        d = color_scheme.to_dict(extended=True)
+        also_color_scheme = fo.ColorScheme.from_dict(d, extended=True)
+
+        self.assertEqual(also_color_scheme.temporal_tags, temporal_tags)
+        assert color_scheme == also_color_scheme
+
 
 class DocumentTests(unittest.TestCase):
     def test_doc_copy_with_new_id(self):
