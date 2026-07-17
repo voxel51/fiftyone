@@ -887,7 +887,7 @@ export class PolylineOverlay extends KeypointOverlay {
    */
   protected override renderLabelText(
     renderer: Renderer2D,
-    ctx: KeypointRenderContext
+    ctx: KeypointRenderContext,
   ): void {
     // Reset first so a no-draw frame clears any stale hit region.
     this.textBounds = undefined;
@@ -916,7 +916,7 @@ export class PolylineOverlay extends KeypointOverlay {
         backgroundColor: ctx.style.fillStyle || ctx.style.strokeStyle || "#000",
         anchor: { vertical: "center", horizontal: "center" },
       },
-      this.containerId
+      this.containerId,
     );
   }
 
