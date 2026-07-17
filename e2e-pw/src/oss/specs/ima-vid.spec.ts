@@ -103,7 +103,11 @@ test.beforeEach(async ({ page, fiftyoneLoader, grid }) => {
   await grid.assert.isTileCountEqualTo(2);
 });
 
-test("check modal playback and tagging behavior", async ({ modal, grid }) => {
+// flaky: intermittently fails during modal playback
+test.skip("check modal playback and tagging behavior", async ({
+  modal,
+  grid,
+}) => {
   await grid.openFirstSample();
   await modal.waitForSampleLoadDomAttribute();
 

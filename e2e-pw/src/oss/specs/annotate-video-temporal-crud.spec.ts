@@ -118,6 +118,10 @@ test.describe.serial("video annotation temporal detection CRUD", () => {
     const newTrack = (await va.temporalTrackIds()).find((t) => !before.has(t));
     expect(newTrack).toBeTruthy();
 
+    // the tracks drawer starts closed; pin the new TD row so the timeline click
+    // has a visible target
+    await va.pinTrack(newTrack as string);
+
     const saved = savedResponse(page);
     await va.clickTrack(newTrack as string);
     await expect(modal.sidebar.edit.backButton).toBeVisible();
