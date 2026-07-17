@@ -8,8 +8,12 @@ wrapper for the FiftyOne Model Zoo.
 """
 
 import glob
+import importlib
 import logging
 import os
+import subprocess
+import sys
+import types
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -27,12 +31,66 @@ import torch
 logger = logging.getLogger(__name__)
 
 
+_DA3_REQUIREMENT = (
+    "git+https://github.com/ByteDance-Seed/depth-anything-3.git"
+    "@2c21ea849ceec7b469a3e62ea0c0e270afc3281a"
+)
+
+
+def _install_depth_anything_3() -> None:
+    # depth-anything-3 pins numpy<2, but its inference stack (including evo,
+    # which pose alignment uses) runs on numpy 2; only the 3D export stack
+    # needs the pin. Installing the full dependency set would downgrade the
+    # host numpy, so the package is installed without dependencies, evo is
+    # installed explicitly, and `_stub_da3_export()` absorbs the export
+    # stack when it cannot import
+    for pkg in ("evo", "e3nn"):
+        fou.ensure_package(pkg, error_level=2) or fou.install_package(pkg)
+
+    args = [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        "--no-deps",
+        _DA3_REQUIREMENT,
+    ]
+    proc = subprocess.run(args, capture_output=True, text=True)
+    if proc.returncode != 0:
+        raise RuntimeError(
+            "Failed to install depth-anything-3:\n%s" % proc.stderr
+        )
+
+
+def _stub_da3_export() -> None:
+    # `depth_anything_3.api` imports the export stack at module level even
+    # though inference never uses it, and that chain requires numpy<2 plus
+    # heavy media dependencies. When the real module cannot import, register
+    # a stub so depth prediction works; 3D exports then raise with guidance
+    try:
+        importlib.import_module("depth_anything_3.utils.export")
+        return
+    except ImportError:
+        pass
+
+    stub = types.ModuleType("depth_anything_3.utils.export")
+
+    def export(*args, **kwargs):
+        raise ImportError(
+            "depth_anything_3's export stack is unavailable in this "
+            "environment; it requires numpy<2 and the package's full "
+            "dependencies. Depth prediction is unaffected"
+        )
+
+    stub.export = export
+    sys.modules["depth_anything_3.utils.export"] = stub
+
+
 def _ensure_depth_anything_3() -> None:
     if not fou.ensure_package("depth-anything-3", error_level=2):
-        fou.install_package(
-            "git+https://github.com/ByteDance-Seed/depth-anything-3.git"
-            "@2c21ea849ceec7b469a3e62ea0c0e270afc3281a"
-        )
+        _install_depth_anything_3()
+
+    _stub_da3_export()
 
 
 da3_api = fou.lazy_import(
@@ -456,6 +514,9 @@ class DepthAnythingV3Model(fout.TorchImageModel):
         show_cameras: bool = True,
     ) -> None:
         """Computes 3D exports (GLB, PLY) for samples.
+
+        Requires depth_anything_3's export stack (``numpy<2`` and its full
+        dependencies).
 
         Examples::
 
