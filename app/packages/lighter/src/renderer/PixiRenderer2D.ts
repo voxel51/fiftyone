@@ -73,7 +73,26 @@ export class PixiRenderer2D implements Renderer2D {
     this.eventBus = getEventBus(channelId);
   }
 
+  private static async waitForFonts(): Promise<void> {
+    const fonts = globalThis.document?.fonts;
+    if (!fonts) {
+      return;
+    }
+    try {
+      // the app's stylesheets register the face well before lighter mounts,
+      // so this waits on the specific load rather than document-wide
+      // fonts.ready, which can stall renderer startup on unrelated fonts
+      await fonts.load(`${FONT_WEIGHT} ${FONT_SIZE}px ${FONT_FAMILY}`);
+    } catch {
+      // draw with whatever font is available
+    }
+  }
+
   public async initializePixiJS(): Promise<void> {
+    // Text measured before the webfont loads uses fallback-font metrics,
+    // shifting label pill geometry by a few pixels
+    await PixiRenderer2D.waitForFonts();
+
     this.app = await sharedPixiApp.initialize(this.canvas);
 
     this.resizeObserver = new ResizeObserver((entries) => {

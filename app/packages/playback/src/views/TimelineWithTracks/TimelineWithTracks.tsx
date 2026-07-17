@@ -22,6 +22,12 @@ import { partitionTracksByPin } from "./partitionTracksByPin";
 import styles from "./TimelineWithTracks.module.css";
 
 export interface TimelineWithTracksProps {
+  /**
+   * Optional readiness signal stamped on the root as
+   * `data-timeline-loaded` so tests can wait for tracks to be committed
+   * instead of polling. Omit to leave the attribute off entirely.
+   */
+  loaded?: boolean;
   /** @default TIMELINE_LABEL_WIDTH */
   labelWidth?: number;
   /**
@@ -87,6 +93,7 @@ export interface TimelineWithTracksProps {
  * scroll together as one unit.
  */
 const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
+  loaded,
   labelWidth: requestedLabelWidth = TIMELINE_LABEL_WIDTH,
   maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
@@ -148,9 +155,15 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
     />
   );
 
+  const loadedAttribute = loaded === undefined ? undefined : String(loaded);
+
   if (tracks.length === 0) {
     return (
-      <div ref={containerRef} className={clsx(styles.root, className)}>
+      <div
+        ref={containerRef}
+        className={clsx(styles.root, className)}
+        data-timeline-loaded={loadedAttribute}
+      >
         <TimelineHeader
           labelWidth={labelWidth}
           zoomRef={containerRef}
@@ -163,7 +176,11 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   }
 
   return (
-    <div ref={containerRef} className={clsx(styles.root, className)}>
+    <div
+      ref={containerRef}
+      className={clsx(styles.root, className)}
+      data-timeline-loaded={loadedAttribute}
+    >
       <Drawer
         side="bottom"
         open={drawerOpen}

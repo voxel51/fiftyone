@@ -38,6 +38,13 @@ export type AnnotationEventGroup = {
    */
   "annotation:persistenceError": { error?: Error };
   /**
+   * Notification event emitted when a persistence pass leaves nothing
+   * pending: the pass found no effective deltas, or it persisted every delta
+   * and no edit landed while the patch was in flight. Consumers (e.g. the
+   * save-settlement seam) treat it as "current engine state is persisted".
+   */
+  "annotation:persistenceSettled": void;
+  /**
    * Notification event emitted when a label is deleted successfully.
    */
   "annotation:deleteSuccess": MutationSuccess<"delete">;

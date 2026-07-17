@@ -112,7 +112,10 @@ export class SidebarPom {
     const selectionDiv = this.sidebar
       .getByTestId("checkbox-" + label)
       .getByTitle(label);
-    await selectionDiv.click({ force: true });
+    // no force: the actionability wait keeps the click from landing while
+    // the filter dropdown is still animating open (a forced click computes
+    // its point once and misses a moving checkbox)
+    await selectionDiv.click();
   }
 
   async applySearch(field: string, search: string) {

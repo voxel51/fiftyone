@@ -77,6 +77,48 @@ export const withoutPath = (root: unknown, segments: string[]): unknown => {
 };
 
 /**
+ * Return a copy of `root` with the leaf at the given JSON-pointer segments set
+ * to `value`, copying each node along the path (copy-on-write) so values shared
+ * with other structures (e.g. `sourceData`) are not mutated. Returns `root`
+ * unchanged if any intermediate segment is absent or not an object.
+ */
+export const withValueAtPath = (
+  root: unknown,
+  segments: string[],
+  value: unknown,
+): unknown => {
+  if (segments.length === 0) {
+    return value;
+  }
+
+  if (root === null || typeof root !== "object") {
+    return root;
+  }
+
+  const [head, ...tail] = segments;
+  const clone: Record<string, unknown> | unknown[] = Array.isArray(root)
+    ? [...root]
+    : { ...root };
+
+  if (tail.length === 0) {
+    (clone as Record<string, unknown>)[head] = value;
+    return clone;
+  }
+
+  if (!(head in clone)) {
+    return clone;
+  }
+
+  (clone as Record<string, unknown>)[head] = withValueAtPath(
+    (clone as Record<string, unknown>)[head],
+    tail,
+    value,
+  );
+
+  return clone;
+};
+
+/**
  * Combine a dot-delimited field path with a JSON-patch-style operation path
  * into a single absolute JSON pointer.
  */
