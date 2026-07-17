@@ -99,6 +99,10 @@ test.describe.serial("video annotation track split / merge", () => {
     await va.assert.objectTrackCount(2);
     const vehicleId = await va.labelRowId("vehicle");
 
+    // the tracks drawer starts closed; pin the row so its timeline interactions
+    // have a visible target
+    await va.pinTrack(vehicleId);
+
     // seek mid-clip so the playhead sits between the track's first and last
     // frame — both sides of the split are then non-empty
     await va.clickTrack(vehicleId);
@@ -124,6 +128,10 @@ test.describe.serial("video annotation track split / merge", () => {
 
     await va.assert.objectTrackCount(2);
     const vehicleId = await va.labelRowId("vehicle");
+
+    // the tracks drawer starts closed; pin the row so the timeline click has a
+    // visible target
+    await va.pinTrack(vehicleId);
 
     // select the track (Split enables with one selected), then seek mid-clip
     // (the row click that selects also jumps the playhead to the track start)
@@ -151,6 +159,10 @@ test.describe.serial("video annotation track split / merge", () => {
     await va.assert.objectTrackCount(2);
     await va.assert.labelListed("vehicle");
     const [sourceId] = await va.objectTrackIds();
+
+    // the tracks drawer starts closed; pin the source row so its context menu
+    // is reachable
+    await va.pinTrack(sourceId);
 
     // merge one vehicle INTO the other; both span every frame, so target-wins
     // drops every source frame — one track remains, still "vehicle"
@@ -189,6 +201,10 @@ test.describe.serial("video annotation track split / merge", () => {
     await va.assert.labelListed("vehicle");
     await va.assert.labelListed("person");
     const personId = await va.labelRowId("person");
+
+    // the tracks drawer starts closed; pin the row so its context menu is
+    // reachable
+    await va.pinTrack(personId);
 
     // right-click the person track's bar; the menu opens (Delete track proves
     // it did) but carries no merge target — the only other track is a different

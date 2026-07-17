@@ -251,6 +251,10 @@ test.describe.serial("video annotation track editing", () => {
     await va.assert.objectTrackCount(1);
     const [trackId] = await va.objectTrackIds();
 
+    // the tracks drawer starts closed; pin the row so the later timeline click
+    // has a visible target
+    await va.pinTrack(trackId);
+
     // sidebar row -> editor
     await va.selectLabel("vehicle");
     await expect(modal.sidebar.edit.backButton).toBeVisible();
