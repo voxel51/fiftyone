@@ -263,7 +263,26 @@ jobs:
               const prior = data.check_runs
                 .filter((c) => c.status === 'completed')
                 .sort((a, b) => new Date(b.started_at) - new Date(a.started_at))[0];
+              // A rerun of failed jobs leaves the prior attempt's check run
+              // completed while its workflow run is live again; the next
+              // attempt's check run doesn't exist until its needs finish.
+              let rerunning = false;
               if (prior && !inFlight) {
+                const runId = (prior.details_url ?? '').match(/\/runs\/(\d+)\//)?.[1];
+                if (runId) {
+                  try {
+                    const { data: run } = await github.rest.actions.getWorkflowRun({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      run_id: Number(runId),
+                    });
+                    rerunning = run.status !== 'completed';
+                  } catch {
+                    // actions: read may be unavailable; mirror as before
+                  }
+                }
+              }
+              if (prior && !inFlight && !rerunning) {
                 if (prior.conclusion === 'success') {
                   core.info('Mirroring the previous all-tests result: success');
                 } else {
