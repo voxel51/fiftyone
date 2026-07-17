@@ -1,7 +1,7 @@
 import { useRegisterAIAnnotationEventHandlers } from "@fiftyone/annotation/src/agents/hooks/useRegisterAIAnnotationEventHandlers";
 import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
 import { LoadingSpinner } from "@fiftyone/components";
-import { useIsGroupDataset } from "@fiftyone/state";
+import { useCurrentSampleId, useIsGroupDataset } from "@fiftyone/state";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import React, { useEffect } from "react";
@@ -155,6 +155,7 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
   const loading = useAtomValue(labelSchemasData) === null;
   const contextManager = useAnnotationContextManager();
   const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
+  const currentSampleId = useCurrentSampleId();
 
   const isDisabled = disabledReason !== null;
 
@@ -169,6 +170,12 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
       clearUndo();
     };
   }, []);
+
+  // Clear undo history on sample change; its commands pin the prior sample's
+  // overlays (and paint snapshots) for redo.
+  useEffect(() => {
+    clearUndo();
+  }, [currentSampleId, clearUndo]);
 
   if (!isDisabled && loading) {
     return <Loading />;
