@@ -32,7 +32,6 @@ import { useSampleMedia } from "../../hooks/useSampleMedia";
 import {
   HIGHLIGHT_STYLE,
   MAX_RUN_NAME_LENGTH,
-  MIDDLE_DOT,
   POINTER_STYLE,
 } from "../../constants";
 import { formatQuery, formatTime } from "../../utils";
@@ -101,6 +100,23 @@ function RunName({
   );
 
   return isLong ? <Tooltip content={name}>{label}</Tooltip> : label;
+}
+
+function MetaRow({ label, value }: { label: string; value: string }) {
+  return (
+    <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
+      <Text
+        variant={TextVariant.Md}
+        color={TextColor.Muted}
+        style={{ minWidth: 52, flexShrink: 0 }}
+      >
+        {label}
+      </Text>
+      <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+        {value}
+      </Text>
+    </Stack>
+  );
 }
 
 type SelectionState = {
@@ -252,11 +268,21 @@ export default function RunList({
                   </Text>
                 )}
               </Stack>
-              <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-                {formatQuery(run)} {MIDDLE_DOT} {run.brain_key}
-                {run.k ? ` ${MIDDLE_DOT} k=${run.k}` : ""}
-                {run.reverse ? " (least similar)" : ""}
-              </Text>
+              <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+                {/* Only show the query when it isn't already the run name */}
+                {formatQuery(run).trim() !== run.run_name.trim() && (
+                  <MetaRow label="Query" value={formatQuery(run)} />
+                )}
+                <MetaRow label="Index" value={run.brain_key} />
+                {run.k ? (
+                  <MetaRow
+                    label="Matches"
+                    value={`k=${run.k}${run.reverse ? " (least similar)" : ""}`}
+                  />
+                ) : run.reverse ? (
+                  <MetaRow label="Order" value="Least similar" />
+                ) : null}
+              </Stack>
               <Text variant={TextVariant.Md} color={TextColor.Muted}>
                 {formatTime(run.creation_time)}
                 {run.created_by_name || run.created_by

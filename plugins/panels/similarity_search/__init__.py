@@ -191,12 +191,14 @@ class SimilaritySearchPanel(Panel):
                 from fiftyone.core.view import DatasetView
 
                 view = DatasetView._build(ctx.dataset, result_view_stages)
-            elif patches_field:
-                view = ctx.dataset.to_patches(patches_field).select(
-                    result_ids, ordered=True
-                )
             else:
-                view = ctx.dataset.select(result_ids, ordered=True)
+                base = ctx.dataset
+                if base.media_type == "group":
+                    base = base.select_group_slices(_allow_mixed=True)
+                elif patches_field:
+                    base = base.to_patches(patches_field)
+
+                view = base.select(result_ids, ordered=True)
 
             ctx.ops.clear_selected_samples()
             ctx.ops.clear_selected_labels()

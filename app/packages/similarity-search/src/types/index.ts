@@ -18,9 +18,9 @@ export enum QueryType {
 }
 
 /**
- * Scope for a similarity search (full dataset or current view).
+ * Standard operator view target (current view or full dataset view).
  */
-export type SearchScope = "view" | "dataset";
+export type ViewTarget = "CURRENT_VIEW" | "DATASET_VIEW";
 
 /**
  * Configuration for a brain similarity key.
@@ -72,7 +72,7 @@ export type SimilaritySearchParams = {
   query_type: QueryType;
   query: string | string[];
   reverse: boolean;
-  search_scope: SearchScope;
+  view_target: ViewTarget;
   patches_field?: string;
   k?: number;
   dist_field?: string;

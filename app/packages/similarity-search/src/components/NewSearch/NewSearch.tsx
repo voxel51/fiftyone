@@ -28,7 +28,7 @@ import {
   BrainKeyConfig,
   CloneConfig,
   QueryType,
-  SearchScope,
+  ViewTarget,
 } from "../../types";
 import {
   SEARCH_OPERATOR_URI,
@@ -41,6 +41,7 @@ import {
 } from "../../constants";
 import { fileToBase64 } from "../../utils";
 import { FileDrop } from "@fiftyone/core/src/plugins/SchemaIO/components";
+import { Markdown } from "@fiftyone/components";
 import { useNewSearchForm } from "../../hooks/useNewSearchForm";
 import {
   NewSearchContainer,
@@ -160,23 +161,43 @@ export default function NewSearch({
         <FormField
           label="Search scope"
           control={
-            <RadioGroup
-              options={
-                isPatchesView
-                  ? [
-                      { value: "dataset", label: "All Patches" },
-                      { value: "view", label: "Current Patches View" },
-                    ]
-                  : [
-                      { value: "dataset", label: "Full Dataset" },
-                      { value: "view", label: "Current View" },
-                    ]
-              }
-              value={form.searchScope}
-              onChange={(value) => form.setSearchScope(value as SearchScope)}
-              size={Size.Md}
-              style={{ display: "flex", flexDirection: "row", gap: "1rem" }}
-            />
+            <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+              <RadioGroup
+                options={
+                  isPatchesView
+                    ? [
+                        {
+                          value: "DATASET_VIEW",
+                          label: "All Patches",
+                          disabled: form.isGroupedDataset,
+                        },
+                        {
+                          value: "CURRENT_VIEW",
+                          label: "Current Patches View",
+                        },
+                      ]
+                    : [
+                        {
+                          value: "DATASET_VIEW",
+                          label: "Full Dataset",
+                          disabled: form.isGroupedDataset,
+                        },
+                        { value: "CURRENT_VIEW", label: "Current View" },
+                      ]
+                }
+                value={form.viewTarget}
+                onChange={(value) => form.setViewTarget(value as ViewTarget)}
+                size={Size.Md}
+                style={{ display: "flex", flexDirection: "row", gap: "1rem" }}
+              />
+              {form.isGroupedDataset && (
+                <Markdown>
+                  {
+                    "Full-dataset search is not supported on grouped datasets. To search more than one slice, add a `SelectGroupSlices` stage to your view to flatten those slices into a single collection, then search the current view."
+                  }
+                </Markdown>
+              )}
+            </Stack>
           }
         />
 
