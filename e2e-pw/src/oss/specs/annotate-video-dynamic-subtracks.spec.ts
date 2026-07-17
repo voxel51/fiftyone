@@ -126,6 +126,9 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
     const va = modal.videoAnnotate;
 
     const parentId = await va.firstObjectTrackId();
+
+    // sub-track expansion lives in the drawer body; the drawer starts closed
+    await va.openTracksDrawer();
     const subId = `${parentId}::${ATTR}`;
 
     // Collapsed by default — no sub-track rows.
@@ -158,6 +161,9 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
     await setSignal(modal, page, "left");
 
     const parentId = await va.firstObjectTrackId();
+
+    // sub-track expansion lives in the drawer body; the drawer starts closed
+    await va.openTracksDrawer();
     const subId = `${parentId}::${ATTR}`;
 
     await va.toggleTrackExpansion(parentId);
@@ -183,6 +189,9 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
     await setSignal(modal, page, "left");
 
     const parentId = await va.firstObjectTrackId();
+
+    // sub-track expansion lives in the drawer body; the drawer starts closed
+    await va.openTracksDrawer();
     const subId = `${parentId}::${ATTR}`;
 
     await va.toggleTrackExpansion(parentId);
@@ -209,6 +218,9 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
     await setSignal(modal, page, "left");
 
     const parentId = await va.firstObjectTrackId();
+
+    // sub-track expansion lives in the drawer body; the drawer starts closed
+    await va.openTracksDrawer();
     const subId = `${parentId}::${ATTR}`;
 
     await va.toggleTrackExpansion(parentId);
@@ -234,6 +246,9 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
     const va = modal.videoAnnotate;
 
     const parentId = await va.firstObjectTrackId();
+
+    // sub-track expansion lives in the drawer body; the drawer starts closed
+    await va.openTracksDrawer();
     const subId = `${parentId}::${ATTR}`;
 
     // Expand without selecting anything first.
@@ -270,6 +285,9 @@ test.describe.serial("video annotation multiple dynamic attributes", () => {
     const va = modal.videoAnnotate;
 
     const parentId = await va.firstObjectTrackId();
+
+    // sub-track expansion lives in the drawer body; the drawer starts closed
+    await va.openTracksDrawer();
 
     await va.toggleTrackExpansion(parentId);
     await expect
