@@ -152,7 +152,7 @@ jobs:
       python-versions: >-
         ${{ (github.base_ref == 'develop' ||
         startsWith(github.base_ref, 'feat/'))
-        && '["3.10", "3.12"]' || '["3.10", "3.11", "3.12"]' }}
+        && '["3.10", "3.13"]' || '["3.10", "3.11", "3.12", "3.13"]' }}
 
   test-windows:
     needs: modified-files
@@ -164,7 +164,7 @@ jobs:
       python-versions: >-
         ${{ (github.base_ref == 'develop' ||
         startsWith(github.base_ref, 'feat/'))
-        && '["3.10", "3.12"]' || '["3.10", "3.11", "3.12"]' }}
+        && '["3.10", "3.13"]' || '["3.10", "3.11", "3.12", "3.13"]' }}
 
   e2e-comment-suites:
     # The authoritative e2e comment freezes its sibling-suite rows when the

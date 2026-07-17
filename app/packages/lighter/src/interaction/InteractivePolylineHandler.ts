@@ -288,9 +288,12 @@ export class InteractivePolylineHandler implements InteractionHandler {
 
   onMove({ worldPoint, event }: OverlayEvent): boolean {
     if (this.dragPointId !== null) {
+      // Move silently while dragging; onPointerUp emits the single committed
+      // move so the engine writes once per gesture, not once per frame.
       this.overlay.movePointById(
         this.dragPointId,
         this.overlay.absolutePointToRelative(worldPoint),
+        false,
       );
       // Hide new point preview while dragging
       this.overlay.setPreviewPoint(null);
@@ -386,6 +389,10 @@ export class InteractivePolylineHandler implements InteractionHandler {
     if (from[0] === to[0] && from[1] === to[1]) {
       return true;
     }
+
+    // Live drag moved the point silently; emit the committed move now so the
+    // engine records one write for the whole gesture.
+    this.overlay.emitPointMoved(id, from, to);
 
     const cmd = new MoveKeypointPointCommand(
       this.overlay as unknown as KeypointOverlay,

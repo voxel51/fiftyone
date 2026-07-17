@@ -6,7 +6,7 @@ on:
       python-versions:
         description: JSON array of Python versions for the Windows test matrix
         type: string
-        default: '["3.10", "3.11", "3.12"]'
+        default: '["3.10", "3.11", "3.12", "3.13"]'
 
 jobs:
   test-python:
