@@ -1,6 +1,10 @@
 import { humanReadableBytes } from "@fiftyone/utilities";
 import type { TilingLayoutMetrics } from "@fiftyone/tiling";
-import type { TemporalTagTimelineProps, Track } from "@fiftyone/playback";
+import {
+  usePlaybackStore,
+  type TemporalTagTimelineProps,
+  type Track,
+} from "@fiftyone/playback";
 import { Size, Spinner } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, {
@@ -15,6 +19,7 @@ import MultiModalPlayback from "../../../components/MultiModalPlayback/MultiModa
 import { byteSourceAccessKey } from "../../../query/bytes/cache";
 import type { ByteSourceDescriptor } from "../../../query/bytes/types";
 import type { SceneSource } from "../../../scene-inventory";
+import { McapExtensionPlaybackStoreProvider } from "../../../extensions/mcap/playback-store";
 import type { StreamInventory } from "../../../schemas/v1";
 import { releaseRetainedImageTextures } from "../../../visualization/panels/image-texture-cache";
 import {
@@ -23,7 +28,10 @@ import {
 } from "../../../visualization/panels/gpu/gpu-point-cloud-projection-resources";
 import { releaseGpuPointCloudColormapTextures } from "../../../visualization/panels/point-cloud/gpu/gpu-point-cloud-colormap-texture";
 import { BitmapImageFrameView } from "../../../visualization/panels/bitmap-image-view";
-import { getMcapSourceBootstrap } from "../source-bootstrap-cache";
+import {
+  getMcapSourceBootstrap,
+  mcapSourceBootstrapKey,
+} from "../source-bootstrap-cache";
 import type { McapResourceClient } from "../types";
 import { Mcap3dViewStateProvider } from "./mcap-3d-view-state-context";
 import { Mcap3dViewSettingsProvider } from "./mcap-3d-view-settings-context";
@@ -82,12 +90,15 @@ type McapPosterImage = Extract<
   { kind: "image" }
 >;
 
+/** Inputs for the source-oriented MCAP playback host. */
 export interface McapSourcePlaybackProps {
   readonly cameraPreferenceField?: string;
   readonly children?: React.ReactNode;
   readonly client: McapResourceClient;
   /** Track ids to start pinned to the timeline (e.g. from a grid tag filter). */
   readonly defaultPinnedTrackIds?: readonly string[];
+  /** Per-row timeline decoration contributed by timeline sources. */
+  readonly decorateTrack?: TemporalTagTimelineProps["decorateTrack"];
   readonly fileName: string;
   readonly headerActions?: React.ReactNode;
   readonly layoutScopeKey?: string;
@@ -98,6 +109,10 @@ export interface McapSourcePlaybackProps {
   readonly onTagDelete?: NonNullable<
     TemporalTagTimelineProps["eventMenuItems"]
   >[number]["onSelect"];
+  /** Reports timeline drawer visibility to registered runtime contributions. */
+  readonly onTimelineDrawerOpenChange?: (open: boolean) => void;
+  /** Optional maximum expanded track-body height. */
+  readonly timelineDrawerMaxSize?: number;
   readonly source: ByteSourceDescriptor | null;
   readonly tracks?: readonly Track[];
 }
@@ -112,6 +127,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   children,
   client,
   defaultPinnedTrackIds,
+  decorateTrack,
   fileName,
   headerActions,
   layoutScopeKey,
@@ -119,6 +135,8 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   onTagCreate,
   onTagUpdate,
   onTagDelete,
+  onTimelineDrawerOpenChange,
+  timelineDrawerMaxSize,
   source,
   tracks,
 }) => {
@@ -165,6 +183,10 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
     source,
   });
   const sourceKey = useMemo(
+    () => (source ? mcapSourceBootstrapKey(source) : ""),
+    [source],
+  );
+  const sourceAccessKey = useMemo(
     () => (source ? byteSourceAccessKey(source) : ""),
     [source],
   );
@@ -304,7 +326,9 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                       source={playbackSource}
                     >
                       <McapDataStreamProvider
-                        expectedSourceKey={playbackSource ? sourceKey : null}
+                        expectedSourceKey={
+                          playbackSource ? sourceAccessKey : null
+                        }
                       >
                         <McapProjectionResourceBoundary />
                         <Mcap3dViewSettingsProvider
@@ -328,6 +352,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                           >
                             <MultiModalPlayback
                               fileName={fileName}
+                              decorateTrack={decorateTrack}
                               headerCaption={headerCaption}
                               headerActions={
                                 <McapHeaderActions actions={headerActions} />
@@ -386,6 +411,10 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                               }
                               onTagCreate={onTagCreate}
                               onTagUpdate={onTagUpdate}
+                              onTimelineDrawerOpenChange={
+                                onTimelineDrawerOpenChange
+                              }
+                              timelineDrawerMaxSize={timelineDrawerMaxSize}
                             >
                               <McapStreams
                                 client={client}
@@ -398,7 +427,9 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                                 source={playbackSource}
                               />
                               <McapSelectionHotkeys />
-                              {children}
+                              <McapExtensionRuntimeBoundary>
+                                {children}
+                              </McapExtensionRuntimeBoundary>
                               <McapModalLayoutPersistence
                                 datasetId={effectiveLayoutScopeKey}
                               />
@@ -440,6 +471,19 @@ const McapPlaybackSessionStateProviders: React.FC<{
     </McapPanelVisibilityProvider>
   </Mcap3dViewStateProvider>
 );
+
+function McapExtensionRuntimeBoundary({
+  children,
+}: {
+  readonly children: React.ReactNode;
+}) {
+  const store = usePlaybackStore();
+  return (
+    <McapExtensionPlaybackStoreProvider store={store}>
+      {children}
+    </McapExtensionPlaybackStoreProvider>
+  );
+}
 
 /** Retires only the previous recording's GPU buffers on an in-place swap. */
 function McapProjectionResourceBoundary() {
