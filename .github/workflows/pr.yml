@@ -240,7 +240,7 @@ jobs:
             // so it never matches the completed filter). Poll for that run's
             // verdict rather than failing on the gap — a vacuous green here
             // could merge the PR before its suite finishes.
-            const deadline = Date.now() + 45 * 60 * 1000;
+            const deadline = Date.now() + 60 * 60 * 1000;
             for (;;) {
               const { data } = await github.rest.checks.listForRef({
                 owner: context.repo.owner,
@@ -296,7 +296,7 @@ jobs:
                 return;
               }
               if (Date.now() >= deadline) {
-                core.setFailed('No completed all-tests for this commit after 45 minutes — deferring to the run testing it.');
+                core.setFailed('No completed all-tests for this commit after 60 minutes — deferring to the run testing it.');
                 return;
               }
               core.info('No completed all-tests for this commit yet — waiting for the run testing it.');
