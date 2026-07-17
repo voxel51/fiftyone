@@ -53,6 +53,7 @@ import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
 import { useVideoTrackDecorator } from "../tracks/useVideoTrackDecorator";
 import { useScrollTrackToAnchor } from "../state/useVideoInteraction";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
+import { useTimelineDrawerOpen } from "../state/useTimelineDrawer";
 import {
   useVideoSurfaceActions,
   type VideoSurfaceActions,
@@ -579,6 +580,9 @@ export const FrameLabelsTracks: React.FC<{
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
 
+  // Persisted globally so switching samples keeps the drawer open/closed.
+  const [drawerOpen, setDrawerOpen] = useTimelineDrawerOpen();
+
   // Persist pin state per video (dataset + sample) so reopening the same
   // sample restores which tracks the user pinned to the timeline.
   const dataset = useDatasetName();
@@ -668,6 +672,8 @@ export const FrameLabelsTracks: React.FC<{
         extraControls={<VideoAnnotationToolbar />}
         loaded={timelineLoaded}
         maxSize={maxSize}
+        drawerOpen={drawerOpen}
+        onDrawerOpenChange={setDrawerOpen}
       />
     </TrackProvider>
   );
