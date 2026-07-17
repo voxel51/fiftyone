@@ -1646,6 +1646,84 @@ describe("MCAP resources", () => {
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
   });
 
+  it("contains payload decode failures to their topic and preserves shared decode work", async () => {
+    const source = createMcapSourceDescriptor();
+    const messages = [
+      createMessage(new Uint8Array([1]), {
+        channelId: 7,
+        logTime: 90n,
+        publishTime: 91n,
+      }),
+      createMessage(new Uint8Array([2]), {
+        channelId: 8,
+        logTime: 108n,
+        publishTime: 109n,
+      }),
+    ];
+    const decodeClient = createTestDecodeClient();
+    vi.mocked(decodeClient.decode).mockImplementation(async (request) => {
+      if (request.context.streamId === "/camera") {
+        throw new Error("invalid camera calibration");
+      }
+      return {
+        context: request.context,
+        decoderId: "test-decoder",
+        decoderVersion: "1",
+        output: createTestDecodedOutput(),
+        payload: request.payload,
+      };
+    });
+    const readMessages = vi.fn(async function* () {
+      for (const message of messages) yield message;
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient,
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [7, createChannel({ id: 7, topic: "/camera" })],
+            [8, createChannel({ id: 8, topic: "/lidar" })],
+          ]),
+          readMessages,
+        }),
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [100n, 105n],
+      source,
+      defaultStreamPolicy: {
+        mode: PlaybackSyncMode.NEAREST,
+        toleranceAfterNs: 20n,
+        toleranceBeforeNs: 20n,
+      },
+      topics: ["/camera", "/lidar"],
+    });
+
+    expect(windows).toHaveLength(2);
+    for (const window of windows) {
+      expect(window.messagesByTopic["/camera"]).toEqual([]);
+      expect(window.decodeErrorsByTopic?.["/camera"]).toEqual([
+        expect.objectContaining({
+          code: "message-decode-failed",
+          message: "invalid camera calibration",
+          messageTimeNs: 90n,
+          requestedTimeNs: window.timeNs,
+          topic: "/camera",
+        }),
+      ]);
+      expect(window.messagesByTopic["/lidar"]).toHaveLength(1);
+      expect(window.messages.map((message) => message.topic)).toEqual([
+        "/lidar",
+      ]);
+    }
+    expect(readMessages).toHaveBeenCalledTimes(1);
+    // The selected union is still decoded once per unique message, including
+    // the cached rejected promise reused by the second window.
+    expect(decodeClient.decode).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps synchronized decode cache entries distinct for changed payloads", async () => {
     const source = createMcapSourceDescriptor();
     const messages = [

@@ -19,6 +19,7 @@ import type {
   McapFrameTransformResolution,
   McapFrameTransformTimeRange,
 } from "../frame-transform-types";
+import { compareBigInt } from "../bigint";
 import {
   EMPTY_MCAP_FRAME_GRAPH_SUMMARY,
   McapFrameTransformStore,
@@ -26,12 +27,6 @@ import {
 } from "../frame-transforms";
 import { isMcapReadCancelledError, mcapErrorMessage } from "../errors";
 import type { McapActiveTimeline, McapResourceClient } from "../types";
-import {
-  markMcapLatencyEvent,
-  mcapLatencyDurationMs,
-  mcapLatencyNowMs,
-} from "../mcap-latency-debug";
-import { recordMcapFrameTransformBandwidth } from "./mcap-bandwidth-debug";
 import { shouldDeferMcapIdleWorkForStore } from "./mcap-network-health";
 
 // Placement reads are foreground work: keep them small so pending Play is not
@@ -84,15 +79,20 @@ export type McapFramePlacementReadinessGetter = ({
 
 export type McapFramePlacementPrefetcher = (timeNs: bigint) => void;
 
+/** Source-scoped transform graph, placement resolver, and load state. */
 export interface McapFrameTransformsState {
   readonly error: string | null;
   readonly frameIds: readonly string[];
   readonly getPlacementReadiness: McapFramePlacementReadinessGetter;
   readonly indexedDynamicRanges: () => readonly McapFrameTransformTimeRange[];
+  /** Whether transform discovery for a playhead has completed or exhausted retries. */
+  readonly isPlacementTimeSettled?: (timeNs: bigint) => boolean;
   readonly prefetchPlacement: McapFramePlacementPrefetcher;
   readonly resolve: McapFrameTransformResolver;
   readonly status: McapFrameTransformsStatus;
   readonly summarizeGraph: McapFrameGraphSummarizer;
+  /** Changes only when the normalized transform edge inventory changes. */
+  readonly topologyRevision?: number;
 }
 
 export interface UseMcapFrameTransformsOptions {
@@ -203,10 +203,6 @@ export function useMcapFrameTransforms({
       version: sourceGeneration,
     });
 
-    const bootstrapStartMs = mcapLatencyNowMs();
-    markMcapLatencyEvent("frame transform bootstrap request", undefined, {
-      onceKey: "frame-transform-bootstrap-request",
-    });
     client
       .readFrameTransformBootstrap({ source })
       .then((set) => {
@@ -215,30 +211,6 @@ export function useMcapFrameTransforms({
         }
 
         store.addStatic(set.samples);
-        recordMcapFrameTransformBandwidth({
-          operation: "transform-bootstrap",
-          set,
-        });
-        markMcapLatencyEvent(
-          "frame transform bootstrap ready",
-          {
-            durationMs: mcapLatencyDurationMs(bootstrapStartMs),
-            samples: set.samples.length,
-          },
-          { onceKey: "frame-transform-bootstrap-ready" },
-        );
-        markMcapLatencyEvent(
-          "frame transforms interactive ready",
-          { frameIds: store.frameIds().length },
-          { onceKey: "frame-transforms-interactive-ready" },
-        );
-        if (dynamicRangeMode !== "range") {
-          markMcapLatencyEvent(
-            "frame transforms ready",
-            { frameIds: store.frameIds().length },
-            { onceKey: "frame-transforms-ready" },
-          );
-        }
         setState((current) => ({
           ...current,
           error: null,
@@ -265,6 +237,8 @@ export function useMcapFrameTransforms({
     };
   }, [activeTimeline, client, dynamicRangeMode, source]);
 
+  // This effect makes exhausted placement windows retryable after an explicit
+  // seek, which is a deliberate request to revisit the active transform time.
   useEffect(() => {
     if (!playbackStore) {
       return undefined;
@@ -302,20 +276,10 @@ export function useMcapFrameTransforms({
       const requestedRange = dynamicPlacementRangeForTime(requestTimeNs);
       const requestedRangeKey = frameTransformRangeKey(requestedRange);
       const sourceGeneration = sourceGenerationRef.current;
-      const requestedRangeStartMs = mcapLatencyNowMs();
       inFlightPlacementRangesRef.current = [
         ...inFlightPlacementRangesRef.current,
         requestedRange,
       ];
-      markMcapLatencyEvent(
-        "frame transform current window request",
-        {
-          endTimeNs: requestedRange.endTimeNs,
-          startTimeNs: requestedRange.startTimeNs,
-        },
-        { onceKey: "first-frame-transform-current-window-request" },
-      );
-
       client
         .readFrameTransformWindow({
           activeTimeline,
@@ -329,18 +293,6 @@ export function useMcapFrameTransforms({
           }
 
           storeRef.current?.addDynamic(set.samples, requestedRange);
-          recordMcapFrameTransformBandwidth({
-            operation: "transform-current-window",
-            set,
-          });
-          markMcapLatencyEvent(
-            "frame transform current window ready",
-            {
-              durationMs: mcapLatencyDurationMs(requestedRangeStartMs),
-              samples: set.samples.length,
-            },
-            { onceKey: "first-frame-transform-current-window-ready" },
-          );
           retryCountRef.current.delete(requestedRangeKey);
           inFlightPlacementRangesRef.current =
             inFlightPlacementRangesRef.current.filter(
@@ -407,10 +359,9 @@ export function useMcapFrameTransforms({
     [activeTimeline, client, dynamicRangeMode, source, state.status],
   );
 
-  // Warm a short transform runway on the idle lane. This is intentionally
-  // separate from the foreground placement window: if playback outruns the
-  // ready transform cache, the placement effect below can still issue a small
-  // foreground read for the active time instead of waiting behind idle work.
+  // This effect warms a short transform runway on the idle lane. It stays
+  // separate from the foreground placement window so playback catch-up never
+  // waits behind speculative work.
   useEffect(() => {
     const store = storeRef.current;
     if (dynamicRangeMode !== "range") {
@@ -459,15 +410,6 @@ export function useMcapFrameTransforms({
       runwayRange,
     ];
     const sourceGeneration = sourceGenerationRef.current;
-    const runwayRangeStartMs = mcapLatencyNowMs();
-    markMcapLatencyEvent(
-      "frame transform runway request",
-      {
-        endTimeNs: runwayRange.endTimeNs,
-        startTimeNs: runwayRange.startTimeNs,
-      },
-      { onceKey: "first-frame-transform-runway-request" },
-    );
 
     client
       .readFrameTransformWindow(
@@ -489,18 +431,6 @@ export function useMcapFrameTransforms({
           inFlightRunwayRangesRef.current.filter(
             (candidate) => candidate !== runwayRange,
           );
-        recordMcapFrameTransformBandwidth({
-          operation: "transform-runway",
-          set,
-        });
-        markMcapLatencyEvent(
-          "frame transform runway ready",
-          {
-            durationMs: mcapLatencyDurationMs(runwayRangeStartMs),
-            samples: set.samples.length,
-          },
-          { onceKey: "first-frame-transform-runway-ready" },
-        );
         setState((current) => ({
           ...current,
           error: null,
@@ -665,6 +595,19 @@ export function useMcapFrameTransforms({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.version],
   );
+  const isPlacementTimeSettled = useCallback(
+    (requestTimeNs: bigint) => {
+      if (state.status === "error") return true;
+      if (state.status !== "ready" || dynamicRangeMode === "pending") {
+        return false;
+      }
+      return (
+        (storeRef.current?.isTimeIndexed(requestTimeNs) ?? false) ||
+        isTimeInRanges(surrenderedPlacementRangesRef.current, requestTimeNs)
+      );
+    },
+    [dynamicRangeMode, state.status],
+  );
   const summarizeGraph = useCallback<McapFrameGraphSummarizer>(
     (dataBearingFrameIds) =>
       storeRef.current?.summarizeGraph(dataBearingFrameIds) ??
@@ -678,15 +621,18 @@ export function useMcapFrameTransforms({
       frameIds,
       getPlacementReadiness,
       indexedDynamicRanges,
+      isPlacementTimeSettled,
       prefetchPlacement: requestPlacementRangeForTime,
       resolve,
       status: state.status,
       summarizeGraph,
+      topologyRevision: storeRef.current?.topologyRevision() ?? 0,
     }),
     [
       frameIds,
       getPlacementReadiness,
       indexedDynamicRanges,
+      isPlacementTimeSettled,
       requestPlacementRangeForTime,
       resolve,
       state.error,
@@ -825,10 +771,6 @@ function mergeTransformRanges(
 }
 
 function compareStrings(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
-}
-
-function compareBigInt(left: bigint, right: bigint): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 

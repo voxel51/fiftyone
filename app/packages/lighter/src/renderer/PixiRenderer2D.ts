@@ -76,7 +76,26 @@ export class PixiRenderer2D implements Renderer2D {
     this.eventBus = getEventBus(channelId);
   }
 
+  private static async waitForFonts(): Promise<void> {
+    const fonts = globalThis.document?.fonts;
+    if (!fonts) {
+      return;
+    }
+    try {
+      // the app's stylesheets register the face well before lighter mounts,
+      // so this waits on the specific load rather than document-wide
+      // fonts.ready, which can stall renderer startup on unrelated fonts
+      await fonts.load(`${FONT_WEIGHT} ${FONT_SIZE}px ${FONT_FAMILY}`);
+    } catch {
+      // draw with whatever font is available
+    }
+  }
+
   public async initializePixiJS(): Promise<void> {
+    // Text measured before the webfont loads uses fallback-font metrics,
+    // shifting label pill geometry by a few pixels
+    await PixiRenderer2D.waitForFonts();
+
     this.app = await sharedPixiApp.initialize(this.canvas);
 
     this.resizeObserver = new ResizeObserver((entries) => {
@@ -823,6 +842,10 @@ export class PixiRenderer2D implements Renderer2D {
       if (options.scaleX !== undefined || options.scaleY !== undefined) {
         sprite.scale.x = options.scaleX ?? 1;
         sprite.scale.y = options.scaleY ?? 1;
+      }
+      if (options.tint !== undefined) {
+        // GPU multiply: white texture × tint = tint, no per-pixel CPU work.
+        sprite.tint = options.tint;
       }
     }
     this.addToContainer(sprite, containerId, false);

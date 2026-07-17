@@ -187,18 +187,9 @@ pages on this site apply to Enterprise deployments as well.
     Installation <installation>
     Getting Started <getting_started>
     API connection <api_connection>
-    Cloud-backed media <cloud_media>
-    Roles and permissions <roles_and_permissions>
-    Dataset Versioning <dataset_versioning>
     App <app>
-    Auto-Labeling <verified_auto_labeling>
-    Data Lens <data_lens>
-    Data Quality <data_quality>
-    Query Performance <query_performance>
-    FiftyOne Agent __SUB_NEW__ <agent>
-    Annotation Workflows __SUB_NEW__ <workflows>
-    Plugins <plugins>
     Secrets <secrets>
     Management SDK <management_sdk>
     Migrations <migrations>
     Pluggable Auth <pluggable_auth>
+

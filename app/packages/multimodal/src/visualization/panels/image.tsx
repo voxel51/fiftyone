@@ -24,6 +24,11 @@ import {
 } from "./use-image-texture-lease";
 import { WebGpuCanvas } from "./gpu/webgpu-canvas";
 import { useWebGpuViewStage, WebGpuView } from "./gpu/webgpu-view-stage";
+import {
+  EMPTY_PANEL_NOTICES,
+  PanelNotices,
+  type PanelNotice,
+} from "./panel-notices";
 
 const HUD_BORDER_RADIUS_PX = 4;
 const HUD_OFFSET_PX = 8;
@@ -48,8 +53,12 @@ export interface ImagePanelProps {
    */
   readonly canvasSurface?: string;
   readonly className?: string;
+  /** Ordered H.264 frames from the preceding keyframe to just before `frame`. */
+  readonly decodeRunway?: readonly ImageVisualization[];
   readonly fit?: "contain" | "cover";
   readonly frame: ImageVisualization;
+  /** Diagnostics rendered in the bottom-left expandable notice control. */
+  readonly notices?: readonly PanelNotice[];
   readonly onImageLoaded?: (width: number, height: number) => void;
   readonly onResetView?: () => void;
   /** R3F scene content rendered in normalized image coordinates. */
@@ -77,8 +86,10 @@ export function ImagePanel({
   alt = "Image",
   canvasSurface,
   className,
+  decodeRunway,
   fit = "contain",
   frame,
+  notices = EMPTY_PANEL_NOTICES,
   onImageLoaded,
   onResetView,
   sceneChildren,
@@ -91,10 +102,12 @@ export function ImagePanel({
   const sharedStage = useWebGpuViewStage();
   const useSharedView = sharedStage !== null && sharedStage.error === null;
   const {
+    errorKind,
     errorMessage,
     handle: textureHandle,
     status,
   } = useImageTextureLease({
+    decodeRunway,
     disabledStatus: "error",
     enabled: hasImageData(frame),
     frame,
@@ -126,6 +139,30 @@ export function ImagePanel({
       viewTransform,
     ],
   );
+  const panelNotices = useMemo<readonly PanelNotice[]>(() => {
+    if (canvasError) {
+      return [
+        ...notices,
+        {
+          id: "image-canvas",
+          message: canvasError,
+          severity: "error",
+        },
+      ];
+    }
+    if (status === "error") {
+      const message = errorMessage ?? "Image unavailable";
+      return [
+        ...notices,
+        {
+          id: "image-texture",
+          message,
+          severity: errorKind === "waiting" ? "info" : "error",
+        },
+      ];
+    }
+    return notices;
+  }, [canvasError, errorKind, errorMessage, notices, status]);
 
   return (
     <div
@@ -161,13 +198,8 @@ export function ImagePanel({
         </WebGpuCanvas>
       )}
 
-      {canvasError || status !== "loaded" ? (
-        <div style={styles.status}>
-          {canvasError ??
-            (status === "error"
-              ? (errorMessage ?? "Image unavailable")
-              : "Loading image")}
-        </div>
+      {!canvasError && status === "loading" ? (
+        <div style={styles.status}>Loading image</div>
       ) : null}
       {!canvasError && status === "loaded" && onResetView ? (
         <div style={styles.resetControls}>
@@ -187,6 +219,7 @@ export function ImagePanel({
           </button>
         </div>
       ) : null}
+      <PanelNotices notices={panelNotices} scope="image" />
     </div>
   );
 }

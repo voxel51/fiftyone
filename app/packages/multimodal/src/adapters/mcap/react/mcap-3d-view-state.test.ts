@@ -1,65 +1,57 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
+  createMcap3dViewStateStore,
   EMPTY_MCAP_3D_VIEW_STATE,
-  clearMcap3dViewState,
-  getMcap3dViewStateSnapshot,
   mcap3dSourceShapeMatches,
   nextMcap3dViewStateRestoreOnceKey,
-  recordMcap3dCameraView,
-  recordMcap3dSourceSelection,
-  recordMcap3dTrackingAnchor,
-  recordMcap3dTrackingMode,
-  recordMcap3dTrajectoryFrameOverrides,
-  recordMcap3dUserCameraTargetFrameId,
-  recordMcap3dUserWorldFrameId,
-  resetMcap3dViewStateForTests,
   resolveMcap3dSelectionRestore,
 } from "./mcap-3d-view-state";
 
-beforeEach(() => {
-  resetMcap3dViewStateForTests();
-});
-
 describe("mcap3dViewState store", () => {
   it("starts empty and records fields independently", () => {
-    expect(getMcap3dViewStateSnapshot()).toEqual(EMPTY_MCAP_3D_VIEW_STATE);
+    const store = createMcap3dViewStateStore();
+    expect(store.getSnapshot()).toEqual(EMPTY_MCAP_3D_VIEW_STATE);
 
-    recordMcap3dSourceSelection({
+    store.recordSourceSelection({
       enabledSourceIds: ["/lidar/top"],
       renderableSourceIds: ["/lidar/top", "/labels/boxes"],
     });
-    recordMcap3dTrajectoryFrameOverrides({ "/odom": "map" });
-    recordMcap3dTrackingMode("heading");
-    recordMcap3dUserWorldFrameId("map");
-    recordMcap3dUserCameraTargetFrameId("base_link");
-    recordMcap3dCameraView({
+    store.recordTrajectoryFrameOverrides({ "/odom": "map" });
+    store.recordTrackingMode("heading");
+    store.recordUserWorldFrameId("map");
+    store.recordUserCameraTargetFrameId("base_link");
+    store.recordCameraView({
       pose: { position: [1, 2, 3], target: [0, 0, 0] },
+      sourceKey: "source-a",
       worldFrameId: "map",
     });
-    recordMcap3dTrackingAnchor({
-      mode: "heading",
-      relativePosition: [1, 0, 0],
+    store.recordCameraProjection({
+      far: 20000,
+      fovDegrees: 60,
+      near: 0.1,
+    });
+    store.recordCameraNavigationMode("absolute");
+    const navigationComposition = {
+      kind: "target-relative",
+      relativePosition: [1, 2, 3],
       relativeTarget: [0, 0, 0],
+      rotationMode: "heading",
       sceneUpAxis: "z",
       targetFrameId: "base_link",
-      worldFrameId: "map",
-    });
-
-    expect(getMcap3dViewStateSnapshot()).toEqual({
+      trackingMode: "heading",
+    } as const;
+    store.recordNavigationCompositions([navigationComposition]);
+    expect(store.getSnapshot()).toEqual({
+      cameraNavigationMode: "absolute",
       cameraView: {
         pose: { position: [1, 2, 3], target: [0, 0, 0] },
+        sourceKey: "source-a",
         worldFrameId: "map",
       },
+      cameraProjection: { far: 20000, fovDegrees: 60, near: 0.1 },
+      navigationCompositions: [navigationComposition],
       enabledSourceIds: ["/lidar/top"],
       renderableSourceIds: ["/lidar/top", "/labels/boxes"],
-      trackingAnchor: {
-        mode: "heading",
-        relativePosition: [1, 0, 0],
-        relativeTarget: [0, 0, 0],
-        sceneUpAxis: "z",
-        targetFrameId: "base_link",
-        worldFrameId: "map",
-      },
       trackingMode: "heading",
       trajectoryFrameOverrides: { "/odom": "map" },
       userCameraTargetFrameId: "base_link",
@@ -68,18 +60,20 @@ describe("mcap3dViewState store", () => {
   });
 
   it("returns snapshots that are frozen in time", () => {
-    recordMcap3dUserWorldFrameId("map");
-    const snapshot = getMcap3dViewStateSnapshot();
+    const store = createMcap3dViewStateStore();
+    store.recordUserWorldFrameId("map");
+    const snapshot = store.getSnapshot();
 
-    recordMcap3dUserWorldFrameId("odom");
+    store.recordUserWorldFrameId("odom");
     expect(snapshot.userWorldFrameId).toBe("map");
-    expect(getMcap3dViewStateSnapshot().userWorldFrameId).toBe("odom");
+    expect(store.getSnapshot().userWorldFrameId).toBe("odom");
   });
 
   it("clears back to empty", () => {
-    recordMcap3dTrackingMode("pose");
-    clearMcap3dViewState();
-    expect(getMcap3dViewStateSnapshot()).toEqual(EMPTY_MCAP_3D_VIEW_STATE);
+    const store = createMcap3dViewStateStore();
+    store.recordTrackingMode("pose");
+    store.clear();
+    expect(store.getSnapshot()).toEqual(EMPTY_MCAP_3D_VIEW_STATE);
   });
 
   it("hands out unique restore once-keys", () => {
@@ -104,13 +98,14 @@ describe("mcap3dSourceShapeMatches", () => {
 
 describe("resolveMcap3dSelectionRestore", () => {
   it("passes the selection fields through on a strict shape match", () => {
-    recordMcap3dSourceSelection({
+    const store = createMcap3dViewStateStore();
+    store.recordSourceSelection({
       enabledSourceIds: ["a"],
       renderableSourceIds: ["a", "b"],
     });
 
     expect(
-      resolveMcap3dSelectionRestore(getMcap3dViewStateSnapshot(), ["b", "a"]),
+      resolveMcap3dSelectionRestore(store.getSnapshot(), ["b", "a"]),
     ).toEqual({
       enabledSourceIds: ["a"],
       sourceShapeMatches: true,
@@ -118,13 +113,14 @@ describe("resolveMcap3dSelectionRestore", () => {
   });
 
   it("falls back to nulls on a shape mismatch or missing snapshot", () => {
-    recordMcap3dSourceSelection({
+    const store = createMcap3dViewStateStore();
+    store.recordSourceSelection({
       enabledSourceIds: ["a"],
       renderableSourceIds: ["a", "b"],
     });
 
     expect(
-      resolveMcap3dSelectionRestore(getMcap3dViewStateSnapshot(), ["a", "c"]),
+      resolveMcap3dSelectionRestore(store.getSnapshot(), ["a", "c"]),
     ).toEqual({
       enabledSourceIds: null,
       sourceShapeMatches: false,

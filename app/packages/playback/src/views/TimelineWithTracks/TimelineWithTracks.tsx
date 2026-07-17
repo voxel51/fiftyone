@@ -1,6 +1,6 @@
 import { Drawer } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
   TIMELINE_DRAWER_MAX_SIZE,
@@ -22,6 +22,12 @@ import { partitionTracksByPin } from "./partitionTracksByPin";
 import styles from "./TimelineWithTracks.module.css";
 
 export interface TimelineWithTracksProps {
+  /**
+   * Optional readiness signal stamped on the root as
+   * `data-timeline-loaded` so tests can wait for tracks to be committed
+   * instead of polling. Omit to leave the attribute off entirely.
+   */
+  loaded?: boolean;
   /** @default TIMELINE_LABEL_WIDTH */
   labelWidth?: number;
   /**
@@ -43,6 +49,10 @@ export interface TimelineWithTracksProps {
    * @default true
    */
   defaultDrawerOpen?: boolean;
+  /** Controlled open state for the tracks drawer. */
+  drawerOpen?: boolean;
+  /** Called when the tracks drawer requests an open-state change. */
+  onDrawerOpenChange?: (open: boolean) => void;
   /** Overlay rendered on top of the ruler row in each TimelineHeader. */
   rulerOverlay?: React.ReactNode;
   /**
@@ -83,10 +93,13 @@ export interface TimelineWithTracksProps {
  * scroll together as one unit.
  */
 const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
+  loaded,
   labelWidth: requestedLabelWidth = TIMELINE_LABEL_WIDTH,
   maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
   defaultDrawerOpen = true,
+  drawerOpen: controlledDrawerOpen,
+  onDrawerOpenChange,
   rulerOverlay,
   eventMenuItems,
   extraControls,
@@ -103,7 +116,18 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   // tracks-length effect. Callers opened from a temporal-tag filter pass
   // `defaultDrawerOpen={false}` so only the pinned (filtered) tracks show.
   // User-initiated collapses/expands persist until the next remount.
-  const [drawerOpen, setDrawerOpen] = useState(defaultDrawerOpen);
+  const [uncontrolledDrawerOpen, setUncontrolledDrawerOpen] =
+    useState(defaultDrawerOpen);
+  const drawerOpen = controlledDrawerOpen ?? uncontrolledDrawerOpen;
+  const handleDrawerOpenChange = useCallback(
+    (open: boolean) => {
+      if (controlledDrawerOpen === undefined) {
+        setUncontrolledDrawerOpen(open);
+      }
+      onDrawerOpenChange?.(open);
+    },
+    [controlledDrawerOpen, onDrawerOpenChange],
+  );
 
   const labelWidth = tracks.length === 0 ? 0 : requestedLabelWidth;
 
@@ -131,9 +155,15 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
     />
   );
 
+  const loadedAttribute = loaded === undefined ? undefined : String(loaded);
+
   if (tracks.length === 0) {
     return (
-      <div ref={containerRef} className={clsx(styles.root, className)}>
+      <div
+        ref={containerRef}
+        className={clsx(styles.root, className)}
+        data-timeline-loaded={loadedAttribute}
+      >
         <TimelineHeader
           labelWidth={labelWidth}
           zoomRef={containerRef}
@@ -146,11 +176,15 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   }
 
   return (
-    <div ref={containerRef} className={clsx(styles.root, className)}>
+    <div
+      ref={containerRef}
+      className={clsx(styles.root, className)}
+      data-timeline-loaded={loadedAttribute}
+    >
       <Drawer
         side="bottom"
         open={drawerOpen}
-        onOpenChange={setDrawerOpen}
+        onOpenChange={handleDrawerOpenChange}
         maxSize={maxSize}
         mode="push"
         header={({ toggle }) => (

@@ -13,7 +13,7 @@ export class EmbeddingsPom {
 
   constructor(
     readonly page: Page,
-    eventUtils: EventUtils,
+    readonly eventUtils: EventUtils,
   ) {
     this.locator = this.page.getByTestId("embeddings-container");
     this.selector = new SelectorPom(this.locator, eventUtils, "embeddings");
@@ -89,12 +89,16 @@ class EmebddingsAsserter {
   }
 
   async verifyLassoSelectsSamples() {
+    // lassoing before plotly has drawn the points selects nothing; plotly
+    // dispatches embeddings-plot-rendered after each draw — arm before
+    // selecting the brain run so the first post-selection draw is caught
+    const rendered = await this.embeddingsPom.eventUtils.arm(
+      "embeddings-plot-rendered",
+    );
+
     await this.embeddingsPom.selector.openResults();
     await this.embeddingsPom.selector.selectResult("img_viz");
-    await this.embeddingsPom.plotContainer.waitFor({
-      state: "visible",
-      timeout: 2000,
-    });
+    await rendered.received;
 
     await this.embeddingsPom.lassoTool.click();
     await this.embeddingsPom.selectAll();

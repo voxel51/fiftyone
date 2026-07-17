@@ -10,10 +10,19 @@
   gap: 6px;
 }
 
-.row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+.recommendButton {
+  align-self: flex-start;
+  background: transparent;
+  border: 0;
+  color: var(--color-content-text-muted);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.recommendButton:hover {
+  color: var(--color-content-text);
 }
 
 .sectionHeader {
@@ -26,6 +35,12 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.labelGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .colorPreview {
@@ -226,4 +241,85 @@
   opacity: 1;
   transform: translateY(-50%);
   visibility: visible;
+}
+
+/* Row shared by list-style settings: control + trailing metadata. */
+.fieldRow {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.fieldRow > :first-child {
+  min-width: 0;
+}
+
+.filterInput {
+  background: transparent;
+  border: 1px solid var(--color-content-border-default, #383835);
+  border-radius: 4px;
+  color: var(--color-content-text-primary);
+  font-size: 12px;
+  padding: 4px 8px;
+  width: 100%;
+}
+
+.filterInput::placeholder {
+  color: var(--color-content-text-secondary);
+}
+
+/* Native radio rows for single-select lists too rich for a dropdown. */
+.radioRow {
+  cursor: pointer;
+}
+
+.radioRow input[type="radio"] {
+  accent-color: var(--color-brand-primary);
+  cursor: pointer;
+  flex: none;
+  margin: 0;
+}
+
+.radioRowLabel {
+  color: var(--color-content-text);
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.25;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Scrubbable number field: read-only display until clicked, drag to scrub. */
+.numberFieldWrap {
+  align-items: center;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.numberField {
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-content-text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  min-height: 28px;
+  min-width: 0;
+  padding: 4px 8px;
+  width: 100%;
+}
+
+.numberField[readonly]:not(:disabled) {
+  cursor: ew-resize;
+  user-select: none;
+}
+
+.numberFieldUnit {
+  color: var(--color-content-text-muted);
+  font-size: 10px;
+  line-height: 1;
 }

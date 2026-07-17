@@ -10,20 +10,29 @@ dotenv.config({ path: process.env.CI ? ".env.ci" : ".env.dev" });
 export default defineConfig({
   testDir: "./src",
   testMatch: "**/?(*.)+(spec).ts?(x)",
-  timeout: Duration.Minutes(5),
+  // The slowest legitimate test is ~30s; a tight cap bounds what a hung
+  // test can burn across retries. Slow specs set their own timeout.
+  timeout: Duration.Seconds(90),
 
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI || process.env.IS_UTILITY_DOCKER ? 3 : 0,
-  /* Run one worker per CI shard to keep worker-scoped server state isolated */
+  retries: process.env.CI || process.env.IS_UTILITY_DOCKER ? 1 : 0,
+  // One worker per CI shard: 2 workers on a 4-vCPU runner was tried and
+  // contention made tests time out (20 failures on an otherwise-green
+  // shard). Scale via shard count in e2e.yml instead.
   workers: process.env.CI ? 1 : undefined,
+  /* Suppress "slow test file" warning annotations on the GitHub summary page */
+  reportSlowTests: null,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter:
-    process.env.CI || process.env.IS_UTILITY_DOCKER
-      ? [["line"], ["html", { open: "never" }], ["github"]]
+  reporter: process.env.CI
+    ? // blob reports are merged across shards into the authoritative PR
+      // comment and combined HTML report (see e2e-report in e2e.yml)
+      [["line"], ["blob"], ["github"]]
+    : process.env.IS_UTILITY_DOCKER
+      ? [["line"], ["html", { open: "never" }]]
       : [["line", { printSteps: true }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
