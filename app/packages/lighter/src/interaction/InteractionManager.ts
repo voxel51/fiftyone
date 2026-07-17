@@ -284,6 +284,15 @@ export class InteractionManager {
     return this.currentPixelCoordinates;
   }
 
+  /**
+   * Whether the camera-pan modifier (shift) is held. A shift-drag pans over
+   * anything under the cursor — empty canvas or an overlay — so it never draws,
+   * selects, or resizes. Aspect-ratio-locked resize lives on alt/meta instead.
+   */
+  private isPanModifierActive(): boolean {
+    return this.currentModifiers.shiftKey;
+  }
+
   private setupEventListeners(): void {
     this.canvas.addEventListener("pointerdown", this.handlePointerDown);
     this.canvas.addEventListener("pointermove", this.handlePointerMove);
@@ -325,6 +334,16 @@ export class InteractionManager {
       }
     } else {
       handler = this.findHandlerAtPoint(point);
+      const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
+
+      // Modifier-drag pans the camera over anything under the cursor — empty
+      // canvas or an overlay. Leave the viewport drag plugin active (no
+      // disableZoomPan / capture / pendingAction) and bail before any selection,
+      // draw, or resize so the drag only pans.
+      if (this.isPanModifierActive()) {
+        return;
+      }
+
       // Prevent pan/zoom when target is selectable
       if (handler && TypeGuards.isSelectable(handler)) {
         this.renderer.disableZoomPan();
@@ -362,8 +381,6 @@ export class InteractionManager {
       // If the user releases without dragging (a click), exit detection mode.
       // Clicking on an existing overlay selects it normally instead.
       if (detectionModeBridge.isActive() || segmentationModeBridge.isActive()) {
-        const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
-
         const isSelectInSegmentation =
           segmentationModeBridge.isActive() &&
           segmentationModeBridge.getActiveTool() === SegmentationTool.Select;
@@ -980,8 +997,10 @@ export class InteractionManager {
 
     this.syncModifiersFromEvent(event);
 
-    if (event.shiftKey) {
-      this.maintainAspectRatio = event.shiftKey;
+    // Alt (Windows/Linux) or Cmd/Meta (macOS) locks the resize aspect ratio;
+    // shift is reserved for camera pan.
+    if (event.altKey || event.metaKey) {
+      this.maintainAspectRatio = true;
       return;
     }
 
@@ -1002,7 +1021,7 @@ export class InteractionManager {
   };
 
   /**
-   * Handles keyboard events for release of shift modifier to maintain aspect ratio.
+   * Handles release of the aspect-ratio-lock modifier (alt/meta).
    * @param event - The keyboard event.
    */
   private handleKeyUp = (event: KeyboardEvent): void => {
@@ -1019,7 +1038,7 @@ export class InteractionManager {
 
     this.syncModifiersFromEvent(event);
 
-    this.maintainAspectRatio = event.shiftKey;
+    this.maintainAspectRatio = event.altKey || event.metaKey;
   };
 
   /**
