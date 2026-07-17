@@ -120,8 +120,6 @@ class SimilaritySearchOperator(foo.Operator):
                 if is_snapshot or not can_edit:
                     dist_field = None
 
-            # The frontend sends the standard view_target; target_view
-            # resolves it and handles groups natively.
             view = ctx.target_view()
 
             ctx.set_progress(0.2, label="Preparing query...")
@@ -262,13 +260,13 @@ class SimilaritySearchOperator(foo.Operator):
             )
 
         embeddings, _, _ = results.get_embeddings(**{id_key: positive_ids})
-        pos_mean = np.mean([np.asarray(e) for e in embeddings], axis=0)
+        pos_mean = np.mean(embeddings, axis=0)
 
         # Qdrant-style: query = avg(pos) + (avg(pos) - avg(neg))
         #                    = 2 * avg(pos) - avg(neg)
         if negative_ids:
             embeddings, _, _ = results.get_embeddings(**{id_key: negative_ids})
-            neg_mean = np.mean([np.asarray(e) for e in embeddings], axis=0)
+            neg_mean = np.mean(embeddings, axis=0)
             combined = 2 * pos_mean - neg_mean
         else:
             combined = pos_mean
