@@ -178,6 +178,9 @@ export const getDisplayName = (path: ACTIVE_FIELD | { path: string }) => {
     if (path.path === "_label_tags") {
       return "label tags";
     }
+    if (path.path === "_temporal_tags") {
+      return "temporal tags";
+    }
     return path.path;
   }
   return path;

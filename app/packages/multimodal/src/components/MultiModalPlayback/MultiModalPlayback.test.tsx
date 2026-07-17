@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useTiling } from "@fiftyone/tiling";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -93,6 +94,24 @@ import MultiModalPlayback, {
   SIDEBAR_MAX_WIDTH_PX,
   SIDEBAR_MIN_WIDTH_PX,
 } from "./MultiModalPlayback";
+
+const AddCameraTileMenuItem = () => {
+  const { addTile } = useTiling();
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        addTile({
+          render: () => null,
+          title: "Camera",
+          type: "camera",
+        })
+      }
+    >
+      Camera
+    </button>
+  );
+};
 
 describe("MultiModalPlayback shell", () => {
   afterEach(() => cleanup());
@@ -269,6 +288,54 @@ describe("MultiModalPlayback shell", () => {
     expect(screen.queryByTestId("drawer")).toBeNull();
   });
 
+  it("toggles timeline tracks from the header", () => {
+    render(
+      <MultiModalPlayback
+        fileName="x"
+        defaultLeftOpen={false}
+        defaultRightOpen={false}
+        tracks={[
+          {
+            id: "track-a",
+            label: "Track A",
+            color: "#4a9eff",
+            events: [],
+          },
+        ]}
+      />,
+    );
+
+    const timeline = screen.getByTestId("tiling-header-toggle-timeline-tracks");
+
+    expect(timeline.getAttribute("aria-pressed")).toBe("false");
+    expect(timeline.getAttribute("aria-label")).toBe("Show timeline tracks");
+
+    fireEvent.click(timeline);
+
+    expect(timeline.getAttribute("aria-pressed")).toBe("true");
+    expect(timeline.getAttribute("aria-label")).toBe("Hide timeline tracks");
+  });
+
+  it("opens the left sidebar when Add tile spawns a panel", () => {
+    const onLeftOpenChange = vi.fn();
+    render(
+      <MultiModalPlayback
+        addTileMenu={<AddCameraTileMenuItem />}
+        defaultLeftOpen={false}
+        defaultRightOpen={false}
+        fileName="x"
+        onLeftOpenChange={onLeftOpenChange}
+      />,
+    );
+
+    expect(screen.queryByTestId("drawer")).toBeNull();
+    fireEvent.click(screen.getByTestId("tiling-header-add-tile"));
+    fireEvent.click(screen.getByText("Camera"));
+
+    expect(screen.getByTestId("left-sidebar-pane")).toBeTruthy();
+    expect(onLeftOpenChange).toHaveBeenCalledWith(true);
+  });
+
   it("removes the right sidebar and its toggle when rightSidebar is null", () => {
     render(<MultiModalPlayback fileName="x" rightSidebar={null} />);
     expect(screen.queryByText("Select a tile to inspect.")).toBeNull();
@@ -278,6 +345,46 @@ describe("MultiModalPlayback shell", () => {
     expect(
       screen.getByTestId("tiling-header-toggle-left-sidebar"),
     ).toBeTruthy();
+  });
+
+  it("keeps the left sidebar mounted when a main-viewport overlay appears", () => {
+    let sidebarMounts = 0;
+    let sidebarUnmounts = 0;
+    const SidebarProbe = () => {
+      React.useEffect(() => {
+        sidebarMounts += 1;
+        return () => {
+          sidebarUnmounts += 1;
+        };
+      }, []);
+      return <div data-testid="sidebar-probe" />;
+    };
+    const { rerender } = render(
+      <MultiModalPlayback
+        fileName="sample-a"
+        leftSidebar={<SidebarProbe />}
+        rightSidebar={null}
+      />,
+    );
+
+    rerender(
+      <MultiModalPlayback
+        fileName="sample-b"
+        leftSidebar={<SidebarProbe />}
+        mainOverlay={<div data-testid="main-overlay" />}
+        rightSidebar={null}
+      />,
+    );
+
+    const overlay = screen.getByTestId("main-overlay");
+    expect(screen.getByTestId("left-sidebar-pane").contains(overlay)).toBe(
+      false,
+    );
+    expect(
+      screen.getByTestId("mosaic-stub").parentElement?.contains(overlay),
+    ).toBe(true);
+    expect(sidebarMounts).toBe(1);
+    expect(sidebarUnmounts).toBe(0);
   });
 
   it("lets header captions react to active pane selection and deselection", () => {

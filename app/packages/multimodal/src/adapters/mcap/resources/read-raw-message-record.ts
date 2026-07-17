@@ -9,7 +9,7 @@ import {
   genericRecordDecoderResolutionForChannel,
   mcapChannelForTopic,
 } from "./generic-record-decoder";
-import { pruneRawRecord } from "./raw-record-prune";
+import { pruneRawRecord, rawRecordToJsonText } from "./raw-record-prune";
 
 /**
  * Forward index probe horizon for the result's validity window. Absence
@@ -132,6 +132,7 @@ export async function readMcapRawMessageRecord({
   const pruned = pruneRawRecord(record, request.prune);
   return {
     ...metadata,
+    fullJson: request.includeFullJson ? rawRecordToJsonText(record) : undefined,
     root: pruned.root,
     status: "ok",
     truncated: pruned.truncated || undefined,

@@ -1,4 +1,5 @@
 import type { McapTypes } from "@mcap/core";
+import { compareBigInt } from "../bigint";
 import { DEFAULT_MAX_PREDECESSOR_CHUNK_PROBES } from "./latest-before";
 import {
   channelIdsForTopics,
@@ -190,15 +191,4 @@ function chunkHasAnyChannel(
   }
 
   return false;
-}
-
-function compareBigInt(left: bigint, right: bigint) {
-  if (left < right) {
-    return -1;
-  }
-  if (left > right) {
-    return 1;
-  }
-
-  return 0;
 }

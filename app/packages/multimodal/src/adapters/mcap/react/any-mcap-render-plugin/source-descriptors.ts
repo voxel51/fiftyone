@@ -2,6 +2,7 @@ import {
   BYTE_SOURCE_READ_PROFILE,
   type ByteSourceDescriptor,
 } from "../../../../query/bytes";
+import { mcapSourceDisplayName } from "../mcap-source-display-name";
 
 export interface AnyMcapSourceDescriptor {
   readonly fileName: string;
@@ -49,7 +50,7 @@ export function createRemoteMcapSourceDescriptor(
 
   const href = url.toString();
   return {
-    fileName: fileNameFromUrl(url) ?? "remote.mcap",
+    fileName: mcapSourceDisplayName(href) ?? "remote.mcap",
     source: {
       readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
       sourceId: `remote-url:${href}`,
@@ -60,10 +61,4 @@ export function createRemoteMcapSourceDescriptor(
 
 export function isMcapFile(file: File): boolean {
   return /\.mcap$/i.test(file.name);
-}
-
-function fileNameFromUrl(url: URL): string | null {
-  const pathname = decodeURIComponent(url.pathname);
-  const finalSegment = pathname.split("/").filter(Boolean).pop();
-  return finalSegment || null;
 }

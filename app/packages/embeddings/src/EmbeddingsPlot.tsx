@@ -86,6 +86,9 @@ export function EmbeddingsPlot({
         <Plot
           data={data as Data[]}
           style={{ zIndex: 1 }}
+          onAfterPlot={() =>
+            document.dispatchEvent(new CustomEvent("embeddings-plot-rendered"))
+          }
           onSelected={(selected) => {
             if (!selected || selected?.points?.length === 0) return;
 

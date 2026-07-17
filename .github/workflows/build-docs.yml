@@ -101,9 +101,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
-        uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          large-packages: false # e2e test failed when `true`
+        uses: ./.github/actions/free-disk-space
       - name: Install pip dependencies
         run: |
           pip install --upgrade pip setuptools wheel build

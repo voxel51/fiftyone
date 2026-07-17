@@ -187,7 +187,16 @@ export type McapPlaybackWorkerStreamResponse =
   | {
       readonly done: false;
       readonly id: number;
+      /** One item carrying buffers whose ownership transfers to the client. */
       readonly item: McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType];
+      readonly ok: true;
+      readonly stream: true;
+    }
+  | {
+      readonly done: false;
+      readonly id: number;
+      /** Plain decoded items batched to amortize worker message delivery. */
+      readonly items: readonly McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType][];
       readonly ok: true;
       readonly stream: true;
     }

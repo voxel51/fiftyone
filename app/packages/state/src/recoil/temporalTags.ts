@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, selector, useRecoilValue, useSetRecoilState } from "recoil";
 import { filters } from "./filters";
 import { isModalActive } from "./modal";
+import { activeField } from "./schema";
 import { datasetId } from "./selectors";
 import { TEMPORAL_TAGS_FIELD } from "./sidebar";
 
@@ -121,6 +122,10 @@ export const useSyncTemporalTagResults = (): void => {
 };
 
 const NO_VALUES: string[] = [];
+
+/** Whether the temporal-tags pseudo-field is enabled in the grid sidebar. */
+export const useTemporalTagsFieldActive = (): boolean =>
+  useRecoilValue(activeField({ modal: false, path: TEMPORAL_TAGS_FIELD }));
 
 /**
  * Tag values the grid is currently filtering *for* via the temporal-tags

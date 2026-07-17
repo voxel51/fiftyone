@@ -1,4 +1,5 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
+import { Size, Spinner } from "@voxel51/voodo";
 import {
   useCallback,
   useEffect,
@@ -7,7 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { ImageAnnotationsOverlay } from "../../../visualization/panels/ImageAnnotationsOverlay";
 import {
   BitmapCanvasHost,
   BitmapImageFrameView,
@@ -15,7 +15,10 @@ import {
 import { PointCloudPanel } from "../../../visualization/panels/point-cloud";
 import { acquireGridLiveLease } from "../../../visualization/panels/gpu/webgpu-live-lease";
 import { renderPointCloudSnapshot } from "../../../visualization/panels/gpu/webgpu-snapshot-renderer";
-import type { McapGridPreviewFrame } from "../grid-preview";
+import {
+  mcapGridPreviewFrameRetainedBytes,
+  type McapGridPreviewFrame,
+} from "../grid-preview";
 import classes from "./GridRenderer.module.css";
 import { McapLoadingAscii } from "./McapLoadingAscii";
 import {
@@ -24,6 +27,7 @@ import {
   useMcapGridSelectedStreamTopic,
 } from "./mcap-grid-stream-state";
 import { useMcapGridCameraPose } from "./mcap-grid-camera-state";
+import { mcapCameraScopeKey } from "./mcap-camera-scope";
 import {
   useMcapGridPreview,
   type McapGridPreviewStatus,
@@ -31,15 +35,17 @@ import {
 import { useStableMcapSource } from "./use-stable-mcap-source";
 
 const IMAGE_FIT = "cover";
-const GRID_ANNOTATION_STROKE_WIDTH = 1;
 // Trailing debounce for shared-pose and cell-resize re-snapshots: orbiting
 // the one hovered cell staleness-marks every visible point-cloud cell, so
 // the debounce is what coalesces that churn into one serial snapshot burst.
 const SNAPSHOT_REFRESH_DEBOUNCE_MS = 250;
-// Hover-intent delay before a point-cloud cell requests a live-renderer
-// lease: scroll-past must not thrash leases/renderers (device churn is
-// exactly what the lease pool exists to prevent). Exported for tests.
+/**
+ * Hover-intent delay before a point-cloud cell requests a live-renderer lease.
+ * Exported for tests.
+ */
 export const HOVER_INTENT_DELAY_MS = 120;
+/** Dwell before hover playback starts, avoiding scroll-under-cursor churn. */
+export const PLAYBACK_HOVER_INTENT_DELAY_MS = HOVER_INTENT_DELAY_MS;
 
 const stopGridActivationPropagation = (
   event: React.MouseEvent<HTMLElement>,
@@ -51,8 +57,18 @@ const stopGridActivationPropagation = (
  * Grid renderer for MCAP-backed multimodal samples. Shows one camera
  * preview frame and plays the stream while hovered.
  */
-export function GridRenderer({ ctx }: SampleRendererProps) {
+export function GridRenderer({
+  ctx,
+  isGridActive = true,
+  onRetainedBytesChange,
+}: SampleRendererProps) {
   const source = useStableMcapSource(ctx);
+  const cameraScopeKey =
+    mcapCameraScopeKey(ctx.dataset.datasetId, ctx.media?.field) ??
+    ctx.dataset.datasetId;
+  const [rootElement, setRootElement] = useState<HTMLDivElement | null>(null);
+  const [hovered, setHovered] = useState(false);
+  const visible = useGridRendererVisibility(rootElement, isGridActive);
   const sampleId = useMemo(() => {
     const sample = ctx.sample.sample as { _id?: string; id?: string };
     return sample._id ?? sample.id;
@@ -61,6 +77,8 @@ export function GridRenderer({ ctx }: SampleRendererProps) {
     ctx.dataset.name,
   );
   const preview = useMcapGridPreview({
+    enabled: visible,
+    hovered,
     selectedStreamTopic:
       selectedStreamTopic === MCAP_GRID_STREAM_AUTO
         ? null
@@ -69,12 +87,47 @@ export function GridRenderer({ ctx }: SampleRendererProps) {
   });
   const registerStreamTopics = useRegisterMcapGridStreamTopics();
   const stableStreamTopics = useStableGridStreamTopics(preview.streamTopics);
-  const allowGridActivation =
-    preview.status === "ready" && preview.frame?.kind === "image";
-  const gridActivationHandler = allowGridActivation
-    ? undefined
-    : stopGridActivationPropagation;
+  const blocksGridActivation = preview.frame?.kind === "point-cloud";
+  const gridActivationHandler = blocksGridActivation
+    ? stopGridActivationPropagation
+    : undefined;
+  const rootClassName = blocksGridActivation
+    ? classes.root
+    : `${classes.root} ${classes.modalActivationSurface}`;
+  const playbackIntent = usePlaybackHoverIntent(
+    preview.pause,
+    preview.play,
+    visible,
+    setHovered,
+  );
+  const [surfaceRetention, setSurfaceRetention] = useState<{
+    readonly bytes: number;
+    readonly frame: McapGridPreviewFrame;
+  } | null>(null);
+  const surfaceRetainedBytes =
+    surfaceRetention?.frame === preview.frame ? surfaceRetention.bytes : 0;
+  const handleSurfaceRetainedBytesChange = useCallback(
+    (bytes: number) => {
+      const frame = preview.frame;
+      if (frame) {
+        setSurfaceRetention((current) =>
+          current?.frame === frame && current.bytes === bytes
+            ? current
+            : { bytes, frame },
+        );
+      }
+    },
+    [preview.frame],
+  );
 
+  // This effect keeps the grid cache's retained-byte estimate current.
+  useEffect(() => {
+    onRetainedBytesChange?.(
+      mcapGridPreviewFrameRetainedBytes(preview.frame) + surfaceRetainedBytes,
+    );
+  }, [onRetainedBytesChange, preview.frame, surfaceRetainedBytes]);
+
+  // This effect registers the sample's previewable topics for grid controls.
   useEffect(() => {
     return registerStreamTopics({
       datasetName: ctx.dataset.name,
@@ -86,18 +139,22 @@ export function GridRenderer({ ctx }: SampleRendererProps) {
 
   return (
     <div
-      className={classes.root}
+      className={rootClassName}
       onClick={gridActivationHandler}
       onContextMenu={gridActivationHandler}
-      onPointerEnter={preview.play}
-      onPointerLeave={preview.pause}
+      onPointerEnter={playbackIntent.enter}
+      onPointerLeave={playbackIntent.leave}
+      ref={setRootElement}
     >
       {preview.frame ? (
         <PreviewFrame
           // Image dimensions are per camera stream; remount to drop stale
           // dimensions when the source or selected topic changes.
           key={`${source?.sourceId ?? ""}:${preview.streamTopic ?? ""}`}
+          active={visible}
+          cameraScopeKey={cameraScopeKey}
           frame={preview.frame}
+          onSurfaceRetainedBytesChange={handleSurfaceRetainedBytesChange}
         />
       ) : (
         <PreviewStatus
@@ -106,8 +163,88 @@ export function GridRenderer({ ctx }: SampleRendererProps) {
           status={preview.status}
         />
       )}
+      {preview.frame && preview.isBuffering ? (
+        <span
+          className={classes.bufferingIndicator}
+          data-testid="mcap-grid-buffering-indicator"
+        >
+          <Spinner size={Size.Xs} />
+        </span>
+      ) : null}
     </div>
   );
+}
+
+function useGridRendererVisibility(
+  element: HTMLDivElement | null,
+  gridActive: boolean,
+): boolean {
+  const [intersecting, setIntersecting] = useState(false);
+
+  // This effect tracks whether the mounted renderer is near the grid viewport.
+  useEffect(() => {
+    if (!element || !gridActive) {
+      setIntersecting(false);
+      return undefined;
+    }
+    if (typeof IntersectionObserver === "undefined") {
+      setIntersecting(element.isConnected);
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) =>
+        setIntersecting(entries.some((entry) => entry.isIntersecting)),
+      // Start the worker shortly before a cell enters the viewport without
+      // decoding the detached 200-item hidden cache.
+      { rootMargin: "200px 0px" },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [element, gridActive]);
+
+  return gridActive && intersecting;
+}
+
+function usePlaybackHoverIntent(
+  pause: () => void,
+  play: () => void,
+  enabled: boolean,
+  setHovered: (hovered: boolean) => void,
+) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancel = useCallback(() => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+  const leave = useCallback(() => {
+    cancel();
+    setHovered(false);
+    pause();
+  }, [cancel, pause, setHovered]);
+  const enter = useCallback(() => {
+    cancel();
+    if (!enabled) {
+      return;
+    }
+    setHovered(true);
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      play();
+    }, PLAYBACK_HOVER_INTENT_DELAY_MS);
+  }, [cancel, enabled, play, setHovered]);
+
+  // This effect cancels hover playback when the grid becomes inactive.
+  useEffect(() => {
+    if (!enabled) {
+      leave();
+    }
+    return cancel;
+  }, [cancel, enabled, leave]);
+
+  return { enter, leave };
 }
 
 function useStableGridStreamTopics(topics: readonly string[]) {
@@ -132,11 +269,29 @@ function useStableGridStreamTopics(topics: readonly string[]) {
   }, [topics]);
 }
 
-function PreviewFrame({ frame }: { readonly frame: McapGridPreviewFrame }) {
+function PreviewFrame({
+  active,
+  cameraScopeKey,
+  frame,
+  onSurfaceRetainedBytesChange,
+}: {
+  readonly active: boolean;
+  readonly cameraScopeKey: string;
+  readonly frame: McapGridPreviewFrame;
+  readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
+}) {
   return frame.kind === "point-cloud" ? (
-    <PointCloudPreviewFrame frame={frame} />
+    <PointCloudPreviewFrame
+      active={active}
+      cameraScopeKey={cameraScopeKey}
+      frame={frame}
+      onSurfaceRetainedBytesChange={onSurfaceRetainedBytesChange}
+    />
   ) : (
-    <ImagePreviewFrame frame={frame} />
+    <ImagePreviewFrame
+      frame={frame}
+      onSurfaceRetainedBytesChange={onSurfaceRetainedBytesChange}
+    />
   );
 }
 
@@ -147,15 +302,22 @@ function PreviewFrame({ frame }: { readonly frame: McapGridPreviewFrame }) {
  * holding one of the pool's capped live-renderer leases.
  */
 function PointCloudPreviewFrame({
+  active,
+  cameraScopeKey,
   frame,
+  onSurfaceRetainedBytesChange,
 }: {
+  readonly active: boolean;
+  readonly cameraScopeKey: string;
   readonly frame: Extract<McapGridPreviewFrame, { kind: "point-cloud" }>;
+  readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
 }) {
-  // Subscribing to the shared pose atom re-renders every point-cloud cell
-  // on each orbit tick of the hovered cell. That is cheap at rest (no
-  // canvas, and the bitmap host no-ops on an unchanged bitmap); the
-  // debounce below is what keeps actual snapshot WORK coalesced.
-  const [cameraPose, setCameraPose] = useMcapGridCameraPose();
+  // Only active/visible cells subscribe to the shared pose. Hidden cached
+  // roots keep their last bitmap and catch up lazily when reattached.
+  const [cameraPose, setCameraPose] = useMcapGridCameraPose(
+    cameraScopeKey,
+    active,
+  );
   // Two-step live gate: `wantsLive` flips once the pointer has dwelled
   // past the intent delay; `live` flips only once the lease pool grants
   // this cell one of its capped live-renderer slots.
@@ -176,10 +338,14 @@ function PointCloudPreviewFrame({
   layersRef.current = layers;
   const cameraPoseRef = useRef(cameraPose);
   cameraPoseRef.current = cameraPose;
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  const liveRef = useRef(live);
+  liveRef.current = live;
 
   const requestSnapshot = useCallback(() => {
     const root = rootRef.current;
-    if (!root) {
+    if (!root || !activeRef.current || liveRef.current) {
       return;
     }
 
@@ -214,8 +380,9 @@ function PointCloudPreviewFrame({
 
       // The host adopts the bitmap and closes the one it replaces.
       setSnapshot(bitmap);
+      onSurfaceRetainedBytesChange(bitmap.width * bitmap.height * 4);
     });
-  }, []);
+  }, [onSurfaceRetainedBytesChange]);
 
   const cancelHoverIntent = useCallback(() => {
     if (intentTimerRef.current !== null) {
@@ -240,10 +407,9 @@ function PointCloudPreviewFrame({
       // pose — the snapshot host underneath is still mounted, so nothing
       // flashes.
       setLive(false);
-      requestSnapshot();
     });
     if (lease === null) {
-      // Denied (Phase 3 budget policy): stay on the snapshot.
+      // The live-renderer budget is full; stay on the snapshot.
       return undefined;
     }
 
@@ -253,29 +419,65 @@ function PointCloudPreviewFrame({
       lease.release();
       setLive(false);
     };
-  }, [holderId, requestSnapshot, wantsLive]);
+  }, [holderId, wantsLive]);
 
   // This effect requests a snapshot immediately on mount and whenever the
   // preview frame content changes (content changes are discrete, so no
   // debounce).
   useEffect(() => {
     requestSnapshot();
-  }, [frame.pointCloud, requestSnapshot]);
+  }, [active, frame.pointCloud, requestSnapshot]);
+
+  // Going live cancels redundant snapshot work. Returning to rest renders
+  // exactly one fresh host bitmap at the final shared camera pose.
+  const wasLiveRef = useRef(false);
+  useEffect(() => {
+    if (live) {
+      wasLiveRef.current = true;
+      inFlightRef.current?.abort();
+      return;
+    }
+    if (wasLiveRef.current) {
+      wasLiveRef.current = false;
+      requestSnapshot();
+    }
+  }, [live, requestSnapshot]);
 
   // This effect re-snapshots (debounced) when the SHARED grid pose
   // changes — all point-cloud cells go stale together when any one is
   // orbited, and the trailing debounce coalesces the orbit stream into
-  // one snapshot per cell once the pose settles.
-  const skipInitialPoseRef = useRef(true);
+  // one snapshot per cell once the pose settles. A hidden→active
+  // transition is excluded: the mount effect above already snapshotted
+  // at the freshly re-read pose, so a debounced follow-up would render
+  // an identical duplicate.
+  const previousPoseRef = useRef(cameraPose);
+  const wasActiveRef = useRef(active);
   useEffect(() => {
-    if (skipInitialPoseRef.current) {
-      skipInitialPoseRef.current = false;
+    const previousPose = previousPoseRef.current;
+    previousPoseRef.current = cameraPose;
+    const wasActive = wasActiveRef.current;
+    wasActiveRef.current = active;
+    if (previousPose === cameraPose || !wasActive) {
+      return undefined;
+    }
+
+    if (!active || live) {
       return undefined;
     }
 
     const timer = setTimeout(requestSnapshot, SNAPSHOT_REFRESH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [cameraPose, requestSnapshot]);
+  }, [active, cameraPose, live, requestSnapshot]);
+
+  // This effect releases live/snapshot work when the cell leaves the viewport.
+  useEffect(() => {
+    if (active) {
+      return;
+    }
+    cancelHoverIntent();
+    setWantsLive(false);
+    inFlightRef.current?.abort();
+  }, [active, cancelHoverIntent]);
 
   // This effect re-snapshots (debounced) when the cell's layout size
   // changes, keeping the bitmap 1:1 with CSS pixels instead of rescaling.
@@ -319,13 +521,20 @@ function PointCloudPreviewFrame({
     };
   }, [cancelHoverIntent]);
 
+  const pointCloudClassName = live
+    ? `${classes.imagePanel} ${classes.pointCloud} ${classes.livePointCloud}`
+    : `${classes.imagePanel} ${classes.pointCloud}`;
+
   return (
     <div
-      className={classes.imagePanel}
+      className={pointCloudClassName}
       onPointerEnter={() => {
         // Arm the hover-intent timer; only a dwell past the delay asks
         // the pool for a live-renderer lease.
         cancelHoverIntent();
+        if (!active) {
+          return;
+        }
         intentTimerRef.current = setTimeout(() => {
           intentTimerRef.current = null;
           setWantsLive(true);
@@ -338,9 +547,6 @@ function PointCloudPreviewFrame({
         // refreshed at the pose the user left the shared camera in.
         cancelHoverIntent();
         setWantsLive(false);
-        if (live) {
-          requestSnapshot();
-        }
       }}
       ref={rootRef}
     >
@@ -371,42 +577,20 @@ function PointCloudPreviewFrame({
 
 function ImagePreviewFrame({
   frame,
+  onSurfaceRetainedBytesChange,
 }: {
   readonly frame: Extract<McapGridPreviewFrame, { kind: "image" }>;
+  readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
 }) {
-  const [imageDims, setImageDims] = useState<{
-    width: number;
-    height: number;
-  } | null>(null);
-
+  // GPU-free bitmap path: image preview cells hold zero WebGPU devices (the
+  // modal's ImagePanel is untouched).
   return (
-    <>
-      {/* GPU-free bitmap path: image preview cells hold zero WebGPU
-          devices (the modal's ImagePanel is untouched). */}
-      <BitmapImageFrameView
-        className={classes.imagePanel}
-        fit={IMAGE_FIT}
-        frame={frame.image}
-        onImageLoaded={(width, height) =>
-          setImageDims((prev) =>
-            prev?.width === width && prev?.height === height
-              ? prev
-              : { width, height },
-          )
-        }
-      />
-      {imageDims && frame.annotations ? (
-        <div className={classes.annotationLayer}>
-          <ImageAnnotationsOverlay
-            annotations={[frame.annotations]}
-            fit={IMAGE_FIT}
-            imageHeight={imageDims.height}
-            imageWidth={imageDims.width}
-            strokeWidth={GRID_ANNOTATION_STROKE_WIDTH}
-          />
-        </div>
-      ) : null}
-    </>
+    <BitmapImageFrameView
+      className={classes.imagePanel}
+      fit={IMAGE_FIT}
+      frame={frame.image}
+      onBitmapRetainedBytesChange={onSurfaceRetainedBytesChange}
+    />
   );
 }
 
