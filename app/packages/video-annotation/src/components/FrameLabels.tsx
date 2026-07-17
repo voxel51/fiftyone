@@ -668,7 +668,6 @@ export const FrameLabelsTracks: React.FC<{
         extraControls={<VideoAnnotationToolbar />}
         loaded={timelineLoaded}
         maxSize={maxSize}
-        defaultDrawerOpen
       />
     </TrackProvider>
   );

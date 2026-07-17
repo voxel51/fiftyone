@@ -44,7 +44,7 @@ export interface TimelineWithTracksProps {
   /**
    * Whether the drawer starts open. Mount-time only — user toggles thereafter
    * persist until the next remount. Defaults closed; callers that want the
-   * timeline visible immediately (e.g. the annotation surface) pass `true`.
+   * timeline visible immediately pass `true`.
    * @default false
    */
   defaultDrawerOpen?: boolean;
@@ -109,9 +109,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   const tracks = useTracks();
   const { pinnedIds, togglePin } = useTrackPinning();
   const { seekSnapped } = usePlayback();
-  // Uncontrolled open state, seeded once from `defaultDrawerOpen`. The
-  // annotation surface remounts on each entry to annotate mode, so passing
-  // `true` there shows the timeline immediately without a tracks-length effect.
+  // Uncontrolled open state, seeded once from `defaultDrawerOpen`.
   // User-initiated collapses/expands persist until the next remount.
   const [uncontrolledDrawerOpen, setUncontrolledDrawerOpen] =
     useState(defaultDrawerOpen);

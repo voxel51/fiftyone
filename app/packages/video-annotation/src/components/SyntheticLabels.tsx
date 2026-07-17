@@ -101,7 +101,7 @@ export const SyntheticTrackTimeline: React.FC = () => {
       tracks={tracks}
       autoPinNewTracks={false}
     >
-      <TimelineWithTracks decorateTrack={decorateTrack} defaultDrawerOpen />
+      <TimelineWithTracks decorateTrack={decorateTrack} />
     </TrackProvider>
   );
 };
