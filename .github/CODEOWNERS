@@ -1,10 +1,5 @@
 *   @voxel51/developers
 
-# Aloha Shirts care about versioning
+# Aloha Shirts own CI/build infrastructure
 .github/                     @voxel51/aloha-shirts
 Dockerfile                   @voxel51/aloha-shirts
-package.json                 @voxel51/aloha-shirts
-requirements.txt             @voxel51/aloha-shirts
-requirements/                @voxel51/aloha-shirts
-setup.py                     @voxel51/aloha-shirts
-yarn.lock                    @voxel51/aloha-shirts

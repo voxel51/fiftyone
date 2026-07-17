@@ -77,7 +77,7 @@
         "@voxel51/voodo": "^0.0.37",
         "brace-expansion": "^5.0.6",
         "minimatch": "9.0.7",
-        "prettier": "^3.8.4",
+        "prettier": "~3.8.4",
         "protobufjs": "^7.6.4",
         "three-stdlib": "^2.36.1"
     }
