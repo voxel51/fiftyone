@@ -53,6 +53,7 @@ import { resolveTrackExtentEdit } from "../tracks/trackExtentEdit";
 import { useVideoTrackDecorator } from "../tracks/useVideoTrackDecorator";
 import { useScrollTrackToAnchor } from "../state/useVideoInteraction";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
+import { useTimelineDrawerOpen } from "../state/useTimelineDrawer";
 import {
   useVideoSurfaceActions,
   type VideoSurfaceActions,
@@ -571,11 +572,16 @@ function useTrackDecorator({
  * only at mount) bootstraps from the real frame-track list; later recolors
  * update through the live `tracks` prop and preserve the user's pin state.
  */
-export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
-  sample,
-}) => {
+export const FrameLabelsTracks: React.FC<{
+  sample?: ModalSample;
+  /** Cap on the timeline drawer body (px); it scrolls internally past this. */
+  maxSize?: number;
+}> = ({ sample, maxSize }) => {
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
+
+  // Persisted globally so switching samples keeps the drawer open/closed.
+  const [drawerOpen, setDrawerOpen] = useTimelineDrawerOpen();
 
   // Persist pin state per video (dataset + sample) so reopening the same
   // sample restores which tracks the user pinned to the timeline.
@@ -665,6 +671,9 @@ export const FrameLabelsTracks: React.FC<{ sample?: ModalSample }> = ({
         decorateTrack={decorateTrack}
         extraControls={<VideoAnnotationToolbar />}
         loaded={timelineLoaded}
+        maxSize={maxSize}
+        drawerOpen={drawerOpen}
+        onDrawerOpenChange={setDrawerOpen}
       />
     </TrackProvider>
   );
@@ -703,6 +712,14 @@ function decorateObjectTrack({
       label: "Delete track",
       destructive: true,
       onSelect: () => actions.deleteTrack(track.id, fieldPath),
+    },
+    {
+      // deletes only the frame captured when the menu opened (see onContextMenu);
+      // a no-op when the track has no occurrence on that frame
+      label: "Delete current frame",
+      destructive: true,
+      onSelect: () =>
+        actions.trimTrack(track.id, [splitFrameRef.current], fieldPath),
     },
     {
       // splits at the frame captured when the menu opened (see onContextMenu)
