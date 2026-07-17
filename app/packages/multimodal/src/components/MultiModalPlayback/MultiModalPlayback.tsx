@@ -51,6 +51,7 @@ export function clampSidebarWidth(px: number): number {
   );
 }
 
+/** Inputs for the reusable multimodal playback shell. */
 export interface MultiModalPlaybackProps {
   /** Filename rendered on the left of the top bar. */
   fileName: string;
@@ -78,6 +79,8 @@ export interface MultiModalPlaybackProps {
   tracks?: Track[];
   /** Track ids that should start pinned to the timeline. */
   defaultPinnedTrackIds?: string[];
+  /** Per-row behavior composed from shared and registered timeline sources. */
+  decorateTrack?: TemporalTagTimelineProps["decorateTrack"];
 
   /** Initial tile entries seeded into the embedded TilingProvider. */
   initialTiles?: Record<string, TilingTile>;
@@ -168,6 +171,10 @@ export interface MultiModalPlaybackProps {
   onTagDelete?: NonNullable<
     TemporalTagTimelineProps["eventMenuItems"]
   >[number]["onSelect"];
+  /** Reports the timeline drawer's seeded and user-controlled visibility. */
+  onTimelineDrawerOpenChange?: (open: boolean) => void;
+  /** Optional maximum expanded track-body height. */
+  timelineDrawerMaxSize?: number;
 
   /**
    * Rendered inside the providers this component owns. Use it for
@@ -219,6 +226,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   timelineExtraActions,
   tracks,
   defaultPinnedTrackIds,
+  decorateTrack,
   initialTiles,
   initialManualTileTitles,
   autoLayoutStrategy,
@@ -243,6 +251,8 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   onTagCreate,
   onTagUpdate,
   onTagDelete,
+  onTimelineDrawerOpenChange,
+  timelineDrawerMaxSize,
   children,
   className,
 }) => {
@@ -290,11 +300,14 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
               onTagCreate={onTagCreate}
               onTagUpdate={onTagUpdate}
               onTagDelete={onTagDelete}
+              onTimelineDrawerOpenChange={onTimelineDrawerOpenChange}
+              timelineDrawerMaxSize={timelineDrawerMaxSize}
               sharedImageWebGpuViews={sharedImageWebGpuViews}
               className={className}
               // Start with the tracks drawer collapsed. Pinned tracks remain
               // visible below the ruler until the user expands the drawer.
               timelineDrawerDefaultOpen={false}
+              decorateTrack={decorateTrack}
             />
           </TilingProvider>
         </SceneInventoryProvider>
@@ -322,10 +335,13 @@ interface LayoutProps {
   onTagCreate?: MultiModalPlaybackProps["onTagCreate"];
   onTagUpdate?: MultiModalPlaybackProps["onTagUpdate"];
   onTagDelete?: MultiModalPlaybackProps["onTagDelete"];
+  onTimelineDrawerOpenChange?: MultiModalPlaybackProps["onTimelineDrawerOpenChange"];
+  timelineDrawerMaxSize?: number;
   sharedImageWebGpuViews: boolean;
   className?: string;
   /** Initial open state for the timeline drawer. */
   timelineDrawerDefaultOpen: boolean;
+  decorateTrack?: MultiModalPlaybackProps["decorateTrack"];
 }
 
 function Layout({
@@ -347,9 +363,12 @@ function Layout({
   onTagCreate,
   onTagUpdate,
   onTagDelete,
+  onTimelineDrawerOpenChange,
+  timelineDrawerMaxSize,
   sharedImageWebGpuViews,
   className,
   timelineDrawerDefaultOpen,
+  decorateTrack,
 }: LayoutProps) {
   const {
     layout,
@@ -399,6 +418,14 @@ function Layout({
     },
     [onRightOpenChange],
   );
+  const updateTimelineTracksOpen = useCallback((open: boolean) => {
+    setTimelineTracksOpen(open);
+  }, []);
+  // This effect reports both the seeded drawer state and subsequent user
+  // changes to runtime contributions that gate work on drawer visibility.
+  useEffect(() => {
+    onTimelineDrawerOpenChange?.(timelineTracksOpen);
+  }, [onTimelineDrawerOpenChange, timelineTracksOpen]);
 
   // A newly spawned panel is focused immediately, so reveal the settings it
   // can configure even when the user previously collapsed the left sidebar.
@@ -477,7 +504,9 @@ function Layout({
         timelineTracksOpen={timelineTracksOpen}
         rightSidebarOpen={rightOpen}
         onToggleLeftSidebar={() => updateLeftOpen(!leftOpen)}
-        onToggleTimelineTracks={() => setTimelineTracksOpen((open) => !open)}
+        onToggleTimelineTracks={() =>
+          updateTimelineTracksOpen(!timelineTracksOpen)
+        }
         onToggleRightSidebar={
           hasRightSidebar ? () => updateRightOpen(!rightOpen) : undefined
         }
@@ -545,7 +574,9 @@ function Layout({
 
       <TemporalTagTimeline
         drawerOpen={timelineTracksOpen}
-        onDrawerOpenChange={setTimelineTracksOpen}
+        maxSize={timelineDrawerMaxSize}
+        onDrawerOpenChange={updateTimelineTracksOpen}
+        decorateTrack={decorateTrack}
         extraActions={timelineExtraActions}
         onTagCreate={onTagCreate}
         onTagUpdate={onTagUpdate}

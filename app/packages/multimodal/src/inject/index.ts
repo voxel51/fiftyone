@@ -2,3 +2,4 @@
 // plugins, we can do so here
 
 import "../adapters/mcap/entry";
+import "./enterprise";

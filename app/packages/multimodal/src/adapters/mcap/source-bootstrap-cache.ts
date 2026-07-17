@@ -39,7 +39,7 @@ export function publishMcapSourceBootstrap(
   source: ByteSourceDescriptor,
   bootstrap: McapSourceBootstrap,
 ): void {
-  const key = byteSourceAccessKey(source);
+  const key = mcapSourceBootstrapKey(source);
   const current = entries.get(key);
   if (current) {
     retainedPosterBytes -= current.posterBytes;
@@ -70,14 +70,14 @@ export function publishMcapSourceBootstrap(
 export function peekMcapSourceBootstrap(
   source: ByteSourceDescriptor,
 ): McapSourceBootstrap | null {
-  return copyEntry(entries.get(byteSourceAccessKey(source)));
+  return copyEntry(entries.get(mcapSourceBootstrapKey(source)));
 }
 
 /** Returns the current source bootstrap and promotes it as recently used. */
 export function getMcapSourceBootstrap(
   source: ByteSourceDescriptor,
 ): McapSourceBootstrap | null {
-  const key = byteSourceAccessKey(source);
+  const key = mcapSourceBootstrapKey(source);
   const entry = entries.get(key);
   if (!entry) {
     return null;
@@ -92,7 +92,7 @@ export function getMcapSourceBootstrap(
 export function getMcapSourceBootstrapSnapshot(
   source: ByteSourceDescriptor,
 ): McapSourceBootstrap | null {
-  return entries.get(byteSourceAccessKey(source)) ?? null;
+  return entries.get(mcapSourceBootstrapKey(source)) ?? null;
 }
 
 /** Subscribes to source-bootstrap publications for one source. */
@@ -100,7 +100,7 @@ export function subscribeMcapSourceBootstrap(
   source: ByteSourceDescriptor,
   listener: () => void,
 ): () => void {
-  const key = byteSourceAccessKey(source);
+  const key = mcapSourceBootstrapKey(source);
   const listeners = listenersBySource.get(key) ?? new Set<() => void>();
   listeners.add(listener);
   listenersBySource.set(key, listeners);
@@ -110,6 +110,11 @@ export function subscribeMcapSourceBootstrap(
       listenersBySource.delete(key);
     }
   };
+}
+
+/** Cache identity for bootstrap facts, including transport validators. */
+export function mcapSourceBootstrapKey(source: ByteSourceDescriptor): string {
+  return JSON.stringify([byteSourceAccessKey(source), source.etag ?? null]);
 }
 
 function copyEntry(entry: CacheEntry | undefined): McapSourceBootstrap | null {
