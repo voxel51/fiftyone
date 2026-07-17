@@ -53,6 +53,9 @@ export class PixiRenderer2D implements Renderer2D {
   // Container tracking for visibility management
   private containers = new Map<string, PIXI.Container>();
 
+  // track created textures to ensure their removal
+  private ownedTextures = new Map<string, PIXI.Texture[]>();
+
   /** Minimum zoom scale (10%). */
   private static readonly ZOOM_MIN = 0.1;
 
@@ -767,10 +770,12 @@ export class PixiRenderer2D implements Renderer2D {
         break;
       case "canvas":
         if (image.canvas) {
-          const texture = PIXI.Texture.from(image.canvas);
+          // 'skipCache: true'
+          const texture = PIXI.Texture.from(image.canvas, true);
           texture.source.update();
           texture.source.scaleMode = "nearest";
           sprite = new PIXI.Sprite(texture);
+          this.trackOwnedTexture(containerId, texture);
         } else {
           return;
         }
@@ -1134,14 +1139,34 @@ export class PixiRenderer2D implements Renderer2D {
     container.addChild(element);
   }
 
+  private trackOwnedTexture(containerId: string, texture: PIXI.Texture): void {
+    const existing = this.ownedTextures.get(containerId);
+    if (existing) {
+      existing.push(texture);
+    } else {
+      this.ownedTextures.set(containerId, [texture]);
+    }
+  }
+
+  private destroyOwnedTextures(containerId: string): void {
+    const textures = this.ownedTextures.get(containerId);
+    if (textures) {
+      for (const texture of textures) {
+        texture.destroy(true);
+      }
+      this.ownedTextures.delete(containerId);
+    }
+  }
+
   /**
    * Disposes of a container
    * @param containerId - The container ID to dispose
    */
   dispose(containerId: string): void {
+    this.destroyOwnedTextures(containerId);
     const container = this.containers.get(containerId);
     if (container) {
-      container.destroy({ children: true });
+      container.destroy({ children: true, context: true });
       this.containers.delete(containerId);
     }
   }
@@ -1268,7 +1293,13 @@ export class PixiRenderer2D implements Renderer2D {
     }
 
     this.resetTickHandler();
-    this.viewport?.destroy({ children: true });
+    for (const textures of this.ownedTextures.values()) {
+      for (const texture of textures) {
+        texture.destroy(true);
+      }
+    }
+    this.ownedTextures.clear();
+    this.viewport?.destroy({ children: true, context: true });
     this.viewport?.removeChildren();
     this.containers.clear();
     this.resizeObserver?.disconnect();
