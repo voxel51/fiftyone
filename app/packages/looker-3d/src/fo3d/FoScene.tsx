@@ -26,6 +26,7 @@ import {
   BoxGeometryAsset,
   CylinderGeometryAsset,
   FbxAsset,
+  GaussianSplatAsset,
   type FoScene,
   type FoSceneNode,
   GltfAsset,
@@ -40,6 +41,8 @@ import { Box } from "./shape/Box";
 import { Cylinder } from "./shape/Cylinder";
 import { Plane } from "./shape/Plane";
 import { Sphere } from "./shape/Sphere";
+import { GaussianSplat } from "./splat/GaussianSplat";
+import { SparkRendererProvider } from "./splat/SparkRendererRoot";
 import { getLabelForSceneNode, getVisibilityMapFromFo3dParsed } from "./utils";
 
 interface FoSceneProps {
@@ -143,6 +146,19 @@ const getAssetJsx = (node: FoSceneNode, children: React.ReactNode) => {
       >
         {children}
       </PlyAssetNode>
+    );
+  } else if (node.asset instanceof GaussianSplatAsset) {
+    return (
+      <GaussianSplat
+        key={key}
+        name={node.name}
+        splat={node.asset}
+        position={node.position}
+        quaternion={node.quaternion}
+        scale={node.scale}
+      >
+        {children}
+      </GaussianSplat>
     );
   } else if (node.asset instanceof StlAsset) {
     return (
@@ -331,16 +347,18 @@ export const FoSceneComponent = ({ scene, pointCloudCrop }: FoSceneProps) => {
 
   const setFo3dContainsBackground = useSetRecoilState(fo3dContainsBackground);
 
+  // This effect synchronizes the global background-availability state with
+  // the active FO3D scene.
   useEffect(() => {
     if (isSceneInitialized && scene?.background !== null) {
       setFo3dContainsBackground(true);
     } else {
       setFo3dContainsBackground(false);
     }
-  }, [scene, isSceneInitialized]);
+  }, [scene, isSceneInitialized, setFo3dContainsBackground]);
 
   return (
-    <>
+    <SparkRendererProvider>
       {isFo3dBackgroundOn && fo3dRoot && scene.background && (
         <Fo3dErrorBoundary ignoreError boundaryName="background">
           <Suspense fallback={null}>
@@ -351,6 +369,6 @@ export const FoSceneComponent = ({ scene, pointCloudCrop }: FoSceneProps) => {
       <PointCloudCropContext.Provider value={pointCloudCrop}>
         <SceneR3f scene={scene} visibilityMap={visibilityMap} />
       </PointCloudCropContext.Provider>
-    </>
+    </SparkRendererProvider>
   );
 };

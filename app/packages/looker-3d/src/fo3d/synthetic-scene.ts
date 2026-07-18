@@ -1,5 +1,6 @@
 import type { ModalSample } from "@fiftyone/state";
 import {
+  GAUSSIAN_SPLAT_EXTENSIONS,
   getSamplePathExtension,
   isWrappableDirect3dSamplePath,
 } from "@fiftyone/utilities";
@@ -12,16 +13,22 @@ type Direct3dMediaFieldName =
   | "plyPath"
   | "gltfPath"
   | "fbxPath"
-  | "stlPath";
+  | "stlPath"
+  | "splatPath";
 type SyntheticSceneNode = Omit<
   FiftyoneSceneRawJson,
   "background" | "camera" | "lights"
 > &
-  Partial<Record<Direct3dMediaFieldName, string>>;
+  Partial<Record<Direct3dMediaFieldName, string>> & {
+    format?: string;
+    centerGeometry?: boolean;
+  };
 type SyntheticNodeConfig = {
   nodeType: string;
   mediaFieldName: Direct3dMediaFieldName;
   defaultMaterial: FoSceneRawNode["defaultMaterial"];
+  format?: string;
+  centerGeometry?: boolean;
 };
 
 const DEFAULT_MESH_MATERIAL: FoSceneRawNode["defaultMaterial"] = {
@@ -65,6 +72,9 @@ const DEFAULT_SCENE_CAMERA: FiftyoneSceneRawJson["camera"] = {
 };
 
 const Y_UP_NODE_TYPES = new Set(["GltfMesh", "FbxMesh"]);
+const GAUSSIAN_SPLAT_EXTENSION_SET: ReadonlySet<string> = new Set(
+  GAUSSIAN_SPLAT_EXTENSIONS,
+);
 
 const DEFAULT_SCENE_BACKGROUND: FiftyoneSceneRawJson["background"] = {
   color: null,
@@ -80,6 +90,19 @@ const getNodeConfigForExtension = (
   extension: string | null,
 ): SyntheticNodeConfig | null => {
   const normalizedExtension = extension?.toLowerCase() ?? null;
+
+  if (
+    normalizedExtension &&
+    GAUSSIAN_SPLAT_EXTENSION_SET.has(normalizedExtension)
+  ) {
+    return {
+      nodeType: "GaussianSplat",
+      mediaFieldName: "splatPath",
+      defaultMaterial: DEFAULT_MESH_MATERIAL,
+      format: normalizedExtension.slice(1),
+      centerGeometry: true,
+    };
+  }
 
   switch (normalizedExtension) {
     case ".pcd":
@@ -148,6 +171,12 @@ const buildSyntheticNode = ({
 
   // Each loader expects the source path on a node-type-specific media field.
   node[nodeConfig.mediaFieldName] = mediaPath;
+  if (nodeConfig.format) {
+    node.format = nodeConfig.format;
+  }
+  if (nodeConfig.centerGeometry !== undefined) {
+    node.centerGeometry = nodeConfig.centerGeometry;
+  }
 
   return node as FiftyoneSceneRawJson;
 };

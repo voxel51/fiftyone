@@ -3,6 +3,7 @@ import {
   BoxGeometryAsset,
   CylinderGeometryAsset,
   FbxAsset,
+  GaussianSplatAsset,
   type FoMeshMaterial,
   type FoPointcloudMaterialProps,
   type FoScene,
@@ -102,6 +103,15 @@ const toQuaternion = (
 const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
   const nodeType = node._type.toLowerCase();
   const material = node.defaultMaterial;
+
+  if (nodeType === "gaussiansplat" && hasStringField(node, "splatPath")) {
+    return new GaussianSplatAsset(
+      node.splatPath,
+      getOptionalStringField(node, "preTransformedSplatPath"),
+      getOptionalStringField(node, "format"),
+      getOptionalBooleanField(node, "centerGeometry") ?? true,
+    );
+  }
 
   if (nodeType.endsWith("mesh")) {
     const meshMaterial = isFoMeshMaterial(material) ? material : undefined;

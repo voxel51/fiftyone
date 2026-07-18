@@ -95,4 +95,71 @@ describe("fetch", () => {
     expect(new Uint8Array(result.response)).toEqual(new Uint8Array([1, 2, 3]));
     expect(onProgress.mock.calls.map(([loaded]) => loaded)).toEqual([0, 2, 3]);
   });
+
+  it("returns an unconsumed response when requested", async () => {
+    const response = new Response("stream me", { status: 200 });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => response),
+    );
+    setFetchFunction("http://localhost");
+
+    const result = await getFetchFunctionExtended()<undefined, Response>({
+      method: "GET",
+      path: "/test",
+      result: "response",
+      retries: 0,
+    });
+
+    expect(result.response).toBe(response);
+    await expect(result.response.text()).resolves.toBe("stream me");
+  });
+
+  it("does not cache non-replayable responses", async () => {
+    const mockFetch = vi.fn(async () => new Response("stream me"));
+    vi.stubGlobal("fetch", mockFetch);
+    setFetchFunction("http://localhost");
+
+    const cachedFetch = getFetchFunction({ cache: true });
+    const basicResponses = await Promise.all([
+      cachedFetch<undefined, Response>(
+        "GET",
+        "/basic",
+        undefined,
+        "response",
+        0,
+      ),
+      cachedFetch<undefined, Response>(
+        "GET",
+        "/basic",
+        undefined,
+        "response",
+        0,
+      ),
+    ]);
+    const extendedResponses = await Promise.all([
+      getFetchFunctionExtended()<undefined, Response>({
+        cache: true,
+        method: "GET",
+        path: "/extended",
+        result: "response",
+        retries: 0,
+      }),
+      getFetchFunctionExtended()<undefined, Response>({
+        cache: true,
+        method: "GET",
+        path: "/extended",
+        result: "response",
+        retries: 0,
+      }),
+    ]);
+
+    await expect(
+      Promise.all([
+        ...basicResponses.map((response) => response.text()),
+        ...extendedResponses.map(({ response }) => response.text()),
+      ]),
+    ).resolves.toEqual(["stream me", "stream me", "stream me", "stream me"]);
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+  });
 });

@@ -18,6 +18,15 @@ export type RecognizedMediaType =
   | NativeMediaType
   | typeof MEDIA_TYPE_MULTIMODAL;
 
+/** Direct-media extensions decoded by the Gaussian splat viewer. */
+export const GAUSSIAN_SPLAT_EXTENSIONS = [
+  ".spz",
+  ".splat",
+  ".ksplat",
+  ".sog",
+  ".rad",
+] as const;
+
 /**
  * Returns true if annotation is supported for the provided media type.
  *
@@ -37,6 +46,7 @@ const DIRECT_3D_SAMPLE_EXTENSIONS = new Set([
   ".glb",
   ".fbx",
   ".stl",
+  ...GAUSSIAN_SPLAT_EXTENSIONS,
 ]);
 
 const WRAPPABLE_DIRECT_3D_SAMPLE_EXTENSIONS = new Set([
@@ -46,6 +56,7 @@ const WRAPPABLE_DIRECT_3D_SAMPLE_EXTENSIONS = new Set([
   ".glb",
   ".fbx",
   ".stl",
+  ...GAUSSIAN_SPLAT_EXTENSIONS,
 ]);
 
 const FO3D_SAMPLE_EXTENSION = ".fo3d";

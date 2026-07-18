@@ -3122,6 +3122,7 @@ __metadata:
     "@emotion/styled": "npm:^11.14.0"
     "@react-three/drei": "npm:^10.7.6"
     "@react-three/fiber": "npm:^8.18.0"
+    "@sparkjsdev/spark": "npm:^2.1.0"
     "@types/chroma-js": "npm:^3.1.1"
     "@types/node": "npm:^20.11.10"
     "@types/three": "npm:^0.176.0"
@@ -6258,6 +6259,17 @@ __metadata:
   dependencies:
     "@sinonjs/commons": "npm:^3.0.0"
   checksum: 10/78155c7bd866a85df85e22028e046b8d46cf3e840f72260954f5e3ed5bd97d66c595524305a6841ffb3f681a08f6e5cef572a2cce5442a8a232dc29fb409b83e
+  languageName: node
+  linkType: hard
+
+"@sparkjsdev/spark@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "@sparkjsdev/spark@npm:2.1.0"
+  dependencies:
+    fflate: "npm:^0.8.2"
+  peerDependencies:
+    three: ">=0.180.0"
+  checksum: 10/2ad0ebaec2eb4c84715e579c0bb57714bd92d7d36d8e1c28597f48c6193400223eb95a09538f96cb6e2a4fe3a0af07444663365f948d88d0f025c85f049c287b
   languageName: node
   linkType: hard
 
