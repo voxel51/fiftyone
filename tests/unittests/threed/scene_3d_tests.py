@@ -233,6 +233,17 @@ class TestScene(unittest.TestCase):
                 "bad", splat_path="/path/to/file.spz", format="invalid"
             )
 
+    def test_gaussian_splat_rejects_conflicting_format_hint(self):
+        with self.assertRaises(ValueError):
+            threed.GaussianSplat(
+                "bad", splat_path="/path/to/file.spz", format="ply"
+            )
+
+        splat = threed.GaussianSplat(
+            "valid", splat_path="/path/to/file.SPZ?version=1", format=".spz"
+        )
+        self.assertEqual(splat.format, "spz")
+
     def test_gaussian_splat_rejects_ambiguous_zip(self):
         with self.assertRaises(ValueError):
             threed.GaussianSplat("bad", splat_path="/path/to/file.zip")

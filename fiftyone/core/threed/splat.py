@@ -89,6 +89,24 @@ class GaussianSplat(Object3D):
 
         path_without_url_suffix = splat_path.split("?", 1)[0].split("#", 1)[0]
         normalized_path = path_without_url_suffix.lower()
+        path_format = next(
+            (
+                extension.removeprefix(".")
+                for extension in SUPPORTED_GAUSSIAN_SPLAT_EXTENSIONS
+                if normalized_path.endswith(extension)
+            ),
+            None,
+        )
+        if (
+            normalized_format is not None
+            and path_format is not None
+            and normalized_format != path_format
+        ):
+            raise ValueError(
+                "Gaussian splat format '%s' does not match path '%s'"
+                % (format, splat_path)
+            )
+
         is_zip = normalized_path.endswith(".zip")
         if is_zip and normalized_format != "sog":
             raise ValueError("A .zip Gaussian splat must use format='sog'")
