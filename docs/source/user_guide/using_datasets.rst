@@ -5329,10 +5329,8 @@ ___________
 files directly, or from `.fo3d` scene files.
 
 Direct assets are the simplest choice when a sample is a single
-:ref:`mesh <3d-meshes>`, :ref:`point cloud <3d-point-clouds>`, or Gaussian
-splat reconstruction. Gaussian splats in PLY, SPZ, SPLAT, KSPLAT, SOG, and RAD
-formats can also be included in FO3D scenes via
-:class:`GaussianSplat <fiftyone.core.threed.GaussianSplat>`.
+:ref:`mesh <3d-meshes>`, :ref:`point cloud <3d-point-clouds>`, or
+:ref:`Gaussian splat reconstruction <3d-gaussian-splats>`:
 
 .. code-block:: python
     :linenos:
@@ -5343,6 +5341,7 @@ formats can also be included in FO3D scenes via
         fo.Sample(filepath="/path/to/model.glb", media_type="3d"),
         fo.Sample(filepath="/path/to/point-cloud.pcd", media_type="3d"),
         fo.Sample(filepath="/path/to/mesh.ply", media_type="3d"),
+        fo.Sample(filepath="/path/to/reconstruction.spz", media_type="3d"),
     ]
 
     dataset = fo.Dataset()
@@ -5354,7 +5353,7 @@ Features such as
 :ref:`camera intrinsics and extrinsics <camera-intrinsics-extrinsics>`, camera
 frustum rendering, and :ref:`3D annotation <creating-3d-polylines>` are
 available whether your sample points directly to a
-:ref:`supported 3D asset <3d-meshes>` or to an `.fo3d` scene.
+supported 3D asset or to an `.fo3d` scene.
 
 Wrap assets in `.fo3d` when you need advanced scene customization such as
 lights, camera configuration, transformations, materials, shapes, or multiple
@@ -5364,7 +5363,8 @@ to add, remove, and manipulate 3D objects in the scene. A scene is
 internally represented as a n-ary tree of 3D objects, where each
 object is a node in the tree. A 3D object is either a
 :ref:`3D mesh <3d-meshes>`, :ref:`point cloud <3d-point-clouds>`,
-or a :ref:`3D shape geometry <3d-shapes>`.
+:ref:`Gaussian splat <3d-gaussian-splats>`, or
+:ref:`3D shape geometry <3d-shapes>`.
 
 A scene may be explicitly initialized with additional attributes, such as
 :class:`camera <fiftyone.core.threed.camera>`,
@@ -5541,6 +5541,37 @@ Here's how a typical PCD file is structured:
     When coloring by intensity :ref:`in the App <app-3d-visualizer>`, the
     intensity values are automatically scaled to use the full dynamic range of
     the colorscale.
+
+.. _3d-gaussian-splats:
+
+3D Gaussian splats
+------------------
+
+FiftyOne supports Gaussian splat reconstructions in PLY, SPZ, SPLAT, KSPLAT,
+SOG, and RAD formats. Splat files can be used directly as 3D samples or added
+to FO3D scenes via
+:class:`GaussianSplat <fiftyone.core.threed.GaussianSplat>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Use a splat file directly as a 3D sample
+    sample = fo.Sample(
+        filepath="/path/to/reconstruction.spz",
+        media_type="3d",
+    )
+
+    # Or add one or more splats to an FO3D scene
+    splat = fo.GaussianSplat("reconstruction", "reconstruction.spz")
+
+    scene = fo.Scene()
+    scene.add(splat)
+    scene.write("/path/to/scene.fo3d")
+
+You can tune each splat's appearance and rendering from its settings panel in
+the App's :ref:`3D visualizer <app-3d-visualizer>`.
 
 .. _3d-shapes:
 
