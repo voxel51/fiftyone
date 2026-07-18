@@ -29,11 +29,29 @@ import {
 } from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
-import { Anchor, Text, Tooltip } from "@voxel51/voodo";
+import {
+  Align,
+  Anchor,
+  Clickable,
+  Divider,
+  Icon,
+  IconName,
+  Justify,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+  Text,
+  TextColor,
+  TextVariant,
+  Tooltip,
+} from "@voxel51/voodo";
 import { createContext, useCallback, useContext } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { ItemLeft, ItemRight } from "./Components";
+import { ItemRight } from "./Components";
+import { useSchemaManagerModal } from "./SchemaManager/hooks";
+import useCanManageSchema from "./useCanManageSchema";
 import {
   useAnnotationContext,
   useAnnotationFields,
@@ -54,12 +72,6 @@ const ActionsDiv = styled.div`
   padding: 0.25rem 1rem;
   width: 100%;
   max-width: 100%;
-`;
-
-const Row = styled.div`
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
 `;
 
 const Container = styled.div<{ $active?: boolean }>`
@@ -327,6 +339,27 @@ export const Redo = () => {
   );
 };
 
+// Schema manager entry point for the Create section. Gated on manage
+// permission — hidden entirely when the user can't edit the schema.
+const SchemaManager = () => {
+  const canManage = useCanManageSchema();
+  const { openSchemaManager } = useSchemaManagerModal();
+
+  if (!canManage) {
+    return null;
+  }
+
+  return (
+    <Tooltip anchor={Anchor.Top} content={<Text>Manage schema</Text>} portal>
+      <Clickable onClick={openSchemaManager}>
+        <Round data-cy="open-schema-manager">
+          <Icon name={IconName.Settings} size={Size.Md} />
+        </Round>
+      </Clickable>
+    </Tooltip>
+  );
+};
+
 export const ThreeDPolylines = () => {
   const { createNew } = useAnnotationContext();
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
@@ -442,7 +475,9 @@ export const ThreeDCuboids = () => {
   );
 };
 
-const Actions = () => {
+// `hidden` keeps the section mounted (its mode hooks stay live) but visually
+// removed — the label edit view hides Create while depending on those hooks.
+const Actions = ({ hidden = false }: { hidden?: boolean }) => {
   // This checks if media type of the dataset resolved to 3d
   const is3dDataset = useRecoilValue(is3DDataset);
   // Video annotation handles the per-frame spatial label types — boxes,
@@ -481,41 +516,63 @@ const Actions = () => {
 
   return (
     <DeactivateAllContext.Provider value={deactivateAll}>
-      <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
-        <Row>
-          <ItemLeft style={{ columnGap: "0.1rem" }}>
-            <Select active={noActiveActions} />
-            {isVideo ? (
-              <>
-                <Classification />
-                <Detection />
-                <Segmentation />
-                <Polyline />
-              </>
-            ) : (
-              <>
-                <Classification />
-                {toolsResolved &&
-                  (areThreeDActionsVisible ? (
-                    <>
-                      <ThreeDCuboids />
-                      <ThreeDPolylines />
-                    </>
-                  ) : (
-                    <>
-                      <Detection />
-                      <Segmentation />
-                      <Polyline />
-                    </>
-                  ))}
-              </>
-            )}
-          </ItemLeft>
+      <ActionsDiv
+        style={{
+          margin: "0 0.25rem",
+          paddingBottom: "0.5rem",
+          display: hidden ? "none" : undefined,
+        }}
+      >
+        <Stack
+          orientation={Orientation.Row}
+          align={Align.Center}
+          justify={Justify.Between}
+          style={{ width: "100%" }}
+        >
+          <Text variant={TextVariant.Lg} color={TextColor.Primary}>
+            Create
+          </Text>
           <ItemRight style={{ columnGap: "0.1rem" }}>
             <Undo />
             <Redo />
+            <Divider orientation={Orientation.Column} />
+            <SchemaManager />
           </ItemRight>
-        </Row>
+        </Stack>
+        <Stack
+          orientation={Orientation.Row}
+          align={Align.Center}
+          justify={Justify.Center}
+          spacing={Spacing.Xs}
+          style={{ width: "100%" }}
+        >
+          <Select active={noActiveActions} />
+          {isVideo ? (
+            <>
+              <Classification />
+              <Detection />
+              <Segmentation />
+              <Polyline />
+            </>
+          ) : (
+            <>
+              <Classification />
+              {toolsResolved &&
+                (areThreeDActionsVisible ? (
+                  <>
+                    <ThreeDCuboids />
+                    <ThreeDPolylines />
+                  </>
+                ) : (
+                  <>
+                    <Detection />
+                    <Segmentation />
+                    <Polyline />
+                  </>
+                ))}
+            </>
+          )}
+        </Stack>
       </ActionsDiv>
     </DeactivateAllContext.Provider>
   );

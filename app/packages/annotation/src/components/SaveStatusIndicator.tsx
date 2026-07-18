@@ -66,7 +66,7 @@ export const SaveStatusIndicator: React.FC<SaveStatusIndicatorProps> = ({
           name={IconName.Circle}
           size={size}
           color={HEALTH_COLOR[health]}
-          className={pulsing ? `${styles.glow} ${styles.pulsing}` : styles.glow}
+          className={pulsing ? styles.pulsing : ""}
         />
       </span>
     </Tooltip>

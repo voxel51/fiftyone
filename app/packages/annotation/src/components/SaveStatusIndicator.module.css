@@ -17,12 +17,6 @@
   line-height: 0;
 }
 
-/* Subtle glow. Colour is omitted so drop-shadow falls back to the icon's
- * `currentColor`, which voodo sets to the health colour. */
-.glow {
-  filter: drop-shadow(0 0 3px);
-}
-
 .pulsing {
   animation: saveStatusPulse 1.6s ease-in-out infinite;
 }
