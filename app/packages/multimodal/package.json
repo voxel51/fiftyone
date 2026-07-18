@@ -13,7 +13,6 @@
         "./temporal-tags": "./src/temporal-tags/index.ts",
         "./inject": "./src/inject/index.ts",
         "./extensions/mcap": "./src/extensions/mcap/index.ts",
-        "./extensions/mcap/runtime": "./src/extensions/mcap/runtime.ts",
         "./adapters/mcap": "./src/adapters/mcap/index.ts",
         "./adapters/mcap/react/TemporalTagGridOverlay": "./src/adapters/mcap/react/TemporalTagGridOverlay.tsx",
         "./schemas/v1": "./src/schemas/v1/index.ts",
@@ -43,9 +42,6 @@
             ],
             "extensions/mcap": [
                 "src/extensions/mcap/index.ts"
-            ],
-            "extensions/mcap/runtime": [
-                "src/extensions/mcap/runtime.ts"
             ],
             "adapters/mcap": [
                 "src/adapters/mcap/index.ts"

@@ -42,7 +42,7 @@ afterEach(() => {
 });
 
 describe("MCAP timeline extension host", () => {
-  it("keeps the OSS-only path functional with no registration", () => {
+  it("keeps the built-in timeline functional with no registration", () => {
     renderHost();
     expect(screen.getByTestId("tracks").textContent).toBe("Tag");
     expect(screen.queryByTestId("runtime")).toBeNull();

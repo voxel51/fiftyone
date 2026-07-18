@@ -33,7 +33,12 @@ interface McapTimelineExtensionHostProps extends Omit<
   readonly children: (composition: McapTimelineComposition) => React.ReactNode;
 }
 
-/** Composes OSS timeline sources with every registered downstream extension. */
+/**
+ * Runs the registered timeline extensions, collects their contributions, and
+ * combines them with the built-in sections before rendering the playback
+ * shell. Extensions stay mounted in a nested chain so each one can use React
+ * hooks and providers while contributing tracks, preferences, and runtime UI.
+ */
 export const McapTimelineExtensionHost: React.FC<
   McapTimelineExtensionHostProps
 > = ({ builtInSections, children, ...context }) => {
@@ -87,6 +92,9 @@ const ExtensionChain: React.FC<ExtensionChainProps> = ({
   extensions,
   index,
 }) => {
+  // Each extension is render-prop middleware: it receives the same host
+  // context, reports one contribution, and wraps the rest of the chain. The
+  // nesting preserves any providers an extension mounts for later extensions.
   const extension = extensions[index];
   if (!extension) return <>{children(contributions)}</>;
   const Component = extension.Component;
@@ -114,6 +122,9 @@ const ComposedTimeline: React.FC<{
   readonly children: (composition: McapTimelineComposition) => React.ReactNode;
   readonly contributions: readonly RegisteredContribution[];
 }> = ({ builtInSections, children, contributions }) => {
+  // This is the merge boundary. Section ordering and track decoration are
+  // resolved together, preference fields use registration order as their
+  // override order, and runtime nodes mount alongside the playback shell.
   const sections = useMemo(
     () => [
       ...builtInSections,
