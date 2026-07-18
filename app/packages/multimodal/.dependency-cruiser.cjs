@@ -36,7 +36,7 @@ module.exports = {
       },
     },
     {
-      name: "only-mcap-adapter-and-inject-entry-can-import-mcap",
+      name: "only-mcap-adapters-extensions-and-inject-entry-can-import-mcap",
       severity: "error",
       from: {
         path: SRC,
