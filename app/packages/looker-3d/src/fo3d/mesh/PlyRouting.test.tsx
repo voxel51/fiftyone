@@ -58,20 +58,22 @@ describe("usePlySplatDetection", () => {
     },
   );
 
-  it("reports failures through the loading manager", async () => {
-    const error = new Error("header request failed");
-    mocks.sniffPlyIsGaussianSplat.mockRejectedValue(error);
+  it("falls back to ordinary PLY rendering when classification fails", async () => {
+    mocks.sniffPlyIsGaussianSplat.mockRejectedValue(
+      new Error("header request failed"),
+    );
     const loadingManager = buildLoadingManager();
     const { result } = renderHook(() =>
       usePlySplatDetection("broken.ply", loadingManager),
     );
 
     await waitFor(() =>
-      expect(result.current).toEqual({ error, plyUrl: "broken.ply" }),
+      expect(result.current).toEqual({
+        isGaussianSplat: false,
+        plyUrl: "broken.ply",
+      }),
     );
-    expect(loadingManager.itemError).toHaveBeenCalledWith(
-      "broken.ply#ply-splat-header",
-    );
+    expect(loadingManager.itemError).not.toHaveBeenCalled();
     expect(loadingManager.itemEnd).toHaveBeenCalledWith(
       "broken.ply#ply-splat-header",
     );

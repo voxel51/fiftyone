@@ -2,7 +2,9 @@ import { getFetchFunctionExtended } from "@fiftyone/utilities";
 
 const PLY_HEADER_RANGE_BYTES = 64 * 1024;
 const MAX_PLY_HEADER_BYTES = 1024 * 1024;
+const MAX_CACHED_PLY_CLASSIFICATIONS = 256;
 const PLY_HEADER_DECODER = new TextDecoder("utf-8");
+const PLY_SPLAT_DETECTION_CACHE = new Map<string, Promise<boolean>>();
 const REQUIRED_GAUSSIAN_SPLAT_PLY_PROPERTIES = [
   "x",
   "y",
@@ -146,7 +148,7 @@ export const readPlyHeaderText = async (response: Response) => {
   return null;
 };
 
-const fetchPlyHeaderText = async (plyUrl: string, signal?: AbortSignal) => {
+const fetchPlyHeaderText = async (plyUrl: string) => {
   const fetchAsset = getFetchFunctionExtended();
 
   try {
@@ -156,19 +158,13 @@ const fetchPlyHeaderText = async (plyUrl: string, signal?: AbortSignal) => {
       result: "response",
       retries: 0,
       headers: { Range: `bytes=0-${PLY_HEADER_RANGE_BYTES - 1}` },
-      signal,
-      cache: true,
     });
     const rangedHeaderText = await readPlyHeaderText(response);
 
     if (rangedHeaderText || response.status !== 206) {
       return rangedHeaderText;
     }
-  } catch (error) {
-    if (signal?.aborted) {
-      throw error;
-    }
-
+  } catch {
     // Some file backends do not support Range. Fall through to a full fetch.
   }
 
@@ -177,18 +173,81 @@ const fetchPlyHeaderText = async (plyUrl: string, signal?: AbortSignal) => {
     path: plyUrl,
     result: "response",
     retries: 0,
-    signal,
   });
 
   return readPlyHeaderText(response);
 };
 
+const getAbortError = (signal: AbortSignal) => {
+  return signal.reason instanceof Error
+    ? signal.reason
+    : new DOMException("PLY classification aborted", "AbortError");
+};
+
+const waitForDetection = (
+  detection: Promise<boolean>,
+  signal?: AbortSignal,
+) => {
+  if (!signal) {
+    return detection;
+  }
+
+  if (signal.aborted) {
+    return Promise.reject(getAbortError(signal));
+  }
+
+  return new Promise<boolean>((resolve, reject) => {
+    const handleAbort = () => {
+      reject(getAbortError(signal));
+    };
+
+    signal.addEventListener("abort", handleAbort, { once: true });
+    detection.then(
+      (result) => {
+        signal.removeEventListener("abort", handleAbort);
+        resolve(result);
+      },
+      (error) => {
+        signal.removeEventListener("abort", handleAbort);
+        reject(error);
+      },
+    );
+  });
+};
+
 /** Fetches enough of a PLY asset to determine whether Spark should load it. */
-export const sniffPlyIsGaussianSplat = async (
+export const sniffPlyIsGaussianSplat = (
   plyUrl: string,
   signal?: AbortSignal,
 ) => {
-  return inferPlyHeaderIsGaussianSplat(
-    await fetchPlyHeaderText(plyUrl, signal),
-  );
+  let detection = PLY_SPLAT_DETECTION_CACHE.get(plyUrl);
+
+  if (!detection) {
+    const nextDetection: Promise<boolean> = fetchPlyHeaderText(plyUrl)
+      .then(inferPlyHeaderIsGaussianSplat)
+      .catch((error) => {
+        if (PLY_SPLAT_DETECTION_CACHE.get(plyUrl) === nextDetection) {
+          PLY_SPLAT_DETECTION_CACHE.delete(plyUrl);
+        }
+        throw error;
+      });
+    detection = nextDetection;
+    PLY_SPLAT_DETECTION_CACHE.set(plyUrl, nextDetection);
+
+    if (PLY_SPLAT_DETECTION_CACHE.size > MAX_CACHED_PLY_CLASSIFICATIONS) {
+      const oldestUrl = PLY_SPLAT_DETECTION_CACHE.keys().next().value;
+      if (oldestUrl !== undefined) {
+        PLY_SPLAT_DETECTION_CACHE.delete(oldestUrl);
+      }
+    }
+  } else {
+    // Refresh recency so large browsing sessions retain recently viewed PLYs.
+    PLY_SPLAT_DETECTION_CACHE.delete(plyUrl);
+    PLY_SPLAT_DETECTION_CACHE.set(plyUrl, detection);
+  }
+
+  // Classification is shared by every consumer of a URL. Aborting one caller
+  // stops only that caller from waiting; it must not cancel another consumer's
+  // in-flight classification.
+  return waitForDetection(detection, signal);
 };

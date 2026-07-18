@@ -36,17 +36,13 @@ interface PlyProps {
   scale: Vector3;
   children?: React.ReactNode;
   pointCloudCrop?: PointCloudCrop | null;
+  requiresCovariance?: boolean;
 }
 
-type PlySplatDetection =
-  | {
-      plyUrl: string;
-      isGaussianSplat: boolean;
-    }
-  | {
-      plyUrl: string;
-      error: Error;
-    };
+type PlySplatDetection = {
+  plyUrl: string;
+  isGaussianSplat: boolean;
+};
 
 /**
  * Sniffs one PLY URL and reports the result only while that URL is current.
@@ -85,13 +81,11 @@ export const usePlySplatDetection = (
           setSplatDetection({ plyUrl, isGaussianSplat: result });
         }
       })
-      .catch((error) => {
+      .catch(() => {
         if (!cancelled) {
-          loadingManager?.itemError(headerUrl);
-          setSplatDetection({
-            plyUrl,
-            error: error instanceof Error ? error : new Error(String(error)),
-          });
+          // Classification is an optimization for routing Gaussian PLYs. If it
+          // fails, preserve the established behavior and let Three load the PLY.
+          setSplatDetection({ plyUrl, isGaussianSplat: false });
         }
       })
       .finally(endLoading);
@@ -392,6 +386,7 @@ const PlyGeometry = ({
   );
 };
 
+/** Routes a PLY asset to Spark, a point cloud, or a triangle mesh. */
 export const Ply = (props: PlyProps) => {
   const {
     name,
@@ -400,6 +395,7 @@ export const Ply = (props: PlyProps) => {
     quaternion,
     scale,
     children,
+    requiresCovariance,
   } = props;
   const { fo3dRoot, loadingManager } = useFo3dContext();
 
@@ -410,10 +406,7 @@ export const Ply = (props: PlyProps) => {
     [plyPath, preTransformedPlyPath, fo3dRoot],
   );
   const currentDetection = usePlySplatDetection(plyUrl, loadingManager);
-  const isGaussianSplat =
-    currentDetection && "isGaussianSplat" in currentDetection
-      ? currentDetection.isGaussianSplat
-      : null;
+  const isGaussianSplat = currentDetection?.isGaussianSplat ?? null;
 
   const splat = useMemo(
     () =>
@@ -425,10 +418,6 @@ export const Ply = (props: PlyProps) => {
       ),
     [plyPath, preTransformedPlyPath, centerGeometry],
   );
-
-  if (currentDetection && "error" in currentDetection) {
-    throw currentDetection.error;
-  }
 
   if (isGaussianSplat === null) {
     return null;
@@ -442,6 +431,7 @@ export const Ply = (props: PlyProps) => {
         position={position}
         quaternion={quaternion}
         scale={scale}
+        requiresCovariance={requiresCovariance}
       >
         {children}
       </GaussianSplat>
