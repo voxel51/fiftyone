@@ -10,6 +10,7 @@ from typing import Optional
 
 from .object_3d import Object3D
 from .transformation import Quaternion, Vec3UnionType
+from .validators import validate_color, validate_float
 
 SUPPORTED_GAUSSIAN_SPLAT_EXTENSIONS = (
     ".ply",
@@ -43,6 +44,9 @@ class GaussianSplat(Object3D):
         position (None): the position of the splat in object space
         quaternion (None): the quaternion of the splat in object space
         scale (None): the scale of the splat in object space
+        opacity (1.0): the opacity multiplier for the splat, in the range
+            ``[0, 1]``
+        tint ("#ffffff"): a color multiplier applied to the splat
 
     Raises:
         ValueError: if the path or format is not supported
@@ -60,6 +64,9 @@ class GaussianSplat(Object3D):
         position: Optional[Vec3UnionType] = None,
         scale: Optional[Vec3UnionType] = None,
         quaternion: Optional[Quaternion] = None,
+        *,
+        opacity: float = 1.0,
+        tint: str = "#ffffff",
     ):
         super().__init__(
             name=name,
@@ -101,12 +108,40 @@ class GaussianSplat(Object3D):
         self.splat_path = splat_path
         self.format = normalized_format
         self.center_geometry = center_geometry
+        self.opacity = opacity
+        self.tint = tint
+
+    @property
+    def opacity(self) -> float:
+        """The opacity multiplier for the splat."""
+        return self._opacity
+
+    @opacity.setter
+    def opacity(self, value: float) -> None:
+        opacity = validate_float(value)
+        if not 0 <= opacity <= 1:
+            raise ValueError(
+                "Gaussian splat opacity must be in the range [0, 1]"
+            )
+
+        self._opacity = opacity
+
+    @property
+    def tint(self) -> str:
+        """The color multiplier for the splat."""
+        return self._tint
+
+    @tint.setter
+    def tint(self, value: str) -> None:
+        self._tint = validate_color(value)
 
     def _to_dict_extra(self):
         r = {
             "splatPath": self.splat_path,
             "format": self.format,
             "centerGeometry": self.center_geometry,
+            "opacity": self.opacity,
+            "tint": self.tint,
         }
 
         if hasattr(self, "_pre_transformed_splat_path"):

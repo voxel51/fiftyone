@@ -162,6 +162,8 @@ class TestScene(unittest.TestCase):
             splat_path="reconstruction.splat",
             format="splat",
             center_geometry=False,
+            opacity=0.65,
+            tint="#ff8800",
         )
 
         self.assertDictEqual(
@@ -178,6 +180,8 @@ class TestScene(unittest.TestCase):
                 "splatPath": "reconstruction.splat",
                 "format": "splat",
                 "centerGeometry": False,
+                "opacity": 0.65,
+                "tint": "#ff8800",
             },
         )
 
@@ -189,6 +193,22 @@ class TestScene(unittest.TestCase):
         self.assertEqual(round_trip.splat_path, "reconstruction.splat")
         self.assertEqual(round_trip.format, "splat")
         self.assertFalse(round_trip.center_geometry)
+        self.assertEqual(round_trip.opacity, 0.65)
+        self.assertEqual(round_trip.tint, "#ff8800")
+
+    def test_gaussian_splat_appearance(self):
+        splat = threed.GaussianSplat("splat", splat_path="scene.spz")
+
+        self.assertEqual(splat.opacity, 1.0)
+        self.assertEqual(splat.tint, "#ffffff")
+        assert_color_prop(self, splat, "tint")
+
+        for invalid_opacity in (None, "opaque", -0.01, 1.01):
+            with self.assertRaises(ValueError):
+                splat.opacity = invalid_opacity
+
+        splat.opacity = 0.25
+        self.assertEqual(splat.opacity, 0.25)
 
     def test_gaussian_splat_invalid_extension(self):
         with self.assertRaises(ValueError):
