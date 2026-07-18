@@ -5,6 +5,7 @@ import { useSplatAppearanceControls } from "./use-splat-appearance-controls";
 
 const controls = vi.hoisted(() => ({
   schema: null as unknown,
+  setControls: vi.fn(),
   setSplatSettings: vi.fn(),
   settings: {
     detail: "low",
@@ -15,17 +16,14 @@ const controls = vi.hoisted(() => ({
 }));
 
 vi.mock("leva", () => ({
-  folder: (schema: unknown) => schema,
-  useControls: (buildSchema: () => unknown) => {
-    controls.schema = buildSchema();
+  useControls: (name: string, buildSchema: () => unknown) => {
+    controls.schema = { [name]: buildSchema() };
+    return [{}, controls.setControls, vi.fn()];
   },
 }));
 
-vi.mock("../fo3d/context", () => ({
-  useFo3dContext: () => ({
-    setSplatSettings: controls.setSplatSettings,
-    splatSettings: controls.settings,
-  }),
+vi.mock("./use-splat-settings", () => ({
+  useSplatSettings: () => [controls.settings, controls.setSplatSettings],
 }));
 
 type AppearanceSchema = Record<
@@ -68,6 +66,12 @@ describe("useSplatAppearanceControls", () => {
       "maxSh",
     ]);
     expect(assetControls.maxSh.label).toBe("View-dependent color");
+    expect(controls.setControls).toHaveBeenCalledWith({
+      detail: "low",
+      maxSh: 0,
+      sharpness: 1,
+      sorting: "stable",
+    });
 
     assetControls.detail.onChange("high");
     assetControls.sharpness.onChange(1.7);
@@ -120,5 +124,9 @@ describe("useSplatAppearanceControls", () => {
     });
 
     expect(result.current).toEqual({ opacity: 0.6, tint: "#00ff00" });
+    expect(controls.setControls).toHaveBeenLastCalledWith({
+      opacity: 0.6,
+      tint: "#00ff00",
+    });
   });
 });

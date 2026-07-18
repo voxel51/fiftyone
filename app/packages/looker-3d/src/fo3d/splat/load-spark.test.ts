@@ -25,4 +25,18 @@ describe("loadSpark", () => {
     await firstLoad;
     expect(spark.moduleLoads).toHaveBeenCalledOnce();
   });
+
+  it("retries after an import failure", async () => {
+    const { createLazyModuleLoader } = await import("./load-spark");
+    const sparkModule = { SparkRenderer: class SparkRenderer {} };
+    const importSpark = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("chunk unavailable"))
+      .mockResolvedValue(sparkModule);
+    const loadSparkWithRetry = createLazyModuleLoader(importSpark);
+
+    await expect(loadSparkWithRetry()).rejects.toThrow("chunk unavailable");
+    await expect(loadSparkWithRetry()).resolves.toBe(sparkModule);
+    expect(importSpark).toHaveBeenCalledTimes(2);
+  });
 });

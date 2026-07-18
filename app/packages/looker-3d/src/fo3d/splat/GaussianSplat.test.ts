@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   applySplatMeshAppearance,
   computeSplatBounds,
+  computeSplatBoundsIncrementally,
   getSplatBounds,
   getSplatFileTypeHint,
   requiresCovarianceSplatTransform,
@@ -74,6 +75,31 @@ describe("computeSplatBounds", () => {
     expect(bounds.max.x).toBeCloseTo(2 * SPARK_MAX_STANDARD_DEVIATIONS);
     expect(bounds.max.y).toBeCloseTo(SPARK_MAX_STANDARD_DEVIATIONS);
     expect(bounds.max.z).toBeCloseTo(3 * SPARK_MAX_STANDARD_DEVIATIONS);
+  });
+});
+
+describe("computeSplatBoundsIncrementally", () => {
+  it("stops between batches when the calculation is aborted", async () => {
+    const abortController = new AbortController();
+    const getSplat = vi.fn(() => ({
+      color: new Color(),
+      center: new Vector3(),
+      opacity: 1,
+      scales: new Vector3(1, 1, 1),
+      quaternion: new Quaternion(),
+    }));
+    const calculation = computeSplatBoundsIncrementally(
+      {
+        getNumSplats: () => 10_001,
+        getSplat,
+      },
+      abortController.signal,
+    );
+
+    abortController.abort();
+
+    await expect(calculation).rejects.toMatchObject({ name: "AbortError" });
+    expect(getSplat).toHaveBeenCalledTimes(10_000);
   });
 });
 
@@ -173,13 +199,19 @@ describe("getSplatFileTypeHint", () => {
 
 describe("requiresCovarianceSplatTransform", () => {
   it.each([
-    [new Vector3(1, 2, 1), true],
-    [new Vector3(-1, -1, -1), true],
-    [new Vector3(0, 0, 0), false],
-    [new Vector3(2, 2, 2), false],
-  ])("classifies scale %j", (scale, expected) => {
-    expect(requiresCovarianceSplatTransform(scale)).toBe(expected);
-  });
+    [new Vector3(1, 2, 1), false, true],
+    [new Vector3(-1, -1, -1), false, true],
+    [new Vector3(0, 0, 0), false, false],
+    [new Vector3(2, 2, 2), false, false],
+    [new Vector3(2, 2, 2), true, true],
+  ])(
+    "classifies scale %j with ancestor covariance %s",
+    (scale, ancestorRequiresCovariance, expected) => {
+      expect(
+        requiresCovarianceSplatTransform(scale, ancestorRequiresCovariance),
+      ).toBe(expected);
+    },
+  );
 });
 
 describe("applySplatMeshAppearance", () => {

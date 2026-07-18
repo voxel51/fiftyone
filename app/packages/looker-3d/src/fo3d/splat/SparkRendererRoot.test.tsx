@@ -58,11 +58,8 @@ vi.mock("@sparkjsdev/spark", () => ({
   },
 }));
 
-vi.mock("../context", () => ({
-  useFo3dContext: () => ({
-    setSplatSettings: mocks.setSplatSettings,
-    splatSettings: mocks.splatSettings,
-  }),
+vi.mock("../../hooks/use-splat-settings", () => ({
+  useSplatSettings: () => [mocks.splatSettings, mocks.setSplatSettings],
 }));
 
 const SplatConsumer = ({

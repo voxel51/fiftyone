@@ -17,6 +17,7 @@ import {
 } from "three";
 import { configureFoLoaderInstance } from "../../hooks/use-fo-loaders";
 import { useSplatAppearanceControls } from "../../hooks/use-splat-appearance-controls";
+import { useSplatSettings } from "../../hooks/use-splat-settings";
 import { useFo3dContext } from "../context";
 import type { GaussianSplatAsset } from "../render-types";
 import { getResolvedUrlForFo3dAsset } from "../utils";
@@ -30,6 +31,7 @@ interface GaussianSplatProps {
   position: Vector3;
   quaternion: Quaternion;
   scale: Vector3;
+  requiresCovariance?: boolean;
   children?: ReactNode;
 }
 
@@ -37,6 +39,12 @@ type LoadedSplat = {
   mesh: SplatMesh;
   boundsProxy: Mesh | null;
   bounds: Box3;
+  loadKey: string;
+};
+
+type SplatLoadError = {
+  error: Error;
+  loadKey: string;
 };
 
 type SplatMeshAppearance = Pick<
@@ -180,7 +188,8 @@ export const computeSplatBounds = (splats: SplatBoundsSource) => {
   return bounds;
 };
 
-const computeSplatBoundsIncrementally = async (
+/** Computes splat bounds in batches and stops promptly when aborted. */
+export const computeSplatBoundsIncrementally = async (
   splats: IndexedSplatBoundsSource,
   signal: AbortSignal,
 ) => {
@@ -292,8 +301,12 @@ export const getSplatFileTypeHint = ({
  * object transform. Its packed-splat path reduces object scale to one scalar,
  * which is only exact for equal, non-negative scale components.
  */
-export const requiresCovarianceSplatTransform = (scale: Vector3) => {
+export const requiresCovarianceSplatTransform = (
+  scale: Vector3,
+  ancestorRequiresCovariance = false,
+) => {
   return (
+    ancestorRequiresCovariance ||
     scale.x < 0 ||
     scale.y < 0 ||
     scale.z < 0 ||
@@ -333,15 +346,18 @@ export const GaussianSplat = ({
   position,
   quaternion,
   scale,
+  requiresCovariance: requiresCovarianceOverride,
   children,
 }: GaussianSplatProps) => {
-  const requiresCovariance = requiresCovarianceSplatTransform(scale);
+  const requiresCovariance =
+    requiresCovarianceOverride ?? requiresCovarianceSplatTransform(scale);
   useSparkRenderer({ requiresCovariance });
 
   const invalidate = useThree((state) => state.invalidate);
-  const { fo3dRoot, loadingManager, splatSettings } = useFo3dContext();
+  const { fo3dRoot, loadingManager } = useFo3dContext();
+  const [splatSettings] = useSplatSettings();
   const [loadedSplat, setLoadedSplat] = useState<LoadedSplat | null>(null);
-  const [loadError, setLoadError] = useState<Error | null>(null);
+  const [loadError, setLoadError] = useState<SplatLoadError | null>(null);
 
   const splatUrl = useMemo(
     () =>
@@ -372,6 +388,9 @@ export const GaussianSplat = ({
       }),
     [format, preTransformedSplatPath, splatPath, splatUrl],
   );
+  const loadKey = `${splatUrl}\0${fileName}\0${fileTypeHint ?? ""}\0${requiresCovariance}`;
+  const currentLoadedSplat =
+    loadedSplat?.loadKey === loadKey ? loadedSplat : null;
 
   // This effect loads the requested splat and disposes every intermediate or
   // mounted Spark resource when the source changes or the component unmounts.
@@ -396,6 +415,9 @@ export const GaussianSplat = ({
       let mesh: SplatMesh | null = null;
 
       try {
+        // Spark 2.1.0 does not expose an AbortSignal for loadInternalAsync.
+        // The cancellation checks below prevent adoption of stale results and
+        // dispose decoded resources as soon as Spark's load settles.
         if (requiresCovariance) {
           const extSplats = new ExtSplats();
           decodedSplats = extSplats;
@@ -454,6 +476,7 @@ export const GaussianSplat = ({
           mesh,
           bounds,
           boundsProxy: createBoundsProxy(bounds),
+          loadKey,
         };
 
         activeSplat = nextSplat;
@@ -470,7 +493,10 @@ export const GaussianSplat = ({
         return;
       }
 
-      setLoadError(error instanceof Error ? error : new Error(String(error)));
+      setLoadError({
+        error: error instanceof Error ? error : new Error(String(error)),
+        loadKey,
+      });
     });
 
     return () => {
@@ -478,31 +504,38 @@ export const GaussianSplat = ({
       boundsAbortController.abort();
       disposeLoadedSplat(activeSplat);
     };
-  }, [fileName, fileTypeHint, loadingManager, requiresCovariance, splatUrl]);
+  }, [
+    fileName,
+    fileTypeHint,
+    loadingManager,
+    loadKey,
+    requiresCovariance,
+    splatUrl,
+  ]);
 
   // This effect applies appearance and SH changes to Spark's existing mesh in
   // place, avoiding network and decode work.
   useEffect(() => {
-    if (!loadedSplat) {
+    if (!currentLoadedSplat) {
       return;
     }
 
     applySplatMeshAppearance({
       maxSh: splatSettings.maxSh,
-      mesh: loadedSplat.mesh,
+      mesh: currentLoadedSplat.mesh,
       opacity,
       tint,
     });
 
     invalidate();
-  }, [invalidate, loadedSplat, opacity, splatSettings.maxSh, tint]);
+  }, [currentLoadedSplat, invalidate, opacity, splatSettings.maxSh, tint]);
 
   const placement = useMemo(() => {
-    if (!loadedSplat) {
+    if (!currentLoadedSplat) {
       return null;
     }
 
-    const center = loadedSplat.bounds.getCenter(new Vector3());
+    const center = currentLoadedSplat.bounds.getCenter(new Vector3());
     const shouldCenterGeometry = centerGeometry ?? true;
     const centerOffset = shouldCenterGeometry
       ? center.clone().multiplyScalar(-1)
@@ -512,13 +545,13 @@ export const GaussianSplat = ({
       boundsProxyPosition: center.add(centerOffset),
       centerOffset,
     };
-  }, [centerGeometry, loadedSplat]);
+  }, [centerGeometry, currentLoadedSplat]);
 
-  if (loadError) {
-    throw loadError;
+  if (loadError?.loadKey === loadKey) {
+    throw loadError.error;
   }
 
-  if (!loadedSplat || !placement) {
+  if (!currentLoadedSplat || !placement) {
     return null;
   }
 
@@ -526,13 +559,13 @@ export const GaussianSplat = ({
     <group position={position} quaternion={quaternion} scale={scale}>
       <primitive
         name={name}
-        object={loadedSplat.mesh}
+        object={currentLoadedSplat.mesh}
         position={placement.centerOffset}
       />
-      {loadedSplat.boundsProxy && (
+      {currentLoadedSplat.boundsProxy && (
         <primitive
           name={`${name}-bounds`}
-          object={loadedSplat.boundsProxy}
+          object={currentLoadedSplat.boundsProxy}
           position={placement.boundsProxyPosition}
         />
       )}

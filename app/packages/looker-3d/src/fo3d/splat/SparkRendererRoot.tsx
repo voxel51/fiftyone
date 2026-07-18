@@ -11,7 +11,7 @@ import {
 } from "react";
 import { Box3 } from "three";
 import { FO_USER_DATA } from "../../constants";
-import { useFo3dContext } from "../context";
+import { useSplatSettings } from "../../hooks/use-splat-settings";
 import { SPARK_MAX_STANDARD_DEVIATIONS } from "./constants";
 import { loadSpark } from "./load-spark";
 import {
@@ -135,7 +135,7 @@ export const SparkRendererProvider = ({
 }: {
   children: ReactNode;
 }) => {
-  const { splatSettings } = useFo3dContext();
+  const [splatSettings] = useSplatSettings();
   const [registrationCounts, setRegistrationCounts] = useState({
     consumers: 0,
     covarianceConsumers: 0,
