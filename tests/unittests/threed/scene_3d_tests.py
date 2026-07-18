@@ -31,6 +31,9 @@ class TestScene(unittest.TestCase):
         self.scene.add(threed.Shape3D(name="shape"))
         self.scene.add(threed.StlMesh("stl", stl_path="/path/to/stl.stl"))
         self.scene.add(threed.PlyMesh("ply", ply_path="/path/to/ply.ply"))
+        self.scene.add(
+            threed.GaussianSplat("splat", splat_path="/path/to/splat.spz")
+        )
         self.scene.add(threed.FbxMesh("fbx", fbx_path="/path/to/fbx.fbx"))
         self.scene.add(threed.ObjMesh("obj", obj_path="/path/to/obj.obj"))
         self.scene.background = threed.SceneBackground(
@@ -60,6 +63,7 @@ class TestScene(unittest.TestCase):
                 "/path/to/stl.stl",
                 "/path/to/fbx.fbx",
                 "/path/to/ply.ply",
+                "/path/to/splat.spz",
                 "/path/to/obj.obj",
                 "relative.gltf",
                 "n1.jpeg",
@@ -74,6 +78,7 @@ class TestScene(unittest.TestCase):
     def test_update_asset_paths(self):
         d = {
             "/path/to/pcd.pcd": "new.pcd",
+            "/path/to/splat.spz": "new.spz",
             "../background.jpeg": "new_background.jpeg",
             "n3.jpeg": "new_n3.jpeg",
         }
@@ -90,6 +95,7 @@ class TestScene(unittest.TestCase):
                 "/path/to/stl.stl",
                 "/path/to/fbx.fbx",
                 "/path/to/ply.ply",
+                "new.spz",
                 "/path/to/obj.obj",
                 "relative.gltf",
                 "n1.jpeg",
@@ -146,8 +152,75 @@ class TestScene(unittest.TestCase):
                 "objs": 1,
                 "shapes": 1,
                 "stls": 1,
+                "gaussian splats": 1,
             },
         )
+
+    def test_gaussian_splat(self):
+        splat = threed.GaussianSplat(
+            "splat",
+            splat_path="reconstruction.splat",
+            format="splat",
+            center_geometry=False,
+        )
+
+        self.assertDictEqual(
+            splat.as_dict(),
+            {
+                "_type": "GaussianSplat",
+                "uuid": splat.uuid,
+                "name": "splat",
+                "visible": True,
+                "position": [0, 0, 0],
+                "quaternion": [0, 0, 0, 1],
+                "scale": [1.0, 1.0, 1.0],
+                "children": [],
+                "splatPath": "reconstruction.splat",
+                "format": "splat",
+                "centerGeometry": False,
+            },
+        )
+
+        round_trip = threed.Object3D._from_dict(
+            convert_keys_to_snake_case(splat.as_dict())
+        )
+
+        self.assertIsInstance(round_trip, threed.GaussianSplat)
+        self.assertEqual(round_trip.splat_path, "reconstruction.splat")
+        self.assertEqual(round_trip.format, "splat")
+        self.assertFalse(round_trip.center_geometry)
+
+    def test_gaussian_splat_invalid_extension(self):
+        with self.assertRaises(ValueError):
+            threed.GaussianSplat("bad", splat_path="/path/to/file.obj")
+
+    def test_gaussian_splat_supported_modern_formats(self):
+        rad = threed.GaussianSplat("lod", splat_path="/path/to/file.rad")
+        sog_zip = threed.GaussianSplat(
+            "sog", splat_path="/path/to/file.zip", format="sog"
+        )
+        opaque = threed.GaussianSplat(
+            "opaque", splat_path="/media?filepath=/asset", format="spz"
+        )
+
+        self.assertEqual(rad.splat_path, "/path/to/file.rad")
+        self.assertEqual(sog_zip.format, "sog")
+        self.assertEqual(opaque.format, "spz")
+
+    def test_gaussian_splat_rejects_invalid_format_hint(self):
+        with self.assertRaises(ValueError):
+            threed.GaussianSplat(
+                "bad", splat_path="/path/to/file.spz", format="invalid"
+            )
+
+    def test_gaussian_splat_rejects_ambiguous_zip(self):
+        with self.assertRaises(ValueError):
+            threed.GaussianSplat("bad", splat_path="/path/to/file.zip")
+
+        with self.assertRaises(ValueError):
+            threed.GaussianSplat(
+                "bad", splat_path="/path/to/file.zip", format="spz"
+            )
 
     def test_from_fo3d(self):
         mock_file = mock_open(read_data=json.dumps(self.scene.as_dict()))
