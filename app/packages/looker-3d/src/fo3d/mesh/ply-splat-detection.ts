@@ -157,6 +157,7 @@ const fetchPlyHeaderText = async (plyUrl: string, signal?: AbortSignal) => {
       retries: 0,
       headers: { Range: `bytes=0-${PLY_HEADER_RANGE_BYTES - 1}` },
       signal,
+      cache: true,
     });
     const rangedHeaderText = await readPlyHeaderText(response);
 
