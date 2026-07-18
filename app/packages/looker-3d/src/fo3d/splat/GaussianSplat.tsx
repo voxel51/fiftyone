@@ -1,9 +1,9 @@
 import { getSampleSrc } from "@fiftyone/state";
-import {
+import { useThree } from "@react-three/fiber";
+import type {
   ExtSplats,
   PackedSplats,
   SplatFileType,
-  SplatLoader,
   SplatMesh,
 } from "@sparkjsdev/spark";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
@@ -16,10 +16,12 @@ import {
   Vector3,
 } from "three";
 import { configureFoLoaderInstance } from "../../hooks/use-fo-loaders";
+import { useSplatAppearanceControls } from "../../hooks/use-splat-appearance-controls";
 import { useFo3dContext } from "../context";
 import type { GaussianSplatAsset } from "../render-types";
 import { getResolvedUrlForFo3dAsset } from "../utils";
 import { SPARK_MAX_STANDARD_DEVIATIONS } from "./constants";
+import { loadSpark } from "./load-spark";
 import { useSparkRenderer } from "./SparkRendererRoot";
 
 interface GaussianSplatProps {
@@ -37,17 +39,22 @@ type LoadedSplat = {
   bounds: Box3;
 };
 
+type SplatMeshAppearance = Pick<
+  SplatMesh,
+  "maxSh" | "opacity" | "recolor" | "updateGenerator"
+>;
+
 const BOUNDS_PROXY_MATERIAL = new MeshBasicMaterial({ visible: false });
 const SPLAT_BOUNDS_BATCH_SIZE = 10_000;
-const SPLAT_FILE_TYPES_BY_EXTENSION: Record<string, SplatFileType> = {
-  ksplat: SplatFileType.KSPLAT,
-  pcsogs: SplatFileType.PCSOGS,
-  ply: SplatFileType.PLY,
-  rad: SplatFileType.RAD,
-  sog: SplatFileType.PCSOGSZIP,
-  spz: SplatFileType.SPZ,
-  splat: SplatFileType.SPLAT,
-};
+const SPLAT_FILE_TYPES_BY_EXTENSION = {
+  ksplat: "ksplat",
+  pcsogs: "pcsogs",
+  ply: "ply",
+  rad: "rad",
+  sog: "pcsogszip",
+  spz: "spz",
+  splat: "splat",
+} as Record<string, SplatFileType>;
 
 const disposeLoadedSplat = (loadedSplat: LoadedSplat | null) => {
   if (!loadedSplat) {
@@ -78,6 +85,27 @@ const disposeDecodedSplats = (
   decodedSplats: ExtSplats | PackedSplats | null,
 ) => {
   decodedSplats?.dispose();
+};
+
+/** Applies live appearance settings without rebuilding or decoding a mesh. */
+export const applySplatMeshAppearance = ({
+  maxSh,
+  mesh,
+  opacity,
+  tint,
+}: {
+  maxSh: number;
+  mesh: SplatMeshAppearance;
+  opacity: number;
+  tint: string;
+}) => {
+  mesh.opacity = opacity;
+  mesh.recolor.set(tint);
+
+  if (mesh.maxSh !== maxSh) {
+    mesh.maxSh = maxSh;
+    mesh.updateGenerator();
+  }
 };
 
 type SplatBoundsSource = Pick<PackedSplats, "forEachSplat">;
@@ -294,7 +322,14 @@ const createBoundsProxy = (bounds: Box3) => {
  */
 export const GaussianSplat = ({
   name,
-  splat: { splatPath, preTransformedSplatPath, format, centerGeometry },
+  splat: {
+    splatPath,
+    preTransformedSplatPath,
+    format,
+    centerGeometry,
+    opacity: defaultOpacity,
+    tint: defaultTint,
+  },
   position,
   quaternion,
   scale,
@@ -303,7 +338,8 @@ export const GaussianSplat = ({
   const requiresCovariance = requiresCovarianceSplatTransform(scale);
   useSparkRenderer({ requiresCovariance });
 
-  const { fo3dRoot, loadingManager } = useFo3dContext();
+  const invalidate = useThree((state) => state.invalidate);
+  const { fo3dRoot, loadingManager, splatSettings } = useFo3dContext();
   const [loadedSplat, setLoadedSplat] = useState<LoadedSplat | null>(null);
   const [loadError, setLoadError] = useState<Error | null>(null);
 
@@ -314,6 +350,12 @@ export const GaussianSplat = ({
     [splatPath, preTransformedSplatPath, fo3dRoot],
   );
   const effectiveSplatPath = preTransformedSplatPath ?? splatPath;
+  const { opacity, tint } = useSplatAppearanceControls({
+    assetKey: effectiveSplatPath,
+    defaultOpacity,
+    defaultTint,
+    name,
+  });
 
   const fileName = useMemo(
     () => getFileNameHint(effectiveSplatPath, splatUrl),
@@ -342,6 +384,12 @@ export const GaussianSplat = ({
     setLoadError(null);
 
     const loadSplat = async () => {
+      const { ExtSplats, PackedSplats, SplatLoader, SplatMesh } =
+        await loadSpark();
+      if (cancelled) {
+        return;
+      }
+
       const loader = new SplatLoader(loadingManager ?? undefined);
       configureFoLoaderInstance(loader, splatUrl, loadingManager);
       let decodedSplats: ExtSplats | PackedSplats | null = null;
@@ -431,6 +479,23 @@ export const GaussianSplat = ({
       disposeLoadedSplat(activeSplat);
     };
   }, [fileName, fileTypeHint, loadingManager, requiresCovariance, splatUrl]);
+
+  // This effect applies appearance and SH changes to Spark's existing mesh in
+  // place, avoiding network and decode work.
+  useEffect(() => {
+    if (!loadedSplat) {
+      return;
+    }
+
+    applySplatMeshAppearance({
+      maxSh: splatSettings.maxSh,
+      mesh: loadedSplat.mesh,
+      opacity,
+      tint,
+    });
+
+    invalidate();
+  }, [invalidate, loadedSplat, opacity, splatSettings.maxSh, tint]);
 
   const placement = useMemo(() => {
     if (!loadedSplat) {

@@ -7,6 +7,10 @@ import {
   FO3D_CAMERA_LIFECYCLE,
   type Fo3dCameraLifecycleState,
 } from "./camera-lifecycle";
+import {
+  DEFAULT_SPLAT_SETTINGS,
+  type Fo3dSplatSettings,
+} from "./splat/settings";
 
 export interface Fo3dPointCloudSettings {
   enableTooltip: boolean;
@@ -30,6 +34,8 @@ interface Fo3dContextT {
   setAutoRotate: (autoRotate: boolean) => void;
   pointCloudSettings: Fo3dPointCloudSettings;
   setPointCloudSettings: Dispatch<SetStateAction<Fo3dPointCloudSettings>>;
+  splatSettings: Fo3dSplatSettings;
+  setSplatSettings: Dispatch<SetStateAction<Fo3dSplatSettings>>;
   hoverMetadata: HoverMetadata | null;
   setHoverMetadata: Dispatch<SetStateAction<HoverMetadata | null>>;
 }
@@ -54,6 +60,8 @@ const defaultContext: Fo3dContextT = {
     selectedCuboidCropMargin: DEFAULT_SELECTED_CUBOID_CROP_MARGIN,
   },
   setPointCloudSettings: () => {},
+  splatSettings: DEFAULT_SPLAT_SETTINGS,
+  setSplatSettings: () => undefined,
   hoverMetadata: null,
   setHoverMetadata: () => {},
 };

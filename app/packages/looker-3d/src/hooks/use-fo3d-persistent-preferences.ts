@@ -2,6 +2,11 @@ import { useBrowserStorage } from "@fiftyone/state";
 import { useCallback, useMemo, type SetStateAction } from "react";
 import { DEFAULT_SELECTED_CUBOID_CROP_MARGIN } from "../constants";
 import type { Fo3dPointCloudSettings } from "../fo3d/context";
+import {
+  DEFAULT_SPLAT_SETTINGS,
+  type Fo3dSplatSettings,
+  normalizeSplatSettings,
+} from "../fo3d/splat/settings";
 
 const DEFAULT_POINT_CLOUD_SETTINGS: Fo3dPointCloudSettings = {
   enableTooltip: false,
@@ -48,10 +53,33 @@ export const useFo3dPersistentPreferences = () => {
     [setStoredPointCloudSettings],
   );
 
+  const [storedSplatSettings, setStoredSplatSettings] = useBrowserStorage(
+    "fo3d-splatSettings:v1",
+    DEFAULT_SPLAT_SETTINGS,
+  );
+  const splatSettings = useMemo(
+    () => normalizeSplatSettings(storedSplatSettings),
+    [storedSplatSettings],
+  );
+  const setSplatSettings = useCallback(
+    (value: SetStateAction<Fo3dSplatSettings>) => {
+      setStoredSplatSettings((previous) => {
+        const normalizedPrevious = normalizeSplatSettings(previous);
+        const next =
+          typeof value === "function" ? value(normalizedPrevious) : value;
+
+        return normalizeSplatSettings(next);
+      });
+    },
+    [setStoredSplatSettings],
+  );
+
   return {
     autoRotate,
     setAutoRotate,
     pointCloudSettings,
     setPointCloudSettings,
+    splatSettings,
+    setSplatSettings,
   };
 };

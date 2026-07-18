@@ -80,6 +80,8 @@ describe("buildSyntheticSceneForDirect3dSamples", () => {
       splatPath: "/tmp/lidar/reconstruction.spz",
       format: "spz",
       centerGeometry: true,
+      opacity: 1,
+      tint: "#ffffff",
     });
   });
 

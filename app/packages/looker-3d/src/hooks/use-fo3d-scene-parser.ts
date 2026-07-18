@@ -64,6 +64,11 @@ const getOptionalBooleanField = (node: FoSceneRawNode, field: string) => {
   return typeof value === "boolean" ? value : undefined;
 };
 
+const getOptionalNumberField = (node: FoSceneRawNode, field: string) => {
+  const value = (node as NodeRecord)[field];
+  return typeof value === "number" ? value : undefined;
+};
+
 const isFoPointcloudMaterial = (
   material: FoSceneRawNode["defaultMaterial"] | undefined,
 ): material is FoPointcloudMaterialProps => {
@@ -110,6 +115,8 @@ const parseAsset = (node: FoSceneRawNode): MeshAsset | undefined => {
       getOptionalStringField(node, "preTransformedSplatPath"),
       getOptionalStringField(node, "format"),
       getOptionalBooleanField(node, "centerGeometry") ?? true,
+      getOptionalNumberField(node, "opacity"),
+      getOptionalStringField(node, "tint"),
     );
   }
 

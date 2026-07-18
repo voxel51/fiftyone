@@ -5,6 +5,7 @@ import {
   isWrappableDirect3dSamplePath,
 } from "@fiftyone/utilities";
 import type { FiftyoneSceneRawJson, FoSceneRawNode } from "../utils";
+import { DEFAULT_SPLAT_OPACITY, DEFAULT_SPLAT_TINT } from "./splat/settings";
 import { getMediaPathForFo3dSample } from "./utils";
 
 type SliceToSampleMap = Record<string, ModalSample>;
@@ -22,6 +23,8 @@ type SyntheticSceneNode = Omit<
   Partial<Record<Direct3dMediaFieldName, string>> & {
     format?: string;
     centerGeometry?: boolean;
+    opacity?: number;
+    tint?: string;
   };
 type SyntheticNodeConfig = {
   nodeType: string;
@@ -29,6 +32,8 @@ type SyntheticNodeConfig = {
   defaultMaterial: FoSceneRawNode["defaultMaterial"];
   format?: string;
   centerGeometry?: boolean;
+  opacity?: number;
+  tint?: string;
 };
 
 const DEFAULT_MESH_MATERIAL: FoSceneRawNode["defaultMaterial"] = {
@@ -101,6 +106,8 @@ const getNodeConfigForExtension = (
       defaultMaterial: DEFAULT_MESH_MATERIAL,
       format: normalizedExtension.slice(1),
       centerGeometry: true,
+      opacity: DEFAULT_SPLAT_OPACITY,
+      tint: DEFAULT_SPLAT_TINT,
     };
   }
 
@@ -176,6 +183,12 @@ const buildSyntheticNode = ({
   }
   if (nodeConfig.centerGeometry !== undefined) {
     node.centerGeometry = nodeConfig.centerGeometry;
+  }
+  if (nodeConfig.opacity !== undefined) {
+    node.opacity = nodeConfig.opacity;
+  }
+  if (nodeConfig.tint !== undefined) {
+    node.tint = nodeConfig.tint;
   }
 
   return node as FiftyoneSceneRawJson;

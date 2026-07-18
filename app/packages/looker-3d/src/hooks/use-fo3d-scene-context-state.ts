@@ -44,6 +44,8 @@ export const useFo3dSceneContextState = ({
     setAutoRotate,
     pointCloudSettings,
     setPointCloudSettings,
+    splatSettings,
+    setSplatSettings,
   } = useFo3dPersistentPreferences();
 
   const [hoverMetadata, setHoverMetadata] = useState<HoverMetadata | null>(
@@ -70,6 +72,8 @@ export const useFo3dSceneContextState = ({
       setAutoRotate,
       pointCloudSettings,
       setPointCloudSettings,
+      splatSettings,
+      setSplatSettings,
       hoverMetadata,
       setHoverMetadata,
       pluginSettings: settings ?? null,
@@ -90,6 +94,8 @@ export const useFo3dSceneContextState = ({
       setAutoRotate,
       pointCloudSettings,
       setPointCloudSettings,
+      splatSettings,
+      setSplatSettings,
       hoverMetadata,
       setHoverMetadata,
       settings,

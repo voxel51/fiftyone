@@ -1,11 +1,8 @@
-import {
-  type PackedSplats,
-  SplatFileType,
-  type SplatMesh,
-} from "@sparkjsdev/spark";
+import { type PackedSplats, type SplatMesh } from "@sparkjsdev/spark";
 import { Color, Quaternion, Vector3 } from "three";
 import { describe, expect, it, vi } from "vitest";
 import {
+  applySplatMeshAppearance,
   computeSplatBounds,
   getSplatBounds,
   getSplatFileTypeHint,
@@ -138,10 +135,10 @@ describe("getSplatBounds", () => {
 
 describe("getSplatFileTypeHint", () => {
   it.each([
-    ["splat", SplatFileType.SPLAT],
-    [".ksplat", SplatFileType.KSPLAT],
-    ["sog", SplatFileType.PCSOGSZIP],
-    ["rad", SplatFileType.RAD],
+    ["splat", "splat"],
+    [".ksplat", "ksplat"],
+    ["sog", "pcsogszip"],
+    ["rad", "rad"],
   ])("maps the %s format hint", (format, expected) => {
     expect(
       getSplatFileTypeHint({
@@ -158,7 +155,7 @@ describe("getSplatFileTypeHint", () => {
         splatPath: "scene.spz?X-Amz-Signature=abc",
         splatUrl: "https://example.com/media",
       }),
-    ).toBe(SplatFileType.SPZ);
+    ).toBe("spz");
   });
 
   it("prefers the fetched pre-transformed representation", () => {
@@ -170,7 +167,7 @@ describe("getSplatFileTypeHint", () => {
         splatPath: "/assets/reconstruction.ply",
         splatUrl: "https://example.com/transformed/reconstruction.spz",
       }),
-    ).toBe(SplatFileType.SPZ);
+    ).toBe("spz");
   });
 });
 
@@ -182,5 +179,46 @@ describe("requiresCovarianceSplatTransform", () => {
     [new Vector3(2, 2, 2), false],
   ])("classifies scale %j", (scale, expected) => {
     expect(requiresCovarianceSplatTransform(scale)).toBe(expected);
+  });
+});
+
+describe("applySplatMeshAppearance", () => {
+  it("updates opacity, tint, and view-dependent color in place", () => {
+    const mesh = {
+      maxSh: 3,
+      opacity: 1,
+      recolor: new Color(),
+      updateGenerator: vi.fn(),
+    };
+
+    applySplatMeshAppearance({
+      maxSh: 1,
+      mesh,
+      opacity: 0.4,
+      tint: "#804020",
+    });
+
+    expect(mesh.opacity).toBe(0.4);
+    expect(mesh.recolor.getHexString()).toBe("804020");
+    expect(mesh.maxSh).toBe(1);
+    expect(mesh.updateGenerator).toHaveBeenCalledOnce();
+  });
+
+  it("does not rebuild the generator when the SH degree is unchanged", () => {
+    const mesh = {
+      maxSh: 3,
+      opacity: 1,
+      recolor: new Color(),
+      updateGenerator: vi.fn(),
+    };
+
+    applySplatMeshAppearance({
+      maxSh: 3,
+      mesh,
+      opacity: 0.8,
+      tint: "#ffffff",
+    });
+
+    expect(mesh.updateGenerator).not.toHaveBeenCalled();
   });
 });

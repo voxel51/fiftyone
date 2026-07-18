@@ -59,6 +59,8 @@ describe("buildFoScene", () => {
         splatPath: "gaussians.spz",
         format: "spz",
         centerGeometry: false,
+        opacity: 0.4,
+        tint: "#ffaa00",
       } as Partial<FiftyoneSceneRawJson>),
     );
 
@@ -69,10 +71,12 @@ describe("buildFoScene", () => {
       splatPath: "gaussians.spz",
       format: "spz",
       centerGeometry: false,
+      opacity: 0.4,
+      tint: "#ffaa00",
     });
   });
 
-  it("defaults GaussianSplat centerGeometry to true", () => {
+  it("defaults omitted GaussianSplat rendering fields", () => {
     const scene = buildFoScene(
       buildRawScene({
         _type: "GaussianSplat",
@@ -82,6 +86,8 @@ describe("buildFoScene", () => {
 
     expect(scene.children[0].asset).toMatchObject({
       centerGeometry: true,
+      opacity: 1,
+      tint: "#ffffff",
     });
   });
 });
