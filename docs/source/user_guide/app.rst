@@ -1408,10 +1408,6 @@ The 3D visualizer allows you to interactively visualize
 along with any associated
 :ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`:
 
-Gaussian splat reconstructions in PLY, SPZ, SPLAT, KSPLAT, SOG, and RAD
-formats can also be viewed directly or included in FO3D scenes via
-:class:`GaussianSplat <fiftyone.core.threed.GaussianSplat>`.
-
 .. image:: /images/app/app-new-3d-visualizer.gif
    :alt: 3d-visualizer
    :align: center

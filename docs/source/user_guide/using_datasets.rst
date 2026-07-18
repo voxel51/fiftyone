@@ -5329,7 +5329,10 @@ ___________
 files directly, or from `.fo3d` scene files.
 
 Direct assets are the simplest choice when a sample is a single
-:ref:`mesh <3d-meshes>` or :ref:`point cloud <3d-point-clouds>`:
+:ref:`mesh <3d-meshes>`, :ref:`point cloud <3d-point-clouds>`, or Gaussian
+splat reconstruction. Gaussian splats in PLY, SPZ, SPLAT, KSPLAT, SOG, and RAD
+formats can also be included in FO3D scenes via
+:class:`GaussianSplat <fiftyone.core.threed.GaussianSplat>`.
 
 .. code-block:: python
     :linenos:
