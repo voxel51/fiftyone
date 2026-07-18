@@ -1,6 +1,6 @@
 const SRC = "^packages/multimodal/src/";
 const ENTERPRISE = `${SRC}enterprise/`;
-const ENTERPRISE_BOOTSTRAP = `${SRC}inject/enterprise\\.ts$`;
+const INJECT_ENTRY = `${SRC}inject/index\\.ts$`;
 const ENTERPRISE_SHARED_FACADES =
   `${SRC}(extensions/mcap/(index|runtime)\\.ts$|` +
   `query/bytes/index\\.ts$|visualization/index\\.ts$)`;
@@ -13,21 +13,21 @@ module.exports = {
       severity: "error",
       from: {
         path: SRC,
-        pathNot: `${SRC}(enterprise/|inject/enterprise\\.ts$)`,
+        pathNot: `${SRC}(enterprise/|inject/index\\.ts$)`,
       },
       to: { path: ENTERPRISE },
     },
     {
-      name: "enterprise-bootstrap-imports-only-enterprise-entry",
+      name: "inject-entry-imports-only-enterprise-entry",
       severity: "error",
-      from: { path: ENTERPRISE_BOOTSTRAP },
+      from: { path: INJECT_ENTRY },
       to: {
-        path: SRC,
+        path: ENTERPRISE,
         pathNot: `${ENTERPRISE}inject\\.ts$`,
       },
     },
     {
-      name: "enterprise-imports-shared-only-through-public-facades",
+      name: "enterprise-imports-shared-only-through-facades",
       severity: "error",
       from: { path: ENTERPRISE },
       to: {
@@ -45,7 +45,7 @@ module.exports = {
       to: { path: MCAP },
     },
     {
-      name: "oss-multimodal-does-not-import-teams",
+      name: "multimodal-does-not-import-teams",
       severity: "error",
       from: { path: SRC },
       to: { path: `${SRC}teams/|^teams-app/|@fiftyone/teams-multimodal` },

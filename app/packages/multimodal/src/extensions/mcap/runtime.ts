@@ -1,3 +1,11 @@
+/**
+ * Data-plane facade for timeline extension implementations.
+ *
+ * Extensions sometimes need the active MCAP stream, demand bridge, or
+ * playback store. Keeping those adapter imports here gives extension code one
+ * narrow dependency boundary without adding lower-level runtime APIs to the
+ * extension registration barrel in `index.ts`.
+ */
 import {
   startMcapDemandBridge,
   useMcapDemandRegistry,
