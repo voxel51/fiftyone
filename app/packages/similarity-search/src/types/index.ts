@@ -20,7 +20,7 @@ export enum QueryType {
 /**
  * Standard operator view target (current view or full dataset view).
  */
-export type ViewTarget = "CURRENT_VIEW" | "DATASET_VIEW";
+export type ViewTarget = "CURRENT_VIEW" | "DATASET";
 
 /**
  * Configuration for a brain similarity key.

@@ -167,7 +167,7 @@ export default function NewSearch({
                   isPatchesView
                     ? [
                         {
-                          value: "DATASET_VIEW",
+                          value: "DATASET",
                           label: "All Patches",
                           disabled: form.isGroupedDataset,
                         },
@@ -178,7 +178,7 @@ export default function NewSearch({
                       ]
                     : [
                         {
-                          value: "DATASET_VIEW",
+                          value: "DATASET",
                           label: "Full Dataset",
                           disabled: form.isGroupedDataset,
                         },

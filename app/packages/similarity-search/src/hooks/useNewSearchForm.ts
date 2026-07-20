@@ -60,7 +60,9 @@ export const useNewSearchForm = (
   );
   const isGroupedDataset =
     useRecoilValue(fos.parentMediaTypeSelector) === "group";
-  const [viewTarget, setViewTarget] = useState<ViewTarget>("DATASET_VIEW");
+  const [viewTarget, setViewTarget] = useState<ViewTarget>(
+    isGroupedDataset ? "CURRENT_VIEW" : "DATASET",
+  );
 
   // ─── Derived config ─────────────────────────────────────────────
 
@@ -99,7 +101,7 @@ export const useNewSearchForm = (
   }, [supportsUpload, queryType]);
 
   useEffect(() => {
-    if (isGroupedDataset && viewTarget === "DATASET_VIEW") {
+    if (isGroupedDataset && viewTarget === "DATASET") {
       setViewTarget("CURRENT_VIEW");
     }
   }, [isGroupedDataset, viewTarget]);

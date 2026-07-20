@@ -195,7 +195,7 @@ class SimilaritySearchPanel(Panel):
                 base = ctx.dataset
                 if base.media_type == "group":
                     base = base.select_group_slices(_allow_mixed=True)
-                elif patches_field:
+                if patches_field:
                     base = base.to_patches(patches_field)
 
                 view = base.select(result_ids, ordered=True)
