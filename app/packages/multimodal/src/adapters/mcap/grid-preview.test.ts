@@ -6,7 +6,7 @@ import type {
 } from "../../decoders";
 import type { ByteSourceDescriptor } from "../../query/bytes";
 import type { StreamInventory } from "../../schemas/v1";
-import { VISUALIZATION_KIND } from "../../visualization";
+import { VISUALIZATION_KIND } from "../../ir";
 import {
   MCAP_GRID_PREVIEW_MAX_FPS,
   MCAP_GRID_PREVIEW_MAX_POINTS,

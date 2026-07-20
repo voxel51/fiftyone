@@ -1,4 +1,4 @@
-import { VISUALIZATION_KIND } from "../../visualization";
+import { VISUALIZATION_KIND } from "../../ir";
 import type { McapGridPreviewFrame } from "./grid-preview";
 
 export function imageFrame(

@@ -1,4 +1,9 @@
-import type { SceneSource } from "../../scene-inventory";
+import {
+  SCENE_SOURCE_METADATA,
+  SCENE_SOURCE_TYPE,
+  type SceneSource,
+  type SceneSourceType,
+} from "../../ir";
 import { PlaybackSyncMode, type StreamInventory } from "../../schemas/v1";
 import {
   isCameraCalibrationStream,
@@ -15,45 +20,6 @@ import {
 import { chooseCalibrationTopic, topicPrefix } from "./topic-matching";
 import type { McapStreamSyncPolicies, McapStreamSyncPolicy } from "./types";
 
-/**
- * Scene-source types the MCAP adapter derives from a topic inventory,
- * named for the payload they carry — not for the sensor that produced
- * it (a point cloud may come from lidar, radar, or a depth camera).
- * These are the keys tile settings use with `useSceneSourcesByType`;
- * the tile catalog maps them to the tile kinds that can render them.
- */
-export const MCAP_SOURCE_TYPE = {
-  // Foxglove CameraCalibration topics: camera intrinsics/projection.
-  // Paired with image streams by topic prefix and rendered as frustums
-  // in the 3D scene; never a standalone tile.
-  CAMERA_CALIBRATION: "camera-calibration",
-  IMAGE: "image",
-  IMAGE_ANNOTATION: "image-annotation",
-  // Foxglove LocationFix topics: geographic fixes surfaced as telemetry
-  // readouts (and, later, map panels); never a standalone tile.
-  LOCATION: "location",
-  // Log and diagnostics topics: console-shaped streams rendered in a log tile.
-  LOG: "log",
-  // Foxglove Grid topics: 2D data grids rendered as textured ground/map
-  // planes in the 3D scene. Named "map-layer" rather than "grid" because
-  // "grid" already means the FiftyOne sample grid throughout the app.
-  MAP_LAYER: "map-layer",
-  POINT_CLOUD: "point-cloud",
-  // Ego/robot pose streams (Foxglove PoseInFrame, JSON odometry exports):
-  // normalized pose samples rendered as trajectories and telemetry in the
-  // 3D scene.
-  POSE: "pose",
-  SCENE_ANNOTATION: "scene-annotation",
-} as const;
-
-export type McapSourceType =
-  (typeof MCAP_SOURCE_TYPE)[keyof typeof MCAP_SOURCE_TYPE];
-
-/** Static MCAP relationships published through generic scene-source metadata. */
-export const MCAP_SCENE_SOURCE_METADATA = {
-  CALIBRATION_TOPIC: "mcap.calibration_topic",
-} as const;
-
 // Latest-at-or-before with no tolerance = unbounded lookback: the read
 // layer resolves the predecessor message however sparse the stream is
 // (keyframe-rate annotations against full-rate video need no special
@@ -63,18 +29,18 @@ const LATEST_SYNC_POLICY: McapStreamSyncPolicy = {
   mode: PlaybackSyncMode.LATEST,
 };
 
-const SYNC_POLICY_BY_TYPE: Record<McapSourceType, McapStreamSyncPolicy> = {
-  [MCAP_SOURCE_TYPE.CAMERA_CALIBRATION]: LATEST_SYNC_POLICY,
-  [MCAP_SOURCE_TYPE.IMAGE]: LATEST_SYNC_POLICY,
-  [MCAP_SOURCE_TYPE.IMAGE_ANNOTATION]: LATEST_SYNC_POLICY,
-  [MCAP_SOURCE_TYPE.LOCATION]: LATEST_SYNC_POLICY,
-  [MCAP_SOURCE_TYPE.LOG]: LATEST_SYNC_POLICY,
+const SYNC_POLICY_BY_TYPE: Record<SceneSourceType, McapStreamSyncPolicy> = {
+  [SCENE_SOURCE_TYPE.CAMERA_CALIBRATION]: LATEST_SYNC_POLICY,
+  [SCENE_SOURCE_TYPE.IMAGE]: LATEST_SYNC_POLICY,
+  [SCENE_SOURCE_TYPE.IMAGE_ANNOTATION]: LATEST_SYNC_POLICY,
+  [SCENE_SOURCE_TYPE.LOCATION]: LATEST_SYNC_POLICY,
+  [SCENE_SOURCE_TYPE.LOG]: LATEST_SYNC_POLICY,
   // Unbounded lookback is what makes static maps work: a one-shot /map
   // message published at file start stays resolvable for the whole run.
-  [MCAP_SOURCE_TYPE.MAP_LAYER]: LATEST_SYNC_POLICY,
-  [MCAP_SOURCE_TYPE.POINT_CLOUD]: LATEST_SYNC_POLICY,
-  [MCAP_SOURCE_TYPE.POSE]: LATEST_SYNC_POLICY,
-  [MCAP_SOURCE_TYPE.SCENE_ANNOTATION]: LATEST_SYNC_POLICY,
+  [SCENE_SOURCE_TYPE.MAP_LAYER]: LATEST_SYNC_POLICY,
+  [SCENE_SOURCE_TYPE.POINT_CLOUD]: LATEST_SYNC_POLICY,
+  [SCENE_SOURCE_TYPE.POSE]: LATEST_SYNC_POLICY,
+  [SCENE_SOURCE_TYPE.SCENE_ANNOTATION]: LATEST_SYNC_POLICY,
 };
 
 /**
@@ -89,7 +55,7 @@ export function mcapSceneSources(
 ): readonly SceneSource[] {
   const classified: Array<{
     id: string;
-    type: McapSourceType;
+    type: SceneSourceType;
     recordCount?: number;
   }> = [];
   for (const topic of topics) {
@@ -118,7 +84,7 @@ export function mcapSceneSources(
   }
 
   const calibrationTopics = classified
-    .filter(({ type }) => type === MCAP_SOURCE_TYPE.CAMERA_CALIBRATION)
+    .filter(({ type }) => type === SCENE_SOURCE_TYPE.CAMERA_CALIBRATION)
     .map(({ id }) => id);
 
   // Prefer the short prefix-derived label; topics whose prefixes collide
@@ -127,7 +93,7 @@ export function mcapSceneSources(
   return classified.map(({ id, type, recordCount }) => {
     const short = shortTopicLabel(id);
     const calibrationTopic =
-      type === MCAP_SOURCE_TYPE.IMAGE
+      type === SCENE_SOURCE_TYPE.IMAGE
         ? chooseCalibrationTopic(id, calibrationTopics)
         : null;
     return {
@@ -137,7 +103,7 @@ export function mcapSceneSources(
       ...(calibrationTopic
         ? {
             metadata: {
-              [MCAP_SCENE_SOURCE_METADATA.CALIBRATION_TOPIC]: calibrationTopic,
+              [SCENE_SOURCE_METADATA.CALIBRATION_STREAM_ID]: calibrationTopic,
             },
           }
         : {}),
@@ -156,7 +122,7 @@ export function mcapStreamPolicies(
 ): McapStreamSyncPolicies {
   const policies: Record<string, McapStreamSyncPolicy> = {};
   for (const source of sources) {
-    const policy = SYNC_POLICY_BY_TYPE[source.type as McapSourceType];
+    const policy = SYNC_POLICY_BY_TYPE[source.type as SceneSourceType];
     if (policy) {
       policies[source.id] = policy;
     }
@@ -166,33 +132,33 @@ export function mcapStreamPolicies(
 
 export function mcapSourceTypeForTopic(
   topic: StreamInventory,
-): McapSourceType | null {
+): SceneSourceType | null {
   if (isImageStream(topic)) {
-    return MCAP_SOURCE_TYPE.IMAGE;
+    return SCENE_SOURCE_TYPE.IMAGE;
   }
   if (isPointCloudStream(topic)) {
-    return MCAP_SOURCE_TYPE.POINT_CLOUD;
+    return SCENE_SOURCE_TYPE.POINT_CLOUD;
   }
   if (isImageAnnotationsStream(topic)) {
-    return MCAP_SOURCE_TYPE.IMAGE_ANNOTATION;
+    return SCENE_SOURCE_TYPE.IMAGE_ANNOTATION;
   }
   if (isSceneUpdateStream(topic)) {
-    return MCAP_SOURCE_TYPE.SCENE_ANNOTATION;
+    return SCENE_SOURCE_TYPE.SCENE_ANNOTATION;
   }
   if (isGridStream(topic)) {
-    return MCAP_SOURCE_TYPE.MAP_LAYER;
+    return SCENE_SOURCE_TYPE.MAP_LAYER;
   }
   if (isCameraCalibrationStream(topic)) {
-    return MCAP_SOURCE_TYPE.CAMERA_CALIBRATION;
+    return SCENE_SOURCE_TYPE.CAMERA_CALIBRATION;
   }
   if (isPoseStream(topic)) {
-    return MCAP_SOURCE_TYPE.POSE;
+    return SCENE_SOURCE_TYPE.POSE;
   }
   if (isLocationFixStream(topic)) {
-    return MCAP_SOURCE_TYPE.LOCATION;
+    return SCENE_SOURCE_TYPE.LOCATION;
   }
   if (isLogStream(topic)) {
-    return MCAP_SOURCE_TYPE.LOG;
+    return SCENE_SOURCE_TYPE.LOG;
   }
   return null;
 }

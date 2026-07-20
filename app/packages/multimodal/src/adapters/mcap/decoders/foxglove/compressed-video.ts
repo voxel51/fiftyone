@@ -5,7 +5,7 @@ import {
   type Decoder,
   type EncodedVideoVisualization,
 } from "../../../../decoders";
-import { VISUALIZATION_KIND } from "../../../../visualization";
+import { VISUALIZATION_KIND } from "../../../../ir";
 import { bytesField, recordField, rosTimestampNs } from "../ros/common";
 import { rosDecodersForPayloads } from "../ros/factory";
 import { analyzeH264AnnexBAccessUnit } from "../../../../utils/h264-annexb";

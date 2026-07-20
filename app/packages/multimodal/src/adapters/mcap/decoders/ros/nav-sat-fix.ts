@@ -4,7 +4,7 @@ import type {
   DecodedOutput,
   LocationVisualization,
 } from "../../../../decoders";
-import { VISUALIZATION_KIND } from "../../../../visualization";
+import { VISUALIZATION_KIND } from "../../../../ir";
 import {
   finiteNumberArrayField,
   numberField,

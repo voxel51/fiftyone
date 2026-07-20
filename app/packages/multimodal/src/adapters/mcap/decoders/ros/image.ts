@@ -4,7 +4,7 @@ import type {
   DecodedOutput,
 } from "../../../../decoders";
 import { resourceHintsForArrayBufferViews } from "../../../../decoders";
-import { VISUALIZATION_KIND } from "../../../../visualization";
+import { VISUALIZATION_KIND } from "../../../../ir";
 import { decodeImageRgba } from "../image-encodings";
 import {
   bytesField,

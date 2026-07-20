@@ -8,7 +8,7 @@ import {
   type McapPlaybackWorkerStreamType,
   type McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
-import { dehydrateMcapFrameTransformSet } from "../frame-transforms";
+import { dehydrateMcapFrameTransformSet } from "../frame-transform-wire";
 import type { McapResourceClient } from "../types";
 
 /**

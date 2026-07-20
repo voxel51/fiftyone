@@ -20,7 +20,7 @@ import {
   type SceneTrianglePrimitive,
   type SceneUpdateVisualization,
 } from "../../../../decoders";
-import { VISUALIZATION_KIND } from "../../../../visualization";
+import { VISUALIZATION_KIND } from "../../../../ir";
 import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";
 import { decodePose, decodeVector3 } from "./protobuf/geometry";

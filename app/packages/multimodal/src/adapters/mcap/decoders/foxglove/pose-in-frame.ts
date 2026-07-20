@@ -5,7 +5,7 @@ import type {
   Decoder,
   PoseVisualization,
 } from "../../../../decoders";
-import { VISUALIZATION_KIND } from "../../../../visualization";
+import { VISUALIZATION_KIND } from "../../../../ir";
 import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";
 import { decodeQuaternion, decodeVector3 } from "./protobuf/geometry";

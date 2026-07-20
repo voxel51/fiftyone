@@ -11,7 +11,7 @@ import type {
   ScenePose3D,
   SceneTextPrimitive,
 } from "../../../../decoders";
-import { VISUALIZATION_KIND } from "../../../../visualization";
+import { VISUALIZATION_KIND } from "../../../../ir";
 import {
   decodePose,
   decodeVector3,

@@ -1,16 +1,10 @@
 import type { Quaternion, Vector3 } from "three";
 
-/**
- * How dynamic transforms are resolved between bracketing samples:
- * `interpolate` slerps/lerps between them; `hold-last` reuses the latest
- * at-or-before sample verbatim so playback never shows synthesized poses.
- */
 export type McapFrameTransformResolutionMode = "interpolate" | "hold-last";
 
 export interface McapFrameTransformPolicy {
   readonly boundaryClampNs: bigint;
   readonly maxInterpolationGapNs: bigint;
-  /** Defaults to `interpolate` when omitted. */
   readonly resolutionMode?: McapFrameTransformResolutionMode;
 }
 
@@ -22,13 +16,6 @@ export type McapFrameTransformResolutionKind =
   | "held"
   | "clamped";
 
-/**
- * Transform sample from a child frame into its parent frame.
- *
- * The rotation/translation use THREE math types. Note: when a set crosses a
- * worker boundary, structured clone strips THREE prototypes — receivers must
- * `hydrateMcapFrameTransformSet` to re-wrap before reading instance methods.
- */
 export interface McapFrameTransformSample {
   readonly childFrameId: string;
   readonly parentFrameId: string;
@@ -43,9 +30,6 @@ export interface McapFrameTransformTopicStats {
   readonly topic: string;
 }
 
-/**
- * Frame transform samples returned by one MCAP resource read.
- */
 export interface McapFrameTransformSet {
   readonly encodedPayloadBytes?: number;
   readonly messageCount?: number;
@@ -54,9 +38,6 @@ export interface McapFrameTransformSet {
   readonly topics?: readonly string[];
 }
 
-/**
- * Plain quaternion shape safe to send through structured clone.
- */
 export interface McapQuaternionWire {
   readonly w: number;
   readonly x: number;
@@ -64,18 +45,12 @@ export interface McapQuaternionWire {
   readonly z: number;
 }
 
-/**
- * Plain vector shape safe to send through structured clone.
- */
 export interface McapVector3Wire {
   readonly x: number;
   readonly y: number;
   readonly z: number;
 }
 
-/**
- * Serialized frame transform sample used across worker boundaries.
- */
 export interface McapFrameTransformSampleWire {
   readonly childFrameId: string;
   readonly parentFrameId: string;
@@ -84,9 +59,6 @@ export interface McapFrameTransformSampleWire {
   readonly translation: McapVector3Wire;
 }
 
-/**
- * Serialized frame transform set used across worker boundaries.
- */
 export interface McapFrameTransformSetWire {
   readonly encodedPayloadBytes?: number;
   readonly messageCount?: number;
@@ -95,14 +67,7 @@ export interface McapFrameTransformSetWire {
   readonly topics?: readonly string[];
 }
 
-/**
- * Composed transform mapping coordinates from sourceFrameId into targetFrameId.
- */
 export interface McapComposedFrameTransform {
-  /**
-   * Largest bracketing sample gap used by any interpolated dynamic edge in
-   * this composed path. Undefined when the path did not interpolate.
-   */
   readonly maxInterpolationGapNs?: bigint;
   readonly resolutionKind?: McapFrameTransformResolutionKind;
   readonly rotation: Quaternion;
@@ -111,9 +76,6 @@ export interface McapComposedFrameTransform {
   readonly translation: Vector3;
 }
 
-/**
- * Result of mapping coordinates from one frame into another frame.
- */
 export type McapFrameTransformResolution = {
   readonly sourceFrameId: string;
   readonly targetFrameId: string;
@@ -130,9 +92,6 @@ export type McapFrameTransformResolution = {
     }
 );
 
-/**
- * Inclusive dynamic timeline range already attempted by the transform hook.
- */
 export interface McapFrameTransformTimeRange {
   readonly endTimeNs: bigint;
   readonly startTimeNs: bigint;

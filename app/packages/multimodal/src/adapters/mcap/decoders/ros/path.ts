@@ -8,7 +8,7 @@ import type {
   ScenePoint3D,
   ScenePose3D,
 } from "../../../../decoders";
-import { VISUALIZATION_KIND } from "../../../../visualization";
+import { VISUALIZATION_KIND } from "../../../../ir";
 import {
   decodePose,
   decodeVector3,
