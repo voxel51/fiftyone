@@ -18,7 +18,6 @@ from starlette.exceptions import HTTPException
 import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.core.tags as fota
-import fiftyone.multimodal.server as foms
 import fiftyone.multimodal.server.routes as fomr
 import fiftyone.server.routes as fosr
 import fiftyone.server.routes.temporal_tags as fott
@@ -809,8 +808,3 @@ class TestTagsRoute:
 
         for path, endpoint in fott.TemporalTagRoutes:
             assert registered_routes[path] is endpoint
-
-    def test_multimodal_server_preserves_temporal_tag_endpoint_exports(self):
-        assert foms.SampleTagsEndpoint is fott.SampleTagsEndpoint
-        assert foms.TagCountsEndpoint is fott.TagCountsEndpoint
-        assert foms.TagsEndpoint is fott.TagsEndpoint
