@@ -1,4 +1,8 @@
-// If we want to run side-effect code in global scope, like registering certain
-// plugins, we can do so here
+import { mcapAdapterDescriptor } from "../adapters/mcap/descriptor";
+import { leRobotAdapterDescriptor } from "../adapters/lerobot/descriptor";
+import { registerFormatAdapter } from "../runtime";
+import { registerEpisodeViews } from "../views/entry";
 
-import "../adapters/mcap/entry";
+registerFormatAdapter(mcapAdapterDescriptor);
+registerFormatAdapter(leRobotAdapterDescriptor);
+registerEpisodeViews();
