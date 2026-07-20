@@ -222,7 +222,7 @@ export function useEpisodeModalLayout({
           cameraPreferenceField,
         );
       } else {
-        // Preserve the legacy dataset-scoped value when the caller cannot
+        // Preserve the dataset-scoped fallback when the caller cannot
         // identify a media field yet.
         writeEpisodeModalLayout({ sceneUpAxis: axis }, datasetId);
       }

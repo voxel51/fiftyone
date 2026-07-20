@@ -110,57 +110,7 @@ describe("episode panel visibility persistence", () => {
   });
 
   it("fails closed on malformed storage", () => {
-    localStorage.setItem("fiftyone.mcap.panel-visibility", "{not-json");
+    localStorage.setItem("fiftyone.episode.panel-visibility.v2", "{not-json");
     expect(readEpisode3dTileVisibility("dataset-a", "3d-1")).toBeNull();
-  });
-
-  it("restores the legacy key and projection field names", () => {
-    localStorage.setItem(
-      "fiftyone.mcap.panel-visibility",
-      JSON.stringify({
-        version: 1,
-        byScope: {
-          "dataset-a:field-a": {
-            updatedAtMs: 1,
-            tiles: {
-              "image-1": {
-                imageLabelTopics: {
-                  "/camera/front": ["/labels/front"],
-                },
-                imagePointCloudProjections: {
-                  "/camera/front": {
-                    enabled: true,
-                    pointSize: 5,
-                    topics: ["/lidar/top"],
-                  },
-                },
-              },
-            },
-          },
-        },
-      }),
-    );
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <EpisodePanelVisibilityProvider scopeKey="dataset-a:field-a">
-        <TilingProvider>
-          <TileIdScope tileId="image-1">{children}</TileIdScope>
-        </TilingProvider>
-      </EpisodePanelVisibilityProvider>
-    );
-
-    const labels = renderHook(
-      () => useEpisodeImageTileLabelStreams("/camera/front"),
-      { wrapper },
-    );
-    const projection = renderHook(
-      () => useEpisodeImageTilePointCloudProjection("/camera/front"),
-      { wrapper },
-    );
-    expect(labels.result.current.labelStreams).toEqual(["/labels/front"]);
-    expect(projection.result.current.projection).toEqual({
-      enabled: true,
-      pointSize: 5,
-      streams: ["/lidar/top"],
-    });
   });
 });

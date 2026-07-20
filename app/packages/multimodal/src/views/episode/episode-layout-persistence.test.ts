@@ -13,8 +13,7 @@ import {
   writeEpisodeModalLayout,
 } from "./episode-layout-persistence";
 
-const STORAGE_KEY = "fiftyone.episode.modal-layout";
-const LEGACY_STORAGE_KEY = "fiftyone.mcap.modal-layout";
+const STORAGE_KEY = "fiftyone.episode.modal-layout.v2";
 
 describe("episode-layout-persistence", () => {
   beforeEach(() => {
@@ -93,61 +92,11 @@ describe("episode-layout-persistence", () => {
     expect(readEpisodeModalLayout()).toBeNull();
   });
 
-  it("migrates pre-versioned fallback layouts", () => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        layout: "image-1",
-        leftSidebarOpen: true,
-        mapSettings: { "map-1": { enabledStreams: ["/gps"], followEgo: true } },
-        rawStreams: { "raw-1": "/imu" },
-        sceneUpAxis: "y",
-        tileTitles: { "image-1": "Front Camera" },
-      }),
-    );
-
-    expect(readEpisodeModalLayout()).toEqual({
-      layout: "image-1",
-      leftSidebarOpen: true,
-    });
-  });
-
-  it("restores the legacy key and stream field names", () => {
-    localStorage.setItem(
-      LEGACY_STORAGE_KEY,
-      JSON.stringify({
-        version: 1,
-        byDataset: {
-          "dataset-a": {
-            mapSettings: {
-              "map-1": { enabledTopics: ["/gps"], followEgo: true },
-            },
-            plotSeries: {
-              "plot-1": [{ color: "#3987e5", fieldPath: "x", topic: "/odom" }],
-            },
-            rawTopics: { "raw-1": "/imu" },
-            updatedAtMs: 1,
-          },
-        },
-      }),
-    );
-
-    expect(readEpisodeModalLayout("dataset-a")).toMatchObject({
-      mapSettings: {
-        "map-1": { enabledStreams: ["/gps"], followEgo: true },
-      },
-      plotSeries: {
-        "plot-1": [{ color: "#3987e5", fieldPath: "x", stream: "/odom" }],
-      },
-      rawStreams: { "raw-1": "/imu" },
-    });
-  });
-
   it("strips dataset-scoped fields from fallback reads", () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        version: 1,
+        version: 2,
         fallback: {
           cameraPreferences: {
             mcap: { preferredWorldFrameId: "map" },
@@ -173,7 +122,7 @@ describe("episode-layout-persistence", () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        version: 1,
+        version: 2,
         fallback: {
           leftSidebarOpen: true,
           layout: { direction: "diagonal", first: "a", second: "b" },
@@ -189,7 +138,7 @@ describe("episode-layout-persistence", () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        version: 1,
+        version: 2,
         fallback: { expandedTileId: "", leftSidebarOpen: true },
       }),
     );
@@ -276,7 +225,7 @@ describe("episode-layout-persistence", () => {
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          version: 1,
+          version: 2,
           byDataset: {
             "dataset-a": {
               cameraPreferences: {
@@ -324,13 +273,13 @@ describe("episode-layout-persistence", () => {
     it("drops non-numeric or non-positive widths but keeps valid fields", () => {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ version: 1, fallback: { sidebarWidthPx: "wide" } }),
+        JSON.stringify({ version: 2, fallback: { sidebarWidthPx: "wide" } }),
       );
       expect(readEpisodeModalLayout()?.sidebarWidthPx).toBeUndefined();
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          version: 1,
+          version: 2,
           fallback: { sidebarWidthPx: -5, leftSidebarOpen: true },
         }),
       );
@@ -727,7 +676,7 @@ describe("episode-layout-persistence", () => {
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          version: 1,
+          version: 2,
           byDataset: {
             "ds-a": {
               leftSidebarOpen: true,

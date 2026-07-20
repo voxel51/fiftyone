@@ -108,7 +108,7 @@ export interface EpisodeImageProjectionSettings {
  * Stream-keyed styling persisted per settings scope (one dataset or ad hoc
  * recording source). Bare stream names collide across unrelated datasets —
  * two recordings sharing `/lidar_top` are not one preference — so these
- * maps resolve scoped-first with the legacy top-level maps as fallback.
+ * maps are isolated from the unscoped top-level maps.
  */
 export interface EpisodeScopedModalSettings {
   readonly imageLabelStreams: Record<string, readonly string[]>;
@@ -121,8 +121,8 @@ export interface EpisodeScopedModalSettings {
  *
  * Device-global preferences (fidelity, timing, pinhole, grid, background,
  * point size) live at the top level. Stream-keyed styling additionally lives
- * under `scoped`, keyed by settings scope; the top-level stream maps remain
- * as the pre-scoping fallback.
+ * under `scoped`, keyed by settings scope; the top-level stream maps serve
+ * unscoped playback hosts.
  */
 export interface EpisodePersistedModalSettings {
   readonly fidelityMode: EpisodePlaybackFidelityMode;
@@ -138,8 +138,7 @@ export interface EpisodePersistedModalSettings {
   readonly temporalPolicy: EpisodeTemporalPolicySettings;
 }
 
-const STORAGE_KEY = "fiftyone.episode.modal-settings";
-const LEGACY_STORAGE_KEY = "fiftyone.mcap.modal-settings";
+const STORAGE_KEY = "fiftyone.episode.modal-settings.v2";
 
 /**
  * Default interpolation policy for newly initialized episode modal settings.
@@ -314,21 +313,18 @@ export const DEFAULT_EPISODE_MODAL_SETTINGS: EpisodePersistedModalSettings = {
 export function readEpisodeModalSettings(): EpisodePersistedModalSettings {
   try {
     const storage = globalThis.localStorage;
-    const raw =
-      storage?.getItem(STORAGE_KEY) ?? storage?.getItem(LEGACY_STORAGE_KEY);
+    const raw = storage?.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_EPISODE_MODAL_SETTINGS;
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) {
       return DEFAULT_EPISODE_MODAL_SETTINGS;
     }
 
-    const candidate = parsed as Partial<EpisodePersistedModalSettings> & {
-      imageLabelTopics?: unknown;
-    };
+    const candidate = parsed as Partial<EpisodePersistedModalSettings>;
     return {
       fidelityMode: normalizeEpisodeFidelityMode(candidate.fidelityMode),
       imageLabelStreams: normalizeEpisodeImageLabelStreamMap(
-        candidate.imageLabelStreams ?? candidate.imageLabelTopics,
+        candidate.imageLabelStreams,
       ),
       imageProjection: normalizeEpisodeImageProjectionMap(
         candidate.imageProjection,
@@ -510,11 +506,8 @@ export function normalizeEpisodeImageProjection(
     return DEFAULT_EPISODE_IMAGE_PROJECTION;
   }
 
-  const candidate = value as Partial<EpisodeImageProjectionSettings> & {
-    calibrationTopic?: unknown;
-    topics?: unknown;
-  };
-  const rawStreams = candidate.streams ?? candidate.topics;
+  const candidate = value as Partial<EpisodeImageProjectionSettings>;
+  const rawStreams = candidate.streams;
   const streams =
     rawStreams === null || rawStreams === undefined
       ? null
@@ -522,9 +515,7 @@ export function normalizeEpisodeImageProjection(
   const enabled =
     candidate.enabled === true && (streams === null || streams.length > 0);
   return {
-    calibrationStream: normalizeOptionalStream(
-      candidate.calibrationStream ?? candidate.calibrationTopic,
-    ),
+    calibrationStream: normalizeOptionalStream(candidate.calibrationStream),
     display: normalizeEpisodeImageDisplay(candidate.display),
     enabled,
     geometry: normalizeEpisodeImageGeometry(candidate.geometry),

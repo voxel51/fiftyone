@@ -427,14 +427,14 @@ describe("useEpisode3dSelection", () => {
   it("restores per-tile visibility before applying fresh defaults", () => {
     const first = renderSelection([lidarTop, lidarFront, boxes]);
     expect(
-      localStorage.getItem("fiftyone.episode.panel-visibility"),
+      localStorage.getItem("fiftyone.episode.panel-visibility.v2"),
     ).toBeNull();
     act(() => {
       first.result.current.toggleSource(lidarFront.id, true);
       first.result.current.toggleSource(boxes.id, true);
     });
     expect(
-      localStorage.getItem("fiftyone.episode.panel-visibility"),
+      localStorage.getItem("fiftyone.episode.panel-visibility.v2"),
     ).not.toBeNull();
     expect(first.result.current.enabled).toEqual(
       new Set([lidarTop.id, lidarFront.id, boxes.id]),
