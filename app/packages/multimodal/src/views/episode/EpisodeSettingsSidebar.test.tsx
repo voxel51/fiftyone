@@ -5,13 +5,7 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import {
-  TileIdScope,
-  TileSettingsContent,
-  TilingProvider,
-  useTiling,
-  type TilingTile,
-} from "@fiftyone/tiling";
+import { TilingProvider, useTiling, type TilingTile } from "@fiftyone/tiling";
 import { PlaybackProvider } from "@fiftyone/playback";
 import { useAtomValue } from "jotai";
 import React from "react";
@@ -73,12 +67,6 @@ const INITIAL_TILES: Record<string, TilingTile> = {
   [LIDAR_TILE_ID]: { title: "3D", render: () => null },
 };
 
-const TileBody: React.FC<{ label: string }> = ({ label }) => (
-  <TileSettingsContent>
-    <div data-testid={PANEL_SETTINGS_TEST_ID}>{label} knobs</div>
-  </TileSettingsContent>
-);
-
 const RegisteredTileBody: React.FC<{
   label: string;
   streamStreams?: readonly string[];
@@ -136,13 +124,10 @@ const TilingStateProbe: React.FC<{
 
 function renderSidebar({
   registeredStreamStreams,
-  registeredTileSettings,
   streams = [],
 }: {
   /** Stream streams declared by the registered tiles' registrations. */
   readonly registeredStreamStreams?: readonly string[];
-  /** Tile ids whose settings register through the tile-settings registry. */
-  readonly registeredTileSettings?: readonly string[];
   readonly streams?: readonly StreamInventory[];
 } = {}) {
   const probeState: { current: TilingProbeState | null } = { current: null };
@@ -152,28 +137,16 @@ function renderSidebar({
         <TilingProvider initialTiles={INITIAL_TILES}>
           <EpisodeTileSettingsProvider>
             <TilingStateProbe stateRef={probeState} />
-            <TileIdScope tileId={CAMERA_TILE_ID}>
-              {registeredTileSettings?.includes(CAMERA_TILE_ID) ? (
-                <RegisteredTileBody
-                  label="camera"
-                  streamStreams={registeredStreamStreams}
-                  tileId={CAMERA_TILE_ID}
-                />
-              ) : (
-                <TileBody label="camera" />
-              )}
-            </TileIdScope>
-            <TileIdScope tileId={LIDAR_TILE_ID}>
-              {registeredTileSettings?.includes(LIDAR_TILE_ID) ? (
-                <RegisteredTileBody
-                  label="lidar"
-                  streamStreams={registeredStreamStreams}
-                  tileId={LIDAR_TILE_ID}
-                />
-              ) : (
-                <TileBody label="lidar" />
-              )}
-            </TileIdScope>
+            <RegisteredTileBody
+              label="camera"
+              streamStreams={registeredStreamStreams}
+              tileId={CAMERA_TILE_ID}
+            />
+            <RegisteredTileBody
+              label="lidar"
+              streamStreams={registeredStreamStreams}
+              tileId={LIDAR_TILE_ID}
+            />
             <FocusButton id={CAMERA_TILE_ID} testId="focus-camera" />
             <FocusButton id={LIDAR_TILE_ID} testId="focus-lidar" />
             <EpisodeSettingsSidebar streams={streams} />
@@ -299,7 +272,7 @@ describe("EpisodeSettingsSidebar", () => {
     ).toBe("as-recorded");
     expect(
       JSON.parse(
-        localStorage.getItem("fiftyone.episode.modal-settings") ?? "{}",
+        localStorage.getItem("fiftyone.episode.modal-settings.v2") ?? "{}",
       ).fidelityMode,
     ).toBe("as-recorded");
   });
@@ -519,7 +492,7 @@ describe("EpisodeSettingsSidebar", () => {
       screen.getByRole("tab", { name: "Camera" }).getAttribute("aria-selected"),
     ).toBe("true");
     expect(screen.getByTestId(PANEL_SETTINGS_TEST_ID).textContent).toBe(
-      "camera knobs",
+      "camera registered knobs",
     );
   });
 
@@ -546,12 +519,12 @@ describe("EpisodeSettingsSidebar", () => {
     fireEvent.click(screen.getByRole("tab", { name: "3D" }));
 
     expect(screen.getByTestId(PANEL_SETTINGS_TEST_ID).textContent).toBe(
-      "lidar knobs",
+      "lidar registered knobs",
     );
   });
 
-  it("renders registry-backed tile settings without the DOM slot", () => {
-    renderSidebar({ registeredTileSettings: [LIDAR_TILE_ID] });
+  it("renders registry-backed tile settings", () => {
+    renderSidebar();
 
     fireEvent.click(screen.getByTestId("focus-lidar"));
 
@@ -562,7 +535,6 @@ describe("EpisodeSettingsSidebar", () => {
 
   it("frames registered stream tiles with their status strip", () => {
     renderSidebar({
-      registeredTileSettings: [LIDAR_TILE_ID],
       registeredStreamStreams: ["/lidar/top"],
     });
 
@@ -573,17 +545,6 @@ describe("EpisodeSettingsSidebar", () => {
     expect(screen.getByText(/Buffering/)).toBeTruthy();
     expect(screen.getByTestId(PANEL_SETTINGS_TEST_ID).textContent).toBe(
       "lidar registered knobs",
-    );
-  });
-
-  it("falls back to the DOM slot when switching to a portal tile", () => {
-    renderSidebar({ registeredTileSettings: [LIDAR_TILE_ID] });
-
-    fireEvent.click(screen.getByTestId("focus-lidar"));
-    fireEvent.click(screen.getByTestId("focus-camera"));
-
-    expect(screen.getByTestId(PANEL_SETTINGS_TEST_ID).textContent).toBe(
-      "camera knobs",
     );
   });
 });
@@ -602,14 +563,13 @@ function stream(
     readonly schema: string;
   },
 ): StreamInventory {
+  const sceneType = testSceneType(schema);
   return {
     $typeName: "fiftyone.multimodal.schemas.v1.StreamInventory",
     displayName: name,
     metadata: {
       [SCENE_SOURCE_METADATA.SOURCE_NAME]: name,
-      ...(testSceneType(schema)
-        ? { [SCENE_SOURCE_METADATA.TYPE]: testSceneType(schema)! }
-        : {}),
+      ...(sceneType ? { [SCENE_SOURCE_METADATA.TYPE]: sceneType } : {}),
       [STREAM_METADATA.DECODE_STATUS]: decodeStatus,
       [STREAM_METADATA.ENCODING]: encoding,
       [STREAM_METADATA.SCHEMA_NAME]: schema,

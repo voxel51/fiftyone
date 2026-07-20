@@ -20,15 +20,9 @@ export interface EpisodeTileSettingsRegistration {
 }
 
 /**
- * Modal-scoped registry of tile settings, keyed by tile id.
- *
- * Successor to the tiling DOM-portal slot (`setSettingsSlotEl` +
- * `TileSettingsContent`): a tile registers its settings as a React element
- * and the sidebar renders it inside its own tree, so the settings UI is
- * ordinary composition — the sidebar can wrap it (status strips, scroll
- * containers) and React devtools match what is on screen. Tiles that still
- * portal keep working; the sidebar prefers a registration when the focused
- * tile has one and falls back to the slot otherwise.
+ * Modal-scoped registry of tile settings, keyed by tile id. A tile registers
+ * its settings as a React element and the sidebar renders it inside its own
+ * tree, where it can add status strips and scroll containers.
  */
 const registry = createEpisodeTileRegistry<EpisodeTileSettingsRegistration>(
   "EpisodeTileSettings",
@@ -43,7 +37,7 @@ export const EpisodeTileSettingsProvider = registry.Provider;
  */
 export const useRegisterEpisodeTileSettings = registry.useRegister;
 
-/** The focused tile's registration, or null to use the legacy slot. */
+/** The focused tile's settings registration, or null when none is mounted. */
 export function useEpisodeTileSettings(
   tileId: string | null | undefined,
 ): EpisodeTileSettingsRegistration | null {
