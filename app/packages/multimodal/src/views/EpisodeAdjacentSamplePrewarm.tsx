@@ -36,7 +36,7 @@ const prewarmIo = createDefaultByteClient();
  * Non-visual worker that prewarms the adjacent samples' startup bytes at
  * idle: after a settle delay (and only while playback is not waiting on
  * data and the network is not limited), it peeks the modal's neighbors,
- * builds their MCAP sources, and warms the shared persistent byte cache
+ * builds their episode sources, and warms the shared persistent byte cache
  * so the hop's cold reads skip the network. Mount inside the playback
  * shell — it reads the shell's store for the buffering and health gates.
  */

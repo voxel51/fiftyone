@@ -24,10 +24,7 @@ import { useEpisodeTimeRange } from "./use-episode-time-range";
  */
 const EpisodeModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const { byteSource: source, episodeSource } = useStableEpisodeSource(ctx);
-  const sampleDescriptor = useMemo(
-    () => sampleDescriptorFromContext(ctx),
-    [ctx.dataset.mediaType, ctx.media.path],
-  );
+  const sampleDescriptor = sampleDescriptorFromContext(ctx);
   const sessionState = useEpisodeSession(sampleDescriptor, episodeSource);
   const timeRange = useEpisodeTimeRange(sessionState.session);
   const fileName = episodeSourceDisplayName(ctx.media.path) ?? "recording";

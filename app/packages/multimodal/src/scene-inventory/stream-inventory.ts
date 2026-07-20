@@ -1,5 +1,6 @@
 import { SCENE_SOURCE_METADATA, type SceneSource } from "../ir";
 import type { StreamInventory } from "../schemas/v1";
+import { streamPrefix } from "../stream-matching";
 
 /** Builds renderer-facing scene sources from adapter-normalized inventory. */
 export function sceneSourcesFromStreamInventory(
@@ -53,8 +54,7 @@ function normalizedSceneMetadata(
 }
 
 function sourceLabel(sourceName: string): string {
-  const segments = sourceName.split("/").filter(Boolean);
-  return displaySourceName(segments[0] ?? sourceName);
+  return displaySourceName(streamPrefix(sourceName) || sourceName);
 }
 
 function displaySourceName(sourceName: string): string {

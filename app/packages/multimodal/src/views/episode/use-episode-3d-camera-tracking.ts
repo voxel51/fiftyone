@@ -36,7 +36,7 @@ import {
 import { buildEpisodeCameraTargetNotice } from "./episode-health";
 import {
   DEFAULT_EPISODE_3D_CAMERA_NAVIGATION_MODE,
-  mcap3dSourceShapeMatches,
+  episode3dSourceShapeMatches,
   type Episode3dCameraNavigationMode,
   type Episode3dCameraViewSnapshot,
   type Episode3dViewStateStore,
@@ -167,7 +167,7 @@ export function useEpisode3dCameraTracking({
   readonly worldFrameId: string;
 }) {
   const viewStateStore = useEpisode3dViewStateStore(suppliedViewStateStore);
-  const restoreSourceShapeMatches = mcap3dSourceShapeMatches(
+  const restoreSourceShapeMatches = episode3dSourceShapeMatches(
     restore?.renderableSourceIds ?? null,
     renderableSourceIds,
   );
@@ -550,7 +550,7 @@ export function useEpisode3dCameraTracking({
     const pending = pendingCameraViewRestoreRef.current;
     if (
       !pending ||
-      !mcap3dCameraPoseRestoreApplies({
+      !episode3dCameraPoseRestoreApplies({
         allowCrossSource: cameraNavigationMode === "absolute",
         currentSourceKey: sourceKey,
         placementStatus,
@@ -809,7 +809,7 @@ export function useEpisode3dCameraTracking({
     }
 
     const snapshot = viewStateStore.getSnapshot();
-    const navigationRestoreCompatible = mcap3dSourceShapeMatches(
+    const navigationRestoreCompatible = episode3dSourceShapeMatches(
       snapshot.renderableSourceIds,
       renderableSourceIds,
     );
@@ -972,7 +972,7 @@ export function useEpisode3dCameraTracking({
  * transformed (never against a provisional source-frame preview), within the
  * same recording, and in the world frame the pose was captured in.
  */
-export function mcap3dCameraPoseRestoreApplies({
+export function episode3dCameraPoseRestoreApplies({
   allowCrossSource = false,
   currentSourceKey,
   placementStatus,

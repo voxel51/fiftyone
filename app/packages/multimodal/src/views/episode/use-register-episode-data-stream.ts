@@ -49,7 +49,12 @@ import type {
 } from "../../ir";
 import { isEpisodeReadCancelledError, type EpisodeSession } from "../../ports";
 import { monotonicNowMs } from "../../time";
-import { DEFAULT_TIMELINE_TICK_RATE_HZ } from "../../runtime";
+import {
+  createEpisodePlaybackRuntime,
+  createTimelineIndex,
+  DEFAULT_TIMELINE_TICK_RATE_HZ,
+  type TimelineIndex,
+} from "../../runtime";
 import { useSetEpisodeDataStream } from "./episode-data-stream-context";
 import {
   decodedCacheBudgetBytes,
@@ -72,8 +77,6 @@ import {
   resetEpisodeStartupCushionState,
   setEpisodeStartupCushionState,
 } from "./episode-startup-cushion-state";
-import type { EpisodeTimelineIndex } from "./episode-timeline-index";
-import { createEpisodeTimelineIndex } from "./episode-timeline-index";
 import { EpisodeStreamCache } from "./episode-stream-cache";
 import type { EpisodeStreamPlaybackFrame } from "./use-episode-stream-values";
 
@@ -228,6 +231,7 @@ interface RemoteStartupGateDecision {
   readonly sourceEpoch: number;
 }
 
+/** Inputs for registering the shared episode playback stream. */
 export interface UseEpisodeDataStreamOptions {
   blockingStreams: readonly string[];
   session: EpisodeSession | null;
@@ -268,7 +272,10 @@ export function useRegisterEpisodeDataStream({
   const isPlaying = useIsPlaying();
   const setDataStream = useSetEpisodeDataStream();
   const seekEvent = useSeekEvent();
-  const playback = session?.playback ?? null;
+  const playback = useMemo(
+    () => (session ? createEpisodePlaybackRuntime(session) : null),
+    [session],
+  );
   // Per-recording discriminator for cross-tile caches and source lifecycle.
   const sourceKey = useMemo(
     () => (source ? byteSourceAccessKey(source) : ""),
@@ -283,7 +290,7 @@ export function useRegisterEpisodeDataStream({
     seek(0);
   }, [pause, seek, sourceKey]);
 
-  const [index, setIndex] = useState<EpisodeTimelineIndex | null>(null);
+  const [index, setIndex] = useState<TimelineIndex | null>(null);
 
   // Stable refs — read in RAF/subscribe callbacks without closure capture.
   const streamCachesRef = useRef<Map<string, EpisodeStreamCache>>(new Map());
@@ -330,7 +337,7 @@ export function useRegisterEpisodeDataStream({
   const nextLookaheadRefreshTimeRef = useRef(0);
   const lastObservedPlayheadSecRef = useRef<number | null>(null);
   const loopRunwayStartTickKeyRef = useRef<string | null>(null);
-  const indexRef = useRef<EpisodeTimelineIndex | null>(null);
+  const indexRef = useRef<TimelineIndex | null>(null);
   const byteTimelineRef = useRef<readonly ByteTimelinePoint[] | null>(null);
   const sourceEpochRef = useRef(0);
   indexRef.current = index;
@@ -572,7 +579,7 @@ export function useRegisterEpisodeDataStream({
     }
   };
 
-  // Ensure a cache exists for every known stream.
+  // This effect ensures a cache exists for every known stream.
   useEffect(() => {
     for (const stream of allStreams) {
       if (!streamCachesRef.current.has(stream)) {
@@ -584,7 +591,7 @@ export function useRegisterEpisodeDataStream({
     }
   }, [allStreams]);
 
-  // Load the timeline range once the source is available. On source
+  // This effect loads the timeline range once the source is available. On source
   // change, reset every piece of cached state synchronously so we
   // don't run fetches/lookups against the new source with old ticks
   // or stale frames while the async range load is in flight.
@@ -625,10 +632,7 @@ export function useRegisterEpisodeDataStream({
     let cancelled = false;
     const range = playback.timeline;
     byteTimelineRef.current = range.byteTimeline ?? null;
-    const nextIndex = createEpisodeTimelineIndex({
-      endTimeNs: range.endNs,
-      startTimeNs: range.startNs,
-    });
+    const nextIndex = createTimelineIndex(range);
     // Publish the data-stream subscription surface before committing the
     // timeline. Tiles can then register as one active set, preserving the
     // proven all-pane startup batch and blocking-before-overlay ordering.
@@ -660,10 +664,13 @@ export function useRegisterEpisodeDataStream({
     return () => {
       cancelled = true;
     };
-    // client is a stable singleton — re-running on its identity would
-    // discard the loaded timeline range for no benefit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [maybeAutoSeekToFirstData, playback, source, store]);
+  }, [
+    clearPausedIdleWarmupTimer,
+    maybeAutoSeekToFirstData,
+    playback,
+    source,
+    store,
+  ]);
 
   // This effect retries the initial auto-seek once the timeline index is
   // committed to React state; stream bounds can resolve first.
@@ -914,8 +921,8 @@ export function useRegisterEpisodeDataStream({
     store,
   ]);
 
-  // Sidebar threshold changes should update stale/ready badges even when the
-  // playhead is paused and no stream commit is happening.
+  // This effect updates stale/ready badges after sidebar threshold changes,
+  // including while the playhead is paused.
   useEffect(() => {
     publishStreamStatuses();
   }, [publishStreamStatuses, staleMediaWarningNs]);
@@ -1782,7 +1789,7 @@ export function useRegisterEpisodeDataStream({
     warmLoopStartRunway,
   ]);
 
-  // Paused-seek: scrub while paused → push or fetch the seeked tick + window.
+  // This effect fetches and publishes a paused seek's target tick and window.
   useEffect(() => {
     if (seekEvent) {
       // Stamp seeks so the idle-work gate can hold speculative reads while
@@ -1801,7 +1808,7 @@ export function useRegisterEpisodeDataStream({
     }
   }, [session, seekEvent, prefetchLookaheadFrom]);
 
-  // Mount-time: kick off lookahead so the buffer fills before play/seek.
+  // This effect kicks off lookahead so the buffer fills before play or seek.
   // (May be a no-op if no tile has subscribed yet — subscribeToStream also
   // triggers this for the same reason.)
   useEffect(() => {
@@ -1836,7 +1843,7 @@ export function useRegisterEpisodeDataStream({
     [],
   );
   const getTimelineIndex = useCallback(() => index, [index]);
-  const readStreamMessages = useCallback(
+  const readStreamFrames = useCallback(
     async ({
       endTimeNs,
       startTimeNs,
@@ -1864,7 +1871,7 @@ export function useRegisterEpisodeDataStream({
     setDataStream({
       getTimelineIndex,
       getStreamCache,
-      readStreamMessages,
+      readStreamFrames,
       sourceKey,
       subscribeToStream,
     });
@@ -1877,7 +1884,7 @@ export function useRegisterEpisodeDataStream({
     subscribeToStream,
     getStreamCache,
     getTimelineIndex,
-    readStreamMessages,
+    readStreamFrames,
   ]);
 }
 
@@ -2015,7 +2022,7 @@ function publishStartupCushionProgress({
 }: {
   readonly activeBlockingStreams: readonly string[];
   readonly caches: Map<string, EpisodeStreamCache>;
-  readonly index: EpisodeTimelineIndex | null;
+  readonly index: TimelineIndex | null;
   readonly playheadSec: number;
   readonly resolveStartupCushion: () => EpisodeStartupCushion;
   readonly store: PlaybackStore;
@@ -2070,7 +2077,7 @@ function bufferWindowCoverage({
 }: {
   readonly activeStreams: readonly string[];
   readonly caches: Map<string, EpisodeStreamCache>;
-  readonly index: EpisodeTimelineIndex | null;
+  readonly index: TimelineIndex | null;
   readonly lookaheadSeconds: number;
   readonly maxTicks: number;
   readonly timeSec: number;
@@ -2108,7 +2115,7 @@ function contiguousBufferedSecondsFromPlayhead({
 }: {
   readonly activeStreams: readonly string[];
   readonly caches: Map<string, EpisodeStreamCache>;
-  readonly index: EpisodeTimelineIndex | null;
+  readonly index: TimelineIndex | null;
   readonly maxSeconds: number;
   readonly timeSec: number;
 }): number {

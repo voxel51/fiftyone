@@ -7,6 +7,7 @@ import {
 import type { ByteSourceDescriptor } from "../../query/bytes/types";
 import { byteSourceAccessKey } from "../../query/bytes";
 import type { EpisodeSession, TransformReadAcceleration } from "../../ports";
+import { createEpisodeTransformReadRuntime } from "../../runtime";
 import {
   idleEpisodeFrameTransformsState,
   useSetEpisodeFrameTransformsContext,
@@ -55,6 +56,10 @@ export function EpisodeStreams({
   const { temporalPolicy } = useEpisodeTemporalPolicySettings();
   const numericSeries = session?.numericSeries ?? null;
   const rawRecords = session?.rawRecords ?? null;
+  const transformRead = useMemo(
+    () => (session ? createEpisodeTransformReadRuntime(session) : null),
+    [session],
+  );
   const sourceKey = useMemo(
     () => (source ? byteSourceAccessKey(source) : null),
     [source],
@@ -128,7 +133,7 @@ export function EpisodeStreams({
     <>
       <EpisodeFrameTransformsBridge
         fidelityMode={fidelityMode}
-        capability={session?.transformRead ?? null}
+        capability={transformRead}
         source={source}
         temporalPolicy={temporalPolicy}
       />

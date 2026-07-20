@@ -35,7 +35,7 @@ const previewHarness = vi.hoisted(() => ({
     pause: vi.fn(),
     play: vi.fn(),
     streamId: null as string | null,
-    streamIds: [] as readonly string[],
+    streamSourceNames: [] as readonly string[],
     status: "idle",
   },
 }));
@@ -175,6 +175,7 @@ afterEach(() => {
   previewHarness.preview.isBuffering = false;
   previewHarness.preview.status = "idle";
   previewHarness.preview.streamId = null;
+  previewHarness.preview.streamSourceNames = [];
   previewHarness.preview.pause.mockClear();
   previewHarness.preview.play.mockClear();
   snapshotHarness.requests.length = 0;

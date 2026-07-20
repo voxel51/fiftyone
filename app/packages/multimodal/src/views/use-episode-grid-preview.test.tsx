@@ -318,7 +318,7 @@ describe("useEpisodeGridPreview", () => {
     act(() => latestState.current?.pause());
   });
 
-  it("reloads and sends the selected stream topic when it changes", async () => {
+  it("reloads and sends the selected source name when it changes", async () => {
     sessionHarness.session.read
       .mockResolvedValueOnce(
         readyResult({ bytes: [1], streamId: "/camera/front" }),
@@ -330,7 +330,7 @@ describe("useEpisodeGridPreview", () => {
     const { rerender } = render(
       <PreviewHarness
         id="selected"
-        selectedStreamId="/camera/front"
+        selectedSourceName="/camera/front"
         source={sourceForId("selected")}
       />,
     );
@@ -344,7 +344,7 @@ describe("useEpisodeGridPreview", () => {
     rerender(
       <PreviewHarness
         id="selected"
-        selectedStreamId="/camera/back"
+        selectedSourceName="/camera/back"
         source={sourceForId("selected")}
       />,
     );
@@ -353,7 +353,7 @@ describe("useEpisodeGridPreview", () => {
       expect(sessionHarness.session.read).toHaveBeenCalledTimes(2);
     });
     expect(sessionHarness.session.read.mock.calls[1]?.[0]).toMatchObject({
-      streamId: "/camera/back",
+      sourceName: "/camera/back",
     });
   });
 
@@ -372,7 +372,7 @@ describe("useEpisodeGridPreview", () => {
         onState={(state) => {
           latestState.current = state;
         }}
-        selectedStreamId="/camera/front"
+        selectedSourceName="/camera/front"
         source={sourceForId("reload-play")}
       />,
     );
@@ -389,7 +389,7 @@ describe("useEpisodeGridPreview", () => {
           onState={(state) => {
             latestState.current = state;
           }}
-          selectedStreamId="/camera/back"
+          selectedSourceName="/camera/back"
           source={sourceForId("reload-play")}
         />,
       );
@@ -436,14 +436,14 @@ function PreviewHarness({
   hovered,
   id,
   onState,
-  selectedStreamId,
+  selectedSourceName,
   source,
 }: {
   readonly enabled?: boolean;
   readonly hovered?: boolean;
   readonly id: string;
   readonly onState?: (state: EpisodeGridPreviewState) => void;
-  readonly selectedStreamId?: string | null;
+  readonly selectedSourceName?: string | null;
   readonly source: ByteSourceDescriptor | null;
 }) {
   const state = useEpisodeGridPreview({
@@ -451,7 +451,7 @@ function PreviewHarness({
     hovered,
     previewSession: sessionHarness.session as EpisodePreviewSession,
     previewSessionStatus: "ready",
-    selectedStreamId,
+    selectedSourceName,
     source,
   });
 
@@ -493,7 +493,8 @@ function readyResult({
     frameTimeNs,
     nextStartTimeNs,
     streamId,
-    streamIds: [streamId],
+    streamSourceName: streamId,
+    streamSourceNames: [streamId],
     status: "ready",
   };
 }
@@ -502,7 +503,8 @@ function emptyResult(hasPreviewStreams: boolean): EpisodePreviewReadResult {
   return {
     frame: null,
     streamId: hasPreviewStreams ? "/camera/front" : null,
-    streamIds: hasPreviewStreams ? ["/camera/front"] : [],
+    streamSourceName: hasPreviewStreams ? "/camera/front" : null,
+    streamSourceNames: hasPreviewStreams ? ["/camera/front"] : [],
     status: "empty",
   };
 }

@@ -4,6 +4,7 @@ import type { EpisodeSession, EpisodeSource, SampleDescriptor } from "../ports";
 import { createDefaultByteClient } from "../query/bytes";
 import { loadFormatAdapter } from "../runtime";
 
+/** Lifecycle state for a lazily detected episode session. */
 export type EpisodeSessionState =
   | { readonly error: null; readonly session: null; readonly status: "idle" }
   | { readonly error: null; readonly session: null; readonly status: "loading" }
@@ -29,7 +30,9 @@ export function useEpisodeSession(
     session: null,
     status: "idle",
   });
+  const { mediaType, path } = sample;
 
+  // This effect detects and owns the session for the current source.
   useEffect(() => {
     if (!source) {
       setState({ error: null, session: null, status: "idle" });
@@ -38,7 +41,7 @@ export function useEpisodeSession(
     let active = true;
     let opened: EpisodeSession | null = null;
     setState({ error: null, session: null, status: "loading" });
-    void loadFormatAdapter(sample)
+    void loadFormatAdapter({ mediaType, path })
       .then(async (adapter) => {
         if (!adapter)
           throw new Error("No episode adapter recognized this sample");
@@ -63,7 +66,7 @@ export function useEpisodeSession(
       active = false;
       opened?.dispose();
     };
-  }, [io, sample.mediaType, sample.path, source]);
+  }, [io, mediaType, path, source]);
 
   return state;
 }

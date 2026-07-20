@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   createEpisode3dViewStateStore,
   EMPTY_EPISODE_3D_VIEW_STATE,
-  mcap3dSourceShapeMatches,
+  episode3dSourceShapeMatches,
   nextEpisode3dViewStateRestoreOnceKey,
   resolveEpisode3dSelectionRestore,
 } from "./episode-3d-view-state";
 
-describe("mcap3dViewState store", () => {
+describe("episode 3D view-state store", () => {
   it("starts empty and records fields independently", () => {
     const store = createEpisode3dViewStateStore();
     expect(store.getSnapshot()).toEqual(EMPTY_EPISODE_3D_VIEW_STATE);
@@ -83,16 +83,16 @@ describe("mcap3dViewState store", () => {
   });
 });
 
-describe("mcap3dSourceShapeMatches", () => {
+describe("episode3dSourceShapeMatches", () => {
   it("matches equal id sets regardless of order", () => {
-    expect(mcap3dSourceShapeMatches(["a", "b"], ["b", "a"])).toBe(true);
+    expect(episode3dSourceShapeMatches(["a", "b"], ["b", "a"])).toBe(true);
   });
 
   it("rejects null, subset, superset, and disjoint shapes", () => {
-    expect(mcap3dSourceShapeMatches(null, ["a"])).toBe(false);
-    expect(mcap3dSourceShapeMatches(["a"], ["a", "b"])).toBe(false);
-    expect(mcap3dSourceShapeMatches(["a", "b"], ["a"])).toBe(false);
-    expect(mcap3dSourceShapeMatches(["a"], ["b"])).toBe(false);
+    expect(episode3dSourceShapeMatches(null, ["a"])).toBe(false);
+    expect(episode3dSourceShapeMatches(["a"], ["a", "b"])).toBe(false);
+    expect(episode3dSourceShapeMatches(["a", "b"], ["a"])).toBe(false);
+    expect(episode3dSourceShapeMatches(["a"], ["b"])).toBe(false);
   });
 });
 

@@ -156,7 +156,7 @@ export function nextEpisode3dViewStateRestoreOnceKey(): string {
  * sample's (as sets). Selection state carried across samples is only
  * meaningful when the recordings are same-shaped.
  */
-export function mcap3dSourceShapeMatches(
+export function episode3dSourceShapeMatches(
   snapshotSourceIds: readonly string[] | null,
   currentSourceIds: readonly string[],
 ): boolean {
@@ -195,7 +195,7 @@ export function resolveEpisode3dSelectionRestore(
 ): Episode3dSelectionRestore {
   const sourceShapeMatches =
     !!snapshot &&
-    mcap3dSourceShapeMatches(
+    episode3dSourceShapeMatches(
       snapshot.renderableSourceIds,
       currentRenderableSourceIds,
     );

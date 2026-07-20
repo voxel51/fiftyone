@@ -22,7 +22,7 @@ describe("buildEpisodeStreamInventoryRows", () => {
     };
 
     expect(sceneSourcesFromStreamInventory([camera])).toEqual([
-      expect.objectContaining({ id: "7", label: "camera" }),
+      expect.objectContaining({ id: "7", label: "camera/front" }),
     ]);
   });
 
@@ -209,14 +209,13 @@ function stream(
   count: string,
   decodeStatus = "decodable",
 ): StreamInventory {
+  const sceneType = testSceneType(schema);
   return {
     $typeName: "fiftyone.multimodal.schemas.v1.StreamInventory",
     displayName: name,
     metadata: {
       [SCENE_SOURCE_METADATA.SOURCE_NAME]: name,
-      ...(testSceneType(schema)
-        ? { [SCENE_SOURCE_METADATA.TYPE]: testSceneType(schema)! }
-        : {}),
+      ...(sceneType ? { [SCENE_SOURCE_METADATA.TYPE]: sceneType } : {}),
       [STREAM_METADATA.DECODE_STATUS]: decodeStatus,
       [STREAM_METADATA.ENCODING]: encoding,
       [STREAM_METADATA.SCHEMA_NAME]: schema,
