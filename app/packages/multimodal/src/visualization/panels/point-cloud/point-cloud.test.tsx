@@ -906,7 +906,7 @@ describe("PointCloudPanel", () => {
             },
             imageContentTimeNs: 100n,
             imageTextureKey: "rec\n/camera/front_right/image\n100",
-            imageTopic: "/camera/front_right/image",
+            imageStream: "/camera/front_right/image",
           },
         ]}
         layers={[]}
@@ -939,7 +939,7 @@ describe("PointCloudPanel", () => {
               width: 1440,
             },
             id: "/camera/front_right/camera_info",
-            imageTopic: "/camera/front_right/image_raw/compressed",
+            imageStream: "/camera/front_right/image_raw/compressed",
             imageUnavailableReason:
               "Original and rectified camera models differ; choose the image geometry",
           },
