@@ -2120,10 +2120,12 @@ __metadata:
     colormap: "catalog:"
     concurrently: "npm:^7.2.1"
     date-fns: "npm:^4.1.0"
+    hyparquet: "npm:^1.26.2"
     jotai: "catalog:"
     lru-cache: "catalog:"
     maplibre-gl: "npm:^4.7.1"
     meshoptimizer: "npm:^0.22.0"
+    mp4box: "npm:^2.4.1"
     protobufjs: "npm:^7.6.4"
     three: "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch"
     uplot: "npm:^1.6.32"
@@ -12119,6 +12121,13 @@ __metadata:
     agent-base: "npm:^7.1.2"
     debug: "npm:4"
   checksum: 10/784b628cbd55b25542a9d85033bdfd03d4eda630fb8b3c9477959367f3be95dc476ed2ecbb9836c359c7c698027fc7b45723a302324433590f45d6c1706e8c13
+  languageName: node
+  linkType: hard
+
+"hyparquet@npm:^1.26.2":
+  version: 1.26.2
+  resolution: "hyparquet@npm:1.26.2"
+  checksum: 10/626a86ea79e37d9f93f4d4c69cffd52ac56b0b45a7f08b22d5867fc3e3a074c331f7a203881488ce0711fdf2db2bd71fc8e2faaa4798837d6614f4b3ba7217c1
   languageName: node
   linkType: hard
 

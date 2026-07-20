@@ -90,10 +90,12 @@
         "buffer": "catalog:",
         "colormap": "catalog:",
         "date-fns": "^4.1.0",
+        "hyparquet": "^1.26.2",
         "jotai": "catalog:",
         "lru-cache": "catalog:",
         "maplibre-gl": "^4.7.1",
         "meshoptimizer": "^0.22.0",
+        "mp4box": "^2.4.1",
         "protobufjs": "^7.6.4",
         "three": "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch",
         "uplot": "^1.6.32"
