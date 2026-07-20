@@ -54,8 +54,8 @@ export interface EncodedH264VideoVisualization extends BaseEncodedVideoVisualiza
 }
 
 /**
- * Encoded video access unit decoded from one message. The contract lets MCAP
- * topics be classified as image-family streams while keeping codec metadata
+ * Encoded video access unit decoded from one record. The contract lets source
+ * streams be classified as image-family streams while keeping codec metadata
  * aligned with the selected codec.
  */
 export type EncodedVideoVisualization =

@@ -8,6 +8,7 @@ import { getSampleSrc } from "@fiftyone/state";
 import type { ByteSourceDescriptor } from "../ir";
 import type { EpisodeSource, SampleDescriptor } from "../ports";
 import { BYTE_SOURCE_READ_PROFILE } from "../query/bytes";
+import { getSourceBootstrap } from "../runtime";
 
 /** Builds the format-neutral sample facts used by lazy adapter detection. */
 export function sampleDescriptorFromContext(
@@ -49,12 +50,12 @@ export function episodeByteSourceFromSample(
 export function episodeSourceFromByteSource(
   source: ByteSourceDescriptor,
 ): EpisodeSource {
+  const bootstrap = getSourceBootstrap(source);
   return {
     assets: {
       list: async () => [
         {
           id: source.sourceId,
-          mediaType: mediaTypeForPath(source.url),
           role: "recording",
         },
       ],
@@ -66,6 +67,8 @@ export function episodeSourceFromByteSource(
       },
     },
     episodeId: source.sourceId,
+    ...(bootstrap?.manifest ? { manifestHint: bootstrap.manifest } : {}),
+    ...(bootstrap?.timeline ? { playbackHint: bootstrap.timeline } : {}),
   };
 }
 
@@ -86,8 +89,4 @@ function byteSourceFromSample(
     sourceId: sample._id,
     url: getSampleSrc(mediaPath),
   };
-}
-
-function mediaTypeForPath(path: string): string | undefined {
-  return /\.mcap(?:$|[?#])/i.test(path) ? "application/x-mcap" : undefined;
 }

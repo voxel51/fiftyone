@@ -48,9 +48,13 @@ module.exports = {
       },
     },
     {
-      name: "agnostic-session-renderer-cannot-reach-an-adapter",
+      name: "agnostic-renderers-cannot-reach-an-adapter",
       severity: "error",
-      from: { path: `${SRC}views/EpisodeSessionRenderer\.tsx$` },
+      from: {
+        path:
+          `${SRC}views/(EpisodeSessionRenderer\\.tsx$|` +
+          `episode/(EpisodeModalRenderer|GridRenderer)\\.tsx$)`,
+      },
       to: { path: ADAPTERS, reachable: true },
     },
     {
@@ -85,9 +89,15 @@ module.exports = {
       severity: "error",
       from: {
         path: SRC,
-        pathNot: `${SRC}(adapters/|inject/)|\\.test\\.[jt]sx?$`,
+        pathNot: `${SRC}(adapters/|inject/index\\.ts$|testing/integration/)`,
       },
       to: { path: ADAPTERS },
+    },
+    {
+      name: "shared-layers-do-not-import-the-composition-root",
+      severity: "error",
+      from: { path: SRC, pathNot: INJECT_ENTRY },
+      to: { path: INJECT_ENTRY },
     },
     {
       name: "multimodal-does-not-import-teams",
