@@ -10,10 +10,6 @@ import { humanReadableBytes } from "@fiftyone/utilities";
 import React, { useEffect, useRef } from "react";
 import type { McapResourceClient } from "../types";
 import {
-  isMcapLatencyDebugEnabled,
-  recordMcapLatencyMetric,
-} from "../mcap-latency-debug";
-import {
   createMcapNetworkHealthEstimator,
   shouldPublishMcapNetworkHealth,
 } from "./mcap-network-health-estimator";
@@ -28,6 +24,15 @@ import { MCAP_3D_PLACEMENT_BUFFERING_DETAIL } from "./use-mcap-3d-placement-stre
 import styles from "./McapNetworkStatus.module.css";
 
 const HEALTH_HEARTBEAT_MS = 1_000;
+
+interface McapNetworkStatusViewModel {
+  readonly detail: string | null;
+  readonly gaugeFillPercent: number | null;
+  readonly kind: "limited" | "neutral";
+  readonly label: string;
+  readonly throughputLabel: string | null;
+  readonly title: string;
+}
 
 /**
  * Non-visual bridge from transport snapshots and playback buffering edges into
@@ -56,22 +61,11 @@ export const McapNetworkHealthTracker: React.FC<{
       const next = estimator.evaluate(nowMs());
       if (shouldPublishMcapNetworkHealth(previous, next)) {
         setMcapNetworkHealth(store, next);
-        recordNetworkHealthMetric(next);
       }
     };
 
     const unsubscribe = subscribeTransport((sample) => {
       estimator.onTransportSample(sample, nowMs());
-      if (isMcapLatencyDebugEnabled()) {
-        recordMcapLatencyMetric("network transport samples", 1, {
-          busyMs: Number(sample.snapshot.busyMs.toFixed(1)),
-          fetchedMB: Number(
-            (sample.snapshot.fetchedBytes / 1024 / 1024).toFixed(3),
-          ),
-          lane: sample.lane,
-          reads: sample.snapshot.reads,
-        });
-      }
       publish();
     });
     const heartbeat = setInterval(publish, HEALTH_HEARTBEAT_MS);
@@ -94,7 +88,6 @@ export const McapNetworkHealthTracker: React.FC<{
     const next = estimator.evaluate(nowMs());
     if (shouldPublishMcapNetworkHealth(getMcapNetworkHealth(store), next)) {
       setMcapNetworkHealth(store, next);
-      recordNetworkHealthMetric(next);
     }
   }, [buffering, playPending, store]);
 
@@ -110,88 +103,120 @@ export const McapNetworkStatusPill: React.FC = () => {
   const playPending = useIsPlayPending();
   const bufferingDetail = useBufferingDetail();
   const startupCushion = useMcapStartupCushionState();
+  const displayThroughput =
+    health.busyThroughputBytesPerSec ?? health.throughputBytesPerSec;
   const throughputLabel =
-    health.throughputBytesPerSec !== null && health.throughputBytesPerSec > 0
-      ? `${humanReadableBytes(Math.round(health.throughputBytesPerSec))}/s`
+    displayThroughput !== null && displayThroughput > 0
+      ? `${humanReadableBytes(Math.round(displayThroughput))}/s`
       : null;
-  const placementPending =
-    playPending && bufferingDetail === MCAP_3D_PLACEMENT_BUFFERING_DETAIL;
-  if (!throughputLabel && !placementPending) {
+  const view = mcapNetworkStatusViewModel({
+    bufferingDetail,
+    healthLimited: health.limited,
+    playPending,
+    startupCushion,
+    throughputLabel,
+  });
+  if (!view) {
     return null;
   }
 
-  // The bandwidth-aware start gate is holding this play press: name the
-  // wait so it reads as deliberate buffering, not a hang.
-  const gatedStart =
-    playPending &&
-    startupCushion !== null &&
-    startupCushion.estimatedWaitSeconds >= 1
-      ? startupCushion
-      : null;
-  const bufferingLabel = placementPending
-    ? "waiting for transforms"
-    : gatedStart
-      ? `buffering ~${Math.round(gatedStart.estimatedWaitSeconds)}s`
-      : null;
-  const label = placementPending
-    ? "Placement"
-    : health.limited
-      ? "Slow network"
-      : "Bandwidth";
-
   return (
     <span
-      className={`${styles.pill} ${health.limited ? "" : styles.neutral}`}
+      className={`${styles.pill} ${view.kind === "neutral" ? styles.neutral : ""}`}
       data-cy="mcap-network-status-pill"
-      title={
-        placementPending
-          ? "Playback is waiting for frame transforms needed to place the 3D point cloud."
-          : health.limited
-            ? "Playback is buffering because the network cannot keep up with this recording's data rate."
-            : "Observed MCAP transfer throughput."
-      }
+      title={view.title}
     >
-      {gatedStart ? (
+      {view.gaugeFillPercent !== null ? (
         // The vessel fills with the runway actually buffered so far.
         <span aria-hidden="true" className={styles.gauge}>
           <span
             className={styles.gaugeFill}
-            style={{
-              height: `${Math.round(
-                Math.min(1, Math.max(0, gatedStart.progressFraction)) * 100,
-              )}%`,
-            }}
+            style={{ height: `${view.gaugeFillPercent}%` }}
           />
         </span>
       ) : (
         <span className={styles.dot} aria-hidden="true" />
       )}
-      {label}
-      {throughputLabel ? (
-        <span className={styles.throughput}>{throughputLabel}</span>
+      {view.label}
+      {view.throughputLabel ? (
+        <span className={styles.throughput}>{view.throughputLabel}</span>
       ) : null}
-      {bufferingLabel ? (
-        <span className={styles.throughput}>{bufferingLabel}</span>
+      {view.detail ? (
+        <span className={styles.throughput}>{view.detail}</span>
       ) : null}
     </span>
   );
 };
 
-function recordNetworkHealthMetric(
-  health: ReturnType<typeof getMcapNetworkHealth>,
-) {
-  if (!isMcapLatencyDebugEnabled()) {
-    return;
+function mcapNetworkStatusViewModel({
+  bufferingDetail,
+  healthLimited,
+  playPending,
+  startupCushion,
+  throughputLabel,
+}: {
+  readonly bufferingDetail: string | null;
+  readonly healthLimited: boolean;
+  readonly playPending: boolean;
+  readonly startupCushion: ReturnType<typeof useMcapStartupCushionState>;
+  readonly throughputLabel: string | null;
+}): McapNetworkStatusViewModel | null {
+  const placementPending =
+    playPending && bufferingDetail === MCAP_3D_PLACEMENT_BUFFERING_DETAIL;
+  // The bandwidth-aware start gate is holding this play press: name the
+  // wait so it reads as deliberate buffering, not a hang.
+  const gatedStart =
+    playPending && startupCushion !== null ? startupCushion : null;
+  if (!throughputLabel && !placementPending && !gatedStart) {
+    return null;
   }
 
-  recordMcapLatencyMetric("network health published", health.limited ? 1 : 0, {
-    busyFraction: Number(health.busyFraction.toFixed(3)),
-    limited: health.limited,
-    throughputMBps:
-      health.throughputBytesPerSec === null
-        ? null
-        : Number((health.throughputBytesPerSec / 1024 / 1024).toFixed(3)),
-  });
+  const startupProgressPercent = gatedStart
+    ? clampedProgressPercent(gatedStart.progressFraction)
+    : null;
+  const startupTargetSeconds = gatedStart
+    ? Number(gatedStart.targetSeconds.toFixed(1))
+    : null;
+
+  if (placementPending) {
+    return {
+      detail: "waiting for transforms",
+      gaugeFillPercent: gatedStart
+        ? clampedProgressPercent(gatedStart.progressFraction)
+        : null,
+      kind: healthLimited ? "limited" : "neutral",
+      label: "Placement",
+      throughputLabel,
+      title:
+        "Playback is waiting for frame transforms needed to place the 3D point cloud.",
+    };
+  }
+
+  if (gatedStart) {
+    return {
+      detail: `buffering ${startupProgressPercent}% of ${startupTargetSeconds}s`,
+      gaugeFillPercent: clampedProgressPercent(gatedStart.progressFraction),
+      kind: healthLimited ? "limited" : "neutral",
+      label: healthLimited ? "Slow network" : "Preparing playback",
+      throughputLabel,
+      title: `Playback has buffered ${startupProgressPercent}% of its ${startupTargetSeconds}-second startup runway.`,
+    };
+  }
+
+  return {
+    detail: null,
+    gaugeFillPercent: null,
+    kind: healthLimited ? "limited" : "neutral",
+    label: healthLimited ? "Slow network" : "Bandwidth",
+    throughputLabel,
+    title: healthLimited
+      ? "Playback is buffering because the network cannot keep up with this recording's data rate."
+      : "Observed MCAP throughput while transfers were active.",
+  };
+}
+
+function clampedProgressPercent(fraction: number): number {
+  return Math.round(Math.min(1, Math.max(0, fraction)) * 100);
 }
 
 function nowMs(): number {

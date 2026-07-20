@@ -76,8 +76,11 @@ export default function useRenderer({
         selectSample.current?.(detail),
       );
       item.addEventListener("refresh", () => {
-        cache.isShown(key) &&
+        if (cache.isShown(key)) {
           spotlight.sizeChange(key, item.getSizeBytesEstimate());
+        } else {
+          cache.updateSize(key);
+        }
       });
 
       cache.set(key, item);

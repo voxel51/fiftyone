@@ -15,11 +15,22 @@ import {
   type Mcap3dSceneUpAxis,
 } from "./mcap-3d-scene-up";
 import {
+  DEFAULT_MCAP_3D_TRACKING_MODE,
+  type Mcap3dTrackingMode,
+} from "./mcap-3d-camera";
+import {
   mcapTileTypeFromId,
+  readMcapCameraPreferences,
   readMcapModalLayout,
+  writeMcapCameraPreferences,
   writeMcapModalLayout,
   type McapPersistedModalLayout,
 } from "./mcap-layout-persistence";
+import {
+  DEFAULT_MCAP_LOG_TILE_SETTINGS,
+  mcapLogTileSettingsAtom,
+  type McapLogTileSettings,
+} from "./mcap-log-tile-state";
 import {
   DEFAULT_MCAP_MAP_TILE_SETTINGS,
   mcapMapTileSettingsAtom,
@@ -57,6 +68,12 @@ export interface McapModalLayout {
   onLeftSidebarWidthChange: (px: number) => void;
   sceneUpAxis: Mcap3dSceneUpAxis;
   onSceneUpAxisChange: (axis: Mcap3dSceneUpAxis) => void;
+  preferredWorldFrameId: string | null;
+  onPreferredWorldFrameIdChange: (frameId: string | null) => void;
+  preferredCameraTargetFrameId: string | null;
+  onPreferredCameraTargetFrameIdChange: (frameId: string) => void;
+  defaultTrackingMode: Mcap3dTrackingMode;
+  onDefaultTrackingModeChange: (mode: Mcap3dTrackingMode) => void;
 }
 
 export interface UseMcapModalLayoutOptions {
@@ -68,6 +85,8 @@ export interface UseMcapModalLayoutOptions {
    * entry.
    */
   datasetId?: string;
+  /** Selected media field used to isolate durable camera conventions. */
+  cameraPreferenceField?: string;
   /** Source locality hint; tightens the default tile budget when remote. */
   readProfile?: ByteSourceReadProfile;
   /** Capability override for tests; collected from the browser when absent. */
@@ -88,6 +107,7 @@ export interface UseMcapModalLayoutOptions {
 export function useMcapModalLayout({
   sources,
   datasetId,
+  cameraPreferenceField,
   readProfile,
   capabilities,
 }: UseMcapModalLayoutOptions): McapModalLayout {
@@ -116,6 +136,11 @@ export function useMcapModalLayout({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sources is the storage-read trigger, not an input
     [datasetId, sources],
   );
+  const persistedCameraPreferences = useMemo(
+    () => readMcapCameraPreferences(datasetId, cameraPreferenceField),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sources re-reads storage after in-place sample swaps
+    [cameraPreferenceField, datasetId, sources],
+  );
 
   const restored = useMemo(
     () =>
@@ -136,12 +161,39 @@ export function useMcapModalLayout({
       ? persisted.expandedTileId
       : null;
   const persistedSceneUpAxis =
-    persisted?.sceneUpAxis ?? DEFAULT_MCAP_3D_SCENE_UP_AXIS;
+    persistedCameraPreferences?.sceneUpAxis ??
+    persisted?.sceneUpAxis ??
+    DEFAULT_MCAP_3D_SCENE_UP_AXIS;
   const [sceneUpAxis, setSceneUpAxis] = useState(persistedSceneUpAxis);
+  const persistedPreferredWorldFrameId =
+    persistedCameraPreferences?.preferredWorldFrameId ?? null;
+  const persistedPreferredCameraTargetFrameId =
+    persistedCameraPreferences?.preferredCameraTargetFrameId ?? null;
+  const persistedDefaultTrackingMode =
+    persistedCameraPreferences?.defaultTrackingMode ??
+    DEFAULT_MCAP_3D_TRACKING_MODE;
+  const [preferredWorldFrameId, setPreferredWorldFrameId] = useState(
+    persistedPreferredWorldFrameId,
+  );
+  const [preferredCameraTargetFrameId, setPreferredCameraTargetFrameId] =
+    useState(persistedPreferredCameraTargetFrameId);
+  const [defaultTrackingMode, setDefaultTrackingMode] = useState(
+    persistedDefaultTrackingMode,
+  );
   // This effect restores the dataset-scoped scene axis after a source change.
   useEffect(() => {
     setSceneUpAxis(persistedSceneUpAxis);
-  }, [datasetId, persistedSceneUpAxis]);
+    setPreferredWorldFrameId(persistedPreferredWorldFrameId);
+    setPreferredCameraTargetFrameId(persistedPreferredCameraTargetFrameId);
+    setDefaultTrackingMode(persistedDefaultTrackingMode);
+  }, [
+    cameraPreferenceField,
+    datasetId,
+    persistedDefaultTrackingMode,
+    persistedPreferredCameraTargetFrameId,
+    persistedPreferredWorldFrameId,
+    persistedSceneUpAxis,
+  ]);
 
   const onLeftOpenChange = useCallback(
     (open: boolean) => {
@@ -160,9 +212,55 @@ export function useMcapModalLayout({
   const onSceneUpAxisChange = useCallback(
     (axis: Mcap3dSceneUpAxis) => {
       setSceneUpAxis(axis);
-      writeMcapModalLayout({ sceneUpAxis: axis }, datasetId);
+      if (datasetId && cameraPreferenceField?.trim()) {
+        writeMcapCameraPreferences(
+          { sceneUpAxis: axis },
+          datasetId,
+          cameraPreferenceField,
+        );
+      } else {
+        // Preserve the legacy dataset-scoped value when the caller cannot
+        // identify a media field yet.
+        writeMcapModalLayout({ sceneUpAxis: axis }, datasetId);
+      }
     },
-    [datasetId],
+    [cameraPreferenceField, datasetId],
+  );
+
+  const onPreferredWorldFrameIdChange = useCallback(
+    (frameId: string | null) => {
+      setPreferredWorldFrameId(frameId);
+      writeMcapCameraPreferences(
+        { preferredWorldFrameId: frameId ?? undefined },
+        datasetId,
+        cameraPreferenceField,
+      );
+    },
+    [cameraPreferenceField, datasetId],
+  );
+
+  const onPreferredCameraTargetFrameIdChange = useCallback(
+    (frameId: string) => {
+      setPreferredCameraTargetFrameId(frameId);
+      writeMcapCameraPreferences(
+        { preferredCameraTargetFrameId: frameId },
+        datasetId,
+        cameraPreferenceField,
+      );
+    },
+    [cameraPreferenceField, datasetId],
+  );
+
+  const onDefaultTrackingModeChange = useCallback(
+    (mode: Mcap3dTrackingMode) => {
+      setDefaultTrackingMode(mode);
+      writeMcapCameraPreferences(
+        { defaultTrackingMode: mode },
+        datasetId,
+        cameraPreferenceField,
+      );
+    },
+    [cameraPreferenceField, datasetId],
   );
 
   return {
@@ -177,6 +275,12 @@ export function useMcapModalLayout({
     onLeftSidebarWidthChange,
     sceneUpAxis,
     onSceneUpAxisChange,
+    preferredWorldFrameId,
+    onPreferredWorldFrameIdChange,
+    preferredCameraTargetFrameId,
+    onPreferredCameraTargetFrameIdChange,
+    defaultTrackingMode,
+    onDefaultTrackingModeChange,
   };
 }
 
@@ -370,6 +474,30 @@ export function McapModalLayoutPersistence({
     store,
   });
 
+  const seededLogKeyRef = useRef<string | null>(null);
+  useSeedPersistedTileAtom({
+    atom: mcapLogTileSettingsAtom,
+    datasetIdRef,
+    field: "logSettings",
+    seededKeyRef: seededLogKeyRef,
+    store,
+    tilesRef,
+  });
+
+  const logSettingsPatch = useCallback(
+    (value: Readonly<Record<string, McapLogTileSettings>>) => ({
+      logSettings: compactLogSettings(value),
+    }),
+    [],
+  );
+  useDebouncedMcapLayoutAtomMirror({
+    atom: mcapLogTileSettingsAtom,
+    datasetIdRef,
+    patchForValue: logSettingsPatch,
+    seededKeyRef: seededLogKeyRef,
+    store,
+  });
+
   const seededMapKeyRef = useRef<string | null>(null);
   useSeedPersistedTileAtom({
     atom: mcapMapTileSettingsAtom,
@@ -512,6 +640,31 @@ function compactPlotSeries(
   return compact;
 }
 
+function compactLogSettings(
+  value: Readonly<Record<string, McapLogTileSettings>>,
+): Record<string, McapLogTileSettings> | undefined {
+  const compact: Record<string, McapLogTileSettings> = {};
+  for (const [tileId, settings] of Object.entries(value)) {
+    const isDefault =
+      settings.followPlayhead ===
+        DEFAULT_MCAP_LOG_TILE_SETTINGS.followPlayhead &&
+      settings.selectedLevels ===
+        DEFAULT_MCAP_LOG_TILE_SETTINGS.selectedLevels &&
+      settings.enabledTopics === undefined;
+    if (isDefault) {
+      continue;
+    }
+    compact[tileId] = {
+      followPlayhead: settings.followPlayhead,
+      selectedLevels: settings.selectedLevels,
+      ...(settings.enabledTopics !== undefined
+        ? { enabledTopics: settings.enabledTopics }
+        : {}),
+    };
+  }
+  return Object.keys(compact).length > 0 ? compact : undefined;
+}
+
 function compactMapSettings(
   value: Readonly<Record<string, McapMapTileSettings>>,
 ): Record<string, McapMapTileSettings> | undefined {
@@ -537,7 +690,11 @@ function compactMapSettings(
   return Object.keys(compact).length > 0 ? compact : undefined;
 }
 
-type PersistedTileAtomField = "mapSettings" | "plotSeries" | "rawTopics";
+type PersistedTileAtomField =
+  | "logSettings"
+  | "mapSettings"
+  | "plotSeries"
+  | "rawTopics";
 
 /**
  * Seeds tile-scoped atoms from the dataset entry once per modal mount.

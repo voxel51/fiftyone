@@ -137,6 +137,15 @@ export const registerBridgeLoop = <Handle, Descriptor>(
         return;
       }
 
+      // defer-while-interacting: the handle holds an in-flight gesture whose
+      // state is newer than the committed label — applying now would clobber
+      // it (an autosave refresh landing mid-resize snaps the box back).
+      // `lastApplied` is left untouched so the value re-applies on the next
+      // reproject once the gesture has released the handle.
+      if (bridge.isInteracting?.(handle)) {
+        return;
+      }
+
       lastApplied.set(key, label);
       adapter.updateHandle(handle, label);
       return;

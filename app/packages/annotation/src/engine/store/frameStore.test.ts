@@ -136,6 +136,58 @@ describe("FrameStore mutation", () => {
   });
 });
 
+describe("FrameStore index-based tracks (no instance)", () => {
+  /** A per-frame detection carrying a track `index` but no `instance`. */
+  const idet = (docId: string, index: number, label = "x"): LabelData => ({
+    _id: docId,
+    _cls: "Detection",
+    index,
+    label,
+    bounding_box: [0, 0, 1, 1],
+  });
+
+  it("coalesces frames sharing an index into one `track-<index>` address", () => {
+    const store = makeStore(
+      frames({
+        1: { [PATH]: [idet("doc-1", 3)] },
+        2: { [PATH]: [idet("doc-2", 3)] },
+      }),
+    );
+
+    // distinct doc ids, one track — addressed by the synthetic track id
+    expect(store.getLabel(ref("track-3", 1))?._id).toBe("doc-1");
+    expect(store.getLabel(ref("track-3", 2))?._id).toBe("doc-2");
+    expect(
+      store
+        .enumerateLabels([LabelType.Detections])
+        .map((r) => `${r.instanceId}@${r.frame}`)
+        .sort(),
+    ).toEqual(["track-3@1", "track-3@2"]);
+  });
+
+  it("an edit preserves the index and mints NO synthetic instance", () => {
+    const store = makeStore({ 1: { [PATH]: [idet("doc-1", 3)] } });
+
+    store.updateLabel(ref("track-3", 1), { label: "cat" });
+
+    const label = store.getLabel(ref("track-3", 1))!;
+    expect(label.label).toBe("cat");
+    expect(label.index).toBe(3);
+    expect(label.instance).toBeUndefined();
+  });
+
+  it("a create on an index track stamps the index, not an instance", () => {
+    const store = makeStore({ 1: { [PATH]: [] } });
+
+    store.updateLabel(ref("track-5", 1), { label: "dog" });
+
+    const label = store.getLabel(ref("track-5", 1))!;
+    expect(label.index).toBe(5);
+    expect(label.instance).toBeUndefined();
+    expect(label._id).not.toBe("track-5"); // doc id minted, not the track id
+  });
+});
+
 describe("FrameStore through the engine: transactions + undo", () => {
   const makeEngine = (data?: FramesData) => {
     const engine = new AnnotationEngine();

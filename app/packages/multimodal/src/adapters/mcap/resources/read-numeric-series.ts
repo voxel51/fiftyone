@@ -26,11 +26,12 @@ export const DEFAULT_NUMERIC_SERIES_MAX_POINTS = 4_000;
 const MAX_SCAN_MESSAGES = 500_000;
 
 /**
- * Projects one dotted field path from a decoded message record.
+ * Projects one dotted field path from a decoded message record. Numeric path
+ * segments index arrays, so `position.0` selects the first array element.
  * Numbers must be finite; booleans map to 0/1; 64-bit values
  * (protobufjs Long, bigint) coerce through `Number` and lose precision
  * beyond 2^53 — acceptable for plotting. Returns undefined for
- * missing, non-numeric, or array-valued paths.
+ * Missing, non-numeric, or whole-array paths return undefined.
  */
 export function projectNumericField(
   record: Record<string, unknown>,
@@ -38,12 +39,16 @@ export function projectNumericField(
 ): number | undefined {
   let current: unknown = record;
   for (const segment of pathSegments) {
-    if (
-      current === null ||
-      typeof current !== "object" ||
-      Array.isArray(current)
-    ) {
+    if (current === null || typeof current !== "object") {
       return undefined;
+    }
+    if (Array.isArray(current) || isNumericTypedArray(current)) {
+      const index = arrayIndex(segment);
+      if (index === undefined || index >= current.length) {
+        return undefined;
+      }
+      current = current[index];
+      continue;
     }
     current = (current as Record<string, unknown>)[segment];
   }
@@ -68,6 +73,30 @@ export function projectNumericField(
   }
 
   return undefined;
+}
+
+function arrayIndex(segment: string): number | undefined {
+  if (!/^(0|[1-9]\d*)$/.test(segment)) {
+    return undefined;
+  }
+  const index = Number(segment);
+  return Number.isSafeInteger(index) ? index : undefined;
+}
+
+function isNumericTypedArray(value: object): value is Exclude<
+  ArrayBufferView,
+  DataView | Uint8Array
+> & {
+  readonly [index: number]: number | bigint;
+  readonly length: number;
+} {
+  return (
+    ArrayBuffer.isView(value) &&
+    !(value instanceof DataView) &&
+    !(value instanceof Uint8Array) &&
+    "length" in value &&
+    typeof value.length === "number"
+  );
 }
 
 /**

@@ -80,4 +80,27 @@ describe("McapSidebarGroup", () => {
     // Flipping the switch must not fold the group.
     expect(screen.getByText("body content")).toBeTruthy();
   });
+
+  it("exposes section help without nesting it in the header button", () => {
+    render(
+      <McapSidebarGroup
+        title="Pointcloud projections"
+        tooltip="Explains pointcloud projections."
+      >
+        <span>body content</span>
+      </McapSidebarGroup>,
+    );
+
+    const help = screen.getByRole("img", {
+      name: "Explains pointcloud projections.",
+    });
+    expect(help.getAttribute("data-tooltip")).toBe(
+      "Explains pointcloud projections.",
+    );
+    expect(
+      screen
+        .getByRole("button", { name: /Pointcloud projections/ })
+        .contains(help),
+    ).toBe(false);
+  });
 });

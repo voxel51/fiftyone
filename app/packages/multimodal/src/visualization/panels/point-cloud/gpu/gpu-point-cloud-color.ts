@@ -10,21 +10,22 @@ import {
   type PointCloudColormap,
   type PointCloudColormapLookup,
 } from "../colormaps";
+import {
+  NEUTRAL_POINT_CLOUD_COLOR,
+  normalizePointCloudColorValue,
+  resolvePointCloudColorPolicy,
+  resolvePointCloudFixedRange,
+  type PointCloudColorRange,
+  type PointCloudScalarColorCandidate,
+} from "../point-cloud-color-policy";
 import type { PointCloudColorOptions } from "../point-cloud-colors";
 import type { PointCloudColorRamp } from "../types";
 import { clamp01, hexToRgbUnit, normalizeIdentifierName } from "../utils";
 
-const HEIGHT_RANGE_EPSILON = 0.000001;
 const HEIGHT_FIELD_LABEL = "height";
 const RGB_COMPONENT_COUNT = 3;
-const CANONICAL_SCALAR_COLOR_FIELDS = [
-  "intensity",
-  "reflectivity",
-  "reflectance",
-  "rcs",
-] as const;
 /** Default normalized RGB used when a point cloud has no color channel. */
-export const NEUTRAL_GPU_POINT_COLOR = [0.72, 0.76, 0.82] as const;
+export const NEUTRAL_GPU_POINT_COLOR = NEUTRAL_POINT_CLOUD_COLOR;
 
 /** Decoder-backed color source selected for GPU point rendering. */
 export type GpuPointCloudColorSource =
@@ -65,24 +66,46 @@ export function resolveGpuPointCloudColor(
   options: PointCloudColorOptions,
 ): ResolvedGpuPointCloudColor {
   const colormap = options.colormap ?? DEFAULT_POINT_CLOUD_COLORMAP;
-  const fixedRange = resolveFixedRange(options);
-  const requested = options.colorBy;
-  let source: GpuPointCloudColorSource | null;
-
-  if (requested && requested !== "auto") {
-    source = requestedColorSource(payload, requested, options, fixedRange);
-  } else {
-    source = rgbColorSource(payload);
-    if (!source) {
-      for (const fieldName of CANONICAL_SCALAR_COLOR_FIELDS) {
-        source = scalarColorSource(payload, fieldName, fixedRange);
-        if (source) break;
-      }
-    }
-    source ??= heightColorSource(payload, fixedRange);
-  }
-
-  source ??= neutralColorSource();
+  const scalarSource = (
+    fieldName: string,
+  ): PointCloudScalarColorCandidate<PointCloudRenderScalarField> | null => {
+    const normalizedName = normalizeIdentifierName(fieldName);
+    const field = payload.scalarFields.find(
+      (candidate) => normalizeIdentifierName(candidate.name) === normalizedName,
+    );
+    if (!field) return null;
+    const range: PointCloudColorRange | null = field.range
+      ? [field.range.min, field.range.max]
+      : null;
+    return { fieldLabel: field.name, range, source: field };
+  };
+  const heightRange: PointCloudColorRange | null = payload.heightRange
+    ? [payload.heightRange.min, payload.heightRange.max]
+    : null;
+  const policy = resolvePointCloudColorPolicy({
+    colorBy: options.colorBy,
+    fixedRange: resolvePointCloudFixedRange(options),
+    heightRange,
+    rgbSource:
+      payload.colors &&
+      payload.colors.length >= payload.capacity * RGB_COMPONENT_COUNT
+        ? payload.colors
+        : null,
+    scalarSource,
+    uniformColor:
+      hexToRgbUnit(options.uniformColor ?? "") ?? NEUTRAL_GPU_POINT_COLOR,
+  });
+  const source: GpuPointCloudColorSource =
+    policy.kind === "rgb"
+      ? { colors: policy.source, kind: "rgb" }
+      : policy.kind === "scalar"
+        ? {
+            field: policy.source,
+            kind: "scalar",
+            maxValue: policy.maxValue,
+            minValue: policy.minValue,
+          }
+        : policy;
   return {
     colorRamp: colorRampForSource(source, colormap, payload.sampledPointCount),
     colormap,
@@ -133,76 +156,9 @@ export function gpuPointCloudColorAtSample(
     target,
     0,
     colormapLookup(color.colormap),
-    normalizeValue(value, source.minValue, source.maxValue),
+    normalizePointCloudColorValue(value, source.minValue, source.maxValue),
   );
   return [target[0], target[1], target[2]];
-}
-
-function requestedColorSource(
-  payload: PointCloudRenderPayload,
-  colorBy: NonNullable<PointCloudColorOptions["colorBy"]>,
-  options: PointCloudColorOptions,
-  fixedRange: readonly [number, number] | null,
-): GpuPointCloudColorSource | null {
-  if (colorBy === "uniform") {
-    return {
-      color:
-        hexToRgbUnit(options.uniformColor ?? "") ?? NEUTRAL_GPU_POINT_COLOR,
-      kind: "uniform",
-    };
-  }
-  if (colorBy === "height") {
-    return heightColorSource(payload, fixedRange);
-  }
-  if (colorBy === "rgb") {
-    return rgbColorSource(payload);
-  }
-  return scalarColorSource(payload, colorBy, fixedRange);
-}
-
-function rgbColorSource(
-  payload: PointCloudRenderPayload,
-): GpuPointCloudColorSource | null {
-  return payload.colors &&
-    payload.colors.length >= payload.capacity * RGB_COMPONENT_COUNT
-    ? { colors: payload.colors, kind: "rgb" }
-    : null;
-}
-
-function heightColorSource(
-  payload: PointCloudRenderPayload,
-  fixedRange: readonly [number, number] | null,
-): GpuPointCloudColorSource | null {
-  if (payload.finitePointCount === 0) {
-    return null;
-  }
-  const range = fixedRange ?? usefulRange(payload.heightRange);
-  return range
-    ? { kind: "height", maxValue: range[1], minValue: range[0] }
-    : null;
-}
-
-function scalarColorSource(
-  payload: PointCloudRenderPayload,
-  requestedName: string,
-  fixedRange: readonly [number, number] | null,
-): GpuPointCloudColorSource | null {
-  const normalizedName = normalizeIdentifierName(requestedName);
-  const field = payload.scalarFields.find(
-    (candidate) => normalizeIdentifierName(candidate.name) === normalizedName,
-  );
-  if (!field) {
-    return null;
-  }
-  const range = fixedRange ?? usefulRange(field.range);
-  return range
-    ? {
-        field,
-        kind: "scalar",
-        maxValue: range[1],
-        minValue: range[0],
-      }
-    : null;
 }
 
 function colorRampForSource(
@@ -230,38 +186,6 @@ function colorRampForSource(
     };
   }
   return null;
-}
-
-function neutralColorSource(): GpuPointCloudColorSource {
-  return { color: NEUTRAL_GPU_POINT_COLOR, kind: "uniform" };
-}
-
-function resolveFixedRange({
-  rangeMax,
-  rangeMin,
-}: PointCloudColorOptions): readonly [number, number] | null {
-  return typeof rangeMin === "number" &&
-    typeof rangeMax === "number" &&
-    Number.isFinite(rangeMin) &&
-    Number.isFinite(rangeMax) &&
-    rangeMin < rangeMax
-    ? [rangeMin, rangeMax]
-    : null;
-}
-
-function usefulRange(
-  range: { readonly max: number; readonly min: number } | null,
-): readonly [number, number] | null {
-  return range &&
-    Number.isFinite(range.min) &&
-    Number.isFinite(range.max) &&
-    range.max - range.min > HEIGHT_RANGE_EPSILON
-    ? [range.min, range.max]
-    : null;
-}
-
-function normalizeValue(value: number, min: number, max: number): number {
-  return clamp01((value - min) / Math.max(HEIGHT_RANGE_EPSILON, max - min));
 }
 
 const colormapLookups = new Map<string, PointCloudColormapLookup>();
