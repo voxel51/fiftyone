@@ -162,6 +162,26 @@ describe("track ops", () => {
     );
   });
 
+  it("extendTrack carries the source frame's mask onto the filler frames", () => {
+    const mask = { shape: [2, 2], counts: "abcd" };
+    frameData = {
+      1: { A: det("d1", "A", { keyframe: true, mask }) },
+    };
+
+    render().current.extendTrack("instance-A", 1, [2]);
+
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "A", frame: 2 },
+      {
+        _cls: "Detection",
+        label: "x",
+        bounding_box: [0, 0, 1, 1],
+        mask,
+        keyframe: false,
+      },
+    );
+  });
+
   it("trimTrack deletes only frames where the track is present", () => {
     frameData = { 2: { A: det("d2", "A") } };
 
