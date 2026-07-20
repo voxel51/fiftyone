@@ -14,6 +14,7 @@ import type { DrawStyle, Point, Rect } from "../types";
 import {
   createMaskCanvas,
   decodeMask,
+  decodeMaskToRaster,
   encodeMask,
   maskBounds,
   type MaskBounds,
@@ -117,6 +118,14 @@ export class MaskCanvas {
   updateSource(mask?: SerializedMask | OverlayMask): boolean {
     const source = MaskCanvas.extractSource(mask);
     if (source === this.rawMaskData) return false;
+
+    // Never reset while a paint encode is still in flight: those canvas pixels
+    // are an uncommitted stroke not yet reflected in any source, so a reconcile
+    // echo reproject (which carries the older, pre-stroke value) would drop them
+    // — and the in-flight encode bails on the canvas swap, losing the stroke for
+    // good. Once the encode has resolved the pixels live in `source`, so a reset
+    // here is recoverable (ensureCanvas re-seeds from `rawMaskData`).
+    if (this.encodingInFlight > 0) return false;
 
     this.reset();
     this.rawMaskData = source;
@@ -271,9 +280,57 @@ export class MaskCanvas {
       this.context.imageSmoothingEnabled = prevSmoothing;
       this.maskBitmap.close();
       this.maskBitmap = undefined;
+    } else if (this.rawMaskData) {
+      // No decoded bitmap yet — e.g. `updateSource` just reset us from a
+      // reconcile reproject (echo or undo) and the async decode hasn't run. Seed
+      // the canvas synchronously from the raw source so a stroke that begins now
+      // paints onto the existing mask instead of a blank canvas (the mask-drop
+      // bug).
+      this.seedCanvasFromRawSync(width, height);
     }
 
     this.rawMaskData = undefined;
+  }
+
+  /**
+   * Synchronously rasterizes {@link rawMaskData} into the (already-created)
+   * editing canvas, scaled to fit. The raster is color-INDEPENDENT (white+alpha)
+   * to match painted strokes; the display color is applied at draw time via
+   * tint. Best-effort: a decode failure leaves the canvas blank rather than
+   * throwing, matching the pre-seed behavior.
+   */
+  private seedCanvasFromRawSync(width: number, height: number): void {
+    if (!this.rawMaskData || !this.context) return;
+
+    try {
+      const {
+        rgba,
+        width: srcWidth,
+        height: srcHeight,
+        rawPixels,
+      } = decodeMaskToRaster(this.rawMaskData);
+
+      const { maskCanvas: srcCanvas, maskContext: srcContext } =
+        createMaskCanvas(srcWidth, srcHeight);
+      srcContext.putImageData(
+        new ImageData(new Uint8ClampedArray(rgba), srcWidth, srcHeight),
+        0,
+        0,
+      );
+
+      const prevSmoothing = this.context.imageSmoothingEnabled;
+      this.context.imageSmoothingEnabled = false;
+      this.context.drawImage(srcCanvas, 0, 0, width, height);
+      this.context.imageSmoothingEnabled = prevSmoothing;
+
+      // Keep hit-testing working immediately: ensureCanvas clears `rawMaskData`
+      // right after this, so the async decode never runs to backfill
+      // `rawPixels`. Adopt the freshly rasterized pixels now (they're at the
+      // mask's native resolution, which is what containsMaskPixel maps against).
+      this.rawPixels = { src: rawPixels, width: srcWidth, height: srcHeight };
+    } catch (err) {
+      console.error("[MaskCanvas] ensureCanvas sync seed failed:", err);
+    }
   }
 
   /**

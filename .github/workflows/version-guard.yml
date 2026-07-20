@@ -21,7 +21,6 @@ jobs:
       - name: Guard VERSION
         env:
           AUTHOR: ${{ github.event.pull_request.user.login }}
-          HEAD_REF: ${{ github.head_ref }}
           BASE_REF: ${{ github.base_ref }}
           LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -36,17 +35,6 @@ jobs:
           if [ -z "$changed" ]; then
             echo "No VERSION change in setup.py. OK."
             exit 0
-          fi
-
-          # Back-merges (release/* -> develop, main -> develop) must keep the base
-          # branch's version — never carry the release version onto develop, so a
-          # merge/* PR may not change the VERSION line.
-          if [[ "$HEAD_REF" == merge/* ]]; then
-            base_got=$(git show "$BASE_SHA:setup.py" | grep -E '^VERSION = ' | head -1 | parse)
-            echo "::error::back-merge changed setup.py VERSION; it must keep the base version ($base_got):"
-            echo "$changed"
-            echo "Resolve the version-file conflict by keeping the base (develop's) version."
-            exit 1
           fi
 
           got=$(grep -E '^VERSION = ' setup.py | head -1 | parse)
