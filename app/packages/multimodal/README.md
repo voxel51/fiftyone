@@ -4,10 +4,19 @@ App-side package for multimodal data loading, decoding, and visualization.
 
 ## Layer Contracts
 
+### IR and ports
+
+Cloneable frame, stream, manifest, and time values live in `src/ir`; that
+directory is a dependency leaf. Method-bearing provider contracts live in
+`src/ports` and may import only IR values. `FormatAdapter.open(...)` returns a
+pull-based `EpisodeSession` with four read-priority lanes, canonical
+cancellation, optional semantic capabilities, and optional equivalent fast
+paths.
+
 ### Resources
 
 Resources cover byte-range reads, decode execution, and bounded cache contracts
-under `src/client/resources`.
+under `src/query/bytes` and `src/query/decode`.
 
 While resources are source-agnostic: a byte range is just `{ source, range }`,
 and a decode request is just `{ payload, bytes, context }`. **Adapters** decide
@@ -18,31 +27,61 @@ which ranges to read and which payload descriptors to decode.
 Adapters compose resources for a concrete source format. The MCAP adapter under
 `src/adapters/mcap` owns MCAP indexing, chunk decompression, channel/schema
 mapping, direct topic metadata reads, sync-window selection, worker playback,
-and adapter-owned decoder registration. Its public surface presents
-playback-ready APIs.
+and adapter-owned decoder registration. It implements the shared format port;
+it does not own React views or shared runtime policy.
 
-## Runtime Flow for Synchronized Playback
+`src/adapters/fixture` is the deterministic contract/performance source and
+covers every public stream kind, cancellation, priority, backpressure, and
+failure containment. `src/adapters/lerobot` is the structurally different port
+validator: it reads LeRobot episode Parquet through byte resources and emits
+MP4 samples as encoded-video IR without introducing topic or message-log
+concepts into the port.
 
-1. Playback driver derives an MCAP byte source from the sample filepath and
-   creates a worker-backed MCAP resource client.
-2. The MCAP resource client initializes an `@mcap/core` indexed reader over app
-   media byte-range URLs, using the raw byte cache and decompression handlers.
-3. Grid and modal renderers ask the MCAP reader summary for topic metadata via
-   `readTopics(...)`; the modal asks the same source for the active timeline
-   range via `readTimelineRange(...)`.
-4. The driver then reads synchronized windows with
-   `readSynchronizedMessages(...)` for load/seek and
-   `readSynchronizedMessageBatch(...)` for playback lookahead.
-5. MCAP messages are mapped to generic payload descriptors and decoded through
-   the decode resource client.
-6. Decoded visualization outputs are cached and rendered by source-agnostic
-   panels.
+### Runtime and views
+
+`src/runtime` owns format-neutral demand, time-window, stream-context,
+transport, adapter-registry, and acceleration-fallback policy. The feature-rich
+React shell lives under `src/views/episode` and consumes IR/session
+capabilities without importing an adapter. Its registration entry uses lazy
+components, while `src/views/mcap-explorer` is the explicit MCAP
+source-acquisition composition surface. Timeline product extensions live under
+`src/extensions/timeline`, and the grid's temporal-tag overlay is exported from
+`src/temporal-tags/grid-overlay`.
+
+`EpisodeSessionRenderer` is the smallest adapter-neutral modal/grid proof. Its
+dependency rule forbids even a transitive reach into `src/adapters`, and its
+tests run against the fixture session. The production shell follows the same
+boundary: its tile catalog, playback driver, settings, grid preview, and modal
+consume stream IDs and optional session capabilities. Adapter-owned code is
+passive and UI-free.
+
+## Adapter-Neutral Runtime Flow
+
+1. The composition root detects the sample with a lightweight adapter
+   descriptor and lazily loads the matching `FormatAdapter`.
+2. The adapter resolves episode assets over the shared byte-resource port. MCAP
+   initializes an `@mcap/core` indexed reader; LeRobot reads Parquet and MP4
+   assets.
+3. Opening the adapter produces a format-neutral episode manifest and session.
+4. Runtime policy requests inclusive time windows through `read(...)`, using
+   synchronized or transform accelerations only when their results match the
+   shared fallbacks.
+5. Format records are mapped to `DecodedFrame` values. MCAP payloads use the
+   decode resource client; LeRobot video samples remain browser-decodable
+   encoded-video IR.
+6. Cloneable visualization outputs flow through runtime contexts to the shared
+   panels; numeric-series and raw-record UI feature-detect their semantic
+   capabilities.
+
+This flow is exercised end-to-end by the generic renderer and fixture adapter,
+and at the port/contract level by MCAP and LeRobot. The dependency graph keeps
+the renderer/runtime side unable to reach an adapter.
 
 ## Worker Playback
 
-Playback uses `src/adapters/mcap/worker` so MCAP scans, decompression, and
-payload decoding do not block the main UI thread. The worker owns the same MCAP
-resource client as inline execution, but exposes it through prioritized RPC:
+The MCAP adapter uses `src/adapters/mcap/worker` so scans, decompression, and
+payload decoding do not block the main UI thread. This implementation remains
+private behind the episode session and exposes its proven prioritized RPC:
 
 - current-frame requests run before speculative playback batches,
 - streaming reads return incremental values to the main thread,
@@ -62,7 +101,7 @@ caches, described below.
 
 1. **Raw byte-range cache**
 
-    `src/client/resources` keeps a bounded in-memory LRU of byte-range reads by
+    `src/query/bytes` keeps a bounded in-memory LRU of byte-range reads by
     source identity and half-open range. This is the durable, format-agnostic
     media cache. MCAP uses it through `ByteClientReadable`, but the cache
     itself knows only about byte sources and ranges.
