@@ -1,27 +1,31 @@
 import { Quaternion, Vector3 } from "three";
 
-import { nonEmpty } from "./strings";
+import { compareBigInt } from "../ir";
 import type {
-  McapComposedFrameTransform,
-  McapFrameTransformPolicy,
-  McapFrameTransformResolution,
-  McapFrameTransformResolutionKind,
-  McapFrameTransformSample,
-  McapFrameTransformSet,
-  McapFrameTransformSetWire,
-  McapFrameTransformTimeRange,
+  EpisodeComposedFrameTransform,
+  EpisodeFrameTransformPolicy,
+  EpisodeFrameTransformResolution,
+  EpisodeFrameTransformResolutionKind,
+  EpisodeFrameTransformSample,
+  EpisodeFrameTransformSet,
+  EpisodeFrameTransformSetWire,
+  EpisodeFrameTransformTimeRange,
 } from "./frame-transform-types";
-import { compareBigInt } from "./sync";
 
 const IDENTITY_QUATERNION = new Quaternion();
 const ZERO_VECTOR = new Vector3();
-const DEFAULT_FRAME_TRANSFORM_POLICY: McapFrameTransformPolicy = {
+const DEFAULT_FRAME_TRANSFORM_POLICY: EpisodeFrameTransformPolicy = {
   boundaryClampNs: 50_000_000n,
   maxInterpolationGapNs: 0n,
 };
 const MAX_ADJACENCY_CACHE_ENTRIES = 8;
 
-export interface McapFrameGraphSummary {
+function nonEmpty(value: string | null | undefined): string | null {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
+
+export interface EpisodeFrameGraphSummary {
   /** Bidirectional transform components, normalized and sorted by stable id. */
   readonly components: readonly (readonly string[])[];
   readonly dataBearingReachableCountsByFrameId: ReadonlyMap<string, number>;
@@ -30,7 +34,7 @@ export interface McapFrameGraphSummary {
   readonly tfConnectedFrameIds: readonly string[];
 }
 
-export const EMPTY_MCAP_FRAME_GRAPH_SUMMARY: McapFrameGraphSummary = {
+export const EMPTY_EPISODE_FRAME_GRAPH_SUMMARY: EpisodeFrameGraphSummary = {
   components: [],
   dataBearingReachableCountsByFrameId: new Map(),
   reachableCountsByFrameId: new Map(),
@@ -38,32 +42,32 @@ export const EMPTY_MCAP_FRAME_GRAPH_SUMMARY: McapFrameGraphSummary = {
   tfConnectedFrameIds: [],
 };
 
-interface McapFrameGraphEdge {
+interface EpisodeFrameGraphEdge {
   readonly childFrameId: string;
   readonly parentFrameId: string;
 }
 
 /**
- * Mutable frame transform index for static and dynamic MCAP transform samples.
+ * Mutable frame transform index for static and dynamic episode transform samples.
  */
-export class McapFrameTransformStore {
+export class EpisodeFrameTransformStore {
   private readonly dynamicSamplesByEdge = new Map<
     string,
-    McapFrameTransformSample[]
+    EpisodeFrameTransformSample[]
   >();
-  private dynamicRanges: readonly McapFrameTransformTimeRange[] = [];
+  private dynamicRanges: readonly EpisodeFrameTransformTimeRange[] = [];
   private graphRevision = 0;
   private readonly frameIdsById = new Set<string>();
   private readonly adjacencyCache = new Map<
     string,
-    Map<string, McapComposedFrameTransform[]>
+    Map<string, EpisodeComposedFrameTransform[]>
   >();
   private readonly staticSamplesByEdge = new Map<
     string,
-    McapFrameTransformSample
+    EpisodeFrameTransformSample
   >();
 
-  addStatic(samples: readonly McapFrameTransformSample[]): void {
+  addStatic(samples: readonly EpisodeFrameTransformSample[]): void {
     for (const sample of samples) {
       const normalized = cleanSample(sample);
       if (normalized) {
@@ -82,8 +86,8 @@ export class McapFrameTransformStore {
   }
 
   addDynamic(
-    samples: readonly McapFrameTransformSample[],
-    range: McapFrameTransformTimeRange,
+    samples: readonly EpisodeFrameTransformSample[],
+    range: EpisodeFrameTransformTimeRange,
   ): void {
     const touchedEdges = new Set<string>();
 
@@ -123,7 +127,7 @@ export class McapFrameTransformStore {
     );
   }
 
-  isRangeIndexed(range: McapFrameTransformTimeRange): boolean {
+  isRangeIndexed(range: EpisodeFrameTransformTimeRange): boolean {
     return this.dynamicRanges.some(
       (indexedRange) =>
         indexedRange.startTimeNs <= range.startTimeNs &&
@@ -139,7 +143,7 @@ export class McapFrameTransformStore {
     return range?.endTimeNs ?? null;
   }
 
-  indexedRanges(): readonly McapFrameTransformTimeRange[] {
+  indexedRanges(): readonly EpisodeFrameTransformTimeRange[] {
     return this.dynamicRanges;
   }
 
@@ -154,10 +158,10 @@ export class McapFrameTransformStore {
 
   summarizeGraph(
     dataBearingFrameIds: ReadonlySet<string>,
-  ): McapFrameGraphSummary {
+  ): EpisodeFrameGraphSummary {
     const edges = this.graphEdges();
     if (edges.length === 0) {
-      return EMPTY_MCAP_FRAME_GRAPH_SUMMARY;
+      return EMPTY_EPISODE_FRAME_GRAPH_SUMMARY;
     }
 
     const childFrameIds = new Set<string>();
@@ -220,11 +224,11 @@ export class McapFrameTransformStore {
     targetFrameId,
     timeNs,
   }: {
-    readonly policy?: McapFrameTransformPolicy;
+    readonly policy?: EpisodeFrameTransformPolicy;
     readonly sourceFrameId: string;
     readonly targetFrameId: string;
     readonly timeNs?: bigint;
-  }): McapFrameTransformResolution {
+  }): EpisodeFrameTransformResolution {
     const source = nonEmpty(sourceFrameId);
     const target = nonEmpty(targetFrameId);
     if (!source || !target) {
@@ -286,7 +290,7 @@ export class McapFrameTransformStore {
 
   private buildAdjacency(
     timeNs: bigint | undefined,
-    policy: McapFrameTransformPolicy,
+    policy: EpisodeFrameTransformPolicy,
   ) {
     const timeKey = frameTransformTimeKey(timeNs, policy);
     const cached = this.adjacencyCache.get(timeKey);
@@ -296,7 +300,7 @@ export class McapFrameTransformStore {
       return cached;
     }
 
-    const adjacency = new Map<string, McapComposedFrameTransform[]>();
+    const adjacency = new Map<string, EpisodeComposedFrameTransform[]>();
 
     for (const childToParent of this.effectiveTransformsForTime(
       timeNs,
@@ -321,9 +325,9 @@ export class McapFrameTransformStore {
 
   private effectiveTransformsForTime(
     timeNs: bigint | undefined,
-    policy: McapFrameTransformPolicy,
+    policy: EpisodeFrameTransformPolicy,
   ) {
-    const transforms = new Map<string, McapComposedFrameTransform>();
+    const transforms = new Map<string, EpisodeComposedFrameTransform>();
 
     for (const [edgeKey, sample] of this.staticSamplesByEdge.entries()) {
       transforms.set(edgeKey, transformFromSample(sample, "static"));
@@ -347,13 +351,13 @@ export class McapFrameTransformStore {
     return [...transforms.values()];
   }
 
-  private addFrameIds(sample: McapFrameTransformSample): void {
+  private addFrameIds(sample: EpisodeFrameTransformSample): void {
     this.frameIdsById.add(sample.parentFrameId);
     this.frameIdsById.add(sample.childFrameId);
   }
 
-  private graphEdges(): readonly McapFrameGraphEdge[] {
-    const edges = new Map<string, McapFrameGraphEdge>();
+  private graphEdges(): readonly EpisodeFrameGraphEdge[] {
+    const edges = new Map<string, EpisodeFrameGraphEdge>();
 
     for (const [key, sample] of this.staticSamplesByEdge.entries()) {
       edges.set(key, {
@@ -421,12 +425,12 @@ function connectedComponents(
  * across `postMessage`. Required because `structuredClone` strips THREE
  * prototypes and `Quaternion` exposes `x/y/z/w` only as getters — after the
  * hop those properties read as `undefined`. Reads the values while the
- * prototype is still attached. Pair with `hydrateMcapFrameTransformSet` on
+ * prototype is still attached. Pair with `hydrateEpisodeFrameTransformSet` on
  * the receiving side.
  */
-export function dehydrateMcapFrameTransformSet(
-  set: McapFrameTransformSet,
-): McapFrameTransformSetWire {
+export function dehydrateEpisodeFrameTransformSet(
+  set: EpisodeFrameTransformSet,
+): EpisodeFrameTransformSetWire {
   return {
     ...(set.encodedPayloadBytes !== undefined
       ? { encodedPayloadBytes: set.encodedPayloadBytes }
@@ -448,8 +452,8 @@ export function dehydrateMcapFrameTransformSet(
         z: sample.translation.z,
       },
     })),
-    ...(set.topicStats !== undefined ? { topicStats: set.topicStats } : {}),
-    ...(set.topics !== undefined ? { topics: set.topics } : {}),
+    ...(set.streamStats !== undefined ? { streamStats: set.streamStats } : {}),
+    ...(set.streams !== undefined ? { streams: set.streams } : {}),
   };
 }
 
@@ -458,9 +462,9 @@ export function dehydrateMcapFrameTransformSet(
  * receiving side of `postMessage`. Safe on already-hydrated input because it
  * reads structurally.
  */
-export function hydrateMcapFrameTransformSet(
-  set: McapFrameTransformSetWire,
-): McapFrameTransformSet {
+export function hydrateEpisodeFrameTransformSet(
+  set: EpisodeFrameTransformSetWire,
+): EpisodeFrameTransformSet {
   return {
     ...(set.encodedPayloadBytes !== undefined
       ? { encodedPayloadBytes: set.encodedPayloadBytes }
@@ -482,8 +486,8 @@ export function hydrateMcapFrameTransformSet(
         sample.translation.z,
       ),
     })),
-    ...(set.topicStats !== undefined ? { topicStats: set.topicStats } : {}),
-    ...(set.topics !== undefined ? { topics: set.topics } : {}),
+    ...(set.streamStats !== undefined ? { streamStats: set.streamStats } : {}),
+    ...(set.streams !== undefined ? { streams: set.streams } : {}),
   };
 }
 
@@ -494,12 +498,12 @@ function resolveComposedTransform({
 }: {
   readonly adjacency: ReadonlyMap<
     string,
-    readonly McapComposedFrameTransform[]
+    readonly EpisodeComposedFrameTransform[]
   >;
   readonly sourceFrameId: string;
   readonly targetFrameId: string;
-}): McapComposedFrameTransform | null {
-  const queue: McapComposedFrameTransform[] = [
+}): EpisodeComposedFrameTransform | null {
+  const queue: EpisodeComposedFrameTransform[] = [
     {
       resolutionKind: "identity",
       rotation: IDENTITY_QUATERNION.clone(),
@@ -540,10 +544,10 @@ function resolveComposedTransform({
 }
 
 function effectiveDynamicTransformForTime(
-  samples: readonly McapFrameTransformSample[],
+  samples: readonly EpisodeFrameTransformSample[],
   timeNs: bigint,
-  policy: McapFrameTransformPolicy,
-): McapComposedFrameTransform | null {
+  policy: EpisodeFrameTransformPolicy,
+): EpisodeComposedFrameTransform | null {
   const { after, before } = bracketSamplesForTime(samples, timeNs);
   if (before?.timeNs === timeNs) {
     return transformFromSample(before, "exact");
@@ -606,11 +610,11 @@ function effectiveDynamicTransformForTime(
 }
 
 function bracketSamplesForTime(
-  samples: readonly McapFrameTransformSample[],
+  samples: readonly EpisodeFrameTransformSample[],
   timeNs: bigint,
 ): {
-  readonly after?: McapFrameTransformSample;
-  readonly before?: McapFrameTransformSample;
+  readonly after?: EpisodeFrameTransformSample;
+  readonly before?: EpisodeFrameTransformSample;
 } {
   let low = 0;
   let high = samples.length;
@@ -637,9 +641,9 @@ function bracketSamplesForTime(
 }
 
 function transformFromSample(
-  sample: McapFrameTransformSample,
-  resolutionKind: McapFrameTransformResolutionKind,
-): McapComposedFrameTransform {
+  sample: EpisodeFrameTransformSample,
+  resolutionKind: EpisodeFrameTransformResolutionKind,
+): EpisodeComposedFrameTransform {
   return {
     resolutionKind,
     rotation: sample.rotation,
@@ -649,7 +653,7 @@ function transformFromSample(
   };
 }
 
-function cleanSample(sample: McapFrameTransformSample) {
+function cleanSample(sample: EpisodeFrameTransformSample) {
   const parentFrameId = nonEmpty(sample.parentFrameId);
   const childFrameId = nonEmpty(sample.childFrameId);
   if (!parentFrameId || !childFrameId) {
@@ -698,14 +702,14 @@ export function compareFrameTransformSamplesByTime(
 }
 
 function sortAndMergeTimeRanges(
-  ranges: readonly McapFrameTransformTimeRange[],
+  ranges: readonly EpisodeFrameTransformTimeRange[],
 ) {
   const sorted = [...ranges].sort((left, right) =>
     left.startTimeNs === right.startTimeNs
       ? compareBigInt(left.endTimeNs, right.endTimeNs)
       : compareBigInt(left.startTimeNs, right.startTimeNs),
   );
-  const merged: McapFrameTransformTimeRange[] = [];
+  const merged: EpisodeFrameTransformTimeRange[] = [];
 
   for (const range of sorted) {
     const last = merged[merged.length - 1];
@@ -765,9 +769,9 @@ function reachableFrameIdsFrom(
 }
 
 function composeFrameTransforms(
-  first: McapComposedFrameTransform,
-  second: McapComposedFrameTransform,
-): McapComposedFrameTransform {
+  first: EpisodeComposedFrameTransform,
+  second: EpisodeComposedFrameTransform,
+): EpisodeComposedFrameTransform {
   const firstRotation = first.rotation.clone().normalize();
   const secondRotation = second.rotation.clone().normalize();
 
@@ -791,8 +795,8 @@ function composeFrameTransforms(
 }
 
 function invertFrameTransform(
-  transform: McapComposedFrameTransform,
-): McapComposedFrameTransform {
+  transform: EpisodeComposedFrameTransform,
+): EpisodeComposedFrameTransform {
   const inverseRotation = transform.rotation.clone().normalize().invert();
 
   return {
@@ -837,11 +841,11 @@ function composeMaxInterpolationGapNs(
 }
 
 function composeResolutionKinds(
-  first: McapFrameTransformResolutionKind | undefined,
-  second: McapFrameTransformResolutionKind | undefined,
-): McapFrameTransformResolutionKind | undefined {
+  first: EpisodeFrameTransformResolutionKind | undefined,
+  second: EpisodeFrameTransformResolutionKind | undefined,
+): EpisodeFrameTransformResolutionKind | undefined {
   const kinds = [first, second].filter(
-    (kind): kind is McapFrameTransformResolutionKind => kind !== undefined,
+    (kind): kind is EpisodeFrameTransformResolutionKind => kind !== undefined,
   );
   if (kinds.includes("clamped")) return "clamped";
   if (kinds.includes("held")) return "held";
@@ -854,7 +858,7 @@ function composeResolutionKinds(
 
 function frameTransformTimeKey(
   timeNs: bigint | undefined,
-  policy: McapFrameTransformPolicy,
+  policy: EpisodeFrameTransformPolicy,
 ) {
   return [
     timeNs === undefined ? "static" : timeNs.toString(),

@@ -1,13 +1,13 @@
 import { Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import {
-  dehydrateMcapFrameTransformSet,
-  hydrateMcapFrameTransformSet,
-  McapFrameTransformStore,
+  dehydrateEpisodeFrameTransformSet,
+  hydrateEpisodeFrameTransformSet,
+  EpisodeFrameTransformStore,
 } from "./frame-transforms";
-import type { McapFrameTransformSample } from "./frame-transform-types";
+import type { EpisodeFrameTransformSample } from "./frame-transform-types";
 
-describe("MCAP frame transform store", () => {
+describe("episode frame transform store", () => {
   it("resolves static-only frame paths", () => {
     const store = createStore({
       staticSamples: [sample("map", "lidar", { x: 1, y: 2, z: 3 })],
@@ -330,7 +330,7 @@ describe("MCAP frame transform store", () => {
   });
 
   it("exposes merged indexed dynamic ranges", () => {
-    const store = new McapFrameTransformStore();
+    const store = new EpisodeFrameTransformStore();
     store.addDynamic([], { endTimeNs: 20n, startTimeNs: 10n });
     store.addDynamic([], { endTimeNs: 40n, startTimeNs: 20n });
     store.addDynamic([], { endTimeNs: 70n, startTimeNs: 60n });
@@ -413,7 +413,7 @@ describe("MCAP frame transform store", () => {
   });
 
   it("changes topology revision only when a new transform edge appears", () => {
-    const store = new McapFrameTransformStore();
+    const store = new EpisodeFrameTransformStore();
     expect(store.topologyRevision()).toBe(0);
 
     store.addDynamic([sample("map", "base_link", { x: 0, y: 0, z: 0 }, 10n)], {
@@ -544,9 +544,9 @@ describe("frame transform worker boundary serialization", () => {
       ],
     };
 
-    const dehydrated = dehydrateMcapFrameTransformSet(set);
+    const dehydrated = dehydrateEpisodeFrameTransformSet(set);
     const overWire = structuredClone(dehydrated);
-    const [received] = hydrateMcapFrameTransformSet(overWire).samples;
+    const [received] = hydrateEpisodeFrameTransformSet(overWire).samples;
     if (!received) {
       throw new Error("Expected one hydrated sample");
     }
@@ -562,7 +562,7 @@ describe("frame transform worker boundary serialization", () => {
   });
 
   it("would lose Quaternion values without dehydration", () => {
-    // Lock in the reason `dehydrateMcapFrameTransformSet` exists: structured
+    // Lock in the reason `dehydrateEpisodeFrameTransformSet` exists: structured
     // clone strips Quaternion's x/y/z/w accessors. Skipping dehydration on the
     // worker side yields zeroed rotations after hydrate. If this test ever
     // starts failing, THREE's Quaternion storage changed and the workaround is
@@ -579,7 +579,7 @@ describe("frame transform worker boundary serialization", () => {
     };
 
     const overWireWithoutDehydrate = structuredClone(set);
-    const [received] = hydrateMcapFrameTransformSet(
+    const [received] = hydrateEpisodeFrameTransformSet(
       overWireWithoutDehydrate,
     ).samples;
     if (!received) {
@@ -602,10 +602,10 @@ function createStore({
     readonly endTimeNs: bigint;
     readonly startTimeNs: bigint;
   };
-  readonly dynamicSamples?: readonly McapFrameTransformSample[];
-  readonly staticSamples?: readonly McapFrameTransformSample[];
+  readonly dynamicSamples?: readonly EpisodeFrameTransformSample[];
+  readonly staticSamples?: readonly EpisodeFrameTransformSample[];
 }) {
-  const store = new McapFrameTransformStore();
+  const store = new EpisodeFrameTransformStore();
   store.addStatic(staticSamples);
   if (dynamicRange) {
     store.addDynamic(dynamicSamples, dynamicRange);
@@ -626,7 +626,7 @@ function sample(
       } = new Vector3(),
   timeNs?: bigint,
   rotation = new Quaternion(),
-): McapFrameTransformSample {
+): EpisodeFrameTransformSample {
   return {
     childFrameId,
     parentFrameId,
