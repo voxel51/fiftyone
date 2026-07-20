@@ -105,8 +105,9 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
     // the label exists, so wait on the persisted state itself
     await annotateSDK.waitForDetectionCount(datasetName, "instances");
 
-    await modal.sidebar.annotate.segmentationMode();
-    await modal.sidebar.annotate.assert.segmentationModeIsActive(false);
+    // The inferred detection is left selected; the create toolbar is hidden
+    // while editing, so exit via the edit form rather than the toolbar.
+    await modal.sidebar.edit.exitToList();
 
     // ── 4. Reload and verify the Detection survived ─────────────────────────
     await page.reload();

@@ -1,4 +1,5 @@
 export * from "./deltaSupplier";
+export * from "./saveStatus";
 export * from "./useAnnotationDeltaSupplier";
 export * from "./useAutoSave";
 export * from "./usePersistAnnotationDeltas";
