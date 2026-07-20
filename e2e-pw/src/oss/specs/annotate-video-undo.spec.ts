@@ -209,6 +209,10 @@ test.describe.serial("video annotation undo/redo", () => {
     await va.assert.objectTrackCount(1);
     const [trackId] = await va.objectTrackIds();
 
+    // the tracks drawer starts closed, so pin the row into the header to reach
+    // its interval bar without opening the drawer
+    await va.pinTrack(trackId);
+
     // whole-track delete (one engine transaction)
     await va.deleteTrackViaContextMenu(trackId);
     await va.assert.objectTrackCount(0);
