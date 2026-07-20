@@ -1,0 +1,114 @@
+import {
+  Button,
+  IconName,
+  SingleValueSlider,
+  Size,
+  Variant,
+} from "@voxel51/voodo";
+import React from "react";
+import { DEFAULT_AUDIO_VOLUME } from "../../lib/playback/atoms";
+import { usePlaybackStore } from "../../lib/playback/playback-store-context";
+import {
+  getAudioVolume,
+  setAudioMuted,
+  setAudioVolume,
+} from "../../lib/playback/store-access";
+import {
+  useAudioAvailable,
+  useAudioMuted,
+  useAudioVolume,
+} from "../../lib/playback/use-playback-state";
+import styles from "./TimelineControls.module.css";
+
+/** Arrow-key volume increment. */
+const KEY_STEP = 0.05;
+
+/**
+ * Mute toggle + volume slider for timeline audio. Renders nothing unless
+ * an audio integration has published `audioAvailableAtom` — a timeline
+ * with no accessible sound shows no control at all (no disabled button,
+ * no indicator).
+ *
+ * The slider displays zero while muted; the persisted volume is left
+ * untouched so unmuting restores it. Dragging above zero unmutes,
+ * dragging to zero mutes. Unmuting with a zero persisted volume (only
+ * reachable through storage edge cases) restores the default level so
+ * "unmute" always makes sound.
+ */
+const VolumeControl: React.FC = () => {
+  const available = useAudioAvailable();
+  const muted = useAudioMuted();
+  const volume = useAudioVolume();
+  const store = usePlaybackStore();
+
+  if (!available) {
+    return null;
+  }
+
+  const shown = muted ? 0 : volume;
+
+  const unmute = () => {
+    if (getAudioVolume(store) === 0) {
+      setAudioVolume(store, DEFAULT_AUDIO_VOLUME);
+    }
+    setAudioMuted(store, false);
+  };
+
+  const handleChange = (next: number) => {
+    if (next <= 0) {
+      // Mute without writing 0 into the volume — unmute restores the
+      // last audible level.
+      setAudioMuted(store, true);
+      return;
+    }
+    setAudioVolume(store, next);
+    setAudioMuted(store, false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    const dir =
+      e.key === "ArrowRight" || e.key === "ArrowUp"
+        ? 1
+        : e.key === "ArrowLeft" || e.key === "ArrowDown"
+          ? -1
+          : 0;
+    if (!dir) {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    handleChange(Math.min(1, Math.max(0, shown + dir * KEY_STEP)));
+  };
+
+  return (
+    <span
+      className={styles.volumeGroup}
+      data-testid="timeline-controls-volume-group"
+      onKeyDown={handleKeyDown}
+    >
+      <Button
+        variant={Variant.Icon}
+        size={Size.Xs}
+        data-testid="timeline-controls-mute"
+        leadingIcon={muted ? IconName.VolumeOff : IconName.VolumeUp}
+        aria-label={muted ? "Unmute" : "Mute"}
+        aria-pressed={muted}
+        onClick={muted ? unmute : () => setAudioMuted(store, true)}
+      />
+      <SingleValueSlider
+        bare
+        className={styles.volumeSlider}
+        data-testid="timeline-controls-volume"
+        aria-label="Volume"
+        min={0}
+        max={1}
+        step={0.01}
+        debounceDelay={0}
+        value={shown}
+        onChange={handleChange}
+      />
+    </span>
+  );
+};
+
+export default VolumeControl;

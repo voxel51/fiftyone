@@ -13,6 +13,7 @@
 // ---------------------------------------------------------------------------
 
 import {
+  audioAvailableAtom,
   audioMutedAtom,
   audioVolumeAtom,
   bufferedRangesAtom,
@@ -196,6 +197,22 @@ export function getAudioMuted(store: PlaybackStore): boolean {
  */
 export function setAudioMuted(store: PlaybackStore, muted: boolean): void {
   store.set(audioMutedAtom, muted);
+}
+
+/** Non-reactive read of whether the timeline has audio to control. */
+export function getAudioAvailable(store: PlaybackStore): boolean {
+  return store.get(audioAvailableAtom);
+}
+
+/**
+ * Publish whether the timeline has audible audio. Audio integrations set
+ * this; the volume UI hides entirely while it's false.
+ */
+export function setAudioAvailable(
+  store: PlaybackStore,
+  available: boolean,
+): void {
+  store.set(audioAvailableAtom, available);
 }
 
 /** Non-reactive read of a stream's current committed value. */

@@ -21,6 +21,7 @@ import {
 import LoopBounds from "../Loop/LoopBounds";
 import PlayheadTime from "../Playhead/PlayheadTime";
 import SpeedControl from "./SpeedControl";
+import VolumeControl from "./VolumeControl";
 import styles from "./TimelineControls.module.css";
 
 export interface TimelineControlsProps {
@@ -148,6 +149,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         onClick={stepForward}
       />
       <SpeedControl />
+      <VolumeControl />
 
       {extraControls}
 

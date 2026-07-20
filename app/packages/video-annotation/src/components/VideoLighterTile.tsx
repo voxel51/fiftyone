@@ -1,5 +1,10 @@
 import React, { useRef, useState } from "react";
-import { usePlayback, useVideoStream, useVideoSync } from "@fiftyone/playback";
+import {
+  useMediaElementAudio,
+  usePlayback,
+  useVideoStream,
+  useVideoSync,
+} from "@fiftyone/playback";
 import { useLighterTileScene } from "../hooks/useLighterTileScene";
 import { useVfcClockSource } from "../hooks/useVfcClockSource";
 import { useVideoAnnotationSyncBundle } from "../hooks/useVideoAnnotationSyncBundle";
@@ -44,6 +49,9 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   // stream's bufferState would produce spurious stalls.
   useVideoStream(sourceId, videoRef, { blocking: false });
   useVideoSync(videoRef);
+  // The <video> is also the audio source in this strategy — volume/mute
+  // follow the audio atoms (initially muted, the atoms' default).
+  useMediaElementAudio(videoRef);
   useVfcClockSource(videoRef);
   const { seek } = usePlayback();
 
@@ -73,7 +81,6 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
         src={videoSrc}
         preload="auto"
         playsInline
-        muted
         onLoadedMetadata={(e) => {
           const v = e.currentTarget;
           setVideoDims({ w: v.videoWidth, h: v.videoHeight });

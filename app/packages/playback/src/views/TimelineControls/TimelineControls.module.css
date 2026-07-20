@@ -66,6 +66,18 @@
   outline: none;
 }
 
+.volumeGroup {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 6px;
+  margin-left: 4px;
+}
+
+.volumeSlider {
+  width: 56px;
+}
+
 .divider {
   width: 1px;
   height: 12px;

@@ -14,6 +14,11 @@ export interface NativeDecodeProbeResult {
   codec?: string;
   /** Why not, when `decodable` is false (diagnostics). */
   reason?: string;
+  /**
+   * Whether the container carries an audio track (from the demuxed
+   * `moov`'s track table). Undefined when the demux never got that far.
+   */
+  hasAudio?: boolean;
 }
 
 /** Give up (report not-decodable) if the probe hasn't answered by now. */
@@ -63,6 +68,7 @@ export function probeNativeDecode(
           decodable: msg.decodable,
           codec: msg.codec,
           reason: msg.reason,
+          hasAudio: msg.hasAudio,
         });
       }
     };

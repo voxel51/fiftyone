@@ -25,6 +25,12 @@ export interface DecodeVerdict {
   codec: string;
   /** Whether `VideoDecoder.isConfigSupported` accepted it. */
   decodable: boolean;
+  /**
+   * Whether the container carries an audio track (from the same demuxed
+   * `moov`). Undefined = unknown; audio integrations fall back to element
+   * sniffing.
+   */
+  hasAudio?: boolean;
 }
 
 /** The slice of the `Storage` interface we use (so tests inject a fake). */
@@ -35,7 +41,9 @@ export interface KeyValueStore {
 
 // Bump to invalidate every persisted entry (keys are namespaced by version, so
 // old entries simply stop being read).
-const VERSION = "v1";
+// v2: verdicts gained `hasAudio` — a stale v1 entry would skip the probe and
+// leave the sample's audio presence unknown forever.
+const VERSION = "v2";
 const PREFIX = `fo:nd:${VERSION}`;
 
 const sampleKey = (dataset: string, sampleId: string): string =>
@@ -172,7 +180,11 @@ function isVerdict(value: unknown): value is DecodeVerdict {
   }
 
   const v = value as Record<string, unknown>;
-  return typeof v.codec === "string" && typeof v.decodable === "boolean";
+  return (
+    typeof v.codec === "string" &&
+    typeof v.decodable === "boolean" &&
+    (v.hasAudio === undefined || typeof v.hasAudio === "boolean")
+  );
 }
 
 /** A guarded `localStorage`, or `null` where it's unavailable (SSR/privacy). */

@@ -15,6 +15,7 @@
 import { useAtomValue } from "jotai";
 import {
   achievedSpeedAtom,
+  audioAvailableAtom,
   audioMutedAtom,
   audioVolumeAtom,
   bufferedRangesAtom,
@@ -87,6 +88,16 @@ export function useAudioVolume(): number {
 export function useAudioMuted(): boolean {
   const store = usePlaybackStore();
   return useAtomValue(audioMutedAtom, { store });
+}
+
+/**
+ * Whether the timeline has audible audio to control. Written by audio
+ * integrations via `setAudioAvailable`; the volume UI renders nothing
+ * while false.
+ */
+export function useAudioAvailable(): boolean {
+  const store = usePlaybackStore();
+  return useAtomValue(audioAvailableAtom, { store });
 }
 
 /**

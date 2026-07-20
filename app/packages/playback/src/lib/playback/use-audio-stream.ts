@@ -10,7 +10,11 @@ import {
 } from "./atoms";
 import { usePlayback } from "./PlaybackProvider";
 import { usePlaybackStore } from "./playback-store-context";
-import { bumpStreamRangesVersion, setAudioMuted } from "./store-access";
+import {
+  bumpStreamRangesVersion,
+  setAudioAvailable,
+  setAudioMuted,
+} from "./store-access";
 import type { BufferReadiness, PlaybackStream } from "./types";
 
 /**
@@ -153,8 +157,10 @@ export function detectElementHasAudio(
  * fractionally longer container duration must not stretch it. Playhead
  * positions past the audio's own end are always "ready" (silence).
  *
- * Returns a best-effort `hasAudio` signal (`null` = unknown) for hiding
- * volume UI; prefer a demuxer-level signal via `enabled` when available.
+ * Publishes `audioAvailableAtom` (the volume UI's render gate) while a
+ * playable element exists without a conclusive "no audio track" verdict,
+ * and returns the best-effort `hasAudio` signal (`null` = unknown) behind
+ * it; prefer a demuxer-level signal via `enabled` when available.
  */
 export function useAudioStream(
   id: string,
@@ -266,6 +272,18 @@ export function useAudioStream(
     };
     return registerStream(stream);
   }, [enabled, metadataReady, id, registerStream]);
+
+  // Publish availability for the volume UI: there is a playable element
+  // (metadata loaded) and no conclusive "no audio track" verdict. Cleared
+  // on teardown so a sample swap can't leave a stale control behind.
+  const available = enabled && metadataReady && hasAudio !== false;
+  useEffect(() => {
+    if (!available) {
+      return undefined;
+    }
+    setAudioAvailable(store, true);
+    return () => setAudioAvailable(store, false);
+  }, [available, store]);
 
   // Activation: subscribed (and therefore barrier-gating) only while the
   // sound is actually wanted. `hasAudio === false` is a conclusive "no

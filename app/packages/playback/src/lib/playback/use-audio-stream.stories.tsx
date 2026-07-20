@@ -1,62 +1,35 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useRef } from "react";
-import { PlaybackProvider, usePlaybackStore } from "./PlaybackProvider";
-import { setAudioMuted, setAudioVolume } from "./store-access";
+import { PlaybackProvider } from "./PlaybackProvider";
 import { useAudioStream } from "./use-audio-stream";
-import {
-  useAudioMuted,
-  useAudioVolume,
-  useIsBuffering,
-} from "./use-playback-state";
+import { useIsBuffering } from "./use-playback-state";
 import { useStream } from "./use-stream";
 import { useVideoStream } from "./use-video-stream";
 import { useVideoSync } from "./use-video-sync";
-import SimplePlaybackBar from "../../views/SimplePlaybackBar/SimplePlaybackBar";
+import TimelineControls from "../../views/TimelineControls/TimelineControls";
 
 /**
  * Dev harness for the audio pipeline: a muted `<video>` provides the
  * picture (registered as its own blocking stream, exactly like the
  * timeline's real frame streams gate the barrier) while `useAudioStream`
  * supplies the sound from the same URL. Exercises the full contract —
- * barrier gating, drift-chase, seek/step/loop resync, speed, volume,
- * mute-to-dormant — without the app.
+ * barrier gating, drift-chase, seek/step/loop resync, speed, volume UI
+ * (the stream publishes availability, so `TimelineControls` shows the
+ * real volume group), mute-to-dormant — without the app.
  */
 
 const MEDIA_URL =
   "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
-const AudioControls: React.FC<{ hasAudio: boolean | null }> = ({
-  hasAudio,
-}) => {
-  const store = usePlaybackStore();
-  const volume = useAudioVolume();
-  const muted = useAudioMuted();
+const StatusLine: React.FC<{ hasAudio: boolean | null }> = ({ hasAudio }) => {
   const isBuffering = useIsBuffering();
-
-  if (hasAudio === false) {
-    return <em>No audio track — controls hidden per product decision.</em>;
-  }
-
   return (
-    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-      <button type="button" onClick={() => setAudioMuted(store, !muted)}>
-        {muted ? "Unmute" : "Mute"}
-      </button>
-      <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-        Volume
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={volume}
-          onChange={(e) => setAudioVolume(store, Number(e.target.value))}
-        />
-      </label>
-      <span style={{ opacity: 0.7 }}>
-        hasAudio: {String(hasAudio)} · {isBuffering ? "buffering…" : "ready"}
-      </span>
-    </div>
+    <span style={{ opacity: 0.7 }}>
+      hasAudio: {String(hasAudio)} · {isBuffering ? "buffering…" : "ready"}
+      {hasAudio === false
+        ? " — no audio track, volume group hidden per product decision"
+        : null}
+    </span>
   );
 };
 
@@ -79,8 +52,8 @@ const Player: React.FC<{ src: string }> = ({ src }) => {
         playsInline
         style={{ width: "100%", background: "#000" }}
       />
-      <SimplePlaybackBar />
-      <AudioControls hasAudio={hasAudio} />
+      <TimelineControls />
+      <StatusLine hasAudio={hasAudio} />
     </div>
   );
 };

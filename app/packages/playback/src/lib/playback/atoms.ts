@@ -20,7 +20,7 @@
 // ---------------------------------------------------------------------------
 
 import { atom, type PrimitiveAtom } from "jotai";
-import { atomFamily } from "jotai/utils";
+import { atomFamily, atomWithStorage, createJSONStorage } from "jotai/utils";
 import type { BufferedRanges, SeekEvent } from "./types";
 
 /**
@@ -141,11 +141,31 @@ export const achievedSpeedAtom = atom<number | null>(null) as PrimitiveAtom<
 >;
 
 /**
- * Audio volume in [0, 1], applied to any audio stream registered via
- * `useAudioStream`. Independent of `audioMutedAtom` so a persisted volume
- * survives mute/unmute round-trips.
+ * The volume an unmute restores, and the very first unmute's level for a
+ * user who has never touched the slider.
  */
-export const audioVolumeAtom = atom(1.0);
+export const DEFAULT_AUDIO_VOLUME = 0.7;
+
+/**
+ * Audio volume in [0, 1], applied to any audio stream registered via
+ * `useAudioStream` / `useMediaElementAudio`. Independent of
+ * `audioMutedAtom` so a persisted volume survives mute/unmute
+ * round-trips.
+ *
+ * Persisted per user (localStorage) so the level carries across samples
+ * and sessions. Mute is deliberately NOT persisted — every timeline
+ * starts muted (see `audioMutedAtom`).
+ */
+export const audioVolumeAtom = atomWithStorage(
+  "fo-playback-audio-volume",
+  DEFAULT_AUDIO_VOLUME,
+  // An explicit synchronous storage keeps the atom's value type `number`
+  // (the storage-less overload admits Promise<number>).
+  createJSONStorage<number>(() => localStorage),
+  // Read the persisted value at first store.get, not asynchronously after
+  // mount — streams apply volume to their element on registration.
+  { getOnInit: true },
+);
 
 /**
  * Whether timeline audio is muted. Defaults to true: browsers reject
@@ -154,6 +174,15 @@ export const audioVolumeAtom = atom(1.0);
  * dormant (unsubscribed) so it never gates the engine's barrier.
  */
 export const audioMutedAtom = atom(true);
+
+/**
+ * Whether the current timeline has audible audio to control. Written by
+ * the audio integrations (`useAudioStream` element sniffing, a demuxer
+ * signal, `useMediaElementAudio`); read by the volume UI, which renders
+ * nothing while false — no disabled control, no "audio unavailable"
+ * indicator.
+ */
+export const audioAvailableAtom = atom(false);
 
 /**
  * Fired on discontinuous playhead jumps: user seek, step forward/back,

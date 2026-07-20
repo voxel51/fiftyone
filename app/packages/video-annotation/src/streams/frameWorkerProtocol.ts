@@ -75,6 +75,11 @@ export interface CapabilityMessage {
   codec?: string;
   /** Human-readable reason when not decodable (diagnostics). */
   reason?: string;
+  /**
+   * Whether the container carries an audio track, per the demuxed `moov`'s
+   * track table. Absent when the demux never got that far.
+   */
+  hasAudio?: boolean;
 }
 
 export type FrameWorkerOutbound =
