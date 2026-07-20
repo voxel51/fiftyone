@@ -1,20 +1,10 @@
-// TODO: implement panel selection for visualization kinds.
+import {
+  VISUALIZATION_KIND,
+  type VisualizationKind,
+} from "../ir/visualization-kinds";
 
-/**
- * Stable visual artifact kinds emitted by decoders.
- */
-export const VISUALIZATION_KIND = Object.freeze({
-  CAMERA_CALIBRATION: "camera-calibration",
-  ENCODED_IMAGE: "encoded-image",
-  ENCODED_VIDEO: "encoded-video",
-  GRID: "grid",
-  IMAGE_ANNOTATIONS: "image-annotations",
-  LOCATION: "location",
-  POINT_CLOUD: "point-cloud",
-  POSE: "pose",
-  RAW_IMAGE: "raw-image",
-  SCENE_UPDATE: "scene-update",
-} as const);
+export { VISUALIZATION_KIND } from "../ir/visualization-kinds";
+export type { VisualizationKind } from "../ir/visualization-kinds";
 
 /**
  * App panel families capable of presenting decoded visual artifacts.
@@ -25,12 +15,6 @@ export const PANEL_TYPE = Object.freeze({
   THREE_D: "3D",
   TIMESERIES: "timeseries",
 } as const);
-
-/**
- * Union of visualization kind ids.
- */
-export type VisualizationKind =
-  (typeof VISUALIZATION_KIND)[keyof typeof VISUALIZATION_KIND];
 
 /**
  * Union of panel family ids.
