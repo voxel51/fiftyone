@@ -150,8 +150,11 @@ export const DEFAULT_AUDIO_VOLUME = 0.7;
 export const audioVolumeAtom = atomWithStorage(
   "fo-playback-audio-volume",
   DEFAULT_AUDIO_VOLUME,
-  // explicit sync storage keeps the value type `number`
-  createJSONStorage<number>(() => localStorage),
+  // explicit sync storage keeps the value type `number`; guarded — the
+  // teams app evaluates this module during Next.js SSR
+  createJSONStorage<number>(() =>
+    typeof window === "undefined" ? undefined : window.localStorage,
+  ),
   // the persisted value must be readable at first store.get
   { getOnInit: true },
 );
@@ -166,7 +169,9 @@ export const audioVolumeAtom = atomWithStorage(
 export const audioMutedAtom = atomWithStorage(
   "fo-playback-audio-muted",
   true,
-  createJSONStorage<boolean>(() => sessionStorage),
+  createJSONStorage<boolean>(() =>
+    typeof window === "undefined" ? undefined : window.sessionStorage,
+  ),
   { getOnInit: true },
 );
 
