@@ -76,26 +76,42 @@ export interface TransformReadAcceleration {
   readTransforms(request: ReadRequest): Promise<readonly TransformSample[]>;
 }
 
-/** Proven synchronized playback surface implemented or emulated per session. */
+/** One synchronized playback read around a single presentation time. */
+export interface SynchronizedPlaybackReadRequest {
+  readonly defaultStreamPolicy?: StreamSyncPolicy;
+  readonly streamPolicies?: StreamSyncPolicies;
+  readonly streams: readonly StreamId[];
+  readonly timeNs: bigint;
+}
+
+/** One synchronized playback read spanning several presentation times. */
+export interface SynchronizedPlaybackBatchReadRequest {
+  readonly defaultStreamPolicy?: StreamSyncPolicy;
+  readonly streamPolicies?: StreamSyncPolicies;
+  readonly streams: readonly StreamId[];
+  readonly timeNs: readonly bigint[];
+}
+
+/** Optional controls for a synchronized playback batch. */
+export interface SynchronizedPlaybackReadOptions {
+  readonly priority?: ReadPriority;
+}
+
+/**
+ * Semantics-equivalent playback acceleration. The shared runtime emulates this
+ * entire surface over mandatory `read()` when an adapter does not provide it.
+ */
 export interface PlaybackReadCapability {
   readonly timeline: EpisodeTimeline;
   readStreamTimeBounds(
     streams: readonly StreamId[],
   ): Promise<readonly StreamTimeBounds[]>;
-  readSynchronized(request: {
-    readonly defaultStreamPolicy?: StreamSyncPolicy;
-    readonly streamPolicies?: StreamSyncPolicies;
-    readonly streams: readonly StreamId[];
-    readonly timeNs: bigint;
-  }): Promise<SynchronizedFrameWindow>;
+  readSynchronized(
+    request: SynchronizedPlaybackReadRequest,
+  ): Promise<SynchronizedFrameWindow>;
   readSynchronizedBatch(
-    request: {
-      readonly defaultStreamPolicy?: StreamSyncPolicy;
-      readonly streamPolicies?: StreamSyncPolicies;
-      readonly streams: readonly StreamId[];
-      readonly timeNs: readonly bigint[];
-    },
-    options?: { readonly priority?: ReadPriority },
+    request: SynchronizedPlaybackBatchReadRequest,
+    options?: SynchronizedPlaybackReadOptions,
   ): Promise<readonly SynchronizedFrameWindow[]>;
   subscribeTransport?(
     listener: (sample: LaneTransportSnapshot) => void,

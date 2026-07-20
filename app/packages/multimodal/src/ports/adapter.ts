@@ -1,8 +1,8 @@
 import type {
   ByteSourceDescriptor,
   EpisodeManifest,
+  EpisodeTimeline,
   EpisodePreviewReadResult,
-  StreamId,
 } from "../ir";
 import type { ByteResources, EpisodeSession, ReadPriority } from "./session";
 
@@ -25,6 +25,7 @@ export interface EpisodeSource {
   readonly assets: AssetResolver;
   readonly episodeId: string;
   readonly manifestHint?: EpisodeManifest;
+  readonly playbackHint?: EpisodeTimeline;
 }
 
 /** Lightweight sample facts available before a heavy adapter chunk loads. */
@@ -42,8 +43,9 @@ export interface AdapterDescriptor {
 
 /** One lightweight poster request made before a full episode session opens. */
 export interface EpisodePreviewReadRequest {
+  /** Stable, human-facing source name used for cross-episode selection. */
+  readonly sourceName?: string | null;
   readonly startTimeNs?: bigint;
-  readonly streamId?: StreamId | null;
 }
 
 /** Scheduling and cancellation controls for one preview read. */

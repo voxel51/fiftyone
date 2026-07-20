@@ -1,5 +1,6 @@
+import { create } from "@bufbuild/protobuf";
 import { describe, expect, it, vi } from "vitest";
-import type { StreamInventory } from "../../schemas/v1";
+import { PlaybackSyncMode, StreamInventorySchema } from "../../schemas/v1";
 import { SCENE_SOURCE_METADATA } from "../../ir";
 import type { ByteResources, EpisodeSource } from "../../ports";
 import {
@@ -10,8 +11,13 @@ import { createMcapFormatAdapter, createMcapManifest } from "./format-adapter";
 import {
   MCAP_ACTIVE_TIMELINE,
   type McapDecodedMessage,
+  type McapRawMessageRecordResult,
+  type McapReadSynchronizedMessageBatchRequest,
   type McapResourceClient,
+  type McapSynchronizedMessageWindow,
+  type McapTopicNumericFields,
 } from "./types";
+import type { McapGridPreviewResult } from "./grid-preview";
 
 const sourceDescriptor = {
   sourceId: "fixture.mcap",
@@ -28,9 +34,9 @@ const source: EpisodeSource = {
   episodeId: "mcap-contract",
 };
 
-const io = {
+const io: ByteResources = {
   readBytes: vi.fn(),
-} as unknown as ByteResources;
+};
 
 defineEpisodeSessionContractTests({
   createSession: () =>
@@ -39,25 +45,115 @@ defineEpisodeSessionContractTests({
 });
 
 describe("MCAP format adapter", () => {
+  it("opens from grid bootstrap hints without repeating inventory reads", async () => {
+    const client = createClient();
+    const manifest = createMcapManifest(
+      "mcap-contract",
+      { endTimeNs: 2n, startTimeNs: 1n },
+      await client.readTopics({ source: sourceDescriptor }),
+    );
+    vi.mocked(client.readTopics).mockClear();
+    const session = await createMcapFormatAdapter({
+      createClient: () => client,
+    }).open(
+      {
+        ...source,
+        manifestHint: manifest,
+        playbackHint: {
+          byteTimeline: [
+            {
+              cumulativeCompressedBytes: 32,
+              endTimeNs: 2n,
+              startOffsetBytes: 0n,
+            },
+          ],
+          endNs: 2n,
+          startNs: 1n,
+          timeDomainId: MCAP_ACTIVE_TIMELINE.LOG,
+        },
+      },
+      io,
+    );
+
+    expect(client.readTimelineRange).not.toHaveBeenCalled();
+    expect(client.readTopics).not.toHaveBeenCalled();
+    expect(session.playback?.timeline.byteTimeline).toHaveLength(1);
+    session.dispose();
+  });
+
+  it("selects a preview by stable source name before channel ids are known", async () => {
+    const request = vi.fn(
+      async (): Promise<McapGridPreviewResult> => ({
+        bootstrapTimelineRange: {
+          activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          endTimeNs: 2n,
+          startTimeNs: 1n,
+        },
+        bootstrapTopics: [
+          create(StreamInventorySchema, {
+            displayName: "/camera/front",
+            metadata: { "mcap.topic": "/camera/front" },
+            payload: { encoding: "ros2", schema: "sensor_msgs/msg/Image" },
+            recordCount: "1",
+            streamId: "7",
+          }),
+        ],
+        state: {
+          error: null,
+          frame: null,
+          hasPreviewTopics: true,
+          streamTopic: "/camera/front",
+          streamTopics: ["/camera/front"],
+          status: "empty",
+        },
+      }),
+    );
+    const pool = {
+      acquire: vi.fn(),
+      release: vi.fn(),
+      request,
+    };
+    const adapter = createMcapFormatAdapter({
+      getPreviewPool: () => pool,
+    });
+    const preview = await adapter.openPreview?.(source, io);
+    if (!preview) throw new Error("Expected MCAP preview support");
+
+    const result = await preview.read({ sourceName: "/camera/front" });
+
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({ selectedStreamTopic: "/camera/front" }),
+      expect.any(Object),
+    );
+    expect(result).toMatchObject({
+      bootstrapTimeline: { endNs: 2n, startNs: 1n },
+      streamId: "7",
+      streamSourceName: "/camera/front",
+      streamSourceNames: ["/camera/front"],
+    });
+    preview.dispose();
+    expect(pool.release).toHaveBeenCalledTimes(1);
+  });
+
   it("normalizes adapter metadata references to stable stream IDs", () => {
     const manifest = createMcapManifest(
       "episode",
       { endTimeNs: 2n, startTimeNs: 1n },
       [
-        {
+        create(StreamInventorySchema, {
           displayName: "/camera/image",
           metadata: {
             "mcap.topic": "/camera/image",
             [SCENE_SOURCE_METADATA.CALIBRATION_STREAM_ID]: "/camera/info",
           },
           streamId: "7",
-        },
-        {
+        }),
+        create(StreamInventorySchema, {
           displayName: "/camera/info",
           metadata: { "mcap.topic": "/camera/info" },
           streamId: "8",
-        },
-      ] as unknown as StreamInventory[],
+        }),
+      ],
     );
 
     expect(manifest.streams[0]).toMatchObject({
@@ -182,30 +278,82 @@ function createClient(): McapResourceClient {
   };
   return {
     dispose: vi.fn(),
-    enumerateNumericFields: vi.fn(async () => [
-      {
-        availability: "ready",
-        encoding: "json",
-        fields: [{ path: "exposure", valueType: "double" }],
-        topic: "/camera",
-      },
-    ]),
+    enumerateNumericFields: vi.fn(
+      async (): Promise<readonly McapTopicNumericFields[]> => [
+        {
+          availability: "ready",
+          encoding: "json",
+          fields: [{ path: "exposure", valueType: "double" }],
+          topic: "/camera",
+        },
+      ],
+    ),
     readDecodedMessages: vi.fn(async function* () {
       yield message;
     }),
+    readFrameTransformBootstrap: vi.fn(async () => ({ samples: [] })),
+    readFrameTransformWindow: vi.fn(async () => ({ samples: [] })),
+    readSynchronizedMessages: vi.fn(async (request) => ({
+      activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+      endTimeNs: request.timeNs,
+      messages: [message],
+      messagesByTopic: { [message.topic]: [message] },
+      startTimeNs: request.timeNs,
+      streamPolicies: Object.fromEntries(
+        request.topics.map((topic: string) => [
+          topic,
+          {
+            endTimeNs: request.timeNs,
+            limit: 1,
+            mode: PlaybackSyncMode.LATEST,
+          },
+        ]),
+      ),
+      timeNs: request.timeNs,
+    })),
+    readSynchronizedMessageBatch: vi.fn(
+      async (
+        request: McapReadSynchronizedMessageBatchRequest,
+      ): Promise<readonly McapSynchronizedMessageWindow[]> =>
+        request.timeNs.map((timeNs) => ({
+          activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          endTimeNs: timeNs,
+          messages: [message],
+          messagesByTopic: { [message.topic]: [message] },
+          startTimeNs: timeNs,
+          streamPolicies: Object.fromEntries(
+            request.topics.map((topic: string) => [
+              topic,
+              {
+                endTimeNs: timeNs,
+                limit: 1,
+                mode: PlaybackSyncMode.LATEST,
+              },
+            ]),
+          ),
+          timeNs,
+        })),
+    ),
     readTimelineRange: vi.fn(async () => ({
       activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
       endTimeNs: 2n,
       startTimeNs: 1n,
     })),
-    readTopics: vi.fn(async () => [
+    readTopicTimeBounds: vi.fn(async () => [
       {
+        firstMessageTimeNs: 1n,
+        lastMessageTimeNs: 2n,
+        topic: "/camera",
+      },
+    ]),
+    readTopics: vi.fn(async () => [
+      create(StreamInventorySchema, {
         displayName: "Camera",
         metadata: { "mcap.topic": "/camera" },
         payload: { encoding: "ros2", schema: "sensor_msgs/msg/Image" },
         recordCount: "1",
         streamId: "camera",
-      } as unknown as StreamInventory,
+      }),
     ]),
     readNumericSeries: vi.fn(async () => ({
       baseTimeNs: 1n,
@@ -220,13 +368,15 @@ function createClient(): McapResourceClient {
       topic: "/camera",
       truncated: false,
     })),
-    readRawMessageRecord: vi.fn(async () => ({
-      messageEncoding: "json",
-      schemaName: null,
-      status: "empty",
-      topic: "/camera",
-      validFromNs: 1n,
-      validUntilNs: 2n,
-    })),
-  } as unknown as McapResourceClient;
+    readRawMessageRecord: vi.fn(
+      async (): Promise<McapRawMessageRecordResult> => ({
+        messageEncoding: "json",
+        schemaName: null,
+        status: "empty",
+        topic: "/camera",
+        validFromNs: 1n,
+        validUntilNs: 2n,
+      }),
+    ),
+  };
 }

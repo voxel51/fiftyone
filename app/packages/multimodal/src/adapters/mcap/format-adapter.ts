@@ -5,6 +5,7 @@ import {
   type ByteSourceDescriptor,
   type DecodedFrame,
   type EpisodeManifest,
+  type EpisodePreviewReadResult,
   type StreamDescriptor,
   type StreamKind,
   type ResolvedStreamSyncPolicy,
@@ -19,6 +20,7 @@ import {
   type EpisodeSession,
   type EpisodeSource,
   type EpisodePreviewReadOptions,
+  type EpisodePreviewReadRequest,
   type EpisodePreviewSession,
   type FormatAdapter,
   type FrameBatch,
@@ -31,7 +33,7 @@ import {
   type TransformReadAcceleration,
 } from "../../ports";
 import { PlaybackSyncMode } from "../../schemas/v1";
-import { isMcapReadCancelledError } from "./errors";
+import { isReadCancelledError } from "../../errors";
 import type { McapGridPreviewResult } from "./grid-preview";
 import { prewarmMcapSource } from "./prewarm-mcap-source";
 import {
@@ -44,6 +46,7 @@ import {
   type McapResourceClient,
   type McapStreamSyncPolicies,
   type McapStreamSyncPolicy,
+  type McapTimelineRange,
 } from "./types";
 import { getMcapGridPreviewPool } from "./worker";
 import {
@@ -51,9 +54,15 @@ import {
   type McapPlaybackWorkerPriority,
 } from "./worker/playback-worker-types";
 
+type McapGridPreviewPool = Pick<
+  ReturnType<typeof getMcapGridPreviewPool>,
+  "acquire" | "release" | "request"
+>;
+
 /** Options for constructing the MCAP format adapter. */
 export interface CreateMcapFormatAdapterOptions {
   readonly createClient?: (io: ByteResources) => McapResourceClient;
+  readonly getPreviewPool?: () => McapGridPreviewPool;
 }
 
 /** Creates the passive MCAP provider behind the shared format port. */
@@ -71,16 +80,26 @@ export function createMcapFormatAdapter(
           : acquireSharedMcapResourceClient({ worker: true });
       const { client } = handle;
       try {
-        const [range, topics] = await Promise.all([
-          client.readTimelineRange({
-            activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-            source: asset,
-          }),
-          client.readTopics({ source: asset }),
-        ]);
-        const manifest =
-          source.manifestHint ??
-          createMcapManifest(source.episodeId, range, topics);
+        const hintedRange = mcapTimelineRangeFromSource(source);
+        let range: McapTimelineRange;
+        let manifest: EpisodeManifest;
+        if (source.manifestHint) {
+          range =
+            hintedRange ?? mcapTimelineRangeFromManifest(source.manifestHint);
+          manifest = source.manifestHint;
+        } else {
+          const [loadedRange, topics] = await Promise.all([
+            hintedRange
+              ? Promise.resolve(hintedRange)
+              : client.readTimelineRange({
+                  activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+                  source: asset,
+                }),
+            client.readTopics({ source: asset }),
+          ]);
+          range = loadedRange;
+          manifest = createMcapManifest(source.episodeId, range, topics);
+        }
         return new McapEpisodeSession(
           client,
           asset,
@@ -95,7 +114,7 @@ export function createMcapFormatAdapter(
     },
     async openPreview(source, _io) {
       const asset = await resolveMcapAsset(source);
-      const pool = getMcapGridPreviewPool();
+      const pool = (options.getPreviewPool ?? getMcapGridPreviewPool)();
       pool.acquire();
       return new McapEpisodePreviewSession(asset, source.episodeId, pool);
     },
@@ -106,12 +125,9 @@ export function createMcapFormatAdapter(
   };
 }
 
-type McapGridPreviewPool = ReturnType<typeof getMcapGridPreviewPool>;
-
 /** Source-bound neutral facade over the adapter's shared preview workers. */
 class McapEpisodePreviewSession implements EpisodePreviewSession {
   private disposed = false;
-  private sourceNamesById = new Map<string, string>();
   private streamIdsBySourceName = new Map<string, string>();
 
   constructor(
@@ -127,16 +143,11 @@ class McapEpisodePreviewSession implements EpisodePreviewSession {
   }
 
   async read(
-    request: {
-      readonly startTimeNs?: bigint;
-      readonly streamId?: string | null;
-    } = {},
+    request: EpisodePreviewReadRequest = {},
     options: EpisodePreviewReadOptions = {},
-  ) {
+  ): Promise<EpisodePreviewReadResult> {
     if (this.disposed) throw new EpisodeReadCancelledError();
-    const selectedStreamTopic = request.streamId
-      ? (this.sourceNamesById.get(request.streamId) ?? request.streamId)
-      : undefined;
+    const selectedStreamTopic = request.sourceName ?? undefined;
     const result = await this.pool.request(
       {
         ...(selectedStreamTopic ? { selectedStreamTopic } : {}),
@@ -154,28 +165,30 @@ class McapEpisodePreviewSession implements EpisodePreviewSession {
     return this.toEpisodeResult(result);
   }
 
-  private toEpisodeResult(result: McapGridPreviewResult) {
+  private toEpisodeResult(
+    result: McapGridPreviewResult,
+  ): EpisodePreviewReadResult {
     if (result.bootstrapTopics) {
       for (const stream of result.bootstrapTopics) {
         const sourceName =
           stream.metadata["mcap.topic"] ??
           stream.displayName ??
           stream.streamId;
-        this.sourceNamesById.set(stream.streamId, sourceName);
         this.streamIdsBySourceName.set(sourceName, stream.streamId);
       }
     }
-    const bootstrapTimeRange = result.bootstrapTimelineRange
+    const timelineRange = result.bootstrapTimelineRange;
+    const bootstrapTimeRange = timelineRange
       ? {
-          endNs: result.bootstrapTimelineRange.endTimeNs,
-          startNs: result.bootstrapTimelineRange.startTimeNs,
+          endNs: timelineRange.endTimeNs,
+          startNs: timelineRange.startTimeNs,
         }
       : undefined;
     const bootstrapManifest =
-      result.bootstrapTimelineRange && result.bootstrapTopics
+      timelineRange && result.bootstrapTopics
         ? createMcapManifest(
             this.episodeId,
-            result.bootstrapTimelineRange,
+            timelineRange,
             result.bootstrapTopics,
           )
         : undefined;
@@ -183,6 +196,16 @@ class McapEpisodePreviewSession implements EpisodePreviewSession {
       this.streamIdsBySourceName.get(sourceName) ?? sourceName;
     return {
       ...(bootstrapManifest ? { bootstrapManifest } : {}),
+      ...(timelineRange
+        ? {
+            bootstrapTimeline: {
+              byteTimeline: timelineRange.byteTimeline,
+              endNs: timelineRange.endTimeNs,
+              startNs: timelineRange.startTimeNs,
+              timeDomainId: MCAP_ACTIVE_TIMELINE.LOG,
+            },
+          }
+        : {}),
       ...(bootstrapTimeRange ? { bootstrapTimeRange } : {}),
       frame: result.state.frame,
       frameTimeNs: result.frameTimeNs,
@@ -190,13 +213,14 @@ class McapEpisodePreviewSession implements EpisodePreviewSession {
       streamId: result.state.streamTopic
         ? streamIdFor(result.state.streamTopic)
         : null,
-      streamIds: result.state.streamTopics.map(streamIdFor),
+      streamSourceName: result.state.streamTopic,
+      streamSourceNames: result.state.streamTopics,
       status:
         result.state.status === "unavailable"
-          ? ("unavailable" as const)
+          ? "unavailable"
           : result.state.frame
-            ? ("ready" as const)
-            : ("empty" as const),
+            ? "ready"
+            : "empty",
     };
   }
 }
@@ -215,6 +239,32 @@ function previewPriority(
     case undefined:
       return MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH;
   }
+}
+
+function mcapTimelineRangeFromSource(
+  source: EpisodeSource,
+): McapTimelineRange | null {
+  if (source.playbackHint) {
+    return {
+      activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+      byteTimeline: source.playbackHint.byteTimeline,
+      endTimeNs: source.playbackHint.endNs,
+      startTimeNs: source.playbackHint.startNs,
+    };
+  }
+  return source.manifestHint
+    ? mcapTimelineRangeFromManifest(source.manifestHint)
+    : null;
+}
+
+function mcapTimelineRangeFromManifest(
+  manifest: EpisodeManifest,
+): McapTimelineRange {
+  return {
+    activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+    endTimeNs: manifest.timeRange.endNs,
+    startTimeNs: manifest.timeRange.startNs,
+  };
 }
 
 /** Adapts the proven MCAP numeric RPCs to the format-neutral capability. */
@@ -560,7 +610,7 @@ class McapEpisodeSession implements EpisodeSession {
         yield { frames: [frame], stream: frame.streamId };
       }
     } catch (error) {
-      if (isMcapReadCancelledError(error)) {
+      if (isReadCancelledError(error)) {
         throw new EpisodeReadCancelledError();
       }
       throw error;
@@ -727,7 +777,7 @@ class McapEpisodeSession implements EpisodeSession {
   }
 
   private normalizeReadError(error: unknown): unknown {
-    return isMcapReadCancelledError(error)
+    return isReadCancelledError(error)
       ? new EpisodeReadCancelledError()
       : error;
   }

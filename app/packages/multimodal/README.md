@@ -26,16 +26,17 @@ which ranges to read and which payload descriptors to decode.
 
 Adapters compose resources for a concrete source format. The MCAP adapter under
 `src/adapters/mcap` owns MCAP indexing, chunk decompression, channel/schema
-mapping, direct topic metadata reads, sync-window selection, worker playback,
-and adapter-owned decoder registration. It implements the shared format port;
-it does not own React views or shared runtime policy.
+mapping, direct topic metadata reads, worker-accelerated playback, and
+adapter-owned decoder registration. It implements the shared format port; it
+does not own React views or shared runtime policy.
 
 `src/adapters/fixture` is the deterministic contract/performance source and
 covers every public stream kind, cancellation, priority, backpressure, and
 failure containment. `src/adapters/lerobot` is the structurally different port
 validator: it reads LeRobot episode Parquet through byte resources and emits
 MP4 samples as encoded-video IR without introducing topic or message-log
-concepts into the port.
+concepts into the port. It intentionally remains contract-only until a later PR
+defines production multi-asset source acquisition and renderer activation.
 
 ### Runtime and views
 
@@ -73,9 +74,10 @@ passive and UI-free.
    panels; numeric-series and raw-record UI feature-detect their semantic
    capabilities.
 
-This flow is exercised end-to-end by the generic renderer and fixture adapter,
-and at the port/contract level by MCAP and LeRobot. The dependency graph keeps
-the renderer/runtime side unable to reach an adapter.
+This flow is exercised end-to-end through the production modal, grid, and
+timeline consumers by the fixture adapter, and at the port/contract level by
+MCAP and LeRobot. The dependency graph keeps the renderer/runtime side unable
+to reach an adapter.
 
 ## Worker Playback
 

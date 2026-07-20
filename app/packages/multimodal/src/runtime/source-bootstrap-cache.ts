@@ -2,6 +2,7 @@ import type {
   ByteSourceDescriptor,
   EpisodeManifest,
   EpisodePosterFrame,
+  EpisodeTimeline,
   TimeWindow,
 } from "../ir";
 import { byteSourceAccessKey } from "../query/bytes";
@@ -16,6 +17,7 @@ export interface SourceBootstrap {
   readonly manifest?: EpisodeManifest;
   readonly poster?: EpisodePosterFrame;
   readonly posterStreamId?: string;
+  readonly timeline?: EpisodeTimeline;
   readonly timeRange?: TimeWindow;
 }
 
@@ -45,12 +47,14 @@ export function publishSourceBootstrap(
     bootstrap.posterStreamId ??
     (replacesPoster ? undefined : current?.posterStreamId);
   const manifest = bootstrap.manifest ?? current?.manifest;
+  const timeline = bootstrap.timeline ?? current?.timeline;
   const timeRange = bootstrap.timeRange ?? current?.timeRange;
   const next: CacheEntry = {
     ...(manifest ? { manifest } : {}),
     ...(poster ? { poster } : {}),
     ...(posterStreamId ? { posterStreamId } : {}),
     ...(timeRange ? { timeRange } : {}),
+    ...(timeline ? { timeline } : {}),
     posterBytes: retainedBinaryBytes(poster ?? null),
   };
   entries.set(key, next);
@@ -113,6 +117,7 @@ function copyEntry(entry: CacheEntry | undefined): SourceBootstrap | null {
     ...(entry.poster ? { poster: entry.poster } : {}),
     ...(entry.posterStreamId ? { posterStreamId: entry.posterStreamId } : {}),
     ...(entry.timeRange ? { timeRange: entry.timeRange } : {}),
+    ...(entry.timeline ? { timeline: entry.timeline } : {}),
   };
 }
 
