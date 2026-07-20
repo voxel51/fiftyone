@@ -154,6 +154,18 @@ export class DetectionOverlay
   applyLabel(label: DetectionLabel) {
     super.applyLabel(label);
 
+    // A reproject (e.g. the autosave tick's server-echo reconcile) must not
+    // clobber an overlay whose gesture is still in flight: the live bounds and
+    // mask canvas are the source of truth until the gesture commits on
+    // pointer-up. Overwriting #relativeBounds mid-paint/resize reverts to the
+    // old committed box, and onPointerUp's paintEnd(this.bounds) then bakes the
+    // mask against those stale bounds — the reported squash. (Painting outside
+    // the box auto-expands it, so the live box is legitimately wider than the
+    // committed one.) Base label metadata is already synced via super above.
+    if (this.isInteracting()) {
+      return;
+    }
+
     if (label.bounding_box) {
       const [x, y, w, h] = label.bounding_box;
       this.#relativeBounds = { x, y, width: w, height: h };

@@ -18,12 +18,9 @@ export class HistogramPom {
   }
 
   async selectField(field: string) {
-    const promise = this.eventUtils.getEventReceivedPromiseForPredicate(
-      `histogram-${field}`,
-      () => true,
-    );
+    const promise = await this.eventUtils.arm(`histogram-${field}`);
     await this.selector.selectResult(field);
-    await promise;
+    await promise.received;
   }
 }
 

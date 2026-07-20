@@ -91,6 +91,16 @@ export interface SurfaceBridge<Handle, Descriptor> {
   /** Optional origin-suppression flag (perf/transitional). */
   isWriting?: boolean;
 
+  /**
+   * True while the handle holds an in-flight user gesture (drag/resize/
+   * paint) whose state is newer than any committed label. The read-half
+   * loop defers reprojection onto such a handle — applying the committed
+   * value mid-gesture would clobber the gesture (e.g. an autosave
+   * round-trip's refresh landing during a resize snaps the box back). The
+   * gesture's own end-commit re-syncs the loop.
+   */
+  isInteracting?(handle: Handle): boolean;
+
   // interaction read-half — SILENT visual application; omit if the
   // surface shows no selection/hover affordance
   applySelected?(handle: Handle, selected: boolean): void;

@@ -12,7 +12,7 @@ import {
   hasGroupSlices,
   modalGroupSlice,
 } from "./groups";
-import { groupSampleAtMainSlice, modalLooker } from "./modal";
+import { groupSampleAtMainSlice, modalLooker, modalSelector } from "./modal";
 import { dynamicGroupsViewMode, selectedMediaField } from "./options";
 import { fieldPaths } from "./schema";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
@@ -138,6 +138,19 @@ export const imaVidLookerState = atomFamily<any, string>({
 export const groupByFieldValue = selector({
   key: "groupByFieldValue",
   get: ({ get }) => {
+    // While the modal is open but the group slice has not settled,
+    // {@link groupSampleAtMainSlice} cannot resolve its variables yet.
+    // Suspend rather than settle to null: consumers hold their previous
+    // value across the transition instead of observing a transient null
+    // that dead-ends dynamic group queries and pagination
+    if (
+      get(modalSelector) !== null &&
+      get(hasGroupSlices) &&
+      !get(groupSlice)
+    ) {
+      return new Promise<never>(() => {});
+    }
+
     // Always read from the sample on the main groupSlice, independent of
     // which slice the modal is currently displaying. See
     // {@link groupSampleAtMainSlice}.

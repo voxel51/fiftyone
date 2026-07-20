@@ -195,6 +195,7 @@ const GridCustomRendererWrapper = ({
     <div
       className={classes.container}
       style={CONTAINER_STYLES}
+      data-cy="grid-custom-renderer"
       onMouseEnter={() => setHovering(true)}
       onMouseMove={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}

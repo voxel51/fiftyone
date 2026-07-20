@@ -5516,16 +5516,18 @@ Here's how a typical PCD file is structured:
     :linenos:
 
     import numpy as np
-    import open3d as o3d
+    from pypcd4 import PointCloud
 
-    points = np.array([(x1, y1, z1), (x2, y2, z2), ...])
-    colors = np.array([(r1, g1, b1), (r2, g2, b2), ...])
+    # XYZ coordinates
+    points = np.array([(x1, y1, z1), (x2, y2, z2), ...], dtype=np.float32)
 
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(points)
-    pcd.colors = o3d.utility.Vector3dVector(colors)
+    # RGB values in [0, 255]
+    colors = np.array([(r1, g1, b1), (r2, g2, b2), ...], dtype=np.uint8)
 
-    o3d.io.write_point_cloud("/path/to/point-cloud.pcd", pcd)
+    rgb = PointCloud.encode_rgb(colors)
+    pcd = PointCloud.from_xyzrgb_points(np.column_stack((points, rgb)))
+
+    pcd.save("/path/to/point-cloud.pcd")
 
 .. note::
 

@@ -88,11 +88,8 @@ export class ModalPom {
     return this.locator.getByTestId("action-display-options");
   }
 
-  getLookerAttachedEvent() {
-    return this.eventUtils.getEventReceivedPromiseForPredicate(
-      "looker-attached",
-      () => true,
-    );
+  armLookerAttached() {
+    return this.eventUtils.arm("looker-attached");
   }
 
   getSampleNavigation(direction: "forward" | "backward") {
