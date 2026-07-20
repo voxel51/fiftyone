@@ -1,3 +1,4 @@
+import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import {
   canAnnotate,
   isGeneratedView,
@@ -49,6 +50,9 @@ export default function useCanAnnotate(): CanAnnotateResult {
   const isDynamic = useRecoilValue(isDynamicGroup);
   const isNestedDynamic = useRecoilValue(isNestedDynamicGroup);
   const isQueryPerformant = useRecoilValue(isQueryPerformantDynamicGroup);
+  const { isEnabled: isDynamicGroupAnnotationEnabled } = useFeature({
+    feature: FeatureFlag.DynamicGroupAnnotation,
+  });
 
   // hide tab entirely if user lacks edit permission or feature disabled
   if (isReadOnlySnapshot || !canAnnotateEnabled) {
@@ -59,7 +63,7 @@ export default function useCanAnnotate(): CanAnnotateResult {
   }
 
   // nested dynamic groups fall through to the group dataset logic below
-  if (isDynamic && !isNestedDynamic) {
+  if (isDynamicGroupAnnotationEnabled && isDynamic && !isNestedDynamic) {
     return {
       showAnnotationTab: true,
       disabledReason: isQueryPerformant
