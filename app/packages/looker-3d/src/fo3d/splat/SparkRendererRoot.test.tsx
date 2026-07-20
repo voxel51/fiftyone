@@ -1,5 +1,6 @@
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { StrictMode, type ReactNode } from "react";
+import { RecoilRoot } from "recoil";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SparkRendererProvider, useSparkRenderer } from "./SparkRendererRoot";
 import { SPARK_MAX_STANDARD_DEVIATIONS } from "./constants";
@@ -72,11 +73,14 @@ const SplatConsumer = ({
 };
 
 const TestScene = ({ children }: { children?: ReactNode }) => (
-  <SparkRendererProvider>{children}</SparkRendererProvider>
+  <RecoilRoot>
+    <SparkRendererProvider>{children}</SparkRendererProvider>
+  </RecoilRoot>
 );
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.clearAllMocks();
   mocks.instances.length = 0;
   mocks.splatSettings = {
@@ -218,5 +222,26 @@ describe("SparkRendererProvider", () => {
     expect(mocks.disposeRenderer).toHaveBeenCalledTimes(1);
     expect(mocks.disposeGeometry).toHaveBeenCalledTimes(1);
     expect(mocks.disposeMaterial).toHaveBeenCalledTimes(1);
+  });
+
+  it("contains renderer failures without unmounting scene content", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    mocks.construct.mockImplementationOnce(() => {
+      throw new Error("renderer failed");
+    });
+
+    render(
+      <TestScene>
+        <SplatConsumer />
+        <div>scene content</div>
+      </TestScene>,
+    );
+
+    await waitFor(() => expect(mocks.construct).toHaveBeenCalledOnce());
+    await waitFor(() => expect(consoleError).toHaveBeenCalled());
+    expect(screen.getByText("scene content")).not.toBeNull();
+    expect(screen.queryByText("renderer failed")).toBeNull();
   });
 });

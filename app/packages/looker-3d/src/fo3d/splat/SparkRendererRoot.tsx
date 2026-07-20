@@ -11,6 +11,7 @@ import {
 } from "react";
 import { Box3 } from "three";
 import { FO_USER_DATA } from "../../constants";
+import { Fo3dErrorBoundary } from "../../ErrorBoundary";
 import { useSplatSettings } from "../../hooks/use-splat-settings";
 import { SPARK_MAX_STANDARD_DEVIATIONS } from "./constants";
 import { loadSpark } from "./load-spark";
@@ -167,10 +168,12 @@ export const SparkRendererProvider = ({
   return (
     <SparkRendererRegistrationContext.Provider value={register}>
       {registrationCounts.consumers > 0 ? (
-        <SparkRendererRoot
-          requiresCovariance={registrationCounts.covarianceConsumers > 0}
-          settings={splatSettings}
-        />
+        <Fo3dErrorBoundary ignoreError boundaryName="Gaussian splat renderer">
+          <SparkRendererRoot
+            requiresCovariance={registrationCounts.covarianceConsumers > 0}
+            settings={splatSettings}
+          />
+        </Fo3dErrorBoundary>
       ) : null}
       {children}
     </SparkRendererRegistrationContext.Provider>
