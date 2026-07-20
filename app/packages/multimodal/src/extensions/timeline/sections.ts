@@ -1,13 +1,13 @@
 import type { Track } from "@fiftyone/playback";
 import clsx from "clsx";
 import { useCallback, useMemo, useState } from "react";
-import type { McapTimelineSection, McapTimelineTrackDecorator } from "./types";
+import type { TimelineSection, TimelineTrackDecorator } from "./types";
 import styles from "./sections.module.css";
 
-const SECTION_HEADER_ID_PREFIX = "mcap-timeline-section::";
+const SECTION_HEADER_ID_PREFIX = "timeline-section::";
 const SECTION_HEADER_COLOR = "#8f9199";
 
-function sectionHeader(section: McapTimelineSection): Track {
+function sectionHeader(section: TimelineSection): Track {
   return {
     id: `${SECTION_HEADER_ID_PREFIX}${section.id}`,
     label: section.label,
@@ -23,10 +23,8 @@ function sectionHeader(section: McapTimelineSection): Track {
  * receive non-pinnable compatibility header tracks so existing grouping and
  * collapse behavior remains intact.
  */
-export function useMcapTimelineSections(
-  sections: readonly McapTimelineSection[],
-): {
-  readonly decorateTrack: McapTimelineTrackDecorator;
+export function useTimelineSections(sections: readonly TimelineSection[]): {
+  readonly decorateTrack: TimelineTrackDecorator;
   readonly tracks: Track[];
 } {
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(
@@ -47,29 +45,29 @@ export function useMcapTimelineSections(
         left.order - right.order || left.id.localeCompare(right.id),
     );
     const ids = new Set<string>();
-    const sourceByTrackId = new Map<string, McapTimelineSection>();
+    const sourceByTrackId = new Map<string, TimelineSection>();
     for (const section of ordered) {
       if (!section.id.includes(":")) {
         throw new Error(
-          `MCAP timeline section ids must be namespaced: ${section.id}`,
+          `Timeline section ids must be namespaced: ${section.id}`,
         );
       }
       if (ids.has(section.id)) {
-        throw new Error(`Duplicate MCAP timeline section id: ${section.id}`);
+        throw new Error(`Duplicate Timeline section id: ${section.id}`);
       }
       ids.add(section.id);
       for (const track of section.tracks) {
         const existing = sourceByTrackId.get(track.id);
         if (existing) {
           throw new Error(
-            `Duplicate MCAP timeline track id ${track.id} in ${existing.id} and ${section.id}`,
+            `Duplicate Timeline track id ${track.id} in ${existing.id} and ${section.id}`,
           );
         }
         sourceByTrackId.set(track.id, section);
       }
     }
     const nonEmpty = ordered.filter((section) => section.tracks.length > 0);
-    const decorateSourceTrack: McapTimelineTrackDecorator = (track, pinned) =>
+    const decorateSourceTrack: TimelineTrackDecorator = (track, pinned) =>
       sourceByTrackId.get(track.id)?.decorateTrack?.(track, pinned) ?? {};
 
     if (nonEmpty.length < 2) {
@@ -86,7 +84,7 @@ export function useMcapTimelineSections(
       const header = sectionHeader(section);
       if (sourceByTrackId.has(header.id)) {
         throw new Error(
-          `MCAP timeline section header id collides with a track: ${header.id}`,
+          `Timeline section header id collides with a track: ${header.id}`,
         );
       }
       headerIds.add(header.id);

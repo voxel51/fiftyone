@@ -1,8 +1,8 @@
 import type { Track } from "@fiftyone/playback";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { useMcapTimelineSections } from "./sections";
-import type { McapTimelineSection } from "./types";
+import { useTimelineSections } from "./sections";
+import type { TimelineSection } from "./types";
 
 const TAG_TRACK: Track = {
   id: "temporal-tag::one",
@@ -16,15 +16,13 @@ const EVENT_TRACK: Track = {
   color: "#111",
   events: [],
 };
-const TAGS_HEADER_ID = "mcap-timeline-section::fiftyone:temporal-tags";
-const EVENTS_HEADER_ID = "mcap-timeline-section::test:events";
+const TAGS_HEADER_ID = "timeline-section::fiftyone:temporal-tags";
+const EVENTS_HEADER_ID = "timeline-section::test:events";
 
-describe("useMcapTimelineSections", () => {
+describe("useTimelineSections", () => {
   it("keeps a single section as real tracks only", () => {
     const { result } = renderHook(() =>
-      useMcapTimelineSections([
-        section("fiftyone:temporal-tags", 200, TAG_TRACK),
-      ]),
+      useTimelineSections([section("fiftyone:temporal-tags", 200, TAG_TRACK)]),
     );
 
     expect(result.current.tracks).toEqual([TAG_TRACK]);
@@ -32,7 +30,7 @@ describe("useMcapTimelineSections", () => {
 
   it("orders multiple sections behind non-pinnable compatibility headers", () => {
     const { result } = renderHook(() =>
-      useMcapTimelineSections([
+      useTimelineSections([
         section("fiftyone:temporal-tags", 200, TAG_TRACK),
         section("test:events", 100, EVENT_TRACK),
       ]),
@@ -55,7 +53,7 @@ describe("useMcapTimelineSections", () => {
   });
 
   it("collapses only unpinned children and preserves source decoration", () => {
-    const sections: McapTimelineSection[] = [
+    const sections: TimelineSection[] = [
       section("fiftyone:temporal-tags", 200, TAG_TRACK),
       {
         ...section("test:events", 100, EVENT_TRACK),
@@ -66,7 +64,7 @@ describe("useMcapTimelineSections", () => {
         }),
       },
     ];
-    const { result } = renderHook(() => useMcapTimelineSections(sections));
+    const { result } = renderHook(() => useTimelineSections(sections));
     const header = result.current.tracks.find(
       (track) => track.id === EVENTS_HEADER_ID,
     );
@@ -97,25 +95,25 @@ describe("useMcapTimelineSections", () => {
     try {
       expect(() =>
         renderHook(() =>
-          useMcapTimelineSections([
+          useTimelineSections([
             section("test:duplicate", 100, EVENT_TRACK),
             section("test:duplicate", 200, TAG_TRACK),
           ]),
         ),
-      ).toThrow("Duplicate MCAP timeline section id: test:duplicate");
+      ).toThrow("Duplicate Timeline section id: test:duplicate");
 
       expect(() =>
         renderHook(() =>
-          useMcapTimelineSections([
+          useTimelineSections([
             section("test:events", 100, EVENT_TRACK),
             section("fiftyone:temporal-tags", 200, EVENT_TRACK),
           ]),
         ),
-      ).toThrow(`Duplicate MCAP timeline track id ${EVENT_TRACK.id}`);
+      ).toThrow(`Duplicate Timeline track id ${EVENT_TRACK.id}`);
 
       expect(() =>
         renderHook(() =>
-          useMcapTimelineSections([
+          useTimelineSections([
             section("test:events", 100, EVENT_TRACK),
             section("fiftyone:temporal-tags", 200, {
               ...TAG_TRACK,
@@ -124,7 +122,7 @@ describe("useMcapTimelineSections", () => {
           ]),
         ),
       ).toThrow(
-        `MCAP timeline section header id collides with a track: ${EVENTS_HEADER_ID}`,
+        `Timeline section header id collides with a track: ${EVENTS_HEADER_ID}`,
       );
     } finally {
       consoleError.mockRestore();
@@ -132,6 +130,6 @@ describe("useMcapTimelineSections", () => {
   });
 });
 
-function section(id: string, order: number, track: Track): McapTimelineSection {
+function section(id: string, order: number, track: Track): TimelineSection {
   return { id, label: id, order, tracks: [track] };
 }
