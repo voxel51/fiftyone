@@ -143,6 +143,23 @@ export const achievedSpeedAtom = atom<number | null>(null) as PrimitiveAtom<
 /** Volume restored by unmute when the user has never set a level. */
 export const DEFAULT_AUDIO_VOLUME = 0.7;
 
+// SSR (the teams app evaluates this module during Next.js prerender) has
+// no `window`, and restricted browsers (sandboxed iframes, blocked
+// cookies) throw on the storage accessor itself; `undefined` keeps the
+// atom in-memory in both cases.
+const guardedStorage = (
+  kind: "localStorage" | "sessionStorage",
+): Storage | undefined => {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+  try {
+    return window[kind];
+  } catch {
+    return undefined;
+  }
+};
+
 /**
  * Audio volume in [0, 1]. Independent of `audioMutedAtom` so unmute
  * restores the prior level. Persisted per user across sessions.
@@ -150,11 +167,8 @@ export const DEFAULT_AUDIO_VOLUME = 0.7;
 export const audioVolumeAtom = atomWithStorage(
   "fo-playback-audio-volume",
   DEFAULT_AUDIO_VOLUME,
-  // explicit sync storage keeps the value type `number`; guarded — the
-  // teams app evaluates this module during Next.js SSR
-  createJSONStorage<number>(() =>
-    typeof window === "undefined" ? undefined : window.localStorage,
-  ),
+  // explicit sync storage keeps the value type `number`
+  createJSONStorage<number>(() => guardedStorage("localStorage")),
   // the persisted value must be readable at first store.get
   { getOnInit: true },
 );
@@ -169,9 +183,7 @@ export const audioVolumeAtom = atomWithStorage(
 export const audioMutedAtom = atomWithStorage(
   "fo-playback-audio-muted",
   true,
-  createJSONStorage<boolean>(() =>
-    typeof window === "undefined" ? undefined : window.sessionStorage,
-  ),
+  createJSONStorage<boolean>(() => guardedStorage("sessionStorage")),
   { getOnInit: true },
 );
 
