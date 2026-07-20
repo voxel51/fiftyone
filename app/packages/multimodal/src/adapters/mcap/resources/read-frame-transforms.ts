@@ -29,7 +29,7 @@ import type {
 import {
   compareFrameTransformSamplesByTime,
   frameTransformEdgeKey,
-} from "../frame-transforms";
+} from "../frame-transform-wire";
 import type { McapReadFrameTransformWindowRequest } from "../types";
 
 const PROTOBUF_ENCODING = "protobuf";

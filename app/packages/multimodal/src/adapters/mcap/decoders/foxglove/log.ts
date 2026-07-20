@@ -5,9 +5,9 @@ import type {
   Decoder,
 } from "../../../../decoders";
 import {
-  MCAP_LOG_ATTRIBUTE_ROWS,
-  MCAP_LOG_LEVEL,
-  type McapDecodedLogRow,
+  LOG_ATTRIBUTE_ROWS,
+  LOG_LEVEL,
+  type DecodedLogRow,
   logRowsAttribute,
 } from "../../log-records";
 import { rosDecodersForPayloads } from "../ros/factory";
@@ -49,7 +49,7 @@ export function decodeFoxgloveLogRecord(
 ): DecodedOutput {
   const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
   const levelNumber = numberField(message, "level");
-  const row: McapDecodedLogRow = {
+  const row: DecodedLogRow = {
     file: optionalString(message, "file"),
     kind: "log",
     level: foxgloveLogLevel(levelNumber),
@@ -67,29 +67,29 @@ export function decodeFoxgloveLogRecord(
 }
 
 function logOutputAttributes(
-  row: McapDecodedLogRow,
+  row: DecodedLogRow,
 ): Record<string, DecodedAttributeValue> {
   const rows = logRowsAttribute([row]);
   return {
     ...rows[0],
-    [MCAP_LOG_ATTRIBUTE_ROWS]: rows,
+    [LOG_ATTRIBUTE_ROWS]: rows,
   };
 }
 
 function foxgloveLogLevel(level: number) {
   switch (level) {
     case 1:
-      return MCAP_LOG_LEVEL.DEBUG;
+      return LOG_LEVEL.DEBUG;
     case 2:
-      return MCAP_LOG_LEVEL.INFO;
+      return LOG_LEVEL.INFO;
     case 3:
-      return MCAP_LOG_LEVEL.WARN;
+      return LOG_LEVEL.WARN;
     case 4:
-      return MCAP_LOG_LEVEL.ERROR;
+      return LOG_LEVEL.ERROR;
     case 5:
-      return MCAP_LOG_LEVEL.FATAL;
+      return LOG_LEVEL.FATAL;
     default:
-      return MCAP_LOG_LEVEL.UNKNOWN;
+      return LOG_LEVEL.UNKNOWN;
   }
 }
 

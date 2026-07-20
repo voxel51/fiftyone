@@ -6,7 +6,7 @@ import {
 } from "../../decoders";
 import type { ByteSourceDescriptor } from "../../query/bytes";
 import type { StreamInventory } from "../../schemas/v1";
-import { VISUALIZATION_KIND } from "../../visualization";
+import { VISUALIZATION_KIND } from "../../ir";
 import { filterDefaultTopicEquivalents } from "./topic-matching";
 import { streamTopics, type McapPreviewTopics } from "./stream-topics";
 import type {

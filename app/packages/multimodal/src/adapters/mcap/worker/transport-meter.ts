@@ -1,21 +1,20 @@
 import {
   createNetworkTransportMeter,
+  type LaneTransportSnapshot,
   type NetworkTransportSnapshot,
+  type TransportLane,
 } from "../../../network-meter";
 
 /**
  * Worker lane a transport snapshot came from. Kept structural here so the
  * resource-client contract can reference it without importing worker internals.
  */
-export type McapTransportLane = "foreground" | "idle" | "bulk";
+export type McapTransportLane = TransportLane;
 
 /**
  * One lane's cumulative transport counters, forwarded to health listeners.
  */
-export interface McapLaneTransportSnapshot {
-  readonly lane: McapTransportLane;
-  readonly snapshot: McapTransportSnapshot;
-}
+export type McapLaneTransportSnapshot = LaneTransportSnapshot;
 
 export type McapTransportSnapshot = NetworkTransportSnapshot;
 

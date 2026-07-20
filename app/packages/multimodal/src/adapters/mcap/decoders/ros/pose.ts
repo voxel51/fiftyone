@@ -4,7 +4,7 @@ import type {
   DecodedOutput,
   PoseVisualization,
 } from "../../../../decoders";
-import { VISUALIZATION_KIND } from "../../../../visualization";
+import { VISUALIZATION_KIND } from "../../../../ir";
 import {
   decodeQuaternion,
   decodeVector3,

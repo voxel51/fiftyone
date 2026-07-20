@@ -9,7 +9,7 @@ import type {
   PayloadDescriptor,
 } from "../../../decoders";
 import type { StreamInventory } from "../../../schemas/v1";
-import { VISUALIZATION_KIND } from "../../../visualization";
+import { VISUALIZATION_KIND } from "../../../ir";
 import {
   isCameraCalibrationStream,
   isCompressedImageStream,

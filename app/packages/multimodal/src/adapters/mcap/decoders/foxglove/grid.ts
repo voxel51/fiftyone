@@ -7,7 +7,7 @@ import type {
   GridVisualization,
 } from "../../../../decoders";
 import { resourceHintsForArrayBufferViews } from "../../../../decoders";
-import { VISUALIZATION_KIND } from "../../../../visualization";
+import { VISUALIZATION_KIND } from "../../../../ir";
 import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";
 import { decodePose } from "./protobuf/geometry";

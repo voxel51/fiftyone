@@ -6,7 +6,7 @@ import descriptor from "protobufjs/ext/descriptor";
 import { describe, expect, it } from "vitest";
 import type { Decoder, PayloadDescriptor } from "../../../decoders";
 import type { StreamInventory } from "../../../schemas/v1";
-import { VISUALIZATION_KIND } from "../../../visualization";
+import { VISUALIZATION_KIND } from "../../../ir";
 import {
   isCameraCalibrationStream,
   isCompressedImageStream,

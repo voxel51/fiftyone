@@ -5,7 +5,7 @@ import type {
   DecodedDiagnostic,
   DecodedOutput,
 } from "../../../../decoders";
-import { VISUALIZATION_KIND } from "../../../../visualization";
+import { VISUALIZATION_KIND } from "../../../../ir";
 import {
   finiteNumberArrayField,
   numberArrayField,

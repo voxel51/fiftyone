@@ -5,7 +5,7 @@ import {
   type DecodedAttributeValue,
   type DecodedOutput,
 } from "../../../../decoders";
-import { VISUALIZATION_KIND } from "../../../../visualization";
+import { VISUALIZATION_KIND } from "../../../../ir";
 import { scanToPoints } from "../foxglove/laser-scan";
 import {
   IDENTITY_QUATERNION,

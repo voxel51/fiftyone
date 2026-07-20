@@ -1,5 +1,5 @@
 import { byteSourceAccessKey } from "../../../query/bytes";
-import { hydrateMcapFrameTransformSet } from "../frame-transforms";
+import { hydrateMcapFrameTransformSet } from "../frame-transform-wire";
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
 import type {

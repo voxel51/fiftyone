@@ -8,7 +8,7 @@ import type { ByteSourceDescriptor } from "../../../query/bytes";
 import type { DecodeClient } from "../../../query/decode";
 import type { DecodedOutput } from "../../../decoders";
 import { PlaybackSyncMode } from "../../../schemas/v1";
-import { VISUALIZATION_KIND } from "../../../visualization";
+import { VISUALIZATION_KIND } from "../../../ir";
 import { createInlineMcapResourceClient } from "./inline";
 import { MCAP_ACTIVE_TIMELINE } from "../types";
 

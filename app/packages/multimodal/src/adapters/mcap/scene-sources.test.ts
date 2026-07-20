@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { SCENE_SOURCE_TYPE } from "../../ir";
 import { PlaybackSyncMode, type StreamInventory } from "../../schemas/v1";
-import {
-  MCAP_SOURCE_TYPE,
-  mcapSceneSources,
-  mcapStreamPolicies,
-} from "./scene-sources";
+import { mcapSceneSources, mcapStreamPolicies } from "./scene-sources";
 
 describe("mcapSceneSources", () => {
   it("classifies supported payloads and omits unsupported topics", () => {
@@ -47,90 +44,90 @@ describe("mcapSceneSources", () => {
     expect(sources).toEqual([
       {
         id: "/CAM_FRONT/image_rect_compressed",
-        type: MCAP_SOURCE_TYPE.IMAGE,
+        type: SCENE_SOURCE_TYPE.IMAGE,
         label: "CAM_FRONT",
         metadata: {
-          "mcap.calibration_topic": "/CAM_FRONT/camera_info",
+          "scene.calibration_stream_id": "/CAM_FRONT/camera_info",
         },
       },
       {
         id: "/CAM_REAR/image",
-        type: MCAP_SOURCE_TYPE.IMAGE,
+        type: SCENE_SOURCE_TYPE.IMAGE,
         label: "CAM_REAR",
       },
       {
         id: "/CAM_VIDEO",
-        type: MCAP_SOURCE_TYPE.IMAGE,
+        type: SCENE_SOURCE_TYPE.IMAGE,
         label: "CAM_VIDEO",
       },
       {
         id: "/CAM_VIDEO_CDR",
-        type: MCAP_SOURCE_TYPE.IMAGE,
+        type: SCENE_SOURCE_TYPE.IMAGE,
         label: "CAM_VIDEO_CDR",
       },
       {
         id: "/CAM_RGBD/raw",
-        type: MCAP_SOURCE_TYPE.IMAGE,
+        type: SCENE_SOURCE_TYPE.IMAGE,
         label: "CAM_RGBD",
       },
       {
         id: "/CAM_RGBD/raw_cdr",
-        type: MCAP_SOURCE_TYPE.IMAGE,
+        type: SCENE_SOURCE_TYPE.IMAGE,
         label: "CAM_RGBD/raw_cdr",
       },
       {
         id: "/LIDAR_TOP",
-        type: MCAP_SOURCE_TYPE.POINT_CLOUD,
+        type: SCENE_SOURCE_TYPE.POINT_CLOUD,
         label: "LIDAR_TOP",
       },
       {
         id: "/scan",
-        type: MCAP_SOURCE_TYPE.POINT_CLOUD,
+        type: SCENE_SOURCE_TYPE.POINT_CLOUD,
         label: "scan",
       },
       {
         id: "/CAM_FRONT/annotations",
-        type: MCAP_SOURCE_TYPE.IMAGE_ANNOTATION,
+        type: SCENE_SOURCE_TYPE.IMAGE_ANNOTATION,
         label: "CAM_FRONT/annotations",
       },
       {
         id: "/markers/annotations",
-        type: MCAP_SOURCE_TYPE.SCENE_ANNOTATION,
+        type: SCENE_SOURCE_TYPE.SCENE_ANNOTATION,
         label: "markers/annotations",
       },
       {
         id: "/map",
-        type: MCAP_SOURCE_TYPE.MAP_LAYER,
+        type: SCENE_SOURCE_TYPE.MAP_LAYER,
         label: "map",
       },
       {
         id: "/drivable_area",
-        type: MCAP_SOURCE_TYPE.MAP_LAYER,
+        type: SCENE_SOURCE_TYPE.MAP_LAYER,
         label: "drivable_area",
       },
       {
         id: "/CAM_FRONT/camera_info",
-        type: MCAP_SOURCE_TYPE.CAMERA_CALIBRATION,
+        type: SCENE_SOURCE_TYPE.CAMERA_CALIBRATION,
         label: "CAM_FRONT/camera_info",
       },
       {
         id: "/pose",
-        type: MCAP_SOURCE_TYPE.POSE,
+        type: SCENE_SOURCE_TYPE.POSE,
         label: "pose",
       },
       {
         id: "/odom",
-        type: MCAP_SOURCE_TYPE.POSE,
+        type: SCENE_SOURCE_TYPE.POSE,
         label: "odom",
       },
       {
         id: "/gps",
-        type: MCAP_SOURCE_TYPE.LOCATION,
+        type: SCENE_SOURCE_TYPE.LOCATION,
         label: "gps",
       },
       {
         id: "/diagnostics",
-        type: MCAP_SOURCE_TYPE.LOG,
+        type: SCENE_SOURCE_TYPE.LOG,
         label: "diagnostics",
       },
     ]);
@@ -168,7 +165,7 @@ describe("mcapSceneSources", () => {
     expect(sources[0]).toEqual({
       id: "/boxi/hesai/intensity_image",
       label: "boxi/hesai/intensity_image",
-      type: MCAP_SOURCE_TYPE.IMAGE,
+      type: SCENE_SOURCE_TYPE.IMAGE,
     });
   });
 
@@ -209,27 +206,27 @@ describe("mcapSceneSources", () => {
     expect(sources).toEqual([
       {
         id: "IMG1_ltm_pyr_L1",
-        type: MCAP_SOURCE_TYPE.IMAGE,
+        type: SCENE_SOURCE_TYPE.IMAGE,
         label: "IMG1_ltm_pyr_L1",
       },
       {
         id: "IMG1_ltm_pyr_L1_left",
-        type: MCAP_SOURCE_TYPE.IMAGE,
+        type: SCENE_SOURCE_TYPE.IMAGE,
         label: "IMG1_ltm_pyr_L1_left",
       },
       {
         id: "IMG1_ltm_pyr_L1_right",
-        type: MCAP_SOURCE_TYPE.IMAGE,
+        type: SCENE_SOURCE_TYPE.IMAGE,
         label: "IMG1_ltm_pyr_L1_right",
       },
       {
         id: "IMG1_ltm_pyr_L1_wide",
-        type: MCAP_SOURCE_TYPE.IMAGE,
+        type: SCENE_SOURCE_TYPE.IMAGE,
         label: "IMG1_ltm_pyr_L1_wide",
       },
       {
         id: "GNSS_Position",
-        type: MCAP_SOURCE_TYPE.LOCATION,
+        type: SCENE_SOURCE_TYPE.LOCATION,
         label: "GNSS_Position",
       },
     ]);

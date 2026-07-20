@@ -3,7 +3,7 @@ import type {
   Decoder,
   PoseVisualization,
 } from "../../../../decoders";
-import { VISUALIZATION_KIND } from "../../../../visualization";
+import { VISUALIZATION_KIND } from "../../../../ir";
 // Context-only timing helper; nothing protobuf-specific despite its home.
 import { timingFromContext } from "../foxglove/protobuf/timing";
 import { decodeJsonRecord, finiteNumberField, recordField } from "./decode";

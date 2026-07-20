@@ -1,56 +1,23 @@
 import type { DecodedAttributeValue } from "../../decoders";
+import type { DecodedLogRow, LogDetail } from "../../ir";
 
-export const MCAP_LOG_ATTRIBUTE_ROWS = "logRows";
-
-export const MCAP_LOG_LEVEL = {
-  DEBUG: "debug",
-  ERROR: "error",
-  FATAL: "fatal",
-  INFO: "info",
-  UNKNOWN: "unknown",
-  WARN: "warn",
-} as const;
-
-export type McapLogLevel = (typeof MCAP_LOG_LEVEL)[keyof typeof MCAP_LOG_LEVEL];
-
-export const MCAP_LOG_LEVELS: readonly McapLogLevel[] = [
-  MCAP_LOG_LEVEL.DEBUG,
-  MCAP_LOG_LEVEL.INFO,
-  MCAP_LOG_LEVEL.WARN,
-  MCAP_LOG_LEVEL.ERROR,
-  MCAP_LOG_LEVEL.FATAL,
-  MCAP_LOG_LEVEL.UNKNOWN,
-];
-
-export interface McapLogDetail {
-  readonly key: string;
-  readonly value: string;
-}
-
-export interface McapDecodedLogRow {
-  readonly details?: readonly McapLogDetail[];
-  readonly file?: string;
-  readonly functionName?: string;
-  readonly hardwareId?: string;
-  readonly kind?: "diagnostic" | "log";
-  readonly level: McapLogLevel;
-  readonly levelNumber?: number;
-  readonly line?: number;
-  readonly message: string;
-  readonly name?: string;
-  readonly status?: string;
-  readonly timestampNs?: bigint;
-  readonly topics?: readonly string[];
-}
+export {
+  LOG_ATTRIBUTE_ROWS,
+  LOG_LEVEL,
+  LOG_LEVELS,
+  type DecodedLogRow,
+  type LogDetail,
+  type LogLevel,
+} from "../../ir";
 
 export function logRowsAttribute(
-  rows: readonly McapDecodedLogRow[],
+  rows: readonly DecodedLogRow[],
 ): readonly Record<string, DecodedAttributeValue>[] {
   return rows.map(logRowAttribute);
 }
 
 export function logRowAttribute(
-  row: McapDecodedLogRow,
+  row: DecodedLogRow,
 ): Record<string, DecodedAttributeValue> {
   const attributes: Record<string, DecodedAttributeValue> = {
     level: row.level,
@@ -72,7 +39,7 @@ export function logRowAttribute(
 }
 
 function logDetailAttribute(
-  detail: McapLogDetail,
+  detail: LogDetail,
 ): Record<string, DecodedAttributeValue> {
   return {
     key: detail.key,

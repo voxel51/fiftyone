@@ -1,11 +1,7 @@
-/**
- * React helpers for MCAP renderer client lifecycle.
- */
-export { useMcapFrameTransforms, useMcapResourceClient } from "./react";
-export type {
-  McapFrameTransformResolver,
-  UseMcapResourceClientOptions,
-} from "./react";
+/** Format-neutral MCAP adapter and lazy registration descriptor. */
+export { createMcapFormatAdapter } from "./format-adapter";
+export type { CreateMcapFormatAdapterOptions } from "./format-adapter";
+export { detectMcapSample, mcapAdapterDescriptor } from "./descriptor";
 
 /**
  * Public MCAP resource client factory.

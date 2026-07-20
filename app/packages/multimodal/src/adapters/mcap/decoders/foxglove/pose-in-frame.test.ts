@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { VISUALIZATION_KIND } from "../../../../visualization";
+import { VISUALIZATION_KIND } from "../../../../ir";
 import { foxglovePoseInFrameDecoder } from "./pose-in-frame";
 import { decodeProtobufMessage } from "./protobuf";
 

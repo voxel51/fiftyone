@@ -5,6 +5,8 @@ import {
   type StreamInventory,
 } from "../../../schemas/v1";
 import type { McapIndexedReaderLike } from "../reader";
+import { SCENE_SOURCE_METADATA, STREAM_METADATA } from "../../../ir";
+import { mcapSceneSources } from "../scene-sources";
 import { genericRecordDecoderResolutionForChannel } from "./generic-record-decoder";
 
 const MCAP_METADATA_PREFIX = "mcap.";
@@ -16,16 +18,50 @@ const MCAP_CHANNEL_METADATA_PREFIX = `${MCAP_METADATA_PREFIX}channel_metadata.`;
 export function readMcapTopics(
   reader: McapIndexedReaderLike,
 ): readonly StreamInventory[] {
-  return [...reader.channelsById.entries()].map(([channelId, channel]) => {
-    const schema = schemaForChannel(channel, reader.schemasById);
+  const streams = [...reader.channelsById.entries()].map(
+    ([channelId, channel]) => {
+      const schema = schemaForChannel(channel, reader.schemasById);
 
-    return create(StreamInventorySchema, {
-      displayName: channel.topic,
-      metadata: channelMetadata(channelId, channel, reader, schema),
-      payload: payloadForChannel(channel, schema),
-      recordCount: recordCountForChannel(channelId, reader),
-      streamId: channelId.toString(),
-    });
+      return create(StreamInventorySchema, {
+        displayName: channel.topic,
+        metadata: channelMetadata(channelId, channel, reader, schema),
+        payload: payloadForChannel(channel, schema),
+        recordCount: recordCountForChannel(channelId, reader),
+        streamId: channelId.toString(),
+      });
+    },
+  );
+  const sourcesByName = new Map(
+    mcapSceneSources(streams).map((source) => [source.id, source]),
+  );
+  return streams.map((stream) => {
+    const sourceName = stream.metadata["mcap.topic"] ?? stream.displayName;
+    const source = sourceName ? sourcesByName.get(sourceName) : undefined;
+    return {
+      ...stream,
+      metadata: {
+        ...stream.metadata,
+        [STREAM_METADATA.DECODE_STATUS]:
+          stream.metadata["mcap.generic_decode_status"] ?? "unknown",
+        [STREAM_METADATA.ENCODING]:
+          stream.metadata["mcap.message_encoding"] ??
+          stream.payload?.encoding ??
+          "unknown",
+        [STREAM_METADATA.SCHEMA_NAME]:
+          stream.metadata["mcap.schema_name"] ??
+          stream.payload?.schema ??
+          "no schema",
+        ...(sourceName
+          ? { [SCENE_SOURCE_METADATA.SOURCE_NAME]: sourceName }
+          : {}),
+        ...(source
+          ? {
+              [SCENE_SOURCE_METADATA.TYPE]: source.type,
+              ...source.metadata,
+            }
+          : {}),
+      },
+    };
   });
 }
 

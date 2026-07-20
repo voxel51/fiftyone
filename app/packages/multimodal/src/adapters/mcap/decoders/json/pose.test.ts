@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { VISUALIZATION_KIND } from "../../../../visualization";
+import { VISUALIZATION_KIND } from "../../../../ir";
 import { decodeJsonRecord } from "./decode";
 import { jsonPoseDecoder } from "./pose";
 

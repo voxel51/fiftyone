@@ -4,9 +4,9 @@ import type {
   DecodedOutput,
 } from "../../../../decoders";
 import {
-  MCAP_LOG_ATTRIBUTE_ROWS,
-  MCAP_LOG_LEVEL,
-  type McapDecodedLogRow,
+  LOG_ATTRIBUTE_ROWS,
+  LOG_LEVEL,
+  type DecodedLogRow,
   logRowsAttribute,
 } from "../../log-records";
 import { optionalString } from "../foxglove/protobuf/records";
@@ -62,7 +62,7 @@ export function decodeRosgraphLogRecord(
   const header = rosHeader(message);
   const timestampNs = rosHeaderTimestampNs(header);
   const levelNumber = numberField(message, "level", undefined, 0);
-  const row: McapDecodedLogRow = {
+  const row: DecodedLogRow = {
     file: optionalString(message, "file"),
     functionName: optionalString(message, "function"),
     kind: "log",
@@ -87,7 +87,7 @@ export function decodeRclLogRecord(
 ): DecodedOutput {
   const timestampNs = rosTimestampNs(recordField(message, "stamp"));
   const levelNumber = numberField(message, "level", undefined, 0);
-  const row: McapDecodedLogRow = {
+  const row: DecodedLogRow = {
     file: optionalString(message, "file"),
     functionName: optionalString(message, "function"),
     kind: "log",
@@ -120,7 +120,7 @@ export function decodeDiagnosticArrayRecord(
   return {
     attributes: {
       ...rosHeaderAttributes(header),
-      [MCAP_LOG_ATTRIBUTE_ROWS]: logRowsAttribute(rows),
+      [LOG_ATTRIBUTE_ROWS]: logRowsAttribute(rows),
       diagnosticCount: rows.length,
       errorCount: counts.error,
       okCount: counts.ok,
@@ -132,21 +132,21 @@ export function decodeDiagnosticArrayRecord(
 }
 
 function logOutputAttributes(
-  row: McapDecodedLogRow,
+  row: DecodedLogRow,
   base: Record<string, DecodedAttributeValue> = {},
 ): Record<string, DecodedAttributeValue> {
   const rows = logRowsAttribute([row]);
   return {
     ...base,
     ...rows[0],
-    [MCAP_LOG_ATTRIBUTE_ROWS]: rows,
+    [LOG_ATTRIBUTE_ROWS]: rows,
   };
 }
 
 function diagnosticStatusRow(
   status: Record<string, unknown>,
   timestampNs: bigint | undefined,
-): McapDecodedLogRow {
+): DecodedLogRow {
   const levelNumber = numberValue(status.level);
   const statusName = diagnosticStatusName(levelNumber);
   const name = optionalString(status, "name");
@@ -179,7 +179,7 @@ function diagnosticDetails(
     .filter((value) => value.key || value.value);
 }
 
-function diagnosticCounts(rows: readonly McapDecodedLogRow[]) {
+function diagnosticCounts(rows: readonly DecodedLogRow[]) {
   const counts = {
     error: 0,
     ok: 0,
@@ -207,28 +207,28 @@ function diagnosticCounts(rows: readonly McapDecodedLogRow[]) {
 }
 
 function rosgraphLogLevel(level: number) {
-  if ((level & 16) !== 0) return MCAP_LOG_LEVEL.FATAL;
-  if ((level & 8) !== 0) return MCAP_LOG_LEVEL.ERROR;
-  if ((level & 4) !== 0) return MCAP_LOG_LEVEL.WARN;
-  if ((level & 2) !== 0) return MCAP_LOG_LEVEL.INFO;
-  if ((level & 1) !== 0) return MCAP_LOG_LEVEL.DEBUG;
-  return MCAP_LOG_LEVEL.UNKNOWN;
+  if ((level & 16) !== 0) return LOG_LEVEL.FATAL;
+  if ((level & 8) !== 0) return LOG_LEVEL.ERROR;
+  if ((level & 4) !== 0) return LOG_LEVEL.WARN;
+  if ((level & 2) !== 0) return LOG_LEVEL.INFO;
+  if ((level & 1) !== 0) return LOG_LEVEL.DEBUG;
+  return LOG_LEVEL.UNKNOWN;
 }
 
 function rclLogLevel(level: number) {
-  if (level >= 50) return MCAP_LOG_LEVEL.FATAL;
-  if (level >= 40) return MCAP_LOG_LEVEL.ERROR;
-  if (level >= 30) return MCAP_LOG_LEVEL.WARN;
-  if (level >= 20) return MCAP_LOG_LEVEL.INFO;
-  if (level >= 10) return MCAP_LOG_LEVEL.DEBUG;
-  return MCAP_LOG_LEVEL.UNKNOWN;
+  if (level >= 50) return LOG_LEVEL.FATAL;
+  if (level >= 40) return LOG_LEVEL.ERROR;
+  if (level >= 30) return LOG_LEVEL.WARN;
+  if (level >= 20) return LOG_LEVEL.INFO;
+  if (level >= 10) return LOG_LEVEL.DEBUG;
+  return LOG_LEVEL.UNKNOWN;
 }
 
 function diagnosticLogLevel(level: number | undefined) {
-  if (level === 2) return MCAP_LOG_LEVEL.ERROR;
-  if (level === 1 || level === 3) return MCAP_LOG_LEVEL.WARN;
-  if (level === 0) return MCAP_LOG_LEVEL.INFO;
-  return MCAP_LOG_LEVEL.UNKNOWN;
+  if (level === 2) return LOG_LEVEL.ERROR;
+  if (level === 1 || level === 3) return LOG_LEVEL.WARN;
+  if (level === 0) return LOG_LEVEL.INFO;
+  return LOG_LEVEL.UNKNOWN;
 }
 
 function diagnosticStatusName(level: number | undefined): string {
