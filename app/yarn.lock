@@ -2102,6 +2102,7 @@ __metadata:
     "@bufbuild/protobuf": "npm:^2.11.0"
     "@date-fns/tz": "npm:^1.5.0"
     "@fiftyone/components": "npm:*"
+    "@fiftyone/playback": "workspace:*"
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/tiling": "npm:*"
