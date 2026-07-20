@@ -50,13 +50,12 @@ type ActiveSettingsTab = "panel" | "scene" | "streams";
  *   be opened from them.
  * - **\<focused tile\>** — everything about one view: its stream status,
  *   camera, layers, and appearance. Content comes from the tile-settings
- *   registry when the focused tile registered one, else from the legacy
- *   tiling DOM slot.
+ *   registry.
  */
 const EpisodeSettingsSidebar: React.FC<{
   readonly streams?: readonly StreamInventory[];
 }> = ({ streams = [] }) => {
-  const { focusedTileId, setSettingsSlotEl, tiles } = useTiling();
+  const { focusedTileId, tiles } = useTiling();
   const registeredPanelSettings = useEpisodeTileSettings(focusedTileId);
   const focusedTile =
     focusedTileId && tiles[focusedTileId] ? tiles[focusedTileId] : null;
@@ -65,10 +64,6 @@ const EpisodeSettingsSidebar: React.FC<{
   const [activeTab, setActiveTab] = useState<ActiveSettingsTab>("scene");
   const hadPanelTabRef = useRef(false);
   const suppressNextPanelAutoSwitchRef = useRef(false);
-  const slotRef = useCallback(
-    (el: HTMLDivElement | null) => setSettingsSlotEl(el),
-    [setSettingsSlotEl],
-  );
   const suppressNextPanelAutoSwitch = useCallback(() => {
     suppressNextPanelAutoSwitchRef.current = true;
   }, []);
@@ -117,7 +112,6 @@ const EpisodeSettingsSidebar: React.FC<{
           content: (
             <PanelSettingsContent
               registration={registeredPanelSettings}
-              slotRef={slotRef}
               tileId={focusedTileId}
             />
           ),
@@ -130,7 +124,6 @@ const EpisodeSettingsSidebar: React.FC<{
     focusedTileId,
     focusedTileTitle,
     registeredPanelSettings,
-    slotRef,
     suppressNextPanelAutoSwitch,
     streams,
   ]);
@@ -170,19 +163,15 @@ const EpisodeSettingsSidebar: React.FC<{
 
 /**
  * The focused tile's settings, framed by the sidebar: registry-backed
- * tiles render as ordinary children — inside a `TileIdScope` so their
+ * tiles render as ordinary children inside a `TileIdScope` so their
  * tileId-scoped hooks resolve, below the tile's stream-status strip when
- * the registration declares streams — while tiles that still use the
- * tiling portal get the DOM slot they expect. Exactly one of the two is
- * mounted at a time.
+ * the registration declares streams.
  */
 function PanelSettingsContent({
   registration,
-  slotRef,
   tileId,
 }: {
   readonly registration: EpisodeTileSettingsRegistration | null;
-  readonly slotRef: (el: HTMLDivElement | null) => void;
   readonly tileId: string | null;
 }) {
   return (
@@ -196,9 +185,7 @@ function PanelSettingsContent({
           ) : null}
           {registration.content}
         </TileIdScope>
-      ) : (
-        <div ref={slotRef} />
-      )}
+      ) : null}
     </div>
   );
 }

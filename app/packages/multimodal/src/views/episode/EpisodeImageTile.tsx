@@ -1,8 +1,8 @@
 import {
-  TileSettingsContent,
   useSetTileTitleHighlighted,
   useSetTileTitle,
   useTileDuplicator,
+  useTileId,
 } from "@fiftyone/tiling";
 import {
   Checkbox,
@@ -18,7 +18,13 @@ import {
   ZIndex,
 } from "@voxel51/voodo";
 import { useStore } from "jotai";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { usePublishAnnotationStreams } from "../../extensions/timeline";
 import type {
   CameraCalibrationVisualization,
@@ -59,6 +65,7 @@ import EpisodeDepthHoverOverlay from "./EpisodeDepthHoverOverlay";
 import EpisodeImageProjectionOverlay from "./EpisodeImageProjectionOverlay";
 import EpisodeImageProjectionScene from "./EpisodeImageProjectionScene";
 import { useEpisodeHoverEcho } from "./episode-hover-echo";
+import { useRegisterEpisodeTileSettings } from "./episode-tile-settings-context";
 import EpisodeSidebarGroup from "./EpisodeSidebarGroup";
 import { rankDefaultImageSources } from "./playback-layout";
 import settingsStyles from "./EpisodeTile.settings.module.css";
@@ -118,6 +125,7 @@ const POINT_CLOUD_PROJECTION_HELP =
   "Projects selected 3D point clouds into this camera image using its calibration and frame transforms. Choose which clouds to overlay and adjust their dot size. These settings affect only this image tile.";
 
 const EpisodeImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
+  const tileId = useTileId();
   const [imageDims, setImageDims] = useState<{
     width: number;
     height: number;
@@ -427,30 +435,38 @@ const EpisodeImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     imageSize: effectiveImageDims,
     resetKey: `${stream}\n${cameraProjection.display}\n${rectifiedViewActive}`,
   });
-  const toggleLabelStream = (labelStream: string, checked: boolean) => {
-    if (!stream) return;
-    const next = new Set(selectedLabelStreams);
-    if (checked) {
-      next.add(labelStream);
-    } else {
-      next.delete(labelStream);
-    }
-    setLabelStreams(
-      annotationStreams.filter((availableStream) => next.has(availableStream)),
-    );
-  };
-  const toggleProjectionStream = (cloudStream: string, checked: boolean) => {
-    const next = new Set(selectedProjectionStreams);
-    if (checked) {
-      next.add(cloudStream);
-    } else {
-      next.delete(cloudStream);
-    }
-    const streams = pointCloudStreams.filter((availableStream) =>
-      next.has(availableStream),
-    );
-    setPointCloudProjection({ enabled: streams.length > 0, streams });
-  };
+  const toggleLabelStream = useCallback(
+    (labelStream: string, checked: boolean) => {
+      if (!stream) return;
+      const next = new Set(selectedLabelStreams);
+      if (checked) {
+        next.add(labelStream);
+      } else {
+        next.delete(labelStream);
+      }
+      setLabelStreams(
+        annotationStreams.filter((availableStream) =>
+          next.has(availableStream),
+        ),
+      );
+    },
+    [annotationStreams, selectedLabelStreams, setLabelStreams, stream],
+  );
+  const toggleProjectionStream = useCallback(
+    (cloudStream: string, checked: boolean) => {
+      const next = new Set(selectedProjectionStreams);
+      if (checked) {
+        next.add(cloudStream);
+      } else {
+        next.delete(cloudStream);
+      }
+      const streams = pointCloudStreams.filter((availableStream) =>
+        next.has(availableStream),
+      );
+      setPointCloudProjection({ enabled: streams.length > 0, streams });
+    },
+    [pointCloudStreams, selectedProjectionStreams, setPointCloudProjection],
+  );
   const canProjectPointClouds = pointCloudSources.length > 0;
   const canConfigureCameraGeometry =
     calibrationSources.length > 0 || canProjectPointClouds;
@@ -521,9 +537,9 @@ const EpisodeImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     [calibrationSelectionLabel, calibrationSources],
   );
 
-  return (
-    <>
-      <TileSettingsContent>
+  const settingsRegistration = useMemo(
+    () => ({
+      content: (
         <div className={settingsStyles.root}>
           <EpisodeSidebarGroup title="Source">
             <Select
@@ -708,7 +724,37 @@ const EpisodeImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
             </EpisodeSidebarGroup>
           ) : null}
         </div>
-      </TileSettingsContent>
+      ),
+      streamStreams: activeStreams,
+    }),
+    [
+      activeStreams,
+      annotationSources.length,
+      annotationStreams,
+      calibrationSourceOptions,
+      cameraProjection,
+      canConfigureCameraGeometry,
+      canProjectPointClouds,
+      geometryControlLabel,
+      geometryStatus,
+      imageSourceOptions,
+      labelSourceGroups,
+      pointCloudProjection,
+      pointCloudSources,
+      selectedLabelStreams,
+      selectedProjectionStreams,
+      setCameraProjection,
+      setLabelStreams,
+      setPointCloudProjection,
+      stream,
+      toggleLabelStream,
+      toggleProjectionStream,
+    ],
+  );
+  useRegisterEpisodeTileSettings(tileId, settingsRegistration);
+
+  return (
+    <>
       {frame ? (
         <div
           className={styles.imageStack}
