@@ -119,7 +119,7 @@ const AnnotationBody = ({
       {isGroupDataset && !disabledReason && (
         <GroupAnnotation onSliceSelected={loadSchemas} />
       )}
-      {!showSetup && <Actions key="actions" />}
+      {!showSetup && <Actions key="actions" hidden={isEditingValue} />}
       {isEditingValue && <Edit key="edit" />}
       {showSetup ? (
         <ImportSchema
