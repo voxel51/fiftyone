@@ -50,6 +50,7 @@ export type FetchResultType =
   | "blob"
   | "text"
   | "arrayBuffer"
+  | "response"
   | "json-stream";
 
 /**
@@ -184,8 +185,8 @@ export const getFetchFunction = (options?: GetFetchFunctionOptions) => {
     retryCodes?: number[],
     errorHandler?: (response: Response) => void | Promise<void>,
     headers?: Record<string, string>,
-  ): Promise<R> =>
-    withCache(buildCacheKey(method, path, body), () =>
+  ): Promise<R> => {
+    const fetchResult = () =>
       fetchFunctionSingleton<A, R>(
         method,
         path,
@@ -195,8 +196,12 @@ export const getFetchFunction = (options?: GetFetchFunctionOptions) => {
         retryCodes,
         errorHandler,
         headers,
-      ),
-    );
+      );
+
+    return result === "response"
+      ? fetchResult()
+      : withCache(buildCacheKey(method, path, body), fetchResult);
+  };
 };
 
 /**
@@ -222,7 +227,7 @@ export const getFetchFunctionExtended =
         config.onProgress,
       );
 
-    if (config.cache) {
+    if (config.cache && config.result !== "response") {
       return withCache(
         buildCacheKey(config.method, config.path, config.body),
         doFetch,
@@ -426,6 +431,13 @@ export const setFetchFunction = (
     if (result === "json-stream") {
       return {
         response: new JSONStreamParser(response, controller),
+        headers: response.headers,
+      };
+    }
+
+    if (result === "response") {
+      return {
+        response,
         headers: response.headers,
       };
     }
