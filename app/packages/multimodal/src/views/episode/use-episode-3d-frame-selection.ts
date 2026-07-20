@@ -272,12 +272,12 @@ export function useEpisode3dFrameSelection({
   // bounded inventory; ordinary content gaps keep the intent pending.
   useEffect(() => {
     const pendingWorld = pendingUserWorldFrameIdRef.current;
-    if (mcap3dUserFrameRestoreApplies(pendingWorld, localFrameIds)) {
+    if (episode3dUserFrameRestoreApplies(pendingWorld, localFrameIds)) {
       pendingUserWorldFrameIdRef.current = null;
       dispatch({ frameId: pendingWorld, type: "userReferenceSelected" });
     }
     const pendingTarget = pendingUserCameraTargetFrameIdRef.current;
-    if (mcap3dUserFrameRestoreApplies(pendingTarget, frameIds)) {
+    if (episode3dUserFrameRestoreApplies(pendingTarget, frameIds)) {
       pendingUserCameraTargetFrameIdRef.current = null;
       setUserCameraTargetFrameId(pendingTarget);
     }
@@ -451,7 +451,7 @@ export function useEpisode3dFrameSelection({
 }
 
 /** Returns whether a carried user frame is available in the current inventory. */
-export function mcap3dUserFrameRestoreApplies(
+export function episode3dUserFrameRestoreApplies(
   frameId: string | null,
   frameIds: readonly string[],
 ): frameId is string {

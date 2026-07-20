@@ -27,7 +27,7 @@ export interface EpisodeGridPreviewSnapshot {
   readonly frame: EpisodePosterFrame | null;
   readonly hasPreviewStreams: boolean;
   readonly streamId: string | null;
-  readonly streamIds: readonly string[];
+  readonly streamSourceNames: readonly string[];
   readonly status: EpisodeGridPreviewStatus;
 }
 
@@ -55,7 +55,7 @@ export interface UseEpisodeGridPreviewOptions {
     | "loading"
     | "ready"
     | "unavailable";
-  readonly selectedStreamId?: string | null;
+  readonly selectedSourceName?: string | null;
   readonly source: ByteSourceDescriptor | null;
 }
 
@@ -67,7 +67,7 @@ const IDLE_PREVIEW_STATE: EpisodeGridPreviewSnapshot = {
   frame: null,
   hasPreviewStreams: false,
   streamId: null,
-  streamIds: [],
+  streamSourceNames: [],
   status: "idle",
 } as const;
 
@@ -82,7 +82,7 @@ export function useEpisodeGridPreview({
   previewSession,
   previewSessionError = null,
   previewSessionStatus = "idle",
-  selectedStreamId,
+  selectedSourceName,
   source,
 }: UseEpisodeGridPreviewOptions): EpisodeGridPreviewState {
   const [state, setState] =
@@ -90,7 +90,7 @@ export function useEpisodeGridPreview({
   const [playing, setPlaying] = useState(false);
   const initialLoadInFlightRef = useRef(false);
   const loadedRequestRef = useRef<{
-    readonly selectedStreamId?: string | null;
+    readonly selectedSourceName?: string | null;
     readonly source: ByteSourceDescriptor;
   } | null>(null);
   const frameTimeNsRef = useRef<bigint | undefined>(undefined);
@@ -107,8 +107,8 @@ export function useEpisodeGridPreview({
     }
   }, [enabled]);
 
-  // Reset only when the requested source/stream changes. Visibility changes
-  // intentionally preserve the last frame so hidden-cache re-entry is free.
+  // This effect resets only when the requested source or stream changes.
+  // Visibility changes preserve the last frame so cache re-entry is free.
   useEffect(() => {
     initialLoadInFlightRef.current = false;
     loadedRequestRef.current = null;
@@ -123,15 +123,15 @@ export function useEpisodeGridPreview({
             frame: null,
             hasPreviewStreams: false,
             streamId: null,
-            streamIds: [],
+            streamSourceNames: [],
             status: "loading",
           }
         : IDLE_PREVIEW_STATE,
     );
-  }, [finishBuffering, selectedStreamId, source]);
+  }, [finishBuffering, selectedSourceName, source]);
 
-  // Adapter loading failures and unsupported preview providers are surfaced
-  // without exposing any format detail to the grid.
+  // This effect surfaces adapter failures and unsupported preview providers
+  // without exposing format details to the grid.
   useEffect(() => {
     if (!source || previewSessionStatus === "idle") return;
     if (previewSessionStatus === "loading") {
@@ -146,7 +146,7 @@ export function useEpisodeGridPreview({
         frame: null,
         hasPreviewStreams: false,
         streamId: null,
-        streamIds: [],
+        streamSourceNames: [],
         status: "unavailable",
       });
       return;
@@ -157,7 +157,7 @@ export function useEpisodeGridPreview({
         frame: null,
         hasPreviewStreams: false,
         streamId: null,
-        streamIds: [],
+        streamSourceNames: [],
         status: "error",
       });
     }
@@ -171,8 +171,8 @@ export function useEpisodeGridPreview({
     }
   }, [enabled, finishBuffering]);
 
-  // Initial frames are visible-only background work until hover promotes the
-  // pending request. Hover playback also stays at CURRENT_FRAME priority.
+  // This effect loads the initial frame as visible-only background work until
+  // hover promotes the pending request to current-frame priority.
   useEffect(() => {
     if (!enabled || !source || !previewSession) {
       return undefined;
@@ -180,7 +180,7 @@ export function useEpisodeGridPreview({
     const loadedRequest = loadedRequestRef.current;
     if (
       loadedRequest?.source === source &&
-      loadedRequest.selectedStreamId === selectedStreamId
+      loadedRequest.selectedSourceName === selectedSourceName
     ) {
       return undefined;
     }
@@ -191,7 +191,9 @@ export function useEpisodeGridPreview({
     frameTimeNsRef.current = undefined;
     nextStartTimeNsRef.current = undefined;
 
-    const request = selectedStreamId ? { streamId: selectedStreamId } : {};
+    const request = selectedSourceName
+      ? { sourceName: selectedSourceName }
+      : {};
     previewSession
       .read(request, {
         priority: hovered ? "current" : "idle",
@@ -200,7 +202,7 @@ export function useEpisodeGridPreview({
       .then((result) => {
         if (active) {
           publishGridBootstrap(source, result);
-          loadedRequestRef.current = { selectedStreamId, source };
+          loadedRequestRef.current = { selectedSourceName, source };
           frameTimeNsRef.current = result.frameTimeNs;
           nextStartTimeNsRef.current = result.nextStartTimeNs;
           setState(snapshotFromResult(result));
@@ -216,7 +218,7 @@ export function useEpisodeGridPreview({
           frame: null,
           hasPreviewStreams: false,
           streamId: null,
-          streamIds: [],
+          streamSourceNames: [],
           status: "error",
         });
       })
@@ -231,7 +233,7 @@ export function useEpisodeGridPreview({
       initialLoadInFlightRef.current = false;
       controller.abort();
     };
-  }, [enabled, hovered, previewSession, selectedStreamId, source]);
+  }, [enabled, hovered, previewSession, selectedSourceName, source]);
 
   // This effect runs the hover playback loop: while playing, it keeps
   // requesting the next frame, wrapping back to the start when the
@@ -261,9 +263,9 @@ export function useEpisodeGridPreview({
             break;
           }
 
-          const request = selectedStreamId
+          const request = selectedSourceName
             ? {
-                streamId: selectedStreamId,
+                sourceName: selectedSourceName,
                 startTimeNs: nextStartTimeNsRef.current,
               }
             : {
@@ -344,7 +346,7 @@ export function useEpisodeGridPreview({
     finishBuffering,
     playing,
     previewSession,
-    selectedStreamId,
+    selectedSourceName,
     source,
     startBuffering,
     state.status,
@@ -392,6 +394,7 @@ function publishGridBootstrap(
 ): void {
   if (
     !result.bootstrapManifest &&
+    !result.bootstrapTimeline &&
     !result.bootstrapTimeRange &&
     !result.frame
   ) {
@@ -400,6 +403,7 @@ function publishGridBootstrap(
 
   publishSourceBootstrap(source, {
     ...(result.bootstrapManifest ? { manifest: result.bootstrapManifest } : {}),
+    ...(result.bootstrapTimeline ? { timeline: result.bootstrapTimeline } : {}),
     ...(result.bootstrapTimeRange
       ? { timeRange: result.bootstrapTimeRange }
       : {}),
@@ -410,8 +414,14 @@ function publishGridBootstrap(
         }
       : {}),
   });
-  if (result.bootstrapTimeRange) {
-    publishEpisodeTimeRange(source.sourceId, result.bootstrapTimeRange);
+  const timeRange = result.bootstrapTimeline
+    ? {
+        endNs: result.bootstrapTimeline.endNs,
+        startNs: result.bootstrapTimeline.startNs,
+      }
+    : result.bootstrapTimeRange;
+  if (timeRange) {
+    publishEpisodeTimeRange(source.sourceId, timeRange);
   }
 }
 
@@ -421,9 +431,9 @@ function snapshotFromResult(
   return {
     error: null,
     frame: result.frame,
-    hasPreviewStreams: result.streamIds.length > 0,
+    hasPreviewStreams: result.streamSourceNames.length > 0,
     streamId: result.streamId,
-    streamIds: result.streamIds,
+    streamSourceNames: result.streamSourceNames,
     status: result.status,
   };
 }

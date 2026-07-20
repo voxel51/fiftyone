@@ -10,7 +10,7 @@ import {
   type Episode3dViewStateStore,
 } from "./episode-3d-view-state";
 import {
-  mcap3dCameraPoseRestoreApplies,
+  episode3dCameraPoseRestoreApplies,
   useEpisode3dCameraTracking,
 } from "./use-episode-3d-camera-tracking";
 import type { EpisodeFrameTransformsState } from "./use-episode-frame-transforms";
@@ -1111,7 +1111,7 @@ describe("useEpisode3dCameraTracking view-state restore", () => {
 describe("restore compatibility gates", () => {
   it("gates the camera pose on transformed placement and a world-frame match", () => {
     expect(
-      mcap3dCameraPoseRestoreApplies({
+      episode3dCameraPoseRestoreApplies({
         currentSourceKey: "source-a",
         placementStatus: "transformed",
         restoreSourceKey: "source-a",
@@ -1120,7 +1120,7 @@ describe("restore compatibility gates", () => {
       }),
     ).toBe(true);
     expect(
-      mcap3dCameraPoseRestoreApplies({
+      episode3dCameraPoseRestoreApplies({
         currentSourceKey: "source-b",
         placementStatus: "transformed",
         restoreSourceKey: "source-a",
@@ -1129,7 +1129,7 @@ describe("restore compatibility gates", () => {
       }),
     ).toBe(false);
     expect(
-      mcap3dCameraPoseRestoreApplies({
+      episode3dCameraPoseRestoreApplies({
         currentSourceKey: "source-a",
         placementStatus: "provisional",
         restoreSourceKey: "source-a",
@@ -1138,7 +1138,7 @@ describe("restore compatibility gates", () => {
       }),
     ).toBe(false);
     expect(
-      mcap3dCameraPoseRestoreApplies({
+      episode3dCameraPoseRestoreApplies({
         currentSourceKey: "source-a",
         placementStatus: "transformed",
         restoreSourceKey: "source-a",
@@ -1147,7 +1147,7 @@ describe("restore compatibility gates", () => {
       }),
     ).toBe(false);
     expect(
-      mcap3dCameraPoseRestoreApplies({
+      episode3dCameraPoseRestoreApplies({
         currentSourceKey: "",
         placementStatus: "transformed",
         restoreSourceKey: "",

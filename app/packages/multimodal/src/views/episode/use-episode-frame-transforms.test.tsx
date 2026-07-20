@@ -10,11 +10,6 @@ import type {
   EpisodeFrameTransformSet,
 } from "../../runtime/frame-transform-types";
 import {
-  MCAP_ACTIVE_TIMELINE as EPISODE_ACTIVE_TIMELINE,
-  type McapActiveTimeline as EpisodeActiveTimeline,
-  type McapResourceClient as EpisodeResourceClient,
-} from "../../adapters/mcap/types";
-import {
   useEpisodeFrameTransforms,
   type EpisodeFrameTransformsState,
 } from "./use-episode-frame-transforms";
@@ -206,7 +201,7 @@ describe("useEpisodeFrameTransforms", () => {
 
     rerender(
       <FrameTransformsHarness
-        activeTimeline={EPISODE_ACTIVE_TIMELINE.LOG}
+        activeTimeline="log"
         client={client}
         label="frames"
         source={source}
@@ -222,7 +217,7 @@ describe("useEpisodeFrameTransforms", () => {
     });
     expect(client.readFrameTransformWindow).toHaveBeenLastCalledWith(
       {
-        activeTimeline: EPISODE_ACTIVE_TIMELINE.LOG,
+        activeTimeline: "log",
         endTimeNs: 1_000_000_100n,
         source,
         startTimeNs: 0n,
@@ -547,8 +542,8 @@ function FrameTransformsHarness({
   source,
   timeNs,
 }: {
-  readonly activeTimeline?: EpisodeActiveTimeline;
-  readonly client: EpisodeResourceClient;
+  readonly activeTimeline?: "log";
+  readonly client: FrameTransformClient;
   readonly dynamicRange?: {
     readonly endTimeNs: bigint;
     readonly startTimeNs: bigint;
@@ -645,16 +640,10 @@ function createFrameTransformClient({
   windowSamples = [],
 }: {
   readonly bootstrapSamples?: readonly EpisodeFrameTransformSample[];
-  readonly readFrameTransformWindow?: EpisodeResourceClient["readFrameTransformWindow"];
+  readonly readFrameTransformWindow?: FrameTransformClient["readFrameTransformWindow"];
   readonly windowSamples?: readonly EpisodeFrameTransformSample[];
-} = {}): EpisodeResourceClient {
+} = {}): FrameTransformClient {
   return {
-    dispose: vi.fn(),
-    readDecodedMessages: vi.fn(async function* () {
-      for (const item of [] as never[]) {
-        yield item;
-      }
-    }),
     readFrameTransformBootstrap: vi.fn(async () => ({
       samples: bootstrapSamples,
     })),
@@ -663,21 +652,22 @@ function createFrameTransformClient({
       vi.fn(async () => ({
         samples: windowSamples,
       })),
-    readSynchronizedMessageBatch: vi.fn(async () => []),
-    readRawMessageRecord: vi.fn(),
-    readSynchronizedMessages: vi.fn(),
-    readTimelineRange: vi.fn(),
-    readTopics: vi.fn(async () => []),
-    readTopicTimeBounds: vi.fn(async () => []),
-    enumerateNumericFields: vi.fn(async () => []),
-    readNumericSeries: vi.fn(async () => ({
-      baseTimeNs: 0n,
-      fields: [],
-      messageCount: 0,
-      topic: "",
-      truncated: false,
-    })),
   };
+}
+
+interface FrameTransformClient {
+  readFrameTransformBootstrap(request: {
+    readonly source: ByteSourceDescriptor;
+  }): Promise<EpisodeFrameTransformSet>;
+  readFrameTransformWindow(
+    request: {
+      readonly activeTimeline?: "log";
+      readonly endTimeNs: bigint;
+      readonly source: ByteSourceDescriptor;
+      readonly startTimeNs: bigint;
+    },
+    options?: { readonly priority?: "bulk" | "current" | "idle" | "playback" },
+  ): Promise<EpisodeFrameTransformSet>;
 }
 
 function createSource(id: string): ByteSourceDescriptor {

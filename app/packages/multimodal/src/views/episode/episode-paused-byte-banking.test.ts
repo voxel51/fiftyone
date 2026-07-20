@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { ByteTimelinePoint } from "../../ir";
 import type { ByteClient, ByteRangeReadRequest } from "../../query/bytes";
-import type { McapByteTimelinePoint as EpisodeByteTimelinePoint } from "../../adapters/mcap/types";
 import {
   episodeBankingEndOffset,
   episodeBankingStartOffset,
@@ -11,7 +11,7 @@ const SECOND_NS = 1_000_000_000n;
 
 // Chunks of 100 bytes each starting at file offset 1000 (a header lives
 // before the first chunk, like a real episode).
-const BYTE_TIMELINE: EpisodeByteTimelinePoint[] = [
+const BYTE_TIMELINE: ByteTimelinePoint[] = [
   {
     cumulativeCompressedBytes: 100,
     endTimeNs: 1n * SECOND_NS,

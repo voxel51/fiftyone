@@ -8,6 +8,7 @@ import type {
 import { createDefaultByteClient } from "../query/bytes";
 import { loadFormatAdapter } from "../runtime";
 
+/** Lifecycle state for a lazily detected lightweight preview session. */
 export type EpisodePreviewSessionState =
   | { readonly error: null; readonly session: null; readonly status: "idle" }
   | {
@@ -43,7 +44,9 @@ export function useEpisodePreviewSession(
     session: null,
     status: "idle",
   });
+  const { mediaType, path } = sample;
 
+  // This effect detects and owns the preview session while the tile is active.
   useEffect(() => {
     if (!enabled || !source) {
       setState({ error: null, session: null, status: "idle" });
@@ -52,7 +55,7 @@ export function useEpisodePreviewSession(
     let active = true;
     let opened: EpisodePreviewSession | null = null;
     setState({ error: null, session: null, status: "loading" });
-    void loadFormatAdapter(sample)
+    void loadFormatAdapter({ mediaType, path })
       .then(async (adapter) => {
         if (!adapter?.openPreview) {
           if (active) {
@@ -84,7 +87,7 @@ export function useEpisodePreviewSession(
       active = false;
       opened?.dispose();
     };
-  }, [enabled, io, sample.mediaType, sample.path, source]);
+  }, [enabled, io, mediaType, path, source]);
 
   return state;
 }

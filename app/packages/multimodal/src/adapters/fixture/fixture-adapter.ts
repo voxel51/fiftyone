@@ -1,15 +1,23 @@
 import {
+  SCENE_SOURCE_METADATA,
+  SCENE_SOURCE_TYPE,
   STREAM_KIND,
   VISUALIZATION_KIND,
   type DecodedFrame,
   type DecodedOutput,
   type EpisodeManifest,
+  type EpisodePosterFrame,
+  type EpisodePreviewReadResult,
+  type SceneSourceType,
   type StreamDescriptor,
   type StreamKind,
   type TransformSample,
 } from "../../ir";
 import {
   EpisodeReadCancelledError,
+  type EpisodePreviewReadOptions,
+  type EpisodePreviewReadRequest,
+  type EpisodePreviewSession,
   type EpisodeSession,
   type EpisodeSource,
   type FormatAdapter,
@@ -20,7 +28,7 @@ import {
 } from "../../ports";
 
 const FIXTURE_START_NS = 1_000_000_000n;
-const FIXTURE_STEP_NS = 100_000_000n;
+const FIXTURE_DEFAULT_RATE_HZ = 10;
 const PRIORITY_ORDER: Readonly<Record<ReadPriority, number>> = {
   current: 0,
   playback: 1,
@@ -36,37 +44,135 @@ export interface FixtureAdapterOptions {
     readonly index: number;
     readonly streamId: string;
   };
+  readonly rateHz?: number;
   readonly seed?: number;
+}
+
+interface NormalizedFixtureAdapterOptions {
+  readonly frameCount: number;
+  readonly frameStepNs: bigint;
+  readonly latencyMs: number;
+  readonly poisonedFrame?: FixtureAdapterOptions["poisonedFrame"];
+  readonly rateHz: number;
+  readonly seed: number;
 }
 
 /** Creates a deterministic, dependency-free adapter for contract and perf tests. */
 export function createFixtureFormatAdapter(
   options: FixtureAdapterOptions = {},
 ): FormatAdapter {
+  const requestedRateHz = options.rateHz ?? FIXTURE_DEFAULT_RATE_HZ;
+  const rateHz =
+    Number.isFinite(requestedRateHz) && requestedRateHz > 0
+      ? requestedRateHz
+      : FIXTURE_DEFAULT_RATE_HZ;
   const normalized = {
     frameCount: Math.max(1, Math.trunc(options.frameCount ?? 4)),
+    frameStepNs: BigInt(Math.max(1, Math.round(1_000_000_000 / rateHz))),
     latencyMs: Math.max(0, options.latencyMs ?? 0),
     poisonedFrame: options.poisonedFrame,
+    rateHz,
     seed: Math.trunc(options.seed ?? 1),
-  };
+  } satisfies NormalizedFixtureAdapterOptions;
   let activeSession: FixtureEpisodeSession | null = null;
+  const openSession = (source: EpisodeSource) => {
+    const session = new FixtureEpisodeSession(source, normalized, () => {
+      if (activeSession && activeSession !== session) {
+        activeSession.deactivate();
+      }
+      activeSession = session;
+    });
+    return session;
+  };
 
   return {
     id: "fixture",
     async open(source) {
       await source.assets.list();
-      const session = new FixtureEpisodeSession(source, normalized, () => {
-        if (activeSession && activeSession !== session) {
-          activeSession.deactivate();
-        }
-        activeSession = session;
-      });
-      return session;
+      return openSession(source);
+    },
+    async openPreview(source) {
+      await source.assets.list();
+      return new FixtureEpisodePreviewSession(openSession(source));
     },
   };
 }
 
+class FixtureEpisodePreviewSession implements EpisodePreviewSession {
+  private disposed = false;
+
+  constructor(private readonly session: FixtureEpisodeSession) {}
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.session.dispose();
+  }
+
+  async read(
+    request: EpisodePreviewReadRequest = {},
+    options: EpisodePreviewReadOptions = {},
+  ): Promise<EpisodePreviewReadResult> {
+    if (this.disposed) throw new EpisodeReadCancelledError();
+    const previewStreams = this.session.manifest.streams.filter(
+      isFixturePreviewStream,
+    );
+    const selected = request.sourceName
+      ? previewStreams.find(
+          (stream) => stream.sourceName === request.sourceName,
+        )
+      : previewStreams[0];
+    const streamSourceNames = previewStreams.map((stream) => stream.sourceName);
+    if (!selected) {
+      return {
+        frame: null,
+        streamId: null,
+        streamSourceName: null,
+        streamSourceNames,
+        status: previewStreams.length > 0 ? "empty" : "unavailable",
+      };
+    }
+    const startNs = request.startTimeNs ?? selected.timeRange.startNs;
+    let decodedFrame: DecodedFrame | undefined;
+    for await (const batch of this.session.read({
+      limit: 1,
+      priority: options.priority,
+      signal: options.signal,
+      streams: [selected.id],
+      window: { endNs: selected.timeRange.endNs, startNs },
+    })) {
+      decodedFrame = batch.frames[0];
+      break;
+    }
+    const frame = decodedFrame ? fixturePosterFrame(decodedFrame) : null;
+    const nextStartTimeNs = decodedFrame
+      ? decodedFrame.timestampNs + this.session.frameStepNs
+      : undefined;
+    return {
+      bootstrapManifest: this.session.manifest,
+      bootstrapTimeline: {
+        endNs: this.session.manifest.timeRange.endNs,
+        startNs: this.session.manifest.timeRange.startNs,
+        timeDomainId: this.session.manifest.timeDomain.id,
+      },
+      bootstrapTimeRange: this.session.manifest.timeRange,
+      frame,
+      frameTimeNs: decodedFrame?.timestampNs,
+      nextStartTimeNs:
+        nextStartTimeNs !== undefined &&
+        nextStartTimeNs <= selected.timeRange.endNs
+          ? nextStartTimeNs
+          : undefined,
+      streamId: selected.id,
+      streamSourceName: selected.sourceName,
+      streamSourceNames,
+      status: frame ? "ready" : "empty",
+    };
+  }
+}
+
 class FixtureEpisodeSession implements EpisodeSession {
+  readonly frameStepNs: bigint;
   readonly manifest: EpisodeManifest;
   readonly synchronizedRead = {
     readSynchronized: (request: ReadRequest) => this.collect(request),
@@ -90,13 +196,15 @@ class FixtureEpisodeSession implements EpisodeSession {
 
   constructor(
     source: EpisodeSource,
-    private readonly options: Required<
-      Pick<FixtureAdapterOptions, "frameCount" | "latencyMs" | "seed">
-    > &
-      Pick<FixtureAdapterOptions, "poisonedFrame">,
+    private readonly options: NormalizedFixtureAdapterOptions,
     private readonly onActivate: () => void,
   ) {
-    const streams = createFixtureStreams(options.frameCount);
+    this.frameStepNs = options.frameStepNs;
+    const streams = createFixtureStreams(
+      options.frameCount,
+      options.frameStepNs,
+      options.rateHz,
+    );
     this.manifest = source.manifestHint ?? {
       episodeId: source.episodeId,
       metadata: { fixtureSeed: options.seed.toString() },
@@ -104,7 +212,8 @@ class FixtureEpisodeSession implements EpisodeSession {
       timeDomain: { id: "fixture-time", kind: "duration", originNs: 0n },
       timeRange: {
         endNs:
-          FIXTURE_START_NS + BigInt(options.frameCount - 1) * FIXTURE_STEP_NS,
+          FIXTURE_START_NS +
+          BigInt(options.frameCount - 1) * options.frameStepNs,
         startNs: FIXTURE_START_NS,
       },
     };
@@ -161,11 +270,13 @@ class FixtureEpisodeSession implements EpisodeSession {
       throwIfAborted(request.signal);
       this.ensureGeneration(generation);
       this.ensureIdleGeneration(priority, idleGeneration);
-      const frames = (this.framesByStream.get(stream) ?? []).filter(
-        (frame) =>
-          frame.timestampNs >= request.window.startNs &&
-          frame.timestampNs <= request.window.endNs,
-      );
+      const frames = (this.framesByStream.get(stream) ?? [])
+        .filter(
+          (frame) =>
+            frame.timestampNs >= request.window.startNs &&
+            frame.timestampNs <= request.window.endNs,
+        )
+        .slice(0, request.limit);
       if (frames.length === 0) continue;
       this.decodedFrames += frames.length;
       this.returnedBatches += 1;
@@ -294,32 +405,77 @@ class FixtureReadScheduler {
   }
 }
 
-function createFixtureStreams(frameCount: number): readonly StreamDescriptor[] {
+function createFixtureStreams(
+  frameCount: number,
+  frameStepNs: bigint,
+  rateHz: number,
+): readonly StreamDescriptor[] {
   const timeRange = {
-    endNs: FIXTURE_START_NS + BigInt(frameCount - 1) * FIXTURE_STEP_NS,
+    endNs: FIXTURE_START_NS + BigInt(frameCount - 1) * frameStepNs,
     startNs: FIXTURE_START_NS,
   };
-  return Object.values(STREAM_KIND).map((kind) => ({
-    approxRateHz: 10,
-    count: frameCount,
-    id: `fixture-${kind}`,
-    kind,
-    payload: { encoding: "fixture", schema: `fixture/${kind}` },
-    sourceName: `Fixture ${kind}`,
-    timeRange,
-  }));
+  return Object.values(STREAM_KIND).map((kind) => {
+    const sceneSourceType = fixtureSceneSourceType(kind);
+    const sourceName = `Fixture ${kind}`;
+    return {
+      approxRateHz: rateHz,
+      count: frameCount,
+      id: `fixture-${kind}`,
+      kind,
+      ...(sceneSourceType
+        ? {
+            metadata: {
+              [SCENE_SOURCE_METADATA.SOURCE_NAME]: sourceName,
+              [SCENE_SOURCE_METADATA.TYPE]: sceneSourceType,
+            },
+          }
+        : {}),
+      payload: { encoding: "fixture", schema: `fixture/${kind}` },
+      sourceName,
+      timeRange,
+    };
+  });
+}
+
+function fixtureSceneSourceType(kind: StreamKind): SceneSourceType | undefined {
+  switch (kind) {
+    case STREAM_KIND.CAMERA_CALIBRATION:
+      return SCENE_SOURCE_TYPE.CAMERA_CALIBRATION;
+    case STREAM_KIND.GRID:
+      return SCENE_SOURCE_TYPE.MAP_LAYER;
+    case STREAM_KIND.IMAGE:
+    case STREAM_KIND.VIDEO:
+      return SCENE_SOURCE_TYPE.IMAGE;
+    case STREAM_KIND.IMAGE_ANNOTATIONS:
+      return SCENE_SOURCE_TYPE.IMAGE_ANNOTATION;
+    case STREAM_KIND.LOCATION:
+      return SCENE_SOURCE_TYPE.LOCATION;
+    case STREAM_KIND.LOG:
+      return SCENE_SOURCE_TYPE.LOG;
+    case STREAM_KIND.POINT_CLOUD:
+      return SCENE_SOURCE_TYPE.POINT_CLOUD;
+    case STREAM_KIND.POSE:
+      return SCENE_SOURCE_TYPE.POSE;
+    case STREAM_KIND.SCENE_UPDATE:
+      return SCENE_SOURCE_TYPE.SCENE_ANNOTATION;
+    case STREAM_KIND.SCALAR:
+    case STREAM_KIND.TRANSFORM:
+    case STREAM_KIND.UNKNOWN:
+      return undefined;
+  }
 }
 
 function createFixtureFrames(
   stream: StreamDescriptor,
   options: {
     readonly frameCount: number;
+    readonly frameStepNs: bigint;
     readonly poisonedFrame?: FixtureAdapterOptions["poisonedFrame"];
     readonly seed: number;
   },
 ): readonly DecodedFrame[] {
   return Array.from({ length: options.frameCount }, (_, index) => {
-    const timestampNs = FIXTURE_START_NS + BigInt(index) * FIXTURE_STEP_NS;
+    const timestampNs = FIXTURE_START_NS + BigInt(index) * options.frameStepNs;
     const output = fixtureOutput(
       stream.kind,
       timestampNs,
@@ -492,6 +648,29 @@ function fixtureOutput(
     case STREAM_KIND.UNKNOWN:
       return { attributes: { fixtureSeed: seed }, resourceHints };
   }
+}
+
+function isFixturePreviewStream(stream: StreamDescriptor): boolean {
+  return (
+    stream.kind === STREAM_KIND.IMAGE ||
+    stream.kind === STREAM_KIND.POINT_CLOUD ||
+    stream.kind === STREAM_KIND.VIDEO
+  );
+}
+
+function fixturePosterFrame(frame: DecodedFrame): EpisodePosterFrame | null {
+  const visualization = frame.output.visualization;
+  if (visualization?.kind === VISUALIZATION_KIND.POINT_CLOUD) {
+    return { kind: "point-cloud", pointCloud: visualization };
+  }
+  if (
+    visualization?.kind === VISUALIZATION_KIND.ENCODED_IMAGE ||
+    visualization?.kind === VISUALIZATION_KIND.ENCODED_VIDEO ||
+    visualization?.kind === VISUALIZATION_KIND.RAW_IMAGE
+  ) {
+    return { image: visualization, kind: "image" };
+  }
+  return null;
 }
 
 function throwIfAborted(signal: AbortSignal | undefined): void {

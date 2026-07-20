@@ -24,19 +24,13 @@ import {
 } from "../../query/bytes";
 import { VISUALIZATION_KIND } from "../../visualization";
 import type {
+  ByteTimelinePoint,
   DecodedFrame,
   StreamSyncPolicies,
   SynchronizedFrameWindow,
 } from "../../ir";
 import type { EpisodeSession } from "../../ports";
-import type {
-  McapDecodedMessage as EpisodeDecodedMessage,
-  McapResourceClient as EpisodeResourceClient,
-  McapStreamSyncPolicies as EpisodeStreamSyncPolicies,
-  McapSynchronizedMessageWindow as EpisodeSynchronizedMessageWindow,
-  McapTimelineRange as EpisodeTimelineRange,
-} from "../../adapters/mcap/types";
-import { MCAP_ACTIVE_TIMELINE as EPISODE_ACTIVE_TIMELINE } from "../../adapters/mcap/types";
+import type { DecodeResult } from "../../query/decode";
 import {
   EpisodeDataStreamProvider,
   useEpisodeDataStream,
@@ -51,12 +45,149 @@ const MAP_STREAM = "/map";
 const RADAR_STREAM = "/RADAR_FRONT";
 const DEFAULT_TEST_STREAMS = [STREAM] as const;
 
+interface EpisodeTimelineRange {
+  readonly activeTimeline: "log";
+  readonly byteTimeline?: readonly ByteTimelinePoint[];
+  readonly endTimeNs: bigint;
+  readonly startTimeNs: bigint;
+}
+
+interface EpisodeDecodedMessage {
+  readonly activeTimeline: "log";
+  readonly channelId: number;
+  readonly decoded: DecodeResult;
+  readonly logTimeNs: bigint;
+  readonly publishTimeNs: bigint;
+  readonly sequence: number;
+  readonly timelineTimeNs: bigint;
+  readonly topic: string;
+}
+
+interface EpisodeTopicDecodeDiagnostic {
+  readonly code: "message-decode-failed";
+  readonly message: string;
+  readonly messageTimeNs: bigint;
+  readonly payloadIdentity: string;
+  readonly requestedTimeNs: bigint;
+  readonly topic: string;
+}
+
+interface EpisodeSynchronizedMessageWindow {
+  readonly activeTimeline: "log";
+  readonly decodeErrorsByTopic?: Readonly<
+    Record<string, readonly EpisodeTopicDecodeDiagnostic[]>
+  >;
+  readonly endTimeNs: bigint;
+  readonly messages: readonly EpisodeDecodedMessage[];
+  readonly messagesByTopic: Readonly<
+    Record<string, readonly EpisodeDecodedMessage[]>
+  >;
+  readonly startTimeNs: bigint;
+  readonly streamPolicies: StreamSyncPolicies;
+  readonly timeNs: bigint;
+}
+
+interface EpisodeResourceClient {
+  readonly cancelIdleReads?: () => void;
+  readDecodedMessages(
+    request: {
+      readonly activeTimeline?: "log";
+      readonly endTimeNs?: bigint;
+      readonly source: ByteSourceDescriptor;
+      readonly startTimeNs?: bigint;
+      readonly topics?: readonly string[];
+    },
+    options?: { readonly priority?: "bulk" | "current" | "idle" | "playback" },
+  ): AsyncGenerator<EpisodeDecodedMessage, void, void>;
+  readSynchronizedMessageBatch(
+    request: {
+      readonly activeTimeline?: "log";
+      readonly source: ByteSourceDescriptor;
+      readonly streamPolicies?: StreamSyncPolicies;
+      readonly timeNs: readonly bigint[];
+      readonly topics: readonly string[];
+    },
+    options?: { readonly priority?: "bulk" | "current" | "idle" | "playback" },
+  ): Promise<readonly EpisodeSynchronizedMessageWindow[]>;
+  readSynchronizedMessages(request: {
+    readonly activeTimeline?: "log";
+    readonly source: ByteSourceDescriptor;
+    readonly streamPolicies?: StreamSyncPolicies;
+    readonly timeNs: bigint;
+    readonly topics: readonly string[];
+  }): Promise<EpisodeSynchronizedMessageWindow>;
+  readTimelineRange(request: {
+    readonly activeTimeline?: "log";
+    readonly source: ByteSourceDescriptor;
+  }): Promise<EpisodeTimelineRange>;
+  readTopicTimeBounds(request: {
+    readonly activeTimeline?: "log";
+    readonly source: ByteSourceDescriptor;
+    readonly topics: readonly string[];
+  }): Promise<
+    readonly {
+      readonly firstMessageTimeNs: bigint | null;
+      readonly lastMessageTimeNs: bigint | null;
+      readonly topic: string;
+    }[]
+  >;
+}
+
 afterEach(() => {
   cleanup();
   window.history.replaceState(null, "", "/");
 });
 
 describe("useRegisterEpisodeDataStream", () => {
+  it("renders through mandatory session reads without playback acceleration", async () => {
+    const source = createSource("mandatory-read");
+    const storeCapture = capturePlaybackStore();
+    const readDecodedMessages = vi.fn(async function* (
+      request: Parameters<EpisodeResourceClient["readDecodedMessages"]>[0],
+    ) {
+      yield createDecodedMessage({
+        stream: request.topics?.[0] ?? STREAM,
+        timeNs: request.startTimeNs ?? 0n,
+        visualization: {
+          bytes: new Uint8Array([1]),
+          kind: VISUALIZATION_KIND.ENCODED_IMAGE,
+        },
+      });
+    });
+    const readSynchronizedMessageBatch = vi.fn(async () => {
+      throw new Error("Playback acceleration must not be required");
+    });
+    const readSynchronizedMessages = vi.fn(async () => {
+      throw new Error("Playback acceleration must not be required");
+    });
+    const client = createClient({
+      readDecodedMessages,
+      readSynchronizedMessageBatch,
+      readSynchronizedMessages,
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onStore={storeCapture.onStore}
+        playbackAcceleration={false}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(getEpisodeStreamStatus(storeCapture.store(), STREAM)).toBe(
+        "ready",
+      );
+    });
+    expect(getStreamValue(storeCapture.store(), STREAM)).not.toBeNull();
+    expect(readDecodedMessages).toHaveBeenCalled();
+    expect(readSynchronizedMessages).not.toHaveBeenCalled();
+    expect(readSynchronizedMessageBatch).not.toHaveBeenCalled();
+  });
+
   it("pauses and starts the next source at its first data tick", async () => {
     const sourceA = createSource("source-a");
     const sourceB = createSource("source-b");
@@ -1769,6 +1900,7 @@ function Harness({
   client,
   onStore,
   onApi,
+  playbackAcceleration = true,
   source,
   staleMediaWarningNs = 0n,
   staleWarningStreams = DEFAULT_TEST_STREAMS,
@@ -1781,17 +1913,23 @@ function Harness({
   readonly client: EpisodeResourceClient;
   readonly onStore: (store: PlaybackStore) => void;
   readonly onApi?: (api: ReturnType<typeof usePlayback>) => void;
+  readonly playbackAcceleration?: boolean;
   readonly source: ByteSourceDescriptor | null;
   readonly staleMediaWarningNs?: bigint;
   readonly staleWarningStreams?: readonly string[];
   readonly subscribe?: boolean;
   readonly subscribedStreams?: readonly string[];
-  readonly streamPolicies?: EpisodeStreamSyncPolicies;
+  readonly streamPolicies?: StreamSyncPolicies;
 }) {
   const dataStream = useEpisodeDataStream();
   const store = usePlaybackStore();
   const api = usePlayback();
-  const session = useTestEpisodeSession(client, source);
+  const session = useTestEpisodeSession(
+    client,
+    source,
+    allStreams,
+    playbackAcceleration,
+  );
   useRegisterEpisodeDataStream({
     allStreams,
     blockingStreams,
@@ -1835,6 +1973,8 @@ function TestProviders({ children }: { readonly children: ReactNode }) {
 function useTestEpisodeSession(
   client: EpisodeResourceClient,
   source: ByteSourceDescriptor | null,
+  streams: readonly string[],
+  playbackAcceleration: boolean,
 ): EpisodeSession | null {
   const [session, setSession] = useState<EpisodeSession | null>(null);
   useEffect(() => {
@@ -1845,7 +1985,7 @@ function useTestEpisodeSession(
     let active = true;
     void client
       .readTimelineRange({
-        activeTimeline: EPISODE_ACTIVE_TIMELINE.LOG,
+        activeTimeline: "log",
         source,
       })
       .then((range) => {
@@ -1894,59 +2034,70 @@ function useTestEpisodeSession(
           dispose: () => undefined,
           manifest: {
             episodeId: source.sourceId,
-            streams: [],
+            streams: streams.map((stream) => ({
+              id: stream,
+              kind: "unknown" as const,
+              payload: { encoding: "test" },
+              sourceName: stream,
+              timeRange: {
+                endNs: range.endTimeNs,
+                startNs: range.startTimeNs,
+              },
+            })),
             timeDomain: { id: "log", kind: "timestamp" },
             timeRange: { endNs: range.endTimeNs, startNs: range.startTimeNs },
           },
-          playback: {
-            timeline: {
-              byteTimeline: range.byteTimeline,
-              endNs: range.endTimeNs,
-              startNs: range.startTimeNs,
-              timeDomainId: "log",
-            },
-            readStreamTimeBounds: async (streams) =>
-              (
-                await client.readTopicTimeBounds({
-                  activeTimeline: EPISODE_ACTIVE_TIMELINE.LOG,
-                  source,
-                  topics: streams,
-                })
-              ).map((bound) => ({
-                firstTimestampNs: bound.firstMessageTimeNs,
-                lastTimestampNs: bound.lastMessageTimeNs,
-                streamId: bound.topic,
-              })),
-            readSynchronized: async (request) =>
-              toWindow(
-                await client.readSynchronizedMessages({
-                  activeTimeline: EPISODE_ACTIVE_TIMELINE.LOG,
-                  source,
-                  streamPolicies:
-                    request.streamPolicies as EpisodeStreamSyncPolicies,
-                  timeNs: request.timeNs,
-                  topics: request.streams,
-                }),
-              ),
-            readSynchronizedBatch: async (request, options) =>
-              (
-                await client.readSynchronizedMessageBatch(
-                  {
-                    activeTimeline: EPISODE_ACTIVE_TIMELINE.LOG,
-                    source,
-                    streamPolicies:
-                      request.streamPolicies as EpisodeStreamSyncPolicies,
-                    timeNs: request.timeNs,
-                    topics: request.streams,
+          ...(playbackAcceleration
+            ? {
+                playback: {
+                  timeline: {
+                    byteTimeline: range.byteTimeline,
+                    endNs: range.endTimeNs,
+                    startNs: range.startTimeNs,
+                    timeDomainId: "log",
                   },
-                  options,
-                )
-              ).map(toWindow),
-          },
+                  readStreamTimeBounds: async (streams) =>
+                    (
+                      await client.readTopicTimeBounds({
+                        activeTimeline: "log",
+                        source,
+                        topics: streams,
+                      })
+                    ).map((bound) => ({
+                      firstTimestampNs: bound.firstMessageTimeNs,
+                      lastTimestampNs: bound.lastMessageTimeNs,
+                      streamId: bound.topic,
+                    })),
+                  readSynchronized: async (request) =>
+                    toWindow(
+                      await client.readSynchronizedMessages({
+                        activeTimeline: "log",
+                        source,
+                        streamPolicies: request.streamPolicies,
+                        timeNs: request.timeNs,
+                        topics: request.streams,
+                      }),
+                    ),
+                  readSynchronizedBatch: async (request, options) =>
+                    (
+                      await client.readSynchronizedMessageBatch(
+                        {
+                          activeTimeline: "log",
+                          source,
+                          streamPolicies: request.streamPolicies,
+                          timeNs: request.timeNs,
+                          topics: request.streams,
+                        },
+                        options,
+                      )
+                    ).map(toWindow),
+                },
+              }
+            : {}),
           async *read(request) {
             for await (const message of client.readDecodedMessages(
               {
-                activeTimeline: EPISODE_ACTIVE_TIMELINE.LOG,
+                activeTimeline: "log",
                 endTimeNs: request.window.endNs,
                 source,
                 startTimeNs: request.window.startNs,
@@ -1965,7 +2116,7 @@ function useTestEpisodeSession(
       active = false;
       setSession(null);
     };
-  }, [client, source]);
+  }, [client, playbackAcceleration, source, streams]);
   return session;
 }
 
@@ -1990,6 +2141,9 @@ function capturePlaybackStore() {
 }
 
 function createClient({
+  readDecodedMessages = vi.fn(async function* () {
+    for (const item of [] as never[]) yield item;
+  }),
   readSynchronizedMessageBatch,
   readTimelineRange,
   // The priority current-frame lane fires on mount/seek; default to a
@@ -2000,34 +2154,18 @@ function createClient({
   ),
   readTopicTimeBounds = vi.fn(async () => []),
 }: {
+  readonly readDecodedMessages?: EpisodeResourceClient["readDecodedMessages"];
   readonly readSynchronizedMessageBatch: EpisodeResourceClient["readSynchronizedMessageBatch"];
   readonly readTimelineRange: EpisodeResourceClient["readTimelineRange"];
   readonly readSynchronizedMessages?: EpisodeResourceClient["readSynchronizedMessages"];
   readonly readTopicTimeBounds?: EpisodeResourceClient["readTopicTimeBounds"];
 }): EpisodeResourceClient {
   return {
-    dispose: vi.fn(),
-    readDecodedMessages: vi.fn(async function* () {
-      for (const item of [] as never[]) {
-        yield item;
-      }
-    }),
-    readFrameTransformBootstrap: vi.fn(async () => ({ samples: [] })),
-    readFrameTransformWindow: vi.fn(async () => ({ samples: [] })),
+    readDecodedMessages,
     readSynchronizedMessageBatch,
     readSynchronizedMessages,
     readTimelineRange,
-    readTopics: vi.fn(async () => []),
     readTopicTimeBounds,
-    enumerateNumericFields: vi.fn(async () => []),
-    readNumericSeries: vi.fn(async () => ({
-      baseTimeNs: 0n,
-      fields: [],
-      messageCount: 0,
-      topic: "",
-      truncated: false,
-    })),
-    readRawMessageRecord: vi.fn(),
   };
 }
 
@@ -2044,7 +2182,7 @@ function createSource(
 
 function createTimelineRange(endTimeNs = 1_000_000_000n): EpisodeTimelineRange {
   return {
-    activeTimeline: EPISODE_ACTIVE_TIMELINE.LOG,
+    activeTimeline: "log",
     endTimeNs,
     startTimeNs: 0n,
   };
@@ -2067,7 +2205,7 @@ function createWindow({
     visualization,
   });
   return {
-    activeTimeline: EPISODE_ACTIVE_TIMELINE.LOG,
+    activeTimeline: "log",
     endTimeNs: timeNs,
     messages: [message],
     messagesByTopic: {
@@ -2081,7 +2219,7 @@ function createWindow({
 
 function createEmptyWindow(timeNs: bigint): EpisodeSynchronizedMessageWindow {
   return {
-    activeTimeline: EPISODE_ACTIVE_TIMELINE.LOG,
+    activeTimeline: "log",
     endTimeNs: timeNs,
     messages: [],
     messagesByTopic: {},
@@ -2103,7 +2241,7 @@ function createPartialDecodeWindow(
     },
   });
   return {
-    activeTimeline: EPISODE_ACTIVE_TIMELINE.LOG,
+    activeTimeline: "log",
     decodeErrorsByTopic: {
       [STREAM]: [
         {
@@ -2138,7 +2276,7 @@ function createDecodedMessage({
   readonly visualization: EpisodeDecodedMessage["decoded"]["output"]["visualization"];
 }): EpisodeDecodedMessage {
   return {
-    activeTimeline: EPISODE_ACTIVE_TIMELINE.LOG,
+    activeTimeline: "log",
     channelId: 1,
     decoded: {
       decoderId: "test-decoder",

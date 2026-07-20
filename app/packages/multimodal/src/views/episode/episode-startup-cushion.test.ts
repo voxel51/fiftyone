@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { McapByteTimelinePoint as EpisodeByteTimelinePoint } from "../../adapters/mcap/types";
+import type { ByteTimelinePoint } from "../../ir";
 import {
   computeEpisodeStartupCushion,
   MAX_STARTUP_CUSHION_SECONDS,
@@ -16,8 +16,8 @@ const MINIMUM_SECONDS = 0.5;
 function uniformByteTimeline(
   bytesPerSecond: number,
   durationSec: number,
-): EpisodeByteTimelinePoint[] {
-  const points: EpisodeByteTimelinePoint[] = [];
+): ByteTimelinePoint[] {
+  const points: ByteTimelinePoint[] = [];
   for (let second = 1; second <= durationSec; second++) {
     points.push({
       cumulativeCompressedBytes: second * bytesPerSecond,
@@ -128,7 +128,7 @@ describe("computeEpisodeStartupCushion", () => {
   it("handles front-loaded recordings with the worst-window deficit", () => {
     // 200 bytes in the first 2 seconds, then 10 B/s: the front burst is
     // the binding constraint even though the average bitrate is low.
-    const byteTimeline: EpisodeByteTimelinePoint[] = [
+    const byteTimeline: ByteTimelinePoint[] = [
       {
         cumulativeCompressedBytes: 100,
         endTimeNs: 1n * SECOND_NS,

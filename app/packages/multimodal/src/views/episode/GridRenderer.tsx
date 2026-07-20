@@ -83,12 +83,12 @@ export function GridRenderer({
     previewSession: previewSession.session,
     previewSessionError: previewSession.error,
     previewSessionStatus: previewSession.status,
-    selectedStreamId:
+    selectedSourceName:
       selectedStream === EPISODE_GRID_STREAM_AUTO ? null : selectedStream,
     source,
   });
   const registerStreams = useRegisterEpisodeGridStreams();
-  const stableStreams = useStableGridStreams(preview.streamIds);
+  const stableStreams = useStableGridStreams(preview.streamSourceNames);
   const blocksGridActivation = preview.frame?.kind === "point-cloud";
   const gridActivationHandler = blocksGridActivation
     ? stopGridActivationPropagation
@@ -136,8 +136,7 @@ export function GridRenderer({
       sampleId,
       streams: stableStreams.streams,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- registerStreams is stable
-  }, [ctx.dataset.name, sampleId, stableStreams]);
+  }, [ctx.dataset.name, registerStreams, sampleId, stableStreams]);
 
   return (
     <div
@@ -432,9 +431,9 @@ function PointCloudPreviewFrame({
     requestSnapshot();
   }, [active, frame.pointCloud, requestSnapshot]);
 
-  // Going live cancels redundant snapshot work. Returning to rest renders
-  // exactly one fresh host bitmap at the final shared camera pose.
   const wasLiveRef = useRef(false);
+  // This effect cancels redundant snapshots while live and refreshes once
+  // after the cell returns to its resting bitmap.
   useEffect(() => {
     if (live) {
       wasLiveRef.current = true;

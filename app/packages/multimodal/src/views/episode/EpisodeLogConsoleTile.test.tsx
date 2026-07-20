@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => {
     playbackStore: {},
     read,
     releaseRead,
+    session: { read },
     seek: vi.fn(),
     setLogSettings: vi.fn(),
     setTileTitle: vi.fn(),
@@ -61,7 +62,7 @@ vi.mock("./episode-data-stream-context", () => ({
 
 vi.mock("./episode-log-console-context", () => ({
   useEpisodeLogConsoleContext: () => ({
-    session: { read: mocks.read },
+    session: mocks.session,
     sourceKey: mocks.source.sourceId,
   }),
 }));

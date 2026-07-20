@@ -1,5 +1,4 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
-import { useMemo } from "react";
 
 import { sampleDescriptorFromContext } from "../episode-source";
 import { useEpisodeSession } from "../use-episode-session";
@@ -14,10 +13,7 @@ export function useEpisodeSampleStreams(
   ctx: SampleRendererProps["ctx"],
 ): EpisodeStreamsState {
   const { episodeSource } = useStableEpisodeSource(ctx);
-  const descriptor = useMemo(
-    () => sampleDescriptorFromContext(ctx),
-    [ctx.dataset.mediaType, ctx.media.path],
-  );
+  const descriptor = sampleDescriptorFromContext(ctx);
   const state = useEpisodeSession(descriptor, episodeSource);
   return useEpisodeStreams({
     error: state.error,
