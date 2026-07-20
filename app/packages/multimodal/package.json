@@ -6,15 +6,18 @@
     "types": "./src/index.ts",
     "exports": {
         ".": "./src/index.ts",
+        "./ir": "./src/ir/index.ts",
+        "./ports": "./src/ports/index.ts",
+        "./runtime": "./src/runtime/index.ts",
         "./query": "./src/query/index.ts",
         "./query/bytes": "./src/query/bytes/index.ts",
         "./query/decode": "./src/query/decode/index.ts",
         "./decoders": "./src/decoders/index.ts",
         "./temporal-tags": "./src/temporal-tags/index.ts",
+        "./temporal-tags/grid-overlay": "./src/temporal-tags/grid-overlay.tsx",
         "./inject": "./src/inject/index.ts",
-        "./extensions/mcap": "./src/extensions/mcap/index.ts",
-        "./adapters/mcap": "./src/adapters/mcap/index.ts",
-        "./adapters/mcap/react/TemporalTagGridOverlay": "./src/adapters/mcap/react/TemporalTagGridOverlay.tsx",
+        "./extensions/timeline": "./src/extensions/timeline/index.ts",
+        "./extensions/timeline/runtime": "./src/extensions/timeline/runtime.ts",
         "./schemas/v1": "./src/schemas/v1/index.ts",
         "./visualization": "./src/visualization/index.ts",
         "./visualization/panels/image": "./src/visualization/panels/image.tsx",
@@ -22,11 +25,23 @@
     },
     "typesVersions": {
         "*": {
+            "ir": [
+                "src/ir/index.ts"
+            ],
+            "ports": [
+                "src/ports/index.ts"
+            ],
+            "runtime": [
+                "src/runtime/index.ts"
+            ],
             "decoders": [
                 "src/decoders/index.ts"
             ],
             "temporal-tags": [
                 "src/temporal-tags/index.ts"
+            ],
+            "temporal-tags/grid-overlay": [
+                "src/temporal-tags/grid-overlay.tsx"
             ],
             "query": [
                 "src/query/index.ts"
@@ -40,14 +55,11 @@
             "inject": [
                 "src/inject/index.ts"
             ],
-            "extensions/mcap": [
-                "src/extensions/mcap/index.ts"
+            "extensions/timeline": [
+                "src/extensions/timeline/index.ts"
             ],
-            "adapters/mcap": [
-                "src/adapters/mcap/index.ts"
-            ],
-            "adapters/mcap/react/TemporalTagGridOverlay": [
-                "src/adapters/mcap/react/TemporalTagGridOverlay.tsx"
+            "extensions/timeline/runtime": [
+                "src/extensions/timeline/runtime.ts"
             ],
             "schemas/v1": [
                 "src/schemas/v1/index.ts"
