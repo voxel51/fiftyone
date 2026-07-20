@@ -99,10 +99,10 @@ let retainedDecodedBytes = 0;
  */
 export function imageTextureCacheKey(
   recordingKey: string,
-  imageTopic: string,
+  imageStream: string,
   contentTimeNs: bigint,
 ): string {
-  return `${recordingKey}\n${imageTopic}\n${contentTimeNs.toString()}`;
+  return `${recordingKey}\n${imageStream}\n${contentTimeNs.toString()}`;
 }
 
 /**

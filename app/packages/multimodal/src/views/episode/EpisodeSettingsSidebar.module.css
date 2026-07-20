@@ -1,0 +1,303 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sidebarRoot {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 12px 16px;
+}
+
+.stickyTabList {
+  isolation: isolate;
+  position: sticky;
+  top: 8px;
+  z-index: 2;
+}
+
+.stickyTabList::before {
+  background: var(--color-content-bg-background);
+  content: "";
+  inset: -20px -16px -8px;
+  position: absolute;
+  z-index: -1;
+}
+
+.tabContent {
+  margin-top: 12px;
+}
+
+.controlStack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.policyGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.policyGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.controlRow {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 104px;
+}
+
+.controlLabel {
+  color: var(--color-content-text-muted);
+  font-size: 11px;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.labelWithTooltip {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.modeSelect {
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-content-text);
+  font-size: 12px;
+  line-height: 1.25;
+  min-height: 28px;
+  min-width: 0;
+  padding: 4px 8px;
+  width: 100%;
+}
+
+.streamList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.streamGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.streamSearchInput {
+  min-width: 0;
+  width: 100%;
+}
+
+.stickyStreamSearch {
+  isolation: isolate;
+  position: sticky;
+  top: 52px;
+  z-index: 1;
+}
+
+.stickyStreamSearch::before {
+  background: var(--color-content-bg-background);
+  content: "";
+  inset: -8px 0;
+  position: absolute;
+  z-index: -1;
+}
+
+.statsDisclosure {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.statsDisclosure > button {
+  align-self: flex-start;
+}
+
+.statsHeader {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.statsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statsRows {
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.statsRow {
+  color: var(--color-content-text-muted);
+  display: grid;
+  font-size: 10px;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  line-height: 1.35;
+  padding: 3px 0;
+}
+
+.statsValue {
+  color: var(--color-content-text);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.streamRow {
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding-left: 8px;
+}
+
+.streamRowHeader {
+  align-items: baseline;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.streamName {
+  color: var(--color-content-text);
+  flex: 1 1 auto;
+  font-size: 11px;
+  line-height: 1.25;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.streamMetaLine {
+  align-items: baseline;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.streamActions {
+  align-items: baseline;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.streamMeta {
+  color: var(--color-content-text-muted);
+  flex: 1 1 auto;
+  font-size: 11px;
+  line-height: 1.25;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.streamStatus {
+  flex: 0 0 auto;
+  color: var(--color-content-text-muted);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.streamActionButton {
+  background: transparent;
+  border: 0;
+  color: var(--color-content-text-muted);
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1.2;
+  padding: 0;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.streamActionButton:focus-visible {
+  outline: 1px solid var(--color-border);
+  outline-offset: 2px;
+}
+
+.streamEmpty {
+  color: var(--color-content-text-muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.resetButton {
+  align-self: flex-start;
+  background: transparent;
+  border: 0;
+  color: var(--color-brand-primary);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1.25;
+  padding: 0;
+}
+
+.tooltipIcon {
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  color: var(--color-content-text-muted);
+  cursor: help;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 10px;
+  height: 16px;
+  justify-content: center;
+  line-height: 1;
+  position: relative;
+  width: 16px;
+}
+
+.tooltipIcon::after {
+  background: rgb(18 24 38);
+  border: 1px solid rgb(71 85 105);
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 55%);
+  color: rgb(248 250 252);
+  content: attr(data-tooltip);
+  font-size: 11px;
+  left: calc(100% + 8px);
+  line-height: 1.35;
+  max-width: 220px;
+  opacity: 0;
+  padding: 8px 10px;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translateX(-2px) translateY(-50%);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+  visibility: hidden;
+  white-space: normal;
+  width: 220px;
+  z-index: 1000;
+}
+
+.tooltipIcon:hover::after,
+.tooltipIcon:focus::after,
+.tooltipIcon:focus-visible::after {
+  opacity: 1;
+  transform: translateY(-50%);
+  visibility: visible;
+}

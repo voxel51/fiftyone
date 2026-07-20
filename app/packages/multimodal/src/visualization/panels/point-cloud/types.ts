@@ -298,7 +298,7 @@ export interface CameraFrustumPanelLayer {
    */
   readonly imageTextureKey?: string;
   /** Image stream this frustum's camera feeds (host-defined). */
-  readonly imageTopic?: string;
+  readonly imageStream?: string;
   /** Base wireframe/image-plane opacity in [0, 1]. */
   readonly opacity?: number;
   /** Emphasize the frustum wireframe (e.g. its camera tile is hovered). */

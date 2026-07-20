@@ -361,7 +361,7 @@ export function PointCloudPanel({
     () =>
       Object.entries(frustumTextureErrors).map(([layerId, message]) => ({
         detail:
-          frustumLayers.find((layer) => layer.id === layerId)?.imageTopic ??
+          frustumLayers.find((layer) => layer.id === layerId)?.imageStream ??
           layerId,
         id: `camera-texture:${layerId}`,
         message,
