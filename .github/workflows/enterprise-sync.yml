@@ -8,12 +8,18 @@ on:
     types: [opened, synchronize, reopened, closed, ready_for_review, edited]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # `edited` gets its own group: body/title edits that land seconds after open
+  # fire runs that skip on the job `if`, and in a shared group they cancel or
+  # displace a still-queued `opened`/`synchronize` run before it can dispatch —
+  # the mirror is silently never created.
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.action == 'edited' && 'edited' || 'sync' }}
   # Don't cancel the `closed` run: merging a PR auto-deletes its head branch,
   # which tears down refs/pull/<n>/merge and cancels the in-flight run before it
-  # can dispatch the "OSS merged" signal to fiftyone-teams. Only cancel the
-  # superseded in-PR runs (opened/synchronize/etc.).
-  cancel-in-progress: ${{ github.event.action != 'closed' }}
+  # can dispatch the "OSS merged" signal to fiftyone-teams. Don't let `edited`
+  # runs cancel either: a body edit racing a retarget would drop the
+  # mirror-close dispatch. Only cancel the superseded in-PR runs
+  # (opened/synchronize/etc.).
+  cancel-in-progress: ${{ github.event.action != 'closed' && github.event.action != 'edited' }}
 
 jobs:
   enterprise-sync:
