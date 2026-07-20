@@ -135,6 +135,35 @@ describe("useSelectionBridge", () => {
     expect(setOverrideStage).toHaveBeenCalledWith({ S: { n: 2 } });
   });
 
+  // A failure banner describes the gesture that failed; it must not
+  // linger over a newer pending lasso or survive an explicit clear
+  it("drops a stale failure banner when a new lasso begins", async () => {
+    vi.mocked(fetchLassoStage)
+      .mockClear()
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockImplementationOnce(() => new Promise(() => undefined));
+    const { result } = renderHook(() => useSelectionBridge(options()));
+
+    act(() => result.current.handleSelection([0], null));
+    await waitFor(() => expect(result.current.error).toMatch("boom"));
+
+    act(() => result.current.handleSelection([0, 1], null));
+    expect(result.current.error).toBeNull();
+  });
+
+  it("clears a failure banner on clearAll", async () => {
+    vi.mocked(fetchLassoStage)
+      .mockClear()
+      .mockRejectedValueOnce(new Error("boom"));
+    const { result } = renderHook(() => useSelectionBridge(options()));
+
+    act(() => result.current.handleSelection([0], null));
+    await waitFor(() => expect(result.current.error).toMatch("boom"));
+
+    act(() => result.current.clearAll());
+    expect(result.current.error).toBeNull();
+  });
+
   it("toggles a sample on plain click", () => {
     const opts = options();
     const { result } = renderHook(() => useSelectionBridge(opts));

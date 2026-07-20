@@ -72,6 +72,7 @@ export function useSelectionBridge({
     resetExtended();
     setSelectedSamples(new Map());
     setSelectionCount(null);
+    setError(null);
     chart.current?.clearSelection();
   }, [resetExtended, setSelectedSamples, chart]);
 
@@ -121,6 +122,9 @@ export function useSelectionBridge({
   ) => {
     if (!datasetName || !brainKey) return;
     const seq = ++lassoSeq.current;
+    // A failure banner describes the previous gesture; a new one starts
+    // clean (the success path below still resets, as a race safeguard)
+    setError(null);
     if (!indices.length) {
       resetExtended();
       setSelectionCount(null);
