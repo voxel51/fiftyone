@@ -25,11 +25,7 @@ export interface DecodeVerdict {
   codec: string;
   /** Whether `VideoDecoder.isConfigSupported` accepted it. */
   decodable: boolean;
-  /**
-   * Whether the container carries an audio track (from the same demuxed
-   * `moov`). Undefined = unknown; audio integrations fall back to element
-   * sniffing.
-   */
+  /** Audio track present in the container; undefined = unknown. */
   hasAudio?: boolean;
 }
 
@@ -39,10 +35,9 @@ export interface KeyValueStore {
   setItem(key: string, value: string): void;
 }
 
-// Bump to invalidate every persisted entry (keys are namespaced by version, so
-// old entries simply stop being read).
-// v2: verdicts gained `hasAudio` — a stale v1 entry would skip the probe and
-// leave the sample's audio presence unknown forever.
+// Bump to invalidate every persisted entry (keys are namespaced by version,
+// so old entries simply stop being read) — required whenever the verdict
+// shape gains a field, else stale entries skip the probe that would fill it.
 const VERSION = "v2";
 const PREFIX = `fo:nd:${VERSION}`;
 

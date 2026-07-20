@@ -75,10 +75,7 @@ export interface CapabilityMessage {
   codec?: string;
   /** Human-readable reason when not decodable (diagnostics). */
   reason?: string;
-  /**
-   * Whether the container carries an audio track, per the demuxed `moov`'s
-   * track table. Absent when the demux never got that far.
-   */
+  /** Audio track present in the container; absent when unknown. */
   hasAudio?: boolean;
 }
 

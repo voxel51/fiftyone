@@ -251,8 +251,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
     // Scrubbing stays continuous — only the settle position snaps.
     <PlaybackProvider snapToFrameOnSettle>
       <VideoAnnotationHandlerRegistration />
-      {/* Frame-driven strategies need their own audio element; the `html`
-          tile's <video> carries its audio itself (useMediaElementAudio). */}
+      {/* the `html` tile's <video> carries its own audio */}
       {strategy !== "html" && (
         <RegisterTimelineAudio
           videoSrc={videoSrc}

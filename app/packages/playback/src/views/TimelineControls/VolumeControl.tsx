@@ -25,15 +25,10 @@ const KEY_STEP = 0.05;
 
 /**
  * Mute toggle + volume slider for timeline audio. Renders nothing unless
- * an audio integration has published `audioAvailableAtom` — a timeline
- * with no accessible sound shows no control at all (no disabled button,
- * no indicator).
+ * an audio integration has published `audioAvailableAtom`.
  *
- * The slider displays zero while muted; the persisted volume is left
- * untouched so unmuting restores it. Dragging above zero unmutes,
- * dragging to zero mutes. Unmuting with a zero persisted volume (only
- * reachable through storage edge cases) restores the default level so
- * "unmute" always makes sound.
+ * The slider shows zero while muted; the stored volume is untouched so
+ * unmute restores it.
  */
 const VolumeControl: React.FC = () => {
   const available = useAudioAvailable();
@@ -48,6 +43,7 @@ const VolumeControl: React.FC = () => {
   const shown = muted ? 0 : volume;
 
   const unmute = () => {
+    // never unmute into silence
     if (getAudioVolume(store) === 0) {
       setAudioVolume(store, DEFAULT_AUDIO_VOLUME);
     }
@@ -56,8 +52,7 @@ const VolumeControl: React.FC = () => {
 
   const handleChange = (next: number) => {
     if (next <= 0) {
-      // Mute without writing 0 into the volume — unmute restores the
-      // last audible level.
+      // mute without clobbering the stored level
       setAudioMuted(store, true);
       return;
     }

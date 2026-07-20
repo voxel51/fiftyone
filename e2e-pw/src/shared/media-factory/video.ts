@@ -29,17 +29,11 @@ interface CreateVideoOptions {
    * Background color of the video as a CSS hex string (e.g. `"#ff0000"`).
    */
   color: string;
-  /**
-   * When `true`, muxes in a 440 Hz sine-tone audio track (Opus) spanning
-   * the full duration. Omit for a video with no audio track at all.
-   */
+  /** When `true`, muxes in a sine-tone audio track. */
   audio?: boolean;
   /**
    * Path to the output video file. The extension picks the container and
-   * video codec: `.webm` encodes VP8 (`libvpx`), `.mp4` encodes VP9
-   * (`libvpx-vp9`, faststart) — an ISO-BMFF container the app's WebCodecs
-   * pipeline can demux, using only royalty-free codecs so Playwright's
-   * Chromium can decode it.
+   * codec: `.webm` (VP8) or `.mp4` (VP9, faststart).
    */
   outputPath: string;
 }
@@ -77,7 +71,7 @@ export const createVideo = async (
   const isMp4 = outputPath.endsWith(".mp4");
   const inputs = [
     `-f lavfi -i 'color=c=${color}:s=${width}x${height}'`,
-    // Opus requires a 48 kHz input.
+    // Opus requires 48 kHz
     audio ? `-f lavfi -i 'sine=frequency=440:sample_rate=48000'` : "",
   ];
   const args = [
@@ -87,7 +81,6 @@ export const createVideo = async (
     "-b:v 1M",
     "-pix_fmt yuv420p",
     audio ? "-c:a libopus -b:a 64k" : "",
-    // faststart puts the moov up front so header-only demux reads stay cheap.
     isMp4 ? "-movflags +faststart" : "",
   ];
   const ffmpegCommand = ["ffmpeg", ...inputs, ...args, outputPath]

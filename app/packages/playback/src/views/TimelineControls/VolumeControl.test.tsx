@@ -77,7 +77,6 @@ describe("VolumeControl", () => {
     const group = screen.getByTestId("timeline-controls-volume-group");
     fireEvent.keyDown(group, { key: "ArrowUp" });
     expect(getAudioMuted(store as PlaybackStore)).toBe(false);
-    // From the muted display value of 0, one step up.
     expect(getAudioVolume(store as PlaybackStore)).toBeCloseTo(0.05);
   });
 

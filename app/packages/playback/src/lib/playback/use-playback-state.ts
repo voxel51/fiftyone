@@ -90,11 +90,7 @@ export function useAudioMuted(): boolean {
   return useAtomValue(audioMutedAtom, { store });
 }
 
-/**
- * Whether the timeline has audible audio to control. Written by audio
- * integrations via `setAudioAvailable`; the volume UI renders nothing
- * while false.
- */
+/** Whether the timeline has audio to control. Write via `setAudioAvailable`. */
 export function useAudioAvailable(): boolean {
   const store = usePlaybackStore();
   return useAtomValue(audioAvailableAtom, { store });

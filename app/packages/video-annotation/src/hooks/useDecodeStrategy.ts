@@ -26,11 +26,7 @@ import { useSampledFramesProbe } from "./useSampledFramesProbe";
 export interface DecodeResolution {
   status: "resolving" | "resolved";
   strategy?: DecodeStrategy;
-  /**
-   * Whether the source video carries an audio track, per the native-decode
-   * probe's demuxed `moov`. Undefined = unknown (forced strategy, probe
-   * skipped or failed) — audio integrations fall back to element sniffing.
-   */
+  /** Audio-track presence from the probe; undefined = unknown. */
   hasAudio?: boolean;
 }
 
@@ -95,7 +91,7 @@ export function useDecodeStrategy(
 interface NativeDecodableState {
   checking: boolean;
   decodable: boolean;
-  /** Audio-track presence from the probe's demux; undefined = unknown. */
+  /** Audio-track presence from the probe; undefined = unknown. */
   hasAudio?: boolean;
 }
 

@@ -204,10 +204,7 @@ export function getAudioAvailable(store: PlaybackStore): boolean {
   return store.get(audioAvailableAtom);
 }
 
-/**
- * Publish whether the timeline has audible audio. Audio integrations set
- * this; the volume UI hides entirely while it's false.
- */
+/** Publish whether the timeline has audio; the volume UI hides while false. */
 export function setAudioAvailable(
   store: PlaybackStore,
   available: boolean,

@@ -49,8 +49,7 @@ export const VideoLighterTile: React.FC<VideoLighterTileProps> = ({
   // stream's bufferState would produce spurious stalls.
   useVideoStream(sourceId, videoRef, { blocking: false });
   useVideoSync(videoRef);
-  // The <video> is also the audio source in this strategy — volume/mute
-  // follow the audio atoms (initially muted, the atoms' default).
+  // the <video> is also the audio source
   useMediaElementAudio(videoRef);
   useVfcClockSource(videoRef);
   const { seek } = usePlayback();

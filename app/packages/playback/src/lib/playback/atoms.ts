@@ -140,30 +140,20 @@ export const achievedSpeedAtom = atom<number | null>(null) as PrimitiveAtom<
   number | null
 >;
 
-/**
- * The volume an unmute restores, and the very first unmute's level for a
- * user who has never touched the slider.
- */
+/** Volume restored by unmute when the user has never set a level. */
 export const DEFAULT_AUDIO_VOLUME = 0.7;
 
 /**
- * Audio volume in [0, 1], applied to any audio stream registered via
- * `useAudioStream` / `useMediaElementAudio`. Independent of
- * `audioMutedAtom` so a persisted volume survives mute/unmute
- * round-trips.
- *
- * Persisted per user (localStorage) so the level carries across samples
- * and sessions. Mute is deliberately NOT persisted — every timeline
- * starts muted (see `audioMutedAtom`).
+ * Audio volume in [0, 1]. Independent of `audioMutedAtom` so unmute
+ * restores the prior level. Persisted per user; mute is not — every
+ * timeline starts muted.
  */
 export const audioVolumeAtom = atomWithStorage(
   "fo-playback-audio-volume",
   DEFAULT_AUDIO_VOLUME,
-  // An explicit synchronous storage keeps the atom's value type `number`
-  // (the storage-less overload admits Promise<number>).
+  // explicit sync storage keeps the value type `number`
   createJSONStorage<number>(() => localStorage),
-  // Read the persisted value at first store.get, not asynchronously after
-  // mount — streams apply volume to their element on registration.
+  // the persisted value must be readable at first store.get
   { getOnInit: true },
 );
 
@@ -176,11 +166,8 @@ export const audioVolumeAtom = atomWithStorage(
 export const audioMutedAtom = atom(true);
 
 /**
- * Whether the current timeline has audible audio to control. Written by
- * the audio integrations (`useAudioStream` element sniffing, a demuxer
- * signal, `useMediaElementAudio`); read by the volume UI, which renders
- * nothing while false — no disabled control, no "audio unavailable"
- * indicator.
+ * Whether the timeline has audio to control. Audio integrations write it;
+ * the volume UI renders nothing while false.
  */
 export const audioAvailableAtom = atom(false);
 

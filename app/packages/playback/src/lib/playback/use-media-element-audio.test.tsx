@@ -43,8 +43,7 @@ describe("useMediaElementAudio", () => {
   afterEach(() => cleanup());
 
   it("publishes availability while the track presence is unknown", () => {
-    // No demuxer in the html path and jsdom exposes no detection signal —
-    // unknown must not lock the user out of unmuting.
+    // unknown must not lock the user out of unmuting
     renderHook(makeVideo());
     expect(getAudioAvailable(store as PlaybackStore)).toBe(true);
   });
@@ -53,7 +52,7 @@ describe("useMediaElementAudio", () => {
     const video = makeVideo();
     Object.defineProperty(video, "mozHasAudio", { value: false });
     renderHook(video);
-    // Detection waits for media data — conclusive only from `loadeddata` on.
+    // detection is conclusive only from `loadeddata` on
     expect(getAudioAvailable(store as PlaybackStore)).toBe(true);
     act(() => {
       video.dispatchEvent(new Event("loadeddata"));
@@ -97,8 +96,7 @@ describe("useMediaElementAudio", () => {
     const s = store as PlaybackStore;
     act(() => setAudioMuted(s, false));
 
-    // The browser rejecting unmuted playback mutes the element and fires
-    // `volumechange` without our writing the atom.
+    // browser self-mute: rejected unmuted playback
     act(() => {
       video.muted = true;
       video.dispatchEvent(new Event("volumechange"));

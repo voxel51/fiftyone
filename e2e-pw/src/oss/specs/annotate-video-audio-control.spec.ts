@@ -14,9 +14,8 @@ import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-audio");
 
-// mp4 (VP9) so the surface resolves the `extract` decode strategy: the
-// probe demuxes the moov with mp4box, and its audio-track verdict is what
-// shows or hides the volume UI. Sample i has ObjectId(f"{i:024x}").
+// mp4 so the decode probe's demux verdict drives the volume UI in both
+// directions. Sample i has ObjectId(f"{i:024x}").
 const audibleClip = `/tmp/${datasetName}-audible.mp4`;
 const silentClip = `/tmp/${datasetName}-silent.mp4`;
 const audibleId = "000000000000000000000000";
@@ -70,8 +69,7 @@ const openAnnotate = async (
 };
 
 test.describe("timeline audio controls", () => {
-  // The playback package renders `data-testid` while this suite's
-  // `getByTestId` targets `data-cy`, so address the attribute directly.
+  // playback renders `data-testid`; this suite's `getByTestId` is `data-cy`
   const volumeGroup = (page: import("src/oss/fixtures").Page) =>
     page.locator('[data-testid="timeline-controls-volume-group"]');
 
@@ -84,7 +82,6 @@ test.describe("timeline audio controls", () => {
 
     await expect(volumeGroup(page)).toBeVisible();
 
-    // Muted is the shipped default: the toggle offers "Unmute".
     const mute = page.locator('[data-testid="timeline-controls-mute"]');
     await expect(mute).toHaveAttribute("aria-label", "Unmute");
     await expect(mute).toHaveAttribute("aria-pressed", "true");
@@ -97,8 +94,7 @@ test.describe("timeline audio controls", () => {
   }) => {
     await openAnnotate(fiftyoneLoader, modal, page, silentId);
 
-    // The controls row is up, but the volume group never mounts — the
-    // demuxer verdict disables the audio stream before the surface renders.
+    // controls render; the volume group never mounts
     await expect(
       page.locator('[data-testid="timeline-controls-root"]').first(),
     ).toBeVisible();
