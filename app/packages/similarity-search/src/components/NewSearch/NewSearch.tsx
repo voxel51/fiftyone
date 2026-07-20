@@ -157,9 +157,9 @@ export default function NewSearch({
           </InfoCard>
         )}
 
-        {/* Search scope */}
+        {/* Target */}
         <FormField
-          label="Search scope"
+          label="Target"
           control={
             <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
               <RadioGroup
