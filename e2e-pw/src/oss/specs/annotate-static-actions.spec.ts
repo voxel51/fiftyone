@@ -1,9 +1,9 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Tests that the Actions toolbar remains visible during annotation editing,
- * that the schema manager opens from the label list, and that exiting
- * detection mode closes the edit form.
+ * Tests that the create toolbar is hidden while editing a label (the edit form
+ * carries its own undo/redo), that the mode toggle stays visible, that the
+ * schema manager opens, and that exiting the edit form restores the label list.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -77,7 +77,7 @@ test.afterEach(async ({ modal, page }) => {
 });
 
 test.describe.serial("static actions toolbar", () => {
-  test("actions toolbar remains visible while editing a label", async ({
+  test("create toolbar is hidden while editing a label", async ({
     modal,
     page,
   }) => {
@@ -85,19 +85,18 @@ test.describe.serial("static actions toolbar", () => {
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
-    // Verify actions toolbar is visible before editing
-    const sidebar = modal.sidebar.locator;
-    const undoButton = sidebar.getByTestId("undo-button");
+    // The create toolbar is visible before editing
     const detectionModeButton = page.getByTestId("detection-mode");
-    await expect(undoButton).toBeVisible();
     await expect(detectionModeButton).toBeVisible();
+    await expect(modal.sidebar.edit.undoButton).toBeVisible();
 
     // Click a label to enter edit mode
     await modal.sidebar.annotate.selectActiveLabel("bird", 0);
 
-    // Actions toolbar should still be visible
-    await expect(undoButton).toBeVisible();
-    await expect(detectionModeButton).toBeVisible();
+    // The create toolbar is hidden while editing; the edit form keeps its own
+    // undo/redo
+    await expect(detectionModeButton).toBeHidden();
+    await expect(modal.sidebar.edit.undoButton).toBeVisible();
   });
 
   test("mode toggle remains visible while editing a label", async ({
@@ -136,16 +135,14 @@ test.describe.serial("static actions toolbar", () => {
     await schemaManager.assert.isClosed();
   });
 
-  test("exiting detection mode via toggle closes the edit form", async ({
-    modal,
-  }) => {
+  test("exiting the edit form restores the label list", async ({ modal }) => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
-    const labelListHeader = modal.sidebar.locator.getByText(
-      "Click labels to edit",
-    );
+    const labelListHeader = modal.sidebar.locator.getByText("Edit", {
+      exact: true,
+    });
 
     // Label list is visible before editing
     await expect(labelListHeader).toBeVisible();
@@ -160,14 +157,11 @@ test.describe.serial("static actions toolbar", () => {
     await modal.sampleCanvas.up();
     await modal.sampleCanvas.assert.hasCursor("nwse-resize");
 
-    // Edit form is showing — label list is hidden during editing
+    // Edit form is showing — the label list (and create toolbar) are hidden
     await expect(labelListHeader).toBeHidden();
 
-    // Exit detection mode via the toggle button
-    await modal.sidebar.annotate.detectionMode("Detections");
-    await modal.sidebar.annotate.assert.detectionModeIsActive(false);
-
-    // Edit form should be closed — label list should reappear
+    // Exit the edit form via the back button — the label list reappears
+    await modal.sidebar.edit.exitToList();
     await expect(labelListHeader).toBeVisible();
   });
 });
