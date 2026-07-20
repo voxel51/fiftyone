@@ -1,12 +1,12 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { McapTimelineExtension } from "./types";
+import type { TimelineExtension } from "./types";
 import {
-  registerMcapTimelineExtension,
-  resetMcapTimelineExtensionsForTests,
+  registerTimelineExtension,
+  resetTimelineExtensionsForTests,
 } from "./registry";
 
-const extension: McapTimelineExtension = {
+const extension: TimelineExtension = {
   id: "test:registry",
   order: 1,
   // eslint-disable-next-line react/prop-types
@@ -15,27 +15,27 @@ const extension: McapTimelineExtension = {
 };
 
 afterEach(async () => {
-  resetMcapTimelineExtensionsForTests();
+  resetTimelineExtensionsForTests();
   const current = await import("./registry");
-  current.resetMcapTimelineExtensionsForTests();
+  current.resetTimelineExtensionsForTests();
 });
 
-describe("MCAP timeline extension registry", () => {
+describe("Timeline extension registry", () => {
   it("shares one registry across duplicate module evaluations", async () => {
-    registerMcapTimelineExtension(extension);
+    registerTimelineExtension(extension);
     vi.resetModules();
     const reloaded = await import("./registry");
 
-    expect(() =>
-      reloaded.registerMcapTimelineExtension({ ...extension }),
-    ).toThrow("Duplicate MCAP timeline extension id: test:registry");
+    expect(() => reloaded.registerTimelineExtension({ ...extension })).toThrow(
+      "Duplicate timeline extension id: test:registry",
+    );
   });
 
   it("keeps cleanup scoped to the object that owns the registration", () => {
-    const unregister = registerMcapTimelineExtension(extension);
+    const unregister = registerTimelineExtension(extension);
     unregister();
     unregister();
 
-    expect(() => registerMcapTimelineExtension({ ...extension })).not.toThrow();
+    expect(() => registerTimelineExtension({ ...extension })).not.toThrow();
   });
 });
