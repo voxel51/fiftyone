@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { rawNodeToJson } from "../../../ir";
 import type {
   McapRawArrayNode,
   McapRawObjectNode,
@@ -7,7 +8,6 @@ import type {
 import {
   DEFAULT_RAW_PRUNE_BUDGETS,
   pruneRawRecord,
-  rawNodeToJson,
   rawRecordToJsonText,
 } from "./raw-record-prune";
 

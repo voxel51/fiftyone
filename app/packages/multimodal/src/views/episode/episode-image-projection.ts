@@ -6,7 +6,7 @@ import type { PointCloudColorWriter } from "../../visualization/panels/point-clo
  * decoded sensor-frame points into the camera frame, projects through
  * a pinhole projection matrix (`P` when present, `K` otherwise). The GPU
  * renderer and shared camera-model module own the production path; these
- * legacy helpers remain deterministic test oracles for pinhole sampling,
+ * CPU reference helpers remain deterministic test oracles for pinhole sampling,
  * color alignment, and picking behavior only.
  */
 

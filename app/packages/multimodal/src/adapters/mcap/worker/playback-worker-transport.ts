@@ -1,5 +1,5 @@
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
-import { mcapError, mcapReadCancelledError } from "../errors";
+import { readCancelledError, toError } from "../../../errors";
 import type {
   McapPlaybackWorkerPriority,
   McapPlaybackWorkerRequest,
@@ -70,7 +70,7 @@ export class McapPlaybackWorkerTransport {
         worker.postMessage(message);
       } catch (error) {
         this.pending.delete(id);
-        reject(mcapError(error));
+        reject(toError(error));
       }
     });
   }
@@ -92,7 +92,7 @@ export class McapPlaybackWorkerTransport {
         continue;
       }
       this.pending.delete(id);
-      pending.reject(mcapReadCancelledError());
+      pending.reject(readCancelledError());
       cancelledIds.push(id);
     }
 
@@ -108,7 +108,7 @@ export class McapPlaybackWorkerTransport {
   cancelStreams(): number[] {
     const cancelledIds: number[] = [];
     for (const [id, stream] of [...this.streams]) {
-      this.failStream(id, stream, mcapReadCancelledError());
+      this.failStream(id, stream, readCancelledError());
       cancelledIds.push(id);
     }
 
@@ -140,7 +140,7 @@ export class McapPlaybackWorkerTransport {
       worker.postMessage(message);
     } catch (error) {
       this.streams.delete(id);
-      throw mcapError(error);
+      throw toError(error);
     }
 
     try {

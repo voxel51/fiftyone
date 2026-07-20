@@ -1,7 +1,7 @@
 import type { StreamDescriptor } from "../../ir";
 import type { EpisodeSession } from "../../ports";
 import type { StreamInventory } from "../../schemas/v1";
-import type { LoadStatus } from "../../load-status";
+import type { LoadStatus } from "../../runtime";
 
 export type EpisodeStreamsStatus = LoadStatus;
 
@@ -17,7 +17,7 @@ export interface UseEpisodeStreamsOptions {
   readonly sourceAvailable: boolean;
 }
 
-/** Projects the session manifest into the legacy inventory view model. */
+/** Projects the session manifest into the generated inventory view model. */
 export function useEpisodeStreams({
   error = null,
   session,

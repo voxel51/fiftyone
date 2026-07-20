@@ -694,7 +694,7 @@ export function createPointCloudGeometry(capacityPoints: number) {
   );
   geometry.setAttribute("position", positionAttribute);
   geometry.setAttribute("color", colorAttribute);
-  // Legacy frames already own compact CPU render data. The picker gets a
+  // CPU-prepared frames already own compact render data. The picker gets a
   // flat storage view over the same array (no CPU copy); using a distinct
   // attribute keeps Three from padding the visible vec3 vertex buffer.
   geometry.setAttribute(

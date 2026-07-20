@@ -1,55 +1,23 @@
-import {
-  BYTE_SOURCE_READ_PROFILE,
-  type ByteReadDebugLog,
-} from "../query/bytes";
-import { monotonicNowMs } from "../time";
+import type {
+  LaneTransportSnapshot,
+  NetworkTransportSnapshot,
+  TransportLane,
+} from "../../ir";
+import { monotonicNowMs } from "../../time";
+import { BYTE_SOURCE_READ_PROFILE } from "./constants";
+import type { ByteReadDebugLog } from "./types";
 
-/**
- * Cumulative network-transport counters for one reader context. Values only
- * grow; consumers diff consecutive snapshots from the same source of samples.
- */
-export interface NetworkTransportSnapshot {
-  /**
-   * Wall milliseconds with at least one network fetch in flight.
-   */
-  readonly busyMs: number;
+export type { LaneTransportSnapshot, NetworkTransportSnapshot, TransportLane };
 
-  /**
-   * Monotonic timestamp when the snapshot was taken.
-   */
-  readonly capturedAtMs: number;
-
-  /**
-   * Bytes actually fetched over the network. Cache hits are excluded.
-   */
-  readonly fetchedBytes: number;
-
-  /**
-   * Completed network fetches. Cache hits and coalesced reads are excluded.
-   */
-  readonly reads: number;
-}
-
-/** Shared scheduling lane used by source transport telemetry. */
-export type TransportLane = "foreground" | "idle" | "bulk";
-
-/** One lane's cumulative source-transport counters. */
-export interface LaneTransportSnapshot {
-  readonly lane: TransportLane;
-  readonly snapshot: NetworkTransportSnapshot;
-}
-
+/** Aggregates byte-read completions into cumulative network counters. */
 export interface NetworkTransportMeter {
   onByteRead(entry: ByteReadDebugLog): void;
   snapshot(): NetworkTransportSnapshot;
 }
 
 /**
- * Aggregates byte-read completions into link-usage counters.
- *
- * Busy time is the union of fetch intervals, reconstructed from completion
- * events. Concurrent fetches therefore count wall time once, matching the
- * question "was the link busy?" rather than summing parallel request time.
+ * Measures fetched bytes and the union of network-busy intervals for one
+ * reader context. Cache hits and local-file reads do not count as transport.
  */
 export function createNetworkTransportMeter(
   now: () => number = monotonicNowMs,
@@ -63,6 +31,7 @@ export function createNetworkTransportMeter(
     onByteRead(entry) {
       if (
         entry.cacheResult !== "fetched" ||
+        entry.fetchedBytes <= 0 ||
         entry.readProfile === BYTE_SOURCE_READ_PROFILE.LOCAL
       ) {
         return;
@@ -71,7 +40,7 @@ export function createNetworkTransportMeter(
       const endMs = now();
       const startMs = endMs - Math.max(0, entry.durationMs);
       busyMs += mergeBusyInterval(busyIntervals, { endMs, startMs });
-      fetchedBytes += Math.max(0, entry.fetchedBytes);
+      fetchedBytes += entry.fetchedBytes;
       reads += 1;
     },
 
@@ -113,6 +82,11 @@ function mergeBusyInterval(
   const nextLengthMs = Math.max(0, next.endMs - next.startMs);
   const merged = { endMs: mergedEndMs, startMs: mergedStartMs };
   if (firstMergedIndex === intervals.length) intervals.push(merged);
-  else intervals.splice(firstMergedIndex, intervals.length, merged);
+  else
+    intervals.splice(
+      firstMergedIndex,
+      intervals.length - firstMergedIndex,
+      merged,
+    );
   return Math.max(0, nextLengthMs - overlapMs);
 }

@@ -1,6 +1,7 @@
 import type { McapTypes } from "@mcap/core";
 import type { DecodeClient } from "../../../query/decode";
-import { compareBigInt } from "../bigint";
+import { compareBigInt } from "../../../ir";
+import { readCancelledError } from "../../../errors";
 import {
   compareByTimelineTime,
   createCandidateSelector,
@@ -10,11 +11,7 @@ import {
   maxBigInt,
   minBigInt,
 } from "../sync";
-import {
-  isMcapTopicDecodeError,
-  mcapReadCancelledError,
-  type McapTopicDecodeError,
-} from "../errors";
+import { isMcapTopicDecodeError, type McapTopicDecodeError } from "../errors";
 import { decodeMcapMessage, mcapMessageRecordId } from "../message-decoder";
 import type { McapIndexedMessageTime, McapIndexedReaderLike } from "../reader";
 import type { McapTimelineStrategy } from "../timeline";
@@ -132,7 +129,7 @@ export async function readMcapSynchronizedMessageBatch({
       // for seconds before the next sample's reads run.
       throwIfAborted: () => {
         if (readSignal?.current?.aborted) {
-          throw mcapReadCancelledError();
+          throw readCancelledError();
         }
       },
       decodeCandidate: (candidate) =>

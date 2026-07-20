@@ -5,6 +5,7 @@ import {
   type SceneSourceType,
 } from "../../ir";
 import { PlaybackSyncMode, type StreamInventory } from "../../schemas/v1";
+import { chooseCalibrationStream, streamPrefix } from "../../stream-matching";
 import {
   isCameraCalibrationStream,
   isGridStream,
@@ -17,7 +18,6 @@ import {
   isSceneUpdateStream,
   topicName,
 } from "./stream-topics";
-import { chooseCalibrationTopic, topicPrefix } from "./topic-matching";
 import type { McapStreamSyncPolicies, McapStreamSyncPolicy } from "./types";
 
 // Latest-at-or-before with no tolerance = unbounded lookback: the read
@@ -94,7 +94,7 @@ export function mcapSceneSources(
     const short = shortTopicLabel(id);
     const calibrationTopic =
       type === SCENE_SOURCE_TYPE.IMAGE
-        ? chooseCalibrationTopic(id, calibrationTopics)
+        ? chooseCalibrationStream(id, calibrationTopics)
         : null;
     return {
       id,
@@ -166,7 +166,7 @@ export function mcapSourceTypeForTopic(
 // "/CAM_FRONT/image_rect_compressed" → "CAM_FRONT";
 // "/CAM_FRONT/annotations" → "CAM_FRONT/annotations".
 function shortTopicLabel(id: string): string {
-  return displayTopic(topicPrefix(id) || id);
+  return displayTopic(streamPrefix(id) || id);
 }
 
 function displayTopic(id: string): string {

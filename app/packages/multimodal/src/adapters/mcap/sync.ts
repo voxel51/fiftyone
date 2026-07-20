@@ -1,5 +1,4 @@
 import { PlaybackSyncMode } from "../../schemas/v1";
-import { compareBigInt } from "./bigint";
 import type {
   McapDecodedMessage,
   McapResolvedStreamSyncPolicy,
@@ -234,7 +233,6 @@ export function compareByTimelineTime(
 /**
  * Comparator for bigint timestamps.
  */
-export { compareBigInt };
 
 /**
  * Returns whether a timestamp falls within optional inclusive bounds.

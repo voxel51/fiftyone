@@ -1,6 +1,6 @@
 import { setFetchFunction } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
-import { mcapErrorMessage } from "../errors";
+import { errorMessage } from "../../../errors";
 import { decodeGridPreview, type McapGridPreviewEntry } from "../grid-preview";
 import { McapPlaybackWorkerScheduler } from "./playback-worker-scheduler";
 import { createWorkerResourceClient } from "./worker-resource-client";
@@ -85,7 +85,7 @@ async function runAndRespond(message: McapGridPreviewWorkerRpcRequest) {
     });
   } catch (error) {
     postResponse({
-      error: mcapErrorMessage(error),
+      error: errorMessage(error),
       id: message.id,
       ok: false,
     });

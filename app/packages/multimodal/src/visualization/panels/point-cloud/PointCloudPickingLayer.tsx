@@ -166,8 +166,8 @@ export function PointCloudPickingLayer({
           }
 
           // A GPU hit identifies a canonical sampled point. Convert that into
-          // the decoded frame's source index before publishing the existing
-          // hover API; legacy layers retain their older rendered-index map.
+          // the decoded frame's source index before publishing the hover API;
+          // layers without source indices use their rendered-index map.
           const gpu = gpuPickDataRef.current.get(pick.layerId);
           let pointIndex: number | null;
           let color: readonly [number, number, number] | null;

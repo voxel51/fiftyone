@@ -6,9 +6,8 @@ export type { SceneSource } from "../ir";
 /**
  * One discoverable data source in the current scene. `type` is the
  * source kind tiles use to find what they can render ("image",
- * "point-cloud", …). `id` is opaque to the inventory — it's whatever
- * the data domain uses to address the source (an MCAP topic, a stream
- * id, etc.).
+ * "point-cloud", …). `id` is opaque to the inventory — it is the stable
+ * stream identity chosen by the source adapter.
  */
 interface SceneInventoryContextValue {
   readonly sources: readonly SceneSource[];
@@ -18,6 +17,7 @@ const SceneInventoryContext = createContext<SceneInventoryContextValue | null>(
   null,
 );
 
+/** Sources and descendants published by `SceneInventoryProvider`. */
 export interface SceneInventoryProviderProps {
   sources: readonly SceneSource[];
   children: React.ReactNode;
@@ -27,7 +27,7 @@ export interface SceneInventoryProviderProps {
  * Publishes the set of data sources available in the current scene so
  * tiles and their settings can discover what they can render. Sits
  * above `MultiModalPlayback` (or inside it as a child) — the data is
- * read by tile components and by domain adapters (e.g. `McapStreams`)
+ * read by tile components and by the episode stream bridge
  * to decide which tile kinds to register.
  */
 export const SceneInventoryProvider: React.FC<SceneInventoryProviderProps> = ({

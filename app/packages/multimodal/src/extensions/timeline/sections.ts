@@ -20,8 +20,8 @@ function sectionHeader(section: TimelineSection): Track {
  * Validates and adapts explicitly ordered sections for the current playback
  * package. Section metadata remains first-class at the extension boundary.
  * Until playback has a section-row primitive, two or more non-empty sections
- * receive non-pinnable compatibility header tracks so existing grouping and
- * collapse behavior remains intact.
+ * receive non-pinnable synthetic header tracks that provide grouping and
+ * collapse behavior.
  */
 export function useTimelineSections(sections: readonly TimelineSection[]): {
   readonly decorateTrack: TimelineTrackDecorator;

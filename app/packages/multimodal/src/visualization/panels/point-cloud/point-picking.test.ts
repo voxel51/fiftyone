@@ -143,7 +143,7 @@ describe("sourcePointIndexForLayerRenderedIndex", () => {
       id: "/points",
     } as const;
 
-    // A legacy budget of one would map the first sample to source 0. The
+    // A CPU-path budget of one would map the first sample to source 0. The
     // payload's exact mapping wins and returns the decoder-selected source 5.
     expect(sourcePointIndexForLayerRenderedIndex(layer, 1, 0)).toBe(5);
     expect(sourcePointIndexForLayerRenderedIndex(layer, 1, 1)).toBeNull();

@@ -21,6 +21,7 @@ import React, {
 import MeasureRulerIcon from "../../components/MeasureRulerIcon";
 import { useSceneInventory } from "../../scene-inventory";
 import { SCENE_SOURCE_TYPE } from "../../ir";
+import type { TimelineIndex } from "../../runtime";
 import {
   useEpisodeLocationTracksContext,
   useEpisodeLocationTracksSourceKey,
@@ -89,7 +90,6 @@ import {
   noteEpisodeMapSourceUpdate,
 } from "./episode-map-performance";
 import { episodeMapRouteProgressFilters } from "./episode-map-route-progress";
-import type { EpisodeTimelineIndex } from "./episode-timeline-index";
 import type { EpisodeTileProps } from "./episode-tile-types";
 import { degreesToRadians } from "./wgs84";
 import EpisodeMapTileSettings from "./EpisodeMapTileSettings";
@@ -519,7 +519,7 @@ function EpisodeMapLibreSurface({
   readonly recenterNonce: number;
   readonly sourceKey: string | null;
   readonly tracks: readonly EpisodeLocationTrackState[];
-  readonly timeline: EpisodeTimelineIndex | null;
+  readonly timeline: TimelineIndex | null;
   readonly viewportScope: string | null;
 }) {
   // This effect records surface commits for the performance-stats panel.

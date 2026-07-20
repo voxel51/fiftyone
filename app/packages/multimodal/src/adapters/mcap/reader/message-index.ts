@@ -1,6 +1,6 @@
 import { McapStreamReader, type McapTypes } from "@mcap/core";
-import { compareBigInt } from "../bigint";
-import { mcapErrorMessage } from "../errors";
+import { compareBigInt } from "../../../ir";
+import { errorMessage } from "../../../errors";
 import type {
   McapIndexedMessageTime,
   McapIndexedReaderLike,
@@ -125,7 +125,7 @@ export function parseMcapMessageIndexRecord(
     record = reader.nextRecord();
   } catch (error) {
     throw new Error(
-      `Expected MCAP MessageIndex record: ${mcapErrorMessage(
+      `Expected MCAP MessageIndex record: ${errorMessage(
         error,
         "failed to parse record",
       )}`,

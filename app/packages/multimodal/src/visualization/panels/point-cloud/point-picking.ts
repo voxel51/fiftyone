@@ -21,15 +21,15 @@ import type { PointCloudPanelLayer } from "./types";
 export const POINT_PICK_RADIUS_PX = 6;
 
 /** userData key marking objects whose hits suppress point picking. */
-export const POINT_PICK_BLOCKING_KEY = "mcapBlocksPointPick";
+export const POINT_PICK_BLOCKING_KEY = "episodeBlocksPointPick";
 
 /** userData value for tagging pick-blocking objects declaratively. */
 export const POINT_PICK_BLOCKING_USER_DATA = {
   [POINT_PICK_BLOCKING_KEY]: true,
 } as const;
 
-/** userData key carrying a pickable points object's layer (topic) id. */
-export const POINT_PICK_LAYER_ID_KEY = "mcapPointsLayerId";
+/** userData key carrying a pickable points object's stream-layer id. */
+export const POINT_PICK_LAYER_ID_KEY = "episodePointsLayerId";
 
 /** One resolved point pick, still in rendered-geometry index space. */
 export interface ResolvedPointPick {
@@ -42,7 +42,7 @@ export interface ResolvedPointPick {
 
 /**
  * Maps a rendered vertex to the full decoded arrays. Decoder-prepared frames
- * carry the exact mapping; legacy frames retain the sampling-walk fallback.
+ * carry the exact mapping; frames without it use the sampling-walk fallback.
  */
 export function sourcePointIndexForLayerRenderedIndex(
   layer: PointCloudPanelLayer,

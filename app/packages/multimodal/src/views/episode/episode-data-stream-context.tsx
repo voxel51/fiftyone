@@ -1,87 +1,29 @@
-import { useCallback } from "react";
 import type { DecodedFrame } from "../../ir";
 import {
   EpisodeDataStreamProvider as RuntimeEpisodeDataStreamProvider,
   useEpisodeDataStream as useRuntimeEpisodeDataStream,
   useSetEpisodeDataStream as useSetRuntimeEpisodeDataStream,
-  type AnyEpisodeDataStream,
-  type TimelineIndex,
+  type EpisodeDataStream as RuntimeEpisodeDataStream,
 } from "../../runtime";
 import type { EpisodeStreamCache } from "./episode-stream-cache";
 
-/** @deprecated episode-shaped compatibility view of the shared data stream. */
-export interface EpisodeDataStream {
-  readonly sourceKey: string;
-  readonly subscribeToStream: (stream: string) => () => void;
-  readonly getStreamCache: (stream: string) => EpisodeStreamCache | undefined;
-  readonly getTimelineIndex: () => TimelineIndex | null;
-  readonly readStreamMessages?: (request: {
-    readonly endTimeNs: bigint;
-    readonly startTimeNs: bigint;
-    readonly stream: string;
-  }) => Promise<readonly DecodedFrame[]>;
-}
+/** Episode renderer specialization of the shared runtime data stream. */
+export type EpisodeDataStream = RuntimeEpisodeDataStream<
+  DecodedFrame,
+  EpisodeStreamCache
+>;
 
-interface EpisodeCompatibilityDataStream extends AnyEpisodeDataStream {
-  readonly format: "episode";
-  readonly legacy: EpisodeDataStream;
-}
-
-/** Compatibility alias over the shared episode provider. */
+/** Shared provider used by the episode renderer shell. */
 export const EpisodeDataStreamProvider = RuntimeEpisodeDataStreamProvider;
 
-/** @deprecated Compatibility hook for the legacy episode view shell. */
+/** Reads the current episode renderer's typed data stream. */
 export function useEpisodeDataStream(): EpisodeDataStream | null {
-  const stream = useRuntimeEpisodeDataStream();
-  return stream && isEpisodeCompatibilityDataStream(stream)
-    ? stream.legacy
-    : null;
+  return useRuntimeEpisodeDataStream<DecodedFrame, EpisodeStreamCache>();
 }
 
-/** @deprecated Compatibility hook for the legacy episode view shell. */
+/** Returns the typed publisher for the current episode renderer. */
 export function useSetEpisodeDataStream(): (
   next: EpisodeDataStream | null,
 ) => void {
-  const setEpisodeDataStream = useSetRuntimeEpisodeDataStream();
-  return useCallback(
-    (next: EpisodeDataStream | null) => {
-      setEpisodeDataStream(next ? toEpisodeDataStream(next) : null);
-    },
-    [setEpisodeDataStream],
-  );
-}
-
-function toEpisodeDataStream(
-  stream: EpisodeDataStream,
-): EpisodeCompatibilityDataStream {
-  return {
-    format: "episode",
-    getStreamCache: stream.getStreamCache,
-    getTimelineIndex: stream.getTimelineIndex,
-    legacy: stream,
-    ...(stream.readStreamMessages
-      ? {
-          readStreamFrames: ({ endTimeNs, startTimeNs, stream: streamId }) =>
-            stream.readStreamMessages?.({
-              endTimeNs,
-              startTimeNs,
-              stream: streamId,
-            }) ?? Promise.resolve([]),
-        }
-      : {}),
-    sourceKey: stream.sourceKey,
-    subscribeToStream: stream.subscribeToStream,
-  };
-}
-
-function isEpisodeCompatibilityDataStream(
-  stream: AnyEpisodeDataStream,
-): stream is EpisodeCompatibilityDataStream {
-  return (
-    "format" in stream &&
-    stream.format === "episode" &&
-    "legacy" in stream &&
-    typeof stream.legacy === "object" &&
-    stream.legacy !== null
-  );
+  return useSetRuntimeEpisodeDataStream<DecodedFrame, EpisodeStreamCache>();
 }

@@ -2,6 +2,29 @@ import { describe, expect, it } from "vitest";
 import { createTimelineIndex } from "./timeline-index";
 
 describe("timeline index", () => {
+  it("represents the default 30 Hz tick grid without materializing it", () => {
+    const timeline = createTimelineIndex({ endNs: 100_000_000n, startNs: 0n });
+
+    expect(timeline.stepNs).toBe(33_333_333n);
+    expect(timeline.tickCount).toBe(4);
+    expect([0, 1, 2, 3].map((index) => timeline.tickAt(index))).toEqual([
+      0n,
+      33_333_333n,
+      66_666_666n,
+      99_999_999n,
+    ]);
+  });
+
+  it("keeps long recordings addressable without materializing ticks", () => {
+    const timeline = createTimelineIndex({
+      endNs: 7_200_000_000_000n,
+      startNs: 0n,
+    });
+
+    expect(timeline.tickCount).toBe(216_001);
+    expect(timeline.nearestTick(7_199)).toBeGreaterThan(7_198_900_000_000n);
+  });
+
   it("retains bigint precision and uses ceiling division", () => {
     const startNs = 10_000_000_000_000_000n;
     const timeline = createTimelineIndex(

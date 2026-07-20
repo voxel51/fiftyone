@@ -4,10 +4,9 @@
  * surfaces display the frame (e.g. the 2D image tile and a 3D camera-frustum
  * image plane showing the same camera message).
  *
- * Keys are opaque strings formed by callers — MCAP consumers use
- * {@link imageTextureCacheKey} (recording key + image topic + content
- * time). The per-recording discriminator (`McapDataStream.sourceKey`, the
- * byte-source access key) is baked into every key, so entries from
+ * Keys are opaque strings formed by callers. Episode consumers use
+ * {@link imageTextureCacheKey} (recording key + image stream + content
+ * time). The per-recording byte-source access key is baked into every key, so entries from
  * different recordings can never collide: no explicit clear at the
  * source-change boundary is needed for correctness. A previous
  * recording's zero-ref entries simply age out of the bounded retention
@@ -95,7 +94,7 @@ let retainedDecodedBytes = 0;
  * (recording discriminator, image topic, message content time). Both the
  * 2D image tile and the 3D frustum image plane form keys through this
  * helper so their decodes collapse into one cache entry. Newline is the
- * separator — byte-source access keys and MCAP topics never contain one.
+ * separator — byte-source access keys and stream IDs never contain one.
  */
 export function imageTextureCacheKey(
   recordingKey: string,
@@ -166,7 +165,7 @@ export function imageTextureCacheStats(): ImageTextureCacheStats {
 
 /**
  * Disposes and forgets every zero-ref retained entry. Live leases are
- * untouched. Call at a session boundary (e.g. the MCAP modal closing) so
+ * untouched. Call at a session boundary (e.g. the episode modal closing) so
  * decoded frames from a finished review session don't stay resident until
  * LRU churn from the next one evicts them.
  */

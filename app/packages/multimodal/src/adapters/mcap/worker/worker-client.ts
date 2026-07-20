@@ -18,7 +18,7 @@ import {
   type McapPlaybackWorkerStreamType,
   type McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
-import { mcapError, mcapErrorMessage, mcapReadCancelledError } from "../errors";
+import { errorMessage, readCancelledError, toError } from "../../../errors";
 import type { McapFrameTransformSet } from "../frame-transform-types";
 import type {
   McapDecodedMessage,
@@ -305,7 +305,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     if (this.explicitOwnership) {
       // Under explicit ownership only activateSource may switch; a request
       // for a non-active source is a dying renderer's late effect.
-      throw mcapReadCancelledError();
+      throw readCancelledError();
     }
 
     // Request-driven switching for callers that never activate a source:
@@ -355,14 +355,11 @@ class WorkerMcapResourceClient implements McapResourceClient {
       worker.postMessage(initRequest);
     } catch (error) {
       if (lane.worker === worker) {
-        this.resetLane(
-          lane,
-          mcapErrorMessage(error, "MCAP worker startup failed"),
-        );
+        this.resetLane(lane, errorMessage(error, "MCAP worker startup failed"));
       } else {
         disposeWorker(worker);
       }
-      throw mcapError(error);
+      throw toError(error);
     }
 
     return lane.worker;

@@ -1,5 +1,5 @@
 import { byteSourceAccessKey } from "../../../query/bytes";
-import { mcapError, mcapErrorMessage } from "../errors";
+import { errorMessage, toError } from "../../../errors";
 import { McapGridPreviewTransport } from "./grid-preview-transport";
 import type {
   McapGridPreviewRequestPayload,
@@ -119,12 +119,12 @@ export class McapGridPreviewWorkerPool {
       if (slot.worker === worker) {
         this.resetSlot(
           slot,
-          mcapErrorMessage(error, "MCAP grid preview worker startup failed"),
+          errorMessage(error, "MCAP grid preview worker startup failed"),
         );
       } else {
         disposeWorker(worker);
       }
-      throw mcapError(error);
+      throw toError(error);
     }
 
     return worker;

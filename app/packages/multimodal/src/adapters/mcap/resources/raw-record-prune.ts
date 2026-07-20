@@ -267,6 +267,3 @@ function fullJsonReplacer(_key: string, value: unknown): unknown {
   }
   return value;
 }
-
-/** @deprecated Raw-record value reconstruction now belongs to the IR. */
-export { rawNodeToJson } from "../../../ir";

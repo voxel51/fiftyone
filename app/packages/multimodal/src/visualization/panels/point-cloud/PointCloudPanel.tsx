@@ -145,9 +145,9 @@ export function PointCloudPanel({
       const colorOptions = pointCloudColorOptions(layer, colorBy);
       const payload = layer.frame.renderPayload;
       if (!payload) {
-        // Compatibility path for custom/legacy producers. Built-in MCAP
-        // frames take the worker-prepared branch below and never expand
-        // positions/colors on the main thread.
+        // renderPayload is optional for custom producers. Built-in MCAP frames
+        // take the worker-prepared branch below and never expand positions or
+        // colors on the main thread.
         return {
           data: buildPointCloudRenderData(
             layer.frame.positions,

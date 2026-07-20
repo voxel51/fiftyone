@@ -5,12 +5,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ImageAnnotationsVisualization } from "../../decoders";
 import { VISUALIZATION_KIND } from "../../visualization";
 import type { DecodedFrame } from "../../ir";
+import type { TimelineIndex } from "../../runtime";
 import {
   EpisodeDataStreamProvider,
   useSetEpisodeDataStream,
   type EpisodeDataStream,
 } from "./episode-data-stream-context";
-import type { EpisodeTimelineIndex } from "./episode-timeline-index";
 import { EpisodeStreamCache } from "./episode-stream-cache";
 import {
   nextDistinctCachedMessage,
@@ -50,7 +50,7 @@ function absBig(n: bigint): bigint {
   return n < 0n ? -n : n;
 }
 
-function makeTimeline(ticks: readonly bigint[]): EpisodeTimelineIndex {
+function makeTimeline(ticks: readonly bigint[]): TimelineIndex {
   const startTimeNs = ticks[0] ?? 0n;
   const stepNs =
     ticks.length > 1 ? (ticks[1] as bigint) - startTimeNs : 1_000_000n;
@@ -99,7 +99,7 @@ function makeTimeline(ticks: readonly bigint[]): EpisodeTimelineIndex {
 
 function makeStream(
   caches: Map<string, EpisodeStreamCache>,
-  timeline: EpisodeTimelineIndex,
+  timeline: TimelineIndex,
 ) {
   let active = 0;
   const subscribeToStream = vi.fn((stream: string) => {

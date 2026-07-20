@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ByteReadDebugLog } from "../query/bytes";
-import { createNetworkTransportMeter } from "./network-meter";
+import { createNetworkTransportMeter } from "../query/bytes/network-meter";
 
 describe("network transport meter", () => {
   it("counts fetched bytes and clips overlapping busy intervals", () => {
@@ -54,15 +54,15 @@ describe("network transport meter", () => {
     });
   });
 
-  it("counts zero-byte network fetches without reducing byte totals", () => {
+  it("ignores zero-byte and invalid network fetch completions", () => {
     const meter = createNetworkTransportMeter(() => 100);
     meter.onByteRead(read({ durationMs: 25, fetchedBytes: 0 }));
     meter.onByteRead(read({ durationMs: 10, fetchedBytes: -1 }));
 
     expect(meter.snapshot()).toMatchObject({
-      busyMs: 25,
+      busyMs: 0,
       fetchedBytes: 0,
-      reads: 2,
+      reads: 0,
     });
   });
 });

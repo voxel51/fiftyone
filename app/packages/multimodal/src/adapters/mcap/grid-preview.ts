@@ -7,7 +7,7 @@ import {
 import type { ByteSourceDescriptor } from "../../query/bytes";
 import type { StreamInventory } from "../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../ir";
-import { filterDefaultTopicEquivalents } from "./topic-matching";
+import { filterDefaultStreamEquivalents } from "../../stream-matching";
 import { streamTopics, type McapPreviewTopics } from "./stream-topics";
 import type {
   McapDecodedMessage,
@@ -23,8 +23,6 @@ const COLOR_COMPONENT_COUNT = 3;
 /** Maximum point count retained by one MCAP grid preview frame. */
 export const MCAP_GRID_PREVIEW_MAX_POINTS = 120_000;
 
-/** Re-exported annotation-topic matcher used by MCAP preview consumers. */
-export { chooseAnnotationTopic } from "./topic-matching";
 /** Re-exported stream classifier used by MCAP preview consumers. */
 export { streamTopics } from "./stream-topics";
 
@@ -332,9 +330,9 @@ function chooseAutoSelection(
 export function chooseCameraSelection(
   topics: McapGridTopics,
 ): McapGridCameraSelection | null {
-  const imageTopic = filterDefaultTopicEquivalents(topics.image, {
+  const imageTopic = filterDefaultStreamEquivalents(topics.image, {
     getKind: () => "image",
-    getTopic: (topic) => topic,
+    getStream: (topic) => topic,
   })[0];
   if (!imageTopic) {
     return null;
@@ -349,9 +347,9 @@ export function chooseCameraSelection(
 function choosePointCloudSelection(
   topics: McapGridTopics,
 ): McapGridPointCloudSelection | null {
-  const pointCloudTopic = filterDefaultTopicEquivalents(topics.pointCloud, {
+  const pointCloudTopic = filterDefaultStreamEquivalents(topics.pointCloud, {
     getKind: () => "point-cloud",
-    getTopic: (topic) => topic,
+    getStream: (topic) => topic,
   })[0];
   return pointCloudTopic
     ? {

@@ -1,5 +1,5 @@
 import { byteSourceAccessKey } from "../../../query/bytes";
-import { mcapError } from "../errors";
+import { toError } from "../../../errors";
 import type {
   McapGridPreviewRequestPayload,
   McapGridPreviewResult,
@@ -89,7 +89,7 @@ export class McapGridPreviewTransport {
       } catch (error) {
         options.signal?.removeEventListener("abort", abort);
         this.pending.delete(id);
-        reject(mcapError(error));
+        reject(toError(error));
       }
     });
   }

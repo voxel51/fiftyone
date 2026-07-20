@@ -654,7 +654,7 @@ export function pointCloud3dPickWorldPosition(
   }
   const position = new THREE.Vector3();
   // Decoder payloads use flat scalar storage to avoid Three's vec3-to-vec4
-  // WebGPU padding pass; legacy geometry uses ordinary vec3 attributes.
+  // WebGPU padding pass; CPU-prepared geometry uses ordinary vec3 attributes.
   if (layer.positionLayout === "flat") {
     const offset = sampleIndex * 3;
     position.set(
@@ -669,7 +669,7 @@ export function pointCloud3dPickWorldPosition(
   return [position.x, position.y, position.z];
 }
 
-/** Reads legacy precomputed RGB; decoder payload colors resolve separately. */
+/** Reads precomputed CPU RGB; decoder payload colors resolve separately. */
 export function pointCloud3dPickColor(
   layer: GpuPointCloud3dPickLayer,
   sampleIndex: number,

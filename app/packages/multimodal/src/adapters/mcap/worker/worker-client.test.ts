@@ -10,6 +10,7 @@ import {
 import { createWorkerMcapResourceClient } from "./worker-client";
 import { dehydrateMcapFrameTransformSet } from "../frame-transform-wire";
 import type { McapFrameTransformSet } from "../frame-transform-types";
+import { READ_CANCELLED_MESSAGE } from "../../../errors";
 
 vi.mock("@fiftyone/utilities", () => ({
   getFetchParameters: () => ({
@@ -253,7 +254,7 @@ describe("worker-backed MCAP resource client", () => {
 
     client.cancelIdleReads?.();
 
-    await expect(idleBatch).rejects.toThrow("Read cancelled");
+    await expect(idleBatch).rejects.toThrow(READ_CANCELLED_MESSAGE);
     expect(idleWorker.messages.at(-1)).toMatchObject({
       id: 1,
       type: "cancel",
@@ -337,7 +338,7 @@ describe("worker-backed MCAP resource client", () => {
     // Switching preempts the old source's work by cancelling: the pending
     // read rejects with the benign cancelled error and the worker is told
     // to abort the matching job instead of being terminated.
-    await expect(first).rejects.toThrow("Read cancelled");
+    await expect(first).rejects.toThrow(READ_CANCELLED_MESSAGE);
     expect(worker.terminate).not.toHaveBeenCalled();
     expect(worker.messages.at(-1)).toEqual({ id: 1, type: "cancel" });
 
@@ -345,7 +346,7 @@ describe("worker-backed MCAP resource client", () => {
     // ownership back.
     await expect(
       client.readTimelineRange(createTimelineRequest("source:1")),
-    ).rejects.toThrow("Read cancelled");
+    ).rejects.toThrow(READ_CANCELLED_MESSAGE);
 
     // The active source proceeds on the same warm worker.
     const second = client.readTimelineRange(createTimelineRequest("source:2"));
@@ -383,7 +384,7 @@ describe("worker-backed MCAP resource client", () => {
 
     // The consumer settles with the benign cancelled error even though a
     // dropped queued job would never produce a worker response.
-    await expect(first).rejects.toThrow("Read cancelled");
+    await expect(first).rejects.toThrow(READ_CANCELLED_MESSAGE);
     expect(worker.terminate).not.toHaveBeenCalled();
     expect(worker.messages.at(-1)).toEqual({ id: 1, type: "cancel" });
   });

@@ -6,9 +6,9 @@ import type { McapTypes } from "@mcap/core";
 import { Root } from "protobufjs";
 import descriptor from "protobufjs/ext/descriptor";
 import { describe, expect, it, vi } from "vitest";
+import { rawNodeToJson } from "../../../ir";
 import type { McapIndexedMessageTime } from "../reader";
 import { resolveMcapTimelineStrategy } from "../timeline";
-import { rawNodeToJson } from "./raw-record-prune";
 import { readMcapRawMessageRecord } from "./read-raw-message-record";
 
 const timeline = resolveMcapTimelineStrategy(undefined);

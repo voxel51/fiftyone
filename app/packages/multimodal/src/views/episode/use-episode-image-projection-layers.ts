@@ -20,7 +20,7 @@ export interface EpisodeImageProjectionLayer {
   readonly colorOptions: PointCloudColorOptions;
   readonly contentTimeNs: bigint;
   readonly frame: PointCloudVisualization;
-  /** Canonical GPU input; decoder-provided for episode, cached once for legacy frames. */
+  /** Canonical GPU input, decoder-provided when available and otherwise cached. */
   readonly payload: PointCloudRenderPayload;
   readonly rotation: {
     readonly w: number;
@@ -121,7 +121,7 @@ export function useEpisodeImageProjectionLayers(
   }, [cameraFrameId, colorOptionsByStream, frames, resolve, streams]);
 }
 
-const legacyProjectionPayloads = new WeakMap<
+const derivedProjectionPayloads = new WeakMap<
   PointCloudVisualization,
   PointCloudRenderPayload
 >();
@@ -134,18 +134,18 @@ function pointCloudProjectionPayload(
     // in the playback worker, keeping O(N) preparation off the main thread.
     return frame.renderPayload;
   }
-  const cached = legacyProjectionPayloads.get(frame);
+  const cached = derivedProjectionPayloads.get(frame);
   if (cached) {
     return cached;
   }
-  // Non-episode/custom producers may not implement renderPayload yet. Build once
-  // per frame object and cache weakly so compatibility does not become
-  // per-camera or per-render CPU work.
+  // renderPayload is optional at the decoder boundary. Build it once per frame
+  // object and cache weakly so custom producers do not add per-camera or
+  // per-render CPU work.
   const payload = buildPointCloudRenderPayload({
     colors: frame.colors,
     positions: frame.positions,
     scalarFields: frame.scalarFields,
   });
-  legacyProjectionPayloads.set(frame, payload);
+  derivedProjectionPayloads.set(frame, payload);
   return payload;
 }

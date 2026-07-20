@@ -1,7 +1,13 @@
 /** Public source-agnostic load state. */
 export type { LoadStatus } from "./load-status";
 /** Public source-agnostic transport metering. */
-export * from "./network-meter";
+export {
+  createNetworkTransportMeter,
+  type LaneTransportSnapshot,
+  type NetworkTransportMeter,
+  type NetworkTransportSnapshot,
+  type TransportLane,
+} from "../query/bytes/network-meter";
 /** Public inclusive range and numeric-series bookkeeping. */
 export * from "./numeric-series-window";
 /** Public lightweight episode-preview pacing policy. */

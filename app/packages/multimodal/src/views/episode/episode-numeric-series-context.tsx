@@ -12,23 +12,21 @@ import React, {
   useState,
 } from "react";
 import {
+  addCoveredRange,
+  flattenSeriesSegments,
+  insertSeriesSegment,
+  removeCoveredRange,
   startDemandBridge,
+  subtractCoveredRanges,
   useDemandRegistry,
   useEpisodeDataStream,
+  type NsRange,
+  type NumericSeriesSegment,
   type TimelineIndex,
 } from "../../runtime";
 import type { NumericStreamFields } from "../../ir";
 import type { NumericSeriesCapability } from "../../ports";
 import { shouldDeferEpisodeIdleWorkForStore } from "./episode-network-health";
-import {
-  addCoveredRange,
-  flattenSeriesSegments,
-  insertSeriesSegment,
-  removeCoveredRange,
-  subtractCoveredRanges,
-  type NsRange,
-  type NumericSeriesSegment,
-} from "./numeric-series-window";
 
 /**
  * Fetch horizon centered on the playhead. Playback's 4s lookahead keeps
