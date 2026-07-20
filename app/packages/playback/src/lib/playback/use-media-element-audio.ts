@@ -35,6 +35,12 @@ export function useMediaElementAudio(
         element.removeEventListener("timeupdate", probe);
       }
     };
+    // a new source invalidates a settled verdict — re-arm
+    const reset = () => {
+      setHasAudio(null);
+      element.addEventListener("loadeddata", probe);
+      element.addEventListener("timeupdate", probe);
+    };
 
     // `audioTracks` is empty before media loads — probing early reads as
     // a false "no".
@@ -43,9 +49,13 @@ export function useMediaElementAudio(
     }
     element.addEventListener("loadeddata", probe);
     element.addEventListener("timeupdate", probe);
+    element.addEventListener("loadstart", reset);
+    element.addEventListener("emptied", reset);
     return () => {
       element.removeEventListener("loadeddata", probe);
       element.removeEventListener("timeupdate", probe);
+      element.removeEventListener("loadstart", reset);
+      element.removeEventListener("emptied", reset);
       setHasAudio(null);
     };
   }, [mediaRef]);

@@ -110,8 +110,6 @@ const SimplePlaybackBar: React.FC = () => {
         variant={Variant.Borderless}
         size={Size.Xs}
         data-testid="simple-playback-bar-play-pause"
-        // React 18/19 type mismatch on FC<{}>.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         leadingIcon={hasPlayIntent ? IconName.Pause : IconName.Play}
         onClick={hasPlayIntent ? pause : play}
         aria-label={hasPlayIntent ? "Pause" : "Play"}

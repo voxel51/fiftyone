@@ -145,8 +145,7 @@ export const DEFAULT_AUDIO_VOLUME = 0.7;
 
 /**
  * Audio volume in [0, 1]. Independent of `audioMutedAtom` so unmute
- * restores the prior level. Persisted per user; mute is not — every
- * timeline starts muted.
+ * restores the prior level. Persisted per user across sessions.
  */
 export const audioVolumeAtom = atomWithStorage(
   "fo-playback-audio-volume",
@@ -158,12 +157,18 @@ export const audioVolumeAtom = atomWithStorage(
 );
 
 /**
- * Whether timeline audio is muted. Defaults to true: browsers reject
- * unmuted autoplay before a user gesture, and muted-by-default matches
- * the legacy player's volume-0 start. While muted, an audio stream goes
+ * Whether timeline audio is muted. Session-scoped: every session starts
+ * muted (browsers reject unmuted autoplay before a user gesture), but an
+ * unmute survives sample changes — each sample mounts a fresh provider
+ * store, which would otherwise re-mute. While muted, an audio stream goes
  * dormant (unsubscribed) so it never gates the engine's barrier.
  */
-export const audioMutedAtom = atom(true);
+export const audioMutedAtom = atomWithStorage(
+  "fo-playback-audio-muted",
+  true,
+  createJSONStorage<boolean>(() => sessionStorage),
+  { getOnInit: true },
+);
 
 /**
  * Whether the timeline has audio to control. Audio integrations write it;

@@ -39,8 +39,9 @@ function renderControls(opts: { available?: boolean } = {}) {
 describe("VolumeControl", () => {
   beforeEach(() => {
     store = null;
-    // The volume atom persists to localStorage; isolate each test.
+    // volume persists to localStorage, mute to sessionStorage
     window.localStorage.clear();
+    window.sessionStorage.clear();
   });
   afterEach(() => cleanup());
 
@@ -89,16 +90,26 @@ describe("VolumeControl", () => {
     expect(getAudioVolume(store as PlaybackStore)).toBeCloseTo(0.05);
   });
 
-  it("persists the volume across providers; mute never persists", () => {
+  it("unmute and volume survive a provider swap within the session", () => {
     const first = renderControls();
     fireEvent.click(screen.getByRole("button", { name: "Unmute" }));
     setAudioVolume(store as PlaybackStore, 0.42);
     first.unmount();
 
     renderControls();
-    // A fresh provider starts muted again…
+    expect(getAudioMuted(store as PlaybackStore)).toBe(false);
+    expect(getAudioVolume(store as PlaybackStore)).toBeCloseTo(0.42);
+  });
+
+  it("a new session starts muted but keeps the persisted volume", () => {
+    const first = renderControls();
+    fireEvent.click(screen.getByRole("button", { name: "Unmute" }));
+    setAudioVolume(store as PlaybackStore, 0.42);
+    first.unmount();
+
+    window.sessionStorage.clear();
+    renderControls();
     expect(getAudioMuted(store as PlaybackStore)).toBe(true);
-    // …but the persisted level survives and an unmute restores it.
     fireEvent.click(screen.getByRole("button", { name: "Unmute" }));
     expect(getAudioVolume(store as PlaybackStore)).toBeCloseTo(0.42);
   });

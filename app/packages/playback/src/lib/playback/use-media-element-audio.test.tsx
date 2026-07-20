@@ -39,6 +39,7 @@ describe("useMediaElementAudio", () => {
   beforeEach(() => {
     store = null;
     window.localStorage.clear();
+    window.sessionStorage.clear();
   });
   afterEach(() => cleanup());
 
@@ -58,6 +59,20 @@ describe("useMediaElementAudio", () => {
       video.dispatchEvent(new Event("loadeddata"));
     });
     expect(getAudioAvailable(store as PlaybackStore)).toBe(false);
+  });
+
+  it("a new source invalidates a settled verdict and re-arms detection", () => {
+    const video = makeVideo();
+    Object.defineProperty(video, "mozHasAudio", { value: false });
+    renderHook(video);
+    const s = store as PlaybackStore;
+    act(() => video.dispatchEvent(new Event("loadeddata")));
+    expect(getAudioAvailable(s)).toBe(false);
+
+    act(() => video.dispatchEvent(new Event("loadstart")));
+    expect(getAudioAvailable(s)).toBe(true);
+    act(() => video.dispatchEvent(new Event("loadeddata")));
+    expect(getAudioAvailable(s)).toBe(false);
   });
 
   it("applies the muted default and persisted volume to the element", () => {
