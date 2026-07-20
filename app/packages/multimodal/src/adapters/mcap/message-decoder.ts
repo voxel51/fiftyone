@@ -1,7 +1,8 @@
 import type { McapTypes } from "@mcap/core";
 import type { ByteSourceDescriptor } from "../../query/bytes";
 import type { DecodeClient } from "../../query/decode";
-import { isMcapReadCancelledError, McapTopicDecodeError } from "./errors";
+import { isReadCancelledError } from "../../errors";
+import { McapTopicDecodeError } from "./errors";
 import type { McapIndexedReaderLike } from "./reader";
 import type { McapTimelineStrategy } from "./timeline";
 import type { McapDecodedMessage } from "./types";
@@ -76,7 +77,7 @@ export async function decodeMcapMessage({
       payload,
     });
   } catch (error) {
-    if (isMcapReadCancelledError(error)) throw error;
+    if (isReadCancelledError(error)) throw error;
     throw new McapTopicDecodeError({
       cause: error,
       messageTimeNs: timelineTimeNs,

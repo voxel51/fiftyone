@@ -13,7 +13,7 @@ import {
   useState,
 } from "react";
 import { Quaternion, Vector3 } from "three";
-import type { LoadStatus } from "../../load-status";
+import type { LoadStatus } from "../../runtime";
 import type {
   EpisodeFrameTransformPolicy,
   EpisodeFrameTransformResolution,

@@ -1,21 +1,4 @@
-import {
-  READ_CANCELLED_MESSAGE,
-  errorMessage,
-  isReadCancelledError,
-  readCancelledError,
-  toError,
-} from "../../errors";
-
-/** @deprecated Use the format-neutral helpers from `../../errors`. */
-export const mcapError = toError;
-/** @deprecated Use the format-neutral helpers from `../../errors`. */
-export const mcapErrorMessage = errorMessage;
-/** @deprecated Use the format-neutral helpers from `../../errors`. */
-export const MCAP_READ_CANCELLED_MESSAGE = READ_CANCELLED_MESSAGE;
-/** @deprecated Use the format-neutral helpers from `../../errors`. */
-export const mcapReadCancelledError = readCancelledError;
-/** @deprecated Use the format-neutral helpers from `../../errors`. */
-export const isMcapReadCancelledError = isReadCancelledError;
+import { errorMessage } from "../../errors";
 
 /** Typed boundary for readable message bytes that fail payload decoding. */
 export class McapTopicDecodeError extends Error {
@@ -36,7 +19,7 @@ export class McapTopicDecodeError extends Error {
     readonly payloadIdentity: string;
     readonly topic: string;
   }) {
-    super(mcapErrorMessage(cause, "Message decode failed"));
+    super(errorMessage(cause, "Message decode failed"));
     this.name = "McapTopicDecodeError";
     this.cause = cause;
     this.messageTimeNs = messageTimeNs;

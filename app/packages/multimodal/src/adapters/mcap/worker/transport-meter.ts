@@ -3,7 +3,7 @@ import {
   type LaneTransportSnapshot,
   type NetworkTransportSnapshot,
   type TransportLane,
-} from "../../../network-meter";
+} from "../../../query/bytes";
 
 /**
  * Worker lane a transport snapshot came from. Kept structural here so the

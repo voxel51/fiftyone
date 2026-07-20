@@ -9,6 +9,7 @@ import {
 import type { ImageAnnotationsVisualization } from "../../decoders";
 import type { ImageAnnotationRenderMetadata } from "../../visualization/panels/image-annotation-render-metadata";
 import type { DecodedFrame } from "../../ir";
+import type { TimelineIndex } from "../../runtime";
 import {
   interpolationFraction,
   prepareImageAnnotationInterpolation,
@@ -21,7 +22,6 @@ import {
   useEpisodeDataStream,
   type EpisodeDataStream,
 } from "./episode-data-stream-context";
-import type { EpisodeTimelineIndex } from "./episode-timeline-index";
 import type { EpisodeStreamCache } from "./episode-stream-cache";
 import { useOptionalPlayhead } from "./use-optional-playhead";
 
@@ -168,7 +168,7 @@ interface NextMessageCacheEntry {
   readonly nextIndex: number | null;
   readonly nextMessage: DecodedFrame | null;
   readonly revision: number;
-  readonly timeline: EpisodeTimelineIndex;
+  readonly timeline: TimelineIndex;
 }
 
 type RenderMetadataCache = WeakMap<
@@ -185,7 +185,7 @@ interface AnnotationSetsFromCachesArgs {
   readonly nextMessageCache: WeakMap<EpisodeStreamCache, NextMessageCacheEntry>;
   readonly playhead: number;
   readonly renderMetadataCache: RenderMetadataCache;
-  readonly timeline: EpisodeTimelineIndex | null;
+  readonly timeline: TimelineIndex | null;
   readonly streams: readonly string[];
 }
 
@@ -338,7 +338,7 @@ function currentAnnotationFrame({
   readonly nextMessageCache: WeakMap<EpisodeStreamCache, NextMessageCacheEntry>;
   readonly playhead: number;
   readonly renderMetadataCache: RenderMetadataCache;
-  readonly timeline: EpisodeTimelineIndex;
+  readonly timeline: TimelineIndex;
 }): {
   readonly frame: ImageAnnotationsVisualization;
   readonly renderMetadata: ImageAnnotationRenderMetadata;
@@ -437,7 +437,7 @@ export function nextDistinctCachedMessage({
   readonly currentTimelineTimeNs: bigint;
   readonly currentMessage?: DecodedFrame;
   readonly lookupCache?: WeakMap<EpisodeStreamCache, NextMessageCacheEntry>;
-  readonly timeline: EpisodeTimelineIndex;
+  readonly timeline: TimelineIndex;
 }): DecodedFrame | null {
   // Ticks are synchronized with LATEST semantics, so several cached ticks can
   // point to the same source annotation. Walk forward only far enough to find

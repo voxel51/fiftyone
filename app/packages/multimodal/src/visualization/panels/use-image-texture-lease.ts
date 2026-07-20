@@ -82,8 +82,8 @@ export function useImageTextureLease({
     [],
   );
 
-  // A replacement first has to commit through the image scene before its old
-  // GPU texture can be destroyed. Releasing from the promise callback races
+  // This effect defers retiring a replaced texture until the replacement has
+  // committed through the image scene. Releasing from the promise callback races
   // the shared WebGPU stage: it can still encode the previous portal while
   // React is committing the new handle. Even releasing on this following
   // committed render is too early for WebGPU: a command buffer submitted by
@@ -159,7 +159,7 @@ export function useImageTextureLease({
       cancelled = true;
     };
     // `identity`, not the frame object, is the requested lifecycle key. Keyed
-    // MCAP callers deliberately keep identity stable across fresh wrappers.
+    // Episode callers deliberately keep identity stable across fresh wrappers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [decodeRunway, disabledStatus, enabled, identity, textureKey]);
 

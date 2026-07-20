@@ -1,5 +1,5 @@
 import type { McapTypes } from "@mcap/core";
-import { compareBigInt } from "../bigint";
+import { compareBigInt } from "../../../ir";
 import { DEFAULT_MAX_PREDECESSOR_CHUNK_PROBES } from "./latest-before";
 import {
   channelIdsForTopics,

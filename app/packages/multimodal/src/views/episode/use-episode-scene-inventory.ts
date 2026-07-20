@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { LoadStatus } from "../../load-status";
+import type { LoadStatus } from "../../runtime";
 import {
   sceneSourcesFromStreamInventory,
   type SceneSource,

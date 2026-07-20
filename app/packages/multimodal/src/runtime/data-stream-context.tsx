@@ -62,13 +62,19 @@ export const EpisodeDataStreamProvider: React.FC<{
 };
 
 /** Reads the format-neutral episode stream handle, if one is published. */
-export function useEpisodeDataStream(): AnyEpisodeDataStream | null {
-  return useContext(DataStreamContext).dataStream;
+export function useEpisodeDataStream<
+  TFrame = unknown,
+  TCache = unknown,
+>(): EpisodeDataStream<TFrame, TCache> | null {
+  return useContext(DataStreamContext).dataStream as EpisodeDataStream<
+    TFrame,
+    TCache
+  > | null;
 }
 
 /** Returns the setter used by runtime setup to publish a stream handle. */
-export function useSetEpisodeDataStream(): (
-  next: AnyEpisodeDataStream | null,
+export function useSetEpisodeDataStream<TFrame = unknown, TCache = unknown>(): (
+  next: EpisodeDataStream<TFrame, TCache> | null,
 ) => void {
   return useContext(DataStreamContext).setDataStream;
 }

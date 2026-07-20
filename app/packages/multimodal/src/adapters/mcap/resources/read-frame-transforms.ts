@@ -1,5 +1,5 @@
 import type { McapTypes } from "@mcap/core";
-import { mcapReadCancelledError } from "../errors";
+import { readCancelledError } from "../../../errors";
 import type { Type } from "protobufjs";
 import { Quaternion, Vector3 } from "three";
 import { decodeProtobufMessage } from "../decoders/foxglove/protobuf";
@@ -344,7 +344,7 @@ export async function readMcapFrameTransformWindow({
     topics: transformTopics,
   })) {
     if (readSignal?.current?.aborted) {
-      throw mcapReadCancelledError();
+      throw readCancelledError();
     }
     const entry = channelsById.get(message.channelId);
     if (!entry) {

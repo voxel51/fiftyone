@@ -175,12 +175,8 @@ async function readH264DecodeRunway(
   targetTimeNs: bigint,
 ): Promise<readonly ImageVisualization[]> {
   const timeline = dataStream?.getTimelineIndex();
-  const readStreamMessages = dataStream?.readStreamMessages;
-  if (
-    !timeline ||
-    !readStreamMessages ||
-    targetTimeNs <= timeline.startTimeNs
-  ) {
+  const readStreamFrames = dataStream?.readStreamFrames;
+  if (!timeline || !readStreamFrames || targetTimeNs <= timeline.startTimeNs) {
     return EMPTY_RUNWAY;
   }
 
@@ -192,7 +188,7 @@ async function readH264DecodeRunway(
       endTimeNs - lookbackNs > timeline.startTimeNs
         ? endTimeNs - lookbackNs
         : timeline.startTimeNs;
-    const messages = await readStreamMessages({
+    const messages = await readStreamFrames({
       endTimeNs,
       startTimeNs,
       stream,

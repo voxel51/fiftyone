@@ -8,13 +8,12 @@ import {
 } from "@testing-library/react";
 import React, { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MCAP_ACTIVE_TIMELINE as EPISODE_ACTIVE_TIMELINE } from "../../adapters/mcap/types";
+import { createTimelineIndex } from "../../runtime";
 import {
   EpisodeDataStreamProvider,
   useSetEpisodeDataStream,
   type EpisodeDataStream,
 } from "./episode-data-stream-context";
-import { createEpisodeTimelineIndex } from "./episode-timeline-index";
 import EpisodeTimestampReadout, {
   formatEpisodeTimestampCopyText,
   formatEpisodeTimeZoneOption,
@@ -92,10 +91,9 @@ describe("timestamp formatting helpers", () => {
 
 function fakeDataStream(startTimeNs: bigint): EpisodeDataStream {
   const endTimeNs = startTimeNs + 10_000_000_000n;
-  const index = createEpisodeTimelineIndex({
-    activeTimeline: EPISODE_ACTIVE_TIMELINE.LOG,
-    startTimeNs,
-    endTimeNs,
+  const index = createTimelineIndex({
+    startNs: startTimeNs,
+    endNs: endTimeNs,
   });
   return {
     getTimelineIndex: () => index,

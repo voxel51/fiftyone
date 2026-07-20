@@ -15,12 +15,12 @@ import { useIsPlayPending } from "@fiftyone/playback/runtime";
 import { usePlaybackStream } from "@fiftyone/playback/runtime";
 import { useEffect, useMemo, useRef } from "react";
 import type { EpisodeFrameTransformTimeRange } from "../../runtime/frame-transform-types";
+import type { TimelineIndex } from "../../runtime";
 import type {
   EpisodeFramePlacementReadiness,
   EpisodeFrameTransformsState,
 } from "./use-episode-frame-transforms";
 import { useEpisodeDataStream } from "./episode-data-stream-context";
-import type { EpisodeTimelineIndex } from "./episode-timeline-index";
 
 const PLACEMENT_LOOKAHEAD_SECONDS = 1;
 const PLACEMENT_STARTUP_BUFFER_SECONDS = 0.5;
@@ -149,7 +149,7 @@ function placementBufferState(
     readonly active: boolean;
     readonly frameIds: readonly string[];
     readonly frameTransforms: EpisodeFrameTransformsState;
-    readonly timeline: EpisodeTimelineIndex | null;
+    readonly timeline: TimelineIndex | null;
     readonly worldFrameId: string;
   },
   timeSec: number,
@@ -187,7 +187,7 @@ function placementBufferedRanges(
     readonly active: boolean;
     readonly frameIds: readonly string[];
     readonly frameTransforms: EpisodeFrameTransformsState;
-    readonly timeline: EpisodeTimelineIndex | null;
+    readonly timeline: TimelineIndex | null;
     readonly worldFrameId: string;
   },
   store: PlaybackStore,
@@ -215,13 +215,13 @@ function placementBufferedRanges(
 }
 
 function fullTimelineRange(
-  timeline: EpisodeTimelineIndex | null,
+  timeline: TimelineIndex | null,
 ): Array<[number, number]> {
   return timeline ? [[0, timeline.durationSec]] : [];
 }
 
 function transformRangeToSeconds(
-  timeline: EpisodeTimelineIndex,
+  timeline: TimelineIndex,
   range: EpisodeFrameTransformTimeRange,
 ): [number, number] {
   return [

@@ -4,24 +4,22 @@ import { useIsPlayPending } from "@fiftyone/playback/runtime";
 import { useEffect, useMemo, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EMPTY_EPISODE_FRAME_GRAPH_SUMMARY } from "../../runtime/frame-transforms";
-import { MCAP_ACTIVE_TIMELINE as EPISODE_ACTIVE_TIMELINE } from "../../adapters/mcap/types";
+import { createTimelineIndex } from "../../runtime";
 import {
   EpisodeDataStreamProvider,
   type EpisodeDataStream,
   useEpisodeDataStream,
   useSetEpisodeDataStream,
 } from "./episode-data-stream-context";
-import { createEpisodeTimelineIndex } from "./episode-timeline-index";
 import { useEpisode3dPlacementStream } from "./use-episode-3d-placement-stream";
 import type {
   EpisodeFramePlacementReadinessStatus,
   EpisodeFrameTransformsState,
 } from "./use-episode-frame-transforms";
 
-const TIMELINE = createEpisodeTimelineIndex({
-  activeTimeline: EPISODE_ACTIVE_TIMELINE.LOG,
-  endTimeNs: 10_000_000_000n,
-  startTimeNs: 0n,
+const TIMELINE = createTimelineIndex({
+  endNs: 10_000_000_000n,
+  startNs: 0n,
 });
 
 const DATA_STREAM: EpisodeDataStream = {

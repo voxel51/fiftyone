@@ -1,6 +1,6 @@
 /**
  * Number of canonical decoder samples a consumer should draw for its local
- * budget. A non-positive budget retains one point, matching the legacy path.
+ * budget. A non-positive budget retains one point, matching the CPU path.
  */
 export function gpuPointCloudDrawCount(
   sampledPointCount: number,

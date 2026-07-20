@@ -17,7 +17,7 @@ import {
   type McapGridPreviewFrame,
 } from "./grid-preview";
 import { firstImageByte, imageFrame } from "./grid-preview-test-utils";
-import { chooseAnnotationTopic } from "./topic-matching";
+import { chooseAnnotationStream } from "../../stream-matching";
 import { streamTopics } from "./stream-topics";
 import type { McapDecodedMessage, McapResourceClient } from "./types";
 
@@ -551,7 +551,7 @@ describe("MCAP grid preview", () => {
 
   it("prefers nested camera annotation siblings", () => {
     expect(
-      chooseAnnotationTopic("/camera/front/image_rect_compressed", [
+      chooseAnnotationStream("/camera/front/image_rect_compressed", [
         "/camera/annotations",
         "/camera/front/annotations",
       ]),
@@ -560,7 +560,7 @@ describe("MCAP grid preview", () => {
 
   it("does not match camera prefixes across path segment boundaries", () => {
     expect(
-      chooseAnnotationTopic("/cam/image_rect_compressed", [
+      chooseAnnotationStream("/cam/image_rect_compressed", [
         "/cam_front/annotations",
       ]),
     ).toBeNull();

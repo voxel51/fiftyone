@@ -8,14 +8,7 @@ export { detectMcapSample, mcapAdapterDescriptor } from "./descriptor";
  */
 export { createMcapResourceClient } from "./resource-client";
 
-/**
- * Shared MCAP stream classification and topic matching helpers.
- */
-export {
-  chooseAnnotationTopic,
-  topicPrefix,
-  topicTokens,
-} from "./topic-matching";
+/** Shared MCAP stream classification helpers. */
 export {
   hasPayload,
   isCompressedImageStream,

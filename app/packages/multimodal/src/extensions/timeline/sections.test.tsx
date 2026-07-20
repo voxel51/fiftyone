@@ -28,7 +28,7 @@ describe("useTimelineSections", () => {
     expect(result.current.tracks).toEqual([TAG_TRACK]);
   });
 
-  it("orders multiple sections behind non-pinnable compatibility headers", () => {
+  it("orders multiple sections behind non-pinnable synthetic headers", () => {
     const { result } = renderHook(() =>
       useTimelineSections([
         section("fiftyone:temporal-tags", 200, TAG_TRACK),

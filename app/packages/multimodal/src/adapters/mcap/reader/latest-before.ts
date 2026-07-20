@@ -1,5 +1,5 @@
 import type { McapTypes } from "@mcap/core";
-import { compareBigInt } from "../bigint";
+import { compareBigInt } from "../../../ir";
 import {
   channelIdsForTopics,
   compareIndexedMessageTimes,
