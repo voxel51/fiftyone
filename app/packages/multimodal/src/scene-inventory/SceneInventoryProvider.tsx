@@ -1,4 +1,7 @@
 import React, { createContext, useContext, useMemo } from "react";
+import type { SceneSource } from "../ir";
+
+export type { SceneSource } from "../ir";
 
 /**
  * One discoverable data source in the current scene. `type` is the
@@ -7,22 +10,6 @@ import React, { createContext, useContext, useMemo } from "react";
  * the data domain uses to address the source (an MCAP topic, a stream
  * id, etc.).
  */
-export interface SceneSource {
-  readonly id: string;
-  readonly type: string;
-  readonly label: string;
-
-  /** Domain-specific source relationships and other static inventory facts. */
-  readonly metadata?: Readonly<Record<string, string>>;
-
-  /**
-   * Total recorded messages for the source when the domain knows it.
-   * Layout heuristics use it to rank sources (a video-rate stream
-   * outranks a single keyframe).
-   */
-  readonly recordCount?: number;
-}
-
 interface SceneInventoryContextValue {
   readonly sources: readonly SceneSource[];
 }

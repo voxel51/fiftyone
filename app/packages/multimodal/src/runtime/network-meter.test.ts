@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ByteReadDebugLog } from "./query/bytes";
+import type { ByteReadDebugLog } from "../query/bytes";
 import { createNetworkTransportMeter } from "./network-meter";
 
 describe("network transport meter", () => {
@@ -34,6 +34,35 @@ describe("network transport meter", () => {
       busyMs: 0,
       fetchedBytes: 0,
       reads: 0,
+    });
+  });
+
+  it("unions nested intervals regardless of completion order", () => {
+    let now = 100;
+    const meter = createNetworkTransportMeter(() => now);
+
+    meter.onByteRead(read({ durationMs: 20, fetchedBytes: 100 }));
+    now = 120;
+    meter.onByteRead(read({ durationMs: 120, fetchedBytes: 200 }));
+    now = 180;
+    meter.onByteRead(read({ durationMs: 30, fetchedBytes: 300 }));
+
+    expect(meter.snapshot()).toMatchObject({
+      busyMs: 150,
+      fetchedBytes: 600,
+      reads: 3,
+    });
+  });
+
+  it("counts zero-byte network fetches without reducing byte totals", () => {
+    const meter = createNetworkTransportMeter(() => 100);
+    meter.onByteRead(read({ durationMs: 25, fetchedBytes: 0 }));
+    meter.onByteRead(read({ durationMs: 10, fetchedBytes: -1 }));
+
+    expect(meter.snapshot()).toMatchObject({
+      busyMs: 25,
+      fetchedBytes: 0,
+      reads: 2,
     });
   });
 });
