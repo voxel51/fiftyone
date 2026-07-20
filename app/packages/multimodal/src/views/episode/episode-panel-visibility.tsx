@@ -51,9 +51,8 @@ interface EpisodePersistedVisibilityStore {
 
 const EpisodePanelVisibilityScopeContext = createContext<string | null>(null);
 
-const STORAGE_KEY = "fiftyone.episode.panel-visibility";
-const LEGACY_STORAGE_KEY = "fiftyone.mcap.panel-visibility";
-const STORAGE_VERSION = 1;
+const STORAGE_KEY = "fiftyone.episode.panel-visibility.v2";
+const STORAGE_VERSION = 2;
 const MAX_SCOPES = 20;
 const MAX_TILES_PER_SCOPE = 64;
 const MAX_STREAMS_PER_TILE = 128;
@@ -257,8 +256,7 @@ function writeTileVisibility(
 function readStore(): EpisodePersistedVisibilityStore | null {
   try {
     const storage = globalThis.localStorage;
-    const raw =
-      storage?.getItem(STORAGE_KEY) ?? storage?.getItem(LEGACY_STORAGE_KEY);
+    const raw = storage?.getItem(STORAGE_KEY);
     if (raw === cachedStorageValue) return cachedStore;
     cachedStorageValue = raw ?? null;
     cachedStore = null;
@@ -308,9 +306,7 @@ function sanitizeTiles(
     if (typeof rawTile !== "object" || rawTile === null) continue;
     const tile = rawTile as Record<string, unknown>;
     const threeD = sanitize3dVisibility(tile.threeD);
-    const imageLabelStreams = sanitizeImageLabelStreams(
-      tile.imageLabelStreams ?? tile.imageLabelTopics,
-    );
+    const imageLabelStreams = sanitizeImageLabelStreams(tile.imageLabelStreams);
     const imagePointCloudProjections = sanitizeImagePointCloudProjections(
       tile.imagePointCloudProjections,
     );
@@ -403,10 +399,8 @@ function normalizeImagePointCloudProjection(
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
     return DEFAULT_IMAGE_POINT_CLOUD_PROJECTION;
   }
-  const candidate = raw as Partial<EpisodeImageTilePointCloudProjection> & {
-    topics?: unknown;
-  };
-  const rawStreams = candidate.streams ?? candidate.topics;
+  const candidate = raw as Partial<EpisodeImageTilePointCloudProjection>;
+  const rawStreams = candidate.streams;
   const streams =
     rawStreams === null
       ? null

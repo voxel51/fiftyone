@@ -79,34 +79,31 @@ const episodeModalSettingsAtom = atom<EpisodePersistedModalSettings>(
 
 /**
  * Active settings scope — one dataset (or ad hoc recording source). While
- * set, stream-keyed styling reads scoped-first with the legacy global maps
- * as fallback, and writes land under the scope, so `/lidar_top` in one
- * dataset stops styling `/lidar_top` in every other. Empty means unscoped:
- * reads and writes use the global maps, the pre-scoping behavior.
+ * set, stream-keyed styling reads and writes only that scope, so `/lidar_top`
+ * in one dataset cannot style `/lidar_top` in another. Empty means unscoped:
+ * reads and writes use the top-level maps.
  */
 const episodeSettingsScopeAtom = atom("");
 
 /**
- * Resolves one stream-keyed styling map against the active scope: scoped
- * entries shadow global ones per stream. Returns the global map identity
- * while the scope adds nothing, so unscoped consumers never re-render.
+ * Resolves one stream-keyed styling map against the active scope. Scoped and
+ * unscoped maps are deliberately isolated.
  */
 function resolveStreamKeyedMap<Key extends keyof EpisodeScopedModalSettings>(
   get: Getter,
   key: Key,
-): EpisodePersistedModalSettings[Key] {
+): EpisodeScopedModalSettings[Key] {
   const settings = get(episodeModalSettingsAtom);
   const scope = get(episodeSettingsScopeAtom);
-  const scoped = scope ? settings.scoped[scope]?.[key] : undefined;
-  if (!scoped || Object.keys(scoped).length === 0) {
-    return settings[key];
+  if (scope) {
+    return settings.scoped[scope]?.[key] ?? EMPTY_EPISODE_SCOPED_SETTINGS[key];
   }
-  return { ...settings[key], ...scoped };
+  return settings[key] as EpisodeScopedModalSettings[Key];
 }
 
 /**
  * Routes one stream-keyed write to the active scope (re-inserted last so
- * pruning drops least-recently-written scopes first), or to the legacy
+ * pruning drops least-recently-written scopes first), or to the unscoped
  * global map while unscoped.
  */
 function updateStreamKeyedSettings<
@@ -222,8 +219,7 @@ const pointCloudColorsAtom = atom(
     const normalizedStream = stream.trim();
     if (!normalizedStream) return;
 
-    // Merge over the resolved value: an edit in a scope starts from what
-    // the user currently sees, even when that came from the global map.
+    // Merge over the value visible in the current scope.
     const previous =
       resolveStreamKeyedMap(get, "pointCloudColors")[normalizedStream] ??
       DEFAULT_EPISODE_POINT_CLOUD_COLOR;
@@ -297,8 +293,7 @@ const imageProjectionAtom = atom(
     const normalizedImageStream = imageStream.trim();
     if (!normalizedImageStream) return;
 
-    // Merge over the resolved value: an edit in a scope starts from what
-    // the user currently sees, even when that came from the global map.
+    // Merge over the value visible in the current scope.
     const previous =
       resolveStreamKeyedMap(get, "imageProjection")[normalizedImageStream] ??
       DEFAULT_EPISODE_IMAGE_PROJECTION;
@@ -342,10 +337,9 @@ function updateModalSettings(
 
 /**
  * Scopes stream-keyed styling (point-cloud colors, image projection, label
- * streams) to the mounted playback host's dataset. Reads resolve scoped
- * entries first and fall back to the legacy global maps; writes land under
+ * streams) to the mounted playback host's dataset. Reads and writes stay under
  * the scope. Call once from the playback host; an empty/undefined scope key
- * leaves settings unscoped (global maps, the pre-scoping behavior).
+ * leaves settings unscoped.
  */
 export function useEpisodeModalSettingsScopeSync(
   scopeKey: string | null | undefined,

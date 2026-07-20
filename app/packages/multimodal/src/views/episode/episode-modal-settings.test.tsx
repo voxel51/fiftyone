@@ -59,37 +59,6 @@ describe("episode-modal-settings", () => {
     });
   });
 
-  it("restores the legacy key and stream field names", () => {
-    localStorage.setItem(
-      "fiftyone.mcap.modal-settings",
-      JSON.stringify({
-        imageLabelTopics: {
-          "/camera/front": ["/labels/front"],
-        },
-        imageProjection: {
-          "/camera/front": {
-            calibrationTopic: "/camera/front/camera_info",
-            enabled: true,
-            topics: ["/lidar/top"],
-          },
-        },
-      }),
-    );
-
-    expect(readEpisodeModalSettings()).toMatchObject({
-      imageLabelStreams: {
-        "/camera/front": ["/labels/front"],
-      },
-      imageProjection: {
-        "/camera/front": {
-          calibrationStream: "/camera/front/camera_info",
-          enabled: true,
-          streams: ["/lidar/top"],
-        },
-      },
-    });
-  });
-
   it("round-trips fidelity mode and image label streams", () => {
     writeEpisodeModalSettings({
       scoped: {},
@@ -742,7 +711,7 @@ describe("episode-modal-settings", () => {
     );
   });
 
-  it("scopes stream-keyed styling to the synced dataset with global fallback", () => {
+  it("isolates scoped stream styling from unscoped settings", () => {
     const globalHook = renderHook(() => useEpisodePointCloudStyleSettings());
     act(() => {
       globalHook.result.current.setPointCloudColor("/lidar_top", {
@@ -756,24 +725,23 @@ describe("episode-modal-settings", () => {
       return useEpisodePointCloudStyleSettings();
     });
 
-    // Unwritten streams resolve through the global fallback.
-    expect(result.current.pointCloudColors["/lidar_top"]?.colorBy).toBe(
-      "height",
-    );
+    expect(result.current.pointCloudColors["/lidar_top"]).toBeUndefined();
 
-    // A scoped edit starts from the resolved value and shadows the global.
     act(() => {
       result.current.setPointCloudColor("/lidar_top", { rangeMax: 9 });
     });
     expect(result.current.pointCloudColors["/lidar_top"]).toMatchObject({
-      colorBy: "height",
+      colorBy: DEFAULT_EPISODE_POINT_CLOUD_COLOR.colorBy,
       rangeMax: 9,
     });
 
     const persisted = readEpisodeModalSettings();
     expect(
       persisted.scoped["dataset-a"]?.pointCloudColors["/lidar_top"],
-    ).toMatchObject({ colorBy: "height", rangeMax: 9 });
+    ).toMatchObject({
+      colorBy: DEFAULT_EPISODE_POINT_CLOUD_COLOR.colorBy,
+      rangeMax: 9,
+    });
     expect(persisted.pointCloudColors["/lidar_top"]).toMatchObject({
       colorBy: "height",
       rangeMax: null,

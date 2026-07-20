@@ -66,9 +66,9 @@ describe("episode-grid-stream-state", () => {
     expect(result.current.streams).toEqual([]);
   });
 
-  it("persists the selected stream stream per dataset with auto as the default", async () => {
+  it("persists the selected source name per dataset with auto as the default", async () => {
     localStorage.setItem(
-      "episode-grid-preview-image-stream:dataset",
+      "episode-grid-preview-source-name:v3:dataset",
       JSON.stringify("/camera/front"),
     );
 
@@ -86,8 +86,31 @@ describe("episode-grid-stream-state", () => {
 
     expect(result.current[0]).toBe("/camera/back");
     expect(
-      localStorage.getItem("episode-grid-preview-image-stream:dataset"),
+      localStorage.getItem("episode-grid-preview-source-name:v3:dataset"),
     ).toBe(JSON.stringify("/camera/back"));
+  });
+
+  it("loads the persisted selection when the dataset changes", async () => {
+    localStorage.setItem(
+      "episode-grid-preview-source-name:v3:dataset-a",
+      JSON.stringify("/camera/front"),
+    );
+    localStorage.setItem(
+      "episode-grid-preview-source-name:v3:dataset-b",
+      JSON.stringify("/camera/back"),
+    );
+    const { rerender, result } = renderHook(
+      ({ datasetName }) => useEpisodeGridSelectedStream(datasetName),
+      { initialProps: { datasetName: "dataset-a" } },
+    );
+
+    await waitFor(() => {
+      expect(result.current[0]).toBe("/camera/front");
+    });
+    rerender({ datasetName: "dataset-b" });
+    await waitFor(() => {
+      expect(result.current[0]).toBe("/camera/back");
+    });
   });
 
   it("uses auto when no dataset is available", () => {

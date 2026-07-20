@@ -1,4 +1,3 @@
-import { useBrowserStorage } from "@fiftyone/state";
 import { atom, getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
 
@@ -8,6 +7,7 @@ import { useCallback, useEffect, useMemo } from "react";
 export const EPISODE_GRID_STREAM_AUTO = "auto" as const;
 
 const EMPTY_STREAMS: readonly string[] = Object.freeze([]);
+const STORAGE_VERSION = "v3";
 
 type StreamsByDataset = Map<string, Map<string, readonly string[]>>;
 type SelectedStreamByDataset = Map<string, string>;
@@ -20,9 +20,10 @@ type StreamRegistration = {
 
 const streamsByDatasetAtom = atom<StreamsByDataset>(new Map());
 const selectedStreamByDatasetAtom = atom<SelectedStreamByDataset>(new Map());
+const hydratedSelectionDatasets = new Set<string>();
 
 function storageKey(datasetName: string) {
-  return `episode-grid-preview-image-stream:${datasetName}`;
+  return `episode-grid-preview-source-name:${STORAGE_VERSION}:${datasetName}`;
 }
 
 function normalizeStreams(streams: readonly string[]) {
@@ -53,6 +54,32 @@ function updateSelectedStream(
   const next = new Map(current);
   next.set(datasetName, normalizedStream);
   return next;
+}
+
+function readStoredSelection(datasetName: string): string {
+  return readStorageValue(storageKey(datasetName)) ?? EPISODE_GRID_STREAM_AUTO;
+}
+
+function readStorageValue(key: string): string | null {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (raw === null) return null;
+    const parsed: unknown = JSON.parse(raw);
+    return typeof parsed === "string" ? normalizeSelectedStream(parsed) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredSelection(datasetName: string, stream: string): void {
+  try {
+    window.localStorage.setItem(
+      storageKey(datasetName),
+      JSON.stringify(normalizeSelectedStream(stream)),
+    );
+  } catch {
+    // Browser storage is optional; the in-memory atom remains authoritative.
+  }
 }
 
 /**
@@ -136,29 +163,35 @@ export function useEpisodeGridStreams(datasetName?: string) {
  * Reads and updates the per-dataset episode grid preview stream override.
  */
 export function useSelectedStream(datasetName?: string) {
-  const key = datasetName
-    ? storageKey(datasetName)
-    : "episode-grid-preview-image-stream";
-  const [storedStream, setStoredStream] = useBrowserStorage<string>(
-    key,
-    EPISODE_GRID_STREAM_AUTO,
-  );
   const selectedStreamByDataset = useAtomValue(selectedStreamByDatasetAtom);
   const setSelectedStreamByDataset = useSetAtom(selectedStreamByDatasetAtom);
+  const storedSelection = useMemo(
+    () => (datasetName ? readStoredSelection(datasetName) : null),
+    [datasetName],
+  );
 
+  // This effect hydrates each dataset once from its persisted selection.
   useEffect(() => {
-    if (!datasetName) {
+    if (!datasetName || hydratedSelectionDatasets.has(datasetName)) {
       return;
     }
 
+    hydratedSelectionDatasets.add(datasetName);
     setSelectedStreamByDataset((current) =>
-      updateSelectedStream(current, datasetName, storedStream),
+      current.has(datasetName)
+        ? current
+        : updateSelectedStream(
+            current,
+            datasetName,
+            storedSelection ?? EPISODE_GRID_STREAM_AUTO,
+          ),
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- setter is stable
-  }, [datasetName, storedStream]);
+  }, [datasetName, setSelectedStreamByDataset, storedSelection]);
 
   const selectedStream = datasetName
-    ? (selectedStreamByDataset.get(datasetName) ?? EPISODE_GRID_STREAM_AUTO)
+    ? (selectedStreamByDataset.get(datasetName) ??
+      storedSelection ??
+      EPISODE_GRID_STREAM_AUTO)
     : EPISODE_GRID_STREAM_AUTO;
 
   const setSelected = useCallback(
@@ -171,10 +204,9 @@ export function useSelectedStream(datasetName?: string) {
       setSelectedStreamByDataset((current) =>
         updateSelectedStream(current, datasetName, normalizedStream),
       );
-      setStoredStream(normalizedStream);
+      writeStoredSelection(datasetName, normalizedStream);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- setters are stable
-    [datasetName],
+    [datasetName, setSelectedStreamByDataset],
   );
 
   return [selectedStream, setSelected] as const;
@@ -194,4 +226,5 @@ export function __resetEpisodeGridStreamStateForTests() {
   const store = getDefaultStore();
   store.set(streamsByDatasetAtom, new Map());
   store.set(selectedStreamByDatasetAtom, new Map());
+  hydratedSelectionDatasets.clear();
 }

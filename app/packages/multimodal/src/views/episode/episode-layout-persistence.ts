@@ -131,9 +131,8 @@ interface PersistedStore {
   byDataset?: Record<string, PersistedDatasetEntry>;
 }
 
-const STORAGE_KEY = "fiftyone.episode.modal-layout";
-const LEGACY_STORAGE_KEY = "fiftyone.mcap.modal-layout";
-const STORAGE_VERSION = 1;
+const STORAGE_KEY = "fiftyone.episode.modal-layout.v2";
+const STORAGE_VERSION = 2;
 const FALLBACK_OMITTED_FIELDS = [
   "logSettings",
   "mapSettings",
@@ -167,7 +166,7 @@ export function isValidMosaicLayout(node: unknown): node is MosaicNode<string> {
   );
 }
 
-/** Field-by-field sanitization of one persisted entry (any version). */
+/** Field-by-field sanitization of one persisted entry. */
 function sanitizeEntry(raw: unknown): EpisodePersistedModalLayout | undefined {
   if (typeof raw !== "object" || raw === null) return undefined;
   const candidate = raw as Record<string, unknown>;
@@ -184,7 +183,7 @@ function sanitizeEntry(raw: unknown): EpisodePersistedModalLayout | undefined {
     logSettings: sanitizeLogSettings(candidate.logSettings),
     mapSettings: sanitizeMapSettings(candidate.mapSettings),
     plotSeries: sanitizePlotSeries(candidate.plotSeries),
-    rawStreams: sanitizeRawStreams(candidate.rawStreams ?? candidate.rawTopics),
+    rawStreams: sanitizeRawStreams(candidate.rawStreams),
     sceneUpAxis: normalizeEpisode3dSceneUpAxis(candidate.sceneUpAxis),
     sidebarWidthPx:
       typeof candidate.sidebarWidthPx === "number" &&
@@ -284,7 +283,7 @@ export function sanitizePlotSeries(
       if (series.length >= MAX_PLOT_SERIES_PER_TILE) break;
       if (typeof entry !== "object" || entry === null) continue;
       const record = entry as Record<string, unknown>;
-      const stream = record.stream ?? record.topic;
+      const stream = record.stream;
       if (
         typeof stream === "string" &&
         stream.length > 0 &&
@@ -369,9 +368,7 @@ export function sanitizeMapSettings(
     const baseLayer =
       normalizeEpisodeMapBaseLayer(record.baseLayer) ??
       DEFAULT_EPISODE_MAP_TILE_SETTINGS.baseLayer;
-    const enabledStreams = sanitizeStreamList(
-      record.enabledStreams ?? record.enabledTopics,
-    );
+    const enabledStreams = sanitizeStreamList(record.enabledStreams);
     const followEgo =
       typeof record.followEgo === "boolean"
         ? record.followEgo
@@ -409,9 +406,7 @@ export function sanitizeLogSettings(
     }
 
     const record = settings as Record<string, unknown>;
-    const enabledStreams = sanitizeStreamList(
-      record.enabledStreams ?? record.enabledTopics,
-    );
+    const enabledStreams = sanitizeStreamList(record.enabledStreams);
     const followPlayhead =
       typeof record.followPlayhead === "boolean"
         ? record.followPlayhead
@@ -496,21 +491,12 @@ function readStore(): {
 } | null {
   try {
     const storage = globalThis.localStorage;
-    const raw =
-      storage?.getItem(STORAGE_KEY) ?? storage?.getItem(LEGACY_STORAGE_KEY);
+    const raw = storage?.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return null;
     const version = (parsed as { version?: unknown }).version;
-    if (version !== STORAGE_VERSION) {
-      if (version === undefined) {
-        const legacyFallback = sanitizedFallbackLayout(parsed);
-        return legacyFallback
-          ? { fallback: legacyFallback, byDataset: {} }
-          : null;
-      }
-      return null;
-    }
+    if (version !== STORAGE_VERSION) return null;
     const store = parsed as { fallback?: unknown; byDataset?: unknown };
     const byDataset: Record<string, PersistedDatasetEntry> = {};
     if (typeof store.byDataset === "object" && store.byDataset !== null) {
