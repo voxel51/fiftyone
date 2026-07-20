@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BYTE_SOURCE_READ_PROFILE } from "../../query/bytes";
-import type { EpisodeSourcePlaybackProps } from "../episode/EpisodeSourcePlayback";
+import type { EpisodeSourcePlaybackProps } from "../episode";
 import AnyMcapViewer from "./AnyMcapViewer";
 
 const viewerHarness = vi.hoisted(() => ({
@@ -16,18 +16,23 @@ const viewerHarness = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock("../episode/EpisodeSourcePlayback", () => ({
-  EpisodeSourcePlayback: (props: EpisodeSourcePlaybackProps) => {
-    viewerHarness.lastPlaybackProps = props;
+vi.mock("../episode", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../episode")>();
 
-    return (
-      <div data-testid="mcap-source-playback">
-        <span data-testid="mcap-source-file-name">{props.fileName}</span>
-        {props.headerActions}
-      </div>
-    );
-  },
-}));
+  return {
+    ...actual,
+    EpisodeSourcePlayback: (props: EpisodeSourcePlaybackProps) => {
+      viewerHarness.lastPlaybackProps = props;
+
+      return (
+        <div data-testid="mcap-source-playback">
+          <span data-testid="mcap-source-file-name">{props.fileName}</span>
+          {props.headerActions}
+        </div>
+      );
+    },
+  };
+});
 
 vi.mock("../use-episode-session", () => ({
   useEpisodeSession: viewerHarness.useEpisodeSession,

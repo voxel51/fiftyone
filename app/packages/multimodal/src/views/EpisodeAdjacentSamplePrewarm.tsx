@@ -15,7 +15,7 @@ import {
   episodeSourceFromByteSource,
   sampleDescriptorFromSample,
 } from "./episode-source";
-import { getEpisodeNetworkHealth } from "./episode/episode-network-health";
+import { getEpisodeNetworkHealth } from "./episode";
 
 /** Settle time for the current sample before spending idle bandwidth. */
 const PREWARM_START_DELAY_MS = 3_000;

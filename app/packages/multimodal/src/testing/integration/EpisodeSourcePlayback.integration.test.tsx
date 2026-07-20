@@ -6,8 +6,8 @@ import { createFixtureFormatAdapter } from "../../adapters/fixture";
 import { STREAM_KIND, type RawImageVisualization } from "../../ir";
 import type { ByteResources, EpisodeSource } from "../../ports";
 import { SceneInventoryProvider } from "../../scene-inventory";
-import { EpisodeSourcePlayback } from "../../views/episode/EpisodeSourcePlayback";
-import { useEpisodeStreamValue } from "../../views/episode/use-episode-stream-values";
+import { EpisodeSourcePlayback } from "../../views/episode";
+import { useEpisodeStreamValue } from "../../views/episode/playback/use-episode-stream-values";
 
 const layout = vi.hoisted(() => ({
   defaultLeftOpen: false,
@@ -49,33 +49,33 @@ vi.mock("../../components/MultiModalPlayback/MultiModalPlayback", () => ({
   ),
 }));
 
-vi.mock("../../views/episode/EpisodeAddTileMenu", () => ({
+vi.mock("../../views/episode/tiles/EpisodeAddTileMenu", () => ({
   default: () => null,
 }));
-vi.mock("../../views/episode/EpisodeInspectorSidebar", () => ({
+vi.mock("../../views/episode/scene/EpisodeInspectorSidebar", () => ({
   default: () => null,
 }));
-vi.mock("../../views/episode/EpisodeNetworkStatus", () => ({
+vi.mock("../../views/episode/shell/EpisodeNetworkStatus", () => ({
   EpisodeNetworkHealthTracker: () => null,
   EpisodeNetworkStatusPill: () => null,
 }));
-vi.mock("../../views/episode/EpisodePausedByteBanking", () => ({
+vi.mock("../../views/episode/playback/EpisodePausedByteBanking", () => ({
   EpisodePausedByteBanking: () => null,
 }));
-vi.mock("../../views/episode/EpisodeSettingsSidebar", () => ({
+vi.mock("../../views/episode/settings/EpisodeSettingsSidebar", () => ({
   default: () => null,
 }));
-vi.mock("../../views/episode/EpisodeTimestampReadout", () => ({
+vi.mock("../../views/episode/playback/EpisodeTimestampReadout", () => ({
   default: () => null,
 }));
-vi.mock("../../views/episode/episode-selected-object", () => ({
+vi.mock("../../views/episode/scene/episode-selected-object", () => ({
   EpisodeSelectionHotkeys: () => null,
 }));
-vi.mock("../../views/episode/use-episode-modal-layout", () => ({
+vi.mock("../../views/episode/layout/use-episode-modal-layout", () => ({
   EpisodeModalLayoutPersistence: () => null,
   useEpisodeModalLayout: () => layout,
 }));
-vi.mock("../../views/episode/use-episode-tiles", () => ({
+vi.mock("../../views/episode/tiles/use-episode-tiles", () => ({
   useEpisodeTiles: () => undefined,
 }));
 

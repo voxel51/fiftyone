@@ -1,0 +1,227 @@
+import type { EpisodeLogConsoleRow } from "./episode-log-console-rows";
+import { compareBigInt } from "../../../ir";
+
+/** Inclusive timeline range represented by a log read or cache window. */
+export interface LogReadRange {
+  readonly endTimeNs: bigint;
+  readonly startTimeNs: bigint;
+}
+
+/** Result of merging log rows into a browser-side retention limit. */
+export interface BoundedLogRows {
+  readonly rows: readonly EpisodeLogConsoleRow[];
+  readonly truncated: boolean;
+}
+
+/** Row indexes and offset needed to render one virtualized viewport slice. */
+export interface VirtualLogRowRange {
+  readonly endIndex: number;
+  readonly offsetPx: number;
+  readonly startIndex: number;
+}
+
+/** Returns the clamped beginning of a log window centered on a timeline tick. */
+export function logWindowStartNs(
+  centerTimeNs: bigint,
+  beforeNs: bigint,
+): bigint {
+  return centerTimeNs > beforeNs ? centerTimeNs - beforeNs : 0n;
+}
+
+/** Returns the inclusive log read window around a timeline tick. */
+export function logWindowForCenter(
+  centerTimeNs: bigint,
+  beforeNs: bigint,
+  afterNs: bigint,
+): LogReadRange {
+  return {
+    endTimeNs: centerTimeNs + afterNs,
+    startTimeNs: logWindowStartNs(centerTimeNs, beforeNs),
+  };
+}
+
+/** Returns the portions of an active window not covered by cached ranges. */
+export function missingLogReadRanges(
+  cachedRanges: readonly LogReadRange[] | null,
+  activeWindow: LogReadRange,
+): readonly LogReadRange[] {
+  if (!cachedRanges) {
+    return [activeWindow];
+  }
+
+  const ranges: LogReadRange[] = [];
+  let cursor = activeWindow.startTimeNs;
+  for (const covered of cachedRanges) {
+    if (covered.startTimeNs > cursor) {
+      ranges.push({ endTimeNs: covered.startTimeNs, startTimeNs: cursor });
+    }
+    if (covered.endTimeNs > cursor) {
+      cursor = covered.endTimeNs;
+    }
+    if (cursor >= activeWindow.endTimeNs) {
+      break;
+    }
+  }
+  if (cursor < activeWindow.endTimeNs) {
+    ranges.push({ endTimeNs: activeWindow.endTimeNs, startTimeNs: cursor });
+  }
+
+  return ranges;
+}
+
+/** Records how much of a capped log read is known to be covered. */
+export function coveredLogReadRange(
+  range: LogReadRange,
+  messageCount: number,
+  lastMessageTimeNs: bigint | undefined,
+  readLimit: number,
+): LogReadRange {
+  if (messageCount >= readLimit && lastMessageTimeNs !== undefined) {
+    return {
+      endTimeNs:
+        lastMessageTimeNs < range.endTimeNs
+          ? lastMessageTimeNs
+          : range.endTimeNs,
+      startTimeNs: range.startTimeNs,
+    };
+  }
+
+  return range;
+}
+
+/** Clips, sorts, and coalesces cached read ranges inside an active window. */
+export function mergeLogReadRanges(
+  ranges: readonly LogReadRange[],
+  activeWindow: LogReadRange,
+): readonly LogReadRange[] {
+  const clippedRanges: LogReadRange[] = [];
+  for (const range of ranges) {
+    const startTimeNs =
+      range.startTimeNs > activeWindow.startTimeNs
+        ? range.startTimeNs
+        : activeWindow.startTimeNs;
+    const endTimeNs =
+      range.endTimeNs < activeWindow.endTimeNs
+        ? range.endTimeNs
+        : activeWindow.endTimeNs;
+    if (startTimeNs <= endTimeNs) {
+      clippedRanges.push({ endTimeNs, startTimeNs });
+    }
+  }
+  clippedRanges.sort((left, right) =>
+    compareBigInt(left.startTimeNs, right.startTimeNs),
+  );
+
+  const merged: LogReadRange[] = [];
+  for (const range of clippedRanges) {
+    const previous = merged[merged.length - 1];
+    if (!previous || range.startTimeNs > previous.endTimeNs) {
+      merged.push(range);
+      continue;
+    }
+    if (range.endTimeNs > previous.endTimeNs) {
+      merged[merged.length - 1] = {
+        ...previous,
+        endTimeNs: range.endTimeNs,
+      };
+    }
+  }
+
+  return merged;
+}
+
+/**
+ * Merges one ordered read into the active log window while keeping browser
+ * work bounded. The newest rows win because follow mode is a live tail; older
+ * rows remain available in the episode source but are not retained in the tile.
+ */
+export function mergeBoundedLogRows(
+  current: readonly EpisodeLogConsoleRow[],
+  incoming: readonly EpisodeLogConsoleRow[],
+  activeWindow: LogReadRange,
+  rowLimit: number,
+): BoundedLogRows {
+  const retainedRows = pruneLogRows(current, activeWindow);
+  if (incoming.length === 0) {
+    return { rows: retainedRows, truncated: false };
+  }
+
+  const rowsById = new Map(retainedRows.map((row) => [row.id, row]));
+  for (const row of incoming) {
+    if (logRowInWindow(row, activeWindow)) {
+      rowsById.set(row.id, row);
+    }
+  }
+
+  const rows = Array.from(rowsById.values()).sort((left, right) =>
+    compareBigInt(left.timeNs, right.timeNs),
+  );
+  if (rows.length <= rowLimit) {
+    return { rows, truncated: false };
+  }
+
+  return {
+    rows: rows.slice(rows.length - rowLimit),
+    truncated: true,
+  };
+}
+
+/** Retains rows that still fall inside the inclusive active window. */
+export function pruneLogRows(
+  rows: readonly EpisodeLogConsoleRow[],
+  activeWindow: LogReadRange,
+): readonly EpisodeLogConsoleRow[] {
+  const retainedRows = rows.filter((row) => logRowInWindow(row, activeWindow));
+  return retainedRows.length === rows.length ? rows : retainedRows;
+}
+
+/** Returns the fixed-height slice that should exist in the DOM. */
+export function virtualLogRowRange({
+  overscan,
+  rowCount,
+  rowHeightPx,
+  scrollTop,
+  viewportHeight,
+}: {
+  readonly overscan: number;
+  readonly rowCount: number;
+  readonly rowHeightPx: number;
+  readonly scrollTop: number;
+  readonly viewportHeight: number;
+}): VirtualLogRowRange {
+  if (rowCount <= 0 || rowHeightPx <= 0) {
+    return { endIndex: 0, offsetPx: 0, startIndex: 0 };
+  }
+
+  const safeOverscan = Math.max(0, Math.floor(overscan));
+  const safeScrollTop = Math.max(0, scrollTop);
+  const firstVisible = Math.min(
+    rowCount - 1,
+    Math.floor(safeScrollTop / rowHeightPx),
+  );
+  const visibleCount =
+    viewportHeight > 0
+      ? Math.ceil(viewportHeight / rowHeightPx)
+      : safeOverscan * 2 + 1;
+  const startIndex = Math.max(0, firstVisible - safeOverscan);
+  const endIndex = Math.min(
+    rowCount,
+    firstVisible + visibleCount + safeOverscan,
+  );
+
+  return {
+    endIndex,
+    offsetPx: startIndex * rowHeightPx,
+    startIndex,
+  };
+}
+
+function logRowInWindow(
+  row: EpisodeLogConsoleRow,
+  activeWindow: LogReadRange,
+): boolean {
+  return (
+    row.timeNs >= activeWindow.startTimeNs &&
+    row.timeNs <= activeWindow.endTimeNs
+  );
+}

@@ -7,7 +7,7 @@ import type {
   EpisodePreviewSession,
   EpisodeSource,
 } from "../../ports";
-import { GridRenderer } from "../../views/episode/GridRenderer";
+import { GridRenderer } from "../../views/episode";
 
 const harness = vi.hoisted(() => ({
   byteSource: {
@@ -35,13 +35,13 @@ vi.mock("../../views/use-episode-preview-session", () => ({
   }),
 }));
 
-vi.mock("../../views/episode/episode-grid-stream-state", () => ({
+vi.mock("../../views/episode/grid/episode-grid-stream-state", () => ({
   EPISODE_GRID_STREAM_AUTO: "__auto__",
   useEpisodeGridSelectedStream: () => ["__auto__", vi.fn()],
   useRegisterEpisodeGridStreams: () => harness.registerStreams,
 }));
 
-vi.mock("../../views/episode/episode-grid-camera-state", () => ({
+vi.mock("../../views/episode/grid/episode-grid-camera-state", () => ({
   useEpisodeGridCameraPose: () => [null, harness.cameraSetter],
 }));
 
@@ -50,7 +50,10 @@ vi.mock("../../visualization/panels/bitmap-image-view", () => ({
   BitmapImageFrameView: () => <div data-testid="fixture-grid-image" />,
 }));
 
-vi.mock("../../visualization/panels/point-cloud", () => ({
+vi.mock("../../visualization/panels/point-cloud", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("../../visualization/panels/point-cloud")
+  >()),
   PointCloudPanel: () => <div data-testid="fixture-grid-live-point-cloud" />,
 }));
 

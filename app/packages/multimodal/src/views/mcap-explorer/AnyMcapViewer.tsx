@@ -15,7 +15,7 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import type { ByteSourceDescriptor } from "../../query/bytes";
 import { episodeSourceFromByteSource } from "../episode-source";
 import { useEpisodeSession } from "../use-episode-session";
-import { EpisodeSourcePlayback } from "../episode/EpisodeSourcePlayback";
+import { EpisodeSourcePlayback } from "../episode";
 import {
   createLocalMcapSourceDescriptor,
   createRemoteMcapSourceDescriptor,

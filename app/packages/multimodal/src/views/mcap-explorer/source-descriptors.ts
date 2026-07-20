@@ -2,7 +2,7 @@ import {
   BYTE_SOURCE_READ_PROFILE,
   type ByteSourceDescriptor,
 } from "../../query/bytes";
-import { episodeSourceDisplayName } from "../episode/episode-source-display-name";
+import { episodeSourceDisplayName } from "../episode";
 
 export interface AnyMcapSourceDescriptor {
   readonly fileName: string;
