@@ -12,6 +12,7 @@ import tempfile
 import unittest
 from unittest.mock import mock_open, patch
 
+import fiftyone as fo
 from fiftyone.core import threed
 from fiftyone.core.threed.utils import convert_keys_to_snake_case
 
@@ -47,6 +48,9 @@ class TestScene(unittest.TestCase):
                 "n6.jpeg",
             ],
         )
+
+    def test_gaussian_splat_public_export(self):
+        self.assertIs(fo.GaussianSplat, threed.GaussianSplat)
 
     def test_export_invalid_extension(self):
         with self.assertRaises(ValueError):
