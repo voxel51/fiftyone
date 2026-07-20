@@ -245,28 +245,27 @@ class SimilaritySearchOperator(foo.Operator):
         # For patch-backed indices, IDs are label IDs not sample IDs
         id_key = "label_ids" if patches_field else "sample_ids"
 
-        # The selection may include samples this index doesn't cover (e.g.
-        # from group slices it wasn't built on), whose embeddings don't
-        # exist. Keep only IDs present in the index — get_embeddings raises
-        # on an all-missing lookup.
-        index_ids = set(getattr(results, id_key))
-        positive_ids = [i for i in positive_ids if i in index_ids]
-        negative_ids = [i for i in negative_ids or [] if i in index_ids]
+        embeddings, _, _ = results.get_embeddings(
+            **{id_key: positive_ids}, allow_missing=True
+        )
+        pos_embeddings = [np.asarray(e) for e in embeddings]
 
-        if not positive_ids:
-            raise ValueError(
-                f"None of the selected positive samples are in the "
-                f"'{brain_key}' index"
+        neg_embeddings = []
+        if negative_ids:
+            embeddings, _, _ = results.get_embeddings(
+                **{id_key: negative_ids}, allow_missing=True
             )
+            neg_embeddings = [np.asarray(e) for e in embeddings]
 
-        embeddings, _, _ = results.get_embeddings(**{id_key: positive_ids})
-        pos_mean = np.mean(embeddings, axis=0)
+        if not pos_embeddings:
+            raise ValueError("No embeddings found for positive samples")
+
+        pos_mean = np.mean(pos_embeddings, axis=0)
 
         # Qdrant-style: query = avg(pos) + (avg(pos) - avg(neg))
         #                    = 2 * avg(pos) - avg(neg)
-        if negative_ids:
-            embeddings, _, _ = results.get_embeddings(**{id_key: negative_ids})
-            neg_mean = np.mean(embeddings, axis=0)
+        if neg_embeddings:
+            neg_mean = np.mean(neg_embeddings, axis=0)
             combined = 2 * pos_mean - neg_mean
         else:
             combined = pos_mean
