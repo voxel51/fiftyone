@@ -1,15 +1,36 @@
 import { useAtomValue } from "jotai";
 import { useCallback, useRef, useState } from "react";
-import { Round } from "../Actions";
+import { Redo, Round, Undo } from "../Actions";
 
 import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import { West as Back } from "@mui/icons-material";
-import { Box, Menu, MenuItem, Stack } from "@mui/material";
-import { Clickable, Icon, IconName, Size, Text } from "@voxel51/voodo";
+import { Box, Menu, MenuItem } from "@mui/material";
+import {
+  Align,
+  Clickable,
+  Icon,
+  IconName,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+  Text,
+} from "@voxel51/voodo";
 import { DETECTION } from "@fiftyone/utilities";
+import styled from "styled-components";
 import { ItemLeft, ItemRight } from "../Components";
 import { ICONS } from "../Icons";
 import { Row } from "./Components";
+
+// The voodo Divider's line renders too faint against the header; an explicit
+// rule in the theme divider colour keeps the status / action groups legible.
+const VerticalDivider = styled.div`
+  width: 1px;
+  height: 1.25rem;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+  background: ${({ theme }) => theme.divider};
+`;
 
 import { labels } from "../useLabels";
 import * as fos from "@fiftyone/state";
@@ -24,6 +45,7 @@ import useExit from "./useExit";
 import { useDetectionMode } from "./useDetectionMode";
 import { useSegmentationMode } from "./useSegmentationMode";
 import {
+  AnnotationSaveIndicator,
   useAnnotationController,
   useAnnotationEngine,
 } from "@fiftyone/annotation";
@@ -147,7 +169,11 @@ const LabelHamburgerMenu = () => {
             onClick={deleteCommand.callback}
             data-cy="label-menu-delete"
           >
-            <Stack direction="row" gap={1} alignItems="center">
+            <Stack
+              orientation={Orientation.Row}
+              align={Align.Center}
+              spacing={Spacing.Sm}
+            >
               <Icon name={IconName.Delete} size={Size.Md} />
               <Text>{deleteCommand.descriptor.label}</Text>
             </Stack>
@@ -203,11 +229,19 @@ const Header = () => {
           <Back />
         </Round>
         {Icon && <Icon fill={color} />}
-        <div>Edit {type}</div>
+        <div style={{ marginRight: "0.75rem" }}>Edit {type}</div>
       </ItemLeft>
       {currentFieldIsReadOnly && <span>Read-only</span>}
       <ItemRight>
-        <Stack direction="row" alignItems="center">
+        <Stack
+          orientation={Orientation.Row}
+          align={Align.Center}
+          spacing={Spacing.Xs}
+        >
+          <AnnotationSaveIndicator />
+          <VerticalDivider />
+          <Undo />
+          <Redo />
           {annotationContext.selected?.label != null && <LabelHamburgerMenu />}
         </Stack>
       </ItemRight>

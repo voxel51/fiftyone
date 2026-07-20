@@ -149,9 +149,9 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.sidebar.annotate.assert.detectionModeIsActive();
 
     // The label list should be hidden (edit form is showing)
-    const labelListHeader = modal.sidebar.locator.getByText(
-      "Click labels to edit",
-    );
+    const labelListHeader = modal.sidebar.locator.getByText("Edit", {
+      exact: true,
+    });
     await expect(labelListHeader).toBeHidden();
   });
 
@@ -174,9 +174,9 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.sidebar.annotate.assert.detectionModeIsActive();
 
     // The label list should be hidden (edit form is showing)
-    const labelListHeader = modal.sidebar.locator.getByText(
-      "Click labels to edit",
-    );
+    const labelListHeader = modal.sidebar.locator.getByText("Edit", {
+      exact: true,
+    });
     await expect(labelListHeader).toBeHidden();
   });
 
@@ -260,8 +260,9 @@ test.describe.serial("canvas interactions and action state", () => {
     await modal.sidebar.annotate.assert.classificationIsActive();
     await modal.sidebar.annotate.assert.detectionModeIsActive(false);
 
-    // 3. Click Select to return to default
-    await modal.sidebar.annotate.selectAction();
+    // 3. Exit the edit form to return to default (the create toolbar's Select
+    // button is hidden while a label is selected)
+    await modal.sidebar.edit.exitToList();
     await modal.sidebar.annotate.assert.selectIsActive();
 
     // 4. Click a detection overlay on canvas → detection mode active
@@ -300,7 +301,7 @@ test.describe.serial("canvas interactions and action state", () => {
     // Wait for the new detection's edit form to open; quitting before the
     // async establish flow commits would re-activate detection mode
     await expect(
-      modal.sidebar.locator.getByText("Click labels to edit"),
+      modal.sidebar.locator.getByText("Edit", { exact: true }),
     ).toBeHidden();
 
     await modal.sidebar.annotate.assert.detectionModeIsActive();
