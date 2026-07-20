@@ -110,10 +110,6 @@ jobs:
       - name: Build app
         if: steps.app-static-cache.outputs.cache-hit != 'true'
         run: make app
-        env:
-          # FOE's app graph exceeds Node's default heap; kept here so the
-          # synced workflow stays consistent across OSS and FOE
-          NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Bundle built app static assets
         run: tar -czf e2e-app-static.tgz fiftyone/server/static
