@@ -8,6 +8,8 @@ const MCAP = `${SRC}adapters/mcap/`;
 const IR = `${SRC}ir/`;
 const PORTS = `${SRC}ports/`;
 const ADAPTERS = `${SRC}adapters/`;
+const EPISODE = `${SRC}views/episode/`;
+const EPISODE_INDEX = `${EPISODE}index\\.ts$`;
 const FORMAT_VENDORS = "^(@mcap/|@foxglove/|hyparquet$|mp4box$)";
 
 module.exports = {
@@ -53,9 +55,31 @@ module.exports = {
       from: {
         path:
           `${SRC}views/(EpisodeSessionRenderer\\.tsx$|` +
-          `episode/(EpisodeModalRenderer|GridRenderer)\\.tsx$)`,
+          `episode/(shell/EpisodeModalRenderer|grid/GridRenderer)\\.tsx$)`,
       },
       to: { path: ADAPTERS, reachable: true },
+    },
+    {
+      name: "episode-production-callers-use-entrypoint",
+      comment:
+        "Production modules outside the episode domain must use its explicit root entrypoint.",
+      severity: "error",
+      from: {
+        path: SRC,
+        pathNot: `${EPISODE}|${SRC}testing/|\\.test\\.[jt]sx?$`,
+      },
+      to: {
+        path: EPISODE,
+        pathNot: EPISODE_INDEX,
+      },
+    },
+    {
+      name: "episode-domains-do-not-import-entrypoint",
+      comment:
+        "The episode entrypoint is for outside callers; domain code uses direct canonical paths.",
+      severity: "error",
+      from: { path: `${EPISODE}[^/]+/` },
+      to: { path: EPISODE_INDEX },
     },
     {
       name: "shared-multimodal-does-not-import-enterprise",
@@ -171,6 +195,20 @@ module.exports = {
       severity: "error",
       from: { path: `${SRC}schemas/` },
       to: { path: `${SRC}(adapters|decoders|query|visualization)/` },
+    },
+  ],
+  required: [
+    {
+      name: "no-flat-episode-typescript-files",
+      comment:
+        "Episode TypeScript belongs in a product domain; only index.ts may remain at the root.",
+      severity: "error",
+      module: {
+        path: `${EPISODE}(?!index\\.ts$)[^/]+\\.tsx?$`,
+      },
+      // No real module can satisfy this path. Matching root files therefore
+      // fail the required rule even when they have no imports of their own.
+      to: { path: "^$" },
     },
   ],
   options: {
