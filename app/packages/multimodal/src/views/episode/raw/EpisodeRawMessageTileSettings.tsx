@@ -10,7 +10,7 @@ import {
 import { checkboxNoSpaceToggleProps } from "../settings/episode-settings-keyboard";
 import { matchesEpisodeStreamFilter } from "../inventory/episode-stream-filter";
 import { EpisodeSettingsFilterInput } from "../settings/EpisodeSettingsFilterInput";
-import rawStyles from "./EpisodeRawMessageTile.module.css";
+import rawStyles from "../../../visualization/message/StructuredMessage.module.css";
 import settingsStyles from "../tiles/EpisodeTile.settings.module.css";
 
 /**

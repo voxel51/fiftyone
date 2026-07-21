@@ -5,19 +5,19 @@ import {
   imageDisplayRect,
   transformedImageDisplayRect,
   type ImageViewTransform,
-} from "../../../visualization/panels/base-2d-scene";
-import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/panels/gpu/gpu-point-cloud-projection-picker";
-import { gpuPointCloudProjectionResourceKey } from "../../../visualization/panels/gpu/gpu-point-cloud-projection";
+} from "../../../visualization/image/base-2d-scene";
+import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/webgpu/gpu-point-cloud-projection-picker";
+import { gpuPointCloudProjectionResourceKey } from "../../../visualization/webgpu/gpu-point-cloud-projection";
 import {
   POINT_HOVER_DWELL_MS,
   POINT_HOVER_MOVE_TOLERANCE_PX,
-} from "../../../visualization/panels/hover-inspect";
-import { attachPointerDwell } from "../../../visualization/panels/pointer-dwell";
+} from "../../../visualization/shared/hover-inspect";
+import { attachPointerDwell } from "../../../visualization/shared/pointer-dwell";
 import {
   DEFAULT_POINT_SIZE,
   gpuPointCloudColorAtSample,
   resolveGpuPointCloudColor,
-} from "../../../visualization/panels/point-cloud";
+} from "../../../visualization/scene-3d";
 import {
   useSetEpisodeHoverEcho,
   type EpisodeHoverEcho,

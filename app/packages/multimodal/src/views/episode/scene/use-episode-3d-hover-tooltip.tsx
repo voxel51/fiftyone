@@ -18,7 +18,7 @@ import {
   VISUALIZATION_HUD_BACKGROUND_COLOR,
   VISUALIZATION_HUD_BORDER_COLOR,
   VISUALIZATION_HUD_TEXT_COLOR,
-} from "../../../visualization/panels/style-tokens";
+} from "../../../visualization/shared/style-tokens";
 
 // Delay before the entity tooltip appears — long enough that sweeping the
 // pointer across a scene doesn't strobe tooltips, short enough to feel

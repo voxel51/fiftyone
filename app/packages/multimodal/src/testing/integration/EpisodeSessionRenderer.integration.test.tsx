@@ -13,13 +13,13 @@ import { createFixtureFormatAdapter } from "../../adapters/fixture";
 import type { ByteResources, EpisodeSource } from "../../ports";
 import { EpisodeSessionRenderer } from "../../views/EpisodeSessionRenderer";
 
-vi.mock("../../visualization/panels/image", () => ({
+vi.mock("../../visualization/image/ImagePanel", () => ({
   ImagePanel: ({ alt }: { alt: string }) => (
     <div data-testid="neutral-image-panel">{alt}</div>
   ),
 }));
 
-vi.mock("../../visualization/panels/point-cloud", () => ({
+vi.mock("../../visualization/scene-3d", () => ({
   PointCloudPanel: () => <div data-testid="neutral-3d-panel">3D</div>,
 }));
 

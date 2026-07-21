@@ -12,7 +12,7 @@ import React, { useCallback, useEffect, useMemo } from "react";
 import type { AlignedData } from "uplot";
 import TimeseriesChart, {
   type TimeseriesChartSeries,
-} from "../../../visualization/panels/timeseries/TimeseriesChart";
+} from "../../../visualization/plot/TimeseriesChart";
 import { useEpisodeDataStream } from "../playback/episode-data-stream-context";
 import {
   episodeNumericSeriesKey,

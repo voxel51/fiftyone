@@ -45,19 +45,17 @@ vi.mock("../../views/episode/grid/episode-grid-camera-state", () => ({
   useEpisodeGridCameraPose: () => [null, harness.cameraSetter],
 }));
 
-vi.mock("../../visualization/panels/bitmap-image-view", () => ({
+vi.mock("../../visualization/image/bitmap-image-view", () => ({
   BitmapCanvasHost: () => <div data-testid="fixture-grid-point-cloud" />,
   BitmapImageFrameView: () => <div data-testid="fixture-grid-image" />,
 }));
 
-vi.mock("../../visualization/panels/point-cloud", async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import("../../visualization/panels/point-cloud")
-  >()),
+vi.mock("../../visualization/scene-3d", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../visualization/scene-3d")>()),
   PointCloudPanel: () => <div data-testid="fixture-grid-live-point-cloud" />,
 }));
 
-vi.mock("../../visualization/panels/gpu/webgpu-snapshot-renderer", () => ({
+vi.mock("../../visualization/webgpu/webgpu-snapshot-renderer", () => ({
   renderPointCloudSnapshot: vi.fn(async () => null),
 }));
 

@@ -47,11 +47,11 @@ export type {
  * Public visualization registry values shared by decoders and panels.
  */
 export {
-  PANEL_TYPE,
+  RENDERER_FAMILY,
   VISUALIZATION_KIND,
-  VISUALIZATION_PANEL_REGISTRY,
+  VISUALIZATION_RENDERER_REGISTRY,
 } from "./visualization";
-export type { PanelType, VisualizationKind } from "./visualization";
+export type { RendererFamily, VisualizationKind } from "./visualization";
 
 /**
  * Scene inventory — discoverable data sources for the current scene.

@@ -8,6 +8,8 @@ import React, {
   useState,
 } from "react";
 import type { MosaicNode } from "react-mosaic-component";
+import { episodeTileExtensionSettingsAtom } from "../../../extensions/tiles/settings";
+import { isEpisodeTileExtensionId } from "../../../extensions/tiles/registry";
 import type { ByteSourceReadProfile } from "../../../query/bytes";
 import type { SceneSource } from "../../../scene-inventory";
 import {
@@ -22,6 +24,7 @@ import {
   episodeTileTypeFromId,
   readEpisodeCameraPreferences,
   readEpisodeModalLayout,
+  sanitizeEpisodeExtensionSettings,
   writeEpisodeCameraPreferences,
   writeEpisodeModalLayout,
   type EpisodePersistedModalLayout,
@@ -42,6 +45,7 @@ import {
 } from "../plots/episode-plot-tile-state";
 import { episodeRawTileStreamAtom } from "../raw/episode-raw-tile-state";
 import { EPISODE_TILE_TYPE } from "../tiles/episode-tile-types";
+import type { EpisodeTileType } from "../tiles/episode-tile-types";
 import {
   collectPlaybackDeviceCapabilities,
   rankDefaultImageSources,
@@ -49,10 +53,8 @@ import {
   type PlaybackDeviceCapabilities,
   type PlaybackLayoutTile,
 } from "./playback-layout";
-import {
-  getEpisodeTileDefinition,
-  episodeTileTypesFor,
-} from "../tiles/use-episode-tiles";
+import { getEpisodeTileDefinition } from "../tiles/use-episode-tiles";
+import MissingEpisodeTile from "../tiles/MissingEpisodeTile";
 
 export interface EpisodeModalLayout {
   initialTiles: Record<string, TilingTile>;
@@ -80,6 +82,8 @@ export interface EpisodeModalLayout {
 }
 
 export interface UseEpisodeModalLayoutOptions {
+  /** Tile kinds supported by the active episode manifest and capabilities. */
+  availableTileTypes: readonly EpisodeTileType[];
   sources: readonly SceneSource[];
   /**
    * Persistence scope — `ctx.dataset.datasetId` (stable across dataset
@@ -108,16 +112,13 @@ export interface UseEpisodeModalLayoutOptions {
  * changes back.
  */
 export function useEpisodeModalLayout({
+  availableTileTypes,
   sources,
   datasetId,
   cameraPreferenceField,
   readProfile,
   capabilities,
 }: UseEpisodeModalLayoutOptions): EpisodeModalLayout {
-  const presentTypes = useMemo(
-    () => Array.from(new Set(sources.map((s) => s.type))),
-    [sources],
-  );
   const resolved = useMemo(
     () =>
       resolvePlaybackLayout({
@@ -149,11 +150,11 @@ export function useEpisodeModalLayout({
     () =>
       rebuildTilesFromLayout(
         persisted?.layout,
-        presentTypes,
+        availableTileTypes,
         sources,
         persisted?.tileTitles,
       ),
-    [persisted, presentTypes, sources],
+    [availableTileTypes, persisted, sources],
   );
   const restoredTileIds = useMemo(
     () => (restored ? new Set(collectTileIds(restored.layout)) : null),
@@ -345,7 +346,7 @@ export function pruneMosaicLayout(
  */
 function rebuildTilesFromLayout(
   layout: MosaicNode<string> | null | undefined,
-  presentTypes: readonly string[],
+  availableTileTypes: readonly EpisodeTileType[],
   sources: readonly SceneSource[],
   tileTitles?: Readonly<Record<string, string>>,
 ): {
@@ -355,11 +356,14 @@ function rebuildTilesFromLayout(
 } | null {
   if (layout === null || layout === undefined) return null;
 
-  const availableTypes = new Set<string>(episodeTileTypesFor(presentTypes));
+  const availableTypes = new Set<string>(availableTileTypes);
   const isValidLeaf = (id: string): boolean => {
     const type = episodeTileTypeFromId(id);
-    if (!type || !availableTypes.has(type)) return false;
-    return getEpisodeTileDefinition(type) !== null;
+    if (!type) return false;
+    const definition = getEpisodeTileDefinition(type);
+    return definition
+      ? availableTypes.has(type)
+      : isEpisodeTileExtensionId(type);
   };
   const pruned = pruneMosaicLayout(layout, isValidLeaf);
   if (pruned === null) return null;
@@ -373,21 +377,24 @@ function rebuildTilesFromLayout(
   for (const id of tileIds) {
     const type = episodeTileTypeFromId(id);
     if (!type) return null;
-    // Pruning guarantees every surviving leaf maps to a definition.
     const definition = getEpisodeTileDefinition(type);
-    if (!definition) return null;
-    const Tile = definition.Tile;
+    const Tile = definition?.Tile ?? MissingEpisodeTile;
     const initialSourceId =
       type === EPISODE_TILE_TYPE.IMAGE
         ? rankedImages[imageLeafIndex++]?.id
         : undefined;
     const restoredTitle = tileTitles?.[id];
-    const title = restoredTitle ?? definition.typeLabel;
+    const title = restoredTitle ?? definition?.typeLabel ?? "Unavailable tile";
     if (restoredTitle) {
       manualTileTitles[id] = restoredTitle;
     }
     tiles[id] = {
-      render: () => <Tile initialSourceId={initialSourceId} />,
+      render: () => (
+        <Tile
+          initialSourceId={initialSourceId}
+          unavailableType={definition ? undefined : type}
+        />
+      ),
       title,
       type,
     };
@@ -474,6 +481,30 @@ export function EpisodeModalLayoutPersistence({
     datasetIdRef,
     patchForValue: rawStreamsPatch,
     seededKeyRef: seededRawKeyRef,
+    store,
+  });
+
+  const seededExtensionSettingsKeyRef = useRef<string | null>(null);
+  useSeedPersistedTileAtom({
+    atom: episodeTileExtensionSettingsAtom,
+    datasetIdRef,
+    field: "extensionSettings",
+    seededKeyRef: seededExtensionSettingsKeyRef,
+    store,
+    tilesRef,
+  });
+
+  const extensionSettingsPatch = useCallback(
+    (value: Readonly<Record<string, unknown>>) => ({
+      extensionSettings: sanitizeEpisodeExtensionSettings(value),
+    }),
+    [],
+  );
+  useDebouncedEpisodeLayoutAtomMirror({
+    atom: episodeTileExtensionSettingsAtom,
+    datasetIdRef,
+    patchForValue: extensionSettingsPatch,
+    seededKeyRef: seededExtensionSettingsKeyRef,
     store,
   });
 
@@ -697,6 +728,7 @@ function compactMapSettings(
 }
 
 type PersistedTileAtomField =
+  | "extensionSettings"
   | "logSettings"
   | "mapSettings"
   | "plotSeries"
@@ -740,7 +772,7 @@ function useSeedPersistedTileAtom<TileValue>({
         return next;
       });
     }
-    seededKeyRef.current = JSON.stringify(store.get(atom));
+    seededKeyRef.current = jsonKey(store.get(atom));
   }, [atom, datasetIdRef, field, seededKeyRef, store, tilesRef]);
 }
 
@@ -770,7 +802,7 @@ function useDebouncedEpisodeLayoutAtomMirror<Value>({
     let dirty = false;
     const currentPatch = () => patchForValue(store.get(atom));
     const unsubscribe = store.sub(atom, () => {
-      const key = JSON.stringify(store.get(atom));
+      const key = jsonKey(store.get(atom));
       if (!dirty && key === seededKeyRef.current) return;
       dirty = true;
       if (timeout !== null) clearTimeout(timeout);
@@ -791,4 +823,12 @@ function useDebouncedEpisodeLayoutAtomMirror<Value>({
       }
     };
   }, [atom, datasetIdRef, patchForValue, seededKeyRef, store]);
+}
+
+function jsonKey(value: unknown): string {
+  try {
+    return JSON.stringify(value) ?? "__undefined__";
+  } catch {
+    return "__unserializable__";
+  }
 }

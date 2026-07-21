@@ -21,13 +21,13 @@ import type { ByteSourceDescriptor } from "../../../query/bytes/types";
 import type { SceneSource } from "../../../scene-inventory";
 import { EpisodePlaybackStoreProvider } from "../../../runtime";
 import type { StreamInventory } from "../../../schemas/v1";
-import { releaseRetainedImageTextures } from "../../../visualization/panels/image-texture-cache";
+import { releaseRetainedImageTextures } from "../../../visualization/image/image-texture-cache";
 import {
   releaseGpuPointCloudProjectionResources,
   releaseGpuPointCloudProjectionResourcesForSource,
-} from "../../../visualization/panels/gpu/gpu-point-cloud-projection-resources";
-import { releaseGpuPointCloudColormapTextures } from "../../../visualization/panels/point-cloud/gpu/gpu-point-cloud-colormap-texture";
-import { BitmapImageFrameView } from "../../../visualization/panels/bitmap-image-view";
+} from "../../../visualization/webgpu/gpu-point-cloud-projection-resources";
+import { releaseGpuPointCloudColormapTextures } from "../../../visualization/scene-3d/gpu/gpu-point-cloud-colormap-texture";
+import { BitmapImageFrameView } from "../../../visualization/image/bitmap-image-view";
 import { getSourceBootstrap, sourceBootstrapKey } from "../../../runtime";
 import type { EpisodeSession } from "../../../ports";
 import { Episode3dViewStateProvider } from "../scene/episode-3d-view-state-context";
@@ -53,6 +53,7 @@ import { EpisodeRawMessageProvider } from "../raw/episode-raw-message-context";
 import { EpisodeSceneUpdateHistoryProvider } from "../scene/episode-scene-update-history-context";
 import { EpisodeSelectionHotkeys } from "../scene/episode-selected-object";
 import EpisodeAddTileMenu from "../tiles/EpisodeAddTileMenu";
+import { episodeTileTypesFor } from "../tiles/use-episode-tiles";
 import EpisodeInspectorSidebar from "../scene/EpisodeInspectorSidebar";
 import styles from "./EpisodeModalRenderer.module.css";
 import {
@@ -78,6 +79,8 @@ import { useEpisodeSceneInventory } from "../inventory/use-episode-scene-invento
 const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
 
 interface EpisodeReadyInventory {
+  readonly hasNumericSeries: boolean;
+  readonly hasRawRecords: boolean;
   readonly sources: readonly SceneSource[];
   readonly streamCount: number;
   readonly streams: readonly StreamInventory[];
@@ -213,9 +216,22 @@ export const EpisodeSourcePlayback: React.FC<EpisodeSourcePlaybackProps> = ({
   const readyInventory = useMemo<EpisodeReadyInventory | null>(
     () =>
       status === "ready" && sources.length > 0
-        ? { sources, streamCount, streams }
+        ? {
+            hasNumericSeries: session?.numericSeries !== undefined,
+            hasRawRecords: session?.rawRecords !== undefined,
+            sources,
+            streamCount,
+            streams,
+          }
         : null,
-    [sources, status, streamCount, streams],
+    [
+      session?.numericSeries,
+      session?.rawRecords,
+      sources,
+      status,
+      streamCount,
+      streams,
+    ],
   );
   const retainedInventoryRef = useRef<EpisodeReadyInventory | null>(null);
   // This layout effect retains the last inventory that produced a usable shell.
@@ -242,6 +258,15 @@ export const EpisodeSourcePlayback: React.FC<EpisodeSourcePlaybackProps> = ({
       : timelineMode.kind === "absolute"
         ? `absolute:${timelineMode.epochAnchorMs}`
         : "duration";
+  const availableTileTypes = useMemo(
+    () =>
+      episodeTileTypesFor({
+        hasNumericSeries: shellInventory?.hasNumericSeries ?? false,
+        hasRawRecords: shellInventory?.hasRawRecords ?? false,
+        sourceTypes: shellSources.map((source) => source.type),
+      }),
+    [shellInventory, shellSources],
+  );
   const playbackSource = readyInventory && !navigationPending ? source : null;
   const effectiveLayoutScopeKey =
     layoutScopeKey ??
@@ -276,6 +301,7 @@ export const EpisodeSourcePlayback: React.FC<EpisodeSourcePlaybackProps> = ({
     defaultTrackingMode,
     onDefaultTrackingModeChange,
   } = useEpisodeModalLayout({
+    availableTileTypes,
     cameraPreferenceField,
     datasetId: effectiveLayoutScopeKey,
     readProfile: source?.readProfile,
@@ -376,7 +402,11 @@ export const EpisodeSourcePlayback: React.FC<EpisodeSourcePlaybackProps> = ({
                               headerActions={
                                 <EpisodeHeaderActions actions={headerActions} />
                               }
-                              addTileMenu={<EpisodeAddTileMenu />}
+                              addTileMenu={
+                                <EpisodeAddTileMenu
+                                  tileTypes={availableTileTypes}
+                                />
+                              }
                               timelineExtraActions={<EpisodeTimestampReadout />}
                               sceneSources={shellSources}
                               mode={timelineMode}
@@ -439,6 +469,7 @@ export const EpisodeSourcePlayback: React.FC<EpisodeSourcePlaybackProps> = ({
                               timelineDrawerMaxSize={timelineDrawerMaxSize}
                             >
                               <EpisodeStreams
+                                availableTileTypes={availableTileTypes}
                                 onPlayheadDataReady={handlePlayheadDataReady}
                                 session={readyInventory ? session : null}
                                 source={playbackSource}

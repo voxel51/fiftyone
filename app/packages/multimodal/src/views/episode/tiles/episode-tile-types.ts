@@ -1,3 +1,5 @@
+import type { EpisodeTileExtensionId } from "../../../extensions/tiles/types";
+
 /**
  * Tile kinds the episode shell can render. A tile kind is named for what
  * it shows ("image", "3d"), not for the sensor behind it. The same
@@ -17,14 +19,14 @@ export const EPISODE_TILE_TYPE = {
   THREE_D: "3d",
 } as const;
 
-export type EpisodeTileType =
+/** Tile kinds supplied eagerly by the core multimodal package. */
+export type BuiltInEpisodeTileType =
   (typeof EPISODE_TILE_TYPE)[keyof typeof EPISODE_TILE_TYPE];
 
-/**
- * Props every episode tile body accepts. `initialSourceId` is the source
- * the tile opens bound to (the layout resolver assigns one per default
- * tile); tiles fall back to their own source ranking when absent.
- */
-export interface EpisodeTileProps {
-  readonly initialSourceId?: string;
-}
+export type {
+  EpisodeTileProps,
+  EpisodeTileExtensionId,
+} from "../../../extensions/tiles/types";
+
+/** Any tile kind available to the episode host in the current build. */
+export type EpisodeTileType = BuiltInEpisodeTileType | EpisodeTileExtensionId;

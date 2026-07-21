@@ -26,7 +26,7 @@ import type {
   ImageAnnotationBounds,
   ImageAnnotationLineListGroup,
   ImageAnnotationRenderMetadata,
-} from "../../../visualization/panels/image-annotation-render-metadata";
+} from "../../../visualization/image/image-annotation-render-metadata";
 
 function interpolationFraction({
   nextTimelineTimeNs,

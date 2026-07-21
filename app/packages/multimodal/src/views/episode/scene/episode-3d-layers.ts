@@ -12,7 +12,7 @@ import type {
   PointCloudFrameTransform,
   PointCloudPanelLayer,
   SceneAnnotationPanelLayer,
-} from "../../../visualization/panels/point-cloud";
+} from "../../../visualization/scene-3d";
 import type { EpisodeStreamPlaybackFrame } from "../playback/use-episode-stream-values";
 import type { EpisodeFrameTransformsState } from "./use-episode-frame-transforms";
 

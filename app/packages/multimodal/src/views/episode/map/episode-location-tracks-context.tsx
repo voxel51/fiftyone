@@ -25,7 +25,7 @@ import {
   type EpisodeLocationTrackPoint,
   type EpisodeLocationTracks,
   type EpisodeLocationTrackState,
-} from "./episode-location-track";
+} from "../../../visualization/map/episode-location-track";
 
 const LOCATION_TRACK_READ_LIMIT = 25_000;
 const LOCATION_TRACK_DEFERRED_RETRY_MS = 2_000;

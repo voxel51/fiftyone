@@ -4,6 +4,7 @@ import {
   episodeTileTypeFromId,
   readEpisodeCameraPreferences,
   readEpisodeModalLayout,
+  sanitizeEpisodeExtensionSettings,
   sanitizeLogSettings,
   sanitizeMapSettings,
   sanitizePlotSeries,
@@ -378,6 +379,28 @@ describe("episode-layout-persistence", () => {
       expect(episodeTileTypeFromId("camera")).toBeNull();
       expect(episodeTileTypeFromId("-3")).toBeNull();
       expect(episodeTileTypeFromId("camera-")).toBeNull();
+    });
+  });
+
+  describe("extensionSettings", () => {
+    it("keeps bounded JSON for namespaced extension tiles only", () => {
+      expect(
+        sanitizeEpisodeExtensionSettings({
+          "fiftyone:events-1": {
+            ["x".repeat(257)]: "ignored",
+            nested: { enabled: true },
+            invalid: 1n,
+            mode: "compact",
+          },
+          "image-1": { ignored: true },
+          "missing-suffix": { ignored: true },
+        }),
+      ).toEqual({
+        "fiftyone:events-1": {
+          nested: { enabled: true },
+          mode: "compact",
+        },
+      });
     });
   });
 

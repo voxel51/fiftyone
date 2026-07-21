@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Quaternion, Vector3 } from "three";
 
-import type { CameraFrustumPanelLayer } from "../../../visualization/panels/point-cloud";
+import type { CameraFrustumPanelLayer } from "../../../visualization/scene-3d";
 import type { EpisodeFrameTransformResolver } from "../scene/use-episode-frame-transforms";
 import type { EpisodeDepthHover } from "./episode-depth-hover";
 import { resolveEpisodeDepthRay } from "./episode-depth-ray";

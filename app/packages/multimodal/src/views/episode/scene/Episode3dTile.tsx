@@ -18,11 +18,11 @@ import type {
   PoseVisualization,
   SceneUpdateVisualization,
 } from "../../../decoders";
-import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
-import { useKeyedIdentityMap } from "../../../visualization/panels/use-keyed-identity-map";
-import type { ThreeSceneBackground } from "../../../visualization/panels/base-3d-scene";
-import { DEFAULT_POINT_CLOUD_CAMERA_PROJECTION } from "../../../visualization/panels/point-cloud/camera-fit-bounds";
-import { PointCloudPanel } from "../../../visualization/panels/point-cloud/PointCloudPanel";
+import { imageTextureCacheKey } from "../../../visualization/image/image-texture-cache";
+import { useKeyedIdentityMap } from "../../../visualization/shared/use-keyed-identity-map";
+import type { ThreeSceneBackground } from "../../../visualization/scene-3d/base-3d-scene";
+import { DEFAULT_POINT_CLOUD_CAMERA_PROJECTION } from "../../../visualization/scene-3d/camera-fit-bounds";
+import { PointCloudPanel } from "../../../visualization/scene-3d/PointCloudPanel";
 import {
   type CameraFrustumPanelLayer,
   type GridPanelLayer,
@@ -33,7 +33,7 @@ import {
   type PointCloudPointPick,
   type SceneAnnotationPanelLayer,
   type SceneRayPanelLayer,
-} from "../../../visualization/panels/point-cloud/types";
+} from "../../../visualization/scene-3d/types";
 import { Episode3dCameraRig } from "./Episode3dCameraRig";
 import Episode3dTileSettings from "./Episode3dTileSettings";
 import { Episode3dViewControls } from "./Episode3dViewControls";

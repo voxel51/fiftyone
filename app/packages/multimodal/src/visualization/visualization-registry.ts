@@ -7,38 +7,37 @@ export { VISUALIZATION_KIND } from "../ir/visualization-kinds";
 export type { VisualizationKind } from "../ir/visualization-kinds";
 
 /**
- * App panel families capable of presenting decoded visual artifacts.
+ * Neutral renderer families capable of presenting decoded visual artifacts.
  */
-export const PANEL_TYPE = Object.freeze({
+export const RENDERER_FAMILY = Object.freeze({
   IMAGE: "image",
   MAP: "map",
-  THREE_D: "3D",
-  TIMESERIES: "timeseries",
+  PLOT: "plot",
+  SCENE_3D: "scene-3d",
 } as const);
 
 /**
- * Union of panel family ids.
+ * Union of semantic renderer-family ids.
  */
-export type PanelType = (typeof PANEL_TYPE)[keyof typeof PANEL_TYPE];
+export type RendererFamily =
+  (typeof RENDERER_FAMILY)[keyof typeof RENDERER_FAMILY];
 
 /**
- * Visualization-to-panel registry.
+ * Visualization-to-renderer registry.
  */
-export const VISUALIZATION_PANEL_REGISTRY: Readonly<
-  Record<VisualizationKind, PanelType>
+export const VISUALIZATION_RENDERER_REGISTRY: Readonly<
+  Record<VisualizationKind, RendererFamily>
 > = Object.freeze({
   // Calibration is data, not imagery: its only renderable form is a camera
-  // frustum in the 3D scene, so it maps to the 3D panel family.
-  [VISUALIZATION_KIND.CAMERA_CALIBRATION]: PANEL_TYPE.THREE_D,
-  [VISUALIZATION_KIND.ENCODED_IMAGE]: PANEL_TYPE.IMAGE,
-  [VISUALIZATION_KIND.ENCODED_VIDEO]: PANEL_TYPE.IMAGE,
-  [VISUALIZATION_KIND.GRID]: PANEL_TYPE.THREE_D,
-  [VISUALIZATION_KIND.IMAGE_ANNOTATIONS]: PANEL_TYPE.IMAGE,
-  // No MAP panel exists yet; locations currently surface as a 3D-tile HUD
-  // readout. The mapping records the natural home for the data.
-  [VISUALIZATION_KIND.LOCATION]: PANEL_TYPE.MAP,
-  [VISUALIZATION_KIND.POINT_CLOUD]: PANEL_TYPE.THREE_D,
-  [VISUALIZATION_KIND.POSE]: PANEL_TYPE.THREE_D,
-  [VISUALIZATION_KIND.RAW_IMAGE]: PANEL_TYPE.IMAGE,
-  [VISUALIZATION_KIND.SCENE_UPDATE]: PANEL_TYPE.THREE_D,
+  // frustum in the 3D scene, so it maps to that renderer family.
+  [VISUALIZATION_KIND.CAMERA_CALIBRATION]: RENDERER_FAMILY.SCENE_3D,
+  [VISUALIZATION_KIND.ENCODED_IMAGE]: RENDERER_FAMILY.IMAGE,
+  [VISUALIZATION_KIND.ENCODED_VIDEO]: RENDERER_FAMILY.IMAGE,
+  [VISUALIZATION_KIND.GRID]: RENDERER_FAMILY.SCENE_3D,
+  [VISUALIZATION_KIND.IMAGE_ANNOTATIONS]: RENDERER_FAMILY.IMAGE,
+  [VISUALIZATION_KIND.LOCATION]: RENDERER_FAMILY.MAP,
+  [VISUALIZATION_KIND.POINT_CLOUD]: RENDERER_FAMILY.SCENE_3D,
+  [VISUALIZATION_KIND.POSE]: RENDERER_FAMILY.SCENE_3D,
+  [VISUALIZATION_KIND.RAW_IMAGE]: RENDERER_FAMILY.IMAGE,
+  [VISUALIZATION_KIND.SCENE_UPDATE]: RENDERER_FAMILY.SCENE_3D,
 });

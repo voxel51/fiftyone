@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { Quaternion, Vector3 } from "three";
-import type { PointCloudCameraPose } from "../../../visualization/panels/point-cloud";
+import type { PointCloudCameraPose } from "../../../visualization/scene-3d";
 import type { Episode3dCameraTargetPose } from "./episode-3d-camera";
 import type { CameraPoseChangeSource } from "./use-episode-3d-camera-tracking";
 import { resolveCameraTargetPose } from "./use-episode-3d-camera-tracking";

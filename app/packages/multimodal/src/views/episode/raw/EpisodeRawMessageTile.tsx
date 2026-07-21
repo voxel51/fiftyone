@@ -8,12 +8,12 @@ import { useEpisodeNumericSeriesContext } from "../plots/episode-numeric-series-
 import { useEpisodeRawMessageContext } from "./episode-raw-message-context";
 import { useEpisodeRawTileStream } from "./episode-raw-tile-state";
 import type { EpisodeTileProps } from "../tiles/episode-tile-types";
-import EpisodeRawMessageTree from "./EpisodeRawMessageTree";
-import rawStyles from "./EpisodeRawMessageTile.module.css";
+import StructuredMessageTree from "../../../visualization/message/StructuredMessageTree";
+import rawStyles from "../../../visualization/message/StructuredMessage.module.css";
 import EpisodeRawMessageTileSettings from "./EpisodeRawMessageTileSettings";
 import { useRegisterEpisodeTileSettings } from "../tiles/episode-tile-settings-context";
 import styles from "../tiles/EpisodeTile.module.css";
-import { useCopyFeedback } from "./use-copy-feedback";
+import { useCopyFeedback } from "../../../visualization/shared/use-copy-feedback";
 
 /**
  * Raw message tile: the escape hatch that makes every stream at least
@@ -227,7 +227,7 @@ function RecordBody({
   if (result.status === "ok" && result.root) {
     return (
       <div className={rawStyles.scroll}>
-        <EpisodeRawMessageTree
+        <StructuredMessageTree
           onAddNumericFieldToPlot={onAddNumericFieldToPlot}
           plottableFieldPaths={plottableFieldPaths}
           root={result.root}

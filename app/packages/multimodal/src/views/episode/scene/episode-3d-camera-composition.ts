@@ -2,7 +2,7 @@ import { Vector3 } from "three";
 import type {
   PointCloudCameraPose,
   PointCloudSceneBoundsSummary,
-} from "../../../visualization/panels/point-cloud";
+} from "../../../visualization/scene-3d";
 import {
   cameraPoseFromTrackingAnchor,
   cameraTrackingAnchorFromPose,

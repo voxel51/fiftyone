@@ -11,12 +11,12 @@ import {
 import {
   BitmapCanvasHost,
   BitmapImageFrameView,
-} from "../../../visualization/panels/bitmap-image-view";
+} from "../../../visualization/image/bitmap-image-view";
 import type { EpisodePosterFrame } from "../../../ir";
 import { retainedBinaryBytes } from "../../../runtime";
-import { PointCloudPanel } from "../../../visualization/panels/point-cloud";
-import { acquireGridLiveLease } from "../../../visualization/panels/gpu/webgpu-live-lease";
-import { renderPointCloudSnapshot } from "../../../visualization/panels/gpu/webgpu-snapshot-renderer";
+import { PointCloudPanel } from "../../../visualization/scene-3d";
+import { acquireGridLiveLease } from "../../../visualization/webgpu/webgpu-live-lease";
+import { renderPointCloudSnapshot } from "../../../visualization/webgpu/webgpu-snapshot-renderer";
 import { sampleDescriptorFromContext } from "../../episode-source";
 import { useEpisodeGridPreview } from "../../use-episode-grid-preview";
 import { useEpisodePreviewSession } from "../../use-episode-preview-session";

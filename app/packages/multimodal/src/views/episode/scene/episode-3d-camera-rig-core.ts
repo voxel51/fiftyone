@@ -1,4 +1,4 @@
-import type { PointCloudCameraPose } from "../../../visualization/panels/point-cloud";
+import type { PointCloudCameraPose } from "../../../visualization/scene-3d";
 import {
   cameraPoseFromTrackingAnchor,
   cameraTrackingAnchorFromPose,

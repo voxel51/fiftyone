@@ -1,7 +1,7 @@
 import type {
   PointCloudCameraPose,
   PointCloudCameraProjection,
-} from "../../../visualization/panels/point-cloud";
+} from "../../../visualization/scene-3d";
 import type { Episode3dTrackingMode } from "./episode-3d-camera";
 import type { Episode3dCameraComposition } from "./episode-3d-camera-composition";
 
