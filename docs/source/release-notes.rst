@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.23.0
 --------------------------
-*Released July 21, 2026*
+*Released HOLD*
 
 Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
 
@@ -42,7 +42,7 @@ Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
 
 FiftyOne 1.20.0
 ---------------
-*Released July 21, 2026*
+*Released HOLD*
 
 App
 ^^^
