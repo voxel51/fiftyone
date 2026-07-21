@@ -18,7 +18,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import MeasureRulerIcon from "../../../components/MeasureRulerIcon";
+import MeasureRulerIcon from "../../../visualization/panels/measurement/MeasureRulerIcon";
 import { useSceneInventory } from "../../../scene-inventory";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
 import type { TimelineIndex } from "../../../runtime";

@@ -29,7 +29,7 @@ const layout = vi.hoisted(() => ({
   sceneUpAxis: "z",
 }));
 
-vi.mock("../../components/MultiModalPlayback/MultiModalPlayback", () => ({
+vi.mock("../../views/episode/shell/MultiModalPlayback", () => ({
   default: ({
     children,
     sceneSources = [],

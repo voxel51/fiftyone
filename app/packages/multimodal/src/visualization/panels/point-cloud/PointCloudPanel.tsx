@@ -9,7 +9,7 @@ import {
 } from "react";
 import * as THREE from "three";
 
-import MeasureRulerIcon from "../../../components/MeasureRulerIcon";
+import MeasureRulerIcon from "../measurement/MeasureRulerIcon";
 import type { PointCloudBounds } from "../../../decoders";
 import { Base3DScene } from "../base-3d-scene";
 import { WebGpuCanvas } from "../gpu/webgpu-canvas";

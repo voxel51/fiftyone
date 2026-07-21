@@ -40,7 +40,7 @@ const playbackHarness = vi.hoisted(() => {
   return harness;
 });
 
-vi.mock("../../../components/MultiModalPlayback/MultiModalPlayback", () => {
+vi.mock("./MultiModalPlayback", () => {
   const MockMultiModalPlayback = ({
     children,
     fileName,
