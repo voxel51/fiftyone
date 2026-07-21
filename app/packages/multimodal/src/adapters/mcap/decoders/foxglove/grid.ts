@@ -1,11 +1,10 @@
+import type { DecodeContext, Decoder } from "../../../../decoders";
 import type {
-  DecodeContext,
   DecodedAttributeValue,
   DecodedOutput,
-  Decoder,
   GridField,
   GridVisualization,
-} from "../../../../decoders";
+} from "../../../../ir";
 import { resourceHintsForArrayBufferViews } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../ir";
 import { rosDecodersForPayloads } from "../ros/factory";

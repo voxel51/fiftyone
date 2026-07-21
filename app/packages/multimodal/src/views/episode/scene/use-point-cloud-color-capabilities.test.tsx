@@ -1,7 +1,7 @@
 import { cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { PointCloudVisualization } from "../../../decoders";
+import type { PointCloudVisualization } from "../../../ir";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import type { EpisodeStreamPlaybackFrame } from "../playback/use-episode-stream-values";
 import { usePointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";

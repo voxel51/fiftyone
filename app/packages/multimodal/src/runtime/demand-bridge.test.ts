@@ -1,15 +1,15 @@
 import { createStore } from "jotai";
 import { playheadAtom } from "@fiftyone/playback/runtime";
 import { act, cleanup, renderHook } from "@testing-library/react";
-import type { MutableRefObject } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTimelineIndex } from "./timeline-index";
 import {
   startDemandBridge,
-  useDemandRegistry,
   type DemandHandlers,
+  type MutableRef,
   type TimelineDataStream,
 } from "./demand-bridge";
+import { useDemandRegistry } from "./react";
 
 afterEach(() => {
   cleanup();
@@ -148,10 +148,10 @@ interface HarnessOptions {
 
 function createHarness(options: HarnessOptions = {}) {
   const fills: boolean[] = [];
-  const handlersRef: MutableRefObject<DemandHandlers | null> = {
+  const handlersRef: MutableRef<DemandHandlers | null> = {
     current: null,
   };
-  const dataStreamRef: MutableRefObject<TimelineDataStream | null> = {
+  const dataStreamRef: MutableRef<TimelineDataStream | null> = {
     current:
       options.dataStream ??
       ({ getTimelineIndex: () => null, sourceKey: "source" } as const),

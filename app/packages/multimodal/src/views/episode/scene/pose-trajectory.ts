@@ -13,7 +13,7 @@ import type {
   SceneLinePrimitive,
   ScenePoint3D,
   SceneUpdateVisualization,
-} from "../../../decoders";
+} from "../../../ir";
 import { VISUALIZATION_KIND } from "../../../visualization";
 
 /**

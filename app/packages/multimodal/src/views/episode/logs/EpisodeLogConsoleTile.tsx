@@ -12,7 +12,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useSceneSourcesByType } from "../../../scene-inventory/SceneInventoryProvider";
+import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import { LOG_LEVELS, type LogLevel } from "../../../ir";
 import {
   useEpisodeLogTileSettings,

@@ -1,4 +1,4 @@
-import type { DecodedAttributeValue } from "../../decoders";
+import type { DecodedAttributeValue } from "../../ir";
 import {
   LOG_ATTRIBUTE_ROWS,
   LOG_LEVEL,

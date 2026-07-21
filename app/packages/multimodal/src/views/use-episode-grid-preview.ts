@@ -5,7 +5,7 @@ import {
   type EpisodePreviewReadResult,
 } from "../ir";
 import type { EpisodePreviewSession } from "../ports";
-import { errorMessage } from "../errors";
+import { episodeErrorMessage as errorMessage } from "./episode-error-message";
 import {
   episodePreviewPlaybackDelayMs,
   publishEpisodeTimeRange,

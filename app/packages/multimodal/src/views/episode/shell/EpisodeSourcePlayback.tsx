@@ -16,16 +16,15 @@ import React, {
   useState,
 } from "react";
 import MultiModalPlayback from "./MultiModalPlayback";
-import { byteSourceAccessKey } from "../../../query/bytes/cache";
-import type { ByteSourceDescriptor } from "../../../query/bytes/types";
+import type { ByteSourceDescriptor, StreamDescriptor } from "../../../ir";
 import type { SceneSource } from "../../../scene-inventory";
-import { EpisodePlaybackStoreProvider } from "../../../runtime";
-import type { StreamInventory } from "../../../schemas/v1";
+import { episodeSourceAccessKey } from "../../../runtime";
+import { EpisodePlaybackStoreProvider } from "../../../runtime/react";
 import { releaseRetainedImageTextures } from "../../../visualization/image/image-texture-cache";
 import {
   releaseGpuPointCloudProjectionResources,
   releaseGpuPointCloudProjectionResourcesForSource,
-} from "../../../visualization/webgpu/gpu-point-cloud-projection-resources";
+} from "../../../visualization/composition/gpu-point-cloud-projection-resources";
 import { releaseGpuPointCloudColormapTextures } from "../../../visualization/scene-3d/gpu/gpu-point-cloud-colormap-texture";
 import { BitmapImageFrameView } from "../../../visualization/image/bitmap-image-view";
 import { getSourceBootstrap, sourceBootstrapKey } from "../../../runtime";
@@ -53,7 +52,10 @@ import { EpisodeRawMessageProvider } from "../raw/episode-raw-message-context";
 import { EpisodeSceneUpdateHistoryProvider } from "../scene/episode-scene-update-history-context";
 import { EpisodeSelectionHotkeys } from "../scene/episode-selected-object";
 import EpisodeAddTileMenu from "../tiles/EpisodeAddTileMenu";
-import { episodeTileTypesFor } from "../tiles/use-episode-tiles";
+import {
+  episodeTileTypesFor,
+  getEpisodeTileDefinition,
+} from "../tiles/episode-tile-catalog";
 import EpisodeInspectorSidebar from "../scene/EpisodeInspectorSidebar";
 import styles from "./EpisodeModalRenderer.module.css";
 import {
@@ -83,7 +85,7 @@ interface EpisodeReadyInventory {
   readonly hasRawRecords: boolean;
   readonly sources: readonly SceneSource[];
   readonly streamCount: number;
-  readonly streams: readonly StreamInventory[];
+  readonly streams: readonly StreamDescriptor[];
 }
 
 type EpisodePosterImage = Extract<
@@ -192,7 +194,7 @@ export const EpisodeSourcePlayback: React.FC<EpisodeSourcePlaybackProps> = ({
     [source],
   );
   const sourceAccessKey = useMemo(
-    () => (source ? byteSourceAccessKey(source) : ""),
+    () => (source ? episodeSourceAccessKey(source) : ""),
     [source],
   );
   const previousSourceKeyRef = useRef(sourceKey);
@@ -305,6 +307,7 @@ export const EpisodeSourcePlayback: React.FC<EpisodeSourcePlaybackProps> = ({
     cameraPreferenceField,
     datasetId: effectiveLayoutScopeKey,
     readProfile: source?.readProfile,
+    resolveTile: getEpisodeTileDefinition,
     sources: shellSources,
   });
 

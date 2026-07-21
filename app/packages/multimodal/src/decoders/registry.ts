@@ -1,4 +1,5 @@
-import type { Decoder, PayloadDescriptor } from "./types";
+import type { PayloadDescriptor } from "../ir";
+import type { Decoder } from "./types";
 
 /**
  * Stable string key for one encoded payload descriptor.

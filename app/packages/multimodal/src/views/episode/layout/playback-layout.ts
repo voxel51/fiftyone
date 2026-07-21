@@ -3,13 +3,13 @@ import type { MosaicNode } from "react-mosaic-component";
 import {
   BYTE_SOURCE_READ_PROFILE,
   type ByteSourceReadProfile,
-} from "../../../query/bytes";
+} from "../../../ir";
 import type { SceneSource } from "../../../scene-inventory";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
 import {
   filterDefaultStreamEquivalents,
   orderDefaultStreamEquivalents,
-} from "../../../stream-matching";
+} from "../../../stream-selection";
 import { episodeTileTypeFromId } from "./episode-layout-persistence";
 import {
   EPISODE_TILE_TYPE,

@@ -1,6 +1,6 @@
 import { McapStreamReader, type McapTypes } from "@mcap/core";
 import { compareBigInt } from "../../../ir";
-import { errorMessage } from "../../../errors";
+import { errorMessage } from "../../../utils/errors";
 import type {
   McapIndexedMessageTime,
   McapIndexedReaderLike,

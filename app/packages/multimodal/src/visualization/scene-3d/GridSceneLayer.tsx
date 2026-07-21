@@ -2,7 +2,7 @@
 import { memo, useEffect, useMemo } from "react";
 import * as THREE from "three";
 
-import type { GridVisualization } from "../../decoders";
+import type { GridVisualization } from "../../ir";
 import {
   pointCloudObjectTransform,
   scenePoseObjectTransform,

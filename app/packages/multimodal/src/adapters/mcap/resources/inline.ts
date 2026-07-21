@@ -16,7 +16,7 @@ import {
   createMcapPredecessorStore,
   type McapPredecessorStore,
 } from "./predecessor-store";
-import { resolveMcapTimelineStrategy } from "../timeline";
+import { resolveMcapTimelineStrategy } from "./timeline";
 import {
   readMcapFrameTransformBootstrap,
   readMcapFrameTransformWindow,
@@ -26,7 +26,7 @@ import { readMcapNumericSeries } from "./read-numeric-series";
 import { readMcapRawMessageRecord } from "./read-raw-message-record";
 import { readMcapTopics } from "./read-topics";
 import { readMcapTopicTimeBounds } from "./read-topic-time-bounds";
-import type { McapFrameTransformSet } from "../frame-transform-types";
+import type { McapFrameTransformSet } from "../shared/frame-transform-types";
 import {
   type McapDecodedMessage,
   type McapEnumerateNumericFieldsRequest,
@@ -47,7 +47,7 @@ import {
   type McapTimelineRange,
   type McapTopicNumericFields,
   type McapTopicTimeBounds,
-} from "../types";
+} from "../shared/types";
 import type { StreamInventory } from "../../../schemas/v1";
 
 const FRAME_TRANSFORM_WINDOW_READ_CACHE_LIMIT = 32;

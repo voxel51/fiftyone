@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { VISUALIZATION_KIND } from "../../../../ir";
-import type { RawImageVisualization } from "../../../../decoders";
+import type { RawImageVisualization } from "../../../../ir";
 import { decodeProtobufMessage } from "./protobuf";
 import {
   foxgloveRawImageCdrDecoders,

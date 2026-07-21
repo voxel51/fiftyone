@@ -50,12 +50,12 @@ vi.mock("../../visualization/image/bitmap-image-view", () => ({
   BitmapImageFrameView: () => <div data-testid="fixture-grid-image" />,
 }));
 
-vi.mock("../../visualization/scene-3d", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../../visualization/scene-3d")>()),
+vi.mock("../../visualization/composition", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../visualization/composition")>()),
   PointCloudPanel: () => <div data-testid="fixture-grid-live-point-cloud" />,
 }));
 
-vi.mock("../../visualization/webgpu/webgpu-snapshot-renderer", () => ({
+vi.mock("../../visualization/scene-3d/gpu/webgpu-snapshot-renderer", () => ({
   renderPointCloudSnapshot: vi.fn(async () => null),
 }));
 

@@ -2,7 +2,7 @@ import { humanReadableBytes } from "@fiftyone/utilities";
 import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { RawRecordResult } from "../../../ir";
-import { useEpisodeDataStream } from "../../../runtime";
+import { useEpisodeDataStream } from "../playback/episode-data-stream-context";
 import { useAddEpisodeFieldToPlot } from "../plots/use-add-episode-field-to-plot";
 import { useEpisodeNumericSeriesContext } from "../plots/episode-numeric-series-context";
 import { useEpisodeRawMessageContext } from "./episode-raw-message-context";

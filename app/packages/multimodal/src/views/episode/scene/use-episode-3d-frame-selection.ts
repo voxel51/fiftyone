@@ -12,7 +12,7 @@ import type {
   PointCloudVisualization,
   PoseVisualization,
   SceneUpdateVisualization,
-} from "../../../decoders";
+} from "../../../ir";
 import type { Episode3dViewStateStore } from "./episode-3d-view-state";
 import { useEpisode3dViewStateStore } from "./episode-3d-view-state-context";
 import {

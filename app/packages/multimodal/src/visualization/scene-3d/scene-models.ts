@@ -2,7 +2,7 @@ import { MeshoptDecoder } from "meshoptimizer";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
-import type { RgbaColor } from "../../decoders";
+import type { RgbaColor } from "../../ir";
 import { clamp01 } from "./utils";
 
 const sceneModelLoader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);

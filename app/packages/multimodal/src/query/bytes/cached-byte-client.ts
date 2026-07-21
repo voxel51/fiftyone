@@ -13,7 +13,7 @@ import {
   tryAcquireByteFillSlot,
 } from "./fill-lock";
 import { parseByteSize } from "./byte-size";
-import { monotonicNowMs } from "../../time";
+import { monotonicNowMs } from "../../utils/monotonic-time";
 import type {
   ByteClient,
   ByteCacheLayers,

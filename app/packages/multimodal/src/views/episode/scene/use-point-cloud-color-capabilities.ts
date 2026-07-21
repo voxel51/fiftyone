@@ -1,6 +1,6 @@
 import { useMemo, useRef } from "react";
 
-import type { PointCloudVisualization } from "../../../decoders";
+import type { PointCloudVisualization } from "../../../ir";
 import type { EpisodeStreamPlaybackFrame } from "../playback/use-episode-stream-values";
 
 /**

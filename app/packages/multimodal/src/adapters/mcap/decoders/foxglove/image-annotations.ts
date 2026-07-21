@@ -1,15 +1,14 @@
-import {
-  type DecodeContext,
-  type DecodedAttributeValue,
-  type DecodedOutput,
-  type Decoder,
-  type ImageAnnotationCircle,
-  type ImageAnnotationPoints,
-  type ImageAnnotationPointsKind,
-  type ImageAnnotationText,
-  type ImageAnnotationsVisualization,
-  type RgbaColor,
-} from "../../../../decoders";
+import { type DecodeContext, type Decoder } from "../../../../decoders";
+import type {
+  DecodedAttributeValue,
+  DecodedOutput,
+  ImageAnnotationCircle,
+  ImageAnnotationPoints,
+  ImageAnnotationPointsKind,
+  ImageAnnotationText,
+  ImageAnnotationsVisualization,
+  RgbaColor,
+} from "../../../../ir";
 import { VISUALIZATION_KIND } from "../../../../ir";
 import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";

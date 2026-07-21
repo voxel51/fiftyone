@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { VISUALIZATION_KIND } from "../../../../ir";
-import type { PointCloudVisualization } from "../../../../decoders";
+import type { PointCloudVisualization } from "../../../../ir";
 import { foxgloveLaserScanDecoder } from "./laser-scan";
 import { decodeProtobufMessage } from "./protobuf";
 

@@ -8,7 +8,7 @@ import {
 } from "../../../query/decoding";
 import { createMcapDecoderRegistry } from "../decoders";
 import { createInlineMcapResourceClient } from "../resources";
-import type { McapResourceClient } from "../types";
+import type { McapResourceClient } from "../shared/types";
 import type { McapPlaybackWorkerFetchParameters } from "./playback-worker-types";
 
 const transferSafeNoopDecodedOutputCache: DecodedOutputCache = {

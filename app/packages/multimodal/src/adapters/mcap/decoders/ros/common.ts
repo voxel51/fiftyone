@@ -1,5 +1,5 @@
+import type { DecodeContext } from "../../../../decoders";
 import type {
-  DecodeContext,
   DecodedAttributeValue,
   PayloadDescriptor,
   SceneArrowPrimitive,
@@ -11,7 +11,7 @@ import type {
   SceneSpherePrimitive,
   SceneTextPrimitive,
   SceneTrianglePrimitive,
-} from "../../../../decoders";
+} from "../../../../ir";
 import { optionalBigInt, optionalString } from "../foxglove/protobuf/records";
 import { timingFromContext } from "../foxglove/protobuf/timing";
 import { rosRecordDecoderForPayload } from "./wire";

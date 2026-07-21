@@ -52,7 +52,7 @@ vi.mock("@voxel51/voodo", () => ({
   Checkbox: ({ label }: { readonly label: string }) => <span>{label}</span>,
 }));
 
-vi.mock("../../../scene-inventory/SceneInventoryProvider", () => ({
+vi.mock("../../../scene-inventory/react", () => ({
   useSceneSourcesByType: () => mocks.logSources,
 }));
 

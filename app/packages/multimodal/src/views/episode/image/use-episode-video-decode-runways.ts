@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { ImageVisualization } from "../../../decoders";
+import type { ImageVisualization } from "../../../ir";
 import type { DecodedFrame } from "../../../ir";
 import {
   useEpisodeDataStream,

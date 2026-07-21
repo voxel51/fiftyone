@@ -11,7 +11,7 @@ import type {
   SceneSpherePrimitive,
   SceneTextPrimitive,
   SceneTrianglePrimitive,
-} from "../../decoders";
+} from "../../ir";
 import { EMPTY_POINT_CLOUD_BOUNDS_SIZE } from "./point-cloud-colors";
 import { SCENE_TEXT_DEFAULT_WORLD_HEIGHT } from "./scene-text-sprite";
 import {

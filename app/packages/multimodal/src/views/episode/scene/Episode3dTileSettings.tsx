@@ -20,7 +20,7 @@ import {
 } from "@voxel51/voodo";
 import type { Descriptor } from "@voxel51/voodo";
 import React, { useEffect, useMemo, useState } from "react";
-import type { DecodedDiagnostic } from "../../../decoders";
+import type { DecodedDiagnostic } from "../../../ir";
 import type { SceneSource } from "../../../scene-inventory";
 import {
   isFollowTrackingMode,

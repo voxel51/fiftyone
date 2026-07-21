@@ -6,8 +6,9 @@
  * message bytes into plain records for the concrete Foxglove decoders.
  */
 import type { Type } from "protobufjs";
-import type { DecodeContext, PayloadDescriptor } from "../../../../../decoders";
-import { protobufFromBinaryDescriptor } from "../../../mcap-support";
+import type { DecodeContext } from "../../../../../decoders";
+import type { PayloadDescriptor } from "../../../../../ir";
+import { protobufFromBinaryDescriptor } from "../../../shared/mcap-support";
 import { asRecord } from "./records";
 
 const messageTypeCache = new WeakMap<Uint8Array, Map<string, Type>>();

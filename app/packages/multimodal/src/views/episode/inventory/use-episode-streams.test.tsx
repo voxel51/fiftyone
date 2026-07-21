@@ -4,16 +4,16 @@ import type { EpisodeSession } from "../../../ports";
 import { useEpisodeStreams } from "./use-episode-streams";
 
 describe("useEpisodeStreams", () => {
-  it("projects neutral manifest streams into inventory rows", () => {
+  it("exposes the neutral manifest streams", () => {
     const session = testSession();
     const state = useEpisodeStreams({ session, sourceAvailable: true });
 
     expect(state.status).toBe("ready");
     expect(state.streams).toEqual([
       expect.objectContaining({
-        displayName: "/camera/front",
-        recordCount: "12",
-        streamId: "camera",
+        count: 12,
+        id: "camera",
+        sourceName: "/camera/front",
       }),
     ]);
     expect(state.streams[0].payload).toEqual(

@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 
-import type { RawImageVisualization } from "../../decoders";
+import type { RawImageVisualization } from "../../ir";
 import { VISUALIZATION_KIND } from "../visualization-registry";
 import type { ImageTextureHandle } from "./base-2d-scene";
 import { useImageTextureLease } from "./use-image-texture-lease";

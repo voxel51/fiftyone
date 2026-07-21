@@ -1,14 +1,14 @@
+import type { DecodeContext } from "../../../../decoders";
 import type {
-  DecodeContext,
   DecodedAttributeValue,
   DecodedOutput,
   PointCloudField,
-} from "../../../../decoders";
+} from "../../../../ir";
+import { resourceHintsForArrayBufferViews } from "../../../../decoders";
 import {
   buildPointCloudRenderPayload,
-  resourceHintsForArrayBufferViews,
-} from "../../../../decoders";
-import { VISUALIZATION_KIND } from "../../../../ir";
+  VISUALIZATION_KIND,
+} from "../../../../ir";
 import {
   type DecodedPointCloudData,
   extractPointCloudData,

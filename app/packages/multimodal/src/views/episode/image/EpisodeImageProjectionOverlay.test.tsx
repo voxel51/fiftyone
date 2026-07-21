@@ -9,14 +9,12 @@ import {
   vi,
 } from "vitest";
 
-import {
-  buildPointCloudRenderPayload,
-  type PointCloudVisualization,
-} from "../../../decoders";
+import { buildPointCloudRenderPayload } from "../../../ir";
+import type { PointCloudVisualization } from "../../../ir";
 import { VISUALIZATION_KIND } from "../../../visualization/visualization-registry";
 import type { PointerDwellOptions } from "../../../visualization/shared/pointer-dwell";
-import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/webgpu/gpu-point-cloud-projection-picker";
-import { gpuPointCloudProjectionResourceKey } from "../../../visualization/webgpu/gpu-point-cloud-projection";
+import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/composition/gpu-point-cloud-projection-picker";
+import { gpuPointCloudProjectionResourceKey } from "../../../visualization/composition/gpu-point-cloud-projection";
 import EpisodeImageProjectionOverlay from "./EpisodeImageProjectionOverlay";
 import type { EpisodeImageProjectionLayer } from "./use-episode-image-projection-layers";
 import type { EpisodeCameraModel } from "./camera-geometry/episode-camera-model";

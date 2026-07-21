@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { READ_CANCELLED_MESSAGE } from "../../../errors";
+import { EPISODE_READ_CANCELLED_MESSAGE } from "../../../ports";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
 
 describe("MCAP playback worker transport", () => {
@@ -58,7 +58,7 @@ describe("MCAP playback worker transport", () => {
     );
 
     expect(cancelledIds).toEqual([1]);
-    await expect(batch).rejects.toThrow(READ_CANCELLED_MESSAGE);
+    await expect(batch).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
 
     // A late worker response for the cancelled id is ignored, and the
     // untouched request still settles normally.
@@ -103,7 +103,7 @@ describe("MCAP playback worker transport", () => {
     const cancelledIds = transport.cancelStreams();
 
     expect(cancelledIds).toEqual([1]);
-    await expect(next).rejects.toThrow(READ_CANCELLED_MESSAGE);
+    await expect(next).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
 
     // A late worker response for the cancelled stream is ignored.
     transport.handleResponse({

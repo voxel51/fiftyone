@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type CSSProperties } from "react";
 
-import type { RawImageVisualization } from "../../../decoders";
+import type { RawImageVisualization } from "../../../ir";
 import {
   imageDisplayRect,
   transformedImageDisplayRect,

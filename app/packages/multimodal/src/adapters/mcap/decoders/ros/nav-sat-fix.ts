@@ -1,9 +1,9 @@
+import type { DecodeContext } from "../../../../decoders";
 import type {
-  DecodeContext,
   DecodedAttributeValue,
   DecodedOutput,
   LocationVisualization,
-} from "../../../../decoders";
+} from "../../../../ir";
 import { VISUALIZATION_KIND } from "../../../../ir";
 import {
   finiteNumberArrayField,

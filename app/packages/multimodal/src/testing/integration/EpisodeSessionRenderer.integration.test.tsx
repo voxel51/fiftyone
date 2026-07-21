@@ -19,7 +19,7 @@ vi.mock("../../visualization/image/ImagePanel", () => ({
   ),
 }));
 
-vi.mock("../../visualization/scene-3d", () => ({
+vi.mock("../../visualization/composition", () => ({
   PointCloudPanel: () => <div data-testid="neutral-3d-panel">3D</div>,
 }));
 

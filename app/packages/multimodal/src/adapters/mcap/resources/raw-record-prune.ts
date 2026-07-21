@@ -3,7 +3,7 @@ import type {
   McapRawPruneBudgets,
   McapRawScalarNode,
   McapRawValueNode,
-} from "../types";
+} from "../shared/types";
 
 /**
  * Default prune budgets for raw record reads. Sized for an inspector

@@ -3,8 +3,8 @@ import * as THREE from "three";
 import {
   createPointCloudColormapLookup,
   pointCloudColormapKey,
-  type PointCloudColormap,
 } from "../colormaps";
+import type { PointCloudColormap } from "../colormap-types";
 
 const LUT_SIZE = 256;
 const RGB_COMPONENT_COUNT = 3;

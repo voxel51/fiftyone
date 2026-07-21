@@ -4,10 +4,7 @@
  * display-ready RGBA with per-encoding handling for color, mono, depth,
  * packed-YUV, and Bayer layouts.
  */
-import type {
-  DecodedAttributeValue,
-  RawImageDepthData,
-} from "../../../decoders";
+import type { DecodedAttributeValue, RawImageDepthData } from "../../../ir";
 
 const RGBA_CHANNEL_COUNT = 4;
 const UINT8_MAX = 255;

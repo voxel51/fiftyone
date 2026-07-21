@@ -1,10 +1,10 @@
 import type { McapTypes } from "@mcap/core";
 import type { McapIndexedReaderLike } from "../reader";
-import type { McapTimelineStrategy } from "../timeline";
+import type { McapTimelineStrategy } from "./timeline";
 import type {
   McapRawMessageRecordResult,
   McapReadRawMessageRecordRequest,
-} from "../types";
+} from "../shared/types";
 import {
   genericRecordDecoderResolutionForChannel,
   mcapChannelForTopic,

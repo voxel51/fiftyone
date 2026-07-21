@@ -28,10 +28,8 @@ import {
   type TimelineMode,
   type Track,
 } from "@fiftyone/playback";
-import {
-  SceneInventoryProvider,
-  type SceneSource,
-} from "../../../scene-inventory";
+import { SceneInventoryProvider } from "../../../scene-inventory/react";
+import type { SceneSource } from "../../../scene-inventory";
 import { WebGpuViewStage } from "../../../visualization/webgpu/webgpu-view-stage";
 import styles from "./MultiModalPlayback.module.css";
 

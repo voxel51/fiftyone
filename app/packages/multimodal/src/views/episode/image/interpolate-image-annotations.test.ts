@@ -5,7 +5,7 @@ import type {
   ImageAnnotationPoints,
   ImageAnnotationText,
   ImageAnnotationsVisualization,
-} from "../../../decoders";
+} from "../../../ir";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import type { DecodedFrame } from "../../../ir";
 import {

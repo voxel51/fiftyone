@@ -17,12 +17,12 @@ import type {
   PointCloudVisualization,
   PoseVisualization,
   SceneUpdateVisualization,
-} from "../../../decoders";
+} from "../../../ir";
 import { imageTextureCacheKey } from "../../../visualization/image/image-texture-cache";
 import { useKeyedIdentityMap } from "../../../visualization/shared/use-keyed-identity-map";
 import type { ThreeSceneBackground } from "../../../visualization/scene-3d/base-3d-scene";
 import { DEFAULT_POINT_CLOUD_CAMERA_PROJECTION } from "../../../visualization/scene-3d/camera-fit-bounds";
-import { PointCloudPanel } from "../../../visualization/scene-3d/PointCloudPanel";
+import { PointCloudPanel } from "../../../visualization/composition";
 import {
   type CameraFrustumPanelLayer,
   type GridPanelLayer,

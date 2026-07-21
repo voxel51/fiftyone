@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFixtureFormatAdapter } from "../../adapters/fixture";
 import { STREAM_KIND, type RawImageVisualization } from "../../ir";
 import type { ByteResources, EpisodeSource } from "../../ports";
-import { SceneInventoryProvider } from "../../scene-inventory";
+import { SceneInventoryProvider } from "../../scene-inventory/react";
 import { EpisodeSourcePlayback } from "../../views/episode";
 import { useEpisodeStreamValue } from "../../views/episode/playback/use-episode-stream-values";
 
@@ -75,8 +75,8 @@ vi.mock("../../views/episode/layout/use-episode-modal-layout", () => ({
   EpisodeModalLayoutPersistence: () => null,
   useEpisodeModalLayout: () => layout,
 }));
-vi.mock("../../views/episode/tiles/use-episode-tiles", () => ({
-  useEpisodeTiles: () => undefined,
+vi.mock("../../views/episode/tiles/use-register-episode-tiles", () => ({
+  useRegisterEpisodeTiles: () => undefined,
 }));
 
 const source: EpisodeSource = {

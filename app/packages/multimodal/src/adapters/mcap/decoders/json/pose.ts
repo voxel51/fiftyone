@@ -1,8 +1,5 @@
-import type {
-  DecodedAttributeValue,
-  Decoder,
-  PoseVisualization,
-} from "../../../../decoders";
+import type { Decoder } from "../../../../decoders";
+import type { DecodedAttributeValue, PoseVisualization } from "../../../../ir";
 import { VISUALIZATION_KIND } from "../../../../ir";
 // Context-only timing helper; nothing protobuf-specific despite its home.
 import { timingFromContext } from "../foxglove/protobuf/timing";

@@ -8,7 +8,7 @@ import descriptor from "protobufjs/ext/descriptor";
 import { describe, expect, it, vi } from "vitest";
 import { rawNodeToJson } from "../../../ir";
 import type { McapIndexedMessageTime } from "../reader";
-import { resolveMcapTimelineStrategy } from "../timeline";
+import { resolveMcapTimelineStrategy } from "./timeline";
 import { readMcapRawMessageRecord } from "./read-raw-message-record";
 
 const timeline = resolveMcapTimelineStrategy(undefined);
@@ -678,8 +678,8 @@ function createSource() {
 }
 
 function rootOf(result: {
-  readonly root?: import("../types").McapRawObjectNode;
-}): import("../types").McapRawObjectNode {
+  readonly root?: import("../shared/types").McapRawObjectNode;
+}): import("../shared/types").McapRawObjectNode {
   if (!result.root) {
     throw new Error("Expected a decoded record root");
   }

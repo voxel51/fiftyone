@@ -6,7 +6,7 @@ import {
   useSyncExternalStore,
 } from "react";
 
-import type { ImageAnnotationsVisualization } from "../../../decoders";
+import type { ImageAnnotationsVisualization } from "../../../ir";
 import type { ImageAnnotationRenderMetadata } from "../../../visualization/image/image-annotation-render-metadata";
 import type { DecodedFrame } from "../../../ir";
 import type { TimelineIndex } from "../../../runtime";
@@ -22,7 +22,7 @@ import {
   useEpisodeDataStream,
   type EpisodeDataStream,
 } from "../playback/episode-data-stream-context";
-import type { EpisodeStreamCache } from "../playback/episode-stream-cache";
+import type { EpisodeStreamCache } from "../../../runtime";
 import { useOptionalPlayhead } from "../playback/use-optional-playhead";
 
 /** Options for the interpolated image-annotation hooks. */

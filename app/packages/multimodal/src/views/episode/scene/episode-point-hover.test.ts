@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { PointCloudVisualization } from "../../../decoders";
+import type { PointCloudVisualization } from "../../../ir";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { episodeHoveredPointForFrame } from "./episode-point-hover";
 

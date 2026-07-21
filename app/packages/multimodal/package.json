@@ -9,6 +9,9 @@
         "./ir": "./src/ir/index.ts",
         "./ports": "./src/ports/index.ts",
         "./runtime": "./src/runtime/index.ts",
+        "./runtime/react": "./src/runtime/react/index.ts",
+        "./scene-inventory": "./src/scene-inventory/index.ts",
+        "./scene-inventory/react": "./src/scene-inventory/react/index.ts",
         "./query": "./src/query/index.ts",
         "./query/bytes": "./src/query/bytes/index.ts",
         "./query/decoding": "./src/query/decoding/index.ts",
@@ -22,6 +25,7 @@
         "./extensions/tiles/runtime": "./src/extensions/tiles/runtime.ts",
         "./schemas/v1": "./src/schemas/v1/index.ts",
         "./visualization": "./src/visualization/index.ts",
+        "./visualization/composition": "./src/visualization/composition/index.ts",
         "./visualization/image": "./src/visualization/image/ImagePanel.tsx",
         "./visualization/scene-3d": "./src/visualization/scene-3d/index.ts"
     },
@@ -35,6 +39,15 @@
             ],
             "runtime": [
                 "src/runtime/index.ts"
+            ],
+            "runtime/react": [
+                "src/runtime/react/index.ts"
+            ],
+            "scene-inventory": [
+                "src/scene-inventory/index.ts"
+            ],
+            "scene-inventory/react": [
+                "src/scene-inventory/react/index.ts"
             ],
             "decoders": [
                 "src/decoders/index.ts"
@@ -74,6 +87,9 @@
             ],
             "visualization": [
                 "src/visualization/index.ts"
+            ],
+            "visualization/composition": [
+                "src/visualization/composition/index.ts"
             ],
             "visualization/image": [
                 "src/visualization/image/ImagePanel.tsx"

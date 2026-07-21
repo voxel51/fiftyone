@@ -9,7 +9,7 @@ import {
 } from "../../../extensions/tiles/registry";
 import EpisodeAddTileMenu from "./EpisodeAddTileMenu";
 import { EPISODE_TILE_TYPE, type EpisodeTileType } from "./episode-tile-types";
-import { episodeTileTypesFor } from "./use-episode-tiles";
+import { episodeTileTypesFor } from "./episode-tile-catalog";
 
 // The menu only stores render closures; tests never mount the heavy tile
 // bodies.

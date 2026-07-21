@@ -1,5 +1,5 @@
+import type { DecodeContext } from "../../../../decoders";
 import type {
-  DecodeContext,
   DecodedAttributeValue,
   DecodedOutput,
   ImageAnnotationPoints,
@@ -10,7 +10,7 @@ import type {
   SceneEntityVisualization,
   ScenePose3D,
   SceneTextPrimitive,
-} from "../../../../decoders";
+} from "../../../../ir";
 import { VISUALIZATION_KIND } from "../../../../ir";
 import {
   decodePose,

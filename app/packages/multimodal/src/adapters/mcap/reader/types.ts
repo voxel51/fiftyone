@@ -3,7 +3,7 @@ import type { ByteSourceDescriptor } from "../../../query/bytes";
 import type {
   McapPrefetchChunkDataRequest,
   McapPrefetchWindowRequest,
-} from "./chunk-prefetch";
+} from "./prefetch-types";
 
 /**
  * One timestamp and byte offset entry from an MCAP message index.

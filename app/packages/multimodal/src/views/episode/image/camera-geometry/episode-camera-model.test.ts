@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { CameraCalibrationVisualization } from "../../../../decoders";
+import type { CameraCalibrationVisualization } from "../../../../ir";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import {
   effectiveEpisodeCameraCalibration,

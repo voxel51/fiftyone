@@ -1,15 +1,17 @@
-import "../browser-node-globals";
+import "../shared/browser-node-globals";
 import { McapIndexedReader, type McapTypes } from "@mcap/core";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
-import { loadDecompressHandlers } from "../mcap-support";
+import { loadDecompressHandlers } from "../shared/mcap-support";
 import { ByteClientReadable } from "./byte-readable";
 import {
   collectChunkDataPrefetchRanges,
   collectWindowPrefetchRanges,
   prefetchMcapByteRanges,
-  type McapPrefetchChunkDataRequest,
-  type McapPrefetchWindowRequest,
 } from "./chunk-prefetch";
+import type {
+  McapPrefetchChunkDataRequest,
+  McapPrefetchWindowRequest,
+} from "./prefetch-types";
 import { createCachedMcapDecompressHandlers } from "./decompress-cache";
 import { readLatestIndexedMessageTimesForReader } from "./latest-before";
 import { readIndexedMessageTimesForReader } from "./message-index";

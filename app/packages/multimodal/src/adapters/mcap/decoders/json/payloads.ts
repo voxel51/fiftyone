@@ -3,7 +3,7 @@
  * names are exporter-chosen and unnamespaced, so decoders registered for
  * these triples must validate payload shape rather than trust the name.
  */
-import type { PayloadDescriptor } from "../../../../decoders";
+import type { PayloadDescriptor } from "../../../../ir";
 
 /**
  * Payload identity for JSON `Pose` messages (odometry-style exports:

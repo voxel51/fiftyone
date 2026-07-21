@@ -14,7 +14,7 @@ import {
 } from "../ir";
 import type { EpisodeSession } from "../ports";
 import { ImagePanel } from "../visualization/image/ImagePanel";
-import { PointCloudPanel } from "../visualization/scene-3d";
+import { PointCloudPanel } from "../visualization/composition";
 
 const PLAYBACK_TICK_MS = 50;
 const NANOSECONDS_PER_MILLISECOND = 1_000_000n;

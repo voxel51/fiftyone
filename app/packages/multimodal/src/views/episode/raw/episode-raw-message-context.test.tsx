@@ -4,12 +4,11 @@ import { act, cleanup, render } from "@testing-library/react";
 import { createStore } from "jotai";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createTimelineIndex, type EpisodeDataStream } from "../../../runtime";
 import {
-  createTimelineIndex,
   EpisodeDataStreamProvider,
   useSetEpisodeDataStream,
-  type EpisodeDataStream,
-} from "../../../runtime";
+} from "../../../runtime/react";
 import type { RawRecordResult, RawRecordStream } from "../../../ir";
 import type { RawRecordCapability } from "../../../ports";
 import {

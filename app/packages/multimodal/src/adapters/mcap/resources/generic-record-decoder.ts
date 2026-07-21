@@ -6,7 +6,7 @@ import {
   rosRecordDecoderForChannel,
 } from "../decoders/ros/wire";
 import type { McapIndexedReaderLike } from "../reader";
-import type { McapDecodeUnavailableReason } from "../types";
+import type { McapDecodeUnavailableReason } from "../shared/types";
 
 /**
  * Channel summary fields needed to resolve a generic record decoder.

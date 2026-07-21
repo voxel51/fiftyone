@@ -1,14 +1,11 @@
-import type {
-  DecodeContext,
-  DecodedAttributeValue,
-  DecodedOutput,
-} from "../../../../decoders";
+import type { DecodeContext } from "../../../../decoders";
+import type { DecodedAttributeValue, DecodedOutput } from "../../../../ir";
 import {
   LOG_ATTRIBUTE_ROWS,
   LOG_LEVEL,
   type DecodedLogRow,
   logRowsAttribute,
-} from "../../log-records";
+} from "../../shared/log-records";
 import { optionalString } from "../foxglove/protobuf/records";
 import { timingFromContext } from "../foxglove/protobuf/timing";
 import {

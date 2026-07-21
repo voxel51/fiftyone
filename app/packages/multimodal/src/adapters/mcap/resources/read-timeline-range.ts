@@ -1,8 +1,8 @@
 import type { McapTypes } from "@mcap/core";
-import { maxBigInt, minBigInt } from "../sync";
+import { maxBigInt, minBigInt } from "../shared/sync";
 import type { McapIndexedReaderLike } from "../reader";
-import type { McapTimelineStrategy } from "../timeline";
-import type { McapByteTimelinePoint, McapTimelineRange } from "../types";
+import type { McapTimelineStrategy } from "./timeline";
+import type { McapByteTimelinePoint, McapTimelineRange } from "../shared/types";
 
 /**
  * Resolves the playable MCAP timeline bounds from indexed chunk metadata.

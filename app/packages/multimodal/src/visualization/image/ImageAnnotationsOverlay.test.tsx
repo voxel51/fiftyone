@@ -2,7 +2,7 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { VISUALIZATION_KIND } from "../visualization-registry";
-import type { ImageAnnotationsVisualization, RgbaColor } from "../../decoders";
+import type { ImageAnnotationsVisualization, RgbaColor } from "../../ir";
 import { ImageAnnotationsOverlay } from "./ImageAnnotationsOverlay";
 
 afterEach(cleanup);

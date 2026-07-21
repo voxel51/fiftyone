@@ -1,5 +1,6 @@
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
-import { readCancelledError, toError } from "../../../errors";
+import { toError } from "../../../utils/errors";
+import { EpisodeReadCancelledError } from "../../../ports";
 import type {
   McapPlaybackWorkerPriority,
   McapPlaybackWorkerRequest,
@@ -92,7 +93,7 @@ export class McapPlaybackWorkerTransport {
         continue;
       }
       this.pending.delete(id);
-      pending.reject(readCancelledError());
+      pending.reject(new EpisodeReadCancelledError());
       cancelledIds.push(id);
     }
 
@@ -108,7 +109,7 @@ export class McapPlaybackWorkerTransport {
   cancelStreams(): number[] {
     const cancelledIds: number[] = [];
     for (const [id, stream] of [...this.streams]) {
-      this.failStream(id, stream, readCancelledError());
+      this.failStream(id, stream, new EpisodeReadCancelledError());
       cancelledIds.push(id);
     }
 

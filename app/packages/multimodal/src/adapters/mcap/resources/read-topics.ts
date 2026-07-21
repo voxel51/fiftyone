@@ -6,7 +6,7 @@ import {
 } from "../../../schemas/v1";
 import type { McapIndexedReaderLike } from "../reader";
 import { SCENE_SOURCE_METADATA, STREAM_METADATA } from "../../../ir";
-import { mcapSceneSources } from "../scene-sources";
+import { mcapSceneSources } from "./scene-sources";
 import { genericRecordDecoderResolutionForChannel } from "./generic-record-decoder";
 
 const MCAP_METADATA_PREFIX = "mcap.";

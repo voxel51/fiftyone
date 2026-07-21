@@ -1,4 +1,3 @@
-export { PointCloudPanel } from "./PointCloudPanel";
 export { DEFAULT_POINT_SIZE } from "./PointCloudSceneLayer";
 export { DEFAULT_POINT_CLOUD_CAMERA_PROJECTION } from "./camera-fit-bounds";
 export {
@@ -16,26 +15,28 @@ export {
 export {
   colormapCssGradient,
   createPointCloudColormapLookup,
-  DEFAULT_POINT_CLOUD_COLORMAP,
   getGradientFromSchemeName,
   getPointCloudColormapStops,
   isPointCloudColormapName,
-  MAX_POINT_CLOUD_COLORMAP_STOPS,
-  MIN_POINT_CLOUD_COLORMAP_STOPS,
   normalizeColorStops,
   normalizePointCloudColormap,
   pointCloudColormapKey,
   pointCloudColormapLabel,
-  POINT_CLOUD_COLORMAP_LABELS,
-  POINT_CLOUD_COLORMAPS,
   sampleColormap,
   writeColormapLookupColor,
+} from "./colormaps";
+export {
+  DEFAULT_POINT_CLOUD_COLORMAP,
+  MAX_POINT_CLOUD_COLORMAP_STOPS,
+  MIN_POINT_CLOUD_COLORMAP_STOPS,
+  POINT_CLOUD_COLORMAP_LABELS,
+  POINT_CLOUD_COLORMAPS,
   type PointCloudColormap,
   type PointCloudColormapLookup,
   type PointCloudColormapName,
   type PointCloudColorStop,
   type PointCloudCustomColormap,
-} from "./colormaps";
+} from "./colormap-types";
 /** Color helpers shared with MCAP settings UI and hover emphasis. */
 export { complementaryRgbUnit, interpolateHexColors } from "./utils";
 export type { ThreeSceneBackground } from "./base-3d-scene";

@@ -5,7 +5,7 @@ import type {
   GridVisualization,
   PointCloudVisualization,
   SceneUpdateVisualization,
-} from "../../../decoders";
+} from "../../../ir";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { EMPTY_EPISODE_FRAME_GRAPH_SUMMARY } from "../../../runtime/frame-transforms";
 import { build3dLayers } from "./episode-3d-layers";

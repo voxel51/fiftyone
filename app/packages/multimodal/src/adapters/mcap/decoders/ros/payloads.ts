@@ -1,4 +1,4 @@
-import type { PayloadDescriptor } from "../../../../decoders";
+import type { PayloadDescriptor } from "../../../../ir";
 
 function rosPayloads(
   ros1Schema: string,

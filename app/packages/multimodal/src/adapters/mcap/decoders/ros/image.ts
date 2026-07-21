@@ -1,8 +1,5 @@
-import type {
-  DecodeContext,
-  DecodedAttributeValue,
-  DecodedOutput,
-} from "../../../../decoders";
+import type { DecodeContext } from "../../../../decoders";
+import type { DecodedAttributeValue, DecodedOutput } from "../../../../ir";
 import { resourceHintsForArrayBufferViews } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../ir";
 import { decodeImageRgba } from "../image-encodings";

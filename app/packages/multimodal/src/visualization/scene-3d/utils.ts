@@ -1,10 +1,6 @@
 import * as THREE from "three";
 
-import type {
-  RgbaColor,
-  SceneLinePrimitive,
-  ScenePoint3D,
-} from "../../decoders";
+import type { RgbaColor, SceneLinePrimitive, ScenePoint3D } from "../../ir";
 import type {
   PanelNotice,
   SceneAnnotationPanelLayer,

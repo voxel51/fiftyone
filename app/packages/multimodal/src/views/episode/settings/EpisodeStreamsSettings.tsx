@@ -1,9 +1,7 @@
-import { useTiling } from "@fiftyone/tiling";
 import { Input, InputType, Size } from "@voxel51/voodo";
-import React, { useCallback, useMemo, useRef, useState } from "react";
-import { useSceneInventory } from "../../../scene-inventory/SceneInventoryProvider";
-import type { StreamInventory } from "../../../schemas/v1";
-import { SCENE_SOURCE_TYPE } from "../../../ir";
+import React, { useMemo, useState } from "react";
+import { useSceneInventory } from "../../../scene-inventory/react";
+import { SCENE_SOURCE_TYPE, type StreamDescriptor } from "../../../ir";
 import {
   EPISODE_STREAM_CAPABILITY,
   EPISODE_STREAM_CAPABILITY_LABEL,
@@ -17,11 +15,8 @@ import {
 } from "../inventory/stream-inventory";
 import EpisodeSidebarGroup from "./EpisodeSidebarGroup";
 import styles from "./EpisodeSettingsSidebar.module.css";
-import {
-  EPISODE_TILE_TYPE,
-  type EpisodeTileType,
-} from "../tiles/episode-tile-types";
-import { getEpisodeTileDefinition } from "../tiles/use-episode-tiles";
+import { EPISODE_TILE_TYPE } from "../tiles/episode-tile-types";
+import { useOpenEpisodeTile } from "../tiles/use-open-episode-tile";
 import { useOpenEpisodeImageTile } from "../image/use-open-episode-image-tile";
 import { useOpenEpisodeRawMessageTile } from "../raw/use-open-episode-raw-message-tile";
 
@@ -29,14 +24,14 @@ const STREAMS_SEARCH_THRESHOLD = 5;
 
 const EpisodeStreamsSettings: React.FC<{
   readonly onStreamActionStart?: () => void;
-  readonly streams: readonly StreamInventory[];
+  readonly streams: readonly StreamDescriptor[];
 }> = ({ onStreamActionStart, streams }) => {
   const sceneSources = useSceneInventory();
   const openImageTile = useOpenEpisodeImageTile();
   const openRawMessageTile = useOpenEpisodeRawMessageTile();
-  const open3dTile = useOpenEpisodePanelTile(EPISODE_TILE_TYPE.THREE_D);
-  const openLogTile = useOpenEpisodePanelTile(EPISODE_TILE_TYPE.LOG);
-  const openMapTile = useOpenEpisodePanelTile(EPISODE_TILE_TYPE.MAP);
+  const open3dTile = useOpenEpisodeTile(EPISODE_TILE_TYPE.THREE_D);
+  const openLogTile = useOpenEpisodeTile(EPISODE_TILE_TYPE.LOG);
+  const openMapTile = useOpenEpisodeTile(EPISODE_TILE_TYPE.MAP);
   const [search, setSearch] = useState("");
   const rows = useMemo(
     () => buildEpisodeStreamInventoryRows({ sceneSources, streams }),
@@ -256,36 +251,6 @@ function visibleStreamStatusLabel(
     return null;
   }
   return EPISODE_STREAM_SUPPORT_LABEL[row.supportStatus];
-}
-
-function useOpenEpisodePanelTile(type: EpisodeTileType): () => void {
-  const { addTile, setFocusedTileId, tiles } = useTiling();
-  const tilesRef = useRef(tiles);
-  tilesRef.current = tiles;
-
-  return useCallback(() => {
-    const currentTiles = tilesRef.current;
-    const existingTileId = Object.keys(currentTiles).find(
-      (tileId) => currentTiles[tileId]?.type === type,
-    );
-    if (existingTileId) {
-      setFocusedTileId(existingTileId);
-      return;
-    }
-
-    const definition = getEpisodeTileDefinition(type);
-    if (!definition) {
-      return;
-    }
-    const Tile = definition.Tile;
-    const tile = {
-      render: () => <Tile />,
-      title: definition.typeLabel,
-      type,
-    };
-    const tileId = addTile(tile, { idPrefix: type });
-    tilesRef.current = { ...currentTiles, [tileId]: tile };
-  }, [addTile, setFocusedTileId, type]);
 }
 
 function streamDetails(row: EpisodeStreamInventoryRow): string {

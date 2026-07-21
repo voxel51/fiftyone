@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, type Mock, vi } from "vitest";
 import type {
   EncodedVideoVisualization,
   RawImageVisualization,
-} from "../../decoders";
+} from "../../ir";
 import { VISUALIZATION_KIND } from "../visualization-registry";
 import { imageDisplayRect } from "./base-2d-scene";
 import {

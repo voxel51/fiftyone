@@ -1,9 +1,9 @@
 import { useTiling } from "@fiftyone/tiling";
 import { useCallback } from "react";
-import { useSceneInventory } from "../../../scene-inventory";
+import { useSceneInventory } from "../../../scene-inventory/react";
 import { useEpisodeImageTileBindings } from "../tiles/episode-tile-source-bindings";
 import { EPISODE_TILE_TYPE } from "../tiles/episode-tile-types";
-import { getEpisodeTileDefinition } from "../tiles/use-episode-tiles";
+import EpisodeImageTile from "./EpisodeImageTile";
 
 /**
  * Opens the modal's view of an image stream: focuses the tile already
@@ -26,14 +26,11 @@ export function useOpenEpisodeImageTile(): (sourceId: string) => void {
         setFocusedTileId(boundTileId);
         return;
       }
-      const definition = getEpisodeTileDefinition(EPISODE_TILE_TYPE.IMAGE);
-      if (!definition) return;
-      const Tile = definition.Tile;
       const title =
         sources.find((source) => source.id === sourceId)?.label ?? sourceId;
       addTile(
         {
-          render: () => <Tile initialSourceId={sourceId} />,
+          render: () => <EpisodeImageTile initialSourceId={sourceId} />,
           title,
           type: EPISODE_TILE_TYPE.IMAGE,
         },

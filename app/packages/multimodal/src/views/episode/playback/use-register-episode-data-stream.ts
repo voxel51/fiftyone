@@ -38,24 +38,22 @@ import {
 } from "./episode-stream-status-state";
 import {
   BYTE_SOURCE_READ_PROFILE,
-  byteSourceAccessKey,
   type ByteSourceDescriptor,
-} from "../../../query/bytes";
-import type {
-  ByteTimelinePoint,
-  DecodedFrame,
-  StreamSyncPolicies,
-  SynchronizedFrameWindow,
+  type ByteTimelinePoint,
+  type DecodedFrame,
+  type StreamSyncPolicies,
+  type SynchronizedFrameWindow,
 } from "../../../ir";
 import {
   isEpisodeReadCancelledError,
   type EpisodeSession,
 } from "../../../ports";
-import { monotonicNowMs } from "../../../time";
+import { monotonicNowMs } from "../../../utils/monotonic-time";
 import {
   createEpisodePlaybackRuntime,
   createTimelineIndex,
   DEFAULT_TIMELINE_TICK_RATE_HZ,
+  episodeSourceAccessKey,
   type TimelineIndex,
 } from "../../../runtime";
 import { useSetEpisodeDataStream } from "./episode-data-stream-context";
@@ -80,7 +78,7 @@ import {
   resetEpisodeStartupCushionState,
   setEpisodeStartupCushionState,
 } from "./episode-startup-cushion-state";
-import { EpisodeStreamCache } from "./episode-stream-cache";
+import { EpisodeStreamCache } from "../../../runtime";
 import type { EpisodeStreamPlaybackFrame } from "./use-episode-stream-values";
 
 // One engine stream owns all episode streams so camera/lidar tiles stay on the
@@ -281,7 +279,7 @@ export function useRegisterEpisodeDataStream({
   );
   // Per-recording discriminator for cross-tile caches and source lifecycle.
   const sourceKey = useMemo(
-    () => (source ? byteSourceAccessKey(source) : ""),
+    () => (source ? episodeSourceAccessKey(source) : ""),
     [source],
   );
 

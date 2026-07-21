@@ -1,5 +1,5 @@
 import { byteSourceAccessKey } from "../../../query/bytes";
-import { toError } from "../../../errors";
+import { toError } from "../../../utils/errors";
 import type {
   McapGridPreviewRequestPayload,
   McapGridPreviewResult,

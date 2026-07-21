@@ -1,10 +1,9 @@
 import {
   resourceHintsForArrayBufferViews,
   type DecodeContext,
-  type DecodedAttributeValue,
-  type DecodedOutput,
   type Decoder,
 } from "../../../../decoders";
+import type { DecodedAttributeValue, DecodedOutput } from "../../../../ir";
 import { VISUALIZATION_KIND } from "../../../../ir";
 import { decodeImageRgba } from "../image-encodings";
 import {

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { EncodedVideoVisualization } from "../../decoders";
+import type { EncodedVideoVisualization } from "../../ir";
 import { VISUALIZATION_KIND } from "../visualization-registry";
 import { createImageTexture } from "./image-texture";
 import {

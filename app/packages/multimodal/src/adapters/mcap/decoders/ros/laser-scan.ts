@@ -1,11 +1,12 @@
 import {
-  buildPointCloudRenderPayload,
   resourceHintsForArrayBufferViews,
   type DecodeContext,
-  type DecodedAttributeValue,
-  type DecodedOutput,
 } from "../../../../decoders";
-import { VISUALIZATION_KIND } from "../../../../ir";
+import type { DecodedAttributeValue, DecodedOutput } from "../../../../ir";
+import {
+  buildPointCloudRenderPayload,
+  VISUALIZATION_KIND,
+} from "../../../../ir";
 import { scanToPoints } from "../foxglove/laser-scan";
 import {
   IDENTITY_QUATERNION,

@@ -5,11 +5,8 @@
  * message-level timestamps. This module merges both sources into the generic
  * decoded timing shape consumed by synchronized playback.
  */
-import type {
-  DecodeContext,
-  DecodedSourceTimestamps,
-  DecodedTiming,
-} from "../../../../../decoders";
+import type { DecodeContext } from "../../../../../decoders";
+import type { DecodedSourceTimestamps, DecodedTiming } from "../../../../../ir";
 import { asRecord, optionalBigInt } from "./records";
 
 const NANOSECONDS_PER_SECOND = 1000000000n;

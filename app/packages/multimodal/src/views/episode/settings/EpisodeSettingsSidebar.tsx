@@ -14,7 +14,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import type { StreamInventory } from "../../../schemas/v1";
+import type { StreamDescriptor } from "../../../ir";
 import {
   type EpisodePlaybackFidelityMode,
   type EpisodeTemporalPolicySettings,
@@ -53,7 +53,7 @@ type ActiveSettingsTab = "panel" | "scene" | "streams";
  *   registry.
  */
 const EpisodeSettingsSidebar: React.FC<{
-  readonly streams?: readonly StreamInventory[];
+  readonly streams?: readonly StreamDescriptor[];
 }> = ({ streams = [] }) => {
   const { focusedTileId, tiles } = useTiling();
   const registeredPanelSettings = useEpisodeTileSettings(focusedTileId);

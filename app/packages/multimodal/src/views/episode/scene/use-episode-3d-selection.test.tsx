@@ -5,7 +5,7 @@ import {
   SCENE_SOURCE_TYPE,
   type SceneSource,
 } from "../../../ir";
-import { streamPrefix } from "../../../stream-matching";
+import { streamPrefix } from "../../../stream-selection";
 import {
   EMPTY_EPISODE_3D_VIEW_STATE,
   createEpisode3dViewStateStore,
@@ -22,7 +22,7 @@ const { imageTileBindingsMock, setTileTitleMock, useSceneInventoryMock } =
     useSceneInventoryMock: vi.fn(),
   }));
 
-vi.mock("../../../scene-inventory", () => ({
+vi.mock("../../../scene-inventory/react", () => ({
   useSceneInventory: useSceneInventoryMock,
 }));
 

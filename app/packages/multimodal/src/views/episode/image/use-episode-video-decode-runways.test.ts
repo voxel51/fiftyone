@@ -1,7 +1,7 @@
 import { cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { EncodedVideoVisualization } from "../../../decoders";
+import type { EncodedVideoVisualization } from "../../../ir";
 import type { DecodedFrame } from "../../../ir";
 import {
   h264RunwayFromMessages,

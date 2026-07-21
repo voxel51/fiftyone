@@ -7,14 +7,14 @@ import type {
   ImageVisualization,
   PointCloudVisualization,
   SceneUpdateVisualization,
-} from "../../decoders";
+} from "../../ir";
 import type {
   ThreeCameraPose,
   ThreeCameraPoseChangeSource,
   ThreeSceneBackground,
   ThreeSceneUpAxis,
 } from "./base-3d-scene";
-import type { PointCloudColormap } from "./colormaps";
+import type { PointCloudColormap } from "./colormap-types";
 import type { PanelNotice } from "../shared/panel-notices";
 
 export type { PanelNotice, PanelNoticeSeverity } from "../shared/panel-notices";

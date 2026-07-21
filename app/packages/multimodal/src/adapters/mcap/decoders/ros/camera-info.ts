@@ -1,10 +1,10 @@
+import type { DecodeContext } from "../../../../decoders";
 import type {
   CameraCalibrationVisualization,
-  DecodeContext,
   DecodedAttributeValue,
   DecodedDiagnostic,
   DecodedOutput,
-} from "../../../../decoders";
+} from "../../../../ir";
 import { VISUALIZATION_KIND } from "../../../../ir";
 import {
   finiteNumberArrayField,

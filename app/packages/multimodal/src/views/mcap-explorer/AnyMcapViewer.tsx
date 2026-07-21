@@ -12,7 +12,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import type { ByteSourceDescriptor } from "../../query/bytes";
+import type { ByteSourceDescriptor } from "../../ir";
 import { episodeSourceFromByteSource } from "../episode-source";
 import { useEpisodeSession } from "../use-episode-session";
 import { EpisodeSourcePlayback } from "../episode";

@@ -1,11 +1,11 @@
 import type { DecodedFrame } from "../../../ir";
+import { type EpisodeDataStream as RuntimeEpisodeDataStream } from "../../../runtime";
+import type { EpisodeStreamCache } from "../../../runtime";
 import {
   EpisodeDataStreamProvider as RuntimeEpisodeDataStreamProvider,
   useEpisodeDataStream as useRuntimeEpisodeDataStream,
   useSetEpisodeDataStream as useSetRuntimeEpisodeDataStream,
-  type EpisodeDataStream as RuntimeEpisodeDataStream,
-} from "../../../runtime";
-import type { EpisodeStreamCache } from "./episode-stream-cache";
+} from "../../../runtime/react";
 
 /** Episode renderer specialization of the shared runtime data stream. */
 export type EpisodeDataStream = RuntimeEpisodeDataStream<

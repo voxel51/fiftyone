@@ -3,9 +3,9 @@ import {
   SCENE_SOURCE_METADATA,
   SCENE_SOURCE_TYPE,
   STREAM_METADATA,
+  type StreamDescriptor,
 } from "../../../ir";
-import { sceneSourcesFromStreamInventory } from "../../../scene-inventory";
-import type { StreamInventory } from "../../../schemas/v1";
+import { sceneSourcesFromStreamDescriptors } from "../../../scene-inventory";
 import {
   EPISODE_STREAM_CAPABILITY,
   EPISODE_STREAM_CATEGORY,
@@ -18,10 +18,10 @@ describe("buildEpisodeStreamInventoryRows", () => {
   it("keeps stable stream IDs distinct from format source names", () => {
     const camera = {
       ...stream("/camera/front", "sensor_msgs/Image", "ros1", "ros1msg", "12"),
-      streamId: "7",
+      id: "7",
     };
 
-    expect(sceneSourcesFromStreamInventory([camera])).toEqual([
+    expect(sceneSourcesFromStreamDescriptors([camera])).toEqual([
       expect.objectContaining({ id: "7", label: "camera/front" }),
     ]);
   });
@@ -69,7 +69,7 @@ describe("buildEpisodeStreamInventoryRows", () => {
     ];
 
     const rows = buildEpisodeStreamInventoryRows({
-      sceneSources: sceneSourcesFromStreamInventory(streams),
+      sceneSources: sceneSourcesFromStreamDescriptors(streams),
       streams,
     });
 
@@ -208,11 +208,12 @@ function stream(
   schemaEncoding: string,
   count: string,
   decodeStatus = "decodable",
-): StreamInventory {
+): StreamDescriptor {
   const sceneType = testSceneType(schema);
   return {
-    $typeName: "fiftyone.multimodal.schemas.v1.StreamInventory",
-    displayName: name,
+    count: Number(count),
+    id: name,
+    kind: "unknown",
     metadata: {
       [SCENE_SOURCE_METADATA.SOURCE_NAME]: name,
       ...(sceneType ? { [SCENE_SOURCE_METADATA.TYPE]: sceneType } : {}),
@@ -221,13 +222,12 @@ function stream(
       [STREAM_METADATA.SCHEMA_NAME]: schema,
     },
     payload: {
-      $typeName: "fiftyone.multimodal.schemas.v1.PayloadDescriptor",
       encoding,
       schema,
       schemaEncoding,
     },
-    recordCount: count,
-    streamId: name,
+    sourceName: name,
+    timeRange: { endNs: 1n, startNs: 0n },
   };
 }
 

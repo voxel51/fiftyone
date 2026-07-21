@@ -1,15 +1,17 @@
 import type {
   PointCloudRenderPayload,
   PointCloudRenderScalarField,
-} from "../../../decoders";
+} from "../../../ir";
 import {
   createPointCloudColormapLookup,
-  DEFAULT_POINT_CLOUD_COLORMAP,
   pointCloudColormapKey,
   writeColormapLookupColor,
+} from "../colormaps";
+import {
+  DEFAULT_POINT_CLOUD_COLORMAP,
   type PointCloudColormap,
   type PointCloudColormapLookup,
-} from "../colormaps";
+} from "../colormap-types";
 import {
   NEUTRAL_POINT_CLOUD_COLOR,
   normalizePointCloudColorValue,

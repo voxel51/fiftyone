@@ -2,7 +2,7 @@ import { act, cleanup, render } from "@testing-library/react";
 import { StrictMode, useEffect, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { ImageAnnotationsVisualization } from "../../../decoders";
+import type { ImageAnnotationsVisualization } from "../../../ir";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import type { DecodedFrame } from "../../../ir";
 import type { TimelineIndex } from "../../../runtime";
@@ -11,7 +11,7 @@ import {
   useSetEpisodeDataStream,
   type EpisodeDataStream,
 } from "../playback/episode-data-stream-context";
-import { EpisodeStreamCache } from "../playback/episode-stream-cache";
+import { EpisodeStreamCache } from "../../../runtime";
 import {
   nextDistinctCachedMessage,
   preparedImageAnnotationInterpolation,

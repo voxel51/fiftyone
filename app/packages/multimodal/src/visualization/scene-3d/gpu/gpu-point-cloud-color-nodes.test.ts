@@ -2,7 +2,7 @@ import * as THREE from "three";
 import * as TSL from "three/tsl";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { buildPointCloudRenderPayload } from "../../../decoders";
+import { buildPointCloudRenderPayload } from "../../../ir";
 import { createGpuPointCloudColorNode } from "./gpu-point-cloud-color-nodes";
 import { resolveGpuPointCloudColor } from "./gpu-point-cloud-color";
 import {

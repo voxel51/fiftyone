@@ -1,22 +1,22 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 
-import { buildPointCloudRenderPayload } from "../../../decoders";
+import { buildPointCloudRenderPayload } from "../../../ir";
 import type { ImageViewTransform } from "../../../visualization/image/base-2d-scene";
-import GpuPointCloudProjectionLayer from "../../../visualization/webgpu/GpuPointCloudProjectionLayer";
+import GpuPointCloudProjectionLayer from "../../../visualization/composition/GpuPointCloudProjectionLayer";
 import {
   gpuPointCloudProjectionResourceKey,
   gpuPointCloudProjectionStreamKey,
-} from "../../../visualization/webgpu/gpu-point-cloud-projection";
-import type { GpuCameraProjection } from "../../../visualization/webgpu/gpu-camera-projection";
+} from "../../../visualization/composition/gpu-point-cloud-projection";
+import type { GpuCameraProjection } from "../../../visualization/composition/gpu-camera-projection";
 import {
   GpuPointCloudProjectionPicker,
   type GpuPointCloudProjectionPickerHandle,
-} from "../../../visualization/webgpu/gpu-point-cloud-projection-picker";
+} from "../../../visualization/composition/gpu-point-cloud-projection-picker";
 import {
   getGpuPointCloudProjectionResource,
   type GpuPointCloudProjectionResource,
-} from "../../../visualization/webgpu/gpu-point-cloud-projection-resources";
+} from "../../../visualization/composition/gpu-point-cloud-projection-resources";
 import {
   DEFAULT_POINT_CLOUD_COLORMAP,
   resolveGpuPointCloudColor,
