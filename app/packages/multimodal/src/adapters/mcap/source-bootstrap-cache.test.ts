@@ -65,6 +65,19 @@ describe("MCAP source bootstrap cache", () => {
       poster: replacementPoster,
     });
   });
+
+  it("does not reuse bootstrap facts after the source validator changes", () => {
+    resetMcapSourceBootstrapCacheForTests();
+    const initial = createSource("rewritten", "etag-a");
+    const replacement = createSource("rewritten", "etag-b");
+
+    publishMcapSourceBootstrap(initial, { topics: [createTopic("initial")] });
+
+    expect(peekMcapSourceBootstrap(initial)?.topics).toEqual([
+      createTopic("initial"),
+    ]);
+    expect(peekMcapSourceBootstrap(replacement)).toBeNull();
+  });
 });
 
 function createTimelineRange(): McapTimelineRange {
@@ -75,8 +88,8 @@ function createTimelineRange(): McapTimelineRange {
   };
 }
 
-function createSource(sourceId: string): ByteSourceDescriptor {
-  return { sourceId, url: `memory://${sourceId}.mcap` };
+function createSource(sourceId: string, etag?: string): ByteSourceDescriptor {
+  return { sourceId, url: `memory://${sourceId}.mcap`, etag };
 }
 
 function createTopic(streamId: string): StreamInventory {

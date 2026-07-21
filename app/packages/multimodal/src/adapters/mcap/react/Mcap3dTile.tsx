@@ -8,6 +8,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { usePublishMcapAnnotationTopics } from "../../../extensions/mcap";
 import type {
   CameraCalibrationVisualization,
   GridVisualization,
@@ -208,6 +209,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     setSourcesEnabled,
     toggleSource,
   } = useMcap3dSelection({ restore: viewStateRestore, sourceKey });
+  usePublishMcapAnnotationTopics(sceneAnnotationTopics);
   const selectedTopicStatuses = useMcapTopicStatuses(selectedTopics);
   const selectedSourcePending = selectedTopicStatuses.some(
     (status) => status === "loading",
