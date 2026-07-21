@@ -19,6 +19,7 @@ import {
 } from "@voxel51/voodo";
 import { useStore } from "jotai";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { usePublishMcapAnnotationTopics } from "../../../extensions/mcap";
 import type {
   CameraCalibrationVisualization,
   ImageVisualization,
@@ -346,6 +347,7 @@ const McapImageTile: React.FC<McapTileProps> = ({ initialSourceId }) => {
     const available = new Set(annotationTopics);
     return storedLabelTopics.filter((labelTopic) => available.has(labelTopic));
   }, [annotationTopics, storedLabelTopics, topic]);
+  usePublishMcapAnnotationTopics(selectedLabelTopics);
   const activeTopics = useMemo(
     () => (topic ? [topic, ...selectedLabelTopics] : []),
     [selectedLabelTopics, topic],

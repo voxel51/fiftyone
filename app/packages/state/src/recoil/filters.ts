@@ -6,7 +6,7 @@ import {
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { DefaultValue, selectorFamily } from "recoil";
 import { getSessionRef, sessionAtom } from "../session";
-import { extendedSelection } from "./atoms";
+import { extendedSelection, extendedSelectionOverrideStage } from "./atoms";
 import { pathHasIndexes, queryPerformance } from "./queryPerformance";
 import { expandPath, fields } from "./schema";
 import { hiddenLabelIds, isFrameField } from "./selectors";
@@ -110,8 +110,11 @@ export const hasFilters = selectorFamily<boolean, boolean>({
       const hidden = Boolean(modal && get(hiddenLabelIds).size);
       const selection =
         !modal && Boolean(get(extendedSelection)?.selection?.length);
+      // An extended selection expressed as a view-stage override (e.g. a
+      // plot lasso) scopes the grid just like an id-list selection does
+      const override = !modal && Boolean(get(extendedSelectionOverrideStage));
 
-      return f || hidden || selection;
+      return f || hidden || selection || override;
     },
 });
 

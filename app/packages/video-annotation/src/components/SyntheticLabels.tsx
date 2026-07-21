@@ -1,6 +1,7 @@
 import { getLabelColorFromContext } from "@fiftyone/lighter";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { useColorScheme, useColorSeed } from "../state/accessors";
+import { useTimelineDrawerOpen } from "../state/useTimelineDrawer";
 import {
   TimelineWithTracks,
   TrackProvider,
@@ -95,13 +96,19 @@ export const SyntheticTrackTimeline: React.FC = () => {
   // linkage — render them undecorated.
   const decorateTrack = useCallback(() => ({}), []);
 
+  const [drawerOpen, setDrawerOpen] = useTimelineDrawerOpen();
+
   return (
     <TrackProvider
       key={ready ? "ready" : "init"}
       tracks={tracks}
       autoPinNewTracks={false}
     >
-      <TimelineWithTracks decorateTrack={decorateTrack} />
+      <TimelineWithTracks
+        decorateTrack={decorateTrack}
+        drawerOpen={drawerOpen}
+        onDrawerOpenChange={setDrawerOpen}
+      />
     </TrackProvider>
   );
 };

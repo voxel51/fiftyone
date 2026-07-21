@@ -50,6 +50,7 @@ const ModalLookerNoTimeline = React.memo((props: NativeLookerProps) => {
       style={{
         width: "100%",
         height: "100%",
+        minHeight: 0,
         background: theme.background.level2,
         position: "relative",
       }}

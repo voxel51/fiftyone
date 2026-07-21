@@ -50,4 +50,21 @@ describe("hasFilter resolves correctly", () => {
     );
     expect(test2()).toBe(true);
   });
+
+  // An extended selection can arrive as a view-stage override (e.g. the
+  // embeddings panel's lasso) instead of an id list; both must count,
+  // or the grid's count/save-filters affordances ignore the selection
+  it("hasFilter resolves correctly when a selection override stage is set", () => {
+    setMockAtoms({
+      filters: {},
+      extendedSelection: null,
+      extendedSelectionOverrideStage: {
+        "fiftyone.core.stages.GeoWithin": { boundary: [] },
+      },
+    });
+    expect(test()).toBe(true);
+
+    setMockAtoms({ extendedSelectionOverrideStage: null });
+    expect(test()).toBe(false);
+  });
 });

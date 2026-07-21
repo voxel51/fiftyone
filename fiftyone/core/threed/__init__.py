@@ -25,6 +25,7 @@ from .shape_3d import (
     SphereGeometry,
     CylinderGeometry,
 )
+from .splat import GaussianSplat
 from .transformation import Euler, Quaternion, Vector3
 
 # This enables Sphinx refs to directly use paths imported here
