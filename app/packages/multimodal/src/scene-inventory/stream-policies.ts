@@ -5,7 +5,7 @@ import {
   type StreamSyncPolicies,
   type StreamSyncPolicy,
 } from "../ir";
-import type { SceneSource } from "./SceneInventoryProvider";
+import type { SceneSource } from "../ir";
 
 const LATEST_POLICY: StreamSyncPolicy = { mode: STREAM_SYNC_MODE.LATEST };
 

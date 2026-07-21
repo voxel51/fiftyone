@@ -1,6 +1,5 @@
 import type { StreamDescriptor } from "../../../ir";
 import type { EpisodeSession } from "../../../ports";
-import type { StreamInventory } from "../../../schemas/v1";
 import type { LoadStatus } from "../../../runtime";
 
 export type EpisodeStreamsStatus = LoadStatus;
@@ -8,7 +7,7 @@ export type EpisodeStreamsStatus = LoadStatus;
 export interface EpisodeStreamsState {
   readonly error: string | null;
   readonly status: EpisodeStreamsStatus;
-  readonly streams: readonly StreamInventory[];
+  readonly streams: readonly StreamDescriptor[];
 }
 
 export interface UseEpisodeStreamsOptions {
@@ -17,7 +16,7 @@ export interface UseEpisodeStreamsOptions {
   readonly sourceAvailable: boolean;
 }
 
-/** Projects the session manifest into the generated inventory view model. */
+/** Exposes the format-neutral stream descriptors from the active session. */
 export function useEpisodeStreams({
   error = null,
   session,
@@ -29,24 +28,6 @@ export function useEpisodeStreams({
   return {
     error: null,
     status: "ready",
-    streams: manifestStreams(session.manifest.streams),
+    streams: session.manifest.streams,
   };
-}
-
-function manifestStreams(
-  streams: readonly StreamDescriptor[],
-): readonly StreamInventory[] {
-  return streams.map((stream) => ({
-    $typeName: "fiftyone.multimodal.schemas.v1.StreamInventory" as const,
-    displayName: stream.sourceName,
-    metadata: { ...stream.metadata },
-    payload: {
-      $typeName: "fiftyone.multimodal.schemas.v1.PayloadDescriptor" as const,
-      encoding: stream.payload.encoding,
-      schema: stream.payload.schema ?? "",
-      schemaEncoding: stream.payload.schemaEncoding ?? "",
-    },
-    recordCount: stream.count?.toString(),
-    streamId: stream.id,
-  }));
 }

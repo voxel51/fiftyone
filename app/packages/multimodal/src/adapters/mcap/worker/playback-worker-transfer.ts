@@ -2,7 +2,7 @@ import type {
   McapDecodedMessage,
   McapNumericSeriesResult,
   McapSynchronizedMessageWindow,
-} from "../types";
+} from "../shared/types";
 
 /**
  * Collects transferable buffers from decoded MCAP results before worker posting.

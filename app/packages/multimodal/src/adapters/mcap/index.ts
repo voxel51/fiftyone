@@ -18,18 +18,18 @@ export {
   isSceneUpdateStream,
   streamTopics,
   topicName,
-} from "./stream-topics";
-export type { McapPreviewTopics } from "./stream-topics";
+} from "./resources/stream-topics";
+export type { McapPreviewTopics } from "./resources/stream-topics";
 
 /**
  * Default tolerance for synchronized MCAP playback windows.
  */
-export { DEFAULT_MCAP_SYNC_TOLERANCE_NS } from "./sync";
+export { DEFAULT_MCAP_SYNC_TOLERANCE_NS } from "./shared/sync";
 
 /**
  * MCAP timeline constants used by playback clocks.
  */
-export { MCAP_ACTIVE_TIMELINE } from "./types";
+export { MCAP_ACTIVE_TIMELINE } from "./shared/types";
 
 /**
  * Options for constructing an MCAP resource client.
@@ -47,7 +47,7 @@ export type { McapIndexedReaderLike, McapReaderFactory } from "./reader";
 export type {
   McapComposedFrameTransform,
   McapFrameTransformResolution,
-} from "./frame-transform-types";
+} from "./shared/frame-transform-types";
 
 /**
  * Public MCAP resource, playback, and sync policy contracts.
@@ -68,7 +68,7 @@ export type {
   McapSynchronizedMessageWindow,
   McapTimelineRange,
   McapActiveTimeline,
-} from "./types";
+} from "./shared/types";
 
 /**
  * Worker-backed MCAP resource client facade.

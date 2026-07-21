@@ -1,7 +1,7 @@
 /**
  * Canonical Foxglove protobuf payload descriptors supported by the MCAP decoder.
  */
-import type { PayloadDescriptor } from "../../../../../decoders";
+import type { PayloadDescriptor } from "../../../../../ir";
 
 /**
  * Payload identity for foxglove.CompressedImage messages.

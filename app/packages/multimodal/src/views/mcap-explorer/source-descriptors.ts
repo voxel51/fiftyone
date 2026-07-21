@@ -1,7 +1,4 @@
-import {
-  BYTE_SOURCE_READ_PROFILE,
-  type ByteSourceDescriptor,
-} from "../../query/bytes";
+import { BYTE_SOURCE_READ_PROFILE, type ByteSourceDescriptor } from "../../ir";
 import { episodeSourceDisplayName } from "../episode";
 
 export interface AnyMcapSourceDescriptor {

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import type { ScenePose3D } from "../../decoders";
+import type { ScenePose3D } from "../../ir";
 import type {
   PointCloudFrameTransform,
   PointCloudObjectTransform,

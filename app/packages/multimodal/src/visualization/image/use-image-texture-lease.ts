@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 
-import type { ImageVisualization } from "../../decoders";
+import type { ImageVisualization } from "../../ir";
 import type { ImageTextureHandle } from "./base-2d-scene";
 import { createImageTexture } from "./image-texture";
 import {

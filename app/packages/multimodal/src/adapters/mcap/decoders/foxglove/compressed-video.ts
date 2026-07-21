@@ -1,14 +1,16 @@
 import {
   resourceHintsForArrayBufferViews,
-  type DecodedAttributeValue,
-  type DecodedOutput,
   type Decoder,
-  type EncodedVideoVisualization,
 } from "../../../../decoders";
+import type {
+  DecodedAttributeValue,
+  DecodedOutput,
+  EncodedVideoVisualization,
+} from "../../../../ir";
 import { VISUALIZATION_KIND } from "../../../../ir";
 import { bytesField, recordField, rosTimestampNs } from "../ros/common";
 import { rosDecodersForPayloads } from "../ros/factory";
-import { analyzeH264AnnexBAccessUnit } from "../../../../utils/h264-annexb";
+import { analyzeH264AnnexBAccessUnit } from "../../../../codecs/h264-annexb";
 import { decodeProtobufMessage } from "./protobuf";
 import {
   FOXGLOVE_COMPRESSED_VIDEO_CDR_PAYLOADS,

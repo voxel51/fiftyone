@@ -3,7 +3,7 @@ import { OrthographicCamera } from "@react-three/drei";
 import type { CSSProperties, ReactNode } from "react";
 import { useMemo, useState } from "react";
 
-import type { ImageVisualization } from "../../decoders";
+import type { ImageVisualization } from "../../ir";
 import {
   Base2DScene,
   ImageTexturePlane,

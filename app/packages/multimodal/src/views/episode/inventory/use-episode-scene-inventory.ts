@@ -1,10 +1,10 @@
 import { useMemo } from "react";
+import type { StreamDescriptor } from "../../../ir";
 import type { LoadStatus } from "../../../runtime";
 import {
-  sceneSourcesFromStreamInventory,
+  sceneSourcesFromStreamDescriptors,
   type SceneSource,
 } from "../../../scene-inventory";
-import type { StreamInventory } from "../../../schemas/v1";
 import {
   useEpisodeStreams,
   type UseEpisodeStreamsOptions,
@@ -16,7 +16,7 @@ export interface EpisodeSceneInventoryState {
   readonly error: string | null;
   readonly status: EpisodeSceneInventoryStatus;
   readonly sources: readonly SceneSource[];
-  readonly streams: readonly StreamInventory[];
+  readonly streams: readonly StreamDescriptor[];
   readonly streamCount: number;
 }
 
@@ -30,7 +30,7 @@ export function useEpisodeSceneInventory(
 ): EpisodeSceneInventoryState {
   const { status, error, streams } = useEpisodeStreams(options);
   const sources = useMemo(
-    () => sceneSourcesFromStreamInventory(streams),
+    () => sceneSourcesFromStreamDescriptors(streams),
     [streams],
   );
 

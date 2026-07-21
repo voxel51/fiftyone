@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type {
-  DecodedOutput,
-  Decoder,
-  PayloadDescriptor,
-} from "../../../../decoders";
+import type { Decoder } from "../../../../decoders";
+import type { DecodedOutput, PayloadDescriptor } from "../../../../ir";
 import type { StreamInventory } from "../../../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../../../ir";
 import { createMcapDecoderRegistry } from "..";
@@ -19,7 +16,7 @@ import {
   isPoseStream,
   isSceneUpdateStream,
   streamTopics,
-} from "../../stream-topics";
+} from "../../resources/stream-topics";
 import {
   detection2DRecord,
   detection3DRecord,

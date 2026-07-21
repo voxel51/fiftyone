@@ -7,8 +7,8 @@ export {
   payloadDescriptorKey,
   resourceHintsForArrayBufferViews,
 } from "./decoders";
+export type { DecodeContext, Decoder } from "./decoders";
 export type {
-  DecodeContext,
   DecodedAttributeValue,
   DecodedOutput,
   DecodedResourceHints,
@@ -16,7 +16,6 @@ export type {
   DecodedTimeRange,
   DecodedTiming,
   DecodedVisualization,
-  Decoder,
   EncodedH264VideoVisualization,
   EncodedImageVisualization,
   EncodedVideoVisualization,
@@ -41,7 +40,7 @@ export type {
   SceneTextPrimitive,
   SceneTrianglePrimitive,
   SceneUpdateVisualization,
-} from "./decoders";
+} from "./ir";
 
 /**
  * Public visualization registry values shared by decoders and panels.
@@ -60,8 +59,6 @@ export {
   SceneInventoryProvider,
   useSceneInventory,
   useSceneSourcesByType,
-} from "./scene-inventory";
-export type {
-  SceneInventoryProviderProps,
-  SceneSource,
-} from "./scene-inventory";
+} from "./scene-inventory/react";
+export type { SceneInventoryProviderProps } from "./scene-inventory/react";
+export type { SceneSource } from "./scene-inventory";

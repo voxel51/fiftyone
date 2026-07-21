@@ -1,10 +1,12 @@
 import {
   resourceHintsForArrayBufferViews,
   type DecodeContext,
-  type DecodedAttributeValue,
-  type DecodedOutput,
-  type EncodedVideoVisualization,
 } from "../../../../decoders";
+import type {
+  DecodedAttributeValue,
+  DecodedOutput,
+  EncodedVideoVisualization,
+} from "../../../../ir";
 import { VISUALIZATION_KIND } from "../../../../ir";
 import {
   bytesField,
@@ -17,7 +19,7 @@ import {
 } from "./common";
 import { rosDecodersForPayloads } from "./factory";
 import { ROS_COMPRESSED_IMAGE_PAYLOADS } from "./payloads";
-import { analyzeH264AnnexBAccessUnit } from "../../../../utils/h264-annexb";
+import { analyzeH264AnnexBAccessUnit } from "../../../../codecs/h264-annexb";
 import {
   videoCodecFromFormat,
   videoRenderingUnsupportedReason,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { RawImageVisualization } from "../../decoders";
+import type { RawImageVisualization } from "../../ir";
 import { VISUALIZATION_KIND } from "../visualization-registry";
 import { createImageTexture } from "./image-texture";
 

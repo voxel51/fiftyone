@@ -1,7 +1,7 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { Quaternion, Vector3 } from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { PointCloudVisualization } from "../../../decoders";
+import type { PointCloudVisualization } from "../../../ir";
 import type { PointCloudCameraPose } from "../../../visualization/scene-3d";
 import { EMPTY_EPISODE_FRAME_GRAPH_SUMMARY } from "../../../runtime/frame-transforms";
 import type { Episode3dCameraTrackingAnchor } from "./episode-3d-camera";

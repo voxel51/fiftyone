@@ -4,7 +4,8 @@ import { MessageWriter as Ros2MessageWriter } from "@foxglove/rosmsg2-serializat
 import { Root } from "protobufjs";
 import descriptor from "protobufjs/ext/descriptor";
 import { describe, expect, it } from "vitest";
-import type { Decoder, PayloadDescriptor } from "../../../decoders";
+import type { Decoder } from "../../../decoders";
+import type { PayloadDescriptor } from "../../../ir";
 import type { StreamInventory } from "../../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../../ir";
 import {
@@ -19,7 +20,7 @@ import {
   isPoseStream,
   isSceneUpdateStream,
   streamTopics,
-} from "../stream-topics";
+} from "../resources/stream-topics";
 import { createMcapDecoderRegistry } from ".";
 import {
   FOXGLOVE_CAMERA_CALIBRATION_CDR_PAYLOADS,

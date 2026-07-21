@@ -5,7 +5,7 @@ import type { McapTypes } from "@mcap/core";
 import { Root } from "protobufjs";
 import descriptor from "protobufjs/ext/descriptor";
 import { describe, expect, it, vi } from "vitest";
-import { resolveMcapTimelineStrategy } from "../timeline";
+import { resolveMcapTimelineStrategy } from "./timeline";
 import {
   projectNumericField,
   readMcapNumericSeries,

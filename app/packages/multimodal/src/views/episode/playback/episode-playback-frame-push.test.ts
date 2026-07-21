@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import type { DecodedFrame } from "../../../ir";
 import { pushTickToStore } from "./episode-playback-frame-push";
-import { EpisodeStreamCache } from "./episode-stream-cache";
+import { EpisodeStreamCache } from "../../../runtime";
 import { getEpisodeStreamDiagnostics } from "./episode-stream-status-state";
 import type { EpisodeStreamPlaybackFrame } from "./use-episode-stream-values";
 

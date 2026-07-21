@@ -1,65 +1,23 @@
 import colormap from "colormap";
 
 import {
+  DEFAULT_POINT_CLOUD_COLORMAP,
+  MAX_POINT_CLOUD_COLORMAP_STOPS,
+  MIN_POINT_CLOUD_COLORMAP_STOPS,
+  POINT_CLOUD_COLORMAP_LABELS,
+  POINT_CLOUD_COLORMAPS,
+  type PointCloudColormap,
+  type PointCloudColormapLookup,
+  type PointCloudColormapName,
+  type PointCloudColorStop,
+  type PointCloudCustomColormap,
+} from "./colormap-types";
+import {
   clamp01,
   hexToRgbUnit,
   normalizeHexColor,
   normalizeIdentifierName,
 } from "./utils";
-
-export interface PointCloudColorStop {
-  readonly color: string;
-  readonly value: number;
-}
-
-export interface PointCloudCustomColormap {
-  readonly list: readonly PointCloudColorStop[];
-  readonly name?: string;
-}
-
-export const POINT_CLOUD_COLORMAPS = [
-  "coolwarm",
-  "grayscale",
-  "inferno",
-  "jet",
-  "magma",
-  "plasma",
-  "turbo",
-  "viridis",
-  "cyantoyellow",
-] as const;
-
-export type PointCloudColormapName = (typeof POINT_CLOUD_COLORMAPS)[number];
-
-export type PointCloudColormap =
-  | PointCloudColormapName
-  | PointCloudCustomColormap;
-
-export interface PointCloudColormapLookup {
-  readonly colors: Float32Array;
-  readonly colormap: PointCloudColormap;
-  readonly size: number;
-}
-
-export const DEFAULT_POINT_CLOUD_COLORMAP: PointCloudColormapName = "coolwarm";
-
-export const POINT_CLOUD_COLORMAP_LABELS: Record<
-  PointCloudColormapName,
-  string
-> = {
-  coolwarm: "Cool-warm",
-  cyantoyellow: "Cyan to yellow",
-  grayscale: "Grayscale",
-  inferno: "Inferno",
-  jet: "Jet",
-  magma: "Magma",
-  plasma: "Plasma",
-  turbo: "Turbo",
-  viridis: "Viridis",
-};
-
-export const MIN_POINT_CLOUD_COLORMAP_STOPS = 2;
-export const MAX_POINT_CLOUD_COLORMAP_STOPS = 256;
 
 const DEFAULT_PRESET_STOP_COUNT = 128;
 const LOOKUP_SIZE = 256;

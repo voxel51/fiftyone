@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { Vector3 } from "three";
-import type { PointCloudVisualization } from "../../../decoders";
+import type { PointCloudVisualization } from "../../../ir";
 import type {
   PointCloudCameraPose,
   PointCloudFrameTransform,

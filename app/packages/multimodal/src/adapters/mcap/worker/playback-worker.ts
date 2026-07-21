@@ -1,5 +1,6 @@
 import { setFetchFunction } from "@fiftyone/utilities";
-import { errorMessage, READ_CANCELLED_MESSAGE } from "../../../errors";
+import { errorMessage } from "../../../utils/errors";
+import { EPISODE_READ_CANCELLED_MESSAGE } from "../../../ports";
 import {
   isMcapPlaybackWorkerStreamRequest,
   runMcapPlaybackWorkerStreamRequest,
@@ -118,7 +119,7 @@ async function runAndRespond(
     // A cancelled request reports the canonical marker no matter which read
     // the abort surfaced through, so consumers can treat it as benign.
     const messageText = context.signal.aborted
-      ? READ_CANCELLED_MESSAGE
+      ? EPISODE_READ_CANCELLED_MESSAGE
       : errorMessage(error);
     postResponse({
       error: messageText,

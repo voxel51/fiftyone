@@ -4,8 +4,8 @@ import {
   STREAM_METADATA,
   type SceneSource,
   type SceneSourceType,
+  type StreamDescriptor,
 } from "../../../ir";
-import type { StreamInventory } from "../../../schemas/v1";
 
 export const EPISODE_STREAM_CATEGORY = {
   SENSORS: "sensors",
@@ -134,7 +134,7 @@ export function buildEpisodeStreamInventoryRows({
   streams,
 }: {
   readonly sceneSources: readonly SceneSource[];
-  readonly streams: readonly StreamInventory[];
+  readonly streams: readonly StreamDescriptor[];
 }): readonly EpisodeStreamInventoryRow[] {
   const sceneSourceTypes = new Map(
     sceneSources.map((source) => [source.id, source.type]),
@@ -148,11 +148,11 @@ export function buildEpisodeStreamInventoryRows({
       }
 
       const sourceType =
-        knownSceneSourceType(stream.metadata[SCENE_SOURCE_METADATA.TYPE]) ??
+        knownSceneSourceType(stream.metadata?.[SCENE_SOURCE_METADATA.TYPE]) ??
         knownSceneSourceType(sceneSourceTypes.get(name));
       const frameTransform = isFrameTransformStream(stream);
       const decodeStatus = genericDecodeStatus(
-        stream.metadata[STREAM_METADATA.DECODE_STATUS],
+        stream.metadata?.[STREAM_METADATA.DECODE_STATUS],
       );
       const canInspect = decodeStatus === "decodable";
       const schemaName = schemaNameFor(stream);
@@ -172,9 +172,9 @@ export function buildEpisodeStreamInventoryRows({
           telemetry,
           stream: name,
         }),
-        countLabel: messageCountLabel(stream.recordCount),
+        countLabel: messageCountLabel(stream.count),
         encoding: encodingFor(stream),
-        recordCount: recordCountFor(stream.recordCount),
+        recordCount: recordCountFor(stream.count),
         schemaName,
         sourceType,
         supportStatus: supportStatusFor({
@@ -212,7 +212,7 @@ export function filterEpisodeStreamInventoryRows(
   );
 }
 
-export function messageCountLabel(recordCount: string | undefined): string {
+export function messageCountLabel(recordCount: number | undefined): string {
   const count = recordCountFor(recordCount);
   if (count === null) {
     return "unknown msgs";
@@ -355,40 +355,43 @@ function genericDecodeStatus(status: string | undefined): GenericDecodeStatus {
   }
 }
 
-function schemaNameFor(stream: StreamInventory): string {
+function schemaNameFor(stream: StreamDescriptor): string {
   return (
-    stream.metadata[STREAM_METADATA.SCHEMA_NAME] ??
-    stream.payload?.schema ??
+    stream.metadata?.[STREAM_METADATA.SCHEMA_NAME] ??
+    stream.payload.schema ??
     "no schema"
   );
 }
 
-function encodingFor(stream: StreamInventory): string {
+function encodingFor(stream: StreamDescriptor): string {
   return (
-    stream.metadata[STREAM_METADATA.ENCODING] ??
-    stream.payload?.encoding ??
+    stream.metadata?.[STREAM_METADATA.ENCODING] ??
+    stream.payload.encoding ??
     "unknown"
   );
 }
 
-function streamName(stream: StreamInventory): string {
+function streamName(stream: StreamDescriptor): string {
   return (
-    stream.metadata[SCENE_SOURCE_METADATA.SOURCE_NAME] ??
-    stream.displayName ??
-    stream.streamId
+    stream.metadata?.[SCENE_SOURCE_METADATA.SOURCE_NAME] ??
+    stream.sourceName ??
+    stream.id
   );
 }
 
-function isFrameTransformStream(stream: StreamInventory): boolean {
-  const identity = `${stream.payload?.schema ?? ""} ${stream.payload?.encoding ?? ""}`;
+function isFrameTransformStream(stream: StreamDescriptor): boolean {
+  const identity = `${stream.payload.schema ?? ""} ${stream.payload.encoding}`;
   return /(?:^|[./_])(?:tf2?_msgs|transform(?:stamped|s)?)(?:$|[./_])/i.test(
     identity,
   );
 }
 
-function recordCountFor(recordCount: string | undefined): number | null {
-  const count = recordCount === undefined ? Number.NaN : Number(recordCount);
-  return Number.isFinite(count) && count >= 0 ? count : null;
+function recordCountFor(recordCount: number | undefined): number | null {
+  return recordCount !== undefined &&
+    Number.isFinite(recordCount) &&
+    recordCount >= 0
+    ? recordCount
+    : null;
 }
 
 function knownSceneSourceType(

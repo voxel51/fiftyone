@@ -1,7 +1,7 @@
 import { PlaybackProvider } from "@fiftyone/playback";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DecodedDiagnostic } from "../../../decoders";
+import type { DecodedDiagnostic } from "../../../ir";
 import type { SceneSource } from "../../../scene-inventory";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
 import Episode3dTileSettings, {

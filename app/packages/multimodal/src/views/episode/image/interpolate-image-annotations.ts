@@ -19,8 +19,8 @@ import type {
   ImageAnnotationPoints,
   ImageAnnotationText,
   ImageAnnotationsVisualization,
-} from "../../../decoders";
-import { groupLineSegmentsByLabel } from "../../../utils/line-segment-grouping";
+} from "../../../ir";
+import { groupLineSegmentsByLabel } from "../../../visualization/image/line-segment-grouping";
 import type { DecodedFrame } from "../../../ir";
 import type {
   ImageAnnotationBounds,

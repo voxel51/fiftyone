@@ -5,14 +5,14 @@ import {
   rootRosMessageDefinition,
   type RosMessageDefinition,
 } from "../decoders/ros/wire";
-import { protobufFromBinaryDescriptor } from "../mcap-support";
+import { protobufFromBinaryDescriptor } from "../shared/mcap-support";
 import type { McapIndexedReaderLike } from "../reader";
 import type {
   McapEnumerateNumericFieldsRequest,
   McapNumericFieldDescriptor,
   McapNumericFieldAvailability,
   McapTopicNumericFields,
-} from "../types";
+} from "../shared/types";
 import { genericRecordDecoderForChannel } from "./generic-record-decoder";
 import { DEFAULT_RAW_PRUNE_BUDGETS } from "./raw-record-prune";
 

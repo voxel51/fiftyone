@@ -1,5 +1,5 @@
+import type { DecodeContext } from "../../../../decoders";
 import type {
-  DecodeContext,
   DecodedAttributeValue,
   DecodedOutput,
   RgbaColor,
@@ -7,7 +7,7 @@ import type {
   SceneLinePrimitive,
   ScenePoint3D,
   ScenePose3D,
-} from "../../../../decoders";
+} from "../../../../ir";
 import { VISUALIZATION_KIND } from "../../../../ir";
 import {
   decodePose,

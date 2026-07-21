@@ -12,7 +12,7 @@ import {
 import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
-import { useSceneInventory } from "../../../scene-inventory";
+import { useSceneInventory } from "../../../scene-inventory/react";
 import {
   MapRenderer,
   type MapRendererPlayback,

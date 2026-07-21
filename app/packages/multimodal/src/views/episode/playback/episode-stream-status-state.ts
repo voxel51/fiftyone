@@ -2,7 +2,7 @@ import { usePlaybackStore, type PlaybackStore } from "@fiftyone/playback";
 import { atom, useAtomValue, type PrimitiveAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { useMemo } from "react";
-import type { DecodedDiagnostic } from "../../../decoders";
+import type { DecodedDiagnostic } from "../../../ir";
 
 /**
  * Per-stream playback readiness at the current playhead tick:

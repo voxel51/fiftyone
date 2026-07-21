@@ -29,7 +29,7 @@ import type {
   SceneTextPrimitive,
   SceneTrianglePrimitive,
   SceneUpdateVisualization,
-} from "../../../decoders";
+} from "../../../ir";
 
 /**
  * Interpolates `prev` toward `next` by fraction `f` in [0, 1]. When

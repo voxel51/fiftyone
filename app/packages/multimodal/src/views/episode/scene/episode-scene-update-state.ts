@@ -2,7 +2,7 @@ import { VISUALIZATION_KIND } from "../../../visualization";
 import type {
   SceneEntityVisualization,
   SceneUpdateVisualization,
-} from "../../../decoders";
+} from "../../../ir";
 
 export interface EpisodeSceneUpdateDelta {
   readonly timeNs: bigint;

@@ -3,9 +3,13 @@ import {
   subscribePlayhead,
   type PlaybackStore,
 } from "@fiftyone/playback/runtime";
-import { useCallback, useRef, type MutableRefObject } from "react";
-import { monotonicNowMs } from "../time";
+import { monotonicNowMs } from "../utils/monotonic-time";
 import type { TimelineIndex } from "./timeline-index";
+
+/** Minimal mutable reference contract shared with React and headless callers. */
+export interface MutableRef<T> {
+  current: T;
+}
 
 /** Minimum data-stream surface needed by the runtime demand bridge. */
 export interface TimelineDataStream {
@@ -20,32 +24,9 @@ export interface DemandHandlers {
 
 /** Refcounted demand registry shared by source-scoped runtime providers. */
 export interface DemandRegistry<THandlers extends DemandHandlers> {
-  readonly handlersRef: MutableRefObject<THandlers | null>;
-  readonly refCountsRef: MutableRefObject<Map<string, number>>;
+  readonly handlersRef: MutableRef<THandlers | null>;
+  readonly refCountsRef: MutableRef<Map<string, number>>;
   readonly subscribeKey: (key: string) => () => void;
-}
-
-/** Creates stable demand refs and an idempotent key subscription helper. */
-export function useDemandRegistry<
-  THandlers extends DemandHandlers,
->(): DemandRegistry<THandlers> {
-  const handlersRef = useRef<THandlers | null>(null);
-  const refCountsRef = useRef(new Map<string, number>());
-  const subscribeKey = useCallback((key: string) => {
-    const counts = refCountsRef.current;
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-    handlersRef.current?.onDemandChanged();
-    let active = true;
-    return () => {
-      if (!active) return;
-      active = false;
-      const current = counts.get(key) ?? 0;
-      if (current <= 1) counts.delete(key);
-      else counts.set(key, current - 1);
-      handlersRef.current?.onDemandChanged();
-    };
-  }, []);
-  return { handlersRef, refCountsRef, subscribeKey };
 }
 
 /** Runtime utilities passed into one source-scoped bridge epoch. */
@@ -69,16 +50,16 @@ export interface DemandBridgeOptions<
   THandlers extends DemandHandlers,
   TDataStream extends TimelineDataStream = TimelineDataStream,
 > {
-  readonly dataStreamRef: MutableRefObject<TDataStream | null>;
+  readonly dataStreamRef: MutableRef<TDataStream | null>;
   readonly demandDebounceMs?: number;
   readonly deferredRetryMs: number;
-  readonly handlersRef: MutableRefObject<THandlers | null>;
+  readonly handlersRef: MutableRef<THandlers | null>;
   readonly makeHandlers: (runtime: DemandBridgeRuntime) => THandlers;
   readonly onFill: (context: DemandBridgeFillContext) => void;
   readonly onHandlersReady?: (handlers: THandlers) => void;
   readonly playbackStore: PlaybackStore | null;
   readonly playheadThrottleMs: number;
-  readonly refCountsRef: MutableRefObject<Map<string, number>>;
+  readonly refCountsRef: MutableRef<Map<string, number>>;
   readonly requireTimeline: boolean;
   readonly shouldDeferIdleWork?: (store: PlaybackStore) => boolean;
   readonly timelineRetryMs: number;

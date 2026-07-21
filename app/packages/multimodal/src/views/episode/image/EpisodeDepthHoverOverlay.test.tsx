@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { Provider as JotaiProvider } from "jotai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { RawImageVisualization } from "../../../decoders";
+import type { RawImageVisualization } from "../../../ir";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import type { EpisodeCameraModel } from "./camera-geometry/episode-camera-model";
 import EpisodeDepthHoverOverlay from "./EpisodeDepthHoverOverlay";

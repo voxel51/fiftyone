@@ -2,7 +2,7 @@ import type { McapIndexedReaderLike } from "../reader";
 import type {
   McapReadTopicTimeBoundsRequest,
   McapTopicTimeBounds,
-} from "../types";
+} from "../shared/types";
 
 /**
  * Resolves per-topic first/last message times from summary indexes.

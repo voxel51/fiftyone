@@ -1,5 +1,5 @@
 import { byteSourceAccessKey } from "../../../query/bytes";
-import { hydrateMcapFrameTransformSet } from "../frame-transform-wire";
+import { hydrateMcapFrameTransformSet } from "../shared/frame-transform-wire";
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
 import type {
@@ -18,8 +18,9 @@ import {
   type McapPlaybackWorkerStreamType,
   type McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
-import { errorMessage, readCancelledError, toError } from "../../../errors";
-import type { McapFrameTransformSet } from "../frame-transform-types";
+import { errorMessage, toError } from "../../../utils/errors";
+import { EpisodeReadCancelledError } from "../../../ports";
+import type { McapFrameTransformSet } from "../shared/frame-transform-types";
 import type {
   McapDecodedMessage,
   McapEnumerateNumericFieldsRequest,
@@ -41,7 +42,7 @@ import type {
   McapTimelineRange,
   McapTopicNumericFields,
   McapTopicTimeBounds,
-} from "../types";
+} from "../shared/types";
 import type { StreamInventory } from "../../../schemas/v1";
 
 type WorkerLaneName = "foreground" | "idle" | "bulk";
@@ -305,7 +306,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     if (this.explicitOwnership) {
       // Under explicit ownership only activateSource may switch; a request
       // for a non-active source is a dying renderer's late effect.
-      throw readCancelledError();
+      throw new EpisodeReadCancelledError();
     }
 
     // Request-driven switching for callers that never activate a source:

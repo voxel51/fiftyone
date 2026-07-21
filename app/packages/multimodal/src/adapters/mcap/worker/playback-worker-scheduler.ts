@@ -1,4 +1,4 @@
-import { monotonicNowMs } from "../../../time";
+import { monotonicNowMs } from "../../../utils/monotonic-time";
 import type { McapPlaybackWorkerPriority } from "./playback-worker-types";
 
 /**

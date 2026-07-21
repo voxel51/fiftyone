@@ -14,7 +14,10 @@ import {
   pruneMosaicLayout,
   useEpisodeModalLayout,
 } from "./use-episode-modal-layout";
-import { episodeTileTypesFor } from "../tiles/use-episode-tiles";
+import {
+  episodeTileTypesFor,
+  getEpisodeTileDefinition,
+} from "../tiles/episode-tile-catalog";
 
 // The tile bodies drag in WebGPU/Three at module load, which jsdom can't
 // evaluate. Layout restore only needs them to exist as components; the
@@ -54,6 +57,7 @@ function renderLayoutHook(
         hasRawRecords: true,
         sourceTypes: sources.map((source) => source.type),
       }),
+      resolveTile: getEpisodeTileDefinition,
       sources,
       datasetId,
       cameraPreferenceField,
@@ -507,6 +511,7 @@ describe("useEpisodeModalLayout", () => {
             hasRawRecords: true,
             sourceTypes: SCENE_SOURCES.map((source) => source.type),
           }),
+          resolveTile: getEpisodeTileDefinition,
           sources: SCENE_SOURCES,
           datasetId,
           capabilities: STRONG_CAPABILITIES,

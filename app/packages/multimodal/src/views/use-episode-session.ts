@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { EpisodeSession, EpisodeSource, SampleDescriptor } from "../ports";
-import { createDefaultByteClient } from "../query/bytes";
-import { loadFormatAdapter } from "../runtime";
+import { openEpisodeSession } from "../runtime";
 
 /** Lifecycle state for a lazily detected episode session. */
 export type EpisodeSessionState =
@@ -24,7 +23,6 @@ export function useEpisodeSession(
   sample: SampleDescriptor,
   source: EpisodeSource | null,
 ): EpisodeSessionState {
-  const io = useMemo(() => createDefaultByteClient(), []);
   const [state, setState] = useState<EpisodeSessionState>({
     error: null,
     session: null,
@@ -41,11 +39,8 @@ export function useEpisodeSession(
     let active = true;
     let opened: EpisodeSession | null = null;
     setState({ error: null, session: null, status: "loading" });
-    void loadFormatAdapter({ mediaType, path })
-      .then(async (adapter) => {
-        if (!adapter)
-          throw new Error("No episode adapter recognized this sample");
-        const session = await adapter.open(source, io);
+    void openEpisodeSession({ mediaType, path }, source)
+      .then((session) => {
         if (!active) {
           session.dispose();
           return;
@@ -66,7 +61,7 @@ export function useEpisodeSession(
       active = false;
       opened?.dispose();
     };
-  }, [io, mediaType, path, source]);
+  }, [mediaType, path, source]);
 
   return state;
 }

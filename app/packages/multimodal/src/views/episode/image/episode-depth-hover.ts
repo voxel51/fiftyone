@@ -1,6 +1,6 @@
 import { atom, useAtomValue, useSetAtom } from "jotai";
 
-import type { RawImageVisualization } from "../../../decoders";
+import type { RawImageVisualization } from "../../../ir";
 import {
   projectEpisodeCameraPoint,
   unprojectEpisodeCameraPixel,

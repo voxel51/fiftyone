@@ -1,7 +1,7 @@
 import type { McapTypes } from "@mcap/core";
 import type { DecodeClient } from "../../../query/decoding";
 import { compareBigInt } from "../../../ir";
-import { readCancelledError } from "../../../errors";
+import { EpisodeReadCancelledError } from "../../../ports";
 import {
   compareByTimelineTime,
   createCandidateSelector,
@@ -10,18 +10,21 @@ import {
   isWithinRange,
   maxBigInt,
   minBigInt,
-} from "../sync";
-import { isMcapTopicDecodeError, type McapTopicDecodeError } from "../errors";
-import { decodeMcapMessage, mcapMessageRecordId } from "../message-decoder";
+} from "../shared/sync";
+import {
+  isMcapTopicDecodeError,
+  type McapTopicDecodeError,
+} from "../shared/errors";
+import { decodeMcapMessage, mcapMessageRecordId } from "./message-decoder";
 import type { McapIndexedMessageTime, McapIndexedReaderLike } from "../reader";
-import type { McapTimelineStrategy } from "../timeline";
+import type { McapTimelineStrategy } from "./timeline";
 import type {
   McapDecodedMessage,
   McapReadSynchronizedMessageBatchRequest,
   McapResolvedStreamSyncPolicy,
   McapSynchronizedMessageWindow,
   McapTopicDecodeDiagnostic,
-} from "../types";
+} from "../shared/types";
 import type { McapPredecessorStore } from "./predecessor-store";
 
 const INDEXED_LOOKUP_KEY_SEPARATOR = "\0";
@@ -129,7 +132,7 @@ export async function readMcapSynchronizedMessageBatch({
       // for seconds before the next sample's reads run.
       throwIfAborted: () => {
         if (readSignal?.current?.aborted) {
-          throw readCancelledError();
+          throw new EpisodeReadCancelledError();
         }
       },
       decodeCandidate: (candidate) =>

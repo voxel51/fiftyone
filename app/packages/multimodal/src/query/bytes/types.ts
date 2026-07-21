@@ -1,13 +1,14 @@
-import type { BYTE_SOURCE_READ_PROFILE } from "./constants";
-import type { ByteRange, ByteSourceDescriptor } from "../../ir";
+import type {
+  ByteRange,
+  ByteSourceDescriptor,
+  ByteSourceReadProfile,
+} from "../../ir";
 
-export type { ByteRange, ByteSourceDescriptor } from "../../ir";
-
-/**
- * Byte-source locality hint used to choose cache fill behavior.
- */
-export type ByteSourceReadProfile =
-  (typeof BYTE_SOURCE_READ_PROFILE)[keyof typeof BYTE_SOURCE_READ_PROFILE];
+export type {
+  ByteRange,
+  ByteSourceDescriptor,
+  ByteSourceReadProfile,
+} from "../../ir";
 
 /**
  * Request for reading one source byte range.

@@ -2,7 +2,7 @@ import { useTiling } from "@fiftyone/tiling";
 import { MenuIconTextItem } from "@voxel51/voodo";
 import React from "react";
 import { EPISODE_TILE_TYPE, type EpisodeTileType } from "./episode-tile-types";
-import { getEpisodeTileDefinition } from "./use-episode-tiles";
+import { getEpisodeTileDefinition } from "./episode-tile-catalog";
 
 /**
  * Archetype-first add-tile menu for the episode modal. Stream/source binding

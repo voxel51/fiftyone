@@ -1,7 +1,7 @@
 import { Quaternion, Vector3 } from "three";
 
+import type { DecodeContext } from "../../../../decoders";
 import type {
-  DecodeContext,
   DecodedAttributeValue,
   DecodedOutput,
   RgbaColor,
@@ -19,7 +19,7 @@ import type {
   SceneSpherePrimitive,
   SceneTextPrimitive,
   SceneTrianglePrimitive,
-} from "../../../../decoders";
+} from "../../../../ir";
 import { VISUALIZATION_KIND } from "../../../../ir";
 import {
   decodePose,

@@ -1,6 +1,6 @@
 import { createInlineMcapResourceClient } from "./resources";
 import type { ByteClient } from "../../query/bytes";
-import type { McapResourceClient } from "./types";
+import type { McapResourceClient } from "./shared/types";
 import { createWorkerMcapResourceClient } from "./worker";
 
 /**

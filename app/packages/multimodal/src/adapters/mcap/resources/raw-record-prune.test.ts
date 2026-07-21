@@ -4,7 +4,7 @@ import type {
   McapRawArrayNode,
   McapRawObjectNode,
   McapRawValueNode,
-} from "../types";
+} from "../shared/types";
 import {
   DEFAULT_RAW_PRUNE_BUDGETS,
   pruneRawRecord,

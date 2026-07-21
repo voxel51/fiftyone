@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import type {
   EpisodePreviewSession,
   EpisodeSource,
   SampleDescriptor,
 } from "../ports";
-import { createDefaultByteClient } from "../query/bytes";
-import { loadFormatAdapter } from "../runtime";
+import { openEpisodePreviewSession } from "../runtime";
 
 /** Lifecycle state for a lazily detected lightweight preview session. */
 export type EpisodePreviewSessionState =
@@ -38,7 +37,6 @@ export function useEpisodePreviewSession(
   source: EpisodeSource | null,
   enabled: boolean,
 ): EpisodePreviewSessionState {
-  const io = useMemo(() => createDefaultByteClient(), []);
   const [state, setState] = useState<EpisodePreviewSessionState>({
     error: null,
     session: null,
@@ -55,9 +53,9 @@ export function useEpisodePreviewSession(
     let active = true;
     let opened: EpisodePreviewSession | null = null;
     setState({ error: null, session: null, status: "loading" });
-    void loadFormatAdapter({ mediaType, path })
-      .then(async (adapter) => {
-        if (!adapter?.openPreview) {
+    void openEpisodePreviewSession({ mediaType, path }, source)
+      .then((session) => {
+        if (!session) {
           if (active) {
             setState({
               error: null,
@@ -67,7 +65,6 @@ export function useEpisodePreviewSession(
           }
           return;
         }
-        const session = await adapter.openPreview(source, io);
         if (!active) {
           session.dispose();
           return;
@@ -87,7 +84,7 @@ export function useEpisodePreviewSession(
       active = false;
       opened?.dispose();
     };
-  }, [enabled, io, mediaType, path, source]);
+  }, [enabled, mediaType, path, source]);
 
   return state;
 }

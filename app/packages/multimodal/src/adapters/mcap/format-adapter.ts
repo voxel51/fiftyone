@@ -33,8 +33,8 @@ import {
   type TransformReadAcceleration,
 } from "../../ports";
 import { PlaybackSyncMode } from "../../schemas/v1";
-import { isReadCancelledError } from "../../errors";
-import type { McapGridPreviewResult } from "./grid-preview";
+import { isEpisodeReadCancelledError } from "../../ports";
+import type { McapGridPreviewResult } from "./resources/grid-preview";
 import { prewarmMcapSource } from "./prewarm-mcap-source";
 import {
   acquireSharedMcapResourceClient,
@@ -47,7 +47,7 @@ import {
   type McapStreamSyncPolicies,
   type McapStreamSyncPolicy,
   type McapTimelineRange,
-} from "./types";
+} from "./shared/types";
 import { getMcapGridPreviewPool } from "./worker";
 import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
@@ -610,7 +610,7 @@ class McapEpisodeSession implements EpisodeSession {
         yield { frames: [frame], stream: frame.streamId };
       }
     } catch (error) {
-      if (isReadCancelledError(error)) {
+      if (isEpisodeReadCancelledError(error)) {
         throw new EpisodeReadCancelledError();
       }
       throw error;
@@ -777,7 +777,7 @@ class McapEpisodeSession implements EpisodeSession {
   }
 
   private normalizeReadError(error: unknown): unknown {
-    return isReadCancelledError(error)
+    return isEpisodeReadCancelledError(error)
       ? new EpisodeReadCancelledError()
       : error;
   }

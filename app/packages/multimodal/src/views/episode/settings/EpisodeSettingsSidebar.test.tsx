@@ -10,15 +10,13 @@ import { PlaybackProvider } from "@fiftyone/playback";
 import { useAtomValue } from "jotai";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  SceneInventoryProvider,
-  type SceneSource,
-} from "../../../scene-inventory";
-import type { StreamInventory } from "../../../schemas/v1";
+import { SceneInventoryProvider } from "../../../scene-inventory/react";
+import type { SceneSource } from "../../../scene-inventory";
 import {
   SCENE_SOURCE_METADATA,
   SCENE_SOURCE_TYPE,
   STREAM_METADATA,
+  type StreamDescriptor,
 } from "../../../ir";
 import { episodeRawTileStreamAtom } from "../raw/episode-raw-tile-state";
 import { __resetEpisodeModalSettingsForTests } from "./episode-modal-settings";
@@ -128,7 +126,7 @@ function renderSidebar({
 }: {
   /** Stream streams declared by the registered tiles' registrations. */
   readonly registeredStreamStreams?: readonly string[];
-  readonly streams?: readonly StreamInventory[];
+  readonly streams?: readonly StreamDescriptor[];
 } = {}) {
   const probeState: { current: TilingProbeState | null } = { current: null };
   const result = render(
@@ -562,11 +560,12 @@ function stream(
     readonly encoding: string;
     readonly schema: string;
   },
-): StreamInventory {
+): StreamDescriptor {
   const sceneType = testSceneType(schema);
   return {
-    $typeName: "fiftyone.multimodal.schemas.v1.StreamInventory",
-    displayName: name,
+    count: Number(count),
+    id: name,
+    kind: "unknown",
     metadata: {
       [SCENE_SOURCE_METADATA.SOURCE_NAME]: name,
       ...(sceneType ? { [SCENE_SOURCE_METADATA.TYPE]: sceneType } : {}),
@@ -575,13 +574,12 @@ function stream(
       [STREAM_METADATA.SCHEMA_NAME]: schema,
     },
     payload: {
-      $typeName: "fiftyone.multimodal.schemas.v1.PayloadDescriptor",
       encoding,
       schema,
       schemaEncoding: encoding === "ros1" ? "ros1msg" : "protobuf",
     },
-    recordCount: count,
-    streamId: name,
+    sourceName: name,
+    timeRange: { endNs: 1n, startNs: 0n },
   };
 }
 

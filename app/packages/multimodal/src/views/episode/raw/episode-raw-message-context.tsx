@@ -11,14 +11,12 @@ import React, {
   useRef,
   useState,
 } from "react";
-import {
-  startDemandBridge,
-  useDemandRegistry,
-  useEpisodeDataStream,
-} from "../../../runtime";
+import { startDemandBridge } from "../../../runtime";
+import { useDemandRegistry } from "../../../runtime/react";
 import type { RawRecordResult, RawRecordStream } from "../../../ir";
 import type { RawRecordCapability } from "../../../ports";
 import { shouldDeferEpisodeIdleWorkForStore } from "../playback/episode-network-health";
+import { useEpisodeDataStream } from "../playback/episode-data-stream-context";
 
 /** Playhead-driven refetches run at most this often per bridge tick. */
 const PLAYHEAD_THROTTLE_MS = 300;

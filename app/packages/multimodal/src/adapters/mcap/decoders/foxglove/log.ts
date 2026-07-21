@@ -1,15 +1,11 @@
-import type {
-  DecodeContext,
-  DecodedAttributeValue,
-  DecodedOutput,
-  Decoder,
-} from "../../../../decoders";
+import type { DecodeContext, Decoder } from "../../../../decoders";
+import type { DecodedAttributeValue, DecodedOutput } from "../../../../ir";
 import {
   LOG_ATTRIBUTE_ROWS,
   LOG_LEVEL,
   type DecodedLogRow,
   logRowsAttribute,
-} from "../../log-records";
+} from "../../shared/log-records";
 import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";
 import {

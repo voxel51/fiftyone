@@ -4,12 +4,11 @@ import { act, cleanup, render } from "@testing-library/react";
 import { createStore } from "jotai";
 import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createTimelineIndex, type EpisodeDataStream } from "../../../runtime";
 import {
-  createTimelineIndex,
   EpisodeDataStreamProvider,
   useSetEpisodeDataStream,
-  type EpisodeDataStream,
-} from "../../../runtime";
+} from "../../../runtime/react";
 import type { NumericSeriesResult, NumericStreamFields } from "../../../ir";
 import type { NumericSeriesCapability } from "../../../ports";
 import {

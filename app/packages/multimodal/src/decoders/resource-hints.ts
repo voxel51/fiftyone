@@ -1,4 +1,4 @@
-import type { DecodedResourceHints } from "./types";
+import type { DecodedResourceHints } from "../ir";
 
 /**
  * Builds decoded-output resource hints for transferable typed-array payloads.

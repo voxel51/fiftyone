@@ -1,25 +1,26 @@
-import { SCENE_SOURCE_METADATA, type SceneSource } from "../ir";
-import type { StreamInventory } from "../schemas/v1";
-import { streamPrefix } from "../stream-matching";
+import {
+  SCENE_SOURCE_METADATA,
+  type SceneSource,
+  type StreamDescriptor,
+} from "../ir";
+import { streamPrefix } from "../stream-selection";
 
 /** Builds renderer-facing scene sources from adapter-normalized inventory. */
-export function sceneSourcesFromStreamInventory(
-  streams: readonly StreamInventory[],
+export function sceneSourcesFromStreamDescriptors(
+  streams: readonly StreamDescriptor[],
 ): readonly SceneSource[] {
   const classified = streams.flatMap((stream) => {
-    const type = stream.metadata[SCENE_SOURCE_METADATA.TYPE];
+    const metadata = stream.metadata ?? {};
+    const type = metadata[SCENE_SOURCE_METADATA.TYPE];
     if (!type) return [];
     const sourceName =
-      stream.metadata[SCENE_SOURCE_METADATA.SOURCE_NAME] ??
-      stream.displayName ??
-      stream.streamId;
-    const recordCount = parseCount(stream.recordCount);
+      metadata[SCENE_SOURCE_METADATA.SOURCE_NAME] ?? stream.sourceName;
     return [
       {
-        id: stream.streamId,
+        id: stream.id,
         label: sourceLabel(sourceName),
-        metadata: normalizedSceneMetadata(stream.metadata),
-        ...(recordCount === undefined ? {} : { recordCount }),
+        metadata: normalizedSceneMetadata(metadata),
+        ...(stream.count === undefined ? {} : { recordCount: stream.count }),
         type,
       },
     ];
@@ -34,7 +35,7 @@ export function sceneSourcesFromStreamInventory(
       ? {
           ...source,
           label: displaySourceName(
-            streams.find((stream) => stream.streamId === source.id)?.metadata[
+            streams.find((stream) => stream.id === source.id)?.metadata?.[
               SCENE_SOURCE_METADATA.SOURCE_NAME
             ] ?? source.id,
           ),
@@ -59,10 +60,4 @@ function sourceLabel(sourceName: string): string {
 
 function displaySourceName(sourceName: string): string {
   return sourceName.replace(/^\//, "");
-}
-
-function parseCount(value: string | undefined): number | undefined {
-  if (value === undefined) return undefined;
-  const count = Number(value);
-  return Number.isFinite(count) && count >= 0 ? count : undefined;
 }

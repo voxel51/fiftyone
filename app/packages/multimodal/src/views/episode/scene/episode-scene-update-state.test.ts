@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type {
   SceneEntityVisualization,
   SceneUpdateVisualization,
-} from "../../../decoders";
+} from "../../../ir";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { sceneUpdateSnapshotAt } from "./episode-scene-update-state";
 

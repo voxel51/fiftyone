@@ -1,6 +1,6 @@
 import { atom, useAtomValue, useStore } from "jotai";
 import React, { useEffect } from "react";
-import type { SceneEntityVisualization } from "../../../decoders";
+import type { SceneEntityVisualization } from "../../../ir";
 
 /**
  * Cross-tile object selection for the episode modal. One object at a time,

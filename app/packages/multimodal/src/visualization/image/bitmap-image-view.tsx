@@ -35,7 +35,7 @@ import type {
   EncodedVideoVisualization,
   ImageVisualization,
   RawImageVisualization,
-} from "../../decoders";
+} from "../../ir";
 import { fittedImageSize } from "./image-fit";
 import {
   createEncodedVideoCanvas,

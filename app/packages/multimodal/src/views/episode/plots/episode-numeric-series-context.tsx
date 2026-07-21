@@ -18,14 +18,14 @@ import {
   removeCoveredRange,
   startDemandBridge,
   subtractCoveredRanges,
-  useDemandRegistry,
-  useEpisodeDataStream,
   type NsRange,
   type NumericSeriesSegment,
   type TimelineIndex,
 } from "../../../runtime";
+import { useDemandRegistry } from "../../../runtime/react";
 import type { NumericStreamFields } from "../../../ir";
 import type { NumericSeriesCapability } from "../../../ports";
+import { useEpisodeDataStream } from "../playback/episode-data-stream-context";
 import { shouldDeferEpisodeIdleWorkForStore } from "../playback/episode-network-health";
 
 /**

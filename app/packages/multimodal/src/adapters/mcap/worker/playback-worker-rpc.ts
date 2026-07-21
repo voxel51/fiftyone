@@ -8,8 +8,8 @@ import {
   type McapPlaybackWorkerStreamType,
   type McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
-import { dehydrateMcapFrameTransformSet } from "../frame-transform-wire";
-import type { McapResourceClient } from "../types";
+import { dehydrateMcapFrameTransformSet } from "../shared/frame-transform-wire";
+import type { McapResourceClient } from "../shared/types";
 
 /**
  * Worker operation descriptor for one unary MCAP RPC.

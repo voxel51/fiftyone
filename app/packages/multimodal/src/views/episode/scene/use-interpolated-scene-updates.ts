@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { SceneUpdateVisualization } from "../../../decoders";
+import type { SceneUpdateVisualization } from "../../../ir";
 import type { DecodedFrame } from "../../../ir";
 import { interpolationFraction } from "../image/interpolate-image-annotations";
 import { interpolateSceneUpdate } from "./interpolate-scene-entities";
@@ -10,7 +10,7 @@ import {
   sceneUpdateSnapshotAt,
   type EpisodeSceneUpdateDelta,
 } from "./episode-scene-update-state";
-import type { EpisodeStreamCache } from "../playback/episode-stream-cache";
+import type { EpisodeStreamCache } from "../../../runtime";
 import {
   nextDistinctCachedMessage,
   useStreamCacheSnapshot,

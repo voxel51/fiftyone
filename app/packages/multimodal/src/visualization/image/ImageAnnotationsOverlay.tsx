@@ -15,8 +15,8 @@ import type {
   ImageAnnotationText,
   ImageAnnotationsVisualization,
   RgbaColor,
-} from "../../decoders";
-import { groupLineSegmentsByLabel } from "../../utils/line-segment-grouping";
+} from "../../ir";
+import { groupLineSegmentsByLabel } from "./line-segment-grouping";
 import type {
   ImageAnnotationBounds,
   ImageAnnotationLineListGroup,

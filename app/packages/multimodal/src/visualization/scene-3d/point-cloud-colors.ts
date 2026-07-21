@@ -1,13 +1,15 @@
 import * as THREE from "three";
 
-import type { PointCloudScalarField } from "../../decoders";
+import type { PointCloudScalarField } from "../../ir";
 import {
   createPointCloudColormapLookup,
+  writeColormapLookupColor,
+} from "./colormaps";
+import {
   DEFAULT_POINT_CLOUD_COLORMAP,
   type PointCloudColormap,
   type PointCloudColormapLookup,
-  writeColormapLookupColor,
-} from "./colormaps";
+} from "./colormap-types";
 import {
   NEUTRAL_POINT_CLOUD_COLOR as NEUTRAL_POINT_COLOR,
   normalizePointCloudColorValue,

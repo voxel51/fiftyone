@@ -1,5 +1,5 @@
 import type { McapTypes } from "@mcap/core";
-import { readCancelledError } from "../../../errors";
+import { EpisodeReadCancelledError } from "../../../ports";
 import type { Type } from "protobufjs";
 import { Quaternion, Vector3 } from "three";
 import { decodeProtobufMessage } from "../decoders/foxglove/protobuf";
@@ -17,20 +17,20 @@ import {
   rootRosMessageDefinition,
   type RosMessageDefinition,
 } from "../decoders/ros/wire";
-import { protobufFromBinaryDescriptor } from "../mcap-support";
+import { protobufFromBinaryDescriptor } from "../shared/mcap-support";
 import { timestampNs } from "../decoders/foxglove/protobuf/timing";
 import type { McapIndexedReaderLike } from "../reader";
-import type { McapTimelineStrategy } from "../timeline";
+import type { McapTimelineStrategy } from "./timeline";
 import type {
   McapFrameTransformSample,
   McapFrameTransformSet,
   McapFrameTransformTopicStats,
-} from "../frame-transform-types";
+} from "../shared/frame-transform-types";
 import {
   compareFrameTransformSamplesByTime,
   frameTransformEdgeKey,
-} from "../frame-transform-wire";
-import type { McapReadFrameTransformWindowRequest } from "../types";
+} from "../shared/frame-transform-wire";
+import type { McapReadFrameTransformWindowRequest } from "../shared/types";
 
 const PROTOBUF_ENCODING = "protobuf";
 const FOXGLOVE_FRAME_TRANSFORM_CDR_SCHEMA = "foxglove_msgs/msg/FrameTransform";
@@ -344,7 +344,7 @@ export async function readMcapFrameTransformWindow({
     topics: transformTopics,
   })) {
     if (readSignal?.current?.aborted) {
-      throw readCancelledError();
+      throw new EpisodeReadCancelledError();
     }
     const entry = channelsById.get(message.channelId);
     if (!entry) {

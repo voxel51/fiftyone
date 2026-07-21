@@ -1,13 +1,12 @@
 import { useEffect, useMemo } from "react";
-import { SCENE_SOURCE_TYPE } from "../../../ir";
-import {
-  streamSyncPoliciesForSceneSources,
-  useSceneInventory,
-} from "../../../scene-inventory";
-import type { ByteSourceDescriptor } from "../../../query/bytes/types";
-import { byteSourceAccessKey } from "../../../query/bytes";
+import { SCENE_SOURCE_TYPE, type ByteSourceDescriptor } from "../../../ir";
+import { streamSyncPoliciesForSceneSources } from "../../../scene-inventory";
+import { useSceneInventory } from "../../../scene-inventory/react";
 import type { EpisodeSession, TransformReadAcceleration } from "../../../ports";
-import { createEpisodeTransformReadRuntime } from "../../../runtime";
+import {
+  createEpisodeTransformReadRuntime,
+  episodeSourceAccessKey,
+} from "../../../runtime";
 import {
   idleEpisodeFrameTransformsState,
   useSetEpisodeFrameTransformsContext,
@@ -26,7 +25,7 @@ import {
 } from "../settings/episode-modal-settings";
 import { useEpisodeFrameTransforms } from "../scene/use-episode-frame-transforms";
 import { useEpisodePlaybackTimeNs } from "../playback/use-episode-playback-time-ns";
-import { useEpisodeTiles } from "../tiles/use-episode-tiles";
+import { useRegisterEpisodeTiles } from "../tiles/use-register-episode-tiles";
 import type { EpisodeTileType } from "../tiles/episode-tile-types";
 import { useRegisterEpisodeDataStream } from "../playback/use-register-episode-data-stream";
 
@@ -65,7 +64,7 @@ export function EpisodeStreams({
     [session],
   );
   const sourceKey = useMemo(
-    () => (source ? byteSourceAccessKey(source) : null),
+    () => (source ? episodeSourceAccessKey(source) : null),
     [source],
   );
 
@@ -131,7 +130,7 @@ export function EpisodeStreams({
     staleWarningStreams,
     streamPolicies,
   });
-  useEpisodeTiles(availableTileTypes);
+  useRegisterEpisodeTiles(availableTileTypes);
 
   return (
     <>
@@ -202,7 +201,7 @@ function EpisodeFrameTransformsBridge({
       maxInterpolationGapNs: msToNs(temporalPolicy.maxInterpolationGapMs),
       resolutionMode: fidelityMode === "smooth" ? "interpolate" : "hold-last",
     },
-    sourceKey: source ? byteSourceAccessKey(source) : null,
+    sourceKey: source ? episodeSourceAccessKey(source) : null,
     timeNs,
   });
 

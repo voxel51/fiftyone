@@ -1,13 +1,13 @@
 import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { PointCloudVisualization } from "../../../decoders";
+import type { PointCloudVisualization } from "../../../ir";
 import {
   SCENE_SOURCE_METADATA,
   SCENE_SOURCE_TYPE,
   type SceneSource,
 } from "../../../ir";
-import { useSceneInventory } from "../../../scene-inventory";
-import { filterDefaultStreamEquivalents } from "../../../stream-matching";
+import { useSceneInventory } from "../../../scene-inventory/react";
+import { filterDefaultStreamEquivalents } from "../../../stream-selection";
 import {
   resolveEpisode3dSelectionRestore,
   type Episode3dViewStateStore,

@@ -10,7 +10,7 @@ import React, {
 import type { MosaicNode } from "react-mosaic-component";
 import { episodeTileExtensionSettingsAtom } from "../../../extensions/tiles/settings";
 import { isEpisodeTileExtensionId } from "../../../extensions/tiles/registry";
-import type { ByteSourceReadProfile } from "../../../query/bytes";
+import type { ByteSourceReadProfile } from "../../../ir";
 import type { SceneSource } from "../../../scene-inventory";
 import {
   DEFAULT_EPISODE_3D_SCENE_UP_AXIS,
@@ -44,8 +44,11 @@ import {
   type EpisodePlotSeriesConfig,
 } from "../plots/episode-plot-tile-state";
 import { episodeRawTileStreamAtom } from "../raw/episode-raw-tile-state";
-import { EPISODE_TILE_TYPE } from "../tiles/episode-tile-types";
-import type { EpisodeTileType } from "../tiles/episode-tile-types";
+import {
+  EPISODE_TILE_TYPE,
+  type EpisodeTileProps,
+  type EpisodeTileType,
+} from "../tiles/episode-tile-types";
 import {
   collectPlaybackDeviceCapabilities,
   rankDefaultImageSources,
@@ -53,7 +56,6 @@ import {
   type PlaybackDeviceCapabilities,
   type PlaybackLayoutTile,
 } from "./playback-layout";
-import { getEpisodeTileDefinition } from "../tiles/use-episode-tiles";
 import MissingEpisodeTile from "../tiles/MissingEpisodeTile";
 
 export interface EpisodeModalLayout {
@@ -98,7 +100,14 @@ export interface UseEpisodeModalLayoutOptions {
   readProfile?: ByteSourceReadProfile;
   /** Capability override for tests; collected from the browser when absent. */
   capabilities?: PlaybackDeviceCapabilities;
+  /** Shell-owned resolver that materializes persisted tile descriptors. */
+  resolveTile: EpisodeTileResolver;
 }
+
+export type EpisodeTileResolver = (type: string) => {
+  readonly Tile: React.ComponentType<EpisodeTileProps>;
+  readonly typeLabel: string;
+} | null;
 
 /**
  * Mount-time layout state for the episode modal: the user's persisted
@@ -118,6 +127,7 @@ export function useEpisodeModalLayout({
   cameraPreferenceField,
   readProfile,
   capabilities,
+  resolveTile,
 }: UseEpisodeModalLayoutOptions): EpisodeModalLayout {
   const resolved = useMemo(
     () =>
@@ -129,8 +139,8 @@ export function useEpisodeModalLayout({
     [sources, readProfile, capabilities],
   );
   const defaultTiles = useMemo(
-    () => buildResolvedTiles(resolved.tiles),
-    [resolved],
+    () => buildResolvedTiles(resolved.tiles, resolveTile),
+    [resolveTile, resolved],
   );
   // Re-read storage whenever the scene changes: the renderer persists
   // across sample navigation, so a new sample arrives as new sources on
@@ -152,9 +162,10 @@ export function useEpisodeModalLayout({
         persisted?.layout,
         availableTileTypes,
         sources,
+        resolveTile,
         persisted?.tileTitles,
       ),
-    [availableTileTypes, persisted, sources],
+    [availableTileTypes, persisted, resolveTile, sources],
   );
   const restoredTileIds = useMemo(
     () => (restored ? new Set(collectTileIds(restored.layout)) : null),
@@ -294,10 +305,11 @@ export function useEpisodeModalLayout({
  */
 function buildResolvedTiles(
   tiles: readonly PlaybackLayoutTile[],
+  resolveTile: EpisodeTileResolver,
 ): Record<string, TilingTile> {
   const result: Record<string, TilingTile> = {};
   for (const tile of tiles) {
-    const definition = getEpisodeTileDefinition(tile.tileType);
+    const definition = resolveTile(tile.tileType);
     if (!definition) continue;
     const Tile = definition.Tile;
     const initialSourceId = tile.initialSourceId;
@@ -348,6 +360,7 @@ function rebuildTilesFromLayout(
   layout: MosaicNode<string> | null | undefined,
   availableTileTypes: readonly EpisodeTileType[],
   sources: readonly SceneSource[],
+  resolveTile: EpisodeTileResolver,
   tileTitles?: Readonly<Record<string, string>>,
 ): {
   layout: MosaicNode<string>;
@@ -360,7 +373,7 @@ function rebuildTilesFromLayout(
   const isValidLeaf = (id: string): boolean => {
     const type = episodeTileTypeFromId(id);
     if (!type) return false;
-    const definition = getEpisodeTileDefinition(type);
+    const definition = resolveTile(type);
     return definition
       ? availableTypes.has(type)
       : isEpisodeTileExtensionId(type);
@@ -377,7 +390,7 @@ function rebuildTilesFromLayout(
   for (const id of tileIds) {
     const type = episodeTileTypeFromId(id);
     if (!type) return null;
-    const definition = getEpisodeTileDefinition(type);
+    const definition = resolveTile(type);
     const Tile = definition?.Tile ?? MissingEpisodeTile;
     const initialSourceId =
       type === EPISODE_TILE_TYPE.IMAGE

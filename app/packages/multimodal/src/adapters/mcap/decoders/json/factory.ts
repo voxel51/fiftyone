@@ -1,9 +1,5 @@
-import type {
-  DecodeContext,
-  DecodedOutput,
-  Decoder,
-  PayloadDescriptor,
-} from "../../../../decoders";
+import type { DecodeContext, Decoder } from "../../../../decoders";
+import type { DecodedOutput, PayloadDescriptor } from "../../../../ir";
 import { timingFromContext } from "../foxglove/protobuf/timing";
 import { decodeJsonRecord } from "./decode";
 

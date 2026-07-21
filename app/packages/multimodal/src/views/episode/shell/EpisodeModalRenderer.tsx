@@ -8,7 +8,7 @@ import {
   TimelineExtensionHost,
   type TimelineSection,
 } from "../../../extensions/timeline";
-import { EpisodeAdjacentSamplePrewarm } from "../../EpisodeAdjacentSamplePrewarm";
+import { EpisodeAdjacentSamplePrewarm } from "../playback/EpisodeAdjacentSamplePrewarm";
 import { EpisodeSourcePlayback } from "./EpisodeSourcePlayback";
 import { episodeSourceDisplayName } from "./episode-source-display-name";
 import {

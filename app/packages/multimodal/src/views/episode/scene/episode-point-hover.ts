@@ -1,4 +1,4 @@
-import type { PointCloudVisualization } from "../../../decoders";
+import type { PointCloudVisualization } from "../../../ir";
 import type { Episode3dHoveredPoint } from "./use-episode-3d-hover-tooltip";
 
 const POINT_COMPONENT_COUNT = 3;

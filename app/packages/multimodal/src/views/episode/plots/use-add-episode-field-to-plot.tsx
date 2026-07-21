@@ -11,8 +11,8 @@ import {
   addEpisodePlotSeriesToTile,
   episodePlotTileSeriesAtom,
 } from "./episode-plot-tile-state";
+import EpisodePlotTile from "./EpisodePlotTile";
 import { EPISODE_TILE_TYPE } from "../tiles/episode-tile-types";
-import { getEpisodeTileDefinition } from "../tiles/use-episode-tiles";
 
 /**
  * Adds a raw-message numeric field to the first existing plot tile, or
@@ -33,11 +33,8 @@ export function useAddEpisodeFieldToPlot(): (
       const current = stateRef.current;
       let tileId = firstPlotTileId(current.layout, current.tiles);
       if (!tileId) {
-        const definition = getEpisodeTileDefinition(EPISODE_TILE_TYPE.PLOT);
-        if (!definition) return;
-        const Tile = definition.Tile;
         const tile: TilingTile = {
-          render: () => <Tile />,
+          render: () => <EpisodePlotTile />,
           title: "Plot",
           type: EPISODE_TILE_TYPE.PLOT,
         };

@@ -12,16 +12,14 @@ export {
 export * from "./numeric-series-window";
 /** Public lightweight episode-preview pacing policy. */
 export * from "./episode-preview";
-/** Public playback-store context for runtime contributions. */
-export * from "./playback-store-context";
 export * from "./frame-transform-types";
 export * from "./frame-transforms";
 /** Public semantics-preserving session read policy and acceleration fallbacks. */
 export * from "./read-policy";
 /** Public precision-safe episode timeline indexing. */
 export * from "./timeline-index";
-/** Public source-scoped episode data-stream context. */
-export * from "./data-stream-context";
+/** Public source-scoped episode data-stream contracts. */
+export * from "./data-stream";
 /** Public bounded grid-to-modal source bootstrap handoff. */
 export * from "./source-bootstrap-cache";
 /** Public episode time-range handoff used across grid and modal shells. */
@@ -40,3 +38,9 @@ export {
   loadFormatAdapter,
   registerFormatAdapter,
 } from "./adapter-registry";
+/** Public format-neutral episode resource orchestration. */
+export * from "./episode-resources";
+/** Public paused-source cache banking policy. */
+export * from "./episode-byte-banking";
+/** Public decoded episode stream cache. */
+export * from "./episode-stream-cache";

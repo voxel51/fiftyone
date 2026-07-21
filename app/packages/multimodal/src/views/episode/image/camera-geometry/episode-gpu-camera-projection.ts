@@ -1,12 +1,12 @@
 import * as THREE from "three";
 
-import type { GpuCameraProjection } from "../../../../visualization/webgpu/gpu-camera-projection";
+import type { GpuCameraProjection } from "../../../../visualization/composition/gpu-camera-projection";
 import {
   sensorToCameraMatrix,
   sensorToImageProjectionMatrix,
   type GpuProjectionRotation,
   type GpuProjectionTranslation,
-} from "../../../../visualization/webgpu/gpu-point-cloud-projection";
+} from "../../../../visualization/composition/gpu-point-cloud-projection";
 import type { EpisodeCameraModel } from "./episode-camera-model";
 
 /** Prepares one resolved episode camera model for the shared GPU projection path. */

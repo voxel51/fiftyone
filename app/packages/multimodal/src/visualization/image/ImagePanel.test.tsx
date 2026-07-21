@@ -12,7 +12,7 @@ import type {
   EncodedImageVisualization,
   EncodedVideoVisualization,
   RawImageVisualization,
-} from "../../decoders";
+} from "../../ir";
 import { VISUALIZATION_KIND } from "../visualization-registry";
 import { ImagePanel } from "./ImagePanel";
 import {

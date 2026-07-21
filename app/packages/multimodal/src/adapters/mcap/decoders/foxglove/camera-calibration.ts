@@ -1,10 +1,9 @@
+import type { DecodeContext, Decoder } from "../../../../decoders";
 import type {
   CameraCalibrationVisualization,
-  DecodeContext,
   DecodedAttributeValue,
   DecodedOutput,
-  Decoder,
-} from "../../../../decoders";
+} from "../../../../ir";
 import { VISUALIZATION_KIND } from "../../../../ir";
 import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";

@@ -1,10 +1,9 @@
+import type { DecodeContext, Decoder } from "../../../../decoders";
 import type {
-  DecodeContext,
   DecodedAttributeValue,
   DecodedOutput,
-  Decoder,
   PoseVisualization,
-} from "../../../../decoders";
+} from "../../../../ir";
 import { VISUALIZATION_KIND } from "../../../../ir";
 import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";

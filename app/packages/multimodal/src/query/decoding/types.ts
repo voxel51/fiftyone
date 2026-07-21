@@ -1,5 +1,5 @@
 import type { DecodeContext, Decoder } from "../../decoders";
-import type { DecodedOutput, PayloadDescriptor } from "../../decoders";
+import type { DecodedOutput, PayloadDescriptor } from "../../ir";
 import type { ByteSourceDescriptor } from "../bytes";
 
 /**

@@ -9,7 +9,7 @@ import type {
   EncodedImageVisualization,
   ImageVisualization,
   RawImageVisualization,
-} from "../../decoders";
+} from "../../ir";
 import type { ImageTextureHandle } from "./base-2d-scene";
 import { createEncodedVideoTexture } from "./video-texture";
 

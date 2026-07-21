@@ -107,7 +107,7 @@ vi.mock("./episode-grid-camera-state", () => ({
   ]),
 }));
 
-vi.mock("../../../visualization/webgpu/webgpu-snapshot-renderer", () => ({
+vi.mock("../../../visualization/scene-3d/gpu/webgpu-snapshot-renderer", () => ({
   renderPointCloudSnapshot: vi.fn(
     (job: SnapshotRequest["job"]) =>
       new Promise<ImageBitmap | null>((resolve) => {
@@ -157,7 +157,7 @@ vi.mock("../../../visualization/image/ImagePanel", () => ({
   ImagePanel: () => <div data-testid="image-panel" />,
 }));
 
-vi.mock("../../../visualization/scene-3d", () => ({
+vi.mock("../../../visualization/composition", () => ({
   PointCloudPanel: () => <div data-testid="point-cloud-panel" />,
 }));
 

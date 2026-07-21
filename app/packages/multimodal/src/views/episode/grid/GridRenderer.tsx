@@ -14,9 +14,9 @@ import {
 } from "../../../visualization/image/bitmap-image-view";
 import type { EpisodePosterFrame } from "../../../ir";
 import { retainedBinaryBytes } from "../../../runtime";
-import { PointCloudPanel } from "../../../visualization/scene-3d";
+import { PointCloudPanel } from "../../../visualization/composition";
 import { acquireGridLiveLease } from "../../../visualization/webgpu/webgpu-live-lease";
-import { renderPointCloudSnapshot } from "../../../visualization/webgpu/webgpu-snapshot-renderer";
+import { renderPointCloudSnapshot } from "../../../visualization/scene-3d/gpu/webgpu-snapshot-renderer";
 import { sampleDescriptorFromContext } from "../../episode-source";
 import { useEpisodeGridPreview } from "../../use-episode-grid-preview";
 import { useEpisodePreviewSession } from "../../use-episode-preview-session";

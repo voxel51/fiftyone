@@ -7,7 +7,7 @@ import {
   setStreamValue,
 } from "@fiftyone/playback/runtime";
 import type { PlaybackStore } from "@fiftyone/playback/runtime";
-import type { EpisodeStreamCache } from "./episode-stream-cache";
+import type { EpisodeStreamCache } from "../../../runtime";
 import type { EpisodeStreamPlaybackFrame } from "./use-episode-stream-values";
 import { setEpisodeStreamDiagnostics } from "./episode-stream-status-state";
 

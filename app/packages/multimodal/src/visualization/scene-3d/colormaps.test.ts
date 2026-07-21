@@ -2,9 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   createPointCloudColormapLookup,
-  DEFAULT_POINT_CLOUD_COLORMAP,
   getGradientFromSchemeName,
-  POINT_CLOUD_COLORMAPS,
   colormapCssGradient,
   normalizeColorStops,
   normalizePointCloudColormap,
@@ -12,6 +10,10 @@ import {
   writeColormapColor,
   writeColormapLookupColor,
 } from "./colormaps";
+import {
+  DEFAULT_POINT_CLOUD_COLORMAP,
+  POINT_CLOUD_COLORMAPS,
+} from "./colormap-types";
 
 describe("point-cloud colormaps", () => {
   it("keeps every sample of every colormap inside [0, 1]", () => {

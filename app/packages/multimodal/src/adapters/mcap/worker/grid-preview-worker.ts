@@ -1,7 +1,10 @@
 import { setFetchFunction } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
-import { errorMessage } from "../../../errors";
-import { decodeGridPreview, type McapGridPreviewEntry } from "../grid-preview";
+import { errorMessage } from "../../../utils/errors";
+import {
+  decodeGridPreview,
+  type McapGridPreviewEntry,
+} from "../resources/grid-preview";
 import { McapPlaybackWorkerScheduler } from "./playback-worker-scheduler";
 import { createWorkerResourceClient } from "./worker-resource-client";
 import type {

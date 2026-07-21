@@ -3,12 +3,12 @@ import {
   genericRecordDecoderForChannel,
   mcapChannelForTopic,
 } from "./generic-record-decoder";
-import type { McapTimelineStrategy } from "../timeline";
+import type { McapTimelineStrategy } from "./timeline";
 import type {
   McapNumericSeriesField,
   McapNumericSeriesResult,
   McapReadNumericSeriesRequest,
-} from "../types";
+} from "../shared/types";
 import { decimateMinMax } from "./numeric-series-decimate";
 import { mcapTimelineRangeFromReader } from "./read-timeline-range";
 

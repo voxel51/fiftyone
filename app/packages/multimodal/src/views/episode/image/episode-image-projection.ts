@@ -1,4 +1,4 @@
-import type { CameraCalibrationVisualization } from "../../../decoders";
+import type { CameraCalibrationVisualization } from "../../../ir";
 import type { PointCloudColorWriter } from "../../../visualization/scene-3d";
 
 /**

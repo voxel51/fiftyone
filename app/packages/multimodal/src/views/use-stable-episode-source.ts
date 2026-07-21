@@ -3,7 +3,7 @@ import { useMemo, useRef } from "react";
 
 import type { ByteSourceDescriptor } from "../ir";
 import type { EpisodeSource } from "../ports";
-import { byteSourceAccessKey } from "../query/bytes";
+import { episodeSourceAccessKey } from "../runtime";
 import {
   episodeByteSourceFromContext,
   episodeSourceFromByteSource,
@@ -15,7 +15,7 @@ export function useStableEpisodeSource(ctx: SampleRendererProps["ctx"]): {
   readonly episodeSource: EpisodeSource | null;
 } {
   const next = episodeByteSourceFromContext(ctx);
-  const sourceKey = next ? byteSourceAccessKey(next) : "";
+  const sourceKey = next ? episodeSourceAccessKey(next) : "";
   const ref = useRef<{
     readonly byteSource: ByteSourceDescriptor | null;
     readonly sourceKey: string;

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
-import type { EncodedVideoVisualization } from "../../decoders";
-import { h264AccessUnitWithParameterSets } from "../../utils/h264-annexb";
+import type { EncodedVideoVisualization } from "../../ir";
+import { h264AccessUnitWithParameterSets } from "../../codecs/h264-annexb";
 import type { ImageTextureHandle } from "./base-2d-scene";
 
 const VIDEO_DECODE_SESSION_CAP = 6;

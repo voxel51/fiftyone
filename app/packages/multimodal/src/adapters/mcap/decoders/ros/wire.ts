@@ -3,7 +3,7 @@ import { parseRos2idl } from "@foxglove/ros2idl-parser";
 import { MessageReader as Ros1MessageReader } from "@foxglove/rosmsg-serialization";
 import { MessageReader as Ros2MessageReader } from "@foxglove/rosmsg2-serialization";
 import type { McapTypes } from "@mcap/core";
-import type { PayloadDescriptor } from "../../../../decoders";
+import type { PayloadDescriptor } from "../../../../ir";
 
 const TEXT_DECODER = new TextDecoder();
 const MAX_PARSED_SCHEMA_CACHE_ENTRIES = 256;

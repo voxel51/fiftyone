@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 
-import {
-  buildPointCloudRenderPayload,
-  type PointCloudRenderPayload,
-  type PointCloudVisualization,
-} from "../../../decoders";
-import { useSceneSourcesByType } from "../../../scene-inventory";
+import { buildPointCloudRenderPayload } from "../../../ir";
+import type {
+  PointCloudRenderPayload,
+  PointCloudVisualization,
+} from "../../../ir";
+import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import type { PointCloudColorOptions } from "../../../visualization/scene-3d";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
 import { useEpisodeFrameTransformsContext } from "../scene/episode-frame-transforms-context";

@@ -5,7 +5,7 @@ import type {
   PointCloudVisualization,
   SceneEntityVisualization,
   SceneUpdateVisualization,
-} from "../../../decoders";
+} from "../../../ir";
 import type {
   CameraFrustumPanelLayer,
   GridPanelLayer,

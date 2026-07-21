@@ -11,7 +11,7 @@ import type {
   SceneModelPrimitive,
   SceneSpherePrimitive,
   SceneTrianglePrimitive,
-} from "../../decoders";
+} from "../../ir";
 import {
   COLOR_COMPONENT_COUNT,
   POINT_COMPONENT_COUNT,

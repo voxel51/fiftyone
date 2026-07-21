@@ -29,10 +29,10 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { gpuPointCloudProjectionResourceStats } from "../../../visualization/webgpu/gpu-point-cloud-projection-resources";
+import { gpuPointCloudProjectionResourceStats } from "../../../visualization/composition/gpu-point-cloud-projection-resources";
 import { gridLiveLeaseStats } from "../../../visualization/webgpu/webgpu-live-lease";
 import { webGpuDeviceStats } from "../../../visualization/webgpu/webgpu-device-registry";
-import { webGpuSnapshotRendererStats } from "../../../visualization/webgpu/webgpu-snapshot-renderer";
+import { webGpuSnapshotRendererStats } from "../../../visualization/scene-3d/gpu/webgpu-snapshot-renderer";
 import { imageTextureCacheStats } from "../../../visualization/image/image-texture-cache";
 import { gpuPointCloudColormapTextureStats } from "../../../visualization/scene-3d/gpu/gpu-point-cloud-colormap-texture";
 import { episodeMapPerformanceStats } from "../../../visualization/map/episode-map-performance";

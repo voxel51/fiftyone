@@ -1,14 +1,10 @@
-import type {
-  DecodeContext,
-  DecodedAttributeValue,
-  DecodedOutput,
-  Decoder,
-} from "../../../../decoders";
+import type { DecodeContext, Decoder } from "../../../../decoders";
+import type { DecodedAttributeValue, DecodedOutput } from "../../../../ir";
+import { resourceHintsForArrayBufferViews } from "../../../../decoders";
 import {
   buildPointCloudRenderPayload,
-  resourceHintsForArrayBufferViews,
-} from "../../../../decoders";
-import { VISUALIZATION_KIND } from "../../../../ir";
+  VISUALIZATION_KIND,
+} from "../../../../ir";
 import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";
 import {

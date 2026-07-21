@@ -9,10 +9,12 @@ export {
   collectChunkDataPrefetchRanges,
   collectWindowPrefetchRanges,
   prefetchMcapByteRanges,
-  type McapPrefetchByteRange,
-  type McapPrefetchChunkDataRequest,
-  type McapPrefetchWindowRequest,
 } from "./chunk-prefetch";
+export type {
+  McapPrefetchByteRange,
+  McapPrefetchChunkDataRequest,
+  McapPrefetchWindowRequest,
+} from "./prefetch-types";
 export { createCachedMcapDecompressHandlers } from "./decompress-cache";
 export {
   parseMcapMessageIndexRecord,

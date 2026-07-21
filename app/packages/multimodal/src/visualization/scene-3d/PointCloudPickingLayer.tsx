@@ -2,7 +2,7 @@ import { useThree } from "@react-three/fiber";
 import { useContext, useEffect, useRef } from "react";
 import * as THREE from "three";
 
-import type { PointCloudRenderPayload } from "../../decoders";
+import type { PointCloudRenderPayload } from "../../ir";
 import {
   POINT_HOVER_DWELL_MS,
   POINT_HOVER_MOVE_TOLERANCE_PX,

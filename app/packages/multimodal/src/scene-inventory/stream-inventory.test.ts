@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { SCENE_SOURCE_METADATA, SCENE_SOURCE_TYPE } from "../ir";
-import type { StreamInventory } from "../schemas/v1";
-import { sceneSourcesFromStreamInventory } from "./stream-inventory";
+import {
+  SCENE_SOURCE_METADATA,
+  SCENE_SOURCE_TYPE,
+  type StreamDescriptor,
+} from "../ir";
+import { sceneSourcesFromStreamDescriptors } from "./stream-inventory";
 
-describe("sceneSourcesFromStreamInventory", () => {
+describe("sceneSourcesFromStreamDescriptors", () => {
   it("keeps camera suffixes out of labels without collapsing sibling streams", () => {
-    const sources = sceneSourcesFromStreamInventory([
+    const sources = sceneSourcesFromStreamDescriptors([
       stream("7", "/camera/front/image_raw", SCENE_SOURCE_TYPE.IMAGE),
       stream(
         "8",
@@ -26,15 +29,17 @@ function stream(
   streamId: string,
   sourceName: string,
   type: string,
-): StreamInventory {
+): StreamDescriptor {
   return {
-    $typeName: "fiftyone.multimodal.schemas.v1.StreamInventory",
-    displayName: sourceName,
+    count: 1,
+    id: streamId,
+    kind: "unknown",
     metadata: {
       [SCENE_SOURCE_METADATA.SOURCE_NAME]: sourceName,
       [SCENE_SOURCE_METADATA.TYPE]: type,
     },
-    recordCount: "1",
-    streamId,
+    payload: { encoding: "unknown" },
+    sourceName,
+    timeRange: { endNs: 1n, startNs: 0n },
   };
 }

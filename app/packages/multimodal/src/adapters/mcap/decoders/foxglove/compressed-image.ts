@@ -1,10 +1,9 @@
 import {
   resourceHintsForArrayBufferViews,
   type DecodeContext,
-  type DecodedAttributeValue,
-  type DecodedOutput,
   type Decoder,
 } from "../../../../decoders";
+import type { DecodedAttributeValue, DecodedOutput } from "../../../../ir";
 import { VISUALIZATION_KIND } from "../../../../ir";
 import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf";

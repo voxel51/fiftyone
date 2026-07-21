@@ -6,7 +6,7 @@ import {
   type EpisodeRawTileStreams,
 } from "./episode-raw-tile-state";
 import { EPISODE_TILE_TYPE } from "../tiles/episode-tile-types";
-import { getEpisodeTileDefinition } from "../tiles/use-episode-tiles";
+import EpisodeRawMessageTile from "./EpisodeRawMessageTile";
 
 /**
  * Opens a Message panel for a stream: focus an existing matching raw tile,
@@ -64,13 +64,8 @@ export function useOpenEpisodeRawMessageTile(): (stream: string) => void {
         return;
       }
 
-      const definition = getEpisodeTileDefinition(EPISODE_TILE_TYPE.RAW);
-      if (!definition) {
-        return;
-      }
-      const Tile = definition.Tile;
       const tile: TilingTile = {
-        render: () => <Tile />,
+        render: () => <EpisodeRawMessageTile />,
         title: stream,
         type: EPISODE_TILE_TYPE.RAW,
       };

@@ -1,9 +1,9 @@
+import type { DecodeContext } from "../../../../decoders";
 import type {
-  DecodeContext,
   DecodedAttributeValue,
   DecodedOutput,
   GridVisualization,
-} from "../../../../decoders";
+} from "../../../../ir";
 import { resourceHintsForArrayBufferViews } from "../../../../decoders";
 import { VISUALIZATION_KIND } from "../../../../ir";
 import { decodePose } from "../foxglove/protobuf/geometry";

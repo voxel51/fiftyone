@@ -1,4 +1,4 @@
-import type { CameraCalibrationVisualization } from "../../../../decoders";
+import type { CameraCalibrationVisualization } from "../../../../ir";
 
 const MATRIX_3_LENGTH = 9;
 const MATRIX_3X4_LENGTH = 12;

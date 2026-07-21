@@ -1,4 +1,4 @@
-import type { LocationVisualization } from "../../decoders";
+import type { LocationVisualization } from "../../ir";
 import { voxel51PrimaryColor } from "./episode-map-puck";
 import { bearingDegrees, haversineDistanceMeters } from "./wgs84";
 

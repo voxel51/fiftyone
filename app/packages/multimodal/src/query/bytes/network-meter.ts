@@ -3,7 +3,7 @@ import type {
   NetworkTransportSnapshot,
   TransportLane,
 } from "../../ir";
-import { monotonicNowMs } from "../../time";
+import { monotonicNowMs } from "../../utils/monotonic-time";
 import { BYTE_SOURCE_READ_PROFILE } from "./constants";
 import type { ByteReadDebugLog } from "./types";
 

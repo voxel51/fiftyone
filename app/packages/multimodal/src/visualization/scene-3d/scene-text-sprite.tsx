@@ -3,7 +3,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 
-import type { RgbaColor, SceneTextPrimitive } from "../../decoders";
+import type { RgbaColor, SceneTextPrimitive } from "../../ir";
 import { scenePoseObjectTransform } from "./transforms";
 import type { TextSpriteTexture } from "./types";
 import { clamp01, rgbaCss } from "./utils";

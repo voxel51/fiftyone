@@ -1,6 +1,6 @@
 import { Checkbox, RadioGroup, Size } from "@voxel51/voodo";
 import React, { useMemo } from "react";
-import { useSceneInventory } from "../../../scene-inventory";
+import { useSceneInventory } from "../../../scene-inventory/react";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
 import {
   EPISODE_MAP_BASE_LAYER,

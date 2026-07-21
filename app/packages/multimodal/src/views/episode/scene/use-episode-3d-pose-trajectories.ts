@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type {
-  PoseVisualization,
-  SceneUpdateVisualization,
-} from "../../../decoders";
+import type { PoseVisualization, SceneUpdateVisualization } from "../../../ir";
 import type { Episode3dViewStateStore } from "./episode-3d-view-state";
 import { useEpisode3dViewStateStore } from "./episode-3d-view-state-context";
 import { useEpisodePoseTrajectoriesContext } from "./episode-pose-trajectories-context";

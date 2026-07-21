@@ -27,7 +27,7 @@
  */
 
 import { useEffect, useReducer, useRef } from "react";
-import type { DecodedDiagnostic } from "../../../decoders";
+import type { DecodedDiagnostic } from "../../../ir";
 import type { Episode3dTransformGapWarning } from "../scene/episode-3d-layers";
 import {
   isFollowTrackingMode,

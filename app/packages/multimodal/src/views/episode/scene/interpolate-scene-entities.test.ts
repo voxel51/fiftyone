@@ -4,7 +4,7 @@ import type {
   SceneCubePrimitive,
   SceneEntityVisualization,
   SceneUpdateVisualization,
-} from "../../../decoders";
+} from "../../../ir";
 import {
   interpolateSceneEntity,
   interpolateSceneUpdate,
