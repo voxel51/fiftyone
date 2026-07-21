@@ -46,11 +46,13 @@ class TIDEEvaluationConfig(COCOEvaluationConfig):
     def __init__(
         self, pred_field, gt_field, bg_thresh=0.1, max_preds=100, **kwargs
     ):
+        """Initializes the TIDE evaluation configuration."""
         super().__init__(pred_field, gt_field, max_preds=max_preds, **kwargs)
         self.bg_thresh = bg_thresh
 
     @property
     def method(self):
+        """The evaluation method name."""
         return "tide"
 
 
@@ -58,6 +60,7 @@ class TIDEEvaluation(COCOEvaluation):
     """TIDE-style detection evaluation."""
 
     def __init__(self, config):
+        """Initializes the TIDE evaluation backend."""
         super().__init__(config)
 
         if not config.classwise:
@@ -74,6 +77,7 @@ class TIDEEvaluation(COCOEvaluation):
         self._error_counts = Counter()
 
     def register_samples(self, samples, eval_key, dynamic=True):
+        """Registers TIDE result fields on the sample collection."""
         super().register_samples(samples, eval_key, dynamic=dynamic)
 
         if eval_key is None or not dynamic:
@@ -93,6 +97,7 @@ class TIDEEvaluation(COCOEvaluation):
                 dataset.add_sample_field(path, fof.StringField)
 
     def evaluate(self, sample_or_frame, eval_key=None):
+        """Evaluates the detections in a sample or frame."""
         if eval_key is None:
             eval_key = "eval"
             gts = _copy_labels(sample_or_frame[self.gt_field])
@@ -123,6 +128,7 @@ class TIDEEvaluation(COCOEvaluation):
         missing=None,
         progress=None,
     ):
+        """Generates the results for the TIDE evaluation."""
         tide_ap, error_deltas, special_error_deltas = _compute_dap(
             self._records,
             self._errors,
@@ -169,6 +175,7 @@ class TIDEEvaluation(COCOEvaluation):
         )
 
     def get_fields(self, samples, eval_key, include_custom_metrics=True):
+        """Returns the fields populated by the evaluation."""
         fields = super().get_fields(
             samples, eval_key, include_custom_metrics=include_custom_metrics
         )
@@ -183,6 +190,7 @@ class TIDEEvaluation(COCOEvaluation):
         return fields
 
     def cleanup(self, samples, eval_key):
+        """Removes fields populated by the evaluation."""
         super().cleanup(samples, eval_key)
 
         dataset = samples._dataset
@@ -205,6 +213,7 @@ class TIDEEvaluation(COCOEvaluation):
             dataset.delete_sample_fields(fields, error_level=1)
 
     def _analyze_errors(self, gts, preds, eval_key, pred_ids):
+        """Classifies and records TIDE errors for a sample or frame."""
         gt_list = _get_labels(gts)
         all_preds = _get_labels(preds)
         pred_list = sorted(
@@ -223,6 +232,7 @@ class TIDEEvaluation(COCOEvaluation):
                 pred[eval_key] = None
 
         def iscrowd(obj):
+            """Determines whether the ground-truth object is a crowd."""
             return bool(obj.get_attribute_value(self.config.iscrowd, False))
 
         crowd_ids = {gt.id for gt in gt_list if iscrowd(gt)}
@@ -342,6 +352,7 @@ class TIDEDetectionResults(COCODetectionResults):
         error_deltas=None,
         special_error_deltas=None,
     ):
+        """Initializes TIDE detection results."""
         if precision is None:
             DetectionResults.__init__(
                 self,
@@ -494,12 +505,14 @@ class TIDEDetectionResults(COCODetectionResults):
         )
 
     def mAP(self, classes=None):
+        """Computes COCO-style mean average precision."""
         if self.precision is None:
             raise ValueError("Set `compute_mAP=True` to compute COCO mAP")
 
         return super().mAP(classes=classes)
 
     def mAR(self, classes=None):
+        """Computes COCO-style mean average recall."""
         if self.precision is None:
             raise ValueError("Set `compute_mAP=True` to compute COCO mAR")
 
@@ -508,6 +521,7 @@ class TIDEDetectionResults(COCODetectionResults):
     def plot_pr_curves(
         self, classes=None, iou_thresh=None, backend="plotly", **kwargs
     ):
+        """Plots precision-recall curves for the evaluation results."""
         if self.precision is None:
             raise ValueError("Set `compute_mAP=True` to plot PR curves")
 
@@ -535,6 +549,7 @@ class TIDEDetectionResults(COCODetectionResults):
 
     @classmethod
     def _from_dict(cls, d, samples, config, eval_key, **kwargs):
+        """Builds TIDE detection results from a serialized dictionary."""
         return DetectionResults._from_dict.__func__(
             cls,
             d,
@@ -555,6 +570,7 @@ class TIDEDetectionResults(COCODetectionResults):
 
 
 def _get_labels(labels):
+    """Returns the objects in a label-list container."""
     if labels is None:
         return []
 
@@ -562,6 +578,7 @@ def _get_labels(labels):
 
 
 def _get_confidence(label):
+    """Returns the confidence of a predicted object."""
     if isinstance(label, fol.Keypoint):
         return np.nanmean(label.confidence) if label.confidence else None
 
@@ -569,6 +586,7 @@ def _get_confidence(label):
 
 
 def _get_tide_pred_ids(preds, max_preds):
+    """Returns the prediction IDs included in TIDE evaluation."""
     pred_list = _get_labels(preds)
     for pred in pred_list:
         if _get_confidence(pred) is None:
@@ -585,6 +603,7 @@ def _get_tide_pred_ids(preds, max_preds):
 
 
 def _get_ignored_pred_ids(preds, active_gts, gts, config, iscrowd, id_key):
+    """Returns prediction IDs ignored because they match crowd objects."""
     crowd_gts = [gt for gt in gts if iscrowd(gt)]
     active_ids = {gt.id for gt in active_gts}
     preds = [pred for pred in preds if pred[id_key] not in active_ids]
@@ -601,6 +620,7 @@ def _get_ignored_pred_ids(preds, active_gts, gts, config, iscrowd, id_key):
 
 
 def _compute_ious(preds, gts, config, iscrowd):
+    """Computes IoUs between predictions and ground-truth objects."""
     kwargs = {
         "iscrowd": iscrowd,
         "error_level": config.error_level,
@@ -616,6 +636,7 @@ def _compute_ious(preds, gts, config, iscrowd):
 
 
 def _classify_error(pred, gts, ious, used_ids, pos_thresh, bg_thresh):
+    """Classifies a false positive into a TIDE error category."""
     same_inds = [idx for idx, gt in enumerate(gts) if gt.label == pred.label]
     if same_inds:
         same_idx = max(same_inds, key=lambda idx: ious[idx])
@@ -646,6 +667,7 @@ def _classify_error(pred, gts, ious, used_ids, pos_thresh, bg_thresh):
 
 
 def _compute_dap(records, errors, gt_counts, missed, false_negatives):
+    """Computes TIDE AP and the AP change for each error category."""
     tide_ap = _compute_map(records, gt_counts)
     error_deltas = {}
     for error in _MAIN_ERRORS:
@@ -699,6 +721,7 @@ def _compute_dap(records, errors, gt_counts, missed, false_negatives):
 
 
 def _compute_map(records, gt_counts):
+    """Computes macro average precision across observed classes."""
     by_label = defaultdict(list)
     for record in records:
         by_label[record["label"]].append(record)
@@ -716,6 +739,7 @@ def _compute_map(records, gt_counts):
 
 
 def _compute_ap(records, num_gt):
+    """Computes 101-point interpolated average precision for one class."""
     if num_gt <= 0 or not records:
         return 0
 
