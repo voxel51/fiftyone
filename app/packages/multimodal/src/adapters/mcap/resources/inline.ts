@@ -1,6 +1,6 @@
 import { LRUCache } from "lru-cache";
 import { byteSourceAccessKey, type ByteClient } from "../../../query/bytes";
-import { type DecodeClient, createDecodeClient } from "../../../query/decode";
+import { type DecodeClient, createDecodeClient } from "../../../query/decoding";
 import { createMultimodalQueryClient } from "../../../query";
 import { createMcapDecoderRegistry } from "../decoders";
 import { readMcapDecodedMessages } from "./read-decoded-messages";

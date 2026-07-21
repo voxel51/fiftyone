@@ -5,7 +5,7 @@ import { MessageWriter as Ros2MessageWriter } from "@foxglove/rosmsg2-serializat
 import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
-import type { DecodeClient } from "../../../query/decode";
+import type { DecodeClient } from "../../../query/decoding";
 import type { DecodedOutput } from "../../../decoders";
 import { PlaybackSyncMode } from "../../../schemas/v1";
 import { VISUALIZATION_KIND } from "../../../ir";

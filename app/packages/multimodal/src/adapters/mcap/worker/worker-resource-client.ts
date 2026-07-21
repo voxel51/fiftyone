@@ -1,11 +1,11 @@
 import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
 import { createMultimodalQueryClient } from "../../../query";
 import type { ByteFillSlotClass, ByteReadDebugLog } from "../../../query/bytes";
-import type { DecodedOutputCache } from "../../../query/decode";
+import type { DecodedOutputCache } from "../../../query/decoding";
 import {
   createDecodeClient,
   inlineDecodeExecutor,
-} from "../../../query/decode";
+} from "../../../query/decoding";
 import { createMcapDecoderRegistry } from "../decoders";
 import { createInlineMcapResourceClient } from "../resources";
 import type { McapResourceClient } from "../types";

@@ -21,7 +21,7 @@ import {
   createMemoryDecodedOutputCache,
   createDecodeClient,
   type DecodeExecutor,
-} from "./decode";
+} from "./decoding";
 
 type ExtendedFetchFunction = <Body, Result>(
   config: FetchFunctionConfig<Body>,

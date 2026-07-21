@@ -30,7 +30,7 @@ import type {
   SynchronizedFrameWindow,
 } from "../../../ir";
 import type { EpisodeSession } from "../../../ports";
-import type { DecodeResult } from "../../../query/decode";
+import type { DecodeResult } from "../../../query/decoding";
 import {
   EpisodeDataStreamProvider,
   useEpisodeDataStream,

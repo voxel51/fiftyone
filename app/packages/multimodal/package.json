@@ -11,7 +11,7 @@
         "./runtime": "./src/runtime/index.ts",
         "./query": "./src/query/index.ts",
         "./query/bytes": "./src/query/bytes/index.ts",
-        "./query/decode": "./src/query/decode/index.ts",
+        "./query/decoding": "./src/query/decoding/index.ts",
         "./decoders": "./src/decoders/index.ts",
         "./temporal-tags": "./src/temporal-tags/index.ts",
         "./temporal-tags/grid-overlay": "./src/temporal-tags/grid-overlay.tsx",
@@ -51,8 +51,8 @@
             "query/bytes": [
                 "src/query/bytes/index.ts"
             ],
-            "query/decode": [
-                "src/query/decode/index.ts"
+            "query/decoding": [
+                "src/query/decoding/index.ts"
             ],
             "inject": [
                 "src/inject/index.ts"

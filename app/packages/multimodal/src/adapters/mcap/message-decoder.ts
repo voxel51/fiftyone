@@ -1,6 +1,6 @@
 import type { McapTypes } from "@mcap/core";
 import type { ByteSourceDescriptor } from "../../query/bytes";
-import type { DecodeClient } from "../../query/decode";
+import type { DecodeClient } from "../../query/decoding";
 import { isReadCancelledError } from "../../errors";
 import { McapTopicDecodeError } from "./errors";
 import type { McapIndexedReaderLike } from "./reader";

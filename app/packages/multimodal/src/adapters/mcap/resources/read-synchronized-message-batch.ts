@@ -1,5 +1,5 @@
 import type { McapTypes } from "@mcap/core";
-import type { DecodeClient } from "../../../query/decode";
+import type { DecodeClient } from "../../../query/decoding";
 import { compareBigInt } from "../../../ir";
 import { readCancelledError } from "../../../errors";
 import {
