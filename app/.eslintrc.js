@@ -31,6 +31,12 @@ module.exports = {
     "only-warn",
   ],
   rules: {
+    // catches == / != coercion bugs; "smart" allows == null checks
+    eqeqeq: ["warn", "smart"],
+    // stray debug logging; console.warn/error are legitimate signals
+    "no-console": ["warn", { allow: ["warn", "error"] }],
+    // components defined inside components remount on every render
+    "react/no-unstable-nested-components": ["warn", { allowAsProps: true }],
     // must disable base rule for typescript no-unused-vars to take effect
     "no-unused-vars": "off",
     // allow unused vars that have the underscore prefix
