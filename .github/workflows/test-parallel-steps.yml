@@ -1,0 +1,93 @@
+name: Test parallel steps
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/test-parallel-steps.yml
+  workflow_dispatch:
+
+jobs:
+  background-wait-cancel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Start background sleeper with an output
+        id: sleeper
+        run: |
+          sleep 20
+          echo "result=slept" >> "$GITHUB_OUTPUT"
+        background: true
+
+      - name: Foreground work while sleeper runs
+        run: echo "this ran while the sleeper was in the background"
+
+      - name: Wait for sleeper
+        wait: sleeper
+
+      - name: Verify background step output propagated
+        run: |
+          test "${{ steps.sleeper.outputs.result }}" = "slept"
+
+      - name: Background task A
+        id: task-a
+        run: sleep 10
+        background: true
+
+      - name: Background task B
+        id: task-b
+        run: sleep 10
+        background: true
+
+      - name: Wait for both tasks
+        wait: [task-a, task-b]
+
+      - name: Start long-running monitor
+        id: monitor
+        run: sleep 300
+        background: true
+
+      - name: Cancel the monitor
+        cancel: monitor
+
+      - name: Background straggler for wait-all
+        id: straggler
+        run: sleep 5
+        background: true
+
+      - name: Wait for all remaining background steps
+        wait-all:
+
+  uses-step-in-background:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Set up Node in the background
+        id: setup-node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+        background: true
+
+      - name: Foreground work while setup runs
+        run: echo "this ran while setup-node was in the background"
+
+      - name: Wait for Node setup
+        wait: setup-node
+
+      - name: Use Node
+        run: node --version
+
+  parallel-group:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - parallel:
+          - name: Task one
+            run: sleep 5 && echo one
+          - name: Task two
+            run: sleep 5 && echo two
+          - name: Task three
+            run: sleep 5 && echo three
+
+      - name: After the group
+        run: echo "all parallel tasks finished"
