@@ -9,3 +9,7 @@ or how a panel draws the result.
 
 Optional accelerations must preserve the semantics of the shared fallback. That
 rule lets performance improve without creating two versions of playback.
+
+Core runtime is headless and depends on ports, query, IR, and domain-free
+utilities. Framework bindings live in an explicit integration subpath so
+workers and non-React callers never load component code.
