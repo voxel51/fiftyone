@@ -5,8 +5,8 @@ import React, { useCallback, useMemo } from "react";
 import {
   ImageAnnotationsOverlay,
   type ImageAnnotationPickedPrimitive,
-} from "../../../visualization/panels/ImageAnnotationsOverlay";
-import type { ImageViewTransform } from "../../../visualization/panels/base-2d-scene";
+} from "../../../visualization/image/ImageAnnotationsOverlay";
+import type { ImageViewTransform } from "../../../visualization/image/base-2d-scene";
 import {
   episodeSelectedObjectAtom,
   useEpisodeSelectedObject,

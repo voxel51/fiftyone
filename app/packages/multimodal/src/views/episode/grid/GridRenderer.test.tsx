@@ -11,12 +11,12 @@ import {
   WEBGPU_DEVICE_BUDGET,
   registerWebGpuRenderer,
   resetWebGpuDeviceRegistryForTests,
-} from "../../../visualization/panels/gpu/webgpu-device-registry";
+} from "../../../visualization/webgpu/webgpu-device-registry";
 import {
   acquireGridLiveLease,
   gridLiveLeaseStats,
   resetGridLiveLeasesForTests,
-} from "../../../visualization/panels/gpu/webgpu-live-lease";
+} from "../../../visualization/webgpu/webgpu-live-lease";
 import type { EpisodePosterFrame } from "../../../ir";
 import {
   GridRenderer,
@@ -107,7 +107,7 @@ vi.mock("./episode-grid-camera-state", () => ({
   ]),
 }));
 
-vi.mock("../../../visualization/panels/gpu/webgpu-snapshot-renderer", () => ({
+vi.mock("../../../visualization/webgpu/webgpu-snapshot-renderer", () => ({
   renderPointCloudSnapshot: vi.fn(
     (job: SnapshotRequest["job"]) =>
       new Promise<ImageBitmap | null>((resolve) => {
@@ -122,7 +122,7 @@ vi.mock("./episode-grid-stream-state", () => ({
   useRegisterEpisodeGridStreams: vi.fn(() => vi.fn()),
 }));
 
-vi.mock("../../../visualization/panels/bitmap-image-view", async () => {
+vi.mock("../../../visualization/image/bitmap-image-view", async () => {
   const { useEffect } = await import("react");
   return {
     BitmapCanvasHost: ({ bitmap }: { readonly bitmap: ImageBitmap | null }) => {
@@ -153,11 +153,11 @@ vi.mock("../../../visualization/panels/bitmap-image-view", async () => {
 // Regression tripwire: GridRenderer no longer imports the WebGPU-backed
 // ImagePanel for image cells; if it ever comes back, the testid reappears
 // and the image-frame test below fails.
-vi.mock("../../../visualization/panels/image", () => ({
+vi.mock("../../../visualization/image/ImagePanel", () => ({
   ImagePanel: () => <div data-testid="image-panel" />,
 }));
 
-vi.mock("../../../visualization/panels/point-cloud", () => ({
+vi.mock("../../../visualization/scene-3d", () => ({
   PointCloudPanel: () => <div data-testid="point-cloud-panel" />,
 }));
 

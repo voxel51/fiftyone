@@ -13,7 +13,7 @@ import { format } from "date-fns/format";
 import React, { useState } from "react";
 import { useEpisodeDataStream } from "./episode-data-stream-context";
 import styles from "./EpisodeTimestampReadout.module.css";
-import { useCopyFeedback } from "../raw/use-copy-feedback";
+import { useCopyFeedback } from "../../../visualization/shared/use-copy-feedback";
 
 const NS_PER_SECOND = 1_000_000_000n;
 const NS_PER_MILLISECOND = 1_000_000n;

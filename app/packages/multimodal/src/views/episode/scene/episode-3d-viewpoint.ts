@@ -1,9 +1,9 @@
 import { MathUtils, Vector3 } from "three";
-import { DEFAULT_POINT_CLOUD_CAMERA_PROJECTION } from "../../../visualization/panels/point-cloud/camera-fit-bounds";
+import { DEFAULT_POINT_CLOUD_CAMERA_PROJECTION } from "../../../visualization/scene-3d/camera-fit-bounds";
 import type {
   PointCloudCameraPose,
   PointCloudCameraProjection,
-} from "../../../visualization/panels/point-cloud/types";
+} from "../../../visualization/scene-3d/types";
 import type { Episode3dSceneUpAxis } from "./episode-3d-scene-up";
 import type { Episode3dCameraNavigationMode } from "./episode-3d-view-state";
 

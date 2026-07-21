@@ -1,7 +1,7 @@
 import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 
-import type { PointCloudCameraPose } from "../../../visualization/panels/point-cloud";
+import type { PointCloudCameraPose } from "../../../visualization/scene-3d";
 
 const GRID_CAMERA_SCOPE_TTL_MS = 30 * 60 * 1000;
 const MAX_GRID_CAMERA_SCOPES = 32;

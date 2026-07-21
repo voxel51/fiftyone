@@ -6,9 +6,9 @@ import {
   type PointCloudVisualization,
 } from "../../../decoders";
 import { VISUALIZATION_KIND } from "../../../visualization/visualization-registry";
-import type { PointerDwellOptions } from "../../../visualization/panels/pointer-dwell";
-import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/panels/gpu/gpu-point-cloud-projection-picker";
-import { gpuPointCloudProjectionResourceKey } from "../../../visualization/panels/gpu/gpu-point-cloud-projection";
+import type { PointerDwellOptions } from "../../../visualization/shared/pointer-dwell";
+import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/webgpu/gpu-point-cloud-projection-picker";
+import { gpuPointCloudProjectionResourceKey } from "../../../visualization/webgpu/gpu-point-cloud-projection";
 import EpisodeImageProjectionOverlay from "./EpisodeImageProjectionOverlay";
 import type { EpisodeImageProjectionLayer } from "./use-episode-image-projection-layers";
 import type { EpisodeCameraModel } from "./camera-geometry/episode-camera-model";
@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
   setHover: vi.fn(),
 }));
 
-vi.mock("../../../visualization/panels/pointer-dwell", () => ({
+vi.mock("../../../visualization/shared/pointer-dwell", () => ({
   attachPointerDwell: (_element: HTMLElement, options: PointerDwellOptions) => {
     mocks.dwell = options;
     return vi.fn();

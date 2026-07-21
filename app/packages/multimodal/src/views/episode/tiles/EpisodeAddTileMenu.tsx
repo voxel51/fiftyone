@@ -4,26 +4,19 @@ import React from "react";
 import { EPISODE_TILE_TYPE, type EpisodeTileType } from "./episode-tile-types";
 import { getEpisodeTileDefinition } from "./use-episode-tiles";
 
-const EPISODE_ADD_TILE_TYPES: readonly EpisodeTileType[] = [
-  EPISODE_TILE_TYPE.IMAGE,
-  EPISODE_TILE_TYPE.THREE_D,
-  EPISODE_TILE_TYPE.MAP,
-  EPISODE_TILE_TYPE.LOG,
-  EPISODE_TILE_TYPE.PLOT,
-  EPISODE_TILE_TYPE.RAW,
-];
-
 /**
  * Archetype-first add-tile menu for the episode modal. Stream/source binding
- * happens inside each panel's settings; this menu only chooses the kind
- * of panel the user wants to create.
+ * happens inside each tile's settings; this menu only chooses the semantic
+ * viewer the user wants to create.
  */
-const EpisodeAddTileMenu: React.FC = () => {
+const EpisodeAddTileMenu: React.FC<{
+  readonly tileTypes: readonly EpisodeTileType[];
+}> = ({ tileTypes }) => {
   const { addTile } = useTiling();
 
   return (
     <>
-      {EPISODE_ADD_TILE_TYPES.map((type) => {
+      {tileTypes.map((type) => {
         const definition = getEpisodeTileDefinition(type);
         if (!definition) return null;
         const Tile = definition.Tile;

@@ -43,7 +43,7 @@ import {
   type PointCloudColorStop,
   type PointCloudColormap,
   type PointCloudColormapName,
-} from "../../../visualization/panels/point-cloud";
+} from "../../../visualization/scene-3d";
 import {
   DEFAULT_EPISODE_IMAGE_PROJECTION,
   DEFAULT_EPISODE_POINT_CLOUD_COLOR,

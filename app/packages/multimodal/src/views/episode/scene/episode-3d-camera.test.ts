@@ -7,7 +7,7 @@ import {
   type Episode3dCameraTargetPose,
   type Episode3dFollowTrackingMode,
 } from "./episode-3d-camera";
-import type { PointCloudCameraPose } from "../../../visualization/panels/point-cloud";
+import type { PointCloudCameraPose } from "../../../visualization/scene-3d";
 
 describe("mcap 3d camera tracking", () => {
   it("follows target translation while preserving camera offset", () => {

@@ -67,7 +67,7 @@ vi.mock("@fiftyone/tiling", async () => {
 
 // The shell only owns the opt-in wrapper boundary; the stage's renderer and
 // registration lifecycle have focused tests in webgpu-view-stage.test.tsx.
-vi.mock("../../../visualization/panels/gpu/webgpu-view-stage", async () => {
+vi.mock("../../../visualization/webgpu/webgpu-view-stage", async () => {
   const react = await vi.importActual<typeof import("react")>("react");
   return {
     WebGpuViewStage: ({

@@ -1,9 +1,15 @@
 import { TilingProvider, useTiling } from "@fiftyone/tiling";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { Button, Dropdown } from "@voxel51/voodo";
+import { Button, Dropdown, IconName } from "@voxel51/voodo";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  registerEpisodeTileExtension,
+  resetEpisodeTileExtensionsForTests,
+} from "../../../extensions/tiles/registry";
 import EpisodeAddTileMenu from "./EpisodeAddTileMenu";
+import { EPISODE_TILE_TYPE, type EpisodeTileType } from "./episode-tile-types";
+import { episodeTileTypesFor } from "./use-episode-tiles";
 
 // The menu only stores render closures; tests never mount the heavy tile
 // bodies.
@@ -40,13 +46,15 @@ function probeState() {
   };
 }
 
-function renderMenu() {
+function renderMenu(
+  tileTypes: readonly EpisodeTileType[] = Object.values(EPISODE_TILE_TYPE),
+) {
   return render(
     <TilingProvider>
       <Dropdown
         trigger={<Button data-testid="open-add-tile-menu">open</Button>}
       >
-        <EpisodeAddTileMenu />
+        <EpisodeAddTileMenu tileTypes={tileTypes} />
       </Dropdown>
       <TilingProbe />
     </TilingProvider>,
@@ -58,9 +66,12 @@ function openMenu() {
 }
 
 describe("EpisodeAddTileMenu", () => {
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    resetEpisodeTileExtensionsForTests();
+  });
 
-  it("lists only panel archetypes", () => {
+  it("lists the built-in semantic tile kinds", () => {
     renderMenu();
     openMenu();
 
@@ -73,6 +84,18 @@ describe("EpisodeAddTileMenu", () => {
     expect(screen.queryByText("Image streams")).toBeNull();
     expect(screen.queryByText("Raw messages")).toBeNull();
     expect(screen.queryByText("CAM_FRONT")).toBeNull();
+  });
+
+  it("lists only tile kinds available for the current episode", () => {
+    renderMenu([EPISODE_TILE_TYPE.IMAGE, EPISODE_TILE_TYPE.RAW]);
+    openMenu();
+
+    expect(screen.getByText("Image")).toBeTruthy();
+    expect(screen.getByText("Message")).toBeTruthy();
+    expect(screen.queryByText("3D")).toBeNull();
+    expect(screen.queryByText("Map")).toBeNull();
+    expect(screen.queryByText("Logs")).toBeNull();
+    expect(screen.queryByText("Plot")).toBeNull();
   });
 
   it("spawns a fresh archetype tile and focuses it", () => {
@@ -113,5 +136,50 @@ describe("EpisodeAddTileMenu", () => {
     for (const id of logIds) {
       expect(titles[id]).toBe("Logs");
     }
+  });
+});
+
+describe("episodeTileTypesFor", () => {
+  afterEach(resetEpisodeTileExtensionsForTests);
+
+  it("uses semantic capabilities for plot and structured messages", () => {
+    expect(
+      episodeTileTypesFor({
+        hasNumericSeries: true,
+        hasRawRecords: false,
+        sourceTypes: ["image", "location"],
+      }),
+    ).toEqual([
+      EPISODE_TILE_TYPE.IMAGE,
+      EPISODE_TILE_TYPE.MAP,
+      EPISODE_TILE_TYPE.PLOT,
+    ]);
+
+    expect(
+      episodeTileTypesFor({
+        hasNumericSeries: false,
+        hasRawRecords: true,
+        sourceTypes: [],
+      }),
+    ).toEqual([EPISODE_TILE_TYPE.RAW]);
+  });
+
+  it("orders and filters build-time tile contributions with the built-ins", () => {
+    registerEpisodeTileExtension({
+      icon: IconName.JSON,
+      id: "test:events",
+      isAvailable: ({ sourceTypes }) => sourceTypes.includes("event"),
+      order: 45,
+      Tile: () => null,
+      typeLabel: "Events",
+    });
+
+    expect(
+      episodeTileTypesFor({
+        hasNumericSeries: true,
+        hasRawRecords: false,
+        sourceTypes: ["event"],
+      }),
+    ).toEqual(["test:events", EPISODE_TILE_TYPE.PLOT]);
   });
 });

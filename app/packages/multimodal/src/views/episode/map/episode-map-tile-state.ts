@@ -1,19 +1,17 @@
 import { useTileId } from "@fiftyone/tiling";
 import { atom, useAtomValue, useStore } from "jotai";
 import { useCallback, useMemo } from "react";
+import {
+  EPISODE_MAP_BASE_LAYER,
+  type EpisodeMapBaseLayer,
+} from "../../../visualization/map/map-types";
 
-export const EPISODE_MAP_BASE_LAYER = {
-  DEFAULT: "default",
-  NONE: "none",
-} as const;
-
-export type EpisodeMapBaseLayer =
-  (typeof EPISODE_MAP_BASE_LAYER)[keyof typeof EPISODE_MAP_BASE_LAYER];
-
-export const OPENFREEMAP_LIBERTY_STYLE_URL =
-  "https://tiles.openfreemap.org/styles/liberty";
-/** Provider label shown while the default basemap loads. */
-export const OPENFREEMAP_PROVIDER_NAME = "OpenFreeMap";
+export {
+  EPISODE_MAP_BASE_LAYER,
+  OPENFREEMAP_LIBERTY_STYLE_URL,
+  OPENFREEMAP_PROVIDER_NAME,
+  type EpisodeMapBaseLayer,
+} from "../../../visualization/map/map-types";
 
 export interface EpisodeMapTileSettings {
   /**

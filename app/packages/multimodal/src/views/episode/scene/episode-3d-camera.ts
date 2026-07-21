@@ -2,7 +2,7 @@ import { Quaternion, Vector3 } from "three";
 import type {
   PointCloudCameraPose,
   PointCloudFrameTransform,
-} from "../../../visualization/panels/point-cloud";
+} from "../../../visualization/scene-3d";
 import {
   DEFAULT_EPISODE_3D_SCENE_UP_AXIS,
   type Episode3dSceneUpAxis,

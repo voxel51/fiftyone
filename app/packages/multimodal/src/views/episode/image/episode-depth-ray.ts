@@ -1,7 +1,7 @@
 import type {
   CameraFrustumPanelLayer,
   SceneRayPanelLayer,
-} from "../../../visualization/panels/point-cloud";
+} from "../../../visualization/scene-3d";
 import type { EpisodeFrameTransformResolver } from "../scene/use-episode-frame-transforms";
 import type { EpisodeDepthHover } from "./episode-depth-hover";
 

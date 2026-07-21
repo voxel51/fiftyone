@@ -3,8 +3,8 @@ import {
   POINT_CLOUD_COLORMAPS,
   normalizePointCloudColormap,
   type PointCloudColormap,
-} from "../../../visualization/panels/point-cloud";
-import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../../visualization/panels/style-tokens";
+} from "../../../visualization/scene-3d";
+import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../../visualization/shared/style-tokens";
 import type {
   EpisodeImageDisplayMode,
   EpisodeImageGeometryMode,

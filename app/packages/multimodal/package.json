@@ -18,10 +18,12 @@
         "./inject": "./src/inject/index.ts",
         "./extensions/timeline": "./src/extensions/timeline/index.ts",
         "./extensions/timeline/runtime": "./src/extensions/timeline/runtime.ts",
+        "./extensions/tiles": "./src/extensions/tiles/index.ts",
+        "./extensions/tiles/runtime": "./src/extensions/tiles/runtime.ts",
         "./schemas/v1": "./src/schemas/v1/index.ts",
         "./visualization": "./src/visualization/index.ts",
-        "./visualization/panels/image": "./src/visualization/panels/image.tsx",
-        "./visualization/panels/point-cloud": "./src/visualization/panels/point-cloud/index.ts"
+        "./visualization/image": "./src/visualization/image/ImagePanel.tsx",
+        "./visualization/scene-3d": "./src/visualization/scene-3d/index.ts"
     },
     "typesVersions": {
         "*": {
@@ -61,17 +63,23 @@
             "extensions/timeline/runtime": [
                 "src/extensions/timeline/runtime.ts"
             ],
+            "extensions/tiles": [
+                "src/extensions/tiles/index.ts"
+            ],
+            "extensions/tiles/runtime": [
+                "src/extensions/tiles/runtime.ts"
+            ],
             "schemas/v1": [
                 "src/schemas/v1/index.ts"
             ],
             "visualization": [
                 "src/visualization/index.ts"
             ],
-            "visualization/panels/image": [
-                "src/visualization/panels/image.tsx"
+            "visualization/image": [
+                "src/visualization/image/ImagePanel.tsx"
             ],
-            "visualization/panels/point-cloud": [
-                "src/visualization/panels/point-cloud/index.ts"
+            "visualization/scene-3d": [
+                "src/visualization/scene-3d/index.ts"
             ]
         }
     },

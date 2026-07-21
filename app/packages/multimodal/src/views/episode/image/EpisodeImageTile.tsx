@@ -34,11 +34,11 @@ import { SCENE_SOURCE_METADATA, SCENE_SOURCE_TYPE } from "../../../ir";
 import { useSceneSourcesByType } from "../../../scene-inventory";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { findBestMatchingAnnotationStreams } from "../../../stream-matching";
-import { ImagePanel } from "../../../visualization/panels/image";
-import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
-import type { PanelNotice } from "../../../visualization/panels/panel-notices";
-import { useImagePanZoom } from "../../../visualization/panels/use-image-pan-zoom";
-import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/panels/gpu/gpu-point-cloud-projection-picker";
+import { ImagePanel } from "../../../visualization/image/ImagePanel";
+import { imageTextureCacheKey } from "../../../visualization/image/image-texture-cache";
+import type { PanelNotice } from "../../../visualization/shared/panel-notices";
+import { useImagePanZoom } from "../../../visualization/image/use-image-pan-zoom";
+import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/webgpu/gpu-point-cloud-projection-picker";
 import { useEpisodeDataStream } from "../playback/episode-data-stream-context";
 import { usePublishEpisodeImageAspectRatio } from "./episode-image-aspect-ratios";
 import {

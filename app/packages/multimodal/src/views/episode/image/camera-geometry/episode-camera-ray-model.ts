@@ -1,4 +1,4 @@
-import type { CameraImageRayModel } from "../../../../visualization/panels/point-cloud";
+import type { CameraImageRayModel } from "../../../../visualization/scene-3d";
 import {
   unprojectEpisodeCameraPixel,
   type EpisodeCameraModel,

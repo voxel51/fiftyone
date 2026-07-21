@@ -1,4 +1,5 @@
 import type { MosaicNode } from "react-mosaic-component";
+import { isEpisodeTileExtensionId } from "../../../extensions/tiles/registry";
 import {
   normalizeEpisode3dSceneUpAxis,
   type Episode3dSceneUpAxis,
@@ -38,6 +39,8 @@ import { EPISODE_TILE_TYPE } from "../tiles/episode-tile-types";
 export interface EpisodePersistedModalLayout {
   /** Tile id rendered expanded over the saved layout, when any. */
   expandedTileId?: string;
+  /** Opaque JSON settings owned by namespaced, build-time tile extensions. */
+  extensionSettings?: Record<string, EpisodePersistedExtensionSettingsValue>;
   leftSidebarOpen?: boolean;
   /** Mosaic tree whose leaves are tile ids (e.g. `image-default`). */
   layout?: MosaicNode<string> | null;
@@ -64,7 +67,7 @@ export interface EpisodePersistedModalLayout {
    */
   rawStreams?: Record<string, string>;
   /**
-   * User-authored panel titles per tile id. Dataset-scoped only: names
+   * User-authored tile titles per tile id. Dataset-scoped only: names
    * are layout semantics for this recording family, not reusable fallback
    * chrome across unrelated stream sets.
    */
@@ -102,6 +105,15 @@ export type EpisodePersistedMapSettings = EpisodeMapTileSettings;
 
 export type EpisodePersistedLogSettings = EpisodeLogTileSettings;
 
+/** JSON values accepted from extension-owned tile settings. */
+export type EpisodePersistedExtensionSettingsValue =
+  | boolean
+  | number
+  | string
+  | null
+  | readonly EpisodePersistedExtensionSettingsValue[]
+  | { readonly [key: string]: EpisodePersistedExtensionSettingsValue };
+
 // Bound the persisted plot config so a corrupt or adversarial payload
 // cannot balloon the localStorage entry parsed on every modal mount.
 const MAX_PLOT_TILES = 32;
@@ -117,6 +129,12 @@ const MAX_TILE_TITLE_LENGTH = 160;
 const MAX_CAMERA_PREFERENCE_FIELDS = 16;
 const MAX_CAMERA_SCOPE_LENGTH = 256;
 const MAX_FRAME_ID_LENGTH = 512;
+const MAX_EXTENSION_TILES = 32;
+const MAX_EXTENSION_SETTINGS_DEPTH = 8;
+const MAX_EXTENSION_SETTINGS_NODES = 2_048;
+const MAX_EXTENSION_SETTINGS_KEYS = 128;
+const MAX_EXTENSION_SETTINGS_KEY_LENGTH = 256;
+const MAX_EXTENSION_SETTINGS_STRING_LENGTH = 8_192;
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
 interface PersistedDatasetEntry extends EpisodePersistedModalLayout {
@@ -137,6 +155,7 @@ const FALLBACK_OMITTED_FIELDS = [
   "logSettings",
   "mapSettings",
   "cameraPreferences",
+  "extensionSettings",
   "plotSeries",
   "rawStreams",
   "sceneUpAxis",
@@ -172,6 +191,9 @@ function sanitizeEntry(raw: unknown): EpisodePersistedModalLayout | undefined {
   const candidate = raw as Record<string, unknown>;
   return {
     cameraPreferences: sanitizeCameraPreferences(candidate.cameraPreferences),
+    extensionSettings: sanitizeEpisodeExtensionSettings(
+      candidate.extensionSettings,
+    ),
     expandedTileId: sanitizeTileId(candidate.expandedTileId),
     leftSidebarOpen:
       typeof candidate.leftSidebarOpen === "boolean"
@@ -193,6 +215,72 @@ function sanitizeEntry(raw: unknown): EpisodePersistedModalLayout | undefined {
         : undefined,
     tileTitles: sanitizeTileTitles(candidate.tileTitles),
   };
+}
+
+/** Bounds opaque extension state before it enters layout persistence. */
+export function sanitizeEpisodeExtensionSettings(
+  value: unknown,
+): Record<string, EpisodePersistedExtensionSettingsValue> | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const result: Record<string, EpisodePersistedExtensionSettingsValue> = {};
+  let acceptedTileCount = 0;
+  for (const [tileId, rawSettings] of Object.entries(value)) {
+    if (acceptedTileCount >= MAX_EXTENSION_TILES) break;
+    const tileType = episodeTileTypeFromId(tileId);
+    if (!tileType || !isEpisodeTileExtensionId(tileType)) continue;
+    const budget = { nodes: 0 };
+    const settings = sanitizeExtensionJsonValue(rawSettings, 0, budget);
+    if (settings !== undefined) {
+      result[tileId] = settings;
+      acceptedTileCount += 1;
+    }
+  }
+  return acceptedTileCount > 0 ? result : undefined;
+}
+
+function sanitizeExtensionJsonValue(
+  value: unknown,
+  depth: number,
+  budget: { nodes: number },
+): EpisodePersistedExtensionSettingsValue | undefined {
+  budget.nodes += 1;
+  if (
+    budget.nodes > MAX_EXTENSION_SETTINGS_NODES ||
+    depth > MAX_EXTENSION_SETTINGS_DEPTH
+  ) {
+    return undefined;
+  }
+  if (value === null || typeof value === "boolean") return value;
+  if (typeof value === "number")
+    return Number.isFinite(value) ? value : undefined;
+  if (typeof value === "string") {
+    return value.length <= MAX_EXTENSION_SETTINGS_STRING_LENGTH
+      ? value
+      : value.slice(0, MAX_EXTENSION_SETTINGS_STRING_LENGTH);
+  }
+  if (Array.isArray(value)) {
+    const result: EpisodePersistedExtensionSettingsValue[] = [];
+    for (const item of value.slice(0, MAX_EXTENSION_SETTINGS_KEYS)) {
+      const sanitized = sanitizeExtensionJsonValue(item, depth + 1, budget);
+      if (sanitized !== undefined) result.push(sanitized);
+    }
+    return result;
+  }
+  if (typeof value !== "object") return undefined;
+
+  const result: Record<string, EpisodePersistedExtensionSettingsValue> = {};
+  for (const [key, item] of Object.entries(value).slice(
+    0,
+    MAX_EXTENSION_SETTINGS_KEYS,
+  )) {
+    if (!key || key.length > MAX_EXTENSION_SETTINGS_KEY_LENGTH) continue;
+    const sanitized = sanitizeExtensionJsonValue(item, depth + 1, budget);
+    if (sanitized !== undefined) result[key] = sanitized;
+  }
+  return result;
 }
 
 function sanitizeCameraPreferences(

@@ -1,4 +1,4 @@
-import type { ImageTextureMesh } from "../../../../visualization/panels/base-2d-scene";
+import type { ImageTextureMesh } from "../../../../visualization/image/base-2d-scene";
 import {
   projectEpisodeCameraPoint,
   unprojectEpisodeCameraPixel,

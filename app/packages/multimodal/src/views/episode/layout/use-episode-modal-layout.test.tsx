@@ -14,6 +14,7 @@ import {
   pruneMosaicLayout,
   useEpisodeModalLayout,
 } from "./use-episode-modal-layout";
+import { episodeTileTypesFor } from "../tiles/use-episode-tiles";
 
 // The tile bodies drag in WebGPU/Three at module load, which jsdom can't
 // evaluate. Layout restore only needs them to exist as components; the
@@ -48,6 +49,11 @@ function renderLayoutHook(
 ) {
   return renderHook(() =>
     useEpisodeModalLayout({
+      availableTileTypes: episodeTileTypesFor({
+        hasNumericSeries: true,
+        hasRawRecords: true,
+        sourceTypes: sources.map((source) => source.type),
+      }),
       sources,
       datasetId,
       cameraPreferenceField,
@@ -310,6 +316,21 @@ describe("useEpisodeModalLayout", () => {
     expect(Object.keys(result.current.initialTiles)).toEqual(["image-default"]);
   });
 
+  it("preserves a namespaced extension leaf with an unavailable placeholder", () => {
+    writeEpisodeModalLayout({ layout: "acme:radar-2" });
+    const { result } = renderLayoutHook(SCENE_SOURCES);
+
+    expect(result.current.initialLayout).toBe("acme:radar-2");
+    expect(result.current.initialTiles["acme:radar-2"].title).toBe(
+      "Unavailable tile",
+    );
+    const view = render(
+      <>{result.current.initialTiles["acme:radar-2"].render()}</>,
+    );
+    expect(view.getByText(/acme:radar/)).toBeTruthy();
+    view.unmount();
+  });
+
   it("prunes leaves whose tile kind has no source in the scene", () => {
     // A layout saved with a 3D stream, opened on an image-only recording,
     // keeps its image tile instead of resetting.
@@ -481,6 +502,11 @@ describe("useEpisodeModalLayout", () => {
     const { result, rerender } = renderHook(
       ({ datasetId }: { readonly datasetId: string }) =>
         useEpisodeModalLayout({
+          availableTileTypes: episodeTileTypesFor({
+            hasNumericSeries: true,
+            hasRawRecords: true,
+            sourceTypes: SCENE_SOURCES.map((source) => source.type),
+          }),
           sources: SCENE_SOURCES,
           datasetId,
           capabilities: STRONG_CAPABILITIES,

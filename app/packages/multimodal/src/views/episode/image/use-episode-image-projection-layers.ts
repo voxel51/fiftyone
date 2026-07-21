@@ -6,7 +6,7 @@ import {
   type PointCloudVisualization,
 } from "../../../decoders";
 import { useSceneSourcesByType } from "../../../scene-inventory";
-import type { PointCloudColorOptions } from "../../../visualization/panels/point-cloud";
+import type { PointCloudColorOptions } from "../../../visualization/scene-3d";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
 import { useEpisodeFrameTransformsContext } from "../scene/episode-frame-transforms-context";
 import {

@@ -27,11 +27,14 @@ import {
 import { useEpisodeFrameTransforms } from "../scene/use-episode-frame-transforms";
 import { useEpisodePlaybackTimeNs } from "../playback/use-episode-playback-time-ns";
 import { useEpisodeTiles } from "../tiles/use-episode-tiles";
+import type { EpisodeTileType } from "../tiles/episode-tile-types";
 import { useRegisterEpisodeDataStream } from "../playback/use-register-episode-data-stream";
 
 const FRAME_TRANSFORM_RANGE_PADDING_NS = 1_000_000_000n;
 
 export interface EpisodeStreamsProps {
+  /** Tile kinds supported by the current manifest, capabilities, and build. */
+  availableTileTypes: readonly EpisodeTileType[];
   /** Shared format-neutral episode session owned by the modal renderer. */
   session: EpisodeSession | null;
   /** Called after every blocking stream covers the current playhead. */
@@ -47,6 +50,7 @@ export interface EpisodeStreamsProps {
  * (single playback stream, per-stream caches, tile registry).
  */
 export function EpisodeStreams({
+  availableTileTypes,
   onPlayheadDataReady,
   session,
   source,
@@ -127,7 +131,7 @@ export function EpisodeStreams({
     staleWarningStreams,
     streamPolicies,
   });
-  useEpisodeTiles();
+  useEpisodeTiles(availableTileTypes);
 
   return (
     <>

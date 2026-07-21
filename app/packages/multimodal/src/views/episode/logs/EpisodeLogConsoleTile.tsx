@@ -5,12 +5,9 @@ import {
   usePlaybackStore,
 } from "@fiftyone/playback";
 import { useSetTileTitle } from "@fiftyone/tiling";
-import { Checkbox } from "@voxel51/voodo";
-import clsx from "clsx";
 import React, {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -26,7 +23,8 @@ import { useEpisodeDataStream } from "../playback/episode-data-stream-context";
 import {
   logConsoleRowsFromDecodedMessage,
   type EpisodeLogConsoleRow,
-} from "./episode-log-console-rows";
+} from "../../../visualization/logs/log-console-rows";
+import LogConsole from "../../../visualization/logs/LogConsole";
 import { useEpisodeLogConsoleContext } from "./episode-log-console-context";
 import {
   coveredLogReadRange,
@@ -36,11 +34,7 @@ import {
   missingLogReadRanges,
   pruneLogRows,
   type LogReadRange,
-  virtualLogRowRange,
 } from "./episode-log-console-window";
-import { checkboxNoSpaceToggleProps } from "../settings/episode-settings-keyboard";
-import styles from "./EpisodeLogConsoleTile.module.css";
-import tileStyles from "../tiles/EpisodeTile.module.css";
 import type { EpisodeTileProps } from "../tiles/episode-tile-types";
 
 const PLAYHEAD_REFRESH_MS = 500;
@@ -52,8 +46,6 @@ const LOG_WINDOW_LABEL = `${
 }s`;
 const LOG_READ_LIMIT = 600;
 const LOG_ROW_LIMIT = 2_000;
-const LOG_ROW_HEIGHT_PX = 30;
-const LOG_ROW_OVERSCAN = 8;
 
 interface LogRowsState {
   readonly error?: string;
@@ -90,8 +82,6 @@ const EpisodeLogConsoleTile: React.FC<EpisodeTileProps> = () => {
   const [state, setState] = useState<LogRowsState>(INITIAL_ROWS);
   const lastPlayheadPublishMsRef = useRef(0);
   const fetchedWindowRef = useRef<LogRowsCacheWindow | null>(null);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  const [viewport, setViewport] = useState({ height: 0, scrollTop: 0 });
 
   // This effect keeps the automatic tile title aligned with the panel's role.
   useEffect(() => {
@@ -349,156 +339,27 @@ const EpisodeLogConsoleTile: React.FC<EpisodeTileProps> = () => {
   );
 
   const timeOriginNs = timelineIndex?.startTimeNs;
-  const showRowList =
-    logSources.length > 0 && state.status !== "error" && rows.length > 0;
-  const visibleRange = useMemo(
-    () =>
-      virtualLogRowRange({
-        overscan: LOG_ROW_OVERSCAN,
-        rowCount: rows.length,
-        rowHeightPx: LOG_ROW_HEIGHT_PX,
-        scrollTop: viewport.scrollTop,
-        viewportHeight: viewport.height,
-      }),
-    [rows.length, viewport.height, viewport.scrollTop],
-  );
-  const visibleRows = rows.slice(
-    visibleRange.startIndex,
-    visibleRange.endIndex,
-  );
-
-  // This effect measures the scroll viewport whenever the virtualized row
-  // list mounts or resizes and disconnects the observer on cleanup.
-  useLayoutEffect(() => {
-    const element = scrollRef.current;
-    if (!element) {
-      return undefined;
-    }
-
-    const publish = () => {
-      setViewport({
-        height: element.clientHeight,
-        scrollTop: element.scrollTop,
-      });
-    };
-    publish();
-
-    if (typeof ResizeObserver === "undefined") {
-      return undefined;
-    }
-    const observer = new ResizeObserver(publish);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [showRowList]);
-
-  const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-    setViewport({
-      height: event.currentTarget.clientHeight,
-      scrollTop: event.currentTarget.scrollTop,
-    });
-  }, []);
-
-  if (logSources.length === 0) {
-    return (
-      <div className={styles.body} data-testid="episode-log-console-tile">
-        <div className={styles.empty}>No log streams in this recording</div>
-      </div>
-    );
-  }
-
   return (
-    <div className={styles.body} data-testid="episode-log-console-tile">
-      <div className={styles.toolbar}>
-        <div className={styles.controlGroup}>
-          <Checkbox
-            checked={followPlayhead}
-            label="Follow"
-            onChange={(checked) => setLogSettings({ followPlayhead: checked })}
-            {...checkboxNoSpaceToggleProps}
-          />
-        </div>
-        <div className={styles.controlGroup}>
-          {LOG_LEVELS.map((level) => (
-            <Checkbox
-              key={level}
-              checked={selectedLevels.includes(level)}
-              label={level}
-              onChange={(checked) => toggleLevel(level, checked)}
-              {...checkboxNoSpaceToggleProps}
-            />
-          ))}
-        </div>
-        {logSources.length > 1 ? (
-          <div className={styles.controlGroup}>
-            {logSources.map((logSource) => (
-              <Checkbox
-                key={logSource.id}
-                checked={selectedStreams.includes(logSource.id)}
-                label={logSource.label}
-                onChange={(checked) => toggleStream(logSource.id, checked)}
-                {...checkboxNoSpaceToggleProps}
-              />
-            ))}
-          </div>
-        ) : null}
-        <span className={styles.meta}>
-          {state.status === "loading"
-            ? "loading"
-            : state.truncated
-              ? `latest ${rows.length.toLocaleString()}`
-              : rows.length.toLocaleString()}{" "}
-          · {LOG_WINDOW_LABEL}
-        </span>
-      </div>
-      {state.status === "error" ? (
-        <div className={tileStyles.loading}>
-          <span className={tileStyles.emptyTextError}>
-            Could not read logs{state.error ? `: ${state.error}` : ""}
-          </span>
-        </div>
-      ) : rows.length === 0 ? (
-        <div className={styles.empty}>
-          {selectedStreams.length === 0 || selectedLevels.length === 0
-            ? "No filters selected"
-            : "No log rows in this time window"}
-        </div>
-      ) : (
-        <div className={styles.scroll} onScroll={handleScroll} ref={scrollRef}>
-          <div
-            className={styles.virtualSpacer}
-            style={{ height: rows.length * LOG_ROW_HEIGHT_PX }}
-          >
-            <div
-              className={styles.virtualRows}
-              style={{ transform: `translateY(${visibleRange.offsetPx}px)` }}
-            >
-              {visibleRows.map((row) => (
-                <button
-                  key={row.id}
-                  className={styles.row}
-                  onClick={() => handleRowClick(row)}
-                  title={rowTitle(row)}
-                  type="button"
-                >
-                  <span className={styles.time}>
-                    {timeOriginNs !== undefined
-                      ? formatRelativeTime(row.timeNs, timeOriginNs)
-                      : formatWindowOffset(row.timeNs, windowStartNs)}
-                  </span>
-                  <span className={clsx(styles.level, styles[row.level])}>
-                    {row.status ?? row.level}
-                  </span>
-                  <span className={styles.source}>
-                    {row.groupLabel ?? row.stream}
-                  </span>
-                  <span className={styles.message}>{row.message}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    <LogConsole
+      error={state.error}
+      followPlayhead={followPlayhead}
+      levels={LOG_LEVELS}
+      onFollowPlayheadChange={(follow) =>
+        setLogSettings({ followPlayhead: follow })
+      }
+      onLevelChange={toggleLevel}
+      onRowClick={handleRowClick}
+      onStreamChange={toggleStream}
+      rows={rows}
+      selectedLevels={selectedLevels}
+      selectedStreams={selectedStreams}
+      sources={logSources}
+      status={state.status}
+      timeOriginNs={timeOriginNs}
+      truncated={state.truncated}
+      windowLabel={LOG_WINDOW_LABEL}
+      windowStartNs={windowStartNs}
+    />
   );
 };
 
@@ -508,33 +369,6 @@ function clipLogCacheWindow(
 ): LogRowsCacheWindow | null {
   const ranges = mergeLogReadRanges(cachedWindow.ranges, activeWindow);
   return ranges.length > 0 ? { ...cachedWindow, ranges } : null;
-}
-
-function formatRelativeTime(timeNs: bigint, originNs: bigint): string {
-  const deltaNs = timeNs - originNs;
-  const sign = deltaNs < 0n ? "-" : "";
-  const absoluteNs = deltaNs < 0n ? -deltaNs : deltaNs;
-  const seconds = absoluteNs / 1_000_000_000n;
-  const millis = (absoluteNs % 1_000_000_000n) / 1_000_000n;
-  return `${sign}${seconds.toString()}.${millis.toString().padStart(3, "0")}s`;
-}
-
-function formatWindowOffset(timeNs: bigint, windowStartNs: bigint): string {
-  return `+${formatRelativeTime(timeNs, windowStartNs)}`;
-}
-
-function rowTitle(row: EpisodeLogConsoleRow): string {
-  const location =
-    row.file && row.line !== undefined
-      ? `${row.file}:${row.line}`
-      : (row.file ?? null);
-  const details =
-    row.details.length > 0
-      ? row.details.map((entry) => `${entry.key}=${entry.value}`).join(", ")
-      : null;
-  return [row.stream, row.groupLabel, location, row.functionName, details]
-    .filter(Boolean)
-    .join(" · ");
 }
 
 export default EpisodeLogConsoleTile;

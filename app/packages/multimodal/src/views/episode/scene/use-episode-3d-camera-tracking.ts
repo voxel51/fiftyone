@@ -12,7 +12,7 @@ import type {
   PointCloudCameraPose,
   PointCloudFrameTransform,
   PointCloudSceneBoundsSummary,
-} from "../../../visualization/panels/point-cloud";
+} from "../../../visualization/scene-3d";
 import {
   cameraTargetPoseFromFrameTransform,
   DEFAULT_EPISODE_3D_TRACKING_MODE,

@@ -1,5 +1,5 @@
 import type { CameraCalibrationVisualization } from "../../../decoders";
-import type { PointCloudColorWriter } from "../../../visualization/panels/point-cloud";
+import type { PointCloudColorWriter } from "../../../visualization/scene-3d";
 
 /**
  * Pure math for the pointcloud→camera projection overlay: transforms

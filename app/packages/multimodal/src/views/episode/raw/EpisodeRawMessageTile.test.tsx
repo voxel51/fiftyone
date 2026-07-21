@@ -79,7 +79,9 @@ vi.mock("./episode-raw-tile-state", () => ({
 }));
 
 vi.mock("./EpisodeRawMessageTileSettings", () => ({ default: () => null }));
-vi.mock("./EpisodeRawMessageTree", () => ({ default: () => null }));
+vi.mock("../../../visualization/message/StructuredMessageTree", () => ({
+  default: () => null,
+}));
 
 beforeEach(() => {
   mocks.readFullMessageJson.mockReset();
