@@ -31,8 +31,8 @@ import {
 import {
   SceneInventoryProvider,
   type SceneSource,
-} from "../../scene-inventory";
-import { WebGpuViewStage } from "../../visualization/panels/gpu/webgpu-view-stage";
+} from "../../../scene-inventory";
+import { WebGpuViewStage } from "../../../visualization/panels/gpu/webgpu-view-stage";
 import styles from "./MultiModalPlayback.module.css";
 
 const EMPTY_SOURCES: readonly SceneSource[] = [];
@@ -52,7 +52,7 @@ export function clampSidebarWidth(px: number): number {
   );
 }
 
-/** Inputs for the reusable multimodal playback shell. */
+/** Inputs for the reusable episode playback shell. */
 export interface MultiModalPlaybackProps {
   /** Filename rendered on the left of the top bar. */
   fileName: string;
@@ -201,7 +201,7 @@ export interface MultiModalPlaybackProps {
 }
 
 /**
- * Multi-modal playback shell. Composes the three
+ * Episode playback shell. Composes the three
  * providers we always need — `PlaybackProvider`, `TrackProvider`,
  * `TilingProvider` — and the standard four-region layout:
  *

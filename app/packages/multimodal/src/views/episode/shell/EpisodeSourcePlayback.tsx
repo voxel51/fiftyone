@@ -15,7 +15,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import MultiModalPlayback from "../../../components/MultiModalPlayback/MultiModalPlayback";
+import MultiModalPlayback from "./MultiModalPlayback";
 import { byteSourceAccessKey } from "../../../query/bytes/cache";
 import type { ByteSourceDescriptor } from "../../../query/bytes/types";
 import type { SceneSource } from "../../../scene-inventory";
