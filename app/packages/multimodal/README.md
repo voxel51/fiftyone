@@ -8,12 +8,11 @@ playback and React surfaces format-neutral.
 
 Dependencies point inward toward stable data contracts:
 
-`composition → views/runtime → ports → IR`
+`inject → views → runtime → query/ports → decoders/IR`
 
-Adapters also implement ports, but views and runtime cannot import them. The
-rules in `.dependency-cruiser.cjs` enforce this direction, keep enterprise
-wiring behind a single injection seam, and preserve the internal layering of
-the MCAP adapter.
+Adapters implement ports using query, decoders, schemas, and IR; views and
+runtime cannot import them. Dependency linting enforces this direction, keeps
+enterprise wiring behind one injection seam, and protects MCAP layering.
 
 - `src/ir` contains cloneable frame, stream, manifest, visualization, and time
   values. It is a dependency leaf.
@@ -24,14 +23,14 @@ the MCAP adapter.
 - `src/adapters` maps concrete formats into the shared contracts. MCAP owns
   indexing, decompression, schemas, workers, and decoder registration; adapters
   never own React UI or shared playback policy.
-- `src/runtime` owns demand, synchronization, transport, fallback, and
-  adapter-registry policy.
+- `src/runtime` owns session opening, demand, synchronization, transport,
+  fallback, and adapter-registry policy. React bindings are isolated from its
+  headless core.
 - `src/inject` and explicit acquisition surfaces choose and lazily load an
   adapter. This is the only layer allowed to connect format code to views.
 
-The fixture adapter is the deterministic contract and performance test source.
-The LeRobot adapter verifies that the port also supports Parquet/MP4 episodes
-without leaking MCAP-style topics or message-log concepts into shared code.
+The fixture and LeRobot adapters prove the ports are not coupled to MCAP-style
+topics or message-log concepts.
 
 ## Episode views
 
@@ -46,14 +45,12 @@ composition, not every React component. Reusable rendering and direct
 manipulation stay in `visualization`.
 
 Visualization is organized by semantic output: image, 3D scene, map, plot,
-message, and logs, with shared interaction and WebGPU infrastructure alongside.
-Build-time extensions may contribute timeline sections or namespaced tiles
-through narrow public contracts.
+message, and logs. Shared interaction and WebGPU are foundations; cross-family
+rendering lives in an explicit composition domain. Extensions contribute
+timeline sections or namespaced tiles through narrow contracts.
 
-Production consumers outside the directory import only its root `index.ts`.
-Code inside an episode domain imports canonical files directly; it must not
-import the root entrypoint or introduce domain barrels. These constraints keep
-public dependencies stable while allowing internal files to move safely.
+Outside consumers use the episode entrypoint. Episode domains use canonical
+modules directly, keeping ownership visible and avoiding barrel cycles.
 
 ## Runtime flow
 
