@@ -1,8 +1,8 @@
 # `@fiftyone/multimodal`
 
 App-side infrastructure for loading, decoding, synchronizing, and visualizing
-multimodal episode data. The package supports multiple source formats while
-keeping playback policy and React surfaces format-neutral.
+multimodal episode data. It supports multiple source formats while keeping
+playback and React surfaces format-neutral.
 
 ## Architecture
 
@@ -44,6 +44,11 @@ placement rules.
 Within this package, `views` means the application layer: product workflow and
 composition, not every React component. Reusable rendering and direct
 manipulation stay in `visualization`.
+
+Visualization is organized by semantic output: image, 3D scene, map, plot,
+message, and logs, with shared interaction and WebGPU infrastructure alongside.
+Build-time extensions may contribute timeline sections or namespaced tiles
+through narrow public contracts.
 
 Production consumers outside the directory import only its root `index.ts`.
 Code inside an episode domain imports canonical files directly; it must not

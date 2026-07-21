@@ -2,10 +2,15 @@
 
 This is the presentation engine.
 
-Visualization turns normalized IR outputs into image, point-cloud, 3D, and
-timeseries experiences. It owns GPU resources, textures, cameras, picking, and
-render-level interaction, including measurement. It displays state supplied by
-higher layers; it does not choose what product experience surrounds it.
+Visualization turns prepared data into semantic rendering families: image, 3D
+scene, map, plot, structured message, and logs. Shared interaction and WebGPU
+machinery sit beside those families because they support several renderers
+without being tile types themselves. This layer owns textures, cameras,
+picking, virtualization, and render-level interaction.
+
+Renderers receive data and callbacks. They do not choose streams, query a
+session, interpret layout policy, or persist product settings; those decisions
+belong to views.
 
 Its dependencies point down to IR, decoders, types, and small pure utilities.
 It must not import views, runtime policy, data acquisition, or adapters.
