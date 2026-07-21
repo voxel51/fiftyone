@@ -13,7 +13,8 @@ jobs:
     steps:
       - name: Mark the e2e comment in progress
         # keeps the authoritative comment honest while a newer run is
-        # executing; the verdict job's rewrite clears the banner
+        # executing; the verdict job's rewrite clears the banner (or the
+        # e2e-aborted job flips it when the pipeline dies before the verdict)
         if: >-
           github.event_name == 'pull_request' &&
           github.event.pull_request.head.repo.full_name == github.repository
@@ -40,10 +41,14 @@ jobs:
             );
             const existing = comments.find((c) => c.body.includes(marker));
             if (existing) {
-              const banner = `> ⏳ e2e running for \`${sha}\` — [run](${runUrl}). Results below are from an earlier run.`;
+              const banner = `> ⏳ CI running for \`${sha}\` — [run](${runUrl}). Results below are from an earlier run.`;
               const lines = existing.body
                 .split('\n')
-                .filter((l) => !l.startsWith('> ⏳'));
+                .filter(
+                  (l) =>
+                    !l.startsWith('> ⏳') &&
+                    !l.startsWith('> ❌ CI failed before'),
+                );
               lines.splice(1, 0, banner);
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
@@ -56,7 +61,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: `${marker}\n> ⏳ e2e running for \`${sha}\` — [run](${runUrl}).`,
+                body: `${marker}\n> ⏳ CI running for \`${sha}\` — [run](${runUrl}).`,
               });
             }
 
@@ -397,3 +402,61 @@ jobs:
           EXPECTED_SHARDS: "8"
           TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
         run: node scripts/enforce-verdict.mjs merged-results.json all-blob-reports
+
+  e2e-aborted:
+    needs: [prepare-e2e, test-e2e]
+    # prepare-e2e failing skips the shards, which skips the verdict — the
+    # only job that rewrites the in-progress banner — so the authoritative
+    # comment would read "running" forever. Same-repo PRs only, matching
+    # the banner stamp.
+    if: >-
+      always() && needs.test-e2e.result == 'skipped' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    name: Mark the e2e comment failed
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const flavor = process.env.GITHUB_REPOSITORY.endsWith(
+              'fiftyone-teams',
+            )
+              ? 'FOE'
+              : 'OSS';
+            const marker = `<!-- e2e-authoritative-report:${flavor} -->`;
+            const sha = context.payload.pull_request.head.sha.slice(0, 10);
+            const runUrl = `${context.serverUrl}/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.runId}`;
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              },
+            );
+            const existing = comments.find((c) => c.body.includes(marker));
+            if (!existing) return;
+            const lines = existing.body.split('\n');
+            const idx = lines.findIndex((l) => l.startsWith('> ⏳'));
+            // a newer run may have stamped its own banner; leave that alone
+            if (
+              idx === -1 ||
+              !lines[idx].includes(`/actions/runs/${context.runId})`)
+            ) {
+              return;
+            }
+            const hasEarlier = lines.some(
+              (l, i) => i > 0 && i !== idx && l.trim() !== '',
+            );
+            lines[idx] =
+              `> ❌ CI failed before e2e could run for \`${sha}\` — [run](${runUrl}).` +
+              (hasEarlier ? ' Results below are from an earlier run.' : '');
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existing.id,
+              body: lines.join('\n'),
+            });

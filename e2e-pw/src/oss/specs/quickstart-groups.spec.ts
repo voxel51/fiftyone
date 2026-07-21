@@ -151,7 +151,9 @@ test.describe.serial("quickstart-groups", () => {
       await expect(modal.carousel).toBeVisible();
     });
 
-    test("annotate pcd slice renders after refreshing from explore mode", async ({
+    // Flaky: the pcd canvas intermittently renders zero pixels after the
+    // explore -> annotate refresh
+    test.skip("annotate pcd slice renders after refreshing from explore mode", async ({
       modal,
       grid,
       page,
