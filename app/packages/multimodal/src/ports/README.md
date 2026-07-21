@@ -1,8 +1,9 @@
 # ports
 
-Ports are the verbs around IR's nouns.
+Ports are like IRs (which are nouns) - but behaviors. They are interfaces for
+shared behaviors.
 
-They define the operations and lifecycle guarantees the system relies on:
+Ports define the operations and lifecycle guarantees the system relies on:
 opening a source, reading frames, fetching bytes, observing cancellation, and
 using optional capabilities. The core owns these contracts; adapters and
 resources provide concrete implementations.
