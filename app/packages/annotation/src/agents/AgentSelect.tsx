@@ -1,4 +1,4 @@
-import { AgentDescriptor } from "./registry";
+import { AgentDescriptor, isAgentSelectable } from "./registry";
 import { ENTERPRISE_LEARN_MORE_URL } from "@fiftyone/components";
 import {
   Align,
@@ -82,10 +82,7 @@ export const AgentSelect = ({
   // programmatically, never surfaced). voodo's Select has no per-option
   // disabled, so an excluded agent is dropped entirely.
   const selectableAgents = useMemo(
-    () =>
-      agentSelector.agents?.filter(
-        (d) => d.available !== false && !d.unlisted,
-      ) ?? [],
+    () => agentSelector.agents?.filter(isAgentSelectable) ?? [],
     [agentSelector.agents],
   );
 
