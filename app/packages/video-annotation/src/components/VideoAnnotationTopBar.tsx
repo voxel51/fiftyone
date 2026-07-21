@@ -8,10 +8,13 @@ import {
   TextColor,
   TextVariant,
 } from "@voxel51/voodo";
+import { useStream } from "@fiftyone/playback";
 import React, { useMemo } from "react";
 import styles from "./VideoAnnotationTopBar.module.css";
 import { useModalSampleFrameRate } from "../state/accessors";
+import type { ImaVidImageFrame } from "../streams/ImaVidImageStream";
 import { useVideoAnnotationStatusContent } from "../state/videoAnnotationStatus";
+import { IMAVID_STREAM_ID } from "../utils/ids";
 
 /**
  * Media facts shown at the top-left of the bar. Resolution and codec are
@@ -48,6 +51,13 @@ const formatFps = (fps: number): string => `${Number(fps.toFixed(2))} fps`;
 
 const useMediaInfo = (sample: ModalSample): MediaInfo => {
   const frameRate = useModalSampleFrameRate(sample);
+  // For an ImaVid each frame is its own image sample, so the filename tracks
+  // the frame under the playhead. The stream dedupes by frame number, so this
+  // only changes on a real frame change; absent (native video / pre-first
+  // frame) it falls back to the modal sample's filepath.
+  const frame = useStream<ImaVidImageFrame>(IMAVID_STREAM_ID);
+  const filepath = frame?.meta?.filepath || sample.sample.filepath;
+
   return useMemo(() => {
     const metadata = (
       sample.sample as { metadata?: VideoMetadataLike } | undefined
@@ -62,12 +72,12 @@ const useMediaInfo = (sample: ModalSample): MediaInfo => {
         : null;
 
     return {
-      filename: basename(sample.sample.filepath),
+      filename: basename(filepath),
       resolution: width && height ? `${width}×${height}` : null,
       fps: fps ? formatFps(fps) : null,
       codec,
     };
-  }, [sample, frameRate]);
+  }, [sample, frameRate, filepath]);
 };
 
 const MetaItem: React.FC<{ children: React.ReactNode; muted?: boolean }> = ({
