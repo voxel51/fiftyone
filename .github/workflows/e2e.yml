@@ -144,7 +144,9 @@ jobs:
     # policy, and the verdict job fails whenever a shard job does.
     # (fiftyone-teams runs the same suite ~1.6x slower.)
     timeout-minutes: 30
-    runs-on: ubuntu-latest
+    # downstream repos reusing this workflow can point shards at a
+    # larger runner spec via repo var
+    runs-on: ${{ vars.FIFTYONE_E2E_RUNNER || 'ubuntu-latest' }}
     # The prebaked image (built by build-ci-images.yml) carries Python +
     # fiftyone's dependency tree, Node/Yarn, ffmpeg, and Chromium, so shard
     # jobs skip all toolchain setup.
@@ -281,7 +283,9 @@ jobs:
     # cancellation force-cancels this job anyway.
     if: always() && needs.test-e2e.result != 'skipped'
     timeout-minutes: 15
-    runs-on: ubuntu-latest
+    # gates the merge, so it follows the shards' runner rather than
+    # queueing on a busy standard pool
+    runs-on: ${{ vars.FIFTYONE_E2E_RUNNER || 'ubuntu-latest' }}
     container:
       # fiftyone-teams overrides the image name via repo var (superset deps)
       image: ${{ vars.FIFTYONE_E2E_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-e2e' }}:latest
