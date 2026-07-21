@@ -9,6 +9,16 @@ FiftyOne Enterprise 2.23.0
 
 Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
 
+- **Agentic Labeling**: a new panel for labeling image datasets with
+  vision-language models. Train a labeling agent interactively — give it a
+  natural-language prompt and a few labeled examples, preview its
+  predictions on your samples in real time, and refine the context until it
+  labels the way you want. Save agents as named, reusable snapshots that
+  capture their prompt, label schema, and example set, then load them into
+  any future session — scoped to a dataset or shared globally — to apply the
+  same labeling behavior without re-authoring the context. Supports
+  classification and detection labels, region/patch labeling, and grouped
+  datasets
 - **AI-powered video annotation**: click-to-segment (point-prompted SAM2
   masks) and AI object tracking are now available on the video annotation
   surface, with support for mask and bounding-box prompts, custom track
