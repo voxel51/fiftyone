@@ -731,6 +731,9 @@ class EvaluationConfig(EnvConfig):
             "coco": {
                 "config_cls": "fiftyone.utils.eval.coco.COCOEvaluationConfig",
             },
+            "tide": {
+                "config_cls": "fiftyone.utils.eval.tide.TIDEEvaluationConfig",
+            },
             "open-images": {
                 "config_cls": "fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig",
             },

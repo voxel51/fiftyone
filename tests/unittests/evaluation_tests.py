@@ -23,6 +23,7 @@ import fiftyone.utils.eval.coco as coco
 import fiftyone.utils.eval.detection as foud
 import fiftyone.utils.eval.regression as four
 import fiftyone.utils.eval.segmentation as fous
+import fiftyone.utils.eval.tide as tide
 import fiftyone.utils.labels as foul
 import fiftyone.utils.iou as foui
 
@@ -1991,6 +1992,272 @@ class DetectionsTests(unittest.TestCase):
         kwargs = {}
 
         self._evaluate_coco(dataset, kwargs)
+
+    @drop_datasets
+    def test_evaluate_detections_tide(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="cls.jpg",
+                    ground_truth=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat", bounding_box=[0, 0, 0.2, 0.2]
+                            )
+                        ]
+                    ),
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="dog",
+                                bounding_box=[0, 0, 0.2, 0.2],
+                                confidence=0.9,
+                            )
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="loc.jpg",
+                    ground_truth=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat", bounding_box=[0, 0, 0.4, 0.4]
+                            )
+                        ]
+                    ),
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0.2, 0, 0.4, 0.4],
+                                confidence=0.9,
+                            )
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="dupe.jpg",
+                    ground_truth=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat", bounding_box=[0, 0, 0.2, 0.2]
+                            )
+                        ]
+                    ),
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0, 0, 0.2, 0.2],
+                                confidence=0.9,
+                            ),
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0, 0, 0.2, 0.2],
+                                confidence=0.8,
+                            ),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="bkg.jpg",
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0, 0, 0.2, 0.2],
+                                confidence=0.9,
+                            )
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="both.jpg",
+                    ground_truth=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat", bounding_box=[0, 0, 0.4, 0.4]
+                            )
+                        ]
+                    ),
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="dog",
+                                bounding_box=[0.2, 0, 0.4, 0.4],
+                                confidence=0.9,
+                            )
+                        ]
+                    ),
+                ),
+            ]
+        )
+
+        results = dataset.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="tide",
+            method="tide",
+            compute_mAP=True,
+        )
+
+        self.assertIsInstance(results, tide.TIDEDetectionResults)
+        self.assertEqual(
+            results.error_counts,
+            {"cls": 1, "loc": 1, "dupe": 1, "bkg": 1, "both": 1, "miss": 1},
+        )
+        self.assertSetEqual(set(results.dAP), set(tide._MAIN_ERRORS))
+        self.assertSetEqual(
+            set(results.special_dAP), set(tide._SPECIAL_ERRORS)
+        )
+        self.assertTrue(np.isfinite(results.tide_ap))
+        self.assertTrue(np.isfinite(results.mAP()))
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["tide_ap"], results.tide_ap)
+        self.assertSetEqual(
+            {key for key in metrics if key.startswith("error_count_")},
+            {"error_count_%s" % error for error in tide._MAIN_ERRORS},
+        )
+        self.assertSetEqual(
+            {key for key in metrics if key.startswith("dAP_")},
+            {
+                "dAP_%s" % error
+                for error in tide._MAIN_ERRORS + tide._SPECIAL_ERRORS
+            },
+        )
+
+        figure = results.plot_error_counts(backend="matplotlib")
+        self.assertListEqual(
+            [bar.get_height() for bar in figure.axes[0].patches], [1] * 6
+        )
+        figure.clear()
+
+        figure = results.plot_error_counts(
+            backend="matplotlib", plot="pie"
+        )
+        self.assertEqual(len(figure.axes[0].patches), 6)
+        figure.clear()
+
+        figure = results.plot_error_counts(
+            backend="plotly", plot="pie", hole=0.25
+        )
+        self.assertListEqual(list(figure.data[0].values), [1] * 6)
+        self.assertEqual(figure.data[0].hole, 0.25)
+
+        figure = results.plot_pr_curves(classes=["cat"], backend="plotly")
+        self.assertEqual(len(figure.data), 1)
+        self.assertEqual(len(figure.data[0].x), 101)
+
+        self.assertListEqual(
+            dataset.values("predictions.detections.tide_error"),
+            [["cls"], ["loc"], [None, "dupe"], ["bkg"], ["both"]],
+        )
+        self.assertListEqual(
+            dataset.values("ground_truth.detections.tide_error"),
+            [[None], [None], [None], None, ["miss"]],
+        )
+
+        unsaved_results = dataset.evaluate_detections(
+            "predictions", gt_field="ground_truth", method="tide"
+        )
+        self.assertIsInstance(unsaved_results, tide.TIDEDetectionResults)
+        with self.assertRaises(ValueError):
+            unsaved_results.mAP()
+
+        dataset.rename_evaluation("tide", "tide2")
+        self.assertTrue(
+            dataset.has_field("predictions.detections.tide2_error")
+        )
+
+        dataset.clear_cache()
+        results = dataset.load_evaluation_results("tide2")
+        self.assertIsInstance(results, tide.TIDEDetectionResults)
+        self.assertTrue(np.isfinite(results.mAP()))
+
+        dataset.delete_evaluation("tide2")
+        self.assertFalse(
+            dataset.has_field("predictions.detections.tide2_error")
+        )
+
+    @drop_datasets
+    def test_evaluate_detections_tide_max_preds_and_crowds(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="max-preds.jpg",
+                    ground_truth=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat", bounding_box=[0, 0, 0.2, 0.2]
+                            )
+                        ]
+                    ),
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="dog",
+                                bounding_box=[0.7, 0.7, 0.2, 0.2],
+                                confidence=0.9,
+                            ),
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0, 0, 0.2, 0.2],
+                                confidence=0.8,
+                            ),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="crowd.jpg",
+                    ground_truth=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0, 0, 0.2, 0.2],
+                                iscrowd=True,
+                            )
+                        ]
+                    ),
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0, 0, 0.2, 0.2],
+                                confidence=0.9,
+                            )
+                        ]
+                    ),
+                ),
+            ]
+        )
+
+        results = dataset.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="tide",
+            method="tide",
+            max_preds=1,
+        )
+
+        self.assertEqual(
+            results.error_counts,
+            {"cls": 0, "loc": 0, "both": 0, "dupe": 0, "bkg": 2, "miss": 1},
+        )
+        self.assertListEqual(
+            dataset.values("predictions.detections.tide"),
+            [["fp", None], ["tp"]],
+        )
+        self.assertListEqual(
+            dataset.values("predictions.detections.tide_error"),
+            [["bkg", None], ["bkg"]],
+        )
+        self.assertListEqual(
+            dataset.values("ground_truth.detections.tide_error"),
+            [["miss"], [None]],
+        )
 
     @drop_datasets
     def test_evaluate_instances_coco(self):
