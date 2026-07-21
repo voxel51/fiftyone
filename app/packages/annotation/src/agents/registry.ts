@@ -22,6 +22,16 @@ export type AgentDescriptor<T extends InferenceResultProxy> = {
 };
 
 /**
+ * Whether an agent may be chosen by the user: excludes the unavailable (a
+ * service-backed agent whose service isn't running) and the unlisted (resolved
+ * programmatically, never surfaced). The selector and the default-agent
+ * bootstrap both filter on this so they can't disagree about the valid set.
+ */
+export const isAgentSelectable = <T extends InferenceResultProxy>(
+  descriptor: AgentDescriptor<T>,
+): boolean => descriptor.available !== false && !descriptor.unlisted;
+
+/**
  * Provides discovery and registration of {@link AnnotationAgent}s.
  *
  * Obtain an instance via {@link useAgentRegistry}.

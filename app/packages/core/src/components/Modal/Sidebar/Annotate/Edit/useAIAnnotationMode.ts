@@ -1,5 +1,6 @@
 import {
   AgentTaskType,
+  isAgentSelectable,
   useActiveTask,
   useAgentSelector,
   usePointSelection,
@@ -34,11 +35,17 @@ export const useIsAIAnnotationModeActive = (): boolean =>
 const useDefaultAgent = () => {
   const agentSelector = useAgentSelector();
 
-  // Select the first available agent as the default once the agents have
-  // resolved; the user can change it from the AgentSelect dropdown.
+  // Select the first *selectable* agent as the default once the agents have
+  // resolved; the user can change it from the AgentSelect dropdown. Bootstrap
+  // from the same filter the selector uses — picking a hidden/unavailable
+  // entry here would just be cleared by the dropdown and reselected in a loop.
   useEffect(() => {
-    if (agentSelector.isResolved && !agentSelector.activeAgent) {
-      agentSelector.setActiveAgent(agentSelector.agents[0]);
+    if (!agentSelector.isResolved) return;
+    if (agentSelector.activeAgent) return;
+
+    const [first] = agentSelector.agents.filter(isAgentSelectable);
+    if (first) {
+      agentSelector.setActiveAgent(first);
     }
   }, [agentSelector]);
 };
