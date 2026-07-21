@@ -3,6 +3,122 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.23.0
+--------------------------
+*Released July 21, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
+
+- **AI-powered video annotation**: click-to-segment (point-prompted SAM2
+  masks) and AI object tracking are now available on the video annotation
+  surface, with support for mask and bounding-box prompts, custom track
+  indices, bidirectional tracking, and concurrent tracking runs with
+  aggregate progress reporting
+- Annotation AI services are consolidated into a single `annotation-ai`
+  service image, and the Services page and annotation AI panel are now
+  always visible
+- Added a service status popover and a Personal > Runs settings page, with
+  service rows linking directly to service logs
+- Improved service orchestration: stopping a managed service now forwards
+  SIGTERM to the workload (releasing GPU memory), health probes respect the
+  configured healthcheck port, worker host resolution is docker-aware for
+  out-of-band compose deployments, and builtin services can be configured to
+  start in a stopped state
+- Auto Labeling now automatically discovers its backing service via the
+  orchestrator binding
+- Delegated operations improvements: named delegation targets are hidden
+  from the schedule dropdown, fixed delegated operation log persistence and
+  an infinite `DocumentTooLarge` error, and improved progress log capture
+- Multimodal fixes, including projection writes now using FiftyOne
+  Enterprise credentials
+- Fixed GPU metrics in telemetry reporting
+- Fixed workflow canvas back-edge connections after page reloads
+- Datasets no longer appear locked when dataset locking routes are
+  unavailable
+- Upgraded `protobufjs`, `torch`, `torchvision`, and `transformers`
+  dependencies to mitigate CVEs and fix `timm` model support
+
+.. _release-notes-v1.20.0:
+
+FiftyOne 1.20.0
+---------------
+*Released July 21, 2026*
+
+App
+^^^
+- **Rebuilt Embeddings panel**: rebuilt from the ground up for scale —
+  embeddings now ship once as binary columns and interactions run
+  client-side, staying interactive into the hundreds of thousands to
+  millions of points. Includes a runs list with readiness status, color-by
+  with categorical and continuous legends, lasso selection synced both ways
+  with the sample grid, hover cards with media previews, and a WebGL
+  density-based renderer. Works with existing visualization results — no
+  recompute required — and requires `fiftyone-brain>=0.23`
+  `#8042 <https://github.com/voxel51/fiftyone/pull/8042>`_,
+  `#8073 <https://github.com/voxel51/fiftyone/pull/8073>`_,
+  `#8076 <https://github.com/voxel51/fiftyone/pull/8076>`_
+- Updated the annotation sidebar UX, including a save indicator that shows
+  pending and saved edits
+  `#7970 <https://github.com/voxel51/fiftyone/pull/7970>`_
+- Added AI segmentation and AI tracking actions to the video annotation
+  toolbar (powered by :ref:`FiftyOne Enterprise <fiftyone-enterprise>`),
+  and extending a segmented track now carries its mask across filled frames
+  `#8068 <https://github.com/voxel51/fiftyone/pull/8068>`_,
+  `#8044 <https://github.com/voxel51/fiftyone/pull/8044>`_
+- Improved track deletion behavior in the video annotation timeline
+  `#8047 <https://github.com/voxel51/fiftyone/pull/8047>`_
+- Shift-drag now pans the canvas while in overlay-creation modes
+  `#8050 <https://github.com/voxel51/fiftyone/pull/8050>`_
+- Fixed polyline and keypoint point editing in video annotation
+  `#8048 <https://github.com/voxel51/fiftyone/pull/8048>`_
+- Fixed video annotation tracks being incorrectly merged; tracks now
+  coalesce by track index
+  `#8046 <https://github.com/voxel51/fiftyone/pull/8046>`_
+- Fixed segmentation mask edits not persisting while annotating with
+  autosave enabled
+  `#8028 <https://github.com/voxel51/fiftyone/pull/8028>`_
+- Polyline labels are now anchored at the centroid of their points
+  `#7719 <https://github.com/voxel51/fiftyone/pull/7719>`_
+- Temporal tag routes are now always registered with the App server,
+  independent of the multimodal feature flag
+  `#8072 <https://github.com/voxel51/fiftyone/pull/8072>`_
+- Fixed similarity search on grouped datasets
+  `#8049 <https://github.com/voxel51/fiftyone/pull/8049>`_
+- Fixed sidebar selector inputs clobbering in-progress search text when
+  their value updates mid-edit
+  `#8029 <https://github.com/voxel51/fiftyone/pull/8029>`_
+
+Performance
+^^^^^^^^^^^
+- Detection masks are now decoded off the main thread and tinted on the
+  GPU, for smoother rendering of mask-heavy samples
+  `#7859 <https://github.com/voxel51/fiftyone/pull/7859>`_,
+  `#7861 <https://github.com/voxel51/fiftyone/pull/7861>`_
+- Fixed App memory leaks in the annotation renderer, undo history, and
+  sidebar, reducing memory growth during long annotation sessions
+  `#8015 <https://github.com/voxel51/fiftyone/pull/8015>`_
+- Optimized default label schema computation for faster dataset loads
+  `#7841 <https://github.com/voxel51/fiftyone/pull/7841>`_
+
+Core
+^^^^
+- Added Python 3.13 support
+  `#7728 <https://github.com/voxel51/fiftyone/pull/7728>`_
+- Upgraded `starlette` to `>=1.3.1` to mitigate CVEs
+  `#7925 <https://github.com/voxel51/fiftyone/pull/7925>`_
+
+Models
+^^^^^^
+- Added OneFormer models to the model zoo via the Hugging Face integration
+  `#7955 <https://github.com/voxel51/fiftyone/pull/7955>`_
+- Added PP-OCRv6 (PaddleOCR) text detection and OCR models to the model zoo
+  `#8010 <https://github.com/voxel51/fiftyone/pull/8010>`_
+- SAM3 video now accepts a single concept prompt combining text and
+  exemplar prompts
+  `#7987 <https://github.com/voxel51/fiftyone/pull/7987>`_
+- Fixes and updates for FC-CLIP zero-shot segmentation models
+  `#7981 <https://github.com/voxel51/fiftyone/pull/7981>`_
+
 FiftyOne Enterprise 2.22.0
 --------------------------
 *Released July 14, 2026*
