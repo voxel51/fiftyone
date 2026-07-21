@@ -172,6 +172,11 @@ describe("media utils", () => {
         "/tmp/example/file.glb",
         "/tmp/example/file.fbx",
         "/tmp/example/file.stl",
+        "/tmp/example/file.spz",
+        "/tmp/example/file.splat",
+        "/tmp/example/file.ksplat",
+        "/tmp/example/file.sog",
+        "/tmp/example/file.rad",
       ];
 
       direct3dPaths.forEach((path) =>
@@ -212,6 +217,11 @@ describe("media utils", () => {
         "/tmp/example/file.glb",
         "/tmp/example/file.fbx",
         "/tmp/example/file.stl",
+        "/tmp/example/file.spz",
+        "/tmp/example/file.splat",
+        "/tmp/example/file.ksplat",
+        "/tmp/example/file.sog",
+        "/tmp/example/file.rad",
         "/media?filepath=/tmp/example/file.PCD",
       ];
 

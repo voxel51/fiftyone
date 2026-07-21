@@ -68,7 +68,8 @@ function hasMatchingCustomCredentialsAudience(urls: unknown): boolean {
     );
 }
 
-function configureFoLoaderInstance(
+/** Applies FiftyOne loading-manager and credential behavior to a loader. */
+export function configureFoLoaderInstance(
   loaderInstance: CredentialAwareLoader,
   urls: unknown,
   loadingManager: unknown,
@@ -134,16 +135,20 @@ export function useFoLoaderNoSuspense<
   );
   const latestLoaderFunctionRef = useRef(loaderFunction);
 
+  // This effect keeps asynchronous loads pointed at the latest loader
+  // customization without restarting a load solely because a callback moved.
   useEffect(() => {
     latestLoaderFunctionRef.current = loaderFunction;
   }, [loaderFunction]);
 
+  // This effect owns the optional loader request and disposes resolved
+  // resources whenever the input changes or the hook unmounts.
   useEffect(() => {
     if (input == null) {
       disposeLoadedResource(currentResultRef.current);
       currentResultRef.current = null;
       setResult(null);
-      return;
+      return undefined;
     }
 
     let cancelled = false;

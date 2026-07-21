@@ -40,7 +40,7 @@ from .annotation import (
     UpdateLabelSchema,
     ValidateLabelSchemas,
 )
-from .dataset import GetFieldSchema
+from .dataset import DeleteBrainRun, GetFieldSchema
 
 logger = logging.getLogger(__name__)
 
@@ -3530,4 +3530,5 @@ def register(p):
     p.register(ValidateLabelSchemas)
 
     # dataset
+    p.register(DeleteBrainRun)
     p.register(GetFieldSchema)

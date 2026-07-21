@@ -1,16 +1,54 @@
 const SRC = "^packages/multimodal/src/";
+const ENTERPRISE = `${SRC}enterprise/`;
+const INJECT_ENTRY = `${SRC}inject/index\\.ts$`;
+const ENTERPRISE_SHARED_FACADES =
+  `${SRC}(extensions/mcap/(index|runtime)\\.ts$|` +
+  `query/bytes/index\\.ts$|visualization/index\\.ts$)`;
 const MCAP = `${SRC}adapters/mcap/`;
 
 module.exports = {
   forbidden: [
     {
-      name: "only-mcap-adapter-and-inject-entry-can-import-mcap",
+      name: "shared-multimodal-does-not-import-enterprise",
       severity: "error",
       from: {
         path: SRC,
-        pathNot: `${SRC}(adapters/mcap/|inject/index\\.ts$)`,
+        pathNot: `${SRC}(enterprise/|inject/index\\.ts$)`,
+      },
+      to: { path: ENTERPRISE },
+    },
+    {
+      name: "inject-entry-imports-only-enterprise-entry",
+      severity: "error",
+      from: { path: INJECT_ENTRY },
+      to: {
+        path: ENTERPRISE,
+        pathNot: `${ENTERPRISE}inject\\.ts$`,
+      },
+    },
+    {
+      name: "enterprise-imports-shared-only-through-facades",
+      severity: "error",
+      from: { path: ENTERPRISE },
+      to: {
+        path: SRC,
+        pathNot: `${ENTERPRISE}|${ENTERPRISE_SHARED_FACADES}`,
+      },
+    },
+    {
+      name: "only-mcap-adapters-extensions-and-inject-entry-can-import-mcap",
+      severity: "error",
+      from: {
+        path: SRC,
+        pathNot: `${SRC}(adapters/mcap/|extensions/mcap/|inject/index\\.ts$)`,
       },
       to: { path: MCAP },
+    },
+    {
+      name: "multimodal-does-not-import-teams",
+      severity: "error",
+      from: { path: SRC },
+      to: { path: `${SRC}teams/|^teams-app/|@fiftyone/teams-multimodal` },
     },
     {
       name: "generic-multimodal-layers-do-not-import-adapters",
