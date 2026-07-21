@@ -1,5 +1,5 @@
 import type { ByteSourceDescriptor } from "../../query/bytes";
-import type { DecodeResult } from "../../query/decode";
+import type { DecodeResult } from "../../query/decoding";
 import type { PlaybackSyncMode, StreamInventory } from "../../schemas/v1";
 import type { McapFrameTransformSet } from "./frame-transform-types";
 import type { McapLaneTransportSnapshot } from "./worker/transport-meter";

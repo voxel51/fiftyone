@@ -1,4 +1,4 @@
-import type { DecodeClient } from "../../../query/decode";
+import type { DecodeClient } from "../../../query/decoding";
 import { isWithinRange } from "../sync";
 import { decodeMcapMessage } from "../message-decoder";
 import type { McapIndexedReaderLike } from "../reader";
