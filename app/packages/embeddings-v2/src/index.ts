@@ -11,8 +11,8 @@ import TabIndicator from "./TabIndicator";
 const EmbeddingsV2Panel = lazy(() => import("./EmbeddingsV2Panel"));
 
 registerComponent({
-  name: "EmbeddingsV2",
-  label: "Embeddings v2",
+  name: "Embeddings",
+  label: "Embeddings",
   component: EmbeddingsV2Panel,
   type: PluginComponentType.Panel,
   activator: () => true,
