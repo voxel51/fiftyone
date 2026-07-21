@@ -2,7 +2,7 @@ const SRC = "^packages/multimodal/src/";
 const ENTERPRISE = `${SRC}enterprise/`;
 const INJECT_ENTRY = `${SRC}inject/index\\.ts$`;
 const ENTERPRISE_SHARED_FACADES =
-  `${SRC}(extensions/timeline/(index|runtime)\\.ts$|` +
+  `${SRC}(extensions/(timeline|tiles)/(index|runtime)\\.ts$|` +
   `query/bytes/index\\.ts$|visualization/index\\.ts$)`;
 const MCAP = `${SRC}adapters/mcap/`;
 const IR = `${SRC}ir/`;
@@ -60,6 +60,19 @@ module.exports = {
       to: {
         path: `${SRC}(views|extensions|visualization|runtime|scene-inventory|temporal-tags)/`,
       },
+    },
+    {
+      // Tile contributions receive only format-neutral contracts and host
+      // settings, so they stay portable across changes to episode internals.
+      name: "tile-extensions-do-not-import-episode-internals",
+      comment:
+        "Build-time tile extensions use their public facade instead of coupling to the episode application's private providers.",
+      severity: "error",
+      from: {
+        path: `${SRC}extensions/tiles/`,
+        pathNot: `${SRC}extensions/tiles/.*\\.test\\.[jt]sx?$`,
+      },
+      to: { path: EPISODE },
     },
     {
       // Keep visualization limited to data and decoding foundations so display
