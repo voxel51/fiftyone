@@ -69,6 +69,7 @@ const DEFAULT_IMAGE_POINT_CLOUD_PROJECTION: EpisodeImageTilePointCloudProjection
     pointSize: DEFAULT_EPISODE_PROJECTION_POINT_SIZE,
     streams: [],
   });
+const EMPTY_IMAGE_LABEL_STREAMS: readonly string[] = Object.freeze([]);
 
 /**
  * Scopes panel visibility to one dataset/source and media field. The scope is
@@ -148,7 +149,9 @@ export function useEpisodeImageTileLabelStreams(imageStream: string): {
   );
 
   return {
-    labelStreams: imageStream ? (streamsByImage[imageStream] ?? []) : [],
+    labelStreams: imageStream
+      ? (streamsByImage[imageStream] ?? EMPTY_IMAGE_LABEL_STREAMS)
+      : EMPTY_IMAGE_LABEL_STREAMS,
     setLabelStreams,
   };
 }

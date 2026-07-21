@@ -45,6 +45,9 @@ describe("episode panel visibility persistence", () => {
     );
 
     expect(first.result.current.labelStreams).toEqual([]);
+    const defaultLabelStreams = first.result.current.labelStreams;
+    first.rerender();
+    expect(first.result.current.labelStreams).toBe(defaultLabelStreams);
     act(() => first.result.current.setLabelStreams(["/camera/front/labels"]));
     expect(first.result.current.labelStreams).toEqual(["/camera/front/labels"]);
     first.unmount();
