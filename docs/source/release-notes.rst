@@ -13,7 +13,8 @@ Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
   masks) and AI object tracking are now available on the video annotation
   surface, with support for mask and bounding-box prompts, custom track
   indices, bidirectional tracking, and concurrent tracking runs with
-  aggregate progress reporting
+  aggregate progress reporting; extending a segmented track carries its
+  mask across filled frames
 - Annotation AI services are consolidated into a single `annotation-ai`
   service image, and the Services page and annotation AI panel are now
   always visible
@@ -60,11 +61,6 @@ App
 - Updated the annotation sidebar UX, including a save indicator that shows
   pending and saved edits
   `#7970 <https://github.com/voxel51/fiftyone/pull/7970>`_
-- Added AI segmentation and AI tracking actions to the video annotation
-  toolbar (powered by :ref:`FiftyOne Enterprise <fiftyone-enterprise>`),
-  and extending a segmented track now carries its mask across filled frames
-  `#8068 <https://github.com/voxel51/fiftyone/pull/8068>`_,
-  `#8044 <https://github.com/voxel51/fiftyone/pull/8044>`_
 - Improved track deletion behavior in the video annotation timeline
   `#8047 <https://github.com/voxel51/fiftyone/pull/8047>`_
 - Shift-drag now pans the canvas while in overlay-creation modes
