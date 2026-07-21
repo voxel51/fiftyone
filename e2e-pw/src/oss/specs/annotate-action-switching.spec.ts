@@ -124,6 +124,9 @@ test.describe.serial("action switching", () => {
     await modal.sidebar.annotate.createClassification();
     await modal.sidebar.annotate.assert.classificationIsActive();
 
+    // Creating a classification opens its edit form, which hides the create
+    // toolbar; exit back to the label list to reach the detection tool
+    await modal.sidebar.edit.exitToList();
     await modal.sidebar.annotate.detectionMode("Detections");
 
     await modal.sidebar.annotate.assert.detectionModeIsActive();
@@ -148,7 +151,7 @@ test.describe.serial("action switching", () => {
     await modal.sidebar.annotate.assert.selectIsActive(false);
   });
 
-  test("Select button deactivates Classification", async ({ modal }) => {
+  test("exiting a classification edit returns to Select", async ({ modal }) => {
     await modal.assert.isOpen();
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
@@ -156,7 +159,9 @@ test.describe.serial("action switching", () => {
     await modal.sidebar.annotate.createClassification();
     await modal.sidebar.annotate.assert.classificationIsActive();
 
-    await modal.sidebar.annotate.selectAction();
+    // The create toolbar (incl. Select) is hidden while editing; exiting the
+    // edit form returns to the default Select action
+    await modal.sidebar.edit.exitToList();
 
     await modal.sidebar.annotate.assert.selectIsActive();
     await modal.sidebar.annotate.assert.classificationIsActive(false);

@@ -94,11 +94,12 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
 
     await modal.sampleCanvas.rightClick(0.5, 0.5);
 
-    // ── 3. Wait for autosave to flush, then exit segmentation mode ──────────
+    // ── 3. Wait for autosave to flush, then exit the edit form ──────────────
+    // The pen commit leaves the new detection selected; the create toolbar is
+    // hidden while editing, so exit via the edit form rather than the toolbar.
     await modal.sidebar.annotate.waitForSavesSettled();
 
-    await modal.sidebar.annotate.segmentationMode();
-    await modal.sidebar.annotate.assert.segmentationModeIsActive(false);
+    await modal.sidebar.edit.exitToList();
 
     // ── 4. Reload the page; verify it doesn't drop the persisted Detection ──
     await page.reload();

@@ -5,8 +5,6 @@
 import { SelectIcon } from "@fiftyone/components";
 import { KnownContexts, useKeyBindings } from "@fiftyone/commands";
 import { buildBrushCursor } from "@fiftyone/lighter";
-import { isVideoDataset } from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
 import {
   Add,
   ArrowDropDown,
@@ -182,11 +180,6 @@ export const useSegmentationActions = (): {
   const { isEditing } = useAnnotationContext();
   const onExit = useExit();
 
-  // AI click-to-segment (SAM2 point selection) is image-only for now — the
-  // video surface's session lifecycle doesn't yet support it cleanly, so the
-  // tool is omitted from the toolbar on video datasets.
-  const isVideo = useRecoilValue(isVideoDataset);
-
   // Three-tier Escape behaviour, mirroring the right-click flow in
   // InteractionManager:
   //   1. close any open label (clear the editing focus)
@@ -260,14 +253,9 @@ export const useSegmentationActions = (): {
             label: "AI",
             icon: <AutoAwesome />,
             shortcut: "A",
-            // AI click-to-segment is image-only for now — the video surface's
-            // session lifecycle doesn't support it cleanly yet.
-            tooltip: isVideo
-              ? "AI-assisted segmentation is not yet supported for video datasets"
-              : "AI",
+            tooltip: "AI",
             isActive: tool === SegmentationTool.AI,
-            isDisabled: isVideo,
-            onClick: () => !isVideo && switchTool(SegmentationTool.AI),
+            onClick: () => switchTool(SegmentationTool.AI),
           },
           {
             id: SegmentationTool.Merge,
@@ -381,7 +369,6 @@ export const useSegmentationActions = (): {
       decreaseToolSize,
       handleEscape,
       increaseToolSize,
-      isVideo,
       mergeTool.disabled,
       setToolSize,
       switchTool,

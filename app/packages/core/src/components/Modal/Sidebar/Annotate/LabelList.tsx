@@ -1,11 +1,5 @@
-import {
-  Button,
-  Size,
-  Text,
-  TextColor,
-  TextVariant,
-  Variant,
-} from "@voxel51/voodo";
+import { Text, TextColor, TextVariant } from "@voxel51/voodo";
+import { AnnotationSaveIndicator } from "@fiftyone/annotation";
 import { EntryKind, isGeneratedView } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -17,8 +11,6 @@ import LoadingEntry from "./LoadingEntry";
 import PrimitiveEntry from "./PrimitiveEntry";
 import useEntries from "./useEntries";
 import { usePrimitivesCount } from "./usePrimitivesCount";
-import { useSchemaManagerModal } from "./SchemaManager/hooks";
-import useCanManageSchema from "./useCanManageSchema";
 
 const EmptyLabelsContainer = styled.div`
   display: flex;
@@ -32,8 +24,6 @@ export default function AnnotateSidebar() {
   usePrimitivesCount();
   const isEditingValue = useAnnotationContext().isEditing;
   const isGenerated = useRecoilValue(isGeneratedView);
-  const { openSchemaManager } = useSchemaManagerModal();
-  const canManage = useCanManageSchema();
 
   // Don't show label list in edit mode or in generated views (patches/clips/frames)
   // In generated views, only the edit panel should be visible
@@ -41,6 +31,7 @@ export default function AnnotateSidebar() {
 
   const headerStyle = {
     display: "flex",
+    alignItems: "center",
     justifyContent: "space-between",
     marginInline: "1rem",
     paddingBottom: "0.5rem",
@@ -49,19 +40,10 @@ export default function AnnotateSidebar() {
   return (
     <>
       <div style={headerStyle}>
-        <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
-          Click labels to edit
+        <Text variant={TextVariant.Lg} color={TextColor.Primary}>
+          Edit
         </Text>
-        {canManage && (
-          <Button
-            variant={Variant.Borderless}
-            size={Size.Sm}
-            data-cy="open-schema-manager"
-            onClick={openSchemaManager}
-          >
-            Schema
-          </Button>
-        )}
+        <AnnotationSaveIndicator />
       </div>
       <Sidebar
         isDisabled={() => true}
