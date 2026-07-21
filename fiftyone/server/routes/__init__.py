@@ -13,6 +13,7 @@ from fiftyone.operators.server import OperatorRoutes
 from .aggregate import Aggregate
 from .camera import CameraRoutes
 from .embeddings import EmbeddingsRoutes
+from .embeddings_v2 import EmbeddingsV2Routes
 from .event import Event
 from .events import Events
 from .features import Features
@@ -44,6 +45,7 @@ if is_feature_enabled("VFF_MULTIMODAL"):
 routes = (
     CameraRoutes
     + EmbeddingsRoutes
+    + EmbeddingsV2Routes
     + GroupsRoutes
     + TemporalTagRoutes
     + multimodal_routes
