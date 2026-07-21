@@ -10,6 +10,7 @@ import {
 } from "three";
 import { describe, expect, it, vi } from "vitest";
 import { COLOR_POOL } from "./constants";
+import type { FiftyoneSceneRawJson } from "./utils";
 import {
   areVectorsCoLocated,
   computeMinMaxForColorBufferAttribute,
@@ -19,6 +20,7 @@ import {
   eulerToQuaternion,
   findObjectByUserData,
   formatNumber,
+  getFiftyoneSceneSummary,
   getAxisAlignedBoundingBoxForPoints3d,
   getColorFromPoolBasedOnHash,
   getGridQuaternionFromUpVector,
@@ -139,6 +141,57 @@ describe("findObjectByUserData", () => {
 
     expect(findObjectByUserData(scene, "labelId", "label-1")).toBe(child);
     expect(findObjectByUserData(scene, "labelId", "missing")).toBeNull();
+  });
+});
+
+describe("getFiftyoneSceneSummary", () => {
+  it("counts GaussianSplat nodes separately from unknown nodes", () => {
+    const scene = {
+      _type: "Scene",
+      name: "root",
+      visible: true,
+      position: [0, 0, 0],
+      quaternion: [0, 0, 0, 1],
+      scale: [1, 1, 1],
+      children: [
+        {
+          _type: "GaussianSplat",
+          name: "splats",
+          visible: true,
+          position: [0, 0, 0],
+          quaternion: [0, 0, 0, 1],
+          scale: [1, 1, 1],
+          children: [],
+        },
+        {
+          _type: "PlyMesh",
+          name: "parent",
+          visible: true,
+          position: [0, 0, 0],
+          quaternion: [0, 0, 0, 1],
+          scale: [1, 1, 1],
+          children: [
+            {
+              _type: "GaussianSplat",
+              name: "nested-splats",
+              visible: true,
+              position: [0, 0, 0],
+              quaternion: [0, 0, 0, 1],
+              scale: [1, 1, 1],
+              children: [],
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(
+      getFiftyoneSceneSummary(scene as unknown as FiftyoneSceneRawJson),
+    ).toMatchObject({
+      meshCount: 1,
+      splatCount: 2,
+      unknownCount: 0,
+    });
   });
 });
 

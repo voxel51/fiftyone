@@ -11,7 +11,7 @@ import {
   Snackbar,
   Starter,
 } from "@fiftyone/core";
-import "@fiftyone/embeddings";
+import "@fiftyone/embeddings-v2";
 import "@fiftyone/map";
 import { OperatorCore } from "@fiftyone/operators";
 import "@fiftyone/relay";
