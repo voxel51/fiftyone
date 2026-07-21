@@ -34,8 +34,8 @@ export const useIsAIAnnotationModeActive = (): boolean =>
 const useDefaultAgent = () => {
   const agentSelector = useAgentSelector();
 
-  // We don't currently expose agent selection capabilities in the UX.
-  // Select the first available agent once the agents have resolved.
+  // Select the first available agent as the default once the agents have
+  // resolved; the user can change it from the AgentSelect dropdown.
   useEffect(() => {
     if (agentSelector.isResolved && !agentSelector.activeAgent) {
       agentSelector.setActiveAgent(agentSelector.agents[0]);
