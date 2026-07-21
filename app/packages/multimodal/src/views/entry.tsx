@@ -5,13 +5,25 @@ import {
 } from "@fiftyone/plugins";
 import React, { lazy, Suspense } from "react";
 
-const LazyModalRenderer = lazy(() => import("./EpisodeModalRenderer"));
-const LazyGridRenderer = lazy(() => import("./EpisodeGridRenderer"));
-const LazyGridStreamSelector = lazy(
-  () => import("./EpisodeGridStreamSelector"),
+const LazyModalRenderer = lazy(
+  () => import("./episode/shell/EpisodeModalRenderer"),
 );
-const LazyExplorer = lazy(() => import("./EpisodeExplorer"));
-const LazyExplorerIcon = lazy(() => import("./EpisodeExplorerIcon"));
+const LazyGridRenderer = lazy(() =>
+  import("./episode/grid/GridRenderer").then(({ GridRenderer }) => ({
+    default: GridRenderer,
+  })),
+);
+const LazyGridStreamSelector = lazy(() =>
+  import("./episode/grid/EpisodeGridStreamSelector").then(
+    ({ EpisodeGridStreamSelector }) => ({
+      default: EpisodeGridStreamSelector,
+    }),
+  ),
+);
+const LazyMcapExplorer = lazy(() => import("./mcap-explorer/AnyMcapViewer"));
+const LazyMcapExplorerIcon = lazy(
+  () => import("./mcap-explorer/McapExplorerIcon"),
+);
 
 function withSuspense<T extends object>(
   Component: React.ComponentType<T>,
@@ -28,8 +40,8 @@ function withSuspense<T extends object>(
 const EpisodeModalRenderer = withSuspense(LazyModalRenderer);
 const EpisodeGridRenderer = withSuspense(LazyGridRenderer);
 const EpisodeGridStreamSelector = withSuspense(LazyGridStreamSelector);
-const EpisodeExplorer = withSuspense(LazyExplorer);
-const EpisodeExplorerIcon = withSuspense(LazyExplorerIcon);
+const McapExplorer = withSuspense(LazyMcapExplorer);
+const McapExplorerIcon = withSuspense(LazyMcapExplorerIcon);
 
 let registered = false;
 
@@ -60,8 +72,8 @@ export function registerEpisodeViews(): void {
   registerComponent({
     name: "AnyMcapViewer",
     label: "MCAP Explorer",
-    Icon: EpisodeExplorerIcon,
-    component: EpisodeExplorer,
+    Icon: McapExplorerIcon,
+    component: McapExplorer,
     type: PluginComponentType.Panel,
     activator: (ctx) => ctx.dataset?.mediaType === "multimodal",
     panelOptions: { allowDuplicates: true, surfaces: "grid" },

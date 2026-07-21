@@ -11,6 +11,7 @@ const ADAPTERS = `${SRC}adapters/`;
 const VISUALIZATION = `${SRC}visualization/`;
 const EPISODE = `${SRC}views/episode/`;
 const EPISODE_INDEX = `${EPISODE}index\\.ts$`;
+const VIEWS_ENTRY = `${SRC}views/entry\\.tsx$`;
 const FORMAT_VENDORS = "^(@mcap/|@foxglove/|hyparquet$|mp4box$)";
 
 module.exports = {
@@ -86,15 +87,16 @@ module.exports = {
       to: { path: ADAPTERS, reachable: true },
     },
     {
-      // Route production consumers through the episode entrypoint so its
-      // external surface stays explicit while internal files can move safely.
+      // Route ordinary production consumers through the episode entrypoint so
+      // its external surface stays explicit. The views composition root may
+      // target leaf components directly to define precise lazy-load boundaries.
       name: "episode-production-callers-use-entrypoint",
       comment:
-        "Production modules outside the episode domain must use its explicit root entrypoint.",
+        "Production modules outside the episode domain use its root entrypoint; the views composition root may load leaf chunks directly.",
       severity: "error",
       from: {
         path: SRC,
-        pathNot: `${EPISODE}|${SRC}testing/|\\.test\\.[jt]sx?$`,
+        pathNot: `${EPISODE}|${VIEWS_ENTRY}|${SRC}testing/|\\.test\\.[jt]sx?$`,
       },
       to: {
         path: EPISODE,
