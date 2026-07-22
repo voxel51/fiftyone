@@ -1,19 +1,5 @@
-import {
-  Align,
-  Button,
-  Card,
-  CardBackground,
-  Icon,
-  IconName,
-  Orientation,
-  Size,
-  Spacing,
-  Stack,
-  Text,
-  TextColor,
-  TextVariant,
-  Variant,
-} from "@voxel51/voodo";
+import { EnterpriseUpsellCallout } from "@fiftyone/components";
+import { Button, IconName, Size, Variant } from "@voxel51/voodo";
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -24,12 +10,6 @@ import { createPortal } from "react-dom";
  */
 const AI_TRACK_GRADIENT =
   "linear-gradient(139deg, #CC5200 5.04%, #9A3EDB 103.8%)";
-
-/** Accent for the callout's icon + CTA. */
-const AI_ACCENT = "#F5821F";
-
-/** Upgrade landing URL. */
-const LEARN_MORE_URL = "https://voxel51.com/why-upgrade?utm_source=FiftyOneApp";
 
 /**
  * Keeps the callout open across the gap between the button and the portaled
@@ -66,10 +46,6 @@ export const AiTrackUpsellButton: React.FC = () => {
   const scheduleClose = () => {
     clearTimeout(closeTimer.current);
     closeTimer.current = setTimeout(() => setRect(null), CLOSE_DELAY_MS);
-  };
-
-  const learnMore = () => {
-    window.open(LEARN_MORE_URL, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -112,45 +88,11 @@ export const AiTrackUpsellButton: React.FC = () => {
               zIndex: "var(--z-above-modal)",
             }}
           >
-            <Card background={CardBackground.Primary} outlined>
-              <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
-                <Stack
-                  orientation={Orientation.Row}
-                  spacing={Spacing.Sm}
-                  align={Align.Center}
-                >
-                  <Icon
-                    name={IconName.AI}
-                    size={Size.Md}
-                    style={{ color: AI_ACCENT }}
-                  />
-                  <Text
-                    variant={TextVariant.Xl}
-                    color={TextColor.Primary}
-                    style={{ fontWeight: 600 }}
-                  >
-                    More powerful AI in Enterprise
-                  </Text>
-                </Stack>
-
-                <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-                  Auto-track objects across frames – available in FiftyOne
-                  Enterprise.
-                </Text>
-
-                <Button
-                  variant={Variant.Primary}
-                  size={Size.Sm}
-                  trailingIcon={IconName.ExternalLink}
-                  onClick={learnMore}
-                  aria-label="Learn more about FiftyOne Enterprise"
-                  data-cy="ai-track-upsell-learn-more"
-                  style={{ background: AI_ACCENT, width: "100%" }}
-                >
-                  Learn more
-                </Button>
-              </Stack>
-            </Card>
+            <EnterpriseUpsellCallout
+              data-cy="ai-track-upsell-callout"
+              title="More powerful AI in Enterprise"
+              description="Auto-track objects across frames – available in FiftyOne Enterprise."
+            />
           </div>,
           document.body,
         )}
