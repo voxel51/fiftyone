@@ -22,6 +22,15 @@ const MESSAGE_INDEX_RECORD_READER_OPTIONS: NonNullable<
 };
 const MCAP_RECORD_HEADER_BYTES = 9;
 const MESSAGE_INDEX_CONTENT_HEADER_BYTES = 6;
+const MAX_MESSAGE_INDEX_BATCH_SPAN_BYTES = 64n * 1024n;
+
+interface MessageIndexRead {
+  readonly channel: McapTypes.TypedMcapRecords["Channel"];
+  readonly range: {
+    readonly length: bigint;
+    readonly offset: bigint;
+  };
+}
 
 /**
  * Reads ordered MCAP message times directly from chunk message-index records.
@@ -205,6 +214,7 @@ export async function readChunkIndexedMessageTimes({
   readonly startTimeNs: bigint | undefined;
 }): Promise<readonly McapIndexedMessageTime[]> {
   const entries: McapIndexedMessageTime[] = [];
+  const reads: MessageIndexRead[] = [];
 
   for (const channelId of channelIds) {
     const channel = reader.channelsById.get(channelId);
@@ -217,30 +227,83 @@ export async function readChunkIndexedMessageTimes({
       continue;
     }
 
-    const bytes = await readExactRange(readable, range.offset, range.length);
-    const messageIndex = parseMcapMessageIndexRecord(bytes);
-    if (messageIndex.channelId !== channelId) {
-      throw new Error(
-        `MCAP MessageIndex channel ${messageIndex.channelId} did not match expected channel ${channelId}`,
-      );
-    }
+    reads.push({ channel, range });
+  }
 
-    for (const [logTimeNs, messageOffset] of messageIndex.records) {
-      if (!isWithinIndexedRange(logTimeNs, startTimeNs, endTimeNs)) {
-        continue;
+  reads.sort((left, right) =>
+    compareBigInt(left.range.offset, right.range.offset),
+  );
+
+  for (const batch of batchMessageIndexReads(reads)) {
+    const batchEnd = batch.reduce((end, read) => {
+      const readEnd = read.range.offset + read.range.length;
+      return readEnd > end ? readEnd : end;
+    }, batch[0].range.offset);
+    const batchOffset = batch[0].range.offset;
+    const batchBytes = await readExactRange(
+      readable,
+      batchOffset,
+      batchEnd - batchOffset,
+    );
+
+    for (const { channel, range } of batch) {
+      const relativeOffset = Number(range.offset - batchOffset);
+      const relativeEnd = relativeOffset + Number(range.length);
+      const bytes = batchBytes.subarray(relativeOffset, relativeEnd);
+      const messageIndex = parseMcapMessageIndexRecord(bytes);
+      if (messageIndex.channelId !== channel.id) {
+        throw new Error(
+          `MCAP MessageIndex channel ${messageIndex.channelId} did not match expected channel ${channel.id}`,
+        );
       }
 
-      entries.push({
-        channelId,
-        chunkStartOffset: chunkIndex.chunkStartOffset,
-        logTimeNs,
-        messageOffset,
-        topic: channel.topic,
-      });
+      for (const [logTimeNs, messageOffset] of messageIndex.records) {
+        if (!isWithinIndexedRange(logTimeNs, startTimeNs, endTimeNs)) {
+          continue;
+        }
+
+        entries.push({
+          channelId: channel.id,
+          chunkStartOffset: chunkIndex.chunkStartOffset,
+          logTimeNs,
+          messageOffset,
+          topic: channel.topic,
+        });
+      }
     }
   }
 
   return entries.sort(compareIndexedMessageTimes);
+}
+
+/**
+ * Coalesces nearby selected MessageIndex records into bounded exact reads.
+ * The MCAP footer stores these records contiguously by chunk, so this avoids
+ * paying one remote round trip per active channel without turning sparse
+ * selections into an unbounded footer fetch.
+ */
+function batchMessageIndexReads(
+  reads: readonly MessageIndexRead[],
+): readonly (readonly MessageIndexRead[])[] {
+  const batches: MessageIndexRead[][] = [];
+
+  for (const read of reads) {
+    const batch = batches.at(-1);
+    if (!batch) {
+      batches.push([read]);
+      continue;
+    }
+
+    const span = read.range.offset + read.range.length - batch[0].range.offset;
+    if (span > MAX_MESSAGE_INDEX_BATCH_SPAN_BYTES) {
+      batches.push([read]);
+      continue;
+    }
+
+    batch.push(read);
+  }
+
+  return batches;
 }
 
 function readExactRange(
