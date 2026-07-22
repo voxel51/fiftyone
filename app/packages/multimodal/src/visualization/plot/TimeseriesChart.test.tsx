@@ -227,6 +227,34 @@ describe("TimeseriesChart interactions", () => {
     expect(onSeek).toHaveBeenCalledOnce();
     unmount();
   });
+
+  it("scrubs continuously when the playhead marker is grabbed", () => {
+    const onSeek = vi.fn();
+    const { unmount } = render(
+      <TimeseriesChart
+        data={DATA}
+        durationSec={20}
+        onSeek={onSeek}
+        registerPlayheadListener={(listener) => {
+          listener(5);
+          return vi.fn();
+        }}
+        series={[{ color: "#f00", label: "speed" }]}
+      />,
+    );
+    const playhead = screen.getByTestId("timeseries-playhead");
+
+    dispatchPointer(playhead, "pointerdown", 5, 5);
+    expect(playhead.className).toContain("playheadDragging");
+
+    dispatchPointer(playhead, "pointermove", 12, 5);
+    dispatchPointer(playhead, "pointermove", 15, 5);
+    expect(onSeek.mock.calls).toEqual([[12], [15]]);
+
+    dispatchPointer(playhead, "pointerup", 15, 5);
+    expect(playhead.className).not.toContain("playheadDragging");
+    unmount();
+  });
 });
 
 const DATA = [

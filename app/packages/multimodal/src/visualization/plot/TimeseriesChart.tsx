@@ -273,6 +273,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
 
     const line = document.createElement("div");
     line.className = styles.playhead;
+    line.dataset.testid = "timeseries-playhead";
     line.style.display = "none";
     chart.over.appendChild(line);
     playheadLineRef.current = line;
@@ -294,7 +295,90 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       readonly x: number;
       readonly y: number;
     } | null = null;
+    let playheadDrag: {
+      readonly pointerId: number;
+      readonly startClientX: number;
+      readonly startPositionPx: number;
+    } | null = null;
     let suppressSeek = false;
+
+    const seekPlayheadDrag = (event: PointerEvent) => {
+      const drag = playheadDrag;
+      const seek = onSeekRef.current;
+      if (!drag || drag.pointerId !== event.pointerId || !seek) {
+        return;
+      }
+      const positionPx =
+        drag.startPositionPx + event.clientX - drag.startClientX;
+      const sec = chart.posToVal(positionPx, "x");
+      if (Number.isFinite(sec)) {
+        seek(Math.min(Math.max(sec, 0), durationSec));
+      }
+    };
+
+    const finishPlayheadDrag = (event: PointerEvent) => {
+      const drag = playheadDrag;
+      if (!drag || drag.pointerId !== event.pointerId) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      playheadDrag = null;
+      line.classList.remove(styles.playheadDragging);
+      if (line.hasPointerCapture?.(event.pointerId)) {
+        line.releasePointerCapture(event.pointerId);
+      }
+    };
+
+    const onPlayheadPointerDown = (event: PointerEvent) => {
+      const sec = playheadSecRef.current;
+      if (
+        playheadDrag ||
+        sec === null ||
+        !onSeekRef.current ||
+        event.button !== 0
+      ) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      playheadDrag = {
+        pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startPositionPx: chart.valToPos(sec, "x"),
+      };
+      line.classList.add(styles.playheadDragging);
+      line.setPointerCapture?.(event.pointerId);
+    };
+    const onPlayheadPointerMove = (event: PointerEvent) => {
+      if (playheadDrag?.pointerId !== event.pointerId) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      seekPlayheadDrag(event);
+    };
+    const onPlayheadPointerUp = (event: PointerEvent) => {
+      finishPlayheadDrag(event);
+    };
+    const onPlayheadPointerCancel = (event: PointerEvent) => {
+      finishPlayheadDrag(event);
+    };
+    const onPlayheadLostPointerCapture = (event: PointerEvent) => {
+      if (playheadDrag?.pointerId !== event.pointerId) {
+        return;
+      }
+      playheadDrag = null;
+      line.classList.remove(styles.playheadDragging);
+    };
+    // uPlot starts its selection gesture from `mousedown`; stopping the
+    // compatibility event keeps grabbing the playhead distinct from the
+    // surrounding plot's box-zoom interaction.
+    const onPlayheadMouseDown = (event: MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
     const onPointerDown = (event: PointerEvent) => {
       activePointerIds.add(event.pointerId);
       if (activePointerIds.size === 1) {
@@ -378,6 +462,12 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     const onDoubleClickCapture = (event: MouseEvent) => {
       event.stopImmediatePropagation();
     };
+    line.addEventListener("pointerdown", onPlayheadPointerDown);
+    line.addEventListener("pointermove", onPlayheadPointerMove);
+    line.addEventListener("pointerup", onPlayheadPointerUp);
+    line.addEventListener("pointercancel", onPlayheadPointerCancel);
+    line.addEventListener("lostpointercapture", onPlayheadLostPointerCapture);
+    line.addEventListener("mousedown", onPlayheadMouseDown);
     over.addEventListener("pointerdown", onPointerDown);
     over.addEventListener("pointerup", onPointerUp);
     over.addEventListener("pointercancel", onPointerCancel);
@@ -404,6 +494,15 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
 
     return () => {
       observer.disconnect();
+      line.removeEventListener("pointerdown", onPlayheadPointerDown);
+      line.removeEventListener("pointermove", onPlayheadPointerMove);
+      line.removeEventListener("pointerup", onPlayheadPointerUp);
+      line.removeEventListener("pointercancel", onPlayheadPointerCancel);
+      line.removeEventListener(
+        "lostpointercapture",
+        onPlayheadLostPointerCapture,
+      );
+      line.removeEventListener("mousedown", onPlayheadMouseDown);
       over.removeEventListener("pointerdown", onPointerDown);
       over.removeEventListener("pointerup", onPointerUp);
       over.removeEventListener("pointercancel", onPointerCancel);
