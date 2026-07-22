@@ -4,11 +4,10 @@ import {
   KnownContexts,
   useCreateCommand,
 } from "@fiftyone/commands";
-import * as fos from "@fiftyone/state";
+import { useTimeZone } from "@fiftyone/state";
 import { isNullish, Primitive, Sample } from "@fiftyone/utilities";
 import { Orientation, Stack } from "@voxel51/voodo";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
 import PrimitiveRenderer from "./PrimitiveRenderer";
 import { generatePrimitiveSchema, PrimitiveSchema } from "./schemaHelpers";
 import {
@@ -30,7 +29,7 @@ export default function PrimitiveEdit({
 
   const sample = useSampleInstance();
   const value = useSampleSelector((s) => s.getResolved<Primitive>(path));
-  const timeZone = useRecoilValue(fos.timeZone);
+  const timeZone = useTimeZone();
 
   const primitiveSchema = generatePrimitiveSchema(path, currentLabelSchema);
 
