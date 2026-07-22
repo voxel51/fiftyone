@@ -39,7 +39,7 @@ export {
 } from "./colormap-types";
 /** Color helpers shared with MCAP settings UI and hover emphasis. */
 export { complementaryRgbUnit, interpolateHexColors } from "./utils";
-export type { ThreeSceneBackground } from "./base-3d-scene";
+export type { ThreeSceneBackground } from "./Base3dScene";
 export type {
   CameraFrustumPanelLayer,
   CameraImageRayModel,

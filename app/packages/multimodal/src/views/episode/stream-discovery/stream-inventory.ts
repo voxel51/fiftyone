@@ -7,7 +7,7 @@ import {
   type StreamDescriptor,
 } from "../../../ir/index";
 
-export const EPISODE_STREAM_CATEGORY = {
+export const STREAM_CATEGORY = {
   SENSORS: "sensors",
   ANNOTATIONS_PLANNING: "annotations-planning",
   TRANSFORMS_POSES: "transforms-poses",
@@ -16,31 +16,28 @@ export const EPISODE_STREAM_CATEGORY = {
   CUSTOM: "custom",
 } as const;
 
-export type EpisodeStreamCategory =
-  (typeof EPISODE_STREAM_CATEGORY)[keyof typeof EPISODE_STREAM_CATEGORY];
+export type StreamCategory =
+  (typeof STREAM_CATEGORY)[keyof typeof STREAM_CATEGORY];
 
-export const EPISODE_STREAM_CATEGORY_ORDER: readonly EpisodeStreamCategory[] = [
-  EPISODE_STREAM_CATEGORY.SENSORS,
-  EPISODE_STREAM_CATEGORY.ANNOTATIONS_PLANNING,
-  EPISODE_STREAM_CATEGORY.TRANSFORMS_POSES,
-  EPISODE_STREAM_CATEGORY.DIAGNOSTICS,
-  EPISODE_STREAM_CATEGORY.TELEMETRY,
-  EPISODE_STREAM_CATEGORY.CUSTOM,
+export const STREAM_CATEGORY_ORDER: readonly StreamCategory[] = [
+  STREAM_CATEGORY.SENSORS,
+  STREAM_CATEGORY.ANNOTATIONS_PLANNING,
+  STREAM_CATEGORY.TRANSFORMS_POSES,
+  STREAM_CATEGORY.DIAGNOSTICS,
+  STREAM_CATEGORY.TELEMETRY,
+  STREAM_CATEGORY.CUSTOM,
 ];
 
-export const EPISODE_STREAM_CATEGORY_LABEL: Record<
-  EpisodeStreamCategory,
-  string
-> = {
-  [EPISODE_STREAM_CATEGORY.SENSORS]: "Sensors",
-  [EPISODE_STREAM_CATEGORY.ANNOTATIONS_PLANNING]: "Annotations & Planning",
-  [EPISODE_STREAM_CATEGORY.TRANSFORMS_POSES]: "Transforms & Poses",
-  [EPISODE_STREAM_CATEGORY.DIAGNOSTICS]: "Diagnostics",
-  [EPISODE_STREAM_CATEGORY.TELEMETRY]: "Telemetry",
-  [EPISODE_STREAM_CATEGORY.CUSTOM]: "Custom / Unknown",
+export const STREAM_CATEGORY_LABEL: Record<StreamCategory, string> = {
+  [STREAM_CATEGORY.SENSORS]: "Sensors",
+  [STREAM_CATEGORY.ANNOTATIONS_PLANNING]: "Annotations & Planning",
+  [STREAM_CATEGORY.TRANSFORMS_POSES]: "Transforms & Poses",
+  [STREAM_CATEGORY.DIAGNOSTICS]: "Diagnostics",
+  [STREAM_CATEGORY.TELEMETRY]: "Telemetry",
+  [STREAM_CATEGORY.CUSTOM]: "Custom / Unknown",
 };
 
-export const EPISODE_STREAM_CAPABILITY = {
+export const STREAM_CAPABILITY = {
   IMAGE: "image",
   LOGS: "logs",
   MAP: "map",
@@ -49,32 +46,26 @@ export const EPISODE_STREAM_CAPABILITY = {
   THREE_D: "three-d",
 } as const;
 
-export type EpisodeStreamCapability =
-  (typeof EPISODE_STREAM_CAPABILITY)[keyof typeof EPISODE_STREAM_CAPABILITY];
+export type StreamCapability =
+  (typeof STREAM_CAPABILITY)[keyof typeof STREAM_CAPABILITY];
 
-export const EPISODE_STREAM_CAPABILITY_LABEL: Record<
-  EpisodeStreamCapability,
-  string
-> = {
-  [EPISODE_STREAM_CAPABILITY.IMAGE]: "Image",
-  [EPISODE_STREAM_CAPABILITY.LOGS]: "Logs",
-  [EPISODE_STREAM_CAPABILITY.MAP]: "Map",
-  [EPISODE_STREAM_CAPABILITY.PLOT]: "Plot",
-  [EPISODE_STREAM_CAPABILITY.RAW]: "Raw",
-  [EPISODE_STREAM_CAPABILITY.THREE_D]: "3D",
+export const STREAM_CAPABILITY_LABEL: Record<StreamCapability, string> = {
+  [STREAM_CAPABILITY.IMAGE]: "Image",
+  [STREAM_CAPABILITY.LOGS]: "Logs",
+  [STREAM_CAPABILITY.MAP]: "Map",
+  [STREAM_CAPABILITY.PLOT]: "Plot",
+  [STREAM_CAPABILITY.RAW]: "Raw",
+  [STREAM_CAPABILITY.THREE_D]: "3D",
 };
 
-export type EpisodeStreamSupportStatus =
+export type StreamSupportStatus =
   | "encoding-unsupported"
   | "inspectable"
   | "no-decoder"
   | "renderable"
   | "schema-unavailable";
 
-export const EPISODE_STREAM_SUPPORT_LABEL: Record<
-  EpisodeStreamSupportStatus,
-  string
-> = {
+export const STREAM_SUPPORT_LABEL: Record<StreamSupportStatus, string> = {
   "encoding-unsupported": "Encoding unsupported",
   inspectable: "Inspectable",
   "no-decoder": "No decoder",
@@ -82,16 +73,16 @@ export const EPISODE_STREAM_SUPPORT_LABEL: Record<
   "schema-unavailable": "Schema unavailable",
 };
 
-export interface EpisodeStreamInventoryRow {
+export interface StreamInventoryRow {
   readonly canInspect: boolean;
-  readonly capabilities: readonly EpisodeStreamCapability[];
-  readonly category: EpisodeStreamCategory;
+  readonly capabilities: readonly StreamCapability[];
+  readonly category: StreamCategory;
   readonly countLabel: string;
   readonly encoding: string;
   readonly recordCount: number | null;
   readonly schemaName: string;
   readonly sourceType: SceneSourceType | null;
-  readonly supportStatus: EpisodeStreamSupportStatus;
+  readonly supportStatus: StreamSupportStatus;
   readonly stream: string;
 }
 
@@ -129,13 +120,13 @@ const TELEMETRY_SCHEMAS: ReadonlySet<string> = new Set([
  * is static and schema-derived: `renderable` means the adapter knows how the
  * stream participates in a panel, not that the stream is currently visible.
  */
-export function buildEpisodeStreamInventoryRows({
+export function buildStreamInventoryRows({
   sceneSources,
   streams,
 }: {
   readonly sceneSources: readonly SceneSource[];
   readonly streams: readonly StreamDescriptor[];
-}): readonly EpisodeStreamInventoryRow[] {
+}): readonly StreamInventoryRow[] {
   const sceneSourceTypes = new Map(
     sceneSources.map((source) => [source.id, source.type]),
   );
@@ -185,14 +176,14 @@ export function buildEpisodeStreamInventoryRows({
         stream: name,
       };
     })
-    .filter((row): row is EpisodeStreamInventoryRow => row !== null)
+    .filter((row): row is StreamInventoryRow => row !== null)
     .sort(compareStreamRows);
 }
 
-export function filterEpisodeStreamInventoryRows(
-  rows: readonly EpisodeStreamInventoryRow[],
+export function filterStreamInventoryRows(
+  rows: readonly StreamInventoryRow[],
   search: string,
-): readonly EpisodeStreamInventoryRow[] {
+): readonly StreamInventoryRow[] {
   const needle = search.trim().toLowerCase();
   if (!needle) {
     return rows;
@@ -203,10 +194,10 @@ export function filterEpisodeStreamInventoryRows(
       row.stream,
       row.schemaName,
       row.encoding,
-      EPISODE_STREAM_CATEGORY_LABEL[row.category],
-      EPISODE_STREAM_SUPPORT_LABEL[row.supportStatus],
+      STREAM_CATEGORY_LABEL[row.category],
+      STREAM_SUPPORT_LABEL[row.supportStatus],
       ...row.capabilities.map(
-        (capability) => EPISODE_STREAM_CAPABILITY_LABEL[capability],
+        (capability) => STREAM_CAPABILITY_LABEL[capability],
       ),
     ].some((value) => value.toLowerCase().includes(needle)),
   );
@@ -230,29 +221,29 @@ function categoryForStream({
   readonly sourceType: SceneSourceType | null;
   readonly telemetry: boolean;
   readonly stream: string;
-}): EpisodeStreamCategory {
+}): StreamCategory {
   if (/(?:^|\/)imu(?:\/|$)/i.test(stream)) {
-    return EPISODE_STREAM_CATEGORY.SENSORS;
+    return STREAM_CATEGORY.SENSORS;
   }
   if (sourceType === SCENE_SOURCE_TYPE.LOG) {
-    return EPISODE_STREAM_CATEGORY.DIAGNOSTICS;
+    return STREAM_CATEGORY.DIAGNOSTICS;
   }
   if (
     sourceType === SCENE_SOURCE_TYPE.IMAGE_ANNOTATION ||
     sourceType === SCENE_SOURCE_TYPE.SCENE_ANNOTATION
   ) {
-    return EPISODE_STREAM_CATEGORY.ANNOTATIONS_PLANNING;
+    return STREAM_CATEGORY.ANNOTATIONS_PLANNING;
   }
   if (sourceType === SCENE_SOURCE_TYPE.POSE || frameTransform) {
-    return EPISODE_STREAM_CATEGORY.TRANSFORMS_POSES;
+    return STREAM_CATEGORY.TRANSFORMS_POSES;
   }
   if (sourceType !== null) {
-    return EPISODE_STREAM_CATEGORY.SENSORS;
+    return STREAM_CATEGORY.SENSORS;
   }
   if (telemetry) {
-    return EPISODE_STREAM_CATEGORY.TELEMETRY;
+    return STREAM_CATEGORY.TELEMETRY;
   }
-  return EPISODE_STREAM_CATEGORY.CUSTOM;
+  return STREAM_CATEGORY.CUSTOM;
 }
 
 function capabilitiesForStream({
@@ -265,15 +256,15 @@ function capabilitiesForStream({
   readonly frameTransform: boolean;
   readonly sourceType: SceneSourceType | null;
   readonly telemetry: boolean;
-}): readonly EpisodeStreamCapability[] {
-  const capabilities: EpisodeStreamCapability[] = [];
+}): readonly StreamCapability[] {
+  const capabilities: StreamCapability[] = [];
 
   if (
     sourceType === SCENE_SOURCE_TYPE.IMAGE ||
     sourceType === SCENE_SOURCE_TYPE.IMAGE_ANNOTATION ||
     sourceType === SCENE_SOURCE_TYPE.CAMERA_CALIBRATION
   ) {
-    capabilities.push(EPISODE_STREAM_CAPABILITY.IMAGE);
+    capabilities.push(STREAM_CAPABILITY.IMAGE);
   }
 
   if (
@@ -284,23 +275,23 @@ function capabilitiesForStream({
     sourceType === SCENE_SOURCE_TYPE.POSE ||
     sourceType === SCENE_SOURCE_TYPE.SCENE_ANNOTATION
   ) {
-    capabilities.push(EPISODE_STREAM_CAPABILITY.THREE_D);
+    capabilities.push(STREAM_CAPABILITY.THREE_D);
   }
 
   if (sourceType === SCENE_SOURCE_TYPE.LOCATION) {
-    capabilities.push(EPISODE_STREAM_CAPABILITY.MAP);
+    capabilities.push(STREAM_CAPABILITY.MAP);
   }
 
   if (sourceType === SCENE_SOURCE_TYPE.LOG) {
-    capabilities.push(EPISODE_STREAM_CAPABILITY.LOGS);
+    capabilities.push(STREAM_CAPABILITY.LOGS);
   }
 
   if (telemetry) {
-    capabilities.push(EPISODE_STREAM_CAPABILITY.PLOT);
+    capabilities.push(STREAM_CAPABILITY.PLOT);
   }
 
   if (canInspect) {
-    capabilities.push(EPISODE_STREAM_CAPABILITY.RAW);
+    capabilities.push(STREAM_CAPABILITY.RAW);
   }
 
   return Array.from(new Set(capabilities));
@@ -314,7 +305,7 @@ function supportStatusFor({
   readonly decodeStatus: GenericDecodeStatus;
   readonly frameTransform: boolean;
   readonly sourceType: SceneSourceType | null;
-}): EpisodeStreamSupportStatus {
+}): StreamSupportStatus {
   if (sourceType !== null || frameTransform) {
     return "renderable";
   }
@@ -331,12 +322,12 @@ function supportStatusFor({
 }
 
 function compareStreamRows(
-  left: EpisodeStreamInventoryRow,
-  right: EpisodeStreamInventoryRow,
+  left: StreamInventoryRow,
+  right: StreamInventoryRow,
 ): number {
   const categoryDelta =
-    EPISODE_STREAM_CATEGORY_ORDER.indexOf(left.category) -
-    EPISODE_STREAM_CATEGORY_ORDER.indexOf(right.category);
+    STREAM_CATEGORY_ORDER.indexOf(left.category) -
+    STREAM_CATEGORY_ORDER.indexOf(right.category);
   return categoryDelta || left.stream.localeCompare(right.stream);
 }
 

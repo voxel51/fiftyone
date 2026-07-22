@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ResolvedLocationTrackPosition } from "./location-track";
-import { episodeMapRouteProgressFilters } from "./route-progress";
+import { mapRouteProgressFilters } from "./route-progress";
 
 function resolved(
   overrides: Partial<ResolvedLocationTrackPosition>,
@@ -16,9 +16,9 @@ function resolved(
   };
 }
 
-describe("episodeMapRouteProgressFilters", () => {
+describe("mapRouteProgressFilters", () => {
   it("shows every segment as future before the track", () => {
-    expect(episodeMapRouteProgressFilters(resolved({}))).toMatchObject({
+    expect(mapRouteProgressFilters(resolved({}))).toMatchObject({
       active: ["==", ["get", "segmentIndex"], -1],
       future: [">=", ["get", "segmentIndex"], 0],
       past: ["<", ["get", "segmentIndex"], 0],
@@ -27,7 +27,7 @@ describe("episodeMapRouteProgressFilters", () => {
 
   it("isolates the active segment from fully past and future segments", () => {
     expect(
-      episodeMapRouteProgressFilters(
+      mapRouteProgressFilters(
         resolved({
           boundarySegmentIndex: 2,
           lineProgress: 0.4,
@@ -44,7 +44,7 @@ describe("episodeMapRouteProgressFilters", () => {
 
   it("keeps no-fix gaps disconnected at the next segment boundary", () => {
     expect(
-      episodeMapRouteProgressFilters(
+      mapRouteProgressFilters(
         resolved({ boundarySegmentIndex: 2, state: "gap" }),
       ),
     ).toMatchObject({

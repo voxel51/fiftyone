@@ -17,7 +17,7 @@
         "./query/decoding": "./src/query/decoding/index.ts",
         "./decoders": "./src/decoders/index.ts",
         "./temporal-tags": "./src/temporal-tags/index.ts",
-        "./temporal-tags/grid-overlay": "./src/temporal-tags/grid-overlay.tsx",
+        "./temporal-tags/grid-overlay": "./src/temporal-tags/TemporalTagGridOverlay.tsx",
         "./inject": "./src/inject/index.ts",
         "./extensions/timeline": "./src/extensions/timeline/index.ts",
         "./extensions/timeline/runtime": "./src/extensions/timeline/runtime.ts",
@@ -56,7 +56,7 @@
                 "src/temporal-tags/index.ts"
             ],
             "temporal-tags/grid-overlay": [
-                "src/temporal-tags/grid-overlay.tsx"
+                "src/temporal-tags/TemporalTagGridOverlay.tsx"
             ],
             "query": [
                 "src/query/index.ts"

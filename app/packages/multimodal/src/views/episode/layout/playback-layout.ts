@@ -10,11 +10,8 @@ import {
   filterDefaultStreamEquivalents,
   orderDefaultStreamEquivalents,
 } from "../../../stream-selection";
-import { episodeTileTypeFromId } from "./episode-layout-persistence";
-import {
-  EPISODE_TILE_TYPE,
-  type EpisodeTileType,
-} from "../tiles/episode-tile-types";
+import { tileTypeFromId } from "./layout-persistence";
+import { TILE_TYPE, type TileType } from "../tiles/tile-types";
 
 /**
  * Hard ceiling on default image tiles. Beyond this, tiles get too small
@@ -45,9 +42,9 @@ const MIN_CONTEXT_SHELF_HEIGHT_FRACTION = 0.2;
 const MAX_CONTEXT_SHELF_HEIGHT_FRACTION = 0.4;
 
 // Mosaic leaf id of the single default 3D tile.
-const THREE_D_TILE_ID = `${EPISODE_TILE_TYPE.THREE_D}-1`;
-const MAP_TILE_ID = `${EPISODE_TILE_TYPE.MAP}-1`;
-const LOG_TILE_ID = `${EPISODE_TILE_TYPE.LOG}-1`;
+const THREE_D_TILE_ID = `${TILE_TYPE.THREE_D}-1`;
+const MAP_TILE_ID = `${TILE_TYPE.MAP}-1`;
+const LOG_TILE_ID = `${TILE_TYPE.LOG}-1`;
 
 /**
  * Device/runtime signals the layout resolver weighs. Collected once per
@@ -71,7 +68,7 @@ export interface PlaybackDeviceCapabilities {
 export interface PlaybackLayoutTile {
   /** Mosaic leaf id, `${tileType}-${n}` so the tiling id parser works. */
   readonly id: string;
-  readonly tileType: EpisodeTileType;
+  readonly tileType: TileType;
   /** Source the tile should open bound to; image tiles only. */
   readonly initialSourceId?: string;
   /** Initial tile title (the source label for image tiles). */
@@ -231,29 +228,29 @@ export function resolvePlaybackLayout({
   const tiles: PlaybackLayoutTile[] = rankedImages
     .slice(0, imageTileCount)
     .map((source, index) => ({
-      id: `${EPISODE_TILE_TYPE.IMAGE}-${index + 1}`,
+      id: `${TILE_TYPE.IMAGE}-${index + 1}`,
       initialSourceId: source.id,
-      tileType: EPISODE_TILE_TYPE.IMAGE,
+      tileType: TILE_TYPE.IMAGE,
       title: source.label,
     }));
   if (has3d) {
     tiles.push({
       id: THREE_D_TILE_ID,
-      tileType: EPISODE_TILE_TYPE.THREE_D,
+      tileType: TILE_TYPE.THREE_D,
       title: "3D",
     });
   }
   if (hasMap) {
     tiles.push({
       id: MAP_TILE_ID,
-      tileType: EPISODE_TILE_TYPE.MAP,
+      tileType: TILE_TYPE.MAP,
       title: "Map",
     });
   }
   if (hasLogs) {
     tiles.push({
       id: LOG_TILE_ID,
-      tileType: EPISODE_TILE_TYPE.LOG,
+      tileType: TILE_TYPE.LOG,
       title: "Logs",
     });
   }
@@ -342,7 +339,7 @@ function remoteNetworkBudget(downlinkMbps: number | null): number {
  * - raw/message tiles stack as a right inspection rail
  * - unknown tile ids fall into diagnostics after known groups
  */
-export function buildEpisodeAutoLayout(
+export function buildAutoLayout(
   tileIds: readonly string[],
   imageAspectRatios: Readonly<Record<string, number>> = {},
   geometry: number | TilingLayoutMetrics = DEFAULT_VIEWPORT_WIDTH_PX /
@@ -363,23 +360,23 @@ export function buildEpisodeAutoLayout(
   const unknown: string[] = [];
 
   for (const tileId of tileIds) {
-    switch (episodeTileTypeFromId(tileId)) {
-      case EPISODE_TILE_TYPE.IMAGE:
+    switch (tileTypeFromId(tileId)) {
+      case TILE_TYPE.IMAGE:
         images.push(tileId);
         break;
-      case EPISODE_TILE_TYPE.THREE_D:
+      case TILE_TYPE.THREE_D:
         threeD.push(tileId);
         break;
-      case EPISODE_TILE_TYPE.MAP:
+      case TILE_TYPE.MAP:
         maps.push(tileId);
         break;
-      case EPISODE_TILE_TYPE.PLOT:
+      case TILE_TYPE.PLOT:
         plots.push(tileId);
         break;
-      case EPISODE_TILE_TYPE.LOG:
+      case TILE_TYPE.LOG:
         logs.push(tileId);
         break;
-      case EPISODE_TILE_TYPE.RAW:
+      case TILE_TYPE.RAW:
         messages.push(tileId);
         break;
       default:
@@ -751,7 +748,7 @@ function buildLayoutTree(
   capabilities: PlaybackDeviceCapabilities,
 ): MosaicNode<string> | undefined {
   return (
-    buildEpisodeAutoLayout(
+    buildAutoLayout(
       tiles.map((tile) => tile.id),
       {},
       capabilities.viewportWidth / capabilities.viewportHeight,

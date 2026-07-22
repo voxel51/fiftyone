@@ -1,8 +1,8 @@
 import { useRegisteredTiles, useTiling } from "@fiftyone/tiling";
 import { useCallback, useRef, type ComponentType } from "react";
 import { useSceneInventory } from "../../../scene-inventory/react";
-import { useEpisodeImageTileBindings } from "./episode-tile-source-bindings";
-import { EPISODE_TILE_TYPE, type EpisodeTileProps } from "./episode-tile-types";
+import { useImageTileBindings } from "./tile-source-bindings";
+import { TILE_TYPE, type EpisodeTileProps } from "./tile-types";
 
 /**
  * Opens the modal's view of an image stream: focuses the tile already
@@ -10,11 +10,11 @@ import { EPISODE_TILE_TYPE, type EpisodeTileProps } from "./episode-tile-types";
  * "take me to this camera" affordance — the source-first add-tile menu
  * and the clickable 3D frustums.
  */
-export function useOpenEpisodeImageTile(): (sourceId: string) => void {
+export function useOpenImageTile(): (sourceId: string) => void {
   const { addTile, setFocusedTileId } = useTiling();
   const registeredTiles = useRegisteredTiles();
   const sources = useSceneInventory();
-  const bindings = useEpisodeImageTileBindings();
+  const bindings = useImageTileBindings();
   const registeredTilesRef = useRef(registeredTiles);
   registeredTilesRef.current = registeredTiles;
 
@@ -29,7 +29,7 @@ export function useOpenEpisodeImageTile(): (sourceId: string) => void {
         return;
       }
       const definition = registeredTilesRef.current.find(
-        (entry) => entry.type === EPISODE_TILE_TYPE.IMAGE,
+        (entry) => entry.type === TILE_TYPE.IMAGE,
       );
       if (!definition) return;
       const ImageTile = definition.Tile as ComponentType<
@@ -41,9 +41,9 @@ export function useOpenEpisodeImageTile(): (sourceId: string) => void {
         {
           render: () => <ImageTile initialSourceId={sourceId} />,
           title,
-          type: EPISODE_TILE_TYPE.IMAGE,
+          type: TILE_TYPE.IMAGE,
         },
-        { idPrefix: EPISODE_TILE_TYPE.IMAGE },
+        { idPrefix: TILE_TYPE.IMAGE },
       );
     },
     [addTile, bindings, setFocusedTileId, sources],

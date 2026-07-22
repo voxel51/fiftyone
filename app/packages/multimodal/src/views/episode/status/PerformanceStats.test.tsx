@@ -7,7 +7,7 @@ import {
   screen,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import EpisodePerformanceStats from "./PerformanceStats";
+import PerformanceStats from "./PerformanceStats";
 
 type Playback = ReturnType<typeof usePlayback>;
 
@@ -22,7 +22,7 @@ function PlaybackProbe({
   return null;
 }
 
-describe("EpisodePerformanceStats", () => {
+describe("PerformanceStats", () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
@@ -47,7 +47,7 @@ describe("EpisodePerformanceStats", () => {
     render(
       <PlaybackProvider duration={10}>
         <PlaybackProbe playbackRef={playbackRef} />
-        <EpisodePerformanceStats sampling={null} />
+        <PerformanceStats sampling={null} />
       </PlaybackProvider>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Stats" }));

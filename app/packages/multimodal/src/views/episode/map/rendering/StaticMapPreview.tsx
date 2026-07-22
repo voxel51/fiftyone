@@ -3,7 +3,7 @@ import React from "react";
 import {
   combineLocationBounds,
   locationBounds,
-  type EpisodeLocationTrackState,
+  type LocationTrackState,
 } from "../tracks/location-track";
 import styles from "./MapRenderer.module.css";
 
@@ -11,7 +11,7 @@ import styles from "./MapRenderer.module.css";
 export function MapLegend({
   tracks,
 }: {
-  readonly tracks: readonly EpisodeLocationTrackState[];
+  readonly tracks: readonly LocationTrackState[];
 }) {
   return (
     <div className={styles.legend}>
@@ -40,7 +40,7 @@ export function MapLegend({
 export function StaticMapPreview({
   tracks,
 }: {
-  readonly tracks: readonly EpisodeLocationTrackState[];
+  readonly tracks: readonly LocationTrackState[];
 }) {
   const bounds = combineLocationBounds(
     tracks.map((track) => locationBounds(track.segments)),

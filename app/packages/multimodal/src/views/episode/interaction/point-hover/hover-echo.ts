@@ -8,7 +8,7 @@ import { atom, useAtomValue, useSetAtom, type PrimitiveAtom } from "jotai";
  *
  * The atom lives in the tiling shell's per-instance Jotai store.
  */
-export interface EpisodeHoveredPointEcho {
+export interface HoveredPointEcho {
   readonly kind: "point";
   /** The point's rendered color where it was hovered, if known. */
   readonly color: readonly [number, number, number] | null;
@@ -20,19 +20,19 @@ export interface EpisodeHoveredPointEcho {
 }
 
 /** Hover payload echoed between episode panes. */
-export type EpisodeHoverEcho = EpisodeHoveredPointEcho;
+export type HoverEcho = HoveredPointEcho;
 
 /** Modal-local atom containing the point currently echoed across panes. */
-export const episodeHoverEchoAtom = atom<EpisodeHoverEcho | null>(
+export const hoverEchoAtom = atom<HoverEcho | null>(
   null,
-) as PrimitiveAtom<EpisodeHoverEcho | null>;
+) as PrimitiveAtom<HoverEcho | null>;
 
 /** Reads the point currently echoed across episode panes. */
-export function useEpisodeHoverEcho(): EpisodeHoverEcho | null {
-  return useAtomValue(episodeHoverEchoAtom);
+export function useHoverEcho(): HoverEcho | null {
+  return useAtomValue(hoverEchoAtom);
 }
 
 /** Returns the setter for the modal-local hover echo. */
-export function useSetEpisodeHoverEcho() {
-  return useSetAtom(episodeHoverEchoAtom);
+export function useSetHoverEcho() {
+  return useSetAtom(hoverEchoAtom);
 }

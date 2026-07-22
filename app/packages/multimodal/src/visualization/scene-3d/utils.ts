@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import type { RgbaColor, SceneLinePrimitive, ScenePoint3D } from "../../ir";
+import type { RgbaColor, SceneLinePrimitive, ScenePoint3d } from "../../ir";
 import type {
   PanelNotice,
   SceneAnnotationPanelLayer,
@@ -62,7 +62,7 @@ export function sceneMaterialProps(
 }
 
 export function primitivePointIndices(
-  points: readonly ScenePoint3D[],
+  points: readonly ScenePoint3d[],
   indices: readonly number[],
 ) {
   const sourceIndices =
@@ -238,8 +238,8 @@ export function isFinitePositiveNumber(value: number): boolean {
 }
 
 export function isFinitePoint3(
-  point: ScenePoint3D | undefined,
-): point is ScenePoint3D {
+  point: ScenePoint3d | undefined,
+): point is ScenePoint3d {
   return !!point && point.every((component) => Number.isFinite(component));
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { episodeMapViewportIsNearEvidence } from "./proximity";
+import { mapViewportIsNearEvidence } from "./proximity";
 
 const SAN_FRANCISCO_VIEWPORT = {
   latitude: 37.7749,
@@ -7,10 +7,10 @@ const SAN_FRANCISCO_VIEWPORT = {
   zoom: 15,
 };
 
-describe("episodeMapViewportIsNearEvidence", () => {
+describe("mapViewportIsNearEvidence", () => {
   it("accepts a marker inside the expanded viewport", () => {
     expect(
-      episodeMapViewportIsNearEvidence({
+      mapViewportIsNearEvidence({
         bounds: null,
         height: 600,
         marker: { latitude: 37.7755, longitude: -122.4185 },
@@ -22,7 +22,7 @@ describe("episodeMapViewportIsNearEvidence", () => {
 
   it("rejects a cached street-level viewport far from the new recording", () => {
     expect(
-      episodeMapViewportIsNearEvidence({
+      mapViewportIsNearEvidence({
         bounds: null,
         height: 600,
         marker: { latitude: 34.0522, longitude: -118.2437 },
@@ -34,7 +34,7 @@ describe("episodeMapViewportIsNearEvidence", () => {
 
   it("accepts route bounds that overlap the expanded viewport", () => {
     expect(
-      episodeMapViewportIsNearEvidence({
+      mapViewportIsNearEvidence({
         bounds: {
           east: -122.41,
           north: 37.78,
@@ -51,7 +51,7 @@ describe("episodeMapViewportIsNearEvidence", () => {
 
   it("handles evidence across the antimeridian", () => {
     expect(
-      episodeMapViewportIsNearEvidence({
+      mapViewportIsNearEvidence({
         bounds: null,
         height: 600,
         marker: { latitude: 0, longitude: -179.9 },
@@ -69,7 +69,7 @@ describe("episodeMapViewportIsNearEvidence", () => {
       west: 179.8,
     };
     expect(
-      episodeMapViewportIsNearEvidence({
+      mapViewportIsNearEvidence({
         bounds,
         height: 600,
         marker: null,
@@ -78,7 +78,7 @@ describe("episodeMapViewportIsNearEvidence", () => {
       }),
     ).toBe(true);
     expect(
-      episodeMapViewportIsNearEvidence({
+      mapViewportIsNearEvidence({
         bounds,
         height: 600,
         marker: null,
@@ -90,7 +90,7 @@ describe("episodeMapViewportIsNearEvidence", () => {
 
   it("uses each valid evidence source independently", () => {
     expect(
-      episodeMapViewportIsNearEvidence({
+      mapViewportIsNearEvidence({
         bounds: {
           east: -122.41,
           north: 37.78,
@@ -104,7 +104,7 @@ describe("episodeMapViewportIsNearEvidence", () => {
       }),
     ).toBe(true);
     expect(
-      episodeMapViewportIsNearEvidence({
+      mapViewportIsNearEvidence({
         bounds: {
           east: Number.POSITIVE_INFINITY,
           north: 37.78,
@@ -121,7 +121,7 @@ describe("episodeMapViewportIsNearEvidence", () => {
 
   it("rejects invalid evidence when there is no valid alternative", () => {
     expect(
-      episodeMapViewportIsNearEvidence({
+      mapViewportIsNearEvidence({
         bounds: null,
         height: 600,
         marker: { latitude: Number.NaN, longitude: -122.4194 },
@@ -130,7 +130,7 @@ describe("episodeMapViewportIsNearEvidence", () => {
       }),
     ).toBe(false);
     expect(
-      episodeMapViewportIsNearEvidence({
+      mapViewportIsNearEvidence({
         bounds: {
           east: Number.POSITIVE_INFINITY,
           north: 37.78,
@@ -147,7 +147,7 @@ describe("episodeMapViewportIsNearEvidence", () => {
 
   it("rejects evidence when the viewport has no measurable surface", () => {
     expect(
-      episodeMapViewportIsNearEvidence({
+      mapViewportIsNearEvidence({
         bounds: null,
         height: 0,
         marker: { latitude: 37.7749, longitude: -122.4194 },

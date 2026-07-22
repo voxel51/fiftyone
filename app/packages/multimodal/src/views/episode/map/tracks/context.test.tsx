@@ -9,18 +9,18 @@ import { VISUALIZATION_KIND } from "../../../../visualization";
 import type { DecodedFrame } from "../../../../ir";
 import type { EpisodeSession } from "../../../../ports";
 import {
-  EpisodeLocationTracksBridge,
-  EpisodeLocationTracksProvider,
-  useEpisodeLocationTracksContext,
+  LocationTracksBridge,
+  LocationTracksProvider,
+  useLocationTracksContext,
 } from "./context";
-import { setEpisodeNetworkHealth } from "../../playback/episode-network-health";
+import { setNetworkHealth } from "../../playback/network-health";
 
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
 });
 
-describe("EpisodeLocationTracksBridge", () => {
+describe("LocationTracksBridge", () => {
   it("starts full-track reads immediately, uses the bulk lane, and publishes no-fix gaps", async () => {
     const source = createSource("drive");
     const locationSources = [locationSource("/gps")];
@@ -79,7 +79,7 @@ describe("EpisodeLocationTracksBridge", () => {
     const source = createSource("drive");
     const store = createStore();
     store.set(isPlayingAtom, true);
-    setEpisodeNetworkHealth(store, {
+    setNetworkHealth(store, {
       busyFraction: 1,
       busyThroughputBytesPerSec: 1,
       limited: true,
@@ -149,14 +149,14 @@ function Harness({
   readonly store?: ReturnType<typeof createStore>;
 }) {
   const body = (
-    <EpisodeLocationTracksProvider>
-      <EpisodeLocationTracksBridge
+    <LocationTracksProvider>
+      <LocationTracksBridge
         session={session}
         locationSources={locationSources}
         sourceKey={source.sourceId}
       />
       <LocationTracksProbe />
-    </EpisodeLocationTracksProvider>
+    </LocationTracksProvider>
   );
   return store ? (
     <PlaybackStoreContext.Provider value={store}>
@@ -168,7 +168,7 @@ function Harness({
 }
 
 function LocationTracksProbe() {
-  const tracks = useEpisodeLocationTracksContext();
+  const tracks = useLocationTracksContext();
   return (
     <div data-testid="location-tracks">
       {[...tracks.entries()]

@@ -15,27 +15,24 @@ import { useAtomValue, useSetAtom } from "jotai";
 import React, { useEffect } from "react";
 import { IconName } from "@voxel51/voodo";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  episodeRawTileStreamAtom,
-  type EpisodeRawTileStreams,
-} from "./raw-message-binding";
-import { EPISODE_TILE_TYPE } from "./episode-tile-types";
-import { useOpenEpisodeRawMessageTile } from "./use-open-raw-message-tile";
+import { rawTileStreamAtom, type RawTileStreams } from "./raw-message-binding";
+import { TILE_TYPE } from "./tile-types";
+import { useOpenRawMessageTile } from "./use-open-raw-message-tile";
 
-const Probe: React.FC<{ readonly seedStreams?: EpisodeRawTileStreams }> = ({
+const Probe: React.FC<{ readonly seedStreams?: RawTileStreams }> = ({
   seedStreams,
 }) => {
-  const openRawMessageTile = useOpenEpisodeRawMessageTile();
+  const openRawMessageTile = useOpenRawMessageTile();
   const { registerTile } = useTileRegistry();
   const { focusedTileId, tiles } = useTiling();
-  const streamsByTile = useAtomValue(episodeRawTileStreamAtom);
+  const streamsByTile = useAtomValue(rawTileStreamAtom);
 
   useEffect(
     () =>
       registerTile({
         icon: IconName.JSON,
         Tile: () => null,
-        type: EPISODE_TILE_TYPE.RAW,
+        type: TILE_TYPE.RAW,
         typeLabel: "Message",
       }),
     [registerTile],
@@ -72,10 +69,10 @@ const Probe: React.FC<{ readonly seedStreams?: EpisodeRawTileStreams }> = ({
   );
 };
 
-const SeedStreams: React.FC<{ readonly streams: EpisodeRawTileStreams }> = ({
+const SeedStreams: React.FC<{ readonly streams: RawTileStreams }> = ({
   streams,
 }) => {
-  const setStreams = useSetAtom(episodeRawTileStreamAtom);
+  const setStreams = useSetAtom(rawTileStreamAtom);
 
   // This effect seeds the raw-stream atom for the hook under test.
   useEffect(() => {
@@ -88,12 +85,12 @@ afterEach(() => {
   cleanup();
 });
 
-describe("useOpenEpisodeRawMessageTile", () => {
+describe("useOpenRawMessageTile", () => {
   it("focuses an already-open raw tile for the stream", async () => {
     renderProbe({
       initialTiles: {
-        "raw-1": tile(EPISODE_TILE_TYPE.RAW),
-        "raw-2": tile(EPISODE_TILE_TYPE.RAW),
+        "raw-1": tile(TILE_TYPE.RAW),
+        "raw-2": tile(TILE_TYPE.RAW),
       },
       seedStreams: { "raw-2": "/imu" },
     });
@@ -112,7 +109,7 @@ describe("useOpenEpisodeRawMessageTile", () => {
   it("reuses an empty raw tile", () => {
     renderProbe({
       initialTiles: {
-        "raw-1": tile(EPISODE_TILE_TYPE.RAW),
+        "raw-1": tile(TILE_TYPE.RAW),
       },
     });
 
@@ -128,8 +125,8 @@ describe("useOpenEpisodeRawMessageTile", () => {
   it("skips occupied raw tiles and reuses the first empty one", async () => {
     renderProbe({
       initialTiles: {
-        "raw-1": tile(EPISODE_TILE_TYPE.RAW),
-        "raw-2": tile(EPISODE_TILE_TYPE.RAW),
+        "raw-1": tile(TILE_TYPE.RAW),
+        "raw-2": tile(TILE_TYPE.RAW),
       },
       seedStreams: { "raw-1": "/gps" },
     });
@@ -155,7 +152,7 @@ describe("useOpenEpisodeRawMessageTile", () => {
       focusedTileId: "raw-1",
       titles: { "raw-1": "/imu" },
       streamsByTile: { "raw-1": "/imu" },
-      types: { "raw-1": EPISODE_TILE_TYPE.RAW },
+      types: { "raw-1": TILE_TYPE.RAW },
     });
   });
 
@@ -167,7 +164,7 @@ describe("useOpenEpisodeRawMessageTile", () => {
     expect(probeState()).toMatchObject({
       focusedTileId: "raw-1",
       streamsByTile: { "raw-1": "/imu" },
-      types: { "raw-1": EPISODE_TILE_TYPE.RAW },
+      types: { "raw-1": TILE_TYPE.RAW },
     });
   });
 });
@@ -177,7 +174,7 @@ function renderProbe({
   seedStreams,
 }: {
   readonly initialTiles?: Record<string, TilingTile>;
-  readonly seedStreams?: EpisodeRawTileStreams;
+  readonly seedStreams?: RawTileStreams;
 } = {}) {
   return render(
     <TilingProvider initialTiles={initialTiles}>
@@ -189,7 +186,7 @@ function renderProbe({
 function probeState(): {
   readonly focusedTileId: string | null;
   readonly titles: Record<string, string>;
-  readonly streamsByTile: EpisodeRawTileStreams;
+  readonly streamsByTile: RawTileStreams;
   readonly types: Record<string, string>;
 } {
   const probe = screen.getByTestId("probe");

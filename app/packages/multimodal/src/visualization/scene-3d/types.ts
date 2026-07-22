@@ -13,14 +13,14 @@ import type {
   ThreeCameraPoseChangeSource,
   ThreeSceneBackground,
   ThreeSceneUpAxis,
-} from "./base-3d-scene";
+} from "./Base3dScene";
 import type { PointCloudColormap } from "./colormap-types";
-import type { PanelNotice } from "../panel-ui/panel-notices";
+import type { PanelNotice } from "../panel-ui/PanelNotices";
 
 export type {
   PanelNotice,
   PanelNoticeSeverity,
-} from "../panel-ui/panel-notices";
+} from "../panel-ui/PanelNotices";
 
 /**
  * Point-cloud colouring modes. Besides the reserved modes ("auto",

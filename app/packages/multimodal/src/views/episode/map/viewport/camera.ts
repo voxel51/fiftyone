@@ -4,10 +4,10 @@ const PLAYBACK_BOUNDS_PADDING = 80;
 const ROUTE_BOUNDS_PADDING = 42;
 
 /** Street-level zoom used when framing a single current location. */
-export const EPISODE_MAP_MARKER_ZOOM = 16;
+export const MAP_MARKER_ZOOM = 16;
 
 /** Camera destination for either a route extent or a current-location marker. */
-export type EpisodeMapCameraTarget =
+export type MapCameraTarget =
   | {
       readonly bounds: LocationBounds;
       readonly kind: "bounds";
@@ -24,7 +24,7 @@ export type EpisodeMapCameraTarget =
  * Chooses the useful playback camera target: recent motion first, then the
  * current fix, with the whole recording retained only as a last-resort frame.
  */
-export function episodeMapPlaybackCameraTarget({
+export function mapPlaybackCameraTarget({
   bounds,
   marker,
   trailBounds,
@@ -35,7 +35,7 @@ export function episodeMapPlaybackCameraTarget({
     readonly longitude: number;
   } | null;
   readonly trailBounds: LocationBounds | null;
-}): EpisodeMapCameraTarget | null {
+}): MapCameraTarget | null {
   if (trailBounds) {
     return {
       bounds: trailBounds,
@@ -48,15 +48,13 @@ export function episodeMapPlaybackCameraTarget({
       kind: "marker",
       latitude: marker.latitude,
       longitude: marker.longitude,
-      zoom: EPISODE_MAP_MARKER_ZOOM,
+      zoom: MAP_MARKER_ZOOM,
     };
   }
-  return bounds ? episodeMapRouteCameraTarget(bounds) : null;
+  return bounds ? mapRouteCameraTarget(bounds) : null;
 }
 
 /** Builds a camera target that frames an entire route. */
-export function episodeMapRouteCameraTarget(
-  bounds: LocationBounds,
-): EpisodeMapCameraTarget {
+export function mapRouteCameraTarget(bounds: LocationBounds): MapCameraTarget {
   return { bounds, kind: "bounds", padding: ROUTE_BOUNDS_PADDING };
 }

@@ -1,12 +1,12 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Episode3dViewSettingsProvider } from "../../spatial/view-settings-context";
+import { Scene3dViewSettingsProvider } from "../../spatial/view-settings-context";
 import {
-  EpisodeSceneFramesProvider,
-  useRegisterEpisodeSceneFrameControls,
-  type EpisodeSceneFrameControls,
+  SceneFramesProvider,
+  useRegisterSceneFrameControls,
+  type SceneFrameControls,
 } from "../../spatial/frame-transforms/scene-frame-controls";
-import EpisodeSceneWorldSettings from "./SceneWorldSettings";
+import SceneWorldSettings from "./SceneWorldSettings";
 
 function expandWorldGroup() {
   fireEvent.click(screen.getByRole("button", { name: /World/ }));
@@ -17,9 +17,9 @@ afterEach(() => cleanup());
 function RegisterFrameControls({
   controls,
 }: {
-  readonly controls: EpisodeSceneFrameControls;
+  readonly controls: SceneFrameControls;
 }) {
-  useRegisterEpisodeSceneFrameControls("3d-1", controls);
+  useRegisterSceneFrameControls("3d-1", controls);
   return null;
 }
 
@@ -27,11 +27,11 @@ function renderWorldSettings({
   frameControls,
   setSceneUpAxis = vi.fn(),
 }: {
-  readonly frameControls?: EpisodeSceneFrameControls;
+  readonly frameControls?: SceneFrameControls;
   readonly setSceneUpAxis?: ReturnType<typeof vi.fn>;
 } = {}) {
   render(
-    <Episode3dViewSettingsProvider
+    <Scene3dViewSettingsProvider
       defaultTrackingMode="free"
       preferredCameraTargetFrameId={null}
       preferredWorldFrameId={null}
@@ -41,19 +41,19 @@ function renderWorldSettings({
       setPreferredWorldFrameId={vi.fn()}
       setSceneUpAxis={setSceneUpAxis}
     >
-      <EpisodeSceneFramesProvider>
+      <SceneFramesProvider>
         {frameControls ? (
           <RegisterFrameControls controls={frameControls} />
         ) : null}
-        <EpisodeSceneWorldSettings />
-      </EpisodeSceneFramesProvider>
-    </Episode3dViewSettingsProvider>,
+        <SceneWorldSettings />
+      </SceneFramesProvider>
+    </Scene3dViewSettingsProvider>,
   );
 }
 
-describe("EpisodeSceneWorldSettings", () => {
+describe("SceneWorldSettings", () => {
   it("renders nothing without a view-settings provider", () => {
-    const { container } = render(<EpisodeSceneWorldSettings />);
+    const { container } = render(<SceneWorldSettings />);
 
     expect(container.firstChild).toBeNull();
   });

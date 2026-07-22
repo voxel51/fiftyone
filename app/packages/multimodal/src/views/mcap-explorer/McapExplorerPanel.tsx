@@ -15,7 +15,7 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import type { ByteSourceDescriptor } from "../../ir/index";
 import { episodeSourceFromByteSource } from "../session/episode-source";
 import { useEpisodeSession } from "../session/use-episode-session";
-import { EpisodeSourcePlayback } from "../episode/index";
+import { SourcePlayback } from "../episode/index";
 import {
   createLocalMcapSourceDescriptor,
   createRemoteMcapSourceDescriptor,
@@ -175,7 +175,7 @@ const McapExplorerPanel: React.FC = () => {
     >
       {active ? (
         <div className={styles.playback}>
-          <EpisodeSourcePlayback
+          <SourcePlayback
             key={active.source.sourceId}
             fileName={active.fileName}
             headerActions={

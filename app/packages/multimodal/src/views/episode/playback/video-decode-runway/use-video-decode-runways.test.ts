@@ -5,7 +5,7 @@ import type { EncodedVideoVisualization } from "../../../../ir";
 import type { DecodedFrame } from "../../../../ir";
 import {
   h264RunwayFromMessages,
-  useEpisodeVideoDecodeRunway,
+  useVideoDecodeRunway,
 } from "./use-video-decode-runways";
 
 afterEach(cleanup);
@@ -35,7 +35,7 @@ describe("h264RunwayFromMessages", () => {
 
   it("returns an empty runway while a selected stream has no frame", () => {
     const { result } = renderHook(() =>
-      useEpisodeVideoDecodeRunway("/camera/image", null),
+      useVideoDecodeRunway("/camera/image", null),
     );
 
     expect(result.current).toEqual([]);

@@ -2,38 +2,38 @@ import { atom, useAtomValue, useSetAtom } from "jotai";
 
 import type { RawImageVisualization } from "../../../ir";
 import {
-  projectEpisodeCameraPoint,
-  unprojectEpisodeCameraPixel,
-  type EpisodeCameraModel,
-} from "./camera-geometry/episode-camera-model";
+  projectCameraPoint,
+  unprojectCameraPixel,
+  type CameraModel,
+} from "./camera-geometry/camera-model";
 
 const MINIMUM_RAY_Z = 1e-9;
 
 /** One valid depth-image sample expressed in its camera frame. */
-export interface EpisodeDepthSample {
+export interface DepthSample {
   readonly depthMeters: number;
   readonly pixel: readonly [number, number];
   readonly position: readonly [number, number, number];
 }
 
 /** Depth-image point currently under the pointer in an episode image tile. */
-export interface EpisodeDepthHover extends EpisodeDepthSample {
+export interface DepthHover extends DepthSample {
   readonly cameraFrameId: string;
   readonly contentTimeNs: bigint;
   readonly imageStream: string;
 }
 
 /** Modal-local depth hover shared by image and 3D tiles. */
-const episodeDepthHoverAtom = atom<EpisodeDepthHover | null>(null);
+const depthHoverAtom = atom<DepthHover | null>(null);
 
 /** Reads the depth sample currently hovered in an image tile. */
-export function useEpisodeDepthHover(): EpisodeDepthHover | null {
-  return useAtomValue(episodeDepthHoverAtom);
+export function useDepthHover(): DepthHover | null {
+  return useAtomValue(depthHoverAtom);
 }
 
 /** Returns the setter for the modal-local depth hover. */
-export function useSetEpisodeDepthHover() {
-  return useSetAtom(episodeDepthHoverAtom);
+export function useSetDepthHover() {
+  return useSetAtom(depthHoverAtom);
 }
 
 /**
@@ -41,19 +41,19 @@ export function useSetEpisodeDepthHover() {
  * Depth encodings measure camera Z, so off-axis rays scale by `depth / ray.z`
  * rather than by their Euclidean length.
  */
-export function episodeDepthSampleAtDisplayPixel({
+export function depthSampleAtDisplayPixel({
   displayCameraModel,
   frame,
   sourceCameraModel,
   u,
   v,
 }: {
-  readonly displayCameraModel: EpisodeCameraModel;
+  readonly displayCameraModel: CameraModel;
   readonly frame: RawImageVisualization;
-  readonly sourceCameraModel: EpisodeCameraModel;
+  readonly sourceCameraModel: CameraModel;
   readonly u: number;
   readonly v: number;
-}): EpisodeDepthSample | null {
+}): DepthSample | null {
   if (
     !frame.depth ||
     frame.depth.values.length !== frame.width * frame.height ||
@@ -88,7 +88,7 @@ export function episodeDepthSampleAtDisplayPixel({
     return null;
   }
 
-  const ray = unprojectEpisodeCameraPixel(sourceCameraModel, x, y);
+  const ray = unprojectCameraPixel(sourceCameraModel, x, y);
   if (!ray || !(ray[2] > MINIMUM_RAY_Z)) {
     return null;
   }
@@ -102,18 +102,18 @@ export function episodeDepthSampleAtDisplayPixel({
 }
 
 function displayPixelInSourceModel(
-  displayCameraModel: EpisodeCameraModel,
-  sourceCameraModel: EpisodeCameraModel,
+  displayCameraModel: CameraModel,
+  sourceCameraModel: CameraModel,
   u: number,
   v: number,
 ): readonly [number, number] | null {
   if (displayCameraModel === sourceCameraModel) {
     return [u, v];
   }
-  const ray = unprojectEpisodeCameraPixel(displayCameraModel, u, v);
+  const ray = unprojectCameraPixel(displayCameraModel, u, v);
   if (!ray) {
     return null;
   }
-  const projected = projectEpisodeCameraPoint(sourceCameraModel, ray);
+  const projected = projectCameraPoint(sourceCameraModel, ray);
   return projected ? [projected.u, projected.v] : null;
 }

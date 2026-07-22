@@ -24,7 +24,7 @@ import {
   PLAYBACK_HOVER_INTENT_DELAY_MS,
 } from "./GridRenderer";
 import classes from "./GridRenderer.module.css";
-import { useEpisodeGridPreview } from "./use-episode-grid-preview";
+import { useGridPreview } from "./use-grid-preview";
 
 const previewHarness = vi.hoisted(() => ({
   preview: {
@@ -96,12 +96,12 @@ vi.mock("../../session/use-episode-preview-session", () => ({
   })),
 }));
 
-vi.mock("./use-episode-grid-preview", () => ({
-  useEpisodeGridPreview: vi.fn(() => previewHarness.preview),
+vi.mock("./use-grid-preview", () => ({
+  useGridPreview: vi.fn(() => previewHarness.preview),
 }));
 
-vi.mock("./episode-grid-camera-state", () => ({
-  useEpisodeGridCameraPose: vi.fn(() => [
+vi.mock("./grid-camera-state", () => ({
+  useGridCameraPose: vi.fn(() => [
     cameraPoseHarness.pose,
     cameraPoseHarness.setPose,
   ]),
@@ -116,13 +116,13 @@ vi.mock("../../../visualization/scene-3d/gpu/webgpu-snapshot-renderer", () => ({
   ),
 }));
 
-vi.mock("./episode-grid-stream-state", () => ({
-  EPISODE_GRID_STREAM_AUTO: "__auto__",
-  useEpisodeGridSelectedStream: vi.fn(() => ["__auto__", vi.fn()]),
-  useRegisterEpisodeGridStreams: vi.fn(() => vi.fn()),
+vi.mock("./grid-stream-state", () => ({
+  GRID_STREAM_AUTO: "__auto__",
+  useGridSelectedStream: vi.fn(() => ["__auto__", vi.fn()]),
+  useRegisterGridStreams: vi.fn(() => vi.fn()),
 }));
 
-vi.mock("../../../visualization/media-2d/bitmap-image-view", async () => {
+vi.mock("../../../visualization/media-2d/BitmapImageView", async () => {
   const { useEffect } = await import("react");
   return {
     BitmapCanvasHost: ({ bitmap }: { readonly bitmap: ImageBitmap | null }) => {
@@ -336,7 +336,7 @@ describe("GridRenderer", () => {
     }
 
     fireEvent.pointerOver(root);
-    expect(vi.mocked(useEpisodeGridPreview)).toHaveBeenLastCalledWith(
+    expect(vi.mocked(useGridPreview)).toHaveBeenLastCalledWith(
       expect.objectContaining({ hovered: true }),
     );
     act(() => {
@@ -345,7 +345,7 @@ describe("GridRenderer", () => {
     expect(previewHarness.preview.play).not.toHaveBeenCalled();
 
     fireEvent.pointerOut(root);
-    expect(vi.mocked(useEpisodeGridPreview)).toHaveBeenLastCalledWith(
+    expect(vi.mocked(useGridPreview)).toHaveBeenLastCalledWith(
       expect.objectContaining({ hovered: false }),
     );
     act(() => {

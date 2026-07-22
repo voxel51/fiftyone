@@ -23,8 +23,8 @@ import type {
   SceneEntityVisualization,
   SceneLinePrimitive,
   SceneModelPrimitive,
-  ScenePoint3D,
-  ScenePose3D,
+  ScenePoint3d,
+  ScenePose3d,
   SceneSpherePrimitive,
   SceneTextPrimitive,
   SceneTrianglePrimitive,
@@ -205,10 +205,10 @@ function lerpTriangle(
 }
 
 function lerpPoints(
-  prev: readonly ScenePoint3D[],
-  next: readonly ScenePoint3D[],
+  prev: readonly ScenePoint3d[],
+  next: readonly ScenePoint3d[],
   f: number,
-): readonly ScenePoint3D[] {
+): readonly ScenePoint3d[] {
   // A vertex-count change is a topology change; hold the previous shape.
   if (prev.length !== next.length) {
     return prev;
@@ -216,7 +216,7 @@ function lerpPoints(
   return prev.map((p, i) => lerpPoint(p, next[i], f));
 }
 
-function lerpPose(a: ScenePose3D, b: ScenePose3D, f: number): ScenePose3D {
+function lerpPose(a: ScenePose3d, b: ScenePose3d, f: number): ScenePose3d {
   const rotation = new Quaternion(...a.quaternion)
     .slerp(new Quaternion(...b.quaternion), f)
     .normalize();

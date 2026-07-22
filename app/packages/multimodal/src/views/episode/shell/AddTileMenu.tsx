@@ -1,11 +1,8 @@
 import { useTiling } from "@fiftyone/tiling";
 import { MenuIconTextItem } from "@voxel51/voodo";
 import React from "react";
-import {
-  EPISODE_TILE_TYPE,
-  type EpisodeTileType,
-} from "../tiles/episode-tile-types";
-import { getEpisodeTileDefinition } from "./tile-catalog";
+import { TILE_TYPE, type TileType } from "../tiles/tile-types";
+import { getTileDefinition } from "./tile-catalog";
 
 /**
  * Archetype-first add-tile menu for the episode modal. Stream/source binding
@@ -13,20 +10,20 @@ import { getEpisodeTileDefinition } from "./tile-catalog";
  * viewer the user wants to create.
  */
 const AddTileMenu: React.FC<{
-  readonly tileTypes: readonly EpisodeTileType[];
+  readonly tileTypes: readonly TileType[];
 }> = ({ tileTypes }) => {
   const { addTile } = useTiling();
 
   return (
     <>
       {tileTypes.map((type) => {
-        const definition = getEpisodeTileDefinition(type);
+        const definition = getTileDefinition(type);
         if (!definition) return null;
         const Tile = definition.Tile;
         return (
           <MenuIconTextItem
             key={type}
-            data-testid={`episode-add-tile-${type === EPISODE_TILE_TYPE.RAW ? "message" : type}`}
+            data-testid={`episode-add-tile-${type === TILE_TYPE.RAW ? "message" : type}`}
             icon={definition.icon}
             text={definition.typeLabel}
             onClick={() => {

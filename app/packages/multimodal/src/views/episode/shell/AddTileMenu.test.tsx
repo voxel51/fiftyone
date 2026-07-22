@@ -8,20 +8,17 @@ import {
   resetEpisodeTileExtensionsForTests,
 } from "../../../extensions/tiles/registry";
 import AddTileMenu from "./AddTileMenu";
-import {
-  EPISODE_TILE_TYPE,
-  type EpisodeTileType,
-} from "../tiles/episode-tile-types";
-import { episodeTileTypesFor } from "./tile-catalog";
+import { TILE_TYPE, type TileType } from "../tiles/tile-types";
+import { tileTypesFor } from "./tile-catalog";
 
 // The menu only stores render closures; tests never mount the heavy tile
 // bodies.
-vi.mock("../image/EpisodeImageTile", () => ({ default: () => null }));
+vi.mock("../image/ImageTile", () => ({ default: () => null }));
 vi.mock("../scene/tile/Scene3dTile", () => ({ default: () => null }));
-vi.mock("../logs/EpisodeLogConsoleTile", () => ({ default: () => null }));
+vi.mock("../logs/LogConsoleTile", () => ({ default: () => null }));
 vi.mock("../map/tile/MapTile", () => ({ default: () => null }));
-vi.mock("../plots/EpisodePlotTile", () => ({ default: () => null }));
-vi.mock("../raw/EpisodeRawMessageTile", () => ({ default: () => null }));
+vi.mock("../plots/PlotTile", () => ({ default: () => null }));
+vi.mock("../raw/RawMessageTile", () => ({ default: () => null }));
 
 const TilingProbe: React.FC = () => {
   const { focusedTileId, tiles } = useTiling();
@@ -49,9 +46,7 @@ function probeState() {
   };
 }
 
-function renderMenu(
-  tileTypes: readonly EpisodeTileType[] = Object.values(EPISODE_TILE_TYPE),
-) {
+function renderMenu(tileTypes: readonly TileType[] = Object.values(TILE_TYPE)) {
   return render(
     <TilingProvider>
       <Dropdown
@@ -90,7 +85,7 @@ describe("AddTileMenu", () => {
   });
 
   it("lists only tile kinds available for the current episode", () => {
-    renderMenu([EPISODE_TILE_TYPE.IMAGE, EPISODE_TILE_TYPE.RAW]);
+    renderMenu([TILE_TYPE.IMAGE, TILE_TYPE.RAW]);
     openMenu();
 
     expect(screen.getByText("Image")).toBeTruthy();
@@ -142,29 +137,25 @@ describe("AddTileMenu", () => {
   });
 });
 
-describe("episodeTileTypesFor", () => {
+describe("tileTypesFor", () => {
   afterEach(resetEpisodeTileExtensionsForTests);
 
   it("uses semantic capabilities for plot and structured messages", () => {
     expect(
-      episodeTileTypesFor({
+      tileTypesFor({
         hasNumericSeries: true,
         hasRawRecords: false,
         sourceTypes: ["image", "location"],
       }),
-    ).toEqual([
-      EPISODE_TILE_TYPE.IMAGE,
-      EPISODE_TILE_TYPE.MAP,
-      EPISODE_TILE_TYPE.PLOT,
-    ]);
+    ).toEqual([TILE_TYPE.IMAGE, TILE_TYPE.MAP, TILE_TYPE.PLOT]);
 
     expect(
-      episodeTileTypesFor({
+      tileTypesFor({
         hasNumericSeries: false,
         hasRawRecords: true,
         sourceTypes: [],
       }),
-    ).toEqual([EPISODE_TILE_TYPE.RAW]);
+    ).toEqual([TILE_TYPE.RAW]);
   });
 
   it("orders and filters build-time tile contributions with the built-ins", () => {
@@ -178,11 +169,11 @@ describe("episodeTileTypesFor", () => {
     });
 
     expect(
-      episodeTileTypesFor({
+      tileTypesFor({
         hasNumericSeries: true,
         hasRawRecords: false,
         sourceTypes: ["event"],
       }),
-    ).toEqual(["test:events", EPISODE_TILE_TYPE.PLOT]);
+    ).toEqual(["test:events", TILE_TYPE.PLOT]);
   });
 });

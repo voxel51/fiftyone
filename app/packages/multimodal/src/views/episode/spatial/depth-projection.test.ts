@@ -2,17 +2,17 @@ import { describe, expect, it, vi } from "vitest";
 import { Quaternion, Vector3 } from "three";
 
 import type { CameraFrustumPanelLayer } from "../../../visualization/scene-3d";
-import type { EpisodeFrameTransformResolver } from "./frame-transforms/use-episode-frame-transforms";
-import type { EpisodeDepthHover } from "./depth-sampling";
-import { resolveEpisodeDepthRay } from "./depth-projection";
+import type { FrameTransformResolver } from "./frame-transforms/use-frame-transforms";
+import type { DepthHover } from "./depth-sampling";
+import { resolveDepthRay } from "./depth-projection";
 
 describe("mcap depth ray", () => {
   it("uses the matching displayed frustum pose", () => {
     const frameTransform = transform("camera", "map");
-    const resolveFrameTransform = vi.fn<EpisodeFrameTransformResolver>();
+    const resolveFrameTransform = vi.fn<FrameTransformResolver>();
 
     expect(
-      resolveEpisodeDepthRay({
+      resolveDepthRay({
         frustumLayers: [frustum(frameTransform)],
         hover: depthHover(),
         resolveFrameTransform,
@@ -32,10 +32,10 @@ describe("mcap depth ray", () => {
   });
 
   it("renders directly when the camera already is the world frame", () => {
-    const resolveFrameTransform = vi.fn<EpisodeFrameTransformResolver>();
+    const resolveFrameTransform = vi.fn<FrameTransformResolver>();
 
     expect(
-      resolveEpisodeDepthRay({
+      resolveDepthRay({
         frustumLayers: [],
         hover: depthHover({ cameraFrameId: "map" }),
         resolveFrameTransform,
@@ -53,10 +53,10 @@ describe("mcap depth ray", () => {
   });
 
   it("withholds the ray when the 3D pane has no world frame", () => {
-    const resolveFrameTransform = vi.fn<EpisodeFrameTransformResolver>();
+    const resolveFrameTransform = vi.fn<FrameTransformResolver>();
 
     expect(
-      resolveEpisodeDepthRay({
+      resolveDepthRay({
         frustumLayers: [],
         hover: depthHover(),
         resolveFrameTransform,
@@ -70,13 +70,13 @@ describe("mcap depth ray", () => {
   it.each(["pending", "missing"] as const)(
     "withholds the ray when fallback placement is %s",
     (status) => {
-      const resolveFrameTransform: EpisodeFrameTransformResolver = (
+      const resolveFrameTransform: FrameTransformResolver = (
         sourceFrameId,
         targetFrameId,
       ) => ({ sourceFrameId, status, targetFrameId });
 
       expect(
-        resolveEpisodeDepthRay({
+        resolveDepthRay({
           frustumLayers: [],
           hover: depthHover(),
           resolveFrameTransform,
@@ -89,7 +89,7 @@ describe("mcap depth ray", () => {
 
   it("uses a resolved fallback transform at the current playhead", () => {
     const frameTransform = transform("camera", "map");
-    const resolveFrameTransform = vi.fn<EpisodeFrameTransformResolver>(
+    const resolveFrameTransform = vi.fn<FrameTransformResolver>(
       (sourceFrameId, targetFrameId) => ({
         resolutionKind: "exact",
         sourceFrameId,
@@ -99,7 +99,7 @@ describe("mcap depth ray", () => {
       }),
     );
 
-    const resolution = resolveEpisodeDepthRay({
+    const resolution = resolveDepthRay({
       frustumLayers: [],
       hover: depthHover(),
       resolveFrameTransform,
@@ -115,9 +115,7 @@ describe("mcap depth ray", () => {
   });
 });
 
-function depthHover(
-  overrides: Partial<EpisodeDepthHover> = {},
-): EpisodeDepthHover {
+function depthHover(overrides: Partial<DepthHover> = {}): DepthHover {
   return {
     cameraFrameId: "camera",
     contentTimeNs: 25n,

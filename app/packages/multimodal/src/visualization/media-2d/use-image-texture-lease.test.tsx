@@ -4,7 +4,7 @@ import * as THREE from "three";
 
 import type { RawImageVisualization } from "../../ir";
 import { VISUALIZATION_KIND } from "../visualization-registry";
-import type { ImageTextureHandle } from "./base-2d-scene";
+import type { ImageTextureHandle } from "./Base2dScene";
 import { useImageTextureLease } from "./use-image-texture-lease";
 import { VideoTextureWaitError } from "./video-texture";
 

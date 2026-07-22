@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
-import type { AnyEpisodeDataStream, EpisodeDataStream } from "../data-stream";
+import type { AnyEpisodeDataStream, DataStream } from "../data-stream";
 
 interface DataStreamContextValue {
   readonly dataStream: AnyEpisodeDataStream | null;
@@ -14,7 +14,7 @@ const DataStreamContext = createContext<DataStreamContextValue>({
 });
 
 /** Publishes one source-scoped stream handle to the shared episode shell. */
-export const EpisodeDataStreamProvider: React.FC<{
+export const DataStreamProvider: React.FC<{
   readonly children: React.ReactNode;
   readonly expectedSourceKey?: string | null;
 }> = ({ children, expectedSourceKey }) => {
@@ -38,19 +38,19 @@ export const EpisodeDataStreamProvider: React.FC<{
 };
 
 /** Reads the format-neutral episode stream handle, if one is published. */
-export function useEpisodeDataStream<
-  TFrame = unknown,
-  TCache = unknown,
->(): EpisodeDataStream<TFrame, TCache> | null {
-  return useContext(DataStreamContext).dataStream as EpisodeDataStream<
+export function useDataStream<TFrame = unknown, TCache = unknown>(): DataStream<
+  TFrame,
+  TCache
+> | null {
+  return useContext(DataStreamContext).dataStream as DataStream<
     TFrame,
     TCache
   > | null;
 }
 
 /** Returns the setter used by runtime setup to publish a stream handle. */
-export function useSetEpisodeDataStream<TFrame = unknown, TCache = unknown>(): (
-  next: EpisodeDataStream<TFrame, TCache> | null,
+export function useSetDataStream<TFrame = unknown, TCache = unknown>(): (
+  next: DataStream<TFrame, TCache> | null,
 ) => void {
   return useContext(DataStreamContext).setDataStream;
 }

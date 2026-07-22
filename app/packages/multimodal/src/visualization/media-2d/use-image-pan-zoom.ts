@@ -8,7 +8,7 @@ import {
   imageViewTransformEquals,
   type ImageDisplaySize,
   type ImageViewTransform,
-} from "./base-2d-scene";
+} from "./Base2dScene";
 
 const MAX_IMAGE_VIEW_SCALE = 16;
 const MIN_IMAGE_VIEW_SCALE = 0.1;

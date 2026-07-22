@@ -1,14 +1,14 @@
 import type { PointCloudVisualization } from "../../../../ir";
-import type { Episode3dHoveredPoint } from "./use-hover-tooltip";
+import type { Scene3dHoveredPoint } from "./use-hover-tooltip";
 
 const POINT_COMPONENT_COUNT = 3;
 
 /** Builds the hovered-point payload for a picked decoded index. */
-export function episodeHoveredPointForFrame(
+export function hoveredPointForFrame(
   stream: string,
   frame: PointCloudVisualization,
   pointIndex: number,
-): Episode3dHoveredPoint | null {
+): Scene3dHoveredPoint | null {
   const position = pointPositionAt(frame, pointIndex);
   if (!position) {
     return null;

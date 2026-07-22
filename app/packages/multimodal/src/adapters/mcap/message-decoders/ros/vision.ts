@@ -8,7 +8,7 @@ import type {
   SceneCubePrimitive,
   SceneEntityDeletionVisualization,
   SceneEntityVisualization,
-  ScenePose3D,
+  ScenePose3d,
   SceneTextPrimitive,
 } from "../../../../ir/index";
 import { VISUALIZATION_KIND } from "../../../../ir/index";
@@ -239,7 +239,7 @@ function detection3DEntity({
 }
 
 function detection3DText(
-  pose: ScenePose3D,
+  pose: ScenePose3d,
   size: readonly [number, number, number],
   text: string,
 ): SceneTextPrimitive {

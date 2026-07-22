@@ -1,24 +1,21 @@
 import { useTileId } from "@fiftyone/tiling";
 import { atom, useAtomValue, useStore } from "jotai";
 import { useCallback, useMemo } from "react";
-import {
-  EPISODE_MAP_BASE_LAYER,
-  type EpisodeMapBaseLayer,
-} from "../rendering/types";
+import { MAP_BASE_LAYER, type MapBaseLayer } from "../rendering/types";
 
 export {
-  EPISODE_MAP_BASE_LAYER,
+  MAP_BASE_LAYER,
   OPENFREEMAP_LIBERTY_STYLE_URL,
   OPENFREEMAP_PROVIDER_NAME,
-  type EpisodeMapBaseLayer,
+  type MapBaseLayer,
 } from "../rendering/types";
 
-export interface EpisodeMapTileSettings {
+export interface MapTileSettings {
   /**
    * Basemap selection for the geographic view. The default is an OSS
    * OpenFreeMap style; `none` is the explicit offline/no-tile mode.
    */
-  readonly baseLayer: EpisodeMapBaseLayer;
+  readonly baseLayer: MapBaseLayer;
   /**
    * `undefined` means "all location streams currently present". Once the
    * user edits stream visibility, this becomes the explicit visible list.
@@ -28,42 +25,38 @@ export interface EpisodeMapTileSettings {
   readonly followEgo: boolean;
 }
 
-export type EpisodeMapTileSettingsByTile = Readonly<
-  Record<string, EpisodeMapTileSettings>
->;
+export type MapTileSettingsByTile = Readonly<Record<string, MapTileSettings>>;
 
-export const DEFAULT_EPISODE_MAP_TILE_SETTINGS: EpisodeMapTileSettings = {
-  baseLayer: EPISODE_MAP_BASE_LAYER.DEFAULT,
+export const DEFAULT_MAP_TILE_SETTINGS: MapTileSettings = {
+  baseLayer: MAP_BASE_LAYER.DEFAULT,
   followEgo: true,
 };
 
-export const episodeMapTileSettingsAtom = atom<EpisodeMapTileSettingsByTile>(
-  {},
-);
+export const mapTileSettingsAtom = atom<MapTileSettingsByTile>({});
 
-export function useEpisodeMapTileSettings(): EpisodeMapTileSettings {
+export function useMapTileSettings(): MapTileSettings {
   const tileId = useTileId();
-  const byTile = useAtomValue(episodeMapTileSettingsAtom);
+  const byTile = useAtomValue(mapTileSettingsAtom);
   return useMemo(
     () =>
       tileId
-        ? { ...DEFAULT_EPISODE_MAP_TILE_SETTINGS, ...byTile[tileId] }
-        : DEFAULT_EPISODE_MAP_TILE_SETTINGS,
+        ? { ...DEFAULT_MAP_TILE_SETTINGS, ...byTile[tileId] }
+        : DEFAULT_MAP_TILE_SETTINGS,
     [byTile, tileId],
   );
 }
 
-export function useSetEpisodeMapTileSettings(): (
-  patch: Partial<EpisodeMapTileSettings>,
+export function useSetMapTileSettings(): (
+  patch: Partial<MapTileSettings>,
 ) => void {
   const tileId = useTileId();
   const store = useStore();
   return useCallback(
     (patch) => {
       if (!tileId) return;
-      store.set(episodeMapTileSettingsAtom, (previous) => {
+      store.set(mapTileSettingsAtom, (previous) => {
         const current = {
-          ...DEFAULT_EPISODE_MAP_TILE_SETTINGS,
+          ...DEFAULT_MAP_TILE_SETTINGS,
           ...previous[tileId],
         };
         const next = { ...current, ...patch };
@@ -81,7 +74,7 @@ export function useSetEpisodeMapTileSettings(): (
   );
 }
 
-export function useToggleEpisodeMapTileStream(): (
+export function useToggleMapTileStream(): (
   stream: string,
   enabled: boolean,
   allStreams: readonly string[],
@@ -91,9 +84,9 @@ export function useToggleEpisodeMapTileStream(): (
   return useCallback(
     (stream, enabled, allStreams) => {
       if (!tileId) return;
-      store.set(episodeMapTileSettingsAtom, (previous) => {
+      store.set(mapTileSettingsAtom, (previous) => {
         const current = {
-          ...DEFAULT_EPISODE_MAP_TILE_SETTINGS,
+          ...DEFAULT_MAP_TILE_SETTINGS,
           ...previous[tileId],
         };
         const enabledStreams = new Set(current.enabledStreams ?? allStreams);
@@ -105,7 +98,7 @@ export function useToggleEpisodeMapTileStream(): (
         const nextStreams = allStreams.filter((candidate) =>
           enabledStreams.has(candidate),
         );
-        const next: EpisodeMapTileSettings = {
+        const next: MapTileSettings = {
           ...current,
           enabledStreams: nextStreams,
         };
@@ -116,11 +109,8 @@ export function useToggleEpisodeMapTileStream(): (
   );
 }
 
-export function normalizeEpisodeMapBaseLayer(
-  raw: unknown,
-): EpisodeMapBaseLayer | undefined {
-  return raw === EPISODE_MAP_BASE_LAYER.DEFAULT ||
-    raw === EPISODE_MAP_BASE_LAYER.NONE
+export function normalizeMapBaseLayer(raw: unknown): MapBaseLayer | undefined {
+  return raw === MAP_BASE_LAYER.DEFAULT || raw === MAP_BASE_LAYER.NONE
     ? raw
     : undefined;
 }

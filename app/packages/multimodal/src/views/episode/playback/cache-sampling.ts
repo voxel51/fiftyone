@@ -2,7 +2,7 @@ import { useCallback, useSyncExternalStore } from "react";
 
 import type { DecodedFrame } from "../../../ir";
 import type { EpisodeStreamCache, TimelineIndex } from "../../../runtime";
-import type { EpisodeDataStream } from "./episode-data-stream-context";
+import type { DataStream } from "./data-stream-context";
 
 // Forward-scan budget for locating the next distinct cached message. At the
 // timeline's ~30 Hz tick rate, 120 ticks spans about four seconds.
@@ -39,7 +39,7 @@ export function interpolationFraction({
 
 /** Cache-revision digest that updates when any watched stream cache changes. */
 export function useStreamCacheSnapshot(
-  dataStream: EpisodeDataStream | null,
+  dataStream: DataStream | null,
   streams: readonly string[],
 ): string {
   const subscribe = useCallback(
@@ -68,7 +68,7 @@ export function useStreamCacheSnapshot(
 }
 
 function streamCacheSnapshot(
-  dataStream: EpisodeDataStream | null,
+  dataStream: DataStream | null,
   streams: readonly string[],
 ): string {
   if (!dataStream || streams.length === 0) return "";

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import type { ScenePose3D } from "../../ir";
+import type { ScenePose3d } from "../../ir";
 import type {
   PointCloudFrameTransform,
   PointCloudObjectTransform,
@@ -38,7 +38,7 @@ export function pointCloudObjectTransform(
 }
 
 export function scenePoseObjectTransform(
-  pose: ScenePose3D,
+  pose: ScenePose3d,
 ): PointCloudObjectTransform {
   const [x, y, z, w] = pose.quaternion;
   const length = Math.hypot(w, x, y, z);

@@ -8,20 +8,20 @@ import { useCallback } from "react";
  * modal and vanishes with it; layout persistence snapshots it per
  * dataset.
  */
-export type EpisodeRawTileStreams = Readonly<Record<string, string>>;
+export type RawTileStreams = Readonly<Record<string, string>>;
 
 /** Modal-local stream binding for each raw-message tile. */
-export const episodeRawTileStreamAtom = atom<EpisodeRawTileStreams>({});
+export const rawTileStreamAtom = atom<RawTileStreams>({});
 
 /** Subscribe to the surrounding raw-message tile's inspected stream. */
-export function useEpisodeRawTileStream(): string | null {
+export function useRawTileStream(): string | null {
   const tileId = useTileId();
-  const byTile = useAtomValue(episodeRawTileStreamAtom);
+  const byTile = useAtomValue(rawTileStreamAtom);
   return tileId ? (byTile[tileId] ?? null) : null;
 }
 
 /** Set (or clear, with null) the surrounding raw tile's stream. */
-export function useSetEpisodeRawTileStream(): (stream: string | null) => void {
+export function useSetRawTileStream(): (stream: string | null) => void {
   const tileId = useTileId();
   const store = useStore();
   return useCallback(
@@ -29,7 +29,7 @@ export function useSetEpisodeRawTileStream(): (stream: string | null) => void {
       if (!tileId) {
         return;
       }
-      store.set(episodeRawTileStreamAtom, (previous) => {
+      store.set(rawTileStreamAtom, (previous) => {
         if ((previous[tileId] ?? null) === stream) {
           return previous;
         }

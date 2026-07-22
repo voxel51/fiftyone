@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  EpisodeMapPlaybackController,
-  type EpisodeMapPlaybackScheduler,
+  MapPlaybackController,
+  type MapPlaybackScheduler,
 } from "./playback-controller";
 
-class ManualScheduler implements EpisodeMapPlaybackScheduler {
+class ManualScheduler implements MapPlaybackScheduler {
   private frameId = 0;
   private readonly frames = new Map<number, (now: number) => void>();
   private timeMs = 0;
@@ -69,7 +69,7 @@ class ManualScheduler implements EpisodeMapPlaybackScheduler {
   }
 }
 
-describe("EpisodeMapPlaybackController", () => {
+describe("MapPlaybackController", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
@@ -77,7 +77,7 @@ describe("EpisodeMapPlaybackController", () => {
     (maxUpdatesPerSecond) => {
       expect(
         () =>
-          new EpisodeMapPlaybackController({
+          new MapPlaybackController({
             maxUpdatesPerSecond,
             onPaint: () => undefined,
             scheduler: new ManualScheduler(),
@@ -89,7 +89,7 @@ describe("EpisodeMapPlaybackController", () => {
   it("coalesces notifications and caps paints", () => {
     const scheduler = new ManualScheduler();
     const paints: Array<{ nowMs: number; playheadNs: bigint | null }> = [];
-    const controller = new EpisodeMapPlaybackController({
+    const controller = new MapPlaybackController({
       maxUpdatesPerSecond: 30,
       onPaint: (playheadNs, nowMs) => paints.push({ nowMs, playheadNs }),
       scheduler,
@@ -112,7 +112,7 @@ describe("EpisodeMapPlaybackController", () => {
   it("retains only the latest hidden playhead and flushes once on resume", () => {
     const scheduler = new ManualScheduler();
     const paints: Array<bigint | null> = [];
-    const controller = new EpisodeMapPlaybackController({
+    const controller = new MapPlaybackController({
       onPaint: (playheadNs) => paints.push(playheadNs),
       scheduler,
     });
@@ -129,7 +129,7 @@ describe("EpisodeMapPlaybackController", () => {
   it("does not paint when visibility toggles without pending work", () => {
     const scheduler = new ManualScheduler();
     const paints: Array<bigint | null> = [];
-    const controller = new EpisodeMapPlaybackController({
+    const controller = new MapPlaybackController({
       onPaint: (playheadNs) => paints.push(playheadNs),
       scheduler,
     });
@@ -143,7 +143,7 @@ describe("EpisodeMapPlaybackController", () => {
   it("does not flush an already-painted value", () => {
     const scheduler = new ManualScheduler();
     const paints: Array<bigint | null> = [];
-    const controller = new EpisodeMapPlaybackController({
+    const controller = new MapPlaybackController({
       onPaint: (playheadNs) => paints.push(playheadNs),
       scheduler,
     });
@@ -157,7 +157,7 @@ describe("EpisodeMapPlaybackController", () => {
   it("repaints invalidated static data once after a hidden interval", () => {
     const scheduler = new ManualScheduler();
     const paints: Array<bigint | null> = [];
-    const controller = new EpisodeMapPlaybackController({
+    const controller = new MapPlaybackController({
       onPaint: (playheadNs) => paints.push(playheadNs),
       scheduler,
     });
@@ -173,7 +173,7 @@ describe("EpisodeMapPlaybackController", () => {
   it("repaints an active invalidation immediately", () => {
     const scheduler = new ManualScheduler();
     const paints: Array<{ nowMs: number; playheadNs: bigint | null }> = [];
-    const controller = new EpisodeMapPlaybackController({
+    const controller = new MapPlaybackController({
       onPaint: (playheadNs, nowMs) => paints.push({ nowMs, playheadNs }),
       scheduler,
     });
@@ -191,7 +191,7 @@ describe("EpisodeMapPlaybackController", () => {
   it("lets paused seeks bypass the ordinary cadence", () => {
     const scheduler = new ManualScheduler();
     const paints: Array<{ nowMs: number; playheadNs: bigint | null }> = [];
-    const controller = new EpisodeMapPlaybackController({
+    const controller = new MapPlaybackController({
       onPaint: (playheadNs, nowMs) => paints.push({ nowMs, playheadNs }),
       scheduler,
     });
@@ -213,7 +213,7 @@ describe("EpisodeMapPlaybackController", () => {
   it("cancels pending work and ignores updates after disposal", () => {
     const scheduler = new ManualScheduler();
     const paints: Array<bigint | null> = [];
-    const controller = new EpisodeMapPlaybackController({
+    const controller = new MapPlaybackController({
       onPaint: (playheadNs) => paints.push(playheadNs),
       scheduler,
     });
@@ -237,7 +237,7 @@ describe("EpisodeMapPlaybackController", () => {
     const consoleError = vi
       .spyOn(console, "error")
       .mockImplementation(() => undefined);
-    const controller = new EpisodeMapPlaybackController({
+    const controller = new MapPlaybackController({
       onPaint: (playheadNs) => {
         if (playheadNs === 1n) throw failure;
         paints.push(playheadNs);

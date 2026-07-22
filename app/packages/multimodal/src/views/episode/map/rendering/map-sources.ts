@@ -22,7 +22,7 @@ const MEASURE_COLOR = "#22d3ee";
 const MAX_STYLE_ZOOM = 22;
 
 /** Installs the stable GeoJSON sources and interaction layers for one map. */
-export function addEpisodeMapSourcesAndLayers(map: MapLibreMap): void {
+export function addMapSourcesAndLayers(map: MapLibreMap): void {
   addGeoJsonSource(map, HIT_SOURCE_ID);
   addGeoJsonSource(map, CURRENT_SOURCE_ID);
   addGeoJsonSource(map, HOVER_SOURCE_ID);

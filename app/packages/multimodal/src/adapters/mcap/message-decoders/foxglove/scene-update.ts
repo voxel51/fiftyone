@@ -16,7 +16,7 @@ import type {
   SceneLinePrimitive,
   SceneLinePrimitiveKind,
   SceneModelPrimitive,
-  ScenePoint3D,
+  ScenePoint3d,
   SceneSpherePrimitive,
   SceneTextPrimitive,
   SceneTrianglePrimitive,
@@ -294,7 +294,7 @@ function decodeColor(
   ];
 }
 
-function decodePoint3(value: unknown): ScenePoint3D {
+function decodePoint3(value: unknown): ScenePoint3d {
   return decodeVector3(asRecord(value));
 }
 

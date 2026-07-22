@@ -5,38 +5,35 @@ const STABLE_REFERENCE_FRAME_IDS = ["map", "world", "odom"] as const;
 const EGO_FRAME_IDS = ["base_link", "ego_vehicle", "ego", "vehicle"] as const;
 
 /** Provenance of the current automatic or explicit reference-frame choice. */
-export type EpisodeReferenceSelectionSource =
-  | "auto-local"
-  | "auto-stable"
-  | "user";
+export type ReferenceSelectionSource = "auto-local" | "auto-stable" | "user";
 
 /** Coordinate frames observed for one selected source. */
-export interface EpisodeFrameObservation {
+export interface FrameObservation {
   readonly frameIds: readonly string[];
   readonly sourceId: string;
 }
 
 /** Normalized inputs that determine a reference-frame decision. */
-export interface EpisodeReferenceFacts {
+export interface ReferenceFacts {
   readonly graphSummary: EpisodeFrameGraphSummary;
-  readonly observations: readonly EpisodeFrameObservation[];
+  readonly observations: readonly FrameObservation[];
   readonly primarySourceId: string | null;
   readonly revisionKey: string;
 }
 
 /** Deterministic active-component and reference-frame selection. */
-export interface EpisodeReferenceDecision {
+export interface ReferenceDecision {
   readonly activeComponentFrameIds: readonly string[];
   readonly activeComponentId: string;
   readonly omittedFrameIds: readonly string[];
   readonly omittedSourceIds: readonly string[];
   readonly primaryAnchorFrameId: string;
   readonly referenceFrameId: string;
-  readonly source: EpisodeReferenceSelectionSource;
+  readonly source: ReferenceSelectionSource;
 }
 
 /** A topology-backed local-to-stable transition awaiting placement readiness. */
-export interface EpisodeReferencePromotion {
+export interface ReferencePromotion {
   readonly candidateFrameId: string;
   readonly componentId: string;
   readonly frameIds: readonly string[];
@@ -47,7 +44,7 @@ export interface EpisodeReferencePromotion {
 }
 
 /** Exact transform committed by a guarded automatic reference promotion. */
-export interface EpisodeReferenceTransition {
+export interface ReferenceTransition {
   readonly key: string;
   readonly sourceFrameId: string;
   readonly targetFrameId: string;
@@ -55,20 +52,20 @@ export interface EpisodeReferenceTransition {
 }
 
 /** Durable state for automatic selection, explicit intent, and promotion gating. */
-export interface EpisodeReferenceSelectionState {
+export interface ReferenceSelectionState {
   readonly blockedPromotionKey: string | null;
-  readonly committedTransition: EpisodeReferenceTransition | null;
-  readonly decision: EpisodeReferenceDecision;
-  readonly facts: EpisodeReferenceFacts;
-  readonly pendingPromotion: EpisodeReferencePromotion | null;
+  readonly committedTransition: ReferenceTransition | null;
+  readonly decision: ReferenceDecision;
+  readonly facts: ReferenceFacts;
+  readonly pendingPromotion: ReferencePromotion | null;
   /** Sticky explicit intent; the rendered decision may temporarily fall back. */
   readonly userReferenceFrameId: string | null;
 }
 
 /** Events accepted by the pure reference-frame selection reducer. */
-export type EpisodeReferenceSelectionAction =
+export type ReferenceSelectionAction =
   | {
-      readonly facts: EpisodeReferenceFacts;
+      readonly facts: ReferenceFacts;
       readonly timeNs?: bigint;
       readonly type: "factsChanged";
     }
@@ -84,7 +81,7 @@ export type EpisodeReferenceSelectionAction =
     }
   | { readonly type: "useRecommendedReference" };
 
-const EMPTY_DECISION: EpisodeReferenceDecision = {
+const EMPTY_DECISION: ReferenceDecision = {
   activeComponentFrameIds: [],
   activeComponentId: "",
   omittedFrameIds: [],
@@ -95,13 +92,13 @@ const EMPTY_DECISION: EpisodeReferenceDecision = {
 };
 
 /** Creates reference selection state from the first available facts. */
-export function createEpisodeReferenceSelectionState(
-  facts: EpisodeReferenceFacts,
-): EpisodeReferenceSelectionState {
+export function createReferenceSelectionState(
+  facts: ReferenceFacts,
+): ReferenceSelectionState {
   return {
     blockedPromotionKey: null,
     committedTransition: null,
-    decision: deriveEpisodeReferenceDecision(facts),
+    decision: deriveReferenceDecision(facts),
     facts,
     pendingPromotion: null,
     userReferenceFrameId: null,
@@ -109,16 +106,13 @@ export function createEpisodeReferenceSelectionState(
 }
 
 /** Pure state machine for reference selection and guarded local→stable promotion. */
-export function episodeReferenceSelectionReducer(
-  state: EpisodeReferenceSelectionState,
-  action: EpisodeReferenceSelectionAction,
-): EpisodeReferenceSelectionState {
+export function referenceSelectionReducer(
+  state: ReferenceSelectionState,
+  action: ReferenceSelectionAction,
+): ReferenceSelectionState {
   switch (action.type) {
     case "userReferenceSelected": {
-      const decision = deriveEpisodeReferenceDecision(
-        state.facts,
-        action.frameId,
-      );
+      const decision = deriveReferenceDecision(state.facts, action.frameId);
       if (decision.source !== "user") return state;
       return {
         ...state,
@@ -134,7 +128,7 @@ export function episodeReferenceSelectionReducer(
         ...state,
         blockedPromotionKey: null,
         committedTransition: null,
-        decision: deriveEpisodeReferenceDecision(state.facts),
+        decision: deriveReferenceDecision(state.facts),
         pendingPromotion: null,
         userReferenceFrameId: null,
       };
@@ -150,7 +144,7 @@ export function episodeReferenceSelectionReducer(
       const pending = state.pendingPromotion;
       if (!pending || pending.key !== action.key) return state;
       if (state.decision.source === "user") return state;
-      const recommended = deriveEpisodeReferenceDecision(state.facts);
+      const recommended = deriveReferenceDecision(state.facts);
       if (
         recommended.referenceFrameId !== pending.candidateFrameId ||
         recommended.activeComponentId !== pending.componentId
@@ -189,7 +183,7 @@ export function episodeReferenceSelectionReducer(
           pendingPromotion: null,
         };
       }
-      const recommended = deriveEpisodeReferenceDecision(
+      const recommended = deriveReferenceDecision(
         action.facts,
         state.userReferenceFrameId ?? undefined,
       );
@@ -237,10 +231,10 @@ export function episodeReferenceSelectionReducer(
 }
 
 /** Derives the active component and reference frame from normalized scene facts. */
-export function deriveEpisodeReferenceDecision(
-  facts: EpisodeReferenceFacts,
+export function deriveReferenceDecision(
+  facts: ReferenceFacts,
   userReferenceFrameId?: string,
-): EpisodeReferenceDecision {
+): ReferenceDecision {
   const observations = normalizeObservations(facts.observations);
   const observedFrameIds = uniqueSorted(
     observations.flatMap((observation) => observation.frameIds),
@@ -310,7 +304,7 @@ export function deriveEpisodeReferenceDecision(
 }
 
 /** Chooses an ego target inside the active component, or its reference frame. */
-export function chooseEpisodeCameraTarget(
+export function chooseCameraTarget(
   activeComponentFrameIds: readonly string[],
   referenceFrameId: string,
 ): string {
@@ -326,11 +320,11 @@ function pendingPromotionFor({
   recommended,
   timeNs,
 }: {
-  readonly current: EpisodeReferenceDecision;
-  readonly facts: EpisodeReferenceFacts;
-  readonly recommended: EpisodeReferenceDecision;
+  readonly current: ReferenceDecision;
+  readonly facts: ReferenceFacts;
+  readonly recommended: ReferenceDecision;
   readonly timeNs?: bigint;
-}): EpisodeReferencePromotion | null {
+}): ReferencePromotion | null {
   if (
     current.source !== "auto-local" ||
     !current.referenceFrameId ||
@@ -360,9 +354,9 @@ function pendingPromotionFor({
 }
 
 function keepLocalReference(
-  recommended: EpisodeReferenceDecision,
-  current: EpisodeReferenceDecision,
-): EpisodeReferenceDecision {
+  recommended: ReferenceDecision,
+  current: ReferenceDecision,
+): ReferenceDecision {
   return {
     ...recommended,
     referenceFrameId: current.referenceFrameId,
@@ -379,7 +373,7 @@ function chooseActiveComponent({
 }: {
   readonly components: readonly (readonly string[])[];
   readonly graphSummary: EpisodeFrameGraphSummary;
-  readonly observations: readonly EpisodeFrameObservation[];
+  readonly observations: readonly FrameObservation[];
   readonly primarySourceId: string | null;
   readonly userReferenceFrameId?: string;
 }): readonly string[] | null {
@@ -445,7 +439,7 @@ function choosePrimaryAnchor({
   primarySourceId,
 }: {
   readonly component: readonly string[];
-  readonly observations: readonly EpisodeFrameObservation[];
+  readonly observations: readonly FrameObservation[];
   readonly primarySourceId: string | null;
 }): string {
   const componentSet = new Set(component);
@@ -556,8 +550,8 @@ function componentsIncludingIsolatedData(
 }
 
 function normalizeObservations(
-  observations: readonly EpisodeFrameObservation[],
-): readonly EpisodeFrameObservation[] {
+  observations: readonly FrameObservation[],
+): readonly FrameObservation[] {
   const frameIdsBySourceId = new Map<string, string[]>();
   for (const observation of observations) {
     const sourceId = observation.sourceId.trim();
@@ -575,9 +569,7 @@ function normalizeObservations(
     .sort((left, right) => compareFrameIds(left.sourceId, right.sourceId));
 }
 
-function hasObservedFrames(
-  observations: readonly EpisodeFrameObservation[],
-): boolean {
+function hasObservedFrames(observations: readonly FrameObservation[]): boolean {
   return observations.some((observation) =>
     observation.frameIds.some((frameId) => frameId.trim().length > 0),
   );

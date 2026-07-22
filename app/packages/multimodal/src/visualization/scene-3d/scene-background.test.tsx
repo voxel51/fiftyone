@@ -2,7 +2,7 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 
-import { SceneBackground } from "./base-3d-scene";
+import { SceneBackground } from "./Base3dScene";
 
 const harness = vi.hoisted(() => ({
   invalidate: vi.fn(),

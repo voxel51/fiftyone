@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { PointCloudVisualization } from "../../../../ir";
 import { VISUALIZATION_KIND } from "../../../../visualization";
-import { episodeHoveredPointForFrame } from "./point-hover";
+import { hoveredPointForFrame } from "./point-hover";
 
 function pointCloudFrame(
   overrides: Partial<PointCloudVisualization> = {},
@@ -21,9 +21,9 @@ function pointCloudFrame(
   };
 }
 
-describe("episodeHoveredPointForFrame", () => {
+describe("hoveredPointForFrame", () => {
   it("snapshots position, frame, and every scalar channel at the index", () => {
-    const hovered = episodeHoveredPointForFrame("/lidar", pointCloudFrame(), 1);
+    const hovered = hoveredPointForFrame("/lidar", pointCloudFrame(), 1);
 
     expect(hovered).toEqual({
       fields: { intensity: 0.75, ring: 9 },
@@ -36,7 +36,7 @@ describe("episodeHoveredPointForFrame", () => {
   });
 
   it("omits the frame id when the message carries none", () => {
-    const hovered = episodeHoveredPointForFrame(
+    const hovered = hoveredPointForFrame(
       "/lidar",
       pointCloudFrame({ coordinateFrameId: undefined }),
       0,
@@ -46,14 +46,10 @@ describe("episodeHoveredPointForFrame", () => {
   });
 
   it("rejects out-of-range and non-finite picks", () => {
+    expect(hoveredPointForFrame("/lidar", pointCloudFrame(), 2)).toBeNull();
+    expect(hoveredPointForFrame("/lidar", pointCloudFrame(), -1)).toBeNull();
     expect(
-      episodeHoveredPointForFrame("/lidar", pointCloudFrame(), 2),
-    ).toBeNull();
-    expect(
-      episodeHoveredPointForFrame("/lidar", pointCloudFrame(), -1),
-    ).toBeNull();
-    expect(
-      episodeHoveredPointForFrame(
+      hoveredPointForFrame(
         "/lidar",
         pointCloudFrame({
           positions: Float32Array.from([Number.NaN, 2, 3]),

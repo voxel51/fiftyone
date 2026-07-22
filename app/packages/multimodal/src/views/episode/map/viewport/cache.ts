@@ -1,16 +1,16 @@
 const MAX_VIEWPORT_SCOPES = 16;
 
 /** Serializable map camera state retained between nearby modal samples. */
-export interface EpisodeMapViewport {
+export interface MapViewport {
   readonly latitude: number;
   readonly longitude: number;
   readonly zoom: number;
 }
 
-const viewportByScope = new Map<string, EpisodeMapViewport>();
+const viewportByScope = new Map<string, MapViewport>();
 
 /** Whether a live camera may stay visible while switching episode samples. */
-export function canPreserveEpisodeMapViewportBetweenSamples(
+export function canPreserveMapViewportBetweenSamples(
   previousScopeKey: string | null,
   nextScopeKey: string | null,
 ): boolean {
@@ -22,9 +22,7 @@ export function canPreserveEpisodeMapViewportBetweenSamples(
 }
 
 /** Reads and promotes the most recent viewport for a dataset scope. */
-export function readEpisodeMapViewport(
-  scopeKey: string | null,
-): EpisodeMapViewport | null {
+export function readMapViewport(scopeKey: string | null): MapViewport | null {
   if (!scopeKey) return null;
   const viewport = viewportByScope.get(scopeKey);
   if (!viewport) return null;
@@ -35,9 +33,9 @@ export function readEpisodeMapViewport(
 }
 
 /** Stores a valid viewport in the bounded, memory-only scope cache. */
-export function writeEpisodeMapViewport(
+export function writeMapViewport(
   scopeKey: string | null,
-  viewport: EpisodeMapViewport,
+  viewport: MapViewport,
 ): void {
   if (!scopeKey || !isValidViewport(viewport)) return;
 
@@ -51,11 +49,11 @@ export function writeEpisodeMapViewport(
 }
 
 /** Clears all cached viewports between tests. */
-export function resetEpisodeMapViewportCacheForTests(): void {
+export function resetMapViewportCacheForTests(): void {
   viewportByScope.clear();
 }
 
-function isValidViewport(viewport: EpisodeMapViewport): boolean {
+function isValidViewport(viewport: MapViewport): boolean {
   return (
     Number.isFinite(viewport.latitude) &&
     viewport.latitude >= -90 &&

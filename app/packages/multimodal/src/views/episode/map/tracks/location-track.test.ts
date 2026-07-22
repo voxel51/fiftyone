@@ -10,14 +10,14 @@ import {
   locationTrailCoordinates,
   resolveIndexedLocationAtTime,
   segmentLocationTrack,
-  type EpisodeLocationTrackPoint,
+  type LocationTrackPoint,
 } from "./location-track";
 import { bearingDegrees } from "../wgs84";
 
 function point(
   index: number,
-  overrides: Partial<EpisodeLocationTrackPoint> = {},
-): EpisodeLocationTrackPoint {
+  overrides: Partial<LocationTrackPoint> = {},
+): LocationTrackPoint {
   return {
     latitude: 37 + index * 0.001,
     longitude: -122 - index * 0.001,

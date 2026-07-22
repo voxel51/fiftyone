@@ -1,5 +1,5 @@
 /** Aggregate counters exposed by the episode performance-stats panel. */
-export interface EpisodeMapPerformanceStats {
+export interface MapPerformanceStats {
   readonly followCommands: number;
   readonly playbackPaints: number;
   readonly reactCommits: {
@@ -19,23 +19,23 @@ let tileReactCommits = 0;
 let totalSourceUpdates = 0;
 
 /** Records a continuous follow-camera command. */
-export function noteEpisodeMapFollowCommand(): void {
+export function noteMapFollowCommand(): void {
   followCommands += 1;
 }
 
 /** Records one imperative playback frame painted into MapLibre. */
-export function noteEpisodeMapPlaybackPaint(): void {
+export function noteMapPlaybackPaint(): void {
   playbackPaints += 1;
 }
 
 /** Records a React commit for either map component boundary. */
-export function noteEpisodeMapReactCommit(surface: "tile" | "surface"): void {
+export function noteMapReactCommit(surface: "tile" | "surface"): void {
   if (surface === "tile") tileReactCommits += 1;
   else surfaceReactCommits += 1;
 }
 
 /** Records a GeoJSON source update while bounding per-source diagnostics. */
-export function noteEpisodeMapSourceUpdate(sourceId: string): void {
+export function noteMapSourceUpdate(sourceId: string): void {
   totalSourceUpdates += 1;
   const count = sourceUpdates.get(sourceId) ?? 0;
   sourceUpdates.delete(sourceId);
@@ -48,7 +48,7 @@ export function noteEpisodeMapSourceUpdate(sourceId: string): void {
 }
 
 /** Returns a serializable snapshot of the cumulative map counters. */
-export function episodeMapPerformanceStats(): EpisodeMapPerformanceStats {
+export function mapPerformanceStats(): MapPerformanceStats {
   return {
     followCommands,
     playbackPaints,
@@ -62,7 +62,7 @@ export function episodeMapPerformanceStats(): EpisodeMapPerformanceStats {
 }
 
 /** Clears map counters between tests. */
-export function resetEpisodeMapPerformanceStatsForTests(): void {
+export function resetMapPerformanceStatsForTests(): void {
   followCommands = 0;
   playbackPaints = 0;
   surfaceReactCommits = 0;

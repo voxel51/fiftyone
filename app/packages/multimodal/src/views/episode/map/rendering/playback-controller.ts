@@ -1,7 +1,7 @@
 const DEFAULT_MAX_UPDATES_PER_SECOND = 30;
 
 /** Timing primitives used by the map playback controller. */
-export interface EpisodeMapPlaybackScheduler {
+export interface MapPlaybackScheduler {
   cancelAnimationFrame(frame: number): void;
   clearTimeout(timer: ReturnType<typeof setTimeout>): void;
   now(): number;
@@ -13,10 +13,10 @@ export interface EpisodeMapPlaybackScheduler {
 }
 
 /** Configuration for a capped imperative map playback controller. */
-export interface EpisodeMapPlaybackControllerOptions {
+export interface MapPlaybackControllerOptions {
   readonly maxUpdatesPerSecond?: number;
   readonly onPaint: (playheadNs: bigint | null, nowMs: number) => void;
-  readonly scheduler?: EpisodeMapPlaybackScheduler;
+  readonly scheduler?: MapPlaybackScheduler;
 }
 
 /**
@@ -24,7 +24,7 @@ export interface EpisodeMapPlaybackControllerOptions {
  * map paint. Paused seeks paint immediately; inactive surfaces retain only the
  * newest playhead and paint it once when they become visible again.
  */
-export class EpisodeMapPlaybackController {
+export class MapPlaybackController {
   private active = true;
   private animationFrame: number | null = null;
   private disposed = false;
@@ -34,10 +34,10 @@ export class EpisodeMapPlaybackController {
   private paintedVersion = 0;
   private readonly intervalMs: number;
   private readonly onPaint: (playheadNs: bigint | null, nowMs: number) => void;
-  private readonly scheduler: EpisodeMapPlaybackScheduler;
+  private readonly scheduler: MapPlaybackScheduler;
   private timer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(options: EpisodeMapPlaybackControllerOptions) {
+  constructor(options: MapPlaybackControllerOptions) {
     const maxUpdatesPerSecond =
       options.maxUpdatesPerSecond ?? DEFAULT_MAX_UPDATES_PER_SECOND;
     if (!Number.isFinite(maxUpdatesPerSecond) || maxUpdatesPerSecond <= 0) {
@@ -156,7 +156,7 @@ export class EpisodeMapPlaybackController {
   }
 }
 
-function browserPlaybackScheduler(): EpisodeMapPlaybackScheduler {
+function browserPlaybackScheduler(): MapPlaybackScheduler {
   return {
     cancelAnimationFrame: (frame) => cancelAnimationFrame(frame),
     clearTimeout: (timer) => clearTimeout(timer),

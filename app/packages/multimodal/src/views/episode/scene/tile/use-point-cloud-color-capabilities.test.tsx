@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import type { PointCloudVisualization } from "../../../../ir/index";
 import { VISUALIZATION_KIND } from "../../../../visualization/index";
-import type { EpisodeStreamPlaybackFrame } from "../../playback/use-episode-stream-values";
+import type { StreamPlaybackFrame } from "../../playback/use-stream-values";
 import { usePointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 
 describe("usePointCloudColorCapabilities", () => {
@@ -43,7 +43,7 @@ describe("usePointCloudColorCapabilities", () => {
       ({
         frames,
       }: {
-        frames: readonly (EpisodeStreamPlaybackFrame<PointCloudVisualization> | null)[];
+        frames: readonly (StreamPlaybackFrame<PointCloudVisualization> | null)[];
       }) => usePointCloudColorCapabilities(["/scan"], frames),
       { initialProps: { frames: [frame({ scalarFields: ["intensity"] })] } },
     );
@@ -62,7 +62,7 @@ describe("usePointCloudColorCapabilities", () => {
       ({
         frames,
       }: {
-        frames: readonly (EpisodeStreamPlaybackFrame<PointCloudVisualization> | null)[];
+        frames: readonly (StreamPlaybackFrame<PointCloudVisualization> | null)[];
       }) => usePointCloudColorCapabilities(["/lidar"], frames),
       {
         initialProps: {
@@ -90,7 +90,7 @@ function frame({
 }: {
   readonly hasColors?: boolean;
   readonly scalarFields?: readonly string[];
-}): EpisodeStreamPlaybackFrame<PointCloudVisualization> {
+}): StreamPlaybackFrame<PointCloudVisualization> {
   return {
     ageNs: 0n,
     contentTimeNs: 0n,

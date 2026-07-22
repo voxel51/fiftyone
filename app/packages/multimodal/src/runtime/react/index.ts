@@ -1,7 +1,7 @@
 export {
-  EpisodeDataStreamProvider,
-  useEpisodeDataStream,
-  useSetEpisodeDataStream,
+  DataStreamProvider,
+  useDataStream,
+  useSetDataStream,
 } from "./data-stream-context";
 export { useDemandRegistry } from "./demand-registry";
 export {
