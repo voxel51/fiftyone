@@ -101,7 +101,7 @@ export const SegmentPolylineRenderer = ({
 
         if (existingLabel && isPolyline(existingLabel)) {
           // Add a new segment to an already-selected polyline (multi-segment)
-          const existingPoints3d = existingLabel.points3d || [];
+          const existingPoints3d = existingLabel.label.points3d || [];
           const newPoints3d = [...existingPoints3d, newSegmentPoints];
 
           // Update existing polyline in working store
@@ -111,7 +111,7 @@ export const SegmentPolylineRenderer = ({
             segments: newPoints3d.map((pts) => ({ points: pts })),
             path: currentActiveField,
             sampleId: currentSampleId,
-            label: existingLabel.label ?? "",
+            label: existingLabel.label.label ?? "",
             misc: {
               closed: shouldClose,
             },
@@ -169,8 +169,6 @@ export const SegmentPolylineRenderer = ({
         selectForAnnotation({
           _id: labelId,
           path: currentActiveField || "",
-          selected: true,
-          _cls: POLYLINE,
         });
 
         setSegmentState({

@@ -18,17 +18,15 @@ import {
   selectedLabelForAnnotationAtom,
 } from "../../state";
 import type { BaseOverlayProps, EventHandlers, HoverState } from "../../types";
+import type { OverlayLabel } from "../loader";
 
-const getDetailsFromLabel = (label: any) => {
-  const field = Array.isArray(label.path)
-    ? label.path[label.path.length - 1]
-    : label.path;
+const getDetailsFromLabel = (overlay: OverlayLabel) => {
   return {
-    field,
-    label,
-    type: label.type,
-    color: label.color,
-    sampleId: label.sampleId,
+    field: overlay.path,
+    label: overlay.label,
+    type: overlay.label._cls,
+    color: overlay.ui.color,
+    sampleId: overlay.sampleId,
   };
 };
 
@@ -59,14 +57,14 @@ export const useHoverState = (): HoverState => {
 /**
  * Hook that provides mesh pointer event handlers.
  */
-const useMeshTooltipProps = (label: any) => {
+const useMeshTooltipProps = (label: OverlayLabel) => {
   const onPointerOver = useRecoilCallback(
     ({ snapshot, set }) =>
       (e?: ThreeEvent<PointerEvent>) => {
         const selectedLabel = snapshot
           .getLoadable(selectedLabelForAnnotationAtom)
           .getValue();
-        if (selectedLabel?._id === label._id) return;
+        if (selectedLabel?._id === label.label._id) return;
 
         const isCurrentlyTransforming = Boolean(
           snapshot.getLoadable(isCurrentlyTransformingAtom).getValue(),
@@ -85,15 +83,15 @@ const useMeshTooltipProps = (label: any) => {
           }
         }
 
-        if (!label.instance || !label.sampleId) return;
+        if (!label.label.instance || !label.sampleId) return;
 
         selectiveRenderingEventBus.emit(
           new LabelHoveredEvent({
             sampleId: label.sampleId,
-            labelId: label.id,
-            instanceId: label.instance._id,
+            labelId: label.label._id,
+            instanceId: label.label.instance._id,
             field: label.path,
-            frameNumber: label.frame_number,
+            frameNumber: label.label.frame_number as number | undefined,
           }),
         );
       },
@@ -111,7 +109,7 @@ const useMeshTooltipProps = (label: any) => {
           set(fos.tooltipDetail, null);
         }
 
-        if (!label.instance) return;
+        if (!label.label.instance) return;
 
         selectiveRenderingEventBus.emit(new LabelUnhoveredEvent());
       },
@@ -138,7 +136,7 @@ const useMeshTooltipProps = (label: any) => {
         const selectedLabel = snapshot
           .getLoadable(selectedLabelForAnnotationAtom)
           .getValue();
-        if (selectedLabel?._id === label._id) return;
+        if (selectedLabel?._id === label.label._id) return;
 
         const isCurrentlyTransforming = Boolean(
           snapshot.getLoadable(isCurrentlyTransformingAtom).getValue(),
@@ -177,7 +175,7 @@ const useMeshTooltipProps = (label: any) => {
 /**
  * Custom hook for managing event handlers and tooltip integration
  */
-export const useEventHandlers = (label: any): EventHandlers => {
+export const useEventHandlers = (label: OverlayLabel): EventHandlers => {
   const {
     onPointerOver: _onPointerOver,
     onPointerOut: _onPointerOut,
@@ -207,10 +205,8 @@ export const useEventHandlers = (label: any): EventHandlers => {
           return;
         }
 
-        const id = label?._id ?? label?.id;
-        const path = Array.isArray(label?.path)
-          ? label.path.join(".")
-          : label?.path;
+        const id = label.label._id;
+        const path = label.path;
 
         if (id && path && sample) {
           engine.interaction.setHovered({ sample, path, instanceId: id }, true);
@@ -227,7 +223,7 @@ export const useEventHandlers = (label: any): EventHandlers => {
 
       // resolve from the hovered set itself, so hover-off works even after
       // the label has been deleted or replaced
-      const id = label?._id ?? label?.id;
+      const id = label.label._id;
       const ref = engine.interaction
         .getHovered()
         .find((hovered) => hovered.instanceId === id);
@@ -246,7 +242,7 @@ export const useEventHandlers = (label: any): EventHandlers => {
 export const useLabelColor = (
   props: Pick<BaseOverlayProps, "selected" | "color">,
   isHovered: boolean,
-  label: any,
+  label: OverlayLabel,
   isSelectedForAnnotation?: boolean,
 ) => {
   const isSimilarLabelHovered = useSimilarLabels3d(label);

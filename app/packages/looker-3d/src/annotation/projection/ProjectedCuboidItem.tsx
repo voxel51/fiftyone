@@ -7,7 +7,7 @@ import { SvgCuboidProjection } from "./SvgCuboidProjection";
 import { useProjectedCuboid } from "./useProjectedCuboid";
 
 interface ProjectedCuboidItemProps {
-  detection: ReconciledDetection3D & { color?: string };
+  detection: ReconciledDetection3D;
   frustumData: FrustumData;
   isSelected: boolean;
   isHovered: boolean;
@@ -28,12 +28,12 @@ export function ProjectedCuboidItem({
   showOrientation,
   upVector,
 }: ProjectedCuboidItemProps) {
-  const projection = useProjectedCuboid(detection, frustumData, upVector);
+  const projection = useProjectedCuboid(detection.label, frustumData, upVector);
 
   if (!projection) return null;
 
   const { color, opacity, strokeDasharray } = resolveVisualProps(
-    detection.color,
+    detection.ui.color,
     isSelected,
     isHovered,
     isAnyLabelSelected,

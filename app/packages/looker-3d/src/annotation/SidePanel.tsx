@@ -792,7 +792,7 @@ const BoundsSideEffectsComponent = ({
     const { label, archetype } = payload;
     const crop = pointCloudCropRef.current;
 
-    if (crop?.labelId === label._id) {
+    if (crop?.labelId === label.label._id) {
       fitToPointCloudCrop(crop);
       return;
     }
@@ -800,7 +800,7 @@ const BoundsSideEffectsComponent = ({
     const object = findObjectByUserData(
       scene,
       FO_USER_DATA.LABEL_ID,
-      label._id,
+      label.label._id,
     );
 
     if (object) {

@@ -38,10 +38,10 @@ import { useThreeDLabelState } from "../state";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
 import type { Archetype3d, PanelId } from "../types";
 import { toEulerFromDegreesArray } from "../utils";
-import { Cuboid, type CuboidProps } from "./cuboid";
+import { Cuboid } from "./cuboid";
 import { DragGate3D } from "./DragGate3D";
 import { type OverlayLabel, load3dOverlays } from "./loader";
-import { type PolyLineProps, Polyline } from "./polyline";
+import { Polyline } from "./polyline";
 import { WorkingStoreManager } from "./WorkingStoreManager";
 
 // Fallback overlay color used when an existing label has no resolved string
@@ -138,16 +138,19 @@ export const ThreeDLabels = ({
     ) => {
       if (isSegmenting) return;
       if (mode === fos.ModalMode.ANNOTATE) {
-        select3DLabelForAnnotation(label, archetype);
+        select3DLabelForAnnotation(
+          { _id: label.label._id, path: label.path },
+          archetype,
+        );
         return;
       }
 
       onSelectLabel({
         detail: {
-          id: label._id,
+          id: label.label._id,
           field: label.path,
           sampleId: label.sampleId,
-          instanceId: label.instance?._id,
+          instanceId: label.label.instance?._id,
           isShiftPressed: e.shiftKey,
         },
       });
@@ -196,21 +199,21 @@ export const ThreeDLabels = ({
       (load3dOverlays(sampleMap, selectedLabels, [], schema) ?? [])
         .map((l) => {
           const path = l.path;
-          const isTagged = shouldShowLabelTag(selectedLabelTags, l.tags);
+          const isTagged = shouldShowLabelTag(selectedLabelTags, l.label.tags);
           const color = getLabelColor({
             coloring,
             path,
             isTagged,
             labelTagColors,
             customizeColorSetting,
-            label: l,
-            embeddedDocType: l._cls,
+            label: l.label,
+            embeddedDocType: l.label._cls,
           });
 
-          return { ...l, color, id: l._id };
+          return { ...l, ui: { ...l.ui, color } };
         })
         .filter((l) => {
-          if (!pathFilter(l.path, l)) {
+          if (!pathFilter(l.path, l.label)) {
             return false;
           }
 
@@ -279,20 +282,20 @@ export const ThreeDLabels = ({
 
   const getOverlayColor = useCallback(
     (overlay: ReconciledDetection3D | ReconciledPolyline3D) => {
-      if (overlay.isNew) {
+      if (overlay.ui.isNew) {
         return getLabelColor({
           coloring,
           path: overlay.path,
           isTagged: false,
           labelTagColors,
           customizeColorSetting,
-          label: overlay,
-          embeddedDocType: overlay._cls,
+          label: overlay.label,
+          embeddedDocType: overlay.label._cls,
         });
       }
 
-      return typeof overlay.color === "string"
-        ? overlay.color
+      return typeof overlay.ui.color === "string"
+        ? overlay.ui.color
         : DEFAULT_OVERLAY_COLOR;
     },
     [coloring, labelTagColors, customizeColorSetting],
@@ -346,25 +349,23 @@ export const ThreeDLabels = ({
   const cuboidOverlays = useMemo(
     () =>
       detectionsToRender.map((overlay) => {
-        // ReconciledDetection3D omits OverlayLabel["selected"], so its
-        // `selected` is typed `unknown` via the index signature; restoring it
-        // is the single narrowing needed to treat the overlay as OverlayLabel.
-        const label = overlay as ReconciledDetection3D & { selected: boolean };
         return (
           <DragGate3D
-            key={`cuboid-${overlay.isNew ? "new-" : ""}${overlay._id}-${
-              overlay.sampleId
-            }`}
+            key={`cuboid-${overlay.ui.isNew ? "new-" : ""}${
+              overlay.label._id
+            }-${overlay.sampleId}`}
             dragThresholdPx={DRAG_GATE_THRESHOLD_PX}
-            onClick={(e) => handleSelect(label, ANNOTATION_CUBOID, e)}
+            onClick={(e) => handleSelect(overlay, ANNOTATION_CUBOID, e)}
           >
             <Cuboid
               lineWidth={cuboidLineWidth}
               rotation={overlayRotation}
-              itemRotation={overlay.rotation ?? itemRotation}
-              {...(overlay as unknown as CuboidProps)}
-              opacity={getOverlayOpacity(overlay._id)}
-              label={label}
+              itemRotation={overlay.label.rotation ?? itemRotation}
+              location={overlay.label.location}
+              dimensions={overlay.label.dimensions}
+              selected={overlay.ui.selected}
+              opacity={getOverlayOpacity(overlay.label._id)}
+              label={overlay}
               useLegacyCoordinates={settings.useLegacyCoordinates}
               color={getOverlayColor(overlay)}
               enableFaceResize
@@ -390,21 +391,23 @@ export const ThreeDLabels = ({
   // Polylines render model -> JSX
   const polylineOverlays = useMemo(() => {
     return polylinesToRender.map((overlay) => {
-      const label = overlay as ReconciledPolyline3D & { selected: boolean };
       return (
         <DragGate3D
-          key={`polyline-draggate-${overlay.isNew ? "new-" : ""}${
-            overlay._id
+          key={`polyline-draggate-${overlay.ui.isNew ? "new-" : ""}${
+            overlay.label._id
           }-${overlay.sampleId}`}
           dragThresholdPx={DRAG_GATE_THRESHOLD_PX}
-          onClick={(e) => handleSelect(label, ANNOTATION_POLYLINE, e)}
+          onClick={(e) => handleSelect(overlay, ANNOTATION_POLYLINE, e)}
         >
           <Polyline
             rotation={overlayRotation}
             lineWidth={polylineWidth}
-            {...(overlay as unknown as PolyLineProps)}
-            opacity={getOverlayOpacity(overlay._id)}
-            label={label}
+            points3d={overlay.label.points3d}
+            filled={!!overlay.label.filled}
+            closed={!!overlay.label.closed}
+            selected={overlay.ui.selected}
+            opacity={getOverlayOpacity(overlay.label._id)}
+            label={overlay}
             color={getOverlayColor(overlay)}
             hoverSource={hoverSource}
           />

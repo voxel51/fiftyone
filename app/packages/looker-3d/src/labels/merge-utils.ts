@@ -17,7 +17,10 @@ export function reconcileDetection(
 ): ReconciledDetection3D {
   return {
     ...overlay,
-    ...(stagedTransform ?? {}),
+    label: {
+      ...overlay.label,
+      ...(stagedTransform ?? {}),
+    },
   } as ReconciledDetection3D;
 }
 
@@ -26,13 +29,15 @@ export function reconcileDetection(
  * Staged segments override the original points3d.
  */
 export function reconcilePolyline(
-  overlay: OverlayLabel & { points3d: [number, number, number][][] },
+  overlay: OverlayLabel & {
+    label: { points3d: [number, number, number][][] };
+  },
   stagedTransform?: PolylinePointTransformData,
 ): ReconciledPolyline3D {
   // Staged segments take precedence over original points3d
   let finalPoints3d = stagedTransform?.segments
     ? stagedTransform.segments.map((seg) => seg.points)
-    : overlay.points3d;
+    : overlay.label.points3d;
 
   // Filter out invalid segments
   if (finalPoints3d) {
@@ -41,8 +46,11 @@ export function reconcilePolyline(
 
   return {
     ...overlay,
-    ...(stagedTransform?.misc ?? {}),
-    points3d: finalPoints3d,
+    label: {
+      ...overlay.label,
+      ...(stagedTransform?.misc ?? {}),
+      points3d: finalPoints3d,
+    },
   } as ReconciledPolyline3D;
 }
 
@@ -57,18 +65,18 @@ export function createNewDetection(
   path: string,
 ): ReconciledDetection3D {
   return {
-    _id: labelId,
-    _cls: "Detection",
-    type: "Detection",
+    label: {
+      _id: labelId,
+      _cls: "Detection",
+      ...(transformData ?? {}),
+      location: transformData.location,
+      dimensions: transformData.dimensions,
+      rotation: transformData.rotation ?? [0, 0, 0],
+      tags: [],
+    },
     path,
-    ...(transformData ?? {}),
-    location: transformData.location,
-    dimensions: transformData.dimensions,
-    rotation: transformData.rotation ?? [0, 0, 0],
-    selected: false,
     sampleId: currentSampleId,
-    tags: [],
-    isNew: true,
+    ui: { selected: false, isNew: true },
   } as ReconciledDetection3D;
 }
 
@@ -95,16 +103,16 @@ export function createNewPolyline(
   }
 
   return {
-    _id: labelId,
-    _cls: "Polyline",
-    type: "Polyline",
+    label: {
+      _id: labelId,
+      _cls: "Polyline",
+      label: transformData.label,
+      tags: [],
+      points3d: validPoints3d,
+      ...(transformData.misc ?? {}),
+    },
     path: transformData.path ?? "",
-    label: transformData.label,
-    selected: false,
     sampleId: currentSampleId,
-    tags: [],
-    points3d: validPoints3d,
-    ...(transformData.misc ?? {}),
-    isNew: true,
+    ui: { selected: false, isNew: true },
   } as ReconciledPolyline3D;
 }

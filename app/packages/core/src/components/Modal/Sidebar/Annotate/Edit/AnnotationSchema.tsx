@@ -1,6 +1,5 @@
 import {
   FRAMES_PREFIX,
-  stripReservedLabelAttributes,
   useActiveAnnotationSampleId,
   useAnnotationEngine,
 } from "@fiftyone/annotation";
@@ -247,13 +246,10 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         instanceId,
         frame,
       };
-      // Persist only true label data: a 3D draft's slot carries the working/
-      // overlay shape (type/isNew/color/path/sampleId), and committing those
-      // pollutes Sample — the write-half's `build3dLabel` strips the same set,
-      // so the idempotent guard would never match and the sync loops forever.
-      const persistableValue = stripReservedLabelAttributes(
-        value as Record<string, unknown>,
-      );
+      // `value` is already pure label data: every surface keeps view state
+      // outside the document (3D working entries nest it under `ui`), so
+      // schema attributes may use any name — including "type" and "color".
+      const persistableValue = value as Record<string, unknown>;
 
       // A video frame label belongs to a track. A static track-level edit
       // (label, index, non-dynamic attributes) applies to EVERY frame the

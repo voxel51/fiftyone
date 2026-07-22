@@ -63,7 +63,7 @@ export const use3dInteractionAdapter = (): void => {
 
   useEffect(() => {
     const label = anchor ? workingDoc.labelsById[anchor.instanceId] : undefined;
-    const targetId = label?._id ?? null;
+    const targetId = label?.label._id ?? null;
 
     if (appliedSelection.current === targetId) {
       return;
@@ -93,10 +93,10 @@ export const use3dInteractionAdapter = (): void => {
 
     appliedSelection.current = targetId;
 
-    const selected = { ...label, selected: true };
+    const selected = { ...label, ui: { ...label.ui, selected: true } };
 
     eventBus.dispatch("annotation:3dLabelSelected", {
-      id: label._id,
+      id: label.label._id,
       archetype,
       label: selected,
     });
@@ -107,7 +107,7 @@ export const use3dInteractionAdapter = (): void => {
       return;
     }
 
-    setSelectedLabelForAnnotation(selected);
+    setSelectedLabelForAnnotation(selected.label);
     setCurrent3dAnnotationMode(archetype);
     setCurrentArchetypeSelectedForTransform(archetype);
 

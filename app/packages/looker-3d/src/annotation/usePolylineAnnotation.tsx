@@ -64,8 +64,8 @@ export const usePolylineAnnotation = ({
 
   // Compute effective points3d from working store (or fallback to props)
   const effectivePoints3d = useMemo(() => {
-    if (workingLabel && workingLabel._cls === POLYLINE) {
-      return workingLabel.points3d;
+    if (workingLabel && workingLabel.label._cls === POLYLINE) {
+      return workingLabel.label.points3d;
     }
     return points3d;
   }, [workingLabel, points3d]);

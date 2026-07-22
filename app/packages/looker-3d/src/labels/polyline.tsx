@@ -49,11 +49,11 @@ export const Polyline = ({
   const { onPointerOver, onPointerOut, ...restEventHandlers } =
     useEventHandlers(label);
 
-  const isHovered = hoveredLabel?.id === label._id;
+  const isHovered = hoveredLabel?.id === label.label._id;
 
   const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
   const isSelectedForAnnotation =
-    useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
+    useRecoilValue(selectedLabelForAnnotationAtom)?._id === label.label._id;
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
   useEffect(() => {
@@ -110,7 +110,7 @@ export const Polyline = ({
 
         return (
           <LineDrei
-            key={`polyline-${label._id}-${i}`}
+            key={`polyline-${label.label._id}-${i}`}
             lineWidth={lineWidth}
             points={validPts}
             color={strokeAndFillColor}
@@ -142,7 +142,7 @@ export const Polyline = ({
 
           return (
             <LineDrei
-              key={`polyline-closing-${label._id}-${i}`}
+              key={`polyline-closing-${label.label._id}-${i}`}
               lineWidth={lineWidth}
               points={[lastPoint, firstPoint]}
               color={strokeAndFillColor}
@@ -168,7 +168,7 @@ export const Polyline = ({
     lineWidth,
     rotation,
     opacity,
-    label._id,
+    label.label._id,
     handleSegmentPointerOver,
     handleSegmentPointerOut,
     handleSegmentClick,
@@ -202,12 +202,12 @@ export const Polyline = ({
 
     return meshes.map((mesh, idx) => (
       <primitive
-        key={`filled-${label._id}-${idx}`}
+        key={`filled-${label.label._id}-${idx}`}
         object={mesh}
         rotation={rotation as unknown as THREE.Euler}
       />
     ));
-  }, [filled, linesPoints3d, rotation, material, label._id]);
+  }, [filled, linesPoints3d, rotation, material, label.label._id]);
 
   useEffect(() => {
     const currentMeshes = meshesRef.current;
@@ -243,7 +243,7 @@ export const Polyline = ({
     };
   }, [material]);
 
-  const transientPolyline = useTransientPolyline(label._id);
+  const transientPolyline = useTransientPolyline(label.label._id);
   const centroidDragPosition = useMemo<THREE.Vector3Tuple>(
     () => transientPolyline?.positionDelta ?? [0, 0, 0],
     [transientPolyline],
@@ -270,7 +270,7 @@ export const Polyline = ({
       <group
         ref={contentRef}
         position={centroidDragPosition}
-        userData={{ [FO_USER_DATA.LABEL_ID]: label._id }}
+        userData={{ [FO_USER_DATA.LABEL_ID]: label.label._id }}
       >
         {markers}
         {previewLines}
@@ -281,7 +281,7 @@ export const Polyline = ({
               return;
             }
 
-            setHoveredLabel({ id: label._id, source: hoverSource });
+            setHoveredLabel({ id: label.label._id, source: hoverSource });
             handleAnnotationPointerOver();
             onPointerOver(e);
           }}

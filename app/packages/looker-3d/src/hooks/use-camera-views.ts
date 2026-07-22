@@ -52,8 +52,8 @@ const calculateLabelCentroidAndRadius = (
   }
 
   if (isDetection3dOverlay(label)) {
-    const location = label.location;
-    const dimensions = label.dimensions;
+    const location = label.label.location;
+    const dimensions = label.label.dimensions;
 
     if (location) {
       // Calculate radius based on dimensions diagonal
@@ -68,7 +68,7 @@ const calculateLabelCentroidAndRadius = (
       };
     }
   } else if (isPolyline3dOverlay(label)) {
-    const points3d = label.points3d;
+    const points3d = label.label.points3d;
 
     if (points3d && points3d.length > 0) {
       const allPoints = points3d.flat();

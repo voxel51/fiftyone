@@ -58,7 +58,9 @@ export function useSyncWorkingToSidebar() {
 
     const currentData = currentEditing.data;
 
-    const mergedData = { ...currentData, ...workingLabel };
+    // Only the working entry's DOCUMENT syncs into the sidebar — view state
+    // (`workingLabel.ui`) never enters the persistable namespace.
+    const mergedData = { ...currentData, ...workingLabel.label };
     if (isEqual(currentData, mergedData)) {
       // No actual difference, but update the ref to track this working label
       lastSyncedWorkingLabelRef.current = workingLabel;
@@ -67,11 +69,11 @@ export function useSyncWorkingToSidebar() {
 
     const updatedEditing = {
       ...currentEditing,
-      data: { ...currentEditing.data, ...workingLabel },
+      data: { ...currentEditing.data, ...workingLabel.label },
       overlay: currentEditing.overlay
         ? {
             ...currentEditing.overlay,
-            label: { ...currentEditing.overlay.label, ...workingLabel },
+            label: { ...currentEditing.overlay.label, ...workingLabel.label },
           }
         : currentEditing.overlay,
     } as typeof currentEditing;

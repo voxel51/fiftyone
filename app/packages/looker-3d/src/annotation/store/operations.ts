@@ -8,6 +8,8 @@ import { isDetection, isPolyline } from "../../types";
 import { quaternionToRadians } from "../../utils";
 import type {
   CuboidTransformData,
+  Detection3DDocument,
+  Polyline3DDocument,
   PolylinePointTransformData,
   ReconciledDetection3D,
   ReconciledPolyline3D,
@@ -55,7 +57,7 @@ export function useCuboidOperations() {
    */
   const updateCuboid = useRecoilCallback(
     ({ snapshot }) =>
-      async (labelId: LabelId, updates: Partial<ReconciledDetection3D>) => {
+      async (labelId: LabelId, updates: Partial<Detection3DDocument>) => {
         const working = await snapshot.getPromise(workingAtom);
         const existingLabel = working.doc.labelsById[labelId];
 
@@ -64,17 +66,17 @@ export function useCuboidOperations() {
         }
 
         // Dynamically capture only the fields being updated for undo
-        const previousState: Partial<ReconciledDetection3D> = {};
+        const previousState: Partial<Detection3DDocument> = {};
         for (const key of Object.keys(updates) as Array<
-          keyof ReconciledDetection3D
+          keyof Detection3DDocument
         >) {
-          if (key in existingLabel) {
+          if (key in existingLabel.label) {
             (previousState as Record<string, unknown>)[key] =
-              existingLabel[key];
+              existingLabel.label[key];
           }
         }
 
-        const roundedUpdates: Partial<ReconciledDetection3D> = { ...updates };
+        const roundedUpdates: Partial<Detection3DDocument> = { ...updates };
         if (updates.location) {
           roundedUpdates.location = roundTuple(updates.location);
         }
@@ -88,7 +90,10 @@ export function useCuboidOperations() {
           roundedUpdates.quaternion = roundTuple(updates.quaternion);
         }
 
-        const nextLabel = { ...existingLabel, ...roundedUpdates };
+        const nextLabel = {
+          ...existingLabel,
+          label: { ...existingLabel.label, ...roundedUpdates },
+        };
 
         const execFn = () => {
           updateLabel(labelId, roundedUpdates);
@@ -127,21 +132,22 @@ export function useCuboidOperations() {
           return;
         }
 
-        const newState: Partial<ReconciledDetection3D> = {};
+        const newState: Partial<Detection3DDocument> = {};
+        const doc = existingLabel.label;
 
         if (transient.positionDelta) {
           newState.location = [
-            existingLabel.location[0] + transient.positionDelta[0],
-            existingLabel.location[1] + transient.positionDelta[1],
-            existingLabel.location[2] + transient.positionDelta[2],
+            doc.location[0] + transient.positionDelta[0],
+            doc.location[1] + transient.positionDelta[1],
+            doc.location[2] + transient.positionDelta[2],
           ];
         }
 
         if (transient.dimensionsDelta) {
           newState.dimensions = [
-            existingLabel.dimensions[0] + transient.dimensionsDelta[0],
-            existingLabel.dimensions[1] + transient.dimensionsDelta[1],
-            existingLabel.dimensions[2] + transient.dimensionsDelta[2],
+            doc.dimensions[0] + transient.dimensionsDelta[0],
+            doc.dimensions[1] + transient.dimensionsDelta[1],
+            doc.dimensions[2] + transient.dimensionsDelta[2],
           ];
         }
 
@@ -169,22 +175,23 @@ export function useCuboidOperations() {
       if (!currentSampleId) return;
 
       const newLabel: ReconciledDetection3D = {
-        _id: labelId,
-        _cls: DETECTION,
-        type: DETECTION,
+        label: {
+          _id: labelId,
+          _cls: DETECTION,
+          location: roundTuple(data.location),
+          dimensions: roundTuple(data.dimensions),
+          rotation: data.rotation
+            ? roundTuple(data.rotation)
+            : data.quaternion
+              ? roundTuple(quaternionToRadians(data.quaternion))
+              : [0, 0, 0],
+          quaternion: data.quaternion ? roundTuple(data.quaternion) : undefined,
+          tags: [],
+          label: labelClass,
+        },
         path,
-        location: roundTuple(data.location),
-        dimensions: roundTuple(data.dimensions),
-        rotation: data.rotation
-          ? roundTuple(data.rotation)
-          : data.quaternion
-            ? roundTuple(quaternionToRadians(data.quaternion))
-            : [0, 0, 0],
-        quaternion: data.quaternion ? roundTuple(data.quaternion) : undefined,
         sampleId: currentSampleId,
-        tags: [],
-        isNew: true,
-        label: labelClass,
+        ui: { selected: false, isNew: true },
       };
 
       // create collapses into commit: the draft is born with a durable
@@ -264,7 +271,7 @@ export function usePolylineOperations() {
    */
   const updatePolyline = useRecoilCallback(
     ({ snapshot }) =>
-      async (labelId: LabelId, updates: Partial<ReconciledPolyline3D>) => {
+      async (labelId: LabelId, updates: Partial<Polyline3DDocument>) => {
         const working = await snapshot.getPromise(workingAtom);
         const existingLabel = working.doc.labelsById[labelId];
 
@@ -273,17 +280,17 @@ export function usePolylineOperations() {
         }
 
         // Dynamically capture only the fields being updated for undo
-        const previousState: Partial<ReconciledPolyline3D> = {};
+        const previousState: Partial<Polyline3DDocument> = {};
         for (const key of Object.keys(updates) as Array<
-          keyof ReconciledPolyline3D
+          keyof Polyline3DDocument
         >) {
-          if (key in existingLabel) {
+          if (key in existingLabel.label) {
             (previousState as Record<string, unknown>)[key] =
-              existingLabel[key];
+              existingLabel.label[key];
           }
         }
 
-        const roundedUpdates: Partial<ReconciledPolyline3D> = { ...updates };
+        const roundedUpdates: Partial<Polyline3DDocument> = { ...updates };
         if (updates.points3d) {
           roundedUpdates.points3d = updates.points3d.map((segment) =>
             segment.map(
@@ -292,7 +299,10 @@ export function usePolylineOperations() {
           );
         }
 
-        const nextLabel = { ...existingLabel, ...roundedUpdates };
+        const nextLabel = {
+          ...existingLabel,
+          label: { ...existingLabel.label, ...roundedUpdates },
+        };
 
         const execFn = () => {
           updateLabel(labelId, roundedUpdates);
@@ -332,7 +342,7 @@ export function usePolylineOperations() {
         }
 
         // Compute new points3d from working + transient deltas
-        let newPoints3d = existingLabel.points3d;
+        let newPoints3d = existingLabel.label.points3d;
 
         if (transient.positionDelta) {
           const delta = transient.positionDelta;
@@ -393,16 +403,17 @@ export function usePolylineOperations() {
       );
 
       const newLabel: ReconciledPolyline3D = {
-        _id: labelId,
-        _cls: POLYLINE,
-        type: POLYLINE,
+        label: {
+          _id: labelId,
+          _cls: POLYLINE,
+          label: data.label ?? "",
+          points3d,
+          tags: [],
+          ...(data.misc ?? {}),
+        },
         path,
-        label: data.label ?? "",
-        points3d,
         sampleId: currentSampleId,
-        tags: [],
-        isNew: true,
-        ...(data.misc ?? {}),
+        ui: { selected: false, isNew: true },
       };
 
       const execFn = () => {

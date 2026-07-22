@@ -24,12 +24,17 @@ export function roundDetection(
 ): ReconciledDetection3D {
   return {
     ...detection,
-    location: roundTuple(detection.location),
-    dimensions: roundTuple(detection.dimensions),
-    rotation: detection.rotation ? roundTuple(detection.rotation) : undefined,
-    quaternion: detection.quaternion
-      ? roundTuple(detection.quaternion)
-      : undefined,
+    label: {
+      ...detection.label,
+      location: roundTuple(detection.label.location),
+      dimensions: roundTuple(detection.label.dimensions),
+      rotation: detection.label.rotation
+        ? roundTuple(detection.label.rotation)
+        : undefined,
+      quaternion: detection.label.quaternion
+        ? roundTuple(detection.label.quaternion)
+        : undefined,
+    },
   };
 }
 
@@ -41,8 +46,11 @@ export function roundPolyline(
 ): ReconciledPolyline3D {
   return {
     ...polyline,
-    points3d: polyline.points3d.map((segment) =>
-      segment.map((point) => roundTuple(point)),
-    ),
+    label: {
+      ...polyline.label,
+      points3d: polyline.label.points3d.map((segment) =>
+        segment.map((point) => roundTuple(point)),
+      ),
+    },
   };
 }
