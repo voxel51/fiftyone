@@ -108,6 +108,7 @@ describe("McapTileStreamNoticeStrip", () => {
 function SeedGap({ startSec }: { readonly startSec: number }) {
   const store = usePlaybackStore();
 
+  // This effect seeds the playback state exercised by the empty-state view.
   useEffect(() => {
     setMcapTopicStatus(store, TOPIC, "gap");
     setMcapTopicStartTimeSec(store, TOPIC, startSec);
@@ -119,6 +120,7 @@ function SeedGap({ startSec }: { readonly startSec: number }) {
 function SeedStaleBadge({ ageNs }: { readonly ageNs: bigint }) {
   const store = usePlaybackStore();
 
+  // This effect seeds the stale frame displayed by the status badge.
   useEffect(() => {
     setMcapTopicStatus(store, TOPIC, "stale");
     setMcapTopicStaleAgeNs(store, TOPIC, ageNs);
@@ -131,6 +133,7 @@ function StreamNoticeHarness() {
   const store = usePlaybackStore();
   const [topics, setTopics] = useState<readonly string[]>([TOPIC]);
 
+  // This effect starts the existing source ready before toggling a new one.
   useEffect(() => {
     setMcapTopicStatus(store, TOPIC, "ready");
   }, [store]);
