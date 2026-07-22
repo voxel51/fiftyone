@@ -41,9 +41,11 @@ export function useInterpolatedSceneUpdateFrames({
 }): readonly (McapTopicPlaybackFrame<SceneUpdateVisualization> | null)[] {
   const dataStream = useMcapDataStream();
   const history = useMcapSceneUpdateHistoryContext();
-  // Smooth mode tracks every RAF tick. As-recorded mode samples placement time
-  // only when its content-driven parent renders, avoiding a broad 60 Hz root.
-  const playhead = useOptionalPlayhead(interpolate);
+  // Smooth mode tracks every RAF tick only when there is annotation work to
+  // interpolate. Otherwise, sample placement time only when the content-driven
+  // parent renders, avoiding an empty high-frequency subscription.
+  const tracksPlayhead = interpolate && topics.length > 0;
+  const playhead = useOptionalPlayhead(tracksPlayhead);
   const timeline = dataStream?.getTimelineIndex() ?? null;
   // Late-arriving lookahead messages must re-derive the lifecycle snapshot and
   // lerp even while the playhead is paused mid-gap.
@@ -78,7 +80,7 @@ export function useInterpolatedSceneUpdateFrames({
   }, [cacheSnapshot, dataStream, frames, history, topics]);
 
   return useMemo(() => {
-    if (!interpolate || !dataStream || !timeline) {
+    if (!interpolate || topics.length === 0 || !dataStream || !timeline) {
       return resolvedFrames;
     }
 
