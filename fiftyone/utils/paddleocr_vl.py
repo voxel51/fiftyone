@@ -76,9 +76,16 @@ def _to_pil(img):
     img = img.astype(np.uint8)
     if img.ndim == 2:
         img = np.stack([img] * 3, axis=-1)
-    if img.shape[2] == 4:
+    if img.shape[2] == 1:
+        img = np.repeat(img, 3, axis=2)
+    elif img.shape[2] == 4:
         img = img[:, :, :3]
     return PILImage.fromarray(img)
+
+
+def _select_dtype(device):
+    """bfloat16 is a CUDA optimization; CPU inference wants float32."""
+    return torch.bfloat16 if "cuda" in str(device) else torch.float32
 
 
 def _parse_spotting(text):
@@ -181,7 +188,7 @@ class PaddleOCRVLModel(fout.TorchImageModel):
             config.name_or_path
         )
         model = transformers.AutoModelForImageTextToText.from_pretrained(
-            config.name_or_path, dtype=torch.bfloat16
+            config.name_or_path, dtype=_select_dtype(self._device)
         ).eval()
         return model.to(self._device)
 
@@ -191,6 +198,9 @@ class PaddleOCRVLModel(fout.TorchImageModel):
 
     def _predict_all(self, imgs):
         prompt = _TASK_PROMPTS[self.config.task]
+        # Only spotting emits geometry; the recognition-only tasks return
+        # content without boxes, so they map to empty detections
+        is_spotting = self.config.task == "spotting"
         results = []
         for img in imgs:
             try:
@@ -224,10 +234,13 @@ class PaddleOCRVLModel(fout.TorchImageModel):
                 results.append(fol.Detections())
                 continue
 
-            detections = [
-                fol.Detection(label=content, bounding_box=box)
-                for content, box in _parse_spotting(text)
-            ]
+            if is_spotting:
+                detections = [
+                    fol.Detection(label=content, bounding_box=box)
+                    for content, box in _parse_spotting(text)
+                ]
+            else:
+                detections = []
             results.append(fol.Detections(detections=detections))
 
         return results
