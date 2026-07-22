@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ByteReadDebugLog } from "../query/bytes";
-import { createNetworkTransportMeter } from "../query/bytes/network-meter";
+import { createNetworkTransportMeter } from "./network-meter";
+import type { ByteReadDebugLog } from "./types";
 
 describe("network transport meter", () => {
   it("counts fetched bytes and clips overlapping busy intervals", () => {
