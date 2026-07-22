@@ -27,21 +27,31 @@ import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 
+logger = logging.getLogger(__name__)
+
 ls = fou.lazy_import(
     "label_studio_sdk",
     callback=lambda: fou.ensure_import("label_studio_sdk>=0.0.13"),
 )
-brush = fou.lazy_import(
-    "label_studio_sdk.converter.brush",
-    callback=lambda: fou.ensure_import("label_studio_sdk>=1.0.0"),
-)
+
+if fou.ensure_import("label_studio_sdk>=1.0.0", error_level=2):
+    brush = fou.lazy_import("label_studio_sdk.converter.brush")
+else:
+    brush = fou.lazy_import(
+        "label_studio_converter.brush",
+        callback=lambda: fou.ensure_import("label_studio_converter.brush"),
+    )
+    _ = brush.__file__
+    logger.warning(
+        "The 'label_studio_converter' project has been archived. "
+        "Please install 'label_studio_sdk>=1.0.0' to use the maintained "
+        "brush converter implementation."
+    )
+
 etree = fou.lazy_import(
     "lxml.etree",
     callback=lambda: fou.ensure_import("lxml.etree"),
 )
-
-
-logger = logging.getLogger(__name__)
 
 
 class LabelStudioBackendConfig(foua.AnnotationBackendConfig):
