@@ -11,16 +11,15 @@ import {
 import {
   BitmapCanvasHost,
   BitmapImageFrameView,
-} from "../../../visualization/image/bitmap-image-view";
+} from "../../../visualization/media-2d/bitmap-image-view";
 import type { EpisodePosterFrame } from "../../../ir";
 import { retainedBinaryBytes } from "../../../runtime";
 import { PointCloudPanel } from "../../../visualization/composition";
 import { acquireGridLiveLease } from "../../../visualization/webgpu/webgpu-live-lease";
 import { renderPointCloudSnapshot } from "../../../visualization/scene-3d/gpu/webgpu-snapshot-renderer";
-import { sampleDescriptorFromContext } from "../../episode-source";
-import { useEpisodeGridPreview } from "../../use-episode-grid-preview";
-import { useEpisodePreviewSession } from "../../use-episode-preview-session";
-import { useStableEpisodeSource } from "../../use-stable-episode-source";
+import { sampleDescriptorFromContext } from "../../session/episode-source";
+import { useEpisodePreviewSession } from "../../session/use-episode-preview-session";
+import { useStableEpisodeSource } from "../../session/use-stable-episode-source";
 import classes from "./GridRenderer.module.css";
 import { EpisodeLoadingAscii } from "../shell/EpisodeLoadingAscii";
 import {
@@ -30,7 +29,10 @@ import {
 } from "./episode-grid-stream-state";
 import { useEpisodeGridCameraPose } from "./episode-grid-camera-state";
 import { episodeCameraScopeKey } from "../shell/episode-camera-scope";
-import type { EpisodeGridPreviewStatus } from "../../use-episode-grid-preview";
+import {
+  useEpisodeGridPreview,
+  type EpisodeGridPreviewStatus,
+} from "./use-episode-grid-preview";
 
 const IMAGE_FIT = "cover";
 // Trailing debounce for shared-pose and cell-resize re-snapshots: orbiting

@@ -6,7 +6,7 @@ package-internal boundary and contains only this guide and `index.ts`.
 
 | Directory    | Responsibility                                                                                     |
 | ------------ | -------------------------------------------------------------------------------------------------- |
-| `grid/`      | Grid renderer, preview-camera state, and per-dataset stream selection                              |
+| `grid/`      | Grid renderer, preview playback, preview-camera state, and per-dataset stream selection            |
 | `image/`     | Image tiles, annotations, projection, depth hover, rectification, and video decode runways         |
 | `inventory/` | Format-neutral stream discovery, classification, filtering, and session inventory                  |
 | `layout/`    | Modal mosaic persistence and automatic playback layout                                             |
@@ -17,7 +17,7 @@ package-internal boundary and contains only this guide and `index.ts`.
 | `raw/`       | Raw-message tile, tree, context, selection state, and raw-tile actions                             |
 | `scene/`     | 3D tile and camera rig, transforms, scene updates, pose trajectories, point hover, and inspector   |
 | `settings/`  | Modal settings state, settings sidebar, generic controls, keyboard behavior, and stream settings   |
-| `shared/`    | Small, genuinely domain-neutral health and notice primitives                                       |
+| `shared/`    | Small, genuinely domain-neutral health, notice, and error-presentation policy                      |
 | `shell/`     | Modal and source composition plus status UI that coordinates multiple domains                      |
 | `tiles/`     | Tile registry, definitions, settings registration, visibility, shared tile styles, and add-tile UI |
 

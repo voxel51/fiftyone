@@ -20,13 +20,13 @@ import type {
   ImageAnnotationText,
   ImageAnnotationsVisualization,
 } from "../../../ir";
-import { groupLineSegmentsByLabel } from "../../../visualization/image/line-segment-grouping";
+import { groupLineSegmentsByLabel } from "../../../visualization/media-2d/line-segment-grouping";
 import type { DecodedFrame } from "../../../ir";
 import type {
   ImageAnnotationBounds,
   ImageAnnotationLineListGroup,
   ImageAnnotationRenderMetadata,
-} from "../../../visualization/image/image-annotation-render-metadata";
+} from "../../../visualization/media-2d/image-annotation-render-metadata";
 
 function interpolationFraction({
   nextTimelineTimeNs,

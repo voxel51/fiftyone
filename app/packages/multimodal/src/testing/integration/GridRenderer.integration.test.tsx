@@ -20,14 +20,14 @@ const harness = vi.hoisted(() => ({
   registerStreams: vi.fn(),
 }));
 
-vi.mock("../../views/use-stable-episode-source", () => ({
+vi.mock("../../views/session/use-stable-episode-source", () => ({
   useStableEpisodeSource: () => ({
     byteSource: harness.byteSource,
     episodeSource: harness.episodeSource,
   }),
 }));
 
-vi.mock("../../views/use-episode-preview-session", () => ({
+vi.mock("../../views/session/use-episode-preview-session", () => ({
   useEpisodePreviewSession: () => ({
     error: null,
     session: harness.previewSession,
@@ -45,7 +45,7 @@ vi.mock("../../views/episode/grid/episode-grid-camera-state", () => ({
   useEpisodeGridCameraPose: () => [null, harness.cameraSetter],
 }));
 
-vi.mock("../../visualization/image/bitmap-image-view", () => ({
+vi.mock("../../visualization/media-2d/bitmap-image-view", () => ({
   BitmapCanvasHost: () => <div data-testid="fixture-grid-point-cloud" />,
   BitmapImageFrameView: () => <div data-testid="fixture-grid-image" />,
 }));

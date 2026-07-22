@@ -44,7 +44,7 @@ Within this package, `views` means the application layer: product workflow and
 composition, not every React component. Reusable rendering and direct
 manipulation stay in `visualization`.
 
-Visualization is organized by semantic output: image, 3D scene, map, plot,
+Visualization is organized by semantic output: 2D media, 3D scene, map, plot,
 message, and logs. Shared interaction and WebGPU are foundations; cross-family
 rendering lives in an explicit composition domain. Extensions contribute
 timeline sections or namespaced tiles through narrow contracts.

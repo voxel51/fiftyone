@@ -13,8 +13,8 @@ import {
 } from "@voxel51/voodo";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import type { ByteSourceDescriptor } from "../../ir";
-import { episodeSourceFromByteSource } from "../episode-source";
-import { useEpisodeSession } from "../use-episode-session";
+import { episodeSourceFromByteSource } from "../session/episode-source";
+import { useEpisodeSession } from "../session/use-episode-session";
 import { EpisodeSourcePlayback } from "../episode";
 import {
   createLocalMcapSourceDescriptor,

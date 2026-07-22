@@ -2,11 +2,11 @@
 
 This is the presentation engine.
 
-Visualization turns prepared data into semantic rendering families: image, 3D
-scene, map, plot, structured message, and logs. Shared interaction and WebGPU
-machinery are lower-level foundations. Cross-family experiences live in an
-explicit composition domain rather than making semantic families depend on one
-another. This layer owns textures, cameras, picking, virtualization, and
+Visualization turns prepared data into semantic rendering families: 2D media,
+3D scene, map, plot, structured message, and logs. Shared interaction and
+WebGPU machinery are lower-level foundations. Cross-family experiences live in
+an explicit composition domain rather than making semantic families depend on
+one another. This layer owns textures, cameras, picking, virtualization, and
 render-level interaction.
 
 Renderers receive data and callbacks. They do not choose streams, query a

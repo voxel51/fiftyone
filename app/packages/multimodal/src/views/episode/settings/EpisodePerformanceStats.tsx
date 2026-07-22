@@ -33,7 +33,7 @@ import { gpuPointCloudProjectionResourceStats } from "../../../visualization/com
 import { gridLiveLeaseStats } from "../../../visualization/webgpu/webgpu-live-lease";
 import { webGpuDeviceStats } from "../../../visualization/webgpu/webgpu-device-registry";
 import { webGpuSnapshotRendererStats } from "../../../visualization/scene-3d/gpu/webgpu-snapshot-renderer";
-import { imageTextureCacheStats } from "../../../visualization/image/image-texture-cache";
+import { imageTextureCacheStats } from "../../../visualization/media-2d/image-texture-cache";
 import { gpuPointCloudColormapTextureStats } from "../../../visualization/scene-3d/gpu/gpu-point-cloud-colormap-texture";
 import { episodeMapPerformanceStats } from "../../../visualization/map/episode-map-performance";
 import styles from "./EpisodeSettingsSidebar.module.css";

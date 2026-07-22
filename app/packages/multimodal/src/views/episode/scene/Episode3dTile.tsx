@@ -18,7 +18,7 @@ import type {
   PoseVisualization,
   SceneUpdateVisualization,
 } from "../../../ir";
-import { imageTextureCacheKey } from "../../../visualization/image/image-texture-cache";
+import { imageTextureCacheKey } from "../../../visualization/media-2d/image-texture-cache";
 import { useKeyedIdentityMap } from "../../../visualization/shared/use-keyed-identity-map";
 import type { ThreeSceneBackground } from "../../../visualization/scene-3d/base-3d-scene";
 import { DEFAULT_POINT_CLOUD_CAMERA_PROJECTION } from "../../../visualization/scene-3d/camera-fit-bounds";

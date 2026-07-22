@@ -3,14 +3,14 @@ import {
   type ByteSourceDescriptor,
   type EpisodePosterFrame,
   type EpisodePreviewReadResult,
-} from "../ir";
-import type { EpisodePreviewSession } from "../ports";
-import { episodeErrorMessage as errorMessage } from "./episode-error-message";
+} from "../../../ir";
+import type { EpisodePreviewSession } from "../../../ports";
 import {
   episodePreviewPlaybackDelayMs,
   publishEpisodeTimeRange,
   publishSourceBootstrap,
-} from "../runtime";
+} from "../../../runtime";
+import { episodeErrorMessage as errorMessage } from "../shared/episode-error-message";
 
 /** Status values used by the format-neutral episode grid preview. */
 export type EpisodeGridPreviewStatus =

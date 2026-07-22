@@ -12,7 +12,7 @@ import { VISUALIZATION_KIND } from "../visualization-registry";
 import {
   imageTextureCacheStats,
   resetImageTextureCacheForTests,
-} from "../image/image-texture-cache";
+} from "../media-2d/image-texture-cache";
 import { sampleColormap, type PointCloudColorSettings } from "../scene-3d";
 import { POINT_CLOUD_POINTS_MATERIAL_PROPS } from "../scene-3d/PointCloudSceneLayer";
 import { PointCloudPanel } from "./PointCloudPanel";

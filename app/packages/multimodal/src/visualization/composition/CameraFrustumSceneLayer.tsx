@@ -5,7 +5,7 @@ import * as THREE from "three";
 
 import type { CameraCalibrationVisualization } from "../../ir";
 import { CLICK_DRAG_TOLERANCE_PX } from "../shared/interaction";
-import { useImageTextureLease } from "../image/use-image-texture-lease";
+import { useImageTextureLease } from "../media-2d/use-image-texture-lease";
 import { POINT_PICK_BLOCKING_USER_DATA } from "../scene-3d/point-picking";
 import { useScenePicking } from "../scene-3d/scene-interactivity";
 import { pointCloudObjectTransform } from "../scene-3d/transforms";

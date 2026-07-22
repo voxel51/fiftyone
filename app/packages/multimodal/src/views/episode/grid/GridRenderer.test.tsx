@@ -24,7 +24,7 @@ import {
   PLAYBACK_HOVER_INTENT_DELAY_MS,
 } from "./GridRenderer";
 import classes from "./GridRenderer.module.css";
-import { useEpisodeGridPreview } from "../../use-episode-grid-preview";
+import { useEpisodeGridPreview } from "./use-episode-grid-preview";
 
 const previewHarness = vi.hoisted(() => ({
   preview: {
@@ -81,14 +81,14 @@ function getGridRendererRoot(container: HTMLElement): HTMLElement {
   return root;
 }
 
-vi.mock("../../use-stable-episode-source", () => ({
+vi.mock("../../session/use-stable-episode-source", () => ({
   useStableEpisodeSource: vi.fn(() => ({
     byteSource: null,
     episodeSource: null,
   })),
 }));
 
-vi.mock("../../use-episode-preview-session", () => ({
+vi.mock("../../session/use-episode-preview-session", () => ({
   useEpisodePreviewSession: vi.fn(() => ({
     error: null,
     session: null,
@@ -96,7 +96,7 @@ vi.mock("../../use-episode-preview-session", () => ({
   })),
 }));
 
-vi.mock("../../use-episode-grid-preview", () => ({
+vi.mock("./use-episode-grid-preview", () => ({
   useEpisodeGridPreview: vi.fn(() => previewHarness.preview),
 }));
 
@@ -122,7 +122,7 @@ vi.mock("./episode-grid-stream-state", () => ({
   useRegisterEpisodeGridStreams: vi.fn(() => vi.fn()),
 }));
 
-vi.mock("../../../visualization/image/bitmap-image-view", async () => {
+vi.mock("../../../visualization/media-2d/bitmap-image-view", async () => {
   const { useEffect } = await import("react");
   return {
     BitmapCanvasHost: ({ bitmap }: { readonly bitmap: ImageBitmap | null }) => {
@@ -153,7 +153,7 @@ vi.mock("../../../visualization/image/bitmap-image-view", async () => {
 // Regression tripwire: GridRenderer no longer imports the WebGPU-backed
 // ImagePanel for image cells; if it ever comes back, the testid reappears
 // and the image-frame test below fails.
-vi.mock("../../../visualization/image/ImagePanel", () => ({
+vi.mock("../../../visualization/media-2d/ImagePanel", () => ({
   ImagePanel: () => <div data-testid="image-panel" />,
 }));
 

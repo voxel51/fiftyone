@@ -13,7 +13,7 @@ import {
   episodeByteSourceFromSample,
   episodeSourceFromByteSource,
   sampleDescriptorFromSample,
-} from "../../episode-source";
+} from "../../session/episode-source";
 import { getEpisodeNetworkHealth } from "./episode-network-health";
 
 /** Settle time for the current sample before spending idle bandwidth. */
