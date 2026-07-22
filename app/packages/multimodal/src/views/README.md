@@ -14,3 +14,9 @@ and adapter internals also stay outside this boundary.
 
 Views express intent through runtime and port capabilities. They do not build
 query clients, interpret generated schemas, or import decoder implementation.
+
+A view may be format-branded when the user interaction itself targets that
+format, as the MCAP explorer does. That is a product distinction, not
+permission to parse the format here: even a format-branded view must enter
+through neutral IR, port, and runtime capabilities while vendor machinery stays
+in adapters.
