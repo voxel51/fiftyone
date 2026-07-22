@@ -1,26 +1,88 @@
 import { isNullish, Primitive } from "@fiftyone/utilities";
+import { DateTime } from "luxon";
 
 /**
- * Problem: user is in EST, server is in UTC. User picks a
- * date-only value, we need to convert it to UTC. This makes the
- * date appear to be a day ahead when it is rendered in the UI back
- * in UTC/server format.
+ * FiftyOne renders `date` fields as the UTC calendar date and `datetime`
+ * fields in the app timezone (`fo.config.timezone`, "UTC" by default),
+ * while react-datepicker only operates on Date objects interpreted in the
+ * browser's local timezone. The helpers below translate between the two so
+ * the picker shows and stores the same wall-clock values the rest of the
+ * app displays.
+ */
+
+/**
+ * Convert an absolute timestamp into a Date whose local-timezone components
+ * match what the app displays for the field, suitable for react-datepicker
+ * @param type - the type of the field ("date" or "datetime")
+ * @param timestamp - epoch milliseconds
+ * @param timeZone - the app display timezone (IANA name, "UTC", or "local")
+ * @returns a Date carrying the displayed wall-clock values in local time
+ */
+export function toPickerDate(
+  type: string,
+  timestamp: number,
+  timeZone: string,
+): Date {
+  if (type === "date") {
+    const date = new Date(timestamp);
+    return new Date(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      12,
+    );
+  }
+
+  const dt = DateTime.fromMillis(timestamp, { zone: timeZone });
+  return new Date(
+    dt.year,
+    dt.month - 1,
+    dt.day,
+    dt.hour,
+    dt.minute,
+    dt.second,
+    dt.millisecond,
+  );
+}
+
+/**
+ * Serialize a picker Date's calendar date to an absolute instant at noon
+ * UTC, so the stored value renders as the same calendar date in every
+ * timezone
  */
 export function dateOnlyToUTC(date: Date): string {
-  // Extract year, month, day from the date object (in local timezone)
   const year = date.getFullYear();
   const month = date.getMonth();
   const day = date.getDate();
 
-  // Create date at noon UTC (avoids timezone boundary issues)
   return new Date(Date.UTC(year, month, day, 12, 0, 0, 0)).toISOString();
 }
 
-export function serializeDateValue(type: string, date: Date): string {
+export function serializeDateValue(
+  type: string,
+  date: Date,
+  timeZone: string,
+): string {
   if (type === "date") {
     return dateOnlyToUTC(date);
   }
-  return date.toISOString();
+
+  // the picker's Date components are wall-clock values in the app display
+  // timezone; interpret them there to recover the absolute instant
+  return DateTime.fromObject(
+    {
+      year: date.getFullYear(),
+      month: date.getMonth() + 1,
+      day: date.getDate(),
+      hour: date.getHours(),
+      minute: date.getMinutes(),
+      second: date.getSeconds(),
+      millisecond: date.getMilliseconds(),
+    },
+    { zone: timeZone },
+  )
+    .toUTC()
+    .toISO();
 }
 
 /**
@@ -51,14 +113,16 @@ export function isDateInDatabaseFormat(
  * input value for other field types
  * @param fieldValue - the value of the field
  * @param type - the type of the field
+ * @param timeZone - the app display timezone
  * @returns the processed value of the field
  */
 export function serializeFieldValue(
   fieldValue: Primitive | Date,
   type: string,
+  timeZone: string,
 ): Primitive {
   if (fieldValue instanceof Date) {
-    return serializeDateValue(type, fieldValue);
+    return serializeDateValue(type, fieldValue, timeZone);
   }
 
   if (type !== "dict") {
@@ -82,29 +146,29 @@ export function serializeFieldValue(
  * pass to SmartForm and handle date/dict fields correctly
  * @param type - the type of the field
  * @param value - the value of the field
+ * @param timeZone - the app display timezone
  * @returns the initial value of the field
  */
 export function parseDatabaseValue(
-  _type: string,
+  type: string,
   value: unknown,
+  timeZone: string,
 ): Primitive | Date {
   /**
    * from the backend we get: { datetime: number, '_cls': 'datetime' }
    */
-  if (value && typeof value === "object" && "datetime" in value) {
-    const timestamp = value.datetime as number;
-    // within editor we use Date objects, parse the timestamp to a Date
-    // and then we will serialize it back on submission to the server
-    return new Date(timestamp);
+  if (isDateInDatabaseFormat(value)) {
+    return toPickerDate(type, value.datetime, timeZone);
   }
+
   // Transient values stored on Sample (e.g. after an undo restored the
   // original database value through setField) are already-serialized ISO
-  // strings — parse them back into Date instances so the picker shows the
+  // strings — parse them back into picker Dates so the picker shows the
   // correct value instead of falling back to "now".
-  if ((_type === "date" || _type === "datetime") && typeof value === "string") {
+  if ((type === "date" || type === "datetime") && typeof value === "string") {
     const parsed = new Date(value);
     if (!Number.isNaN(parsed.getTime())) {
-      return parsed;
+      return toPickerDate(type, parsed.getTime(), timeZone);
     }
   }
   return value as Primitive;

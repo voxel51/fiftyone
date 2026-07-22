@@ -4,9 +4,11 @@ import {
   KnownContexts,
   useCreateCommand,
 } from "@fiftyone/commands";
+import * as fos from "@fiftyone/state";
 import { isNullish, Primitive, Sample } from "@fiftyone/utilities";
 import { Orientation, Stack } from "@voxel51/voodo";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRecoilValue } from "recoil";
 import PrimitiveRenderer from "./PrimitiveRenderer";
 import { generatePrimitiveSchema, PrimitiveSchema } from "./schemaHelpers";
 import {
@@ -28,17 +30,18 @@ export default function PrimitiveEdit({
 
   const sample = useSampleInstance();
   const value = useSampleSelector((s) => s.getResolved<Primitive>(path));
+  const timeZone = useRecoilValue(fos.timeZone);
 
   const primitiveSchema = generatePrimitiveSchema(path, currentLabelSchema);
 
   const [fieldValue, setFieldValue] = useState<Primitive | Date>(
-    parseDatabaseValue(type, value),
+    parseDatabaseValue(type, value, timeZone),
   );
 
   // synchronize external value changes with field
   useEffect(
-    () => setFieldValue(parseDatabaseValue(type, value)),
-    [type, value],
+    () => setFieldValue(parseDatabaseValue(type, value, timeZone)),
+    [type, value, timeZone],
   );
 
   // need to use a ref to access field value in command callback;
@@ -59,7 +62,11 @@ export default function PrimitiveEdit({
         // stage mutation on execute
         () => {
           try {
-            const serializedValue = serializeFieldValue(newValue, type);
+            const serializedValue = serializeFieldValue(
+              newValue,
+              type,
+              timeZone,
+            );
             if (
               !isAddOperation &&
               (isNullish(serializedValue) || serializedValue === "")
@@ -87,7 +94,7 @@ export default function PrimitiveEdit({
           }
         },
       );
-    }, [path, sample, type, value]),
+    }, [path, sample, type, value, timeZone]),
     () => true,
   );
 
