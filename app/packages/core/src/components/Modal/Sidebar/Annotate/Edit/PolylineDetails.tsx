@@ -1,3 +1,8 @@
+import {
+  useAnnotationEngine,
+  useEngineSelector,
+  useSceneSampleId,
+} from "@fiftyone/annotation";
 import * as fos from "@fiftyone/state";
 import { Box, Typography } from "@mui/material";
 import { useMemo } from "react";
@@ -52,13 +57,29 @@ export const PolylineDetails = () => {
     | fos.PolylineAnnotationLabel["data"]
     | null;
 
+  // committed geometry read reactively from the engine (cf. Position3d) — a
+  // 3D vertex edit commits there immediately, while a draft's `data` snapshot
+  // is frozen at creation. Pre-commit drafts fall back to the snapshot.
+  const engine = useAnnotationEngine();
+  const sample = useSceneSampleId();
+  const field = selected?.field ?? null;
+  const labelId = (currentDataValue?._id as string | undefined) ?? "";
+  const committed = useEngineSelector(engine, (e) =>
+    labelId && field && sample
+      ? (e.getLabel({ sample, path: field, instanceId: labelId }) as
+          | fos.PolylineAnnotationLabel["data"]
+          | undefined)
+      : undefined,
+  );
+
   const { segmentCount, vertexCount } = useMemo(() => {
-    const points = currentDataValue?.points3d ?? currentDataValue?.points;
+    const source = committed ?? currentDataValue;
+    const points = source?.points3d ?? source?.points;
     return {
       segmentCount: countSegments(points),
       vertexCount: countVertices(points),
     };
-  }, [currentDataValue]);
+  }, [committed, currentDataValue]);
 
   return (
     <Box sx={{ px: 1.5, py: 1 }}>
