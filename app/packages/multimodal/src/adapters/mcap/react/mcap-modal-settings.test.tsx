@@ -530,7 +530,9 @@ describe("mcap-modal-settings", () => {
       </>,
     );
 
-    expect(screen.getByTestId("fidelity-mode").textContent).toBe("smooth");
+    expect(screen.getByTestId("fidelity-mode").textContent).toBe(
+      DEFAULT_MCAP_FIDELITY_MODE,
+    );
     const playbackRendersBeforeUpdate = playbackRenders;
     const sceneBackgroundRendersBeforeUpdate = sceneBackgroundRenders;
 
