@@ -74,10 +74,8 @@ export const McapTileStatusBadge: React.FC<{
  * The same per-topic stream summary as the corner badge, rendered as the
  * tile settings' status strip: buffering, gap, stale, and failure states
  * read identically whether the user is looking at the tile or its
- * settings. Brief state changes are stabilized so admitting a new source
- * does not insert and immediately remove a card above the controls. Renders
- * nothing while every topic is current.
- */
+ * settings.
+ **/
 export const McapTileStreamNoticeStrip: React.FC<{
   topics: readonly string[];
 }> = ({ topics }) => {
