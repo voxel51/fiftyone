@@ -2,12 +2,14 @@
 // --reporter json) as the markdown body for the authoritative e2e PR comment
 // and the workflow job summary.
 //
-// Usage: node scripts/report-summary.mjs merged-results.json [blob-dir] [jobs-json]
+// Usage: node scripts/report-summary.mjs merged-results.json [blob-dir] [jobs-json] [burn-in-json]
 // Env: RUN_URL (workflow run link), HEAD_SHA (commit the run tested),
 // TEST_E2E_RESULT (shard jobs' aggregate result), EXPECTED_SHARDS
 // (shard count; with blob-dir, flags runs whose reports are incomplete),
 // RUN_STARTED_AT (attempt start, for the wall-clock line), REPORT_URL
-// (merged HTML report artifact download link)
+// (merged HTML report artifact download link), BURN_IN_COUNT (spec files
+// selected for burn-in; 0/empty = none this run), BURN_IN_RESULT (burn-in
+// job conclusion)
 
 import { readFileSync, readdirSync } from "node:fs";
 
@@ -21,7 +23,7 @@ const FLAVOR = (process.env.GITHUB_REPOSITORY ?? "").endsWith("fiftyone-teams")
 const MARKER = `<!-- e2e-authoritative-report:${FLAVOR} -->`;
 const MAX_LISTED = 50;
 
-const [, , jsonPath, blobDir, jobsPath] = process.argv;
+const [, , jsonPath, blobDir, jobsPath, burnInJsonPath] = process.argv;
 if (!jsonPath) {
   console.error(
     "usage: node scripts/report-summary.mjs <merged-results.json> [blob-dir]",
@@ -72,6 +74,48 @@ const byLocation = (a, b) => a.location.localeCompare(b.location);
 failed.sort(byLocation);
 flaky.sort(byLocation);
 
+// Burn-in: new/modified spec files repeated 10x with retries disabled in
+// their own job; its report merges separately so repeats don't inflate the
+// suite counts above.
+const burnInCount = Number(process.env.BURN_IN_COUNT || "0");
+const burnInResult = process.env.BURN_IN_RESULT ?? "";
+const burnInFailed = [];
+let burnInStats = null;
+if (burnInCount > 0 && burnInJsonPath) {
+  try {
+    const burnInReport = JSON.parse(readFileSync(burnInJsonPath, "utf8"));
+    burnInStats = burnInReport.stats ?? {};
+    const walkBurnIn = (suite, trail) => {
+      const path = suite.title ? [...trail, suite.title] : trail;
+      for (const spec of suite.specs ?? []) {
+        const runs = spec.tests ?? [];
+        const failedRuns = runs.filter((t) => t.status === "unexpected").length;
+        if (failedRuns > 0) {
+          burnInFailed.push({
+            location: `${spec.file}:${spec.line}`,
+            title: `${[...path.slice(1), spec.title].join(" › ")} — failed ${failedRuns}/${runs.length} runs`,
+          });
+        }
+      }
+      for (const child of suite.suites ?? []) {
+        walkBurnIn(child, path);
+      }
+    };
+    for (const suite of burnInReport.suites ?? []) {
+      walkBurnIn(suite, []);
+    }
+    burnInFailed.sort(byLocation);
+  } catch {
+    // missing report: burnInStats stays null and the run reads as unhealthy
+  }
+}
+const burnInUnhealthy =
+  burnInCount > 0 &&
+  (burnInResult !== "success" ||
+    burnInStats === null ||
+    burnInFailed.length > 0 ||
+    (burnInStats.expected ?? 0) + (burnInStats.unexpected ?? 0) === 0);
+
 const itemize = (entries) => {
   const lines = entries
     .slice(0, MAX_LISTED)
@@ -110,9 +154,11 @@ const headline = failed.length
   ? `## ❌ CI (${FLAVOR}): ${failed.length} failed spec${
       failed.length === 1 ? "" : "s"
     }`
-  : incomplete
-    ? `## ⚠️ CI (${FLAVOR}): incomplete e2e run`
-    : `## ✅ CI (${FLAVOR})`;
+  : burnInUnhealthy
+    ? `## ❌ CI (${FLAVOR}): e2e burn-in failed`
+    : incomplete
+      ? `## ⚠️ CI (${FLAVOR}): incomplete e2e run`
+      : `## ✅ CI (${FLAVOR})`;
 
 const lines = [MARKER, headline];
 if (incomplete) {
@@ -131,6 +177,14 @@ lines.push(
     stats.expected ?? 0
   } passed · ${stats.skipped ?? 0} skipped**${wallClock} at \`${sha}\`${runLink}`,
 );
+if (burnInCount > 0) {
+  lines.push(
+    "",
+    `**Burn-in** (${burnInCount} new/modified spec file${
+      burnInCount === 1 ? "" : "s"
+    } × 10 runs, no retries): ${burnInUnhealthy ? "❌" : "✅"}`,
+  );
+}
 if (suiteRows.length) {
   lines.push(
     "",
@@ -138,6 +192,9 @@ if (suiteRows.length) {
     "| --- | --- |",
     ...suiteRows,
     `| e2e | ${failed.length ? "❌" : incomplete ? "⚠️" : "✅"} |`,
+    ...(burnInCount > 0
+      ? [`| e2e burn-in | ${burnInUnhealthy ? "❌" : "✅"} |`]
+      : []),
   );
 }
 
@@ -146,6 +203,22 @@ if (failed.length) {
 }
 if (flaky.length) {
   lines.push("", "### Flaky (passed on retry)", ...itemize(flaky));
+}
+if (burnInUnhealthy) {
+  lines.push("", "### Burn-in failures");
+  if (burnInFailed.length) {
+    lines.push(...itemize(burnInFailed));
+  } else {
+    // the job died or produced no report; the verdict names the cause
+    lines.push(
+      `- burn-in job concluded '${burnInResult}' with no usable report`,
+    );
+  }
+  lines.push(
+    "",
+    "New and modified specs must pass 10 consecutive runs. Reproduce with" +
+      " `cd e2e-pw && yarn e2e <spec> --repeat-each=10 --retries=0`.",
+  );
 }
 const reportUrl = process.env.REPORT_URL ?? "";
 lines.push(
