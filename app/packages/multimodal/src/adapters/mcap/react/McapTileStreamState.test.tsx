@@ -1,8 +1,13 @@
 import { PlaybackProvider, usePlaybackStore } from "@fiftyone/playback";
 import { act, cleanup, render, screen } from "@testing-library/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { McapTileEmptyState, McapTileStatusBadge } from "./McapTileStreamState";
+import {
+  McapTileEmptyState,
+  McapTileStatusBadge,
+  McapTileStreamNoticeStrip,
+} from "./McapTileStreamState";
+import { MCAP_NOTICE_APPEARANCE_FLOOR_MS } from "./mcap-health";
 import {
   setMcapTopicStartTimeSec,
   setMcapTopicStaleAgeNs,
@@ -10,6 +15,7 @@ import {
 } from "./mcap-stream-status-state";
 
 const TOPIC = "/camera";
+const SECOND_TOPIC = "/labels";
 
 afterEach(() => {
   cleanup();
@@ -64,6 +70,41 @@ describe("McapTileEmptyState", () => {
   });
 });
 
+describe("McapTileStreamNoticeStrip", () => {
+  it("suppresses a transient loading notice when a source is enabled", () => {
+    vi.useFakeTimers();
+    render(
+      <PlaybackProvider>
+        <StreamNoticeHarness />
+      </PlaybackProvider>,
+    );
+
+    act(() => screen.getByRole("button", { name: "Enable labels" }).click());
+    expect(screen.queryByText(/Buffering/)).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(MCAP_NOTICE_APPEARANCE_FLOOR_MS - 1);
+      screen.getByRole("button", { name: "Labels ready" }).click();
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(screen.queryByText(/Buffering/)).toBeNull();
+  });
+
+  it("shows a loading notice that survives the appearance floor", () => {
+    vi.useFakeTimers();
+    render(
+      <PlaybackProvider>
+        <StreamNoticeHarness />
+      </PlaybackProvider>,
+    );
+
+    act(() => screen.getByRole("button", { name: "Enable labels" }).click());
+    act(() => vi.advanceTimersByTime(MCAP_NOTICE_APPEARANCE_FLOOR_MS));
+
+    expect(screen.getByText(/Buffering/)).toBeTruthy();
+  });
+});
+
 function SeedGap({ startSec }: { readonly startSec: number }) {
   const store = usePlaybackStore();
 
@@ -84,4 +125,28 @@ function SeedStaleBadge({ ageNs }: { readonly ageNs: bigint }) {
   }, [ageNs, store]);
 
   return <McapTileStatusBadge topics={[TOPIC]} />;
+}
+
+function StreamNoticeHarness() {
+  const store = usePlaybackStore();
+  const [topics, setTopics] = useState<readonly string[]>([TOPIC]);
+
+  useEffect(() => {
+    setMcapTopicStatus(store, TOPIC, "ready");
+  }, [store]);
+
+  return (
+    <>
+      <button onClick={() => setTopics([TOPIC, SECOND_TOPIC])} type="button">
+        Enable labels
+      </button>
+      <button
+        onClick={() => setMcapTopicStatus(store, SECOND_TOPIC, "ready")}
+        type="button"
+      >
+        Labels ready
+      </button>
+      <McapTileStreamNoticeStrip topics={topics} />
+    </>
+  );
 }

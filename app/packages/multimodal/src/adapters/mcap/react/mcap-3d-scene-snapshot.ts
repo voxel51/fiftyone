@@ -1,3 +1,12 @@
+import type {
+  CameraFrustumPanelLayer,
+  GridPanelLayer,
+  PointCloudPanelLayer,
+  SceneAnnotationPanelLayer,
+} from "../../../visualization/panels/point-cloud/types";
+import type { McapHealthNotice } from "./mcap-health";
+import type { Mcap3dPlacementStatus } from "./use-mcap-3d-camera-tracking";
+
 /** Placement state relevant to retaining the last valid 3D scene. */
 export type Mcap3dSceneSnapshotReadiness =
   | "ready"
@@ -21,6 +30,74 @@ export interface Mcap3dSceneSnapshotSelection<Snapshot> {
   readonly heldReason: Mcap3dHeldSceneReason | null;
   readonly nextHeld: HeldMcap3dSceneSnapshot<Snapshot> | null;
   readonly snapshot: Snapshot;
+}
+
+/** Renderable 3D scene state committed atomically across stream transitions. */
+export interface Mcap3dSceneSnapshot {
+  readonly annotationLayers: readonly SceneAnnotationPanelLayer[];
+  readonly frustumLayers: readonly CameraFrustumPanelLayer[];
+  readonly gridLayers: readonly GridPanelLayer[];
+  readonly notices: readonly McapHealthNotice[];
+  readonly placementStatus: Mcap3dPlacementStatus;
+  readonly pointCloudLayers: readonly PointCloudPanelLayer[];
+}
+
+/**
+ * Removes disabled sources from a held scene without disturbing layers that
+ * are still selected. This lets an additive source transition retain useful
+ * work while ensuring a source the user disabled disappears immediately.
+ */
+export function restrictHeldMcap3dSceneSnapshotToTopics(
+  held: HeldMcap3dSceneSnapshot<Mcap3dSceneSnapshot> | null,
+  selectedTopics: ReadonlySet<string>,
+): HeldMcap3dSceneSnapshot<Mcap3dSceneSnapshot> | null {
+  if (!held) return null;
+
+  const snapshot = held.snapshot;
+  const nextSnapshot: Mcap3dSceneSnapshot = {
+    annotationLayers: filterPreservingIdentity(
+      snapshot.annotationLayers,
+      (layer) =>
+        layer.sourceId === undefined || selectedTopics.has(layer.sourceId),
+    ),
+    frustumLayers: filterPreservingIdentity(snapshot.frustumLayers, (layer) =>
+      selectedTopics.has(layer.id),
+    ),
+    gridLayers: filterPreservingIdentity(snapshot.gridLayers, (layer) =>
+      selectedTopics.has(layer.id),
+    ),
+    notices: filterPreservingIdentity(
+      snapshot.notices,
+      (notice) =>
+        notice.topicId === undefined || selectedTopics.has(notice.topicId),
+    ),
+    placementStatus: snapshot.placementStatus,
+    pointCloudLayers: filterPreservingIdentity(
+      snapshot.pointCloudLayers,
+      (layer) => selectedTopics.has(layer.id),
+    ),
+  };
+  const retainable = mcap3dSceneSnapshotHasLayers(nextSnapshot);
+
+  return {
+    ...held,
+    retainable,
+    snapshot: sceneSnapshotArraysMatch(snapshot, nextSnapshot)
+      ? snapshot
+      : nextSnapshot,
+  };
+}
+
+/** Returns whether a 3D scene contains any source-backed render layers. */
+export function mcap3dSceneSnapshotHasLayers(
+  snapshot: Mcap3dSceneSnapshot,
+): boolean {
+  return (
+    snapshot.pointCloudLayers.length > 0 ||
+    snapshot.annotationLayers.length > 0 ||
+    snapshot.gridLayers.length > 0 ||
+    snapshot.frustumLayers.length > 0
+  );
 }
 
 /**
@@ -115,4 +192,25 @@ function committedSelection<Snapshot>(
     },
     snapshot,
   };
+}
+
+function filterPreservingIdentity<Item>(
+  items: readonly Item[],
+  predicate: (item: Item) => boolean,
+): readonly Item[] {
+  const filtered = items.filter(predicate);
+  return filtered.length === items.length ? items : filtered;
+}
+
+function sceneSnapshotArraysMatch(
+  first: Mcap3dSceneSnapshot,
+  second: Mcap3dSceneSnapshot,
+): boolean {
+  return (
+    first.annotationLayers === second.annotationLayers &&
+    first.frustumLayers === second.frustumLayers &&
+    first.gridLayers === second.gridLayers &&
+    first.notices === second.notices &&
+    first.pointCloudLayers === second.pointCloudLayers
+  );
 }

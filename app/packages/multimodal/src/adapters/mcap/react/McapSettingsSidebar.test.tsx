@@ -552,19 +552,32 @@ describe("McapSettingsSidebar", () => {
   });
 
   it("frames registered stream tiles with their status strip", () => {
-    renderSidebar({
-      registeredTileSettings: [LIDAR_TILE_ID],
-      registeredStreamTopics: ["/lidar/top"],
-    });
+    vi.useFakeTimers();
+    try {
+      renderSidebar({
+        registeredTileSettings: [LIDAR_TILE_ID],
+        registeredStreamTopics: ["/lidar/top"],
+      });
 
-    fireEvent.click(screen.getByTestId("focus-lidar"));
+      fireEvent.click(screen.getByTestId("focus-lidar"));
 
-    // No stream state has been written for the topic, so the strip
-    // surfaces the buffering notice above the tile's controls.
-    expect(screen.getByText(/Buffering/)).toBeTruthy();
-    expect(screen.getByTestId(PANEL_SETTINGS_TEST_ID).textContent).toBe(
-      "lidar registered knobs",
-    );
+      // No stream state has been written for the topic, but the strip waits
+      // out brief loading transitions so enabling a source cannot shift the
+      // controls down and immediately back up.
+      expect(screen.queryByText(/Buffering/)).toBeNull();
+      expect(screen.getByTestId(PANEL_SETTINGS_TEST_ID).textContent).toBe(
+        "lidar registered knobs",
+      );
+
+      act(() => {
+        vi.advanceTimersByTime(600);
+      });
+
+      // A sustained loading condition remains visible and actionable.
+      expect(screen.getByText(/Buffering/)).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("falls back to the DOM slot when switching to a portal tile", () => {

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  restrictHeldMcap3dSceneSnapshotToTopics,
   selectMcap3dSceneSnapshot,
   type HeldMcap3dSceneSnapshot,
+  type Mcap3dSceneSnapshot,
 } from "./mcap-3d-scene-snapshot";
 
 const EMPTY = "empty";
@@ -89,12 +91,109 @@ describe("selectMcap3dSceneSnapshot", () => {
   });
 });
 
+describe("restrictHeldMcap3dSceneSnapshotToTopics", () => {
+  it("retains an existing scene while an additive source is pending", () => {
+    const snapshot = sceneSnapshot({ pointCloudTopics: ["lidar"] });
+    const held = sceneHeld(snapshot);
+
+    const restricted = restrictHeldMcap3dSceneSnapshotToTopics(
+      held,
+      new Set(["lidar", "boxes"]),
+    );
+    const selection = selectMcap3dSceneSnapshot({
+      current: sceneSnapshot(),
+      currentRetainable: false,
+      definitiveMissingGraceMs: GRACE_MS,
+      empty: sceneSnapshot(),
+      hasSourceData: true,
+      held: restricted,
+      key: KEY,
+      nowMs: 0,
+      readiness: "pending",
+    });
+
+    expect(restricted?.snapshot).toBe(snapshot);
+    expect(selection.snapshot).toBe(snapshot);
+    expect(selection.heldReason).toBe("pending");
+  });
+
+  it("removes a disabled source from a retained scene immediately", () => {
+    const snapshot = sceneSnapshot({
+      annotationTopics: ["boxes"],
+      pointCloudTopics: ["lidar", "radar"],
+    });
+
+    const restricted = restrictHeldMcap3dSceneSnapshotToTopics(
+      sceneHeld(snapshot),
+      new Set(["radar", "boxes"]),
+    );
+
+    expect(
+      restricted?.snapshot.pointCloudLayers.map((layer) => layer.id),
+    ).toEqual(["radar"]);
+    expect(
+      restricted?.snapshot.annotationLayers.map((layer) => layer.sourceId),
+    ).toEqual(["boxes"]);
+    expect(restricted?.retainable).toBe(true);
+  });
+
+  it("marks a retained scene empty after its final source is disabled", () => {
+    const restricted = restrictHeldMcap3dSceneSnapshotToTopics(
+      sceneHeld(sceneSnapshot({ gridTopics: ["map"] })),
+      new Set(),
+    );
+
+    expect(restricted?.snapshot.gridLayers).toEqual([]);
+    expect(restricted?.retainable).toBe(false);
+  });
+});
+
 function readyHeld(): HeldMcap3dSceneSnapshot<string> {
   return {
     definitiveMissingSinceMs: null,
     key: KEY,
     retainable: true,
     snapshot: READY,
+  };
+}
+
+function sceneHeld(
+  snapshot: Mcap3dSceneSnapshot,
+): HeldMcap3dSceneSnapshot<Mcap3dSceneSnapshot> {
+  return {
+    definitiveMissingSinceMs: null,
+    key: KEY,
+    retainable: true,
+    snapshot,
+  };
+}
+
+function sceneSnapshot({
+  annotationTopics = [],
+  gridTopics = [],
+  pointCloudTopics = [],
+}: {
+  readonly annotationTopics?: readonly string[];
+  readonly gridTopics?: readonly string[];
+  readonly pointCloudTopics?: readonly string[];
+} = {}): Mcap3dSceneSnapshot {
+  return {
+    annotationLayers: annotationTopics.map(
+      (sourceId) =>
+        ({
+          id: `${sourceId}:entity`,
+          sourceId,
+        }) as Mcap3dSceneSnapshot["annotationLayers"][number],
+    ),
+    frustumLayers: [],
+    gridLayers: gridTopics.map(
+      (id) => ({ id }) as Mcap3dSceneSnapshot["gridLayers"][number],
+    ),
+    notices: [],
+    placementStatus: "transformed",
+    pointCloudLayers: pointCloudTopics.map(
+      (id) => ({ id }) as Mcap3dSceneSnapshot["pointCloudLayers"][number],
+    ),
   };
 }
 

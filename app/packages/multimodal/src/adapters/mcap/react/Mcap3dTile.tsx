@@ -24,13 +24,11 @@ import { DEFAULT_POINT_CLOUD_CAMERA_PROJECTION } from "../../../visualization/pa
 import { PointCloudPanel } from "../../../visualization/panels/point-cloud/PointCloudPanel";
 import {
   type CameraFrustumPanelLayer,
-  type GridPanelLayer,
   type PointCloudCameraPose,
   type PointCloudCameraProjection,
   type PointCloudPanelLayer,
   type PointCloudPanelRenderStats,
   type PointCloudPointPick,
-  type SceneAnnotationPanelLayer,
   type SceneRayPanelLayer,
 } from "../../../visualization/panels/point-cloud/types";
 import { Mcap3dCameraRig } from "./Mcap3dCameraRig";
@@ -38,9 +36,12 @@ import Mcap3dTileSettings from "./Mcap3dTileSettings";
 import { Mcap3dViewControls } from "./Mcap3dViewControls";
 import { build3dLayers } from "./mcap-3d-layers";
 import {
+  mcap3dSceneSnapshotHasLayers,
+  restrictHeldMcap3dSceneSnapshotToTopics,
   selectMcap3dSceneSnapshot,
   type HeldMcap3dSceneSnapshot,
   type Mcap3dHeldSceneReason,
+  type Mcap3dSceneSnapshot,
 } from "./mcap-3d-scene-snapshot";
 import { useMcap3dViewSettings } from "./mcap-3d-view-settings-context";
 import {
@@ -246,6 +247,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const { focusedTileId } = useTiling();
   const sceneSnapshotRef =
     useRef<HeldMcap3dSceneSnapshot<Mcap3dSceneSnapshot> | null>(null);
+  const panelHasCommittedRef = useRef(false);
   const [, refreshSceneSnapshot] = useState(0);
   const panelBackground = useMemo<ThreeSceneBackground>(() => {
     switch (sceneBackground.mode) {
@@ -497,7 +499,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       };
     },
     inputs: (layer) => [
-      layer,
+      layer.frame,
+      layer.contentTimeNs,
+      ...mcap3dFrameTransformIdentityInputs(layer.frameTransform),
       pointCloudColors[layer.id],
       pointCloudSourceById.get(layer.id),
       pointCloudSources,
@@ -622,7 +626,9 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       const index = cameraTopics.indexOf(layer.id);
       const imageTopic = index >= 0 ? (frustumImageTopics[index] ?? "") : "";
       return [
-        layer,
+        layer.frame,
+        layer.contentTimeNs,
+        ...mcap3dFrameTransformIdentityInputs(layer.frameTransform),
         index >= 0 ? frustumImageFrames[index] : null,
         index >= 0 ? frustumImageDecodeRunways[index] : null,
         imageTopic,
@@ -710,11 +716,19 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     // not every annotation in the scene.
     inputs: (layer) => {
       const entity = layer.frame.entities[0];
-      if (!entity) return [layer];
+      if (!entity) {
+        return [
+          layer.frame,
+          layer.sourceId,
+          ...mcap3dFrameTransformIdentityInputs(layer.frameTransform),
+        ];
+      }
       const topic = layer.sourceId ?? "";
       const entityId = entity.id || layer.id;
       return [
-        layer,
+        entity,
+        layer.sourceId,
+        ...mcap3dFrameTransformIdentityInputs(layer.frameTransform),
         isMcapSceneEntitySelected(selectedObject, topic, entityId),
         isMcapLabelEcho(selectedObject, mcapEntityLabel(entity)),
         onHoverEntity,
@@ -782,6 +796,15 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       key: (layer) => layer.id,
     },
   );
+  const stableGridLayers = useKeyedIdentityMap(gridLayers, {
+    build: (layer) => layer,
+    inputs: (layer) => [
+      layer.frame,
+      layer.contentTimeNs,
+      ...mcap3dFrameTransformIdentityInputs(layer.frameTransform),
+    ],
+    key: (layer) => layer.id,
+  });
   // Schema-driven telemetry: speed from the first enabled pose stream whose
   // latest sample carries velocity, coordinates from the first LocationFix
   // stream — never keyed on topic names.
@@ -977,20 +1000,14 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   // scene health reads identically in the canvas chip and the sidebar.
   usePublishMcapSceneNotices(tileId, panelNotices);
   const sceneSnapshotKey = useMemo(
-    () =>
-      JSON.stringify([
-        sourceKey,
-        selectedTopicsKey,
-        worldFrameId,
-        fidelityMode,
-      ]),
-    [fidelityMode, selectedTopicsKey, sourceKey, worldFrameId],
+    () => JSON.stringify([sourceKey, worldFrameId, fidelityMode]),
+    [fidelityMode, sourceKey, worldFrameId],
   );
   const currentSceneSnapshot = useMemo<Mcap3dSceneSnapshot>(
     () => ({
       annotationLayers,
       frustumLayers,
-      gridLayers,
+      gridLayers: stableGridLayers,
       notices: panelNotices,
       placementStatus,
       pointCloudLayers: hoverablePointCloudLayers,
@@ -999,7 +1016,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       annotationLayers,
       hoverablePointCloudLayers,
       frustumLayers,
-      gridLayers,
+      stableGridLayers,
       panelNotices,
       placementStatus,
     ],
@@ -1010,17 +1027,21 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     gridFrames.some(Boolean) ||
     calibrationFrames.some(Boolean);
   const currentSceneRetainable =
-    currentSceneSnapshot.pointCloudLayers.length > 0 ||
-    currentSceneSnapshot.annotationLayers.length > 0 ||
-    currentSceneSnapshot.gridLayers.length > 0 ||
-    currentSceneSnapshot.frustumLayers.length > 0;
+    mcap3dSceneSnapshotHasLayers(currentSceneSnapshot);
+  const selectedTopicSet = useMemo(
+    () => new Set(selectedTopics),
+    [selectedTopics],
+  );
   const sceneSnapshotSelection = selectMcap3dSceneSnapshot({
     current: currentSceneSnapshot,
     currentRetainable: currentSceneRetainable,
     definitiveMissingGraceMs: DEFINITIVE_MISSING_SCENE_GRACE_MS,
     empty: emptyMcap3dSceneSnapshot(currentSceneSnapshot.placementStatus),
     hasSourceData: hasSceneSourceData,
-    held: sceneSnapshotRef.current,
+    held: restrictHeldMcap3dSceneSnapshotToTopics(
+      sceneSnapshotRef.current,
+      selectedTopicSet,
+    ),
     key: sceneSnapshotKey,
     nowMs: Date.now(),
     readiness: selectedSourcePending
@@ -1070,6 +1091,21 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     depthRayResolution?.status === "ready"
       ? [depthRayResolution.layer]
       : EMPTY_SCENE_RAYS;
+  const sceneHasRenderableContent =
+    mcap3dSceneSnapshotHasLayers(displayedScene) || depthRayLayers.length > 0;
+  const sceneRequiresPanel =
+    sceneHasRenderableContent || producedNotices.length > 0;
+  const shouldRenderPanel =
+    selectedTopics.length > 0 &&
+    (sceneRequiresPanel || panelHasCommittedRef.current);
+
+  // This layout effect records that source-backed scene content committed,
+  // allowing later source-loading transitions to keep WebGPU mounted.
+  useLayoutEffect(() => {
+    if (sceneHasRenderableContent) {
+      panelHasCommittedRef.current = true;
+    }
+  }, [sceneHasRenderableContent]);
   const prefetchFramePlacement = frameTransforms.prefetchPlacement;
 
   // This effect requests the transform window needed by a hovered camera ray.
@@ -1181,16 +1217,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         <div className={styles.loading}>
           <span className={styles.emptyText}>No sources selected</span>
         </div>
-      ) : // Gate on the UNSTABILIZED notices: a live notice condition must keep
-      // the panel (and its GL canvas) mounted even while the stabilizer's
-      // appearance floor still hides it from the chip — otherwise short
-      // transform dropouts would flash the empty state and churn the canvas.
-      displayedScene.pointCloudLayers.length > 0 ||
-        displayedScene.annotationLayers.length > 0 ||
-        displayedScene.gridLayers.length > 0 ||
-        displayedScene.frustumLayers.length > 0 ||
-        depthRayLayers.length > 0 ||
-        producedNotices.length > 0 ? (
+      ) : shouldRenderPanel ? (
         <div className={styles.panelStack} {...hoverTooltipContainerProps}>
           <PointCloudPanel
             annotationLayers={displayedScene.annotationLayers}
@@ -1240,15 +1267,6 @@ function msToNs(value: number): bigint {
   return BigInt(Math.max(0, Math.round(value))) * 1_000_000n;
 }
 
-interface Mcap3dSceneSnapshot {
-  readonly annotationLayers: readonly SceneAnnotationPanelLayer[];
-  readonly frustumLayers: readonly CameraFrustumPanelLayer[];
-  readonly gridLayers: readonly GridPanelLayer[];
-  readonly notices: readonly McapHealthNotice[];
-  readonly placementStatus: Mcap3dPlacementStatus;
-  readonly pointCloudLayers: readonly PointCloudPanelLayer[];
-}
-
 function emptyMcap3dSceneSnapshot(
   placementStatus: Mcap3dPlacementStatus,
 ): Mcap3dSceneSnapshot {
@@ -1260,6 +1278,25 @@ function emptyMcap3dSceneSnapshot(
     placementStatus,
     pointCloudLayers: [],
   };
+}
+
+function mcap3dFrameTransformIdentityInputs(
+  transform: PointCloudPanelLayer["frameTransform"],
+): readonly unknown[] {
+  return transform
+    ? [
+        transform.resolutionKind,
+        transform.sourceFrameId,
+        transform.targetFrameId,
+        transform.translation.x,
+        transform.translation.y,
+        transform.translation.z,
+        transform.rotation.x,
+        transform.rotation.y,
+        transform.rotation.z,
+        transform.rotation.w,
+      ]
+    : [null];
 }
 
 const McapHeldSceneStatusBadge: React.FC<{
