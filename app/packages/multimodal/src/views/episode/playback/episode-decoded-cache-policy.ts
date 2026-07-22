@@ -58,6 +58,16 @@ export function nextDecodedCacheLookaheadSeconds({
   return currentSeconds;
 }
 
+/** Browser-reported device memory, normalized for cache-budget decisions. */
+export function reportedDeviceMemoryGb(): number | null {
+  if (typeof navigator === "undefined") return null;
+  const memoryGb = (navigator as Navigator & { deviceMemory?: number })
+    .deviceMemory;
+  return memoryGb !== undefined && Number.isFinite(memoryGb) && memoryGb > 0
+    ? memoryGb
+    : null;
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }

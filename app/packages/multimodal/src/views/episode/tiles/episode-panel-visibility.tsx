@@ -10,10 +10,10 @@ import React, {
 import {
   DEFAULT_EPISODE_PROJECTION_POINT_SIZE,
   normalizeEpisodePointSize,
-} from "../scene/episode-point-size";
+} from "../presentation/point-size-policy";
 
 /** Persisted source visibility for one episode 3D tile. */
-export interface Episode3dTileVisibility {
+export interface Scene3dTileVisibility {
   readonly enabledSourceIds: readonly string[];
   /** `null` records that the user deliberately left no primary geometry. */
   readonly primarySourceId: string | null;
@@ -36,7 +36,7 @@ type ImagePointCloudProjectionsByImage = Readonly<
 interface EpisodePersistedTileVisibility {
   readonly imageLabelStreams?: ImageLabelStreamsByImage;
   readonly imagePointCloudProjections?: ImagePointCloudProjectionsByImage;
-  readonly threeD?: Episode3dTileVisibility;
+  readonly threeD?: Scene3dTileVisibility;
 }
 
 interface EpisodePersistedVisibilityScope {
@@ -92,18 +92,18 @@ export function useEpisodePanelVisibilityScope(): string | null {
 }
 
 /** Reads one 3D tile's durable visibility before it creates stream demand. */
-export function readEpisode3dTileVisibility(
+export function readScene3dTileVisibility(
   scopeKey: string | null,
   tileId: string | null,
-): Episode3dTileVisibility | null {
+): Scene3dTileVisibility | null {
   return readTileVisibility(scopeKey, tileId)?.threeD ?? null;
 }
 
 /** Writes one 3D tile's visibility without disturbing its image settings. */
-export function writeEpisode3dTileVisibility(
+export function writeScene3dTileVisibility(
   scopeKey: string | null,
   tileId: string | null,
-  visibility: Episode3dTileVisibility,
+  visibility: Scene3dTileVisibility,
 ): void {
   writeTileVisibility(scopeKey, tileId, { threeD: visibility });
 }
@@ -324,7 +324,7 @@ function sanitizeTiles(
   return result;
 }
 
-function sanitize3dVisibility(raw: unknown): Episode3dTileVisibility | null {
+function sanitize3dVisibility(raw: unknown): Scene3dTileVisibility | null {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
     return null;
   }

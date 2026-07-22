@@ -11,7 +11,7 @@ import {
 import * as THREE from "three";
 
 import { fittedImageSize } from "./image-fit";
-import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../shared/style-tokens";
+import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../panel-ui/style-tokens";
 
 /**
  * Screen-space transform for an image fitted into a 2D panel.

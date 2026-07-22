@@ -36,7 +36,7 @@ import { VISUALIZATION_KIND } from "../../../visualization";
 import { findBestMatchingAnnotationStreams } from "../../../stream-selection";
 import { ImagePanel } from "../../../visualization/media-2d/ImagePanel";
 import { imageTextureCacheKey } from "../../../visualization/media-2d/image-texture-cache";
-import type { PanelNotice } from "../../../visualization/shared/panel-notices";
+import type { PanelNotice } from "../../../visualization/panel-ui/panel-notices";
 import { useImagePanZoom } from "../../../visualization/media-2d/use-image-pan-zoom";
 import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/composition/gpu-point-cloud-projection-picker";
 import { useEpisodeDataStream } from "../playback/episode-data-stream-context";
@@ -47,12 +47,12 @@ import {
   MIN_EPISODE_POINT_CLOUD_POINT_SIZE,
   useEpisodeImageProjection,
   useEpisodePlaybackSettings,
-} from "../settings/episode-modal-settings";
+} from "../settings/modal/state";
 import {
   useEpisodeImageTileLabelStreams,
   useEpisodeImageTilePointCloudProjection,
 } from "../tiles/episode-panel-visibility";
-import { checkboxNoSpaceToggleProps } from "../settings/episode-settings-keyboard";
+import { checkboxNoSpaceToggleProps } from "../settings/controls/episode-settings-keyboard";
 import {
   chooseNextImageStream,
   episodeImageTileBindingsAtom,
@@ -64,9 +64,9 @@ import EpisodeImageAnnotationOverlay from "./EpisodeImageAnnotationOverlay";
 import EpisodeDepthHoverOverlay from "./EpisodeDepthHoverOverlay";
 import EpisodeImageProjectionOverlay from "./EpisodeImageProjectionOverlay";
 import EpisodeImageProjectionScene from "./EpisodeImageProjectionScene";
-import { useEpisodeHoverEcho } from "./episode-hover-echo";
+import { useEpisodeHoverEcho } from "../interaction/point-hover/hover-echo";
 import { useRegisterEpisodeTileSettings } from "../tiles/episode-tile-settings-context";
-import EpisodeSidebarGroup from "../settings/EpisodeSidebarGroup";
+import EpisodeSidebarGroup from "../settings/controls/EpisodeSidebarGroup";
 import { rankDefaultImageSources } from "../layout/playback-layout";
 import settingsStyles from "../tiles/EpisodeTile.settings.module.css";
 import styles from "../tiles/EpisodeTile.module.css";
@@ -74,13 +74,13 @@ import {
   EpisodeTileEmptyState,
   EpisodeTileStatusBadge,
 } from "../tiles/EpisodeTileStreamState";
-import { EpisodeSettingsLabel } from "../settings/EpisodeSettingsLabel";
+import { EpisodeSettingsLabel } from "../settings/controls/EpisodeSettingsLabel";
 import type { EpisodeTileProps } from "../tiles/episode-tile-types";
 import {
   useEpisodeStreamContentFrame,
   useEpisodeStreamValue,
 } from "../playback/use-episode-stream-values";
-import { useEpisodeVideoDecodeRunway } from "./use-episode-video-decode-runways";
+import { useEpisodeVideoDecodeRunway } from "../playback/video-decode-runway/use-video-decode-runways";
 import { useEpisodeImageProjectionLayers } from "./use-episode-image-projection-layers";
 import {
   effectiveEpisodeCameraCalibration,
@@ -88,11 +88,11 @@ import {
   type EpisodeCameraModelResolution,
   type EpisodeImageDisplayMode,
   type EpisodeImageGeometryMode,
-} from "./camera-geometry/episode-camera-model";
+} from "../spatial/camera-geometry/episode-camera-model";
 import {
   episodeRectifiedImageDisplay,
   type EpisodeRectifiedImageDisplay,
-} from "./camera-geometry/episode-image-rectification";
+} from "../spatial/camera-geometry/episode-image-rectification";
 
 const IMAGE_FIT = "contain";
 const EMPTY_PROJECTION_STREAMS: readonly string[] = [];

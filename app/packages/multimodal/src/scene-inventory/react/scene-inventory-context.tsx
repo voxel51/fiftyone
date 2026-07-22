@@ -26,7 +26,7 @@ export interface SceneInventoryProviderProps {
 /**
  * Publishes the set of data sources available in the current scene so
  * tiles and their settings can discover what they can render. Sits
- * above `MultiModalPlayback` (or inside it as a child) — the data is
+ * above `EpisodePlaybackShell` (or inside it as a child) — the data is
  * read by tile components and by the episode stream bridge
  * to decide which tile kinds to register.
  */

@@ -23,7 +23,7 @@ import {
 import * as THREE from "three";
 
 const LazyWebGpuCanvas = lazy(async () => {
-  const module = await import("./webgpu-canvas");
+  const module = await import("./WebGpuCanvas");
   return { default: module.WebGpuCanvas };
 });
 

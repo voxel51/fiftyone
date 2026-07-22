@@ -3,7 +3,7 @@ import { useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
-import { CLICK_DRAG_TOLERANCE_PX } from "../shared/interaction";
+import { CLICK_DRAG_TOLERANCE_PX } from "../interaction/interaction";
 import {
   type MeasurementPlaneUpAxis,
   type MeasurementPoint,

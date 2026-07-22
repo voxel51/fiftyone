@@ -1,14 +1,16 @@
-import { useTiling } from "@fiftyone/tiling";
+import { useRegisteredTiles, useTiling } from "@fiftyone/tiling";
 import { useCallback, useRef } from "react";
 
-import { getEpisodeTileDefinition } from "./episode-tile-catalog";
 import type { EpisodeTileType } from "./episode-tile-types";
 
 /** Returns a host command that focuses or creates one tile archetype. */
 export function useOpenEpisodeTile(type: EpisodeTileType): () => void {
   const { addTile, setFocusedTileId, tiles } = useTiling();
+  const registeredTiles = useRegisteredTiles();
   const tilesRef = useRef(tiles);
+  const registeredTilesRef = useRef(registeredTiles);
   tilesRef.current = tiles;
+  registeredTilesRef.current = registeredTiles;
 
   return useCallback(() => {
     const currentTiles = tilesRef.current;
@@ -20,7 +22,9 @@ export function useOpenEpisodeTile(type: EpisodeTileType): () => void {
       return;
     }
 
-    const definition = getEpisodeTileDefinition(type);
+    const definition = registeredTilesRef.current.find(
+      (entry) => entry.type === type,
+    );
     if (!definition) {
       return;
     }

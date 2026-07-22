@@ -4,9 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { RawImageVisualization } from "../../../ir";
 import { VISUALIZATION_KIND } from "../../../visualization";
-import type { EpisodeCameraModel } from "./camera-geometry/episode-camera-model";
+import type { EpisodeCameraModel } from "../spatial/camera-geometry/episode-camera-model";
 import EpisodeDepthHoverOverlay from "./EpisodeDepthHoverOverlay";
-import { useEpisodeDepthHover } from "./episode-depth-hover";
+import { useEpisodeDepthHover } from "../spatial/depth-sampling";
 
 afterEach(() => {
   cleanup();

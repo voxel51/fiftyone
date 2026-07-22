@@ -20,7 +20,7 @@ vi.mock("./episode-raw-message-context", () => ({
   }),
 }));
 
-vi.mock("./episode-raw-tile-state", () => ({
+vi.mock("../tiles/raw-message-binding", () => ({
   useEpisodeRawTileStream: () => mockState.selectedStream,
   useSetEpisodeRawTileStream: () => mockState.setStream,
 }));

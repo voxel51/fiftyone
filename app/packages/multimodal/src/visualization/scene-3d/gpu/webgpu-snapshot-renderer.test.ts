@@ -21,7 +21,7 @@ import {
   DEFAULT_MAX_RENDERED_POINTS,
   buildPointCloudRenderData,
 } from "../point-cloud-colors";
-import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../shared/style-tokens";
+import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../panel-ui/style-tokens";
 import {
   resetWebGpuDeviceRegistryForTests,
   webGpuDeviceStats,

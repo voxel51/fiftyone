@@ -3,7 +3,7 @@ import { type ThreeEvent } from "@react-three/fiber";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 
 import type { SceneEntityVisualization } from "../../ir";
-import { CLICK_DRAG_TOLERANCE_PX } from "../shared/interaction";
+import { CLICK_DRAG_TOLERANCE_PX } from "../interaction/interaction";
 import {
   SceneArrowMesh,
   SceneCubeMesh,

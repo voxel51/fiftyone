@@ -28,24 +28,6 @@ import type {
   ImageAnnotationRenderMetadata,
 } from "../../../visualization/media-2d/image-annotation-render-metadata";
 
-function interpolationFraction({
-  nextTimelineTimeNs,
-  playheadNs,
-  previousTimelineTimeNs,
-}: {
-  readonly nextTimelineTimeNs: bigint;
-  readonly playheadNs: bigint;
-  readonly previousTimelineTimeNs: bigint;
-}): number | null {
-  const span = nextTimelineTimeNs - previousTimelineTimeNs;
-  if (span <= 0n) return null;
-  const elapsed = playheadNs - previousTimelineTimeNs;
-  if (elapsed <= 0n) return null;
-  const f = Number(elapsed) / Number(span);
-  if (!Number.isFinite(f)) return null;
-  return Math.min(1, f);
-}
-
 function vizOf(msg: DecodedFrame): ImageAnnotationsVisualization | null {
   const v = msg.output.visualization;
   if (!v || v.kind !== "image-annotations") return null;
@@ -719,7 +701,6 @@ export {
   interpolateLineList,
   interpolatePointsArray,
   interpolateTexts,
-  interpolationFraction,
   lowerBoundBigInt,
   makeGroup,
   matchLineListGroups,

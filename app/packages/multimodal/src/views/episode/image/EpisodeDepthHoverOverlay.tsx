@@ -6,12 +6,12 @@ import {
   transformedImageDisplayRect,
   type ImageViewTransform,
 } from "../../../visualization/media-2d/base-2d-scene";
-import type { EpisodeCameraModel } from "./camera-geometry/episode-camera-model";
+import type { EpisodeCameraModel } from "../spatial/camera-geometry/episode-camera-model";
 import {
   episodeDepthSampleAtDisplayPixel,
   useSetEpisodeDepthHover,
   type EpisodeDepthHover,
-} from "./episode-depth-hover";
+} from "../spatial/depth-sampling";
 
 interface PointerPosition {
   readonly clientX: number;

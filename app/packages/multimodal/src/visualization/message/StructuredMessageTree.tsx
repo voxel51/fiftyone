@@ -2,7 +2,7 @@ import React, { useCallback, useState } from "react";
 import type { RawObjectNode, RawValueNode } from "../../ir";
 import { rawNodeToJson } from "../../ir";
 import styles from "./StructuredMessage.module.css";
-import { useCopyFeedback } from "../shared/use-copy-feedback";
+import { useCopyFeedback } from "../panel-ui/use-copy-feedback";
 
 /** Levels expanded by default; deeper nodes open on demand. */
 const AUTO_EXPAND_DEPTH = 2;

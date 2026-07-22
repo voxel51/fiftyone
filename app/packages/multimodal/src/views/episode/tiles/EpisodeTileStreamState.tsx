@@ -4,13 +4,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   buildEpisodeTileEmptyStateModel,
   buildEpisodeTileStreamNotice,
-} from "../shared/episode-health";
+} from "../status/episode-health";
 import {
   useEpisodeStreamStartTimes,
   useEpisodeStreamStaleAges,
   useEpisodeStreamStatuses,
 } from "../playback/episode-stream-status-state";
-import EpisodeNoticeStrip from "../shared/EpisodeNoticeStrip";
+import EpisodeNoticeStrip from "../status/EpisodeNoticeStrip";
 import styles from "./EpisodeTile.module.css";
 
 /** Loading gaps shorter than this should read as an atomic frame swap. */

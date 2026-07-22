@@ -9,12 +9,12 @@ import {
 } from "react";
 import * as THREE from "three";
 
-import MeasureRulerIcon from "../shared/MeasureRulerIcon";
+import MeasureRulerIcon from "../panel-ui/MeasureRulerIcon";
 import type { PointCloudBounds } from "../../ir";
 import { Base3DScene } from "../scene-3d/base-3d-scene";
-import { WebGpuCanvas } from "../webgpu/webgpu-canvas";
-import { PanelNotices } from "../shared/panel-notices";
-import { useKeyedIdentityMap } from "../shared/use-keyed-identity-map";
+import { WebGpuCanvas } from "../webgpu/WebGpuCanvas";
+import { PanelNotices } from "../panel-ui/panel-notices";
+import { useKeyedIdentityMap } from "../panel-ui/use-keyed-identity-map";
 import {
   DEFAULT_POINT_CLOUD_CAMERA_PROJECTION,
   PERSPECTIVE_POINT_CAMERA,

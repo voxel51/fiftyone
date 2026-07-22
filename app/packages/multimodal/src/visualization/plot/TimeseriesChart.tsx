@@ -2,7 +2,7 @@ import { Icon, IconName, Size } from "@voxel51/voodo";
 import React, { useEffect, useRef } from "react";
 import uPlot, { type AlignedData } from "uplot";
 import "uplot/dist/uPlot.min.css";
-import { CLICK_DRAG_TOLERANCE_PX } from "../shared/interaction";
+import { CLICK_DRAG_TOLERANCE_PX } from "../interaction/interaction";
 import styles from "./TimeseriesChart.module.css";
 import {
   TIMESERIES_ZOOM_IN_FACTOR,

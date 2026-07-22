@@ -10,7 +10,7 @@ import {
   publishEpisodeTimeRange,
   publishSourceBootstrap,
 } from "../../../runtime";
-import { episodeErrorMessage as errorMessage } from "../shared/episode-error-message";
+import { episodeErrorMessage as errorMessage } from "../status/episode-error-message";
 
 /** Status values used by the format-neutral episode grid preview. */
 export type EpisodeGridPreviewStatus =

@@ -13,7 +13,7 @@ import { format } from "date-fns/format";
 import React, { useState } from "react";
 import { useEpisodeDataStream } from "./episode-data-stream-context";
 import styles from "./EpisodeTimestampReadout.module.css";
-import { useCopyFeedback } from "../../../visualization/shared/use-copy-feedback";
+import { useCopyFeedback } from "../../../visualization/panel-ui/use-copy-feedback";
 
 const NS_PER_SECOND = 1_000_000_000n;
 const NS_PER_MILLISECOND = 1_000_000n;
@@ -242,7 +242,7 @@ export function formatEpisodeTimestampCopyText(ns: bigint): string {
  * paste into external log queries and tickets. Renders nothing for recordings
  * whose timestamps aren't a plausible epoch (sim time).
  *
- * Mounted through `MultiModalPlayback`'s `timelineExtraActions` slot.
+ * Mounted through `EpisodePlaybackShell`'s `timelineExtraActions` slot.
  */
 const EpisodeTimestampReadout: React.FC = () => {
   const playheadSec = usePlayhead();
