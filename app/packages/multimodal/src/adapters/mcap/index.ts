@@ -6,7 +6,7 @@ export { detectMcapSample, mcapAdapterDescriptor } from "./descriptor";
 /**
  * Public MCAP resource client factory.
  */
-export { createMcapResourceClient } from "./resource-client";
+export { createMcapResourceClient } from "./resource-client/index";
 
 /** Shared MCAP stream classification helpers. */
 export {
@@ -18,23 +18,23 @@ export {
   isSceneUpdateStream,
   streamTopics,
   topicName,
-} from "./resources/stream-topics";
-export type { McapPreviewTopics } from "./resources/stream-topics";
+} from "./resource-client/stream-topics";
+export type { McapPreviewTopics } from "./resource-client/stream-topics";
 
 /**
  * Default tolerance for synchronized MCAP playback windows.
  */
-export { DEFAULT_MCAP_SYNC_TOLERANCE_NS } from "./shared/sync";
+export { DEFAULT_MCAP_SYNC_TOLERANCE_NS } from "./synchronization/policy";
 
 /**
  * MCAP timeline constants used by playback clocks.
  */
-export { MCAP_ACTIVE_TIMELINE } from "./shared/types";
+export { MCAP_ACTIVE_TIMELINE } from "./contracts/index";
 
 /**
  * Options for constructing an MCAP resource client.
  */
-export type { CreateMcapResourceClientOptions } from "./resource-client";
+export type { CreateMcapResourceClientOptions } from "./resource-client/index";
 
 /**
  * Reader contracts exposed for tests and advanced adapter wiring.
@@ -47,7 +47,7 @@ export type { McapIndexedReaderLike, McapReaderFactory } from "./reader";
 export type {
   McapComposedFrameTransform,
   McapFrameTransformResolution,
-} from "./shared/frame-transform-types";
+} from "./transforms/types";
 
 /**
  * Public MCAP resource, playback, and sync policy contracts.
@@ -68,7 +68,7 @@ export type {
   McapSynchronizedMessageWindow,
   McapTimelineRange,
   McapActiveTimeline,
-} from "./shared/types";
+} from "./contracts/index";
 
 /**
  * Worker-backed MCAP resource client facade.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { McapDecodedMessage } from "../shared/types";
+import type { McapDecodedMessage } from "../contracts/index";
 import {
   estimateMcapStreamItemBytes,
   isMcapStreamBatchFull,

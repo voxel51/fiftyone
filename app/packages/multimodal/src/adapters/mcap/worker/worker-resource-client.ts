@@ -6,9 +6,9 @@ import {
   createDecodeClient,
   inlineDecodeExecutor,
 } from "../../../query/decoding";
-import { createMcapDecoderRegistry } from "../decoders";
-import { createInlineMcapResourceClient } from "../resources";
-import type { McapResourceClient } from "../shared/types";
+import { createMcapDecoderRegistry } from "../message-decoders/index";
+import { createInlineMcapResourceClient } from "../resource-client/inline-client";
+import type { McapResourceClient } from "../contracts/index";
 import type { McapPlaybackWorkerFetchParameters } from "./playback-worker-types";
 
 const transferSafeNoopDecodedOutputCache: DecodedOutputCache = {

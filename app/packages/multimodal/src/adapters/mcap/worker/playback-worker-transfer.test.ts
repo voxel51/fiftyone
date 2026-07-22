@@ -4,7 +4,7 @@ import type {
   McapDecodedMessage,
   McapSynchronizedMessageWindow,
   McapTimelineRange,
-} from "../shared/types";
+} from "../contracts/index";
 
 describe("MCAP playback worker transfer collection", () => {
   it("collects encoded image and point-cloud buffers", () => {

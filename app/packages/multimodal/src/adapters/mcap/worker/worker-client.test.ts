@@ -8,8 +8,8 @@ import {
   type McapPlaybackWorkerResponse,
 } from "./playback-worker-types";
 import { createWorkerMcapResourceClient } from "./worker-client";
-import { dehydrateMcapFrameTransformSet } from "../shared/frame-transform-wire";
-import type { McapFrameTransformSet } from "../shared/frame-transform-types";
+import { dehydrateMcapFrameTransformSet } from "../transforms/wire";
+import type { McapFrameTransformSet } from "../transforms/types";
 import { EPISODE_READ_CANCELLED_MESSAGE } from "../../../ports";
 
 vi.mock("@fiftyone/utilities", () => ({

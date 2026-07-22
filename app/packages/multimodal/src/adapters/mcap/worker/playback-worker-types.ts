@@ -1,4 +1,4 @@
-import type { McapFrameTransformSetWire } from "../shared/frame-transform-types";
+import type { McapFrameTransformSetWire } from "../transforms/types";
 import type { McapTransportSnapshot } from "./transport-meter";
 import type {
   McapDecodedMessage,
@@ -19,7 +19,7 @@ import type {
   McapTimelineRange,
   McapTopicNumericFields,
   McapTopicTimeBounds,
-} from "../shared/types";
+} from "../contracts/index";
 import type { StreamInventory } from "../../../schemas/v1";
 
 /**

@@ -1,5 +1,5 @@
 import { byteSourceAccessKey } from "../../../query/bytes";
-import { hydrateMcapFrameTransformSet } from "../shared/frame-transform-wire";
+import { hydrateMcapFrameTransformSet } from "../transforms/wire";
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
 import type {
@@ -20,7 +20,7 @@ import {
 } from "./playback-worker-types";
 import { errorMessage, toError } from "../../../utils/errors";
 import { EpisodeReadCancelledError } from "../../../ports";
-import type { McapFrameTransformSet } from "../shared/frame-transform-types";
+import type { McapFrameTransformSet } from "../transforms/types";
 import type {
   McapDecodedMessage,
   McapEnumerateNumericFieldsRequest,
@@ -42,7 +42,7 @@ import type {
   McapTimelineRange,
   McapTopicNumericFields,
   McapTopicTimeBounds,
-} from "../shared/types";
+} from "../contracts/index";
 import type { StreamInventory } from "../../../schemas/v1";
 
 type WorkerLaneName = "foreground" | "idle" | "bulk";

@@ -16,8 +16,8 @@ import {
   type McapResourceClient,
   type McapSynchronizedMessageWindow,
   type McapTopicNumericFields,
-} from "./shared/types";
-import type { McapGridPreviewResult } from "./resources/grid-preview";
+} from "./contracts/index";
+import type { McapGridPreviewResult } from "./resource-client/grid-preview";
 
 const sourceDescriptor = {
   sourceId: "fixture.mcap",
