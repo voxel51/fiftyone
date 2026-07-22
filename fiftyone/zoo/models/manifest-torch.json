@@ -12422,6 +12422,35 @@
                 }
             ],
             "date_added": "2026-07-14 12:00:00"
+        },
+        {
+            "base_name": "glm-ocr-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "GLM-OCR, a 0.9B vision-language model that transcribes document images to text",
+            "source": "https://huggingface.co/zai-org/GLM-OCR",
+            "author": "Z.ai",
+            "license": "MIT",
+            "size_bytes": 2650754336,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.glm_ocr.GLMOCRModel",
+                "config": {
+                    "name_or_path": "zai-org/GLM-OCR",
+                    "task": "text"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "transformers>=5.14"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["ocr", "classification", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-21 00:00:00"
         }
     ]
 }
