@@ -62,15 +62,35 @@
 }
 
 .playhead {
-  border-left: 1px solid rgba(255, 255, 255, 0.65);
   bottom: 0;
-  left: 0;
-  pointer-events: none;
+  cursor: grab;
+  left: -6px;
   position: absolute;
+  touch-action: none;
   top: 0;
-  width: 0;
+  width: 12px;
   will-change: transform;
   z-index: 2;
+}
+
+.playhead::after {
+  background: rgba(255, 255, 255, 0.65);
+  bottom: 0;
+  content: "";
+  left: 50%;
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  width: 1px;
+}
+
+.playhead:hover::after,
+.playheadDragging::after {
+  background: var(--color-brand-primary);
+}
+
+.playheadDragging {
+  cursor: grabbing;
 }
 
 /* Shared hover-time caret echoed from other time-axis surfaces (other
