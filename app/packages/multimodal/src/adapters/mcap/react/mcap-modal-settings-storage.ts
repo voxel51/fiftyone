@@ -138,12 +138,13 @@ export interface McapPersistedModalSettings {
   readonly temporalPolicy: McapTemporalPolicySettings;
 }
 
-const STORAGE_KEY = "fiftyone.mcap.modal-settings";
+const STORAGE_KEY = "fiftyone.mcap.modal-settings-1";
 
 /**
  * Default interpolation policy for newly initialized MCAP modal settings.
  */
-export const DEFAULT_MCAP_FIDELITY_MODE: McapPlaybackFidelityMode = "smooth";
+export const DEFAULT_MCAP_FIDELITY_MODE: McapPlaybackFidelityMode =
+  "as-recorded";
 
 const FIDELITY_MODES: readonly McapPlaybackFidelityMode[] = [
   "smooth",
