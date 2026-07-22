@@ -1094,7 +1094,7 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   const sceneHasRenderableContent =
     mcap3dSceneSnapshotHasLayers(displayedScene) || depthRayLayers.length > 0;
   const sceneRequiresPanel =
-    sceneHasRenderableContent || producedNotices.length > 0;
+    sceneHasRenderableContent || displayedScene.notices.length > 0;
   const shouldRenderPanel =
     selectedTopics.length > 0 &&
     (sceneRequiresPanel || panelHasCommittedRef.current);
