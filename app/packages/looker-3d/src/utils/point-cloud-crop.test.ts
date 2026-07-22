@@ -21,17 +21,21 @@ import {
 } from "./point-cloud-crop";
 
 const buildDetection = (
-  overrides: Partial<ReconciledDetection3D> = {},
+  overrides: Partial<ReconciledDetection3D["label"]> = {},
 ): ReconciledDetection3D =>
   ({
-    _cls: "Detection",
-    _id: "detection-1",
+    label: {
+      _cls: "Detection",
+      _id: "detection-1",
+      label: "car",
+      location: [0, 0, 0],
+      dimensions: [2, 4, 6],
+      rotation: [0, 0, 0],
+      ...overrides,
+    },
     path: "ground_truth",
-    label: "car",
-    location: [0, 0, 0],
-    dimensions: [2, 4, 6],
-    rotation: [0, 0, 0],
-    ...overrides,
+    sampleId: "sample-1",
+    ui: { selected: false },
   }) as ReconciledDetection3D;
 
 describe("point-cloud crop", () => {
@@ -74,10 +78,14 @@ describe("point-cloud crop", () => {
       detections: [buildDetection()],
       polylines: [
         {
-          _cls: "Polyline",
-          _id: "polyline-1",
+          label: {
+            _cls: "Polyline",
+            _id: "polyline-1",
+            points3d: [[[0, 0, 0]]],
+          },
           path: "lanes",
-          points3d: [[[0, 0, 0]]],
+          sampleId: "sample-1",
+          ui: { selected: false },
         },
       ],
     } as ReturnType<typeof deriveRenderModel>;
@@ -270,12 +278,12 @@ describe("point-cloud crop", () => {
       dimensions: [2, 2, 2],
     });
     const workingDoc: WorkingDoc = {
-      labelsById: { [detection._id]: detection },
+      labelsById: { [detection.label._id]: detection },
       deletedIds: new Set(),
     };
     const transient: TransientStore = {
       cuboids: {
-        [detection._id]: {
+        [detection.label._id]: {
           positionDelta: [1, 0, 0],
           dimensionsDelta: [1, 2, 3],
           quaternionOverride: [
@@ -287,12 +295,12 @@ describe("point-cloud crop", () => {
         },
       },
       polylines: {},
-      activeDragLabel: detection._id,
+      activeDragLabel: detection.label._id,
     };
 
     const crop = getSelectedCuboidPointCloudCrop({
       renderModel: deriveRenderModel(workingDoc, transient),
-      selectedLabelId: detection._id,
+      selectedLabelId: detection.label._id,
       margin: 0,
     });
 
@@ -310,13 +318,13 @@ describe("point-cloud crop", () => {
     const detection = buildDetection();
     const crop = getCuboidPointCloudCrop({
       renderModel: { detections: [detection], polylines: [] },
-      labelId: detection._id,
+      labelId: detection.label._id,
       margin: 1,
       source: "raycast-hover",
       visibleWorldHeightAtCenter: 4,
     });
 
-    expect(crop?.labelId).toBe(detection._id);
+    expect(crop?.labelId).toBe(detection.label._id);
     expect(crop?.source).toBe("raycast-hover");
     expect(crop?.visibleWorldHeightAtCenter).toBe(4);
     expect(crop?.halfSize.toArray()).toEqual([2, 3, 4]);
@@ -327,10 +335,14 @@ describe("point-cloud crop", () => {
       detections: [],
       polylines: [
         {
-          _cls: "Polyline",
-          _id: "polyline-1",
+          label: {
+            _cls: "Polyline",
+            _id: "polyline-1",
+            points3d: [[[0, 0, 0]]],
+          },
           path: "lanes",
-          points3d: [[[0, 0, 0]]],
+          sampleId: "sample-1",
+          ui: { selected: false },
         } as ReconciledPolyline3D,
       ],
     };

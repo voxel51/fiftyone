@@ -10,23 +10,20 @@ import {
 } from "./adapters";
 import { createLooker3dBridge, type WorkingStore3d } from "./looker3dBridge";
 
-// build3dLabel is the only runtime cross-package import the adapters pull in;
-// it touches looker-3d types only, so no mock is needed.
-
 const cuboid = (id: string, label = "car"): Working3dLabel =>
   ({
-    _id: id,
-    _cls: "Detection",
-    type: "Detection",
+    label: {
+      _id: id,
+      _cls: "Detection",
+      label,
+      location: [1, 2, 3],
+      dimensions: [4, 5, 6],
+      rotation: [0, 0, 0],
+      tags: [],
+    },
     path: "ground_truth",
-    label,
-    location: [1, 2, 3],
-    dimensions: [4, 5, 6],
-    rotation: [0, 0, 0],
-    color: "#seed",
-    isNew: false,
     sampleId: "sample-1",
-    tags: [],
+    ui: { selected: false, color: "#seed", isNew: false },
   }) as unknown as Working3dLabel;
 
 /** In-memory working store standing in for the Recoil-backed implementation. */
@@ -35,12 +32,15 @@ const makeFakeStore = () => {
   const store: WorkingStore3d = {
     get: (id) => map.get(id),
     add: (label) => {
-      map.set(label._id, label);
+      map.set(label.label._id, label);
     },
     update: (id, partial) => {
       const prev = map.get(id);
       if (prev) {
-        map.set(id, { ...prev, ...partial } as Working3dLabel);
+        map.set(id, {
+          ...prev,
+          label: { ...prev.label, ...partial },
+        } as Working3dLabel);
       }
     },
     remove: (id) => {
@@ -83,7 +83,7 @@ describe("looker-3d adapters", () => {
     });
   });
 
-  it("buildHandle stamps id = ref.instanceId, path, type, and clears isNew", () => {
+  it("buildHandle stamps id = ref.instanceId, wrapper addressing, and clears isNew", () => {
     const descriptor = detection3dAdapter.buildHandle(
       ref("ground_truth", "c1"),
       {
@@ -95,33 +95,42 @@ describe("looker-3d adapters", () => {
       } as never,
     );
 
-    expect(descriptor.label._id).toBe("c1");
+    expect(descriptor.label.label._id).toBe("c1");
     expect(descriptor.label.path).toBe("ground_truth");
-    expect(descriptor.label.type).toBe("Detection");
-    expect(descriptor.label.isNew).toBe(false);
+    expect(descriptor.label.ui.isNew).toBe(false);
+    // bookkeeping never enters the document namespace
+    expect(descriptor.label.label).not.toHaveProperty("type");
+    expect(descriptor.label.label).not.toHaveProperty("path");
+    expect(descriptor.label.label).not.toHaveProperty("isNew");
   });
 
   describe("toLabel", () => {
-    it("strips _id and the internal-only attributes", () => {
+    it("returns the document verbatim minus _id — user attributes with formerly-reserved names survive", () => {
+      const entry = cuboid("c1");
+      // user attributes whose names collide with the old reserved set
+      (entry.label as Record<string, unknown>).type = "sedan";
+      (entry.label as Record<string, unknown>).color = "red";
+
       const handle: Looker3dHandle = {
         instanceId: "c1",
         path: "ground_truth",
-        read: () => cuboid("c1"),
+        read: () => entry,
         apply: vi.fn(),
       };
 
       const out = detection3dAdapter.toLabel(handle) as Record<string, unknown>;
 
       expect(out._id).toBeUndefined();
-      expect(out.color).toBeUndefined();
+      // addressing/view state live on the wrapper, never in the document
       expect(out.path).toBeUndefined();
-      expect(out.type).toBeUndefined();
-      expect(out.isNew).toBeUndefined();
       expect(out.sampleId).toBeUndefined();
-      // persistable geometry survives
+      expect(out.ui).toBeUndefined();
+      // persistable geometry and user attributes survive
       expect(out.location).toEqual([1, 2, 3]);
       expect(out.dimensions).toEqual([4, 5, 6]);
       expect(out.label).toBe("car");
+      expect(out.type).toBe("sedan");
+      expect(out.color).toBe("red");
     });
 
     it("returns null when the handle no longer resolves", () => {
@@ -145,13 +154,17 @@ describe("createLooker3dBridge", () => {
       resolveColor: () => "#resolved",
     });
 
+    const base = cuboid("c1");
     const handle = bridge.mount({
-      label: { ...cuboid("c1"), color: undefined } as Working3dLabel,
+      label: {
+        ...base,
+        ui: { ...base.ui, color: undefined },
+      } as Working3dLabel,
     });
 
     expect(handle?.instanceId).toBe("c1");
-    expect(map.get("c1")?.color).toBe("#resolved");
-    expect(handle?.read()?.label).toBe("car");
+    expect(map.get("c1")?.ui.color).toBe("#resolved");
+    expect(handle?.read()?.label.label).toBe("car");
   });
 
   it("mount falls back to the descriptor color when no resolver is given", () => {
@@ -160,7 +173,7 @@ describe("createLooker3dBridge", () => {
 
     bridge.mount({ label: cuboid("c1") });
 
-    expect(map.get("c1")?.color).toBe("#seed");
+    expect(map.get("c1")?.ui.color).toBe("#seed");
   });
 
   it("resolveHandle returns undefined on a path mismatch, adopts a matching entry", () => {
@@ -190,8 +203,8 @@ describe("createLooker3dBridge", () => {
       label: "truck",
       location: [9, 9, 9],
     } as never);
-    expect(map.get("c1")?.label).toBe("truck");
-    expect(map.get("c1")?.location).toEqual([9, 9, 9]);
+    expect(map.get("c1")?.label.label).toBe("truck");
+    expect(map.get("c1")?.label.location).toEqual([9, 9, 9]);
 
     bridge.unmount(handle);
     expect(store.get("c1")).toBeUndefined();
@@ -241,8 +254,8 @@ describe("looker-3d bridge driven by the engine read-half", () => {
   });
 
   it("mounts present 3D labels into the working store on registration", () => {
-    expect(fake.map.get("c1")?.label).toBe("car");
-    expect(fake.map.get("c1")?.color).toBe("#engine");
+    expect(fake.map.get("c1")?.label.label).toBe("car");
+    expect(fake.map.get("c1")?.ui.color).toBe("#engine");
   });
 
   it("reprojects a Sample edit onto the working entry", () => {
@@ -254,7 +267,7 @@ describe("looker-3d bridge driven by the engine read-half", () => {
       dimensions: [4, 5, 6],
     });
 
-    expect(fake.map.get("c1")?.label).toBe("truck");
+    expect(fake.map.get("c1")?.label.label).toBe("truck");
   });
 
   it("unmounts a working entry when its Sample label is deleted", () => {
@@ -272,6 +285,6 @@ describe("looker-3d bridge driven by the engine read-half", () => {
       dimensions: [4, 5, 6],
     });
 
-    expect(fake.map.get("c1")?.label).toBe("car");
+    expect(fake.map.get("c1")?.label.label).toBe("car");
   });
 });

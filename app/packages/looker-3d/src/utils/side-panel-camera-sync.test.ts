@@ -56,12 +56,16 @@ const buildIntent = () => ({
 const buildSelectionCrop = (): PointCloudCrop => {
   return createPointCloudCropFromDetection(
     {
-      _cls: "Detection",
-      _id: "detection-1",
+      label: {
+        _cls: "Detection",
+        _id: "detection-1",
+        location: [0, 0, 0],
+        dimensions: [4, 4, 4],
+        rotation: [0, 0, 0],
+      },
       path: "ground_truth",
-      location: [0, 0, 0],
-      dimensions: [4, 4, 4],
-      rotation: [0, 0, 0],
+      sampleId: "sample-1",
+      ui: { selected: false },
     },
     { margin: 0, source: "selection" },
   )!;
@@ -338,12 +342,16 @@ describe("side panel camera sync", () => {
       doesPointCloudCropFitCamera(
         createPointCloudCropFromDetection(
           {
-            _cls: "Detection",
-            _id: "detection-2",
+            label: {
+              _cls: "Detection",
+              _id: "detection-2",
+              location: [20, 0, 0],
+              dimensions: [4, 4, 4],
+              rotation: [0, 0, 0],
+            },
             path: "ground_truth",
-            location: [20, 0, 0],
-            dimensions: [4, 4, 4],
-            rotation: [0, 0, 0],
+            sampleId: "sample-1",
+            ui: { selected: false },
           },
           { margin: 0, source: "selection" },
         )!,
@@ -355,12 +363,16 @@ describe("side panel camera sync", () => {
       doesPointCloudCropFitCamera(
         createPointCloudCropFromDetection(
           {
-            _cls: "Detection",
-            _id: "detection-behind",
+            label: {
+              _cls: "Detection",
+              _id: "detection-behind",
+              location: [0, 0, 20],
+              dimensions: [1, 1, 1],
+              rotation: [0, 0, 0],
+            },
             path: "ground_truth",
-            location: [0, 0, 20],
-            dimensions: [1, 1, 1],
-            rotation: [0, 0, 0],
+            sampleId: "sample-1",
+            ui: { selected: false },
           },
           { margin: 0, source: "selection" },
         )!,
