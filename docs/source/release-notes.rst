@@ -3,6 +3,14 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.22.1
+--------------------------
+*Released July 22, 2026*
+
+App
+
+- Fixed a bug that caused the App to crash for users with the Guest role
+
 FiftyOne Enterprise 2.22.0
 --------------------------
 *Released July 14, 2026*
