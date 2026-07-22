@@ -4,13 +4,13 @@ import type {
   EpisodeManifest,
   EpisodePosterFrame,
   TimeWindow,
-} from "../../ir";
+} from "../ir";
 import {
   getSourceBootstrap,
   peekSourceBootstrap,
   publishSourceBootstrap,
   resetSourceBootstrapCacheForTests,
-} from "../../runtime/source-bootstrap-cache";
+} from "./source-bootstrap-cache";
 
 describe("source bootstrap cache", () => {
   it("merges inventory and poster facts for the same source", () => {
@@ -75,9 +75,9 @@ describe("source bootstrap cache", () => {
 
     publishSourceBootstrap(initial, { manifest: createManifest("initial") });
 
-    expect(peekSourceBootstrap(initial)?.manifest).toEqual(
-      createManifest("initial"),
-    );
+    expect(
+      peekSourceBootstrap(createSource("rewritten", "etag-a"))?.manifest,
+    ).toEqual(createManifest("initial"));
     expect(peekSourceBootstrap(replacement)).toBeNull();
   });
 });
