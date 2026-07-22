@@ -20,6 +20,7 @@ import {
   selectedPolylineVertexAtom,
 } from "../state";
 import type { HoveredLabelSource } from "../types";
+import type { OverlayLabel } from "../labels/loader";
 import { getComplementaryColor } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 import {
@@ -29,7 +30,7 @@ import {
 } from "./utils/polyline-utils";
 
 interface UsePolylineAnnotationProps {
-  label: any;
+  label: OverlayLabel;
   points3d: Vector3Tuple[][];
   strokeAndFillColor: string;
   isAnnotateMode: boolean;
@@ -45,7 +46,7 @@ export const usePolylineAnnotation = ({
   isSelectedForAnnotation,
   hoverSource,
 }: UsePolylineAnnotationProps) => {
-  const labelId = label._id;
+  const labelId = label.label._id;
 
   const workingLabel = useWorkingLabel(labelId);
   const { updatePolyline } = useUpdateTransient();

@@ -19,10 +19,11 @@ import {
 } from "../annotation/store";
 import type { TransientCuboidState } from "../annotation/store/types";
 import { isDetection3dOverlay } from "../types";
+import type { OverlayLabel } from "../labels/loader";
 import { radiansToQuaternion } from "../utils";
 
 interface UseCuboidAnnotationProps {
-  label: any;
+  label: OverlayLabel;
   location: Vector3Tuple;
   dimensions: Vector3Tuple;
   rotation: Vector3Tuple;
@@ -38,7 +39,7 @@ export const useCuboidAnnotation = ({
   isAnnotateMode,
   isSelectedForAnnotation,
 }: UseCuboidAnnotationProps) => {
-  const labelId = label._id;
+  const labelId = label.label._id;
 
   const workingLabel = useWorkingLabel(labelId);
   const { updateCuboid } = useUpdateTransient();
