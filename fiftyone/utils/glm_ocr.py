@@ -63,9 +63,16 @@ def _to_pil(img):
     img = img.astype(np.uint8)
     if img.ndim == 2:
         img = np.stack([img] * 3, axis=-1)
-    if img.shape[2] == 4:
+    if img.shape[2] == 1:
+        img = np.repeat(img, 3, axis=2)
+    elif img.shape[2] == 4:
         img = img[:, :, :3]
     return PILImage.fromarray(img)
+
+
+def _select_dtype(device):
+    """bfloat16 is a CUDA optimization; CPU inference wants float32."""
+    return torch.bfloat16 if "cuda" in str(device) else torch.float32
 
 
 class GLMOCRModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
@@ -138,7 +145,7 @@ class GLMOCRModel(fout.TorchImageModel):
             config.name_or_path
         )
         model = transformers.AutoModelForImageTextToText.from_pretrained(
-            config.name_or_path, dtype=torch.bfloat16
+            config.name_or_path, dtype=_select_dtype(self._device)
         ).eval()
         return model.to(self._device)
 
