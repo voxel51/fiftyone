@@ -1,4 +1,29 @@
-import type { ByteTimelinePoint } from "../../../ir";
+import {
+  getIsPlayPending,
+  getIsPlaying,
+  getLoopEnd,
+  getLoopStart,
+  getPlayhead,
+  type PlaybackStore,
+} from "@fiftyone/playback";
+
+import {
+  BYTE_SOURCE_READ_PROFILE,
+  type ByteSourceReadProfile,
+  type ByteTimelinePoint,
+} from "../../../ir";
+import {
+  DEFAULT_TIMELINE_TICK_RATE_HZ,
+  type EpisodeStreamCache,
+  type TimelineIndex,
+} from "../../../runtime";
+import { getNetworkHealth } from "./network-health";
+import {
+  bufferWindowCoverage,
+  contiguousBufferedSecondsFromPlayhead,
+  type DerivedPlaybackPolicy,
+} from "./playback-buffering";
+import { setStartupCushionState } from "./startup-cushion-state";
 
 /**
  * Plan against a fraction of the measured throughput: the estimate is a
@@ -31,7 +56,16 @@ export const MAX_STARTUP_CUSHION_WAIT_SECONDS = 8;
 export const UNMEASURED_LINK_NOMINAL_WAIT_SECONDS = 3;
 
 const NANOSECONDS_PER_SECOND = 1_000_000_000;
+const PROVISIONAL_REMOTE_START_COVERAGE_SECONDS = 1.5;
 
+interface RemoteStartupGateDecision {
+  readonly coverageSeconds: number;
+  readonly mode: "held" | "provisional";
+  readonly playheadSec: number;
+  readonly sourceEpoch: number;
+}
+
+/** Timeline, cache, and throughput inputs used to size the startup gate. */
 export interface StartupCushionInputs {
   /**
    * Cumulative compressed-byte curve for the recording, ascending by time.
@@ -67,6 +101,7 @@ export interface StartupCushionInputs {
   readonly throughputBytesPerSec: number | null;
 }
 
+/** Content coverage and estimated wall wait required before playback starts. */
 export interface StartupCushion {
   /**
    * Content seconds of blocking-stream coverage to require before starting.
@@ -191,4 +226,176 @@ export function computeStartupCushion(
     cushionSeconds,
     estimatedWaitSeconds: bytesForCushion(cushionSeconds) / throughput,
   };
+}
+
+/**
+ * Stateful bandwidth planner for one mounted data stream. It owns the
+ * pessimistic press-time throughput envelope and the one-shot remote-start
+ * decision so React lifecycle code cannot accidentally release a held press.
+ */
+export class StartupCushionPlanner {
+  private pendingPlanThroughputFloor: number | null = null;
+  private remoteDecision: RemoteStartupGateDecision | null = null;
+
+  /** Ends the current press plan after play commits, cancels, or seeks. */
+  resetPendingPlan(): void {
+    this.pendingPlanThroughputFloor = null;
+    this.remoteDecision = null;
+  }
+
+  /** Resolves the required blocking-stream runway from current source state. */
+  resolve({
+    activeBlockingStreams,
+    byteTimeline,
+    caches,
+    index,
+    policy,
+    sourceEpoch,
+    sourceReadProfile,
+    store,
+  }: {
+    readonly activeBlockingStreams: readonly string[];
+    readonly byteTimeline: readonly ByteTimelinePoint[] | null;
+    readonly caches: Map<string, EpisodeStreamCache>;
+    readonly index: TimelineIndex | null;
+    readonly policy: DerivedPlaybackPolicy;
+    readonly sourceEpoch: number;
+    readonly sourceReadProfile: ByteSourceReadProfile | undefined;
+    readonly store: PlaybackStore;
+  }): StartupCushion {
+    if (!index) {
+      return {
+        cushionSeconds: policy.startupLookaheadSeconds,
+        estimatedWaitSeconds: 0,
+      };
+    }
+
+    const loopStartSec = getLoopStart(store);
+    const loopEndSec = getLoopEnd(store);
+    const horizonSec =
+      loopEndSec > loopStartSec
+        ? Math.min(index.durationSec, loopEndSec)
+        : index.durationSec;
+    const playheadSec = getPlayhead(store);
+    const health = getNetworkHealth(store);
+    const spanSeconds = horizonSec - playheadSec;
+
+    if (
+      sourceReadProfile === BYTE_SOURCE_READ_PROFILE.REMOTE &&
+      !health.throughputPlannable &&
+      byteTimeline !== null &&
+      byteTimeline.length > 0 &&
+      spanSeconds > policy.startupLookaheadSeconds
+    ) {
+      if (this.remoteDecision?.sourceEpoch !== sourceEpoch) {
+        this.remoteDecision = null;
+      }
+      if (this.remoteDecision === null) {
+        const coverageSeconds = contiguousBufferedSecondsFromPlayhead({
+          activeStreams: activeBlockingStreams,
+          caches,
+          index,
+          maxSeconds: PROVISIONAL_REMOTE_START_COVERAGE_SECONDS,
+          timeSec: playheadSec,
+        });
+        this.remoteDecision = {
+          coverageSeconds,
+          mode:
+            coverageSeconds >= PROVISIONAL_REMOTE_START_COVERAGE_SECONDS
+              ? "provisional"
+              : "held",
+          playheadSec,
+          sourceEpoch,
+        };
+      }
+      if (this.remoteDecision.mode === "provisional") {
+        return {
+          cushionSeconds: policy.startupLookaheadSeconds,
+          estimatedWaitSeconds: 0,
+        };
+      }
+      return {
+        cushionSeconds: Math.min(MAX_STARTUP_CUSHION_SECONDS, spanSeconds),
+        estimatedWaitSeconds: UNMEASURED_LINK_NOMINAL_WAIT_SECONDS,
+      };
+    }
+
+    let planThroughput =
+      health.busyThroughputBytesPerSec ?? health.throughputBytesPerSec;
+    if (planThroughput !== null && !getIsPlaying(store)) {
+      planThroughput = Math.min(
+        this.pendingPlanThroughputFloor ?? planThroughput,
+        planThroughput,
+      );
+      this.pendingPlanThroughputFloor = planThroughput;
+    }
+
+    return computeStartupCushion({
+      byteTimeline,
+      horizonSec,
+      minimumSeconds: policy.startupLookaheadSeconds,
+      playheadSec,
+      startTimeNs: index.startTimeNs,
+      throughputBytesPerSec: planThroughput,
+    });
+  }
+}
+
+/** Publishes progress for a play press held behind a bandwidth cushion. */
+export function publishStartupCushionProgress({
+  activeBlockingStreams,
+  caches,
+  index,
+  playheadSec,
+  policy,
+  resolveStartupCushion,
+  store,
+  tick,
+}: {
+  readonly activeBlockingStreams: readonly string[];
+  readonly caches: Map<string, EpisodeStreamCache>;
+  readonly index: TimelineIndex | null;
+  readonly playheadSec: number;
+  readonly policy: DerivedPlaybackPolicy;
+  readonly resolveStartupCushion: () => StartupCushion;
+  readonly store: PlaybackStore;
+  readonly tick: bigint | null;
+}): void {
+  if (
+    !getIsPlayPending(store) ||
+    tick === null ||
+    activeBlockingStreams.length === 0
+  ) {
+    setStartupCushionState(store, null);
+    return;
+  }
+
+  const cushion = resolveStartupCushion();
+  if (
+    cushion.cushionSeconds <= policy.startupLookaheadSeconds ||
+    cushion.estimatedWaitSeconds <= 0
+  ) {
+    setStartupCushionState(store, null);
+    return;
+  }
+
+  const coverage = bufferWindowCoverage({
+    activeStreams: activeBlockingStreams,
+    caches,
+    index,
+    lookaheadSeconds: cushion.cushionSeconds,
+    maxTicks: Math.max(
+      policy.startupMinTicks,
+      Math.ceil(DEFAULT_TIMELINE_TICK_RATE_HZ * cushion.cushionSeconds),
+    ),
+    timeSec: playheadSec,
+  });
+  const missingFraction = coverage?.total
+    ? (coverage.total - coverage.covered) / coverage.total
+    : 1;
+  setStartupCushionState(store, {
+    estimatedWaitSeconds: cushion.estimatedWaitSeconds * missingFraction,
+    progressFraction: 1 - missingFraction,
+    targetSeconds: cushion.cushionSeconds,
+  });
 }

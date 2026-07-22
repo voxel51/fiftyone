@@ -1,7 +1,12 @@
+import type { PlaybackStore } from "@fiftyone/playback";
+import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
+import { VISUALIZATION_KIND } from "../../../visualization";
+import { createTimelineIndex, EpisodeStreamCache } from "../../../runtime";
 import {
   decodedCacheBudgetBytes,
   nextDecodedCacheLookaheadSeconds,
+  rebalanceDecodedCaches,
 } from "./decoded-cache-policy";
 
 const MIB = 1024 ** 2;
@@ -59,5 +64,40 @@ describe("episode decoded cache policy", () => {
         decodedBytes: 128 * MIB,
       }),
     ).toBe(3);
+  });
+
+  it("prunes speculative frames outside the resized protected runway", () => {
+    const cache = new EpisodeStreamCache();
+    const frame = {
+      output: {
+        visualization: {
+          bytes: new Uint8Array(1_024),
+          kind: VISUALIZATION_KIND.ENCODED_IMAGE,
+        },
+      },
+      streamId: "/camera",
+      timestampNs: 0n,
+    };
+    cache.set(0n, frame);
+    cache.set(10_000_000_000n, {
+      ...frame,
+      timestampNs: 10_000_000_000n,
+    });
+
+    const lookahead = rebalanceDecodedCaches({
+      budgetBytes: 1,
+      caches: new Map([["/camera", cache]]),
+      currentLookaheadSeconds: 4,
+      index: createTimelineIndex({ endNs: 10_000_000_000n, startNs: 0n }, 1),
+      maxLookaheadSeconds: 4,
+      minLookaheadSeconds: 0.5,
+      pruneSpeculative: true,
+      stepSeconds: 1,
+      store: createStore() as PlaybackStore,
+    });
+
+    expect(lookahead).toBe(0.5);
+    expect(cache.has(0n)).toBe(true);
+    expect(cache.has(10_000_000_000n)).toBe(false);
   });
 });

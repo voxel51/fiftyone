@@ -1,8 +1,28 @@
-import { usePlaybackStore, type PlaybackStore } from "@fiftyone/playback";
+import {
+  getBufferingDetail,
+  getIsBuffering,
+  getIsPlayPending,
+  getIsPlaying,
+  getPlayhead,
+  setBufferingDetail,
+  setIsBuffering,
+  usePlaybackStore,
+  type PlaybackStore,
+} from "@fiftyone/playback";
 import { atom, useAtomValue, type PrimitiveAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { useMemo } from "react";
 import type { DecodedDiagnostic } from "../../../ir";
+import type { EpisodeStreamCache, TimelineIndex } from "../../../runtime";
+import {
+  bufferWindowCoverage,
+  staleAgeForMessage,
+  type DerivedPlaybackPolicy,
+} from "./playback-buffering";
+import {
+  publishStartupCushionProgress,
+  type StartupCushion,
+} from "./startup-cushion";
 
 /**
  * Per-stream playback readiness at the current playhead tick:
@@ -213,4 +233,138 @@ export function setStreamStartTimeSec(
   startTimeSec: number | null,
 ): void {
   store.set(streamStartTimeSecAtom(stream), startTimeSec);
+}
+
+/**
+ * Publishes per-stream readiness, aggregate buffering feedback, held-frame
+ * recovery, and startup-gate progress for the current playhead.
+ */
+export function publishDataStreamStatuses({
+  activeBlockingStreams,
+  activeStreams,
+  caches,
+  failedStreams,
+  index,
+  onPlayheadDataReady,
+  policy,
+  publishBufferedRangesNow,
+  pushCurrentTick,
+  resolveStartupCushion,
+  scheduleBufferedRangesPublish,
+  schedulePausedIdleWarmup,
+  staleMediaWarningNs,
+  staleWarningStreams,
+  store,
+}: {
+  readonly activeBlockingStreams: readonly string[];
+  readonly activeStreams: readonly string[];
+  readonly caches: Map<string, EpisodeStreamCache>;
+  readonly failedStreams: ReadonlySet<string>;
+  readonly index: TimelineIndex | null;
+  readonly onPlayheadDataReady: (() => void) | undefined;
+  readonly policy: DerivedPlaybackPolicy;
+  readonly publishBufferedRangesNow: () => void;
+  readonly pushCurrentTick: (
+    activeStreams: readonly string[],
+    tick: bigint,
+  ) => void;
+  readonly resolveStartupCushion: () => StartupCushion;
+  readonly scheduleBufferedRangesPublish: () => void;
+  readonly schedulePausedIdleWarmup: (delayMs?: number) => void;
+  readonly staleMediaWarningNs: bigint;
+  readonly staleWarningStreams: ReadonlySet<string>;
+  readonly store: PlaybackStore;
+}): void {
+  const blockingStreamSet = new Set(activeBlockingStreams);
+  const tick = index?.nearestTick(getPlayhead(store)) ?? null;
+  let blockingCovered = 0;
+
+  for (const stream of activeStreams) {
+    const cache = caches.get(stream);
+    let status: StreamStatus;
+    let staleAgeNs: bigint | null = null;
+    if (tick === null || !cache?.has(tick)) {
+      status = failedStreams.has(stream) ? "failed" : "loading";
+    } else {
+      if (blockingStreamSet.has(stream)) blockingCovered += 1;
+      if (failedStreams.has(stream)) {
+        status = "failed";
+      } else {
+        const message = cache.get(tick);
+        if (!message) {
+          status = "gap";
+        } else if (staleWarningStreams.has(stream)) {
+          staleAgeNs = staleAgeForMessage(tick, message, staleMediaWarningNs);
+          status = staleAgeNs === null ? "ready" : "stale";
+        } else {
+          status = "ready";
+        }
+      }
+    }
+    if (getStreamStaleAgeNs(store, stream) !== staleAgeNs) {
+      setStreamStaleAgeNs(store, stream, staleAgeNs);
+    }
+    if (getStreamStatus(store, stream) !== status) {
+      setStreamStatus(store, stream, status);
+    }
+  }
+
+  const blockingTotal = activeBlockingStreams.length;
+  const detail =
+    tick !== null && blockingTotal > 0 && blockingCovered < blockingTotal
+      ? `${blockingCovered}/${blockingTotal} streams`
+      : null;
+  if (getBufferingDetail(store) !== detail) {
+    setBufferingDetail(store, detail);
+  }
+
+  if (
+    tick !== null &&
+    blockingTotal > 0 &&
+    blockingCovered === blockingTotal &&
+    getIsBuffering(store)
+  ) {
+    setIsBuffering(store, false);
+    pushCurrentTick(activeStreams, tick);
+  }
+
+  const playheadSec = getPlayhead(store);
+  const startupCoverage =
+    tick !== null && blockingTotal > 0
+      ? bufferWindowCoverage({
+          activeStreams: activeBlockingStreams,
+          caches,
+          index,
+          lookaheadSeconds: policy.startupLookaheadSeconds,
+          maxTicks: policy.startupMaxPrefetchBatch,
+          timeSec: playheadSec,
+        })
+      : null;
+  const startupReady =
+    !!startupCoverage?.total &&
+    startupCoverage.covered === startupCoverage.total;
+
+  publishStartupCushionProgress({
+    activeBlockingStreams,
+    caches,
+    index,
+    playheadSec,
+    policy,
+    resolveStartupCushion,
+    store,
+    tick,
+  });
+
+  if (tick !== null && blockingTotal > 0 && blockingCovered === blockingTotal) {
+    onPlayheadDataReady?.();
+  }
+
+  if (startupReady && getIsPlayPending(store)) {
+    publishBufferedRangesNow();
+  } else {
+    scheduleBufferedRangesPublish();
+  }
+  if (startupReady && !getIsPlaying(store) && !getIsPlayPending(store)) {
+    schedulePausedIdleWarmup(policy.prefetchRefreshSeconds * 1000);
+  }
 }
