@@ -393,13 +393,15 @@ phase rather than waiting for later refactoring.
    families.
 2. Generic WebGPU infrastructure is a leaf relative to image, point-cloud, and
    scene-3D domains.
-3. `visualization-semantic-families-do-not-import-siblings`: the physical
+3. `visualization-families-do-not-import-siblings`: the physical
    families—image, logs, map, message, plot, and scene-3D—remain independent.
    Structured messages and time series are product concepts represented by
    `message` and `plot`.
-4. Cross-family behavior belongs to `visualization/composition`. Point-cloud
-   projection and its panel-level scene assembly live there; generic GPU
-   mechanisms remain under WebGPU and scene snapshots remain owned by scene-3D.
+4. `visualization-families-do-not-import-composition`: cross-family behavior
+   belongs above the reusable families in `visualization/composition`, and
+   semantic families must not depend back on it. Point-cloud projection and its
+   panel-level scene assembly live there; generic GPU mechanisms remain under
+   WebGPU and scene snapshots remain owned by scene-3D.
 5. Visualization may consume IR and narrow platform utilities, but not views,
    runtime, query, adapters, schemas, or decoders.
 

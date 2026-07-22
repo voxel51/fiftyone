@@ -426,6 +426,14 @@ module.exports = {
       from: { path: VISUALIZATION_FAMILIES, pathNot: TEST_MODULE },
       to: { path: VISUALIZATION_FAMILIES, pathNot: `${VISUALIZATION}$1/` },
     },
+    {
+      // Preserve composition as the upper cross-family layer so a semantic
+      // renderer never acquires a dependency on the experience combining it.
+      name: "visualization-families-do-not-import-composition",
+      severity: "error",
+      from: { path: VISUALIZATION_FAMILIES, pathNot: TEST_MODULE },
+      to: { path: `${VISUALIZATION}composition/` },
+    },
 
     {
       // Keep extension families independent so they integrate through host
