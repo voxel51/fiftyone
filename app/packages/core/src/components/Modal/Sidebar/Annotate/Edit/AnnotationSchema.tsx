@@ -251,8 +251,21 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       // overlay shape (type/isNew/color/path/sampleId), and committing those
       // pollutes Sample — the write-half's `build3dLabel` strips the same set,
       // so the idempotent guard would never match and the sync loops forever.
+      // A schema-declared attribute may share a reserved name (e.g. "type");
+      // when the form (or a conditional owner-change) produced a value for it,
+      // that value is real label data and must survive the strip.
+      const schemaOwnedNames = new Set(
+        allAttributes
+          .map((attr) => attr.name)
+          .filter(
+            (name): name is string =>
+              !!name &&
+              (name in formResult || uniqueConditionalNames.has(name)),
+          ),
+      );
       const persistableValue = stripReservedLabelAttributes(
         value as Record<string, unknown>,
+        schemaOwnedNames,
       );
 
       // A video frame label belongs to a track. A static track-level edit

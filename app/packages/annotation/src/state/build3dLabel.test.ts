@@ -3,7 +3,7 @@ import type {
   ReconciledPolyline3D,
 } from "@fiftyone/looker-3d";
 import { describe, expect, it } from "vitest";
-import { build3dLabel } from "./build3dLabel";
+import { build3dLabel, stripReservedLabelAttributes } from "./build3dLabel";
 
 const baseDetection = (
   overrides: Partial<ReconciledDetection3D> = {},
@@ -125,5 +125,40 @@ describe("build3dLabel", () => {
     build3dLabel(label);
     expect(label).toHaveProperty("color", "#ff0000");
     expect(label).toHaveProperty("path", "ground_truth_3d");
+  });
+});
+
+describe("stripReservedLabelAttributes", () => {
+  it("keeps a reserved-named key listed in `keep`", () => {
+    const result = stripReservedLabelAttributes(
+      { label: "car", type: "sedan", color: "#ff0000", isNew: true },
+      new Set(["type"]),
+    );
+
+    expect(result).toEqual({ label: "car", type: "sedan" });
+  });
+
+  it("ignores `keep` names outside the reserved set", () => {
+    const result = stripReservedLabelAttributes(
+      { label: "car", confidence: 0.9, path: "ground_truth" },
+      new Set(["label", "confidence"]),
+    );
+
+    expect(result).toEqual({ label: "car", confidence: 0.9 });
+  });
+
+  it("strips the full reserved set without `keep`", () => {
+    const result = stripReservedLabelAttributes({
+      label: "car",
+      color: "#ff0000",
+      id: "legacy",
+      isNew: true,
+      path: "ground_truth",
+      selected: true,
+      sampleId: "sample-1",
+      type: "Detection",
+    });
+
+    expect(result).toEqual({ label: "car" });
   });
 });

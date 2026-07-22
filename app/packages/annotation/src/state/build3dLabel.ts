@@ -26,12 +26,19 @@ export const reservedLabelAttributes = [
  * Drop the {@link reservedLabelAttributes} from a label-data partial — the
  * sanitizer for any path that commits a working/overlay-shaped label into the
  * engine or {@link Sample}.
+ *
+ * A label schema may declare a real attribute whose name collides with the
+ * reserved set (e.g. a "type" attribute on a Detection). Callers that know
+ * which names the schema owns pass them via `keep` so those values survive
+ * the strip.
  */
 export const stripReservedLabelAttributes = <T extends Record<string, unknown>>(
   data: T,
+  keep?: ReadonlySet<string>,
 ): T => {
   const out = { ...data };
   for (const key of reservedLabelAttributes) {
+    if (keep?.has(key)) continue;
     delete out[key];
   }
   return out;
