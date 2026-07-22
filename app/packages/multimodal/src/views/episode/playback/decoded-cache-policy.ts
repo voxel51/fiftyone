@@ -58,6 +58,60 @@ export function nextDecodedCacheLookaheadSeconds({
   return currentSeconds;
 }
 
+/** Rebalances decoded caches and returns the next speculative horizon. */
+export function rebalanceDecodedCaches({
+  budgetBytes,
+  caches,
+  currentLookaheadSeconds,
+  index,
+  maxLookaheadSeconds,
+  minLookaheadSeconds,
+  pruneSpeculative,
+  stepSeconds,
+  store,
+}: {
+  readonly budgetBytes: number;
+  readonly caches: Map<string, EpisodeStreamCache>;
+  readonly currentLookaheadSeconds: number;
+  readonly index: TimelineIndex | null;
+  readonly maxLookaheadSeconds: number;
+  readonly minLookaheadSeconds: number;
+  readonly pruneSpeculative: boolean;
+  readonly stepSeconds: number;
+  readonly store: PlaybackStore;
+}): number {
+  if (!index) return currentLookaheadSeconds;
+
+  let decodedBytes = 0;
+  for (const cache of caches.values()) decodedBytes += cache.decodedBytes;
+  const nextLookaheadSeconds = nextDecodedCacheLookaheadSeconds({
+    budgetBytes,
+    currentSeconds: currentLookaheadSeconds,
+    decodedBytes,
+    maxSeconds: maxLookaheadSeconds,
+    minSeconds: minLookaheadSeconds,
+    stepSeconds,
+  });
+  if (decodedBytes <= budgetBytes || !pruneSpeculative) {
+    return nextLookaheadSeconds;
+  }
+
+  const playheadSec = getPlayhead(store);
+  const protectedStartTick = index.nearestTick(
+    Math.max(0, playheadSec - minLookaheadSeconds),
+  );
+  const protectedEndTick = index.nearestTick(
+    Math.min(index.durationSec, playheadSec + nextLookaheadSeconds),
+  );
+  if (protectedStartTick === undefined || protectedEndTick === undefined) {
+    return nextLookaheadSeconds;
+  }
+  for (const cache of caches.values()) {
+    cache.pruneOutside(protectedStartTick, protectedEndTick);
+  }
+  return nextLookaheadSeconds;
+}
+
 /** Browser-reported device memory, normalized for cache-budget decisions. */
 export function reportedDeviceMemoryGb(): number | null {
   if (typeof navigator === "undefined") return null;
@@ -71,3 +125,6 @@ export function reportedDeviceMemoryGb(): number | null {
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
+import { getPlayhead, type PlaybackStore } from "@fiftyone/playback";
+
+import type { EpisodeStreamCache, TimelineIndex } from "../../../runtime";

@@ -1,9 +1,18 @@
+import type { PlaybackStore } from "@fiftyone/playback";
+import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
-import type { ByteTimelinePoint } from "../../../ir";
+import { BYTE_SOURCE_READ_PROFILE, type ByteTimelinePoint } from "../../../ir";
+import { createTimelineIndex, EpisodeStreamCache } from "../../../runtime";
+import { setNetworkHealth } from "./network-health";
+import {
+  DEFAULT_PLAYBACK_POLICY,
+  derivePlaybackPolicy,
+} from "./playback-buffering";
 import {
   computeStartupCushion,
   MAX_STARTUP_CUSHION_SECONDS,
   MAX_STARTUP_CUSHION_WAIT_SECONDS,
+  StartupCushionPlanner,
 } from "./startup-cushion";
 
 const SECOND_NS = 1_000_000_000n;
@@ -161,3 +170,91 @@ describe("computeStartupCushion", () => {
     expect(cushion.estimatedWaitSeconds).toBeCloseTo(100 / 50, 5);
   });
 });
+
+describe("StartupCushionPlanner", () => {
+  it("keeps an unmeasured remote press held until its one-shot plan resets", () => {
+    const planner = new StartupCushionPlanner();
+    const store = createStore() as PlaybackStore;
+    const index = createTimelineIndex({
+      endNs: 20n * SECOND_NS,
+      startNs: 0n,
+    });
+    const cache = new EpisodeStreamCache();
+    const inputs = {
+      activeBlockingStreams: ["/camera"],
+      byteTimeline: uniformByteTimeline(100, 20),
+      caches: new Map([["/camera", cache]]),
+      index,
+      policy: derivePlaybackPolicy(DEFAULT_PLAYBACK_POLICY),
+      sourceEpoch: 1,
+      sourceReadProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
+      store,
+    } as const;
+
+    expect(planner.resolve(inputs)).toEqual({
+      cushionSeconds: MAX_STARTUP_CUSHION_SECONDS,
+      estimatedWaitSeconds: 3,
+    });
+
+    const coverageEndNs = index.secToNs(1.5);
+    for (let position = 0; position < index.tickCount; position++) {
+      const tick = index.tickAt(position);
+      if (tick === undefined || tick > coverageEndNs) break;
+      cache.set(tick, null);
+    }
+    // Coverage arriving during the same press cannot reverse its initial
+    // decision; the engine owns the release and then resets the plan.
+    expect(planner.resolve(inputs).cushionSeconds).toBe(
+      MAX_STARTUP_CUSHION_SECONDS,
+    );
+
+    planner.resetPendingPlan();
+    expect(planner.resolve(inputs)).toEqual({
+      cushionSeconds: inputs.policy.startupLookaheadSeconds,
+      estimatedWaitSeconds: 0,
+    });
+  });
+
+  it("keeps the slower press-time throughput until pause/resume resets it", () => {
+    const planner = new StartupCushionPlanner();
+    const store = createStore() as PlaybackStore;
+    const inputs = {
+      activeBlockingStreams: ["/camera"],
+      byteTimeline: uniformByteTimeline(27, 20),
+      caches: new Map([["/camera", new EpisodeStreamCache()]]),
+      index: createTimelineIndex({
+        endNs: 20n * SECOND_NS,
+        startNs: 0n,
+      }),
+      policy: derivePlaybackPolicy(DEFAULT_PLAYBACK_POLICY),
+      sourceEpoch: 1,
+      sourceReadProfile: BYTE_SOURCE_READ_PROFILE.REMOTE,
+      store,
+    } as const;
+    setNetworkHealth(store, networkHealth(25));
+    const slowPlan = planner.resolve(inputs);
+    expect(slowPlan.cushionSeconds).toBeGreaterThan(
+      inputs.policy.startupLookaheadSeconds,
+    );
+
+    setNetworkHealth(store, networkHealth(1_000));
+    expect(planner.resolve(inputs)).toEqual(slowPlan);
+
+    planner.resetPendingPlan();
+    expect(planner.resolve(inputs)).toEqual({
+      cushionSeconds: inputs.policy.startupLookaheadSeconds,
+      estimatedWaitSeconds: 0,
+    });
+  });
+});
+
+function networkHealth(throughputBytesPerSec: number) {
+  return {
+    busyFraction: 1,
+    busyThroughputBytesPerSec: throughputBytesPerSec,
+    limited: false,
+    throughputBytesPerSec,
+    throughputPlannable: true,
+    updatedAtMs: 1,
+  };
+}

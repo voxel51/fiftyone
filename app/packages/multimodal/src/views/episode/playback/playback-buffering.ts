@@ -348,3 +348,59 @@ export function bufferedRangesEqual(
   }
   return true;
 }
+
+/** Derives contiguous all-stream cache coverage for timeline shading. */
+export function computeBufferedRanges({
+  activeStreams,
+  caches,
+  index,
+}: {
+  readonly activeStreams: readonly string[];
+  readonly caches: Map<string, EpisodeStreamCache>;
+  readonly index: TimelineIndex | null;
+}): Array<[number, number]> {
+  if (!index || activeStreams.length === 0) return [];
+  const firstCache = caches.get(activeStreams[0]);
+  if (!firstCache) return [];
+
+  const indexes: number[] = [];
+  const seenIndexes = new Set<number>();
+  for (const tick of firstCache.cachedTicks()) {
+    const tickIndex = index.indexOfTick(tick);
+    if (tickIndex === undefined || seenIndexes.has(tickIndex)) continue;
+    if (!activeStreams.every((stream) => caches.get(stream)?.has(tick))) {
+      continue;
+    }
+    seenIndexes.add(tickIndex);
+    indexes.push(tickIndex);
+  }
+  if (indexes.length === 0) return [];
+  indexes.sort((left, right) => left - right);
+
+  const ranges: Array<[number, number]> = [];
+  const nominalTickSec = 1 / DEFAULT_TIMELINE_TICK_RATE_HZ;
+  const pushRange = (startIndex: number, endIndex: number): void => {
+    const startTick = index.tickAt(startIndex);
+    const endTick = index.tickAt(endIndex);
+    if (startTick === undefined || endTick === undefined) return;
+    ranges.push([
+      index.nsToSec(startTick),
+      Math.min(index.nsToSec(endTick) + nominalTickSec, index.durationSec),
+    ]);
+  };
+
+  let runStartIndex = indexes[0];
+  let runEndIndex = runStartIndex;
+  for (let position = 1; position < indexes.length; position++) {
+    const nextIndex = indexes[position];
+    if (nextIndex === runEndIndex + 1) {
+      runEndIndex = nextIndex;
+      continue;
+    }
+    pushRange(runStartIndex, runEndIndex);
+    runStartIndex = nextIndex;
+    runEndIndex = nextIndex;
+  }
+  pushRange(runStartIndex, runEndIndex);
+  return ranges;
+}

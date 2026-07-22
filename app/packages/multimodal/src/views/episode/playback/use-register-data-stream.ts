@@ -1,24 +1,12 @@
 import {
   getBufferedRanges,
-  getBufferingDetail,
-  getIsBuffering,
-  getIsPlayPending,
-  getIsPlaying,
-  getLoopEnd,
-  getLoopStart,
   getPlayhead,
   setBufferedRanges,
-  setBufferingDetail,
-  setIsBuffering,
   setStreamValue,
-  subscribeIsPlayPending,
-  subscribePlayhead,
   useIsPlaying,
   usePlayback,
   usePlaybackStore,
   useSeekEvent,
-  type PlaybackStore,
-  type PlaybackStream,
 } from "@fiftyone/playback";
 import {
   useCallback,
@@ -29,15 +17,12 @@ import {
   useState,
 } from "react";
 import {
-  getStreamStatus,
-  getStreamStaleAgeNs,
+  publishDataStreamStatuses,
   setStreamStartTimeSec,
   setStreamStaleAgeNs,
   setStreamStatus,
-  type StreamStatus,
 } from "./stream-status-state";
 import {
-  BYTE_SOURCE_READ_PROFILE,
   type ByteSourceDescriptor,
   type ByteTimelinePoint,
   type DecodedFrame,
@@ -51,65 +36,35 @@ import { monotonicNowMs } from "../../../utils/monotonic-time";
 import {
   createEpisodePlaybackRuntime,
   createTimelineIndex,
-  DEFAULT_TIMELINE_TICK_RATE_HZ,
   episodeSourceAccessKey,
   type TimelineIndex,
 } from "../../../runtime";
 import { useSetDataStream } from "./data-stream-context";
 import {
   decodedCacheBudgetBytes,
-  nextDecodedCacheLookaheadSeconds,
+  rebalanceDecodedCaches as applyDecodedCachePolicy,
   reportedDeviceMemoryGb,
 } from "./decoded-cache-policy";
+import { shouldDeferIdleWorkForStore } from "./network-health";
 import {
-  getNetworkHealth,
-  shouldDeferIdleWorkForStore,
-} from "./network-health";
-import {
-  activeStreamsInCaches,
   bufferedRangesEqual,
-  bufferWindowCoverage,
-  contiguousBufferedSecondsFromPlayhead,
-  decodeFailuresByStream,
+  computeBufferedRanges as deriveBufferedRanges,
   DEFAULT_PLAYBACK_POLICY,
   derivePlaybackPolicy,
-  distributeWindowToCaches,
-  batchReadPriority,
-  fillMissingLookaheadFrom,
-  fillMissingStartupBufferFrom,
   nsToSeconds,
   resetPlaybackBuffering,
-  staleAgeForMessage,
-  type DataOperation,
 } from "./playback-buffering";
+import {
+  createDataStreamFetchState,
+  createDataStreamPrefetcher,
+  DataStreamScheduler,
+  resetDataStreamFetchState,
+} from "./data-stream-prefetch";
 import { pushTickToStore } from "./playback-frame-push";
-import {
-  computeStartupCushion,
-  MAX_STARTUP_CUSHION_SECONDS,
-  MAX_STARTUP_CUSHION_WAIT_SECONDS,
-  UNMEASURED_LINK_NOMINAL_WAIT_SECONDS,
-  type StartupCushion,
-} from "./startup-cushion";
-import {
-  resetStartupCushionState,
-  setStartupCushionState,
-} from "./startup-cushion-state";
+import { StartupCushionPlanner, type StartupCushion } from "./startup-cushion";
+import { resetStartupCushionState } from "./startup-cushion-state";
 import { EpisodeStreamCache } from "../../../runtime";
 import type { StreamPlaybackFrame } from "./use-stream-values";
-
-// One engine stream owns all episode streams so camera/lidar tiles stay on the
-// same synchronized timeline and fetch in shared batches.
-const STREAM_ID = "episode-data-stream";
-
-/**
- * Consecutive fetch failures per stream before the stream stops retrying
- * the affected ticks. Below the threshold a failure leaves the ticks
- * uncached so the engine's normal prefetch loop retries (covers transient
- * network errors); at the threshold the failed ticks are seeded as
- * "fetched, no message" so one persistently-broken stream can't stall the
- * clock and freeze the whole modal.
- */
-const MAX_FETCH_FAILURE_STREAK = 3;
 
 /**
  * Trailing-throttle interval for republishing buffered ranges to the
@@ -118,18 +73,7 @@ const MAX_FETCH_FAILURE_STREAK = 3;
  * buffering stalls).
  */
 const BUFFERED_RANGES_PUBLISH_INTERVAL_MS = 500;
-const PROVISIONAL_REMOTE_START_COVERAGE_SECONDS = 1.5;
-
 const PLAYBACK_POLICY = derivePlaybackPolicy(DEFAULT_PLAYBACK_POLICY);
-
-/**
- * Batches one engine prefetch call may enqueue. The engine widens its
- * pending-start prefetch window to the bandwidth cushion, and the fill
- * must be able to pipeline the whole window — pacing it one batch per
- * buffered-ranges publish would bound filling at ~1 content-second per
- * wall second no matter how fast the link is.
- */
-const MAX_ENGINE_PREFETCH_BATCHES_PER_CALL = 8;
 
 const noop = (): void => undefined;
 
@@ -142,13 +86,6 @@ export function cancelIdleReads(
   } catch (error) {
     if (!isEpisodeReadCancelledError(error)) throw error;
   }
-}
-
-interface RemoteStartupGateDecision {
-  readonly coverageSeconds: number;
-  readonly mode: "held" | "provisional";
-  readonly playheadSec: number;
-  readonly sourceEpoch: number;
 }
 
 /** Inputs for registering the shared episode playback stream. */
@@ -223,18 +160,10 @@ export function useRegisterDataStream({
   const backgroundLookaheadSecondsRef = useRef(
     PLAYBACK_POLICY.lookaheadSeconds,
   );
-  // Pending fetches keyed by tick → set of streams each in-flight request
-  // is covering. Per-stream so a request that omits a newly-subscribed
-  // stream doesn't make collectMissingTicks think that stream is in flight.
-  const pendingTicksRef = useRef<Map<string, Set<string>>>(new Map());
+  const [fetchState] = useState(createDataStreamFetchState);
   const lastFrameRef = useRef<Map<string, StreamPlaybackFrame<unknown>>>(
     new Map(),
   );
-  // Consecutive fetch failures per stream; reset on the first success.
-  const failureStreakRef = useRef<Map<string, number>>(new Map());
-  // Streams currently in the "failed" state (streak hit the cap). Sticky
-  // until a later fetch covering the stream succeeds.
-  const failedStreamsRef = useRef<Set<string>>(new Set());
   // Pending trailing-throttle timer for the buffered-ranges publish.
   const bufferedRangesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -248,15 +177,7 @@ export function useRegisterDataStream({
   const streamStartTimesNsRef = useRef<Map<string, bigint | null>>(new Map());
   const autoSeekSourceEpochRef = useRef<number | null>(null);
   const lastSeekAtMsRef = useRef<number | null>(null);
-  // Pessimistic link-rate envelope for the press currently held by the
-  // start gate; null outside a pending session. See resolveStartupCushion.
-  const pendingPlanThroughputFloorRef = useRef<number | null>(null);
-  const remoteStartupGateDecisionRef = useRef<RemoteStartupGateDecision | null>(
-    null,
-  );
-  const nextLookaheadRefreshTimeRef = useRef(0);
-  const lastObservedPlayheadSecRef = useRef<number | null>(null);
-  const loopRunwayStartTickKeyRef = useRef<string | null>(null);
+  const [startupCushionPlanner] = useState(() => new StartupCushionPlanner());
   const indexRef = useRef<TimelineIndex | null>(null);
   const byteTimelineRef = useRef<readonly ByteTimelinePoint[] | null>(null);
   const sourceEpochRef = useRef(0);
@@ -328,107 +249,20 @@ export function useRegisterDataStream({
   // draining, so one honest buffering wait replaces repeated mid-play
   // freezes.
   const sourceReadProfile = source?.readProfile;
-  const resolveStartupCushion = useCallback((): StartupCushion => {
-    const currentIndex = indexRef.current;
-    if (!currentIndex) {
-      return {
-        cushionSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
-        estimatedWaitSeconds: 0,
-      };
-    }
-    const loopStartSec = getLoopStart(store);
-    const loopEndSec = getLoopEnd(store);
-    const horizonSec =
-      loopEndSec > loopStartSec
-        ? Math.min(currentIndex.durationSec, loopEndSec)
-        : currentIndex.durationSec;
-    const playheadSec = getPlayhead(store);
-    const health = getNetworkHealth(store);
-
-    // A remote press with no planning-grade measurement must not resolve
-    // to the floor: the estimator at press time reads idle spans and first
-    // bursts, and both a stale-low figure (wall-cap walk-down) and a
-    // burst-high one (no-deficit) collapse the gate before the link is
-    // known. Hold at the ceiling instead — the pending prefetch this
-    // triggers delivers real samples within a fetch round-trip, and the
-    // live getter re-resolves to the measured plan (fast links: the
-    // floor; coverage already banked clears the gate untouched).
-    const spanSeconds = horizonSec - playheadSec;
-    if (
-      sourceReadProfile === BYTE_SOURCE_READ_PROFILE.REMOTE &&
-      !health.throughputPlannable &&
-      byteTimelineRef.current !== null &&
-      byteTimelineRef.current.length > 0 &&
-      spanSeconds > PLAYBACK_POLICY.startupLookaheadSeconds
-    ) {
-      const sourceEpoch = sourceEpochRef.current;
-      let decision = remoteStartupGateDecisionRef.current;
-      if (decision?.sourceEpoch !== sourceEpoch) {
-        decision = null;
-        remoteStartupGateDecisionRef.current = null;
-      }
-      if (decision === null) {
-        const coverageSeconds = contiguousBufferedSecondsFromPlayhead({
-          activeStreams: getActiveBlockingStreams(),
-          caches: streamCachesRef.current,
-          index: currentIndex,
-          maxSeconds: PROVISIONAL_REMOTE_START_COVERAGE_SECONDS,
-          timeSec: playheadSec,
-        });
-        decision = {
-          coverageSeconds,
-          mode:
-            coverageSeconds >= PROVISIONAL_REMOTE_START_COVERAGE_SECONDS
-              ? "provisional"
-              : "held",
-          playheadSec,
-          sourceEpoch,
-        };
-        remoteStartupGateDecisionRef.current = decision;
-      }
-      if (decision.mode === "provisional") {
-        return {
-          cushionSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
-          estimatedWaitSeconds: 0,
-        };
-      }
-      return {
-        cushionSeconds: Math.min(MAX_STARTUP_CUSHION_SECONDS, spanSeconds),
-        estimatedWaitSeconds: UNMEASURED_LINK_NOMINAL_WAIT_SECONDS,
-      };
-    }
-
-    // Plan from transfer-busy throughput: the wall-window figure decays
-    // across idle spans and would walk the cushion down on a link that
-    // was merely quiet, not slow.
-    let planThroughput =
-      health.busyThroughputBytesPerSec ?? health.throughputBytesPerSec;
-    // Until the press commits, the link estimate may only ratchet down:
-    // the estimator re-reads bursts as the window turns over, and one
-    // 48ms-optimistic evaluation would otherwise release a gate that the
-    // previous evaluation had sized seconds of coverage for. The envelope
-    // must capture the press-time evaluation too — it runs before the
-    // pending flag flips — so it tracks every non-playing evaluation and
-    // resets when the pending session ends. Pipelined pending fills load
-    // the link exactly like playback will, so the pessimistic envelope
-    // converges to the sustainable rate.
-    if (planThroughput !== null && !getIsPlaying(store)) {
-      planThroughput = Math.min(
-        pendingPlanThroughputFloorRef.current ?? planThroughput,
-        planThroughput,
-      );
-      pendingPlanThroughputFloorRef.current = planThroughput;
-    }
-
-    return computeStartupCushion({
-      byteTimeline: byteTimelineRef.current,
-      horizonSec,
-      minimumSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
-      playheadSec,
-      startTimeNs: currentIndex.startTimeNs,
-      throughputBytesPerSec: planThroughput,
-    });
-  }, [getActiveBlockingStreams, sourceReadProfile, store]);
+  const resolveStartupCushion = useCallback(
+    (): StartupCushion =>
+      startupCushionPlanner.resolve({
+        activeBlockingStreams: getActiveBlockingStreams(),
+        byteTimeline: byteTimelineRef.current,
+        caches: streamCachesRef.current,
+        index: indexRef.current,
+        policy: PLAYBACK_POLICY,
+        sourceEpoch: sourceEpochRef.current,
+        sourceReadProfile,
+        store,
+      }),
+    [getActiveBlockingStreams, sourceReadProfile, startupCushionPlanner, store],
+  );
 
   // If a recording's selected renderable streams begin just after the episode
   // timeline start, land the initial playhead on the first sampled tick that
@@ -468,37 +302,6 @@ export function useRegisterDataStream({
     seek(targetSec);
   }, [getActiveStreams, seek, store]);
 
-  // Pending helpers — wrap the per-tick stream sets so call sites read
-  // like simple predicates instead of repeating the get/has dance.
-  const isStreamPending = (tickKey: string, stream: string): boolean =>
-    pendingTicksRef.current.get(tickKey)?.has(stream) ?? false;
-  const markStreamsPending = (
-    tickKeys: readonly string[],
-    streams: readonly string[],
-  ): void => {
-    const pending = pendingTicksRef.current;
-    for (const key of tickKeys) {
-      let covered = pending.get(key);
-      if (!covered) {
-        covered = new Set();
-        pending.set(key, covered);
-      }
-      for (const t of streams) covered.add(t);
-    }
-  };
-  const clearStreamsPending = (
-    tickKeys: readonly string[],
-    streams: readonly string[],
-  ): void => {
-    const pending = pendingTicksRef.current;
-    for (const key of tickKeys) {
-      const covered = pending.get(key);
-      if (!covered) continue;
-      for (const t of streams) covered.delete(t);
-      if (covered.size === 0) pending.delete(key);
-    }
-  };
-
   // This effect ensures a cache exists for every known stream.
   useEffect(() => {
     for (const stream of allStreams) {
@@ -520,18 +323,12 @@ export function useRegisterDataStream({
     const sourceEpoch = sourceEpochRef.current;
     setIndex(null);
     byteTimelineRef.current = null;
-    pendingTicksRef.current.clear();
+    resetDataStreamFetchState(fetchState);
     lastFrameRef.current.clear();
-    failureStreakRef.current.clear();
-    failedStreamsRef.current.clear();
     streamStartTimesNsRef.current.clear();
     autoSeekSourceEpochRef.current = null;
-    pendingPlanThroughputFloorRef.current = null;
-    remoteStartupGateDecisionRef.current = null;
-    nextLookaheadRefreshTimeRef.current = 0;
+    startupCushionPlanner.resetPendingPlan();
     backgroundLookaheadSecondsRef.current = PLAYBACK_POLICY.lookaheadSeconds;
-    lastObservedPlayheadSecRef.current = null;
-    loopRunwayStartTickKeyRef.current = null;
     clearPausedIdleWarmupTimer();
     for (const cache of streamCachesRef.current.values()) {
       cache.clear();
@@ -586,9 +383,11 @@ export function useRegisterDataStream({
     };
   }, [
     clearPausedIdleWarmupTimer,
+    fetchState,
     maybeAutoSeekToFirstData,
     playback,
     source,
+    startupCushionPlanner,
     store,
   ]);
 
@@ -603,62 +402,11 @@ export function useRegisterDataStream({
   // stalling. Derived from cache keys so this stays bounded by cache size,
   // not recording duration.
   const computeBufferedRanges = useCallback((): Array<[number, number]> => {
-    const currentIndex = indexRef.current;
-    if (!currentIndex) return [];
-    const activeStreams = getActiveBlockingStreams();
-    if (activeStreams.length === 0) return [];
-    const caches = streamCachesRef.current;
-    const firstCache = caches.get(activeStreams[0]);
-    if (!firstCache) return [];
-    const { durationSec } = currentIndex;
-    const nominalTickSec = 1 / DEFAULT_TIMELINE_TICK_RATE_HZ;
-
-    const ranges: Array<[number, number]> = [];
-    const indexes: number[] = [];
-    const seenIndexes = new Set<number>();
-    for (const tick of firstCache.cachedTicks()) {
-      const tickIndex = currentIndex.indexOfTick(tick);
-      if (tickIndex === undefined || seenIndexes.has(tickIndex)) continue;
-      let covered = true;
-      for (const stream of activeStreams) {
-        if (!caches.get(stream)?.has(tick)) {
-          covered = false;
-          break;
-        }
-      }
-      if (covered) {
-        seenIndexes.add(tickIndex);
-        indexes.push(tickIndex);
-      }
-    }
-    if (indexes.length === 0) return ranges;
-
-    indexes.sort((a, b) => a - b);
-
-    const pushRange = (startIndex: number, endIndex: number): void => {
-      const startTick = currentIndex.tickAt(startIndex);
-      const endTick = currentIndex.tickAt(endIndex);
-      if (startTick === undefined || endTick === undefined) return;
-      ranges.push([
-        currentIndex.nsToSec(startTick),
-        Math.min(currentIndex.nsToSec(endTick) + nominalTickSec, durationSec),
-      ]);
-    };
-
-    let runStartIndex = indexes[0];
-    let runEndIndex = runStartIndex;
-    for (let i = 1; i < indexes.length; i++) {
-      const nextIndex = indexes[i];
-      if (nextIndex === runEndIndex + 1) {
-        runEndIndex = nextIndex;
-        continue;
-      }
-      pushRange(runStartIndex, runEndIndex);
-      runStartIndex = nextIndex;
-      runEndIndex = nextIndex;
-    }
-    pushRange(runStartIndex, runEndIndex);
-    return ranges;
+    return deriveBufferedRanges({
+      activeStreams: getActiveBlockingStreams(),
+      caches: streamCachesRef.current,
+      index: indexRef.current,
+    });
   }, [getActiveBlockingStreams]);
 
   const publishBufferedRangesNow = useCallback(() => {
@@ -698,143 +446,40 @@ export function useRegisterDataStream({
   // This effect retires the pending-start plan once playback begins.
   useEffect(() => {
     if (!isPlaying) return;
-    pendingPlanThroughputFloorRef.current = null;
-    remoteStartupGateDecisionRef.current = null;
-  }, [isPlaying]);
+    startupCushionPlanner.resetPendingPlan();
+  }, [isPlaying, startupCushionPlanner]);
 
-  // Recompute per-stream status at the current playhead tick and the
-  // aggregate buffering detail ("N/M streams"). Same-value atom writes are
-  // no-ops, so calling this from RAF-adjacent paths (stream.prefetch,
-  // onCommit) only wakes React on actual transitions.
   const publishStreamStatuses = useCallback(() => {
-    const activeStreams = getActiveStreams();
-    const activeBlockingStreams = getActiveBlockingStreams();
-    const blockingStreamSet = new Set(activeBlockingStreams);
-    const caches = streamCachesRef.current;
-    const failed = failedStreamsRef.current;
-    const tick = indexRef.current?.nearestTick(getPlayhead(store)) ?? null;
-
-    let blockingCovered = 0;
-    for (const stream of activeStreams) {
-      const cache = caches.get(stream);
-
-      let status: StreamStatus;
-      let staleAgeNs: bigint | null = null;
-      if (tick === null || !cache?.has(tick)) {
-        status = failed.has(stream) ? "failed" : "loading";
-      } else {
-        if (blockingStreamSet.has(stream)) {
-          blockingCovered += 1;
-        }
-        if (failed.has(stream)) {
-          status = "failed";
-        } else {
-          const msg = cache.get(tick);
-          if (!msg) {
-            status = "gap";
-          } else if (staleWarningStreamsRef.current.has(stream)) {
-            staleAgeNs = staleAgeForMessage(
-              tick,
-              msg,
-              staleMediaWarningNsRef.current,
-            );
-            status = staleAgeNs === null ? "ready" : "stale";
-          } else {
-            status = "ready";
-          }
-        }
-      }
-      if (getStreamStaleAgeNs(store, stream) !== staleAgeNs) {
-        setStreamStaleAgeNs(store, stream, staleAgeNs);
-      }
-      if (getStreamStatus(store, stream) !== status) {
-        setStreamStatus(store, stream, status);
-      }
-    }
-
-    const blockingTotal = activeBlockingStreams.length;
-    const detail =
-      tick !== null && blockingTotal > 0 && blockingCovered < blockingTotal
-        ? `${blockingCovered}/${blockingTotal} streams`
-        : null;
-    if (getBufferingDetail(store) !== detail) {
-      setBufferingDetail(store, detail);
-    }
-
-    // Paused catch-up completion: the engine flags buffering on a
-    // seek/step into uncached data but has no tick to clear it while
-    // paused — once every active stream covers the playhead tick, the
-    // wait is over. (Never *set* the flag here; the engine owns that.)
-    if (
-      tick !== null &&
-      blockingTotal > 0 &&
-      blockingCovered === blockingTotal &&
-      getIsBuffering(store)
-    ) {
-      setIsBuffering(store, false);
-      // The stall is over — re-push the playhead tick so values held
-      // through it re-resolve, and a fetched tick with genuinely no
-      // message settles to its honest empty state.
-      pushTickToStore(
-        activeStreams,
-        tick,
-        caches,
-        lastFrameRef.current,
-        store,
-        failed,
-      );
-    }
-
-    const playheadSec = getPlayhead(store);
-    const startupCoverage =
-      tick !== null && blockingTotal > 0
-        ? bufferWindowCoverage({
-            activeStreams: activeBlockingStreams,
-            caches,
-            index: indexRef.current,
-            lookaheadSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
-            maxTicks: PLAYBACK_POLICY.startupMaxPrefetchBatch,
-            timeSec: playheadSec,
-          })
-        : null;
-    const startupReady =
-      !!startupCoverage?.total &&
-      startupCoverage.covered === startupCoverage.total;
-
-    publishStartupCushionProgress({
-      activeBlockingStreams,
-      caches,
+    publishDataStreamStatuses({
+      activeBlockingStreams: getActiveBlockingStreams(),
+      activeStreams: getActiveStreams(),
+      caches: streamCachesRef.current,
+      failedStreams: fetchState.failedStreams,
       index: indexRef.current,
-      playheadSec,
+      onPlayheadDataReady: onPlayheadDataReadyRef.current,
+      policy: PLAYBACK_POLICY,
+      publishBufferedRangesNow,
+      pushCurrentTick: (activeStreams, tick) =>
+        pushTickToStore(
+          [...activeStreams],
+          tick,
+          streamCachesRef.current,
+          lastFrameRef.current,
+          store,
+          fetchState.failedStreams,
+        ),
       resolveStartupCushion,
+      scheduleBufferedRangesPublish,
+      schedulePausedIdleWarmup: (delayMs) =>
+        schedulePausedIdleWarmupRef.current?.(delayMs),
+      staleMediaWarningNs: staleMediaWarningNsRef.current,
+      staleWarningStreams: staleWarningStreamsRef.current,
       store,
-      tick,
     });
-
-    if (
-      tick !== null &&
-      blockingTotal > 0 &&
-      blockingCovered === blockingTotal
-    ) {
-      onPlayheadDataReadyRef.current?.();
-    }
-
-    // Every data-flow event that can change statuses can also change
-    // coverage — refresh the timeline's buffered shading (throttled).
-    if (startupReady && getIsPlayPending(store)) {
-      publishBufferedRangesNow();
-    } else {
-      scheduleBufferedRangesPublish();
-    }
-
-    if (startupReady && !getIsPlaying(store) && !getIsPlayPending(store)) {
-      schedulePausedIdleWarmupRef.current?.(
-        PLAYBACK_POLICY.prefetchRefreshSeconds * 1000,
-      );
-    }
   }, [
-    getActiveStreams,
+    fetchState,
     getActiveBlockingStreams,
+    getActiveStreams,
     publishBufferedRangesNow,
     resolveStartupCushion,
     scheduleBufferedRangesPublish,
@@ -847,475 +492,91 @@ export function useRegisterDataStream({
     publishStreamStatuses();
   }, [publishStreamStatuses, staleMediaWarningNs]);
 
-  // Failure bookkeeping for one rejected fetch. Below the streak cap the
-  // ticks stay uncached so the engine retries; at the cap the requested
-  // ticks are sealed as "no message" so playback can move past the
-  // failure, and the stream surfaces as "failed" until a fetch succeeds.
-  const handleFetchFailure = useCallback(
-    (error: unknown, ticks: readonly bigint[], streams: readonly string[]) => {
-      const newlyFailed: string[] = [];
-      for (const stream of streams) {
-        const streak = (failureStreakRef.current.get(stream) ?? 0) + 1;
-        failureStreakRef.current.set(stream, streak);
-        if (streak < MAX_FETCH_FAILURE_STREAK) continue;
-        if (!failedStreamsRef.current.has(stream)) {
-          failedStreamsRef.current.add(stream);
-          newlyFailed.push(stream);
-        }
-        const cache = streamCachesRef.current.get(stream);
-        if (cache?.isActive) {
-          for (const tick of ticks) {
-            if (!cache.has(tick)) cache.set(tick, null);
-          }
-        }
-      }
-      if (newlyFailed.length > 0) {
-        console.warn(
-          `[episode] giving up on streams after ${MAX_FETCH_FAILURE_STREAK} failed fetches:`,
-          newlyFailed,
-          error,
-        );
-      }
-      // Statuses are republished by the caller's `.finally`, after the
-      // pending bookkeeping for this fetch is cleared.
-    },
-    [],
-  );
-
-  const handleFetchSuccess = useCallback((streams: readonly string[]) => {
-    for (const stream of streams) {
-      failureStreakRef.current.delete(stream);
-      failedStreamsRef.current.delete(stream);
-    }
-  }, []);
-
   const rebalanceDecodedCaches = useCallback(
     (pruneSpeculative: boolean) => {
-      const currentIndex = indexRef.current;
-      if (!currentIndex) return;
-
-      const caches = streamCachesRef.current;
-      let decodedBytes = 0;
-      for (const cache of caches.values()) {
-        decodedBytes += cache.decodedBytes;
-      }
-
-      const budgetBytes = decodedCacheBudgetBytesRef.current;
-      backgroundLookaheadSecondsRef.current = nextDecodedCacheLookaheadSeconds({
-        budgetBytes,
-        currentSeconds: backgroundLookaheadSecondsRef.current,
-        decodedBytes,
-        maxSeconds: PLAYBACK_POLICY.lookaheadSeconds,
-        minSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
+      backgroundLookaheadSecondsRef.current = applyDecodedCachePolicy({
+        budgetBytes: decodedCacheBudgetBytesRef.current,
+        caches: streamCachesRef.current,
+        currentLookaheadSeconds: backgroundLookaheadSecondsRef.current,
+        index: indexRef.current,
+        maxLookaheadSeconds: PLAYBACK_POLICY.lookaheadSeconds,
+        minLookaheadSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
+        pruneSpeculative,
         stepSeconds: PLAYBACK_POLICY.prefetchBatchSeconds,
+        store,
       });
-
-      if (decodedBytes <= budgetBytes || !pruneSpeculative) return;
-
-      const playheadSec = getPlayhead(store);
-      const protectedStartTick = currentIndex.nearestTick(
-        Math.max(0, playheadSec - PLAYBACK_POLICY.startupLookaheadSeconds),
-      );
-      const protectedEndTick = currentIndex.nearestTick(
-        Math.min(
-          currentIndex.durationSec,
-          playheadSec + backgroundLookaheadSecondsRef.current,
-        ),
-      );
-      if (protectedStartTick === undefined || protectedEndTick === undefined) {
-        return;
-      }
-
-      for (const cache of caches.values()) {
-        cache.pruneOutside(protectedStartTick, protectedEndTick);
-      }
     },
     [store],
   );
 
-  // Core batch-fetch helper. Fetches ticks for the active stream set, fills
-  // per-stream caches, and (since the engine doesn't tick when paused) also
-  // pushes any fetched frame at the current playhead to atoms so paused
-  // tiles render their first frame as soon as the network resolves.
-  const fetchBatch = useCallback(
-    (ticks: bigint[], activeStreams: string[], operation: DataOperation) => {
-      if (
-        ticks.length === 0 ||
-        activeStreams.length === 0 ||
-        !source ||
-        !playback
-      ) {
-        return false;
-      }
-      const sourceEpoch = sourceEpochRef.current;
-      const caches = streamCachesRef.current;
-
-      // Only include a tick if at least one active stream needs it (not
-      // already pending for that stream). A tick that's fully covered by
-      // in-flight requests across every active stream is dropped.
-      const toFetch = ticks.filter((tick) => {
-        const tickKey = tick.toString();
-        return activeStreams.some((t) => !isStreamPending(tickKey, t));
-      });
-      if (toFetch.length === 0) return false;
-
-      const keys = toFetch.map((t) => t.toString());
-      const streamsToFetch = activeStreams.filter((stream) =>
-        toFetch.some((tick) => {
-          const tickKey = tick.toString();
-          return (
-            !caches.get(stream)?.has(tick) && !isStreamPending(tickKey, stream)
-          );
-        }),
-      );
-      if (streamsToFetch.length === 0) return false;
-
-      const batchPriority = batchReadPriority(operation);
-
-      markStreamsPending(keys, streamsToFetch);
-
-      playback
-        .readSynchronizedBatch(
-          {
-            streamPolicies: streamPoliciesRef.current,
-            streams: streamsToFetch,
-            timeNs: toFetch,
-          },
-          {
-            priority: batchPriority,
-          },
-        )
-        .then((windows) => {
-          if (sourceEpochRef.current !== sourceEpoch) return;
-          const decodeFailures = decodeFailuresByStream(windows);
-          handleFetchSuccess(
-            streamsToFetch.filter((stream) => !decodeFailures.has(stream)),
-          );
-
-          const activeFetchedStreams = activeStreamsInCaches(
-            caches,
-            streamsToFetch,
-          );
-          if (activeFetchedStreams.length === 0) return;
-
-          for (const window of windows) {
-            distributeWindowToCaches(
-              window,
-              caches,
-              activeFetchedStreams.filter(
-                (stream) => !window.diagnosticsByStream?.[stream],
-              ),
-              {
-                pinned: operation === "loopback-lookahead",
-              },
-            );
-          }
-          for (const [stream, failure] of decodeFailures) {
-            handleFetchFailure(
-              new Error(failure.messages.join("; ")),
-              failure.ticks,
-              [stream],
-            );
-          }
-          rebalanceDecodedCaches(operation === "background-lookahead");
-          const currentIndex = indexRef.current;
-          if (!currentIndex) return;
-          const tick = currentIndex.nearestTick(getPlayhead(store));
-          const stillActiveStreams = activeStreamsInCaches(
-            caches,
-            activeStreams,
-          );
-          // Explicit undefined check — `0n` is falsy but a valid tick.
-          if (tick !== undefined) {
-            pushTickToStore(
-              stillActiveStreams,
-              tick,
-              caches,
-              lastFrameRef.current,
-              store,
-              failedStreamsRef.current,
-            );
-          }
-        })
-        .catch((error) => {
-          if (sourceEpochRef.current !== sourceEpoch) return;
-          // Deliberate cancellation (seek reclaiming the link) is benign:
-          // no failure streaks — the ticks simply stay unfetched, and the
-          // caller's `.finally` still clears pending bookkeeping so future
-          // passes can re-request them.
-          if (isEpisodeReadCancelledError(error)) {
-            return;
-          }
-          handleFetchFailure(error, toFetch, streamsToFetch);
-        })
-        .finally(() => {
-          if (sourceEpochRef.current !== sourceEpoch) return;
-
-          clearStreamsPending(keys, streamsToFetch);
-          publishStreamStatuses();
-        });
-
-      return true;
-    },
-    [
-      playback,
-      source,
-      store,
-      handleFetchFailure,
-      handleFetchSuccess,
-      publishStreamStatuses,
-      rebalanceDecodedCaches,
-    ],
-  );
-
-  // Fetch the nearest target frame through the worker's current-frame lane so
-  // mount, seek, subscription, and buffering recovery do not wait behind a
-  // larger background lookahead batch.
-  const fetchCurrentFrame = useCallback(
-    (tick: bigint, activeStreams: string[]) => {
-      if (activeStreams.length === 0 || !source || !playback) {
-        return false;
-      }
-
-      const sourceEpoch = sourceEpochRef.current;
-      const caches = streamCachesRef.current;
-      const tickKey = tick.toString();
-      const streamsToFetch = activeStreams.filter(
-        (stream) =>
-          !caches.get(stream)?.has(tick) && !isStreamPending(tickKey, stream),
-      );
-      if (streamsToFetch.length === 0) return false;
-
-      markStreamsPending([tickKey], streamsToFetch);
-
-      playback
-        .readSynchronized({
-          streamPolicies: streamPoliciesRef.current,
-          streams: streamsToFetch,
-          timeNs: tick,
-        })
-        .then((window) => {
-          if (sourceEpochRef.current !== sourceEpoch) return;
-          const decodeFailures = decodeFailuresByStream([window]);
-          handleFetchSuccess(
-            streamsToFetch.filter((stream) => !decodeFailures.has(stream)),
-          );
-
-          const activeFetchedStreams = activeStreamsInCaches(
-            caches,
-            streamsToFetch,
-          );
-          if (activeFetchedStreams.length === 0) return;
-
-          distributeWindowToCaches(
-            window,
-            caches,
-            activeFetchedStreams.filter(
-              (stream) => !window.diagnosticsByStream?.[stream],
-            ),
-          );
-          for (const [stream, failure] of decodeFailures) {
-            handleFetchFailure(
-              new Error(failure.messages.join("; ")),
-              failure.ticks,
-              [stream],
-            );
-          }
-          rebalanceDecodedCaches(false);
-          pushTickToStore(
-            activeStreamsInCaches(caches, activeStreams),
-            tick,
-            caches,
-            lastFrameRef.current,
+  const prefetcher = useMemo(
+    () =>
+      source && playback
+        ? createDataStreamPrefetcher({
+            caches: streamCachesRef.current,
+            fetchState,
+            getIndex: () => indexRef.current,
+            getSourceEpoch: () => sourceEpochRef.current,
+            getStreamPolicies: () => streamPoliciesRef.current,
+            lastFrames: lastFrameRef.current,
+            playback,
+            publishStreamStatuses,
+            rebalanceDecodedCaches,
             store,
-            failedStreamsRef.current,
-          );
-        })
-        .catch((error) => {
-          if (sourceEpochRef.current !== sourceEpoch) return;
-          if (isEpisodeReadCancelledError(error)) return;
-          handleFetchFailure(error, [tick], streamsToFetch);
-        })
-        .finally(() => {
-          if (sourceEpochRef.current !== sourceEpoch) return;
-
-          clearStreamsPending([tickKey], streamsToFetch);
-          publishStreamStatuses();
-        });
-
-      return true;
-    },
+          })
+        : null,
     [
+      fetchState,
       playback,
-      source,
-      store,
-      handleFetchFailure,
-      handleFetchSuccess,
       publishStreamStatuses,
       rebalanceDecodedCaches,
+      source,
+      store,
     ],
   );
 
-  // Collect ticks in [startSec, endSec] where at least one requested stream
-  // still needs the data — i.e. not cached and not already pending for
-  // that specific stream. Capped by the resolved playback policy.
-  const collectMissingTicksForStreams = useCallback(
-    (
-      startSec: number,
-      endSec: number,
-      maxTicks: number,
-      streams: readonly string[],
-    ): bigint[] => {
-      const currentIndex = indexRef.current;
-      if (!currentIndex) return [];
-      if (streams.length === 0) return [];
-      const caches = streamCachesRef.current;
-      const startNs = currentIndex.secToNs(startSec);
-      const endNs = currentIndex.secToNs(endSec);
-      // Jump to the first tick >= startNs so this runs in O(window) per RAF
-      // prefetch without materializing the global tick grid.
-      const startIdx = currentIndex.indexAtOrAfter(startNs);
-      const toFetch: bigint[] = [];
-      for (let i = startIdx; i < currentIndex.tickCount; i++) {
-        const tick = currentIndex.tickAt(i);
-        if (tick === undefined) break;
-        if (tick > endNs) break;
-        const tickKey = tick.toString();
-        const needsFetch = streams.some(
-          (t) => !caches.get(t)?.has(tick) && !isStreamPending(tickKey, t),
-        );
-        if (needsFetch) toFetch.push(tick);
-        if (toFetch.length >= maxTicks) break;
-      }
-      return toFetch;
-    },
-    [],
+  const scheduler = useMemo(
+    () =>
+      prefetcher
+        ? new DataStreamScheduler({
+            caches: streamCachesRef.current,
+            computeBufferedRanges,
+            failedStreams: fetchState.failedStreams,
+            getActiveBlockingStreams,
+            getActiveStreams,
+            getBackgroundLookaheadSeconds: () =>
+              backgroundLookaheadSecondsRef.current,
+            getBlockingStreams: () => blockingStreamsRef.current,
+            getIndex: () => indexRef.current,
+            getLastSeekAtMs: () => lastSeekAtMsRef.current,
+            isSourceAvailable: () => source !== null,
+            lastFrames: lastFrameRef.current,
+            policy: PLAYBACK_POLICY,
+            prefetcher,
+            publishStreamStatuses,
+            resolveStartupCushion,
+            startupCushionPlanner,
+            store,
+          })
+        : null,
+    [
+      computeBufferedRanges,
+      fetchState,
+      getActiveBlockingStreams,
+      getActiveStreams,
+      prefetcher,
+      publishStreamStatuses,
+      resolveStartupCushion,
+      source,
+      startupCushionPlanner,
+      store,
+    ],
   );
 
-  const warmLoopStartRunway = useCallback(
-    (timeSec: number, activeStreams: string[]): boolean => {
-      const currentIndex = indexRef.current;
-      if (!currentIndex || activeStreams.length === 0) return false;
-
-      const loopStartSec = getLoopStart(store);
-      const loopEndSec = getLoopEnd(store);
-      if (loopEndSec <= loopStartSec) return false;
-      if (timeSec <= loopStartSec + PLAYBACK_POLICY.startupLookaheadSeconds) {
-        return false;
-      }
-
-      const secondsToLoopEnd = loopEndSec - timeSec;
-      const lookaheadSeconds = backgroundLookaheadSecondsRef.current;
-      if (secondsToLoopEnd < 0 || secondsToLoopEnd > lookaheadSeconds) {
-        return false;
-      }
-
-      const loopStartTick = currentIndex.nearestTick(loopStartSec);
-      if (loopStartTick === undefined) return false;
-
-      const loopStartTickKey = loopStartTick.toString();
-      if (loopRunwayStartTickKeyRef.current !== loopStartTickKey) {
-        loopRunwayStartTickKeyRef.current = loopStartTickKey;
-        for (const cache of streamCachesRef.current.values()) {
-          cache.clearPinned();
-        }
-      }
-
-      const missing = collectMissingTicksForStreams(
-        loopStartSec,
-        loopStartSec + lookaheadSeconds,
-        PLAYBACK_POLICY.maxPrefetchBatch,
-        activeStreams,
-      );
-
-      if (missing.length === 0) {
-        return false;
-      }
-
-      return fetchBatch(missing, activeStreams, "loopback-lookahead");
-    },
-    [collectMissingTicksForStreams, fetchBatch, store],
+  const runPausedIdleWarmup = useCallback(
+    () => scheduler?.runPausedIdleWarmup() ?? false,
+    [scheduler],
   );
-
-  const runPausedIdleWarmup = useCallback((): boolean => {
-    const currentIndex = indexRef.current;
-    if (
-      !currentIndex ||
-      !source ||
-      getIsPlaying(store) ||
-      getIsPlayPending(store)
-    ) {
-      return false;
-    }
-
-    const timeSec = getPlayhead(store);
-    const activeStreams = getActiveStreams();
-    const activeBlockingStreams = getActiveBlockingStreams();
-    if (activeStreams.length === 0 || activeBlockingStreams.length === 0) {
-      return false;
-    }
-
-    const startupCoverage = bufferWindowCoverage({
-      activeStreams: activeBlockingStreams,
-      caches: streamCachesRef.current,
-      index: currentIndex,
-      lookaheadSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
-      maxTicks: PLAYBACK_POLICY.startupMaxPrefetchBatch,
-      timeSec,
-    });
-    if (
-      !startupCoverage?.total ||
-      startupCoverage.covered < startupCoverage.total
-    ) {
-      return false;
-    }
-
-    if (warmLoopStartRunway(timeSec, activeStreams)) {
-      return true;
-    }
-
-    const endSec =
-      timeSec +
-      Math.min(
-        PLAYBACK_POLICY.pausedWarmupRunwaySeconds,
-        backgroundLookaheadSecondsRef.current,
-      );
-    const blockingMissing = collectMissingTicksForStreams(
-      timeSec,
-      endSec,
-      PLAYBACK_POLICY.maxPrefetchBatch,
-      activeBlockingStreams,
-    );
-    if (
-      blockingMissing.length > 0 &&
-      fetchBatch(blockingMissing, activeBlockingStreams, "background-lookahead")
-    ) {
-      return true;
-    }
-
-    const allMissing = collectMissingTicksForStreams(
-      timeSec,
-      endSec,
-      PLAYBACK_POLICY.maxPrefetchBatch,
-      activeStreams,
-    );
-    if (
-      allMissing.length > 0 &&
-      fetchBatch(allMissing, activeStreams, "background-lookahead")
-    ) {
-      return true;
-    }
-
-    return false;
-  }, [
-    collectMissingTicksForStreams,
-    fetchBatch,
-    getActiveBlockingStreams,
-    getActiveStreams,
-    source,
-    store,
-    warmLoopStartRunway,
-  ]);
 
   const schedulePausedIdleWarmup = useCallback(
     (delayMs = 0) => {
@@ -1375,335 +636,15 @@ export function useRegisterDataStream({
     source,
   ]);
 
-  // Push cached current frame for the active set, request a missing current
-  // frame on the priority lane, and then enqueue bounded background lookahead
-  // so mount, tile subscribe, and seek paint before bulk prefetch completes.
   const prefetchLookaheadFrom = useCallback(
-    (timeSec: number) => {
-      const currentIndex = indexRef.current;
-      if (!currentIndex) return;
-      const activeStreams = getActiveStreams();
-      if (activeStreams.length === 0) return;
-      nextLookaheadRefreshTimeRef.current = timeSec;
-
-      // One all-active batch monopolizes the serial worker lane. Fetch the
-      // blocking visual set first so a large non-blocking static overlay (the
-      // NuScenes /map message is ~19 MB) cannot sit in front of cameras and
-      // point clouds. Non-blocking overlays still get their own immediate
-      // request, but it queues behind the content that removes the poster.
-      const blockingSet = blockingStreamsRef.current;
-      const activeBlockingStreams = activeStreams.filter((stream) =>
-        blockingSet.has(stream),
-      );
-      const overlayStreams =
-        activeBlockingStreams.length > 0
-          ? activeStreams.filter((stream) => !blockingSet.has(stream))
-          : [];
-      const heavyStreams =
-        activeBlockingStreams.length > 0
-          ? activeBlockingStreams
-          : activeStreams;
-
-      const tick = currentIndex.nearestTick(timeSec);
-      // Explicit undefined check — `0n` is falsy but a valid tick.
-      if (tick !== undefined) {
-        pushTickToStore(
-          activeStreams,
-          tick,
-          streamCachesRef.current,
-          lastFrameRef.current,
-          store,
-          failedStreamsRef.current,
-        );
-        fetchCurrentFrame(tick, heavyStreams);
-        if (overlayStreams.length > 0) {
-          fetchCurrentFrame(tick, overlayStreams);
-        }
-      }
-
-      // The startup gate measures coverage over blocking streams, so its
-      // fill matches that set; overlay lookahead arrives through the
-      // regular background top-ups.
-      fillMissingStartupBufferFrom({
-        activeStreams: heavyStreams,
-        collectMissingTicks: (startSec, endSec, maxTicks) =>
-          collectMissingTicksForStreams(
-            startSec,
-            endSec,
-            maxTicks,
-            heavyStreams,
-          ),
-        fetchBatch,
-        policy: PLAYBACK_POLICY,
-        timeSec,
-      });
-
-      // Surface "loading" immediately on seek/mount/subscribe — the
-      // fetches kicked off above republish when they settle.
-      publishStreamStatuses();
-    },
-    [
-      collectMissingTicksForStreams,
-      fetchBatch,
-      fetchCurrentFrame,
-      getActiveStreams,
-      publishStreamStatuses,
-      store,
-    ],
+    (timeSec: number) => scheduler?.prefetchLookaheadFrom(timeSec),
+    [scheduler],
   );
 
   // This effect registers the engine stream and proactive lookahead subscription.
   useEffect(() => {
-    if (!index || !source) return undefined;
-
-    const nativeStep = 1 / DEFAULT_TIMELINE_TICK_RATE_HZ;
-    const caches = streamCachesRef.current;
-    const lastFrame = lastFrameRef.current;
-    let lastCommittedTickKey: string | null = null;
-
-    const stream: PlaybackStream = {
-      id: STREAM_ID,
-      blocking: true,
-      duration: index.durationSec,
-      nativeStepSeconds: nativeStep,
-      // Bandwidth-aware start gate: the engine reads these on every pending
-      // evaluation, so the getters keep the required runway (and the window
-      // its pending prefetches fill) sized to live link throughput. On
-      // healthy links both resolve to the static policy floor.
-      // Message-only layouts have no playback-stream caches to warm, so
-      // report zero runway instead of waiting on empty buffered ranges.
-      get lookaheadSeconds() {
-        if (getActiveBlockingStreams().length === 0) return 0;
-        return resolveStartupCushion().cushionSeconds;
-      },
-      get startupBufferSeconds() {
-        if (getActiveBlockingStreams().length === 0) return 0;
-        return resolveStartupCushion().cushionSeconds;
-      },
-      startupBufferMaxWaitSeconds: MAX_STARTUP_CUSHION_WAIT_SECONDS,
-      bufferedRanges: computeBufferedRanges,
-
-      bufferState: (timeSec) => {
-        const tick = index.nearestTick(timeSec);
-        // Explicit undefined check — `0n` is falsy but a valid tick
-        // (files with relative log times start at exactly 0n, and a
-        // falsy check here wedges the engine at t=0 forever).
-        if (tick === undefined) {
-          return "missing";
-        }
-        const activeStreams = getActiveBlockingStreams();
-        if (activeStreams.length === 0) return "ready";
-        const tickKey = tick.toString();
-        let missingStreams = 0;
-        let pendingStreams = 0;
-        for (const t of activeStreams) {
-          if (caches.get(t)?.has(tick)) {
-            continue;
-          }
-          if (isStreamPending(tickKey, t)) {
-            pendingStreams++;
-          } else {
-            missingStreams++;
-          }
-        }
-        const state =
-          missingStreams > 0
-            ? "missing"
-            : pendingStreams > 0
-              ? "loading"
-              : "ready";
-        return state;
-      },
-
-      prefetch: ([startSec, endSec]) => {
-        const activeStreams = getActiveStreams();
-        const tick = index.nearestTick(startSec);
-        // Explicit undefined check — `0n` is falsy but a valid tick.
-        if (tick !== undefined) fetchCurrentFrame(tick, activeStreams);
-        // Fill the whole requested window in bounded batches: with the
-        // bandwidth cushion the engine can ask for several seconds here,
-        // and the batches must be in flight together to pipeline the
-        // link. Pending-tick bookkeeping keeps repeat calls idempotent.
-        for (let i = 0; i < MAX_ENGINE_PREFETCH_BATCHES_PER_CALL; i++) {
-          const missing = collectMissingTicksForStreams(
-            startSec,
-            endSec,
-            PLAYBACK_POLICY.maxPrefetchBatch,
-            activeStreams,
-          );
-          if (missing.length === 0) break;
-          if (!fetchBatch(missing, activeStreams, "playback-prefetch")) break;
-        }
-        // Mid-playback stall: keep per-stream statuses and the "N/M
-        // streams" detail fresh while the engine waits. Same-value
-        // writes are no-ops, so RAF-rate calls stay cheap.
-        publishStreamStatuses();
-      },
-
-      onCommit: (timeSec, commitStore) => {
-        const tick = index.nearestTick(timeSec);
-        // Explicit undefined check — `0n` is falsy but a valid tick.
-        if (tick === undefined) return;
-        const tickKey = tick.toString();
-        if (lastCommittedTickKey === tickKey) return;
-        lastCommittedTickKey = tickKey;
-        const activeStreams = getActiveStreams();
-        pushTickToStore(
-          activeStreams,
-          tick,
-          caches,
-          lastFrame,
-          commitStore,
-          failedStreamsRef.current,
-        );
-        // The committed tick changed — gaps/ready flips happen here
-        // during normal playback.
-        publishStreamStatuses();
-      },
-    };
-
-    const unregister = registerStream(stream);
-    // Keep the stream permanently active — subscriber count is managed
-    // per-stream via EpisodeStreamCache, not at the engine stream level.
-    const unsubscribe = subscribeStream(STREAM_ID);
-
-    // Pending-play flips re-evaluate statuses immediately: the gated-start
-    // progress (chip ETA) appears with the press and clears the moment
-    // playback starts, instead of waiting for the next fetch to settle.
-    // A session end (press committed or cancelled) also closes the plan's
-    // pessimistic link-rate envelope; the next press re-seeds it from its
-    // own press-time evaluation.
-    const unsubPlayPending = subscribeIsPlayPending(store, () => {
-      if (!getIsPlayPending(store)) {
-        pendingPlanThroughputFloorRef.current = null;
-        remoteStartupGateDecisionRef.current = null;
-      }
-      publishStreamStatuses();
-    });
-
-    // Proactive lookahead: fill the buffer ahead of the playhead in larger
-    // chunks instead of creating one tiny worker request per source tick.
-    const unsubPlayhead = subscribePlayhead(store, () => {
-      const timeSec = getPlayhead(store);
-      const previousPlayheadSec = lastObservedPlayheadSecRef.current;
-      const movedBackward =
-        previousPlayheadSec !== null &&
-        timeSec + nativeStep < previousPlayheadSec;
-      lastObservedPlayheadSecRef.current = timeSec;
-      if (movedBackward) {
-        nextLookaheadRefreshTimeRef.current = 0;
-      }
-      // A committed frame while playing means any held press has resolved
-      // (instant starts never flip the pending flag, so the falling-edge
-      // reset can miss); stale envelopes must not pin future presses.
-      if (getIsPlaying(store)) {
-        pendingPlanThroughputFloorRef.current = null;
-        remoteStartupGateDecisionRef.current = null;
-      }
-      if (timeSec < nextLookaheadRefreshTimeRef.current) return;
-      nextLookaheadRefreshTimeRef.current =
-        timeSec + PLAYBACK_POLICY.prefetchRefreshSeconds;
-      const activeStreams = getActiveStreams();
-      if (activeStreams.length === 0) return;
-      const activeBlockingStreams = getActiveBlockingStreams();
-
-      const startupCoverage = bufferWindowCoverage({
-        activeStreams: activeBlockingStreams,
-        caches,
-        index,
-        lookaheadSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
-        maxTicks: PLAYBACK_POLICY.startupMaxPrefetchBatch,
-        timeSec,
-      });
-      if (
-        startupCoverage?.total &&
-        startupCoverage.covered < startupCoverage.total
-      ) {
-        fillMissingStartupBufferFrom({
-          activeStreams: activeBlockingStreams,
-          collectMissingTicks: (startSec, endSec, maxTicks) =>
-            collectMissingTicksForStreams(
-              startSec,
-              endSec,
-              maxTicks,
-              activeBlockingStreams,
-            ),
-          fetchBatch,
-          policy: PLAYBACK_POLICY,
-          timeSec,
-        });
-        // While the clock runs on an unconstrained link, keep building the
-        // runway in this same pass: the hole just means an in-flight batch
-        // hasn't landed, and returning would strand playback at zero margin
-        // (each pass fills only the window the playhead is about to eat, so
-        // every late batch stalls the clock). Stand down when a limited
-        // link makes lookahead bytes compete with the playhead-critical
-        // fill, and outside committed playback (paused seeks land here via
-        // playhead writes; their runway comes from the seek prefetch and
-        // the paused idle warmup, not this pass).
-        if (!getIsPlaying(store) || getNetworkHealth(store).limited) {
-          return;
-        }
-      }
-
-      // The startup fill above is playback-critical and never yields; the
-      // speculative lookahead below stands down while a constrained network
-      // is the reason playback is waiting.
-      if (
-        shouldDeferIdleWorkForStore(
-          store,
-          lastSeekAtMsRef.current === null
-            ? null
-            : monotonicNowMs() - lastSeekAtMsRef.current,
-        )
-      ) {
-        return;
-      }
-
-      if (warmLoopStartRunway(timeSec, activeStreams)) {
-        return;
-      }
-
-      // Periodic top-up only fills missing lookahead; current-frame publication
-      // stays in prefetchLookaheadFrom for mount, seek, and subscription paths.
-      fillMissingLookaheadFrom({
-        activeStreams,
-        collectMissingTicks: (startSec, endSec, maxTicks) =>
-          collectMissingTicksForStreams(
-            startSec,
-            endSec,
-            maxTicks,
-            activeStreams,
-          ),
-        fetchBatch,
-        lookaheadSeconds: backgroundLookaheadSecondsRef.current,
-        policy: PLAYBACK_POLICY,
-        timeSec,
-      });
-    });
-
-    return () => {
-      unregister();
-      unsubscribe();
-      unsubPlayPending();
-      unsubPlayhead();
-    };
-  }, [
-    index,
-    source,
-    registerStream,
-    subscribeStream,
-    store,
-    fetchBatch,
-    fetchCurrentFrame,
-    collectMissingTicksForStreams,
-    computeBufferedRanges,
-    getActiveBlockingStreams,
-    getActiveStreams,
-    publishStreamStatuses,
-    resolveStartupCushion,
-    warmLoopStartRunway,
-  ]);
+    return scheduler?.register(registerStream, subscribeStream);
+  }, [index, registerStream, scheduler, source, subscribeStream]);
 
   // This effect fetches and publishes a paused seek's target tick and window.
   useEffect(() => {
@@ -1712,8 +653,7 @@ export function useRegisterDataStream({
       // the foreground catch-up fetch owns a constrained link, and reclaim
       // it immediately from speculative transfers already in flight.
       lastSeekAtMsRef.current = monotonicNowMs();
-      pendingPlanThroughputFloorRef.current = null;
-      remoteStartupGateDecisionRef.current = null;
+      startupCushionPlanner.resetPendingPlan();
       // A source transition can dispose the previous session before this
       // seek effect runs. Cancelling idle work on that session is already
       // satisfied, so do not surface its deliberate cancellation through
@@ -1726,7 +666,7 @@ export function useRegisterDataStream({
       // frames at their ownership boundaries.
       prefetchLookaheadFrom(seekEvent.time);
     }
-  }, [session, seekEvent, prefetchLookaheadFrom]);
+  }, [session, seekEvent, prefetchLookaheadFrom, startupCushionPlanner]);
 
   // This effect kicks off lookahead so the buffer fills before play or seek.
   // (May be a no-op if no tile has subscribed yet — subscribeToStream also
@@ -1806,66 +746,4 @@ export function useRegisterDataStream({
     getTimelineIndex,
     readStreamFrames,
   ]);
-}
-
-/**
- * Publishes gated-start progress for modal chrome while a play press waits
- * on the bandwidth cushion: the runway target and a wall-clock estimate
- * that shrinks as coverage fills. Cleared whenever no press is pending or
- * the cushion is just the static floor.
- */
-function publishStartupCushionProgress({
-  activeBlockingStreams,
-  caches,
-  index,
-  playheadSec,
-  resolveStartupCushion,
-  store,
-  tick,
-}: {
-  readonly activeBlockingStreams: readonly string[];
-  readonly caches: Map<string, EpisodeStreamCache>;
-  readonly index: TimelineIndex | null;
-  readonly playheadSec: number;
-  readonly resolveStartupCushion: () => StartupCushion;
-  readonly store: PlaybackStore;
-  readonly tick: bigint | null;
-}): void {
-  if (
-    !getIsPlayPending(store) ||
-    tick === null ||
-    activeBlockingStreams.length === 0
-  ) {
-    setStartupCushionState(store, null);
-    return;
-  }
-
-  const cushion = resolveStartupCushion();
-  if (
-    cushion.cushionSeconds <= PLAYBACK_POLICY.startupLookaheadSeconds ||
-    cushion.estimatedWaitSeconds <= 0
-  ) {
-    setStartupCushionState(store, null);
-    return;
-  }
-
-  const coverage = bufferWindowCoverage({
-    activeStreams: activeBlockingStreams,
-    caches,
-    index,
-    lookaheadSeconds: cushion.cushionSeconds,
-    maxTicks: Math.max(
-      PLAYBACK_POLICY.startupMinTicks,
-      Math.ceil(DEFAULT_TIMELINE_TICK_RATE_HZ * cushion.cushionSeconds),
-    ),
-    timeSec: playheadSec,
-  });
-  const missingFraction = coverage?.total
-    ? (coverage.total - coverage.covered) / coverage.total
-    : 1;
-  setStartupCushionState(store, {
-    estimatedWaitSeconds: cushion.estimatedWaitSeconds * missingFraction,
-    progressFraction: 1 - missingFraction,
-    targetSeconds: cushion.cushionSeconds,
-  });
 }

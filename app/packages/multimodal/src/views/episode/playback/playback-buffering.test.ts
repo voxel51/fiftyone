@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DecodedFrame, SynchronizedFrameWindow } from "../../../ir";
+import { createTimelineIndex, EpisodeStreamCache } from "../../../runtime";
 import {
   bufferedRangesEqual,
   decodeFailuresByStream,
   DEFAULT_PLAYBACK_POLICY,
   derivePlaybackPolicy,
   batchReadPriority,
+  computeBufferedRanges,
   fillMissingLookaheadFrom,
   fillMissingStartupBufferFrom,
   nsToSeconds,
@@ -129,5 +131,36 @@ describe("episode playback buffering values", () => {
     );
     expect(bufferedRangesEqual([[0, 1]], [[0, 1]])).toBe(true);
     expect(bufferedRangesEqual([[0, 1]], [[0, 2]])).toBe(false);
+  });
+
+  it("derives only contiguous ranges covered by every active stream", () => {
+    const index = createTimelineIndex({
+      endNs: 100_000_000n,
+      startNs: 0n,
+    });
+    const camera = new EpisodeStreamCache();
+    const lidar = new EpisodeStreamCache();
+    const first = index.tickAt(0) ?? 0n;
+    const second = index.tickAt(1) ?? 0n;
+    const fourth = index.tickAt(3) ?? 0n;
+    for (const cache of [camera, lidar]) {
+      cache.set(first, null);
+      cache.set(second, null);
+      cache.set(fourth, null);
+    }
+
+    const ranges = computeBufferedRanges({
+      activeStreams: ["camera", "lidar"],
+      caches: new Map([
+        ["camera", camera],
+        ["lidar", lidar],
+      ]),
+      index,
+    });
+
+    expect(ranges).toHaveLength(2);
+    expect(ranges[0]?.[0]).toBe(0);
+    expect(ranges[0]?.[1]).toBeCloseTo(2 / 30, 6);
+    expect(ranges[1]).toEqual([index.nsToSec(fourth), 0.1]);
   });
 });
