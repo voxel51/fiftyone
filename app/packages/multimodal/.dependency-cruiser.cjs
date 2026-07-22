@@ -10,6 +10,7 @@ const DECODERS = `${SRC}decoders/`;
 const ENTERPRISE = `${SRC}enterprise/`;
 const EPISODE = `${SRC}views/episode/`;
 const EPISODE_INDEX = `${EPISODE}index\\.ts$`;
+const EPISODE_MAP_RENDERING = `${EPISODE}map/rendering/`;
 const EXTENSIONS = `${SRC}extensions/`;
 const INJECT = `${SRC}inject/`;
 const INJECT_ENTRY = `${INJECT}index\\.ts$`;
@@ -43,13 +44,14 @@ const REACT_UI =
   "^packages/(components|tiling)/|^packages/playback/index\\.ts$";
 
 const MCAP = `${ADAPTERS}mcap/`;
-const MCAP_SHARED = `${MCAP}shared/`;
-const MCAP_DECODERS = `${MCAP}decoders/`;
+const MCAP_FOUNDATIONS = `${MCAP}(compatibility|contracts|normalization|synchronization|transforms)/`;
+const MCAP_MESSAGE_DECODERS = `${MCAP}message-decoders/`;
 const MCAP_READER = `${MCAP}reader/`;
-const MCAP_RESOURCES = `${MCAP}resources/`;
+const MCAP_RESOURCE_CLIENT = `${MCAP}resource-client/`;
+const MCAP_RESOURCE_CLIENT_ENTRY = `${MCAP_RESOURCE_CLIENT}index\\.ts$`;
 const MCAP_WORKER = `${MCAP}worker/`;
 
-const VISUALIZATION_FAMILIES = `${VISUALIZATION}(media-2d|logs|map|message|plot|scene-3d)/`;
+const VISUALIZATION_FAMILIES = `${VISUALIZATION}(media-2d|logs|message|plot|scene-3d)/`;
 
 module.exports = {
   forbidden: [
@@ -178,6 +180,17 @@ module.exports = {
       severity: "error",
       from: { path: `${EPISODE}[^/]+/`, pathNot: TEST_MODULE },
       to: { path: EPISODE_INDEX },
+    },
+    {
+      // The map renderer is episode-owned, but moving it under views must not
+      // grant it access to arbitrary product or runtime composition.
+      name: "episode-map-rendering-imports-only-map-and-rendering-foundations",
+      severity: "error",
+      from: { path: EPISODE_MAP_RENDERING, pathNot: TEST_MODULE },
+      to: {
+        path: SRC,
+        pathNot: `${EPISODE}map/|${VISUALIZATION}|${IR}|${UTILS}`,
+      },
     },
     {
       // Keep sample-to-session binding below every product surface so shared
@@ -379,7 +392,7 @@ module.exports = {
       name: "mcap-core-layers-are-headless",
       severity: "error",
       from: {
-        path: `${MCAP}(shared|decoders|reader|resources|worker)/`,
+        path: `${MCAP}(compatibility|contracts|message-decoders|normalization|reader|resource-client|synchronization|transforms|worker)/`,
         pathNot: TEST_MODULE,
       },
       to: { path: REACT_UI },
@@ -403,12 +416,18 @@ module.exports = {
     },
 
     {
-      // Keep shared visualization primitives below every semantic renderer so
-      // a common helper cannot smuggle a feature-family dependency downward.
-      name: "visualization-shared-is-a-leaf",
+      // Keep interaction primitives and common panel UI below every semantic
+      // renderer so a foundation cannot smuggle a feature dependency downward.
+      name: "visualization-interaction-and-panel-ui-are-leaves",
       severity: "error",
-      from: { path: `${VISUALIZATION}shared/`, pathNot: TEST_MODULE },
-      to: { path: VISUALIZATION, pathNot: `${VISUALIZATION}shared/` },
+      from: {
+        path: `${VISUALIZATION}(interaction|panel-ui)/`,
+        pathNot: TEST_MODULE,
+      },
+      to: {
+        path: VISUALIZATION,
+        pathNot: `${VISUALIZATION}(interaction|panel-ui)/`,
+      },
     },
     {
       // Keep WebGPU as generic rendering infrastructure; semantic projection
@@ -418,7 +437,7 @@ module.exports = {
       from: { path: `${VISUALIZATION}webgpu/`, pathNot: TEST_MODULE },
       to: {
         path: VISUALIZATION,
-        pathNot: `${VISUALIZATION}(webgpu|shared)/`,
+        pathNot: `${VISUALIZATION}(webgpu|interaction|panel-ui)/`,
       },
     },
     {
@@ -459,20 +478,23 @@ module.exports = {
     },
 
     {
-      // Keep MCAP shared contracts and pure helpers at the bottom of the
+      // Keep named MCAP contracts and pure foundations at the bottom of the
       // adapter graph so every implementation stratum may reuse them safely.
-      name: "mcap-shared-imports-only-shared",
+      name: "mcap-foundations-import-only-foundations",
       severity: "error",
-      from: { path: MCAP_SHARED, pathNot: TEST_MODULE },
-      to: { path: MCAP, pathNot: MCAP_SHARED },
+      from: { path: MCAP_FOUNDATIONS, pathNot: TEST_MODULE },
+      to: { path: MCAP, pathNot: MCAP_FOUNDATIONS },
     },
     {
-      // Keep MCAP format decoders below readers, resources, workers, and the
-      // adapter facade; decoding may use only decoder-local and shared code.
-      name: "mcap-decoders-import-only-shared-and-decoders",
+      // Keep concrete MCAP message decoders below readers, the resource client,
+      // workers, and the adapter facade.
+      name: "mcap-message-decoders-import-only-decoder-foundations",
       severity: "error",
-      from: { path: MCAP_DECODERS, pathNot: TEST_MODULE },
-      to: { path: MCAP, pathNot: `${MCAP}(decoders|shared)/` },
+      from: { path: MCAP_MESSAGE_DECODERS, pathNot: TEST_MODULE },
+      to: {
+        path: MCAP,
+        pathNot: `${MCAP}(message-decoders|compatibility|contracts|normalization|synchronization|transforms)/`,
+      },
     },
     {
       // Keep MCAP indexed readers independent of resource scheduling and worker
@@ -480,17 +502,23 @@ module.exports = {
       name: "mcap-reader-imports-only-reader-foundations",
       severity: "error",
       from: { path: MCAP_READER, pathNot: TEST_MODULE },
-      to: { path: MCAP, pathNot: `${MCAP}(reader|decoders|shared)/` },
+      to: {
+        path: MCAP,
+        pathNot: `${MCAP}(reader|message-decoders|compatibility|contracts|normalization|synchronization|transforms)/`,
+      },
     },
     {
       // Keep MCAP resources as the orchestration layer over readers and
       // decoders without reaching upward into worker or facade composition.
-      name: "mcap-resources-import-only-resource-foundations",
+      name: "mcap-resource-client-imports-only-resource-foundations",
       severity: "error",
-      from: { path: MCAP_RESOURCES, pathNot: TEST_MODULE },
+      from: {
+        path: MCAP_RESOURCE_CLIENT,
+        pathNot: `${TEST_MODULE}|${MCAP_RESOURCE_CLIENT_ENTRY}`,
+      },
       to: {
         path: MCAP,
-        pathNot: `${MCAP}(resources|reader|decoders|shared)/`,
+        pathNot: `${MCAP}(resource-client|reader|message-decoders|compatibility|contracts|normalization|synchronization|transforms)/`,
       },
     },
     {
@@ -501,7 +529,7 @@ module.exports = {
       from: { path: MCAP_WORKER, pathNot: TEST_MODULE },
       to: {
         path: MCAP,
-        pathNot: `${MCAP}(worker|resources|reader|decoders|shared)/`,
+        pathNot: `${MCAP}(worker|resource-client|reader|message-decoders|compatibility|contracts|normalization|synchronization|transforms)/`,
       },
     },
   ],
