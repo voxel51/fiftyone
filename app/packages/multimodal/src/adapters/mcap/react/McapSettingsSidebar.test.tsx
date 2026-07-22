@@ -280,23 +280,23 @@ describe("McapSettingsSidebar", () => {
     expect(screen.queryByText("Performance diagnostics")).toBeNull();
   });
 
-  it("persists fidelity mode changes through the select", () => {
+  it("starts as-recorded and persists fidelity mode changes", () => {
     renderSidebar();
 
     const select = screen.getByLabelText(
       "Between messages",
     ) as HTMLSelectElement;
-    expect(select.value).toBe("smooth");
+    expect(select.value).toBe("as-recorded");
 
-    fireEvent.change(select, { target: { value: "as-recorded" } });
+    fireEvent.change(select, { target: { value: "smooth" } });
 
     expect(
       (screen.getByLabelText("Between messages") as HTMLSelectElement).value,
-    ).toBe("as-recorded");
+    ).toBe("smooth");
     expect(
-      JSON.parse(localStorage.getItem("fiftyone.mcap.modal-settings") ?? "{}")
+      JSON.parse(localStorage.getItem("fiftyone.mcap.modal-settings-1") ?? "{}")
         .fidelityMode,
-    ).toBe("as-recorded");
+    ).toBe("smooth");
   });
 
   it("collapses the advanced timing tuning by default", () => {
