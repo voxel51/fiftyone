@@ -42,7 +42,6 @@ import {
   type ByteTimelinePoint,
   type DecodedFrame,
   type StreamSyncPolicies,
-  type SynchronizedFrameWindow,
 } from "../../../ir";
 import {
   isEpisodeReadCancelledError,
@@ -60,12 +59,29 @@ import { useSetEpisodeDataStream } from "./episode-data-stream-context";
 import {
   decodedCacheBudgetBytes,
   nextDecodedCacheLookaheadSeconds,
+  reportedDeviceMemoryGb,
 } from "./episode-decoded-cache-policy";
 import {
   getEpisodeNetworkHealth,
   shouldDeferEpisodeIdleWorkForStore,
 } from "./episode-network-health";
-import { resetEpisodePlaybackBuffering } from "./episode-playback-buffering";
+import {
+  activeStreamsInCaches,
+  bufferedRangesEqual,
+  bufferWindowCoverage,
+  contiguousBufferedSecondsFromPlayhead,
+  decodeFailuresByStream,
+  DEFAULT_EPISODE_PLAYBACK_POLICY,
+  deriveEpisodePlaybackPolicy,
+  distributeWindowToCaches,
+  episodeBatchReadPriority,
+  fillMissingLookaheadFrom,
+  fillMissingStartupBufferFrom,
+  nsToSeconds,
+  resetEpisodePlaybackBuffering,
+  staleAgeForMessage,
+  type EpisodeDataOperation,
+} from "./episode-playback-buffering";
 import { pushTickToStore } from "./episode-playback-frame-push";
 import {
   computeEpisodeStartupCushion,
@@ -84,112 +100,6 @@ import type { EpisodeStreamPlaybackFrame } from "./use-episode-stream-values";
 // One engine stream owns all episode streams so camera/lidar tiles stay on the
 // same synchronized timeline and fetch in shared batches.
 const STREAM_ID = "episode-data-stream";
-
-type EpisodeDataOperation =
-  | "background-lookahead"
-  | "loopback-lookahead"
-  | "playback-prefetch"
-  | "startup-lookahead";
-
-interface EpisodePlaybackPolicy {
-  /**
-   * Background buffer horizon. This is intentionally larger than startup
-   * readiness: once playback is moving, keep enough decoded data ahead of the
-   * playhead to absorb normal worker latency.
-   */
-  readonly lookaheadSeconds: number;
-
-  /**
-   * First-play readiness target. Mount/seek/engine prefetch fill only this
-   * small adaptive window so the UI can start moving before the full lookahead
-   * is warm.
-   */
-  readonly startupBufferSeconds: number;
-
-  /**
-   * Minimum/maximum ticks in the first-play window. The time target is clamped
-   * through these bounds so sparse and dense recordings both get a sensible
-   * cushion.
-   */
-  readonly startupMaxTicks: number;
-  readonly startupMinTicks: number;
-
-  /**
-   * Paused warmup horizon. While the user is looking at a loaded sample but
-   * playback is not moving, warm just enough render-blocking data to make
-   * Play feel instant. Active playback still uses the larger rolling
-   * `lookaheadSeconds` horizon.
-   */
-  readonly pausedWarmupRunwaySeconds: number;
-
-  /**
-   * Per-worker-request time cap. A single full-lookahead request can decode too
-   * much at once and create a large response, so the lookahead is filled by
-   * multiple bounded requests.
-   */
-  readonly prefetchBatchSeconds: number;
-
-  /**
-   * Maximum number of background prefetch batches to enqueue in one pass.
-   * Keeping this lower than the full lookahead lets the current-frame request
-   * win worker time on mount, seek, and subscription while still filling the
-   * buffer through periodic top-ups.
-   */
-  readonly prefetchBatchesPerPass: number;
-
-  /**
-   * Cadence for topping up lookahead while playback advances. This should be
-   * much slower than RAF but comfortably faster than the buffer can drain.
-   */
-  readonly prefetchRefreshSeconds: number;
-
-  /**
-   * Cache room relative to one full lookahead window. Values above 1 leave room
-   * for overlap during refreshes, seeks, and in-flight batch completion, so
-   * future prefetches do not evict near-playhead ticks before playback reaches
-   * them.
-   */
-  readonly streamCacheLookaheadMultiplier: number;
-}
-
-/**
- * Playback policy after converting human-scale seconds/multipliers into the
- * concrete tick counts used by the prefetch loop and per-stream caches.
- */
-interface DerivedEpisodePlaybackPolicy extends EpisodePlaybackPolicy {
-  /**
-   * Maximum number of timeline ticks to request in one worker batch, derived
-   * from the timeline tick rate and `prefetchBatchSeconds`.
-   */
-  readonly maxPrefetchBatch: number;
-
-  /**
-   * Concrete first-play window after clamping `startupBufferSeconds` through
-   * `startupMinTicks` / `startupMaxTicks`.
-   */
-  readonly startupLookaheadSeconds: number;
-
-  /** Maximum number of ticks to request in the startup window. */
-  readonly startupMaxPrefetchBatch: number;
-
-  /**
-   * Maximum entries retained per stream cache, derived from tick rate,
-   * lookahead window, and `streamCacheLookaheadMultiplier`.
-   */
-  readonly streamCacheMaxEntries: number;
-}
-
-const DEFAULT_EPISODE_PLAYBACK_POLICY: EpisodePlaybackPolicy = {
-  lookaheadSeconds: 4,
-  pausedWarmupRunwaySeconds: 1.5,
-  prefetchBatchSeconds: 1,
-  prefetchBatchesPerPass: 1,
-  prefetchRefreshSeconds: 0.5,
-  startupBufferSeconds: 0.5,
-  startupMaxTicks: 15,
-  startupMinTicks: 3,
-  streamCacheLookaheadMultiplier: 2,
-} as const;
 
 /**
  * Consecutive fetch failures per stream before the stream stops retrying
@@ -224,6 +134,17 @@ const PLAYBACK_POLICY = deriveEpisodePlaybackPolicy(
 const MAX_ENGINE_PREFETCH_BATCHES_PER_CALL = 8;
 
 const noop = (): void => undefined;
+
+/** Treats cancellation against an already-disposed session as complete. */
+export function cancelEpisodeIdleReads(
+  session: Pick<EpisodeSession, "cancelIdle"> | null,
+): void {
+  try {
+    session?.cancelIdle?.();
+  } catch (error) {
+    if (!isEpisodeReadCancelledError(error)) throw error;
+  }
+}
 
 interface RemoteStartupGateDecision {
   readonly coverageSeconds: number;
@@ -1799,7 +1720,11 @@ export function useRegisterEpisodeDataStream({
       lastSeekAtMsRef.current = monotonicNowMs();
       pendingPlanThroughputFloorRef.current = null;
       remoteStartupGateDecisionRef.current = null;
-      session?.cancelIdle?.();
+      // A source transition can dispose the previous session before this
+      // seek effect runs. Cancelling idle work on that session is already
+      // satisfied, so do not surface its deliberate cancellation through
+      // the episode error boundary.
+      cancelEpisodeIdleReads(session);
       // Retain the previous frame while an uncovered target loads. Stream
       // loading state lets scene tiles mark the retained snapshot as previous,
       // and the target frame replaces it as soon as the foreground fetch
@@ -1889,123 +1814,6 @@ export function useRegisterEpisodeDataStream({
   ]);
 }
 
-function deriveEpisodePlaybackPolicy(
-  policy: EpisodePlaybackPolicy,
-  tickRateHz = DEFAULT_TIMELINE_TICK_RATE_HZ,
-): DerivedEpisodePlaybackPolicy {
-  const startupLookaheadSeconds = clampNumber(
-    policy.startupBufferSeconds,
-    policy.startupMinTicks / tickRateHz,
-    policy.startupMaxTicks / tickRateHz,
-  );
-  const pausedWarmupRunwaySeconds = clampNumber(
-    policy.pausedWarmupRunwaySeconds,
-    startupLookaheadSeconds,
-    policy.lookaheadSeconds,
-  );
-
-  return {
-    ...policy,
-    maxPrefetchBatch: Math.ceil(tickRateHz * policy.prefetchBatchSeconds),
-    pausedWarmupRunwaySeconds,
-    startupLookaheadSeconds,
-    startupMaxPrefetchBatch: Math.max(
-      policy.startupMinTicks,
-      Math.ceil(tickRateHz * startupLookaheadSeconds),
-    ),
-    streamCacheMaxEntries: Math.ceil(
-      tickRateHz *
-        policy.lookaheadSeconds *
-        policy.streamCacheLookaheadMultiplier,
-    ),
-  };
-}
-
-function clampNumber(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
-function episodeBatchReadPriority(
-  operation: EpisodeDataOperation,
-): "idle" | "playback" {
-  return operation === "background-lookahead" ? "idle" : "playback";
-}
-
-function fillMissingLookaheadFrom({
-  activeStreams,
-  collectMissingTicks,
-  fetchBatch,
-  lookaheadSeconds,
-  policy,
-  timeSec,
-}: {
-  activeStreams: string[];
-  collectMissingTicks: (
-    startSec: number,
-    endSec: number,
-    maxTicks: number,
-  ) => bigint[];
-  fetchBatch: (
-    ticks: bigint[],
-    activeStreams: string[],
-    operation: EpisodeDataOperation,
-  ) => boolean;
-  lookaheadSeconds: number;
-  policy: DerivedEpisodePlaybackPolicy;
-  timeSec: number;
-}): boolean {
-  const endSec = timeSec + lookaheadSeconds;
-  const batchesToQueue = Math.min(
-    policy.prefetchBatchesPerPass,
-    Math.ceil(lookaheadSeconds / policy.prefetchBatchSeconds),
-  );
-  let queued = false;
-  for (let i = 0; i < batchesToQueue; i++) {
-    const missing = collectMissingTicks(
-      timeSec,
-      endSec,
-      policy.maxPrefetchBatch,
-    );
-    if (missing.length === 0) return queued;
-    if (!fetchBatch(missing, activeStreams, "background-lookahead")) {
-      return queued;
-    }
-    queued = true;
-  }
-  return queued;
-}
-
-function fillMissingStartupBufferFrom({
-  activeStreams,
-  collectMissingTicks,
-  fetchBatch,
-  policy,
-  timeSec,
-}: {
-  activeStreams: string[];
-  collectMissingTicks: (
-    startSec: number,
-    endSec: number,
-    maxTicks: number,
-  ) => bigint[];
-  fetchBatch: (
-    ticks: bigint[],
-    activeStreams: string[],
-    operation: EpisodeDataOperation,
-  ) => boolean;
-  policy: DerivedEpisodePlaybackPolicy;
-  timeSec: number;
-}): boolean {
-  const endSec = timeSec + policy.startupLookaheadSeconds;
-  const missing = collectMissingTicks(
-    timeSec,
-    endSec,
-    policy.startupMaxPrefetchBatch,
-  );
-  if (missing.length === 0) return false;
-  return fetchBatch(missing, activeStreams, "startup-lookahead");
-}
-
 /**
  * Publishes gated-start progress for modal chrome while a play press waits
  * on the bandwidth cushion: the runway target and a wall-clock estimate
@@ -2066,176 +1874,4 @@ function publishStartupCushionProgress({
     progressFraction: 1 - missingFraction,
     targetSeconds: cushion.cushionSeconds,
   });
-}
-
-function bufferWindowCoverage({
-  activeStreams,
-  caches,
-  index,
-  lookaheadSeconds,
-  maxTicks,
-  timeSec,
-}: {
-  readonly activeStreams: readonly string[];
-  readonly caches: Map<string, EpisodeStreamCache>;
-  readonly index: TimelineIndex | null;
-  readonly lookaheadSeconds: number;
-  readonly maxTicks: number;
-  readonly timeSec: number;
-}): { readonly covered: number; readonly total: number } | null {
-  if (!index || activeStreams.length === 0) return null;
-
-  const startTick = index.nearestTick(timeSec);
-  if (startTick === undefined) return null;
-
-  const endNs = index.secToNs(timeSec + lookaheadSeconds);
-  const startIdx = index.indexOfTick(startTick);
-  if (startIdx === undefined) return null;
-  let covered = 0;
-  let total = 0;
-
-  for (let i = startIdx; i < index.tickCount && total < maxTicks; i++) {
-    const tick = index.tickAt(i);
-    if (tick === undefined) break;
-    if (tick > endNs) break;
-    total += 1;
-    if (activeStreams.every((stream) => caches.get(stream)?.has(tick))) {
-      covered += 1;
-    }
-  }
-
-  return { covered, total };
-}
-
-function contiguousBufferedSecondsFromPlayhead({
-  activeStreams,
-  caches,
-  index,
-  maxSeconds,
-  timeSec,
-}: {
-  readonly activeStreams: readonly string[];
-  readonly caches: Map<string, EpisodeStreamCache>;
-  readonly index: TimelineIndex | null;
-  readonly maxSeconds: number;
-  readonly timeSec: number;
-}): number {
-  if (!index || activeStreams.length === 0 || maxSeconds <= 0) return 0;
-
-  const startTick = index.nearestTick(timeSec);
-  if (startTick === undefined) return 0;
-
-  const startIdx = index.indexOfTick(startTick);
-  if (startIdx === undefined) return 0;
-
-  const endNs = index.secToNs(timeSec + maxSeconds);
-  const nominalTickSec = 1 / DEFAULT_TIMELINE_TICK_RATE_HZ;
-  let lastCoveredTick: bigint | null = null;
-
-  for (let i = startIdx; i < index.tickCount; i++) {
-    const tick = index.tickAt(i);
-    if (tick === undefined || tick > endNs) break;
-    if (!activeStreams.every((stream) => caches.get(stream)?.has(tick))) break;
-    lastCoveredTick = tick;
-  }
-
-  if (lastCoveredTick === null) return 0;
-  return Math.min(
-    maxSeconds,
-    Math.max(0, index.nsToSec(lastCoveredTick) - timeSec + nominalTickSec),
-  );
-}
-
-function activeStreamsInCaches(
-  caches: Map<string, EpisodeStreamCache>,
-  streams: readonly string[],
-): string[] {
-  return streams.filter((stream) => caches.get(stream)?.isActive);
-}
-
-function nsToSeconds(deltaNs: bigint): number {
-  const clamped = deltaNs < 0n ? 0n : deltaNs;
-  return (
-    Number(clamped / 1_000_000_000n) +
-    Number(clamped % 1_000_000_000n) / 1_000_000_000
-  );
-}
-
-function staleAgeForMessage(
-  tick: bigint,
-  msg: DecodedFrame,
-  staleMediaWarningNs: bigint,
-): bigint | null {
-  if (staleMediaWarningNs <= 0n) return null;
-  const ageNs = tick >= msg.timestampNs ? tick - msg.timestampNs : 0n;
-  return ageNs > staleMediaWarningNs ? ageNs : null;
-}
-
-function reportedDeviceMemoryGb(): number | null {
-  if (typeof navigator === "undefined") return null;
-  const memoryGb = (navigator as Navigator & { deviceMemory?: number })
-    .deviceMemory;
-  return memoryGb !== undefined && Number.isFinite(memoryGb) && memoryGb > 0
-    ? memoryGb
-    : null;
-}
-
-function distributeWindowToCaches(
-  window: SynchronizedFrameWindow,
-  caches: Map<string, EpisodeStreamCache>,
-  requestedStreams: readonly string[],
-  options?: { readonly pinned?: boolean },
-): void {
-  // Seed every requested stream for this tick — null if the backend omitted
-  // or returned an empty array — so bufferState resolves and the engine
-  // doesn't stall on ticks where a stream has no message.
-  for (const stream of requestedStreams) {
-    const msgs = window.framesByStream[stream];
-    caches.get(stream)?.set(window.timeNs, msgs?.[0] ?? null, options);
-  }
-}
-
-interface EpisodeStreamWindowDecodeFailure {
-  readonly messages: readonly string[];
-  readonly ticks: readonly bigint[];
-}
-
-function decodeFailuresByStream(
-  windows: readonly SynchronizedFrameWindow[],
-): ReadonlyMap<string, EpisodeStreamWindowDecodeFailure> {
-  const messagesByStream = new Map<string, Set<string>>();
-  const ticksByStream = new Map<string, bigint[]>();
-  for (const window of windows) {
-    for (const [stream, diagnostics] of Object.entries(
-      window.diagnosticsByStream ?? {},
-    )) {
-      const messages = messagesByStream.get(stream) ?? new Set<string>();
-      for (const diagnostic of diagnostics) messages.add(diagnostic.message);
-      messagesByStream.set(stream, messages);
-      const ticks = ticksByStream.get(stream) ?? [];
-      ticks.push(window.timeNs);
-      ticksByStream.set(stream, ticks);
-    }
-  }
-
-  return new Map(
-    [...messagesByStream].map(([stream, messages]) => [
-      stream,
-      {
-        messages: [...messages],
-        ticks: ticksByStream.get(stream) ?? [],
-      },
-    ]),
-  );
-}
-
-function bufferedRangesEqual(
-  a: ReadonlyArray<readonly [number, number]>,
-  b: ReadonlyArray<readonly [number, number]>,
-): boolean {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    if (a[i][0] !== b[i][0] || a[i][1] !== b[i][1]) return false;
-  }
-  return true;
 }

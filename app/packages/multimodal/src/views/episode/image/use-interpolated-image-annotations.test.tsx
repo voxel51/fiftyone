@@ -12,8 +12,8 @@ import {
   type EpisodeDataStream,
 } from "../playback/episode-data-stream-context";
 import { EpisodeStreamCache } from "../../../runtime";
+import { nextDistinctCachedMessage } from "../playback/cache-sampling";
 import {
-  nextDistinctCachedMessage,
   preparedImageAnnotationInterpolation,
   useInterpolatedImageAnnotations,
   useInterpolatedImageAnnotationSets,

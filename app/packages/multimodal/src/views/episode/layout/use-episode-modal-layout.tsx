@@ -15,11 +15,11 @@ import type { SceneSource } from "../../../scene-inventory";
 import {
   DEFAULT_EPISODE_3D_SCENE_UP_AXIS,
   type Episode3dSceneUpAxis,
-} from "../scene/episode-3d-scene-up";
+} from "../spatial/view-preferences";
 import {
   DEFAULT_EPISODE_3D_TRACKING_MODE,
   type Episode3dTrackingMode,
-} from "../scene/episode-3d-camera";
+} from "../scene/camera/episode-3d-camera";
 import {
   episodeTileTypeFromId,
   readEpisodeCameraPreferences,
@@ -38,12 +38,12 @@ import {
   DEFAULT_EPISODE_MAP_TILE_SETTINGS,
   episodeMapTileSettingsAtom,
   type EpisodeMapTileSettings,
-} from "../map/episode-map-tile-state";
+} from "../map/tile/tile-state";
 import {
   episodePlotTileSeriesAtom,
   type EpisodePlotSeriesConfig,
 } from "../plots/episode-plot-tile-state";
-import { episodeRawTileStreamAtom } from "../raw/episode-raw-tile-state";
+import { episodeRawTileStreamAtom } from "../tiles/raw-message-binding";
 import {
   EPISODE_TILE_TYPE,
   type EpisodeTileProps,

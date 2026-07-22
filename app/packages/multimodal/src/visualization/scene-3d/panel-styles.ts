@@ -6,7 +6,7 @@ import {
   VISUALIZATION_HUD_TEXT_COLOR,
   VISUALIZATION_PANEL_BACKGROUND_COLOR,
   VISUALIZATION_STATUS_TEXT_COLOR,
-} from "../shared/style-tokens";
+} from "../panel-ui/style-tokens";
 
 const HUD_BORDER_RADIUS_PX = 4;
 // Matches the in-scene measurement overlay color (MeasurementLayer).

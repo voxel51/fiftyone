@@ -12,28 +12,30 @@ import {
 import { buildPointCloudRenderPayload } from "../../../ir";
 import type { PointCloudVisualization } from "../../../ir";
 import { VISUALIZATION_KIND } from "../../../visualization/visualization-registry";
-import type { PointerDwellOptions } from "../../../visualization/shared/pointer-dwell";
+import type { PointerDwellOptions } from "../../../visualization/interaction/pointer-dwell";
 import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/composition/gpu-point-cloud-projection-picker";
 import { gpuPointCloudProjectionResourceKey } from "../../../visualization/composition/gpu-point-cloud-projection";
 import EpisodeImageProjectionOverlay from "./EpisodeImageProjectionOverlay";
 import type { EpisodeImageProjectionLayer } from "./use-episode-image-projection-layers";
-import type { EpisodeCameraModel } from "./camera-geometry/episode-camera-model";
+import type { EpisodeCameraModel } from "../spatial/camera-geometry/episode-camera-model";
 
 const mocks = vi.hoisted(() => ({
   dwell: null as PointerDwellOptions | null,
   setHover: vi.fn(),
 }));
 
-vi.mock("../../../visualization/shared/pointer-dwell", () => ({
+vi.mock("../../../visualization/interaction/pointer-dwell", () => ({
   attachPointerDwell: (_element: HTMLElement, options: PointerDwellOptions) => {
     mocks.dwell = options;
     return vi.fn();
   },
 }));
 
-vi.mock("./episode-hover-echo", async (importOriginal) => {
+vi.mock("../interaction/point-hover/hover-echo", async (importOriginal) => {
   const original =
-    await importOriginal<typeof import("./episode-hover-echo")>();
+    await importOriginal<
+      typeof import("../interaction/point-hover/hover-echo")
+    >();
   return { ...original, useSetEpisodeHoverEcho: () => mocks.setHover };
 });
 

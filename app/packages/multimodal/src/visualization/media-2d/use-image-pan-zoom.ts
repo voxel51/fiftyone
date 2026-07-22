@@ -1,7 +1,7 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { CLICK_DRAG_TOLERANCE_PX } from "../shared/interaction";
+import { CLICK_DRAG_TOLERANCE_PX } from "../interaction/interaction";
 import {
   clampImageViewTransform,
   DEFAULT_IMAGE_VIEW_TRANSFORM,

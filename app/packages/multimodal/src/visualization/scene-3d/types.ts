@@ -15,9 +15,12 @@ import type {
   ThreeSceneUpAxis,
 } from "./base-3d-scene";
 import type { PointCloudColormap } from "./colormap-types";
-import type { PanelNotice } from "../shared/panel-notices";
+import type { PanelNotice } from "../panel-ui/panel-notices";
 
-export type { PanelNotice, PanelNoticeSeverity } from "../shared/panel-notices";
+export type {
+  PanelNotice,
+  PanelNoticeSeverity,
+} from "../panel-ui/panel-notices";
 
 /**
  * Point-cloud colouring modes. Besides the reserved modes ("auto",

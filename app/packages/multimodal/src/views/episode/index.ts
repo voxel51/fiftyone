@@ -9,5 +9,5 @@ export type { EpisodeSourcePlaybackProps } from "./shell/EpisodeSourcePlayback";
 export { episodeSourceDisplayName } from "./shell/episode-source-display-name";
 export { getEpisodeNetworkHealth } from "./playback/episode-network-health";
 
-export { useEpisodeFrameTransforms } from "./scene/use-episode-frame-transforms";
-export type { EpisodeFrameTransformResolver } from "./scene/use-episode-frame-transforms";
+export { useEpisodeFrameTransforms } from "./spatial/frame-transforms/use-episode-frame-transforms";
+export type { EpisodeFrameTransformResolver } from "./spatial/frame-transforms/use-episode-frame-transforms";

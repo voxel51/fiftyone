@@ -22,9 +22,9 @@ import {
   resolveGpuPointCloudColor,
   type ResolvedGpuPointCloudColor,
 } from "../../../visualization/scene-3d";
-import type { EpisodeHoverEcho } from "./episode-hover-echo";
-import type { EpisodeCameraModel } from "./camera-geometry/episode-camera-model";
-import { episodeGpuCameraProjection } from "./camera-geometry/episode-gpu-camera-projection";
+import type { EpisodeHoverEcho } from "../interaction/point-hover/hover-echo";
+import type { EpisodeCameraModel } from "../spatial/camera-geometry/episode-camera-model";
+import { episodeGpuCameraProjection } from "../spatial/camera-geometry/episode-gpu-camera-projection";
 import type { EpisodeImageProjectionLayer } from "./use-episode-image-projection-layers";
 
 /** Inputs required to render and inspect projected point clouds for one image. */

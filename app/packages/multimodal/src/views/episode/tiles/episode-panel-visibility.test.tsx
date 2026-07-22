@@ -4,12 +4,12 @@ import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   EpisodePanelVisibilityProvider,
-  readEpisode3dTileVisibility,
+  readScene3dTileVisibility,
   useEpisodeImageTileLabelStreams,
   useEpisodeImageTilePointCloudProjection,
-  writeEpisode3dTileVisibility,
+  writeScene3dTileVisibility,
 } from "./episode-panel-visibility";
-import { DEFAULT_EPISODE_PROJECTION_POINT_SIZE } from "../scene/episode-point-size";
+import { DEFAULT_EPISODE_PROJECTION_POINT_SIZE } from "../presentation/point-size-policy";
 
 afterEach(() => {
   cleanup();
@@ -18,17 +18,17 @@ afterEach(() => {
 
 describe("episode panel visibility persistence", () => {
   it("isolates 3D visibility by inspection scope and tile", () => {
-    writeEpisode3dTileVisibility("dataset-a:field-a", "3d-1", {
+    writeScene3dTileVisibility("dataset-a:field-a", "3d-1", {
       enabledSourceIds: ["/lidar/top", "/camera/front/camera_info"],
       primarySourceId: "/lidar/top",
     });
 
-    expect(readEpisode3dTileVisibility("dataset-a:field-a", "3d-1")).toEqual({
+    expect(readScene3dTileVisibility("dataset-a:field-a", "3d-1")).toEqual({
       enabledSourceIds: ["/lidar/top", "/camera/front/camera_info"],
       primarySourceId: "/lidar/top",
     });
-    expect(readEpisode3dTileVisibility("dataset-a:field-a", "3d-2")).toBeNull();
-    expect(readEpisode3dTileVisibility("dataset-a:field-b", "3d-1")).toBeNull();
+    expect(readScene3dTileVisibility("dataset-a:field-a", "3d-2")).toBeNull();
+    expect(readScene3dTileVisibility("dataset-a:field-b", "3d-1")).toBeNull();
   });
 
   it("defaults image labels off and restores an explicit per-tile choice", () => {
@@ -114,6 +114,6 @@ describe("episode panel visibility persistence", () => {
 
   it("fails closed on malformed storage", () => {
     localStorage.setItem("fiftyone.episode.panel-visibility.v2", "{not-json");
-    expect(readEpisode3dTileVisibility("dataset-a", "3d-1")).toBeNull();
+    expect(readScene3dTileVisibility("dataset-a", "3d-1")).toBeNull();
   });
 });

@@ -6,8 +6,8 @@ import type { PointCloudRenderPayload } from "../../ir";
 import {
   POINT_HOVER_DWELL_MS,
   POINT_HOVER_MOVE_TOLERANCE_PX,
-} from "../shared/hover-inspect";
-import { attachPointerDwell } from "../shared/pointer-dwell";
+} from "../interaction/hover-inspect";
+import { attachPointerDwell } from "../interaction/pointer-dwell";
 import {
   createGpuPointCloud3dPickerController,
   GpuPointCloud3dPickerRegistryContext,

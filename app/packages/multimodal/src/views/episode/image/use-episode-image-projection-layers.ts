@@ -8,11 +8,11 @@ import type {
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import type { PointCloudColorOptions } from "../../../visualization/scene-3d";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
-import { useEpisodeFrameTransformsContext } from "../scene/episode-frame-transforms-context";
+import { useEpisodeFrameTransformsContext } from "../spatial/frame-transforms/context";
 import {
   defaultEpisodePointCloudColorForSource,
   useEpisodePointCloudStyleSettings,
-} from "../settings/episode-modal-settings";
+} from "../settings/modal/state";
 import { useEpisodeStreamPlaybackFrames } from "../playback/use-episode-stream-values";
 
 /** One point-cloud frame prepared for projection into an episode image tile. */

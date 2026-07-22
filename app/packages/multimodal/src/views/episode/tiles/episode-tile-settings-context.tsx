@@ -1,5 +1,5 @@
 import type React from "react";
-import { createEpisodeTileRegistry } from "./episode-tile-registry";
+import { createEpisodeTileRegistry } from "../interaction/registry";
 
 /**
  * One tile's settings registration. The sidebar owns the frame around

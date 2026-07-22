@@ -11,8 +11,8 @@ import { gpuPointCloudProjectionResourceKey } from "../../../visualization/compo
 import {
   POINT_HOVER_DWELL_MS,
   POINT_HOVER_MOVE_TOLERANCE_PX,
-} from "../../../visualization/shared/hover-inspect";
-import { attachPointerDwell } from "../../../visualization/shared/pointer-dwell";
+} from "../../../visualization/interaction/hover-inspect";
+import { attachPointerDwell } from "../../../visualization/interaction/pointer-dwell";
 import {
   DEFAULT_POINT_SIZE,
   gpuPointCloudColorAtSample,
@@ -21,14 +21,14 @@ import {
 import {
   useSetEpisodeHoverEcho,
   type EpisodeHoverEcho,
-} from "./episode-hover-echo";
-import { episodeHoveredPointForFrame } from "../scene/episode-point-hover";
+} from "../interaction/point-hover/hover-echo";
+import { episodeHoveredPointForFrame } from "../interaction/point-hover/point-hover";
 import {
   Episode3dHoverTooltip,
   type Episode3dHoverTooltipState,
-} from "../scene/use-episode-3d-hover-tooltip";
+} from "../interaction/point-hover/use-hover-tooltip";
 import type { EpisodeImageProjectionLayer } from "./use-episode-image-projection-layers";
-import type { EpisodeCameraModel } from "./camera-geometry/episode-camera-model";
+import type { EpisodeCameraModel } from "../spatial/camera-geometry/episode-camera-model";
 
 const PROJECTION_PICK_RADIUS_SCREEN_PX = 6;
 

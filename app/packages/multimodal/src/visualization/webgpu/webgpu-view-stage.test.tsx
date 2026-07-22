@@ -14,7 +14,7 @@ const harness = vi.hoisted(() => ({
   onError: null as ((error: string | null) => void) | null,
 }));
 
-vi.mock("./webgpu-canvas", () => ({
+vi.mock("./WebGpuCanvas", () => ({
   WebGpuCanvas: ({
     children: _children,
     dpr,

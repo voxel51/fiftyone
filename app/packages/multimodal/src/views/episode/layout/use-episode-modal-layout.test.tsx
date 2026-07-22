@@ -17,7 +17,7 @@ import {
 import {
   episodeTileTypesFor,
   getEpisodeTileDefinition,
-} from "../tiles/episode-tile-catalog";
+} from "../shell/tile-catalog";
 
 // The tile bodies drag in WebGPU/Three at module load, which jsdom can't
 // evaluate. Layout restore only needs them to exist as components; the
@@ -27,8 +27,8 @@ vi.mock("../image/EpisodeImageTile", () => ({
     <div data-testid="image-tile" data-source={initialSourceId} />
   ),
 }));
-vi.mock("../scene/Episode3dTile", () => ({ default: () => null }));
-vi.mock("../map/EpisodeMapTile", () => ({ default: () => null }));
+vi.mock("../scene/tile/Scene3dTile", () => ({ default: () => null }));
+vi.mock("../map/tile/MapTile", () => ({ default: () => null }));
 
 const SCENE_SOURCES: readonly SceneSource[] = [
   { id: "/cam/image_rect_compressed", type: "image", label: "cam" },

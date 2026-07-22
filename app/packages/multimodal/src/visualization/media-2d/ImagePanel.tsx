@@ -16,19 +16,19 @@ import {
   VISUALIZATION_HUD_TEXT_COLOR,
   VISUALIZATION_PANEL_BACKGROUND_COLOR,
   VISUALIZATION_STATUS_TEXT_COLOR,
-} from "../shared/style-tokens";
+} from "../panel-ui/style-tokens";
 import {
   hasImageData,
   imageIdentity,
   useImageTextureLease,
 } from "./use-image-texture-lease";
-import { WebGpuCanvas } from "../webgpu/webgpu-canvas";
+import { WebGpuCanvas } from "../webgpu/WebGpuCanvas";
 import { useWebGpuViewStage, WebGpuView } from "../webgpu/webgpu-view-stage";
 import {
   EMPTY_PANEL_NOTICES,
   PanelNotices,
   type PanelNotice,
-} from "../shared/panel-notices";
+} from "../panel-ui/panel-notices";
 
 const HUD_BORDER_RADIUS_PX = 4;
 const HUD_OFFSET_PX = 8;

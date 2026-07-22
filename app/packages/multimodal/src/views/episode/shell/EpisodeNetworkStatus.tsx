@@ -20,7 +20,7 @@ import {
   useEpisodeNetworkHealth,
 } from "../playback/episode-network-health";
 import { useEpisodeStartupCushionState } from "../playback/episode-startup-cushion-state";
-import { EPISODE_3D_PLACEMENT_BUFFERING_DETAIL } from "../scene/use-episode-3d-placement-stream";
+import { EPISODE_3D_PLACEMENT_BUFFERING_DETAIL } from "../scene/placement/use-episode-3d-placement-stream";
 import styles from "./EpisodeNetworkStatus.module.css";
 
 const HEALTH_HEARTBEAT_MS = 1_000;

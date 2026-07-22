@@ -7,11 +7,11 @@ import {
   useEpisodePlotTileSeries,
   useToggleEpisodePlotSeries,
 } from "./episode-plot-tile-state";
-import { checkboxNoSpaceToggleProps } from "../settings/episode-settings-keyboard";
-import { matchesEpisodeStreamFilter } from "../inventory/episode-stream-filter";
+import { checkboxNoSpaceToggleProps } from "../settings/controls/episode-settings-keyboard";
+import { matchesEpisodeStreamFilter } from "../stream-discovery/episode-stream-filter";
 import EpisodePlotTileStyles from "./EpisodePlotTile.module.css";
-import { EpisodeSettingsFilterInput } from "../settings/EpisodeSettingsFilterInput";
-import EpisodeSidebarGroup from "../settings/EpisodeSidebarGroup";
+import { EpisodeSettingsFilterInput } from "../settings/controls/EpisodeSettingsFilterInput";
+import EpisodeSidebarGroup from "../settings/controls/EpisodeSidebarGroup";
 import settingsStyles from "../tiles/EpisodeTile.settings.module.css";
 
 /**

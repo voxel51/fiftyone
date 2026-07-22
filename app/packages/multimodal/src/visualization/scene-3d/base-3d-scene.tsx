@@ -12,7 +12,7 @@ import {
   useState,
 } from "react";
 
-import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../shared/style-tokens";
+import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../panel-ui/style-tokens";
 
 const AXIS_COLORS: [string, string, string] = ["#ef4444", "#22c55e", "#3b82f6"];
 const AXIS_LABEL_COLOR = "#f8fafc";

@@ -56,7 +56,7 @@ import type {
   PointCloudPanelLayer,
   PointCloudRenderLayer,
 } from "../types";
-import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../shared/style-tokens";
+import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../panel-ui/style-tokens";
 import {
   registerWebGpuRenderer,
   type WebGpuRendererRegistration,

@@ -29,7 +29,7 @@ const layout = vi.hoisted(() => ({
   sceneUpAxis: "z",
 }));
 
-vi.mock("../../views/episode/shell/MultiModalPlayback", () => ({
+vi.mock("../../views/episode/shell/EpisodePlaybackShell", () => ({
   default: ({
     children,
     sceneSources = [],
@@ -49,10 +49,10 @@ vi.mock("../../views/episode/shell/MultiModalPlayback", () => ({
   ),
 }));
 
-vi.mock("../../views/episode/tiles/EpisodeAddTileMenu", () => ({
+vi.mock("../../views/episode/shell/AddTileMenu", () => ({
   default: () => null,
 }));
-vi.mock("../../views/episode/scene/EpisodeInspectorSidebar", () => ({
+vi.mock("../../views/episode/scene/picking/EpisodeInspectorSidebar", () => ({
   default: () => null,
 }));
 vi.mock("../../views/episode/shell/EpisodeNetworkStatus", () => ({
@@ -62,20 +62,20 @@ vi.mock("../../views/episode/shell/EpisodeNetworkStatus", () => ({
 vi.mock("../../views/episode/playback/EpisodePausedByteBanking", () => ({
   EpisodePausedByteBanking: () => null,
 }));
-vi.mock("../../views/episode/settings/EpisodeSettingsSidebar", () => ({
+vi.mock("../../views/episode/settings/modal/EpisodeSettingsSidebar", () => ({
   default: () => null,
 }));
 vi.mock("../../views/episode/playback/EpisodeTimestampReadout", () => ({
   default: () => null,
 }));
-vi.mock("../../views/episode/scene/episode-selected-object", () => ({
+vi.mock("../../views/episode/interaction/selection/selected-object", () => ({
   EpisodeSelectionHotkeys: () => null,
 }));
 vi.mock("../../views/episode/layout/use-episode-modal-layout", () => ({
   EpisodeModalLayoutPersistence: () => null,
   useEpisodeModalLayout: () => layout,
 }));
-vi.mock("../../views/episode/tiles/use-register-episode-tiles", () => ({
+vi.mock("../../views/episode/shell/use-register-tiles", () => ({
   useRegisterEpisodeTiles: () => undefined,
 }));
 

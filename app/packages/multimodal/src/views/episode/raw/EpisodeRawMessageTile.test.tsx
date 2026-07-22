@@ -74,7 +74,7 @@ vi.mock("../plots/use-add-episode-field-to-plot", () => ({
   useAddEpisodeFieldToPlot: () => vi.fn(),
 }));
 
-vi.mock("./episode-raw-tile-state", () => ({
+vi.mock("../tiles/raw-message-binding", () => ({
   useEpisodeRawTileStream: () => "/state",
 }));
 

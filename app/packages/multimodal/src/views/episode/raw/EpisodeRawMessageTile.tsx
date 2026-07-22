@@ -6,14 +6,14 @@ import { useEpisodeDataStream } from "../playback/episode-data-stream-context";
 import { useAddEpisodeFieldToPlot } from "../plots/use-add-episode-field-to-plot";
 import { useEpisodeNumericSeriesContext } from "../plots/episode-numeric-series-context";
 import { useEpisodeRawMessageContext } from "./episode-raw-message-context";
-import { useEpisodeRawTileStream } from "./episode-raw-tile-state";
+import { useEpisodeRawTileStream } from "../tiles/raw-message-binding";
 import type { EpisodeTileProps } from "../tiles/episode-tile-types";
 import StructuredMessageTree from "../../../visualization/message/StructuredMessageTree";
 import rawStyles from "../../../visualization/message/StructuredMessage.module.css";
 import EpisodeRawMessageTileSettings from "./EpisodeRawMessageTileSettings";
 import { useRegisterEpisodeTileSettings } from "../tiles/episode-tile-settings-context";
 import styles from "../tiles/EpisodeTile.module.css";
-import { useCopyFeedback } from "../../../visualization/shared/use-copy-feedback";
+import { useCopyFeedback } from "../../../visualization/panel-ui/use-copy-feedback";
 
 /**
  * Raw message tile: the escape hatch that makes every stream at least

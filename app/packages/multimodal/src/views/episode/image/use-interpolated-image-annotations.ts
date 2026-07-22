@@ -1,23 +1,21 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useSyncExternalStore,
-} from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import type { ImageAnnotationsVisualization } from "../../../ir";
 import type { ImageAnnotationRenderMetadata } from "../../../visualization/media-2d/image-annotation-render-metadata";
-import type { DecodedFrame } from "../../../ir";
 import type { TimelineIndex } from "../../../runtime";
 import {
-  interpolationFraction,
   prepareImageAnnotationInterpolation,
   prepareImageAnnotationRenderMetadata,
   sampleImageAnnotationInterpolation,
   type PreparedImageAnnotationInterpolation,
   vizOf,
 } from "./interpolate-image-annotations";
+import {
+  interpolationFraction,
+  nextDistinctCachedMessage,
+  useStreamCacheSnapshot,
+  type NextMessageCacheEntry,
+} from "../playback/cache-sampling";
 import {
   useEpisodeDataStream,
   type EpisodeDataStream,
@@ -32,11 +30,6 @@ export interface UseInterpolatedImageAnnotationsOptions {
 }
 
 const EMPTY_STREAMS: readonly string[] = [];
-// Forward-scan budget when searching for the next distinct annotation to lerp
-// toward. Coupled to the ~30 Hz timeline tick rate: 120 ticks ≈ 4s, which
-// comfortably spans the ~2 Hz annotation cadence. If the tick rate changes,
-// revisit this — set too low, sparse annotations silently stop interpolating.
-const MAX_NEXT_MESSAGE_SCAN_TICKS = 120;
 
 /**
  * Single-stream convenience wrapper over {@link useInterpolatedImageAnnotationSets}.
@@ -162,15 +155,6 @@ type InterpolationCache = WeakMap<
   WeakMap<ImageAnnotationsVisualization, PreparedImageAnnotationInterpolation>
 >;
 
-interface NextMessageCacheEntry {
-  readonly currentIndex: number;
-  readonly currentMessage: DecodedFrame;
-  readonly nextIndex: number | null;
-  readonly nextMessage: DecodedFrame | null;
-  readonly revision: number;
-  readonly timeline: TimelineIndex;
-}
-
 type RenderMetadataCache = WeakMap<
   ImageAnnotationsVisualization,
   ImageAnnotationRenderMetadata
@@ -246,60 +230,6 @@ function useStableStreams(streams: readonly string[]): readonly string[] {
   const key = normalized.join("\n");
   // eslint-disable-next-line react-hooks/exhaustive-deps -- key is the content digest of `normalized`
   return useMemo(() => normalized, [key]);
-}
-
-/**
- * Subscribes to the per-stream cache revisions via `useSyncExternalStore` and
- * returns a `"stream:revision|"` digest string. The digest changes whenever a
- * watched cache bumps its revision (frames arrive, change, or are cleared),
- * which is what drives the hook to re-derive annotation frames as data streams in.
- * Shared with `use-interpolated-scene-updates`.
- */
-export function useStreamCacheSnapshot(
-  dataStream: EpisodeDataStream | null,
-  streams: readonly string[],
-): string {
-  const subscribe = useCallback(
-    (onStoreChange: () => void) => {
-      if (!dataStream || streams.length === 0) return () => undefined;
-      // Only caches that already exist are observed. This is safe because the
-      // data stream creates every stream cache before it publishes itself, so by
-      // the time `dataStream` is non-null the caches exist. If a stream's cache
-      // could appear *after* this subscription runs, its revision bumps would go
-      // unseen — bump a dependency here to re-subscribe in that case.
-      const unsubscribeFns: (() => void)[] = [];
-      for (const stream of streams) {
-        const cache = dataStream.getStreamCache(stream);
-        if (cache) {
-          unsubscribeFns.push(cache.subscribeToChanges(onStoreChange));
-        }
-      }
-      return () => {
-        for (const unsubscribe of unsubscribeFns) unsubscribe();
-      };
-    },
-    [dataStream, streams],
-  );
-
-  const getSnapshot = useCallback(
-    () => streamCacheSnapshot(dataStream, streams),
-    [dataStream, streams],
-  );
-
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-}
-
-function streamCacheSnapshot(
-  dataStream: EpisodeDataStream | null,
-  streams: readonly string[],
-): string {
-  if (!dataStream || streams.length === 0) return "";
-  let snapshot = "";
-  for (const stream of streams) {
-    const revision = dataStream.getStreamCache(stream)?.revision ?? -1;
-    snapshot += `${stream}:${revision}|`;
-  }
-  return snapshot;
 }
 
 function normalizeStreams(streams: readonly string[]): readonly string[] {
@@ -417,88 +347,4 @@ export function preparedImageAnnotationInterpolation(
     byNext.set(next, prepared);
   }
   return prepared;
-}
-
-/**
- * Finds the next cached source message strictly after `currentTick` whose
- * timeline time differs from the current message's. Decoder-agnostic; shared
- * by the 2D image-annotation and 3D scene-update interpolation hooks.
- */
-export function nextDistinctCachedMessage({
-  cache,
-  currentTick,
-  currentTimelineTimeNs,
-  currentMessage,
-  lookupCache,
-  timeline,
-}: {
-  readonly cache: EpisodeStreamCache;
-  readonly currentTick: bigint;
-  readonly currentTimelineTimeNs: bigint;
-  readonly currentMessage?: DecodedFrame;
-  readonly lookupCache?: WeakMap<EpisodeStreamCache, NextMessageCacheEntry>;
-  readonly timeline: TimelineIndex;
-}): DecodedFrame | null {
-  // Ticks are synchronized with LATEST semantics, so several cached ticks can
-  // point to the same source annotation. Walk forward only far enough to find
-  // the next cached source message; if lookahead is missing, staying on the
-  // current frame is cheaper and visually safer than scanning the full file.
-  const currentIndex = timeline.indexOfTick(currentTick);
-  if (currentIndex === undefined) return null;
-  const cached = lookupCache?.get(cache);
-  if (
-    currentMessage &&
-    cached?.timeline === timeline &&
-    cached.revision === cache.revision &&
-    cached.currentMessage === currentMessage
-  ) {
-    if (
-      cached.nextMessage &&
-      cached.nextIndex !== null &&
-      currentIndex >= cached.currentIndex &&
-      currentIndex < cached.nextIndex
-    ) {
-      return cached.nextMessage;
-    }
-    // A miss is only reusable at the exact scan frontier. As the playhead
-    // advances, the bounded search window slides and can expose a sparse next
-    // message without any cache revision or current-message change.
-    if (!cached.nextMessage && currentIndex === cached.currentIndex) {
-      return null;
-    }
-  }
-  const startIndex = currentIndex + 1;
-  const endIndex = Math.min(
-    timeline.tickCount,
-    startIndex + MAX_NEXT_MESSAGE_SCAN_TICKS,
-  );
-  for (let i = startIndex; i < endIndex; i++) {
-    const tick = timeline.tickAt(i);
-    if (tick === undefined) break;
-    const msg = cache.get(tick);
-    if (msg && msg.timestampNs !== currentTimelineTimeNs) {
-      if (lookupCache && currentMessage) {
-        lookupCache.set(cache, {
-          currentIndex,
-          currentMessage,
-          nextIndex: i,
-          nextMessage: msg,
-          revision: cache.revision,
-          timeline,
-        });
-      }
-      return msg;
-    }
-  }
-  if (lookupCache && currentMessage) {
-    lookupCache.set(cache, {
-      currentIndex,
-      currentMessage,
-      nextIndex: null,
-      nextMessage: null,
-      revision: cache.revision,
-      timeline,
-    });
-  }
-  return null;
 }

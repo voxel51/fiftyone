@@ -10,7 +10,7 @@ import type { ImageViewTransform } from "../../../visualization/media-2d/base-2d
 import {
   episodeSelectedObjectAtom,
   useEpisodeSelectedObject,
-} from "../scene/episode-selected-object";
+} from "../interaction/selection/selected-object";
 import { useInterpolatedImageAnnotationSets } from "./use-interpolated-image-annotations";
 
 export interface EpisodeImageAnnotationOverlayProps {

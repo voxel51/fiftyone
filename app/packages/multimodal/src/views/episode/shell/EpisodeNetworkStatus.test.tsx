@@ -13,7 +13,7 @@ import {
   setEpisodeStartupCushionState,
   type EpisodeStartupCushionState,
 } from "../playback/episode-startup-cushion-state";
-import { EPISODE_3D_PLACEMENT_BUFFERING_DETAIL } from "../scene/use-episode-3d-placement-stream";
+import { EPISODE_3D_PLACEMENT_BUFFERING_DETAIL } from "../scene/placement/use-episode-3d-placement-stream";
 
 const IDLE_HEALTH: EpisodeNetworkHealth = {
   busyFraction: 0,

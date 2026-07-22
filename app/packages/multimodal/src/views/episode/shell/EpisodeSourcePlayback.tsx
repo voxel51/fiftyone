@@ -15,7 +15,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import MultiModalPlayback from "./MultiModalPlayback";
+import EpisodePlaybackShell from "./EpisodePlaybackShell";
 import type { ByteSourceDescriptor, StreamDescriptor } from "../../../ir";
 import type { SceneSource } from "../../../scene-inventory";
 import { episodeSourceAccessKey } from "../../../runtime";
@@ -29,34 +29,31 @@ import { releaseGpuPointCloudColormapTextures } from "../../../visualization/sce
 import { BitmapImageFrameView } from "../../../visualization/media-2d/bitmap-image-view";
 import { getSourceBootstrap, sourceBootstrapKey } from "../../../runtime";
 import type { EpisodeSession } from "../../../ports";
-import { Episode3dViewStateProvider } from "../scene/episode-3d-view-state-context";
-import { Episode3dViewSettingsProvider } from "../scene/episode-3d-view-settings-context";
-import { Episode3dViewpointProvider } from "../scene/episode-3d-viewpoint-context";
-import { useEpisodeModalSettingsScopeSync } from "../settings/episode-modal-settings";
-import { EpisodeSceneFramesProvider } from "../scene/episode-scene-frames-context";
-import { EpisodeSceneNoticesProvider } from "../scene/episode-scene-notices-context";
+import { Episode3dViewStateProvider } from "../scene/camera/episode-3d-view-state-context";
+import { Episode3dViewSettingsProvider } from "../spatial/view-settings-context";
+import { Episode3dViewpointProvider } from "../scene/camera/episode-3d-viewpoint-context";
+import { useEpisodeModalSettingsScopeSync } from "../settings/modal/state";
+import { EpisodeSceneFramesProvider } from "../spatial/frame-transforms/scene-frame-controls";
+import { EpisodeSceneNoticesProvider } from "../status/scene-notices-context";
 import { EpisodeTileSettingsProvider } from "../tiles/episode-tile-settings-context";
 import { episodeCameraScopeKey } from "./episode-camera-scope";
 import {
   EpisodeDataStreamProvider,
   useEpisodeDataStream,
 } from "../playback/episode-data-stream-context";
-import { EpisodeFrameTransformsProvider } from "../scene/episode-frame-transforms-context";
+import { EpisodeFrameTransformsProvider } from "../spatial/frame-transforms/context";
 import { EpisodeImageAspectRatioProvider } from "../image/episode-image-aspect-ratios";
 import { EpisodeLogConsoleProvider } from "../logs/episode-log-console-context";
-import { EpisodeLocationTracksProvider } from "../map/episode-location-tracks-context";
-import { EpisodeMapViewportScopeProvider } from "../map/episode-map-viewport-cache";
+import { EpisodeLocationTracksProvider } from "../map/tracks/context";
+import { EpisodeMapViewportScopeProvider } from "../map/viewport/context";
 import { EpisodeNumericSeriesProvider } from "../plots/episode-numeric-series-context";
-import { EpisodePoseTrajectoriesProvider } from "../scene/episode-pose-trajectories-context";
+import { EpisodePoseTrajectoriesProvider } from "../scene/entities/episode-pose-trajectories-context";
 import { EpisodeRawMessageProvider } from "../raw/episode-raw-message-context";
-import { EpisodeSceneUpdateHistoryProvider } from "../scene/episode-scene-update-history-context";
-import { EpisodeSelectionHotkeys } from "../scene/episode-selected-object";
-import EpisodeAddTileMenu from "../tiles/EpisodeAddTileMenu";
-import {
-  episodeTileTypesFor,
-  getEpisodeTileDefinition,
-} from "../tiles/episode-tile-catalog";
-import EpisodeInspectorSidebar from "../scene/EpisodeInspectorSidebar";
+import { EpisodeSceneUpdateHistoryProvider } from "../scene/entities/episode-scene-update-history-context";
+import { EpisodeSelectionHotkeys } from "../interaction/selection/selected-object";
+import AddTileMenu from "./AddTileMenu";
+import { episodeTileTypesFor, getEpisodeTileDefinition } from "./tile-catalog";
+import EpisodeInspectorSidebar from "../scene/picking/EpisodeInspectorSidebar";
 import styles from "./EpisodeModalRenderer.module.css";
 import {
   EpisodeNetworkHealthTracker,
@@ -64,7 +61,7 @@ import {
 } from "./EpisodeNetworkStatus";
 import { EpisodePausedByteBanking } from "../playback/EpisodePausedByteBanking";
 import { EpisodePanelVisibilityProvider } from "../tiles/episode-panel-visibility";
-import EpisodeSettingsSidebar from "../settings/EpisodeSettingsSidebar";
+import EpisodeSettingsSidebar from "../settings/modal/EpisodeSettingsSidebar";
 import { EpisodeStreams } from "./EpisodeStreams";
 import EpisodeTimestampReadout from "../playback/EpisodeTimestampReadout";
 import {
@@ -76,7 +73,7 @@ import {
   useEpisodeModalLayout,
 } from "../layout/use-episode-modal-layout";
 import { resolveEpisodeTimelineMode } from "../playback/episode-timeline-mode";
-import { useEpisodeSceneInventory } from "../inventory/use-episode-scene-inventory";
+import { useEpisodeSceneInventory } from "../stream-discovery/use-episode-scene-inventory";
 
 const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
 
@@ -397,7 +394,7 @@ export const EpisodeSourcePlayback: React.FC<EpisodeSourcePlaybackProps> = ({
                           <EpisodeImageAspectRatioProvider
                             onChange={onImageAspectRatioChange}
                           >
-                            <MultiModalPlayback
+                            <EpisodePlaybackShell
                               key={timelineModeKey}
                               fileName={fileName}
                               decorateTrack={decorateTrack}
@@ -406,9 +403,7 @@ export const EpisodeSourcePlayback: React.FC<EpisodeSourcePlaybackProps> = ({
                                 <EpisodeHeaderActions actions={headerActions} />
                               }
                               addTileMenu={
-                                <EpisodeAddTileMenu
-                                  tileTypes={availableTileTypes}
-                                />
+                                <AddTileMenu tileTypes={availableTileTypes} />
                               }
                               timelineExtraActions={<EpisodeTimestampReadout />}
                               sceneSources={shellSources}
@@ -491,7 +486,7 @@ export const EpisodeSourcePlayback: React.FC<EpisodeSourcePlaybackProps> = ({
                               <EpisodeModalLayoutPersistence
                                 datasetId={effectiveLayoutScopeKey}
                               />
-                            </MultiModalPlayback>
+                            </EpisodePlaybackShell>
                           </EpisodeImageAspectRatioProvider>
                         </Episode3dViewSettingsProvider>
                       </EpisodeDataStreamProvider>

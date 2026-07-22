@@ -10,22 +10,22 @@ import {
 import {
   idleEpisodeFrameTransformsState,
   useSetEpisodeFrameTransformsContext,
-} from "../scene/episode-frame-transforms-context";
-import { EpisodeLocationTracksBridge } from "../map/episode-location-tracks-context";
+} from "../spatial/frame-transforms/context";
+import { EpisodeLocationTracksBridge } from "../map/tracks/context";
 import { EpisodeNumericSeriesBridge } from "../plots/episode-numeric-series-context";
-import { EpisodePoseTrajectoriesStartupGate } from "../scene/episode-pose-trajectories-context";
+import { EpisodePoseTrajectoriesStartupGate } from "../scene/entities/episode-pose-trajectories-context";
 import { EpisodeRawMessageBridge } from "../raw/episode-raw-message-context";
-import { EpisodeSceneUpdateHistoryBridge } from "../scene/episode-scene-update-history-context";
+import { EpisodeSceneUpdateHistoryBridge } from "../scene/entities/episode-scene-update-history-context";
 import { useEpisodeDataStream } from "../playback/episode-data-stream-context";
 import {
   type EpisodePlaybackFidelityMode,
   type EpisodeTemporalPolicySettings,
   useEpisodePlaybackSettings,
   useEpisodeTemporalPolicySettings,
-} from "../settings/episode-modal-settings";
-import { useEpisodeFrameTransforms } from "../scene/use-episode-frame-transforms";
+} from "../settings/modal/state";
+import { useEpisodeFrameTransforms } from "../spatial/frame-transforms/use-episode-frame-transforms";
 import { useEpisodePlaybackTimeNs } from "../playback/use-episode-playback-time-ns";
-import { useRegisterEpisodeTiles } from "../tiles/use-register-episode-tiles";
+import { useRegisterEpisodeTiles } from "./use-register-tiles";
 import type { EpisodeTileType } from "../tiles/episode-tile-types";
 import { useRegisterEpisodeDataStream } from "../playback/use-register-episode-data-stream";
 
@@ -43,7 +43,7 @@ export interface EpisodeStreamsProps {
 }
 
 /**
- * Non-visual child of MultiModalPlayback. Reads the scene inventory
+ * Non-visual child of EpisodePlaybackShell. Reads the scene inventory
  * from the surrounding `SceneInventoryProvider`, derives per-stream
  * sync policies from the source types, then wires the episode data layer
  * (single playback stream, per-stream caches, tile registry).

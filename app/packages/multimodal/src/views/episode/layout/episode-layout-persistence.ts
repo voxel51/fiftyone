@@ -3,8 +3,8 @@ import { isEpisodeTileExtensionId } from "../../../extensions/tiles/registry";
 import {
   normalizeEpisode3dSceneUpAxis,
   type Episode3dSceneUpAxis,
-} from "../scene/episode-3d-scene-up";
-import type { Episode3dTrackingMode } from "../scene/episode-3d-camera";
+} from "../spatial/view-preferences";
+import type { Episode3dTrackingMode } from "../scene/camera/episode-3d-camera";
 import { LOG_LEVELS, type LogLevel } from "../../../ir";
 import {
   DEFAULT_EPISODE_LOG_TILE_SETTINGS,
@@ -14,7 +14,7 @@ import {
   DEFAULT_EPISODE_MAP_TILE_SETTINGS,
   normalizeEpisodeMapBaseLayer,
   type EpisodeMapTileSettings,
-} from "../map/episode-map-tile-state";
+} from "../map/tile/tile-state";
 import { EPISODE_TILE_TYPE } from "../tiles/episode-tile-types";
 
 /**

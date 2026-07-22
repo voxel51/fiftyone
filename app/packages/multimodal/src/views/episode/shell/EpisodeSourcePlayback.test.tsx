@@ -41,8 +41,8 @@ const playbackHarness = vi.hoisted(() => {
   return harness;
 });
 
-vi.mock("./MultiModalPlayback", () => {
-  const MockMultiModalPlayback = ({
+vi.mock("./EpisodePlaybackShell", () => {
+  const MockEpisodePlaybackShell = ({
     children,
     fileName,
     mainOverlay,
@@ -86,11 +86,13 @@ vi.mock("./MultiModalPlayback", () => {
       </PlaybackProvider>
     );
   };
-  return { default: MockMultiModalPlayback };
+  return { default: MockEpisodePlaybackShell };
 });
 
-vi.mock("../tiles/EpisodeAddTileMenu", () => ({ default: () => null }));
-vi.mock("../scene/EpisodeInspectorSidebar", () => ({ default: () => null }));
+vi.mock("./AddTileMenu", () => ({ default: () => null }));
+vi.mock("../scene/picking/EpisodeInspectorSidebar", () => ({
+  default: () => null,
+}));
 vi.mock("./EpisodeNetworkStatus", () => ({
   EpisodeNetworkHealthTracker: () => null,
   EpisodeNetworkStatusPill: () => null,
@@ -98,8 +100,10 @@ vi.mock("./EpisodeNetworkStatus", () => ({
 vi.mock("../playback/EpisodePausedByteBanking", () => ({
   EpisodePausedByteBanking: () => null,
 }));
-vi.mock("../settings/EpisodeSettingsSidebar", () => ({ default: () => null }));
-vi.mock("../scene/episode-selected-object", () => ({
+vi.mock("../settings/modal/EpisodeSettingsSidebar", () => ({
+  default: () => null,
+}));
+vi.mock("../interaction/selection/selected-object", () => ({
   EpisodeSelectionHotkeys: () => null,
 }));
 vi.mock("./EpisodeStreams", () => ({
@@ -123,7 +127,7 @@ vi.mock("../layout/use-episode-modal-layout", () => ({
   EpisodeModalLayoutPersistence: () => null,
   useEpisodeModalLayout: playbackHarness.useEpisodeModalLayout,
 }));
-vi.mock("../inventory/use-episode-scene-inventory", () => ({
+vi.mock("../stream-discovery/use-episode-scene-inventory", () => ({
   useEpisodeSceneInventory: playbackHarness.useEpisodeSceneInventory,
 }));
 

@@ -20,7 +20,9 @@ const LazyGridStreamSelector = lazy(() =>
     }),
   ),
 );
-const LazyMcapExplorer = lazy(() => import("./mcap-explorer/AnyMcapViewer"));
+const LazyMcapExplorer = lazy(
+  () => import("./mcap-explorer/McapExplorerPanel"),
+);
 const LazyMcapExplorerIcon = lazy(
   () => import("./mcap-explorer/McapExplorerIcon"),
 );
@@ -70,7 +72,7 @@ export function registerEpisodeViews(): void {
     },
   });
   registerComponent({
-    name: "AnyMcapViewer",
+    name: "McapExplorerPanel",
     label: "MCAP Explorer",
     Icon: McapExplorerIcon,
     component: McapExplorer,

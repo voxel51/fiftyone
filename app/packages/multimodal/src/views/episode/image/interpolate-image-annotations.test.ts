@@ -16,7 +16,6 @@ import {
   interpolateLineList,
   interpolatePointsArray,
   interpolateTexts,
-  interpolationFraction,
   lowerBoundBigInt,
   makeGroup,
   matchLineListGroups,
@@ -25,6 +24,7 @@ import {
   vizOf,
   type Point2,
 } from "./interpolate-image-annotations";
+import { interpolationFraction } from "../playback/cache-sampling";
 
 // ---------------------------------------------------------------------------
 // Fixture builders (typed so array literals infer as the readonly tuples the

@@ -29,14 +29,17 @@ import type {
   StreamSyncPolicies,
   SynchronizedFrameWindow,
 } from "../../../ir";
-import type { EpisodeSession } from "../../../ports";
+import { EpisodeReadCancelledError, type EpisodeSession } from "../../../ports";
 import type { DecodeResult } from "../../../query/decoding";
 import {
   EpisodeDataStreamProvider,
   useEpisodeDataStream,
 } from "./episode-data-stream-context";
 import type { EpisodeStreamPlaybackFrame } from "./use-episode-stream-values";
-import { useRegisterEpisodeDataStream } from "./use-register-episode-data-stream";
+import {
+  cancelEpisodeIdleReads,
+  useRegisterEpisodeDataStream,
+} from "./use-register-episode-data-stream";
 
 const STREAM = "/CAM_FRONT/image_rect_compressed";
 const IMAGE_ANNOTATION_STREAM = "/CAM_FRONT/annotations";
@@ -336,6 +339,27 @@ describe("useRegisterEpisodeDataStream", () => {
       ).toBeGreaterThan(1);
     });
     expect(getStreamValue(store, STREAM)).toBeNull();
+  });
+
+  it("ignores idle cancellation from a session disposed during a source reset", () => {
+    const session: Pick<EpisodeSession, "cancelIdle"> = {
+      cancelIdle: () => {
+        throw new EpisodeReadCancelledError();
+      },
+    };
+
+    expect(() => cancelEpisodeIdleReads(session)).not.toThrow();
+  });
+
+  it("surfaces unexpected idle cancellation failures", () => {
+    const failure = new Error("transport failed");
+    const session: Pick<EpisodeSession, "cancelIdle"> = {
+      cancelIdle: () => {
+        throw failure;
+      },
+    };
+
+    expect(() => cancelEpisodeIdleReads(session)).toThrow(failure);
   });
 
   it("ignores in-flight batch results after stream unsubscribe", async () => {
