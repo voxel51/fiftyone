@@ -11,3 +11,7 @@ resources provide concrete implementations.
 A port may speak in IR values, but it should not expose vendor types, React
 state, or one format's internal machinery. That is what keeps implementations
 replaceable.
+
+Contract-level errors live here when callers and implementations must agree on
+their identity or lifecycle meaning. Generic conversion of an unknown caught
+value remains a domain-free utility.

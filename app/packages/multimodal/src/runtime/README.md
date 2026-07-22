@@ -13,3 +13,8 @@ rule lets performance improve without creating two versions of playback.
 Core runtime is headless and depends on ports, query, IR, and domain-free
 utilities. Framework bindings live in an explicit integration subpath so
 workers and non-React callers never load component code.
+
+The headless policy modules intentionally remain together while they share one
+runtime lifecycle. A future split should follow a genuinely independent
+capability or lifecycle, not a repeated `episode-` prefix: episode is already
+the package's enclosing domain.
