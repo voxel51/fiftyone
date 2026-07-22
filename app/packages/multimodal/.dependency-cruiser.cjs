@@ -22,10 +22,10 @@ const SCHEMAS = `${SRC}schemas/`;
 const STREAM_SELECTION = `${SRC}stream-selection/`;
 const TEMPORAL_TAGS = `${SRC}temporal-tags/`;
 const TESTING = `${SRC}testing/`;
-const TYPES = `${SRC}types/`;
 const UTILS = `${SRC}utils/`;
 const VIEWS = `${SRC}views/`;
 const VIEWS_ENTRY = `${VIEWS}entry\\.tsx$`;
+const VIEW_SESSION = `${VIEWS}session/`;
 const VISUALIZATION = `${SRC}visualization/`;
 
 const ENTERPRISE_SHARED_FACADES =
@@ -49,7 +49,7 @@ const MCAP_READER = `${MCAP}reader/`;
 const MCAP_RESOURCES = `${MCAP}resources/`;
 const MCAP_WORKER = `${MCAP}worker/`;
 
-const VISUALIZATION_FAMILIES = `${VISUALIZATION}(image|logs|map|message|plot|scene-3d)/`;
+const VISUALIZATION_FAMILIES = `${VISUALIZATION}(media-2d|logs|map|message|plot|scene-3d)/`;
 
 module.exports = {
   forbidden: [
@@ -179,6 +179,17 @@ module.exports = {
       from: { path: `${EPISODE}[^/]+/`, pathNot: TEST_MODULE },
       to: { path: EPISODE_INDEX },
     },
+    {
+      // Keep sample-to-session binding below every product surface so shared
+      // lifecycle code cannot acquire rendering, layout, or feature policy.
+      name: "view-session-imports-only-session-foundations",
+      severity: "error",
+      from: { path: VIEW_SESSION, pathNot: TEST_MODULE },
+      to: {
+        path: SRC,
+        pathNot: `${SRC}(views/session|runtime|ports|ir|utils)/`,
+      },
+    },
 
     {
       // Define the complete internal dependency surface of adapters; a new
@@ -294,14 +305,6 @@ module.exports = {
       to: { path: SRC, pathNot: `${SRC}(temporal-tags|runtime|ir)/` },
     },
     {
-      // Keep ambient third-party declarations outside the application graph;
-      // they participate in compilation but do not consume application code.
-      name: "types-do-not-import-application-code",
-      severity: "error",
-      from: { path: TYPES, pathNot: TEST_MODULE },
-      to: { path: SRC, pathNot: TYPES },
-    },
-    {
       // Keep utilities truly domain-free so any namespace may import them
       // without creating a hidden route back into application ownership.
       name: "utils-do-not-import-application-code",
@@ -336,7 +339,7 @@ module.exports = {
       from: { path: TESTING },
       to: {
         path: SRC,
-        pathNot: `${SRC}(testing|adapters|codecs|decoders|extensions|ir|ports|query|runtime|scene-inventory|schemas|stream-selection|temporal-tags|types|utils|views|visualization)/`,
+        pathNot: `${SRC}(testing|adapters|codecs|decoders|extensions|ir|ports|query|runtime|scene-inventory|schemas|stream-selection|temporal-tags|utils|views|visualization)/`,
       },
     },
 
@@ -419,7 +422,7 @@ module.exports = {
       },
     },
     {
-      // Keep image, logs, map, message, plot, and scene-3D independently
+      // Keep 2D media, logs, map, message, plot, and scene-3D independently
       // reusable; cross-family rendering belongs in visualization/composition.
       name: "visualization-families-do-not-import-siblings",
       severity: "error",
@@ -509,6 +512,14 @@ module.exports = {
       name: "no-flat-multimodal-source-files",
       severity: "error",
       module: { path: `${SRC}(?!index\\.ts$)[^/]+\\.tsx?$` },
+      to: { path: "^$" },
+    },
+    {
+      // Keep the views root as the explicit registration entrypoint; shared
+      // binding and product implementation belong to named view domains.
+      name: "no-flat-views-typescript-files",
+      severity: "error",
+      module: { path: `${VIEWS}(?!entry\\.tsx$)[^/]+\\.tsx?$` },
       to: { path: "^$" },
     },
     {

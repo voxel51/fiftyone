@@ -108,9 +108,6 @@ The remaining namespaces have stricter roles or special graph semantics:
   helper understands a product concept, a media format, or an IR model, it
   belongs to that domain instead. Its many inbound arrows are omitted from the
   diagram for readability.
-- `types` contains ambient declarations for third-party packages only. It
-  participates in TypeScript compilation rather than serving as an ordinary
-  import target, and it must not import application code.
 - `testing` may consume public production boundaries, but production code must
   never import it.
 - The package root is its public entrypoint, not an internal communication
@@ -300,10 +297,10 @@ instead of assembling infrastructure themselves.
 Top-level boundaries are not enough when subdomains import one another through
 convenient barrels.
 
-Within visualization, image and scene-3D code reached into WebGPU, while WebGPU
-contained semantic point-cloud projection and scene snapshots. Generic GPU
-infrastructure is now a leaf. Point-cloud projection belongs to the explicit
-composition domain, scene snapshots belong with scene-3D, and semantic
+Within visualization, media-2D and scene-3D code reached into WebGPU, while
+WebGPU contained semantic point-cloud projection and scene snapshots. Generic
+GPU infrastructure is now a leaf. Point-cloud projection belongs to the
+explicit composition domain, scene snapshots belong with scene-3D, and semantic
 visualization families remain independent.
 
 Within episode views, feature hooks once read a tile catalog that imported the
@@ -337,14 +334,22 @@ reused; they are policy, not per-rule escape hatches.
    public API surface.
 6. `no-flat-multimodal-source-files`: only the root public entrypoint may live
    directly under `src`.
+7. `no-flat-views-typescript-files`: only the application registration
+   entrypoint may live directly under `views`; bindings and surfaces must use a
+   named domain.
+
+The dependency check also enumerates every top-level source directory and
+requires an exact namespace-level `from` rule in the configuration. A new
+namespace therefore fails closed until its dependency contract is declared;
+existing namespace allowlists cannot leave a new source domain unconstrained.
 
 ### Positive top-level boundaries
 
 An “imports only” rule covers every production top-level namespace: adapters,
 codecs, decoders, extensions, inject, IR, ports, query, runtime, scene
-inventory, schemas, stream selection, temporal tags, types, utilities, views,
-and visualization. Separate positive rules retain the optional enterprise
-overlay and its named shared facades.
+inventory, schemas, stream selection, temporal tags, utilities, views, and
+visualization. Separate positive rules retain the optional enterprise overlay
+and its named shared facades.
 
 Positive allowlists are preferable to a growing collection of pairwise
 prohibitions. A negative rule says that one known edge is wrong; an allowlist
@@ -391,12 +396,13 @@ phase rather than waiting for later refactoring.
 
 1. `visualization-shared-is-a-leaf`: shared primitives cannot import semantic
    families.
-2. Generic WebGPU infrastructure is a leaf relative to image, point-cloud, and
-   scene-3D domains.
+2. Generic WebGPU infrastructure is a leaf relative to media-2D, point-cloud,
+   and scene-3D domains. Ambient WebGPU and TSL declarations stay colocated
+   with this infrastructure instead of forming a top-level type namespace.
 3. `visualization-families-do-not-import-siblings`: the physical
-   families—image, logs, map, message, plot, and scene-3D—remain independent.
-   Structured messages and time series are product concepts represented by
-   `message` and `plot`.
+   families—media-2D, logs, map, message, plot, and scene-3D—remain
+   independent. Structured messages and time series are product concepts
+   represented by `message` and `plot`.
 4. `visualization-families-do-not-import-composition`: cross-family behavior
    belongs above the reusable families in `visualization/composition`, and
    semantic families must not depend back on it. Point-cloud projection and its
@@ -407,12 +413,15 @@ phase rather than waiting for later refactoring.
 
 ### Extension, episode, and MCAP internals
 
-1. `extension-families-do-not-import-each-other`: extensions integrate through
+1. `view-session-imports-only-session-foundations`: shared sample and source
+   binding may use runtime, ports, IR, and utilities, but cannot import product
+   surfaces or visualization.
+2. `extension-families-do-not-import-each-other`: extensions integrate through
    shared host contracts, not sibling implementation details.
-2. Episode feature domains depend on leaf tile contracts and host commands, not
+3. Episode feature domains depend on leaf tile contracts and host commands, not
    on the concrete tile catalog. Shell and tile assembly may depend on feature
    descriptors; features must not depend back on assembly.
-3. MCAP uses a positive sublayer DAG: `shared` is the leaf; decoders may use
+4. MCAP uses a positive sublayer DAG: `shared` is the leaf; decoders may use
    shared code; readers may use decoders and shared code; resources may use
    readers, decoders, and shared code; workers may use resources and the layers
    below them; the adapter facade composes the stack.
