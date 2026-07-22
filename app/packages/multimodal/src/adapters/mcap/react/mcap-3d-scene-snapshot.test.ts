@@ -120,12 +120,35 @@ describe("restrictHeldMcap3dSceneSnapshotToTopics", () => {
   it("removes a disabled source from a retained scene immediately", () => {
     const snapshot = sceneSnapshot({
       annotationTopics: ["boxes"],
+      frustumTopics: ["camera", "rear-camera"],
+      notices: [
+        {
+          id: "global",
+          message: "Global notice",
+          scope: "scene",
+          severity: "info",
+        },
+        {
+          id: "camera",
+          message: "Camera notice",
+          scope: "topic",
+          severity: "warning",
+          topicId: "camera",
+        },
+        {
+          id: "lidar",
+          message: "Lidar notice",
+          scope: "topic",
+          severity: "warning",
+          topicId: "lidar",
+        },
+      ],
       pointCloudTopics: ["lidar", "radar"],
     });
 
     const restricted = restrictHeldMcap3dSceneSnapshotToTopics(
       sceneHeld(snapshot),
-      new Set(["radar", "boxes"]),
+      new Set(["radar", "boxes", "camera"]),
     );
 
     expect(
@@ -134,6 +157,13 @@ describe("restrictHeldMcap3dSceneSnapshotToTopics", () => {
     expect(
       restricted?.snapshot.annotationLayers.map((layer) => layer.sourceId),
     ).toEqual(["boxes"]);
+    expect(restricted?.snapshot.frustumLayers.map((layer) => layer.id)).toEqual(
+      ["camera"],
+    );
+    expect(restricted?.snapshot.notices.map((notice) => notice.id)).toEqual([
+      "global",
+      "camera",
+    ]);
     expect(restricted?.retainable).toBe(true);
   });
 
@@ -170,11 +200,15 @@ function sceneHeld(
 
 function sceneSnapshot({
   annotationTopics = [],
+  frustumTopics = [],
   gridTopics = [],
+  notices = [],
   pointCloudTopics = [],
 }: {
   readonly annotationTopics?: readonly string[];
+  readonly frustumTopics?: readonly string[];
   readonly gridTopics?: readonly string[];
+  readonly notices?: Mcap3dSceneSnapshot["notices"];
   readonly pointCloudTopics?: readonly string[];
 } = {}): Mcap3dSceneSnapshot {
   return {
@@ -185,11 +219,13 @@ function sceneSnapshot({
           sourceId,
         }) as Mcap3dSceneSnapshot["annotationLayers"][number],
     ),
-    frustumLayers: [],
+    frustumLayers: frustumTopics.map(
+      (id) => ({ id }) as Mcap3dSceneSnapshot["frustumLayers"][number],
+    ),
     gridLayers: gridTopics.map(
       (id) => ({ id }) as Mcap3dSceneSnapshot["gridLayers"][number],
     ),
-    notices: [],
+    notices,
     placementStatus: "transformed",
     pointCloudLayers: pointCloudTopics.map(
       (id) => ({ id }) as Mcap3dSceneSnapshot["pointCloudLayers"][number],
