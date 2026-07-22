@@ -70,6 +70,12 @@ class ToPilTests(unittest.TestCase):
         arr = np.zeros((8, 12), dtype=np.uint8)
         self.assertEqual(foup._to_pil(arr).mode, "RGB")
 
+    def test_single_channel_hwc(self):
+        arr = np.zeros((8, 12, 1), dtype=np.uint8)
+        pil = foup._to_pil(arr)
+        self.assertEqual(pil.mode, "RGB")
+        self.assertEqual(pil.size, (12, 8))
+
     def test_rgba_dropped_to_rgb(self):
         arr = np.zeros((8, 12, 4), dtype=np.uint8)
         pil = foup._to_pil(arr)
@@ -105,9 +111,27 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.task, "table")
 
 
+class SelectDtypeTests(unittest.TestCase):
+    def test_cuda_uses_bfloat16(self):
+        import torch
+
+        self.assertEqual(foup._select_dtype("cuda:0"), torch.bfloat16)
+        self.assertEqual(
+            foup._select_dtype(torch.device("cuda:0")), torch.bfloat16
+        )
+
+    def test_cpu_uses_float32(self):
+        import torch
+
+        self.assertEqual(foup._select_dtype("cpu"), torch.float32)
+        self.assertEqual(
+            foup._select_dtype(torch.device("cpu")), torch.float32
+        )
+
+
 class PredictTests(unittest.TestCase):
-    def _model(self, decoded):
-        config = foup.PaddleOCRVLModelConfig({})
+    def _model(self, decoded, task="spotting"):
+        config = foup.PaddleOCRVLModelConfig({"task": task})
         model = foup.PaddleOCRVLModel.__new__(foup.PaddleOCRVLModel)
         model.config = config
         model._device = "cpu"
@@ -138,6 +162,18 @@ class PredictTests(unittest.TestCase):
         model = self._model("")
         model._processor.apply_chat_template.side_effect = RuntimeError("boom")
         out = model._predict_all([np.zeros((16, 16, 3), dtype=np.uint8)])
+        self.assertIsInstance(out[0], fol.Detections)
+        self.assertEqual(len(out[0].detections), 0)
+
+    def test_non_spotting_task_ignores_locations(self):
+        # location-like tokens in a non-spotting task must not be parsed
+        decoded = (
+            "hello<|LOC_100|><|LOC_100|><|LOC_500|><|LOC_100|>"
+            "<|LOC_500|><|LOC_300|><|LOC_100|><|LOC_300|></s>"
+        )
+        model = self._model(decoded, task="table")
+        with mock.patch("torch.inference_mode"):
+            out = model._predict_all([np.zeros((16, 16, 3), dtype=np.uint8)])
         self.assertIsInstance(out[0], fol.Detections)
         self.assertEqual(len(out[0].detections), 0)
 
