@@ -26,6 +26,12 @@ class ToPilTests(unittest.TestCase):
         arr = np.zeros((8, 12), dtype=np.uint8)
         self.assertEqual(foug._to_pil(arr).mode, "RGB")
 
+    def test_single_channel_hwc(self):
+        arr = np.zeros((8, 12, 1), dtype=np.uint8)
+        pil = foug._to_pil(arr)
+        self.assertEqual(pil.mode, "RGB")
+        self.assertEqual(pil.size, (12, 8))
+
     def test_rgba_dropped_to_rgb(self):
         arr = np.zeros((8, 12, 4), dtype=np.uint8)
         self.assertEqual(foug._to_pil(arr).mode, "RGB")
@@ -105,6 +111,25 @@ class PredictTests(unittest.TestCase):
         model._processor.apply_chat_template.side_effect = RuntimeError("x")
         out = model._predict_all([np.zeros((16, 16, 3), dtype=np.uint8)])
         self.assertIsNone(out[0])
+
+
+class SelectDtypeTests(unittest.TestCase):
+    def test_cuda_uses_bfloat16(self):
+        import torch
+
+        self.assertEqual(foug._select_dtype("cuda:0"), torch.bfloat16)
+        self.assertEqual(foug._select_dtype("cuda"), torch.bfloat16)
+        self.assertEqual(
+            foug._select_dtype(torch.device("cuda:0")), torch.bfloat16
+        )
+
+    def test_cpu_uses_float32(self):
+        import torch
+
+        self.assertEqual(foug._select_dtype("cpu"), torch.float32)
+        self.assertEqual(
+            foug._select_dtype(torch.device("cpu")), torch.float32
+        )
 
 
 if __name__ == "__main__":
