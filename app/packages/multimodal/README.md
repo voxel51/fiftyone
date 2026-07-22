@@ -35,10 +35,11 @@ topics or message-log concepts.
 ## Episode views
 
 The production React shell lives in `src/views/episode`. Its files are grouped
-by product domain: grid, image, inventory, layout, logs, map, playback, plots,
-raw data, scene, settings, shared primitives, shell composition, and tiles. See
-the [episode domain guide](src/views/episode/README.md) for ownership and
-placement rules.
+by product domain: grid, image, interaction, layout, logs, map, playback,
+plots, raw data, scene, settings, shell composition, spatial capabilities,
+status, stream discovery, and tiles. See the
+[episode domain guide](src/views/episode/README.md) for ownership and placement
+rules.
 
 Within this package, `views` means the application layer: product workflow and
 composition, not every React component. Reusable rendering and direct
@@ -51,6 +52,19 @@ timeline sections or namespaced tiles through narrow contracts.
 
 Outside consumers use the episode entrypoint. Episode domains use canonical
 modules directly, keeping ownership visible and avoiding barrel cycles.
+
+## Naming
+
+- Component-primary files use PascalCase and match their main component.
+- Hooks, state, controllers, and pure logic use kebab-case.
+- Package-owned code symbols use `Mcap`, `WebGpu`, `2d`, and `3d`. Preserve
+  source-defined protocol, generated, and third-party names such as
+  `Detection3D`, `Object3D`, and `WebGPURenderer`.
+- Product text uses the official `MCAP`, `WebGPU`, `2D`, and `3D` forms.
+- Use `Multimodal`, never `MultiModal`.
+- Private feature files and symbols do not repeat the enclosing feature name.
+- Qualify reused internal nouns by role, as in `message-decoders` and
+  `stream-discovery`; stable extension contribution paths retain their names.
 
 ## Runtime flow
 
