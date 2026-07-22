@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
-import type { ImageTextureHandle } from "./base-2d-scene";
+import type { ImageTextureHandle } from "./Base2dScene";
 import {
   acquireImageTexture,
   IMAGE_TEXTURE_RETENTION_BYTE_CAP,

@@ -7,10 +7,10 @@ import {
   poseMarkerSceneUpdate,
   speedHudLine,
   trajectorySceneUpdate,
-  type EpisodePoseTrajectoryPoint,
+  type PoseTrajectoryPoint,
 } from "./pose-trajectory";
 
-function point(index: number): EpisodePoseTrajectoryPoint {
+function point(index: number): PoseTrajectoryPoint {
   return { position: [index, index * 2, 0], timeNs: BigInt(index) };
 }
 

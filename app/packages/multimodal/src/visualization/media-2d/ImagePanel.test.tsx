@@ -33,8 +33,8 @@ vi.mock("@react-three/drei", () => ({
   OrthographicCamera: () => <div data-testid="orthographic-camera" />,
 }));
 
-vi.mock("./base-2d-scene", () => ({
-  Base2DScene: ({ children }: { readonly children?: ReactNode }) => (
+vi.mock("./Base2dScene", () => ({
+  Base2dScene: ({ children }: { readonly children?: ReactNode }) => (
     <div data-testid="base-2d-scene">{children}</div>
   ),
   ImageTexturePlane: ({ children }: { readonly children?: ReactNode }) => (
@@ -48,7 +48,7 @@ vi.mock("../webgpu/WebGpuCanvas", () => ({
   ),
 }));
 
-vi.mock("../webgpu/webgpu-view-stage", () => ({
+vi.mock("../webgpu/WebGpuViewStage", () => ({
   useWebGpuViewStage: () => sharedStageMock.current,
   WebGpuView: ({ children }: { readonly children?: ReactNode }) => (
     <div data-testid="webgpu-view">{children}</div>

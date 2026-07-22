@@ -11,7 +11,7 @@ import {
 import {
   BitmapCanvasHost,
   BitmapImageFrameView,
-} from "../../../visualization/media-2d/bitmap-image-view";
+} from "../../../visualization/media-2d/BitmapImageView";
 import type { EpisodePosterFrame } from "../../../ir";
 import { retainedBinaryBytes } from "../../../runtime";
 import { PointCloudPanel } from "../../../visualization/composition";
@@ -21,18 +21,15 @@ import { sampleDescriptorFromContext } from "../../session/episode-source";
 import { useEpisodePreviewSession } from "../../session/use-episode-preview-session";
 import { useStableEpisodeSource } from "../../session/use-stable-episode-source";
 import classes from "./GridRenderer.module.css";
-import { EpisodeLoadingAscii } from "../shell/EpisodeLoadingAscii";
+import { LoadingAscii } from "../shell/LoadingAscii";
 import {
-  EPISODE_GRID_STREAM_AUTO,
-  useRegisterEpisodeGridStreams,
-  useEpisodeGridSelectedStream,
-} from "./episode-grid-stream-state";
-import { useEpisodeGridCameraPose } from "./episode-grid-camera-state";
-import { episodeCameraScopeKey } from "../shell/episode-camera-scope";
-import {
-  useEpisodeGridPreview,
-  type EpisodeGridPreviewStatus,
-} from "./use-episode-grid-preview";
+  GRID_STREAM_AUTO,
+  useRegisterGridStreams,
+  useGridSelectedStream,
+} from "./grid-stream-state";
+import { useGridCameraPose } from "./grid-camera-state";
+import { cameraScopeKey } from "../shell/camera-scope";
+import { useGridPreview, type GridPreviewStatus } from "./use-grid-preview";
 
 const IMAGE_FIT = "cover";
 // Trailing debounce for shared-pose and cell-resize re-snapshots: orbiting
@@ -63,8 +60,8 @@ export function GridRenderer({
   onRetainedBytesChange,
 }: SampleRendererProps) {
   const { byteSource: source, episodeSource } = useStableEpisodeSource(ctx);
-  const cameraScopeKey =
-    episodeCameraScopeKey(ctx.dataset.datasetId, ctx.media?.field) ??
+  const gridCameraScopeKey =
+    cameraScopeKey(ctx.dataset.datasetId, ctx.media?.field) ??
     ctx.dataset.datasetId;
   const [rootElement, setRootElement] = useState<HTMLDivElement | null>(null);
   const [hovered, setHovered] = useState(false);
@@ -73,23 +70,23 @@ export function GridRenderer({
     const sample = ctx.sample.sample as { _id?: string; id?: string };
     return sample._id ?? sample.id;
   }, [ctx.sample.sample]);
-  const [selectedStream] = useEpisodeGridSelectedStream(ctx.dataset.name);
+  const [selectedStream] = useGridSelectedStream(ctx.dataset.name);
   const previewSession = useEpisodePreviewSession(
     sampleDescriptorFromContext(ctx),
     episodeSource,
     visible,
   );
-  const preview = useEpisodeGridPreview({
+  const preview = useGridPreview({
     enabled: visible,
     hovered,
     previewSession: previewSession.session,
     previewSessionError: previewSession.error,
     previewSessionStatus: previewSession.status,
     selectedSourceName:
-      selectedStream === EPISODE_GRID_STREAM_AUTO ? null : selectedStream,
+      selectedStream === GRID_STREAM_AUTO ? null : selectedStream,
     source,
   });
-  const registerStreams = useRegisterEpisodeGridStreams();
+  const registerStreams = useRegisterGridStreams();
   const stableStreams = useStableGridStreams(preview.streamSourceNames);
   const blocksGridActivation = preview.frame?.kind === "point-cloud";
   const gridActivationHandler = blocksGridActivation
@@ -155,7 +152,7 @@ export function GridRenderer({
           // dimensions when the source or selected stream changes.
           key={`${source?.sourceId ?? ""}:${preview.streamId ?? ""}`}
           active={visible}
-          cameraScopeKey={cameraScopeKey}
+          cameraScopeKey={gridCameraScopeKey}
           frame={preview.frame}
           onSurfaceRetainedBytesChange={handleSurfaceRetainedBytesChange}
         />
@@ -319,10 +316,7 @@ function PointCloudPreviewFrame({
 }) {
   // Only active/visible cells subscribe to the shared pose. Hidden cached
   // roots keep their last bitmap and catch up lazily when reattached.
-  const [cameraPose, setCameraPose] = useEpisodeGridCameraPose(
-    cameraScopeKey,
-    active,
-  );
+  const [cameraPose, setCameraPose] = useGridCameraPose(cameraScopeKey, active);
   // Two-step live gate: `wantsLive` flips once the pointer has dwelled
   // past the intent delay; `live` flips only once the lease pool grants
   // this cell one of its capped live-renderer slots.
@@ -606,7 +600,7 @@ function PreviewStatus({
 }: {
   readonly error: string | null;
   readonly hasPreviewStreams: boolean;
-  readonly status: EpisodeGridPreviewStatus;
+  readonly status: GridPreviewStatus;
 }) {
   const loading = status === "loading";
   const message = previewStatusMessage(status, hasPreviewStreams);
@@ -614,7 +608,7 @@ function PreviewStatus({
   return (
     <div className={classes.status}>
       <div className={classes.statusTitle}>
-        {loading ? <EpisodeLoadingAscii /> : null}
+        {loading ? <LoadingAscii /> : null}
         {message ? <span>{message}</span> : null}
       </div>
       {error ? <div className={classes.error}>{error}</div> : null}
@@ -623,7 +617,7 @@ function PreviewStatus({
 }
 
 function previewStatusMessage(
-  status: EpisodeGridPreviewStatus,
+  status: GridPreviewStatus,
   hasPreviewStreams: boolean,
 ): string | null {
   if (status === "loading") {

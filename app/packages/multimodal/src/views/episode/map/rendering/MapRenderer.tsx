@@ -17,7 +17,7 @@ import {
   type InterpolatedLocation,
   type LocationTrackCursor,
   type LocationBounds,
-  type EpisodeLocationTrackState,
+  type LocationTrackState,
   type ResolvedLocationTrackPosition,
 } from "../tracks/location-track";
 import {
@@ -34,41 +34,41 @@ import {
   type MapMeasurementState,
 } from "../measurement";
 import {
-  episodeMapPlaybackCameraTarget,
-  episodeMapRouteCameraTarget,
-  type EpisodeMapCameraTarget,
+  mapPlaybackCameraTarget,
+  mapRouteCameraTarget,
+  type MapCameraTarget,
 } from "../viewport/camera";
-import { EPISODE_MAP_BASE_LAYER, type EpisodeMapBaseLayer } from "./types";
+import { MAP_BASE_LAYER, type MapBaseLayer } from "./types";
 import {
-  initialEpisodeMapBasemapStatus,
+  initialMapBasemapStatus,
   loadOpenFreeMapStyle,
-  EPISODE_MAP_LOCAL_BACKGROUND_LAYER_ID,
-  episodeMapBasemapSourceIds,
-  episodeMapBasemapStatusText,
-  mergeEpisodeMapOverlaysIntoStyle,
-  shouldShowEpisodeMapStaticPreview,
-  type EpisodeMapBasemapStatus,
+  MAP_LOCAL_BACKGROUND_LAYER_ID,
+  mapBasemapSourceIds,
+  mapBasemapStatusText,
+  mergeMapOverlaysIntoStyle,
+  shouldShowMapStaticPreview,
+  type MapBasemapStatus,
 } from "../basemap";
 import {
-  canPreserveEpisodeMapViewportBetweenSamples,
-  readEpisodeMapViewport,
-  writeEpisodeMapViewport,
+  canPreserveMapViewportBetweenSamples,
+  readMapViewport,
+  writeMapViewport,
 } from "../viewport/cache";
-import { episodeMapViewportIsNearEvidence } from "../viewport/proximity";
-import { EpisodeMapPlaybackController } from "./playback-controller";
+import { mapViewportIsNearEvidence } from "../viewport/proximity";
+import { MapPlaybackController } from "./playback-controller";
 import {
-  noteEpisodeMapFollowCommand,
-  noteEpisodeMapPlaybackPaint,
-  noteEpisodeMapReactCommit,
-  noteEpisodeMapSourceUpdate,
+  noteMapFollowCommand,
+  noteMapPlaybackPaint,
+  noteMapReactCommit,
+  noteMapSourceUpdate,
 } from "./performance";
-import { episodeMapRouteProgressFilters } from "../tracks/route-progress";
+import { mapRouteProgressFilters } from "../tracks/route-progress";
 import { degreesToRadians } from "../wgs84";
 import { MapLegend, StaticMapPreview } from "./StaticMapPreview";
 import { joinMapStatusText, MapEmptyState, mapStatusText } from "./MapStatus";
 import {
   ACCURACY_LAYER_ID,
-  addEpisodeMapSourcesAndLayers,
+  addMapSourcesAndLayers,
   CURRENT_SOURCE_ID,
   HIT_LAYER_ID,
   HIT_SOURCE_ID,
@@ -144,7 +144,7 @@ interface GeoJsonFeatureCollection {
 interface IndexedMapTrack {
   readonly index: IndexedLocationTrack;
   readonly key: string;
-  readonly track: EpisodeLocationTrackState;
+  readonly track: LocationTrackState;
 }
 
 interface MapPlaybackFrame {
@@ -173,7 +173,7 @@ const EMPTY_FEATURE_COLLECTION: GeoJsonFeatureCollection = {
   features: [],
 };
 const indexedLocationTrackByState = new WeakMap<
-  EpisodeLocationTrackState,
+  LocationTrackState,
   IndexedLocationTrack
 >();
 
@@ -182,7 +182,7 @@ const NO_TILE_STYLE: MapLibreStyle = {
   sources: {},
   layers: [
     {
-      id: EPISODE_MAP_LOCAL_BACKGROUND_LAYER_ID,
+      id: MAP_LOCAL_BACKGROUND_LAYER_ID,
       type: "background",
       paint: { "background-color": "#06101a" },
     },
@@ -203,7 +203,7 @@ export interface MapRendererPlayback {
 
 /** Prepared geographic evidence and host interactions consumed by the map. */
 export interface MapRendererProps {
-  readonly baseLayer: EpisodeMapBaseLayer;
+  readonly baseLayer: MapBaseLayer;
   readonly enabledStreamCount: number;
   readonly errorCount: number;
   readonly followEgo: boolean;
@@ -216,7 +216,7 @@ export interface MapRendererProps {
   readonly playback: MapRendererPlayback;
   readonly pulseActive: boolean;
   readonly sourceKey: string | null;
-  readonly tracks: readonly EpisodeLocationTrackState[];
+  readonly tracks: readonly LocationTrackState[];
   readonly truncated: boolean;
   readonly viewportScope: string | null;
 }
@@ -242,7 +242,7 @@ export const MapRenderer: React.FC<MapRendererProps> = ({
 }) => {
   // This effect records renderer commits for the performance-stats panel.
   useEffect(() => {
-    noteEpisodeMapReactCommit("tile");
+    noteMapReactCommit("tile");
   });
   const [recenterNonce, setRecenterNonce] = useState(0);
   const [fitRouteNonce, setFitRouteNonce] = useState(0);
@@ -251,11 +251,11 @@ export const MapRenderer: React.FC<MapRendererProps> = ({
     null,
   );
   const [basemapState, setBasemapState] = useState<{
-    readonly baseLayer: EpisodeMapBaseLayer;
-    readonly status: EpisodeMapBasemapStatus;
+    readonly baseLayer: MapBaseLayer;
+    readonly status: MapBasemapStatus;
   }>(() => ({
     baseLayer,
-    status: initialEpisodeMapBasemapStatus(baseLayer),
+    status: initialMapBasemapStatus(baseLayer),
   }));
 
   const bounds = useMemo(
@@ -311,13 +311,13 @@ export const MapRenderer: React.FC<MapRendererProps> = ({
   const basemapStatus =
     basemapState.baseLayer === baseLayer
       ? basemapState.status
-      : initialEpisodeMapBasemapStatus(baseLayer);
+      : initialMapBasemapStatus(baseLayer);
   const statusText = joinMapStatusText(
-    episodeMapBasemapStatusText(basemapStatus),
+    mapBasemapStatusText(basemapStatus),
     trackStatusText,
   );
   const onBasemapStatusChange = useCallback(
-    (baseLayer: EpisodeMapBaseLayer, status: EpisodeMapBasemapStatus) => {
+    (baseLayer: MapBaseLayer, status: MapBasemapStatus) => {
       setBasemapState((current) =>
         current.baseLayer === baseLayer && current.status === status
           ? current
@@ -329,7 +329,7 @@ export const MapRenderer: React.FC<MapRendererProps> = ({
 
   return (
     <div className={styles.body} data-testid="episode-map-tile">
-      <EpisodeMapLibreSurface
+      <MapLibreSurface
         basemapStatus={basemapStatus}
         bounds={bounds}
         fitRouteNonce={fitRouteNonce}
@@ -406,7 +406,7 @@ export const MapRenderer: React.FC<MapRendererProps> = ({
   );
 };
 
-function EpisodeMapLibreSurface({
+function MapLibreSurface({
   baseLayer,
   basemapStatus,
   bounds,
@@ -427,8 +427,8 @@ function EpisodeMapLibreSurface({
   tracks,
   viewportScope,
 }: {
-  readonly baseLayer: EpisodeMapBaseLayer;
-  readonly basemapStatus: EpisodeMapBasemapStatus;
+  readonly baseLayer: MapBaseLayer;
+  readonly basemapStatus: MapBasemapStatus;
   readonly bounds: LocationBounds | null;
   readonly fitRouteNonce: number;
   readonly followEgo: boolean;
@@ -437,8 +437,8 @@ function EpisodeMapLibreSurface({
   readonly measurement: MapMeasurementState | null;
   readonly onHoverTimeNs: (timeNs: bigint | null) => void;
   readonly onBasemapStatusChange: (
-    baseLayer: EpisodeMapBaseLayer,
-    status: EpisodeMapBasemapStatus,
+    baseLayer: MapBaseLayer,
+    status: MapBasemapStatus,
   ) => void;
   readonly onMeasurePick: (point: MapMeasurementPoint) => void;
   readonly onSeekTimeNs: (timeNs: bigint) => void;
@@ -447,12 +447,12 @@ function EpisodeMapLibreSurface({
   readonly pulseActive: boolean;
   readonly recenterNonce: number;
   readonly sourceKey: string | null;
-  readonly tracks: readonly EpisodeLocationTrackState[];
+  readonly tracks: readonly LocationTrackState[];
   readonly viewportScope: string | null;
 }) {
   // This effect records surface commits for the performance-stats panel.
   useEffect(() => {
-    noteEpisodeMapReactCommit("surface");
+    noteMapReactCommit("surface");
   });
   const indexedTracks = useMemo(() => tracks.map(indexedMapTrack), [tracks]);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -467,16 +467,10 @@ function EpisodeMapLibreSurface({
   const userInteractedRef = useRef(false);
   const recenterGuardUntilRef = useRef(0);
   const suppressViewportWriteRef = useRef(false);
-  const playbackControllerRef = useRef<EpisodeMapPlaybackController | null>(
-    null,
-  );
-  const installedTrackLayersRef = useRef(
-    new Map<string, EpisodeLocationTrackState>(),
-  );
-  const installedBaseLayerRef = useRef<EpisodeMapBaseLayer>(
-    EPISODE_MAP_BASE_LAYER.NONE,
-  );
-  const basemapStatusRef = useRef<EpisodeMapBasemapStatus>("disabled");
+  const playbackControllerRef = useRef<MapPlaybackController | null>(null);
+  const installedTrackLayersRef = useRef(new Map<string, LocationTrackState>());
+  const installedBaseLayerRef = useRef<MapBaseLayer>(MAP_BASE_LAYER.NONE);
+  const basemapStatusRef = useRef<MapBasemapStatus>("disabled");
   const playbackPaintStateRef = useRef<MapPlaybackPaintState>({
     cursors: new Map(),
     lastFollowAtMs: Number.NEGATIVE_INFINITY,
@@ -496,7 +490,7 @@ function EpisodeMapLibreSurface({
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
-  const showStaticPreview = shouldShowEpisodeMapStaticPreview({
+  const showStaticPreview = shouldShowMapStaticPreview({
     basemapStatus,
     cameraReady,
     failed,
@@ -613,7 +607,7 @@ function EpisodeMapLibreSurface({
 
         map.on("load", () => {
           loadedRef.current = true;
-          addEpisodeMapSourcesAndLayers(map);
+          addMapSourcesAndLayers(map);
           setLoaded(true);
         });
         map.on("error", () => {
@@ -739,7 +733,7 @@ function EpisodeMapLibreSurface({
         mapRef.current = null;
       }
       loadedRef.current = false;
-      installedBaseLayerRef.current = EPISODE_MAP_BASE_LAYER.NONE;
+      installedBaseLayerRef.current = MAP_BASE_LAYER.NONE;
       basemapStatusRef.current = "disabled";
       installedTrackLayers.clear();
     };
@@ -759,18 +753,18 @@ function EpisodeMapLibreSurface({
 
     let cancelled = false;
     let removeReadinessListeners: () => void = () => undefined;
-    const report = (status: EpisodeMapBasemapStatus) => {
+    const report = (status: MapBasemapStatus) => {
       if (cancelled) return;
       basemapStatusRef.current = status;
       onBasemapStatusChange(baseLayer, status);
     };
 
-    if (baseLayer === EPISODE_MAP_BASE_LAYER.NONE) {
+    if (baseLayer === MAP_BASE_LAYER.NONE) {
       report("disabled");
-      if (installedBaseLayerRef.current !== EPISODE_MAP_BASE_LAYER.NONE) {
-        installedBaseLayerRef.current = EPISODE_MAP_BASE_LAYER.NONE;
+      if (installedBaseLayerRef.current !== MAP_BASE_LAYER.NONE) {
+        installedBaseLayerRef.current = MAP_BASE_LAYER.NONE;
         map.setStyle(NO_TILE_STYLE, {
-          transformStyle: mergeEpisodeMapOverlaysIntoStyle,
+          transformStyle: mergeMapOverlaysIntoStyle,
         });
         ensureCurrentPuckImages(map, indexedTracksRef.current);
         playbackControllerRef.current?.invalidate();
@@ -797,7 +791,7 @@ function EpisodeMapLibreSurface({
         const styleAlreadyInstalled =
           installedBaseLayerRef.current === baseLayer;
         if (!styleAlreadyInstalled && !cameraReady) return;
-        const sourceIds = episodeMapBasemapSourceIds(style);
+        const sourceIds = mapBasemapSourceIds(style);
         let overlaysRestored = false;
         const restoreOverlays = () => {
           if (overlaysRestored || cancelled) return;
@@ -832,14 +826,14 @@ function EpisodeMapLibreSurface({
         if (!styleAlreadyInstalled) {
           installedBaseLayerRef.current = baseLayer;
           map.setStyle(style, {
-            transformStyle: mergeEpisodeMapOverlaysIntoStyle,
+            transformStyle: mergeMapOverlaysIntoStyle,
           });
         }
         markReadyWhenLoaded();
       })
       .catch(() => {
         if (cancelled) return;
-        installedBaseLayerRef.current = EPISODE_MAP_BASE_LAYER.NONE;
+        installedBaseLayerRef.current = MAP_BASE_LAYER.NONE;
         report("error");
       });
 
@@ -864,7 +858,7 @@ function EpisodeMapLibreSurface({
         sourceChanged &&
         cameraReadyRef.current &&
         loadedRef.current &&
-        canPreserveEpisodeMapViewportBetweenSamples(
+        canPreserveMapViewportBetweenSamples(
           previousViewportScopeRef.current,
           viewportScope,
         );
@@ -903,7 +897,7 @@ function EpisodeMapLibreSurface({
 
   // This effect owns the playback subscription and its capped map controller.
   useEffect(() => {
-    const controller = new EpisodeMapPlaybackController({
+    const controller = new MapPlaybackController({
       onPaint: (playheadNs, nowMs) => {
         const indexed = indexedTracksRef.current;
         const paintState = playbackPaintStateRef.current;
@@ -916,7 +910,7 @@ function EpisodeMapLibreSurface({
         const map = mapRef.current;
         if (!map || !loadedRef.current) return;
 
-        noteEpisodeMapPlaybackPaint();
+        noteMapPlaybackPaint();
         paintMapPlaybackFrame(map, indexed, frame, paintState);
         if (
           sourceKeyRef.current &&
@@ -933,7 +927,7 @@ function EpisodeMapLibreSurface({
           if (target) {
             initialFrameEpochRef.current = cameraEpochRef.current;
             recenterGuardUntilRef.current = nowMs + RECENTER_GUARD_MS;
-            applyEpisodeMapCameraTarget(map, target, 240);
+            applyMapCameraTarget(map, target, 240);
           }
         }
         updateFollowCamera({
@@ -1079,10 +1073,10 @@ function EpisodeMapLibreSurface({
     }
 
     warmStartEpochRef.current = cameraEpoch;
-    const viewport = readEpisodeMapViewport(viewportScope);
+    const viewport = readMapViewport(viewportScope);
     const warmStartApplies =
       viewport !== null &&
-      episodeMapViewportIsNearEvidence({
+      mapViewportIsNearEvidence({
         bounds,
         height: container.clientHeight,
         marker,
@@ -1099,7 +1093,7 @@ function EpisodeMapLibreSurface({
       const target = playbackCameraTarget(bounds, frame.markers, frame.comets);
       if (target) {
         initialFrameEpochRef.current = cameraEpoch;
-        applyEpisodeMapCameraTarget(map, target, 0);
+        applyMapCameraTarget(map, target, 0);
       }
     }
     cameraReadyRef.current = true;
@@ -1124,7 +1118,7 @@ function EpisodeMapLibreSurface({
     initialFrameEpochRef.current = cameraEpoch;
     recenterGuardUntilRef.current = performance.now() + RECENTER_GUARD_MS;
     const frame = latestPlaybackFrameRef.current;
-    applyEpisodeMapCameraTarget(
+    applyMapCameraTarget(
       map,
       playbackCameraTarget(bounds, frame.markers, frame.comets),
       400,
@@ -1142,7 +1136,7 @@ function EpisodeMapLibreSurface({
     if (fitRouteNonce === 0 || !map || !loadedRef.current || !bounds) {
       return;
     }
-    applyEpisodeMapCameraTarget(map, episodeMapRouteCameraTarget(bounds), 400);
+    applyMapCameraTarget(map, mapRouteCameraTarget(bounds), 400);
     // Bounds grow as track data arrives, but only another button press should
     // move a camera the user may have adjusted in the meantime.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1197,17 +1191,17 @@ function playbackCameraTarget(
   bounds: LocationBounds | null,
   currentLocations: readonly MapLocationMarker[],
   comets: readonly CometTrail[],
-): EpisodeMapCameraTarget | null {
-  return episodeMapPlaybackCameraTarget({
+): MapCameraTarget | null {
+  return mapPlaybackCameraTarget({
     bounds,
     marker: currentLocations[0]?.location ?? null,
     trailBounds: coordinateBounds(comets.flatMap((trail) => trail.coordinates)),
   });
 }
 
-function applyEpisodeMapCameraTarget(
+function applyMapCameraTarget(
   map: MapLibreMap,
-  target: EpisodeMapCameraTarget | null,
+  target: MapCameraTarget | null,
   duration: number,
 ): void {
   if (!target) return;
@@ -1233,7 +1227,7 @@ function rememberMapViewport(
   viewportScope: string | null,
 ): void {
   const center = map.getCenter();
-  writeEpisodeMapViewport(viewportScope, {
+  writeMapViewport(viewportScope, {
     latitude: center.lat,
     longitude: center.lng,
     zoom: map.getZoom(),
@@ -1259,11 +1253,11 @@ function coordinateBounds(
   return { east, north, south, west };
 }
 
-function trackLayerKey(track: EpisodeLocationTrackState): string {
+function trackLayerKey(track: LocationTrackState): string {
   return `${track.color}:${track.stream}`;
 }
 
-function indexedMapTrack(track: EpisodeLocationTrackState): IndexedMapTrack {
+function indexedMapTrack(track: LocationTrackState): IndexedMapTrack {
   let index = indexedLocationTrackByState.get(track);
   if (!index) {
     index = indexLocationTrack(track.segments);
@@ -1287,7 +1281,7 @@ function cometSourceId(key: string): string {
 function reconcileTrackLayers(
   map: MapLibreMap,
   tracks: readonly IndexedMapTrack[],
-  installed: Map<string, EpisodeLocationTrackState>,
+  installed: Map<string, LocationTrackState>,
 ): void {
   const wanted = new Map(tracks.map((track) => [track.key, track]));
   for (const key of installed.keys()) {
@@ -1593,7 +1587,7 @@ function updateRouteProgress(
   const { key, track } = indexedTrack;
   if (!map.getLayer(routeLayerId(key, "active"))) return;
   const activeSegment = resolved.segmentIndex;
-  const filters = episodeMapRouteProgressFilters(resolved);
+  const filters = mapRouteProgressFilters(resolved);
   if (paintState.routeProgressKeys.get(key) !== filters.key) {
     map.setFilter(routeLayerId(key, "past-casing"), filters.past as never);
     map.setFilter(routeLayerId(key, "past"), filters.past as never);
@@ -1714,7 +1708,7 @@ function updateFollowCamera({
   }
   suppressViewportWriteRef.current = true;
   try {
-    noteEpisodeMapFollowCommand();
+    noteMapFollowCommand();
     map.jumpTo({ center: [current.longitude, current.latitude] });
   } finally {
     suppressViewportWriteRef.current = false;
@@ -1747,7 +1741,7 @@ function setGeoJsonSourceData(
 ) {
   const source = map.getSource(sourceId);
   if (isGeoJsonSource(source)) {
-    noteEpisodeMapSourceUpdate(sourceId);
+    noteMapSourceUpdate(sourceId);
     source.setData(data);
   }
 }
@@ -1761,7 +1755,7 @@ function isGeoJsonSource(
 }
 
 function hitPointFeatures(
-  tracks: readonly EpisodeLocationTrackState[],
+  tracks: readonly LocationTrackState[],
 ): GeoJsonFeatureCollection {
   const features: GeoJsonFeature[] = [];
   for (const track of tracks) {

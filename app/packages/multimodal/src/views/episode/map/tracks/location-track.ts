@@ -22,7 +22,7 @@ export const MAX_LOCATION_TRACK_RENDER_POINTS = 10_000;
 const NO_FIX_STATUS = -1;
 const MAX_FORWARD_CURSOR_STEPS = 64;
 
-export interface EpisodeLocationTrackPoint {
+export interface LocationTrackPoint {
   /** 95% (2σ) horizontal accuracy in meters, when the fix carried one. */
   readonly accuracyM?: number;
   readonly altitude?: number;
@@ -33,8 +33,8 @@ export interface EpisodeLocationTrackPoint {
   readonly timeNs: bigint;
 }
 
-export interface EpisodeLocationTrackSegment {
-  readonly points: readonly EpisodeLocationTrackPoint[];
+export interface LocationTrackSegment {
+  readonly points: readonly LocationTrackPoint[];
 }
 
 /** Immutable search and rendering data for one valid-fix segment. */
@@ -42,7 +42,7 @@ export interface IndexedLocationTrackSegment {
   readonly coordinates: readonly (readonly [number, number])[];
   readonly cumulativeDistanceM: readonly number[];
   readonly endTimeNs: bigint;
-  readonly points: readonly EpisodeLocationTrackPoint[];
+  readonly points: readonly LocationTrackPoint[];
   readonly startTimeNs: bigint;
   readonly timesNs: readonly bigint[];
   readonly totalDistanceM: number;
@@ -50,8 +50,8 @@ export interface IndexedLocationTrackSegment {
 
 /** Search index over the valid-fix segments of one location track. */
 export interface IndexedLocationTrack {
-  readonly firstPoint: EpisodeLocationTrackPoint | null;
-  readonly lastPoint: EpisodeLocationTrackPoint | null;
+  readonly firstPoint: LocationTrackPoint | null;
+  readonly lastPoint: LocationTrackPoint | null;
   readonly segments: readonly IndexedLocationTrackSegment[];
 }
 
@@ -73,20 +73,17 @@ export interface ResolvedLocationTrackPosition {
   readonly state: "empty" | "before" | "active" | "gap" | "after";
 }
 
-export interface EpisodeLocationTrackState {
+export interface LocationTrackState {
   readonly color: string;
   readonly label: string;
   readonly pointCount: number;
-  readonly segments: readonly EpisodeLocationTrackSegment[];
+  readonly segments: readonly LocationTrackSegment[];
   readonly status: "loading" | "ready" | "error";
   readonly stream: string;
   readonly truncated?: boolean;
 }
 
-export type EpisodeLocationTracks = ReadonlyMap<
-  string,
-  EpisodeLocationTrackState
->;
+export type LocationTracks = ReadonlyMap<string, LocationTrackState>;
 
 export interface InterpolatedLocation {
   readonly accuracyM?: number;
@@ -107,7 +104,7 @@ export interface LocationBounds {
 export function locationPointFromVisualization(
   visualization: LocationVisualization,
   timelineTimeNs: bigint,
-): EpisodeLocationTrackPoint {
+): LocationTrackPoint {
   return {
     accuracyM: horizontalAccuracyM(visualization.positionCovariance),
     altitude: finiteOrUndefined(visualization.altitude),
@@ -151,9 +148,7 @@ export function horizontalAccuracyM(
   return maxVariance > 0 ? 2 * Math.sqrt(maxVariance) : undefined;
 }
 
-export function isValidLocationPoint(
-  point: EpisodeLocationTrackPoint,
-): boolean {
+export function isValidLocationPoint(point: LocationTrackPoint): boolean {
   return (
     Number.isFinite(point.latitude) &&
     Number.isFinite(point.longitude) &&
@@ -166,10 +161,10 @@ export function isValidLocationPoint(
 }
 
 export function segmentLocationTrack(
-  points: readonly EpisodeLocationTrackPoint[],
-): readonly EpisodeLocationTrackSegment[] {
-  const segments: EpisodeLocationTrackSegment[] = [];
-  let current: EpisodeLocationTrackPoint[] = [];
+  points: readonly LocationTrackPoint[],
+): readonly LocationTrackSegment[] {
+  const segments: LocationTrackSegment[] = [];
+  let current: LocationTrackPoint[] = [];
 
   for (const point of points) {
     if (!isValidLocationPoint(point)) {
@@ -190,11 +185,11 @@ export function segmentLocationTrack(
 }
 
 export function decimateLocationTrackSegments(
-  segments: readonly EpisodeLocationTrackSegment[],
+  segments: readonly LocationTrackSegment[],
   maxPoints = MAX_LOCATION_TRACK_RENDER_POINTS,
 ): {
   readonly pointCount: number;
-  readonly segments: readonly EpisodeLocationTrackSegment[];
+  readonly segments: readonly LocationTrackSegment[];
   readonly truncated: boolean;
 } {
   const pointCount = countLocationTrackPoints(segments);
@@ -212,14 +207,14 @@ export function decimateLocationTrackSegments(
 }
 
 export function countLocationTrackPoints(
-  segments: readonly EpisodeLocationTrackSegment[],
+  segments: readonly LocationTrackSegment[],
 ): number {
   return segments.reduce((count, segment) => count + segment.points.length, 0);
 }
 
 /** Builds the immutable time, coordinate, and distance index for a track. */
 export function indexLocationTrack(
-  segments: readonly EpisodeLocationTrackSegment[],
+  segments: readonly LocationTrackSegment[],
 ): IndexedLocationTrack {
   const indexedSegments: IndexedLocationTrackSegment[] = [];
   for (const segment of segments) {
@@ -365,7 +360,7 @@ export function indexedLocationTrailCoordinates(
 }
 
 export function interpolateLocationAtTime(
-  segments: readonly EpisodeLocationTrackSegment[],
+  segments: readonly LocationTrackSegment[],
   timeNs: bigint,
 ): InterpolatedLocation | null {
   const first = firstLocationPoint(segments);
@@ -407,7 +402,7 @@ export function interpolateLocationAtTime(
  * time-interpolated so the trail head sits exactly under the marker.
  */
 export function locationTrailCoordinates(
-  segments: readonly EpisodeLocationTrackSegment[],
+  segments: readonly LocationTrackSegment[],
   timeNs: bigint,
   windowNs: bigint,
 ): readonly [number, number][] {
@@ -452,7 +447,7 @@ export function locationTrailCoordinates(
 }
 
 export function locationBounds(
-  segments: readonly EpisodeLocationTrackSegment[],
+  segments: readonly LocationTrackSegment[],
 ): LocationBounds | null {
   let west = Number.POSITIVE_INFINITY;
   let east = Number.NEGATIVE_INFINITY;
@@ -678,8 +673,8 @@ function clampUnit(value: number): number {
 }
 
 function interpolateBetweenPoints(
-  left: EpisodeLocationTrackPoint,
-  right: EpisodeLocationTrackPoint,
+  left: LocationTrackPoint,
+  right: LocationTrackPoint,
   timeNs: bigint,
 ): InterpolatedLocation {
   const span = Number(right.timeNs - left.timeNs);
@@ -698,7 +693,7 @@ function interpolateBetweenPoints(
 }
 
 function locationFromPoint(
-  point: EpisodeLocationTrackPoint,
+  point: LocationTrackPoint,
   bearingDeg?: number,
 ): InterpolatedLocation {
   return {
@@ -712,8 +707,8 @@ function locationFromPoint(
 }
 
 function firstLocationPoint(
-  segments: readonly EpisodeLocationTrackSegment[],
-): EpisodeLocationTrackPoint | null {
+  segments: readonly LocationTrackSegment[],
+): LocationTrackPoint | null {
   for (const segment of segments) {
     if (segment.points.length > 0) return segment.points[0];
   }
@@ -721,8 +716,8 @@ function firstLocationPoint(
 }
 
 function lastLocationPoint(
-  segments: readonly EpisodeLocationTrackSegment[],
-): EpisodeLocationTrackPoint | null {
+  segments: readonly LocationTrackSegment[],
+): LocationTrackPoint | null {
   for (let index = segments.length - 1; index >= 0; index -= 1) {
     const points = segments[index].points;
     if (points.length > 0) return points[points.length - 1];
@@ -731,10 +726,10 @@ function lastLocationPoint(
 }
 
 function decimateSegmentsByGlobalIndex(
-  segments: readonly EpisodeLocationTrackSegment[],
+  segments: readonly LocationTrackSegment[],
   pointCount: number,
   maxPoints: number,
-): readonly EpisodeLocationTrackSegment[] {
+): readonly LocationTrackSegment[] {
   if (maxPoints <= 0) {
     return [];
   }
@@ -751,9 +746,9 @@ function decimateSegmentsByGlobalIndex(
   }
 
   let globalIndex = 0;
-  const decimated: EpisodeLocationTrackSegment[] = [];
+  const decimated: LocationTrackSegment[] = [];
   for (const segment of segments) {
-    const points: EpisodeLocationTrackPoint[] = [];
+    const points: LocationTrackPoint[] = [];
     for (const point of segment.points) {
       if (wantedIndices.has(globalIndex)) {
         points.push(point);

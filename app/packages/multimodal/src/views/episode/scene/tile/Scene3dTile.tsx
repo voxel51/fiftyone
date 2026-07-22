@@ -20,7 +20,7 @@ import type {
 } from "../../../../ir/index";
 import { imageTextureCacheKey } from "../../../../visualization/media-2d/image-texture-cache";
 import { useKeyedIdentityMap } from "../../../../visualization/panel-ui/use-keyed-identity-map";
-import type { ThreeSceneBackground } from "../../../../visualization/scene-3d/base-3d-scene";
+import type { ThreeSceneBackground } from "../../../../visualization/scene-3d/Base3dScene";
 import { DEFAULT_POINT_CLOUD_CAMERA_PROJECTION } from "../../../../visualization/scene-3d/camera-fit-bounds";
 import { PointCloudPanel } from "../../../../visualization/composition/index";
 import {
@@ -34,111 +34,108 @@ import {
   type SceneAnnotationPanelLayer,
   type SceneRayPanelLayer,
 } from "../../../../visualization/scene-3d/types";
-import { Episode3dCameraRig } from "../camera/Episode3dCameraRig";
+import { Scene3dCameraRig } from "../camera/Scene3dCameraRig";
 import Scene3dTileSettings from "./Scene3dTileSettings";
-import { Episode3dViewControls } from "../camera/Episode3dViewControls";
-import { build3dLayers } from "../entities/episode-3d-layers";
+import { Scene3dViewControls } from "../camera/Scene3dViewControls";
+import { build3dLayers } from "../entities/scene-3d-layers";
 import {
-  selectEpisode3dSceneSnapshot,
-  type HeldEpisode3dSceneSnapshot,
-  type Episode3dHeldSceneReason,
-} from "../entities/episode-3d-scene-snapshot";
-import { useEpisode3dViewSettings } from "../../spatial/view-settings-context";
+  selectScene3dSnapshot,
+  type HeldScene3dSnapshot,
+  type Scene3dHeldSceneReason,
+} from "../entities/scene-3d-scene-snapshot";
+import { useScene3dViewSettings } from "../../spatial/view-settings-context";
 import {
-  buildEpisode3dPlacementNotices,
-  buildEpisode3dTransformNotices,
-  buildEpisodeCapabilityNotices,
-  buildEpisodeReferenceFrameNotices,
-  useStabilizedEpisodeNotices,
-  type EpisodeHealthNotice,
-} from "../../status/episode-health";
+  buildScene3dPlacementNotices,
+  buildScene3dTransformNotices,
+  buildCapabilityNotices,
+  buildReferenceFrameNotices,
+  useStabilizedNotices,
+  type HealthNotice,
+} from "../../status/health";
 import {
-  useEpisodeStreamDiagnostics,
-  useEpisodeStreamStatuses,
-} from "../../playback/episode-stream-status-state";
-import { useEpisode3dViewStateStore } from "../camera/episode-3d-view-state-context";
+  useStreamDiagnostics,
+  useStreamStatuses,
+} from "../../playback/stream-status-state";
+import { useScene3dViewStateStore } from "../camera/scene-3d-view-state-context";
 import {
-  type Episode3dViewpointController,
-  useRegisterEpisode3dViewpoint,
-} from "../camera/episode-3d-viewpoint-context";
+  type Scene3dViewpointController,
+  useRegisterScene3dViewpoint,
+} from "../camera/scene-3d-viewpoint-context";
 import {
-  useRegisterEpisodeSceneFrameControls,
-  useEpisodeSceneFrameControls,
-  type EpisodeSceneFrameControls,
+  useRegisterSceneFrameControls,
+  useSceneFrameControls,
+  type SceneFrameControls,
 } from "../../spatial/frame-transforms/scene-frame-controls";
-import { usePublishEpisodeSceneNotices } from "../../status/scene-notices-context";
-import { useRegisterEpisodeTileSettings } from "../../tiles/episode-tile-settings-context";
+import { usePublishSceneNotices } from "../../status/scene-notices-context";
+import { useRegisterTileSettings } from "../../tiles/tile-settings-context";
 import {
-  createEpisode3dViewpointStore,
-  normalizeEpisode3dCameraProjection,
-} from "../camera/episode-3d-viewpoint";
-import type { Episode3dCameraNavigationMode } from "../camera/episode-3d-view-state";
+  createScene3dViewpointStore,
+  normalizeScene3dCameraProjection,
+} from "../camera/scene-3d-viewpoint";
+import type { Scene3dCameraNavigationMode } from "../camera/scene-3d-view-state";
 import { type PrimitiveAtom, useStore } from "jotai";
-import { useEpisodeDataStream } from "../../playback/episode-data-stream-context";
+import { useDataStream } from "../../playback/data-stream-context";
 import {
-  useEpisodeFrustumImageHover,
-  useEpisodeHoveredImageStream,
-  useEpisodeImageTileBindings,
-} from "../../tiles/episode-tile-source-bindings";
+  useFrustumImageHover,
+  useHoveredImageStream,
+  useImageTileBindings,
+} from "../../tiles/tile-source-bindings";
 import {
-  Episode3dHoverTooltip,
-  useEpisode3dHoverTooltip,
+  Scene3dHoverTooltip,
+  useScene3dHoverTooltip,
 } from "../../interaction/point-hover/use-hover-tooltip";
-import { useOpenEpisodeImageTile } from "../../tiles/use-open-image-tile";
+import { useOpenImageTile } from "../../tiles/use-open-image-tile";
 import {
-  isEpisodeLabelEcho,
-  isEpisodeSceneEntitySelected,
-  episodeEntityLabel,
-  episodeSelectedObjectAtom,
-  useEpisodeSelectedObject,
+  isLabelEcho,
+  isSceneEntitySelected,
+  entityLabel,
+  selectedObjectAtom,
+  useSelectedObject,
 } from "../../interaction/selection/selected-object";
-import { episodeHoveredPointForFrame } from "../../interaction/point-hover/point-hover";
+import { hoveredPointForFrame } from "../../interaction/point-hover/point-hover";
 import {
-  episodeHoverEchoAtom,
-  useEpisodeHoverEcho,
-  type EpisodeHoverEcho,
+  hoverEchoAtom,
+  useHoverEcho,
+  type HoverEcho,
 } from "../../interaction/point-hover/hover-echo";
-import { useEpisodeDepthHover } from "../../spatial/depth-sampling";
-import { resolveEpisodeDepthRay } from "../../spatial/depth-projection";
-import { useEpisodeFrameTransformsContext } from "../../spatial/frame-transforms/context";
+import { useDepthHover } from "../../spatial/depth-sampling";
+import { resolveDepthRay } from "../../spatial/depth-projection";
+import { useFrameTransformsContext } from "../../spatial/frame-transforms/context";
 import {
-  DEFAULT_EPISODE_IMAGE_PROJECTION,
-  defaultEpisodePointCloudColorForSource,
-  useEpisodeImageProjectionSettingsByStream,
-  useEpisodePinholeCameraSettings,
-  useEpisodePlaybackSettings,
-  useEpisodePointCloudStyleSettings,
-  useEpisodeReferenceGridSettings,
-  useEpisodeSceneBackgroundSettings,
-  useEpisodeTemporalPolicySettings,
+  DEFAULT_IMAGE_PROJECTION,
+  defaultPointCloudColorForSource,
+  useImageProjectionSettingsByStream,
+  usePinholeCameraSettings,
+  usePlaybackSettings,
+  usePointCloudStyleSettings,
+  useReferenceGridSettings,
+  useSceneBackgroundSettings,
+  useTemporalPolicySettings,
 } from "../../settings/modal/state";
-import { resolveEpisodeCameraModel } from "../../spatial/camera-geometry/episode-camera-model";
-import { episodeCameraRayModel } from "../../spatial/camera-geometry/episode-camera-ray-model";
+import { resolveCameraModel } from "../../spatial/camera-geometry/camera-model";
+import { cameraRayModel } from "../../spatial/camera-geometry/camera-ray-model";
 import { usePointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
-import type { EpisodeTileProps } from "../../tiles/episode-tile-types";
-import styles from "../../tiles/EpisodeTile.module.css";
-import {
-  EpisodeTileEmptyState,
-  EpisodeTileStatusBadge,
-} from "../../tiles/EpisodeTileStreamState";
+import type { EpisodeTileProps } from "../../tiles/tile-types";
+import styles from "../../tiles/Tile.module.css";
+import { TileEmptyState, TileStatusBadge } from "../../tiles/TileStreamState";
 import { locationHudLine, speedHudLine } from "../entities/pose-trajectory";
 import {
-  useEpisode3dCameraTracking,
-  type Episode3dPlacementStatus,
-} from "../camera/use-episode-3d-camera-tracking";
-import { useEpisode3dFrameSelection } from "../placement/use-episode-3d-frame-selection";
-import { useEpisode3dPoseTrajectories } from "../entities/use-episode-3d-pose-trajectories";
-import { useEpisode3dPlacementStream } from "../placement/use-episode-3d-placement-stream";
-import { useEpisode3dViewShortcuts } from "../camera/use-episode-3d-view-shortcuts";
+  useScene3dCameraTracking,
+  type Scene3dPlacementStatus,
+} from "../camera/use-scene-3d-camera-tracking";
+import { useScene3dFrameSelection } from "../placement/use-scene-3d-frame-selection";
+import { useScene3dPoseTrajectories } from "../entities/use-scene-3d-pose-trajectories";
+import { useScene3dPlacementStream } from "../placement/use-scene-3d-placement-stream";
+import { useScene3dViewShortcuts } from "../camera/use-scene-3d-view-shortcuts";
 import {
   playbackFrameForStream,
   selectProvisionalPointCloudStream,
-  useEpisode3dSelection,
-} from "../picking/use-episode-3d-selection";
+  useScene3dSelection,
+} from "../picking/use-scene-3d-selection";
 import { useInterpolatedSceneUpdateFrames } from "../entities/use-interpolated-scene-updates";
-import { useEpisodePlaybackTimeNs } from "../../playback/use-episode-playback-time-ns";
-import { useEpisodeStreamPlaybackFrames } from "../../playback/use-episode-stream-values";
-import { useEpisodeVideoDecodeRunways } from "../../playback/video-decode-runway/use-video-decode-runways";
+import { usePlaybackTimeNs } from "../../playback/use-playback-time-ns";
+import { useStreamPlaybackFrames } from "../../playback/use-stream-values";
+import { useVideoDecodeRunways } from "../../playback/video-decode-runway/use-video-decode-runways";
 
 /**
  * Named gradient backdrop profiles for the 3D scene. "Abyss" is dark
@@ -165,21 +162,21 @@ const STUDIO_BACKGROUND: ThreeSceneBackground = {
  * sidebar offers checkboxes and panel-specific frame controls.
  */
 const Scene3dTile: React.FC<EpisodeTileProps> = () => {
-  const viewStateStore = useEpisode3dViewStateStore();
-  const sourceKey = useEpisodeDataStream()?.sourceKey ?? "";
+  const viewStateStore = useScene3dViewStateStore();
+  const sourceKey = useDataStream()?.sourceKey ?? "";
   const jotaiStore = useStore();
   // The previous mount's view state, read once before any write-through can
   // overwrite it. The tile remounts per sample, so this snapshot is exactly
   // the state the user left the previous sample's 3D tile in.
   const [viewStateRestore] = useState(() => viewStateStore.getSnapshot());
   const [cameraProjection, setCameraProjection] = useState(() =>
-    normalizeEpisode3dCameraProjection(
+    normalizeScene3dCameraProjection(
       viewStateRestore.cameraProjection ??
         DEFAULT_POINT_CLOUD_CAMERA_PROJECTION,
     ),
   );
   const [cameraNavigationMode, setCameraNavigationMode] =
-    useState<Episode3dCameraNavigationMode>(
+    useState<Scene3dCameraNavigationMode>(
       viewStateRestore.cameraNavigationMode,
     );
   const carriedTargetComposition = viewStateRestore.navigationCompositions.find(
@@ -213,21 +210,21 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     selectedStreamsKey,
     setSourcesEnabled,
     toggleSource,
-  } = useEpisode3dSelection({ restore: viewStateRestore, sourceKey });
+  } = useScene3dSelection({ restore: viewStateRestore, sourceKey });
   usePublishAnnotationStreams(sceneAnnotationStreams);
-  const selectedStreamStatuses = useEpisodeStreamStatuses(selectedStreams);
+  const selectedStreamStatuses = useStreamStatuses(selectedStreams);
   const selectedSourcePending = selectedStreamStatuses.some(
     (status) => status === "loading",
   );
-  const frameTransforms = useEpisodeFrameTransformsContext();
-  const { fidelityMode } = useEpisodePlaybackSettings();
-  const { temporalPolicy } = useEpisodeTemporalPolicySettings();
-  const { pinholeCamera } = useEpisodePinholeCameraSettings();
-  const imageProjectionSettings = useEpisodeImageProjectionSettingsByStream();
+  const frameTransforms = useFrameTransformsContext();
+  const { fidelityMode } = usePlaybackSettings();
+  const { temporalPolicy } = useTemporalPolicySettings();
+  const { pinholeCamera } = usePinholeCameraSettings();
+  const imageProjectionSettings = useImageProjectionSettingsByStream();
   const { pointCloudColors, pointCloudPointSize, showPointCloudColorLegend } =
-    useEpisodePointCloudStyleSettings();
-  const { referenceGrid } = useEpisodeReferenceGridSettings();
-  const { sceneBackground } = useEpisodeSceneBackgroundSettings();
+    usePointCloudStyleSettings();
+  const { referenceGrid } = useReferenceGridSettings();
+  const { sceneBackground } = useSceneBackgroundSettings();
   const {
     defaultTrackingMode,
     preferredCameraTargetFrameId,
@@ -236,9 +233,9 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     setDefaultTrackingMode,
     setPreferredCameraTargetFrameId,
     setPreferredWorldFrameId,
-  } = useEpisode3dViewSettings();
+  } = useScene3dViewSettings();
   const [viewpointStore] = useState(() =>
-    createEpisode3dViewpointStore({
+    createScene3dViewpointStore({
       cameraNavigationMode,
       pose: null,
       projection: cameraProjection,
@@ -251,8 +248,9 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   );
   const tileId = useTileId();
   const { focusedTileId } = useTiling();
-  const sceneSnapshotRef =
-    useRef<HeldEpisode3dSceneSnapshot<Episode3dSceneSnapshot> | null>(null);
+  const sceneSnapshotRef = useRef<HeldScene3dSnapshot<Scene3dSnapshot> | null>(
+    null,
+  );
   const [, refreshSceneSnapshot] = useState(0);
   const panelBackground = useMemo<ThreeSceneBackground>(() => {
     switch (sceneBackground.mode) {
@@ -276,39 +274,34 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     [referenceGrid, sceneUpAxis],
   );
   const frustumImageFrames =
-    useEpisodeStreamPlaybackFrames<ImageVisualization>(frustumImageStreams);
-  const frustumImageDecodeRunways = useEpisodeVideoDecodeRunways(
+    useStreamPlaybackFrames<ImageVisualization>(frustumImageStreams);
+  const frustumImageDecodeRunways = useVideoDecodeRunways(
     frustumImageStreams,
     frustumImageFrames,
   );
   const frames =
-    useEpisodeStreamPlaybackFrames<PointCloudVisualization>(pointCloudStreams);
+    useStreamPlaybackFrames<PointCloudVisualization>(pointCloudStreams);
   const pointCloudColorCapabilities = usePointCloudColorCapabilities(
     pointCloudStreams,
     frames,
   );
   const heldAnnotationFrames =
-    useEpisodeStreamPlaybackFrames<SceneUpdateVisualization>(
-      sceneAnnotationStreams,
-    );
+    useStreamPlaybackFrames<SceneUpdateVisualization>(sceneAnnotationStreams);
   const annotationFrames = useInterpolatedSceneUpdateFrames({
     frames: heldAnnotationFrames,
     interpolate: fidelityMode === "smooth",
     streams: sceneAnnotationStreams,
   });
   const gridFrames =
-    useEpisodeStreamPlaybackFrames<GridVisualization>(mapLayerStreams);
+    useStreamPlaybackFrames<GridVisualization>(mapLayerStreams);
   const calibrationFrames =
-    useEpisodeStreamPlaybackFrames<CameraCalibrationVisualization>(
-      cameraStreams,
-    );
-  const calibrationDiagnostics = useEpisodeStreamDiagnostics(cameraStreams);
-  const poseFrames =
-    useEpisodeStreamPlaybackFrames<PoseVisualization>(poseStreams);
+    useStreamPlaybackFrames<CameraCalibrationVisualization>(cameraStreams);
+  const calibrationDiagnostics = useStreamDiagnostics(cameraStreams);
+  const poseFrames = useStreamPlaybackFrames<PoseVisualization>(poseStreams);
   const locationFrames =
-    useEpisodeStreamPlaybackFrames<LocationVisualization>(locationStreams);
-  const playbackTimeNs = useEpisodePlaybackTimeNs();
-  const registeredSceneFrameControls = useEpisodeSceneFrameControls();
+    useStreamPlaybackFrames<LocationVisualization>(locationStreams);
+  const playbackTimeNs = usePlaybackTimeNs();
+  const registeredSceneFrameControls = useSceneFrameControls();
   const referenceAuthority =
     registeredSceneFrameControls &&
     registeredSceneFrameControls.authorityTileId !== tileId
@@ -334,7 +327,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     referenceSelectionSource,
     updateCameraTargetFrameId,
     worldFrameId,
-  } = useEpisode3dFrameSelection({
+  } = useScene3dFrameSelection({
     annotationFrames,
     annotationStreams: sceneAnnotationStreams,
     calibrationFrames,
@@ -359,7 +352,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   // The reference frame is scene-scoped: publish this tile's controls so
   // the sidebar's Scene tab can edit them. Selections write through the
   // modal-wide preference, so concurrent 3D tiles converge on one choice.
-  const sceneFrameControls = useMemo<EpisodeSceneFrameControls>(
+  const sceneFrameControls = useMemo<SceneFrameControls>(
     () => ({
       activeComponentFrameIds: localActiveComponentFrameIds,
       authorityTileId: tileId ?? "",
@@ -385,7 +378,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       tileId,
     ],
   );
-  useRegisterEpisodeSceneFrameControls(tileId, sceneFrameControls);
+  useRegisterSceneFrameControls(tileId, sceneFrameControls);
 
   const provisionalStreamId = useMemo(
     () => selectProvisionalPointCloudStream(selectedPointCloudSources, frames),
@@ -402,7 +395,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     setTrajectoryFrameOverrides,
     trajectories,
     trajectoryFrameByStream,
-  } = useEpisode3dPoseTrajectories({
+  } = useScene3dPoseTrajectories({
     annotationFrames,
     frameIds,
     playbackTimeNs,
@@ -466,7 +459,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
         .filter((frameId): frameId is string => Boolean(frameId)),
     [frames],
   );
-  const placementReadiness = useEpisode3dPlacementStream({
+  const placementReadiness = useScene3dPlacementStream({
     active: pointCloudStreams.length > 0,
     frameIds: pointCloudPlacementFrameIds,
     frameTransforms,
@@ -491,7 +484,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
         label: layer.id,
       };
       const settings = {
-        ...defaultEpisodePointCloudColorForSource(source, pointCloudSources),
+        ...defaultPointCloudColorForSource(source, pointCloudSources),
         ...pointCloudColors[layer.id],
       };
       return {
@@ -523,17 +516,17 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   // texture key matches the one the 2D image tile forms for the same
   // (recording, image stream, frame), so both surfaces share one decoded
   // texture through the image-texture cache.
-  const openImageTile = useOpenEpisodeImageTile();
-  const frustumImageHover = useEpisodeFrustumImageHover();
-  const hoveredImageStream = useEpisodeHoveredImageStream();
-  const imageTileBindings = useEpisodeImageTileBindings();
+  const openImageTile = useOpenImageTile();
+  const frustumImageHover = useFrustumImageHover();
+  const hoveredImageStream = useHoveredImageStream();
+  const imageTileBindings = useImageTileBindings();
   const {
     containerProps: hoverTooltipContainerProps,
     onHoverCamera,
     onHoverEntity,
     onHoverPoint,
     tooltip: hoverTooltip,
-  } = useEpisode3dHoverTooltip();
+  } = useScene3dHoverTooltip();
   // The stream shown by the focused (active) tile, if it's an image tile.
   const focusedImageStream = focusedTileId
     ? (imageTileBindings[focusedTileId] ?? null)
@@ -548,12 +541,10 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
         index >= 0 ? frustumImageDecodeRunways[index] : undefined;
       const imageStream = index >= 0 ? (frustumImageStreams[index] ?? "") : "";
       const geometry = imageStream
-        ? (
-            imageProjectionSettings[imageStream] ??
-            DEFAULT_EPISODE_IMAGE_PROJECTION
-          ).geometry
+        ? (imageProjectionSettings[imageStream] ?? DEFAULT_IMAGE_PROJECTION)
+            .geometry
         : "original";
-      const cameraModelResolution = resolveEpisodeCameraModel({
+      const cameraModelResolution = resolveCameraModel({
         calibration: layer.frame,
         geometry,
         imageStream,
@@ -561,14 +552,14 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       const rayCameraModelResolution =
         cameraModelResolution.status === "ready"
           ? cameraModelResolution
-          : resolveEpisodeCameraModel({
+          : resolveCameraModel({
               calibration: layer.frame,
               geometry: "original",
               imageStream,
             });
-      const cameraRayModel =
+      const resolvedCameraRayModel =
         rayCameraModelResolution.status === "ready"
-          ? episodeCameraRayModel(rayCameraModelResolution.model)
+          ? cameraRayModel(rayCameraModelResolution.model)
           : undefined;
       // Cmd-clicking a frustum opens its image tile; hovering or focusing
       // the tile highlights the frustum.
@@ -624,7 +615,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
         ...layer,
         ...linked,
         ...imageProps,
-        cameraRayModel,
+        cameraRayModel: resolvedCameraRayModel,
         imagePlaneDepthM: pinholeImagePlaneDepthM,
         opacity: pinholeOpacity,
         requireCameraRayModel: true,
@@ -665,12 +656,12 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   // (one entity each) learns whether it's the selected object (or a
   // label-match echo of one) and how to toggle itself selected. Kept out
   // of build3dLayers so the pure layer builder stays selection-agnostic.
-  const selectedObject = useEpisodeSelectedObject();
-  type SelectedObjectState = ReturnType<typeof useEpisodeSelectedObject>;
+  const selectedObject = useSelectedObject();
+  type SelectedObjectState = ReturnType<typeof useSelectedObject>;
   const setSelectedObject = useCallback(
     (update: SetStateAction<SelectedObjectState>) => {
       jotaiStore.set(
-        episodeSelectedObjectAtom as PrimitiveAtom<SelectedObjectState>,
+        selectedObjectAtom as PrimitiveAtom<SelectedObjectState>,
         update,
       );
     },
@@ -682,15 +673,15 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       if (!entity) return layer;
       const stream = layer.sourceId ?? "";
       const entityId = entity.id || layer.id;
-      const label = episodeEntityLabel(entity);
-      const isSelected = isEpisodeSceneEntitySelected(
+      const label = entityLabel(entity);
+      const isSelected = isSceneEntitySelected(
         selectedObject,
         stream,
         entityId,
       );
       return {
         ...layer,
-        highlighted: isSelected || isEpisodeLabelEcho(selectedObject, label),
+        highlighted: isSelected || isLabelEcho(selectedObject, label),
         onHoverEntity: (hoveredId: string | null) =>
           onHoverEntity(
             hoveredId ? { entityId, kind: "entity", label, stream } : null,
@@ -704,7 +695,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
           // scope toggles off; changing the modifier switches scope.
           const scope = modifiers.shiftKey ? "label" : "instance";
           setSelectedObject((current) =>
-            isEpisodeSceneEntitySelected(current, stream, entityId) &&
+            isSceneEntitySelected(current, stream, entityId) &&
             current?.scope === scope
               ? null
               : {
@@ -730,8 +721,8 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       const entityId = entity.id || layer.id;
       return [
         layer,
-        isEpisodeSceneEntitySelected(selectedObject, stream, entityId),
-        isEpisodeLabelEcho(selectedObject, episodeEntityLabel(entity)),
+        isSceneEntitySelected(selectedObject, stream, entityId),
+        isLabelEcho(selectedObject, entityLabel(entity)),
         onHoverEntity,
         setSelectedObject,
       ];
@@ -739,8 +730,8 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     key: (layer) => layer.id,
   });
   // Share point hovers between the 3D scene and image projections.
-  const hoverEcho = useEpisodeHoverEcho();
-  const publishedPointHoverRefs = useRef(new Map<string, EpisodeHoverEcho>());
+  const hoverEcho = useHoverEcho();
+  const publishedPointHoverRefs = useRef(new Map<string, HoverEcho>());
   const hoverablePointCloudLayers = useKeyedIdentityMap(
     coloredPointCloudLayers,
     {
@@ -755,14 +746,14 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
               : null,
           onHoverPoint: (pick: PointCloudPointPick | null) => {
             const hoveredPoint = pick
-              ? episodeHoveredPointForFrame(stream, frame, pick.pointIndex)
+              ? hoveredPointForFrame(stream, frame, pick.pointIndex)
               : null;
             const payload = hoveredPoint
               ? { ...hoveredPoint, color: pick?.color ?? null }
               : null;
             onHoverPoint(payload);
             if (payload && pick) {
-              const hover: EpisodeHoverEcho = {
+              const hover: HoverEcho = {
                 color: pick.color,
                 kind: "point",
                 pointIndex: payload.pointIndex,
@@ -770,14 +761,14 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
                 stream,
               };
               publishedPointHoverRefs.current.set(stream, hover);
-              jotaiStore.set(episodeHoverEchoAtom, hover);
+              jotaiStore.set(hoverEchoAtom, hover);
               return;
             }
 
             const published = publishedPointHoverRefs.current.get(stream);
             publishedPointHoverRefs.current.delete(stream);
             if (published) {
-              jotaiStore.set(episodeHoverEchoAtom, (current) =>
+              jotaiStore.set(hoverEchoAtom, (current) =>
                 current === published ? null : current,
               );
             }
@@ -815,7 +806,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     }
     return lines;
   }, [locationFrames, poseFrames]);
-  const placementStatus = useMemo<Episode3dPlacementStatus>(
+  const placementStatus = useMemo<Scene3dPlacementStatus>(
     () =>
       provisionalFrameIds.length > 0
         ? "provisional"
@@ -838,7 +829,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   );
   const placementNotices = useMemo(
     () =>
-      buildEpisode3dPlacementNotices({
+      buildScene3dPlacementNotices({
         pendingAnnotationFrameIds,
         pendingFrustumFrameIds,
         pendingGridFrameIds,
@@ -853,7 +844,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   );
   const transformNotices = useMemo(
     () =>
-      buildEpisode3dTransformNotices({
+      buildScene3dTransformNotices({
         clampedFrameIds,
         frameTransformsError: frameTransforms.error,
         largeInterpolationGaps,
@@ -877,7 +868,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     rig,
     setTrackingMode,
     trackingMode,
-  } = useEpisode3dCameraTracking({
+  } = useScene3dCameraTracking({
     cameraTargetFrameId,
     cameraTargetSelectionSource,
     defaultTrackingMode,
@@ -903,7 +894,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   });
   const updateCameraProjection = useCallback(
     (projection: PointCloudCameraProjection) => {
-      const normalized = normalizeEpisode3dCameraProjection(projection);
+      const normalized = normalizeScene3dCameraProjection(projection);
       setCameraProjection(normalized);
       viewpointStore.publish({ projection: normalized });
       viewStateStore.recordCameraProjection(normalized);
@@ -911,7 +902,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     [viewStateStore, viewpointStore],
   );
   const viewpointActionsRef = useRef<{
-    setCameraNavigationMode: (mode: Episode3dCameraNavigationMode) => void;
+    setCameraNavigationMode: (mode: Scene3dCameraNavigationMode) => void;
     setPose: (pose: PointCloudCameraPose) => void;
     setProjection: (projection: PointCloudCameraProjection) => void;
   }>({
@@ -931,7 +922,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     },
     setProjection: updateCameraProjection,
   };
-  const [viewpointController] = useState<Episode3dViewpointController>(() => ({
+  const [viewpointController] = useState<Scene3dViewpointController>(() => ({
     ...viewpointStore,
     setCameraNavigationMode: (mode) =>
       viewpointActionsRef.current.setCameraNavigationMode(mode),
@@ -939,7 +930,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     setProjection: (projection) =>
       viewpointActionsRef.current.setProjection(projection),
   }));
-  useRegisterEpisode3dViewpoint(tileId, viewpointController);
+  useRegisterScene3dViewpoint(tileId, viewpointController);
   // This effect publishes infrequent camera settings to the sidebar store.
   useEffect(() => {
     viewpointStore.publish({
@@ -948,7 +939,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       sceneUpAxis,
     });
   }, [cameraNavigationMode, cameraProjection, sceneUpAxis, viewpointStore]);
-  const { applyEgoView, applyTopView } = useEpisode3dViewShortcuts({
+  const { applyEgoView, applyTopView } = useScene3dViewShortcuts({
     cameraTargetFrameId,
     frameIds,
     frameTransforms,
@@ -959,12 +950,12 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     sceneUpAxis,
     worldFrameId,
   });
-  const producedNotices = useMemo<readonly EpisodeHealthNotice[]>(
+  const producedNotices = useMemo<readonly HealthNotice[]>(
     () => [
       ...placementNotices,
       ...transformNotices,
-      ...buildEpisodeCapabilityNotices(cameraStreams, calibrationDiagnostics),
-      ...buildEpisodeReferenceFrameNotices({
+      ...buildCapabilityNotices(cameraStreams, calibrationDiagnostics),
+      ...buildReferenceFrameNotices({
         omittedFrameIds,
         omittedSourceIds,
         referenceFrameId: worldFrameId,
@@ -987,10 +978,10 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   // Scene-scoped notices are stabilized before reaching the panel:
   // per-tick condition flips around transform boundaries must not blink
   // the chip, and the returned identity is stable while content holds.
-  const panelNotices = useStabilizedEpisodeNotices(producedNotices);
+  const panelNotices = useStabilizedNotices(producedNotices);
   // The same stabilized set feeds the sidebar's Scene status strip, so
   // scene health reads identically in the canvas chip and the sidebar.
-  usePublishEpisodeSceneNotices(tileId, panelNotices);
+  usePublishSceneNotices(tileId, panelNotices);
   const sceneSnapshotKey = useMemo(
     () =>
       JSON.stringify([
@@ -1001,7 +992,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       ]),
     [fidelityMode, selectedStreamsKey, sourceKey, worldFrameId],
   );
-  const currentSceneSnapshot = useMemo<Episode3dSceneSnapshot>(
+  const currentSceneSnapshot = useMemo<Scene3dSnapshot>(
     () => ({
       annotationLayers,
       frustumLayers,
@@ -1029,11 +1020,11 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     currentSceneSnapshot.annotationLayers.length > 0 ||
     currentSceneSnapshot.gridLayers.length > 0 ||
     currentSceneSnapshot.frustumLayers.length > 0;
-  const sceneSnapshotSelection = selectEpisode3dSceneSnapshot({
+  const sceneSnapshotSelection = selectScene3dSnapshot({
     current: currentSceneSnapshot,
     currentRetainable: currentSceneRetainable,
     definitiveMissingGraceMs: DEFINITIVE_MISSING_SCENE_GRACE_MS,
-    empty: emptyEpisode3dSceneSnapshot(currentSceneSnapshot.placementStatus),
+    empty: emptyScene3dSnapshot(currentSceneSnapshot.placementStatus),
     hasSourceData: hasSceneSourceData,
     held: sceneSnapshotRef.current,
     key: sceneSnapshotKey,
@@ -1061,11 +1052,11 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     );
     return () => clearTimeout(timer);
   }, [sceneSnapshotSelection.graceRemainingMs]);
-  const depthHover = useEpisodeDepthHover();
+  const depthHover = useDepthHover();
   const depthRayResolution = useMemo(
     () =>
       depthHover
-        ? resolveEpisodeDepthRay({
+        ? resolveDepthRay({
             frustumLayers: displayedScene.frustumLayers,
             hover: depthHover,
             resolveFrameTransform: frameTransforms.resolve,
@@ -1188,7 +1179,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       worldFrameId,
     ],
   );
-  useRegisterEpisodeTileSettings(tileId, settingsRegistration);
+  useRegisterTileSettings(tileId, settingsRegistration);
 
   return (
     <>
@@ -1212,10 +1203,10 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
             background={panelBackground}
             cameraPose={poseCommand}
             cameraProjection={cameraProjection}
-            cameraRig={<Episode3dCameraRig {...rig} />}
+            cameraRig={<Scene3dCameraRig {...rig} />}
             canvasSurface="modal-3d"
             controls={
-              <Episode3dViewControls
+              <Scene3dViewControls
                 onEgoView={applyEgoView}
                 onTopView={applyTopView}
               />
@@ -1236,18 +1227,14 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
             worldGrid={worldGrid}
           />
           {sceneSnapshotSelection.heldReason ? (
-            <EpisodeHeldSceneStatusBadge
-              reason={sceneSnapshotSelection.heldReason}
-            />
+            <HeldSceneStatusBadge reason={sceneSnapshotSelection.heldReason} />
           ) : (
-            <EpisodeTileStatusBadge streams={selectedStreams} />
+            <TileStatusBadge streams={selectedStreams} />
           )}
-          {hoverTooltip ? (
-            <Episode3dHoverTooltip tooltip={hoverTooltip} />
-          ) : null}
+          {hoverTooltip ? <Scene3dHoverTooltip tooltip={hoverTooltip} /> : null}
         </div>
       ) : (
-        <EpisodeTileEmptyState streams={selectedStreams} />
+        <TileEmptyState streams={selectedStreams} />
       )}
     </>
   );
@@ -1257,18 +1244,18 @@ function msToNs(value: number): bigint {
   return BigInt(Math.max(0, Math.round(value))) * 1_000_000n;
 }
 
-interface Episode3dSceneSnapshot {
+interface Scene3dSnapshot {
   readonly annotationLayers: readonly SceneAnnotationPanelLayer[];
   readonly frustumLayers: readonly CameraFrustumPanelLayer[];
   readonly gridLayers: readonly GridPanelLayer[];
-  readonly notices: readonly EpisodeHealthNotice[];
-  readonly placementStatus: Episode3dPlacementStatus;
+  readonly notices: readonly HealthNotice[];
+  readonly placementStatus: Scene3dPlacementStatus;
   readonly pointCloudLayers: readonly PointCloudPanelLayer[];
 }
 
-function emptyEpisode3dSceneSnapshot(
-  placementStatus: Episode3dPlacementStatus,
-): Episode3dSceneSnapshot {
+function emptyScene3dSnapshot(
+  placementStatus: Scene3dPlacementStatus,
+): Scene3dSnapshot {
   return {
     annotationLayers: [],
     frustumLayers: [],
@@ -1279,8 +1266,8 @@ function emptyEpisode3dSceneSnapshot(
   };
 }
 
-const EpisodeHeldSceneStatusBadge: React.FC<{
-  readonly reason: Episode3dHeldSceneReason;
+const HeldSceneStatusBadge: React.FC<{
+  readonly reason: Scene3dHeldSceneReason;
 }> = ({ reason }) => (
   <span
     className={styles.statusBadge}

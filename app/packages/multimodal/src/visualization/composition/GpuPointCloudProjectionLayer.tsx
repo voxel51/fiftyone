@@ -5,7 +5,7 @@ import * as THREE from "three";
 import * as TSL from "three/tsl";
 import { PointsNodeMaterial } from "three/webgpu";
 
-import type { ImageViewTransform } from "../media-2d/base-2d-scene";
+import type { ImageViewTransform } from "../media-2d/Base2dScene";
 import {
   createGpuCameraProjectionNodes,
   updateGpuCameraProjectionBindings,
@@ -309,7 +309,7 @@ export function createGpuPointCloudProjectionMaterial({
     projectionTsl.lessThan(u, dimensionsUniform.x),
     projectionTsl.lessThan(v, dimensionsUniform.y),
   );
-  // Base2DScene's orthographic plane spans [-0.5, 0.5]. Convert calibration
+  // Base2dScene's orthographic plane spans [-0.5, 0.5]. Convert calibration
   // pixels into that local space; its parent applies contain/cover and pan/zoom.
   const projectedPosition = projectionTsl.vec3(
     u.div(dimensionsUniform.x).sub(0.5),

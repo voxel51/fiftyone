@@ -1,18 +1,18 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import type { EpisodeHealthNotice } from "../status/episode-health";
+import type { HealthNotice } from "../status/health";
 import {
-  EpisodeSceneNoticesProvider,
-  useEpisodeSceneNotices,
-  usePublishEpisodeSceneNotices,
+  SceneNoticesProvider,
+  useSceneNotices,
+  usePublishSceneNotices,
 } from "./scene-notices-context";
 
 afterEach(() => cleanup());
 
 function notice(
   id: string,
-  scope: EpisodeHealthNotice["scope"] = "scene",
-): EpisodeHealthNotice {
+  scope: HealthNotice["scope"] = "scene",
+): HealthNotice {
   return { id, message: `message ${id}`, scope, severity: "info" };
 }
 
@@ -20,29 +20,29 @@ function Publisher({
   notices,
   tileId,
 }: {
-  readonly notices: readonly EpisodeHealthNotice[];
+  readonly notices: readonly HealthNotice[];
   readonly tileId: string;
 }) {
-  usePublishEpisodeSceneNotices(tileId, notices);
+  usePublishSceneNotices(tileId, notices);
   return null;
 }
 
 function Reader({
   probe,
 }: {
-  readonly probe: { current: readonly EpisodeHealthNotice[] | null };
+  readonly probe: { current: readonly HealthNotice[] | null };
 }) {
-  probe.current = useEpisodeSceneNotices();
+  probe.current = useSceneNotices();
   return null;
 }
 
 describe("episode-scene-notices-context", () => {
   it("unions published notices and dedupes shared conditions by id", () => {
-    const probe: { current: readonly EpisodeHealthNotice[] | null } = {
+    const probe: { current: readonly HealthNotice[] | null } = {
       current: null,
     };
     render(
-      <EpisodeSceneNoticesProvider>
+      <SceneNoticesProvider>
         <Publisher
           notices={[notice("transform:missing"), notice("render:sampled")]}
           tileId="a"
@@ -52,7 +52,7 @@ describe("episode-scene-notices-context", () => {
           tileId="b"
         />
         <Reader probe={probe} />
-      </EpisodeSceneNoticesProvider>,
+      </SceneNoticesProvider>,
     );
 
     expect(probe.current?.map((entry) => entry.id)).toEqual([
@@ -63,24 +63,24 @@ describe("episode-scene-notices-context", () => {
   });
 
   it("filters non-scene scopes out of the scene union", () => {
-    const probe: { current: readonly EpisodeHealthNotice[] | null } = {
+    const probe: { current: readonly HealthNotice[] | null } = {
       current: null,
     };
     render(
-      <EpisodeSceneNoticesProvider>
+      <SceneNoticesProvider>
         <Publisher
           notices={[notice("stream:stale", "tile"), notice("placement:ok")]}
           tileId="a"
         />
         <Reader probe={probe} />
-      </EpisodeSceneNoticesProvider>,
+      </SceneNoticesProvider>,
     );
 
     expect(probe.current?.map((entry) => entry.id)).toEqual(["placement:ok"]);
   });
 
   it("returns an empty stable list outside a provider", () => {
-    const probe: { current: readonly EpisodeHealthNotice[] | null } = {
+    const probe: { current: readonly HealthNotice[] | null } = {
       current: null,
     };
     render(<Reader probe={probe} />);

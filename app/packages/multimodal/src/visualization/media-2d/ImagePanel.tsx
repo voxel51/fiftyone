@@ -5,11 +5,11 @@ import { useMemo, useState } from "react";
 
 import type { ImageVisualization } from "../../ir";
 import {
-  Base2DScene,
+  Base2dScene,
   ImageTexturePlane,
   type ImageTextureMesh,
   type ImageViewTransform,
-} from "./base-2d-scene";
+} from "./Base2dScene";
 import {
   VISUALIZATION_HUD_BACKGROUND_COLOR,
   VISUALIZATION_HUD_BORDER_COLOR,
@@ -23,12 +23,12 @@ import {
   useImageTextureLease,
 } from "./use-image-texture-lease";
 import { WebGpuCanvas } from "../webgpu/WebGpuCanvas";
-import { useWebGpuViewStage, WebGpuView } from "../webgpu/webgpu-view-stage";
+import { useWebGpuViewStage, WebGpuView } from "../webgpu/WebGpuViewStage";
 import {
   EMPTY_PANEL_NOTICES,
   PanelNotices,
   type PanelNotice,
-} from "../panel-ui/panel-notices";
+} from "../panel-ui/PanelNotices";
 
 const HUD_BORDER_RADIUS_PX = 4;
 const HUD_OFFSET_PX = 8;
@@ -119,7 +119,7 @@ export function ImagePanel({
   });
   const scene = useMemo(
     () => (
-      <Base2DScene background={!useSharedView}>
+      <Base2dScene background={!useSharedView}>
         <ImageTexturePlane
           fit={fit}
           textureMesh={textureMesh}
@@ -128,7 +128,7 @@ export function ImagePanel({
         >
           {sceneChildren}
         </ImageTexturePlane>
-      </Base2DScene>
+      </Base2dScene>
     ),
     [
       fit,

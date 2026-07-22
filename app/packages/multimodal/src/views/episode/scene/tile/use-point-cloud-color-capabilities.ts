@@ -1,7 +1,7 @@
 import { useMemo, useRef } from "react";
 
 import type { PointCloudVisualization } from "../../../../ir/index";
-import type { EpisodeStreamPlaybackFrame } from "../../playback/use-episode-stream-values";
+import type { StreamPlaybackFrame } from "../../playback/use-stream-values";
 
 /**
  * Color channels a point-cloud stream has been observed to carry: the
@@ -29,7 +29,7 @@ interface MutableCapabilities {
  */
 export function usePointCloudColorCapabilities(
   streams: readonly string[],
-  frames: readonly (EpisodeStreamPlaybackFrame<PointCloudVisualization> | null)[],
+  frames: readonly (StreamPlaybackFrame<PointCloudVisualization> | null)[],
 ): ReadonlyMap<string, PointCloudColorCapabilities> {
   const accumulatedRef = useRef(new Map<string, MutableCapabilities>());
 

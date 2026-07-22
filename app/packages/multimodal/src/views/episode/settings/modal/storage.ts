@@ -6,27 +6,27 @@ import {
 } from "../../../../visualization/scene-3d";
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../../../visualization/panel-ui/style-tokens";
 import type {
-  EpisodeImageDisplayMode,
-  EpisodeImageGeometryMode,
-} from "../../spatial/camera-geometry/episode-camera-model";
+  ImageDisplayMode,
+  ImageGeometryMode,
+} from "../../spatial/camera-geometry/camera-model";
 import {
-  DEFAULT_EPISODE_POINT_CLOUD_POINT_SIZE,
-  DEFAULT_EPISODE_PROJECTION_POINT_SIZE,
-  normalizeEpisodePointSize,
+  DEFAULT_POINT_CLOUD_POINT_SIZE,
+  DEFAULT_PROJECTION_POINT_SIZE,
+  normalizePointSize,
 } from "../../presentation/point-size-policy";
 
 export {
-  DEFAULT_EPISODE_POINT_CLOUD_POINT_SIZE,
-  DEFAULT_EPISODE_PROJECTION_POINT_SIZE,
-  MAX_EPISODE_POINT_CLOUD_POINT_SIZE,
-  EPISODE_POINT_CLOUD_POINT_SIZE_STEP,
-  MIN_EPISODE_POINT_CLOUD_POINT_SIZE,
+  DEFAULT_POINT_CLOUD_POINT_SIZE,
+  DEFAULT_PROJECTION_POINT_SIZE,
+  MAX_POINT_CLOUD_POINT_SIZE,
+  POINT_CLOUD_POINT_SIZE_STEP,
+  MIN_POINT_CLOUD_POINT_SIZE,
 } from "../../presentation/point-size-policy";
 
 /**
  * Timing tolerances and warning thresholds for synchronized episode playback.
  */
-export interface EpisodeTemporalPolicySettings {
+export interface TemporalPolicySettings {
   readonly boundaryClampMs: number;
   readonly maxInterpolationGapMs: number;
   readonly staleMediaWarningMs: number;
@@ -36,12 +36,12 @@ export interface EpisodeTemporalPolicySettings {
 /**
  * How the viewer renders values between recorded message timestamps.
  */
-export type EpisodePlaybackFidelityMode = "smooth" | "as-recorded";
+export type PlaybackFidelityMode = "smooth" | "as-recorded";
 
 /**
  * Appearance of the 3D tile's world reference grid.
  */
-export interface EpisodeReferenceGridSettings {
+export interface ReferenceGridSettings {
   readonly enabled: boolean;
   /** Peak line opacity, percent (0-100). */
   readonly opacityPercent: number;
@@ -52,7 +52,7 @@ export interface EpisodeReferenceGridSettings {
 /**
  * Appearance of camera-calibration frustums in the 3D tile.
  */
-export interface EpisodePinholeCameraSettings {
+export interface PinholeCameraSettings {
   /** Distance from optical center to image plane, in meters. */
   readonly imagePlaneDepthM: number;
   /** Base frustum/image-plane opacity, percent (0-100). */
@@ -62,13 +62,13 @@ export interface EpisodePinholeCameraSettings {
 /**
  * 3D scene backdrop styles: a solid color or a named gradient profile.
  */
-export type EpisodeSceneBackgroundMode = "solid" | "abyss" | "studio";
+export type SceneBackgroundMode = "solid" | "abyss" | "studio";
 
 /**
  * Persisted 3D scene background choice.
  */
-export interface EpisodeSceneBackgroundSettings {
-  readonly mode: EpisodeSceneBackgroundMode;
+export interface SceneBackgroundSettings {
+  readonly mode: SceneBackgroundMode;
   /** Hex color (#rrggbb) used while `mode` is "solid". */
   readonly solidColor: string;
 }
@@ -76,7 +76,7 @@ export interface EpisodeSceneBackgroundSettings {
 /**
  * How one point-cloud stream is colored in the 3D tile.
  */
-export interface EpisodePointCloudColorSettings {
+export interface PointCloudColorSettings {
   readonly colorBy: string;
   readonly colormap: PointCloudColormap;
   readonly rangeMax: number | null;
@@ -90,14 +90,14 @@ export interface EpisodePointCloudColorSettings {
  * projection's own knob because dots compete with photographic detail,
  * not a dark void.
  */
-export interface EpisodeImageProjectionSettings {
+export interface ImageProjectionSettings {
   /** Explicit calibration stream; null uses the scene-inventory association. */
   readonly calibrationStream: string | null;
   /** Presentation of the recorded pixels; rectified is an explicit remap. */
-  readonly display: EpisodeImageDisplayMode;
+  readonly display: ImageDisplayMode;
   readonly enabled: boolean;
   /** Recorded image pixel geometry; Auto blocks materially ambiguous models. */
-  readonly geometry: EpisodeImageGeometryMode;
+  readonly geometry: ImageGeometryMode;
   /** Dot size, on the same scale as the 3D point size. */
   readonly pointSize: number;
   /** Explicit cloud streams to project; null projects every cloud. */
@@ -110,10 +110,10 @@ export interface EpisodeImageProjectionSettings {
  * two recordings sharing `/lidar_top` are not one preference — so these
  * maps are isolated from the unscoped top-level maps.
  */
-export interface EpisodeScopedModalSettings {
+export interface ScopedModalSettings {
   readonly imageLabelStreams: Record<string, readonly string[]>;
-  readonly imageProjection: Record<string, EpisodeImageProjectionSettings>;
-  readonly pointCloudColors: Record<string, EpisodePointCloudColorSettings>;
+  readonly imageProjection: Record<string, ImageProjectionSettings>;
+  readonly pointCloudColors: Record<string, PointCloudColorSettings>;
 }
 
 /**
@@ -124,18 +124,18 @@ export interface EpisodeScopedModalSettings {
  * under `scoped`, keyed by settings scope; the top-level stream maps serve
  * unscoped playback hosts.
  */
-export interface EpisodePersistedModalSettings {
-  readonly fidelityMode: EpisodePlaybackFidelityMode;
+export interface PersistedModalSettings {
+  readonly fidelityMode: PlaybackFidelityMode;
   readonly imageLabelStreams: Record<string, readonly string[]>;
-  readonly imageProjection: Record<string, EpisodeImageProjectionSettings>;
-  readonly pinholeCamera: EpisodePinholeCameraSettings;
-  readonly pointCloudColors: Record<string, EpisodePointCloudColorSettings>;
+  readonly imageProjection: Record<string, ImageProjectionSettings>;
+  readonly pinholeCamera: PinholeCameraSettings;
+  readonly pointCloudColors: Record<string, PointCloudColorSettings>;
   readonly pointCloudPointSize: number;
-  readonly referenceGrid: EpisodeReferenceGridSettings;
-  readonly sceneBackground: EpisodeSceneBackgroundSettings;
-  readonly scoped: Record<string, EpisodeScopedModalSettings>;
+  readonly referenceGrid: ReferenceGridSettings;
+  readonly sceneBackground: SceneBackgroundSettings;
+  readonly scoped: Record<string, ScopedModalSettings>;
   readonly showPointCloudColorLegend: boolean;
-  readonly temporalPolicy: EpisodeTemporalPolicySettings;
+  readonly temporalPolicy: TemporalPolicySettings;
 }
 
 const STORAGE_KEY = "fiftyone.episode.modal-settings.v2";
@@ -143,10 +143,9 @@ const STORAGE_KEY = "fiftyone.episode.modal-settings.v2";
 /**
  * Default interpolation policy for newly initialized episode modal settings.
  */
-export const DEFAULT_EPISODE_FIDELITY_MODE: EpisodePlaybackFidelityMode =
-  "smooth";
+export const DEFAULT_FIDELITY_MODE: PlaybackFidelityMode = "smooth";
 
-const FIDELITY_MODES: readonly EpisodePlaybackFidelityMode[] = [
+const FIDELITY_MODES: readonly PlaybackFidelityMode[] = [
   "smooth",
   "as-recorded",
 ];
@@ -154,7 +153,7 @@ const FIDELITY_MODES: readonly EpisodePlaybackFidelityMode[] = [
 /**
  * Default timing policy balancing smooth playback with visible data gaps.
  */
-export const DEFAULT_EPISODE_TEMPORAL_POLICY: EpisodeTemporalPolicySettings = {
+export const DEFAULT_TEMPORAL_POLICY: TemporalPolicySettings = {
   boundaryClampMs: 50,
   maxInterpolationGapMs: 0,
   staleMediaWarningMs: 500,
@@ -166,7 +165,7 @@ const MAX_TEMPORAL_POLICY_MS = 60_000;
 /**
  * Default world reference grid shown in the 3D episode tile.
  */
-export const DEFAULT_EPISODE_REFERENCE_GRID: EpisodeReferenceGridSettings = {
+export const DEFAULT_REFERENCE_GRID: ReferenceGridSettings = {
   enabled: true,
   opacityPercent: 5,
   spacingM: 1,
@@ -178,7 +177,7 @@ const MAX_GRID_SPACING_M = 10_000;
 /**
  * Default appearance for camera calibration frustums.
  */
-export const DEFAULT_EPISODE_PINHOLE_CAMERA: EpisodePinholeCameraSettings = {
+export const DEFAULT_PINHOLE_CAMERA: PinholeCameraSettings = {
   imagePlaneDepthM: 2.75,
   opacityPercent: 85,
 };
@@ -189,23 +188,21 @@ const MAX_PINHOLE_DEPTH_M = 100;
 /**
  * Default 3D scene background for episode playback.
  */
-export const DEFAULT_EPISODE_SCENE_BACKGROUND: EpisodeSceneBackgroundSettings =
-  {
-    mode: "abyss",
-    solidColor: VISUALIZATION_PANEL_BACKGROUND_COLOR,
-  };
+export const DEFAULT_SCENE_BACKGROUND: SceneBackgroundSettings = {
+  mode: "abyss",
+  solidColor: VISUALIZATION_PANEL_BACKGROUND_COLOR,
+};
 
 /**
  * Default point-cloud color override before source-specific defaults apply.
  */
-export const DEFAULT_EPISODE_POINT_CLOUD_COLOR: EpisodePointCloudColorSettings =
-  {
-    colorBy: "auto",
-    colormap: DEFAULT_POINT_CLOUD_COLORMAP,
-    rangeMax: null,
-    rangeMin: null,
-    uniformColor: "#b8c2d1",
-  };
+export const DEFAULT_POINT_CLOUD_COLOR: PointCloudColorSettings = {
+  colorBy: "auto",
+  colormap: DEFAULT_POINT_CLOUD_COLORMAP,
+  rangeMax: null,
+  rangeMin: null,
+  uniformColor: "#b8c2d1",
+};
 
 const POINT_CLOUD_COLORMAPS_WITHOUT_TURBO = POINT_CLOUD_COLORMAPS.filter(
   (colormap) => colormap !== "turbo",
@@ -214,12 +211,12 @@ const POINT_CLOUD_COLORMAPS_WITHOUT_TURBO = POINT_CLOUD_COLORMAPS.filter(
 /**
  * Chooses a stable default point-cloud color preset by source index.
  */
-export function defaultEpisodePointCloudColorForIndex(
+export function defaultPointCloudColorForIndex(
   index: number,
-): EpisodePointCloudColorSettings {
+): PointCloudColorSettings {
   const safeIndex = Number.isFinite(index) ? Math.max(0, Math.floor(index)) : 0;
   return {
-    ...DEFAULT_EPISODE_POINT_CLOUD_COLOR,
+    ...DEFAULT_POINT_CLOUD_COLOR,
     colormap: POINT_CLOUD_COLORMAPS[safeIndex % POINT_CLOUD_COLORMAPS.length],
   };
 }
@@ -232,10 +229,10 @@ interface PointCloudSourceLike {
 /**
  * Chooses a stable default point-cloud color preset for a source list.
  */
-export function defaultEpisodePointCloudColorForSource(
+export function defaultPointCloudColorForSource(
   source: PointCloudSourceLike,
   sources: readonly PointCloudSourceLike[],
-): EpisodePointCloudColorSettings {
+): PointCloudColorSettings {
   const sourceIndex = sources.findIndex(
     (candidate) => candidate.id === source.id,
   );
@@ -243,12 +240,12 @@ export function defaultEpisodePointCloudColorForSource(
   const firstLidarIndex = sources.findIndex(isLidarSource);
   if (safeIndex === firstLidarIndex) {
     return {
-      ...DEFAULT_EPISODE_POINT_CLOUD_COLOR,
+      ...DEFAULT_POINT_CLOUD_COLOR,
       colormap: "turbo",
     };
   }
   if (firstLidarIndex < 0) {
-    return defaultEpisodePointCloudColorForIndex(safeIndex);
+    return defaultPointCloudColorForIndex(safeIndex);
   }
 
   const distributedIndex =
@@ -256,7 +253,7 @@ export function defaultEpisodePointCloudColorForSource(
   const colormapIndex =
     distributedIndex % POINT_CLOUD_COLORMAPS_WITHOUT_TURBO.length;
   return {
-    ...DEFAULT_EPISODE_POINT_CLOUD_COLOR,
+    ...DEFAULT_POINT_CLOUD_COLOR,
     colormap:
       POINT_CLOUD_COLORMAPS_WITHOUT_TURBO[colormapIndex] ??
       DEFAULT_POINT_CLOUD_COLORMAP,
@@ -267,7 +264,7 @@ function isLidarSource(source: PointCloudSourceLike): boolean {
   return `${source.id} ${source.label ?? ""}`.toLowerCase().includes("lidar");
 }
 
-const SCENE_BACKGROUND_MODES: readonly EpisodeSceneBackgroundMode[] = [
+const SCENE_BACKGROUND_MODES: readonly SceneBackgroundMode[] = [
   "solid",
   "abyss",
   "studio",
@@ -278,7 +275,7 @@ const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 /**
  * Empty per-scope styling payload.
  */
-export const EMPTY_EPISODE_SCOPED_SETTINGS: EpisodeScopedModalSettings = {
+export const EMPTY_SCOPED_SETTINGS: ScopedModalSettings = {
   imageLabelStreams: {},
   imageProjection: {},
   pointCloudColors: {},
@@ -288,80 +285,72 @@ export const EMPTY_EPISODE_SCOPED_SETTINGS: EpisodeScopedModalSettings = {
  * Most scopes retained in the persisted payload. Writes re-insert their
  * scope last, so pruning drops the least recently written datasets first.
  */
-export const MAX_EPISODE_SETTINGS_SCOPES = 20;
+export const MAX_SETTINGS_SCOPES = 20;
 
 /**
  * Complete default episode modal settings payload.
  */
-export const DEFAULT_EPISODE_MODAL_SETTINGS: EpisodePersistedModalSettings = {
-  fidelityMode: DEFAULT_EPISODE_FIDELITY_MODE,
+export const DEFAULT_MODAL_SETTINGS: PersistedModalSettings = {
+  fidelityMode: DEFAULT_FIDELITY_MODE,
   imageLabelStreams: {},
   imageProjection: {},
-  pinholeCamera: DEFAULT_EPISODE_PINHOLE_CAMERA,
+  pinholeCamera: DEFAULT_PINHOLE_CAMERA,
   pointCloudColors: {},
-  pointCloudPointSize: DEFAULT_EPISODE_POINT_CLOUD_POINT_SIZE,
-  referenceGrid: DEFAULT_EPISODE_REFERENCE_GRID,
-  sceneBackground: DEFAULT_EPISODE_SCENE_BACKGROUND,
+  pointCloudPointSize: DEFAULT_POINT_CLOUD_POINT_SIZE,
+  referenceGrid: DEFAULT_REFERENCE_GRID,
+  sceneBackground: DEFAULT_SCENE_BACKGROUND,
   scoped: {},
   showPointCloudColorLegend: false,
-  temporalPolicy: DEFAULT_EPISODE_TEMPORAL_POLICY,
+  temporalPolicy: DEFAULT_TEMPORAL_POLICY,
 };
 
 /**
  * Reads persisted episode modal settings from local storage.
  */
-export function readEpisodeModalSettings(): EpisodePersistedModalSettings {
+export function readModalSettings(): PersistedModalSettings {
   try {
     const storage = globalThis.localStorage;
     const raw = storage?.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_EPISODE_MODAL_SETTINGS;
+    if (!raw) return DEFAULT_MODAL_SETTINGS;
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) {
-      return DEFAULT_EPISODE_MODAL_SETTINGS;
+      return DEFAULT_MODAL_SETTINGS;
     }
 
-    const candidate = parsed as Partial<EpisodePersistedModalSettings>;
+    const candidate = parsed as Partial<PersistedModalSettings>;
     return {
-      fidelityMode: normalizeEpisodeFidelityMode(candidate.fidelityMode),
-      imageLabelStreams: normalizeEpisodeImageLabelStreamMap(
+      fidelityMode: normalizeFidelityMode(candidate.fidelityMode),
+      imageLabelStreams: normalizeImageLabelStreamMap(
         candidate.imageLabelStreams,
       ),
-      imageProjection: normalizeEpisodeImageProjectionMap(
-        candidate.imageProjection,
-      ),
-      pinholeCamera: normalizeEpisodePinholeCamera(candidate.pinholeCamera),
-      pointCloudColors: normalizeEpisodePointCloudColorMap(
-        candidate.pointCloudColors,
-      ),
-      pointCloudPointSize: normalizeEpisodePointCloudPointSize(
+      imageProjection: normalizeImageProjectionMap(candidate.imageProjection),
+      pinholeCamera: normalizePinholeCamera(candidate.pinholeCamera),
+      pointCloudColors: normalizePointCloudColorMap(candidate.pointCloudColors),
+      pointCloudPointSize: normalizePointCloudPointSize(
         candidate.pointCloudPointSize,
       ),
-      referenceGrid: normalizeEpisodeReferenceGrid(candidate.referenceGrid),
-      sceneBackground: normalizeEpisodeSceneBackground(
-        candidate.sceneBackground,
-      ),
-      scoped: normalizeEpisodeScopedSettingsMap(candidate.scoped),
+      referenceGrid: normalizeReferenceGrid(candidate.referenceGrid),
+      sceneBackground: normalizeSceneBackground(candidate.sceneBackground),
+      scoped: normalizeScopedSettingsMap(candidate.scoped),
       showPointCloudColorLegend:
         typeof candidate.showPointCloudColorLegend === "boolean"
           ? candidate.showPointCloudColorLegend
           : false,
-      temporalPolicy: normalizeEpisodeTemporalPolicy(candidate.temporalPolicy),
+      temporalPolicy: normalizeTemporalPolicy(candidate.temporalPolicy),
     };
   } catch {
-    return DEFAULT_EPISODE_MODAL_SETTINGS;
+    return DEFAULT_MODAL_SETTINGS;
   }
 }
 
 /**
  * Writes the full persisted episode modal settings payload.
  */
-export function writeEpisodeModalSettings(
-  settings: EpisodePersistedModalSettings,
-): void {
+export function writeModalSettings(settings: PersistedModalSettings): void {
   try {
     globalThis.localStorage?.setItem(
       STORAGE_KEY,
-      JSON.stringify(normalizeEpisodeModalSettings(settings)),
+      JSON.stringify(normalizeModalSettings(settings)),
     );
   } catch {
     // Settings persistence is a convenience; storage failures should not
@@ -372,50 +361,44 @@ export function writeEpisodeModalSettings(
 /**
  * Normalizes a full episode modal settings payload before persistence.
  */
-export function normalizeEpisodeModalSettings(
-  settings: EpisodePersistedModalSettings,
-): EpisodePersistedModalSettings {
+export function normalizeModalSettings(
+  settings: PersistedModalSettings,
+): PersistedModalSettings {
   return {
-    fidelityMode: normalizeEpisodeFidelityMode(settings.fidelityMode),
-    imageLabelStreams: normalizeEpisodeImageLabelStreamMap(
-      settings.imageLabelStreams,
-    ),
-    imageProjection: normalizeEpisodeImageProjectionMap(
-      settings.imageProjection,
-    ),
-    pinholeCamera: normalizeEpisodePinholeCamera(settings.pinholeCamera),
-    pointCloudColors: normalizeEpisodePointCloudColorMap(
-      settings.pointCloudColors,
-    ),
-    pointCloudPointSize: normalizeEpisodePointCloudPointSize(
+    fidelityMode: normalizeFidelityMode(settings.fidelityMode),
+    imageLabelStreams: normalizeImageLabelStreamMap(settings.imageLabelStreams),
+    imageProjection: normalizeImageProjectionMap(settings.imageProjection),
+    pinholeCamera: normalizePinholeCamera(settings.pinholeCamera),
+    pointCloudColors: normalizePointCloudColorMap(settings.pointCloudColors),
+    pointCloudPointSize: normalizePointCloudPointSize(
       settings.pointCloudPointSize,
     ),
-    referenceGrid: normalizeEpisodeReferenceGrid(settings.referenceGrid),
-    sceneBackground: normalizeEpisodeSceneBackground(settings.sceneBackground),
-    scoped: normalizeEpisodeScopedSettingsMap(settings.scoped),
+    referenceGrid: normalizeReferenceGrid(settings.referenceGrid),
+    sceneBackground: normalizeSceneBackground(settings.sceneBackground),
+    scoped: normalizeScopedSettingsMap(settings.scoped),
     showPointCloudColorLegend: settings.showPointCloudColorLegend === true,
-    temporalPolicy: normalizeEpisodeTemporalPolicy(settings.temporalPolicy),
+    temporalPolicy: normalizeTemporalPolicy(settings.temporalPolicy),
   };
 }
 
 /**
  * Normalizes the per-scope styling map: each entry's stream maps go through
  * the same normalizers as the top-level maps, entries left empty are
- * dropped, and only the last `MAX_EPISODE_SETTINGS_SCOPES` entries survive —
+ * dropped, and only the last `MAX_SETTINGS_SCOPES` entries survive —
  * writes re-insert their scope last, so insertion order is recency order.
  */
-export function normalizeEpisodeScopedSettingsMap(
+export function normalizeScopedSettingsMap(
   value: unknown,
-): Record<string, EpisodeScopedModalSettings> {
+): Record<string, ScopedModalSettings> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return {};
   }
 
-  const entries: [string, EpisodeScopedModalSettings][] = [];
+  const entries: [string, ScopedModalSettings][] = [];
   for (const [scope, scopedValue] of Object.entries(value)) {
     const normalizedScope = scope.trim();
     if (!normalizedScope) continue;
-    const scoped = normalizeEpisodeScopedSettings(scopedValue);
+    const scoped = normalizeScopedSettings(scopedValue);
     if (
       Object.keys(scoped.imageLabelStreams).length === 0 &&
       Object.keys(scoped.imageProjection).length === 0 &&
@@ -426,72 +409,63 @@ export function normalizeEpisodeScopedSettingsMap(
     entries.push([normalizedScope, scoped]);
   }
 
-  return Object.fromEntries(entries.slice(-MAX_EPISODE_SETTINGS_SCOPES));
+  return Object.fromEntries(entries.slice(-MAX_SETTINGS_SCOPES));
 }
 
 /**
  * Normalizes one scope's styling payload.
  */
-export function normalizeEpisodeScopedSettings(
-  value: unknown,
-): EpisodeScopedModalSettings {
+export function normalizeScopedSettings(value: unknown): ScopedModalSettings {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return EMPTY_EPISODE_SCOPED_SETTINGS;
+    return EMPTY_SCOPED_SETTINGS;
   }
 
-  const candidate = value as Partial<EpisodeScopedModalSettings>;
+  const candidate = value as Partial<ScopedModalSettings>;
   return {
-    imageLabelStreams: normalizeEpisodeImageLabelStreamMap(
+    imageLabelStreams: normalizeImageLabelStreamMap(
       candidate.imageLabelStreams,
     ),
-    imageProjection: normalizeEpisodeImageProjectionMap(
-      candidate.imageProjection,
-    ),
-    pointCloudColors: normalizeEpisodePointCloudColorMap(
-      candidate.pointCloudColors,
-    ),
+    imageProjection: normalizeImageProjectionMap(candidate.imageProjection),
+    pointCloudColors: normalizePointCloudColorMap(candidate.pointCloudColors),
   };
 }
 
 /**
  * Returns a supported playback fidelity mode or the default mode.
  */
-export function normalizeEpisodeFidelityMode(
-  value: unknown,
-): EpisodePlaybackFidelityMode {
-  return FIDELITY_MODES.includes(value as EpisodePlaybackFidelityMode)
-    ? (value as EpisodePlaybackFidelityMode)
-    : DEFAULT_EPISODE_FIDELITY_MODE;
+export function normalizeFidelityMode(value: unknown): PlaybackFidelityMode {
+  return FIDELITY_MODES.includes(value as PlaybackFidelityMode)
+    ? (value as PlaybackFidelityMode)
+    : DEFAULT_FIDELITY_MODE;
 }
 
 /**
  * Default pointcloud projection settings for one image stream.
  */
-export const DEFAULT_EPISODE_IMAGE_PROJECTION: EpisodeImageProjectionSettings =
-  {
-    calibrationStream: null,
-    display: "recorded",
-    enabled: false,
-    geometry: "auto",
-    pointSize: DEFAULT_EPISODE_PROJECTION_POINT_SIZE,
-    streams: [],
-  } as const;
+export const DEFAULT_IMAGE_PROJECTION: ImageProjectionSettings = {
+  calibrationStream: null,
+  display: "recorded",
+  enabled: false,
+  geometry: "auto",
+  pointSize: DEFAULT_PROJECTION_POINT_SIZE,
+  streams: [],
+} as const;
 
 /**
  * Normalizes persisted per-image-stream pointcloud projection settings.
  */
-export function normalizeEpisodeImageProjectionMap(
+export function normalizeImageProjectionMap(
   value: unknown,
-): Record<string, EpisodeImageProjectionSettings> {
+): Record<string, ImageProjectionSettings> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return {};
   }
 
-  const result: Record<string, EpisodeImageProjectionSettings> = {};
+  const result: Record<string, ImageProjectionSettings> = {};
   for (const [imageStream, settings] of Object.entries(value)) {
     const normalizedImageStream = imageStream.trim();
     if (!normalizedImageStream) continue;
-    result[normalizedImageStream] = normalizeEpisodeImageProjection(settings);
+    result[normalizedImageStream] = normalizeImageProjection(settings);
   }
   return result;
 }
@@ -499,52 +473,48 @@ export function normalizeEpisodeImageProjectionMap(
 /**
  * Normalizes one pointcloud projection settings entry.
  */
-export function normalizeEpisodeImageProjection(
+export function normalizeImageProjection(
   value: unknown,
-): EpisodeImageProjectionSettings {
+): ImageProjectionSettings {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return DEFAULT_EPISODE_IMAGE_PROJECTION;
+    return DEFAULT_IMAGE_PROJECTION;
   }
 
-  const candidate = value as Partial<EpisodeImageProjectionSettings>;
+  const candidate = value as Partial<ImageProjectionSettings>;
   const rawStreams = candidate.streams;
   const streams =
     rawStreams === null || rawStreams === undefined
       ? null
-      : normalizeEpisodeStreamList(rawStreams);
+      : normalizeStreamList(rawStreams);
   const enabled =
     candidate.enabled === true && (streams === null || streams.length > 0);
   return {
     calibrationStream: normalizeOptionalStream(candidate.calibrationStream),
-    display: normalizeEpisodeImageDisplay(candidate.display),
+    display: normalizeImageDisplay(candidate.display),
     enabled,
-    geometry: normalizeEpisodeImageGeometry(candidate.geometry),
-    pointSize: normalizeEpisodePointSize(
+    geometry: normalizeImageGeometry(candidate.geometry),
+    pointSize: normalizePointSize(
       candidate.pointSize,
-      DEFAULT_EPISODE_PROJECTION_POINT_SIZE,
+      DEFAULT_PROJECTION_POINT_SIZE,
     ),
     streams: enabled ? streams : [],
   };
 }
 
 /** Returns a supported image presentation mode or the recorded pixels. */
-export function normalizeEpisodeImageDisplay(
-  value: unknown,
-): EpisodeImageDisplayMode {
+export function normalizeImageDisplay(value: unknown): ImageDisplayMode {
   return value === "rectified" ? value : "recorded";
 }
 
 /** Returns a supported image-geometry mode or Auto. */
-export function normalizeEpisodeImageGeometry(
-  value: unknown,
-): EpisodeImageGeometryMode {
+export function normalizeImageGeometry(value: unknown): ImageGeometryMode {
   return value === "original" || value === "rectified" ? value : "auto";
 }
 
 /**
  * Normalizes persisted image-stream to label-stream selections.
  */
-export function normalizeEpisodeImageLabelStreamMap(
+export function normalizeImageLabelStreamMap(
   value: unknown,
 ): Record<string, readonly string[]> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -555,7 +525,7 @@ export function normalizeEpisodeImageLabelStreamMap(
   for (const [imageStream, labelStreams] of Object.entries(value)) {
     const normalizedImageStream = imageStream.trim();
     if (!normalizedImageStream) continue;
-    result[normalizedImageStream] = normalizeEpisodeStreamList(labelStreams);
+    result[normalizedImageStream] = normalizeStreamList(labelStreams);
   }
   return result;
 }
@@ -563,7 +533,7 @@ export function normalizeEpisodeImageLabelStreamMap(
 /**
  * Normalizes a list of stream names by trimming, filtering, and deduplicating.
  */
-export function normalizeEpisodeStreamList(value: unknown): readonly string[] {
+export function normalizeStreamList(value: unknown): readonly string[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -587,18 +557,18 @@ function normalizeOptionalStream(value: unknown): string | null {
 /**
  * Normalizes persisted per-stream point-cloud color overrides.
  */
-export function normalizeEpisodePointCloudColorMap(
+export function normalizePointCloudColorMap(
   value: unknown,
-): Record<string, EpisodePointCloudColorSettings> {
+): Record<string, PointCloudColorSettings> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return {};
   }
 
-  const result: Record<string, EpisodePointCloudColorSettings> = {};
+  const result: Record<string, PointCloudColorSettings> = {};
   for (const [stream, settings] of Object.entries(value)) {
     const normalizedStream = stream.trim();
     if (!normalizedStream) continue;
-    result[normalizedStream] = normalizeEpisodePointCloudColor(settings);
+    result[normalizedStream] = normalizePointCloudColor(settings);
   }
   return result;
 }
@@ -606,19 +576,19 @@ export function normalizeEpisodePointCloudColorMap(
 /**
  * Normalizes one point-cloud color settings object.
  */
-export function normalizeEpisodePointCloudColor(
+export function normalizePointCloudColor(
   value: unknown,
-): EpisodePointCloudColorSettings {
+): PointCloudColorSettings {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return DEFAULT_EPISODE_POINT_CLOUD_COLOR;
+    return DEFAULT_POINT_CLOUD_COLOR;
   }
 
-  const candidate = value as Partial<EpisodePointCloudColorSettings>;
+  const candidate = value as Partial<PointCloudColorSettings>;
   return {
     colorBy:
       typeof candidate.colorBy === "string" && candidate.colorBy.trim()
         ? candidate.colorBy.trim()
-        : DEFAULT_EPISODE_POINT_CLOUD_COLOR.colorBy,
+        : DEFAULT_POINT_CLOUD_COLOR.colorBy,
     colormap: normalizePointCloudColormap(candidate.colormap),
     // Range ends are kept independently: an inverted pair simply does not
     // apply as a fixed range until the user finishes editing it.
@@ -626,7 +596,7 @@ export function normalizeEpisodePointCloudColor(
     rangeMin: finiteOrNull(candidate.rangeMin),
     uniformColor: normalizeHexColor(
       candidate.uniformColor,
-      DEFAULT_EPISODE_POINT_CLOUD_COLOR.uniformColor,
+      DEFAULT_POINT_CLOUD_COLOR.uniformColor,
     ),
   };
 }
@@ -634,8 +604,8 @@ export function normalizeEpisodePointCloudColor(
 /**
  * Clamps a point-cloud point size to the supported settings range.
  */
-export function normalizeEpisodePointCloudPointSize(value: unknown): number {
-  return normalizeEpisodePointSize(value);
+export function normalizePointCloudPointSize(value: unknown): number {
+  return normalizePointSize(value);
 }
 
 function finiteOrNull(value: unknown): number | null {
@@ -651,30 +621,28 @@ function normalizeHexColor(value: unknown, fallback: string): string {
 /**
  * Normalizes the 3D reference grid settings object.
  */
-export function normalizeEpisodeReferenceGrid(
-  value: unknown,
-): EpisodeReferenceGridSettings {
+export function normalizeReferenceGrid(value: unknown): ReferenceGridSettings {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return DEFAULT_EPISODE_REFERENCE_GRID;
+    return DEFAULT_REFERENCE_GRID;
   }
 
-  const candidate = value as Partial<EpisodeReferenceGridSettings>;
+  const candidate = value as Partial<ReferenceGridSettings>;
   return {
     enabled:
       typeof candidate.enabled === "boolean"
         ? candidate.enabled
-        : DEFAULT_EPISODE_REFERENCE_GRID.enabled,
+        : DEFAULT_REFERENCE_GRID.enabled,
     opacityPercent: clampNumber(
       candidate.opacityPercent,
       0,
       100,
-      DEFAULT_EPISODE_REFERENCE_GRID.opacityPercent,
+      DEFAULT_REFERENCE_GRID.opacityPercent,
     ),
     spacingM: clampNumber(
       candidate.spacingM,
       MIN_GRID_SPACING_M,
       MAX_GRID_SPACING_M,
-      DEFAULT_EPISODE_REFERENCE_GRID.spacingM,
+      DEFAULT_REFERENCE_GRID.spacingM,
     ),
   };
 }
@@ -682,26 +650,24 @@ export function normalizeEpisodeReferenceGrid(
 /**
  * Normalizes camera frustum display settings.
  */
-export function normalizeEpisodePinholeCamera(
-  value: unknown,
-): EpisodePinholeCameraSettings {
+export function normalizePinholeCamera(value: unknown): PinholeCameraSettings {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return DEFAULT_EPISODE_PINHOLE_CAMERA;
+    return DEFAULT_PINHOLE_CAMERA;
   }
 
-  const candidate = value as Partial<EpisodePinholeCameraSettings>;
+  const candidate = value as Partial<PinholeCameraSettings>;
   return {
     imagePlaneDepthM: clampNumber(
       candidate.imagePlaneDepthM,
       MIN_PINHOLE_DEPTH_M,
       MAX_PINHOLE_DEPTH_M,
-      DEFAULT_EPISODE_PINHOLE_CAMERA.imagePlaneDepthM,
+      DEFAULT_PINHOLE_CAMERA.imagePlaneDepthM,
     ),
     opacityPercent: clampNumber(
       candidate.opacityPercent,
       0,
       100,
-      DEFAULT_EPISODE_PINHOLE_CAMERA.opacityPercent,
+      DEFAULT_PINHOLE_CAMERA.opacityPercent,
     ),
   };
 }
@@ -709,25 +675,23 @@ export function normalizeEpisodePinholeCamera(
 /**
  * Normalizes the 3D scene background settings object.
  */
-export function normalizeEpisodeSceneBackground(
+export function normalizeSceneBackground(
   value: unknown,
-): EpisodeSceneBackgroundSettings {
+): SceneBackgroundSettings {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return DEFAULT_EPISODE_SCENE_BACKGROUND;
+    return DEFAULT_SCENE_BACKGROUND;
   }
 
-  const candidate = value as Partial<EpisodeSceneBackgroundSettings>;
+  const candidate = value as Partial<SceneBackgroundSettings>;
   return {
-    mode: SCENE_BACKGROUND_MODES.includes(
-      candidate.mode as EpisodeSceneBackgroundMode,
-    )
-      ? (candidate.mode as EpisodeSceneBackgroundMode)
-      : DEFAULT_EPISODE_SCENE_BACKGROUND.mode,
+    mode: SCENE_BACKGROUND_MODES.includes(candidate.mode as SceneBackgroundMode)
+      ? (candidate.mode as SceneBackgroundMode)
+      : DEFAULT_SCENE_BACKGROUND.mode,
     solidColor:
       typeof candidate.solidColor === "string" &&
       HEX_COLOR_PATTERN.test(candidate.solidColor)
         ? candidate.solidColor.toLowerCase()
-        : DEFAULT_EPISODE_SCENE_BACKGROUND.solidColor,
+        : DEFAULT_SCENE_BACKGROUND.solidColor,
   };
 }
 
@@ -747,30 +711,30 @@ function clampNumber(
 /**
  * Normalizes playback timing policy settings.
  */
-export function normalizeEpisodeTemporalPolicy(
+export function normalizeTemporalPolicy(
   value: unknown,
-): EpisodeTemporalPolicySettings {
+): TemporalPolicySettings {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return DEFAULT_EPISODE_TEMPORAL_POLICY;
+    return DEFAULT_TEMPORAL_POLICY;
   }
 
-  const candidate = value as Partial<EpisodeTemporalPolicySettings>;
+  const candidate = value as Partial<TemporalPolicySettings>;
   return {
     boundaryClampMs: normalizePolicyMs(
       candidate.boundaryClampMs,
-      DEFAULT_EPISODE_TEMPORAL_POLICY.boundaryClampMs,
+      DEFAULT_TEMPORAL_POLICY.boundaryClampMs,
     ),
     maxInterpolationGapMs: normalizePolicyMs(
       candidate.maxInterpolationGapMs,
-      DEFAULT_EPISODE_TEMPORAL_POLICY.maxInterpolationGapMs,
+      DEFAULT_TEMPORAL_POLICY.maxInterpolationGapMs,
     ),
     staleMediaWarningMs: normalizePolicyMs(
       candidate.staleMediaWarningMs,
-      DEFAULT_EPISODE_TEMPORAL_POLICY.staleMediaWarningMs,
+      DEFAULT_TEMPORAL_POLICY.staleMediaWarningMs,
     ),
     transformGapWarningMs: normalizePolicyMs(
       candidate.transformGapWarningMs,
-      DEFAULT_EPISODE_TEMPORAL_POLICY.transformGapWarningMs,
+      DEFAULT_TEMPORAL_POLICY.transformGapWarningMs,
     ),
   };
 }

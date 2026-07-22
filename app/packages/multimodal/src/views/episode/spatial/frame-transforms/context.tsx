@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
 import { EMPTY_EPISODE_FRAME_GRAPH_SUMMARY } from "../../../../runtime/frame-transforms";
-import type { EpisodeFrameTransformsState } from "./use-episode-frame-transforms";
+import type { FrameTransformsState } from "./use-frame-transforms";
 
-const missingResolve: EpisodeFrameTransformsState["resolve"] = (
+const missingResolve: FrameTransformsState["resolve"] = (
   sourceFrameId,
   targetFrameId,
 ) => ({
@@ -11,7 +11,7 @@ const missingResolve: EpisodeFrameTransformsState["resolve"] = (
   targetFrameId,
 });
 
-const IDLE_FRAME_TRANSFORMS: EpisodeFrameTransformsState = {
+const IDLE_FRAME_TRANSFORMS: FrameTransformsState = {
   error: null,
   frameIds: [],
   getPlacementReadiness: () => ({ frameIds: [], status: "ready" }),
@@ -22,48 +22,49 @@ const IDLE_FRAME_TRANSFORMS: EpisodeFrameTransformsState = {
   summarizeGraph: () => EMPTY_EPISODE_FRAME_GRAPH_SUMMARY,
 };
 
-interface EpisodeFrameTransformsContextValue {
-  readonly frameTransforms: EpisodeFrameTransformsState;
-  readonly setFrameTransforms: (state: EpisodeFrameTransformsState) => void;
+interface FrameTransformsContextValue {
+  readonly frameTransforms: FrameTransformsState;
+  readonly setFrameTransforms: (state: FrameTransformsState) => void;
 }
 
-const EpisodeFrameTransformsContext =
-  createContext<EpisodeFrameTransformsContextValue | null>(null);
+const FrameTransformsContext =
+  createContext<FrameTransformsContextValue | null>(null);
 
 /**
  * Shares the active episode transform resolver with tile bodies. The provider
  * lives outside the playback shell; a bridge inside the shell updates it once
  * the current playhead time and source-specific resource client are available.
  */
-export const EpisodeFrameTransformsProvider: React.FC<{
+export const FrameTransformsProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
-  const [frameTransforms, setFrameTransforms] =
-    useState<EpisodeFrameTransformsState>(IDLE_FRAME_TRANSFORMS);
+  const [frameTransforms, setFrameTransforms] = useState<FrameTransformsState>(
+    IDLE_FRAME_TRANSFORMS,
+  );
   const value = useMemo(
     () => ({ frameTransforms, setFrameTransforms }),
     [frameTransforms],
   );
 
   return (
-    <EpisodeFrameTransformsContext.Provider value={value}>
+    <FrameTransformsContext.Provider value={value}>
       {children}
-    </EpisodeFrameTransformsContext.Provider>
+    </FrameTransformsContext.Provider>
   );
 };
 
 /**
  * Reads the current episode frame transform resolver state.
  */
-export function useEpisodeFrameTransformsContext(): EpisodeFrameTransformsState {
+export function useFrameTransformsContext(): FrameTransformsState {
   return useContextValue().frameTransforms;
 }
 
 /**
  * Updates the shared episode frame transform resolver state.
  */
-export function useSetEpisodeFrameTransformsContext(): (
-  state: EpisodeFrameTransformsState,
+export function useSetFrameTransformsContext(): (
+  state: FrameTransformsState,
 ) => void {
   return useContextValue().setFrameTransforms;
 }
@@ -71,15 +72,15 @@ export function useSetEpisodeFrameTransformsContext(): (
 /**
  * Shared idle state used by bridge cleanup.
  */
-export function idleEpisodeFrameTransformsState(): EpisodeFrameTransformsState {
+export function idleFrameTransformsState(): FrameTransformsState {
   return IDLE_FRAME_TRANSFORMS;
 }
 
-function useContextValue(): EpisodeFrameTransformsContextValue {
-  const value = useContext(EpisodeFrameTransformsContext);
+function useContextValue(): FrameTransformsContextValue {
+  const value = useContext(FrameTransformsContext);
   if (!value) {
     throw new Error(
-      "episode frame transforms must be used inside <EpisodeFrameTransformsProvider>",
+      "episode frame transforms must be used inside <FrameTransformsProvider>",
     );
   }
 

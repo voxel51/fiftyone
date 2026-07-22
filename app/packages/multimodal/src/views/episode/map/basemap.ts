@@ -1,37 +1,30 @@
 import type { SourceSpecification, StyleSpecification } from "maplibre-gl";
 import {
-  EPISODE_MAP_BASE_LAYER,
+  MAP_BASE_LAYER,
   OPENFREEMAP_LIBERTY_STYLE_URL,
   OPENFREEMAP_PROVIDER_NAME,
-  type EpisodeMapBaseLayer,
+  type MapBaseLayer,
 } from "./rendering/types";
 
 /** Layer used behind trajectories until a remote basemap is installed. */
-export const EPISODE_MAP_LOCAL_BACKGROUND_LAYER_ID =
-  "episode-location-background";
+export const MAP_LOCAL_BACKGROUND_LAYER_ID = "episode-location-background";
 
-const EPISODE_MAP_STYLE_ID_PREFIX = "episode-location-";
+const MAP_STYLE_ID_PREFIX = "episode-location-";
 
 /** Loading state for the selected map-tile basemap. */
-export type EpisodeMapBasemapStatus =
-  | "disabled"
-  | "error"
-  | "loading"
-  | "ready";
+export type MapBasemapStatus = "disabled" | "error" | "loading" | "ready";
 
 let openFreeMapStylePromise: Promise<StyleSpecification> | null = null;
 
 /** Returns the initial provider state for a selected basemap. */
-export function initialEpisodeMapBasemapStatus(
-  baseLayer: EpisodeMapBaseLayer,
-): EpisodeMapBasemapStatus {
-  return baseLayer === EPISODE_MAP_BASE_LAYER.NONE ? "disabled" : "loading";
+export function initialMapBasemapStatus(
+  baseLayer: MapBaseLayer,
+): MapBasemapStatus {
+  return baseLayer === MAP_BASE_LAYER.NONE ? "disabled" : "loading";
 }
 
 /** Returns provider-labelled user-facing status text when action is pending. */
-export function episodeMapBasemapStatusText(
-  status: EpisodeMapBasemapStatus,
-): string | null {
+export function mapBasemapStatusText(status: MapBasemapStatus): string | null {
   if (status === "loading") {
     return `Loading basemap from ${OPENFREEMAP_PROVIDER_NAME}`;
   }
@@ -45,13 +38,13 @@ export function episodeMapBasemapStatusText(
  * Keeps the dependency-free route preview visible until the interactive map
  * is framed and its selected provider has loaded enough tiles to take over.
  */
-export function shouldShowEpisodeMapStaticPreview({
+export function shouldShowMapStaticPreview({
   basemapStatus,
   cameraReady,
   failed,
   mapLoaded,
 }: {
-  readonly basemapStatus: EpisodeMapBasemapStatus;
+  readonly basemapStatus: MapBasemapStatus;
   readonly cameraReady: boolean;
   readonly failed: boolean;
   readonly mapLoaded: boolean;
@@ -64,7 +57,7 @@ export function shouldShowEpisodeMapStaticPreview({
  * The local background is deliberately excluded so it cannot cover the
  * remote basemap after the swap.
  */
-export function mergeEpisodeMapOverlaysIntoStyle(
+export function mergeMapOverlaysIntoStyle(
   previousStyle: StyleSpecification | undefined,
   nextStyle: StyleSpecification,
 ): StyleSpecification {
@@ -72,28 +65,26 @@ export function mergeEpisodeMapOverlaysIntoStyle(
 
   const overlaySources: Record<string, SourceSpecification> = {};
   for (const [id, source] of Object.entries(previousStyle.sources)) {
-    if (isEpisodeMapOverlayStyleId(id)) overlaySources[id] = source;
+    if (isMapOverlayStyleId(id)) overlaySources[id] = source;
   }
   const overlayLayers = previousStyle.layers.filter(({ id }) =>
-    isEpisodeMapOverlayStyleId(id),
+    isMapOverlayStyleId(id),
   );
   return {
     ...nextStyle,
     sources: { ...nextStyle.sources, ...overlaySources },
     layers: [
-      ...nextStyle.layers.filter(({ id }) => !isEpisodeMapOverlayStyleId(id)),
+      ...nextStyle.layers.filter(({ id }) => !isMapOverlayStyleId(id)),
       ...overlayLayers,
     ],
   };
 }
 
 /** Returns only the provider-owned source IDs from a basemap style. */
-export function episodeMapBasemapSourceIds(
+export function mapBasemapSourceIds(
   style: StyleSpecification,
 ): readonly string[] {
-  return Object.keys(style.sources).filter(
-    (id) => !isEpisodeMapOverlayStyleId(id),
-  );
+  return Object.keys(style.sources).filter((id) => !isMapOverlayStyleId(id));
 }
 
 /** Fetches only the style document; MapLibre loads its assets after install. */
@@ -120,10 +111,9 @@ export function loadOpenFreeMapStyle(): Promise<StyleSpecification> {
   return openFreeMapStylePromise;
 }
 
-function isEpisodeMapOverlayStyleId(id: string): boolean {
+function isMapOverlayStyleId(id: string): boolean {
   return (
-    id.startsWith(EPISODE_MAP_STYLE_ID_PREFIX) &&
-    id !== EPISODE_MAP_LOCAL_BACKGROUND_LAYER_ID
+    id.startsWith(MAP_STYLE_ID_PREFIX) && id !== MAP_LOCAL_BACKGROUND_LAYER_ID
   );
 }
 

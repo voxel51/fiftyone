@@ -35,17 +35,17 @@ vi.mock("../../views/session/use-episode-preview-session", () => ({
   }),
 }));
 
-vi.mock("../../views/episode/grid/episode-grid-stream-state", () => ({
-  EPISODE_GRID_STREAM_AUTO: "__auto__",
-  useEpisodeGridSelectedStream: () => ["__auto__", vi.fn()],
-  useRegisterEpisodeGridStreams: () => harness.registerStreams,
+vi.mock("../../views/episode/grid/grid-stream-state", () => ({
+  GRID_STREAM_AUTO: "__auto__",
+  useGridSelectedStream: () => ["__auto__", vi.fn()],
+  useRegisterGridStreams: () => harness.registerStreams,
 }));
 
-vi.mock("../../views/episode/grid/episode-grid-camera-state", () => ({
-  useEpisodeGridCameraPose: () => [null, harness.cameraSetter],
+vi.mock("../../views/episode/grid/grid-camera-state", () => ({
+  useGridCameraPose: () => [null, harness.cameraSetter],
 }));
 
-vi.mock("../../visualization/media-2d/bitmap-image-view", () => ({
+vi.mock("../../visualization/media-2d/BitmapImageView", () => ({
   BitmapCanvasHost: () => <div data-testid="fixture-grid-point-cloud" />,
   BitmapImageFrameView: () => <div data-testid="fixture-grid-image" />,
 }));

@@ -1,7 +1,7 @@
 import type { ResolvedLocationTrackPosition } from "./location-track";
 
 /** Layer filters for one resolved point on a static segmented route. */
-export interface EpisodeMapRouteProgressFilters {
+export interface MapRouteProgressFilters {
   readonly active: readonly unknown[];
   readonly future: readonly unknown[];
   readonly key: string;
@@ -9,9 +9,9 @@ export interface EpisodeMapRouteProgressFilters {
 }
 
 /** Filters static route segments without replacing their GeoJSON geometry. */
-export function episodeMapRouteProgressFilters(
+export function mapRouteProgressFilters(
   resolved: ResolvedLocationTrackPosition,
-): EpisodeMapRouteProgressFilters {
+): MapRouteProgressFilters {
   const segment = ["get", "segmentIndex"] as const;
   const activeSegment = resolved.segmentIndex;
   return {

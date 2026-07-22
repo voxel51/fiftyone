@@ -8,59 +8,59 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  __resetEpisodeModalSettingsForTests,
-  DEFAULT_EPISODE_FIDELITY_MODE,
-  DEFAULT_EPISODE_IMAGE_PROJECTION,
-  DEFAULT_EPISODE_PINHOLE_CAMERA,
-  DEFAULT_EPISODE_POINT_CLOUD_COLOR,
-  DEFAULT_EPISODE_POINT_CLOUD_POINT_SIZE,
-  DEFAULT_EPISODE_REFERENCE_GRID,
-  DEFAULT_EPISODE_SCENE_BACKGROUND,
-  DEFAULT_EPISODE_TEMPORAL_POLICY,
-  MAX_EPISODE_POINT_CLOUD_POINT_SIZE,
-  MAX_EPISODE_SETTINGS_SCOPES,
-  defaultEpisodePointCloudColorForIndex,
-  defaultEpisodePointCloudColorForSource,
-  readEpisodeModalSettings,
-  useEpisodeImageLabelStreams,
-  useEpisodeImageProjection,
-  useEpisodeModalSettingsScopeSync,
-  useEpisodePinholeCameraSettings,
-  useEpisodePlaybackSettings,
-  useEpisodePointCloudStyleSettings,
-  useEpisodeReferenceGridSettings,
-  useEpisodeSceneBackgroundSettings,
-  useEpisodeTemporalPolicySettings,
-  writeEpisodeModalSettings,
+  __resetModalSettingsForTests,
+  DEFAULT_FIDELITY_MODE,
+  DEFAULT_IMAGE_PROJECTION,
+  DEFAULT_PINHOLE_CAMERA,
+  DEFAULT_POINT_CLOUD_COLOR,
+  DEFAULT_POINT_CLOUD_POINT_SIZE,
+  DEFAULT_REFERENCE_GRID,
+  DEFAULT_SCENE_BACKGROUND,
+  DEFAULT_TEMPORAL_POLICY,
+  MAX_POINT_CLOUD_POINT_SIZE,
+  MAX_SETTINGS_SCOPES,
+  defaultPointCloudColorForIndex,
+  defaultPointCloudColorForSource,
+  readModalSettings,
+  useImageLabelStreams,
+  useImageProjection,
+  useModalSettingsScopeSync,
+  usePinholeCameraSettings,
+  usePlaybackSettings,
+  usePointCloudStyleSettings,
+  useReferenceGridSettings,
+  useSceneBackgroundSettings,
+  useTemporalPolicySettings,
+  writeModalSettings,
 } from "./state";
 
 describe("episode-modal-settings", () => {
   beforeEach(() => {
     localStorage.clear();
-    __resetEpisodeModalSettingsForTests();
+    __resetModalSettingsForTests();
   });
 
   afterEach(() => cleanup());
 
   it("returns default settings when nothing is stored", () => {
-    expect(DEFAULT_EPISODE_SCENE_BACKGROUND.mode).toBe("abyss");
-    expect(readEpisodeModalSettings()).toEqual({
-      fidelityMode: DEFAULT_EPISODE_FIDELITY_MODE,
+    expect(DEFAULT_SCENE_BACKGROUND.mode).toBe("abyss");
+    expect(readModalSettings()).toEqual({
+      fidelityMode: DEFAULT_FIDELITY_MODE,
       imageLabelStreams: {},
       imageProjection: {},
-      pinholeCamera: DEFAULT_EPISODE_PINHOLE_CAMERA,
+      pinholeCamera: DEFAULT_PINHOLE_CAMERA,
       pointCloudColors: {},
-      pointCloudPointSize: DEFAULT_EPISODE_POINT_CLOUD_POINT_SIZE,
-      referenceGrid: DEFAULT_EPISODE_REFERENCE_GRID,
-      sceneBackground: DEFAULT_EPISODE_SCENE_BACKGROUND,
+      pointCloudPointSize: DEFAULT_POINT_CLOUD_POINT_SIZE,
+      referenceGrid: DEFAULT_REFERENCE_GRID,
+      sceneBackground: DEFAULT_SCENE_BACKGROUND,
       scoped: {},
       showPointCloudColorLegend: false,
-      temporalPolicy: DEFAULT_EPISODE_TEMPORAL_POLICY,
+      temporalPolicy: DEFAULT_TEMPORAL_POLICY,
     });
   });
 
   it("round-trips fidelity mode and image label streams", () => {
-    writeEpisodeModalSettings({
+    writeModalSettings({
       scoped: {},
       fidelityMode: "as-recorded",
       imageLabelStreams: {
@@ -90,7 +90,7 @@ describe("episode-modal-settings", () => {
       },
     });
 
-    expect(readEpisodeModalSettings()).toEqual({
+    expect(readModalSettings()).toEqual({
       fidelityMode: "as-recorded",
       imageLabelStreams: {
         "/camera/front": ["/labels/front", "/labels/all"],
@@ -122,55 +122,53 @@ describe("episode-modal-settings", () => {
   });
 
   it("rejects unknown fidelity modes", () => {
-    writeEpisodeModalSettings({
+    writeModalSettings({
       scoped: {},
       fidelityMode: "plaid" as never,
       imageLabelStreams: {},
       imageProjection: {},
-      pinholeCamera: DEFAULT_EPISODE_PINHOLE_CAMERA,
+      pinholeCamera: DEFAULT_PINHOLE_CAMERA,
       pointCloudColors: {},
-      pointCloudPointSize: DEFAULT_EPISODE_POINT_CLOUD_POINT_SIZE,
-      referenceGrid: DEFAULT_EPISODE_REFERENCE_GRID,
-      sceneBackground: DEFAULT_EPISODE_SCENE_BACKGROUND,
+      pointCloudPointSize: DEFAULT_POINT_CLOUD_POINT_SIZE,
+      referenceGrid: DEFAULT_REFERENCE_GRID,
+      sceneBackground: DEFAULT_SCENE_BACKGROUND,
       showPointCloudColorLegend: false,
-      temporalPolicy: DEFAULT_EPISODE_TEMPORAL_POLICY,
+      temporalPolicy: DEFAULT_TEMPORAL_POLICY,
     });
 
-    expect(readEpisodeModalSettings().fidelityMode).toBe(
-      DEFAULT_EPISODE_FIDELITY_MODE,
-    );
+    expect(readModalSettings().fidelityMode).toBe(DEFAULT_FIDELITY_MODE);
   });
 
   it("clamps invalid reference-grid values", () => {
-    writeEpisodeModalSettings({
+    writeModalSettings({
       scoped: {},
-      fidelityMode: DEFAULT_EPISODE_FIDELITY_MODE,
+      fidelityMode: DEFAULT_FIDELITY_MODE,
       imageLabelStreams: {},
       imageProjection: {},
-      pinholeCamera: DEFAULT_EPISODE_PINHOLE_CAMERA,
+      pinholeCamera: DEFAULT_PINHOLE_CAMERA,
       pointCloudColors: {},
-      pointCloudPointSize: DEFAULT_EPISODE_POINT_CLOUD_POINT_SIZE,
+      pointCloudPointSize: DEFAULT_POINT_CLOUD_POINT_SIZE,
       referenceGrid: {
         enabled: true,
         opacityPercent: 250,
         spacingM: Number.NaN,
       },
-      sceneBackground: DEFAULT_EPISODE_SCENE_BACKGROUND,
+      sceneBackground: DEFAULT_SCENE_BACKGROUND,
       showPointCloudColorLegend: false,
-      temporalPolicy: DEFAULT_EPISODE_TEMPORAL_POLICY,
+      temporalPolicy: DEFAULT_TEMPORAL_POLICY,
     });
 
-    expect(readEpisodeModalSettings().referenceGrid).toEqual({
+    expect(readModalSettings().referenceGrid).toEqual({
       enabled: true,
       opacityPercent: 100,
-      spacingM: DEFAULT_EPISODE_REFERENCE_GRID.spacingM,
+      spacingM: DEFAULT_REFERENCE_GRID.spacingM,
     });
   });
 
   it("clamps invalid pinhole camera values", () => {
-    writeEpisodeModalSettings({
+    writeModalSettings({
       scoped: {},
-      fidelityMode: DEFAULT_EPISODE_FIDELITY_MODE,
+      fidelityMode: DEFAULT_FIDELITY_MODE,
       imageLabelStreams: {},
       imageProjection: {},
       pinholeCamera: {
@@ -178,49 +176,49 @@ describe("episode-modal-settings", () => {
         opacityPercent: 250,
       },
       pointCloudColors: {},
-      pointCloudPointSize: DEFAULT_EPISODE_POINT_CLOUD_POINT_SIZE,
-      referenceGrid: DEFAULT_EPISODE_REFERENCE_GRID,
-      sceneBackground: DEFAULT_EPISODE_SCENE_BACKGROUND,
+      pointCloudPointSize: DEFAULT_POINT_CLOUD_POINT_SIZE,
+      referenceGrid: DEFAULT_REFERENCE_GRID,
+      sceneBackground: DEFAULT_SCENE_BACKGROUND,
       showPointCloudColorLegend: false,
-      temporalPolicy: DEFAULT_EPISODE_TEMPORAL_POLICY,
+      temporalPolicy: DEFAULT_TEMPORAL_POLICY,
     });
 
-    expect(readEpisodeModalSettings().pinholeCamera).toEqual({
+    expect(readModalSettings().pinholeCamera).toEqual({
       imagePlaneDepthM: 0.05,
       opacityPercent: 100,
     });
   });
 
   it("rejects invalid scene background values", () => {
-    writeEpisodeModalSettings({
+    writeModalSettings({
       scoped: {},
-      fidelityMode: DEFAULT_EPISODE_FIDELITY_MODE,
+      fidelityMode: DEFAULT_FIDELITY_MODE,
       imageLabelStreams: {},
       imageProjection: {},
-      pinholeCamera: DEFAULT_EPISODE_PINHOLE_CAMERA,
+      pinholeCamera: DEFAULT_PINHOLE_CAMERA,
       pointCloudColors: {},
-      pointCloudPointSize: DEFAULT_EPISODE_POINT_CLOUD_POINT_SIZE,
-      referenceGrid: DEFAULT_EPISODE_REFERENCE_GRID,
+      pointCloudPointSize: DEFAULT_POINT_CLOUD_POINT_SIZE,
+      referenceGrid: DEFAULT_REFERENCE_GRID,
       sceneBackground: {
         mode: "plaid" as never,
         solidColor: "not-a-color",
       },
-      temporalPolicy: DEFAULT_EPISODE_TEMPORAL_POLICY,
+      temporalPolicy: DEFAULT_TEMPORAL_POLICY,
       showPointCloudColorLegend: false,
     });
 
-    expect(readEpisodeModalSettings().sceneBackground).toEqual(
-      DEFAULT_EPISODE_SCENE_BACKGROUND,
+    expect(readModalSettings().sceneBackground).toEqual(
+      DEFAULT_SCENE_BACKGROUND,
     );
   });
 
   it("round-trips point cloud color settings", () => {
-    writeEpisodeModalSettings({
+    writeModalSettings({
       scoped: {},
-      fidelityMode: DEFAULT_EPISODE_FIDELITY_MODE,
+      fidelityMode: DEFAULT_FIDELITY_MODE,
       imageLabelStreams: {},
       imageProjection: {},
-      pinholeCamera: DEFAULT_EPISODE_PINHOLE_CAMERA,
+      pinholeCamera: DEFAULT_PINHOLE_CAMERA,
       pointCloudColors: {
         "/lidar/points": {
           colorBy: "intensity",
@@ -237,14 +235,14 @@ describe("episode-modal-settings", () => {
           uniformColor: "#BADA55",
         },
       },
-      pointCloudPointSize: DEFAULT_EPISODE_POINT_CLOUD_POINT_SIZE,
-      referenceGrid: DEFAULT_EPISODE_REFERENCE_GRID,
-      sceneBackground: DEFAULT_EPISODE_SCENE_BACKGROUND,
+      pointCloudPointSize: DEFAULT_POINT_CLOUD_POINT_SIZE,
+      referenceGrid: DEFAULT_REFERENCE_GRID,
+      sceneBackground: DEFAULT_SCENE_BACKGROUND,
       showPointCloudColorLegend: false,
-      temporalPolicy: DEFAULT_EPISODE_TEMPORAL_POLICY,
+      temporalPolicy: DEFAULT_TEMPORAL_POLICY,
     });
 
-    expect(readEpisodeModalSettings().pointCloudColors).toEqual({
+    expect(readModalSettings().pointCloudColors).toEqual({
       "/lidar/points": {
         colorBy: "intensity",
         colormap: "turbo",
@@ -263,12 +261,12 @@ describe("episode-modal-settings", () => {
   });
 
   it("sanitizes invalid point cloud color settings", () => {
-    writeEpisodeModalSettings({
+    writeModalSettings({
       scoped: {},
-      fidelityMode: DEFAULT_EPISODE_FIDELITY_MODE,
+      fidelityMode: DEFAULT_FIDELITY_MODE,
       imageLabelStreams: {},
       imageProjection: {},
-      pinholeCamera: DEFAULT_EPISODE_PINHOLE_CAMERA,
+      pinholeCamera: DEFAULT_PINHOLE_CAMERA,
       pointCloudColors: {
         "  ": {
           colorBy: "intensity",
@@ -285,23 +283,23 @@ describe("episode-modal-settings", () => {
           uniformColor: "nope",
         },
       },
-      pointCloudPointSize: DEFAULT_EPISODE_POINT_CLOUD_POINT_SIZE,
-      referenceGrid: DEFAULT_EPISODE_REFERENCE_GRID,
-      sceneBackground: DEFAULT_EPISODE_SCENE_BACKGROUND,
+      pointCloudPointSize: DEFAULT_POINT_CLOUD_POINT_SIZE,
+      referenceGrid: DEFAULT_REFERENCE_GRID,
+      sceneBackground: DEFAULT_SCENE_BACKGROUND,
       showPointCloudColorLegend: false,
-      temporalPolicy: DEFAULT_EPISODE_TEMPORAL_POLICY,
+      temporalPolicy: DEFAULT_TEMPORAL_POLICY,
     });
 
-    expect(readEpisodeModalSettings().pointCloudColors).toEqual({
-      "/lidar/points": DEFAULT_EPISODE_POINT_CLOUD_COLOR,
+    expect(readModalSettings().pointCloudColors).toEqual({
+      "/lidar/points": DEFAULT_POINT_CLOUD_COLOR,
     });
   });
 
   it("assigns point cloud default colormaps by source index", () => {
-    expect(defaultEpisodePointCloudColorForIndex(0).colormap).toBe("coolwarm");
-    expect(defaultEpisodePointCloudColorForIndex(1).colormap).toBe("grayscale");
-    expect(defaultEpisodePointCloudColorForIndex(9).colormap).toBe("coolwarm");
-    expect(defaultEpisodePointCloudColorForIndex(Number.NaN).colormap).toBe(
+    expect(defaultPointCloudColorForIndex(0).colormap).toBe("coolwarm");
+    expect(defaultPointCloudColorForIndex(1).colormap).toBe("grayscale");
+    expect(defaultPointCloudColorForIndex(9).colormap).toBe("coolwarm");
+    expect(defaultPointCloudColorForIndex(Number.NaN).colormap).toBe(
       "coolwarm",
     );
   });
@@ -314,18 +312,18 @@ describe("episode-modal-settings", () => {
       { id: "/camera/depth_points", label: "depth" },
     ];
 
-    expect(
-      defaultEpisodePointCloudColorForSource(sources[0], sources).colormap,
-    ).toBe("coolwarm");
-    expect(
-      defaultEpisodePointCloudColorForSource(sources[1], sources).colormap,
-    ).toBe("turbo");
-    expect(
-      defaultEpisodePointCloudColorForSource(sources[2], sources).colormap,
-    ).toBe("grayscale");
-    expect(
-      defaultEpisodePointCloudColorForSource(sources[3], sources).colormap,
-    ).toBe("inferno");
+    expect(defaultPointCloudColorForSource(sources[0], sources).colormap).toBe(
+      "coolwarm",
+    );
+    expect(defaultPointCloudColorForSource(sources[1], sources).colormap).toBe(
+      "turbo",
+    );
+    expect(defaultPointCloudColorForSource(sources[2], sources).colormap).toBe(
+      "grayscale",
+    );
+    expect(defaultPointCloudColorForSource(sources[3], sources).colormap).toBe(
+      "inferno",
+    );
   });
 
   it("keeps index defaults when no lidar source is present", () => {
@@ -334,45 +332,45 @@ describe("episode-modal-settings", () => {
       { id: "/depth/points", label: "depth" },
     ];
 
-    expect(
-      defaultEpisodePointCloudColorForSource(sources[0], sources).colormap,
-    ).toBe("coolwarm");
-    expect(
-      defaultEpisodePointCloudColorForSource(sources[1], sources).colormap,
-    ).toBe("grayscale");
+    expect(defaultPointCloudColorForSource(sources[0], sources).colormap).toBe(
+      "coolwarm",
+    );
+    expect(defaultPointCloudColorForSource(sources[1], sources).colormap).toBe(
+      "grayscale",
+    );
   });
 
   it("preserves explicit empty label selections", () => {
-    writeEpisodeModalSettings({
+    writeModalSettings({
       scoped: {},
-      fidelityMode: DEFAULT_EPISODE_FIDELITY_MODE,
+      fidelityMode: DEFAULT_FIDELITY_MODE,
       imageLabelStreams: {
         "/camera/front": [],
       },
       imageProjection: {},
-      pinholeCamera: DEFAULT_EPISODE_PINHOLE_CAMERA,
+      pinholeCamera: DEFAULT_PINHOLE_CAMERA,
       pointCloudColors: {},
-      pointCloudPointSize: DEFAULT_EPISODE_POINT_CLOUD_POINT_SIZE,
-      referenceGrid: DEFAULT_EPISODE_REFERENCE_GRID,
-      sceneBackground: DEFAULT_EPISODE_SCENE_BACKGROUND,
+      pointCloudPointSize: DEFAULT_POINT_CLOUD_POINT_SIZE,
+      referenceGrid: DEFAULT_REFERENCE_GRID,
+      sceneBackground: DEFAULT_SCENE_BACKGROUND,
       showPointCloudColorLegend: false,
-      temporalPolicy: DEFAULT_EPISODE_TEMPORAL_POLICY,
+      temporalPolicy: DEFAULT_TEMPORAL_POLICY,
     });
 
-    const read = readEpisodeModalSettings();
+    const read = readModalSettings();
     expect(Object.hasOwn(read.imageLabelStreams, "/camera/front")).toBe(true);
     expect(read.imageLabelStreams["/camera/front"]).toEqual([]);
   });
 
   it("updates settings through domain hooks", () => {
     const { result } = renderHook(() => ({
-      imageLabels: useEpisodeImageLabelStreams("/camera/front"),
-      pinhole: useEpisodePinholeCameraSettings(),
-      playback: useEpisodePlaybackSettings(),
-      pointCloud: useEpisodePointCloudStyleSettings(),
-      referenceGrid: useEpisodeReferenceGridSettings(),
-      sceneBackground: useEpisodeSceneBackgroundSettings(),
-      temporalPolicy: useEpisodeTemporalPolicySettings(),
+      imageLabels: useImageLabelStreams("/camera/front"),
+      pinhole: usePinholeCameraSettings(),
+      playback: usePlaybackSettings(),
+      pointCloud: usePointCloudStyleSettings(),
+      referenceGrid: useReferenceGridSettings(),
+      sceneBackground: useSceneBackgroundSettings(),
+      temporalPolicy: useTemporalPolicySettings(),
     }));
 
     act(() => {
@@ -404,12 +402,12 @@ describe("episode-modal-settings", () => {
     });
     expect(result.current.referenceGrid.referenceGrid).toEqual({
       enabled: false,
-      opacityPercent: DEFAULT_EPISODE_REFERENCE_GRID.opacityPercent,
+      opacityPercent: DEFAULT_REFERENCE_GRID.opacityPercent,
       spacingM: 10,
     });
     expect(result.current.sceneBackground.sceneBackground).toEqual({
       mode: "studio",
-      solidColor: DEFAULT_EPISODE_SCENE_BACKGROUND.solidColor,
+      solidColor: DEFAULT_SCENE_BACKGROUND.solidColor,
     });
     expect(result.current.imageLabels.labelStreams).toEqual(["/labels"]);
     expect(result.current.imageLabels.hasExplicitLabelStreams).toBe(true);
@@ -421,18 +419,18 @@ describe("episode-modal-settings", () => {
       staleMediaWarningMs: 500,
       transformGapWarningMs: 1500,
     });
-    expect(readEpisodeModalSettings()).toMatchObject({
+    expect(readModalSettings()).toMatchObject({
       fidelityMode: "as-recorded",
       imageLabelStreams: { "/camera/front": ["/labels"] },
       pinholeCamera: { imagePlaneDepthM: 6, opacityPercent: 35 },
       referenceGrid: {
         enabled: false,
-        opacityPercent: DEFAULT_EPISODE_REFERENCE_GRID.opacityPercent,
+        opacityPercent: DEFAULT_REFERENCE_GRID.opacityPercent,
         spacingM: 10,
       },
       sceneBackground: {
         mode: "studio",
-        solidColor: DEFAULT_EPISODE_SCENE_BACKGROUND.solidColor,
+        solidColor: DEFAULT_SCENE_BACKGROUND.solidColor,
       },
       pointCloudPointSize: 4.5,
       showPointCloudColorLegend: true,
@@ -449,12 +447,12 @@ describe("episode-modal-settings", () => {
     });
 
     expect(result.current.temporalPolicy.temporalPolicy).toEqual(
-      DEFAULT_EPISODE_TEMPORAL_POLICY,
+      DEFAULT_TEMPORAL_POLICY,
     );
   });
 
   it("updates point cloud colors per stream through the style hook", () => {
-    const { result } = renderHook(() => useEpisodePointCloudStyleSettings());
+    const { result } = renderHook(() => usePointCloudStyleSettings());
 
     act(() => {
       result.current.setPointCloudColor("/lidar/points", {
@@ -469,7 +467,7 @@ describe("episode-modal-settings", () => {
       colormap: "turbo",
       rangeMax: null,
       rangeMin: null,
-      uniformColor: DEFAULT_EPISODE_POINT_CLOUD_COLOR.uniformColor,
+      uniformColor: DEFAULT_POINT_CLOUD_COLOR.uniformColor,
     });
 
     act(() => {
@@ -491,11 +489,11 @@ describe("episode-modal-settings", () => {
       uniformColor: "#00ff88",
     });
     expect(result.current.pointCloudColors["/radar/points"]).toEqual({
-      ...DEFAULT_EPISODE_POINT_CLOUD_COLOR,
+      ...DEFAULT_POINT_CLOUD_COLOR,
       colorBy: "vx_comp",
     });
     expect(Object.keys(result.current.pointCloudColors)).toHaveLength(2);
-    expect(readEpisodeModalSettings().pointCloudColors).toEqual(
+    expect(readModalSettings().pointCloudColors).toEqual(
       result.current.pointCloudColors,
     );
   });
@@ -506,13 +504,13 @@ describe("episode-modal-settings", () => {
 
     const PlaybackConsumer = () => {
       playbackRenders += 1;
-      const { fidelityMode } = useEpisodePlaybackSettings();
+      const { fidelityMode } = usePlaybackSettings();
       return <span data-testid="fidelity-mode">{fidelityMode}</span>;
     };
 
     const SceneBackgroundControl = () => {
       sceneBackgroundRenders += 1;
-      const { setSceneBackground } = useEpisodeSceneBackgroundSettings();
+      const { setSceneBackground } = useSceneBackgroundSettings();
       return (
         <button
           onClick={() => setSceneBackground({ mode: "studio" })}
@@ -538,40 +536,40 @@ describe("episode-modal-settings", () => {
 
     expect(playbackRenders).toBe(playbackRendersBeforeUpdate);
     expect(sceneBackgroundRenders).toBe(sceneBackgroundRendersBeforeUpdate + 1);
-    expect(readEpisodeModalSettings().sceneBackground.mode).toBe("studio");
+    expect(readModalSettings().sceneBackground.mode).toBe("studio");
   });
 
   it("clamps persisted point size to the supported range", () => {
-    writeEpisodeModalSettings({
+    writeModalSettings({
       scoped: {},
-      fidelityMode: DEFAULT_EPISODE_FIDELITY_MODE,
+      fidelityMode: DEFAULT_FIDELITY_MODE,
       imageLabelStreams: {},
       imageProjection: {},
-      pinholeCamera: DEFAULT_EPISODE_PINHOLE_CAMERA,
+      pinholeCamera: DEFAULT_PINHOLE_CAMERA,
       pointCloudColors: {},
       pointCloudPointSize: 42,
-      referenceGrid: DEFAULT_EPISODE_REFERENCE_GRID,
-      sceneBackground: DEFAULT_EPISODE_SCENE_BACKGROUND,
+      referenceGrid: DEFAULT_REFERENCE_GRID,
+      sceneBackground: DEFAULT_SCENE_BACKGROUND,
       showPointCloudColorLegend: false,
-      temporalPolicy: DEFAULT_EPISODE_TEMPORAL_POLICY,
+      temporalPolicy: DEFAULT_TEMPORAL_POLICY,
     });
 
-    expect(readEpisodeModalSettings().pointCloudPointSize).toBe(
-      MAX_EPISODE_POINT_CLOUD_POINT_SIZE,
+    expect(readModalSettings().pointCloudPointSize).toBe(
+      MAX_POINT_CLOUD_POINT_SIZE,
     );
   });
 
   it("clamps invalid temporal policy values", () => {
-    writeEpisodeModalSettings({
+    writeModalSettings({
       scoped: {},
-      fidelityMode: DEFAULT_EPISODE_FIDELITY_MODE,
+      fidelityMode: DEFAULT_FIDELITY_MODE,
       imageLabelStreams: {},
       imageProjection: {},
-      pinholeCamera: DEFAULT_EPISODE_PINHOLE_CAMERA,
+      pinholeCamera: DEFAULT_PINHOLE_CAMERA,
       pointCloudColors: {},
       pointCloudPointSize: Number.POSITIVE_INFINITY,
-      referenceGrid: DEFAULT_EPISODE_REFERENCE_GRID,
-      sceneBackground: DEFAULT_EPISODE_SCENE_BACKGROUND,
+      referenceGrid: DEFAULT_REFERENCE_GRID,
+      sceneBackground: DEFAULT_SCENE_BACKGROUND,
       showPointCloudColorLegend: false,
       temporalPolicy: {
         boundaryClampMs: -10,
@@ -581,23 +579,21 @@ describe("episode-modal-settings", () => {
       },
     });
 
-    expect(readEpisodeModalSettings()).toMatchObject({
-      pointCloudPointSize: DEFAULT_EPISODE_POINT_CLOUD_POINT_SIZE,
+    expect(readModalSettings()).toMatchObject({
+      pointCloudPointSize: DEFAULT_POINT_CLOUD_POINT_SIZE,
       temporalPolicy: {
         boundaryClampMs: 0,
         maxInterpolationGapMs: 60_000,
-        staleMediaWarningMs:
-          DEFAULT_EPISODE_TEMPORAL_POLICY.staleMediaWarningMs,
-        transformGapWarningMs:
-          DEFAULT_EPISODE_TEMPORAL_POLICY.transformGapWarningMs,
+        staleMediaWarningMs: DEFAULT_TEMPORAL_POLICY.staleMediaWarningMs,
+        transformGapWarningMs: DEFAULT_TEMPORAL_POLICY.transformGapWarningMs,
       },
     });
   });
 
   it("sanitizes invalid lidar projection settings", () => {
-    writeEpisodeModalSettings({
+    writeModalSettings({
       scoped: {},
-      fidelityMode: DEFAULT_EPISODE_FIDELITY_MODE,
+      fidelityMode: DEFAULT_FIDELITY_MODE,
       imageLabelStreams: {},
       imageProjection: {
         "  ": {
@@ -618,34 +614,32 @@ describe("episode-modal-settings", () => {
           streams: ["/lidar", "", "/lidar", 42 as never],
         },
       },
-      pinholeCamera: DEFAULT_EPISODE_PINHOLE_CAMERA,
+      pinholeCamera: DEFAULT_PINHOLE_CAMERA,
       pointCloudColors: {},
-      pointCloudPointSize: DEFAULT_EPISODE_POINT_CLOUD_POINT_SIZE,
-      referenceGrid: DEFAULT_EPISODE_REFERENCE_GRID,
-      sceneBackground: DEFAULT_EPISODE_SCENE_BACKGROUND,
+      pointCloudPointSize: DEFAULT_POINT_CLOUD_POINT_SIZE,
+      referenceGrid: DEFAULT_REFERENCE_GRID,
+      sceneBackground: DEFAULT_SCENE_BACKGROUND,
       showPointCloudColorLegend: false,
-      temporalPolicy: DEFAULT_EPISODE_TEMPORAL_POLICY,
+      temporalPolicy: DEFAULT_TEMPORAL_POLICY,
     });
 
-    expect(readEpisodeModalSettings().imageProjection).toEqual({
-      "/camera/array": DEFAULT_EPISODE_IMAGE_PROJECTION,
+    expect(readModalSettings().imageProjection).toEqual({
+      "/camera/array": DEFAULT_IMAGE_PROJECTION,
       "/camera/front": {
         calibrationStream: null,
         display: "recorded",
         enabled: false,
         geometry: "auto",
-        pointSize: MAX_EPISODE_POINT_CLOUD_POINT_SIZE,
+        pointSize: MAX_POINT_CLOUD_POINT_SIZE,
         streams: [],
       },
     });
   });
 
   it("updates lidar projection per image stream through the hook", () => {
-    const { result } = renderHook(() =>
-      useEpisodeImageProjection("/camera/front"),
-    );
+    const { result } = renderHook(() => useImageProjection("/camera/front"));
 
-    expect(result.current.projection).toEqual(DEFAULT_EPISODE_IMAGE_PROJECTION);
+    expect(result.current.projection).toEqual(DEFAULT_IMAGE_PROJECTION);
 
     act(() => {
       result.current.setProjection({ enabled: true, pointSize: 8 });
@@ -663,7 +657,7 @@ describe("episode-modal-settings", () => {
       result.current.setProjection({ streams: ["/lidar/points"] });
     });
     expect(result.current.projection.streams).toEqual(["/lidar/points"]);
-    expect(readEpisodeModalSettings().imageProjection).toEqual({
+    expect(readModalSettings().imageProjection).toEqual({
       "/camera/front": {
         calibrationStream: null,
         display: "recorded",
@@ -688,9 +682,7 @@ describe("episode-modal-settings", () => {
   });
 
   it("persists image geometry and calibration overrides per image stream", () => {
-    const { result } = renderHook(() =>
-      useEpisodeImageProjection("/camera/front"),
-    );
+    const { result } = renderHook(() => useImageProjection("/camera/front"));
 
     act(() => {
       result.current.setProjection({
@@ -701,18 +693,18 @@ describe("episode-modal-settings", () => {
     });
 
     expect(result.current.projection).toEqual({
-      ...DEFAULT_EPISODE_IMAGE_PROJECTION,
+      ...DEFAULT_IMAGE_PROJECTION,
       calibrationStream: "/camera/front/calibration",
       display: "rectified",
       geometry: "rectified",
     });
-    expect(readEpisodeModalSettings().imageProjection["/camera/front"]).toEqual(
+    expect(readModalSettings().imageProjection["/camera/front"]).toEqual(
       result.current.projection,
     );
   });
 
   it("isolates scoped stream styling from unscoped settings", () => {
-    const globalHook = renderHook(() => useEpisodePointCloudStyleSettings());
+    const globalHook = renderHook(() => usePointCloudStyleSettings());
     act(() => {
       globalHook.result.current.setPointCloudColor("/lidar_top", {
         colorBy: "height",
@@ -721,8 +713,8 @@ describe("episode-modal-settings", () => {
     globalHook.unmount();
 
     const { result, unmount } = renderHook(() => {
-      useEpisodeModalSettingsScopeSync("dataset-a");
-      return useEpisodePointCloudStyleSettings();
+      useModalSettingsScopeSync("dataset-a");
+      return usePointCloudStyleSettings();
     });
 
     expect(result.current.pointCloudColors["/lidar_top"]).toBeUndefined();
@@ -731,15 +723,15 @@ describe("episode-modal-settings", () => {
       result.current.setPointCloudColor("/lidar_top", { rangeMax: 9 });
     });
     expect(result.current.pointCloudColors["/lidar_top"]).toMatchObject({
-      colorBy: DEFAULT_EPISODE_POINT_CLOUD_COLOR.colorBy,
+      colorBy: DEFAULT_POINT_CLOUD_COLOR.colorBy,
       rangeMax: 9,
     });
 
-    const persisted = readEpisodeModalSettings();
+    const persisted = readModalSettings();
     expect(
       persisted.scoped["dataset-a"]?.pointCloudColors["/lidar_top"],
     ).toMatchObject({
-      colorBy: DEFAULT_EPISODE_POINT_CLOUD_COLOR.colorBy,
+      colorBy: DEFAULT_POINT_CLOUD_COLOR.colorBy,
       rangeMax: 9,
     });
     expect(persisted.pointCloudColors["/lidar_top"]).toMatchObject({
@@ -749,7 +741,7 @@ describe("episode-modal-settings", () => {
 
     // Leaving the dataset restores the unscoped (global) view.
     unmount();
-    const after = renderHook(() => useEpisodePointCloudStyleSettings());
+    const after = renderHook(() => usePointCloudStyleSettings());
     expect(after.result.current.pointCloudColors["/lidar_top"]).toMatchObject({
       colorBy: "height",
       rangeMax: null,
@@ -758,8 +750,8 @@ describe("episode-modal-settings", () => {
 
   it("keeps datasets from styling each other's streams", () => {
     const datasetA = renderHook(() => {
-      useEpisodeModalSettingsScopeSync("dataset-a");
-      return useEpisodeImageLabelStreams("/camera/front");
+      useModalSettingsScopeSync("dataset-a");
+      return useImageLabelStreams("/camera/front");
     });
     act(() => {
       datasetA.result.current.setLabelStreams(["/labels/a"]);
@@ -768,18 +760,18 @@ describe("episode-modal-settings", () => {
     datasetA.unmount();
 
     const datasetB = renderHook(() => {
-      useEpisodeModalSettingsScopeSync("dataset-b");
-      return useEpisodeImageLabelStreams("/camera/front");
+      useModalSettingsScopeSync("dataset-b");
+      return useImageLabelStreams("/camera/front");
     });
     expect(datasetB.result.current.labelStreams).toEqual([]);
     expect(datasetB.result.current.hasExplicitLabelStreams).toBe(false);
   });
 
   it("prunes the least recently written scopes past the retention cap", () => {
-    for (let index = 0; index < MAX_EPISODE_SETTINGS_SCOPES + 1; index++) {
+    for (let index = 0; index < MAX_SETTINGS_SCOPES + 1; index++) {
       const scope = renderHook(() => {
-        useEpisodeModalSettingsScopeSync(`dataset-${index}`);
-        return useEpisodePointCloudStyleSettings();
+        useModalSettingsScopeSync(`dataset-${index}`);
+        return usePointCloudStyleSettings();
       });
       act(() => {
         scope.result.current.setPointCloudColor("/lidar_top", {
@@ -789,9 +781,9 @@ describe("episode-modal-settings", () => {
       scope.unmount();
     }
 
-    const scopes = Object.keys(readEpisodeModalSettings().scoped);
-    expect(scopes).toHaveLength(MAX_EPISODE_SETTINGS_SCOPES);
+    const scopes = Object.keys(readModalSettings().scoped);
+    expect(scopes).toHaveLength(MAX_SETTINGS_SCOPES);
     expect(scopes).not.toContain("dataset-0");
-    expect(scopes).toContain(`dataset-${MAX_EPISODE_SETTINGS_SCOPES}`);
+    expect(scopes).toContain(`dataset-${MAX_SETTINGS_SCOPES}`);
   });
 });

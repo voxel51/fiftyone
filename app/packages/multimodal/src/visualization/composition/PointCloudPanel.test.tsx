@@ -27,8 +27,8 @@ vi.mock("@react-three/fiber", () => ({
   ) => selector({ invalidate: vi.fn(), viewport: { dpr: 1 } }),
 }));
 
-vi.mock("../scene-3d/base-3d-scene", () => ({
-  Base3DScene: ({
+vi.mock("../scene-3d/Base3dScene", () => ({
+  Base3dScene: ({
     cameraPose,
     children,
     onCameraPoseChange,

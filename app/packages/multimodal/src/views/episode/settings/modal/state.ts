@@ -9,73 +9,71 @@ import {
 import { useCallback, useEffect, useMemo } from "react";
 
 import {
-  DEFAULT_EPISODE_IMAGE_PROJECTION,
-  DEFAULT_EPISODE_POINT_CLOUD_COLOR,
-  DEFAULT_EPISODE_TEMPORAL_POLICY,
-  EMPTY_EPISODE_SCOPED_SETTINGS,
-  normalizeEpisodeFidelityMode,
-  normalizeEpisodeImageProjection,
-  normalizeEpisodePinholeCamera,
-  normalizeEpisodePointCloudColor,
-  normalizeEpisodePointCloudPointSize,
-  normalizeEpisodeReferenceGrid,
-  normalizeEpisodeSceneBackground,
-  normalizeEpisodeTemporalPolicy,
-  normalizeEpisodeStreamList,
-  readEpisodeModalSettings,
-  writeEpisodeModalSettings,
-  type EpisodeImageProjectionSettings,
-  type EpisodePersistedModalSettings,
-  type EpisodePinholeCameraSettings,
-  type EpisodePlaybackFidelityMode,
-  type EpisodePointCloudColorSettings,
-  type EpisodeReferenceGridSettings,
-  type EpisodeSceneBackgroundSettings,
-  type EpisodeTemporalPolicySettings,
+  DEFAULT_IMAGE_PROJECTION,
+  DEFAULT_POINT_CLOUD_COLOR,
+  DEFAULT_TEMPORAL_POLICY,
+  EMPTY_SCOPED_SETTINGS,
+  normalizeFidelityMode,
+  normalizeImageProjection,
+  normalizePinholeCamera,
+  normalizePointCloudColor,
+  normalizePointCloudPointSize,
+  normalizeReferenceGrid,
+  normalizeSceneBackground,
+  normalizeTemporalPolicy,
+  normalizeStreamList,
+  readModalSettings,
+  writeModalSettings,
+  type ImageProjectionSettings,
+  type PersistedModalSettings,
+  type PinholeCameraSettings,
+  type PlaybackFidelityMode,
+  type PointCloudColorSettings,
+  type ReferenceGridSettings,
+  type SceneBackgroundSettings,
+  type TemporalPolicySettings,
 } from "./storage";
-import type { EpisodeScopedModalSettings } from "./storage";
-export type { EpisodeScopedModalSettings };
+import type { ScopedModalSettings } from "./storage";
+export type { ScopedModalSettings };
 export type {
-  EpisodeImageDisplayMode,
-  EpisodeImageGeometryMode,
-} from "../../spatial/camera-geometry/episode-camera-model";
+  ImageDisplayMode,
+  ImageGeometryMode,
+} from "../../spatial/camera-geometry/camera-model";
 
 export {
-  DEFAULT_EPISODE_FIDELITY_MODE,
-  DEFAULT_EPISODE_IMAGE_PROJECTION,
-  DEFAULT_EPISODE_MODAL_SETTINGS,
-  DEFAULT_EPISODE_PROJECTION_POINT_SIZE,
-  DEFAULT_EPISODE_PINHOLE_CAMERA,
-  DEFAULT_EPISODE_POINT_CLOUD_COLOR,
-  DEFAULT_EPISODE_POINT_CLOUD_POINT_SIZE,
-  DEFAULT_EPISODE_REFERENCE_GRID,
-  DEFAULT_EPISODE_SCENE_BACKGROUND,
-  DEFAULT_EPISODE_TEMPORAL_POLICY,
-  MAX_EPISODE_POINT_CLOUD_POINT_SIZE,
-  MAX_EPISODE_SETTINGS_SCOPES,
-  EPISODE_POINT_CLOUD_POINT_SIZE_STEP,
-  MIN_EPISODE_POINT_CLOUD_POINT_SIZE,
-  defaultEpisodePointCloudColorForIndex,
-  defaultEpisodePointCloudColorForSource,
-  readEpisodeModalSettings,
-  writeEpisodeModalSettings,
-  type EpisodeImageProjectionSettings,
-  type EpisodePersistedModalSettings,
-  type EpisodePinholeCameraSettings,
-  type EpisodePlaybackFidelityMode,
-  type EpisodePointCloudColorSettings,
-  type EpisodeReferenceGridSettings,
-  type EpisodeSceneBackgroundMode,
-  type EpisodeSceneBackgroundSettings,
-  type EpisodeTemporalPolicySettings,
+  DEFAULT_FIDELITY_MODE,
+  DEFAULT_IMAGE_PROJECTION,
+  DEFAULT_MODAL_SETTINGS,
+  DEFAULT_PROJECTION_POINT_SIZE,
+  DEFAULT_PINHOLE_CAMERA,
+  DEFAULT_POINT_CLOUD_COLOR,
+  DEFAULT_POINT_CLOUD_POINT_SIZE,
+  DEFAULT_REFERENCE_GRID,
+  DEFAULT_SCENE_BACKGROUND,
+  DEFAULT_TEMPORAL_POLICY,
+  MAX_POINT_CLOUD_POINT_SIZE,
+  MAX_SETTINGS_SCOPES,
+  POINT_CLOUD_POINT_SIZE_STEP,
+  MIN_POINT_CLOUD_POINT_SIZE,
+  defaultPointCloudColorForIndex,
+  defaultPointCloudColorForSource,
+  readModalSettings,
+  writeModalSettings,
+  type ImageProjectionSettings,
+  type PersistedModalSettings,
+  type PinholeCameraSettings,
+  type PlaybackFidelityMode,
+  type PointCloudColorSettings,
+  type ReferenceGridSettings,
+  type SceneBackgroundMode,
+  type SceneBackgroundSettings,
+  type TemporalPolicySettings,
 } from "./storage";
 
 const EMPTY_STREAM_LIST: readonly string[] = Object.freeze([]);
 
-const episodeModalSettingsStore = createStore();
-const episodeModalSettingsAtom = atom<EpisodePersistedModalSettings>(
-  readEpisodeModalSettings(),
-);
+const modalSettingsStore = createStore();
+const modalSettingsAtom = atom<PersistedModalSettings>(readModalSettings());
 
 /**
  * Active settings scope — one dataset (or ad hoc recording source). While
@@ -83,22 +81,22 @@ const episodeModalSettingsAtom = atom<EpisodePersistedModalSettings>(
  * in one dataset cannot style `/lidar_top` in another. Empty means unscoped:
  * reads and writes use the top-level maps.
  */
-const episodeSettingsScopeAtom = atom("");
+const settingsScopeAtom = atom("");
 
 /**
  * Resolves one stream-keyed styling map against the active scope. Scoped and
  * unscoped maps are deliberately isolated.
  */
-function resolveStreamKeyedMap<Key extends keyof EpisodeScopedModalSettings>(
+function resolveStreamKeyedMap<Key extends keyof ScopedModalSettings>(
   get: Getter,
   key: Key,
-): EpisodeScopedModalSettings[Key] {
-  const settings = get(episodeModalSettingsAtom);
-  const scope = get(episodeSettingsScopeAtom);
+): ScopedModalSettings[Key] {
+  const settings = get(modalSettingsAtom);
+  const scope = get(settingsScopeAtom);
   if (scope) {
-    return settings.scoped[scope]?.[key] ?? EMPTY_EPISODE_SCOPED_SETTINGS[key];
+    return settings.scoped[scope]?.[key] ?? EMPTY_SCOPED_SETTINGS[key];
   }
-  return settings[key] as EpisodeScopedModalSettings[Key];
+  return settings[key] as ScopedModalSettings[Key];
 }
 
 /**
@@ -106,23 +104,18 @@ function resolveStreamKeyedMap<Key extends keyof EpisodeScopedModalSettings>(
  * pruning drops least-recently-written scopes first), or to the unscoped
  * global map while unscoped.
  */
-function updateStreamKeyedSettings<
-  Key extends keyof EpisodeScopedModalSettings,
->(
+function updateStreamKeyedSettings<Key extends keyof ScopedModalSettings>(
   get: Getter,
   set: Setter,
   key: Key,
-  updateMap: (
-    current: EpisodeScopedModalSettings[Key],
-  ) => EpisodeScopedModalSettings[Key],
+  updateMap: (current: ScopedModalSettings[Key]) => ScopedModalSettings[Key],
 ): void {
-  const scope = get(episodeSettingsScopeAtom);
+  const scope = get(settingsScopeAtom);
   updateModalSettings(set, (current) => {
     if (!scope) {
       return { ...current, [key]: updateMap(current[key]) };
     }
-    const previousScoped =
-      current.scoped[scope] ?? EMPTY_EPISODE_SCOPED_SETTINGS;
+    const previousScoped = current.scoped[scope] ?? EMPTY_SCOPED_SETTINGS;
     const nextScoped = {
       ...previousScoped,
       [key]: updateMap(previousScoped[key]),
@@ -135,21 +128,21 @@ function updateStreamKeyedSettings<
 }
 
 const fidelityModeAtom = atom(
-  (get) => get(episodeModalSettingsAtom).fidelityMode,
-  (_get, set, mode: EpisodePlaybackFidelityMode) => {
+  (get) => get(modalSettingsAtom).fidelityMode,
+  (_get, set, mode: PlaybackFidelityMode) => {
     updateModalSettings(set, (current) => ({
       ...current,
-      fidelityMode: normalizeEpisodeFidelityMode(mode),
+      fidelityMode: normalizeFidelityMode(mode),
     }));
   },
 );
 
 const temporalPolicyAtom = atom(
-  (get) => get(episodeModalSettingsAtom).temporalPolicy,
-  (_get, set, policy: Partial<EpisodeTemporalPolicySettings>) => {
+  (get) => get(modalSettingsAtom).temporalPolicy,
+  (_get, set, policy: Partial<TemporalPolicySettings>) => {
     updateModalSettings(set, (current) => ({
       ...current,
-      temporalPolicy: normalizeEpisodeTemporalPolicy({
+      temporalPolicy: normalizeTemporalPolicy({
         ...current.temporalPolicy,
         ...policy,
       }),
@@ -160,16 +153,16 @@ const temporalPolicyAtom = atom(
 const resetTemporalPolicyAtom = atom(null, (_get, set) => {
   updateModalSettings(set, (current) => ({
     ...current,
-    temporalPolicy: DEFAULT_EPISODE_TEMPORAL_POLICY,
+    temporalPolicy: DEFAULT_TEMPORAL_POLICY,
   }));
 });
 
 const pinholeCameraAtom = atom(
-  (get) => get(episodeModalSettingsAtom).pinholeCamera,
-  (_get, set, settings: Partial<EpisodePinholeCameraSettings>) => {
+  (get) => get(modalSettingsAtom).pinholeCamera,
+  (_get, set, settings: Partial<PinholeCameraSettings>) => {
     updateModalSettings(set, (current) => ({
       ...current,
-      pinholeCamera: normalizeEpisodePinholeCamera({
+      pinholeCamera: normalizePinholeCamera({
         ...current.pinholeCamera,
         ...settings,
       }),
@@ -178,11 +171,11 @@ const pinholeCameraAtom = atom(
 );
 
 const referenceGridAtom = atom(
-  (get) => get(episodeModalSettingsAtom).referenceGrid,
-  (_get, set, settings: Partial<EpisodeReferenceGridSettings>) => {
+  (get) => get(modalSettingsAtom).referenceGrid,
+  (_get, set, settings: Partial<ReferenceGridSettings>) => {
     updateModalSettings(set, (current) => ({
       ...current,
-      referenceGrid: normalizeEpisodeReferenceGrid({
+      referenceGrid: normalizeReferenceGrid({
         ...current.referenceGrid,
         ...settings,
       }),
@@ -191,11 +184,11 @@ const referenceGridAtom = atom(
 );
 
 const sceneBackgroundAtom = atom(
-  (get) => get(episodeModalSettingsAtom).sceneBackground,
-  (_get, set, settings: Partial<EpisodeSceneBackgroundSettings>) => {
+  (get) => get(modalSettingsAtom).sceneBackground,
+  (_get, set, settings: Partial<SceneBackgroundSettings>) => {
     updateModalSettings(set, (current) => ({
       ...current,
-      sceneBackground: normalizeEpisodeSceneBackground({
+      sceneBackground: normalizeSceneBackground({
         ...current.sceneBackground,
         ...settings,
       }),
@@ -213,7 +206,7 @@ const pointCloudColorsAtom = atom(
       settings,
     }: {
       readonly stream: string;
-      readonly settings: Partial<EpisodePointCloudColorSettings>;
+      readonly settings: Partial<PointCloudColorSettings>;
     },
   ) => {
     const normalizedStream = stream.trim();
@@ -222,10 +215,10 @@ const pointCloudColorsAtom = atom(
     // Merge over the value visible in the current scope.
     const previous =
       resolveStreamKeyedMap(get, "pointCloudColors")[normalizedStream] ??
-      DEFAULT_EPISODE_POINT_CLOUD_COLOR;
+      DEFAULT_POINT_CLOUD_COLOR;
     updateStreamKeyedSettings(get, set, "pointCloudColors", (colors) => ({
       ...colors,
-      [normalizedStream]: normalizeEpisodePointCloudColor({
+      [normalizedStream]: normalizePointCloudColor({
         ...previous,
         ...settings,
       }),
@@ -234,17 +227,17 @@ const pointCloudColorsAtom = atom(
 );
 
 const pointCloudPointSizeAtom = atom(
-  (get) => get(episodeModalSettingsAtom).pointCloudPointSize,
+  (get) => get(modalSettingsAtom).pointCloudPointSize,
   (_get, set, pointSize: number) => {
     updateModalSettings(set, (current) => ({
       ...current,
-      pointCloudPointSize: normalizeEpisodePointCloudPointSize(pointSize),
+      pointCloudPointSize: normalizePointCloudPointSize(pointSize),
     }));
   },
 );
 
 const showPointCloudColorLegendAtom = atom(
-  (get) => get(episodeModalSettingsAtom).showPointCloudColorLegend,
+  (get) => get(modalSettingsAtom).showPointCloudColorLegend,
   (_get, set, showPointCloudColorLegend: boolean) => {
     updateModalSettings(set, (current) => ({
       ...current,
@@ -268,7 +261,7 @@ const imageLabelStreamsAtom = atom(
   ) => {
     const normalizedImageStream = imageStream.trim();
     if (!normalizedImageStream) return;
-    const normalizedLabelStreams = normalizeEpisodeStreamList(labelStreams);
+    const normalizedLabelStreams = normalizeStreamList(labelStreams);
 
     updateStreamKeyedSettings(get, set, "imageLabelStreams", (streams) => ({
       ...streams,
@@ -287,7 +280,7 @@ const imageProjectionAtom = atom(
       settings,
     }: {
       readonly imageStream: string;
-      readonly settings: Partial<EpisodeImageProjectionSettings>;
+      readonly settings: Partial<ImageProjectionSettings>;
     },
   ) => {
     const normalizedImageStream = imageStream.trim();
@@ -296,7 +289,7 @@ const imageProjectionAtom = atom(
     // Merge over the value visible in the current scope.
     const previous =
       resolveStreamKeyedMap(get, "imageProjection")[normalizedImageStream] ??
-      DEFAULT_EPISODE_IMAGE_PROJECTION;
+      DEFAULT_IMAGE_PROJECTION;
     let streams =
       settings.streams !== undefined ? settings.streams : previous.streams;
     if (settings.enabled === false) {
@@ -310,7 +303,7 @@ const imageProjectionAtom = atom(
     }
     updateStreamKeyedSettings(get, set, "imageProjection", (projections) => ({
       ...projections,
-      [normalizedImageStream]: normalizeEpisodeImageProjection({
+      [normalizedImageStream]: normalizeImageProjection({
         ...previous,
         ...settings,
         streams,
@@ -321,16 +314,14 @@ const imageProjectionAtom = atom(
 
 function updateModalSettings(
   set: Setter,
-  resolver: (
-    current: EpisodePersistedModalSettings,
-  ) => EpisodePersistedModalSettings,
+  resolver: (current: PersistedModalSettings) => PersistedModalSettings,
 ): void {
-  set(episodeModalSettingsAtom, (current) => {
+  set(modalSettingsAtom, (current) => {
     const next = resolver(current);
     if (next === current) {
       return current;
     }
-    writeEpisodeModalSettings(next);
+    writeModalSettings(next);
     return next;
   });
 }
@@ -341,7 +332,7 @@ function updateModalSettings(
  * the scope. Call once from the playback host; an empty/undefined scope key
  * leaves settings unscoped.
  */
-export function useEpisodeModalSettingsScopeSync(
+export function useModalSettingsScopeSync(
   scopeKey: string | null | undefined,
 ): void {
   // This effect binds the settings scope to the active dataset for this
@@ -350,9 +341,9 @@ export function useEpisodeModalSettingsScopeSync(
   useEffect(() => {
     const scope = scopeKey?.trim() ?? "";
     if (!scope) return undefined;
-    episodeModalSettingsStore.set(episodeSettingsScopeAtom, scope);
+    modalSettingsStore.set(settingsScopeAtom, scope);
     return () => {
-      episodeModalSettingsStore.set(episodeSettingsScopeAtom, (current) =>
+      modalSettingsStore.set(settingsScopeAtom, (current) =>
         current === scope ? "" : current,
       );
     };
@@ -362,12 +353,12 @@ export function useEpisodeModalSettingsScopeSync(
 /**
  * Reads and updates the episode playback fidelity preference.
  */
-export function useEpisodePlaybackSettings() {
+export function usePlaybackSettings() {
   const fidelityMode = useAtomValue(fidelityModeAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
   const setFidelityMode = useSetAtom(fidelityModeAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
 
   return useMemo(
@@ -379,15 +370,15 @@ export function useEpisodePlaybackSettings() {
 /**
  * Reads and updates episode timing policy preferences.
  */
-export function useEpisodeTemporalPolicySettings() {
+export function useTemporalPolicySettings() {
   const temporalPolicy = useAtomValue(temporalPolicyAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
   const setTemporalPolicy = useSetAtom(temporalPolicyAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
   const resetTemporalPolicy = useSetAtom(resetTemporalPolicyAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
 
   return useMemo(
@@ -399,12 +390,12 @@ export function useEpisodeTemporalPolicySettings() {
 /**
  * Reads and updates camera frustum display preferences.
  */
-export function useEpisodePinholeCameraSettings() {
+export function usePinholeCameraSettings() {
   const pinholeCamera = useAtomValue(pinholeCameraAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
   const setPinholeCamera = useSetAtom(pinholeCameraAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
 
   return useMemo(
@@ -416,12 +407,12 @@ export function useEpisodePinholeCameraSettings() {
 /**
  * Reads and updates 3D reference grid preferences.
  */
-export function useEpisodeReferenceGridSettings() {
+export function useReferenceGridSettings() {
   const referenceGrid = useAtomValue(referenceGridAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
   const setReferenceGrid = useSetAtom(referenceGridAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
 
   return useMemo(
@@ -433,12 +424,12 @@ export function useEpisodeReferenceGridSettings() {
 /**
  * Reads and updates 3D scene background preferences.
  */
-export function useEpisodeSceneBackgroundSettings() {
+export function useSceneBackgroundSettings() {
   const sceneBackground = useAtomValue(sceneBackgroundAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
   const setSceneBackground = useSetAtom(sceneBackgroundAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
 
   return useMemo(
@@ -450,34 +441,34 @@ export function useEpisodeSceneBackgroundSettings() {
 /**
  * Reads and updates point-cloud style preferences.
  */
-export function useEpisodePointCloudStyleSettings() {
+export function usePointCloudStyleSettings() {
   const pointCloudColors = useAtomValue(pointCloudColorsAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
   const pointCloudPointSize = useAtomValue(pointCloudPointSizeAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
   const showPointCloudColorLegend = useAtomValue(
     showPointCloudColorLegendAtom,
     {
-      store: episodeModalSettingsStore,
+      store: modalSettingsStore,
     },
   );
   const setPointCloudColor = useSetAtom(pointCloudColorsAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
   const setPointCloudPointSize = useSetAtom(pointCloudPointSizeAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
   const setShowPointCloudColorLegend = useSetAtom(
     showPointCloudColorLegendAtom,
     {
-      store: episodeModalSettingsStore,
+      store: modalSettingsStore,
     },
   );
 
   const updatePointCloudColor = useCallback(
-    (stream: string, settings: Partial<EpisodePointCloudColorSettings>) => {
+    (stream: string, settings: Partial<PointCloudColorSettings>) => {
       setPointCloudColor({ settings, stream });
     },
     [setPointCloudColor],
@@ -506,9 +497,7 @@ export function useEpisodePointCloudStyleSettings() {
 /**
  * Reads and updates explicit label-stream selections for one image stream.
  */
-export function useEpisodeImageLabelStreams(
-  imageStream: string | null | undefined,
-) {
+export function useImageLabelStreams(imageStream: string | null | undefined) {
   const normalizedImageStream = imageStream?.trim() ?? "";
   const labelStreamsAtom = useMemo(
     () =>
@@ -530,13 +519,13 @@ export function useEpisodeImageLabelStreams(
     [normalizedImageStream],
   );
   const labelStreams = useAtomValue(labelStreamsAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
   const hasExplicitLabelStreams = useAtomValue(hasExplicitLabelStreamsAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
   const setStoredImageLabelStreams = useSetAtom(imageLabelStreamsAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
   const setLabelStreams = useCallback(
     (nextLabelStreams: readonly string[]) => {
@@ -559,28 +548,26 @@ export function useEpisodeImageLabelStreams(
  * Reads and updates the lidar projection overlay settings for one image
  * stream.
  */
-export function useEpisodeImageProjection(
-  imageStream: string | null | undefined,
-) {
+export function useImageProjection(imageStream: string | null | undefined) {
   const normalizedImageStream = imageStream?.trim() ?? "";
   const projectionValueAtom = useMemo(
     () =>
       atom((get) =>
         normalizedImageStream
           ? (get(imageProjectionAtom)[normalizedImageStream] ??
-            DEFAULT_EPISODE_IMAGE_PROJECTION)
-          : DEFAULT_EPISODE_IMAGE_PROJECTION,
+            DEFAULT_IMAGE_PROJECTION)
+          : DEFAULT_IMAGE_PROJECTION,
       ),
     [normalizedImageStream],
   );
   const projection = useAtomValue(projectionValueAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
   const setStoredProjection = useSetAtom(imageProjectionAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
   const setProjection = useCallback(
-    (settings: Partial<EpisodeImageProjectionSettings>) => {
+    (settings: Partial<ImageProjectionSettings>) => {
       if (!normalizedImageStream) return;
       setStoredProjection({ imageStream: normalizedImageStream, settings });
     },
@@ -594,21 +581,21 @@ export function useEpisodeImageProjection(
 }
 
 /** Reads all per-image camera geometry settings for shared 3D consumers. */
-export function useEpisodeImageProjectionSettingsByStream(): Readonly<
-  Record<string, EpisodeImageProjectionSettings>
+export function useImageProjectionSettingsByStream(): Readonly<
+  Record<string, ImageProjectionSettings>
 > {
   return useAtomValue(imageProjectionAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
 }
 
 /** Updates camera geometry settings for an image without requiring its tile. */
-export function useSetEpisodeImageProjection() {
+export function useSetImageProjection() {
   const setStoredProjection = useSetAtom(imageProjectionAtom, {
-    store: episodeModalSettingsStore,
+    store: modalSettingsStore,
   });
   return useCallback(
-    (imageStream: string, settings: Partial<EpisodeImageProjectionSettings>) =>
+    (imageStream: string, settings: Partial<ImageProjectionSettings>) =>
       setStoredProjection({ imageStream, settings }),
     [setStoredProjection],
   );
@@ -617,10 +604,7 @@ export function useSetEpisodeImageProjection() {
 /**
  * Resyncs the private settings store from localStorage for isolated tests.
  */
-export function __resetEpisodeModalSettingsForTests(): void {
-  episodeModalSettingsStore.set(
-    episodeModalSettingsAtom,
-    readEpisodeModalSettings(),
-  );
-  episodeModalSettingsStore.set(episodeSettingsScopeAtom, "");
+export function __resetModalSettingsForTests(): void {
+  modalSettingsStore.set(modalSettingsAtom, readModalSettings());
+  modalSettingsStore.set(settingsScopeAtom, "");
 }

@@ -7,19 +7,19 @@ import {
 import { useSceneSourcesByType } from "../../../../scene-inventory/react";
 import { SCENE_SOURCE_TYPE } from "../../../../ir";
 import {
-  buildEpisodePointCloudSamplingNotice,
-  useStabilizedEpisodeNotices,
-  type EpisodePointCloudSamplingSummary,
-} from "../../status/episode-health";
-import { useEpisodeSceneNotices } from "../../status/scene-notices-context";
-import EpisodeNoticeStrip from "../../status/EpisodeNoticeStrip";
-import type { EpisodeStreamPlaybackFrame } from "../../playback/use-episode-stream-values";
+  buildPointCloudSamplingNotice,
+  useStabilizedNotices,
+  type PointCloudSamplingSummary,
+} from "../../status/health";
+import { useSceneNotices } from "../../status/scene-notices-context";
+import NoticeStrip from "../../status/NoticeStrip";
+import type { StreamPlaybackFrame } from "../../playback/use-stream-values";
 
 /**
  * Live display-sampling summary across every point-cloud source in the
  * scene, or null while all clouds render in full.
  */
-export function usePointCloudSamplingSummary(): EpisodePointCloudSamplingSummary | null {
+export function usePointCloudSamplingSummary(): PointCloudSamplingSummary | null {
   const pointCloudSources = useSceneSourcesByType(
     SCENE_SOURCE_TYPE.POINT_CLOUD,
   );
@@ -28,7 +28,7 @@ export function usePointCloudSamplingSummary(): EpisodePointCloudSamplingSummary
     [pointCloudSources],
   );
   const frames =
-    useStreamValues<EpisodeStreamPlaybackFrame<PointCloudVisualization> | null>(
+    useStreamValues<StreamPlaybackFrame<PointCloudVisualization> | null>(
       streamIds,
     );
 
@@ -59,22 +59,22 @@ export function usePointCloudSamplingSummary(): EpisodePointCloudSamplingSummary
  * sampling notice goes through its own stabilizer so both flavors share
  * the same appearance/disappearance discipline.
  */
-export const EpisodeSceneStatusStrip: React.FC<{
-  readonly sampling: EpisodePointCloudSamplingSummary | null;
+export const SceneStatusStrip: React.FC<{
+  readonly sampling: PointCloudSamplingSummary | null;
 }> = ({ sampling }) => {
-  const publishedNotices = useEpisodeSceneNotices();
+  const publishedNotices = useSceneNotices();
   const producedLocally = useMemo(() => {
-    const samplingNotice = buildEpisodePointCloudSamplingNotice(
+    const samplingNotice = buildPointCloudSamplingNotice(
       sampling,
       MAX_POINT_CLOUD_RENDER_POINTS,
     );
     return samplingNotice ? [samplingNotice] : [];
   }, [sampling]);
-  const localNotices = useStabilizedEpisodeNotices(producedLocally);
+  const localNotices = useStabilizedNotices(producedLocally);
   const notices = useMemo(
     () => [...localNotices, ...publishedNotices],
     [localNotices, publishedNotices],
   );
 
-  return <EpisodeNoticeStrip notices={notices} />;
+  return <NoticeStrip notices={notices} />;
 };

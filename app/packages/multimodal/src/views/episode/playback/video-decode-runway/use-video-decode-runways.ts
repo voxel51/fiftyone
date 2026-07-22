@@ -2,11 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ImageVisualization } from "../../../../ir";
 import type { DecodedFrame } from "../../../../ir";
-import {
-  useEpisodeDataStream,
-  type EpisodeDataStream,
-} from "../episode-data-stream-context";
-import type { EpisodeStreamContentFrame } from "../use-episode-stream-values";
+import { useDataStream, type DataStream } from "../data-stream-context";
+import type { StreamContentFrame } from "../use-stream-values";
 
 const INITIAL_VIDEO_RUNWAY_LOOKBACK_NS = 15_000_000_000n;
 const EMPTY_RUNWAY: readonly ImageVisualization[] = [];
@@ -22,11 +19,11 @@ interface VideoDecodeRunway {
  * again after a backwards seek); ordinary forward playback stays on the
  * already-configured shared decoder session.
  */
-export function useEpisodeVideoDecodeRunways(
+export function useVideoDecodeRunways(
   streams: readonly string[],
-  playbackFrames: readonly (EpisodeStreamContentFrame<ImageVisualization> | null)[],
+  playbackFrames: readonly (StreamContentFrame<ImageVisualization> | null)[],
 ): readonly (readonly ImageVisualization[])[] {
-  const dataStream = useEpisodeDataStream();
+  const dataStream = useDataStream();
   const [runways, setRunways] = useState<
     Readonly<Record<string, VideoDecodeRunway>>
   >({});
@@ -155,22 +152,20 @@ export function useEpisodeVideoDecodeRunways(
 }
 
 /** Single-stream convenience wrapper used by an image tile. */
-export function useEpisodeVideoDecodeRunway(
+export function useVideoDecodeRunway(
   stream: string,
-  playbackFrame: EpisodeStreamContentFrame<ImageVisualization> | null,
+  playbackFrame: StreamContentFrame<ImageVisualization> | null,
 ): readonly ImageVisualization[] {
   const streams = useMemo(() => (stream ? [stream] : []), [stream]);
   const playbackFrames = useMemo(
     () => (stream ? [playbackFrame] : []),
     [playbackFrame, stream],
   );
-  return (
-    useEpisodeVideoDecodeRunways(streams, playbackFrames)[0] ?? EMPTY_RUNWAY
-  );
+  return useVideoDecodeRunways(streams, playbackFrames)[0] ?? EMPTY_RUNWAY;
 }
 
 async function readH264DecodeRunway(
-  dataStream: EpisodeDataStream | null,
+  dataStream: DataStream | null,
   stream: string,
   targetTimeNs: bigint,
 ): Promise<readonly ImageVisualization[]> {

@@ -1,8 +1,8 @@
 import type {
-  EpisodeReferenceSelectionSource,
-  EpisodeReferenceTransition,
+  ReferenceSelectionSource,
+  ReferenceTransition,
 } from "./reference-selection";
-import { createEpisodeTileRegistry } from "../../interaction/registry";
+import { createTileRegistry } from "../../interaction/registry";
 
 /**
  * Reference-frame controls a mounted 3D tile publishes for the scene at large.
@@ -15,7 +15,7 @@ import { createEpisodeTileRegistry } from "../../interaction/registry";
  * chrome — the sidebar's Scene tab — edits them without reaching into tile
  * internals.
  */
-export interface EpisodeSceneFrameControls {
+export interface SceneFrameControls {
   readonly activeComponentFrameIds: readonly string[];
   /** Stable first-registered authority; focus changes do not change it. */
   readonly authorityTileId: string;
@@ -23,26 +23,25 @@ export interface EpisodeSceneFrameControls {
   readonly frameIds: readonly string[];
   readonly omittedFrameIds: readonly string[];
   readonly omittedSourceIds: readonly string[];
-  readonly referenceTransition: EpisodeReferenceTransition | null;
+  readonly referenceTransition: ReferenceTransition | null;
   readonly updateWorldFrameId: (frameId: string) => void;
   readonly useRecommendedWorldFrame: () => void;
   readonly worldFrameId: string;
-  readonly worldFrameSelectionSource: EpisodeReferenceSelectionSource;
+  readonly worldFrameSelectionSource: ReferenceSelectionSource;
 }
 
-const registry =
-  createEpisodeTileRegistry<EpisodeSceneFrameControls>("EpisodeSceneFrames");
+const registry = createTileRegistry<SceneFrameControls>("EpisodeSceneFrames");
 
 /** Modal-scoped registry of the 3D tiles' scene frame controls. */
-export const EpisodeSceneFramesProvider = registry.Provider;
+export const SceneFramesProvider = registry.Provider;
 
 /** Publishes a 3D tile's frame controls for the tile's mounted lifetime. */
-export const useRegisterEpisodeSceneFrameControls = registry.useRegister;
+export const useRegisterSceneFrameControls = registry.useRegister;
 
 /**
  * The scene's frame controls, from the first mounted 3D tile — or null when
  * no 3D view exists to give the reference frame meaning.
  */
-export function useEpisodeSceneFrameControls(): EpisodeSceneFrameControls | null {
+export function useSceneFrameControls(): SceneFrameControls | null {
   return registry.usePrimary();
 }

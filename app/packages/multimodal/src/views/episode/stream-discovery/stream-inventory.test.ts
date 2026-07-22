@@ -7,14 +7,14 @@ import {
 } from "../../../ir/index";
 import { sceneSourcesFromStreamDescriptors } from "../../../scene-inventory/index";
 import {
-  EPISODE_STREAM_CAPABILITY,
-  EPISODE_STREAM_CATEGORY,
-  buildEpisodeStreamInventoryRows,
-  filterEpisodeStreamInventoryRows,
-  type EpisodeStreamInventoryRow,
+  STREAM_CAPABILITY,
+  STREAM_CATEGORY,
+  buildStreamInventoryRows,
+  filterStreamInventoryRows,
+  type StreamInventoryRow,
 } from "./stream-inventory";
 
-describe("buildEpisodeStreamInventoryRows", () => {
+describe("buildStreamInventoryRows", () => {
   it("keeps stable stream IDs distinct from format source names", () => {
     const camera = {
       ...stream("/camera/front", "sensor_msgs/Image", "ros1", "ros1msg", "12"),
@@ -68,7 +68,7 @@ describe("buildEpisodeStreamInventoryRows", () => {
       ),
     ];
 
-    const rows = buildEpisodeStreamInventoryRows({
+    const rows = buildStreamInventoryRows({
       sceneSources: sceneSourcesFromStreamDescriptors(streams),
       streams,
     });
@@ -88,58 +88,40 @@ describe("buildEpisodeStreamInventoryRows", () => {
       "/vendor/raw",
     ]);
     expect(row(rows, "/camera/front")).toMatchObject({
-      category: EPISODE_STREAM_CATEGORY.SENSORS,
+      category: STREAM_CATEGORY.SENSORS,
       supportStatus: "renderable",
-      capabilities: [
-        EPISODE_STREAM_CAPABILITY.IMAGE,
-        EPISODE_STREAM_CAPABILITY.RAW,
-      ],
+      capabilities: [STREAM_CAPABILITY.IMAGE, STREAM_CAPABILITY.RAW],
     });
     expect(row(rows, "/markers")).toMatchObject({
-      category: EPISODE_STREAM_CATEGORY.ANNOTATIONS_PLANNING,
+      category: STREAM_CATEGORY.ANNOTATIONS_PLANNING,
       supportStatus: "renderable",
-      capabilities: [
-        EPISODE_STREAM_CAPABILITY.THREE_D,
-        EPISODE_STREAM_CAPABILITY.RAW,
-      ],
+      capabilities: [STREAM_CAPABILITY.THREE_D, STREAM_CAPABILITY.RAW],
     });
     expect(row(rows, "/gps")).toMatchObject({
-      category: EPISODE_STREAM_CATEGORY.SENSORS,
+      category: STREAM_CATEGORY.SENSORS,
       supportStatus: "renderable",
-      capabilities: [
-        EPISODE_STREAM_CAPABILITY.MAP,
-        EPISODE_STREAM_CAPABILITY.RAW,
-      ],
+      capabilities: [STREAM_CAPABILITY.MAP, STREAM_CAPABILITY.RAW],
     });
     expect(row(rows, "/tf_static")).toMatchObject({
-      category: EPISODE_STREAM_CATEGORY.TRANSFORMS_POSES,
+      category: STREAM_CATEGORY.TRANSFORMS_POSES,
       sourceType: null,
       supportStatus: "renderable",
-      capabilities: [
-        EPISODE_STREAM_CAPABILITY.THREE_D,
-        EPISODE_STREAM_CAPABILITY.RAW,
-      ],
+      capabilities: [STREAM_CAPABILITY.THREE_D, STREAM_CAPABILITY.RAW],
     });
     expect(row(rows, "/diagnostics")).toMatchObject({
-      category: EPISODE_STREAM_CATEGORY.DIAGNOSTICS,
+      category: STREAM_CATEGORY.DIAGNOSTICS,
       supportStatus: "renderable",
-      capabilities: [
-        EPISODE_STREAM_CAPABILITY.LOGS,
-        EPISODE_STREAM_CAPABILITY.RAW,
-      ],
+      capabilities: [STREAM_CAPABILITY.LOGS, STREAM_CAPABILITY.RAW],
     });
     expect(row(rows, "/imu")).toMatchObject({
-      category: EPISODE_STREAM_CATEGORY.SENSORS,
+      category: STREAM_CATEGORY.SENSORS,
       supportStatus: "inspectable",
-      capabilities: [
-        EPISODE_STREAM_CAPABILITY.PLOT,
-        EPISODE_STREAM_CAPABILITY.RAW,
-      ],
+      capabilities: [STREAM_CAPABILITY.PLOT, STREAM_CAPABILITY.RAW],
     });
     expect(row(rows, "/vendor/raw")).toMatchObject({
-      category: EPISODE_STREAM_CATEGORY.CUSTOM,
+      category: STREAM_CATEGORY.CUSTOM,
       supportStatus: "inspectable",
-      capabilities: [EPISODE_STREAM_CAPABILITY.RAW],
+      capabilities: [STREAM_CAPABILITY.RAW],
     });
     expect(row(rows, "/broken")).toMatchObject({
       supportStatus: "schema-unavailable",
@@ -157,18 +139,18 @@ describe("buildEpisodeStreamInventoryRows", () => {
       stream("/simulated_pose", "vendor_msgs/Widget", "cdr", "ros2msg", "3"),
     ];
 
-    const rows = buildEpisodeStreamInventoryRows({ sceneSources: [], streams });
+    const rows = buildStreamInventoryRows({ sceneSources: [], streams });
 
     expect(row(rows, "/vehicle/IMU/data").category).toBe(
-      EPISODE_STREAM_CATEGORY.SENSORS,
+      STREAM_CATEGORY.SENSORS,
     );
     expect(row(rows, "/simulated_pose").category).not.toBe(
-      EPISODE_STREAM_CATEGORY.SENSORS,
+      STREAM_CATEGORY.SENSORS,
     );
   });
 
   it("searches stream names, schema names, categories, support, and capabilities", () => {
-    const rows = buildEpisodeStreamInventoryRows({
+    const rows = buildStreamInventoryRows({
       sceneSources: [],
       streams: [
         stream("/imu", "sensor_msgs/Imu", "ros1", "ros1msg", "9"),
@@ -176,20 +158,20 @@ describe("buildEpisodeStreamInventoryRows", () => {
       ],
     });
 
-    expect(
-      filterEpisodeStreamInventoryRows(rows, "sensors").map(streamName),
-    ).toEqual(["/imu"]);
-    expect(
-      filterEpisodeStreamInventoryRows(rows, "Widget").map(streamName),
-    ).toEqual(["/vendor/raw"]);
-    expect(
-      filterEpisodeStreamInventoryRows(rows, "plot").map(streamName),
-    ).toEqual(["/imu"]);
-    expect(filterEpisodeStreamInventoryRows(rows, "unsupported")).toEqual([]);
+    expect(filterStreamInventoryRows(rows, "sensors").map(streamName)).toEqual([
+      "/imu",
+    ]);
+    expect(filterStreamInventoryRows(rows, "Widget").map(streamName)).toEqual([
+      "/vendor/raw",
+    ]);
+    expect(filterStreamInventoryRows(rows, "plot").map(streamName)).toEqual([
+      "/imu",
+    ]);
+    expect(filterStreamInventoryRows(rows, "unsupported")).toEqual([]);
   });
 });
 
-function row(rows: readonly EpisodeStreamInventoryRow[], stream: string) {
+function row(rows: readonly StreamInventoryRow[], stream: string) {
   const match = rows.find((candidate) => candidate.stream === stream);
   if (!match) {
     throw new Error(`Missing stream inventory row: ${stream}`);

@@ -30,7 +30,7 @@ const HOVER_TOOLTIP_OFFSET_PX = 12;
 const POINT_TOOLTIP_MAX_FIELDS = 6;
 
 /** Scene entity reported by the episode 3D hover surface. */
-export interface Episode3dHoveredEntity {
+export interface Scene3dHoveredEntity {
   readonly kind: "entity";
   readonly stream: string;
   readonly entityId: string;
@@ -38,7 +38,7 @@ export interface Episode3dHoveredEntity {
 }
 
 /** Textured camera frustum reported by the episode 3D hover surface. */
-export interface Episode3dHoveredCamera {
+export interface Scene3dHoveredCamera {
   readonly calibrationStream: string;
   readonly distortionModel?: string;
   readonly frameId?: string;
@@ -48,7 +48,7 @@ export interface Episode3dHoveredCamera {
 }
 
 /** One dwelled-on cloud point with its decoded per-point values. */
-export interface Episode3dHoveredPoint {
+export interface Scene3dHoveredPoint {
   readonly kind: "point";
   readonly stream: string;
   readonly pointIndex: number;
@@ -62,13 +62,13 @@ export interface Episode3dHoveredPoint {
 }
 
 /** Any object supported by the episode 3D hover tooltip. */
-export type Episode3dHoveredObject =
-  | Episode3dHoveredCamera
-  | Episode3dHoveredEntity
-  | Episode3dHoveredPoint;
+export type Scene3dHoveredObject =
+  | Scene3dHoveredCamera
+  | Scene3dHoveredEntity
+  | Scene3dHoveredPoint;
 
 /** Hovered object plus its tooltip position within the 3D tile. */
-export type Episode3dHoverTooltipState = Episode3dHoveredObject & {
+export type Scene3dHoverTooltipState = Scene3dHoveredObject & {
   readonly x: number;
   readonly y: number;
 };
@@ -88,22 +88,20 @@ export type Episode3dHoverTooltipState = Episode3dHoveredObject & {
  * anchors to a hovered DOM child, and canvas-internal objects have no
  * DOM node to anchor to.
  */
-export function useEpisode3dHoverTooltip(): {
+export function useScene3dHoverTooltip(): {
   readonly containerProps: {
     readonly ref: RefObject<HTMLDivElement>;
     readonly onPointerMove: (event: React.PointerEvent) => void;
   };
-  readonly onHoverCamera: (hovered: Episode3dHoveredCamera | null) => void;
-  readonly onHoverEntity: (hovered: Episode3dHoveredEntity | null) => void;
-  readonly onHoverPoint: (hovered: Episode3dHoveredPoint | null) => void;
-  readonly tooltip: Episode3dHoverTooltipState | null;
+  readonly onHoverCamera: (hovered: Scene3dHoveredCamera | null) => void;
+  readonly onHoverEntity: (hovered: Scene3dHoveredEntity | null) => void;
+  readonly onHoverPoint: (hovered: Scene3dHoveredPoint | null) => void;
+  readonly tooltip: Scene3dHoverTooltipState | null;
 } {
   const containerRef = useRef<HTMLDivElement>(null);
   const pointerRef = useRef({ x: 0, y: 0 });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [tooltip, setTooltip] = useState<Episode3dHoverTooltipState | null>(
-    null,
-  );
+  const [tooltip, setTooltip] = useState<Scene3dHoverTooltipState | null>(null);
 
   // This effect clears a pending show-timer on unmount.
   useEffect(
@@ -128,7 +126,7 @@ export function useEpisode3dHoverTooltip(): {
   const scheduleDelayedHover = useCallback(
     <Kind extends "camera" | "entity">(
       kind: Kind,
-      hovered: Extract<Episode3dHoveredObject, { readonly kind: Kind }> | null,
+      hovered: Extract<Scene3dHoveredObject, { readonly kind: Kind }> | null,
     ) => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
@@ -146,18 +144,18 @@ export function useEpisode3dHoverTooltip(): {
     [pointerPosition],
   );
   const onHoverCamera = useCallback(
-    (hovered: Episode3dHoveredCamera | null) =>
+    (hovered: Scene3dHoveredCamera | null) =>
       scheduleDelayedHover("camera", hovered),
     [scheduleDelayedHover],
   );
   const onHoverEntity = useCallback(
-    (hovered: Episode3dHoveredEntity | null) =>
+    (hovered: Scene3dHoveredEntity | null) =>
       scheduleDelayedHover("entity", hovered),
     [scheduleDelayedHover],
   );
 
   const onHoverPoint = useCallback(
-    (hovered: Episode3dHoveredPoint | null) => {
+    (hovered: Scene3dHoveredPoint | null) => {
       if (!hovered) {
         setTooltip((current) => (current?.kind === "point" ? null : current));
         return;
@@ -228,8 +226,8 @@ const colorBadgeStyle: CSSProperties = {
 };
 
 /** Minimal cursor-adjacent tooltip for a hovered 3D object. */
-export const Episode3dHoverTooltip: React.FC<{
-  readonly tooltip: Episode3dHoverTooltipState;
+export const Scene3dHoverTooltip: React.FC<{
+  readonly tooltip: Scene3dHoverTooltipState;
 }> = ({ tooltip }) => {
   return (
     <div
@@ -254,7 +252,7 @@ export const Episode3dHoverTooltip: React.FC<{
 function CameraTooltipContent({
   tooltip,
 }: {
-  readonly tooltip: Episode3dHoveredCamera;
+  readonly tooltip: Scene3dHoveredCamera;
 }) {
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
@@ -300,7 +298,7 @@ function CameraTooltipContent({
 function EntityTooltipContent({
   tooltip,
 }: {
-  readonly tooltip: Episode3dHoveredEntity;
+  readonly tooltip: Scene3dHoveredEntity;
 }) {
   const title = tooltip.label ?? tooltip.entityId;
   const showId = tooltip.label !== null && tooltip.label !== tooltip.entityId;
@@ -315,7 +313,7 @@ function EntityTooltipContent({
 function PointTooltipContent({
   tooltip,
 }: {
-  readonly tooltip: Episode3dHoveredPoint;
+  readonly tooltip: Scene3dHoveredPoint;
 }) {
   const fieldEntries = Object.entries(tooltip.fields);
   const shownFields = fieldEntries.slice(0, POINT_TOOLTIP_MAX_FIELDS);

@@ -15,34 +15,34 @@ import type { DecodedDiagnostic } from "../../../../ir/index";
 import type { SceneSource } from "../../../../scene-inventory/index";
 import {
   isFollowTrackingMode,
-  type Episode3dTrackingMode,
-} from "../camera/episode-3d-camera";
+  type Scene3dTrackingMode,
+} from "../camera/scene-3d-camera";
 import {
-  DEFAULT_EPISODE_IMAGE_PROJECTION,
-  type EpisodeSceneBackgroundMode,
-  useEpisodePinholeCameraSettings,
-  useEpisodeImageProjectionSettingsByStream,
-  useEpisodePointCloudStyleSettings,
-  useEpisodeReferenceGridSettings,
-  useEpisodeSceneBackgroundSettings,
-  useSetEpisodeImageProjection,
+  DEFAULT_IMAGE_PROJECTION,
+  type SceneBackgroundMode,
+  usePinholeCameraSettings,
+  useImageProjectionSettingsByStream,
+  usePointCloudStyleSettings,
+  useReferenceGridSettings,
+  useSceneBackgroundSettings,
+  useSetImageProjection,
 } from "../../settings/modal/state";
-import type { EpisodeImageGeometryMode } from "../../spatial/camera-geometry/episode-camera-model";
+import type { ImageGeometryMode } from "../../spatial/camera-geometry/camera-model";
 import type { PointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 import { PointCloudStyleSection } from "./PointCloudStyleSection";
-import type { EpisodePoseTrajectories } from "../entities/episode-pose-trajectories-context";
+import type { PoseTrajectories } from "../entities/pose-trajectories-context";
 import {
   checkboxNoSpaceToggleProps,
   settingsBooleanNoSpaceToggleProps,
-} from "../../settings/controls/episode-settings-keyboard";
-import { EpisodeFrameSelect } from "../../settings/controls/EpisodeFrameSelect";
-import { EpisodeSettingsNumberField } from "../../settings/controls/EpisodeSettingsNumberField";
-import { EpisodeSettingsSelect } from "../../settings/controls/EpisodeSettingsSelect";
-import EpisodeSidebarGroup from "../../settings/controls/EpisodeSidebarGroup";
-import settingsStyles from "../../tiles/EpisodeTile.settings.module.css";
-import { EpisodeSettingsLabel as SettingsLabel } from "../../settings/controls/EpisodeSettingsLabel";
-import EpisodeViewpointSettings from "../camera/EpisodeViewpointSettings";
-import { TRACKING_MODES } from "../camera/use-episode-3d-camera-tracking";
+} from "../../settings/controls/settings-keyboard";
+import { FrameSelect } from "../../settings/controls/FrameSelect";
+import { SettingsNumberField } from "../../settings/controls/SettingsNumberField";
+import { SettingsSelect } from "../../settings/controls/SettingsSelect";
+import SidebarGroup from "../../settings/controls/SidebarGroup";
+import settingsStyles from "../../tiles/Tile.settings.module.css";
+import { SettingsLabel } from "../../settings/controls/SettingsLabel";
+import ViewpointSettings from "../camera/ViewpointSettings";
+import { TRACKING_MODES } from "../camera/use-scene-3d-camera-tracking";
 
 /**
  * One source group shown in the 3D settings sidebar.
@@ -109,7 +109,7 @@ export interface Scene3dTileSettingsPoseControls {
   readonly setTrajectoryFrameOverrides: React.Dispatch<
     React.SetStateAction<Readonly<Record<string, string>>>
   >;
-  readonly trajectories: EpisodePoseTrajectories;
+  readonly trajectories: PoseTrajectories;
   readonly trajectoryFrameByStream: ReadonlyMap<string, string>;
 }
 
@@ -117,8 +117,8 @@ export interface Scene3dTileSettingsPoseControls {
  * Camera tracking controls owned by the 3D tile instance.
  */
 export interface Scene3dTileSettingsTrackingControls {
-  readonly mode: Episode3dTrackingMode;
-  readonly setMode: (mode: Episode3dTrackingMode) => void;
+  readonly mode: Scene3dTrackingMode;
+  readonly setMode: (mode: Scene3dTrackingMode) => void;
 }
 
 /**
@@ -158,9 +158,9 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
   tileId,
   trackingControls,
 }) => {
-  const { pinholeCamera, setPinholeCamera } = useEpisodePinholeCameraSettings();
-  const imageProjectionSettings = useEpisodeImageProjectionSettingsByStream();
-  const setImageProjection = useSetEpisodeImageProjection();
+  const { pinholeCamera, setPinholeCamera } = usePinholeCameraSettings();
+  const imageProjectionSettings = useImageProjectionSettingsByStream();
+  const setImageProjection = useSetImageProjection();
   const {
     pointCloudColors,
     pointCloudPointSize,
@@ -168,10 +168,9 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
     setPointCloudPointSize,
     setShowPointCloudColorLegend,
     showPointCloudColorLegend,
-  } = useEpisodePointCloudStyleSettings();
-  const { referenceGrid, setReferenceGrid } = useEpisodeReferenceGridSettings();
-  const { sceneBackground, setSceneBackground } =
-    useEpisodeSceneBackgroundSettings();
+  } = usePointCloudStyleSettings();
+  const { referenceGrid, setReferenceGrid } = useReferenceGridSettings();
+  const { sceneBackground, setSceneBackground } = useSceneBackgroundSettings();
   const { cameraTargetFrameId, frameIds, worldFrameId } = frameControls;
   const { enabled, setSourcesEnabled, toggleSource } = selection;
   const pointCloudSources = sourceGroups.pointCloud.sources;
@@ -207,10 +206,10 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
 
   return (
     <div className={settingsStyles.root}>
-      <EpisodeViewpointSettings tileId={tileId} />
+      <ViewpointSettings tileId={tileId} />
 
-      <EpisodeSidebarGroup title="Tracking">
-        <EpisodeFrameSelect
+      <SidebarGroup title="Tracking">
+        <FrameSelect
           disabled={frameIds.length === 0}
           label="Camera Target"
           onChange={updateCameraTargetFrameId}
@@ -233,7 +232,7 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
             move.
           </span>
         ) : null}
-      </EpisodeSidebarGroup>
+      </SidebarGroup>
 
       <SourceGroup
         enabled={enabled}
@@ -271,7 +270,7 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
       />
 
       {cameraSources.length > 0 ? (
-        <EpisodeSidebarGroup
+        <SidebarGroup
           defaultExpanded={false}
           summary={`${pinholeCamera.imagePlaneDepthM} m · ${pinholeCamera.opacityPercent}%`}
           title="Pinhole"
@@ -304,7 +303,7 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
                 ?.label ?? cameraStream;
             const geometry =
               imageProjectionSettings[imageStream]?.geometry ??
-              DEFAULT_EPISODE_IMAGE_PROJECTION.geometry;
+              DEFAULT_IMAGE_PROJECTION.geometry;
             return (
               <FormField
                 key={cameraStream}
@@ -319,11 +318,11 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
                     aria-label={`Recorded image geometry (${cameraLabel})`}
                     exclusive
                     onChange={(value) => {
-                      if (isEpisodeImageGeometryMode(value)) {
+                      if (isImageGeometryMode(value)) {
                         setImageProjection(imageStream, { geometry: value });
                       }
                     }}
-                    options={EPISODE_IMAGE_GEOMETRY_OPTIONS}
+                    options={IMAGE_GEOMETRY_OPTIONS}
                     portal
                     zIndex={ZIndex.AboveModal}
                     value={geometry}
@@ -332,7 +331,7 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
               />
             );
           })}
-        </EpisodeSidebarGroup>
+        </SidebarGroup>
       ) : null}
 
       <SourceGroup
@@ -361,7 +360,7 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
               !trajectories.get(s.id)?.streamFrameId,
           )
           .map((s) => (
-            <EpisodeFrameSelect
+            <FrameSelect
               disabled={frameIds.length === 0}
               key={s.id}
               label={`Trajectory Frame (${s.label})`}
@@ -388,7 +387,7 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
         toggleSource={toggleSource}
       />
 
-      <EpisodeSidebarGroup defaultExpanded={false} title="Appearance">
+      <SidebarGroup defaultExpanded={false} title="Appearance">
         <div className={settingsStyles.field}>
           <div className={settingsStyles.sectionHeader}>
             <SettingsLabel
@@ -427,10 +426,10 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
             label="Background"
             tooltip="Scene backdrop behind the 3D view: a solid color of your choice, or a named gradient — Abyss (dark) or Studio (light)."
           />
-          <EpisodeSettingsSelect
+          <SettingsSelect
             ariaLabel="Background style"
             onChange={(mode) =>
-              setSceneBackground({ mode: mode as EpisodeSceneBackgroundMode })
+              setSceneBackground({ mode: mode as SceneBackgroundMode })
             }
             options={SCENE_BACKGROUND_OPTIONS}
             value={sceneBackground.mode}
@@ -447,7 +446,7 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
             />
           ) : null}
         </label>
-      </EpisodeSidebarGroup>
+      </SidebarGroup>
     </div>
   );
 };
@@ -458,15 +457,13 @@ const SCENE_BACKGROUND_OPTIONS = [
   { label: "Studio", value: "studio" },
 ];
 
-const EPISODE_IMAGE_GEOMETRY_OPTIONS: Descriptor<{ label: string }>[] = [
+const IMAGE_GEOMETRY_OPTIONS: Descriptor<{ label: string }>[] = [
   { data: { label: "Auto (recommended)" }, id: "auto" },
   { data: { label: "Original camera" }, id: "original" },
   { data: { label: "Rectified" }, id: "rectified" },
 ];
 
-function isEpisodeImageGeometryMode(
-  value: unknown,
-): value is EpisodeImageGeometryMode {
+function isImageGeometryMode(value: unknown): value is ImageGeometryMode {
   return value === "auto" || value === "original" || value === "rectified";
 }
 
@@ -499,7 +496,7 @@ function SourceGroup({
   }
 
   return (
-    <EpisodeSidebarGroup
+    <SidebarGroup
       summary={`${selectedCount} of ${sources.length} on`}
       title={title}
       toggle={{
@@ -537,7 +534,7 @@ function SourceGroup({
         })}
       </div>
       {children}
-    </EpisodeSidebarGroup>
+    </SidebarGroup>
   );
 }
 
@@ -571,7 +568,7 @@ function SettingsNumberInput({
           {label}
         </Text>
       )}
-      <EpisodeSettingsNumberField
+      <SettingsNumberField
         ariaLabel={label}
         disabled={disabled}
         mapping={mapping}
@@ -590,16 +587,16 @@ function TrackingModeSelect({
   tooltip,
   value,
 }: {
-  readonly onChange: (value: Episode3dTrackingMode) => void;
+  readonly onChange: (value: Scene3dTrackingMode) => void;
   readonly tooltip: string;
-  readonly value: Episode3dTrackingMode;
+  readonly value: Scene3dTrackingMode;
 }) {
   return (
     <label className={settingsStyles.field}>
       <SettingsLabel label="Tracking Mode" tooltip={tooltip} />
-      <EpisodeSettingsSelect
+      <SettingsSelect
         ariaLabel="Tracking Mode"
-        onChange={(value) => onChange(value as Episode3dTrackingMode)}
+        onChange={(value) => onChange(value as Scene3dTrackingMode)}
         options={TRACKING_MODES}
         value={value}
       />

@@ -17,7 +17,7 @@ import {
 import { POINT_PICK_BLOCKING_USER_DATA } from "./point-picking";
 import { SceneEmphasisContext, type SceneEmphasis } from "./scene-emphasis";
 import { useScenePicking } from "./scene-interactivity";
-import { SceneTextSprite } from "./scene-text-sprite";
+import { SceneTextSprite } from "./SceneTextSprite";
 import { pointCloudObjectTransform } from "./transforms";
 import type { SceneAnnotationPanelLayer } from "./types";
 import { useInvalidateOn } from "./use-invalidate-on";

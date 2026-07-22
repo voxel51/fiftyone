@@ -2,11 +2,11 @@ import { Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import type { EpisodeFrameGraphSummary } from "../../../../runtime/frame-transforms";
 import {
-  chooseEpisodeCameraTarget,
-  createEpisodeReferenceSelectionState,
-  deriveEpisodeReferenceDecision,
-  episodeReferenceSelectionReducer,
-  type EpisodeReferenceFacts,
+  chooseCameraTarget,
+  createReferenceSelectionState,
+  deriveReferenceDecision,
+  referenceSelectionReducer,
+  type ReferenceFacts,
 } from "./reference-selection";
 
 describe("episode 3D reference selection", () => {
@@ -17,17 +17,15 @@ describe("episode 3D reference selection", () => {
       primarySourceId: null,
     });
 
-    expect(deriveEpisodeReferenceDecision(emptyFacts).referenceFrameId).toBe(
-      "",
-    );
+    expect(deriveReferenceDecision(emptyFacts).referenceFrameId).toBe("");
 
     const observedFacts = facts({
       components: [["base_link", "world"]],
       observations: [{ frameIds: ["base_link"], sourceId: "/pose" }],
       primarySourceId: "/pose",
     });
-    let state = createEpisodeReferenceSelectionState(observedFacts);
-    state = episodeReferenceSelectionReducer(state, {
+    let state = createReferenceSelectionState(observedFacts);
+    state = referenceSelectionReducer(state, {
       facts: emptyFacts,
       type: "factsChanged",
     });
@@ -35,7 +33,7 @@ describe("episode 3D reference selection", () => {
   });
 
   it("keeps a disconnected primary point cloud visible instead of choosing world", () => {
-    const decision = deriveEpisodeReferenceDecision(
+    const decision = deriveReferenceDecision(
       facts({
         components: [["base_link", "world"]],
         observations: [
@@ -56,7 +54,7 @@ describe("episode 3D reference selection", () => {
   });
 
   it("uses primary-source frame membership before other selected sources", () => {
-    const decision = deriveEpisodeReferenceDecision(
+    const decision = deriveReferenceDecision(
       facts({
         components: [["a"], ["b", "world"]],
         observations: [
@@ -73,7 +71,7 @@ describe("episode 3D reference selection", () => {
   });
 
   it("counts each source once per component when the primary has no frame", () => {
-    const decision = deriveEpisodeReferenceDecision(
+    const decision = deriveReferenceDecision(
       facts({
         components: [["a"], ["b"]],
         observations: [
@@ -89,12 +87,8 @@ describe("episode 3D reference selection", () => {
   });
 
   it("never targets an ego frame outside the active component", () => {
-    expect(chooseEpisodeCameraTarget(["velodyne"], "velodyne")).toBe(
-      "velodyne",
-    );
-    expect(chooseEpisodeCameraTarget(["base_link", "map"], "map")).toBe(
-      "base_link",
-    );
+    expect(chooseCameraTarget(["velodyne"], "velodyne")).toBe("velodyne");
+    expect(chooseCameraTarget(["base_link", "map"], "map")).toBe("base_link");
   });
 
   it("guards local-to-stable promotion and ignores a stale completion after user takeover", () => {
@@ -110,8 +104,8 @@ describe("episode 3D reference selection", () => {
       primarySourceId: "/points",
       revisionKey: "connected",
     });
-    let state = createEpisodeReferenceSelectionState(localFacts);
-    state = episodeReferenceSelectionReducer(state, {
+    let state = createReferenceSelectionState(localFacts);
+    state = referenceSelectionReducer(state, {
       facts: connectedFacts,
       timeNs: 42n,
       type: "factsChanged",
@@ -120,12 +114,12 @@ describe("episode 3D reference selection", () => {
     expect(promotionKey).toBeTruthy();
     expect(state.decision.referenceFrameId).toBe("velodyne");
 
-    state = episodeReferenceSelectionReducer(state, {
+    state = referenceSelectionReducer(state, {
       frameId: "velodyne",
       type: "userReferenceSelected",
     });
     expect(state.pendingPromotion).toBeNull();
-    state = episodeReferenceSelectionReducer(state, {
+    state = referenceSelectionReducer(state, {
       key: promotionKey ?? "",
       transform: frameTransform("velodyne", "world"),
       type: "promotionResolved",
@@ -149,13 +143,13 @@ describe("episode 3D reference selection", () => {
       primarySourceId: "/points",
       revisionKey: "2",
     });
-    let state = createEpisodeReferenceSelectionState(localFacts);
-    state = episodeReferenceSelectionReducer(state, {
+    let state = createReferenceSelectionState(localFacts);
+    state = referenceSelectionReducer(state, {
       facts: connectedFacts,
       type: "factsChanged",
     });
     const key = state.pendingPromotion?.key ?? "";
-    state = episodeReferenceSelectionReducer(state, {
+    state = referenceSelectionReducer(state, {
       key,
       transform: frameTransform("lidar", "world"),
       type: "promotionResolved",
@@ -171,7 +165,7 @@ describe("episode 3D reference selection", () => {
     });
     expect(state.pendingPromotion).toBeNull();
     expect(
-      episodeReferenceSelectionReducer(state, {
+      referenceSelectionReducer(state, {
         key,
         transform: frameTransform("lidar", "world"),
         type: "promotionResolved",
@@ -187,10 +181,10 @@ function facts({
   revisionKey = "revision",
 }: {
   readonly components: readonly (readonly string[])[];
-  readonly observations: EpisodeReferenceFacts["observations"];
+  readonly observations: ReferenceFacts["observations"];
   readonly primarySourceId: string | null;
   readonly revisionKey?: string;
-}): EpisodeReferenceFacts {
+}): ReferenceFacts {
   const frameIds = [...new Set(components.flatMap((component) => component))];
   const graphSummary: EpisodeFrameGraphSummary = {
     components,

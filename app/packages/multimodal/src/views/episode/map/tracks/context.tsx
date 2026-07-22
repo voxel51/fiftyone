@@ -14,50 +14,51 @@ import type { EpisodeSession } from "../../../../ports";
 import type { SceneSource } from "../../../../scene-inventory";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import {
-  shouldDeferEpisodeBulkHistory,
-  startEpisodeBulkStreamLifecycle,
-} from "../../playback/episode-bulk-stream-lifecycle";
+  shouldDeferBulkHistory,
+  startBulkStreamLifecycle,
+} from "../../playback/bulk-stream-lifecycle";
 import {
   decimateLocationTrackSegments,
   locationPointFromVisualization,
   locationTrackColor,
   segmentLocationTrack,
-  type EpisodeLocationTrackPoint,
-  type EpisodeLocationTracks,
-  type EpisodeLocationTrackState,
+  type LocationTrackPoint,
+  type LocationTracks,
+  type LocationTrackState,
 } from "./location-track";
 
 const LOCATION_TRACK_READ_LIMIT = 25_000;
 const LOCATION_TRACK_DEFERRED_RETRY_MS = 2_000;
 
-const EMPTY_LOCATION_TRACKS: EpisodeLocationTracks = new Map();
+const EMPTY_LOCATION_TRACKS: LocationTracks = new Map();
 
-interface EpisodeLocationTracksContextValue {
+interface LocationTracksContextValue {
   readonly setTracks: (
     sourceKey: string | null,
-    tracks: EpisodeLocationTracks,
+    tracks: LocationTracks,
   ) => void;
   readonly sourceKey: string | null;
-  readonly tracks: EpisodeLocationTracks;
+  readonly tracks: LocationTracks;
 }
 
-const EpisodeLocationTracksContext =
-  createContext<EpisodeLocationTracksContextValue | null>(null);
+const LocationTracksContext = createContext<LocationTracksContextValue | null>(
+  null,
+);
 
 /**
  * Shares full-file geographic tracks with map tiles. The provider lives
  * outside playback; the bridge inside playback performs one bulk read per
  * source file and publishes normalized route segments here.
  */
-export const EpisodeLocationTracksProvider: React.FC<{
+export const LocationTracksProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
   const [state, setState] = useState<{
     readonly sourceKey: string | null;
-    readonly tracks: EpisodeLocationTracks;
+    readonly tracks: LocationTracks;
   }>({ sourceKey: null, tracks: EMPTY_LOCATION_TRACKS });
   const setTracks = React.useCallback(
-    (sourceKey: string | null, tracks: EpisodeLocationTracks) => {
+    (sourceKey: string | null, tracks: LocationTracks) => {
       setState({ sourceKey, tracks });
     },
     [],
@@ -65,18 +66,18 @@ export const EpisodeLocationTracksProvider: React.FC<{
   const value = useMemo(() => ({ ...state, setTracks }), [setTracks, state]);
 
   return (
-    <EpisodeLocationTracksContext.Provider value={value}>
+    <LocationTracksContext.Provider value={value}>
       {children}
-    </EpisodeLocationTracksContext.Provider>
+    </LocationTracksContext.Provider>
   );
 };
 
-export function useEpisodeLocationTracksContext(): EpisodeLocationTracks {
+export function useLocationTracksContext(): LocationTracks {
   return useContextValue().tracks;
 }
 
 /** Returns the source key associated with the published location tracks. */
-export function useEpisodeLocationTracksSourceKey(): string | null {
+export function useLocationTracksSourceKey(): string | null {
   return useContextValue().sourceKey;
 }
 
@@ -86,7 +87,7 @@ export function useEpisodeLocationTracksSourceKey(): string | null {
  * whole route is the map tile's core value, so this intentionally uses the
  * same capped bulk-lane pattern as pose trajectories.
  */
-export function EpisodeLocationTracksBridge({
+export function LocationTracksBridge({
   locationSources,
   session,
   sourceKey,
@@ -96,7 +97,7 @@ export function EpisodeLocationTracksBridge({
   readonly sourceKey: string | null;
 }) {
   const { setTracks } = useContextValue();
-  const tracksRef = useRef(new Map<string, EpisodeLocationTrackState>());
+  const tracksRef = useRef(new Map<string, LocationTrackState>());
   const playbackStore = useContext(PlaybackStoreContext);
 
   // This effect loads and publishes location tracks for the active source.
@@ -108,15 +109,15 @@ export function EpisodeLocationTracksBridge({
       return undefined;
     }
 
-    const commit = (stream: string, state: EpisodeLocationTrackState) => {
+    const commit = (stream: string, state: LocationTrackState) => {
       tracksRef.current.set(stream, state);
       setTracks(sourceKey, new Map(tracksRef.current));
     };
 
-    return startEpisodeBulkStreamLifecycle({
+    return startBulkStreamLifecycle({
       initialDelayMs: 0,
       retryDelayMs: LOCATION_TRACK_DEFERRED_RETRY_MS,
-      shouldStandDown: () => shouldDeferEpisodeBulkHistory(playbackStore),
+      shouldStandDown: () => shouldDeferBulkHistory(playbackStore),
       streams: locationSources.map((locationSource) => locationSource.id),
       runStream: async (stream, control) => {
         const index = locationSources.findIndex(
@@ -131,10 +132,10 @@ export function EpisodeLocationTracksBridge({
           pointCount: 0,
           segments: [],
           stream,
-        } satisfies Omit<EpisodeLocationTrackState, "status">;
+        } satisfies Omit<LocationTrackState, "status">;
         commit(stream, { ...baseState, status: "loading" });
 
-        const points: EpisodeLocationTrackPoint[] = [];
+        const points: LocationTrackPoint[] = [];
         let messageCount = 0;
         try {
           for await (const batch of session.read({
@@ -190,11 +191,11 @@ export function EpisodeLocationTracksBridge({
   return null;
 }
 
-function useContextValue(): EpisodeLocationTracksContextValue {
-  const value = useContext(EpisodeLocationTracksContext);
+function useContextValue(): LocationTracksContextValue {
+  const value = useContext(LocationTracksContext);
   if (!value) {
     throw new Error(
-      "episode location tracks must be used inside <EpisodeLocationTracksProvider>",
+      "episode location tracks must be used inside <LocationTracksProvider>",
     );
   }
 

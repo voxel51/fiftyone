@@ -6,26 +6,23 @@ import {
 import type { EpisodeTileAvailability } from "../../../extensions/tiles/types";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
 import Scene3dTile from "../scene/tile/Scene3dTile";
-import EpisodeImageTile from "../image/EpisodeImageTile";
-import EpisodeLogConsoleTile from "../logs/EpisodeLogConsoleTile";
+import ImageTile from "../image/ImageTile";
+import LogConsoleTile from "../logs/LogConsoleTile";
 import MapTile from "../map/tile/MapTile";
-import EpisodePlotTile from "../plots/EpisodePlotTile";
-import EpisodeRawMessageTile from "../raw/EpisodeRawMessageTile";
+import PlotTile from "../plots/PlotTile";
+import RawMessageTile from "../raw/RawMessageTile";
 import {
-  EPISODE_TILE_TYPE,
-  type BuiltInEpisodeTileType,
+  TILE_TYPE,
+  type BuiltInTileType,
   type EpisodeTileProps,
-  type EpisodeTileType,
-} from "../tiles/episode-tile-types";
+  type TileType,
+} from "../tiles/tile-types";
 
-export { EPISODE_TILE_TYPE } from "../tiles/episode-tile-types";
-export type {
-  EpisodeTileProps,
-  EpisodeTileType,
-} from "../tiles/episode-tile-types";
+export { TILE_TYPE } from "../tiles/tile-types";
+export type { EpisodeTileProps, TileType } from "../tiles/tile-types";
 export type { EpisodeTileAvailability } from "../../../extensions/tiles/types";
 
-interface EpisodeTileDefinition {
+interface TileDefinition {
   readonly icon: IconName;
   readonly isAvailable: (facts: EpisodeTileAvailability) => boolean;
   readonly order: number;
@@ -41,27 +38,24 @@ const THREE_D_SOURCE_TYPES = new Set<string>([
 ]);
 
 /** Built-in tile catalog in explicit product order. */
-const BUILT_IN_TILE_BY_TYPE: Record<
-  BuiltInEpisodeTileType,
-  EpisodeTileDefinition
-> = {
-  [EPISODE_TILE_TYPE.IMAGE]: {
+const BUILT_IN_TILE_BY_TYPE: Record<BuiltInTileType, TileDefinition> = {
+  [TILE_TYPE.IMAGE]: {
     icon: IconName.GridView,
     isAvailable: ({ sourceTypes }) =>
       sourceTypes.includes(SCENE_SOURCE_TYPE.IMAGE),
     order: 10,
-    Tile: EpisodeImageTile,
+    Tile: ImageTile,
     typeLabel: "Image",
   },
-  [EPISODE_TILE_TYPE.LOG]: {
+  [TILE_TYPE.LOG]: {
     icon: IconName.Logs,
     isAvailable: ({ sourceTypes }) =>
       sourceTypes.includes(SCENE_SOURCE_TYPE.LOG),
     order: 40,
-    Tile: EpisodeLogConsoleTile,
+    Tile: LogConsoleTile,
     typeLabel: "Logs",
   },
-  [EPISODE_TILE_TYPE.MAP]: {
+  [TILE_TYPE.MAP]: {
     icon: IconName.Polyline,
     isAvailable: ({ sourceTypes }) =>
       sourceTypes.includes(SCENE_SOURCE_TYPE.LOCATION),
@@ -69,7 +63,7 @@ const BUILT_IN_TILE_BY_TYPE: Record<
     Tile: MapTile,
     typeLabel: "Map",
   },
-  [EPISODE_TILE_TYPE.THREE_D]: {
+  [TILE_TYPE.THREE_D]: {
     icon: IconName.Embeddings,
     isAvailable: ({ sourceTypes }) =>
       sourceTypes.some((sourceType) => THREE_D_SOURCE_TYPES.has(sourceType)),
@@ -77,27 +71,27 @@ const BUILT_IN_TILE_BY_TYPE: Record<
     Tile: Scene3dTile,
     typeLabel: "3D",
   },
-  [EPISODE_TILE_TYPE.PLOT]: {
+  [TILE_TYPE.PLOT]: {
     icon: IconName.Insights,
     isAvailable: ({ hasNumericSeries }) => hasNumericSeries,
     order: 50,
-    Tile: EpisodePlotTile,
+    Tile: PlotTile,
     typeLabel: "Plot",
   },
-  [EPISODE_TILE_TYPE.RAW]: {
+  [TILE_TYPE.RAW]: {
     icon: IconName.JSON,
     isAvailable: ({ hasRawRecords }) => hasRawRecords,
     order: 60,
-    Tile: EpisodeRawMessageTile,
+    Tile: RawMessageTile,
     typeLabel: "Message",
   },
 };
 
 const BUILT_IN_TILE_TYPES = Object.keys(
   BUILT_IN_TILE_BY_TYPE,
-) as BuiltInEpisodeTileType[];
+) as BuiltInTileType[];
 
-function isBuiltInTileType(type: string): type is BuiltInEpisodeTileType {
+function isBuiltInTileType(type: string): type is BuiltInTileType {
   return Object.hasOwn(BUILT_IN_TILE_BY_TYPE, type);
 }
 
@@ -106,7 +100,7 @@ function isBuiltInTileType(type: string): type is BuiltInEpisodeTileType {
  * tile type, or `null` for unknown types (e.g. a persisted layout from
  * a build with more tile kinds).
  */
-export function getEpisodeTileDefinition(type: string): {
+export function getTileDefinition(type: string): {
   icon: IconName;
   order: number;
   typeLabel: string;
@@ -121,11 +115,11 @@ export function getEpisodeTileDefinition(type: string): {
  * Tile kinds supported by the current episode, in explicit product order.
  * Build-time contributions share the same availability and ordering policy.
  */
-export function episodeTileTypesFor(
+export function tileTypesFor(
   facts: EpisodeTileAvailability,
-): readonly EpisodeTileType[] {
-  const definitions: readonly (EpisodeTileDefinition & {
-    readonly id: EpisodeTileType;
+): readonly TileType[] {
+  const definitions: readonly (TileDefinition & {
+    readonly id: TileType;
   })[] = [
     ...BUILT_IN_TILE_TYPES.map((id) => ({
       ...BUILT_IN_TILE_BY_TYPE[id],

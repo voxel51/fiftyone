@@ -14,8 +14,8 @@ import type {
   SceneLinePrimitive,
   SceneLinePrimitiveKind,
   SceneModelPrimitive,
-  ScenePoint3D,
-  ScenePose3D,
+  ScenePoint3d,
+  ScenePose3d,
   SceneSpherePrimitive,
   SceneTextPrimitive,
   SceneTrianglePrimitive,
@@ -396,9 +396,9 @@ function markerArrows({
   scale,
 }: {
   readonly color: RgbaColor | null;
-  readonly points: readonly ScenePoint3D[];
-  readonly pose: ScenePose3D;
-  readonly scale: ScenePoint3D;
+  readonly points: readonly ScenePoint3d[];
+  readonly pose: ScenePose3d;
+  readonly scale: ScenePoint3d;
 }): readonly SceneArrowPrimitive[] {
   if (points.length >= 2) {
     const start = transformPointByPose(pose, points[0]);
@@ -466,9 +466,9 @@ function markerLine({
 }: {
   readonly color: RgbaColor | null;
   readonly colors: readonly RgbaColor[];
-  readonly points: readonly ScenePoint3D[];
-  readonly pose: ScenePose3D;
-  readonly scale: ScenePoint3D;
+  readonly points: readonly ScenePoint3d[];
+  readonly pose: ScenePose3d;
+  readonly scale: ScenePoint3d;
   readonly type: SceneLinePrimitiveKind;
 }): SceneLinePrimitive {
   return {
@@ -486,8 +486,8 @@ function markerLine({
 function markerModel(
   marker: Record<string, unknown>,
   color: RgbaColor | null,
-  pose: ScenePose3D,
-  scale: ScenePoint3D,
+  pose: ScenePose3d,
+  scale: ScenePoint3d,
 ): SceneModelPrimitive | null {
   const url = stringField(marker, "mesh_resource", "");
   if (!url.startsWith("data:")) {
@@ -571,7 +571,7 @@ function markerEntityId(
   return `${topic}:${stringField(marker, "ns")}:${integerField(marker, "id", 0)}`;
 }
 
-function markerPose(marker: Record<string, unknown>): ScenePose3D {
+function markerPose(marker: Record<string, unknown>): ScenePose3d {
   const pose = decodePose(recordField(marker, "pose"));
   return {
     position: pose.position,
@@ -579,7 +579,7 @@ function markerPose(marker: Record<string, unknown>): ScenePose3D {
   };
 }
 
-function markerScale(marker: Record<string, unknown>): ScenePoint3D {
+function markerScale(marker: Record<string, unknown>): ScenePoint3d {
   const scale = decodeVector3(recordField(marker, "scale"), [1, 1, 1]);
   return [
     positiveOr(scale[0], 1),
@@ -588,7 +588,7 @@ function markerScale(marker: Record<string, unknown>): ScenePoint3D {
   ];
 }
 
-function markerPointSize(scale: ScenePoint3D): ScenePoint3D {
+function markerPointSize(scale: ScenePoint3d): ScenePoint3d {
   return [
     positiveOr(scale[0], DEFAULT_POINT_SIZE),
     positiveOr(scale[1], DEFAULT_POINT_SIZE),
@@ -598,7 +598,7 @@ function markerPointSize(scale: ScenePoint3D): ScenePoint3D {
 
 function markerPoints(
   marker: Record<string, unknown>,
-): readonly ScenePoint3D[] {
+): readonly ScenePoint3d[] {
   return arrayField(marker, "points").map((point) =>
     decodeVector3(recordField({ point }, "point"), ZERO_VECTOR3),
   );
@@ -630,9 +630,9 @@ function colorFromRecord(
 }
 
 function composeMarkerPointPose(
-  markerPoseValue: ScenePose3D,
-  point: ScenePoint3D,
-): ScenePose3D {
+  markerPoseValue: ScenePose3d,
+  point: ScenePoint3d,
+): ScenePose3d {
   return {
     position: transformPointByPose(markerPoseValue, point),
     quaternion: markerPoseValue.quaternion,
@@ -640,9 +640,9 @@ function composeMarkerPointPose(
 }
 
 function transformPointByPose(
-  pose: ScenePose3D,
-  point: ScenePoint3D,
-): ScenePoint3D {
+  pose: ScenePose3d,
+  point: ScenePoint3d,
+): ScenePoint3d {
   const q = decodeQuaternion(
     {
       w: pose.quaternion[3],

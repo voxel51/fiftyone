@@ -33,7 +33,7 @@
  */
 import * as THREE from "three";
 
-import type { ImageTextureHandle } from "./base-2d-scene";
+import type { ImageTextureHandle } from "./Base2dScene";
 
 type TextureWithNormalized = THREE.Texture & {
   normalized?: boolean;

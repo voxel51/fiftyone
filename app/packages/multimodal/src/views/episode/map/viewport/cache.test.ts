@@ -1,24 +1,24 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  canPreserveEpisodeMapViewportBetweenSamples,
-  readEpisodeMapViewport,
-  resetEpisodeMapViewportCacheForTests,
-  writeEpisodeMapViewport,
+  canPreserveMapViewportBetweenSamples,
+  readMapViewport,
+  resetMapViewportCacheForTests,
+  writeMapViewport,
 } from "./cache";
 
 describe("mcap map viewport cache", () => {
   beforeEach(() => {
-    resetEpisodeMapViewportCacheForTests();
+    resetMapViewportCacheForTests();
   });
 
   it("warms later samples in the same dataset scope", () => {
-    writeEpisodeMapViewport("dataset-a", {
+    writeMapViewport("dataset-a", {
       latitude: 37.7749,
       longitude: -122.4194,
       zoom: 16,
     });
 
-    expect(readEpisodeMapViewport("dataset-a")).toEqual({
+    expect(readMapViewport("dataset-a")).toEqual({
       latitude: 37.7749,
       longitude: -122.4194,
       zoom: 16,
@@ -26,46 +26,46 @@ describe("mcap map viewport cache", () => {
   });
 
   it("preserves a live camera only between samples in the same dataset", () => {
-    expect(
-      canPreserveEpisodeMapViewportBetweenSamples("dataset-a", "dataset-a"),
-    ).toBe(true);
-    expect(
-      canPreserveEpisodeMapViewportBetweenSamples("dataset-a", "dataset-b"),
-    ).toBe(false);
-    expect(canPreserveEpisodeMapViewportBetweenSamples(null, null)).toBe(false);
+    expect(canPreserveMapViewportBetweenSamples("dataset-a", "dataset-a")).toBe(
+      true,
+    );
+    expect(canPreserveMapViewportBetweenSamples("dataset-a", "dataset-b")).toBe(
+      false,
+    );
+    expect(canPreserveMapViewportBetweenSamples(null, null)).toBe(false);
   });
 
   it("does not leak a viewport into another dataset", () => {
-    writeEpisodeMapViewport("dataset-a", {
+    writeMapViewport("dataset-a", {
       latitude: 37.7749,
       longitude: -122.4194,
       zoom: 16,
     });
 
-    expect(readEpisodeMapViewport("dataset-b")).toBeNull();
+    expect(readMapViewport("dataset-b")).toBeNull();
   });
 
   it("ignores invalid location data", () => {
-    writeEpisodeMapViewport("dataset-a", {
+    writeMapViewport("dataset-a", {
       latitude: 100,
       longitude: -122.4194,
       zoom: 16,
     });
 
-    expect(readEpisodeMapViewport("dataset-a")).toBeNull();
+    expect(readMapViewport("dataset-a")).toBeNull();
   });
 
   it("keeps only the most recent dataset scopes", () => {
     for (let index = 0; index < 17; index += 1) {
-      writeEpisodeMapViewport(`dataset-${index}`, {
+      writeMapViewport(`dataset-${index}`, {
         latitude: index,
         longitude: -index,
         zoom: 12,
       });
     }
 
-    expect(readEpisodeMapViewport("dataset-0")).toBeNull();
-    expect(readEpisodeMapViewport("dataset-16")).toEqual({
+    expect(readMapViewport("dataset-0")).toBeNull();
+    expect(readMapViewport("dataset-16")).toEqual({
       latitude: 16,
       longitude: -16,
       zoom: 12,

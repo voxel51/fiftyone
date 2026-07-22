@@ -5,18 +5,16 @@ import {
 } from "@fiftyone/plugins";
 import React, { lazy, Suspense } from "react";
 
-const LazyModalRenderer = lazy(
-  () => import("./episode/shell/EpisodeModalRenderer"),
-);
+const LazyModalRenderer = lazy(() => import("./episode/shell/ModalRenderer"));
 const LazyGridRenderer = lazy(() =>
   import("./episode/grid/GridRenderer").then(({ GridRenderer }) => ({
     default: GridRenderer,
   })),
 );
 const LazyGridStreamSelector = lazy(() =>
-  import("./episode/grid/EpisodeGridStreamSelector").then(
-    ({ EpisodeGridStreamSelector }) => ({
-      default: EpisodeGridStreamSelector,
+  import("./episode/grid/GridStreamSelector").then(
+    ({ GridStreamSelector }) => ({
+      default: GridStreamSelector,
     }),
   ),
 );
@@ -39,9 +37,9 @@ function withSuspense<T extends object>(
   };
 }
 
-const EpisodeModalRenderer = withSuspense(LazyModalRenderer);
+const ModalRenderer = withSuspense(LazyModalRenderer);
 const EpisodeGridRenderer = withSuspense(LazyGridRenderer);
-const EpisodeGridStreamSelector = withSuspense(LazyGridStreamSelector);
+const GridStreamSelector = withSuspense(LazyGridStreamSelector);
 const McapExplorer = withSuspense(LazyMcapExplorer);
 const McapExplorerIcon = withSuspense(LazyMcapExplorerIcon);
 
@@ -54,7 +52,7 @@ export function registerEpisodeViews(): void {
   registerComponent({
     name: "EpisodeRenderer",
     label: "Episode Renderer",
-    component: EpisodeModalRenderer,
+    component: ModalRenderer,
     type: PluginComponentType.SampleRenderer,
     activator: (ctx) => ctx.dataset?.mediaType === "multimodal",
     sampleRendererOptions: {
@@ -66,7 +64,7 @@ export function registerEpisodeViews(): void {
         overrideComponent: EpisodeGridRenderer,
         slots: {
           [SAMPLE_RENDERER_GRID_SLOT.HEADER_AFTER_RESOURCE_COUNT]:
-            EpisodeGridStreamSelector,
+            GridStreamSelector,
         },
       },
     },

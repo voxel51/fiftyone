@@ -39,18 +39,18 @@ import {
   type PointCloudColormapName,
 } from "../../../../visualization/scene-3d/index";
 import {
-  DEFAULT_EPISODE_POINT_CLOUD_COLOR,
-  MAX_EPISODE_POINT_CLOUD_POINT_SIZE,
-  EPISODE_POINT_CLOUD_POINT_SIZE_STEP,
-  MIN_EPISODE_POINT_CLOUD_POINT_SIZE,
-  defaultEpisodePointCloudColorForSource,
-  type EpisodePointCloudColorSettings,
+  DEFAULT_POINT_CLOUD_COLOR,
+  MAX_POINT_CLOUD_POINT_SIZE,
+  POINT_CLOUD_POINT_SIZE_STEP,
+  MIN_POINT_CLOUD_POINT_SIZE,
+  defaultPointCloudColorForSource,
+  type PointCloudColorSettings,
 } from "../../settings/modal/state";
-import { settingsBooleanNoSpaceToggleProps } from "../../settings/controls/episode-settings-keyboard";
-import { EpisodeSettingsNumberField } from "../../settings/controls/EpisodeSettingsNumberField";
-import { EpisodeSettingsLabel as SettingsLabel } from "../../settings/controls/EpisodeSettingsLabel";
-import EpisodeSidebarGroup from "../../settings/controls/EpisodeSidebarGroup";
-import settingsStyles from "../../tiles/EpisodeTile.settings.module.css";
+import { settingsBooleanNoSpaceToggleProps } from "../../settings/controls/settings-keyboard";
+import { SettingsNumberField } from "../../settings/controls/SettingsNumberField";
+import { SettingsLabel } from "../../settings/controls/SettingsLabel";
+import SidebarGroup from "../../settings/controls/SidebarGroup";
+import settingsStyles from "../../tiles/Tile.settings.module.css";
 import type { PointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 
 /** Point-cloud appearance controls for the focused 3D scene tile. */
@@ -69,13 +69,13 @@ export function PointCloudStyleSection({
     string,
     PointCloudColorCapabilities
   >;
-  readonly pointCloudColors: Record<string, EpisodePointCloudColorSettings>;
+  readonly pointCloudColors: Record<string, PointCloudColorSettings>;
   readonly pointCloudPointSize: number;
   readonly pointCloudSources: readonly SceneSource[];
   readonly selectedPointCloudSources: readonly SceneSource[];
   readonly setPointCloudColor: (
     stream: string,
-    settings: Partial<EpisodePointCloudColorSettings>,
+    settings: Partial<PointCloudColorSettings>,
   ) => void;
   readonly setPointCloudPointSize: (pointSize: number) => void;
   readonly setShowPointCloudColorLegend: (visible: boolean) => void;
@@ -99,17 +99,17 @@ export function PointCloudStyleSection({
   }, [expandedSourceId, selectedPointCloudSources]);
 
   return (
-    <EpisodeSidebarGroup
+    <SidebarGroup
       defaultExpanded={false}
       summary={summary}
       title="Point Clouds (Style)"
     >
       <PointCloudNumberInput
         label="Point size"
-        max={MAX_EPISODE_POINT_CLOUD_POINT_SIZE}
-        min={MIN_EPISODE_POINT_CLOUD_POINT_SIZE}
+        max={MAX_POINT_CLOUD_POINT_SIZE}
+        min={MIN_POINT_CLOUD_POINT_SIZE}
         onChange={setPointCloudPointSize}
-        step={EPISODE_POINT_CLOUD_POINT_SIZE_STEP}
+        step={POINT_CLOUD_POINT_SIZE_STEP}
         tooltip="Global point sprite size in screen pixels for all point clouds in this 3D view."
         value={pointCloudPointSize}
       />
@@ -132,7 +132,7 @@ export function PointCloudStyleSection({
         <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
           <div className={settingsStyles.colorSourceList}>
             {selectedPointCloudSources.map((source) => {
-              const defaultSettings = defaultEpisodePointCloudColorForSource(
+              const defaultSettings = defaultPointCloudColorForSource(
                 source,
                 pointCloudSources,
               );
@@ -203,7 +203,7 @@ export function PointCloudStyleSection({
           Select a point cloud to configure its colors.
         </span>
       )}
-    </EpisodeSidebarGroup>
+    </SidebarGroup>
   );
 }
 
@@ -249,7 +249,7 @@ let nextPointCloudColorStopId = 0;
 function PointCloudColorSummary({
   settings,
 }: {
-  readonly settings: EpisodePointCloudColorSettings;
+  readonly settings: PointCloudColorSettings;
 }) {
   const rampActive =
     settings.colorBy !== "rgb" && settings.colorBy !== "uniform";
@@ -308,7 +308,7 @@ function pointCloudColorByLabel(colorBy: string): string {
 function pointCloudRangeLabel({
   rangeMax,
   rangeMin,
-}: EpisodePointCloudColorSettings): string | null {
+}: PointCloudColorSettings): string | null {
   if (rangeMin === null && rangeMax === null) {
     return null;
   }
@@ -317,8 +317,8 @@ function pointCloudRangeLabel({
 }
 
 function isDefaultPointCloudColorSettings(
-  settings: EpisodePointCloudColorSettings,
-  defaultSettings = DEFAULT_EPISODE_POINT_CLOUD_COLOR,
+  settings: PointCloudColorSettings,
+  defaultSettings = DEFAULT_POINT_CLOUD_COLOR,
 ): boolean {
   return (
     settings.colorBy === defaultSettings.colorBy &&
@@ -345,10 +345,8 @@ function PointCloudColorControls({
 }: {
   readonly capabilities?: PointCloudColorCapabilities;
   readonly defaultColormap?: PointCloudColormap;
-  readonly onChange: (
-    settings: Partial<EpisodePointCloudColorSettings>,
-  ) => void;
-  readonly settings: EpisodePointCloudColorSettings;
+  readonly onChange: (settings: Partial<PointCloudColorSettings>) => void;
+  readonly settings: PointCloudColorSettings;
   readonly sourceLabel?: string;
 }) {
   const [editorOpen, setEditorOpen] = useState(false);
@@ -431,8 +429,7 @@ function PointCloudColorControls({
               }
               type="color"
               value={
-                settings.uniformColor ||
-                DEFAULT_EPISODE_POINT_CLOUD_COLOR.uniformColor
+                settings.uniformColor || DEFAULT_POINT_CLOUD_COLOR.uniformColor
               }
             />
           }
@@ -879,7 +876,7 @@ function SettingsNullableNumberInput({
     <FormField
       label={<SettingsLabel label={label} tooltip={tooltip} />}
       control={
-        <EpisodeSettingsNumberField
+        <SettingsNumberField
           ariaLabel={label}
           empty="null"
           onCommit={onChange}
@@ -921,7 +918,7 @@ function PointCloudNumberInput({
           {label}
         </Text>
       )}
-      <EpisodeSettingsNumberField
+      <SettingsNumberField
         ariaLabel={label}
         disabled={disabled}
         mapping={mapping}

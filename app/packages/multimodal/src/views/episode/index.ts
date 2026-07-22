@@ -1,13 +1,13 @@
 /**
  * Public production surface for episode-backed views.
  */
-export { default as EpisodeModalRenderer } from "./shell/EpisodeModalRenderer";
+export { default as ModalRenderer } from "./shell/ModalRenderer";
 export { GridRenderer } from "./grid/GridRenderer";
-export { EpisodeGridStreamSelector } from "./grid/EpisodeGridStreamSelector";
-export { EpisodeSourcePlayback } from "./shell/EpisodeSourcePlayback";
-export type { EpisodeSourcePlaybackProps } from "./shell/EpisodeSourcePlayback";
-export { episodeSourceDisplayName } from "./shell/episode-source-display-name";
-export { getEpisodeNetworkHealth } from "./playback/episode-network-health";
+export { GridStreamSelector } from "./grid/GridStreamSelector";
+export { SourcePlayback } from "./shell/SourcePlayback";
+export type { SourcePlaybackProps } from "./shell/SourcePlayback";
+export { sourceDisplayName } from "./shell/source-display-name";
+export { getNetworkHealth } from "./playback/network-health";
 
-export { useEpisodeFrameTransforms } from "./spatial/frame-transforms/use-episode-frame-transforms";
-export type { EpisodeFrameTransformResolver } from "./spatial/frame-transforms/use-episode-frame-transforms";
+export { useFrameTransforms } from "./spatial/frame-transforms/use-frame-transforms";
+export type { FrameTransformResolver } from "./spatial/frame-transforms/use-frame-transforms";

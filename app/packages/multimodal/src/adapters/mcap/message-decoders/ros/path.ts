@@ -5,8 +5,8 @@ import type {
   RgbaColor,
   SceneArrowPrimitive,
   SceneLinePrimitive,
-  ScenePoint3D,
-  ScenePose3D,
+  ScenePoint3d,
+  ScenePose3d,
 } from "../../../../ir/index";
 import { VISUALIZATION_KIND } from "../../../../ir/index";
 import {
@@ -150,7 +150,7 @@ export function decodeRosPoseArrayRecord(
   };
 }
 
-function pathPoints(message: Record<string, unknown>): readonly ScenePoint3D[] {
+function pathPoints(message: Record<string, unknown>): readonly ScenePoint3d[] {
   return arrayRecords(message, "poses")
     .slice(0, MAX_PATH_POINTS)
     .map((poseStamped) =>
@@ -163,7 +163,7 @@ function pathPoints(message: Record<string, unknown>): readonly ScenePoint3D[] {
 
 function poseArrayPoses(
   poses: readonly Record<string, unknown>[],
-): readonly ScenePose3D[] {
+): readonly ScenePose3d[] {
   return poses.map((pose) => {
     const decoded = decodePose(pose);
     return {
@@ -173,7 +173,7 @@ function poseArrayPoses(
   });
 }
 
-function pathLine(points: readonly ScenePoint3D[]): SceneLinePrimitive {
+function pathLine(points: readonly ScenePoint3d[]): SceneLinePrimitive {
   return {
     color: PATH_COLOR,
     colors: [],
@@ -186,7 +186,7 @@ function pathLine(points: readonly ScenePoint3D[]): SceneLinePrimitive {
   };
 }
 
-function poseArrow(pose: ScenePose3D): SceneArrowPrimitive {
+function poseArrow(pose: ScenePose3d): SceneArrowPrimitive {
   return {
     color: POSE_ARRAY_COLOR,
     headDiameter: POSE_ARROW_HEAD_DIAMETER,
@@ -197,7 +197,7 @@ function poseArrow(pose: ScenePose3D): SceneArrowPrimitive {
   };
 }
 
-function identityPose(): ScenePose3D {
+function identityPose(): ScenePose3d {
   return {
     position: ZERO_VECTOR3,
     quaternion: IDENTITY_QUATERNION,

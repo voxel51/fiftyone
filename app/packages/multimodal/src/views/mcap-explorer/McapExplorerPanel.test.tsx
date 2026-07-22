@@ -1,11 +1,11 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BYTE_SOURCE_READ_PROFILE } from "../../query/bytes/index";
-import type { EpisodeSourcePlaybackProps } from "../episode/index";
+import type { SourcePlaybackProps } from "../episode/index";
 import McapExplorerPanel from "./McapExplorerPanel";
 
 const viewerHarness = vi.hoisted(() => ({
-  lastPlaybackProps: null as EpisodeSourcePlaybackProps | null,
+  lastPlaybackProps: null as SourcePlaybackProps | null,
   reset() {
     this.lastPlaybackProps = null;
   },
@@ -21,7 +21,7 @@ vi.mock("../episode/index", async (importOriginal) => {
 
   return {
     ...actual,
-    EpisodeSourcePlayback: (props: EpisodeSourcePlaybackProps) => {
+    SourcePlayback: (props: SourcePlaybackProps) => {
       viewerHarness.lastPlaybackProps = props;
 
       return (

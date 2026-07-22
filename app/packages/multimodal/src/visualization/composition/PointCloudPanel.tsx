@@ -11,9 +11,9 @@ import * as THREE from "three";
 
 import MeasureRulerIcon from "../panel-ui/MeasureRulerIcon";
 import type { PointCloudBounds } from "../../ir";
-import { Base3DScene } from "../scene-3d/base-3d-scene";
+import { Base3dScene } from "../scene-3d/Base3dScene";
 import { WebGpuCanvas } from "../webgpu/WebGpuCanvas";
-import { PanelNotices } from "../panel-ui/panel-notices";
+import { PanelNotices } from "../panel-ui/PanelNotices";
 import { useKeyedIdentityMap } from "../panel-ui/use-keyed-identity-map";
 import {
   DEFAULT_POINT_CLOUD_CAMERA_PROJECTION,
@@ -441,7 +441,7 @@ export function PointCloudPanel({
         surface={canvasSurface}
       >
         <PerspectiveCameraProjection projection={cameraProjection} />
-        <Base3DScene
+        <Base3dScene
           background={background}
           cameraPose={effectiveCameraPose}
           onCameraPoseChange={onCameraPoseChange}
@@ -502,7 +502,7 @@ export function PointCloudPanel({
               />
             </GpuPointCloud3dPickerRegistryContext.Provider>
           </ScenePickingContext.Provider>
-        </Base3DScene>
+        </Base3dScene>
       </WebGpuCanvas>
 
       {canvasError ? (

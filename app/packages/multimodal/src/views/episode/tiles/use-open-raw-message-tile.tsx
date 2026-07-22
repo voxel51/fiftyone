@@ -5,21 +5,18 @@ import {
 } from "@fiftyone/tiling";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef } from "react";
-import {
-  episodeRawTileStreamAtom,
-  type EpisodeRawTileStreams,
-} from "./raw-message-binding";
-import { EPISODE_TILE_TYPE } from "./episode-tile-types";
+import { rawTileStreamAtom, type RawTileStreams } from "./raw-message-binding";
+import { TILE_TYPE } from "./tile-types";
 
 /**
  * Opens a Message panel for a stream: focus an existing matching raw tile,
  * reuse an empty raw tile, or create a new raw tile with the stream preselected.
  */
-export function useOpenEpisodeRawMessageTile(): (stream: string) => void {
+export function useOpenRawMessageTile(): (stream: string) => void {
   const { addTile, setFocusedTileId, setTileTitle, tiles } = useTiling();
   const registeredTiles = useRegisteredTiles();
-  const streamsByTile = useAtomValue(episodeRawTileStreamAtom);
-  const setStreamsByTile = useSetAtom(episodeRawTileStreamAtom);
+  const streamsByTile = useAtomValue(rawTileStreamAtom);
+  const setStreamsByTile = useSetAtom(rawTileStreamAtom);
   const stateRef = useRef({ registeredTiles, tiles, streamsByTile });
   stateRef.current = { registeredTiles, tiles, streamsByTile };
 
@@ -31,7 +28,7 @@ export function useOpenEpisodeRawMessageTile(): (stream: string) => void {
 
       const current = stateRef.current;
       const rawTileIds = Object.keys(current.tiles).filter(
-        (tileId) => current.tiles[tileId]?.type === EPISODE_TILE_TYPE.RAW,
+        (tileId) => current.tiles[tileId]?.type === TILE_TYPE.RAW,
       );
       const matchingTileId = rawTileIds.find(
         (tileId) => current.streamsByTile[tileId] === stream,
@@ -70,16 +67,16 @@ export function useOpenEpisodeRawMessageTile(): (stream: string) => void {
       }
 
       const definition = current.registeredTiles.find(
-        (entry) => entry.type === EPISODE_TILE_TYPE.RAW,
+        (entry) => entry.type === TILE_TYPE.RAW,
       );
       if (!definition) return;
       const RawMessageTile = definition.Tile;
       const tile: TilingTile = {
         render: () => <RawMessageTile />,
         title: stream,
-        type: EPISODE_TILE_TYPE.RAW,
+        type: TILE_TYPE.RAW,
       };
-      const tileId = addTile(tile, { idPrefix: EPISODE_TILE_TYPE.RAW });
+      const tileId = addTile(tile, { idPrefix: TILE_TYPE.RAW });
       const nextStreams = setRawTileStream(
         current.streamsByTile,
         tileId,
@@ -100,10 +97,10 @@ export function useOpenEpisodeRawMessageTile(): (stream: string) => void {
 }
 
 function setRawTileStream(
-  previous: EpisodeRawTileStreams,
+  previous: RawTileStreams,
   tileId: string,
   stream: string,
-): EpisodeRawTileStreams {
+): RawTileStreams {
   if (previous[tileId] === stream) {
     return previous;
   }

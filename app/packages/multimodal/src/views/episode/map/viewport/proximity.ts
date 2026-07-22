@@ -1,4 +1,4 @@
-import type { EpisodeMapViewport } from "./cache";
+import type { MapViewport } from "./cache";
 import type { LocationBounds } from "../tracks/location-track";
 
 const TILE_SIZE = 512;
@@ -17,7 +17,7 @@ type Rect = {
  * The comparison is performed in projected pixels at the cached zoom, so the
  * threshold scales naturally from street level to regional views.
  */
-export function episodeMapViewportIsNearEvidence({
+export function mapViewportIsNearEvidence({
   bounds,
   height,
   marker,
@@ -30,7 +30,7 @@ export function episodeMapViewportIsNearEvidence({
     readonly latitude: number;
     readonly longitude: number;
   } | null;
-  readonly viewport: EpisodeMapViewport;
+  readonly viewport: MapViewport;
   readonly width: number;
 }): boolean {
   if (

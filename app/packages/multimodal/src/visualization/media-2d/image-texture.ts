@@ -10,7 +10,7 @@ import type {
   ImageVisualization,
   RawImageVisualization,
 } from "../../ir";
-import type { ImageTextureHandle } from "./base-2d-scene";
+import type { ImageTextureHandle } from "./Base2dScene";
 import { createEncodedVideoTexture } from "./video-texture";
 
 const MAX_VIDEO_DECODE_PREREQUISITES = 600;

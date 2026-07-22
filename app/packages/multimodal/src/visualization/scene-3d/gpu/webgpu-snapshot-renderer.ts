@@ -458,7 +458,7 @@ function buildSnapshotScene(
     PERSPECTIVE_POINT_CAMERA.near,
     PERSPECTIVE_POINT_CAMERA.far,
   );
-  // Z-up, mirroring useZUpSceneCoordinates in the live Base3DScene.
+  // Z-up, mirroring useZUpSceneCoordinates in the live Base3dScene.
   camera.up.set(0, 0, 1);
   if (pose) {
     camera.position.set(...pose.position);

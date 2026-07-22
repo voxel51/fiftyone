@@ -3,21 +3,21 @@ import React, { useMemo } from "react";
 import { useSceneInventory } from "../../../../scene-inventory/react";
 import { SCENE_SOURCE_TYPE } from "../../../../ir";
 import {
-  EPISODE_MAP_BASE_LAYER,
-  type EpisodeMapBaseLayer,
-  useEpisodeMapTileSettings,
-  useSetEpisodeMapTileSettings,
-  useToggleEpisodeMapTileStream,
+  MAP_BASE_LAYER,
+  type MapBaseLayer,
+  useMapTileSettings,
+  useSetMapTileSettings,
+  useToggleMapTileStream,
 } from "./tile-state";
-import { checkboxNoSpaceToggleProps } from "../../settings/controls/episode-settings-keyboard";
-import settingsStyles from "../../tiles/EpisodeTile.settings.module.css";
+import { checkboxNoSpaceToggleProps } from "../../settings/controls/settings-keyboard";
+import settingsStyles from "../../tiles/Tile.settings.module.css";
 
 const BASE_LAYER_OPTIONS = [
   {
-    value: EPISODE_MAP_BASE_LAYER.DEFAULT,
+    value: MAP_BASE_LAYER.DEFAULT,
     label: "Default basemap (OpenFreeMap)",
   },
-  { value: EPISODE_MAP_BASE_LAYER.NONE, label: "No basemap" },
+  { value: MAP_BASE_LAYER.NONE, label: "No basemap" },
 ];
 
 const MapTileSettings: React.FC = () => {
@@ -31,11 +31,11 @@ const MapTileSettings: React.FC = () => {
     () => locationSources.map((source) => source.id),
     [locationSources],
   );
-  const settings = useEpisodeMapTileSettings();
-  const setSettings = useSetEpisodeMapTileSettings();
-  const toggleStream = useToggleEpisodeMapTileStream();
+  const settings = useMapTileSettings();
+  const setSettings = useSetMapTileSettings();
+  const toggleStream = useToggleMapTileStream();
   const enabledStreams = new Set(settings.enabledStreams ?? streams);
-  const baseLayer = settings.baseLayer ?? EPISODE_MAP_BASE_LAYER.DEFAULT;
+  const baseLayer = settings.baseLayer ?? MAP_BASE_LAYER.DEFAULT;
 
   return (
     <div className={settingsStyles.root}>
@@ -43,7 +43,7 @@ const MapTileSettings: React.FC = () => {
         <RadioGroup
           name="episode-map-base-layer"
           onChange={(value) =>
-            setSettings({ baseLayer: value as EpisodeMapBaseLayer })
+            setSettings({ baseLayer: value as MapBaseLayer })
           }
           options={BASE_LAYER_OPTIONS}
           size={Size.Md}

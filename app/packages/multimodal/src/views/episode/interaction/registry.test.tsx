@@ -1,7 +1,7 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { createEpisodeTileRegistry } from "./registry";
+import { createTileRegistry } from "./registry";
 
 interface Probe {
   readonly entries: ReadonlyMap<string, string>;
@@ -11,7 +11,7 @@ interface Probe {
 afterEach(() => cleanup());
 
 function harness(preferredTileId?: string | null) {
-  const registry = createEpisodeTileRegistry<string>("Test");
+  const registry = createTileRegistry<string>("Test");
   const probe: { current: Probe | null } = { current: null };
   const setters = new Map<string, (value: string) => void>();
 
@@ -43,7 +43,7 @@ function harness(preferredTileId?: string | null) {
   return { probe, publish, Publisher, Reader, registry };
 }
 
-describe("createEpisodeTileRegistry", () => {
+describe("createTileRegistry", () => {
   it("registers per tile and preserves registration order", () => {
     const { probe, publish, Publisher, Reader, registry } = harness();
     render(

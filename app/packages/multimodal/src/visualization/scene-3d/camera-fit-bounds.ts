@@ -6,14 +6,14 @@ import type {
   SceneCylinderPrimitive,
   SceneLinePrimitive,
   SceneModelPrimitive,
-  ScenePoint3D,
-  ScenePose3D,
+  ScenePoint3d,
+  ScenePose3d,
   SceneSpherePrimitive,
   SceneTextPrimitive,
   SceneTrianglePrimitive,
 } from "../../ir";
 import { EMPTY_POINT_CLOUD_BOUNDS_SIZE } from "./point-cloud-colors";
-import { SCENE_TEXT_DEFAULT_WORLD_HEIGHT } from "./scene-text-sprite";
+import { SCENE_TEXT_DEFAULT_WORLD_HEIGHT } from "./SceneTextSprite";
 import {
   matrixFromObjectTransform,
   pointCloudObjectTransform,
@@ -233,7 +233,7 @@ function boundsForSceneTriangle(
 }
 
 function boundsForPoseAndSize(
-  pose: ScenePose3D,
+  pose: ScenePose3d,
   size: readonly [number, number, number],
 ): THREE.Box3 | null {
   if (!isFinitePositiveVector(size)) {
@@ -246,7 +246,7 @@ function boundsForPoseAndSize(
 }
 
 function boundsForBoxWithPose(
-  pose: ScenePose3D,
+  pose: ScenePose3d,
   min: THREE.Vector3,
   max: THREE.Vector3,
 ): THREE.Box3 {
@@ -256,9 +256,9 @@ function boundsForBoxWithPose(
 }
 
 function boundsForScenePoints(
-  points: readonly ScenePoint3D[],
+  points: readonly ScenePoint3d[],
   pointIndices: readonly number[],
-  pose: ScenePose3D,
+  pose: ScenePose3d,
 ): THREE.Box3 | null {
   const bounds = new THREE.Box3();
   bounds.makeEmpty();

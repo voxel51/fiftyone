@@ -2,11 +2,11 @@ import type {
   CameraFrustumPanelLayer,
   SceneRayPanelLayer,
 } from "../../../visualization/scene-3d";
-import type { EpisodeDepthHover } from "./depth-sampling";
-import type { EpisodeFrameTransformResolver } from "./frame-transforms/use-episode-frame-transforms";
+import type { DepthHover } from "./depth-sampling";
+import type { FrameTransformResolver } from "./frame-transforms/use-frame-transforms";
 
 /** Resolution of a hovered depth sample into one 3D pane's world frame. */
-export type EpisodeDepthRayResolution =
+export type DepthRayResolution =
   | { readonly layer: SceneRayPanelLayer; readonly status: "ready" }
   | { readonly status: "pending" | "missing" };
 
@@ -14,7 +14,7 @@ export type EpisodeDepthRayResolution =
  * Places a hovered depth ray using the displayed matching frustum when
  * possible, so the ray and frustum share an identical camera pose.
  */
-export function resolveEpisodeDepthRay({
+export function resolveDepthRay({
   frustumLayers,
   hover,
   resolveFrameTransform,
@@ -22,11 +22,11 @@ export function resolveEpisodeDepthRay({
   worldFrameId,
 }: {
   readonly frustumLayers: readonly CameraFrustumPanelLayer[];
-  readonly hover: EpisodeDepthHover;
-  readonly resolveFrameTransform: EpisodeFrameTransformResolver;
+  readonly hover: DepthHover;
+  readonly resolveFrameTransform: FrameTransformResolver;
   readonly timeNs?: bigint;
   readonly worldFrameId: string;
-}): EpisodeDepthRayResolution {
+}): DepthRayResolution {
   const layerBase = {
     end: hover.position,
     id: `depth-ray:${hover.imageStream}`,

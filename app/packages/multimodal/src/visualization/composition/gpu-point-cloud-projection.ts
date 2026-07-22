@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import type { ImageViewTransform } from "../media-2d/base-2d-scene";
+import type { ImageViewTransform } from "../media-2d/Base2dScene";
 import { fittedImageSize } from "../media-2d/image-fit";
 
 const QUATERNION_EPSILON = 1e-9;

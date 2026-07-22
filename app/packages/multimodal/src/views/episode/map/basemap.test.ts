@@ -1,13 +1,13 @@
 import type { StyleSpecification } from "maplibre-gl";
 import { describe, expect, it } from "vitest";
 import {
-  initialEpisodeMapBasemapStatus,
-  episodeMapBasemapSourceIds,
-  episodeMapBasemapStatusText,
-  mergeEpisodeMapOverlaysIntoStyle,
-  shouldShowEpisodeMapStaticPreview,
+  initialMapBasemapStatus,
+  mapBasemapSourceIds,
+  mapBasemapStatusText,
+  mergeMapOverlaysIntoStyle,
+  shouldShowMapStaticPreview,
 } from "./basemap";
-import { EPISODE_MAP_BASE_LAYER } from "./rendering/types";
+import { MAP_BASE_LAYER } from "./rendering/types";
 
 const localStyle: StyleSpecification = {
   version: 8,
@@ -43,7 +43,7 @@ const remoteStyle: StyleSpecification = {
 
 describe("episode map basemap lifecycle", () => {
   it("keeps episode overlays above a replacement basemap", () => {
-    const merged = mergeEpisodeMapOverlaysIntoStyle(localStyle, remoteStyle);
+    const merged = mergeMapOverlaysIntoStyle(localStyle, remoteStyle);
 
     expect(Object.keys(merged.sources)).toEqual([
       "openmaptiles",
@@ -56,11 +56,8 @@ describe("episode map basemap lifecycle", () => {
   });
 
   it("removes provider sources when returning to the local style", () => {
-    const withBasemap = mergeEpisodeMapOverlaysIntoStyle(
-      localStyle,
-      remoteStyle,
-    );
-    const localOnly = mergeEpisodeMapOverlaysIntoStyle(withBasemap, {
+    const withBasemap = mergeMapOverlaysIntoStyle(localStyle, remoteStyle);
+    const localOnly = mergeMapOverlaysIntoStyle(withBasemap, {
       version: 8,
       sources: {},
       layers: [{ id: "episode-location-background", type: "background" }],
@@ -76,30 +73,26 @@ describe("episode map basemap lifecycle", () => {
   });
 
   it("reports only provider sources as basemap dependencies", () => {
-    const merged = mergeEpisodeMapOverlaysIntoStyle(localStyle, remoteStyle);
+    const merged = mergeMapOverlaysIntoStyle(localStyle, remoteStyle);
 
-    expect(episodeMapBasemapSourceIds(merged)).toEqual(["openmaptiles"]);
+    expect(mapBasemapSourceIds(merged)).toEqual(["openmaptiles"]);
   });
 
   it("names the provider while loading or unavailable", () => {
-    expect(episodeMapBasemapStatusText("loading")).toBe(
+    expect(mapBasemapStatusText("loading")).toBe(
       "Loading basemap from OpenFreeMap",
     );
-    expect(episodeMapBasemapStatusText("error")).toBe(
+    expect(mapBasemapStatusText("error")).toBe(
       "Basemap unavailable from OpenFreeMap",
     );
-    expect(episodeMapBasemapStatusText("ready")).toBeNull();
-    expect(initialEpisodeMapBasemapStatus(EPISODE_MAP_BASE_LAYER.NONE)).toBe(
-      "disabled",
-    );
-    expect(initialEpisodeMapBasemapStatus(EPISODE_MAP_BASE_LAYER.DEFAULT)).toBe(
-      "loading",
-    );
+    expect(mapBasemapStatusText("ready")).toBeNull();
+    expect(initialMapBasemapStatus(MAP_BASE_LAYER.NONE)).toBe("disabled");
+    expect(initialMapBasemapStatus(MAP_BASE_LAYER.DEFAULT)).toBe("loading");
   });
 
   it("keeps the static route visible until the provider map can take over", () => {
     expect(
-      shouldShowEpisodeMapStaticPreview({
+      shouldShowMapStaticPreview({
         basemapStatus: "loading",
         cameraReady: true,
         failed: false,
@@ -107,7 +100,7 @@ describe("episode map basemap lifecycle", () => {
       }),
     ).toBe(true);
     expect(
-      shouldShowEpisodeMapStaticPreview({
+      shouldShowMapStaticPreview({
         basemapStatus: "ready",
         cameraReady: false,
         failed: false,
@@ -115,7 +108,7 @@ describe("episode map basemap lifecycle", () => {
       }),
     ).toBe(true);
     expect(
-      shouldShowEpisodeMapStaticPreview({
+      shouldShowMapStaticPreview({
         basemapStatus: "ready",
         cameraReady: true,
         failed: false,
@@ -126,7 +119,7 @@ describe("episode map basemap lifecycle", () => {
 
   it("falls back to the static route when MapLibre fails", () => {
     expect(
-      shouldShowEpisodeMapStaticPreview({
+      shouldShowMapStaticPreview({
         basemapStatus: "error",
         cameraReady: true,
         failed: true,
@@ -134,7 +127,7 @@ describe("episode map basemap lifecycle", () => {
       }),
     ).toBe(true);
     expect(
-      shouldShowEpisodeMapStaticPreview({
+      shouldShowMapStaticPreview({
         basemapStatus: "error",
         cameraReady: true,
         failed: false,

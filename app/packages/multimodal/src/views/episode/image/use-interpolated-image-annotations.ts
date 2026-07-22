@@ -17,9 +17,9 @@ import {
   type NextMessageCacheEntry,
 } from "../playback/cache-sampling";
 import {
-  useEpisodeDataStream,
-  type EpisodeDataStream,
-} from "../playback/episode-data-stream-context";
+  useDataStream,
+  type DataStream,
+} from "../playback/data-stream-context";
 import type { EpisodeStreamCache } from "../../../runtime";
 import { useOptionalPlayhead } from "../playback/use-optional-playhead";
 
@@ -60,9 +60,9 @@ export function useInterpolatedImageAnnotationSets(
   readonly stream: string;
 }[] {
   const stableStreams = useStableStreams(streams);
-  const dataStream = useEpisodeDataStream();
+  const dataStream = useDataStream();
   const subscriptionsRef = useRef<Map<string, () => void>>(new Map());
-  const streamRef = useRef<EpisodeDataStream | null>(null);
+  const streamRef = useRef<DataStream | null>(null);
   const streamSet = useMemo(() => new Set(stableStreams), [stableStreams]);
 
   // This effect syncs stream subscriptions with the data stream and stream list.
@@ -163,7 +163,7 @@ type RenderMetadataCache = WeakMap<
 interface AnnotationSetsFromCachesArgs {
   /** Invalidation token from `useSyncExternalStore`; frame derivation reads caches below. */
   readonly cacheSnapshot: string;
-  readonly dataStream: EpisodeDataStream | null;
+  readonly dataStream: DataStream | null;
   readonly interpolate: boolean;
   readonly interpolationCache: InterpolationCache;
   readonly nextMessageCache: WeakMap<EpisodeStreamCache, NextMessageCacheEntry>;

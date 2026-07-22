@@ -1,15 +1,15 @@
 import { RadioGroup, Size, Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React from "react";
-import { useOptionalEpisode3dViewSettings } from "../../spatial/view-settings-context";
+import { useOptionalScene3dViewSettings } from "../../spatial/view-settings-context";
 import {
-  EPISODE_3D_SCENE_UP_AXES,
-  type Episode3dSceneUpAxis,
+  SCENE_3D_UP_AXES,
+  type Scene3dUpAxis,
 } from "../../spatial/view-preferences";
-import { useEpisodeSceneFrameControls } from "../../spatial/frame-transforms/scene-frame-controls";
-import { EpisodeFrameSelect } from "../controls/EpisodeFrameSelect";
-import EpisodeSidebarGroup from "../controls/EpisodeSidebarGroup";
-import { EpisodeSettingsLabel } from "../controls/EpisodeSettingsLabel";
-import settingsStyles from "../../tiles/EpisodeTile.settings.module.css";
+import { useSceneFrameControls } from "../../spatial/frame-transforms/scene-frame-controls";
+import { FrameSelect } from "../controls/FrameSelect";
+import SidebarGroup from "../controls/SidebarGroup";
+import { SettingsLabel } from "../controls/SettingsLabel";
+import settingsStyles from "../../tiles/Tile.settings.module.css";
 
 const WORLD_FRAME_TOOLTIP =
   "The coordinate system used to place the active transform component. One reference frame applies to every 3D view of the scene.";
@@ -24,9 +24,9 @@ const UP_AXIS_TOOLTIP =
  * a playback host (no scene, nothing to orient); shows a hint while no 3D
  * view is mounted to give the frame list meaning.
  */
-const EpisodeSceneWorldSettings: React.FC = () => {
-  const viewSettings = useOptionalEpisode3dViewSettings();
-  const frameControls = useEpisodeSceneFrameControls();
+const SceneWorldSettings: React.FC = () => {
+  const viewSettings = useOptionalScene3dViewSettings();
+  const frameControls = useSceneFrameControls();
 
   if (!viewSettings) {
     return null;
@@ -38,14 +38,10 @@ const EpisodeSceneWorldSettings: React.FC = () => {
     : `up ${sceneUpAxis.toUpperCase()}`;
 
   return (
-    <EpisodeSidebarGroup
-      defaultExpanded={false}
-      summary={summary}
-      title="World"
-    >
+    <SidebarGroup defaultExpanded={false} summary={summary} title="World">
       {frameControls ? (
         <>
-          <EpisodeFrameSelect
+          <FrameSelect
             disabled={frameControls.frameIds.length === 0}
             label="Reference Frame"
             onChange={frameControls.updateWorldFrameId}
@@ -73,11 +69,11 @@ const EpisodeSceneWorldSettings: React.FC = () => {
         tooltip={UP_AXIS_TOOLTIP}
         value={sceneUpAxis}
       />
-    </EpisodeSidebarGroup>
+    </SidebarGroup>
   );
 };
 
-const UP_AXIS_OPTIONS = EPISODE_3D_SCENE_UP_AXES.map((axis) => ({
+const UP_AXIS_OPTIONS = SCENE_3D_UP_AXES.map((axis) => ({
   label: axis.toUpperCase(),
   value: axis,
 }));
@@ -89,16 +85,16 @@ function SceneUpAxisSelect({
   tooltip,
   value,
 }: {
-  readonly onChange: (value: Episode3dSceneUpAxis) => void;
+  readonly onChange: (value: Scene3dUpAxis) => void;
   readonly tooltip: string;
-  readonly value: Episode3dSceneUpAxis;
+  readonly value: Scene3dUpAxis;
 }) {
   return (
     <div className={settingsStyles.field}>
-      <EpisodeSettingsLabel label="Up Axis" tooltip={tooltip} />
+      <SettingsLabel label="Up Axis" tooltip={tooltip} />
       <RadioGroup
         name="episode-scene-up-axis"
-        onChange={(next) => onChange(next as Episode3dSceneUpAxis)}
+        onChange={(next) => onChange(next as Scene3dUpAxis)}
         options={UP_AXIS_OPTIONS}
         size={Size.Sm}
         value={value}
@@ -107,4 +103,4 @@ function SceneUpAxisSelect({
   );
 }
 
-export default EpisodeSceneWorldSettings;
+export default SceneWorldSettings;

@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import type { RawImageVisualization } from "../../../ir";
 import { VISUALIZATION_KIND } from "../../../visualization";
-import type { EpisodeCameraModel } from "./camera-geometry/episode-camera-model";
-import { episodeDepthSampleAtDisplayPixel } from "./depth-sampling";
+import type { CameraModel } from "./camera-geometry/camera-model";
+import { depthSampleAtDisplayPixel } from "./depth-sampling";
 
 describe("mcap depth hover", () => {
   it("unprojects 16UC1 camera-Z depth without shortening off-axis rays", () => {
@@ -15,7 +15,7 @@ describe("mcap depth hover", () => {
       0.001,
     );
 
-    const sample = episodeDepthSampleAtDisplayPixel({
+    const sample = depthSampleAtDisplayPixel({
       displayCameraModel: model,
       frame,
       sourceCameraModel: model,
@@ -40,7 +40,7 @@ describe("mcap depth hover", () => {
     const values = new Float32Array(12);
     values[5] = 3.5;
 
-    const sample = episodeDepthSampleAtDisplayPixel({
+    const sample = depthSampleAtDisplayPixel({
       displayCameraModel,
       frame: depthFrame(4, 3, values, 1),
       sourceCameraModel,
@@ -60,7 +60,7 @@ describe("mcap depth hover", () => {
     const frame = depthFrame(3, 1, new Float32Array([0, Number.NaN, 2]), 1);
 
     expect(
-      episodeDepthSampleAtDisplayPixel({
+      depthSampleAtDisplayPixel({
         displayCameraModel: model,
         frame,
         sourceCameraModel: model,
@@ -69,7 +69,7 @@ describe("mcap depth hover", () => {
       }),
     ).toBeNull();
     expect(
-      episodeDepthSampleAtDisplayPixel({
+      depthSampleAtDisplayPixel({
         displayCameraModel: model,
         frame,
         sourceCameraModel: model,
@@ -78,7 +78,7 @@ describe("mcap depth hover", () => {
       }),
     ).toBeNull();
     expect(
-      episodeDepthSampleAtDisplayPixel({
+      depthSampleAtDisplayPixel({
         displayCameraModel: model,
         frame,
         sourceCameraModel: model,
@@ -97,7 +97,7 @@ function cameraModel({
   readonly cx?: number;
   readonly height: number;
   readonly width: number;
-}): EpisodeCameraModel {
+}): CameraModel {
   return {
     height,
     kind: "pinhole",

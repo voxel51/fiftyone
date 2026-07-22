@@ -7,7 +7,7 @@ export interface SourceScopedDataStream {
 }
 
 /** Format-neutral data stream published to episode consumers. */
-export interface EpisodeDataStream<
+export interface DataStream<
   TFrame = DecodedFrame,
   TCache = unknown,
 > extends SourceScopedDataStream {
@@ -22,4 +22,4 @@ export interface EpisodeDataStream<
 }
 
 /** Erased frame/cache specialization stored by React integrations. */
-export type AnyEpisodeDataStream = EpisodeDataStream<unknown, unknown>;
+export type AnyEpisodeDataStream = DataStream<unknown, unknown>;

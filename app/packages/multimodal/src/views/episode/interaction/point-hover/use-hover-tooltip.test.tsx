@@ -2,10 +2,10 @@ import { act, render, renderHook, screen } from "@testing-library/react";
 import type React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  Episode3dHoverTooltip,
-  useEpisode3dHoverTooltip,
-  type Episode3dHoveredEntity,
-  type Episode3dHoveredPoint,
+  Scene3dHoverTooltip,
+  useScene3dHoverTooltip,
+  type Scene3dHoveredEntity,
+  type Scene3dHoveredPoint,
 } from "./use-hover-tooltip";
 
 const HOVERED_CAMERA = {
@@ -17,14 +17,14 @@ const HOVERED_CAMERA = {
   resolution: [1920, 1080] as const,
 };
 
-const HOVERED: Episode3dHoveredEntity = {
+const HOVERED: Scene3dHoveredEntity = {
   entityId: "veh-12",
   kind: "entity",
   label: "car",
   stream: "/markers",
 };
 
-const HOVERED_POINT: Episode3dHoveredPoint = {
+const HOVERED_POINT: Scene3dHoveredPoint = {
   fields: { intensity: 0.5, ring: 7 },
   frameId: "LIDAR_TOP",
   kind: "point",
@@ -37,14 +37,14 @@ function pointerAt(x: number, y: number) {
   return { clientX: x, clientY: y } as React.PointerEvent;
 }
 
-describe("useEpisode3dHoverTooltip", () => {
+describe("useScene3dHoverTooltip", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
 
   it("shows the tooltip at the pointer after the dwell delay", () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() => useEpisode3dHoverTooltip());
+    const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
       result.current.containerProps.onPointerMove(pointerAt(120, 80));
@@ -64,7 +64,7 @@ describe("useEpisode3dHoverTooltip", () => {
 
   it("cancels a pending tooltip when the hover ends early", () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() => useEpisode3dHoverTooltip());
+    const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
       result.current.onHoverEntity(HOVERED);
@@ -77,7 +77,7 @@ describe("useEpisode3dHoverTooltip", () => {
 
   it("hides a shown tooltip when the pointer leaves the object", () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() => useEpisode3dHoverTooltip());
+    const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
       result.current.onHoverEntity(HOVERED);
@@ -93,7 +93,7 @@ describe("useEpisode3dHoverTooltip", () => {
 
   it("re-arms the dwell when hopping between objects", () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() => useEpisode3dHoverTooltip());
+    const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
       result.current.onHoverEntity(HOVERED);
@@ -116,7 +116,7 @@ describe("useEpisode3dHoverTooltip", () => {
   });
 
   it("shows point payloads immediately — their dwell already elapsed", () => {
-    const { result } = renderHook(() => useEpisode3dHoverTooltip());
+    const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
       result.current.containerProps.onPointerMove(pointerAt(40, 60));
@@ -136,7 +136,7 @@ describe("useEpisode3dHoverTooltip", () => {
 
   it("delays camera details and renders its association metadata", () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() => useEpisode3dHoverTooltip());
+    const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
       result.current.onHoverCamera(HOVERED_CAMERA);
@@ -146,7 +146,7 @@ describe("useEpisode3dHoverTooltip", () => {
 
     const tooltip = result.current.tooltip;
     if (!tooltip) throw new Error("expected a camera tooltip");
-    render(<Episode3dHoverTooltip tooltip={tooltip} />);
+    render(<Scene3dHoverTooltip tooltip={tooltip} />);
     expect(screen.getByText("/camera/front/image")).toBeTruthy();
     expect(screen.getByText("/camera/front/camera_info")).toBeTruthy();
     expect(screen.getByText("1920 × 1080")).toBeTruthy();
@@ -154,7 +154,7 @@ describe("useEpisode3dHoverTooltip", () => {
 
   it("does not let a pending entity replace a newer point tooltip", () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() => useEpisode3dHoverTooltip());
+    const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
       result.current.onHoverEntity(HOVERED);
@@ -168,7 +168,7 @@ describe("useEpisode3dHoverTooltip", () => {
 
   it("preserves a pending entity dwell when point hover misses", () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() => useEpisode3dHoverTooltip());
+    const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
       result.current.onHoverEntity(HOVERED);
@@ -182,7 +182,7 @@ describe("useEpisode3dHoverTooltip", () => {
 
   it("only clears tooltips of its own kind", () => {
     vi.useFakeTimers();
-    const { result } = renderHook(() => useEpisode3dHoverTooltip());
+    const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
       result.current.onHoverEntity(HOVERED);

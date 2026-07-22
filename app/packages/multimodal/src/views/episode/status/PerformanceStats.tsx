@@ -35,8 +35,8 @@ import { webGpuDeviceStats } from "../../../visualization/webgpu/webgpu-device-r
 import { webGpuSnapshotRendererStats } from "../../../visualization/scene-3d/gpu/webgpu-snapshot-renderer";
 import { imageTextureCacheStats } from "../../../visualization/media-2d/image-texture-cache";
 import { gpuPointCloudColormapTextureStats } from "../../../visualization/scene-3d/gpu/gpu-point-cloud-colormap-texture";
-import { episodeMapPerformanceStats } from "../map/rendering/performance";
-import styles from "../settings/modal/EpisodeSettingsSidebar.module.css";
+import { mapPerformanceStats } from "../map/rendering/performance";
+import styles from "../settings/modal/SettingsSidebar.module.css";
 
 const STATS_REFRESH_INTERVAL_MS = 1_000;
 const PLAYHEAD_REFRESH_INTERVAL_MS = 250;
@@ -65,7 +65,7 @@ interface FramePerformanceStats {
 }
 
 /** Displays opt-in live performance diagnostics for the active episode scene. */
-export default function EpisodePerformanceStats({
+export default function PerformanceStats({
   sampling,
 }: {
   readonly sampling: PointCloudSamplingSummary | null;
@@ -445,7 +445,7 @@ function readRuntimeStats() {
     },
     gridLive: gridLiveLeaseStats(),
     imageTextures: imageTextureCacheStats(),
-    map: episodeMapPerformanceStats(),
+    map: mapPerformanceStats(),
     projection: gpuPointCloudProjectionResourceStats(),
     snapshotRenderer: webGpuSnapshotRendererStats(),
     webGpu: webGpuDeviceStats(),

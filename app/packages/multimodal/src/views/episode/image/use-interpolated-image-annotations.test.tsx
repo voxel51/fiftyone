@@ -7,10 +7,10 @@ import { VISUALIZATION_KIND } from "../../../visualization";
 import type { DecodedFrame } from "../../../ir";
 import type { TimelineIndex } from "../../../runtime";
 import {
-  EpisodeDataStreamProvider,
-  useSetEpisodeDataStream,
-  type EpisodeDataStream,
-} from "../playback/episode-data-stream-context";
+  DataStreamProvider,
+  useSetDataStream,
+  type DataStream,
+} from "../playback/data-stream-context";
 import { EpisodeStreamCache } from "../../../runtime";
 import { nextDistinctCachedMessage } from "../playback/cache-sampling";
 import {
@@ -40,7 +40,7 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
-// Fakes — a real EpisodeStreamCache behind a fake EpisodeDataStream so cache.isActive
+// Fakes — a real EpisodeStreamCache behind a fake DataStream so cache.isActive
 // faithfully reports the hook's subscription state, and revision bumps drive
 // the external store for real. The stream also tracks the net active
 // subscription count so tests can assert exact counts (not just isActive).
@@ -114,7 +114,7 @@ function makeStream(
       release();
     };
   });
-  const stream: EpisodeDataStream = {
+  const stream: DataStream = {
     sourceKey: "test-source",
     subscribeToStream,
     getStreamCache: (stream) => caches.get(stream),
@@ -184,12 +184,12 @@ function Harness({
   interpolate = true,
   onResult,
 }: {
-  readonly stream: EpisodeDataStream | null;
+  readonly stream: DataStream | null;
   readonly streams: readonly string[];
   readonly interpolate?: boolean;
   readonly onResult: (sets: AnnotationSets) => void;
 }) {
-  const setStream = useSetEpisodeDataStream();
+  const setStream = useSetDataStream();
   // This effect publishes the test stream into context.
   useEffect(() => {
     setStream(stream);
@@ -208,11 +208,11 @@ function SingleHarness({
   streamId,
   onResult,
 }: {
-  readonly stream: EpisodeDataStream | null;
+  readonly stream: DataStream | null;
   readonly streamId: string;
   readonly onResult: (frame: ImageAnnotationsVisualization | null) => void;
 }) {
-  const setStream = useSetEpisodeDataStream();
+  const setStream = useSetDataStream();
   // This effect publishes the test stream into context.
   useEffect(() => {
     setStream(stream);
@@ -227,7 +227,7 @@ function SingleHarness({
 }
 
 function TestProviders({ children }: { readonly children: ReactNode }) {
-  return <EpisodeDataStreamProvider>{children}</EpisodeDataStreamProvider>;
+  return <DataStreamProvider>{children}</DataStreamProvider>;
 }
 
 const TICKS = [0n, 1_000_000n, 2_000_000n] as const;

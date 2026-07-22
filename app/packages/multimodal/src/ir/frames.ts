@@ -223,7 +223,7 @@ export interface GridVisualization {
   readonly cellSize: readonly [number, number];
   readonly columnCount: number;
   readonly rowCount: number;
-  readonly pose: ScenePose3D;
+  readonly pose: ScenePose3d;
   readonly rgba: Uint8Array;
   readonly timestampNs?: bigint;
 }
@@ -315,12 +315,12 @@ export interface PoseVisualization {
 /**
  * 3D position and orientation normalized for FiftyOne scene rendering.
  */
-export interface ScenePose3D {
+export interface ScenePose3d {
   readonly position: readonly [number, number, number];
   readonly quaternion: readonly [number, number, number, number];
 }
 
-export type ScenePoint3D = readonly [number, number, number];
+export type ScenePoint3d = readonly [number, number, number];
 
 /**
  * Arrow primitive. Arrows point along the local +X axis before `pose` is
@@ -330,7 +330,7 @@ export interface SceneArrowPrimitive {
   readonly color: RgbaColor | null;
   readonly headDiameter: number;
   readonly headLength: number;
-  readonly pose: ScenePose3D;
+  readonly pose: ScenePose3d;
   readonly shaftDiameter: number;
   readonly shaftLength: number;
 }
@@ -340,7 +340,7 @@ export interface SceneArrowPrimitive {
  */
 export interface SceneCubePrimitive {
   readonly color: RgbaColor | null;
-  readonly pose: ScenePose3D;
+  readonly pose: ScenePose3d;
   readonly size: readonly [number, number, number];
 }
 
@@ -351,7 +351,7 @@ export interface SceneCubePrimitive {
 export interface SceneCylinderPrimitive {
   readonly bottomScale: number;
   readonly color: RgbaColor | null;
-  readonly pose: ScenePose3D;
+  readonly pose: ScenePose3d;
   readonly size: readonly [number, number, number];
   readonly topScale: number;
 }
@@ -365,8 +365,8 @@ export interface SceneLinePrimitive {
   readonly color: RgbaColor | null;
   readonly colors: readonly RgbaColor[];
   readonly indices: readonly number[];
-  readonly points: readonly ScenePoint3D[];
-  readonly pose: ScenePose3D;
+  readonly points: readonly ScenePoint3d[];
+  readonly pose: ScenePose3d;
   readonly scaleInvariant: boolean;
   readonly thickness: number;
   readonly type: SceneLinePrimitiveKind;
@@ -380,7 +380,7 @@ export interface SceneModelPrimitive {
   readonly data?: Uint8Array;
   readonly mediaType: string;
   readonly overrideColor: boolean;
-  readonly pose: ScenePose3D;
+  readonly pose: ScenePose3d;
   readonly scale: readonly [number, number, number];
   readonly url: string;
 }
@@ -390,7 +390,7 @@ export interface SceneModelPrimitive {
  */
 export interface SceneSpherePrimitive {
   readonly color: RgbaColor | null;
-  readonly pose: ScenePose3D;
+  readonly pose: ScenePose3d;
   readonly size: readonly [number, number, number];
 }
 
@@ -401,7 +401,7 @@ export interface SceneTextPrimitive {
   readonly billboard: boolean;
   readonly color: RgbaColor | null;
   readonly fontSize: number;
-  readonly pose: ScenePose3D;
+  readonly pose: ScenePose3d;
   readonly scaleInvariant: boolean;
   readonly text: string;
 }
@@ -413,8 +413,8 @@ export interface SceneTrianglePrimitive {
   readonly color: RgbaColor | null;
   readonly colors: readonly RgbaColor[];
   readonly indices: readonly number[];
-  readonly points: readonly ScenePoint3D[];
-  readonly pose: ScenePose3D;
+  readonly points: readonly ScenePoint3d[];
+  readonly pose: ScenePose3d;
 }
 
 /**

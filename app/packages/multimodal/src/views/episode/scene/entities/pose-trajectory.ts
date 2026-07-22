@@ -11,7 +11,7 @@ import type {
   SceneArrowPrimitive,
   SceneEntityVisualization,
   SceneLinePrimitive,
-  ScenePoint3D,
+  ScenePoint3d,
   SceneUpdateVisualization,
 } from "../../../../ir/index";
 import { VISUALIZATION_KIND } from "../../../../visualization/index";
@@ -19,8 +19,8 @@ import { VISUALIZATION_KIND } from "../../../../visualization/index";
 /**
  * One trajectory sample: pose position at a timeline time.
  */
-export interface EpisodePoseTrajectoryPoint {
-  readonly position: ScenePoint3D;
+export interface PoseTrajectoryPoint {
+  readonly position: ScenePoint3d;
   readonly timeNs: bigint;
 }
 
@@ -62,15 +62,15 @@ const POSE_AXES: ReadonlyArray<{
  * Uniform-stride decimation that always keeps the final point.
  */
 export function decimateTrajectory(
-  points: readonly EpisodePoseTrajectoryPoint[],
+  points: readonly PoseTrajectoryPoint[],
   maxPoints = TRAJECTORY_MAX_POINTS,
-): readonly EpisodePoseTrajectoryPoint[] {
+): readonly PoseTrajectoryPoint[] {
   if (maxPoints < 2 || points.length <= maxPoints) {
     return points;
   }
 
   const stride = (points.length - 1) / (maxPoints - 1);
-  const decimated: EpisodePoseTrajectoryPoint[] = [];
+  const decimated: PoseTrajectoryPoint[] = [];
   for (let index = 0; index < maxPoints - 1; index++) {
     decimated.push(points[Math.round(index * stride)]);
   }
@@ -104,7 +104,7 @@ export function trajectorySceneUpdate({
   stream,
 }: {
   readonly frameId: string;
-  readonly points: readonly EpisodePoseTrajectoryPoint[];
+  readonly points: readonly PoseTrajectoryPoint[];
   readonly stream: string;
 }): SceneUpdateVisualization {
   const line: SceneLinePrimitive = {

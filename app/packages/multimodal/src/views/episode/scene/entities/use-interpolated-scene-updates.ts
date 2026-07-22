@@ -8,14 +8,14 @@ import {
   useStreamCacheSnapshot,
 } from "../../playback/cache-sampling";
 import { interpolateSceneUpdate } from "./interpolate-scene-entities";
-import { useEpisodeDataStream } from "../../playback/episode-data-stream-context";
-import { useEpisodeSceneUpdateHistoryContext } from "./episode-scene-update-history-context";
+import { useDataStream } from "../../playback/data-stream-context";
+import { useSceneUpdateHistoryContext } from "./scene-update-history-context";
 import {
   sceneUpdateSnapshotAt,
-  type EpisodeSceneUpdateDelta,
-} from "./episode-scene-update-state";
+  type SceneUpdateDelta,
+} from "./scene-update-state";
 import type { EpisodeStreamCache } from "../../../../runtime/index";
-import type { EpisodeStreamPlaybackFrame } from "../../playback/use-episode-stream-values";
+import type { StreamPlaybackFrame } from "../../playback/use-stream-values";
 import { useOptionalPlayhead } from "../../playback/use-optional-playhead";
 
 /**
@@ -28,19 +28,19 @@ import { useOptionalPlayhead } from "../../playback/use-optional-playhead";
  * untouched.
  *
  * The caller keeps ownership of stream subscriptions (they ride the base
- * `useEpisodeStreamPlaybackFrames` call); this hook only reads caches.
+ * `useStreamPlaybackFrames` call); this hook only reads caches.
  */
 export function useInterpolatedSceneUpdateFrames({
   frames,
   interpolate,
   streams,
 }: {
-  readonly frames: readonly (EpisodeStreamPlaybackFrame<SceneUpdateVisualization> | null)[];
+  readonly frames: readonly (StreamPlaybackFrame<SceneUpdateVisualization> | null)[];
   readonly interpolate: boolean;
   readonly streams: readonly string[];
-}): readonly (EpisodeStreamPlaybackFrame<SceneUpdateVisualization> | null)[] {
-  const dataStream = useEpisodeDataStream();
-  const history = useEpisodeSceneUpdateHistoryContext();
+}): readonly (StreamPlaybackFrame<SceneUpdateVisualization> | null)[] {
+  const dataStream = useDataStream();
+  const history = useSceneUpdateHistoryContext();
   // Smooth mode tracks every RAF tick. As-recorded mode samples placement time
   // only when its content-driven parent renders, avoiding a broad 60 Hz root.
   const playhead = useOptionalPlayhead(interpolate);
@@ -172,10 +172,10 @@ function sceneUpdateDeltasForStream({
   readonly cache: EpisodeStreamCache | null;
   readonly fallbackFrame: SceneUpdateVisualization;
   readonly fallbackTimeNs: bigint;
-  readonly historyDeltas: readonly EpisodeSceneUpdateDelta[] | undefined;
+  readonly historyDeltas: readonly SceneUpdateDelta[] | undefined;
   readonly historyReady: boolean;
   readonly targetTimeNs: bigint;
-}): readonly EpisodeSceneUpdateDelta[] {
+}): readonly SceneUpdateDelta[] {
   if (historyReady && historyDeltas) {
     return historyDeltas;
   }
@@ -191,12 +191,12 @@ function sceneUpdateDeltasForStream({
 function cachedSceneUpdateDeltas(
   cache: EpisodeStreamCache | null,
   targetTimeNs: bigint,
-): readonly EpisodeSceneUpdateDelta[] {
+): readonly SceneUpdateDelta[] {
   if (!cache) {
     return [];
   }
 
-  const deltas: EpisodeSceneUpdateDelta[] = [];
+  const deltas: SceneUpdateDelta[] = [];
   const seenMessages = new Set<string>();
   for (const tick of cache.cachedTicks()) {
     const msg = cache.get(tick);

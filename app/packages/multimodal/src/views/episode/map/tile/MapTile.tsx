@@ -17,19 +17,16 @@ import {
   MapRenderer,
   type MapRendererPlayback,
 } from "../rendering/MapRenderer";
-import type { EpisodeLocationTrackState } from "../tracks/location-track";
-import { useEpisodeDataStream } from "../../playback/episode-data-stream-context";
-import type { EpisodeTileProps } from "../../tiles/episode-tile-types";
-import { useRegisterEpisodeTileSettings } from "../../tiles/episode-tile-settings-context";
+import type { LocationTrackState } from "../tracks/location-track";
+import { useDataStream } from "../../playback/data-stream-context";
+import type { EpisodeTileProps } from "../../tiles/tile-types";
+import { useRegisterTileSettings } from "../../tiles/tile-settings-context";
 import {
-  useEpisodeLocationTracksContext,
-  useEpisodeLocationTracksSourceKey,
+  useLocationTracksContext,
+  useLocationTracksSourceKey,
 } from "../tracks/context";
-import {
-  useEpisodeMapTileSettings,
-  useSetEpisodeMapTileSettings,
-} from "./tile-state";
-import { useEpisodeMapViewportScope } from "../viewport/context";
+import { useMapTileSettings, useSetMapTileSettings } from "./tile-state";
+import { useMapViewportScope } from "../viewport/context";
 import MapTileSettings from "./MapTileSettings";
 
 const MapTile: React.FC<EpisodeTileProps> = () => {
@@ -38,15 +35,15 @@ const MapTile: React.FC<EpisodeTileProps> = () => {
     () => ({ content: <MapTileSettings /> }),
     [],
   );
-  useRegisterEpisodeTileSettings(tileId, settingsRegistration);
+  useRegisterTileSettings(tileId, settingsRegistration);
   const setTileTitle = useSetTileTitle();
   const sources = useSceneInventory();
-  const tracksByStream = useEpisodeLocationTracksContext();
-  const tracksSourceKey = useEpisodeLocationTracksSourceKey();
-  const settings = useEpisodeMapTileSettings();
-  const setSettings = useSetEpisodeMapTileSettings();
-  const viewportScope = useEpisodeMapViewportScope();
-  const dataStream = useEpisodeDataStream();
+  const tracksByStream = useLocationTracksContext();
+  const tracksSourceKey = useLocationTracksSourceKey();
+  const settings = useMapTileSettings();
+  const setSettings = useSetMapTileSettings();
+  const viewportScope = useMapViewportScope();
+  const dataStream = useDataStream();
   const sourceKey = dataStream?.sourceKey ?? null;
   const timeline = dataStream?.getTimelineIndex() ?? null;
   const store = usePlaybackStore();
@@ -74,7 +71,7 @@ const MapTile: React.FC<EpisodeTileProps> = () => {
     if (!sourceKey || tracksSourceKey !== sourceKey) return [];
     return visibleStreams
       .map((stream) => tracksByStream.get(stream))
-      .filter((track): track is EpisodeLocationTrackState => Boolean(track));
+      .filter((track): track is LocationTrackState => Boolean(track));
   }, [sourceKey, tracksByStream, tracksSourceKey, visibleStreams]);
   const readyTracks = useMemo(
     () =>
@@ -159,7 +156,7 @@ const MapTile: React.FC<EpisodeTileProps> = () => {
 };
 
 function mapTileTitle(
-  readyTracks: readonly EpisodeLocationTrackState[],
+  readyTracks: readonly LocationTrackState[],
   locationStreamCount: number,
 ): string {
   if (readyTracks.length === 1) return readyTracks[0].label;

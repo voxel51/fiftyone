@@ -3,7 +3,7 @@ import { collectTileIds } from "@fiftyone/tiling";
 import type { SceneSource } from "../../../scene-inventory";
 import {
   buildAspectAwareImageLayout,
-  buildEpisodeAutoLayout,
+  buildAutoLayout,
   orderImageSourcesForManualSelection,
   rankDefaultImageSources,
   rankImageSources,
@@ -341,9 +341,9 @@ describe("resolvePlaybackLayout", () => {
   });
 });
 
-describe("buildEpisodeAutoLayout", () => {
+describe("buildAutoLayout", () => {
   it("keeps 3d larger than one image tile", () => {
-    expect(buildEpisodeAutoLayout(["image-1", "3d-1"])).toEqual({
+    expect(buildAutoLayout(["image-1", "3d-1"])).toEqual({
       direction: "column",
       first: "3d-1",
       second: "image-1",
@@ -352,12 +352,7 @@ describe("buildEpisodeAutoLayout", () => {
   });
 
   it("lets a three-image row hug its height below 3d", () => {
-    const layout = buildEpisodeAutoLayout([
-      "image-1",
-      "image-2",
-      "image-3",
-      "3d-1",
-    ]);
+    const layout = buildAutoLayout(["image-1", "image-2", "image-3", "3d-1"]);
 
     expect(layout).toMatchObject({
       direction: "column",
@@ -370,7 +365,7 @@ describe("buildEpisodeAutoLayout", () => {
   });
 
   it("groups multiple 3d tiles inside the full-width top region", () => {
-    expect(buildEpisodeAutoLayout(["image-1", "3d-1", "3d-2"])).toEqual({
+    expect(buildAutoLayout(["image-1", "3d-1", "3d-2"])).toEqual({
       direction: "column",
       first: {
         direction: "row",
@@ -384,7 +379,7 @@ describe("buildEpisodeAutoLayout", () => {
   });
 
   it("places map tiles beside 3d tiles in the top visual region", () => {
-    expect(buildEpisodeAutoLayout(["image-1", "3d-1", "map-1"])).toEqual({
+    expect(buildAutoLayout(["image-1", "3d-1", "map-1"])).toEqual({
       direction: "column",
       first: {
         direction: "row",
@@ -399,7 +394,7 @@ describe("buildEpisodeAutoLayout", () => {
 
   it("gives 3d more space as the image bank becomes shallower", () => {
     expect(
-      buildEpisodeAutoLayout(["image-1", "3d-1"], { "image-1": 8 }, 1.6),
+      buildAutoLayout(["image-1", "3d-1"], { "image-1": 8 }, 1.6),
     ).toMatchObject({
       direction: "column",
       first: "3d-1",
@@ -412,7 +407,7 @@ describe("buildEpisodeAutoLayout", () => {
       { length: 6 },
       (_, index) => `image-${index + 1}`,
     );
-    expect(buildEpisodeAutoLayout([...images, "3d-1"], {}, 1.6)).toMatchObject({
+    expect(buildAutoLayout([...images, "3d-1"], {}, 1.6)).toMatchObject({
       direction: "column",
       first: "3d-1",
       second: { direction: "row" },
@@ -428,7 +423,7 @@ describe("buildEpisodeAutoLayout", () => {
       tileHorizontalInset: 6,
       tileVerticalInset: 34,
     };
-    const layout = buildEpisodeAutoLayout([...images, "3d-1"], {}, metrics);
+    const layout = buildAutoLayout([...images, "3d-1"], {}, metrics);
     const imageBodyWidth = metrics.width - images.length * 6;
     const idealShelfHeight = imageBodyWidth / (images.length * (16 / 9)) + 34;
 
@@ -450,7 +445,7 @@ describe("buildEpisodeAutoLayout", () => {
       tileHorizontalInset: 10,
       tileVerticalInset: 30,
     };
-    const layout = buildEpisodeAutoLayout(
+    const layout = buildAutoLayout(
       ["image-1", "image-2", "3d-1"],
       { "image-1": 2, "image-2": 1 },
       metrics,
@@ -468,7 +463,7 @@ describe("buildEpisodeAutoLayout", () => {
   });
 
   it("uses landscape-shaped rows for the image bank", () => {
-    expect(buildEpisodeAutoLayout(["image-1", "image-2", "image-3"])).toEqual({
+    expect(buildAutoLayout(["image-1", "image-2", "image-3"])).toEqual({
       direction: "column",
       first: "image-1",
       second: {
@@ -482,7 +477,7 @@ describe("buildEpisodeAutoLayout", () => {
   });
 
   it("co-locates maps with images when no 3d tile is present", () => {
-    expect(buildEpisodeAutoLayout(["image-1", "map-1"])).toEqual({
+    expect(buildAutoLayout(["image-1", "map-1"])).toEqual({
       direction: "row",
       first: "image-1",
       second: "map-1",
@@ -491,7 +486,7 @@ describe("buildEpisodeAutoLayout", () => {
   });
 
   it("stacks plot tiles vertically", () => {
-    expect(buildEpisodeAutoLayout(["plot-1", "plot-2", "plot-3"])).toEqual({
+    expect(buildAutoLayout(["plot-1", "plot-2", "plot-3"])).toEqual({
       direction: "column",
       first: "plot-1",
       second: {
@@ -505,7 +500,7 @@ describe("buildEpisodeAutoLayout", () => {
   });
 
   it("stacks log tiles vertically", () => {
-    expect(buildEpisodeAutoLayout(["log-1", "log-2"])).toEqual({
+    expect(buildAutoLayout(["log-1", "log-2"])).toEqual({
       direction: "column",
       first: "log-1",
       second: "log-2",
@@ -514,7 +509,7 @@ describe("buildEpisodeAutoLayout", () => {
   });
 
   it("stacks message tiles vertically", () => {
-    expect(buildEpisodeAutoLayout(["raw-1", "raw-2"])).toEqual({
+    expect(buildAutoLayout(["raw-1", "raw-2"])).toEqual({
       direction: "column",
       first: "raw-1",
       second: "raw-2",
@@ -524,7 +519,7 @@ describe("buildEpisodeAutoLayout", () => {
 
   it("places 3d on top with images and plots beside a message rail below", () => {
     expect(
-      buildEpisodeAutoLayout([
+      buildAutoLayout([
         "image-1",
         "3d-1",
         "plot-1",
@@ -561,8 +556,8 @@ describe("buildEpisodeAutoLayout", () => {
   });
 
   it("uses clean single-purpose layouts for point-cloud-only and image-only workspaces", () => {
-    expect(buildEpisodeAutoLayout(["3d-1"])).toBe("3d-1");
-    expect(buildEpisodeAutoLayout(["image-1", "image-2"])).toEqual({
+    expect(buildAutoLayout(["3d-1"])).toBe("3d-1");
+    expect(buildAutoLayout(["image-1", "image-2"])).toEqual({
       direction: "row",
       first: "image-1",
       second: "image-2",
@@ -571,7 +566,7 @@ describe("buildEpisodeAutoLayout", () => {
   });
 
   it("keeps unknown tile ids in diagnostics after known plot tiles", () => {
-    expect(buildEpisodeAutoLayout(["plot-1", "custom-1"])).toEqual({
+    expect(buildAutoLayout(["plot-1", "custom-1"])).toEqual({
       direction: "column",
       first: "plot-1",
       second: "custom-1",

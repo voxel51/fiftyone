@@ -17,7 +17,7 @@ import React, {
  * the primary (preferred, else first-registered) tile. All hooks degrade
  * gracefully outside the provider so chrome can render in isolation.
  */
-export interface EpisodeTileRegistry<T> {
+export interface TileRegistry<T> {
   readonly Provider: React.FC<{ readonly children: React.ReactNode }>;
   /** Every registered entry in registration order; empty without a provider. */
   readonly useEntries: () => ReadonlyMap<string, T>;
@@ -27,7 +27,7 @@ export interface EpisodeTileRegistry<T> {
   readonly useRegister: (tileId: string | null | undefined, value: T) => void;
 }
 
-interface EpisodeTileRegistryValue<T> {
+interface TileRegistryValue<T> {
   readonly entries: ReadonlyMap<string, T>;
   readonly register: (tileId: string, value: T) => void;
   readonly unregister: (tileId: string) => void;
@@ -39,10 +39,8 @@ const EMPTY_ENTRIES: ReadonlyMap<string, never> = new Map<string, never>();
  * Creates an independent tile registry. `name` labels the provider in React
  * devtools and error contexts; each call returns an isolated context.
  */
-export function createEpisodeTileRegistry<T>(
-  name: string,
-): EpisodeTileRegistry<T> {
-  const Context = createContext<EpisodeTileRegistryValue<T> | null>(null);
+export function createTileRegistry<T>(name: string): TileRegistry<T> {
+  const Context = createContext<TileRegistryValue<T> | null>(null);
 
   const Provider: React.FC<{ readonly children: React.ReactNode }> = ({
     children,

@@ -26,7 +26,7 @@ import {
   imageDisplayRect,
   transformedImageDisplayRect,
   type ImageViewTransform,
-} from "./base-2d-scene";
+} from "./Base2dScene";
 import styles from "./image-annotations-overlay.module.css";
 
 export type ImageAnnotationPrimitive =
