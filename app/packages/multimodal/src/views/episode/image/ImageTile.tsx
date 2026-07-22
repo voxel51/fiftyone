@@ -4,19 +4,6 @@ import {
   useTileDuplicator,
   useTileId,
 } from "@fiftyone/tiling";
-import {
-  Checkbox,
-  Dropdown,
-  DropdownAnchor,
-  DropdownTrigger,
-  MenuTextItem,
-  Select,
-  SelectAnchor,
-  Text,
-  TextColor,
-  TextVariant,
-  ZIndex,
-} from "@voxel51/voodo";
 import { useStore } from "jotai";
 import React, {
   useCallback,
@@ -42,9 +29,6 @@ import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization
 import { useDataStream } from "../playback/data-stream-context";
 import { usePublishImageAspectRatio } from "./image-aspect-ratios";
 import {
-  MAX_POINT_CLOUD_POINT_SIZE,
-  POINT_CLOUD_POINT_SIZE_STEP,
-  MIN_POINT_CLOUD_POINT_SIZE,
   useImageProjection,
   usePlaybackSettings,
 } from "../settings/modal/state";
@@ -52,7 +36,6 @@ import {
   useImageTileLabelStreams,
   useImageTilePointCloudProjection,
 } from "../tiles/panel-visibility";
-import { checkboxNoSpaceToggleProps } from "../settings/controls/settings-keyboard";
 import {
   chooseNextImageStream,
   imageTileBindingsAtom,
@@ -66,12 +49,9 @@ import ImageProjectionOverlay from "./ImageProjectionOverlay";
 import ImageProjectionScene from "./ImageProjectionScene";
 import { useHoverEcho } from "../interaction/point-hover/hover-echo";
 import { useRegisterTileSettings } from "../tiles/tile-settings-context";
-import SidebarGroup from "../settings/controls/SidebarGroup";
 import { rankDefaultImageSources } from "../layout/playback-layout";
-import settingsStyles from "../tiles/Tile.settings.module.css";
 import styles from "../tiles/Tile.module.css";
 import { TileEmptyState, TileStatusBadge } from "../tiles/TileStreamState";
-import { SettingsLabel } from "../settings/controls/SettingsLabel";
 import type { EpisodeTileProps } from "../tiles/tile-types";
 import {
   useStreamContentFrame,
@@ -82,45 +62,21 @@ import { useImageProjectionLayers } from "./use-image-projection-layers";
 import {
   effectiveCameraCalibration,
   resolveCameraModel,
-  type CameraModelResolution,
-  type ImageDisplayMode,
-  type ImageGeometryMode,
 } from "../spatial/camera-geometry/camera-model";
+import { resolveRectifiedImageDisplay } from "../spatial/camera-geometry/image-rectification";
+import ImageTileSettings from "./ImageTileSettings";
 import {
-  resolveRectifiedImageDisplay,
-  type RectifiedImageDisplay,
-} from "../spatial/camera-geometry/image-rectification";
+  describeCalibrationSelection,
+  describeCameraGeometry,
+  describeGeometryControl,
+  getProjectionIssue,
+  getRectifiedDisplayIssue,
+} from "./image-camera-status";
 
 const IMAGE_FIT = "contain";
 const EMPTY_PROJECTION_STREAMS: readonly string[] = [];
-const AUTO_CALIBRATION_OPTION_ID = "__episode_auto_calibration__";
-const IMAGE_GEOMETRY_MODES: readonly ImageGeometryMode[] = [
-  "auto",
-  "original",
-  "rectified",
-];
-const IMAGE_GEOMETRY_LABELS: Record<ImageGeometryMode, string> = {
-  auto: "Auto (recommended)",
-  original: "Original camera",
-  rectified: "Rectified",
-};
-const IMAGE_DISPLAY_MODES: readonly ImageDisplayMode[] = [
-  "recorded",
-  "rectified",
-];
-const IMAGE_DISPLAY_LABELS: Record<ImageDisplayMode, string> = {
-  recorded: "Recorded pixels",
-  rectified: "Rectified view",
-};
-const CAMERA_CALIBRATION_HELP =
-  "Calibration stream used for camera geometry. Auto uses a unique scene-inventory image-to-camera match and leaves ambiguous images unmatched; choosing a stream overrides that association for this image and its 3D frustum.";
-const IMAGE_DISPLAY_HELP =
-  "Pixels shown in this tile. Recorded pixels preserves the source image exactly. Rectified view remaps a supported original image into the calibration's rectified pixel space and moves annotations, projections, and picking with it.";
-const RECORDED_IMAGE_GEOMETRY_HELP =
-  "Coordinate system of the recorded image. Auto recognizes canonical image_raw and image_rect stream suffixes, accepts pixel-equivalent models, and withholds ambiguous overlays otherwise. Original camera applies K and lens distortion D. Rectified uses R and P without applying D.";
-const POINT_CLOUD_PROJECTION_HELP =
-  "Projects selected 3D point clouds into this camera image using its calibration and frame transforms. Choose which clouds to overlay and adjust their dot size. These settings affect only this image tile.";
 
+/** Renders one image stream with labels, projections, and camera controls. */
 const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const tileId = useTileId();
   const [imageDims, setImageDims] = useState<{
@@ -511,226 +467,46 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
         : [],
     [visibleIssue],
   );
-  const imageSourceOptions = useMemo(
-    () =>
-      images.map((source) => ({
-        data: { label: source.label },
-        id: source.id,
-      })),
-    [images],
-  );
-  const calibrationSourceOptions = useMemo(
-    () => [
-      {
-        data: { label: calibrationSelectionLabel },
-        id: AUTO_CALIBRATION_OPTION_ID,
-      },
-      ...calibrationSources.map((source) => ({
-        data: { label: source.label },
-        id: source.id,
-      })),
-    ],
-    [calibrationSelectionLabel, calibrationSources],
-  );
-
   const settingsRegistration = useMemo(
     () => ({
       content: (
-        <div className={settingsStyles.root}>
-          <SidebarGroup title="Source">
-            <Select
-              anchor={SelectAnchor.BottomStart}
-              aria-label="Source"
-              exclusive
-              onChange={(value) => {
-                if (typeof value === "string") setStream(value);
-              }}
-              options={imageSourceOptions}
-              portal
-              value={stream}
-              zIndex={ZIndex.AboveModal}
-            />
-          </SidebarGroup>
-          {canConfigureCameraGeometry ? (
-            <SidebarGroup
-              summary={`${IMAGE_DISPLAY_LABELS[cameraProjection.display]} · ${geometryControlLabel}`}
-              title="Camera geometry"
-            >
-              <label className={settingsStyles.field}>
-                <SettingsLabel
-                  label="Calibration"
-                  tooltip={CAMERA_CALIBRATION_HELP}
-                />
-                <Select
-                  anchor={SelectAnchor.BottomStart}
-                  aria-label="Calibration"
-                  exclusive
-                  onChange={(value) => {
-                    if (typeof value !== "string") return;
-                    setCameraProjection({
-                      calibrationStream:
-                        value === AUTO_CALIBRATION_OPTION_ID ? null : value,
-                    });
-                  }}
-                  options={calibrationSourceOptions}
-                  portal
-                  value={
-                    cameraProjection.calibrationStream ??
-                    AUTO_CALIBRATION_OPTION_ID
-                  }
-                  zIndex={ZIndex.AboveModal}
-                />
-              </label>
-              <label className={settingsStyles.field}>
-                <SettingsLabel label="Display" tooltip={IMAGE_DISPLAY_HELP} />
-                <Dropdown
-                  anchor={DropdownAnchor.BottomStart}
-                  trigger={
-                    <DropdownTrigger>
-                      {IMAGE_DISPLAY_LABELS[cameraProjection.display]}
-                    </DropdownTrigger>
-                  }
-                >
-                  {IMAGE_DISPLAY_MODES.map((mode) => (
-                    <MenuTextItem
-                      key={mode}
-                      onClick={() => setCameraProjection({ display: mode })}
-                    >
-                      {IMAGE_DISPLAY_LABELS[mode]}
-                    </MenuTextItem>
-                  ))}
-                </Dropdown>
-              </label>
-              <label className={settingsStyles.field}>
-                <SettingsLabel
-                  label="Recorded image geometry"
-                  tooltip={RECORDED_IMAGE_GEOMETRY_HELP}
-                />
-                <Dropdown
-                  anchor={DropdownAnchor.BottomStart}
-                  trigger={
-                    <DropdownTrigger>
-                      {IMAGE_GEOMETRY_LABELS[cameraProjection.geometry]}
-                    </DropdownTrigger>
-                  }
-                >
-                  {IMAGE_GEOMETRY_MODES.map((mode) => (
-                    <MenuTextItem
-                      key={mode}
-                      onClick={() => setCameraProjection({ geometry: mode })}
-                    >
-                      {IMAGE_GEOMETRY_LABELS[mode]}
-                    </MenuTextItem>
-                  ))}
-                </Dropdown>
-                <span className={settingsStyles.metaText}>
-                  {geometryStatus}
-                </span>
-              </label>
-            </SidebarGroup>
-          ) : null}
-          {annotationSources.length > 0 ? (
-            <SidebarGroup
-              summary={`${selectedLabelStreams.length} of ${annotationSources.length} on`}
-              title="Labels"
-              toggle={{
-                ariaLabel: "Toggle labels",
-                checked: selectedLabelStreams.length > 0,
-                onChange: (checked) => {
-                  if (!stream) return;
-                  setLabelStreams(checked ? [...annotationStreams] : []);
-                },
-              }}
-            >
-              <div className={settingsStyles.labelGroups}>
-                <ImageLabelSourceGroup
-                  sources={labelSourceGroups.matching}
-                  selectedStreams={selectedLabelStreams}
-                  title="Matching"
-                  toggleStream={toggleLabelStream}
-                />
-                <ImageLabelSourceGroup
-                  sources={labelSourceGroups.remaining}
-                  selectedStreams={selectedLabelStreams}
-                  title="Remaining"
-                  toggleStream={toggleLabelStream}
-                />
-              </div>
-            </SidebarGroup>
-          ) : null}
-          {canProjectPointClouds ? (
-            <SidebarGroup
-              summary={`${selectedProjectionStreams.length} of ${pointCloudSources.length} on`}
-              title="Pointcloud projections"
-              tooltip={POINT_CLOUD_PROJECTION_HELP}
-              toggle={{
-                ariaLabel: "Toggle pointcloud projections",
-                checked: selectedProjectionStreams.length > 0,
-                // Master toggle drives the children: on selects every
-                // cloud, off unchecks them all.
-                onChange: (checked) =>
-                  setPointCloudProjection(
-                    checked
-                      ? { enabled: true, streams: null }
-                      : { enabled: false, streams: [] },
-                  ),
-              }}
-            >
-              <label className={settingsStyles.field}>
-                <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-                  Point size
-                </Text>
-                <input
-                  aria-label="Point size"
-                  className={settingsStyles.select}
-                  max={MAX_POINT_CLOUD_POINT_SIZE}
-                  min={MIN_POINT_CLOUD_POINT_SIZE}
-                  onChange={(event) => {
-                    const next = Number(event.target.value);
-                    if (Number.isFinite(next)) {
-                      setPointCloudProjection({
-                        pointSize: Math.min(
-                          MAX_POINT_CLOUD_POINT_SIZE,
-                          Math.max(MIN_POINT_CLOUD_POINT_SIZE, next),
-                        ),
-                      });
-                    }
-                  }}
-                  step={POINT_CLOUD_POINT_SIZE_STEP}
-                  type="number"
-                  value={pointCloudProjection.pointSize}
-                />
-              </label>
-              <div className={settingsStyles.optionStack}>
-                {pointCloudSources.map((s) => (
-                  <Checkbox
-                    key={s.id}
-                    label={s.label}
-                    checked={selectedProjectionStreams.includes(s.id)}
-                    onChange={(checked) =>
-                      toggleProjectionStream(s.id, checked)
-                    }
-                    {...checkboxNoSpaceToggleProps}
-                  />
-                ))}
-              </div>
-            </SidebarGroup>
-          ) : null}
-        </div>
+        <ImageTileSettings
+          annotationSources={annotationSources}
+          annotationStreams={annotationStreams}
+          calibrationSelectionLabel={calibrationSelectionLabel}
+          calibrationSources={calibrationSources}
+          cameraProjection={cameraProjection}
+          canConfigureCameraGeometry={canConfigureCameraGeometry}
+          geometryControlLabel={geometryControlLabel}
+          geometryStatus={geometryStatus}
+          images={images}
+          labelSourceGroups={labelSourceGroups}
+          pointCloudProjection={pointCloudProjection}
+          pointCloudSources={pointCloudSources}
+          selectedLabelStreams={selectedLabelStreams}
+          selectedProjectionStreams={selectedProjectionStreams}
+          setCameraProjection={setCameraProjection}
+          setLabelStreams={setLabelStreams}
+          setPointCloudProjection={setPointCloudProjection}
+          setStream={setStream}
+          stream={stream}
+          toggleLabelStream={toggleLabelStream}
+          toggleProjectionStream={toggleProjectionStream}
+        />
       ),
       streamStreams: activeStreams,
     }),
     [
       activeStreams,
-      annotationSources.length,
+      annotationSources,
       annotationStreams,
-      calibrationSourceOptions,
+      calibrationSelectionLabel,
+      calibrationSources,
       cameraProjection,
       canConfigureCameraGeometry,
-      canProjectPointClouds,
       geometryControlLabel,
       geometryStatus,
-      imageSourceOptions,
+      images,
       labelSourceGroups,
       pointCloudProjection,
       pointCloudSources,
@@ -840,173 +616,5 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     </>
   );
 };
-
-function ImageLabelSourceGroup({
-  selectedStreams,
-  sources,
-  title,
-  toggleStream,
-}: {
-  readonly selectedStreams: readonly string[];
-  readonly sources: readonly { readonly id: string; readonly label: string }[];
-  readonly title: string;
-  readonly toggleStream: (stream: string, checked: boolean) => void;
-}) {
-  if (sources.length === 0) return null;
-
-  return (
-    <div className={settingsStyles.field}>
-      <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-        {title}
-      </Text>
-      <div className={settingsStyles.optionStack}>
-        {sources.map((source) => (
-          <Checkbox
-            key={source.id}
-            label={source.label}
-            checked={selectedStreams.includes(source.id)}
-            onChange={(checked) => toggleStream(source.id, checked)}
-            {...checkboxNoSpaceToggleProps}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-type ImageDimensions = { readonly height: number; readonly width: number };
-
-function describeCalibrationSelection(
-  explicitStream: string | null,
-  automaticStream: string | null,
-  sources: readonly { readonly id: string; readonly label: string }[],
-): string {
-  if (explicitStream) {
-    return sourceLabel(sources, explicitStream);
-  }
-  return automaticStream
-    ? `Auto · ${sourceLabel(sources, automaticStream)}`
-    : "Auto · no match";
-}
-
-function sourceLabel(
-  sources: readonly { readonly id: string; readonly label: string }[],
-  stream: string,
-): string {
-  return sources.find((source) => source.id === stream)?.label ?? stream;
-}
-
-function describeCameraGeometry(
-  resolution: CameraModelResolution | null,
-): string {
-  if (!resolution) {
-    return "Waiting for camera calibration";
-  }
-  if (resolution.status === "ready") {
-    const mode =
-      resolution.mode === "original" ? "Original camera" : "Rectified";
-    return `${mode} · ${resolution.model.kind}`;
-  }
-  if (resolution.suggestedMode) {
-    return `${resolution.message}. Suggested: ${IMAGE_GEOMETRY_LABELS[resolution.suggestedMode]}`;
-  }
-  return resolution.message;
-}
-
-function describeGeometryControl(
-  geometry: ImageGeometryMode,
-  resolution: CameraModelResolution | null,
-): string {
-  if (resolution?.status === "ready" && geometry === "auto") {
-    const resolved = resolution.mode === "original" ? "Original" : "Rectified";
-    return `Auto → ${resolved}`;
-  }
-  if (resolution?.status !== "ready" && resolution?.suggestedMode) {
-    return "Choose geometry";
-  }
-  return IMAGE_GEOMETRY_LABELS[geometry];
-}
-
-function getRectifiedDisplayIssue({
-  calibration,
-  calibrationStream,
-  cameraModelResolution,
-  display,
-  explicitCalibrationAvailable,
-  imageDims,
-  rectifiedDisplay,
-  rectifiedModelResolution,
-  sourceDimensionMismatch,
-}: {
-  readonly calibration: CameraCalibrationVisualization | null;
-  readonly calibrationStream: string | null;
-  readonly cameraModelResolution: CameraModelResolution | null;
-  readonly display: ImageDisplayMode;
-  readonly explicitCalibrationAvailable: boolean;
-  readonly imageDims: ImageDimensions | null;
-  readonly rectifiedDisplay: RectifiedImageDisplay | null;
-  readonly rectifiedModelResolution: CameraModelResolution | null;
-  readonly sourceDimensionMismatch: boolean;
-}): string | null {
-  if (display !== "rectified") return null;
-  if (!calibrationStream) return "Rectified view needs a camera calibration";
-  if (!explicitCalibrationAvailable) {
-    return "The selected camera calibration is not available in this recording";
-  }
-  if (!calibration) return "Waiting for camera calibration";
-  if (cameraModelResolution?.status !== "ready") {
-    return (
-      cameraModelResolution?.message ??
-      "Choose the recorded image geometry before rectifying"
-    );
-  }
-  if (sourceDimensionMismatch && imageDims) {
-    const model = cameraModelResolution.model;
-    return `Cannot rectify ${imageDims.width}×${imageDims.height} pixels with ${model.width}×${model.height} calibration`;
-  }
-  if (cameraModelResolution.mode === "rectified") return null;
-  if (rectifiedModelResolution?.status !== "ready") {
-    return "Rectified view requires a usable rectified projection matrix P";
-  }
-  return rectifiedDisplay ? null : "Unable to build a valid rectification map";
-}
-
-function getProjectionIssue({
-  calibration,
-  calibrationStream,
-  cameraModelResolution,
-  enabled,
-  explicitCalibrationAvailable,
-  imageDims,
-  sourceDimensionMismatch,
-}: {
-  readonly calibration: CameraCalibrationVisualization | null;
-  readonly calibrationStream: string | null;
-  readonly cameraModelResolution: CameraModelResolution | null;
-  readonly enabled: boolean;
-  readonly explicitCalibrationAvailable: boolean;
-  readonly imageDims: ImageDimensions | null;
-  readonly sourceDimensionMismatch: boolean;
-}): string | null {
-  if (!enabled) return null;
-  if (!calibrationStream) {
-    return "Choose a camera calibration before projecting points";
-  }
-  if (!explicitCalibrationAvailable) {
-    return "The selected camera calibration is not available in this recording";
-  }
-  if (!calibration) return "Waiting for camera calibration";
-  if (cameraModelResolution?.status !== "ready") {
-    return cameraModelResolution?.message ?? "Camera projection is unavailable";
-  }
-  if (!calibration.coordinateFrameId) {
-    return "Camera calibration has no coordinate frame";
-  }
-  if (sourceDimensionMismatch && imageDims) {
-    const model = cameraModelResolution.model;
-    return `Image is ${imageDims.width}×${imageDims.height}, but calibration resolves to ${model.width}×${model.height}`;
-  }
-  return null;
-}
 
 export default ImageTile;
