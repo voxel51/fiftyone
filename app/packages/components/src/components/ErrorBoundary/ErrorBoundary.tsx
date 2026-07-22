@@ -58,10 +58,14 @@ export const ErrorDisplayMarkup = <T extends AppError>({
   let messages: { message: string; content: string }[] = [];
 
   if (error instanceof GraphQLError) {
-    messages = error.errors.map((e: any) => ({
-      message: e.message,
-      content: "\n\n" + (e.extensions?.stack?.join("\n") ?? ""),
-    }));
+    messages = error.errors.map((e: any) => {
+      const stack = e?.extensions?.stack;
+      const trace = Array.isArray(stack) ? stack.join("\n") : stack;
+      return {
+        message: e?.message,
+        content: typeof trace === "string" && trace ? "\n\n" + trace : "",
+      };
+    });
   } else if (error instanceof NetworkError) {
     messages = [];
     if (error.code)
