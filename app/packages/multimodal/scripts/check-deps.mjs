@@ -1,5 +1,7 @@
 import { execFileSync } from "node:child_process";
 import assert from "node:assert/strict";
+import { readdirSync } from "node:fs";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 import { bin } from "./process.mjs";
@@ -7,6 +9,32 @@ import { bin } from "./process.mjs";
 console.log("Checking dependencies integrity for multimodal");
 
 const appRoot = fileURLToPath(new URL("../../..", import.meta.url));
+const require = createRequire(import.meta.url);
+const dependencyConfig = require("../.dependency-cruiser.cjs");
+const namespacePath = /^\^packages\/multimodal\/src\/([\w-]+)\/$/;
+const declaredNamespaces = new Set(
+  dependencyConfig.forbidden.flatMap((rule) => {
+    const match = namespacePath.exec(rule.from?.path);
+    return match ? [match[1]] : [];
+  }),
+);
+const topLevelNamespaces = readdirSync(new URL("../src/", import.meta.url), {
+  withFileTypes: true,
+})
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name);
+const undeclaredNamespaces = topLevelNamespaces.filter(
+  (namespace) => !declaredNamespaces.has(namespace),
+);
+
+assert.equal(
+  undeclaredNamespaces.length,
+  0,
+  `top-level namespaces need a direct dependency rule: ${undeclaredNamespaces.join(", ")}`,
+);
+console.log(
+  `Verified ${topLevelNamespaces.length} top-level namespace dependency contracts`,
+);
 
 execFileSync(
   bin("yarn"),
