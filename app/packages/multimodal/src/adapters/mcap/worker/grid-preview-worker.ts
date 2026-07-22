@@ -4,7 +4,7 @@ import { errorMessage } from "../../../utils/errors";
 import {
   decodeGridPreview,
   type McapGridPreviewEntry,
-} from "../resources/grid-preview";
+} from "../resource-client/grid-preview";
 import { McapPlaybackWorkerScheduler } from "./playback-worker-scheduler";
 import { createWorkerResourceClient } from "./worker-resource-client";
 import type {

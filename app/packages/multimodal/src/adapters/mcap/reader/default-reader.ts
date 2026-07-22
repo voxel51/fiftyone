@@ -1,7 +1,7 @@
-import "../shared/browser-node-globals";
+import "../compatibility/browser-node-globals";
 import { McapIndexedReader, type McapTypes } from "@mcap/core";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
-import { loadDecompressHandlers } from "../shared/mcap-support";
+import { loadDecompressHandlers } from "../compatibility/mcap-support";
 import { ByteClientReadable } from "./byte-readable";
 import {
   collectChunkDataPrefetchRanges,

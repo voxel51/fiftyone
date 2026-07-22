@@ -1,4 +1,4 @@
-import type { McapDecodedMessage } from "../shared/types";
+import type { McapDecodedMessage } from "../contracts/index";
 
 /** Maximum plain decoded records delivered in one worker message. */
 export const MCAP_STREAM_BATCH_MAX_ITEMS = 64;

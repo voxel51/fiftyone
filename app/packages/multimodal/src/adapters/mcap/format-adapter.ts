@@ -34,12 +34,12 @@ import {
 } from "../../ports";
 import { PlaybackSyncMode } from "../../schemas/v1";
 import { isEpisodeReadCancelledError } from "../../ports";
-import type { McapGridPreviewResult } from "./resources/grid-preview";
+import type { McapGridPreviewResult } from "./resource-client/grid-preview";
 import { prewarmMcapSource } from "./prewarm-mcap-source";
 import {
   acquireSharedMcapResourceClient,
   createMcapResourceClient,
-} from "./resource-client";
+} from "./resource-client/index";
 import {
   MCAP_ACTIVE_TIMELINE,
   type McapDecodedMessage,
@@ -47,7 +47,7 @@ import {
   type McapStreamSyncPolicies,
   type McapStreamSyncPolicy,
   type McapTimelineRange,
-} from "./shared/types";
+} from "./contracts/index";
 import { getMcapGridPreviewPool } from "./worker";
 import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
