@@ -1,13 +1,5 @@
 import { useTileId, useTiling } from "@fiftyone/tiling";
-import React, {
-  type SetStateAction,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { usePublishAnnotationStreams } from "../../../../extensions/timeline/index";
 import type {
   CameraCalibrationVisualization,
@@ -18,31 +10,19 @@ import type {
   PoseVisualization,
   SceneUpdateVisualization,
 } from "../../../../ir/index";
-import { imageTextureCacheKey } from "../../../../visualization/media-2d/image-texture-cache";
 import { useKeyedIdentityMap } from "../../../../visualization/panel-ui/use-keyed-identity-map";
 import type { ThreeSceneBackground } from "../../../../visualization/scene-3d/Base3dScene";
 import { DEFAULT_POINT_CLOUD_CAMERA_PROJECTION } from "../../../../visualization/scene-3d/camera-fit-bounds";
 import { PointCloudPanel } from "../../../../visualization/composition/index";
 import {
-  type CameraFrustumPanelLayer,
-  type GridPanelLayer,
   type PointCloudCameraPose,
-  type PointCloudCameraProjection,
-  type PointCloudPanelLayer,
   type PointCloudPanelRenderStats,
-  type PointCloudPointPick,
-  type SceneAnnotationPanelLayer,
   type SceneRayPanelLayer,
 } from "../../../../visualization/scene-3d/types";
 import { Scene3dCameraRig } from "../camera/Scene3dCameraRig";
 import Scene3dTileSettings from "./Scene3dTileSettings";
 import { Scene3dViewControls } from "../camera/Scene3dViewControls";
-import { build3dLayers } from "../entities/scene-3d-layers";
-import {
-  selectScene3dSnapshot,
-  type HeldScene3dSnapshot,
-  type Scene3dHeldSceneReason,
-} from "../entities/scene-3d-scene-snapshot";
+import type { Scene3dHeldSceneReason } from "../entities/scene-3d-scene-snapshot";
 import { useScene3dViewSettings } from "../../spatial/view-settings-context";
 import {
   buildScene3dPlacementNotices,
@@ -58,10 +38,6 @@ import {
 } from "../../playback/stream-status-state";
 import { useScene3dViewStateStore } from "../camera/scene-3d-view-state-context";
 import {
-  type Scene3dViewpointController,
-  useRegisterScene3dViewpoint,
-} from "../camera/scene-3d-viewpoint-context";
-import {
   useRegisterSceneFrameControls,
   useSceneFrameControls,
   type SceneFrameControls,
@@ -73,36 +49,11 @@ import {
   normalizeScene3dCameraProjection,
 } from "../camera/scene-3d-viewpoint";
 import type { Scene3dCameraNavigationMode } from "../camera/scene-3d-view-state";
-import { type PrimitiveAtom, useStore } from "jotai";
 import { useDataStream } from "../../playback/data-stream-context";
-import {
-  useFrustumImageHover,
-  useHoveredImageStream,
-  useImageTileBindings,
-} from "../../tiles/tile-source-bindings";
-import {
-  Scene3dHoverTooltip,
-  useScene3dHoverTooltip,
-} from "../../interaction/point-hover/use-hover-tooltip";
-import { useOpenImageTile } from "../../tiles/use-open-image-tile";
-import {
-  isLabelEcho,
-  isSceneEntitySelected,
-  entityLabel,
-  selectedObjectAtom,
-  useSelectedObject,
-} from "../../interaction/selection/selected-object";
-import { hoveredPointForFrame } from "../../interaction/point-hover/point-hover";
-import {
-  hoverEchoAtom,
-  useHoverEcho,
-  type HoverEcho,
-} from "../../interaction/point-hover/hover-echo";
 import { useDepthHover } from "../../spatial/depth-sampling";
 import { resolveDepthRay } from "../../spatial/depth-projection";
 import { useFrameTransformsContext } from "../../spatial/frame-transforms/context";
 import {
-  DEFAULT_IMAGE_PROJECTION,
   defaultPointCloudColorForSource,
   useImageProjectionSettingsByStream,
   usePinholeCameraSettings,
@@ -112,8 +63,6 @@ import {
   useSceneBackgroundSettings,
   useTemporalPolicySettings,
 } from "../../settings/modal/state";
-import { resolveCameraModel } from "../../spatial/camera-geometry/camera-model";
-import { cameraRayModel } from "../../spatial/camera-geometry/camera-ray-model";
 import { usePointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 import type { EpisodeTileProps } from "../../tiles/tile-types";
 import styles from "../../tiles/Tile.module.css";
@@ -125,7 +74,6 @@ import {
 } from "../camera/use-scene-3d-camera-tracking";
 import { useScene3dFrameSelection } from "../placement/use-scene-3d-frame-selection";
 import { useScene3dPoseTrajectories } from "../entities/use-scene-3d-pose-trajectories";
-import { useScene3dPlacementStream } from "../placement/use-scene-3d-placement-stream";
 import { useScene3dViewShortcuts } from "../camera/use-scene-3d-view-shortcuts";
 import {
   playbackFrameForStream,
@@ -136,6 +84,17 @@ import { useInterpolatedSceneUpdateFrames } from "../entities/use-interpolated-s
 import { usePlaybackTimeNs } from "../../playback/use-playback-time-ns";
 import { useStreamPlaybackFrames } from "../../playback/use-stream-values";
 import { useVideoDecodeRunways } from "../../playback/video-decode-runway/use-video-decode-runways";
+import {
+  useScene3dSnapshot,
+  type Scene3dSnapshot,
+} from "../entities/use-scene-3d-snapshot";
+import {
+  Scene3dHoverTooltip,
+  useScene3dPickingLayers,
+} from "../picking/use-scene-3d-picking-layers";
+import { useScene3dFrustumLayers } from "../camera/use-scene-3d-frustum-layers";
+import { useScene3dPlacedLayers } from "../placement/use-scene-3d-placed-layers";
+import { useScene3dViewpointRegistration } from "../camera/use-scene-3d-viewpoint-registration";
 
 /**
  * Named gradient backdrop profiles for the 3D scene. "Abyss" is dark
@@ -148,7 +107,6 @@ const ABYSS_BACKGROUND: ThreeSceneBackground = {
   top: "#12362b",
 };
 const EMPTY_SCENE_RAYS: readonly SceneRayPanelLayer[] = [];
-const DEFINITIVE_MISSING_SCENE_GRACE_MS = 2_000;
 const STUDIO_BACKGROUND: ThreeSceneBackground = {
   bottom: "#c8b39a",
   kind: "gradient",
@@ -164,7 +122,6 @@ const STUDIO_BACKGROUND: ThreeSceneBackground = {
 const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   const viewStateStore = useScene3dViewStateStore();
   const sourceKey = useDataStream()?.sourceKey ?? "";
-  const jotaiStore = useStore();
   // The previous mount's view state, read once before any write-through can
   // overwrite it. The tile remounts per sample, so this snapshot is exactly
   // the state the user left the previous sample's 3D tile in.
@@ -248,10 +205,6 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   );
   const tileId = useTileId();
   const { focusedTileId } = useTiling();
-  const sceneSnapshotRef = useRef<HeldScene3dSnapshot<Scene3dSnapshot> | null>(
-    null,
-  );
-  const [, refreshSceneSnapshot] = useState(0);
   const panelBackground = useMemo<ThreeSceneBackground>(() => {
     switch (sceneBackground.mode) {
       case "abyss":
@@ -416,55 +369,26 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     pendingAnnotationFrameIds,
     pendingFrustumFrameIds,
     pendingGridFrameIds,
+    placementReadiness,
     pointCloudLayers,
     provisionalFrameIds,
     sceneAnnotationLayers,
     transformedLayerCount,
     unresolvedFrameIds,
-  } = useMemo(() => {
-    return build3dLayers({
-      annotationFrames: combinedAnnotationFrames,
-      calibrationFrames,
-      frameTransforms,
-      frames,
-      gridFrames,
-      largeInterpolationGapWarningNs: msToNs(
-        temporalPolicy.transformGapWarningMs,
-      ),
-      provisionalStreamId,
-      selectedAnnotationStreams: combinedAnnotationStreams,
-      selectedCalibrationStreams: cameraStreams,
-      selectedGridStreams: mapLayerStreams,
-      selectedStreams: pointCloudStreams,
-      worldFrameId,
-    });
-  }, [
+  } = useScene3dPlacedLayers({
+    annotationFrames: combinedAnnotationFrames,
+    annotationStreams: combinedAnnotationStreams,
     calibrationFrames,
-    cameraStreams,
-    combinedAnnotationFrames,
-    combinedAnnotationStreams,
+    calibrationStreams: cameraStreams,
     frameTransforms,
     frames,
     gridFrames,
-    mapLayerStreams,
+    gridStreams: mapLayerStreams,
+    largeInterpolationGapWarningMs: temporalPolicy.transformGapWarningMs,
+    playbackTimeNs,
     pointCloudStreams,
     provisionalStreamId,
-    temporalPolicy.transformGapWarningMs,
-    worldFrameId,
-  ]);
-  const pointCloudPlacementFrameIds = useMemo(
-    () =>
-      frames
-        .map((frame) => frame?.frame.coordinateFrameId)
-        .filter((frameId): frameId is string => Boolean(frameId)),
-    [frames],
-  );
-  const placementReadiness = useScene3dPlacementStream({
-    active: pointCloudStreams.length > 0,
-    frameIds: pointCloudPlacementFrameIds,
-    frameTransforms,
-    playbackTimeNs,
-    streamId: `episode-3d-placement:${tileId ?? "default"}`,
+    tileId,
     worldFrameId,
   });
   const pointCloudSourceById = useMemo(
@@ -510,284 +434,29 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     ],
     key: (layer) => layer.id,
   });
-  // Attach each camera's current image to its frustum layer. Done outside
-  // build3dLayers so the pure layer builder stays image-agnostic; index
-  // alignment with cameraStreams mirrors the playback-frames arrays. The
-  // texture key matches the one the 2D image tile forms for the same
-  // (recording, image stream, frame), so both surfaces share one decoded
-  // texture through the image-texture cache.
-  const openImageTile = useOpenImageTile();
-  const frustumImageHover = useFrustumImageHover();
-  const hoveredImageStream = useHoveredImageStream();
-  const imageTileBindings = useImageTileBindings();
   const {
-    containerProps: hoverTooltipContainerProps,
+    annotationLayers,
+    hoverablePointCloudLayers,
+    hoverTooltip,
+    hoverTooltipContainerProps,
     onHoverCamera,
-    onHoverEntity,
-    onHoverPoint,
-    tooltip: hoverTooltip,
-  } = useScene3dHoverTooltip();
-  // The stream shown by the focused (active) tile, if it's an image tile.
-  const focusedImageStream = focusedTileId
-    ? (imageTileBindings[focusedTileId] ?? null)
-    : null;
-  const pinholeImagePlaneDepthM = pinholeCamera.imagePlaneDepthM;
-  const pinholeOpacity = pinholeCamera.opacityPercent / 100;
-  const frustumLayerCandidates = useKeyedIdentityMap(cameraFrustumLayers, {
-    build: (layer) => {
-      const index = cameraStreams.indexOf(layer.id);
-      const imageFrame = index >= 0 ? frustumImageFrames[index] : null;
-      const imageDecodeRunway =
-        index >= 0 ? frustumImageDecodeRunways[index] : undefined;
-      const imageStream = index >= 0 ? (frustumImageStreams[index] ?? "") : "";
-      const geometry = imageStream
-        ? (imageProjectionSettings[imageStream] ?? DEFAULT_IMAGE_PROJECTION)
-            .geometry
-        : "original";
-      const cameraModelResolution = resolveCameraModel({
-        calibration: layer.frame,
-        geometry,
-        imageStream,
-      });
-      const rayCameraModelResolution =
-        cameraModelResolution.status === "ready"
-          ? cameraModelResolution
-          : resolveCameraModel({
-              calibration: layer.frame,
-              geometry: "original",
-              imageStream,
-            });
-      const resolvedCameraRayModel =
-        rayCameraModelResolution.status === "ready"
-          ? cameraRayModel(rayCameraModelResolution.model)
-          : undefined;
-      // Cmd-clicking a frustum opens its image tile; hovering or focusing
-      // the tile highlights the frustum.
-      const linked = imageStream
-        ? {
-            highlighted: hoveredImageStream === imageStream,
-            selected: focusedImageStream === imageStream,
-            imageStream,
-            onHover: (hovered: boolean) => {
-              if (hovered) {
-                frustumImageHover.setHovered(imageStream);
-                onHoverCamera({
-                  calibrationStream: layer.id,
-                  distortionModel: layer.frame.distortionModel,
-                  frameId: layer.frame.coordinateFrameId,
-                  imageStream,
-                  kind: "camera",
-                  resolution: [layer.frame.width, layer.frame.height],
-                });
-                return;
-              }
-              if (frustumImageHover.clearIfCurrent(imageStream)) {
-                onHoverCamera(null);
-              }
-            },
-            onSelect: ({ metaKey }: { readonly metaKey: boolean }) => {
-              if (metaKey) {
-                openImageTile(imageStream);
-              }
-            },
-          }
-        : {};
-      let imageProps: Partial<CameraFrustumPanelLayer> = {};
-      if (imageFrame) {
-        imageProps =
-          cameraModelResolution.status === "ready"
-            ? {
-                image: imageFrame.frame,
-                imageContentTimeNs: imageFrame.contentTimeNs,
-                ...(imageDecodeRunway?.length ? { imageDecodeRunway } : {}),
-                imageTextureKey:
-                  sourceKey && imageStream
-                    ? imageTextureCacheKey(
-                        sourceKey,
-                        imageStream,
-                        imageFrame.contentTimeNs,
-                      )
-                    : undefined,
-              }
-            : { imageUnavailableReason: cameraModelResolution.message };
-      }
-      return {
-        ...layer,
-        ...linked,
-        ...imageProps,
-        cameraRayModel: resolvedCameraRayModel,
-        imagePlaneDepthM: pinholeImagePlaneDepthM,
-        opacity: pinholeOpacity,
-        requireCameraRayModel: true,
-      };
-    },
-    // Hover/focus enter as per-layer booleans, not the global stream values:
-    // moving the hover from one camera to another rebuilds exactly those two
-    // frustums.
-    inputs: (layer) => {
-      const index = cameraStreams.indexOf(layer.id);
-      const imageStream = index >= 0 ? (frustumImageStreams[index] ?? "") : "";
-      return [
-        layer,
-        index >= 0 ? frustumImageFrames[index] : null,
-        index >= 0 ? frustumImageDecodeRunways[index] : null,
-        imageStream,
-        imageStream ? imageProjectionSettings[imageStream] : null,
-        imageStream !== "" && hoveredImageStream === imageStream,
-        imageStream !== "" && focusedImageStream === imageStream,
-        frustumImageHover,
-        openImageTile,
-        onHoverCamera,
-        pinholeImagePlaneDepthM,
-        pinholeOpacity,
-        sourceKey,
-      ];
-    },
-    key: (layer) => layer.id,
+  } = useScene3dPickingLayers({
+    pointCloudLayers: coloredPointCloudLayers,
+    sceneAnnotationLayers,
   });
-  const frustumLayers = useMemo(
-    () =>
-      frustumLayerCandidates.filter(
-        (layer): layer is NonNullable<typeof layer> => layer !== null,
-      ),
-    [frustumLayerCandidates],
-  );
-  // Wire the scene annotations into the cross-tile selection: each layer
-  // (one entity each) learns whether it's the selected object (or a
-  // label-match echo of one) and how to toggle itself selected. Kept out
-  // of build3dLayers so the pure layer builder stays selection-agnostic.
-  const selectedObject = useSelectedObject();
-  type SelectedObjectState = ReturnType<typeof useSelectedObject>;
-  const setSelectedObject = useCallback(
-    (update: SetStateAction<SelectedObjectState>) => {
-      jotaiStore.set(
-        selectedObjectAtom as PrimitiveAtom<SelectedObjectState>,
-        update,
-      );
-    },
-    [jotaiStore],
-  );
-  const annotationLayers = useKeyedIdentityMap(sceneAnnotationLayers, {
-    build: (layer) => {
-      const entity = layer.frame.entities[0];
-      if (!entity) return layer;
-      const stream = layer.sourceId ?? "";
-      const entityId = entity.id || layer.id;
-      const label = entityLabel(entity);
-      const isSelected = isSceneEntitySelected(
-        selectedObject,
-        stream,
-        entityId,
-      );
-      return {
-        ...layer,
-        highlighted: isSelected || isLabelEcho(selectedObject, label),
-        onHoverEntity: (hoveredId: string | null) =>
-          onHoverEntity(
-            hoveredId ? { entityId, kind: "entity", label, stream } : null,
-          ),
-        onSelectEntity: (
-          _entityId: string,
-          modifiers: { readonly shiftKey: boolean },
-        ) => {
-          // Plain click = this instance only; shift-click widens to
-          // every object sharing the label. Re-clicking with the same
-          // scope toggles off; changing the modifier switches scope.
-          const scope = modifiers.shiftKey ? "label" : "instance";
-          setSelectedObject((current) =>
-            isSceneEntitySelected(current, stream, entityId) &&
-            current?.scope === scope
-              ? null
-              : {
-                  entityId,
-                  frameId: entity.frameId,
-                  kind: "scene-annotation",
-                  label,
-                  metadata: entity.metadata,
-                  scope,
-                  stream,
-                },
-          );
-        },
-      };
-    },
-    // Selection enters as this entity's derived booleans, so a selection
-    // change rebuilds the entity gaining and the entity losing emphasis —
-    // not every annotation in the scene.
-    inputs: (layer) => {
-      const entity = layer.frame.entities[0];
-      if (!entity) return [layer];
-      const stream = layer.sourceId ?? "";
-      const entityId = entity.id || layer.id;
-      return [
-        layer,
-        isSceneEntitySelected(selectedObject, stream, entityId),
-        isLabelEcho(selectedObject, entityLabel(entity)),
-        onHoverEntity,
-        setSelectedObject,
-      ];
-    },
-    key: (layer) => layer.id,
+  const frustumLayers = useScene3dFrustumLayers({
+    cameraFrustumLayers,
+    cameraStreams,
+    focusedTileId,
+    frustumImageDecodeRunways,
+    frustumImageFrames,
+    frustumImageStreams,
+    imagePlaneDepthM: pinholeCamera.imagePlaneDepthM,
+    imageProjectionSettings,
+    onHoverCamera,
+    opacity: pinholeCamera.opacityPercent / 100,
+    sourceKey,
   });
-  // Share point hovers between the 3D scene and image projections.
-  const hoverEcho = useHoverEcho();
-  const publishedPointHoverRefs = useRef(new Map<string, HoverEcho>());
-  const hoverablePointCloudLayers = useKeyedIdentityMap(
-    coloredPointCloudLayers,
-    {
-      build: (layer) => {
-        const stream = layer.id;
-        const frame = layer.frame;
-        return {
-          ...layer,
-          hoveredPoint:
-            hoverEcho?.kind === "point" && hoverEcho.stream === stream
-              ? { color: hoverEcho.color, position: hoverEcho.position }
-              : null,
-          onHoverPoint: (pick: PointCloudPointPick | null) => {
-            const hoveredPoint = pick
-              ? hoveredPointForFrame(stream, frame, pick.pointIndex)
-              : null;
-            const payload = hoveredPoint
-              ? { ...hoveredPoint, color: pick?.color ?? null }
-              : null;
-            onHoverPoint(payload);
-            if (payload && pick) {
-              const hover: HoverEcho = {
-                color: pick.color,
-                kind: "point",
-                pointIndex: payload.pointIndex,
-                position: payload.position,
-                stream,
-              };
-              publishedPointHoverRefs.current.set(stream, hover);
-              jotaiStore.set(hoverEchoAtom, hover);
-              return;
-            }
-
-            const published = publishedPointHoverRefs.current.get(stream);
-            publishedPointHoverRefs.current.delete(stream);
-            if (published) {
-              jotaiStore.set(hoverEchoAtom, (current) =>
-                current === published ? null : current,
-              );
-            }
-          },
-        };
-      },
-      // The hover echo enters as this stream's slice (null for everyone
-      // else), so pointer movement over one cloud never rebuilds the others.
-      inputs: (layer) => [
-        layer,
-        hoverEcho?.kind === "point" && hoverEcho.stream === layer.id
-          ? hoverEcho
-          : null,
-        jotaiStore,
-        onHoverPoint,
-      ],
-      key: (layer) => layer.id,
-    },
-  );
   // Schema-driven telemetry: speed from the first enabled pose stream whose
   // latest sample carries velocity, coordinates from the first LocationFix
   // stream — never keyed on stream names.
@@ -892,53 +561,17 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     worldFrameTransition: referenceTransition,
     worldFrameId,
   });
-  const updateCameraProjection = useCallback(
-    (projection: PointCloudCameraProjection) => {
-      const normalized = normalizeScene3dCameraProjection(projection);
-      setCameraProjection(normalized);
-      viewpointStore.publish({ projection: normalized });
-      viewStateStore.recordCameraProjection(normalized);
-    },
-    [viewStateStore, viewpointStore],
-  );
-  const viewpointActionsRef = useRef<{
-    setCameraNavigationMode: (mode: Scene3dCameraNavigationMode) => void;
-    setPose: (pose: PointCloudCameraPose) => void;
-    setProjection: (projection: PointCloudCameraProjection) => void;
-  }>({
-    setCameraNavigationMode: () => undefined,
-    setPose: () => undefined,
-    setProjection: () => undefined,
+  useScene3dViewpointRegistration({
+    cameraNavigationMode,
+    cameraProjection,
+    handleCameraPoseChange,
+    sceneUpAxis,
+    setCameraNavigationMode,
+    setCameraProjection,
+    tileId,
+    viewStateStore,
+    viewpointStore,
   });
-  viewpointActionsRef.current = {
-    setCameraNavigationMode: (mode) => {
-      setCameraNavigationMode(mode);
-      viewpointStore.publish({ cameraNavigationMode: mode });
-      viewStateStore.recordCameraNavigationMode(mode);
-    },
-    setPose: (pose) => {
-      viewpointStore.publish({ pose });
-      handleCameraPoseChange(pose, "focus");
-    },
-    setProjection: updateCameraProjection,
-  };
-  const [viewpointController] = useState<Scene3dViewpointController>(() => ({
-    ...viewpointStore,
-    setCameraNavigationMode: (mode) =>
-      viewpointActionsRef.current.setCameraNavigationMode(mode),
-    setPose: (pose) => viewpointActionsRef.current.setPose(pose),
-    setProjection: (projection) =>
-      viewpointActionsRef.current.setProjection(projection),
-  }));
-  useRegisterScene3dViewpoint(tileId, viewpointController);
-  // This effect publishes infrequent camera settings to the sidebar store.
-  useEffect(() => {
-    viewpointStore.publish({
-      cameraNavigationMode,
-      projection: cameraProjection,
-      sceneUpAxis,
-    });
-  }, [cameraNavigationMode, cameraProjection, sceneUpAxis, viewpointStore]);
   const { applyEgoView, applyTopView } = useScene3dViewShortcuts({
     cameraTargetFrameId,
     frameIds,
@@ -1015,20 +648,10 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     annotationFrames.some(Boolean) ||
     gridFrames.some(Boolean) ||
     calibrationFrames.some(Boolean);
-  const currentSceneRetainable =
-    currentSceneSnapshot.pointCloudLayers.length > 0 ||
-    currentSceneSnapshot.annotationLayers.length > 0 ||
-    currentSceneSnapshot.gridLayers.length > 0 ||
-    currentSceneSnapshot.frustumLayers.length > 0;
-  const sceneSnapshotSelection = selectScene3dSnapshot({
+  const sceneSnapshotSelection = useScene3dSnapshot({
     current: currentSceneSnapshot,
-    currentRetainable: currentSceneRetainable,
-    definitiveMissingGraceMs: DEFINITIVE_MISSING_SCENE_GRACE_MS,
-    empty: emptyScene3dSnapshot(currentSceneSnapshot.placementStatus),
     hasSourceData: hasSceneSourceData,
-    held: sceneSnapshotRef.current,
     key: sceneSnapshotKey,
-    nowMs: Date.now(),
     readiness: selectedSourcePending
       ? "pending"
       : placementReadiness.status === "ready" ||
@@ -1036,22 +659,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
         ? placementReadiness.status
         : "pending",
   });
-  // This layout effect commits held-scene state only after React commits the
-  // scene selected by the same render.
-  useLayoutEffect(() => {
-    sceneSnapshotRef.current = sceneSnapshotSelection.nextHeld;
-  }, [sceneSnapshotSelection.nextHeld]);
   const displayedScene = sceneSnapshotSelection.snapshot;
-  // This effect expires a transform-only scene hold even when no new stream
-  // event arrives to trigger another render.
-  useEffect(() => {
-    if (sceneSnapshotSelection.graceRemainingMs === null) return undefined;
-    const timer = setTimeout(
-      () => refreshSceneSnapshot((version) => version + 1),
-      sceneSnapshotSelection.graceRemainingMs,
-    );
-    return () => clearTimeout(timer);
-  }, [sceneSnapshotSelection.graceRemainingMs]);
   const depthHover = useDepthHover();
   const depthRayResolution = useMemo(
     () =>
@@ -1239,32 +847,6 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     </>
   );
 };
-
-function msToNs(value: number): bigint {
-  return BigInt(Math.max(0, Math.round(value))) * 1_000_000n;
-}
-
-interface Scene3dSnapshot {
-  readonly annotationLayers: readonly SceneAnnotationPanelLayer[];
-  readonly frustumLayers: readonly CameraFrustumPanelLayer[];
-  readonly gridLayers: readonly GridPanelLayer[];
-  readonly notices: readonly HealthNotice[];
-  readonly placementStatus: Scene3dPlacementStatus;
-  readonly pointCloudLayers: readonly PointCloudPanelLayer[];
-}
-
-function emptyScene3dSnapshot(
-  placementStatus: Scene3dPlacementStatus,
-): Scene3dSnapshot {
-  return {
-    annotationLayers: [],
-    frustumLayers: [],
-    gridLayers: [],
-    notices: [],
-    placementStatus,
-    pointCloudLayers: [],
-  };
-}
 
 const HeldSceneStatusBadge: React.FC<{
   readonly reason: Scene3dHeldSceneReason;
