@@ -42,6 +42,7 @@ interface MockOptions {
       readonly range?: readonly [number, number];
     };
   };
+  readonly series?: readonly { readonly label?: string }[];
 }
 
 interface MockChart {
@@ -197,6 +198,7 @@ describe("TimeseriesChart interactions", () => {
       y: true,
     });
     expect(chart.options.scales?.x?.range).toBeUndefined();
+    expect(chart.options.series?.[0]?.label).toBe("Time");
 
     const size = chart.options.axes?.[1]?.size;
     if (typeof size !== "function") {

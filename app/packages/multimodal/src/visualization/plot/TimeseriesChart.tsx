@@ -255,7 +255,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
         x: { time: false },
       },
       series: [
-        {},
+        { label: "Time" },
         ...currentSeries.map((entry) => ({
           label: entry.label,
           points: { show: false },
