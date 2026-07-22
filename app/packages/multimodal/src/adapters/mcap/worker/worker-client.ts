@@ -4,6 +4,7 @@ import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
 import type {
   McapLaneTransportSnapshot,
+  McapTransportLane,
   McapTransportSnapshot,
 } from "./transport-meter";
 import { workerFetchParameters } from "./worker-resource-client";
@@ -44,10 +45,8 @@ import type {
 } from "../types";
 import type { StreamInventory } from "../../../schemas/v1";
 
-type WorkerLaneName = "interactive" | "foreground" | "idle" | "bulk";
-
 type WorkerLane = {
-  readonly name: WorkerLaneName;
+  readonly name: McapTransportLane;
   readonly transport: McapPlaybackWorkerTransport;
   worker?: Worker;
 };
@@ -387,7 +386,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     });
   }
 
-  private createLane(name: WorkerLaneName): WorkerLane {
+  private createLane(name: McapTransportLane): WorkerLane {
     return {
       name,
       transport: new McapPlaybackWorkerTransport(
@@ -398,7 +397,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
   }
 
   private emitTransport(
-    lane: WorkerLaneName,
+    lane: McapTransportLane,
     snapshot: McapTransportSnapshot,
   ): void {
     if (this.transportListeners.size === 0) {
