@@ -7,7 +7,7 @@ import {
  * Worker lane a transport snapshot came from. Kept structural here so the
  * resource-client contract can reference it without importing worker internals.
  */
-export type McapTransportLane = "foreground" | "idle" | "bulk";
+export type McapTransportLane = "interactive" | "foreground" | "idle" | "bulk";
 
 /**
  * One lane's cumulative transport counters, forwarded to health listeners.
