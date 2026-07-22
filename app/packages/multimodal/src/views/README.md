@@ -15,6 +15,11 @@ and adapter internals also stay outside this boundary.
 Views express intent through runtime and port capabilities. They do not build
 query clients, interpret generated schemas, or import decoder implementation.
 
+Shared sample-to-session binding lives in the session domain. Product surfaces
+may depend on that domain, but session depends only on lower capabilities and
+never reaches back into rendering, layout, or surface-specific behavior. The
+views root remains only the application registration entrypoint.
+
 A view may be format-branded when the user interaction itself targets that
 format, as the MCAP explorer does. That is a product distinction, not
 permission to parse the format here: even a format-branded view must enter

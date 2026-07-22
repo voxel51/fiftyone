@@ -7,12 +7,12 @@ import {
   type EpisodePosterFrame,
   type EpisodePreviewReadResult,
   VISUALIZATION_KIND,
-} from "../ir";
-import type { EpisodePreviewSession } from "../ports";
+} from "../../../ir";
+import type { EpisodePreviewSession } from "../../../ports";
 import {
   getSourceBootstrap,
   resetSourceBootstrapCacheForTests,
-} from "../runtime";
+} from "../../../runtime";
 import {
   EPISODE_GRID_BUFFERING_DELAY_MS,
   useEpisodeGridPreview,

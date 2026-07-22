@@ -9,3 +9,7 @@ composition works through public boundaries.
 Keep narrow tests beside the code they exercise. Put a test here when several
 implementations must pass the same contract or when the boundary itself is the
 subject under test.
+
+Test-only renderers and cross-layer fixtures also live here rather than in a
+production view namespace. Their broader dependencies are part of the harness,
+not an application architecture contract.

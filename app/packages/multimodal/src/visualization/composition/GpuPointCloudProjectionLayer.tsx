@@ -5,7 +5,7 @@ import * as THREE from "three";
 import * as TSL from "three/tsl";
 import { PointsNodeMaterial } from "three/webgpu";
 
-import type { ImageViewTransform } from "../image/base-2d-scene";
+import type { ImageViewTransform } from "../media-2d/base-2d-scene";
 import {
   createGpuCameraProjectionNodes,
   updateGpuCameraProjectionBindings,

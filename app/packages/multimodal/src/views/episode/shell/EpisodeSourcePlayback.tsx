@@ -20,13 +20,13 @@ import type { ByteSourceDescriptor, StreamDescriptor } from "../../../ir";
 import type { SceneSource } from "../../../scene-inventory";
 import { episodeSourceAccessKey } from "../../../runtime";
 import { EpisodePlaybackStoreProvider } from "../../../runtime/react";
-import { releaseRetainedImageTextures } from "../../../visualization/image/image-texture-cache";
+import { releaseRetainedImageTextures } from "../../../visualization/media-2d/image-texture-cache";
 import {
   releaseGpuPointCloudProjectionResources,
   releaseGpuPointCloudProjectionResourcesForSource,
 } from "../../../visualization/composition/gpu-point-cloud-projection-resources";
 import { releaseGpuPointCloudColormapTextures } from "../../../visualization/scene-3d/gpu/gpu-point-cloud-colormap-texture";
-import { BitmapImageFrameView } from "../../../visualization/image/bitmap-image-view";
+import { BitmapImageFrameView } from "../../../visualization/media-2d/bitmap-image-view";
 import { getSourceBootstrap, sourceBootstrapKey } from "../../../runtime";
 import type { EpisodeSession } from "../../../ports";
 import { Episode3dViewStateProvider } from "../scene/episode-3d-view-state-context";

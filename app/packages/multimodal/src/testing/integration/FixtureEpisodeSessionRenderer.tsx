@@ -11,27 +11,28 @@ import {
   type DecodedFrame,
   type DecodedVisualization,
   type ImageVisualization,
-} from "../ir";
-import type { EpisodeSession } from "../ports";
-import { ImagePanel } from "../visualization/image/ImagePanel";
-import { PointCloudPanel } from "../visualization/composition";
+} from "../../ir";
+import type { EpisodeSession } from "../../ports";
+import { PointCloudPanel } from "../../visualization/composition";
+import { ImagePanel } from "../../visualization/media-2d/ImagePanel";
 
 const PLAYBACK_TICK_MS = 50;
 const NANOSECONDS_PER_MILLISECOND = 1_000_000n;
 
-export interface EpisodeSessionRendererProps {
+/** Inputs for the test-only format-agnostic session renderer. */
+export interface FixtureEpisodeSessionRendererProps {
   readonly session: EpisodeSession;
   readonly variant?: "grid" | "modal";
 }
 
 /**
- * Minimal format-agnostic episode shell used by adapter contract fixtures and
- * new formats while the richer tile composition builds on the same port.
+ * Test-only format-agnostic episode shell used to exercise adapter contracts
+ * through the same session port as production surfaces.
  */
-export function EpisodeSessionRenderer({
+export function FixtureEpisodeSessionRenderer({
   session,
   variant = "modal",
-}: EpisodeSessionRendererProps) {
+}: FixtureEpisodeSessionRendererProps) {
   const { startNs, endNs } = session.manifest.timeRange;
   const [playheadNs, setPlayheadNs] = useState(startNs);
   const [playing, setPlaying] = useState(false);
@@ -43,11 +44,13 @@ export function EpisodeSessionRenderer({
     (playheadNs - startNs) / NANOSECONDS_PER_MILLISECOND,
   );
 
+  // This effect owns activation and disposal of the supplied fixture session.
   useEffect(() => {
     session.activate?.();
     return () => session.dispose();
   }, [session]);
 
+  // This effect advances fixture playback until it reaches the session end.
   useEffect(() => {
     if (!playing) return undefined;
     const timer = setInterval(() => {
@@ -145,6 +148,7 @@ function useEpisodeFrames(session: EpisodeSession, playheadNs: bigint) {
   }>({ byStream: new Map(), error: null });
   const requestId = useRef(0);
 
+  // This effect reads the latest frames for the current fixture playhead.
   useEffect(() => {
     const id = ++requestId.current;
     const controller = new AbortController();

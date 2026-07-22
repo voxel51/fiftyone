@@ -5,7 +5,7 @@ import {
   imageDisplayRect,
   transformedImageDisplayRect,
   type ImageViewTransform,
-} from "../../../visualization/image/base-2d-scene";
+} from "../../../visualization/media-2d/base-2d-scene";
 import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/composition/gpu-point-cloud-projection-picker";
 import { gpuPointCloudProjectionResourceKey } from "../../../visualization/composition/gpu-point-cloud-projection";
 import {

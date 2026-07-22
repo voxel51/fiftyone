@@ -7,7 +7,7 @@ import {
 } from "react";
 
 import type { ImageAnnotationsVisualization } from "../../../ir";
-import type { ImageAnnotationRenderMetadata } from "../../../visualization/image/image-annotation-render-metadata";
+import type { ImageAnnotationRenderMetadata } from "../../../visualization/media-2d/image-annotation-render-metadata";
 import type { DecodedFrame } from "../../../ir";
 import type { TimelineIndex } from "../../../runtime";
 import {

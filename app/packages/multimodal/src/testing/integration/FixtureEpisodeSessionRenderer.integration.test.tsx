@@ -11,9 +11,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createFixtureFormatAdapter } from "../../adapters/fixture";
 import type { ByteResources, EpisodeSource } from "../../ports";
-import { EpisodeSessionRenderer } from "../../views/EpisodeSessionRenderer";
+import { FixtureEpisodeSessionRenderer } from "./FixtureEpisodeSessionRenderer";
 
-vi.mock("../../visualization/image/ImagePanel", () => ({
+vi.mock("../../visualization/media-2d/ImagePanel", () => ({
   ImagePanel: ({ alt }: { alt: string }) => (
     <div data-testid="neutral-image-panel">{alt}</div>
   ),
@@ -48,7 +48,7 @@ describe("format-agnostic episode session renderer", () => {
   it("renders a fixture modal and advances its shared timeline", async () => {
     const session = await createFixtureFormatAdapter().open(source, io);
     try {
-      render(<EpisodeSessionRenderer session={session} />);
+      render(<FixtureEpisodeSessionRenderer session={session} />);
 
       await waitFor(() =>
         expect(screen.getByLabelText("Fixture image")).not.toBeNull(),
@@ -78,7 +78,9 @@ describe("format-agnostic episode session renderer", () => {
   it("renders the fixture grid through the same session port", async () => {
     const session = await createFixtureFormatAdapter().open(source, io);
     try {
-      render(<EpisodeSessionRenderer session={session} variant="grid" />);
+      render(
+        <FixtureEpisodeSessionRenderer session={session} variant="grid" />,
+      );
       const grid = screen.getByTestId("episode-session-grid");
       await waitFor(() =>
         expect(within(grid).getByTestId("neutral-image-panel")).not.toBeNull(),

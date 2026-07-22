@@ -5,9 +5,9 @@ import {
 } from "@fiftyone/plugins";
 import { getSampleSrc } from "@fiftyone/state";
 
-import { BYTE_SOURCE_READ_PROFILE, type ByteSourceDescriptor } from "../ir";
-import type { EpisodeSource, SampleDescriptor } from "../ports";
-import { getSourceBootstrap } from "../runtime";
+import { BYTE_SOURCE_READ_PROFILE, type ByteSourceDescriptor } from "../../ir";
+import type { EpisodeSource, SampleDescriptor } from "../../ports";
+import { getSourceBootstrap } from "../../runtime";
 
 /** Builds the format-neutral sample facts used by lazy adapter detection. */
 export function sampleDescriptorFromContext(

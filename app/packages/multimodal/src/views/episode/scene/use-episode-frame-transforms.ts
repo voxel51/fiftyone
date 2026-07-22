@@ -20,7 +20,7 @@ import type {
   EpisodeFrameTransformTimeRange,
 } from "../../../runtime/frame-transform-types";
 import { compareBigInt, type TransformSample } from "../../../ir";
-import { episodeErrorMessage as errorMessage } from "../../episode-error-message";
+import { episodeErrorMessage as errorMessage } from "../shared/episode-error-message";
 import {
   isEpisodeReadCancelledError,
   type TransformReadAcceleration,

@@ -4,11 +4,11 @@ import type {
   ByteSourceDescriptor,
   EpisodeManifest,
   EpisodeTimeline,
-} from "../ir";
+} from "../../ir";
 import {
   publishSourceBootstrap,
   resetSourceBootstrapCacheForTests,
-} from "../runtime";
+} from "../../runtime";
 import { episodeSourceFromByteSource } from "./episode-source";
 
 afterEach(resetSourceBootstrapCacheForTests);

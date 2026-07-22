@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 
-import type { EpisodeSession, EpisodeSource, SampleDescriptor } from "../ports";
-import { openEpisodeSession } from "../runtime";
+import type {
+  EpisodeSession,
+  EpisodeSource,
+  SampleDescriptor,
+} from "../../ports";
+import { openEpisodeSession } from "../../runtime";
 
 /** Lifecycle state for a lazily detected episode session. */
 export type EpisodeSessionState =

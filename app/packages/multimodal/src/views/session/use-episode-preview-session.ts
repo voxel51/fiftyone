@@ -4,8 +4,8 @@ import type {
   EpisodePreviewSession,
   EpisodeSource,
   SampleDescriptor,
-} from "../ports";
-import { openEpisodePreviewSession } from "../runtime";
+} from "../../ports";
+import { openEpisodePreviewSession } from "../../runtime";
 
 /** Lifecycle state for a lazily detected lightweight preview session. */
 export type EpisodePreviewSessionState =

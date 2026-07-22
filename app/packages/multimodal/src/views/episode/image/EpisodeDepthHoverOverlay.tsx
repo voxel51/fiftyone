@@ -5,7 +5,7 @@ import {
   imageDisplayRect,
   transformedImageDisplayRect,
   type ImageViewTransform,
-} from "../../../visualization/image/base-2d-scene";
+} from "../../../visualization/media-2d/base-2d-scene";
 import type { EpisodeCameraModel } from "./camera-geometry/episode-camera-model";
 import {
   episodeDepthSampleAtDisplayPixel,

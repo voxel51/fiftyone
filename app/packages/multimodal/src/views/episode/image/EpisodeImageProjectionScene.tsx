@@ -2,7 +2,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 
 import { buildPointCloudRenderPayload } from "../../../ir";
-import type { ImageViewTransform } from "../../../visualization/image/base-2d-scene";
+import type { ImageViewTransform } from "../../../visualization/media-2d/base-2d-scene";
 import GpuPointCloudProjectionLayer from "../../../visualization/composition/GpuPointCloudProjectionLayer";
 import {
   gpuPointCloudProjectionResourceKey,

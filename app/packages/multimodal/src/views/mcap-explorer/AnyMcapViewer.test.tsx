@@ -34,7 +34,7 @@ vi.mock("../episode", async (importOriginal) => {
   };
 });
 
-vi.mock("../use-episode-session", () => ({
+vi.mock("../session/use-episode-session", () => ({
   useEpisodeSession: viewerHarness.useEpisodeSession,
 }));
 

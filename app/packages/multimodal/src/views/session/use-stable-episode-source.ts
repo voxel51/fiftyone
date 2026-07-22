@@ -1,9 +1,9 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { useMemo, useRef } from "react";
 
-import type { ByteSourceDescriptor } from "../ir";
-import type { EpisodeSource } from "../ports";
-import { episodeSourceAccessKey } from "../runtime";
+import type { ByteSourceDescriptor } from "../../ir";
+import type { EpisodeSource } from "../../ports";
+import { episodeSourceAccessKey } from "../../runtime";
 import {
   episodeByteSourceFromContext,
   episodeSourceFromByteSource,

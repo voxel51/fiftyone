@@ -1,8 +1,8 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import React, { useMemo } from "react";
-import { sampleDescriptorFromContext } from "../../episode-source";
-import { useEpisodeSession } from "../../use-episode-session";
-import { useStableEpisodeSource } from "../../use-stable-episode-source";
+import { sampleDescriptorFromContext } from "../../session/episode-source";
+import { useEpisodeSession } from "../../session/use-episode-session";
+import { useStableEpisodeSource } from "../../session/use-stable-episode-source";
 import {
   AnnotationStreamsProvider,
   TimelineExtensionHost,
