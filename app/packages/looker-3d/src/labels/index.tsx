@@ -359,7 +359,10 @@ export const ThreeDLabels = ({
           >
             <Cuboid
               lineWidth={cuboidLineWidth}
-              rotation={overlayRotation}
+              rotation={
+                (overlay.label.rotation as [number, number, number]) ??
+                overlayRotation
+              }
               itemRotation={overlay.label.rotation ?? itemRotation}
               location={overlay.label.location}
               dimensions={overlay.label.dimensions}
