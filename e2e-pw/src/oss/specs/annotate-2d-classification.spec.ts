@@ -86,8 +86,7 @@ test.describe.serial("2D annotation classification", () => {
     await modal.sidebar.switchMode("annotate");
   });
 
-  // flaky: passed only on retry in CI
-  test.skip("creating a classification assigns a class and persists", async ({
+  test("creating a classification assigns a class and persists", async ({
     annotateSDK,
     modal,
     page,

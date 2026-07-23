@@ -92,9 +92,7 @@ const drawBox = async (
   await modal.sampleCanvas.up();
 };
 
-// skipped: the canvas-drag test is load-sensitive on FOE runners (flaky
-// 2026-07-16, then hard-failed both attempts); serial when re-enabled
-test.describe.skip("annotation cross-surface undo", () => {
+test.describe.serial("annotation cross-surface undo", () => {
   // serial tests share one dataset; the seeded "cat" box is restored within each
   // test (every edit is undone), and drawn boxes are removed via create-undo, so
   // the dataset returns to its baseline shape between tests.
