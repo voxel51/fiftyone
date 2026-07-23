@@ -53,7 +53,7 @@ if ((stats.flaky ?? 0) > 0) {
   console.log(
     `::warning::${stats.flaky} flaky spec${
       stats.flaky === 1 ? "" : "s"
-    } (passed on retry) — see the e2e comment`,
+    } (passed on retry) — see the CI comment`,
   );
 }
 

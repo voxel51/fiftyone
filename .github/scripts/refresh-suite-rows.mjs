@@ -1,11 +1,14 @@
-// Rewrites the suite rows of an existing authoritative e2e comment with
-// each suite's concluded state, and settles the python section from the
-// pytest-results artifacts. The comment is posted when the e2e verdict
-// completes, which often precedes slower siblings like test-windows and
-// the python matrix, so their entries freeze at ⏳ without this refresh.
+// Keeps the authoritative CI comment truthful once every suite has
+// concluded: rewrites the suite rows (suites like test-windows outlast the
+// e2e verdict and would freeze at ⏳), settles the python section from the
+// pytest-results artifacts, and — when the e2e pipeline never posted a
+// comment (drafts, docs-only changes, stacked PRs) — builds a suites-only
+// comment from scratch so every PR gets one.
 //
-// usage: node refresh-suite-rows.mjs <run-jobs.json> <comment-body.md> [pytest-junit-dir]
-// Prints the refreshed body (unchanged if the comment has no suite table).
+// usage: node refresh-suite-rows.mjs <run-jobs.json> <comment-body.md|--new> [pytest-junit-dir]
+// --new env: GITHUB_REPOSITORY (flavor), HEAD_SHA, RUN_URL
+// Prints the refreshed (or fresh) body; an existing body without a suite
+// table passes through unchanged.
 
 import { readFileSync } from "node:fs";
 
@@ -16,29 +19,66 @@ import {
   buildPythonFailures,
   buildPythonLine,
   collectResults,
+  hasPythonJobs,
 } from "./python-section.mjs";
 import { buildSuiteRows } from "./suite-rows.mjs";
 
 const [, , jobsPath, bodyPath, junitDir] = process.argv;
 if (!jobsPath || !bodyPath) {
   console.error(
-    "usage: node refresh-suite-rows.mjs <run-jobs.json> <body.md> [pytest-junit-dir]",
+    "usage: node refresh-suite-rows.mjs <run-jobs.json> <body.md|--new> [pytest-junit-dir]",
   );
   process.exit(1);
 }
 
-const body = readFileSync(bodyPath, "utf8");
-const lines = body.split("\n");
-const header = lines.indexOf("| suite | result |");
-const e2eRow = lines.findIndex((l) => l.startsWith("| e2e |"));
-if (header === -1 || e2eRow < header + 2) {
-  process.stdout.write(body);
-  process.exit(0);
-}
-
 const jobs = JSON.parse(readFileSync(jobsPath, "utf8")).jobs ?? [];
 const rows = buildSuiteRows(jobs);
-lines.splice(header + 2, e2eRow - header - 2, ...rows);
+
+let lines;
+if (bodyPath === "--new") {
+  const flavor = (process.env.GITHUB_REPOSITORY ?? "").endsWith(
+    "fiftyone-teams",
+  )
+    ? "FOE"
+    : "OSS";
+  const sha = (process.env.HEAD_SHA ?? "").slice(0, 10);
+  const runUrl = process.env.RUN_URL ?? "";
+  lines = [
+    `<!-- ci-report:${flavor} -->`,
+    `## ${rows.some((r) => r.includes("❌")) ? "❌" : "✅"} CI (${flavor})`,
+    "",
+    `Suite results at \`${sha}\`${runUrl ? ` — [run](${runUrl})` : ""}`,
+  ];
+  if (hasPythonJobs(jobs)) {
+    lines.push("", `**python**: ⏳ ${PYTHON_LINE_MARKER}`);
+  }
+  if (rows.length) {
+    lines.push("", "| suite | result |", "| --- | --- |", ...rows);
+  } else {
+    lines.push("", "_No suites ran for this change._");
+  }
+  if (hasPythonJobs(jobs)) {
+    lines.push("", PYTHON_FAILURES_START, PYTHON_FAILURES_END);
+  }
+  lines.push("", "_The e2e suite did not run for this revision._");
+} else {
+  const body = readFileSync(bodyPath, "utf8");
+  lines = body.split("\n");
+  const header = lines.indexOf("| suite | result |");
+  const e2eRow = lines.findIndex((l) => l.startsWith("| e2e |"));
+  if (header === -1 || e2eRow < header + 2) {
+    process.stdout.write(body);
+    process.exit(0);
+  }
+  lines.splice(header + 2, e2eRow - header - 2, ...rows);
+
+  // The headline is posted by the e2e verdict, which only knows e2e; a
+  // suite that failed after posting must flip it
+  const headline = lines.findIndex((l) => l.startsWith("## "));
+  if (headline !== -1 && rows.some((r) => r.includes("❌"))) {
+    lines[headline] = lines[headline].replace(/^## [✅⚠️]+ CI/u, "## ❌ CI");
+  }
+}
 
 // settle the python placeholder: its own clock from the concluded matrix
 // jobs, failed tests (with per-version timing) from the junit artifacts
@@ -58,10 +98,4 @@ if (junitDir && pythonLine !== -1) {
   }
 }
 
-// The headline is posted by the e2e verdict, which only knows e2e; a suite
-// that failed after posting must flip it
-const headline = lines.findIndex((l) => l.startsWith("## "));
-if (headline !== -1 && rows.some((r) => r.includes("❌"))) {
-  lines[headline] = lines[headline].replace(/^## [✅⚠️]+ CI/u, "## ❌ CI");
-}
 process.stdout.write(lines.join("\n"));

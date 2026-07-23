@@ -14,7 +14,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - name: Mark the e2e comment in progress
+      - name: Mark the CI comment in progress
         # keeps the authoritative comment honest while a newer run is
         # executing; the verdict job's rewrite clears the banner (or the
         # e2e-aborted job flips it when the pipeline dies before the verdict)
@@ -30,7 +30,7 @@ jobs:
             )
               ? 'FOE'
               : 'OSS';
-            const marker = `<!-- e2e-authoritative-report:${flavor} -->`;
+            const marker = `<!-- ci-report:${flavor} -->`;
             const sha = context.payload.pull_request.head.sha.slice(0, 10);
             const runUrl = `${context.serverUrl}/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.runId}`;
             const comments = await github.paginate(
@@ -547,7 +547,7 @@ jobs:
             )
               ? 'FOE'
               : 'OSS';
-            const marker = `<!-- e2e-authoritative-report:${flavor} -->`;
+            const marker = `<!-- ci-report:${flavor} -->`;
             const comments = await github.paginate(
               github.rest.issues.listComments,
               {
@@ -595,7 +595,7 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 5
     runs-on: ubuntu-latest
-    name: Mark the e2e comment failed
+    name: Mark the CI comment failed
     steps:
       - uses: actions/github-script@v9
         with:
@@ -605,7 +605,7 @@ jobs:
             )
               ? 'FOE'
               : 'OSS';
-            const marker = `<!-- e2e-authoritative-report:${flavor} -->`;
+            const marker = `<!-- ci-report:${flavor} -->`;
             const sha = context.payload.pull_request.head.sha.slice(0, 10);
             const runUrl = `${context.serverUrl}/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.runId}`;
             const comments = await github.paginate(

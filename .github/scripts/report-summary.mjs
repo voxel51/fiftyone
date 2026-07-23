@@ -1,5 +1,5 @@
 // Renders the merged Playwright JSON report (playwright merge-reports
-// --reporter json) as the markdown body for the authoritative e2e PR comment
+// --reporter json) as the markdown body for the authoritative CI PR comment
 // and the workflow job summary.
 //
 // Usage: node .github/scripts/report-summary.mjs merged-results.json [blob-dir] [jobs-json] [burn-in-json]
@@ -27,7 +27,7 @@ import { buildSuiteRows } from "./suite-rows.mjs";
 const FLAVOR = (process.env.GITHUB_REPOSITORY ?? "").endsWith("fiftyone-teams")
   ? "FOE"
   : "OSS";
-const MARKER = `<!-- e2e-authoritative-report:${FLAVOR} -->`;
+const MARKER = `<!-- ci-report:${FLAVOR} -->`;
 const MAX_LISTED = 50;
 
 const [, , jsonPath, blobDir, jobsPath, burnInJsonPath] = process.argv;

@@ -6,7 +6,7 @@ const IGNORE = new Set([
   "modified-files",
   "triage",
   "enterprise-sync",
-  "e2e-comment-suites",
+  "ci-comment",
   // enterprise plumbing jobs, not suites; report-to-oss also runs after the
   // refresh job, so its row could never settle
   "report-to-oss",
