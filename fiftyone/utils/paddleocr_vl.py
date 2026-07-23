@@ -47,6 +47,15 @@ _LOC_BINS = 1000
 _SPOT_PATTERN = re.compile(r"(.*?)((?:<\|LOC_\d+\|>){8})", re.DOTALL)
 _LOC_TOKEN = re.compile(r"<\|LOC_(\d+)\|>")
 
+# The reference spotting pipeline doubles images whose dimensions are both
+# under this threshold and raises the processor's pixel budget, so fine text
+# survives the resize. Coordinates are normalized, so the upscale does not
+# change the returned boxes.
+_SPOTTING_UPSCALE_THRESHOLD = 1500
+_SPOTTING_MAX_PIXELS = 2048 * 28 * 28
+_DEFAULT_MAX_PIXELS = 1280 * 28 * 28
+_MIN_PIXELS = 4 * 28 * 28
+
 
 def _ensure_paddleocr_vl():
     fou.ensure_package(_MIN_TRANSFORMERS)
@@ -80,12 +89,26 @@ def _to_pil(img):
         img = np.repeat(img, 3, axis=2)
     elif img.shape[2] == 4:
         img = img[:, :, :3]
-    return PILImage.fromarray(img)
+    return PILImage.fromarray(img).convert("RGB")
 
 
-def _select_dtype(device):
+def _select_dtype(device) -> "torch.dtype":
     """bfloat16 is a CUDA optimization; CPU inference wants float32."""
     return torch.bfloat16 if "cuda" in str(device) else torch.float32
+
+
+def _upscale_for_spotting(pil):
+    """Doubles images whose dimensions are both under 1500 px, matching the
+    reference spotting pipeline, which upscales small inputs so fine text
+    survives the processor's resize."""
+    width, height = pil.size
+    if (
+        width < _SPOTTING_UPSCALE_THRESHOLD
+        and height < _SPOTTING_UPSCALE_THRESHOLD
+    ):
+        resample = getattr(PILImage, "Resampling", PILImage).LANCZOS
+        return pil.resize((width * 2, height * 2), resample)
+    return pil
 
 
 def _parse_spotting(text):
@@ -201,10 +224,15 @@ class PaddleOCRVLModel(fout.TorchImageModel):
         # Only spotting emits geometry; the recognition-only tasks return
         # content without boxes, so they map to empty detections
         is_spotting = self.config.task == "spotting"
+        max_pixels = (
+            _SPOTTING_MAX_PIXELS if is_spotting else _DEFAULT_MAX_PIXELS
+        )
         results = []
         for img in imgs:
             try:
                 pil = _to_pil(img)
+                if is_spotting:
+                    pil = _upscale_for_spotting(pil)
                 messages = [
                     {
                         "role": "user",
@@ -220,6 +248,17 @@ class PaddleOCRVLModel(fout.TorchImageModel):
                     tokenize=True,
                     return_dict=True,
                     return_tensors="pt",
+                    images_kwargs={
+                        "size": {
+                            "shortest_edge": getattr(
+                                self._processor.image_processor,
+                                "min_pixels",
+                                None,
+                            )
+                            or _MIN_PIXELS,
+                            "longest_edge": max_pixels,
+                        }
+                    },
                 ).to(self._device)
                 with torch.inference_mode():
                     out = self._model.generate(

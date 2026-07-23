@@ -76,6 +76,12 @@ class ToPilTests(unittest.TestCase):
         self.assertEqual(pil.mode, "RGB")
         self.assertEqual(pil.size, (12, 8))
 
+    def test_two_channel_la(self):
+        arr = np.zeros((8, 12, 2), dtype=np.uint8)
+        pil = foup._to_pil(arr)
+        self.assertEqual(pil.mode, "RGB")
+        self.assertEqual(pil.size, (12, 8))
+
     def test_rgba_dropped_to_rgb(self):
         arr = np.zeros((8, 12, 4), dtype=np.uint8)
         pil = foup._to_pil(arr)
@@ -109,6 +115,20 @@ class ConfigTests(unittest.TestCase):
     def test_recognition_task_accepted(self):
         config = foup.PaddleOCRVLModelConfig({"task": "table"})
         self.assertEqual(config.task, "table")
+
+
+class UpscaleForSpottingTests(unittest.TestCase):
+    def test_small_image_doubled(self):
+        from PIL import Image
+
+        pil = Image.new("RGB", (640, 200))
+        self.assertEqual(foup._upscale_for_spotting(pil).size, (1280, 400))
+
+    def test_large_image_unchanged(self):
+        from PIL import Image
+
+        pil = Image.new("RGB", (1600, 200))
+        self.assertEqual(foup._upscale_for_spotting(pil).size, (1600, 200))
 
 
 class SelectDtypeTests(unittest.TestCase):
@@ -164,6 +184,22 @@ class PredictTests(unittest.TestCase):
         out = model._predict_all([np.zeros((16, 16, 3), dtype=np.uint8)])
         self.assertIsInstance(out[0], fol.Detections)
         self.assertEqual(len(out[0].detections), 0)
+
+    def test_spotting_pixel_budget(self):
+        model = self._model("</s>")
+        with mock.patch("torch.inference_mode"):
+            model._predict_all([np.zeros((16, 16, 3), dtype=np.uint8)])
+        kwargs = model._processor.apply_chat_template.call_args.kwargs
+        size = kwargs["images_kwargs"]["size"]
+        self.assertEqual(size["longest_edge"], foup._SPOTTING_MAX_PIXELS)
+
+    def test_recognition_pixel_budget(self):
+        model = self._model("</s>", task="table")
+        with mock.patch("torch.inference_mode"):
+            model._predict_all([np.zeros((16, 16, 3), dtype=np.uint8)])
+        kwargs = model._processor.apply_chat_template.call_args.kwargs
+        size = kwargs["images_kwargs"]["size"]
+        self.assertEqual(size["longest_edge"], foup._DEFAULT_MAX_PIXELS)
 
     def test_non_spotting_task_ignores_locations(self):
         # location-like tokens in a non-spotting task must not be parsed
