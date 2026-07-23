@@ -381,3 +381,55 @@ export function resolveLabelSelectionVisuals(
       return { styleName, color: null };
   }
 }
+
+const formatAttributeNumber = (value: number): string => {
+  if (!Number.isFinite(value)) {
+    return String(value);
+  }
+
+  if (value % 1 === 0) {
+    return value.toLocaleString();
+  }
+
+  return Number(
+    value.toFixed(Math.abs(value) < 0.001 ? 6 : 3),
+  ).toLocaleString();
+};
+
+export const formatLabelAttributeValue = (value: unknown): string | null => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    const parts = value
+      .map(formatLabelAttributeValue)
+      .filter((part) => part !== null && part !== "");
+    return parts.length ? parts.join(", ") : null;
+  }
+
+  switch (typeof value) {
+    case "number":
+      return formatAttributeNumber(value);
+    case "boolean":
+      return value ? "True" : "False";
+    case "string":
+      return value;
+    default:
+      return null;
+  }
+};
+
+/**
+ * Render a label's shown attribute values as a comma separated string.
+ */
+export const getLabelAttributesText = (
+  label: object,
+  attributes: string[],
+): string =>
+  attributes
+    .map((name) =>
+      formatLabelAttributeValue((label as Record<string, unknown>)[name]),
+    )
+    .filter((value) => value !== null && value !== "")
+    .join(", ");

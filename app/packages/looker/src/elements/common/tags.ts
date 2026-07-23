@@ -27,6 +27,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private fontSize?: number;
   private labelTagColors: LabelTagColor = {};
   private playing = false;
+  private shownLabelAttributes: BaseState["options"]["shownLabelAttributes"];
 
   createHTMLElement() {
     const container = document.createElement("div");
@@ -50,6 +51,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         filter,
         labelTagColors,
         selectedLabelTags,
+        showPatchLabels,
+        shownLabelAttributes,
         timeZone,
       },
       playing,
@@ -70,6 +73,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         compareObjectArrays(this.customizedColors, customizeColorSetting) &&
         isEqual(this.labelTagColors, labelTagColors) &&
         isEqual(this.attributeVisibility, attributeVisibility) &&
+        isEqual(this.shownLabelAttributes, shownLabelAttributes) &&
         this.colorSeed === coloring.seed) ||
       !sample
     ) {
@@ -85,6 +89,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       labelTagColors,
       sample,
       selectedLabelTags,
+      showPatchLabels,
+      shownLabelAttributes,
       timeZone,
     });
 
@@ -96,6 +102,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.labelTagColors = labelTagColors;
     this.colorPool = coloring.pool as string[];
     this.attributeVisibility = attributeVisibility;
+    this.shownLabelAttributes = shownLabelAttributes;
 
     this.element.dispatchEvent(
       new CustomEvent("re-render-tag", {

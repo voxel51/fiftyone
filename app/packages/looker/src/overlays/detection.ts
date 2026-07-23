@@ -21,6 +21,7 @@ import {
 } from "./base";
 import {
   getInstanceStrokeStyles,
+  getLabelAttributesText,
   resolveLabelSelectionVisuals,
   t,
 } from "./util";
@@ -247,8 +248,15 @@ export default class DetectionOverlay<
   }
 
   private getLabelText(state: Readonly<State>): string {
-    let text =
-      this.label.label && state.options.showLabel ? `${this.label.label}` : "";
+    const attributes = state.options.shownLabelAttributes?.[this.field];
+    let text = "";
+    if (state.options.showLabel) {
+      text = attributes
+        ? getLabelAttributesText(this.label, attributes)
+        : this.label.label
+          ? `${this.label.label}`
+          : "";
+    }
 
     const hasIndex =
       (typeof this.label.index === "string" ||
@@ -275,6 +283,7 @@ export default class DetectionOverlay<
 
     if (
       state.options.showConfidence &&
+      !attributes?.includes("confidence") &&
       (!isNaN(this.label.confidence as number) ||
         NONFINITES.has(this.label.confidence as NONFINITE))
     ) {

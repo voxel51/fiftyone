@@ -200,6 +200,8 @@ export interface BaseOptions {
   showHelp: boolean;
   showLabel: boolean;
   showOverlays: boolean;
+  showPatchLabels: boolean;
+  shownLabelAttributes: { [path: string]: string[] };
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
   smoothMasks: boolean;
@@ -480,6 +482,8 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   showJSON: false,
   showHelp: false,
   showLabel: false,
+  showPatchLabels: false,
+  shownLabelAttributes: {},
   showTooltip: false,
   onlyShowHoveredLabel: false,
   filter: null,
