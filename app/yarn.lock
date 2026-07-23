@@ -2256,6 +2256,9 @@ __metadata:
     "@voxel51/voodo": "npm:^0.1.0"
     babel-plugin-relay: "npm:^14.1.0"
     html2canvas: "npm:1.0.0-rc.7"
+    jotai: "catalog:"
+    jotai-effect: "catalog:"
+    jotai-family: "catalog:"
     lodash: "catalog:"
     prettier: "catalog:"
     resize-observer-polyfill: "catalog:"
@@ -13032,6 +13035,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"jotai-effect@npm:^2.2.3":
+  version: 2.4.1
+  resolution: "jotai-effect@npm:2.4.1"
+  peerDependencies:
+    jotai: ">=2.20.0 || >=3.0.0-alpha.0"
+  checksum: 10/55007beeddbf3b1dc82906bb75e654751309d91bbce9d75919108558dbdb6c566f5c186008e8769e3ab47977dd2a10be636858e5ac3a00f57e01c01d1ac46437
+  languageName: node
+  linkType: hard
+
+"jotai-family@npm:^1.0.2":
+  version: 1.1.0
+  resolution: "jotai-family@npm:1.1.0"
+  peerDependencies:
+    jotai: ">=2.9.0"
+  checksum: 10/16558ced63a0b9f392b64a528a48adfbc9d1a91b4ce39647a54d3db9d88574f2b51eaa8e8477cb8d9e9bad4000387cedc0ed9e2311c28f622997510e7df13878
+  languageName: node
+  linkType: hard
+
 "jotai-optics@npm:^0.4.0":
   version: 0.4.0
   resolution: "jotai-optics@npm:0.4.0"
@@ -13042,18 +13063,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jotai@npm:^2.9.3":
-  version: 2.9.3
-  resolution: "jotai@npm:2.9.3"
+"jotai@npm:^2.20.1":
+  version: 2.20.2
+  resolution: "jotai@npm:2.20.2"
   peerDependencies:
+    "@babel/core": ">=7.0.0"
+    "@babel/template": ">=7.0.0"
     "@types/react": ">=17.0.0"
     react: ">=17.0.0"
   peerDependenciesMeta:
+    "@babel/core":
+      optional: true
+    "@babel/template":
+      optional: true
     "@types/react":
       optional: true
     react:
       optional: true
-  checksum: 10/4366a50be8edd39f1430ac655677e559cfbb253101e4f2e750bca8ebd81e75ea09ea3828bce727482b15305ffe924dda75bd9a055e903e0cc804b6600478dc36
+  checksum: 10/110a4b6fa7ceb61b10400adfb13be5fe343ec477c883393ba5d7420b70c8b1d7eb1920eaa6f89a9fafd9faca3a06a15900542e28780a91b73403bd7fb5476099
   languageName: node
   linkType: hard
 
