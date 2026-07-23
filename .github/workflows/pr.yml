@@ -218,7 +218,16 @@ jobs:
   all-tests:
     runs-on: ubuntu-latest
     needs: [modified-files, build, lint, test, e2e]
-    if: always()
+    # not `always()`: a concurrency-cancelled run (an edit displaced by the
+    # next edit) must conclude cancelled, not turn the failed gate into a
+    # red `all-tests` on a SHA it never tested.
+    if: ${{ !cancelled() }}
+    permissions:
+      # the mirror lists the SHA's workflow runs to find the run testing it;
+      # implicit on public repos, required on private fiftyone-teams
+      actions: read
+      # the mirror reads the SHA's all-tests check runs for the verdict
+      checks: read
     env:
       # A run that skipped the suite (a no-op body edit, or a failed gate)
       # must not aggregate its skipped needs into a vacuous green that
@@ -236,71 +245,88 @@ jobs:
         with:
           script: |
             // A no-op edit usually lands while the run actually testing this
-            // SHA is still in flight (this job's own check run is in_progress,
-            // so it never matches the completed filter). Poll for that run's
-            // verdict rather than failing on the gap — a vacuous green here
-            // could merge the PR before its suite finishes.
-            const deadline = Date.now() + 60 * 60 * 1000;
+            // SHA is still in flight. Its all-tests check run doesn't exist
+            // until its needs finish, so watch this workflow's *runs* on the
+            // SHA instead: stay pending while one is live, then mirror its
+            // verdict. Completed check runs only count as a verdict when
+            // their workflow run finished uncancelled — a run displaced by
+            // concurrency reds its always() gate without testing anything.
+            const sha = context.payload.pull_request.head.sha;
+            const { data: self } = await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId,
+            });
+            const deadline = Date.now() + 90 * 60 * 1000;
+            let emptyPolls = 0;
             for (;;) {
+              const runs = await github.paginate(
+                github.rest.actions.listWorkflowRunsForRepo,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  head_sha: sha,
+                  per_page: 100,
+                },
+              );
+              const live = runs.filter(
+                (r) =>
+                  r.workflow_id === self.workflow_id &&
+                  r.id !== context.runId &&
+                  r.status !== 'completed',
+              );
+              const finished = new Set(
+                runs
+                  .filter((r) => r.status === 'completed' && r.conclusion !== 'cancelled')
+                  .map((r) => `/runs/${r.id}/`),
+              );
               const { data } = await github.rest.checks.listForRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                ref: context.payload.pull_request.head.sha,
+                ref: sha,
                 check_name: 'all-tests',
                 // `latest` (the default) returns only the newest run per name —
                 // this job's own in_progress run — hiding the completed verdict.
                 filter: 'all',
                 per_page: 100,
               });
-              // Never mirror while another suite run is in flight — a
-              // stale completed green (e.g. a draft-era run whose e2e was
-              // skipped) must not shadow the run actually testing this SHA.
-              const isSelf = (c) =>
-                (c.details_url ?? '').includes(`/runs/${context.runId}/`);
-              const inFlight = data.check_runs.some(
-                (c) => c.status !== 'completed' && !isSelf(c),
-              );
               const prior = data.check_runs
-                .filter((c) => c.status === 'completed')
+                .filter(
+                  (c) =>
+                    c.status === 'completed' &&
+                    (c.conclusion === 'success' || c.conclusion === 'failure') &&
+                    [...finished].some((p) => (c.details_url ?? '').includes(p)),
+                )
                 .sort((a, b) => new Date(b.started_at) - new Date(a.started_at))[0];
-              // A rerun of failed jobs leaves the prior attempt's check run
-              // completed while its workflow run is live again; the next
-              // attempt's check run doesn't exist until its needs finish.
-              // Any non-completed sibling check run from the same workflow
-              // run reveals the rerun.
-              let rerunning = false;
-              if (prior && !inFlight) {
-                const runPath = (prior.details_url ?? '').match(/\/runs\/\d+\//)?.[0];
-                if (runPath) {
-                  const siblings = await github.paginate(github.rest.checks.listForRef, {
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    ref: context.payload.pull_request.head.sha,
-                    filter: 'all',
-                    per_page: 100,
-                  });
-                  rerunning = siblings.some(
-                    (c) =>
-                      c.status !== 'completed' &&
-                      !isSelf(c) &&
-                      (c.details_url ?? '').includes(runPath),
-                  );
-                }
-              }
-              if (prior && !inFlight && !rerunning) {
+              // Never mirror while another suite run is in flight — a stale
+              // completed verdict (e.g. a draft-era run, or the attempt a
+              // rerun is replacing) must not shadow the run testing this SHA.
+              if (live.length === 0 && prior) {
                 if (prior.conclusion === 'success') {
-                  core.info('Mirroring the previous all-tests result: success');
+                  core.info(`Mirroring the real all-tests result: success — ${prior.details_url}`);
                 } else {
-                  core.setFailed(`Mirroring the previous all-tests result: ${prior.conclusion}`);
+                  core.setFailed(`Mirroring the real all-tests result: failure — see ${prior.details_url}`);
                 }
                 return;
               }
-              if (Date.now() >= deadline) {
-                core.setFailed('No completed all-tests for this commit after 60 minutes — deferring to the run testing it.');
-                return;
+              if (live.length > 0) {
+                emptyPolls = 0;
+                if (Date.now() >= deadline) {
+                  core.setFailed(`Still waiting on ${live[0].html_url} after 90 minutes — re-run this job once it completes.`);
+                  return;
+                }
+                core.info(`Waiting on the run testing this SHA: ${live.map((r) => r.html_url).join(', ')}`);
+              } else {
+                // Nothing is testing the SHA and no verdict exists (e.g.
+                // every real run was cancelled). Give races a short grace,
+                // then defer to a human rather than inventing a verdict.
+                if (++emptyPolls >= 3) {
+                  core.setFailed('No run is testing this SHA and no completed all-tests verdict exists — re-run the Pull Request workflow.');
+                  return;
+                }
+                core.info('No verdict and no live run for this SHA yet — waiting.');
               }
-              core.info('No completed all-tests for this commit yet — waiting for the run testing it.');
-              await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
+              await new Promise((resolve) => setTimeout(resolve, 2 * 60 * 1000));
             }
       - name: Fail when a draft deferred the e2e suite
         # A draft run must not publish a successful merge-authoritative
