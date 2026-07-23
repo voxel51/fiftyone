@@ -524,6 +524,12 @@ class McapEpisodeSession implements EpisodeSession {
   readonly numericSeries: NumericSeriesCapability;
   readonly playback: PlaybackReadCapability;
   readonly rawRecords: RawRecordCapability;
+  readonly terminology = {
+    stream: {
+      plural: "topics",
+      singular: "topic",
+    },
+  } as const;
   readonly transformRead: TransformReadAcceleration;
   private disposed = false;
   private decodedFrames = 0;
