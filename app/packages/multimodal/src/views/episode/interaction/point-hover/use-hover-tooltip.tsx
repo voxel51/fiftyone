@@ -46,7 +46,6 @@ export interface Scene3dHoveredCamera {
   readonly distortionModel?: string;
   readonly frameId?: string;
   readonly imageLabel: string;
-  readonly imageSourceName: string;
   readonly imageStream: string;
   readonly kind: "camera";
   readonly parentPosition: CameraFrustumParentPosition;
@@ -332,12 +331,6 @@ function CameraTooltipContent({
       <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
         <Text variant={TextVariant.Sm}>{tooltip.imageLabel}</Text>
         <div style={tooltipDetailStyle}>
-          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-            Image source
-          </Text>
-          <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
-            {tooltip.imageSourceName}
-          </Text>
           <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
             Intrinsics source
           </Text>

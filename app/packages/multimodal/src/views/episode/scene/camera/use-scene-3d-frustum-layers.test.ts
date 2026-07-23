@@ -53,7 +53,6 @@ describe("buildScene3dFrustumLayer", () => {
         calibrationSourceName: "/camera/front/camera_info",
         calibrationStream: "3",
         imageLabel: "camera/front/image_raw",
-        imageSourceName: "/camera/front/image_raw",
         imageStream: "7",
         kind: "camera",
         parentPosition: {
