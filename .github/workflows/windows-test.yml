@@ -59,10 +59,8 @@ jobs:
         run: |
           uv pip install --system '.[multimodal]' -r requirements/github.txt
       - name: Configure
-        id: test_config
         run: |
           python tests/utils/setup_config.py
-          python tests/utils/github_actions_flags.py
 
       - name: Wait for FFmpeg
         wait: setup-ffmpeg
