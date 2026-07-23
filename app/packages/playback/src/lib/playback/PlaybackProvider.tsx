@@ -45,6 +45,7 @@ export function PlaybackProvider({
   defaultLoopEnd,
   defaultSpeed = 1.0,
   snapToFrameOnSettle,
+  mode,
 }: PlaybackConfig & { children: React.ReactNode }) {
   const { store, contextValue } = usePlaybackEngine({
     duration,
@@ -53,6 +54,7 @@ export function PlaybackProvider({
     defaultLoopEnd,
     defaultSpeed,
     snapToFrameOnSettle,
+    mode,
   });
 
   // We deliberately do NOT mount a Jotai `<Provider>` here. Every reactive

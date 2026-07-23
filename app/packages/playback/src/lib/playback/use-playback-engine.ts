@@ -10,6 +10,7 @@ import {
   isPlayingAtom,
   loopEndAtom,
   loopStartAtom,
+  modeAtom,
   playheadAtom,
   seekEventAtom,
   speedAtom,
@@ -105,6 +106,7 @@ export function usePlaybackEngine({
   defaultLoopEnd,
   defaultSpeed = 1.0,
   snapToFrameOnSettle = false,
+  mode = { kind: "duration" },
 }: PlaybackConfig = {}): {
   store: PlaybackStore;
   contextValue: PlaybackContextValue;
@@ -140,6 +142,7 @@ export function usePlaybackEngine({
     s.set(viewEndAtom, initialDuration);
     s.set(loopStartAtom, loopStart);
     s.set(loopEndAtom, loopEnd);
+    s.set(modeAtom, mode);
     return s;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // store is created once at mount; config is treated as mount-time
