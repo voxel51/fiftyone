@@ -20,7 +20,6 @@ import type {
 import { SCENE_SOURCE_METADATA, SCENE_SOURCE_TYPE } from "../../../ir";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import { VISUALIZATION_KIND } from "../../../visualization";
-import { findBestMatchingAnnotationStreams } from "../../../stream-selection";
 import { ImagePanel } from "../../../visualization/media-2d/ImagePanel";
 import { imageTextureCacheKey } from "../../../visualization/media-2d/image-texture-cache";
 import type { PanelNotice } from "../../../visualization/panel-ui/PanelNotices";
@@ -28,6 +27,7 @@ import { useImagePanZoom } from "../../../visualization/media-2d/use-image-pan-z
 import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/composition/GpuPointCloudProjectionPicker";
 import { useDataStream } from "../playback/data-stream-context";
 import { usePublishImageAspectRatio } from "./image-aspect-ratios";
+import { groupImageLabelSources } from "./image-label-source-groups";
 import {
   useImageProjection,
   usePlaybackSettings,
@@ -182,27 +182,18 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     playbackFrame && sourceKey
       ? imageTextureCacheKey(sourceKey, stream, playbackFrame.contentTimeNs)
       : undefined;
+  const selectedImageSource =
+    images.find((source) => source.id === stream) ?? null;
   const annotationStreams = useMemo(
-    () => annotationSources.map((s) => s.id),
+    () => annotationSources.map((source) => source.id),
     [annotationSources],
   );
-  const labelSourceGroups = useMemo(() => {
-    const matchingStreams = new Set(
-      stream
-        ? findBestMatchingAnnotationStreams(stream, annotationStreams)
-        : [],
-    );
-    return {
-      matching: annotationSources.filter((source) =>
-        matchingStreams.has(source.id),
-      ),
-      remaining: annotationSources.filter(
-        (source) => !matchingStreams.has(source.id),
-      ),
-    };
-  }, [annotationSources, annotationStreams, stream]);
+  const labelSourceGroups = useMemo(
+    () => groupImageLabelSources(selectedImageSource, annotationSources),
+    [annotationSources, selectedImageSource],
+  );
   const autoCalibrationStream =
-    images.find((source) => source.id === stream)?.metadata?.[
+    selectedImageSource?.metadata?.[
       SCENE_SOURCE_METADATA.CALIBRATION_STREAM_ID
     ] ?? null;
   const explicitCalibrationStream = cameraProjection.calibrationStream;
@@ -225,10 +216,10 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
         ? resolveCameraModel({
             calibration,
             geometry: cameraProjection.geometry,
-            imageStream: stream,
+            imageSourceName: selectedImageSource?.sourceName ?? "",
           })
         : null,
-    [calibration, cameraProjection.geometry, stream],
+    [calibration, cameraProjection.geometry, selectedImageSource?.sourceName],
   );
   const rectifiedModelResolution = useMemo(
     () =>
@@ -236,10 +227,10 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
         ? resolveCameraModel({
             calibration,
             geometry: "rectified",
-            imageStream: stream,
+            imageSourceName: selectedImageSource?.sourceName ?? "",
           })
         : null,
-    [calibration, stream],
+    [calibration, selectedImageSource?.sourceName],
   );
   const sourceDimensionMismatch = Boolean(
     imageDims &&

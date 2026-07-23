@@ -17,7 +17,8 @@ describe("buildScene3dFrustumLayer", () => {
       hovered: true,
       imageFrame: null,
       imagePlaneDepthM: 2,
-      imageStream: "/camera/front/image",
+      imageSourceName: "/camera/front/image_raw",
+      imageStream: "7",
       layer: calibrationLayer(),
       onHoverCamera,
       opacity: 0.6,
@@ -29,13 +30,13 @@ describe("buildScene3dFrustumLayer", () => {
     expect(layer).toMatchObject({
       highlighted: true,
       imagePlaneDepthM: 2,
-      imageStream: "/camera/front/image",
+      imageStream: "7",
       opacity: 0.6,
       requireCameraRayModel: true,
       selected: true,
     });
     layer.onHover?.(true);
-    expect(setHovered).toHaveBeenCalledWith("/camera/front/image");
+    expect(setHovered).toHaveBeenCalledWith("7");
     expect(onHoverCamera).toHaveBeenCalledWith(
       expect.objectContaining({
         calibrationStream: "/camera/front/calibration",
@@ -43,7 +44,7 @@ describe("buildScene3dFrustumLayer", () => {
       }),
     );
     layer.onHover?.(false);
-    expect(clearHovered).toHaveBeenCalledWith("/camera/front/image");
+    expect(clearHovered).toHaveBeenCalledWith("7");
     expect(onHoverCamera).toHaveBeenLastCalledWith(null);
     layer.onSelect?.({ metaKey: false });
     layer.onSelect?.({ metaKey: true });
@@ -60,11 +61,12 @@ describe("buildScene3dFrustumLayer", () => {
     const layer = buildScene3dFrustumLayer({
       clearHovered: () => true,
       focused: false,
-      geometry: "original",
+      geometry: "auto",
       hovered: false,
       imageFrame: frame,
       imagePlaneDepthM: 1,
-      imageStream: "/camera/front/image",
+      imageSourceName: "/camera/front/image_raw",
+      imageStream: "7",
       layer: calibrationLayer(),
       onHoverCamera: () => undefined,
       opacity: 1,
@@ -75,7 +77,7 @@ describe("buildScene3dFrustumLayer", () => {
 
     expect(layer.image).toBe(frame.frame);
     expect(layer.imageContentTimeNs).toBe(42n);
-    expect(layer.imageTextureKey).toContain("/camera/front/image");
+    expect(layer.imageTextureKey).toContain("7");
     expect(layer.cameraRayModel).toBeDefined();
   });
 });
@@ -84,9 +86,13 @@ function calibrationLayer(): CameraFrustumPanelLayer {
   return {
     frame: {
       coordinateFrameId: "front_camera",
+      D: [-0.2, 0.03, 0, 0, 0],
+      distortionModel: "plumb_bob",
       height: 100,
       K: [80, 0, 50, 0, 80, 50, 0, 0, 1],
       kind: VISUALIZATION_KIND.CAMERA_CALIBRATION,
+      P: [80, 0, 50, 0, 0, 80, 50, 0, 0, 0, 1, 0],
+      R: [1, 0, 0, 0, 1, 0, 0, 0, 1],
       width: 100,
     },
     id: "/camera/front/calibration",

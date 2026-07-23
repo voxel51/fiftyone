@@ -149,6 +149,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     cameraStreams,
     enabled,
     frustumImageStreams,
+    imageSources,
     locationStreams,
     mapLayerSources,
     mapLayerStreams,
@@ -406,6 +407,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       const source = pointCloudSourceById.get(layer.id) ?? {
         id: layer.id,
         label: layer.id,
+        sourceName: "",
       };
       const settings = {
         ...defaultPointCloudColorForSource(source, pointCloudSources),
@@ -451,6 +453,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     frustumImageDecodeRunways,
     frustumImageFrames,
     frustumImageStreams,
+    imageSources,
     imagePlaneDepthM: pinholeCamera.imagePlaneDepthM,
     imageProjectionSettings,
     onHoverCamera,

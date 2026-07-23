@@ -44,7 +44,10 @@ describe("mcapSceneSources", () => {
       ),
     ]);
 
-    expect(sources).toEqual([
+    expect(sources.every((source) => source.sourceName === source.id)).toBe(
+      true,
+    );
+    expect(sources).toMatchObject([
       {
         id: "/CAM_FRONT/image_rect_compressed",
         type: SCENE_SOURCE_TYPE.IMAGE,
@@ -165,9 +168,10 @@ describe("mcapSceneSources", () => {
       ),
     ]);
 
-    expect(sources[0]).toEqual({
+    expect(sources[0]).toMatchObject({
       id: "/boxi/hesai/intensity_image",
       label: "boxi/hesai/intensity_image",
+      sourceName: "/boxi/hesai/intensity_image",
       type: SCENE_SOURCE_TYPE.IMAGE,
     });
   });
@@ -206,7 +210,7 @@ describe("mcapSceneSources", () => {
       ),
     ]);
 
-    expect(sources).toEqual([
+    expect(sources).toMatchObject([
       {
         id: "IMG1_ltm_pyr_L1",
         type: SCENE_SOURCE_TYPE.IMAGE,
@@ -326,7 +330,14 @@ describe("mcapStreamPolicies", () => {
 
   it("ignores sources with unknown types", () => {
     expect(
-      mcapStreamPolicies([{ id: "/radar", type: "radar", label: "radar" }]),
+      mcapStreamPolicies([
+        {
+          id: "/radar",
+          label: "radar",
+          sourceName: "/radar",
+          type: "radar",
+        },
+      ]),
     ).toEqual({});
   });
 });

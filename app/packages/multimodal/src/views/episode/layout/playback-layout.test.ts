@@ -20,10 +20,15 @@ const STRONG_LOCAL: PlaybackDeviceCapabilities = {
 };
 const MIN_THREE_D_TOP_SPLIT_PERCENTAGE = 60;
 
-function imageSource(id: string, recordCount?: number): SceneSource {
+function imageSource(
+  id: string,
+  recordCount?: number,
+  sourceName = id,
+): SceneSource {
   return {
     id,
-    label: id.replace(/^\//, ""),
+    label: sourceName.replace(/^\//, ""),
+    sourceName,
     type: "image",
     ...(recordCount !== undefined ? { recordCount } : {}),
   };
@@ -33,6 +38,7 @@ function logSource(id: string, recordCount?: number): SceneSource {
   return {
     id,
     label: id.replace(/^\//, ""),
+    sourceName: id,
     type: "log",
     ...(recordCount !== undefined ? { recordCount } : {}),
   };
@@ -42,6 +48,7 @@ function locationSource(id: string, recordCount?: number): SceneSource {
   return {
     id,
     label: id.replace(/^\//, ""),
+    sourceName: id,
     type: "location",
     ...(recordCount !== undefined ? { recordCount } : {}),
   };
@@ -50,6 +57,7 @@ function locationSource(id: string, recordCount?: number): SceneSource {
 const POINT_CLOUD: SceneSource = {
   id: "/points",
   label: "points",
+  sourceName: "/points",
   type: "point-cloud",
 };
 
@@ -75,48 +83,37 @@ describe("rankImageSources", () => {
 
   it("prefers color over depth-like streams at equal density", () => {
     const ranked = rankImageSources([
-      imageSource("/cam/depth", 240),
-      imageSource("/cam/image_rgb", 240),
-      imageSource("/cam/disparity", 500),
+      imageSource("7", 240, "/cam/depth"),
+      imageSource("8", 240, "/cam/image_rgb"),
+      imageSource("9", 500, "/cam/disparity"),
     ]);
 
     // Density still dominates; the color preference only breaks ties.
-    expect(ranked.map((s) => s.id)).toEqual([
-      "/cam/disparity",
-      "/cam/image_rgb",
-      "/cam/depth",
-    ]);
+    expect(ranked.map((s) => s.id)).toEqual(["9", "8", "7"]);
   });
 });
 
 describe("rankDefaultImageSources", () => {
   it("suppresses raw image siblings when a preferred equivalent exists", () => {
     const ranked = rankDefaultImageSources([
-      imageSource("/camera/front/image", 1_000),
-      imageSource("/camera/front/image_downsampled", 100),
-      imageSource("/camera/back/image", 900),
+      imageSource("7", 1_000, "/camera/front/image"),
+      imageSource("8", 100, "/camera/front/image_downsampled"),
+      imageSource("9", 900, "/camera/back/image"),
     ]);
 
-    expect(ranked.map((s) => s.id)).toEqual([
-      "/camera/front/image_downsampled",
-      "/camera/back/image",
-    ]);
+    expect(ranked.map((s) => s.id)).toEqual(["8", "9"]);
   });
 });
 
 describe("orderImageSourcesForManualSelection", () => {
   it("keeps raw image siblings visible after their preferred equivalent", () => {
     const ordered = orderImageSourcesForManualSelection([
-      imageSource("/camera/front/image", 1_000),
-      imageSource("/camera/back/image", 900),
-      imageSource("/camera/front/image_downsampled", 100),
+      imageSource("7", 1_000, "/camera/front/image"),
+      imageSource("9", 900, "/camera/back/image"),
+      imageSource("8", 100, "/camera/front/image_downsampled"),
     ]);
 
-    expect(ordered.map((s) => s.id)).toEqual([
-      "/camera/front/image_downsampled",
-      "/camera/front/image",
-      "/camera/back/image",
-    ]);
+    expect(ordered.map((s) => s.id)).toEqual(["8", "7", "9"]);
   });
 });
 
@@ -332,7 +329,12 @@ describe("resolvePlaybackLayout", () => {
     const { tiles, layout } = resolvePlaybackLayout({
       capabilities: STRONG_LOCAL,
       sources: [
-        { id: "/annotations", label: "annotations", type: "image-annotation" },
+        {
+          id: "/annotations",
+          label: "annotations",
+          sourceName: "/annotations",
+          type: "image-annotation",
+        },
       ],
     });
 

@@ -108,7 +108,7 @@ describe("default stream equivalents", () => {
     expect(
       filterDefaultStreamEquivalents(
         ["/camera/front/image", "/camera/front/image_downsampled"],
-        { getKind: () => "image", getStream: (topic) => topic },
+        { getKind: () => "image", getSourceName: (topic) => topic },
       ),
     ).toEqual(["/camera/front/image_downsampled"]);
   });
@@ -117,7 +117,7 @@ describe("default stream equivalents", () => {
     expect(
       filterDefaultStreamEquivalents(
         ["/lidar/points", "/lidar/points_downsampled"],
-        { getKind: () => "point-cloud", getStream: (topic) => topic },
+        { getKind: () => "point-cloud", getSourceName: (topic) => topic },
       ),
     ).toEqual(["/lidar/points_downsampled"]);
   });
@@ -126,24 +126,35 @@ describe("default stream equivalents", () => {
     expect(
       filterDefaultStreamEquivalents(
         [
-          { id: "/camera/front/image", type: "image" },
-          { id: "/camera/back/image_downsampled", type: "image" },
-          { id: "/camera/front/image_downsampled", type: "point-cloud" },
+          {
+            id: "7",
+            sourceName: "/camera/front/image",
+            type: "image",
+          },
+          {
+            id: "8",
+            sourceName: "/camera/back/image_downsampled",
+            type: "image",
+          },
+          {
+            id: "9",
+            sourceName: "/camera/front/image_downsampled",
+            type: "point-cloud",
+          },
         ],
-        { getKind: (source) => source.type, getStream: (source) => source.id },
+        {
+          getKind: (source) => source.type,
+          getSourceName: (source) => source.sourceName,
+        },
       ).map((source) => source.id),
-    ).toEqual([
-      "/camera/front/image",
-      "/camera/back/image_downsampled",
-      "/camera/front/image_downsampled",
-    ]);
+    ).toEqual(["7", "8", "9"]);
   });
 
   it("keeps a lone compressed topic available as its own default", () => {
     expect(
       filterDefaultStreamEquivalents(["/camera/front/image_rect_compressed"], {
         getKind: () => "image",
-        getStream: (topic) => topic,
+        getSourceName: (topic) => topic,
       }),
     ).toEqual(["/camera/front/image_rect_compressed"]);
   });
@@ -156,7 +167,7 @@ describe("default stream equivalents", () => {
           "/sensors/primary/left/image_rect_compressed",
           "/sensors/primary/right/image_rect_compressed",
         ],
-        { getKind: () => "image", getStream: (topic) => topic },
+        { getKind: () => "image", getSourceName: (topic) => topic },
       ),
     ).toEqual([
       "/sensors/primary/image_rect_compressed",
@@ -173,7 +184,7 @@ describe("default stream equivalents", () => {
           "/sensors/primary/image_downsampled",
           "/sensors/primary/left/image_rect_compressed",
         ],
-        { getKind: () => "image", getStream: (topic) => topic },
+        { getKind: () => "image", getSourceName: (topic) => topic },
       ),
     ).toEqual([
       "/sensors/primary/image_downsampled",
@@ -189,7 +200,7 @@ describe("default stream equivalents", () => {
           "/camera/back/image",
           "/camera/front/image_downsampled",
         ],
-        { getKind: () => "image", getStream: (topic) => topic },
+        { getKind: () => "image", getSourceName: (topic) => topic },
       ),
     ).toEqual([
       "/camera/front/image_downsampled",

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { ImageVisualization } from "../../../../ir";
+import type { ImageVisualization, SceneSource } from "../../../../ir";
 import { imageTextureCacheKey } from "../../../../visualization/media-2d/image-texture-cache";
 import { useKeyedIdentityMap } from "../../../../visualization/panel-ui/use-keyed-identity-map";
 import type { CameraFrustumPanelLayer } from "../../../../visualization/scene-3d/types";
@@ -34,6 +34,7 @@ interface BuildFrustumLayerOptions extends FrustumLayerActions {
   readonly imageDecodeRunway?: readonly ImageVisualization[];
   readonly imageFrame: StreamPlaybackFrame<ImageVisualization> | null;
   readonly imagePlaneDepthM: number;
+  readonly imageSourceName: string;
   readonly imageStream: string;
   readonly layer: CameraFrustumPanelLayer;
   readonly opacity: number;
@@ -52,6 +53,7 @@ export function buildScene3dFrustumLayer({
   imageDecodeRunway,
   imageFrame,
   imagePlaneDepthM,
+  imageSourceName,
   imageStream,
   layer,
   onHoverCamera,
@@ -63,7 +65,7 @@ export function buildScene3dFrustumLayer({
   const cameraModelResolution = resolveCameraModel({
     calibration: layer.frame,
     geometry,
-    imageStream,
+    imageSourceName,
   });
   const rayCameraModelResolution =
     cameraModelResolution.status === "ready"
@@ -71,7 +73,7 @@ export function buildScene3dFrustumLayer({
       : resolveCameraModel({
           calibration: layer.frame,
           geometry: "original",
-          imageStream,
+          imageSourceName,
         });
   const resolvedCameraRayModel =
     rayCameraModelResolution.status === "ready"
@@ -141,6 +143,7 @@ export function useScene3dFrustumLayers({
   frustumImageStreams,
   imagePlaneDepthM,
   imageProjectionSettings,
+  imageSources,
   onHoverCamera,
   opacity,
   sourceKey,
@@ -155,6 +158,7 @@ export function useScene3dFrustumLayers({
   readonly imageProjectionSettings: Readonly<
     Record<string, ImageProjectionSettings>
   >;
+  readonly imageSources: readonly SceneSource[];
   readonly onHoverCamera: (hovered: Scene3dHoveredCamera | null) => void;
   readonly opacity: number;
   readonly sourceKey: string;
@@ -163,6 +167,10 @@ export function useScene3dFrustumLayers({
   const frustumImageHover = useFrustumImageHover();
   const hoveredImageStream = useHoveredImageStream();
   const imageTileBindings = useImageTileBindings();
+  const imageSourceNamesById = useMemo(
+    () => new Map(imageSources.map((source) => [source.id, source.sourceName])),
+    [imageSources],
+  );
   const focusedImageStream = focusedTileId
     ? (imageTileBindings[focusedTileId] ?? null)
     : null;
@@ -182,6 +190,7 @@ export function useScene3dFrustumLayers({
           index >= 0 ? frustumImageDecodeRunways[index] : undefined,
         imageFrame: index >= 0 ? (frustumImageFrames[index] ?? null) : null,
         imagePlaneDepthM,
+        imageSourceName: imageSourceNamesById.get(imageStream) ?? "",
         imageStream,
         layer,
         onHoverCamera,
@@ -199,6 +208,7 @@ export function useScene3dFrustumLayers({
         index >= 0 ? frustumImageFrames[index] : null,
         index >= 0 ? frustumImageDecodeRunways[index] : null,
         imageStream,
+        imageSourceNamesById.get(imageStream) ?? "",
         imageStream ? imageProjectionSettings[imageStream] : null,
         imageStream !== "" && hoveredImageStream === imageStream,
         imageStream !== "" && focusedImageStream === imageStream,

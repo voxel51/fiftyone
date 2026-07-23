@@ -60,7 +60,11 @@ export function useImageProjectionLayers(
     const options = new Map<string, PointCloudColorOptions>();
 
     for (const stream of streams) {
-      const source = sourcesById.get(stream) ?? { id: stream, label: stream };
+      const source = sourcesById.get(stream) ?? {
+        id: stream,
+        label: stream,
+        sourceName: "",
+      };
       const settings = {
         ...defaultPointCloudColorForSource(source, pointCloudSources),
         ...pointCloudColors[stream],

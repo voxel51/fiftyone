@@ -332,7 +332,7 @@ export function chooseCameraSelection(
 ): McapGridCameraSelection | null {
   const imageTopic = filterDefaultStreamEquivalents(topics.image, {
     getKind: () => "image",
-    getStream: (topic) => topic,
+    getSourceName: (topic) => topic,
   })[0];
   if (!imageTopic) {
     return null;
@@ -349,7 +349,7 @@ function choosePointCloudSelection(
 ): McapGridPointCloudSelection | null {
   const pointCloudTopic = filterDefaultStreamEquivalents(topics.pointCloud, {
     getKind: () => "point-cloud",
-    getStream: (topic) => topic,
+    getSourceName: (topic) => topic,
   })[0];
   return pointCloudTopic
     ? {

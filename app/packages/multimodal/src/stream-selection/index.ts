@@ -33,13 +33,12 @@ const IMAGE_SUFFIX_TOKENS = new Set([
 export interface DefaultStreamPreferenceOptions<T> {
   /** Equivalence is scoped by kind so unrelated stream families never merge. */
   readonly getKind?: (item: T) => string;
-  readonly getStream: (item: T) => string;
+  readonly getSourceName: (item: T) => string;
 }
 
 interface DefaultStreamCandidate<T> {
   readonly item: T;
   readonly markerScore: number;
-  readonly stream: string;
 }
 
 interface DefaultStreamGroup<T> {
@@ -48,69 +47,76 @@ interface DefaultStreamGroup<T> {
   readonly tokenKeys: string[][];
 }
 
-/** Chooses the annotation stream that best matches a selected image stream. */
+/** Chooses the annotation source name that best matches an image source name. */
 export function chooseAnnotationStream(
-  imageStream: string,
-  annotationStreams: readonly string[],
+  imageSourceName: string,
+  annotationSourceNames: readonly string[],
 ): string | null {
-  if (annotationStreams.length === 0) return null;
+  if (annotationSourceNames.length === 0) return null;
 
-  const cameraPrefix = streamPrefix(imageStream);
+  const cameraPrefix = streamPrefix(imageSourceName);
   const exactStream = cameraPrefix ? `${cameraPrefix}/annotations` : "";
-  const exact = annotationStreams.find((stream) => stream === exactStream);
+  const exact = annotationSourceNames.find(
+    (sourceName) => sourceName === exactStream,
+  );
   return (
     exact ??
-    findBestMatchingAnnotationStreams(imageStream, annotationStreams)[0] ??
+    findBestMatchingAnnotationStreams(
+      imageSourceName,
+      annotationSourceNames,
+    )[0] ??
     null
   );
 }
 
-/** Returns all annotation streams tied for the strongest positive match. */
+/** Returns all annotation source names tied for the strongest positive match. */
 export function findBestMatchingAnnotationStreams(
-  imageStream: string,
-  annotationStreams: readonly string[],
+  imageSourceName: string,
+  annotationSourceNames: readonly string[],
 ): readonly string[] {
   let bestScore = 0;
   let matches: string[] = [];
-  const cameraPrefix = streamPrefix(imageStream);
-  const imageTokens = streamTokens(imageStream);
+  const cameraPrefix = streamPrefix(imageSourceName);
+  const imageTokens = streamTokens(imageSourceName);
 
-  for (const annotationStream of annotationStreams) {
+  for (const annotationSourceName of annotationSourceNames) {
     const score = annotationStreamMatchScore(
-      annotationStream,
+      annotationSourceName,
       cameraPrefix,
       imageTokens,
     );
     if (score > bestScore) {
       bestScore = score;
-      matches = [annotationStream];
+      matches = [annotationSourceName];
     } else if (score > 0 && score === bestScore) {
-      matches.push(annotationStream);
+      matches.push(annotationSourceName);
     }
   }
   return matches;
 }
 
-/** Chooses the unique calibration stream that best matches an image stream. */
+/** Chooses the unique calibration source name matching an image source name. */
 export function chooseCalibrationStream(
-  imageStream: string,
-  calibrationStreams: readonly string[],
+  imageSourceName: string,
+  calibrationSourceNames: readonly string[],
 ): string | null {
-  if (calibrationStreams.length === 0) return null;
+  if (calibrationSourceNames.length === 0) return null;
 
-  const cameraPrefix = streamPrefix(imageStream);
+  const cameraPrefix = streamPrefix(imageSourceName);
   const exactStream = cameraPrefix ? `${cameraPrefix}/camera_info` : "";
-  const exact = calibrationStreams.find((stream) => stream === exactStream);
+  const exact = calibrationSourceNames.find(
+    (sourceName) => sourceName === exactStream,
+  );
   if (exact) return exact;
 
   let bestStream: string | null = null;
   let bestScore = 0;
   let bestScoreTied = false;
-  const imageTokens = streamTokens(imageStream);
-  for (const calibrationStream of calibrationStreams) {
-    const calibrationTokens = streamTokens(calibrationStream);
+  const imageTokens = streamTokens(imageSourceName);
+  for (const calibrationSourceName of calibrationSourceNames) {
+    const calibrationTokens = streamTokens(calibrationSourceName);
     let score =
-      cameraPrefix && isAtOrBelowPrefix(calibrationStream, cameraPrefix)
+      cameraPrefix && isAtOrBelowPrefix(calibrationSourceName, cameraPrefix)
         ? 10
         : 0;
     for (const token of imageTokens) {
@@ -118,7 +124,7 @@ export function chooseCalibrationStream(
     }
     if (score > bestScore) {
       bestScore = score;
-      bestStream = calibrationStream;
+      bestStream = calibrationSourceName;
       bestScoreTied = false;
     } else if (score > 0 && score === bestScore) {
       bestScoreTied = true;
@@ -200,13 +206,13 @@ function annotationStreamMatchScore(
 
 function defaultStreamGroups<T>(
   items: readonly T[],
-  { getKind, getStream }: DefaultStreamPreferenceOptions<T>,
+  { getKind, getSourceName }: DefaultStreamPreferenceOptions<T>,
 ): DefaultStreamGroup<T>[] {
   const groups: DefaultStreamGroup<T>[] = [];
   for (const item of items) {
-    const stream = getStream(item);
+    const sourceName = getSourceName(item);
     const kind = getKind?.(item) ?? "";
-    const tokenKey = defaultStreamTokenKey(stream, kind);
+    const tokenKey = defaultStreamTokenKey(sourceName, kind);
     let group = groups.find(
       (candidate) =>
         candidate.kind === kind &&
@@ -219,8 +225,7 @@ function defaultStreamGroups<T>(
     group.tokenKeys.push(tokenKey);
     group.candidates.push({
       item,
-      markerScore: preferenceMarkerScore(stream),
-      stream,
+      markerScore: preferenceMarkerScore(sourceName),
     });
   }
   return groups;
@@ -241,12 +246,13 @@ function bestDefaultStreamCandidate<T>(
   return best;
 }
 
-function defaultStreamTokenKey(stream: string, kind: string): string[] {
-  const basis = kind === "image" ? streamPrefix(stream) || stream : stream;
+function defaultStreamTokenKey(sourceName: string, kind: string): string[] {
+  const basis =
+    kind === "image" ? streamPrefix(sourceName) || sourceName : sourceName;
   const withoutMarkers = splitTokens(basis).filter(
     (token) => !PREFERENCE_MARKER_TOKENS.has(token),
   );
-  return withoutMarkers.length > 0 ? withoutMarkers : splitTokens(stream);
+  return withoutMarkers.length > 0 ? withoutMarkers : splitTokens(sourceName);
 }
 
 function tokenKeysEqual(left: readonly string[], right: readonly string[]) {
@@ -258,9 +264,9 @@ function tokenKeysEqual(left: readonly string[], right: readonly string[]) {
   );
 }
 
-function preferenceMarkerScore(stream: string): number {
+function preferenceMarkerScore(sourceName: string): number {
   let score = 0;
-  for (const token of splitTokens(stream)) {
+  for (const token of splitTokens(sourceName)) {
     score = Math.max(score, PREFERENCE_MARKER_SCORES.get(token) ?? 0);
   }
   return score;

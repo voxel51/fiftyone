@@ -19,8 +19,40 @@ describe("sceneSourcesFromStreamDescriptors", () => {
     ]);
 
     expect(sources).toMatchObject([
-      { id: "7", label: "camera/front" },
-      { id: "8", label: "camera/front/annotations" },
+      {
+        id: "7",
+        label: "camera/front",
+        sourceName: "/camera/front/image_raw",
+      },
+      {
+        id: "8",
+        label: "camera/front/annotations",
+        sourceName: "/camera/front/annotations",
+      },
+    ]);
+  });
+
+  it("uses full source names to disambiguate colliding labels", () => {
+    const sources = sceneSourcesFromStreamDescriptors([
+      stream("7", "/camera/front/image_raw", SCENE_SOURCE_TYPE.IMAGE),
+      stream(
+        "8",
+        "/camera/front/image_rect_compressed",
+        SCENE_SOURCE_TYPE.IMAGE,
+      ),
+    ]);
+
+    expect(sources).toMatchObject([
+      {
+        id: "7",
+        label: "camera/front/image_raw",
+        sourceName: "/camera/front/image_raw",
+      },
+      {
+        id: "8",
+        label: "camera/front/image_rect_compressed",
+        sourceName: "/camera/front/image_rect_compressed",
+      },
     ]);
   });
 });

@@ -151,7 +151,7 @@ export function rankDefaultImageSources(
 ): readonly SceneSource[] {
   return filterDefaultStreamEquivalents(rankImageSources(sources), {
     getKind: (source) => source.type,
-    getStream: (source) => source.id,
+    getSourceName: (source) => source.sourceName,
   });
 }
 
@@ -164,12 +164,12 @@ export function orderImageSourcesForManualSelection(
 ): readonly SceneSource[] {
   return orderDefaultStreamEquivalents(rankImageSources(sources), {
     getKind: (source) => source.type,
-    getStream: (source) => source.id,
+    getSourceName: (source) => source.sourceName,
   });
 }
 
 function isNonColorImageSource(source: SceneSource): boolean {
-  return source.id
+  return source.sourceName
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .some((token) => NON_COLOR_IMAGE_TOKENS.has(token));

@@ -109,6 +109,7 @@ export function mcapSceneSources(
       id,
       type,
       label: (labelCounts.get(short) ?? 0) > 1 ? displayTopic(id) : short,
+      sourceName: id,
       ...(calibrationTopic
         ? {
             metadata: {

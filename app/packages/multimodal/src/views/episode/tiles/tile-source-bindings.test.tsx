@@ -19,7 +19,7 @@ import {
 } from "./tile-source-bindings";
 
 function imageSource(id: string): SceneSource {
-  return { id, label: id.toUpperCase(), type: "image" };
+  return { id, label: id.toUpperCase(), sourceName: id, type: "image" };
 }
 
 describe("chooseNextImageStream", () => {

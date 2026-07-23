@@ -123,7 +123,7 @@ export function useScene3dSelection({
     () =>
       filterDefaultStreamEquivalents(imageSources, {
         getKind: (source) => source.type,
-        getStream: (source) => source.id,
+        getSourceName: (source) => source.sourceName,
       }),
     [imageSources],
   );
@@ -168,7 +168,7 @@ export function useScene3dSelection({
     () =>
       filterDefaultStreamEquivalents(selectableRenderableSources, {
         getKind: (source) => source.type,
-        getStream: (source) => source.id,
+        getSourceName: (source) => source.sourceName,
       }),
     [selectableRenderableSources],
   );
@@ -437,6 +437,7 @@ export function useScene3dSelection({
     cameraStreams,
     enabled,
     frustumImageStreams,
+    imageSources,
     locationStreams,
     mapLayerSources,
     mapLayerStreams,
@@ -732,7 +733,7 @@ export function playbackFrameForStream(
 }
 
 function provisionalPointCloudStreamScore(source: SceneSource): number {
-  const haystack = `${source.id} ${source.label}`.toLowerCase();
+  const haystack = source.sourceName.toLowerCase();
   let score = 0;
 
   for (const keyword of PROVISIONAL_STREAM_KEYWORDS) {

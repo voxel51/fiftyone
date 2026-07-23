@@ -245,7 +245,12 @@ function nonLocationMessage(timelineTimeNs: bigint): DecodedFrame {
 }
 
 function locationSource(id: string): SceneSource {
-  return { id, label: id.replace(/^\//, ""), type: "location" };
+  return {
+    id,
+    label: id.replace(/^\//, ""),
+    sourceName: id,
+    type: "location",
+  };
 }
 
 function createSource(sourceId: string): ByteSourceDescriptor {

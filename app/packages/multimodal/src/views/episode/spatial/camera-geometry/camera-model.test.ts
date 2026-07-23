@@ -59,7 +59,7 @@ describe("episode camera model", () => {
         P,
       }),
       geometry: "auto",
-      imageStream: "/camera/front/image_rect",
+      imageSourceName: "/camera/front/image_rect",
     });
     expect(rectified.status).toBe("ready");
     if (rectified.status !== "ready") {
@@ -74,7 +74,7 @@ describe("episode camera model", () => {
         P,
       }),
       geometry: "auto",
-      imageStream: "/camera/front/image_raw/compressed",
+      imageSourceName: "/camera/front/image_raw/compressed",
     });
     expect(original.status).toBe("ready");
     if (original.status !== "ready") {
@@ -91,7 +91,7 @@ describe("episode camera model", () => {
         P,
       }),
       geometry: "auto",
-      imageStream: "/camera/front/image",
+      imageSourceName: "/camera/front/image",
     });
 
     expect(resolved.status).toBe("ambiguous");
@@ -101,7 +101,7 @@ describe("episode camera model", () => {
     const resolved = resolveCameraModel({
       calibration: calibration({ D: [0, 0, 0, 0, 0], P }),
       geometry: "auto",
-      imageStream: "/camera/front/image",
+      imageSourceName: "/camera/front/image",
     });
     expect(resolved.status).toBe("ready");
     if (resolved.status !== "ready") {
@@ -118,7 +118,7 @@ describe("episode camera model", () => {
         P,
       }),
       geometry: "auto",
-      imageStream: "/camera/front/image",
+      imageSourceName: "/camera/front/image",
     });
     expect(resolved.status).toBe("ready");
     if (resolved.status !== "ready") {
@@ -135,7 +135,7 @@ describe("episode camera model", () => {
         distortionModel: "plumb_bob",
       }),
       geometry: "original",
-      imageStream: "/camera/front/image",
+      imageSourceName: "/camera/front/image",
     });
     expect(resolved.status).toBe("ready");
     if (resolved.status !== "ready") {
@@ -153,7 +153,7 @@ describe("episode camera model", () => {
         distortionModel: "plumb_bob",
       }),
       geometry: "original",
-      imageStream: "/camera/front/image",
+      imageSourceName: "/camera/front/image",
     });
     expect(resolved.status).toBe("ready");
     if (resolved.status !== "ready") {
@@ -169,7 +169,7 @@ describe("episode camera model", () => {
         distortionModel: "plumb_bob",
       }),
       geometry: "original",
-      imageStream: "/camera/front/image",
+      imageSourceName: "/camera/front/image",
     });
     expect(resolved.status).toBe("invalid");
   });
@@ -184,7 +184,7 @@ describe("episode camera model", () => {
         width: 640,
       }),
       geometry: "original",
-      imageStream: "/camera/fisheye/image",
+      imageSourceName: "/camera/fisheye/image",
     });
     expect(resolved.status).toBe("ready");
     if (resolved.status !== "ready") {
@@ -204,7 +204,7 @@ describe("episode camera model", () => {
         R: [0, -1, 0, 1, 0, 0, 0, 0, 1],
       }),
       geometry: "rectified",
-      imageStream: "/camera/front/image",
+      imageSourceName: "/camera/front/image",
     });
     expect(resolved.status).toBe("ready");
     if (resolved.status !== "ready") {
@@ -223,7 +223,7 @@ describe("episode camera model", () => {
         distortionModel: "vendor_magic",
       }),
       geometry: "original",
-      imageStream: "/camera/front/image",
+      imageSourceName: "/camera/front/image",
     });
     expect(resolved.status).toBe("unsupported");
   });
@@ -235,7 +235,7 @@ describe("episode camera model", () => {
         distortionModel: "vendor_magic",
       }),
       geometry: "original",
-      imageStream: "/camera/front/image",
+      imageSourceName: "/camera/front/image",
     });
     expect(resolved.status).toBe("unsupported");
   });
@@ -247,7 +247,7 @@ describe("episode camera model", () => {
         distortionModel: "plumb_bob",
       }),
       geometry: "original",
-      imageStream: "/camera/front/image",
+      imageSourceName: "/camera/front/image",
     });
     expect(resolved.status).toBe("invalid");
   });

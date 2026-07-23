@@ -13,7 +13,10 @@ import {
   type Scene3dViewStateSnapshot,
 } from "../camera/scene-3d-view-state";
 import { PanelVisibilityProvider } from "../../tiles/panel-visibility";
-import { useScene3dSelection } from "./use-scene-3d-selection";
+import {
+  selectProvisionalPointCloudStream,
+  useScene3dSelection,
+} from "./use-scene-3d-selection";
 
 const { imageTileBindingsMock, setTileTitleMock, useSceneInventoryMock } =
   vi.hoisted(() => ({
@@ -60,10 +63,6 @@ const lidarDownsampled = source(
 const boxes = source("/labels/boxes", SCENE_SOURCE_TYPE.SCENE_ANNOTATION);
 const frontImage = source(
   "/camera/front/image_rect_compressed",
-  SCENE_SOURCE_TYPE.IMAGE,
-);
-const frontImageDownsampled = source(
-  "/camera/front/image_downsampled",
   SCENE_SOURCE_TYPE.IMAGE,
 );
 const rearImage = source(
@@ -175,19 +174,23 @@ describe("useScene3dSelection", () => {
   });
 
   it("fresh-mount defaults enable preferred equivalents without hiding raw sources", () => {
-    const { result } = renderSelection([lidarRaw, lidarDownsampled, boxes]);
+    const raw = source("20", SCENE_SOURCE_TYPE.POINT_CLOUD, "/lidar/points");
+    const downsampled = source(
+      "21",
+      SCENE_SOURCE_TYPE.POINT_CLOUD,
+      "/lidar/points_downsampled",
+    );
+    const { result } = renderSelection([raw, downsampled, boxes]);
 
-    expect(result.current.enabled).toEqual(new Set([lidarDownsampled.id]));
-    expect(result.current.pointCloudStreams).toEqual([lidarDownsampled.id]);
+    expect(result.current.enabled).toEqual(new Set([downsampled.id]));
+    expect(result.current.pointCloudStreams).toEqual([downsampled.id]);
 
     act(() => {
-      result.current.toggleSource(lidarRaw.id, true);
+      result.current.toggleSource(raw.id, true);
     });
-    expect(result.current.enabled).toEqual(
-      new Set([lidarRaw.id, lidarDownsampled.id]),
-    );
+    expect(result.current.enabled).toEqual(new Set([raw.id, downsampled.id]));
     expect(new Set(result.current.pointCloudStreams)).toEqual(
-      new Set([lidarRaw.id, lidarDownsampled.id]),
+      new Set([raw.id, downsampled.id]),
     );
   });
 
@@ -246,18 +249,49 @@ describe("useScene3dSelection", () => {
   });
 
   it("pairs camera frustums with preferred image equivalents", () => {
+    const calibration = source(
+      "30",
+      SCENE_SOURCE_TYPE.CAMERA_CALIBRATION,
+      "/camera/front/camera_info",
+    );
+    const raw = source(
+      "31",
+      SCENE_SOURCE_TYPE.IMAGE,
+      "/camera/front/image",
+      calibration.id,
+    );
+    const downsampled = source(
+      "32",
+      SCENE_SOURCE_TYPE.IMAGE,
+      "/camera/front/image_downsampled",
+      calibration.id,
+    );
     imageTileBindingsMock.mockReturnValue({
-      "image-1": frontImageDownsampled.id,
+      "image-1": downsampled.id,
     });
-    const { result } = renderSelection([
-      frontCalibration,
-      frontImage,
-      frontImageDownsampled,
-    ]);
+    const { result } = renderSelection([calibration, raw, downsampled]);
 
-    expect(result.current.frustumImageStreams).toEqual([
-      frontImageDownsampled.id,
-    ]);
+    expect(result.current.frustumImageStreams).toEqual([downsampled.id]);
+  });
+
+  it("uses source names to rank provisional point clouds", () => {
+    const radar = source(
+      "40",
+      SCENE_SOURCE_TYPE.POINT_CLOUD,
+      "/radar/front/points",
+    );
+    const lidar = source(
+      "41",
+      SCENE_SOURCE_TYPE.POINT_CLOUD,
+      "/lidar/top/points",
+    );
+    const frame = {} as NonNullable<
+      Parameters<typeof selectProvisionalPointCloudStream>[1][number]
+    >;
+
+    expect(
+      selectProvisionalPointCloudStream([radar, lidar], [frame, frame]),
+    ).toBe(lidar.id);
   });
 
   it("pairs qualified camera streams independently for frustum images", () => {
@@ -479,12 +513,19 @@ function viewStateSnapshot(
   return { ...EMPTY_SCENE_3D_VIEW_STATE, ...overrides };
 }
 
-function source(id: string, type: string): SceneSource {
+function source(
+  id: string,
+  type: string,
+  sourceName = id,
+  calibrationStreamId?: string,
+): SceneSource {
   const calibrationStream =
-    type === SCENE_SOURCE_TYPE.IMAGE ? `${streamPrefix(id)}/camera_info` : null;
+    type === SCENE_SOURCE_TYPE.IMAGE
+      ? (calibrationStreamId ?? `${streamPrefix(sourceName)}/camera_info`)
+      : null;
   return {
     id,
-    label: id,
+    label: sourceName,
     ...(calibrationStream
       ? {
           metadata: {
@@ -492,6 +533,7 @@ function source(id: string, type: string): SceneSource {
           },
         }
       : {}),
+    sourceName,
     type,
   };
 }

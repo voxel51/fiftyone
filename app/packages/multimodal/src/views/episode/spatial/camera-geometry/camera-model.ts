@@ -188,11 +188,11 @@ export function effectiveCameraCalibration(
 export function resolveCameraModel({
   calibration,
   geometry,
-  imageStream,
+  imageSourceName,
 }: {
   readonly calibration: CameraCalibrationVisualization;
   readonly geometry: ImageGeometryMode;
-  readonly imageStream: string;
+  readonly imageSourceName: string;
 }): CameraModelResolution {
   const effective = effectiveCameraCalibration(calibration);
   if (!effective) {
@@ -211,7 +211,7 @@ export function resolveCameraModel({
     return readyOrFailure(rectified, "rectified");
   }
 
-  const inferredGeometry = suggestImageGeometry(imageStream);
+  const inferredGeometry = suggestImageGeometry(imageSourceName);
   if (inferredGeometry) {
     return readyOrFailure(
       inferredGeometry === "original" ? original : rectified,
@@ -319,9 +319,9 @@ function cameraModelCacheKey(calibration: EffectiveCameraCalibration): string {
 
 /** Geometry encoded by a canonical terminal image stream suffix. */
 export function suggestImageGeometry(
-  imageStream: string,
+  imageSourceName: string,
 ): ResolvedImageGeometryMode | null {
-  const pathSegments = imageStream.toLowerCase().split("/").filter(Boolean);
+  const pathSegments = imageSourceName.toLowerCase().split("/").filter(Boolean);
   for (let index = pathSegments.length - 1; index >= 0; index -= 1) {
     const tokens = pathSegments[index].split(/[^a-z0-9]+/).filter(Boolean);
     if (tokens.every((token) => IMAGE_TRANSPORT_STREAM_TOKENS.has(token))) {

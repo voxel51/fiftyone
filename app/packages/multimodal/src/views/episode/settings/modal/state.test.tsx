@@ -306,10 +306,14 @@ describe("episode-modal-settings", () => {
 
   it("biases turbo to the first lidar point cloud source", () => {
     const sources = [
-      { id: "/radar/front", label: "radar" },
-      { id: "/lidar/top", label: "points" },
-      { id: "/lidar/left", label: "lidar left" },
-      { id: "/camera/depth_points", label: "depth" },
+      { id: "40", label: "radar", sourceName: "/radar/front" },
+      { id: "41", label: "points", sourceName: "/lidar/top" },
+      { id: "42", label: "lidar left", sourceName: "/lidar/left" },
+      {
+        id: "43",
+        label: "depth",
+        sourceName: "/camera/depth_points",
+      },
     ];
 
     expect(defaultPointCloudColorForSource(sources[0], sources).colormap).toBe(
@@ -328,8 +332,8 @@ describe("episode-modal-settings", () => {
 
   it("keeps index defaults when no lidar source is present", () => {
     const sources = [
-      { id: "/radar/front", label: "radar" },
-      { id: "/depth/points", label: "depth" },
+      { id: "40", label: "radar", sourceName: "/radar/front" },
+      { id: "41", label: "depth", sourceName: "/depth/points" },
     ];
 
     expect(defaultPointCloudColorForSource(sources[0], sources).colormap).toBe(
