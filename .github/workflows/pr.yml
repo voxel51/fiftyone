@@ -226,6 +226,7 @@ jobs:
       # the mirror lists the SHA's workflow runs to find the run testing it;
       # implicit on public repos, required on private fiftyone-teams
       actions: read
+      # the mirror reads the SHA's all-tests check runs for the verdict
       checks: read
     env:
       # A run that skipped the suite (a no-op body edit, or a failed gate)
@@ -256,7 +257,7 @@ jobs:
               repo: context.repo.repo,
               run_id: context.runId,
             });
-            const deadline = Date.now() + 2 * 60 * 60 * 1000;
+            const deadline = Date.now() + 90 * 60 * 1000;
             let emptyPolls = 0;
             for (;;) {
               const runs = await github.paginate(
@@ -311,7 +312,7 @@ jobs:
               if (live.length > 0) {
                 emptyPolls = 0;
                 if (Date.now() >= deadline) {
-                  core.setFailed(`Still waiting on ${live[0].html_url} after 2 hours — re-run this job once it completes.`);
+                  core.setFailed(`Still waiting on ${live[0].html_url} after 90 minutes — re-run this job once it completes.`);
                   return;
                 }
                 core.info(`Waiting on the run testing this SHA: ${live.map((r) => r.html_url).join(', ')}`);
@@ -319,13 +320,13 @@ jobs:
                 // Nothing is testing the SHA and no verdict exists (e.g.
                 // every real run was cancelled). Give races a short grace,
                 // then defer to a human rather than inventing a verdict.
-                if (++emptyPolls >= 10) {
+                if (++emptyPolls >= 3) {
                   core.setFailed('No run is testing this SHA and no completed all-tests verdict exists — re-run the Pull Request workflow.');
                   return;
                 }
                 core.info('No verdict and no live run for this SHA yet — waiting.');
               }
-              await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
+              await new Promise((resolve) => setTimeout(resolve, 2 * 60 * 1000));
             }
       - name: Fail when a draft deferred the e2e suite
         # A draft run must not publish a successful merge-authoritative
