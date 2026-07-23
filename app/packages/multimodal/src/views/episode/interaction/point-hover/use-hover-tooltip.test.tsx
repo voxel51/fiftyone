@@ -29,7 +29,9 @@ const HOVERED: Scene3dHoveredEntity = {
   entityId: "veh-12",
   kind: "entity",
   label: "car",
+  metadata: {},
   stream: "/markers",
+  texts: [],
 };
 
 const HOVERED_POINT: Scene3dHoveredPoint = {
@@ -109,10 +111,9 @@ describe("useScene3dHoverTooltip", () => {
       result.current.onHoverEntity(HOVERED);
       vi.advanceTimersByTime(50);
       result.current.onHoverEntity({
+        ...HOVERED,
         entityId: "ped-3",
-        kind: "entity",
         label: "pedestrian",
-        stream: "/markers",
       });
       vi.advanceTimersByTime(80);
     });
@@ -233,6 +234,35 @@ describe("useScene3dHoverTooltip", () => {
     expect(screen.getByText("lidar/top")).toBeTruthy();
     expect(screen.getByText("/lidar/top/points")).toBeTruthy();
     expect(screen.queryByText("21")).toBeNull();
+  });
+
+  it("renders every scene text and metadata value for an entity", () => {
+    const { getAllByText, getByText } = render(
+      <Scene3dHoverTooltip
+        tooltip={{
+          ...HOVERED,
+          entityId: "1721917734:3",
+          label: "pedestrian",
+          metadata: {
+            classId: "pedestrian",
+            score: "0.8100",
+            source: "vision_msgs",
+          },
+          texts: ["pedestrian 0.81", "crossing"],
+          x: 0,
+          y: 0,
+        }}
+      />,
+    );
+
+    expect(getAllByText("pedestrian")).toHaveLength(2);
+    expect(getByText("1721917734:3")).toBeTruthy();
+    expect(getByText("pedestrian 0.81")).toBeTruthy();
+    expect(getByText("crossing")).toBeTruthy();
+    expect(getByText("Score")).toBeTruthy();
+    expect(getByText("0.8100")).toBeTruthy();
+    expect(getByText("Class ID")).toBeTruthy();
+    expect(getByText("vision_msgs")).toBeTruthy();
   });
 
   it("does not let a pending entity replace a newer point tooltip", () => {

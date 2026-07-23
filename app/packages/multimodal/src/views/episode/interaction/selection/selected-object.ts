@@ -53,7 +53,14 @@ export function useSelectedObject(): SelectedObject | null {
 // Metadata keys producers commonly use for an object's class/label, in
 // preference order. The entity id is the fallback — some datasets pack
 // the class into it.
-const ENTITY_LABEL_METADATA_KEYS = ["label", "category", "class", "name"];
+const ENTITY_LABEL_METADATA_KEYS = [
+  "label",
+  "category",
+  "class",
+  "classId",
+  "class_id",
+  "name",
+];
 
 /** Best-effort display label for a 3D scene entity. */
 export function entityLabel(
