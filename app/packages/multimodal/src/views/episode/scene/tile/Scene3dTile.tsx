@@ -637,8 +637,8 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   // per-tick condition flips around transform boundaries must not blink
   // the chip, and the returned identity is stable while content holds.
   const panelNotices = useStabilizedNotices(producedNotices);
-  // The same stabilized set feeds the sidebar's Scene status strip, so
-  // scene health reads identically in the canvas chip and the sidebar.
+  // Publish the same stabilized set for non-warning sidebar status. Warning
+  // diagnostics remain local to the panel's bottom-left notice control.
   usePublishSceneNotices(tileId, panelNotices);
   const sceneSnapshotKey = useMemo(
     () =>
@@ -862,7 +862,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
           {sceneSnapshotSelection.heldReason ? (
             <HeldSceneStatusBadge reason={sceneSnapshotSelection.heldReason} />
           ) : (
-            <TileStatusBadge streams={selectedStreams} />
+            <TileStatusBadge showWarnings={false} streams={selectedStreams} />
           )}
           {hoverTooltip ? <Scene3dHoverTooltip tooltip={hoverTooltip} /> : null}
         </div>

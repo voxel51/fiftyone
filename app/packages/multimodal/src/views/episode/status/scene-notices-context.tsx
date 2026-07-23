@@ -4,8 +4,9 @@ import { createTileRegistry } from "../interaction/registry";
 
 /**
  * Modal-scoped channel for scene-scoped health notices. Producers (3D
- * tiles) publish their already-stabilized notices; the sidebar's Scene tab
- * renders the union, so scene health reads the same everywhere it appears.
+ * tiles) publish their already-stabilized notices. Consumers choose the
+ * appropriate presentation policy; the settings sidebar omits warnings
+ * that already appear in the affected panel.
  */
 const registry = createTileRegistry<readonly HealthNotice[]>(
   "EpisodeSceneNotices",

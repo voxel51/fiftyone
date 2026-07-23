@@ -52,9 +52,10 @@ export function usePointCloudSamplingSummary(): PointCloudSamplingSummary | null
 }
 
 /**
- * The Scene tab's status strip: every scene-scoped health notice in one
- * place — conditions the 3D tiles publish (transform failures, placement
- * loading, camera tracking) plus the sampling condition detected here.
+ * The Scene tab's non-warning status strip: conditions the 3D tiles publish
+ * (transform failures, placement loading, camera tracking) plus the sampling
+ * condition detected here. Warning diagnostics are filtered by `NoticeStrip`
+ * so they remain local to the affected panel.
  * Tile-published notices arrive already stabilized; the locally produced
  * sampling notice goes through its own stabilizer so both flavors share
  * the same appearance/disappearance discipline.
