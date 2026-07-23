@@ -118,6 +118,12 @@ const availablePatchesSimilarityKeys = selectorFamily<
       }
       patches = methods.map(([method, field]) => [method, field]);
 
+      // avoid the async modal sample dependency below when there is nothing
+      // to filter
+      if (!patches.length) {
+        return [];
+      }
+
       if (params.modal) {
         if (get(fos.hasSelectedLabels)) {
           const fields = new Set(
