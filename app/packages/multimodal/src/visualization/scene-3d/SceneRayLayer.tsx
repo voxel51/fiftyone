@@ -5,8 +5,15 @@ import * as THREE from "three";
 import { pointCloudObjectTransform } from "./transforms";
 import type { SceneRayPanelLayer } from "./types";
 import { useInvalidateOn } from "./use-invalidate-on";
+import {
+  SCENE_SELECTED_DASH_SIZE,
+  SCENE_SELECTED_GAP_SIZE,
+  withLineDistances,
+} from "./utils";
 
 const DEFAULT_RAY_COLOR = 0x38d6ff;
+const PROJECTION_CORRESPONDENCE_COLOR = 0xffaa33;
+const PROJECTION_CORRESPONDENCE_OPACITY = 0.7;
 const ENDPOINT_SIZE_PX = 8;
 const RAY_RENDER_ORDER = 9_500;
 const NOOP_RAYCAST = () => undefined;
@@ -37,8 +44,19 @@ export function SceneRayLayer({
     );
     return geometry;
   }, []);
-  const color = layer.color ?? DEFAULT_RAY_COLOR;
-  useInvalidateOn([color, layer.end, layer.start, objectTransform]);
+  const isProjectionCorrespondence = layer.role === "projection-correspondence";
+  const color =
+    layer.color ??
+    (isProjectionCorrespondence
+      ? PROJECTION_CORRESPONDENCE_COLOR
+      : DEFAULT_RAY_COLOR);
+  useInvalidateOn([
+    color,
+    isProjectionCorrespondence,
+    layer.end,
+    layer.start,
+    objectTransform,
+  ]);
 
   // This effect updates the stable line buffer before the scene is painted.
   useLayoutEffect(() => {
@@ -46,6 +64,7 @@ export function SceneRayLayer({
     positions.setXYZ(0, layer.start[0], layer.start[1], layer.start[2]);
     positions.setXYZ(1, layer.end[0], layer.end[1], layer.end[2]);
     positions.needsUpdate = true;
+    withLineDistances(lineGeometry);
   }, [layer.end, layer.start, lineGeometry]);
 
   // This effect disposes the stable line geometry on unmount.
@@ -66,29 +85,43 @@ export function SceneRayLayer({
         renderOrder={RAY_RENDER_ORDER}
       >
         <primitive attach="geometry" object={lineGeometry} />
-        <lineBasicMaterial
-          color={color}
-          depthTest={false}
-          depthWrite={false}
-          transparent
-        />
+        {isProjectionCorrespondence ? (
+          <lineDashedMaterial
+            color={color}
+            dashSize={SCENE_SELECTED_DASH_SIZE}
+            depthTest={false}
+            depthWrite={false}
+            gapSize={SCENE_SELECTED_GAP_SIZE}
+            opacity={PROJECTION_CORRESPONDENCE_OPACITY}
+            transparent
+          />
+        ) : (
+          <lineBasicMaterial
+            color={color}
+            depthTest={false}
+            depthWrite={false}
+            transparent
+          />
+        )}
       </lineSegments>
-      <points
-        frustumCulled={false}
-        position={layer.end}
-        raycast={NOOP_RAYCAST}
-        renderOrder={RAY_RENDER_ORDER}
-      >
-        <primitive attach="geometry" object={endpointGeometry} />
-        <pointsMaterial
-          color={color}
-          depthTest={false}
-          depthWrite={false}
-          size={ENDPOINT_SIZE_PX}
-          sizeAttenuation={false}
-          transparent
-        />
-      </points>
+      {isProjectionCorrespondence ? null : (
+        <points
+          frustumCulled={false}
+          position={layer.end}
+          raycast={NOOP_RAYCAST}
+          renderOrder={RAY_RENDER_ORDER}
+        >
+          <primitive attach="geometry" object={endpointGeometry} />
+          <pointsMaterial
+            color={color}
+            depthTest={false}
+            depthWrite={false}
+            size={ENDPOINT_SIZE_PX}
+            sizeAttenuation={false}
+            transparent
+          />
+        </points>
+      )}
     </group>
   );
 }

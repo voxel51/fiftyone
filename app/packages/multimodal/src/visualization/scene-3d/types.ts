@@ -228,6 +228,12 @@ export interface SceneRayPanelLayer {
   readonly end: readonly [number, number, number];
   readonly frameTransform?: PointCloudFrameTransform;
   readonly id: string;
+  /**
+   * Projection correspondences are dashed and rely on the existing
+   * hovered-point marker for their endpoint. Other rays retain the default
+   * solid presentation.
+   */
+  readonly role?: "projection-correspondence";
   readonly start: readonly [number, number, number];
 }
 
