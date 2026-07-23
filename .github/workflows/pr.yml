@@ -54,6 +54,7 @@ jobs:
               - '.github/workflows/build.yml'
             e2e-pw:
               - 'e2e-pw/**'
+              - '.github/scripts/**'
               - '.github/workflows/e2e.yml'
             fiftyone:
               - 'fiftyone/**'

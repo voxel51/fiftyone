@@ -101,7 +101,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          SPECS=$(node scripts/burn-in-specs.mjs)
+          SPECS=$(node ../.github/scripts/burn-in-specs.mjs)
           COUNT=0
           if [ -n "$SPECS" ]; then
             COUNT=$(printf '%s\n' "$SPECS" | wc -l | tr -d ' ')
@@ -274,10 +274,10 @@ jobs:
         # Report-only: failed specs are surfaced by the e2e verdict job from
         # the merged blob reports. A red shard means infra death (timeout,
         # lost runner), not a test failure. Specs are assigned to shards by
-        # duration (scripts/pack-shards.mjs), not Playwright's count-based
+        # duration (.github/scripts/pack-shards.mjs), not Playwright's count-based
         # sharding, so no shard is bottlenecked by the heavy spec families.
         run: |
-          FILES=$(node scripts/pack-shards.mjs ${{ matrix.shard }} 8)
+          FILES=$(node ../.github/scripts/pack-shards.mjs ${{ matrix.shard }} 8)
           if [ -z "$FILES" ]; then
             echo "no specs assigned to shard ${{ matrix.shard }}"
           else
@@ -305,7 +305,7 @@ jobs:
     # joining the suite — flaky-on-arrival tests fail here instead of landing
     # and flaking later. Targets are individual tests where the diff maps to
     # them, whole spec files when shared code changed (see
-    # scripts/burn-in-specs.mjs). Report-only like the shards: the verdict
+    # .github/scripts/burn-in-specs.mjs). Report-only like the shards: the verdict
     # job enforces the outcome, so a red burn-in job means infra death, not
     # a failing spec.
     if: needs.prepare-e2e.outputs.burn-in-count != '0'
@@ -581,7 +581,7 @@ jobs:
           TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
           BURN_IN_COUNT: ${{ needs.prepare-e2e.outputs.burn-in-count }}
           BURN_IN_RESULT: ${{ needs.burn-in.result }}
-        run: node scripts/enforce-verdict.mjs merged-results.json all-blob-reports burn-in-results.json
+        run: node ../.github/scripts/enforce-verdict.mjs merged-results.json all-blob-reports burn-in-results.json
 
   e2e-aborted:
     needs: [prepare-e2e, test-e2e]
