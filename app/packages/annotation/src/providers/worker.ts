@@ -23,6 +23,7 @@ import {
 } from "./math";
 import { loadModelWeights } from "./modelCache";
 import { getEmbedding, putEmbedding } from "./embeddingCache";
+import { createTaskQueue } from "./taskQueue";
 
 // Typed helpers to enforce message shapes at compile time.
 
@@ -141,6 +142,11 @@ if (!import.meta.env?.DEV && import.meta.env?.ORT_WASM_PATH) {
 
 let encoderSession: ort.InferenceSession | null = null;
 let decoderSession: ort.InferenceSession | null = null;
+
+// onnxruntime-web's WASM backend rejects overlapping run() calls with
+// "Session already started", so all model work is serialized FIFO — a
+// prompt arriving mid-encode waits for the active run instead of failing.
+const enqueueModelTask = createTaskQueue();
 
 /**
  * Fetch an image URL and decode it into ImageData.
@@ -798,30 +804,33 @@ self.onmessage = async (e: MessageEvent<WorkerInbound>) => {
 
   try {
     if (msg.type === "loadModel") {
-      await loadModel();
+      await enqueueModelTask(loadModel);
       postResponse(id, "loadModel", undefined as void);
     } else if (msg.type === "embedAndDecode") {
-      const result = await embedAndDecode(
-        msg.payload.imageUrl,
-        msg.payload.points,
+      const result = await enqueueModelTask(() =>
+        embedAndDecode(msg.payload.imageUrl, msg.payload.points),
       );
       postStatusNotification("ready");
       postResponse(id, "embedAndDecode", result, [
         result.mask.buffer as ArrayBuffer,
       ]);
     } else if (msg.type === "embedAndDecodeBitmap") {
-      const result = await embedAndDecodeBitmap(
-        msg.payload.bitmap,
-        msg.payload.cacheKey,
-        msg.payload.points,
-        msg.payload.useEmbeddingCache,
+      const result = await enqueueModelTask(() =>
+        embedAndDecodeBitmap(
+          msg.payload.bitmap,
+          msg.payload.cacheKey,
+          msg.payload.points,
+          msg.payload.useEmbeddingCache,
+        ),
       );
       postStatusNotification("ready");
       postResponse(id, "embedAndDecodeBitmap", result, [
         result.mask.buffer as ArrayBuffer,
       ]);
     } else if (msg.type === "encodeBitmap") {
-      await encodeBitmap(msg.payload.bitmap, msg.payload.cacheKey);
+      await enqueueModelTask(() =>
+        encodeBitmap(msg.payload.bitmap, msg.payload.cacheKey),
+      );
       postResponse(id, "encodeBitmap", undefined as void);
     }
   } catch (err) {

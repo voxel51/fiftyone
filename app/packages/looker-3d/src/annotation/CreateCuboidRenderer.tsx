@@ -209,9 +209,9 @@ export const CreateCuboidRenderer = ({
           path: currentActiveField,
           selected: true,
           _cls: DETECTION,
-          location,
-          dimensions,
-          quaternion,
+          location: transformData.location,
+          dimensions: transformData.dimensions,
+          quaternion: transformData.quaternion,
         });
         selectNewCuboidForTransform();
         setTransformMode("scale");
