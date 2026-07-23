@@ -829,7 +829,6 @@ function sceneEntityHasNonCubePrimitives(
     entity.lines.length > 0 ||
     entity.models.length > 0 ||
     entity.spheres.length > 0 ||
-    entity.texts.length > 0 ||
     entity.triangles.length > 0
   );
 }

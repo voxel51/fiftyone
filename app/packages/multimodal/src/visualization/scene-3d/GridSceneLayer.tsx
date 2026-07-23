@@ -54,7 +54,7 @@ export const GridSceneLayer = memo(function GridSceneLayer({
   // the app's pinned three version (its `Texture` requires `isTextureArray`,
   // which our DataTexture predates), so a structurally-valid texture fails
   // the material prop check. Runtime is unaffected; drop this cast when the
-  // two three versions are aligned. Same workaround as SceneTextSprite.
+  // two three versions are aligned.
   const textureMap = texture as never;
 
   return (

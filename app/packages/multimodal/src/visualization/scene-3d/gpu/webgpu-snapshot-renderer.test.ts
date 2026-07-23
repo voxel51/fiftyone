@@ -4,9 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PointCloudVisualization } from "../../../ir";
 
 // The snapshot module reuses PointCloudSceneLayer's pure geometry builders,
-// whose module (like SceneTextSprite in the fit-math chain) also exports
-// R3F components. Mock @react-three/fiber the way point-cloud.test.tsx does
-// so jsdom never loads the real reconciler (which would double-load three).
+// whose module also exports R3F components. Mock @react-three/fiber the way
+// point-cloud.test.tsx does so jsdom never loads the real reconciler (which
+// would double-load three).
 vi.mock("@react-three/fiber", () => ({
   useFrame: vi.fn(),
   useThree: (selector: (state: { invalidate: () => void }) => unknown) =>

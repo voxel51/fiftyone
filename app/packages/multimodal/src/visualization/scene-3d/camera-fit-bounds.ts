@@ -9,11 +9,9 @@ import type {
   ScenePoint3d,
   ScenePose3d,
   SceneSpherePrimitive,
-  SceneTextPrimitive,
   SceneTrianglePrimitive,
 } from "../../ir";
 import { EMPTY_POINT_CLOUD_BOUNDS_SIZE } from "./point-cloud-colors";
-import { SCENE_TEXT_DEFAULT_WORLD_HEIGHT } from "./SceneTextSprite";
 import {
   matrixFromObjectTransform,
   pointCloudObjectTransform,
@@ -142,10 +140,6 @@ function boundsForAnnotationLayer(
       const bounds = boundsForSceneSphere(sphere);
       if (bounds) layerBounds.union(bounds);
     }
-    for (const text of entity.texts) {
-      const bounds = boundsForSceneText(text);
-      if (bounds) layerBounds.union(bounds);
-    }
     for (const triangle of entity.triangles) {
       const bounds = boundsForSceneTriangle(triangle);
       if (bounds) layerBounds.union(bounds);
@@ -204,22 +198,6 @@ function boundsForSceneModel(model: SceneModelPrimitive): THREE.Box3 | null {
 
 function boundsForSceneSphere(sphere: SceneSpherePrimitive): THREE.Box3 | null {
   return boundsForPoseAndSize(sphere.pose, sphere.size);
-}
-
-function boundsForSceneText(text: SceneTextPrimitive): THREE.Box3 | null {
-  if (!text.text) {
-    return null;
-  }
-
-  // Scale-invariant text has no fixed world size (it is sized in screen
-  // pixels per frame), so use a nominal height for camera fitting.
-  const height =
-    text.scaleInvariant || !(text.fontSize > 0)
-      ? SCENE_TEXT_DEFAULT_WORLD_HEIGHT
-      : text.fontSize;
-  const width = Math.max(height, text.text.length * height * 0.5);
-
-  return boundsForPoseAndSize(text.pose, [width, height, 0.05]);
 }
 
 function boundsForSceneTriangle(
