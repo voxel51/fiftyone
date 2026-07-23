@@ -6,6 +6,7 @@ import {
   buildTileStreamNotice,
 } from "../status/health";
 import {
+  useStreamContentTimes,
   useStreamStartTimes,
   useStreamStaleAges,
   useStreamStatuses,
@@ -39,20 +40,23 @@ function useStableStreams(streams: readonly string[]): readonly string[] {
  * The parent container must be `position: relative`.
  */
 export const TileStatusBadge: React.FC<{
+  showWarnings?: boolean;
   streams: readonly string[];
-}> = ({ streams }) => {
+}> = ({ showWarnings = true, streams }) => {
   const stableStreams = useStableStreams(streams);
   const statuses = useStreamStatuses(stableStreams);
   const startTimes = useStreamStartTimes(stableStreams);
   const staleAges = useStreamStaleAges(stableStreams);
+  const contentTimes = useStreamContentTimes(stableStreams);
   const notice = buildTileStreamNotice({
+    contentTimes,
     staleAges,
     startTimes,
     statuses,
     streams: stableStreams,
   });
 
-  if (!notice) return null;
+  if (!notice || (!showWarnings && notice.severity === "warning")) return null;
 
   return (
     <span
@@ -72,8 +76,9 @@ export const TileStatusBadge: React.FC<{
 /**
  * The same per-stream summary as the corner badge, rendered as the
  * tile settings' status strip: buffering, gap, stale, and failure states
- * read identically whether the user is looking at the tile or its
- * settings. Renders nothing while every stream is current.
+ * share one model whether the user is looking at the tile or its settings.
+ * The sidebar's `NoticeStrip` omits warning-severity states such as stale
+ * frames so those warnings remain panel-local.
  */
 export const TileStreamNoticeStrip: React.FC<{
   streams: readonly string[];
@@ -82,7 +87,9 @@ export const TileStreamNoticeStrip: React.FC<{
   const statuses = useStreamStatuses(stableStreams);
   const startTimes = useStreamStartTimes(stableStreams);
   const staleAges = useStreamStaleAges(stableStreams);
+  const contentTimes = useStreamContentTimes(stableStreams);
   const notice = buildTileStreamNotice({
+    contentTimes,
     staleAges,
     startTimes,
     statuses,

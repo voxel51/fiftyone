@@ -272,7 +272,7 @@ describe("SettingsSidebar", () => {
     ).toBeNull();
   });
 
-  it("surfaces a stabilized sampling notice in the scene status strip", () => {
+  it("keeps warning diagnostics out of the scene settings sidebar", () => {
     vi.useFakeTimers();
     try {
       playbackFrames.current = [
@@ -288,18 +288,15 @@ describe("SettingsSidebar", () => {
 
       renderSidebar();
 
-      // The notice pipeline's appearance floor holds new conditions back so
-      // boundary flips never blink the strip.
-      expect(screen.queryByText("Point cloud sampled for display")).toBeNull();
-
       act(() => {
         vi.advanceTimersByTime(600);
       });
 
-      expect(screen.getByText("Point cloud sampled for display")).toBeTruthy();
+      expect(screen.queryByText("Point cloud sampled for display")).toBeNull();
       expect(
-        screen.getByText("Showing 150,000 of 275,000 points."),
-      ).toBeTruthy();
+        screen.queryByText("Showing 150,000 of 275,000 points."),
+      ).toBeNull();
+      expect(screen.getByRole("button", { name: "Stats" })).toBeTruthy();
     } finally {
       vi.useRealTimers();
     }

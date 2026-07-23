@@ -37,21 +37,26 @@ const SEVERITY_TEXT_COLOR: Record<HealthSeverity, TextColor> = {
 
 /**
  * Status strip a sidebar surface mounts above its controls: one row per
- * stabilized health notice for that surface's scope. Purely presentational —
- * producing, stabilizing, and scoping notices is the caller's job — and it
- * renders nothing while the scope is healthy, so quiet scenes pay no chrome.
+ * non-warning health notice for that surface's scope. Warning diagnostics
+ * stay with the affected panel's local notice control instead of duplicating
+ * into settings chrome. Producing, stabilizing, and scoping notices is the
+ * caller's job.
  */
 const NoticeStrip: React.FC<{
   readonly notices: readonly HealthNotice[];
 }> = ({ notices }) => {
-  if (notices.length === 0) {
+  const visibleNotices = notices.filter(
+    (notice) => notice.severity !== "warning",
+  );
+
+  if (visibleNotices.length === 0) {
     return null;
   }
 
   return (
     <Card background={CardBackground.Secondary} compact outlined>
       <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
-        {notices.map((notice) => (
+        {visibleNotices.map((notice) => (
           <Stack
             align={Align.Start}
             key={notice.id}

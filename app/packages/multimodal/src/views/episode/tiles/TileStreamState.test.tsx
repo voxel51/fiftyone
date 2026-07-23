@@ -62,6 +62,27 @@ describe("TileEmptyState", () => {
       await screen.findByText("Displaying stale frame from 2.4s ago"),
     ).toBeTruthy();
   });
+
+  it("can keep stale warnings out of tile chrome", () => {
+    render(
+      <PlaybackProvider>
+        <SeedStaleBadge ageNs={2_400_000_000n} showWarnings={false} />
+      </PlaybackProvider>,
+    );
+
+    expect(screen.queryByTestId("episode-tile-status-badge")).toBeNull();
+    expect(screen.queryByText(/Displaying stale frame/)).toBeNull();
+  });
+
+  it("keeps non-warning stream status in tile chrome", () => {
+    render(
+      <PlaybackProvider>
+        <TileStatusBadge showWarnings={false} streams={[STREAM]} />
+      </PlaybackProvider>,
+    );
+
+    expect(screen.getByText("Buffering")).toBeTruthy();
+  });
 });
 
 function SeedGap({ startSec }: { readonly startSec: number }) {
@@ -76,7 +97,13 @@ function SeedGap({ startSec }: { readonly startSec: number }) {
   return <TileEmptyState streams={[STREAM]} />;
 }
 
-function SeedStaleBadge({ ageNs }: { readonly ageNs: bigint }) {
+function SeedStaleBadge({
+  ageNs,
+  showWarnings,
+}: {
+  readonly ageNs: bigint;
+  readonly showWarnings?: boolean;
+}) {
   const store = usePlaybackStore();
 
   // This effect seeds stale metadata in the playback store for the badge test.
@@ -85,5 +112,5 @@ function SeedStaleBadge({ ageNs }: { readonly ageNs: bigint }) {
     setStreamStaleAgeNs(store, STREAM, ageNs);
   }, [ageNs, store]);
 
-  return <TileStatusBadge streams={[STREAM]} />;
+  return <TileStatusBadge showWarnings={showWarnings} streams={[STREAM]} />;
 }
