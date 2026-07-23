@@ -41,6 +41,7 @@ declare module "three/webgpu" {
    * by TSL node graphs.
    */
   export class MeshBasicNodeMaterial extends MeshBasicMaterial {
+    colorNode: Node | null;
     opacityNode: Node | null;
     positionNode: Node | null;
   }

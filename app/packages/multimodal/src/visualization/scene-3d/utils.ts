@@ -7,7 +7,8 @@ import type {
   SceneAnnotationPrimitiveSummary,
 } from "./types";
 
-const DEFAULT_SCENE_CUBE_COLOR: RgbaColor = [0.1, 0.78, 0.95, 1];
+/** Default wireframe color for scene cubes without an explicit RGBA value. */
+export const DEFAULT_SCENE_CUBE_COLOR: RgbaColor = [0.1, 0.78, 0.95, 1];
 export const EMPTY_NOTICES: readonly PanelNotice[] = [];
 const HEX_COLOR_PATTERN = /^#?([0-9a-f]{6})$/i;
 const RGB_MAX = 255;
