@@ -142,6 +142,14 @@ export interface RawRecordCapability {
   }): Promise<RawRecordResult>;
 }
 
+/** Format-selected nouns used by the shared episode viewer. */
+export interface EpisodeTerminology {
+  readonly stream?: {
+    readonly plural: string;
+    readonly singular: string;
+  };
+}
+
 /** Open, format-neutral episode data plane consumed by the shared runtime. */
 export interface EpisodeSession {
   readonly manifest: EpisodeManifest;
@@ -149,6 +157,7 @@ export interface EpisodeSession {
   readonly playback?: PlaybackReadCapability;
   readonly rawRecords?: RawRecordCapability;
   readonly synchronizedRead?: SynchronizedReadAcceleration;
+  readonly terminology?: EpisodeTerminology;
   readonly transformRead?: TransformReadAcceleration;
 
   activate?(): void;

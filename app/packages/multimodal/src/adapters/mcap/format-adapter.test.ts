@@ -45,6 +45,20 @@ defineEpisodeSessionContractTests({
 });
 
 describe("MCAP format adapter", () => {
+  it("names streams as topics for the shared viewer", async () => {
+    const session = await createMcapFormatAdapter({
+      createClient,
+    }).open(source, io);
+    try {
+      expect(session.terminology?.stream).toEqual({
+        plural: "topics",
+        singular: "topic",
+      });
+    } finally {
+      session.dispose();
+    }
+  });
+
   it("opens from grid bootstrap hints without repeating inventory reads", async () => {
     const client = createClient();
     const manifest = createMcapManifest(
