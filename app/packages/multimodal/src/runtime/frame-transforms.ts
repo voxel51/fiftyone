@@ -17,6 +17,7 @@ import type {
   EpisodeFrameTransformTimeRange,
   EpisodeHeldFrameTransform,
   EpisodeHeldFrameTransformReason,
+  EpisodeParentFrameTransformResolution,
 } from "./frame-transform-types";
 
 const IDENTITY_QUATERNION = new Quaternion();
@@ -60,6 +61,17 @@ type EffectiveDynamicTransformResult =
     }
   | { readonly status: "unavailable" };
 
+interface EpisodeFrameTransformIndex {
+  readonly adjacency: ReadonlyMap<
+    string,
+    readonly EpisodeComposedFrameTransform[]
+  >;
+  readonly parentTransformsByChildFrameId: ReadonlyMap<
+    string,
+    EpisodeComposedFrameTransform
+  >;
+}
+
 /**
  * Mutable frame transform index for static and dynamic episode transform samples.
  */
@@ -81,7 +93,7 @@ export class EpisodeFrameTransformStore {
   private readonly frameIdsById = new Set<string>();
   private readonly adjacencyCache = new Map<
     string,
-    Map<string, EpisodeComposedFrameTransform[]>
+    EpisodeFrameTransformIndex
   >();
   private readonly staticSamplesByEdge = new Map<
     string,
@@ -327,10 +339,54 @@ export class EpisodeFrameTransformStore {
     };
   }
 
+  resolveParent({
+    policy = DEFAULT_FRAME_TRANSFORM_POLICY,
+    sourceFrameId,
+    timeNs,
+  }: {
+    readonly policy?: EpisodeFrameTransformPolicy;
+    readonly sourceFrameId: string;
+    readonly timeNs?: bigint;
+  }): EpisodeParentFrameTransformResolution {
+    const source = nonEmpty(sourceFrameId);
+    if (!source) {
+      return { sourceFrameId, status: "missing" };
+    }
+
+    const transform = this.buildTransformIndex(
+      timeNs,
+      policy,
+    ).parentTransformsByChildFrameId.get(source);
+    if (transform) {
+      return {
+        parentFrameId: transform.targetFrameId,
+        sourceFrameId: source,
+        status: "resolved",
+        transform,
+      };
+    }
+
+    if (
+      timeNs !== undefined &&
+      this.dynamicSamplesByChild.has(source) &&
+      !this.isTimeIndexed(timeNs)
+    ) {
+      return { sourceFrameId: source, status: "pending" };
+    }
+    return { sourceFrameId: source, status: "missing" };
+  }
+
   private buildAdjacency(
     timeNs: bigint | undefined,
     policy: EpisodeFrameTransformPolicy,
   ) {
+    return this.buildTransformIndex(timeNs, policy).adjacency;
+  }
+
+  private buildTransformIndex(
+    timeNs: bigint | undefined,
+    policy: EpisodeFrameTransformPolicy,
+  ): EpisodeFrameTransformIndex {
     const timeKey = frameTransformTimeKey(timeNs, policy);
     const cached = this.adjacencyCache.get(timeKey);
     if (cached) {
@@ -340,10 +396,18 @@ export class EpisodeFrameTransformStore {
     }
 
     const adjacency = new Map<string, EpisodeComposedFrameTransform[]>();
+    const parentTransformsByChildFrameId = new Map<
+      string,
+      EpisodeComposedFrameTransform
+    >();
     for (const childToParent of this.effectiveTransformsForTime(
       timeNs,
       policy,
     )) {
+      parentTransformsByChildFrameId.set(
+        childToParent.sourceFrameId,
+        childToParent,
+      );
       pushAdjacency(adjacency, childToParent.sourceFrameId, childToParent);
       pushAdjacency(
         adjacency,
@@ -352,13 +416,14 @@ export class EpisodeFrameTransformStore {
       );
     }
 
-    this.adjacencyCache.set(timeKey, adjacency);
+    const index = { adjacency, parentTransformsByChildFrameId };
+    this.adjacencyCache.set(timeKey, index);
     if (this.adjacencyCache.size > MAX_ADJACENCY_CACHE_ENTRIES) {
       const oldestKey = this.adjacencyCache.keys().next().value;
       if (oldestKey !== undefined) this.adjacencyCache.delete(oldestKey);
     }
 
-    return adjacency;
+    return index;
   }
 
   private effectiveTransformsForTime(
