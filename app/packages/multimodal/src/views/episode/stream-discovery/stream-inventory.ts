@@ -5,6 +5,7 @@ import {
   type SceneSource,
   type SceneSourceType,
   type StreamDescriptor,
+  type StreamId,
 } from "../../../ir/index";
 
 export const STREAM_CATEGORY = {
@@ -81,9 +82,10 @@ export interface StreamInventoryRow {
   readonly encoding: string;
   readonly recordCount: number | null;
   readonly schemaName: string;
+  readonly sourceName: string;
   readonly sourceType: SceneSourceType | null;
+  readonly streamId: StreamId;
   readonly supportStatus: StreamSupportStatus;
-  readonly stream: string;
 }
 
 type GenericDecodeStatus =
@@ -133,14 +135,14 @@ export function buildStreamInventoryRows({
 
   return streams
     .map((stream) => {
-      const name = streamName(stream);
-      if (!name) {
+      const sourceName = sourceNameFor(stream);
+      if (!sourceName) {
         return null;
       }
 
       const sourceType =
         knownSceneSourceType(stream.metadata?.[SCENE_SOURCE_METADATA.TYPE]) ??
-        knownSceneSourceType(sceneSourceTypes.get(name));
+        knownSceneSourceType(sceneSourceTypes.get(stream.id));
       const frameTransform = isFrameTransformStream(stream);
       const decodeStatus = genericDecodeStatus(
         stream.metadata?.[STREAM_METADATA.DECODE_STATUS],
@@ -159,21 +161,22 @@ export function buildStreamInventoryRows({
         }),
         category: categoryForStream({
           frameTransform,
+          sourceName,
           sourceType,
           telemetry,
-          stream: name,
         }),
         countLabel: messageCountLabel(stream.count),
         encoding: encodingFor(stream),
         recordCount: recordCountFor(stream.count),
         schemaName,
+        sourceName,
         sourceType,
+        streamId: stream.id,
         supportStatus: supportStatusFor({
           decodeStatus,
           frameTransform,
           sourceType,
         }),
-        stream: name,
       };
     })
     .filter((row): row is StreamInventoryRow => row !== null)
@@ -191,7 +194,7 @@ export function filterStreamInventoryRows(
 
   return rows.filter((row) =>
     [
-      row.stream,
+      row.sourceName,
       row.schemaName,
       row.encoding,
       STREAM_CATEGORY_LABEL[row.category],
@@ -213,16 +216,16 @@ export function messageCountLabel(recordCount: number | undefined): string {
 
 function categoryForStream({
   frameTransform,
+  sourceName,
   sourceType,
   telemetry,
-  stream,
 }: {
   readonly frameTransform: boolean;
+  readonly sourceName: string;
   readonly sourceType: SceneSourceType | null;
   readonly telemetry: boolean;
-  readonly stream: string;
 }): StreamCategory {
-  if (/(?:^|\/)imu(?:\/|$)/i.test(stream)) {
+  if (/(?:^|\/)imu(?:\/|$)/i.test(sourceName)) {
     return STREAM_CATEGORY.SENSORS;
   }
   if (sourceType === SCENE_SOURCE_TYPE.LOG) {
@@ -328,7 +331,7 @@ function compareStreamRows(
   const categoryDelta =
     STREAM_CATEGORY_ORDER.indexOf(left.category) -
     STREAM_CATEGORY_ORDER.indexOf(right.category);
-  return categoryDelta || left.stream.localeCompare(right.stream);
+  return categoryDelta || left.sourceName.localeCompare(right.sourceName);
 }
 
 function isTelemetrySchema(schemaName: string): boolean {
@@ -362,7 +365,7 @@ function encodingFor(stream: StreamDescriptor): string {
   );
 }
 
-function streamName(stream: StreamDescriptor): string {
+function sourceNameFor(stream: StreamDescriptor): string {
   return (
     stream.metadata?.[SCENE_SOURCE_METADATA.SOURCE_NAME] ??
     stream.sourceName ??

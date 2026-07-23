@@ -32,7 +32,7 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
     [],
   );
   useRegisterTileSettings(tileId, settingsRegistration);
-  const stream = useRawTileStream();
+  const streamKey = useRawTileStream();
   const setTileTitle = useSetTileTitle();
   const { recordsByStream, subscribeRecord } = useRawMessageContext();
   const { ensureEnumeration, enumeration } = useNumericSeriesContext();
@@ -41,52 +41,61 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
   // This effect declares interest in the selected stream while the tile
   // shows it; the bridge follows the playhead for interested streams.
   useEffect(() => {
-    if (!stream) {
+    if (!streamKey) {
       return undefined;
     }
-    return subscribeRecord(stream);
-  }, [subscribeRecord, stream]);
+    return subscribeRecord(streamKey);
+  }, [streamKey, subscribeRecord]);
 
   // The raw tree only shows "plot" on fields confirmed by the numeric
   // catalog. While the catalog is idle/loading/error, no affordance is shown.
   useEffect(() => {
-    if (stream) {
+    if (streamKey) {
       ensureEnumeration();
     }
-  }, [ensureEnumeration, stream]);
+  }, [ensureEnumeration, streamKey]);
 
-  // This effect keeps the tile title synchronized with the selected stream.
-  useEffect(() => {
-    setTileTitle(stream ?? "Message", { source: "auto" });
-  }, [setTileTitle, stream]);
-
-  const state = stream ? recordsByStream.get(stream) : undefined;
+  const state = streamKey ? recordsByStream.get(streamKey) : undefined;
   const result = state?.result;
+
+  // Keep canonical ids in tile state, but present the source name returned by
+  // the adapter. While a record is loading, preserve the title assigned by the
+  // stream action or picker instead of flashing an internal channel id.
+  useEffect(() => {
+    if (!streamKey) {
+      setTileTitle("Message", { source: "auto" });
+    } else if (result?.sourceName) {
+      setTileTitle(result.sourceName, { source: "auto" });
+    }
+  }, [result?.sourceName, setTileTitle, streamKey]);
+
   const plottableFieldPaths = useMemo(() => {
-    if (!stream || enumeration.status !== "ready") {
+    if (!streamKey || enumeration.status !== "ready") {
       return undefined;
     }
     const streamFields = enumeration.streams.find(
-      (entry) => entry.streamId === stream && entry.availability === "ready",
+      (entry) =>
+        (entry.streamId === streamKey || entry.sourceName === streamKey) &&
+        entry.availability === "ready",
     );
     if (!streamFields || streamFields.fields.length === 0) {
       return undefined;
     }
     return new Set(streamFields.fields.map((field) => field.path));
-  }, [enumeration, stream]);
+  }, [enumeration, streamKey]);
 
   const handleAddFieldToPlot = useCallback(
     (fieldPath: string) => {
-      if (stream) {
-        addFieldToPlot(stream, fieldPath);
+      if (streamKey) {
+        addFieldToPlot(streamKey, fieldPath);
       }
     },
-    [addFieldToPlot, stream],
+    [addFieldToPlot, streamKey],
   );
 
   return (
     <div className={rawStyles.body} data-cy="episode-raw-tile">
-      {!stream ? (
+      {!streamKey ? (
         <div className={styles.loading}>
           <span className={styles.emptyText}>
             Choose a stream in the panel settings
@@ -102,13 +111,13 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
             }
           >
             {state?.status === "error"
-              ? `Could not read ${stream}: ${state.error ?? "unknown error"}`
+              ? `Could not read ${streamKey}: ${state.error ?? "unknown error"}`
               : "Loading message…"}
           </span>
         </div>
       ) : (
         <>
-          <MetaRow result={result} stream={stream} />
+          <MetaRow result={result} streamKey={streamKey} />
           <RecordBody
             onAddNumericFieldToPlot={handleAddFieldToPlot}
             plottableFieldPaths={plottableFieldPaths}
@@ -122,10 +131,10 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
 
 function MetaRow({
   result,
-  stream,
+  streamKey,
 }: {
   readonly result: RawRecordResult;
-  readonly stream: string;
+  readonly streamKey: string;
 }) {
   const dataStream = useDataStream();
   const { readFullMessageJson } = useRawMessageContext();
@@ -145,7 +154,7 @@ function MetaRow({
 
     setCopying(true);
     try {
-      const json = await readFullMessageJson(stream, result.validFromNs);
+      const json = await readFullMessageJson(streamKey, result.validFromNs);
       await navigator.clipboard.writeText(json);
       showCopyFeedback("copied");
     } catch {
@@ -153,7 +162,7 @@ function MetaRow({
     } finally {
       setCopying(false);
     }
-  }, [copying, readFullMessageJson, result, showCopyFeedback, stream]);
+  }, [copying, readFullMessageJson, result, showCopyFeedback, streamKey]);
 
   const startTimeNs = dataStream?.getTimelineIndex()?.startTimeNs;
   const relativeTime =
@@ -163,7 +172,7 @@ function MetaRow({
 
   return (
     <div className={rawStyles.meta} data-cy="episode-raw-meta">
-      <span className={rawStyles.metaStream}>{stream}</span>
+      <span className={rawStyles.metaStream}>{result.sourceName}</span>
       {relativeTime ? (
         <span title="Message log time relative to the recording start">
           {relativeTime}
