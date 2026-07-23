@@ -1,12 +1,10 @@
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 import { bin } from "./process.mjs";
-
-console.log("Checking dependencies integrity for multimodal");
 
 const appRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const require = createRequire(import.meta.url);
@@ -32,40 +30,31 @@ assert.equal(
   0,
   `top-level namespaces need a direct dependency rule: ${undeclaredNamespaces.join(", ")}`,
 );
-console.log(
-  `Verified ${topLevelNamespaces.length} top-level namespace dependency contracts`,
-);
 
-execFileSync(
+const cruiseArgs = [
+  "exec",
+  "depcruise",
+  "--config",
+  "packages/multimodal/.dependency-cruiser.cjs",
+  "packages/multimodal/src",
+];
+const cruise = spawnSync(
   bin("yarn"),
-  [
-    "exec",
-    "depcruise",
-    "--config",
-    "packages/multimodal/.dependency-cruiser.cjs",
-    "packages/multimodal/src",
-  ],
+  [...cruiseArgs, "--output-type", "json"],
   {
     cwd: appRoot,
-    stdio: "inherit",
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
   },
 );
 
-const graph = JSON.parse(
-  execFileSync(
-    bin("yarn"),
-    [
-      "exec",
-      "depcruise",
-      "--config",
-      "packages/multimodal/.dependency-cruiser.cjs",
-      "--output-type",
-      "json",
-      "packages/multimodal/src",
-    ],
-    { cwd: appRoot, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
-  ),
-);
+if (cruise.error) throw cruise.error;
+if (cruise.status !== 0) {
+  spawnSync(bin("yarn"), cruiseArgs, { cwd: appRoot, stdio: "inherit" });
+  process.exit(cruise.status ?? 1);
+}
+
+const graph = JSON.parse(cruise.stdout);
 
 const sourcePrefix = "packages/multimodal/src/";
 const dependencies = graph.modules.flatMap((module) =>
@@ -73,11 +62,6 @@ const dependencies = graph.modules.flatMap((module) =>
 );
 
 const episodeProductionPrefix = `${sourcePrefix}views/episode/`;
-// Temporary upper bounds for production module edges between episode domains
-// that still depend on one another in both directions. Lower a bound whenever
-// a migration removes an edge, and delete both directions once the pair is no
-// longer bidirectional.
-const episodeDomainBudget = Object.freeze({});
 
 function episodeProductionDomain(source) {
   if (
@@ -104,39 +88,19 @@ function verifyEpisodeDomainDirection(edges) {
     edgeCounts.set(key, (edgeCounts.get(key) ?? 0) + 1);
   }
 
-  const reversePairs = [...edgeCounts.entries()]
+  const bidirectionalEdges = [...edgeCounts.entries()]
     .filter(([key]) => {
       const [from, to] = key.split("->");
       return edgeCounts.has(`${to}->${from}`);
     })
     .sort(([left], [right]) => left.localeCompare(right));
-  const missingBudgets = reversePairs.filter(
-    ([key]) => !Object.hasOwn(episodeDomainBudget, key),
-  );
+
   assert.equal(
-    missingBudgets.length,
+    bidirectionalEdges.length,
     0,
-    `new bidirectional episode-domain edges need an explicit migration budget:\n${missingBudgets
+    `episode domains must not depend on each other in both directions:\n${bidirectionalEdges
       .map(([key, count]) => `  ${key}: ${count}`)
       .join("\n")}`,
-  );
-
-  for (const [key, budget] of Object.entries(episodeDomainBudget)) {
-    const actual = edgeCounts.get(key) ?? 0;
-    assert(
-      actual <= budget,
-      `${key} has ${actual} production module edges; migration budget is ${budget}`,
-    );
-
-    const [from, to] = key.split("->");
-    assert(
-      edgeCounts.has(`${to}->${from}`),
-      `${key} is no longer bidirectional; delete its migration budget`,
-    );
-  }
-
-  console.log(
-    `Verified episode domain direction with ${reversePairs.length / 2} temporary bidirectional pair budgets`,
   );
 }
 
@@ -166,6 +130,4 @@ assert(
   "outside dependencies must remain visible leaves without being traversed",
 );
 
-console.log(
-  `Verified ${outsideTargets.length} outside dependency targets as visible leaves`,
-);
+console.log("Multimodal dependency architecture verified");
