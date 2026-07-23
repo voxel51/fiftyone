@@ -21,6 +21,8 @@ import { SCENE_SOURCE_METADATA, SCENE_SOURCE_TYPE } from "../../../ir";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { ImagePanel } from "../../../visualization/media-2d/ImagePanel";
+import GpuImageAnnotationLayer from "../../../visualization/media-2d/GpuImageAnnotationLayer";
+import { GpuImageAnnotationPicker } from "../../../visualization/media-2d/GpuImageAnnotationPicker";
 import { imageTextureCacheKey } from "../../../visualization/media-2d/image-texture-cache";
 import type { PanelNotice } from "../../../visualization/panel-ui/PanelNotices";
 import { useImagePanZoom } from "../../../visualization/media-2d/use-image-pan-zoom";
@@ -62,6 +64,7 @@ import {
 } from "../spatial/camera-geometry/camera-model";
 import { resolveRectifiedImageDisplay } from "../spatial/camera-geometry/image-rectification";
 import ImageTileSettings from "./ImageTileSettings";
+import { useImageAnnotationLayer } from "./use-image-annotation-layer";
 import {
   describeCalibrationSelection,
   describeCameraGeometry,
@@ -306,6 +309,17 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       available.has(labelStream),
     );
   }, [annotationStreams, storedLabelStreams, stream]);
+  const annotationPixelTransform = rectifiedViewActive
+    ? rectifiedDisplay?.pixelTransform
+    : undefined;
+  const imageAnnotations = useImageAnnotationLayer({
+    pixelTransform: annotationPixelTransform,
+    resourceKey: `${sourceKey || "episode-session"}\n${tileId}\n${stream}`,
+    streams: selectedLabelStreams,
+  });
+  const activeImageAnnotations = Boolean(
+    effectiveImageDims && imageAnnotations.hasGeometry,
+  );
   usePublishAnnotationStreams(selectedLabelStreams);
   const activeStreams = useMemo(
     () => (stream ? [stream, ...selectedLabelStreams] : []),
@@ -370,7 +384,10 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     fit: IMAGE_FIT,
     // The resting hand cursor would occlude the very dot a dwell hover
     // inspects; a crosshair pinpoints it. Dragging still shows "grabbing".
-    idleCursor: activeProjection || activeDepthHover ? "crosshair" : undefined,
+    idleCursor:
+      activeProjection || activeDepthHover || activeImageAnnotations
+        ? "crosshair"
+        : undefined,
     imageSize: effectiveImageDims,
     resetKey: `${stream}\n${cameraProjection.display}\n${rectifiedViewActive}`,
   });
@@ -538,19 +555,48 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
             onResetView={imagePanZoom.resetView}
             notices={imageNotices}
             sceneChildren={
-              activeProjection ? (
-                <ImageProjectionScene
-                  cameraModel={activeProjection.cameraModel}
-                  fit={IMAGE_FIT}
-                  imageHeight={activeProjection.imageDims.height}
-                  imageWidth={activeProjection.imageDims.width}
-                  hoveredPoint={sharedHover}
-                  layers={projectionLayers}
-                  pointSize={pointCloudProjection.pointSize}
-                  ref={projectionPickerRef}
-                  sourceKey={sourceKey || "episode-session"}
-                  viewTransform={imagePanZoom.viewTransform}
-                />
+              activeProjection || activeImageAnnotations ? (
+                <>
+                  {activeProjection ? (
+                    <ImageProjectionScene
+                      cameraModel={activeProjection.cameraModel}
+                      fit={IMAGE_FIT}
+                      imageHeight={activeProjection.imageDims.height}
+                      imageWidth={activeProjection.imageDims.width}
+                      hoveredPoint={sharedHover}
+                      layers={projectionLayers}
+                      pointSize={pointCloudProjection.pointSize}
+                      ref={projectionPickerRef}
+                      sourceKey={sourceKey || "episode-session"}
+                      viewTransform={imagePanZoom.viewTransform}
+                    />
+                  ) : null}
+                  {activeImageAnnotations && effectiveImageDims ? (
+                    <>
+                      <GpuImageAnnotationLayer
+                        fit={IMAGE_FIT}
+                        imageHeight={effectiveImageDims.height}
+                        imageWidth={effectiveImageDims.width}
+                        resource={imageAnnotations.resource}
+                        viewTransform={imagePanZoom.viewTransform}
+                      />
+                      <GpuImageAnnotationLayer
+                        fit={IMAGE_FIT}
+                        imageHeight={effectiveImageDims.height}
+                        imageWidth={effectiveImageDims.width}
+                        renderOrder={30}
+                        resource={imageAnnotations.highlightResource}
+                        viewTransform={imagePanZoom.viewTransform}
+                      />
+                      <GpuImageAnnotationPicker
+                        imageHeight={effectiveImageDims.height}
+                        imageWidth={effectiveImageDims.width}
+                        ref={imageAnnotations.pickerRef}
+                        resource={imageAnnotations.resource}
+                      />
+                    </>
+                  ) : null}
+                </>
               ) : undefined
             }
             textureMesh={
@@ -580,20 +626,15 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
               viewTransform={imagePanZoom.viewTransform}
             />
           ) : null}
-          {effectiveImageDims && selectedLabelStreams.length > 0 ? (
+          {activeImageAnnotations && effectiveImageDims ? (
             <ImageAnnotationOverlay
               fit={IMAGE_FIT}
               imageWidth={effectiveImageDims.width}
               imageHeight={effectiveImageDims.height}
-              // Keep the interpolation engine available internally while the
-              // product policy treats recorded 2D annotations as authoritative.
-              interpolate={false}
-              pixelTransform={
-                rectifiedViewActive
-                  ? rectifiedDisplay?.pixelTransform
-                  : undefined
-              }
-              streams={selectedLabelStreams}
+              onHoverPrimitive={imageAnnotations.setHoveredPrimitiveIndex}
+              onSelectPrimitive={imageAnnotations.selectPrimitive}
+              pickerRef={imageAnnotations.pickerRef}
+              prepared={imageAnnotations.prepared}
               viewTransform={imagePanZoom.viewTransform}
             />
           ) : null}
