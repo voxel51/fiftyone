@@ -66,10 +66,11 @@ import { resolveRectifiedImageDisplay } from "../spatial/camera-geometry/image-r
 import ImageTileSettings from "./ImageTileSettings";
 import { useImageAnnotationLayer } from "./use-image-annotation-layer";
 import {
+  classifyImageDimensions,
   describeCalibrationSelection,
   describeCameraGeometry,
   describeGeometryControl,
-  getProjectionIssue,
+  getProjectionNotice,
   getRectifiedDisplayIssue,
 } from "./image-camera-status";
 
@@ -231,12 +232,16 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
         : null,
     [calibration, selectedImageSource?.sourceName],
   );
-  const sourceDimensionMismatch = Boolean(
-    imageDims &&
-    cameraModelResolution?.status === "ready" &&
-    (imageDims.width !== cameraModelResolution.model.width ||
-      imageDims.height !== cameraModelResolution.model.height),
-  );
+  const dimensionCompatibility =
+    imageDims && cameraModelResolution?.status === "ready"
+      ? classifyImageDimensions(imageDims, cameraModelResolution.model)
+      : null;
+  // Rectification still requires exact pixel coordinates. Point-cloud
+  // projection may also use proportional dimensions because its render and
+  // pick paths normalize through calibration pixels.
+  const sourceDimensionMismatch =
+    dimensionCompatibility !== null && dimensionCompatibility !== "exact";
+  const projectionDimensionMismatch = dimensionCompatibility === "mismatch";
   const rectifiedDisplay = useMemo(() => {
     if (
       cameraProjection.display !== "rectified" ||
@@ -347,7 +352,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     calibration &&
     calibration.coordinateFrameId &&
     displayCameraModel &&
-    !sourceDimensionMismatch &&
+    !projectionDimensionMismatch &&
     selectedProjectionStreams.length > 0
       ? {
           cameraFrameId: calibration.coordinateFrameId,
@@ -443,34 +448,46 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     rectifiedModelResolution,
     sourceDimensionMismatch,
   });
-  const projectionIssue = getProjectionIssue({
-    calibration,
-    calibrationStream,
-    cameraModelResolution,
-    enabled:
-      pointCloudProjection.enabled && selectedProjectionStreams.length > 0,
-    explicitCalibrationAvailable,
-    imageDims,
-    sourceDimensionMismatch,
-  });
-  const visibleIssue = rectifiedDisplayIssue ?? projectionIssue;
+  const projectionNotice = useMemo(
+    () =>
+      getProjectionNotice({
+        calibration,
+        calibrationStream,
+        cameraModelResolution,
+        dimensionCompatibility,
+        enabled:
+          pointCloudProjection.enabled && selectedProjectionStreams.length > 0,
+        explicitCalibrationAvailable,
+        imageDims,
+      }),
+    [
+      calibration,
+      calibrationStream,
+      cameraModelResolution,
+      dimensionCompatibility,
+      explicitCalibrationAvailable,
+      imageDims,
+      pointCloudProjection.enabled,
+      selectedProjectionStreams.length,
+    ],
+  );
   const geometryControlLabel = describeGeometryControl(
     cameraProjection.geometry,
     cameraModelResolution,
   );
-  const imageNotices = useMemo<readonly PanelNotice[]>(
-    () =>
-      visibleIssue
-        ? [
-            {
-              id: "episode-image-projection",
-              message: visibleIssue,
-              severity: "warning",
-            },
-          ]
-        : [],
-    [visibleIssue],
-  );
+  const imageNotices = useMemo<readonly PanelNotice[]>(() => {
+    const visibleNotice = rectifiedDisplayIssue
+      ? { message: rectifiedDisplayIssue, severity: "warning" as const }
+      : projectionNotice;
+    return visibleNotice
+      ? [
+          {
+            id: "episode-image-projection",
+            ...visibleNotice,
+          },
+        ]
+      : [];
+  }, [projectionNotice, rectifiedDisplayIssue]);
   const settingsRegistration = useMemo(
     () => ({
       content: (

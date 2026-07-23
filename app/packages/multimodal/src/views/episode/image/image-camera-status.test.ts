@@ -3,9 +3,10 @@ import { describe, expect, it } from "vitest";
 
 import { resolveCameraModel } from "../spatial/camera-geometry/camera-model";
 import {
+  classifyImageDimensions,
   describeCalibrationSelection,
   describeGeometryControl,
-  getProjectionIssue,
+  getProjectionNotice,
   getRectifiedDisplayIssue,
 } from "./image-camera-status";
 
@@ -23,6 +24,34 @@ const ready = resolveCameraModel({
 });
 
 describe("image camera status", () => {
+  it("classifies exact and proportionally scaled image dimensions", () => {
+    const calibrationDims = { height: 180, width: 320 };
+
+    expect(
+      classifyImageDimensions({ height: 180, width: 320 }, calibrationDims),
+    ).toBe("exact");
+    expect(
+      classifyImageDimensions({ height: 720, width: 1280 }, calibrationDims),
+    ).toBe("proportional");
+    expect(
+      classifyImageDimensions({ height: 540, width: 960 }, calibrationDims),
+    ).toBe("proportional");
+  });
+
+  it("allows dimension rounding but rejects material aspect changes", () => {
+    const calibrationDims = { height: 180, width: 320 };
+
+    expect(
+      classifyImageDimensions({ height: 721, width: 1280 }, calibrationDims),
+    ).toBe("proportional");
+    expect(
+      classifyImageDimensions({ height: 722, width: 1280 }, calibrationDims),
+    ).toBe("mismatch");
+    expect(
+      classifyImageDimensions({ height: 800, width: 1280 }, calibrationDims),
+    ).toBe("mismatch");
+  });
+
   it("describes automatic and explicit calibration choices", () => {
     const sources = [{ id: "/calibration", label: "Front calibration" }];
     expect(describeCalibrationSelection(null, "/calibration", sources)).toBe(
@@ -41,27 +70,65 @@ describe("image camera status", () => {
 
   it("reports the first actionable projection gate", () => {
     expect(
-      getProjectionIssue({
+      getProjectionNotice({
         calibration: null,
         calibrationStream: null,
         cameraModelResolution: null,
+        dimensionCompatibility: null,
         enabled: true,
         explicitCalibrationAvailable: true,
         imageDims: null,
-        sourceDimensionMismatch: false,
       }),
-    ).toBe("Choose a camera calibration before projecting points");
+    ).toEqual({
+      message: "Choose a camera calibration before projecting points",
+      severity: "warning",
+    });
     expect(
-      getProjectionIssue({
+      getProjectionNotice({
         calibration,
         calibrationStream: "/calibration",
         cameraModelResolution: ready,
+        dimensionCompatibility: "exact",
         enabled: true,
         explicitCalibrationAvailable: true,
-        imageDims: null,
-        sourceDimensionMismatch: false,
+        imageDims: { height: 100, width: 100 },
       }),
     ).toBeNull();
+  });
+
+  it("reports proportional projection scaling as information", () => {
+    expect(
+      getProjectionNotice({
+        calibration,
+        calibrationStream: "/calibration",
+        cameraModelResolution: ready,
+        dimensionCompatibility: "proportional",
+        enabled: true,
+        explicitCalibrationAvailable: true,
+        imageDims: { height: 400, width: 400 },
+      }),
+    ).toEqual({
+      message:
+        "Image is 400×400; using 100×100 calibration with proportional scaling",
+      severity: "info",
+    });
+  });
+
+  it("keeps incompatible projection dimensions as a warning", () => {
+    expect(
+      getProjectionNotice({
+        calibration,
+        calibrationStream: "/calibration",
+        cameraModelResolution: ready,
+        dimensionCompatibility: "mismatch",
+        enabled: true,
+        explicitCalibrationAvailable: true,
+        imageDims: { height: 300, width: 400 },
+      }),
+    ).toEqual({
+      message: "Image is 400×300, but calibration resolves to 100×100",
+      severity: "warning",
+    });
   });
 
   it("distinguishes geometry choice from rectified-display readiness", () => {
