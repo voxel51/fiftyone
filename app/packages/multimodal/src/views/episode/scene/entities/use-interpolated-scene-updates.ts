@@ -26,9 +26,8 @@ import { useOptionalPlayhead } from "../../playback/use-optional-playhead";
  * playback frames. Each held frame is lerped toward the next distinct
  * cached message by the playhead fraction, producing a synthesized frame
  * stamped at the playhead so transform placement resolves at the same time
- * as the geometry. With `interpolate` false (as-recorded fidelity) or when
- * no lookahead message is cached yet, the input frames pass through
- * untouched.
+ * as the geometry. With interpolation disabled or when no lookahead message
+ * is cached yet, the input frames pass through untouched.
  *
  * The caller keeps ownership of stream subscriptions (they ride the base
  * `useStreamPlaybackFrames` call); this hook only reads caches.
@@ -44,9 +43,11 @@ export function useInterpolatedSceneUpdateFrames({
 }): readonly (StreamPlaybackFrame<SceneUpdateVisualization> | null)[] {
   const dataStream = useDataStream();
   const history = useSceneUpdateHistoryContext();
-  // Smooth mode tracks every RAF tick. As-recorded mode samples placement time
-  // only when its content-driven parent renders, avoiding a broad 60 Hz root.
-  const playhead = useOptionalPlayhead(interpolate);
+  // Track every RAF tick only when there is annotation work to interpolate.
+  // Otherwise, sample placement time only when the content-driven parent
+  // renders, avoiding an empty high-frequency subscription.
+  const tracksPlayhead = interpolate && streams.length > 0;
+  const playhead = useOptionalPlayhead(tracksPlayhead);
   const timeline = dataStream?.getTimelineIndex() ?? null;
   // Late-arriving lookahead messages must re-derive the lifecycle snapshot and
   // lerp even while the playhead is paused mid-gap.
@@ -81,7 +82,7 @@ export function useInterpolatedSceneUpdateFrames({
   }, [cacheSnapshot, dataStream, frames, history, streams]);
 
   return useMemo(() => {
-    if (!interpolate || !dataStream || !timeline) {
+    if (!interpolate || streams.length === 0 || !dataStream || !timeline) {
       return resolvedFrames;
     }
 
