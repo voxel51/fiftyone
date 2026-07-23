@@ -71,10 +71,19 @@ describe("ImageProjectionOverlay", () => {
         kind: "point",
         pointIndex: 0,
         position: [1, 2, 3],
-        stream: "/lidar",
+        source: {
+          cameraFrameId: "camera",
+          imageContentTimeNs: 21n,
+          imageStream: "/camera/image",
+          kind: "image-projection",
+          pointContentTimeNs: 42n,
+        },
+        stream: "41",
       }),
     );
-    expect(screen.getByTestId("episode-3d-hover-tooltip")).toBeTruthy();
+    const tooltip = screen.getByTestId("episode-3d-hover-tooltip");
+    expect(tooltip.textContent).toContain("lidar/top");
+    expect(tooltip.textContent).toContain("/lidar/top/points");
     expect(container.querySelector("canvas")).toBeNull();
   });
 
@@ -111,25 +120,75 @@ describe("ImageProjectionOverlay", () => {
       ),
     ).toBe(false);
   });
+
+  it("clears the published interaction when its point frame changes", async () => {
+    const layer = projectionLayer();
+    const picker = pickerHandle(
+      Promise.resolve({
+        layerIndex: 0,
+        resourceKey: gpuPointCloudProjectionResourceKey(
+          "recording",
+          layer.stream,
+          layer.contentTimeNs,
+        ),
+        sampleIndex: 0,
+        sourceIndex: 0,
+      }),
+    );
+    const rendered = renderOverlay(layer, picker);
+    mockOverlayBounds(rendered.container);
+
+    act(() => mocks.dwell?.onDwell(210, 170));
+    await waitFor(() =>
+      expect(
+        mocks.setHover.mock.calls.some(
+          ([value]) => typeof value === "object" && value?.kind === "point",
+        ),
+      ).toBe(true),
+    );
+    const published = mocks.setHover.mock.calls.find(
+      ([value]) => typeof value === "object" && value?.kind === "point",
+    )?.[0];
+
+    rendered.rerender(projectionOverlay(projectionLayer(43n), picker));
+
+    await waitFor(() => {
+      const clear = mocks.setHover.mock.calls.at(-1)?.[0];
+      expect(clear).toBeTypeOf("function");
+      expect(clear(published)).toBeNull();
+    });
+    expect(picker.invalidate).toHaveBeenCalled();
+    expect(screen.queryByTestId("episode-3d-hover-tooltip")).toBeNull();
+  });
 });
 
 function renderOverlay(
   layer: ImageProjectionLayer,
   picker: GpuPointCloudProjectionPickerHandle,
 ) {
-  return render(
+  return render(projectionOverlay(layer, picker));
+}
+
+function projectionOverlay(
+  layer: ImageProjectionLayer,
+  picker: GpuPointCloudProjectionPickerHandle,
+) {
+  return (
     <div>
       <ImageProjectionOverlay
+        cameraFrameId="camera"
         cameraModel={cameraModel()}
         fit="contain"
         imageHeight={300}
+        imageContentTimeNs={21n}
+        imageStream="/camera/image"
         imageWidth={400}
         layers={[layer]}
         pickerRef={{ current: picker }}
         pointSize={2}
         sourceKey="recording"
       />
-    </div>,
+    </div>
   );
 }
 
@@ -171,7 +230,7 @@ function pickerHandle(
   };
 }
 
-function projectionLayer(): ImageProjectionLayer {
+function projectionLayer(contentTimeNs = 42n): ImageProjectionLayer {
   const positions = new Float32Array([1, 2, 3]);
   const payload = buildPointCloudRenderPayload({ positions });
   const frame: PointCloudVisualization = {
@@ -185,11 +244,13 @@ function projectionLayer(): ImageProjectionLayer {
   };
   return {
     colorOptions: { colorBy: "uniform", uniformColor: "#ff0000" },
-    contentTimeNs: 42n,
+    contentTimeNs,
     frame,
     payload,
     rotation: { w: 1, x: 0, y: 0, z: 0 },
-    stream: "/lidar",
+    sourceLabel: "lidar/top",
+    sourceName: "/lidar/top/points",
+    stream: "41",
     translation: { x: 0, y: 0, z: 0 },
   };
 }

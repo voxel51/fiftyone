@@ -349,6 +349,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const activeProjection =
     effectiveImageDims &&
     pointCloudProjection.enabled &&
+    playbackFrame &&
     calibration &&
     calibration.coordinateFrameId &&
     displayCameraModel &&
@@ -357,6 +358,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       ? {
           cameraFrameId: calibration.coordinateFrameId,
           cameraModel: displayCameraModel,
+          imageContentTimeNs: playbackFrame.contentTimeNs,
           imageDims: effectiveImageDims,
         }
       : null;
@@ -632,9 +634,12 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           ) : null}
           {activeProjection ? (
             <ImageProjectionOverlay
+              cameraFrameId={activeProjection.cameraFrameId}
               cameraModel={activeProjection.cameraModel}
               fit={IMAGE_FIT}
               imageHeight={activeProjection.imageDims.height}
+              imageContentTimeNs={activeProjection.imageContentTimeNs}
+              imageStream={stream}
               imageWidth={activeProjection.imageDims.width}
               layers={projectionLayers}
               pickerRef={projectionPickerRef}

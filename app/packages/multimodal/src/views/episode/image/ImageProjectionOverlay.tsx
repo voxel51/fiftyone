@@ -1,5 +1,11 @@
 import type { RefObject } from "react";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 
 import {
   imageDisplayRect,
@@ -38,9 +44,12 @@ const PROJECTION_PICK_RADIUS_SCREEN_PX = 6;
  * timing, coordinate conversion, tooltip UI, and cross-pane hover state.
  */
 const ImageProjectionOverlay = ({
+  cameraFrameId,
   cameraModel,
   fit,
   imageHeight,
+  imageContentTimeNs,
+  imageStream,
   imageWidth,
   layers,
   pickerRef,
@@ -48,9 +57,12 @@ const ImageProjectionOverlay = ({
   sourceKey,
   viewTransform,
 }: {
+  readonly cameraFrameId: string;
   readonly cameraModel: CameraModel;
   readonly fit: "contain" | "cover";
   readonly imageHeight: number;
+  readonly imageContentTimeNs: bigint;
+  readonly imageStream: string;
   readonly imageWidth: number;
   readonly layers: readonly ImageProjectionLayer[];
   readonly pickerRef: RefObject<GpuPointCloudProjectionPickerHandle>;
@@ -65,7 +77,7 @@ const ImageProjectionOverlay = ({
   const publishedHoverRef = useRef<HoverEcho | null>(null);
   const requestGenerationRef = useRef(0);
 
-  // The pointer subscription stays stable while playback and TF data churn.
+  // Mutable render inputs are read again when an asynchronous pick resolves.
   const cameraModelRef = useRef(cameraModel);
   cameraModelRef.current = cameraModel;
   const fitRef = useRef(fit);
@@ -81,26 +93,48 @@ const ImageProjectionOverlay = ({
   const viewTransformRef = useRef(viewTransform);
   viewTransformRef.current = viewTransform;
 
+  const clearOwnHover = useCallback(() => {
+    // Pointer cancellation cannot cancel mapAsync itself. Bump both the DOM
+    // generation and controller generation so a late integer texel is inert.
+    requestGenerationRef.current += 1;
+    pickerRef.current?.invalidate();
+    setDwellTooltip(null);
+    const published = publishedHoverRef.current;
+    if (!published) {
+      return;
+    }
+    publishedHoverRef.current = null;
+    setSharedHover((current) => (current === published ? null : current));
+  }, [pickerRef, setSharedHover]);
+
+  // This effect clears a frame-scoped projection hover when either its image
+  // frame or point resource leaves the tile.
+  useEffect(() => {
+    const published = publishedHoverRef.current;
+    const source = published?.source;
+    if (!published || source?.kind !== "image-projection") {
+      return;
+    }
+    const imageStillCurrent =
+      source.cameraFrameId === cameraFrameId &&
+      source.imageContentTimeNs === imageContentTimeNs &&
+      source.imageStream === imageStream;
+    const pointStillCurrent = layers.some(
+      (layer) =>
+        layer.stream === published.stream &&
+        layer.contentTimeNs === source.pointContentTimeNs,
+    );
+    if (!imageStillCurrent || !pointStillCurrent) {
+      clearOwnHover();
+    }
+  }, [cameraFrameId, clearOwnHover, imageContentTimeNs, imageStream, layers]);
+
   // This effect owns pointer-based GPU picking for the projection overlay.
   useEffect(() => {
     const surface = containerRef.current?.parentElement;
     if (!surface) {
       return undefined;
     }
-
-    const clearOwnHover = () => {
-      // Pointer cancellation cannot cancel mapAsync itself. Bump both the DOM
-      // generation and controller generation so a late integer texel is inert.
-      requestGenerationRef.current += 1;
-      pickerRef.current?.invalidate();
-      setDwellTooltip(null);
-      const published = publishedHoverRef.current;
-      if (!published) {
-        return;
-      }
-      publishedHoverRef.current = null;
-      setSharedHover((current) => (current === published ? null : current));
-    };
 
     const pickAt = (clientX: number, clientY: number) => {
       const container = containerRef.current;
@@ -197,12 +231,26 @@ const ImageProjectionOverlay = ({
             return;
           }
 
-          setDwellTooltip({ ...tooltip, color, x: pointerX, y: pointerY });
+          setDwellTooltip({
+            ...tooltip,
+            color,
+            sourceLabel: layer.sourceLabel,
+            sourceName: layer.sourceName,
+            x: pointerX,
+            y: pointerY,
+          });
           const hover: HoverEcho = {
             color,
             kind: "point",
             pointIndex,
             position: tooltip.position,
+            source: {
+              cameraFrameId,
+              imageContentTimeNs,
+              imageStream,
+              kind: "image-projection",
+              pointContentTimeNs: layer.contentTimeNs,
+            },
             stream: layer.stream,
           };
           publishedHoverRef.current = hover;
@@ -225,7 +273,14 @@ const ImageProjectionOverlay = ({
       detach();
       clearOwnHover();
     };
-  }, [pickerRef, setSharedHover]);
+  }, [
+    cameraFrameId,
+    clearOwnHover,
+    imageContentTimeNs,
+    imageStream,
+    pickerRef,
+    setSharedHover,
+  ]);
 
   return (
     <div

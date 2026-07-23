@@ -28,6 +28,10 @@ export interface ImageProjectionLayer {
     readonly y: number;
     readonly z: number;
   };
+  /** Collision-safe presentation label for the point-cloud source. */
+  readonly sourceLabel: string;
+  /** Exact format-native name for the point-cloud source. */
+  readonly sourceName: string;
   readonly stream: string;
   readonly translation: {
     readonly x: number;
@@ -53,14 +57,16 @@ export function useImageProjectionLayers(
   );
   const { pointCloudColors } = usePointCloudStyleSettings();
 
+  const pointCloudSourcesById = useMemo(
+    () =>
+      new Map(pointCloudSources.map((source) => [source.id, source] as const)),
+    [pointCloudSources],
+  );
   const colorOptionsByStream = useMemo(() => {
-    const sourcesById = new Map(
-      pointCloudSources.map((source) => [source.id, source] as const),
-    );
     const options = new Map<string, PointCloudColorOptions>();
 
     for (const stream of streams) {
-      const source = sourcesById.get(stream) ?? {
+      const source = pointCloudSourcesById.get(stream) ?? {
         id: stream,
         label: stream,
         sourceName: "",
@@ -79,7 +85,7 @@ export function useImageProjectionLayers(
     }
 
     return options;
-  }, [pointCloudColors, pointCloudSources, streams]);
+  }, [pointCloudColors, pointCloudSources, pointCloudSourcesById, streams]);
 
   return useMemo(() => {
     if (!cameraFrameId) {
@@ -93,6 +99,7 @@ export function useImageProjectionLayers(
       const frame = playbackFrame?.frame;
       const sourceFrameId = frame?.coordinateFrameId;
       const colorOptions = colorOptionsByStream.get(stream);
+      const source = pointCloudSourcesById.get(stream);
       if (!playbackFrame || !frame || !sourceFrameId || !colorOptions) {
         continue;
       }
@@ -108,20 +115,28 @@ export function useImageProjectionLayers(
       if (resolution.status !== "resolved") {
         continue;
       }
-
       layers.push({
         colorOptions,
         contentTimeNs: playbackFrame.contentTimeNs,
         frame,
         payload: pointCloudProjectionPayload(frame),
         rotation: resolution.transform.rotation,
+        sourceLabel: source?.label ?? stream,
+        sourceName: source?.sourceName ?? stream,
         stream,
         translation: resolution.transform.translation,
       });
     }
 
     return layers;
-  }, [cameraFrameId, colorOptionsByStream, frames, resolve, streams]);
+  }, [
+    cameraFrameId,
+    colorOptionsByStream,
+    frames,
+    pointCloudSourcesById,
+    resolve,
+    streams,
+  ]);
 }
 
 const derivedProjectionPayloads = new WeakMap<
