@@ -107,13 +107,6 @@ export function rgbaColorKey(color: RgbaColor) {
   return color.map((component) => clamp01(component).toFixed(4)).join(",");
 }
 
-export function rgbaCss(color: RgbaColor) {
-  const [r, g, b, a] = color;
-  return `rgba(${Math.round(clamp01(r) * 255)}, ${Math.round(
-    clamp01(g) * 255,
-  )}, ${Math.round(clamp01(b) * 255)}, ${clamp01(a)})`;
-}
-
 export function clamp01(value: number): number {
   return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
 }

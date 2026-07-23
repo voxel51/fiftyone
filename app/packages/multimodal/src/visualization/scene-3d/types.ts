@@ -103,16 +103,6 @@ export interface SceneIndexedGeometryRenderData {
   readonly usesVertexColors: boolean;
 }
 
-export interface TextSpriteTexture {
-  readonly aspectRatio: number;
-  /**
-   * Ratio of the full sprite height (line height + padding) to one unit of
-   * font size, so display scale can target the requested glyph height.
-   */
-  readonly heightPerFontUnit: number;
-  readonly texture: THREE.Texture;
-}
-
 /**
  * Transform from a point-cloud frame into the panel's fixed frame.
  */

@@ -59,7 +59,7 @@ describe("buildSceneAnnotationCubeRenderPlan", () => {
     expect(plan.selectedPassive).toEqual([]);
   });
 
-  it("routes highlighted cubes to selected batches and retains only non-cube residuals", () => {
+  it("keeps tooltip-only text out of the residual render path", () => {
     const text: SceneTextPrimitive = {
       billboard: true,
       color: [1, 1, 1, 1],
@@ -79,7 +79,7 @@ describe("buildSceneAnnotationCubeRenderPlan", () => {
     expect(plan.selectedInteractive).toHaveLength(1);
     expect(plan.normalInteractive).toEqual([]);
     expect(plan.normalPassive).toEqual([]);
-    expect(plan.residualLayers).toEqual([selected]);
+    expect(plan.residualLayers).toEqual([]);
   });
 
   it("drops invalid cubes instead of mounting the old empty cube subtree", () => {
