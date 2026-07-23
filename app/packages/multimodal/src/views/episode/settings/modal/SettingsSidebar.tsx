@@ -15,6 +15,7 @@ import React, {
   useState,
 } from "react";
 import type { StreamDescriptor } from "../../../../ir";
+import type { EpisodeTerminology } from "../../../../ports";
 import {
   type PlaybackFidelityMode,
   type TemporalPolicySettings,
@@ -35,6 +36,12 @@ import { TileStreamNoticeStrip } from "../../tiles/TileStreamState";
 import StreamsSettings from "./StreamsSettings";
 
 type ActiveSettingsTab = "panel" | "scene" | "streams";
+type StreamTerminology = NonNullable<EpisodeTerminology["stream"]>;
+
+const DEFAULT_STREAM_TERMINOLOGY: StreamTerminology = {
+  plural: "streams",
+  singular: "stream",
+};
 
 /**
  * episode-specific left sidebar. Each tab is one scope of the viewer's
@@ -43,15 +50,17 @@ type ActiveSettingsTab = "panel" | "scene" | "streams";
  * - **Scene** — the shared world and its time: scene-wide status, the
  *   coordinate system (world frame, up axis), playback time semantics, and
  *   opt-in diagnostics. Nothing here reaches into a single tile.
- * - **Streams** — the recording's catalog: what streams exist and what can
- *   be opened from them.
+ * - **stream catalog** — the recording's catalog: what streams exist and what
+ *   can be opened from them. Its visible name is selected by the format.
  * - **\<focused tile\>** — everything about one view: its stream status,
  *   camera, layers, and appearance. Content comes from the tile-settings
  *   registry.
  */
 const SettingsSidebar: React.FC<{
   readonly streams?: readonly StreamDescriptor[];
-}> = ({ streams = [] }) => {
+  readonly terminology?: EpisodeTerminology;
+}> = ({ streams = [], terminology }) => {
+  const streamTerminology = terminology?.stream ?? DEFAULT_STREAM_TERMINOLOGY;
   const { focusedTileId, tiles } = useTiling();
   const registeredPanelSettings = useTileSettings(focusedTileId);
   const focusedTile =
@@ -92,11 +101,12 @@ const SettingsSidebar: React.FC<{
       {
         id: "streams",
         data: {
-          label: "Streams",
+          label: titleCase(streamTerminology.plural),
           content: (
             <StreamsSettings
               onStreamActionStart={suppressNextPanelAutoSwitch}
               streams={streams}
+              terminology={streamTerminology}
             />
           ),
         },
@@ -123,6 +133,7 @@ const SettingsSidebar: React.FC<{
     focusedTileId,
     focusedTileTitle,
     registeredPanelSettings,
+    streamTerminology,
     suppressNextPanelAutoSwitch,
     streams,
   ]);
@@ -159,6 +170,12 @@ const SettingsSidebar: React.FC<{
     </div>
   );
 };
+
+function titleCase(label: string): string {
+  return label
+    ? `${label.charAt(0).toLocaleUpperCase()}${label.slice(1)}`
+    : label;
+}
 
 /**
  * The focused tile's settings, framed by the sidebar: registry-backed

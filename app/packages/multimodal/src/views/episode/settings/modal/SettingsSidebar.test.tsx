@@ -23,6 +23,7 @@ import {
   STREAM_METADATA,
   type StreamDescriptor,
 } from "../../../../ir";
+import type { EpisodeTerminology } from "../../../../ports";
 import { rawTileStreamAtom } from "../../tiles/raw-message-binding";
 import { TILE_TYPE } from "../../tiles/tile-types";
 import { __resetModalSettingsForTests } from "./state";
@@ -161,11 +162,13 @@ function renderSidebar({
   registeredStreamStreams,
   sources = SOURCES,
   streams = [],
+  terminology,
 }: {
   /** Stream streams declared by the registered tiles' registrations. */
   readonly registeredStreamStreams?: readonly string[];
   readonly sources?: readonly SceneSource[];
   readonly streams?: readonly StreamDescriptor[];
+  readonly terminology?: EpisodeTerminology;
 } = {}) {
   const probeState: { current: TilingProbeState | null } = { current: null };
   const result = render(
@@ -187,7 +190,7 @@ function renderSidebar({
             />
             <FocusButton id={CAMERA_TILE_ID} testId="focus-camera" />
             <FocusButton id={LIDAR_TILE_ID} testId="focus-lidar" />
-            <SettingsSidebar streams={streams} />
+            <SettingsSidebar streams={streams} terminology={terminology} />
           </TileSettingsProvider>
         </TilingProvider>
       </SceneInventoryProvider>
@@ -213,6 +216,38 @@ describe("SettingsSidebar", () => {
     expect(screen.queryByRole("tab", { name: "Camera" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Settings" })).toBeNull();
     expect(screen.getByText("Advanced timing")).toBeTruthy();
+  });
+
+  it("uses format-selected terminology for the stream catalog", () => {
+    renderSidebar({
+      streams: ["alpha", "beta", "gamma", "delta", "epsilon", "zeta"].map(
+        (name) =>
+          stream(`/${name}`, {
+            count: "1",
+            decodeStatus: "decodable",
+            encoding: "ros1",
+            schema: `example_msgs/${name}`,
+          }),
+      ),
+      terminology: {
+        stream: {
+          plural: "topics",
+          singular: "topic",
+        },
+      },
+    });
+
+    expect(screen.queryByRole("tab", { name: "Streams" })).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Topics" }));
+
+    expect(screen.getByLabelText("Search topics")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Custom / Unknown" }));
+    expect(screen.getByText("6 topics")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Search topics"), {
+      target: { value: "nothing" },
+    });
+    expect(screen.getByText('No topics match "nothing"')).toBeTruthy();
   });
 
   it("shows the playback fidelity control without the count summary", () => {

@@ -2,6 +2,7 @@ import { Input, InputType, Size } from "@voxel51/voodo";
 import React, { useMemo, useState } from "react";
 import { useSceneInventory } from "../../../../scene-inventory/react";
 import { SCENE_SOURCE_TYPE, type StreamDescriptor } from "../../../../ir";
+import type { EpisodeTerminology } from "../../../../ports";
 import {
   STREAM_CAPABILITY,
   STREAM_CAPABILITY_LABEL,
@@ -28,7 +29,8 @@ const STREAMS_SEARCH_THRESHOLD = 5;
 const StreamsSettings: React.FC<{
   readonly onStreamActionStart?: () => void;
   readonly streams: readonly StreamDescriptor[];
-}> = ({ onStreamActionStart, streams }) => {
+  readonly terminology: NonNullable<EpisodeTerminology["stream"]>;
+}> = ({ onStreamActionStart, streams, terminology }) => {
   const sceneSources = useSceneInventory();
   const openImageTile = useOpenImageTile();
   const openRawMessageTile = useOpenRawMessageTile();
@@ -36,6 +38,7 @@ const StreamsSettings: React.FC<{
   const openLogTile = useOpenTile(TILE_TYPE.LOG);
   const openMapTile = useOpenTile(TILE_TYPE.MAP);
   const [search, setSearch] = useState("");
+  const { plural, singular } = terminology;
   const rows = useMemo(
     () => buildStreamInventoryRows({ sceneSources, streams }),
     [sceneSources, streams],
@@ -78,16 +81,16 @@ const StreamsSettings: React.FC<{
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
       {rows.length === 0 ? (
-        <span className={styles.streamEmpty}>No streams found</span>
+        <span className={styles.streamEmpty}>No {plural} found</span>
       ) : (
         <>
           {showSearch ? (
             <div className={styles.stickyStreamSearch}>
               <Input
-                aria-label="Search streams"
+                aria-label={`Search ${plural}`}
                 className={styles.streamSearchInput}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search streams"
+                placeholder={`Search ${plural}`}
                 size={Size.Sm}
                 type={InputType.Search}
                 value={search}
@@ -98,7 +101,7 @@ const StreamsSettings: React.FC<{
             {groups.map((group) => (
               <SidebarGroup
                 key={group.category}
-                summary={streamCountLabel(group.rows.length)}
+                summary={streamCountLabel(group.rows.length, singular, plural)}
                 title={STREAM_CATEGORY_LABEL[group.category]}
               >
                 <div className={styles.streamList}>
@@ -115,7 +118,7 @@ const StreamsSettings: React.FC<{
             ))}
             {filteredRows.length === 0 ? (
               <span className={styles.streamEmpty}>
-                No streams match &quot;{search}&quot;
+                No {plural} match &quot;{search}&quot;
               </span>
             ) : null}
           </div>
@@ -267,8 +270,12 @@ function streamDetails(row: StreamInventoryRow): string {
   ].join(" · ");
 }
 
-function streamCountLabel(count: number): string {
-  return `${count.toLocaleString()} ${count === 1 ? "stream" : "streams"}`;
+function streamCountLabel(
+  count: number,
+  singular: string,
+  plural: string,
+): string {
+  return `${count.toLocaleString()} ${count === 1 ? singular : plural}`;
 }
 
 export default StreamsSettings;
