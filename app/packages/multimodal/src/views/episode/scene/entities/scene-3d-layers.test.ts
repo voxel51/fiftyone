@@ -136,6 +136,7 @@ function annotationPlaybackFrame(
 
 function transformsState(
   resolve: FrameTransformsState["resolve"],
+  resolveParent?: NonNullable<FrameTransformsState["resolveParent"]>,
 ): FrameTransformsState {
   return {
     error: null,
@@ -144,6 +145,7 @@ function transformsState(
     indexedDynamicRanges: () => [],
     prefetchPlacement: () => undefined,
     resolve,
+    ...(resolveParent ? { resolveParent } : {}),
     status: "ready",
     summarizeGraph: () => EMPTY_EPISODE_FRAME_GRAPH_SUMMARY,
   };
@@ -785,7 +787,7 @@ describe("build3dLayers", () => {
     const transform = {
       rotation: new Quaternion(),
       sourceFrameId: "CAM_FRONT",
-      targetFrameId: "base_link",
+      targetFrameId: "map",
       translation: new Vector3(1.7, 0, 1.5),
     };
     const { cameraFrustumLayers, transformedLayerCount } = build3dLayers({
@@ -793,16 +795,29 @@ describe("build3dLayers", () => {
         calibrationPlaybackFrame(calibrationViz("CAM_FRONT")),
       ],
       frames: [],
-      frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
-        sourceFrameId,
-        resolutionKind: "exact",
-        status: "resolved",
-        targetFrameId,
-        transform,
-      })),
+      frameTransforms: transformsState(
+        (sourceFrameId, targetFrameId) => ({
+          sourceFrameId,
+          resolutionKind: "exact",
+          status: "resolved",
+          targetFrameId,
+          transform,
+        }),
+        (sourceFrameId) => ({
+          parentFrameId: "base_link",
+          sourceFrameId,
+          status: "resolved",
+          transform: {
+            rotation: new Quaternion(),
+            sourceFrameId,
+            targetFrameId: "base_link",
+            translation: new Vector3(0.25, -0.1, 1.25),
+          },
+        }),
+      ),
       selectedCalibrationStreams: ["/CAM_FRONT/camera_info"],
       selectedStreams: [],
-      worldFrameId: "base_link",
+      worldFrameId: "map",
     });
 
     expect(cameraFrustumLayers).toHaveLength(1);
@@ -810,6 +825,11 @@ describe("build3dLayers", () => {
       contentTimeNs: TIME_NS,
       frameTransform: transform,
       id: "/CAM_FRONT/camera_info",
+      parentPosition: {
+        kind: "resolved",
+        origin: [0.25, -0.1, 1.25],
+        parentFrameId: "base_link",
+      },
     });
     expect(transformedLayerCount).toBe(1);
   });
@@ -907,5 +927,9 @@ describe("build3dLayers", () => {
 
     expect(cameraFrustumLayers).toHaveLength(1);
     expect(cameraFrustumLayers[0]?.frameTransform).toBeUndefined();
+    expect(cameraFrustumLayers[0]?.parentPosition).toEqual({
+      kind: "unavailable",
+      reason: "Camera frame missing",
+    });
   });
 });

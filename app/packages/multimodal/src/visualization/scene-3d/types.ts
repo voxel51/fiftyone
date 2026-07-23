@@ -263,6 +263,18 @@ export interface CameraImageRayModel {
   readonly width: number;
 }
 
+/** Camera-frame origin expressed directly in its active immediate parent. */
+export type CameraFrustumParentPosition =
+  | {
+      readonly kind: "resolved";
+      readonly origin: readonly [number, number, number];
+      readonly parentFrameId: string;
+    }
+  | {
+      readonly kind: "unavailable";
+      readonly reason: string;
+    };
+
 /**
  * One camera calibration rendered as a wireframe frustum in the shared
  * scene, optionally carrying the camera's current encoded image to
@@ -304,6 +316,7 @@ export interface CameraFrustumPanelLayer {
   readonly imageStream?: string;
   /** Base wireframe/image-plane opacity in [0, 1]. */
   readonly opacity?: number;
+  readonly parentPosition?: CameraFrustumParentPosition;
   /** Emphasize the frustum wireframe (e.g. its camera tile is hovered). */
   readonly highlighted?: boolean;
   /**

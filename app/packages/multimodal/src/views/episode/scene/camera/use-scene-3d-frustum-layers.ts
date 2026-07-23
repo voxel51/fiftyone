@@ -102,6 +102,10 @@ export function buildScene3dFrustumLayer({
               imageSourceName,
               imageStream,
               kind: "camera",
+              parentPosition: layer.parentPosition ?? {
+                kind: "unavailable",
+                reason: "Parent frame unavailable",
+              },
               resolution: [layer.frame.width, layer.frame.height],
             });
             return;

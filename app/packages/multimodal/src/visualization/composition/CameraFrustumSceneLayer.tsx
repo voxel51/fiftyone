@@ -109,6 +109,7 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
   const hoveredRef = useRef(hovered);
   hoveredRef.current = hovered;
   const onHoverRef = useRef(layer.onHover);
+  const hoverOwnerRef = useRef(layer.imageStream);
   // Selected (linked camera tile focused) draws dashed; hover — direct
   // or echoed from the linked tile — draws solid in the highlight color.
   const selected = Boolean(layer.selected);
@@ -170,14 +171,26 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
     },
     [],
   );
-  // Transfer an active hover between callback instances without leaving the
-  // previous owner stuck in its hovered state.
+  // Publish an active hover through each new callback instance so live
+  // parent-frame metadata keeps the visible tooltip in sync. A replacement
+  // callback owns the same keyed frustum, so publishing `false` through the
+  // previous instance would unnecessarily clear and re-dwell the tooltip.
   useEffect(() => {
+    const previousOwner = hoverOwnerRef.current;
+    hoverOwnerRef.current = layer.imageStream;
     if (onHoverRef.current === layer.onHover) return;
-    onHoverRef.current?.(false);
+    const previousOnHover = onHoverRef.current;
     onHoverRef.current = layer.onHover;
-    onHoverRef.current?.(hoveredRef.current);
-  }, [layer.onHover]);
+    if (!hoveredRef.current) return;
+    if (previousOwner !== layer.imageStream) {
+      previousOnHover?.(false);
+    }
+    if (onHoverRef.current) {
+      onHoverRef.current(true);
+    } else if (previousOwner === layer.imageStream) {
+      previousOnHover?.(false);
+    }
+  }, [layer.imageStream, layer.onHover]);
   // Pointer-out handlers disappear when picking or interactivity is disabled,
   // so clear the hover explicitly while the active callback is still known.
   useEffect(() => {
