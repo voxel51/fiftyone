@@ -4,6 +4,7 @@ import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
 import type {
   McapLaneTransportSnapshot,
+  McapTransportLane,
   McapTransportSnapshot,
 } from "./transport-meter";
 import { workerFetchParameters } from "./worker-resource-client";
@@ -45,10 +46,8 @@ import type {
 } from "../contracts/index";
 import type { StreamInventory } from "../../../schemas/v1";
 
-type WorkerLaneName = "foreground" | "idle" | "bulk";
-
 type WorkerLane = {
-  readonly name: WorkerLaneName;
+  readonly name: McapTransportLane;
   readonly transport: McapPlaybackWorkerTransport;
   worker?: Worker;
 };
@@ -80,10 +79,12 @@ class WorkerMcapResourceClient implements McapResourceClient {
   private readonly transportListeners = new Set<
     (sample: McapLaneTransportSnapshot) => void
   >();
+  private readonly interactiveLane = this.createLane("interactive");
   private readonly foregroundLane = this.createLane("foreground");
   private readonly idleLane = this.createLane("idle");
   private readonly bulkLane = this.createLane("bulk");
   private readonly lanes = [
+    this.interactiveLane,
     this.foregroundLane,
     this.idleLane,
     this.bulkLane,
@@ -323,6 +324,9 @@ class WorkerMcapResourceClient implements McapResourceClient {
     if (priority === MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH) {
       return this.idleLane;
     }
+    if (priority === MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME) {
+      return this.interactiveLane;
+    }
     return this.foregroundLane;
   }
 
@@ -347,9 +351,13 @@ class WorkerMcapResourceClient implements McapResourceClient {
       const initRequest: McapPlaybackWorkerRequest = {
         payload: {
           ...workerFetchParameters(),
-          // Only the foreground lane serves playback-critical reads; the
-          // idle and bulk lanes must never occupy the reserved fill slot.
-          fillSlotClass: lane.name === "foreground" ? "priority" : "background",
+          // Current-frame and ordinary foreground playback remain eligible
+          // for priority fill slots. Idle and bulk work cannot occupy the
+          // reserved slot while either user-visible lane needs the link.
+          fillSlotClass:
+            lane.name === "interactive" || lane.name === "foreground"
+              ? "priority"
+              : "background",
         },
         type: "init",
       };
@@ -376,7 +384,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     });
   }
 
-  private createLane(name: WorkerLaneName): WorkerLane {
+  private createLane(name: McapTransportLane): WorkerLane {
     return {
       name,
       transport: new McapPlaybackWorkerTransport(
@@ -387,7 +395,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
   }
 
   private emitTransport(
-    lane: WorkerLaneName,
+    lane: McapTransportLane,
     snapshot: McapTransportSnapshot,
   ): void {
     if (this.transportListeners.size === 0) {
