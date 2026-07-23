@@ -90,10 +90,11 @@ jobs:
       - name: Prepare yarn 4
         run: corepack prepare yarn@4.9.1 --activate
 
-      - name: Detect specs to burn in
-        # New and modified spec files must pass a burn-in (repeated runs,
-        # retries disabled) before joining the suite; the burn-in job below
-        # runs them and the verdict job enforces the result.
+      - name: Detect tests to burn in
+        # New and modified tests must pass a burn-in (repeated runs, retries
+        # disabled) before joining the suite; the burn-in job below runs
+        # them and the verdict job enforces the result. Targets are
+        # file:line tests, or whole spec files when shared code changed.
         id: burn-in-specs
         working-directory: e2e-pw
         env:
@@ -111,7 +112,7 @@ jobs:
             printf '%s\n' "$SPECS"
             echo "BURN_IN_EOF"
           } >> "$GITHUB_OUTPUT"
-          echo "burn-in: $COUNT new/modified spec file(s)"
+          echo "burn-in: $COUNT target(s)"
 
       - name: Compute app tree hash
         id: app-tree-hash
@@ -300,11 +301,13 @@ jobs:
 
   burn-in:
     needs: prepare-e2e
-    # New and modified spec files must pass 10 consecutive runs with retries
-    # disabled before joining the suite — flaky-on-arrival specs fail here
-    # instead of landing and flaking later. Report-only like the shards: the
-    # verdict job enforces the outcome, so a red burn-in job means infra
-    # death, not a failing spec.
+    # New and modified tests must pass 10 runs with retries disabled before
+    # joining the suite — flaky-on-arrival tests fail here instead of landing
+    # and flaking later. Targets are individual tests where the diff maps to
+    # them, whole spec files when shared code changed (see
+    # scripts/burn-in-specs.mjs). Report-only like the shards: the verdict
+    # job enforces the outcome, so a red burn-in job means infra death, not
+    # a failing spec.
     if: needs.prepare-e2e.outputs.burn-in-count != '0'
     # 10 repeats of several typical spec files fit this budget; a PR that
     # adds more should land them in pieces.
@@ -393,16 +396,19 @@ jobs:
         run: yarn playwright install chromium
         working-directory: e2e-pw
 
-      - name: Burn in new and modified specs
+      - name: Burn in new and modified tests
         # --retries=0 because retries mask exactly the flakiness this gate
         # screens for; --trace so the rare burn-in failure is debuggable
         # (retries never happen here, so the config's on-all-retries mode
-        # would capture nothing).
+        # would capture nothing). --workers=50% (1 worker per 2 vCPUs)
+        # overrides the config's 1-worker CI default: the parallelism both
+        # shortens the burn-in and adds contention pressure a spec must
+        # tolerate before joining the suite.
         env:
-          SPECS: ${{ needs.prepare-e2e.outputs.burn-in-specs }}
+          TARGETS: ${{ needs.prepare-e2e.outputs.burn-in-specs }}
         run: |
-          printf 'burning in:\n%s\n' "$SPECS"
-          yarn e2e $SPECS --repeat-each=10 --retries=0 --trace=retain-on-failure ||
+          printf 'burning in:\n%s\n' "$TARGETS"
+          yarn e2e $TARGETS --repeat-each=10 --retries=0 --workers=50% --trace=retain-on-failure ||
             echo "::warning::burn-in had failing runs; see the e2e verdict job"
         working-directory: e2e-pw
 

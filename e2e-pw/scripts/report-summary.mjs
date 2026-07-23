@@ -180,7 +180,7 @@ lines.push(
 if (burnInCount > 0) {
   lines.push(
     "",
-    `**Burn-in** (${burnInCount} new/modified spec file${
+    `**Burn-in** (${burnInCount} new/modified target${
       burnInCount === 1 ? "" : "s"
     } × 10 runs, no retries): ${burnInUnhealthy ? "❌" : "✅"}`,
   );
