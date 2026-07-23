@@ -59,6 +59,117 @@ describe("MCAP indexed message times", () => {
     expect(exactReads).toEqual(reads);
   });
 
+  it("batches nearby requested ranges across an unselected index", async () => {
+    const cameraIndex = createMessageIndexRecord(7, [[10n, 1n]]);
+    const skippedIndex = createMessageIndexRecord(9, [[10n, 9n]]);
+    const lidarIndex = createMessageIndexRecord(8, [[11n, 2n]]);
+    const cameraOffset = 64n;
+    const skippedOffset = cameraOffset + BigInt(cameraIndex.byteLength);
+    const lidarOffset = skippedOffset + BigInt(skippedIndex.byteLength);
+    const { exactReads, readable } = createReadable([
+      { bytes: cameraIndex, offset: cameraOffset },
+      { bytes: skippedIndex, offset: skippedOffset },
+      { bytes: lidarIndex, offset: lidarOffset },
+    ]);
+    const reader = createReader({
+      chunkIndexes: [
+        createChunkIndex({
+          messageEndTime: 11n,
+          messageIndexLength: BigInt(
+            cameraIndex.byteLength +
+              skippedIndex.byteLength +
+              lidarIndex.byteLength,
+          ),
+          messageIndexOffsets: new Map([
+            [7, cameraOffset],
+            [9, skippedOffset],
+            [8, lidarOffset],
+          ]),
+          messageStartTime: 10n,
+        }),
+      ],
+    });
+
+    const entries = await collect(
+      readIndexedMessageTimesForReader(reader, readable, {
+        topics: ["/camera", "/lidar"],
+      }),
+    );
+
+    expect(
+      entries.map(({ logTimeNs, topic }) => ({ logTimeNs, topic })),
+    ).toEqual([
+      { logTimeNs: 10n, topic: "/camera" },
+      { logTimeNs: 11n, topic: "/lidar" },
+    ]);
+    expect(exactReads).toEqual([
+      {
+        offset: cameraOffset,
+        size: BigInt(
+          cameraIndex.byteLength +
+            skippedIndex.byteLength +
+            lidarIndex.byteLength,
+        ),
+      },
+    ]);
+  });
+
+  it("keeps sparse requested message index ranges in bounded reads", async () => {
+    const cameraIndex = createMessageIndexRecord(7, [[10n, 1n]]);
+    const skippedIndex = createMessageIndexRecord(
+      9,
+      Array.from(
+        { length: 4_096 },
+        (_, index) => [BigInt(index), BigInt(index)] as const,
+      ),
+    );
+    const lidarIndex = createMessageIndexRecord(8, [[11n, 2n]]);
+    const cameraOffset = 64n;
+    const skippedOffset = cameraOffset + BigInt(cameraIndex.byteLength);
+    const lidarOffset = skippedOffset + BigInt(skippedIndex.byteLength);
+    const { exactReads, readable } = createReadable([
+      { bytes: cameraIndex, offset: cameraOffset },
+      { bytes: skippedIndex, offset: skippedOffset },
+      { bytes: lidarIndex, offset: lidarOffset },
+    ]);
+    const reader = createReader({
+      chunkIndexes: [
+        createChunkIndex({
+          messageEndTime: 11n,
+          messageIndexLength: BigInt(
+            cameraIndex.byteLength +
+              skippedIndex.byteLength +
+              lidarIndex.byteLength,
+          ),
+          messageIndexOffsets: new Map([
+            [7, cameraOffset],
+            [9, skippedOffset],
+            [8, lidarOffset],
+          ]),
+          messageStartTime: 10n,
+        }),
+      ],
+    });
+
+    const entries = await collect(
+      readIndexedMessageTimesForReader(reader, readable, {
+        topics: ["/camera", "/lidar"],
+      }),
+    );
+
+    expect(entries.map((entry) => entry.topic)).toEqual(["/camera", "/lidar"]);
+    expect(exactReads).toEqual([
+      {
+        offset: cameraOffset,
+        size: BigInt(cameraIndex.byteLength),
+      },
+      {
+        offset: lidarOffset,
+        size: BigInt(lidarIndex.byteLength),
+      },
+    ]);
+  });
+
   it("stops after the limit for ordered chunks", async () => {
     const firstIndex = createMessageIndexRecord(7, [[10n, 1n]]);
     const secondIndex = createMessageIndexRecord(7, [[20n, 2n]]);
