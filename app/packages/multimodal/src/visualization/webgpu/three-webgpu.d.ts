@@ -4,7 +4,11 @@
 // intentionally narrow so it only covers the surface we import until the
 // upstream types expose it.
 declare module "three/webgpu" {
-  import type { MeshBasicMaterial, PointsMaterial } from "three";
+  import type {
+    MeshBasicMaterial,
+    PointsMaterial,
+    SpriteMaterial,
+  } from "three";
   import type { Node } from "three/tsl";
 
   export * from "three";
@@ -39,6 +43,13 @@ declare module "three/webgpu" {
   export class MeshBasicNodeMaterial extends MeshBasicMaterial {
     opacityNode: Node | null;
     positionNode: Node | null;
+  }
+
+  /** Minimal node-material surface for scale-then-rotate instanced sprites. */
+  export class SpriteNodeMaterial extends SpriteMaterial {
+    positionNode: Node | null;
+    rotationNode: Node | null;
+    scaleNode: Node | null;
   }
 
   /**
