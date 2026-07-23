@@ -24,6 +24,41 @@ type ImageDimensions = {
   readonly width: number;
 };
 
+/** Relationship between decoded image pixels and calibration pixels. */
+export type ImageDimensionCompatibility = "exact" | "mismatch" | "proportional";
+
+/** A projection notice and the severity shown by the image panel. */
+export interface ImageProjectionNotice {
+  readonly message: string;
+  readonly severity: "info" | "warning";
+}
+
+/**
+ * Classifies whether image and calibration pixels differ only by uniform
+ * scaling. The cross-product tolerance permits one decoded-image pixel of
+ * dimension rounding without accepting a material aspect-ratio change.
+ */
+export function classifyImageDimensions(
+  image: ImageDimensions,
+  calibration: ImageDimensions,
+): ImageDimensionCompatibility {
+  if (
+    image.width === calibration.width &&
+    image.height === calibration.height
+  ) {
+    return "exact";
+  }
+  if (!validImageDimensions(image) || !validImageDimensions(calibration)) {
+    return "mismatch";
+  }
+
+  const aspectDelta = Math.abs(
+    image.width * calibration.height - image.height * calibration.width,
+  );
+  const roundingTolerance = Math.max(calibration.width, calibration.height);
+  return aspectDelta <= roundingTolerance ? "proportional" : "mismatch";
+}
+
 /** Describes the explicit or inventory-selected camera calibration. */
 export function describeCalibrationSelection(
   explicitStream: string | null,
@@ -112,43 +147,69 @@ export function getRectifiedDisplayIssue({
   return rectifiedDisplay ? null : "Unable to build a valid rectification map";
 }
 
-/** Explains why point-cloud projection is not currently available. */
-export function getProjectionIssue({
+/** Describes a point-cloud projection failure or proportional-scale assumption. */
+export function getProjectionNotice({
   calibration,
   calibrationStream,
   cameraModelResolution,
+  dimensionCompatibility,
   enabled,
   explicitCalibrationAvailable,
   imageDims,
-  sourceDimensionMismatch,
 }: {
   readonly calibration: CameraCalibrationVisualization | null;
   readonly calibrationStream: string | null;
   readonly cameraModelResolution: CameraModelResolution | null;
+  readonly dimensionCompatibility: ImageDimensionCompatibility | null;
   readonly enabled: boolean;
   readonly explicitCalibrationAvailable: boolean;
   readonly imageDims: ImageDimensions | null;
-  readonly sourceDimensionMismatch: boolean;
-}): string | null {
+}): ImageProjectionNotice | null {
   if (!enabled) return null;
   if (!calibrationStream) {
-    return "Choose a camera calibration before projecting points";
+    return warning("Choose a camera calibration before projecting points");
   }
   if (!explicitCalibrationAvailable) {
-    return "The selected camera calibration is not available in this recording";
+    return warning(
+      "The selected camera calibration is not available in this recording",
+    );
   }
-  if (!calibration) return "Waiting for camera calibration";
+  if (!calibration) return warning("Waiting for camera calibration");
   if (cameraModelResolution?.status !== "ready") {
-    return cameraModelResolution?.message ?? "Camera projection is unavailable";
+    return warning(
+      cameraModelResolution?.message ?? "Camera projection is unavailable",
+    );
   }
   if (!calibration.coordinateFrameId) {
-    return "Camera calibration has no coordinate frame";
+    return warning("Camera calibration has no coordinate frame");
   }
-  if (sourceDimensionMismatch && imageDims) {
+  if (dimensionCompatibility === "mismatch" && imageDims) {
     const model = cameraModelResolution.model;
-    return `Image is ${imageDims.width}×${imageDims.height}, but calibration resolves to ${model.width}×${model.height}`;
+    return warning(
+      `Image is ${imageDims.width}×${imageDims.height}, but calibration resolves to ${model.width}×${model.height}`,
+    );
+  }
+  if (dimensionCompatibility === "proportional" && imageDims) {
+    const model = cameraModelResolution.model;
+    return {
+      message: `Image is ${imageDims.width}×${imageDims.height}; using ${model.width}×${model.height} calibration with proportional scaling`,
+      severity: "info",
+    };
   }
   return null;
+}
+
+function validImageDimensions(dimensions: ImageDimensions): boolean {
+  return (
+    Number.isInteger(dimensions.width) &&
+    dimensions.width > 0 &&
+    Number.isInteger(dimensions.height) &&
+    dimensions.height > 0
+  );
+}
+
+function warning(message: string): ImageProjectionNotice {
+  return { message, severity: "warning" };
 }
 
 function sourceLabel(
