@@ -136,6 +136,19 @@ describe("toPickerDate", () => {
     expect(picker.getHours()).toBe(0);
     expect(picker.getMinutes()).toBe(30);
   });
+
+  it("ignores the app timezone for date fields", () => {
+    const picker = toPickerDate("date", JULY_22_DATE_MS, "America/New_York");
+    expect(picker.getFullYear()).toBe(2026);
+    expect(picker.getMonth()).toBe(6);
+    expect(picker.getDate()).toBe(22);
+  });
+
+  it("throws on an invalid timezone instead of returning an Invalid Date", () => {
+    expect(() => toPickerDate("datetime", INSTANT_MS, "Not/AZone")).toThrow(
+      "invalid date or timezone",
+    );
+  });
 });
 
 describe("serializeDateValue", () => {

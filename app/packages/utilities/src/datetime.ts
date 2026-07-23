@@ -103,16 +103,18 @@ export function formatRelativeTime(timestamp: number): string | null {
  * displays.
  */
 
+export type DateFieldType = "date" | "datetime";
+
 /**
  * Convert an absolute timestamp into a Date whose local-timezone components
  * match what the app displays for the field, suitable for react-datepicker
- * @param type - the type of the field ("date" or "datetime")
+ * @param type - the type of the field
  * @param timestamp - epoch milliseconds
  * @param timeZone - the app display timezone (IANA name, "UTC", or "local")
  * @returns a Date carrying the displayed wall-clock values in local time
  */
 export function toPickerDate(
-  type: string,
+  type: DateFieldType,
   timestamp: number,
   timeZone: string,
 ): Date {
@@ -127,6 +129,13 @@ export function toPickerDate(
   }
 
   const dt = DateTime.fromMillis(timestamp, { zone: timeZone });
+
+  // an invalid zone or timestamp yields NaN components; throw instead of
+  // handing the picker an Invalid Date
+  if (!dt.isValid) {
+    throw new Error(`invalid date or timezone: ${timestamp} (${timeZone})`);
+  }
+
   return new Date(
     dt.year,
     dt.month - 1,
@@ -152,7 +161,7 @@ export function dateOnlyToUTC(date: Date): string {
 }
 
 export function serializeDateValue(
-  type: string,
+  type: DateFieldType,
   date: Date,
   timeZone: string,
 ): string {
