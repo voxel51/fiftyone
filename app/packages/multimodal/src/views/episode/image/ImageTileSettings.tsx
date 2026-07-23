@@ -129,6 +129,16 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
     ],
     [calibrationSelectionLabel, calibrationSources],
   );
+  const matchingLabelStreams = useMemo(
+    () => labelSourceGroups.matching.map((source) => source.id),
+    [labelSourceGroups.matching],
+  );
+  const hasEnabledMatchingLabels = useMemo(() => {
+    const selected = new Set(selectedLabelStreams);
+    return matchingLabelStreams.some((labelStream) =>
+      selected.has(labelStream),
+    );
+  }, [matchingLabelStreams, selectedLabelStreams]);
   const canProjectPointClouds = pointCloudSources.length > 0;
 
   return (
@@ -227,11 +237,20 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
           summary={`${selectedLabelStreams.length} of ${annotationSources.length} on`}
           title="Labels"
           toggle={{
-            ariaLabel: "Toggle labels",
-            checked: selectedLabelStreams.length > 0,
+            ariaLabel: "Toggle matching labels",
+            checked: hasEnabledMatchingLabels,
             onChange: (checked) => {
               if (!stream) return;
-              setLabelStreams(checked ? [...annotationStreams] : []);
+              const next = new Set(selectedLabelStreams);
+              for (const labelStream of matchingLabelStreams) {
+                if (checked) next.add(labelStream);
+                else next.delete(labelStream);
+              }
+              setLabelStreams(
+                annotationStreams.filter((labelStream) =>
+                  next.has(labelStream),
+                ),
+              );
             },
           }}
         >
