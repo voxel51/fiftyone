@@ -89,6 +89,8 @@ export interface SceneSource {
   readonly label: string;
   readonly metadata?: Readonly<Record<string, string>>;
   readonly recordCount?: number;
+  /** Format-native name used for display and semantic stream-name matching. */
+  readonly sourceName: string;
   /**
    * Semantic family understood by a renderer. Known shared families use
    * `SceneSourceType`; adapters may also publish extension families that

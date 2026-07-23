@@ -19,7 +19,7 @@ const calibration = {
 const ready = resolveCameraModel({
   calibration,
   geometry: "original",
-  imageStream: "/camera/image_raw",
+  imageSourceName: "/camera/image_raw",
 });
 
 describe("image camera status", () => {

@@ -38,6 +38,7 @@ vi.mock("../../views/episode/shell/PlaybackShell", () => ({
     readonly sceneSources?: readonly {
       id: string;
       label: string;
+      sourceName: string;
       type: string;
     }[];
   }) => (

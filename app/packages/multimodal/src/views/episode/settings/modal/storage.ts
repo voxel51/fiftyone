@@ -224,6 +224,7 @@ export function defaultPointCloudColorForIndex(
 interface PointCloudSourceLike {
   readonly id: string;
   readonly label?: string;
+  readonly sourceName: string;
 }
 
 /**
@@ -261,7 +262,7 @@ export function defaultPointCloudColorForSource(
 }
 
 function isLidarSource(source: PointCloudSourceLike): boolean {
-  return `${source.id} ${source.label ?? ""}`.toLowerCase().includes("lidar");
+  return source.sourceName.toLowerCase().includes("lidar");
 }
 
 const SCENE_BACKGROUND_MODES: readonly SceneBackgroundMode[] = [

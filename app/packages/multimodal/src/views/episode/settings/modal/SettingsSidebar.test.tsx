@@ -48,21 +48,25 @@ const SOURCES: readonly SceneSource[] = [
   {
     id: "/camera/front",
     label: "front",
+    sourceName: "/camera/front",
     type: SCENE_SOURCE_TYPE.IMAGE,
   },
   {
     id: "/lidar/top",
     label: "top",
+    sourceName: "/lidar/top",
     type: SCENE_SOURCE_TYPE.POINT_CLOUD,
   },
   {
     id: "/camera/front/annotations",
     label: "front labels",
+    sourceName: "/camera/front/annotations",
     type: SCENE_SOURCE_TYPE.IMAGE_ANNOTATION,
   },
   {
     id: "/markers",
     label: "markers",
+    sourceName: "/markers",
     type: SCENE_SOURCE_TYPE.SCENE_ANNOTATION,
   },
 ];
@@ -463,6 +467,7 @@ describe("SettingsSidebar", () => {
         {
           id: "7",
           label: "camera/front",
+          sourceName: "/camera/front",
           type: SCENE_SOURCE_TYPE.IMAGE,
         },
       ],

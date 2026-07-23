@@ -943,5 +943,5 @@ function source(
   type: string,
   recordCount?: number,
 ): SceneSource {
-  return { id, label, recordCount, type };
+  return { id, label, recordCount, sourceName: id, type };
 }

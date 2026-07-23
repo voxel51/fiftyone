@@ -23,7 +23,11 @@ describe("buildStreamInventoryRows", () => {
 
     const sceneSources = sceneSourcesFromStreamDescriptors([camera]);
     expect(sceneSources).toEqual([
-      expect.objectContaining({ id: "7", label: "camera/front" }),
+      expect.objectContaining({
+        id: "7",
+        label: "camera/front",
+        sourceName: "/camera/front",
+      }),
     ]);
     expect(
       buildStreamInventoryRows({ sceneSources, streams: [camera] }),

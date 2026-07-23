@@ -21,6 +21,7 @@ export function sceneSourcesFromStreamDescriptors(
         label: sourceLabel(sourceName),
         metadata: normalizedSceneMetadata(metadata),
         ...(stream.count === undefined ? {} : { recordCount: stream.count }),
+        sourceName,
         type,
       },
     ];
@@ -34,11 +35,7 @@ export function sceneSourcesFromStreamDescriptors(
     (labelCounts.get(source.label) ?? 0) > 1
       ? {
           ...source,
-          label: displaySourceName(
-            streams.find((stream) => stream.id === source.id)?.metadata?.[
-              SCENE_SOURCE_METADATA.SOURCE_NAME
-            ] ?? source.id,
-          ),
+          label: displaySourceName(source.sourceName),
         }
       : source,
   );

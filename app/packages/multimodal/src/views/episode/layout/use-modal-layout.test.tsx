@@ -28,8 +28,18 @@ vi.mock("../scene/tile/Scene3dTile", () => ({ default: () => null }));
 vi.mock("../map/tile/MapTile", () => ({ default: () => null }));
 
 const SCENE_SOURCES: readonly SceneSource[] = [
-  { id: "/cam/image_rect_compressed", type: "image", label: "cam" },
-  { id: "/lidar", type: "point-cloud", label: "lidar" },
+  {
+    id: "/cam/image_rect_compressed",
+    label: "cam",
+    sourceName: "/cam/image_rect_compressed",
+    type: "image",
+  },
+  {
+    id: "/lidar",
+    label: "lidar",
+    sourceName: "/lidar",
+    type: "point-cloud",
+  },
 ];
 
 // Deterministic capabilities so jsdom's missing navigator signals can't
@@ -95,8 +105,20 @@ describe("useModalLayout", () => {
 
   it("opens one tile per image source bound to distinct streams", () => {
     const { result } = renderLayoutHook([
-      { id: "/a", type: "image", label: "a", recordCount: 10 },
-      { id: "/b", type: "image", label: "b", recordCount: 90 },
+      {
+        id: "/a",
+        label: "a",
+        recordCount: 10,
+        sourceName: "/a",
+        type: "image",
+      },
+      {
+        id: "/b",
+        label: "b",
+        recordCount: 90,
+        sourceName: "/b",
+        type: "image",
+      },
       SCENE_SOURCES[1],
     ]);
 
@@ -112,14 +134,27 @@ describe("useModalLayout", () => {
 
   it("opens default image tiles on preferred equivalents only", () => {
     const { result } = renderLayoutHook([
-      { id: "/cam/image", type: "image", label: "raw", recordCount: 1_000 },
+      {
+        id: "/cam/image",
+        label: "raw",
+        recordCount: 1_000,
+        sourceName: "/cam/image",
+        type: "image",
+      },
       {
         id: "/cam/image_downsampled",
-        type: "image",
         label: "downsampled",
         recordCount: 100,
+        sourceName: "/cam/image_downsampled",
+        type: "image",
       },
-      { id: "/rear/image", type: "image", label: "rear", recordCount: 900 },
+      {
+        id: "/rear/image",
+        label: "rear",
+        recordCount: 900,
+        sourceName: "/rear/image",
+        type: "image",
+      },
     ]);
 
     expect(Object.keys(result.current.initialTiles)).toEqual([
@@ -267,8 +302,20 @@ describe("useModalLayout", () => {
       },
     });
     const { result } = renderLayoutHook([
-      { id: "/a", type: "image", label: "a", recordCount: 10 },
-      { id: "/b", type: "image", label: "b", recordCount: 90 },
+      {
+        id: "/a",
+        label: "a",
+        recordCount: 10,
+        sourceName: "/a",
+        type: "image",
+      },
+      {
+        id: "/b",
+        label: "b",
+        recordCount: 90,
+        sourceName: "/b",
+        type: "image",
+      },
     ]);
 
     expect(renderedSourceOf(result.current.initialTiles["image-3"])).toBe("/b");
@@ -284,14 +331,27 @@ describe("useModalLayout", () => {
       },
     });
     const { result } = renderLayoutHook([
-      { id: "/cam/image", type: "image", label: "raw", recordCount: 1_000 },
+      {
+        id: "/cam/image",
+        label: "raw",
+        recordCount: 1_000,
+        sourceName: "/cam/image",
+        type: "image",
+      },
       {
         id: "/cam/image_downsampled",
-        type: "image",
         label: "downsampled",
         recordCount: 100,
+        sourceName: "/cam/image_downsampled",
+        type: "image",
       },
-      { id: "/rear/image", type: "image", label: "rear", recordCount: 900 },
+      {
+        id: "/rear/image",
+        label: "rear",
+        recordCount: 900,
+        sourceName: "/rear/image",
+        type: "image",
+      },
     ]);
 
     expect(renderedSourceOf(result.current.initialTiles["image-3"])).toBe(
@@ -394,8 +454,20 @@ describe("useModalLayout", () => {
       },
     });
     const { result } = renderLayoutHook([
-      { id: "/a", type: "image", label: "a", recordCount: 10 },
-      { id: "/b", type: "image", label: "b", recordCount: 90 },
+      {
+        id: "/a",
+        label: "a",
+        recordCount: 10,
+        sourceName: "/a",
+        type: "image",
+      },
+      {
+        id: "/b",
+        label: "b",
+        recordCount: 90,
+        sourceName: "/b",
+        type: "image",
+      },
     ]);
     expect(result.current.initialLayout).toEqual({
       direction: "row",
