@@ -21,7 +21,8 @@ An :ref:`admin user <enterprise-admin>` must configure cloud credentials
 
     If your workflows use cloud-backed point clouds, segmentation masks,
     in-App annotation, or multimodal (MCAP) datasets, you must also configure
-    :ref:`CORS <enterprise-cors>` on your cloud buckets as part of this step.
+    :ref:`CORS <enterprise-cors>` on your cloud storage buckets/containers as
+    part of this step.
     Without it, those assets fail to load in the App with a
     ``No 'Access-Control-Allow-Origin' header`` error. This is easy to miss and
     a common source of "asset failed to load" issues, so we recommend setting

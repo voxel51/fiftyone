@@ -162,7 +162,7 @@ Cross-origin resource sharing (CORS)
 ____________________________________
 
 We strongly recommend configuring cross-origin resource sharing (CORS) on your
-cloud buckets. Most media renders in the App via standard ``<img>``/``<video>``
+cloud storage buckets/containers. Most media renders in the App via standard ``<img>``/``<video>``
 elements that do not require CORS, but any media that the App fetches and
 decodes directly in the browser **requires** it, including cloud-backed
 :ref:`point clouds <point-cloud-datasets>`,
@@ -268,7 +268,7 @@ here is an example configuration:
             "AllowedHeaders": ["*"],
             "AllowedMethods": ["GET", "HEAD"],
             "AllowedOrigins": ["https://fiftyone-enterprise-deployment.yourcompany.com"],
-            "ExposeHeaders": [],
+            "ExposeHeaders": ["Content-Range", "Content-Length", "Accept-Ranges"],
             "MaxAgeSeconds": 86400
         }
     ]
@@ -474,9 +474,9 @@ at the storage-account level (Blob service) via the Azure portal
         --methods GET HEAD \
         --origins "https://fiftyone-enterprise-deployment.yourcompany.com" \
         --allowed-headers "*" \
-        --exposed-headers "*" \
+        --exposed-headers "Content-Range" "Content-Length" "Accept-Ranges" \
         --max-age 3600 \
-        --account-name <account-name>
+        --account-name "<account-name>"
 
 See the
 `Azure Storage CORS documentation <https://learn.microsoft.com/en-us/rest/api/storageservices/cross-origin-resource-sharing--cors--support-for-the-azure-storage-services>`_
