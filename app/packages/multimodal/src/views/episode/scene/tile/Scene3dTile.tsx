@@ -56,9 +56,11 @@ import {
   normalizeScene3dCameraProjection,
 } from "../camera/scene-3d-viewpoint";
 import type { Scene3dCameraNavigationMode } from "../camera/scene-3d-view-state";
+import { useHoverEcho } from "../../interaction/point-hover/hover-echo";
 import { useDataStream } from "../../playback/data-stream-context";
 import { useDepthHover } from "../../spatial/depth-sampling";
 import { resolveDepthRay } from "../../spatial/depth-projection";
+import { resolveProjectionCorrespondence } from "../../spatial/projection-correspondence";
 import { useFrameTransformsContext } from "../../spatial/frame-transforms/context";
 import {
   defaultPointCloudColorForSource,
@@ -703,6 +705,22 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     selectedStreams,
   });
   const displayedScene = sceneSnapshotSelection.snapshot;
+  const hoverEcho = useHoverEcho();
+  const projectionCorrespondence = useMemo(
+    () =>
+      resolveProjectionCorrespondence({
+        frustumLayers: displayedScene.frustumLayers,
+        hover: hoverEcho,
+        pointCloudLayers: displayedScene.pointCloudLayers,
+        worldFrameId,
+      }),
+    [
+      displayedScene.frustumLayers,
+      displayedScene.pointCloudLayers,
+      hoverEcho,
+      worldFrameId,
+    ],
+  );
   const depthHover = useDepthHover();
   const depthRayResolution = useMemo(
     () =>
@@ -723,12 +741,19 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       worldFrameId,
     ],
   );
-  const depthRayLayers =
-    depthRayResolution?.status === "ready"
-      ? [depthRayResolution.layer]
-      : EMPTY_SCENE_RAYS;
+  const rayLayers = useMemo(() => {
+    const depthRay =
+      depthRayResolution?.status === "ready" ? depthRayResolution.layer : null;
+    if (!depthRay && !projectionCorrespondence) {
+      return EMPTY_SCENE_RAYS;
+    }
+    return [
+      ...(depthRay ? [depthRay] : []),
+      ...(projectionCorrespondence ? [projectionCorrespondence] : []),
+    ];
+  }, [depthRayResolution, projectionCorrespondence]);
   const sceneHasRenderableContent =
-    scene3dSnapshotHasLayers(displayedScene) || depthRayLayers.length > 0;
+    scene3dSnapshotHasLayers(displayedScene) || rayLayers.length > 0;
   const sceneRequiresPanel =
     sceneHasRenderableContent || displayedScene.notices.length > 0;
   const shouldRenderPanel =
@@ -878,7 +903,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
             onCameraPoseChange={handleCameraPoseChange}
             onRenderStats={handlePanelRenderStats}
             pointSize={pointCloudPointSize}
-            rayLayers={depthRayLayers}
+            rayLayers={rayLayers}
             sceneUp={sceneUpAxis}
             showColorLegend={showPointCloudColorLegend}
             worldGrid={worldGrid}

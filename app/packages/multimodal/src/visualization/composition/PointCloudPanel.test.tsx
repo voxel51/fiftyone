@@ -744,6 +744,31 @@ describe("PointCloudPanel", () => {
     expect(cameraPose.target).toEqual([1, 2, 3]);
   });
 
+  it("renders projection correspondences as dashed connectors without endpoint markers", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const { container } = render(
+      <PointCloudPanel
+        layers={[]}
+        rayLayers={[
+          {
+            end: [4, 5, 6],
+            id: "projection-correspondence:/camera/image:/points:42",
+            role: "projection-correspondence",
+            start: [1, 2, 3],
+          },
+        ]}
+        showHud={false}
+      />,
+    );
+
+    const material = container.querySelector("linedashedmaterial");
+    expect(material).toBeTruthy();
+    expect(material?.getAttribute("color")).toBe("16755251");
+    expect(material?.getAttribute("opacity")).toBe("0.7");
+    expect(container.querySelector("points")).toBeNull();
+  });
+
   it("applies custom camera frustum depth and base opacity", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const setAttribute = vi.spyOn(
