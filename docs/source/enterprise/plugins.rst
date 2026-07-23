@@ -5,6 +5,9 @@ FiftyOne Enterprise Plugins
 
 .. default-role:: code
 
+.. customavailablein::
+    :enterprise_version: 1.3.0
+
 FiftyOne Enterprise provides native support for installing and running
 :ref:`FiftyOne plugins <fiftyone-plugins>`, which offers powerful opportunities
 to extend and customize the functionality of your Enterprise deployment to suit
@@ -356,6 +359,9 @@ method from the Management SDK:
 Delegated operations
 ____________________
 
+.. customavailablein::
+    :enterprise_version: 1.4.0
+
 :ref:`Delegated operations <delegated-operations>` are a powerful feature of
 FiftyOne's plugin framework that allows users to schedule tasks from within the
 App that are executed in the background on a connected compute cluster.
@@ -689,6 +695,9 @@ appears beside the operator label:
 Renaming
 ^^^^^^^^
 
+.. customavailablein::
+    :enterprise_version: 1.5.0
+
 When delegating an operation multiple times on the same dataset, you may wish
 to give the runs custom labels so that you can easily identify each run later.
 
@@ -704,6 +713,9 @@ indicated by “3”:
 
 Terminate
 ^^^^^^^^^
+
+.. customavailablein::
+    :enterprise_version: 1.5.0
 
 To terminate a run, click the three dots indicated by "1". Then, in the
 menu, click "Terminate" as indicated by "2". The run status will be
@@ -725,6 +737,9 @@ updated and will now display as failed:
 
 Monitoring progress
 ^^^^^^^^^^^^^^^^^^^
+
+.. customavailablein::
+    :enterprise_version: 1.5.0
 
 Delegated operations can optionally
 :ref:`report their progress <operator-reporting-progress>` during execution.

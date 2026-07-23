@@ -5,6 +5,9 @@ Auto-Labeling
 
 .. default-role:: code
 
+.. customavailablein::
+    :enterprise_version: 2.14.0
+
 Auto-Labeling is a feature built into the
 :ref:`FiftyOne Enterprise App <enterprise-app>`
 which allows you to automatically generate

@@ -5,6 +5,10 @@ Plugins Overview
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.17.0
+    :enterprise_version: 1.0
+
 FiftyOne provides a powerful plugin framework that allows for extending and
 customizing the functionality of the tool to suit your specific needs.
 

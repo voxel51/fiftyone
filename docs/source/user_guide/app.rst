@@ -351,6 +351,10 @@ session by either manually configuring port forwarding or via the FiftyOne CLI:
 Using the sidebar
 _________________
 
+.. customavailablein::
+    :oss_version: 0.18.0
+    :enterprise_version: 1.0
+
 Any labels, tags, and scalar fields can be overlaid on the samples in the App
 by toggling the corresponding checkboxes in the App's sidebar:
 
@@ -815,6 +819,10 @@ You can also disable Query Performance by default for all datasets by setting
 Sidebar groups
 --------------
 
+.. customavailablein::
+    :oss_version: 0.18.0
+    :enterprise_version: 1.0
+
 You can customize the layout of the App's sidebar by creating/renaming/deleting
 groups and dragging fields between groups directly in the App:
 
@@ -903,6 +911,10 @@ the App.
 Grouping samples
 ________________
 
+.. customavailablein::
+    :oss_version: 0.21.0
+    :enterprise_version: 1.3.0
+
 You can use the group action in the App's menu to
 :ref:`dynamically group <view-groups>` your samples by a field of your choice:
 
@@ -931,6 +943,10 @@ elements of the group as a video.
 
 Field visibility
 ________________
+
+.. customavailablein::
+    :oss_version: 0.21.0
+    :enterprise_version: 1.3.0
 
 You can configure which fields of your dataset appear in the App's sidebar by
 clicking the settings icon in the upper right of the sidebar to open the Field
@@ -1025,6 +1041,10 @@ fields:
 Color schemes
 _____________
 
+.. customavailablein::
+    :oss_version: 0.21.0
+    :enterprise_version: 1.3.0
+
 You can configure the color scheme used by the App to render content by
 clicking on the color palette icon above the sample grid.
 
@@ -1047,6 +1067,10 @@ Consider the following example:
 
 Color schemes in the App
 ------------------------
+
+.. customavailablein::
+    :oss_version: 0.21.5
+    :enterprise_version: 1.3.5
 
 The GIF below demonstrates how to:
 
@@ -1239,6 +1263,10 @@ You can also dynamically edit your current color scheme by modifying it:
 Saving views
 ____________
 
+.. customavailablein::
+    :oss_version: 0.19.0
+    :enterprise_version: 1.1
+
 You can use the menu in the upper-left of the App to record the current state
 of the App's view bar and filters sidebar as a **saved view** into your
 dataset:
@@ -1402,6 +1430,10 @@ hovering, a slider appears to adjust the setting manually.
 Using the 3D visualizer
 _______________________
 
+.. customavailablein::
+    :oss_version: 0.17.0
+    :enterprise_version: 1.0
+
 The 3D visualizer allows you to interactively visualize
 :ref:`3D samples <3d-datasets>` or
 :ref:`point cloud samples <point-cloud-datasets>`
@@ -1466,6 +1498,10 @@ the full colormap using the same strategy.
 
 Dynamic point cloud coloring
 ----------------------------
+
+.. customavailablein::
+    :oss_version: 1.7.0
+    :enterprise_version: 2.10.0
 
 FiftyOne supports dynamic coloring of point clouds based on any attribute
 in your PCD file. This allows you to visualize and analyze point cloud data in
@@ -1693,6 +1729,10 @@ For more information on FiftyOne’s in-App annotation features,
 Linking labels
 ______________
 
+.. customavailablein::
+    :oss_version: 1.5.0
+    :enterprise_version: 2.8.0
+
 FiftyOne provides a mechanism to link related labels together, such as the same
 object instance observed across multiple frames of a video or across different
 slices of a grouped dataset.
@@ -1767,6 +1807,10 @@ slices:
 Spaces
 ______
 
+.. customavailablein::
+    :oss_version: 0.19.0
+    :enterprise_version: 1.1
+
 Spaces provide a customizable framework for organizing interactive Panels of
 information within the App.
 
@@ -1837,6 +1881,10 @@ close Panels by clicking their `x` icon:
 
 Configuring spaces in Python
 ----------------------------
+
+.. customavailablein::
+    :oss_version: 0.19.0
+    :enterprise_version: 1.1
 
 You can also programmatically configure your Space layout and the states of the
 individual Panels via the |Space| and |Panel| classes in Python, as shown
@@ -1934,6 +1982,10 @@ You can reset your spaces to their default state by setting
 
 Saving workspaces
 _________________
+
+.. customavailablein::
+    :oss_version: 0.24.0
+    :enterprise_version: 1.7.0
 
 If you find yourself frequently using/recreating a certain
 :ref:`spaces layout <app-spaces>`, you can save it as a workspace with a name
@@ -2115,6 +2167,10 @@ Samples panel as follows:
 Embeddings panel
 ________________
 
+.. customavailablein::
+    :oss_version: 0.19.0
+    :enterprise_version: 1.1
+
 When you load a dataset in the App that contains an
 :ref:`embeddings visualization <brain-embeddings-visualization>`, you can open
 the Embeddings panel to visualize and interactively explore a scatterplot of
@@ -2204,6 +2260,10 @@ The Embeddings panel supports the following `state` parameters:
 
 Similarity Search panel __SUB_NEW__
 ___________________________________
+
+.. customavailablein::
+    :oss_version: 1.15.0
+    :enterprise_version: 2.18.0
 
 When you load a dataset in the App that has one or more
 :ref:`similarity indexes <brain-similarity>`, you can open the Similarity
@@ -2336,6 +2396,10 @@ This is useful for a large number of results or large datasets.
 Triggering from the grid
 ------------------------
 
+.. customavailablein::
+    :oss_version: 0.9.0
+    :enterprise_version: 1.0
+
 In addition to opening the panel from the panels menu, you can also trigger
 similarity searches directly from the sample grid via the **similarity
 popover**: a lightweight menu in the grid toolbar for quick searches. Select
@@ -2424,6 +2488,10 @@ press search.
 
 Model Evaluation panel __SUB_NEW__
 __________________________________
+
+.. customavailablein::
+    :oss_version: 1.1.0
+    :enterprise_version: 2.2.0
 
 When you load a dataset in the App that contains one or more
 :ref:`evaluations <evaluating-models>`, you can open the Model Evaluation panel
@@ -3021,6 +3089,10 @@ And you can edit or delete an existing scenario by selecting `Edit` or
 Map panel
 _________
 
+.. customavailablein::
+    :oss_version: 0.17.0
+    :enterprise_version: 1.0
+
 When you load a dataset in the App that contains a |GeoLocation| field with
 :attr:`point <fiftyone.core.labels.GeoLocation.point>` data populated, you can
 open the Map panel to visualize and interactively explore a scatterplot of the
@@ -3335,6 +3407,10 @@ slices of the dataset:
 Persistent selections
 ---------------------
 
+.. customavailablein::
+    :oss_version: 1.6.0
+    :enterprise_version: 2.9.1
+
 By default, selection of samples and/or labels in the App are persisted for the
 duration of the App session:
 
@@ -3374,6 +3450,10 @@ When in expanded sample mode:
 
 Tags and tagging
 ________________
+
+.. customavailablein::
+    :oss_version: 0.8.0
+    :enterprise_version: 1.0
 
 Tagging is a first-class citizen in FiftyOne, as both |Sample| and |Label|
 instances have a ``tags`` attribute that you can use to store arbitrary string
@@ -3450,6 +3530,10 @@ excluded.
 
 Viewing object patches
 ______________________
+
+.. customavailablein::
+    :oss_version: 0.9.0
+    :enterprise_version: 1.0
 
 Whenever you load a dataset in the App that contains label list fields in
 |Detections| or |Polylines| format, you can use the patches menu to create a
@@ -3562,6 +3646,10 @@ opposed to their labels) will not affect the sample tags of the underlying
 Viewing video clips
 ___________________
 
+.. customavailablein::
+    :oss_version: 0.14.0
+    :enterprise_version: 1.0
+
 Whenever you load a video dataset in the App that contains |TemporalDetection|
 labels or frame-level label lists such as |Detections|, you can use the patches
 menu to create a view into your data that contains one sample per clip defined
@@ -3626,6 +3714,10 @@ to their labels) will not affect the sample tags of the underlying |Sample|.
 
 Multiple media fields
 _____________________
+
+.. customavailablein::
+    :oss_version: 0.17.0
+    :enterprise_version: 1.0
 
 There are use cases where you may want to associate multiple media versions
 with each sample in your dataset, such as:

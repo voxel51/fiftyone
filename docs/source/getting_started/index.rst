@@ -35,6 +35,13 @@ Each guide is designed as a sequential learning experience with navigation betwe
 .. Add guide cards below
 
 .. customcarditem::
+    :header: Getting Started with Enterprise
+    :description: Create your first dataset in FiftyOne Enterprise. Learn to configure cloud credentials, install the SDK, import samples, and schedule metadata computation.
+    :link: ../enterprise/getting_started.html
+    :image: https://docs.voxel51.com/_images/getting_started_cloud_creds.gif
+    :tags: FiftyOne-Enterprise
+
+.. customcarditem::
     :header: Building Plugins with AI Agents __SUB_NEW__
     :description: Build custom FiftyOne operators and panels using natural language. Prompt your AI coding agent to create, test, and iterate on plugins end to end, without writing boilerplate.
     :link: agents/index.html
@@ -136,6 +143,7 @@ Each guide is designed as a sequential learning experience with navigation betwe
    :maxdepth: 1
    :hidden:
 
+   Getting Started with Enterprise <../enterprise/getting_started>
    Building Plugins with AI Agents __SUB_NEW__ <agents/index>
    Auto Labeling Guide <auto_labeling/index>
    Annotation Guide __SUB_NEW__ <annotation/index>

@@ -5,6 +5,10 @@ Quickstart Groups
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.17.0
+    :enterprise_version: 1.0
+
 A small dataset with grouped image and point cloud data.
 
 The dataset consists of 200 scenes from the train split of the KITTI dataset,

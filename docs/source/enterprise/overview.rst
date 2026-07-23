@@ -237,7 +237,7 @@ links in each row for details.
 
     <tr class="cat"><th colspan="3">Model workflows</th></tr>
     <tr>
-    <th class="stub"><p><a href="../user_guide/evaluation.html">Model evaluation</a></p></th>
+    <th class="stub"><p><a href="../user_guide/evaluation/index.html">Model evaluation</a></p></th>
     <td><div class="check-icon"><img alt="Included" src="/_static/images/icons/checkmark.svg" /></div></td>
     <td><div class="check-icon"><img alt="Included" src="/_static/images/icons/checkmark.svg" /></div></td>
     </tr>

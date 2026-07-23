@@ -92,7 +92,7 @@ FiftyOne
       <span class="quick-link-icon"></span>
       Label my data <span class="new-badge">NEW</span>
     </a>
-    <a href="user_guide/evaluation.html" class="quick-link-item">
+    <a href="user_guide/evaluation/index.html" class="quick-link-item">
       <span class="quick-link-icon"></span>
       Evaluate my model
     </a>
@@ -548,7 +548,7 @@ _________
    :hidden:
 
    FiftyOne Concepts <user_guide/index>
-   Using datasets <user_guide/using_datasets>
+   FiftyOne Datasets <user_guide/using_datasets>
    FiftyOne App <user_guide/app>
    FiftyOne Enterprise 🚀 <enterprise/index>
    FiftyOne Brain <brain/index>

@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.abspath("../extensions"))
 
 from custom_directives import (
     CustomAnimatedCTADirective,
+    CustomAvailableInDirective,
     CustomButtonDirective,
     CustomCalloutItemDirective,
     CustomCardItemDirective,
@@ -26,7 +27,11 @@ from custom_directives import (
     CustomUseCaseCardDirective,
 )
 from fiftyone.internal.docs import is_hidden_from_docs
-from redirects import generate_api_redirects, generate_redirects
+from redirects import (
+    generate_api_redirects,
+    generate_moved_anchor_redirects,
+    generate_redirects,
+)
 
 import fiftyone.constants as foc
 
@@ -315,6 +320,7 @@ def setup(app):
     app.add_config_value("redirects_file", "redirects", "env")
     app.connect("builder-inited", generate_redirects)
     app.connect("build-finished", generate_api_redirects)
+    app.connect("build-finished", generate_moved_anchor_redirects)
     # See https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#event-autodoc-skip-member
     app.connect("autodoc-skip-member", _skip_hidden_from_docs)
 
@@ -326,3 +332,4 @@ def setup(app):
     app.add_directive("customguidescard", CustomGuidesCardDirective)
     app.add_directive("customanimatedcta", CustomAnimatedCTADirective)
     app.add_directive("customusecasecard", CustomUseCaseCardDirective)
+    app.add_directive("customavailablein", CustomAvailableInDirective)

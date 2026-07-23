@@ -140,11 +140,11 @@ fi
 
 echo "Building HTML docs"
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
-sphinx-build -M html source build --jobs auto $SPHINXOPTS
+sphinx-build -M html source build --jobs 1 $SPHINXOPTS
 
 if [[ ${SKIP_MARKDOWN} = false ]]; then
     echo "Building Markdown docs"
-    sphinx-build -M markdown source build --jobs auto $SPHINXOPTS
+    sphinx-build -M markdown source build --jobs 1 $SPHINXOPTS
 
     echo "Copying markdown files to HTML output"
     cp -r build/markdown/* build/html/

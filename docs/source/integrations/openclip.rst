@@ -5,6 +5,10 @@ OpenCLIP Integration
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.23.2
+    :enterprise_version: 1.5.3
+
 FiftyOne integrates natively with the
 `OpenCLIP <https://github.com/mlfoundations/open_clip>`_ library, an open
 source implementation of OpenAI's CLIP (Contrastive Language-Image
