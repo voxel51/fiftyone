@@ -21,7 +21,7 @@ import {
   collectResults,
   hasPythonJobs,
 } from "./python-section.mjs";
-import { buildSuiteRows } from "./suite-rows.mjs";
+import { buildSuiteRows, jobsIcon } from "./suite-rows.mjs";
 
 const [, , jobsPath, bodyPath, junitDir] = process.argv;
 if (!jobsPath || !bodyPath) {
@@ -34,8 +34,10 @@ if (!jobsPath || !bodyPath) {
 const jobs = JSON.parse(readFileSync(jobsPath, "utf8")).jobs ?? [];
 const rows = buildSuiteRows(jobs);
 
-let lines;
-if (bodyPath === "--new") {
+// full comment built from the run's jobs alone — used when the e2e pipeline
+// never posted its report: skipped entirely, or dead after the in-progress
+// banner but before the verdict could write results
+const buildFresh = () => {
   const flavor = (process.env.GITHUB_REPOSITORY ?? "").endsWith(
     "fiftyone-teams",
   )
@@ -43,40 +45,54 @@ if (bodyPath === "--new") {
     : "OSS";
   const sha = (process.env.HEAD_SHA ?? "").slice(0, 10);
   const runUrl = process.env.RUN_URL ?? "";
-  lines = [
+  const e2eJobs = jobs.filter((j) => j.name.split(" / ")[0] === "e2e");
+  const e2eRan = e2eJobs.some((j) => j.conclusion !== "skipped");
+  const allRows = [
+    ...rows,
+    ...(e2eRan ? [`| e2e | ${jobsIcon(e2eJobs)} |`] : []),
+  ];
+  const fresh = [
     `<!-- ci-report:${flavor} -->`,
-    `## ${rows.some((r) => r.includes("❌")) ? "❌" : "✅"} CI (${flavor})`,
+    `## ${allRows.some((r) => r.includes("❌")) ? "❌" : "✅"} CI (${flavor})`,
     "",
     `Suite results at \`${sha}\`${runUrl ? ` — [run](${runUrl})` : ""}`,
   ];
   if (hasPythonJobs(jobs)) {
-    lines.push("", `**python**: ⏳ ${PYTHON_LINE_MARKER}`);
+    fresh.push("", `**python**: ⏳ ${PYTHON_LINE_MARKER}`);
   }
-  if (rows.length) {
-    lines.push("", "| suite | result |", "| --- | --- |", ...rows);
+  if (allRows.length) {
+    fresh.push("", "| suite | result |", "| --- | --- |", ...allRows);
   } else {
-    lines.push("", "_No suites ran for this change._");
+    fresh.push("", "_No suites ran for this change._");
   }
   if (hasPythonJobs(jobs)) {
-    lines.push("", PYTHON_FAILURES_START, PYTHON_FAILURES_END);
+    fresh.push("", PYTHON_FAILURES_START, PYTHON_FAILURES_END);
   }
-  lines.push("", "_The e2e suite did not run for this revision._");
+  if (!e2eRan) {
+    fresh.push("", "_The e2e suite did not run for this revision._");
+  }
+  return fresh;
+};
+
+let lines;
+if (bodyPath === "--new") {
+  lines = buildFresh();
 } else {
   const body = readFileSync(bodyPath, "utf8");
   lines = body.split("\n");
   const header = lines.indexOf("| suite | result |");
   const e2eRow = lines.findIndex((l) => l.startsWith("| e2e |"));
   if (header === -1 || e2eRow < header + 2) {
-    process.stdout.write(body);
-    process.exit(0);
-  }
-  lines.splice(header + 2, e2eRow - header - 2, ...rows);
+    lines = buildFresh();
+  } else {
+    lines.splice(header + 2, e2eRow - header - 2, ...rows);
 
-  // The headline is posted by the e2e verdict, which only knows e2e; a
-  // suite that failed after posting must flip it
-  const headline = lines.findIndex((l) => l.startsWith("## "));
-  if (headline !== -1 && rows.some((r) => r.includes("❌"))) {
-    lines[headline] = lines[headline].replace(/^## [✅⚠️]+ CI/u, "## ❌ CI");
+    // The headline is posted by the e2e verdict, which only knows e2e; a
+    // suite that failed after posting must flip it
+    const headline = lines.findIndex((l) => l.startsWith("## "));
+    if (headline !== -1 && rows.some((r) => r.includes("❌"))) {
+      lines[headline] = lines[headline].replace(/^## [✅⚠️]+ CI/u, "## ❌ CI");
+    }
   }
 }
 

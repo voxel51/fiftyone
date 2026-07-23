@@ -195,6 +195,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          persist-credentials: false
           sparse-checkout: .github/scripts
       - name: Download pytest results
         # junit reports for the comment's python section; empty when the

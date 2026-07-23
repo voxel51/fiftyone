@@ -24,9 +24,13 @@ export class HistogramPom {
   }
 
   // arm BEFORE the action that reloads the histogram (mode switch, panel
-  // foreground); the app fires histograms-loaded on every completed draw
-  async armLoad() {
-    return this.eventUtils.arm("histograms-loaded");
+  // foreground); the app fires histograms-loaded on every completed draw.
+  // Pass a path to ignore sibling histograms' draws.
+  async armLoad(path?: string) {
+    return this.eventUtils.arm(
+      "histograms-loaded",
+      (e) => !path || (e.detail as { path?: string })?.path === path,
+    );
   }
 }
 

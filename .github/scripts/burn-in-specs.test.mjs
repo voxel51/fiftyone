@@ -67,6 +67,25 @@ describe("fileTargets", () => {
     expect(fileTargets(path, patch, SOURCE)).toEqual([`${path}:8`]);
   });
 
+  it("targets each test a multi-hunk diff lands in", () => {
+    const patch = [
+      "@@ -8,3 +8,3 @@",
+      ` ${line(8)}`,
+      "-    await expect(old).toBe(1);",
+      `+${line(9)}`,
+      ` ${line(10)}`,
+      "@@ -13,3 +13,3 @@",
+      ` ${line(13)}`,
+      "-    const s = old;",
+      `+${line(14)}`,
+      ` ${line(15)}`,
+    ].join("\n");
+    expect(fileTargets(path, patch, SOURCE)).toEqual([
+      `${path}:8`,
+      `${path}:13`,
+    ]);
+  });
+
   it("targets the declaration when a leading comment is deleted with it", () => {
     const patch = [
       "@@ -12,3 +12,2 @@",

@@ -374,7 +374,6 @@ jobs:
         id: test_config
         run: |
           python tests/utils/setup_config.py
-          python tests/utils/github_actions_flags.py
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
@@ -448,6 +447,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             /e2e-pw/**
+            /.github/scripts/**
           sparse-checkout-cone-mode: false
 
       - name: Download blob reports

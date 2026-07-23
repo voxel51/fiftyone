@@ -13,6 +13,15 @@ const IGNORE = new Set([
   "oss-merged-check",
 ]);
 
+export const jobsIcon = (js) =>
+  js.some((j) => j.conclusion === "failure")
+    ? "❌"
+    : js.some((j) => j.status !== "completed")
+      ? "⏳"
+      : js.some((j) => j.conclusion === "cancelled")
+        ? "🚫 cancelled"
+        : "✅";
+
 export function buildSuiteRows(jobs) {
   const groups = new Map();
   for (const job of jobs) {
@@ -24,14 +33,7 @@ export function buildSuiteRows(jobs) {
     }
     groups.set(group, [...(groups.get(group) ?? []), job]);
   }
-  const icon = (js) =>
-    js.some((j) => j.conclusion === "failure")
-      ? "❌"
-      : js.some((j) => j.status !== "completed")
-        ? "⏳"
-        : js.some((j) => j.conclusion === "cancelled")
-          ? "🚫 cancelled"
-          : "✅";
+  const icon = jobsIcon;
   return [...groups.entries()]
     .sort()
     .filter(([, js]) => !js.every((j) => j.conclusion === "skipped"))

@@ -177,9 +177,11 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
         };
 
   useLayoutEffect(() => {
-    const el = document.getElementById(`histogram-${path}`);
-    el?.dispatchEvent(new CustomEvent(`histogram-${path}`, { bubbles: true }));
-    el?.dispatchEvent(
+    // the empty-data state renders no container; completion must still
+    // signal, so fall back to the document
+    const el = document.getElementById(`histogram-${path}`) ?? document;
+    el.dispatchEvent(new CustomEvent(`histogram-${path}`, { bubbles: true }));
+    el.dispatchEvent(
       new CustomEvent("histograms-loaded", { bubbles: true, detail: { path } }),
     );
   }, [path, raw, ref]);
