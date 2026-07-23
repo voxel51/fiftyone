@@ -516,12 +516,7 @@ export function useFrameTransforms({
         targetFrameId,
       },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      policy?.boundaryClampNs,
-      policy?.maxInterpolationGapNs,
-      policy?.resolutionMode,
-      state.version,
-    ],
+    [policy?.boundaryClampNs, state.version],
   );
   const getPlacementReadiness = useCallback<FramePlacementReadinessGetter>(
     ({ frameIds: requestedFrameIds, targetFrameId, timeNs: requestTimeNs }) => {
@@ -593,14 +588,7 @@ export function useFrameTransforms({
       };
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      dynamicRangeMode,
-      policy?.boundaryClampNs,
-      policy?.maxInterpolationGapNs,
-      policy?.resolutionMode,
-      state.status,
-      state.version,
-    ],
+    [dynamicRangeMode, policy?.boundaryClampNs, state.status, state.version],
   );
   const indexedDynamicRanges = useCallback(
     () => storeRef.current?.indexedRanges() ?? [],

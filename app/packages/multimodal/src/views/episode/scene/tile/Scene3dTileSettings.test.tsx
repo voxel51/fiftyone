@@ -1,4 +1,5 @@
 import { PlaybackProvider } from "@fiftyone/playback";
+import { TileIdScope } from "@fiftyone/tiling";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { Dispatch, SetStateAction } from "react";
 import {
@@ -18,8 +19,6 @@ import Scene3dTileSettings, {
 } from "./Scene3dTileSettings";
 import {
   __resetModalSettingsForTests,
-  DEFAULT_FIDELITY_MODE,
-  DEFAULT_TEMPORAL_POLICY,
   readModalSettings,
   writeModalSettings,
   type PinholeCameraSettings,
@@ -40,6 +39,11 @@ const CAM_BACK = source(
   SCENE_SOURCE_TYPE.CAMERA_CALIBRATION,
   227,
 );
+const TRACKED_LABELS = source(
+  "/tracked_objects",
+  "Tracked objects",
+  SCENE_SOURCE_TYPE.SCENE_ANNOTATION,
+);
 const LIDAR = source(
   "LIDAR_TOP",
   "LIDAR_TOP",
@@ -58,6 +62,29 @@ afterEach(() => {
 });
 
 describe("Scene3dTileSettings", () => {
+  it("keeps tracked-label smoothing collapsed and off by default", () => {
+    renderSettings({
+      sceneAnnotationSources: [TRACKED_LABELS],
+      sceneAnnotationStreams: [TRACKED_LABELS.id],
+    });
+
+    const group = screen.getByRole("button", {
+      name: /3D Label Playback/,
+    });
+    expect(group.getAttribute("aria-expanded")).toBe("false");
+    expect(
+      screen.queryByRole("switch", { name: "Smooth tracked 3D labels" }),
+    ).toBeNull();
+
+    fireEvent.click(group);
+    const toggle = screen.getByRole("switch", {
+      name: "Smooth tracked 3D labels",
+    });
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+  });
+
   it("renders a camera master switch when camera sources exist", () => {
     renderSettings({
       cameraSources: [CAM_FRONT, CAM_BACK],
@@ -825,7 +852,9 @@ function renderSettings(
   seedModalSettings(props);
   render(
     <PlaybackProvider duration={1}>
-      <Scene3dTileSettings {...componentProps(props)} />
+      <TileIdScope tileId="3d-1">
+        <Scene3dTileSettings {...componentProps(props)} />
+      </TileIdScope>
     </PlaybackProvider>,
   );
   return props;
@@ -877,7 +906,6 @@ function settingsProps(
 function seedModalSettings(props: SettingsTestProps) {
   writeModalSettings({
     scoped: {},
-    fidelityMode: DEFAULT_FIDELITY_MODE,
     imageLabelStreams: {},
     imageProjection: {},
     pinholeCamera: props.pinholeCamera,
@@ -886,7 +914,6 @@ function seedModalSettings(props: SettingsTestProps) {
     referenceGrid: props.referenceGrid,
     sceneBackground: props.sceneBackground,
     showPointCloudColorLegend: props.showPointCloudColorLegend,
-    temporalPolicy: DEFAULT_TEMPORAL_POLICY,
   });
   __resetModalSettingsForTests();
 }

@@ -64,6 +64,51 @@ describe("useScene3dCameraTracking", () => {
     expect(result.current.rig.mode).toBe("position");
   });
 
+  it("keeps held camera targets resolved while exposing stale follow status", () => {
+    const heldEdge = {
+      ageNs: 3_200_000_000n,
+      reason: "after-last-sample" as const,
+      sourceFrameId: "base_link",
+      sourceTimeNs: 10_000_000_000n,
+      staleAfterNs: 500_000_000n,
+      targetFrameId: "map",
+    };
+    const heldTransforms: FrameTransformsState = {
+      ...translationTransforms(1, 2, 3),
+      resolve: (sourceFrameId, targetFrameId) => ({
+        heldEdges: [heldEdge],
+        resolutionKind: "held",
+        sourceFrameId,
+        status: "resolved",
+        targetFrameId,
+        transform: {
+          heldEdges: [heldEdge],
+          resolutionKind: "held",
+          rotation: new Quaternion(),
+          sourceFrameId,
+          targetFrameId,
+          translation: new Vector3(1, 2, 3),
+        },
+      }),
+    };
+    const { rerender, result } = renderHook(useScene3dCameraTracking, {
+      initialProps: trackingProps({ frameTransforms: heldTransforms }),
+    });
+
+    expect(result.current.cameraTargetResolution.status).toBe("resolved");
+    expect(result.current.cameraFollowHeldPose).toEqual(heldEdge);
+    expect(result.current.cameraTrackingNotice).toBeNull();
+
+    rerender(
+      trackingProps({ frameTransforms: translationTransforms(4, 5, 6) }),
+    );
+    expect(result.current.cameraFollowHeldPose).toBeNull();
+    expect(result.current.cameraTargetResolution).toMatchObject({
+      pose: { translation: { x: 4, y: 5, z: 6 } },
+      status: "resolved",
+    });
+  });
+
   it("keeps interaction and initial traffic out of React state", () => {
     const { result } = renderHook(useScene3dCameraTracking, {
       initialProps: trackingProps(),

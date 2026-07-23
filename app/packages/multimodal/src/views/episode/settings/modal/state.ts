@@ -11,27 +11,22 @@ import { useCallback, useEffect, useMemo } from "react";
 import {
   DEFAULT_IMAGE_PROJECTION,
   DEFAULT_POINT_CLOUD_COLOR,
-  DEFAULT_TEMPORAL_POLICY,
   EMPTY_SCOPED_SETTINGS,
-  normalizeFidelityMode,
   normalizeImageProjection,
   normalizePinholeCamera,
   normalizePointCloudColor,
   normalizePointCloudPointSize,
   normalizeReferenceGrid,
   normalizeSceneBackground,
-  normalizeTemporalPolicy,
   normalizeStreamList,
   readModalSettings,
   writeModalSettings,
   type ImageProjectionSettings,
   type PersistedModalSettings,
   type PinholeCameraSettings,
-  type PlaybackFidelityMode,
   type PointCloudColorSettings,
   type ReferenceGridSettings,
   type SceneBackgroundSettings,
-  type TemporalPolicySettings,
 } from "./storage";
 import type { ScopedModalSettings } from "./storage";
 export type { ScopedModalSettings };
@@ -41,7 +36,6 @@ export type {
 } from "../../spatial/camera-geometry/camera-model";
 
 export {
-  DEFAULT_FIDELITY_MODE,
   DEFAULT_IMAGE_PROJECTION,
   DEFAULT_MODAL_SETTINGS,
   DEFAULT_PROJECTION_POINT_SIZE,
@@ -50,7 +44,6 @@ export {
   DEFAULT_POINT_CLOUD_POINT_SIZE,
   DEFAULT_REFERENCE_GRID,
   DEFAULT_SCENE_BACKGROUND,
-  DEFAULT_TEMPORAL_POLICY,
   MAX_POINT_CLOUD_POINT_SIZE,
   MAX_SETTINGS_SCOPES,
   POINT_CLOUD_POINT_SIZE_STEP,
@@ -62,12 +55,10 @@ export {
   type ImageProjectionSettings,
   type PersistedModalSettings,
   type PinholeCameraSettings,
-  type PlaybackFidelityMode,
   type PointCloudColorSettings,
   type ReferenceGridSettings,
   type SceneBackgroundMode,
   type SceneBackgroundSettings,
-  type TemporalPolicySettings,
 } from "./storage";
 
 const EMPTY_STREAM_LIST: readonly string[] = Object.freeze([]);
@@ -126,36 +117,6 @@ function updateStreamKeyedSettings<Key extends keyof ScopedModalSettings>(
     return { ...current, scoped };
   });
 }
-
-const fidelityModeAtom = atom(
-  (get) => get(modalSettingsAtom).fidelityMode,
-  (_get, set, mode: PlaybackFidelityMode) => {
-    updateModalSettings(set, (current) => ({
-      ...current,
-      fidelityMode: normalizeFidelityMode(mode),
-    }));
-  },
-);
-
-const temporalPolicyAtom = atom(
-  (get) => get(modalSettingsAtom).temporalPolicy,
-  (_get, set, policy: Partial<TemporalPolicySettings>) => {
-    updateModalSettings(set, (current) => ({
-      ...current,
-      temporalPolicy: normalizeTemporalPolicy({
-        ...current.temporalPolicy,
-        ...policy,
-      }),
-    }));
-  },
-);
-
-const resetTemporalPolicyAtom = atom(null, (_get, set) => {
-  updateModalSettings(set, (current) => ({
-    ...current,
-    temporalPolicy: DEFAULT_TEMPORAL_POLICY,
-  }));
-});
 
 const pinholeCameraAtom = atom(
   (get) => get(modalSettingsAtom).pinholeCamera,
@@ -348,43 +309,6 @@ export function useModalSettingsScopeSync(
       );
     };
   }, [scopeKey]);
-}
-
-/**
- * Reads and updates the episode playback fidelity preference.
- */
-export function usePlaybackSettings() {
-  const fidelityMode = useAtomValue(fidelityModeAtom, {
-    store: modalSettingsStore,
-  });
-  const setFidelityMode = useSetAtom(fidelityModeAtom, {
-    store: modalSettingsStore,
-  });
-
-  return useMemo(
-    () => ({ fidelityMode, setFidelityMode }),
-    [fidelityMode, setFidelityMode],
-  );
-}
-
-/**
- * Reads and updates episode timing policy preferences.
- */
-export function useTemporalPolicySettings() {
-  const temporalPolicy = useAtomValue(temporalPolicyAtom, {
-    store: modalSettingsStore,
-  });
-  const setTemporalPolicy = useSetAtom(temporalPolicyAtom, {
-    store: modalSettingsStore,
-  });
-  const resetTemporalPolicy = useSetAtom(resetTemporalPolicyAtom, {
-    store: modalSettingsStore,
-  });
-
-  return useMemo(
-    () => ({ resetTemporalPolicy, setTemporalPolicy, temporalPolicy }),
-    [resetTemporalPolicy, setTemporalPolicy, temporalPolicy],
-  );
 }
 
 /**

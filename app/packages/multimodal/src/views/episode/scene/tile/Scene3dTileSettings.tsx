@@ -43,6 +43,10 @@ import settingsStyles from "../../tiles/Tile.settings.module.css";
 import { SettingsLabel } from "../../settings/controls/SettingsLabel";
 import ViewpointSettings from "../camera/ViewpointSettings";
 import { TRACKING_MODES } from "../camera/use-scene-3d-camera-tracking";
+import {
+  useScene3dTilePlaybackSettings,
+  useSetScene3dTilePlaybackSettings,
+} from "./scene-3d-tile-state";
 
 /**
  * One source group shown in the 3D settings sidebar.
@@ -171,6 +175,8 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
   } = usePointCloudStyleSettings();
   const { referenceGrid, setReferenceGrid } = useReferenceGridSettings();
   const { sceneBackground, setSceneBackground } = useSceneBackgroundSettings();
+  const { smoothTrackedLabels } = useScene3dTilePlaybackSettings();
+  const setScene3dTilePlaybackSettings = useSetScene3dTilePlaybackSettings();
   const { cameraTargetFrameId, frameIds, worldFrameId } = frameControls;
   const { enabled, setSourcesEnabled, toggleSource } = selection;
   const pointCloudSources = sourceGroups.pointCloud.sources;
@@ -343,6 +349,34 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
         toggleAriaLabel="Toggle 3D labels"
         toggleSource={toggleSource}
       />
+
+      {sceneAnnotationSources.length > 0 ? (
+        <SidebarGroup
+          defaultExpanded={false}
+          summary={smoothTrackedLabels ? "Smoothed" : "Recorded"}
+          title="3D Label Playback"
+        >
+          <div className={settingsStyles.field}>
+            <div className={settingsStyles.sectionHeader}>
+              <SettingsLabel
+                label="Smooth tracked 3D labels"
+                tooltip="Interpolates compatible geometry only when consecutive entities share a stable ID and coordinate frame. Recorded labels remain held when matching is unsafe or the message gap is too large."
+              />
+              <Toggle
+                aria-label="Smooth tracked 3D labels"
+                checked={smoothTrackedLabels}
+                onChange={(checked) =>
+                  setScene3dTilePlaybackSettings({
+                    smoothTrackedLabels: checked,
+                  })
+                }
+                size={Size.Sm}
+                {...settingsBooleanNoSpaceToggleProps}
+              />
+            </div>
+          </div>
+        </SidebarGroup>
+      ) : null}
 
       <SourceGroup
         enabled={enabled}

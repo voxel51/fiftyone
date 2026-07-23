@@ -7,7 +7,10 @@ import {
   nextDistinctCachedMessage,
   useStreamCacheSnapshot,
 } from "../../playback/cache-sampling";
-import { interpolateSceneUpdate } from "./interpolate-scene-entities";
+import {
+  hasInterpolatableSceneEntityPair,
+  interpolateSceneUpdate,
+} from "./interpolate-scene-entities";
 import { useDataStream } from "../../playback/data-stream-context";
 import { useSceneUpdateHistoryContext } from "./scene-update-history-context";
 import {
@@ -112,6 +115,14 @@ export function useInterpolatedSceneUpdateFrames({
       if (!nextViz) {
         return playbackFrame;
       }
+      const interpolationGapNs =
+        nextMsg.timestampNs - playbackFrame.contentTimeNs;
+      if (
+        interpolationGapNs <= 0n ||
+        interpolationGapNs > cache.interpolationGapLimitNs()
+      ) {
+        return playbackFrame;
+      }
       const historyStream = history.get(stream);
       const nextDeltas = sceneUpdateDeltasForStream({
         cache,
@@ -125,6 +136,9 @@ export function useInterpolatedSceneUpdateFrames({
         nextDeltas.length > 0
           ? sceneUpdateSnapshotAt(nextDeltas, nextMsg.timestampNs)
           : nextViz;
+      if (!hasInterpolatableSceneEntityPair(playbackFrame.frame, nextFrame)) {
+        return playbackFrame;
+      }
 
       const f = interpolationFraction({
         nextTimelineTimeNs: nextMsg.timestampNs,

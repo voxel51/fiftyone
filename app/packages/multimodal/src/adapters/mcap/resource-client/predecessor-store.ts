@@ -30,7 +30,9 @@ export interface McapPredecessorMemoEntry {
 }
 
 /**
- * Per-topic memo of resolved predecessor lookups for one MCAP source.
+ * Per-topic, per-limit memo of resolved predecessor lookups for one MCAP
+ * source. Keeping limits independent lets synchronized stream reads and
+ * transform-anchor reads share the store without evicting each other.
  *
  * Playback advances monotonically through small batch windows, so the
  * same predecessor answers many consecutive batches. Memoizing the
@@ -49,8 +51,8 @@ export interface McapPredecessorStore {
   ): readonly McapIndexedMessageTime[] | undefined;
 
   /**
-   * Records a resolved predecessor lookup, replacing any prior memo for
-   * the topic.
+   * Records a resolved predecessor lookup, replacing the prior memo for
+   * the same topic and per-topic limit.
    */
   record(topic: string, entry: McapPredecessorMemoEntry): void;
 
@@ -68,15 +70,16 @@ export interface McapPredecessorStore {
 
 /**
  * Creates an in-memory predecessor memo. Size is bounded by the topic
- * count of one source, so no eviction is needed.
+ * count and the small set of limits used by one source, so no eviction is
+ * needed.
  */
 export function createMcapPredecessorStore(): McapPredecessorStore {
-  const memos = new Map<string, McapPredecessorMemoEntry>();
+  const memos = new Map<string, Map<number, McapPredecessorMemoEntry>>();
 
   return {
     lookup(topic, timeNs, limitPerTopic) {
-      const memo = memos.get(topic);
-      if (!memo || memo.limitPerTopic !== limitPerTopic) {
+      const memo = memos.get(topic)?.get(limitPerTopic);
+      if (!memo) {
         return undefined;
       }
 
@@ -90,21 +93,27 @@ export function createMcapPredecessorStore(): McapPredecessorStore {
     },
 
     record(topic, entry) {
-      memos.set(topic, entry);
+      const topicMemos = memos.get(topic) ?? new Map();
+      topicMemos.set(entry.limitPerTopic, entry);
+      memos.set(topic, topicMemos);
     },
 
     extend(topic, fromTimeNs, toTimeNs) {
-      const memo = memos.get(topic);
-      if (!memo || toTimeNs <= memo.nextKnownTimeNs) {
+      const topicMemos = memos.get(topic);
+      if (!topicMemos) {
         return;
       }
-      // A disjoint proven interval can't chain — messages could exist
-      // in the unobserved span between the memo and the new knowledge.
-      if (fromTimeNs > memo.nextKnownTimeNs) {
-        return;
+      for (const [limit, memo] of topicMemos) {
+        if (toTimeNs <= memo.nextKnownTimeNs) {
+          continue;
+        }
+        // A disjoint proven interval can't chain — messages could exist
+        // in the unobserved span between the memo and the new knowledge.
+        if (fromTimeNs > memo.nextKnownTimeNs) {
+          continue;
+        }
+        topicMemos.set(limit, { ...memo, nextKnownTimeNs: toTimeNs });
       }
-
-      memos.set(topic, { ...memo, nextKnownTimeNs: toTimeNs });
     },
 
     clear() {

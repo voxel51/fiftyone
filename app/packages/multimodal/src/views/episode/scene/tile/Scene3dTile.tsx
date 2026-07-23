@@ -57,11 +57,9 @@ import {
   defaultPointCloudColorForSource,
   useImageProjectionSettingsByStream,
   usePinholeCameraSettings,
-  usePlaybackSettings,
   usePointCloudStyleSettings,
   useReferenceGridSettings,
   useSceneBackgroundSettings,
-  useTemporalPolicySettings,
 } from "../../settings/modal/state";
 import { usePointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 import type { EpisodeTileProps } from "../../tiles/tile-types";
@@ -95,6 +93,7 @@ import {
 import { useScene3dFrustumLayers } from "../camera/use-scene-3d-frustum-layers";
 import { useScene3dPlacedLayers } from "../placement/use-scene-3d-placed-layers";
 import { useScene3dViewpointRegistration } from "../camera/use-scene-3d-viewpoint-registration";
+import { useScene3dTilePlaybackSettings } from "./scene-3d-tile-state";
 
 /**
  * Named gradient backdrop profiles for the 3D scene. "Abyss" is dark
@@ -121,7 +120,9 @@ const STUDIO_BACKGROUND: ThreeSceneBackground = {
  */
 const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   const viewStateStore = useScene3dViewStateStore();
-  const sourceKey = useDataStream()?.sourceKey ?? "";
+  const dataStream = useDataStream();
+  const sourceKey = dataStream?.sourceKey ?? "";
+  const timelineStartTimeNs = dataStream?.getTimelineIndex()?.startTimeNs;
   // The previous mount's view state, read once before any write-through can
   // overwrite it. The tile remounts per sample, so this snapshot is exactly
   // the state the user left the previous sample's 3D tile in.
@@ -175,8 +176,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     (status) => status === "loading",
   );
   const frameTransforms = useFrameTransformsContext();
-  const { fidelityMode } = usePlaybackSettings();
-  const { temporalPolicy } = useTemporalPolicySettings();
+  const { smoothTrackedLabels } = useScene3dTilePlaybackSettings();
   const { pinholeCamera } = usePinholeCameraSettings();
   const imageProjectionSettings = useImageProjectionSettingsByStream();
   const { pointCloudColors, pointCloudPointSize, showPointCloudColorLegend } =
@@ -243,7 +243,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     useStreamPlaybackFrames<SceneUpdateVisualization>(sceneAnnotationStreams);
   const annotationFrames = useInterpolatedSceneUpdateFrames({
     frames: heldAnnotationFrames,
-    interpolate: fidelityMode === "smooth",
+    interpolate: smoothTrackedLabels,
     streams: sceneAnnotationStreams,
   });
   const gridFrames =
@@ -364,9 +364,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   });
   const {
     cameraFrustumLayers,
-    clampedFrameIds,
     gridLayers,
-    largeInterpolationGaps,
     pendingAnnotationFrameIds,
     pendingFrustumFrameIds,
     pendingGridFrameIds,
@@ -374,8 +372,9 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     pointCloudLayers,
     provisionalFrameIds,
     sceneAnnotationLayers,
+    stalePoseUsages,
     transformedLayerCount,
-    unresolvedFrameIds,
+    unresolvedPoseUsages,
   } = useScene3dPlacedLayers({
     annotationFrames: combinedAnnotationFrames,
     annotationStreams: combinedAnnotationStreams,
@@ -385,7 +384,6 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     frames,
     gridFrames,
     gridStreams: mapLayerStreams,
-    largeInterpolationGapWarningMs: temporalPolicy.transformGapWarningMs,
     playbackTimeNs,
     pointCloudStreams,
     provisionalStreamId,
@@ -396,6 +394,25 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     () =>
       new Map(pointCloudSources.map((source) => [source.id, source] as const)),
     [pointCloudSources],
+  );
+  const sourceLabelsById = useMemo(
+    () =>
+      new Map(
+        [
+          ...cameraSources,
+          ...mapLayerSources,
+          ...pointCloudSources,
+          ...poseSources,
+          ...sceneAnnotationSources,
+        ].map((source) => [source.id, source.label || source.id] as const),
+      ),
+    [
+      cameraSources,
+      mapLayerSources,
+      pointCloudSources,
+      poseSources,
+      sceneAnnotationSources,
+    ],
   );
 
   // Attach each cloud's color settings outside build3dLayers so the pure
@@ -514,24 +531,8 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       provisionalFrameIds,
     ],
   );
-  const transformNotices = useMemo(
-    () =>
-      buildScene3dTransformNotices({
-        clampedFrameIds,
-        frameTransformsError: frameTransforms.error,
-        largeInterpolationGaps,
-        unresolvedFrameIds,
-        worldFrameId,
-      }),
-    [
-      clampedFrameIds,
-      frameTransforms.error,
-      largeInterpolationGaps,
-      unresolvedFrameIds,
-      worldFrameId,
-    ],
-  );
   const {
+    cameraFollowHeldPose,
     cameraTrackingNotice,
     getDisplayedCameraPose,
     handleCameraPoseChange,
@@ -564,6 +565,27 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     worldFrameTransition: referenceTransition,
     worldFrameId,
   });
+  const transformNotices = useMemo(
+    () =>
+      buildScene3dTransformNotices({
+        cameraFollowHeldPose,
+        frameTransformsError: frameTransforms.error,
+        sourceLabelsById,
+        stalePoseUsages,
+        timelineStartTimeNs,
+        unresolvedPoseUsages,
+        worldFrameId,
+      }),
+    [
+      cameraFollowHeldPose,
+      frameTransforms.error,
+      sourceLabelsById,
+      stalePoseUsages,
+      timelineStartTimeNs,
+      unresolvedPoseUsages,
+      worldFrameId,
+    ],
+  );
   useScene3dViewpointRegistration({
     cameraNavigationMode,
     cameraProjection,
@@ -624,9 +646,9 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
         sourceKey,
         selectedStreamsKey,
         worldFrameId,
-        fidelityMode,
+        smoothTrackedLabels,
       ]),
-    [fidelityMode, selectedStreamsKey, sourceKey, worldFrameId],
+    [selectedStreamsKey, smoothTrackedLabels, sourceKey, worldFrameId],
   );
   const currentSceneSnapshot = useMemo<Scene3dSnapshot>(
     () => ({

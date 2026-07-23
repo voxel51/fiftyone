@@ -18,6 +18,7 @@ import {
 } from "react";
 import {
   publishDataStreamStatuses,
+  setStreamContentTimeSec,
   setStreamStartTimeSec,
   setStreamStaleAgeNs,
   setStreamStatus,
@@ -96,7 +97,6 @@ export interface UseDataStreamOptions {
   onPlayheadDataReady?: () => void;
   source: ByteSourceDescriptor | null;
   allStreams: readonly string[];
-  staleMediaWarningNs: bigint;
   staleWarningStreams: readonly string[];
   streamPolicies: StreamSyncPolicies;
 }
@@ -120,7 +120,6 @@ export function useRegisterDataStream({
   onPlayheadDataReady,
   source,
   allStreams,
-  staleMediaWarningNs,
   staleWarningStreams,
   streamPolicies,
 }: UseDataStreamOptions): void {
@@ -189,7 +188,6 @@ export function useRegisterDataStream({
   const blockingStreamsRef = useRef<ReadonlySet<string>>(
     new Set(blockingStreams),
   );
-  const staleMediaWarningNsRef = useRef(staleMediaWarningNs);
   const staleWarningStreamsRef = useRef<ReadonlySet<string>>(
     new Set(staleWarningStreams),
   );
@@ -207,10 +205,6 @@ export function useRegisterDataStream({
   useEffect(() => {
     onPlayheadDataReadyRef.current = onPlayheadDataReady;
   }, [onPlayheadDataReady]);
-  // This effect keeps stale-age evaluation current inside stable callbacks.
-  useEffect(() => {
-    staleMediaWarningNsRef.current = staleMediaWarningNs;
-  }, [staleMediaWarningNs]);
   // This effect keeps stale-warning stream membership current inside callbacks.
   useEffect(() => {
     staleWarningStreamsRef.current = new Set(staleWarningStreams);
@@ -335,6 +329,7 @@ export function useRegisterDataStream({
     }
     for (const stream of streamCachesRef.current.keys()) {
       setStreamValue(store, stream, null);
+      setStreamContentTimeSec(store, stream, null);
       setStreamStatus(store, stream, "loading");
       setStreamStaleAgeNs(store, stream, null);
       setStreamStartTimeSec(store, stream, null);
@@ -472,7 +467,6 @@ export function useRegisterDataStream({
       scheduleBufferedRangesPublish,
       schedulePausedIdleWarmup: (delayMs) =>
         schedulePausedIdleWarmupRef.current?.(delayMs),
-      staleMediaWarningNs: staleMediaWarningNsRef.current,
       staleWarningStreams: staleWarningStreamsRef.current,
       store,
     });
@@ -485,12 +479,6 @@ export function useRegisterDataStream({
     scheduleBufferedRangesPublish,
     store,
   ]);
-
-  // This effect updates stale/ready badges after sidebar threshold changes,
-  // including while the playhead is paused.
-  useEffect(() => {
-    publishStreamStatuses();
-  }, [publishStreamStatuses, staleMediaWarningNs]);
 
   const rebalanceDecodedCaches = useCallback(
     (pruneSpeculative: boolean) => {

@@ -45,6 +45,11 @@ import {
 } from "../plots/plot-tile-state";
 import { rawTileStreamAtom } from "../tiles/raw-message-binding";
 import {
+  DEFAULT_SCENE_3D_TILE_PLAYBACK_SETTINGS,
+  scene3dTilePlaybackSettingsAtom,
+  type Scene3dTilePlaybackSettings,
+} from "../scene/tile/scene-3d-tile-state";
+import {
   TILE_TYPE,
   type EpisodeTileProps,
   type TileType,
@@ -567,6 +572,32 @@ export function ModalLayoutPersistence({
     store,
   });
 
+  const seededScene3dSettingsKeyRef = useRef<string | null>(null);
+  useSeedPersistedTileAtom({
+    atom: scene3dTilePlaybackSettingsAtom,
+    datasetIdRef,
+    field: "scene3dSettings",
+    seededKeyRef: seededScene3dSettingsKeyRef,
+    store,
+    tilesRef,
+  });
+
+  const scene3dSettingsPatch = useCallback(
+    (
+      value: Readonly<Record<string, Scene3dTilePlaybackSettings>>,
+    ): Partial<PersistedModalLayout> => ({
+      scene3dSettings: compactScene3dSettings(value),
+    }),
+    [],
+  );
+  useDebouncedLayoutAtomMirror({
+    atom: scene3dTilePlaybackSettingsAtom,
+    datasetIdRef,
+    patchForValue: scene3dSettingsPatch,
+    seededKeyRef: seededScene3dSettingsKeyRef,
+    store,
+  });
+
   // Write only after the layout actually changes from what this mount
   // started with. Restores can be PRUNED views of the saved arrangement
   // (e.g. an image-only sample drops the 3D leaf); persisting one without
@@ -729,12 +760,31 @@ function compactMapSettings(
   return Object.keys(compact).length > 0 ? compact : undefined;
 }
 
+function compactScene3dSettings(
+  value: Readonly<Record<string, Scene3dTilePlaybackSettings>>,
+): Record<string, Scene3dTilePlaybackSettings> | undefined {
+  const compact: Record<string, Scene3dTilePlaybackSettings> = {};
+  for (const [tileId, settings] of Object.entries(value)) {
+    if (
+      settings.smoothTrackedLabels ===
+      DEFAULT_SCENE_3D_TILE_PLAYBACK_SETTINGS.smoothTrackedLabels
+    ) {
+      continue;
+    }
+    compact[tileId] = {
+      smoothTrackedLabels: settings.smoothTrackedLabels,
+    };
+  }
+  return Object.keys(compact).length > 0 ? compact : undefined;
+}
+
 type PersistedTileAtomField =
   | "extensionSettings"
   | "logSettings"
   | "mapSettings"
   | "plotSeries"
-  | "rawStreams";
+  | "rawStreams"
+  | "scene3dSettings";
 
 /**
  * Seeds tile-scoped atoms from the dataset entry once per modal mount.

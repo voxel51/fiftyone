@@ -918,7 +918,7 @@ describe("stream status + buffering feedback", () => {
     expect(getStreamValue(store, STREAM)).toBeNull();
   });
 
-  it("keeps displaying old media and marks it stale past the warning threshold", async () => {
+  it("keeps displaying old media and marks it stale past the adaptive threshold", async () => {
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
@@ -952,7 +952,7 @@ describe("stream status + buffering feedback", () => {
       ]),
     });
 
-    const { rerender } = render(
+    render(
       <Harness
         client={client}
         onApi={(value) => {
@@ -960,7 +960,6 @@ describe("stream status + buffering feedback", () => {
         }}
         onStore={storeCapture.onStore}
         source={source}
-        staleMediaWarningNs={500_000_000n}
       />,
       { wrapper: TestProviders },
     );
@@ -985,25 +984,9 @@ describe("stream status + buffering feedback", () => {
       expect(value?.ageNs).toBe(value?.requestedTimeNs);
       expect(getStreamStatus(store, STREAM)).toBe("stale");
     });
-
-    rerender(
-      <Harness
-        client={client}
-        onApi={(value) => {
-          api = value;
-        }}
-        onStore={storeCapture.onStore}
-        source={source}
-        staleMediaWarningNs={0n}
-      />,
-    );
-
-    await waitFor(() => {
-      expect(getStreamStatus(store, STREAM)).toBe("ready");
-    });
   });
 
-  it("keeps held annotation streams ready without stale-frame warning status", async () => {
+  it("holds annotation geometry and marks it stale after its adaptive threshold", async () => {
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
@@ -1053,8 +1036,7 @@ describe("stream status + buffering feedback", () => {
         }}
         onStore={storeCapture.onStore}
         source={source}
-        staleMediaWarningNs={500_000_000n}
-        staleWarningStreams={[]}
+        staleWarningStreams={[IMAGE_ANNOTATION_STREAM]}
         subscribedStreams={[IMAGE_ANNOTATION_STREAM]}
       />,
       { wrapper: TestProviders },
@@ -1078,7 +1060,7 @@ describe("stream status + buffering feedback", () => {
       expect(value).not.toBeNull();
       expect(value?.contentTimeNs).toBe(0n);
       expect(value?.requestedTimeNs).toBeGreaterThan(500_000_000n);
-      expect(getStreamStatus(store, IMAGE_ANNOTATION_STREAM)).toBe("ready");
+      expect(getStreamStatus(store, IMAGE_ANNOTATION_STREAM)).toBe("stale");
     });
   });
 
@@ -1896,7 +1878,6 @@ function Harness({
   onApi,
   playbackAcceleration = true,
   source,
-  staleMediaWarningNs = 0n,
   staleWarningStreams = DEFAULT_TEST_STREAMS,
   subscribe = true,
   subscribedStreams = DEFAULT_TEST_STREAMS,
@@ -1909,7 +1890,6 @@ function Harness({
   readonly onApi?: (api: ReturnType<typeof usePlayback>) => void;
   readonly playbackAcceleration?: boolean;
   readonly source: ByteSourceDescriptor | null;
-  readonly staleMediaWarningNs?: bigint;
   readonly staleWarningStreams?: readonly string[];
   readonly subscribe?: boolean;
   readonly subscribedStreams?: readonly string[];
@@ -1929,7 +1909,6 @@ function Harness({
     blockingStreams,
     session,
     source,
-    staleMediaWarningNs,
     staleWarningStreams,
     streamPolicies: streamPolicies as unknown as StreamSyncPolicies,
   });

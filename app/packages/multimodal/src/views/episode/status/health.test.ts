@@ -24,10 +24,9 @@ const NO_PLACEMENT_IDS = {
 } as const;
 
 const NO_TRANSFORM_CONDITIONS = {
-  clampedFrameIds: [],
   frameTransformsError: null,
-  largeInterpolationGaps: [],
-  unresolvedFrameIds: [],
+  stalePoseUsages: [],
+  unresolvedPoseUsages: [],
   worldFrameId: "map",
 } as const;
 
@@ -86,7 +85,13 @@ describe("buildScene3dTransformNotices", () => {
     const notices = buildScene3dTransformNotices({
       ...NO_TRANSFORM_CONDITIONS,
       frameTransformsError: "network unreachable",
-      unresolvedFrameIds: ["radar_front"],
+      unresolvedPoseUsages: [
+        {
+          sourceFrameId: "radar_front",
+          sourceId: "/radar",
+          targetFrameId: "map",
+        },
+      ],
     });
 
     expect(notices).toEqual([
@@ -104,47 +109,149 @@ describe("buildScene3dTransformNotices", () => {
     expect(
       buildScene3dTransformNotices({
         ...NO_TRANSFORM_CONDITIONS,
-        unresolvedFrameIds: ["radar_front"],
+        unresolvedPoseUsages: [
+          {
+            sourceFrameId: "radar_front",
+            sourceId: "/radar",
+            targetFrameId: "map",
+          },
+        ],
         worldFrameId: "",
       }),
     ).toEqual([]);
   });
 
-  it("reports missing, clamped, and large-gap conditions per frame list", () => {
+  it("reports unplaceable content by its friendly source label", () => {
     const notices = buildScene3dTransformNotices({
-      clampedFrameIds: ["lidar_top"],
       frameTransformsError: null,
-      largeInterpolationGaps: [
-        { frameId: "lidar", gapNs: 2_300_000_000n },
-        { frameId: "radar", gapNs: 250_000_000n },
+      sourceLabelsById: new Map([["/radar", "Front radar"]]),
+      stalePoseUsages: [],
+      unresolvedPoseUsages: [
+        {
+          sourceFrameId: "radar_front",
+          sourceId: "/radar",
+          targetFrameId: "map",
+        },
       ],
-      unresolvedFrameIds: ["radar_front"],
       worldFrameId: "map",
     });
 
     expect(notices).toEqual([
       {
-        detail: "radar_front",
-        id: "transform:missing",
-        message: "Missing transform to map",
-        scope: "scene",
-        severity: "warning",
-      },
-      {
-        detail: "lidar_top",
-        id: "transform:clamped",
-        message: "Using boundary-clamped transform to map",
-        scope: "scene",
-        severity: "info",
-      },
-      {
-        detail: "lidar (2.3s), radar (250ms)",
-        id: "transform:large-gap",
-        message: "Interpolating transform across large gap to map",
+        detail: "No pose connects radar_front to map at this time.",
+        id: "transform:missing:/radar",
+        message: "Cannot place Front radar in the scene",
         scope: "scene",
         severity: "warning",
       },
     ]);
+  });
+
+  it("describes stale poses with source time and age, not interpolation internals", () => {
+    const notices = buildScene3dTransformNotices({
+      frameTransformsError: null,
+      sourceLabelsById: new Map([
+        ["/lidar", "LiDAR"],
+        ["/radar", "Radar"],
+      ]),
+      stalePoseUsages: [
+        {
+          ageNs: 3_200_000_000n,
+          sourceFrameId: "base_link",
+          sourceId: "/lidar",
+          sourceTimeNs: 15_000_000_000n,
+          staleAfterNs: 500_000_000n,
+          targetFrameId: "map",
+        },
+        {
+          ageNs: 900_000_000n,
+          sourceFrameId: "base_link",
+          sourceId: "/radar",
+          sourceTimeNs: 17_300_000_000n,
+          staleAfterNs: 500_000_000n,
+          targetFrameId: "map",
+        },
+      ],
+      timelineStartTimeNs: 5_000_000_000n,
+      unresolvedPoseUsages: [],
+      worldFrameId: "map",
+    });
+
+    expect(notices).toEqual([
+      {
+        detail:
+          "LiDAR — using pose from 0:10.00 (3.2s old). Radar — using pose from 0:12.30 (900ms old). Placement may be inaccurate.",
+        id: "transform:stale",
+        message: "Pose data is stale",
+        scope: "scene",
+        severity: "warning",
+      },
+    ]);
+    expect(notices[0]?.detail).not.toContain("limit");
+  });
+
+  it("folds paused camera follow into the stale-pose notice", () => {
+    expect(
+      buildScene3dTransformNotices({
+        cameraFollowHeldPose: {
+          ageNs: 3_200_000_000n,
+          sourceFrameId: "base_link",
+          sourceTimeNs: 15_000_000_000n,
+          staleAfterNs: 500_000_000n,
+          targetFrameId: "map",
+        },
+        frameTransformsError: null,
+        stalePoseUsages: [],
+        timelineStartTimeNs: 5_000_000_000n,
+        unresolvedPoseUsages: [],
+        worldFrameId: "map",
+      }),
+    ).toEqual([
+      {
+        detail:
+          "Camera follow is paused — using pose from 0:10.00 (3.2s old). Placement may be inaccurate.",
+        id: "transform:stale",
+        message: "Pose data is stale",
+        scope: "scene",
+        severity: "warning",
+      },
+    ]);
+  });
+
+  it("shows the three stalest affected sources and a remainder count", () => {
+    const usageInputs: readonly (readonly [string, bigint])[] = [
+      ["/a", 1_000_000_000n],
+      ["/b", 4_000_000_000n],
+      ["/c", 3_000_000_000n],
+      ["/d", 2_000_000_000n],
+    ];
+    const usages = usageInputs.map(([sourceId, ageNs]) => ({
+      ageNs,
+      sourceFrameId: "base_link",
+      sourceId,
+      sourceTimeNs: 10_000_000_000n,
+      staleAfterNs: 500_000_000n,
+      targetFrameId: "map",
+    }));
+
+    const [notice] = buildScene3dTransformNotices({
+      frameTransformsError: null,
+      sourceLabelsById: new Map([
+        ["/a", "A"],
+        ["/b", "B"],
+        ["/c", "C"],
+        ["/d", "D"],
+      ]),
+      stalePoseUsages: usages,
+      timelineStartTimeNs: 0n,
+      unresolvedPoseUsages: [],
+      worldFrameId: "map",
+    });
+
+    expect(notice?.detail).toBe(
+      "B — using pose from 0:10.00 (4.0s old). C — using pose from 0:10.00 (3.0s old). D — using pose from 0:10.00 (2.0s old). +1 more. Placement may be inaccurate.",
+    );
+    expect(notice?.detail).not.toContain("A —");
   });
 });
 
@@ -341,13 +448,14 @@ describe("buildTileStreamNotice", () => {
   it("describes the age of the oldest stale displayed frame", () => {
     expect(
       buildTileStreamNotice({
+        contentTimes: [12.34, null],
         staleAges: [2_400_000_000n, null],
         startTimes: [null, null],
         statuses: ["stale", "ready"],
       }),
     ).toEqual({
       id: "stream:stale",
-      message: "Displaying stale frame from 2.4s ago (1/2)",
+      message: "Displaying stale frame from 2.4s ago (source 0:12.34) (1/2)",
       scope: "tile",
       severity: "warning",
       status: "stale",

@@ -43,12 +43,7 @@ export function interpolateSceneUpdate(
   f: number,
   atTimeNs?: bigint,
 ): SceneUpdateVisualization {
-  const nextById = new Map<string, SceneEntityVisualization>();
-  for (const entity of next.entities) {
-    if (entity.id && !nextById.has(entity.id)) {
-      nextById.set(entity.id, entity);
-    }
-  }
+  const nextById = indexSceneEntitiesByStableId(next.entities);
 
   return {
     ...prev,
@@ -56,12 +51,45 @@ export function interpolateSceneUpdate(
       const match = entity.id ? nextById.get(entity.id) : undefined;
       // Entities are only comparable within one coordinate frame; a frame
       // hop between messages is a re-parent, not motion.
-      if (!match || match.frameId !== entity.frameId) {
+      if (
+        !match ||
+        match.frameId !== entity.frameId ||
+        !hasCompatiblePrimitiveFamily(entity, match)
+      ) {
         return entity;
       }
       return interpolateSceneEntity(entity, match, f, atTimeNs);
     }),
   };
+}
+
+/** Whether an update pair contains geometry safe to synthesize by stable ID. */
+export function hasInterpolatableSceneEntityPair(
+  prev: SceneUpdateVisualization,
+  next: SceneUpdateVisualization,
+): boolean {
+  const nextById = indexSceneEntitiesByStableId(next.entities);
+  return prev.entities.some((entity) => {
+    if (!entity.id) return false;
+    const match = nextById.get(entity.id);
+    return (
+      match !== undefined &&
+      match.frameId === entity.frameId &&
+      hasCompatiblePrimitiveFamily(entity, match)
+    );
+  });
+}
+
+function indexSceneEntitiesByStableId(
+  entities: readonly SceneEntityVisualization[],
+): ReadonlyMap<string, SceneEntityVisualization> {
+  const byId = new Map<string, SceneEntityVisualization>();
+  for (const entity of entities) {
+    if (entity.id && !byId.has(entity.id)) {
+      byId.set(entity.id, entity);
+    }
+  }
+  return byId;
 }
 
 /**
@@ -88,6 +116,29 @@ export function interpolateSceneEntity(
     texts: lerpFamily(prev.texts, next.texts, f, lerpText),
     triangles: lerpFamily(prev.triangles, next.triangles, f, lerpTriangle),
   };
+}
+
+function hasCompatiblePrimitiveFamily(
+  prev: SceneEntityVisualization,
+  next: SceneEntityVisualization,
+): boolean {
+  return (
+    isCompatibleFamily(prev.arrows, next.arrows) ||
+    isCompatibleFamily(prev.cubes, next.cubes) ||
+    isCompatibleFamily(prev.cylinders, next.cylinders) ||
+    isCompatibleFamily(prev.lines, next.lines) ||
+    isCompatibleFamily(prev.models, next.models) ||
+    isCompatibleFamily(prev.spheres, next.spheres) ||
+    isCompatibleFamily(prev.texts, next.texts) ||
+    isCompatibleFamily(prev.triangles, next.triangles)
+  );
+}
+
+function isCompatibleFamily(
+  prev: readonly unknown[],
+  next: readonly unknown[],
+): boolean {
+  return prev.length > 0 && prev.length === next.length;
 }
 
 function lerpFamily<T>(

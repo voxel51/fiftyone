@@ -1,5 +1,6 @@
 import { TilingProvider, useTiling } from "@fiftyone/tiling";
 import { act, cleanup, render, renderHook } from "@testing-library/react";
+import { useAtomValue, useStore } from "jotai";
 import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SceneSource } from "../../../scene-inventory";
@@ -15,6 +16,10 @@ import {
   useModalLayout,
 } from "./use-modal-layout";
 import { tileTypesFor, getTileDefinition } from "../shell/tile-catalog";
+import {
+  scene3dTilePlaybackSettingsAtom,
+  type Scene3dTilePlaybackSettingsByTile,
+} from "../scene/tile/scene-3d-tile-state";
 
 // The tile bodies drag in WebGPU/Three at module load, which jsdom can't
 // evaluate. Layout restore only needs them to exist as components; the
@@ -720,6 +725,38 @@ describe("ModalLayoutPersistence", () => {
     return null;
   }
 
+  function Scene3dSettingsDriver({
+    enabled,
+    tileId,
+  }: {
+    readonly enabled: boolean | null;
+    readonly tileId: string;
+  }) {
+    const store = useStore();
+    // This effect drives tile playback settings from test props.
+    useEffect(() => {
+      if (enabled === null) return;
+      store.set(scene3dTilePlaybackSettingsAtom, (previous) => ({
+        ...previous,
+        [tileId]: { smoothTrackedLabels: enabled },
+      }));
+    }, [enabled, store, tileId]);
+    return null;
+  }
+
+  function Scene3dSettingsProbe({
+    onValue,
+  }: {
+    readonly onValue: (value: Scene3dTilePlaybackSettingsByTile) => void;
+  }) {
+    const value = useAtomValue(scene3dTilePlaybackSettingsAtom);
+    // This effect exposes atom updates to the test assertion.
+    useEffect(() => {
+      onValue(value);
+    }, [onValue, value]);
+    return null;
+  }
+
   // Two tiles so the provider's derived initial layout differs from the
   // single-leaf arrangement the driver applies — persistence only writes
   // once the layout changes from what the mount started with.
@@ -797,6 +834,59 @@ describe("ModalLayoutPersistence", () => {
     });
     expect(readModalLayout("dataset-a")?.tileTitles).toEqual({
       "camera-default": "Front Camera",
+    });
+  });
+
+  it("mirrors 3D smoothing into the active dataset and tile", () => {
+    const tiles = {
+      "3d-1": { title: "3D", render: () => null },
+      "3d-2": { title: "3D compare", render: () => null },
+    };
+    const { rerender } = render(
+      <TilingProvider initialTiles={tiles}>
+        <Scene3dSettingsDriver enabled={null} tileId="3d-1" />
+        <ModalLayoutPersistence datasetId="dataset-a" />
+      </TilingProvider>,
+    );
+
+    rerender(
+      <TilingProvider initialTiles={tiles}>
+        <Scene3dSettingsDriver enabled tileId="3d-1" />
+        <ModalLayoutPersistence datasetId="dataset-a" />
+      </TilingProvider>,
+    );
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+
+    expect(readModalLayout("dataset-a")?.scene3dSettings).toEqual({
+      "3d-1": { smoothTrackedLabels: true },
+    });
+    expect(readModalLayout("dataset-b")?.scene3dSettings).toBeUndefined();
+  });
+
+  it("restores 3D smoothing for a surviving tile", () => {
+    writeModalLayout(
+      {
+        scene3dSettings: {
+          "3d-1": { smoothTrackedLabels: true },
+        },
+      },
+      "dataset-a",
+    );
+    const values: unknown[] = [];
+
+    render(
+      <TilingProvider
+        initialTiles={{ "3d-1": { title: "3D", render: () => null } }}
+      >
+        <Scene3dSettingsProbe onValue={(value) => values.push(value)} />
+        <ModalLayoutPersistence datasetId="dataset-a" />
+      </TilingProvider>,
+    );
+
+    expect(values.at(-1)).toEqual({
+      "3d-1": { smoothTrackedLabels: true },
     });
   });
 

@@ -14,11 +14,6 @@ import {
 } from "../entities/scene-3d-layers";
 import { useScene3dPlacementStream } from "./use-scene-3d-placement-stream";
 
-/** Converts UI millisecond thresholds to the nanoseconds used by transforms. */
-export function millisecondsToNanoseconds(value: number): bigint {
-  return BigInt(Math.max(0, Math.round(value))) * 1_000_000n;
-}
-
 /** Unique coordinate frames whose placement gates point-cloud playback. */
 export function pointCloudPlacementFrameIds(
   frames: readonly (StreamPlaybackFrame<PointCloudVisualization> | null)[],
@@ -42,7 +37,6 @@ export function useScene3dPlacedLayers({
   frames,
   gridFrames,
   gridStreams,
-  largeInterpolationGapWarningMs,
   playbackTimeNs,
   pointCloudStreams,
   provisionalStreamId,
@@ -57,7 +51,6 @@ export function useScene3dPlacedLayers({
   readonly frames: readonly (StreamPlaybackFrame<PointCloudVisualization> | null)[];
   readonly gridFrames: readonly (StreamPlaybackFrame<GridVisualization> | null)[];
   readonly gridStreams: readonly string[];
-  readonly largeInterpolationGapWarningMs: number;
   readonly playbackTimeNs?: bigint;
   readonly pointCloudStreams: readonly string[];
   readonly provisionalStreamId: string | null;
@@ -74,9 +67,6 @@ export function useScene3dPlacedLayers({
         frameTransforms,
         frames,
         gridFrames,
-        largeInterpolationGapWarningNs: millisecondsToNanoseconds(
-          largeInterpolationGapWarningMs,
-        ),
         provisionalStreamId,
         selectedAnnotationStreams: annotationStreams,
         selectedCalibrationStreams: calibrationStreams,
@@ -93,7 +83,6 @@ export function useScene3dPlacedLayers({
       frames,
       gridFrames,
       gridStreams,
-      largeInterpolationGapWarningMs,
       pointCloudStreams,
       provisionalStreamId,
       worldFrameId,

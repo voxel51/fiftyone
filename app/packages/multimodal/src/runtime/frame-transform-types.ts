@@ -1,17 +1,7 @@
 import type { Quaternion, Vector3 } from "three";
 
-/**
- * How dynamic transforms are resolved between bracketing samples:
- * `interpolate` slerps/lerps between them; `hold-last` reuses the latest
- * at-or-before sample verbatim so playback never shows synthesized poses.
- */
-export type EpisodeFrameTransformResolutionMode = "interpolate" | "hold-last";
-
 export interface EpisodeFrameTransformPolicy {
   readonly boundaryClampNs: bigint;
-  readonly maxInterpolationGapNs: bigint;
-  /** Defaults to `interpolate` when omitted. */
-  readonly resolutionMode?: EpisodeFrameTransformResolutionMode;
 }
 
 export type EpisodeFrameTransformResolutionKind =
@@ -21,6 +11,28 @@ export type EpisodeFrameTransformResolutionKind =
   | "interpolated"
   | "held"
   | "clamped";
+
+/** Why a dynamic edge is holding its latest recorded pose. */
+export type EpisodeHeldFrameTransformReason =
+  | "after-last-sample"
+  | "interpolation-gap"
+  | "parent-change";
+
+/**
+ * One dynamic edge whose latest recorded pose is being reused at the query
+ * time. Gap/limit fields are diagnostic only; user-facing status is derived
+ * from the source timestamp and age.
+ */
+export interface EpisodeHeldFrameTransform {
+  readonly ageNs: bigint;
+  readonly interpolationGapLimitNs?: bigint;
+  readonly interpolationGapNs?: bigint;
+  readonly reason: EpisodeHeldFrameTransformReason;
+  readonly sourceFrameId: string;
+  readonly sourceTimeNs: bigint;
+  readonly staleAfterNs: bigint;
+  readonly targetFrameId: string;
+}
 
 /**
  * Transform sample from a child frame into its parent frame.
@@ -99,6 +111,8 @@ export interface EpisodeFrameTransformSetWire {
  * Composed transform mapping coordinates from sourceFrameId into targetFrameId.
  */
 export interface EpisodeComposedFrameTransform {
+  /** Dynamic edges held at their latest recorded pose along this path. */
+  readonly heldEdges?: readonly EpisodeHeldFrameTransform[];
   /**
    * Largest bracketing sample gap used by any interpolated dynamic edge in
    * this composed path. Undefined when the path did not interpolate.
@@ -119,6 +133,7 @@ export type EpisodeFrameTransformResolution = {
   readonly targetFrameId: string;
 } & (
   | {
+      readonly heldEdges?: readonly EpisodeHeldFrameTransform[];
       readonly maxInterpolationGapNs?: bigint;
       readonly resolutionKind?: EpisodeFrameTransformResolutionKind;
       readonly status: "resolved";

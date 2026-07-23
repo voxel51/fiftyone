@@ -13,9 +13,8 @@
  * | `placement:pending-grids`      | info     | scene | map/grid layers hidden while their transforms load |
  * | `placement:pending-frustums`   | info     | scene | camera frustums hidden while their transforms load |
  * | `transform:failed`             | error    | scene | frame-transform window fetch failed |
- * | `transform:missing`            | warning  | scene | no transform path to the world frame; layer dropped |
- * | `transform:clamped`            | info     | scene | nearest-sample transform used within the boundary clamp |
- * | `transform:large-gap`          | warning  | scene | interpolating across a gap wider than the warning threshold |
+ * | `transform:missing:<source>`   | warning  | scene | no transform path to the world frame; affected source hidden |
+ * | `transform:stale`              | warning  | scene | latest recorded pose held past its freshness threshold |
  * | `camera:target-unavailable`    | warning  | scene | follow tracking enabled but the target transform is missing |
  * | `render:sampled`               | warning  | scene | point clouds exceed the display cap and render sampled |
  * | `stream:loading`               | info     | tile  | a stream is buffering at the playhead |
@@ -30,9 +29,21 @@ import { useEffect, useReducer, useRef } from "react";
 import type { DecodedDiagnostic } from "../../../ir";
 import type { StreamStatus } from "../playback/stream-status-state";
 
-export interface TransformGapWarning {
-  readonly frameId: string;
-  readonly gapNs: bigint;
+/** One visible source placed through a held transform past its stale threshold. */
+export interface StalePoseUsage {
+  readonly ageNs: bigint;
+  readonly sourceFrameId: string;
+  readonly sourceId: string;
+  readonly sourceTimeNs: bigint;
+  readonly staleAfterNs: bigint;
+  readonly targetFrameId: string;
+}
+
+/** One visible source that has no resolvable path into the scene frame. */
+export interface UnresolvedPoseUsage {
+  readonly sourceFrameId: string;
+  readonly sourceId: string;
+  readonly targetFrameId: string;
 }
 
 export type TrackingMode = "free" | "heading" | "pose" | "position";
@@ -172,16 +183,20 @@ export function buildScene3dPlacementNotices({
  * trustworthy enough to report on.
  */
 export function buildScene3dTransformNotices({
-  clampedFrameIds,
+  cameraFollowHeldPose,
   frameTransformsError,
-  largeInterpolationGaps,
-  unresolvedFrameIds,
+  sourceLabelsById,
+  stalePoseUsages,
+  timelineStartTimeNs,
+  unresolvedPoseUsages,
   worldFrameId,
 }: {
-  readonly clampedFrameIds: readonly string[];
+  readonly cameraFollowHeldPose?: Omit<StalePoseUsage, "sourceId"> | null;
   readonly frameTransformsError: string | null;
-  readonly largeInterpolationGaps: readonly TransformGapWarning[];
-  readonly unresolvedFrameIds: readonly string[];
+  readonly sourceLabelsById?: ReadonlyMap<string, string>;
+  readonly stalePoseUsages: readonly StalePoseUsage[];
+  readonly timelineStartTimeNs?: bigint;
+  readonly unresolvedPoseUsages: readonly UnresolvedPoseUsage[];
   readonly worldFrameId: string;
 }): HealthNotice[] {
   if (frameTransformsError) {
@@ -200,29 +215,48 @@ export function buildScene3dTransformNotices({
   }
 
   const notices: HealthNotice[] = [];
-  if (unresolvedFrameIds.length > 0) {
+  for (const unresolved of unresolvedPoseUsages) {
+    const sourceLabel =
+      sourceLabelsById?.get(unresolved.sourceId) ?? unresolved.sourceId;
     notices.push({
-      detail: unresolvedFrameIds.join(", "),
-      id: "transform:missing",
-      message: `Missing transform to ${worldFrameId}`,
+      detail: `No pose connects ${unresolved.sourceFrameId} to ${unresolved.targetFrameId} at this time.`,
+      id: `transform:missing:${unresolved.sourceId}`,
+      message: `Cannot place ${sourceLabel} in the scene`,
       scope: "scene",
       severity: "warning",
     });
   }
-  if (clampedFrameIds.length > 0) {
-    notices.push({
-      detail: clampedFrameIds.join(", "),
-      id: "transform:clamped",
-      message: `Using boundary-clamped transform to ${worldFrameId}`,
-      scope: "scene",
-      severity: "info",
+
+  if (stalePoseUsages.length > 0 || cameraFollowHeldPose) {
+    const rankedUsages = [...stalePoseUsages].sort(compareStalePoseSeverity);
+    const visibleUsages = rankedUsages.slice(0, 3);
+    const usageDetails = visibleUsages.map((usage) => {
+      const sourceLabel =
+        sourceLabelsById?.get(usage.sourceId) ?? usage.sourceId;
+      return `${sourceLabel} — using pose from ${formatPoseSourceTime(
+        usage.sourceTimeNs,
+        timelineStartTimeNs,
+      )} (${formatNsDuration(usage.ageNs)} old)`;
     });
-  }
-  if (largeInterpolationGaps.length > 0) {
+    const remaining = rankedUsages.length - visibleUsages.length;
+    if (remaining > 0) {
+      usageDetails.push(`+${remaining} more`);
+    }
+    if (cameraFollowHeldPose) {
+      usageDetails.push(
+        stalePoseUsages.length > 0
+          ? "Camera follow is paused"
+          : `Camera follow is paused — using pose from ${formatPoseSourceTime(
+              cameraFollowHeldPose.sourceTimeNs,
+              timelineStartTimeNs,
+            )} (${formatNsDuration(cameraFollowHeldPose.ageNs)} old)`,
+      );
+    }
+
     notices.push({
-      detail: formatInterpolationGapWarnings(largeInterpolationGaps),
-      id: "transform:large-gap",
-      message: `Interpolating transform across large gap to ${worldFrameId}`,
+      detail: `${usageDetails.join(". ")}. Placement may be inaccurate.`,
+      id: "transform:stale",
+      message: "Pose data is stale",
       scope: "scene",
       severity: "warning",
     });
@@ -302,12 +336,13 @@ export function buildPointCloudSamplingNotice(
   };
 }
 
-function formatInterpolationGapWarnings(
-  gaps: readonly TransformGapWarning[],
-): string {
-  return gaps
-    .map(({ frameId, gapNs }) => `${frameId} (${formatNsDuration(gapNs)})`)
-    .join(", ");
+function compareStalePoseSeverity(left: StalePoseUsage, right: StalePoseUsage) {
+  const relativeAge =
+    right.ageNs * left.staleAfterNs - left.ageNs * right.staleAfterNs;
+  if (relativeAge !== 0n) {
+    return relativeAge > 0n ? 1 : -1;
+  }
+  return left.sourceId.localeCompare(right.sourceId);
 }
 
 function formatNsDuration(value: bigint): string {
@@ -317,6 +352,17 @@ function formatNsDuration(value: bigint): string {
   }
 
   return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function formatPoseSourceTime(
+  sourceTimeNs: bigint,
+  timelineStartTimeNs: bigint | undefined,
+): string {
+  const relativeTimeNs =
+    timelineStartTimeNs === undefined
+      ? sourceTimeNs
+      : sourceTimeNs - timelineStartTimeNs;
+  return formatSourceTime(Number(relativeTimeNs) / 1_000_000_000);
 }
 
 // ---------------------------------------------------------------------------
@@ -432,16 +478,18 @@ function formatStaleAge(ageNs: bigint): string {
   return `${minutes}m ${String(remainingSeconds).padStart(2, "0")}s`;
 }
 
-function oldestStaleAgeNs(
+function oldestStaleObservation(
   statuses: readonly StreamStatus[],
   staleAges: readonly (bigint | null)[],
-): bigint | null {
-  let oldest: bigint | null = null;
+): { readonly ageNs: bigint; readonly index: number } | null {
+  let oldest: { readonly ageNs: bigint; readonly index: number } | null = null;
   statuses.forEach((status, index) => {
     if (status !== "stale") return;
     const age = staleAges[index];
     if (age === null || age === undefined) return;
-    if (oldest === null || age > oldest) oldest = age;
+    if (oldest === null || age > oldest.ageNs) {
+      oldest = { ageNs: age, index };
+    }
   });
   return oldest;
 }
@@ -451,6 +499,7 @@ function streamNoticeMessage(
   statuses: readonly StreamStatus[],
   startTimes: readonly (number | null)[],
   staleAges: readonly (bigint | null)[],
+  contentTimes: readonly (number | null)[],
   streams: readonly string[],
 ): string {
   switch (summary.status) {
@@ -461,10 +510,14 @@ function streamNoticeMessage(
         earliestGapStartSec(statuses, startTimes),
       )}${affectedSuffix(summary)}`;
     case "stale": {
-      const ageNs = oldestStaleAgeNs(statuses, staleAges);
+      const stale = oldestStaleObservation(statuses, staleAges);
       const ageCopy =
-        ageNs === null ? "" : ` from ${formatStaleAge(ageNs)} ago`;
-      return `Displaying stale frame${ageCopy}${affectedSuffix(summary)}`;
+        stale === null ? "" : ` from ${formatStaleAge(stale.ageNs)} ago`;
+      const sourceTime =
+        stale === null ? null : (contentTimes[stale.index] ?? null);
+      const sourceCopy =
+        sourceTime === null ? "" : ` (source ${formatSourceTime(sourceTime)})`;
+      return `Displaying stale frame${ageCopy}${sourceCopy}${affectedSuffix(summary)}`;
     }
     case "failed": {
       const failedStreams = streams.filter(
@@ -490,11 +543,13 @@ function boundedIdList(ids: readonly string[], limit = 8): string {
  * pinned by tests.
  */
 export function buildTileStreamNotice({
+  contentTimes = [],
   staleAges,
   startTimes,
   statuses,
   streams = [],
 }: {
+  readonly contentTimes?: readonly (number | null)[];
   readonly staleAges: readonly (bigint | null)[];
   readonly startTimes: readonly (number | null)[];
   readonly statuses: readonly StreamStatus[];
@@ -510,12 +565,24 @@ export function buildTileStreamNotice({
       statuses,
       startTimes,
       staleAges,
+      contentTimes,
       streams,
     ),
     scope: "tile",
     severity: STREAM_STATUS_SEVERITY[summary.status],
     status: summary.status,
   };
+}
+
+function formatSourceTime(sec: number): string {
+  const safe = Number.isFinite(sec) && sec > 0 ? sec : 0;
+  const totalCs = Math.round(safe * 100);
+  const minutes = Math.floor(totalCs / 6000);
+  const seconds = Math.floor((totalCs % 6000) / 100);
+  const centiseconds = totalCs % 100;
+  return `${minutes}:${String(seconds).padStart(2, "0")}.${String(
+    centiseconds,
+  ).padStart(2, "0")}`;
 }
 
 /**

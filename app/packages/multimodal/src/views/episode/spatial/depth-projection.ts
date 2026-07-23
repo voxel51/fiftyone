@@ -62,7 +62,9 @@ export function resolveDepthRay({
     timeNs,
   );
   if (resolution.status !== "resolved") {
-    return { status: resolution.status };
+    return {
+      status: resolution.status === "pending" ? "pending" : "missing",
+    };
   }
   return {
     layer: { ...layerBase, frameTransform: resolution.transform },

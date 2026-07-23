@@ -45,6 +45,7 @@ import { useScene3dViewStateStore } from "./scene-3d-view-state-context";
 import type { ReferenceTransition } from "../../spatial/frame-transforms/reference-selection";
 import type { FrameTransformsState } from "../../spatial/frame-transforms/use-frame-transforms";
 import type { StreamPlaybackFrame } from "../../playback/use-stream-values";
+import type { EpisodeHeldFrameTransform } from "../../../../runtime/frame-transform-types";
 
 /** User-selectable camera tracking modes and their display labels. */
 export const TRACKING_MODES: readonly {
@@ -285,6 +286,26 @@ export function useScene3dCameraTracking({
       worldFrameId,
     ],
   );
+  const cameraFollowHeldPose = useMemo(() => {
+    if (
+      !isFollowTrackingMode(effectiveTrackingMode) ||
+      cameraTargetResolution.status !== "resolved"
+    ) {
+      return null;
+    }
+
+    let worst: EpisodeHeldFrameTransform | undefined;
+    for (const edge of cameraTargetResolution.heldEdges ?? []) {
+      if (
+        edge.ageNs > edge.staleAfterNs &&
+        (!worst ||
+          edge.ageNs * worst.staleAfterNs > worst.ageNs * edge.staleAfterNs)
+      ) {
+        worst = edge;
+      }
+    }
+    return worst ?? null;
+  }, [cameraTargetResolution, effectiveTrackingMode]);
 
   const recordCameraViewIfEligible = useCallback(
     (pose: PointCloudCameraPose) => {
@@ -954,6 +975,7 @@ export function useScene3dCameraTracking({
   );
 
   return {
+    cameraFollowHeldPose,
     cameraTargetResolution,
     cameraTrackingNotice,
     getDisplayedCameraPose,
@@ -1029,10 +1051,15 @@ export function resolveCameraTargetPose({
     playbackTimeNs,
   );
   if (resolution.status !== "resolved") {
-    return { status: resolution.status };
+    return {
+      status: resolution.status === "pending" ? "pending" : "missing",
+    };
   }
 
   return {
+    ...(resolution.heldEdges?.length
+      ? { heldEdges: resolution.heldEdges }
+      : {}),
     pose: cameraTargetPoseFromFrameTransform(resolution.transform),
     status: "resolved",
   };

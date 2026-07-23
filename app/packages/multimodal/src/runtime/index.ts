@@ -18,6 +18,8 @@ export * from "./frame-transforms";
 export * from "./read-policy";
 /** Public precision-safe episode timeline indexing. */
 export * from "./timeline-index";
+/** Public cadence-derived temporal policies shared by playback consumers. */
+export * from "./temporal-policy";
 /** Public source-scoped episode data-stream contracts. */
 export * from "./data-stream";
 /** Public bounded grid-to-modal source bootstrap handoff. */
