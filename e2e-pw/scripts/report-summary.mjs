@@ -85,17 +85,31 @@ if (burnInCount > 0 && burnInJsonPath) {
   try {
     const burnInReport = JSON.parse(readFileSync(burnInJsonPath, "utf8"));
     burnInStats = burnInReport.stats ?? {};
+    // each repeat-each run arrives as its own spec entry in the merged
+    // JSON, so aggregate runs per test before reporting failed-N-of-M
+    const byTest = new Map();
     const walkBurnIn = (suite, trail) => {
       const path = suite.title ? [...trail, suite.title] : trail;
       for (const spec of suite.specs ?? []) {
-        const runs = spec.tests ?? [];
-        const failedRuns = runs.filter((t) => t.status === "unexpected").length;
-        if (failedRuns > 0) {
-          burnInFailed.push({
-            location: `${spec.file}:${spec.line}`,
-            title: `${[...path.slice(1), spec.title].join(" › ")} — failed ${failedRuns}/${runs.length} runs`,
-          });
+        const key = `${spec.file}:${spec.line} › ${spec.title}`;
+        const entry = byTest.get(key) ?? {
+          location: `${spec.file}:${spec.line}`,
+          name: [...path.slice(1), spec.title].join(" › "),
+          failed: 0,
+          runs: [],
+        };
+        for (const test of spec.tests ?? []) {
+          const ok = test.status !== "unexpected";
+          const ms = (test.results ?? []).reduce(
+            (sum, result) => sum + (result.duration ?? 0),
+            0,
+          );
+          entry.runs.push({ ok, ms });
+          if (!ok) {
+            entry.failed++;
+          }
         }
+        byTest.set(key, entry);
       }
       for (const child of suite.suites ?? []) {
         walkBurnIn(child, path);
@@ -103,6 +117,15 @@ if (burnInCount > 0 && burnInJsonPath) {
     };
     for (const suite of burnInReport.suites ?? []) {
       walkBurnIn(suite, []);
+    }
+    for (const entry of byTest.values()) {
+      if (entry.failed > 0) {
+        burnInFailed.push({
+          location: entry.location,
+          title: `${entry.name} — failed ${entry.failed}/${entry.runs.length} runs`,
+          runs: entry.runs,
+        });
+      }
     }
     burnInFailed.sort(byLocation);
   } catch {
@@ -207,7 +230,22 @@ if (flaky.length) {
 if (burnInUnhealthy) {
   lines.push("", "### Burn-in failures");
   if (burnInFailed.length) {
-    lines.push(...itemize(burnInFailed));
+    for (const entry of burnInFailed.slice(0, MAX_LISTED)) {
+      lines.push(
+        "<details>",
+        `<summary><code>${entry.location}</code> ${entry.title}</summary>`,
+        "",
+        ...entry.runs.map(
+          (run, i) =>
+            `- run ${i + 1}: ${run.ok ? "✅" : "❌"} ${(run.ms / 1000).toFixed(1)}s`,
+        ),
+        "",
+        "</details>",
+      );
+    }
+    if (burnInFailed.length > MAX_LISTED) {
+      lines.push(`…and ${burnInFailed.length - MAX_LISTED} more`);
+    }
   } else {
     // the job died or produced no report; the verdict names the cause
     lines.push(
@@ -216,8 +254,8 @@ if (burnInUnhealthy) {
   }
   lines.push(
     "",
-    "New and modified specs must pass 10 consecutive runs. Reproduce with" +
-      " `cd e2e-pw && yarn e2e <spec> --repeat-each=10 --retries=0`.",
+    "New and modified tests must pass 10 consecutive runs. Reproduce with" +
+      " `cd e2e-pw && yarn e2e <file:line> --repeat-each=10 --retries=0`.",
   );
 }
 const reportUrl = process.env.REPORT_URL ?? "";
