@@ -15,7 +15,6 @@ const HOVERED_CAMERA = {
   distortionModel: "plumb_bob",
   frameId: "camera_front",
   imageLabel: "camera/front/image",
-  imageSourceName: "/camera/front/image",
   imageStream: "14",
   kind: "camera" as const,
   parentPosition: {
@@ -159,13 +158,14 @@ describe("useScene3dHoverTooltip", () => {
     if (!tooltip) throw new Error("expected a camera tooltip");
     render(<Scene3dHoverTooltip tooltip={tooltip} />);
     expect(screen.getByText("camera/front/image")).toBeTruthy();
-    expect(screen.getByText("/camera/front/image")).toBeTruthy();
     expect(screen.getByText("/camera/front/camera_info")).toBeTruthy();
     expect(screen.getByText("Auto-matched")).toBeTruthy();
     expect(screen.getByText("1920 × 1080")).toBeTruthy();
     expect(screen.getByText("Intrinsics source")).toBeTruthy();
     expect(screen.getByText("Position in parent (base_link)")).toBeTruthy();
     expect(screen.getByText("x +1.234 · y −0.082 · z +1.643 m")).toBeTruthy();
+    expect(screen.queryByText("Image source")).toBeNull();
+    expect(screen.queryByText("/camera/front/image")).toBeNull();
     expect(screen.queryByText("14")).toBeNull();
     expect(screen.queryByText("3")).toBeNull();
   });

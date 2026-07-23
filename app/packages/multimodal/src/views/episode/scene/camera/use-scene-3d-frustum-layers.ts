@@ -99,7 +99,6 @@ export function buildScene3dFrustumLayer({
               distortionModel: layer.frame.distortionModel,
               frameId: layer.frame.coordinateFrameId,
               imageLabel,
-              imageSourceName,
               imageStream,
               kind: "camera",
               parentPosition: layer.parentPosition ?? {
