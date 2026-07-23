@@ -64,15 +64,23 @@ export function useScene3dPickingLayers({
       const stream = layer.sourceId ?? "";
       const entityId = entity.id || layer.id;
       const label = entityLabel(entity);
+      const hoveredEntity = {
+        entityId,
+        kind: "entity" as const,
+        label,
+        metadata: entity.metadata,
+        stream,
+        texts: entity.texts
+          .map((textPrimitive) => textPrimitive.text)
+          .filter(Boolean),
+      };
       return {
         ...layer,
         highlighted:
           isSceneEntitySelected(selectedObject, stream, entityId) ||
           isLabelEcho(selectedObject, label),
         onHoverEntity: (hoveredId: string | null) =>
-          onHoverEntity(
-            hoveredId ? { entityId, kind: "entity", label, stream } : null,
-          ),
+          onHoverEntity(hoveredId ? hoveredEntity : null),
         onSelectEntity: (
           _entityId: string,
           modifiers: { readonly shiftKey: boolean },

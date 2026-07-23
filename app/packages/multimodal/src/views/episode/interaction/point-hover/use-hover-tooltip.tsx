@@ -36,6 +36,8 @@ export interface Scene3dHoveredEntity {
   readonly stream: string;
   readonly entityId: string;
   readonly label: string | null;
+  readonly metadata: Readonly<Record<string, string>>;
+  readonly texts: readonly string[];
 }
 
 /** Textured camera frustum reported by the episode 3D hover surface. */
@@ -427,12 +429,57 @@ function EntityTooltipContent({
 }) {
   const title = tooltip.label ?? tooltip.entityId;
   const showId = tooltip.label !== null && tooltip.label !== tooltip.entityId;
+  const metadataEntries = Object.entries(tooltip.metadata);
   return (
-    <>
-      {title}
-      {showId ? ` · ${tooltip.entityId}` : ""}
-    </>
+    <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+      <Text variant={TextVariant.Sm}>{title}</Text>
+      {showId || tooltip.texts.length > 0 || metadataEntries.length > 0 ? (
+        <div style={tooltipDetailStyle}>
+          {showId ? (
+            <>
+              <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+                Entity
+              </Text>
+              <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+                {tooltip.entityId}
+              </Text>
+            </>
+          ) : null}
+          {tooltip.texts.map((text, index) => (
+            <React.Fragment key={`${index}:${text}`}>
+              <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+                {index === 0 ? "Text" : `Text ${index + 1}`}
+              </Text>
+              <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+                {text}
+              </Text>
+            </React.Fragment>
+          ))}
+          {metadataEntries.map(([key, value]) => (
+            <React.Fragment key={key}>
+              <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+                {formatMetadataKey(key)}
+              </Text>
+              <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+                {value}
+              </Text>
+            </React.Fragment>
+          ))}
+        </div>
+      ) : null}
+    </Stack>
   );
+}
+
+function formatMetadataKey(key: string): string {
+  const words = key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim();
+  if (!words) return key;
+  return words
+    .replace(/\b\w/g, (character) => character.toUpperCase())
+    .replace(/\bId\b/g, "ID");
 }
 
 function PointTooltipContent({

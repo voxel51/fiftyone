@@ -30,6 +30,9 @@ describe("entityLabel", () => {
         metadata: { category: "truck", label: "car" },
       }),
     ).toBe("car");
+    expect(entityLabel({ id: "e1", metadata: { classId: "pedestrian" } })).toBe(
+      "pedestrian",
+    );
   });
 
   it("falls back to the entity id, then null", () => {
