@@ -85,31 +85,36 @@ const getTicks = (data: { key: number; edges: [number, number] }[]) => {
 };
 
 const useData = (path: string) => {
-  const data = useRecoilValue(distribution(path));
+  // raw carries the resolved aggregation's identity: a new object exactly
+  // when a new distribution resolves, unlike the mapped data built fresh
+  // every render
+  const raw = useRecoilValue(distribution(path));
 
-  switch (data.__typename) {
+  switch (raw.__typename) {
     case "BoolCountValuesResponse":
       return {
-        data: data.values.map(({ value, bool }) => ({
+        data: raw.values.map(({ value, bool }) => ({
           key: bool,
           count: value,
           ticks: null,
         })),
         ticks: null,
+        raw,
       };
     case "DatetimeHistogramValuesResponse":
-      return makeData(data.counts, data.datetimes);
+      return { ...makeData(raw.counts, raw.datetimes), raw };
     case "FloatHistogramValuesResponse":
-      return makeData(data.counts, data.floats);
+      return { ...makeData(raw.counts, raw.floats), raw };
     case "IntHistogramValuesResponse":
-      return makeData(data.counts, data.ints);
+      return { ...makeData(raw.counts, raw.ints), raw };
     case "StrCountValuesResponse":
       return {
-        data: data.values.map(({ value, str }) => ({
+        data: raw.values.map(({ value, str }) => ({
           key: str,
           count: value,
         })),
         ticks: null,
+        raw,
       };
 
     default:
@@ -135,7 +140,7 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
   const [ref, { height }] = useMeasure();
   const theme = useTheme();
 
-  const { data, ticks } = useData(path);
+  const { data, ticks, raw } = useData(path);
   const hasMore = data.length >= LIMIT;
 
   const barWidth = 24;
@@ -172,10 +177,12 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
         };
 
   useLayoutEffect(() => {
-    document
-      .getElementById(`histogram-${path}`)
-      ?.dispatchEvent(new CustomEvent(`histogram-${path}`, { bubbles: true }));
-  }, [path, ref]);
+    const el = document.getElementById(`histogram-${path}`);
+    el?.dispatchEvent(new CustomEvent(`histogram-${path}`, { bubbles: true }));
+    el?.dispatchEvent(
+      new CustomEvent("histograms-loaded", { bubbles: true, detail: { path } }),
+    );
+  }, [path, raw, ref]);
 
   return data.length ? (
     <Container id={`histogram-${path}`} ref={ref}>

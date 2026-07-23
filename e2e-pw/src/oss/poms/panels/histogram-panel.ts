@@ -22,6 +22,12 @@ export class HistogramPom {
     await this.selector.selectResult(field);
     await promise.received;
   }
+
+  // arm BEFORE the action that reloads the histogram (mode switch, panel
+  // foreground); the app fires histograms-loaded on every completed draw
+  async armLoad() {
+    return this.eventUtils.arm("histograms-loaded");
+  }
 }
 
 class HistogramAsserter {
