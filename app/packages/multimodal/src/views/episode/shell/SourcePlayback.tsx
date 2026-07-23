@@ -28,7 +28,7 @@ import {
 import { releaseGpuPointCloudColormapTextures } from "../../../visualization/scene-3d/gpu/gpu-point-cloud-colormap-texture";
 import { BitmapImageFrameView } from "../../../visualization/media-2d/BitmapImageView";
 import { getSourceBootstrap, sourceBootstrapKey } from "../../../runtime";
-import type { EpisodeSession } from "../../../ports";
+import type { EpisodeSession, EpisodeTerminology } from "../../../ports";
 import { Scene3dViewStateProvider } from "../scene/camera/scene-3d-view-state-context";
 import { Scene3dViewSettingsProvider } from "../spatial/view-settings-context";
 import { Scene3dViewpointProvider } from "../scene/camera/scene-3d-viewpoint-context";
@@ -80,6 +80,7 @@ interface ReadyInventory {
   readonly sources: readonly SceneSource[];
   readonly streamCount: number;
   readonly streams: readonly StreamDescriptor[];
+  readonly terminology?: EpisodeTerminology;
 }
 
 type PosterImage = Extract<
@@ -217,11 +218,13 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
             sources,
             streamCount,
             streams,
+            terminology: session?.terminology,
           }
         : null,
     [
       session?.numericSeries,
       session?.rawRecords,
+      session?.terminology,
       sources,
       status,
       streamCount,
@@ -426,7 +429,10 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                               }
                               onTagDelete={onTagDelete}
                               leftSidebar={
-                                <SettingsSidebar streams={shellStreams} />
+                                <SettingsSidebar
+                                  streams={shellStreams}
+                                  terminology={shellInventory?.terminology}
+                                />
                               }
                               mainOverlay={
                                 hasTerminalTransition ? (

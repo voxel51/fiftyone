@@ -43,11 +43,13 @@ vi.mock("./PlaybackShell", () => {
   const MockPlaybackShell = ({
     children,
     fileName,
+    leftSidebar,
     mainOverlay,
     sceneSources,
   }: {
     readonly children?: ReactNode;
     readonly fileName: string;
+    readonly leftSidebar?: ReactNode;
     readonly mainOverlay?: ReactNode;
     readonly sceneSources?: readonly { id: string }[];
   }) => {
@@ -78,6 +80,7 @@ vi.mock("./PlaybackShell", () => {
           >
             {shellState}
           </button>
+          {leftSidebar}
           {children}
           <div data-testid="mock-main-viewport">{mainOverlay}</div>
         </div>
@@ -99,7 +102,15 @@ vi.mock("../playback/PausedByteBanking", () => ({
   PausedByteBanking: () => null,
 }));
 vi.mock("../settings/modal/SettingsSidebar", () => ({
-  default: () => null,
+  default: ({
+    terminology,
+  }: {
+    terminology?: { stream?: { plural: string } };
+  }) => (
+    <span data-testid="settings-stream-term">
+      {terminology?.stream?.plural}
+    </span>
+  ),
 }));
 vi.mock("../interaction/selection/selected-object", () => ({
   SelectionHotkeys: () => null,
@@ -178,6 +189,32 @@ describe("SourcePlayback", () => {
       }),
     );
     expect(document.querySelector('[data-testid="playback-shell"]')).toBeNull();
+  });
+
+  it("passes the format terminology into the shared settings sidebar", () => {
+    const terminology = {
+      stream: {
+        plural: "topics",
+        singular: "topic",
+      },
+    } as const;
+    const session = {
+      activate: vi.fn(),
+      terminology,
+    } as unknown as EpisodeSession;
+    playbackHarness.sceneInventory = readyInventory("/camera");
+
+    render(
+      <SourcePlayback
+        session={session}
+        fileName="sample.mcap"
+        source={createSource("sample")}
+      />,
+    );
+
+    expect(screen.getByTestId("settings-stream-term").textContent).toBe(
+      "topics",
+    );
   });
 
   it("preserves the mounted shell and its state across source transitions", () => {
