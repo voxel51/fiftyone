@@ -13,6 +13,13 @@
 
 import { readFileSync, readdirSync } from "node:fs";
 
+import { fmtMs, jobSpan } from "./job-span.mjs";
+import {
+  PYTHON_FAILURES_END,
+  PYTHON_FAILURES_START,
+  PYTHON_LINE_MARKER,
+  hasPythonJobs,
+} from "./python-section.mjs";
 import { buildSuiteRows } from "./suite-rows.mjs";
 
 // The synced copy of this suite runs in fiftyone-teams too; flavor-scoped
@@ -51,9 +58,18 @@ const walk = (suite, trail) => {
   const path = suite.title ? [...trail, suite.title] : trail;
   for (const spec of suite.specs ?? []) {
     const statuses = (spec.tests ?? []).map((t) => t.status);
+    // one result per attempt, so retries surface with their own clock
+    const attempts = (spec.tests ?? [])
+      .flatMap((t) => t.results ?? [])
+      .map(
+        (r) =>
+          `${r.status === "passed" ? "✅" : "❌"} ${((r.duration ?? 0) / 1000).toFixed(1)}s`,
+      )
+      .join(", ");
     const entry = {
       location: `${spec.file}:${spec.line}`,
       title: [...path.slice(1), spec.title].join(" › "),
+      attempts,
     };
     if (statuses.includes("unexpected")) {
       failed.push(entry);
@@ -142,7 +158,10 @@ const burnInUnhealthy =
 const itemize = (entries) => {
   const lines = entries
     .slice(0, MAX_LISTED)
-    .map((e) => `- \`${e.location}\` ${e.title}`);
+    .map(
+      (e) =>
+        `- \`${e.location}\` ${e.title}${e.attempts ? ` — ${e.attempts}` : ""}`,
+    );
   if (entries.length > MAX_LISTED) {
     lines.push(`- …and ${entries.length - MAX_LISTED} more`);
   }
@@ -154,24 +173,30 @@ const sha = (process.env.HEAD_SHA ?? "").slice(0, 10);
 const runUrl = process.env.RUN_URL ?? "";
 const runLink = runUrl ? ` — [run](${runUrl})` : "";
 
-const startedAt = Date.parse(process.env.RUN_STARTED_AT ?? "");
-let wallClock = "";
-if (!Number.isNaN(startedAt)) {
-  const totalSeconds = Math.round((Date.now() - startedAt) / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  wallClock = ` · ⏱ ${minutes}m ${totalSeconds % 60}s`;
-}
-
-// one row per sibling suite in the run (build, lint, unit tests, ...)
-let suiteRows = [];
+let jobs = [];
 if (jobsPath) {
   try {
-    const jobs = JSON.parse(readFileSync(jobsPath, "utf8")).jobs ?? [];
-    suiteRows = buildSuiteRows(jobs);
+    jobs = JSON.parse(readFileSync(jobsPath, "utf8")).jobs ?? [];
   } catch {
     // jobs are informational; the e2e verdict never depends on them
   }
 }
+
+// each suite line carries its own clock: e2e is the shard jobs' span,
+// burn-in and python run in parallel with their own, so none inflates
+// another
+const shardSpan = jobSpan(jobs, /Run e2e shard/);
+const burnInSpan = jobSpan(jobs, /Burn in new/);
+let wallClock = shardSpan === null ? "" : ` · ⏱ ${fmtMs(shardSpan)}`;
+if (!wallClock) {
+  const startedAt = Date.parse(process.env.RUN_STARTED_AT ?? "");
+  if (!Number.isNaN(startedAt)) {
+    wallClock = ` · ⏱ pipeline ${fmtMs(Date.now() - startedAt)}`;
+  }
+}
+
+// one row per sibling suite in the run (build, lint, unit tests, ...)
+const suiteRows = buildSuiteRows(jobs);
 
 const headline = failed.length
   ? `## ❌ CI (${FLAVOR}): ${failed.length} failed spec${
@@ -196,17 +221,24 @@ if (incomplete) {
 }
 lines.push(
   "",
-  `**${failed.length} failed · ${flaky.length} flaky · ${
+  `**e2e**: ${failed.length} failed · ${flaky.length} flaky · ${
     stats.expected ?? 0
-  } passed · ${stats.skipped ?? 0} skipped**${wallClock} at \`${sha}\`${runLink}`,
+  } passed · ${stats.skipped ?? 0} skipped${wallClock} at \`${sha}\`${runLink}`,
 );
 if (burnInCount > 0) {
   lines.push(
     "",
-    `**Burn-in** (${burnInCount} new/modified target${
+    `**burn-in** (${burnInCount} new/modified target${
       burnInCount === 1 ? "" : "s"
-    } × 10 runs, no retries): ${burnInUnhealthy ? "❌" : "✅"}`,
+    } × 10 runs, no retries): ${burnInUnhealthy ? "❌" : "✅"}${
+      burnInSpan === null ? "" : ` · ⏱ ${fmtMs(burnInSpan)}`
+    }`,
   );
+}
+// the python matrix usually outlasts the e2e verdict; post a placeholder
+// and let the suite-refresh job settle it from the pytest-results artifacts
+if (hasPythonJobs(jobs)) {
+  lines.push("", `**python**: ⏳ ${PYTHON_LINE_MARKER}`);
 }
 if (suiteRows.length) {
   lines.push(
@@ -257,6 +289,9 @@ if (burnInUnhealthy) {
     "New and modified tests must pass 10 consecutive runs. Reproduce with" +
       " `cd e2e-pw && yarn e2e <file:line> --repeat-each=10 --retries=0`.",
   );
+}
+if (hasPythonJobs(jobs)) {
+  lines.push("", PYTHON_FAILURES_START, PYTHON_FAILURES_END);
 }
 const reportUrl = process.env.REPORT_URL ?? "";
 lines.push(
