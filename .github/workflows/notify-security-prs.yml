@@ -4,10 +4,14 @@ name: Notify security PRs
 # PR. Those PRs carry the `security` label (renovate.json -> vulnerabilityAlerts)
 # and are authored by voxel51-bot. Routine version bumps are intentionally not
 # announced — only CVE/security PRs reach the channel.
+#
+# Renovate attaches labels at PR creation, so the label is already present in
+# the `opened` payload. Do not add a `labeled` trigger: each labeled event
+# posts again, duplicating the notification.
 
 on:
   pull_request:
-    types: [opened, reopened, labeled]
+    types: [opened, reopened]
 
 permissions:
   contents: read
@@ -17,10 +21,7 @@ jobs:
     if: >-
       github.repository_owner == 'voxel51' &&
       github.event.pull_request.user.login == 'voxel51-bot' &&
-      (
-        (github.event.action == 'labeled' && github.event.label.name == 'security') ||
-        (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'security'))
-      )
+      contains(github.event.pull_request.labels.*.name, 'security')
     runs-on: ubuntu-latest
     steps:
       - name: "Post to #compliance-security"
