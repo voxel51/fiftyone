@@ -67,10 +67,10 @@ def _to_pil(img):
         img = np.repeat(img, 3, axis=2)
     elif img.shape[2] == 4:
         img = img[:, :, :3]
-    return PILImage.fromarray(img)
+    return PILImage.fromarray(img).convert("RGB")
 
 
-def _select_dtype(device):
+def _select_dtype(device) -> "torch.dtype":
     """bfloat16 is a CUDA optimization; CPU inference wants float32."""
     return torch.bfloat16 if "cuda" in str(device) else torch.float32
 

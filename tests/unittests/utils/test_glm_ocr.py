@@ -32,6 +32,12 @@ class ToPilTests(unittest.TestCase):
         self.assertEqual(pil.mode, "RGB")
         self.assertEqual(pil.size, (12, 8))
 
+    def test_two_channel_la(self):
+        arr = np.zeros((8, 12, 2), dtype=np.uint8)
+        pil = foug._to_pil(arr)
+        self.assertEqual(pil.mode, "RGB")
+        self.assertEqual(pil.size, (12, 8))
+
     def test_rgba_dropped_to_rgb(self):
         arr = np.zeros((8, 12, 4), dtype=np.uint8)
         self.assertEqual(foug._to_pil(arr).mode, "RGB")
