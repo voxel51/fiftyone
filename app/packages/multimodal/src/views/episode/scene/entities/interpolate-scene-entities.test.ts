@@ -6,6 +6,7 @@ import type {
   SceneUpdateVisualization,
 } from "../../../../ir/index";
 import {
+  hasInterpolatableSceneEntityPair,
   interpolateSceneEntity,
   interpolateSceneUpdate,
 } from "./interpolate-scene-entities";
@@ -190,5 +191,81 @@ describe("interpolateSceneUpdate", () => {
 
     const out = interpolateSceneUpdate(update([prev]), update([next]), 0.5);
     expect(out.entities[0]).toBe(prev);
+  });
+
+  it("requires a stable id, matching frame, and compatible primitive family", () => {
+    const compatiblePrev = entity({
+      cubeCount: 1,
+      cubes: [cube()],
+      frameId: "map",
+      id: "car-1",
+    });
+    const compatibleNext = entity({
+      cubeCount: 1,
+      cubes: [cube()],
+      frameId: "map",
+      id: "car-1",
+    });
+    expect(
+      hasInterpolatableSceneEntityPair(
+        update([compatiblePrev]),
+        update([compatibleNext]),
+      ),
+    ).toBe(true);
+    expect(
+      hasInterpolatableSceneEntityPair(
+        update([compatiblePrev]),
+        update([{ ...compatibleNext, id: "" }]),
+      ),
+    ).toBe(false);
+    expect(
+      hasInterpolatableSceneEntityPair(
+        update([compatiblePrev]),
+        update([{ ...compatibleNext, frameId: "base_link" }]),
+      ),
+    ).toBe(false);
+    expect(
+      hasInterpolatableSceneEntityPair(
+        update([compatiblePrev]),
+        update([
+          {
+            ...compatibleNext,
+            cubeCount: 2,
+            cubes: [cube(), cube()],
+          },
+        ]),
+      ),
+    ).toBe(false);
+  });
+
+  it("uses the same first duplicate id for safety checks and interpolation", () => {
+    const prev = entity({
+      cubeCount: 1,
+      cubes: [
+        cube({
+          pose: { position: [0, 0, 0], quaternion: IDENTITY_QUAT },
+        }),
+      ],
+      frameId: "map",
+      id: "car-1",
+    });
+    const incompatibleFirst = {
+      ...prev,
+      cubeCount: 0,
+      cubes: [],
+    };
+    const compatibleSecond = {
+      ...prev,
+      cubes: [
+        cube({
+          pose: { position: [10, 0, 0], quaternion: IDENTITY_QUAT },
+        }),
+      ],
+    };
+    const previous = update([prev]);
+    const next = update([incompatibleFirst, compatibleSecond]);
+
+    expect(hasInterpolatableSceneEntityPair(previous, next)).toBe(false);
+    expect(interpolateSceneUpdate(previous, next, 0.5).entities[0]).toBe(prev);
   });
 });

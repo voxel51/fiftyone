@@ -113,6 +113,14 @@ export function createInlineMcapResourceClient(
   >({
     max: FRAME_TRANSFORM_WINDOW_READ_CACHE_LIMIT,
   });
+  const predecessorStoreForSource = (sourceKey: string) => {
+    let store = predecessorStores.get(sourceKey);
+    if (!store) {
+      store = createMcapPredecessorStore();
+      predecessorStores.set(sourceKey, store);
+    }
+    return store;
+  };
 
   const client: McapResourceClient = {
     dispose() {
@@ -260,6 +268,7 @@ export function createInlineMcapResourceClient(
         .get(request.source)
         .then((reader) =>
           readMcapFrameTransformWindow({
+            predecessorStore: predecessorStoreForSource(sourceKey),
             reader,
             readSignal: options.readSignal,
             request,
@@ -287,11 +296,7 @@ export function createInlineMcapResourceClient(
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
       const reader = await readerStore.get(request.source);
       const sourceKey = byteSourceAccessKey(request.source);
-      let predecessorStore = predecessorStores.get(sourceKey);
-      if (!predecessorStore) {
-        predecessorStore = createMcapPredecessorStore();
-        predecessorStores.set(sourceKey, predecessorStore);
-      }
+      const predecessorStore = predecessorStoreForSource(sourceKey);
 
       return readMcapSynchronizedMessageBatch({
         decodeClient,

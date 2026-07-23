@@ -33,7 +33,7 @@ import {
  * - "ready"   — the latest message at or before the current tick is being shown
  *   within the stale-warning threshold.
  * - "stale"   — the latest message at or before the current tick is still being
- *   shown, but is older than the configured stale-warning threshold.
+ *   shown, but is older than its cadence-derived stale threshold.
  * - "gap"     — the tick was fetched and the stream has no message at or
  *   before it. Under latest-at-or-before selection this means the
  *   playhead is before the stream's first message.
@@ -75,6 +75,15 @@ const streamStartTimeSecAtom = atomFamily(
 const streamStaleAgeNsAtom = atomFamily(
   (_stream: string) =>
     atom<bigint | null>(null) as PrimitiveAtom<bigint | null>,
+);
+
+/**
+ * Timeline-relative timestamp of the observation currently displayed for a
+ * stream. Null means no observation is available at the current playhead.
+ */
+const streamContentTimeSecAtom = atomFamily(
+  (_stream: string) =>
+    atom<number | null>(null) as PrimitiveAtom<number | null>,
 );
 
 const EMPTY_DIAGNOSTICS: readonly DecodedDiagnostic[] = [];
@@ -137,6 +146,21 @@ export function useStreamStaleAges(
   return useAtomValue(staleAgesAtom, { store });
 }
 
+/** Reactive source times for the observations currently displayed. */
+export function useStreamContentTimes(
+  streams: readonly string[],
+): readonly (number | null)[] {
+  const store = usePlaybackStore();
+  const contentTimesAtom = useMemo(
+    () =>
+      atom((get) =>
+        streams.map((stream) => get(streamContentTimeSecAtom(stream))),
+      ),
+    [streams],
+  );
+  return useAtomValue(contentTimesAtom, { store });
+}
+
 /** Decoder capability diagnostics, index-aligned with the supplied streams. */
 export function useStreamDiagnostics(
   streams: readonly string[],
@@ -184,6 +208,23 @@ export function setStreamStaleAgeNs(
   ageNs: bigint | null,
 ): void {
   store.set(streamStaleAgeNsAtom(stream), ageNs);
+}
+
+/** Non-reactive read for the data stream and tests. */
+export function getStreamContentTimeSec(
+  store: PlaybackStore,
+  stream: string,
+): number | null {
+  return store.get(streamContentTimeSecAtom(stream));
+}
+
+/** Non-reactive write for the displayed observation timestamp. */
+export function setStreamContentTimeSec(
+  store: PlaybackStore,
+  stream: string,
+  timeSec: number | null,
+): void {
+  store.set(streamContentTimeSecAtom(stream), timeSec);
 }
 
 /** Replaces a stream's latest decoder diagnostics when their content changes. */
@@ -252,7 +293,6 @@ export function publishDataStreamStatuses({
   resolveStartupCushion,
   scheduleBufferedRangesPublish,
   schedulePausedIdleWarmup,
-  staleMediaWarningNs,
   staleWarningStreams,
   store,
 }: {
@@ -271,7 +311,6 @@ export function publishDataStreamStatuses({
   readonly resolveStartupCushion: () => StartupCushion;
   readonly scheduleBufferedRangesPublish: () => void;
   readonly schedulePausedIdleWarmup: (delayMs?: number) => void;
-  readonly staleMediaWarningNs: bigint;
   readonly staleWarningStreams: ReadonlySet<string>;
   readonly store: PlaybackStore;
 }): void {
@@ -283,6 +322,7 @@ export function publishDataStreamStatuses({
     const cache = caches.get(stream);
     let status: StreamStatus;
     let staleAgeNs: bigint | null = null;
+    let contentTimeSec: number | null = null;
     if (tick === null || !cache?.has(tick)) {
       status = failedStreams.has(stream) ? "failed" : "loading";
     } else {
@@ -293,13 +333,23 @@ export function publishDataStreamStatuses({
         const message = cache.get(tick);
         if (!message) {
           status = "gap";
-        } else if (staleWarningStreams.has(stream)) {
-          staleAgeNs = staleAgeForMessage(tick, message, staleMediaWarningNs);
-          status = staleAgeNs === null ? "ready" : "stale";
         } else {
-          status = "ready";
+          contentTimeSec = index?.nsToSec(message.timestampNs) ?? null;
+          if (staleWarningStreams.has(stream)) {
+            staleAgeNs = staleAgeForMessage(
+              tick,
+              message,
+              cache.observationStaleThresholdNs(),
+            );
+            status = staleAgeNs === null ? "ready" : "stale";
+          } else {
+            status = "ready";
+          }
         }
       }
+    }
+    if (getStreamContentTimeSec(store, stream) !== contentTimeSec) {
+      setStreamContentTimeSec(store, stream, contentTimeSec);
     }
     if (getStreamStaleAgeNs(store, stream) !== staleAgeNs) {
       setStreamStaleAgeNs(store, stream, staleAgeNs);

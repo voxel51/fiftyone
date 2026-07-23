@@ -1293,6 +1293,177 @@ describe("MCAP resources", () => {
     expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
   });
 
+  it("anchors indexed transform windows with cached predecessor messages", async () => {
+    const anchorTimeNs = 7_000_000_020n;
+    const earlierAnchorTimeNs = 6_000_000_020n;
+    const earlierFrameTransformMessage = FRAME_TRANSFORM_MESSAGE.slice();
+    // Foxglove Timestamp.seconds is the one-byte varint at this offset in the
+    // pinned fixture; retain the same edge while giving it an older pose.
+    earlierFrameTransformMessage[3] = 6;
+    const readLatestIndexedMessageTimes = vi.fn(
+      async () =>
+        new Map([
+          [
+            "/robot_transforms",
+            [
+              createIndexedMessageTime(
+                "/robot_transforms",
+                10,
+                anchorTimeNs,
+                20n,
+              ),
+              createIndexedMessageTime(
+                "/robot_transforms",
+                10,
+                earlierAnchorTimeNs,
+                10n,
+              ),
+            ],
+          ],
+        ]),
+    );
+    const readMessages = vi.fn(async function* (args?: {
+      readonly endTime?: bigint;
+      readonly startTime?: bigint;
+      readonly topics?: readonly string[];
+    }) {
+      if (
+        args?.startTime !== undefined &&
+        args.endTime !== undefined &&
+        args.startTime <= earlierAnchorTimeNs &&
+        earlierAnchorTimeNs <= args.endTime
+      ) {
+        yield createMessage(earlierFrameTransformMessage, {
+          channelId: 10,
+          logTime: earlierAnchorTimeNs,
+        });
+      }
+      if (
+        args?.startTime !== undefined &&
+        args.endTime !== undefined &&
+        args.startTime <= anchorTimeNs &&
+        anchorTimeNs <= args.endTime
+      ) {
+        yield createMessage(FRAME_TRANSFORM_MESSAGE, {
+          channelId: 10,
+          logTime: anchorTimeNs,
+        });
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/robot_transforms",
+              }),
+            ],
+          ]),
+          readLatestIndexedMessageTimes,
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+        }),
+      ),
+    });
+    const source = createMcapSourceDescriptor();
+
+    const first = await client.readFrameTransformWindow({
+      endTimeNs: 11_000_000_000n,
+      source,
+      startTimeNs: 10_000_000_000n,
+    });
+    const second = await client.readFrameTransformWindow({
+      endTimeNs: 11_000_000_000n,
+      source,
+      startTimeNs: 10_500_000_000n,
+    });
+
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledExactlyOnceWith({
+      limitPerTopic: 32,
+      timeNs: 10_000_000_000n,
+      topics: ["/robot_transforms"],
+    });
+    expect(first.samples).toHaveLength(1);
+    expect(second.samples).toHaveLength(1);
+    expect(readMessages).toHaveBeenCalledWith({
+      endTime: anchorTimeNs,
+      startTime: earlierAnchorTimeNs,
+      topics: ["/robot_transforms"],
+    });
+    expect(first.samples[0]).toMatchObject({
+      childFrameId: "lidar",
+      parentFrameId: "map",
+      timeNs: anchorTimeNs,
+    });
+  });
+
+  it("keeps the bounded predecessor fallback for readers without indexes", async () => {
+    const readMessages = vi.fn(async function* () {
+      // The message lands inside the bounded log-time read, while its recorded
+      // transform timestamp precedes the window and becomes the held anchor.
+      yield createMessage(FRAME_TRANSFORM_MESSAGE, {
+        channelId: 10,
+        logTime: 10_500_000_000n,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/robot_transforms",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: 11_000_000_000n,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: 10_000_000_000n,
+    });
+
+    expect(readMessages).toHaveBeenCalledTimes(1);
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "lidar",
+      parentFrameId: "map",
+      timeNs: 7_000_000_020n,
+    });
+  });
+
   it("keeps dynamic frame transform window reads in a bounded LRU cache", async () => {
     const source = createMcapSourceDescriptor();
     const readMessages = vi.fn(async function* () {

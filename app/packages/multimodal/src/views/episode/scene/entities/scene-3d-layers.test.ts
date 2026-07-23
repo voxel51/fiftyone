@@ -210,7 +210,7 @@ describe("build3dLayers", () => {
       targetFrameId: "base_link",
       translation: new Vector3(1, 2, 3),
     };
-    const { pointCloudLayers, unresolvedFrameIds } = build3dLayers({
+    const { pointCloudLayers } = build3dLayers({
       frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
         sourceFrameId,
         resolutionKind: "exact",
@@ -223,28 +223,25 @@ describe("build3dLayers", () => {
       worldFrameId: "base_link",
     });
 
-    expect(unresolvedFrameIds).toEqual([]);
     expect(pointCloudLayers).toHaveLength(1);
     expect(pointCloudLayers[0]?.contentTimeNs).toBe(123n);
     expect(pointCloudLayers[0]?.frameTransform).toBe(transform);
   });
 
   it("renders a still-loading (pending) cloud in its own frame rather than dropping it", () => {
-    const { pointCloudLayers, provisionalFrameIds, unresolvedFrameIds } =
-      build3dLayers({
-        frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
-          sourceFrameId,
-          status: "pending",
-          targetFrameId,
-        })),
-        frames: [playbackFrame(frame("lidar"), 456n)],
-        selectedStreams: ["lidar-stream"],
-        worldFrameId: "map",
-      });
+    const { pointCloudLayers, provisionalFrameIds } = build3dLayers({
+      frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
+        sourceFrameId,
+        status: "pending",
+        targetFrameId,
+      })),
+      frames: [playbackFrame(frame("lidar"), 456n)],
+      selectedStreams: ["lidar-stream"],
+      worldFrameId: "map",
+    });
 
     // Pending is transient (window still loading): show the cloud now, snap to
     // world once the transform arrives. No missing warning.
-    expect(unresolvedFrameIds).toEqual([]);
     expect(provisionalFrameIds).toEqual(["lidar"]);
     expect(pointCloudLayers).toHaveLength(1);
     expect(pointCloudLayers[0]?.contentTimeNs).toBe(456n);
@@ -279,7 +276,7 @@ describe("build3dLayers", () => {
   });
 
   it("drops and reports a cloud that is genuinely missing a path to the world frame", () => {
-    const { pointCloudLayers, unresolvedFrameIds } = build3dLayers({
+    const { pointCloudLayers, unresolvedPoseUsages } = build3dLayers({
       frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
         sourceFrameId,
         status: "missing",
@@ -290,12 +287,18 @@ describe("build3dLayers", () => {
       worldFrameId: "map",
     });
 
-    expect(unresolvedFrameIds).toEqual(["lidar"]);
+    expect(unresolvedPoseUsages).toEqual([
+      {
+        sourceFrameId: "lidar",
+        sourceId: "lidar-stream",
+        targetFrameId: "map",
+      },
+    ]);
     expect(pointCloudLayers).toHaveLength(0);
   });
 
   it("renders on first paint before a world frame or playback time is known", () => {
-    const { pointCloudLayers, unresolvedFrameIds } = build3dLayers({
+    const { pointCloudLayers } = build3dLayers({
       frameTransforms: transformsState(() => {
         throw new Error("resolve must not run without a world frame and time");
       }),
@@ -304,7 +307,6 @@ describe("build3dLayers", () => {
       worldFrameId: "",
     });
 
-    expect(unresolvedFrameIds).toEqual([]);
     expect(pointCloudLayers).toHaveLength(1);
     expect(pointCloudLayers[0]?.frameTransform).toBeUndefined();
   });
@@ -361,61 +363,125 @@ describe("build3dLayers", () => {
     ]);
   });
 
-  it("reports boundary-clamped transforms separately from missing paths", () => {
-    const { clampedFrameIds, pointCloudLayers, unresolvedFrameIds } =
-      build3dLayers({
-        frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
+  it("keeps boundary-clamped transforms visible", () => {
+    const { pointCloudLayers } = build3dLayers({
+      frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
+        resolutionKind: "clamped",
+        sourceFrameId,
+        status: "resolved",
+        targetFrameId,
+        transform: {
           resolutionKind: "clamped",
+          rotation: new Quaternion(),
           sourceFrameId,
-          status: "resolved",
           targetFrameId,
-          transform: {
-            resolutionKind: "clamped",
-            rotation: new Quaternion(),
-            sourceFrameId,
-            targetFrameId,
-            translation: new Vector3(),
-          },
-        })),
-        frames: [playbackFrame(frame("lidar"))],
-        selectedStreams: ["lidar-stream"],
-        worldFrameId: "map",
-      });
+          translation: new Vector3(),
+        },
+      })),
+      frames: [playbackFrame(frame("lidar"))],
+      selectedStreams: ["lidar-stream"],
+      worldFrameId: "map",
+    });
 
-    expect(clampedFrameIds).toEqual(["lidar"]);
-    expect(unresolvedFrameIds).toEqual([]);
     expect(pointCloudLayers).toHaveLength(1);
   });
 
-  it("reports rendered transforms that interpolate across large gaps", () => {
-    const { largeInterpolationGaps, pointCloudLayers, unresolvedFrameIds } =
-      build3dLayers({
-        frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
-          maxInterpolationGapNs: 2_500_000_000n,
-          resolutionKind: "interpolated",
+  it("keeps stale held transforms visible and reports source-facing age", () => {
+    const { pointCloudLayers, stalePoseUsages } = build3dLayers({
+      frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
+        heldEdges: [
+          {
+            ageNs: 3_200_000_000n,
+            interpolationGapLimitNs: 2_000_000_000n,
+            interpolationGapNs: 5_000_000_000n,
+            reason: "interpolation-gap",
+            sourceFrameId,
+            sourceTimeNs: 10_000_000_000n,
+            staleAfterNs: 500_000_000n,
+            targetFrameId,
+          },
+        ],
+        resolutionKind: "held",
+        sourceFrameId,
+        status: "resolved",
+        targetFrameId,
+        transform: {
+          resolutionKind: "held",
+          rotation: new Quaternion(),
+          sourceFrameId,
+          targetFrameId,
+          translation: new Vector3(1, 2, 3),
+        },
+      })),
+      frames: [playbackFrame(frame("lidar"))],
+      selectedStreams: ["lidar-stream"],
+      worldFrameId: "map",
+    });
+
+    expect(stalePoseUsages).toEqual([
+      {
+        ageNs: 3_200_000_000n,
+        sourceFrameId: "lidar",
+        sourceId: "lidar-stream",
+        sourceTimeNs: 10_000_000_000n,
+        staleAfterNs: 500_000_000n,
+        targetFrameId: "map",
+      },
+    ]);
+    expect(pointCloudLayers).toHaveLength(1);
+    expect(pointCloudLayers[0]?.frameTransform?.translation.toArray()).toEqual([
+      1, 2, 3,
+    ]);
+  });
+
+  it("keeps every frame-placed layer visible on stale held poses", () => {
+    const result = build3dLayers({
+      annotationFrames: [annotationPlaybackFrame(sceneUpdate("annotations"))],
+      calibrationFrames: [calibrationPlaybackFrame(calibrationViz("camera"))],
+      frameTransforms: transformsState((sourceFrameId, targetFrameId) => {
+        const heldEdge = {
+          ageNs: 1_000_000_000n,
+          reason: "after-last-sample" as const,
+          sourceFrameId,
+          sourceTimeNs: 0n,
+          staleAfterNs: 500_000_000n,
+          targetFrameId,
+        };
+        return {
+          heldEdges: [heldEdge],
+          resolutionKind: "held",
           sourceFrameId,
           status: "resolved",
           targetFrameId,
           transform: {
-            maxInterpolationGapNs: 2_500_000_000n,
-            resolutionKind: "interpolated",
+            heldEdges: [heldEdge],
+            resolutionKind: "held",
             rotation: new Quaternion(),
             sourceFrameId,
             targetFrameId,
             translation: new Vector3(),
           },
-        })),
-        frames: [playbackFrame(frame("lidar"))],
-        largeInterpolationGapWarningNs: 2_000_000_000n,
-        selectedStreams: ["lidar-stream"],
-        worldFrameId: "map",
-      });
+        };
+      }),
+      frames: [playbackFrame(frame("lidar"))],
+      gridFrames: [gridPlaybackFrame(gridViz("grid"))],
+      selectedAnnotationStreams: ["/markers"],
+      selectedCalibrationStreams: ["/camera"],
+      selectedGridStreams: ["/map"],
+      selectedStreams: ["/lidar"],
+      worldFrameId: "world",
+    });
 
-    expect(largeInterpolationGaps).toEqual([
-      { frameId: "lidar", gapNs: 2_500_000_000n },
+    expect(result.pointCloudLayers).toHaveLength(1);
+    expect(result.gridLayers).toHaveLength(1);
+    expect(result.cameraFrustumLayers).toHaveLength(1);
+    expect(result.sceneAnnotationLayers).toHaveLength(1);
+    expect(result.stalePoseUsages.map((usage) => usage.sourceId)).toEqual([
+      "/camera",
+      "/lidar",
+      "/map",
+      "/markers",
     ]);
-    expect(unresolvedFrameIds).toEqual([]);
-    expect(pointCloudLayers).toHaveLength(1);
   });
 
   it("resolves scene annotations at each entity timestamp", () => {
@@ -550,7 +616,7 @@ describe("build3dLayers", () => {
   });
 
   it("drops and reports annotations whose transform is missing", () => {
-    const { sceneAnnotationLayers, unresolvedFrameIds } = build3dLayers({
+    const { sceneAnnotationLayers, unresolvedPoseUsages } = build3dLayers({
       annotationFrames: [annotationPlaybackFrame(sceneUpdate("lidar"))],
       frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
         sourceFrameId,
@@ -564,7 +630,13 @@ describe("build3dLayers", () => {
     });
 
     expect(sceneAnnotationLayers).toHaveLength(0);
-    expect(unresolvedFrameIds).toEqual(["lidar"]);
+    expect(unresolvedPoseUsages).toEqual([
+      {
+        sourceFrameId: "lidar",
+        sourceId: "/markers",
+        targetFrameId: "base_link",
+      },
+    ]);
   });
 
   it("places a grid whose frame resolves to the world frame", () => {
@@ -574,23 +646,21 @@ describe("build3dLayers", () => {
       targetFrameId: "base_link",
       translation: new Vector3(-920, -1300, 0),
     };
-    const { gridLayers, transformedLayerCount, unresolvedFrameIds } =
-      build3dLayers({
-        frames: [],
-        frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
-          sourceFrameId,
-          resolutionKind: "exact",
-          status: "resolved",
-          targetFrameId,
-          transform,
-        })),
-        gridFrames: [gridPlaybackFrame(gridViz("map"))],
-        selectedGridStreams: ["/map"],
-        selectedStreams: [],
-        worldFrameId: "base_link",
-      });
+    const { gridLayers, transformedLayerCount } = build3dLayers({
+      frames: [],
+      frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
+        sourceFrameId,
+        resolutionKind: "exact",
+        status: "resolved",
+        targetFrameId,
+        transform,
+      })),
+      gridFrames: [gridPlaybackFrame(gridViz("map"))],
+      selectedGridStreams: ["/map"],
+      selectedStreams: [],
+      worldFrameId: "base_link",
+    });
 
-    expect(unresolvedFrameIds).toEqual([]);
     expect(gridLayers).toHaveLength(1);
     expect(gridLayers[0]).toMatchObject({
       contentTimeNs: TIME_NS,
@@ -651,7 +721,7 @@ describe("build3dLayers", () => {
   });
 
   it("drops and reports grids whose transform is missing", () => {
-    const { gridLayers, unresolvedFrameIds } = build3dLayers({
+    const { gridLayers, unresolvedPoseUsages } = build3dLayers({
       frames: [],
       frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
         sourceFrameId,
@@ -665,7 +735,13 @@ describe("build3dLayers", () => {
     });
 
     expect(gridLayers).toHaveLength(0);
-    expect(unresolvedFrameIds).toEqual(["map"]);
+    expect(unresolvedPoseUsages).toEqual([
+      {
+        sourceFrameId: "map",
+        sourceId: "/map",
+        targetFrameId: "base_link",
+      },
+    ]);
   });
 
   it("renders a frameless grid at the scene origin without consulting transforms", () => {
@@ -712,25 +788,23 @@ describe("build3dLayers", () => {
       targetFrameId: "base_link",
       translation: new Vector3(1.7, 0, 1.5),
     };
-    const { cameraFrustumLayers, transformedLayerCount, unresolvedFrameIds } =
-      build3dLayers({
-        calibrationFrames: [
-          calibrationPlaybackFrame(calibrationViz("CAM_FRONT")),
-        ],
-        frames: [],
-        frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
-          sourceFrameId,
-          resolutionKind: "exact",
-          status: "resolved",
-          targetFrameId,
-          transform,
-        })),
-        selectedCalibrationStreams: ["/CAM_FRONT/camera_info"],
-        selectedStreams: [],
-        worldFrameId: "base_link",
-      });
+    const { cameraFrustumLayers, transformedLayerCount } = build3dLayers({
+      calibrationFrames: [
+        calibrationPlaybackFrame(calibrationViz("CAM_FRONT")),
+      ],
+      frames: [],
+      frameTransforms: transformsState((sourceFrameId, targetFrameId) => ({
+        sourceFrameId,
+        resolutionKind: "exact",
+        status: "resolved",
+        targetFrameId,
+        transform,
+      })),
+      selectedCalibrationStreams: ["/CAM_FRONT/camera_info"],
+      selectedStreams: [],
+      worldFrameId: "base_link",
+    });
 
-    expect(unresolvedFrameIds).toEqual([]);
     expect(cameraFrustumLayers).toHaveLength(1);
     expect(cameraFrustumLayers[0]).toMatchObject({
       contentTimeNs: TIME_NS,
@@ -810,7 +884,13 @@ describe("build3dLayers", () => {
     });
 
     expect(missingResult.cameraFrustumLayers).toHaveLength(0);
-    expect(missingResult.unresolvedFrameIds).toEqual(["CAM_FRONT"]);
+    expect(missingResult.unresolvedPoseUsages).toEqual([
+      {
+        sourceFrameId: "CAM_FRONT",
+        sourceId: "/CAM_FRONT/camera_info",
+        targetFrameId: "base_link",
+      },
+    ]);
   });
 
   it("renders a frameless frustum at the scene origin without consulting transforms", () => {

@@ -58,77 +58,6 @@ describe("episode frame transform store", () => {
     });
   });
 
-  it("holds the latest at-or-before sample in hold-last mode", () => {
-    const store = createStore({
-      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
-      dynamicSamples: [
-        sample("map", "base_link", { x: 1, y: 0, z: 0 }, 100n),
-        sample("map", "base_link", { x: 3, y: 0, z: 0 }, 300n),
-      ],
-    });
-
-    expect(
-      store.resolve({
-        policy: {
-          boundaryClampNs: 50n,
-          maxInterpolationGapNs: 0n,
-          resolutionMode: "hold-last",
-        },
-        sourceFrameId: "base_link",
-        targetFrameId: "map",
-        timeNs: 250n,
-      }),
-    ).toMatchObject({
-      resolutionKind: "held",
-      status: "resolved",
-      transform: {
-        resolutionKind: "held",
-        translation: { x: 1, y: 0, z: 0 },
-      },
-    });
-  });
-
-  it("still resolves exact samples and start clamps in hold-last mode", () => {
-    const store = createStore({
-      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
-      dynamicSamples: [
-        sample("map", "base_link", { x: 1, y: 0, z: 0 }, 100n),
-        sample("map", "base_link", { x: 3, y: 0, z: 0 }, 300n),
-      ],
-    });
-    const policy = {
-      boundaryClampNs: 50n,
-      maxInterpolationGapNs: 0n,
-      resolutionMode: "hold-last",
-    } as const;
-
-    expect(
-      store.resolve({
-        policy,
-        sourceFrameId: "base_link",
-        targetFrameId: "map",
-        timeNs: 100n,
-      }),
-    ).toMatchObject({
-      resolutionKind: "exact",
-      status: "resolved",
-      transform: { translation: { x: 1, y: 0, z: 0 } },
-    });
-
-    expect(
-      store.resolve({
-        policy,
-        sourceFrameId: "base_link",
-        targetFrameId: "map",
-        timeNs: 60n,
-      }),
-    ).toMatchObject({
-      resolutionKind: "clamped",
-      status: "resolved",
-      transform: { translation: { x: 1, y: 0, z: 0 } },
-    });
-  });
-
   it("carries the largest interpolation gap through composed paths", () => {
     const store = createStore({
       dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
@@ -217,7 +146,6 @@ describe("episode frame transform store", () => {
       store.resolve({
         policy: {
           boundaryClampNs: 10n,
-          maxInterpolationGapNs: 250n,
         },
         sourceFrameId: "base_link",
         targetFrameId: "map",
@@ -228,28 +156,271 @@ describe("episode frame transform store", () => {
     });
   });
 
-  it("reports missing across interpolation gaps larger than the policy allows", () => {
+  it("holds the latest pose across implausible interpolation gaps", () => {
     const store = createStore({
-      dynamicRange: { endTimeNs: 1000n, startTimeNs: 0n },
+      dynamicRange: { endTimeNs: 3_000_000_000n, startTimeNs: 0n },
       dynamicSamples: [
-        sample("map", "base_link", { x: 1, y: 0, z: 0 }, 100n),
-        sample("map", "base_link", { x: 10, y: 0, z: 0 }, 1000n),
+        sample("map", "base_link", { x: 1, y: 0, z: 0 }, 0n),
+        sample("map", "base_link", { x: 10, y: 0, z: 0 }, 3_000_000_000n),
       ],
     });
 
     expect(
       store.resolve({
-        policy: {
-          boundaryClampNs: 50n,
-          maxInterpolationGapNs: 100n,
-        },
         sourceFrameId: "base_link",
         targetFrameId: "map",
-        timeNs: 500n,
+        timeNs: 1_500_000_000n,
       }),
     ).toMatchObject({
-      status: "missing",
+      heldEdges: [
+        {
+          ageNs: 1_500_000_000n,
+          interpolationGapLimitNs: 2_000_000_000n,
+          interpolationGapNs: 3_000_000_000n,
+          reason: "interpolation-gap",
+          sourceFrameId: "base_link",
+          sourceTimeNs: 0n,
+          staleAfterNs: 500_000_000n,
+          targetFrameId: "map",
+        },
+      ],
+      resolutionKind: "held",
+      status: "resolved",
+      transform: {
+        resolutionKind: "held",
+        translation: { x: 1, y: 0, z: 0 },
+      },
     });
+  });
+
+  it("derives per-edge hold metadata and carries it through composed paths", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 1_000_000_000n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("map", "base_link", undefined, 0n),
+        sample("map", "base_link", undefined, 100_000_000n),
+        sample("map", "base_link", undefined, 200_000_000n),
+        sample("map", "base_link", undefined, 300_000_000n),
+        sample("map", "base_link", undefined, 1_000_000_000n),
+      ],
+      staticSamples: [sample("base_link", "lidar")],
+    });
+
+    expect(
+      store.resolve({
+        sourceFrameId: "lidar",
+        targetFrameId: "map",
+        timeNs: 650_000_000n,
+      }),
+    ).toMatchObject({
+      heldEdges: [
+        {
+          ageNs: 350_000_000n,
+          interpolationGapLimitNs: 300_000_000n,
+          interpolationGapNs: 700_000_000n,
+          reason: "interpolation-gap",
+          sourceFrameId: "base_link",
+          sourceTimeNs: 300_000_000n,
+          staleAfterNs: 500_000_000n,
+          targetFrameId: "map",
+        },
+      ],
+      resolutionKind: "held",
+      sourceFrameId: "lidar",
+      status: "resolved",
+      targetFrameId: "map",
+      transform: {
+        resolutionKind: "held",
+      },
+    });
+  });
+
+  it("holds after the final sample and recovers at the next exact pose", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 3_000_000_000n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("map", "base_link", { x: 1, y: 0, z: 0 }, 0n),
+        sample("map", "base_link", { x: 10, y: 0, z: 0 }, 3_000_000_000n),
+      ],
+    });
+
+    const held = store.resolve({
+      sourceFrameId: "base_link",
+      targetFrameId: "map",
+      timeNs: 1_500_000_000n,
+    });
+    expect(held).toMatchObject({
+      heldEdges: [{ ageNs: 1_500_000_000n }],
+      resolutionKind: "held",
+      status: "resolved",
+    });
+
+    const recovered = store.resolve({
+      sourceFrameId: "base_link",
+      targetFrameId: "map",
+      timeNs: 3_000_000_000n,
+    });
+    expect(recovered).toMatchObject({
+      resolutionKind: "exact",
+      status: "resolved",
+      transform: {
+        translation: { x: 10, y: 0, z: 0 },
+      },
+    });
+    expect(recovered).not.toHaveProperty("heldEdges");
+
+    expect(
+      store.resolve({
+        sourceFrameId: "base_link",
+        targetFrameId: "map",
+        timeNs: 4_000_000_000n,
+      }),
+    ).toMatchObject({
+      heldEdges: [
+        {
+          ageNs: 1_000_000_000n,
+          reason: "after-last-sample",
+          sourceTimeNs: 3_000_000_000n,
+        },
+      ],
+      resolutionKind: "held",
+      status: "resolved",
+    });
+  });
+
+  it("preserves every held edge through inverse and composed paths", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 2_000_000_000n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("map", "base_link", undefined, 0n),
+        sample("base_link", "lidar", undefined, 100_000_000n),
+      ],
+    });
+
+    const composed = store.resolve({
+      sourceFrameId: "lidar",
+      targetFrameId: "map",
+      timeNs: 1_000_000_000n,
+    });
+    expect(composed).toMatchObject({
+      heldEdges: [
+        {
+          ageNs: 900_000_000n,
+          sourceFrameId: "lidar",
+          sourceTimeNs: 100_000_000n,
+          targetFrameId: "base_link",
+        },
+        {
+          ageNs: 1_000_000_000n,
+          sourceFrameId: "base_link",
+          sourceTimeNs: 0n,
+          targetFrameId: "map",
+        },
+      ],
+      resolutionKind: "held",
+      status: "resolved",
+    });
+
+    expect(
+      store.resolve({
+        sourceFrameId: "map",
+        targetFrameId: "lidar",
+        timeNs: 1_000_000_000n,
+      }),
+    ).toMatchObject({
+      heldEdges: [
+        {
+          sourceFrameId: "base_link",
+          targetFrameId: "map",
+        },
+        {
+          sourceFrameId: "lidar",
+          targetFrameId: "base_link",
+        },
+      ],
+      resolutionKind: "held",
+      status: "resolved",
+    });
+  });
+
+  it("switches parents exactly at the recorded timestamp", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("map", "base_link", { x: 1, y: 0, z: 0 }, 0n),
+        sample("map", "base_link", { x: 2, y: 0, z: 0 }, 100n),
+        sample("odom", "base_link", { x: 3, y: 0, z: 0 }, 200n),
+        sample("odom", "base_link", { x: 4, y: 0, z: 0 }, 300n),
+      ],
+    });
+
+    expect(
+      store.resolve({
+        sourceFrameId: "base_link",
+        targetFrameId: "map",
+        timeNs: 150n,
+      }),
+    ).toMatchObject({
+      heldEdges: [{ reason: "parent-change", sourceTimeNs: 100n }],
+      status: "resolved",
+      transform: {
+        translation: { x: 2, y: 0, z: 0 },
+      },
+    });
+    expect(
+      store.resolve({
+        sourceFrameId: "base_link",
+        targetFrameId: "odom",
+        timeNs: 150n,
+      }),
+    ).toMatchObject({ status: "missing" });
+
+    expect(
+      store.resolve({
+        sourceFrameId: "base_link",
+        targetFrameId: "odom",
+        timeNs: 200n,
+      }),
+    ).toMatchObject({
+      resolutionKind: "exact",
+      status: "resolved",
+      transform: {
+        translation: { x: 3, y: 0, z: 0 },
+      },
+    });
+    expect(
+      store.resolve({
+        sourceFrameId: "base_link",
+        targetFrameId: "map",
+        timeNs: 200n,
+      }),
+    ).toMatchObject({ status: "missing" });
+  });
+
+  it("does not pre-clamp a new parent over an existing static relationship", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 100n, startTimeNs: 0n },
+      dynamicSamples: [sample("odom", "base_link", { x: 5, y: 0, z: 0 }, 100n)],
+      staticSamples: [sample("map", "base_link", { x: 1, y: 0, z: 0 })],
+    });
+
+    expect(
+      store.resolve({
+        sourceFrameId: "base_link",
+        targetFrameId: "map",
+        timeNs: 75n,
+      }),
+    ).toMatchObject({
+      resolutionKind: "static",
+      status: "resolved",
+    });
+    expect(
+      store.resolve({
+        sourceFrameId: "base_link",
+        targetFrameId: "odom",
+        timeNs: 75n,
+      }),
+    ).toMatchObject({ status: "missing" });
   });
 
   it("composes mixed static and dynamic paths", () => {

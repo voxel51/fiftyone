@@ -13,9 +13,10 @@ import type {
   PointCloudPanelLayer,
   SceneAnnotationPanelLayer,
 } from "../../../../visualization/scene-3d/index";
+import type { EpisodeHeldFrameTransform } from "../../../../runtime/frame-transform-types";
 import type { StreamPlaybackFrame } from "../../playback/use-stream-values";
 import type { FrameTransformsState } from "../../spatial/frame-transforms/use-frame-transforms";
-import type { TransformGapWarning } from "../../status/health";
+import type { StalePoseUsage, UnresolvedPoseUsage } from "../../status/health";
 
 /**
  * Resolution of one source frame into the world frame for placement.
@@ -25,6 +26,7 @@ import type { TransformGapWarning } from "../../status/health";
  */
 type FrameTransformResolution =
   | {
+      readonly heldEdges?: readonly EpisodeHeldFrameTransform[];
       readonly maxInterpolationGapNs?: bigint;
       readonly status: "resolved";
       readonly transform: PointCloudFrameTransform;
@@ -32,21 +34,18 @@ type FrameTransformResolution =
   | { readonly status: "pending" }
   | { readonly status: "missing" };
 
-export type Scene3dTransformGapWarning = TransformGapWarning;
-
 export interface Scene3dLayerBuildResult {
   readonly cameraFrustumLayers: readonly CameraFrustumPanelLayer[];
-  readonly clampedFrameIds: readonly string[];
   readonly gridLayers: readonly GridPanelLayer[];
-  readonly largeInterpolationGaps: readonly Scene3dTransformGapWarning[];
   readonly pendingAnnotationFrameIds: readonly string[];
   readonly pendingFrustumFrameIds: readonly string[];
   readonly pendingGridFrameIds: readonly string[];
   readonly pointCloudLayers: readonly PointCloudPanelLayer[];
   readonly provisionalFrameIds: readonly string[];
   readonly sceneAnnotationLayers: readonly SceneAnnotationPanelLayer[];
+  readonly stalePoseUsages: readonly StalePoseUsage[];
   readonly transformedLayerCount: number;
-  readonly unresolvedFrameIds: readonly string[];
+  readonly unresolvedPoseUsages: readonly UnresolvedPoseUsage[];
 }
 
 /**
@@ -54,7 +53,7 @@ export interface Scene3dLayerBuildResult {
  * the chosen world frame. Clouds that cannot be placed *yet* (transforms still
  * loading) render in their own frame when callers choose to draw through
  * pending state; clouds with no resolvable path to the world frame are dropped
- * and reported through `unresolvedFrameIds`.
+ * and reported through `unresolvedPoseUsages`.
  */
 export function build3dLayers({
   annotationFrames = [],
@@ -62,7 +61,6 @@ export function build3dLayers({
   frameTransforms,
   frames,
   gridFrames = [],
-  largeInterpolationGapWarningNs = 0n,
   provisionalStreamId,
   selectedAnnotationStreams = [],
   selectedCalibrationStreams = [],
@@ -75,7 +73,6 @@ export function build3dLayers({
   readonly frameTransforms: FrameTransformsState;
   readonly frames: readonly (StreamPlaybackFrame<PointCloudVisualization> | null)[];
   readonly gridFrames?: readonly (StreamPlaybackFrame<GridVisualization> | null)[];
-  readonly largeInterpolationGapWarningNs?: bigint;
   readonly provisionalStreamId?: string | null;
   readonly selectedAnnotationStreams?: readonly string[];
   readonly selectedCalibrationStreams?: readonly string[];
@@ -87,15 +84,14 @@ export function build3dLayers({
   const gridLayers: GridPanelLayer[] = [];
   const pointCloudLayers: PointCloudPanelLayer[] = [];
   const sceneAnnotationLayers: SceneAnnotationPanelLayer[] = [];
-  const clampedFrameIds = new Set<string>();
-  const largeInterpolationGapsByFrameId = new Map<string, bigint>();
   const pendingAnnotationFrameIds = new Set<string>();
   const pendingFrustumFrameIds = new Set<string>();
   const pendingGridFrameIds = new Set<string>();
   const pendingStreamId = provisionalStreamId ?? selectedStreams[0] ?? null;
   const provisionalFrameIds = new Set<string>();
+  const stalePoseUsagesBySourceId = new Map<string, StalePoseUsage>();
   let transformedLayerCount = 0;
-  const unresolvedFrameIds = new Set<string>();
+  const unresolvedPoseUsagesBySourceId = new Map<string, UnresolvedPoseUsage>();
   const transformCache = new Map<string, FrameTransformResolution>();
   const resolveCachedFrameTransform = (
     sourceFrameId: string,
@@ -111,10 +107,6 @@ export function build3dLayers({
       frameTransforms,
       sourceFrameId,
       timeNs: requestedTimeNs,
-      clampedFrameIds,
-      largeInterpolationGapWarningNs,
-      largeInterpolationGapsByFrameId,
-      unresolvedFrameIds,
       worldFrameId,
     });
     transformCache.set(cacheKey, resolution);
@@ -150,6 +142,11 @@ export function build3dLayers({
     // only the deterministic provisional source instead of raw-overlapping all
     // sensors in their own frames.
     if (resolution.status === "missing") {
+      recordUnresolvedPoseUsage(unresolvedPoseUsagesBySourceId, {
+        sourceFrameId: frame.coordinateFrameId,
+        sourceId: stream,
+        targetFrameId: worldFrameId,
+      });
       return;
     }
     if (resolution.status === "pending" && stream !== pendingStreamId) {
@@ -159,6 +156,11 @@ export function build3dLayers({
       provisionalFrameIds.add(frame.coordinateFrameId);
     } else {
       transformedLayerCount += 1;
+      recordStalePoseUsage(
+        stalePoseUsagesBySourceId,
+        stream,
+        resolution.heldEdges,
+      );
     }
 
     pointCloudLayers.push({
@@ -196,6 +198,11 @@ export function build3dLayers({
       playbackFrame.requestedTimeNs,
     );
     if (resolution.status === "missing") {
+      recordUnresolvedPoseUsage(unresolvedPoseUsagesBySourceId, {
+        sourceFrameId: frame.coordinateFrameId,
+        sourceId: stream,
+        targetFrameId: worldFrameId,
+      });
       return;
     }
     if (resolution.status === "pending") {
@@ -206,6 +213,11 @@ export function build3dLayers({
     }
 
     transformedLayerCount += 1;
+    recordStalePoseUsage(
+      stalePoseUsagesBySourceId,
+      stream,
+      resolution.heldEdges,
+    );
     gridLayers.push({
       ...layerBase,
       frameTransform: resolution.transform,
@@ -239,6 +251,11 @@ export function build3dLayers({
       playbackFrame.requestedTimeNs,
     );
     if (resolution.status === "missing") {
+      recordUnresolvedPoseUsage(unresolvedPoseUsagesBySourceId, {
+        sourceFrameId: frame.coordinateFrameId,
+        sourceId: stream,
+        targetFrameId: worldFrameId,
+      });
       return;
     }
     if (resolution.status === "pending") {
@@ -247,6 +264,11 @@ export function build3dLayers({
     }
 
     transformedLayerCount += 1;
+    recordStalePoseUsage(
+      stalePoseUsagesBySourceId,
+      stream,
+      resolution.heldEdges,
+    );
     cameraFrustumLayers.push({
       ...layerBase,
       frameTransform: resolution.transform,
@@ -264,38 +286,46 @@ export function build3dLayers({
         return;
       }
 
-      const layer = buildSceneAnnotationLayer({
+      const builtLayer = buildSceneAnnotationLayer({
         entity,
         entityIndex,
         playbackFrame,
         resolveCachedFrameTransform,
         pendingAnnotationFrameIds,
         stream,
+        unresolvedPoseUsagesBySourceId,
+        worldFrameId,
       });
-      if (!layer) {
+      if (!builtLayer) {
         return;
       }
 
       transformedLayerCount += 1;
-      sceneAnnotationLayers.push(layer);
+      recordStalePoseUsage(
+        stalePoseUsagesBySourceId,
+        stream,
+        builtLayer.heldEdges,
+      );
+      sceneAnnotationLayers.push(builtLayer.layer);
     });
   });
 
   return {
     cameraFrustumLayers,
-    clampedFrameIds: [...clampedFrameIds].sort(),
     gridLayers,
-    largeInterpolationGaps: [...largeInterpolationGapsByFrameId.entries()]
-      .map(([frameId, gapNs]) => ({ frameId, gapNs }))
-      .sort((left, right) => left.frameId.localeCompare(right.frameId)),
     pendingAnnotationFrameIds: [...pendingAnnotationFrameIds].sort(),
     pendingFrustumFrameIds: [...pendingFrustumFrameIds].sort(),
     pendingGridFrameIds: [...pendingGridFrameIds].sort(),
     pointCloudLayers,
     provisionalFrameIds: [...provisionalFrameIds].sort(),
     sceneAnnotationLayers,
+    stalePoseUsages: [...stalePoseUsagesBySourceId.values()].sort(
+      (left, right) => left.sourceId.localeCompare(right.sourceId),
+    ),
     transformedLayerCount,
-    unresolvedFrameIds: [...unresolvedFrameIds].sort(),
+    unresolvedPoseUsages: [...unresolvedPoseUsagesBySourceId.values()].sort(
+      (left, right) => left.sourceId.localeCompare(right.sourceId),
+    ),
   };
 }
 
@@ -306,6 +336,8 @@ function buildSceneAnnotationLayer({
   playbackFrame,
   resolveCachedFrameTransform,
   stream,
+  unresolvedPoseUsagesBySourceId,
+  worldFrameId,
 }: {
   readonly entity: SceneEntityVisualization;
   readonly entityIndex: number;
@@ -316,7 +348,12 @@ function buildSceneAnnotationLayer({
     requestedTimeNs: bigint,
   ) => FrameTransformResolution;
   readonly stream: string;
-}): SceneAnnotationPanelLayer | null {
+  readonly unresolvedPoseUsagesBySourceId: Map<string, UnresolvedPoseUsage>;
+  readonly worldFrameId: string;
+}): {
+  readonly heldEdges?: readonly EpisodeHeldFrameTransform[];
+  readonly layer: SceneAnnotationPanelLayer;
+} | null {
   const requestedTimeNs = entity.frameLocked
     ? playbackFrame.requestedTimeNs
     : (entity.timestampNs ?? playbackFrame.contentTimeNs);
@@ -328,7 +365,7 @@ function buildSceneAnnotationLayer({
   const id = `${stream}:${entity.id || entityIndex}`;
 
   if (!entity.frameId) {
-    return { frame: sceneFrame, id, sourceId: stream };
+    return { layer: { frame: sceneFrame, id, sourceId: stream } };
   }
 
   const resolution = resolveCachedFrameTransform(
@@ -336,6 +373,11 @@ function buildSceneAnnotationLayer({
     requestedTimeNs,
   );
   if (resolution.status === "missing") {
+    recordUnresolvedPoseUsage(unresolvedPoseUsagesBySourceId, {
+      sourceFrameId: entity.frameId,
+      sourceId: stream,
+      targetFrameId: worldFrameId,
+    });
     return null;
   }
   if (resolution.status === "pending") {
@@ -344,10 +386,15 @@ function buildSceneAnnotationLayer({
   }
 
   return {
-    frame: sceneFrame,
-    frameTransform: resolution.transform,
-    id,
-    sourceId: stream,
+    ...(resolution.heldEdges?.length
+      ? { heldEdges: resolution.heldEdges }
+      : {}),
+    layer: {
+      frame: sceneFrame,
+      frameTransform: resolution.transform,
+      id,
+      sourceId: stream,
+    },
   };
 }
 
@@ -366,21 +413,13 @@ function sceneEntityPrimitiveCount(entity: SceneEntityVisualization) {
 
 function resolveFrameTransform({
   frameTransforms,
-  largeInterpolationGapWarningNs,
-  largeInterpolationGapsByFrameId,
   sourceFrameId,
   timeNs,
-  clampedFrameIds,
-  unresolvedFrameIds,
   worldFrameId,
 }: {
   readonly frameTransforms: FrameTransformsState;
-  readonly largeInterpolationGapWarningNs: bigint;
-  readonly largeInterpolationGapsByFrameId: Map<string, bigint>;
   readonly sourceFrameId: string;
   readonly timeNs: bigint | undefined;
-  readonly clampedFrameIds: Set<string>;
-  readonly unresolvedFrameIds: Set<string>;
   readonly worldFrameId: string;
 }): FrameTransformResolution {
   // No world frame chosen yet (frames still loading). Treat as loading so the
@@ -412,21 +451,10 @@ function resolveFrameTransform({
     timeNs,
   );
   if (resolution.status === "resolved") {
-    if (resolution.resolutionKind === "clamped") {
-      clampedFrameIds.add(sourceFrameId);
-    }
-    if (
-      largeInterpolationGapWarningNs > 0n &&
-      resolution.maxInterpolationGapNs !== undefined &&
-      resolution.maxInterpolationGapNs > largeInterpolationGapWarningNs
-    ) {
-      setMaxInterpolationGap(
-        largeInterpolationGapsByFrameId,
-        sourceFrameId,
-        resolution.maxInterpolationGapNs,
-      );
-    }
     return {
+      ...(resolution.heldEdges?.length
+        ? { heldEdges: resolution.heldEdges }
+        : {}),
       ...(resolution.maxInterpolationGapNs !== undefined
         ? { maxInterpolationGapNs: resolution.maxInterpolationGapNs }
         : {}),
@@ -440,17 +468,55 @@ function resolveFrameTransform({
 
   // The transform window is loaded but no path connects this frame to the world
   // frame. Surface it; the caller drops the cloud rather than draw it wrong.
-  unresolvedFrameIds.add(sourceFrameId);
   return { status: "missing" };
 }
 
-function setMaxInterpolationGap(
-  gapsByFrameId: Map<string, bigint>,
-  frameId: string,
-  gapNs: bigint,
+function recordStalePoseUsage(
+  usagesBySourceId: Map<string, StalePoseUsage>,
+  sourceId: string,
+  heldEdges: readonly EpisodeHeldFrameTransform[] | undefined,
 ) {
-  const current = gapsByFrameId.get(frameId);
-  if (current === undefined || gapNs > current) {
-    gapsByFrameId.set(frameId, gapNs);
+  if (!heldEdges?.length) {
+    return;
   }
+
+  let worst: EpisodeHeldFrameTransform | undefined;
+  for (const edge of heldEdges) {
+    if (edge.ageNs <= edge.staleAfterNs) {
+      continue;
+    }
+    if (
+      !worst ||
+      edge.ageNs * worst.staleAfterNs > worst.ageNs * edge.staleAfterNs
+    ) {
+      worst = edge;
+    }
+  }
+  if (!worst) {
+    return;
+  }
+
+  const current = usagesBySourceId.get(sourceId);
+  if (
+    current &&
+    worst.ageNs * current.staleAfterNs <= current.ageNs * worst.staleAfterNs
+  ) {
+    return;
+  }
+
+  usagesBySourceId.set(sourceId, {
+    ageNs: worst.ageNs,
+    sourceFrameId: worst.sourceFrameId,
+    sourceId,
+    sourceTimeNs: worst.sourceTimeNs,
+    staleAfterNs: worst.staleAfterNs,
+    targetFrameId: worst.targetFrameId,
+  });
+}
+
+function recordUnresolvedPoseUsage(
+  usagesBySourceId: Map<string, UnresolvedPoseUsage>,
+  usage: UnresolvedPoseUsage,
+) {
+  usagesBySourceId.set(usage.sourceId, usage);
 }

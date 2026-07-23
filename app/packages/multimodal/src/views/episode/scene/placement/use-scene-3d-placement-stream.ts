@@ -202,9 +202,25 @@ function placementBufferedRanges(
   if (!active || !timeline || frameIds.length === 0 || !worldFrameId) {
     return fullTimelineRange(timeline);
   }
+  const tick = timeline.nearestTick(getPlayhead(store));
+  if (tick !== undefined) {
+    const readiness = frameTransforms.getPlacementReadiness({
+      frameIds,
+      targetFrameId: worldFrameId,
+      timeNs: tick,
+    });
+    // A held pose is a resolved placement, not a buffering condition. Once
+    // the current scene can be placed (or is definitively unplaceable), keep
+    // playback continuous while transform runway reads catch up.
+    if (
+      readiness.status === "ready" ||
+      readiness.status === "definitiveMissing"
+    ) {
+      return fullTimelineRange(timeline);
+    }
+  }
   const indexedRanges = frameTransforms.indexedDynamicRanges();
   if (indexedRanges.length === 0) {
-    const tick = timeline.nearestTick(getPlayhead(store));
     if (tick === undefined) {
       return [];
     }

@@ -1,6 +1,11 @@
 import { Quaternion, Vector3 } from "three";
 
 import { compareBigInt } from "../ir";
+import {
+  DEFAULT_OBSERVATION_STALE_THRESHOLD_NS,
+  DEFAULT_TRANSFORM_INTERPOLATION_GAP_NS,
+  EpisodeCadenceTracker,
+} from "./temporal-policy";
 import type {
   EpisodeComposedFrameTransform,
   EpisodeFrameTransformPolicy,
@@ -10,13 +15,14 @@ import type {
   EpisodeFrameTransformSet,
   EpisodeFrameTransformSetWire,
   EpisodeFrameTransformTimeRange,
+  EpisodeHeldFrameTransform,
+  EpisodeHeldFrameTransformReason,
 } from "./frame-transform-types";
 
 const IDENTITY_QUATERNION = new Quaternion();
 const ZERO_VECTOR = new Vector3();
 const DEFAULT_FRAME_TRANSFORM_POLICY: EpisodeFrameTransformPolicy = {
   boundaryClampNs: 50_000_000n,
-  maxInterpolationGapNs: 0n,
 };
 const MAX_ADJACENCY_CACHE_ENTRIES = 8;
 
@@ -47,11 +53,26 @@ interface EpisodeFrameGraphEdge {
   readonly parentFrameId: string;
 }
 
+type EffectiveDynamicTransformResult =
+  | {
+      readonly status: "resolved";
+      readonly transform: EpisodeComposedFrameTransform;
+    }
+  | { readonly status: "unavailable" };
+
 /**
  * Mutable frame transform index for static and dynamic episode transform samples.
  */
 export class EpisodeFrameTransformStore {
+  private readonly dynamicCadenceByEdge = new Map<
+    string,
+    EpisodeCadenceTracker
+  >();
   private readonly dynamicSamplesByEdge = new Map<
+    string,
+    EpisodeFrameTransformSample[]
+  >();
+  private readonly dynamicSamplesByChild = new Map<
     string,
     EpisodeFrameTransformSample[]
   >();
@@ -89,6 +110,7 @@ export class EpisodeFrameTransformStore {
     samples: readonly EpisodeFrameTransformSample[],
     range: EpisodeFrameTransformTimeRange,
   ): void {
+    const touchedChildren = new Set<string>();
     const touchedEdges = new Set<string>();
 
     for (const sample of samples) {
@@ -107,14 +129,27 @@ export class EpisodeFrameTransformStore {
       const edgeSamples = this.dynamicSamplesByEdge.get(key) ?? [];
       edgeSamples.push(normalized);
       this.dynamicSamplesByEdge.set(key, edgeSamples);
+      const childSamples =
+        this.dynamicSamplesByChild.get(normalized.childFrameId) ?? [];
+      childSamples.push(normalized);
+      this.dynamicSamplesByChild.set(normalized.childFrameId, childSamples);
+      const cadence =
+        this.dynamicCadenceByEdge.get(key) ?? new EpisodeCadenceTracker();
+      cadence.observe(normalized.timeNs);
+      this.dynamicCadenceByEdge.set(key, cadence);
       this.addFrameIds(normalized);
+      touchedChildren.add(normalized.childFrameId);
       touchedEdges.add(key);
     }
 
     for (const key of touchedEdges) {
-      this.dynamicSamplesByEdge
-        .get(key)
-        ?.sort(compareFrameTransformSamplesByTime);
+      const edgeSamples = this.dynamicSamplesByEdge.get(key);
+      edgeSamples?.sort(compareFrameTransformSamplesByTime);
+    }
+    for (const childFrameId of touchedChildren) {
+      this.dynamicSamplesByChild
+        .get(childFrameId)
+        ?.sort(compareFrameTransformSamplesByTimeAndParent);
     }
 
     this.dynamicRanges = sortAndMergeTimeRanges([...this.dynamicRanges, range]);
@@ -255,13 +290,17 @@ export class EpisodeFrameTransformStore {
       };
     }
 
+    const adjacency = this.buildAdjacency(timeNs, policy);
     const transform = resolveComposedTransform({
-      adjacency: this.buildAdjacency(timeNs, policy),
+      adjacency,
       sourceFrameId: source,
       targetFrameId: target,
     });
     if (transform) {
       return {
+        ...(transform.heldEdges?.length
+          ? { heldEdges: transform.heldEdges }
+          : {}),
         ...(transform.maxInterpolationGapNs !== undefined
           ? { maxInterpolationGapNs: transform.maxInterpolationGapNs }
           : {}),
@@ -301,7 +340,6 @@ export class EpisodeFrameTransformStore {
     }
 
     const adjacency = new Map<string, EpisodeComposedFrameTransform[]>();
-
     for (const childToParent of this.effectiveTransformsForTime(
       timeNs,
       policy,
@@ -337,14 +375,34 @@ export class EpisodeFrameTransformStore {
       return [...transforms.values()];
     }
 
-    for (const [edgeKey, edgeSamples] of this.dynamicSamplesByEdge.entries()) {
-      const transform = effectiveDynamicTransformForTime(
-        edgeSamples,
+    for (const [childFrameId, childSamples] of this.dynamicSamplesByChild) {
+      const { after, before } = bracketSamplesForTime(childSamples, timeNs);
+      const activeSample = before ?? after;
+      if (!activeSample) continue;
+      // A static relationship remains authoritative until the first dynamic
+      // relationship is recorded. In particular, the pre-start timestamp
+      // clamp must never activate a different parent before its timestamp.
+      if (
+        !before &&
+        after &&
+        hasEffectiveTransformForChild(transforms, childFrameId)
+      ) {
+        continue;
+      }
+      const edgeKey = frameTransformEdgeKey(activeSample);
+      const cadence = this.dynamicCadenceByEdge.get(edgeKey);
+      const result = effectiveDynamicTransformForTime(
+        { after, before },
         timeNs,
         policy,
+        cadence?.interpolationGapLimitNs() ??
+          DEFAULT_TRANSFORM_INTERPOLATION_GAP_NS,
+        cadence?.observationStaleThresholdNs() ??
+          DEFAULT_OBSERVATION_STALE_THRESHOLD_NS,
       );
-      if (transform) {
-        transforms.set(edgeKey, transform);
+      if (result.status === "resolved") {
+        removeTransformsForChild(transforms, childFrameId);
+        transforms.set(edgeKey, result.transform);
       }
     }
 
@@ -544,69 +602,109 @@ function resolveComposedTransform({
 }
 
 function effectiveDynamicTransformForTime(
-  samples: readonly EpisodeFrameTransformSample[],
+  {
+    after,
+    before,
+  }: {
+    readonly after?: EpisodeFrameTransformSample;
+    readonly before?: EpisodeFrameTransformSample;
+  },
   timeNs: bigint,
   policy: EpisodeFrameTransformPolicy,
-): EpisodeComposedFrameTransform | null {
-  const { after, before } = bracketSamplesForTime(samples, timeNs);
+  interpolationGapLimitNs: bigint,
+  staleAfterNs: bigint,
+): EffectiveDynamicTransformResult {
   if (before?.timeNs === timeNs) {
-    return transformFromSample(before, "exact");
+    return {
+      status: "resolved",
+      transform: transformFromSample(before, "exact"),
+    };
   }
   if (after?.timeNs === timeNs) {
-    return transformFromSample(after, "exact");
-  }
-
-  // As-recorded playback: the latest at-or-before sample is reused verbatim.
-  // Lookback is unbounded (matching latest-at-or-before observation
-  // semantics); only the start boundary falls through to the clamp below.
-  if (policy.resolutionMode === "hold-last" && before) {
-    return transformFromSample(before, "held");
+    return {
+      status: "resolved",
+      transform: transformFromSample(after, "exact"),
+    };
   }
 
   if (before && after) {
     const beforeTimeNs = before.timeNs as bigint;
     const afterTimeNs = after.timeNs as bigint;
     const gapNs = afterTimeNs - beforeTimeNs;
-    if (
-      policy.maxInterpolationGapNs > 0n &&
-      gapNs > policy.maxInterpolationGapNs
-    ) {
-      return null;
+    if (before.parentFrameId !== after.parentFrameId) {
+      return {
+        status: "resolved",
+        transform: heldTransformFromSample({
+          reason: "parent-change",
+          sample: before,
+          staleAfterNs,
+          timeNs,
+        }),
+      };
     }
     if (gapNs <= 0n) {
-      return transformFromSample(before, "exact");
+      return {
+        status: "resolved",
+        transform: transformFromSample(before, "exact"),
+      };
+    }
+    if (gapNs > interpolationGapLimitNs) {
+      return {
+        status: "resolved",
+        transform: heldTransformFromSample({
+          interpolationGapLimitNs,
+          interpolationGapNs: gapNs,
+          reason: "interpolation-gap",
+          sample: before,
+          staleAfterNs,
+          timeNs,
+        }),
+      };
     }
 
     const ratio = Number(timeNs - beforeTimeNs) / Number(gapNs);
     return {
-      maxInterpolationGapNs: gapNs,
-      resolutionKind: "interpolated",
-      rotation: before.rotation
-        .clone()
-        .slerp(after.rotation, ratio)
-        .normalize(),
-      sourceFrameId: before.childFrameId,
-      targetFrameId: before.parentFrameId,
-      translation: before.translation.clone().lerp(after.translation, ratio),
+      status: "resolved",
+      transform: {
+        maxInterpolationGapNs: gapNs,
+        resolutionKind: "interpolated",
+        rotation: before.rotation
+          .clone()
+          .slerp(after.rotation, ratio)
+          .normalize(),
+        sourceFrameId: before.childFrameId,
+        targetFrameId: before.parentFrameId,
+        translation: before.translation.clone().lerp(after.translation, ratio),
+      },
     };
   }
 
-  if (policy.boundaryClampNs <= 0n) {
-    return null;
-  }
-
-  if (after?.timeNs !== undefined && after.timeNs > timeNs) {
-    return after.timeNs - timeNs <= policy.boundaryClampNs
-      ? transformFromSample(after, "clamped")
-      : null;
-  }
   if (before?.timeNs !== undefined && before.timeNs < timeNs) {
-    return timeNs - before.timeNs <= policy.boundaryClampNs
-      ? transformFromSample(before, "clamped")
-      : null;
+    return {
+      status: "resolved",
+      transform: heldTransformFromSample({
+        reason: "after-last-sample",
+        sample: before,
+        staleAfterNs,
+        timeNs,
+      }),
+    };
   }
 
-  return null;
+  if (
+    policy.boundaryClampNs > 0n &&
+    after?.timeNs !== undefined &&
+    after.timeNs > timeNs
+  ) {
+    return after.timeNs - timeNs <= policy.boundaryClampNs
+      ? {
+          status: "resolved",
+          transform: transformFromSample(after, "clamped"),
+        }
+      : { status: "unavailable" };
+  }
+
+  return { status: "unavailable" };
 }
 
 function bracketSamplesForTime(
@@ -646,6 +744,45 @@ function transformFromSample(
 ): EpisodeComposedFrameTransform {
   return {
     resolutionKind,
+    rotation: sample.rotation,
+    sourceFrameId: sample.childFrameId,
+    targetFrameId: sample.parentFrameId,
+    translation: sample.translation,
+  };
+}
+
+function heldTransformFromSample({
+  interpolationGapLimitNs,
+  interpolationGapNs,
+  reason,
+  sample,
+  staleAfterNs,
+  timeNs,
+}: {
+  readonly interpolationGapLimitNs?: bigint;
+  readonly interpolationGapNs?: bigint;
+  readonly reason: EpisodeHeldFrameTransformReason;
+  readonly sample: EpisodeFrameTransformSample;
+  readonly staleAfterNs: bigint;
+  readonly timeNs: bigint;
+}): EpisodeComposedFrameTransform {
+  const sourceTimeNs = sample.timeNs as bigint;
+  const heldEdge: EpisodeHeldFrameTransform = {
+    ageNs: timeNs > sourceTimeNs ? timeNs - sourceTimeNs : 0n,
+    ...(interpolationGapLimitNs !== undefined
+      ? { interpolationGapLimitNs }
+      : {}),
+    ...(interpolationGapNs !== undefined ? { interpolationGapNs } : {}),
+    reason,
+    sourceFrameId: sample.childFrameId,
+    sourceTimeNs,
+    staleAfterNs,
+    targetFrameId: sample.parentFrameId,
+  };
+
+  return {
+    heldEdges: [heldEdge],
+    resolutionKind: "held",
     rotation: sample.rotation,
     sourceFrameId: sample.childFrameId,
     targetFrameId: sample.parentFrameId,
@@ -699,6 +836,39 @@ export function compareFrameTransformSamplesByTime(
   }
 
   return left.timeNs < right.timeNs ? -1 : 1;
+}
+
+function compareFrameTransformSamplesByTimeAndParent(
+  left: EpisodeFrameTransformSample,
+  right: EpisodeFrameTransformSample,
+) {
+  const timeOrder = compareFrameTransformSamplesByTime(left, right);
+  return timeOrder === 0
+    ? compareStrings(left.parentFrameId, right.parentFrameId)
+    : timeOrder;
+}
+
+function removeTransformsForChild(
+  transforms: Map<string, EpisodeComposedFrameTransform>,
+  childFrameId: string,
+) {
+  for (const [key, transform] of transforms) {
+    if (transform.sourceFrameId === childFrameId) {
+      transforms.delete(key);
+    }
+  }
+}
+
+function hasEffectiveTransformForChild(
+  transforms: ReadonlyMap<string, EpisodeComposedFrameTransform>,
+  childFrameId: string,
+) {
+  for (const transform of transforms.values()) {
+    if (transform.sourceFrameId === childFrameId) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function sortAndMergeTimeRanges(
@@ -776,6 +946,7 @@ function composeFrameTransforms(
   const secondRotation = second.rotation.clone().normalize();
 
   return {
+    ...composeHeldEdges(first.heldEdges, second.heldEdges),
     ...composeMaxInterpolationGapNs(
       first.maxInterpolationGapNs,
       second.maxInterpolationGapNs,
@@ -800,6 +971,7 @@ function invertFrameTransform(
   const inverseRotation = transform.rotation.clone().normalize().invert();
 
   return {
+    ...(transform.heldEdges?.length ? { heldEdges: transform.heldEdges } : {}),
     ...(transform.maxInterpolationGapNs !== undefined
       ? { maxInterpolationGapNs: transform.maxInterpolationGapNs }
       : {}),
@@ -840,6 +1012,25 @@ function composeMaxInterpolationGapNs(
   return { maxInterpolationGapNs: maxBigInt(first, second) };
 }
 
+function composeHeldEdges(
+  first: readonly EpisodeHeldFrameTransform[] | undefined,
+  second: readonly EpisodeHeldFrameTransform[] | undefined,
+): { readonly heldEdges?: readonly EpisodeHeldFrameTransform[] } {
+  if (!first?.length) {
+    return second?.length ? { heldEdges: second } : {};
+  }
+  if (!second?.length) {
+    return { heldEdges: first };
+  }
+
+  const edges = new Map<string, EpisodeHeldFrameTransform>();
+  for (const edge of [...first, ...second]) {
+    const key = `${edge.sourceFrameId}\0${edge.targetFrameId}\0${edge.sourceTimeNs}`;
+    edges.set(key, edge);
+  }
+  return { heldEdges: [...edges.values()] };
+}
+
 function composeResolutionKinds(
   first: EpisodeFrameTransformResolutionKind | undefined,
   second: EpisodeFrameTransformResolutionKind | undefined,
@@ -847,8 +1038,8 @@ function composeResolutionKinds(
   const kinds = [first, second].filter(
     (kind): kind is EpisodeFrameTransformResolutionKind => kind !== undefined,
   );
-  if (kinds.includes("clamped")) return "clamped";
   if (kinds.includes("held")) return "held";
+  if (kinds.includes("clamped")) return "clamped";
   if (kinds.includes("interpolated")) return "interpolated";
   if (kinds.includes("exact")) return "exact";
   if (kinds.includes("static")) return "static";
@@ -862,8 +1053,6 @@ function frameTransformTimeKey(
 ) {
   return [
     timeNs === undefined ? "static" : timeNs.toString(),
-    policy.maxInterpolationGapNs.toString(),
     policy.boundaryClampNs.toString(),
-    policy.resolutionMode ?? "interpolate",
   ].join(":");
 }

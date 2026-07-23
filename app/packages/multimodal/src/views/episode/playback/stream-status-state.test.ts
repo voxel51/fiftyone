@@ -15,6 +15,7 @@ import {
   derivePlaybackPolicy,
 } from "./playback-buffering";
 import {
+  getStreamContentTimeSec,
   getStreamStatus,
   publishDataStreamStatuses,
 } from "./stream-status-state";
@@ -53,13 +54,13 @@ describe("publishDataStreamStatuses", () => {
       }),
       scheduleBufferedRangesPublish,
       schedulePausedIdleWarmup: vi.fn(),
-      staleMediaWarningNs: 1_000_000_000n,
       staleWarningStreams: new Set([CAMERA]),
       store,
     } as const;
 
     publishDataStreamStatuses(common);
     expect(getStreamStatus(store, CAMERA)).toBe("ready");
+    expect(getStreamContentTimeSec(store, CAMERA)).toBe(0);
     expect(getStreamStatus(store, LIDAR)).toBe("loading");
     expect(getBufferingDetail(store)).toBe("1/2 streams");
     expect(scheduleBufferedRangesPublish).toHaveBeenCalledOnce();

@@ -24,21 +24,6 @@ export {
 } from "../../presentation/point-size-policy";
 
 /**
- * Timing tolerances and warning thresholds for synchronized episode playback.
- */
-export interface TemporalPolicySettings {
-  readonly boundaryClampMs: number;
-  readonly maxInterpolationGapMs: number;
-  readonly staleMediaWarningMs: number;
-  readonly transformGapWarningMs: number;
-}
-
-/**
- * How the viewer renders values between recorded message timestamps.
- */
-export type PlaybackFidelityMode = "smooth" | "as-recorded";
-
-/**
  * Appearance of the 3D tile's world reference grid.
  */
 export interface ReferenceGridSettings {
@@ -119,13 +104,11 @@ export interface ScopedModalSettings {
 /**
  * Full localStorage payload for browser-wide episode modal preferences.
  *
- * Device-global preferences (fidelity, timing, pinhole, grid, background,
- * point size) live at the top level. Stream-keyed styling additionally lives
- * under `scoped`, keyed by settings scope; the top-level stream maps serve
- * unscoped playback hosts.
+ * Device-global appearance preferences live at the top level. Stream-keyed
+ * styling additionally lives under `scoped`, keyed by settings scope; the
+ * top-level stream maps serve unscoped playback hosts.
  */
 export interface PersistedModalSettings {
-  readonly fidelityMode: PlaybackFidelityMode;
   readonly imageLabelStreams: Record<string, readonly string[]>;
   readonly imageProjection: Record<string, ImageProjectionSettings>;
   readonly pinholeCamera: PinholeCameraSettings;
@@ -135,32 +118,9 @@ export interface PersistedModalSettings {
   readonly sceneBackground: SceneBackgroundSettings;
   readonly scoped: Record<string, ScopedModalSettings>;
   readonly showPointCloudColorLegend: boolean;
-  readonly temporalPolicy: TemporalPolicySettings;
 }
 
-const STORAGE_KEY = "fiftyone.episode.modal-settings.v2";
-
-/**
- * Default interpolation policy for newly initialized episode modal settings.
- */
-export const DEFAULT_FIDELITY_MODE: PlaybackFidelityMode = "smooth";
-
-const FIDELITY_MODES: readonly PlaybackFidelityMode[] = [
-  "smooth",
-  "as-recorded",
-];
-
-/**
- * Default timing policy balancing smooth playback with visible data gaps.
- */
-export const DEFAULT_TEMPORAL_POLICY: TemporalPolicySettings = {
-  boundaryClampMs: 50,
-  maxInterpolationGapMs: 0,
-  staleMediaWarningMs: 500,
-  transformGapWarningMs: 2000,
-};
-
-const MAX_TEMPORAL_POLICY_MS = 60_000;
+const STORAGE_KEY = "fiftyone.episode.modal-settings.v3";
 
 /**
  * Default world reference grid shown in the 3D episode tile.
@@ -292,7 +252,6 @@ export const MAX_SETTINGS_SCOPES = 20;
  * Complete default episode modal settings payload.
  */
 export const DEFAULT_MODAL_SETTINGS: PersistedModalSettings = {
-  fidelityMode: DEFAULT_FIDELITY_MODE,
   imageLabelStreams: {},
   imageProjection: {},
   pinholeCamera: DEFAULT_PINHOLE_CAMERA,
@@ -302,7 +261,6 @@ export const DEFAULT_MODAL_SETTINGS: PersistedModalSettings = {
   sceneBackground: DEFAULT_SCENE_BACKGROUND,
   scoped: {},
   showPointCloudColorLegend: false,
-  temporalPolicy: DEFAULT_TEMPORAL_POLICY,
 };
 
 /**
@@ -320,7 +278,6 @@ export function readModalSettings(): PersistedModalSettings {
 
     const candidate = parsed as Partial<PersistedModalSettings>;
     return {
-      fidelityMode: normalizeFidelityMode(candidate.fidelityMode),
       imageLabelStreams: normalizeImageLabelStreamMap(
         candidate.imageLabelStreams,
       ),
@@ -337,7 +294,6 @@ export function readModalSettings(): PersistedModalSettings {
         typeof candidate.showPointCloudColorLegend === "boolean"
           ? candidate.showPointCloudColorLegend
           : false,
-      temporalPolicy: normalizeTemporalPolicy(candidate.temporalPolicy),
     };
   } catch {
     return DEFAULT_MODAL_SETTINGS;
@@ -366,7 +322,6 @@ export function normalizeModalSettings(
   settings: PersistedModalSettings,
 ): PersistedModalSettings {
   return {
-    fidelityMode: normalizeFidelityMode(settings.fidelityMode),
     imageLabelStreams: normalizeImageLabelStreamMap(settings.imageLabelStreams),
     imageProjection: normalizeImageProjectionMap(settings.imageProjection),
     pinholeCamera: normalizePinholeCamera(settings.pinholeCamera),
@@ -378,7 +333,6 @@ export function normalizeModalSettings(
     sceneBackground: normalizeSceneBackground(settings.sceneBackground),
     scoped: normalizeScopedSettingsMap(settings.scoped),
     showPointCloudColorLegend: settings.showPointCloudColorLegend === true,
-    temporalPolicy: normalizeTemporalPolicy(settings.temporalPolicy),
   };
 }
 
@@ -429,15 +383,6 @@ export function normalizeScopedSettings(value: unknown): ScopedModalSettings {
     imageProjection: normalizeImageProjectionMap(candidate.imageProjection),
     pointCloudColors: normalizePointCloudColorMap(candidate.pointCloudColors),
   };
-}
-
-/**
- * Returns a supported playback fidelity mode or the default mode.
- */
-export function normalizeFidelityMode(value: unknown): PlaybackFidelityMode {
-  return FIDELITY_MODES.includes(value as PlaybackFidelityMode)
-    ? (value as PlaybackFidelityMode)
-    : DEFAULT_FIDELITY_MODE;
 }
 
 /**
@@ -707,43 +652,4 @@ function clampNumber(
   }
 
   return Math.min(max, Math.max(min, value));
-}
-
-/**
- * Normalizes playback timing policy settings.
- */
-export function normalizeTemporalPolicy(
-  value: unknown,
-): TemporalPolicySettings {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return DEFAULT_TEMPORAL_POLICY;
-  }
-
-  const candidate = value as Partial<TemporalPolicySettings>;
-  return {
-    boundaryClampMs: normalizePolicyMs(
-      candidate.boundaryClampMs,
-      DEFAULT_TEMPORAL_POLICY.boundaryClampMs,
-    ),
-    maxInterpolationGapMs: normalizePolicyMs(
-      candidate.maxInterpolationGapMs,
-      DEFAULT_TEMPORAL_POLICY.maxInterpolationGapMs,
-    ),
-    staleMediaWarningMs: normalizePolicyMs(
-      candidate.staleMediaWarningMs,
-      DEFAULT_TEMPORAL_POLICY.staleMediaWarningMs,
-    ),
-    transformGapWarningMs: normalizePolicyMs(
-      candidate.transformGapWarningMs,
-      DEFAULT_TEMPORAL_POLICY.transformGapWarningMs,
-    ),
-  };
-}
-
-function normalizePolicyMs(value: unknown, fallback: number): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return fallback;
-  }
-
-  return Math.min(MAX_TEMPORAL_POLICY_MS, Math.max(0, Math.round(value)));
 }

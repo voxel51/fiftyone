@@ -28,10 +28,7 @@ import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization
 import { useDataStream } from "../playback/data-stream-context";
 import { usePublishImageAspectRatio } from "./image-aspect-ratios";
 import { groupImageLabelSources } from "./image-label-source-groups";
-import {
-  useImageProjection,
-  usePlaybackSettings,
-} from "../settings/modal/state";
+import { useImageProjection } from "../settings/modal/state";
 import {
   useImageTileLabelStreams,
   useImageTilePointCloudProjection,
@@ -96,7 +93,6 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const pointCloudSources = useSceneSourcesByType(
     SCENE_SOURCE_TYPE.POINT_CLOUD,
   );
-  const { fidelityMode } = usePlaybackSettings();
   const setTileTitle = useSetTileTitle();
   const setTileTitleHighlighted = useSetTileTitleHighlighted();
   const hoveredFrustumImageStream = useHoveredFrustumImageStream();
@@ -589,7 +585,9 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
               fit={IMAGE_FIT}
               imageWidth={effectiveImageDims.width}
               imageHeight={effectiveImageDims.height}
-              interpolate={fidelityMode === "smooth"}
+              // Keep the interpolation engine available internally while the
+              // product policy treats recorded 2D annotations as authoritative.
+              interpolate={false}
               pixelTransform={
                 rectifiedViewActive
                   ? rectifiedDisplay?.pixelTransform

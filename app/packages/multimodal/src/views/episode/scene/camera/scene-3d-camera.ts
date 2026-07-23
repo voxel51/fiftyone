@@ -9,6 +9,7 @@ import {
   type Scene3dFollowTrackingMode,
   type Scene3dTrackingMode,
 } from "../../spatial/view-preferences";
+import type { EpisodeHeldFrameTransform } from "../../../../runtime/frame-transform-types";
 export type {
   Scene3dFollowTrackingMode,
   Scene3dTrackingMode,
@@ -45,6 +46,7 @@ export interface Scene3dCameraTrackingAnchor {
  */
 export type CameraTargetResolution =
   | {
+      readonly heldEdges?: readonly EpisodeHeldFrameTransform[];
       readonly pose: Scene3dCameraTargetPose;
       readonly status: "resolved";
     }

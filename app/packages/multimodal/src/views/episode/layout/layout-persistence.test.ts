@@ -9,12 +9,13 @@ import {
   sanitizeMapSettings,
   sanitizePlotSeries,
   sanitizeRawStreams,
+  sanitizeScene3dSettings,
   sanitizeTileTitles,
   writeCameraPreferences,
   writeModalLayout,
 } from "./layout-persistence";
 
-const STORAGE_KEY = "fiftyone.episode.modal-layout.v2";
+const STORAGE_KEY = "fiftyone.episode.modal-layout.v3";
 
 describe("layout-persistence", () => {
   beforeEach(() => {
@@ -23,6 +24,26 @@ describe("layout-persistence", () => {
 
   it("returns null when nothing is stored", () => {
     expect(readModalLayout()).toBeNull();
+  });
+
+  it("ignores the previous v2 localStorage key", () => {
+    localStorage.setItem(
+      "fiftyone.episode.modal-layout.v2",
+      JSON.stringify({
+        version: 2,
+        byDataset: {
+          "dataset-a": {
+            layout: "3d-1",
+            updatedAtMs: 1,
+          },
+        },
+      }),
+    );
+
+    expect(readModalLayout("dataset-a")).toBeNull();
+    expect(
+      localStorage.getItem("fiftyone.episode.modal-layout.v2"),
+    ).not.toBeNull();
   });
 
   it("round-trips sidebar state and layout", () => {
@@ -97,7 +118,7 @@ describe("layout-persistence", () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        version: 2,
+        version: 3,
         fallback: {
           cameraPreferences: {
             mcap: { preferredWorldFrameId: "map" },
@@ -110,6 +131,9 @@ describe("layout-persistence", () => {
             "map-1": { enabledStreams: ["/gps"], followEgo: false },
           },
           rawStreams: { "raw-1": "/imu" },
+          scene3dSettings: {
+            "3d-1": { smoothTrackedLabels: true },
+          },
           sceneUpAxis: "z",
           tileTitles: { "image-1": "Front Camera" },
         },
@@ -123,7 +147,7 @@ describe("layout-persistence", () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        version: 2,
+        version: 3,
         fallback: {
           leftSidebarOpen: true,
           layout: { direction: "diagonal", first: "a", second: "b" },
@@ -139,7 +163,7 @@ describe("layout-persistence", () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        version: 2,
+        version: 3,
         fallback: { expandedTileId: "", leftSidebarOpen: true },
       }),
     );
@@ -224,7 +248,7 @@ describe("layout-persistence", () => {
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          version: 2,
+          version: 3,
           byDataset: {
             "dataset-a": {
               cameraPreferences: {
@@ -272,13 +296,13 @@ describe("layout-persistence", () => {
     it("drops non-numeric or non-positive widths but keeps valid fields", () => {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ version: 2, fallback: { sidebarWidthPx: "wide" } }),
+        JSON.stringify({ version: 3, fallback: { sidebarWidthPx: "wide" } }),
       );
       expect(readModalLayout()?.sidebarWidthPx).toBeUndefined();
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          version: 2,
+          version: 3,
           fallback: { sidebarWidthPx: -5, leftSidebarOpen: true },
         }),
       );
@@ -497,6 +521,42 @@ describe("layout-persistence", () => {
     });
   });
 
+  describe("scene3dSettings", () => {
+    it("round-trips per dataset and never leaks between tiles or datasets", () => {
+      writeModalLayout(
+        {
+          scene3dSettings: {
+            "3d-1": { smoothTrackedLabels: true },
+            "3d-2": { smoothTrackedLabels: false },
+          },
+        },
+        "ds-a",
+      );
+      writeModalLayout({ leftSidebarOpen: true }, "ds-b");
+
+      expect(readModalLayout("ds-a")?.scene3dSettings).toEqual({
+        "3d-1": { smoothTrackedLabels: true },
+        "3d-2": { smoothTrackedLabels: false },
+      });
+      expect(readModalLayout("ds-b")?.scene3dSettings).toBeUndefined();
+    });
+
+    it("drops non-3D tile ids and non-boolean values", () => {
+      expect(
+        sanitizeScene3dSettings({
+          "3d-1": { smoothTrackedLabels: true },
+          "image-1": { smoothTrackedLabels: true },
+          "3d-2": { smoothTrackedLabels: "yes" },
+          "3d-3": null,
+        }),
+      ).toEqual({
+        "3d-1": { smoothTrackedLabels: true },
+      });
+      expect(sanitizeScene3dSettings(null)).toBeUndefined();
+      expect(sanitizeScene3dSettings({})).toBeUndefined();
+    });
+  });
+
   describe("logSettings", () => {
     const SETTINGS = {
       "log-1": {
@@ -689,7 +749,7 @@ describe("layout-persistence", () => {
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          version: 2,
+          version: 3,
           byDataset: {
             "ds-a": {
               leftSidebarOpen: true,

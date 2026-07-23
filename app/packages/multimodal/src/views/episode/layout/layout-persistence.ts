@@ -66,6 +66,8 @@ export interface PersistedModalLayout {
    * `plotSeries`, never merged into the browser-wide fallback.
    */
   rawStreams?: Record<string, string>;
+  /** Playback presentation settings per 3D tile. Dataset-scoped only. */
+  scene3dSettings?: Record<string, PersistedScene3dSettings>;
   /**
    * User-authored tile titles per tile id. Dataset-scoped only: names
    * are layout semantics for this recording family, not reusable fallback
@@ -105,6 +107,10 @@ export type PersistedMapSettings = MapTileSettings;
 
 export type PersistedLogSettings = LogTileSettings;
 
+export interface PersistedScene3dSettings {
+  readonly smoothTrackedLabels: boolean;
+}
+
 /** JSON values accepted from extension-owned tile settings. */
 export type PersistedExtensionSettingsValue =
   | boolean
@@ -122,6 +128,7 @@ const MAX_RAW_TILES = 32;
 const MAX_RAW_STREAM_LENGTH = 512;
 const MAX_MAP_TILES = 16;
 const MAX_LOG_TILES = 16;
+const MAX_SCENE_3D_TILES = 16;
 const MAX_MAP_STREAMS_PER_TILE = 64;
 const MAX_MAP_STREAM_LENGTH = 512;
 const MAX_TILE_TITLES = 64;
@@ -149,8 +156,8 @@ interface PersistedStore {
   byDataset?: Record<string, PersistedDatasetEntry>;
 }
 
-const STORAGE_KEY = "fiftyone.episode.modal-layout.v2";
-const STORAGE_VERSION = 2;
+const STORAGE_KEY = "fiftyone.episode.modal-layout.v3";
+const STORAGE_VERSION = 3;
 const FALLBACK_OMITTED_FIELDS = [
   "logSettings",
   "mapSettings",
@@ -158,6 +165,7 @@ const FALLBACK_OMITTED_FIELDS = [
   "extensionSettings",
   "plotSeries",
   "rawStreams",
+  "scene3dSettings",
   "sceneUpAxis",
   "tileTitles",
 ] as const;
@@ -204,6 +212,7 @@ function sanitizeEntry(raw: unknown): PersistedModalLayout | undefined {
     mapSettings: sanitizeMapSettings(candidate.mapSettings),
     plotSeries: sanitizePlotSeries(candidate.plotSeries),
     rawStreams: sanitizeRawStreams(candidate.rawStreams),
+    scene3dSettings: sanitizeScene3dSettings(candidate.scene3dSettings),
     sceneUpAxis: normalizeScene3dUpAxis(candidate.sceneUpAxis),
     sidebarWidthPx:
       typeof candidate.sidebarWidthPx === "number" &&
@@ -419,6 +428,36 @@ export function sanitizeRawStreams(
     }
     if (tileCount >= MAX_RAW_TILES) break;
     result[tileId] = stream;
+    tileCount += 1;
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+/** Structural validation of per-3D-tile playback presentation settings. */
+export function sanitizeScene3dSettings(
+  raw: unknown,
+): Record<string, PersistedScene3dSettings> | undefined {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return undefined;
+  }
+
+  const result: Record<string, PersistedScene3dSettings> = {};
+  let tileCount = 0;
+  for (const [tileId, settings] of Object.entries(raw)) {
+    if (
+      tileCount >= MAX_SCENE_3D_TILES ||
+      tileTypeFromId(tileId) !== TILE_TYPE.THREE_D ||
+      typeof settings !== "object" ||
+      settings === null ||
+      Array.isArray(settings)
+    ) {
+      continue;
+    }
+    const smoothTrackedLabels = (settings as Record<string, unknown>)
+      .smoothTrackedLabels;
+    if (typeof smoothTrackedLabels !== "boolean") continue;
+    result[tileId] = { smoothTrackedLabels };
     tileCount += 1;
   }
 

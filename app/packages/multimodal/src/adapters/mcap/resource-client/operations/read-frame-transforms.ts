@@ -19,8 +19,12 @@ import {
 } from "../../message-decoders/ros/wire";
 import { protobufFromBinaryDescriptor } from "../../compatibility/mcap-support";
 import { timestampNs } from "../../message-decoders/foxglove/protobuf/timing";
-import type { McapIndexedReaderLike } from "../../reader/index";
+import type {
+  McapIndexedMessageTime,
+  McapIndexedReaderLike,
+} from "../../reader/index";
 import type { McapTimelineStrategy } from "../timeline";
+import type { McapPredecessorStore } from "../predecessor-store";
 import type {
   McapFrameTransformSample,
   McapFrameTransformSet,
@@ -38,6 +42,7 @@ const FOXGLOVE_FRAME_TRANSFORMS_CDR_SCHEMA =
   "foxglove_msgs/msg/FrameTransforms";
 const FOXGLOVE_FRAME_TRANSFORMS_SCHEMA = "foxglove.FrameTransforms";
 const TF_MESSAGE_BATCH_FIELD = "transforms";
+const TRANSFORM_PREDECESSOR_MESSAGES_PER_TOPIC = 32;
 
 const SUPPORTED_TRANSFORM_SCHEMAS: ReadonlySet<string> = new Set([
   "foxglove.FrameTransform",
@@ -301,14 +306,19 @@ function isStaticTransformBootstrapTopic(topic: string): boolean {
  * schema-discovered transform channel. Per-sample classification: a sample
  * with a message-level timestamp inside the requested window is dynamic;
  * a sample with no timestamp is emitted as static (no `timeNs`) so callers
- * can store it for all time, matching Foxglove convention.
+ * can store it for all time, matching Foxglove convention. Indexed readers
+ * also contribute the newest predecessor sample per edge so random seeks can
+ * hold a recorded pose immediately; non-indexed readers retain predecessors
+ * found inside the bounded message read.
  */
 export async function readMcapFrameTransformWindow({
+  predecessorStore,
   reader,
   readSignal,
   request,
   timeline,
 }: {
+  readonly predecessorStore?: McapPredecessorStore;
   readonly reader: McapIndexedReaderLike;
   readonly readSignal?: { readonly current: AbortSignal | null };
   readonly request: McapReadFrameTransformWindowRequest;
@@ -338,6 +348,10 @@ export async function readMcapFrameTransformWindow({
   });
 
   const samples: McapFrameTransformSample[] = [];
+  const inWindowPredecessorByEdge = new Map<string, McapFrameTransformSample>();
+  const nextKnownTimeNsByTopic = new Map(
+    transformTopics.map((topic) => [topic, request.endTimeNs + 1n] as const),
+  );
   for await (const message of reader.readMessages({
     endTime,
     startTime,
@@ -350,6 +364,13 @@ export async function readMcapFrameTransformWindow({
     if (!entry) {
       continue;
     }
+    const messageTimeNs = timeline.messageTimeNs(message);
+    if (messageTimeNs > request.startTimeNs) {
+      const current = nextKnownTimeNsByTopic.get(entry.channel.topic);
+      if (current === undefined || messageTimeNs < current) {
+        nextKnownTimeNsByTopic.set(entry.channel.topic, messageTimeNs);
+      }
+    }
     recordFrameTransformMessage(readStats, entry.channel.topic, message);
     try {
       for (const sample of normalizeFrameTransformMessage({
@@ -360,10 +381,11 @@ export async function readMcapFrameTransformWindow({
           samples.push(sample);
           continue;
         }
-        if (
-          request.startTimeNs <= sample.timeNs &&
-          sample.timeNs <= request.endTimeNs
-        ) {
+        if (sample.timeNs < request.startTimeNs) {
+          setNewestFrameTransformSample(inWindowPredecessorByEdge, sample);
+          continue;
+        }
+        if (sample.timeNs <= request.endTimeNs) {
           samples.push(sample);
         }
       }
@@ -372,7 +394,227 @@ export async function readMcapFrameTransformWindow({
     }
   }
 
+  const predecessorAnchors = await readIndexedTransformPredecessorAnchors({
+    channelsById,
+    nextKnownTimeNsByTopic,
+    predecessorStore,
+    reader,
+    readSignal,
+    readStats,
+    timeline,
+    timeNs: request.startTimeNs,
+    topics: transformTopics,
+  });
+  const anchorsByEdge = new Map<string, McapFrameTransformSample>();
+  for (const anchor of [
+    ...predecessorAnchors,
+    ...inWindowPredecessorByEdge.values(),
+  ]) {
+    setNewestFrameTransformSample(anchorsByEdge, anchor);
+  }
+  const sampleIdentities = new Set(samples.map(frameTransformSampleIdentity));
+  for (const anchor of anchorsByEdge.values()) {
+    const identity = frameTransformSampleIdentity(anchor);
+    if (!sampleIdentities.has(identity)) {
+      sampleIdentities.add(identity);
+      samples.push(anchor);
+    }
+  }
+
   return createMcapFrameTransformSet({ readStats, samples });
+}
+
+/**
+ * Resolves a bounded set of indexed messages before a random-seek window,
+ * then keeps only the newest dynamic sample per transform edge. This gives
+ * the runtime a truthful pose to hold without scanning transform history.
+ */
+async function readIndexedTransformPredecessorAnchors({
+  channelsById,
+  nextKnownTimeNsByTopic,
+  predecessorStore,
+  reader,
+  readSignal,
+  readStats,
+  timeline,
+  timeNs,
+  topics,
+}: {
+  readonly channelsById: ReadonlyMap<number, FrameTransformChannel>;
+  readonly nextKnownTimeNsByTopic: ReadonlyMap<string, bigint>;
+  readonly predecessorStore?: McapPredecessorStore;
+  readonly reader: McapIndexedReaderLike;
+  readonly readSignal?: { readonly current: AbortSignal | null };
+  readonly readStats: FrameTransformReadStats;
+  readonly timeline: McapTimelineStrategy;
+  readonly timeNs: bigint;
+  readonly topics: readonly string[];
+}): Promise<readonly McapFrameTransformSample[]> {
+  const indexedMessageTimeNs = timeline.indexedMessageTimeNs;
+  const indexedMessageTimesRequest = timeline.indexedMessageTimesRequest;
+  if (
+    !reader.readLatestIndexedMessageTimes ||
+    !indexedMessageTimeNs ||
+    !indexedMessageTimesRequest
+  ) {
+    return [];
+  }
+
+  const probeTimeNs = indexedMessageTimesRequest({
+    endTimeNs: timeNs,
+  }).endTimeNs;
+  if (probeTimeNs === undefined) {
+    return [];
+  }
+
+  const entriesByTopic = new Map<string, readonly McapIndexedMessageTime[]>();
+  const topicsToProbe: string[] = [];
+  for (const topic of topics) {
+    const memoized = predecessorStore?.lookup(
+      topic,
+      timeNs,
+      TRANSFORM_PREDECESSOR_MESSAGES_PER_TOPIC,
+    );
+    if (memoized) {
+      entriesByTopic.set(topic, memoized);
+      predecessorStore?.extend(
+        topic,
+        timeNs,
+        nextKnownTimeNsByTopic.get(topic) ?? timeNs + 1n,
+      );
+    } else {
+      topicsToProbe.push(topic);
+    }
+  }
+
+  if (topicsToProbe.length > 0) {
+    const resolved = await reader.readLatestIndexedMessageTimes({
+      limitPerTopic: TRANSFORM_PREDECESSOR_MESSAGES_PER_TOPIC,
+      timeNs: probeTimeNs,
+      topics: topicsToProbe,
+    });
+    for (const topic of topicsToProbe) {
+      const entries = resolved.get(topic) ?? [];
+      entriesByTopic.set(topic, entries);
+      const entryTimes = entries.map(indexedMessageTimeNs);
+      predecessorStore?.record(topic, {
+        entries,
+        limitPerTopic: TRANSFORM_PREDECESSOR_MESSAGES_PER_TOPIC,
+        nextKnownTimeNs: nextKnownTimeNsByTopic.get(topic) ?? timeNs + 1n,
+        predecessorTimeNs:
+          entryTimes.length > 0 ? maxBigIntValues(entryTimes) : null,
+      });
+    }
+  }
+
+  const entries = [...entriesByTopic.values()].flat();
+  if (entries.length === 0) {
+    return [];
+  }
+  void reader.prefetchChunkData?.({
+    chunkStartOffsets: entries.map((entry) => entry.chunkStartOffset),
+  });
+
+  const newestSampleByEdge = new Map<string, McapFrameTransformSample>();
+  for (const [topic, groupedEntries] of entriesByTopic) {
+    if (readSignal?.current?.aborted) {
+      throw new EpisodeReadCancelledError();
+    }
+    if (groupedEntries.length === 0) {
+      continue;
+    }
+    const timelineTimes = groupedEntries.map(indexedMessageTimeNs);
+    const { endTime, startTime } = timeline.messageReadRange({
+      endTimeNs: maxBigIntValues(timelineTimes),
+      startTimeNs: minBigIntValues(timelineTimes),
+    });
+    const indexedIdentities = new Set(
+      groupedEntries.map(indexedTransformMessageIdentity),
+    );
+
+    for await (const message of reader.readMessages({
+      endTime,
+      startTime,
+      topics: [topic],
+    })) {
+      if (readSignal?.current?.aborted) {
+        throw new EpisodeReadCancelledError();
+      }
+      if (
+        !indexedIdentities.has(
+          `${message.channelId}\0${message.logTime.toString()}`,
+        )
+      ) {
+        continue;
+      }
+      const channel = channelsById.get(message.channelId);
+      if (!channel) {
+        continue;
+      }
+      recordFrameTransformMessage(readStats, channel.channel.topic, message);
+      try {
+        for (const sample of normalizeFrameTransformMessage({
+          entry: channel,
+          message,
+        })) {
+          if (sample.timeNs === undefined || sample.timeNs > timeNs) {
+            continue;
+          }
+          setNewestFrameTransformSample(newestSampleByEdge, sample);
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  return [...newestSampleByEdge.values()].sort(
+    compareFrameTransformSamplesByTime,
+  );
+}
+
+function indexedTransformMessageIdentity(entry: McapIndexedMessageTime) {
+  return `${entry.channelId}\0${entry.logTimeNs.toString()}`;
+}
+
+function frameTransformSampleIdentity(sample: McapFrameTransformSample) {
+  return `${frameTransformEdgeKey(sample)}\0${sample.timeNs?.toString() ?? "static"}`;
+}
+
+function setNewestFrameTransformSample(
+  samplesByEdge: Map<string, McapFrameTransformSample>,
+  sample: McapFrameTransformSample,
+) {
+  if (sample.timeNs === undefined) {
+    return;
+  }
+  const edgeKey = frameTransformEdgeKey(sample);
+  const current = samplesByEdge.get(edgeKey);
+  if (current?.timeNs === undefined || current.timeNs < sample.timeNs) {
+    samplesByEdge.set(edgeKey, sample);
+  }
+}
+
+function maxBigIntValues(values: readonly bigint[]) {
+  let maximum = values[0] as bigint;
+  for (let index = 1; index < values.length; index += 1) {
+    const value = values[index] as bigint;
+    if (value > maximum) {
+      maximum = value;
+    }
+  }
+  return maximum;
+}
+
+function minBigIntValues(values: readonly bigint[]) {
+  let minimum = values[0] as bigint;
+  for (let index = 1; index < values.length; index += 1) {
+    const value = values[index] as bigint;
+    if (value < minimum) {
+      minimum = value;
+    }
+  }
+  return minimum;
 }
 
 function createFrameTransformReadStats(

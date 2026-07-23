@@ -1,11 +1,5 @@
 import { TileIdScope, useTiling } from "@fiftyone/tiling";
-import {
-  Size,
-  Text,
-  TextColor,
-  TextVariant,
-  ToggleSwitch,
-} from "@voxel51/voodo";
+import { Size, ToggleSwitch } from "@voxel51/voodo";
 import type { Descriptor, ToggleSwitchTab } from "@voxel51/voodo";
 import React, {
   useCallback,
@@ -17,20 +11,12 @@ import React, {
 import type { StreamDescriptor } from "../../../../ir";
 import type { EpisodeTerminology } from "../../../../ports";
 import {
-  type PlaybackFidelityMode,
-  type TemporalPolicySettings,
-  usePlaybackSettings,
-  useTemporalPolicySettings,
-} from "./state";
-import {
   useTileSettings,
   type TileSettingsRegistration,
 } from "../../tiles/tile-settings-context";
 import PerformanceStats from "../../status/PerformanceStats";
 import { SceneStatusStrip, usePointCloudSamplingSummary } from "./SceneStatus";
 import SceneWorldSettings from "./SceneWorldSettings";
-import { SettingsNumberField } from "../controls/SettingsNumberField";
-import SidebarGroup from "../controls/SidebarGroup";
 import styles from "./SettingsSidebar.module.css";
 import { TileStreamNoticeStrip } from "../../tiles/TileStreamState";
 import StreamsSettings from "./StreamsSettings";
@@ -47,9 +33,9 @@ const DEFAULT_STREAM_TERMINOLOGY: StreamTerminology = {
  * episode-specific left sidebar. Each tab is one scope of the viewer's
  * information hierarchy and shows only that scope's facts:
  *
- * - **Scene** — the shared world and its time: scene-wide status, the
- *   coordinate system (world frame, up axis), playback time semantics, and
- *   opt-in diagnostics. Nothing here reaches into a single tile.
+ * - **Scene** — the shared world: scene-wide status, the coordinate system
+ *   (world frame, up axis), and opt-in diagnostics. Nothing here reaches into
+ *   a single tile.
  * - **stream catalog** — the recording's catalog: what streams exist and what
  *   can be opened from them. Its visible name is selected by the format.
  * - **\<focused tile\>** — everything about one view: its stream status,
@@ -205,9 +191,9 @@ function PanelSettingsContent({
 }
 
 /**
- * The Scene tab: status first, then the world's coordinate system, then how
- * playback interprets time, then opt-in diagnostics last — configuration
- * reads top-down from "is the scene healthy" to "how do I debug it".
+ * The Scene tab: status first, then the world's coordinate system, then opt-in
+ * diagnostics last — configuration reads top-down from "is the scene healthy"
+ * to "how do I debug it".
  */
 function GlobalSceneSettings() {
   const sampling = usePointCloudSamplingSummary();
@@ -216,176 +202,8 @@ function GlobalSceneSettings() {
     <div className={`${styles.root} ${styles.tabContent}`}>
       <SceneStatusStrip sampling={sampling} />
       <SceneWorldSettings />
-      <PlaybackFidelitySettings />
-      <TimeResolutionSettings />
       <PerformanceStats sampling={sampling} />
     </div>
-  );
-}
-
-const FIDELITY_OPTIONS: readonly {
-  readonly label: string;
-  readonly value: PlaybackFidelityMode;
-}[] = [
-  { label: "Smooth", value: "smooth" },
-  { label: "As recorded", value: "as-recorded" },
-];
-
-function PlaybackFidelitySettings() {
-  const { fidelityMode, setFidelityMode } = usePlaybackSettings();
-
-  return (
-    <SidebarGroup title="Playback">
-      <div className={styles.controlStack}>
-        <label className={styles.controlRow}>
-          <ControlLabel
-            label="Between messages"
-            tooltip="Smooth interpolates continuous signals — transforms and 2D/3D label geometry — between recorded messages for fluid playback. As recorded never synthesizes: every signal holds its latest recorded message, so the scene only shows values that exist in the recording."
-          />
-          <select
-            aria-label="Between messages"
-            className={styles.modeSelect}
-            onChange={(event) =>
-              setFidelityMode(event.target.value as PlaybackFidelityMode)
-            }
-            value={fidelityMode}
-          >
-            {FIDELITY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-    </SidebarGroup>
-  );
-}
-
-function TimeResolutionSettings() {
-  const { resetTemporalPolicy, setTemporalPolicy, temporalPolicy } =
-    useTemporalPolicySettings();
-
-  return (
-    <TemporalPolicyControls
-      onReset={resetTemporalPolicy}
-      onUpdate={setTemporalPolicy}
-      policy={temporalPolicy}
-    />
-  );
-}
-
-function TemporalPolicyControls({
-  onReset,
-  onUpdate,
-  policy,
-}: {
-  readonly onReset: () => void;
-  readonly onUpdate: (policy: Partial<TemporalPolicySettings>) => void;
-  readonly policy: TemporalPolicySettings;
-}) {
-  return (
-    <SidebarGroup defaultExpanded={false} title="Advanced timing">
-      <div className={styles.policyGroups}>
-        <div className={styles.policyGroup}>
-          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-            Observations
-          </Text>
-          <div className={styles.controlStack}>
-            <PolicyNumberInput
-              label="Stale frame warning"
-              onChange={(staleMediaWarningMs) =>
-                onUpdate({ staleMediaWarningMs })
-              }
-              tooltip="Shows a stale badge when latest-at-or-before observations are older than this threshold. Observation lookup is unbounded and never uses future samples. Enter 0 to disable the warning."
-              value={policy.staleMediaWarningMs}
-            />
-          </div>
-        </div>
-        <div className={styles.policyGroup}>
-          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-            Transforms
-          </Text>
-          <div className={styles.controlStack}>
-            <PolicyNumberInput
-              label="Max interpolation gap"
-              onChange={(maxInterpolationGapMs) =>
-                onUpdate({ maxInterpolationGapMs })
-              }
-              tooltip="Largest gap between bracketing transform samples that can be interpolated. Larger gaps make placement unavailable. Enter 0 to remove the gap limit."
-              value={policy.maxInterpolationGapMs}
-            />
-            <PolicyNumberInput
-              label="Large gap warning"
-              onChange={(transformGapWarningMs) =>
-                onUpdate({ transformGapWarningMs })
-              }
-              tooltip="Shows a warning when a rendered transform interpolates across a wider gap than this. Rendering continues if the max interpolation gap allows it. Enter 0 to disable the warning."
-              value={policy.transformGapWarningMs}
-            />
-            <PolicyNumberInput
-              label="Boundary clamp"
-              onChange={(boundaryClampMs) => onUpdate({ boundaryClampMs })}
-              tooltip="Start/end tolerance for using the nearest transform sample when a full interpolation bracket does not exist. Enter 0 to disable boundary clamping."
-              value={policy.boundaryClampMs}
-            />
-          </div>
-        </div>
-      </div>
-      <button className={styles.resetButton} onClick={onReset} type="button">
-        Reset to defaults
-      </button>
-    </SidebarGroup>
-  );
-}
-
-function PolicyNumberInput({
-  label,
-  onChange,
-  tooltip,
-  value,
-}: {
-  readonly label: string;
-  readonly onChange: (value: number) => void;
-  readonly tooltip: string;
-  readonly value: number;
-}) {
-  return (
-    <label className={styles.controlRow}>
-      <ControlLabel label={label} tooltip={tooltip} />
-      <SettingsNumberField
-        ariaLabel={label}
-        max={60_000}
-        min={0}
-        onCommit={onChange}
-        step={50}
-        unit="ms"
-        value={value}
-      />
-    </label>
-  );
-}
-
-function ControlLabel({
-  label,
-  tooltip,
-}: {
-  readonly label: string;
-  readonly tooltip: string;
-}) {
-  return (
-    <span className={styles.labelWithTooltip}>
-      <span className={styles.controlLabel}>{label}</span>
-      <span
-        aria-label={tooltip}
-        className={styles.tooltipIcon}
-        data-tooltip={tooltip}
-        role="img"
-        tabIndex={0}
-      >
-        ?
-      </span>
-    </span>
   );
 }
 

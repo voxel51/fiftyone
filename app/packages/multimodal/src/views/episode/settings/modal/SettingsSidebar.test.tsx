@@ -219,7 +219,7 @@ describe("SettingsSidebar", () => {
     expect(screen.getByRole("tab", { name: "Streams" })).toBeTruthy();
     expect(screen.queryByRole("tab", { name: "Camera" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Settings" })).toBeNull();
-    expect(screen.getByText("Advanced timing")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Stats" })).toBeTruthy();
   });
 
   it("uses format-selected terminology for the stream catalog", () => {
@@ -254,13 +254,13 @@ describe("SettingsSidebar", () => {
     expect(screen.getByText('No topics match "nothing"')).toBeTruthy();
   });
 
-  it("shows the playback fidelity control without the count summary", () => {
+  it("keeps temporal playback policy out of scene settings", () => {
     renderSidebar();
 
     expect(screen.queryByText("Images")).toBeNull();
     expect(screen.queryByText("3D")).toBeNull();
-    expect(screen.getByLabelText("Between messages")).toBeTruthy();
-    expect(screen.getByText("Advanced timing")).toBeTruthy();
+    expect(screen.queryByLabelText("Between messages")).toBeNull();
+    expect(screen.queryByText("Advanced timing")).toBeNull();
   });
 
   it("hides scene world controls without a playback host", () => {
@@ -323,7 +323,7 @@ describe("SettingsSidebar", () => {
         .getAttribute("aria-expanded"),
     ).toBe("true");
     expect(screen.getByText("Performance diagnostics")).toBeTruthy();
-    expect(screen.getAllByText("Playback")).toHaveLength(2);
+    expect(screen.getByText("Playback")).toBeTruthy();
     expect(screen.getByText("Rendering")).toBeTruthy();
     expect(screen.getByText("WebGPU")).toBeTruthy();
     expect(screen.getByText("Grid & snapshots")).toBeTruthy();
@@ -332,37 +332,6 @@ describe("SettingsSidebar", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Hide stats" }));
     expect(screen.queryByText("Performance diagnostics")).toBeNull();
-  });
-
-  it("persists fidelity mode changes through the select", () => {
-    renderSidebar();
-
-    const select = screen.getByLabelText(
-      "Between messages",
-    ) as HTMLSelectElement;
-    expect(select.value).toBe("smooth");
-
-    fireEvent.change(select, { target: { value: "as-recorded" } });
-
-    expect(
-      (screen.getByLabelText("Between messages") as HTMLSelectElement).value,
-    ).toBe("as-recorded");
-    expect(
-      JSON.parse(
-        localStorage.getItem("fiftyone.episode.modal-settings.v2") ?? "{}",
-      ).fidelityMode,
-    ).toBe("as-recorded");
-  });
-
-  it("collapses the advanced timing tuning by default", () => {
-    renderSidebar();
-
-    expect(screen.queryByLabelText("Stale frame warning")).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: /Advanced timing/ }));
-
-    expect(screen.getByLabelText("Stale frame warning")).toBeTruthy();
-    expect(screen.getByText("Reset to defaults")).toBeTruthy();
   });
 
   it("lists all streams by category in the streams tab", () => {
@@ -618,7 +587,7 @@ describe("SettingsSidebar", () => {
     expect(
       screen.getByRole("tab", { name: "Scene" }).getAttribute("aria-selected"),
     ).toBe("true");
-    expect(screen.getByText("Advanced timing")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Stats" })).toBeTruthy();
     expect(screen.queryByTestId(PANEL_SETTINGS_TEST_ID)).toBeNull();
   });
 

@@ -1,11 +1,7 @@
 import type { Quaternion, Vector3 } from "three";
 
-export type McapFrameTransformResolutionMode = "interpolate" | "hold-last";
-
 export interface McapFrameTransformPolicy {
   readonly boundaryClampNs: bigint;
-  readonly maxInterpolationGapNs: bigint;
-  readonly resolutionMode?: McapFrameTransformResolutionMode;
 }
 
 export type McapFrameTransformResolutionKind =
@@ -15,6 +11,24 @@ export type McapFrameTransformResolutionKind =
   | "interpolated"
   | "held"
   | "clamped";
+
+/** Why a dynamic MCAP transform edge is holding its latest recorded pose. */
+export type McapHeldFrameTransformReason =
+  | "after-last-sample"
+  | "interpolation-gap"
+  | "parent-change";
+
+/** Worker-safe metadata for one held dynamic transform edge. */
+export interface McapHeldFrameTransform {
+  readonly ageNs: bigint;
+  readonly interpolationGapLimitNs?: bigint;
+  readonly interpolationGapNs?: bigint;
+  readonly reason: McapHeldFrameTransformReason;
+  readonly sourceFrameId: string;
+  readonly sourceTimeNs: bigint;
+  readonly staleAfterNs: bigint;
+  readonly targetFrameId: string;
+}
 
 export interface McapFrameTransformSample {
   readonly childFrameId: string;
@@ -68,6 +82,7 @@ export interface McapFrameTransformSetWire {
 }
 
 export interface McapComposedFrameTransform {
+  readonly heldEdges?: readonly McapHeldFrameTransform[];
   readonly maxInterpolationGapNs?: bigint;
   readonly resolutionKind?: McapFrameTransformResolutionKind;
   readonly rotation: Quaternion;
@@ -81,6 +96,7 @@ export type McapFrameTransformResolution = {
   readonly targetFrameId: string;
 } & (
   | {
+      readonly heldEdges?: readonly McapHeldFrameTransform[];
       readonly maxInterpolationGapNs?: bigint;
       readonly resolutionKind?: McapFrameTransformResolutionKind;
       readonly status: "resolved";

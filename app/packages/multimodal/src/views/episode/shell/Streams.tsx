@@ -17,12 +17,6 @@ import { PoseTrajectoriesStartupGate } from "../scene/entities/pose-trajectories
 import { RawMessageBridge } from "../raw/raw-message-context";
 import { SceneUpdateHistoryBridge } from "../scene/entities/scene-update-history-context";
 import { useDataStream } from "../playback/data-stream-context";
-import {
-  type PlaybackFidelityMode,
-  type TemporalPolicySettings,
-  usePlaybackSettings,
-  useTemporalPolicySettings,
-} from "../settings/modal/state";
 import { useFrameTransforms } from "../spatial/frame-transforms/use-frame-transforms";
 import { usePlaybackTimeNs } from "../playback/use-playback-time-ns";
 import { useRegisterTiles } from "./use-register-tiles";
@@ -30,6 +24,7 @@ import type { TileType } from "../tiles/tile-types";
 import { useRegisterDataStream } from "../playback/use-register-data-stream";
 
 const FRAME_TRANSFORM_RANGE_PADDING_NS = 1_000_000_000n;
+const FRAME_TRANSFORM_BOUNDARY_CLAMP_NS = 50_000_000n;
 
 export interface StreamsProps {
   /** Tile kinds supported by the current manifest, capabilities, and build. */
@@ -55,8 +50,6 @@ export function Streams({
   source,
 }: StreamsProps) {
   const sources = useSceneInventory();
-  const { fidelityMode } = usePlaybackSettings();
-  const { temporalPolicy } = useTemporalPolicySettings();
   const numericSeries = session?.numericSeries ?? null;
   const rawRecords = session?.rawRecords ?? null;
   const transformRead = useMemo(
@@ -78,15 +71,14 @@ export function Streams({
       sources
         .filter(
           (s) =>
-            s.type === SCENE_SOURCE_TYPE.IMAGE ||
-            s.type === SCENE_SOURCE_TYPE.POINT_CLOUD,
+            s.type !== SCENE_SOURCE_TYPE.CAMERA_CALIBRATION &&
+            s.type !== SCENE_SOURCE_TYPE.MAP_LAYER,
         )
         .map((s) => s.id),
     [sources],
   );
-  // Map layers are overlays like annotations: playback must not stall on a
-  // one-shot multi-megabyte /map fetch, and a static map is *supposed* to be
-  // older than the playhead, so it never earns a stale-media warning.
+  // Static maps and calibration metadata remain valid until replaced. Other
+  // recorded observations are held but surface their cadence-derived age.
   const blockingStreams = useMemo(
     () =>
       sources
@@ -126,7 +118,6 @@ export function Streams({
     session,
     source,
     allStreams,
-    staleMediaWarningNs: msToNs(temporalPolicy.staleMediaWarningMs),
     staleWarningStreams,
     streamPolicies,
   });
@@ -134,12 +125,7 @@ export function Streams({
 
   return (
     <>
-      <FrameTransformsBridge
-        fidelityMode={fidelityMode}
-        capability={transformRead}
-        source={source}
-        temporalPolicy={temporalPolicy}
-      />
+      <FrameTransformsBridge capability={transformRead} source={source} />
       <PoseTrajectoriesStartupGate
         poseStreams={poseStreams}
         session={session}
@@ -163,14 +149,10 @@ export function Streams({
 
 function FrameTransformsBridge({
   capability,
-  fidelityMode,
   source,
-  temporalPolicy,
 }: {
   readonly capability: TransformReadAcceleration | null;
-  readonly fidelityMode: PlaybackFidelityMode;
   readonly source: ByteSourceDescriptor | null;
-  readonly temporalPolicy: TemporalPolicySettings;
 }) {
   const setFrameTransforms = useSetFrameTransformsContext();
   const dataStream = useDataStream();
@@ -194,9 +176,7 @@ function FrameTransformsBridge({
     capability,
     dynamicRange,
     policy: {
-      boundaryClampNs: msToNs(temporalPolicy.boundaryClampMs),
-      maxInterpolationGapNs: msToNs(temporalPolicy.maxInterpolationGapMs),
-      resolutionMode: fidelityMode === "smooth" ? "interpolate" : "hold-last",
+      boundaryClampNs: FRAME_TRANSFORM_BOUNDARY_CLAMP_NS,
     },
     sourceKey: source ? episodeSourceAccessKey(source) : null,
     timeNs,
@@ -212,8 +192,4 @@ function FrameTransformsBridge({
   }, [frameTransforms, setFrameTransforms]);
 
   return null;
-}
-
-function msToNs(value: number): bigint {
-  return BigInt(Math.max(0, Math.round(value))) * 1_000_000n;
 }

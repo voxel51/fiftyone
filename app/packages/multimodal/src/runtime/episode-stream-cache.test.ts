@@ -177,4 +177,22 @@ describe("EpisodeStreamCache", () => {
     expect(cache.has(4n)).toBe(true);
     expect(cache.stats().decodedBytes).toBe(128);
   });
+
+  it("derives temporal limits from the messages observed by the stream", () => {
+    const cache = new EpisodeStreamCache();
+    const cadenceNs = 200_000_000n;
+    for (let index = 0; index < 4; index += 1) {
+      cache.set(BigInt(index), {
+        ...MESSAGE,
+        timestampNs: BigInt(index) * cadenceNs,
+      });
+    }
+
+    expect(cache.observationStaleThresholdNs()).toBe(600_000_000n);
+    expect(cache.interpolationGapLimitNs()).toBe(600_000_000n);
+
+    cache.clear();
+    expect(cache.observationStaleThresholdNs()).toBe(500_000_000n);
+    expect(cache.interpolationGapLimitNs()).toBe(2_000_000_000n);
+  });
 });

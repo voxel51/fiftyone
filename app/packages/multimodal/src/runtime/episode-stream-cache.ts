@@ -1,6 +1,7 @@
 import { LRUCache } from "lru-cache";
 import { estimateFieldSize } from "../query/cache-utils";
 import type { DecodedFrame } from "../ir";
+import { EpisodeCadenceTracker } from "./temporal-policy";
 
 const DEFAULT_MAX_ENTRIES = 512;
 
@@ -37,6 +38,7 @@ export interface EpisodeStreamCacheStats {
  * change.
  */
 export class EpisodeStreamCache {
+  private readonly cadence = new EpisodeCadenceTracker();
   private readonly cache: LRUCache<string, CacheEntry>;
   private readonly listeners = new Set<() => void>();
   private readonly messageRetention = new Map<DecodedFrame, MessageRetention>();
@@ -62,6 +64,16 @@ export class EpisodeStreamCache {
 
   get decodedBytes(): number {
     return this._decodedBytes;
+  }
+
+  /** Cadence-derived age after which a held observation is visibly stale. */
+  observationStaleThresholdNs(): bigint {
+    return this.cadence.observationStaleThresholdNs();
+  }
+
+  /** Cadence-derived gap limit used by optional observation interpolation. */
+  interpolationGapLimitNs(): bigint {
+    return this.cadence.interpolationGapLimitNs();
   }
 
   stats(): EpisodeStreamCacheStats {
@@ -120,6 +132,9 @@ export class EpisodeStreamCache {
     msg: DecodedFrame | null,
     options?: { readonly pinned?: boolean },
   ): void {
+    if (msg) {
+      this.cadence.observe(msg.timestampNs);
+    }
     const key = tick.toString();
     if (options?.pinned || this.pinned.has(key)) {
       const previousEntry = this.pinned.get(key);
@@ -166,6 +181,7 @@ export class EpisodeStreamCache {
    *  previously-cached frames are now from a different recording and
    *  must not be reused. */
   clear(): void {
+    this.cadence.clear();
     if (this.cache.size === 0 && this.pinned.size === 0) return;
     this.cache.clear();
     for (const entry of this.pinned.values()) this.releaseEntry(entry);
