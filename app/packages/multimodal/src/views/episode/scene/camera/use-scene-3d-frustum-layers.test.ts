@@ -11,11 +11,14 @@ describe("buildScene3dFrustumLayer", () => {
     const openImageTile = vi.fn();
     const setHovered = vi.fn();
     const layer = buildScene3dFrustumLayer({
+      calibrationAssociation: "Auto-matched",
+      calibrationSourceName: "/camera/front/camera_info",
       clearHovered,
       focused: true,
       geometry: "original",
       hovered: true,
       imageFrame: null,
+      imageLabel: "camera/front/image_raw",
       imagePlaneDepthM: 2,
       imageSourceName: "/camera/front/image_raw",
       imageStream: "7",
@@ -39,7 +42,12 @@ describe("buildScene3dFrustumLayer", () => {
     expect(setHovered).toHaveBeenCalledWith("7");
     expect(onHoverCamera).toHaveBeenCalledWith(
       expect.objectContaining({
-        calibrationStream: "/camera/front/calibration",
+        calibrationAssociation: "Auto-matched",
+        calibrationSourceName: "/camera/front/camera_info",
+        calibrationStream: "3",
+        imageLabel: "camera/front/image_raw",
+        imageSourceName: "/camera/front/image_raw",
+        imageStream: "7",
         kind: "camera",
       }),
     );
@@ -59,11 +67,14 @@ describe("buildScene3dFrustumLayer", () => {
       requestedTimeNs: 42n,
     };
     const layer = buildScene3dFrustumLayer({
+      calibrationAssociation: "Selected in settings",
+      calibrationSourceName: "/camera/front/camera_info",
       clearHovered: () => true,
       focused: false,
       geometry: "auto",
       hovered: false,
       imageFrame: frame,
+      imageLabel: "camera/front/image_raw",
       imagePlaneDepthM: 1,
       imageSourceName: "/camera/front/image_raw",
       imageStream: "7",
@@ -95,6 +106,6 @@ function calibrationLayer(): CameraFrustumPanelLayer {
       R: [1, 0, 0, 0, 1, 0, 0, 0, 1],
       width: 100,
     },
-    id: "/camera/front/calibration",
+    id: "3",
   };
 }

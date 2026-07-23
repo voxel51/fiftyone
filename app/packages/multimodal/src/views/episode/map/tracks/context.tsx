@@ -131,6 +131,7 @@ export function LocationTracksBridge({
           label: locationSource.label,
           pointCount: 0,
           segments: [],
+          sourceName: locationSource.sourceName,
           stream,
         } satisfies Omit<LocationTrackState, "status">;
         commit(stream, { ...baseState, status: "loading" });

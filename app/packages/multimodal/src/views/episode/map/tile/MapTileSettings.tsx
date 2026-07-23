@@ -74,7 +74,9 @@ const MapTileSettings: React.FC = () => {
                 }
                 {...checkboxNoSpaceToggleProps}
               />
-              <span className={settingsStyles.metaText}>{source.id}</span>
+              <span className={settingsStyles.metaText}>
+                {source.sourceName}
+              </span>
             </div>
           ))}
         </div>

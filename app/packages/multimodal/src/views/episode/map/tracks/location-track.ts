@@ -78,6 +78,7 @@ export interface LocationTrackState {
   readonly label: string;
   readonly pointCount: number;
   readonly segments: readonly LocationTrackSegment[];
+  readonly sourceName: string;
   readonly status: "loading" | "ready" | "error";
   readonly stream: string;
   readonly truncated?: boolean;

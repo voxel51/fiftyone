@@ -9,10 +9,14 @@ import {
 } from "./use-hover-tooltip";
 
 const HOVERED_CAMERA = {
-  calibrationStream: "/camera/front/camera_info",
+  calibrationAssociation: "Auto-matched" as const,
+  calibrationSourceName: "/camera/front/camera_info",
+  calibrationStream: "3",
   distortionModel: "plumb_bob",
   frameId: "camera_front",
-  imageStream: "/camera/front/image",
+  imageLabel: "camera/front/image",
+  imageSourceName: "/camera/front/image",
+  imageStream: "14",
   kind: "camera" as const,
   resolution: [1920, 1080] as const,
 };
@@ -30,7 +34,9 @@ const HOVERED_POINT: Scene3dHoveredPoint = {
   kind: "point",
   pointIndex: 42,
   position: [1, 2, 3],
-  stream: "/lidar",
+  sourceLabel: "lidar/top",
+  sourceName: "/lidar/top/points",
+  stream: "21",
 };
 
 function pointerAt(x: number, y: number) {
@@ -147,9 +153,21 @@ describe("useScene3dHoverTooltip", () => {
     const tooltip = result.current.tooltip;
     if (!tooltip) throw new Error("expected a camera tooltip");
     render(<Scene3dHoverTooltip tooltip={tooltip} />);
+    expect(screen.getByText("camera/front/image")).toBeTruthy();
     expect(screen.getByText("/camera/front/image")).toBeTruthy();
     expect(screen.getByText("/camera/front/camera_info")).toBeTruthy();
+    expect(screen.getByText("Auto-matched")).toBeTruthy();
     expect(screen.getByText("1920 × 1080")).toBeTruthy();
+    expect(screen.queryByText("14")).toBeNull();
+    expect(screen.queryByText("3")).toBeNull();
+  });
+
+  it("renders a point source name instead of its canonical id", () => {
+    render(<Scene3dHoverTooltip tooltip={{ ...HOVERED_POINT, x: 0, y: 0 }} />);
+
+    expect(screen.getByText("lidar/top")).toBeTruthy();
+    expect(screen.getByText("/lidar/top/points")).toBeTruthy();
+    expect(screen.queryByText("21")).toBeNull();
   });
 
   it("does not let a pending entity replace a newer point tooltip", () => {

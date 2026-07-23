@@ -8,7 +8,8 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { useSetAtom } from "jotai";
-import React from "react";
+import React, { useMemo } from "react";
+import { useSceneInventory } from "../../../../scene-inventory/react";
 import {
   selectedObjectAtom,
   useSelectedObject,
@@ -27,6 +28,14 @@ import settingsStyles from "../../tiles/Tile.settings.module.css";
 const InspectorSidebar: React.FC = () => {
   const selected = useSelectedObject();
   const setSelected = useSetAtom(selectedObjectAtom);
+  const sources = useSceneInventory();
+  const sourceNamesById = useMemo(
+    () => new Map(sources.map((source) => [source.id, source.sourceName])),
+    [sources],
+  );
+  const selectedSourceName = selected
+    ? (sourceNamesById.get(selected.stream) ?? "Unknown source")
+    : "Unknown source";
 
   return (
     <SidebarPanel title="Inspect">
@@ -44,9 +53,15 @@ const InspectorSidebar: React.FC = () => {
           data-testid="episode-inspector-body"
         >
           {selected.kind === "scene-annotation" ? (
-            <SceneObjectFields selected={selected} />
+            <SceneObjectFields
+              selected={selected}
+              sourceName={selectedSourceName}
+            />
           ) : (
-            <ImageObjectFields selected={selected} />
+            <ImageObjectFields
+              selected={selected}
+              sourceName={selectedSourceName}
+            />
           )}
           <Button
             variant={Variant.Secondary}
@@ -64,15 +79,17 @@ const InspectorSidebar: React.FC = () => {
 
 function SceneObjectFields({
   selected,
+  sourceName,
 }: {
   readonly selected: SelectedSceneObject;
+  readonly sourceName: string;
 }) {
   const metadataEntries = Object.entries(selected.metadata);
   return (
     <>
       <Field label="Object" value={selected.label ?? selected.entityId} />
       <Field label="Entity id" value={selected.entityId} />
-      <Field label="Stream" value={selected.stream} />
+      <Field label="Stream" value={sourceName} />
       {selected.frameId ? (
         <Field label="Frame" value={selected.frameId} />
       ) : null}
@@ -98,14 +115,16 @@ function SceneObjectFields({
 
 function ImageObjectFields({
   selected,
+  sourceName,
 }: {
   readonly selected: SelectedImageObject;
+  readonly sourceName: string;
 }) {
   return (
     <>
       <Field label="Object" value={selected.label ?? selected.primitiveKind} />
       <Field label="Kind" value={selected.primitiveKind} />
-      <Field label="Stream" value={selected.stream} />
+      <Field label="Stream" value={sourceName} />
       <div className={settingsStyles.field}>
         <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
           Geometry

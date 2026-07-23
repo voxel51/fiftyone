@@ -217,7 +217,7 @@ export function buildScene3dTransformNotices({
   const notices: HealthNotice[] = [];
   for (const unresolved of unresolvedPoseUsages) {
     const sourceLabel =
-      sourceLabelsById?.get(unresolved.sourceId) ?? unresolved.sourceId;
+      sourceLabelsById?.get(unresolved.sourceId) ?? "Unknown source";
     notices.push({
       detail: `No pose connects ${unresolved.sourceFrameId} to ${unresolved.targetFrameId} at this time.`,
       id: `transform:missing:${unresolved.sourceId}`,
@@ -232,7 +232,7 @@ export function buildScene3dTransformNotices({
     const visibleUsages = rankedUsages.slice(0, 3);
     const usageDetails = visibleUsages.map((usage) => {
       const sourceLabel =
-        sourceLabelsById?.get(usage.sourceId) ?? usage.sourceId;
+        sourceLabelsById?.get(usage.sourceId) ?? "Unknown source";
       return `${sourceLabel} — using pose from ${formatPoseSourceTime(
         usage.sourceTimeNs,
         timelineStartTimeNs,

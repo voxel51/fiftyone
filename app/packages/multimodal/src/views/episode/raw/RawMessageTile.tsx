@@ -57,17 +57,31 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
 
   const state = streamKey ? recordsByStream.get(streamKey) : undefined;
   const result = state?.result;
+  const selectedSourceName = useMemo(() => {
+    if (result?.sourceName) {
+      return result.sourceName;
+    }
+    if (!streamKey || enumeration.status !== "ready") {
+      return null;
+    }
+    return (
+      enumeration.streams.find(
+        (stream) =>
+          stream.streamId === streamKey || stream.sourceName === streamKey,
+      )?.sourceName ?? null
+    );
+  }, [enumeration, result?.sourceName, streamKey]);
 
   // Keep canonical ids in tile state, but present the source name returned by
-  // the adapter. While a record is loading, preserve the title assigned by the
-  // stream action or picker instead of flashing an internal channel id.
+  // the adapter or inventory. While both are loading, preserve the title
+  // assigned by the stream action or picker instead of flashing an id.
   useEffect(() => {
     if (!streamKey) {
       setTileTitle("Message", { source: "auto" });
-    } else if (result?.sourceName) {
-      setTileTitle(result.sourceName, { source: "auto" });
+    } else if (selectedSourceName) {
+      setTileTitle(selectedSourceName, { source: "auto" });
     }
-  }, [result?.sourceName, setTileTitle, streamKey]);
+  }, [selectedSourceName, setTileTitle, streamKey]);
 
   const plottableFieldPaths = useMemo(() => {
     if (!streamKey || enumeration.status !== "ready") {
@@ -111,7 +125,9 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
             }
           >
             {state?.status === "error"
-              ? `Could not read ${streamKey}: ${state.error ?? "unknown error"}`
+              ? `Could not read ${selectedSourceName ?? "the selected source"}: ${
+                  state.error ?? "unknown error"
+                }`
               : "Loading message…"}
           </span>
         </div>

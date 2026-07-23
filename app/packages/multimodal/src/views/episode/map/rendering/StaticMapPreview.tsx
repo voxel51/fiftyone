@@ -19,7 +19,7 @@ export function MapLegend({
         <div
           className={styles.legendRow}
           key={track.stream}
-          title={track.stream}
+          title={track.sourceName}
         >
           <span
             className={styles.legendSwatch}
