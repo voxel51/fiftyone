@@ -1,125 +1,330 @@
-import { useSetTileSelection } from "@fiftyone/tiling";
-import { useSetAtom } from "jotai";
-import React, { useCallback, useMemo } from "react";
+import type { CSSProperties, RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import {
-  ImageAnnotationsOverlay,
-  type ImageAnnotationPickedPrimitive,
-} from "../../../visualization/media-2d/ImageAnnotationsOverlay";
-import type { ImageViewTransform } from "../../../visualization/media-2d/Base2dScene";
+  imageDisplayRect,
+  transformedImageDisplayRect,
+  type ImageViewTransform,
+} from "../../../visualization/media-2d/Base2dScene";
+import type { GpuImageAnnotationPickerHandle } from "../../../visualization/media-2d/GpuImageAnnotationPicker";
+import type {
+  PreparedImageAnnotationMetadata,
+  PreparedImageAnnotations,
+} from "../../../visualization/media-2d/gpu-image-annotation-preparation";
 import {
-  selectedObjectAtom,
-  useSelectedObject,
-} from "../interaction/selection/selected-object";
-import { useInterpolatedImageAnnotationSets } from "./use-interpolated-image-annotations";
+  POINT_HOVER_DWELL_MS,
+  POINT_HOVER_MOVE_TOLERANCE_PX,
+} from "../../../visualization/interaction/hover-inspect";
+import { attachPointerDwell } from "../../../visualization/interaction/pointer-dwell";
+import {
+  VISUALIZATION_HUD_BACKGROUND_COLOR,
+  VISUALIZATION_HUD_BORDER_COLOR,
+  VISUALIZATION_HUD_TEXT_COLOR,
+} from "../../../visualization/panel-ui/style-tokens";
 
+const PICK_RADIUS_SCREEN_PX = 6;
+const TOOLTIP_OFFSET_PX = 12;
+
+interface AnnotationTooltip {
+  readonly metadata: PreparedImageAnnotationMetadata;
+  readonly x: number;
+  readonly y: number;
+}
+
+/** DOM interaction inputs for GPU-rendered image annotations. */
 export interface ImageAnnotationOverlayProps {
-  readonly imageWidth: number;
+  readonly fit: "contain" | "cover";
   readonly imageHeight: number;
-  readonly fit?: "contain" | "cover";
-  readonly interpolate?: boolean;
-  readonly pixelTransform?: (
-    u: number,
-    v: number,
-  ) => readonly [number, number] | null;
-  readonly streams: readonly string[];
+  readonly imageWidth: number;
+  readonly onHoverPrimitive: (primitiveIndex: number | null) => void;
+  readonly onSelectPrimitive: (
+    primitiveIndex: number,
+    shiftKey: boolean,
+  ) => void;
+  readonly pickerRef: RefObject<GpuImageAnnotationPickerHandle>;
+  readonly prepared: PreparedImageAnnotations;
   readonly viewTransform?: ImageViewTransform;
 }
 
 /**
- * Subscribes to selected episode image-annotations streams and overlays their
- * decoded primitives on top of the surrounding image panel.
- *
- * Selection is shared modal-wide through `selectedObjectAtom`: the
- * exact picked shape highlights wherever its stream renders, other tiles
- * echo by label, and the inspector sidebar shows the payload. The
- * per-tile selection is still published for the tiling inspector
- * contract.
+ * DOM interaction shell for GPU-rendered image annotations. It owns dwell,
+ * click, and tooltip presentation only; no annotation shape becomes a DOM
+ * element.
  */
-const ImageAnnotationOverlay: React.FC<ImageAnnotationOverlayProps> = ({
-  imageWidth,
+export default function ImageAnnotationOverlay({
+  fit,
   imageHeight,
-  fit = "contain",
-  interpolate = true,
-  pixelTransform,
-  streams,
+  imageWidth,
+  onHoverPrimitive,
+  onSelectPrimitive,
+  pickerRef,
+  prepared,
   viewTransform,
-}) => {
-  const annotationSets = useInterpolatedImageAnnotationSets(streams, {
-    interpolate,
-  });
-  const setSelection = useSetTileSelection();
-  const selectedObject = useSelectedObject();
-  const setSelectedObject = useSetAtom(selectedObjectAtom);
+}: ImageAnnotationOverlayProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const requestGenerationRef = useRef(0);
+  const [tooltip, setTooltip] = useState<AnnotationTooltip | null>(null);
 
-  const displayedStreams = useMemo(
-    () => new Set(annotationSets.map((set) => set.stream)),
-    [annotationSets],
-  );
-  // Exact-shape highlight when the modal-wide selection points at one of
-  // this overlay's streams; the label echo only widens SHIFT-click
-  // (label-scoped) selections.
-  const selectedKey =
-    selectedObject?.kind === "image-annotation" &&
-    displayedStreams.has(selectedObject.stream)
-      ? selectedObject.key
-      : null;
-  const highlightLabel =
-    selectedObject?.scope === "label" ? selectedObject.label : null;
+  const fitRef = useRef(fit);
+  fitRef.current = fit;
+  const imageDimsRef = useRef({ height: imageHeight, width: imageWidth });
+  imageDimsRef.current = { height: imageHeight, width: imageWidth };
+  const metadataRef = useRef(prepared.metadata);
+  metadataRef.current = prepared.metadata;
+  const onHoverRef = useRef(onHoverPrimitive);
+  onHoverRef.current = onHoverPrimitive;
+  const onSelectRef = useRef(onSelectPrimitive);
+  onSelectRef.current = onSelectPrimitive;
+  const viewTransformRef = useRef(viewTransform);
+  viewTransformRef.current = viewTransform;
 
-  const handleSelect = useCallback(
-    (
-      picked: ImageAnnotationPickedPrimitive,
-      modifiers: { readonly shiftKey: boolean },
+  // This layout effect invalidates pending reads when frame metadata changes.
+  useLayoutEffect(() => {
+    requestGenerationRef.current += 1;
+    pickerRef.current?.invalidate();
+    setTooltip(null);
+    onHoverRef.current(null);
+  }, [pickerRef, prepared]);
+
+  // This effect keeps one native pointer subscription while metadata churns.
+  useEffect(() => {
+    const surface = containerRef.current?.parentElement;
+    if (!surface) return undefined;
+    let pointerDown: { readonly x: number; readonly y: number } | null = null;
+    let pointerDragged = false;
+
+    const clearHover = () => {
+      requestGenerationRef.current += 1;
+      pickerRef.current?.invalidate();
+      setTooltip(null);
+      onHoverRef.current(null);
+    };
+
+    const requestPick = (
+      clientX: number,
+      clientY: number,
+      consumer: (
+        metadata: PreparedImageAnnotationMetadata,
+        primitiveIndex: number,
+        pointer: { readonly x: number; readonly y: number },
+      ) => void,
     ) => {
-      const stream = annotationSets[picked.setIndex]?.stream;
-      if (!stream) return;
-      // Plain click = this shape only; shift-click widens to the label.
-      // Re-clicking with the same scope toggles off.
-      const scope = modifiers.shiftKey
-        ? ("label" as const)
-        : ("instance" as const);
-      const isRepeat =
-        selectedObject?.kind === "image-annotation" &&
-        selectedObject.stream === stream &&
-        selectedObject.key === picked.key &&
-        selectedObject.scope === scope;
-      if (isRepeat) {
-        setSelectedObject(null);
-        setSelection(null);
+      const container = containerRef.current;
+      const picker = pickerRef.current;
+      const dims = imageDimsRef.current;
+      if (!container || !picker || dims.width <= 0 || dims.height <= 0) {
+        clearHover();
         return;
       }
-      const payload = {
-        kind: "image-annotation" as const,
-        scope,
-        stream,
-        key: picked.key,
-        label: picked.label,
-        primitiveKind: picked.primitive.kind,
-        primitiveIndex: picked.primitiveIndex,
-        data: picked.primitive.value,
+      const bounds = container.getBoundingClientRect();
+      if (bounds.width <= 0 || bounds.height <= 0) {
+        clearHover();
+        return;
+      }
+      const rect = transformedImageDisplayRect(
+        imageDisplayRect(
+          { height: bounds.height, width: bounds.width },
+          dims,
+          fitRef.current,
+        ),
+        viewTransformRef.current,
+      );
+      if (rect.width <= 0 || rect.height <= 0) {
+        clearHover();
+        return;
+      }
+      const pointer = {
+        x: clientX - bounds.left,
+        y: clientY - bounds.top,
       };
-      setSelectedObject(payload);
-      setSelection({ ...payload, color: picked.color });
-    },
-    [annotationSets, selectedObject, setSelection, setSelectedObject],
-  );
+      const targetU = ((pointer.x - rect.x) / rect.width) * dims.width;
+      const targetV = ((pointer.y - rect.y) / rect.height) * dims.height;
+      const imagePxPerScreenPx = dims.width / rect.width;
+      const generation = ++requestGenerationRef.current;
+      void picker
+        .pick({
+          radiusPx: PICK_RADIUS_SCREEN_PX * imagePxPerScreenPx,
+          targetU,
+          targetV,
+        })
+        .then((pick) => {
+          if (generation !== requestGenerationRef.current || !pick) {
+            if (generation === requestGenerationRef.current) clearHover();
+            return;
+          }
+          const metadata = metadataRef.current[pick.primitiveIndex];
+          if (!metadata) {
+            clearHover();
+            return;
+          }
+          consumer(metadata, pick.primitiveIndex, pointer);
+        })
+        .catch(() => {
+          if (generation === requestGenerationRef.current) clearHover();
+        });
+    };
 
-  if (annotationSets.length === 0) return null;
+    const detachDwell = attachPointerDwell(surface, {
+      dwellMs: POINT_HOVER_DWELL_MS,
+      moveTolerancePx: POINT_HOVER_MOVE_TOLERANCE_PX,
+      onCancel: clearHover,
+      onDwell: (clientX, clientY) =>
+        requestPick(clientX, clientY, (metadata, primitiveIndex, pointer) => {
+          setTooltip({ metadata, ...pointer });
+          onHoverRef.current(primitiveIndex);
+        }),
+    });
+    const handlePointerDown = (event: PointerEvent) => {
+      pointerDown = { x: event.clientX, y: event.clientY };
+      pointerDragged = false;
+    };
+    const handlePointerMove = (event: PointerEvent) => {
+      if (
+        pointerDown &&
+        Math.hypot(
+          event.clientX - pointerDown.x,
+          event.clientY - pointerDown.y,
+        ) > POINT_HOVER_MOVE_TOLERANCE_PX
+      ) {
+        pointerDragged = true;
+      }
+    };
+    const handlePointerCancel = () => {
+      pointerDown = null;
+      pointerDragged = false;
+    };
+    const handleClick = (event: MouseEvent) => {
+      pointerDown = null;
+      if (event.defaultPrevented || pointerDragged) {
+        pointerDragged = false;
+        return;
+      }
+      requestPick(event.clientX, event.clientY, (_metadata, primitiveIndex) =>
+        onSelectRef.current(primitiveIndex, event.shiftKey),
+      );
+    };
+    surface.addEventListener("pointerdown", handlePointerDown);
+    surface.addEventListener("pointermove", handlePointerMove);
+    surface.addEventListener("pointercancel", handlePointerCancel);
+    surface.addEventListener("pointerleave", handlePointerCancel);
+    surface.addEventListener("click", handleClick);
+    return () => {
+      surface.removeEventListener("click", handleClick);
+      surface.removeEventListener("pointerdown", handlePointerDown);
+      surface.removeEventListener("pointermove", handlePointerMove);
+      surface.removeEventListener("pointercancel", handlePointerCancel);
+      surface.removeEventListener("pointerleave", handlePointerCancel);
+      detachDwell();
+      clearHover();
+    };
+  }, [pickerRef]);
+
   return (
-    <ImageAnnotationsOverlay
-      annotations={annotationSets.map((set) => set.frame)}
-      renderMetadata={annotationSets.map((set) => set.renderMetadata)}
-      imageWidth={imageWidth}
-      imageHeight={imageHeight}
-      fit={fit}
-      selectedKey={selectedKey}
-      highlightLabel={highlightLabel}
-      onSelectPrimitive={handleSelect}
-      pixelTransform={pixelTransform}
-      viewTransform={viewTransform}
-    />
+    <div
+      data-episode-image-annotation-overlay
+      ref={containerRef}
+      style={containerStyle}
+    >
+      {tooltip ? <ImageAnnotationTooltip tooltip={tooltip} /> : null}
+    </div>
   );
+}
+
+function ImageAnnotationTooltip({
+  tooltip,
+}: {
+  readonly tooltip: AnnotationTooltip;
+}) {
+  const { metadata } = tooltip;
+  const type =
+    metadata.primitive.kind === "circle"
+      ? "Circle"
+      : humanizePrimitiveType(metadata.primitive.value.type);
+  return (
+    <div
+      data-testid="episode-image-annotation-tooltip"
+      style={{
+        ...tooltipStyle,
+        left: tooltip.x + TOOLTIP_OFFSET_PX,
+        top: tooltip.y + TOOLTIP_OFFSET_PX,
+      }}
+    >
+      <div style={headingStyle}>
+        <span
+          aria-hidden
+          style={{ ...colorBadgeStyle, background: metadata.color }}
+        />
+        <span>{metadata.label ?? type}</span>
+      </div>
+      <div style={detailStyle}>
+        <span style={detailLabelStyle}>Type</span>
+        <span>{type}</span>
+        <span style={detailLabelStyle}>Stream</span>
+        <span style={detailValueStyle}>{metadata.stream}</span>
+      </div>
+    </div>
+  );
+}
+
+function humanizePrimitiveType(value: string): string {
+  return value
+    .split("-")
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+const containerStyle: CSSProperties = {
+  inset: 0,
+  overflow: "hidden",
+  pointerEvents: "none",
+  position: "absolute",
 };
 
-export default ImageAnnotationOverlay;
+const tooltipStyle: CSSProperties = {
+  background: VISUALIZATION_HUD_BACKGROUND_COLOR,
+  border: `1px solid ${VISUALIZATION_HUD_BORDER_COLOR}`,
+  borderRadius: 8,
+  boxShadow: "0 6px 18px rgba(0, 0, 0, 0.28)",
+  color: VISUALIZATION_HUD_TEXT_COLOR,
+  display: "grid",
+  fontSize: 11,
+  gap: 6,
+  lineHeight: 1.35,
+  maxWidth: 300,
+  overflow: "hidden",
+  padding: "8px 10px",
+  pointerEvents: "none",
+  position: "absolute",
+  whiteSpace: "nowrap",
+  zIndex: 4,
+};
+
+const headingStyle: CSSProperties = {
+  alignItems: "center",
+  display: "flex",
+  fontWeight: 600,
+  gap: 6,
+};
+
+const colorBadgeStyle: CSSProperties = {
+  border: "1px solid rgba(255, 255, 255, 0.35)",
+  borderRadius: "50%",
+  height: 8,
+  width: 8,
+};
+
+const detailStyle: CSSProperties = {
+  display: "grid",
+  gap: "2px 12px",
+  gridTemplateColumns: "max-content minmax(0, 1fr)",
+};
+
+const detailLabelStyle: CSSProperties = {
+  color: "#94a3b8",
+};
+
+const detailValueStyle: CSSProperties = {
+  maxWidth: 220,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
