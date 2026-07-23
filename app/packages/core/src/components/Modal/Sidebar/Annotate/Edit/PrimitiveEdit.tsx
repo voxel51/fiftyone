@@ -4,7 +4,6 @@ import {
   KnownContexts,
   useCreateCommand,
 } from "@fiftyone/commands";
-import { useTimeZone } from "@fiftyone/state";
 import { isNullish, Primitive, Sample } from "@fiftyone/utilities";
 import { Orientation, Stack } from "@voxel51/voodo";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -29,23 +28,19 @@ export default function PrimitiveEdit({
 
   const sample = useSampleInstance();
   const value = useSampleSelector((s) => s.getResolved<Primitive>(path));
-  const timeZone = useTimeZone();
 
   const primitiveSchema = generatePrimitiveSchema(path, currentLabelSchema);
 
-  const [fieldValue, setFieldValue] = useState<Primitive | Date>(
-    parseDatabaseValue(type, value, timeZone),
+  const [fieldValue, setFieldValue] = useState<Primitive>(
+    parseDatabaseValue(value),
   );
 
   // synchronize external value changes with field
-  useEffect(
-    () => setFieldValue(parseDatabaseValue(type, value, timeZone)),
-    [type, value, timeZone],
-  );
+  useEffect(() => setFieldValue(parseDatabaseValue(value)), [value]);
 
   // need to use a ref to access field value in command callback;
   // command will run before the next render loop when `fieldValue` is updated.
-  const transientFieldValue = useRef<Primitive>(fieldValue as Primitive);
+  const transientFieldValue = useRef<Primitive>(fieldValue);
 
   // undoable command which handles primitive edits
   const editCommand = useCreateCommand(
@@ -61,11 +56,7 @@ export default function PrimitiveEdit({
         // stage mutation on execute
         () => {
           try {
-            const serializedValue = serializeFieldValue(
-              newValue,
-              type,
-              timeZone,
-            );
+            const serializedValue = serializeFieldValue(newValue, type);
             if (
               !isAddOperation &&
               (isNullish(serializedValue) || serializedValue === "")
@@ -93,7 +84,7 @@ export default function PrimitiveEdit({
           }
         },
       );
-    }, [path, sample, type, value, timeZone]),
+    }, [path, sample, type, value]),
     () => true,
   );
 
