@@ -6,11 +6,22 @@ import {
   createTimelineDisplayConversion,
   useTimelineDisplay,
 } from "./timeline-display";
-import { useLoopEnd, useLoopStart, usePlayhead } from "./use-playback-state";
+import {
+  useLoopEnd,
+  useLoopStart,
+  usePlayhead,
+  useStepInterval,
+} from "./use-playback-state";
 import type { TimelineMode } from "./types";
 
 const wrap =
-  (config: { duration?: number; mode?: TimelineMode } = {}) =>
+  (
+    config: {
+      duration?: number;
+      mode?: TimelineMode;
+      stepInterval?: number;
+    } = {},
+  ) =>
   ({ children }: { children: React.ReactNode }) => (
     <PlaybackProvider {...config}>{children}</PlaybackProvider>
   );
@@ -68,6 +79,22 @@ describe("useTimelineDisplay", () => {
     });
     expect(result.current.mode).toEqual({ kind: "duration" });
     expect(result.current.toDisplay(4)).toBe(4);
+  });
+
+  it("sequence mode derives the fallback step interval from fps unless overridden", () => {
+    const { result: derived } = renderHook(() => useStepInterval(), {
+      wrapper: wrap({ duration: 10, mode: { kind: "sequence", fps: 24 } }),
+    });
+    expect(derived.current).toBeCloseTo(1 / 24);
+
+    const { result: overridden } = renderHook(() => useStepInterval(), {
+      wrapper: wrap({
+        duration: 10,
+        mode: { kind: "sequence", fps: 24 },
+        stepInterval: 1 / 12,
+      }),
+    });
+    expect(overridden.current).toBeCloseTo(1 / 12);
   });
 
   it("seekDisplay converts through fromDisplay and drives the real playhead", () => {
