@@ -69,7 +69,7 @@ export function serializeDateValue(
 
   // the picker's Date components are wall-clock values in the app display
   // timezone; interpret them there to recover the absolute instant
-  return DateTime.fromObject(
+  const iso = DateTime.fromObject(
     {
       year: date.getFullYear(),
       month: date.getMonth() + 1,
@@ -83,6 +83,14 @@ export function serializeDateValue(
   )
     .toUTC()
     .toISO();
+
+  // an invalid zone or date yields null; throw so the caller skips the
+  // mutation instead of treating the value as missing and deleting the field
+  if (iso === null) {
+    throw new Error(`invalid date or timezone: ${date} (${timeZone})`);
+  }
+
+  return iso;
 }
 
 /**

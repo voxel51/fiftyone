@@ -63,6 +63,13 @@ describe("serializeDateValue", () => {
       new Date(INSTANT_MS).toISOString(),
     );
   });
+
+  it("throws on an invalid timezone instead of returning null", () => {
+    const picker = new Date(INSTANT_MS);
+    expect(() => serializeDateValue("datetime", picker, "Not/AZone")).toThrow(
+      "invalid date or timezone",
+    );
+  });
 });
 
 describe("dateOnlyToUTC", () => {
