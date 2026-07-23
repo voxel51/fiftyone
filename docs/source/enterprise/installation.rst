@@ -161,11 +161,22 @@ credentials for use by all app users <enterprise-cloud-storage-page>`.
 Cross-origin resource sharing (CORS)
 ____________________________________
 
-If your datasets include cloud-backed
-:ref:`point clouds <point-cloud-datasets>` or
-:ref:`segmentation maps <semantic-segmentation>`, you may need to configure
-cross-origin resource sharing (CORS) for your cloud buckets. Details are
-provided below for each cloud platform.
+We strongly recommend configuring cross-origin resource sharing (CORS) on your
+cloud buckets. Most media renders in the App via standard ``<img>``/``<video>``
+elements that do not require CORS, but any media that the App fetches and
+decodes directly in the browser **requires** it, including cloud-backed
+:ref:`point clouds <point-cloud-datasets>`,
+:ref:`segmentation maps <semantic-segmentation>`, in-App annotation, and
+multimodal (MCAP) datasets. Without CORS, these assets fail to load with a
+``No 'Access-Control-Allow-Origin' header is present on the requested resource``
+browser error, even when other media displays correctly in the App.
+
+When configuring CORS, set the allowed origin(s) to the URL(s) from which your
+users access the FiftyOne Enterprise App, and allow the ``GET`` and ``HEAD``
+methods. For media that is read in byte ranges (such as MCAP), also allow the
+``Range`` request header and expose the ``Content-Range``, ``Content-Length``,
+and ``Accept-Ranges`` response headers. Details are provided below for each
+cloud platform.
 
 Browser caching
 _______________
@@ -448,6 +459,25 @@ alias:
     you can provide it by setting the
     `AZURE_STORAGE_ACCOUNT_URL` environment variable or by including the
     `account_url` key in your credentials `.ini` file.
+
+If you need to configure CORS on your Azure Blob storage account, you can do so
+at the storage-account level (Blob service) via the Azure portal
+(**Settings > Resource sharing (CORS)**) or the Azure CLI:
+
+.. code-block:: shell
+
+    az storage cors add \
+        --services b \
+        --methods GET HEAD \
+        --origins "https://fiftyone-enterprise-deployment.yourcompany.com" \
+        --allowed-headers "*" \
+        --exposed-headers "*" \
+        --max-age 3600 \
+        --account-name <account-name>
+
+See the
+`Azure Storage CORS documentation <https://learn.microsoft.com/en-us/rest/api/storageservices/cross-origin-resource-sharing--cors--support-for-the-azure-storage-services>`_
+for more details.
 
 If you would like to take advantage of browser caching you can
 `specify cache-control headers on Azure blobs <https://learn.microsoft.com/en-us/azure/cdn/cdn-manage-expiration-of-blob-content#setting-cache-control-headers-by-using-azure-powershell>`_.
