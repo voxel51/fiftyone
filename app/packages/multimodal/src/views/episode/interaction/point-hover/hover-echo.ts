@@ -16,6 +16,18 @@ export interface HoveredPointEcho {
   readonly pointIndex: number;
   /** Sensor-frame coordinates of the hovered point. */
   readonly position: readonly [number, number, number];
+  /**
+   * Interaction surface that published the hover. Projection metadata is
+   * intentionally identity-only: each 3D pane owns placement into its own
+   * displayed world scene.
+   */
+  readonly source?: {
+    readonly cameraFrameId: string;
+    readonly imageContentTimeNs: bigint;
+    readonly imageStream: string;
+    readonly kind: "image-projection";
+    readonly pointContentTimeNs: bigint;
+  };
   readonly stream: string;
 }
 
