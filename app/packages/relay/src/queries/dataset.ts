@@ -58,6 +58,13 @@ export default graphql`
               color
             }
           }
+          temporalTags {
+            fieldColor
+            valueColors {
+              value
+              color
+            }
+          }
           fields {
             colorByAttribute
             fieldColor

@@ -58,3 +58,4 @@ export { PlaybackStreamBase } from "./src/lib/playback/stream-base";
 export type { BufferReadiness } from "./src/lib/playback/types";
 export { TrackProvider } from "./src/lib/tracks/TrackProvider";
 export type { Track, TrackEvent } from "./src/lib/tracks/TrackProvider";
+export * from "./src/utils/usePointerLockDrag";

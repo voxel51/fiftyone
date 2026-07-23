@@ -96,7 +96,11 @@ export class FoWebServer {
             `tcp:127.0.0.1:${this.#port}`,
             `http-get://127.0.0.1:${this.#port}/graphql`,
           ],
-          timeout: Duration.Seconds(30),
+          // emulated containers (linux baseline generation on Apple
+          // silicon) need minutes for the python import chain
+          timeout: process.env.FO_WEB_SERVER_TIMEOUT_MS
+            ? Number(process.env.FO_WEB_SERVER_TIMEOUT_MS)
+            : Duration.Seconds(30),
         }),
         startupFailure,
       ]);

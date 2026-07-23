@@ -262,6 +262,30 @@ const useRegisterModeQuitHandlers = ({
 };
 
 /**
+ * Point-selection finalize: right-click during an AI click-to-segment session
+ * commits the in-progress mask and re-arms a fresh point session for the next
+ * detection. The committed label stays selected; `finalizePointSelection` flags
+ * the next click to seed a NEW mask rather than refine the just-committed one.
+ * Mirrors the image surface's `useBridge`.
+ */
+const useRegisterPointSelectionFinalizeHandler = ({
+  registerHandler,
+  segmentationMode,
+}: {
+  registerHandler: RegisterLighterHandler;
+  segmentationMode: SegmentationMode;
+}): void => {
+  registerHandler(
+    "lighter:point-selection-finalize",
+    useCallback(() => {
+      if (segmentationMode.segmentationModeActive) {
+        segmentationMode.finalizePointSelection();
+      }
+    }, [segmentationMode]),
+  );
+};
+
+/**
  * Track deleted: deleting a track leaves no useful edit/draw state to keep open,
  * so tear detection mode down.
  */
@@ -317,6 +341,10 @@ export const useSyncLighterAnnotation = (scene: Scene2D | null): void => {
     detectionMode,
     segmentationMode,
     polylineMode,
+  });
+  useRegisterPointSelectionFinalizeHandler({
+    registerHandler,
+    segmentationMode,
   });
   useRegisterTrackDeletedHandler({ detectionMode });
 

@@ -393,7 +393,7 @@ export const StatusBar = ({
   const onClickHandler = useCallback(() => {
     setShowPerfStatus((prev) => !prev);
     setActiveNode(null);
-  }, []);
+  }, [setShowPerfStatus, setActiveNode]);
 
   const shouldShowViewStatus =
     cameraViewStatus.viewName &&

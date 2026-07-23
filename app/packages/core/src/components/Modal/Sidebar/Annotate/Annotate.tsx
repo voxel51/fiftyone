@@ -1,7 +1,7 @@
 import { useRegisterAIAnnotationEventHandlers } from "@fiftyone/annotation/src/agents/hooks/useRegisterAIAnnotationEventHandlers";
 import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
 import { LoadingSpinner } from "@fiftyone/components";
-import { useIsGroupDataset } from "@fiftyone/state";
+import { useCurrentSampleId, useIsGroupDataset } from "@fiftyone/state";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import React, { useEffect } from "react";
@@ -22,6 +22,7 @@ import useLabels from "./useLabels";
 import { useRegisterPolylineSidebarSyncHandlers } from "./Edit/useRegisterPolylineSidebarSyncHandlers";
 import useSourceFieldToActivate from "./useSourceFieldToActivate";
 import {
+  useSaveSettlement,
   useSync3dModalSample,
   useSyncAnnotationEngine,
   useSyncModalSample,
@@ -46,6 +47,9 @@ const DISABLED_MESSAGES: Record<
     </p>
   ),
   videoDataset: <p>Annotation isn&rsquo;t supported for video datasets.</p>,
+  multimodalDataset: (
+    <p>Annotation isn&rsquo;t supported for multimodal datasets.</p>
+  ),
 };
 
 const Container = styled.div`
@@ -69,6 +73,25 @@ const Loading = () => {
         Loading
       </Text>
     </Container>
+  );
+};
+
+/**
+ * Invisible save-settlement marker: `data-settled` is "true" iff every
+ * annotation edit has been persisted (no pending deltas, no in-flight patch).
+ * Autosave is an interval tick, so an edit's patch may start seconds after its
+ * commit — tests that hand off to a fresh load (or another test) await this
+ * seam instead of racing the tick.
+ */
+const SaveSettlementMarker = () => {
+  const settled = useSaveSettlement();
+
+  return (
+    <div
+      data-cy="annotation-save-state"
+      data-settled={settled ? "true" : "false"}
+      style={{ display: "none" }}
+    />
   );
 };
 
@@ -96,7 +119,7 @@ const AnnotationBody = ({
       {isGroupDataset && !disabledReason && (
         <GroupAnnotation onSliceSelected={loadSchemas} />
       )}
-      {!showSetup && <Actions key="actions" />}
+      {!showSetup && <Actions key="actions" hidden={isEditingValue} />}
       {isEditingValue && <Edit key="edit" />}
       {showSetup ? (
         <ImportSchema
@@ -132,6 +155,7 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
   const loading = useAtomValue(labelSchemasData) === null;
   const contextManager = useAnnotationContextManager();
   const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
+  const currentSampleId = useCurrentSampleId();
 
   const isDisabled = disabledReason !== null;
 
@@ -147,12 +171,19 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
     };
   }, []);
 
+  // Clear undo history on sample change; its commands pin the prior sample's
+  // overlays (and paint snapshots) for redo.
+  useEffect(() => {
+    clearUndo();
+  }, [currentSampleId, clearUndo]);
+
   if (!isDisabled && loading) {
     return <Loading />;
   }
 
   return (
     <>
+      <SaveSettlementMarker key="save-state" />
       <AnnotationBody
         disabledReason={disabledReason}
         key="body"

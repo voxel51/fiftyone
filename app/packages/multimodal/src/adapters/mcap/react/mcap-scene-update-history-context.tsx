@@ -1,5 +1,4 @@
 import { PlaybackStoreContext } from "@fiftyone/playback/src/lib/playback/playback-store-context";
-import { getIsPlaying } from "@fiftyone/playback/src/lib/playback/store-access";
 import React, {
   createContext,
   useContext,
@@ -14,9 +13,9 @@ import { byteSourceAccessKey } from "../../../query/bytes";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { MCAP_ACTIVE_TIMELINE, type McapResourceClient } from "../types";
 import {
-  getMcapNetworkHealth,
-  shouldDeferMcapIdleWorkForStore,
-} from "./mcap-network-health";
+  shouldDeferMcapBulkHistory,
+  startMcapBulkTopicLifecycle,
+} from "./mcap-bulk-topic-lifecycle";
 import type { McapSceneUpdateDelta } from "./mcap-scene-update-state";
 
 const SCENE_UPDATE_HISTORY_READ_LIMIT = 50_000;
@@ -63,6 +62,11 @@ export const McapSceneUpdateHistoryProvider: React.FC<{
   );
 };
 
+/**
+ * Reads scene-update history when available. This hook is intentionally
+ * optional because interpolation also runs in lightweight consumers that use
+ * the live topic cache without mounting the full playback history bridge.
+ */
 export function useMcapSceneUpdateHistoryContext(): McapSceneUpdateHistory {
   return useContext(McapSceneUpdateHistoryContext)?.history ?? EMPTY_HISTORY;
 }
@@ -78,12 +82,10 @@ export function McapSceneUpdateHistoryBridge({
 }) {
   const { setHistory } = useContextValue();
   const sourceKey = source ? byteSourceAccessKey(source) : null;
-  const fetchedTopicsRef = useRef(new Set<string>());
   const historyRef = useRef(new Map<string, McapSceneUpdateHistoryTopic>());
   const playbackStore = useContext(PlaybackStoreContext);
 
   useEffect(() => {
-    fetchedTopicsRef.current = new Set();
     historyRef.current = new Map();
     setHistory(EMPTY_HISTORY);
 
@@ -91,109 +93,57 @@ export function McapSceneUpdateHistoryBridge({
       return undefined;
     }
 
-    let cancelled = false;
-    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
-    const activeTopics = new Set(sceneAnnotationTopics);
     const commit = (topic: string, state: McapSceneUpdateHistoryTopic) => {
-      if (cancelled) {
-        return;
-      }
       historyRef.current.set(topic, state);
       setHistory(new Map(historyRef.current));
     };
 
-    const shouldStandDown = (): boolean => {
-      if (!playbackStore) {
-        return false;
-      }
-      if (
-        getIsPlaying(playbackStore) &&
-        getMcapNetworkHealth(playbackStore).limited
-      ) {
-        return true;
-      }
-      return shouldDeferMcapIdleWorkForStore(playbackStore, null);
-    };
-
-    const scheduleRetry = (delayMs: number) => {
-      if (cancelled || retryTimeout !== null) {
-        return;
-      }
-      retryTimeout = setTimeout(() => {
-        retryTimeout = null;
-        start();
-      }, delayMs);
-    };
-
-    const start = () => {
-      if (cancelled) {
-        return;
-      }
-      if (shouldStandDown()) {
-        scheduleRetry(SCENE_UPDATE_HISTORY_DEFERRED_RETRY_MS);
-        return;
-      }
-
-      for (const topic of sceneAnnotationTopics) {
-        if (!activeTopics.has(topic) || fetchedTopicsRef.current.has(topic)) {
-          continue;
-        }
-        fetchedTopicsRef.current.add(topic);
+    return startMcapBulkTopicLifecycle({
+      initialDelayMs: SCENE_UPDATE_HISTORY_START_DELAY_MS,
+      retryDelayMs: SCENE_UPDATE_HISTORY_DEFERRED_RETRY_MS,
+      shouldStandDown: () => shouldDeferMcapBulkHistory(playbackStore),
+      topics: sceneAnnotationTopics,
+      runTopic: async (topic, control) => {
         commit(topic, { deltas: [], status: "loading" });
 
-        void (async () => {
-          const deltas: McapSceneUpdateDelta[] = [];
-          let messageCount = 0;
-          try {
-            for await (const message of client.readDecodedMessages(
-              {
-                activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-                limit: SCENE_UPDATE_HISTORY_READ_LIMIT,
-                source,
-                topics: [topic],
-              },
-              { priority: "bulk" },
-            )) {
-              if (cancelled) {
-                return;
-              }
-              if (shouldStandDown()) {
-                fetchedTopicsRef.current.delete(topic);
-                scheduleRetry(SCENE_UPDATE_HISTORY_DEFERRED_RETRY_MS);
-                return;
-              }
-              messageCount += 1;
-              const visualization = message.decoded.output.visualization;
-              if (visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE) {
-                continue;
-              }
-              deltas.push({
-                timeNs: message.timelineTimeNs,
-                update: visualization,
-              });
+        const deltas: McapSceneUpdateDelta[] = [];
+        let messageCount = 0;
+        try {
+          for await (const message of client.readDecodedMessages(
+            {
+              activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+              limit: SCENE_UPDATE_HISTORY_READ_LIMIT,
+              source,
+              topics: [topic],
+            },
+            { priority: "bulk" },
+          )) {
+            if (control.isCancelled()) return;
+            if (control.standDown()) return;
+            messageCount += 1;
+            const visualization = message.decoded.output.visualization;
+            if (visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE) {
+              continue;
             }
-
-            const truncated = messageCount >= SCENE_UPDATE_HISTORY_READ_LIMIT;
-            commit(topic, {
-              deltas,
-              status: truncated ? "truncated" : "ready",
-              ...(truncated ? { truncated: true } : {}),
+            deltas.push({
+              timeNs: message.timelineTimeNs,
+              update: visualization,
             });
-          } catch {
-            commit(topic, { deltas: [], status: "error" });
           }
-        })();
-      }
-    };
 
-    scheduleRetry(SCENE_UPDATE_HISTORY_START_DELAY_MS);
-
-    return () => {
-      cancelled = true;
-      if (retryTimeout !== null) {
-        clearTimeout(retryTimeout);
-      }
-    };
+          const truncated = messageCount >= SCENE_UPDATE_HISTORY_READ_LIMIT;
+          if (control.isCancelled()) return;
+          commit(topic, {
+            deltas,
+            status: truncated ? "truncated" : "ready",
+            ...(truncated ? { truncated: true } : {}),
+          });
+        } catch {
+          if (control.isCancelled()) return;
+          commit(topic, { deltas: [], status: "error" });
+        }
+      },
+    });
   }, [
     client,
     playbackStore,

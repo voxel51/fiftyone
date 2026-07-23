@@ -1,12 +1,14 @@
 import { useTileId, useTiling } from "@fiftyone/tiling";
-import { useSeekEvent } from "@fiftyone/playback/src/lib/playback/use-playback-state";
 import React, {
   type SetStateAction,
   useCallback,
+  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { usePublishMcapAnnotationTopics } from "../../../extensions/mcap";
 import type {
   CameraCalibrationVisualization,
   GridVisualization,
@@ -17,29 +19,64 @@ import type {
   SceneUpdateVisualization,
 } from "../../../decoders";
 import { imageTextureCacheKey } from "../../../visualization/panels/image-texture-cache";
+import { useKeyedIdentityMap } from "../../../visualization/panels/use-keyed-identity-map";
+import type { ThreeSceneBackground } from "../../../visualization/panels/base-3d-scene";
+import { DEFAULT_POINT_CLOUD_CAMERA_PROJECTION } from "../../../visualization/panels/point-cloud/camera-fit-bounds";
+import { PointCloudPanel } from "../../../visualization/panels/point-cloud/PointCloudPanel";
 import {
   type CameraFrustumPanelLayer,
   type GridPanelLayer,
-  PointCloudPanel,
+  type PointCloudCameraPose,
+  type PointCloudCameraProjection,
   type PointCloudPanelLayer,
   type PointCloudPanelRenderStats,
   type PointCloudPointPick,
   type SceneAnnotationPanelLayer,
-  type ThreeSceneBackground,
-} from "../../../visualization/panels/point-cloud";
+  type SceneRayPanelLayer,
+} from "../../../visualization/panels/point-cloud/types";
+import { Mcap3dCameraRig } from "./Mcap3dCameraRig";
 import Mcap3dTileSettings from "./Mcap3dTileSettings";
+import { Mcap3dViewControls } from "./Mcap3dViewControls";
 import { build3dLayers } from "./mcap-3d-layers";
+import {
+  selectMcap3dSceneSnapshot,
+  type HeldMcap3dSceneSnapshot,
+  type Mcap3dHeldSceneReason,
+} from "./mcap-3d-scene-snapshot";
 import { useMcap3dViewSettings } from "./mcap-3d-view-settings-context";
 import {
   buildMcap3dPlacementNotices,
   buildMcap3dTransformNotices,
+  buildMcapCapabilityNotices,
+  buildMcapReferenceFrameNotices,
   useStabilizedMcapNotices,
   type McapHealthNotice,
 } from "./mcap-health";
-import { getMcap3dViewStateSnapshot } from "./mcap-3d-view-state";
+import {
+  useMcapTopicDiagnostics,
+  useMcapTopicStatuses,
+} from "./mcap-stream-status-state";
+import { useMcap3dViewStateStore } from "./mcap-3d-view-state-context";
+import {
+  type Mcap3dViewpointController,
+  useRegisterMcap3dViewpoint,
+} from "./mcap-3d-viewpoint-context";
+import {
+  useRegisterMcapSceneFrameControls,
+  useMcapSceneFrameControls,
+  type McapSceneFrameControls,
+} from "./mcap-scene-frames-context";
+import { usePublishMcapSceneNotices } from "./mcap-scene-notices-context";
+import { useRegisterMcapTileSettings } from "./mcap-tile-settings-context";
+import {
+  createMcap3dViewpointStore,
+  normalizeMcap3dCameraProjection,
+} from "./mcap-3d-viewpoint";
+import type { Mcap3dCameraNavigationMode } from "./mcap-3d-view-state";
 import { type PrimitiveAtom, useStore } from "jotai";
 import { useMcapDataStream } from "./mcap-data-stream-context";
 import {
+  useMcapFrustumImageHover,
   useMcapHoveredImageTopic,
   useMcapImageTileBindings,
 } from "./mcap-tile-source-bindings";
@@ -61,6 +98,8 @@ import {
   useMcapHoverEcho,
   type McapHoverEcho,
 } from "./mcap-hover-echo";
+import { useMcapDepthHover } from "./mcap-depth-hover";
+import { resolveMcapDepthRay } from "./mcap-depth-ray";
 import { useMcapFrameTransformsContext } from "./mcap-frame-transforms-context";
 import {
   DEFAULT_MCAP_IMAGE_PROJECTION,
@@ -75,7 +114,6 @@ import {
 } from "./mcap-modal-settings";
 import { resolveMcapCameraModel } from "./camera-geometry/mcap-camera-model";
 import { mcapCameraRayModel } from "./camera-geometry/mcap-camera-ray-model";
-import { resolveMcapFrustumImageTopics } from "./camera-geometry/mcap-camera-association";
 import { usePointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 import type { McapTileProps } from "./mcap-tile-types";
 import styles from "./McapTile.module.css";
@@ -97,6 +135,7 @@ import {
 import { useInterpolatedSceneUpdateFrames } from "./use-interpolated-scene-updates";
 import { useMcapPlaybackTimeNs } from "./use-mcap-playback-time-ns";
 import { useMcapTopicPlaybackFrames } from "./use-mcap-topic-stream";
+import { useMcapVideoDecodeRunways } from "./use-mcap-video-decode-runways";
 
 /**
  * Named gradient backdrop profiles for the 3D scene. "Abyss" is dark
@@ -108,6 +147,8 @@ const ABYSS_BACKGROUND: ThreeSceneBackground = {
   kind: "gradient",
   top: "#12362b",
 };
+const EMPTY_SCENE_RAYS: readonly SceneRayPanelLayer[] = [];
+const DEFINITIVE_MISSING_SCENE_GRACE_MS = 2_000;
 const STUDIO_BACKGROUND: ThreeSceneBackground = {
   bottom: "#c8b39a",
   kind: "gradient",
@@ -121,10 +162,29 @@ const STUDIO_BACKGROUND: ThreeSceneBackground = {
  * sidebar offers checkboxes and panel-specific frame controls.
  */
 const Mcap3dTile: React.FC<McapTileProps> = () => {
+  const viewStateStore = useMcap3dViewStateStore();
+  const sourceKey = useMcapDataStream()?.sourceKey ?? "";
+  const jotaiStore = useStore();
   // The previous mount's view state, read once before any write-through can
   // overwrite it. The tile remounts per sample, so this snapshot is exactly
   // the state the user left the previous sample's 3D tile in.
-  const [viewStateRestore] = useState(() => getMcap3dViewStateSnapshot());
+  const [viewStateRestore] = useState(() => viewStateStore.getSnapshot());
+  const [cameraProjection, setCameraProjection] = useState(() =>
+    normalizeMcap3dCameraProjection(
+      viewStateRestore.cameraProjection ??
+        DEFAULT_POINT_CLOUD_CAMERA_PROJECTION,
+    ),
+  );
+  const [cameraNavigationMode, setCameraNavigationMode] =
+    useState<Mcap3dCameraNavigationMode>(viewStateRestore.cameraNavigationMode);
+  const carriedTargetComposition = viewStateRestore.navigationCompositions.find(
+    (composition) => composition.kind === "target-relative",
+  );
+  const carriedCameraTargetFrameId =
+    cameraNavigationMode === "relative" &&
+    carriedTargetComposition?.kind === "target-relative"
+      ? carriedTargetComposition.targetFrameId
+      : null;
   const {
     cameraSources,
     cameraTopics,
@@ -137,6 +197,8 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     pointCloudTopics,
     poseSources,
     poseTopics,
+    primarySourceId,
+    renderableSourceIds,
     restoredSourceShapeMatches,
     sceneAnnotationSources,
     sceneAnnotationTopics,
@@ -146,7 +208,12 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     selectedTopicsKey,
     setSourcesEnabled,
     toggleSource,
-  } = useMcap3dSelection({ restore: viewStateRestore });
+  } = useMcap3dSelection({ restore: viewStateRestore, sourceKey });
+  usePublishMcapAnnotationTopics(sceneAnnotationTopics);
+  const selectedTopicStatuses = useMcapTopicStatuses(selectedTopics);
+  const selectedSourcePending = selectedTopicStatuses.some(
+    (status) => status === "loading",
+  );
   const frameTransforms = useMcapFrameTransformsContext();
   const { fidelityMode } = useMcapPlaybackSettings();
   const { temporalPolicy } = useMcapTemporalPolicySettings();
@@ -156,11 +223,32 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     useMcapPointCloudStyleSettings();
   const { referenceGrid } = useMcapReferenceGridSettings();
   const { sceneBackground } = useMcapSceneBackgroundSettings();
-  const { sceneUpAxis, setSceneUpAxis } = useMcap3dViewSettings();
+  const {
+    defaultTrackingMode,
+    preferredCameraTargetFrameId,
+    preferredWorldFrameId,
+    sceneUpAxis,
+    setDefaultTrackingMode,
+    setPreferredCameraTargetFrameId,
+    setPreferredWorldFrameId,
+  } = useMcap3dViewSettings();
+  const [viewpointStore] = useState(() =>
+    createMcap3dViewpointStore({
+      cameraNavigationMode,
+      pose: null,
+      projection: cameraProjection,
+      sceneUpAxis,
+    }),
+  );
+  const publishViewpointPose = useCallback(
+    (pose: PointCloudCameraPose) => viewpointStore.publish({ pose }),
+    [viewpointStore],
+  );
   const tileId = useTileId();
   const { focusedTileId } = useTiling();
-  const seekEvent = useSeekEvent();
-  const sceneSnapshotRef = useRef<HeldMcap3dSceneSnapshot | null>(null);
+  const sceneSnapshotRef =
+    useRef<HeldMcap3dSceneSnapshot<Mcap3dSceneSnapshot> | null>(null);
+  const [, refreshSceneSnapshot] = useState(0);
   const panelBackground = useMemo<ThreeSceneBackground>(() => {
     switch (sceneBackground.mode) {
       case "abyss":
@@ -182,15 +270,11 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         : null,
     [referenceGrid, sceneUpAxis],
   );
-  const resolvedFrustumImageTopics = useMemo(() => {
-    return resolveMcapFrustumImageTopics({
-      cameraTopics,
-      inventoryImageTopics: frustumImageTopics,
-      settingsByImageTopic: imageProjectionSettings,
-    });
-  }, [cameraTopics, frustumImageTopics, imageProjectionSettings]);
-  const frustumImageFrames = useMcapTopicPlaybackFrames<ImageVisualization>(
-    resolvedFrustumImageTopics,
+  const frustumImageFrames =
+    useMcapTopicPlaybackFrames<ImageVisualization>(frustumImageTopics);
+  const frustumImageDecodeRunways = useMcapVideoDecodeRunways(
+    frustumImageTopics,
+    frustumImageFrames,
   );
   const frames =
     useMcapTopicPlaybackFrames<PointCloudVisualization>(pointCloudTopics);
@@ -209,24 +293,89 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     useMcapTopicPlaybackFrames<GridVisualization>(mapLayerTopics);
   const calibrationFrames =
     useMcapTopicPlaybackFrames<CameraCalibrationVisualization>(cameraTopics);
+  const calibrationDiagnostics = useMcapTopicDiagnostics(cameraTopics);
   const poseFrames = useMcapTopicPlaybackFrames<PoseVisualization>(poseTopics);
   const locationFrames =
     useMcapTopicPlaybackFrames<LocationVisualization>(locationTopics);
   const playbackTimeNs = useMcapPlaybackTimeNs();
+  const registeredSceneFrameControls = useMcapSceneFrameControls();
+  const referenceAuthority =
+    registeredSceneFrameControls &&
+    registeredSceneFrameControls.authorityTileId !== tileId
+      ? registeredSceneFrameControls
+      : null;
   const {
     cameraTargetFrameId,
+    cameraTargetSelectionSource,
     frameIds,
+    localActiveComponentFrameIds,
+    localFrameIds,
+    localOmittedFrameIds,
+    localOmittedSourceIds,
+    localReferenceTransition,
+    localReferenceSelectionSource,
+    localUseRecommendedWorldFrame,
+    localUpdateWorldFrameId,
+    localWorldFrameId,
+    navigationReferenceSettled,
+    omittedFrameIds,
+    omittedSourceIds,
+    referenceTransition,
+    referenceSelectionSource,
     updateCameraTargetFrameId,
-    updateWorldFrameId,
     worldFrameId,
   } = useMcap3dFrameSelection({
     annotationFrames,
+    annotationTopics: sceneAnnotationTopics,
     calibrationFrames,
+    calibrationTopics: cameraTopics,
     frames,
     frameTransforms,
     gridFrames,
+    gridTopics: mapLayerTopics,
+    onPreferredCameraTargetFrameIdChange: setPreferredCameraTargetFrameId,
+    onPreferredWorldFrameIdChange: setPreferredWorldFrameId,
+    carriedCameraTargetFrameId,
+    playbackTimeNs,
+    pointCloudTopics,
+    poseFrames,
+    poseTopics,
+    preferredCameraTargetFrameId,
+    preferredWorldFrameId,
+    primarySourceId,
+    referenceAuthority,
     restore: viewStateRestore,
   });
+  // The reference frame is scene-scoped: publish this tile's controls so
+  // the sidebar's Scene tab can edit them. Selections write through the
+  // modal-wide preference, so concurrent 3D tiles converge on one choice.
+  const sceneFrameControls = useMemo<McapSceneFrameControls>(
+    () => ({
+      activeComponentFrameIds: localActiveComponentFrameIds,
+      authorityTileId: tileId ?? "",
+      frameIds: localFrameIds,
+      omittedFrameIds: localOmittedFrameIds,
+      omittedSourceIds: localOmittedSourceIds,
+      referenceTransition: localReferenceTransition,
+      updateWorldFrameId: localUpdateWorldFrameId,
+      useRecommendedWorldFrame: localUseRecommendedWorldFrame,
+      worldFrameId: localWorldFrameId,
+      worldFrameSelectionSource: localReferenceSelectionSource,
+    }),
+    [
+      localActiveComponentFrameIds,
+      localFrameIds,
+      localOmittedFrameIds,
+      localOmittedSourceIds,
+      localReferenceTransition,
+      localReferenceSelectionSource,
+      localUseRecommendedWorldFrame,
+      localUpdateWorldFrameId,
+      localWorldFrameId,
+      tileId,
+    ],
+  );
+  useRegisterMcapSceneFrameControls(tileId, sceneFrameControls);
 
   const provisionalTopicId = useMemo(
     () => selectProvisionalPointCloudTopic(selectedPointCloudSources, frames),
@@ -299,7 +448,6 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     temporalPolicy.transformGapWarningMs,
     worldFrameId,
   ]);
-  const sourceKey = useMcapDataStream()?.sourceKey ?? "";
   const pointCloudPlacementFrameIds = useMemo(
     () =>
       frames
@@ -322,40 +470,42 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   );
 
   // Attach each cloud's color settings outside build3dLayers so the pure
-  // layer builder stays color-agnostic; layer id = topic.
-  const coloredPointCloudLayers = useMemo(
-    () =>
-      pointCloudLayers.map((layer) => {
-        const source = pointCloudSourceById.get(layer.id) ?? {
-          id: layer.id,
-          label: layer.id,
-        };
-        const settings = {
-          ...defaultMcapPointCloudColorForSource(source, pointCloudSources),
-          ...pointCloudColors[layer.id],
-        };
-        return {
-          ...layer,
-          colorSettings: {
-            colorBy: settings.colorBy,
-            colormap: settings.colormap,
-            ...(settings.rangeMax !== null
-              ? { rangeMax: settings.rangeMax }
-              : {}),
-            ...(settings.rangeMin !== null
-              ? { rangeMin: settings.rangeMin }
-              : {}),
-            uniformColor: settings.uniformColor,
-          },
-        };
-      }),
-    [
-      pointCloudColors,
-      pointCloudLayers,
-      pointCloudSourceById,
+  // layer builder stays color-agnostic; layer id = topic. Keyed identity:
+  // wrappers survive renders their own inputs didn't cause, so memoized
+  // scene layers skip reconciliation for untouched siblings.
+  const coloredPointCloudLayers = useKeyedIdentityMap(pointCloudLayers, {
+    build: (layer) => {
+      const source = pointCloudSourceById.get(layer.id) ?? {
+        id: layer.id,
+        label: layer.id,
+      };
+      const settings = {
+        ...defaultMcapPointCloudColorForSource(source, pointCloudSources),
+        ...pointCloudColors[layer.id],
+      };
+      return {
+        ...layer,
+        colorSettings: {
+          colorBy: settings.colorBy,
+          colormap: settings.colormap,
+          ...(settings.rangeMax !== null
+            ? { rangeMax: settings.rangeMax }
+            : {}),
+          ...(settings.rangeMin !== null
+            ? { rangeMin: settings.rangeMin }
+            : {}),
+          uniformColor: settings.uniformColor,
+        },
+      };
+    },
+    inputs: (layer) => [
+      layer,
+      pointCloudColors[layer.id],
+      pointCloudSourceById.get(layer.id),
       pointCloudSources,
     ],
-  );
+    key: (layer) => layer.id,
+  });
   // Attach each camera's current image to its frustum layer. Done outside
   // build3dLayers so the pure layer builder stays image-agnostic; index
   // alignment with cameraTopics mirrors the playback-frames arrays. The
@@ -363,108 +513,146 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
   // (recording, image topic, frame), so both surfaces share one decoded
   // texture through the image-texture cache.
   const openImageTile = useOpenMcapImageTile();
+  const frustumImageHover = useMcapFrustumImageHover();
   const hoveredImageTopic = useMcapHoveredImageTopic();
   const imageTileBindings = useMcapImageTileBindings();
+  const {
+    containerProps: hoverTooltipContainerProps,
+    onHoverCamera,
+    onHoverEntity,
+    onHoverPoint,
+    tooltip: hoverTooltip,
+  } = useMcap3dHoverTooltip();
   // The stream shown by the focused (active) tile, if it's an image tile.
   const focusedImageTopic = focusedTileId
     ? (imageTileBindings[focusedTileId] ?? null)
     : null;
   const pinholeImagePlaneDepthM = pinholeCamera.imagePlaneDepthM;
   const pinholeOpacity = pinholeCamera.opacityPercent / 100;
+  const frustumLayerCandidates = useKeyedIdentityMap(cameraFrustumLayers, {
+    build: (layer) => {
+      const index = cameraTopics.indexOf(layer.id);
+      const imageFrame = index >= 0 ? frustumImageFrames[index] : null;
+      const imageDecodeRunway =
+        index >= 0 ? frustumImageDecodeRunways[index] : undefined;
+      const imageTopic = index >= 0 ? (frustumImageTopics[index] ?? "") : "";
+      const geometry = imageTopic
+        ? (imageProjectionSettings[imageTopic] ?? DEFAULT_MCAP_IMAGE_PROJECTION)
+            .geometry
+        : "original";
+      const cameraModelResolution = resolveMcapCameraModel({
+        calibration: layer.frame,
+        geometry,
+        imageTopic,
+      });
+      const rayCameraModelResolution =
+        cameraModelResolution.status === "ready"
+          ? cameraModelResolution
+          : resolveMcapCameraModel({
+              calibration: layer.frame,
+              geometry: "original",
+              imageTopic,
+            });
+      const cameraRayModel =
+        rayCameraModelResolution.status === "ready"
+          ? mcapCameraRayModel(rayCameraModelResolution.model)
+          : undefined;
+      // Cmd-clicking a frustum opens its image tile; hovering or focusing
+      // the tile highlights the frustum.
+      const linked = imageTopic
+        ? {
+            highlighted: hoveredImageTopic === imageTopic,
+            selected: focusedImageTopic === imageTopic,
+            imageTopic,
+            onHover: (hovered: boolean) => {
+              if (hovered) {
+                frustumImageHover.setHovered(imageTopic);
+                onHoverCamera({
+                  calibrationTopic: layer.id,
+                  distortionModel: layer.frame.distortionModel,
+                  frameId: layer.frame.coordinateFrameId,
+                  imageTopic,
+                  kind: "camera",
+                  resolution: [layer.frame.width, layer.frame.height],
+                });
+                return;
+              }
+              if (frustumImageHover.clearIfCurrent(imageTopic)) {
+                onHoverCamera(null);
+              }
+            },
+            onSelect: ({ metaKey }: { readonly metaKey: boolean }) => {
+              if (metaKey) {
+                openImageTile(imageTopic);
+              }
+            },
+          }
+        : {};
+      let imageProps: Partial<CameraFrustumPanelLayer> = {};
+      if (imageFrame) {
+        imageProps =
+          cameraModelResolution.status === "ready"
+            ? {
+                image: imageFrame.frame,
+                imageContentTimeNs: imageFrame.contentTimeNs,
+                ...(imageDecodeRunway?.length ? { imageDecodeRunway } : {}),
+                imageTextureKey:
+                  sourceKey && imageTopic
+                    ? imageTextureCacheKey(
+                        sourceKey,
+                        imageTopic,
+                        imageFrame.contentTimeNs,
+                      )
+                    : undefined,
+              }
+            : { imageUnavailableReason: cameraModelResolution.message };
+      }
+      return {
+        ...layer,
+        ...linked,
+        ...imageProps,
+        cameraRayModel,
+        imagePlaneDepthM: pinholeImagePlaneDepthM,
+        opacity: pinholeOpacity,
+        requireCameraRayModel: true,
+      };
+    },
+    // Hover/focus enter as per-layer booleans, not the global topic values:
+    // moving the hover from one camera to another rebuilds exactly those two
+    // frustums.
+    inputs: (layer) => {
+      const index = cameraTopics.indexOf(layer.id);
+      const imageTopic = index >= 0 ? (frustumImageTopics[index] ?? "") : "";
+      return [
+        layer,
+        index >= 0 ? frustumImageFrames[index] : null,
+        index >= 0 ? frustumImageDecodeRunways[index] : null,
+        imageTopic,
+        imageTopic ? imageProjectionSettings[imageTopic] : null,
+        imageTopic !== "" && hoveredImageTopic === imageTopic,
+        imageTopic !== "" && focusedImageTopic === imageTopic,
+        frustumImageHover,
+        openImageTile,
+        onHoverCamera,
+        pinholeImagePlaneDepthM,
+        pinholeOpacity,
+        sourceKey,
+      ];
+    },
+    key: (layer) => layer.id,
+  });
   const frustumLayers = useMemo(
     () =>
-      cameraFrustumLayers.map((layer) => {
-        const index = cameraTopics.indexOf(layer.id);
-        const imageFrame = index >= 0 ? frustumImageFrames[index] : null;
-        const imageTopic =
-          index >= 0 ? (resolvedFrustumImageTopics[index] ?? "") : "";
-        const geometry = imageTopic
-          ? (
-              imageProjectionSettings[imageTopic] ??
-              DEFAULT_MCAP_IMAGE_PROJECTION
-            ).geometry
-          : "original";
-        const cameraModelResolution = resolveMcapCameraModel({
-          calibration: layer.frame,
-          geometry,
-          imageTopic,
-        });
-        const rayCameraModelResolution =
-          cameraModelResolution.status === "ready"
-            ? cameraModelResolution
-            : resolveMcapCameraModel({
-                calibration: layer.frame,
-                geometry: "original",
-                imageTopic,
-              });
-        const cameraRayModel =
-          rayCameraModelResolution.status === "ready"
-            ? mcapCameraRayModel(rayCameraModelResolution.model)
-            : undefined;
-        const imageGeometryReady = cameraModelResolution.status === "ready";
-        // Cmd-clicking a frustum opens its image tile; hovering or focusing
-        // the tile highlights the frustum.
-        const linked = imageTopic
-          ? {
-              highlighted: hoveredImageTopic === imageTopic,
-              selected: focusedImageTopic === imageTopic,
-              imageTopic,
-              onSelect: ({ metaKey }: { readonly metaKey: boolean }) => {
-                if (metaKey) {
-                  openImageTile(imageTopic);
-                }
-              },
-            }
-          : {};
-        if (!imageFrame || !imageGeometryReady) {
-          return {
-            ...layer,
-            ...linked,
-            cameraRayModel,
-            imagePlaneDepthM: pinholeImagePlaneDepthM,
-            opacity: pinholeOpacity,
-            requireCameraRayModel: true,
-          };
-        }
-        return {
-          ...layer,
-          ...linked,
-          cameraRayModel,
-          image: imageFrame.frame,
-          imageContentTimeNs: imageFrame.contentTimeNs,
-          imagePlaneDepthM: pinholeImagePlaneDepthM,
-          imageTextureKey:
-            sourceKey && imageTopic
-              ? imageTextureCacheKey(
-                  sourceKey,
-                  imageTopic,
-                  imageFrame.contentTimeNs,
-                )
-              : undefined,
-          opacity: pinholeOpacity,
-          requireCameraRayModel: true,
-        };
-      }),
-    [
-      cameraFrustumLayers,
-      cameraTopics,
-      frustumImageFrames,
-      focusedImageTopic,
-      hoveredImageTopic,
-      imageProjectionSettings,
-      openImageTile,
-      pinholeImagePlaneDepthM,
-      pinholeOpacity,
-      resolvedFrustumImageTopics,
-      sourceKey,
-    ],
+      frustumLayerCandidates.filter(
+        (layer): layer is NonNullable<typeof layer> => layer !== null,
+      ),
+    [frustumLayerCandidates],
   );
   // Wire the scene annotations into the cross-tile selection: each layer
   // (one entity each) learns whether it's the selected object (or a
   // label-match echo of one) and how to toggle itself selected. Kept out
   // of build3dLayers so the pure layer builder stays selection-agnostic.
   const selectedObject = useMcapSelectedObject();
-  const jotaiStore = useStore();
   type SelectedObjectState = ReturnType<typeof useMcapSelectedObject>;
   const setSelectedObject = useCallback(
     (update: SetStateAction<SelectedObjectState>) => {
@@ -475,65 +663,75 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     },
     [jotaiStore],
   );
-  const {
-    containerProps: hoverTooltipContainerProps,
-    onHoverEntity,
-    onHoverPoint,
-    tooltip: hoverTooltip,
-  } = useMcap3dHoverTooltip();
-  const annotationLayers = useMemo(
-    () =>
-      sceneAnnotationLayers.map((layer) => {
-        const entity = layer.frame.entities[0];
-        if (!entity) return layer;
-        const topic = layer.sourceId ?? "";
-        const entityId = entity.id || layer.id;
-        const label = mcapEntityLabel(entity);
-        const isSelected = isMcapSceneEntitySelected(
-          selectedObject,
-          topic,
-          entityId,
-        );
-        return {
-          ...layer,
-          highlighted: isSelected || isMcapLabelEcho(selectedObject, label),
-          onHoverEntity: (hoveredId: string | null) =>
-            onHoverEntity(
-              hoveredId ? { entityId, kind: "entity", label, topic } : null,
-            ),
-          onSelectEntity: (
-            _entityId: string,
-            modifiers: { readonly shiftKey: boolean },
-          ) => {
-            // Plain click = this instance only; shift-click widens to
-            // every object sharing the label. Re-clicking with the same
-            // scope toggles off; changing the modifier switches scope.
-            const scope = modifiers.shiftKey ? "label" : "instance";
-            setSelectedObject((current) =>
-              isMcapSceneEntitySelected(current, topic, entityId) &&
-              current?.scope === scope
-                ? null
-                : {
-                    entityId,
-                    frameId: entity.frameId,
-                    kind: "scene-annotation",
-                    label,
-                    metadata: entity.metadata,
-                    scope,
-                    topic,
-                  },
-            );
-          },
-        };
-      }),
-    [onHoverEntity, sceneAnnotationLayers, selectedObject, setSelectedObject],
-  );
+  const annotationLayers = useKeyedIdentityMap(sceneAnnotationLayers, {
+    build: (layer) => {
+      const entity = layer.frame.entities[0];
+      if (!entity) return layer;
+      const topic = layer.sourceId ?? "";
+      const entityId = entity.id || layer.id;
+      const label = mcapEntityLabel(entity);
+      const isSelected = isMcapSceneEntitySelected(
+        selectedObject,
+        topic,
+        entityId,
+      );
+      return {
+        ...layer,
+        highlighted: isSelected || isMcapLabelEcho(selectedObject, label),
+        onHoverEntity: (hoveredId: string | null) =>
+          onHoverEntity(
+            hoveredId ? { entityId, kind: "entity", label, topic } : null,
+          ),
+        onSelectEntity: (
+          _entityId: string,
+          modifiers: { readonly shiftKey: boolean },
+        ) => {
+          // Plain click = this instance only; shift-click widens to
+          // every object sharing the label. Re-clicking with the same
+          // scope toggles off; changing the modifier switches scope.
+          const scope = modifiers.shiftKey ? "label" : "instance";
+          setSelectedObject((current) =>
+            isMcapSceneEntitySelected(current, topic, entityId) &&
+            current?.scope === scope
+              ? null
+              : {
+                  entityId,
+                  frameId: entity.frameId,
+                  kind: "scene-annotation",
+                  label,
+                  metadata: entity.metadata,
+                  scope,
+                  topic,
+                },
+          );
+        },
+      };
+    },
+    // Selection enters as this entity's derived booleans, so a selection
+    // change rebuilds the entity gaining and the entity losing emphasis —
+    // not every annotation in the scene.
+    inputs: (layer) => {
+      const entity = layer.frame.entities[0];
+      if (!entity) return [layer];
+      const topic = layer.sourceId ?? "";
+      const entityId = entity.id || layer.id;
+      return [
+        layer,
+        isMcapSceneEntitySelected(selectedObject, topic, entityId),
+        isMcapLabelEcho(selectedObject, mcapEntityLabel(entity)),
+        onHoverEntity,
+        setSelectedObject,
+      ];
+    },
+    key: (layer) => layer.id,
+  });
   // Share point hovers between the 3D scene and image projections.
   const hoverEcho = useMcapHoverEcho();
   const publishedPointHoverRefs = useRef(new Map<string, McapHoverEcho>());
-  const hoverablePointCloudLayers = useMemo(
-    () =>
-      coloredPointCloudLayers.map((layer) => {
+  const hoverablePointCloudLayers = useKeyedIdentityMap(
+    coloredPointCloudLayers,
+    {
+      build: (layer) => {
         const topic = layer.id;
         const frame = layer.frame;
         return {
@@ -572,8 +770,19 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             }
           },
         };
-      }),
-    [coloredPointCloudLayers, hoverEcho, jotaiStore, onHoverPoint],
+      },
+      // The hover echo enters as this topic's slice (null for everyone
+      // else), so pointer movement over one cloud never rebuilds the others.
+      inputs: (layer) => [
+        layer,
+        hoverEcho?.kind === "point" && hoverEcho.topic === layer.id
+          ? hoverEcho
+          : null,
+        jotaiStore,
+        onHoverPoint,
+      ],
+      key: (layer) => layer.id,
+    },
   );
   // Schema-driven telemetry: speed from the first enabled pose stream whose
   // latest sample carries velocity, coordinates from the first LocationFix
@@ -651,22 +860,82 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     getDisplayedCameraPose,
     handleCameraPoseChange,
     noteRenderedCameraPose,
-    panelCameraPose,
+    poseCommand,
+    rig,
     setTrackingMode,
     trackingMode,
   } = useMcap3dCameraTracking({
     cameraTargetFrameId,
+    cameraTargetSelectionSource,
+    defaultTrackingMode,
     frameTransforms,
     placementStatus,
     playbackTimeNs,
     provisionalFrameIds,
     provisionalPlaybackFrame,
+    cameraNavigationMode,
+    onCameraPoseSample: publishViewpointPose,
+    renderableSourceIds,
     restore: viewStateRestore,
     sceneUpAxis,
     selectedTopicsKey,
+    onDefaultTrackingModeChange: setDefaultTrackingMode,
+    navigationReferenceSettled,
+    sourceKey,
+    suspendAutoFollowAtReference:
+      cameraTargetSelectionSource === "auto" &&
+      cameraTargetFrameId === worldFrameId,
+    worldFrameTransition: referenceTransition,
     worldFrameId,
   });
-  useMcap3dViewShortcuts({
+  const updateCameraProjection = useCallback(
+    (projection: PointCloudCameraProjection) => {
+      const normalized = normalizeMcap3dCameraProjection(projection);
+      setCameraProjection(normalized);
+      viewpointStore.publish({ projection: normalized });
+      viewStateStore.recordCameraProjection(normalized);
+    },
+    [viewStateStore, viewpointStore],
+  );
+  const viewpointActionsRef = useRef<{
+    setCameraNavigationMode: (mode: Mcap3dCameraNavigationMode) => void;
+    setPose: (pose: PointCloudCameraPose) => void;
+    setProjection: (projection: PointCloudCameraProjection) => void;
+  }>({
+    setCameraNavigationMode: () => undefined,
+    setPose: () => undefined,
+    setProjection: () => undefined,
+  });
+  viewpointActionsRef.current = {
+    setCameraNavigationMode: (mode) => {
+      setCameraNavigationMode(mode);
+      viewpointStore.publish({ cameraNavigationMode: mode });
+      viewStateStore.recordCameraNavigationMode(mode);
+    },
+    setPose: (pose) => {
+      viewpointStore.publish({ pose });
+      handleCameraPoseChange(pose, "focus");
+    },
+    setProjection: updateCameraProjection,
+  };
+  const [viewpointController] = useState<Mcap3dViewpointController>(() => ({
+    ...viewpointStore,
+    setCameraNavigationMode: (mode) =>
+      viewpointActionsRef.current.setCameraNavigationMode(mode),
+    setPose: (pose) => viewpointActionsRef.current.setPose(pose),
+    setProjection: (projection) =>
+      viewpointActionsRef.current.setProjection(projection),
+  }));
+  useRegisterMcap3dViewpoint(tileId, viewpointController);
+  // This effect publishes infrequent camera settings to the sidebar store.
+  useEffect(() => {
+    viewpointStore.publish({
+      cameraNavigationMode,
+      projection: cameraProjection,
+      sceneUpAxis,
+    });
+  }, [cameraNavigationMode, cameraProjection, sceneUpAxis, viewpointStore]);
+  const { applyEgoView, applyTopView } = useMcap3dViewShortcuts({
     cameraTargetFrameId,
     frameIds,
     frameTransforms,
@@ -681,14 +950,34 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
     () => [
       ...placementNotices,
       ...transformNotices,
+      ...buildMcapCapabilityNotices(cameraTopics, calibrationDiagnostics),
+      ...buildMcapReferenceFrameNotices({
+        omittedFrameIds,
+        omittedSourceIds,
+        referenceFrameId: worldFrameId,
+        source: referenceSelectionSource,
+      }),
       ...(cameraTrackingNotice ? [cameraTrackingNotice] : []),
     ],
-    [cameraTrackingNotice, placementNotices, transformNotices],
+    [
+      calibrationDiagnostics,
+      cameraTopics,
+      cameraTrackingNotice,
+      omittedFrameIds,
+      omittedSourceIds,
+      placementNotices,
+      referenceSelectionSource,
+      transformNotices,
+      worldFrameId,
+    ],
   );
   // Scene-scoped notices are stabilized before reaching the panel:
   // per-tick condition flips around transform boundaries must not blink
   // the chip, and the returned identity is stable while content holds.
   const panelNotices = useStabilizedMcapNotices(producedNotices);
+  // The same stabilized set feeds the sidebar's Scene status strip, so
+  // scene health reads identically in the canvas chip and the sidebar.
+  usePublishMcapSceneNotices(tileId, panelNotices);
   const sceneSnapshotKey = useMemo(
     () =>
       JSON.stringify([
@@ -696,9 +985,8 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         selectedTopicsKey,
         worldFrameId,
         fidelityMode,
-        seekEvent?.seq ?? 0,
       ]),
-    [fidelityMode, seekEvent?.seq, selectedTopicsKey, sourceKey, worldFrameId],
+    [fidelityMode, selectedTopicsKey, sourceKey, worldFrameId],
   );
   const currentSceneSnapshot = useMemo<Mcap3dSceneSnapshot>(
     () => ({
@@ -718,70 +1006,179 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
       placementStatus,
     ],
   );
+  const hasSceneSourceData =
+    frames.some(Boolean) ||
+    annotationFrames.some(Boolean) ||
+    gridFrames.some(Boolean) ||
+    calibrationFrames.some(Boolean);
+  const currentSceneRetainable =
+    currentSceneSnapshot.pointCloudLayers.length > 0 ||
+    currentSceneSnapshot.annotationLayers.length > 0 ||
+    currentSceneSnapshot.gridLayers.length > 0 ||
+    currentSceneSnapshot.frustumLayers.length > 0;
   const sceneSnapshotSelection = selectMcap3dSceneSnapshot({
     current: currentSceneSnapshot,
+    currentRetainable: currentSceneRetainable,
+    definitiveMissingGraceMs: DEFINITIVE_MISSING_SCENE_GRACE_MS,
+    empty: emptyMcap3dSceneSnapshot(currentSceneSnapshot.placementStatus),
+    hasSourceData: hasSceneSourceData,
     held: sceneSnapshotRef.current,
     key: sceneSnapshotKey,
-    shouldCommit:
-      placementReadiness.status === "ready" ||
-      placementReadiness.status === "definitiveMissing",
+    nowMs: Date.now(),
+    readiness: selectedSourcePending
+      ? "pending"
+      : placementReadiness.status === "ready" ||
+          placementReadiness.status === "definitiveMissing"
+        ? placementReadiness.status
+        : "pending",
   });
-  sceneSnapshotRef.current = sceneSnapshotSelection.nextHeld;
+  // This layout effect commits held-scene state only after React commits the
+  // scene selected by the same render.
+  useLayoutEffect(() => {
+    sceneSnapshotRef.current = sceneSnapshotSelection.nextHeld;
+  }, [sceneSnapshotSelection.nextHeld]);
   const displayedScene = sceneSnapshotSelection.snapshot;
+  // This effect expires a transform-only scene hold even when no new stream
+  // event arrives to trigger another render.
+  useEffect(() => {
+    if (sceneSnapshotSelection.graceRemainingMs === null) return undefined;
+    const timer = setTimeout(
+      () => refreshSceneSnapshot((version) => version + 1),
+      sceneSnapshotSelection.graceRemainingMs,
+    );
+    return () => clearTimeout(timer);
+  }, [sceneSnapshotSelection.graceRemainingMs]);
+  const depthHover = useMcapDepthHover();
+  const depthRayResolution = useMemo(
+    () =>
+      depthHover
+        ? resolveMcapDepthRay({
+            frustumLayers: displayedScene.frustumLayers,
+            hover: depthHover,
+            resolveFrameTransform: frameTransforms.resolve,
+            timeNs: playbackTimeNs,
+            worldFrameId,
+          })
+        : null,
+    [
+      depthHover,
+      displayedScene.frustumLayers,
+      frameTransforms.resolve,
+      playbackTimeNs,
+      worldFrameId,
+    ],
+  );
+  const depthRayLayers =
+    depthRayResolution?.status === "ready"
+      ? [depthRayResolution.layer]
+      : EMPTY_SCENE_RAYS;
+  const prefetchFramePlacement = frameTransforms.prefetchPlacement;
+
+  // This effect requests the transform window needed by a hovered camera ray.
+  useEffect(() => {
+    if (
+      depthRayResolution?.status === "pending" &&
+      playbackTimeNs !== undefined
+    ) {
+      prefetchFramePlacement(playbackTimeNs);
+    }
+  }, [depthRayResolution?.status, prefetchFramePlacement, playbackTimeNs]);
 
   const handlePanelRenderStats = useCallback(
     (stats: PointCloudPanelRenderStats) => {
       if (stats.cameraPose) {
-        noteRenderedCameraPose(stats.cameraPose);
+        viewpointStore.publish({ pose: stats.cameraPose });
+        noteRenderedCameraPose(stats.cameraPose, stats.sceneBounds);
       }
     },
-    [noteRenderedCameraPose],
+    [noteRenderedCameraPose, viewpointStore],
   );
+
+  // The settings tree is registered into the sidebar rather than rendered
+  // here; the registration is memoized over grouped, stabilized props so
+  // playback ticks and pose-command updates never re-register (or
+  // reconcile) it. `streamTopics` lets the sidebar frame render this
+  // tile's stream-status strip.
+  const settingsRegistration = useMemo(
+    () => ({
+      content: (
+        <Mcap3dTileSettings
+          cameraInputs={{
+            diagnosticsByTopic: calibrationDiagnostics,
+            imageTopics: frustumImageTopics,
+          }}
+          frameControls={{
+            cameraTargetFrameId,
+            frameIds,
+            updateCameraTargetFrameId,
+            worldFrameId,
+          }}
+          pointCloudInputs={{
+            colorCapabilities: pointCloudColorCapabilities,
+            selectedSources: selectedPointCloudSources,
+          }}
+          poseControls={{
+            selectedSources: selectedPoseSources,
+            setTrajectoryFrameOverrides,
+            trajectories,
+            trajectoryFrameByTopic,
+          }}
+          selection={{ enabled, setSourcesEnabled, toggleSource }}
+          sourceGroups={{
+            camera: { sources: cameraSources, topics: cameraTopics },
+            mapLayer: { sources: mapLayerSources, topics: mapLayerTopics },
+            pointCloud: {
+              sources: pointCloudSources,
+              topics: pointCloudTopics,
+            },
+            pose: { sources: poseSources, topics: poseTopics },
+            sceneAnnotation: {
+              sources: sceneAnnotationSources,
+              topics: sceneAnnotationTopics,
+            },
+          }}
+          tileId={tileId ?? null}
+          trackingControls={{ mode: trackingMode, setMode: setTrackingMode }}
+        />
+      ),
+      streamTopics: selectedTopics,
+    }),
+    [
+      cameraSources,
+      cameraTargetFrameId,
+      cameraTopics,
+      calibrationDiagnostics,
+      frustumImageTopics,
+      enabled,
+      frameIds,
+      mapLayerSources,
+      mapLayerTopics,
+      pointCloudColorCapabilities,
+      pointCloudSources,
+      pointCloudTopics,
+      poseSources,
+      poseTopics,
+      sceneAnnotationSources,
+      sceneAnnotationTopics,
+      selectedPointCloudSources,
+      selectedPoseSources,
+      selectedTopics,
+      setSourcesEnabled,
+      setTrackingMode,
+      setTrajectoryFrameOverrides,
+      tileId,
+      toggleSource,
+      trackingMode,
+      trajectories,
+      trajectoryFrameByTopic,
+      updateCameraTargetFrameId,
+      worldFrameId,
+    ],
+  );
+  useRegisterMcapTileSettings(tileId, settingsRegistration);
 
   return (
     <>
-      <Mcap3dTileSettings
-        frameControls={{
-          cameraTargetFrameId,
-          frameIds,
-          updateCameraTargetFrameId,
-          updateWorldFrameId,
-          worldFrameId,
-        }}
-        pointCloudInputs={{
-          colorCapabilities: pointCloudColorCapabilities,
-          selectedSources: selectedPointCloudSources,
-        }}
-        poseControls={{
-          selectedSources: selectedPoseSources,
-          setTrajectoryFrameOverrides,
-          trajectories,
-          trajectoryFrameByTopic,
-        }}
-        sceneControls={{
-          sceneUpAxis,
-          setSceneUpAxis,
-        }}
-        selection={{
-          enabled,
-          setSourcesEnabled,
-          toggleSource,
-        }}
-        sourceGroups={{
-          camera: { sources: cameraSources, topics: cameraTopics },
-          mapLayer: { sources: mapLayerSources, topics: mapLayerTopics },
-          pointCloud: { sources: pointCloudSources, topics: pointCloudTopics },
-          pose: { sources: poseSources, topics: poseTopics },
-          sceneAnnotation: {
-            sources: sceneAnnotationSources,
-            topics: sceneAnnotationTopics,
-          },
-        }}
-        trackingControls={{
-          mode: trackingMode,
-          setMode: setTrackingMode,
-        }}
-      />
       {selectedTopics.length === 0 ? (
         <div className={styles.loading}>
           <span className={styles.emptyText}>No sources selected</span>
@@ -794,13 +1191,22 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
         displayedScene.annotationLayers.length > 0 ||
         displayedScene.gridLayers.length > 0 ||
         displayedScene.frustumLayers.length > 0 ||
+        depthRayLayers.length > 0 ||
         producedNotices.length > 0 ? (
         <div className={styles.panelStack} {...hoverTooltipContainerProps}>
           <PointCloudPanel
             annotationLayers={displayedScene.annotationLayers}
             background={panelBackground}
-            cameraPose={panelCameraPose}
+            cameraPose={poseCommand}
+            cameraProjection={cameraProjection}
+            cameraRig={<Mcap3dCameraRig {...rig} />}
             canvasSurface="modal-3d"
+            controls={
+              <Mcap3dViewControls
+                onEgoView={applyEgoView}
+                onTopView={applyTopView}
+              />
+            }
             fitResetKey={`${worldFrameId}:${sceneUpAxis}`}
             frustumLayers={displayedScene.frustumLayers}
             hudLines={hudLines}
@@ -811,11 +1217,18 @@ const Mcap3dTile: React.FC<McapTileProps> = () => {
             onCameraPoseChange={handleCameraPoseChange}
             onRenderStats={handlePanelRenderStats}
             pointSize={pointCloudPointSize}
+            rayLayers={depthRayLayers}
             sceneUp={sceneUpAxis}
             showColorLegend={showPointCloudColorLegend}
             worldGrid={worldGrid}
           />
-          <McapTileStatusBadge topics={selectedTopics} />
+          {sceneSnapshotSelection.heldReason ? (
+            <McapHeldSceneStatusBadge
+              reason={sceneSnapshotSelection.heldReason}
+            />
+          ) : (
+            <McapTileStatusBadge topics={selectedTopics} />
+          )}
           {hoverTooltip ? <Mcap3dHoverTooltip tooltip={hoverTooltip} /> : null}
         </div>
       ) : (
@@ -838,43 +1251,6 @@ interface Mcap3dSceneSnapshot {
   readonly pointCloudLayers: readonly PointCloudPanelLayer[];
 }
 
-interface HeldMcap3dSceneSnapshot {
-  readonly key: string;
-  readonly snapshot: Mcap3dSceneSnapshot;
-}
-
-function selectMcap3dSceneSnapshot({
-  current,
-  held,
-  key,
-  shouldCommit,
-}: {
-  readonly current: Mcap3dSceneSnapshot;
-  readonly held: HeldMcap3dSceneSnapshot | null;
-  readonly key: string;
-  readonly shouldCommit: boolean;
-}): {
-  readonly nextHeld: HeldMcap3dSceneSnapshot | null;
-  readonly snapshot: Mcap3dSceneSnapshot;
-} {
-  if (shouldCommit) {
-    return {
-      nextHeld: { key, snapshot: current },
-      snapshot: current,
-    };
-  }
-  if (held?.key === key) {
-    return {
-      nextHeld: held,
-      snapshot: held.snapshot,
-    };
-  }
-  return {
-    nextHeld: null,
-    snapshot: emptyMcap3dSceneSnapshot(current.placementStatus),
-  };
-}
-
 function emptyMcap3dSceneSnapshot(
   placementStatus: Mcap3dPlacementStatus,
 ): Mcap3dSceneSnapshot {
@@ -887,5 +1263,19 @@ function emptyMcap3dSceneSnapshot(
     pointCloudLayers: [],
   };
 }
+
+const McapHeldSceneStatusBadge: React.FC<{
+  readonly reason: Mcap3dHeldSceneReason;
+}> = ({ reason }) => (
+  <span
+    className={styles.statusBadge}
+    data-status="loading"
+    data-testid="mcap-3d-held-scene-status"
+    role="status"
+  >
+    {reason === "pending" ? "Loading target" : "Waiting for transforms"}
+    {" · showing previous scene"}
+  </span>
+);
 
 export default Mcap3dTile;

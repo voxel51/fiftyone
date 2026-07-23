@@ -1,6 +1,6 @@
 import type { LocationVisualization } from "../../../decoders";
 import { voxel51PrimaryColor } from "./mcap-map-puck";
-import { bearingDegrees } from "./wgs84";
+import { bearingDegrees, haversineDistanceMeters } from "./wgs84";
 
 // Brand orange leads so the (near-universal) single-GPS case reads as
 // "the ego"; the rest are visually distant from it and from each other.
@@ -20,6 +20,7 @@ export function locationTrackColor(index: number): string {
 export const MAX_LOCATION_TRACK_RENDER_POINTS = 10_000;
 
 const NO_FIX_STATUS = -1;
+const MAX_FORWARD_CURSOR_STEPS = 64;
 
 export interface McapLocationTrackPoint {
   /** 95% (2σ) horizontal accuracy in meters, when the fix carried one. */
@@ -34,6 +35,42 @@ export interface McapLocationTrackPoint {
 
 export interface McapLocationTrackSegment {
   readonly points: readonly McapLocationTrackPoint[];
+}
+
+/** Immutable search and rendering data for one valid-fix segment. */
+export interface IndexedLocationTrackSegment {
+  readonly coordinates: readonly (readonly [number, number])[];
+  readonly cumulativeDistanceM: readonly number[];
+  readonly endTimeNs: bigint;
+  readonly points: readonly McapLocationTrackPoint[];
+  readonly startTimeNs: bigint;
+  readonly timesNs: readonly bigint[];
+  readonly totalDistanceM: number;
+}
+
+/** Search index over the valid-fix segments of one location track. */
+export interface IndexedLocationTrack {
+  readonly firstPoint: McapLocationTrackPoint | null;
+  readonly lastPoint: McapLocationTrackPoint | null;
+  readonly segments: readonly IndexedLocationTrackSegment[];
+}
+
+/** Mutable cursor reused during forward playback. */
+export interface LocationTrackCursor {
+  pointIndex: number;
+  segmentIndex: number;
+  timeNs: bigint | null;
+}
+
+/** Position and route-partition state resolved for one playhead time. */
+export interface ResolvedLocationTrackPosition {
+  /** Segment boundary separating fully-past from fully-future segments. */
+  readonly boundarySegmentIndex: number;
+  readonly lineProgress: number | null;
+  readonly location: InterpolatedLocation | null;
+  readonly pointIndex: number | null;
+  readonly segmentIndex: number | null;
+  readonly state: "empty" | "before" | "active" | "gap" | "after";
 }
 
 export interface McapLocationTrackState {
@@ -175,6 +212,153 @@ export function countLocationTrackPoints(
   return segments.reduce((count, segment) => count + segment.points.length, 0);
 }
 
+/** Builds the immutable time, coordinate, and distance index for a track. */
+export function indexLocationTrack(
+  segments: readonly McapLocationTrackSegment[],
+): IndexedLocationTrack {
+  const indexedSegments: IndexedLocationTrackSegment[] = [];
+  for (const segment of segments) {
+    if (segment.points.length === 0) continue;
+    const cumulativeDistanceM = [0];
+    const coordinates: [number, number][] = [];
+    const timesNs: bigint[] = [];
+    for (let index = 0; index < segment.points.length; index += 1) {
+      const point = segment.points[index];
+      coordinates.push([point.longitude, point.latitude]);
+      timesNs.push(point.timeNs);
+      if (index > 0) {
+        cumulativeDistanceM.push(
+          cumulativeDistanceM[index - 1] +
+            haversineDistanceMeters(segment.points[index - 1], point),
+        );
+      }
+    }
+    indexedSegments.push({
+      coordinates,
+      cumulativeDistanceM,
+      endTimeNs: timesNs[timesNs.length - 1],
+      points: segment.points,
+      startTimeNs: timesNs[0],
+      timesNs,
+      totalDistanceM: cumulativeDistanceM[cumulativeDistanceM.length - 1],
+    });
+  }
+  return {
+    firstPoint: indexedSegments[0]?.points[0] ?? null,
+    lastPoint:
+      indexedSegments[indexedSegments.length - 1]?.points.at(-1) ?? null,
+    segments: indexedSegments,
+  };
+}
+
+/** Creates a cursor for repeated indexed location lookups. */
+export function createLocationTrackCursor(): LocationTrackCursor {
+  return { pointIndex: 0, segmentIndex: 0, timeNs: null };
+}
+
+/**
+ * Resolves one indexed track position. Forward playback advances the optional
+ * cursor; seeks and backwards movement fall back to binary search.
+ */
+export function resolveIndexedLocationAtTime(
+  track: IndexedLocationTrack,
+  timeNs: bigint,
+  cursor?: LocationTrackCursor,
+): ResolvedLocationTrackPosition {
+  const { firstPoint, lastPoint, segments } = track;
+  if (!firstPoint || !lastPoint || segments.length === 0) {
+    updateCursor(cursor, 0, 0, timeNs);
+    return emptyResolvedPosition();
+  }
+  if (timeNs < firstPoint.timeNs) {
+    updateCursor(cursor, 0, 0, timeNs);
+    return {
+      boundarySegmentIndex: 0,
+      lineProgress: null,
+      location: locationFromPoint(firstPoint),
+      pointIndex: null,
+      segmentIndex: null,
+      state: "before",
+    };
+  }
+  if (timeNs > lastPoint.timeNs) {
+    const segmentIndex = segments.length - 1;
+    const pointIndex = segments[segmentIndex].points.length - 1;
+    updateCursor(cursor, segmentIndex, pointIndex, timeNs);
+    return {
+      boundarySegmentIndex: segments.length,
+      lineProgress: null,
+      location: locationFromPoint(lastPoint),
+      pointIndex: null,
+      segmentIndex: null,
+      state: "after",
+    };
+  }
+
+  const segmentIndex = resolveSegmentIndex(segments, timeNs, cursor);
+  if (segmentIndex < 0) {
+    const boundarySegmentIndex = findFirstSegmentStartingAfter(
+      segments,
+      timeNs,
+    );
+    updateCursor(cursor, boundarySegmentIndex, 0, timeNs);
+    return {
+      boundarySegmentIndex,
+      lineProgress: null,
+      location: null,
+      pointIndex: null,
+      segmentIndex: null,
+      state: "gap",
+    };
+  }
+
+  const segment = segments[segmentIndex];
+  const pointIndex = resolvePointIndex(segment, segmentIndex, timeNs, cursor);
+  const location = locationAtIndexedPoint(segment, pointIndex, timeNs);
+  updateCursor(cursor, segmentIndex, pointIndex, timeNs);
+  return {
+    boundarySegmentIndex: segmentIndex,
+    lineProgress: lineProgressAt(segment, pointIndex, location, timeNs),
+    location,
+    pointIndex,
+    segmentIndex,
+    state: "active",
+  };
+}
+
+/** Builds the comet tail from the same resolved segment as the marker. */
+export function indexedLocationTrailCoordinates(
+  track: IndexedLocationTrack,
+  resolved: ResolvedLocationTrackPosition,
+  windowNs: bigint,
+): readonly [number, number][] {
+  let segmentIndex = resolved.segmentIndex;
+  let head = resolved.location;
+  if (resolved.state === "after") {
+    segmentIndex = track.segments.length - 1;
+    head = track.lastPoint ? locationFromPoint(track.lastPoint) : null;
+  }
+  if (segmentIndex === null || !head) return [];
+
+  const segment = track.segments[segmentIndex];
+  if (!segment) return [];
+  const tailNs =
+    head.timeNs - windowNs > segment.startTimeNs
+      ? head.timeNs - windowNs
+      : segment.startTimeNs;
+  const tailPointIndex = findPointInterval(segment.timesNs, tailNs);
+  const tail = locationAtIndexedPoint(segment, tailPointIndex, tailNs);
+  const coordinates: [number, number][] = [[tail.longitude, tail.latitude]];
+  const firstInteriorPoint = lowerBoundBigInt(segment.timesNs, tailNs + 1n);
+  const endInteriorPoint = lowerBoundBigInt(segment.timesNs, head.timeNs);
+  for (let index = firstInteriorPoint; index < endInteriorPoint; index += 1) {
+    const coordinate = segment.coordinates[index];
+    coordinates.push([coordinate[0], coordinate[1]]);
+  }
+  coordinates.push([head.longitude, head.latitude]);
+  return coordinates.length >= 2 ? coordinates : [];
+}
+
 export function interpolateLocationAtTime(
   segments: readonly McapLocationTrackSegment[],
   timeNs: bigint,
@@ -307,6 +491,185 @@ export function combineLocationBounds(
       : bound;
   }
   return combined;
+}
+
+function emptyResolvedPosition(): ResolvedLocationTrackPosition {
+  return {
+    boundarySegmentIndex: 0,
+    lineProgress: null,
+    location: null,
+    pointIndex: null,
+    segmentIndex: null,
+    state: "empty",
+  };
+}
+
+function updateCursor(
+  cursor: LocationTrackCursor | undefined,
+  segmentIndex: number,
+  pointIndex: number,
+  timeNs: bigint,
+): void {
+  if (!cursor) return;
+  cursor.segmentIndex = segmentIndex;
+  cursor.pointIndex = pointIndex;
+  cursor.timeNs = timeNs;
+}
+
+function resolveSegmentIndex(
+  segments: readonly IndexedLocationTrackSegment[],
+  timeNs: bigint,
+  cursor: LocationTrackCursor | undefined,
+): number {
+  if (cursor && cursor.timeNs !== null) {
+    if (timeNs >= cursor.timeNs) {
+      let index = Math.min(cursor.segmentIndex, segments.length - 1);
+      let steps = 0;
+      while (index < segments.length && timeNs > segments[index].endTimeNs) {
+        index += 1;
+        steps += 1;
+        if (steps >= MAX_FORWARD_CURSOR_STEPS) {
+          return binarySearchSegmentIndex(segments, timeNs);
+        }
+      }
+      if (
+        index < segments.length &&
+        timeNs >= segments[index].startTimeNs &&
+        timeNs <= segments[index].endTimeNs
+      ) {
+        return index;
+      }
+      return -1;
+    }
+  }
+
+  return binarySearchSegmentIndex(segments, timeNs);
+}
+
+function binarySearchSegmentIndex(
+  segments: readonly IndexedLocationTrackSegment[],
+  timeNs: bigint,
+): number {
+  const candidate = lowerBoundSegmentStart(segments, timeNs) - 1;
+  return candidate >= 0 && timeNs <= segments[candidate].endTimeNs
+    ? candidate
+    : -1;
+}
+
+function findFirstSegmentStartingAfter(
+  segments: readonly IndexedLocationTrackSegment[],
+  timeNs: bigint,
+): number {
+  return lowerBoundSegmentStart(segments, timeNs);
+}
+
+function lowerBoundSegmentStart(
+  segments: readonly IndexedLocationTrackSegment[],
+  timeNs: bigint,
+): number {
+  let low = 0;
+  let high = segments.length;
+  while (low < high) {
+    const middle = low + Math.floor((high - low) / 2);
+    if (segments[middle].startTimeNs <= timeNs) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
+  return low;
+}
+
+function resolvePointIndex(
+  segment: IndexedLocationTrackSegment,
+  segmentIndex: number,
+  timeNs: bigint,
+  cursor: LocationTrackCursor | undefined,
+): number {
+  if (segment.points.length <= 1) return 0;
+  if (
+    cursor &&
+    cursor.timeNs !== null &&
+    timeNs >= cursor.timeNs &&
+    cursor.segmentIndex === segmentIndex
+  ) {
+    let index = Math.min(cursor.pointIndex, segment.points.length - 2);
+    let steps = 0;
+    while (
+      index + 1 < segment.points.length - 1 &&
+      segment.timesNs[index + 1] < timeNs
+    ) {
+      index += 1;
+      steps += 1;
+      if (steps >= MAX_FORWARD_CURSOR_STEPS) {
+        return findPointInterval(segment.timesNs, timeNs);
+      }
+    }
+    return index;
+  }
+  return findPointInterval(segment.timesNs, timeNs);
+}
+
+function findPointInterval(timesNs: readonly bigint[], timeNs: bigint): number {
+  if (timesNs.length <= 1) return 0;
+  const rightIndex = lowerBoundBigInt(timesNs, timeNs);
+  if (rightIndex <= 0) return 0;
+  if (rightIndex >= timesNs.length) return timesNs.length - 2;
+  return rightIndex - 1;
+}
+
+function lowerBoundBigInt(values: readonly bigint[], target: bigint): number {
+  let low = 0;
+  let high = values.length;
+  while (low < high) {
+    const middle = low + Math.floor((high - low) / 2);
+    if (values[middle] < target) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
+  return low;
+}
+
+function locationAtIndexedPoint(
+  segment: IndexedLocationTrackSegment,
+  pointIndex: number,
+  timeNs: bigint,
+): InterpolatedLocation {
+  if (segment.points.length === 1) {
+    return locationFromPoint(segment.points[0]);
+  }
+  const leftIndex = Math.min(pointIndex, segment.points.length - 2);
+  return interpolateBetweenPoints(
+    segment.points[leftIndex],
+    segment.points[leftIndex + 1],
+    timeNs,
+  );
+}
+
+function lineProgressAt(
+  segment: IndexedLocationTrackSegment,
+  pointIndex: number,
+  location: InterpolatedLocation,
+  timeNs: bigint,
+): number {
+  if (segment.points.length <= 1) return 0;
+  const leftIndex = Math.min(pointIndex, segment.points.length - 2);
+  if (segment.totalDistanceM > 0) {
+    const distanceM =
+      segment.cumulativeDistanceM[leftIndex] +
+      haversineDistanceMeters(segment.points[leftIndex], location);
+    return clampUnit(distanceM / segment.totalDistanceM);
+  }
+  const span = Number(segment.endTimeNs - segment.startTimeNs);
+  return span > 0
+    ? clampUnit(Number(timeNs - segment.startTimeNs) / span)
+    : leftIndex / (segment.points.length - 1);
+}
+
+function clampUnit(value: number): number {
+  return Math.max(0, Math.min(1, value));
 }
 
 function interpolateBetweenPoints(

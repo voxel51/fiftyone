@@ -584,7 +584,8 @@ points that demonstrates how
 
     import fiftyone as fo
     import numpy as np
-    import open3d as o3d
+    from pypcd4 import PointCloud
+    from scipy.spatial.transform import Rotation
 
     detections = []
     point_cloud = []
@@ -601,14 +602,13 @@ points that demonstrates how
         )
         detections.append(detection)
 
-        R = o3d.geometry.get_rotation_matrix_from_xyz(rotation)
+        R = Rotation.from_euler("XYZ", rotation).as_matrix()
         points = np.random.uniform(-dimensions / 2, dimensions / 2, size=(1000, 3))
         points = points @ R.T + location[np.newaxis, :]
         point_cloud.extend(points)
 
-    pc = o3d.geometry.PointCloud()
-    pc.points = o3d.utility.Vector3dVector(np.array(point_cloud))
-    o3d.io.write_point_cloud("/tmp/toy.pcd", pc)
+    pc = PointCloud.from_xyz_points(np.array(point_cloud, dtype=np.float32))
+    pc.save("/tmp/toy.pcd")
 
     scene = fo.Scene()
     scene.add(fo.PointCloud("point cloud", "/tmp/toy.pcd"))

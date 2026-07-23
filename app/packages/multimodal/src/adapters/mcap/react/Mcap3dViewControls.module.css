@@ -1,0 +1,34 @@
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.button {
+  align-items: center;
+  background: rgba(5, 11, 18, 0.76);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 4px;
+  color: #cbd5e1;
+  cursor: pointer;
+  display: inline-flex;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  height: 24px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  width: 24px;
+}
+
+.button:hover,
+.button:focus-visible {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(203, 213, 225, 0.48);
+}
+
+.button:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 1px;
+}

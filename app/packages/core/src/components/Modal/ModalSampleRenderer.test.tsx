@@ -78,12 +78,18 @@ const ctx = {
   surface: "modal",
   dataset: mockDataset,
   schema: mockSchema,
+  transitioning: undefined as boolean | undefined,
 };
 
 type TestCtx = typeof ctx;
 
 const Renderer = ({ ctx }: { ctx: TestCtx }) => (
-  <div data-testid="renderer">{ctx.media.url}</div>
+  <div
+    data-testid="renderer"
+    data-transitioning={ctx.transitioning || undefined}
+  >
+    {ctx.media.url}
+  </div>
 );
 
 const registration = {
@@ -134,6 +140,18 @@ describe("ModalSampleRenderer", () => {
       mockSchema,
       "modal",
     );
+  });
+
+  it("tells a persistent renderer when the next sample is still resolving", () => {
+    render(
+      <ModalSampleRenderer
+        sample={sample}
+        modalMediaField="filepath"
+        transitioning
+      />,
+    );
+
+    expect(screen.getByTestId("renderer").dataset.transitioning).toBe("true");
   });
 
   it("falls back to MetadataLooker when no renderer matches", () => {

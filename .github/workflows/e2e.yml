@@ -2,25 +2,74 @@ name: Test e2e
 
 on:
   workflow_call:
-    secrets:
-      docker-username:
-        required: false
-      docker-password:
-        required: false
 jobs:
   prepare-e2e:
     timeout-minutes: 45
     runs-on: ubuntu-latest
     name: Prepare e2e assets
-    env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/ms-playwright
     defaults:
       run:
         shell: bash
     steps:
+      - name: Mark the e2e comment in progress
+        # keeps the authoritative comment honest while a newer run is
+        # executing; the verdict job's rewrite clears the banner (or the
+        # e2e-aborted job flips it when the pipeline dies before the verdict)
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const flavor = process.env.GITHUB_REPOSITORY.endsWith(
+              'fiftyone-teams',
+            )
+              ? 'FOE'
+              : 'OSS';
+            const marker = `<!-- e2e-authoritative-report:${flavor} -->`;
+            const sha = context.payload.pull_request.head.sha.slice(0, 10);
+            const runUrl = `${context.serverUrl}/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.runId}`;
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              },
+            );
+            const existing = comments.find((c) => c.body.includes(marker));
+            if (existing) {
+              const banner = `> ⏳ CI running for \`${sha}\` — [run](${runUrl}). Results below are from an earlier run.`;
+              const lines = existing.body
+                .split('\n')
+                .filter(
+                  (l) =>
+                    !l.startsWith('> ⏳') &&
+                    !l.startsWith('> ❌ CI failed before'),
+                );
+              lines.splice(1, 0, banner);
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: lines.join('\n'),
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `${marker}\n> ⏳ CI running for \`${sha}\` — [run](${runUrl}).`,
+              });
+            }
+
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          # yarn install runs PR-controlled lifecycle scripts
+          persist-credentials: false
           submodules: true
           sparse-checkout: |
             /*
@@ -37,11 +86,6 @@ jobs:
 
       - name: Prepare yarn 4
         run: corepack prepare yarn@4.9.1 --activate
-
-      - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          large-packages: false
 
       - name: Compute app tree hash
         id: app-tree-hash
@@ -94,36 +138,33 @@ jobs:
         run: yarn install
         working-directory: e2e-pw
 
-      - name: Get Playwright version
-        id: playwright-version
-        run: |
-          echo "PLAYWRIGHT_VERSION=$(node -e "process.stdout.write(require('@playwright/test/package.json').version)")" >> $GITHUB_OUTPUT
-        working-directory: e2e-pw
-
-      - name: Cache playwright browser
-        uses: actions/cache@v5
-        id: playwright-browser-cache
-        with:
-          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
-          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.PLAYWRIGHT_VERSION }}
-
-      - name: Install Playwright Chromium if not cached
-        run: yarn playwright install chromium
-        if: steps.playwright-browser-cache.outputs.cache-hit != 'true'
-        working-directory: e2e-pw
-
   test-e2e:
     needs: prepare-e2e
-    timeout-minutes: 90
-    runs-on: ubuntu-latest # the standard runner's 14GB free disk space is not sufficient.  We create more free space with the `jlumbroso/free-disk-space` action as a step (below).
-    name: Test e2e (Mongo ${{ matrix.mongodb-version }}, shard ${{ matrix.shard }}/4)
+    # Hard budget: a shard that can't finish in 30 minutes is a failure by
+    # policy, and the verdict job fails whenever a shard job does.
+    # (fiftyone-teams runs the same suite ~1.6x slower.)
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    # The prebaked image (built by build-ci-images.yml) carries Python +
+    # fiftyone's dependency tree, Node/Yarn, ffmpeg, and Chromium, so shard
+    # jobs skip all toolchain setup.
+    container:
+      # fiftyone-teams overrides the image name via repo var (superset deps)
+      image: ${{ vars.FIFTYONE_E2E_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-e2e' }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      # Chromium needs more than Docker's default 64MB /dev/shm
+      options: --shm-size=2gb
+    name: Run e2e shard ${{ matrix.shard }}/8 (report-only, Mongo ${{ matrix.mongodb-version }})
     env:
       FIFTYONE_DO_NOT_TRACK: true
       FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE: false
-      FIFTYONE_DATABASE_URI: mongodb://localhost:27017
+      # Job containers reach service containers by service name, not localhost
+      FIFTYONE_DATABASE_URI: mongodb://mongo:27017
       FIFTYONE_DATABASE_NAME: playwright
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
-      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/ms-playwright
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       FIFTYONE_PLUGINS_DIR: ${{ github.workspace }}/e2e-pw/src/shared/assets/plugins
       VFF_EXP_ANNOTATION: true
     defaults:
@@ -134,7 +175,7 @@ jobs:
       matrix:
         mongodb-version:
           - "latest"
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     services:
       # Run MongoDB as a service container rather than via a Docker-based
       # action. Container actions are built from `docker:latest` at job start
@@ -155,22 +196,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          # yarn install runs PR-controlled lifecycle scripts
+          persist-credentials: false
           submodules: true
           sparse-checkout: |
             /*
             !/docs/**
           sparse-checkout-cone-mode: false
-
-      - name: Setup node 22
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-
-      - name: Enable corepack
-        run: corepack enable
-
-      - name: Prepare yarn 4
-        run: corepack prepare yarn@4.9.1 --activate
 
       - name: Download built app static assets
         uses: actions/download-artifact@v8
@@ -180,41 +212,10 @@ jobs:
       - name: Restore built app static assets
         run: tar -xzf e2e-app-static.tgz -C .
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v4
-        # Skip docker login on forks (that won't have the docker-* secrets)
-        if: env.docker-username != '' && env.docker-password != ''
-        env:
-          docker-username: ${{ secrets.docker-username }}
-          docker-password: ${{ secrets.docker-password }}
-        with:
-          username: ${{ env.docker-username }}
-          password: ${{ env.docker-password }}
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: 3.10.16
-
-      - name: Setup (UV)
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: 3.10.16
-          enable-cache: true
-          cache-dependency-path: |
-            requirements/common.txt
-            requirements/github.txt
-            requirements/test.txt
-            requirements/e2e.txt
-      - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
-        uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          large-packages: false # e2e test failed when `true`
-      - name: Install requirements
-        run: |
-          uv pip install --system -r requirements/e2e.txt
-
       - name: Install fiftyone
+        # dependencies are baked into the image; this only builds fiftyone
+        # itself from the PR's source (plus any deps added since the last
+        # image build)
         run: |
           uv pip install --system '.[multimodal]' -r requirements/e2e.txt
 
@@ -223,9 +224,6 @@ jobs:
         run: |
           python tests/utils/setup_config.py
           python tests/utils/github_actions_flags.py
-
-      - name: Setup FFmpeg
-        uses: ./.github/actions/setup-ffmpeg
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
@@ -239,37 +237,228 @@ jobs:
         run: yarn install
         working-directory: e2e-pw
 
-      - name: Get Playwright version
-        id: playwright-version
-        run: |
-          echo "PLAYWRIGHT_VERSION=$(node -e "process.stdout.write(require('@playwright/test/package.json').version)")" >> $GITHUB_OUTPUT
-        working-directory: e2e-pw
-
-      - name: Cache playwright browser
-        uses: actions/cache@v5
-        id: playwright-browser-cache
-        with:
-          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
-          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.PLAYWRIGHT_VERSION }}
-
-      - name: Install Playwright Chromium if not cached
+      - name: Install Chromium if the lockfile moved past the baked browser
+        # no-op when the image's browser matches; lets Playwright-upgrade
+        # PRs validate themselves before the image rebuilds
         run: yarn playwright install chromium
-        if: steps.playwright-browser-cache.outputs.cache-hit != 'true'
         working-directory: e2e-pw
 
       - name: Run Playwright tests
-        run: yarn e2e --shard=${{ matrix.shard }}/4
+        # Report-only: failed specs are surfaced by the e2e verdict job from
+        # the merged blob reports. A red shard means infra death (timeout,
+        # lost runner), not a test failure. Specs are assigned to shards by
+        # duration (scripts/pack-shards.mjs), not Playwright's count-based
+        # sharding, so no shard is bottlenecked by the heavy spec families.
+        run: |
+          FILES=$(node scripts/pack-shards.mjs ${{ matrix.shard }} 8)
+          if [ -z "$FILES" ]; then
+            echo "no specs assigned to shard ${{ matrix.shard }}"
+          else
+            yarn e2e $FILES ||
+              echo "::warning::shard ${{ matrix.shard }} had failing specs; see the e2e verdict job"
+          fi
         working-directory: e2e-pw
 
       - name: Lint Playwright tests
         run: yarn lint
         working-directory: e2e-pw
 
-      - name: Upload test report
+      - name: Upload blob report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report-mongodb-${{ matrix.mongodb-version }}-shard-${{ matrix.shard }}
+          name: e2e-blob-shard-${{ matrix.shard }}
+          path: e2e-pw/blob-report/
+          # 3 days so reports from Friday/weekend runs survive into Monday.
+          retention-days: 3
+
+  e2e-verdict:
+    needs: test-e2e
+    # The single authoritative e2e check: shard jobs are report-only, so
+    # this job alone decides pass/fail from the merged shard reports. Runs
+    # on 'cancelled' too — timeout-minutes kills report as cancelled, and
+    # those runs still need a comment and a red verdict. A run-level
+    # cancellation force-cancels this job anyway.
+    if: always() && needs.test-e2e.result != 'skipped'
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    container:
+      # fiftyone-teams overrides the image name via repo var (superset deps)
+      image: ${{ vars.FIFTYONE_E2E_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-e2e' }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    name: e2e verdict
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # yarn install runs PR-controlled lifecycle scripts
+          persist-credentials: false
+          sparse-checkout: |
+            /e2e-pw/**
+          sparse-checkout-cone-mode: false
+
+      - name: Download blob reports
+        uses: actions/download-artifact@v8
+        with:
+          pattern: e2e-blob-shard-*
+          path: e2e-pw/all-blob-reports
+          merge-multiple: true
+
+      - name: Cache E2E Node Modules
+        id: e2e-node-cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            e2e-pw/node_modules
+          key: node-modules-${{ hashFiles('e2e-pw/yarn.lock') }}
+
+      - name: Install E2E dependencies
+        run: yarn install
+        working-directory: e2e-pw
+
+      - name: Merge shard reports
+        working-directory: e2e-pw
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: merged-results.json
+        run: yarn playwright merge-reports --reporter html,json ./all-blob-reports
+
+      - name: Upload merged report
+        id: upload-merged
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-merged
           path: e2e-pw/playwright-report/
           # 3 days so reports from Friday/weekend runs survive into Monday.
           retention-days: 3
+
+      - name: Summarize
+        working-directory: e2e-pw
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
+          EXPECTED_SHARDS: "8"
+          REPORT_URL: ${{ steps.upload-merged.outputs.artifact-url }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # sibling suite results + the e2e pipeline start (prepare-e2e)
+          curl -sf -H "Authorization: Bearer $GH_TOKEN" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
+            > run-jobs.json || echo '{}' > run-jobs.json
+          RUN_STARTED_AT=$(node -e "const j=require('./run-jobs.json').jobs??[];const p=j.find((x)=>x.name.endsWith('Prepare e2e assets'));console.log(p?.started_at??'')")
+          export RUN_STARTED_AT
+          node scripts/report-summary.mjs merged-results.json all-blob-reports run-jobs.json > e2e-summary.md
+          cat e2e-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post authoritative PR comment
+        # Same-repo PRs only: fork tokens are read-only, and the job summary
+        # above still carries the itemized list there.
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('e2e-pw/e2e-summary.md', 'utf8');
+            const flavor = process.env.GITHUB_REPOSITORY.endsWith(
+              'fiftyone-teams',
+            )
+              ? 'FOE'
+              : 'OSS';
+            const marker = `<!-- e2e-authoritative-report:${flavor} -->`;
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              },
+            );
+            const existing = comments.find((c) => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Enforce verdict
+        working-directory: e2e-pw
+        env:
+          EXPECTED_SHARDS: "8"
+          TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
+        run: node scripts/enforce-verdict.mjs merged-results.json all-blob-reports
+
+  e2e-aborted:
+    needs: [prepare-e2e, test-e2e]
+    # prepare-e2e failing skips the shards, which skips the verdict — the
+    # only job that rewrites the in-progress banner — so the authoritative
+    # comment would read "running" forever. Same-repo PRs only, matching
+    # the banner stamp.
+    if: >-
+      always() && needs.test-e2e.result == 'skipped' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    name: Mark the e2e comment failed
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const flavor = process.env.GITHUB_REPOSITORY.endsWith(
+              'fiftyone-teams',
+            )
+              ? 'FOE'
+              : 'OSS';
+            const marker = `<!-- e2e-authoritative-report:${flavor} -->`;
+            const sha = context.payload.pull_request.head.sha.slice(0, 10);
+            const runUrl = `${context.serverUrl}/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.runId}`;
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              },
+            );
+            const existing = comments.find((c) => c.body.includes(marker));
+            if (!existing) return;
+            const lines = existing.body.split('\n');
+            const idx = lines.findIndex((l) => l.startsWith('> ⏳'));
+            // a newer run may have stamped its own banner; leave that alone
+            if (
+              idx === -1 ||
+              !lines[idx].includes(`/actions/runs/${context.runId})`)
+            ) {
+              return;
+            }
+            const hasEarlier = lines.some(
+              (l, i) => i > 0 && i !== idx && l.trim() !== '',
+            );
+            lines[idx] =
+              `> ❌ CI failed before e2e could run for \`${sha}\` — [run](${runUrl}).` +
+              (hasEarlier ? ' Results below are from an earlier run.' : '');
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existing.id,
+              body: lines.join('\n'),
+            });

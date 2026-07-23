@@ -79,7 +79,6 @@ const McapRawMessageTree: React.FC<McapRawMessageTreeProps> = ({
           plottableFieldPaths={effectivePlottableFieldPaths}
           plottedPath={plottedPath}
           toggle={toggle}
-          withinArray={false}
         />
       ))}
       {root.droppedEntries ? (
@@ -105,7 +104,6 @@ interface TreeRowProps {
   readonly plottableFieldPaths?: ReadonlySet<string>;
   readonly plottedPath: string | null;
   readonly toggle: (path: string, expanded: boolean) => void;
-  readonly withinArray: boolean;
 }
 
 function TreeRow({
@@ -120,14 +118,13 @@ function TreeRow({
   plottableFieldPaths,
   plottedPath,
   toggle,
-  withinArray,
 }: TreeRowProps) {
   const expandable = isExpandable(node);
   const expanded =
     expandedOverrides.get(path) ?? (expandable && depth < AUTO_EXPAND_DEPTH);
   const indent = { paddingLeft: `${depth * 14}px` };
   const canAddToPlot =
-    !withinArray && isPlottableScalar(node) && plottableFieldPaths?.has(path);
+    isPlottableScalar(node) && plottableFieldPaths?.has(path);
   const addToPlotLabel =
     plottedPath === path ? `${path} plotted` : `Add ${path} to plot`;
 
@@ -192,7 +189,6 @@ function TreeRow({
               plottableFieldPaths={plottableFieldPaths}
               plottedPath={plottedPath}
               toggle={toggle}
-              withinArray={withinArray}
             />
           ))
         : null}
@@ -224,7 +220,6 @@ function TreeRow({
               plottableFieldPaths={plottableFieldPaths}
               plottedPath={plottedPath}
               toggle={toggle}
-              withinArray={true}
             />
           ))
         : null}

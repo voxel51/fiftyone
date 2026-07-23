@@ -1,8 +1,8 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  getMcap3dViewStateSnapshot,
-  resetMcap3dViewStateForTests,
+  createMcap3dViewStateStore,
+  type Mcap3dViewStateStore,
 } from "./mcap-3d-view-state";
 import { useMcap3dPoseTrajectories } from "./use-mcap-3d-pose-trajectories";
 
@@ -10,8 +10,10 @@ vi.mock("./mcap-pose-trajectories-context", () => ({
   useMcapPoseTrajectoriesContext: () => new Map(),
 }));
 
+let viewStateStore: Mcap3dViewStateStore;
+
 beforeEach(() => {
-  resetMcap3dViewStateForTests();
+  viewStateStore = createMcap3dViewStateStore();
 });
 
 afterEach(() => {
@@ -41,12 +43,12 @@ describe("useMcap3dPoseTrajectories view-state carry-over", () => {
     });
 
     expect(result.current.trajectoryFrameOverrides).toEqual({});
-    expect(getMcap3dViewStateSnapshot().trajectoryFrameOverrides).toEqual({});
+    expect(viewStateStore.getSnapshot().trajectoryFrameOverrides).toEqual({});
 
     act(() => {
       result.current.setTrajectoryFrameOverrides({ "/odom": "map" });
     });
-    expect(getMcap3dViewStateSnapshot().trajectoryFrameOverrides).toEqual({
+    expect(viewStateStore.getSnapshot().trajectoryFrameOverrides).toEqual({
       "/odom": "map",
     });
   });
@@ -62,6 +64,7 @@ function trajectoriesProps(
     poseFrames: [null],
     poseTopics: ["/odom"],
     sceneAnnotationTopics: [],
+    viewStateStore,
     ...overrides,
   };
 }

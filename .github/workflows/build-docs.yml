@@ -27,10 +27,9 @@ on:
       - docs/**
       - examples/**
       - fiftyone/**
+      - plugins/**
       - requirements/**
-      - "**.py"
-      - "**.md"
-      - "**.rst"
+      - setup.py
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -100,10 +99,12 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements/docs.txt
+            setup.py
       - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
-        uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          large-packages: false # e2e test failed when `true`
+        uses: ./.github/actions/free-disk-space
       - name: Install pip dependencies
         run: |
           pip install --upgrade pip setuptools wheel build
@@ -114,6 +115,7 @@ jobs:
           python -Im build
           pip install ./dist/*.whl
       - name: Install
+        id: install-docs-dependencies
         run: |
           echo "Installing system dependencies"
           sudo apt-get install pandoc
@@ -123,6 +125,7 @@ jobs:
           pip install fiftyone-brain fiftyone-db
           echo "Installing fiftyone"
           pip install .
+        background: true
 
       - name: Setup node 22
         uses: actions/setup-node@v6
@@ -144,9 +147,13 @@ jobs:
           key: node-modules-${{ hashFiles('app/yarn.lock') }}
       - name: Install app
         run: cd app && yarn install
+      - name: Wait for docs dependencies
+        wait: install-docs-dependencies
       - name: Build docs
+        # PR builds skip the markdown mirror pass; it is only needed for
+        # the published site
         run: |
-          ./docs/generate_docs.bash -t fiftyone-teams
+          ./docs/generate_docs.bash -t fiftyone-teams ${{ github.event_name == 'pull_request' && '-m' || '' }}
       - name: Upload docs
         uses: actions/upload-artifact@v7
         with:
@@ -163,16 +170,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download docs
+        id: download-docs
         uses: actions/download-artifact@v8
         with:
           name: docs
           path: docs-download/
+        background: true
       - name: Authorize gcloud
         uses: google-github-actions/auth@v3
         with:
           credentials_json: "${{ secrets.DOCS_GCP_CREDENTIALS }}"
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v3
+      - name: Wait for docs
+        wait: download-docs
       - name: publish
         run: gsutil -m rsync -dR -x '^SBOMs/.*' docs-download gs://docs.voxel51.com
 
@@ -184,15 +195,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download docs
+        id: download-docs
         uses: actions/download-artifact@v8
         with:
           name: docs
           path: docs-download/
+        background: true
       - name: Authorize gcloud
         uses: google-github-actions/auth@v3
         with:
           credentials_json: "${{ secrets.DOCS_GCP_CREDENTIALS }}"
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v3
+      - name: Wait for docs
+        wait: download-docs
       - name: publish
         run: gsutil -m rsync -dR -x '^robots.txt' docs-download gs://docs.dev.voxel51.com

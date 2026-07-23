@@ -8,12 +8,18 @@ on:
     types: [opened, synchronize, reopened, closed, ready_for_review, edited]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # `edited` gets its own group: body/title edits that land seconds after open
+  # fire runs that skip on the job `if`, and in a shared group they cancel or
+  # displace a still-queued `opened`/`synchronize` run before it can dispatch —
+  # the mirror is silently never created.
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.action == 'edited' && 'edited' || 'sync' }}
   # Don't cancel the `closed` run: merging a PR auto-deletes its head branch,
   # which tears down refs/pull/<n>/merge and cancels the in-flight run before it
-  # can dispatch the "OSS merged" signal to fiftyone-teams. Only cancel the
-  # superseded in-PR runs (opened/synchronize/etc.).
-  cancel-in-progress: ${{ github.event.action != 'closed' }}
+  # can dispatch the "OSS merged" signal to fiftyone-teams. Don't let `edited`
+  # runs cancel either: a body edit racing a retarget would drop the
+  # mirror-close dispatch. Only cancel the superseded in-PR runs
+  # (opened/synchronize/etc.).
+  cancel-in-progress: ${{ github.event.action != 'closed' && github.event.action != 'edited' }}
 
 jobs:
   enterprise-sync:
@@ -46,27 +52,6 @@ jobs:
 
             // Bases mirrored into Enterprise.
             const isSyncBase = (b) => b === 'develop' || b.startsWith('release/');
-
-            // Back-merge PRs (`merge/<ref> → develop`, opened by the
-            // develop-back-merge workflow as voxel51-bot) are *vertical*
-            // reconciliation, handled independently by each repo's own
-            // back-merge. Mirroring one would be a diagonal whole-branch merge
-            // that re-surfaces the entire OSS↔Enterprise divergence and
-            // duplicates the Enterprise repo's own back-merge. Skip the sync;
-            // mark the gate green so the OSS back-merge isn't blocked.
-            if (pr.head.ref.startsWith('merge/') && pr.user.login === 'voxel51-bot') {
-              if (action !== 'closed') {
-                await github.rest.repos.createCommitStatus({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  sha,
-                  state: 'success',
-                  context: 'enterprise / ci',
-                  description: 'No Enterprise sync — back-merge handled natively in Enterprise',
-                });
-              }
-              return;
-            }
 
             // Retarget away from a synced base: close the orphaned mirror.
             if (action === 'edited' && context.payload.changes.base) {
