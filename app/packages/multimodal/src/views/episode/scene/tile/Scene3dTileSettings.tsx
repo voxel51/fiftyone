@@ -306,7 +306,7 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
             if (!imageStream) return null;
             const cameraLabel =
               cameraSources.find((source) => source.id === cameraStream)
-                ?.label ?? cameraStream;
+                ?.label ?? "Unknown camera source";
             const geometry =
               imageProjectionSettings[imageStream]?.geometry ??
               DEFAULT_IMAGE_PROJECTION.geometry;

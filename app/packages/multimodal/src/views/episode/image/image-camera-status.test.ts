@@ -34,6 +34,9 @@ describe("image camera status", () => {
     expect(describeCalibrationSelection(null, null, sources)).toBe(
       "Auto · no match",
     );
+    expect(describeCalibrationSelection("3", null, sources)).toBe(
+      "Unknown calibration source",
+    );
   });
 
   it("reports the first actionable projection gate", () => {

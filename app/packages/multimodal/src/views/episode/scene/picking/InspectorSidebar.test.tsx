@@ -1,18 +1,36 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { createStore, Provider as JotaiProvider } from "jotai";
 import { afterEach, describe, expect, it } from "vitest";
+import { SceneInventoryProvider } from "../../../../scene-inventory/react";
 import {
   selectedObjectAtom,
   type SelectedObject,
 } from "../../interaction/selection/selected-object";
 import InspectorSidebar from "./InspectorSidebar";
 
+const SOURCES = [
+  {
+    id: "12",
+    label: "markers/annotations",
+    sourceName: "/markers/annotations",
+    type: "scene-annotation",
+  },
+  {
+    id: "13",
+    label: "cam_front/annotations",
+    sourceName: "/cam_front/annotations",
+    type: "image-annotation",
+  },
+] as const;
+
 function renderSidebar(selected: SelectedObject | null) {
   const store = createStore();
   store.set(selectedObjectAtom, selected);
   const view = render(
     <JotaiProvider store={store}>
-      <InspectorSidebar />
+      <SceneInventoryProvider sources={SOURCES}>
+        <InspectorSidebar />
+      </SceneInventoryProvider>
     </JotaiProvider>,
   );
   return { store, view };
@@ -34,7 +52,7 @@ describe("InspectorSidebar", () => {
       label: "car",
       metadata: { category: "car", score: "0.97" },
       scope: "instance",
-      stream: "/markers/annotations",
+      stream: "12",
     });
 
     const body = screen.getByTestId("episode-inspector-body");
@@ -54,13 +72,14 @@ describe("InspectorSidebar", () => {
       primitiveIndex: 0,
       primitiveKind: "circle",
       scope: "instance",
-      stream: "/cam_front/annotations",
+      stream: "13",
     });
 
     const body = screen.getByTestId("episode-inspector-body");
     expect(body.textContent).toContain("pedestrian");
     expect(body.textContent).toContain("circle");
     expect(body.textContent).toContain("/cam_front/annotations");
+    expect(screen.queryByText("13")).toBeNull();
     expect(body.textContent).toContain('"diameter": 12');
   });
 
@@ -71,7 +90,7 @@ describe("InspectorSidebar", () => {
       label: "car",
       metadata: {},
       scope: "instance",
-      stream: "/markers",
+      stream: "12",
     });
 
     fireEvent.click(screen.getByTestId("episode-inspector-clear"));

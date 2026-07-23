@@ -1,6 +1,7 @@
-import { type SetStateAction, useCallback, useRef } from "react";
+import { type SetStateAction, useCallback, useMemo, useRef } from "react";
 import { type PrimitiveAtom, useStore } from "jotai";
 
+import type { SceneSource } from "../../../../ir";
 import { useKeyedIdentityMap } from "../../../../visualization/panel-ui/use-keyed-identity-map";
 import type {
   PointCloudPanelLayer,
@@ -30,9 +31,11 @@ type SelectedObjectState = ReturnType<typeof useSelectedObject>;
 /** Wires scene entities and points into shared selection/hover state. */
 export function useScene3dPickingLayers({
   pointCloudLayers,
+  pointCloudSources,
   sceneAnnotationLayers,
 }: {
   readonly pointCloudLayers: readonly PointCloudPanelLayer[];
+  readonly pointCloudSources: readonly SceneSource[];
   readonly sceneAnnotationLayers: readonly SceneAnnotationPanelLayer[];
 }) {
   const jotaiStore = useStore();
@@ -102,11 +105,16 @@ export function useScene3dPickingLayers({
   });
 
   const hoverEcho = useHoverEcho();
+  const pointCloudSourcesById = useMemo(
+    () => new Map(pointCloudSources.map((source) => [source.id, source])),
+    [pointCloudSources],
+  );
   const publishedPointHoverRefs = useRef(new Map<string, HoverEcho>());
   const hoverablePointCloudLayers = useKeyedIdentityMap(pointCloudLayers, {
     build: (layer) => {
       const stream = layer.id;
       const frame = layer.frame;
+      const source = pointCloudSourcesById.get(stream);
       return {
         ...layer,
         hoveredPoint:
@@ -118,7 +126,16 @@ export function useScene3dPickingLayers({
             ? hoveredPointForFrame(stream, frame, pick.pointIndex)
             : null;
           const payload = hoveredPoint
-            ? { ...hoveredPoint, color: pick?.color ?? null }
+            ? {
+                ...hoveredPoint,
+                color: pick?.color ?? null,
+                ...(source
+                  ? {
+                      sourceLabel: source.label,
+                      sourceName: source.sourceName,
+                    }
+                  : {}),
+              }
             : null;
           onHoverPoint(payload);
           if (payload && pick) {
@@ -150,6 +167,8 @@ export function useScene3dPickingLayers({
         : null,
       jotaiStore,
       onHoverPoint,
+      pointCloudSourcesById.get(layer.id)?.label ?? "",
+      pointCloudSourcesById.get(layer.id)?.sourceName ?? "",
     ],
     key: (layer) => layer.id,
   });

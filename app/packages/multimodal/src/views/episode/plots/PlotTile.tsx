@@ -18,6 +18,10 @@ import {
   numericSeriesKey,
   useNumericSeriesContext,
 } from "./numeric-series-context";
+import {
+  plotSeriesDisplayName,
+  plotTileDisplayTitle,
+} from "./plot-series-display";
 import { usePlotTileSeries } from "./plot-tile-state";
 import type { EpisodeTileProps } from "../tiles/tile-types";
 import { joinNumericSeries } from "./numeric-series-join";
@@ -43,8 +47,16 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
   useRegisterTileSettings(tileId, settingsRegistration);
   const seriesConfigs = usePlotTileSeries();
   const setTileTitle = useSetTileTitle();
-  const { ensureEnumeration, seriesByKey, subscribeSeries } =
+  const { ensureEnumeration, enumeration, seriesByKey, subscribeSeries } =
     useNumericSeriesContext();
+  const sourceNamesByBinding = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const stream of enumeration.streams) {
+      names.set(stream.streamId, stream.sourceName);
+      names.set(stream.sourceName, stream.sourceName);
+    }
+    return names;
+  }, [enumeration.streams]);
   const dataStream = useDataStream();
   const durationSec = dataStream?.getTimelineIndex()?.durationSec ?? 0;
   const { seek } = usePlayback();
@@ -58,8 +70,10 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
 
   // This effect keeps the tile chrome aligned with the selected plot series.
   useEffect(() => {
-    setTileTitle(plotTileTitle(seriesConfigs), { source: "auto" });
-  }, [seriesConfigs, setTileTitle]);
+    setTileTitle(plotTileDisplayTitle(seriesConfigs, sourceNamesByBinding), {
+      source: "auto",
+    });
+  }, [seriesConfigs, setTileTitle, sourceNamesByBinding]);
 
   // This effect declares interest in every enabled series while the tile
   // shows it; the bridge fetches playhead windows for interested signals
@@ -101,14 +115,14 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
       ) {
         out.push({
           color: entry.config.color,
-          label: `${entry.config.stream}.${entry.config.fieldPath}`,
+          label: plotSeriesDisplayName(entry.config, sourceNamesByBinding),
           timesSec: entry.state.timesSec,
           values: entry.state.values,
         });
       }
     }
     return out;
-  }, [resolved]);
+  }, [resolved, sourceNamesByBinding]);
 
   const chartSeries: readonly TimeseriesChartSeries[] = useMemo(
     () => ready.map((entry) => ({ color: entry.color, label: entry.label })),
@@ -203,21 +217,5 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
     </div>
   );
 };
-
-function plotTileTitle(
-  seriesConfigs: readonly {
-    readonly fieldPath: string;
-    readonly stream: string;
-  }[],
-): string {
-  if (seriesConfigs.length === 0) {
-    return "Plot";
-  }
-  if (seriesConfigs.length === 1) {
-    const [{ fieldPath, stream }] = seriesConfigs;
-    return `${stream}.${fieldPath}`;
-  }
-  return `Plot (${seriesConfigs.length})`;
-}
 
 export default PlotTile;

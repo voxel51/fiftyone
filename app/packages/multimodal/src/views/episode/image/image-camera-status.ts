@@ -155,5 +155,8 @@ function sourceLabel(
   sources: readonly { readonly id: string; readonly label: string }[],
   stream: string,
 ): string {
-  return sources.find((source) => source.id === stream)?.label ?? stream;
+  return (
+    sources.find((source) => source.id === stream)?.label ??
+    "Unknown calibration source"
+  );
 }

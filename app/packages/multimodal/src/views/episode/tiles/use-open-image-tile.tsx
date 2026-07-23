@@ -36,7 +36,8 @@ export function useOpenImageTile(): (sourceId: string) => void {
         EpisodeTileProps & { readonly initialSourceId?: string }
       >;
       const title =
-        sources.find((source) => source.id === sourceId)?.label ?? sourceId;
+        sources.find((source) => source.id === sourceId)?.label ??
+        "Unknown image source";
       addTile(
         {
           render: () => <ImageTile initialSourceId={sourceId} />,

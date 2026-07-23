@@ -28,11 +28,14 @@ interface FrustumLayerActions {
 }
 
 interface BuildFrustumLayerOptions extends FrustumLayerActions {
+  readonly calibrationAssociation: Scene3dHoveredCamera["calibrationAssociation"];
+  readonly calibrationSourceName: string;
   readonly focused: boolean;
   readonly geometry: ImageGeometryMode;
   readonly hovered: boolean;
   readonly imageDecodeRunway?: readonly ImageVisualization[];
   readonly imageFrame: StreamPlaybackFrame<ImageVisualization> | null;
+  readonly imageLabel: string;
   readonly imagePlaneDepthM: number;
   readonly imageSourceName: string;
   readonly imageStream: string;
@@ -46,12 +49,15 @@ interface BuildFrustumLayerOptions extends FrustumLayerActions {
  * frustum without coupling the pure scene-layer builder to image tiles.
  */
 export function buildScene3dFrustumLayer({
+  calibrationAssociation,
+  calibrationSourceName,
   clearHovered,
   focused,
   geometry,
   hovered,
   imageDecodeRunway,
   imageFrame,
+  imageLabel,
   imagePlaneDepthM,
   imageSourceName,
   imageStream,
@@ -87,9 +93,13 @@ export function buildScene3dFrustumLayer({
           if (isHovered) {
             setHovered(imageStream);
             onHoverCamera({
+              calibrationAssociation,
+              calibrationSourceName,
               calibrationStream: layer.id,
               distortionModel: layer.frame.distortionModel,
               frameId: layer.frame.coordinateFrameId,
+              imageLabel,
+              imageSourceName,
               imageStream,
               kind: "camera",
               resolution: [layer.frame.width, layer.frame.height],
@@ -136,6 +146,7 @@ export function buildScene3dFrustumLayer({
 /** Decorates all camera frustums with their current image and tile linkage. */
 export function useScene3dFrustumLayers({
   cameraFrustumLayers,
+  cameraSources,
   cameraStreams,
   focusedTileId,
   frustumImageDecodeRunways,
@@ -149,6 +160,7 @@ export function useScene3dFrustumLayers({
   sourceKey,
 }: {
   readonly cameraFrustumLayers: readonly CameraFrustumPanelLayer[];
+  readonly cameraSources: readonly SceneSource[];
   readonly cameraStreams: readonly string[];
   readonly focusedTileId: string | null | undefined;
   readonly frustumImageDecodeRunways: readonly (readonly ImageVisualization[])[];
@@ -167,8 +179,12 @@ export function useScene3dFrustumLayers({
   const frustumImageHover = useFrustumImageHover();
   const hoveredImageStream = useHoveredImageStream();
   const imageTileBindings = useImageTileBindings();
-  const imageSourceNamesById = useMemo(
-    () => new Map(imageSources.map((source) => [source.id, source.sourceName])),
+  const cameraSourcesById = useMemo(
+    () => new Map(cameraSources.map((source) => [source.id, source])),
+    [cameraSources],
+  );
+  const imageSourcesById = useMemo(
+    () => new Map(imageSources.map((source) => [source.id, source])),
     [imageSources],
   );
   const focusedImageStream = focusedTileId
@@ -178,19 +194,26 @@ export function useScene3dFrustumLayers({
     build: (layer) => {
       const index = cameraStreams.indexOf(layer.id);
       const imageStream = index >= 0 ? (frustumImageStreams[index] ?? "") : "";
+      const cameraSource = cameraSourcesById.get(layer.id);
+      const imageSource = imageSourcesById.get(imageStream);
+      const projectionSettings =
+        imageProjectionSettings[imageStream] ?? DEFAULT_IMAGE_PROJECTION;
       return buildScene3dFrustumLayer({
+        calibrationAssociation: projectionSettings.calibrationStream
+          ? "Selected in settings"
+          : "Auto-matched",
+        calibrationSourceName:
+          cameraSource?.sourceName ?? "Unknown calibration source",
         clearHovered: frustumImageHover.clearIfCurrent,
         focused: focusedImageStream === imageStream,
-        geometry: imageStream
-          ? (imageProjectionSettings[imageStream] ?? DEFAULT_IMAGE_PROJECTION)
-              .geometry
-          : "original",
+        geometry: imageStream ? projectionSettings.geometry : "original",
         hovered: hoveredImageStream === imageStream,
         imageDecodeRunway:
           index >= 0 ? frustumImageDecodeRunways[index] : undefined,
         imageFrame: index >= 0 ? (frustumImageFrames[index] ?? null) : null,
+        imageLabel: imageSource?.label ?? "Unknown image source",
         imagePlaneDepthM,
-        imageSourceName: imageSourceNamesById.get(imageStream) ?? "",
+        imageSourceName: imageSource?.sourceName ?? "Unknown image source",
         imageStream,
         layer,
         onHoverCamera,
@@ -208,7 +231,9 @@ export function useScene3dFrustumLayers({
         index >= 0 ? frustumImageFrames[index] : null,
         index >= 0 ? frustumImageDecodeRunways[index] : null,
         imageStream,
-        imageSourceNamesById.get(imageStream) ?? "",
+        cameraSourcesById.get(layer.id)?.sourceName ?? "",
+        imageSourcesById.get(imageStream)?.label ?? "",
+        imageSourcesById.get(imageStream)?.sourceName ?? "",
         imageStream ? imageProjectionSettings[imageStream] : null,
         imageStream !== "" && hoveredImageStream === imageStream,
         imageStream !== "" && focusedImageStream === imageStream,

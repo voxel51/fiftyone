@@ -147,6 +147,26 @@ describe("buildScene3dTransformNotices", () => {
     ]);
   });
 
+  it("does not expose a canonical id when a source label is unavailable", () => {
+    const notices = buildScene3dTransformNotices({
+      frameTransformsError: null,
+      stalePoseUsages: [],
+      unresolvedPoseUsages: [
+        {
+          sourceFrameId: "radar_front",
+          sourceId: "17",
+          targetFrameId: "map",
+        },
+      ],
+      worldFrameId: "map",
+    });
+
+    expect(notices[0]?.message).toBe(
+      "Cannot place Unknown source in the scene",
+    );
+    expect(notices[0]?.message).not.toContain("17");
+  });
+
   it("describes stale poses with source time and age, not interpolation internals", () => {
     const notices = buildScene3dTransformNotices({
       frameTransformsError: null,

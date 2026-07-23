@@ -59,6 +59,7 @@ function createTrack(): LocationTrackState {
         ],
       },
     ],
+    sourceName: "/gps/fix",
     status: "ready",
     stream: "/gps",
   };

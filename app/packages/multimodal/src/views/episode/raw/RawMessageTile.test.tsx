@@ -8,6 +8,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RawRecordResult } from "../../../ir";
 import type { NumericFieldsEnumeration } from "../plots/numeric-series-context";
+import type { RawRecordState } from "./raw-message-context";
 import RawMessageTile from "./RawMessageTile";
 
 const mocks = vi.hoisted(() => ({
@@ -19,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   } as NumericFieldsEnumeration,
   readFullMessageJson:
     vi.fn<(stream: string, timeNs: bigint) => Promise<string>>(),
+  recordState: null as RawRecordState | null,
   selectedStream: "/state",
   setTileTitle: vi.fn(),
   writeText: vi.fn<(text: string) => Promise<void>>(),
@@ -71,9 +73,7 @@ vi.mock("../plots/numeric-series-context", () => ({
 vi.mock("./raw-message-context", () => ({
   useRawMessageContext: () => ({
     readFullMessageJson: mocks.readFullMessageJson,
-    recordsByStream: new Map([
-      [mocks.selectedStream, { result: DISPLAYED_RESULT, status: "ready" }],
-    ]),
+    recordsByStream: new Map([[mocks.selectedStream, mocks.recordState]]),
     subscribeRecord: vi.fn(() => vi.fn()),
   }),
 }));
@@ -93,6 +93,7 @@ beforeEach(() => {
   mocks.ensureEnumeration.mockReset();
   mocks.enumeration = { status: "idle", streams: [] };
   mocks.readFullMessageJson.mockReset();
+  mocks.recordState = { result: DISPLAYED_RESULT, status: "ready" };
   mocks.selectedStream = "/state";
   mocks.setTileTitle.mockReset();
   mocks.writeText.mockReset();
@@ -141,6 +142,19 @@ describe("RawMessageTile", () => {
 
     fireEvent.click(screen.getByTestId("episode-raw-plot-data.0"));
     expect(mocks.addFieldToPlot).toHaveBeenCalledWith("/state", "data.0");
+  });
+
+  it("names a failed canonical binding by its source name", () => {
+    mocks.selectedStream = "7";
+    mocks.enumeration = readyEnumeration();
+    mocks.recordState = { error: "decoder unavailable", status: "error" };
+
+    render(<RawMessageTile />);
+
+    expect(
+      screen.getByText("Could not read /state: decoder unavailable"),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Could not read 7/)).toBeNull();
   });
 });
 

@@ -404,7 +404,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
           ...pointCloudSources,
           ...poseSources,
           ...sceneAnnotationSources,
-        ].map((source) => [source.id, source.label || source.id] as const),
+        ].map((source) => [source.id, source.label] as const),
       ),
     [
       cameraSources,
@@ -461,10 +461,12 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     onHoverCamera,
   } = useScene3dPickingLayers({
     pointCloudLayers: coloredPointCloudLayers,
+    pointCloudSources,
     sceneAnnotationLayers,
   });
   const frustumLayers = useScene3dFrustumLayers({
     cameraFrustumLayers,
+    cameraSources,
     cameraStreams,
     focusedTileId,
     frustumImageDecodeRunways,

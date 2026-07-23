@@ -39,9 +39,13 @@ export interface Scene3dHoveredEntity {
 
 /** Textured camera frustum reported by the episode 3D hover surface. */
 export interface Scene3dHoveredCamera {
+  readonly calibrationAssociation: "Auto-matched" | "Selected in settings";
+  readonly calibrationSourceName: string;
   readonly calibrationStream: string;
   readonly distortionModel?: string;
   readonly frameId?: string;
+  readonly imageLabel: string;
+  readonly imageSourceName: string;
   readonly imageStream: string;
   readonly kind: "camera";
   readonly resolution: readonly [number, number];
@@ -50,6 +54,10 @@ export interface Scene3dHoveredCamera {
 /** One dwelled-on cloud point with its decoded per-point values. */
 export interface Scene3dHoveredPoint {
   readonly kind: "point";
+  /** Collision-safe presentation label for the source, when resolved. */
+  readonly sourceLabel?: string;
+  /** Exact format-native source name, when resolved. */
+  readonly sourceName?: string;
   readonly stream: string;
   readonly pointIndex: number;
   /** Sensor-frame coordinates of the point. */
@@ -256,13 +264,25 @@ function CameraTooltipContent({
 }) {
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-      <Text variant={TextVariant.Sm}>{tooltip.imageStream}</Text>
+      <Text variant={TextVariant.Sm}>{tooltip.imageLabel}</Text>
       <div style={tooltipDetailStyle}>
+        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+          Image source
+        </Text>
+        <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+          {tooltip.imageSourceName}
+        </Text>
         <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
           Calibration
         </Text>
         <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
-          {tooltip.calibrationStream}
+          {tooltip.calibrationSourceName}
+        </Text>
+        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+          Association
+        </Text>
+        <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+          {tooltip.calibrationAssociation}
         </Text>
         {tooltip.frameId ? (
           <>
@@ -330,9 +350,17 @@ function PointTooltipContent({
             }}
           />
         ) : null}
-        <Text variant={TextVariant.Sm}>{tooltip.stream}</Text>
+        <Text variant={TextVariant.Sm}>
+          {tooltip.sourceLabel ?? "Unknown point-cloud source"}
+        </Text>
       </div>
       <div style={tooltipDetailStyle}>
+        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+          Source
+        </Text>
+        <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+          {tooltip.sourceName ?? "Unknown source"}
+        </Text>
         <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
           Point
         </Text>
