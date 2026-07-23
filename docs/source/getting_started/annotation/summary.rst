@@ -89,7 +89,7 @@ Resources
 
 * :doc:`FiftyOne Brain - Embeddings </brain>`
 
-* :doc:`FiftyOne Evaluation API </user_guide/evaluation>`
+* :doc:`FiftyOne Evaluation API </user_guide/evaluation/index>`
 
 * :doc:`Annotation Integrations </integrations/index>`
 

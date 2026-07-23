@@ -16,6 +16,12 @@ separate model errors from label errors.
    :maxdepth: 1
    :hidden:
 
-   Evaluating models <../user_guide/evaluation>
+   Evaluation Overview __SUB_NEW__ <../user_guide/evaluation/index>
+   Evaluating Regressions <../user_guide/evaluation/regressions>
+   Evaluating Classifications <../user_guide/evaluation/classifications>
+   Evaluating Detections <../user_guide/evaluation/detections>
+   Evaluating Segmentations <../user_guide/evaluation/segmentations>
+   Advanced Evaluation Usage <../user_guide/evaluation/advanced>
    Evaluating object detections <../tutorials/evaluate_detections.ipynb>
    Evaluating a classifier <../tutorials/evaluate_classifications.ipynb>
+   Open Images-style evaluation <../tutorials/open_images.ipynb>

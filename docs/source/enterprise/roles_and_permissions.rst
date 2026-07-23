@@ -90,6 +90,9 @@ they've been granted access.
 Labeler
 -------
 
+.. customavailablein::
+    :enterprise_version: 2.17.0
+
 Labelers only have access to datasets to which they have been specifically
 granted access (a dataset's
 :ref:`default access level <enterprise-default-access>` does not apply to
@@ -105,6 +108,9 @@ view other users of the deployment.
 
 Guest
 -----
+
+.. customavailablein::
+    :enterprise_version: 1.1
 
 Guests only have access to datasets to which they have been specifically
 granted access (a dataset's
@@ -153,6 +159,9 @@ existing users to the group by clicking on "Add users".
 
 Service accounts
 ----------------
+
+.. customavailablein::
+    :enterprise_version: 2.18.0
 
 Service accounts are non-human principals designed for programmatic, automated,
 or machine-to-machine access to FiftyOne Enterprise. They authenticate
@@ -357,6 +366,9 @@ example by adding or removing samples, tags, annotation runs, brain runs, etc.
 Can tag
 --------
 
+.. customavailablein::
+    :enterprise_version: 2.0.0
+
 A user with **Can tag** permissions on a dataset can find the dataset from
 their dataset listing page.
 
@@ -400,6 +412,9 @@ on your team's deployment.
 
 Roles page
 __________
+
+.. customavailablein::
+    :enterprise_version: 1.7.0
 
 Admins can review the actions and permissions available to each user role by
 navigating to the "Settings > Security > Roles" page:

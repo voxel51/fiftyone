@@ -5,6 +5,10 @@ In-App Annotation
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 1.13.0
+    :enterprise_version: 2.16.0
+
 .. admonition:: Managing an annotation team?
    :class: tip
 

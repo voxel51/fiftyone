@@ -191,7 +191,6 @@ pages on this site apply to Enterprise deployments as well.
 
     Overview <overview>
     Installation <installation>
-    Getting Started <getting_started>
     API connection <api_connection>
     App <app>
     Secrets <secrets>

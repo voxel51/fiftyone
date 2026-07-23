@@ -252,7 +252,6 @@ your datasets and turn your good models into *great models*.
    Exploring Kaputt Dataset <kaputt_dataset.ipynb>
    DINOv3 visual search <dinov3.ipynb>
    pandas and FiftyOne <pandas_comparison.ipynb>
-   Working with Open Images <open_images.ipynb>
    Embeddings with Qdrant <qdrant.ipynb>
    3D point clouds with Point-E <pointe.ipynb>
    Monocular depth estimation <monocular_depth_estimation.ipynb>

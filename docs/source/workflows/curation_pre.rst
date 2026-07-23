@@ -21,6 +21,7 @@ subsets you discover into named slices of your dataset.
    :maxdepth: 1
    :hidden:
 
+   Similarity Search <../user_guide/similarity>
    Using image embeddings <../tutorials/image_embeddings.ipynb>
    Dimensionality reduction <../tutorials/dimension_reduction.ipynb>
    Clustering images <../tutorials/clustering.ipynb>

@@ -5,6 +5,10 @@ Grouped datasets
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.17.0
+    :enterprise_version: 1.0
+
 FiftyOne supports the creation of **grouped datasets**, which contain multiple
 slices of samples of possibly different modalities (e.g.,
 :ref:`image <dataset-media-type>`, :ref:`video <video-datasets>`, or
@@ -1022,6 +1026,10 @@ slices, you can :ref:`select them <groups-selecting-slices>`!
 Groups in the App
 _________________
 
+.. customavailablein::
+    :oss_version: 0.17.0
+    :enterprise_version: 1.0
+
 When you load a grouped dataset or view in :ref:`the App <fiftyone-app>`,
 you'll see the samples from the collection's
 :ref:`default group slice <groups-dataset-properties>` in the grid view by
@@ -1094,6 +1102,10 @@ you can use the dynamic grouping action to playback scenes in sequential order:
 
 Linking labels across slices
 ____________________________
+
+.. customavailablein::
+    :oss_version: 1.5.0
+    :enterprise_version: 2.8.0
 
 When working with grouped datasets representing multiview data, you may want to
 represent the fact that multiple labels across different slices correspond to
