@@ -124,6 +124,88 @@ describe("ImageTileSettings", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: matching.label }));
     expect(toggleLabelStream).toHaveBeenCalledWith("12", true);
   });
+
+  it("changes only matching streams from the master labels toggle", () => {
+    const image = source(
+      "7",
+      "Front camera",
+      SCENE_SOURCE_TYPE.IMAGE,
+      "/camera/front/image_raw",
+    );
+    const matching = source(
+      "12",
+      "Front detections",
+      SCENE_SOURCE_TYPE.IMAGE_ANNOTATION,
+      "/camera/front/detections",
+    );
+    const remaining = source(
+      "13",
+      "Rear detections",
+      SCENE_SOURCE_TYPE.IMAGE_ANNOTATION,
+      "/camera/rear/detections",
+    );
+    const annotationSources = [matching, remaining];
+    const labelSourceGroups = groupImageLabelSources(image, annotationSources);
+    const setLabelStreams = vi.fn();
+    const props = (
+      selectedLabelStreams: readonly string[],
+    ): React.ComponentProps<typeof ImageTileSettings> => ({
+      annotationSources,
+      annotationStreams: annotationSources.map((source) => source.id),
+      calibrationSelectionLabel: "Auto · no match",
+      calibrationSources: [],
+      cameraProjection: {
+        calibrationStream: null,
+        display: "recorded",
+        enabled: false,
+        geometry: "auto",
+        pointSize: 6,
+        streams: null,
+      },
+      canConfigureCameraGeometry: false,
+      geometryControlLabel: "Auto",
+      geometryStatus: "",
+      images: [image],
+      labelSourceGroups,
+      pointCloudProjection: {
+        enabled: false,
+        pointSize: 6,
+        streams: null,
+      },
+      pointCloudSources: [],
+      selectedLabelStreams,
+      selectedProjectionStreams: [],
+      setCameraProjection: vi.fn(),
+      setLabelStreams,
+      setPointCloudProjection: vi.fn(),
+      setStream: vi.fn(),
+      stream: image.id,
+      toggleLabelStream: vi.fn(),
+      toggleProjectionStream: vi.fn(),
+    });
+
+    const { rerender } = render(
+      React.createElement(ImageTileSettings, props([remaining.id])),
+    );
+    const toggle = screen.getByRole("switch", {
+      name: "Toggle matching labels",
+    });
+
+    fireEvent.click(toggle);
+    expect(setLabelStreams).toHaveBeenLastCalledWith([
+      matching.id,
+      remaining.id,
+    ]);
+
+    rerender(
+      React.createElement(
+        ImageTileSettings,
+        props([matching.id, remaining.id]),
+      ),
+    );
+    fireEvent.click(toggle);
+    expect(setLabelStreams).toHaveBeenLastCalledWith([remaining.id]);
+  });
 });
 
 function source(
