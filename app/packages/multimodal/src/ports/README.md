@@ -1,7 +1,6 @@
 # ports
 
-Ports are like IRs (which are nouns) - but behaviors. They are interfaces for
-shared behaviors.
+Ports are like IRs - but behaviors. They are interfaces for shared behaviors.
 
 Ports define the operations and lifecycle guarantees the system relies on:
 opening a source, reading frames, fetching bytes, observing cancellation, and

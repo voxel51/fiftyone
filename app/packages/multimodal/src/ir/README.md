@@ -1,6 +1,6 @@
 # IR
 
-IR is the system's shared language.
+IR (Intermediate Representations) is the shared language.
 
 It defines the passive, cloneable values that cross boundaries: sources,
 streams, frames, time, manifests, and visualization outputs. IR says what the
