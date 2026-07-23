@@ -1,3 +1,4 @@
+import { PlaybackProvider } from "@fiftyone/playback";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -64,20 +65,22 @@ vi.mock("../../../components/MultiModalPlayback/MultiModalPlayback", () => {
       };
     }, []);
     return (
-      <div data-instance-id={instanceId} data-testid="playback-shell">
-        <span data-testid="shell-file-name">{fileName}</span>
-        <span data-testid="shell-sources">
-          {sceneSources?.map((source) => source.id).join(",") ?? ""}
-        </span>
-        <button
-          data-testid="shell-state"
-          onClick={() => setShellState((value) => value + 1)}
-        >
-          {shellState}
-        </button>
-        {children}
-        <div data-testid="mock-main-viewport">{mainOverlay}</div>
-      </div>
+      <PlaybackProvider>
+        <div data-instance-id={instanceId} data-testid="playback-shell">
+          <span data-testid="shell-file-name">{fileName}</span>
+          <span data-testid="shell-sources">
+            {sceneSources?.map((source) => source.id).join(",") ?? ""}
+          </span>
+          <button
+            data-testid="shell-state"
+            onClick={() => setShellState((value) => value + 1)}
+          >
+            {shellState}
+          </button>
+          {children}
+          <div data-testid="mock-main-viewport">{mainOverlay}</div>
+        </div>
+      </PlaybackProvider>
     );
   };
   return { default: MockMultiModalPlayback };
@@ -321,10 +324,53 @@ describe("McapSourcePlayback", () => {
     expect(playbackHarness.shellMounts).toBe(1);
     expect(playbackHarness.shellUnmounts).toBe(0);
   });
+
+  it("treats an etag-only rewrite as a new source transition", () => {
+    const client = {
+      activateSource: vi.fn(),
+    } as unknown as McapResourceClient;
+    const initial = createSource("rewritten", "etag-a");
+    const replacement = createSource("rewritten", "etag-b");
+    playbackHarness.sceneInventory = readyInventory("/camera");
+
+    const view = render(
+      <McapSourcePlayback
+        client={client}
+        fileName="rewritten.mcap"
+        source={initial}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("stream-ready"));
+    expect(
+      document
+        .querySelector("[data-mcap-playback-shell]")
+        ?.hasAttribute("data-mcap-source-transitioning"),
+    ).toBe(false);
+
+    view.rerender(
+      <McapSourcePlayback
+        client={client}
+        fileName="rewritten.mcap"
+        source={replacement}
+      />,
+    );
+    expect(
+      document
+        .querySelector("[data-mcap-playback-shell]")
+        ?.getAttribute("data-mcap-source-transitioning"),
+    ).toBe("true");
+
+    fireEvent.click(screen.getByTestId("stream-ready"));
+    expect(
+      document
+        .querySelector("[data-mcap-playback-shell]")
+        ?.hasAttribute("data-mcap-source-transitioning"),
+    ).toBe(false);
+  });
 });
 
-function createSource(sourceId: string): ByteSourceDescriptor {
-  return { sourceId, url: `memory://${sourceId}.mcap` };
+function createSource(sourceId: string, etag?: string): ByteSourceDescriptor {
+  return { sourceId, url: `memory://${sourceId}.mcap`, etag };
 }
 
 function readyInventory(topic: string) {

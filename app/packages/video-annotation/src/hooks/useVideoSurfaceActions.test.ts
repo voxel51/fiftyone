@@ -167,6 +167,26 @@ describe("track ops", () => {
     );
   });
 
+  it("extendTrack carries the source frame's mask onto the filler frames", () => {
+    const mask = { shape: [2, 2], counts: "abcd" };
+    frameData = {
+      1: { A: det("d1", "A", { keyframe: true, mask }) },
+    };
+
+    render().current.extendTrack("instance-A", 1, [2]);
+
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "A", frame: 2 },
+      {
+        _cls: "Detection",
+        label: "x",
+        bounding_box: [0, 0, 1, 1],
+        mask,
+        keyframe: false,
+      },
+    );
+  });
+
   it("trimTrack deletes only frames where the track is present", () => {
     frameData = { 2: { A: det("d2", "A") } };
 
@@ -420,13 +440,27 @@ describe("track identity ops (split / merge)", () => {
     expect(mockBus.dispatch).not.toHaveBeenCalled();
   });
 
-  it("mergeTracks skips a legacy track-<index> on either side", () => {
-    frameData = { 1: { A: det("d1", "A") } };
+  it("mergeTracks operates on an index-based track-<index> (a real address)", () => {
+    // source is an instance-less index track; the engine addresses it by its
+    // synthetic `track-1` id, so merge treats it like any other track
+    frameData = {
+      1: { "track-1": det("d1", "track-1", { index: 1, instance: undefined }) },
+      2: { A: det("d2", "A") },
+    };
 
     render().current.mergeTracks("track-1", "instance-A");
-    render().current.mergeTracks("instance-A", "track-1");
 
-    expect(mockActions.transaction).not.toHaveBeenCalled();
+    expect(mockActions.transaction).toHaveBeenCalledTimes(1);
+    expect(mockActions.deleteLabel).toHaveBeenCalledWith({
+      path: PATH,
+      instanceId: "track-1",
+      frame: 1,
+    });
+    // frame 1 has no target box → the source content is re-laid onto A
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "A", frame: 1 },
+      expect.objectContaining({ label: "x", bounding_box: [0, 0, 1, 1] }),
+    );
   });
 });
 

@@ -119,6 +119,11 @@ test.describe.serial("video non-box label rendering", () => {
     // swaps the list for its editor), then start on a different label so the
     // timeline click must change the selection.
     const instanceId = await modal.videoAnnotate.labelRowId("person");
+
+    // the tracks drawer starts closed; pin the row so the timeline click below
+    // has a visible target
+    await modal.videoAnnotate.pinTrack(instanceId);
+
     await modal.videoAnnotate.selectLabel("vehicle");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "vehicle");
 

@@ -100,6 +100,11 @@ test.describe.serial("video annotation temporal detection edit", () => {
 
     // "approach" is [1,6] -> rendered span 0.00-0.60s
     const approach = await trackIdForLabel(va, "approach");
+
+    // the tracks drawer starts closed; pin the TD row so its interval bar is
+    // rendered for the reads and drag below
+    await va.pinTrack(approach);
+
     expect(await va.trackBarTitle(approach)).toContain("0.00-0.60s");
 
     // drag the end handle right; resolves to support end frame 7 -> 0.70s

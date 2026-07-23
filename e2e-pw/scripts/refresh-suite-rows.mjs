@@ -26,5 +26,13 @@ if (header === -1 || e2eRow < header + 2) {
 }
 
 const jobs = JSON.parse(readFileSync(jobsPath, "utf8")).jobs ?? [];
-lines.splice(header + 2, e2eRow - header - 2, ...buildSuiteRows(jobs));
+const rows = buildSuiteRows(jobs);
+lines.splice(header + 2, e2eRow - header - 2, ...rows);
+
+// The headline is posted by the e2e verdict, which only knows e2e; a suite
+// that failed after posting must flip it
+const headline = lines.findIndex((l) => l.startsWith("## "));
+if (headline !== -1 && rows.some((r) => r.includes("❌"))) {
+  lines[headline] = lines[headline].replace(/^## [✅⚠️]+ CI/u, "## ❌ CI");
+}
 process.stdout.write(lines.join("\n"));

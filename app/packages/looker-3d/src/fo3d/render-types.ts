@@ -1,5 +1,7 @@
+import { GAUSSIAN_SPLAT_EXTENSIONS } from "@fiftyone/utilities";
 import type { Quaternion, Vector3 } from "three";
 import type { FiftyoneSceneRawJson } from "../utils";
+import { DEFAULT_SPLAT_OPACITY, DEFAULT_SPLAT_TINT } from "./splat/settings";
 
 export const Fo3dSupportedExtensions = [
   ".pcd",
@@ -10,6 +12,7 @@ export const Fo3dSupportedExtensions = [
   ".gltf",
   ".glb",
   ".fbx",
+  ...GAUSSIAN_SPLAT_EXTENSIONS,
 ] as const;
 
 export class BoxGeometryAsset {
@@ -72,6 +75,18 @@ export class GltfAsset {
   ) {}
 }
 
+/** Parsed render configuration for a Gaussian splat scene asset. */
+export class GaussianSplatAsset {
+  constructor(
+    readonly splatPath: string,
+    readonly preTransformedSplatPath?: string,
+    readonly format?: string,
+    readonly centerGeometry?: boolean,
+    readonly opacity: number = DEFAULT_SPLAT_OPACITY,
+    readonly tint: string = DEFAULT_SPLAT_TINT,
+  ) {}
+}
+
 export class ObjAsset {
   constructor(
     readonly objPath?: string,
@@ -111,6 +126,7 @@ export class StlAsset {
 
 export type MeshAsset =
   | FbxAsset
+  | GaussianSplatAsset
   | GltfAsset
   | ObjAsset
   | PcdAsset

@@ -8,31 +8,28 @@ import {
   PolylineOverlay,
   useLighter,
 } from "@fiftyone/lighter";
-import {
-  AnnotationLabel,
-  isPatchesView,
-  PolylineAnnotationLabel,
-} from "@fiftyone/state";
+import { isPatchesView } from "@fiftyone/state";
 import { POLYLINE } from "@fiftyone/utilities";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import {
+  type AnnotationContextSelected,
   type CreateOptions,
   useAnnotationContext,
   useAnnotationFields,
 } from "./useAnnotationContext";
 
 /**
- * Utility method to determine if an {@link AnnotationLabel} is a 2d polyline.
- *
- * @param label Label to check
+ * Whether a 2D polyline is the current selection. Keys off the normalized
+ * selection `type`: a committed polyline reconciles back under the plural
+ * `Polylines` field type, which `currentType` folds into `Polyline` — the raw
+ * `label.type` would miss it and leave the edit tool disarmed.
  */
-const is2dPolyline = (
-  label: AnnotationLabel,
-): label is PolylineAnnotationLabel => {
-  return label?.type === "Polyline" && label.overlay instanceof PolylineOverlay;
-};
+const is2dPolylineSelected = (
+  selected: AnnotationContextSelected | null | undefined,
+): boolean =>
+  selected?.type === POLYLINE && selected.overlay instanceof PolylineOverlay;
 
 /**
  * Active flag for 2D polyline annotation mode. While `true`, selecting a
@@ -168,13 +165,13 @@ export const usePolylineModeInstaller = (): void => {
   // exits it. Deselecting entirely leaves the mode active so the user can
   // immediately draw another polyline — exiting requires an explicit gesture
   // (toolbar toggle or generic mode-quit).
-  const prevSelectedLabelRef = useRef(selected?.label);
+  const prevSelectedRef = useRef(selected);
   useEffect(() => {
-    const prev = prevSelectedLabelRef.current;
-    prevSelectedLabelRef.current = selected?.label;
+    const prev = prevSelectedRef.current;
+    prevSelectedRef.current = selected;
 
-    const isPolyline2d = is2dPolyline(selected?.label);
-    const wasPolyline2d = is2dPolyline(prev);
+    const isPolyline2d = is2dPolylineSelected(selected);
+    const wasPolyline2d = is2dPolylineSelected(prev);
 
     if (isPolyline2d) {
       setPolylineModeActive(true);
@@ -182,7 +179,7 @@ export const usePolylineModeInstaller = (): void => {
       // Switched from a polyline to a different non-polyline label.
       setPolylineModeActive(false);
     }
-  }, [selected?.label, setPolylineModeActive]);
+  }, [selected, setPolylineModeActive]);
 
   // Stable ref so the creation handler's `onCreate` always sees the latest
   // create function without needing to swap the installed handler.
@@ -203,7 +200,7 @@ export const usePolylineModeInstaller = (): void => {
       return;
     }
 
-    const isPolyline2d = is2dPolyline(selected?.label);
+    const isPolyline2d = is2dPolylineSelected(selected);
 
     if (!polylineModeActive) {
       exitInstalledHandler();
@@ -262,7 +259,7 @@ export const usePolylineModeInstaller = (): void => {
 
     scene.enterInteractiveMode(handler);
     installedHandlerRef.current = handler;
-  }, [exitInstalledHandler, polylineModeActive, scene, selected?.label]);
+  }, [exitInstalledHandler, polylineModeActive, scene, selected]);
 
   // Tear down on unmount (e.g., scene swap, modal close).
   useEffect(() => {

@@ -6,7 +6,7 @@ on:
       python-versions:
         description: JSON array of Python versions for the Python test matrix
         type: string
-        default: '["3.10", "3.11", "3.12"]'
+        default: '["3.10", "3.11", "3.12", "3.13"]'
 
 jobs:
   test-app:
@@ -107,7 +107,7 @@ jobs:
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
       - name: Upload
-        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.12' }}
+        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.13' }}
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

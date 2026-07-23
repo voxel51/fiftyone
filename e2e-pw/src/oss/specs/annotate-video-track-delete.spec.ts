@@ -85,6 +85,10 @@ test.describe.serial("video annotation whole-track delete", () => {
     await va.assert.labelListed("vehicle");
     const [trackId] = await va.objectTrackIds();
 
+    // the tracks drawer starts closed; pin the row into the header to reach its
+    // interval bar
+    await va.pinTrack(trackId);
+
     // delete the whole track via the timeline context menu; autosave persists it
     const saved = page.waitForResponse(
       (r) =>

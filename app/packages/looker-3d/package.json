@@ -17,6 +17,7 @@
         "@emotion/styled": "^11.14.0",
         "@react-three/drei": "^10.7.6",
         "@react-three/fiber": "^8.18.0",
+        "@sparkjsdev/spark": "2.1.0",
         "chroma-js": "^3.1.2",
         "leva": "^0.9.36",
         "lodash": "^4.18.1",

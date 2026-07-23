@@ -12,6 +12,15 @@ on:
       - tests/ci/Dockerfile
       - .github/workflows/build-ci-images.yml
   workflow_dispatch:
+    inputs:
+      python-versions:
+        description: >-
+          JSON array of python versions to build test images for
+        default: '["3.10", "3.11", "3.12", "3.13"]'
+      build-e2e-image:
+        description: Also rebuild the e2e image
+        type: boolean
+        default: true
 
 # Serialize pushes of the mutable tags
 concurrency:
@@ -24,6 +33,7 @@ permissions:
 
 jobs:
   build-e2e-image:
+    if: github.event_name == 'push' || inputs.build-e2e-image
     timeout-minutes: 45
     runs-on: ubuntu-latest
     name: Build and push e2e image
@@ -32,11 +42,9 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Free Disk Space (Ubuntu)
-        # the test image's dependency tree exceeds the standard runner's
+        # the image's dependency tree exceeds the standard runner's
         # free disk during build
-        uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          large-packages: false
+        uses: ./.github/actions/free-disk-space
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -67,17 +75,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.10", "3.11", "3.12"]
+        python: ${{ fromJSON(inputs.python-versions || '["3.10", "3.11", "3.12", "3.13"]') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       - name: Free Disk Space (Ubuntu)
-        # the test image's dependency tree exceeds the standard runner's
+        # the image's dependency tree exceeds the standard runner's
         # free disk during build
-        uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          large-packages: false
+        uses: ./.github/actions/free-disk-space
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

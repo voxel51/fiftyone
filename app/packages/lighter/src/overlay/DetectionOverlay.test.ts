@@ -71,3 +71,46 @@ describe("DetectionOverlay.applyLabel mask drop", () => {
     expect(overlay.hasMask()).toBe(false);
   });
 });
+
+describe("DetectionOverlay.applyLabel gesture guard", () => {
+  // Regression: an autosave-tick reconcile reprojects the OLD committed box
+  // while the user is still painting/resizing. Painting outside the box grows
+  // the live bounds, so the reproject's (narrower) box must not overwrite them —
+  // onPointerUp's paintEnd(this.bounds) would otherwise bake the mask against
+  // the stale bounds and squash it.
+  const setInteracting = (overlay: DetectionOverlay, state: string): void => {
+    (overlay as unknown as { interactionState: string }).interactionState =
+      state;
+  };
+
+  it("does not clobber live bounds while a gesture is in flight", () => {
+    const overlay = makeOverlay();
+    overlay.applyLabel({
+      label: "vehicle",
+      bounding_box: [0.1, 0.1, 0.4, 0.4],
+    });
+    const liveBounds = { ...overlay.relativeBounds };
+
+    setInteracting(overlay, "PAINTING");
+    // the tick reprojects the old, narrow committed box
+    overlay.applyLabel({
+      label: "vehicle",
+      bounding_box: [0.5, 0.1, 0.02, 0.4],
+    });
+
+    expect(overlay.relativeBounds).toEqual(liveBounds);
+  });
+
+  it("does not drop the mask on a mask-less reproject during a gesture", () => {
+    const overlay = makeOverlay();
+    vi.spyOn(maskOf(overlay), "hasPendingEncode").mockReturnValue(false);
+
+    setInteracting(overlay, "PAINTING");
+    overlay.applyLabel({
+      label: "vehicle",
+      bounding_box: [0.1, 0.1, 0.2, 0.2],
+    });
+
+    expect(overlay.hasMask()).toBe(true);
+  });
+});

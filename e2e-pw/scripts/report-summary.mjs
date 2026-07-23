@@ -107,12 +107,12 @@ if (jobsPath) {
 }
 
 const headline = failed.length
-  ? `## ❌ CI (${FLAVOR}): ${failed.length} failed e2e spec${
+  ? `## ❌ CI (${FLAVOR}): ${failed.length} failed spec${
       failed.length === 1 ? "" : "s"
     }`
   : incomplete
     ? `## ⚠️ CI (${FLAVOR}): incomplete e2e run`
-    : `## ✅ CI (${FLAVOR}): e2e passed`;
+    : `## ✅ CI (${FLAVOR})`;
 
 const lines = [MARKER, headline];
 if (incomplete) {

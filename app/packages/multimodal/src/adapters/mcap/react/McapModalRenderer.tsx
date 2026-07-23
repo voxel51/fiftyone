@@ -1,5 +1,10 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
-import React from "react";
+import React, { useMemo } from "react";
+import {
+  McapAnnotationTopicsProvider,
+  McapTimelineExtensionHost,
+  type McapTimelineSection,
+} from "../../../extensions/mcap";
 import { McapAdjacentSamplePrewarm } from "./McapAdjacentSamplePrewarm";
 import { McapSourcePlayback } from "./McapSourcePlayback";
 import { mcapSourceDisplayName } from "./mcap-source-display-name";
@@ -20,28 +25,66 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
   const source = useStableMcapSource(ctx);
   const fileName = mcapSourceDisplayName(ctx.media.path) ?? "recording.mcap";
   const datasetId = ctx.dataset.datasetId;
-  const { tracks, onTagCreate, onTagUpdate, onTagDelete } =
-    useMcapTemporalTags(ctx);
+  const {
+    tracks: tagTracks,
+    onTagCreate,
+    onTagUpdate,
+    onTagDelete,
+  } = useMcapTemporalTags(ctx);
   // Auto-pin the timeline tracks for the temporal tags the grid was filtered
   // by, so opening a filtered sample surfaces the relevant tags immediately.
   const defaultPinnedTrackIds = useFilteredTemporalTagPinnedIds();
+  const builtInSections = useMemo<readonly McapTimelineSection[]>(
+    () => [
+      {
+        id: "fiftyone:temporal-tags",
+        label: "Temporal tags",
+        order: 200,
+        tracks: tagTracks,
+      },
+    ],
+    [tagTracks],
+  );
 
   return (
-    <McapSourcePlayback
-      client={client}
-      defaultPinnedTrackIds={defaultPinnedTrackIds}
-      fileName={fileName}
-      layoutScopeKey={datasetId}
-      cameraPreferenceField={ctx.media.field}
-      onTagCreate={onTagCreate}
-      onTagUpdate={onTagUpdate}
-      onTagDelete={onTagDelete}
-      navigationPending={ctx.transitioning === true}
-      source={source}
-      tracks={tracks}
-    >
-      <McapAdjacentSamplePrewarm ctx={ctx} />
-    </McapSourcePlayback>
+    <McapAnnotationTopicsProvider>
+      <McapTimelineExtensionHost
+        builtInSections={builtInSections}
+        client={client}
+        ctx={ctx}
+        layoutScopeKey={datasetId}
+        navigationPending={ctx.transitioning === true}
+        source={source}
+      >
+        {({
+          decorateTrack,
+          onDrawerOpenChange,
+          preferences,
+          runtime,
+          tracks,
+        }) => (
+          <McapSourcePlayback
+            client={client}
+            defaultPinnedTrackIds={defaultPinnedTrackIds}
+            decorateTrack={decorateTrack}
+            fileName={fileName}
+            layoutScopeKey={datasetId}
+            cameraPreferenceField={ctx.media.field}
+            onTagCreate={onTagCreate}
+            onTagUpdate={onTagUpdate}
+            onTagDelete={onTagDelete}
+            onTimelineDrawerOpenChange={onDrawerOpenChange}
+            timelineDrawerMaxSize={preferences.drawerMaxSize}
+            navigationPending={ctx.transitioning === true}
+            source={source}
+            tracks={tracks}
+          >
+            <McapAdjacentSamplePrewarm ctx={ctx} />
+            {runtime}
+          </McapSourcePlayback>
+        )}
+      </McapTimelineExtensionHost>
+    </McapAnnotationTopicsProvider>
   );
 };
 
