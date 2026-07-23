@@ -117,6 +117,43 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.task, "table")
 
 
+class PixelBudgetEffectTests(unittest.TestCase):
+    """Verifies the size bounds change the processor's output resolution,
+    not merely that they are forwarded."""
+
+    @classmethod
+    def setUpClass(cls):
+        try:
+            import transformers
+
+            cls.image_processor = (
+                transformers.AutoImageProcessor.from_pretrained(
+                    "PaddlePaddle/PaddleOCR-VL-1.6"
+                )
+            )
+        except Exception as e:
+            raise unittest.SkipTest(
+                "PaddleOCR-VL image processor unavailable: %s" % e
+            )
+
+    def test_spotting_budget_raises_resolution(self):
+        from PIL import Image
+
+        big = Image.new("RGB", (2800, 2800))
+        base = self.image_processor(images=big, return_tensors="pt")
+        raised = self.image_processor(
+            images=big,
+            return_tensors="pt",
+            size={
+                "shortest_edge": foup._MIN_PIXELS,
+                "longest_edge": foup._SPOTTING_MAX_PIXELS,
+            },
+        )
+        self.assertGreater(
+            raised["pixel_values"].shape[0], base["pixel_values"].shape[0]
+        )
+
+
 class UpscaleForSpottingTests(unittest.TestCase):
     def test_small_image_doubled(self):
         from PIL import Image

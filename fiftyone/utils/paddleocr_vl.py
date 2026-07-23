@@ -97,7 +97,7 @@ def _select_dtype(device) -> "torch.dtype":
     return torch.bfloat16 if "cuda" in str(device) else torch.float32
 
 
-def _upscale_for_spotting(pil):
+def _upscale_for_spotting(pil) -> "PILImage.Image":
     """Doubles images whose dimensions are both under 1500 px, matching the
     reference spotting pipeline, which upscales small inputs so fine text
     survives the processor's resize."""
