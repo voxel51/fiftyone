@@ -42,6 +42,7 @@ export { complementaryRgbUnit, interpolateHexColors } from "./utils";
 export type { ThreeSceneBackground } from "./Base3dScene";
 export type {
   CameraFrustumPanelLayer,
+  CameraFrustumParentPosition,
   CameraImageRayModel,
   GridPanelLayer,
   PanelNotice,

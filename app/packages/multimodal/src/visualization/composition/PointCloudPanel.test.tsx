@@ -826,6 +826,86 @@ describe("PointCloudPanel", () => {
     expect(onSelect).toHaveBeenNthCalledWith(2, { metaKey: true });
   });
 
+  it("refreshes an active frustum hover without publishing a false leave", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const firstOnHover = vi.fn();
+    const nextOnHover = vi.fn();
+    const transferredOnHover = vi.fn();
+    const frame = {
+      height: 900,
+      K: [450, 0, 800, 0, 450, 450, 0, 0, 1] as const,
+      kind: VISUALIZATION_KIND.CAMERA_CALIBRATION,
+      width: 1600,
+    };
+
+    const { container, rerender } = render(
+      <PointCloudPanel
+        frustumLayers={[
+          {
+            frame,
+            id: "/CAM_FRONT/camera_info",
+            imageStream: "/CAM_FRONT/image",
+            onHover: firstOnHover,
+          },
+        ]}
+        layers={[]}
+        showHud={false}
+      />,
+    );
+    const frustumGroup = container.querySelector("linesegments")?.parentElement;
+    expect(frustumGroup).toBeTruthy();
+    if (!frustumGroup) throw new Error("Expected a rendered frustum group");
+
+    fireEvent.pointerOver(frustumGroup);
+    expect(firstOnHover).toHaveBeenLastCalledWith(true);
+
+    rerender(
+      <PointCloudPanel
+        frustumLayers={[
+          {
+            frame,
+            parentPosition: {
+              kind: "resolved",
+              origin: [1, 2, 3],
+              parentFrameId: "base_link",
+            },
+            id: "/CAM_FRONT/camera_info",
+            imageStream: "/CAM_FRONT/image",
+            onHover: nextOnHover,
+          },
+        ]}
+        layers={[]}
+        showHud={false}
+      />,
+    );
+
+    expect(firstOnHover).toHaveBeenCalledTimes(1);
+    expect(nextOnHover).toHaveBeenLastCalledWith(true);
+
+    rerender(
+      <PointCloudPanel
+        frustumLayers={[
+          {
+            frame,
+            id: "/CAM_FRONT/camera_info",
+            imageStream: "/CAM_REAR/image",
+            onHover: transferredOnHover,
+          },
+        ]}
+        layers={[]}
+        showHud={false}
+      />,
+    );
+
+    expect(nextOnHover).toHaveBeenLastCalledWith(false);
+    expect(transferredOnHover).toHaveBeenLastCalledWith(true);
+
+    const updatedGroup = container.querySelector("linesegments")?.parentElement;
+    if (!updatedGroup) throw new Error("Expected the updated frustum group");
+    fireEvent.pointerOut(updatedGroup);
+    expect(transferredOnHover).toHaveBeenLastCalledWith(false);
+  });
+
   it("decodes a keyed frustum image through the shared texture cache", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const createBitmap = vi.fn(async () => ({

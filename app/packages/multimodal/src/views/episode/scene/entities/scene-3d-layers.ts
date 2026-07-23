@@ -8,6 +8,7 @@ import type {
 } from "../../../../ir/index";
 import type {
   CameraFrustumPanelLayer,
+  CameraFrustumParentPosition,
   GridPanelLayer,
   PointCloudFrameTransform,
   PointCloudPanelLayer,
@@ -239,7 +240,13 @@ export function build3dLayers({
     if (!frame.coordinateFrameId) {
       // A frustum without a camera frame has no meaningful placement, but
       // origin rendering keeps it debuggable rather than silently absent.
-      cameraFrustumLayers.push(layerBase);
+      cameraFrustumLayers.push({
+        ...layerBase,
+        parentPosition: {
+          kind: "unavailable",
+          reason: "Camera frame missing",
+        },
+      });
       transformedLayerCount += 1;
       return;
     }
@@ -272,6 +279,11 @@ export function build3dLayers({
     cameraFrustumLayers.push({
       ...layerBase,
       frameTransform: resolution.transform,
+      parentPosition: resolveCameraParentPosition({
+        frameTransforms,
+        sourceFrameId: frame.coordinateFrameId,
+        timeNs: playbackFrame.requestedTimeNs,
+      }),
     });
   });
 
@@ -512,6 +524,33 @@ function recordStalePoseUsage(
     staleAfterNs: worst.staleAfterNs,
     targetFrameId: worst.targetFrameId,
   });
+}
+
+function resolveCameraParentPosition({
+  frameTransforms,
+  sourceFrameId,
+  timeNs,
+}: {
+  readonly frameTransforms: FrameTransformsState;
+  readonly sourceFrameId: string;
+  readonly timeNs: bigint;
+}): CameraFrustumParentPosition {
+  const resolution = frameTransforms.resolveParent?.(sourceFrameId, timeNs);
+  if (resolution?.status === "resolved") {
+    const { translation } = resolution.transform;
+    return {
+      kind: "resolved",
+      origin: [translation.x, translation.y, translation.z],
+      parentFrameId: resolution.parentFrameId,
+    };
+  }
+  return {
+    kind: "unavailable",
+    reason:
+      resolution?.status === "pending"
+        ? "Parent transform pending"
+        : "Parent frame unavailable",
+  };
 }
 
 function recordUnresolvedPoseUsage(

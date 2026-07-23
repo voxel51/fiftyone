@@ -22,7 +22,14 @@ describe("buildScene3dFrustumLayer", () => {
       imagePlaneDepthM: 2,
       imageSourceName: "/camera/front/image_raw",
       imageStream: "7",
-      layer: calibrationLayer(),
+      layer: {
+        ...calibrationLayer(),
+        parentPosition: {
+          kind: "resolved",
+          origin: [0.2, 0.1, 1.5],
+          parentFrameId: "base_link",
+        },
+      },
       onHoverCamera,
       opacity: 0.6,
       openImageTile,
@@ -49,6 +56,11 @@ describe("buildScene3dFrustumLayer", () => {
         imageSourceName: "/camera/front/image_raw",
         imageStream: "7",
         kind: "camera",
+        parentPosition: {
+          kind: "resolved",
+          origin: [0.2, 0.1, 1.5],
+          parentFrameId: "base_link",
+        },
       }),
     );
     layer.onHover?.(false);

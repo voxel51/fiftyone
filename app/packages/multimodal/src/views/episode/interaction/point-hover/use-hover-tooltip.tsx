@@ -19,6 +19,7 @@ import {
   VISUALIZATION_HUD_BORDER_COLOR,
   VISUALIZATION_HUD_TEXT_COLOR,
 } from "../../../../visualization/panel-ui/style-tokens";
+import type { CameraFrustumParentPosition } from "../../../../visualization/scene-3d/types";
 
 // Delay before the entity tooltip appears — long enough that sweeping the
 // pointer across a scene doesn't strobe tooltips, short enough to feel
@@ -48,6 +49,7 @@ export interface Scene3dHoveredCamera {
   readonly imageSourceName: string;
   readonly imageStream: string;
   readonly kind: "camera";
+  readonly parentPosition: CameraFrustumParentPosition;
   readonly resolution: readonly [number, number];
 }
 
@@ -81,6 +83,13 @@ export type Scene3dHoverTooltipState = Scene3dHoveredObject & {
   readonly y: number;
 };
 
+type DelayedHover = Scene3dHoveredCamera | Scene3dHoveredEntity;
+
+interface PendingDelayedHover {
+  hovered: DelayedHover;
+  readonly key: string;
+}
+
 /**
  * Delayed hover tooltip for 3D scene objects. The 3D layers report
  * enter/leave through `onHoverEntity`; after a short dwell the tooltip
@@ -110,11 +119,19 @@ export function useScene3dHoverTooltip(): {
   const pointerRef = useRef({ x: 0, y: 0 });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [tooltip, setTooltip] = useState<Scene3dHoverTooltipState | null>(null);
+  const tooltipRef = useRef<Scene3dHoverTooltipState | null>(null);
+  const pendingDelayedHoverRef = useRef<PendingDelayedHover | null>(null);
+
+  const commitTooltip = useCallback((next: Scene3dHoverTooltipState | null) => {
+    tooltipRef.current = next;
+    setTooltip(next);
+  }, []);
 
   // This effect clears a pending show-timer on unmount.
   useEffect(
     () => () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      pendingDelayedHoverRef.current = null;
     },
     [],
   );
@@ -132,24 +149,55 @@ export function useScene3dHoverTooltip(): {
   }, []);
 
   const scheduleDelayedHover = useCallback(
-    <Kind extends "camera" | "entity">(
-      kind: Kind,
-      hovered: Extract<Scene3dHoveredObject, { readonly kind: Kind }> | null,
-    ) => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
+    (kind: DelayedHover["kind"], hovered: DelayedHover | null) => {
       if (!hovered) {
-        setTooltip((current) => (current?.kind === kind ? null : current));
+        if (pendingDelayedHoverRef.current?.hovered.kind === kind) {
+          if (timerRef.current) clearTimeout(timerRef.current);
+          timerRef.current = null;
+          pendingDelayedHoverRef.current = null;
+        }
+        if (tooltipRef.current?.kind === kind) {
+          commitTooltip(null);
+        }
         return;
       }
+
+      const key = delayedHoverKey(hovered);
+      const current = tooltipRef.current;
+      if (
+        current &&
+        current.kind !== "point" &&
+        delayedHoverKey(current) === key
+      ) {
+        commitTooltip({
+          ...hovered,
+          x: current.x,
+          y: current.y,
+        });
+        return;
+      }
+
+      const pending = pendingDelayedHoverRef.current;
+      if (pending?.key === key) {
+        // Parent position may change every playback tick before the initial
+        // dwell completes. Keep the timer but publish the newest payload.
+        pending.hovered = hovered;
+        return;
+      }
+
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (current?.kind === kind) commitTooltip(null);
+      pendingDelayedHoverRef.current = { hovered, key };
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
-        setTooltip({ ...hovered, ...pointerPosition() });
+        const latest = pendingDelayedHoverRef.current;
+        pendingDelayedHoverRef.current = null;
+        if (latest) {
+          commitTooltip({ ...latest.hovered, ...pointerPosition() });
+        }
       }, HOVER_TOOLTIP_DELAY_MS);
     },
-    [pointerPosition],
+    [commitTooltip, pointerPosition],
   );
   const onHoverCamera = useCallback(
     (hovered: Scene3dHoveredCamera | null) =>
@@ -165,16 +213,17 @@ export function useScene3dHoverTooltip(): {
   const onHoverPoint = useCallback(
     (hovered: Scene3dHoveredPoint | null) => {
       if (!hovered) {
-        setTooltip((current) => (current?.kind === "point" ? null : current));
+        if (tooltipRef.current?.kind === "point") commitTooltip(null);
         return;
       }
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
       }
-      setTooltip({ ...hovered, ...pointerPosition() });
+      pendingDelayedHoverRef.current = null;
+      commitTooltip({ ...hovered, ...pointerPosition() });
     },
-    [pointerPosition],
+    [commitTooltip, pointerPosition],
   );
 
   return {
@@ -184,6 +233,12 @@ export function useScene3dHoverTooltip(): {
     onHoverPoint,
     tooltip,
   };
+}
+
+function delayedHoverKey(hovered: DelayedHover): string {
+  return hovered.kind === "camera"
+    ? `camera:${hovered.calibrationStream}:${hovered.imageStream}`
+    : `entity:${hovered.stream}:${hovered.entityId}`;
 }
 
 const tooltipStyle: CSSProperties = {
@@ -216,6 +271,12 @@ const tooltipValueStyle: CSSProperties = {
   overflow: "hidden",
   textAlign: "right",
   textOverflow: "ellipsis",
+};
+
+const tooltipPositionStyle: CSSProperties = {
+  fontVariantNumeric: "tabular-nums",
+  minWidth: "32ch",
+  textAlign: "left",
 };
 
 const tooltipHeadingStyle: CSSProperties = {
@@ -262,57 +323,108 @@ function CameraTooltipContent({
 }: {
   readonly tooltip: Scene3dHoveredCamera;
 }) {
+  const parentPositionHeading =
+    tooltip.parentPosition.kind === "resolved"
+      ? `Position in parent (${tooltip.parentPosition.parentFrameId})`
+      : "Position in parent";
   return (
-    <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-      <Text variant={TextVariant.Sm}>{tooltip.imageLabel}</Text>
-      <div style={tooltipDetailStyle}>
-        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-          Image source
-        </Text>
-        <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
-          {tooltip.imageSourceName}
-        </Text>
-        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-          Calibration
-        </Text>
-        <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
-          {tooltip.calibrationSourceName}
-        </Text>
-        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-          Association
-        </Text>
-        <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
-          {tooltip.calibrationAssociation}
-        </Text>
-        {tooltip.frameId ? (
-          <>
-            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-              Frame
-            </Text>
-            <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
-              {tooltip.frameId}
-            </Text>
-          </>
-        ) : null}
-        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-          Resolution
-        </Text>
-        <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
-          {tooltip.resolution[0]} × {tooltip.resolution[1]}
-        </Text>
-        {tooltip.distortionModel ? (
-          <>
-            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-              Distortion
-            </Text>
-            <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
-              {tooltip.distortionModel}
-            </Text>
-          </>
-        ) : null}
-      </div>
+    <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+      <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+        <Text variant={TextVariant.Sm}>{tooltip.imageLabel}</Text>
+        <div style={tooltipDetailStyle}>
+          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+            Image source
+          </Text>
+          <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+            {tooltip.imageSourceName}
+          </Text>
+          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+            Intrinsics source
+          </Text>
+          <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+            {tooltip.calibrationSourceName}
+          </Text>
+          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+            Association
+          </Text>
+          <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+            {tooltip.calibrationAssociation}
+          </Text>
+          {tooltip.frameId ? (
+            <>
+              <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+                Frame
+              </Text>
+              <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+                {tooltip.frameId}
+              </Text>
+            </>
+          ) : null}
+          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+            Resolution
+          </Text>
+          <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+            {tooltip.resolution[0]} × {tooltip.resolution[1]}
+          </Text>
+          {tooltip.distortionModel ? (
+            <>
+              <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+                Distortion
+              </Text>
+              <Text variant={TextVariant.Xs} style={tooltipValueStyle}>
+                {tooltip.distortionModel}
+              </Text>
+            </>
+          ) : null}
+        </div>
+      </Stack>
+      <CameraPositionBlock
+        heading={parentPositionHeading}
+        position={tooltip.parentPosition}
+      />
     </Stack>
   );
+}
+
+function CameraPositionBlock({
+  heading,
+  position,
+}: {
+  readonly heading: string;
+  readonly position: CameraFrustumParentPosition;
+}) {
+  return (
+    <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+      <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+        {heading}
+      </Text>
+      <Text variant={TextVariant.Xs} style={tooltipPositionStyle}>
+        {position.kind === "unavailable"
+          ? "Unavailable"
+          : formatCameraPosition(position.origin)}
+      </Text>
+      {position.kind === "unavailable" ? (
+        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+          Reason · {position.reason}
+        </Text>
+      ) : null}
+    </Stack>
+  );
+}
+
+function formatCameraPosition(
+  origin: readonly [number, number, number],
+): string {
+  return `x ${formatSignedMeters(origin[0])} · y ${formatSignedMeters(
+    origin[1],
+  )} · z ${formatSignedMeters(origin[2])} m`;
+}
+
+function formatSignedMeters(value: number): string {
+  const rounded = Math.round(value * 1000) / 1000;
+  const normalized = Object.is(rounded, -0) ? 0 : rounded;
+  const sign = normalized < 0 ? "−" : "+";
+  return `${sign}${Math.abs(normalized).toFixed(3)}`;
 }
 
 function EntityTooltipContent({

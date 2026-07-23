@@ -18,6 +18,11 @@ const HOVERED_CAMERA = {
   imageSourceName: "/camera/front/image",
   imageStream: "14",
   kind: "camera" as const,
+  parentPosition: {
+    kind: "resolved" as const,
+    origin: [1.234, -0.082, 1.643] as const,
+    parentFrameId: "base_link",
+  },
   resolution: [1920, 1080] as const,
 };
 
@@ -158,8 +163,68 @@ describe("useScene3dHoverTooltip", () => {
     expect(screen.getByText("/camera/front/camera_info")).toBeTruthy();
     expect(screen.getByText("Auto-matched")).toBeTruthy();
     expect(screen.getByText("1920 × 1080")).toBeTruthy();
+    expect(screen.getByText("Intrinsics source")).toBeTruthy();
+    expect(screen.getByText("Position in parent (base_link)")).toBeTruthy();
+    expect(screen.getByText("x +1.234 · y −0.082 · z +1.643 m")).toBeTruthy();
     expect(screen.queryByText("14")).toBeNull();
     expect(screen.queryByText("3")).toBeNull();
+  });
+
+  it("keeps a camera dwell alive while its parent position updates", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useScene3dHoverTooltip());
+
+    act(() => {
+      result.current.onHoverCamera(HOVERED_CAMERA);
+      vi.advanceTimersByTime(50);
+      result.current.onHoverCamera({
+        ...HOVERED_CAMERA,
+        parentPosition: {
+          ...HOVERED_CAMERA.parentPosition,
+          origin: [2.5, 3.5, 4.5],
+        },
+      });
+      vi.advanceTimersByTime(60);
+    });
+
+    expect(result.current.tooltip).toMatchObject({
+      kind: "camera",
+      parentPosition: { origin: [2.5, 3.5, 4.5] },
+    });
+
+    act(() => {
+      result.current.onHoverCamera({
+        ...HOVERED_CAMERA,
+        parentPosition: {
+          ...HOVERED_CAMERA.parentPosition,
+          origin: [5.5, 6.5, 7.5],
+        },
+      });
+    });
+    expect(result.current.tooltip).toMatchObject({
+      parentPosition: { origin: [5.5, 6.5, 7.5] },
+    });
+  });
+
+  it("renders an unavailable parent position honestly", () => {
+    render(
+      <Scene3dHoverTooltip
+        tooltip={{
+          ...HOVERED_CAMERA,
+          frameId: undefined,
+          parentPosition: {
+            kind: "unavailable",
+            reason: "Camera frame missing",
+          },
+          x: 0,
+          y: 0,
+        }}
+      />,
+    );
+    expect(screen.getByText("Position in parent")).toBeTruthy();
+    expect(screen.getByText("Unavailable")).toBeTruthy();
+    expect(screen.getByText("Reason · Camera frame missing")).toBeTruthy();
+    expect(screen.queryByText("x +0.000 · y +0.000 · z +0.000 m")).toBeNull();
   });
 
   it("renders a point source name instead of its canonical id", () => {
