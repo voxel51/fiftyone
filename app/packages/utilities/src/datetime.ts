@@ -86,6 +86,15 @@ const handleDigits = (digits: string) => {
 };
 
 /**
+ * Format an absolute timestamp as a relative time string, e.g. "3 hours ago"
+ * @param timestamp - epoch milliseconds
+ * @returns the relative time string, or null for an invalid timestamp
+ */
+export function formatRelativeTime(timestamp: number): string | null {
+  return DateTime.fromMillis(timestamp).toRelative();
+}
+
+/**
  * FiftyOne renders `date` fields as the UTC calendar date and `datetime`
  * fields in the app timezone (`fo.config.timezone`, "UTC" by default),
  * while react-datepicker only operates on Date objects interpreted in the

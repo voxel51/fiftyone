@@ -6,6 +6,7 @@ import {
   dateOnlyToUTC,
   formatDatePicker,
   formatDateTimePicker,
+  formatRelativeTime,
   serializeDateValue,
   toPickerDate,
 } from "./datetime";
@@ -96,6 +97,16 @@ describe("formatDatePicker", () => {
     const utcMidnight = 1704067200000;
     const result = formatDatePicker(utcMidnight);
     expect(result).toBe("2024-01-01");
+  });
+});
+
+describe("formatRelativeTime", () => {
+  it("formats past timestamps relative to now", () => {
+    expect(formatRelativeTime(Date.now() - 3_600_000)).toMatch(/ago/);
+  });
+
+  it("returns null for invalid timestamps", () => {
+    expect(formatRelativeTime(Number.NaN)).toBeNull();
   });
 });
 
