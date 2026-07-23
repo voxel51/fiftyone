@@ -444,6 +444,56 @@ describe("episode frame transform store", () => {
     });
   });
 
+  it("resolves the source frame directly into its immediate parent", () => {
+    const store = createStore({
+      staticSamples: [
+        sample("map", "base_link", { x: 40, y: 20, z: 0 }),
+        sample("base_link", "camera", { x: 1, y: 2, z: 3 }),
+      ],
+    });
+
+    expect(
+      store.resolveParent({
+        sourceFrameId: "camera",
+        timeNs: 100n,
+      }),
+    ).toMatchObject({
+      parentFrameId: "base_link",
+      sourceFrameId: "camera",
+      status: "resolved",
+      transform: {
+        sourceFrameId: "camera",
+        targetFrameId: "base_link",
+        translation: { x: 1, y: 2, z: 3 },
+      },
+    });
+  });
+
+  it("follows the active immediate parent across dynamic parent changes", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("base_link", "camera", { x: 1, y: 0, z: 0 }, 100n),
+        sample("sensor_rig", "camera", { x: 2, y: 0, z: 0 }, 200n),
+      ],
+    });
+
+    expect(
+      store.resolveParent({ sourceFrameId: "camera", timeNs: 150n }),
+    ).toMatchObject({
+      parentFrameId: "base_link",
+      status: "resolved",
+      transform: { translation: { x: 1, y: 0, z: 0 } },
+    });
+    expect(
+      store.resolveParent({ sourceFrameId: "camera", timeNs: 200n }),
+    ).toMatchObject({
+      parentFrameId: "sensor_rig",
+      status: "resolved",
+      transform: { translation: { x: 2, y: 0, z: 0 } },
+    });
+  });
+
   it("resolves inverse paths", () => {
     const store = createStore({
       staticSamples: [sample("map", "lidar", { x: 1, y: 2, z: 3 })],

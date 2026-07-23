@@ -18,6 +18,7 @@ import type {
   EpisodeFrameTransformPolicy,
   EpisodeFrameTransformResolution,
   EpisodeFrameTransformTimeRange,
+  EpisodeParentFrameTransformResolution,
 } from "../../../../runtime/frame-transform-types";
 import { compareBigInt, type TransformSample } from "../../../../ir";
 import { errorMessage } from "../../status/error-message";
@@ -54,6 +55,12 @@ export type FrameTransformResolver = (
   targetFrameId: string,
   timeNs: bigint,
 ) => EpisodeFrameTransformResolution;
+
+/** Resolves a frame into its active immediate parent at a playback time. */
+export type ParentFrameTransformResolver = (
+  sourceFrameId: string,
+  timeNs: bigint,
+) => EpisodeParentFrameTransformResolution;
 
 export type FrameGraphSummarizer = (
   dataBearingFrameIds: ReadonlySet<string>,
@@ -92,6 +99,7 @@ export interface FrameTransformsState {
   readonly isPlacementTimeSettled?: (timeNs: bigint) => boolean;
   readonly prefetchPlacement: FramePlacementPrefetcher;
   readonly resolve: FrameTransformResolver;
+  readonly resolveParent?: ParentFrameTransformResolver;
   readonly status: FrameTransformsStatus;
   readonly summarizeGraph: FrameGraphSummarizer;
   /** Changes only when the normalized transform edge inventory changes. */
@@ -518,6 +526,19 @@ export function useFrameTransforms({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [policy?.boundaryClampNs, state.version],
   );
+  const resolveParent = useCallback<ParentFrameTransformResolver>(
+    (sourceFrameId, requestTimeNs) =>
+      storeRef.current?.resolveParent({
+        ...(policy ? { policy } : {}),
+        sourceFrameId,
+        timeNs: requestTimeNs,
+      }) ?? {
+        sourceFrameId,
+        status: "missing",
+      },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [policy?.boundaryClampNs, state.version],
+  );
   const getPlacementReadiness = useCallback<FramePlacementReadinessGetter>(
     ({ frameIds: requestedFrameIds, targetFrameId, timeNs: requestTimeNs }) => {
       const frameIds = uniqueNonEmptySortedFrameIds(requestedFrameIds).filter(
@@ -624,6 +645,7 @@ export function useFrameTransforms({
       isPlacementTimeSettled,
       prefetchPlacement: requestPlacementRangeForTime,
       resolve,
+      resolveParent,
       status: state.status,
       summarizeGraph,
       topologyRevision: storeRef.current?.topologyRevision() ?? 0,
@@ -635,6 +657,7 @@ export function useFrameTransforms({
       isPlacementTimeSettled,
       requestPlacementRangeForTime,
       resolve,
+      resolveParent,
       state.error,
       state.status,
       summarizeGraph,

@@ -146,6 +146,26 @@ export type EpisodeFrameTransformResolution = {
 );
 
 /**
+ * Result of resolving a frame directly into its active immediate parent.
+ * Unlike a composed transform resolution, the target is discovered from the
+ * transform graph at the requested time.
+ */
+export type EpisodeParentFrameTransformResolution = {
+  readonly sourceFrameId: string;
+} & (
+  | {
+      readonly parentFrameId: string;
+      readonly status: "resolved";
+      readonly transform: EpisodeComposedFrameTransform;
+    }
+  | {
+      readonly parentFrameId?: undefined;
+      readonly status: "pending" | "missing";
+      readonly transform?: undefined;
+    }
+);
+
+/**
  * Inclusive dynamic timeline range already attempted by the transform hook.
  */
 export interface EpisodeFrameTransformTimeRange {
