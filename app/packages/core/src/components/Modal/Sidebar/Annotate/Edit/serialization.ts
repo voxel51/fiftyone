@@ -54,7 +54,7 @@ export function serializeFieldValue(
  * Convert raw value into a primitive of the format that we can
  * pass to SmartForm and handle date/dict fields correctly. Date and
  * datetime values become ISO instant strings; the SmartForm datepicker
- * widget translates them to and from display-timezone wall clocks.
+ * widget translates them to and from the displayed date and time.
  * @param value - the value of the field
  * @returns the initial value of the field
  */

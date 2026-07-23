@@ -6,8 +6,9 @@ import { useCallback, useMemo } from "react";
 
 /**
  * Form data carries dates as ISO instant strings. The picker renders and
- * edits them as the wall clock the app displays for the field: the UTC
- * calendar date for date fields, the app timezone for datetime fields.
+ * edits them as the local date and time the app displays for the field:
+ * the UTC calendar date for date fields, the time in the app timezone for
+ * datetime fields.
  */
 export default function DatePickerWidget(props: WidgetProps) {
   const { label, value, disabled, readonly, autofocus, onChange, options } =

@@ -99,7 +99,7 @@ export function formatRelativeTime(timestamp: number): string | null {
  * fields in the app timezone (`fo.config.timezone`, "UTC" by default),
  * while react-datepicker only operates on Date objects interpreted in the
  * browser's local timezone. The helpers below translate between the two so
- * pickers show and store the same wall-clock values the rest of the app
+ * pickers show and store the same dates and times the rest of the app
  * displays.
  */
 
@@ -111,7 +111,7 @@ export type DateFieldType = "date" | "datetime";
  * @param type - the type of the field
  * @param timestamp - epoch milliseconds
  * @param timeZone - the app display timezone (IANA name, "UTC", or "local")
- * @returns a Date carrying the displayed wall-clock values in local time
+ * @returns a Date whose local-time components carry the displayed date and time
  */
 export function toPickerDate(
   type: DateFieldType,
@@ -169,7 +169,7 @@ export function serializeDateValue(
     return dateOnlyToUTC(date);
   }
 
-  // the picker's Date components are wall-clock values in the app display
+  // the picker's Date components are the displayed date and time in the app
   // timezone; interpret them there to recover the absolute instant
   const iso = DateTime.fromObject(
     {

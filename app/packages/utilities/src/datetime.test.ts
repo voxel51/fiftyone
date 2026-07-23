@@ -118,7 +118,7 @@ describe("toPickerDate", () => {
     expect(picker.getDate()).toBe(22);
   });
 
-  it("shows datetime fields as the wall clock in the app timezone", () => {
+  it("shows datetime fields as the local time in the app timezone", () => {
     // 2026-07-22T00:30Z is 2026-07-21T20:30 in New York (EDT)
     const picker = toPickerDate("datetime", INSTANT_MS, "America/New_York");
     expect(picker.getFullYear()).toBe(2026);
@@ -128,7 +128,7 @@ describe("toPickerDate", () => {
     expect(picker.getMinutes()).toBe(30);
   });
 
-  it("shows datetime fields as the UTC wall clock for the default timezone", () => {
+  it("shows datetime fields as UTC time for the default timezone", () => {
     const picker = toPickerDate("datetime", INSTANT_MS, "UTC");
     expect(picker.getFullYear()).toBe(2026);
     expect(picker.getMonth()).toBe(6);
