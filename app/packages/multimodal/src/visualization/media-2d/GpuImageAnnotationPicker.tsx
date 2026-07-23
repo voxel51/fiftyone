@@ -152,7 +152,7 @@ export const GpuImageAnnotationPicker = forwardRef<
   // This layout effect synchronizes frame buffers before the browser paints.
   useLayoutEffect(() => {
     controllerRef.current?.setScene({ imageHeight, imageWidth, resource });
-  }, [imageHeight, imageWidth, resource, resource.revision]);
+  }, [gl, imageHeight, imageWidth, resource, resource.revision]);
 
   useImperativeHandle(forwardedRef, () => handle, [handle]);
   return null;

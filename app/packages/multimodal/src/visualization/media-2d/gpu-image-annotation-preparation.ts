@@ -34,6 +34,7 @@ export interface ImageAnnotationSetInput {
 /** Stable identity and presentation metadata for one selectable shape. */
 export interface PreparedImageAnnotationMetadata {
   readonly color: string;
+  /** Stable within `stream`; pair both fields for cross-stream identity. */
   readonly key: string;
   readonly label: string | null;
   readonly primitive: ImageAnnotationPrimitive;
@@ -78,6 +79,7 @@ export interface PreparedImageAnnotationPicks {
   readonly c: Float32Array;
   readonly count: number;
   readonly kinds: Float32Array;
+  /** Candidate order used as the GPU depth tie-breaker. */
   readonly orders: Float32Array;
   readonly primitiveIndices: Uint32Array;
   /** Disc radius for DISC candidates; unused by other candidate kinds. */
@@ -951,6 +953,8 @@ function batchOffsets(
   primitiveIndices: Uint32Array,
   primitiveCount: number,
 ): Uint32Array {
+  // Preparation appends each metadata entry's geometry contiguously and in
+  // metadata order, so these prefix sums are also valid slice boundaries.
   const offsets = new Uint32Array(primitiveCount + 1);
   for (const primitiveIndex of primitiveIndices) {
     if (primitiveIndex < primitiveCount) offsets[primitiveIndex + 1] += 1;

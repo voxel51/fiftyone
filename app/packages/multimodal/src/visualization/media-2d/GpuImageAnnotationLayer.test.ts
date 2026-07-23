@@ -13,7 +13,7 @@ import {
 afterEach(() => resetGpuImageAnnotationResourcesForTests());
 
 describe("GPU image annotation layer", () => {
-  it("uses scale-then-rotate sprites for line segments", () => {
+  it("keeps points on point materials and rotates scaled line sprites", () => {
     const resource = getGpuImageAnnotationResource("tile", payload());
     const pointMaterial = createGpuImageAnnotationPointMaterial(
       resource.points,
@@ -25,6 +25,13 @@ describe("GPU image annotation layer", () => {
     expect(pointMaterial.material.positionNode).not.toBeNull();
     expect(pointMaterial.material.sizeNode).not.toBeNull();
     expect(pointMaterial.material.fragmentNode).not.toBeNull();
+    expect(
+      (
+        pointMaterial.material as unknown as {
+          readonly isPointsNodeMaterial?: boolean;
+        }
+      ).isPointsNodeMaterial,
+    ).toBe(true);
     expect(segmentMaterial.material.positionNode).not.toBeNull();
     expect(segmentMaterial.material.rotationNode).not.toBeNull();
     expect(segmentMaterial.material.scaleNode).not.toBeNull();

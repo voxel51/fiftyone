@@ -251,6 +251,7 @@ export function createGpuImageAnnotationPointMaterial(
   material.sizeNode = size;
   material.fragmentNode = annotationTsl.Fn(() => {
     annotationTsl.Discard(outsideImage(imageRect));
+    // Geometry follows the image scale; stroke thickness stays in CSS pixels.
     const pixelOffset = annotationTsl.uv().sub(0.5).mul(size).abs();
     const distance = pixelOffset.length();
     const radius = diameter.mul(pixelScale.x).mul(0.5);
@@ -284,6 +285,8 @@ export function createGpuImageAnnotationSegmentMaterial(
     delta.y.mul(pixelScale.y),
   );
   const length = screenDelta.length();
+  // Segment length follows the image scale; stroke thickness stays in CSS
+  // pixels to preserve the old non-scaling SVG stroke behavior.
   const spriteSize = annotationTsl.vec2(length.add(thickness), thickness);
 
   material.positionNode = annotationPosition(

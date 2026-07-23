@@ -15,7 +15,7 @@ export interface GpuImageAnnotationResource {
   readonly pick: GpuImageAnnotationPickResource;
   readonly points: GpuImageAnnotationPointResource;
   /** Increments when new frame data is copied into the stable buffers. */
-  revision: number;
+  readonly revision: number;
   readonly segments: GpuImageAnnotationSegmentResource;
 }
 
@@ -23,7 +23,7 @@ export interface GpuImageAnnotationResource {
 export interface GpuImageAnnotationPointResource {
   readonly centerAttribute: THREE.InstancedBufferAttribute;
   readonly colorAttribute: THREE.InstancedBufferAttribute;
-  count: number;
+  readonly count: number;
   readonly diameterAttribute: THREE.InstancedBufferAttribute;
   readonly geometry: THREE.PlaneGeometry;
   readonly kindAttribute: THREE.InstancedBufferAttribute;
@@ -33,7 +33,7 @@ export interface GpuImageAnnotationPointResource {
 /** GPU attributes for the instanced line-segment batch. */
 export interface GpuImageAnnotationSegmentResource {
   readonly colorAttribute: THREE.InstancedBufferAttribute;
-  count: number;
+  readonly count: number;
   readonly endAttribute: THREE.InstancedBufferAttribute;
   readonly geometry: THREE.PlaneGeometry;
   readonly startAttribute: THREE.InstancedBufferAttribute;
@@ -45,7 +45,7 @@ export interface GpuImageAnnotationPickResource {
   readonly aAttribute: THREE.InstancedBufferAttribute;
   readonly bAttribute: THREE.InstancedBufferAttribute;
   readonly cAttribute: THREE.InstancedBufferAttribute;
-  count: number;
+  readonly count: number;
   readonly geometry: THREE.PlaneGeometry;
   readonly kindAttribute: THREE.InstancedBufferAttribute;
   readonly orderAttribute: THREE.InstancedBufferAttribute;
@@ -53,14 +53,30 @@ export interface GpuImageAnnotationPickResource {
   readonly radiusAttribute: THREE.InstancedBufferAttribute;
 }
 
+interface InternalPointResource extends GpuImageAnnotationPointResource {
+  count: number;
+}
+
+interface InternalSegmentResource extends GpuImageAnnotationSegmentResource {
+  count: number;
+}
+
+interface InternalPickResource extends GpuImageAnnotationPickResource {
+  count: number;
+}
+
 interface InternalResource extends GpuImageAnnotationResource {
   disposed: boolean;
   payload: PreparedImageAnnotations;
-  pickCapacity: number;
-  pointCapacity: number;
+  readonly pick: InternalPickResource;
+  readonly pickCapacity: number;
+  readonly pointCapacity: number;
+  readonly points: InternalPointResource;
   retired: boolean;
   retainCount: number;
-  segmentCapacity: number;
+  revision: number;
+  readonly segmentCapacity: number;
+  readonly segments: InternalSegmentResource;
 }
 
 const entries = new Map<string, InternalResource>();
@@ -171,9 +187,7 @@ function updateResource(
   resource.revision += 1;
 }
 
-function createPointResource(
-  capacity: number,
-): GpuImageAnnotationPointResource {
+function createPointResource(capacity: number): InternalPointResource {
   const geometry = new THREE.PlaneGeometry(1, 1);
   const centerAttribute = attribute(new Float32Array(capacity * 2), 2);
   const colorAttribute = attribute(new Float32Array(capacity * 3), 3);
@@ -196,9 +210,7 @@ function createPointResource(
   };
 }
 
-function createSegmentResource(
-  capacity: number,
-): GpuImageAnnotationSegmentResource {
+function createSegmentResource(capacity: number): InternalSegmentResource {
   const geometry = new THREE.PlaneGeometry(1, 1);
   const colorAttribute = attribute(new Float32Array(capacity * 3), 3);
   const endAttribute = attribute(new Float32Array(capacity * 2), 2);
@@ -218,7 +230,7 @@ function createSegmentResource(
   };
 }
 
-function createPickResource(capacity: number): GpuImageAnnotationPickResource {
+function createPickResource(capacity: number): InternalPickResource {
   const geometry = new THREE.PlaneGeometry(1, 1);
   const aAttribute = attribute(new Float32Array(capacity * 2), 2);
   const bAttribute = attribute(new Float32Array(capacity * 2), 2);
@@ -251,7 +263,7 @@ function createPickResource(capacity: number): GpuImageAnnotationPickResource {
 }
 
 function copyPoints(
-  resource: GpuImageAnnotationPointResource,
+  resource: InternalPointResource,
   points: PreparedImageAnnotationPoints,
 ): void {
   copy(resource.centerAttribute, points.centers);
@@ -263,7 +275,7 @@ function copyPoints(
 }
 
 function copySegments(
-  resource: GpuImageAnnotationSegmentResource,
+  resource: InternalSegmentResource,
   segments: PreparedImageAnnotationSegments,
 ): void {
   copy(resource.colorAttribute, segments.colors);
@@ -274,7 +286,7 @@ function copySegments(
 }
 
 function copyPicks(
-  resource: GpuImageAnnotationPickResource,
+  resource: InternalPickResource,
   picks: PreparedImageAnnotationPicks,
 ): void {
   copy(resource.aAttribute, picks.a);
