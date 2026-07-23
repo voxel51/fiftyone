@@ -19,6 +19,8 @@ import { rawTileStreamAtom, type RawTileStreams } from "./raw-message-binding";
 import { TILE_TYPE } from "./tile-types";
 import { useOpenRawMessageTile } from "./use-open-raw-message-tile";
 
+const IMU_TARGET = { sourceName: "/imu", streamId: "7" };
+
 const Probe: React.FC<{ readonly seedStreams?: RawTileStreams }> = ({
   seedStreams,
 }) => {
@@ -41,13 +43,13 @@ const Probe: React.FC<{ readonly seedStreams?: RawTileStreams }> = ({
   return (
     <>
       {seedStreams ? <SeedStreams streams={seedStreams} /> : null}
-      <button onClick={() => openRawMessageTile("/imu")} type="button">
+      <button onClick={() => openRawMessageTile(IMU_TARGET)} type="button">
         open imu
       </button>
       <button
         onClick={() => {
-          openRawMessageTile("/imu");
-          openRawMessageTile("/imu");
+          openRawMessageTile(IMU_TARGET);
+          openRawMessageTile(IMU_TARGET);
         }}
         type="button"
       >
@@ -92,17 +94,17 @@ describe("useOpenRawMessageTile", () => {
         "raw-1": tile(TILE_TYPE.RAW),
         "raw-2": tile(TILE_TYPE.RAW),
       },
-      seedStreams: { "raw-2": "/imu" },
+      seedStreams: { "raw-2": "7" },
     });
     await waitFor(() =>
-      expect(probeState().streamsByTile).toMatchObject({ "raw-2": "/imu" }),
+      expect(probeState().streamsByTile).toMatchObject({ "raw-2": "7" }),
     );
 
     fireEvent.click(screen.getByRole("button", { name: "open imu" }));
 
     expect(probeState()).toMatchObject({
       focusedTileId: "raw-2",
-      streamsByTile: { "raw-2": "/imu" },
+      streamsByTile: { "raw-2": "7" },
     });
   });
 
@@ -118,7 +120,7 @@ describe("useOpenRawMessageTile", () => {
     expect(probeState()).toMatchObject({
       focusedTileId: "raw-1",
       titles: { "raw-1": "/imu" },
-      streamsByTile: { "raw-1": "/imu" },
+      streamsByTile: { "raw-1": "7" },
     });
   });
 
@@ -139,7 +141,7 @@ describe("useOpenRawMessageTile", () => {
     expect(probeState()).toMatchObject({
       focusedTileId: "raw-2",
       titles: { "raw-2": "/imu" },
-      streamsByTile: { "raw-1": "/gps", "raw-2": "/imu" },
+      streamsByTile: { "raw-1": "/gps", "raw-2": "7" },
     });
   });
 
@@ -151,7 +153,7 @@ describe("useOpenRawMessageTile", () => {
     expect(probeState()).toMatchObject({
       focusedTileId: "raw-1",
       titles: { "raw-1": "/imu" },
-      streamsByTile: { "raw-1": "/imu" },
+      streamsByTile: { "raw-1": "7" },
       types: { "raw-1": TILE_TYPE.RAW },
     });
   });
@@ -163,7 +165,7 @@ describe("useOpenRawMessageTile", () => {
 
     expect(probeState()).toMatchObject({
       focusedTileId: "raw-1",
-      streamsByTile: { "raw-1": "/imu" },
+      streamsByTile: { "raw-1": "7" },
       types: { "raw-1": TILE_TYPE.RAW },
     });
   });

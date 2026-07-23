@@ -8,11 +8,19 @@ import { useCallback, useRef } from "react";
 import { rawTileStreamAtom, type RawTileStreams } from "./raw-message-binding";
 import { TILE_TYPE } from "./tile-types";
 
+/** Canonical raw-stream binding plus the user-facing name used for titles. */
+export interface RawMessageTileTarget {
+  readonly sourceName: string;
+  readonly streamId: string;
+}
+
 /**
  * Opens a Message panel for a stream: focus an existing matching raw tile,
  * reuse an empty raw tile, or create a new raw tile with the stream preselected.
  */
-export function useOpenRawMessageTile(): (stream: string) => void {
+export function useOpenRawMessageTile(): (
+  target: RawMessageTileTarget,
+) => void {
   const { addTile, setFocusedTileId, setTileTitle, tiles } = useTiling();
   const registeredTiles = useRegisteredTiles();
   const streamsByTile = useAtomValue(rawTileStreamAtom);
@@ -21,8 +29,8 @@ export function useOpenRawMessageTile(): (stream: string) => void {
   stateRef.current = { registeredTiles, tiles, streamsByTile };
 
   return useCallback(
-    (stream: string) => {
-      if (!stream) {
+    ({ sourceName, streamId }: RawMessageTileTarget) => {
+      if (!streamId) {
         return;
       }
 
@@ -31,7 +39,7 @@ export function useOpenRawMessageTile(): (stream: string) => void {
         (tileId) => current.tiles[tileId]?.type === TILE_TYPE.RAW,
       );
       const matchingTileId = rawTileIds.find(
-        (tileId) => current.streamsByTile[tileId] === stream,
+        (tileId) => current.streamsByTile[tileId] === streamId,
       );
       if (matchingTileId) {
         setFocusedTileId(matchingTileId);
@@ -45,7 +53,7 @@ export function useOpenRawMessageTile(): (stream: string) => void {
         const nextStreams = setRawTileStream(
           current.streamsByTile,
           emptyTileId,
-          stream,
+          streamId,
         );
         const emptyTile = current.tiles[emptyTileId];
         stateRef.current = {
@@ -53,15 +61,15 @@ export function useOpenRawMessageTile(): (stream: string) => void {
           tiles: emptyTile
             ? {
                 ...current.tiles,
-                [emptyTileId]: { ...emptyTile, title: stream },
+                [emptyTileId]: { ...emptyTile, title: sourceName },
               }
             : current.tiles,
           streamsByTile: nextStreams,
         };
         setStreamsByTile((previous) =>
-          setRawTileStream(previous, emptyTileId, stream),
+          setRawTileStream(previous, emptyTileId, streamId),
         );
-        setTileTitle(emptyTileId, stream, { source: "auto" });
+        setTileTitle(emptyTileId, sourceName, { source: "auto" });
         setFocusedTileId(emptyTileId);
         return;
       }
@@ -73,14 +81,14 @@ export function useOpenRawMessageTile(): (stream: string) => void {
       const RawMessageTile = definition.Tile;
       const tile: TilingTile = {
         render: () => <RawMessageTile />,
-        title: stream,
+        title: sourceName,
         type: TILE_TYPE.RAW,
       };
       const tileId = addTile(tile, { idPrefix: TILE_TYPE.RAW });
       const nextStreams = setRawTileStream(
         current.streamsByTile,
         tileId,
-        stream,
+        streamId,
       );
       stateRef.current = {
         registeredTiles: current.registeredTiles,
@@ -88,7 +96,7 @@ export function useOpenRawMessageTile(): (stream: string) => void {
         streamsByTile: nextStreams,
       };
       setStreamsByTile((previous) =>
-        setRawTileStream(previous, tileId, stream),
+        setRawTileStream(previous, tileId, streamId),
       );
       setFocusedTileId(tileId);
     },

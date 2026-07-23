@@ -114,6 +114,12 @@ const TileRegistryFixture: React.FC = () => {
       registerTile({
         icon: null,
         Tile: () => null,
+        type: TILE_TYPE.IMAGE,
+        typeLabel: "Image",
+      }),
+      registerTile({
+        icon: null,
+        Tile: () => null,
         type: TILE_TYPE.MAP,
         typeLabel: "Map",
       }),
@@ -153,16 +159,18 @@ const TilingStateProbe: React.FC<{
 
 function renderSidebar({
   registeredStreamStreams,
+  sources = SOURCES,
   streams = [],
 }: {
   /** Stream streams declared by the registered tiles' registrations. */
   readonly registeredStreamStreams?: readonly string[];
+  readonly sources?: readonly SceneSource[];
   readonly streams?: readonly StreamDescriptor[];
 } = {}) {
   const probeState: { current: TilingProbeState | null } = { current: null };
   const result = render(
     <PlaybackProvider duration={1}>
-      <SceneInventoryProvider sources={SOURCES}>
+      <SceneInventoryProvider sources={sources}>
         <TilingProvider initialTiles={INITIAL_TILES}>
           <TileSettingsProvider>
             <TileRegistryFixture />
@@ -394,6 +402,7 @@ describe("SettingsSidebar", () => {
           count: "8",
           decodeStatus: "decodable",
           encoding: "ros1",
+          id: "7",
           schema: "sensor_msgs/Imu",
         }),
       ],
@@ -405,12 +414,44 @@ describe("SettingsSidebar", () => {
     const focusedTileId = probeState.current?.focusedTileId;
     expect(focusedTileId?.startsWith("raw-")).toBe(true);
     expect(probeState.current?.titles[focusedTileId ?? ""]).toBe("/imu");
-    expect(probeState.current?.streamsByTile[focusedTileId ?? ""]).toBe("/imu");
+    expect(probeState.current?.streamsByTile[focusedTileId ?? ""]).toBe("7");
     expect(
       screen
         .getByRole("tab", { name: "Streams" })
         .getAttribute("aria-selected"),
     ).toBe("true");
+  });
+
+  it("opens image streams by canonical id while displaying the source name", () => {
+    const { probeState } = renderSidebar({
+      sources: [
+        {
+          id: "7",
+          label: "camera/front",
+          type: SCENE_SOURCE_TYPE.IMAGE,
+        },
+      ],
+      streams: [
+        stream("/camera/front", {
+          count: "3",
+          decodeStatus: "decodable",
+          encoding: "ros1",
+          id: "7",
+          schema: "sensor_msgs/Image",
+        }),
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Streams" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Image /camera/front" }),
+    );
+
+    const focusedTileId = probeState.current?.focusedTileId;
+    expect(focusedTileId?.startsWith("image-")).toBe(true);
+    expect(probeState.current?.titles[focusedTileId ?? ""]).toBe(
+      "camera/front",
+    );
   });
 
   it("opens GPS streams in a Map panel without leaving Streams", () => {
@@ -585,18 +626,20 @@ function stream(
     count,
     decodeStatus,
     encoding,
+    id = name,
     schema,
   }: {
     readonly count: string;
     readonly decodeStatus: string;
     readonly encoding: string;
+    readonly id?: string;
     readonly schema: string;
   },
 ): StreamDescriptor {
   const sceneType = testSceneType(schema);
   return {
     count: Number(count),
-    id: name,
+    id,
     kind: "unknown",
     metadata: {
       [SCENE_SOURCE_METADATA.SOURCE_NAME]: name,

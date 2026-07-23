@@ -21,8 +21,18 @@ describe("buildStreamInventoryRows", () => {
       id: "7",
     };
 
-    expect(sceneSourcesFromStreamDescriptors([camera])).toEqual([
+    const sceneSources = sceneSourcesFromStreamDescriptors([camera]);
+    expect(sceneSources).toEqual([
       expect.objectContaining({ id: "7", label: "camera/front" }),
+    ]);
+    expect(
+      buildStreamInventoryRows({ sceneSources, streams: [camera] }),
+    ).toEqual([
+      expect.objectContaining({
+        sourceName: "/camera/front",
+        sourceType: SCENE_SOURCE_TYPE.IMAGE,
+        streamId: "7",
+      }),
     ]);
   });
 
@@ -73,7 +83,7 @@ describe("buildStreamInventoryRows", () => {
       streams,
     });
 
-    expect(rows.map((row) => row.stream)).toEqual([
+    expect(rows.map((row) => row.sourceName)).toEqual([
       "/camera/front",
       "/gps",
       "/imu",
@@ -172,15 +182,15 @@ describe("buildStreamInventoryRows", () => {
 });
 
 function row(rows: readonly StreamInventoryRow[], stream: string) {
-  const match = rows.find((candidate) => candidate.stream === stream);
+  const match = rows.find((candidate) => candidate.sourceName === stream);
   if (!match) {
     throw new Error(`Missing stream inventory row: ${stream}`);
   }
   return match;
 }
 
-function streamName(row: { readonly stream: string }): string {
-  return row.stream;
+function streamName(row: { readonly sourceName: string }): string {
+  return row.sourceName;
 }
 
 function stream(

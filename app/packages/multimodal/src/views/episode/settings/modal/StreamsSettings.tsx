@@ -18,7 +18,10 @@ import styles from "./SettingsSidebar.module.css";
 import { TILE_TYPE } from "../../tiles/tile-types";
 import { useOpenTile } from "../../tiles/use-open-tile";
 import { useOpenImageTile } from "../../tiles/use-open-image-tile";
-import { useOpenRawMessageTile } from "../../tiles/use-open-raw-message-tile";
+import {
+  useOpenRawMessageTile,
+  type RawMessageTileTarget,
+} from "../../tiles/use-open-raw-message-tile";
 
 const STREAMS_SEARCH_THRESHOLD = 5;
 
@@ -102,7 +105,7 @@ const StreamsSettings: React.FC<{
                   {group.rows.map((row) => (
                     <StreamRow
                       actionHandlers={actionHandlers}
-                      key={row.stream}
+                      key={row.streamId}
                       onStreamActionStart={onStreamActionStart}
                       row={row}
                     />
@@ -140,7 +143,7 @@ function StreamRow({
   return (
     <div className={styles.streamRow} title={streamDetails(row)}>
       <div className={styles.streamRowHeader}>
-        <span className={styles.streamName}>{row.stream}</span>
+        <span className={styles.streamName}>{row.sourceName}</span>
         {statusLabel ? (
           <span className={styles.streamStatus}>{statusLabel}</span>
         ) : null}
@@ -176,7 +179,7 @@ interface StreamActionHandlers {
   readonly openImageTile: (sourceId: string) => void;
   readonly openLogTile: () => void;
   readonly openMapTile: () => void;
-  readonly openRawMessageTile: (stream: string) => void;
+  readonly openRawMessageTile: (target: RawMessageTileTarget) => void;
 }
 
 interface StreamAction {
@@ -194,10 +197,10 @@ function streamActionsForRow(
 
   if (row.sourceType === SCENE_SOURCE_TYPE.IMAGE) {
     actions.push({
-      ariaLabel: `Image ${row.stream}`,
+      ariaLabel: `Image ${row.sourceName}`,
       id: "image",
       label: "Image",
-      onClick: () => handlers.openImageTile(row.stream),
+      onClick: () => handlers.openImageTile(row.streamId),
     });
   }
 
@@ -206,7 +209,7 @@ function streamActionsForRow(
     row.capabilities.includes(STREAM_CAPABILITY.THREE_D)
   ) {
     actions.push({
-      ariaLabel: `3D ${row.stream}`,
+      ariaLabel: `3D ${row.sourceName}`,
       id: "3d",
       label: "3D",
       onClick: handlers.open3dTile,
@@ -215,7 +218,7 @@ function streamActionsForRow(
 
   if (row.capabilities.includes(STREAM_CAPABILITY.LOGS)) {
     actions.push({
-      ariaLabel: `Logs ${row.stream}`,
+      ariaLabel: `Logs ${row.sourceName}`,
       id: "logs",
       label: "Logs",
       onClick: handlers.openLogTile,
@@ -224,7 +227,7 @@ function streamActionsForRow(
 
   if (row.capabilities.includes(STREAM_CAPABILITY.MAP)) {
     actions.push({
-      ariaLabel: `Map ${row.stream}`,
+      ariaLabel: `Map ${row.sourceName}`,
       id: "map",
       label: "Map",
       onClick: handlers.openMapTile,
@@ -232,10 +235,14 @@ function streamActionsForRow(
   }
 
   actions.push({
-    ariaLabel: `Inspect ${row.stream}`,
+    ariaLabel: `Inspect ${row.sourceName}`,
     id: "inspect",
     label: "Inspect",
-    onClick: () => handlers.openRawMessageTile(row.stream),
+    onClick: () =>
+      handlers.openRawMessageTile({
+        sourceName: row.sourceName,
+        streamId: row.streamId,
+      }),
   });
 
   return actions;

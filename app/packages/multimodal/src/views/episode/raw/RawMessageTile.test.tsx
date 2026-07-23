@@ -7,11 +7,19 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RawRecordResult } from "../../../ir";
+import type { NumericFieldsEnumeration } from "../plots/numeric-series-context";
 import RawMessageTile from "./RawMessageTile";
 
 const mocks = vi.hoisted(() => ({
+  addFieldToPlot: vi.fn(),
+  ensureEnumeration: vi.fn(),
+  enumeration: {
+    status: "idle",
+    streams: [],
+  } as NumericFieldsEnumeration,
   readFullMessageJson:
     vi.fn<(stream: string, timeNs: bigint) => Promise<string>>(),
+  selectedStream: "/state",
   setTileTitle: vi.fn(),
   writeText: vi.fn<(text: string) => Promise<void>>(),
 }));
@@ -55,8 +63,8 @@ vi.mock("../playback/data-stream-context", () => ({
 
 vi.mock("../plots/numeric-series-context", () => ({
   useNumericSeriesContext: () => ({
-    ensureEnumeration: vi.fn(),
-    enumeration: { status: "idle", streams: [] },
+    ensureEnumeration: mocks.ensureEnumeration,
+    enumeration: mocks.enumeration,
   }),
 }));
 
@@ -64,27 +72,28 @@ vi.mock("./raw-message-context", () => ({
   useRawMessageContext: () => ({
     readFullMessageJson: mocks.readFullMessageJson,
     recordsByStream: new Map([
-      ["/state", { result: DISPLAYED_RESULT, status: "ready" }],
+      [mocks.selectedStream, { result: DISPLAYED_RESULT, status: "ready" }],
     ]),
     subscribeRecord: vi.fn(() => vi.fn()),
   }),
 }));
 
 vi.mock("../plots/use-add-field-to-plot", () => ({
-  useAddFieldToPlot: () => vi.fn(),
+  useAddFieldToPlot: () => mocks.addFieldToPlot,
 }));
 
 vi.mock("../tiles/raw-message-binding", () => ({
-  useRawTileStream: () => "/state",
+  useRawTileStream: () => mocks.selectedStream,
 }));
 
 vi.mock("./RawMessageTileSettings", () => ({ default: () => null }));
-vi.mock("../../../visualization/message/StructuredMessageTree", () => ({
-  default: () => null,
-}));
 
 beforeEach(() => {
+  mocks.addFieldToPlot.mockReset();
+  mocks.ensureEnumeration.mockReset();
+  mocks.enumeration = { status: "idle", streams: [] };
   mocks.readFullMessageJson.mockReset();
+  mocks.selectedStream = "/state";
   mocks.setTileTitle.mockReset();
   mocks.writeText.mockReset();
   Object.assign(navigator, { clipboard: { writeText: mocks.writeText } });
@@ -110,4 +119,42 @@ describe("RawMessageTile", () => {
     );
     expect(screen.getByRole("button", { name: "Copied" })).toBeTruthy();
   });
+
+  it("offers numeric fields for a canonical stream id", () => {
+    mocks.selectedStream = "7";
+    mocks.enumeration = readyEnumeration();
+
+    render(<RawMessageTile />);
+
+    fireEvent.click(screen.getByTestId("episode-raw-plot-data.0"));
+    expect(mocks.addFieldToPlot).toHaveBeenCalledWith("7", "data.0");
+    expect(mocks.setTileTitle).toHaveBeenCalledWith("/state", {
+      source: "auto",
+    });
+  });
+
+  it("offers numeric fields for a legacy source-name binding", () => {
+    mocks.selectedStream = "/state";
+    mocks.enumeration = readyEnumeration();
+
+    render(<RawMessageTile />);
+
+    fireEvent.click(screen.getByTestId("episode-raw-plot-data.0"));
+    expect(mocks.addFieldToPlot).toHaveBeenCalledWith("/state", "data.0");
+  });
 });
+
+function readyEnumeration(): NumericFieldsEnumeration {
+  return {
+    status: "ready",
+    streams: [
+      {
+        availability: "ready",
+        encoding: "json",
+        fields: [{ path: "data.0", valueType: "number" }],
+        sourceName: "/state",
+        streamId: "7",
+      },
+    ],
+  };
+}
