@@ -28,8 +28,10 @@ import { useInvalidateOn } from "./use-invalidate-on";
  */
 export const SceneAnnotationLayer = memo(function SceneAnnotationLayer({
   layer,
+  renderCubes = true,
 }: {
   readonly layer: SceneAnnotationPanelLayer;
+  readonly renderCubes?: boolean;
 }) {
   const { frameTransform } = layer;
   const objectTransform = useMemo(
@@ -52,6 +54,7 @@ export const SceneAnnotationLayer = memo(function SceneAnnotationLayer({
           highlighted={Boolean(layer.highlighted)}
           onHoverEntity={layer.onHoverEntity}
           onSelectEntity={layer.onSelectEntity}
+          renderCubes={renderCubes}
         />
       ))}
     </group>
@@ -64,6 +67,7 @@ function SceneAnnotationEntity({
   highlighted,
   onHoverEntity,
   onSelectEntity,
+  renderCubes,
 }: {
   readonly entity: SceneEntityVisualization;
   readonly entityIndex: number;
@@ -73,6 +77,7 @@ function SceneAnnotationEntity({
     entityId: string,
     modifiers: { readonly shiftKey: boolean },
   ) => void;
+  readonly renderCubes: boolean;
 }) {
   const pickingEnabled = useScenePicking();
   const [hovered, setHovered] = useState(false);
@@ -171,17 +176,19 @@ function SceneAnnotationEntity({
             )}
           />
         ))}
-        {entity.cubes.map((cube, primitiveIndex) => (
-          <SceneCubeMesh
-            cube={cube}
-            key={scenePrimitiveKey(
-              entity.id,
-              entityIndex,
-              "cube",
-              primitiveIndex,
-            )}
-          />
-        ))}
+        {renderCubes
+          ? entity.cubes.map((cube, primitiveIndex) => (
+              <SceneCubeMesh
+                cube={cube}
+                key={scenePrimitiveKey(
+                  entity.id,
+                  entityIndex,
+                  "cube",
+                  primitiveIndex,
+                )}
+              />
+            ))
+          : null}
         {entity.cylinders.map((cylinder, primitiveIndex) => (
           <SceneCylinderMesh
             cylinder={cylinder}

@@ -54,6 +54,10 @@ import {
   type MeasurementState,
 } from "../scene-3d/measurement";
 import { SceneAnnotationLayer } from "../scene-3d/SceneAnnotationLayer";
+import {
+  buildSceneAnnotationCubeRenderPlan,
+  SceneAnnotationCubeBatches,
+} from "../scene-3d/SceneAnnotationCubeBatch";
 import { SceneRayLayer } from "../scene-3d/SceneRayLayer";
 import { ScenePickingContext } from "../scene-3d/scene-interactivity";
 import { WorldGridLayer } from "../scene-3d/WorldGridLayer";
@@ -355,6 +359,10 @@ export function PointCloudPanel({
     () => annotationPrimitiveSummaryForLayers(annotationLayers),
     [annotationLayers],
   );
+  const annotationCubeRenderPlan = useMemo(
+    () => buildSceneAnnotationCubeRenderPlan(annotationLayers),
+    [annotationLayers],
+  );
   const annotationCubeCount = annotationPrimitiveSummary.cubeCount;
   const annotationPrimitiveCount = annotationPrimitiveSummary.totalCount;
   const hasPointCloudLayers = layers.length > 0;
@@ -475,8 +483,13 @@ export function PointCloudPanel({
                   pointSize={pointSize}
                 />
               ))}
-              {annotationLayers.map((layer) => (
-                <SceneAnnotationLayer key={layer.id} layer={layer} />
+              <SceneAnnotationCubeBatches plan={annotationCubeRenderPlan} />
+              {annotationCubeRenderPlan.residualLayers.map((layer) => (
+                <SceneAnnotationLayer
+                  key={layer.id}
+                  layer={layer}
+                  renderCubes={false}
+                />
               ))}
               {frustumLayers.map((layer) => (
                 <CameraFrustumSceneLayer

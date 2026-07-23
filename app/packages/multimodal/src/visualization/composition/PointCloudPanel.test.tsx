@@ -352,7 +352,7 @@ describe("PointCloudPanel", () => {
     ]);
   });
 
-  it("renders scene annotation cubes in the shared 3D scene", () => {
+  it("batches scene annotation cubes in the shared 3D scene", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     const { container } = render(
@@ -409,9 +409,10 @@ describe("PointCloudPanel", () => {
       />,
     );
 
-    const groups = Array.from(container.querySelectorAll("group"));
-    expect(groups.map((g) => g.getAttribute("position"))).toContain("10,0,0");
-    expect(groups.map((g) => g.getAttribute("position"))).toContain("1,2,3");
+    // The frame and primitive transforms are composed into one instance
+    // matrix, so cube-only entities mount no per-layer or per-cube groups.
+    expect(container.querySelectorAll("group")).toHaveLength(0);
+    expect(container.querySelectorAll("primitive")).toHaveLength(1);
     expect(screen.queryByText("No finite points")).toBeNull();
   });
 
