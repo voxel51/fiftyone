@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   buildTileEmptyStateModel,
   buildTileStreamNotice,
+  useStabilizedNotices,
 } from "../status/health";
 import {
   useStreamContentTimes,
@@ -95,8 +96,9 @@ export const TileStreamNoticeStrip: React.FC<{
     statuses,
     streams: stableStreams,
   });
+  const notices = useStabilizedNotices(notice ? [notice] : []);
 
-  return <NoticeStrip notices={notice ? [notice] : []} />;
+  return <NoticeStrip notices={notices} />;
 };
 
 /**

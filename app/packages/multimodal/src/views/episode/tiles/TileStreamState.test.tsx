@@ -1,8 +1,13 @@
 import { PlaybackProvider, usePlaybackStore } from "@fiftyone/playback";
 import { act, cleanup, render, screen } from "@testing-library/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TileEmptyState, TileStatusBadge } from "./TileStreamState";
+import {
+  TileEmptyState,
+  TileStatusBadge,
+  TileStreamNoticeStrip,
+} from "./TileStreamState";
+import { NOTICE_APPEARANCE_FLOOR_MS } from "../status/health";
 import {
   setStreamStartTimeSec,
   setStreamStaleAgeNs,
@@ -10,6 +15,7 @@ import {
 } from "../playback/stream-status-state";
 
 const STREAM = "/camera";
+const SECOND_STREAM = "/labels";
 
 afterEach(() => {
   cleanup();
@@ -85,6 +91,41 @@ describe("TileEmptyState", () => {
   });
 });
 
+describe("TileStreamNoticeStrip", () => {
+  it("suppresses a transient loading notice when a source is enabled", () => {
+    vi.useFakeTimers();
+    render(
+      <PlaybackProvider>
+        <StreamNoticeHarness />
+      </PlaybackProvider>,
+    );
+
+    act(() => screen.getByRole("button", { name: "Enable labels" }).click());
+    expect(screen.queryByText(/Buffering/)).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(NOTICE_APPEARANCE_FLOOR_MS - 1);
+      screen.getByRole("button", { name: "Labels ready" }).click();
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(screen.queryByText(/Buffering/)).toBeNull();
+  });
+
+  it("shows a loading notice that survives the appearance floor", () => {
+    vi.useFakeTimers();
+    render(
+      <PlaybackProvider>
+        <StreamNoticeHarness />
+      </PlaybackProvider>,
+    );
+
+    act(() => screen.getByRole("button", { name: "Enable labels" }).click());
+    act(() => vi.advanceTimersByTime(NOTICE_APPEARANCE_FLOOR_MS));
+
+    expect(screen.getByText(/Buffering/)).toBeTruthy();
+  });
+});
+
 function SeedGap({ startSec }: { readonly startSec: number }) {
   const store = usePlaybackStore();
 
@@ -113,4 +154,29 @@ function SeedStaleBadge({
   }, [ageNs, store]);
 
   return <TileStatusBadge showWarnings={showWarnings} streams={[STREAM]} />;
+}
+
+function StreamNoticeHarness() {
+  const store = usePlaybackStore();
+  const [streams, setStreams] = useState<readonly string[]>([STREAM]);
+
+  // This effect starts the existing source ready before toggling a new one.
+  useEffect(() => {
+    setStreamStatus(store, STREAM, "ready");
+  }, [store]);
+
+  return (
+    <>
+      <button onClick={() => setStreams([STREAM, SECOND_STREAM])} type="button">
+        Enable labels
+      </button>
+      <button
+        onClick={() => setStreamStatus(store, SECOND_STREAM, "ready")}
+        type="button"
+      >
+        Labels ready
+      </button>
+      <TileStreamNoticeStrip streams={streams} />
+    </>
+  );
 }

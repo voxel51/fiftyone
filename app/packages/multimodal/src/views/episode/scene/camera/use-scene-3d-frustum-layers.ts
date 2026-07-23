@@ -19,6 +19,10 @@ import {
   useImageTileBindings,
 } from "../../tiles/tile-source-bindings";
 import { useOpenImageTile } from "../../tiles/use-open-image-tile";
+import {
+  frameTransformIdentityInputs,
+  frustumParentPositionIdentityInputs,
+} from "../entities/scene-3d-layer-identity";
 
 interface FrustumLayerActions {
   readonly clearHovered: (stream: string) => boolean;
@@ -230,7 +234,10 @@ export function useScene3dFrustumLayers({
       const index = cameraStreams.indexOf(layer.id);
       const imageStream = index >= 0 ? (frustumImageStreams[index] ?? "") : "";
       return [
-        layer,
+        layer.frame,
+        layer.contentTimeNs,
+        ...frameTransformIdentityInputs(layer.frameTransform),
+        ...frustumParentPositionIdentityInputs(layer.parentPosition),
         index >= 0 ? frustumImageFrames[index] : null,
         index >= 0 ? frustumImageDecodeRunways[index] : null,
         imageStream,

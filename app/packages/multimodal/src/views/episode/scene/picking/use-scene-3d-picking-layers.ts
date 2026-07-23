@@ -25,6 +25,7 @@ import {
   selectedObjectAtom,
   useSelectedObject,
 } from "../../interaction/selection/selected-object";
+import { frameTransformIdentityInputs } from "../entities/scene-3d-layer-identity";
 
 type SelectedObjectState = ReturnType<typeof useSelectedObject>;
 
@@ -90,11 +91,19 @@ export function useScene3dPickingLayers({
     },
     inputs: (layer) => {
       const entity = layer.frame.entities[0];
-      if (!entity) return [layer];
+      if (!entity) {
+        return [
+          layer.frame,
+          layer.sourceId,
+          ...frameTransformIdentityInputs(layer.frameTransform),
+        ];
+      }
       const stream = layer.sourceId ?? "";
       const entityId = entity.id || layer.id;
       return [
-        layer,
+        entity,
+        layer.sourceId,
+        ...frameTransformIdentityInputs(layer.frameTransform),
         isSceneEntitySelected(selectedObject, stream, entityId),
         isLabelEcho(selectedObject, entityLabel(entity)),
         onHoverEntity,

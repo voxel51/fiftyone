@@ -1,5 +1,12 @@
 import { useTileId, useTiling } from "@fiftyone/tiling";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { usePublishAnnotationStreams } from "../../../../extensions/timeline/index";
 import type {
   CameraCalibrationVisualization,
@@ -83,6 +90,7 @@ import { usePlaybackTimeNs } from "../../playback/use-playback-time-ns";
 import { useStreamPlaybackFrames } from "../../playback/use-stream-values";
 import { useVideoDecodeRunways } from "../../playback/video-decode-runway/use-video-decode-runways";
 import {
+  scene3dSnapshotHasLayers,
   useScene3dSnapshot,
   type Scene3dSnapshot,
 } from "../entities/use-scene-3d-snapshot";
@@ -94,6 +102,7 @@ import { useScene3dFrustumLayers } from "../camera/use-scene-3d-frustum-layers";
 import { useScene3dPlacedLayers } from "../placement/use-scene-3d-placed-layers";
 import { useScene3dViewpointRegistration } from "../camera/use-scene-3d-viewpoint-registration";
 import { useScene3dTilePlaybackSettings } from "./scene-3d-tile-state";
+import { frameTransformIdentityInputs } from "../entities/scene-3d-layer-identity";
 
 /**
  * Named gradient backdrop profiles for the 3D scene. "Abyss" is dark
@@ -206,6 +215,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   );
   const tileId = useTileId();
   const { focusedTileId } = useTiling();
+  const panelHasCommittedRef = useRef(false);
   const panelBackground = useMemo<ThreeSceneBackground>(() => {
     switch (sceneBackground.mode) {
       case "abyss":
@@ -446,7 +456,9 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       };
     },
     inputs: (layer) => [
-      layer,
+      layer.frame,
+      layer.contentTimeNs,
+      ...frameTransformIdentityInputs(layer.frameTransform),
       pointCloudColors[layer.id],
       pointCloudSourceById.get(layer.id),
       pointCloudSources,
@@ -478,6 +490,15 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     onHoverCamera,
     opacity: pinholeCamera.opacityPercent / 100,
     sourceKey,
+  });
+  const stableGridLayers = useKeyedIdentityMap(gridLayers, {
+    build: (layer) => layer,
+    inputs: (layer) => [
+      layer.frame,
+      layer.contentTimeNs,
+      ...frameTransformIdentityInputs(layer.frameTransform),
+    ],
+    key: (layer) => layer.id,
   });
   // Schema-driven telemetry: speed from the first enabled pose stream whose
   // latest sample carries velocity, coordinates from the first LocationFix
@@ -643,20 +664,14 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   // diagnostics remain local to the panel's bottom-left notice control.
   usePublishSceneNotices(tileId, panelNotices);
   const sceneSnapshotKey = useMemo(
-    () =>
-      JSON.stringify([
-        sourceKey,
-        selectedStreamsKey,
-        worldFrameId,
-        smoothTrackedLabels,
-      ]),
-    [selectedStreamsKey, smoothTrackedLabels, sourceKey, worldFrameId],
+    () => JSON.stringify([sourceKey, worldFrameId, smoothTrackedLabels]),
+    [smoothTrackedLabels, sourceKey, worldFrameId],
   );
   const currentSceneSnapshot = useMemo<Scene3dSnapshot>(
     () => ({
       annotationLayers,
       frustumLayers,
-      gridLayers,
+      gridLayers: stableGridLayers,
       notices: panelNotices,
       placementStatus,
       pointCloudLayers: hoverablePointCloudLayers,
@@ -665,7 +680,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       annotationLayers,
       hoverablePointCloudLayers,
       frustumLayers,
-      gridLayers,
+      stableGridLayers,
       panelNotices,
       placementStatus,
     ],
@@ -685,6 +700,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
           placementReadiness.status === "definitiveMissing"
         ? placementReadiness.status
         : "pending",
+    selectedStreams,
   });
   const displayedScene = sceneSnapshotSelection.snapshot;
   const depthHover = useDepthHover();
@@ -711,6 +727,21 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     depthRayResolution?.status === "ready"
       ? [depthRayResolution.layer]
       : EMPTY_SCENE_RAYS;
+  const sceneHasRenderableContent =
+    scene3dSnapshotHasLayers(displayedScene) || depthRayLayers.length > 0;
+  const sceneRequiresPanel =
+    sceneHasRenderableContent || displayedScene.notices.length > 0;
+  const shouldRenderPanel =
+    selectedStreams.length > 0 &&
+    (sceneRequiresPanel || panelHasCommittedRef.current);
+
+  // This layout effect records that source-backed scene content committed so
+  // later source-loading transitions keep the renderer mounted.
+  useLayoutEffect(() => {
+    if (sceneHasRenderableContent) {
+      panelHasCommittedRef.current = true;
+    }
+  }, [sceneHasRenderableContent]);
   const prefetchFramePlacement = frameTransforms.prefetchPlacement;
 
   // This effect requests the transform window needed by a hovered camera ray.
@@ -822,16 +853,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
         <div className={styles.loading}>
           <span className={styles.emptyText}>No sources selected</span>
         </div>
-      ) : // Gate on the UNSTABILIZED notices: a live notice condition must keep
-      // the panel (and its GL canvas) mounted even while the stabilizer's
-      // appearance floor still hides it from the chip — otherwise short
-      // transform dropouts would flash the empty state and churn the canvas.
-      displayedScene.pointCloudLayers.length > 0 ||
-        displayedScene.annotationLayers.length > 0 ||
-        displayedScene.gridLayers.length > 0 ||
-        displayedScene.frustumLayers.length > 0 ||
-        depthRayLayers.length > 0 ||
-        producedNotices.length > 0 ? (
+      ) : shouldRenderPanel ? (
         <div className={styles.panelStack} {...hoverTooltipContainerProps}>
           <PointCloudPanel
             annotationLayers={displayedScene.annotationLayers}
