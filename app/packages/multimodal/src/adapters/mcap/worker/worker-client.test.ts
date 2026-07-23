@@ -75,7 +75,7 @@ describe("worker-backed MCAP resource client", () => {
     });
 
     expect(onTransport).toHaveBeenCalledWith({
-      lane: "foreground",
+      lane: "interactive",
       snapshot,
     });
 
@@ -288,7 +288,7 @@ describe("worker-backed MCAP resource client", () => {
     await expect(windows).resolves.toEqual([]);
   });
 
-  it("uses a separate foreground worker while idle-prefetch work is pending", async () => {
+  it("uses a separate interactive worker while idle-prefetch work is pending", async () => {
     const { client, workers } = createClientHarness();
     const source = createSource("source:1");
 
@@ -317,6 +317,12 @@ describe("worker-backed MCAP resource client", () => {
       priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
       type: "readSynchronizedMessages",
     });
+    expect(workers[1].messages[0]).toMatchObject({
+      payload: {
+        fillSlotClass: "priority",
+      },
+      type: "init",
+    });
 
     const currentWindow = createSynchronizedWindow(1n);
     workers[1].respond({ id: 1, ok: true, result: currentWindow });
@@ -324,6 +330,56 @@ describe("worker-backed MCAP resource client", () => {
 
     workers[0].respond({ id: 1, ok: true, result: [] });
     await expect(idle).resolves.toEqual([]);
+  });
+
+  it("admits a current frame while foreground playback is unresolved", async () => {
+    const { client, workers } = createClientHarness();
+    const source = createSource("source:1");
+    const playback = client.readSynchronizedMessageBatch({
+      timeNs: [1n, 2n],
+      source,
+      topics: ["/camera"],
+    });
+    const current = client.readSynchronizedMessages({
+      timeNs: 1n,
+      source,
+      topics: ["/labels"],
+    });
+
+    expect(workers).toHaveLength(2);
+    expect(workers[0].messages).toEqual([
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          fillSlotClass: "priority",
+        }),
+        type: "init",
+      }),
+      expect.objectContaining({
+        id: 1,
+        priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLAYBACK_BATCH,
+        type: "readSynchronizedMessageBatch",
+      }),
+    ]);
+    expect(workers[1].messages).toEqual([
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          fillSlotClass: "priority",
+        }),
+        type: "init",
+      }),
+      expect.objectContaining({
+        id: 1,
+        priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+        type: "readSynchronizedMessages",
+      }),
+    ]);
+
+    const currentWindow = createSynchronizedWindow(1n);
+    workers[1].respond({ id: 1, ok: true, result: currentWindow });
+    await expect(current).resolves.toEqual(currentWindow);
+
+    workers[0].respond({ id: 1, ok: true, result: [] });
+    await expect(playback).resolves.toEqual([]);
   });
 
   it("keeps workers warm and fails stale reads under explicit ownership", async () => {

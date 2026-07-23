@@ -65,9 +65,9 @@ export type McapPlaybackWorkerPriority =
  */
 export type McapPlaybackWorkerFetchParameters = {
   /**
-   * Fill-slot class for this worker's remote block fills: the foreground
-   * playback lane declares "priority" (reserved slot access), idle and
-   * bulk lanes declare "background".
+   * Fill-slot class for this worker's remote block fills: interactive and
+   * foreground playback lanes declare "priority" (reserved slot access);
+   * idle and bulk lanes declare "background".
    */
   readonly fillSlotClass?: "background" | "priority";
   readonly headers: Record<string, string>;

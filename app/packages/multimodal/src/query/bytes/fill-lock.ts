@@ -78,11 +78,11 @@ export function byteFillSlotName(
 }
 
 /**
- * First slot a fill class may use. Priority fills (the playback-critical
- * foreground lane) may take any slot including slot 0; background fills
- * (idle lookahead, bulk history scans, speculative readahead) start at
- * slot 1 — so however deep the background queue grows, the playhead's
- * next fill always has slot 0 waiting for it.
+ * First slot a fill class may use. Priority fills (interactive and foreground
+ * playback lanes) may take any slot including slot 0; background fills (idle
+ * lookahead, bulk history scans, speculative readahead) start at slot 1 — so
+ * however deep the background queue grows, the playhead's next fill always
+ * has slot 0 waiting for it.
  */
 export function byteFillSlotFloor(
   slotClass: "background" | "priority" | undefined,

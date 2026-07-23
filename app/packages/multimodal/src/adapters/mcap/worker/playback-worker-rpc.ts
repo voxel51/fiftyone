@@ -62,9 +62,9 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY,
   },
-  // Idle lane on purpose: a raw read may decode one multi-megabyte
-  // message, and the foreground lane is serial with current-frame and
-  // playback reads. Inspection latency loses to playback smoothness.
+  // Idle lane on purpose: a raw read may decode one multi-megabyte message
+  // and must not occupy either user-visible playback lane. Inspection
+  // latency loses to playback smoothness.
   readRawMessageRecord: {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
