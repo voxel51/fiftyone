@@ -171,17 +171,21 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
 
   // Metadata gate: without a frame count no strategy can mount, so show an
   // actionable prompt instead of a stream that would throw or blank out.
+  // Wrapped in the provider (see the resolved return) — the top bar reads the
+  // playback context in every surface state.
   if (prerequisites.status === "blocked") {
     return (
-      <div
-        ref={dimensions.ref as React.RefObject<HTMLDivElement>}
-        className={styles.root}
-      >
-        <VideoAnnotationTopBar sample={sample} />
-        <div className={styles.media}>
-          <AnnotatePrerequisiteNotice blocker={prerequisites.blocker} />
+      <PlaybackProvider snapToFrameOnSettle>
+        <div
+          ref={dimensions.ref as React.RefObject<HTMLDivElement>}
+          className={styles.root}
+        >
+          <VideoAnnotationTopBar sample={sample} />
+          <div className={styles.media}>
+            <AnnotatePrerequisiteNotice blocker={prerequisites.blocker} />
+          </div>
         </div>
-      </div>
+      </PlaybackProvider>
     );
   }
 
@@ -189,15 +193,17 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   // hold on a spinner so the scaffolding mounts exactly once, on the winner.
   if (resolution.status !== "resolved" || !resolution.strategy) {
     return (
-      <div
-        ref={dimensions.ref as React.RefObject<HTMLDivElement>}
-        className={styles.root}
-      >
-        <VideoAnnotationTopBar sample={sample} />
-        <div className={styles.media}>
-          <AnnotatePrerequisiteChecking />
+      <PlaybackProvider snapToFrameOnSettle>
+        <div
+          ref={dimensions.ref as React.RefObject<HTMLDivElement>}
+          className={styles.root}
+        >
+          <VideoAnnotationTopBar sample={sample} />
+          <div className={styles.media}>
+            <AnnotatePrerequisiteChecking />
+          </div>
         </div>
-      </div>
+      </PlaybackProvider>
     );
   }
 
