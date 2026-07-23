@@ -2,7 +2,7 @@
 // --reporter json) as the markdown body for the authoritative e2e PR comment
 // and the workflow job summary.
 //
-// Usage: node scripts/report-summary.mjs merged-results.json [blob-dir] [jobs-json] [burn-in-json]
+// Usage: node .github/scripts/report-summary.mjs merged-results.json [blob-dir] [jobs-json] [burn-in-json]
 // Env: RUN_URL (workflow run link), HEAD_SHA (commit the run tested),
 // TEST_E2E_RESULT (shard jobs' aggregate result), EXPECTED_SHARDS
 // (shard count; with blob-dir, flags runs whose reports are incomplete),

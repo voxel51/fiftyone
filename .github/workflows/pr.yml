@@ -188,7 +188,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          sparse-checkout: e2e-pw/scripts
+          sparse-checkout: .github/scripts
       - name: Download pytest results
         # junit reports for the comment's python section; empty when the
         # python matrix was skipped or died before uploading
@@ -219,7 +219,7 @@ jobs:
             "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
             > run-jobs.json
           gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CID" --jq .body > body.md
-          node e2e-pw/scripts/refresh-suite-rows.mjs run-jobs.json body.md pytest-junit > new-body.md
+          node .github/scripts/refresh-suite-rows.mjs run-jobs.json body.md pytest-junit > new-body.md
           if cmp -s body.md new-body.md; then
             echo "suite rows already final"
             exit 0

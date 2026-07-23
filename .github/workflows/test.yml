@@ -134,7 +134,7 @@ jobs:
           exit $fail
       - name: Upload pytest results
         # junit reports feed the python section of the authoritative CI
-        # comment (e2e-pw/scripts/python-section.mjs)
+        # comment (.github/scripts/python-section.mjs)
         if: success() || failure()
         uses: actions/upload-artifact@v7
         with:
