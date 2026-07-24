@@ -153,7 +153,10 @@ const burnInUnhealthy =
   (burnInResult !== "success" ||
     burnInStats === null ||
     burnInFailed.length > 0 ||
-    (burnInStats.expected ?? 0) + (burnInStats.unexpected ?? 0) === 0);
+    (burnInStats.expected ?? 0) +
+      (burnInStats.skipped ?? 0) +
+      (burnInStats.unexpected ?? 0) ===
+      0);
 
 const itemize = (entries) => {
   const lines = entries

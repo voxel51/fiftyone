@@ -85,7 +85,9 @@ if (burnInCount > 0) {
         } — new/modified specs must pass all 10 repeats`,
       );
     }
-    if ((burnInStats.expected ?? 0) + burnInFailed === 0) {
+    // all-skipped is a valid outcome: quarantining a flaky test edits it,
+    // making it a burn-in target whose runs all skip
+    if ((burnInStats.expected ?? 0) + (burnInStats.skipped ?? 0) + burnInFailed === 0) {
       failures.push("burn-in ran no tests");
     }
   }
