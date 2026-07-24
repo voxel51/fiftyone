@@ -11,6 +11,13 @@ import {
   useScene3dPickingLayers,
 } from "./use-scene-3d-picking-layers";
 
+const POINT_SOURCE = {
+  id: "/lidar",
+  label: "lidar/top",
+  sourceName: "/lidar/top/points",
+  type: "point-cloud",
+} as const;
+
 describe("scene 3D picking layers", () => {
   it("toggles instance selection and widens it to label scope", () => {
     const entity = {
@@ -51,25 +58,7 @@ describe("scene 3D picking layers", () => {
   it("publishes an exact-frame 3D point with world and safe metadata", () => {
     const store = createStore();
     const layer = pointCloudLayer(42n);
-    const wrapper = ({ children }: { readonly children: ReactNode }) =>
-      createElement(Provider, { store }, children);
-    const { result, rerender } = renderHook(
-      ({ pointLayer }: { readonly pointLayer: PointCloudPanelLayer }) =>
-        useScene3dPickingLayers({
-          pointCloudLayers: [pointLayer],
-          pointCloudSources: [
-            {
-              id: "/lidar",
-              label: "lidar/top",
-              sourceName: "/lidar/top/points",
-              type: "point-cloud",
-            },
-          ],
-          sceneAnnotationLayers: [],
-          worldFrameId: "map",
-        }),
-      { initialProps: { pointLayer: layer }, wrapper },
-    );
+    const { result, rerender } = renderPickingLayers(store, layer);
 
     act(() => {
       result.current.hoverablePointCloudLayers[0]?.onHoverPoint?.({
@@ -93,11 +82,60 @@ describe("scene 3D picking layers", () => {
       worldFrameId: "map",
       worldPosition: [11, 12, 13],
     });
+    expect(result.current.hoverablePointCloudLayers[0]?.hoveredPoint).toEqual({
+      color: [1, 0, 0],
+      position: [1, 2, 3],
+    });
 
     rerender({ pointLayer: pointCloudLayer(43n) });
     expect(store.get(hoverEchoAtom)).toBeNull();
   });
+
+  it("omits the point marker for image-originated ray correspondence", () => {
+    const store = createStore();
+    const layer = pointCloudLayer(42n);
+    store.set(hoverEchoAtom, {
+      color: [1, 0, 0],
+      contentTimeNs: 42n,
+      fields: {},
+      frameId: "map",
+      kind: "point",
+      pointIndex: 0,
+      position: [1, 2, 3],
+      source: {
+        cameraFrameId: "camera",
+        imageContentTimeNs: 21n,
+        imageStream: "/camera/image",
+        kind: "image-projection",
+      },
+      stream: "/lidar",
+    });
+
+    const { result } = renderPickingLayers(store, layer);
+
+    expect(
+      result.current.hoverablePointCloudLayers[0]?.hoveredPoint,
+    ).toBeNull();
+  });
 });
+
+function renderPickingLayers(
+  store: ReturnType<typeof createStore>,
+  layer: PointCloudPanelLayer,
+) {
+  const wrapper = ({ children }: { readonly children: ReactNode }) =>
+    createElement(Provider, { store }, children);
+  return renderHook(
+    ({ pointLayer }: { readonly pointLayer: PointCloudPanelLayer }) =>
+      useScene3dPickingLayers({
+        pointCloudLayers: [pointLayer],
+        pointCloudSources: [POINT_SOURCE],
+        sceneAnnotationLayers: [],
+        worldFrameId: "map",
+      }),
+    { initialProps: { pointLayer: layer }, wrapper },
+  );
+}
 
 function pointCloudLayer(contentTimeNs: bigint): PointCloudPanelLayer {
   return {
