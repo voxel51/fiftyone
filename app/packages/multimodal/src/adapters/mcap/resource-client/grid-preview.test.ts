@@ -483,7 +483,18 @@ describe("MCAP grid preview", () => {
     expect(frame?.pointCount).toBe(MCAP_GRID_PREVIEW_MAX_POINTS);
     expect(frame?.positions).toBe(frame?.renderPayload?.positions);
     expect(frame?.positions[0]).toBe(0);
-    expect(frame?.positions.at(-3)).toBe(sourcePointCount - 1);
+    const sampledX = new Set<number>();
+    let maxSampledX = -Infinity;
+    let minSampledX = Infinity;
+    for (let offset = 0; offset < (frame?.positions.length ?? 0); offset += 3) {
+      const value = frame?.positions[offset] ?? Number.NaN;
+      sampledX.add(value);
+      maxSampledX = Math.max(maxSampledX, value);
+      minSampledX = Math.min(minSampledX, value);
+    }
+    expect(sampledX.size).toBe(MCAP_GRID_PREVIEW_MAX_POINTS);
+    expect(minSampledX).toBe(0);
+    expect(maxSampledX).toBe(sourcePointCount - 1);
     expect(mcapGridPreviewFrameRetainedBytes(result.state.frame)).toBe(
       MCAP_GRID_PREVIEW_MAX_POINTS * (3 * Float32Array.BYTES_PER_ELEMENT + 4),
     );

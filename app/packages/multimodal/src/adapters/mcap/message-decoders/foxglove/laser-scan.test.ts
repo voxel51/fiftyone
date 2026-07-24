@@ -58,8 +58,11 @@ describe("foxgloveLaserScanDecoder", () => {
     });
     expectPositionsCloseTo(renderPayload.positions.subarray(0, 9), [
       [1, 0, 0],
-      [Math.SQRT1_2, Math.SQRT1_2, 0],
       [0, 1, 0],
+      [Math.SQRT1_2, Math.SQRT1_2, 0],
+    ]);
+    expect(Array.from(renderPayload.sourceIndices.slice(0, 3))).toEqual([
+      0, 2, 1,
     ]);
     expect(renderPayload.bounds?.min[0]).toBeCloseTo(0);
     expect(renderPayload.bounds?.min[1]).toBeCloseTo(0);
