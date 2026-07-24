@@ -51,7 +51,11 @@ import { useHoverEcho } from "../interaction/point-hover/hover-echo";
 import { useRegisterTileSettings } from "../tiles/tile-settings-context";
 import { rankDefaultImageSources } from "../layout/playback-layout";
 import styles from "../tiles/Tile.module.css";
-import { TileEmptyState, TileStatusBadge } from "../tiles/TileStreamState";
+import {
+  TileEmptyState,
+  TileStatusBadge,
+  useTileStreamWarningNotices,
+} from "../tiles/TileStreamState";
 import type { EpisodeTileProps } from "../tiles/tile-types";
 import {
   useStreamContentFrame,
@@ -374,6 +378,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     () => (stream ? [stream, ...publishedAnnotationStreams] : []),
     [publishedAnnotationStreams, stream],
   );
+  const streamWarningNotices = useTileStreamWarningNotices(activeStreams);
   const pointCloudStreams = useMemo(
     () => pointCloudSources.map((s) => s.id),
     [pointCloudSources],
@@ -586,13 +591,14 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       : projectionNotice;
     return visibleNotice
       ? [
+          ...streamWarningNotices,
           {
             id: "episode-image-projection",
             ...visibleNotice,
           },
         ]
-      : [];
-  }, [projectionNotice, rectifiedDisplayIssue]);
+      : streamWarningNotices;
+  }, [projectionNotice, rectifiedDisplayIssue, streamWarningNotices]);
   const settingsRegistration = useMemo(
     () => ({
       content: (
@@ -778,7 +784,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
               viewTransform={imagePanZoom.viewTransform}
             />
           ) : null}
-          <TileStatusBadge streams={activeStreams} />
+          <TileStatusBadge showWarnings={false} streams={activeStreams} />
         </div>
       ) : (
         <TileEmptyState streams={stream ? [stream] : []} />

@@ -6,7 +6,9 @@ import {
   TileEmptyState,
   TileStatusBadge,
   TileStreamNoticeStrip,
+  useTileStreamWarningNotices,
 } from "./TileStreamState";
+import { PanelNotices } from "../../../visualization/panel-ui/PanelNotices";
 import { NOTICE_APPEARANCE_FLOOR_MS } from "../status/health";
 import {
   setStreamStartTimeSec,
@@ -89,6 +91,26 @@ describe("TileEmptyState", () => {
 
     expect(screen.getByText("Buffering")).toBeTruthy();
   });
+
+  it("routes stale warnings through the panel notice control", () => {
+    vi.useFakeTimers();
+    render(
+      <PlaybackProvider>
+        <SeedStalePanelNotice ageNs={2_400_000_000n} />
+      </PlaybackProvider>,
+    );
+
+    act(() => vi.advanceTimersByTime(NOTICE_APPEARANCE_FLOOR_MS));
+    expect(screen.queryByTestId("episode-tile-status-badge")).toBeNull();
+
+    const noticeButton = screen.getByRole("button", {
+      name: "1 image notice",
+    });
+    act(() => noticeButton.click());
+    expect(
+      screen.getByText("Displaying stale frame from 2.4s ago"),
+    ).toBeTruthy();
+  });
 });
 
 describe("TileStreamNoticeStrip", () => {
@@ -154,6 +176,24 @@ function SeedStaleBadge({
   }, [ageNs, store]);
 
   return <TileStatusBadge showWarnings={showWarnings} streams={[STREAM]} />;
+}
+
+function SeedStalePanelNotice({ ageNs }: { readonly ageNs: bigint }) {
+  const store = usePlaybackStore();
+  const notices = useTileStreamWarningNotices([STREAM]);
+
+  // This effect seeds stale metadata for the panel-local warning test.
+  useEffect(() => {
+    setStreamStatus(store, STREAM, "stale");
+    setStreamStaleAgeNs(store, STREAM, ageNs);
+  }, [ageNs, store]);
+
+  return (
+    <>
+      <PanelNotices notices={notices} scope="image" />
+      <TileStatusBadge showWarnings={false} streams={[STREAM]} />
+    </>
+  );
 }
 
 function StreamNoticeHarness() {
