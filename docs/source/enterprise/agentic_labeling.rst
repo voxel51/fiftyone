@@ -181,19 +181,14 @@ test again until the previews are mostly correct on a representative handful.
 Saving an agent
 ---------------
 
-Click **Save agent** in the sticky footer. Save is enabled as soon as the text
-prompt is non-empty — a blank draft cannot be saved — and a saved agent is
-required before you can launch a run. In the dialog, give the agent a **Name**
-(required) and an optional **Description**, then click **Save agent**.
+When you're satisfied with the agent's behavior on test samples, click **Save agent** in the sticky footer to save your prompts and prepare the agent for a Run on the full dataset. 
 
 .. image:: https://cdn.voxel51.com/enterprise_agentic_labeling/al_save_agent_modal.webp
     :alt: agentic-labeling-save-agent
     :align: center
 
-Saved agents appear on the Dashboard's **Agents** tab, one row each, with a
-**Ready** or **Draft** pill and a kebab menu offering **Edit**, **New run**,
-and **Delete**. Use the filter bar — search plus **Dataset**, **Owner**, and
-**Task** filters — to narrow a long list.
+Saved agents appear on the Dashboard's **Agents** tab with a menu offering **Edit**, **New run**,
+and **Delete** options. 
 
 .. image:: https://cdn.voxel51.com/enterprise_agentic_labeling/al_agents_tab.webp
     :alt: agentic-labeling-agents-tab
@@ -204,26 +199,23 @@ and **Delete**. Use the filter bar — search plus **Dataset**, **Owner**, and
 Configuring and launching a run
 -------------------------------
 
+
+After training and saving an agent, launch a **Run** to label your data at scale.
+
 Open **Run Config** from the Dashboard's **New Run** button or an agent row's
 **New run** menu item, then configure the run:
 
 - **Agent** (required) — the saved agent to run.
 - **Target** — the scope to label: **All samples**, **Current view**
   (:ref:`the current view <using-views>`), or **Current selection**
-  (:ref:`currently-selected samples <app-select-samples>`). Each option shows a
-  live count, and **Current selection** is disabled when nothing is selected.
+  (:ref:`currently-selected samples <app-select-samples>`). 
 - **Label field** — the name of a new or existing field where predictions are
   written; use a new field name to avoid changing existing labels. On a
   patches target this becomes a **Detection attribute** selector instead — the
-  attribute written onto each patch detection.
+  attribute written onto each detection.
 - **Run name** (optional) — a human-friendly name for the run.
 - **Advanced** — **Workers** (default **16**) and **Batch size** (default
   **32**).
-
-Click **Start run**. The button is blocked, with an inline message, when the
-agent and target do not match — for example, a whole-image agent pointed at a
-patches target, a Detection agent on a patches view, a region agent with no
-source field, or an empty selection.
 
 .. image:: https://cdn.voxel51.com/enterprise_agentic_labeling/al_run_config.webp
     :alt: agentic-labeling-run-config
@@ -246,12 +238,12 @@ samples.
 
 Click a card to open **Run Detail**, which shows:
 
-- an editable **name** and the current **status**;
-- a **metadata card** (dataset, label field, task, workers, batch size);
-- a **progress bar** with `completed / total` and parse-failure counts;
+- an editable **name** and the current **status**
+- a **metadata card** (dataset, label field, task, workers, batch size)
+- a **progress bar** with `completed / total` and parse-failure counts
 - the read-only **Agent configuration** — the prompt and example thumbnails
-  the run uses;
-- a **Notes** field;
+  the run uses
+- a **Notes** field
 - status-conditional actions: **Pause**, **Resume**, **Cancel**, **Delete**,
   and **New Run**.
 
@@ -262,7 +254,7 @@ If a run fails, a red banner shows the error and a collapsible **Stack trace**.
     :align: center
 
 When the run completes, its labels are written to your chosen field, ready to
-review in the grid like any other FiftyOne labels.
+review in the grid. Consider creating an :ref:`annotation workflow <enterprise-workflows>` for your annotators to review the results.
 
 .. _agentic-labeling-tasks:
 
