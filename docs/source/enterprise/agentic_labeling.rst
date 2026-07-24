@@ -278,7 +278,7 @@ Region Captioning      A caption per object
 Classification
 --------------
 
-Assign a single label to the whole image. Your **Text prompt** does the work —
+Assign a single label to the whole image. Use the **Text prompt** to 
 describe the classes and the decision you want. Use **Allowed classes** to hold
 the model to a fixed set of labels, or leave it empty to let the model choose
 freely.
@@ -305,7 +305,7 @@ Caption
 -------
 
 Produce a free-text description of the whole image. Your **Text prompt** fully
-controls the caption's style, length, and focus — be explicit, or you will get
+controls the caption's style, length, and focus. Be explicit, or you will get
 the model's default.
 
 .. image:: https://cdn.voxel51.com/enterprise_agentic_labeling/al_task_caption.webp
@@ -318,18 +318,21 @@ Region tasks
 ------------
 
 **Region Classification** and **Region Captioning** apply the same ideas as
-their whole-image versions, but to **one object at a time**: Region
+their whole-image versions, but to **one object at a time**. Region
 Classification gives each object a label, and Region Captioning gives each
-object a caption. Both add two controls:
+object a caption. 
+
+Region tasks require an existing Detections field on the dataset.
+
+Both add two controls:
 
 - **Regions from** — where the objects come from. On a normal view, pick a
-  source **Detections** field; each detection becomes one object to label. On a
+  source **Detections** field and each detection becomes one object to label. On a
   patches view this control is hidden, because the patches themselves are the
-  objects. A normal view with no Detections field is a mismatch the panel
-  blocks.
+  objects.
 - **Show region as** — **Cropped** (the model sees only the object's patch) or
   **In context** (the model sees the full image with the object highlighted).
-  Use Cropped when the object stands alone; use In context when its
+  Use Cropped when the object stands alone, use In context when its
   surroundings matter.
 
 Predictions attach to each object, so every object carries its own label or
@@ -412,7 +415,6 @@ Using examples
     :alt: agentic-labeling-heads-up-classes
     :align: center
 
-- Examples can come from a different dataset than your targets.
 - Keep the set small — a few clear examples beat a large, noisy one.
 
 .. _agentic-labeling-troubleshooting:
