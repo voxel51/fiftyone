@@ -22,8 +22,10 @@ import { hoveredPointForFrame } from "../../interaction/point-hover/point-hover"
 import {
   hoverEchoAtom,
   hoverMatchesPointFrame,
+  hoverMatchesSceneEntity,
   useHoverEcho,
-  type HoverEcho,
+  type HoveredPointEcho,
+  type HoveredSceneAnnotationEcho,
 } from "../../interaction/point-hover/hover-echo";
 import {
   entityLabel,
@@ -66,6 +68,10 @@ export function useScene3dPickingLayers({
     },
     [jotaiStore],
   );
+  const hoverEcho = useHoverEcho();
+  const publishedEntityHoverRefs = useRef(
+    new Map<string, HoveredSceneAnnotationEcho>(),
+  );
   const annotationLayers = useKeyedIdentityMap(sceneAnnotationLayers, {
     build: (layer) => {
       const entity = layer.frame.entities[0];
@@ -88,8 +94,27 @@ export function useScene3dPickingLayers({
         highlighted:
           isSceneEntitySelected(selectedObject, stream, entityId) ||
           isLabelEcho(selectedObject, label),
-        onHoverEntity: (hoveredId: string | null) =>
-          onHoverEntity(hoveredId ? hoveredEntity : null),
+        hovered: hoverMatchesSceneEntity(hoverEcho, stream, entityId),
+        onHoverEntity: (hoveredId: string | null) => {
+          onHoverEntity(hoveredId ? hoveredEntity : null);
+          const published = publishedEntityHoverRefs.current.get(layer.id);
+          if (hoveredId) {
+            const hover: HoveredSceneAnnotationEcho = {
+              entityId: hoveredId,
+              kind: "scene-annotation",
+              stream,
+            };
+            publishedEntityHoverRefs.current.set(layer.id, hover);
+            jotaiStore.set(hoverEchoAtom, hover);
+            return;
+          }
+          publishedEntityHoverRefs.current.delete(layer.id);
+          if (published) {
+            jotaiStore.set(hoverEchoAtom, (current) =>
+              current === published ? null : current,
+            );
+          }
+        },
         onSelectEntity: (
           _entityId: string,
           modifiers: { readonly shiftKey: boolean },
@@ -123,6 +148,8 @@ export function useScene3dPickingLayers({
         ...frameTransformIdentityInputs(layer.frameTransform),
         isSceneEntitySelected(selectedObject, stream, entityId),
         isLabelEcho(selectedObject, entityLabel(entity)),
+        hoverMatchesSceneEntity(hoverEcho, stream, entityId),
+        jotaiStore,
         onHoverEntity,
         setSelectedObject,
       ];
@@ -130,12 +157,11 @@ export function useScene3dPickingLayers({
     key: (layer) => layer.id,
   });
 
-  const hoverEcho = useHoverEcho();
   const pointCloudSourcesById = useMemo(
     () => new Map(pointCloudSources.map((source) => [source.id, source])),
     [pointCloudSources],
   );
-  const publishedPointHoverRefs = useRef(new Map<string, HoverEcho>());
+  const publishedPointHoverRefs = useRef(new Map<string, HoveredPointEcho>());
   const hoverablePointCloudLayers = useKeyedIdentityMap(pointCloudLayers, {
     build: (layer) => {
       const stream = layer.id;
@@ -176,7 +202,7 @@ export function useScene3dPickingLayers({
                 (!layer.frameTransform &&
                   frame.coordinateFrameId === worldFrameId)) &&
               pick.worldPosition.every(Number.isFinite);
-            const hover: HoverEcho = {
+            const hover: HoveredPointEcho = {
               color: pick.color,
               contentTimeNs: layer.contentTimeNs,
               fields: payload.fields,
@@ -242,19 +268,44 @@ export function useScene3dPickingLayers({
     }
   }, [jotaiStore, onHoverPoint, pointCloudLayers]);
 
+  // This effect retires entity hovers published by this 3D pane when
+  // lifecycle reconstruction removes their source layer.
+  useEffect(() => {
+    const currentLayerIds = new Set(
+      sceneAnnotationLayers.map((layer) => layer.id),
+    );
+    for (const [layerId, published] of publishedEntityHoverRefs.current) {
+      if (currentLayerIds.has(layerId)) continue;
+      publishedEntityHoverRefs.current.delete(layerId);
+      if (jotaiStore.get(hoverEchoAtom) === published) {
+        jotaiStore.set(hoverEchoAtom, null);
+        onHoverEntity(null);
+      }
+    }
+  }, [jotaiStore, onHoverEntity, sceneAnnotationLayers]);
+
   // This effect clears hovers owned by this 3D pane on unmount. Identity
   // checks preserve a newer hover published by another surface.
   useEffect(
     () => () => {
+      const publishedEntities = new Set(
+        publishedEntityHoverRefs.current.values(),
+      );
+      publishedEntityHoverRefs.current.clear();
       const published = new Set(publishedPointHoverRefs.current.values());
       publishedPointHoverRefs.current.clear();
       const current = jotaiStore.get(hoverEchoAtom);
-      if (current && published.has(current)) {
+      const ownsEntityHover =
+        current?.kind === "scene-annotation" && publishedEntities.has(current);
+      const ownsPointHover =
+        current?.kind === "point" && published.has(current);
+      if (ownsEntityHover || ownsPointHover) {
         jotaiStore.set(hoverEchoAtom, null);
-        onHoverPoint(null);
+        if (ownsEntityHover) onHoverEntity(null);
+        if (ownsPointHover) onHoverPoint(null);
       }
     },
-    [jotaiStore, onHoverPoint],
+    [jotaiStore, onHoverEntity, onHoverPoint],
   );
 
   return {

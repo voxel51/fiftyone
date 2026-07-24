@@ -163,6 +163,22 @@ describe("scene cube instance buffers", () => {
     expect(resource.opacityAttribute.getX(0)).toBe(1);
   });
 
+  it("honors hover emphasis echoed from another tile", () => {
+    const layer = annotationLayer("/boxes", sceneEntity("box"), {
+      hovered: true,
+    });
+    const plan = buildSceneAnnotationCubeRenderPlan([layer]);
+    const resource = createSceneCubeBatchResource(1);
+    disposableResources.push(resource);
+
+    applySceneCubeBatchRecords(resource, plan.normalPassive);
+
+    expect(Array.from(resource.colorAttribute.array.slice(0, 3))).toEqual([
+      1, 1, 1,
+    ]);
+    expect(resource.opacityAttribute.getX(0)).toBe(1);
+  });
+
   it("keeps solid-box instance raycasts and reports the owning instance id", () => {
     const layer = annotationLayer("/boxes", sceneEntity("box"));
     const plan = buildSceneAnnotationCubeRenderPlan([layer]);

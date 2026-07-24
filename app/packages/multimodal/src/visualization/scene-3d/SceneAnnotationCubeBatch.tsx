@@ -409,7 +409,7 @@ export function applySceneCubeBatchRecords(
       opacityArray,
       index,
       record,
-      record.key === hoveredKey,
+      Boolean(record.layer.hovered) || record.key === hoveredKey,
     );
   }
 
@@ -729,7 +729,7 @@ function updateNormalCubeHover(
       opacityArray,
       previous.index,
       previous.record,
-      false,
+      Boolean(previous.record.layer.hovered),
     );
   }
   if (next) {
