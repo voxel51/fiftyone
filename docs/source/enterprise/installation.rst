@@ -326,7 +326,7 @@ here is an example configuration:
         {
             "origin": ["https://fiftyone-enterprise-deployment.yourcompany.com"],
             "method": ["GET", "HEAD"],
-            "responseHeader": ["*"],
+            "responseHeader": ["Content-Range", "Content-Length", "Accept-Ranges"],
             "maxAgeSeconds": 3600
         }
     ]
