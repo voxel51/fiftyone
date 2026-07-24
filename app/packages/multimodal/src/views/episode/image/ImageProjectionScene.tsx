@@ -22,7 +22,10 @@ import {
   resolveGpuPointCloudColor,
   type ResolvedGpuPointCloudColor,
 } from "../../../visualization/scene-3d";
-import type { HoverEcho } from "../interaction/point-hover/hover-echo";
+import {
+  hoverMatchesPointFrame,
+  type HoverEcho,
+} from "../interaction/point-hover/hover-echo";
 import type { CameraModel } from "../spatial/camera-geometry/camera-model";
 import { toGpuCameraProjection } from "../spatial/camera-geometry/gpu-camera-projection";
 import type { ImageProjectionLayer } from "./use-image-projection-layers";
@@ -36,6 +39,8 @@ export interface ImageProjectionSceneProps {
   readonly layers: readonly ImageProjectionLayer[];
   readonly hoveredPoint: HoverEcho | null;
   readonly pointSize: number;
+  /** Streams whose full projections are visible and pickable. */
+  readonly renderedStreams: readonly string[];
   readonly sourceKey: string;
   readonly viewTransform?: ImageViewTransform;
 }
@@ -66,6 +71,7 @@ export const ImageProjectionScene = forwardRef<
     hoveredPoint,
     layers,
     pointSize,
+    renderedStreams,
     sourceKey,
     viewTransform,
   },
@@ -115,24 +121,28 @@ export const ImageProjectionScene = forwardRef<
       }),
     [cameraModel, layers, sourceKey],
   );
+  const renderedLayers = useMemo(() => {
+    const streams = new Set(renderedStreams);
+    return preparedLayers.filter(({ layer }) => streams.has(layer.stream));
+  }, [preparedLayers, renderedStreams]);
   const pickLayers = useMemo(
     () =>
       // Visible and pick passes bind the exact same attributes/matrices. This
       // prevents a separate projection representation from drifting from what
       // the user sees.
-      preparedLayers.map(({ projection, resource, resourceKey }) => ({
+      renderedLayers.map(({ projection, resource, resourceKey }) => ({
         positionAttribute: resource.positionAttribute,
         projection,
         resourceKey,
         sampledPointCount: resource.sampledPointCount,
         sourceIndexAttribute: resource.sourceIndexAttribute,
       })),
-    [preparedLayers],
+    [renderedLayers],
   );
 
   return (
     <>
-      {preparedLayers.map(({ color, layer, projection, resource }) => (
+      {renderedLayers.map(({ color, layer, projection, resource }) => (
         <GpuPointCloudProjectionLayer
           calibrationHeight={cameraModel.height}
           calibrationWidth={cameraModel.width}
@@ -176,7 +186,10 @@ function ProjectedHoverMarker({
   pointSize,
   preparedLayers,
   viewTransform,
-}: Omit<ImageProjectionSceneProps, "layers" | "sourceKey" | "hoveredPoint"> & {
+}: Omit<
+  ImageProjectionSceneProps,
+  "layers" | "renderedStreams" | "sourceKey" | "hoveredPoint"
+> & {
   readonly hoveredPoint: HoverEcho | null;
   readonly preparedLayers: readonly PreparedProjectionLayer[];
 }) {
@@ -185,7 +198,9 @@ function ProjectedHoverMarker({
   const [pointSizeScale, setPointSizeScale] = useState(1);
   const pointHover = hoveredPoint?.kind === "point" ? hoveredPoint : null;
   const prepared = pointHover
-    ? preparedLayers.find(({ layer }) => layer.stream === pointHover.stream)
+    ? preparedLayers.find(({ layer }) =>
+        hoverMatchesPointFrame(pointHover, layer.stream, layer.contentTimeNs),
+      )
     : undefined;
   // Reuse the production projection layer for hover emphasis. A one-point
   // payload keeps marker projection/fit semantics identical to cloud points

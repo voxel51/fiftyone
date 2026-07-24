@@ -73,6 +73,7 @@ import {
   getProjectionNotice,
   getRectifiedDisplayIssue,
 } from "./image-camera-status";
+import { projectionStreamsForHover } from "./hover-projection-streams";
 
 const IMAGE_FIT = "contain";
 const EMPTY_PROJECTION_STREAMS: readonly string[] = [];
@@ -346,15 +347,13 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     pointCloudProjection.streams,
     pointCloudStreams,
   ]);
-  const activeProjection =
+  const projectionGeometry =
     effectiveImageDims &&
-    pointCloudProjection.enabled &&
     playbackFrame &&
     calibration &&
     calibration.coordinateFrameId &&
     displayCameraModel &&
-    !projectionDimensionMismatch &&
-    selectedProjectionStreams.length > 0
+    !projectionDimensionMismatch
       ? {
           cameraFrameId: calibration.coordinateFrameId,
           cameraModel: displayCameraModel,
@@ -362,6 +361,13 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           imageDims: effectiveImageDims,
         }
       : null;
+  const activeProjection =
+    projectionGeometry &&
+    pointCloudProjection.enabled &&
+    selectedProjectionStreams.length > 0
+      ? projectionGeometry
+      : null;
+  const hasActiveProjection = activeProjection !== null;
   const depthCameraFrameId =
     frame?.kind === VISUALIZATION_KIND.RAW_IMAGE
       ? (frame.coordinateFrameId ?? calibration?.coordinateFrameId)
@@ -383,10 +389,37 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           sourceCameraModel,
         }
       : null;
-  const projectionLayers = useImageProjectionLayers(
-    activeProjection ? selectedProjectionStreams : EMPTY_PROJECTION_STREAMS,
-    activeProjection?.cameraFrameId,
+  const hoverProjectionStream =
+    sharedHover?.kind === "point" ? sharedHover.stream : null;
+  const projectionSceneStreams = useMemo(
+    () =>
+      projectionStreamsForHover(
+        hasActiveProjection ? selectedProjectionStreams : [],
+        pointCloudStreams,
+        hoverProjectionStream,
+      ),
+    [
+      hasActiveProjection,
+      hoverProjectionStream,
+      pointCloudStreams,
+      selectedProjectionStreams,
+    ],
   );
+  const projectionScene =
+    projectionGeometry && projectionSceneStreams.length > 0
+      ? projectionGeometry
+      : null;
+  const projectionLayers = useImageProjectionLayers(
+    projectionSceneStreams,
+    projectionScene?.cameraFrameId,
+  );
+  const renderedProjectionLayers = useMemo(() => {
+    if (!hasActiveProjection) {
+      return [];
+    }
+    const rendered = new Set(selectedProjectionStreams);
+    return projectionLayers.filter((layer) => rendered.has(layer.stream));
+  }, [hasActiveProjection, projectionLayers, selectedProjectionStreams]);
   const imagePanZoom = useImagePanZoom({
     fit: IMAGE_FIT,
     // The resting hand cursor would occlude the very dot a dwell hover
@@ -574,18 +607,23 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
             onResetView={imagePanZoom.resetView}
             notices={imageNotices}
             sceneChildren={
-              activeProjection || activeImageAnnotations ? (
+              projectionScene || activeImageAnnotations ? (
                 <>
-                  {activeProjection ? (
+                  {projectionScene ? (
                     <ImageProjectionScene
-                      cameraModel={activeProjection.cameraModel}
+                      cameraModel={projectionScene.cameraModel}
                       fit={IMAGE_FIT}
-                      imageHeight={activeProjection.imageDims.height}
-                      imageWidth={activeProjection.imageDims.width}
+                      imageHeight={projectionScene.imageDims.height}
+                      imageWidth={projectionScene.imageDims.width}
                       hoveredPoint={sharedHover}
                       layers={projectionLayers}
                       pointSize={pointCloudProjection.pointSize}
                       ref={projectionPickerRef}
+                      renderedStreams={
+                        activeProjection
+                          ? selectedProjectionStreams
+                          : EMPTY_PROJECTION_STREAMS
+                      }
                       sourceKey={sourceKey || "episode-session"}
                       viewTransform={imagePanZoom.viewTransform}
                     />
@@ -641,7 +679,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
               imageContentTimeNs={activeProjection.imageContentTimeNs}
               imageStream={stream}
               imageWidth={activeProjection.imageDims.width}
-              layers={projectionLayers}
+              layers={renderedProjectionLayers}
               pickerRef={projectionPickerRef}
               pointSize={pointCloudProjection.pointSize}
               sourceKey={sourceKey || "episode-session"}
