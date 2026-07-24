@@ -12,6 +12,8 @@ export const MAX_POINT_CLOUD_RENDER_POINTS = 150_000;
 const POINT_COMPONENT_COUNT = 3;
 const COLOR_COMPONENT_COUNT = 3;
 const MIN_POINT_CLOUD_RENDER_CAPACITY = 1_024;
+const LARGE_POINT_CLOUD_CAPACITY_GRANULARITY = 4_096;
+const POWER_OF_TWO_CAPACITY_LIMIT = 8_192;
 
 /**
  * Builds the bounded point-cloud payload shared by renderers. Sampling is
@@ -203,10 +205,16 @@ function sampleFinitePoints({
 
 export function pointCloudRenderCapacity(sampledPointCount: number): number {
   const required = Math.max(MIN_POINT_CLOUD_RENDER_CAPACITY, sampledPointCount);
-  if (required > 2 ** 17) {
+  if (required >= MAX_POINT_CLOUD_RENDER_POINTS) {
     return MAX_POINT_CLOUD_RENDER_POINTS;
   }
-  return 2 ** Math.ceil(Math.log2(required));
+  if (required <= POWER_OF_TWO_CAPACITY_LIMIT) {
+    return 2 ** Math.ceil(Math.log2(required));
+  }
+  return (
+    Math.ceil(required / LARGE_POINT_CLOUD_CAPACITY_GRANULARITY) *
+    LARGE_POINT_CLOUD_CAPACITY_GRANULARITY
+  );
 }
 
 export function sampledFiniteOrdinal(

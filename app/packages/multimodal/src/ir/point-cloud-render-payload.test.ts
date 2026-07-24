@@ -120,6 +120,16 @@ describe("buildPointCloudRenderPayload", () => {
     expect(payload.sourceIndices[pointCount]).toBe(0);
   });
 
+  it("uses fine-grained buckets for large payloads", () => {
+    const pointCount = 65_537;
+    const payload = buildPointCloudRenderPayload({
+      positions: new Float32Array(pointCount * 3),
+    });
+
+    expect(payload.capacity).toBe(69_632);
+    expect(payload.capacity - payload.sampledPointCount).toBeLessThan(4_096);
+  });
+
   it("uses the minimum capacity and null statistics for an empty cloud", () => {
     const payload = buildPointCloudRenderPayload({
       positions: new Float32Array(0),
