@@ -204,6 +204,15 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     () => sceneAnnotationSources.map((source) => source.id),
     [sceneAnnotationSources],
   );
+  const annotationSourceLabelsById = useMemo(
+    () =>
+      new Map(
+        [...annotationSources, ...sceneAnnotationSources].map(
+          (source) => [source.id, source.label] as const,
+        ),
+      ),
+    [annotationSources, sceneAnnotationSources],
+  );
   const labelSourceGroups = useMemo(
     () => groupImageLabelSources(selectedImageSource, annotationSources),
     [annotationSources, selectedImageSource],
@@ -781,6 +790,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
               onSelectPrimitive={imageAnnotations.selectPrimitive}
               pickerRef={imageAnnotations.pickerRef}
               prepared={imageAnnotations.prepared}
+              sourceLabelsById={annotationSourceLabelsById}
               viewTransform={imagePanZoom.viewTransform}
             />
           ) : null}

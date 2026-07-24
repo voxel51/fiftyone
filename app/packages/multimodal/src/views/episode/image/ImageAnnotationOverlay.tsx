@@ -43,6 +43,7 @@ export interface ImageAnnotationOverlayProps {
   ) => void;
   readonly pickerRef: RefObject<GpuImageAnnotationPickerHandle>;
   readonly prepared: PreparedImageAnnotations;
+  readonly sourceLabelsById: ReadonlyMap<string, string>;
   readonly viewTransform?: ImageViewTransform;
 }
 
@@ -59,6 +60,7 @@ export default function ImageAnnotationOverlay({
   onSelectPrimitive,
   pickerRef,
   prepared,
+  sourceLabelsById,
   viewTransform,
 }: ImageAnnotationOverlayProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -225,14 +227,24 @@ export default function ImageAnnotationOverlay({
       ref={containerRef}
       style={containerStyle}
     >
-      {tooltip ? <ImageAnnotationTooltip tooltip={tooltip} /> : null}
+      {tooltip ? (
+        <ImageAnnotationTooltip
+          streamLabel={
+            sourceLabelsById.get(tooltip.metadata.stream) ??
+            tooltip.metadata.stream
+          }
+          tooltip={tooltip}
+        />
+      ) : null}
     </div>
   );
 }
 
 function ImageAnnotationTooltip({
+  streamLabel,
   tooltip,
 }: {
+  readonly streamLabel: string;
   readonly tooltip: AnnotationTooltip;
 }) {
   const { metadata } = tooltip;
@@ -260,7 +272,7 @@ function ImageAnnotationTooltip({
         <span style={detailLabelStyle}>Type</span>
         <span>{type}</span>
         <span style={detailLabelStyle}>Stream</span>
-        <span style={detailValueStyle}>{metadata.stream}</span>
+        <span style={detailValueStyle}>{streamLabel}</span>
       </div>
     </div>
   );
