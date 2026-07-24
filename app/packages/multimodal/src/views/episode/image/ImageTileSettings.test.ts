@@ -31,6 +31,7 @@ describe("ImageTileSettings", () => {
         geometryStatus: "Original camera · pinhole",
         images: [source("/camera", "Front camera", SCENE_SOURCE_TYPE.IMAGE)],
         labelSourceGroups: { matching: [], remaining: [] },
+        label3dProjection: { enabled: false, streams: [] },
         pointCloudProjection: {
           enabled: true,
           pointSize: 6,
@@ -39,15 +40,19 @@ describe("ImageTileSettings", () => {
         pointCloudSources: [
           source("/lidar", "Top lidar", SCENE_SOURCE_TYPE.POINT_CLOUD),
         ],
+        sceneAnnotationSources: [],
         selectedLabelStreams: [],
         selectedProjectionStreams: ["/lidar"],
+        selectedSceneAnnotationStreams: [],
         setCameraProjection: vi.fn(),
+        setLabel3dProjection: vi.fn(),
         setLabelStreams: vi.fn(),
         setPointCloudProjection,
         setStream: vi.fn(),
         stream: "/camera",
         toggleLabelStream: vi.fn(),
         toggleProjectionStream: vi.fn(),
+        toggleSceneAnnotationStream: vi.fn(),
       }),
     );
 
@@ -101,21 +106,26 @@ describe("ImageTileSettings", () => {
         geometryStatus: "",
         images: [image],
         labelSourceGroups: groupImageLabelSources(image, annotationSources),
+        label3dProjection: { enabled: true, streams: null },
         pointCloudProjection: {
           enabled: false,
           pointSize: 6,
           streams: null,
         },
         pointCloudSources: [],
+        sceneAnnotationSources: [],
         selectedLabelStreams: [],
         selectedProjectionStreams: [],
+        selectedSceneAnnotationStreams: [],
         setCameraProjection: vi.fn(),
+        setLabel3dProjection: vi.fn(),
         setLabelStreams: vi.fn(),
         setPointCloudProjection: vi.fn(),
         setStream: vi.fn(),
         stream: image.id,
         toggleLabelStream,
         toggleProjectionStream: vi.fn(),
+        toggleSceneAnnotationStream: vi.fn(),
       }),
     );
 
@@ -167,21 +177,26 @@ describe("ImageTileSettings", () => {
       geometryStatus: "",
       images: [image],
       labelSourceGroups,
+      label3dProjection: { enabled: true, streams: null },
       pointCloudProjection: {
         enabled: false,
         pointSize: 6,
         streams: null,
       },
       pointCloudSources: [],
+      sceneAnnotationSources: [],
       selectedLabelStreams,
       selectedProjectionStreams: [],
+      selectedSceneAnnotationStreams: [],
       setCameraProjection: vi.fn(),
+      setLabel3dProjection: vi.fn(),
       setLabelStreams,
       setPointCloudProjection: vi.fn(),
       setStream: vi.fn(),
       stream: image.id,
       toggleLabelStream: vi.fn(),
       toggleProjectionStream: vi.fn(),
+      toggleSceneAnnotationStream: vi.fn(),
     });
 
     const { rerender } = render(
@@ -205,6 +220,74 @@ describe("ImageTileSettings", () => {
     );
     fireEvent.click(toggle);
     expect(setLabelStreams).toHaveBeenLastCalledWith([remaining.id]);
+  });
+
+  it("provides dedicated per-topic 3D label projection controls", () => {
+    const setLabel3dProjection = vi.fn();
+    const toggleSceneAnnotationStream = vi.fn();
+    const camera = source("/camera", "Front camera", SCENE_SOURCE_TYPE.IMAGE);
+    const detections = source(
+      "/detections_3d",
+      "3D detections",
+      SCENE_SOURCE_TYPE.SCENE_ANNOTATION,
+    );
+
+    render(
+      React.createElement(ImageTileSettings, {
+        annotationSources: [],
+        annotationStreams: [],
+        calibrationSelectionLabel: "Auto · no match",
+        calibrationSources: [],
+        cameraProjection: {
+          calibrationStream: null,
+          display: "recorded",
+          enabled: false,
+          geometry: "auto",
+          pointSize: 6,
+          streams: null,
+        },
+        canConfigureCameraGeometry: true,
+        geometryControlLabel: "Auto",
+        geometryStatus: "",
+        images: [camera],
+        labelSourceGroups: { matching: [], remaining: [] },
+        label3dProjection: { enabled: false, streams: [] },
+        pointCloudProjection: {
+          enabled: false,
+          pointSize: 6,
+          streams: [],
+        },
+        pointCloudSources: [],
+        sceneAnnotationSources: [detections],
+        selectedLabelStreams: [],
+        selectedProjectionStreams: [],
+        selectedSceneAnnotationStreams: [],
+        setCameraProjection: vi.fn(),
+        setLabel3dProjection,
+        setLabelStreams: vi.fn(),
+        setPointCloudProjection: vi.fn(),
+        setStream: vi.fn(),
+        stream: camera.id,
+        toggleLabelStream: vi.fn(),
+        toggleProjectionStream: vi.fn(),
+        toggleSceneAnnotationStream,
+      }),
+    );
+
+    expect(screen.getByText("3D labels projections")).toBeTruthy();
+    fireEvent.click(screen.getByRole("checkbox", { name: detections.label }));
+    expect(toggleSceneAnnotationStream).toHaveBeenCalledWith(
+      detections.id,
+      true,
+    );
+
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Toggle 3D labels projections" }),
+    );
+    expect(setLabel3dProjection).toHaveBeenCalledWith({
+      enabled: true,
+      streams: null,
+    });
   });
 });
 

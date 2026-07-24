@@ -24,13 +24,11 @@ export function resolveProjectionCorrespondence({
   readonly pointCloudLayers: readonly PointCloudPanelLayer[];
   readonly worldFrameId: string;
 }): SceneRayPanelLayer | null {
-  const source = hover?.source;
-  if (
-    !hover ||
-    hover.kind !== "point" ||
-    source?.kind !== "image-projection" ||
-    !worldFrameId
-  ) {
+  if (!hover || hover.kind !== "point" || !worldFrameId) {
+    return null;
+  }
+  const source = hover.source;
+  if (source?.kind !== "image-projection") {
     return null;
   }
 

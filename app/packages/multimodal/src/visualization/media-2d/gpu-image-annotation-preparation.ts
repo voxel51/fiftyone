@@ -39,6 +39,8 @@ export interface PreparedImageAnnotationMetadata {
   readonly label: string | null;
   readonly primitive: ImageAnnotationPrimitive;
   readonly primitiveIndex: number;
+  /** Source scene entity for synthesized 3D-label projections. */
+  readonly sceneEntityId?: string;
   readonly stream: string;
 }
 
@@ -384,13 +386,17 @@ function prepareLineList(
   for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
     const group = groups[groupIndex];
     const metadataIndex = addMetadata(state, {
-      key: `pg-${primitiveIndex}-${groupIndex}-${boundsKey(group.bounds)}`,
+      color: group.color,
+      key:
+        group.key ??
+        `pg-${primitiveIndex}-${groupIndex}-${boundsKey(group.bounds)}`,
       label: group.label,
       primitive: {
         kind: "points",
         value: { ...primitive, points: group.points },
       },
       primitiveIndex,
+      ...(group.sceneEntityId ? { sceneEntityId: group.sceneEntityId } : {}),
       stream,
     });
     const color = colorRgb(state.metadata[metadataIndex].color);
@@ -470,10 +476,15 @@ function prepareCircle(
 
 function addMetadata(
   state: PreparationState,
-  metadata: Omit<PreparedImageAnnotationMetadata, "color">,
+  metadata: Omit<PreparedImageAnnotationMetadata, "color"> & {
+    readonly color?: string;
+  },
 ): number {
   const index = state.metadata.length;
-  state.metadata.push({ ...metadata, color: colorForLabel(metadata.label) });
+  state.metadata.push({
+    ...metadata,
+    color: metadata.color ?? colorForLabel(metadata.label),
+  });
   return index;
 }
 

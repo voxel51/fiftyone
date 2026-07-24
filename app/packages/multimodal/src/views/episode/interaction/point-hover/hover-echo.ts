@@ -44,10 +44,17 @@ export interface HoveredPointEcho {
   readonly worldPosition?: readonly [number, number, number];
 }
 
-/** Hover payload echoed between episode panes. */
-export type HoverEcho = HoveredPointEcho;
+/** Stable identity for a scene entity hovered in either 2D or 3D. */
+export interface HoveredSceneAnnotationEcho {
+  readonly entityId: string;
+  readonly kind: "scene-annotation";
+  readonly stream: string;
+}
 
-/** Modal-local atom containing the point currently echoed across panes. */
+/** Hover payload echoed between episode panes. */
+export type HoverEcho = HoveredPointEcho | HoveredSceneAnnotationEcho;
+
+/** Modal-local atom containing the object currently echoed across panes. */
 export const hoverEchoAtom = atom<HoverEcho | null>(
   null,
 ) as PrimitiveAtom<HoverEcho | null>;
@@ -77,5 +84,18 @@ export function hoverMatchesPointFrame(
     contentTimeNs !== undefined &&
     hover.stream === stream &&
     hover.contentTimeNs === contentTimeNs
+  );
+}
+
+/** Whether a shared hover identifies this exact scene entity. */
+export function hoverMatchesSceneEntity(
+  hover: HoverEcho | null,
+  stream: string,
+  entityId: string,
+): hover is HoveredSceneAnnotationEcho {
+  return (
+    hover?.kind === "scene-annotation" &&
+    hover.stream === stream &&
+    hover.entityId === entityId
   );
 }

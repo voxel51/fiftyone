@@ -32,6 +32,7 @@ import { usePublishImageAspectRatio } from "./image-aspect-ratios";
 import { groupImageLabelSources } from "./image-label-source-groups";
 import { useImageProjection } from "../settings/modal/state";
 import {
+  useImageTile3dLabelProjection,
   useImageTileLabelStreams,
   useImageTilePointCloudProjection,
 } from "../tiles/panel-visibility";
@@ -65,6 +66,7 @@ import {
 import { resolveRectifiedImageDisplay } from "../spatial/camera-geometry/image-rectification";
 import ImageTileSettings from "./ImageTileSettings";
 import { useImageAnnotationLayer } from "./use-image-annotation-layer";
+import { useProjectedSceneAnnotations } from "./use-projected-scene-annotations";
 import {
   classifyImageDimensions,
   describeCalibrationSelection,
@@ -98,6 +100,9 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const pointCloudSources = useSceneSourcesByType(
     SCENE_SOURCE_TYPE.POINT_CLOUD,
   );
+  const sceneAnnotationSources = useSceneSourcesByType(
+    SCENE_SOURCE_TYPE.SCENE_ANNOTATION,
+  );
   const setTileTitle = useSetTileTitle();
   const setTileTitleHighlighted = useSetTileTitleHighlighted();
   const hoveredFrustumImageStream = useHoveredFrustumImageStream();
@@ -118,6 +123,8 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   );
   const { labelStreams: storedLabelStreams, setLabelStreams } =
     useImageTileLabelStreams(stream);
+  const { projection: label3dProjection, setProjection: setLabel3dProjection } =
+    useImageTile3dLabelProjection(stream);
   const { projection: cameraProjection, setProjection: setCameraProjection } =
     useImageProjection(stream);
   const {
@@ -188,6 +195,10 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const annotationStreams = useMemo(
     () => annotationSources.map((source) => source.id),
     [annotationSources],
+  );
+  const sceneAnnotationStreams = useMemo(
+    () => sceneAnnotationSources.map((source) => source.id),
+    [sceneAnnotationSources],
   );
   const labelSourceGroups = useMemo(
     () => groupImageLabelSources(selectedImageSource, annotationSources),
@@ -318,7 +329,30 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const annotationPixelTransform = rectifiedViewActive
     ? rectifiedDisplay?.pixelTransform
     : undefined;
+  const selectedSceneAnnotationStreams = useMemo(() => {
+    if (!label3dProjection.enabled) return [];
+    if (label3dProjection.streams === null) return sceneAnnotationStreams;
+    const available = new Set(sceneAnnotationStreams);
+    return label3dProjection.streams.filter((annotationStream) =>
+      available.has(annotationStream),
+    );
+  }, [
+    label3dProjection.enabled,
+    label3dProjection.streams,
+    sceneAnnotationStreams,
+  ]);
+  const projectedSceneAnnotations = useProjectedSceneAnnotations({
+    cameraFrameId:
+      !projectionDimensionMismatch && playbackFrame
+        ? calibration?.coordinateFrameId
+        : null,
+    cameraModel: !projectionDimensionMismatch ? sourceCameraModel : null,
+    outputHeight: effectiveImageDims?.height,
+    outputWidth: effectiveImageDims?.width,
+    streams: selectedSceneAnnotationStreams,
+  });
   const imageAnnotations = useImageAnnotationLayer({
+    additionalSets: projectedSceneAnnotations.sets,
     pixelTransform: annotationPixelTransform,
     resourceKey: `${sourceKey || "episode-session"}\n${tileId}\n${stream}`,
     streams: selectedLabelStreams,
@@ -326,10 +360,19 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const activeImageAnnotations = Boolean(
     effectiveImageDims && imageAnnotations.hasGeometry,
   );
-  usePublishAnnotationStreams(selectedLabelStreams);
+  const publishedAnnotationStreams = useMemo(
+    () => [
+      ...selectedLabelStreams,
+      ...selectedSceneAnnotationStreams.filter(
+        (annotationStream) => !selectedLabelStreams.includes(annotationStream),
+      ),
+    ],
+    [selectedLabelStreams, selectedSceneAnnotationStreams],
+  );
+  usePublishAnnotationStreams(publishedAnnotationStreams);
   const activeStreams = useMemo(
-    () => (stream ? [stream, ...selectedLabelStreams] : []),
-    [selectedLabelStreams, stream],
+    () => (stream ? [stream, ...publishedAnnotationStreams] : []),
+    [publishedAnnotationStreams, stream],
   );
   const pointCloudStreams = useMemo(
     () => pointCloudSources.map((s) => s.id),
@@ -463,9 +506,31 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     },
     [pointCloudStreams, selectedProjectionStreams, setPointCloudProjection],
   );
+  const toggleSceneAnnotationStream = useCallback(
+    (annotationStream: string, checked: boolean) => {
+      const next = new Set(selectedSceneAnnotationStreams);
+      if (checked) {
+        next.add(annotationStream);
+      } else {
+        next.delete(annotationStream);
+      }
+      const streams = sceneAnnotationStreams.filter((availableStream) =>
+        next.has(availableStream),
+      );
+      setLabel3dProjection({ enabled: streams.length > 0, streams });
+    },
+    [
+      sceneAnnotationStreams,
+      selectedSceneAnnotationStreams,
+      setLabel3dProjection,
+    ],
+  );
   const canProjectPointClouds = pointCloudSources.length > 0;
+  const canProject3dLabels = sceneAnnotationSources.length > 0;
   const canConfigureCameraGeometry =
-    calibrationSources.length > 0 || canProjectPointClouds;
+    calibrationSources.length > 0 ||
+    canProjectPointClouds ||
+    canProject3dLabels;
   const calibrationSelectionLabel = describeCalibrationSelection(
     cameraProjection.calibrationStream,
     autoCalibrationStream,
@@ -491,7 +556,10 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
         cameraModelResolution,
         dimensionCompatibility,
         enabled:
-          pointCloudProjection.enabled && selectedProjectionStreams.length > 0,
+          (pointCloudProjection.enabled &&
+            selectedProjectionStreams.length > 0) ||
+          (label3dProjection.enabled &&
+            selectedSceneAnnotationStreams.length > 0),
         explicitCalibrationAvailable,
         imageDims,
       }),
@@ -502,7 +570,9 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       dimensionCompatibility,
       explicitCalibrationAvailable,
       imageDims,
+      label3dProjection.enabled,
       pointCloudProjection.enabled,
+      selectedSceneAnnotationStreams.length,
       selectedProjectionStreams.length,
     ],
   );
@@ -537,17 +607,22 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           geometryStatus={geometryStatus}
           images={images}
           labelSourceGroups={labelSourceGroups}
+          label3dProjection={label3dProjection}
           pointCloudProjection={pointCloudProjection}
           pointCloudSources={pointCloudSources}
+          sceneAnnotationSources={sceneAnnotationSources}
           selectedLabelStreams={selectedLabelStreams}
           selectedProjectionStreams={selectedProjectionStreams}
+          selectedSceneAnnotationStreams={selectedSceneAnnotationStreams}
           setCameraProjection={setCameraProjection}
+          setLabel3dProjection={setLabel3dProjection}
           setLabelStreams={setLabelStreams}
           setPointCloudProjection={setPointCloudProjection}
           setStream={setStream}
           stream={stream}
           toggleLabelStream={toggleLabelStream}
           toggleProjectionStream={toggleProjectionStream}
+          toggleSceneAnnotationStream={toggleSceneAnnotationStream}
         />
       ),
       streamStreams: activeStreams,
@@ -564,16 +639,21 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       geometryStatus,
       images,
       labelSourceGroups,
+      label3dProjection,
       pointCloudProjection,
       pointCloudSources,
+      sceneAnnotationSources,
       selectedLabelStreams,
       selectedProjectionStreams,
+      selectedSceneAnnotationStreams,
       setCameraProjection,
+      setLabel3dProjection,
       setLabelStreams,
       setPointCloudProjection,
       stream,
       toggleLabelStream,
       toggleProjectionStream,
+      toggleSceneAnnotationStream,
     ],
   );
   useRegisterTileSettings(tileId, settingsRegistration);

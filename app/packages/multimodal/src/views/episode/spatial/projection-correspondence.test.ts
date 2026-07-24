@@ -6,7 +6,7 @@ import type {
   PointCloudPanelLayer,
 } from "../../../visualization/scene-3d";
 import { VISUALIZATION_KIND } from "../../../visualization/visualization-registry";
-import type { HoverEcho } from "../interaction/point-hover/hover-echo";
+import type { HoveredPointEcho } from "../interaction/point-hover/hover-echo";
 import { resolveProjectionCorrespondence } from "./projection-correspondence";
 
 describe("projection correspondence", () => {
@@ -115,8 +115,8 @@ describe("projection correspondence", () => {
 });
 
 function projectionHover(
-  overrides: Partial<HoverEcho & { readonly kind: "point" }> = {},
-): HoverEcho {
+  overrides: Partial<HoveredPointEcho> = {},
+): HoveredPointEcho {
   return {
     color: [1, 0, 0],
     contentTimeNs: 42n,
