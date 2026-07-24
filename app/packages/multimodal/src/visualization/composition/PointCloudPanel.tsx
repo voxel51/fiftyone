@@ -36,6 +36,7 @@ import {
   GpuPointCloud3dPickerRegistryContext,
 } from "../scene-3d/gpu/gpu-point-cloud-3d-picker";
 import { gpuPointCloudDrawCount } from "../scene-3d/gpu/gpu-point-cloud-sampling";
+import { allocatePointCloudCanvasBudget } from "../scene-3d/gpu/point-cloud-canvas-budget";
 import {
   DEFAULT_POINT_SIZE,
   PointCloudSceneLayer,
@@ -147,12 +148,26 @@ export function PointCloudPanel({
     () => createGpuPointCloud3dPickerRegistry(),
     [],
   );
+  const pointBudgetByLayer = useMemo(
+    () =>
+      allocatePointCloudCanvasBudget(
+        layers.map((layer) => ({
+          id: layer.id,
+          pointCount:
+            layer.frame.renderPayload?.sampledPointCount ??
+            Math.floor(layer.frame.positions.length / 3),
+        })),
+        maxRenderedPoints,
+      ),
+    [layers, maxRenderedPoints],
+  );
   // Keyed identity: a prepared wrapper survives renders its own layer didn't
   // cause, so the memoized scene layers below skip reconciliation (and their
   // per-frame layout effects) for clouds whose content didn't change.
   const renderLayers = useKeyedIdentityMap(layers, {
     build: (layer): PreparedPointCloudPanelLayer => {
       const colorOptions = pointCloudColorOptions(layer, colorBy);
+      const layerPointBudget = pointBudgetByLayer.get(layer.id) ?? 0;
       const payload = layer.frame.renderPayload;
       if (!payload) {
         // renderPayload is optional for custom producers. Built-in MCAP frames
@@ -161,7 +176,7 @@ export function PointCloudPanel({
         return {
           data: buildPointCloudRenderData(
             layer.frame.positions,
-            maxRenderedPoints,
+            layerPointBudget,
             colorOptions,
           ),
           layer,
@@ -171,7 +186,7 @@ export function PointCloudPanel({
       const gpuColor = resolveGpuPointCloudColor(payload, colorOptions);
       const renderedPointCount = gpuPointCloudDrawCount(
         payload.sampledPointCount,
-        maxRenderedPoints,
+        layerPointBudget,
       );
       return {
         // Scene fitting, legends, and render stats consume this compact
@@ -197,7 +212,7 @@ export function PointCloudPanel({
         layer,
       };
     },
-    inputs: (layer) => [layer, colorBy, maxRenderedPoints],
+    inputs: (layer) => [layer, colorBy, pointBudgetByLayer.get(layer.id) ?? 0],
     key: (layer) => layer.id,
   });
   const gpuPickData = useMemo(() => {

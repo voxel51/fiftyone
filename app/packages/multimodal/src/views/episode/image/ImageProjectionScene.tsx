@@ -29,6 +29,9 @@ import {
 import type { CameraModel } from "../spatial/camera-geometry/camera-model";
 import { toGpuCameraProjection } from "../spatial/camera-geometry/gpu-camera-projection";
 import type { ImageProjectionLayer } from "./use-image-projection-layers";
+import { allocatePointCloudCanvasBudget } from "../../../visualization/scene-3d/gpu/point-cloud-canvas-budget";
+import { DEFAULT_MAX_RENDERED_POINTS } from "../../../visualization/scene-3d/point-cloud-colors";
+import { useWebGpuViewPointCloudBudget } from "../../../visualization/webgpu/WebGpuViewStage";
 
 /** Inputs required to render and inspect projected point clouds for one image. */
 export interface ImageProjectionSceneProps {
@@ -125,19 +128,39 @@ export const ImageProjectionScene = forwardRef<
     const streams = new Set(renderedStreams);
     return preparedLayers.filter(({ layer }) => streams.has(layer.stream));
   }, [preparedLayers, renderedStreams]);
+  const pointBudgetDemands = useMemo(
+    () =>
+      renderedLayers.map(({ layer, resource }) => ({
+        id: layer.stream,
+        pointCount: resource.sampledPointCount,
+      })),
+    [renderedLayers],
+  );
+  const sharedPointBudget = useWebGpuViewPointCloudBudget(pointBudgetDemands);
+  const localPointBudget = useMemo(
+    () =>
+      allocatePointCloudCanvasBudget(
+        pointBudgetDemands,
+        DEFAULT_MAX_RENDERED_POINTS,
+      ),
+    [pointBudgetDemands],
+  );
+  const pointBudget =
+    sharedPointBudget.size > 0 ? sharedPointBudget : localPointBudget;
   const pickLayers = useMemo(
     () =>
       // Visible and pick passes bind the exact same attributes/matrices. This
       // prevents a separate projection representation from drifting from what
       // the user sees.
-      renderedLayers.map(({ projection, resource, resourceKey }) => ({
+      renderedLayers.map(({ layer, projection, resource, resourceKey }) => ({
         positionAttribute: resource.positionAttribute,
         projection,
         resourceKey,
-        sampledPointCount: resource.sampledPointCount,
+        sampledPointCount:
+          pointBudget.get(layer.stream) ?? resource.sampledPointCount,
         sourceIndexAttribute: resource.sourceIndexAttribute,
       })),
-    [renderedLayers],
+    [pointBudget, renderedLayers],
   );
 
   return (
@@ -153,6 +176,7 @@ export const ImageProjectionScene = forwardRef<
           key={layer.stream}
           pointSize={pointSize}
           projection={projection}
+          renderedPointCount={pointBudget.get(layer.stream)}
           resource={resource}
           viewTransform={viewTransform}
         />

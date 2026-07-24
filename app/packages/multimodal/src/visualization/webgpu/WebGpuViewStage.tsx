@@ -18,9 +18,15 @@ import {
   useRef,
   useState,
   useId,
+  useSyncExternalStore,
   type HTMLAttributes,
 } from "react";
 import * as THREE from "three";
+import { DEFAULT_MAX_RENDERED_POINTS } from "../scene-3d/point-cloud-colors";
+import {
+  EMPTY_POINT_CLOUD_BUDGET,
+  PointCloudCanvasBudget,
+} from "../scene-3d/gpu/point-cloud-canvas-budget";
 
 const LazyWebGpuCanvas = lazy(async () => {
   const module = await import("./WebGpuCanvas");
@@ -36,6 +42,7 @@ const SHARED_VIEW_SURFACE = "modal-images";
 interface WebGpuViewStageContextValue {
   readonly error: string | null;
   readonly invalidate: () => void;
+  readonly pointCloudBudget: PointCloudCanvasBudget;
   readonly ready: boolean;
   readonly registerView: () => () => void;
   readonly updateView: (id: string, node: ReactNode | null) => void;
@@ -71,6 +78,9 @@ export function WebGpuViewStage({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const invalidateRef = useRef<(() => void) | null>(null);
   const registrationsRef = useRef(new Set<symbol>());
+  const [pointCloudBudget] = useState(
+    () => new PointCloudCanvasBudget(DEFAULT_MAX_RENDERED_POINTS),
+  );
   const [dpr, setDpr] = useState(currentStageDpr);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -172,8 +182,15 @@ export function WebGpuViewStage({
   }, [dpr, invalidate]);
 
   const context = useMemo<WebGpuViewStageContextValue>(
-    () => ({ error, invalidate, ready, registerView, updateView }),
-    [error, invalidate, ready, registerView, updateView],
+    () => ({
+      error,
+      invalidate,
+      pointCloudBudget,
+      ready,
+      registerView,
+      updateView,
+    }),
+    [error, invalidate, pointCloudBudget, ready, registerView, updateView],
   );
 
   return (
@@ -566,6 +583,51 @@ function updateViewCamera(
 /** Returns the nearest shared-stage state, or null outside a stage. */
 export function useWebGpuViewStage(): WebGpuViewStageState | null {
   return useContext(WebGpuViewStageContext);
+}
+
+/**
+ * Registers point draws owned by one scissored view and returns that view's
+ * allocation from the shared physical canvas budget.
+ */
+export function useWebGpuViewPointCloudBudget(
+  demands: readonly { readonly id: string; readonly pointCount: number }[],
+  weight = 1,
+): ReadonlyMap<string, number> {
+  const stage = useContext(WebGpuViewStageContext);
+  const size = useThree((state) => state.size);
+  const viewId = useId();
+  const demandSignature = demands
+    .map((demand) => `${demand.id}:${demand.pointCount}`)
+    .join("|");
+
+  useLayoutEffect(() => {
+    if (!stage) return undefined;
+    stage.pointCloudBudget.updateView(viewId, {
+      area: size.width * size.height,
+      demands,
+      weight,
+    });
+    stage.invalidate();
+    return () => {
+      stage.pointCloudBudget.removeView(viewId);
+      stage.invalidate();
+    };
+    // demandSignature captures the immutable demand content while allowing
+    // callers to rebuild their small descriptor array freely.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demandSignature, size.height, size.width, stage, viewId, weight]);
+
+  const subscribe = useCallback(
+    (listener: () => void) =>
+      stage?.pointCloudBudget.subscribe(listener) ?? (() => undefined),
+    [stage],
+  );
+  const getSnapshot = useCallback(
+    () =>
+      stage?.pointCloudBudget.allocation(viewId) ?? EMPTY_POINT_CLOUD_BUDGET,
+    [stage, viewId],
+  );
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
 const stageStyle: CSSProperties = {
