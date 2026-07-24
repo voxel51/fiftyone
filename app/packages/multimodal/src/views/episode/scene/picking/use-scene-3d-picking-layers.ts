@@ -143,13 +143,11 @@ export function useScene3dPickingLayers({
       const source = pointCloudSourcesById.get(stream);
       return {
         ...layer,
-        hoveredPoint: hoverMatchesPointFrame(
-          hoverEcho,
-          stream,
-          layer.contentTimeNs,
-        )
-          ? { color: hoverEcho.color, position: hoverEcho.position }
-          : null,
+        hoveredPoint:
+          hoverMatchesPointFrame(hoverEcho, stream, layer.contentTimeNs) &&
+          hoverEcho.source?.kind !== "image-projection"
+            ? { color: hoverEcho.color, position: hoverEcho.position }
+            : null,
         onHoverPoint: (pick: PointCloudPointPick | null) => {
           const hoveredPoint = pick
             ? hoveredPointForFrame(
