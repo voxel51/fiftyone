@@ -119,6 +119,8 @@ function projectionHover(
 ): HoverEcho {
   return {
     color: [1, 0, 0],
+    contentTimeNs: 42n,
+    fields: {},
     kind: "point",
     pointIndex: 0,
     position: [1, 0, 0],
@@ -127,7 +129,6 @@ function projectionHover(
       imageContentTimeNs: 21n,
       imageStream: "/camera/image",
       kind: "image-projection",
-      pointContentTimeNs: 42n,
     },
     stream: "/lidar",
     ...overrides,

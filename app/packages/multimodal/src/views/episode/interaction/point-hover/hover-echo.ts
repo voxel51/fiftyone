@@ -12,6 +12,12 @@ export interface HoveredPointEcho {
   readonly kind: "point";
   /** The point's rendered color where it was hovered, if known. */
   readonly color: readonly [number, number, number] | null;
+  /** Timestamp identifying the exact point-cloud message being inspected. */
+  readonly contentTimeNs: bigint;
+  /** Finite scalar values safe to surface in point tooltips. */
+  readonly fields: Readonly<Record<string, number>>;
+  /** Coordinate frame of `position`, when declared by the point source. */
+  readonly frameId?: string;
   /** Index into the source frame's decoded per-point arrays. */
   readonly pointIndex: number;
   /** Sensor-frame coordinates of the hovered point. */
@@ -26,9 +32,16 @@ export interface HoveredPointEcho {
     readonly imageContentTimeNs: bigint;
     readonly imageStream: string;
     readonly kind: "image-projection";
-    readonly pointContentTimeNs: bigint;
   };
+  /** Collision-safe presentation label for the point source, when known. */
+  readonly sourceLabel?: string;
+  /** Exact format-native point source name, when known. */
+  readonly sourceName?: string;
   readonly stream: string;
+  /** Frame containing `worldPosition`, present for resolved 3D picks. */
+  readonly worldFrameId?: string;
+  /** Picked position in the 3D panel's resolved world frame. */
+  readonly worldPosition?: readonly [number, number, number];
 }
 
 /** Hover payload echoed between episode panes. */
@@ -47,4 +60,22 @@ export function useHoverEcho(): HoverEcho | null {
 /** Returns the setter for the modal-local hover echo. */
 export function useSetHoverEcho() {
   return useSetAtom(hoverEchoAtom);
+}
+
+/**
+ * Whether a point hover belongs to an exact displayed point-cloud frame.
+ * Stream alone is insufficient during playback: a stale source coordinate
+ * must never be reprojected with a newer frame's transform.
+ */
+export function hoverMatchesPointFrame(
+  hover: HoverEcho | null,
+  stream: string,
+  contentTimeNs: bigint | undefined,
+): hover is HoveredPointEcho {
+  return (
+    hover?.kind === "point" &&
+    contentTimeNs !== undefined &&
+    hover.stream === stream &&
+    hover.contentTimeNs === contentTimeNs
+  );
 }

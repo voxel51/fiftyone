@@ -76,6 +76,9 @@ describe("ImageProjectionOverlay", () => {
     await waitFor(() =>
       expect(mocks.setHover).toHaveBeenCalledWith({
         color: [1, 0, 0],
+        contentTimeNs: 42n,
+        fields: {},
+        frameId: "lidar",
         kind: "point",
         pointIndex: 0,
         position: [1, 2, 3],
@@ -84,8 +87,9 @@ describe("ImageProjectionOverlay", () => {
           imageContentTimeNs: 21n,
           imageStream: "/camera/image",
           kind: "image-projection",
-          pointContentTimeNs: 42n,
         },
+        sourceLabel: "lidar/top",
+        sourceName: "/lidar/top/points",
         stream: "41",
       }),
     );

@@ -477,6 +477,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     pointCloudLayers: coloredPointCloudLayers,
     pointCloudSources,
     sceneAnnotationLayers,
+    worldFrameId,
   });
   const frustumLayers = useScene3dFrustumLayers({
     cameraFrustumLayers,
