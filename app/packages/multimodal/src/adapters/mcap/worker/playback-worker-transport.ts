@@ -21,6 +21,7 @@ type PendingRequest<
   readonly reject: (error: Error) => void;
   readonly resolve: (result: McapPlaybackWorkerResultByType[Type]) => void;
   readonly sourceKey: string;
+  readonly supersessionKeys: readonly string[];
   readonly type: McapPlaybackWorkerUnaryType;
 };
 
@@ -55,6 +56,7 @@ export class McapPlaybackWorkerTransport {
     type: Type,
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
     priority?: McapPlaybackWorkerPriority,
+    supersessionKeys: readonly string[] = [],
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     const id = this.nextRequestId++;
     const message = createRpcRequest(id, sourceKey, type, payload, priority);
@@ -64,6 +66,7 @@ export class McapPlaybackWorkerTransport {
         reject,
         resolve: resolve as PendingRequest["resolve"],
         sourceKey,
+        supersessionKeys,
         type,
       });
 
@@ -84,12 +87,18 @@ export class McapPlaybackWorkerTransport {
    */
   cancelPending(
     filter: (pending: {
+      readonly supersessionKeys: readonly string[];
       readonly type: McapPlaybackWorkerUnaryType;
     }) => boolean,
   ): number[] {
     const cancelledIds: number[] = [];
     for (const [id, pending] of this.pending) {
-      if (!filter({ type: pending.type })) {
+      if (
+        !filter({
+          supersessionKeys: pending.supersessionKeys,
+          type: pending.type,
+        })
+      ) {
         continue;
       }
       this.pending.delete(id);

@@ -45,6 +45,10 @@ import type {
   McapTopicTimeBounds,
 } from "../contracts/index";
 import type { StreamInventory } from "../../../schemas/v1";
+import {
+  haveMcapSupersessionKeyOverlap,
+  mcapForegroundSupersessionKeys,
+} from "./playback-worker-supersession";
 
 type WorkerLane = {
   readonly name: McapTransportLane;
@@ -74,6 +78,7 @@ export function createWorkerMcapResourceClient(
 
 class WorkerMcapResourceClient implements McapResourceClient {
   private activeSourceKey = "";
+  private foregroundGeneration = 0;
   private disposed = false;
   private explicitOwnership = false;
   private readonly transportListeners = new Set<
@@ -127,6 +132,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     // hops for seconds.
     this.cancelAllPendingReads();
     this.activeSourceKey = sourceKey;
+    this.foregroundGeneration += 1;
   }
 
   // Rejects every pending unary and stream locally and tells each lane's
@@ -263,12 +269,33 @@ class WorkerMcapResourceClient implements McapResourceClient {
       return Promise.reject(error);
     }
     const lane = this.laneForPriority(effectivePriority);
+    const supersessionKeys = mcapForegroundSupersessionKeys({
+      generation: this.foregroundGeneration,
+      payload,
+      priority: effectivePriority,
+      sourceKey,
+      type,
+    });
+    if (supersessionKeys.length > 0) {
+      const cancelledIds = lane.transport.cancelPending((pending) =>
+        haveMcapSupersessionKeyOverlap(
+          pending.supersessionKeys,
+          supersessionKeys,
+        ),
+      );
+      this.postCancelRequests(lane, cancelledIds);
+      // A burst of obsolete presentation work is also a seek/scrub signal.
+      // Give the byte link back to the newest foreground frame immediately;
+      // useful playback-runway work remains on its separate foreground lane.
+      if (cancelledIds.length > 0) this.cancelIdleReads();
+    }
     return lane.transport.request(
       this.workerForLane(lane, sourceKey),
       sourceKey,
       type,
       payload,
       effectivePriority,
+      supersessionKeys,
     );
   }
 
@@ -315,6 +342,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     // ownership, so keep-warm would thrash (0.3 s -> ~4.6 s hops).
     this.resetWorkers("MCAP worker reset for a different source");
     this.activeSourceKey = sourceKey;
+    this.foregroundGeneration += 1;
   }
 
   private laneForPriority(priority: McapPlaybackWorkerPriority): WorkerLane {
