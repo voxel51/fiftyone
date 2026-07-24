@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   PanelVisibilityProvider,
   readScene3dTileVisibility,
+  useImageTile3dLabelProjection,
   useImageTileLabelStreams,
   useImageTilePointCloudProjection,
   writeScene3dTileVisibility,
@@ -14,6 +15,7 @@ import { DEFAULT_PROJECTION_POINT_SIZE } from "../presentation/point-size-policy
 afterEach(() => {
   cleanup();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe("episode panel visibility persistence", () => {
@@ -61,7 +63,7 @@ describe("episode panel visibility persistence", () => {
     ]);
   });
 
-  it("isolates point-cloud projections for image tiles on the same source", () => {
+  it("keeps opt-in point-cloud projections isolated in session storage", () => {
     const wrapperFor = (tileId: string) => {
       const Wrapper = ({ children }: { children: React.ReactNode }) => (
         <PanelVisibilityProvider scopeKey="dataset-a:field-a">
@@ -99,6 +101,12 @@ describe("episode panel visibility persistence", () => {
       pointSize: DEFAULT_PROJECTION_POINT_SIZE,
       streams: [],
     });
+    expect(sessionStorage.getItem("fiftyone.episode.projections.v1")).toContain(
+      "/lidar/top",
+    );
+    expect(
+      localStorage.getItem("fiftyone.episode.panel-visibility.v2"),
+    ).toBeNull();
 
     foo.unmount();
     const restored = renderHook(
@@ -109,6 +117,105 @@ describe("episode panel visibility persistence", () => {
       enabled: true,
       pointSize: 8,
       streams: ["/lidar/top"],
+    });
+
+    restored.unmount();
+    sessionStorage.clear();
+    const nextSession = renderHook(
+      () => useImageTilePointCloudProjection("/camera/front/image"),
+      { wrapper: wrapperFor("image-1") },
+    );
+    expect(nextSession.result.current.projection).toEqual({
+      enabled: false,
+      pointSize: DEFAULT_PROJECTION_POINT_SIZE,
+      streams: [],
+    });
+  });
+
+  it("keeps opt-in 3D-label projections in session storage", () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <PanelVisibilityProvider scopeKey="dataset-a:field-a">
+        <TilingProvider>
+          <TileIdScope tileId="image-1">{children}</TileIdScope>
+        </TilingProvider>
+      </PanelVisibilityProvider>
+    );
+    const first = renderHook(
+      () => useImageTile3dLabelProjection("/camera/front/image"),
+      { wrapper },
+    );
+
+    expect(first.result.current.projection).toEqual({
+      enabled: false,
+      streams: [],
+    });
+    act(() =>
+      first.result.current.setProjection({
+        enabled: true,
+        streams: ["/detections_3d"],
+      }),
+    );
+    expect(first.result.current.projection).toEqual({
+      enabled: true,
+      streams: ["/detections_3d"],
+    });
+    expect(sessionStorage.getItem("fiftyone.episode.projections.v1")).toContain(
+      "/detections_3d",
+    );
+    expect(
+      localStorage.getItem("fiftyone.episode.panel-visibility.v2"),
+    ).toBeNull();
+    first.unmount();
+
+    const restored = renderHook(
+      () => useImageTile3dLabelProjection("/camera/front/image"),
+      { wrapper },
+    );
+    expect(restored.result.current.projection).toEqual({
+      enabled: true,
+      streams: ["/detections_3d"],
+    });
+    act(() => restored.result.current.setProjection({ enabled: false }));
+    expect(restored.result.current.projection).toEqual({
+      enabled: false,
+      streams: [],
+    });
+  });
+
+  it("does not infer projection opt-in from incomplete session data", () => {
+    sessionStorage.setItem(
+      "fiftyone.episode.projections.v1",
+      JSON.stringify({
+        byScope: {
+          "dataset-a:field-a": {
+            tiles: {
+              "image-1": {
+                image3dLabelProjections: {
+                  "/camera/front/image": { streams: null },
+                },
+              },
+            },
+            updatedAtMs: 1,
+          },
+        },
+        version: 1,
+      }),
+    );
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <PanelVisibilityProvider scopeKey="dataset-a:field-a">
+        <TilingProvider>
+          <TileIdScope tileId="image-1">{children}</TileIdScope>
+        </TilingProvider>
+      </PanelVisibilityProvider>
+    );
+    const projection = renderHook(
+      () => useImageTile3dLabelProjection("/camera/front/image"),
+      { wrapper },
+    );
+
+    expect(projection.result.current.projection).toEqual({
+      enabled: false,
+      streams: [],
     });
   });
 
