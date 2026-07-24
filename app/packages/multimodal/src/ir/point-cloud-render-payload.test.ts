@@ -76,7 +76,7 @@ describe("buildPointCloudRenderPayload", () => {
     expect(Array.from(payload.positions.slice(9, 12))).toEqual([0, 0, 0]);
   });
 
-  it("caps dense clouds at exactly 150k samples and includes both endpoints", () => {
+  it("caps dense clouds at exactly 150k unique nested samples", () => {
     const sourcePointCount = MAX_POINT_CLOUD_RENDER_POINTS + 1;
     const positions = new Float32Array(sourcePointCount * 3);
     for (let index = 0; index < sourcePointCount; index++) {
@@ -93,18 +93,47 @@ describe("buildPointCloudRenderPayload", () => {
     expect(payload.sampledPointCount).toBe(MAX_POINT_CLOUD_RENDER_POINTS);
     expect(payload.positions).toHaveLength(MAX_POINT_CLOUD_RENDER_POINTS * 3);
     expect(payload.sourceIndices).toHaveLength(MAX_POINT_CLOUD_RENDER_POINTS);
-    expect(payload.sourceIndices[0]).toBe(0);
-    expect(payload.sourceIndices[payload.sampledPointCount - 1]).toBe(
-      sourcePointCount - 1,
-    );
-    let strictlyIncreasing = true;
-    for (let index = 1; index < payload.sampledPointCount; index++) {
-      if (payload.sourceIndices[index] <= payload.sourceIndices[index - 1]) {
-        strictlyIncreasing = false;
-        break;
-      }
+    expect(Array.from(payload.sourceIndices.slice(0, 4))).toEqual([
+      0, 131_072, 65_536, 32_768,
+    ]);
+    const sourceIndices = new Set(payload.sourceIndices);
+    expect(sourceIndices.size).toBe(payload.sampledPointCount);
+    expect(
+      Array.from(sourceIndices).every(
+        (sourceIndex) => sourceIndex < sourcePointCount,
+      ),
+    ).toBe(true);
+    expect(Array.from(payload.positions.slice(0, 12))).toEqual([
+      0, -0, 0, 131_072, -131_072, 65_536, 65_536, -65_536, 32_768, 32_768,
+      -32_768, 16_384,
+    ]);
+  });
+
+  it("keeps lower draw budgets as stable prefixes", () => {
+    const positions = new Float32Array(16 * 3);
+    for (let pointIndex = 0; pointIndex < 16; pointIndex++) {
+      positions[pointIndex * 3] = pointIndex;
     }
-    expect(strictlyIncreasing).toBe(true);
+
+    const payload = buildPointCloudRenderPayload({ positions });
+
+    expect(Array.from(payload.sourceIndices.slice(0, 4))).toEqual([
+      0, 8, 4, 12,
+    ]);
+    expect(Array.from(payload.sourceIndices.slice(0, 8))).toEqual([
+      0, 8, 4, 12, 2, 10, 6, 14,
+    ]);
+  });
+
+  it("retains every source index when the cloud fits the payload budget", () => {
+    const pointCount = 1_025;
+    const payload = buildPointCloudRenderPayload({
+      positions: new Float32Array(pointCount * 3),
+    });
+
+    expect(new Set(payload.sourceIndices.slice(0, pointCount)).size).toBe(
+      pointCount,
+    );
   });
 
   it("rounds intermediate capacities up to a power of two", () => {
@@ -116,7 +145,6 @@ describe("buildPointCloudRenderPayload", () => {
     expect(payload.capacity).toBe(2_048);
     expect(payload.sampledPointCount).toBe(pointCount);
     expect(payload.positions).toHaveLength(payload.capacity * 3);
-    expect(payload.sourceIndices[pointCount - 1]).toBe(pointCount - 1);
     expect(payload.sourceIndices[pointCount]).toBe(0);
   });
 

@@ -16,9 +16,9 @@ const LARGE_POINT_CLOUD_CAPACITY_GRANULARITY = 4_096;
 const POWER_OF_TWO_CAPACITY_LIMIT = 8_192;
 
 /**
- * Builds the bounded point-cloud payload shared by renderers. Sampling is
- * deterministic and uniform over finite source points, including the first
- * and last finite point when the cloud exceeds the render budget.
+ * Builds the bounded point-cloud payload shared by renderers. Samples follow a
+ * deterministic bit-reversed source order, so every lower render budget can
+ * draw a stable prefix while remaining distributed across the source domain.
  */
 export function buildPointCloudRenderPayload({
   colors,
@@ -97,7 +97,6 @@ export function buildPointCloudRenderPayload({
   if (sampledPointCount > 0) {
     sampleFinitePoints({
       colors,
-      finitePointCount,
       pointCount,
       positions,
       sampledColors,
@@ -132,7 +131,6 @@ export function buildPointCloudRenderPayload({
 
 function sampleFinitePoints({
   colors,
-  finitePointCount,
   pointCount,
   positions,
   sampledColors,
@@ -143,7 +141,6 @@ function sampleFinitePoints({
   sourceIndices,
 }: {
   readonly colors?: Float32Array;
-  readonly finitePointCount: number;
   readonly pointCount: number;
   readonly positions: Float32Array;
   readonly sampledColors?: Float32Array;
@@ -153,19 +150,21 @@ function sampleFinitePoints({
   readonly scalarFields: readonly PointCloudScalarField[];
   readonly sourceIndices: Uint32Array;
 }): void {
-  let finiteOrdinal = 0;
   let sampleIndex = 0;
-  let targetOrdinal = sampledFiniteOrdinal(
-    sampleIndex,
-    sampledPointCount,
-    finitePointCount,
-  );
+  const sampleDomainSize = pointCloudSampleDomainSize(pointCount);
 
   for (
-    let pointIndex = 0;
-    pointIndex < pointCount && sampleIndex < sampledPointCount;
-    pointIndex++
+    let sequenceIndex = 0;
+    sequenceIndex < sampleDomainSize && sampleIndex < sampledPointCount;
+    sequenceIndex++
   ) {
+    const pointIndex = progressivePointCloudSourceIndex(
+      sequenceIndex,
+      sampleDomainSize,
+    );
+    if (pointIndex >= pointCount) {
+      continue;
+    }
     const sourceOffset = pointIndex * POINT_COMPONENT_COUNT;
     const x = positions[sourceOffset];
     const y = positions[sourceOffset + 1];
@@ -174,32 +173,24 @@ function sampleFinitePoints({
       continue;
     }
 
-    if (finiteOrdinal === targetOrdinal) {
-      const targetOffset = sampleIndex * POINT_COMPONENT_COUNT;
-      sampledPositions[targetOffset] = x;
-      sampledPositions[targetOffset + 1] = y;
-      sampledPositions[targetOffset + 2] = z;
-      if (sampledColors && colors) {
-        sampledColors[targetOffset] = colors[sourceOffset];
-        sampledColors[targetOffset + 1] = colors[sourceOffset + 1];
-        sampledColors[targetOffset + 2] = colors[sourceOffset + 2];
-      }
-      for (let fieldIndex = 0; fieldIndex < scalarFields.length; fieldIndex++) {
-        const sourceValues = scalarFields[fieldIndex].values;
-        sampledScalarFields[fieldIndex].values[sampleIndex] =
-          pointIndex < sourceValues.length
-            ? sourceValues[pointIndex]
-            : Number.NaN;
-      }
-      sourceIndices[sampleIndex] = pointIndex;
-      sampleIndex++;
-      targetOrdinal = sampledFiniteOrdinal(
-        sampleIndex,
-        sampledPointCount,
-        finitePointCount,
-      );
+    const targetOffset = sampleIndex * POINT_COMPONENT_COUNT;
+    sampledPositions[targetOffset] = x;
+    sampledPositions[targetOffset + 1] = y;
+    sampledPositions[targetOffset + 2] = z;
+    if (sampledColors && colors) {
+      sampledColors[targetOffset] = colors[sourceOffset];
+      sampledColors[targetOffset + 1] = colors[sourceOffset + 1];
+      sampledColors[targetOffset + 2] = colors[sourceOffset + 2];
     }
-    finiteOrdinal++;
+    for (let fieldIndex = 0; fieldIndex < scalarFields.length; fieldIndex++) {
+      const sourceValues = scalarFields[fieldIndex].values;
+      sampledScalarFields[fieldIndex].values[sampleIndex] =
+        pointIndex < sourceValues.length
+          ? sourceValues[pointIndex]
+          : Number.NaN;
+    }
+    sourceIndices[sampleIndex] = pointIndex;
+    sampleIndex++;
   }
 }
 
@@ -217,17 +208,34 @@ export function pointCloudRenderCapacity(sampledPointCount: number): number {
   );
 }
 
-export function sampledFiniteOrdinal(
-  sampleIndex: number,
-  sampledPointCount: number,
-  finitePointCount: number,
-): number {
-  if (sampledPointCount <= 1) {
+export function pointCloudSampleDomainSize(pointCount: number): number {
+  const normalizedPointCount = Number.isFinite(pointCount)
+    ? Math.max(0, Math.floor(pointCount))
+    : 0;
+  if (normalizedPointCount === 0) {
     return 0;
   }
-  return Math.floor(
-    (sampleIndex * (finitePointCount - 1)) / (sampledPointCount - 1),
-  );
+  return 2 ** Math.ceil(Math.log2(normalizedPointCount));
+}
+
+/**
+ * Returns one index in a power-of-two domain's bit-reversed order.
+ *
+ * For an organized row-major cloud this progressively spreads early samples
+ * across both scan rows and columns. Consumers can therefore draw any prefix
+ * without changing the identity of points retained by smaller budgets.
+ */
+export function progressivePointCloudSourceIndex(
+  sequenceIndex: number,
+  sampleDomainSize: number,
+): number {
+  let reversed = sequenceIndex >>> 0;
+  reversed = ((reversed >>> 1) & 0x55555555) | ((reversed & 0x55555555) << 1);
+  reversed = ((reversed >>> 2) & 0x33333333) | ((reversed & 0x33333333) << 2);
+  reversed = ((reversed >>> 4) & 0x0f0f0f0f) | ((reversed & 0x0f0f0f0f) << 4);
+  reversed = ((reversed >>> 8) & 0x00ff00ff) | ((reversed & 0x00ff00ff) << 8);
+  reversed = (reversed >>> 16) | (reversed << 16);
+  return reversed >>> Math.clz32(sampleDomainSize - 1);
 }
 
 export function isFinitePointCloudPosition(

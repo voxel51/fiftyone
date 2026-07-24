@@ -129,6 +129,7 @@ export function decodeRosPointCloud2Record(
   });
   const decodedPoints = extractPointCloudRenderData(data, pointStep, fields, {
     ...(invalidZeroField ? { invalidZeroField } : {}),
+    ...(height > 1 ? { organizedShape: { height, width } } : {}),
   });
   const pointCount = decodedPoints.renderPayload.sampledPointCount;
   attributes.pointCount = pointCount;

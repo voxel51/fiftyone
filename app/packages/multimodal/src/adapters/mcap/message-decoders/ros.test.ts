@@ -623,16 +623,16 @@ describe("ROS MCAP decoders", () => {
     expect(output.visualization.coordinateFrameId).toBe("lidar");
     expect(output.visualization.pointCount).toBe(3);
     expect(Array.from(output.visualization.positions)).toEqual([
-      1, 2, 3, 4, 5, 6, 9, 10, 11,
+      1, 2, 3, 9, 10, 11, 4, 5, 6,
     ]);
     expect(output.visualization.scalarFields?.[0]?.name).toBe("intensity");
     expect(
       Array.from(output.visualization.scalarFields?.[0]?.values ?? []),
-    ).toEqual([10, 20, 40]);
+    ).toEqual([10, 40, 20]);
     expect(output.visualization.scalarFields?.[1]?.name).toBe("ring");
     expect(
       Array.from(output.visualization.scalarFields?.[1]?.values ?? []),
-    ).toEqual([50_000, 60_000, 65_535]);
+    ).toEqual([50_000, 65_535, 60_000]);
     const renderPayload = output.visualization.renderPayload;
     if (!renderPayload) {
       throw new Error("Expected point cloud render payload");
@@ -646,7 +646,7 @@ describe("ROS MCAP decoders", () => {
       sourcePointCount: 4,
     });
     expect(Array.from(renderPayload.sourceIndices.slice(0, 3))).toEqual([
-      0, 1, 3,
+      0, 3, 1,
     ]);
     expect(output.visualization.positions.buffer).toBe(
       renderPayload.positions.buffer,
@@ -766,16 +766,16 @@ describe("ROS MCAP decoders", () => {
       sampledPointCount: 3,
       sourcePointCount: 4,
     });
-    expect(Array.from(payload.sourceIndices.slice(0, 3))).toEqual([0, 2, 3]);
+    expect(Array.from(payload.sourceIndices.slice(0, 3))).toEqual([0, 3, 2]);
     expect(Array.from(output.visualization.positions)).toEqual([
-      1, 2, 3, 0, 0, 0, 4, 5, 6,
+      1, 2, 3, 4, 5, 6, 0, 0, 0,
     ]);
     const range = payload.scalarFields.find((field) => field.name === "range");
     expect(range).toMatchObject({
       finiteValueCount: 3,
       range: { max: 200, min: 50 },
     });
-    expect(Array.from(range?.values.slice(0, 3) ?? [])).toEqual([100, 50, 200]);
+    expect(Array.from(range?.values.slice(0, 3) ?? [])).toEqual([100, 200, 50]);
   });
 
   it("degrades ros1 PointCloud2 big-endian data instead of throwing", () => {

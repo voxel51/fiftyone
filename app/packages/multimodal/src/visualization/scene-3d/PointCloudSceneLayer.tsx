@@ -23,9 +23,8 @@ import {
 import type { ResolvedGpuPointCloudColor } from "./gpu/gpu-point-cloud-color";
 import {
   gpuPointCloudPositionNode,
-  gpuPointCloudSampleIndexFromStrideNode,
+  gpuPointCloudSampleIndexNode,
   gpuPointCloudScalarNode,
-  type GpuPointCloudNode,
 } from "./gpu/gpu-point-cloud-position-nodes";
 import { POINT_COMPONENT_COUNT } from "./point-cloud-colors";
 import {
@@ -126,16 +125,7 @@ interface GpuPointCloud3dResource {
 interface GpuPointCloud3dMaterial {
   readonly colorUniforms: GpuPointCloudColorUniforms;
   readonly material: PointsNodeMaterial;
-  readonly sampleStride: SceneUniformNode<number>;
 }
-
-interface SceneUniformNode<T> extends GpuPointCloudNode {
-  value: T;
-}
-
-const sceneTsl = TSL as unknown as {
-  uniform<T extends number>(value: T): SceneUniformNode<T>;
-};
 
 const EMPTY_GPU_INSTANCE_ATTRIBUTES = new Map<
   string,
@@ -227,10 +217,6 @@ function GpuPointCloudPoints({
     resource.sampledPointCount = gpu.payload.sampledPointCount;
     resource.renderedPointCount = gpu.renderedPointCount;
     sprite.count = gpu.renderedPointCount;
-    shader.sampleStride.value =
-      gpu.renderedPointCount > 0
-        ? Math.fround(gpu.payload.sampledPointCount / gpu.renderedPointCount)
-        : 1;
     shader.material.size = pointSize;
     updateGpuPointCloudColorUniforms(shader.colorUniforms, gpu.color);
     if (pickLayer) {
@@ -317,10 +303,9 @@ function createGpuPointCloud3dMaterial(
     size: DEFAULT_POINT_SIZE,
     sizeAttenuation: false,
   });
-  // instanceIndex spans renderedPointCount. The stride maps it evenly into
-  // sampledPointCount, allowing runtime point budgets without new CPU arrays.
-  const sampleStride = sceneTsl.uniform(1);
-  const sampleIndex = gpuPointCloudSampleIndexFromStrideNode(sampleStride);
+  // instanceIndex spans the progressively ordered payload prefix, allowing
+  // runtime point budgets without new CPU arrays or point replacement.
+  const sampleIndex = gpuPointCloudSampleIndexNode();
   const positionNode = gpuPointCloudPositionNode(
     resource.position,
     "flat",
@@ -347,7 +332,7 @@ function createGpuPointCloud3dMaterial(
     colorUniforms,
   );
   material.toneMapped = false;
-  return { colorUniforms, material, sampleStride };
+  return { colorUniforms, material };
 }
 
 function ensureGpuPointCloud3dSchema(

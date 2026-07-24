@@ -178,7 +178,7 @@ describe("sourcePointIndexForLayerRenderedIndex", () => {
 });
 
 describe("GPU canonical sample mapping", () => {
-  it("honors the local draw budget with an even deterministic selection", () => {
+  it("honors the local draw budget with a stable prefix", () => {
     expect(gpuPointCloudDrawCount(150_000, 120_000)).toBe(120_000);
     expect(gpuPointCloudDrawCount(10, 100)).toBe(10);
     expect(gpuPointCloudDrawCount(10, 0)).toBe(1);
@@ -187,7 +187,7 @@ describe("GPU canonical sample mapping", () => {
       Array.from({ length: 6 }, (_, index) =>
         gpuPointCloudSampleIndex(10, 6, index),
       ),
-    ).toEqual([0, 1, 3, 5, 6, 8]);
+    ).toEqual([0, 1, 2, 3, 4, 5]);
   });
 
   it("keeps identity draws exact and rejects invalid indexes", () => {

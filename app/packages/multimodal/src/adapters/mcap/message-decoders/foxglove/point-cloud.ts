@@ -11,8 +11,9 @@ import { resourceHintsForArrayBufferViews } from "../../../../decoders/index";
 import {
   isFinitePointCloudPosition,
   MAX_POINT_CLOUD_RENDER_POINTS,
+  pointCloudSampleDomainSize,
   pointCloudRenderCapacity,
-  sampledFiniteOrdinal,
+  progressivePointCloudSourceIndex,
   VISUALIZATION_KIND,
 } from "../../../../ir/index";
 import { rosDecodersForPayloads } from "../ros/factory";
@@ -204,6 +205,14 @@ export interface PackedPointCloudProjectionOptions {
    * provide this only after recognizing a sensor-specific packed layout.
    */
   readonly invalidZeroField?: PointCloudField;
+  /**
+   * Row-major sensor shape. When it matches the packed record count, samples
+   * follow a nested 2D lattice that spreads prefixes across both axes.
+   */
+  readonly organizedShape?: {
+    readonly height: number;
+    readonly width: number;
+  };
   readonly pose?: ProtobufPose3D;
 }
 
@@ -293,18 +302,25 @@ export function extractPointCloudRenderData(
   );
   const sourceIndices = new Uint32Array(capacity);
 
-  let finiteOrdinal = 0;
   let sampleIndex = 0;
-  let targetOrdinal = sampledFiniteOrdinal(
-    sampleIndex,
-    sampledPointCount,
-    finitePointCount,
+  const organizedSampleOrder = createOrganizedPointCloudSampleOrder(
+    sourcePointCount,
+    options.organizedShape,
   );
+  const sampleDomainSize =
+    organizedSampleOrder?.pointCount ??
+    pointCloudSampleDomainSize(sourcePointCount);
   for (
-    let pointIndex = 0;
-    pointIndex < sourcePointCount && sampleIndex < sampledPointCount;
-    pointIndex++
+    let sequenceIndex = 0;
+    sequenceIndex < sampleDomainSize && sampleIndex < sampledPointCount;
+    sequenceIndex++
   ) {
+    const pointIndex = organizedSampleOrder
+      ? organizedPointCloudSourceIndex(sequenceIndex, organizedSampleOrder)
+      : progressivePointCloudSourceIndex(sequenceIndex, sampleDomainSize);
+    if (pointIndex >= sourcePointCount) {
+      continue;
+    }
     const baseOffset = pointIndex * pointStride;
     if (isInvalidPackedPoint(view, baseOffset, layout.invalidZeroField)) {
       continue;
@@ -314,42 +330,34 @@ export function extractPointCloudRenderData(
       continue;
     }
 
-    if (finiteOrdinal === targetOrdinal) {
-      const positionOffset = sampleIndex * POINT_COMPONENT_COUNT;
-      positions[positionOffset] = position.x;
-      positions[positionOffset + 1] = position.y;
-      positions[positionOffset + 2] = position.z;
-      if (colors && layout.color) {
-        writePackedColor(
-          data,
-          view,
-          baseOffset,
-          colors,
-          positionOffset,
-          layout.color,
-        );
-      }
-      for (
-        let fieldIndex = 0;
-        fieldIndex < layout.scalarFields.length;
-        fieldIndex++
-      ) {
-        const field = layout.scalarFields[fieldIndex];
-        scalarFields[fieldIndex].values[sampleIndex] = readNumericField(
-          view,
-          baseOffset + field.offset,
-          field.type,
-        );
-      }
-      sourceIndices[sampleIndex] = pointIndex;
-      sampleIndex++;
-      targetOrdinal = sampledFiniteOrdinal(
-        sampleIndex,
-        sampledPointCount,
-        finitePointCount,
+    const positionOffset = sampleIndex * POINT_COMPONENT_COUNT;
+    positions[positionOffset] = position.x;
+    positions[positionOffset + 1] = position.y;
+    positions[positionOffset + 2] = position.z;
+    if (colors && layout.color) {
+      writePackedColor(
+        data,
+        view,
+        baseOffset,
+        colors,
+        positionOffset,
+        layout.color,
       );
     }
-    finiteOrdinal++;
+    for (
+      let fieldIndex = 0;
+      fieldIndex < layout.scalarFields.length;
+      fieldIndex++
+    ) {
+      const field = layout.scalarFields[fieldIndex];
+      scalarFields[fieldIndex].values[sampleIndex] = readNumericField(
+        view,
+        baseOffset + field.offset,
+        field.type,
+      );
+    }
+    sourceIndices[sampleIndex] = pointIndex;
+    sampleIndex++;
   }
 
   const renderPayload: PointCloudRenderPayload = {
@@ -386,6 +394,71 @@ interface MutablePackedPointPosition {
   x: number;
   y: number;
   z: number;
+}
+
+interface OrganizedPointCloudSampleOrder {
+  readonly columnStride: number;
+  readonly height: number;
+  readonly pointCount: number;
+  readonly rowStride: number;
+  readonly width: number;
+}
+
+function createOrganizedPointCloudSampleOrder(
+  pointCount: number,
+  shape: PackedPointCloudProjectionOptions["organizedShape"],
+): OrganizedPointCloudSampleOrder | null {
+  if (
+    !shape ||
+    !Number.isInteger(shape.height) ||
+    !Number.isInteger(shape.width) ||
+    shape.height <= 1 ||
+    shape.width <= 0 ||
+    shape.height * shape.width !== pointCount
+  ) {
+    return null;
+  }
+  return {
+    columnStride: goldenCoprimeStride(shape.width),
+    height: shape.height,
+    pointCount,
+    rowStride: goldenCoprimeStride(shape.height),
+    width: shape.width,
+  };
+}
+
+/**
+ * Enumerates every cell once. Within each row phase, coprime strides move
+ * early samples across scan rows and columns instead of tracing a stripe.
+ */
+function organizedPointCloudSourceIndex(
+  sequenceIndex: number,
+  order: OrganizedPointCloudSampleOrder,
+): number {
+  const rowPhase = sequenceIndex % order.height;
+  const columnPhase = Math.floor(sequenceIndex / order.height);
+  const row = (rowPhase * order.rowStride) % order.height;
+  const column = (columnPhase + rowPhase * order.columnStride) % order.width;
+  return row * order.width + column;
+}
+
+function goldenCoprimeStride(size: number): number {
+  let stride = Math.max(1, Math.floor(size * 0.6180339887498949));
+  while (greatestCommonDivisor(stride, size) !== 1) {
+    stride++;
+  }
+  return stride;
+}
+
+function greatestCommonDivisor(left: number, right: number): number {
+  let a = left;
+  let b = right;
+  while (b !== 0) {
+    const remainder = a % b;
+    a = b;
+    b = remainder;
+  }
+  return a;
 }
 
 type PackedPointColorLayout =
