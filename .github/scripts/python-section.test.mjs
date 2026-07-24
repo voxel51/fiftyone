@@ -86,6 +86,16 @@ describe("buildPythonLine", () => {
     expect(line).toContain(PYTHON_LINE_MARKER);
   });
 
+  it("links each leg's junit artifact when a url is known", () => {
+    const linked = results.map((r) => ({
+      ...r,
+      url: `https://example.com/${r.version}`,
+    }));
+    expect(buildPythonLine(JOBS, linked)).toContain(
+      "junit: [3.10](https://example.com/3.10) · [3.13](https://example.com/3.13)",
+    );
+  });
+
   it("reads healthy when nothing failed", () => {
     const green = results.map((r) => ({
       ...r,
@@ -154,9 +164,15 @@ describe("collectResults", () => {
       writeFileSync(join(leg, "main.xml"), JUNIT);
     }
     writeFileSync(join(dir, "stray.txt"), "ignored");
+    writeFileSync(
+      join(dir, "artifact-urls.tsv"),
+      "pytest-results-3.10\thttps://example.com/a/1\n",
+    );
     const results = collectResults(dir);
     expect(results.map((r) => r.version)).toEqual(["3.10", "3.13"]);
     expect(results[0].cases).toHaveLength(4);
+    expect(results[0].url).toBe("https://example.com/a/1");
+    expect(results[1].url).toBeUndefined();
   });
 
   it("returns nothing for a missing directory", () => {

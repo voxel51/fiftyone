@@ -40,7 +40,8 @@ export const parseJunit = (xml) => {
 };
 
 // junit-dir layout: <dir>/pytest-results-<version>/**.xml (one artifact per
-// matrix leg); returns [{version, cases}] sorted by version
+// matrix leg) plus an optional artifact-urls.tsv (name<TAB>url) linking each
+// leg's artifact; returns [{version, cases, url?}] sorted by version
 export const collectResults = (junitDir) => {
   const results = [];
   let artifacts = [];
@@ -50,6 +51,17 @@ export const collectResults = (junitDir) => {
     );
   } catch {
     return results;
+  }
+  const urls = new Map();
+  try {
+    for (const row of readFileSync(join(junitDir, "artifact-urls.tsv"), "utf8")
+      .split("\n")
+      .filter(Boolean)) {
+      const [name, url] = row.split("\t");
+      urls.set(name, url);
+    }
+  } catch {
+    // links are optional; the section renders without them
   }
   for (const artifact of artifacts) {
     const cases = [];
@@ -67,6 +79,7 @@ export const collectResults = (junitDir) => {
     results.push({
       version: artifact.name.replace("pytest-results-", ""),
       cases,
+      url: urls.get(artifact.name),
     });
   }
   return results.sort((a, b) => a.version.localeCompare(b.version));
@@ -116,7 +129,13 @@ export const buildPythonLine = (jobs, results) => {
   const counts = failures.length
     ? `❌ ${failures.length} failed · ${passed} passed`
     : `✅ ${passed} passed`;
-  return `**python**: ${counts} · ${skipped} skipped${clock} ${PYTHON_LINE_MARKER}`;
+  const links = results
+    .filter((r) => r.url)
+    .map((r) => `[${r.version}](${r.url})`)
+    .join(" · ");
+  return `**python**: ${counts} · ${skipped} skipped${clock}${
+    links ? ` · junit: ${links}` : ""
+  } ${PYTHON_LINE_MARKER}`;
 };
 
 export const buildPythonFailures = (results) => {

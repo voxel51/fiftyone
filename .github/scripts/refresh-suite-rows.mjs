@@ -33,6 +33,8 @@ if (!jobsPath || !bodyPath) {
 
 const jobs = JSON.parse(readFileSync(jobsPath, "utf8")).jobs ?? [];
 const rows = buildSuiteRows(jobs);
+const e2eJobs = jobs.filter((j) => j.name.split(" / ")[0] === "e2e");
+const e2eRan = e2eJobs.some((j) => j.conclusion !== "skipped");
 
 // full comment built from the run's jobs alone — used when the e2e pipeline
 // never posted its report: skipped entirely, or dead after the in-progress
@@ -45,8 +47,6 @@ const buildFresh = () => {
     : "OSS";
   const sha = (process.env.HEAD_SHA ?? "").slice(0, 10);
   const runUrl = process.env.RUN_URL ?? "";
-  const e2eJobs = jobs.filter((j) => j.name.split(" / ")[0] === "e2e");
-  const e2eRan = e2eJobs.some((j) => j.conclusion !== "skipped");
   const allRows = [
     ...rows,
     ...(e2eRan ? [`| e2e | ${jobsIcon(e2eJobs)} |`] : []),
@@ -82,7 +82,10 @@ if (bodyPath === "--new") {
   lines = body.split("\n");
   const header = lines.indexOf("| suite | result |");
   const e2eRow = lines.findIndex((l) => l.startsWith("| e2e |"));
-  if (header === -1 || e2eRow < header + 2) {
+  // a body without a suite table is a stranded banner; a body with one but
+  // no e2e jobs this run carries a previous revision's e2e results — both
+  // rebuild from this run's jobs
+  if (!e2eRan || header === -1 || e2eRow < header + 2) {
     lines = buildFresh();
   } else {
     lines.splice(header + 2, e2eRow - header - 2, ...rows);

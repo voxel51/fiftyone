@@ -232,6 +232,10 @@ if (burnInCount > 0) {
       burnInCount === 1 ? "" : "s"
     } × 10 runs, no retries): ${burnInUnhealthy ? "❌" : "✅"}${
       burnInSpan === null ? "" : ` · ⏱ ${fmtMs(burnInSpan)}`
+    }${
+      process.env.BURN_IN_REPORT_URL
+        ? ` · [report](${process.env.BURN_IN_REPORT_URL})`
+        : ""
     }`,
   );
 }

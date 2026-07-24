@@ -125,9 +125,10 @@ jobs:
           mkdir -p junit
           fail=0
           while IFS= read -r -d '' f; do
-            name=$(echo "${f#tests/isolated/}" | tr '/' '-')
+            rel="${f#tests/isolated/}"
+            mkdir -p "junit/isolated/$(dirname "$rel")"
             python tests/utils/pytest_wrapper.py "$f" --verbose \
-              --junitxml "junit/isolated-${name%.py}.xml" || fail=1
+              --junitxml "junit/isolated/${rel%.py}.xml" || fail=1
           done < <(find tests/isolated/ -name '*.py' -print0)
           exit $fail
       - name: Upload pytest results

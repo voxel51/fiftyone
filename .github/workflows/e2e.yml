@@ -485,20 +485,6 @@ jobs:
           PLAYWRIGHT_JSON_OUTPUT_NAME: merged-results.json
         run: yarn playwright merge-reports --reporter html,json ./all-blob-reports
 
-      - name: Merge burn-in report
-        # kept separate from the shard merge so 10x-repeated specs don't
-        # inflate the suite's counts
-        if: needs.prepare-e2e.outputs.burn-in-count != '0'
-        working-directory: e2e-pw
-        env:
-          PLAYWRIGHT_JSON_OUTPUT_NAME: burn-in-results.json
-        run: |
-          if ls burn-in-blob-report/*.zip >/dev/null 2>&1; then
-            yarn playwright merge-reports --reporter json ./burn-in-blob-report
-          else
-            echo "no burn-in blob report; the enforce step fails on the job result"
-          fi
-
       - name: Upload merged report
         id: upload-merged
         uses: actions/upload-artifact@v7
@@ -507,6 +493,32 @@ jobs:
           path: e2e-pw/playwright-report/
           # 3 days so reports from Friday/weekend runs survive into Monday.
           retention-days: 3
+
+      - name: Merge burn-in report
+        # kept separate from the shard merge so 10x-repeated specs don't
+        # inflate the suite's counts; reuses the default report dir now that
+        # the shard report has been uploaded
+        if: needs.prepare-e2e.outputs.burn-in-count != '0'
+        working-directory: e2e-pw
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: burn-in-results.json
+        run: |
+          if ls burn-in-blob-report/*.zip >/dev/null 2>&1; then
+            rm -rf playwright-report
+            yarn playwright merge-reports --reporter html,json ./burn-in-blob-report
+          else
+            echo "no burn-in blob report; the enforce step fails on the job result"
+          fi
+
+      - name: Upload burn-in report
+        id: upload-burn-in
+        if: needs.prepare-e2e.outputs.burn-in-count != '0'
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-burn-in
+          path: e2e-pw/playwright-report/
+          retention-days: 3
+          if-no-files-found: ignore
 
       - name: Summarize
         working-directory: e2e-pw
@@ -517,6 +529,7 @@ jobs:
           EXPECTED_SHARDS: "8"
           BURN_IN_COUNT: ${{ needs.prepare-e2e.outputs.burn-in-count }}
           BURN_IN_RESULT: ${{ needs.burn-in.result }}
+          BURN_IN_REPORT_URL: ${{ steps.upload-burn-in.outputs.artifact-url }}
           REPORT_URL: ${{ steps.upload-merged.outputs.artifact-url }}
           GH_TOKEN: ${{ github.token }}
         run: |

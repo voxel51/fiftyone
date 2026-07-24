@@ -14,7 +14,9 @@ const IGNORE = new Set([
 ]);
 
 export const jobsIcon = (js) =>
-  js.some((j) => j.conclusion === "failure")
+  js.some((j) =>
+    ["failure", "timed_out", "action_required"].includes(j.conclusion),
+  )
     ? "❌"
     : js.some((j) => j.status !== "completed")
       ? "⏳"
