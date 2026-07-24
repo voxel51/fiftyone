@@ -21,7 +21,7 @@
         "lodash.throttle": "^4.1.1",
         "mapbox-gl": "^2.9.2",
         "react-map-gl": "^7.0.18",
-        "use-resize-observer": "^9.0.2"
+        "use-resize-observer": "catalog:"
     },
     "devDependencies": {
         "@types/mapbox-gl": "^2.7.4",

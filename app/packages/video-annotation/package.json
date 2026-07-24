@@ -19,18 +19,18 @@
         "@fiftyone/utilities": "workspace:*",
         "@voxel51/voodo": "^0.0.39",
         "clsx": "^2.1.0",
-        "jotai": "^2.9.3",
-        "lru-cache": "^11.0.1",
+        "jotai": "catalog:",
+        "lru-cache": "catalog:",
         "mp4box": "^2.4.1"
     },
     "devDependencies": {
-        "@eslint/compat": "^1.1.1",
+        "@eslint/compat": "catalog:",
         "@types/dom-webcodecs": "^0.1.18",
         "eslint": "catalog:eslint9",
         "eslint-plugin-react": "^7.35.0",
         "eslint-plugin-react-hooks": "rc",
-        "globals": "^15.8.0",
-        "typescript-eslint": "^7.17.0",
+        "globals": "catalog:",
+        "typescript-eslint": "catalog:",
         "vite": "catalog:"
     }
 }

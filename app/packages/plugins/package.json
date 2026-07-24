@@ -19,9 +19,9 @@
         "README.md"
     ],
     "devDependencies": {
-        "@babel/preset-typescript": "^7.17.12",
+        "@babel/preset-typescript": "catalog:",
         "@fiftyone/utilities": "workspace:^",
-        "jest": "^29.7.0",
+        "jest": "catalog:",
         "prettier": "catalog:",
         "vite": "catalog:"
     }

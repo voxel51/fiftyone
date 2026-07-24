@@ -7,7 +7,7 @@
     "dependencies": {
         "@voxel51/voodo": "^0.0.39",
         "clsx": "^2.1.1",
-        "jotai": "^2.9.3",
+        "jotai": "catalog:",
         "react-mosaic-component": "^6.1.1"
     },
     "peerDependencies": {

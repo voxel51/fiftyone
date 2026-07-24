@@ -16,7 +16,7 @@
         "@fiftyone/analytics": "*"
     },
     "devDependencies": {
-        "@testing-library/dom": "^10.4.0",
+        "@testing-library/dom": "catalog:",
         "@testing-library/react": "^16.2.0",
         "@typescript-eslint/eslint-plugin": "^6.0.0",
         "@typescript-eslint/parser": "^6.0.0",

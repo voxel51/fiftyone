@@ -3,20 +3,20 @@
     "main": "./index.ts",
     "packageManager": "yarn@4.9.1",
     "devDependencies": {
-        "@eslint/compat": "^1.1.1",
+        "@eslint/compat": "catalog:",
         "eslint": "catalog:eslint9",
         "eslint-plugin-react": "^7.35.0",
         "eslint-plugin-react-hooks": "rc",
-        "globals": "^15.8.0",
+        "globals": "catalog:",
         "prettier": "catalog:",
-        "typescript-eslint": "^7.17.0",
+        "typescript-eslint": "catalog:",
         "vite": "catalog:"
     },
     "dependencies": {
         "@fiftyone/commands": "workspace:^",
         "@fiftyone/tiling": "*",
         "@voxel51/voodo": "^0.0.39",
-        "jotai": "^2.9.3",
+        "jotai": "catalog:",
         "jotai-optics": "^0.4.0",
         "vite-plugin-svgr": "catalog:"
     },
