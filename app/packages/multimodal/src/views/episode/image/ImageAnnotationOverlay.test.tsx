@@ -39,9 +39,10 @@ describe("ImageAnnotationOverlay", () => {
       targetU: 100,
       targetV: 50,
     });
-    expect(
-      screen.getByTestId("episode-image-annotation-tooltip").textContent,
-    ).toContain("car");
+    const tooltip = screen.getByTestId("episode-image-annotation-tooltip");
+    expect(tooltip.textContent).toContain("car");
+    expect(tooltip.textContent).toContain("Stream3D detections");
+    expect(tooltip.textContent).not.toContain("21");
     expect(container.querySelector("svg")).toBeNull();
     expect(
       container.querySelectorAll("circle, line, polygon, polyline"),
@@ -122,6 +123,7 @@ function renderOverlay(
         onSelectPrimitive={onSelectPrimitive}
         pickerRef={pickerRef}
         prepared={prepared()}
+        sourceLabelsById={new Map([["21", "3D detections"]])}
       />
     </div>,
   );
@@ -158,7 +160,7 @@ function prepared(): PreparedImageAnnotations {
           },
         },
         primitiveIndex: 0,
-        stream: "/labels",
+        stream: "21",
       },
     ],
     picks: {
