@@ -13,6 +13,9 @@ export function transferablesForMcapResult(result: unknown): Transferable[] {
   for (const buffer of numericSeriesBuffersFromResult(result)) {
     transferables.add(buffer);
   }
+  for (const buffer of pointCloudChannelBuffersFromResult(result)) {
+    transferables.add(buffer);
+  }
 
   for (const message of decodedMessagesFromResult(result)) {
     for (const transferable of message.decoded.output.resourceHints
@@ -22,6 +25,24 @@ export function transferablesForMcapResult(result: unknown): Transferable[] {
   }
 
   return [...transferables];
+}
+
+function pointCloudChannelBuffersFromResult(result: unknown): ArrayBuffer[] {
+  const record = recordFromUnknown(result);
+  if (record?.kind === "rgb" && record.colors instanceof Float32Array) {
+    return record.colors.buffer instanceof ArrayBuffer
+      ? [record.colors.buffer]
+      : [];
+  }
+  const scalarField = recordFromUnknown(record?.scalarField);
+  if (
+    record?.kind === "scalar" &&
+    scalarField?.values instanceof Float32Array &&
+    scalarField.values.buffer instanceof ArrayBuffer
+  ) {
+    return [scalarField.values.buffer];
+  }
+  return [];
 }
 
 function numericSeriesBuffersFromResult(result: unknown): ArrayBuffer[] {

@@ -4,8 +4,16 @@ import {
   useStreamValues,
   useStreamValuesSelector,
 } from "@fiftyone/playback";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDataStream, type DataStream } from "./data-stream-context";
+import type { StreamSubscriptionOptions } from "../../../runtime";
+import type {
+  PointCloudRenderChannelPayload,
+  PointCloudRenderPayload,
+  PointCloudVisualization,
+} from "../../../ir";
+import { CANONICAL_POINT_CLOUD_SCALAR_COLOR_FIELDS } from "../../../visualization/scene-3d/point-cloud-color-policy";
+import { normalizeIdentifierName } from "../../../visualization/scene-3d/utils";
 
 /** One committed stream value plus its content and placement timestamps. */
 export interface StreamPlaybackFrame<T = unknown> {
@@ -107,6 +115,7 @@ export function usePlaybackStreamValues<T = unknown>(
  */
 export function useStreamPlaybackFrames<T = unknown>(
   streams: readonly string[],
+  subscriptionOptions?: readonly (StreamSubscriptionOptions | undefined)[],
 ): readonly (StreamPlaybackFrame<T> | null)[] {
   const dataStream = useDataStream();
   const values = useStreamValues<StreamPlaybackFrame<T> | null>(streams);
@@ -114,9 +123,124 @@ export function useStreamPlaybackFrames<T = unknown>(
   // excluded so unavailable-stream renders keep the same array instance.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const emptyValues = useMemo(() => streams.map(() => null), [streams.length]);
-  useStreamSubscriptions(streams, dataStream);
+  useStreamSubscriptions(streams, dataStream, subscriptionOptions);
 
   return dataStream ? values : emptyValues;
+}
+
+/**
+ * Point-cloud specialization that swaps worker-projected color data over the
+ * current immutable geometry payload. Channel changes never rebuild XYZ.
+ */
+export function usePointCloudPlaybackFrames(
+  streams: readonly string[],
+  colorBy: readonly string[],
+): readonly (StreamPlaybackFrame<PointCloudVisualization> | null)[] {
+  const subscriptionOptions = useMemo(
+    () =>
+      streams.map((_, index) => ({
+        pointCloudColorBy: colorBy[index] ?? "auto",
+      })),
+    [colorBy, streams],
+  );
+  const frames = useStreamPlaybackFrames<PointCloudVisualization>(
+    streams,
+    subscriptionOptions,
+  );
+  const dataStream = useDataStream();
+  const [channels, setChannels] = useState<
+    ReadonlyMap<string, PointCloudRenderChannelPayload>
+  >(() => new Map());
+  const colorSignature = colorBy.join("|");
+
+  // This effect projects a missing color channel for each committed geometry
+  // frame and caches the replacement independently from playback ownership.
+  useEffect(() => {
+    const readPointCloudChannel = dataStream?.readPointCloudChannel;
+    if (!readPointCloudChannel) return undefined;
+    let cancelled = false;
+    frames.forEach((playbackFrame, index) => {
+      const payload = playbackFrame?.frame.renderPayload;
+      const activeColorBy = colorBy[index] ?? "auto";
+      const stream = streams[index];
+      if (
+        !playbackFrame ||
+        !payload ||
+        !stream ||
+        pointCloudPayloadHasActiveChannel(payload, activeColorBy)
+      ) {
+        return;
+      }
+      const samplePlanKey = payload.samplePlanKey;
+      if (!samplePlanKey) return;
+      const key = pointCloudChannelKey(
+        dataStream.sourceKey,
+        stream,
+        playbackFrame.contentTimeNs,
+        samplePlanKey,
+        activeColorBy,
+      );
+      if (channels.has(key)) return;
+
+      void readPointCloudChannel({
+        activeColorBy,
+        capacity: payload.capacity,
+        sampledPointCount: payload.sampledPointCount,
+        samplePlanKey,
+        sourceIndices: payload.sourceIndices,
+        stream,
+        timestampNs: playbackFrame.contentTimeNs,
+      })
+        .then((channel) => {
+          if (cancelled || channel.samplePlanKey !== samplePlanKey) return;
+          setChannels((current) => {
+            if (current.get(key) === channel) return current;
+            const next = new Map(current);
+            next.set(key, channel);
+            while (next.size > 64) {
+              const oldest = next.keys().next().value;
+              if (oldest === undefined) break;
+              next.delete(oldest);
+            }
+            return next;
+          });
+        })
+        .catch(() => undefined);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // colorSignature captures the supported option content.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channels, colorSignature, dataStream, frames, streams]);
+
+  return useMemo(
+    () =>
+      frames.map((playbackFrame, index) => {
+        const payload = playbackFrame?.frame.renderPayload;
+        const samplePlanKey = payload?.samplePlanKey;
+        const stream = streams[index];
+        const activeColorBy = colorBy[index] ?? "auto";
+        if (!playbackFrame || !payload || !samplePlanKey || !stream) {
+          return playbackFrame;
+        }
+        const channel = channels.get(
+          pointCloudChannelKey(
+            dataStream?.sourceKey ?? "",
+            stream,
+            playbackFrame.contentTimeNs,
+            samplePlanKey,
+            activeColorBy,
+          ),
+        );
+        if (!channel) return playbackFrame;
+        return {
+          ...playbackFrame,
+          frame: applyPointCloudRenderChannel(playbackFrame.frame, channel),
+        };
+      }),
+    [channels, colorBy, dataStream?.sourceKey, frames, streams],
+  );
 }
 
 function useStreamSubscription(
@@ -133,45 +257,139 @@ function useStreamSubscription(
 function useStreamSubscriptions(
   streams: readonly string[],
   dataStream: DataStream | null,
+  options?: readonly (StreamSubscriptionOptions | undefined)[],
 ): void {
-  const subscriptionsRef = useRef<Map<string, () => void>>(new Map());
+  const subscriptionsRef = useRef<
+    Map<string, { readonly key: string; readonly unsubscribe: () => void }>
+  >(new Map());
   const streamRef = useRef<DataStream | null>(null);
+  const optionsSignature = streams
+    .map(
+      (stream, index) =>
+        `${stream}:${options?.[index]?.pointCloudColorBy ?? ""}`,
+    )
+    .join("|");
 
   // This effect diffs stream leases and resets them when the stream changes.
   useEffect(() => {
     const subscriptions = subscriptionsRef.current;
 
     if (streamRef.current !== dataStream) {
-      for (const unsubscribe of subscriptions.values()) unsubscribe();
+      for (const subscription of subscriptions.values()) {
+        subscription.unsubscribe();
+      }
       subscriptions.clear();
       streamRef.current = dataStream;
     }
     if (!dataStream) return;
 
     const streamSet = new Set(streams);
-    for (const [stream, unsubscribe] of subscriptions) {
-      if (!streamSet.has(stream)) {
-        unsubscribe();
+    for (const [stream, subscription] of subscriptions) {
+      const index = streams.indexOf(stream);
+      const key = streamSubscriptionOptionsKey(options?.[index]);
+      if (!streamSet.has(stream) || subscription.key !== key) {
+        subscription.unsubscribe();
         subscriptions.delete(stream);
       }
     }
-    for (const stream of streams) {
+    for (let index = 0; index < streams.length; index++) {
+      const stream = streams[index];
       if (stream && !subscriptions.has(stream)) {
-        subscriptions.set(stream, dataStream.subscribeToStream(stream));
+        const streamOptions = options?.[index];
+        subscriptions.set(stream, {
+          key: streamSubscriptionOptionsKey(streamOptions),
+          unsubscribe: dataStream.subscribeToStream(stream, streamOptions),
+        });
       }
     }
-  }, [dataStream, streams]);
+    // optionsSignature captures the supported option content without requiring
+    // callers to memoize their small descriptor arrays.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataStream, optionsSignature, streams]);
 
   // This effect releases every remaining stream lease on unmount.
   useEffect(
     () => () => {
-      for (const unsubscribe of subscriptionsRef.current.values()) {
-        unsubscribe();
+      for (const subscription of subscriptionsRef.current.values()) {
+        subscription.unsubscribe();
       }
       subscriptionsRef.current.clear();
     },
     [],
   );
+}
+
+function streamSubscriptionOptionsKey(
+  options: StreamSubscriptionOptions | undefined,
+): string {
+  return options?.pointCloudColorBy ?? "";
+}
+
+const CANONICAL_AUTO_SCALAR_FIELDS = new Set<string>(
+  CANONICAL_POINT_CLOUD_SCALAR_COLOR_FIELDS,
+);
+
+function pointCloudPayloadHasActiveChannel(
+  payload: PointCloudRenderPayload,
+  colorBy: string,
+): boolean {
+  const normalized = normalizeIdentifierName(colorBy);
+  if (normalized === "height" || normalized === "uniform") return true;
+  if (normalized === "rgb") return payload.colors !== undefined;
+  if (normalized === "auto") {
+    return (
+      payload.colors !== undefined ||
+      payload.scalarFields.some((field) =>
+        CANONICAL_AUTO_SCALAR_FIELDS.has(normalizeIdentifierName(field.name)),
+      )
+    );
+  }
+  return payload.scalarFields.some(
+    (field) => normalizeIdentifierName(field.name) === normalized,
+  );
+}
+
+function pointCloudChannelKey(
+  sourceKey: string,
+  stream: string,
+  contentTimeNs: bigint,
+  samplePlanKey: string,
+  activeColorBy: string,
+): string {
+  return [sourceKey, stream, contentTimeNs, samplePlanKey, activeColorBy].join(
+    "\0",
+  );
+}
+
+/** Replaces color data only when it belongs to the frame's geometry plan. */
+export function applyPointCloudRenderChannel(
+  frame: PointCloudVisualization,
+  channel: PointCloudRenderChannelPayload,
+): PointCloudVisualization {
+  const payload = frame.renderPayload;
+  if (!payload || payload.samplePlanKey !== channel.samplePlanKey) return frame;
+  const colors = channel.kind === "rgb" ? channel.colors : undefined;
+  const scalarFields = channel.kind === "scalar" ? [channel.scalarField] : [];
+  const componentCount = payload.sampledPointCount * 3;
+  const {
+    colors: _previousFrameColors,
+    scalarFields: _previousFrameScalarFields,
+    ...frameWithoutChannel
+  } = frame;
+  const { colors: _previousPayloadColors, ...payloadWithoutChannel } = payload;
+  return {
+    ...frameWithoutChannel,
+    ...(colors ? { colors: colors.subarray(0, componentCount) } : {}),
+    renderPayload: {
+      ...payloadWithoutChannel,
+      ...(colors ? { colors } : {}),
+      scalarFields,
+    },
+    scalarFields: scalarFields.map((field) => ({
+      name: field.name,
+      values: field.values.subarray(0, payload.sampledPointCount),
+    })),
+  };
 }
 
 function selectFrame<T>(value: StreamPlaybackFrame<T> | null): T | null {

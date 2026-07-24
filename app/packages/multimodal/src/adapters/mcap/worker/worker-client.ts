@@ -26,11 +26,13 @@ import type {
   McapDecodedMessage,
   McapEnumerateNumericFieldsRequest,
   McapNumericSeriesResult,
+  McapPointCloudChannelResult,
   McapReadDecodedMessagesRequest,
   McapReadFrameTransformBootstrapRequest,
   McapReadFrameTransformWindowRequest,
   McapRawMessageRecordResult,
   McapReadNumericSeriesRequest,
+  McapReadPointCloudChannelRequest,
   McapReadRawMessageRecordRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
@@ -213,6 +215,12 @@ class WorkerMcapResourceClient implements McapResourceClient {
     request: McapReadRawMessageRecordRequest,
   ): Promise<McapRawMessageRecordResult> {
     return this.request("readRawMessageRecord", request);
+  }
+
+  readPointCloudChannel(
+    request: McapReadPointCloudChannelRequest,
+  ): Promise<McapPointCloudChannelResult> {
+    return this.request("readPointCloudChannel", request);
   }
 
   readFrameTransformBootstrap(

@@ -4,11 +4,13 @@ import type {
   McapDecodedMessage,
   McapEnumerateNumericFieldsRequest,
   McapNumericSeriesResult,
+  McapPointCloudChannelResult,
   McapRawMessageRecordResult,
   McapReadDecodedMessagesRequest,
   McapReadFrameTransformBootstrapRequest,
   McapReadFrameTransformWindowRequest,
   McapReadNumericSeriesRequest,
+  McapReadPointCloudChannelRequest,
   McapReadRawMessageRecordRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
@@ -84,6 +86,7 @@ export type McapPlaybackWorkerRequestPayloadByType = {
   readonly readFrameTransformBootstrap: McapReadFrameTransformBootstrapRequest;
   readonly readFrameTransformWindow: McapReadFrameTransformWindowRequest;
   readonly readNumericSeries: McapReadNumericSeriesRequest;
+  readonly readPointCloudChannel: McapReadPointCloudChannelRequest;
   readonly readRawMessageRecord: McapReadRawMessageRecordRequest;
   readonly readSynchronizedMessageBatch: McapReadSynchronizedMessageBatchRequest;
   readonly readSynchronizedMessages: McapReadSynchronizedMessagesRequest;
@@ -100,6 +103,7 @@ export type McapPlaybackWorkerResultByType = {
   readonly readFrameTransformBootstrap: McapFrameTransformSetWire;
   readonly readFrameTransformWindow: McapFrameTransformSetWire;
   readonly readNumericSeries: McapNumericSeriesResult;
+  readonly readPointCloudChannel: McapPointCloudChannelResult;
   readonly readRawMessageRecord: McapRawMessageRecordResult;
   readonly readSynchronizedMessageBatch: readonly McapSynchronizedMessageWindow[];
   readonly readSynchronizedMessages: McapSynchronizedMessageWindow;

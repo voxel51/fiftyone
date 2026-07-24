@@ -30,6 +30,17 @@ export function mcapForegroundSupersessionKeys<
   if (priority !== MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME) {
     return [];
   }
+  if (type === "readPointCloudChannel") {
+    const { activeColorBy, topic } = payload as {
+      readonly activeColorBy: string;
+      readonly topic: string;
+    };
+    return [
+      [sourceKey, generation, "point-cloud-channel", topic, activeColorBy].join(
+        SUPERSESSION_KEY_SEPARATOR,
+      ),
+    ];
+  }
   if (
     type !== "readSynchronizedMessages" &&
     type !== "readSynchronizedMessageBatch"

@@ -62,6 +62,10 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY,
   },
+  readPointCloudChannel: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+  },
   // Idle lane on purpose: a raw read may decode one multi-megabyte message
   // and must not occupy either user-visible playback lane. Inspection
   // latency loses to playback smoothness.
@@ -129,6 +133,13 @@ export function runMcapPlaybackWorkerUnaryRequest(
         .then(dehydrateMcapFrameTransformSet);
     case "readNumericSeries":
       return client.readNumericSeries(message.payload);
+    case "readPointCloudChannel":
+      if (!client.readPointCloudChannel) {
+        return Promise.reject(
+          new Error("Point-cloud channel projection is unavailable"),
+        );
+      }
+      return client.readPointCloudChannel(message.payload);
     case "readRawMessageRecord":
       return client.readRawMessageRecord(message.payload);
     case "readSynchronizedMessageBatch":

@@ -26,6 +26,7 @@ import {
   type FrameBatch,
   type NumericSeriesCapability,
   type PlaybackReadCapability,
+  type PointCloudProjectionCapability,
   type RawRecordCapability,
   type ReadRequest,
   type ReadPriority,
@@ -523,6 +524,7 @@ class McapEpisodeSession implements EpisodeSession {
   readonly manifest: EpisodeManifest;
   readonly numericSeries: NumericSeriesCapability;
   readonly playback: PlaybackReadCapability;
+  readonly pointCloudProjection?: PointCloudProjectionCapability;
   readonly rawRecords: RawRecordCapability;
   readonly terminology = {
     stream: {
@@ -568,6 +570,27 @@ class McapEpisodeSession implements EpisodeSession {
       streams: manifest.streams,
     });
     this.playback = this.createPlaybackCapability(timelineRange);
+    const readPointCloudChannel = this.client.readPointCloudChannel?.bind(
+      this.client,
+    );
+    if (readPointCloudChannel) {
+      this.pointCloudProjection = {
+        readChannel: (request) => {
+          this.ensureOpen();
+          return readPointCloudChannel({
+            activeColorBy: request.activeColorBy,
+            activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+            capacity: request.capacity,
+            sampledPointCount: request.sampledPointCount,
+            samplePlanKey: request.samplePlanKey,
+            source: this.source,
+            sourceIndices: request.sourceIndices,
+            timeNs: request.timestampNs,
+            topic: this.sourceNameFor(request.stream),
+          });
+        },
+      };
+    }
     this.transformRead = this.createTransformReadAcceleration();
   }
 
@@ -667,6 +690,9 @@ class McapEpisodeSession implements EpisodeSession {
           const window = await this.client.readSynchronizedMessages({
             activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
             defaultStreamPolicy: toMcapSyncPolicy(request.defaultStreamPolicy),
+            pointCloudColorByByTopic: this.toMcapPointCloudColorBy(
+              request.pointCloudColorBy,
+            ),
             source: this.source,
             streamPolicies: this.toMcapSyncPolicies(request.streamPolicies),
             timeNs: request.timeNs,
@@ -685,6 +711,9 @@ class McapEpisodeSession implements EpisodeSession {
               activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
               defaultStreamPolicy: toMcapSyncPolicy(
                 request.defaultStreamPolicy,
+              ),
+              pointCloudColorByByTopic: this.toMcapPointCloudColorBy(
+                request.pointCloudColorBy,
               ),
               source: this.source,
               streamPolicies: this.toMcapSyncPolicies(request.streamPolicies),
@@ -807,6 +836,18 @@ class McapEpisodeSession implements EpisodeSession {
       Object.entries(policies).map(([stream, policy]) => [
         this.sourceNameFor(stream),
         toMcapSyncPolicy(policy) as McapStreamSyncPolicy,
+      ]),
+    );
+  }
+
+  private toMcapPointCloudColorBy(
+    colorBy: Readonly<Record<string, string>> | undefined,
+  ): Readonly<Record<string, string>> | undefined {
+    if (!colorBy) return undefined;
+    return Object.fromEntries(
+      Object.entries(colorBy).map(([stream, field]) => [
+        this.sourceNameFor(stream),
+        field,
       ]),
     );
   }

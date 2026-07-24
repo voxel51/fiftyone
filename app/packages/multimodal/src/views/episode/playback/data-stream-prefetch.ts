@@ -46,6 +46,7 @@ import type { StreamPlaybackFrame } from "./use-stream-values";
 export const MAX_FETCH_FAILURE_STREAK = 3;
 const STREAM_ID = "episode-data-stream";
 const MAX_ENGINE_PREFETCH_BATCHES_PER_CALL = 8;
+const EMPTY_POINT_CLOUD_COLOR_BY: Readonly<Record<string, string>> = {};
 
 /** Mutable request bookkeeping owned by one mounted episode data stream. */
 export interface DataStreamFetchState {
@@ -96,6 +97,7 @@ export function createDataStreamPrefetcher({
   caches,
   fetchState,
   getIndex,
+  getPointCloudColorBy = () => EMPTY_POINT_CLOUD_COLOR_BY,
   getSourceEpoch,
   getStreamPolicies,
   lastFrames,
@@ -107,6 +109,7 @@ export function createDataStreamPrefetcher({
   readonly caches: Map<string, EpisodeStreamCache>;
   readonly fetchState: DataStreamFetchState;
   readonly getIndex: () => TimelineIndex | null;
+  readonly getPointCloudColorBy?: () => Readonly<Record<string, string>>;
   readonly getSourceEpoch: () => number;
   readonly getStreamPolicies: () => StreamSyncPolicies;
   readonly lastFrames: Map<string, StreamPlaybackFrame<unknown>>;
@@ -223,6 +226,7 @@ export function createDataStreamPrefetcher({
     void playback
       .readSynchronizedBatch(
         {
+          pointCloudColorBy: getPointCloudColorBy(),
           streamPolicies: getStreamPolicies(),
           streams: streamsToFetch,
           timeNs: toFetch,
@@ -301,6 +305,7 @@ export function createDataStreamPrefetcher({
     markStreamsPending([tickKey], streamsToFetch);
     void playback
       .readSynchronized({
+        pointCloudColorBy: getPointCloudColorBy(),
         streamPolicies: getStreamPolicies(),
         streams: streamsToFetch,
         timeNs: tick,

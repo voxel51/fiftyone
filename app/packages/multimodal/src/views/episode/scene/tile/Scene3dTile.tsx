@@ -13,7 +13,6 @@ import type {
   GridVisualization,
   ImageVisualization,
   LocationVisualization,
-  PointCloudVisualization,
   PoseVisualization,
   SceneUpdateVisualization,
 } from "../../../../ir/index";
@@ -89,7 +88,10 @@ import {
 } from "../picking/use-scene-3d-selection";
 import { useInterpolatedSceneUpdateFrames } from "../entities/use-interpolated-scene-updates";
 import { usePlaybackTimeNs } from "../../playback/use-playback-time-ns";
-import { useStreamPlaybackFrames } from "../../playback/use-stream-values";
+import {
+  usePointCloudPlaybackFrames,
+  useStreamPlaybackFrames,
+} from "../../playback/use-stream-values";
 import { useVideoDecodeRunways } from "../../playback/video-decode-runway/use-video-decode-runways";
 import {
   scene3dSnapshotHasLayers,
@@ -245,8 +247,28 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     frustumImageStreams,
     frustumImageFrames,
   );
-  const frames =
-    useStreamPlaybackFrames<PointCloudVisualization>(pointCloudStreams);
+  const pointCloudColorBy = useMemo(
+    () =>
+      pointCloudStreams.map((stream) => {
+        const source = pointCloudSources.find(
+          (candidate) => candidate.id === stream,
+        ) ?? {
+          id: stream,
+          label: stream,
+          sourceName: "",
+        };
+        const settings = {
+          ...defaultPointCloudColorForSource(source, pointCloudSources),
+          ...pointCloudColors[stream],
+        };
+        return settings.colorBy;
+      }),
+    [pointCloudColors, pointCloudSources, pointCloudStreams],
+  );
+  const frames = usePointCloudPlaybackFrames(
+    pointCloudStreams,
+    pointCloudColorBy,
+  );
   const pointCloudColorCapabilities = usePointCloudColorCapabilities(
     pointCloudStreams,
     frames,

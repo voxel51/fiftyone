@@ -13,11 +13,13 @@ import type {
  */
 export async function* readMcapDecodedMessages({
   decodeClient,
+  readSignal,
   reader,
   request,
   timeline,
 }: {
   readonly decodeClient: DecodeClient;
+  readonly readSignal?: { readonly current: AbortSignal | null };
   readonly reader: McapIndexedReaderLike;
   readonly request: McapReadDecodedMessagesRequest;
   readonly timeline: McapTimelineStrategy;
@@ -58,6 +60,7 @@ export async function* readMcapDecodedMessages({
       decodeClient,
       message,
       reader,
+      signal: readSignal?.current ?? undefined,
       source: request.source,
       timeline,
     });

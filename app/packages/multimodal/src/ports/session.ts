@@ -5,6 +5,7 @@ import type {
   EpisodeManifest,
   NumericSeriesResult,
   NumericStreamFields,
+  PointCloudRenderChannelPayload,
   EpisodeTimeline,
   LaneTransportSnapshot,
   RawRecordPruneBudgets,
@@ -79,6 +80,8 @@ export interface TransformReadAcceleration {
 /** One synchronized playback read around a single presentation time. */
 export interface SynchronizedPlaybackReadRequest {
   readonly defaultStreamPolicy?: StreamSyncPolicy;
+  /** Active point-cloud color source requested per stream. */
+  readonly pointCloudColorBy?: Readonly<Record<StreamId, string>>;
   readonly streamPolicies?: StreamSyncPolicies;
   readonly streams: readonly StreamId[];
   readonly timeNs: bigint;
@@ -87,6 +90,8 @@ export interface SynchronizedPlaybackReadRequest {
 /** One synchronized playback read spanning several presentation times. */
 export interface SynchronizedPlaybackBatchReadRequest {
   readonly defaultStreamPolicy?: StreamSyncPolicy;
+  /** Active point-cloud color source requested per stream. */
+  readonly pointCloudColorBy?: Readonly<Record<StreamId, string>>;
   readonly streamPolicies?: StreamSyncPolicies;
   readonly streams: readonly StreamId[];
   readonly timeNs: readonly bigint[];
@@ -142,6 +147,19 @@ export interface RawRecordCapability {
   }): Promise<RawRecordResult>;
 }
 
+/** On-demand point-cloud channel projection over an immutable geometry plan. */
+export interface PointCloudProjectionCapability {
+  readChannel(request: {
+    readonly activeColorBy: string;
+    readonly capacity: number;
+    readonly sampledPointCount: number;
+    readonly samplePlanKey: string;
+    readonly sourceIndices: Uint32Array;
+    readonly stream: StreamId;
+    readonly timestampNs: bigint;
+  }): Promise<PointCloudRenderChannelPayload>;
+}
+
 /** Format-selected nouns used by the shared episode viewer. */
 export interface EpisodeTerminology {
   readonly stream?: {
@@ -155,6 +173,7 @@ export interface EpisodeSession {
   readonly manifest: EpisodeManifest;
   readonly numericSeries?: NumericSeriesCapability;
   readonly playback?: PlaybackReadCapability;
+  readonly pointCloudProjection?: PointCloudProjectionCapability;
   readonly rawRecords?: RawRecordCapability;
   readonly synchronizedRead?: SynchronizedReadAcceleration;
   readonly terminology?: EpisodeTerminology;

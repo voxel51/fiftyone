@@ -146,6 +146,9 @@ export async function readMcapSynchronizedMessageBatch({
           rawDecodeCache,
           rawReadCache,
           reader,
+          pointCloudColorBy:
+            request.pointCloudColorByByTopic?.[candidate.topic],
+          signal: readSignal?.current ?? undefined,
           source: request.source,
           timeline,
         }),
@@ -186,6 +189,8 @@ export async function readMcapSynchronizedMessageBatch({
         candidate,
         decodeCache: rawDecodeCache,
         decodeClient,
+        pointCloudColorBy: request.pointCloudColorByByTopic?.[candidate.topic],
+        signal: readSignal?.current ?? undefined,
         source: request.source,
         timeline,
       }),
@@ -697,6 +702,8 @@ async function decodeIndexedCandidate({
   rawDecodeCache,
   rawReadCache,
   reader,
+  pointCloudColorBy,
+  signal,
   source,
   timeline,
 }: {
@@ -709,10 +716,14 @@ async function decodeIndexedCandidate({
     Promise<readonly McapRawMessageCandidate[]>
   >;
   readonly reader: McapIndexedReaderLike;
+  readonly pointCloudColorBy?: string;
+  readonly signal?: AbortSignal;
   readonly source: McapReadSynchronizedMessageBatchRequest["source"];
   readonly timeline: McapTimelineStrategy;
 }): Promise<McapDecodedMessage> {
-  const key = indexedCandidateRecordId(candidate);
+  const key = `${indexedCandidateRecordId(candidate)}\0${
+    pointCloudColorBy ?? "auto"
+  }`;
   let decoded = indexedDecodeCache.get(key);
 
   if (!decoded) {
@@ -726,6 +737,8 @@ async function decodeIndexedCandidate({
         candidate: rawCandidate,
         decodeCache: rawDecodeCache,
         decodeClient,
+        pointCloudColorBy,
+        signal,
         source,
         timeline,
       }),
@@ -822,16 +835,22 @@ async function decodeRawCandidate({
   candidate,
   decodeCache,
   decodeClient,
+  pointCloudColorBy,
+  signal,
   source,
   timeline,
 }: {
   readonly candidate: McapRawMessageCandidate;
   readonly decodeCache: Map<string, Promise<McapDecodedMessage>>;
   readonly decodeClient: DecodeClient;
+  readonly pointCloudColorBy?: string;
+  readonly signal?: AbortSignal;
   readonly source: McapReadSynchronizedMessageBatchRequest["source"];
   readonly timeline: McapTimelineStrategy;
 }): Promise<McapDecodedMessage> {
-  const key = mcapMessageRecordId(candidate.message);
+  const key = `${mcapMessageRecordId(candidate.message)}\0${
+    pointCloudColorBy ?? "auto"
+  }`;
   let decoded = decodeCache.get(key);
 
   if (!decoded) {
@@ -839,7 +858,9 @@ async function decodeRawCandidate({
       channel: candidate.channel,
       decodeClient,
       message: candidate.message,
+      pointCloudColorBy,
       schema: candidate.schema,
+      signal,
       source,
       timeline,
     });

@@ -592,29 +592,26 @@ describe("ROS MCAP decoders", () => {
       rowStep,
       width: 2,
     });
-    const output = decoderForSchemaEncoding(
-      rosPointCloud2Decoders,
-      "ros1msg",
-    ).decode(
-      ros1Message(ROS1_POINT_CLOUD2_SCHEMA, {
-        data: Array.from(data),
-        fields: [
-          pointField("x", 0),
-          pointField("y", 4),
-          pointField("z", 8),
-          pointField("intensity", 12),
-          pointField("ring", 16, 4),
-        ],
-        header: ros1Header({ frameId: "lidar", nsec: 2, sec: 1, seq: 7 }),
-        height: 2,
-        is_bigendian: false,
-        is_dense: false,
-        point_step: pointStep,
-        row_step: rowStep,
-        width: 2,
-      }),
-      { schemaData: schemaData(ROS1_POINT_CLOUD2_SCHEMA) },
-    );
+    const decoder = decoderForSchemaEncoding(rosPointCloud2Decoders, "ros1msg");
+    const bytes = ros1Message(ROS1_POINT_CLOUD2_SCHEMA, {
+      data: Array.from(data),
+      fields: [
+        pointField("x", 0),
+        pointField("y", 4),
+        pointField("z", 8),
+        pointField("intensity", 12),
+        pointField("ring", 16, 4),
+      ],
+      header: ros1Header({ frameId: "lidar", nsec: 2, sec: 1, seq: 7 }),
+      height: 2,
+      is_bigendian: false,
+      is_dense: false,
+      point_step: pointStep,
+      row_step: rowStep,
+      width: 2,
+    });
+    const context = { schemaData: schemaData(ROS1_POINT_CLOUD2_SCHEMA) };
+    const output = decoder.decode(bytes, context);
 
     expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.POINT_CLOUD);
     if (output.visualization?.kind !== VISUALIZATION_KIND.POINT_CLOUD) {
@@ -629,10 +626,7 @@ describe("ROS MCAP decoders", () => {
     expect(
       Array.from(output.visualization.scalarFields?.[0]?.values ?? []),
     ).toEqual([10, 40, 20]);
-    expect(output.visualization.scalarFields?.[1]?.name).toBe("ring");
-    expect(
-      Array.from(output.visualization.scalarFields?.[1]?.values ?? []),
-    ).toEqual([50_000, 65_535, 60_000]);
+    expect(output.visualization.scalarFields).toHaveLength(1);
     const renderPayload = output.visualization.renderPayload;
     if (!renderPayload) {
       throw new Error("Expected point cloud render payload");
@@ -645,6 +639,7 @@ describe("ROS MCAP decoders", () => {
       sampledPointCount: 3,
       sourcePointCount: 4,
     });
+    expect(renderPayload.availableScalarFields).toEqual(["intensity", "ring"]);
     expect(Array.from(renderPayload.sourceIndices.slice(0, 3))).toEqual([
       0, 3, 1,
     ]);
@@ -654,26 +649,18 @@ describe("ROS MCAP decoders", () => {
     expect(output.visualization.scalarFields?.[0]?.values.buffer).toBe(
       renderPayload.scalarFields[0].values.buffer,
     );
-    expect(renderPayload.scalarFields).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          finiteValueCount: 3,
-          name: "intensity",
-          range: { max: 40, min: 10 },
-        }),
-        expect.objectContaining({
-          finiteValueCount: 3,
-          name: "ring",
-          range: { max: 65_535, min: 50_000 },
-        }),
-      ]),
-    );
+    expect(renderPayload.scalarFields).toEqual([
+      expect.objectContaining({
+        finiteValueCount: 3,
+        name: "intensity",
+        range: { max: 40, min: 10 },
+      }),
+    ]);
     expect(output.resourceHints?.transferables).toEqual(
       expect.arrayContaining([
         renderPayload.positions.buffer,
         renderPayload.sourceIndices.buffer,
         renderPayload.scalarFields[0].values.buffer,
-        renderPayload.scalarFields[1].values.buffer,
       ]),
     );
     expect(output.resourceHints?.sizeBytes).toBe(
@@ -684,6 +671,25 @@ describe("ROS MCAP decoders", () => {
           0,
         ),
     );
+    const projected = decoder.projectPointCloudChannel?.(bytes, context, {
+      activeColorBy: "ring",
+      capacity: renderPayload.capacity,
+      sampledPointCount: renderPayload.sampledPointCount,
+      samplePlanKey: renderPayload.samplePlanKey ?? "",
+      sourceIndices: renderPayload.sourceIndices,
+    });
+    if (projected?.kind !== "scalar") {
+      throw new Error("Expected projected ring channel");
+    }
+    expect(projected.samplePlanKey).toBe(renderPayload.samplePlanKey);
+    expect(projected.scalarField).toMatchObject({
+      finiteValueCount: 3,
+      name: "ring",
+      range: { max: 65_535, min: 50_000 },
+    });
+    expect(Array.from(projected.scalarField.values.slice(0, 3))).toEqual([
+      50_000, 65_535, 60_000,
+    ]);
     expect(output.attributes).toMatchObject({
       frameId: "lidar",
       height: 2,
@@ -745,7 +751,10 @@ describe("ROS MCAP decoders", () => {
         row_step: pointStep * width,
         width,
       }),
-      { schemaData: schemaData(ROS1_POINT_CLOUD2_SCHEMA) },
+      {
+        pointCloudColorBy: "range",
+        schemaData: schemaData(ROS1_POINT_CLOUD2_SCHEMA),
+      },
     );
 
     expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.POINT_CLOUD);

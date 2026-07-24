@@ -27,6 +27,7 @@ import {
   type ByteSourceDescriptor,
   type ByteTimelinePoint,
   type DecodedFrame,
+  type PointCloudRenderChannelPayload,
   type StreamSyncPolicies,
 } from "../../../ir";
 import {
@@ -38,6 +39,7 @@ import {
   createEpisodePlaybackRuntime,
   createTimelineIndex,
   episodeSourceAccessKey,
+  type StreamSubscriptionOptions,
   type TimelineIndex,
 } from "../../../runtime";
 import { useSetDataStream } from "./data-stream-context";
@@ -174,6 +176,13 @@ export function useRegisterDataStream({
     ((delayMs?: number) => void) | null
   >(null);
   const streamStartTimesNsRef = useRef<Map<string, bigint | null>>(new Map());
+  const pointCloudColorSubscriptionsRef = useRef<
+    Map<string, Map<string, number>>
+  >(new Map());
+  const activePointCloudColorByRef = useRef<Map<string, string>>(new Map());
+  const pointCloudChannelReadsRef = useRef<
+    Map<string, Promise<PointCloudRenderChannelPayload>>
+  >(new Map());
   const autoSeekSourceEpochRef = useRef<number | null>(null);
   const lastSeekAtMsRef = useRef<number | null>(null);
   const [startupCushionPlanner] = useState(() => new StartupCushionPlanner());
@@ -319,6 +328,7 @@ export function useRegisterDataStream({
     byteTimelineRef.current = null;
     resetDataStreamFetchState(fetchState);
     lastFrameRef.current.clear();
+    pointCloudChannelReadsRef.current.clear();
     streamStartTimesNsRef.current.clear();
     autoSeekSourceEpochRef.current = null;
     startupCushionPlanner.resetPendingPlan();
@@ -504,6 +514,8 @@ export function useRegisterDataStream({
             caches: streamCachesRef.current,
             fetchState,
             getIndex: () => indexRef.current,
+            getPointCloudColorBy: () =>
+              Object.fromEntries(activePointCloudColorByRef.current),
             getSourceEpoch: () => sourceEpochRef.current,
             getStreamPolicies: () => streamPoliciesRef.current,
             lastFrames: lastFrameRef.current,
@@ -668,15 +680,42 @@ export function useRegisterDataStream({
   // a stream flips its cache to active, which is what gates lookahead — so we
   // also trigger a prefetch here so buffering starts the moment a tile mounts.
   const subscribeToStream = useCallback(
-    (stream: string): (() => void) => {
+    (stream: string, options?: StreamSubscriptionOptions): (() => void) => {
       const cache = streamCachesRef.current.get(stream);
       if (!cache) return noop;
 
+      const colorBy = options?.pointCloudColorBy;
+      if (colorBy) {
+        const subscriptions =
+          pointCloudColorSubscriptionsRef.current.get(stream) ?? new Map();
+        subscriptions.set(colorBy, (subscriptions.get(colorBy) ?? 0) + 1);
+        pointCloudColorSubscriptionsRef.current.set(stream, subscriptions);
+        activePointCloudColorByRef.current.set(
+          stream,
+          preferredPointCloudColorBy(subscriptions),
+        );
+      }
       const cleanup = cache.subscribe();
       maybeAutoSeekToFirstData();
       prefetchLookaheadFrom(getPlayhead(store));
       return () => {
         cleanup();
+        if (colorBy) {
+          const subscriptions =
+            pointCloudColorSubscriptionsRef.current.get(stream);
+          const count = subscriptions?.get(colorBy) ?? 0;
+          if (count <= 1) subscriptions?.delete(colorBy);
+          else subscriptions?.set(colorBy, count - 1);
+          if (!subscriptions || subscriptions.size === 0) {
+            pointCloudColorSubscriptionsRef.current.delete(stream);
+            activePointCloudColorByRef.current.delete(stream);
+          } else {
+            activePointCloudColorByRef.current.set(
+              stream,
+              preferredPointCloudColorBy(subscriptions),
+            );
+          }
+        }
         // Cache cleared itself in its own cleanup once the count hit 0;
         // also drop the held-last-frame so a future re-subscribe can't
         // flash stale content from the previous session.
@@ -714,11 +753,53 @@ export function useRegisterDataStream({
     },
     [session, source],
   );
+  const readPointCloudChannel = useCallback(
+    (request: {
+      readonly activeColorBy: string;
+      readonly capacity: number;
+      readonly sampledPointCount: number;
+      readonly samplePlanKey: string;
+      readonly sourceIndices: Uint32Array;
+      readonly stream: string;
+      readonly timestampNs: bigint;
+    }) => {
+      const capability = session?.pointCloudProjection;
+      if (!capability) {
+        return Promise.resolve<PointCloudRenderChannelPayload>({
+          kind: "none",
+          samplePlanKey: request.samplePlanKey,
+        });
+      }
+      const key = [
+        sourceKey,
+        request.stream,
+        request.timestampNs.toString(),
+        request.samplePlanKey,
+        request.activeColorBy,
+      ].join("\0");
+      const cached = pointCloudChannelReadsRef.current.get(key);
+      if (cached) return cached;
+
+      const read = capability.readChannel(request).catch((error) => {
+        pointCloudChannelReadsRef.current.delete(key);
+        throw error;
+      });
+      pointCloudChannelReadsRef.current.set(key, read);
+      while (pointCloudChannelReadsRef.current.size > 64) {
+        const oldest = pointCloudChannelReadsRef.current.keys().next().value;
+        if (oldest === undefined) break;
+        pointCloudChannelReadsRef.current.delete(oldest);
+      }
+      return read;
+    },
+    [session, sourceKey],
+  );
   // This effect publishes the current recording stream through React context.
   useEffect(() => {
     setDataStream({
       getTimelineIndex,
       getStreamCache,
+      ...(session?.pointCloudProjection ? { readPointCloudChannel } : {}),
       readStreamFrames,
       sourceKey,
       subscribeToStream,
@@ -733,5 +814,21 @@ export function useRegisterDataStream({
     getStreamCache,
     getTimelineIndex,
     readStreamFrames,
+    readPointCloudChannel,
+    session?.pointCloudProjection,
   ]);
+}
+
+function preferredPointCloudColorBy(
+  subscriptions: ReadonlyMap<string, number>,
+): string {
+  let selected = "auto";
+  let selectedCount = -1;
+  for (const [colorBy, count] of subscriptions) {
+    if (count > selectedCount) {
+      selected = colorBy;
+      selectedCount = count;
+    }
+  }
+  return selected;
 }
