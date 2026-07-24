@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type {
   CameraFrustumPanelLayer,
@@ -41,6 +41,10 @@ export function useScene3dSnapshot({
 }) {
   const heldRef = useRef<HeldScene3dSnapshot<Scene3dSnapshot> | null>(null);
   const [, refresh] = useState(0);
+  const selectedStreamSet = useMemo(
+    () => new Set(selectedStreams),
+    [selectedStreams],
+  );
   const currentRetainable = scene3dSnapshotHasLayers(current);
   const selection = selectScene3dSnapshot({
     current,
@@ -50,7 +54,7 @@ export function useScene3dSnapshot({
     hasSourceData,
     held: restrictHeldScene3dSnapshotToStreams(
       heldRef.current,
-      new Set(selectedStreams),
+      selectedStreamSet,
     ),
     key,
     nowMs: Date.now(),
