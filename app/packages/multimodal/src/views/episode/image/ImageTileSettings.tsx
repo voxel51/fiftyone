@@ -23,7 +23,10 @@ import {
 import { checkboxNoSpaceToggleProps } from "../settings/controls/settings-keyboard";
 import { SettingsLabel } from "../settings/controls/SettingsLabel";
 import SidebarGroup from "../settings/controls/SidebarGroup";
-import type { ImageTilePointCloudProjection } from "../tiles/panel-visibility";
+import type {
+  ImageTile3dLabelProjection,
+  ImageTilePointCloudProjection,
+} from "../tiles/panel-visibility";
 import settingsStyles from "../tiles/Tile.settings.module.css";
 import type {
   ImageDisplayMode,
@@ -52,6 +55,8 @@ const RECORDED_IMAGE_GEOMETRY_HELP =
   "Coordinate system of the recorded image. Auto recognizes canonical image_raw and image_rect stream suffixes, accepts pixel-equivalent models, and withholds ambiguous overlays otherwise. Original camera applies K and lens distortion D. Rectified uses R and P without applying D.";
 const POINT_CLOUD_PROJECTION_HELP =
   "Projects selected 3D point clouds into this camera image using its calibration and frame transforms. Choose which clouds to overlay and adjust their dot size. These settings affect only this image tile.";
+const LABEL_3D_PROJECTION_HELP =
+  "Projects selected 3D label topics into this camera image using its calibration and frame transforms. These settings affect only this image tile.";
 
 interface ImageTileSettingsProps {
   readonly annotationSources: readonly SceneSource[];
@@ -67,12 +72,18 @@ interface ImageTileSettingsProps {
     readonly matching: readonly SceneSource[];
     readonly remaining: readonly SceneSource[];
   };
+  readonly label3dProjection: ImageTile3dLabelProjection;
   readonly pointCloudProjection: ImageTilePointCloudProjection;
   readonly pointCloudSources: readonly SceneSource[];
+  readonly sceneAnnotationSources: readonly SceneSource[];
   readonly selectedLabelStreams: readonly string[];
   readonly selectedProjectionStreams: readonly string[];
+  readonly selectedSceneAnnotationStreams: readonly string[];
   readonly setCameraProjection: (
     settings: Partial<ImageProjectionSettings>,
+  ) => void;
+  readonly setLabel3dProjection: (
+    settings: Partial<ImageTile3dLabelProjection>,
   ) => void;
   readonly setLabelStreams: (streams: readonly string[]) => void;
   readonly setPointCloudProjection: (
@@ -82,6 +93,10 @@ interface ImageTileSettingsProps {
   readonly stream: string;
   readonly toggleLabelStream: (stream: string, checked: boolean) => void;
   readonly toggleProjectionStream: (stream: string, checked: boolean) => void;
+  readonly toggleSceneAnnotationStream: (
+    stream: string,
+    checked: boolean,
+  ) => void;
 }
 
 /** Sidebar controls for one image tile; rendering stays in ImageTile. */
@@ -96,17 +111,22 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
   geometryStatus,
   images,
   labelSourceGroups,
+  label3dProjection,
   pointCloudProjection,
   pointCloudSources,
+  sceneAnnotationSources,
   selectedLabelStreams,
   selectedProjectionStreams,
+  selectedSceneAnnotationStreams,
   setCameraProjection,
+  setLabel3dProjection,
   setLabelStreams,
   setPointCloudProjection,
   setStream,
   stream,
   toggleLabelStream,
   toggleProjectionStream,
+  toggleSceneAnnotationStream,
 }) => {
   const imageSourceOptions = useMemo(
     () =>
@@ -139,6 +159,7 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
       selected.has(labelStream),
     );
   }, [matchingLabelStreams, selectedLabelStreams]);
+  const canProject3dLabels = sceneAnnotationSources.length > 0;
   const canProjectPointClouds = pointCloudSources.length > 0;
 
   return (
@@ -267,6 +288,39 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
               title="Remaining"
               toggleStream={toggleLabelStream}
             />
+          </div>
+        </SidebarGroup>
+      ) : null}
+      {canProject3dLabels ? (
+        <SidebarGroup
+          summary={`${selectedSceneAnnotationStreams.length} of ${sceneAnnotationSources.length} on`}
+          title="3D labels projections"
+          tooltip={LABEL_3D_PROJECTION_HELP}
+          toggle={{
+            ariaLabel: "Toggle 3D labels projections",
+            checked:
+              label3dProjection.enabled &&
+              selectedSceneAnnotationStreams.length > 0,
+            onChange: (checked) =>
+              setLabel3dProjection(
+                checked
+                  ? { enabled: true, streams: null }
+                  : { enabled: false, streams: [] },
+              ),
+          }}
+        >
+          <div className={settingsStyles.optionStack}>
+            {sceneAnnotationSources.map((source) => (
+              <Checkbox
+                key={source.id}
+                label={source.label}
+                checked={selectedSceneAnnotationStreams.includes(source.id)}
+                onChange={(checked) =>
+                  toggleSceneAnnotationStream(source.id, checked)
+                }
+                {...checkboxNoSpaceToggleProps}
+              />
+            ))}
           </div>
         </SidebarGroup>
       ) : null}

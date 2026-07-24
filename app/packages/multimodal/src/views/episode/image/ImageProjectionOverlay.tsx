@@ -111,8 +111,11 @@ const ImageProjectionOverlay = ({
   // frame or point resource leaves the tile.
   useEffect(() => {
     const published = publishedHoverRef.current;
-    const source = published?.source;
-    if (!published || source?.kind !== "image-projection") {
+    if (!published || published.kind !== "point") {
+      return;
+    }
+    const source = published.source;
+    if (source?.kind !== "image-projection") {
       return;
     }
     const imageStillCurrent =

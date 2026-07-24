@@ -1,13 +1,14 @@
 import { useSetTileSelection } from "@fiftyone/tiling";
 import { useSetAtom } from "jotai";
 import type { MutableRefObject } from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { GpuImageAnnotationPickerHandle } from "../../../visualization/media-2d/GpuImageAnnotationPicker";
 import {
   EMPTY_PREPARED_IMAGE_ANNOTATIONS,
   prepareImageAnnotationHighlight,
   prepareImageAnnotations,
+  type ImageAnnotationSetInput,
   type ImagePixelTransform,
   type PreparedImageAnnotationMetadata,
   type PreparedImageAnnotations,
@@ -16,6 +17,12 @@ import {
   getGpuImageAnnotationResource,
   type GpuImageAnnotationResource,
 } from "../../../visualization/media-2d/gpu-image-annotation-resources";
+import {
+  hoverMatchesSceneEntity,
+  useHoverEcho,
+  useSetHoverEcho,
+  type HoveredSceneAnnotationEcho,
+} from "../interaction/point-hover/hover-echo";
 import {
   selectedObjectAtom,
   useSelectedObject,
@@ -41,10 +48,12 @@ export interface ImageAnnotationLayerState {
  * and stable imperative handlers.
  */
 export function useImageAnnotationLayer({
+  additionalSets = [],
   pixelTransform,
   resourceKey,
   streams,
 }: {
+  readonly additionalSets?: readonly ImageAnnotationSetInput[];
   readonly pixelTransform?: ImagePixelTransform;
   readonly resourceKey: string;
   readonly streams: readonly string[];
@@ -55,8 +64,12 @@ export function useImageAnnotationLayer({
     interpolate: false,
   });
   const prepared = useMemo(
-    () => prepareImageAnnotations(annotationSets, pixelTransform),
-    [annotationSets, pixelTransform],
+    () =>
+      prepareImageAnnotations(
+        [...annotationSets, ...additionalSets],
+        pixelTransform,
+      ),
+    [additionalSets, annotationSets, pixelTransform],
   );
   const preparedHasGeometry = hasAnnotationGeometry(prepared);
   const resource = useMemo(
@@ -67,9 +80,14 @@ export function useImageAnnotationLayer({
       ),
     [prepared, preparedHasGeometry, resourceKey],
   );
-  const [hoveredPrimitiveIndex, setHoveredPrimitiveIndex] = useState<
+  const [hoveredPrimitiveIndex, setLocalHoveredPrimitiveIndex] = useState<
     number | null
   >(null);
+  const hoverEcho = useHoverEcho();
+  const setHoverEcho = useSetHoverEcho();
+  const publishedSceneHoverRef = useRef<HoveredSceneAnnotationEcho | null>(
+    null,
+  );
   const selectedObject = useSelectedObject();
   const setSelectedObject = useSetAtom(selectedObjectAtom);
   const setTileSelection = useSetTileSelection();
@@ -83,6 +101,13 @@ export function useImageAnnotationLayer({
     }
     for (let index = 0; index < prepared.metadata.length; index++) {
       const metadata = prepared.metadata[index];
+      const hoverEchoMatch =
+        metadata.sceneEntityId !== undefined &&
+        hoverMatchesSceneEntity(
+          hoverEcho,
+          metadata.stream,
+          metadata.sceneEntityId,
+        );
       const exact =
         selectedObject?.kind === "image-annotation" &&
         selectedObject.stream === metadata.stream &&
@@ -91,10 +116,10 @@ export function useImageAnnotationLayer({
         selectedObject?.scope === "label" &&
         metadata.label !== null &&
         metadata.label === selectedObject.label;
-      if (exact || labelEcho) indices.add(index);
+      if (hoverEchoMatch || exact || labelEcho) indices.add(index);
     }
     return indices;
-  }, [hoveredPrimitiveIndex, prepared.metadata, selectedObject]);
+  }, [hoverEcho, hoveredPrimitiveIndex, prepared.metadata, selectedObject]);
   const highlightPrepared = useMemo(
     () => prepareImageAnnotationHighlight(prepared, highlightIndices),
     [highlightIndices, prepared],
@@ -113,6 +138,42 @@ export function useImageAnnotationLayer({
     [highlightHasGeometry, highlightPrepared, resourceKey],
   );
   const pickerRef = useRef<GpuImageAnnotationPickerHandle | null>(null);
+
+  const setHoveredPrimitiveIndex = useCallback(
+    (primitiveIndex: number | null) => {
+      setLocalHoveredPrimitiveIndex(primitiveIndex);
+      const metadata =
+        primitiveIndex === null ? undefined : prepared.metadata[primitiveIndex];
+      const next =
+        metadata?.sceneEntityId !== undefined
+          ? ({
+              entityId: metadata.sceneEntityId,
+              kind: "scene-annotation",
+              stream: metadata.stream,
+            } satisfies HoveredSceneAnnotationEcho)
+          : null;
+      const published = publishedSceneHoverRef.current;
+      publishedSceneHoverRef.current = next;
+      if (next) {
+        setHoverEcho(next);
+      } else if (published) {
+        setHoverEcho((current) => (current === published ? null : current));
+      }
+    },
+    [prepared.metadata, setHoverEcho],
+  );
+
+  // This effect clears hover state published by this image tile on unmount.
+  useEffect(
+    () => () => {
+      const published = publishedSceneHoverRef.current;
+      publishedSceneHoverRef.current = null;
+      if (published) {
+        setHoverEcho((current) => (current === published ? null : current));
+      }
+    },
+    [setHoverEcho],
+  );
 
   const selectPrimitive = useCallback(
     (primitiveIndex: number, shiftKey: boolean) => {

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { hoverMatchesPointFrame, type HoverEcho } from "./hover-echo";
+import {
+  hoverMatchesPointFrame,
+  hoverMatchesSceneEntity,
+  type HoverEcho,
+} from "./hover-echo";
 
 const HOVER: HoverEcho = {
   color: [1, 0, 0],
@@ -21,5 +25,20 @@ describe("point hover echo", () => {
     expect(hoverMatchesPointFrame(HOVER, "/lidar", 43n)).toBe(false);
     expect(hoverMatchesPointFrame(HOVER, "/other", 42n)).toBe(false);
     expect(hoverMatchesPointFrame(HOVER, "/lidar", undefined)).toBe(false);
+  });
+
+  it("matches scene annotations by stream and entity identity", () => {
+    const hover: HoverEcho = {
+      entityId: "car-1",
+      kind: "scene-annotation",
+      stream: "/detections_3d",
+    };
+    expect(hoverMatchesSceneEntity(hover, "/detections_3d", "car-1")).toBe(
+      true,
+    );
+    expect(hoverMatchesSceneEntity(hover, "/detections_3d", "car-2")).toBe(
+      false,
+    );
+    expect(hoverMatchesSceneEntity(HOVER, "/lidar", "car-1")).toBe(false);
   });
 });
