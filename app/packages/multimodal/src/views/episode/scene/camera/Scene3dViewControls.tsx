@@ -1,5 +1,6 @@
 import React from "react";
 
+import controlStyles from "../../../../visualization/panel-ui/PanelControl.module.css";
 import styles from "./Scene3dViewControls.module.css";
 
 interface Scene3dViewControlsProps {
@@ -45,7 +46,7 @@ function ViewPresetButton({
     <button
       aria-keyshortcuts={keyLabel}
       aria-label={label}
-      className={styles.button}
+      className={`${styles.button} ${controlStyles.button}`}
       onClick={onClick}
       onPointerDown={(event) => event.stopPropagation()}
       title={tooltip}
