@@ -108,6 +108,8 @@ export interface GpuPointCloudProjectionLayerProps {
   readonly circular?: boolean;
   /** Camera-model projection shared with the integer picker. */
   readonly projection: GpuCameraProjection;
+  /** Canvas-global allocation for this view/layer draw. */
+  readonly renderedPointCount?: number;
   /** Grow-only source-topic buffers shared by every camera view. */
   readonly resource: GpuPointCloudProjectionResource;
   readonly renderOrder?: number;
@@ -133,6 +135,7 @@ export function GpuPointCloudProjectionLayer({
   pointSizeScale = 1,
   projection,
   renderOrder = DEFAULT_RENDER_ORDER,
+  renderedPointCount,
   resource,
   viewTransform,
 }: GpuPointCloudProjectionLayerProps) {
@@ -198,7 +201,10 @@ export function GpuPointCloudProjectionLayer({
 
   // This layout effect binds projection uniforms before the frame is rendered.
   useLayoutEffect(() => {
-    sprite.count = resource.sampledPointCount;
+    sprite.count = Math.min(
+      resource.sampledPointCount,
+      renderedPointCount ?? resource.sampledPointCount,
+    );
     updateGpuPointCloudColorUniforms(shader.colorUniforms, color);
     updateGpuCameraProjectionBindings(shader.cameraProjection, projection);
     shader.dimensions.value.set(calibrationWidth, calibrationHeight);
@@ -239,6 +245,7 @@ export function GpuPointCloudProjectionLayer({
     pointSize,
     pointSizeScale,
     projection,
+    renderedPointCount,
     resource,
     shader,
     sprite,
