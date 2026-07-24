@@ -2149,13 +2149,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@eslint/js@npm:8.57.1":
-  version: 8.57.1
-  resolution: "@eslint/js@npm:8.57.1"
-  checksum: 10/7562b21be10c2adbfa4aa5bb2eccec2cb9ac649a3569560742202c8d1cb6c931ce634937a2f0f551e078403a1c1285d6c2c0aa345dafc986149665cd69fe8b59
-  languageName: node
-  linkType: hard
-
 "@eslint/js@npm:9.7.0":
   version: 9.7.0
   resolution: "@eslint/js@npm:9.7.0"
@@ -2178,7 +2171,7 @@ __metadata:
     fs-extra: "npm:^10.1.0"
     jest: "npm:^29.7.0"
     lodash: "npm:^4.18.1"
-    prettier: "npm:^3.8.4"
+    prettier: "catalog:"
     vite: "catalog:"
   languageName: unknown
   linkType: soft
@@ -2200,13 +2193,13 @@ __metadata:
     "@types/lodash": "npm:^4.14.182"
     "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
     "@typescript-eslint/parser": "npm:^6.0.0"
-    eslint: "npm:^8.0.0"
+    eslint: "catalog:"
     jsdom: "npm:^26.0.0"
     lodash: "npm:^4.18.1"
     onnxruntime-web: "npm:^1.24.3"
     uuid: "npm:^14.0.0"
     vite: "catalog:"
-    vite-plugin-externals: "npm:^0.5.0"
+    vite-plugin-externals: "catalog:"
     vite-plugin-relay: "catalog:"
     vitest: "catalog:"
   peerDependencies:
@@ -2263,9 +2256,9 @@ __metadata:
     uuid: "npm:^14.0.0"
     vite: "catalog:"
     vite-plugin-relay: "catalog:"
-    vite-plugin-rewrite-all: "npm:^1.0.2"
+    vite-plugin-rewrite-all: "catalog:"
     vite-plugin-svgr: "catalog:"
-    vite-plugin-wasm: "npm:^3.6.0"
+    vite-plugin-wasm: "catalog:"
   peerDependencies:
     "@mui/icons-material": "*"
     "@react-spring/web": "*"
@@ -2280,10 +2273,10 @@ __metadata:
     "@testing-library/react": "npm:^16.2.0"
     "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
     "@typescript-eslint/parser": "npm:^6.0.0"
-    eslint: "npm:^8.0.0"
+    eslint: "catalog:"
     jsdom: "npm:^26.0.0"
     vite: "catalog:"
-    vite-plugin-externals: "npm:^0.5.0"
+    vite-plugin-externals: "catalog:"
     vitest: "catalog:"
   peerDependencies:
     react: "*"
@@ -2298,10 +2291,10 @@ __metadata:
     "@testing-library/react": "npm:^16.2.0"
     "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
     "@typescript-eslint/parser": "npm:^6.0.0"
-    eslint: "npm:^8.0.0"
+    eslint: "catalog:"
     jsdom: "npm:^26.0.0"
     vite: "catalog:"
-    vite-plugin-externals: "npm:^0.5.0"
+    vite-plugin-externals: "catalog:"
     vitest: "catalog:"
   peerDependencies:
     react: "*"
@@ -2321,11 +2314,11 @@ __metadata:
     "@mui/icons-material": "npm:^5.16.7"
     "@mui/material": "npm:^5.9.0"
     "@react-spring/web": "npm:^9.7.3"
-    "@storybook/addon-essentials": "npm:^8"
-    "@storybook/addon-interactions": "npm:^8"
-    "@storybook/addon-links": "npm:^8"
-    "@storybook/react": "npm:^8"
-    "@storybook/react-vite": "npm:^8"
+    "@storybook/addon-essentials": "catalog:"
+    "@storybook/addon-interactions": "catalog:"
+    "@storybook/addon-links": "catalog:"
+    "@storybook/react": "catalog:"
+    "@storybook/react-vite": "catalog:"
     "@textea/json-viewer": "npm:^3.4.1"
     "@types/react-input-autosize": "npm:^2.2.1"
     "@types/react-syntax-highlighter": "npm:^15.5.6"
@@ -2333,14 +2326,14 @@ __metadata:
     classnames: "npm:^2.3.1"
     framer-motion: "npm:^6.2.7"
     material-icons: "npm:^1.13.12"
-    prettier: "npm:^3.8.4"
+    prettier: "catalog:"
     re-resizable: "npm:^6.9.17"
     react-input-autosize: "npm:^3.0.0"
     react-laag: "npm:^2.0.3"
     react-markdown: "npm:^8.0.7"
     react-syntax-highlighter: "npm:^15.5.0"
     react-use: "npm:^17.5.1"
-    storybook: "npm:^8"
+    storybook: "catalog:"
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "catalog:"
   peerDependencies:
@@ -2394,7 +2387,7 @@ __metadata:
     lodash: "npm:^4.18.1"
     lru-cache: "npm:^11.0.1"
     numeral: "npm:^2.0.6"
-    prettier: "npm:^3.8.4"
+    prettier: "catalog:"
     re-resizable: "npm:^6.9.17"
     react-color: "npm:^2.19.3"
     react-draggable: "npm:^4.4.5"
@@ -2469,7 +2462,7 @@ __metadata:
     plotly.js: "npm:^3.1.1"
     use-resize-observer: "npm:^9.0.2"
     vite: "catalog:"
-    vite-plugin-externals: "npm:^0.5.0"
+    vite-plugin-externals: "catalog:"
   peerDependencies:
     "@mui/icons-material": "*"
     react-error-boundary: "*"
@@ -2486,10 +2479,10 @@ __metadata:
     "@testing-library/react": "npm:^16.2.0"
     "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
     "@typescript-eslint/parser": "npm:^6.0.0"
-    eslint: "npm:^8.0.0"
+    eslint: "catalog:"
     jsdom: "npm:^26.0.0"
     vite: "catalog:"
-    vite-plugin-externals: "npm:^0.5.0"
+    vite-plugin-externals: "catalog:"
     vitest: "catalog:"
   peerDependencies:
     jotai: "*"
@@ -2507,10 +2500,10 @@ __metadata:
     "@testing-library/react": "npm:^16.2.0"
     "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
     "@typescript-eslint/parser": "npm:^6.0.0"
-    eslint: "npm:^8.0.0"
+    eslint: "catalog:"
     jsdom: "npm:^26.0.0"
     vite: "catalog:"
-    vite-plugin-externals: "npm:^0.5.0"
+    vite-plugin-externals: "catalog:"
     vitest: "catalog:"
   peerDependencies:
     jotai: "*"
@@ -2537,7 +2530,7 @@ __metadata:
     colormap: "npm:^2.3.2"
     concurrently: "npm:^7.2.1"
     dependency-cruiser: "npm:^16.10.4"
-    eslint: "npm:^8.28.0"
+    eslint: "catalog:"
     eslint-config-prettier: "npm:^10.1.8"
     eslint-plugin-only-warn: "npm:^1.0.3"
     eslint-plugin-prettier: "npm:^5.5.6"
@@ -2545,7 +2538,7 @@ __metadata:
     eslint-plugin-react-hooks: "npm:^4.6.0"
     jsdom: "npm:^20.0.2"
     pixi-viewport: "npm:^6.0.3"
-    prettier: "npm:^3.8.4"
+    prettier: "catalog:"
     react-player: "npm:^2.16.0"
     react-plotly.js: "npm:^2.6.0"
     relay-compiler: "npm:^14.1.0"
@@ -2554,9 +2547,9 @@ __metadata:
     typescript: "npm:^4.9.5"
     typescript-plugin-css-modules: "npm:^5.0.2"
     vite: "catalog:"
-    vite-plugin-eslint: "npm:^1.8.1"
+    vite-plugin-eslint: "catalog:"
     vite-plugin-relay: "catalog:"
-    vite-plugin-wasm: "npm:^3.6.0"
+    vite-plugin-wasm: "catalog:"
     vitest: "catalog:"
   languageName: unknown
   linkType: soft
@@ -2565,7 +2558,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/flashlight@workspace:packages/flashlight"
   dependencies:
-    prettier: "npm:^3.8.4"
+    prettier: "catalog:"
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "catalog:"
   languageName: unknown
@@ -2577,7 +2570,7 @@ __metadata:
   dependencies:
     "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
     "@typescript-eslint/parser": "npm:^6.0.0"
-    eslint: "npm:^8.0.0"
+    eslint: "catalog:"
     lru-cache: "npm:^11.0.1"
     pixi.js: "npm:^8.13.1"
   peerDependencies:
@@ -2613,7 +2606,7 @@ __metadata:
     three: "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch"
     tunnel-rat: "npm:^0.1.2"
     vite: "catalog:"
-    vite-plugin-externals: "npm:^0.5.0"
+    vite-plugin-externals: "catalog:"
   peerDependencies:
     "@mui/icons-material": "*"
     "@mui/material": "*"
@@ -2640,7 +2633,7 @@ __metadata:
     lru-cache: "npm:^11.0.1"
     mime: "npm:^2.5.2"
     monotone-convex-hull-2d: "npm:^1.0.1"
-    prettier: "npm:^3.8.4"
+    prettier: "catalog:"
     typescript-plugin-css-modules: "npm:^5.1.0"
     uuid: "npm:^14.0.0"
     vite: "catalog:"
@@ -2668,7 +2661,7 @@ __metadata:
     react-map-gl: "npm:^7.0.18"
     use-resize-observer: "npm:^9.0.2"
     vite: "catalog:"
-    vite-plugin-externals: "npm:^0.5.0"
+    vite-plugin-externals: "catalog:"
   peerDependencies:
     "@mui/icons-material": "*"
     react-error-boundary: "*"
@@ -2719,7 +2712,7 @@ __metadata:
     "@fiftyone/utilities": "workspace:^"
     "@testing-library/react": "npm:^14.0.0"
     jest: "npm:^29.7.0"
-    prettier: "npm:^3.8.4"
+    prettier: "catalog:"
     vite: "catalog:"
     vitest: "catalog:"
   peerDependencies:
@@ -2736,13 +2729,13 @@ __metadata:
     "@fiftyone/commands": "workspace:^"
     "@fiftyone/tiling": "npm:*"
     "@voxel51/voodo": "npm:^0.0.39"
-    eslint: "npm:9.7.0"
+    eslint: "catalog:eslint9"
     eslint-plugin-react: "npm:^7.35.0"
     eslint-plugin-react-hooks: "npm:rc"
     globals: "npm:^15.8.0"
     jotai: "npm:^2.9.3"
     jotai-optics: "npm:^0.4.0"
-    prettier: "npm:^3.8.4"
+    prettier: "catalog:"
     typescript-eslint: "npm:^7.17.0"
     vite: "catalog:"
     vite-plugin-svgr: "catalog:"
@@ -2758,7 +2751,7 @@ __metadata:
     "@babel/preset-typescript": "npm:^7.17.12"
     "@fiftyone/utilities": "workspace:^"
     jest: "npm:^29.7.0"
-    prettier: "npm:^3.8.4"
+    prettier: "catalog:"
     vite: "catalog:"
   languageName: unknown
   linkType: soft
@@ -2768,7 +2761,7 @@ __metadata:
   resolution: "@fiftyone/relay@workspace:packages/relay"
   dependencies:
     "@recoiljs/refine": "npm:^0.1.1"
-    prettier: "npm:^3.8.4"
+    prettier: "catalog:"
     react-relay: "npm:^14.1.0"
     recoil-sync: "npm:^0.2.0"
     relay-compiler: "npm:^14.0.0"
@@ -2789,7 +2782,7 @@ __metadata:
     "@fiftyone/state": "npm:*"
     "@voxel51/voodo": "npm:^0.0.39"
     vite: "catalog:"
-    vite-plugin-externals: "npm:^0.5.0"
+    vite-plugin-externals: "catalog:"
   peerDependencies:
     "@mui/icons-material": "*"
     jotai: "*"
@@ -2838,7 +2831,7 @@ __metadata:
     babel-plugin-relay: "npm:^14.1.0"
     html2canvas: "npm:1.0.0-rc.7"
     lodash: "npm:^4.18.1"
-    prettier: "npm:^3.8.4"
+    prettier: "catalog:"
     vite: "catalog:"
   peerDependencies:
     react: "*"
@@ -2877,7 +2870,7 @@ __metadata:
     luxon: "npm:^3.6.1"
     mime: "npm:^2.5.2"
     path-browserify: "npm:^1.0.1"
-    prettier: "npm:^3.8.4"
+    prettier: "catalog:"
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "catalog:"
   peerDependencies:
@@ -2902,7 +2895,7 @@ __metadata:
     "@types/dom-webcodecs": "npm:^0.1.18"
     "@voxel51/voodo": "npm:^0.0.39"
     clsx: "npm:^2.1.0"
-    eslint: "npm:9.7.0"
+    eslint: "catalog:eslint9"
     eslint-plugin-react: "npm:^7.35.0"
     eslint-plugin-react-hooks: "npm:rc"
     globals: "npm:^15.8.0"
@@ -3227,17 +3220,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@humanwhocodes/config-array@npm:^0.13.0":
-  version: 0.13.0
-  resolution: "@humanwhocodes/config-array@npm:0.13.0"
-  dependencies:
-    "@humanwhocodes/object-schema": "npm:^2.0.3"
-    debug: "npm:^4.3.1"
-    minimatch: "npm:^3.0.5"
-  checksum: 10/524df31e61a85392a2433bf5d03164e03da26c03d009f27852e7dcfdafbc4a23f17f021dacf88e0a7a9fe04ca032017945d19b57a16e2676d9114c22a53a9d11
-  languageName: node
-  linkType: hard
-
 "@humanwhocodes/module-importer@npm:^1.0.1":
   version: 1.0.1
   resolution: "@humanwhocodes/module-importer@npm:1.0.1"
@@ -3249,13 +3231,6 @@ __metadata:
   version: 2.0.2
   resolution: "@humanwhocodes/object-schema@npm:2.0.2"
   checksum: 10/ef915e3e2f34652f3d383b28a9a99cfea476fa991482370889ab14aac8ecd2b38d47cc21932526c6d949da0daf4a4a6bf629d30f41b0caca25e146819cbfa70e
-  languageName: node
-  linkType: hard
-
-"@humanwhocodes/object-schema@npm:^2.0.3":
-  version: 2.0.3
-  resolution: "@humanwhocodes/object-schema@npm:2.0.3"
-  checksum: 10/05bb99ed06c16408a45a833f03a732f59bf6184795d4efadd33238ff8699190a8c871ad1121241bb6501589a9598dc83bf25b99dcbcf41e155cdf36e35e937a3
   languageName: node
   linkType: hard
 
@@ -11646,54 +11621,6 @@ __metadata:
   bin:
     eslint: bin/eslint.js
   checksum: 10/f9b3c99a63f1e94feadb2005d854c907d2a9322d14a0ad8a47a127562475bfdcc43fbffcae184e3de94d832218891bb4b7a21a914f7ef9e22b1d2ee19941368d
-  languageName: node
-  linkType: hard
-
-"eslint@npm:^8.0.0":
-  version: 8.57.1
-  resolution: "eslint@npm:8.57.1"
-  dependencies:
-    "@eslint-community/eslint-utils": "npm:^4.2.0"
-    "@eslint-community/regexpp": "npm:^4.6.1"
-    "@eslint/eslintrc": "npm:^2.1.4"
-    "@eslint/js": "npm:8.57.1"
-    "@humanwhocodes/config-array": "npm:^0.13.0"
-    "@humanwhocodes/module-importer": "npm:^1.0.1"
-    "@nodelib/fs.walk": "npm:^1.2.8"
-    "@ungap/structured-clone": "npm:^1.2.0"
-    ajv: "npm:^6.12.4"
-    chalk: "npm:^4.0.0"
-    cross-spawn: "npm:^7.0.2"
-    debug: "npm:^4.3.2"
-    doctrine: "npm:^3.0.0"
-    escape-string-regexp: "npm:^4.0.0"
-    eslint-scope: "npm:^7.2.2"
-    eslint-visitor-keys: "npm:^3.4.3"
-    espree: "npm:^9.6.1"
-    esquery: "npm:^1.4.2"
-    esutils: "npm:^2.0.2"
-    fast-deep-equal: "npm:^3.1.3"
-    file-entry-cache: "npm:^6.0.1"
-    find-up: "npm:^5.0.0"
-    glob-parent: "npm:^6.0.2"
-    globals: "npm:^13.19.0"
-    graphemer: "npm:^1.4.0"
-    ignore: "npm:^5.2.0"
-    imurmurhash: "npm:^0.1.4"
-    is-glob: "npm:^4.0.0"
-    is-path-inside: "npm:^3.0.3"
-    js-yaml: "npm:^4.1.0"
-    json-stable-stringify-without-jsonify: "npm:^1.0.1"
-    levn: "npm:^0.4.1"
-    lodash.merge: "npm:^4.6.2"
-    minimatch: "npm:^3.1.2"
-    natural-compare: "npm:^1.4.0"
-    optionator: "npm:^0.9.3"
-    strip-ansi: "npm:^6.0.1"
-    text-table: "npm:^0.2.0"
-  bin:
-    eslint: bin/eslint.js
-  checksum: 10/5504fa24879afdd9f9929b2fbfc2ee9b9441a3d464efd9790fbda5f05738858530182029f13323add68d19fec749d3ab4a70320ded091ca4432b1e9cc4ed104c
   languageName: node
   linkType: hard
 

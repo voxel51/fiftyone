@@ -56,9 +56,9 @@
         "typescript-plugin-css-modules": "^5.0.2",
         "vite": "catalog:",
         "vite-plugin-relay": "catalog:",
-        "vite-plugin-rewrite-all": "^1.0.2",
+        "vite-plugin-rewrite-all": "catalog:",
         "vite-plugin-svgr": "catalog:",
-        "vite-plugin-wasm": "^3.6.0"
+        "vite-plugin-wasm": "catalog:"
     },
     "peerDependencies": {
         "@mui/icons-material": "*",

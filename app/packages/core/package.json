@@ -71,7 +71,7 @@
         "@types/relay-compiler": "^8.0.2",
         "@types/styled-components": "^5.1.23",
         "@vitejs/plugin-react": "catalog:",
-        "prettier": "^3.8.4",
+        "prettier": "catalog:",
         "relay-compiler": "^14.1.0",
         "rollup-plugin-polyfill-node": "^0.6.2",
         "typescript-plugin-css-modules": "^5.1.0",

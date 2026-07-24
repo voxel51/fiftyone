@@ -4,11 +4,11 @@
     "packageManager": "yarn@4.9.1",
     "devDependencies": {
         "@eslint/compat": "^1.1.1",
-        "eslint": "9.7.0",
+        "eslint": "catalog:eslint9",
         "eslint-plugin-react": "^7.35.0",
         "eslint-plugin-react-hooks": "rc",
         "globals": "^15.8.0",
-        "prettier": "^3.8.4",
+        "prettier": "catalog:",
         "typescript-eslint": "^7.17.0",
         "vite": "catalog:"
     },

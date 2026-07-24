@@ -18,11 +18,11 @@
         "@types/lodash": "^4.14.182",
         "@typescript-eslint/eslint-plugin": "^6.0.0",
         "@typescript-eslint/parser": "^6.0.0",
-        "eslint": "^8.0.0",
+        "eslint": "catalog:",
         "jsdom": "^26.0.0",
         "uuid": "^14.0.0",
         "vite": "catalog:",
-        "vite-plugin-externals": "^0.5.0",
+        "vite-plugin-externals": "catalog:",
         "vite-plugin-relay": "catalog:",
         "vitest": "catalog:"
     },
