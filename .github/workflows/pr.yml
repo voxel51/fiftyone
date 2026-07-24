@@ -207,7 +207,9 @@ jobs:
             --jq '.artifacts[] | select(.name | startswith("pytest-results-")) | [.id, .name] | @tsv' |
           while IFS=$'\t' read -r id name; do
             gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > "$name.zip"
-            unzip -q -d "pytest-junit/$name" "$name.zip"
+            # -o: reruns list every attempt's artifact under the same name;
+            # an interactive replace prompt would fail the job
+            unzip -o -q -d "pytest-junit/$name" "$name.zip"
             printf '%s\t%s\n' "$name" \
               "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts/$id" \
               >> pytest-junit/artifact-urls.tsv
