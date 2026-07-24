@@ -20,7 +20,7 @@ import {
 } from "./StyledElements";
 
 export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
-  const { spaces } = useSpaces(spaceId);
+  const { spaces, updateSpaces } = useSpaces(spaceId);
   const panelName = node.type as string;
   const panelId = node.id;
   const panel = useReactivePanel(panelName);
@@ -45,7 +45,15 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
         }
       }}
       onClick={() => {
-        if (!active) spaces.setNodeActive(node);
+        // activate against the latest tree: this render's `active` prop can
+        // be stale mid-transition, and guarding on it makes the click a
+        // silent no-op
+        updateSpaces((latest) => {
+          const target = latest.findNodeById(node.id);
+          if (target && !target.isActive()) {
+            latest.setNodeActive(target);
+          }
+        });
       }}
       $active={active}
       data-cy={`panel-tab-${(panelName as string).toLowerCase()}`}
