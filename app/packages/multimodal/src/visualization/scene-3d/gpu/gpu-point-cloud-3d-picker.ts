@@ -14,7 +14,6 @@ import {
 } from "../../webgpu/gpu-pick-render-target";
 import {
   gpuPointCloudPositionNode,
-  gpuPointCloudSampleIndexFromStrideNode,
   gpuPointCloudSampleIndexNode,
   type GpuPointCloudNode,
   type GpuPointCloudPositionLayout,
@@ -304,7 +303,6 @@ class PointCloud3dPickerController implements GpuPointCloud3dPickerController {
 
 interface ActivePointCloud3dPickLayer {
   sampledPointCount: number;
-  readonly sampleStride: PickUniformNode<number>;
   source: GpuPointCloud3dPickLayer;
   readonly sprite: THREE.Sprite;
   readonly visible: PickUniformNode<number>;
@@ -345,9 +343,8 @@ function createPointCloud3dPickPass(
   };
 
   try {
-    // Each Sprite is an instanced dispatch over one cloud. The same stride
-    // expression used by visible rendering maps rendered instances into the
-    // canonical worker-prepared sample, keeping LOD and picking identical.
+    // Each Sprite is an instanced dispatch over one cloud. Visible rendering
+    // and picking both consume the canonical worker-prepared sample prefix.
     for (const {
       renderedPointCount,
       sampledPointCount,
@@ -355,10 +352,7 @@ function createPointCloud3dPickPass(
     } of activePickLayers(sourceLayers)) {
       const worldMatrix = pickTsl.uniform(new THREE.Matrix4());
       const visible = pickTsl.uniform(1);
-      const sampleStride = pickTsl.uniform(
-        Math.fround(sampledPointCount / renderedPointCount),
-      );
-      const sampleIndex = gpuPointCloudSampleIndexFromStrideNode(sampleStride);
+      const sampleIndex = gpuPointCloudSampleIndexNode();
       const material = createPointCloud3dPickMaterialNode({
         activeLayerIndex: layers.length,
         far,
@@ -384,7 +378,6 @@ function createPointCloud3dPickPass(
       materials.push(material);
       layers.push({
         sampledPointCount,
-        sampleStride,
         source,
         sprite,
         visible,
@@ -422,9 +415,6 @@ function createPointCloud3dPickPass(
         const next = nextLayers[index];
         layer.source = next.source;
         layer.sampledPointCount = next.sampledPointCount;
-        layer.sampleStride.value = Math.fround(
-          next.sampledPointCount / next.renderedPointCount,
-        );
         layer.sprite.count = next.renderedPointCount;
       }
       return true;
@@ -476,7 +466,7 @@ function activePickLayers(sourceLayers: readonly GpuPointCloud3dPickLayer[]): {
       normalizedCount(source.sampledPointCount),
     );
     // renderedPointCount may impose a tighter per-panel budget than the
-    // canonical payload. The shader samples evenly from sampledPointCount.
+    // canonical payload. The shader draws its progressively ordered prefix.
     const renderedPointCount = Math.min(
       sampledPointCount,
       normalizedCount(source.renderedPointCount),
@@ -499,8 +489,6 @@ export function createPointCloud3dPickMaterial({
   radiusPx,
   rayDirection,
   rayOrigin,
-  renderedPointCount,
-  sampledPointCount,
   viewProjection,
   viewport,
   visible,
@@ -532,10 +520,7 @@ export function createPointCloud3dPickMaterial({
     radius: pickTsl.uniform(radiusPx),
     rayDirection: pickTsl.uniform(rayDirection.clone()),
     rayOrigin: pickTsl.uniform(rayOrigin.clone()),
-    sampleIndex: gpuPointCloudSampleIndexNode(
-      sampledPointCount,
-      renderedPointCount,
-    ) as PickSampleIndexNode,
+    sampleIndex: gpuPointCloudSampleIndexNode() as PickSampleIndexNode,
     viewProjection: pickTsl.uniform(viewProjection.clone()),
     viewport: pickTsl.uniform(viewport.clone()),
     visible: pickTsl.uniform(visible === false ? 0 : 1),

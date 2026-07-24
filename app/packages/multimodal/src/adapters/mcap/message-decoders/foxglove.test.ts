@@ -891,8 +891,13 @@ describe("Foxglove decoders", () => {
       throw new Error("Expected point cloud visualization");
     }
     expect(Array.from(output.visualization.positions)).toEqual([
-      1, 2, 3, 4, 5, 6, 0, 0, 0,
+      1, 2, 3, 0, 0, 0, 4, 5, 6,
     ]);
+    expect(
+      Array.from(
+        output.visualization.renderPayload?.sourceIndices.slice(0, 3) ?? [],
+      ),
+    ).toEqual([0, 2, 1]);
     expect(output.visualization.pointCount).toBe(3);
   });
 

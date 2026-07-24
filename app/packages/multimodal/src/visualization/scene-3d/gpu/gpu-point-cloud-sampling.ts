@@ -20,9 +20,9 @@ export function gpuPointCloudDrawCount(
 }
 
 /**
- * Maps one consumer draw index to an evenly-spaced canonical payload sample.
- * The float32 rounding mirrors the TSL/WebGPU expression exactly, keeping
- * CPU hover reconstruction in lockstep with the vertex shader.
+ * Maps one consumer draw index into the canonical payload's stable prefix.
+ * The worker orders samples progressively, so reducing a local draw budget
+ * does not replace points that were already visible at a smaller budget.
  */
 export function gpuPointCloudSampleIndex(
   sampledPointCount: number,
@@ -41,11 +41,7 @@ export function gpuPointCloudSampleIndex(
   ) {
     return null;
   }
-  if (drawn === sampled) {
-    return renderedIndex;
-  }
-  const stride = Math.fround(sampled / drawn);
-  return Math.floor(Math.fround(Math.fround(renderedIndex) * stride));
+  return renderedIndex;
 }
 
 function normalizedCount(value: number): number {

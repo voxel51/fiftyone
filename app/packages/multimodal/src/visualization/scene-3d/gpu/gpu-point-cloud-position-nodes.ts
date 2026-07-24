@@ -12,9 +12,7 @@ export interface GpuPointCloudNode extends TSL.Node {
   readonly y: GpuPointCloudNode;
   readonly z: GpuPointCloudNode;
   add(value: GpuPointCloudNode | number): GpuPointCloudNode;
-  floor(): GpuPointCloudNode;
   mul(value: GpuPointCloudNode | number): GpuPointCloudNode;
-  toUint(): GpuPointCloudNode;
 }
 
 interface GpuPointCloudStorageNode {
@@ -25,7 +23,6 @@ interface GpuPointCloudStorageNode {
 // Fiber's bundled Three typings lag the runtime's storage/index TSL exports.
 const pointCloudTsl = TSL as unknown as {
   readonly instanceIndex: GpuPointCloudNode;
-  float(value: GpuPointCloudNode): GpuPointCloudNode;
   storage(
     attribute: THREE.BufferAttribute,
     type: "float" | "vec3",
@@ -39,32 +36,8 @@ const pointCloudTsl = TSL as unknown as {
 };
 
 /** Shader counterpart of `gpuPointCloudSampleIndex`, shared by draw and pick. */
-export function gpuPointCloudSampleIndexNode(
-  sampledPointCount: number,
-  renderedPointCount: number,
-): GpuPointCloudNode {
-  if (renderedPointCount <= 0 || renderedPointCount === sampledPointCount) {
-    return pointCloudTsl.instanceIndex;
-  }
-  // Match float32/WGSL arithmetic exactly. CPU hover mapping uses the same
-  // fround sequence, so a drawn instance always resolves to the same sample.
-  const stride = Math.fround(sampledPointCount / renderedPointCount);
-  return pointCloudTsl
-    .float(pointCloudTsl.instanceIndex)
-    .mul(stride)
-    .floor()
-    .toUint();
-}
-
-/** Stable-material variant whose frame-varying stride is a uniform node. */
-export function gpuPointCloudSampleIndexFromStrideNode(
-  stride: TSL.Node,
-): GpuPointCloudNode {
-  return pointCloudTsl
-    .float(pointCloudTsl.instanceIndex)
-    .mul(stride as GpuPointCloudNode)
-    .floor()
-    .toUint();
+export function gpuPointCloudSampleIndexNode(): GpuPointCloudNode {
+  return pointCloudTsl.instanceIndex;
 }
 
 /** Reads one sampled position without materializing a second point array. */
