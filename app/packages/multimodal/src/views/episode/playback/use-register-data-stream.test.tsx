@@ -13,7 +13,7 @@ import {
   type PlaybackStore,
 } from "@fiftyone/playback";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { setNetworkHealth } from "./network-health";
 import { getStartupCushionState } from "./startup-cushion-state";
@@ -1904,12 +1904,17 @@ function Harness({
     allStreams,
     playbackAcceleration,
   );
+  const streamNames = useMemo(
+    () => new Map(allStreams.map((stream) => [stream, stream])),
+    [allStreams],
+  );
   useRegisterDataStream({
     allStreams,
     blockingStreams,
     session,
     source,
     staleWarningStreams,
+    streamNames,
     streamPolicies: streamPolicies as unknown as StreamSyncPolicies,
   });
 

@@ -66,6 +66,10 @@ export function Streams({
     [sources],
   );
   const allStreams = useMemo(() => sources.map((s) => s.id), [sources]);
+  const streamNames = useMemo(
+    () => new Map(sources.map((s) => [s.id, s.sourceName])),
+    [sources],
+  );
   const staleWarningStreams = useMemo(
     () =>
       sources
@@ -119,6 +123,7 @@ export function Streams({
     source,
     allStreams,
     staleWarningStreams,
+    streamNames,
     streamPolicies,
   });
   useRegisterTiles(availableTileTypes);

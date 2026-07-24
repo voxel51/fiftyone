@@ -13,6 +13,7 @@ export * from "./src/lib/playback/use-stream";
 export * from "./src/lib/playback/store-access";
 export type {
   BufferedRanges,
+  BufferingStream,
   PlaybackStore,
   PlaybackStream,
   SeekEvent,

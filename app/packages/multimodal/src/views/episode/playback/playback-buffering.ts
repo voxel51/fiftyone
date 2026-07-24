@@ -1,6 +1,7 @@
 import {
   setBufferedRanges,
   setBufferingDetail,
+  setBufferingStreams,
   setIsBuffering,
   type PlaybackStore,
 } from "@fiftyone/playback";
@@ -175,6 +176,7 @@ function clampNumber(value: number, min: number, max: number): number {
 /** Clears episode-owned playback buffering feedback during source transitions. */
 export function resetPlaybackBuffering(store: PlaybackStore): void {
   setBufferingDetail(store, null);
+  setBufferingStreams(store, []);
   setIsBuffering(store, false);
   setBufferedRanges(store, []);
 }

@@ -100,6 +100,8 @@ export interface UseDataStreamOptions {
   source: ByteSourceDescriptor | null;
   allStreams: readonly string[];
   staleWarningStreams: readonly string[];
+  /** Human-readable names keyed by the stream IDs used for data access. */
+  streamNames: ReadonlyMap<string, string>;
   streamPolicies: StreamSyncPolicies;
 }
 
@@ -123,6 +125,7 @@ export function useRegisterDataStream({
   source,
   allStreams,
   staleWarningStreams,
+  streamNames,
   streamPolicies,
 }: UseDataStreamOptions): void {
   const { pause, registerStream, seek, subscribeStream } = usePlayback();
@@ -201,6 +204,7 @@ export function useRegisterDataStream({
     new Set(staleWarningStreams),
   );
   const streamPoliciesRef = useRef(streamPolicies);
+  const streamNamesRef = useRef(streamNames);
   const onPlayheadDataReadyRef = useRef(onPlayheadDataReady);
   // This effect keeps active stream discovery current without rebuilding streams.
   useEffect(() => {
@@ -222,6 +226,11 @@ export function useRegisterDataStream({
   useEffect(() => {
     streamPoliciesRef.current = streamPolicies;
   }, [streamPolicies]);
+  // This effect keeps buffering diagnostics human-readable without rebuilding
+  // the registered playback stream when inventory labels change.
+  useEffect(() => {
+    streamNamesRef.current = streamNames;
+  }, [streamNames]);
 
   const getActiveStreams = useCallback(
     (): string[] =>
@@ -478,6 +487,7 @@ export function useRegisterDataStream({
       schedulePausedIdleWarmup: (delayMs) =>
         schedulePausedIdleWarmupRef.current?.(delayMs),
       staleWarningStreams: staleWarningStreamsRef.current,
+      streamNames: streamNamesRef.current,
       store,
     });
   }, [
