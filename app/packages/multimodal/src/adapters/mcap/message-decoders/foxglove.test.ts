@@ -709,6 +709,7 @@ describe("Foxglove decoders", () => {
       finitePointCount: 2,
       heightRange: { max: 6, min: 3 },
       sampledPointCount: 2,
+      sourcePointCount: 2,
     });
     expect(Array.from(renderPayload.positions.slice(0, 6))).toEqual([
       1, 2, 3, 4, 5, 6,
@@ -719,6 +720,15 @@ describe("Foxglove decoders", () => {
       name: "rcs",
       range: { max: 20, min: 10 },
     });
+    expect(output.visualization.positions.buffer).toBe(
+      renderPayload.positions.buffer,
+    );
+    expect(output.visualization.colors?.buffer).toBe(
+      renderPayload.colors.buffer,
+    );
+    expect(output.visualization.scalarFields?.[0]?.values.buffer).toBe(
+      renderPayload.scalarFields[0].values.buffer,
+    );
     expect(output.resourceHints?.transferables).toEqual(
       expect.arrayContaining([
         renderPayload.positions.buffer,
@@ -726,6 +736,12 @@ describe("Foxglove decoders", () => {
         renderPayload.sourceIndices.buffer,
         renderPayload.scalarFields[0].values.buffer,
       ]),
+    );
+    expect(output.resourceHints?.sizeBytes).toBe(
+      renderPayload.positions.byteLength +
+        renderPayload.colors.byteLength +
+        renderPayload.sourceIndices.byteLength +
+        renderPayload.scalarFields[0].values.byteLength,
     );
   });
 

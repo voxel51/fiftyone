@@ -140,7 +140,12 @@ export function useScene3dPickingLayers({
             : null,
         onHoverPoint: (pick: PointCloudPointPick | null) => {
           const hoveredPoint = pick
-            ? hoveredPointForFrame(stream, frame, pick.pointIndex)
+            ? hoveredPointForFrame(
+                stream,
+                frame,
+                pick.pointIndex,
+                pick.sampleIndex,
+              )
             : null;
           const payload = hoveredPoint
             ? {

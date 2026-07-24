@@ -211,6 +211,7 @@ export function PointCloudPickingLayer({
           layer.onHoverPoint({
             color,
             pointIndex,
+            ...(gpu ? { sampleIndex: pick.sampleIndex } : {}),
             worldPosition: pick.worldPosition,
           });
         })
@@ -253,11 +254,8 @@ function sourcePointIndexForGpuSample(
     return null;
   }
   // sourceIndices is the worker-built identity bridge from the bounded GPU
-  // sample back to the full decoded channel arrays used by tooltip code.
+  // sample back to its packed source record.
   const sourceIndex = payload.sourceIndices[sampleIndex];
-  const decodedPointCount = Math.min(
-    layer.frame.pointCount,
-    Math.floor(layer.frame.positions.length / 3),
-  );
-  return sourceIndex < decodedPointCount ? sourceIndex : null;
+  const sourcePointCount = payload.sourcePointCount ?? layer.frame.pointCount;
+  return sourceIndex < sourcePointCount ? sourceIndex : null;
 }

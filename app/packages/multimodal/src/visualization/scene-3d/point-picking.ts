@@ -41,7 +41,7 @@ export interface ResolvedPointPick {
 }
 
 /**
- * Maps a rendered vertex to the full decoded arrays. Decoder-prepared frames
+ * Maps a rendered vertex to its packed source record. Decoder-prepared frames
  * carry the exact mapping; frames without it use the sampling-walk fallback.
  */
 export function sourcePointIndexForLayerRenderedIndex(
@@ -70,11 +70,8 @@ export function sourcePointIndexForLayerRenderedIndex(
     return null;
   }
   const sourceIndex = payload.sourceIndices[sampleIndex];
-  const decodedPointCount = Math.min(
-    layer.frame.pointCount,
-    Math.floor(layer.frame.positions.length / 3),
-  );
-  return sourceIndex < decodedPointCount ? sourceIndex : null;
+  const sourcePointCount = payload.sourcePointCount ?? layer.frame.pointCount;
+  return sourceIndex < sourcePointCount ? sourceIndex : null;
 }
 
 /**

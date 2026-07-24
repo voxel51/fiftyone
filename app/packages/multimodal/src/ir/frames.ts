@@ -153,6 +153,13 @@ export interface PointCloudRenderPayload {
   readonly positions: Float32Array;
   readonly sampledPointCount: number;
   readonly scalarFields: readonly PointCloudRenderScalarField[];
+  /**
+   * Number of packed source records addressed by `sourceIndices`. Built-in
+   * MCAP decoders set this even when invalid returns are omitted from the
+   * bounded render sample. Optional for custom producers created before the
+   * render-native contract.
+   */
+  readonly sourcePointCount?: number;
   readonly sourceIndices: Uint32Array;
 }
 
@@ -167,16 +174,24 @@ export interface PointCloudVisualization {
   /**
    * Optional interleaved per-point RGB colours in 0-1 components.
    * Length must equal 3 * pointCount.
+   *
+   * Built-in MCAP point clouds expose the bounded render sample here as a
+   * compatibility view over `renderPayload`; they do not retain a second
+   * full-resolution decoded array.
    */
   readonly colors?: Float32Array;
   readonly kind: typeof VISUALIZATION_KIND.POINT_CLOUD;
   readonly fields: readonly PointCloudField[];
   readonly pointCount: number;
+  /**
+   * Interleaved positions for `pointCount` compatibility points. Built-in
+   * MCAP producers alias the sampled prefix of `renderPayload.positions`.
+   */
   readonly positions: Float32Array;
   /**
    * Optional bounded, finite render data and full-cloud statistics prepared by
-   * the decoder. Full arrays remain available above for inspection and other
-   * consumers that require every decoded point.
+   * the decoder. For built-in MCAP point clouds this is the canonical data
+   * representation; the compatibility arrays above alias its sampled prefix.
    */
   readonly renderPayload?: PointCloudRenderPayload;
   /**

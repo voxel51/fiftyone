@@ -5,15 +5,8 @@ import type {
   PointCloudField,
 } from "../../../../ir/index";
 import { resourceHintsForArrayBufferViews } from "../../../../decoders/index";
-import {
-  buildPointCloudRenderPayload,
-  VISUALIZATION_KIND,
-} from "../../../../ir/index";
-import {
-  type DecodedPointCloudData,
-  extractPointCloudData,
-  POINT_COMPONENT_COUNT,
-} from "../foxglove/point-cloud";
+import { VISUALIZATION_KIND } from "../../../../ir/index";
+import { extractPointCloudRenderData } from "../foxglove/point-cloud";
 import {
   arrayField,
   bytesField,
@@ -128,22 +121,26 @@ export function decodeRosPointCloud2Record(
   const fields = originalFields
     .map(mapRosPointField)
     .filter((field): field is PointCloudField => field !== undefined);
-  const decodedPoints = filterFinitePoints(
-    extractPointCloudData(data, pointStep, fields),
-  );
-  const pointCount = decodedPoints.positions.length / POINT_COMPONENT_COUNT;
+  const invalidZeroField = recognizedOusterRangeField({
+    fields,
+    height,
+    originalFields,
+    width,
+  });
+  const decodedPoints = extractPointCloudRenderData(data, pointStep, fields, {
+    ...(invalidZeroField ? { invalidZeroField } : {}),
+  });
+  const pointCount = decodedPoints.renderPayload.sampledPointCount;
   attributes.pointCount = pointCount;
+  attributes.sourcePointCount = decodedPoints.sourcePointCount;
   const packedFieldMetadata = fields.map((field) => ({
     name: field.name,
     offset: field.offset,
     type: field.type,
   }));
-  const renderPayload = buildPointCloudRenderPayload(decodedPoints);
+  const renderPayload = decodedPoints.renderPayload;
 
   const transferableViews = [
-    decodedPoints.positions,
-    decodedPoints.colors,
-    ...decodedPoints.scalarFields.map((field) => field.values),
     renderPayload.positions,
     renderPayload.colors,
     ...renderPayload.scalarFields.map((field) => field.values),
@@ -247,6 +244,43 @@ function mapRosPointField(field: RosPointField): PointCloudField | undefined {
   };
 }
 
+function recognizedOusterRangeField({
+  fields,
+  height,
+  originalFields,
+  width,
+}: {
+  readonly fields: readonly PointCloudField[];
+  readonly height: number;
+  readonly originalFields: readonly RosPointField[];
+  readonly width: number;
+}): PointCloudField | undefined {
+  if (height <= 1 || width <= 1) {
+    return undefined;
+  }
+
+  const byName = new Map(
+    originalFields.map((field) => [field.name.toLowerCase(), field]),
+  );
+  const matches = (name: string, datatype: number): boolean => {
+    const field = byName.get(name);
+    return field?.count === 1 && field.datatype === datatype;
+  };
+  const isOusterLayout =
+    matches("x", ROS_FLOAT32_FIELD_TYPE) &&
+    matches("y", ROS_FLOAT32_FIELD_TYPE) &&
+    matches("z", ROS_FLOAT32_FIELD_TYPE) &&
+    matches("t", ROS_UINT32_FIELD_TYPE) &&
+    matches("ring", ROS_UINT16_FIELD_TYPE) &&
+    matches("range", ROS_UINT32_FIELD_TYPE) &&
+    matches("signal", ROS_UINT16_FIELD_TYPE) &&
+    matches("reflectivity", ROS_UINT16_FIELD_TYPE) &&
+    matches("near_ir", ROS_UINT16_FIELD_TYPE);
+  return isOusterLayout
+    ? fields.find((field) => field.name.toLowerCase() === "range")
+    : undefined;
+}
+
 function flattenPointCloudRows({
   data,
   height,
@@ -306,67 +340,4 @@ function isZeroRange(
   }
 
   return true;
-}
-
-function filterFinitePoints(
-  decoded: DecodedPointCloudData,
-): DecodedPointCloudData {
-  const pointCount = decoded.positions.length / POINT_COMPONENT_COUNT;
-  const keptIndexes: number[] = [];
-  for (let index = 0; index < pointCount; index++) {
-    const offset = index * POINT_COMPONENT_COUNT;
-    if (
-      Number.isFinite(decoded.positions[offset]) &&
-      Number.isFinite(decoded.positions[offset + 1]) &&
-      Number.isFinite(decoded.positions[offset + 2])
-    ) {
-      keptIndexes.push(index);
-    }
-  }
-
-  if (keptIndexes.length === pointCount) {
-    return decoded;
-  }
-
-  const positions = new Float32Array(
-    keptIndexes.length * POINT_COMPONENT_COUNT,
-  );
-  const colors = decoded.colors
-    ? new Float32Array(keptIndexes.length * POINT_COMPONENT_COUNT)
-    : undefined;
-  const scalarFields = decoded.scalarFields.map((field) => ({
-    name: field.name,
-    values: new Float32Array(keptIndexes.length),
-  }));
-
-  keptIndexes.forEach((sourceIndex, targetIndex) => {
-    const sourceOffset = sourceIndex * POINT_COMPONENT_COUNT;
-    const targetOffset = targetIndex * POINT_COMPONENT_COUNT;
-    positions.set(
-      decoded.positions.subarray(
-        sourceOffset,
-        sourceOffset + POINT_COMPONENT_COUNT,
-      ),
-      targetOffset,
-    );
-    if (colors && decoded.colors) {
-      colors.set(
-        decoded.colors.subarray(
-          sourceOffset,
-          sourceOffset + POINT_COMPONENT_COUNT,
-        ),
-        targetOffset,
-      );
-    }
-    scalarFields.forEach((field, fieldIndex) => {
-      field.values[targetIndex] =
-        decoded.scalarFields[fieldIndex]?.values[sourceIndex] ?? Number.NaN;
-    });
-  });
-
-  return {
-    ...(colors ? { colors } : {}),
-    positions,
-    scalarFields,
-  };
 }
