@@ -5,6 +5,8 @@ import {
   buildTileEmptyStateModel,
   buildTileStreamNotice,
   useStabilizedNotices,
+  type HealthNotice,
+  type TileStreamNotice,
 } from "../status/health";
 import {
   useStreamContentTimes,
@@ -29,6 +31,35 @@ function useStableStreams(streams: readonly string[]): readonly string[] {
   return useMemo(() => streams.filter(Boolean), [key]);
 }
 
+function useTileStreamNotice(
+  streams: readonly string[],
+): TileStreamNotice | null {
+  const stableStreams = useStableStreams(streams);
+  const statuses = useStreamStatuses(stableStreams);
+  const startTimes = useStreamStartTimes(stableStreams);
+  const staleAges = useStreamStaleAges(stableStreams);
+  const contentTimes = useStreamContentTimes(stableStreams);
+
+  return buildTileStreamNotice({
+    contentTimes,
+    staleAges,
+    startTimes,
+    statuses,
+    streams: stableStreams,
+  });
+}
+
+/**
+ * Warning-severity stream diagnostics for a tile's local notice control.
+ * Lower-severity progress states and errors remain in the corner badge.
+ */
+export function useTileStreamWarningNotices(
+  streams: readonly string[],
+): readonly HealthNotice[] {
+  const notice = useTileStreamNotice(streams);
+  return useStabilizedNotices(notice?.severity === "warning" ? [notice] : []);
+}
+
 /**
  * Corner pill layered over a tile that is showing content. Surfaces the
  * worst per-stream playback status so a seek/step that lands on missing
@@ -44,18 +75,7 @@ export const TileStatusBadge: React.FC<{
   showWarnings?: boolean;
   streams: readonly string[];
 }> = ({ showWarnings = true, streams }) => {
-  const stableStreams = useStableStreams(streams);
-  const statuses = useStreamStatuses(stableStreams);
-  const startTimes = useStreamStartTimes(stableStreams);
-  const staleAges = useStreamStaleAges(stableStreams);
-  const contentTimes = useStreamContentTimes(stableStreams);
-  const notice = buildTileStreamNotice({
-    contentTimes,
-    staleAges,
-    startTimes,
-    statuses,
-    streams: stableStreams,
-  });
+  const notice = useTileStreamNotice(streams);
 
   if (!notice || (!showWarnings && notice.severity === "warning")) return null;
 
@@ -84,18 +104,7 @@ export const TileStatusBadge: React.FC<{
 export const TileStreamNoticeStrip: React.FC<{
   streams: readonly string[];
 }> = ({ streams }) => {
-  const stableStreams = useStableStreams(streams);
-  const statuses = useStreamStatuses(stableStreams);
-  const startTimes = useStreamStartTimes(stableStreams);
-  const staleAges = useStreamStaleAges(stableStreams);
-  const contentTimes = useStreamContentTimes(stableStreams);
-  const notice = buildTileStreamNotice({
-    contentTimes,
-    staleAges,
-    startTimes,
-    statuses,
-    streams: stableStreams,
-  });
+  const notice = useTileStreamNotice(streams);
   const notices = useStabilizedNotices(notice ? [notice] : []);
 
   return <NoticeStrip notices={notices} />;
