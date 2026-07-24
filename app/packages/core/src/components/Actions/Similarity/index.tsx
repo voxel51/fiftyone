@@ -3,13 +3,12 @@ import { executeOperator } from "@fiftyone/operators";
 import { useOutsideClick, useSimilarityType } from "@fiftyone/state";
 import { Search, Wallpaper } from "@mui/icons-material";
 import { useCallback, useRef, useState } from "react";
-import { useRecoilValueLoadable } from "recoil";
 import Loading from "../Loading";
 import type { ActionProps } from "../types";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
 import { PANEL_NAME } from "./constants";
 import SimilarityPopover from "./Similar";
-import { availableSimilarityKeys } from "./utils";
+import { useAvailableSimilarityKeys } from "./utils";
 
 const Similarity = ({
   modal,
@@ -27,12 +26,7 @@ const Similarity = ({
     isImageSearch,
   });
 
-  // a loadable so a pending dependency (e.g. the modal sample in patches
-  // views) suspends neither the action row nor the global boundary
-  const keysLoadable = useRecoilValueLoadable(
-    availableSimilarityKeys({ modal, isImageSearch: showImageSimilarityIcon }),
-  );
-  const keys = keysLoadable.state === "hasValue" ? keysLoadable.contents : null;
+  const keys = useAvailableSimilarityKeys(modal, showImageSimilarityIcon);
 
   const togglePopover = useCallback(() => {
     if (searching || keys === null) return;
