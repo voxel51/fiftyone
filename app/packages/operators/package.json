@@ -19,10 +19,8 @@
         "README.md"
     ],
     "devDependencies": {
-        "@babel/preset-typescript": "catalog:",
         "@fiftyone/utilities": "workspace:^",
         "@testing-library/react": "^14.0.0",
-        "jest": "catalog:",
         "prettier": "catalog:",
         "vite": "catalog:",
         "vitest": "catalog:"

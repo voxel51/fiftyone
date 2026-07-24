@@ -11,7 +11,7 @@
     "main": "./src/index.ts",
     "scripts": {
         "build": "tsc",
-        "test": "jest",
+        "test": "vitest",
         "test:watch": "jest --watch",
         "lint": "eslint src/**/*.ts",
         "type-check": "tsc --noEmit"

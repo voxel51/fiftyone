@@ -42,6 +42,5 @@
         "@mui/material": "*",
         "@react-spring/web": "*",
         "recoil": "*"
-    },
-    "packageManager": "yarn@4.9.1"
+    }
 }

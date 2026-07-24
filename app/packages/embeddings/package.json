@@ -20,13 +20,13 @@
         "use-resize-observer": "catalog:"
     },
     "devDependencies": {
+        "@vitejs/plugin-react": "catalog:",
         "vite": "catalog:",
         "vite-plugin-externals": "catalog:"
     },
     "fiftyone": {
         "script": "dist/index.umd.js"
     },
-    "packageManager": "yarn@4.9.1",
     "peerDependencies": {
         "@mui/icons-material": "*",
         "react-error-boundary": "*",

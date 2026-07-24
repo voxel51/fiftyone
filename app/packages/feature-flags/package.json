@@ -20,6 +20,7 @@
         "@testing-library/react": "^16.2.0",
         "@typescript-eslint/eslint-plugin": "^6.0.0",
         "@typescript-eslint/parser": "^6.0.0",
+        "@vitejs/plugin-react": "catalog:",
         "eslint": "catalog:",
         "jsdom": "^26.0.0",
         "vite": "catalog:",
@@ -29,7 +30,6 @@
     "fiftyone": {
         "script": "dist/index.umd.js"
     },
-    "packageManager": "yarn@4.9.1",
     "peerDependencies": {
         "jotai": "*",
         "react": "*"

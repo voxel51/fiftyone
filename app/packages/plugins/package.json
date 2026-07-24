@@ -11,7 +11,7 @@
     "main": "./src/index.ts",
     "scripts": {
         "dev": "vite",
-        "test": "jest"
+        "test": "vitest"
     },
     "private": true,
     "files": [
@@ -19,9 +19,7 @@
         "README.md"
     ],
     "devDependencies": {
-        "@babel/preset-typescript": "catalog:",
         "@fiftyone/utilities": "workspace:^",
-        "jest": "catalog:",
         "prettier": "catalog:",
         "vite": "catalog:"
     }

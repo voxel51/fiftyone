@@ -34,13 +34,11 @@
         "react-dom": "18.2.0",
         "react-error-boundary": "catalog:",
         "react-ga4": "^2.1.0",
-        "react-is": "catalog:",
         "react-relay": "14.1.0",
         "react-use-measure": "catalog:",
         "react-uuid": "catalog:",
         "recoil": "catalog:",
         "recoil-relay": "catalog:",
-        "resize-observer-polyfill": "catalog:",
         "styled-components": "^6.1.8",
         "uuid": "catalog:"
     },
@@ -56,7 +54,6 @@
         "typescript-plugin-css-modules": "^5.0.2",
         "vite": "catalog:",
         "vite-plugin-relay": "catalog:",
-        "vite-plugin-rewrite-all": "catalog:",
         "vite-plugin-svgr": "catalog:",
         "vite-plugin-wasm": "catalog:"
     },

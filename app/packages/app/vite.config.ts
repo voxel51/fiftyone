@@ -6,21 +6,15 @@ import { defineConfig, normalizePath, type Plugin } from "vite";
 import relay from "vite-plugin-relay";
 import svgr from "vite-plugin-svgr";
 import wasm from "vite-plugin-wasm";
-import { basePlugins } from "../../vite.base.config";
 
 async function loadConfig() {
-  const pluginRewriteAll = (await import("vite-plugin-rewrite-all")).default;
-
   return defineConfig({
     base: "",
     plugins: [
-      ...basePlugins,
       svgr(),
       react(),
       relay,
       nodePolyfills(),
-      // pluginRewriteAll to address this vite bug: https://github.com/vitejs/vite/issues/2415
-      pluginRewriteAll(),
       foxgloveWasmAsUrl(),
       wasm(),
       // Vite's worker bundling breaks ort's WASM resolution and emits hashed

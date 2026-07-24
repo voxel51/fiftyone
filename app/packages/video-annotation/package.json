@@ -1,7 +1,6 @@
 {
     "name": "@fiftyone/video-annotation",
     "main": "./index.ts",
-    "packageManager": "yarn@4.9.1",
     "scripts": {
         "lint": "eslint src index.ts",
         "lint:fix": "eslint src index.ts --fix",

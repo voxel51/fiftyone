@@ -11,7 +11,7 @@
     "main": "./src/index.ts",
     "scripts": {
         "dev": "vite",
-        "test": "jest",
+        "test": "vitest",
         "gen:aggs": "node scripts/generateAggregationClasses.js"
     },
     "private": true,
@@ -20,9 +20,7 @@
         "README.md"
     ],
     "devDependencies": {
-        "@babel/preset-typescript": "catalog:",
         "fs-extra": "^10.1.0",
-        "jest": "catalog:",
         "lodash": "catalog:",
         "prettier": "catalog:",
         "vite": "catalog:"

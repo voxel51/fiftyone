@@ -18,6 +18,7 @@
         "@types/lodash": "catalog:",
         "@typescript-eslint/eslint-plugin": "^6.0.0",
         "@typescript-eslint/parser": "^6.0.0",
+        "@vitejs/plugin-react": "catalog:",
         "eslint": "catalog:",
         "jsdom": "^26.0.0",
         "uuid": "catalog:",
@@ -29,7 +30,6 @@
     "fiftyone": {
         "script": "dist/index.umd.js"
     },
-    "packageManager": "yarn@4.9.1",
     "dependencies": {
         "lodash": "catalog:",
         "onnxruntime-web": "catalog:"

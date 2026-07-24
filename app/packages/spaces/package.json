@@ -17,6 +17,7 @@
     },
     "devDependencies": {
         "@types/sortablejs": "^1.15.0",
+        "@vitejs/plugin-react": "catalog:",
         "vite": "catalog:"
     },
     "dependencies": {

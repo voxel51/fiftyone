@@ -26,7 +26,6 @@
     "fiftyone": {
         "script": "dist/index.umd.js"
     },
-    "packageManager": "yarn@4.9.1",
     "peerDependencies": {
         "react": "*"
     }
