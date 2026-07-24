@@ -15,6 +15,7 @@
 import {
   bufferedRangesAtom,
   bufferingDetailAtom,
+  bufferingStreamsAtom,
   currentTimeAtom,
   hoverTimeAtom,
   isBufferingAtom,
@@ -26,7 +27,7 @@ import {
   streamRangesVersionAtom,
   streamValueAtom,
 } from "./atoms";
-import type { BufferedRanges, PlaybackStore } from "./types";
+import type { BufferedRanges, BufferingStream, PlaybackStore } from "./types";
 
 /** Non-reactive read of the visual playhead position, in seconds. */
 export function getPlayhead(store: PlaybackStore): number {
@@ -149,6 +150,36 @@ export function setBufferingDetail(
   detail: string | null,
 ): void {
   store.set(bufferingDetailAtom, detail);
+}
+
+/** Non-reactive read of the streams behind the buffering indicator. */
+export function getBufferingStreams(
+  store: PlaybackStore,
+): readonly BufferingStream[] {
+  return store.get(bufferingStreamsAtom);
+}
+
+/**
+ * Publish blocking stream readiness for buffering UI. Equal snapshots are
+ * ignored because data streams may report status on every fetched tick.
+ */
+export function setBufferingStreams(
+  store: PlaybackStore,
+  streams: readonly BufferingStream[],
+): void {
+  const current = store.get(bufferingStreamsAtom);
+  if (
+    current.length === streams.length &&
+    current.every(
+      (stream, index) =>
+        stream.id === streams[index]?.id &&
+        stream.label === streams[index]?.label &&
+        stream.state === streams[index]?.state,
+    )
+  ) {
+    return;
+  }
+  store.set(bufferingStreamsAtom, [...streams]);
 }
 
 /** Non-reactive read of the published buffered time ranges. */

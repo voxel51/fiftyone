@@ -21,6 +21,16 @@ export type SeekEvent = { time: number; seq: number };
  */
 export type BufferedRanges = ReadonlyArray<readonly [number, number]>;
 
+/** Readiness detail shown when playback is waiting on blocking streams. */
+export interface BufferingStream {
+  /** Stable stream identifier supplied by the data layer. */
+  readonly id: string;
+  /** Human-readable display label supplied by the data layer. */
+  readonly label: string;
+  /** Whether this stream covers the playhead or is still being fetched. */
+  readonly state: "ready" | "waiting";
+}
+
 // ---------------------------------------------------------------------------
 // Buffer readiness
 // ---------------------------------------------------------------------------

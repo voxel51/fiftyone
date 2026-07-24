@@ -5,8 +5,10 @@ import {
   getIsPlaying,
   getPlayhead,
   setBufferingDetail,
+  setBufferingStreams,
   setIsBuffering,
   usePlaybackStore,
+  type BufferingStream,
   type PlaybackStore,
 } from "@fiftyone/playback";
 import { atom, useAtomValue, type PrimitiveAtom } from "jotai";
@@ -295,6 +297,7 @@ export function publishDataStreamStatuses({
   schedulePausedIdleWarmup,
   staleWarningStreams,
   store,
+  streamNames,
 }: {
   readonly activeBlockingStreams: readonly string[];
   readonly activeStreams: readonly string[];
@@ -313,8 +316,10 @@ export function publishDataStreamStatuses({
   readonly schedulePausedIdleWarmup: (delayMs?: number) => void;
   readonly staleWarningStreams: ReadonlySet<string>;
   readonly store: PlaybackStore;
+  readonly streamNames: ReadonlyMap<string, string>;
 }): void {
   const blockingStreamSet = new Set(activeBlockingStreams);
+  const coveredBlockingStreams = new Set<string>();
   const tick = index?.nearestTick(getPlayhead(store)) ?? null;
   let blockingCovered = 0;
 
@@ -326,7 +331,10 @@ export function publishDataStreamStatuses({
     if (tick === null || !cache?.has(tick)) {
       status = failedStreams.has(stream) ? "failed" : "loading";
     } else {
-      if (blockingStreamSet.has(stream)) blockingCovered += 1;
+      if (blockingStreamSet.has(stream)) {
+        blockingCovered += 1;
+        coveredBlockingStreams.add(stream);
+      }
       if (failedStreams.has(stream)) {
         status = "failed";
       } else {
@@ -367,6 +375,15 @@ export function publishDataStreamStatuses({
   if (getBufferingDetail(store) !== detail) {
     setBufferingDetail(store, detail);
   }
+  const bufferingStreams: readonly BufferingStream[] =
+    detail === null
+      ? []
+      : activeBlockingStreams.map((stream) => ({
+          id: stream,
+          label: streamNames.get(stream) ?? stream,
+          state: coveredBlockingStreams.has(stream) ? "ready" : "waiting",
+        }));
+  setBufferingStreams(store, bufferingStreams);
 
   if (
     tick !== null &&

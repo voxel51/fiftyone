@@ -17,6 +17,7 @@ import {
   achievedSpeedAtom,
   bufferedRangesAtom,
   bufferingDetailAtom,
+  bufferingStreamsAtom,
   currentTimeAtom,
   durationAtom,
   hoverTimeAtom,
@@ -33,7 +34,7 @@ import {
   viewStartAtom,
 } from "./atoms";
 import { usePlaybackStore } from "./playback-store-context";
-import type { BufferedRanges, SeekEvent } from "./types";
+import type { BufferedRanges, BufferingStream, SeekEvent } from "./types";
 
 /** Visual playhead position in seconds — updates every RAF tick + on scrub. */
 export function usePlayhead(): number {
@@ -82,6 +83,12 @@ export function useIsBuffering(): boolean {
 export function useBufferingDetail(): string | null {
   const store = usePlaybackStore();
   return useAtomValue(bufferingDetailAtom, { store });
+}
+
+/** Blocking stream readiness behind the current buffering indicator. */
+export function useBufferingStreams(): readonly BufferingStream[] {
+  const store = usePlaybackStore();
+  return useAtomValue(bufferingStreamsAtom, { store });
 }
 
 /**

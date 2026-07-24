@@ -1,5 +1,6 @@
 import {
   getBufferingDetail,
+  getBufferingStreams,
   getIsBuffering,
   setIsBuffering,
   type PlaybackStore,
@@ -22,6 +23,8 @@ import {
 
 const CAMERA = "/camera";
 const LIDAR = "/lidar";
+const CAMERA_NAME = "/sensors/front_camera/image";
+const LIDAR_NAME = "/sensors/roof_lidar/points";
 
 describe("publishDataStreamStatuses", () => {
   it("publishes partial readiness and clears a covered paused-seek stall", () => {
@@ -56,6 +59,10 @@ describe("publishDataStreamStatuses", () => {
       schedulePausedIdleWarmup: vi.fn(),
       staleWarningStreams: new Set([CAMERA]),
       store,
+      streamNames: new Map([
+        [CAMERA, CAMERA_NAME],
+        [LIDAR, LIDAR_NAME],
+      ]),
     } as const;
 
     publishDataStreamStatuses(common);
@@ -63,6 +70,10 @@ describe("publishDataStreamStatuses", () => {
     expect(getStreamContentTimeSec(store, CAMERA)).toBe(0);
     expect(getStreamStatus(store, LIDAR)).toBe("loading");
     expect(getBufferingDetail(store)).toBe("1/2 streams");
+    expect(getBufferingStreams(store)).toEqual([
+      { id: CAMERA, label: CAMERA_NAME, state: "ready" },
+      { id: LIDAR, label: LIDAR_NAME, state: "waiting" },
+    ]);
     expect(scheduleBufferedRangesPublish).toHaveBeenCalledOnce();
 
     setIsBuffering(store, true);
@@ -70,6 +81,7 @@ describe("publishDataStreamStatuses", () => {
     publishDataStreamStatuses(common);
     expect(getStreamStatus(store, LIDAR)).toBe("gap");
     expect(getBufferingDetail(store)).toBeNull();
+    expect(getBufferingStreams(store)).toEqual([]);
     expect(getIsBuffering(store)).toBe(false);
     expect(onPlayheadDataReady).toHaveBeenCalledOnce();
   });

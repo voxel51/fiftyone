@@ -21,7 +21,7 @@
 
 import { atom, type PrimitiveAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
-import type { BufferedRanges, SeekEvent } from "./types";
+import type { BufferedRanges, BufferingStream, SeekEvent } from "./types";
 
 /**
  * Per-stream reactive value atom, keyed by stream id. Lazily created on first
@@ -98,6 +98,13 @@ export const isBufferingAtom = atom(false);
 export const bufferingDetailAtom = atom<string | null>(null) as PrimitiveAtom<
   string | null
 >;
+
+/**
+ * Structured readiness behind the aggregate buffering detail. Data layers
+ * publish blocking stream identifiers and their playhead readiness so the
+ * timeline can explain exactly what playback is waiting for.
+ */
+export const bufferingStreamsAtom = atom<readonly BufferingStream[]>([]);
 
 /**
  * Time ranges where every blocking stream has data buffered and ready to
