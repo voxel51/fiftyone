@@ -8,15 +8,34 @@ export function hoveredPointForFrame(
   stream: string,
   frame: PointCloudVisualization,
   pointIndex: number,
+  sampleIndex?: number,
 ): Scene3dHoveredPoint | null {
-  const position = pointPositionAt(frame, pointIndex);
+  const payload = frame.renderPayload;
+  const resolvedSampleIndex =
+    payload &&
+    Number.isInteger(sampleIndex) &&
+    sampleIndex !== undefined &&
+    sampleIndex >= 0 &&
+    sampleIndex < payload.sampledPointCount &&
+    payload.sourceIndices[sampleIndex] === pointIndex
+      ? sampleIndex
+      : null;
+  const position =
+    resolvedSampleIndex !== null && payload
+      ? pointPositionAt(payload, resolvedSampleIndex)
+      : pointPositionAt(frame, pointIndex);
   if (!position) {
     return null;
   }
 
   const fields: Record<string, number> = {};
-  for (const scalarField of frame.scalarFields ?? []) {
-    const value = scalarField.values[pointIndex];
+  const scalarFields =
+    resolvedSampleIndex === null
+      ? (frame.scalarFields ?? [])
+      : (payload?.scalarFields ?? []);
+  const valueIndex = resolvedSampleIndex ?? pointIndex;
+  for (const scalarField of scalarFields) {
+    const value = scalarField.values[valueIndex];
     if (value !== undefined) {
       fields[scalarField.name] = value;
     }
@@ -33,7 +52,7 @@ export function hoveredPointForFrame(
 }
 
 function pointPositionAt(
-  frame: PointCloudVisualization,
+  frame: Pick<PointCloudVisualization, "positions">,
   pointIndex: number,
 ): readonly [number, number, number] | null {
   if (!Number.isInteger(pointIndex) || pointIndex < 0) {

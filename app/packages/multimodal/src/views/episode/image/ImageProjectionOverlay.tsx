@@ -220,6 +220,7 @@ const ImageProjectionOverlay = ({
             layer.stream,
             layer.frame,
             pointIndex,
+            pick.sampleIndex,
           );
           const color = gpuPointCloudColorAtSample(
             resolveGpuPointCloudColor(payload, layer.colorOptions),

@@ -148,8 +148,13 @@ export interface WorldGridPanelConfig {
 export interface PointCloudPointPick {
   /** The point's rendered (colormapped) color, normalized RGB. */
   readonly color: readonly [number, number, number] | null;
-  /** Index into the layer frame's positions/scalarFields arrays. */
+  /** Packed source-record index (or decoded index for custom producers). */
   readonly pointIndex: number;
+  /**
+   * Canonical render-payload index when the hit came from a built-in GPU
+   * path. This lets hover read sampled values without retaining full arrays.
+   */
+  readonly sampleIndex?: number;
   /** Picked vertex in the panel's fixed (world) frame. */
   readonly worldPosition: readonly [number, number, number];
 }

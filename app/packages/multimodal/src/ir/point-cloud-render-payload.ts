@@ -48,7 +48,7 @@ export function buildPointCloudRenderPayload({
     const x = positions[offset];
     const y = positions[offset + 1];
     const z = positions[offset + 2];
-    if (!isFinitePosition(x, y, z)) {
+    if (!isFinitePointCloudPosition(x, y, z)) {
       continue;
     }
 
@@ -123,6 +123,7 @@ export function buildPointCloudRenderPayload({
     positions: sampledPositions,
     sampledPointCount,
     scalarFields: sampledScalarFields,
+    sourcePointCount: pointCount,
     sourceIndices,
   };
 }
@@ -167,7 +168,7 @@ function sampleFinitePoints({
     const x = positions[sourceOffset];
     const y = positions[sourceOffset + 1];
     const z = positions[sourceOffset + 2];
-    if (!isFinitePosition(x, y, z)) {
+    if (!isFinitePointCloudPosition(x, y, z)) {
       continue;
     }
 
@@ -200,7 +201,7 @@ function sampleFinitePoints({
   }
 }
 
-function pointCloudRenderCapacity(sampledPointCount: number): number {
+export function pointCloudRenderCapacity(sampledPointCount: number): number {
   const required = Math.max(MIN_POINT_CLOUD_RENDER_CAPACITY, sampledPointCount);
   if (required > 2 ** 17) {
     return MAX_POINT_CLOUD_RENDER_POINTS;
@@ -208,7 +209,7 @@ function pointCloudRenderCapacity(sampledPointCount: number): number {
   return 2 ** Math.ceil(Math.log2(required));
 }
 
-function sampledFiniteOrdinal(
+export function sampledFiniteOrdinal(
   sampleIndex: number,
   sampledPointCount: number,
   finitePointCount: number,
@@ -221,6 +222,10 @@ function sampledFiniteOrdinal(
   );
 }
 
-function isFinitePosition(x: number, y: number, z: number): boolean {
+export function isFinitePointCloudPosition(
+  x: number,
+  y: number,
+  z: number,
+): boolean {
   return Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z);
 }

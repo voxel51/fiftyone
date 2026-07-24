@@ -3,11 +3,16 @@ import type {
   DecodedAttributeValue,
   DecodedOutput,
   PointCloudField,
+  PointCloudRenderPayload,
+  PointCloudRenderScalarField,
   PointCloudScalarField,
 } from "../../../../ir/index";
 import { resourceHintsForArrayBufferViews } from "../../../../decoders/index";
 import {
-  buildPointCloudRenderPayload,
+  isFinitePointCloudPosition,
+  MAX_POINT_CLOUD_RENDER_POINTS,
+  pointCloudRenderCapacity,
+  sampledFiniteOrdinal,
   VISUALIZATION_KIND,
 } from "../../../../ir/index";
 import { rosDecodersForPayloads } from "../ros/factory";
@@ -123,16 +128,14 @@ export function decodeFoxglovePointCloudRecord(
   const data = requiredBytes(message, "data");
   const pointStride = requiredNumber(message, "pointStride", "point_stride");
   const fields = packedFields(requiredArray(message, "fields"));
-  const decodedPoints = extractPointCloudData(data, pointStride, fields);
-  applyPose(
-    decodedPoints.positions,
-    decodePose(optionalRecord(message, "pose")),
-  );
+  const decodedPoints = extractPointCloudRenderData(data, pointStride, fields, {
+    pose: decodePose(optionalRecord(message, "pose")),
+  });
   // Per-message Foxglove frame_id carried by this point cloud payload. This
   // is separate from the MCAP channel frame_id metadata fallback.
   const frameId = optionalString(message, "frameId", "frame_id");
   const messageTimestamp = timestampNs(optionalRecord(message, "timestamp"));
-  const pointCount = decodedPoints.positions.length / POINT_COMPONENT_COUNT;
+  const pointCount = decodedPoints.renderPayload.sampledPointCount;
   const packedFieldMetadata = fields.map((field) => ({
     name: field.name,
     offset: field.offset,
@@ -142,17 +145,15 @@ export function decodeFoxglovePointCloudRecord(
     fields: packedFieldMetadata,
     pointCount,
     pointStride,
+    sourcePointCount: decodedPoints.sourcePointCount,
   };
 
   if (frameId) {
     attributes.frameId = frameId;
   }
-  const renderPayload = buildPointCloudRenderPayload(decodedPoints);
+  const renderPayload = decodedPoints.renderPayload;
 
   const transferableViews = [
-    decodedPoints.positions,
-    decodedPoints.colors,
-    ...decodedPoints.scalarFields.map((field) => field.values),
     renderPayload.positions,
     renderPayload.colors,
     ...renderPayload.scalarFields.map((field) => field.values),
@@ -185,6 +186,398 @@ export interface DecodedPointCloudData {
   readonly colors?: Float32Array;
   readonly positions: Float32Array;
   readonly scalarFields: readonly PointCloudScalarField[];
+}
+
+/**
+ * Render-native packed point-cloud projection. Compatibility arrays are
+ * sampled-prefix views over `renderPayload`; no full decoded XYZ/RGB/scalar
+ * arrays are allocated.
+ */
+export interface DecodedPointCloudRenderData extends DecodedPointCloudData {
+  readonly renderPayload: PointCloudRenderPayload;
+  readonly sourcePointCount: number;
+}
+
+export interface PackedPointCloudProjectionOptions {
+  /**
+   * A numeric field whose zero value marks an invalid return. Callers must
+   * provide this only after recognizing a sensor-specific packed layout.
+   */
+  readonly invalidZeroField?: PointCloudField;
+  readonly pose?: ProtobufPose3D;
+}
+
+/**
+ * Reads packed point records directly into the bounded renderer payload.
+ *
+ * The first pass computes validity and full-cloud statistics. The second pass
+ * writes only selected records into capacity-sized GPU arrays. This keeps
+ * source identity for picking while avoiding full-resolution intermediate
+ * arrays and per-scalar extraction passes.
+ */
+export function extractPointCloudRenderData(
+  data: Uint8Array,
+  pointStride: number,
+  fields: readonly PointCloudField[],
+  options: PackedPointCloudProjectionOptions = {},
+): DecodedPointCloudRenderData {
+  const layout = pointCloudLayout(pointStride, fields, options);
+  const pointDataByteLength = alignedPointDataByteLength(data, pointStride);
+  const sourcePointCount = Math.floor(pointDataByteLength / pointStride);
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const transform = pointCloudTransform(options.pose);
+  const scalarStats = layout.scalarFields.map((field) => ({
+    field,
+    finiteValueCount: 0,
+    max: -Infinity,
+    min: Infinity,
+  }));
+  let finitePointCount = 0;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let maxZ = -Infinity;
+  let minX = Infinity;
+  let minY = Infinity;
+  let minZ = Infinity;
+  const position = { x: 0, y: 0, z: 0 };
+
+  for (let pointIndex = 0; pointIndex < sourcePointCount; pointIndex++) {
+    const baseOffset = pointIndex * pointStride;
+    if (isInvalidPackedPoint(view, baseOffset, layout.invalidZeroField)) {
+      continue;
+    }
+    readPackedPosition(view, baseOffset, layout, transform, position);
+    const { x, y, z } = position;
+    if (!isFinitePointCloudPosition(x, y, z)) {
+      continue;
+    }
+
+    finitePointCount++;
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    minZ = Math.min(minZ, z);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+    maxZ = Math.max(maxZ, z);
+    for (const stats of scalarStats) {
+      const value = readNumericField(
+        view,
+        baseOffset + stats.field.offset,
+        stats.field.type,
+      );
+      if (!Number.isFinite(value)) {
+        continue;
+      }
+      stats.finiteValueCount++;
+      stats.min = Math.min(stats.min, value);
+      stats.max = Math.max(stats.max, value);
+    }
+  }
+
+  const sampledPointCount = Math.min(
+    finitePointCount,
+    MAX_POINT_CLOUD_RENDER_POINTS,
+  );
+  const capacity = pointCloudRenderCapacity(sampledPointCount);
+  const positions = new Float32Array(capacity * POINT_COMPONENT_COUNT);
+  const colors = layout.color
+    ? new Float32Array(capacity * COLOR_COMPONENT_COUNT)
+    : undefined;
+  const scalarFields: PointCloudRenderScalarField[] = scalarStats.map(
+    ({ field, finiteValueCount, max, min }) => ({
+      finiteValueCount,
+      name: field.name,
+      range: finiteValueCount > 0 ? { max, min } : null,
+      values: new Float32Array(capacity),
+    }),
+  );
+  const sourceIndices = new Uint32Array(capacity);
+
+  let finiteOrdinal = 0;
+  let sampleIndex = 0;
+  let targetOrdinal = sampledFiniteOrdinal(
+    sampleIndex,
+    sampledPointCount,
+    finitePointCount,
+  );
+  for (
+    let pointIndex = 0;
+    pointIndex < sourcePointCount && sampleIndex < sampledPointCount;
+    pointIndex++
+  ) {
+    const baseOffset = pointIndex * pointStride;
+    if (isInvalidPackedPoint(view, baseOffset, layout.invalidZeroField)) {
+      continue;
+    }
+    readPackedPosition(view, baseOffset, layout, transform, position);
+    if (!isFinitePointCloudPosition(position.x, position.y, position.z)) {
+      continue;
+    }
+
+    if (finiteOrdinal === targetOrdinal) {
+      const positionOffset = sampleIndex * POINT_COMPONENT_COUNT;
+      positions[positionOffset] = position.x;
+      positions[positionOffset + 1] = position.y;
+      positions[positionOffset + 2] = position.z;
+      if (colors && layout.color) {
+        writePackedColor(
+          data,
+          view,
+          baseOffset,
+          colors,
+          positionOffset,
+          layout.color,
+        );
+      }
+      for (
+        let fieldIndex = 0;
+        fieldIndex < layout.scalarFields.length;
+        fieldIndex++
+      ) {
+        const field = layout.scalarFields[fieldIndex];
+        scalarFields[fieldIndex].values[sampleIndex] = readNumericField(
+          view,
+          baseOffset + field.offset,
+          field.type,
+        );
+      }
+      sourceIndices[sampleIndex] = pointIndex;
+      sampleIndex++;
+      targetOrdinal = sampledFiniteOrdinal(
+        sampleIndex,
+        sampledPointCount,
+        finitePointCount,
+      );
+    }
+    finiteOrdinal++;
+  }
+
+  const renderPayload: PointCloudRenderPayload = {
+    bounds:
+      finitePointCount > 0
+        ? { max: [maxX, maxY, maxZ], min: [minX, minY, minZ] }
+        : null,
+    capacity,
+    ...(colors ? { colors } : {}),
+    finitePointCount,
+    heightRange: finitePointCount > 0 ? { max: maxZ, min: minZ } : null,
+    positions,
+    sampledPointCount,
+    scalarFields,
+    sourceIndices,
+    sourcePointCount,
+  };
+  const sampledComponentCount = sampledPointCount * POINT_COMPONENT_COUNT;
+  const compatibilityScalarFields = scalarFields.map(({ name, values }) => ({
+    name,
+    values: values.subarray(0, sampledPointCount),
+  }));
+
+  return {
+    ...(colors ? { colors: colors.subarray(0, sampledComponentCount) } : {}),
+    positions: positions.subarray(0, sampledComponentCount),
+    renderPayload,
+    scalarFields: compatibilityScalarFields,
+    sourcePointCount,
+  };
+}
+
+interface MutablePackedPointPosition {
+  x: number;
+  y: number;
+  z: number;
+}
+
+type PackedPointColorLayout =
+  | {
+      readonly blue: PointCloudField;
+      readonly green: PointCloudField;
+      readonly kind: "separate";
+      readonly red: PointCloudField;
+    }
+  | {
+      readonly field: PointCloudField;
+      readonly kind: "packed";
+    };
+
+interface PackedPointCloudLayout {
+  readonly color: PackedPointColorLayout | null;
+  readonly invalidZeroField?: PointCloudField;
+  readonly scalarFields: readonly PointCloudField[];
+  readonly x: PointCloudField;
+  readonly y: PointCloudField;
+  readonly z: PointCloudField;
+}
+
+interface PackedPointCloudTransform {
+  readonly enabled: boolean;
+  readonly px: number;
+  readonly py: number;
+  readonly pz: number;
+  readonly qw: number;
+  readonly qx: number;
+  readonly qy: number;
+  readonly qz: number;
+}
+
+function pointCloudLayout(
+  pointStride: number,
+  fields: readonly PointCloudField[],
+  options: PackedPointCloudProjectionOptions,
+): PackedPointCloudLayout {
+  if (pointStride <= 0) {
+    throw new Error(`Invalid point stride ${pointStride}`);
+  }
+
+  const x = requiredFloat32Field(fields, "x");
+  const y = requiredFloat32Field(fields, "y");
+  const z = requiredFloat32Field(fields, "z");
+  for (const field of [x, y, z]) {
+    if (field.offset < 0 || field.offset + FLOAT32_BYTE_WIDTH > pointStride) {
+      throw new Error(`Point cloud '${field.name}' field exceeds point stride`);
+    }
+  }
+  if (
+    options.invalidZeroField &&
+    !canReadNumericField(options.invalidZeroField, pointStride)
+  ) {
+    throw new Error("Point cloud invalid-return field exceeds point stride");
+  }
+
+  return {
+    color: packedPointColorLayout(fields, pointStride),
+    ...(options.invalidZeroField
+      ? { invalidZeroField: options.invalidZeroField }
+      : {}),
+    scalarFields: scalarFieldsForLayout(fields, pointStride),
+    x,
+    y,
+    z,
+  };
+}
+
+function packedPointColorLayout(
+  fields: readonly PointCloudField[],
+  pointStride: number,
+): PackedPointColorLayout | null {
+  const red = findColorChannel(fields, pointStride, RED_COLOR_CHANNEL_NAMES);
+  const green = findColorChannel(
+    fields,
+    pointStride,
+    GREEN_COLOR_CHANNEL_NAMES,
+  );
+  const blue = findColorChannel(fields, pointStride, BLUE_COLOR_CHANNEL_NAMES);
+  if (red && green && blue) {
+    return { blue, green, kind: "separate", red };
+  }
+
+  const field = fields.find(
+    (candidate) =>
+      PACKED_COLOR_FIELD_NAMES.includes(normalizedFieldName(candidate.name)) &&
+      canReadNumericField(candidate, pointStride) &&
+      numericFieldByteWidth(candidate.type) === 4,
+  );
+  return field ? { field, kind: "packed" } : null;
+}
+
+function pointCloudTransform(
+  pose: ProtobufPose3D | undefined,
+): PackedPointCloudTransform {
+  const [px, py, pz] = pose?.position ?? [0, 0, 0];
+  const normalized = pose ? normalizedQuaternion(pose.quaternion) : null;
+  const [qx, qy, qz, qw] = normalized ?? [0, 0, 0, 1];
+  return {
+    enabled:
+      px !== 0 ||
+      py !== 0 ||
+      pz !== 0 ||
+      qx !== 0 ||
+      qy !== 0 ||
+      qz !== 0 ||
+      qw !== 1,
+    px,
+    py,
+    pz,
+    qw,
+    qx,
+    qy,
+    qz,
+  };
+}
+
+function readPackedPosition(
+  view: DataView,
+  baseOffset: number,
+  layout: PackedPointCloudLayout,
+  transform: PackedPointCloudTransform,
+  target: MutablePackedPointPosition,
+): void {
+  const x = view.getFloat32(baseOffset + layout.x.offset, true);
+  const y = view.getFloat32(baseOffset + layout.y.offset, true);
+  const z = view.getFloat32(baseOffset + layout.z.offset, true);
+  if (!transform.enabled) {
+    target.x = x;
+    target.y = y;
+    target.z = z;
+    return;
+  }
+
+  const { px, py, pz, qw, qx, qy, qz } = transform;
+  const tx = 2 * (qy * z - qz * y);
+  const ty = 2 * (qz * x - qx * z);
+  const tz = 2 * (qx * y - qy * x);
+  target.x = px + x + qw * tx + qy * tz - qz * ty;
+  target.y = py + y + qw * ty + qz * tx - qx * tz;
+  target.z = pz + z + qw * tz + qx * ty - qy * tx;
+}
+
+function isInvalidPackedPoint(
+  view: DataView,
+  baseOffset: number,
+  invalidZeroField: PointCloudField | undefined,
+): boolean {
+  return (
+    invalidZeroField !== undefined &&
+    readNumericField(
+      view,
+      baseOffset + invalidZeroField.offset,
+      invalidZeroField.type,
+    ) === 0
+  );
+}
+
+function writePackedColor(
+  data: Uint8Array,
+  view: DataView,
+  baseOffset: number,
+  colors: Float32Array,
+  colorOffset: number,
+  layout: PackedPointColorLayout,
+): void {
+  if (layout.kind === "separate") {
+    colors[colorOffset] = normalizeColorChannel(
+      readNumericField(view, baseOffset + layout.red.offset, layout.red.type),
+      layout.red.type,
+    );
+    colors[colorOffset + 1] = normalizeColorChannel(
+      readNumericField(
+        view,
+        baseOffset + layout.green.offset,
+        layout.green.type,
+      ),
+      layout.green.type,
+    );
+    colors[colorOffset + 2] = normalizeColorChannel(
+      readNumericField(view, baseOffset + layout.blue.offset, layout.blue.type),
+      layout.blue.type,
+    );
+    return;
+  }
+
+  const byteOffset = baseOffset + layout.field.offset;
+  colors[colorOffset] = data[byteOffset + 2] / UINT8_MAX_VALUE;
+  colors[colorOffset + 1] = data[byteOffset + 1] / UINT8_MAX_VALUE;
+  colors[colorOffset + 2] = data[byteOffset] / UINT8_MAX_VALUE;
 }
 
 /**
@@ -282,6 +675,16 @@ function extractScalarFields(
   pointCount: number,
   fields: readonly PointCloudField[],
 ): readonly PointCloudScalarField[] {
+  return scalarFieldsForLayout(fields, pointStride).map((field) => ({
+    name: field.name,
+    values: extractNumericValues(data, pointStride, pointCount, field),
+  }));
+}
+
+function scalarFieldsForLayout(
+  fields: readonly PointCloudField[],
+  pointStride: number,
+): readonly PointCloudField[] {
   const canonicalFieldByName = new Map<string, PointCloudField>();
   const additionalFields: PointCloudField[] = [];
   const seenNames = new Set<string>();
@@ -317,10 +720,7 @@ function extractScalarFields(
   }
   orderedFields.push(...additionalFields);
 
-  return orderedFields.slice(0, MAX_SCALAR_FIELDS).map((field) => ({
-    name: field.name,
-    values: extractNumericValues(data, pointStride, pointCount, field),
-  }));
+  return orderedFields.slice(0, MAX_SCALAR_FIELDS);
 }
 
 function extractColorField(
@@ -532,35 +932,6 @@ function clamp01(value: number): number {
 
 function normalizedFieldName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function applyPose(positions: Float32Array, pose: ProtobufPose3D) {
-  const [px, py, pz] = pose.position;
-  const normalized = normalizedQuaternion(pose.quaternion);
-
-  if (!normalized && px === 0 && py === 0 && pz === 0) {
-    return;
-  }
-
-  const [qx, qy, qz, qw] = normalized ?? [0, 0, 0, 1];
-  for (
-    let offset = 0;
-    offset < positions.length;
-    offset += POINT_COMPONENT_COUNT
-  ) {
-    const x = positions[offset];
-    const y = positions[offset + 1];
-    const z = positions[offset + 2];
-    // Quaternion-rotate v via t = 2(q_vec x v); v' = v + w*t + q_vec x t,
-    // then translate from point-cloud-local coordinates into frame_id.
-    const tx = 2 * (qy * z - qz * y);
-    const ty = 2 * (qz * x - qx * z);
-    const tz = 2 * (qx * y - qy * x);
-
-    positions[offset] = px + x + qw * tx + qy * tz - qz * ty;
-    positions[offset + 1] = py + y + qw * ty + qz * tx - qx * tz;
-    positions[offset + 2] = pz + z + qw * tz + qx * ty - qy * tx;
-  }
 }
 
 function packedFields(values: readonly unknown[]): readonly PointCloudField[] {

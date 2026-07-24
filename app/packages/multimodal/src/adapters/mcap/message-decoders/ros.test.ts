@@ -643,10 +643,17 @@ describe("ROS MCAP decoders", () => {
       finitePointCount: 3,
       heightRange: { max: 11, min: 3 },
       sampledPointCount: 3,
+      sourcePointCount: 4,
     });
     expect(Array.from(renderPayload.sourceIndices.slice(0, 3))).toEqual([
-      0, 1, 2,
+      0, 1, 3,
     ]);
+    expect(output.visualization.positions.buffer).toBe(
+      renderPayload.positions.buffer,
+    );
+    expect(output.visualization.scalarFields?.[0]?.values.buffer).toBe(
+      renderPayload.scalarFields[0].values.buffer,
+    );
     expect(renderPayload.scalarFields).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -669,6 +676,14 @@ describe("ROS MCAP decoders", () => {
         renderPayload.scalarFields[1].values.buffer,
       ]),
     );
+    expect(output.resourceHints?.sizeBytes).toBe(
+      renderPayload.positions.byteLength +
+        renderPayload.sourceIndices.byteLength +
+        renderPayload.scalarFields.reduce(
+          (total, field) => total + field.values.byteLength,
+          0,
+        ),
+    );
     expect(output.attributes).toMatchObject({
       frameId: "lidar",
       height: 2,
@@ -678,6 +693,89 @@ describe("ROS MCAP decoders", () => {
       width: 2,
     });
     expect(output.timing?.sourceTimestamps?.messageTime).toBe(1_000_000_002n);
+  });
+
+  it("drops zero-range returns only for recognized organized Ouster layouts", () => {
+    const pointStep = 34;
+    const width = 2;
+    const height = 2;
+    const data = new Uint8Array(pointStep * width * height);
+    const view = new DataView(data.buffer);
+    const points = [
+      { position: [1, 2, 3], range: 100 },
+      { position: [0, 0, 0], range: 0 },
+      { position: [0, 0, 0], range: 50 },
+      { position: [4, 5, 6], range: 200 },
+    ] as const;
+    points.forEach(({ position: [x, y, z], range }, index) => {
+      const offset = index * pointStep;
+      view.setFloat32(offset, x, true);
+      view.setFloat32(offset + 4, y, true);
+      view.setFloat32(offset + 8, z, true);
+      view.setUint32(offset + 16, index, true);
+      view.setUint16(offset + 20, index, true);
+      view.setUint32(offset + 24, range, true);
+      view.setUint16(offset + 28, 10 + index, true);
+      view.setUint16(offset + 30, 20 + index, true);
+      view.setUint16(offset + 32, 30 + index, true);
+    });
+
+    const output = decoderForSchemaEncoding(
+      rosPointCloud2Decoders,
+      "ros1msg",
+    ).decode(
+      ros1Message(ROS1_POINT_CLOUD2_SCHEMA, {
+        data: Array.from(data),
+        fields: [
+          pointField("x", 0),
+          pointField("y", 4),
+          pointField("z", 8),
+          pointField("t", 16, 6),
+          pointField("ring", 20, 4),
+          pointField("range", 24, 6),
+          pointField("signal", 28, 4),
+          pointField("reflectivity", 30, 4),
+          pointField("near_ir", 32, 4),
+        ],
+        header: ros1Header({ frameId: "os_sensor" }),
+        height,
+        is_bigendian: false,
+        is_dense: true,
+        point_step: pointStep,
+        row_step: pointStep * width,
+        width,
+      }),
+      { schemaData: schemaData(ROS1_POINT_CLOUD2_SCHEMA) },
+    );
+
+    expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.POINT_CLOUD);
+    if (output.visualization?.kind !== VISUALIZATION_KIND.POINT_CLOUD) {
+      throw new Error("Expected point cloud visualization");
+    }
+    const payload = output.visualization.renderPayload;
+    if (!payload) {
+      throw new Error("Expected point cloud render payload");
+    }
+    expect(output.visualization.pointCount).toBe(3);
+    expect(output.attributes).toMatchObject({
+      pointCount: 3,
+      sourcePointCount: 4,
+    });
+    expect(payload).toMatchObject({
+      finitePointCount: 3,
+      sampledPointCount: 3,
+      sourcePointCount: 4,
+    });
+    expect(Array.from(payload.sourceIndices.slice(0, 3))).toEqual([0, 2, 3]);
+    expect(Array.from(output.visualization.positions)).toEqual([
+      1, 2, 3, 0, 0, 0, 4, 5, 6,
+    ]);
+    const range = payload.scalarFields.find((field) => field.name === "range");
+    expect(range).toMatchObject({
+      finiteValueCount: 3,
+      range: { max: 200, min: 50 },
+    });
+    expect(Array.from(range?.values.slice(0, 3) ?? [])).toEqual([100, 50, 200]);
   });
 
   it("degrades ros1 PointCloud2 big-endian data instead of throwing", () => {
