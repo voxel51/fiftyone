@@ -13,6 +13,7 @@ import MeasureRulerIcon from "../panel-ui/MeasureRulerIcon";
 import type { PointCloudBounds } from "../../ir";
 import { Base3dScene } from "../scene-3d/Base3dScene";
 import { WebGpuCanvas } from "../webgpu/WebGpuCanvas";
+import controlStyles from "../panel-ui/PanelControl.module.css";
 import { PanelNotices } from "../panel-ui/PanelNotices";
 import { useKeyedIdentityMap } from "../panel-ui/use-keyed-identity-map";
 import {
@@ -562,6 +563,7 @@ export function PointCloudPanel({
             <button
               aria-label="Measure distance"
               aria-pressed={measureArmed}
+              className={controlStyles.button}
               onClick={handleMeasureToggle}
               style={
                 measureArmed ? styles.measureToggleActive : styles.measureToggle
@@ -575,6 +577,7 @@ export function PointCloudPanel({
           {frameFitPose ? (
             <button
               aria-label="Recenter view"
+              className={controlStyles.button}
               onClick={handleRecenter}
               style={styles.recenter}
               title="Recenter the view on the current scene"

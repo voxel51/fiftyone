@@ -29,6 +29,7 @@ import {
   PanelNotices,
   type PanelNotice,
 } from "../panel-ui/PanelNotices";
+import controlStyles from "../panel-ui/PanelControl.module.css";
 
 const HUD_BORDER_RADIUS_PX = 4;
 const HUD_OFFSET_PX = 8;
@@ -205,6 +206,7 @@ export function ImagePanel({
         <div style={styles.resetControls}>
           <button
             aria-label="Recenter view"
+            className={controlStyles.button}
             onClick={onResetView}
             onPointerDown={(event) => event.stopPropagation()}
             style={styles.resetButton}
