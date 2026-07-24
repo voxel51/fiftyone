@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import reactRefresh from "@vitejs/plugin-react-refresh";
+import react from "@vitejs/plugin-react";
 import nodePolyfills from "rollup-plugin-polyfill-node";
 import { defineConfig, normalizePath, type Plugin } from "vite";
 import relay from "vite-plugin-relay";
@@ -16,9 +16,7 @@ async function loadConfig() {
     plugins: [
       ...basePlugins,
       svgr(),
-      reactRefresh({
-        parserPlugins: ["classProperties", "classPrivateProperties"],
-      }),
+      react(),
       relay,
       nodePolyfills(),
       // pluginRewriteAll to address this vite bug: https://github.com/vitejs/vite/issues/2415

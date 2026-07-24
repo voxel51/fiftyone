@@ -10,7 +10,7 @@
         "globals": "^15.8.0",
         "prettier": "^3.8.4",
         "typescript-eslint": "^7.17.0",
-        "vite": "^7.3.2"
+        "vite": "catalog:"
     },
     "dependencies": {
         "@fiftyone/commands": "workspace:^",
@@ -18,7 +18,7 @@
         "@voxel51/voodo": "^0.0.39",
         "jotai": "^2.9.3",
         "jotai-optics": "^0.4.0",
-        "vite-plugin-svgr": "^4.2.0"
+        "vite-plugin-svgr": "catalog:"
     },
     "peerDependencies": {
         "@fiftyone/spaces": "*"

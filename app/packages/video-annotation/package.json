@@ -31,6 +31,6 @@
         "eslint-plugin-react-hooks": "rc",
         "globals": "^15.8.0",
         "typescript-eslint": "^7.17.0",
-        "vite": "^7.3.2"
+        "vite": "catalog:"
     }
 }
