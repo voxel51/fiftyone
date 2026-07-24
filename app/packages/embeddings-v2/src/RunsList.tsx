@@ -173,8 +173,11 @@ export default function RunsList({
                   formatTimestamp(run.timestamp),
                 ].filter((item): item is string => Boolean(item))}
                 onClick={run.ready ? () => onOpen(run.brainKey) : undefined}
+                // No actions on pending runs: Refresh needs results, and
+                // Delete would remove the run record without stopping the
+                // computation writing it (manage those from the Runs page)
                 actions={
-                  confirmKey === run.brainKey ? (
+                  !run.ready ? undefined : confirmKey === run.brainKey ? (
                     <>
                       <Button
                         variant={Variant.Secondary}
