@@ -36,7 +36,7 @@ export function hoveredPointForFrame(
   const valueIndex = resolvedSampleIndex ?? pointIndex;
   for (const scalarField of scalarFields) {
     const value = scalarField.values[valueIndex];
-    if (value !== undefined) {
+    if (value !== undefined && Number.isFinite(value)) {
       fields[scalarField.name] = value;
     }
   }

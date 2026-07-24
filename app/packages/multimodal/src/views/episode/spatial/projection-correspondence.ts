@@ -36,8 +36,7 @@ export function resolveProjectionCorrespondence({
 
   const pointLayer = pointCloudLayers.find(
     (layer) =>
-      layer.id === hover.stream &&
-      layer.contentTimeNs === source.pointContentTimeNs,
+      layer.id === hover.stream && layer.contentTimeNs === hover.contentTimeNs,
   );
   if (!pointLayer) {
     return null;
@@ -70,7 +69,7 @@ export function resolveProjectionCorrespondence({
 
   return {
     end,
-    id: `projection-correspondence:${source.imageStream}:${hover.stream}:${source.pointContentTimeNs.toString()}`,
+    id: `projection-correspondence:${source.imageStream}:${hover.stream}:${hover.contentTimeNs.toString()}`,
     role: "projection-correspondence",
     start,
   };

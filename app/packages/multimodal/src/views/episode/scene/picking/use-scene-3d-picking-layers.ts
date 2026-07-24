@@ -1,4 +1,10 @@
-import { type SetStateAction, useCallback, useMemo, useRef } from "react";
+import {
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { type PrimitiveAtom, useStore } from "jotai";
 
 import type { SceneSource } from "../../../../ir";
@@ -15,6 +21,7 @@ import {
 import { hoveredPointForFrame } from "../../interaction/point-hover/point-hover";
 import {
   hoverEchoAtom,
+  hoverMatchesPointFrame,
   useHoverEcho,
   type HoverEcho,
 } from "../../interaction/point-hover/hover-echo";
@@ -34,10 +41,12 @@ export function useScene3dPickingLayers({
   pointCloudLayers,
   pointCloudSources,
   sceneAnnotationLayers,
+  worldFrameId,
 }: {
   readonly pointCloudLayers: readonly PointCloudPanelLayer[];
   readonly pointCloudSources: readonly SceneSource[];
   readonly sceneAnnotationLayers: readonly SceneAnnotationPanelLayer[];
+  readonly worldFrameId: string;
 }) {
   const jotaiStore = useStore();
   const {
@@ -134,10 +143,13 @@ export function useScene3dPickingLayers({
       const source = pointCloudSourcesById.get(stream);
       return {
         ...layer,
-        hoveredPoint:
-          hoverEcho?.kind === "point" && hoverEcho.stream === stream
-            ? { color: hoverEcho.color, position: hoverEcho.position }
-            : null,
+        hoveredPoint: hoverMatchesPointFrame(
+          hoverEcho,
+          stream,
+          layer.contentTimeNs,
+        )
+          ? { color: hoverEcho.color, position: hoverEcho.position }
+          : null,
         onHoverPoint: (pick: PointCloudPointPick | null) => {
           const hoveredPoint = pick
             ? hoveredPointForFrame(
@@ -160,13 +172,31 @@ export function useScene3dPickingLayers({
               }
             : null;
           onHoverPoint(payload);
-          if (payload && pick) {
+          if (payload && pick && layer.contentTimeNs !== undefined) {
+            const hasResolvedWorldPosition =
+              (layer.frameTransform?.targetFrameId === worldFrameId ||
+                (!layer.frameTransform &&
+                  frame.coordinateFrameId === worldFrameId)) &&
+              pick.worldPosition.every(Number.isFinite);
             const hover: HoverEcho = {
               color: pick.color,
+              contentTimeNs: layer.contentTimeNs,
+              fields: payload.fields,
+              ...(payload.frameId ? { frameId: payload.frameId } : {}),
               kind: "point",
               pointIndex: payload.pointIndex,
               position: payload.position,
+              ...(payload.sourceLabel
+                ? { sourceLabel: payload.sourceLabel }
+                : {}),
+              ...(payload.sourceName ? { sourceName: payload.sourceName } : {}),
               stream,
+              ...(hasResolvedWorldPosition
+                ? {
+                    worldFrameId,
+                    worldPosition: pick.worldPosition,
+                  }
+                : {}),
             };
             publishedPointHoverRefs.current.set(stream, hover);
             jotaiStore.set(hoverEchoAtom, hover);
@@ -184,16 +214,50 @@ export function useScene3dPickingLayers({
     },
     inputs: (layer) => [
       layer,
-      hoverEcho?.kind === "point" && hoverEcho.stream === layer.id
+      hoverMatchesPointFrame(hoverEcho, layer.id, layer.contentTimeNs)
         ? hoverEcho
         : null,
       jotaiStore,
       onHoverPoint,
       pointCloudSourcesById.get(layer.id)?.label ?? "",
       pointCloudSourcesById.get(layer.id)?.sourceName ?? "",
+      worldFrameId,
     ],
     key: (layer) => layer.id,
   });
+
+  // This effect retires hovers published by this 3D surface when playback
+  // replaces their immutable point frame without another pointer event.
+  useEffect(() => {
+    for (const [stream, published] of publishedPointHoverRefs.current) {
+      const layer = pointCloudLayers.find(
+        (candidate) => candidate.id === stream,
+      );
+      if (hoverMatchesPointFrame(published, stream, layer?.contentTimeNs)) {
+        continue;
+      }
+      publishedPointHoverRefs.current.delete(stream);
+      if (jotaiStore.get(hoverEchoAtom) === published) {
+        jotaiStore.set(hoverEchoAtom, null);
+        onHoverPoint(null);
+      }
+    }
+  }, [jotaiStore, onHoverPoint, pointCloudLayers]);
+
+  // This effect clears hovers owned by this 3D pane on unmount. Identity
+  // checks preserve a newer hover published by another surface.
+  useEffect(
+    () => () => {
+      const published = new Set(publishedPointHoverRefs.current.values());
+      publishedPointHoverRefs.current.clear();
+      const current = jotaiStore.get(hoverEchoAtom);
+      if (current && published.has(current)) {
+        jotaiStore.set(hoverEchoAtom, null);
+        onHoverPoint(null);
+      }
+    },
+    [jotaiStore, onHoverPoint],
+  );
 
   return {
     annotationLayers,

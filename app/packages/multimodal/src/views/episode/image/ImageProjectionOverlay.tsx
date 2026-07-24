@@ -122,7 +122,7 @@ const ImageProjectionOverlay = ({
     const pointStillCurrent = layers.some(
       (layer) =>
         layer.stream === published.stream &&
-        layer.contentTimeNs === source.pointContentTimeNs,
+        layer.contentTimeNs === published.contentTimeNs,
     );
     if (!imageStillCurrent || !pointStillCurrent) {
       clearOwnHover();
@@ -242,6 +242,9 @@ const ImageProjectionOverlay = ({
           });
           const hover: HoverEcho = {
             color,
+            contentTimeNs: layer.contentTimeNs,
+            fields: tooltip.fields,
+            ...(tooltip.frameId ? { frameId: tooltip.frameId } : {}),
             kind: "point",
             pointIndex,
             position: tooltip.position,
@@ -250,8 +253,9 @@ const ImageProjectionOverlay = ({
               imageContentTimeNs,
               imageStream,
               kind: "image-projection",
-              pointContentTimeNs: layer.contentTimeNs,
             },
+            sourceLabel: layer.sourceLabel,
+            sourceName: layer.sourceName,
             stream: layer.stream,
           };
           publishedHoverRef.current = hover;

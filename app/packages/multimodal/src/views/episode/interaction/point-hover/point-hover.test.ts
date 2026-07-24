@@ -94,4 +94,22 @@ describe("hoveredPointForFrame", () => {
       ),
     ).toBeNull();
   });
+
+  it("omits non-finite scalar metadata from the hover payload", () => {
+    const hovered = hoveredPointForFrame(
+      "/lidar",
+      pointCloudFrame({
+        scalarFields: [
+          { name: "finite", values: Float32Array.from([1, 2]) },
+          {
+            name: "invalid",
+            values: Float32Array.from([Number.NaN, Number.POSITIVE_INFINITY]),
+          },
+        ],
+      }),
+      1,
+    );
+
+    expect(hovered?.fields).toEqual({ finite: 2 });
+  });
 });
