@@ -30,6 +30,7 @@ import {
 import { enumerateMcapNumericFields } from "./numeric-fields";
 import { readMcapNumericSeries } from "./operations/read-numeric-series";
 import { readMcapRawMessageRecord } from "./operations/read-raw-message-record";
+import { readMcapPointCloudChannel } from "./operations/read-point-cloud-channel";
 import { readMcapTopics } from "./operations/read-topics";
 import { readMcapTopicTimeBounds } from "./operations/read-topic-time-bounds";
 import type { McapFrameTransformSet } from "../transforms/types";
@@ -41,8 +42,10 @@ import {
   type McapReadFrameTransformBootstrapRequest,
   type McapReadFrameTransformWindowRequest,
   type McapRawMessageRecordResult,
+  type McapPointCloudChannelResult,
   type McapReadNumericSeriesRequest,
   type McapReadRawMessageRecordRequest,
+  type McapReadPointCloudChannelRequest,
   type McapReadSynchronizedMessageBatchRequest,
   type McapReadSynchronizedMessagesRequest,
   type McapReadTopicsRequest,
@@ -78,11 +81,12 @@ export function createInlineMcapResourceClient(
 ): McapResourceClient {
   const query = createMultimodalQueryClient();
   const byteClient = options.byteClient ?? query.bytes;
+  const decoderRegistry = createMcapDecoderRegistry();
   const decodeClient =
     options.decodeClient ??
     createDecodeClient({
       cache: query.caches.decoded,
-      registry: createMcapDecoderRegistry(),
+      registry: decoderRegistry,
     });
   const readerFactory = options.readerFactory ?? createDefaultMcapReader;
   const readerStore = createMcapReaderStore({
@@ -140,6 +144,7 @@ export function createInlineMcapResourceClient(
       const reader = await readerStore.get(request.source);
       yield* readMcapDecodedMessages({
         decodeClient,
+        readSignal: options.readSignal,
         reader,
         request,
         timeline,
@@ -209,6 +214,20 @@ export function createInlineMcapResourceClient(
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
       const reader = await readerStore.get(request.source);
       return readMcapRawMessageRecord({ reader, request, timeline });
+    },
+
+    async readPointCloudChannel(
+      request: McapReadPointCloudChannelRequest,
+    ): Promise<McapPointCloudChannelResult> {
+      const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
+      const reader = await readerStore.get(request.source);
+      return readMcapPointCloudChannel({
+        decoderRegistry,
+        reader,
+        readSignal: options.readSignal,
+        request,
+        timeline,
+      });
     },
 
     async readTopicTimeBounds(request: McapReadTopicTimeBoundsRequest) {

@@ -42,6 +42,33 @@ describe("MCAP foreground supersession", () => {
     ).toEqual([]);
   });
 
+  it("supersedes stale channel projections without starving another view", () => {
+    const keys = (activeColorBy: string) =>
+      mcapForegroundSupersessionKeys({
+        generation: 3,
+        payload: {
+          activeColorBy,
+          capacity: 1_024,
+          samplePlanKey: "4:4",
+          sampledPointCount: 4,
+          source: createSource(),
+          sourceIndices: new Uint32Array([0, 1, 2, 3]),
+          timeNs: 10n,
+          topic: "/lidar",
+        },
+        priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+        sourceKey: "source",
+        type: "readPointCloudChannel",
+      });
+
+    expect(
+      haveMcapSupersessionKeyOverlap(keys("intensity"), keys("intensity")),
+    ).toBe(true);
+    expect(
+      haveMcapSupersessionKeyOverlap(keys("intensity"), keys("ring")),
+    ).toBe(false);
+  });
+
   it("detects partially overlapping stream requests", () => {
     expect(
       haveMcapSupersessionKeyOverlap(

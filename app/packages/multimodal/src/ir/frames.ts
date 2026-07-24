@@ -138,20 +138,43 @@ export interface PointCloudRenderScalarField {
   readonly values: Float32Array;
 }
 
+/** Replaceable color data aligned with one immutable geometry sample plan. */
+export type PointCloudRenderChannelPayload =
+  | {
+      readonly colors: Float32Array;
+      readonly kind: "rgb";
+      readonly samplePlanKey: string;
+    }
+  | {
+      readonly kind: "scalar";
+      readonly samplePlanKey: string;
+      readonly scalarField: PointCloudRenderScalarField;
+    }
+  | {
+      readonly kind: "none";
+      readonly samplePlanKey: string;
+    };
+
 /**
  * Decoder-prepared point data shared by point-cloud renderers. The first
  * `sampledPointCount` entries contain only finite positions; `sourceIndices`
  * maps each sample back to the corresponding point in the full decoded arrays.
  */
 export interface PointCloudRenderPayload {
+  /** Scalar channel names available for on-demand worker projection. */
+  readonly availableScalarFields?: readonly string[];
   readonly bounds: PointCloudBounds | null;
   /** Allocated point capacity shared by every typed array in this payload. */
   readonly capacity: number;
   readonly colors?: Float32Array;
   readonly finitePointCount: number;
+  /** Whether packed source records contain a usable RGB layout. */
+  readonly hasRgb?: boolean;
   readonly heightRange: PointCloudNumericRange | null;
   readonly positions: Float32Array;
   readonly sampledPointCount: number;
+  /** Stable identity of the source-index ordering backing this geometry. */
+  readonly samplePlanKey?: string;
   readonly scalarFields: readonly PointCloudRenderScalarField[];
   /**
    * Number of packed source records addressed by `sourceIndices`. Built-in

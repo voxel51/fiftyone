@@ -8,6 +8,7 @@ import type {
   StreamInventory,
 } from "../../../schemas/v1/index";
 import type { McapFrameTransformSet } from "../transforms/types";
+import type { PointCloudRenderChannelPayload } from "../../../ir/index";
 
 type McapLaneTransportSnapshot = LaneTransportSnapshot;
 
@@ -462,6 +463,22 @@ export interface McapReadRawMessageRecordRequest {
   readonly topic: string;
 }
 
+/** Request for one color channel aligned with an existing geometry payload. */
+export interface McapReadPointCloudChannelRequest {
+  readonly activeColorBy: string;
+  readonly activeTimeline?: McapActiveTimeline;
+  readonly capacity: number;
+  readonly samplePlanKey: string;
+  readonly sampledPointCount: number;
+  readonly source: ByteSourceDescriptor;
+  readonly sourceIndices: Uint32Array;
+  readonly timeNs: bigint;
+  readonly topic: string;
+}
+
+/** Worker-projected channel data; geometry remains owned by the main thread. */
+export type McapPointCloudChannelResult = PointCloudRenderChannelPayload;
+
 /**
  * Raw record read outcome: `ok` carries a pruned record tree;
  * `unsupported` carries message metadata when a generic decode path is
@@ -614,6 +631,8 @@ export interface McapTimelineRange {
  * Request for a playback-oriented synchronized message window.
  */
 export interface McapReadSynchronizedMessagesRequest {
+  /** Active point-cloud color source requested per MCAP topic. */
+  readonly pointCloudColorByByTopic?: Readonly<Record<string, string>>;
   /**
    * Playback timeline time around which per-topic messages are selected.
    */
@@ -876,6 +895,11 @@ export interface McapResourceClient {
   readRawMessageRecord(
     request: McapReadRawMessageRecordRequest,
   ): Promise<McapRawMessageRecordResult>;
+
+  /** Projects one replacement point-cloud channel without rebuilding XYZ. */
+  readPointCloudChannel?(
+    request: McapReadPointCloudChannelRequest,
+  ): Promise<McapPointCloudChannelResult>;
 
   /**
    * Reads eager frame transforms needed for initial 3D placement.

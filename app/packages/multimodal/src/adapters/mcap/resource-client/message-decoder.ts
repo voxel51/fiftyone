@@ -14,8 +14,10 @@ export interface DecodeMcapMessageRequest {
   readonly channel?: McapTypes.TypedMcapRecords["Channel"];
   readonly decodeClient: DecodeClient;
   readonly message: McapTypes.TypedMcapRecords["Message"];
+  readonly pointCloudColorBy?: string;
   readonly reader?: McapIndexedReaderLike;
   readonly schema?: McapTypes.TypedMcapRecords["Schema"];
+  readonly signal?: AbortSignal;
   readonly source: ByteSourceDescriptor;
   readonly timeline: McapTimelineStrategy;
 }
@@ -27,8 +29,10 @@ export async function decodeMcapMessage({
   channel,
   decodeClient,
   message,
+  pointCloudColorBy,
   reader,
   schema,
+  signal,
   source,
   timeline,
 }: DecodeMcapMessageRequest): Promise<McapDecodedMessage> {
@@ -59,14 +63,23 @@ export async function decodeMcapMessage({
         decodeClient.cachesDecodedOutput === false
           ? undefined
           : {
-              decoderOptionsKey: timeline.cacheKeySuffix,
+              decoderOptionsKey: [
+                timeline.cacheKeySuffix,
+                pointCloudColorBy
+                  ? `pointCloudColorBy=${pointCloudColorBy}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(";"),
               recordId: mcapMessageRecordId(message),
               source,
               streamId: topic,
               timeNs: timelineTimeNs,
             },
       context: {
+        ...(pointCloudColorBy ? { pointCloudColorBy } : {}),
         schemaData: resolvedSchema?.data,
+        ...(signal ? { signal } : {}),
         sourceTimestamps: {
           logTime: message.logTime,
           publishTime: message.publishTime,

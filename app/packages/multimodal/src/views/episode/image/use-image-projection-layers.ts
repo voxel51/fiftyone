@@ -13,7 +13,7 @@ import {
   defaultPointCloudColorForSource,
   usePointCloudStyleSettings,
 } from "../settings/modal/state";
-import { useStreamPlaybackFrames } from "../playback/use-stream-values";
+import { usePointCloudPlaybackFrames } from "../playback/use-stream-values";
 
 /** One point-cloud frame prepared for projection into an episode image tile. */
 export interface ImageProjectionLayer {
@@ -50,7 +50,6 @@ export function useImageProjectionLayers(
   streams: readonly string[],
   cameraFrameId: string | undefined,
 ): readonly ImageProjectionLayer[] {
-  const frames = useStreamPlaybackFrames<PointCloudVisualization>(streams);
   const { resolve } = useFrameTransformsContext();
   const pointCloudSources = useSceneSourcesByType(
     SCENE_SOURCE_TYPE.POINT_CLOUD,
@@ -86,6 +85,14 @@ export function useImageProjectionLayers(
 
     return options;
   }, [pointCloudColors, pointCloudSources, pointCloudSourcesById, streams]);
+  const pointCloudColorBy = useMemo(
+    () =>
+      streams.map(
+        (stream) => colorOptionsByStream.get(stream)?.colorBy ?? "auto",
+      ),
+    [colorOptionsByStream, streams],
+  );
+  const frames = usePointCloudPlaybackFrames(streams, pointCloudColorBy);
 
   return useMemo(() => {
     if (!cameraFrameId) {

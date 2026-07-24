@@ -657,24 +657,21 @@ describe("Foxglove decoders", () => {
     expect(output.timing?.sourceTimestamps?.messageTime).toBe(12_000_000_034n);
   });
 
-  it("decodes point cloud colors and canonical scalar fields", () => {
-    const output = foxglovePointCloudDecoder.decode(
-      pointCloudMessage(radarPointBytes(), {
-        fields: [
-          { name: "x", offset: 0, type: 7 },
-          { name: "y", offset: 4, type: 7 },
-          { name: "z", offset: 8, type: 7 },
-          { name: "rcs", offset: 12, type: 7 },
-          { name: "r", offset: 16, type: 1 },
-          { name: "g", offset: 17, type: 1 },
-          { name: "b", offset: 18, type: 1 },
-        ],
-        pointStride: 19,
-      }),
-      {
-        schemaData: POINT_CLOUD_FIXTURE.schemaData,
-      },
-    );
+  it("decodes only the active point cloud channel and projects replacements", () => {
+    const bytes = pointCloudMessage(radarPointBytes(), {
+      fields: [
+        { name: "x", offset: 0, type: 7 },
+        { name: "y", offset: 4, type: 7 },
+        { name: "z", offset: 8, type: 7 },
+        { name: "rcs", offset: 12, type: 7 },
+        { name: "r", offset: 16, type: 1 },
+        { name: "g", offset: 17, type: 1 },
+        { name: "b", offset: 18, type: 1 },
+      ],
+      pointStride: 19,
+    });
+    const context = { schemaData: POINT_CLOUD_FIXTURE.schemaData };
+    const output = foxglovePointCloudDecoder.decode(bytes, context);
 
     expect(output.visualization?.kind).toBe(VISUALIZATION_KIND.POINT_CLOUD);
     if (output.visualization?.kind !== VISUALIZATION_KIND.POINT_CLOUD) {
@@ -692,10 +689,7 @@ describe("Foxglove decoders", () => {
       128 / 255,
       1,
     ]);
-    expect(output.visualization.scalarFields?.[0]?.name).toBe("rcs");
-    expect(
-      Array.from(output.visualization.scalarFields?.[0]?.values ?? []),
-    ).toEqual([10, 20]);
+    expect(output.visualization.scalarFields).toBeUndefined();
     const renderPayload = output.visualization.renderPayload;
     if (!renderPayload) {
       throw new Error("Expected point cloud render payload");
@@ -707,42 +701,59 @@ describe("Foxglove decoders", () => {
       bounds: { max: [4, 5, 6], min: [1, 2, 3] },
       capacity: 1_024,
       finitePointCount: 2,
+      hasRgb: true,
       heightRange: { max: 6, min: 3 },
       sampledPointCount: 2,
       sourcePointCount: 2,
     });
+    expect(renderPayload.availableScalarFields).toEqual(["rcs"]);
     expect(Array.from(renderPayload.positions.slice(0, 6))).toEqual([
       1, 2, 3, 4, 5, 6,
     ]);
     expect(Array.from(renderPayload.sourceIndices.slice(0, 2))).toEqual([0, 1]);
-    expect(renderPayload.scalarFields[0]).toMatchObject({
-      finiteValueCount: 2,
-      name: "rcs",
-      range: { max: 20, min: 10 },
-    });
+    expect(renderPayload.scalarFields).toEqual([]);
     expect(output.visualization.positions.buffer).toBe(
       renderPayload.positions.buffer,
     );
     expect(output.visualization.colors?.buffer).toBe(
       renderPayload.colors.buffer,
     );
-    expect(output.visualization.scalarFields?.[0]?.values.buffer).toBe(
-      renderPayload.scalarFields[0].values.buffer,
-    );
     expect(output.resourceHints?.transferables).toEqual(
       expect.arrayContaining([
         renderPayload.positions.buffer,
         renderPayload.colors.buffer,
         renderPayload.sourceIndices.buffer,
-        renderPayload.scalarFields[0].values.buffer,
       ]),
     );
     expect(output.resourceHints?.sizeBytes).toBe(
       renderPayload.positions.byteLength +
         renderPayload.colors.byteLength +
-        renderPayload.sourceIndices.byteLength +
-        renderPayload.scalarFields[0].values.byteLength,
+        renderPayload.sourceIndices.byteLength,
     );
+
+    const projected = foxglovePointCloudDecoder.projectPointCloudChannel?.(
+      bytes,
+      context,
+      {
+        activeColorBy: "rcs",
+        capacity: renderPayload.capacity,
+        sampledPointCount: renderPayload.sampledPointCount,
+        samplePlanKey: renderPayload.samplePlanKey ?? "",
+        sourceIndices: renderPayload.sourceIndices,
+      },
+    );
+    if (projected?.kind !== "scalar") {
+      throw new Error("Expected projected RCS channel");
+    }
+    expect(projected.samplePlanKey).toBe(renderPayload.samplePlanKey);
+    expect(projected.scalarField).toMatchObject({
+      finiteValueCount: 2,
+      name: "rcs",
+      range: { max: 20, min: 10 },
+    });
+    expect(Array.from(projected.scalarField.values.slice(0, 2))).toEqual([
+      10, 20,
+    ]);
   });
 
   it("decodes strided lidar layouts with trailing scalar fields", () => {
@@ -777,7 +788,7 @@ describe("Foxglove decoders", () => {
     expect(output.visualization.pointCount).toBe(2);
   });
 
-  it("extracts non-canonical numeric channels as scalar fields", () => {
+  it("discovers non-canonical channels but expands only the requested one", () => {
     // Two points: x,y,z, intensity, ring, vx_comp, rgb (all float32).
     // Everything numeric that is neither a position component nor consumed
     // as color must come out as a scalar channel — canonical channels
@@ -799,6 +810,7 @@ describe("Foxglove decoders", () => {
         },
       ),
       {
+        pointCloudColorBy: "vx_comp",
         schemaData: POINT_CLOUD_FIXTURE.schemaData,
       },
     );
@@ -809,16 +821,19 @@ describe("Foxglove decoders", () => {
     }
     expect(
       output.visualization.scalarFields?.map((field) => field.name),
-    ).toEqual(["intensity", "ring", "vx_comp"]);
+    ).toEqual(["vx_comp"]);
     expect(
-      Array.from(output.visualization.scalarFields?.[1]?.values ?? []),
-    ).toEqual([7, 8]);
-    expect(
-      Array.from(output.visualization.scalarFields?.[2]?.values ?? []),
+      Array.from(output.visualization.scalarFields?.[0]?.values ?? []),
     ).toEqual([-1.5, 2.25]);
+    expect(output.visualization.renderPayload?.availableScalarFields).toEqual([
+      "intensity",
+      "ring",
+      "vx_comp",
+    ]);
+    expect(output.visualization.colors).toBeUndefined();
   });
 
-  it("caps scalar channel extraction on exotic layouts", () => {
+  it("caps discoverable scalar channels on exotic layouts", () => {
     const extraFieldCount = 20;
     const fields = [
       { name: "x", offset: 0, type: 7 },
@@ -836,6 +851,7 @@ describe("Foxglove decoders", () => {
         { fields, pointStride: (3 + extraFieldCount) * 4 },
       ),
       {
+        pointCloudColorBy: "channel_15",
         schemaData: POINT_CLOUD_FIXTURE.schemaData,
       },
     );
@@ -844,9 +860,11 @@ describe("Foxglove decoders", () => {
     if (output.visualization?.kind !== VISUALIZATION_KIND.POINT_CLOUD) {
       throw new Error("Expected point cloud visualization");
     }
-    expect(output.visualization.scalarFields).toHaveLength(16);
-    expect(output.visualization.scalarFields?.[0]?.name).toBe("channel_0");
-    expect(output.visualization.scalarFields?.[15]?.name).toBe("channel_15");
+    expect(output.visualization.scalarFields).toHaveLength(1);
+    expect(output.visualization.scalarFields?.[0]?.name).toBe("channel_15");
+    expect(output.visualization.renderPayload?.availableScalarFields).toEqual(
+      Array.from({ length: 16 }, (_, index) => `channel_${index}`),
+    );
   });
 
   it("applies point cloud pose to decoded positions", () => {

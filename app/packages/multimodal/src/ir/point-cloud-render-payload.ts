@@ -116,17 +116,31 @@ export function buildPointCloudRenderPayload({
     finitePointCount > 0 ? { max: maxZ, min: minZ } : null;
 
   return {
+    availableScalarFields: scalarFields.map((field) => field.name),
     bounds,
     capacity,
     ...(sampledColors ? { colors: sampledColors } : {}),
     finitePointCount,
+    hasRgb: hasAlignedColors,
     heightRange,
     positions: sampledPositions,
     sampledPointCount,
+    samplePlanKey: pointCloudSamplePlanKey(pointCount, sampledPointCount),
     scalarFields: sampledScalarFields,
     sourcePointCount: pointCount,
     sourceIndices,
   };
+}
+
+/** Stable key for the current nested source-index plan/version. */
+export function pointCloudSamplePlanKey(
+  sourcePointCount: number,
+  sampledPointCount: number,
+): string {
+  return `nested-v1:${Math.max(0, Math.floor(sourcePointCount))}:${Math.max(
+    0,
+    Math.floor(sampledPointCount),
+  )}`;
 }
 
 function sampleFinitePoints({

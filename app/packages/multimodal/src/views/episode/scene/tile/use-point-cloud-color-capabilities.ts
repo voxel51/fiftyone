@@ -53,13 +53,17 @@ export function usePointCloudColorCapabilities(
       accumulated.set(stream, capabilities);
     }
 
-    if (frame.colors) {
+    if (frame.renderPayload?.hasRgb || frame.colors) {
       capabilities.hasRgb = true;
     }
-    for (const scalarField of frame.scalarFields ?? []) {
-      if (!capabilities.scalarFieldNames.has(scalarField.name)) {
-        capabilities.scalarFieldNames.add(scalarField.name);
-        capabilities.scalarFieldOrder.push(scalarField.name);
+    const scalarFieldNames =
+      frame.renderPayload?.availableScalarFields ??
+      frame.scalarFields?.map((field) => field.name) ??
+      [];
+    for (const scalarFieldName of scalarFieldNames) {
+      if (!capabilities.scalarFieldNames.has(scalarFieldName)) {
+        capabilities.scalarFieldNames.add(scalarFieldName);
+        capabilities.scalarFieldOrder.push(scalarFieldName);
       }
     }
   });

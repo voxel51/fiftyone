@@ -1,12 +1,19 @@
-import type { DecodeContext } from "../../../../decoders/index";
+import type {
+  DecodeContext,
+  PointCloudChannelProjectionRequest,
+} from "../../../../decoders/index";
 import type {
   DecodedAttributeValue,
   DecodedOutput,
   PointCloudField,
+  PointCloudRenderChannelPayload,
 } from "../../../../ir/index";
 import { resourceHintsForArrayBufferViews } from "../../../../decoders/index";
 import { VISUALIZATION_KIND } from "../../../../ir/index";
-import { extractPointCloudRenderData } from "../foxglove/point-cloud";
+import {
+  extractPointCloudRenderChannel,
+  extractPointCloudRenderData,
+} from "../foxglove/point-cloud";
 import {
   arrayField,
   bytesField,
@@ -61,6 +68,7 @@ export const rosPointCloud2Decoders = rosDecodersForPayloads({
   id: "ros.point-cloud2",
   map: decodeRosPointCloud2Record,
   payloads: ROS_POINT_CLOUD2_PAYLOADS,
+  projectPointCloudChannel: projectRosPointCloud2Channel,
 });
 
 /**
@@ -128,8 +136,10 @@ export function decodeRosPointCloud2Record(
     width,
   });
   const decodedPoints = extractPointCloudRenderData(data, pointStep, fields, {
+    activeColorBy: context.pointCloudColorBy,
     ...(invalidZeroField ? { invalidZeroField } : {}),
     ...(height > 1 ? { organizedShape: { height, width } } : {}),
+    signal: context.signal,
   });
   const pointCount = decodedPoints.renderPayload.sampledPointCount;
   attributes.pointCount = pointCount;
@@ -165,6 +175,31 @@ export function decodeRosPointCloud2Record(
       renderPayload,
     },
   };
+}
+
+function projectRosPointCloud2Channel(
+  message: Record<string, unknown>,
+  context: DecodeContext,
+  request: PointCloudChannelProjectionRequest,
+): PointCloudRenderChannelPayload {
+  const height = integerField(message, "height");
+  const width = integerField(message, "width");
+  const pointStep = integerField(message, "point_step");
+  const rowStep = integerField(message, "row_step");
+  validateLayout({ height, pointStep, rowStep, width });
+  const fields = pointFields(arrayField(message, "fields"))
+    .map(mapRosPointField)
+    .filter((field): field is PointCloudField => field !== undefined);
+  const data = flattenPointCloudRows({
+    data: bytesField(message, "data"),
+    height,
+    pointStep,
+    rowStep,
+    width,
+  });
+  return extractPointCloudRenderChannel(data, pointStep, fields, request, {
+    signal: context.signal,
+  });
 }
 
 interface RosPointField {
