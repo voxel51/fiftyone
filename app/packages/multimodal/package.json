@@ -65,7 +65,7 @@
     },
     "scripts": {
         "lint": "yarn check",
-        "check": "yarn check:lint && yarn check:deps && yarn check:types",
+        "check": "concurrently -g \"yarn:check:lint\" \"yarn:check:deps\" \"yarn:check:types\"",
         "check:types": "node ./scripts/check-types.mjs",
         "check:lint": "node ./scripts/check-lint.mjs",
         "check:deps": "node ./scripts/check-deps.mjs"
@@ -100,6 +100,7 @@
     },
     "devDependencies": {
         "@types/three": "^0.182.0",
+        "concurrently": "^7.2.1",
         "vite-plugin-relay": "catalog:"
     }
 }

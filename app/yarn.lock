@@ -2115,6 +2115,7 @@ __metadata:
     "@voxel51/voodo": "npm:^0.0.39"
     buffer: "catalog:"
     colormap: "catalog:"
+    concurrently: "npm:^7.2.1"
     date-fns: "npm:^4.1.0"
     jotai: "catalog:"
     lru-cache: "catalog:"
