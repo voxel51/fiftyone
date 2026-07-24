@@ -4,7 +4,11 @@ import type {
   PointCloudRenderChannelPayload,
   PointCloudVisualization,
 } from "../../../ir";
-import { VISUALIZATION_KIND } from "../../../ir";
+import {
+  POINT_CLOUD_RGB_ENCODING,
+  pointCloudNativeIntegerScalarEncoding,
+  VISUALIZATION_KIND,
+} from "../../../ir";
 import { applyPointCloudRenderChannel } from "./use-stream-values";
 
 describe("point cloud render channel replacement", () => {
@@ -13,16 +17,17 @@ describe("point cloud render channel replacement", () => {
     const positions = frame.renderPayload?.positions;
     const sourceIndices = frame.renderPayload?.sourceIndices;
     const bounds = frame.renderPayload?.bounds;
-    const channel: PointCloudRenderChannelPayload = {
+    const channel = {
       kind: "scalar",
       samplePlanKey: "4:2",
       scalarField: {
+        encoding: pointCloudNativeIntegerScalarEncoding("uint16"),
         finiteValueCount: 2,
         name: "ring",
         range: { max: 8, min: 7 },
-        values: new Float32Array(1_024).fill(7, 0, 1).fill(8, 1, 2),
+        values: new Uint16Array(1_024).fill(7, 0, 1).fill(8, 1, 2),
       },
-    };
+    } satisfies PointCloudRenderChannelPayload;
 
     const result = applyPointCloudRenderChannel(frame, channel);
 
@@ -32,10 +37,34 @@ describe("point cloud render channel replacement", () => {
     expect(result.renderPayload?.sourceIndices).toBe(sourceIndices);
     expect(result.renderPayload?.bounds).toBe(bounds);
     expect(result.colors).toBeUndefined();
-    expect(result.renderPayload?.colors).toBeUndefined();
-    expect(result.scalarFields?.[0]?.name).toBe("ring");
-    expect(Array.from(result.scalarFields?.[0]?.values ?? [])).toEqual([7, 8]);
+    expect(result.renderPayload?.rgb).toBeUndefined();
+    expect(result.scalarFields).toBeUndefined();
     expect(result.renderPayload?.scalarFields).toEqual([channel.scalarField]);
+    expect(result.renderPayload?.scalarFields[0].values).toBeInstanceOf(
+      Uint16Array,
+    );
+  });
+
+  it("propagates the RGB descriptor without rebuilding geometry", () => {
+    const frame = pointCloudFrame();
+    const rgb = {
+      encoding: POINT_CLOUD_RGB_ENCODING,
+      values: new Uint8Array(1_024 * 3),
+    };
+    rgb.values.set([255, 0, 0, 0, 255, 0]);
+
+    const result = applyPointCloudRenderChannel(frame, {
+      kind: "rgb",
+      rgb,
+      samplePlanKey: "4:2",
+    });
+
+    expect(result.renderPayload?.positions).toBe(
+      frame.renderPayload?.positions,
+    );
+    expect(result.renderPayload?.rgb).toBe(rgb);
+    expect(result.renderPayload?.rgb?.values).toBeInstanceOf(Uint8Array);
+    expect(result.colors).toBeUndefined();
   });
 
   it("ignores a channel from a different geometry sample plan", () => {
@@ -53,8 +82,6 @@ describe("point cloud render channel replacement", () => {
 function pointCloudFrame(): PointCloudVisualization {
   const positions = new Float32Array(1_024 * 3);
   positions.set([1, 2, 3, 4, 5, 6]);
-  const colors = new Float32Array(1_024 * 3);
-  colors.set([1, 0, 0, 0, 1, 0]);
   const sourceIndices = new Uint32Array(1_024);
   sourceIndices.set([1, 3]);
   const bounds = {
@@ -63,7 +90,6 @@ function pointCloudFrame(): PointCloudVisualization {
   } as const;
 
   return {
-    colors: colors.subarray(0, 6),
     fields: [],
     kind: VISUALIZATION_KIND.POINT_CLOUD,
     pointCount: 2,
@@ -72,7 +98,6 @@ function pointCloudFrame(): PointCloudVisualization {
       availableScalarFields: ["intensity", "ring"],
       bounds,
       capacity: 1_024,
-      colors,
       finitePointCount: 4,
       hasRgb: true,
       heightRange: { max: 6, min: 3 },

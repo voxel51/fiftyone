@@ -117,6 +117,50 @@ export interface PointCloudNumericRange {
   readonly min: number;
 }
 
+/** Storage arrays accepted by decoder-prepared point-cloud color channels. */
+export type PointCloudChannelArray =
+  | Float32Array
+  | Int8Array
+  | Uint8Array
+  | Int16Array
+  | Uint16Array
+  | Int32Array
+  | Uint32Array;
+
+/** Physical component type retained in a point-cloud channel payload. */
+export type PointCloudChannelStorage =
+  | "float32"
+  | "int8"
+  | "uint8"
+  | "int16"
+  | "uint16"
+  | "int32"
+  | "uint32";
+
+/**
+ * Durable interpretation of one decoder-prepared point-cloud channel.
+ *
+ * Rendered values are `origin + stored * scale`. `invalidValue` names a
+ * reserved stored value, when one exists; `null` means every storage value is
+ * data (float channels continue to use IEEE non-finite values).
+ */
+export interface PointCloudChannelEncoding {
+  readonly componentCount: 1 | 3;
+  readonly invalidValue: number | null;
+  readonly origin: number;
+  readonly scale: number;
+  readonly storage: PointCloudChannelStorage;
+}
+
+/** Canonical RGB channel retained as byte components until the GPU reads it. */
+export interface PointCloudRenderRgbChannel {
+  readonly encoding: PointCloudChannelEncoding & {
+    readonly componentCount: 3;
+    readonly storage: "uint8";
+  };
+  readonly values: Uint8Array;
+}
+
 /**
  * Axis-aligned bounds computed from every finite point in a decoded cloud.
  */
@@ -131,18 +175,21 @@ export interface PointCloudBounds {
  * describes renderable points.
  */
 export interface PointCloudRenderScalarField {
+  readonly encoding: PointCloudChannelEncoding & {
+    readonly componentCount: 1;
+  };
   readonly finiteValueCount: number;
   readonly name: string;
   readonly range: PointCloudNumericRange | null;
   /** Capacity-sized values aligned with the sampled render positions. */
-  readonly values: Float32Array;
+  readonly values: PointCloudChannelArray;
 }
 
 /** Replaceable color data aligned with one immutable geometry sample plan. */
 export type PointCloudRenderChannelPayload =
   | {
-      readonly colors: Float32Array;
       readonly kind: "rgb";
+      readonly rgb: PointCloudRenderRgbChannel;
       readonly samplePlanKey: string;
     }
   | {
@@ -166,12 +213,13 @@ export interface PointCloudRenderPayload {
   readonly bounds: PointCloudBounds | null;
   /** Allocated point capacity shared by every typed array in this payload. */
   readonly capacity: number;
-  readonly colors?: Float32Array;
   readonly finitePointCount: number;
   /** Whether packed source records contain a usable RGB layout. */
   readonly hasRgb?: boolean;
   readonly heightRange: PointCloudNumericRange | null;
   readonly positions: Float32Array;
+  /** Active RGB bytes, present only when RGB is the projected color source. */
+  readonly rgb?: PointCloudRenderRgbChannel;
   readonly sampledPointCount: number;
   /** Stable identity of the source-index ordering backing this geometry. */
   readonly samplePlanKey?: string;
@@ -198,9 +246,9 @@ export interface PointCloudVisualization {
    * Optional interleaved per-point RGB colours in 0-1 components.
    * Length must equal 3 * pointCount.
    *
-   * Built-in MCAP point clouds expose the bounded render sample here as a
-   * compatibility view over `renderPayload`; they do not retain a second
-   * full-resolution decoded array.
+   * Legacy/custom producers may expose this compatibility array. Built-in
+   * MCAP point clouds keep RGB byte-encoded in `renderPayload` instead of
+   * widening it to create this view.
    */
   readonly colors?: Float32Array;
   readonly kind: typeof VISUALIZATION_KIND.POINT_CLOUD;
@@ -220,6 +268,7 @@ export interface PointCloudVisualization {
   /**
    * Optional canonical per-point sensor-return channels such as intensity/RCS.
    * Each scalar field's values array must have length equal to pointCount.
+   * Built-in MCAP point clouds keep encoded channels in `renderPayload`.
    */
   readonly scalarFields?: readonly PointCloudScalarField[];
 }

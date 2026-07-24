@@ -29,15 +29,15 @@ export function transferablesForMcapResult(result: unknown): Transferable[] {
 
 function pointCloudChannelBuffersFromResult(result: unknown): ArrayBuffer[] {
   const record = recordFromUnknown(result);
-  if (record?.kind === "rgb" && record.colors instanceof Float32Array) {
-    return record.colors.buffer instanceof ArrayBuffer
-      ? [record.colors.buffer]
-      : [];
+  const rgb = recordFromUnknown(record?.rgb);
+  if (record?.kind === "rgb" && rgb && ArrayBuffer.isView(rgb.values)) {
+    return rgb.values.buffer instanceof ArrayBuffer ? [rgb.values.buffer] : [];
   }
   const scalarField = recordFromUnknown(record?.scalarField);
   if (
     record?.kind === "scalar" &&
-    scalarField?.values instanceof Float32Array &&
+    scalarField &&
+    ArrayBuffer.isView(scalarField.values) &&
     scalarField.values.buffer instanceof ArrayBuffer
   ) {
     return [scalarField.values.buffer];

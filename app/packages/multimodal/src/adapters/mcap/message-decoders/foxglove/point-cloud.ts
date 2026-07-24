@@ -6,16 +6,22 @@ import type {
 import type {
   DecodedAttributeValue,
   DecodedOutput,
+  PointCloudChannelEncoding,
   PointCloudField,
   PointCloudRenderPayload,
   PointCloudRenderChannelPayload,
+  PointCloudRenderRgbChannel,
   PointCloudRenderScalarField,
   PointCloudScalarField,
 } from "../../../../ir/index";
 import { resourceHintsForArrayBufferViews } from "../../../../decoders/index";
 import {
+  createPointCloudChannelArray,
   isFinitePointCloudPosition,
   MAX_POINT_CLOUD_RENDER_POINTS,
+  POINT_CLOUD_FLOAT32_SCALAR_ENCODING,
+  POINT_CLOUD_RGB_ENCODING,
+  pointCloudNativeIntegerScalarEncoding,
   pointCloudSampleDomainSize,
   pointCloudSamplePlanKey,
   pointCloudRenderCapacity,
@@ -172,12 +178,14 @@ export function decodeFoxglovePointCloudRecord(
   }
   const renderPayload = decodedPoints.renderPayload;
 
-  const transferableViews = [
+  const transferableViews: ArrayBufferView[] = [
     renderPayload.positions,
-    renderPayload.colors,
     ...renderPayload.scalarFields.map((field) => field.values),
     renderPayload.sourceIndices,
-  ].filter((view): view is Float32Array | Uint32Array => view !== undefined);
+  ];
+  if (renderPayload.rgb) {
+    transferableViews.push(renderPayload.rgb.values);
+  }
 
   return {
     attributes,
@@ -185,10 +193,6 @@ export function decodeFoxglovePointCloudRecord(
     timing: timingFromContext(context, messageTimestamp),
     visualization: {
       ...(frameId ? { coordinateFrameId: frameId } : {}),
-      ...(decodedPoints.colors ? { colors: decodedPoints.colors } : {}),
-      ...(decodedPoints.scalarFields.length
-        ? { scalarFields: decodedPoints.scalarFields }
-        : {}),
       fields: packedFieldMetadata,
       kind: VISUALIZATION_KIND.POINT_CLOUD,
       pointCount,
@@ -225,11 +229,12 @@ export interface DecodedPointCloudData {
 }
 
 /**
- * Render-native packed point-cloud projection. Compatibility arrays are
- * sampled-prefix views over `renderPayload`; no full decoded XYZ/RGB/scalar
- * arrays are allocated.
+ * Render-native packed point-cloud projection. Positions expose a sampled
+ * compatibility view; encoded RGB/scalars remain solely in `renderPayload`
+ * so no widened duplicate channel arrays are allocated.
  */
-export interface DecodedPointCloudRenderData extends DecodedPointCloudData {
+export interface DecodedPointCloudRenderData {
+  readonly positions: Float32Array;
   readonly renderPayload: PointCloudRenderPayload;
   readonly sourcePointCount: number;
 }
@@ -337,17 +342,24 @@ export function extractPointCloudRenderData(
   );
   const capacity = pointCloudRenderCapacity(sampledPointCount);
   const positions = new Float32Array(capacity * POINT_COMPONENT_COUNT);
-  const colors =
+  const rgb: PointCloudRenderRgbChannel | undefined =
     activeChannel?.kind === "rgb"
-      ? new Float32Array(capacity * COLOR_COMPONENT_COUNT)
+      ? {
+          encoding: POINT_CLOUD_RGB_ENCODING,
+          values: new Uint8Array(capacity * COLOR_COMPONENT_COUNT),
+        }
       : undefined;
   const scalarFields: PointCloudRenderScalarField[] = scalarStats.map(
-    ({ field, finiteValueCount, max, min }) => ({
-      finiteValueCount,
-      name: field.name,
-      range: finiteValueCount > 0 ? { max, min } : null,
-      values: new Float32Array(capacity),
-    }),
+    ({ field, finiteValueCount, max, min }) => {
+      const encoding = scalarEncodingForField(field);
+      return {
+        encoding,
+        finiteValueCount,
+        name: field.name,
+        range: finiteValueCount > 0 ? { max, min } : null,
+        values: createPointCloudChannelArray(encoding, capacity),
+      };
+    },
   );
   const sourceIndices = new Uint32Array(capacity);
 
@@ -384,12 +396,12 @@ export function extractPointCloudRenderData(
     positions[positionOffset] = position.x;
     positions[positionOffset + 1] = position.y;
     positions[positionOffset + 2] = position.z;
-    if (colors && activeChannel?.kind === "rgb") {
+    if (rgb && activeChannel?.kind === "rgb") {
       writePackedColor(
         data,
         view,
         baseOffset,
-        colors,
+        rgb.values,
         positionOffset,
         activeChannel.color,
       );
@@ -413,11 +425,11 @@ export function extractPointCloudRenderData(
         ? { max: [maxX, maxY, maxZ], min: [minX, minY, minZ] }
         : null,
     capacity,
-    ...(colors ? { colors } : {}),
     finitePointCount,
     hasRgb: layout.color !== null,
     heightRange: finitePointCount > 0 ? { max: maxZ, min: minZ } : null,
     positions,
+    ...(rgb ? { rgb } : {}),
     sampledPointCount,
     samplePlanKey: pointCloudSamplePlanKey(sourcePointCount, sampledPointCount),
     scalarFields,
@@ -425,16 +437,10 @@ export function extractPointCloudRenderData(
     sourcePointCount,
   };
   const sampledComponentCount = sampledPointCount * POINT_COMPONENT_COUNT;
-  const compatibilityScalarFields = scalarFields.map(({ name, values }) => ({
-    name,
-    values: values.subarray(0, sampledPointCount),
-  }));
 
   return {
-    ...(colors ? { colors: colors.subarray(0, sampledComponentCount) } : {}),
     positions: positions.subarray(0, sampledComponentCount),
     renderPayload,
-    scalarFields: compatibilityScalarFields,
     sourcePointCount,
   };
 }
@@ -468,7 +474,10 @@ export function extractPointCloudRenderChannel(
   );
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   if (channel.kind === "rgb") {
-    const colors = new Float32Array(capacity * COLOR_COMPONENT_COUNT);
+    const rgb: PointCloudRenderRgbChannel = {
+      encoding: POINT_CLOUD_RGB_ENCODING,
+      values: new Uint8Array(capacity * COLOR_COMPONENT_COUNT),
+    };
     for (let sampleIndex = 0; sampleIndex < sampledPointCount; sampleIndex++) {
       throwIfPointCloudProjectionCancelled(options.signal, sampleIndex);
       const pointIndex = request.sourceIndices[sampleIndex];
@@ -478,15 +487,23 @@ export function extractPointCloudRenderChannel(
         data,
         view,
         baseOffset,
-        colors,
+        rgb.values,
         sampleIndex * COLOR_COMPONENT_COUNT,
         channel.color,
       );
     }
-    return { colors, kind: "rgb", samplePlanKey: request.samplePlanKey };
+    return { kind: "rgb", rgb, samplePlanKey: request.samplePlanKey };
   }
 
-  const values = new Float32Array(capacity);
+  const preservesNativeIntegers = pointCloudSampleIndicesAreAddressable(
+    request.sourceIndices,
+    sampledPointCount,
+    sourcePointCount,
+  );
+  const encoding = preservesNativeIntegers
+    ? scalarEncodingForField(channel.field)
+    : POINT_CLOUD_FLOAT32_SCALAR_ENCODING;
+  const values = createPointCloudChannelArray(encoding, capacity);
   let finiteValueCount = 0;
   let max = -Infinity;
   let min = Infinity;
@@ -511,6 +528,7 @@ export function extractPointCloudRenderChannel(
     kind: "scalar",
     samplePlanKey: request.samplePlanKey,
     scalarField: {
+      encoding,
       finiteValueCount,
       name: channel.field.name,
       range: finiteValueCount > 0 ? { max, min } : null,
@@ -798,16 +816,16 @@ function writePackedColor(
   data: Uint8Array,
   view: DataView,
   baseOffset: number,
-  colors: Float32Array,
+  colors: Uint8Array,
   colorOffset: number,
   layout: PackedPointColorLayout,
 ): void {
   if (layout.kind === "separate") {
-    colors[colorOffset] = normalizeColorChannel(
+    colors[colorOffset] = colorChannelByte(
       readNumericField(view, baseOffset + layout.red.offset, layout.red.type),
       layout.red.type,
     );
-    colors[colorOffset + 1] = normalizeColorChannel(
+    colors[colorOffset + 1] = colorChannelByte(
       readNumericField(
         view,
         baseOffset + layout.green.offset,
@@ -815,7 +833,7 @@ function writePackedColor(
       ),
       layout.green.type,
     );
-    colors[colorOffset + 2] = normalizeColorChannel(
+    colors[colorOffset + 2] = colorChannelByte(
       readNumericField(view, baseOffset + layout.blue.offset, layout.blue.type),
       layout.blue.type,
     );
@@ -823,9 +841,9 @@ function writePackedColor(
   }
 
   const byteOffset = baseOffset + layout.field.offset;
-  colors[colorOffset] = data[byteOffset + 2] / UINT8_MAX_VALUE;
-  colors[colorOffset + 1] = data[byteOffset + 1] / UINT8_MAX_VALUE;
-  colors[colorOffset + 2] = data[byteOffset] / UINT8_MAX_VALUE;
+  colors[colorOffset] = data[byteOffset + 2];
+  colors[colorOffset + 1] = data[byteOffset + 1];
+  colors[colorOffset + 2] = data[byteOffset];
 }
 
 /**
@@ -1143,6 +1161,44 @@ function numericFieldByteWidth(fieldType: number): number {
     default:
       return 0;
   }
+}
+
+function scalarEncodingForField(
+  field: PointCloudField,
+): PointCloudChannelEncoding & { readonly componentCount: 1 } {
+  switch (field.type) {
+    case INT8_FIELD_TYPE:
+      return pointCloudNativeIntegerScalarEncoding("int8");
+    case UINT8_FIELD_TYPE:
+      return pointCloudNativeIntegerScalarEncoding("uint8");
+    case INT16_FIELD_TYPE:
+      return pointCloudNativeIntegerScalarEncoding("int16");
+    case UINT16_FIELD_TYPE:
+      return pointCloudNativeIntegerScalarEncoding("uint16");
+    case INT32_FIELD_TYPE:
+      return pointCloudNativeIntegerScalarEncoding("int32");
+    case UINT32_FIELD_TYPE:
+      return pointCloudNativeIntegerScalarEncoding("uint32");
+    default:
+      return POINT_CLOUD_FLOAT32_SCALAR_ENCODING;
+  }
+}
+
+function pointCloudSampleIndicesAreAddressable(
+  sourceIndices: Uint32Array,
+  sampledPointCount: number,
+  sourcePointCount: number,
+): boolean {
+  for (let sampleIndex = 0; sampleIndex < sampledPointCount; sampleIndex++) {
+    if (sourceIndices[sampleIndex] >= sourcePointCount) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function colorChannelByte(value: number, fieldType: number): number {
+  return Math.round(normalizeColorChannel(value, fieldType) * UINT8_MAX_VALUE);
 }
 
 function normalizeColorChannel(value: number, fieldType: number): number {

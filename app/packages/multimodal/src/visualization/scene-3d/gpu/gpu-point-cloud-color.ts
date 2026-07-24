@@ -1,7 +1,9 @@
 import type {
+  PointCloudRenderRgbChannel,
   PointCloudRenderPayload,
   PointCloudRenderScalarField,
 } from "../../../ir";
+import { decodePointCloudChannelValue } from "../../../ir";
 import {
   createPointCloudColormapLookup,
   pointCloudColormapKey,
@@ -32,8 +34,8 @@ export const NEUTRAL_GPU_POINT_COLOR = NEUTRAL_POINT_CLOUD_COLOR;
 /** Decoder-backed color source selected for GPU point rendering. */
 export type GpuPointCloudColorSource =
   | {
-      readonly colors: Float32Array;
       readonly kind: "rgb";
+      readonly rgb: PointCloudRenderRgbChannel;
     }
   | {
       readonly kind: "height";
@@ -89,9 +91,9 @@ export function resolveGpuPointCloudColor(
     fixedRange: resolvePointCloudFixedRange(options),
     heightRange,
     rgbSource:
-      payload.colors &&
-      payload.colors.length >= payload.capacity * RGB_COMPONENT_COUNT
-        ? payload.colors
+      payload.rgb &&
+      payload.rgb.values.length >= payload.capacity * RGB_COMPONENT_COUNT
+        ? payload.rgb
         : null,
     scalarSource,
     uniformColor:
@@ -99,7 +101,7 @@ export function resolveGpuPointCloudColor(
   });
   const source: GpuPointCloudColorSource =
     policy.kind === "rgb"
-      ? { colors: policy.source, kind: "rgb" }
+      ? { kind: "rgb", rgb: policy.source }
       : policy.kind === "scalar"
         ? {
             field: policy.source,
@@ -139,16 +141,34 @@ export function gpuPointCloudColorAtSample(
   if (source.kind === "rgb") {
     const offset = sampleIndex * RGB_COMPONENT_COUNT;
     return [
-      clamp01(source.colors[offset]),
-      clamp01(source.colors[offset + 1]),
-      clamp01(source.colors[offset + 2]),
+      clamp01(
+        decodePointCloudChannelValue(
+          source.rgb.encoding,
+          source.rgb.values[offset],
+        ),
+      ),
+      clamp01(
+        decodePointCloudChannelValue(
+          source.rgb.encoding,
+          source.rgb.values[offset + 1],
+        ),
+      ),
+      clamp01(
+        decodePointCloudChannelValue(
+          source.rgb.encoding,
+          source.rgb.values[offset + 2],
+        ),
+      ),
     ];
   }
 
   const value =
     source.kind === "height"
       ? payload.positions[sampleIndex * RGB_COMPONENT_COUNT + 2]
-      : source.field.values[sampleIndex];
+      : decodePointCloudChannelValue(
+          source.field.encoding,
+          source.field.values[sampleIndex],
+        );
   if (!Number.isFinite(value)) {
     return NEUTRAL_GPU_POINT_COLOR;
   }

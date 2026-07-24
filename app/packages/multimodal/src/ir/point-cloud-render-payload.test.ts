@@ -4,6 +4,7 @@ import {
   buildPointCloudRenderPayload,
   MAX_POINT_CLOUD_RENDER_POINTS,
 } from "./point-cloud-render-payload";
+import { POINT_CLOUD_RGB_ENCODING } from "./point-cloud-channel-encoding";
 
 describe("buildPointCloudRenderPayload", () => {
   it("aligns deterministic finite samples, colors, scalar values, and statistics", () => {
@@ -45,8 +46,9 @@ describe("buildPointCloudRenderPayload", () => {
     expect(Array.from(payload.positions.slice(0, 9))).toEqual([
       0, 1, 2, 3, 4, 5, 6, 7, 8,
     ]);
-    expect(Array.from(payload.colors?.slice(0, 9) ?? [])).toEqual([
-      1, 0, 0, 0, 0, 1, 0.25, 0.5, 0.75,
+    expect(payload.rgb?.encoding).toEqual(POINT_CLOUD_RGB_ENCODING);
+    expect(Array.from(payload.rgb?.values.slice(0, 9) ?? [])).toEqual([
+      255, 0, 0, 0, 0, 255, 64, 128, 191,
     ]);
     expect(Array.from(payload.sourceIndices.slice(0, 3))).toEqual([0, 2, 3]);
     expect(
@@ -70,7 +72,8 @@ describe("buildPointCloudRenderPayload", () => {
 
     // Capacity padding is inert; sampledPointCount is the only drawn prefix.
     expect(payload.positions).toHaveLength(payload.capacity * 3);
-    expect(payload.colors).toHaveLength(payload.capacity * 3);
+    expect(payload.rgb?.values).toHaveLength(payload.capacity * 3);
+    expect(payload.positions).toBeInstanceOf(Float32Array);
     expect(payload.scalarFields[0].values).toHaveLength(payload.capacity);
     expect(payload.sourceIndices).toHaveLength(payload.capacity);
     expect(Array.from(payload.positions.slice(9, 12))).toEqual([0, 0, 0]);
@@ -187,6 +190,6 @@ describe("buildPointCloudRenderPayload", () => {
       positions: Float32Array.from([0, 0, 0, 1, 1, 1]),
     });
 
-    expect(payload.colors).toBeUndefined();
+    expect(payload.rgb).toBeUndefined();
   });
 });

@@ -7,6 +7,7 @@ import {
   type PointCloudChannelProjectionRequest,
 } from "../../../../decoders";
 import type { PointCloudRenderChannelPayload } from "../../../../ir";
+import { POINT_CLOUD_FLOAT32_SCALAR_ENCODING } from "../../../../ir";
 import type { McapIndexedReaderLike } from "../../reader";
 import { MCAP_ACTIVE_TIMELINE } from "../../contracts";
 import { resolveMcapTimelineStrategy } from "../timeline";
@@ -24,6 +25,7 @@ describe("readMcapPointCloudChannel", () => {
         kind: "scalar",
         samplePlanKey: request.samplePlanKey,
         scalarField: {
+          encoding: POINT_CLOUD_FLOAT32_SCALAR_ENCODING,
           finiteValueCount: 2,
           name: request.activeColorBy,
           range: { max: 8, min: 7 },

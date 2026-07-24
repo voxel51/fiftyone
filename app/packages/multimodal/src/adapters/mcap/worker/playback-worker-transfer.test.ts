@@ -21,6 +21,47 @@ describe("MCAP playback worker transfer collection", () => {
     ]);
   });
 
+  it("collects native-width point-cloud channel replacements", () => {
+    const rgb = new Uint8Array([255, 128, 0]);
+    const scalar = new Uint16Array([1_000, 65_000]);
+
+    expect(
+      transferablesForMcapResult({
+        kind: "rgb",
+        rgb: {
+          encoding: {
+            componentCount: 3,
+            invalidValue: null,
+            origin: 0,
+            scale: 1 / 255,
+            storage: "uint8",
+          },
+          values: rgb,
+        },
+        samplePlanKey: "rgb-plan",
+      }),
+    ).toEqual([rgb.buffer]);
+    expect(
+      transferablesForMcapResult({
+        kind: "scalar",
+        samplePlanKey: "scalar-plan",
+        scalarField: {
+          encoding: {
+            componentCount: 1,
+            invalidValue: null,
+            origin: 0,
+            scale: 1,
+            storage: "uint16",
+          },
+          finiteValueCount: 2,
+          name: "ring",
+          range: { max: 65_000, min: 1_000 },
+          values: scalar,
+        },
+      }),
+    ).toEqual([scalar.buffer]);
+  });
+
   it("keeps timeline ranges cloneable without transferables", () => {
     expect(transferablesForMcapResult(createTimelineRange())).toEqual([]);
   });

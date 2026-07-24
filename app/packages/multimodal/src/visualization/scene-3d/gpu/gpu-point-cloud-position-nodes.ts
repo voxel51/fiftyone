@@ -65,14 +65,3 @@ export function gpuPointCloudPositionNode(
     values.element(offset.add(2)),
   );
 }
-
-/** Reads one scalar channel from the same canonical sample index. */
-export function gpuPointCloudScalarNode(
-  attribute: THREE.BufferAttribute,
-  sampleIndex: GpuPointCloudNode,
-): TSL.Node {
-  return pointCloudTsl
-    .storage(attribute, "float", attribute.count)
-    .toReadOnly()
-    .element(sampleIndex);
-}
