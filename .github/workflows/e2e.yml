@@ -503,8 +503,10 @@ jobs:
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: burn-in-results.json
         run: |
+          # always cleared: a missing blob report must not re-upload the
+          # already-uploaded shard report under the burn-in name
+          rm -rf playwright-report
           if ls burn-in-blob-report/*.zip >/dev/null 2>&1; then
-            rm -rf playwright-report
             yarn playwright merge-reports --reporter html,json ./burn-in-blob-report
           else
             echo "no burn-in blob report; the enforce step fails on the job result"
