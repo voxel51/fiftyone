@@ -2544,7 +2544,7 @@ __metadata:
     relay-compiler: "npm:^14.1.0"
     relay-runtime: "npm:^14.1.0"
     typedoc: "npm:^0.23.21"
-    typescript: "npm:^4.9.5"
+    typescript: "catalog:"
     typescript-plugin-css-modules: "npm:^5.0.2"
     vite: "catalog:"
     vite-plugin-eslint: "catalog:"
@@ -21965,9 +21965,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vite-plugin-externals@npm:^0.5.0":
-  version: 0.5.2
-  resolution: "vite-plugin-externals@npm:0.5.2"
+"vite-plugin-externals@npm:^0.6.2":
+  version: 0.6.2
+  resolution: "vite-plugin-externals@npm:0.6.2"
   dependencies:
     acorn: "npm:^8.4.0"
     es-module-lexer: "npm:^0.4.1"
@@ -21975,7 +21975,7 @@ __metadata:
     magic-string: "npm:^0.25.7"
   peerDependencies:
     vite: ">=2.0.0"
-  checksum: 10/22f7c3d6b8af6cd75b98ee530eb1ab62e6b2faa6b8398f643eeefbcf555ccca1d90f3e954953f1d4a10494dacf16c55d5385baa122fb746929ca20d7dd1eb30a
+  checksum: 10/fcb57e74f51cbff61ae0111e7aa41d8cbc3fbb57ef763ff47be7d0985303df28598de1f8067f662c64c20fd15e9b2ddea474983635fe500c5bb3490149efa3a1
   languageName: node
   linkType: hard
 
