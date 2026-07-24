@@ -48,6 +48,17 @@ export const isWholeSampleReset = (change: LabelChange): boolean =>
   change.kind === "reset" && change.ref.path === "";
 
 /**
+ * A custom persistence transport for one store's JSON-patch deltas.
+ *
+ * Registered against the store's sample id via
+ * `engine.registerPersistenceAdapter`; persistence routes the store's patch
+ * through it instead of the standard modal-sample PATCH. Resolves `true` on
+ * success (the caller then reconciles the deltas as persisted) and `false`
+ * on failure; version conflicts throw, like the standard transport.
+ */
+export type PersistenceAdapter = (deltas: JSONDeltas) => Promise<boolean>;
+
+/**
  * The committed source of truth for one (sample, shape-region).
  *
  * Resolution order: transient wins, else source, else undefined.

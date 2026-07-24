@@ -464,6 +464,24 @@ describe("engine persistence aggregation", () => {
   });
 });
 
+describe("engine persistence adapters", () => {
+  it("routes by sample id, unregisters cleanly, rejects duplicates", () => {
+    const { engine } = makeEngine("s1");
+    const adapter = async () => true;
+
+    const unregister = engine.registerPersistenceAdapter("s1", adapter);
+    expect(engine.getPersistenceAdapter("s1")).toBe(adapter);
+    expect(engine.getPersistenceAdapter("s2")).toBeUndefined();
+
+    expect(() =>
+      engine.registerPersistenceAdapter("s1", async () => false),
+    ).toThrow(/registered/);
+
+    unregister();
+    expect(engine.getPersistenceAdapter("s1")).toBeUndefined();
+  });
+});
+
 describe("engine display channel", () => {
   it("notifies once per transaction with a single version bump", () => {
     const { engine } = makeEngine();

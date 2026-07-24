@@ -9,6 +9,7 @@ import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
 import { useRegisterVideoSegmentBitmap } from "../hooks/useRegisterVideoSegmentBitmap";
 import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameClock";
+import { useDynamicGroupPersistence } from "../hooks/useDynamicGroupPersistence";
 import { useSyncAnnotationVideoStore } from "../hooks/useSyncAnnotationVideoStore";
 import { useVideoLighterEngineBridge } from "../hooks/useVideoLighterEngineBridge";
 import { useFollowAnchorFrame } from "../state/useVideoInteraction";
@@ -132,6 +133,13 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   const labelsMode = useLabelsMode();
   const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
   const prerequisites = useAnnotatePrerequisites(sample);
+
+  // ImaVid write path: frame edits fan out to the group's member samples
+  // under one group version token. Inert for native video.
+  useDynamicGroupPersistence({
+    enabled: isImageDynamicGroupVideo,
+    frameCount: prerequisites.frameCount,
+  });
 
   // Measure the surface so the timeline body caps at a fraction of it: past the
   // cap the drawer scrolls internally instead of growing into the media area.
