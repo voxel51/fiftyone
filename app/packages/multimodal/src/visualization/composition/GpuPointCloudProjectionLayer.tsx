@@ -28,6 +28,11 @@ import {
   type GpuPointCloudColorUniforms,
 } from "../scene-3d/gpu/gpu-point-cloud-color-nodes";
 import type { ResolvedGpuPointCloudColor } from "../scene-3d/gpu/gpu-point-cloud-color";
+import {
+  gpuPointCloudChannelValueNode,
+  gpuPointCloudRgbNode,
+} from "../scene-3d/gpu/gpu-point-cloud-channel-nodes";
+import { gpuPointCloudSampleIndexNode } from "../scene-3d/gpu/gpu-point-cloud-position-nodes";
 import { DEFAULT_POINT_SIZE } from "../scene-3d/PointCloudSceneLayer";
 
 const CULLED_POSITION = 1e9;
@@ -35,6 +40,10 @@ const MIN_VIEW_SCALE = 1e-6;
 const PROJECTION_Z = 0.1;
 const DEFAULT_RENDER_ORDER = 10;
 const NOOP_RAYCAST = () => undefined;
+const EMPTY_PROJECTION_CHANNEL_ATTRIBUTES = new Map<
+  string,
+  THREE.InstancedBufferAttribute
+>();
 
 interface ProjectionNode {
   readonly w: ProjectionNode;
@@ -301,6 +310,7 @@ export function createGpuPointCloudProjectionMaterial({
     resource.positionAttribute,
     "vec3",
   ) as unknown as ProjectionNode;
+  const sampleIndex = gpuPointCloudSampleIndexNode();
   // Direct vertex projection avoids a per-camera compute pass and UV buffer.
   // The shared camera-model graph returns calibration-pixel coordinates.
   const projected = createGpuCameraProjectionNodes(
@@ -333,12 +343,21 @@ export function createGpuPointCloudProjectionMaterial({
     projectionTsl.vec2(1, 1),
     projectionTsl.vec2(0, 0),
   );
+  const rgbNode = resource.colorChannel
+    ? gpuPointCloudRgbNode(resource.colorChannel, sampleIndex)
+    : null;
+  const scalarNodes = new Map<string, TSL.Node>();
+  for (const [name, channel] of resource.scalarChannels) {
+    scalarNodes.set(name, gpuPointCloudChannelValueNode(channel, sampleIndex));
+  }
   const colorNode = createGpuPointCloudColorNode(
     color,
     {
-      color: resource.colorAttribute,
+      color: null,
+      colorNode: rgbNode,
       positionNode: sensorPosition as unknown as TSL.Node,
-      scalar: resource.scalarAttributes,
+      scalar: EMPTY_PROJECTION_CHANNEL_ATTRIBUTES,
+      scalarNodes,
     },
     colorUniforms,
   );

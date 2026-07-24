@@ -1,6 +1,11 @@
 import * as THREE from "three";
 
 import type { PointCloudRenderPayload } from "../../ir";
+import {
+  createGpuPointCloudChannelResource,
+  updateGpuPointCloudChannelResource,
+  type GpuPointCloudChannelResource,
+} from "../scene-3d/gpu/gpu-point-cloud-channel-nodes";
 
 const POINT_COMPONENT_COUNT = 3;
 
@@ -18,14 +23,14 @@ export interface GpuPointCloudProjectionResourceInput {
 
 /** Grow-only GPU attributes shared by every view of one point-cloud topic. */
 export interface GpuPointCloudProjectionResource {
-  colorAttribute: THREE.InstancedBufferAttribute | null;
+  colorChannel: GpuPointCloudChannelResource | null;
   /** Immutable frame identity currently resident in the reusable buffers. */
   contentKey: string;
   /** Dedicated sprite quad whose disposal releases node-owned GPU buffers. */
   readonly geometry: THREE.PlaneGeometry;
   readonly positionAttribute: THREE.InstancedBufferAttribute;
   sampledPointCount: number;
-  readonly scalarAttributes: Map<string, THREE.InstancedBufferAttribute>;
+  readonly scalarChannels: Map<string, GpuPointCloudChannelResource>;
   readonly sourceIndexAttribute: THREE.InstancedBufferAttribute;
   /** CPU mapping retained for O(1) hover payload reconstruction. */
   sourceIndices: Uint32Array;
@@ -180,13 +185,13 @@ function createResource(
     payload.positions,
     POINT_COMPONENT_COUNT,
   );
-  const colorAttribute = payload.colors
-    ? new THREE.InstancedBufferAttribute(payload.colors, POINT_COMPONENT_COUNT)
+  const colorChannel = payload.rgb
+    ? createGpuPointCloudChannelResource(payload.rgb)
     : null;
-  const scalarAttributes = new Map(
+  const scalarChannels = new Map(
     payload.scalarFields.map((field) => [
       field.name,
-      new THREE.InstancedBufferAttribute(field.values, 1),
+      createGpuPointCloudChannelResource(field),
     ]),
   );
   const sourceIndexAttribute = new THREE.InstancedBufferAttribute(
@@ -197,14 +202,16 @@ function createResource(
   // WebGPU backend. The quad itself is merely the instanced point primitive.
   const geometry = new THREE.PlaneGeometry(1, 1);
   geometry.setAttribute("projectionPosition", positionAttribute);
-  if (colorAttribute) geometry.setAttribute("projectionColor", colorAttribute);
-  attachScalarAttributes(geometry, scalarAttributes);
+  if (colorChannel) {
+    geometry.setAttribute("projectionColor", colorChannel.attribute);
+  }
+  attachScalarAttributes(geometry, scalarChannels);
   geometry.setAttribute("projectionSourceIndex", sourceIndexAttribute);
 
   totalResourceAllocations += 1;
   return {
     capacity: payload.capacity,
-    colorAttribute,
+    colorChannel,
     contentKey,
     disposed: false,
     frameUpdateCount: 0,
@@ -213,7 +220,7 @@ function createResource(
     retired: false,
     retainCount: 0,
     sampledPointCount: normalizedSampleCount(payload),
-    scalarAttributes,
+    scalarChannels,
     sourceIndexAttribute,
     sourceIndices: payload.sourceIndices,
     streamKey,
@@ -232,55 +239,65 @@ function updateResource(
   replaceAttributeArray(resource.sourceIndexAttribute, payload.sourceIndices);
   resource.sourceIndices = payload.sourceIndices;
 
-  if (payload.colors) {
-    if (!resource.colorAttribute) {
-      resource.colorAttribute = new THREE.InstancedBufferAttribute(
-        payload.colors,
-        POINT_COMPONENT_COUNT,
-      );
+  if (payload.rgb) {
+    if (!resource.colorChannel) {
+      resource.colorChannel = createGpuPointCloudChannelResource(payload.rgb);
       resource.geometry.setAttribute(
         "projectionColor",
-        resource.colorAttribute,
+        resource.colorChannel.attribute,
       );
     } else {
-      replaceAttributeArray(resource.colorAttribute, payload.colors);
+      const previous = resource.colorChannel;
+      resource.colorChannel = updateGpuPointCloudChannelResource(
+        resource.colorChannel,
+        payload.rgb,
+      );
+      if (resource.colorChannel !== previous) {
+        resource.geometry.setAttribute(
+          "projectionColor",
+          resource.colorChannel.attribute,
+        );
+      }
     }
-  } else if (resource.colorAttribute) {
+  } else if (resource.colorChannel) {
     resource.geometry.deleteAttribute("projectionColor");
-    resource.colorAttribute = null;
+    resource.colorChannel = null;
   }
 
   // Scalar attribute slot numbers are derived from Map iteration order. Clear
   // every old slot before reattaching so removed/reordered fields cannot leave
   // a stale geometry binding at projectionScalarN.
-  const previousScalarCount = resource.scalarAttributes.size;
+  const previousScalarCount = resource.scalarChannels.size;
   const currentScalarNames = new Set(
     payload.scalarFields.map((field) => field.name),
   );
-  for (const name of resource.scalarAttributes.keys()) {
+  for (const name of resource.scalarChannels.keys()) {
     if (!currentScalarNames.has(name)) {
-      resource.scalarAttributes.delete(name);
+      resource.scalarChannels.delete(name);
     }
   }
   for (const field of payload.scalarFields) {
-    const attribute = resource.scalarAttributes.get(field.name);
-    if (attribute) {
-      replaceAttributeArray(attribute, field.values);
-    } else {
-      resource.scalarAttributes.set(
+    const channel = resource.scalarChannels.get(field.name);
+    if (channel) {
+      resource.scalarChannels.set(
         field.name,
-        new THREE.InstancedBufferAttribute(field.values, 1),
+        updateGpuPointCloudChannelResource(channel, field),
+      );
+    } else {
+      resource.scalarChannels.set(
+        field.name,
+        createGpuPointCloudChannelResource(field),
       );
     }
   }
   for (
     let index = 0;
-    index < Math.max(previousScalarCount, resource.scalarAttributes.size);
+    index < Math.max(previousScalarCount, resource.scalarChannels.size);
     index++
   ) {
     resource.geometry.deleteAttribute(`projectionScalar${index}`);
   }
-  attachScalarAttributes(resource.geometry, resource.scalarAttributes);
+  attachScalarAttributes(resource.geometry, resource.scalarChannels);
 
   resource.contentKey = contentKey;
   resource.sampledPointCount = normalizedSampleCount(payload);
@@ -300,11 +317,11 @@ function replaceAttributeArray(
 
 function attachScalarAttributes(
   geometry: THREE.BufferGeometry,
-  attributes: ReadonlyMap<string, THREE.InstancedBufferAttribute>,
+  channels: ReadonlyMap<string, GpuPointCloudChannelResource>,
 ): void {
   let index = 0;
-  for (const attribute of attributes.values()) {
-    geometry.setAttribute(`projectionScalar${index++}`, attribute);
+  for (const channel of channels.values()) {
+    geometry.setAttribute(`projectionScalar${index++}`, channel.attribute);
   }
 }
 

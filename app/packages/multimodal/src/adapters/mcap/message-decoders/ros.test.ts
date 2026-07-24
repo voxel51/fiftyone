@@ -622,11 +622,7 @@ describe("ROS MCAP decoders", () => {
     expect(Array.from(output.visualization.positions)).toEqual([
       1, 2, 3, 9, 10, 11, 4, 5, 6,
     ]);
-    expect(output.visualization.scalarFields?.[0]?.name).toBe("intensity");
-    expect(
-      Array.from(output.visualization.scalarFields?.[0]?.values ?? []),
-    ).toEqual([10, 40, 20]);
-    expect(output.visualization.scalarFields).toHaveLength(1);
+    expect(output.visualization.scalarFields).toBeUndefined();
     const renderPayload = output.visualization.renderPayload;
     if (!renderPayload) {
       throw new Error("Expected point cloud render payload");
@@ -646,11 +642,9 @@ describe("ROS MCAP decoders", () => {
     expect(output.visualization.positions.buffer).toBe(
       renderPayload.positions.buffer,
     );
-    expect(output.visualization.scalarFields?.[0]?.values.buffer).toBe(
-      renderPayload.scalarFields[0].values.buffer,
-    );
     expect(renderPayload.scalarFields).toEqual([
       expect.objectContaining({
+        encoding: expect.objectContaining({ storage: "float32" }),
         finiteValueCount: 3,
         name: "intensity",
         range: { max: 40, min: 10 },
@@ -683,6 +677,13 @@ describe("ROS MCAP decoders", () => {
     }
     expect(projected.samplePlanKey).toBe(renderPayload.samplePlanKey);
     expect(projected.scalarField).toMatchObject({
+      encoding: {
+        componentCount: 1,
+        invalidValue: null,
+        origin: 0,
+        scale: 1,
+        storage: "uint16",
+      },
       finiteValueCount: 3,
       name: "ring",
       range: { max: 65_535, min: 50_000 },
@@ -690,6 +691,24 @@ describe("ROS MCAP decoders", () => {
     expect(Array.from(projected.scalarField.values.slice(0, 3))).toEqual([
       50_000, 65_535, 60_000,
     ]);
+    expect(projected.scalarField.values).toBeInstanceOf(Uint16Array);
+
+    const fallback = decoder.projectPointCloudChannel?.(bytes, context, {
+      activeColorBy: "ring",
+      capacity: 2,
+      sampledPointCount: 2,
+      samplePlanKey: "ambiguous-plan",
+      sourceIndices: Uint32Array.of(0, 99),
+    });
+    if (fallback?.kind !== "scalar") {
+      throw new Error("Expected fallback ring channel");
+    }
+    expect(fallback.scalarField.encoding).toMatchObject({
+      storage: "float32",
+    });
+    expect(fallback.scalarField.values).toBeInstanceOf(Float32Array);
+    expect(fallback.scalarField.values[0]).toBe(50_000);
+    expect(fallback.scalarField.values[1]).toBeNaN();
     expect(output.attributes).toMatchObject({
       frameId: "lidar",
       height: 2,
@@ -781,10 +800,12 @@ describe("ROS MCAP decoders", () => {
     ]);
     const range = payload.scalarFields.find((field) => field.name === "range");
     expect(range).toMatchObject({
+      encoding: { storage: "uint32" },
       finiteValueCount: 3,
       range: { max: 200, min: 50 },
     });
     expect(Array.from(range?.values.slice(0, 3) ?? [])).toEqual([100, 200, 50]);
+    expect(range?.values).toBeInstanceOf(Uint32Array);
   });
 
   it("degrades ros1 PointCloud2 big-endian data instead of throwing", () => {

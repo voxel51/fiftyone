@@ -5,6 +5,10 @@ import type {
   PointCloudRenderScalarField,
   PointCloudScalarField,
 } from "./frames";
+import {
+  POINT_CLOUD_FLOAT32_SCALAR_ENCODING,
+  POINT_CLOUD_RGB_ENCODING,
+} from "./point-cloud-channel-encoding";
 
 /** Maximum number of finite points retained in a decoder render payload. */
 export const MAX_POINT_CLOUD_RENDER_POINTS = 150_000;
@@ -82,11 +86,12 @@ export function buildPointCloudRenderPayload({
   const sampledPositions = new Float32Array(capacity * POINT_COMPONENT_COUNT);
   const hasAlignedColors =
     colors !== undefined && colors.length >= pointCount * COLOR_COMPONENT_COUNT;
-  const sampledColors = hasAlignedColors
-    ? new Float32Array(capacity * COLOR_COMPONENT_COUNT)
+  const sampledRgbValues = hasAlignedColors
+    ? new Uint8Array(capacity * COLOR_COMPONENT_COUNT)
     : undefined;
   const sampledScalarFields: PointCloudRenderScalarField[] = scalarStats.map(
     ({ finiteValueCount, max, min, name }) => ({
+      encoding: POINT_CLOUD_FLOAT32_SCALAR_ENCODING,
       finiteValueCount,
       name,
       range: finiteValueCount > 0 ? { max, min } : null,
@@ -99,7 +104,7 @@ export function buildPointCloudRenderPayload({
       colors,
       pointCount,
       positions,
-      sampledColors,
+      sampledRgbValues,
       sampledPointCount,
       sampledPositions,
       sampledScalarFields,
@@ -119,11 +124,18 @@ export function buildPointCloudRenderPayload({
     availableScalarFields: scalarFields.map((field) => field.name),
     bounds,
     capacity,
-    ...(sampledColors ? { colors: sampledColors } : {}),
     finitePointCount,
     hasRgb: hasAlignedColors,
     heightRange,
     positions: sampledPositions,
+    ...(sampledRgbValues
+      ? {
+          rgb: {
+            encoding: POINT_CLOUD_RGB_ENCODING,
+            values: sampledRgbValues,
+          },
+        }
+      : {}),
     sampledPointCount,
     samplePlanKey: pointCloudSamplePlanKey(pointCount, sampledPointCount),
     scalarFields: sampledScalarFields,
@@ -147,7 +159,7 @@ function sampleFinitePoints({
   colors,
   pointCount,
   positions,
-  sampledColors,
+  sampledRgbValues,
   sampledPointCount,
   sampledPositions,
   sampledScalarFields,
@@ -157,7 +169,7 @@ function sampleFinitePoints({
   readonly colors?: Float32Array;
   readonly pointCount: number;
   readonly positions: Float32Array;
-  readonly sampledColors?: Float32Array;
+  readonly sampledRgbValues?: Uint8Array;
   readonly sampledPointCount: number;
   readonly sampledPositions: Float32Array;
   readonly sampledScalarFields: readonly PointCloudRenderScalarField[];
@@ -191,10 +203,16 @@ function sampleFinitePoints({
     sampledPositions[targetOffset] = x;
     sampledPositions[targetOffset + 1] = y;
     sampledPositions[targetOffset + 2] = z;
-    if (sampledColors && colors) {
-      sampledColors[targetOffset] = colors[sourceOffset];
-      sampledColors[targetOffset + 1] = colors[sourceOffset + 1];
-      sampledColors[targetOffset + 2] = colors[sourceOffset + 2];
+    if (sampledRgbValues && colors) {
+      sampledRgbValues[targetOffset] = normalizedColorByte(
+        colors[sourceOffset],
+      );
+      sampledRgbValues[targetOffset + 1] = normalizedColorByte(
+        colors[sourceOffset + 1],
+      );
+      sampledRgbValues[targetOffset + 2] = normalizedColorByte(
+        colors[sourceOffset + 2],
+      );
     }
     for (let fieldIndex = 0; fieldIndex < scalarFields.length; fieldIndex++) {
       const sourceValues = scalarFields[fieldIndex].values;
@@ -206,6 +224,13 @@ function sampleFinitePoints({
     sourceIndices[sampleIndex] = pointIndex;
     sampleIndex++;
   }
+}
+
+function normalizedColorByte(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.round(Math.max(0, Math.min(1, value)) * 255);
 }
 
 export function pointCloudRenderCapacity(sampledPointCount: number): number {

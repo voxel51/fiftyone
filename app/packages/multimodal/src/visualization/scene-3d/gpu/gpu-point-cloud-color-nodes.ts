@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import * as TSL from "three/tsl";
 
+import { pointCloudChannelEncodingKey } from "../../../ir";
 import {
   NEUTRAL_GPU_POINT_COLOR,
   type ResolvedGpuPointCloudColor,
@@ -74,9 +75,16 @@ export function gpuPointCloudColorNodeKey(
   // Only choices that change storage access or LUT sampling belong in this
   // key. Per-frame ranges and uniform values update existing uniforms.
   const source = color.source;
-  if (source.kind === "uniform" || source.kind === "rgb") return source.kind;
+  if (source.kind === "uniform") return source.kind;
+  if (source.kind === "rgb") {
+    return `${source.kind}:${pointCloudChannelEncodingKey(source.rgb.encoding)}`;
+  }
   const field = source.kind === "height" ? "height" : source.field.name;
-  return `${source.kind}:${field}:${pointCloudColormapKey(color.colormap)}`;
+  const encoding =
+    source.kind === "scalar"
+      ? `:${pointCloudChannelEncodingKey(source.field.encoding)}`
+      : "";
+  return `${source.kind}:${field}${encoding}:${pointCloudColormapKey(color.colormap)}`;
 }
 
 /** Creates and initializes uniforms for a resolved point-cloud color policy. */

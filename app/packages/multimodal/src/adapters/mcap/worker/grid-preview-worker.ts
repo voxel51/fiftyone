@@ -133,7 +133,7 @@ function transferablesForResponse(
       frame.pointCloud.colors,
       ...(frame.pointCloud.scalarFields?.map((field) => field.values) ?? []),
       frame.pointCloud.renderPayload?.positions,
-      frame.pointCloud.renderPayload?.colors,
+      frame.pointCloud.renderPayload?.rgb?.values,
       frame.pointCloud.renderPayload?.sourceIndices,
       ...(frame.pointCloud.renderPayload?.scalarFields.map(
         (field) => field.values,

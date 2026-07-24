@@ -2,13 +2,25 @@ import * as THREE from "three";
 import * as TSL from "three/tsl";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { buildPointCloudRenderPayload } from "../../../ir";
-import { createGpuPointCloudColorNode } from "./gpu-point-cloud-color-nodes";
+import {
+  buildPointCloudRenderPayload,
+  pointCloudNativeIntegerScalarEncoding,
+} from "../../../ir";
+import {
+  createGpuPointCloudChannelResource,
+  gpuPointCloudChannelValueNode,
+  gpuPointCloudRgbNode,
+} from "./gpu-point-cloud-channel-nodes";
+import {
+  createGpuPointCloudColorNode,
+  gpuPointCloudColorNodeKey,
+} from "./gpu-point-cloud-color-nodes";
 import { resolveGpuPointCloudColor } from "./gpu-point-cloud-color";
 import {
   gpuPointCloudColormapTextureStats,
   releaseGpuPointCloudColormapTextures,
 } from "./gpu-point-cloud-colormap-texture";
+import { gpuPointCloudSampleIndexNode } from "./gpu-point-cloud-position-nodes";
 
 afterEach(() => releaseGpuPointCloudColormapTextures());
 
@@ -79,6 +91,41 @@ describe("GPU pointcloud color nodes", () => {
       ),
     ).toBe(colorNode);
   });
+
+  it("includes scalar encodings in shader topology keys", () => {
+    const base = buildPointCloudRenderPayload({
+      positions: new Float32Array([0, 0, 1]),
+    });
+    const encodedPayload = (storage: "uint8" | "uint16") => {
+      const values =
+        storage === "uint8"
+          ? new Uint8Array(base.capacity)
+          : new Uint16Array(base.capacity);
+      values[0] = 42;
+      return {
+        ...base,
+        scalarFields: [
+          {
+            encoding: pointCloudNativeIntegerScalarEncoding(storage),
+            finiteValueCount: 1,
+            name: "reflectivity",
+            range: { max: 42, min: 0 },
+            values,
+          },
+        ],
+      };
+    };
+    const uint8 = resolveGpuPointCloudColor(encodedPayload("uint8"), {
+      colorBy: "reflectivity",
+    });
+    const uint16 = resolveGpuPointCloudColor(encodedPayload("uint16"), {
+      colorBy: "reflectivity",
+    });
+
+    expect(gpuPointCloudColorNodeKey(uint8)).not.toBe(
+      gpuPointCloudColorNodeKey(uint16),
+    );
+  });
 });
 
 function nodeConstantValues(node: TSL.Node): unknown[] {
@@ -97,15 +144,24 @@ function attributesForPayload(
   payload: ReturnType<typeof buildPointCloudRenderPayload>,
 ) {
   const position = new THREE.InstancedBufferAttribute(payload.positions, 3);
+  const sampleIndex = gpuPointCloudSampleIndexNode();
+  const colorChannel = payload.rgb
+    ? createGpuPointCloudChannelResource(payload.rgb)
+    : null;
   return {
-    color: payload.colors
-      ? new THREE.InstancedBufferAttribute(payload.colors, 3)
+    color: null,
+    colorNode: colorChannel
+      ? gpuPointCloudRgbNode(colorChannel, sampleIndex)
       : null,
     positionNode: TSL.instancedBufferAttribute(position, "vec3"),
-    scalar: new Map(
+    scalar: new Map<string, THREE.InstancedBufferAttribute>(),
+    scalarNodes: new Map(
       payload.scalarFields.map((field) => [
         field.name,
-        new THREE.InstancedBufferAttribute(field.values, 1),
+        gpuPointCloudChannelValueNode(
+          createGpuPointCloudChannelResource(field),
+          sampleIndex,
+        ),
       ]),
     ),
   };

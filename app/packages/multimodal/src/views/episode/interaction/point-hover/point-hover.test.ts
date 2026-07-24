@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { PointCloudVisualization } from "../../../../ir";
+import { pointCloudNativeIntegerScalarEncoding } from "../../../../ir";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import { hoveredPointForFrame } from "./point-hover";
 
@@ -47,7 +48,7 @@ describe("hoveredPointForFrame", () => {
 
   it("reads render-native hover data by sampled identity", () => {
     const positions = Float32Array.from([1, 2, 3, 4, 5, 6]);
-    const intensity = Float32Array.from([0.25, 0.75]);
+    const intensity = Uint16Array.from([25, 75]);
     const frame = pointCloudFrame({
       positions,
       renderPayload: {
@@ -59,20 +60,26 @@ describe("hoveredPointForFrame", () => {
         sampledPointCount: 2,
         scalarFields: [
           {
+            encoding: pointCloudNativeIntegerScalarEncoding("uint16"),
             finiteValueCount: 2,
             name: "intensity",
-            range: { max: 0.75, min: 0.25 },
+            range: { max: 75, min: 25 },
             values: intensity,
           },
         ],
         sourceIndices: Uint32Array.from([2, 10]),
         sourcePointCount: 11,
       },
-      scalarFields: [{ name: "intensity", values: intensity }],
+      scalarFields: [
+        {
+          name: "intensity",
+          values: Float32Array.from([0.25, 0.75]),
+        },
+      ],
     });
 
     expect(hoveredPointForFrame("/lidar", frame, 10, 1)).toEqual({
-      fields: { intensity: 0.75 },
+      fields: { intensity: 75 },
       frameId: "LIDAR_TOP",
       kind: "point",
       pointIndex: 10,

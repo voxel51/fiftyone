@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { buildPointCloudRenderPayload } from "../../ir";
+import {
+  buildPointCloudRenderPayload,
+  pointCloudNativeIntegerScalarEncoding,
+} from "../../ir";
 import {
   getGpuPointCloudProjectionResource,
   GPU_PROJECTION_RESOURCE_RETENTION_CAP,
@@ -37,16 +40,20 @@ describe("GPU pointcloud projection resources", () => {
 
     expect(second).toBe(first);
     expect(first.positionAttribute.array).toBe(payload.positions);
-    expect(first.colorAttribute?.array).toBe(payload.colors);
+    expect(first.colorChannel?.values).toBe(payload.rgb?.values);
+    expect(first.colorChannel?.values).toBeInstanceOf(Uint8Array);
+    expect(first.colorChannel?.attribute.array.byteLength).toBe(
+      payload.rgb?.values.byteLength,
+    );
     expect(first.sourceIndexAttribute.array).toBe(payload.sourceIndices);
-    expect(first.scalarAttributes.get("intensity")?.array).toBe(
+    expect(first.scalarChannels.get("intensity")?.values).toBe(
       payload.scalarFields[0].values,
     );
     expect(first.geometry.getAttribute("projectionPosition")).toBe(
       first.positionAttribute,
     );
     expect(first.geometry.getAttribute("projectionScalar0")).toBe(
-      first.scalarAttributes.get("intensity"),
+      first.scalarChannels.get("intensity")?.attribute,
     );
     expect(first.sourceIndices).toBe(payload.sourceIndices);
     expect(first.sampledPointCount).toBe(2);
@@ -103,9 +110,9 @@ describe("GPU pointcloud projection resources", () => {
     });
 
     expect(updated).toBe(resource);
-    expect(resource.colorAttribute).toBeNull();
+    expect(resource.colorChannel).toBeNull();
     expect(resource.geometry.getAttribute("projectionColor")).toBeUndefined();
-    expect(resource.scalarAttributes.size).toBe(0);
+    expect(resource.scalarChannels.size).toBe(0);
     expect(resource.geometry.getAttribute("projectionScalar0")).toBeUndefined();
   });
 
@@ -121,6 +128,38 @@ describe("GPU pointcloud projection resources", () => {
 
     expect(payload.capacity).toBeGreaterThan(payload.sampledPointCount);
     expect(resource.sampledPointCount).toBe(1);
+  });
+
+  it("retains native-width integer scalar storage", () => {
+    const payload = buildPointCloudRenderPayload({
+      positions: new Float32Array([1, 2, 3, 4, 5, 6]),
+    });
+    const values = new Uint16Array(payload.capacity);
+    values.set([1_000, 65_000]);
+    const encodedPayload = {
+      ...payload,
+      scalarFields: [
+        {
+          encoding: pointCloudNativeIntegerScalarEncoding("uint16"),
+          finiteValueCount: 2,
+          name: "intensity",
+          range: { max: 65_000, min: 1_000 },
+          values,
+        },
+      ],
+    };
+
+    const resource = getGpuPointCloudProjectionResource({
+      contentKey: "native-scalar",
+      payload: encodedPayload,
+      streamKey: "native-scalar",
+    });
+    const channel = resource.scalarChannels.get("intensity");
+
+    expect(channel?.values).toBe(values);
+    expect(channel?.values).toBeInstanceOf(Uint16Array);
+    expect(channel?.attribute.array.byteLength).toBe(values.byteLength);
+    expect(resource.positionAttribute.array).toBeInstanceOf(Float32Array);
   });
 
   it("bounds unpinned frames while preserving active resources", async () => {

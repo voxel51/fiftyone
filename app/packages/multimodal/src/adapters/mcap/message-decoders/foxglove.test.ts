@@ -681,20 +681,13 @@ describe("Foxglove decoders", () => {
     expect(Array.from(output.visualization.positions)).toEqual([
       1, 2, 3, 4, 5, 6,
     ]);
-    expectArrayCloseTo(Array.from(output.visualization.colors ?? []), [
-      1,
-      0,
-      0,
-      0,
-      128 / 255,
-      1,
-    ]);
+    expect(output.visualization.colors).toBeUndefined();
     expect(output.visualization.scalarFields).toBeUndefined();
     const renderPayload = output.visualization.renderPayload;
     if (!renderPayload) {
       throw new Error("Expected point cloud render payload");
     }
-    if (!renderPayload.colors) {
+    if (!renderPayload.rgb) {
       throw new Error("Expected sampled point cloud colors");
     }
     expect(renderPayload).toMatchObject({
@@ -711,23 +704,31 @@ describe("Foxglove decoders", () => {
       1, 2, 3, 4, 5, 6,
     ]);
     expect(Array.from(renderPayload.sourceIndices.slice(0, 2))).toEqual([0, 1]);
+    expect(renderPayload.rgb.encoding).toEqual({
+      componentCount: 3,
+      invalidValue: null,
+      origin: 0,
+      scale: 1 / 255,
+      storage: "uint8",
+    });
+    expect(renderPayload.rgb.values).toBeInstanceOf(Uint8Array);
+    expect(Array.from(renderPayload.rgb.values.slice(0, 6))).toEqual([
+      255, 0, 0, 0, 128, 255,
+    ]);
     expect(renderPayload.scalarFields).toEqual([]);
     expect(output.visualization.positions.buffer).toBe(
       renderPayload.positions.buffer,
     );
-    expect(output.visualization.colors?.buffer).toBe(
-      renderPayload.colors.buffer,
-    );
     expect(output.resourceHints?.transferables).toEqual(
       expect.arrayContaining([
         renderPayload.positions.buffer,
-        renderPayload.colors.buffer,
+        renderPayload.rgb.values.buffer,
         renderPayload.sourceIndices.buffer,
       ]),
     );
     expect(output.resourceHints?.sizeBytes).toBe(
       renderPayload.positions.byteLength +
-        renderPayload.colors.byteLength +
+        renderPayload.rgb.values.byteLength +
         renderPayload.sourceIndices.byteLength,
     );
 
@@ -747,12 +748,33 @@ describe("Foxglove decoders", () => {
     }
     expect(projected.samplePlanKey).toBe(renderPayload.samplePlanKey);
     expect(projected.scalarField).toMatchObject({
+      encoding: { storage: "float32" },
       finiteValueCount: 2,
       name: "rcs",
       range: { max: 20, min: 10 },
     });
     expect(Array.from(projected.scalarField.values.slice(0, 2))).toEqual([
       10, 20,
+    ]);
+
+    const projectedRgb = foxglovePointCloudDecoder.projectPointCloudChannel?.(
+      bytes,
+      context,
+      {
+        activeColorBy: "rgb",
+        capacity: renderPayload.capacity,
+        sampledPointCount: renderPayload.sampledPointCount,
+        samplePlanKey: renderPayload.samplePlanKey ?? "",
+        sourceIndices: renderPayload.sourceIndices,
+      },
+    );
+    if (projectedRgb?.kind !== "rgb") {
+      throw new Error("Expected projected RGB channel");
+    }
+    expect(projectedRgb.rgb.encoding).toEqual(renderPayload.rgb.encoding);
+    expect(projectedRgb.rgb.values).toBeInstanceOf(Uint8Array);
+    expect(Array.from(projectedRgb.rgb.values.slice(0, 6))).toEqual([
+      255, 0, 0, 0, 128, 255,
     ]);
   });
 
@@ -781,9 +803,18 @@ describe("Foxglove decoders", () => {
     expect(Array.from(output.visualization.positions)).toEqual([
       1, 2, 3, 4, 5, 6,
     ]);
-    expect(output.visualization.scalarFields?.[0]?.name).toBe("intensity");
+    expect(output.visualization.scalarFields).toBeUndefined();
+    expect(output.visualization.renderPayload?.scalarFields[0]).toMatchObject({
+      encoding: { storage: "float32" },
+      name: "intensity",
+    });
     expect(
-      Array.from(output.visualization.scalarFields?.[0]?.values ?? []),
+      Array.from(
+        output.visualization.renderPayload?.scalarFields[0].values.slice(
+          0,
+          2,
+        ) ?? [],
+      ),
     ).toEqual([0.5, 7.5]);
     expect(output.visualization.pointCount).toBe(2);
   });
@@ -819,11 +850,14 @@ describe("Foxglove decoders", () => {
     if (output.visualization?.kind !== VISUALIZATION_KIND.POINT_CLOUD) {
       throw new Error("Expected point cloud visualization");
     }
+    expect(output.visualization.scalarFields).toBeUndefined();
     expect(
-      output.visualization.scalarFields?.map((field) => field.name),
-    ).toEqual(["vx_comp"]);
-    expect(
-      Array.from(output.visualization.scalarFields?.[0]?.values ?? []),
+      Array.from(
+        output.visualization.renderPayload?.scalarFields[0].values.slice(
+          0,
+          2,
+        ) ?? [],
+      ),
     ).toEqual([-1.5, 2.25]);
     expect(output.visualization.renderPayload?.availableScalarFields).toEqual([
       "intensity",
@@ -860,8 +894,10 @@ describe("Foxglove decoders", () => {
     if (output.visualization?.kind !== VISUALIZATION_KIND.POINT_CLOUD) {
       throw new Error("Expected point cloud visualization");
     }
-    expect(output.visualization.scalarFields).toHaveLength(1);
-    expect(output.visualization.scalarFields?.[0]?.name).toBe("channel_15");
+    expect(output.visualization.scalarFields).toBeUndefined();
+    expect(output.visualization.renderPayload?.scalarFields[0]?.name).toBe(
+      "channel_15",
+    );
     expect(output.visualization.renderPayload?.availableScalarFields).toEqual(
       Array.from({ length: 16 }, (_, index) => `channel_${index}`),
     );

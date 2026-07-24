@@ -151,12 +151,14 @@ export function decodeRosPointCloud2Record(
   }));
   const renderPayload = decodedPoints.renderPayload;
 
-  const transferableViews = [
+  const transferableViews: ArrayBufferView[] = [
     renderPayload.positions,
-    renderPayload.colors,
     ...renderPayload.scalarFields.map((field) => field.values),
     renderPayload.sourceIndices,
-  ].filter((view): view is Float32Array | Uint32Array => view !== undefined);
+  ];
+  if (renderPayload.rgb) {
+    transferableViews.push(renderPayload.rgb.values);
+  }
 
   return {
     attributes,
@@ -164,10 +166,6 @@ export function decodeRosPointCloud2Record(
     timing: timingFromRosHeader(context, header),
     visualization: {
       ...(frameId ? { coordinateFrameId: frameId } : {}),
-      ...(decodedPoints.colors ? { colors: decodedPoints.colors } : {}),
-      ...(decodedPoints.scalarFields.length
-        ? { scalarFields: decodedPoints.scalarFields }
-        : {}),
       fields: packedFieldMetadata,
       kind: VISUALIZATION_KIND.POINT_CLOUD,
       pointCount,

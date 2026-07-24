@@ -13,6 +13,7 @@ import * as TSL from "three/tsl";
 import { PointsNodeMaterial } from "three/webgpu";
 
 import type { PointCloudRenderPayload } from "../../ir";
+import { pointCloudChannelEncodingKey } from "../../ir";
 import {
   createGpuPointCloudColorNode,
   createGpuPointCloudColorUniforms,
@@ -22,9 +23,15 @@ import {
 } from "./gpu/gpu-point-cloud-color-nodes";
 import type { ResolvedGpuPointCloudColor } from "./gpu/gpu-point-cloud-color";
 import {
+  createGpuPointCloudChannelResource,
+  gpuPointCloudChannelValueNode,
+  gpuPointCloudRgbNode,
+  updateGpuPointCloudChannelResource,
+  type GpuPointCloudChannelResource,
+} from "./gpu/gpu-point-cloud-channel-nodes";
+import {
   gpuPointCloudPositionNode,
   gpuPointCloudSampleIndexNode,
-  gpuPointCloudScalarNode,
 } from "./gpu/gpu-point-cloud-position-nodes";
 import { POINT_COMPONENT_COUNT } from "./point-cloud-colors";
 import {
@@ -114,11 +121,11 @@ export const PointCloudSceneLayer = memo(function PointCloudSceneLayer({
 
 interface GpuPointCloud3dResource {
   readonly capacity: number;
-  color: THREE.BufferAttribute | null;
+  color: GpuPointCloudChannelResource | null;
   readonly position: THREE.BufferAttribute;
   renderedPointCount: number;
   sampledPointCount: number;
-  readonly scalar: Map<string, THREE.BufferAttribute>;
+  readonly scalar: Map<string, GpuPointCloudChannelResource>;
   readonly spriteGeometry: THREE.PlaneGeometry;
 }
 
@@ -262,12 +269,12 @@ function createGpuPointCloud3dResource(
   // Flat float storage avoids Three's main-thread vec3→vec4 padding
   // pass for WebGPU storage buffers. The shader reconstructs vec3 values.
   const position = new THREE.BufferAttribute(payload.positions, 1);
-  const color = payload.colors
-    ? new THREE.BufferAttribute(payload.colors, 1)
+  const color = payload.rgb
+    ? createGpuPointCloudChannelResource(payload.rgb)
     : null;
-  const scalar = new Map<string, THREE.BufferAttribute>();
+  const scalar = new Map<string, GpuPointCloudChannelResource>();
   for (const field of payload.scalarFields) {
-    scalar.set(field.name, new THREE.BufferAttribute(field.values, 1));
+    scalar.set(field.name, createGpuPointCloudChannelResource(field));
   }
   // PointsNodeMaterial on WebGPU renders instanced screen-aligned quads. A
   // one-quad geometry supplies ownership/lifetime; point data comes from node
@@ -277,11 +284,14 @@ function createGpuPointCloud3dResource(
   // disposal, so every prepared attribute is attached under a private name.
   spriteGeometry.setAttribute("pointPosition", position);
   if (color) {
-    spriteGeometry.setAttribute("pointColor", color);
+    spriteGeometry.setAttribute("pointColor", color.attribute);
   }
   let scalarIndex = 0;
-  for (const attribute of scalar.values()) {
-    spriteGeometry.setAttribute(`pointScalar${scalarIndex++}`, attribute);
+  for (const channel of scalar.values()) {
+    spriteGeometry.setAttribute(
+      `pointScalar${scalarIndex++}`,
+      channel.attribute,
+    );
   }
 
   return {
@@ -312,11 +322,11 @@ function createGpuPointCloud3dMaterial(
     sampleIndex,
   );
   const colorNode = resource.color
-    ? gpuPointCloudPositionNode(resource.color, "flat", sampleIndex)
+    ? gpuPointCloudRgbNode(resource.color, sampleIndex)
     : null;
   const scalarNodes = new Map<string, TSL.Node>();
-  for (const [name, attribute] of resource.scalar) {
-    scalarNodes.set(name, gpuPointCloudScalarNode(attribute, sampleIndex));
+  for (const [name, channel] of resource.scalar) {
+    scalarNodes.set(name, gpuPointCloudChannelValueNode(channel, sampleIndex));
   }
   material.positionNode = positionNode;
   const colorUniforms = createGpuPointCloudColorUniforms(color);
@@ -342,14 +352,29 @@ function ensureGpuPointCloud3dSchema(
   // Schema is grow-only within one capacity resource. Removing an optional
   // channel does not invalidate its binding; the active color policy decides
   // whether the compiled material reads it.
-  if (payload.colors && !resource.color) {
-    resource.color = new THREE.BufferAttribute(payload.colors, 1);
-    resource.spriteGeometry.setAttribute("pointColor", resource.color);
+  if (
+    payload.rgb &&
+    (!resource.color ||
+      pointCloudChannelEncodingKey(resource.color.encoding) !==
+        pointCloudChannelEncodingKey(payload.rgb.encoding))
+  ) {
+    resource.color = createGpuPointCloudChannelResource(payload.rgb);
+    resource.spriteGeometry.setAttribute(
+      "pointColor",
+      resource.color.attribute,
+    );
   }
   let addedScalar = false;
   for (const field of payload.scalarFields) {
-    if (resource.scalar.has(field.name)) continue;
-    resource.scalar.set(field.name, new THREE.BufferAttribute(field.values, 1));
+    const existing = resource.scalar.get(field.name);
+    if (
+      existing &&
+      pointCloudChannelEncodingKey(existing.encoding) ===
+        pointCloudChannelEncodingKey(field.encoding)
+    ) {
+      continue;
+    }
+    resource.scalar.set(field.name, createGpuPointCloudChannelResource(field));
     addedScalar = true;
   }
   if (addedScalar) attachGpuPointCloud3dScalars(resource);
@@ -362,12 +387,27 @@ function updateGpuPointCloud3dResource(
   // Replace transferred ArrayBuffer views instead of copying point data on the
   // main thread. needsUpdate below tells Three to upload the new view once.
   replaceGpuPointCloud3dArray(resource.position, payload.positions);
-  if (payload.colors && resource.color) {
-    replaceGpuPointCloud3dArray(resource.color, payload.colors);
+  if (payload.rgb && resource.color) {
+    const previous = resource.color;
+    resource.color = updateGpuPointCloudChannelResource(
+      resource.color,
+      payload.rgb,
+    );
+    if (resource.color !== previous) {
+      resource.spriteGeometry.setAttribute(
+        "pointColor",
+        resource.color.attribute,
+      );
+    }
   }
   for (const field of payload.scalarFields) {
-    const attribute = resource.scalar.get(field.name);
-    if (attribute) replaceGpuPointCloud3dArray(attribute, field.values);
+    const channel = resource.scalar.get(field.name);
+    if (!channel) continue;
+    const updated = updateGpuPointCloudChannelResource(channel, field);
+    if (updated !== channel) {
+      resource.scalar.set(field.name, updated);
+      attachGpuPointCloud3dScalars(resource);
+    }
   }
 }
 
@@ -382,10 +422,10 @@ function replaceGpuPointCloud3dArray(
 
 function attachGpuPointCloud3dScalars(resource: GpuPointCloud3dResource): void {
   let scalarIndex = 0;
-  for (const attribute of resource.scalar.values()) {
+  for (const channel of resource.scalar.values()) {
     resource.spriteGeometry.setAttribute(
       `pointScalar${scalarIndex++}`,
-      attribute,
+      channel.attribute,
     );
   }
 }

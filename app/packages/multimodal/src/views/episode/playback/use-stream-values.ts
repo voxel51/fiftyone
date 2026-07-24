@@ -335,10 +335,10 @@ function pointCloudPayloadHasActiveChannel(
 ): boolean {
   const normalized = normalizeIdentifierName(colorBy);
   if (normalized === "height" || normalized === "uniform") return true;
-  if (normalized === "rgb") return payload.colors !== undefined;
+  if (normalized === "rgb") return payload.rgb !== undefined;
   if (normalized === "auto") {
     return (
-      payload.colors !== undefined ||
+      payload.rgb !== undefined ||
       payload.scalarFields.some((field) =>
         CANONICAL_AUTO_SCALAR_FIELDS.has(normalizeIdentifierName(field.name)),
       )
@@ -368,27 +368,21 @@ export function applyPointCloudRenderChannel(
 ): PointCloudVisualization {
   const payload = frame.renderPayload;
   if (!payload || payload.samplePlanKey !== channel.samplePlanKey) return frame;
-  const colors = channel.kind === "rgb" ? channel.colors : undefined;
+  const rgb = channel.kind === "rgb" ? channel.rgb : undefined;
   const scalarFields = channel.kind === "scalar" ? [channel.scalarField] : [];
-  const componentCount = payload.sampledPointCount * 3;
   const {
     colors: _previousFrameColors,
     scalarFields: _previousFrameScalarFields,
     ...frameWithoutChannel
   } = frame;
-  const { colors: _previousPayloadColors, ...payloadWithoutChannel } = payload;
+  const { rgb: _previousRgb, ...payloadWithoutChannel } = payload;
   return {
     ...frameWithoutChannel,
-    ...(colors ? { colors: colors.subarray(0, componentCount) } : {}),
     renderPayload: {
       ...payloadWithoutChannel,
-      ...(colors ? { colors } : {}),
+      ...(rgb ? { rgb } : {}),
       scalarFields,
     },
-    scalarFields: scalarFields.map((field) => ({
-      name: field.name,
-      values: field.values.subarray(0, payload.sampledPointCount),
-    })),
   };
 }
 

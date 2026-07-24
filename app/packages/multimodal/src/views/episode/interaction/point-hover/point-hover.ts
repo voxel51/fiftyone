@@ -1,4 +1,5 @@
 import type { PointCloudVisualization } from "../../../../ir";
+import { decodePointCloudChannelValue } from "../../../../ir";
 import type { Scene3dHoveredPoint } from "./use-hover-tooltip";
 
 const POINT_COMPONENT_COUNT = 3;
@@ -29,15 +30,22 @@ export function hoveredPointForFrame(
   }
 
   const fields: Record<string, number> = {};
-  const scalarFields =
-    resolvedSampleIndex === null
-      ? (frame.scalarFields ?? [])
-      : (payload?.scalarFields ?? []);
-  const valueIndex = resolvedSampleIndex ?? pointIndex;
-  for (const scalarField of scalarFields) {
-    const value = scalarField.values[valueIndex];
-    if (value !== undefined && Number.isFinite(value)) {
-      fields[scalarField.name] = value;
+  if (resolvedSampleIndex === null) {
+    for (const scalarField of frame.scalarFields ?? []) {
+      const value = scalarField.values[pointIndex];
+      if (value !== undefined && Number.isFinite(value)) {
+        fields[scalarField.name] = value;
+      }
+    }
+  } else {
+    for (const scalarField of payload?.scalarFields ?? []) {
+      const value = decodePointCloudChannelValue(
+        scalarField.encoding,
+        scalarField.values[resolvedSampleIndex],
+      );
+      if (value !== undefined && Number.isFinite(value)) {
+        fields[scalarField.name] = value;
+      }
     }
   }
 

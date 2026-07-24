@@ -1,4 +1,7 @@
-import { buildPointCloudRenderPayload } from "../../../ir/index";
+import {
+  buildPointCloudRenderPayload,
+  createPointCloudChannelArray,
+} from "../../../ir/index";
 import type {
   PointCloudRenderPayload,
   ImageVisualization,
@@ -542,18 +545,14 @@ function compactGridPointCloud(
       scalarFields: frame.scalarFields,
     });
   const renderPayload = compactGridRenderPayload(sourcePayload);
-  const scalarFields = renderPayload.scalarFields.map(({ name, values }) => ({
-    name,
-    values,
-  }));
 
   return {
     ...frame,
-    colors: renderPayload.colors,
     pointCount: renderPayload.sampledPointCount,
     positions: renderPayload.positions,
     renderPayload,
-    scalarFields: scalarFields.length > 0 ? scalarFields : undefined,
+    colors: undefined,
+    scalarFields: undefined,
   };
 }
 
@@ -566,13 +565,16 @@ function compactGridRenderPayload(
   );
   const capacity = Math.max(1, sampledPointCount);
   const positions = new Float32Array(capacity * POINT_COMPONENT_COUNT);
-  const colors = source.colors
-    ? new Float32Array(capacity * COLOR_COMPONENT_COUNT)
+  const rgb = source.rgb
+    ? {
+        encoding: source.rgb.encoding,
+        values: new Uint8Array(capacity * COLOR_COMPONENT_COUNT),
+      }
     : undefined;
   const sourceIndices = new Uint32Array(capacity);
   const scalarFields = source.scalarFields.map((field) => ({
     ...field,
-    values: new Float32Array(capacity),
+    values: createPointCloudChannelArray(field.encoding, capacity),
   }));
 
   for (let targetIndex = 0; targetIndex < sampledPointCount; targetIndex++) {
@@ -586,12 +588,14 @@ function compactGridRenderPayload(
     positions[targetOffset] = source.positions[sourceOffset];
     positions[targetOffset + 1] = source.positions[sourceOffset + 1];
     positions[targetOffset + 2] = source.positions[sourceOffset + 2];
-    if (colors && source.colors) {
+    if (rgb && source.rgb) {
       const targetColorOffset = targetIndex * COLOR_COMPONENT_COUNT;
       const sourceColorOffset = sourceIndex * COLOR_COMPONENT_COUNT;
-      colors[targetColorOffset] = source.colors[sourceColorOffset];
-      colors[targetColorOffset + 1] = source.colors[sourceColorOffset + 1];
-      colors[targetColorOffset + 2] = source.colors[sourceColorOffset + 2];
+      rgb.values[targetColorOffset] = source.rgb.values[sourceColorOffset];
+      rgb.values[targetColorOffset + 1] =
+        source.rgb.values[sourceColorOffset + 1];
+      rgb.values[targetColorOffset + 2] =
+        source.rgb.values[sourceColorOffset + 2];
     }
     for (let fieldIndex = 0; fieldIndex < scalarFields.length; fieldIndex++) {
       scalarFields[fieldIndex].values[targetIndex] =
@@ -605,10 +609,10 @@ function compactGridRenderPayload(
   return {
     bounds: source.bounds,
     capacity,
-    ...(colors ? { colors } : {}),
     finitePointCount: source.finitePointCount,
     heightRange: source.heightRange,
     positions,
+    ...(rgb ? { rgb } : {}),
     sampledPointCount,
     scalarFields,
     sourceIndices,
