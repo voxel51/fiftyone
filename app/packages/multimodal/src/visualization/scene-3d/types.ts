@@ -208,6 +208,8 @@ export interface SceneAnnotationPanelLayer {
   readonly sourceId?: string;
   /** Emphasize this layer's entities (selection / cross-tile echo). */
   readonly highlighted?: boolean;
+  /** Render this layer with hover emphasis from another tile. */
+  readonly hovered?: boolean;
   /**
    * Makes the layer's entities clickable: called with the picked
    * entity's id (or the entity index as a string when it has none) on

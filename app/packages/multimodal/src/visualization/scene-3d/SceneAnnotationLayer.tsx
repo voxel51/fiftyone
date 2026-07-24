@@ -51,6 +51,7 @@ export const SceneAnnotationLayer = memo(function SceneAnnotationLayer({
           entity={entity}
           entityIndex={entityIndex}
           highlighted={Boolean(layer.highlighted)}
+          hoveredExternally={Boolean(layer.hovered)}
           onHoverEntity={layer.onHoverEntity}
           onSelectEntity={layer.onSelectEntity}
           renderCubes={renderCubes}
@@ -64,6 +65,7 @@ function SceneAnnotationEntity({
   entity,
   entityIndex,
   highlighted,
+  hoveredExternally,
   onHoverEntity,
   onSelectEntity,
   renderCubes,
@@ -71,6 +73,7 @@ function SceneAnnotationEntity({
   readonly entity: SceneEntityVisualization;
   readonly entityIndex: number;
   readonly highlighted: boolean;
+  readonly hoveredExternally: boolean;
   readonly onHoverEntity?: (entityId: string | null) => void;
   readonly onSelectEntity?: (
     entityId: string,
@@ -91,7 +94,7 @@ function SceneAnnotationEntity({
   // dashed, hovered ones draw solid in the emphasis color.
   const emphasis: SceneEmphasis = highlighted
     ? "selected"
-    : hovered && interactive
+    : hoveredExternally || (hovered && interactive)
       ? "hover"
       : "none";
 

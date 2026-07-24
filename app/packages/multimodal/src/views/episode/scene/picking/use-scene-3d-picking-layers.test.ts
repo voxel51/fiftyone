@@ -4,7 +4,10 @@ import { createStore, Provider } from "jotai";
 import { describe, expect, it } from "vitest";
 
 import { VISUALIZATION_KIND } from "../../../../visualization";
-import type { PointCloudPanelLayer } from "../../../../visualization/scene-3d";
+import type {
+  PointCloudPanelLayer,
+  SceneAnnotationPanelLayer,
+} from "../../../../visualization/scene-3d";
 import { hoverEchoAtom } from "../../interaction/point-hover/hover-echo";
 import {
   toggleSceneEntitySelection,
@@ -117,6 +120,48 @@ describe("scene 3D picking layers", () => {
       result.current.hoverablePointCloudLayers[0]?.hoveredPoint,
     ).toBeNull();
   });
+
+  it("publishes and consumes scene-entity hover correspondence", () => {
+    const store = createStore();
+    const layer = sceneAnnotationLayer();
+    const wrapper = ({ children }: { readonly children: ReactNode }) =>
+      createElement(Provider, { store }, children);
+    const { result } = renderHook(
+      () =>
+        useScene3dPickingLayers({
+          pointCloudLayers: [],
+          pointCloudSources: [],
+          sceneAnnotationLayers: [layer],
+          worldFrameId: "map",
+        }),
+      { wrapper },
+    );
+
+    expect(result.current.annotationLayers[0]?.hovered).toBe(false);
+    act(() => {
+      result.current.annotationLayers[0]?.onHoverEntity?.("car-1");
+    });
+    expect(store.get(hoverEchoAtom)).toEqual({
+      entityId: "car-1",
+      kind: "scene-annotation",
+      stream: "/detections_3d",
+    });
+    expect(result.current.annotationLayers[0]?.hovered).toBe(true);
+
+    act(() => {
+      result.current.annotationLayers[0]?.onHoverEntity?.(null);
+    });
+    expect(store.get(hoverEchoAtom)).toBeNull();
+
+    act(() => {
+      store.set(hoverEchoAtom, {
+        entityId: "car-1",
+        kind: "scene-annotation",
+        stream: "/detections_3d",
+      });
+    });
+    expect(result.current.annotationLayers[0]?.hovered).toBe(true);
+  });
 });
 
 function renderPickingLayers(
@@ -152,5 +197,48 @@ function pointCloudLayer(contentTimeNs: bigint): PointCloudPanelLayer {
       ],
     },
     id: "/lidar",
+  };
+}
+
+function sceneAnnotationLayer(): SceneAnnotationPanelLayer {
+  return {
+    frame: {
+      deletions: [],
+      entities: [
+        {
+          arrowCount: 0,
+          arrows: [],
+          cubeCount: 1,
+          cubes: [
+            {
+              color: null,
+              pose: {
+                position: [0, 0, 5],
+                quaternion: [0, 0, 0, 1],
+              },
+              size: [2, 2, 2],
+            },
+          ],
+          cylinderCount: 0,
+          cylinders: [],
+          frameLocked: false,
+          id: "car-1",
+          lineCount: 0,
+          lines: [],
+          metadata: { label: "car" },
+          modelCount: 0,
+          models: [],
+          sphereCount: 0,
+          spheres: [],
+          textCount: 0,
+          texts: [],
+          triangleCount: 0,
+          triangles: [],
+        },
+      ],
+      kind: VISUALIZATION_KIND.SCENE_UPDATE,
+    },
+    id: "/detections_3d:car-1",
+    sourceId: "/detections_3d",
   };
 }
