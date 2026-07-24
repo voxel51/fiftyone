@@ -98,13 +98,15 @@ async function runAndRespond(
   activeReadSignal.current = context.signal;
 
   try {
+    throwIfWorkerRequestCancelled(context.signal);
     ensureActiveSource(message.sourceKey);
     if (isMcapPlaybackWorkerStreamRequest(message)) {
-      await streamRequest(message);
+      await streamRequest(message, context.signal);
       return;
     }
 
     const result = await runMcapPlaybackWorkerUnaryRequest(mcap, message);
+    throwIfWorkerRequestCancelled(context.signal);
     const transferables = transferablesForMcapResult(result);
     postResponse(
       {
@@ -134,12 +136,14 @@ async function runAndRespond(
 
 async function streamRequest(
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType>,
+  signal: AbortSignal,
 ) {
   let batch: McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType][] =
     [];
   let batchBytes = 0;
 
   for await (const item of runMcapPlaybackWorkerStreamRequest(mcap, message)) {
+    throwIfWorkerRequestCancelled(signal);
     const transferables = transferablesForMcapResult(item);
     // Transferable buffers must keep their per-item ownership boundary. Plain
     // decoded records can share one postMessage to reduce main-thread churn.
@@ -186,6 +190,7 @@ async function streamRequest(
       batchBytes = 0;
     }
   }
+  throwIfWorkerRequestCancelled(signal);
   postStreamBatch(message.id, batch);
 
   postResponse({
@@ -195,6 +200,12 @@ async function streamRequest(
     stream: true,
     transport: transportMeter.snapshot(),
   });
+}
+
+function throwIfWorkerRequestCancelled(signal: AbortSignal): void {
+  if (signal.aborted) {
+    throw new Error(EPISODE_READ_CANCELLED_MESSAGE);
+  }
 }
 
 function postStreamBatch(

@@ -382,6 +382,40 @@ describe("worker-backed MCAP resource client", () => {
     await expect(playback).resolves.toEqual([]);
   });
 
+  it("cancels an older current-frame request for an overlapping topic", async () => {
+    const { client, workers } = createClientHarness();
+    const source = createSource("source:1");
+    const stale = client.readSynchronizedMessages({
+      timeNs: 1n,
+      source,
+      topics: ["/lidar", "/radar"],
+    });
+    const latest = client.readSynchronizedMessages({
+      timeNs: 2n,
+      source,
+      topics: ["/lidar"],
+    });
+    const worker = workers[0];
+
+    await expect(stale).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
+    expect(worker.messages.slice(1)).toEqual([
+      expect.objectContaining({
+        id: 1,
+        type: "readSynchronizedMessages",
+      }),
+      { id: 1, type: "cancel" },
+      expect.objectContaining({
+        id: 2,
+        payload: expect.objectContaining({ timeNs: 2n }),
+        type: "readSynchronizedMessages",
+      }),
+    ]);
+
+    const window = createSynchronizedWindow(2n);
+    worker.respond({ id: 2, ok: true, result: window });
+    await expect(latest).resolves.toEqual(window);
+  });
+
   it("keeps workers warm and fails stale reads under explicit ownership", async () => {
     const { client, workers } = createClientHarness();
 
