@@ -1,4 +1,5 @@
-import { Size, Spinner } from "@voxel51/voodo";
+import { usePlayback } from "@fiftyone/playback";
+import { Button, Size, Spinner, Variant } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -14,6 +15,8 @@ import {
   useStreamStaleAges,
   useStreamStatuses,
 } from "../playback/stream-status-state";
+import { useDataStream } from "../playback/data-stream-context";
+import { INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS } from "../playback/playback-buffering";
 import NoticeStrip from "../status/NoticeStrip";
 import styles from "./Tile.module.css";
 
@@ -115,10 +118,10 @@ export const TileStreamNoticeStrip: React.FC<{
  * the message from the streams' playback statuses instead of spinning
  * forever: a spinner only while data is actually loading, otherwise an
  * explicit "no data" / "failed" message — with the stream's start time
- * when it is known ("No data until 0:12"). A tile with no usable streams
- * gets a deterministic "no source" message rather than an infinite
- * spinner — before any playback-store hook runs, so sourceless tiles
- * don't require a surrounding PlaybackProvider.
+ * and jump action when a real gap exceeds the startup window. A tile with no
+ * usable streams gets a deterministic "no source" message rather than an
+ * infinite spinner — before any playback-store hook runs, so sourceless
+ * tiles don't require a surrounding PlaybackProvider.
  */
 export const TileEmptyState: React.FC<{
   streams: readonly string[];
@@ -144,6 +147,24 @@ const TileEmptyStateForStreams: React.FC<{
   const statuses = useStreamStatuses(streams);
   const startTimes = useStreamStartTimes(streams);
   const model = buildTileEmptyStateModel({ startTimes, statuses });
+  const dataStream = useDataStream();
+  const { seek } = usePlayback();
+  let jumpTargetSec: number | null = null;
+  if (
+    model.kind === "gap" &&
+    model.startSec !== null &&
+    model.startSec > INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS
+  ) {
+    const timeline = dataStream?.getTimelineIndex();
+    if (timeline) {
+      const targetTick = timeline.tickAt(
+        timeline.indexAtOrAfter(timeline.secToNs(model.startSec)),
+      );
+      jumpTargetSec =
+        targetTick === undefined ? null : timeline.nsToSec(targetTick);
+    }
+  }
+  const jumpTarget = jumpTargetSec;
 
   return (
     <div className={styles.loading} data-testid="episode-tile-empty-state">
@@ -154,7 +175,19 @@ const TileEmptyStateForStreams: React.FC<{
       ) : model.kind === "loading" ? (
         <DelayedLoadingIndicator />
       ) : (
-        <span className={styles.emptyText}>{model.message}</span>
+        <div className={styles.emptyContent}>
+          <span className={styles.emptyText}>{model.message}</span>
+          {jumpTarget !== null ? (
+            <Button
+              data-testid="episode-tile-jump-to-data"
+              onClick={() => seek(jumpTarget)}
+              size={Size.Xs}
+              variant={Variant.Secondary}
+            >
+              Jump to data
+            </Button>
+          ) : null}
+        </div>
       )}
     </div>
   );

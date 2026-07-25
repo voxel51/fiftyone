@@ -40,6 +40,9 @@ export interface DerivedPlaybackPolicy extends PlaybackPolicy {
   readonly streamCacheMaxEntries: number;
 }
 
+/** Longest pre-data gap that initial episode setup advances automatically. */
+export const INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS = 0.5;
+
 /** Default buffering policy for episode playback. */
 export const DEFAULT_PLAYBACK_POLICY: PlaybackPolicy = {
   lookaheadSeconds: 4,
@@ -47,7 +50,7 @@ export const DEFAULT_PLAYBACK_POLICY: PlaybackPolicy = {
   prefetchBatchSeconds: 1,
   prefetchBatchesPerPass: 1,
   prefetchRefreshSeconds: 0.5,
-  startupBufferSeconds: 0.5,
+  startupBufferSeconds: INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS,
   startupMaxTicks: 15,
   startupMinTicks: 3,
   streamCacheLookaheadMultiplier: 2,

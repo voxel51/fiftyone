@@ -1,5 +1,7 @@
 import {
   getBufferedRanges,
+  getIsPlaying,
+  getIsPlayPending,
   getPlayhead,
   setBufferedRanges,
   setStreamValue,
@@ -54,6 +56,7 @@ import {
   computeBufferedRanges as deriveBufferedRanges,
   DEFAULT_PLAYBACK_POLICY,
   derivePlaybackPolicy,
+  INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS,
   nsToSeconds,
   resetPlaybackBuffering,
 } from "./playback-buffering";
@@ -187,6 +190,7 @@ export function useRegisterDataStream({
     Map<string, Promise<PointCloudRenderChannelPayload>>
   >(new Map());
   const autoSeekSourceEpochRef = useRef<number | null>(null);
+  const autoSeekScheduleEpochRef = useRef<number | null>(null);
   const lastSeekAtMsRef = useRef<number | null>(null);
   const [startupCushionPlanner] = useState(() => new StartupCushionPlanner());
   const indexRef = useRef<TimelineIndex | null>(null);
@@ -278,12 +282,15 @@ export function useRegisterDataStream({
 
   // If a recording's selected renderable streams begin just after the episode
   // timeline start, land the initial playhead on the first sampled tick that
-  // can actually resolve data. This consumes the stream bounds already loaded
-  // for status copy; it never asks the worker for another index/read.
+  // resolves every short-skew stream. Later-starting and empty streams remain
+  // at their honest gaps instead of pulling the whole recording forward. This
+  // consumes the bounds already loaded for status copy and stays inside the
+  // startup buffer, so it never asks the worker for another index/read.
   const maybeAutoSeekToFirstData = useCallback(() => {
     const currentEpoch = sourceEpochRef.current;
     if (autoSeekSourceEpochRef.current === currentEpoch) return;
     if (getPlayhead(store) !== 0) return;
+    if (getIsPlaying(store) || getIsPlayPending(store)) return;
 
     const currentIndex = indexRef.current;
     if (!currentIndex) return;
@@ -291,19 +298,28 @@ export function useRegisterDataStream({
     const activeStreams = getActiveStreams();
     if (activeStreams.length === 0) return;
 
-    let firstMessageTimeNs: bigint | null = null;
+    let latestShortStartTimeNs: bigint | null = null;
     for (const stream of activeStreams) {
-      if (!streamStartTimesNsRef.current.has(stream)) return;
       const streamStart = streamStartTimesNsRef.current.get(stream);
-      if (streamStart === null || streamStart === undefined) return;
-      if (firstMessageTimeNs === null || streamStart < firstMessageTimeNs) {
-        firstMessageTimeNs = streamStart;
+      if (streamStart === null || streamStart === undefined) continue;
+      const startSec = currentIndex.nsToSec(streamStart);
+      if (
+        startSec <= 0 ||
+        startSec > INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS
+      ) {
+        continue;
+      }
+      if (
+        latestShortStartTimeNs === null ||
+        streamStart > latestShortStartTimeNs
+      ) {
+        latestShortStartTimeNs = streamStart;
       }
     }
-    if (firstMessageTimeNs === null) return;
+    if (latestShortStartTimeNs === null) return;
 
     const tick = currentIndex.tickAt(
-      currentIndex.indexAtOrAfter(firstMessageTimeNs),
+      currentIndex.indexAtOrAfter(latestShortStartTimeNs),
     );
     if (tick === undefined) return;
 
@@ -313,6 +329,23 @@ export function useRegisterDataStream({
     autoSeekSourceEpochRef.current = currentEpoch;
     seek(targetSec);
   }, [getActiveStreams, seek, store]);
+
+  // Stream subscriptions mount as one React effect batch. Coalescing their
+  // auto-seek checks lets the target consider the complete visible set instead
+  // of committing to whichever short-skew stream subscribes first.
+  const scheduleAutoSeekToFirstData = useCallback(() => {
+    const currentEpoch = sourceEpochRef.current;
+    if (autoSeekScheduleEpochRef.current === currentEpoch) return;
+    autoSeekScheduleEpochRef.current = currentEpoch;
+    void Promise.resolve().then(() => {
+      if (autoSeekScheduleEpochRef.current === currentEpoch) {
+        autoSeekScheduleEpochRef.current = null;
+      }
+      if (sourceEpochRef.current === currentEpoch) {
+        maybeAutoSeekToFirstData();
+      }
+    });
+  }, [maybeAutoSeekToFirstData]);
 
   // This effect ensures a cache exists for every known stream.
   useEffect(() => {
@@ -340,6 +373,7 @@ export function useRegisterDataStream({
     pointCloudChannelReadsRef.current.clear();
     streamStartTimesNsRef.current.clear();
     autoSeekSourceEpochRef.current = null;
+    autoSeekScheduleEpochRef.current = null;
     startupCushionPlanner.resetPendingPlan();
     backgroundLookaheadSecondsRef.current = PLAYBACK_POLICY.lookaheadSeconds;
     clearPausedIdleWarmupTimer();
@@ -389,7 +423,7 @@ export function useRegisterDataStream({
               : nsToSeconds(bound.firstTimestampNs - range.startNs);
           setStreamStartTimeSec(store, bound.streamId, startSec);
         }
-        maybeAutoSeekToFirstData();
+        scheduleAutoSeekToFirstData();
       })
       .catch(noop);
     return () => {
@@ -398,8 +432,8 @@ export function useRegisterDataStream({
   }, [
     clearPausedIdleWarmupTimer,
     fetchState,
-    maybeAutoSeekToFirstData,
     playback,
+    scheduleAutoSeekToFirstData,
     source,
     startupCushionPlanner,
     store,
@@ -408,8 +442,8 @@ export function useRegisterDataStream({
   // This effect retries the initial auto-seek once the timeline index is
   // committed to React state; stream bounds can resolve first.
   useEffect(() => {
-    if (index) maybeAutoSeekToFirstData();
-  }, [index, maybeAutoSeekToFirstData]);
+    if (index) scheduleAutoSeekToFirstData();
+  }, [index, scheduleAutoSeekToFirstData]);
 
   // Contiguous [startSec, endSec] ranges where every active stream has the
   // tick cached — i.e. the stretches playback can run through without
@@ -706,7 +740,7 @@ export function useRegisterDataStream({
         );
       }
       const cleanup = cache.subscribe();
-      maybeAutoSeekToFirstData();
+      scheduleAutoSeekToFirstData();
       prefetchLookaheadFrom(getPlayhead(store));
       return () => {
         cleanup();
@@ -732,7 +766,7 @@ export function useRegisterDataStream({
         if (!cache.isActive) lastFrameRef.current.delete(stream);
       };
     },
-    [maybeAutoSeekToFirstData, prefetchLookaheadFrom, store],
+    [prefetchLookaheadFrom, scheduleAutoSeekToFirstData, store],
   );
 
   const getStreamCache = useCallback(

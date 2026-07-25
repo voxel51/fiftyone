@@ -62,6 +62,13 @@
   font-size: 12px;
 }
 
+.emptyContent {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .emptyTextError {
   color: var(--color-content-text-destructive);
 }
