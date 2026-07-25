@@ -154,8 +154,8 @@ describe("TilingHeader", () => {
     );
     const button = screen.getByTestId("tiling-header-add-tile");
     expect(button).toBeTruthy();
-    expect(button.getAttribute("aria-label")).toBe("Add Tile");
-    expect(button.textContent).toBe("Add Tile");
+    expect(button.getAttribute("aria-label")).toBe("Layout");
+    expect(button.textContent).toBe("Layout");
     expect(button.className).toContain("border-1");
   });
 
