@@ -176,7 +176,7 @@ describe("SourcePlayback", () => {
       />,
     );
 
-    expect(session.activate).toHaveBeenCalledWith();
+    expect(session.activate).not.toHaveBeenCalled();
     expect(
       screen.getByText(
         "No previewable streams in this recording (3 streams found)",

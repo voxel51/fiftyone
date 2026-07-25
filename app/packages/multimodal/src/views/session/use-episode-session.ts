@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type {
   EpisodeSession,
@@ -22,50 +22,122 @@ export type EpisodeSessionState =
       readonly status: "ready";
     };
 
+interface OwnedEpisodeSessionState {
+  readonly mediaType: string | undefined;
+  readonly path: string | undefined;
+  readonly source: EpisodeSource | null;
+  readonly value: EpisodeSessionState;
+}
+
 /** Detects, loads, and owns one format-neutral episode session. */
 export function useEpisodeSession(
   sample: SampleDescriptor,
   source: EpisodeSource | null,
 ): EpisodeSessionState {
-  const [state, setState] = useState<EpisodeSessionState>({
-    error: null,
-    session: null,
-    status: "idle",
-  });
   const { mediaType, path } = sample;
+  const liveSessionRef = useRef<EpisodeSession | null>(null);
+  const [ownedState, setOwnedState] = useState<OwnedEpisodeSessionState>(
+    () => ({
+      mediaType,
+      path,
+      source,
+      value: {
+        error: null,
+        session: null,
+        status: source ? "loading" : "idle",
+      },
+    }),
+  );
 
   // This effect detects and owns the session for the current source.
   useEffect(() => {
     if (!source) {
-      setState({ error: null, session: null, status: "idle" });
+      setOwnedState({
+        mediaType,
+        path,
+        source,
+        value: { error: null, session: null, status: "idle" },
+      });
       return undefined;
     }
     let active = true;
     let opened: EpisodeSession | null = null;
-    setState({ error: null, session: null, status: "loading" });
-    void openEpisodeSession({ mediaType, path }, source)
+    const controller = new AbortController();
+    setOwnedState({
+      mediaType,
+      path,
+      source,
+      value: { error: null, session: null, status: "loading" },
+    });
+    void openEpisodeSession({ mediaType, path }, source, {
+      signal: controller.signal,
+    })
       .then((session) => {
         if (!active) {
           session.dispose();
           return;
         }
         opened = session;
+        liveSessionRef.current = session;
         session.activate?.();
-        setState({ error: null, session, status: "ready" });
+        setOwnedState({
+          mediaType,
+          path,
+          source,
+          value: { error: null, session, status: "ready" },
+        });
       })
       .catch((error) => {
         if (!active) return;
-        setState({
-          error: error instanceof Error ? error.message : String(error),
-          session: null,
-          status: "error",
+        if (opened) {
+          if (liveSessionRef.current === opened) {
+            liveSessionRef.current = null;
+          }
+          opened.dispose();
+          opened = null;
+        }
+        setOwnedState({
+          mediaType,
+          path,
+          source,
+          value: {
+            error: error instanceof Error ? error.message : String(error),
+            session: null,
+            status: "error",
+          },
         });
       });
     return () => {
       active = false;
-      opened?.dispose();
+      controller.abort();
+      if (opened) {
+        if (liveSessionRef.current === opened) {
+          liveSessionRef.current = null;
+        }
+        opened.dispose();
+      }
     };
   }, [mediaType, path, source]);
 
-  return state;
+  // Effects clean up the previous request after the next render starts. Derive
+  // ownership here so that render can never publish that stale session, and
+  // verify liveness in case cleanup ran before its loading update committed.
+  const ownsCurrentRequest =
+    ownedState.mediaType === mediaType &&
+    ownedState.path === path &&
+    ownedState.source === source;
+  if (!ownsCurrentRequest) {
+    return {
+      error: null,
+      session: null,
+      status: source ? "loading" : "idle",
+    };
+  }
+  if (
+    ownedState.value.status === "ready" &&
+    liveSessionRef.current !== ownedState.value.session
+  ) {
+    return { error: null, session: null, status: "loading" };
+  }
+  return ownedState.value;
 }

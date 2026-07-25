@@ -95,8 +95,11 @@ export function createMcapFormatAdapter(
 ): FormatAdapter {
   return {
     id: "mcap",
-    async open(source, io) {
+    async open(source, io, openOptions) {
       const asset = await resolveMcapAsset(source);
+      if (openOptions?.signal?.aborted) {
+        throw new EpisodeReadCancelledError();
+      }
       const handle = options.createClient
         ? ownedClient(options.createClient(io))
         : asset.localFile
@@ -104,6 +107,11 @@ export function createMcapFormatAdapter(
           : acquireSharedMcapResourceClient({ worker: true });
       const { client } = handle;
       try {
+        // Full-session ownership must precede inventory reads. Without this,
+        // a source lacking grid bootstrap hints asks the shared worker to read
+        // before the session can activate, and the previous sample's ownership
+        // correctly rejects that request as stale.
+        client.activateSource?.(asset);
         const hintedRange = mcapTimelineRangeFromSource(source);
         let range: McapTimelineRange;
         let manifest: EpisodeManifest;
@@ -123,6 +131,9 @@ export function createMcapFormatAdapter(
           ]);
           range = loadedRange;
           manifest = createMcapManifest(source.episodeId, range, topics);
+        }
+        if (openOptions?.signal?.aborted) {
+          throw new EpisodeReadCancelledError();
         }
         return new McapEpisodeSession(
           client,

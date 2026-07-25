@@ -139,12 +139,6 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   source,
   tracks,
 }) => {
-  // Ownership must precede the children's first reads, and child effects run
-  // before parent effects. The call is idempotent per source.
-  if (source) {
-    session?.activate?.();
-  }
-
   const imageAspectRatiosRef = useRef<Record<string, number>>({});
   const onImageAspectRatioChange = useCallback(
     (tileId: string, aspectRatio: number | null) => {

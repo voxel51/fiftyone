@@ -130,10 +130,9 @@ class WorkerMcapResourceClient implements McapResourceClient {
     // locally with the benign cancelled error, workers abort the matching
     // jobs at their read and decode boundaries, and the fleet stays warm —
     // the next sample skips worker startup and the parked reader keeps its
-    // indexes for a return trip. This depends on activation preceding the
-    // new renderer's first reads (it runs during render); effect-timed
-    // activation raced those reads into the fail-fast path and stalled
-    // hops for seconds.
+    // indexes for a return trip. This depends on activation preceding both
+    // adapter bootstrap reads and publication of the session to the renderer;
+    // later activation races either path into this fail-fast guard.
     this.cancelAllPendingReads();
     this.activeSourceKey = sourceKey;
     this.foregroundGeneration += 1;

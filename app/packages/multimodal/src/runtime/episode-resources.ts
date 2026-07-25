@@ -1,5 +1,6 @@
 import type { ByteSourceDescriptor } from "../ir";
 import type {
+  EpisodeOpenOptions,
   EpisodePreviewSession,
   EpisodeSession,
   EpisodeSource,
@@ -19,12 +20,13 @@ export function episodeSourceAccessKey(source: ByteSourceDescriptor): string {
 export async function openEpisodeSession(
   sample: SampleDescriptor,
   source: EpisodeSource,
+  options?: EpisodeOpenOptions,
 ): Promise<EpisodeSession> {
   const adapter = await loadFormatAdapter(sample);
   if (!adapter) {
     throw new Error("No episode adapter recognized this sample");
   }
-  return adapter.open(source, episodeByteResources);
+  return adapter.open(source, episodeByteResources, options);
 }
 
 /** Detects an adapter and opens its lightweight preview when supported. */
