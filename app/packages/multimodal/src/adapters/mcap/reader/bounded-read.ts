@@ -328,7 +328,7 @@ export function createMcapBoundedReader({
       assertUsageWithinGrant(usage, request);
 
       return {
-        ...(groupIndex < groups.length
+        ...(stopReason !== "oversized-source-unit" && groupIndex < groups.length
           ? {
               continuation: continuationFor({
                 endTimeNs: request.endTimeNs,

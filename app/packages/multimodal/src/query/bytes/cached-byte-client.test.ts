@@ -709,6 +709,48 @@ describe("createCachedByteClient remote fill slots", () => {
     );
   });
 
+  it("cancels a waiter without aborting its shared readahead fill", async () => {
+    const { manager } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const { client } = createClient({
+      blockSizeBytes: 16,
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const sized = () =>
+      source({ readProfile: BYTE_SOURCE_READ_PROFILE.REMOTE, sizeBytes: "32" });
+
+    const read = client.readBytes(
+      request({ range: { length: 4n, offset: 0n }, source: sized() }),
+    );
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(2);
+
+    const controller = new AbortController();
+    const waiter = client.readBytes(
+      request({
+        range: { length: 4n, offset: 16n },
+        signal: controller.signal,
+        source: sized(),
+      }),
+    );
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(2);
+
+    controller.abort();
+    await expect(waiter).rejects.toMatchObject({ name: "AbortError" });
+    expect(controlled.pending).toHaveLength(2);
+
+    for (const entry of controlled.pending) {
+      entry.resolve(fillResult(entry.request));
+    }
+    await read;
+  });
+
   it("frees the slot queue position when a waiting fill aborts", async () => {
     const { manager } = createFakeLockManager();
     const shared = createMemoryByteRangeCache({

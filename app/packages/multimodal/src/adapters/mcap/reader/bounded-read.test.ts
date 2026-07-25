@@ -169,6 +169,7 @@ describe("bounded MCAP reader", () => {
 
     expect(rejected.stopReason).toBe("oversized-source-unit");
     expect(rejected.usage.chunksOpened).toBe(0);
+    expect(rejected.continuation).toBeUndefined();
     expect(harness.networkReads).toHaveLength(0);
 
     const admitted = await harness.read(
@@ -217,6 +218,7 @@ describe("bounded MCAP reader", () => {
 
     expect(result.stopReason).toBe("oversized-source-unit");
     expect(result.usage.chunksOpened).toBe(0);
+    expect(result.continuation).toBeUndefined();
     expect(harness.networkReads).toHaveLength(0);
   });
 
@@ -262,6 +264,7 @@ describe("bounded MCAP reader", () => {
 
     expect(result.stopReason).toBe("oversized-source-unit");
     expect(result.usage.chunksOpened).toBe(0);
+    expect(result.continuation).toBeUndefined();
     expect(harness.networkReads).toHaveLength(0);
   });
 

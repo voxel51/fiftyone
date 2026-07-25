@@ -177,6 +177,44 @@ describe("runEpisodeByteBankingPass", () => {
     expect(outcome).toBe("failed");
   });
 
+  it("aborts a block when its wall-time grant expires", async () => {
+    let aborted = false;
+    const bytes: ByteClient = {
+      readBytes(request) {
+        return new Promise((_, reject) => {
+          request.signal?.addEventListener(
+            "abort",
+            () => {
+              aborted = true;
+              const error = new Error("aborted");
+              error.name = "AbortError";
+              reject(error);
+            },
+            { once: true },
+          );
+        });
+      },
+    };
+    const budgetAccount = bankingBudgetAccount({
+      maxSourceBytes: 512,
+      maxWallTimeMs: 1,
+    });
+
+    const outcome = await runEpisodeByteBankingPass({
+      blockSizeBytesFor: () => 512,
+      budgetAccount,
+      bytes,
+      endOffset: 512n,
+      fromOffset: 0n,
+      shouldStop: () => false,
+      source: SOURCE,
+    });
+
+    expect(outcome).toBe("budget-exhausted");
+    expect(aborted).toBe(true);
+    expect(budgetAccount.remaining().maxSourceBytes).toBe(0);
+  });
+
   it("stops before a cache fill that the shared source account cannot admit", async () => {
     const { bytes, reads } = recordingByteClient();
     const budgetAccount = bankingBudgetAccount({ maxSourceBytes: 511 });
