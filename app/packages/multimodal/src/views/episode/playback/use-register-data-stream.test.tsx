@@ -653,6 +653,33 @@ describe("stream status + buffering feedback", () => {
     expect(options?.priority).toBe("playback");
   });
 
+  it("uses a three-tick startup runway for local recordings", async () => {
+    const source = createSource("local-source", "local");
+    const storeCapture = capturePlaybackStore();
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(client.readSynchronizedMessageBatch).toHaveBeenCalled();
+    });
+
+    const request = vi.mocked(client.readSynchronizedMessageBatch).mock
+      .calls[0]?.[0];
+    expect(request?.timeNs).toHaveLength(3);
+    expect(request?.timeNs.at(-1)).toBeLessThanOrEqual(100_000_000n);
+  });
+
   it("starts multi-stream playback across all active panes with a bounded startup window", async () => {
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
