@@ -1,13 +1,24 @@
 import type { ByteSourceDescriptor, ByteTimelinePoint } from "../ir";
-import type { PlaybackReadCapability } from "../ports";
+import type {
+  PlaybackReadCapability,
+  ReadWorkUsage,
+  SourceReadBudgetAccount,
+} from "../ports";
 import { createMultimodalQueryClient } from "../query";
 import {
   createMemoryByteRangeCache,
   createZonedRemoteBlockSize,
   type ByteClient,
 } from "../query/bytes";
+import { monotonicNowMs } from "../utils/monotonic-time";
 
 const BANKING_MEMORY_CACHE_BYTES = 8 * 1024 * 1024;
+const BANKING_MAX_WALL_TIME_PER_BLOCK_MS = 5_000;
+
+type ByteBankingBudgetAccount = Pick<
+  SourceReadBudgetAccount,
+  "remaining" | "reserve"
+>;
 
 let sharedBankingByteClient: ByteClient | undefined;
 
@@ -78,6 +89,11 @@ export function episodeBankingEndOffset(
 
 export interface EpisodeByteBankingPassOptions {
   /**
+   * The source-scoped account shared with decoded bounded-read jobs.
+   */
+  readonly budgetAccount: ByteBankingBudgetAccount;
+
+  /**
    * Byte client the pass reads through — a background-slot-class client
    * so banking can never occupy the reserved priority fill slot.
    */
@@ -126,19 +142,22 @@ export interface EpisodeByteBankingPassOptions {
  */
 export async function runEpisodeByteBankingPass({
   blockSizeBytesFor,
+  budgetAccount,
   bytes,
   endOffset,
   fromOffset,
   onProgress,
   shouldStop,
   source,
-}: EpisodeByteBankingPassOptions): Promise<"completed" | "failed" | "stopped"> {
+}: EpisodeByteBankingPassOptions): Promise<
+  "budget-exhausted" | "completed" | "failed" | "stopped"
+> {
   let bankedBytes = 0n;
 
   const bankRegion = async (
     regionStart: bigint,
     regionEnd: bigint,
-  ): Promise<"completed" | "failed" | "stopped"> => {
+  ): Promise<"budget-exhausted" | "completed" | "failed" | "stopped"> => {
     let cursor = regionStart;
     while (cursor < regionEnd) {
       if (shouldStop()) {
@@ -159,15 +178,54 @@ export async function runEpisodeByteBankingPass({
       const blockStart = (cursor / blockSize) * blockSize;
       const blockEnd = blockStart + blockSize;
       const readEnd = blockEnd < regionEnd ? blockEnd : regionEnd;
+      const request = {
+        cachePolicy: { readahead: false },
+        range: { length: readEnd - blockStart, offset: blockStart },
+        source,
+      } as const;
+      const planned = bytes.planRead?.(request) ?? request;
+      const logicalSourceBytes = Number(planned.range.length);
+      const remaining = budgetAccount.remaining();
+      if (
+        !Number.isSafeInteger(logicalSourceBytes) ||
+        logicalSourceBytes < 0 ||
+        remaining.maxWallTimeMs <= 0
+      ) {
+        return "budget-exhausted";
+      }
+      const reservation = budgetAccount.reserve({
+        maxMessages: 0,
+        maxSourceBytes: logicalSourceBytes,
+        maxUncompressedBytes: 0,
+        maxWallTimeMs: Math.min(
+          BANKING_MAX_WALL_TIME_PER_BLOCK_MS,
+          remaining.maxWallTimeMs,
+        ),
+      });
+      if (!reservation) {
+        return "budget-exhausted";
+      }
+      const startedAtMs = monotonicNowMs();
+      let result;
       try {
-        const result = await bytes.readBytes({
-          range: { length: readEnd - blockStart, offset: blockStart },
-          source,
-        });
-        bankedBytes += result.range.length;
+        result = await bytes.readBytes(request);
       } catch {
+        reservation.commit(emptyReadWorkUsage());
         return "failed";
       }
+      reservation.commit(
+        {
+          ...emptyReadWorkUsage(),
+          elapsedMs: monotonicNowMs() - startedAtMs,
+          logicalSourceBytes,
+          transferredBytes:
+            result.readUsage?.transferredBytes ?? result.bytes.byteLength,
+        },
+        {
+          exact: true,
+        },
+      );
+      bankedBytes += planned.range.length;
       onProgress?.(bankedBytes);
       cursor = blockEnd;
     }
@@ -186,6 +244,7 @@ export async function runEpisodeByteBankingPass({
 
 /** Inputs for one runtime-owned paused-source banking attempt. */
 export interface BankEpisodeBytesOptions {
+  readonly budgetAccount: ByteBankingBudgetAccount;
   readonly playback: PlaybackReadCapability;
   readonly playheadTimeNs: bigint;
   readonly shouldStop: () => boolean;
@@ -197,12 +256,13 @@ export interface BankEpisodeBytesOptions {
  * background cache lane. UI callers own scheduling and stand-down policy.
  */
 export async function bankEpisodeBytes({
+  budgetAccount,
   playback,
   playheadTimeNs,
   shouldStop,
   source,
 }: BankEpisodeBytesOptions): Promise<
-  "completed" | "failed" | "stopped" | "unavailable"
+  "budget-exhausted" | "completed" | "failed" | "stopped" | "unavailable"
 > {
   if (typeof globalThis.caches === "undefined") {
     return "unavailable";
@@ -228,10 +288,24 @@ export async function bankEpisodeBytes({
         range: { length: 1n, offset },
         source: resolved,
       }),
+    budgetAccount,
     bytes,
     endOffset: episodeBankingEndOffset(byteTimeline),
     fromOffset: episodeBankingStartOffset(byteTimeline, playheadTimeNs),
     shouldStop,
     source: resolved,
   });
+}
+
+function emptyReadWorkUsage(): ReadWorkUsage {
+  return {
+    chunksOpened: 0,
+    decompressedBytes: 0,
+    decompressionCacheHits: 0,
+    elapsedMs: 0,
+    logicalSourceBytes: 0,
+    logicalUncompressedBytes: 0,
+    messagesDecoded: 0,
+    transferredBytes: 0,
+  };
 }

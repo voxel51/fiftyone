@@ -191,6 +191,10 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
     () => (source ? episodeSourceAccessKey(source) : ""),
     [source],
   );
+  const sourceReadBudgetAccount = useMemo(
+    () => session?.boundedRead?.openAccount() ?? null,
+    [session],
+  );
   const previousSourceKeyRef = useRef(sourceKey);
   const hasNavigatedRef = useRef(false);
   if (navigationPending || previousSourceKeyRef.current !== sourceKey) {
@@ -476,6 +480,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 playback={session?.playback ?? null}
                               />
                               <PausedByteBanking
+                                budgetAccount={sourceReadBudgetAccount}
                                 playback={session?.playback ?? null}
                                 source={playbackSource}
                               />
