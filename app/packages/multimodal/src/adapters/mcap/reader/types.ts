@@ -1,4 +1,10 @@
 import type { McapIndexedReader, McapTypes } from "@mcap/core";
+import type { TimeWindow } from "../../../ir";
+import type {
+  BudgetedReadStopReason,
+  ReadWorkBudget,
+  ReadWorkUsage,
+} from "../../../ports";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import type {
   McapPrefetchChunkDataRequest,
@@ -135,6 +141,38 @@ export type McapReaderFactory = (
   readable: McapTypes.IReadable,
 ) => Promise<McapIndexedReaderLike>;
 
+/** Adapter-private exact position between atomic MCAP admission groups. */
+export interface McapReadContinuation {
+  readonly endTimeNs?: bigint;
+  readonly nextChunkStartOffset: bigint;
+  readonly sourceKey: string;
+  readonly startTimeNs?: bigint;
+  readonly topicsKey: string;
+  readonly version: 1;
+}
+
+/** One hard-bounded raw MCAP read issued below the decoded resource client. */
+export interface McapBoundedMessageReadRequest {
+  readonly absoluteBudget: ReadWorkBudget;
+  readonly absoluteMaxChunks: number;
+  readonly budget: ReadWorkBudget;
+  readonly continuation?: McapReadContinuation;
+  readonly endTimeNs?: bigint;
+  readonly maxChunks: number;
+  readonly signal?: AbortSignal;
+  readonly startTimeNs?: bigint;
+  readonly topics?: readonly string[];
+}
+
+/** Raw messages and work evidence returned by the bounded MCAP executor. */
+export interface McapBoundedMessageReadResult {
+  readonly continuation?: McapReadContinuation;
+  readonly coverageByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
+  readonly messages: readonly McapTypes.TypedMcapRecords["Message"][];
+  readonly stopReason: BudgetedReadStopReason;
+  readonly usage: ReadWorkUsage;
+}
+
 /**
  * Indexed MCAP reader surface used by this adapter.
  */
@@ -158,6 +196,14 @@ export interface McapIndexedReaderLike {
    * Optional summary statistics from the MCAP footer section.
    */
   readonly statistics?: McapIndexedReader["statistics"];
+
+  /**
+   * Reads admitted chunks directly instead of delegating an unbounded window
+   * to `readMessages()`.
+   */
+  readBoundedMessages?(
+    request: McapBoundedMessageReadRequest,
+  ): Promise<McapBoundedMessageReadResult>;
 
   /**
    * Reads timestamp-only message-index entries without decoding chunk records.

@@ -2,6 +2,7 @@ import "../compatibility/browser-node-globals";
 import { McapIndexedReader, type McapTypes } from "@mcap/core";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { loadDecompressHandlers } from "../compatibility/mcap-support";
+import { createMcapBoundedReader } from "./bounded-read";
 import { ByteClientReadable } from "./byte-readable";
 import {
   collectChunkDataPrefetchRanges,
@@ -47,7 +48,7 @@ export async function createDefaultMcapReader(
   const chunkCompressions = compressedChunkTypes(reader);
   assertSupportedChunkCompressions(chunkCompressions, decompressHandlers);
 
-  return {
+  const adapterReader: McapIndexedReaderLike = {
     channelsById: reader.channelsById,
     chunkIndexes: reader.chunkIndexes,
     prefetchChunkData: (request: McapPrefetchChunkDataRequest) =>
@@ -80,6 +81,15 @@ export async function createDefaultMcapReader(
     schemasById: reader.schemasById,
     statistics: reader.statistics,
   };
+  if (readable instanceof ByteClientReadable) {
+    adapterReader.readBoundedMessages = createMcapBoundedReader({
+      decompressHandlers: wasmDecompressHandlers,
+      readable,
+      reader: adapterReader,
+      sourceKey: () => readable.sourceAccessKey(),
+    });
+  }
+  return adapterReader;
 }
 
 function compressedChunkTypes(reader: McapIndexedReader): ReadonlySet<string> {
