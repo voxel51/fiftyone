@@ -12,7 +12,10 @@ import {
   BYTE_SOURCE_READ_PROFILE,
   type ByteSourceDescriptor,
 } from "../../../ir";
-import type { PlaybackReadCapability } from "../../../ports";
+import type {
+  PlaybackReadCapability,
+  SourceReadBudgetAccount,
+} from "../../../ports";
 import { bankEpisodeBytes, episodeSourceAccessKey } from "../../../runtime";
 import { shouldDeferIdleWorkForStore } from "./network-health";
 
@@ -44,9 +47,10 @@ const BANKING_MAX_FAILURES = 3;
  * persistent layer exists — without it there is nowhere to bank to.
  */
 export const PausedByteBanking: React.FC<{
+  readonly budgetAccount: SourceReadBudgetAccount | null;
   readonly playback: PlaybackReadCapability | null;
   readonly source: ByteSourceDescriptor | null;
-}> = ({ playback, source }) => {
+}> = ({ budgetAccount, playback, source }) => {
   const store = usePlaybackStore();
   const sourceKey = source ? episodeSourceAccessKey(source) : null;
   const remote = source?.readProfile === BYTE_SOURCE_READ_PROFILE.REMOTE;
@@ -55,7 +59,7 @@ export const PausedByteBanking: React.FC<{
   // delay, gated pass attempts with stand-down retries, and teardown on
   // source change or unmount.
   useEffect(() => {
-    if (!source || !sourceKey || !remote || !playback) {
+    if (!source || !sourceKey || !remote || !playback || !budgetAccount) {
       return undefined;
     }
     if (typeof globalThis.caches === "undefined") {
@@ -99,6 +103,7 @@ export const PausedByteBanking: React.FC<{
           BigInt(Math.round(getPlayhead(store) * 1_000_000_000));
 
         const outcome = await bankEpisodeBytes({
+          budgetAccount,
           playback,
           playheadTimeNs,
           shouldStop: () => cancelled || shouldStandDown(),
@@ -107,7 +112,11 @@ export const PausedByteBanking: React.FC<{
         if (cancelled) {
           return;
         }
-        if (outcome === "completed" || outcome === "unavailable") {
+        if (
+          outcome === "budget-exhausted" ||
+          outcome === "completed" ||
+          outcome === "unavailable"
+        ) {
           done = true;
           return;
         }
@@ -131,7 +140,7 @@ export const PausedByteBanking: React.FC<{
         clearTimeout(retryTimeout);
       }
     };
-  }, [playback, remote, source, sourceKey, store]);
+  }, [budgetAccount, playback, remote, source, sourceKey, store]);
 
   return null;
 };

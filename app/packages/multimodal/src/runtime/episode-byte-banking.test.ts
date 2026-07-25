@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { ByteTimelinePoint } from "../ir";
+import type { ReadWorkBudget, SourceReadBudgetAccount } from "../ports";
 import type { ByteClient, ByteRangeReadRequest } from "../query/bytes";
 import {
   episodeBankingEndOffset,
   episodeBankingStartOffset,
   runEpisodeByteBankingPass,
 } from "./episode-byte-banking";
+import { createSourceReadBudgetLedger } from "./read-budget-account";
 
 const SECOND_NS = 1_000_000_000n;
 
@@ -51,6 +53,37 @@ const SOURCE = {
   url: "https://bytes.example/bank.mcap",
 };
 
+function bankingBudgetAccount(
+  allowance: Partial<ReadWorkBudget> = {},
+): Pick<SourceReadBudgetAccount, "remaining" | "reserve"> {
+  const ledger = createSourceReadBudgetLedger(
+    {
+      maxMessages: 0,
+      maxSourceBytes: 10_000,
+      maxUncompressedBytes: 0,
+      maxWallTimeMs: 10_000,
+      ...allowance,
+    },
+    { maxPhysicalUnits: 0 },
+  );
+  return {
+    remaining: () => {
+      const { maxPhysicalUnits: _maxPhysicalUnits, ...remaining } =
+        ledger.remaining();
+      return remaining;
+    },
+    reserve: (budget) => {
+      const reservation = ledger.reserve(budget, 0);
+      return reservation
+        ? {
+            budget: reservation.budget,
+            commit: (usage, options) => reservation.commit(usage, 0, options),
+          }
+        : undefined;
+    },
+  };
+}
+
 describe("episodeBankingStartOffset", () => {
   it("starts at the first chunk still ahead of the playhead", () => {
     expect(episodeBankingStartOffset(BYTE_TIMELINE, 0n)).toBe(1_000n);
@@ -84,6 +117,7 @@ describe("runEpisodeByteBankingPass", () => {
 
     const outcome = await runEpisodeByteBankingPass({
       blockSizeBytesFor: () => 512,
+      budgetAccount: bankingBudgetAccount(),
       bytes,
       endOffset: 1_320n,
       fromOffset: 1_110n,
@@ -108,6 +142,7 @@ describe("runEpisodeByteBankingPass", () => {
 
     const outcome = await runEpisodeByteBankingPass({
       blockSizeBytesFor: () => 512,
+      budgetAccount: bankingBudgetAccount(),
       bytes,
       endOffset: 1_320n,
       fromOffset: 0n,
@@ -131,6 +166,7 @@ describe("runEpisodeByteBankingPass", () => {
 
     const outcome = await runEpisodeByteBankingPass({
       blockSizeBytesFor: () => 512,
+      budgetAccount: bankingBudgetAccount(),
       bytes,
       endOffset: 1_320n,
       fromOffset: 0n,
@@ -139,5 +175,62 @@ describe("runEpisodeByteBankingPass", () => {
     });
 
     expect(outcome).toBe("failed");
+  });
+
+  it("stops before a cache fill that the shared source account cannot admit", async () => {
+    const { bytes, reads } = recordingByteClient();
+    const budgetAccount = bankingBudgetAccount({ maxSourceBytes: 511 });
+
+    const outcome = await runEpisodeByteBankingPass({
+      blockSizeBytesFor: () => 512,
+      budgetAccount,
+      bytes,
+      endOffset: 1_320n,
+      fromOffset: 0n,
+      shouldStop: () => false,
+      source: SOURCE,
+    });
+
+    expect(outcome).toBe("budget-exhausted");
+    expect(reads).toEqual([]);
+    expect(budgetAccount.remaining().maxSourceBytes).toBe(511);
+  });
+
+  it("charges logical cache-fill bytes even when a warm read transfers nothing", async () => {
+    const reads: ByteRangeReadRequest["range"][] = [];
+    const bytes: ByteClient = {
+      planRead: (request) => ({
+        ...request,
+        range: { length: 512n, offset: 0n },
+      }),
+      async readBytes(request) {
+        reads.push(request.range);
+        return {
+          bytes: new Uint8Array(Number(request.range.length)),
+          range: request.range,
+          readUsage: {
+            cacheResult: "fill-hit",
+            fillRange: { length: 512n, offset: 0n },
+            transferredBytes: 0,
+          },
+          source: request.source,
+        };
+      },
+    };
+    const budgetAccount = bankingBudgetAccount({ maxSourceBytes: 512 });
+
+    const outcome = await runEpisodeByteBankingPass({
+      blockSizeBytesFor: () => 512,
+      budgetAccount,
+      bytes,
+      endOffset: 512n,
+      fromOffset: 0n,
+      shouldStop: () => false,
+      source: SOURCE,
+    });
+
+    expect(outcome).toBe("completed");
+    expect(reads).toEqual([{ length: 512n, offset: 0n }]);
+    expect(budgetAccount.remaining().maxSourceBytes).toBe(0);
   });
 });
