@@ -57,6 +57,103 @@ export interface FrameBatch {
   readonly stream: StreamId;
 }
 
+/** Hard work limits for one resumable source read grant. */
+export interface ReadWorkBudget {
+  /** Decoded messages admitted for this grant. */
+  readonly maxMessages: number;
+  /** Logical source bytes admitted, including cache-served physical ranges. */
+  readonly maxSourceBytes: number;
+  /** Bytes admitted after source decompression. */
+  readonly maxUncompressedBytes: number;
+  /** Cooperative elapsed-time limit checked at bounded work boundaries. */
+  readonly maxWallTimeMs: number;
+}
+
+/** Physical work attributed to one bounded read grant. */
+export interface ReadWorkUsage {
+  readonly chunksOpened: number;
+  readonly decompressedBytes: number;
+  readonly decompressionCacheHits: number;
+  readonly elapsedMs: number;
+  readonly logicalSourceBytes: number;
+  readonly logicalUncompressedBytes: number;
+  readonly messagesDecoded: number;
+  readonly transferredBytes: number;
+}
+
+/** Why a bounded grant returned control to its caller. */
+export type BudgetedReadStopReason =
+  | "budget-exhausted"
+  | "oversized-source-unit"
+  | "source-exhausted";
+
+declare const READ_CONTINUATION_BRAND: unique symbol;
+
+/**
+ * Opaque, source-bound position returned by a bounded adapter read.
+ *
+ * Callers may only return this value to the job that produced it.
+ */
+export type ReadContinuation = object & {
+  readonly [READ_CONTINUATION_BRAND]?: never;
+};
+
+/** One explicit slice requested from a source-scoped budget account. */
+export interface BudgetedReadRequest {
+  readonly budget: ReadWorkBudget;
+  readonly continuation?: ReadContinuation;
+  readonly signal?: AbortSignal;
+  readonly streams: readonly StreamId[];
+  readonly window: TimeWindow;
+}
+
+/** Partial or complete data returned by one bounded source read grant. */
+export interface BudgetedReadResult {
+  readonly batches: readonly FrameBatch[];
+  readonly continuation?: ReadContinuation;
+  readonly coverageByStream: ReadonlyMap<StreamId, readonly TimeWindow[]>;
+  readonly stopReason: BudgetedReadStopReason;
+  readonly usage: ReadWorkUsage;
+}
+
+/** One independently resumable job sharing its source account's allowance. */
+export interface BudgetedReadJob {
+  read(request: BudgetedReadRequest): Promise<BudgetedReadResult>;
+}
+
+/**
+ * One source-account reservation for work outside a decoded read job, such as
+ * speculative byte-cache warming.
+ */
+export interface SourceReadBudgetReservation {
+  readonly budget: ReadWorkBudget;
+  commit(usage: ReadWorkUsage, options?: { readonly exact?: boolean }): void;
+}
+
+/** Source-scoped cumulative allowance shared by every job created from it. */
+export interface SourceReadBudgetAccount {
+  createJob(): BudgetedReadJob;
+  remaining(): ReadWorkBudget;
+
+  /**
+   * Reserves non-decoding source work from this same cumulative account.
+   *
+   * The reservation is charged immediately. Exact settlement refunds only
+   * demonstrably unused work; conservative settlement retains the charge.
+   */
+  reserve(budget: ReadWorkBudget): SourceReadBudgetReservation | undefined;
+}
+
+/** Optional format-neutral bounded-read surface on an episode session. */
+export interface BoundedReadCapability {
+  /**
+   * Opens the source account once. Omitting the allowance selects the
+   * adapter's fixed source policy. Reopening with a different allowance is
+   * rejected so job recreation cannot reset or enlarge cumulative work.
+   */
+  openAccount(allowance?: ReadWorkBudget): SourceReadBudgetAccount;
+}
+
 /** Monotone source telemetry reported in shared runtime units. */
 export interface SourceStats {
   readonly capturedAtMs: number;
@@ -170,6 +267,7 @@ export interface EpisodeTerminology {
 
 /** Open, format-neutral episode data plane consumed by the shared runtime. */
 export interface EpisodeSession {
+  readonly boundedRead?: BoundedReadCapability;
   readonly manifest: EpisodeManifest;
   readonly numericSeries?: NumericSeriesCapability;
   readonly playback?: PlaybackReadCapability;
