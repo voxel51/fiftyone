@@ -9,6 +9,7 @@ import {
 /** Cancellation and retry controls scoped to one bulk stream read. */
 export interface BulkStreamControl {
   readonly isCancelled: () => boolean;
+  readonly signal: AbortSignal;
   readonly standDown: () => boolean;
 }
 
@@ -36,6 +37,7 @@ export function startBulkStreamLifecycle({
   let cancelled = false;
   let retryTimeout: ReturnType<typeof setTimeout> | null = null;
   const fetchedStreams = new Set<string>();
+  const activeControllers = new Set<AbortController>();
 
   const schedule = (delayMs: number) => {
     if (cancelled || retryTimeout !== null) return;
@@ -56,8 +58,11 @@ export function startBulkStreamLifecycle({
       if (fetchedStreams.has(stream)) continue;
       fetchedStreams.add(stream);
       let retryAfterRun = false;
+      const controller = new AbortController();
+      activeControllers.add(controller);
       const run = runStream(stream, {
         isCancelled: () => cancelled,
+        signal: controller.signal,
         standDown: () => {
           if (cancelled) return true;
           if (!shouldStandDown()) return false;
@@ -66,6 +71,7 @@ export function startBulkStreamLifecycle({
         },
       });
       const finish = () => {
+        activeControllers.delete(controller);
         if (!cancelled && retryAfterRun) {
           fetchedStreams.delete(stream);
           schedule(retryDelayMs);
@@ -83,6 +89,8 @@ export function startBulkStreamLifecycle({
 
   return () => {
     cancelled = true;
+    for (const controller of activeControllers) controller.abort();
+    activeControllers.clear();
     if (retryTimeout !== null) clearTimeout(retryTimeout);
   };
 }

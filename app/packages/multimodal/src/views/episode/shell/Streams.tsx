@@ -2,7 +2,11 @@ import { useEffect, useMemo } from "react";
 import { SCENE_SOURCE_TYPE, type ByteSourceDescriptor } from "../../../ir";
 import { streamSyncPoliciesForSceneSources } from "../../../scene-inventory";
 import { useSceneInventory } from "../../../scene-inventory/react";
-import type { EpisodeSession, TransformReadAcceleration } from "../../../ports";
+import type {
+  EpisodeSession,
+  SourceReadBudgetAccount,
+  TransformReadAcceleration,
+} from "../../../ports";
 import {
   createEpisodeTransformReadRuntime,
   episodeSourceAccessKey,
@@ -35,6 +39,8 @@ export interface StreamsProps {
   session: EpisodeSession | null;
   /** Called after every blocking stream covers the current playhead. */
   onPlayheadDataReady?: () => void;
+  /** Source-scoped bounded-work account shared by background consumers. */
+  budgetAccount?: SourceReadBudgetAccount | null;
   /** Byte source currently feeding the playback shell. */
   source: ByteSourceDescriptor | null;
 }
@@ -47,6 +53,7 @@ export interface StreamsProps {
  */
 export function Streams({
   availableTileTypes,
+  budgetAccount,
   onPlayheadDataReady,
   session,
   source,
@@ -162,6 +169,7 @@ export function Streams({
         sourceKey={sourceKey}
       />
       <LocationTracksBridge
+        budgetAccount={budgetAccount}
         locationSources={locationSources}
         session={session}
         sourceKey={sourceKey}

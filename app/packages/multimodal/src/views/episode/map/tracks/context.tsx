@@ -11,7 +11,13 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import type { EpisodeSession } from "../../../../ports";
+import type {
+  BudgetedReadResult,
+  EpisodeSession,
+  FrameBatch,
+  ReadContinuation,
+  SourceReadBudgetAccount,
+} from "../../../../ports";
 import type { SceneSource } from "../../../../scene-inventory";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import { shouldDeferBulkHistory } from "../../playback/bulk-stream-lifecycle";
@@ -32,6 +38,12 @@ import {
 const LOCATION_TRACK_READ_LIMIT = 25_000;
 const LOCATION_TRACK_DEFERRED_RETRY_MS = 2_000;
 const LOCATION_TRACK_PROGRESS_POINT_INTERVAL = 250;
+const LOCATION_TRACK_GRANT_BUDGET = {
+  maxMessages: 5_000,
+  maxSourceBytes: 32 * 1024 * 1024,
+  maxUncompressedBytes: 64 * 1024 * 1024,
+  maxWallTimeMs: 750,
+} as const;
 
 const EMPTY_LOCATION_TRACKS: LocationTracks = new Map();
 
@@ -90,11 +102,13 @@ export function useLocationTracksSourceKey(): string | null {
  * route segments while each stream is still being read.
  */
 export function LocationTracksBridge({
+  budgetAccount,
   locationSources,
   session,
   sourceKey,
   streams,
 }: {
+  readonly budgetAccount?: SourceReadBudgetAccount | null;
   readonly locationSources: readonly SceneSource[];
   readonly session: EpisodeSession | null;
   readonly sourceKey: string | null;
@@ -133,17 +147,13 @@ export function LocationTracksBridge({
       const points: LocationTrackPoint[] = [];
       let messageCount = 0;
       let publishedPointCount = 0;
+      let truncated = false;
       try {
-        for await (const batch of session.read({
-          limit: LOCATION_TRACK_READ_LIMIT,
-          priority: "bulk",
-          streams: [stream],
-          window: session.manifest.timeRange,
-        })) {
+        const consume = (batch: FrameBatch) => {
           for (const frame of batch.frames) {
-            if (control.isCancelled()) return;
+            if (control.isCancelled()) return false;
             messageCount += 1;
-            if (control.standDown()) return;
+            if (control.standDown()) return false;
             const visualization = frame.output.visualization;
             if (visualization?.kind !== VISUALIZATION_KIND.LOCATION) continue;
             points.push(
@@ -168,13 +178,56 @@ export function LocationTracksBridge({
               ...(progress.truncated ? { truncated: true } : {}),
             });
           }
+          return true;
+        };
+
+        if (budgetAccount) {
+          const job = budgetAccount.createJob();
+          let continuation: ReadContinuation | undefined;
+          while (!control.isCancelled()) {
+            if (control.standDown()) return;
+            const result: BudgetedReadResult = await job.read({
+              budget: LOCATION_TRACK_GRANT_BUDGET,
+              ...(continuation ? { continuation } : {}),
+              signal: control.signal,
+              streams: [stream],
+              window: session.manifest.timeRange,
+            });
+            for (const batch of result.batches) {
+              if (!consume(batch)) return;
+            }
+            const madeProgress =
+              result.batches.length > 0 || result.usage.chunksOpened > 0;
+            continuation = result.continuation;
+            if (!continuation || result.stopReason === "source-exhausted")
+              break;
+            if (
+              !madeProgress ||
+              result.stopReason === "oversized-source-unit"
+            ) {
+              truncated = true;
+              break;
+            }
+          }
+        } else {
+          for await (const batch of session.read({
+            limit: LOCATION_TRACK_READ_LIMIT,
+            priority: "bulk",
+            signal: control.signal,
+            streams: [stream],
+            window: session.manifest.timeRange,
+          })) {
+            if (!consume(batch)) return;
+          }
         }
 
         const result = decimateLocationTrackSegments(
           segmentLocationTrack(points),
         );
-        const truncated =
-          result.truncated || messageCount >= LOCATION_TRACK_READ_LIMIT;
+        truncated =
+          truncated ||
+          result.truncated ||
+          messageCount >= LOCATION_TRACK_READ_LIMIT;
         if (control.isCancelled()) return;
         commit({
           ...baseState,
@@ -188,7 +241,7 @@ export function LocationTracksBridge({
         commit({ ...baseState, status: "error" });
       }
     },
-    [locationSources, session],
+    [budgetAccount, locationSources, session],
   );
   const tracks = useDemandDrivenHistory({
     initialDelayMs: 0,
