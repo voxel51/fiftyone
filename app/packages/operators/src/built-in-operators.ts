@@ -24,8 +24,10 @@ import {
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
+import { loadPlugins } from "@fiftyone/plugins";
 import { useOperatorExecutor } from ".";
 import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
+import { useRefreshOperators } from "./loader";
 import registerPanel from "./Panel/register";
 import "./builtin";
 import {
@@ -81,6 +83,26 @@ class ReloadDataset extends Operator {
   }
   async execute({ hooks }) {
     hooks.refresh();
+  }
+}
+class ReloadPlugins extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "reload_plugins",
+      label: "Reload plugins",
+    });
+  }
+  // loadPlugins() only runs once, at mount; a later install needs this.
+  useHooks() {
+    return {
+      refreshOperators: useRefreshOperators(),
+      datasetName: useRecoilValue(fos.datasetName),
+    };
+  }
+  async execute({ hooks }) {
+    await loadPlugins();
+    await hooks.refreshOperators(hooks.datasetName);
   }
 }
 class ClearSelectedSamples extends Operator {
@@ -1746,6 +1768,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(ViewFromJSON);
     _registerBuiltInOperator(ReloadSamples);
     _registerBuiltInOperator(ReloadDataset);
+    _registerBuiltInOperator(ReloadPlugins);
     _registerBuiltInOperator(ClearSelectedSamples);
     _registerBuiltInOperator(OpenAllPanels);
     _registerBuiltInOperator(CloseAllPanels);
