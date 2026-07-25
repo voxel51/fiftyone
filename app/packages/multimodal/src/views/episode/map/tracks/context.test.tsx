@@ -21,6 +21,30 @@ afterEach(() => {
 });
 
 describe("LocationTracksBridge", () => {
+  it("does not read until a map consumer demands a location stream", () => {
+    const source = createSource("drive");
+    const session = createSession();
+    const view = render(
+      <Harness
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        source={source}
+        streams={[]}
+      />,
+    );
+    expect(session.read).not.toHaveBeenCalled();
+
+    view.rerender(
+      <Harness
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        source={source}
+        streams={["/gps"]}
+      />,
+    );
+    expect(session.read).toHaveBeenCalledTimes(1);
+  });
+
   it("starts full-track reads immediately, uses the bulk lane, and publishes no-fix gaps", async () => {
     const source = createSource("drive");
     const locationSources = [locationSource("/gps")];
@@ -47,6 +71,40 @@ describe("LocationTracksBridge", () => {
     await waitFor(() => {
       expect(screen.getByTestId("location-tracks").textContent).toBe(
         "/gps:ready:2:2:full",
+      );
+    });
+  });
+
+  it("publishes route segments progressively while the full scan continues", async () => {
+    let releaseRemainder: () => void = () => undefined;
+    const remainder = new Promise<void>((resolve) => {
+      releaseRemainder = resolve;
+    });
+    const source = createSource("drive");
+    const session = createSession(async function* () {
+      yield locationMessage(1_000_000_000n, 37, -122, 0);
+      await remainder;
+      yield locationMessage(2_000_000_000n, 37.001, -122.001, 0);
+    });
+
+    render(
+      <Harness
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        source={source}
+        streams={["/gps"]}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:loading:1:1:full",
+      );
+    });
+
+    releaseRemainder();
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:ready:2:1:full",
       );
     });
   });
@@ -142,11 +200,13 @@ function Harness({
   locationSources,
   source,
   store,
+  streams,
 }: {
   readonly session: EpisodeSession;
   readonly locationSources: readonly SceneSource[];
   readonly source: ByteSourceDescriptor;
   readonly store?: ReturnType<typeof createStore>;
+  readonly streams?: readonly string[];
 }) {
   const body = (
     <LocationTracksProvider>
@@ -154,6 +214,7 @@ function Harness({
         session={session}
         locationSources={locationSources}
         sourceKey={source.sourceId}
+        streams={streams}
       />
       <LocationTracksProbe />
     </LocationTracksProvider>

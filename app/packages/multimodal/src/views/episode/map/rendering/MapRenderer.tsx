@@ -19,6 +19,7 @@ import {
   type LocationTrackState,
 } from "../tracks/location-track";
 import { MapLibreSurface } from "./MapLibreSurface";
+import type { MapLocationMarker } from "./playback-paint";
 import { joinMapStatusText, MapEmptyState, mapStatusText } from "./MapStatus";
 import { noteMapReactCommit } from "./performance";
 import { MapLegend } from "./StaticMapPreview";
@@ -37,6 +38,7 @@ export interface MapRendererProps {
   readonly loadingCount: number;
   readonly locationEvidencePending: boolean;
   readonly locationStreamCount: number;
+  readonly liveMarkers: readonly MapLocationMarker[];
   readonly onFollowEgoChange: (followEgo: boolean) => void;
   readonly onHoverTimeNs: (timeNs: bigint | null) => void;
   readonly onSeekTimeNs: (timeNs: bigint) => void;
@@ -57,6 +59,7 @@ export const MapRenderer: React.FC<MapRendererProps> = ({
   loadingCount,
   locationEvidencePending,
   locationStreamCount,
+  liveMarkers,
   onFollowEgoChange,
   onHoverTimeNs,
   onSeekTimeNs,
@@ -162,6 +165,7 @@ export const MapRenderer: React.FC<MapRendererProps> = ({
         fitRouteNonce={fitRouteNonce}
         followEgo={followEgo}
         locationEvidencePending={locationEvidencePending}
+        liveMarkers={liveMarkers}
         measureArmed={measureArmed}
         measurement={measurement}
         onBasemapStatusChange={onBasemapStatusChange}
@@ -182,7 +186,7 @@ export const MapRenderer: React.FC<MapRendererProps> = ({
             {statusText}
           </span>
         ) : null}
-        {tracks.length > 0 ? (
+        {tracks.length > 0 || liveMarkers.length > 0 ? (
           <button
             className={styles.controlButton}
             onClick={() => {
@@ -226,7 +230,7 @@ export const MapRenderer: React.FC<MapRendererProps> = ({
         enabledStreamCount={enabledStreamCount}
         loadingCount={loadingCount}
         locationStreamCount={locationStreamCount}
-        readyTrackCount={tracks.length}
+        readyTrackCount={tracks.length + liveMarkers.length}
       />
     </div>
   );

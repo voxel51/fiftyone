@@ -31,6 +31,28 @@ afterEach(() => {
 });
 
 describe("PoseTrajectoriesBridge", () => {
+  it("starts and cancels the delayed read with pose-trajectory demand", async () => {
+    vi.useFakeTimers();
+    const source = createSource("pose");
+    const session = createSession();
+    const view = render(
+      <Harness session={session} enabled source={source} streams={[]} />,
+    );
+
+    await advanceTimers(5_000);
+    expect(session.read).not.toHaveBeenCalled();
+
+    view.rerender(
+      <Harness session={session} enabled source={source} streams={["/pose"]} />,
+    );
+    await advanceTimers(1_000);
+    view.rerender(
+      <Harness session={session} enabled source={source} streams={[]} />,
+    );
+    await advanceTimers(5_000);
+    expect(session.read).not.toHaveBeenCalled();
+  });
+
   it("delays full-history pose reads and sends them to the bulk lane", async () => {
     vi.useFakeTimers();
     const source = createSource("pose");
@@ -257,17 +279,19 @@ function Harness({
   session,
   enabled,
   source,
+  streams = ["/pose"],
 }: {
   readonly session: EpisodeSession;
   readonly enabled: boolean;
   readonly source: ByteSourceDescriptor;
+  readonly streams?: readonly string[];
 }) {
   return (
     <PoseTrajectoriesProvider>
       <PoseTrajectoriesBridge
         session={session}
         enabled={enabled}
-        poseStreams={["/pose"]}
+        poseStreams={streams}
         sourceKey={source.sourceId}
       />
       <TrajectoriesProbe />

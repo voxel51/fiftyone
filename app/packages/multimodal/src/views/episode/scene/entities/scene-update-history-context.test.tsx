@@ -17,6 +17,24 @@ afterEach(() => {
 });
 
 describe("SceneUpdateHistoryBridge", () => {
+  it("does not scan an unselected scene-update stream", async () => {
+    vi.useFakeTimers();
+    const session = createSession();
+    const source = createSource("markers");
+    const view = render(
+      <Harness session={session} source={source} streams={[]} />,
+    );
+
+    await advanceTimers(5_000);
+    expect(session.read).not.toHaveBeenCalled();
+
+    view.rerender(
+      <Harness session={session} source={source} streams={["/markers"]} />,
+    );
+    await advanceTimers(1_500);
+    expect(session.read).toHaveBeenCalledTimes(1);
+  });
+
   it("delays full-history reads, uses the bulk lane, and publishes deltas", async () => {
     vi.useFakeTimers();
     const source = createSource("markers");
@@ -37,6 +55,39 @@ describe("SceneUpdateHistoryBridge", () => {
     });
     expect(screen.getByTestId("scene-history").textContent).toBe(
       "/markers:ready:1:full",
+    );
+  });
+
+  it("publishes a covered chronological prefix before the full read finishes", async () => {
+    vi.useFakeTimers();
+    let releaseRemainder: () => void = () => undefined;
+    const remainder = new Promise<void>((resolve) => {
+      releaseRemainder = resolve;
+    });
+    const session = createSession(async function* () {
+      yield sceneUpdateMessage(10n);
+      await remainder;
+      yield sceneUpdateMessage(20n);
+    });
+
+    render(
+      <Harness
+        session={session}
+        source={createSource("markers")}
+        streams={["/markers"]}
+      />,
+    );
+    await advanceTimers(1_500);
+    expect(screen.getByTestId("scene-history").textContent).toBe(
+      "/markers:loading:1:full",
+    );
+
+    releaseRemainder();
+    await act(async () => {
+      await remainder;
+    });
+    expect(screen.getByTestId("scene-history").textContent).toBe(
+      "/markers:ready:2:full",
     );
   });
 
@@ -65,15 +116,17 @@ describe("SceneUpdateHistoryBridge", () => {
 function Harness({
   session,
   source,
+  streams = ["/markers"],
 }: {
   readonly session: EpisodeSession;
   readonly source: ByteSourceDescriptor;
+  readonly streams?: readonly string[];
 }) {
   return (
     <SceneUpdateHistoryProvider>
       <SceneUpdateHistoryBridge
         session={session}
-        sceneAnnotationStreams={["/markers"]}
+        sceneAnnotationStreams={streams}
         sourceKey={source.sourceId}
       />
       <HistoryProbe />

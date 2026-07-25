@@ -22,9 +22,11 @@ import { usePlaybackTimeNs } from "../playback/use-playback-time-ns";
 import { useRegisterTiles } from "./use-register-tiles";
 import type { TileType } from "../tiles/tile-types";
 import { useRegisterDataStream } from "../playback/use-register-data-stream";
+import { useFullHistoryStreamsByFeature } from "../playback/full-history-interests";
 
 const FRAME_TRANSFORM_RANGE_PADDING_NS = 1_000_000_000n;
 const FRAME_TRANSFORM_BOUNDARY_CLAMP_NS = 50_000_000n;
+const EMPTY_STREAMS: readonly string[] = [];
 
 export interface StreamsProps {
   /** Tile kinds supported by the current manifest, capabilities, and build. */
@@ -50,6 +52,13 @@ export function Streams({
   source,
 }: StreamsProps) {
   const sources = useSceneInventory();
+  const fullHistoryStreams = useFullHistoryStreamsByFeature();
+  const requestedLocationHistoryStreams =
+    fullHistoryStreams.get("location") ?? EMPTY_STREAMS;
+  const requestedPoseHistoryStreams =
+    fullHistoryStreams.get("pose") ?? EMPTY_STREAMS;
+  const requestedSceneUpdateHistoryStreams =
+    fullHistoryStreams.get("scene-update") ?? EMPTY_STREAMS;
   const numericSeries = session?.numericSeries ?? null;
   const rawRecords = session?.rawRecords ?? null;
   const transformRead = useMemo(
@@ -101,19 +110,35 @@ export function Streams({
   );
   const poseStreams = useMemo(
     () =>
-      sources.filter((s) => s.type === SCENE_SOURCE_TYPE.POSE).map((s) => s.id),
-    [sources],
+      requestedPoseHistoryStreams.filter((stream) =>
+        sources.some(
+          (source) =>
+            source.id === stream && source.type === SCENE_SOURCE_TYPE.POSE,
+        ),
+      ),
+    [requestedPoseHistoryStreams, sources],
   );
   const locationSources = useMemo(
     () => sources.filter((s) => s.type === SCENE_SOURCE_TYPE.LOCATION),
     [sources],
   );
+  const locationStreams = useMemo(
+    () =>
+      requestedLocationHistoryStreams.filter((stream) =>
+        locationSources.some((source) => source.id === stream),
+      ),
+    [locationSources, requestedLocationHistoryStreams],
+  );
   const sceneAnnotationStreams = useMemo(
     () =>
-      sources
-        .filter((s) => s.type === SCENE_SOURCE_TYPE.SCENE_ANNOTATION)
-        .map((s) => s.id),
-    [sources],
+      requestedSceneUpdateHistoryStreams.filter((stream) =>
+        sources.some(
+          (source) =>
+            source.id === stream &&
+            source.type === SCENE_SOURCE_TYPE.SCENE_ANNOTATION,
+        ),
+      ),
+    [requestedSceneUpdateHistoryStreams, sources],
   );
 
   useRegisterDataStream({
@@ -140,6 +165,7 @@ export function Streams({
         locationSources={locationSources}
         session={session}
         sourceKey={sourceKey}
+        streams={locationStreams}
       />
       <SceneUpdateHistoryBridge
         sceneAnnotationStreams={sceneAnnotationStreams}

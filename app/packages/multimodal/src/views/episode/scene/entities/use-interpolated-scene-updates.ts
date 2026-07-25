@@ -12,7 +12,10 @@ import {
   interpolateSceneUpdate,
 } from "./interpolate-scene-entities";
 import { useDataStream } from "../../playback/data-stream-context";
-import { useSceneUpdateHistoryContext } from "./scene-update-history-context";
+import {
+  useSceneUpdateHistoryContext,
+  type SceneUpdateHistoryStream,
+} from "./scene-update-history-context";
 import {
   sceneUpdateSnapshotAt,
   type SceneUpdateDelta,
@@ -66,7 +69,10 @@ export function useInterpolatedSceneUpdateFrames({
         fallbackFrame: playbackFrame.frame,
         fallbackTimeNs: playbackFrame.contentTimeNs,
         historyDeltas: historyStream?.deltas,
-        historyReady: historyStream?.status === "ready",
+        historyCoversTarget: sceneUpdateHistoryCovers(
+          historyStream,
+          playbackFrame.requestedTimeNs,
+        ),
         targetTimeNs: playbackFrame.requestedTimeNs,
       });
       if (deltas.length === 0) {
@@ -130,7 +136,10 @@ export function useInterpolatedSceneUpdateFrames({
         fallbackFrame: nextViz,
         fallbackTimeNs: nextMsg.timestampNs,
         historyDeltas: historyStream?.deltas,
-        historyReady: historyStream?.status === "ready",
+        historyCoversTarget: sceneUpdateHistoryCovers(
+          historyStream,
+          nextMsg.timestampNs,
+        ),
         targetTimeNs: nextMsg.timestampNs,
       });
       const nextFrame =
@@ -181,17 +190,17 @@ function sceneUpdateDeltasForStream({
   fallbackFrame,
   fallbackTimeNs,
   historyDeltas,
-  historyReady,
+  historyCoversTarget,
   targetTimeNs,
 }: {
   readonly cache: EpisodeStreamCache | null;
   readonly fallbackFrame: SceneUpdateVisualization;
   readonly fallbackTimeNs: bigint;
   readonly historyDeltas: readonly SceneUpdateDelta[] | undefined;
-  readonly historyReady: boolean;
+  readonly historyCoversTarget: boolean;
   readonly targetTimeNs: bigint;
 }): readonly SceneUpdateDelta[] {
-  if (historyReady && historyDeltas) {
+  if (historyCoversTarget && historyDeltas) {
     return historyDeltas;
   }
 
@@ -201,6 +210,18 @@ function sceneUpdateDeltasForStream({
   }
 
   return [{ timeNs: fallbackTimeNs, update: fallbackFrame }];
+}
+
+function sceneUpdateHistoryCovers(
+  history: SceneUpdateHistoryStream | undefined,
+  targetTimeNs: bigint,
+): boolean {
+  if (!history) return false;
+  if (history.status === "ready") return true;
+  return (
+    history.loadedThroughNs !== undefined &&
+    history.loadedThroughNs >= targetTimeNs
+  );
 }
 
 function cachedSceneUpdateDeltas(

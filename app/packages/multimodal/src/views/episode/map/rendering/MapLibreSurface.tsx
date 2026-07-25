@@ -53,6 +53,8 @@ import {
   paintMapPlaybackFrame,
   prunePlaybackPaintState,
   updateMapPulse,
+  withLiveMapMarkers,
+  type MapLocationMarker,
   type MapPlaybackFrame,
   type MapPlaybackPaintState,
 } from "./playback-paint";
@@ -122,6 +124,7 @@ export function MapLibreSurface({
   fitRouteNonce,
   followEgo,
   locationEvidencePending,
+  liveMarkers,
   measureArmed,
   measurement,
   onHoverTimeNs,
@@ -142,6 +145,7 @@ export function MapLibreSurface({
   readonly fitRouteNonce: number;
   readonly followEgo: boolean;
   readonly locationEvidencePending: boolean;
+  readonly liveMarkers: readonly MapLocationMarker[];
   readonly measureArmed: boolean;
   readonly measurement: MapMeasurementState | null;
   readonly onHoverTimeNs: (timeNs: bigint | null) => void;
@@ -216,6 +220,7 @@ export function MapLibreSurface({
   const measurementRef = useRef(measurement);
   const viewportScopeRef = useRef(viewportScope);
   const indexedTracksRef = useRef(indexedTracks);
+  const liveMarkersRef = useRef(liveMarkers);
   const followEgoRef = useRef(followEgo);
   const pulseActiveRef = useRef(pulseActive);
   const sourceKeyRef = useRef(sourceKey);
@@ -227,6 +232,7 @@ export function MapLibreSurface({
   measurementRef.current = measurement;
   viewportScopeRef.current = viewportScope;
   indexedTracksRef.current = indexedTracks;
+  liveMarkersRef.current = liveMarkers;
   followEgoRef.current = followEgo;
   pulseActiveRef.current = pulseActive;
   sourceKeyRef.current = sourceKey;
@@ -478,7 +484,11 @@ export function MapLibreSurface({
         map.setStyle(NO_TILE_STYLE, {
           transformStyle: mergeMapOverlaysIntoStyle,
         });
-        ensureCurrentPuckImages(map, indexedTracksRef.current);
+        ensureCurrentPuckImages(
+          map,
+          indexedTracksRef.current,
+          liveMarkersRef.current,
+        );
         playbackControllerRef.current?.invalidate();
       }
       return () => {
@@ -507,7 +517,11 @@ export function MapLibreSurface({
         let overlaysRestored = false;
         const restoreOverlays = () => {
           if (overlaysRestored || cancelled) return;
-          ensureCurrentPuckImages(map, indexedTracksRef.current);
+          ensureCurrentPuckImages(
+            map,
+            indexedTracksRef.current,
+            liveMarkersRef.current,
+          );
           playbackControllerRef.current?.invalidate();
           overlaysRestored = true;
         };
@@ -613,10 +627,9 @@ export function MapLibreSurface({
       onPaint: (playheadNs, nowMs) => {
         const indexed = indexedTracksRef.current;
         const paintState = playbackPaintStateRef.current;
-        const frame = mapPlaybackFrameAt(
-          indexed,
-          playheadNs,
-          paintState.cursors,
+        const frame = withLiveMapMarkers(
+          mapPlaybackFrameAt(indexed, playheadNs, paintState.cursors),
+          liveMarkersRef.current,
         );
         latestPlaybackFrameRef.current = frame;
         const map = mapRef.current;
@@ -677,10 +690,10 @@ export function MapLibreSurface({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
-    ensurePuckImages(
-      map,
-      indexedTracks.map(({ track }) => track.color),
-    );
+    ensurePuckImages(map, [
+      ...indexedTracks.map(({ track }) => track.color),
+      ...liveMarkers.map((marker) => marker.color),
+    ]);
     reconcileTrackLayers(map, indexedTracks, installedTrackLayersRef.current);
     setGeoJsonSourceData(
       map,
@@ -689,7 +702,7 @@ export function MapLibreSurface({
     );
     prunePlaybackPaintState(playbackPaintStateRef.current, indexedTracks);
     playbackControllerRef.current?.invalidate();
-  }, [indexedTracks, loaded]);
+  }, [indexedTracks, liveMarkers, loaded]);
 
   // This effect isolates hover subscription updates to the hover source.
   useEffect(() => {
@@ -815,6 +828,7 @@ export function MapLibreSurface({
     bounds,
     cameraEpoch,
     loaded,
+    liveMarkers,
     locationEvidencePending,
     sourceKey,
     viewportScope,
@@ -859,7 +873,7 @@ export function MapLibreSurface({
       <div className={styles.map} ref={containerRef} />
       {showStaticPreview ? (
         <div className={styles.fallback}>
-          <StaticMapPreview tracks={tracks} />
+          <StaticMapPreview liveMarkers={liveMarkers} tracks={tracks} />
         </div>
       ) : null}
     </>
@@ -873,11 +887,12 @@ function isMapSurfaceActive(activity: MapSurfaceActivity): boolean {
 function ensureCurrentPuckImages(
   map: MapLibreMap,
   tracks: readonly IndexedMapTrack[],
+  liveMarkers: readonly MapLocationMarker[],
 ): void {
-  ensurePuckImages(
-    map,
-    tracks.map(({ track }) => track.color),
-  );
+  ensurePuckImages(map, [
+    ...tracks.map(({ track }) => track.color),
+    ...liveMarkers.map((marker) => marker.color),
+  ]);
 }
 
 function loadMapLibre(): Promise<MapLibreModule> {

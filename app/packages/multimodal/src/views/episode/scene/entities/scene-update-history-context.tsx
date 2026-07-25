@@ -1,31 +1,37 @@
 import { PlaybackStoreContext } from "@fiftyone/playback/runtime";
 import React, {
+  useCallback,
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 
 import type { EpisodeSession } from "../../../../ports/index";
 import { VISUALIZATION_KIND } from "../../../../visualization/index";
+import { shouldDeferBulkHistory } from "../../playback/bulk-stream-lifecycle";
 import {
-  shouldDeferBulkHistory,
-  startBulkStreamLifecycle,
-} from "../../playback/bulk-stream-lifecycle";
+  useDemandDrivenHistory,
+  type DemandDrivenHistoryLoader,
+} from "../../playback/use-demand-driven-history";
 import type { SceneUpdateDelta } from "./scene-update-state";
 
 const SCENE_UPDATE_HISTORY_READ_LIMIT = 50_000;
 const SCENE_UPDATE_HISTORY_START_DELAY_MS = 1_500;
 const SCENE_UPDATE_HISTORY_DEFERRED_RETRY_MS = 2_000;
 
+/** Progressive reconstruction state for one scene-update stream. */
 export interface SceneUpdateHistoryStream {
   readonly deltas: readonly SceneUpdateDelta[];
+  /** The chronological prefix is complete through this message timestamp. */
+  readonly loadedThroughNs?: bigint;
   readonly status: "error" | "loading" | "ready" | "truncated";
   readonly truncated?: boolean;
 }
 
+/** Scene-update histories keyed by stream id. */
 export type SceneUpdateHistory = ReadonlyMap<string, SceneUpdateHistoryStream>;
 
 const EMPTY_HISTORY: SceneUpdateHistory = new Map();
@@ -66,6 +72,7 @@ export function useSceneUpdateHistoryContext(): SceneUpdateHistory {
   return useContext(SceneUpdateHistoryContext)?.history ?? EMPTY_HISTORY;
 }
 
+/** Loads selected scene-update histories and publishes chronological prefixes. */
 export function SceneUpdateHistoryBridge({
   sceneAnnotationStreams,
   session,
@@ -75,70 +82,90 @@ export function SceneUpdateHistoryBridge({
   readonly session: EpisodeSession | null;
   readonly sourceKey: string | null;
 }) {
-  const { setHistory } = useContextValue();
-  const historyRef = useRef(new Map<string, SceneUpdateHistoryStream>());
+  const { history: publishedHistory, setHistory } = useContextValue();
   const playbackStore = useContext(PlaybackStoreContext);
+  const loadStream = useCallback(
+    async ({
+      commit,
+      control,
+      stream,
+    }: DemandDrivenHistoryLoader<SceneUpdateHistoryStream>) => {
+      if (!session) return;
+      commit({ deltas: [], status: "loading" });
 
-  // This effect restarts bulk history collection when the source, session, or
-  // selected annotation streams change.
-  useEffect(() => {
-    historyRef.current = new Map();
-    setHistory(EMPTY_HISTORY);
-
-    if (!sourceKey || !session || sceneAnnotationStreams.length === 0) {
-      return undefined;
-    }
-
-    const commit = (stream: string, state: SceneUpdateHistoryStream) => {
-      historyRef.current.set(stream, state);
-      setHistory(new Map(historyRef.current));
-    };
-
-    return startBulkStreamLifecycle({
-      initialDelayMs: SCENE_UPDATE_HISTORY_START_DELAY_MS,
-      retryDelayMs: SCENE_UPDATE_HISTORY_DEFERRED_RETRY_MS,
-      shouldStandDown: () => shouldDeferBulkHistory(playbackStore),
-      streams: sceneAnnotationStreams,
-      runStream: async (stream, control) => {
-        commit(stream, { deltas: [], status: "loading" });
-
-        const deltas: SceneUpdateDelta[] = [];
-        let messageCount = 0;
-        try {
-          for await (const batch of session.read({
-            limit: SCENE_UPDATE_HISTORY_READ_LIMIT,
-            priority: "bulk",
-            streams: [stream],
-            window: session.manifest.timeRange,
-          })) {
-            for (const frame of batch.frames) {
-              if (control.isCancelled() || control.standDown()) return;
-              messageCount += 1;
-              const visualization = frame.output.visualization;
-              if (visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE) {
-                continue;
-              }
-              deltas.push({
-                timeNs: frame.timestampNs,
-                update: visualization,
-              });
+      const deltas: SceneUpdateDelta[] = [];
+      let loadedThroughNs: bigint | undefined;
+      let messageCount = 0;
+      try {
+        for await (const batch of session.read({
+          limit: SCENE_UPDATE_HISTORY_READ_LIMIT,
+          priority: "bulk",
+          streams: [stream],
+          window: session.manifest.timeRange,
+        })) {
+          for (const frame of batch.frames) {
+            if (control.isCancelled() || control.standDown()) return;
+            messageCount += 1;
+            if (
+              loadedThroughNs === undefined ||
+              frame.timestampNs > loadedThroughNs
+            ) {
+              loadedThroughNs = frame.timestampNs;
             }
+            const visualization = frame.output.visualization;
+            if (visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE) {
+              continue;
+            }
+            deltas.push({
+              timeNs: frame.timestampNs,
+              update: visualization,
+            });
           }
-
-          const truncated = messageCount >= SCENE_UPDATE_HISTORY_READ_LIMIT;
-          if (control.isCancelled()) return;
-          commit(stream, {
-            deltas,
-            status: truncated ? "truncated" : "ready",
-            ...(truncated ? { truncated: true } : {}),
-          });
-        } catch {
-          if (control.isCancelled()) return;
-          commit(stream, { deltas: [], status: "error" });
+          if (loadedThroughNs !== undefined) {
+            commit({
+              deltas: [...deltas],
+              loadedThroughNs,
+              status: "loading",
+            });
+          }
         }
-      },
-    });
-  }, [playbackStore, sceneAnnotationStreams, setHistory, session, sourceKey]);
+
+        const truncated = messageCount >= SCENE_UPDATE_HISTORY_READ_LIMIT;
+        if (control.isCancelled()) return;
+        commit({
+          deltas,
+          ...(loadedThroughNs !== undefined ? { loadedThroughNs } : {}),
+          status: truncated ? "truncated" : "ready",
+          ...(truncated ? { truncated: true } : {}),
+        });
+      } catch {
+        if (control.isCancelled()) return;
+        commit({ deltas: [], status: "error" });
+      }
+    },
+    [session],
+  );
+  const history = useDemandDrivenHistory({
+    initialDelayMs: SCENE_UPDATE_HISTORY_START_DELAY_MS,
+    isRetainable: isCompletedSceneUpdateHistory,
+    loadStream,
+    readIdentity: session,
+    retryDelayMs: SCENE_UPDATE_HISTORY_DEFERRED_RETRY_MS,
+    shouldStandDown: () => shouldDeferBulkHistory(playbackStore),
+    sourceKey,
+    streams: sceneAnnotationStreams,
+  });
+
+  // This effect publishes the source-scoped cache to mounted 3D tiles.
+  useLayoutEffect(() => {
+    if (
+      publishedHistory === history ||
+      (publishedHistory.size === 0 && history.size === 0)
+    ) {
+      return;
+    }
+    setHistory(history);
+  }, [history, publishedHistory, setHistory]);
 
   // This effect clears shared history when the bridge leaves the provider.
   useEffect(
@@ -149,6 +176,12 @@ export function SceneUpdateHistoryBridge({
   );
 
   return null;
+}
+
+function isCompletedSceneUpdateHistory(
+  history: SceneUpdateHistoryStream,
+): boolean {
+  return history.status === "ready" || history.status === "truncated";
 }
 
 function useContextValue(): SceneUpdateHistoryContextValue {

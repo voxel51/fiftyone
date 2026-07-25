@@ -11,14 +11,21 @@ import {
 } from "@fiftyone/playback";
 import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
 import React, { useCallback, useEffect, useMemo } from "react";
-import { SCENE_SOURCE_TYPE } from "../../../../ir";
+import { SCENE_SOURCE_TYPE, type LocationVisualization } from "../../../../ir";
 import { useSceneInventory } from "../../../../scene-inventory/react";
 import {
   MapRenderer,
   type MapRendererPlayback,
 } from "../rendering/MapRenderer";
-import type { LocationTrackState } from "../tracks/location-track";
+import type { MapLocationMarker } from "../rendering/playback-paint";
+import {
+  isValidLocationPoint,
+  locationPointFromVisualization,
+  locationTrackColor,
+  type LocationTrackState,
+} from "../tracks/location-track";
 import { useDataStream } from "../../playback/data-stream-context";
+import { useStreamPlaybackFrames } from "../../playback/use-stream-values";
 import type { EpisodeTileProps } from "../../tiles/tile-types";
 import { useRegisterTileSettings } from "../../tiles/tile-settings-context";
 import {
@@ -28,6 +35,7 @@ import {
 import { useMapTileSettings, useSetMapTileSettings } from "./tile-state";
 import { useMapViewportScope } from "../viewport/context";
 import MapTileSettings from "./MapTileSettings";
+import { usePublishFullHistoryStreams } from "../../playback/full-history-interests";
 
 const MapTile: React.FC<EpisodeTileProps> = () => {
   const tileId = useTileId();
@@ -67,6 +75,32 @@ const MapTile: React.FC<EpisodeTileProps> = () => {
     () => allStreams.filter((stream) => enabledStreams.has(stream)),
     [allStreams, enabledStreams],
   );
+  usePublishFullHistoryStreams("location", visibleStreams);
+  const locationFrames =
+    useStreamPlaybackFrames<LocationVisualization>(visibleStreams);
+  const liveMarkers = useMemo<readonly MapLocationMarker[]>(() => {
+    const markers: MapLocationMarker[] = [];
+    visibleStreams.forEach((stream, index) => {
+      const frame = locationFrames[index];
+      const sourceIndex = locationSources.findIndex(
+        (source) => source.id === stream,
+      );
+      const source = locationSources[sourceIndex];
+      if (!frame || !source || sourceIndex < 0) return;
+      const location = locationPointFromVisualization(
+        frame.frame,
+        frame.contentTimeNs,
+      );
+      if (!isValidLocationPoint(location)) return;
+      markers.push({
+        color: locationTrackColor(sourceIndex),
+        label: source.label,
+        location,
+        stream,
+      });
+    });
+    return markers;
+  }, [locationFrames, locationSources, visibleStreams]);
   const tracks = useMemo(() => {
     if (!sourceKey || tracksSourceKey !== sourceKey) return [];
     return visibleStreams
@@ -77,6 +111,13 @@ const MapTile: React.FC<EpisodeTileProps> = () => {
     () =>
       tracks.filter(
         (track) => track.status === "ready" && track.segments.length > 0,
+      ),
+    [tracks],
+  );
+  const renderableTracks = useMemo(
+    () =>
+      tracks.filter(
+        (track) => track.status !== "error" && track.segments.length > 0,
       ),
     [tracks],
   );
@@ -142,14 +183,15 @@ const MapTile: React.FC<EpisodeTileProps> = () => {
       loadingCount={loadingCount}
       locationEvidencePending={locationEvidencePending}
       locationStreamCount={locationSources.length}
+      liveMarkers={liveMarkers}
       onFollowEgoChange={(followEgo) => setSettings({ followEgo })}
       onHoverTimeNs={onHoverTimeNs}
       onSeekTimeNs={onSeekTimeNs}
       playback={playback}
       pulseActive={isPlaying}
       sourceKey={sourceKey}
-      tracks={readyTracks}
-      truncated={tracks.some((track) => track.truncated)}
+      tracks={renderableTracks}
+      truncated={renderableTracks.some((track) => track.truncated)}
       viewportScope={viewportScope}
     />
   );

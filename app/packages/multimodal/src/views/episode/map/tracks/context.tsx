@@ -3,20 +3,22 @@
 // bridge mirrors the pose-trajectory bulk fetch path.
 import { PlaybackStoreContext } from "@fiftyone/playback/runtime";
 import React, {
+  useCallback,
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import type { EpisodeSession } from "../../../../ports";
 import type { SceneSource } from "../../../../scene-inventory";
 import { VISUALIZATION_KIND } from "../../../../visualization";
+import { shouldDeferBulkHistory } from "../../playback/bulk-stream-lifecycle";
 import {
-  shouldDeferBulkHistory,
-  startBulkStreamLifecycle,
-} from "../../playback/bulk-stream-lifecycle";
+  useDemandDrivenHistory,
+  type DemandDrivenHistoryLoader,
+} from "../../playback/use-demand-driven-history";
 import {
   decimateLocationTrackSegments,
   locationPointFromVisualization,
@@ -29,6 +31,7 @@ import {
 
 const LOCATION_TRACK_READ_LIMIT = 25_000;
 const LOCATION_TRACK_DEFERRED_RETRY_MS = 2_000;
+const LOCATION_TRACK_PROGRESS_POINT_INTERVAL = 250;
 
 const EMPTY_LOCATION_TRACKS: LocationTracks = new Map();
 
@@ -72,6 +75,7 @@ export const LocationTracksProvider: React.FC<{
   );
 };
 
+/** Returns the location histories currently retained for the active source. */
 export function useLocationTracksContext(): LocationTracks {
   return useContextValue().tracks;
 }
@@ -82,104 +86,133 @@ export function useLocationTracksSourceKey(): string | null {
 }
 
 /**
- * Bridge that fetches every location stream's full track once per source.
- * The track is tiny compared to camera/point-cloud data, and seeing the
- * whole route is the map tile's core value, so this intentionally uses the
- * same capped bulk-lane pattern as pose trajectories.
+ * Loads selected location histories on the bulk lane and publishes partial
+ * route segments while each stream is still being read.
  */
 export function LocationTracksBridge({
   locationSources,
   session,
   sourceKey,
+  streams,
 }: {
   readonly locationSources: readonly SceneSource[];
   readonly session: EpisodeSession | null;
   readonly sourceKey: string | null;
+  readonly streams?: readonly string[];
 }) {
-  const { setTracks } = useContextValue();
-  const tracksRef = useRef(new Map<string, LocationTrackState>());
+  const {
+    setTracks,
+    sourceKey: publishedSourceKey,
+    tracks: publishedTracks,
+  } = useContextValue();
   const playbackStore = useContext(PlaybackStoreContext);
+  const requestedStreams =
+    streams ?? locationSources.map((locationSource) => locationSource.id);
+  const loadStream = useCallback(
+    async ({
+      commit,
+      control,
+      stream,
+    }: DemandDrivenHistoryLoader<LocationTrackState>) => {
+      if (!session) return;
+      const index = locationSources.findIndex(
+        (locationSource) => locationSource.id === stream,
+      );
+      const locationSource = locationSources[index];
+      if (!locationSource) return;
+      const baseState = {
+        color: locationTrackColor(index),
+        label: locationSource.label,
+        pointCount: 0,
+        segments: [],
+        sourceName: locationSource.sourceName,
+        stream,
+      } satisfies Omit<LocationTrackState, "status">;
+      commit({ ...baseState, status: "loading" });
 
-  // This effect loads and publishes location tracks for the active source.
-  useEffect(() => {
-    tracksRef.current = new Map();
-    setTracks(sourceKey, EMPTY_LOCATION_TRACKS);
-
-    if (!sourceKey || !session || locationSources.length === 0) {
-      return undefined;
-    }
-
-    const commit = (stream: string, state: LocationTrackState) => {
-      tracksRef.current.set(stream, state);
-      setTracks(sourceKey, new Map(tracksRef.current));
-    };
-
-    return startBulkStreamLifecycle({
-      initialDelayMs: 0,
-      retryDelayMs: LOCATION_TRACK_DEFERRED_RETRY_MS,
-      shouldStandDown: () => shouldDeferBulkHistory(playbackStore),
-      streams: locationSources.map((locationSource) => locationSource.id),
-      runStream: async (stream, control) => {
-        const index = locationSources.findIndex(
-          (locationSource) => locationSource.id === stream,
-        );
-        const locationSource = locationSources[index];
-        if (!locationSource) return;
-        const color = locationTrackColor(index);
-        const baseState = {
-          color,
-          label: locationSource.label,
-          pointCount: 0,
-          segments: [],
-          sourceName: locationSource.sourceName,
-          stream,
-        } satisfies Omit<LocationTrackState, "status">;
-        commit(stream, { ...baseState, status: "loading" });
-
-        const points: LocationTrackPoint[] = [];
-        let messageCount = 0;
-        try {
-          for await (const batch of session.read({
-            limit: LOCATION_TRACK_READ_LIMIT,
-            priority: "bulk",
-            streams: [stream],
-            window: session.manifest.timeRange,
-          })) {
-            for (const frame of batch.frames) {
-              if (control.isCancelled()) return;
-              messageCount += 1;
-              if (control.standDown()) return;
-              const visualization = frame.output.visualization;
-              if (visualization?.kind !== VISUALIZATION_KIND.LOCATION) continue;
-              points.push(
-                locationPointFromVisualization(
-                  visualization,
-                  frame.timestampNs,
-                ),
-              );
-            }
+      const points: LocationTrackPoint[] = [];
+      let messageCount = 0;
+      let publishedPointCount = 0;
+      try {
+        for await (const batch of session.read({
+          limit: LOCATION_TRACK_READ_LIMIT,
+          priority: "bulk",
+          streams: [stream],
+          window: session.manifest.timeRange,
+        })) {
+          for (const frame of batch.frames) {
+            if (control.isCancelled()) return;
+            messageCount += 1;
+            if (control.standDown()) return;
+            const visualization = frame.output.visualization;
+            if (visualization?.kind !== VISUALIZATION_KIND.LOCATION) continue;
+            points.push(
+              locationPointFromVisualization(visualization, frame.timestampNs),
+            );
           }
-
-          const result = decimateLocationTrackSegments(
-            segmentLocationTrack(points),
-          );
-          const truncated =
-            result.truncated || messageCount >= LOCATION_TRACK_READ_LIMIT;
-          if (control.isCancelled()) return;
-          commit(stream, {
-            ...baseState,
-            pointCount: result.pointCount,
-            segments: result.segments,
-            status: "ready",
-            ...(truncated ? { truncated: true } : {}),
-          });
-        } catch {
-          if (control.isCancelled()) return;
-          commit(stream, { ...baseState, status: "error" });
+          if (
+            points.length > 0 &&
+            (publishedPointCount === 0 ||
+              points.length - publishedPointCount >=
+                LOCATION_TRACK_PROGRESS_POINT_INTERVAL)
+          ) {
+            const progress = decimateLocationTrackSegments(
+              segmentLocationTrack(points),
+            );
+            publishedPointCount = points.length;
+            commit({
+              ...baseState,
+              pointCount: progress.pointCount,
+              segments: progress.segments,
+              status: "loading",
+              ...(progress.truncated ? { truncated: true } : {}),
+            });
+          }
         }
-      },
-    });
-  }, [locationSources, playbackStore, session, setTracks, sourceKey]);
+
+        const result = decimateLocationTrackSegments(
+          segmentLocationTrack(points),
+        );
+        const truncated =
+          result.truncated || messageCount >= LOCATION_TRACK_READ_LIMIT;
+        if (control.isCancelled()) return;
+        commit({
+          ...baseState,
+          pointCount: result.pointCount,
+          segments: result.segments,
+          status: "ready",
+          ...(truncated ? { truncated: true } : {}),
+        });
+      } catch {
+        if (control.isCancelled()) return;
+        commit({ ...baseState, status: "error" });
+      }
+    },
+    [locationSources, session],
+  );
+  const tracks = useDemandDrivenHistory({
+    initialDelayMs: 0,
+    isRetainable: isCompletedLocationTrack,
+    loadStream,
+    readIdentity: session,
+    retryDelayMs: LOCATION_TRACK_DEFERRED_RETRY_MS,
+    shouldStandDown: () => shouldDeferBulkHistory(playbackStore),
+    sourceKey,
+    streams: requestedStreams,
+  });
+
+  // This effect publishes the source-scoped cache to mounted map tiles.
+  useLayoutEffect(() => {
+    if (
+      publishedTracks === tracks ||
+      (publishedTracks.size === 0 &&
+        tracks.size === 0 &&
+        publishedSourceKey === null)
+    ) {
+      return;
+    }
+    setTracks(sourceKey, tracks);
+  }, [publishedSourceKey, publishedTracks, setTracks, sourceKey, tracks]);
 
   // This effect clears provider state when the bridge unmounts.
   useEffect(
@@ -190,6 +223,10 @@ export function LocationTracksBridge({
   );
 
   return null;
+}
+
+function isCompletedLocationTrack(track: LocationTrackState): boolean {
+  return track.status === "ready";
 }
 
 function useContextValue(): LocationTracksContextValue {
