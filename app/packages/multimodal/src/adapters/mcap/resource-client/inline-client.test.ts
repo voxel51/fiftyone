@@ -9,6 +9,10 @@ import type { DecodeClient } from "../../../query/decoding/index";
 import type { DecodedOutput } from "../../../ir/index";
 import { PlaybackSyncMode } from "../../../schemas/v1/index";
 import { VISUALIZATION_KIND } from "../../../ir/index";
+import type {
+  McapBoundedMessageReadResult,
+  McapIndexedReaderLike,
+} from "../reader/index";
 import { createInlineMcapResourceClient } from "./inline-client";
 import { MCAP_ACTIVE_TIMELINE } from "../contracts/index";
 
@@ -639,6 +643,288 @@ describe("MCAP resources", () => {
     expect(set.samples[0]?.timeNs).toBeUndefined();
     expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
     expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("uses bounded indexed reads for static transform bootstrap", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
+        channelId: 10,
+      });
+    });
+    const readBoundedMessages = vi.fn(async () =>
+      createBoundedReadResult([
+        createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
+          channelId: 10,
+        }),
+      ]),
+    );
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/tf_static",
+              }),
+            ],
+          ]),
+          chunkIndexes: [
+            createChunkIndex({
+              messageIndexLength: 64n,
+              messageIndexOffsets: new Map([[10, 900n]]),
+              uncompressedSize: 256n,
+            }),
+          ],
+          readBoundedMessages,
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 1n]]),
+          }),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).not.toHaveBeenCalled();
+    expect(readBoundedMessages).toHaveBeenCalledOnce();
+    expect(readBoundedMessages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        absoluteMaxChunks: 1,
+        maxChunks: 1,
+        topics: ["/tf_static"],
+      }),
+    );
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]).toMatchObject({
+      childFrameId: "lidar",
+      parentFrameId: "map",
+    });
+  });
+
+  it("drains bounded transform bootstrap continuations without partial results", async () => {
+    const continuation = {
+      nextChunkStartOffset: 2_000n,
+      sourceKey: "source",
+      topicsKey: "/tf_static",
+      version: 1 as const,
+    };
+    const firstMessage = createMessage(
+      FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP,
+      { channelId: 10, logTime: 100n },
+    );
+    const secondMessage = createMessage(
+      FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP,
+      { channelId: 10, logTime: 200n },
+    );
+    const readBoundedMessages = vi
+      .fn<NonNullable<McapIndexedReaderLike["readBoundedMessages"]>>()
+      .mockResolvedValueOnce(
+        createBoundedReadResult([firstMessage], {
+          continuation,
+          stopReason: "budget-exhausted",
+        }),
+      )
+      .mockResolvedValueOnce(createBoundedReadResult([secondMessage]));
+    const readMessages = vi.fn(async function* () {
+      yield firstMessage;
+      yield secondMessage;
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/tf_static",
+              }),
+            ],
+          ]),
+          chunkIndexes: [
+            createChunkIndex({
+              messageIndexLength: 64n,
+              messageIndexOffsets: new Map([[10, 900n]]),
+              uncompressedSize: 256n,
+            }),
+            createChunkIndex({
+              chunkStartOffset: 2_000n,
+              messageEndTime: 40n,
+              messageIndexLength: 64n,
+              messageIndexOffsets: new Map([[10, 1_900n]]),
+              messageStartTime: 30n,
+              uncompressedSize: 256n,
+            }),
+          ],
+          readBoundedMessages,
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 2n]]),
+          }),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(readMessages).not.toHaveBeenCalled();
+    expect(readBoundedMessages).toHaveBeenCalledTimes(2);
+    expect(readBoundedMessages.mock.calls[1]?.[0]).toMatchObject({
+      continuation,
+      topics: ["/tf_static"],
+    });
+    expect(set.samples).toHaveLength(2);
+  });
+
+  it("defers missing-stat static channels that span more chunks than the cap", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
+        channelId: 10,
+      });
+    });
+    const readBoundedMessages = vi.fn(async () => createBoundedReadResult([]));
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/tf_static",
+              }),
+            ],
+          ]),
+          chunkIndexes: Array.from({ length: 257 }, (_, index) =>
+            createChunkIndex({
+              chunkStartOffset: BigInt(1_000 + index * 1_000),
+              messageEndTime: BigInt(index * 2 + 1),
+              messageIndexOffsets: new Map([[10, BigInt(index * 1_000 + 900)]]),
+              messageStartTime: BigInt(index * 2),
+            }),
+          ),
+          readBoundedMessages,
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(set.samples).toEqual([]);
+    expect(readBoundedMessages).not.toHaveBeenCalled();
+    expect(readMessages).not.toHaveBeenCalled();
+  });
+
+  it("defers missing-stat static channels whose indexed messages exceed the cap", async () => {
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      for (let index = 0; index < 257; index += 1) {
+        yield createIndexedMessageTime(
+          "/tf_static",
+          10,
+          BigInt(index),
+          BigInt(index),
+        );
+      }
+    });
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
+        channelId: 10,
+      });
+    });
+    const readBoundedMessages = vi.fn(async () => createBoundedReadResult([]));
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/tf_static",
+              }),
+            ],
+          ]),
+          chunkIndexes: [
+            createChunkIndex({
+              messageIndexOffsets: new Map([[10, 900n]]),
+            }),
+          ],
+          readBoundedMessages,
+          readIndexedMessageTimes,
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(set.samples).toEqual([]);
+    expect(readIndexedMessageTimes).toHaveBeenCalledWith({
+      limit: 257,
+      topics: ["/tf_static"],
+    });
+    expect(readBoundedMessages).not.toHaveBeenCalled();
+    expect(readMessages).not.toHaveBeenCalled();
   });
 
   it("discovers transform-like protobuf schemas without Foxglove schema names", async () => {
@@ -2745,6 +3031,7 @@ function createReader({
   messages = [],
   readIndexedMessageTimes,
   readLatestIndexedMessageTimes,
+  readBoundedMessages,
   readMessages,
   schemasById = new Map([[3, createSchema(new Uint8Array([9]))]]),
   statistics,
@@ -2765,6 +3052,9 @@ function createReader({
     },
     void,
     void
+  >;
+  readonly readBoundedMessages?: NonNullable<
+    McapIndexedReaderLike["readBoundedMessages"]
   >;
   readonly readLatestIndexedMessageTimes?: (args: {
     readonly limitPerTopic?: number;
@@ -2798,6 +3088,7 @@ function createReader({
     chunkIndexes,
     readIndexedMessageTimes,
     readLatestIndexedMessageTimes,
+    readBoundedMessages,
     readMessages:
       readMessages ??
       vi.fn(async function* () {
@@ -2807,6 +3098,28 @@ function createReader({
       }),
     schemasById,
     statistics,
+  };
+}
+
+function createBoundedReadResult(
+  messages: readonly McapTypes.TypedMcapRecords["Message"][],
+  overrides: Partial<McapBoundedMessageReadResult> = {},
+): McapBoundedMessageReadResult {
+  return {
+    coverageByTopic: new Map(),
+    messages,
+    stopReason: "source-exhausted",
+    usage: {
+      chunksOpened: 1,
+      decompressedBytes: 0,
+      decompressionCacheHits: 0,
+      elapsedMs: 1,
+      logicalSourceBytes: 256,
+      logicalUncompressedBytes: 256,
+      messagesDecoded: messages.length,
+      transferredBytes: 256,
+    },
+    ...overrides,
   };
 }
 
