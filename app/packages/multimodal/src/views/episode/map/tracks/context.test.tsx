@@ -7,7 +7,12 @@ import type { ByteSourceDescriptor } from "../../../../query/bytes";
 import type { SceneSource } from "../../../../scene-inventory";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import type { DecodedFrame } from "../../../../ir";
-import type { EpisodeSession } from "../../../../ports";
+import type {
+  BudgetedReadJob,
+  BudgetedReadResult,
+  EpisodeSession,
+  SourceReadBudgetAccount,
+} from "../../../../ports";
 import {
   LocationTracksBridge,
   LocationTracksProvider,
@@ -65,6 +70,7 @@ describe("LocationTracksBridge", () => {
     expect(session.read).toHaveBeenCalledWith({
       limit: 25_000,
       priority: "bulk",
+      signal: expect.any(AbortSignal),
       streams: ["/gps"],
       window: session.manifest.timeRange,
     });
@@ -107,6 +113,54 @@ describe("LocationTracksBridge", () => {
         "/gps:ready:2:1:full",
       );
     });
+  });
+
+  it("resumes bounded grants until the full route is ready", async () => {
+    const source = createSource("drive");
+    const session = createSession();
+    const continuation = {};
+    const read = vi
+      .fn<BudgetedReadJob["read"]>()
+      .mockResolvedValueOnce(
+        boundedResult({
+          continuation,
+          frames: [locationMessage(1_000_000_000n, 37, -122, 0)],
+          stopReason: "budget-exhausted",
+        }),
+      )
+      .mockResolvedValueOnce(
+        boundedResult({
+          frames: [locationMessage(2_000_000_000n, 37.001, -122.001, 0)],
+          stopReason: "source-exhausted",
+        }),
+      );
+    const budgetAccount = {
+      createJob: () => ({ read }),
+    } as unknown as SourceReadBudgetAccount;
+
+    render(
+      <Harness
+        budgetAccount={budgetAccount}
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        source={source}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:ready:2:1:full",
+      );
+    });
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(read.mock.calls[0]?.[0]).not.toHaveProperty("continuation");
+    expect(read.mock.calls[1]?.[0]).toMatchObject({
+      continuation,
+      signal: expect.any(AbortSignal),
+      streams: ["/gps"],
+      window: session.manifest.timeRange,
+    });
+    expect(session.read).not.toHaveBeenCalled();
   });
 
   it("marks streams as error when the bulk read rejects", async () => {
@@ -196,12 +250,14 @@ describe("LocationTracksBridge", () => {
 });
 
 function Harness({
+  budgetAccount,
   session,
   locationSources,
   source,
   store,
   streams,
 }: {
+  readonly budgetAccount?: SourceReadBudgetAccount;
   readonly session: EpisodeSession;
   readonly locationSources: readonly SceneSource[];
   readonly source: ByteSourceDescriptor;
@@ -211,6 +267,7 @@ function Harness({
   const body = (
     <LocationTracksProvider>
       <LocationTracksBridge
+        budgetAccount={budgetAccount}
         session={session}
         locationSources={locationSources}
         sourceKey={source.sourceId}
@@ -226,6 +283,33 @@ function Harness({
   ) : (
     body
   );
+}
+
+function boundedResult({
+  continuation,
+  frames,
+  stopReason,
+}: {
+  readonly continuation?: object;
+  readonly frames: readonly DecodedFrame[];
+  readonly stopReason: BudgetedReadResult["stopReason"];
+}): BudgetedReadResult {
+  return {
+    batches: [{ frames, stream: "/gps" }],
+    ...(continuation ? { continuation } : {}),
+    coverageByStream: new Map(),
+    stopReason,
+    usage: {
+      chunksOpened: 1,
+      decompressedBytes: 1,
+      decompressionCacheHits: 0,
+      elapsedMs: 1,
+      logicalSourceBytes: 1,
+      logicalUncompressedBytes: 1,
+      messagesDecoded: frames.length,
+      transferredBytes: 1,
+    },
+  };
 }
 
 function LocationTracksProbe() {

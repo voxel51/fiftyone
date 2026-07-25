@@ -54,4 +54,26 @@ describe("startBulkStreamLifecycle", () => {
     expect(maxActiveReads).toBe(1);
     cancel();
   });
+
+  it("aborts active stream work when the lifecycle is cancelled", async () => {
+    let control: BulkStreamControl | undefined;
+    const runStream = vi.fn(
+      async (_stream: string, nextControl: BulkStreamControl) => {
+        control = nextControl;
+        await new Promise<void>(() => undefined);
+      },
+    );
+
+    const cancel = startBulkStreamLifecycle({
+      initialDelayMs: 0,
+      retryDelayMs: 100,
+      runStream,
+      shouldStandDown: () => false,
+      streams: ["/location"],
+    });
+
+    expect(control?.signal.aborted).toBe(false);
+    cancel();
+    expect(control?.signal.aborted).toBe(true);
+  });
 });

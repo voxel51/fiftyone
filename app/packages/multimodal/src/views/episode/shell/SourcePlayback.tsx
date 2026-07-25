@@ -449,6 +449,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                             >
                               <Streams
                                 availableTileTypes={availableTileTypes}
+                                budgetAccount={sourceReadBudgetAccount}
                                 onPlayheadDataReady={handlePlayheadDataReady}
                                 session={readyInventory ? session : null}
                                 source={playbackSource}
