@@ -187,6 +187,44 @@ describe("worker-backed MCAP resource client", () => {
     await expect(window).resolves.toEqual(workerResult);
   });
 
+  it("keeps current media on a separate worker from placement transforms", async () => {
+    const { client, workers } = createClientHarness();
+    const source = createSource("source:1");
+    const transformRequest = {
+      endTimeNs: 20n,
+      source,
+      startTimeNs: 10n,
+    };
+
+    const transforms = client.readFrameTransformWindow(transformRequest);
+    const current = client.readSynchronizedMessages({
+      source,
+      timeNs: 15n,
+      topics: ["/camera"],
+    });
+
+    expect(workers).toHaveLength(2);
+    expect(workers[0].messages[1]).toMatchObject({
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLACEMENT_FRAME,
+      type: "readFrameTransformWindow",
+    });
+    expect(workers[1].messages[1]).toMatchObject({
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+      type: "readSynchronizedMessages",
+    });
+
+    const currentWindow = createSynchronizedWindow(15n);
+    workers[1].respond({ id: 1, ok: true, result: currentWindow });
+    await expect(current).resolves.toEqual(currentWindow);
+
+    workers[0].respond({
+      id: 1,
+      ok: true,
+      result: structuredClone(dehydrateMcapFrameTransformSet({ samples: [] })),
+    });
+    await expect(transforms).resolves.toEqual({ samples: [] });
+  });
+
   it("can demote frame transform windows to idle-prefetch priority", async () => {
     const { client, workers } = createClientHarness();
     const request = {

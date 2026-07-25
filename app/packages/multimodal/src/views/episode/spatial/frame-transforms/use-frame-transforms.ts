@@ -290,7 +290,6 @@ export function useFrameTransforms({
       ];
       capability
         .readTransforms({
-          priority: "current",
           streams: [],
           window: {
             endNs: requestedRange.endTimeNs,

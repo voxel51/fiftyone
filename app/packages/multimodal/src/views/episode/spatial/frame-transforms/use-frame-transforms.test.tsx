@@ -76,7 +76,7 @@ describe("useFrameTransforms", () => {
           source,
           startTimeNs: 0n,
         },
-        { priority: "current" },
+        { priority: undefined },
       );
     });
     await waitFor(() => {
@@ -111,7 +111,7 @@ describe("useFrameTransforms", () => {
         source,
         startTimeNs: 0n,
       },
-      { priority: "current" },
+      { priority: undefined },
     ]);
     await waitFor(() => {
       expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
@@ -222,7 +222,7 @@ describe("useFrameTransforms", () => {
         source,
         startTimeNs: 0n,
       },
-      { priority: "current" },
+      { priority: undefined },
     );
   });
 
