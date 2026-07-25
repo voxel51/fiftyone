@@ -1,10 +1,12 @@
 import type { McapTypes } from "@mcap/core";
 import type {
   ByteClient,
+  ByteRange,
+  ByteRangeReadRequest,
   ByteRangeReadResult,
   ByteSourceDescriptor,
 } from "../../../query/bytes";
-import { parseByteSize } from "../../../query/bytes";
+import { byteSourceAccessKey, parseByteSize } from "../../../query/bytes";
 import { chunkMessageIndexRange } from "./chunk-index-ranges";
 
 export interface McapChunkReadDebugLog {
@@ -29,6 +31,13 @@ export interface ByteClientReadableOptions {
    * to their owning request without threading signals through `@mcap/core`.
    */
   readonly readSignal?: { readonly current: AbortSignal | null };
+}
+
+/** One contained byte read with its preplanned fill and transfer attribution. */
+export interface McapContainedByteRead {
+  readonly bytes: Uint8Array;
+  readonly fillRange: ByteRange;
+  readonly transferredBytes: number;
 }
 
 /**
@@ -57,6 +66,11 @@ export class ByteClientReadable implements McapTypes.IReadable {
     chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][],
   ): void {
     this.chunkIndexes = chunkIndexes;
+  }
+
+  /** Current access/content identity, including a discovered validator. */
+  sourceAccessKey(): string {
+    return byteSourceAccessKey(this.source);
   }
 
   async size(): Promise<bigint> {
@@ -121,19 +135,76 @@ export class ByteClientReadable implements McapTypes.IReadable {
   }
 
   async readExact(offset: bigint, size: bigint): Promise<Uint8Array> {
-    return this.readRange(offset, size, { blockFill: false });
+    return this.readRange(offset, size, {
+      blockFill: false,
+      readahead: false,
+    });
+  }
+
+  /** Plans the physical cache fill without performing the read. */
+  planReadRange(
+    offset: bigint,
+    size: bigint,
+    cachePolicy?: ByteRangeReadRequest["cachePolicy"],
+  ): ByteRange {
+    const request = {
+      ...(cachePolicy ? { cachePolicy } : {}),
+      range: { length: size, offset },
+      source: this.source,
+    };
+    return (this.byteClient.planRead?.(request) ?? request).range;
+  }
+
+  /**
+   * Executes one admitted range with autonomous readahead disabled and
+   * reports the underlying cache-fill/transport attribution.
+   */
+  async readContained(
+    offset: bigint,
+    size: bigint,
+    options: {
+      readonly exact?: boolean;
+      readonly signal?: AbortSignal;
+    } = {},
+  ): Promise<McapContainedByteRead> {
+    const cachePolicy = {
+      ...(options.exact ? { blockFill: false } : {}),
+      readahead: false,
+    } as const;
+    const fillRange = this.planReadRange(offset, size, cachePolicy);
+    const result = await this.readRangeResult(
+      offset,
+      size,
+      cachePolicy,
+      options.signal,
+    );
+    return {
+      bytes: result.bytes,
+      fillRange,
+      transferredBytes:
+        result.readUsage?.transferredBytes ?? result.bytes.byteLength,
+    };
   }
 
   private async readRange(
     offset: bigint,
     size: bigint,
-    cachePolicy?: { readonly blockFill?: boolean },
+    cachePolicy?: ByteRangeReadRequest["cachePolicy"],
   ): Promise<Uint8Array> {
+    return (await this.readRangeResult(offset, size, cachePolicy)).bytes;
+  }
+
+  private async readRangeResult(
+    offset: bigint,
+    size: bigint,
+    cachePolicy?: ByteRangeReadRequest["cachePolicy"],
+    signalOverride?: AbortSignal,
+  ): Promise<ByteRangeReadResult> {
     // Warm-cache walks (topic bounds, index scans, per-message decode reads)
     // never reach a network boundary, so a cancelled job would otherwise hold
     // its serial lane for seconds of pure CPU. Every read consults the
     // active request's signal, making cancellation effective on cache hits.
-    const activeSignal = this.options.readSignal?.current;
+    const activeSignal = signalOverride ?? this.options.readSignal?.current;
     if (activeSignal?.aborted) {
       throw abortedReadableError();
     }
@@ -145,13 +216,18 @@ export class ByteClientReadable implements McapTypes.IReadable {
     }
 
     if (size === 0n) {
-      return new Uint8Array();
+      return {
+        bytes: new Uint8Array(),
+        range: { length: 0n, offset },
+        source: this.source,
+      };
     }
 
     const readKey = readRangeKey(offset, size, cachePolicy);
     const pending = this.inFlightReads.get(readKey);
     const cacheResult = pending ? "coalesced" : "fetched";
-    const signal = this.options.readSignal?.current ?? undefined;
+    const signal =
+      signalOverride ?? this.options.readSignal?.current ?? undefined;
     const result = await (pending ??
       this.startReadRange(readKey, {
         cachePolicy,
@@ -167,7 +243,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
       cacheResult,
     );
 
-    return result.bytes;
+    return result;
   }
 
   private startReadRange(
@@ -345,12 +421,13 @@ function chunkReadDebugLog({
 function readRangeKey(
   offset: bigint,
   size: bigint,
-  cachePolicy: { readonly blockFill?: boolean } | undefined,
+  cachePolicy: ByteRangeReadRequest["cachePolicy"] | undefined,
 ): string {
   return [
     offset.toString(),
     size.toString(),
     cachePolicy?.blockFill === false ? "exact" : "default",
+    cachePolicy?.readahead === false ? "contained" : "readahead",
   ].join(":");
 }
 

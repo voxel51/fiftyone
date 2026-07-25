@@ -436,6 +436,48 @@ describe("createCachedByteClient sequential remote readahead", () => {
     await read;
   });
 
+  it("uses the same fill plan for admission and contained execution", async () => {
+    const controlled = createControlledReader();
+    const { client } = createClient({
+      blockSizeBytes: 16,
+      reads: controlled.reader,
+    });
+    const boundedRequest = request({
+      cachePolicy: { readahead: false },
+      range: { length: 4n, offset: 3n },
+      source: remoteSource(),
+    });
+
+    expect(client.planRead?.(boundedRequest).range).toEqual({
+      length: 16n,
+      offset: 0n,
+    });
+    const coldRead = client.readBytes(boundedRequest);
+    await flushAsync();
+
+    // Readahead is explicitly contained to the admitted fill.
+    expect(controlled.pending).toHaveLength(1);
+    expect(controlled.pending[0].request.range).toEqual({
+      length: 16n,
+      offset: 0n,
+    });
+    controlled.pending[0].resolve(fillResult(controlled.pending[0].request));
+    const cold = await coldRead;
+    expect(cold.readUsage).toEqual({
+      cacheResult: "fetched",
+      fillRange: { length: 16n, offset: 0n },
+      transferredBytes: 16,
+    });
+
+    const warm = await client.readBytes(boundedRequest);
+    expect(warm.readUsage).toEqual({
+      cacheResult: "fill-hit",
+      fillRange: { length: 16n, offset: 0n },
+      transferredBytes: 0,
+    });
+    expect(controlled.pending).toHaveLength(1);
+  });
+
   it("does not queue readahead for non-remote sources", async () => {
     const controlled = createControlledReader();
     const { client } = createClient({
