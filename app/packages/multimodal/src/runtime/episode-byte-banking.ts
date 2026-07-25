@@ -205,18 +205,34 @@ export async function runEpisodeByteBankingPass({
       if (!reservation) {
         return "budget-exhausted";
       }
+      const controller = new AbortController();
+      let deadlineExpired = false;
+      const deadline = setTimeout(() => {
+        deadlineExpired = true;
+        controller.abort();
+      }, reservation.budget.maxWallTimeMs);
       const startedAtMs = monotonicNowMs();
       let result;
       try {
-        result = await bytes.readBytes(request);
+        result = await bytes.readBytes({
+          ...request,
+          signal: controller.signal,
+        });
       } catch {
         reservation.commit(emptyReadWorkUsage());
-        return "failed";
+        return deadlineExpired ? "budget-exhausted" : "failed";
+      } finally {
+        clearTimeout(deadline);
+      }
+      const elapsedMs = monotonicNowMs() - startedAtMs;
+      if (elapsedMs > reservation.budget.maxWallTimeMs) {
+        reservation.commit(emptyReadWorkUsage());
+        return "budget-exhausted";
       }
       reservation.commit(
         {
           ...emptyReadWorkUsage(),
-          elapsedMs: monotonicNowMs() - startedAtMs,
+          elapsedMs,
           logicalSourceBytes,
           transferredBytes:
             result.readUsage?.transferredBytes ?? result.bytes.byteLength,

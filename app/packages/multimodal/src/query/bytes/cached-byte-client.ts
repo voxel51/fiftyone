@@ -487,7 +487,7 @@ export function createCachedByteClient(
         pendingByteReads.set(fillKey, fill);
       }
 
-      const outcome = await fill;
+      const outcome = await waitForByteFill(fill, request.signal);
       logByteRead(caches, {
         cacheResult: coalesced ? "coalesced" : outcome.cacheResult,
         fillRequest,
@@ -505,6 +505,42 @@ export function createCachedByteClient(
       );
     },
   };
+}
+
+function waitForByteFill(
+  fill: Promise<ByteFillOutcome>,
+  signal: AbortSignal | undefined,
+): Promise<ByteFillOutcome> {
+  if (!signal) {
+    return fill;
+  }
+
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      signal.removeEventListener("abort", onAbort);
+      reject(abortedByteFillWaitError());
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    void fill.then(
+      (outcome) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(outcome);
+      },
+      (error: unknown) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      },
+    );
+    if (signal.aborted) {
+      onAbort();
+    }
+  });
+}
+
+function abortedByteFillWaitError(): Error {
+  const error = new Error("Byte fill wait aborted");
+  error.name = "AbortError";
+  return error;
 }
 
 function withByteReadUsage(
