@@ -67,13 +67,17 @@ describe("MCAP playback worker scheduler", () => {
     });
     scheduler.enqueue({
       id: 2,
+      operation: "readBoundedMessages",
       priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
       run: async () => {
         ran.push("cancelled");
       },
       sourceKey: "source",
     });
-    scheduler.cancel(2);
+    expect(scheduler.cancel(2)).toEqual({
+      operation: "readBoundedMessages",
+      state: "queued",
+    });
 
     firstJob.resolve();
     await flushAsync();
@@ -98,7 +102,7 @@ describe("MCAP playback worker scheduler", () => {
     await flushAsync();
     expect(signals[0]?.aborted).toBe(false);
 
-    scheduler.cancel(7);
+    expect(scheduler.cancel(7)).toEqual({ state: "running" });
     expect(signals[0]?.aborted).toBe(true);
 
     gate.resolve();

@@ -46,6 +46,10 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
   },
+  readBoundedMessages: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY,
+  },
   readDecodedMessages: {
     kind: "stream",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
@@ -123,6 +127,8 @@ export function runMcapPlaybackWorkerUnaryRequest(
   switch (message.type) {
     case "enumerateNumericFields":
       return client.enumerateNumericFields(message.payload);
+    case "readBoundedMessages":
+      return client.readBoundedMessages(message.payload);
     case "readFrameTransformBootstrap":
       return client
         .readFrameTransformBootstrap(message.payload)

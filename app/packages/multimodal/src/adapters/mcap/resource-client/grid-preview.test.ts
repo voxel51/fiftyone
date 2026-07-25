@@ -586,6 +586,7 @@ function createClient(
 ): McapResourceClient {
   return {
     dispose: vi.fn(),
+    readBoundedMessages: vi.fn(),
     readDecodedMessages: vi.fn(async function* () {
       for (const item of [] as never[]) {
         yield item;

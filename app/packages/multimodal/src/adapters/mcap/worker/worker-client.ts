@@ -27,6 +27,8 @@ import type {
   McapEnumerateNumericFieldsRequest,
   McapNumericSeriesResult,
   McapPointCloudChannelResult,
+  McapReadBoundedMessagesRequest,
+  McapReadBoundedMessagesResult,
   McapReadDecodedMessagesRequest,
   McapReadFrameTransformBootstrapRequest,
   McapReadFrameTransformWindowRequest,
@@ -176,6 +178,18 @@ class WorkerMcapResourceClient implements McapResourceClient {
     }
   }
 
+  readBoundedMessages(
+    request: McapReadBoundedMessagesRequest,
+    options?: McapResourceReadOptions,
+  ): Promise<McapReadBoundedMessagesResult> {
+    return this.request(
+      "readBoundedMessages",
+      request,
+      resourcePriorityToWorkerPriority(options?.priority),
+      options?.signal,
+    );
+  }
+
   readTimelineRange(
     request: McapReadTimelineRangeRequest,
   ): Promise<McapTimelineRange> {
@@ -263,6 +277,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     type: Type,
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
     priority?: McapPlaybackWorkerPriority,
+    signal?: AbortSignal,
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     if (this.disposed) {
       return Promise.reject(new Error("MCAP worker client is disposed"));
@@ -304,6 +319,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
       payload,
       effectivePriority,
       supersessionKeys,
+      signal,
     );
   }
 

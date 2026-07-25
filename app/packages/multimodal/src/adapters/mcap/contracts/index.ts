@@ -2,6 +2,13 @@ import type {
   ByteSourceDescriptor,
   LaneTransportSnapshot,
 } from "../../../query/bytes/index";
+import type {
+  BudgetedReadStopReason,
+  ReadContinuation,
+  ReadWorkBudget,
+  ReadWorkUsage,
+} from "../../../ports";
+import type { TimeWindow } from "../../../ir";
 import type { DecodeResult } from "../../../query/decoding/index";
 import type {
   PlaybackSyncMode,
@@ -118,6 +125,29 @@ export interface McapReadDecodedMessagesRequest {
    * Optional MCAP topics to include. Undefined means all topics.
    */
   readonly topics?: readonly string[];
+}
+
+/** Internal resource request backing the format-neutral bounded-read port. */
+export interface McapReadBoundedMessagesRequest {
+  readonly absoluteBudget: ReadWorkBudget;
+  readonly absoluteMaxChunks: number;
+  readonly activeTimeline?: McapActiveTimeline;
+  readonly budget: ReadWorkBudget;
+  readonly continuation?: ReadContinuation;
+  readonly endTimeNs?: bigint;
+  readonly maxChunks: number;
+  readonly source: ByteSourceDescriptor;
+  readonly startTimeNs?: bigint;
+  readonly topics: readonly string[];
+}
+
+/** Decoded partial result returned across the MCAP resource boundary. */
+export interface McapReadBoundedMessagesResult {
+  readonly continuation?: ReadContinuation;
+  readonly coverageByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
+  readonly messages: readonly McapDecodedMessage[];
+  readonly stopReason: BudgetedReadStopReason;
+  readonly usage: ReadWorkUsage;
 }
 
 /**
@@ -689,6 +719,7 @@ export type McapResourceReadPriority = "bulk" | "current" | "idle" | "playback";
  */
 export interface McapResourceReadOptions {
   readonly priority?: McapResourceReadPriority;
+  readonly signal?: AbortSignal;
 }
 
 /**
@@ -845,6 +876,12 @@ export interface McapResourceClient {
     request: McapReadDecodedMessagesRequest,
     options?: McapResourceReadOptions,
   ): AsyncGenerator<McapDecodedMessage, void, void>;
+
+  /** Executes one admitted, resumable MCAP chunk grant. */
+  readBoundedMessages(
+    request: McapReadBoundedMessagesRequest,
+    options?: McapResourceReadOptions,
+  ): Promise<McapReadBoundedMessagesResult>;
 
   /**
    * Returns the playable time range for the active timeline.

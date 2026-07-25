@@ -6,6 +6,8 @@ import type {
   McapNumericSeriesResult,
   McapPointCloudChannelResult,
   McapRawMessageRecordResult,
+  McapReadBoundedMessagesRequest,
+  McapReadBoundedMessagesResult,
   McapReadDecodedMessagesRequest,
   McapReadFrameTransformBootstrapRequest,
   McapReadFrameTransformWindowRequest,
@@ -22,6 +24,7 @@ import type {
   McapTopicNumericFields,
   McapTopicTimeBounds,
 } from "../contracts/index";
+import type { McapBoundedReadCancellation } from "../reader";
 import type { StreamInventory } from "../../../schemas/v1";
 
 /**
@@ -82,6 +85,7 @@ export type McapPlaybackWorkerFetchParameters = {
  */
 export type McapPlaybackWorkerRequestPayloadByType = {
   readonly enumerateNumericFields: McapEnumerateNumericFieldsRequest;
+  readonly readBoundedMessages: McapReadBoundedMessagesRequest;
   readonly readDecodedMessages: McapReadDecodedMessagesRequest;
   readonly readFrameTransformBootstrap: McapReadFrameTransformBootstrapRequest;
   readonly readFrameTransformWindow: McapReadFrameTransformWindowRequest;
@@ -100,6 +104,7 @@ export type McapPlaybackWorkerRequestPayloadByType = {
  */
 export type McapPlaybackWorkerResultByType = {
   readonly enumerateNumericFields: readonly McapTopicNumericFields[];
+  readonly readBoundedMessages: McapReadBoundedMessagesResult;
   readonly readFrameTransformBootstrap: McapFrameTransformSetWire;
   readonly readFrameTransformWindow: McapFrameTransformSetWire;
   readonly readNumericSeries: McapNumericSeriesResult;
@@ -216,6 +221,7 @@ export type McapPlaybackWorkerStreamResponse =
  * Failure response for any worker RPC.
  */
 export type McapPlaybackWorkerErrorResponse = {
+  readonly boundedReadCancellation?: McapBoundedReadCancellation;
   readonly error: string;
   readonly id: number;
   readonly ok: false;
