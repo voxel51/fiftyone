@@ -110,11 +110,13 @@ export function byteSourceCacheKey(source: ByteSourceDescriptor): string {
  */
 export function byteSourceAccessKey(source: ByteSourceDescriptor): string {
   // Readers/workers own transport state, so they must refresh when the URL or
-  // read profile changes even though the underlying sourceId stays stable.
+  // content validator changes even though the underlying sourceId stays
+  // stable. Size remains excluded because it may be discovered after opening.
   return serializeCacheKey([
     source.sourceId,
     source.url,
     source.readProfile ?? null,
+    source.etag ?? null,
   ]);
 }
 

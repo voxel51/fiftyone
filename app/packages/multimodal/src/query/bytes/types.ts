@@ -22,6 +22,12 @@ export interface ByteRangeReadRequest {
      * Whether cache wrappers may widen this read to a configured block fill.
      */
     readonly blockFill?: boolean;
+
+    /**
+     * Whether a cache wrapper may queue autonomous successor-block readahead.
+     * Bounded grants disable this so no unadmitted range outlives the grant.
+     */
+    readonly readahead?: boolean;
   };
 
   /**
@@ -68,6 +74,21 @@ export interface ByteRangeReadResult {
    * Raw bytes for range.
    */
   readonly bytes: Uint8Array;
+
+  /** Cache/fill attribution for this logical read when the client provides it. */
+  readonly readUsage?: ByteRangeReadUsage;
+}
+
+/** Physical cache-fill outcome behind one logical byte-range result. */
+export interface ByteRangeReadUsage {
+  readonly cacheResult:
+    | "coalesced"
+    | "fill-hit"
+    | "fetched"
+    | "persistent-hit"
+    | "request-hit";
+  readonly fillRange: ByteRange;
+  readonly transferredBytes: number;
 }
 
 export interface ByteReadDebugLog {
@@ -104,6 +125,12 @@ export interface ByteClient {
   stat?(
     source: ByteSourceDescriptor,
   ): Promise<ByteSourceDescriptor | undefined>;
+
+  /**
+   * Resolves the physical cache-fill range a read would admit without reading
+   * bytes. Bounded adapters use this pure plan as their byte-budget authority.
+   */
+  planRead?(request: ByteRangeReadRequest): ByteRangeReadRequest;
 
   /**
    * Reads the requested source byte range and returns exactly that range.

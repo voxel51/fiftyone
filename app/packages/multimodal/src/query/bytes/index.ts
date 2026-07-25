@@ -10,6 +10,7 @@ export { createAdaptiveByteCacheBlockSize } from "./adaptive-block-size";
 export {
   createCachedByteClient,
   defaultByteCacheBlockSizeBytes,
+  planByteCacheFillRequest,
 } from "./cached-byte-client";
 export { createDefaultByteClient } from "./default-byte-client";
 export {
@@ -60,6 +61,7 @@ export type {
   ByteRangeCache,
   ByteRangeReadRequest,
   ByteRangeReadResult,
+  ByteRangeReadUsage,
   ByteReadDebugLog,
   ByteClient,
   ByteSourceDescriptor,

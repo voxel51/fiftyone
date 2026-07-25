@@ -35,6 +35,47 @@ export function defaultByteCacheBlockSizeBytes(
     : DEFAULT_LOCAL_BYTE_CACHE_BLOCK_SIZE_BYTES;
 }
 
+/**
+ * Purely resolves the cache fill a logical request may trigger.
+ *
+ * Admission and execution both call this planner so byte-bounded readers
+ * charge the widened physical range rather than only the returned slice.
+ */
+export function planByteCacheFillRequest(
+  request: ByteRangeReadRequest,
+  blockSizeBytes: number | undefined,
+): ByteRangeReadRequest {
+  if (
+    request.cachePolicy?.blockFill === false ||
+    blockSizeBytes === undefined ||
+    !Number.isSafeInteger(blockSizeBytes) ||
+    blockSizeBytes <= 0 ||
+    request.range.length >= BigInt(blockSizeBytes)
+  ) {
+    return request;
+  }
+
+  const sourceSize = parseByteSize(request.source.sizeBytes);
+  if (sourceSize === undefined) {
+    return request;
+  }
+  const blockSize = BigInt(blockSizeBytes);
+  const offset = (request.range.offset / blockSize) * blockSize;
+  const blockEnd = offset + blockSize;
+  const end = blockEnd < sourceSize ? blockEnd : sourceSize;
+  if (end < request.range.offset + request.range.length) {
+    return request;
+  }
+
+  return {
+    ...request,
+    range: {
+      length: end - offset,
+      offset,
+    },
+  };
+}
+
 interface ByteFillOutcome {
   readonly cacheResult: "fetched" | "persistent-hit";
   readonly result: ByteRangeReadResult;
@@ -293,6 +334,9 @@ export function createCachedByteClient(
     request: ByteRangeReadRequest,
     fillRequest: ByteRangeReadRequest,
   ) => {
+    if (request.cachePolicy?.readahead === false) {
+      return;
+    }
     if (request.source.readProfile !== BYTE_SOURCE_READ_PROFILE.REMOTE) {
       return;
     }
@@ -354,43 +398,20 @@ export function createCachedByteClient(
   };
 
   return {
+    planRead(request) {
+      return planByteCacheFillRequest(request, resolveBlockSizeBytes(request));
+    },
+
     async stat(source) {
       return reader.stat?.(source);
     },
 
     async readBytes(request) {
       const startMs = byteReadNowMs();
-      // Widen small reads to cacheable blocks when the source size is known.
-      let fillRequest = request;
-      if (request.cachePolicy?.blockFill !== false) {
-        const blockSizeBytes = resolveBlockSizeBytes(request);
-
-        if (
-          blockSizeBytes !== undefined &&
-          Number.isSafeInteger(blockSizeBytes) &&
-          blockSizeBytes > 0 &&
-          request.range.length < BigInt(blockSizeBytes)
-        ) {
-          const sourceSize = parseByteSize(request.source.sizeBytes);
-
-          if (sourceSize !== undefined) {
-            const blockSize = BigInt(blockSizeBytes);
-            const offset = (request.range.offset / blockSize) * blockSize;
-            const blockEnd = offset + blockSize;
-            const end = blockEnd < sourceSize ? blockEnd : sourceSize;
-
-            if (end >= request.range.offset + request.range.length) {
-              fillRequest = {
-                ...request,
-                range: {
-                  length: end - offset,
-                  offset,
-                },
-              };
-            }
-          }
-        }
-      }
+      const fillRequest = planByteCacheFillRequest(
+        request,
+        resolveBlockSizeBytes(request),
+      );
 
       maybeQueueRemoteReadahead(request, fillRequest);
 
@@ -403,7 +424,10 @@ export function createCachedByteClient(
           result: cachedFill,
           startMs,
         });
-        return sliceByteRangeResult(cachedFill, request.range);
+        return sliceByteRangeResult(
+          withByteReadUsage(cachedFill, fillRequest.range, "fill-hit"),
+          request.range,
+        );
       }
 
       if (
@@ -419,7 +443,11 @@ export function createCachedByteClient(
             result: cachedRequest,
             startMs,
           });
-          return cachedRequest;
+          return withByteReadUsage(
+            cachedRequest,
+            fillRequest.range,
+            "request-hit",
+          );
         }
       }
 
@@ -441,7 +469,10 @@ export function createCachedByteClient(
           result: persistedFill,
           startMs,
         });
-        return sliceByteRangeResult(persistedFill, request.range);
+        return sliceByteRangeResult(
+          withByteReadUsage(persistedFill, fillRequest.range, "persistent-hit"),
+          request.range,
+        );
       }
 
       // In-flight request coalescing follows the active access URL, while the
@@ -464,7 +495,32 @@ export function createCachedByteClient(
         result: outcome.result,
         startMs,
       });
-      return sliceByteRangeResult(outcome.result, request.range);
+      return sliceByteRangeResult(
+        withByteReadUsage(
+          outcome.result,
+          fillRequest.range,
+          coalesced ? "coalesced" : outcome.cacheResult,
+        ),
+        request.range,
+      );
+    },
+  };
+}
+
+function withByteReadUsage(
+  result: ByteRangeReadResult,
+  fillRange: ByteRange,
+  cacheResult: NonNullable<ByteRangeReadResult["readUsage"]>["cacheResult"],
+): ByteRangeReadResult {
+  return {
+    ...result,
+    readUsage: {
+      cacheResult,
+      fillRange,
+      transferredBytes:
+        cacheResult === "fetched"
+          ? (result.readUsage?.transferredBytes ?? result.bytes.byteLength)
+          : 0,
     },
   };
 }
@@ -542,6 +598,7 @@ function sliceByteRangeResult(
 
   return {
     bytes: result.bytes.subarray(start, end),
+    ...(result.readUsage ? { readUsage: result.readUsage } : {}),
     range,
     source: result.source,
   };
