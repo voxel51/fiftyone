@@ -26,6 +26,7 @@ import {
   setStreamStatus,
 } from "./stream-status-state";
 import {
+  BYTE_SOURCE_READ_PROFILE,
   type ByteSourceDescriptor,
   type ByteTimelinePoint,
   type DecodedFrame,
@@ -40,6 +41,7 @@ import { monotonicNowMs } from "../../../utils/monotonic-time";
 import {
   createEpisodePlaybackRuntime,
   createTimelineIndex,
+  DEFAULT_TIMELINE_TICK_RATE_HZ,
   episodeSourceAccessKey,
   type StreamSubscriptionOptions,
   type TimelineIndex,
@@ -56,6 +58,7 @@ import {
   computeBufferedRanges as deriveBufferedRanges,
   DEFAULT_PLAYBACK_POLICY,
   derivePlaybackPolicy,
+  type DerivedPlaybackPolicy,
   INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS,
   nsToSeconds,
   resetPlaybackBuffering,
@@ -80,6 +83,16 @@ import type { StreamPlaybackFrame } from "./use-stream-values";
  */
 const BUFFERED_RANGES_PUBLISH_INTERVAL_MS = 500;
 const PLAYBACK_POLICY = derivePlaybackPolicy(DEFAULT_PLAYBACK_POLICY);
+// Local files need only a current-frame guard before rolling prefetch takes
+// over. Keeping this grant short prevents cold multi-image batches from
+// monopolizing the foreground worker; remote sources retain the adaptive
+// half-second floor and bandwidth cushion.
+const LOCAL_STARTUP_TICKS = 3;
+const LOCAL_PLAYBACK_POLICY: DerivedPlaybackPolicy = {
+  ...PLAYBACK_POLICY,
+  startupLookaheadSeconds: LOCAL_STARTUP_TICKS / DEFAULT_TIMELINE_TICK_RATE_HZ,
+  startupMaxPrefetchBatch: LOCAL_STARTUP_TICKS,
+};
 
 const noop = (): void => undefined;
 
@@ -145,6 +158,10 @@ export function useRegisterDataStream({
     () => (source ? episodeSourceAccessKey(source) : ""),
     [source],
   );
+  const playbackPolicy =
+    source?.readProfile === BYTE_SOURCE_READ_PROFILE.LOCAL
+      ? LOCAL_PLAYBACK_POLICY
+      : PLAYBACK_POLICY;
 
   // This layout effect resets recording-local time before paint while the
   // playback store—and therefore the modal workspace—survives navigation.
@@ -272,12 +289,18 @@ export function useRegisterDataStream({
         byteTimeline: byteTimelineRef.current,
         caches: streamCachesRef.current,
         index: indexRef.current,
-        policy: PLAYBACK_POLICY,
+        policy: playbackPolicy,
         sourceEpoch: sourceEpochRef.current,
         sourceReadProfile,
         store,
       }),
-    [getActiveBlockingStreams, sourceReadProfile, startupCushionPlanner, store],
+    [
+      getActiveBlockingStreams,
+      playbackPolicy,
+      sourceReadProfile,
+      startupCushionPlanner,
+      store,
+    ],
   );
 
   // If a recording's selected renderable streams begin just after the episode
@@ -505,7 +528,7 @@ export function useRegisterDataStream({
       failedStreams: fetchState.failedStreams,
       index: indexRef.current,
       onPlayheadDataReady: onPlayheadDataReadyRef.current,
-      policy: PLAYBACK_POLICY,
+      policy: playbackPolicy,
       publishBufferedRangesNow,
       pushCurrentTick: (activeStreams, tick) =>
         pushTickToStore(
@@ -529,6 +552,7 @@ export function useRegisterDataStream({
     getActiveBlockingStreams,
     getActiveStreams,
     publishBufferedRangesNow,
+    playbackPolicy,
     resolveStartupCushion,
     scheduleBufferedRangesPublish,
     store,
@@ -595,7 +619,7 @@ export function useRegisterDataStream({
             getLastSeekAtMs: () => lastSeekAtMsRef.current,
             isSourceAvailable: () => source !== null,
             lastFrames: lastFrameRef.current,
-            policy: PLAYBACK_POLICY,
+            policy: playbackPolicy,
             prefetcher,
             publishStreamStatuses,
             resolveStartupCushion,
@@ -609,6 +633,7 @@ export function useRegisterDataStream({
       getActiveBlockingStreams,
       getActiveStreams,
       prefetcher,
+      playbackPolicy,
       publishStreamStatuses,
       resolveStartupCushion,
       source,
