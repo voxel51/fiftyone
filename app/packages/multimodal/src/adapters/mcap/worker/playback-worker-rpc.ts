@@ -56,7 +56,10 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
   },
   readFrameTransformBootstrap: {
     kind: "unary",
-    priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLACEMENT_FRAME,
+    // Static graph enrichment must not occupy the serial foreground lane in
+    // front of image playback batches. Current-time placement remains at
+    // PLACEMENT_FRAME through readFrameTransformWindow.
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,
   },
   readFrameTransformWindow: {
     kind: "unary",
