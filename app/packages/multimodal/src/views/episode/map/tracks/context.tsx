@@ -12,6 +12,7 @@ import React, {
   useState,
 } from "react";
 import type {
+  BudgetedReadJob,
   BudgetedReadResult,
   EpisodeSession,
   FrameBatch,
@@ -46,6 +47,15 @@ const LOCATION_TRACK_GRANT_BUDGET = {
 } as const;
 
 const EMPTY_LOCATION_TRACKS: LocationTracks = new Map();
+
+interface BoundedLocationTrackProgress {
+  readonly job: BudgetedReadJob;
+  readonly points: LocationTrackPoint[];
+  continuation?: ReadContinuation;
+  messageCount: number;
+  publishedPointCount: number;
+  truncated: boolean;
+}
 
 interface LocationTracksContextValue {
   readonly setTracks: (
@@ -122,6 +132,34 @@ export function LocationTracksBridge({
   const playbackStore = useContext(PlaybackStoreContext);
   const requestedStreams =
     streams ?? locationSources.map((locationSource) => locationSource.id);
+  const requestedStreamsKey = [...new Set(requestedStreams)].sort().join("\0");
+  const progressCacheRef = React.useRef<{
+    readonly budgetAccount: SourceReadBudgetAccount | null | undefined;
+    readonly byStream: Map<string, BoundedLocationTrackProgress>;
+    readonly session: EpisodeSession | null;
+    readonly sourceKey: string | null;
+  }>();
+  if (
+    progressCacheRef.current?.budgetAccount !== budgetAccount ||
+    progressCacheRef.current?.session !== session ||
+    progressCacheRef.current?.sourceKey !== sourceKey
+  ) {
+    progressCacheRef.current = {
+      budgetAccount,
+      byStream: new Map(),
+      session,
+      sourceKey,
+    };
+  }
+  const boundedProgressByStream = progressCacheRef.current.byStream;
+  useEffect(() => {
+    const desiredStreams = new Set(
+      requestedStreamsKey ? requestedStreamsKey.split("\0") : [],
+    );
+    for (const stream of boundedProgressByStream.keys()) {
+      if (!desiredStreams.has(stream)) boundedProgressByStream.delete(stream);
+    }
+  }, [boundedProgressByStream, requestedStreamsKey]);
   const loadStream = useCallback(
     async ({
       commit,
@@ -142,18 +180,30 @@ export function LocationTracksBridge({
         sourceName: locationSource.sourceName,
         stream,
       } satisfies Omit<LocationTrackState, "status">;
-      commit({ ...baseState, status: "loading" });
-
-      const points: LocationTrackPoint[] = [];
-      let messageCount = 0;
-      let publishedPointCount = 0;
-      let truncated = false;
+      let boundedProgress = boundedProgressByStream.get(stream);
+      if (!boundedProgress) {
+        commit({ ...baseState, status: "loading" });
+        if (budgetAccount) {
+          boundedProgress = {
+            job: budgetAccount.createJob(),
+            messageCount: 0,
+            points: [],
+            publishedPointCount: 0,
+            truncated: false,
+          };
+          boundedProgressByStream.set(stream, boundedProgress);
+        }
+      }
+      const points = boundedProgress?.points ?? [];
+      let messageCount = boundedProgress?.messageCount ?? 0;
+      let publishedPointCount = boundedProgress?.publishedPointCount ?? 0;
+      let truncated = boundedProgress?.truncated ?? false;
       try {
-        const consume = (batch: FrameBatch) => {
+        const consume = (batch: FrameBatch, mayStandDown: boolean) => {
           for (const frame of batch.frames) {
             if (control.isCancelled()) return false;
             messageCount += 1;
-            if (control.standDown()) return false;
+            if (mayStandDown && control.standDown()) return false;
             const visualization = frame.output.visualization;
             if (visualization?.kind !== VISUALIZATION_KIND.LOCATION) continue;
             points.push(
@@ -178,29 +228,41 @@ export function LocationTracksBridge({
               ...(progress.truncated ? { truncated: true } : {}),
             });
           }
+          if (boundedProgress) {
+            boundedProgress.messageCount = messageCount;
+            boundedProgress.publishedPointCount = publishedPointCount;
+            boundedProgress.truncated = truncated;
+          }
           return true;
         };
 
-        if (budgetAccount) {
-          const job = budgetAccount.createJob();
-          let continuation: ReadContinuation | undefined;
+        if (boundedProgress) {
           while (!control.isCancelled()) {
             if (control.standDown()) return;
-            const result: BudgetedReadResult = await job.read({
+            const result: BudgetedReadResult = await boundedProgress.job.read({
               budget: LOCATION_TRACK_GRANT_BUDGET,
-              ...(continuation ? { continuation } : {}),
+              ...(boundedProgress.continuation
+                ? { continuation: boundedProgress.continuation }
+                : {}),
               signal: control.signal,
               streams: [stream],
               window: session.manifest.timeRange,
             });
             for (const batch of result.batches) {
-              if (!consume(batch)) return;
+              if (!consume(batch, false)) {
+                boundedProgressByStream.delete(stream);
+                return;
+              }
             }
             const madeProgress =
               result.batches.length > 0 || result.usage.chunksOpened > 0;
-            continuation = result.continuation;
-            if (!continuation || result.stopReason === "source-exhausted")
+            boundedProgress.continuation = result.continuation;
+            if (
+              !boundedProgress.continuation ||
+              result.stopReason === "source-exhausted"
+            ) {
               break;
+            }
             if (
               !madeProgress ||
               result.stopReason === "oversized-source-unit"
@@ -217,7 +279,7 @@ export function LocationTracksBridge({
             streams: [stream],
             window: session.manifest.timeRange,
           })) {
-            if (!consume(batch)) return;
+            if (!consume(batch, true)) return;
           }
         }
 
@@ -228,7 +290,10 @@ export function LocationTracksBridge({
           truncated ||
           result.truncated ||
           messageCount >= LOCATION_TRACK_READ_LIMIT;
-        if (control.isCancelled()) return;
+        if (control.isCancelled()) {
+          boundedProgressByStream.delete(stream);
+          return;
+        }
         commit({
           ...baseState,
           pointCount: result.pointCount,
@@ -236,12 +301,14 @@ export function LocationTracksBridge({
           status: "ready",
           ...(truncated ? { truncated: true } : {}),
         });
+        boundedProgressByStream.delete(stream);
       } catch {
+        boundedProgressByStream.delete(stream);
         if (control.isCancelled()) return;
         commit({ ...baseState, status: "error" });
       }
     },
-    [budgetAccount, locationSources, session],
+    [boundedProgressByStream, budgetAccount, locationSources, session],
   );
   const tracks = useDemandDrivenHistory({
     initialDelayMs: 0,

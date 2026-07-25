@@ -163,6 +163,69 @@ describe("LocationTracksBridge", () => {
     expect(session.read).not.toHaveBeenCalled();
   });
 
+  it("keeps bounded progress when playback pressure interrupts the route", async () => {
+    vi.useFakeTimers();
+    const source = createSource("drive");
+    const store = createStore();
+    const session = createSession();
+    const continuation = {};
+    const read = vi
+      .fn<BudgetedReadJob["read"]>()
+      .mockImplementationOnce(async () => {
+        store.set(isPlayingAtom, true);
+        setNetworkHealth(store, {
+          busyFraction: 1,
+          busyThroughputBytesPerSec: 1,
+          limited: true,
+          throughputBytesPerSec: 1,
+          throughputPlannable: true,
+          updatedAtMs: 0,
+        });
+        return boundedResult({
+          continuation,
+          frames: [locationMessage(1_000_000_000n, 37, -122, 0)],
+          stopReason: "budget-exhausted",
+        });
+      })
+      .mockResolvedValueOnce(
+        boundedResult({
+          frames: [locationMessage(2_000_000_000n, 37.001, -122.001, 0)],
+          stopReason: "source-exhausted",
+        }),
+      );
+    const createJob = vi.fn(() => ({ read }));
+    const budgetAccount = {
+      createJob,
+    } as unknown as SourceReadBudgetAccount;
+
+    render(
+      <Harness
+        budgetAccount={budgetAccount}
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        source={source}
+        store={store}
+      />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("location-tracks").textContent).toBe(
+      "/gps:loading:1:1:full",
+    );
+
+    store.set(isPlayingAtom, false);
+    await advanceTimers(2_000);
+    expect(screen.getByTestId("location-tracks").textContent).toBe(
+      "/gps:ready:2:1:full",
+    );
+    expect(createJob).toHaveBeenCalledTimes(1);
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(read.mock.calls[1]?.[0]).toMatchObject({ continuation });
+  });
+
   it("marks streams as error when the bulk read rejects", async () => {
     const source = createSource("drive");
     const locationSources = [locationSource("/gps")];
