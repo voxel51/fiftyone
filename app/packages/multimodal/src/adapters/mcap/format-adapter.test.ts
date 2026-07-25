@@ -8,6 +8,7 @@ import {
   collectBatches,
 } from "../../testing/adapter-contract";
 import { createMcapFormatAdapter, createMcapManifest } from "./format-adapter";
+import { McapBoundedReadCancelledError } from "./reader";
 import {
   MCAP_ACTIVE_TIMELINE,
   type McapDecodedMessage,
@@ -57,6 +58,284 @@ describe("MCAP format adapter", () => {
     } finally {
       session.dispose();
     }
+  });
+
+  it("shares one cumulative bounded-read allowance across jobs", async () => {
+    const client = createClient();
+    const continuation = { cursor: 1 };
+    vi.mocked(client.readBoundedMessages).mockResolvedValue({
+      continuation,
+      coverageByTopic: new Map([["/camera", [{ endNs: 1n, startNs: 1n }]]]),
+      messages: [
+        {
+          activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          channelId: 1,
+          decoded: {
+            decoderId: "fixture",
+            decoderVersion: "1",
+            output: { resourceHints: { transferables: [] } },
+            payload: { encoding: "fixture" },
+          },
+          logTimeNs: 1n,
+          publishTimeNs: 2n,
+          sequence: 7,
+          timelineTimeNs: 1n,
+          topic: "/camera",
+        },
+      ],
+      stopReason: "budget-exhausted",
+      usage: {
+        chunksOpened: 1,
+        decompressedBytes: 300,
+        decompressionCacheHits: 0,
+        elapsedMs: 10,
+        logicalSourceBytes: 100,
+        logicalUncompressedBytes: 300,
+        messagesDecoded: 1,
+        transferredBytes: 100,
+      },
+    });
+    const session = await createMcapFormatAdapter({
+      boundedChunksPerGrant: 2,
+      boundedChunksPerSource: 4,
+      createClient: () => client,
+    }).open(source, io);
+    const allowance = {
+      maxMessages: 10,
+      maxSourceBytes: 1_000,
+      maxUncompressedBytes: 3_000,
+      maxWallTimeMs: 1_000,
+    };
+    const account = session.boundedRead?.openAccount(allowance);
+    const grant = {
+      maxMessages: 5,
+      maxSourceBytes: 500,
+      maxUncompressedBytes: 1_500,
+      maxWallTimeMs: 500,
+    };
+
+    const result = await account?.createJob().read({
+      budget: grant,
+      streams: ["camera"],
+      window: { endNs: 2n, startNs: 1n },
+    });
+
+    expect(result?.batches).toHaveLength(1);
+    expect(result?.continuation).toBe(continuation);
+    expect(result?.coverageByStream.get("camera")).toEqual([
+      { endNs: 1n, startNs: 1n },
+    ]);
+    expect(account?.remaining()).toEqual({
+      maxMessages: 9,
+      maxSourceBytes: 900,
+      maxUncompressedBytes: 2_700,
+      maxWallTimeMs: 990,
+    });
+    const cacheWarmReservation = account?.reserve({
+      maxMessages: 0,
+      maxSourceBytes: 200,
+      maxUncompressedBytes: 0,
+      maxWallTimeMs: 100,
+    });
+    cacheWarmReservation?.commit(
+      {
+        chunksOpened: 0,
+        decompressedBytes: 0,
+        decompressionCacheHits: 0,
+        elapsedMs: 5,
+        logicalSourceBytes: 100,
+        logicalUncompressedBytes: 0,
+        messagesDecoded: 0,
+        transferredBytes: 0,
+      },
+      { exact: true },
+    );
+    expect(account?.remaining()).toEqual({
+      maxMessages: 9,
+      maxSourceBytes: 800,
+      maxUncompressedBytes: 2_700,
+      maxWallTimeMs: 985,
+    });
+    expect(
+      account?.reserve({
+        maxMessages: 0,
+        maxSourceBytes: 801,
+        maxUncompressedBytes: 0,
+        maxWallTimeMs: 0,
+      }),
+    ).toBeUndefined();
+    expect(() =>
+      session.boundedRead?.openAccount({
+        ...allowance,
+        maxSourceBytes: 2_000,
+      }),
+    ).toThrow("already open");
+    session.dispose();
+  });
+
+  it("retains a cancelled grant after receiving partial usage", async () => {
+    const client = createClient();
+    const partialUsage = {
+      chunksOpened: 1,
+      decompressedBytes: 300,
+      decompressionCacheHits: 0,
+      elapsedMs: 12,
+      logicalSourceBytes: 200,
+      logicalUncompressedBytes: 600,
+      messagesDecoded: 2,
+      transferredBytes: 128,
+    };
+    vi.mocked(client.readBoundedMessages).mockRejectedValue(
+      new McapBoundedReadCancelledError(partialUsage),
+    );
+    const session = await createMcapFormatAdapter({
+      boundedChunksPerGrant: 2,
+      boundedChunksPerSource: 4,
+      createClient: () => client,
+    }).open(source, io);
+    const account = session.boundedRead?.openAccount({
+      maxMessages: 10,
+      maxSourceBytes: 1_000,
+      maxUncompressedBytes: 3_000,
+      maxWallTimeMs: 1_000,
+    });
+
+    await expect(
+      account?.createJob().read({
+        budget: {
+          maxMessages: 5,
+          maxSourceBytes: 500,
+          maxUncompressedBytes: 1_500,
+          maxWallTimeMs: 500,
+        },
+        streams: ["camera"],
+        window: { endNs: 2n, startNs: 1n },
+      }),
+    ).rejects.toMatchObject({ name: "EpisodeReadCancelledError" });
+
+    expect(account?.remaining()).toEqual({
+      maxMessages: 5,
+      maxSourceBytes: 500,
+      maxUncompressedBytes: 1_500,
+      maxWallTimeMs: 500,
+    });
+    session.dispose();
+  });
+
+  it("cancels after completed physical work without committing a continuation", async () => {
+    const client = createClient();
+    const controller = new AbortController();
+    const completedUsage = {
+      chunksOpened: 1,
+      decompressedBytes: 0,
+      decompressionCacheHits: 1,
+      elapsedMs: 8,
+      logicalSourceBytes: 200,
+      logicalUncompressedBytes: 600,
+      messagesDecoded: 0,
+      transferredBytes: 0,
+    };
+    vi.mocked(client.readBoundedMessages).mockImplementation(async () => {
+      controller.abort();
+      return {
+        continuation: { cursor: 2 },
+        coverageByTopic: new Map(),
+        messages: [],
+        stopReason: "budget-exhausted",
+        usage: completedUsage,
+      };
+    });
+    const session = await createMcapFormatAdapter({
+      boundedChunksPerGrant: 1,
+      boundedChunksPerSource: 2,
+      createClient: () => client,
+    }).open(source, io);
+    const account = session.boundedRead?.openAccount({
+      maxMessages: 10,
+      maxSourceBytes: 1_000,
+      maxUncompressedBytes: 3_000,
+      maxWallTimeMs: 1_000,
+    });
+
+    await expect(
+      account?.createJob().read({
+        budget: {
+          maxMessages: 5,
+          maxSourceBytes: 500,
+          maxUncompressedBytes: 1_500,
+          maxWallTimeMs: 500,
+        },
+        signal: controller.signal,
+        streams: ["camera"],
+        window: { endNs: 2n, startNs: 1n },
+      }),
+    ).rejects.toMatchObject({ name: "EpisodeReadCancelledError" });
+    expect(account?.remaining()).toEqual({
+      maxMessages: 5,
+      maxSourceBytes: 500,
+      maxUncompressedBytes: 1_500,
+      maxWallTimeMs: 500,
+    });
+    session.dispose();
+  });
+
+  it("suppresses a bounded result completed after its source session is disposed", async () => {
+    const client = createClient();
+    let resolveRead:
+      | ((
+          value: Awaited<ReturnType<typeof client.readBoundedMessages>>,
+        ) => void)
+      | undefined;
+    vi.mocked(client.readBoundedMessages).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRead = resolve;
+        }),
+    );
+    const session = await createMcapFormatAdapter({
+      boundedChunksPerGrant: 1,
+      boundedChunksPerSource: 2,
+      createClient: () => client,
+    }).open(source, io);
+    const read = session.boundedRead
+      ?.openAccount({
+        maxMessages: 10,
+        maxSourceBytes: 1_000,
+        maxUncompressedBytes: 3_000,
+        maxWallTimeMs: 1_000,
+      })
+      .createJob()
+      .read({
+        budget: {
+          maxMessages: 5,
+          maxSourceBytes: 500,
+          maxUncompressedBytes: 1_500,
+          maxWallTimeMs: 500,
+        },
+        streams: ["camera"],
+        window: { endNs: 2n, startNs: 1n },
+      });
+
+    session.dispose();
+    resolveRead?.({
+      coverageByTopic: new Map(),
+      messages: [],
+      stopReason: "budget-exhausted",
+      usage: {
+        chunksOpened: 1,
+        decompressedBytes: 0,
+        decompressionCacheHits: 1,
+        elapsedMs: 5,
+        logicalSourceBytes: 100,
+        logicalUncompressedBytes: 300,
+        messagesDecoded: 0,
+        transferredBytes: 0,
+      },
+    });
+
+    await expect(read).rejects.toMatchObject({
+      name: "EpisodeReadCancelledError",
+    });
   });
 
   it("opens from grid bootstrap hints without repeating inventory reads", async () => {
@@ -302,6 +581,7 @@ function createClient(): McapResourceClient {
         },
       ],
     ),
+    readBoundedMessages: vi.fn(),
     readDecodedMessages: vi.fn(async function* () {
       yield message;
     }),

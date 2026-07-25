@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
-import { readdirSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
@@ -105,6 +105,49 @@ function verifyEpisodeDomainDirection(edges) {
 }
 
 verifyEpisodeDomainDirection(dependencies);
+
+// Whole-manifest aggregate reads predate the bounded-read substrate. Keep the
+// remaining migrations explicit: a new view-owned `session.read()` over the
+// manifest range must use a bounded job instead of joining this allowlist.
+const legacyManifestWideReads = new Map([
+  ["packages/multimodal/src/views/episode/map/tracks/context.tsx", 1],
+  [
+    "packages/multimodal/src/views/episode/scene/entities/pose-trajectories-context.tsx",
+    1,
+  ],
+  [
+    "packages/multimodal/src/views/episode/scene/entities/scene-update-history-context.tsx",
+    1,
+  ],
+]);
+const discoveredManifestWideReads = new Map();
+for (const module of graph.modules) {
+  const source = module.source;
+  if (
+    !source.startsWith(episodeProductionPrefix) ||
+    !/\.[cm]?[jt]sx?$/.test(source) ||
+    /\.(?:bench|spec|test)\.[cm]?[jt]sx?$/.test(source)
+  ) {
+    continue;
+  }
+  const contents = readFileSync(
+    new URL(`../../../${source}`, import.meta.url),
+    {
+      encoding: "utf8",
+    },
+  );
+  if (!contents.includes("session.read(")) continue;
+  const count = contents.match(/session\.manifest\.timeRange/g)?.length ?? 0;
+  if (count > 0) {
+    discoveredManifestWideReads.set(source, count);
+  }
+}
+assert.deepEqual(
+  discoveredManifestWideReads,
+  legacyManifestWideReads,
+  "new manifest-wide view reads must use a source-budgeted bounded-read job",
+);
+
 const visibleVendorEdge = dependencies.find(
   ({ dependency, module }) =>
     module.source.startsWith(`${sourcePrefix}adapters/`) &&

@@ -16,6 +16,9 @@ import {
 } from "../../ir";
 import {
   EpisodeReadCancelledError,
+  type BoundedReadCapability,
+  type BudgetedReadRequest,
+  type BudgetedReadResult,
   type ByteResources,
   type EpisodeSession,
   type EpisodeSource,
@@ -31,8 +34,15 @@ import {
   type ReadRequest,
   type ReadPriority,
   type SourceStats,
+  type ReadWorkBudget,
+  type ReadWorkUsage,
+  type SourceReadBudgetAccount,
   type TransformReadAcceleration,
 } from "../../ports";
+import {
+  createSourceReadBudgetLedger,
+  type SourceReadBudgetLedger,
+} from "../../runtime/read-budget-account";
 import { PlaybackSyncMode } from "../../schemas/v1";
 import { isEpisodeReadCancelledError } from "../../ports";
 import type { McapGridPreviewResult } from "./resource-client/grid-preview";
@@ -54,14 +64,27 @@ import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
   type McapPlaybackWorkerPriority,
 } from "./worker/playback-worker-types";
+import { isMcapBoundedReadCancelledError } from "./reader/bounded-read-cancellation";
 
 type McapGridPreviewPool = Pick<
   ReturnType<typeof getMcapGridPreviewPool>,
   "acquire" | "release" | "request"
 >;
 
+const DEFAULT_MCAP_BOUNDED_CHUNKS_PER_GRANT = 4;
+const DEFAULT_MCAP_BOUNDED_CHUNKS_PER_SOURCE = 64;
+const DEFAULT_MCAP_BOUNDED_SOURCE_ALLOWANCE: ReadWorkBudget = {
+  maxMessages: 250_000,
+  maxSourceBytes: 256 * 1024 * 1024,
+  maxUncompressedBytes: 512 * 1024 * 1024,
+  maxWallTimeMs: 30_000,
+};
+
 /** Options for constructing the MCAP format adapter. */
 export interface CreateMcapFormatAdapterOptions {
+  readonly boundedChunksPerGrant?: number;
+  readonly boundedChunksPerSource?: number;
+  readonly boundedSourceAllowance?: ReadWorkBudget;
   readonly createClient?: (io: ByteResources) => McapResourceClient;
   readonly getPreviewPool?: () => McapGridPreviewPool;
 }
@@ -107,6 +130,17 @@ export function createMcapFormatAdapter(
           manifest,
           range,
           handle.release,
+          {
+            maxChunksPerGrant:
+              options.boundedChunksPerGrant ??
+              DEFAULT_MCAP_BOUNDED_CHUNKS_PER_GRANT,
+            maxChunksPerSource:
+              options.boundedChunksPerSource ??
+              DEFAULT_MCAP_BOUNDED_CHUNKS_PER_SOURCE,
+            sourceAllowance:
+              options.boundedSourceAllowance ??
+              DEFAULT_MCAP_BOUNDED_SOURCE_ALLOWANCE,
+          },
         );
       } catch (error) {
         handle.release();
@@ -521,6 +555,7 @@ function streamKindForPayload(
 }
 
 class McapEpisodeSession implements EpisodeSession {
+  readonly boundedRead: BoundedReadCapability;
   readonly manifest: EpisodeManifest;
   readonly numericSeries: NumericSeriesCapability;
   readonly playback: PlaybackReadCapability;
@@ -537,6 +572,8 @@ class McapEpisodeSession implements EpisodeSession {
   private decodedFrames = 0;
   private readRequests = 0;
   private returnedBatches = 0;
+  private budgetAllowance?: ReadWorkBudget;
+  private budgetLedger?: SourceReadBudgetLedger;
   private readonly sourceNamesById: ReadonlyMap<string, string>;
 
   constructor(
@@ -554,11 +591,19 @@ class McapEpisodeSession implements EpisodeSession {
       readonly startTimeNs: bigint;
     },
     private readonly releaseClient: () => void,
+    private readonly boundedPolicy: {
+      readonly maxChunksPerGrant: number;
+      readonly maxChunksPerSource: number;
+      readonly sourceAllowance: ReadWorkBudget;
+    },
   ) {
     this.manifest = manifest;
     this.sourceNamesById = new Map(
       manifest.streams.map((stream) => [stream.id, stream.sourceName]),
     );
+    this.boundedRead = {
+      openAccount: (allowance) => this.openBoundedReadAccount(allowance),
+    };
     this.numericSeries = createMcapNumericSeriesCapability({
       client,
       source,
@@ -653,6 +698,140 @@ class McapEpisodeSession implements EpisodeSession {
       readRequests: this.readRequests,
       returnedBatches: this.returnedBatches,
     };
+  }
+
+  private openBoundedReadAccount(
+    allowance: ReadWorkBudget = this.boundedPolicy.sourceAllowance,
+  ): SourceReadBudgetAccount {
+    this.ensureOpen();
+    if (!this.budgetLedger) {
+      this.budgetAllowance = { ...allowance };
+      this.budgetLedger = createSourceReadBudgetLedger(allowance, {
+        maxPhysicalUnits: this.boundedPolicy.maxChunksPerSource,
+      });
+    } else if (!sameReadWorkBudget(this.budgetAllowance, allowance)) {
+      throw new Error(
+        "MCAP source read budget account is already open with a different allowance",
+      );
+    }
+    const ledger = this.budgetLedger;
+    return {
+      createJob: () => ({
+        read: (request) => this.readBounded(request, ledger),
+      }),
+      remaining: () => {
+        const { maxPhysicalUnits: _maxPhysicalUnits, ...remaining } =
+          ledger.remaining();
+        return remaining;
+      },
+      reserve: (budget) => {
+        const reservation = ledger.reserve(budget, 0);
+        if (!reservation) {
+          return undefined;
+        }
+        return {
+          budget: reservation.budget,
+          commit: (usage, options) => reservation.commit(usage, 0, options),
+        };
+      },
+    };
+  }
+
+  private async readBounded(
+    request: BudgetedReadRequest,
+    ledger: SourceReadBudgetLedger,
+  ): Promise<BudgetedReadResult> {
+    this.ensureOpen();
+    throwIfAborted(request.signal);
+    const absoluteBudget = this.budgetAllowance;
+    if (!absoluteBudget) {
+      throw new Error("MCAP source read budget account is not open");
+    }
+    const reservation = ledger.reserve(
+      request.budget,
+      this.boundedPolicy.maxChunksPerGrant,
+    );
+    if (!reservation) {
+      return {
+        batches: [],
+        ...(request.continuation ? { continuation: request.continuation } : {}),
+        coverageByStream: new Map(),
+        stopReason: "budget-exhausted",
+        usage: emptyReadWorkUsage(),
+      };
+    }
+
+    this.readRequests += 1;
+    const topics = request.streams.map((stream) => this.sourceNameFor(stream));
+    let completedUsage: ReadWorkUsage | undefined;
+    let reservationSettled = false;
+    try {
+      const result = await this.client.readBoundedMessages(
+        {
+          absoluteBudget,
+          absoluteMaxChunks: this.boundedPolicy.maxChunksPerGrant,
+          activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          budget: reservation.budget,
+          continuation: request.continuation,
+          endTimeNs: request.window.endNs,
+          maxChunks: reservation.maxPhysicalUnits,
+          source: this.source,
+          startTimeNs: request.window.startNs,
+          topics,
+        },
+        { priority: "bulk", signal: request.signal },
+      );
+      completedUsage = result.usage;
+      this.ensureOpen();
+      throwIfAborted(request.signal);
+      const requestedStreams = new Set(request.streams);
+      const batches: FrameBatch[] = [];
+      for (const message of result.messages) {
+        const frame = decodedFrameFromMcap(message, this.manifest.streams);
+        if (!requestedStreams.has(frame.streamId)) {
+          continue;
+        }
+        batches.push({ frames: [frame], stream: frame.streamId });
+        this.decodedFrames += 1;
+        this.returnedBatches += 1;
+      }
+      reservationSettled = true;
+      reservation.commit(result.usage, result.usage.chunksOpened, {
+        exact: true,
+      });
+      return {
+        batches,
+        ...(result.continuation ? { continuation: result.continuation } : {}),
+        coverageByStream: new Map(
+          [...result.coverageByTopic].map(([topic, windows]) => [
+            this.streamIdFor(topic),
+            windows,
+          ]),
+        ),
+        stopReason: result.stopReason,
+        usage: result.usage,
+      };
+    } catch (error) {
+      const cancelled =
+        isMcapBoundedReadCancelledError(error) ||
+        isEpisodeReadCancelledError(error) ||
+        request.signal?.aborted === true;
+      if (cancelled) {
+        const cancellationUsage = boundedCancellationUsage(
+          error,
+          completedUsage,
+        );
+        if (!reservationSettled) {
+          reservationSettled = true;
+          reservation.commit(cancellationUsage, cancellationUsage.chunksOpened);
+        }
+        throw new EpisodeReadCancelledError();
+      }
+      if (!reservationSettled) {
+        reservation.commit(emptyReadWorkUsage(), 0);
+      }
+      throw error;
+    }
   }
 
   private createPlaybackCapability(timelineRange: {
@@ -855,6 +1034,41 @@ class McapEpisodeSession implements EpisodeSession {
   private ensureOpen(): void {
     if (this.disposed) throw new EpisodeReadCancelledError();
   }
+}
+
+function boundedCancellationUsage(
+  error: unknown,
+  completedUsage: ReadWorkUsage | undefined,
+): ReadWorkUsage {
+  if (isMcapBoundedReadCancelledError(error)) {
+    return error.usage;
+  }
+  return completedUsage ?? emptyReadWorkUsage();
+}
+
+function emptyReadWorkUsage() {
+  return {
+    chunksOpened: 0,
+    decompressedBytes: 0,
+    decompressionCacheHits: 0,
+    elapsedMs: 0,
+    logicalSourceBytes: 0,
+    logicalUncompressedBytes: 0,
+    messagesDecoded: 0,
+    transferredBytes: 0,
+  } as const;
+}
+
+function sameReadWorkBudget(
+  left: ReadWorkBudget | undefined,
+  right: ReadWorkBudget,
+): boolean {
+  return (
+    left?.maxMessages === right.maxMessages &&
+    left.maxSourceBytes === right.maxSourceBytes &&
+    left.maxUncompressedBytes === right.maxUncompressedBytes &&
+    left.maxWallTimeMs === right.maxWallTimeMs
+  );
 }
 
 function ownedClient(client: McapResourceClient): {
