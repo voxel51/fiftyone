@@ -44,5 +44,7 @@ export {
 export * from "./episode-resources";
 /** Public paused-source cache banking policy. */
 export * from "./episode-byte-banking";
+/** Public source-scoped bounded-read accounting. */
+export * from "./read-budget-account";
 /** Public decoded episode stream cache. */
 export * from "./episode-stream-cache";
