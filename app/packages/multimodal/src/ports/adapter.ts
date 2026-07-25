@@ -68,10 +68,19 @@ export interface EpisodePrewarmOptions {
   readonly signal?: AbortSignal;
 }
 
+/** Cancellation controls for opening one full episode session. */
+export interface EpisodeOpenOptions {
+  readonly signal?: AbortSignal;
+}
+
 /** Format module that turns episode assets into the shared session port. */
 export interface FormatAdapter {
   readonly id: string;
-  open(source: EpisodeSource, io: ByteResources): Promise<EpisodeSession>;
+  open(
+    source: EpisodeSource,
+    io: ByteResources,
+    options?: EpisodeOpenOptions,
+  ): Promise<EpisodeSession>;
   /** Optional lightweight poster path; format-specific workers remain hidden. */
   openPreview?(
     source: EpisodeSource,

@@ -46,6 +46,56 @@ defineEpisodeSessionContractTests({
 });
 
 describe("MCAP format adapter", () => {
+  it("activates the source before uncached bootstrap reads", async () => {
+    const calls: string[] = [];
+    const client = createClient();
+    client.activateSource = vi.fn(() => calls.push("activate"));
+    vi.mocked(client.readTimelineRange).mockImplementation(async () => {
+      calls.push("timeline");
+      return {
+        activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+        endTimeNs: 2n,
+        startTimeNs: 1n,
+      };
+    });
+    vi.mocked(client.readTopics).mockImplementation(async () => {
+      calls.push("topics");
+      return [];
+    });
+
+    const session = await createMcapFormatAdapter({
+      createClient: () => client,
+    }).open(source, io);
+
+    expect(calls).toEqual(["activate", "timeline", "topics"]);
+    session.dispose();
+  });
+
+  it("does not claim ownership when an abandoned open finishes resolving", async () => {
+    const controller = new AbortController();
+    const client = createClient();
+    client.activateSource = vi.fn();
+    const createClientForOpen = vi.fn(() => client);
+    const cancelledSource: EpisodeSource = {
+      ...source,
+      assets: {
+        ...source.assets,
+        resolve: async () => {
+          controller.abort();
+          return sourceDescriptor;
+        },
+      },
+    };
+
+    await expect(
+      createMcapFormatAdapter({
+        createClient: createClientForOpen,
+      }).open(cancelledSource, io, { signal: controller.signal }),
+    ).rejects.toMatchObject({ name: "EpisodeReadCancelledError" });
+    expect(createClientForOpen).not.toHaveBeenCalled();
+    expect(client.activateSource).not.toHaveBeenCalled();
+  });
+
   it("names streams as topics for the shared viewer", async () => {
     const session = await createMcapFormatAdapter({
       createClient,
