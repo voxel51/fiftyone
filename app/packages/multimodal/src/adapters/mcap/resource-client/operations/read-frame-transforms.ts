@@ -20,8 +20,10 @@ import {
 import { protobufFromBinaryDescriptor } from "../../compatibility/mcap-support";
 import { timestampNs } from "../../message-decoders/foxglove/protobuf/timing";
 import type {
+  McapBoundedMessageReadResult,
   McapIndexedMessageTime,
   McapIndexedReaderLike,
+  McapReadContinuation,
 } from "../../reader/index";
 import type { McapTimelineStrategy } from "../timeline";
 import type { McapPredecessorStore } from "../predecessor-store";
@@ -43,6 +45,9 @@ const FOXGLOVE_FRAME_TRANSFORMS_CDR_SCHEMA =
 const FOXGLOVE_FRAME_TRANSFORMS_SCHEMA = "foxglove.FrameTransforms";
 const TF_MESSAGE_BATCH_FIELD = "transforms";
 const TRANSFORM_PREDECESSOR_MESSAGES_PER_TOPIC = 32;
+const BOOTSTRAP_BOUNDED_MAX_SOURCE_BYTES = 64 * 1024 * 1024;
+const BOOTSTRAP_BOUNDED_MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
+const BOOTSTRAP_BOUNDED_MAX_WALL_TIME_MS = 10_000;
 
 const SUPPORTED_TRANSFORM_SCHEMAS: ReadonlySet<string> = new Set([
   "foxglove.FrameTransform",
@@ -82,6 +87,8 @@ type FrameTransformSchemaMatch =
  * blocking first playback.
  */
 const BOOTSTRAP_CHANNEL_MESSAGE_CAP = 256n;
+const BOOTSTRAP_CHANNEL_MESSAGE_LIMIT =
+  Number(BOOTSTRAP_CHANNEL_MESSAGE_CAP) + 1;
 const STATIC_TRANSFORM_TOPIC_SEGMENTS: ReadonlySet<string> = new Set([
   "static_tf",
   "static_transform",
@@ -90,6 +97,7 @@ const STATIC_TRANSFORM_TOPIC_SEGMENTS: ReadonlySet<string> = new Set([
 ]);
 
 type McapChannel = McapTypes.TypedMcapRecords["Channel"];
+type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
 type McapMessage = McapTypes.TypedMcapRecords["Message"];
 type McapSchema = McapTypes.TypedMcapRecords["Schema"];
 
@@ -198,61 +206,247 @@ function frameTransformDecoderForChannel(
 export async function readMcapFrameTransformBootstrap(
   reader: McapIndexedReaderLike,
 ): Promise<McapFrameTransformSet> {
-  const bootstrapChannels: FrameTransformChannel[] = [];
+  const boundedMessages: McapMessage[] = [];
+  const fallbackChannels: FrameTransformChannel[] = [];
+  const bootstrapChannelsById = new Map<number, FrameTransformChannel>();
+  // Admission stays per-channel so a missing footer count cannot hide one
+  // broad topic inside an otherwise small aggregate read budget.
   for (const entry of discoverFrameTransformChannels(reader)) {
-    if (await shouldBootstrapFrameTransformChannel(reader, entry)) {
-      bootstrapChannels.push(entry);
+    if (await frameTransformChannelExceedsBootstrapCap(reader, entry)) {
+      continue;
+    }
+
+    const bounded = await readBoundedFrameTransformChannel(reader, entry);
+    if (bounded.kind === "deferred") {
+      continue;
+    }
+    if (isStaticTransformBootstrapTopic(entry.channel.topic)) {
+      if (bounded.kind === "complete") {
+        boundedMessages.push(...bounded.messages);
+        bootstrapChannelsById.set(entry.channel.id, entry);
+      } else {
+        fallbackChannels.push(entry);
+        bootstrapChannelsById.set(entry.channel.id, entry);
+      }
+      continue;
+    }
+
+    if (bounded.kind === "complete") {
+      if (firstMessageHasStaticSample(entry, bounded.messages)) {
+        boundedMessages.push(...bounded.messages);
+        bootstrapChannelsById.set(entry.channel.id, entry);
+      }
+      continue;
+    }
+    if (await firstTransformMessageHasStaticSample(reader, entry)) {
+      fallbackChannels.push(entry);
+      bootstrapChannelsById.set(entry.channel.id, entry);
     }
   }
-  if (bootstrapChannels.length === 0) {
+  if (boundedMessages.length === 0 && fallbackChannels.length === 0) {
     return createMcapFrameTransformSet({ samples: [] });
   }
+  const bootstrapChannels = [...bootstrapChannelsById.values()];
   const channelsById = indexByChannelId(bootstrapChannels);
   const readStats = createFrameTransformReadStats(
     bootstrapChannels.map((entry) => entry.channel.topic),
   );
 
   const samples: McapFrameTransformSample[] = [];
-  for await (const message of reader.readMessages({
-    topics: bootstrapChannels.map((entry) => entry.channel.topic),
-  })) {
-    const entry = channelsById.get(message.channelId);
-    if (!entry) {
-      continue;
-    }
-    recordFrameTransformMessage(readStats, entry.channel.topic, message);
-    try {
-      for (const sample of normalizeFrameTransformMessage({
-        entry,
+  for (const message of boundedMessages) {
+    recordBootstrapMessage({
+      channelsById,
+      message,
+      readStats,
+      samples,
+    });
+  }
+  if (fallbackChannels.length > 0) {
+    for await (const message of reader.readMessages({
+      topics: fallbackChannels.map((entry) => entry.channel.topic),
+    })) {
+      recordBootstrapMessage({
+        channelsById,
         message,
-      })) {
-        if (sample.timeNs === undefined) {
-          samples.push(sample);
-        }
-      }
-    } catch {
-      continue;
+        readStats,
+        samples,
+      });
     }
   }
 
   return createMcapFrameTransformSet({ readStats, samples });
 }
 
-async function shouldBootstrapFrameTransformChannel(
+function recordBootstrapMessage({
+  channelsById,
+  message,
+  readStats,
+  samples,
+}: {
+  readonly channelsById: ReadonlyMap<number, FrameTransformChannel>;
+  readonly message: McapMessage;
+  readonly readStats: FrameTransformReadStats;
+  readonly samples: McapFrameTransformSample[];
+}): void {
+  const entry = channelsById.get(message.channelId);
+  if (!entry) {
+    return;
+  }
+  recordFrameTransformMessage(readStats, entry.channel.topic, message);
+  try {
+    for (const sample of normalizeFrameTransformMessage({
+      entry,
+      message,
+    })) {
+      if (sample.timeNs === undefined) {
+        samples.push(sample);
+      }
+    }
+  } catch {
+    return;
+  }
+}
+
+async function frameTransformChannelExceedsBootstrapCap(
   reader: McapIndexedReaderLike,
   entry: FrameTransformChannel,
 ): Promise<boolean> {
-  if (
-    entry.messageCount !== undefined &&
-    entry.messageCount > BOOTSTRAP_CHANNEL_MESSAGE_CAP
-  ) {
-    return false;
-  }
-  if (isStaticTransformBootstrapTopic(entry.channel.topic)) {
-    return true;
+  if (entry.messageCount !== undefined) {
+    return entry.messageCount > BOOTSTRAP_CHANNEL_MESSAGE_CAP;
   }
 
-  return firstTransformMessageHasStaticSample(reader, entry);
+  const indexedChunks = chunksForChannel(reader, entry.channel.id);
+  if (indexedChunks.length > Number(BOOTSTRAP_CHANNEL_MESSAGE_CAP)) {
+    return true;
+  }
+  if (!reader.readIndexedMessageTimes) {
+    return false;
+  }
+
+  let indexedMessages = 0;
+  for await (const _entry of reader.readIndexedMessageTimes({
+    limit: BOOTSTRAP_CHANNEL_MESSAGE_LIMIT,
+    topics: [entry.channel.topic],
+  })) {
+    indexedMessages += 1;
+    if (indexedMessages >= BOOTSTRAP_CHANNEL_MESSAGE_LIMIT) {
+      return true;
+    }
+  }
+  return false;
+}
+
+type BoundedFrameTransformChannelRead =
+  | {
+      readonly kind: "complete";
+      readonly messages: readonly McapMessage[];
+    }
+  | { readonly kind: "deferred" }
+  | { readonly kind: "fallback" };
+
+async function readBoundedFrameTransformChannel(
+  reader: McapIndexedReaderLike,
+  entry: FrameTransformChannel,
+): Promise<BoundedFrameTransformChannelRead> {
+  const readBoundedMessages = reader.readBoundedMessages;
+  if (!readBoundedMessages || reader.chunkIndexes.length === 0) {
+    return { kind: "fallback" };
+  }
+  const chunks = chunksForChannel(reader, entry.channel.id);
+  if (chunks.length === 0) {
+    return entry.messageCount === undefined || entry.messageCount === 0n
+      ? { kind: "complete", messages: [] }
+      : { kind: "fallback" };
+  }
+  if (chunks.length > Number(BOOTSTRAP_CHANNEL_MESSAGE_CAP)) {
+    return { kind: "deferred" };
+  }
+
+  const indexedSourceBytes = sumSafeChunkBytes(
+    chunks,
+    (chunk) => chunk.chunkLength + chunk.messageIndexLength,
+  );
+  const indexedUncompressedBytes = sumSafeChunkBytes(
+    chunks,
+    (chunk) => chunk.uncompressedSize,
+  );
+  if (
+    indexedSourceBytes > BOOTSTRAP_BOUNDED_MAX_SOURCE_BYTES ||
+    indexedUncompressedBytes > BOOTSTRAP_BOUNDED_MAX_UNCOMPRESSED_BYTES
+  ) {
+    return { kind: "fallback" };
+  }
+
+  const budget = {
+    maxMessages: Number(BOOTSTRAP_CHANNEL_MESSAGE_CAP),
+    maxSourceBytes: BOOTSTRAP_BOUNDED_MAX_SOURCE_BYTES,
+    maxUncompressedBytes: BOOTSTRAP_BOUNDED_MAX_UNCOMPRESSED_BYTES,
+    maxWallTimeMs: BOOTSTRAP_BOUNDED_MAX_WALL_TIME_MS,
+  };
+  const messages: McapMessage[] = [];
+  let continuation: McapReadContinuation | undefined;
+  for (let grant = 0; grant <= chunks.length; grant += 1) {
+    const result: McapBoundedMessageReadResult = await readBoundedMessages({
+      absoluteBudget: budget,
+      absoluteMaxChunks: chunks.length,
+      budget,
+      ...(continuation ? { continuation } : {}),
+      maxChunks: chunks.length,
+      topics: [entry.channel.topic],
+    });
+    if (result.stopReason === "oversized-source-unit") {
+      return { kind: "fallback" };
+    }
+    messages.push(...result.messages);
+    if (messages.length > Number(BOOTSTRAP_CHANNEL_MESSAGE_CAP)) {
+      return { kind: "deferred" };
+    }
+    if (!result.continuation) {
+      return result.stopReason === "source-exhausted"
+        ? { kind: "complete", messages }
+        : { kind: "fallback" };
+    }
+    continuation = result.continuation;
+  }
+
+  return { kind: "fallback" };
+}
+
+function chunksForChannel(
+  reader: McapIndexedReaderLike,
+  channelId: number,
+): readonly McapChunkIndex[] {
+  return reader.chunkIndexes.filter((chunk: McapChunkIndex) =>
+    chunk.messageIndexOffsets.has(channelId),
+  );
+}
+
+function sumSafeChunkBytes(
+  chunks: readonly McapChunkIndex[],
+  select: (chunk: McapChunkIndex) => bigint,
+): number {
+  const total = chunks.reduce((sum, chunk) => sum + select(chunk), 0n);
+  const value = Number(total);
+  return Number.isSafeInteger(value) ? value : Number.POSITIVE_INFINITY;
+}
+
+function firstMessageHasStaticSample(
+  entry: FrameTransformChannel,
+  messages: readonly McapMessage[],
+): boolean {
+  const message = messages.find(
+    (candidate) => candidate.channelId === entry.channel.id,
+  );
+  if (!message) {
+    return false;
+  }
+  try {
+    return normalizeFrameTransformMessage({ entry, message }).some(
+      (sample) => sample.timeNs === undefined,
+    );
+  } catch {
+    return false;
+  }
 }
 
 async function firstTransformMessageHasStaticSample(
