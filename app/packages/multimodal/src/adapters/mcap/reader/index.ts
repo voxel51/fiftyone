@@ -1,5 +1,15 @@
 export { createDefaultMcapReader } from "./default-reader";
 export {
+  createMcapBoundedReader,
+  type CreateMcapBoundedReaderOptions,
+} from "./bounded-read";
+export {
+  emptyMcapBoundedReadUsage,
+  isMcapBoundedReadCancelledError,
+  McapBoundedReadCancelledError,
+  type McapBoundedReadCancellation,
+} from "./bounded-read-cancellation";
+export {
   type CreateMcapReaderStoreOptions,
   createMcapReaderStore,
   type McapReaderStore,
@@ -17,6 +27,7 @@ export type {
 } from "./prefetch-types";
 export { createCachedMcapDecompressHandlers } from "./decompress-cache";
 export {
+  collectChunkMessageIndexReadRanges,
   parseMcapMessageIndexRecord,
   readIndexedMessageTimesForReader,
 } from "./message-index";
@@ -31,7 +42,10 @@ export {
 
 export type {
   McapIndexedMessageTime,
+  McapBoundedMessageReadRequest,
+  McapBoundedMessageReadResult,
   McapIndexedReaderLike,
+  McapReadContinuation,
   McapReaderFactory,
   McapReadIndexedMessageTimesRequest,
   McapReadLatestIndexedMessageTimesRequest,
