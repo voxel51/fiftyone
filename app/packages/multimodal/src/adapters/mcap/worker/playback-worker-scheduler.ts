@@ -29,6 +29,12 @@ type QueuedJob = McapPlaybackWorkerJob & {
   readonly queuedAtMs: number;
 };
 
+/** Worker-side disposition of one cancellation request. */
+export interface McapPlaybackWorkerCancellation {
+  readonly operation?: string;
+  readonly state: "queued" | "running" | "unknown";
+}
+
 export interface McapPlaybackWorkerSchedulerDebugLog {
   readonly event: "started" | "finished";
   readonly jobId: number;
@@ -53,12 +59,20 @@ export class McapPlaybackWorkerScheduler {
   private runningAbort: AbortController | null = null;
   private runningJobId: number | null = null;
 
-  cancel(id: number) {
+  cancel(id: number): McapPlaybackWorkerCancellation {
     this.cancelled.add(id);
+    const queued = this.queue.find((job) => job.id === id);
     this.queue = this.queue.filter((job) => job.id !== id);
     if (this.runningJobId === id) {
       this.runningAbort?.abort();
+      return { state: "running" };
     }
+    if (queued) {
+      this.cancelled.delete(id);
+      return { operation: queued.operation, state: "queued" };
+    }
+    this.cancelled.delete(id);
+    return { state: "unknown" };
   }
 
   dispose() {

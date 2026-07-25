@@ -11,6 +11,11 @@ import {
   type McapPlaybackWorkerRunContext,
 } from "./playback-worker-scheduler";
 import type { ByteReadDebugLog } from "../../../query/bytes";
+import {
+  emptyMcapBoundedReadUsage,
+  isMcapBoundedReadCancelledError,
+  McapBoundedReadCancelledError,
+} from "../reader/bounded-read-cancellation";
 import { createMcapTransportMeter } from "./transport-meter";
 import { transferablesForMcapResult } from "./playback-worker-transfer";
 import {
@@ -71,7 +76,22 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
   }
 
   if (message.type === "cancel") {
-    scheduler.cancel(message.id);
+    const cancellation = scheduler.cancel(message.id);
+    if (cancellation.state === "queued") {
+      postResponse({
+        ...(cancellation.operation === "readBoundedMessages"
+          ? {
+              boundedReadCancellation: {
+                usage: emptyMcapBoundedReadUsage(),
+              },
+            }
+          : {}),
+        error: EPISODE_READ_CANCELLED_MESSAGE,
+        id: message.id,
+        ok: false,
+        transport: transportMeter.snapshot(),
+      });
+    }
     return;
   }
 
@@ -106,6 +126,13 @@ async function runAndRespond(
     }
 
     const result = await runMcapPlaybackWorkerUnaryRequest(mcap, message);
+    if (
+      context.signal.aborted &&
+      message.type === "readBoundedMessages" &&
+      "usage" in result
+    ) {
+      throw new McapBoundedReadCancelledError(result.usage);
+    }
     throwIfWorkerRequestCancelled(context.signal);
     const transferables = transferablesForMcapResult(result);
     postResponse(
@@ -124,6 +151,13 @@ async function runAndRespond(
       ? EPISODE_READ_CANCELLED_MESSAGE
       : errorMessage(error);
     postResponse({
+      ...(isMcapBoundedReadCancelledError(error)
+        ? {
+            boundedReadCancellation: {
+              usage: error.usage,
+            },
+          }
+        : {}),
       error: messageText,
       id: message.id,
       ok: false,

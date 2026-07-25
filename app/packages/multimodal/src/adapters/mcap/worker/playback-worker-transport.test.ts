@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { EPISODE_READ_CANCELLED_MESSAGE } from "../../../ports";
+import { isMcapBoundedReadCancelledError } from "../reader";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
 
 describe("MCAP playback worker transport", () => {
@@ -65,6 +66,96 @@ describe("MCAP playback worker transport", () => {
     transport.handleResponse({ error: "late failure", id: 1, ok: false });
     transport.handleResponse({ id: 2, ok: true, result: [] });
     await expect(topics).resolves.toEqual([]);
+  });
+
+  it("aborts an in-flight unary request and notifies the worker", async () => {
+    const worker = createWorker();
+    const transport = new McapPlaybackWorkerTransport(() => true);
+    const controller = new AbortController();
+    const request = transport.request(
+      worker,
+      "source:1",
+      "readTimelineRange",
+      { source: createSource() },
+      undefined,
+      [],
+      controller.signal,
+    );
+
+    controller.abort();
+
+    await expect(request).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
+    expect(worker.postMessage).toHaveBeenLastCalledWith({
+      id: 1,
+      type: "cancel",
+    });
+  });
+
+  it("waits for bounded-read partial usage after signalling worker cancellation", async () => {
+    const worker = createWorker();
+    const transport = new McapPlaybackWorkerTransport(() => true);
+    const controller = new AbortController();
+    const budget = {
+      maxMessages: 10,
+      maxSourceBytes: 1_000,
+      maxUncompressedBytes: 2_000,
+      maxWallTimeMs: 100,
+    };
+    const request = transport.request(
+      worker,
+      "source:1",
+      "readBoundedMessages",
+      {
+        absoluteBudget: budget,
+        absoluteMaxChunks: 2,
+        budget,
+        maxChunks: 2,
+        source: createSource(),
+        topics: ["/camera"],
+      },
+      undefined,
+      [],
+      controller.signal,
+    );
+    const rejected = vi.fn();
+    void request.catch(rejected);
+
+    controller.abort();
+    await Promise.resolve();
+
+    expect(rejected).not.toHaveBeenCalled();
+    expect(worker.postMessage).toHaveBeenLastCalledWith({
+      id: 1,
+      type: "cancel",
+    });
+
+    const usage = {
+      chunksOpened: 1,
+      decompressedBytes: 500,
+      decompressionCacheHits: 0,
+      elapsedMs: 8,
+      logicalSourceBytes: 200,
+      logicalUncompressedBytes: 500,
+      messagesDecoded: 3,
+      transferredBytes: 128,
+    };
+    transport.handleResponse({
+      boundedReadCancellation: { usage },
+      error: EPISODE_READ_CANCELLED_MESSAGE,
+      id: 1,
+      ok: false,
+    });
+
+    try {
+      await request;
+      throw new Error("expected bounded read cancellation");
+    } catch (error) {
+      expect(isMcapBoundedReadCancelledError(error)).toBe(true);
+      if (!isMcapBoundedReadCancelledError(error)) {
+        throw error;
+      }
+      expect(error.usage).toEqual(usage);
+    }
   });
 
   it("settles unary responses even when the source is inactive", async () => {

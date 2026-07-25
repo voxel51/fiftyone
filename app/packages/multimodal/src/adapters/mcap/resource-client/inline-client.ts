@@ -10,6 +10,7 @@ import {
 import { createMultimodalQueryClient } from "../../../query/index";
 import { createMcapDecoderRegistry } from "../message-decoders/index";
 import { readMcapDecodedMessages } from "./operations/read-decoded-messages";
+import { readMcapBoundedMessages } from "./operations/read-bounded-messages";
 import {
   createDefaultMcapReader,
   createMcapReaderStore,
@@ -39,6 +40,8 @@ import {
   type McapEnumerateNumericFieldsRequest,
   type McapNumericSeriesResult,
   type McapReadDecodedMessagesRequest,
+  type McapReadBoundedMessagesRequest,
+  type McapReadBoundedMessagesResult,
   type McapReadFrameTransformBootstrapRequest,
   type McapReadFrameTransformWindowRequest,
   type McapRawMessageRecordResult,
@@ -52,6 +55,7 @@ import {
   type McapReadTopicTimeBoundsRequest,
   type McapReadTimelineRangeRequest,
   type McapResourceClient,
+  type McapResourceReadOptions,
   type McapSynchronizedMessageWindow,
   type McapTimelineRange,
   type McapTopicNumericFields,
@@ -147,6 +151,21 @@ export function createInlineMcapResourceClient(
         readSignal: options.readSignal,
         reader,
         request,
+        timeline,
+      });
+    },
+
+    async readBoundedMessages(
+      request: McapReadBoundedMessagesRequest,
+      readOptions?: McapResourceReadOptions,
+    ): Promise<McapReadBoundedMessagesResult> {
+      const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
+      const reader = await readerStore.get(request.source);
+      return readMcapBoundedMessages({
+        decodeClient,
+        reader,
+        request,
+        signal: readOptions?.signal ?? options.readSignal?.current ?? undefined,
         timeline,
       });
     },

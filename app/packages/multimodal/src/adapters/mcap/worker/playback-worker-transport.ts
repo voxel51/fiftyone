@@ -14,10 +14,16 @@ import type {
   McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
 import type { McapTransportSnapshot } from "./transport-meter";
+import {
+  emptyMcapBoundedReadUsage,
+  McapBoundedReadCancelledError,
+} from "../reader/bounded-read-cancellation";
 
 type PendingRequest<
   Type extends McapPlaybackWorkerUnaryType = McapPlaybackWorkerUnaryType,
 > = {
+  cancelled?: boolean;
+  readonly cleanup?: () => void;
   readonly reject: (error: Error) => void;
   readonly resolve: (result: McapPlaybackWorkerResultByType[Type]) => void;
   readonly sourceKey: string;
@@ -57,12 +63,47 @@ export class McapPlaybackWorkerTransport {
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
     priority?: McapPlaybackWorkerPriority,
     supersessionKeys: readonly string[] = [],
+    signal?: AbortSignal,
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     const id = this.nextRequestId++;
     const message = createRpcRequest(id, sourceKey, type, payload, priority);
 
     return new Promise((resolve, reject) => {
+      const cancel = () => {
+        const pending = this.pending.get(id);
+        if (!pending) {
+          return;
+        }
+        if (pending.type === "readBoundedMessages") {
+          // Keep bounded reads pending until the worker reports its
+          // best-effort partial usage at the next cancellation boundary.
+          pending.cancelled = true;
+        } else {
+          this.pending.delete(id);
+          pending.cleanup?.();
+          pending.reject(new EpisodeReadCancelledError());
+        }
+        try {
+          worker.postMessage({ id, type: "cancel" });
+        } catch {
+          if (pending.type === "readBoundedMessages") {
+            this.pending.delete(id);
+            pending.cleanup?.();
+            pending.reject(new EpisodeReadCancelledError());
+          }
+        }
+      };
+      if (signal?.aborted) {
+        reject(new EpisodeReadCancelledError());
+        return;
+      }
+      signal?.addEventListener("abort", cancel, { once: true });
       this.pending.set(id, {
+        ...(signal
+          ? {
+              cleanup: () => signal.removeEventListener("abort", cancel),
+            }
+          : {}),
         reject,
         resolve: resolve as PendingRequest["resolve"],
         sourceKey,
@@ -73,17 +114,18 @@ export class McapPlaybackWorkerTransport {
       try {
         worker.postMessage(message);
       } catch (error) {
+        const pending = this.pending.get(id);
         this.pending.delete(id);
+        pending?.cleanup?.();
         reject(toError(error));
       }
     });
   }
 
   /**
-   * Cancels matching pending unary requests: rejects each locally with the
-   * canonical cancelled error and returns their ids so the caller can tell
-   * the worker to drop or abort the matching jobs. Late worker responses
-   * for these ids are ignored by handleResponse.
+   * Cancels matching pending unary requests and returns their ids so the caller
+   * can tell the worker to drop or abort them. Ordinary reads reject locally.
+   * Bounded reads wait for the worker's partial-usage acknowledgement.
    */
   cancelPending(
     filter: (pending: {
@@ -101,8 +143,13 @@ export class McapPlaybackWorkerTransport {
       ) {
         continue;
       }
-      this.pending.delete(id);
-      pending.reject(new EpisodeReadCancelledError());
+      if (pending.type === "readBoundedMessages") {
+        pending.cancelled = true;
+      } else {
+        this.pending.delete(id);
+        pending.cleanup?.();
+        pending.reject(new EpisodeReadCancelledError());
+      }
       cancelledIds.push(id);
     }
 
@@ -191,6 +238,21 @@ export class McapPlaybackWorkerTransport {
       // It still owns this request id, so settle and remove it instead of
       // leaving the caller's promise hanging.
       this.pending.delete(response.id);
+      pending.cleanup?.();
+      if (
+        pending.type === "readBoundedMessages" &&
+        (pending.cancelled ||
+          (!response.ok && response.boundedReadCancellation !== undefined))
+      ) {
+        const usage = response.ok
+          ? "usage" in response.result
+            ? response.result.usage
+            : emptyMcapBoundedReadUsage()
+          : (response.boundedReadCancellation?.usage ??
+            emptyMcapBoundedReadUsage());
+        pending.reject(new McapBoundedReadCancelledError(usage));
+        return;
+      }
       if (response.ok) {
         pending.resolve(response.result);
       } else {
@@ -222,6 +284,7 @@ export class McapPlaybackWorkerTransport {
   rejectAll(reason: string) {
     const error = new Error(reason);
     for (const pending of this.pending.values()) {
+      pending.cleanup?.();
       pending.reject(error);
     }
     this.pending.clear();
