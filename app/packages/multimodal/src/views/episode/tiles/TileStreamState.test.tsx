@@ -1,7 +1,13 @@
-import { PlaybackProvider, usePlaybackStore } from "@fiftyone/playback";
+import {
+  getPlayhead,
+  PlaybackProvider,
+  usePlaybackStore,
+  type PlaybackStore,
+} from "@fiftyone/playback";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { useEffect, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createTimelineIndex, type TimelineIndex } from "../../../runtime";
 import {
   TileEmptyState,
   TileStatusBadge,
@@ -15,6 +21,10 @@ import {
   setStreamStaleAgeNs,
   setStreamStatus,
 } from "../playback/stream-status-state";
+import {
+  DataStreamProvider,
+  useSetDataStream,
+} from "../playback/data-stream-context";
 
 const STREAM = "/camera";
 const SECOND_STREAM = "/labels";
@@ -57,6 +67,42 @@ describe("TileEmptyState", () => {
     );
 
     expect(await screen.findByText("No data until 0:00.01")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Jump to data" })).toBeNull();
+  });
+
+  it("jumps long gaps to the first timeline tick with data", async () => {
+    const timeline = createTimelineIndex({
+      endNs: 2_000_000_000n,
+      startNs: 0n,
+    });
+    const storeCapture: { current: PlaybackStore | null } = { current: null };
+    render(
+      <PlaybackProvider duration={2}>
+        <DataStreamProvider>
+          <SeedJumpGap
+            onStore={(value) => {
+              storeCapture.current = value;
+            }}
+            startSec={0.6}
+            timeline={timeline}
+          />
+        </DataStreamProvider>
+      </PlaybackProvider>,
+    );
+
+    expect(await screen.findByText("Starts at 0:00.60")).toBeTruthy();
+    const jump = screen.getByRole("button", { name: "Jump to data" });
+    act(() => jump.click());
+
+    const targetTick = timeline.tickAt(
+      timeline.indexAtOrAfter(timeline.secToNs(0.6)),
+    );
+    expect(targetTick).toBeDefined();
+    const store = storeCapture.current;
+    if (!store || targetTick === undefined) {
+      throw new Error("Jump-to-data test did not capture playback state");
+    }
+    expect(getPlayhead(store)).toBeCloseTo(timeline.nsToSec(targetTick), 6);
   });
 
   it("describes the age of a stale displayed frame", async () => {
@@ -156,6 +202,37 @@ function SeedGap({ startSec }: { readonly startSec: number }) {
     setStreamStatus(store, STREAM, "gap");
     setStreamStartTimeSec(store, STREAM, startSec);
   }, [startSec, store]);
+
+  return <TileEmptyState streams={[STREAM]} />;
+}
+
+function SeedJumpGap({
+  onStore,
+  startSec,
+  timeline,
+}: {
+  readonly onStore: (store: PlaybackStore) => void;
+  readonly startSec: number;
+  readonly timeline: TimelineIndex;
+}) {
+  const store = usePlaybackStore();
+  const setDataStream = useSetDataStream();
+
+  useEffect(() => {
+    setDataStream({
+      getStreamCache: () => undefined,
+      getTimelineIndex: () => timeline,
+      sourceKey: "jump-gap-test",
+      subscribeToStream: () => () => undefined,
+    });
+    return () => setDataStream(null);
+  }, [setDataStream, timeline]);
+
+  useEffect(() => {
+    onStore(store);
+    setStreamStatus(store, STREAM, "gap");
+    setStreamStartTimeSec(store, STREAM, startSec);
+  }, [onStore, startSec, store]);
 
   return <TileEmptyState streams={[STREAM]} />;
 }

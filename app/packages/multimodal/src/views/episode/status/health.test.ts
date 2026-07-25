@@ -588,19 +588,40 @@ describe("buildTileEmptyStateModel", () => {
     ).toEqual({ kind: "loading" });
   });
 
-  it("falls back to gap copy with the earliest known start", () => {
+  it("offers the earliest known long-gap start", () => {
     expect(
       buildTileEmptyStateModel({
         startTimes: [12, 30],
         statuses: ["gap", "gap"],
       }),
-    ).toEqual({ kind: "gap", message: "No data until 0:12.00" });
+    ).toEqual({
+      kind: "gap",
+      message: "Starts at 0:12.00",
+      startSec: 12,
+    });
+  });
+
+  it("retains short-gap and unknown-gap copy", () => {
+    expect(
+      buildTileEmptyStateModel({
+        startTimes: [0.2],
+        statuses: ["gap"],
+      }),
+    ).toEqual({
+      kind: "gap",
+      message: "No data until 0:00.20",
+      startSec: 0.2,
+    });
     expect(
       buildTileEmptyStateModel({
         startTimes: [null],
         statuses: ["gap"],
       }),
-    ).toEqual({ kind: "gap", message: "No data at this time" });
+    ).toEqual({
+      kind: "gap",
+      message: "No data at this time",
+      startSec: null,
+    });
   });
 });
 

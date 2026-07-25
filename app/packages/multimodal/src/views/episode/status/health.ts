@@ -27,6 +27,7 @@
 
 import { useEffect, useReducer, useRef } from "react";
 import type { DecodedDiagnostic } from "../../../ir";
+import { INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS } from "../playback/playback-buffering";
 import type { StreamStatus } from "../playback/stream-status-state";
 
 /** One visible source placed through a held transform past its stale threshold. */
@@ -458,6 +459,13 @@ function gapCopy(startSec: number | null): string {
     : "No data at this time";
 }
 
+function emptyStateGapCopy(startSec: number | null): string {
+  return startSec !== null &&
+    startSec > INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS
+    ? `Starts at ${formatStartTime(startSec)}`
+    : gapCopy(startSec);
+}
+
 function formatStaleAge(ageNs: bigint): string {
   if (ageNs < 1_000_000_000n) {
     const ms = Number(ageNs / 1_000_000n);
@@ -588,11 +596,15 @@ function formatSourceTime(sec: number): string {
 /**
  * What a contentless tile should show: an explicit failure once every stream
  * has failed, a spinner only while data is actually loading, otherwise the
- * gap message (with the stream's start time when it is known).
+ * gap message and optional start time for actionable long gaps.
  */
 export type TileEmptyStateModel =
   | { readonly kind: "failed"; readonly message: string }
-  | { readonly kind: "gap"; readonly message: string }
+  | {
+      readonly kind: "gap";
+      readonly message: string;
+      readonly startSec: number | null;
+    }
   | { readonly kind: "loading" };
 
 export function buildTileEmptyStateModel({
@@ -610,9 +622,11 @@ export function buildTileEmptyStateModel({
   if (statuses.some((s) => s === "loading")) {
     return { kind: "loading" };
   }
+  const startSec = earliestGapStartSec(statuses, startTimes);
   return {
     kind: "gap",
-    message: gapCopy(earliestGapStartSec(statuses, startTimes)),
+    message: emptyStateGapCopy(startSec),
+    startSec,
   };
 }
 

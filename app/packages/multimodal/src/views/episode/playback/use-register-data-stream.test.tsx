@@ -262,6 +262,225 @@ describe("useRegisterDataStream", () => {
     expect(client.readTopicTimeBounds).toHaveBeenCalledTimes(2);
   });
 
+  it("starts at the latest short-skew stream and ignores long gaps", async () => {
+    const source = createSource("mixed-starts");
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const streams = [STREAM, LIDAR_STREAM, MAP_STREAM, RADAR_STREAM] as const;
+    const readDecodedMessages = vi.fn(async function* () {
+      for (const item of [] as never[]) yield item;
+    });
+    const readTopicTimeBounds = vi.fn(async () => [
+      {
+        firstMessageTimeNs: 0n,
+        lastMessageTimeNs: 1_000_000_000n,
+        topic: STREAM,
+      },
+      {
+        firstMessageTimeNs: 10_000_000n,
+        lastMessageTimeNs: 1_000_000_000n,
+        topic: LIDAR_STREAM,
+      },
+      {
+        firstMessageTimeNs: 20_000_000n,
+        lastMessageTimeNs: 1_000_000_000n,
+        topic: MAP_STREAM,
+      },
+      {
+        firstMessageTimeNs: 800_000_000n,
+        lastMessageTimeNs: 1_000_000_000n,
+        topic: RADAR_STREAM,
+      },
+    ]);
+    const client = createClient({
+      readDecodedMessages,
+      readSynchronizedMessageBatch: vi.fn(
+        () =>
+          new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
+      ),
+      readSynchronizedMessages: vi.fn(
+        () => new Promise<SynchronizedMessageWindow>(() => undefined),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTopicTimeBounds,
+    });
+
+    render(
+      <Harness
+        allStreams={streams}
+        blockingStreams={streams}
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+        staleWarningStreams={streams}
+        subscribedStreams={streams}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(getPlayhead(storeCapture.store())).toBeCloseTo(1 / 30, 6);
+    });
+    expect(readTopicTimeBounds).toHaveBeenCalledTimes(1);
+    expect(readDecodedMessages).not.toHaveBeenCalled();
+
+    act(() => api?.seek(0));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(getPlayhead(storeCapture.store())).toBe(0);
+  });
+
+  it("includes a start at the 500ms threshold", async () => {
+    const source = createSource("threshold-start");
+    const storeCapture = capturePlaybackStore();
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(
+        () =>
+          new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
+      ),
+      readSynchronizedMessages: vi.fn(
+        () => new Promise<SynchronizedMessageWindow>(() => undefined),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTopicTimeBounds: vi.fn(async () => [
+        {
+          firstMessageTimeNs: 500_000_000n,
+          lastMessageTimeNs: 1_000_000_000n,
+          topic: STREAM,
+        },
+      ]),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(getPlayhead(storeCapture.store())).toBeCloseTo(16 / 30, 6);
+    });
+  });
+
+  it("leaves a start beyond 500ms at the recording origin", async () => {
+    const source = createSource("long-gap");
+    const storeCapture = capturePlaybackStore();
+    const readTopicTimeBounds = vi.fn(async () => [
+      {
+        firstMessageTimeNs: 500_000_001n,
+        lastMessageTimeNs: 1_000_000_000n,
+        topic: STREAM,
+      },
+    ]);
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(
+        () =>
+          new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
+      ),
+      readSynchronizedMessages: vi.fn(
+        () => new Promise<SynchronizedMessageWindow>(() => undefined),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTopicTimeBounds,
+    });
+
+    render(
+      <Harness
+        client={client}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(readTopicTimeBounds).toHaveBeenCalledTimes(1);
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(getPlayhead(storeCapture.store())).toBe(0);
+  });
+
+  it.each([
+    [
+      "the playhead has moved",
+      (api: ReturnType<typeof usePlayback>) => api.seek(0.25),
+      0.25,
+    ] as const,
+    [
+      "play has been requested",
+      (api: ReturnType<typeof usePlayback>) => api.play(),
+      0,
+    ] as const,
+  ])(
+    "does not auto-seek after %s",
+    async (_condition, beforeBounds, expected) => {
+      const source = createSource(`guarded-${expected}`);
+      const storeCapture = capturePlaybackStore();
+      const bounds = deferred<
+        readonly {
+          readonly firstMessageTimeNs: bigint | null;
+          readonly lastMessageTimeNs: bigint | null;
+          readonly topic: string;
+        }[]
+      >();
+      let api: ReturnType<typeof usePlayback> | undefined;
+      const readTopicTimeBounds = vi.fn(() => bounds.promise);
+      const client = createClient({
+        readSynchronizedMessageBatch: vi.fn(
+          () =>
+            new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
+        ),
+        readSynchronizedMessages: vi.fn(
+          () => new Promise<SynchronizedMessageWindow>(() => undefined),
+        ),
+        readTimelineRange: vi.fn(async () => createTimelineRange()),
+        readTopicTimeBounds,
+      });
+
+      render(
+        <Harness
+          client={client}
+          onApi={(value) => {
+            api = value;
+          }}
+          onStore={storeCapture.onStore}
+          source={source}
+        />,
+        { wrapper: TestProviders },
+      );
+
+      await waitFor(() => {
+        expect(readTopicTimeBounds).toHaveBeenCalledTimes(1);
+      });
+      const capturedApi = api;
+      if (!capturedApi) throw new Error("Playback API was not captured");
+      act(() => beforeBounds(capturedApi));
+      await act(async () => {
+        bounds.resolve([
+          {
+            firstMessageTimeNs: 10_000_000n,
+            lastMessageTimeNs: 1_000_000_000n,
+            topic: STREAM,
+          },
+        ]);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(getPlayhead(storeCapture.store())).toBe(expected);
+    },
+  );
+
   it("ignores in-flight batch results after the source changes", async () => {
     const sourceA = createSource("source-a");
     const sourceB = createSource("source-b");
