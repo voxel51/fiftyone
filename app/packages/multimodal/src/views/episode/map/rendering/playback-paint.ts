@@ -60,6 +60,28 @@ export function emptyMapPlaybackFrame(): MapPlaybackFrame {
   return { comets: [], markers: [], resolutions: new Map() };
 }
 
+/**
+ * Replaces route-derived markers with exact current-frame observations and
+ * adds streams whose full route has not produced a marker yet.
+ */
+export function withLiveMapMarkers(
+  frame: MapPlaybackFrame,
+  liveMarkers: readonly MapLocationMarker[],
+): MapPlaybackFrame {
+  if (liveMarkers.length === 0) return frame;
+  const liveByStream = new Map(
+    liveMarkers.map((marker) => [marker.stream, marker] as const),
+  );
+  const markers = frame.markers.map(
+    (marker) => liveByStream.get(marker.stream) ?? marker,
+  );
+  const existingStreams = new Set(frame.markers.map((marker) => marker.stream));
+  for (const marker of liveMarkers) {
+    if (!existingStreams.has(marker.stream)) markers.push(marker);
+  }
+  return { ...frame, markers };
+}
+
 /** Resolves marker and comet presentation for one playback timestamp. */
 export function mapPlaybackFrameAt(
   tracks: readonly IndexedMapTrack[],

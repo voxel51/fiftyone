@@ -59,6 +59,7 @@ describe("MapLibreSurface", () => {
         fitRouteNonce={0}
         followEgo={false}
         locationEvidencePending={false}
+        liveMarkers={[]}
         measureArmed={false}
         measurement={null}
         onBasemapStatusChange={vi.fn()}

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import type { LocationTrackState } from "../tracks/location-track";
-import { mapPlaybackFrameAt, prunePlaybackPaintState } from "./playback-paint";
+import {
+  mapPlaybackFrameAt,
+  prunePlaybackPaintState,
+  withLiveMapMarkers,
+} from "./playback-paint";
 import { createIndexedMapTrack } from "./route-layers";
 
 describe("map playback paint", () => {
@@ -16,6 +20,23 @@ describe("map playback paint", () => {
     expect(backward.markers[0]?.location.longitude).toBeCloseTo(2);
     expect(backward.resolutions.get(indexed.key)?.state).toBe("active");
     expect(backward.comets[0]?.coordinates.length).toBeGreaterThan(0);
+  });
+
+  it("uses exact current-frame markers while route history is incomplete", () => {
+    const indexed = createIndexedMapTrack(createTrack());
+    const routeFrame = mapPlaybackFrameAt([indexed], 8n, new Map());
+    const live = {
+      color: "#fff",
+      label: "live gps",
+      location: { latitude: 10, longitude: 20, timeNs: 8n },
+      stream: "/gps",
+    };
+
+    const frame = withLiveMapMarkers(routeFrame, [live]);
+
+    expect(frame.markers).toEqual([live]);
+    expect(frame.comets).toBe(routeFrame.comets);
+    expect(frame.resolutions).toBe(routeFrame.resolutions);
   });
 
   it("prunes cursor and filter state for removed tracks", () => {

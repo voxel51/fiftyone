@@ -3,19 +3,21 @@
 // bridge has direct unit tests.
 import { PlaybackStoreContext } from "@fiftyone/playback/runtime";
 import React, {
+  useCallback,
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import type { EpisodeSession } from "../../../../ports/index";
 import { VISUALIZATION_KIND } from "../../../../visualization/index";
+import { shouldDeferBulkHistory } from "../../playback/bulk-stream-lifecycle";
 import {
-  shouldDeferBulkHistory,
-  startBulkStreamLifecycle,
-} from "../../playback/bulk-stream-lifecycle";
+  useDemandDrivenHistory,
+  type DemandDrivenHistoryLoader,
+} from "../../playback/use-demand-driven-history";
 import { useFrameTransformsContext } from "../../spatial/frame-transforms/context";
 import {
   decimateTrajectory,
@@ -123,11 +125,9 @@ export function PoseTrajectoriesStartupGate({
 }
 
 /**
- * Bridge that fetches each pose stream's full history once per source after
- * first 3D placement is viable. Full-history reads use the bulk lane so they
- * never serialize playback lookahead or transform placement work. Tile
- * selection changes never refetch — the cache is immutable per-stream file
- * data; consumers filter what renders.
+ * Loads selected pose histories after first 3D placement is viable.
+ * Full-history reads use the bulk lane and completed trajectories remain warm
+ * briefly when their final consumer closes.
  */
 export function PoseTrajectoriesBridge({
   enabled = true,
@@ -140,82 +140,80 @@ export function PoseTrajectoriesBridge({
   readonly session: EpisodeSession | null;
   readonly sourceKey: string | null;
 }) {
-  const { setTrajectories } = useContextValue();
-  const trajectoriesRef = useRef(new Map<string, PoseTrajectoryState>());
+  const { setTrajectories, trajectories: publishedTrajectories } =
+    useContextValue();
   // Nullable on purpose: callers inside the playback shell provide the store
   // (enabling the network-health gate); standalone callers and tests get
   // null and keep ungated behavior.
   const playbackStore = useContext(PlaybackStoreContext);
 
-  // This effect fetches newly appearing pose streams once per source and
-  // drops state for streams that leave the inventory. It re-keys (full
-  // reset) when the source changes.
-  useEffect(() => {
-    trajectoriesRef.current = new Map();
-    setTrajectories(EMPTY_TRAJECTORIES);
+  const loadStream = useCallback(
+    async ({
+      commit,
+      control,
+      stream,
+    }: DemandDrivenHistoryLoader<PoseTrajectoryState>) => {
+      if (!session) return;
+      commit({ points: [], status: "loading" });
 
-    if (!enabled || !sourceKey || !session) {
-      return undefined;
-    }
-
-    const commit = (stream: string, state: PoseTrajectoryState) => {
-      trajectoriesRef.current.set(stream, state);
-      setTrajectories(new Map(trajectoriesRef.current));
-    };
-
-    return startBulkStreamLifecycle({
-      initialDelayMs: TRAJECTORY_START_DELAY_MS,
-      retryDelayMs: TRAJECTORY_DEFERRED_RETRY_MS,
-      shouldStandDown: () => shouldDeferBulkHistory(playbackStore),
-      streams: poseStreams,
-      runStream: async (stream, control) => {
-        commit(stream, { points: [], status: "loading" });
-
-        const points: PoseTrajectoryPoint[] = [];
-        let streamFrameId: string | undefined;
-        try {
-          for await (const batch of session.read({
-            limit: TRAJECTORY_READ_LIMIT,
-            priority: "bulk",
-            streams: [stream],
-            window: session.manifest.timeRange,
-          })) {
-            for (const frame of batch.frames) {
-              if (control.isCancelled() || control.standDown()) return;
-              const visualization = frame.output.visualization;
-              if (visualization?.kind !== VISUALIZATION_KIND.POSE) continue;
-              if (!streamFrameId && visualization.coordinateFrameId) {
-                streamFrameId = visualization.coordinateFrameId;
-              }
-              points.push({
-                position: visualization.position,
-                timeNs: frame.timestampNs,
-              });
+      const points: PoseTrajectoryPoint[] = [];
+      let streamFrameId: string | undefined;
+      try {
+        for await (const batch of session.read({
+          limit: TRAJECTORY_READ_LIMIT,
+          priority: "bulk",
+          streams: [stream],
+          window: session.manifest.timeRange,
+        })) {
+          for (const frame of batch.frames) {
+            if (control.isCancelled() || control.standDown()) return;
+            const visualization = frame.output.visualization;
+            if (visualization?.kind !== VISUALIZATION_KIND.POSE) continue;
+            if (!streamFrameId && visualization.coordinateFrameId) {
+              streamFrameId = visualization.coordinateFrameId;
             }
+            points.push({
+              position: visualization.position,
+              timeNs: frame.timestampNs,
+            });
           }
-
-          if (control.isCancelled()) return;
-          commit(stream, {
-            points: decimateTrajectory(points),
-            status: "ready",
-            ...(streamFrameId ? { streamFrameId } : {}),
-          });
-        } catch {
-          if (control.isCancelled()) return;
-          commit(stream, { points: [], status: "error" });
         }
-      },
-    });
-    // `poseStreams` identity is derived from the scene inventory, so this
-    // covers both source swaps and streams appearing late.
-  }, [
+
+        if (control.isCancelled()) return;
+        commit({
+          points: decimateTrajectory(points),
+          status: "ready",
+          ...(streamFrameId ? { streamFrameId } : {}),
+        });
+      } catch {
+        if (control.isCancelled()) return;
+        commit({ points: [], status: "error" });
+      }
+    },
+    [session],
+  );
+  const trajectories = useDemandDrivenHistory({
     enabled,
-    playbackStore,
-    poseStreams,
-    setTrajectories,
-    session,
+    initialDelayMs: TRAJECTORY_START_DELAY_MS,
+    isRetainable: isCompletedPoseTrajectory,
+    loadStream,
+    readIdentity: session,
+    retryDelayMs: TRAJECTORY_DEFERRED_RETRY_MS,
+    shouldStandDown: () => shouldDeferBulkHistory(playbackStore),
     sourceKey,
-  ]);
+    streams: poseStreams,
+  });
+
+  // This effect publishes the source-scoped cache to mounted 3D tiles.
+  useLayoutEffect(() => {
+    if (
+      publishedTrajectories === trajectories ||
+      (publishedTrajectories.size === 0 && trajectories.size === 0)
+    ) {
+      return;
+    }
+    setTrajectories(trajectories);
+  }, [publishedTrajectories, setTrajectories, trajectories]);
 
   // This effect clears published trajectories when the bridge unmounts.
   useEffect(
@@ -226,6 +224,10 @@ export function PoseTrajectoriesBridge({
   );
 
   return null;
+}
+
+function isCompletedPoseTrajectory(trajectory: PoseTrajectoryState): boolean {
+  return trajectory.status === "ready";
 }
 
 function useContextValue(): PoseTrajectoriesContextValue {

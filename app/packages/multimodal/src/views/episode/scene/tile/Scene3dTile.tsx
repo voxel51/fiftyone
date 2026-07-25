@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 import { usePublishAnnotationStreams } from "../../../../extensions/timeline/index";
+import { usePublishFullHistoryStreams } from "../../playback/full-history-interests";
 import type {
   CameraCalibrationVisualization,
   GridVisualization,
@@ -184,6 +185,8 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     toggleSource,
   } = useScene3dSelection({ restore: viewStateRestore, sourceKey });
   usePublishAnnotationStreams(sceneAnnotationStreams);
+  usePublishFullHistoryStreams("pose", poseStreams);
+  usePublishFullHistoryStreams("scene-update", sceneAnnotationStreams);
   const selectedStreamStatuses = useStreamStatuses(selectedStreams);
   const selectedSourcePending = selectedStreamStatuses.some(
     (status) => status === "loading",

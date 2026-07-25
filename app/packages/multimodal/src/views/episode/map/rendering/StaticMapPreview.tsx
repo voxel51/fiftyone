@@ -5,6 +5,7 @@ import {
   locationBounds,
   type LocationTrackState,
 } from "../tracks/location-track";
+import type { MapLocationMarker } from "./playback-paint";
 import styles from "./MapRenderer.module.css";
 
 /** Legend for the currently rendered location tracks. */
@@ -38,19 +39,29 @@ export function MapLegend({
 
 /** Lightweight route preview shown while the interactive basemap is absent. */
 export function StaticMapPreview({
+  liveMarkers = [],
   tracks,
 }: {
+  readonly liveMarkers?: readonly MapLocationMarker[];
   readonly tracks: readonly LocationTrackState[];
 }) {
-  const bounds = combineLocationBounds(
-    tracks.map((track) => locationBounds(track.segments)),
-  );
+  const bounds = combineLocationBounds([
+    ...tracks.map((track) => locationBounds(track.segments)),
+    ...liveMarkers.map(({ location }) => ({
+      east: location.longitude,
+      north: location.latitude,
+      south: location.latitude,
+      west: location.longitude,
+    })),
+  ]);
   const project = (longitude: number, latitude: number): [number, number] => {
     if (!bounds) return [50, 50];
-    const width = Math.max(bounds.east - bounds.west, 0.000001);
-    const height = Math.max(bounds.north - bounds.south, 0.000001);
-    const x = ((longitude - bounds.west) / width) * 92 + 4;
-    const y = 96 - ((latitude - bounds.south) / height) * 92;
+    const width = bounds.east - bounds.west;
+    const height = bounds.north - bounds.south;
+    const x =
+      width > 0.000001 ? ((longitude - bounds.west) / width) * 92 + 4 : 50;
+    const y =
+      height > 0.000001 ? 96 - ((latitude - bounds.south) / height) * 92 : 50;
     return [x, y];
   };
 
@@ -96,6 +107,23 @@ export function StaticMapPreview({
           );
         }),
       )}
+      {liveMarkers.map((marker) => {
+        const [x, y] = project(
+          marker.location.longitude,
+          marker.location.latitude,
+        );
+        return (
+          <circle
+            cx={x}
+            cy={y}
+            fill={marker.color}
+            key={marker.stream}
+            r="1.8"
+            stroke="#f8fafc"
+            strokeWidth="0.5"
+          />
+        );
+      })}
     </svg>
   );
 }
