@@ -57,6 +57,7 @@ import InspectorSidebar from "../scene/picking/InspectorSidebar";
 import styles from "./ModalRenderer.module.css";
 import { NetworkHealthTracker, NetworkStatusPill } from "./NetworkStatus";
 import { PausedByteBanking } from "../playback/PausedByteBanking";
+import { FullHistoryInterestsProvider } from "../playback/full-history-interests";
 import { PanelVisibilityProvider } from "../tiles/panel-visibility";
 import SettingsSidebar from "../settings/modal/SettingsSidebar";
 import { Streams } from "./Streams";
@@ -489,21 +490,23 @@ const PlaybackSessionStateProviders: React.FC<{
   readonly children: React.ReactNode;
   readonly viewportScopeKey?: string;
 }> = ({ cameraViewStateScopeKey, children, viewportScopeKey }) => (
-  <Scene3dViewStateProvider scopeKey={cameraViewStateScopeKey}>
-    <PanelVisibilityProvider scopeKey={cameraViewStateScopeKey}>
-      <Scene3dViewpointProvider>
-        <SceneFramesProvider>
-          <SceneNoticesProvider>
-            <TileSettingsProvider>
-              <MapViewportScopeProvider scopeKey={viewportScopeKey}>
-                {children}
-              </MapViewportScopeProvider>
-            </TileSettingsProvider>
-          </SceneNoticesProvider>
-        </SceneFramesProvider>
-      </Scene3dViewpointProvider>
-    </PanelVisibilityProvider>
-  </Scene3dViewStateProvider>
+  <FullHistoryInterestsProvider>
+    <Scene3dViewStateProvider scopeKey={cameraViewStateScopeKey}>
+      <PanelVisibilityProvider scopeKey={cameraViewStateScopeKey}>
+        <Scene3dViewpointProvider>
+          <SceneFramesProvider>
+            <SceneNoticesProvider>
+              <TileSettingsProvider>
+                <MapViewportScopeProvider scopeKey={viewportScopeKey}>
+                  {children}
+                </MapViewportScopeProvider>
+              </TileSettingsProvider>
+            </SceneNoticesProvider>
+          </SceneFramesProvider>
+        </Scene3dViewpointProvider>
+      </PanelVisibilityProvider>
+    </Scene3dViewStateProvider>
+  </FullHistoryInterestsProvider>
 );
 
 function ExtensionRuntimeBoundary({
