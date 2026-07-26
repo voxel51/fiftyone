@@ -129,9 +129,19 @@ export const viewEndAtom = atom(0); // initialised to duration by PlaybackProvid
 export const loopStartAtom = atom(0);
 export const loopEndAtom = atom(0); // initialised to duration by PlaybackProvider
 
-// Static config — set once by PlaybackProvider, never changed.
+// Provider-initialized config.
 export const durationAtom = atom(0);
 export const stepIntervalAtom = atom(1 / 30);
+
+/**
+ * Trailing delay before a paused seek may ask missing blocking streams to
+ * prefetch. The visual playhead and already-buffered commits remain immediate.
+ *
+ * This is runtime-settable because a long-lived PlaybackProvider may host
+ * sources with different access costs over its lifetime. General playback
+ * defaults to zero; data layers that know a source is remote may opt in.
+ */
+export const seekFetchDebounceMsAtom = atom(0);
 
 /**
  * Playback speed multiplier. 1.0 = normal speed, 2.0 = double speed,
@@ -155,10 +165,10 @@ export const achievedSpeedAtom = atom<number | null>(null) as PrimitiveAtom<
  * The `seq` counter makes each event distinguishable even when `time`
  * hasn't changed (e.g. seeking to the same position twice).
  *
- * Streams subscribe to this atom — via useSeekEvent or store.sub — to
- * flush their cache and start buffering around the new position. The
- * engine debounces updates to this atom during rapid scrubbing so streams
- * don't thrash. playheadAtom always updates immediately for smooth UI.
+ * Streams subscribe to this atom — via useSeekEvent or store.sub — to react
+ * to user intent such as cancelling obsolete speculative work. It fires
+ * immediately; missing-data fetch admission is independently controlled by
+ * seekFetchDebounceMsAtom. playheadAtom also updates immediately for smooth UI.
  */
 // See `streamValueAtom` — same null-initial-value overload quirk; the
 // cast preserves the writable shape so `store.set(seekEventAtom, ...)`

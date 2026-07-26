@@ -24,6 +24,7 @@ import {
   loopEndAtom,
   loopStartAtom,
   playheadAtom,
+  seekFetchDebounceMsAtom,
   streamRangesVersionAtom,
   streamValueAtom,
 } from "./atoms";
@@ -66,6 +67,25 @@ export function subscribePlayhead(
   callback: () => void,
 ): () => void {
   return store.sub(playheadAtom, callback);
+}
+
+/** Current trailing delay for missing-data fetches after a seek. */
+export function getSeekFetchDebounceMs(store: PlaybackStore): number {
+  return store.get(seekFetchDebounceMsAtom);
+}
+
+/**
+ * Updates the missing-data seek debounce for a long-lived playback store.
+ * Invalid and negative values restore immediate fetch admission.
+ */
+export function setSeekFetchDebounceMs(
+  store: PlaybackStore,
+  debounceMs: number,
+): void {
+  store.set(
+    seekFetchDebounceMsAtom,
+    Number.isFinite(debounceMs) && debounceMs > 0 ? debounceMs : 0,
+  );
 }
 
 /** Non-reactive read of the hovered timeline time, in seconds (or null). */

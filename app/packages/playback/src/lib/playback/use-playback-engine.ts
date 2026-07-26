@@ -11,6 +11,7 @@ import {
   loopEndAtom,
   loopStartAtom,
   playheadAtom,
+  seekFetchDebounceMsAtom,
   seekEventAtom,
   speedAtom,
   stepIntervalAtom,
@@ -18,7 +19,7 @@ import {
   viewEndAtom,
   viewStartAtom,
 } from "./atoms";
-import { MAX_SPEED, SEEK_BAR_DEBOUNCE } from "../constants";
+import { MAX_SPEED } from "../constants";
 import { clamp, clampAndValidateBounds } from "./utils";
 import { createPlaybackRateMeter } from "./playback-rate-meter";
 import type {
@@ -106,6 +107,7 @@ export function usePlaybackEngine({
   defaultSpeed = 1.0,
   snapToFrameOnSettle = false,
   mode = { kind: "duration" },
+  seekFetchDebounceMs = 0,
 }: PlaybackConfig = {}): {
   store: PlaybackStore;
   contextValue: PlaybackContextValue;
@@ -144,6 +146,12 @@ export function usePlaybackEngine({
 
     s.set(durationAtom, initialDuration);
     s.set(stepIntervalAtom, resolvedStepInterval);
+    s.set(
+      seekFetchDebounceMsAtom,
+      Number.isFinite(seekFetchDebounceMs) && seekFetchDebounceMs > 0
+        ? seekFetchDebounceMs
+        : 0,
+    );
     s.set(speedAtom, initialSpeed);
     s.set(viewEndAtom, initialDuration);
     s.set(loopStartAtom, loopStart);
@@ -170,13 +178,25 @@ export function usePlaybackEngine({
     null,
   );
   const tryStartPendingPlaybackRef = useRef<() => void>(() => undefined);
-  const seekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seekFetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  // The pending target whose missing-data nudge may run. Null while a
+  // configured trailing debounce is still coalescing visual seek updates.
+  const seekPrefetchTargetRef = useRef<number | null>(null);
   const seekSeqRef = useRef(0);
   // A seek/step/snap target that couldn't commit immediately because a
   // blocking stream was still buffering. The settle loop (below) polls
   // the barrier for this time while paused and commits once ready.
   const pendingCommitRef = useRef<number | null>(null);
   const settleRafRef = useRef<number | null>(null);
+
+  const clearSeekFetchDebounce = useCallback(() => {
+    if (seekFetchDebounceRef.current !== null) {
+      clearTimeout(seekFetchDebounceRef.current);
+      seekFetchDebounceRef.current = null;
+    }
+  }, []);
 
   // A stream is "active" when registered AND has at least one subscriber.
   // Dormant streams (registered but no subscribers) are skipped entirely.
@@ -226,18 +246,9 @@ export function usePlaybackEngine({
   }, [store]);
 
   const fireSeekEvent = useCallback(
-    (time: number, immediate = false) => {
-      const fire = () => {
-        seekSeqRef.current += 1;
-        store.set(seekEventAtom, { time, seq: seekSeqRef.current });
-      };
-      if (seekDebounceRef.current) clearTimeout(seekDebounceRef.current);
-      if (immediate) {
-        fire();
-      } else {
-        // Debounced so streams don't thrash their caches during rapid scrubbing.
-        seekDebounceRef.current = setTimeout(fire, SEEK_BAR_DEBOUNCE);
-      }
+    (time: number) => {
+      seekSeqRef.current += 1;
+      store.set(seekEventAtom, { time, seq: seekSeqRef.current });
     },
     [store],
   );
@@ -265,7 +276,7 @@ export function usePlaybackEngine({
    * never request the seeked frame until the user hit play.
    */
   const runBarrier = useCallback(
-    (targetTime: number): boolean => {
+    (targetTime: number, requestMissing = true): boolean => {
       const duration = store.get(durationAtom);
       let isBuffering = false;
 
@@ -284,7 +295,7 @@ export function usePlaybackEngine({
         }
 
         isBuffering = true;
-        if (state === "missing") {
+        if (requestMissing && state === "missing") {
           s.prefetch?.([
             targetTime,
             Math.min(duration, targetTime + (s.lookaheadSeconds ?? 3)),
@@ -362,6 +373,11 @@ export function usePlaybackEngine({
 
       let committedMediaSeconds = 0;
       if (runBarrier(targetTime)) {
+        // Active playback has accepted a newer target, so any paused-seek
+        // debounce still pointing at an older target is obsolete.
+        pendingCommitRef.current = null;
+        seekPrefetchTargetRef.current = null;
+        clearSeekFetchDebounce();
         store.set(playheadAtom, targetTime);
         doCommit(targetTime);
         committedMediaSeconds = willWrap
@@ -370,7 +386,7 @@ export function usePlaybackEngine({
           : Math.max(0, targetTime - currentTime);
         // Loop-wrap is a discontinuous jump — fire immediately so
         // streams can flush their cache and buffer around loopStart.
-        if (willWrap) fireSeekEvent(loopStart, true);
+        if (willWrap) fireSeekEvent(loopStart);
       }
 
       const achievedSpeed = achievedRateMeterRef.current.sample(
@@ -383,7 +399,7 @@ export function usePlaybackEngine({
 
       rafIdRef.current = requestAnimationFrame(tick);
     },
-    [store, fireSeekEvent, doCommit, runBarrier],
+    [clearSeekFetchDebounce, store, fireSeekEvent, doCommit, runBarrier],
   );
 
   useEffect(() => {
@@ -412,14 +428,9 @@ export function usePlaybackEngine({
         settleRafRef.current = null;
       }
 
-      // A queued seek-event timeout could otherwise fire after unmount and
-      // touch an orphaned store.
-      if (seekDebounceRef.current !== null) {
-        clearTimeout(seekDebounceRef.current);
-        seekDebounceRef.current = null;
-      }
+      clearSeekFetchDebounce();
     };
-  }, [store, tick]);
+  }, [clearSeekFetchDebounce, store, tick]);
 
   /**
    * Paused settle loop. A `seek`/`step`/snap into an unbuffered region
@@ -437,14 +448,17 @@ export function usePlaybackEngine({
       return;
     }
 
-    if (runBarrier(time)) {
+    const mayRequestMissing = seekPrefetchTargetRef.current === time;
+    if (runBarrier(time, mayRequestMissing)) {
       pendingCommitRef.current = null;
+      seekPrefetchTargetRef.current = null;
+      clearSeekFetchDebounce();
       doCommit(time);
       return;
     }
 
     settleRafRef.current = requestAnimationFrame(settleTick);
-  }, [store, runBarrier, doCommit]);
+  }, [clearSeekFetchDebounce, store, runBarrier, doCommit]);
 
   const clearPendingPlayTimeout = useCallback(() => {
     if (pendingPlayTimeoutRef.current === null) return;
@@ -593,15 +607,54 @@ export function usePlaybackEngine({
   );
 
   /**
+   * Releases the latest coalesced seek target into the data plane. A stale
+   * timer is harmless: only the current pending target may request data.
+   */
+  const releaseSeekFetch = useCallback(
+    (time: number) => {
+      if (pendingCommitRef.current !== time) return;
+
+      seekPrefetchTargetRef.current = time;
+      if (runBarrier(time, true)) {
+        pendingCommitRef.current = null;
+        seekPrefetchTargetRef.current = null;
+        clearSeekFetchDebounce();
+        doCommit(time);
+        return;
+      }
+
+      if (!store.get(isPlayingAtom) && settleRafRef.current === null) {
+        settleRafRef.current = requestAnimationFrame(settleTick);
+      }
+    },
+    [clearSeekFetchDebounce, doCommit, runBarrier, settleTick, store],
+  );
+
+  /**
    * Commit `time` now if the barrier is satisfied, else remember it and
-   * let {@link settleTick} commit it once streams finish buffering.
+   * let {@link settleTick} commit it once streams finish buffering. Missing
+   * streams may be nudged immediately or after the configured trailing
+   * debounce; already-buffered targets always commit synchronously.
    */
   const commitWhenReady = useCallback(
-    (time: number) => {
+    (time: number, immediateFetch = false) => {
+      clearSeekFetchDebounce();
       pendingCommitRef.current = time;
 
-      if (runBarrier(time)) {
+      const debounceMs = store.get(seekFetchDebounceMsAtom);
+      const requestMissing = immediateFetch || debounceMs <= 0;
+      seekPrefetchTargetRef.current = requestMissing ? time : null;
+      if (!requestMissing) {
+        seekFetchDebounceRef.current = setTimeout(() => {
+          seekFetchDebounceRef.current = null;
+          releaseSeekFetch(time);
+        }, debounceMs);
+      }
+
+      if (runBarrier(time, requestMissing)) {
         pendingCommitRef.current = null;
+        seekPrefetchTargetRef.current = null;
+        clearSeekFetchDebounce();
         doCommit(time);
         return;
       }
@@ -610,7 +663,14 @@ export function usePlaybackEngine({
         settleRafRef.current = requestAnimationFrame(settleTick);
       }
     },
-    [runBarrier, doCommit, settleTick],
+    [
+      clearSeekFetchDebounce,
+      doCommit,
+      releaseSeekFetch,
+      runBarrier,
+      settleTick,
+      store,
+    ],
   );
 
   const actions = useMemo(() => {
@@ -637,12 +697,18 @@ export function usePlaybackEngine({
       );
 
       if (Math.abs(snapped - current) < step * 1e-6) {
+        // A drag may already have landed exactly on a frame boundary. Treat
+        // its settle call as an explicit flush even though no visual move is
+        // needed.
+        if (pendingCommitRef.current === current) {
+          commitWhenReady(current, true);
+        }
         return;
       }
 
       store.set(playheadAtom, snapped);
-      fireSeekEvent(snapped, true);
-      commitWhenReady(snapped);
+      fireSeekEvent(snapped);
+      commitWhenReady(snapped, true);
     };
 
     return {
@@ -710,7 +776,7 @@ export function usePlaybackEngine({
         if (current < ls || current >= le) {
           current = ls;
           store.set(playheadAtom, current);
-          fireSeekEvent(current, true);
+          fireSeekEvent(current);
         }
         requestOrStartPlayback(current);
       },
@@ -731,8 +797,8 @@ export function usePlaybackEngine({
           store.get(durationAtom),
         );
         store.set(playheadAtom, next);
-        fireSeekEvent(next, true);
-        commitWhenReady(next);
+        fireSeekEvent(next);
+        commitWhenReady(next, true);
         if (pendingPlayRef.current) requestOrStartPlayback(next);
       },
       stepForward: () => {
@@ -746,8 +812,8 @@ export function usePlaybackEngine({
           store.get(durationAtom),
         );
         store.set(playheadAtom, next);
-        fireSeekEvent(next, true);
-        commitWhenReady(next);
+        fireSeekEvent(next);
+        commitWhenReady(next, true);
         if (pendingPlayRef.current) requestOrStartPlayback(next);
       },
       setView: (start: number, end: number) => {

@@ -297,6 +297,17 @@ export interface PlaybackConfig {
    * @default { kind: "duration" }
    */
   mode?: TimelineMode;
+  /**
+   * Trailing delay before a seek asks missing blocking streams to prefetch.
+   * The visual playhead and commits into already-buffered data stay immediate.
+   * Step, loop-wrap, play-reset, and settle-snap operations bypass the delay.
+   *
+   * This is only the provider's initial value. Long-lived playback surfaces
+   * may update it through `setSeekFetchDebounceMs()` when source locality
+   * changes.
+   * @default 0
+   */
+  seekFetchDebounceMs?: number;
 }
 
 // ---------------------------------------------------------------------------
