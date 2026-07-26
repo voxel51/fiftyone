@@ -6,7 +6,10 @@ import type {
   PointCloudVisualization,
   SceneUpdateVisualization,
 } from "../../../../ir";
-import type { StreamPlaybackFrame } from "../../playback/use-stream-values";
+import type {
+  StreamContentFrame,
+  StreamPlaybackFrame,
+} from "../../playback/use-stream-values";
 import type { FrameTransformsState } from "../../spatial/frame-transforms/use-frame-transforms";
 import {
   build3dLayers,
@@ -16,7 +19,7 @@ import { useScene3dPlacementStream } from "./use-scene-3d-placement-stream";
 
 /** Unique coordinate frames whose placement gates point-cloud playback. */
 export function pointCloudPlacementFrameIds(
-  frames: readonly (StreamPlaybackFrame<PointCloudVisualization> | null)[],
+  frames: readonly (StreamContentFrame<PointCloudVisualization> | null)[],
 ): readonly string[] {
   return Array.from(
     new Set(
@@ -48,7 +51,7 @@ export function useScene3dPlacedLayers({
   readonly calibrationFrames: readonly (StreamPlaybackFrame<CameraCalibrationVisualization> | null)[];
   readonly calibrationStreams: readonly string[];
   readonly frameTransforms: FrameTransformsState;
-  readonly frames: readonly (StreamPlaybackFrame<PointCloudVisualization> | null)[];
+  readonly frames: readonly (StreamContentFrame<PointCloudVisualization> | null)[];
   readonly gridFrames: readonly (StreamPlaybackFrame<GridVisualization> | null)[];
   readonly gridStreams: readonly string[];
   readonly playbackTimeNs?: bigint;

@@ -15,18 +15,18 @@ import type {
 import { CANONICAL_POINT_CLOUD_SCALAR_COLOR_FIELDS } from "../../../visualization/scene-3d/point-cloud-color-policy";
 import { normalizeIdentifierName } from "../../../visualization/scene-3d/utils";
 
-/** One committed stream value plus its content and placement timestamps. */
-export interface StreamPlaybackFrame<T = unknown> {
-  readonly ageNs: bigint;
-  readonly contentTimeNs: bigint;
-  readonly frame: T;
-  readonly requestedTimeNs: bigint;
-}
-
-/** Content identity without tick-relative placement metadata. */
+/** One committed stream value plus its source content time. */
 export interface StreamContentFrame<T = unknown> {
   readonly contentTimeNs: bigint;
   readonly frame: T;
+}
+
+/** A committed stream value plus tick-relative placement metadata. */
+export interface StreamPlaybackFrame<
+  T = unknown,
+> extends StreamContentFrame<T> {
+  readonly ageNs: bigint;
+  readonly requestedTimeNs: bigint;
 }
 
 /**
@@ -110,6 +110,29 @@ export function usePlaybackStreamValues<T = unknown>(
 }
 
 /**
+ * Multi-stream content-only subscription. Tick-relative metadata updates are
+ * filtered before React, while content time and decoded-frame identity remain
+ * index-aligned with `streams`.
+ */
+export function useStreamContentFrames<T = unknown>(
+  streams: readonly string[],
+  subscriptionOptions?: readonly (StreamSubscriptionOptions | undefined)[],
+): readonly (StreamContentFrame<T> | null)[] {
+  const dataStream = useDataStream();
+  const values = useStreamValuesSelector<
+    StreamPlaybackFrame<T>,
+    StreamContentFrame<T> | null
+  >(streams, selectContentFrame, equalContentFrames);
+  // Only the fallback's length matters; stream identity is intentionally
+  // excluded so unavailable-stream renders keep the same array instance.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const emptyValues = useMemo(() => streams.map(() => null), [streams.length]);
+  useStreamSubscriptions(streams, dataStream, subscriptionOptions);
+
+  return dataStream ? values : emptyValues;
+}
+
+/**
  * Subscribes to several streams and returns their placement-aware frames,
  * index-aligned with `streams`.
  */
@@ -135,7 +158,7 @@ export function useStreamPlaybackFrames<T = unknown>(
 export function usePointCloudPlaybackFrames(
   streams: readonly string[],
   colorBy: readonly string[],
-): readonly (StreamPlaybackFrame<PointCloudVisualization> | null)[] {
+): readonly (StreamContentFrame<PointCloudVisualization> | null)[] {
   const subscriptionOptions = useMemo(
     () =>
       streams.map((_, index) => ({
@@ -143,7 +166,7 @@ export function usePointCloudPlaybackFrames(
       })),
     [colorBy, streams],
   );
-  const frames = useStreamPlaybackFrames<PointCloudVisualization>(
+  const frames = useStreamContentFrames<PointCloudVisualization>(
     streams,
     subscriptionOptions,
   );

@@ -24,7 +24,10 @@ import {
   type ReferenceTransition,
 } from "../../spatial/frame-transforms/reference-selection";
 import type { FrameTransformsState } from "../../spatial/frame-transforms/use-frame-transforms";
-import type { StreamPlaybackFrame } from "../../playback/use-stream-values";
+import type {
+  StreamContentFrame,
+  StreamPlaybackFrame,
+} from "../../playback/use-stream-values";
 
 /** Frame names considered ego-centric automatic camera targets, in priority order. */
 export const PREFERRED_CAMERA_TARGET_FRAMES = [
@@ -87,7 +90,7 @@ export function useScene3dFrameSelection({
   readonly annotationStreams?: readonly string[];
   readonly calibrationFrames: readonly (StreamPlaybackFrame<CameraCalibrationVisualization> | null)[];
   readonly calibrationStreams?: readonly string[];
-  readonly frames: readonly (StreamPlaybackFrame<PointCloudVisualization> | null)[];
+  readonly frames: readonly (StreamContentFrame<PointCloudVisualization> | null)[];
   readonly frameTransforms: FrameTransformsState;
   readonly gridFrames: readonly (StreamPlaybackFrame<GridVisualization> | null)[];
   readonly gridStreams?: readonly string[];
@@ -467,7 +470,7 @@ function coordinateStreamFrames<
   Frame extends { readonly coordinateFrameId?: string },
 >(
   streams: readonly string[],
-  frames: readonly (StreamPlaybackFrame<Frame> | null)[],
+  frames: readonly (StreamContentFrame<Frame> | null)[],
   fallbackPrefix: string,
 ): readonly StreamFrameObservation[] {
   return frames.map((playbackFrame, index) => ({

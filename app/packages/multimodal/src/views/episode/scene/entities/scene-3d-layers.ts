@@ -15,7 +15,10 @@ import type {
   SceneAnnotationPanelLayer,
 } from "../../../../visualization/scene-3d/index";
 import type { EpisodeHeldFrameTransform } from "../../../../runtime/frame-transform-types";
-import type { StreamPlaybackFrame } from "../../playback/use-stream-values";
+import type {
+  StreamContentFrame,
+  StreamPlaybackFrame,
+} from "../../playback/use-stream-values";
 import type { FrameTransformsState } from "../../spatial/frame-transforms/use-frame-transforms";
 import type { StalePoseUsage, UnresolvedPoseUsage } from "../../status/health";
 
@@ -72,7 +75,7 @@ export function build3dLayers({
   readonly annotationFrames?: readonly (StreamPlaybackFrame<SceneUpdateVisualization> | null)[];
   readonly calibrationFrames?: readonly (StreamPlaybackFrame<CameraCalibrationVisualization> | null)[];
   readonly frameTransforms: FrameTransformsState;
-  readonly frames: readonly (StreamPlaybackFrame<PointCloudVisualization> | null)[];
+  readonly frames: readonly (StreamContentFrame<PointCloudVisualization> | null)[];
   readonly gridFrames?: readonly (StreamPlaybackFrame<GridVisualization> | null)[];
   readonly provisionalStreamId?: string | null;
   readonly selectedAnnotationStreams?: readonly string[];

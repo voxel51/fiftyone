@@ -17,6 +17,8 @@ import { sampleColormap, type PointCloudColorSettings } from "../scene-3d";
 import { POINT_CLOUD_POINTS_MATERIAL_PROPS } from "../scene-3d/PointCloudSceneLayer";
 import { PointCloudPanel } from "./PointCloudPanel";
 
+const webGpuCanvasRender = vi.hoisted(() => vi.fn());
+
 vi.mock("@react-three/fiber", () => ({
   useFrame: vi.fn(),
   useThree: (
@@ -75,12 +77,14 @@ vi.mock("../scene-3d/Base3dScene", () => ({
 }));
 
 vi.mock("../webgpu/WebGpuCanvas", () => ({
-  WebGpuCanvas: ({ children }: { readonly children?: ReactNode }) => (
-    <div>{children}</div>
-  ),
+  WebGpuCanvas: ({ children }: { readonly children?: ReactNode }) => {
+    webGpuCanvasRender();
+    return <div>{children}</div>;
+  },
 }));
 
 beforeEach(() => {
+  webGpuCanvasRender.mockClear();
   resetImageTextureCacheForTests();
 });
 
@@ -1610,6 +1614,22 @@ describe("PointCloudPanel", () => {
       }),
       [0.72, 0.76, 0.82, 0.72, 0.76, 0.82],
     );
+  });
+
+  it("does not reconcile the canvas for chrome-only panel updates", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const layers = [pointCloudLayer("/lidar", {})];
+    const { rerender } = render(
+      <PointCloudPanel fit="never" hudLines={["first"]} layers={layers} />,
+    );
+    const canvasRenders = webGpuCanvasRender.mock.calls.length;
+
+    rerender(
+      <PointCloudPanel fit="never" hudLines={["second"]} layers={layers} />,
+    );
+
+    expect(webGpuCanvasRender).toHaveBeenCalledTimes(canvasRenders);
+    expect(screen.getByText("second")).toBeTruthy();
   });
 });
 

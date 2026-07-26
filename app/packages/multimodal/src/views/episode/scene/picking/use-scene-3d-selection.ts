@@ -22,7 +22,7 @@ import {
 } from "../../tiles/panel-visibility";
 import { useImageProjectionSettingsByStream } from "../../settings/modal/state";
 import { useImageTileBindings } from "../../tiles/tile-source-bindings";
-import type { StreamPlaybackFrame } from "../../playback/use-stream-values";
+import type { StreamContentFrame } from "../../playback/use-stream-values";
 
 const TILE_TYPE_LABEL = "3D";
 const PROVISIONAL_STREAM_KEYWORDS: readonly {
@@ -682,7 +682,7 @@ function sortPointCloudSourcesForInitialPaint(
  */
 export function selectProvisionalPointCloudStream(
   sources: readonly SceneSource[],
-  frames: readonly (StreamPlaybackFrame<PointCloudVisualization> | null)[],
+  frames: readonly (StreamContentFrame<PointCloudVisualization> | null)[],
 ): string | null {
   let best: {
     readonly index: number;
@@ -721,7 +721,7 @@ export function selectProvisionalPointCloudStream(
  */
 export function playbackFrameForStream(
   selectedStreams: readonly string[],
-  frames: readonly (StreamPlaybackFrame<PointCloudVisualization> | null)[],
+  frames: readonly (StreamContentFrame<PointCloudVisualization> | null)[],
   stream: string | null,
 ) {
   if (!stream) {

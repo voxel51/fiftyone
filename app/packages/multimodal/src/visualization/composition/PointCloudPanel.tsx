@@ -1,6 +1,7 @@
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import { useThree } from "@react-three/fiber";
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -11,7 +12,10 @@ import * as THREE from "three";
 
 import MeasureRulerIcon from "../panel-ui/MeasureRulerIcon";
 import type { PointCloudBounds } from "../../ir";
-import { Base3dScene } from "../scene-3d/Base3dScene";
+import {
+  Base3dScene,
+  type ThreeSceneBackground,
+} from "../scene-3d/Base3dScene";
 import { WebGpuCanvas } from "../webgpu/WebGpuCanvas";
 import controlStyles from "../panel-ui/PanelControl.module.css";
 import { PanelNotices } from "../panel-ui/PanelNotices";
@@ -82,6 +86,7 @@ import {
 } from "../scene-3d/utils";
 
 const EMPTY_GPU_RENDER_ARRAY = new Float32Array(0);
+const EMPTY_ARRAY: readonly never[] = [];
 
 interface PreparedPointCloudPanelLayer {
   readonly data: PointCloudRenderData;
@@ -95,7 +100,7 @@ interface PreparedPointCloudPanelLayer {
  * streams compose into a single fused view.
  */
 export function PointCloudPanel({
-  annotationLayers = [],
+  annotationLayers = EMPTY_ARRAY,
   background,
   cameraPose,
   cameraProjection = DEFAULT_POINT_CLOUD_CAMERA_PROJECTION,
@@ -106,16 +111,16 @@ export function PointCloudPanel({
   controls,
   fit = "initial",
   fitResetKey,
-  frustumLayers = [],
-  gridLayers = [],
-  hudLines = [],
+  frustumLayers = EMPTY_ARRAY,
+  gridLayers = EMPTY_ARRAY,
+  hudLines = EMPTY_ARRAY,
   layers,
   maxRenderedPoints = DEFAULT_MAX_RENDERED_POINTS,
   notices = EMPTY_NOTICES,
   onCameraPoseChange,
   onRenderStats,
   pointSize = DEFAULT_POINT_SIZE,
-  rayLayers = [],
+  rayLayers = EMPTY_ARRAY,
   sceneUp = "z",
   showGizmo = true,
   showColorLegend = false,
@@ -453,86 +458,33 @@ export function PointCloudPanel({
 
   return (
     <div className={className} style={{ ...styles.panel, ...style }}>
-      <WebGpuCanvas
-        camera={PERSPECTIVE_POINT_CAMERA}
-        onError={setCanvasError}
-        role="img"
-        style={
-          measureArmed
-            ? { ...styles.canvas, cursor: "crosshair" }
-            : styles.canvas
-        }
-        surface={canvasSurface}
-      >
-        <PerspectiveCameraProjection projection={cameraProjection} />
-        <Base3dScene
-          background={background}
-          cameraPose={effectiveCameraPose}
-          onCameraPoseChange={onCameraPoseChange}
-          showGizmo={showGizmo}
-          up={sceneUp}
-        >
-          {cameraRig}
-          <ScenePickingContext.Provider value={!measureArmed}>
-            <GpuPointCloud3dPickerRegistryContext.Provider
-              value={pointPickerRegistry}
-            >
-              {/* Visible cloud layers publish live storage bindings into this
-                  canvas-local registry; the picking layer consumes the
-                  registry after all scene children have committed. */}
-              {effectiveWorldGrid ? (
-                <WorldGridLayer {...effectiveWorldGrid} />
-              ) : null}
-              {gridLayers.map((layer, index) => (
-                <GridSceneLayer
-                  key={layer.id}
-                  layer={layer}
-                  renderOrder={index - gridLayers.length}
-                />
-              ))}
-              {renderLayers.map(({ data, gpu, layer }) => (
-                <PointCloudSceneLayer
-                  key={layer.id}
-                  data={data}
-                  gpu={gpu}
-                  layer={layer}
-                  pointSize={pointSize}
-                />
-              ))}
-              <SceneAnnotationCubeBatches plan={annotationCubeRenderPlan} />
-              {annotationCubeRenderPlan.residualLayers.map((layer) => (
-                <SceneAnnotationLayer
-                  key={layer.id}
-                  layer={layer}
-                  renderCubes={false}
-                />
-              ))}
-              {frustumLayers.map((layer) => (
-                <CameraFrustumSceneLayer
-                  key={layer.id}
-                  layer={layer}
-                  onTextureError={updateFrustumTextureError}
-                />
-              ))}
-              {rayLayers.map((layer) => (
-                <SceneRayLayer key={layer.id} layer={layer} />
-              ))}
-              <PointCloudPickingLayer
-                gpuPickData={gpuPickData}
-                layers={layers}
-                maxRenderedPoints={maxRenderedPoints}
-                pointSize={pointSize}
-              />
-              <MeasurementLayer
-                armed={measureArmed}
-                measurement={measurement}
-                onPick={handleMeasurePick}
-                planeUp={measurePlaneUp}
-              />
-            </GpuPointCloud3dPickerRegistryContext.Provider>
-          </ScenePickingContext.Provider>
-        </Base3dScene>
-      </WebGpuCanvas>
+      <PointCloudCanvas
+        annotationCubeRenderPlan={annotationCubeRenderPlan}
+        background={background}
+        cameraPose={effectiveCameraPose}
+        cameraProjection={cameraProjection}
+        cameraRig={cameraRig}
+        canvasSurface={canvasSurface}
+        frustumLayers={frustumLayers}
+        gpuPickData={gpuPickData}
+        gridLayers={gridLayers}
+        layers={layers}
+        maxRenderedPoints={maxRenderedPoints}
+        measureArmed={measureArmed}
+        measurement={measurement}
+        measurePlaneUp={measurePlaneUp}
+        onCameraPoseChange={onCameraPoseChange}
+        onCanvasError={setCanvasError}
+        onMeasurePick={handleMeasurePick}
+        pointPickerRegistry={pointPickerRegistry}
+        pointSize={pointSize}
+        rayLayers={rayLayers}
+        renderLayers={renderLayers}
+        sceneUp={sceneUp}
+        showGizmo={showGizmo}
+        updateFrustumTextureError={updateFrustumTextureError}
+        worldGrid={effectiveWorldGrid}
+      />
 
       {canvasError ? (
         <div style={styles.status}>{canvasError}</div>
@@ -596,6 +548,153 @@ export function PointCloudPanel({
     </div>
   );
 }
+
+interface PointCloudCanvasProps {
+  readonly annotationCubeRenderPlan: ReturnType<
+    typeof buildSceneAnnotationCubeRenderPlan
+  >;
+  readonly background?: ThreeSceneBackground;
+  readonly cameraPose: PointCloudCameraPose | null;
+  readonly cameraProjection: PointCloudCameraProjection;
+  readonly cameraRig: PointCloudPanelProps["cameraRig"];
+  readonly canvasSurface: PointCloudPanelProps["canvasSurface"];
+  readonly frustumLayers: NonNullable<PointCloudPanelProps["frustumLayers"]>;
+  readonly gpuPickData: ReadonlyMap<string, GpuPointCloudPickData>;
+  readonly gridLayers: NonNullable<PointCloudPanelProps["gridLayers"]>;
+  readonly layers: readonly PointCloudPanelLayer[];
+  readonly maxRenderedPoints: number;
+  readonly measureArmed: boolean;
+  readonly measurement: MeasurementState | null;
+  readonly measurePlaneUp: NonNullable<PointCloudPanelProps["sceneUp"]>;
+  readonly onCameraPoseChange: PointCloudPanelProps["onCameraPoseChange"];
+  readonly onCanvasError: (error: string | null) => void;
+  readonly onMeasurePick: (point: MeasurementPoint) => void;
+  readonly pointPickerRegistry: ReturnType<
+    typeof createGpuPointCloud3dPickerRegistry
+  >;
+  readonly pointSize: number;
+  readonly rayLayers: NonNullable<PointCloudPanelProps["rayLayers"]>;
+  readonly renderLayers: readonly PreparedPointCloudPanelLayer[];
+  readonly sceneUp: NonNullable<PointCloudPanelProps["sceneUp"]>;
+  readonly showGizmo: boolean;
+  readonly updateFrustumTextureError: (
+    layerId: string,
+    message: string | null,
+  ) => void;
+  readonly worldGrid: PointCloudPanelProps["worldGrid"];
+}
+
+/**
+ * Memo boundary around the R3F root. Tile chrome and placement metadata can
+ * commit independently without asking Fiber to walk the canvas ancestry.
+ */
+const PointCloudCanvas = memo(function PointCloudCanvas(
+  props: PointCloudCanvasProps,
+) {
+  const {
+    annotationCubeRenderPlan,
+    background,
+    cameraPose,
+    cameraProjection,
+    cameraRig,
+    canvasSurface,
+    frustumLayers,
+    gpuPickData,
+    gridLayers,
+    layers,
+    maxRenderedPoints,
+    measureArmed,
+    measurement,
+    measurePlaneUp,
+    onCameraPoseChange,
+    onCanvasError,
+    onMeasurePick,
+    pointPickerRegistry,
+    pointSize,
+    rayLayers,
+    renderLayers,
+    sceneUp,
+    showGizmo,
+    updateFrustumTextureError,
+    worldGrid,
+  } = props;
+
+  return (
+    <WebGpuCanvas
+      camera={PERSPECTIVE_POINT_CAMERA}
+      onError={onCanvasError}
+      role="img"
+      style={
+        measureArmed ? { ...styles.canvas, cursor: "crosshair" } : styles.canvas
+      }
+      surface={canvasSurface}
+    >
+      <PerspectiveCameraProjection projection={cameraProjection} />
+      <Base3dScene
+        background={background}
+        cameraPose={cameraPose}
+        onCameraPoseChange={onCameraPoseChange}
+        showGizmo={showGizmo}
+        up={sceneUp}
+      >
+        {cameraRig}
+        <ScenePickingContext.Provider value={!measureArmed}>
+          <GpuPointCloud3dPickerRegistryContext.Provider
+            value={pointPickerRegistry}
+          >
+            {worldGrid ? <WorldGridLayer {...worldGrid} /> : null}
+            {gridLayers.map((layer, index) => (
+              <GridSceneLayer
+                key={layer.id}
+                layer={layer}
+                renderOrder={index - gridLayers.length}
+              />
+            ))}
+            {renderLayers.map(({ data, gpu, layer }) => (
+              <PointCloudSceneLayer
+                key={layer.id}
+                data={data}
+                gpu={gpu}
+                layer={layer}
+                pointSize={pointSize}
+              />
+            ))}
+            <SceneAnnotationCubeBatches plan={annotationCubeRenderPlan} />
+            {annotationCubeRenderPlan.residualLayers.map((layer) => (
+              <SceneAnnotationLayer
+                key={layer.id}
+                layer={layer}
+                renderCubes={false}
+              />
+            ))}
+            {frustumLayers.map((layer) => (
+              <CameraFrustumSceneLayer
+                key={layer.id}
+                layer={layer}
+                onTextureError={updateFrustumTextureError}
+              />
+            ))}
+            {rayLayers.map((layer) => (
+              <SceneRayLayer key={layer.id} layer={layer} />
+            ))}
+            <PointCloudPickingLayer
+              gpuPickData={gpuPickData}
+              layers={layers}
+              maxRenderedPoints={maxRenderedPoints}
+              pointSize={pointSize}
+            />
+            <MeasurementLayer
+              armed={measureArmed}
+              measurement={measurement}
+              onPick={onMeasurePick}
+              planeUp={measurePlaneUp}
+            />
+          </GpuPointCloud3dPickerRegistryContext.Provider>
+        </ScenePickingContext.Provider>
+      </Base3dScene>
+    </WebGpuCanvas>
+  );
+});
 
 function PerspectiveCameraProjection({
   projection,

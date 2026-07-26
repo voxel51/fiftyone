@@ -44,7 +44,7 @@ import {
 import { useScene3dViewStateStore } from "./scene-3d-view-state-context";
 import type { ReferenceTransition } from "../../spatial/frame-transforms/reference-selection";
 import type { FrameTransformsState } from "../../spatial/frame-transforms/use-frame-transforms";
-import type { StreamPlaybackFrame } from "../../playback/use-stream-values";
+import type { StreamContentFrame } from "../../playback/use-stream-values";
 import type { EpisodeHeldFrameTransform } from "../../../../runtime/frame-transform-types";
 
 /** User-selectable camera tracking modes and their display labels. */
@@ -149,7 +149,7 @@ export function useScene3dCameraTracking({
   readonly placementStatus: Scene3dPlacementStatus;
   readonly playbackTimeNs: bigint | undefined;
   readonly provisionalFrameIds: readonly string[];
-  readonly provisionalPlaybackFrame: StreamPlaybackFrame<PointCloudVisualization> | null;
+  readonly provisionalPlaybackFrame: StreamContentFrame<PointCloudVisualization> | null;
   /** Live pose sink for non-React camera observers such as Viewpoint. */
   readonly onCameraPoseSample?: (pose: PointCloudCameraPose) => void;
   readonly onDefaultTrackingModeChange?: (mode: Scene3dTrackingMode) => void;

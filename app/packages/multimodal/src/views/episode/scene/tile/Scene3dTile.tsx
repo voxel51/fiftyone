@@ -26,7 +26,10 @@ import {
   type PointCloudPanelRenderStats,
   type SceneRayPanelLayer,
 } from "../../../../visualization/scene-3d/types";
-import { Scene3dCameraRig } from "../camera/Scene3dCameraRig";
+import {
+  createScene3dCameraRigStore,
+  Scene3dCameraRigFromStore,
+} from "../camera/Scene3dCameraRig";
 import Scene3dTileSettings from "./Scene3dTileSettings";
 import { Scene3dViewControls } from "../camera/Scene3dViewControls";
 import type { Scene3dHeldSceneReason } from "../entities/scene-3d-scene-snapshot";
@@ -616,6 +619,16 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     worldFrameTransition: referenceTransition,
     worldFrameId,
   });
+  const [cameraRigStore] = useState(() => createScene3dCameraRigStore(rig));
+  // This layout effect publishes the latest playback inputs before the canvas
+  // paints without turning them into React state inside the R3F tree.
+  useLayoutEffect(() => {
+    cameraRigStore.publish(rig);
+  }, [cameraRigStore, rig]);
+  const cameraRigNode = useMemo(
+    () => <Scene3dCameraRigFromStore store={cameraRigStore} />,
+    [cameraRigStore],
+  );
   const transformNotices = useMemo(
     () =>
       buildScene3dTransformNotices({
@@ -911,7 +924,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
             background={panelBackground}
             cameraPose={poseCommand}
             cameraProjection={cameraProjection}
-            cameraRig={<Scene3dCameraRig {...rig} />}
+            cameraRig={cameraRigNode}
             canvasSurface="modal-3d"
             controls={
               <Scene3dViewControls
