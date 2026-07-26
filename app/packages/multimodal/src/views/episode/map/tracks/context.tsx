@@ -167,6 +167,7 @@ export function LocationTracksBridge({
       stream,
     }: DemandDrivenHistoryLoader<LocationTrackState>) => {
       if (!session) return;
+      const manifestTimeRange = session.manifest.timeRange;
       const index = locationSources.findIndex(
         (locationSource) => locationSource.id === stream,
       );
@@ -246,7 +247,7 @@ export function LocationTracksBridge({
                 : {}),
               signal: control.signal,
               streams: [stream],
-              window: session.manifest.timeRange,
+              window: manifestTimeRange,
             });
             for (const batch of result.batches) {
               if (!consume(batch, false)) {
@@ -277,7 +278,7 @@ export function LocationTracksBridge({
             priority: "bulk",
             signal: control.signal,
             streams: [stream],
-            window: session.manifest.timeRange,
+            window: manifestTimeRange,
           })) {
             if (!consume(batch, true)) return;
           }
