@@ -524,6 +524,7 @@ describe("MCAP format adapter", () => {
           stream: "camera",
           frames: [
             expect.objectContaining({
+              recordId: "indexed-record:camera:1",
               sequence: 7,
               sourceTimestamps: {
                 logTime: 1n,
@@ -615,6 +616,7 @@ function createClient(): McapResourceClient {
     },
     logTimeNs: 1n,
     publishTimeNs: 2n,
+    recordId: "indexed-record:camera:1",
     sequence: 7,
     timelineTimeNs: 1n,
     topic: "/camera",

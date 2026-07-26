@@ -24,6 +24,16 @@ export interface EpisodeStreamCacheStats {
   readonly pinnedEntryCount: number;
 }
 
+/** Result of placing one fetched frame into a stream cache. */
+export interface EpisodeStreamCacheSetResult {
+  /** Decoded bytes whose duplicate retention was avoided, otherwise zero. */
+  readonly avoidedDecodedBytes: number;
+  /** True when a distinct wrapper reused an already-resident decoded artifact. */
+  readonly canonicalized: boolean;
+  /** Whether the producer supplied a collision-safe canonical record identity. */
+  readonly canonicalEligible: boolean;
+}
+
 /**
  * Per-stream cache for decoded episode messages, keyed by tick (bigint as string).
  *
@@ -42,6 +52,7 @@ export class EpisodeStreamCache {
   private readonly cache: LRUCache<string, CacheEntry>;
   private readonly listeners = new Set<() => void>();
   private readonly messageRetention = new Map<DecodedFrame, MessageRetention>();
+  private readonly messagesByRecordId = new Map<string, DecodedFrame>();
   private readonly pinned = new Map<string, CacheEntry>();
   private _decodedBytes = 0;
   private _subscriberCount = 0;
@@ -131,7 +142,9 @@ export class EpisodeStreamCache {
     tick: bigint,
     msg: DecodedFrame | null,
     options?: { readonly pinned?: boolean },
-  ): void {
+  ): EpisodeStreamCacheSetResult {
+    const canonical = this.canonicalizeMessage(msg);
+    msg = canonical.msg;
     if (msg) {
       this.cadence.observe(msg.timestampNs);
     }
@@ -146,7 +159,7 @@ export class EpisodeStreamCache {
       if (previousEntry) this.releaseEntry(previousEntry);
       this.pinned.set(key, entry);
       if (!hadEntry || previous !== msg) this.bumpRevision();
-      return;
+      return canonical.result;
     }
 
     const hadEntry = this.cache.has(key);
@@ -159,6 +172,7 @@ export class EpisodeStreamCache {
     // dispose, keeping message-retention byte accounting balanced.
     this.cache.set(key, entry);
     if (!hadEntry || previous !== msg) this.bumpRevision();
+    return canonical.result;
   }
 
   /**
@@ -215,7 +229,51 @@ export class EpisodeStreamCache {
     retained.refs -= 1;
     if (retained.refs > 0) return;
     this.messageRetention.delete(entry.msg);
+    if (
+      entry.msg.recordId &&
+      this.messagesByRecordId.get(entry.msg.recordId) === entry.msg
+    ) {
+      this.messagesByRecordId.delete(entry.msg.recordId);
+    }
     this._decodedBytes -= retained.bytes;
+  }
+
+  private canonicalizeMessage(msg: DecodedFrame | null): {
+    readonly msg: DecodedFrame | null;
+    readonly result: EpisodeStreamCacheSetResult;
+  } {
+    if (!msg?.recordId) {
+      return {
+        msg,
+        result: {
+          canonicalized: false,
+          canonicalEligible: false,
+          avoidedDecodedBytes: 0,
+        },
+      };
+    }
+
+    const existing = this.messagesByRecordId.get(msg.recordId);
+    if (existing) {
+      return {
+        msg: existing,
+        result: {
+          canonicalized: existing !== msg,
+          canonicalEligible: true,
+          avoidedDecodedBytes: this.messageRetention.get(existing)?.bytes ?? 0,
+        },
+      };
+    }
+
+    this.messagesByRecordId.set(msg.recordId, msg);
+    return {
+      msg,
+      result: {
+        canonicalized: false,
+        canonicalEligible: true,
+        avoidedDecodedBytes: 0,
+      },
+    };
   }
 
   private bumpRevision(): void {

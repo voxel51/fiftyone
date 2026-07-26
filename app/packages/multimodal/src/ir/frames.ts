@@ -707,6 +707,12 @@ export interface DecodedOutput {
  */
 export interface DecodedFrame {
   readonly output: DecodedOutput;
+  /**
+   * Optional format-native identity for canonicalizing equivalent decoded
+   * artifacts while they remain resident. Producers must omit it unless the
+   * identity is collision-safe for every decode option affecting `output`.
+   */
+  readonly recordId?: string;
   readonly sequence?: number;
   readonly sourceTimestamps?: DecodedSourceTimestamps;
   readonly streamId: string;

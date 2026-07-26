@@ -1192,6 +1192,7 @@ function decodedFrameFromMcap(
   );
   return {
     output: message.decoded.output,
+    recordId: message.recordId,
     sequence: message.sequence,
     sourceTimestamps: {
       ...message.decoded.output.timing?.sourceTimestamps,

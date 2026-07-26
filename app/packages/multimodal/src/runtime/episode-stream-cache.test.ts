@@ -136,6 +136,56 @@ describe("EpisodeStreamCache", () => {
     });
   });
 
+  it("canonicalizes equivalent indexed artifacts while the record is resident", () => {
+    const cache = new EpisodeStreamCache();
+    const first = { ...MESSAGE, recordId: "record:1" };
+    const duplicate = { ...MESSAGE, recordId: "record:1" };
+
+    expect(cache.set(1n, first)).toEqual({
+      avoidedDecodedBytes: 0,
+      canonicalized: false,
+      canonicalEligible: true,
+    });
+    expect(cache.set(2n, duplicate)).toEqual({
+      avoidedDecodedBytes: 128,
+      canonicalized: true,
+      canonicalEligible: true,
+    });
+
+    expect(cache.get(2n)).toBe(first);
+    expect(cache.stats().decodedBytes).toBe(128);
+  });
+
+  it("forgets canonical identity after its final placement is released", () => {
+    const cache = new EpisodeStreamCache(1);
+    const first = { ...MESSAGE, recordId: "record:1" };
+    const replacement = {
+      ...MESSAGE,
+      recordId: "record:2",
+      timestampNs: 2n,
+    };
+    const reloaded = { ...MESSAGE, recordId: "record:1" };
+
+    cache.set(1n, first);
+    cache.set(2n, replacement);
+    expect(cache.set(3n, reloaded).canonicalized).toBe(false);
+    expect(cache.get(3n)).toBe(reloaded);
+  });
+
+  it("does not canonicalize frames without a collision-safe record id", () => {
+    const cache = new EpisodeStreamCache();
+    const duplicate = { ...MESSAGE };
+
+    cache.set(1n, MESSAGE);
+    expect(cache.set(2n, duplicate)).toEqual({
+      avoidedDecodedBytes: 0,
+      canonicalized: false,
+      canonicalEligible: false,
+    });
+    expect(cache.get(2n)).toBe(duplicate);
+    expect(cache.stats().decodedBytes).toBe(256);
+  });
+
   it("releases unique decoded bytes on replacement, LRU eviction, and clear", () => {
     const cache = new EpisodeStreamCache(1);
     const second = {

@@ -752,6 +752,14 @@ export interface McapDecodedMessage {
   readonly publishTimeNs: bigint;
 
   /**
+   * Collision-safe identity of this decoded artifact when the indexed reader
+   * can address the underlying physical record. Includes decoder options that
+   * can change the output. Raw-reader fallbacks omit it rather than inventing
+   * an identity from potentially reused message metadata.
+   */
+  readonly recordId?: string;
+
+  /**
    * MCAP message sequence number.
    */
   readonly sequence: number;
