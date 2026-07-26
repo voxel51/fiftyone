@@ -95,34 +95,46 @@ type InputKind =
 /**
  * Every control a param can legitimately be edited with, most specific first.
  *
- * Param types are pipe-delimited alternatives, and several params accept more
- * than one genuinely different thing — `SortBy.field_or_expr` is
- * `field|str|json`, meaning a field path *or* an expression. Collapsing that to
- * a single winner is what made expressions unreachable in `SortBy`, `GroupBy`,
- * and `ToClips`, so the alternatives are all returned and the caller picks.
+ * A param accepting more than one genuinely different thing gets one mode each:
+ * `SortBy.field_or_expr` is `field|str|json`, a field path *or* an expression,
+ * and collapsing that to a single winner is what made expressions unreachable in
+ * `SortBy`, `GroupBy` and `ToClips`.
+ *
+ * Alternatives that are the same thing spelled differently do not. A field
+ * param's `str` exists because Python accepts a field path as a plain string, so
+ * a text mode beside the picker would send the identical value — the exception
+ * is a param naming a field the stage writes, where typing a name the dataset
+ * does not have yet is a different act and the picker has nothing to offer. A
+ * list alternative likewise subsumes its singular, since the multi-select can
+ * hold one item and Python takes either.
  */
-export const paramModes = (typeString: string): InputKind[] => {
-  const tokens = typeString.split("|").map((t) => t.trim());
-  const has = (t: string) => tokens.includes(t);
-  const modes: InputKind[] = [];
+export const paramModes = (param: ParamDef): InputKind[] => {
+  const has = (t: string) => param.tokens.includes(t);
+  const expression: InputKind[] = has("json") || has("dict") ? ["json"] : [];
 
-  // Most specific first, so `modes[0]` is the default the bar opens with.
-  if (has("list<field>")) modes.push("fieldList");
-  if (has("field")) modes.push("field");
+  if (param.choices.source === "FIELDS") {
+    const picker: InputKind = has("list<field>") ? "fieldList" : "field";
+    const newNames = param.choices.fields.some(
+      (constraint) => constraint.existence !== "EXISTING",
+    );
+    const typed: InputKind[] = newNames ? ["string"] : [];
+    return [picker, ...typed, ...expression];
+  }
+
+  const modes: InputKind[] = [];
   if (has("bool")) modes.push("bool");
   if (has("int") || has("float")) modes.push("numeric");
   if (has("list<id>")) modes.push("idList");
-  if (has("id")) modes.push("id");
+  else if (has("id")) modes.push("id");
   if (has("list<str>")) modes.push("stringList");
-  if (has("str")) modes.push("string");
-  if (has("json") || has("dict")) modes.push("json");
+  else if (has("str")) modes.push("string");
+  modes.push(...expression);
 
   // `json` is also the catch-all for a type this build doesn't recognize.
   return modes.length ? modes : ["json"];
 };
 
-export const pickInput = (typeString: string): InputKind =>
-  paramModes(typeString)[0];
+export const pickInput = (param: ParamDef): InputKind => paramModes(param)[0];
 
 /** Short label for a mode, for the switcher. */
 export const MODE_LABELS: Record<InputKind, string> = {
@@ -147,7 +159,7 @@ export const inferMode = (
   value: unknown,
   isFieldPath: (path: string) => boolean,
 ): InputKind => {
-  const modes = paramModes(param.type);
+  const modes = paramModes(param);
   const allows = (kind: InputKind) => modes.includes(kind);
 
   if (value === undefined || value === null || value === "") {
@@ -179,6 +191,7 @@ export const inferMode = (
 
   if (typeof value === "string") {
     if (allows("field") && isFieldPath(value)) return "field";
+    if (allows("fieldList") && isFieldPath(value)) return "fieldList";
     if (
       allows("numeric") &&
       value.trim() !== "" &&
@@ -200,14 +213,6 @@ export const isEmptyValue = (value: unknown): boolean =>
   (Array.isArray(value) && value.length === 0);
 
 /**
- * `true` when the stage's constructor will not accept this param being
- * omitted. Verified against every stage's `__init__` signature: a param is
- * required exactly when it declares no default and does not accept `NoneType`.
- */
-export const isRequired = (param: ParamDef): boolean =>
-  param.default == null && !isNullable(param.type);
-
-/**
  * The reason this value cannot be sent, or null when it can.
  *
  * Numbers are checked strictly: `Number` rejects trailing garbage where
@@ -221,7 +226,7 @@ export const validateParam = (
   kind: InputKind,
 ): string | null => {
   if (isEmptyValue(value)) {
-    return isRequired(param) ? "Required" : null;
+    return param.required ? "Required" : null;
   }
 
   if (kind === "numeric") {
@@ -230,8 +235,7 @@ export const validateParam = (
     if (!Number.isFinite(parsed)) {
       return `Not a number: ${text}`;
     }
-    const tokens = param.type.split("|").map((t) => t.trim());
-    if (!tokens.includes("float") && !Number.isInteger(parsed)) {
+    if (!param.tokens.includes("float") && !Number.isInteger(parsed)) {
       return "Must be a whole number";
     }
   }
@@ -246,13 +250,6 @@ export const validateParam = (
 
   return null;
 };
-
-/** `true` when the param accepts `NoneType` — i.e. is clearable. */
-export const isNullable = (typeString: string): boolean =>
-  typeString
-    .split("|")
-    .map((t) => t.trim())
-    .includes("NoneType");
 
 // ---------------------------------------------------------------
 // Bar-level state
@@ -334,9 +331,39 @@ const reducer = (state: BarState, action: BarAction): BarState => {
 // Dynamic form for a single stage's params
 // ---------------------------------------------------------------
 
+/**
+ * One way a field param can be satisfied, as the stage declares it. `ftypes`
+ * and `labelTypes` are empty when unrestricted; `existence` says whether a name
+ * the dataset does not have yet is acceptable, which it is for a param naming a
+ * field the stage writes.
+ */
+interface FieldConstraint {
+  level: "ANY" | "SAMPLE" | "FRAME" | "%future added value";
+  existence: "EXISTING" | "EXISTING_ROOT" | "ANY" | "%future added value";
+  ftypes: readonly string[];
+  labelTypes: readonly string[];
+}
+
+/** Where a param's valid values come from, discriminated by `source`. */
+interface ParamChoices {
+  source:
+    | "FIELDS"
+    | "GROUP_SLICES"
+    | "CONSTANTS"
+    | "FREE_TEXT"
+    | "%future added value";
+  fields: readonly FieldConstraint[];
+  values: readonly string[];
+}
+
 interface ParamDef {
   name: string;
   type: string;
+  /** `type`'s alternatives, already split by the server. */
+  tokens: readonly string[];
+  nullable: boolean;
+  required: boolean;
+  choices: ParamChoices;
   default: string | null | undefined;
   placeholder: string | null | undefined;
 }
@@ -376,6 +403,15 @@ const Labelled: React.FC<
   </Stack>
 );
 
+/**
+ * A list control's value. A list mode also covers the param's singular
+ * alternative, so a view that carries one bare value still opens with it shown.
+ */
+const asList = (value: unknown): string[] => {
+  if (Array.isArray(value)) return value as string[];
+  return typeof value === "string" && value ? [value] : [];
+};
+
 const ParamControl: React.FC<ParamInputProps> = ({
   param,
   value,
@@ -386,7 +422,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
 }) => {
   const invalid = Boolean(error);
   // Controls name themselves, so the required marker rides along with the name
-  const name = isRequired(param) ? `${param.name} *` : param.name;
+  const name = param.required ? `${param.name} *` : param.name;
   const placeholder = param.placeholder ?? name;
 
   switch (kind) {
@@ -420,7 +456,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
         <Labelled name={name} invalid={invalid}>
           <Select
             portal
-            value={Array.isArray(value) ? (value as string[]) : []}
+            value={asList(value)}
             options={fieldOptions}
             onChange={(v) => onChange(Array.isArray(v) ? v : v ? [v] : [])}
           />
@@ -446,7 +482,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
         <Input
           error={invalid}
           size={Size.Sm}
-          value={Array.isArray(value) ? (value as string[]).join(", ") : ""}
+          value={asList(value).join(", ")}
           placeholder={`${placeholder} (comma separated)`}
           onChange={(e) =>
             onChange(
@@ -476,7 +512,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
         <Input
           error={invalid}
           size={Size.Sm}
-          value={Array.isArray(value) ? (value as string[]).join(", ") : ""}
+          value={asList(value).join(", ")}
           placeholder={`${placeholder} (id, id, …)`}
           onChange={(e) =>
             onChange(
@@ -516,7 +552,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
 const ParamInput: React.FC<
   ParamInputProps & { onModeChange: (kind: InputKind) => void }
 > = ({ onModeChange, ...props }) => {
-  const modes = paramModes(props.param.type);
+  const modes = paramModes(props.param);
 
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
@@ -711,7 +747,7 @@ const StageCard: React.FC<StageCardProps> = ({
                     param={p}
                     value={stage.kwargs[p.name]}
                     error={errors.get(p.name)}
-                    kind={kinds.get(p.name) ?? pickInput(p.type)}
+                    kind={kinds.get(p.name) ?? pickInput(p)}
                     onModeChange={(kind) => onModeChange(p.name, kind)}
                     onChange={(v) => onChange(p.name, v)}
                     fieldOptions={fieldOptions}
@@ -754,6 +790,22 @@ const ViewBar: React.FC = () => {
   const [modeOverrides, setModeOverrides] = React.useState<
     Record<string, InputKind>
   >({});
+  // Params the user has entered something into, keyed `${stageId}:${paramName}`.
+  // A required param is empty until it is filled, so reporting that as an error
+  // straight away would open every freshly added stage already marked invalid.
+  const [touched, setTouched] = React.useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+
+  const markTouched = useCallback((stageId: string, param: string) => {
+    setTouched((current) => {
+      const key = `${stageId}:${param}`;
+      if (current.has(key)) return current;
+      const next = new Set(current);
+      next.add(key);
+      return next;
+    });
+  }, []);
 
   // Stage definitions provide the param schema; the view itself
   // carries kwargs as an ordered `kwargs: [[name, value], ...]` list.
@@ -825,7 +877,7 @@ const ViewBar: React.FC = () => {
 
   const kindOf = useCallback(
     (stage: WorkingStage, param: ParamDef): InputKind =>
-      activeKinds.get(stage.id)?.get(param.name) ?? pickInput(param.type),
+      activeKinds.get(stage.id)?.get(param.name) ?? pickInput(param),
     [activeKinds],
   );
 
@@ -902,6 +954,22 @@ const ViewBar: React.FC = () => {
     }
     return { byStage, labels };
   }, [state.stages, defsByName, kindOf]);
+
+  /**
+   * The errors to show. Apply is gated on all of them, but a param the user has
+   * not entered anything into has no input to be wrong about yet — the reason it
+   * blocks Apply is on the button's own tooltip.
+   */
+  const visibleErrors = useMemo(() => {
+    const byStage = new Map<string, ReadonlyMap<string, string>>();
+    for (const [stageId, messages] of paramErrors.byStage) {
+      const shown = new Map(
+        [...messages].filter(([param]) => touched.has(`${stageId}:${param}`)),
+      );
+      if (shown.size) byStage.set(stageId, shown);
+    }
+    return byStage;
+  }, [paramErrors, touched]);
 
   const apply = useCallback(() => {
     if (paramErrors.labels.length) return;
@@ -1144,7 +1212,7 @@ const ViewBar: React.FC = () => {
         return (
           <React.Fragment key={stage.id}>
             <StageCard
-              errors={paramErrors.byStage.get(stage.id) ?? NO_ERRORS}
+              errors={visibleErrors.get(stage.id) ?? NO_ERRORS}
               kinds={activeKinds.get(stage.id) ?? NO_KINDS}
               onModeChange={(param, kind) => changeMode(stage, param, kind)}
               stage={stage}
@@ -1154,9 +1222,10 @@ const ViewBar: React.FC = () => {
               onToggle={() =>
                 setEditingId((id) => (id === stage.id ? null : stage.id))
               }
-              onChange={(name, value) =>
-                dispatch({ type: "setKwarg", id: stage.id, name, value })
-              }
+              onChange={(name, value) => {
+                markTouched(stage.id, name);
+                dispatch({ type: "setKwarg", id: stage.id, name, value });
+              }}
               onRemove={() => {
                 if (editingId === stage.id) setEditingId(null);
                 dispatch({ type: "removeStage", id: stage.id });
