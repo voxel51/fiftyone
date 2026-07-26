@@ -608,6 +608,7 @@ export function useRegisterDataStream({
       prefetcher
         ? new DataStreamScheduler({
             caches: streamCachesRef.current,
+            cancelIdle: () => cancelIdleReads(session),
             computeBufferedRanges,
             failedStreams: fetchState.failedStreams,
             getActiveBlockingStreams,
@@ -639,6 +640,7 @@ export function useRegisterDataStream({
       source,
       startupCushionPlanner,
       store,
+      session,
     ],
   );
 
@@ -689,7 +691,8 @@ export function useRegisterDataStream({
     };
   }, [schedulePausedIdleWarmup]);
 
-  // This effect starts paused warmup and cancels it while playback is active.
+  // Paused warmup is speculative. The scheduler cancels in-flight idle work
+  // synchronously when play becomes pending; this effect only owns its timer.
   useEffect(() => {
     if (isPlaying) {
       clearPausedIdleWarmupTimer();

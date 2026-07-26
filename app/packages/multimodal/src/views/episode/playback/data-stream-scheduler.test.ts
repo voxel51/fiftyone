@@ -78,6 +78,9 @@ describe("DataStreamScheduler", () => {
     const cleanup = harness.register();
 
     playbackState.isPlayPending = true;
+    playbackState.pendingListener?.();
+    expect(harness.cancelIdle).toHaveBeenCalledOnce();
+
     playbackState.isPlayPending = false;
     playbackState.pendingListener?.();
     expect(
@@ -119,8 +122,10 @@ function createSchedulerHarness() {
   } as unknown as StartupCushionPlanner;
   const unregisterStream = vi.fn();
   const unsubscribeStream = vi.fn();
+  const cancelIdle = vi.fn();
   const scheduler = new DataStreamScheduler({
     caches: new Map([["/camera", cache]]),
+    cancelIdle,
     computeBufferedRanges: () => [[0, 10]],
     failedStreams: new Set(),
     getActiveBlockingStreams: () => ["/camera"],
@@ -143,6 +148,7 @@ function createSchedulerHarness() {
   });
 
   return {
+    cancelIdle,
     prefetcher,
     register: () =>
       scheduler.register(

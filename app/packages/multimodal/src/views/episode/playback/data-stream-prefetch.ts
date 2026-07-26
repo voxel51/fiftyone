@@ -394,6 +394,7 @@ export function createDataStreamPrefetcher({
 /** Dependencies required by the rolling episode prefetch scheduler. */
 export interface DataStreamSchedulerOptions {
   readonly caches: Map<string, EpisodeStreamCache>;
+  readonly cancelIdle: () => void;
   readonly computeBufferedRanges: () => Array<[number, number]>;
   readonly failedStreams: ReadonlySet<string>;
   readonly getActiveBlockingStreams: () => string[];
@@ -689,7 +690,9 @@ export class DataStreamScheduler {
     const unregister = registerStream(stream);
     const unsubscribe = subscribeStream(STREAM_ID);
     const unsubPlayPending = subscribeIsPlayPending(options.store, () => {
-      if (!getIsPlayPending(options.store)) {
+      if (getIsPlayPending(options.store)) {
+        options.cancelIdle();
+      } else {
         options.startupCushionPlanner.resetPendingPlan();
       }
       options.publishStreamStatuses();

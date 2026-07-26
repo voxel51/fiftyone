@@ -11,6 +11,7 @@ import type {
   StreamSyncPolicies,
   SynchronizedFrameWindow,
 } from "../../../ir";
+import { EpisodeReadCancelledError } from "../../../ports";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { createTimelineIndex, EpisodeStreamCache } from "../../../runtime";
 import {
@@ -80,6 +81,29 @@ describe("data stream prefetcher", () => {
     expect(readSynchronizedBatch.mock.calls[1]?.[1]).toEqual({
       priority: "idle",
     });
+  });
+
+  it("releases pending ticks after an idle read is cancelled", async () => {
+    const idleRead = deferred<readonly SynchronizedFrameWindow[]>();
+    const harness = createHarness({
+      readSynchronizedBatch: vi.fn(() => idleRead.promise),
+    });
+    harness.caches.get(IMAGE)?.subscribe();
+
+    expect(
+      harness.prefetcher.fetchBatch([0n], [IMAGE], "background-lookahead"),
+    ).toBe(true);
+    expect(
+      harness.prefetcher.collectMissingTicksForStreams(0, 0, 1, [IMAGE]),
+    ).toEqual([]);
+
+    idleRead.reject(new EpisodeReadCancelledError());
+    await settle();
+
+    expect(harness.fetchState.failureStreaks).toEqual(new Map());
+    expect(
+      harness.prefetcher.collectMissingTicksForStreams(0, 0, 1, [IMAGE]),
+    ).toEqual([0n]);
   });
 
   it("isolates decode failures and seals only the repeatedly broken stream", async () => {
@@ -234,10 +258,12 @@ function windowAt(
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => {
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((done, fail) => {
     resolve = done;
+    reject = fail;
   });
-  return { promise, resolve };
+  return { promise, reject, resolve };
 }
 
 async function settle(): Promise<void> {
