@@ -2220,6 +2220,42 @@ describe("MCAP resources", () => {
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
   });
 
+  it("shares synchronized worker decodes without inspecting payload bytes", async () => {
+    const source = createMcapSourceDescriptor();
+    const data = new Uint8Array([1, 2, 3]);
+    const iteratePayload = vi.spyOn(data, Symbol.iterator);
+    const message = createMessage(data, {
+      logTime: 100n,
+      publishTime: 101n,
+    });
+    const decodeClient = {
+      ...createTestDecodeClient(),
+      cachesDecodedOutput: false,
+    };
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient,
+      readerFactory: vi.fn(async () =>
+        createReader({
+          messages: [message],
+        }),
+      ),
+    });
+
+    const windows = await client.readSynchronizedMessageBatch({
+      timeNs: [100n, 101n],
+      source,
+      topics: ["/topic"],
+    });
+
+    expect(windows).toHaveLength(2);
+    expect(
+      windows.map((window) => window.messagesByTopic["/topic"]?.length),
+    ).toEqual([1, 1]);
+    expect(decodeClient.decode).toHaveBeenCalledTimes(1);
+    expect(iteratePayload).not.toHaveBeenCalled();
+  });
+
   it("uses indexed message times to read only selected synchronized messages", async () => {
     const source = createMcapSourceDescriptor();
     const camera = createMessage(new Uint8Array([1]), {

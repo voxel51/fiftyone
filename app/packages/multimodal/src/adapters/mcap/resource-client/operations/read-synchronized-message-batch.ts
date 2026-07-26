@@ -15,7 +15,7 @@ import {
   isMcapTopicDecodeError,
   type McapTopicDecodeError,
 } from "../../normalization/errors";
-import { decodeMcapMessage, mcapMessageRecordId } from "../message-decoder";
+import { decodeMcapMessage } from "../message-decoder";
 import type {
   McapIndexedMessageTime,
   McapIndexedReaderLike,
@@ -55,6 +55,14 @@ interface McapIndexedMessageCandidate extends McapIndexedMessageTime {
 type McapSettledTopicDecode =
   | { readonly decoded: McapDecodedMessage; readonly status: "decoded" }
   | { readonly error: McapTopicDecodeError; readonly status: "error" };
+
+// Raw candidates are materialized once per batch; indexed lookups share them
+// through rawReadCache. Object identity avoids payload scans while the nested
+// map preserves point-cloud color variants.
+type McapRawDecodeCache = Map<
+  McapTypes.TypedMcapRecords["Message"],
+  Map<string, Promise<McapDecodedMessage>>
+>;
 
 /**
  * Reads and decodes synchronized MCAP windows for one batched playback request.
@@ -102,7 +110,7 @@ export async function readMcapSynchronizedMessageBatch({
     ),
   );
   const minTickNs = minBigInt([...request.timeNs]);
-  const rawDecodeCache = new Map<string, Promise<McapDecodedMessage>>();
+  const rawDecodeCache: McapRawDecodeCache = new Map();
   const indexedCandidates = await collectIndexedCandidates({
     endTimeNs,
     reader,
@@ -710,7 +718,7 @@ async function decodeIndexedCandidate({
   readonly candidate: McapIndexedMessageCandidate;
   readonly decodeClient: DecodeClient;
   readonly indexedDecodeCache: Map<string, Promise<McapDecodedMessage>>;
-  readonly rawDecodeCache: Map<string, Promise<McapDecodedMessage>>;
+  readonly rawDecodeCache: McapRawDecodeCache;
   readonly rawReadCache: Map<
     string,
     Promise<readonly McapRawMessageCandidate[]>
@@ -841,17 +849,21 @@ async function decodeRawCandidate({
   timeline,
 }: {
   readonly candidate: McapRawMessageCandidate;
-  readonly decodeCache: Map<string, Promise<McapDecodedMessage>>;
+  readonly decodeCache: McapRawDecodeCache;
   readonly decodeClient: DecodeClient;
   readonly pointCloudColorBy?: string;
   readonly signal?: AbortSignal;
   readonly source: McapReadSynchronizedMessageBatchRequest["source"];
   readonly timeline: McapTimelineStrategy;
 }): Promise<McapDecodedMessage> {
-  const key = `${mcapMessageRecordId(candidate.message)}\0${
-    pointCloudColorBy ?? "auto"
-  }`;
-  let decoded = decodeCache.get(key);
+  let decodedByColor = decodeCache.get(candidate.message);
+  if (!decodedByColor) {
+    decodedByColor = new Map();
+    decodeCache.set(candidate.message, decodedByColor);
+  }
+
+  const colorKey = pointCloudColorBy ?? "auto";
+  let decoded = decodedByColor.get(colorKey);
 
   if (!decoded) {
     decoded = decodeMcapMessage({
@@ -864,7 +876,7 @@ async function decodeRawCandidate({
       source,
       timeline,
     });
-    decodeCache.set(key, decoded);
+    decodedByColor.set(colorKey, decoded);
   }
 
   return decoded;
