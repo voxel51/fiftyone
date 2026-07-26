@@ -348,6 +348,11 @@ input ExtendedViewForm {
   slice: String = null
 }
 
+type FieldKind {
+  ftype: String!
+  kind: Kind!
+}
+
 type FloatAggregation implements Aggregation {
   path: String!
   count: Int!
@@ -449,6 +454,20 @@ scalar JSON
 type KeypointSkeleton {
   labels: [String!]
   edges: [[Int!]!]!
+}
+
+"""
+The kind of value a view expression operator accepts or produces
+"""
+enum Kind {
+  ANY
+  NUMBER
+  STRING
+  BOOLEAN
+  ARRAY
+  OBJECT
+  DATE
+  ID
 }
 
 type LabelTagColor {
@@ -691,6 +710,9 @@ type Query {
     datasetName: String!
     viewStages: BSONArray!
   ): SchemaResult!
+  viewExpressionOperators: [ViewExpressionOperator!]!
+  viewExpressionFieldKinds: [FieldKind!]!
+  viewExpressionAstVersion: Int!
 }
 
 type QueryTimeout {
@@ -901,6 +923,20 @@ type VideoSample implements Sample {
   aspectRatio: Float!
   frameNumber: Int!
   frameRate: Float!
+}
+
+type ViewExpressionOperator {
+  name: String!
+  display: String!
+  syntax: String!
+  selfKind: Kind!
+  argKinds: [Kind!]!
+  returns: Kind!
+  minArgs: Int!
+  maxArgs: Int
+  reflected: Boolean!
+  typed: Boolean!
+  summary: String!
 }
 
 type WildcardProjection {

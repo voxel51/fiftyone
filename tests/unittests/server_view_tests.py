@@ -11,10 +11,13 @@ import unittest
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
+import fiftyone.core.expression_ast as foea
+import fiftyone.core.expression_catalog as focx
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
+import fiftyone.server.expressions as fose
 from fiftyone.server.query import Dataset
 from fiftyone.server.samples import paginate_samples
 import fiftyone.server.view as fosv
@@ -1303,3 +1306,40 @@ class GetExtendedViewTests(unittest.TestCase):
         )
         self.assertEqual(len(view), 1)
         ds.delete()
+
+
+class ViewExpressionQueryTests(unittest.TestCase):
+    def test_operators(self):
+        operators = {
+            operator.name: operator
+            for operator in fose.view_expression_operators()
+        }
+        self.assertEqual(len(operators), len(focx.build_catalog()))
+
+        greater = operators["__gt__"]
+        self.assertEqual(greater.display, ">")
+        self.assertEqual(greater.returns, focx.Kind.BOOLEAN)
+        self.assertEqual(greater.arg_kinds, [focx.Kind.ANY])
+
+        length = operators["length"]
+        self.assertEqual(length.self_kind, focx.Kind.ARRAY)
+        self.assertEqual(length.returns, focx.Kind.NUMBER)
+
+    def test_field_kinds(self):
+        kinds = {
+            field_kind.ftype: field_kind.kind
+            for field_kind in fose.view_expression_field_kinds()
+        }
+        self.assertEqual(
+            kinds["fiftyone.core.fields.FloatField"], focx.Kind.NUMBER
+        )
+        self.assertEqual(
+            kinds["fiftyone.core.fields.ObjectIdField"], focx.Kind.ID
+        )
+        self.assertEqual(
+            len(kinds),
+            len(focx.field_kinds_by_ftype()),
+        )
+
+    def test_ast_version(self):
+        self.assertEqual(fose.view_expression_ast_version(), foea.AST_VERSION)
