@@ -124,6 +124,47 @@ export const isEmptyValue = (value: unknown): boolean =>
 export const isRequired = (param: ParamDef): boolean =>
   param.default == null && !isNullable(param.type);
 
+/**
+ * The reason this value cannot be sent, or null when it can.
+ *
+ * Numbers are checked strictly: `Number` rejects trailing garbage where
+ * `parseFloat` would quietly accept `"1x"` as 1, and a param that takes `int`
+ * without `float` rejects a fractional value. Expressions and dicts are only
+ * checked for being parseable — the server is the authority on their contents.
+ */
+export const validateParam = (
+  param: ParamDef,
+  value: unknown,
+): string | null => {
+  if (isEmptyValue(value)) {
+    return isRequired(param) ? "Required" : null;
+  }
+
+  const kind = pickInput(param.type);
+
+  if (kind === "numeric") {
+    const text = String(value).trim();
+    const parsed = Number(text);
+    if (!Number.isFinite(parsed)) {
+      return `Not a number: ${text}`;
+    }
+    const tokens = param.type.split("|").map((t) => t.trim());
+    if (!tokens.includes("float") && !Number.isInteger(parsed)) {
+      return "Must be a whole number";
+    }
+  }
+
+  if (kind === "json" && typeof value === "string") {
+    try {
+      JSON.parse(value);
+    } catch (e) {
+      return `Invalid JSON: ${(e as Error).message}`;
+    }
+  }
+
+  return null;
+};
+
 /** `true` when the param accepts `NoneType` — i.e. is clearable. */
 export const isNullable = (typeString: string): boolean =>
   typeString
@@ -165,7 +206,7 @@ type BarAction =
 
 const initialState: BarState = { stages: [] };
 
-const NO_MISSING: ReadonlySet<string> = new Set();
+const NO_ERRORS: ReadonlyMap<string, string> = new Map();
 
 const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -219,8 +260,8 @@ interface ParamDef {
 interface ParamInputProps {
   param: ParamDef;
   value: unknown;
-  /** Required, but nothing entered yet. */
-  invalid?: boolean;
+  /** Why this value cannot be sent, if it cannot. */
+  error?: string | null;
   onChange: (next: unknown) => void;
   fieldOptions: { id: string; data: { label: string } }[];
 }
@@ -249,13 +290,14 @@ const Labelled: React.FC<
   </Stack>
 );
 
-const ParamInput: React.FC<ParamInputProps> = ({
+const ParamControl: React.FC<ParamInputProps> = ({
   param,
   value,
-  invalid,
+  error,
   onChange,
   fieldOptions,
 }) => {
+  const invalid = Boolean(error);
   const kind = pickInput(param.type);
   // Controls name themselves, so the required marker rides along with the name
   const name = isRequired(param) ? `${param.name} *` : param.name;
@@ -306,11 +348,7 @@ const ParamInput: React.FC<ParamInputProps> = ({
           size={Size.Sm}
           value={value == null ? "" : String(value)}
           placeholder={placeholder}
-          onChange={(e) => {
-            const raw = e.target.value;
-            const parsed = Number.parseFloat(raw);
-            onChange(Number.isFinite(parsed) ? parsed : raw);
-          }}
+          onChange={(e) => onChange(e.target.value)}
         />
       );
 
@@ -385,6 +423,26 @@ const ParamInput: React.FC<ParamInputProps> = ({
   }
 };
 
+/**
+ * A parameter's control plus the reason its value was rejected. voodo's `Input`
+ * takes only a boolean error, so the message is rendered here.
+ */
+const ParamInput: React.FC<ParamInputProps> = (props) => (
+  <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+    <ParamControl {...props} />
+    {props.error && (
+      <span
+        style={{
+          fontSize: 11,
+          color: "var(--fo-palette-error-plainColor)",
+        }}
+      >
+        {props.error}
+      </span>
+    )}
+  </Stack>
+);
+
 // ---------------------------------------------------------------
 // Stage card
 // ---------------------------------------------------------------
@@ -393,8 +451,8 @@ interface StageCardProps {
   stage: WorkingStage;
   definition: { name: string; params: ParamDef[] };
   fieldOptions: { id: string; data: { label: string } }[];
-  /** Required param names on this stage with nothing entered. */
-  missing: ReadonlySet<string>;
+  /** Why each of this stage's params was rejected, by param name. */
+  errors: ReadonlyMap<string, string>;
   expanded: boolean;
   onToggle: () => void;
   onChange: (name: string, value: unknown) => void;
@@ -422,7 +480,7 @@ const StageCard: React.FC<StageCardProps> = ({
   stage,
   definition,
   fieldOptions,
-  missing,
+  errors,
   expanded,
   onToggle,
   onChange,
@@ -527,7 +585,7 @@ const StageCard: React.FC<StageCardProps> = ({
                     key={p.name}
                     param={p}
                     value={stage.kwargs[p.name]}
-                    invalid={missing.has(p.name)}
+                    error={errors.get(p.name)}
                     onChange={(v) => onChange(p.name, v)}
                     fieldOptions={fieldOptions}
                   />
@@ -620,7 +678,15 @@ const ViewBar: React.FC = () => {
       const def = defsByName.get(s.cls);
       const kwargs: [string, unknown][] = (def?.params ?? [])
         .filter((p) => !isEmpty(s.kwargs[p.name]))
-        .map((p) => [p.name, s.kwargs[p.name]]);
+        .map((p) => {
+          const value = s.kwargs[p.name];
+          // Numeric controls hold what was typed; validation has already
+          // rejected anything that is not a number by the time Apply runs
+          if (pickInput(p.type) === "numeric" && typeof value === "string") {
+            return [p.name, Number(value.trim())];
+          }
+          return [p.name, value];
+        });
       return { _cls: `fiftyone.core.stages.${s.cls}`, kwargs };
     });
   }, [state.stages, defsByName]);
@@ -632,30 +698,31 @@ const ViewBar: React.FC = () => {
    * param is simply omitted and the server builds a broken stage — an empty
    * `Limit` becomes `Limit()`, which raises rather than doing nothing.
    */
-  const missingRequired = useMemo(() => {
-    const byStage = new Map<string, Set<string>>();
+  const paramErrors = useMemo(() => {
+    const byStage = new Map<string, Map<string, string>>();
     const labels: string[] = [];
     for (const stage of state.stages) {
       const def = defsByName.get(stage.cls);
       for (const param of def?.params ?? []) {
-        if (isRequired(param) && isEmptyValue(stage.kwargs[param.name])) {
-          let names = byStage.get(stage.id);
-          if (!names) {
-            names = new Set();
-            byStage.set(stage.id, names);
-          }
-          names.add(param.name);
-          labels.push(`${stage.cls}.${param.name}`);
+        const message = validateParam(param, stage.kwargs[param.name]);
+        if (!message) continue;
+
+        let messages = byStage.get(stage.id);
+        if (!messages) {
+          messages = new Map();
+          byStage.set(stage.id, messages);
         }
+        messages.set(param.name, message);
+        labels.push(`${stage.cls}.${param.name} (${message})`);
       }
     }
     return { byStage, labels };
   }, [state.stages, defsByName]);
 
   const apply = useCallback(() => {
-    if (missingRequired.labels.length) return;
+    if (paramErrors.labels.length) return;
     setView(serializeWorking());
-  }, [missingRequired, serializeWorking, setView]);
+  }, [paramErrors, serializeWorking, setView]);
 
   /**
    * Pending changes detector: whether the working state differs
@@ -893,7 +960,7 @@ const ViewBar: React.FC = () => {
         return (
           <React.Fragment key={stage.id}>
             <StageCard
-              missing={missingRequired.byStage.get(stage.id) ?? NO_MISSING}
+              errors={paramErrors.byStage.get(stage.id) ?? NO_ERRORS}
               stage={stage}
               definition={def}
               fieldOptions={fieldOptions}
@@ -939,10 +1006,10 @@ const ViewBar: React.FC = () => {
           variant={Variant.Primary}
           size={Size.Xs}
           onClick={apply}
-          disabled={missingRequired.labels.length > 0}
+          disabled={paramErrors.labels.length > 0}
           title={
-            missingRequired.labels.length
-              ? `Required: ${missingRequired.labels.join(", ")}`
+            paramErrors.labels.length
+              ? `Fix: ${paramErrors.labels.join(", ")}`
               : "Apply view"
           }
           data-cy="btn-apply-view-bar"
