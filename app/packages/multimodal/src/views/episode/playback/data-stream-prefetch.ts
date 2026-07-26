@@ -1,11 +1,12 @@
 import {
+  getCurrentTime,
   getIsPlayPending,
   getIsPlaying,
   getLoopEnd,
   getLoopStart,
   getPlayhead,
+  subscribeCurrentTime,
   subscribeIsPlayPending,
-  subscribePlayhead,
   type PlaybackStore,
   type PlaybackStream,
 } from "@fiftyone/playback";
@@ -338,14 +339,18 @@ export function createDataStreamPrefetcher({
           );
         }
         rebalanceDecodedCaches(false);
-        pushTickToStore(
-          activeStreamsInCaches(caches, activeStreams),
-          tick,
-          caches,
-          lastFrames,
-          store,
-          fetchState.failedStreams,
-        );
+        const currentIndex = getIndex();
+        const currentTick = currentIndex?.nearestTick(getPlayhead(store));
+        if (currentTick !== undefined) {
+          pushTickToStore(
+            activeStreamsInCaches(caches, activeStreams),
+            currentTick,
+            caches,
+            lastFrames,
+            store,
+            fetchState.failedStreams,
+          );
+        }
       })
       .catch((error) => {
         if (getSourceEpoch() !== sourceEpoch) return;
@@ -418,14 +423,14 @@ export interface DataStreamSchedulerOptions {
  * warmup, and the single playback-engine stream without owning React state.
  */
 export class DataStreamScheduler {
-  private lastObservedPlayheadSec: number | null = null;
+  private lastObservedCommitSec: number | null = null;
   private loopRunwayStartTickKey: string | null = null;
   private nextLookaheadRefreshTime = 0;
 
   constructor(private readonly options: DataStreamSchedulerOptions) {}
 
   resetSource(): void {
-    this.lastObservedPlayheadSec = null;
+    this.lastObservedCommitSec = null;
     this.loopRunwayStartTickKey = null;
     this.nextLookaheadRefreshTime = 0;
   }
@@ -697,12 +702,12 @@ export class DataStreamScheduler {
       }
       options.publishStreamStatuses();
     });
-    const unsubPlayhead = subscribePlayhead(options.store, () => {
-      const timeSec = getPlayhead(options.store);
+    const unsubCurrentTime = subscribeCurrentTime(options.store, () => {
+      const timeSec = getCurrentTime(options.store);
       const movedBackward =
-        this.lastObservedPlayheadSec !== null &&
-        timeSec + nativeStep < this.lastObservedPlayheadSec;
-      this.lastObservedPlayheadSec = timeSec;
+        this.lastObservedCommitSec !== null &&
+        timeSec + nativeStep < this.lastObservedCommitSec;
+      this.lastObservedCommitSec = timeSec;
       if (movedBackward) this.nextLookaheadRefreshTime = 0;
       if (getIsPlaying(options.store)) {
         options.startupCushionPlanner.resetPendingPlan();
@@ -781,7 +786,7 @@ export class DataStreamScheduler {
       unregister();
       unsubscribe();
       unsubPlayPending();
-      unsubPlayhead();
+      unsubCurrentTime();
     };
   }
 }

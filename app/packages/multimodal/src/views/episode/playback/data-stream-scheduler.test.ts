@@ -14,41 +14,44 @@ import {
 import type { StartupCushionPlanner } from "./startup-cushion";
 
 const playbackState = vi.hoisted(() => ({
+  currentTime: 0,
+  currentTimeListener: null as (() => void) | null,
+  currentTimeUnsubscribe: vi.fn(),
   isPlayPending: false,
   isPlaying: false,
   pendingListener: null as (() => void) | null,
   pendingUnsubscribe: vi.fn(),
   playhead: 0,
-  playheadListener: null as (() => void) | null,
-  playheadUnsubscribe: vi.fn(),
 }));
 
 vi.mock("@fiftyone/playback", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@fiftyone/playback")>();
   return {
     ...actual,
+    getCurrentTime: () => playbackState.currentTime,
     getIsPlayPending: () => playbackState.isPlayPending,
     getIsPlaying: () => playbackState.isPlaying,
     getPlayhead: () => playbackState.playhead,
+    subscribeCurrentTime: (_store: PlaybackStore, listener: () => void) => {
+      playbackState.currentTimeListener = listener;
+      return playbackState.currentTimeUnsubscribe;
+    },
     subscribeIsPlayPending: (_store: PlaybackStore, listener: () => void) => {
       playbackState.pendingListener = listener;
       return playbackState.pendingUnsubscribe;
-    },
-    subscribePlayhead: (_store: PlaybackStore, listener: () => void) => {
-      playbackState.playheadListener = listener;
-      return playbackState.playheadUnsubscribe;
     },
   };
 });
 
 beforeEach(() => {
+  playbackState.currentTime = 0;
+  playbackState.currentTimeListener = null;
+  playbackState.currentTimeUnsubscribe.mockReset();
   playbackState.isPlayPending = false;
   playbackState.isPlaying = false;
   playbackState.pendingListener = null;
   playbackState.pendingUnsubscribe.mockReset();
   playbackState.playhead = 0;
-  playbackState.playheadListener = null;
-  playbackState.playheadUnsubscribe.mockReset();
 });
 
 describe("DataStreamScheduler", () => {
@@ -56,23 +59,37 @@ describe("DataStreamScheduler", () => {
     const harness = createSchedulerHarness();
     const cleanup = harness.register();
 
-    movePlayhead(5);
+    commitTime(5);
     expect(backgroundFetchCount(harness.prefetcher.fetchBatch)).toBe(1);
 
     // A sub-threshold forward tick is intentionally coalesced.
-    movePlayhead(5.01);
+    commitTime(5.01);
     expect(backgroundFetchCount(harness.prefetcher.fetchBatch)).toBe(1);
 
     playbackState.isPlaying = true;
-    movePlayhead(6);
+    commitTime(6);
     expect(backgroundFetchCount(harness.prefetcher.fetchBatch)).toBe(1);
     expect(
       operationFetchCount(harness.prefetcher.fetchBatch, "playback-prefetch"),
     ).toBe(1);
 
     playbackState.isPlaying = false;
-    movePlayhead(1);
+    commitTime(1);
     expect(backgroundFetchCount(harness.prefetcher.fetchBatch)).toBe(2);
+    cleanup();
+  });
+
+  it("does not admit lookahead work from visual-only playhead movement", () => {
+    const harness = createSchedulerHarness();
+    const cleanup = harness.register();
+
+    playbackState.playhead = 1;
+    playbackState.playhead = 5;
+    playbackState.playhead = 9;
+    expect(harness.prefetcher.fetchBatch).not.toHaveBeenCalled();
+
+    commitTime(9);
+    expect(harness.prefetcher.fetchBatch).toHaveBeenCalledOnce();
     cleanup();
   });
 
@@ -91,7 +108,7 @@ describe("DataStreamScheduler", () => {
     ).toHaveBeenCalledOnce();
 
     playbackState.isPlaying = true;
-    movePlayhead(0.5);
+    commitTime(0.5);
     expect(
       harness.startupCushionPlanner.resetPendingPlan,
     ).toHaveBeenCalledTimes(2);
@@ -100,7 +117,7 @@ describe("DataStreamScheduler", () => {
     expect(harness.unregisterStream).toHaveBeenCalledOnce();
     expect(harness.unsubscribeStream).toHaveBeenCalledOnce();
     expect(playbackState.pendingUnsubscribe).toHaveBeenCalledOnce();
-    expect(playbackState.playheadUnsubscribe).toHaveBeenCalledOnce();
+    expect(playbackState.currentTimeUnsubscribe).toHaveBeenCalledOnce();
   });
 });
 
@@ -164,9 +181,10 @@ function createSchedulerHarness() {
   };
 }
 
-function movePlayhead(timeSec: number): void {
+function commitTime(timeSec: number): void {
+  playbackState.currentTime = timeSec;
   playbackState.playhead = timeSec;
-  playbackState.playheadListener?.();
+  playbackState.currentTimeListener?.();
 }
 
 function backgroundFetchCount(fetchBatch: ReturnType<typeof vi.fn>): number {

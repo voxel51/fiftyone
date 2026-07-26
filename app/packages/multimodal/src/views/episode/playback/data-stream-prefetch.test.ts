@@ -3,6 +3,7 @@ import {
   setIsBuffering,
   type PlaybackStore,
 } from "@fiftyone/playback";
+import { playheadAtom } from "@fiftyone/playback/runtime";
 import { createStore } from "jotai";
 import { describe, expect, it, vi } from "vitest";
 
@@ -157,12 +158,35 @@ describe("data stream prefetcher", () => {
     expect(held).not.toBeNull();
 
     setIsBuffering(harness.store, true);
+    harness.store.set(playheadAtom, 0.5);
     harness.prefetcher.fetchCurrentFrame(500_000_000n, [IMAGE]);
     expect(getStreamValue(harness.store, IMAGE)).toBe(held);
     targetRead.resolve(windowAt(500_000_000n, []));
     await settle();
     expect(getStreamValue(harness.store, IMAGE)).toBe(held);
     expect(harness.rebalanceDecodedCaches).toHaveBeenLastCalledWith(false);
+  });
+
+  it("publishes the current playhead tick when an older frame read resolves", async () => {
+    const staleRead = deferred<SynchronizedFrameWindow>();
+    const harness = createHarness({
+      readSynchronized: vi.fn(() => staleRead.promise),
+    });
+    harness.caches.get(IMAGE)?.subscribe();
+
+    expect(harness.prefetcher.fetchCurrentFrame(0n, [IMAGE])).toBe(true);
+    harness.caches.get(IMAGE)?.set(500_000_000n, frame(IMAGE, 500_000_000n));
+    harness.store.set(playheadAtom, 0.5);
+
+    staleRead.resolve(windowAt(0n, [frame(IMAGE, 0n)]));
+    await settle();
+
+    expect(
+      getStreamValue<StreamPlaybackFrame<unknown>>(harness.store, IMAGE),
+    ).toMatchObject({
+      contentTimeNs: 500_000_000n,
+      requestedTimeNs: 500_000_000n,
+    });
   });
 });
 

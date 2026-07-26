@@ -5,6 +5,7 @@ import {
   getIsPlayPending,
   getIsPlaying,
   getPlayhead,
+  getSeekFetchDebounceMs,
   getStreamValue,
   PlaybackProvider,
   setIsBuffering,
@@ -137,6 +138,38 @@ afterEach(() => {
 });
 
 describe("useRegisterDataStream", () => {
+  it("enables seek-fetch debounce only for explicitly remote sources", () => {
+    const remote = createSource(
+      "remote-policy",
+      BYTE_SOURCE_READ_PROFILE.REMOTE,
+    );
+    const local = createSource("local-policy", BYTE_SOURCE_READ_PROFILE.LOCAL);
+    const storeCapture = capturePlaybackStore();
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    const { rerender, unmount } = render(
+      <Harness
+        client={client}
+        onStore={storeCapture.onStore}
+        source={remote}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+    expect(getSeekFetchDebounceMs(store)).toBe(150);
+
+    rerender(
+      <Harness client={client} onStore={storeCapture.onStore} source={local} />,
+    );
+    expect(getSeekFetchDebounceMs(store)).toBe(0);
+
+    unmount();
+    expect(getSeekFetchDebounceMs(store)).toBe(0);
+  });
+
   it("renders through mandatory session reads without playback acceleration", async () => {
     const source = createSource("mandatory-read");
     const storeCapture = capturePlaybackStore();
@@ -1470,8 +1503,8 @@ describe("stream status + buffering feedback", () => {
       expect(getStreamStatus(store, STREAM)).toBe("loading");
     });
 
-    // The (debounced) seek event issues a priority fetch for the seeked
-    // tick; resolving it is the "workers caught up" moment.
+    // The engine's missing-data admission issues a priority fetch for the
+    // seeked tick; resolving it is the "workers caught up" moment.
     await waitFor(() => {
       expect(currentCalls.length).toBeGreaterThan(mountCalls);
     });
@@ -1493,6 +1526,80 @@ describe("stream status + buffering feedback", () => {
       expect(getIsBuffering(store)).toBe(false);
       expect(getStreamStatus(store, STREAM)).toBe("ready");
     });
+  });
+
+  it("bounds remote request admission to the settled target during a seek burst", async () => {
+    const source = createSource(
+      "remote-seek-census",
+      BYTE_SOURCE_READ_PROFILE.REMOTE,
+    );
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const readSynchronizedMessageBatch = vi.fn(
+      (
+        _request: Parameters<ResourceClient["readSynchronizedMessageBatch"]>[0],
+      ) => new Promise<readonly SynchronizedMessageWindow[]>(() => undefined),
+    );
+    const readSynchronizedMessages = vi.fn(
+      (_request: Parameters<ResourceClient["readSynchronizedMessages"]>[0]) =>
+        new Promise<SynchronizedMessageWindow>(() => undefined),
+    );
+    const client = createClient({
+      readSynchronizedMessageBatch,
+      readSynchronizedMessages,
+      readTimelineRange: vi.fn(async () =>
+        createTimelineRange(60_000_000_000n),
+      ),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(readSynchronizedMessageBatch).toHaveBeenCalled();
+      expect(readSynchronizedMessages).toHaveBeenCalled();
+    });
+    const initialBatchCalls = readSynchronizedMessageBatch.mock.calls.length;
+    const initialCurrentCalls = readSynchronizedMessages.mock.calls.length;
+
+    act(() => {
+      for (let second = 1; second <= 30; second++) {
+        api?.seek(second);
+      }
+    });
+
+    // Visual-only positions must not cross the data-plane boundary.
+    expect(getPlayhead(storeCapture.store())).toBe(30);
+    expect(readSynchronizedMessageBatch).toHaveBeenCalledTimes(
+      initialBatchCalls,
+    );
+    expect(readSynchronizedMessages).toHaveBeenCalledTimes(initialCurrentCalls);
+
+    await waitFor(() => {
+      expect(readSynchronizedMessageBatch).toHaveBeenCalledTimes(
+        initialBatchCalls + 1,
+      );
+      expect(readSynchronizedMessages).toHaveBeenCalledTimes(
+        initialCurrentCalls + 1,
+      );
+    });
+
+    const settledCurrentRequest =
+      readSynchronizedMessages.mock.calls.at(-1)?.[0];
+    expect(settledCurrentRequest?.timeNs).toBeGreaterThan(29_000_000_000n);
+    const settledBatchRequest =
+      readSynchronizedMessageBatch.mock.calls.at(-1)?.[0];
+    expect(settledBatchRequest?.timeNs.length).toBeGreaterThan(0);
+    expect(settledBatchRequest?.timeNs.length).toBeLessThanOrEqual(15);
   });
 
   it("seeks and prefetches virtual ticks beyond the old materialized tick cap", async () => {

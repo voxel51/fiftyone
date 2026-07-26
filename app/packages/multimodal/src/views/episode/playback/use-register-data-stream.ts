@@ -4,6 +4,7 @@ import {
   getIsPlayPending,
   getPlayhead,
   setBufferedRanges,
+  setSeekFetchDebounceMs,
   setStreamValue,
   useIsPlaying,
   usePlayback,
@@ -82,6 +83,7 @@ import type { StreamPlaybackFrame } from "./use-stream-values";
  * buffering stalls).
  */
 const BUFFERED_RANGES_PUBLISH_INTERVAL_MS = 500;
+const REMOTE_SEEK_FETCH_DEBOUNCE_MS = 150;
 const PLAYBACK_POLICY = derivePlaybackPolicy(DEFAULT_PLAYBACK_POLICY);
 // Local files need only a current-frame guard before rolling prefetch takes
 // over. Keeping this grant short prevents cold multi-image batches from
@@ -158,18 +160,27 @@ export function useRegisterDataStream({
     () => (source ? episodeSourceAccessKey(source) : ""),
     [source],
   );
+  const sourceReadProfile = source?.readProfile;
   const playbackPolicy =
-    source?.readProfile === BYTE_SOURCE_READ_PROFILE.LOCAL
+    sourceReadProfile === BYTE_SOURCE_READ_PROFILE.LOCAL
       ? LOCAL_PLAYBACK_POLICY
       : PLAYBACK_POLICY;
+  const seekFetchDebounceMs =
+    sourceReadProfile === BYTE_SOURCE_READ_PROFILE.REMOTE
+      ? REMOTE_SEEK_FETCH_DEBOUNCE_MS
+      : 0;
 
   // This layout effect resets recording-local time before paint while the
-  // playback store—and therefore the modal workspace—survives navigation.
-  // The stream-bounds path below may then advance zero to the first data tick.
+  // playback store—and therefore the modal workspace—survives navigation. It
+  // also applies source-local fetch policy before the reset seek: generic and
+  // local playback remain immediate, while explicitly remote sources coalesce
+  // missing-data admission during rapid scrubbing.
   useLayoutEffect(() => {
+    setSeekFetchDebounceMs(store, seekFetchDebounceMs);
     pause();
     seek(0);
-  }, [pause, seek, sourceKey]);
+    return () => setSeekFetchDebounceMs(store, 0);
+  }, [pause, seek, seekFetchDebounceMs, sourceKey, store]);
 
   const [index, setIndex] = useState<TimelineIndex | null>(null);
 
@@ -281,7 +292,6 @@ export function useRegisterDataStream({
   // the smallest cushion that plays through to the horizon without
   // draining, so one honest buffering wait replaces repeated mid-play
   // freezes.
-  const sourceReadProfile = source?.readProfile;
   const resolveStartupCushion = useCallback(
     (): StartupCushion =>
       startupCushionPlanner.resolve({
@@ -718,7 +728,9 @@ export function useRegisterDataStream({
     return scheduler?.register(registerStream, subscribeStream);
   }, [index, registerStream, scheduler, source, subscribeStream]);
 
-  // This effect fetches and publishes a paused seek's target tick and window.
+  // This effect reacts immediately to seek intent without admitting data work.
+  // The playback engine owns missing-data prefetch and applies the source-local
+  // debounce above; committed-time scheduling grows runway after data lands.
   useEffect(() => {
     if (seekEvent) {
       // Stamp seeks so the idle-work gate can hold speculative reads while
@@ -736,9 +748,8 @@ export function useRegisterDataStream({
       // and the target frame replaces it as soon as the foreground fetch
       // lands. Source changes and stream unsubscription still clear retained
       // frames at their ownership boundaries.
-      prefetchLookaheadFrom(seekEvent.time);
     }
-  }, [session, seekEvent, prefetchLookaheadFrom, startupCushionPlanner]);
+  }, [session, seekEvent, startupCushionPlanner]);
 
   // This effect kicks off lookahead so the buffer fills before play or seek.
   // (May be a no-op if no tile has subscribed yet — subscribeToStream also
