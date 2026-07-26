@@ -206,6 +206,29 @@ interface ParamInputProps {
   fieldOptions: { id: string; data: { label: string } }[];
 }
 
+/**
+ * Names a control that cannot name itself. voodo's `Select` takes no
+ * placeholder, so the field pickers get a leading label; every other control
+ * carries the param name in its own placeholder.
+ */
+const Labelled: React.FC<React.PropsWithChildren<{ name: string }>> = ({
+  name,
+  children,
+}) => (
+  <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+    <span
+      style={{
+        fontSize: 12,
+        fontWeight: 500,
+        color: "var(--fo-palette-text-secondary)",
+      }}
+    >
+      {name}
+    </span>
+    {children}
+  </Stack>
+);
+
 const ParamInput: React.FC<ParamInputProps> = ({
   param,
   value,
@@ -221,33 +244,36 @@ const ParamInput: React.FC<ParamInputProps> = ({
         <Toggle
           checked={Boolean(value)}
           onChange={(v) => onChange(v)}
+          label={param.name}
           aria-label={param.name}
         />
       );
 
     case "field":
       return (
-        <Select
-          exclusive
-          portal
-          value={typeof value === "string" ? value : undefined}
-          options={fieldOptions}
-          onChange={(v) => {
-            if (typeof v === "string") onChange(v);
-          }}
-          style={{ minWidth: 160 }}
-        />
+        <Labelled name={param.name}>
+          <Select
+            exclusive
+            portal
+            value={typeof value === "string" ? value : undefined}
+            options={fieldOptions}
+            onChange={(v) => {
+              if (typeof v === "string") onChange(v);
+            }}
+          />
+        </Labelled>
       );
 
     case "fieldList":
       return (
-        <Select
-          portal
-          value={Array.isArray(value) ? (value as string[]) : []}
-          options={fieldOptions}
-          onChange={(v) => onChange(Array.isArray(v) ? v : v ? [v] : [])}
-          style={{ minWidth: 160 }}
-        />
+        <Labelled name={param.name}>
+          <Select
+            portal
+            value={Array.isArray(value) ? (value as string[]) : []}
+            options={fieldOptions}
+            onChange={(v) => onChange(Array.isArray(v) ? v : v ? [v] : [])}
+          />
+        </Labelled>
       );
 
     case "numeric":
@@ -455,37 +481,24 @@ const StageCard: React.FC<StageCardProps> = ({
               top: rect.top + 6,
               left: rect.left,
               zIndex: 10000,
-              minWidth: 360,
+              minWidth: 260,
               boxShadow: "0 8px 24px rgba(0, 0, 0, 0.45)",
               borderRadius: 6,
             }}
           >
             <Card background={CardBackground.Primary} outlined compact>
+              {/* Each control names itself — text inputs through their
+                  placeholder, toggles through their label — so there is no
+                  label column and no gutter beside the narrow controls. */}
               <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
                 {definition.params.map((p) => (
-                  <Stack
+                  <ParamInput
                     key={p.name}
-                    orientation={Orientation.Row}
-                    spacing={Spacing.Sm}
-                    align={Align.Center}
-                  >
-                    <span
-                      style={{
-                        fontSize: 12,
-                        color: "var(--fo-palette-text-primary)",
-                        fontWeight: 500,
-                        minWidth: 80,
-                      }}
-                    >
-                      {p.name}
-                    </span>
-                    <ParamInput
-                      param={p}
-                      value={stage.kwargs[p.name]}
-                      onChange={(v) => onChange(p.name, v)}
-                      fieldOptions={fieldOptions}
-                    />
-                  </Stack>
+                    param={p}
+                    value={stage.kwargs[p.name]}
+                    onChange={(v) => onChange(p.name, v)}
+                    fieldOptions={fieldOptions}
+                  />
                 ))}
               </Stack>
             </Card>
