@@ -12,16 +12,16 @@ export class ViewBarPom {
     this.locator = this.page.getByTestId("view-bar");
   }
 
-  get clearBtn() {
-    return this.locator.getByTestId("btn-clear-view-bar");
+  get applyBtn() {
+    return this.locator.getByTestId("btn-apply-view-bar");
   }
 
   get viewStages() {
     return this.locator.getByTestId("view-stage-container");
   }
 
-  clear() {
-    return this.clearBtn.click();
+  apply() {
+    return this.applyBtn.click();
   }
 }
 
