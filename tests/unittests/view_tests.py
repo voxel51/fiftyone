@@ -17,6 +17,8 @@ import numpy as np
 
 import fiftyone as fo
 from fiftyone import ViewField as F, VALUE
+import fiftyone.core.expression_ast as foea
+import fiftyone.core.expressions as foe
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
 import fiftyone.core.view as fov
@@ -4240,6 +4242,25 @@ class ViewStageTests(unittest.TestCase):
         self.assertIs(len(result), 1)
         self.assertEqual(result[0].id, self.sample1.id)
 
+    def test_match_expression_round_trip(self):
+        expr = F("conf") > 0.5
+
+        stage = fosg.Match(expr)
+        d = stage._serialize()
+
+        # stages serialize their expressions as MongoDB today
+        mongo = fosg.ViewStage._from_dict(d)
+        self.assertEqual(mongo._get_mongo_expr(), stage._get_mongo_expr())
+
+        # an envelope is decoded back into the expression that built it
+        d["kwargs"] = [["filter", foea.to_envelope(expr)]]
+        decoded = fosg.ViewStage._from_dict(d)
+        self.assertIsInstance(decoded._filter, foe.ViewExpression)
+        self.assertEqual(decoded._get_mongo_expr(), stage._get_mongo_expr())
+        self.assertEqual(
+            decoded.to_mongo(self.dataset), stage.to_mongo(self.dataset)
+        )
+
     def test_match_labels(self):
         sample1 = fo.Sample(
             filepath="image1.png",
@@ -5268,7 +5289,7 @@ class ViewStageTests(unittest.TestCase):
         self.assertEqual(type(second_stage), fosg.Select)
 
     def test_selected_samples_in_group_slices(self):
-        (dataset, selected_ids) = self._make_group_by_group_dataset()
+        dataset, selected_ids = self._make_group_by_group_dataset()
         view = dataset.view()
         self.assertEqual(view.media_type, "group")
 

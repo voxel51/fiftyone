@@ -21,6 +21,7 @@ import numpy as np
 
 import eta.core.utils as etau
 
+import fiftyone.core.expression_ast as foea
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
@@ -378,7 +379,11 @@ class ViewStage(object):
             a :class:`ViewStage`
         """
         view_stage_cls = etau.get_class(d["_cls"])
-        stage = view_stage_cls(**dict(d["kwargs"]))
+        kwargs = {
+            name: _decode_expressions(value)
+            for name, value in dict(d["kwargs"]).items()
+        }
+        stage = view_stage_cls(**kwargs)
         stage._uuid = d.get("_uuid", None)
         return stage
 
@@ -387,6 +392,25 @@ class ViewStageError(Exception):
     """An error raised when a problem with a :class:`ViewStage` is encountered."""
 
     pass
+
+
+def _decode_expressions(value):
+    """Reconstructs any view expression envelopes in a serialized stage
+    parameter.
+
+    A parameter may hold a raw MongoDB expression instead, which is what stages
+    serialize today; those are returned unchanged, as is anything else.
+    """
+    if foea.is_envelope(value):
+        return foea.from_envelope(value)
+
+    if isinstance(value, dict):
+        return {k: _decode_expressions(v) for k, v in value.items()}
+
+    if isinstance(value, list):
+        return [_decode_expressions(v) for v in value]
+
+    return value
 
 
 class Concat(ViewStage):
