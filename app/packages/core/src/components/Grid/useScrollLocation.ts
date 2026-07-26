@@ -15,7 +15,7 @@ export default function useScrollLocation(pageReset: string) {
       (ref: { current: number | null }) => {
         ref.current = get(gridPage);
       },
-    []
+    [],
   );
 
   const getKey = useMemo(() => {
@@ -52,7 +52,7 @@ export default function useScrollLocation(pageReset: string) {
           key,
         };
       },
-    [getKey]
+    [getKey],
   );
 
   // when scrolling ends, use set to save the grid location to recoil
@@ -63,7 +63,7 @@ export default function useScrollLocation(pageReset: string) {
         set(gridAt, location.at.description);
         set(gridOffset, location.offset);
       },
-    []
+    [],
   );
 
   return { get, set };

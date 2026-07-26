@@ -13,7 +13,7 @@ const useSetColorScheme: EventHandlerHook = () => {
       // we don't send rgb list to GraphQL
       setter("colorScheme", ensureColorScheme(payload.color_scheme));
     },
-    [setter]
+    [setter],
   );
 };
 export default useSetColorScheme;

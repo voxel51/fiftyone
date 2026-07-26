@@ -1,0 +1,97 @@
+name: Community PRs
+
+# Routes non-member PRs to the `community` branch and posts one welcome comment.
+# pull_request_target so it can edit fork PR bases; never checks out PR code.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, edited]
+
+concurrency:
+  group: community-prs-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  triage:
+    # The `community` branch is OSS-only.
+    if: github.repository == 'voxel51/fiftyone'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+
+            let hasPush = false;
+            try {
+              const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: author,
+              });
+              hasPush = ['write', 'admin', 'maintain'].includes(data.permission);
+            } catch {
+              hasPush = false;
+            }
+            if (hasPush) return;
+
+            let from = null;
+            if (pr.base.ref !== 'community') {
+              from = pr.base.ref;
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                base: 'community',
+              });
+            }
+
+            // Bots (e.g. Dependabot) are retargeted but skip the welcome.
+            if (author.endsWith('[bot]')) return;
+
+            const marker = '<!-- community-prs -->';
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              per_page: 100,
+            });
+            if (comments.some(c => (c.body || '').includes(marker))) return;
+
+            const body = [
+              marker,
+              `Thanks for opening this pull request, @${author}! 🎉`,
+              '',
+            ];
+
+            if (from) {
+              body.push(
+                `Community pull requests target the \`community\` branch, so I've changed this PR's base from \`${from}\` to \`community\`. Your changes are unaffected — a maintainer integrates \`community\` into \`develop\`.`,
+                '',
+              );
+            }
+
+            body.push(
+              'A maintainer will review your changes soon. In the meantime, please ensure:',
+              '',
+              '- [ ] You filled out the PR template above, completely to the best of your knowledge',
+              '- [ ] You include tests (if applicable)',
+              '- [ ] You read the [contribution guide](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md#community-pull-requests)',
+              '',
+              '**Helpful resources:**',
+              '- 📖 [FiftyOne Documentation](https://docs.voxel51.com/)',
+              '- 💬 [Discord Community](https://discord.gg/fiftyone-community)',
+              '- 🎬 [YouTube Channel](https://www.youtube.com/@voxel51)',
+            );
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: body.join('\n'),
+            });

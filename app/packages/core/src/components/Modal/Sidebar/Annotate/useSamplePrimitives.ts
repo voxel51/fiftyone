@@ -10,7 +10,7 @@ const useSamplePrimitives = (): string[] => {
     fieldPaths({
       space: State.SPACE.SAMPLE,
       ftype: [...VALID_PRIMITIVE_TYPES, DICT_FIELD],
-    })
+    }),
   );
 
   if (!activeFields) {
@@ -18,7 +18,7 @@ const useSamplePrimitives = (): string[] => {
   }
 
   const validPrimitivePaths = primitivePaths.filter((path) =>
-    activeFields.includes(path)
+    activeFields.includes(path),
   );
 
   return validPrimitivePaths;

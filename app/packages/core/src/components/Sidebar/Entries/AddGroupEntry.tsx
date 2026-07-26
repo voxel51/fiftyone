@@ -14,12 +14,12 @@ const AddGroup = () => {
     ({ set, snapshot }) =>
       async (newGroup: string) => {
         const current = await snapshot.getPromise(
-          fos.sidebarGroupsDefinition(false)
+          fos.sidebarGroupsDefinition(false),
         );
         if (
           !fos.validateGroupName(
             current.map(({ name }) => name),
-            newGroup
+            newGroup,
           )
         ) {
           return;
@@ -38,7 +38,7 @@ const AddGroup = () => {
           sidebarGroups: newGroups,
         });
       },
-    []
+    [],
   );
 
   if (isFieldVisibilityApplied || disabled) {

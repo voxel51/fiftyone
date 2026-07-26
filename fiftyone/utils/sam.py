@@ -734,6 +734,9 @@ class SAMSegmenterOutputProcessor(fout.OutputProcessor):
             if mask.dtype != bool:
                 mask = mask > self.mask_thresh
 
+            if not mask.any():
+                continue
+
             if box is None:
                 detections.append(
                     fol.Detection.from_mask(

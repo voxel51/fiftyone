@@ -52,7 +52,7 @@ const CoordinateField = forwardRef<HTMLInputElement, CoordinateFieldProps>(
         }}
       />
     );
-  }
+  },
 );
 
 export const PlaneCoordinateInputs = ({
@@ -107,7 +107,7 @@ export const PlaneCoordinateInputs = ({
         position: newPosition,
       }));
     },
-    [annotationPlane.position]
+    [annotationPlane.position],
   );
 
   const handleRotationChange = useCallback(
@@ -134,7 +134,7 @@ export const PlaneCoordinateInputs = ({
         quaternion: newQuaternion,
       }));
     },
-    [annotationPlane.quaternion]
+    [annotationPlane.quaternion],
   );
 
   if (!annotationPlane.enabled) {
@@ -317,7 +317,7 @@ export const VertexCoordinateInputs = ({
           pointIndex,
           newPosition,
           // Update shared vertices
-          true
+          true,
         );
 
         // Convert segments to points3d format and update working store
@@ -331,7 +331,7 @@ export const VertexCoordinateInputs = ({
       points3d,
       selectedPointPosition,
       updatePolylinePoints,
-    ]
+    ],
   );
 
   if (!selectedPoint) {

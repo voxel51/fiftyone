@@ -1,8 +1,8 @@
 import {
   generatedDatasetName as generatedDatasetNameAtom,
   isGeneratedView,
+  useActiveModalSample,
   useCurrentDatasetId,
-  useModalSample,
   useRefreshSample,
 } from "@fiftyone/state";
 import { useCallback } from "react";
@@ -42,7 +42,7 @@ export const usePatchSampleWith = ({
   return useCallback(
     (
       sampleDeltas: JSONDeltas,
-      patchOptions?: PatchOptions
+      patchOptions?: PatchOptions,
     ): Promise<boolean> => {
       return doPatchSample({
         sample,
@@ -64,7 +64,7 @@ export const usePatchSampleWith = ({
       isGenerated,
       refreshSample,
       sample,
-    ]
+    ],
   );
 };
 
@@ -74,13 +74,13 @@ export const usePatchSampleWith = ({
  */
 export const usePatchSample = (): ((
   sampleDeltas: JSONDeltas,
-  patchOptions?: PatchOptions
+  patchOptions?: PatchOptions,
 ) => Promise<boolean>) => {
   const isGenerated = useRecoilValue(isGeneratedView);
   const generatedDatasetName = useRecoilValue(generatedDatasetNameAtom);
 
   return usePatchSampleWith({
-    sample: useModalSample()?.sample,
+    sample: useActiveModalSample(),
     datasetId: useCurrentDatasetId(),
     getVersionToken: useGetVersionToken(),
     refreshSample: useRefreshSample(),

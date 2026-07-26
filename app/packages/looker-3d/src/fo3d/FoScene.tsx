@@ -1,10 +1,18 @@
 import { useControls } from "leva";
-import { Suspense, useEffect, useMemo } from "react";
+import {
+  createContext,
+  memo,
+  Suspense,
+  useContext,
+  useEffect,
+  useMemo,
+} from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { Fo3dErrorBoundary } from "../ErrorBoundary";
 import { PANEL_ORDER_VISIBILITY } from "../constants";
 import { useUrlModifier } from "../hooks/use-fo3d-fetcher";
 import { fo3dContainsBackground, isFo3dBackgroundOnAtom } from "../state";
+import type { PointCloudCrop } from "../utils/point-cloud-crop";
 import { AssetErrorBoundary } from "./AssetErrorBoundary";
 import { Fo3dBackground } from "./Background";
 import { useFo3dContext } from "./context";
@@ -18,6 +26,7 @@ import {
   BoxGeometryAsset,
   CylinderGeometryAsset,
   FbxAsset,
+  GaussianSplatAsset,
   type FoScene,
   type FoSceneNode,
   GltfAsset,
@@ -32,13 +41,82 @@ import { Box } from "./shape/Box";
 import { Cylinder } from "./shape/Cylinder";
 import { Plane } from "./shape/Plane";
 import { Sphere } from "./shape/Sphere";
+import {
+  GaussianSplat,
+  requiresCovarianceSplatTransform,
+} from "./splat/GaussianSplat";
+import { SparkRendererProvider } from "./splat/SparkRendererRoot";
 import { getLabelForSceneNode, getVisibilityMapFromFo3dParsed } from "./utils";
 
 interface FoSceneProps {
   scene: FoScene;
+  pointCloudCrop?: PointCloudCrop | null;
 }
 
-const getAssetJsx = (node: FoSceneNode, children: React.ReactNode) => {
+const PointCloudCropContext = createContext<PointCloudCrop | null | undefined>(
+  null,
+);
+
+const PcdAssetNode = ({
+  children,
+  node,
+  nodeKey,
+}: {
+  children: React.ReactNode;
+  node: FoSceneNode & { asset: PcdAsset };
+  nodeKey: string;
+}) => {
+  const pointCloudCrop = useContext(PointCloudCropContext);
+
+  return (
+    <Pcd
+      key={nodeKey}
+      name={node.name}
+      pcd={node.asset}
+      position={node.position}
+      quaternion={node.quaternion}
+      scale={node.scale}
+      pointCloudCrop={pointCloudCrop}
+    >
+      {children}
+    </Pcd>
+  );
+};
+
+const PlyAssetNode = ({
+  children,
+  node,
+  nodeKey,
+  requiresCovariance,
+}: {
+  children: React.ReactNode;
+  node: FoSceneNode & { asset: PlyAsset };
+  nodeKey: string;
+  requiresCovariance: boolean;
+}) => {
+  const pointCloudCrop = useContext(PointCloudCropContext);
+
+  return (
+    <Ply
+      key={nodeKey}
+      name={node.name}
+      ply={node.asset}
+      position={node.position}
+      quaternion={node.quaternion}
+      scale={node.scale}
+      pointCloudCrop={pointCloudCrop}
+      requiresCovariance={requiresCovariance}
+    >
+      {children}
+    </Ply>
+  );
+};
+
+const getAssetJsx = (
+  node: FoSceneNode,
+  children: React.ReactNode,
+  requiresCovariance: boolean,
+) => {
   if (!node.asset) {
     return null;
   }
@@ -61,29 +139,38 @@ const getAssetJsx = (node: FoSceneNode, children: React.ReactNode) => {
     );
   } else if (node.asset instanceof PcdAsset) {
     return (
-      <Pcd
+      <PcdAssetNode
         key={key}
-        name={node.name}
-        pcd={node.asset as PcdAsset}
-        position={node.position}
-        quaternion={node.quaternion}
-        scale={node.scale}
+        node={node as FoSceneNode & { asset: PcdAsset }}
+        nodeKey={key}
       >
         {children}
-      </Pcd>
+      </PcdAssetNode>
     );
   } else if (node.asset instanceof PlyAsset) {
     return (
-      <Ply
+      <PlyAssetNode
+        key={key}
+        node={node as FoSceneNode & { asset: PlyAsset }}
+        nodeKey={key}
+        requiresCovariance={requiresCovariance}
+      >
+        {children}
+      </PlyAssetNode>
+    );
+  } else if (node.asset instanceof GaussianSplatAsset) {
+    return (
+      <GaussianSplat
         key={key}
         name={node.name}
-        ply={node.asset as PlyAsset}
+        splat={node.asset}
         position={node.position}
         quaternion={node.quaternion}
         scale={node.scale}
+        requiresCovariance={requiresCovariance}
       >
         {children}
-      </Ply>
+      </GaussianSplat>
     );
   } else if (node.asset instanceof StlAsset) {
     return (
@@ -181,13 +268,30 @@ const getAssetJsx = (node: FoSceneNode, children: React.ReactNode) => {
   return null;
 };
 
+const getAssetErrorResetKey = (node: FoSceneNode, assetRoot: string | null) => {
+  if (node.asset instanceof GaussianSplatAsset) {
+    const source = node.asset.preTransformedSplatPath ?? node.asset.splatPath;
+    return JSON.stringify([assetRoot ?? "", source, node.asset.format ?? ""]);
+  }
+
+  return node.asset;
+};
+
 const R3fNode = ({
+  ancestorRequiresCovariance,
+  assetRoot,
   node,
   visibilityMap,
 }: {
+  ancestorRequiresCovariance: boolean;
+  assetRoot: string | null;
   node: FoSceneNode;
   visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>;
 }) => {
+  const requiresCovariance = requiresCovarianceSplatTransform(
+    node.scale,
+    ancestorRequiresCovariance,
+  );
   const children = useMemo(() => {
     if (!node.children || node.children.length === 0) {
       return null;
@@ -195,21 +299,32 @@ const R3fNode = ({
 
     return node.children.map((child) => {
       return (
-        <R3fNode key={child.name} node={child} visibilityMap={visibilityMap} />
+        <R3fNode
+          key={child.name}
+          ancestorRequiresCovariance={requiresCovariance}
+          assetRoot={assetRoot}
+          node={child}
+          visibilityMap={visibilityMap}
+        />
       );
     });
-  }, [node, visibilityMap]);
+  }, [assetRoot, node, requiresCovariance, visibilityMap]);
 
   const label = useMemo(() => getLabelForSceneNode(node), [node]);
 
   const isNodeVisible = useMemo(
     () => Boolean(visibilityMap[label]),
-    [label, visibilityMap]
+    [label, visibilityMap],
   );
 
   const assetJsx = useMemo(
-    () => (isNodeVisible ? getAssetJsx(node, children) : null),
-    [node, children, isNodeVisible]
+    () =>
+      isNodeVisible ? getAssetJsx(node, children, requiresCovariance) : null,
+    [node, children, isNodeVisible, requiresCovariance],
+  );
+  const assetErrorResetKey = useMemo(
+    () => getAssetErrorResetKey(node, assetRoot),
+    [assetRoot, node],
   );
 
   if (!assetJsx) {
@@ -217,16 +332,18 @@ const R3fNode = ({
   }
 
   return (
-    <AssetErrorBoundary>
+    <AssetErrorBoundary resetKey={assetErrorResetKey}>
       <Suspense fallback={null}>{assetJsx}</Suspense>
     </AssetErrorBoundary>
   );
 };
 
-const SceneR3f = ({
+const SceneR3fComponent = ({
+  assetRoot,
   scene,
   visibilityMap,
 }: {
+  assetRoot: string | null;
   scene: FoScene;
   visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>;
 }) => {
@@ -237,16 +354,27 @@ const SceneR3f = ({
       scale={scene.scale}
     >
       {scene.children.map((child) => (
-        <R3fNode key={child.name} node={child} visibilityMap={visibilityMap} />
+        <R3fNode
+          key={child.name}
+          ancestorRequiresCovariance={requiresCovarianceSplatTransform(
+            scene.scale,
+          )}
+          assetRoot={assetRoot}
+          node={child}
+          visibilityMap={visibilityMap}
+        />
       ))}
     </group>
   );
 };
 
-export const FoSceneComponent = ({ scene }: FoSceneProps) => {
+const SceneR3f = memo(SceneR3fComponent);
+
+/** Renders a parsed FO3D scene and its asset-specific controls. */
+export const FoSceneComponent = ({ scene, pointCloudCrop }: FoSceneProps) => {
   const defaultVisibilityMap = useMemo(
     () => getVisibilityMapFromFo3dParsed(scene),
-    [scene]
+    [scene],
   );
 
   const { isSceneInitialized, fo3dRoot } = useFo3dContext();
@@ -263,23 +391,24 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
       // this saves an extra click for the user
       collapsed: Object.keys(defaultVisibilityMap).length < 2,
     },
-    [defaultVisibilityMap]
+    [defaultVisibilityMap],
   );
 
   const isFo3dBackgroundOn = useRecoilValue(isFo3dBackgroundOnAtom);
 
   const setFo3dContainsBackground = useSetRecoilState(fo3dContainsBackground);
 
+  // This effect synchronizes background availability with the active scene.
   useEffect(() => {
     if (isSceneInitialized && scene?.background !== null) {
       setFo3dContainsBackground(true);
     } else {
       setFo3dContainsBackground(false);
     }
-  }, [scene, isSceneInitialized]);
+  }, [scene, isSceneInitialized, setFo3dContainsBackground]);
 
   return (
-    <>
+    <SparkRendererProvider>
       {isFo3dBackgroundOn && fo3dRoot && scene.background && (
         <Fo3dErrorBoundary ignoreError boundaryName="background">
           <Suspense fallback={null}>
@@ -287,7 +416,13 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
           </Suspense>
         </Fo3dErrorBoundary>
       )}
-      <SceneR3f scene={scene} visibilityMap={visibilityMap} />
-    </>
+      <PointCloudCropContext.Provider value={pointCloudCrop}>
+        <SceneR3f
+          assetRoot={fo3dRoot}
+          scene={scene}
+          visibilityMap={visibilityMap}
+        />
+      </PointCloudCropContext.Provider>
+    </SparkRendererProvider>
   );
 };

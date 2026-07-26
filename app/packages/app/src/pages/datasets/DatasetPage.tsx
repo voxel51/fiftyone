@@ -5,25 +5,24 @@
 import {
   ActivityToast,
   Dataset,
+  DatasetGridRendererFailover,
   QueryPerformanceToast,
   SchemaManagerOutlet,
   Snackbar,
   Starter,
 } from "@fiftyone/core";
-import "@fiftyone/embeddings";
+import "@fiftyone/embeddings-v2";
 import "@fiftyone/map";
 import { OperatorCore } from "@fiftyone/operators";
 import "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { datasetQueryContext } from "@fiftyone/state";
-import React from "react";
 import { usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 import Nav from "../../components/Nav";
 import type { Route } from "../../routing";
 import style from "../index.module.css";
-import { DatasetGridRendererFailover } from "./DatasetGridRendererFailover";
 import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
 
 const DatasetPageQueryNode = graphql`

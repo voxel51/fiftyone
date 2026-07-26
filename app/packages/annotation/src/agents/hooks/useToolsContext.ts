@@ -73,7 +73,7 @@ export const useToolsContext = (): ToolsContext => {
       regionsOfInterest,
       textPrompt,
     }),
-    [activeTask, positivePoints, negativePoints, regionsOfInterest, textPrompt]
+    [activeTask, positivePoints, negativePoints, regionsOfInterest, textPrompt],
   );
 };
 
@@ -87,32 +87,32 @@ export const useToolsState = (): ToolsState => {
   const [positivePoints, setPositivePoints] = useAtom(positivePointsAtom);
   const [negativePoints, setNegativePoints] = useAtom(negativePointsAtom);
   const [regionsOfInterest, setRegionsOfInterest] = useAtom(
-    regionsOfInterestAtom
+    regionsOfInterestAtom,
   );
   const [textPrompt, setTextPrompt] = useAtom(textPromptAtom);
 
   const addPositivePoint = useCallback(
     (descriptor: PointDescriptor) =>
       setPositivePoints((prev) => [...prev, descriptor]),
-    [setPositivePoints]
+    [setPositivePoints],
   );
 
   const removePositivePoint = useCallback(
     (id: string) =>
       setPositivePoints((prev) => prev.filter((d) => d.id !== id)),
-    [setPositivePoints]
+    [setPositivePoints],
   );
 
   const addNegativePoint = useCallback(
     (descriptor: PointDescriptor) =>
       setNegativePoints((prev) => [...prev, descriptor]),
-    [setNegativePoints]
+    [setNegativePoints],
   );
 
   const removeNegativePoint = useCallback(
     (id: string) =>
       setNegativePoints((prev) => prev.filter((d) => d.id !== id)),
-    [setNegativePoints]
+    [setNegativePoints],
   );
 
   const updatePoint = useCallback(
@@ -135,7 +135,7 @@ export const useToolsState = (): ToolsState => {
         setNegativePoints((prev) => replacePoint(prev));
       }
     },
-    [positivePoints, setNegativePoints, setPositivePoints]
+    [positivePoints, setNegativePoints, setPositivePoints],
   );
 
   const reset = useCallback(() => {
@@ -180,6 +180,6 @@ export const useToolsState = (): ToolsState => {
       setRegionsOfInterest,
       setTextPrompt,
       reset,
-    ]
+    ],
   );
 };

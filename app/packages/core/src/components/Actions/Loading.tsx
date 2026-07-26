@@ -1,6 +1,5 @@
 import { LoadingDots, useTheme } from "@fiftyone/components";
 import type { CSSProperties } from "react";
-import React from "react";
 
 const Loading = ({ style }: { style?: CSSProperties }) => {
   const theme = useTheme();

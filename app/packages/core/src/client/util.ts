@@ -23,10 +23,10 @@ export const parseTimestamp = (timestamp?: DateTime): Date | null => {
     return typeof timestamp === "string"
       ? new Date(timestamp)
       : "$date" in timestamp
-      ? new Date(timestamp.$date)
-      : "datetime" in timestamp
-      ? new Date(timestamp.datetime)
-      : null;
+        ? new Date(timestamp.$date)
+        : "datetime" in timestamp
+          ? new Date(timestamp.datetime)
+          : null;
   }
 
   return null;

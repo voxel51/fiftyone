@@ -5,11 +5,10 @@
     "private": true,
     "main": "./src/index.tsx",
     "scripts": {
-        "check": "biome check --write ./src README.md tsconfig.json vite.config.ts",
         "dev": "vite",
         "build": "yarn workspace @fiftyone/fiftyone compile && yarn build-bare && yarn copy-to-python",
         "build:win32": "yarn workspace @fiftyone/fiftyone compile && yarn build-bare && yarn copy-to-python:win32",
-        "build-bare": "NODE_OPTIONS=--max-old-space-size=4096 && vite build",
+        "build-bare": "NODE_OPTIONS=--max-old-space-size=8192 vite build",
         "copy-to-python": "rm -rf ../../../fiftyone/server/static && cp -r ./dist ../../../fiftyone/server/static",
         "copy-to-python:win32": "robocopy './dist' '../../../fiftyone/server/static' /MIR"
     },
@@ -22,6 +21,7 @@
         "@fiftyone/relay": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
+        "@fiftyone/video-annotation": "workspace:*",
         "@material-ui/core": "4.12.4",
         "@use-gesture/react": "10.1.1",
         "classnames": "^2.2.6",
@@ -45,7 +45,6 @@
         "uuid": "^14.0.0"
     },
     "devDependencies": {
-        "@biomejs/biome": "^1.8.3",
         "@types/lodash": "^4.14.182",
         "@types/mime": "^2.0.3",
         "@types/react-router": "^5.1.20",

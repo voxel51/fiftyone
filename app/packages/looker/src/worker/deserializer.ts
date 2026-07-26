@@ -3,7 +3,7 @@ import { RENDER_STATUS_DECODED } from "./shared";
 
 const extractSerializedMask = (
   label: object,
-  maskProp: string
+  maskProp: string,
 ): string | undefined => {
   if (typeof label?.[maskProp] === "string") {
     return label[maskProp];

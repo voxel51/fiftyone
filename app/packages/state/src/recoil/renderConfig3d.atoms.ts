@@ -145,8 +145,8 @@ export const active3dSlicesToSampleMap = selector<Record<string, ModalSample>>({
 
     return Object.fromEntries(
       Object.entries(get(all3dSlicesToSampleMap)).filter(([slice]) =>
-        active.includes(slice)
-      )
+        active.includes(slice),
+      ),
     );
   },
 });
@@ -158,7 +158,7 @@ export const all3dSlicesToSampleMap = selector<Record<string, ModalSample>>({
       get(threedSamples).map<[string, ModalSample]>((sample) => [
         getPath(sample.sample, `${get(groupField)}.name`) as unknown as string,
         sample as ModalSample,
-      ])
+      ]),
     );
   },
 });
@@ -276,12 +276,22 @@ export const sceneSample = selector<ModalSample>({
 
 export const threedSamples = selector<ModalSample[]>({
   key: "threedSamples",
-  get: ({ get }) =>
-    get(
+  get: ({ get }) => {
+    const slices = get(all3dSlices);
+
+    // without slices the query degenerates to a whole-group selection whose
+    // sample records overwrite modal relay records without their dynamic
+    // group (_group) values
+    if (!slices.length) {
+      return [];
+    }
+
+    return get(
       groupSamples({
-        slices: get(all3dSlices),
+        slices,
         count: null,
         paginationData: false,
-      })
-    ),
+      }),
+    );
+  },
 });

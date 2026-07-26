@@ -3061,6 +3061,7 @@ class ViewTargetProperty(Property):
         selected_samples_description=None,
         selected_labels_label="Selected labels",
         selected_labels_description=None,
+        require_flat=False,
         **kwargs,
     ):
         """Initializes instance
@@ -3111,7 +3112,20 @@ class ViewTargetProperty(Property):
             selected_labels_description (None): the description for the
                 "selected labels" target view. If ``None``, a default
                 description is generated
+            require_flat (False): whether the operation requires a flattened
+                (non-grouped) collection. When ``True``, grouped views that
+                cannot be automatically scoped to the active group slice
+                invalidate this property
         """
+        # surface unflattenable grouped views as a form validation error
+        # rather than an execution failure
+        invalid_error = None
+        if require_flat:
+            try:
+                # pylint: disable-next-line=protected-access
+                ctx._get_active_view(ctx.view, require_flat=True)
+            except ValueError as e:
+                invalid_error = str(e)
 
         # Determine which target views are available
         has_base_view = (
@@ -3171,6 +3185,10 @@ class ViewTargetProperty(Property):
             view=choice_view,
             **kwargs,
         )
+
+        if invalid_error is not None:
+            self.invalid = True
+            self.error_message = invalid_error
 
     @property
     def options(self):

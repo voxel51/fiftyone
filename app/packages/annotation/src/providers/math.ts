@@ -38,7 +38,7 @@ export function transformPoint(x: number, y: number): [number, number] {
  */
 export function normalizeBbox(
   bbox: { x: number; y: number; w: number; h: number },
-  img: ImageGeometry
+  img: ImageGeometry,
 ): { x: number; y: number; w: number; h: number } {
   return {
     x: bbox.x / img.originalWidth,
@@ -62,14 +62,17 @@ export function computeMaskBbox(
   maskData: Float32Array,
   img: ImageGeometry,
   maskH = SAM2_OUTPUT_SIZE,
-  maskW = SAM2_OUTPUT_SIZE
+  maskW = SAM2_OUTPUT_SIZE,
 ): { x: number; y: number; w: number; h: number } | null {
   const { originalWidth: W, originalHeight: H } = img;
   // The image fills the full mask (SAM2 stretches to 1024x1024), so the
   // mask-space coords map directly to normalized [0,1] image coords.
 
   // Find exact bbox of positive logits in mask space
-  let mx0 = maskW, my0 = maskH, mx1 = -1, my1 = -1;
+  let mx0 = maskW,
+    my0 = maskH,
+    mx1 = -1,
+    my1 = -1;
   for (let y = 0; y < maskH; y++) {
     for (let x = 0; x < maskW; x++) {
       if (maskData[y * maskW + x] > 0) {
@@ -81,8 +84,7 @@ export function computeMaskBbox(
     }
   }
 
-  if (mx1 < 0)
-    return null;
+  if (mx1 < 0) return null;
 
   // Map mask-space bbox to original image coordinates
   const x1 = Math.max(0, Math.floor((mx0 / maskW) * W));
@@ -110,7 +112,7 @@ export function postprocessMask(
   img: ImageGeometry,
   bbox: { x: number; y: number; w: number; h: number },
   maskH = SAM2_OUTPUT_SIZE,
-  maskW = SAM2_OUTPUT_SIZE
+  maskW = SAM2_OUTPUT_SIZE,
 ): Float32Array {
   const { originalWidth: W, originalHeight: H } = img;
   // The image fills the full mask: map image-space (ox, oy) directly to

@@ -1,4 +1,3 @@
-import React from "react";
 import ListView from "./ListView";
 import { getComponentProps } from "../utils";
 

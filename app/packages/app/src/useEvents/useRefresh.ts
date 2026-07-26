@@ -34,7 +34,7 @@ const useRefresh: EventHandlerHook = ({ router, session }) => {
 
       router.history.replace(path, state);
     },
-    [router, session]
+    [router, session],
   );
 };
 

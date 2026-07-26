@@ -1,0 +1,11 @@
+/* Notice rows are flex rows whose text column legitimately shrinks to
+   wrap; the severity icon must not — a squeezed svg rescales its glyph
+   and reads as a smaller icon. The fixed height matches the message's
+   TextVariant.Sm line box (21px) so the icon centers on the first text
+   line instead of pinning to its top. */
+.iconSlot {
+  align-items: center;
+  display: flex;
+  flex: none;
+  height: 21px;
+}

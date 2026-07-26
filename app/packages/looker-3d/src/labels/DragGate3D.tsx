@@ -61,7 +61,7 @@ export function DragGate3D({
         draggedRef.current = true;
       }
     },
-    [thresholdSq]
+    [thresholdSq],
   );
 
   const handlePointerUp = React.useCallback((e: PointerEvt) => {
@@ -78,7 +78,7 @@ export function DragGate3D({
       childHandlersRef.current.onClick?.(e);
       onClick?.(e);
     },
-    [onClick]
+    [onClick],
   );
 
   return React.cloneElement(children, {

@@ -5,7 +5,7 @@ const useEventHandler = (target, eventType, handler, useCapture = false) => {
   handlerRef.current = handler;
 
   useEffect(() => {
-    if (!target) return;
+    if (!target) return undefined;
 
     const wrapper = (e) => handlerRef.current(e);
     target && target.addEventListener(eventType, wrapper, useCapture);

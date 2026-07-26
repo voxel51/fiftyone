@@ -12,22 +12,22 @@ describe("getDataView", () => {
       const buf = new ArrayBuffer(4);
       new DataView(buf).setFloat32(0, 42.42, true);
       expect(getDataView(makeDataView(buf), 0, "F", 4, true)).toBeCloseTo(
-        42.42
+        42.42,
       );
       new DataView(buf).setFloat32(0, -13.5, false);
       expect(getDataView(makeDataView(buf), 0, "F", 4, false)).toBeCloseTo(
-        -13.5
+        -13.5,
       );
     });
     it("reads 8-byte float (Float64)", () => {
       const buf = new ArrayBuffer(8);
       new DataView(buf).setFloat64(0, 123456.789, true);
       expect(getDataView(makeDataView(buf), 0, "F", 8, true)).toBeCloseTo(
-        123456.789
+        123456.789,
       );
       new DataView(buf).setFloat64(0, -98765.4321, false);
       expect(getDataView(makeDataView(buf), 0, "F", 8, false)).toBeCloseTo(
-        -98765.4321
+        -98765.4321,
       );
     });
   });
@@ -84,8 +84,8 @@ describe("getDataView", () => {
           0,
           "X" as PCDFileFormat,
           4,
-          true
-        )
+          true,
+        ),
       ).toBeUndefined();
     });
   });

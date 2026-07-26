@@ -19,7 +19,10 @@ class Timer {
 }
 
 class IntervalTimer extends Timer {
-  constructor(private interval: number, private onInterval: () => void) {
+  constructor(
+    private interval: number,
+    private onInterval: () => void,
+  ) {
     super();
   }
 
@@ -36,7 +39,10 @@ class IntervalTimer extends Timer {
 }
 
 class TimeoutTimer extends Timer {
-  constructor(private timeout: number, private onTimeout: () => void) {
+  constructor(
+    private timeout: number,
+    private onTimeout: () => void,
+  ) {
     super();
   }
 
@@ -67,7 +73,7 @@ function useTimer(params: TimerViewParams) {
   useEffect(() => {
     if (!interval && !timeout) {
       console.warn(
-        "useTimer requires either `interval` or `timeout` to be defined."
+        "useTimer requires either `interval` or `timeout` to be defined.",
       );
       return;
     }

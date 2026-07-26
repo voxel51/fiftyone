@@ -40,7 +40,7 @@ setMockAtoms({
       // The regression we're guarding against: the server raises
       // `DatasetView has no field '_label_tags'` if this path is ever sent.
       throw new Error(
-        "aggregation should never be called with path '_label_tags'"
+        "aggregation should never be called with path '_label_tags'",
       );
     }
     return LABEL_TAG_AGGS[params.path];

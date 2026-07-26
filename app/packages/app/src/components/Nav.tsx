@@ -45,7 +45,7 @@ const getUseSearch = (fragment: NavDatasets$key) => {
           }
         }
       `,
-      fragment
+      fragment,
     );
 
     useDebounce(
@@ -53,7 +53,7 @@ const getUseSearch = (fragment: NavDatasets$key) => {
         refetch({ search });
       },
       200,
-      [search, refresh]
+      [search, refresh],
     );
 
     return useMemo(() => {
@@ -78,7 +78,7 @@ const Nav: React.FC<
         ...NavDatasets
       }
     `,
-    fragment
+    fragment,
   );
 
   const useSearch = getUseSearch(data);
@@ -120,10 +120,8 @@ const Nav: React.FC<
             </div>
           </Suspense>
         )}
-        {!hasDataset && (
-          <div style={{ flex: 1, marginLeft: "1.5rem" }} />
-        )}
-        <div style={{ padding: '0.5rem' }}>
+        {!hasDataset && <div style={{ flex: 1, marginLeft: "1.5rem" }} />}
+        <div style={{ padding: "0.5rem" }}>
           <Teams />
         </div>
         <div className={iconContainer}>

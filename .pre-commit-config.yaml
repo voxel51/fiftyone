@@ -31,17 +31,11 @@ repos:
         exclude: ^docs/ # *do* commit ipynb outputs in `docs/`
         entry: jupyter nbconvert --clear-output --ClearOutputPreprocessor.enabled=True
         args: ["--log-level=ERROR"]
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v2.6.2
-    hooks:
-      - id: prettier
-        exclude: ^docs/theme/
-        language_version: system
   - repo: local
     hooks:
-      - id: frontend-check
-        name: biome check
-        entry: npx biome check --apply --files-ignore-unknown=true --no-errors-on-unmatched
+      - id: prettier
+        name: prettier
         language: system
-        types: [text]
-        files: "^app\\/packages\\/(app|spotlight)\\/.*\\.(css|html|json|md|ts)$"
+        entry: app/node_modules/.bin/prettier --write --ignore-unknown
+        files: \.(ts|js|jsx|tsx|json|css|scss|md)$
+        exclude: ^docs/theme/

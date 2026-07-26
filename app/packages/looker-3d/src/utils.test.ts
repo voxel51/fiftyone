@@ -1,29 +1,37 @@
 import {
   BufferAttribute,
+  Object3D,
   PerspectiveCamera,
   Plane,
   Quaternion,
   Raycaster,
+  Scene,
   Vector3,
 } from "three";
 import { describe, expect, it, vi } from "vitest";
 import { COLOR_POOL } from "./constants";
+import type { FiftyoneSceneRawJson } from "./utils";
 import {
+  areVectorsCoLocated,
   computeMinMaxForColorBufferAttribute,
   computeMinMaxForScalarBufferAttribute,
   createPlane,
   deg2rad,
   eulerToQuaternion,
+  findObjectByUserData,
   formatNumber,
+  getFiftyoneSceneSummary,
   getAxisAlignedBoundingBoxForPoints3d,
   getColorFromPoolBasedOnHash,
   getGridQuaternionFromUpVector,
   getPlaneFromPositionAndQuaternion,
   getPlaneIntersection,
+  isFiniteVector3,
   isValidPoint3d,
   isValidPolylineSegment,
   quaternionToEuler,
   toEulerFromDegreesArray,
+  toVector3,
   toNDC,
   validatePoints3d,
   validatePoints3dArray,
@@ -83,6 +91,110 @@ describe("formatNumber", () => {
   });
 });
 
+describe("toVector3", () => {
+  it("converts tuples to Vector3 instances", () => {
+    expect(toVector3([1, 2, 3]).toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("clones Vector3 inputs", () => {
+    const input = new Vector3(4, 5, 6);
+    const result = toVector3(input);
+
+    expect(result.toArray()).toEqual([4, 5, 6]);
+    expect(result).not.toBe(input);
+  });
+});
+
+describe("isFiniteVector3", () => {
+  it("returns true only when every component is finite", () => {
+    expect(isFiniteVector3(new Vector3(1, 2, 3))).toBe(true);
+    expect(isFiniteVector3(new Vector3(Number.NaN, 2, 3))).toBe(false);
+    expect(isFiniteVector3(new Vector3(1, Number.POSITIVE_INFINITY, 3))).toBe(
+      false,
+    );
+  });
+});
+
+describe("areVectorsCoLocated", () => {
+  it("checks whether two vectors are within the distance threshold", () => {
+    expect(
+      areVectorsCoLocated(new Vector3(0, 0, 0), new Vector3(0, 0, 0)),
+    ).toBe(true);
+    expect(
+      areVectorsCoLocated(new Vector3(0, 0, 0), new Vector3(0.01, 0, 0)),
+    ).toBe(false);
+    expect(
+      areVectorsCoLocated(new Vector3(0, 0, 0), new Vector3(0.01, 0, 0), 1e-2),
+    ).toBe(true);
+  });
+});
+
+describe("findObjectByUserData", () => {
+  it("returns the first scene object with matching user data", () => {
+    const scene = new Scene();
+    const child = new Object3D();
+    const laterChild = new Object3D();
+    child.userData.labelId = "label-1";
+    laterChild.userData.labelId = "label-1";
+    scene.add(child);
+    scene.add(laterChild);
+
+    expect(findObjectByUserData(scene, "labelId", "label-1")).toBe(child);
+    expect(findObjectByUserData(scene, "labelId", "missing")).toBeNull();
+  });
+});
+
+describe("getFiftyoneSceneSummary", () => {
+  it("counts GaussianSplat nodes separately from unknown nodes", () => {
+    const scene = {
+      _type: "Scene",
+      name: "root",
+      visible: true,
+      position: [0, 0, 0],
+      quaternion: [0, 0, 0, 1],
+      scale: [1, 1, 1],
+      children: [
+        {
+          _type: "GaussianSplat",
+          name: "splats",
+          visible: true,
+          position: [0, 0, 0],
+          quaternion: [0, 0, 0, 1],
+          scale: [1, 1, 1],
+          children: [],
+        },
+        {
+          _type: "PlyMesh",
+          name: "parent",
+          visible: true,
+          position: [0, 0, 0],
+          quaternion: [0, 0, 0, 1],
+          scale: [1, 1, 1],
+          children: [
+            {
+              _type: "GaussianSplat",
+              name: "nested-splats",
+              visible: true,
+              position: [0, 0, 0],
+              quaternion: [0, 0, 0, 1],
+              scale: [1, 1, 1],
+              children: [],
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(
+      getFiftyoneSceneSummary(scene as unknown as FiftyoneSceneRawJson),
+    ).toMatchObject({
+      meshCount: 1,
+      splatCount: 2,
+      unknownCount: 0,
+    });
+  });
+});
+
 describe("computeMinMaxForColorBufferAttribute", () => {
   it("computes min and max for color attribute", () => {
     const attr = new BufferAttribute(new Float32Array([1, 2, 3, 4, 5, 6]), 1);
@@ -132,7 +244,7 @@ describe("getColorFromPoolBasedOnHash", () => {
   });
   it("returns same color for same string", () => {
     expect(getColorFromPoolBasedOnHash("repeat")).toBe(
-      getColorFromPoolBasedOnHash("repeat")
+      getColorFromPoolBasedOnHash("repeat"),
     );
   });
 });
@@ -161,7 +273,7 @@ describe("getGridQuaternionFromUpVector", () => {
       result.w * result.w +
         result.x * result.x +
         result.y * result.y +
-        result.z * result.z
+        result.z * result.z,
     );
     expect(magnitude).toBeCloseTo(1);
     const targetNormal = new Vector3(0, 1, 0);
@@ -182,7 +294,7 @@ describe("getGridQuaternionFromUpVector", () => {
       result.w * result.w +
         result.x * result.x +
         result.y * result.y +
-        result.z * result.z
+        result.z * result.z,
     );
     expect(magnitude).toBeCloseTo(1);
   });
@@ -198,7 +310,7 @@ describe("getGridQuaternionFromUpVector", () => {
       result.w * result.w +
         result.x * result.x +
         result.y * result.y +
-        result.z * result.z
+        result.z * result.z,
     );
     expect(magnitude).toBeCloseTo(1);
   });
@@ -229,7 +341,7 @@ describe("getGridQuaternionFromUpVector", () => {
       result.w * result.w +
         result.x * result.x +
         result.y * result.y +
-        result.z * result.z
+        result.z * result.z,
     );
     expect(magnitude).toBeCloseTo(1);
     const rotated = up.clone().applyQuaternion(result);
@@ -425,7 +537,7 @@ describe("getPlaneFromPositionAndQuaternion", () => {
     const normalMagnitude = Math.sqrt(
       result.normal.x * result.normal.x +
         result.normal.y * result.normal.y +
-        result.normal.z * result.normal.z
+        result.normal.z * result.normal.z,
     );
     expect(normalMagnitude).toBeCloseTo(1);
   });
@@ -441,7 +553,7 @@ describe("getPlaneFromPositionAndQuaternion", () => {
     const normalMagnitude = Math.sqrt(
       result.normal.x * result.normal.x +
         result.normal.y * result.normal.y +
-        result.normal.z * result.normal.z
+        result.normal.z * result.normal.z,
     );
     expect(normalMagnitude).toBeCloseTo(1);
   });
@@ -508,7 +620,7 @@ describe("eulerToQuaternion", () => {
       result[0] * result[0] +
         result[1] * result[1] +
         result[2] * result[2] +
-        result[3] * result[3]
+        result[3] * result[3],
     );
     expect(magnitude).toBeCloseTo(1, 5);
   });
@@ -522,7 +634,7 @@ describe("eulerToQuaternion", () => {
       result[0] * result[0] +
         result[1] * result[1] +
         result[2] * result[2] +
-        result[3] * result[3]
+        result[3] * result[3],
     );
     expect(magnitude).toBeCloseTo(1, 5);
   });
@@ -660,7 +772,7 @@ describe("eulerToQuaternion and quaternionToEuler roundtrip", () => {
       quaternion[0] * quaternion[0] +
         quaternion[1] * quaternion[1] +
         quaternion[2] * quaternion[2] +
-        quaternion[3] * quaternion[3]
+        quaternion[3] * quaternion[3],
     );
     expect(magnitude).toBeCloseTo(1, 5);
   });
@@ -808,14 +920,14 @@ describe("isValidPolylineSegment", () => {
       isValidPolylineSegment([
         [1, 2, 3],
         [4, 5, 6],
-      ])
+      ]),
     ).toBe(true);
     expect(
       isValidPolylineSegment([
         [1, 2, 3],
         [4, 5, 6],
         [7, 8, 9],
-      ])
+      ]),
     ).toBe(true);
   });
 
@@ -830,14 +942,14 @@ describe("isValidPolylineSegment", () => {
       isValidPolylineSegment([
         [1, 2, 3],
         [4, 5, "6"],
-      ])
+      ]),
     ).toBe(false);
     expect(isValidPolylineSegment([[1, 2, 3], null])).toBe(false);
     expect(
       isValidPolylineSegment([
         [1, 2, 3],
         [4, 5],
-      ])
+      ]),
     ).toBe(false);
   });
 
@@ -847,14 +959,14 @@ describe("isValidPolylineSegment", () => {
       isValidPolylineSegment([
         [1, 2, 3],
         [Number.POSITIVE_INFINITY, 5, 6],
-      ])
+      ]),
     ).toBe(false);
     expect(
       isValidPolylineSegment([
         [1, 2, 3],
         [4, 5, 6],
         [7, 8, 9],
-      ])
+      ]),
     ).toBe(true);
   });
 });

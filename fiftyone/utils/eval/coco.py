@@ -52,6 +52,8 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels. By
             default, IoUs are computed directly on the dense pixel masks
+        keypoint_sigmas (None): an optional list of per-keypoint OKS sigmas to
+            use when evaluating :class:`fiftyone.core.labels.Keypoints`
         compute_mAP (False): whether to perform the necessary computations so
             that mAP, mAR, and PR curves can be generated
         iou_threshs (None): a list of IoU thresholds to use when computing mAP
@@ -82,6 +84,7 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         use_masks=False,
         use_boxes=False,
         tolerance=None,
+        keypoint_sigmas=None,
         compute_mAP=False,
         iou_threshs=None,
         max_preds=None,
@@ -108,6 +111,7 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         self.use_masks = use_masks
         self.use_boxes = use_boxes
         self.tolerance = tolerance
+        self.keypoint_sigmas = keypoint_sigmas
         self.compute_mAP = compute_mAP
         self.iou_threshs = iou_threshs
         self.max_preds = max_preds
@@ -542,6 +546,9 @@ def _coco_evaluation_setup(
 
     if config.use_boxes:
         iou_kwargs.update(use_boxes=True)
+
+    if config.keypoint_sigmas is not None:
+        iou_kwargs.update(keypoint_sigmas=config.keypoint_sigmas)
 
     # Organize ground truth and predictions by category
 

@@ -30,7 +30,7 @@ export class FoWebServer {
         "Starting webserver on port",
         this.#port,
         "with database",
-        dbName
+        dbName,
       );
 
       const mainPyPath = process.env.FIFTYONE_ROOT_DIR
@@ -62,8 +62,8 @@ export class FoWebServer {
           if (!startupComplete) {
             reject(
               new Error(
-                `webserver exited before startup completed (code=${code}, signal=${signal})`
-              )
+                `webserver exited before startup completed (code=${code}, signal=${signal})`,
+              ),
             );
           }
         };
@@ -87,7 +87,7 @@ export class FoWebServer {
       console.log(
         `waiting for webserver (procId = ${proc.pid}) to start on port ${
           this.#port
-        }...`
+        }...`,
       );
 
       await Promise.race([
@@ -96,7 +96,11 @@ export class FoWebServer {
             `tcp:127.0.0.1:${this.#port}`,
             `http-get://127.0.0.1:${this.#port}/graphql`,
           ],
-          timeout: Duration.Seconds(30),
+          // emulated containers (linux baseline generation on Apple
+          // silicon) need minutes for the python import chain
+          timeout: process.env.FO_WEB_SERVER_TIMEOUT_MS
+            ? Number(process.env.FO_WEB_SERVER_TIMEOUT_MS)
+            : Duration.Seconds(30),
         }),
         startupFailure,
       ]);
@@ -135,7 +139,7 @@ export class FoWebServer {
     const timeoutPromise = new Promise<void>((_, reject) => {
       setTimeout(
         () => reject(new Error("Timeout stopping webserver")),
-        timeoutMs
+        timeoutMs,
       );
     });
 

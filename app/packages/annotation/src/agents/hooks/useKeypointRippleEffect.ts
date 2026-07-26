@@ -38,7 +38,7 @@ export interface UseKeypointRippleEffectAPI {
  * a generic effect registry, and this hook plugs the ripple effect into it.
  */
 export const useKeypointRippleEffect = (
-  getOverlay: (id: string) => unknown
+  getOverlay: (id: string) => unknown,
 ): UseKeypointRippleEffectAPI => {
   const statesRef = useRef<Map<string, OverlayRippleState>>(new Map());
   const rafRef = useRef<number | null>(null);
@@ -115,12 +115,12 @@ export const useKeypointRippleEffect = (
         pointId,
         durationMs == null
           ? Number.POSITIVE_INFINITY
-          : performance.now() + durationMs
+          : performance.now() + durationMs,
       );
       overlay.markDirty();
       ensureLoop();
     },
-    [getOverlay, ensureLoop]
+    [getOverlay, ensureLoop],
   );
 
   const remove = useCallback((overlayId: string, pointId: string) => {

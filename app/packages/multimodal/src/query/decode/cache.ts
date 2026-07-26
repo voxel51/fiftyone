@@ -38,7 +38,7 @@ export function decodedOutputCacheKey(key: DecodedOutputCacheKey): string {
  * Creates a byte-bounded in-memory cache for decoded playback/visualization outputs.
  */
 export function createMemoryDecodedOutputCache(
-  options: MemoryCacheOptions
+  options: MemoryCacheOptions,
 ): DecodedOutputCache {
   const cache = createByteBoundedCache<DecodeResult>(options);
 
@@ -63,7 +63,7 @@ export function createMemoryDecodedOutputCache(
         options,
         decodedOutputCacheKey(key),
         result,
-        resultSizeBytes
+        resultSizeBytes,
       );
     },
   };

@@ -3,11 +3,9 @@
  */
 
 import {
-  Checkbox,
   Input,
   Orientation,
   RichList,
-  Size,
   Spacing,
   Stack,
   Text,
@@ -26,7 +24,6 @@ interface AddClassCardProps {
 }
 
 const AddClassCard = ({
-  attributeCount,
   existingClasses,
   onSave,
   onCancel,

@@ -51,7 +51,7 @@ describe("CommandDispatcher", () => {
 
   it("should throw error when executing unregistered command", async () => {
     await expect(dispatcher.execute(new TestCommand(5))).rejects.toThrow(
-      "No handler registered for TestCommand"
+      "No handler registered for TestCommand",
     );
   });
 
@@ -88,7 +88,7 @@ describe("CommandDispatcher", () => {
     });
 
     await expect(dispatcher.execute(new TestCommand(5))).rejects.toThrow(
-      "Handler error"
+      "Handler error",
     );
   });
 
@@ -103,7 +103,7 @@ describe("CommandDispatcher", () => {
     dispatcher.unregister(TestCommand);
 
     await expect(dispatcher.execute(new TestCommand(5))).rejects.toThrow(
-      "No handler registered for TestCommand"
+      "No handler registered for TestCommand",
     );
   });
 });

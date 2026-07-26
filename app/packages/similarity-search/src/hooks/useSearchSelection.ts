@@ -15,7 +15,7 @@ export const useSearchSelection = () => {
     () =>
       (selectedLabels && selectedLabels.length > 0) ||
       (selectedSamples && selectedSamples.size > 0),
-    [selectedSamples, selectedLabels]
+    [selectedSamples, selectedLabels],
   );
 
   const queryIds = useMemo(() => {

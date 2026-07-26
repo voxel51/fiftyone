@@ -45,13 +45,13 @@ const LABELS_PREFIX = LABELS_PATH + ".";
  */
 export const computeLabelTagCounts = (
   sample: Record<string, unknown>,
-  fieldSchema: Schema
+  fieldSchema: Schema,
 ): Record<string, number> => {
   const counts: Record<string, number> = {};
 
   const collectFromData = (
     data: Record<string, unknown>,
-    schema: Schema
+    schema: Schema,
   ): void => {
     for (const key in schema) {
       const field = schema[key];
@@ -72,7 +72,7 @@ export const computeLabelTagCounts = (
           } else {
             collectFromData(
               fieldValue as Record<string, unknown>,
-              field.fields
+              field.fields,
             );
           }
         }
@@ -325,7 +325,7 @@ export const computeTagData = ({
 
   const TEMPORAL_DETECTION_RENDERER = (
     path: string,
-    param: TemporalDetectionLabel
+    param: TemporalDetectionLabel,
   ): TagData | null => {
     if (!param.label) {
       return null;
@@ -353,7 +353,7 @@ export const computeTagData = ({
 
   const EMBEDDED_DOCUMENT_RENDERER = (
     path: string,
-    values: { [key: string]: unknown }
+    values: { [key: string]: unknown },
   ) => {
     const results = [];
 
@@ -459,7 +459,7 @@ export const computeTagData = ({
     } else if (path === "_label_tags") {
       const labelTags = computeLabelTagCounts(
         sample as Record<string, unknown>,
-        fieldSchema
+        fieldSchema,
       );
       for (const [tag, count] of Object.entries(labelTags)) {
         const value = `${tag}: ${count}`;
@@ -575,7 +575,7 @@ const prettyNumber = (value: number | NONFINITE): string => {
 
 const shouldShowLabel = (
   labelTag: string,
-  visibility?: Visibility
+  visibility?: Visibility,
 ): boolean => {
   if (!visibility) return true;
 

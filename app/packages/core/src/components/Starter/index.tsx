@@ -15,7 +15,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { CONTENT_BY_MODE } from "./content";
 
@@ -125,7 +125,7 @@ export function StarterSubtitle(props: StarterPropsType) {
       }
       return false;
     },
-    [browser]
+    [browser],
   );
   const hasCreateDatasetOperator = useMemo(() => {
     if (!isAddSample) {

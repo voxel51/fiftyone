@@ -5,7 +5,7 @@ import { PopoutDiv } from "../utils";
 
 const useAlign = (
   anchorRef: MutableRefObject<HTMLElement>,
-  modal?: boolean
+  modal?: boolean,
 ) => {
   const [align, setAlign] = useState("auto");
   useLayoutEffect(() => {
