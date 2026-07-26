@@ -16,6 +16,7 @@ import numpy as np
 
 import eta.core.utils as etau
 
+import fiftyone.core.expression_ast as foea
 from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.utils as fou
 
@@ -119,6 +120,7 @@ def _do_get_group_slices(expr, group_slices):
             _do_get_group_slices(e, group_slices)
 
 
+@foea.records_expression_syntax
 class ViewExpression(object):
     """An expression defining a possibly-complex manipulation of a document.
 
@@ -237,6 +239,10 @@ class ViewExpression(object):
     def __init__(self, expr):
         self._expr = expr
         self._prefix = None
+        # Set by the operator that built this expression; None means the
+        # expression was constructed directly from MongoDB, which carries no
+        # syntax to record
+        self._ast = None
 
     def __str__(self):
         return repr(self)
@@ -252,6 +258,7 @@ class ViewExpression(object):
     def __deepcopy__(self, memo):
         obj = self.__class__(deepcopy(self._expr, memo))
         obj._prefix = deepcopy(self._prefix, memo)
+        obj._ast = deepcopy(self._ast, memo)
         return obj
 
     def _freeze_prefix(self, prefix):
@@ -276,6 +283,52 @@ class ViewExpression(object):
             prefix = self._prefix
 
         return _do_to_mongo(self._expr, prefix)
+
+    def to_ast(self):
+        """Returns a JSON-serializable syntax tree for this expression.
+
+        Unlike :meth:`to_mongo`, which lowers the expression and discards which
+        operators produced it, the tree records the construction, so the
+        expression can be reconstructed with :meth:`from_ast` or rendered as
+        Python source with :meth:`to_python`.
+
+        Returns:
+            a JSON dict
+        """
+        return foea.node_of(self)
+
+    @staticmethod
+    def from_ast(node):
+        """Reconstructs an expression from a syntax tree.
+
+        Args:
+            node: a syntax tree, as returned by :meth:`to_ast`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return foea.from_node(node)
+
+    def to_python(self, field_var="F", expr_var="E"):
+        """Renders this expression as Python source.
+
+        Args:
+            field_var ("F"): the name bound to :class:`ViewField`
+            expr_var ("E"): the name bound to :class:`ViewExpression`
+
+        Returns:
+            a string of Python source
+        """
+        return foea.to_python(self, field_var=field_var, expr_var=expr_var)
+
+    @property
+    def is_reconstructible(self):
+        """Whether this expression can be rendered as Python source.
+
+        False when the expression, or any subexpression, was built by passing
+        MongoDB directly to :class:`ViewExpression`.
+        """
+        return foea.is_reconstructible(self)
 
     def __call__(self, field):
         """Retrieves the specified field or embedded field of this expression,
