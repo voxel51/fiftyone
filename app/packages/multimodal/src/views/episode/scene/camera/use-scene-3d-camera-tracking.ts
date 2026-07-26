@@ -261,6 +261,15 @@ export function useScene3dCameraTracking({
   // without re-binding them per render. Render-phase ref write: idempotent.
   const recordGateRef = useRef({ placementStatus, sourceKey, worldFrameId });
   recordGateRef.current = { placementStatus, sourceKey, worldFrameId };
+  // Imperative camera callbacks can outlive the render that created them.
+  // Accept traffic only when both the committed epoch and latest render own it.
+  const isCameraEpochActive = useCallback(
+    () =>
+      Boolean(sourceKey) &&
+      activeSourceKeyRef.current === sourceKey &&
+      recordGateRef.current.sourceKey === sourceKey,
+    [sourceKey],
+  );
   const cameraTargetResolution = useMemo(
     () =>
       resolveCameraTargetPose({
@@ -683,6 +692,21 @@ export function useScene3dCameraTracking({
 
   const handleCameraPoseChange = useCallback(
     (pose: PointCloudCameraPose, source: CameraPoseChangeSource) => {
+      if (!isCameraEpochActive()) {
+        return;
+      }
+      // A canvas can remount while the outgoing source is unbound and emit its
+      // fitted pose as "initial". Preserve the last displayed user pose until
+      // the real source epoch changes; otherwise the handoff flush records the
+      // transient fit instead of the viewpoint the user established.
+      if (
+        source === "initial" &&
+        (latestCameraPoseRef.current ||
+          pendingCameraViewRestoreRef.current ||
+          pendingCompositionRestoreRef.current.length > 0)
+      ) {
+        return;
+      }
       latestCameraPoseRef.current = pose;
       rememberProvisionalCameraPose(pose);
       if (source === "initial" || source === "interaction") {
@@ -702,6 +726,7 @@ export function useScene3dCameraTracking({
       recordNavigationComposition(pose, latestAnchorRef.current);
     },
     [
+      isCameraEpochActive,
       recordCameraViewIfEligible,
       recordNavigationComposition,
       rememberProvisionalCameraPose,
@@ -712,6 +737,9 @@ export function useScene3dCameraTracking({
       pose: PointCloudCameraPose,
       sceneBounds?: PointCloudSceneBoundsSummary,
     ) => {
+      if (!isCameraEpochActive()) {
+        return;
+      }
       latestCameraPoseRef.current = pose;
       if (sceneBounds) latestSceneBoundsRef.current = sceneBounds;
       rememberProvisionalCameraPose(pose);
@@ -728,6 +756,7 @@ export function useScene3dCameraTracking({
     },
     [
       applyPendingComposition,
+      isCameraEpochActive,
       recordNavigationComposition,
       rememberProvisionalCameraPose,
     ],
@@ -741,22 +770,31 @@ export function useScene3dCameraTracking({
     [],
   );
 
-  const onGestureStart = useCallback((pose: PointCloudCameraPose) => {
-    // A grab is deliberate: abandon carried-over restores the moment the
-    // user takes hold, and pin the panel out of fit-fallback. The pin is
-    // one-shot — the functional update bails once any command exists, so
-    // wheel micro-gestures cost no renders.
-    pendingCameraViewRestoreRef.current = null;
-    pendingCompositionRestoreRef.current = [];
-    latestCameraPoseRef.current = pose;
-    setPoseCommand((current) => current ?? pose);
-  }, []);
+  const onGestureStart = useCallback(
+    (pose: PointCloudCameraPose) => {
+      if (!isCameraEpochActive()) {
+        return;
+      }
+      // A grab is deliberate: abandon carried-over restores the moment the
+      // user takes hold, and pin the panel out of fit-fallback. The pin is
+      // one-shot — the functional update bails once any command exists, so
+      // wheel micro-gestures cost no renders.
+      pendingCameraViewRestoreRef.current = null;
+      pendingCompositionRestoreRef.current = [];
+      latestCameraPoseRef.current = pose;
+      setPoseCommand((current) => current ?? pose);
+    },
+    [isCameraEpochActive],
+  );
 
   const onCommit = useCallback(
     (
       pose: PointCloudCameraPose,
       anchor: Scene3dCameraTrackingAnchor | null,
     ) => {
+      if (!isCameraEpochActive()) {
+        return;
+      }
       latestCameraPoseRef.current = pose;
       latestAnchorRef.current = anchor;
       rememberProvisionalCameraPose(pose);
@@ -764,6 +802,7 @@ export function useScene3dCameraTracking({
       recordNavigationComposition(pose, anchor);
     },
     [
+      isCameraEpochActive,
       recordCameraViewIfEligible,
       recordNavigationComposition,
       rememberProvisionalCameraPose,
@@ -772,12 +811,15 @@ export function useScene3dCameraTracking({
 
   const onPoseSample = useCallback(
     (sample: Scene3dCameraRigSample) => {
+      if (!isCameraEpochActive()) {
+        return;
+      }
       onCameraPoseSample?.(sample.pose);
       latestCameraPoseRef.current = sample.pose;
       latestAnchorRef.current = sample.anchor;
       rememberProvisionalCameraPose(sample.pose);
     },
-    [onCameraPoseSample, rememberProvisionalCameraPose],
+    [isCameraEpochActive, onCameraPoseSample, rememberProvisionalCameraPose],
   );
 
   const activeEpochRecorderRef = useRef({

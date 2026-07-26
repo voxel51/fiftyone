@@ -109,7 +109,7 @@ describe("useScene3dCameraTracking", () => {
     });
   });
 
-  it("keeps interaction and initial traffic out of React state", () => {
+  it("keeps interaction and initial traffic out of React state without replacing a live pose", () => {
     const { result } = renderHook(useScene3dCameraTracking, {
       initialProps: trackingProps(),
     });
@@ -118,12 +118,13 @@ describe("useScene3dCameraTracking", () => {
     // bookkeeping only: the rig owns interactive motion imperatively, and a
     // state write here would re-render the tile per pointer move.
     act(() => {
-      result.current.handleCameraPoseChange(pose(1), "interaction");
       result.current.handleCameraPoseChange(pose(2), "initial");
+      result.current.handleCameraPoseChange(pose(1), "interaction");
+      result.current.handleCameraPoseChange(pose(3), "initial");
     });
 
     expect(result.current.poseCommand).toBeNull();
-    expect(result.current.getDisplayedCameraPose()).toEqual(pose(2));
+    expect(result.current.getDisplayedCameraPose()).toEqual(pose(1));
   });
 
   it("streams live rig poses to non-React camera observers", () => {
@@ -902,6 +903,57 @@ describe("useScene3dCameraTracking view-state restore", () => {
       result.current.rig.onPoseSample({ anchor, pose: pose(6) });
     });
     expect(viewStateStore.getSnapshot().navigationCompositions).toEqual([]);
+
+    rerender(
+      trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "empty",
+        sourceKey: "source-b",
+      }),
+    );
+    expect(viewStateStore.getSnapshot().navigationCompositions[0]).toEqual(
+      targetComposition({
+        relativePosition: [6, 0, 10],
+        relativeTarget: [6, 0, 0],
+      }),
+    );
+
+    rerender(
+      trackingProps({
+        frameTransforms: translationTransforms(10, 0, 0),
+        placementStatus: "transformed",
+        sourceKey: "source-b",
+      }),
+    );
+    expect(result.current.poseCommand).toEqual({
+      position: [16, 0, 10],
+      target: [16, 0, 0],
+    });
+  });
+
+  it("ignores camera traffic while sample navigation is unbound", () => {
+    const { rerender, result } = renderHook(useScene3dCameraTracking, {
+      initialProps: trackingProps({ placementStatus: "transformed" }),
+    });
+
+    act(() => {
+      result.current.handleCameraPoseChange(pose(6), "interaction");
+      result.current.handleCameraPoseChange(pose(1), "initial");
+    });
+    expect(result.current.getDisplayedCameraPose()).toEqual(pose(6));
+
+    rerender(
+      trackingProps({
+        placementStatus: "empty",
+        sourceKey: "",
+      }),
+    );
+    act(() => {
+      result.current.noteRenderedCameraPose(pose(2));
+      result.current.rig.onPoseSample({ anchor: null, pose: pose(3) });
+      result.current.rig.onCommit(pose(4), null);
+    });
+    expect(result.current.getDisplayedCameraPose()).toEqual(pose(6));
 
     rerender(
       trackingProps({
