@@ -1,23 +1,17 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Clean-room rewrite of the dataset view bar. Built only against
- * the Relay `stageDefinitions` fragment (which mirrors the server's
- * {@link fiftyone/core/stages.py}) — does not borrow design or
- * behavior from the legacy xstate-based `ViewBar.tsx`.
+ * The dataset view bar: a horizontal row of stage cards, each with a
+ * dynamic form keyed by the stage's parameter definitions, and an
+ * insertion slot between every pair of stages. Local React state owns
+ * the in-progress edit; the Apply button serializes the whole working
+ * state and pushes it through `fos.useSetView`.
  *
- * Render contract: horizontal `Stack` of stage cards, each with a
- * dynamic form keyed by the stage's parameter definitions. An
- * appendable "+ Stage" picker at the end opens a voodo `Select`
- * over the available stage names. Local React state owns the
- * in-progress edit; on submit (Enter on a field, or the apply
- * button) the entire view is serialized and pushed via
- * `fos.useSetView`.
- *
- * Param `type` strings (from `ParameterDefinition`) are
+ * Stage schemas come from the `stageDefinitions` atom, which mirrors
+ * the server's `fiftyone/core/stages.py`. Param `type` strings are
  * pipe-delimited alternatives — see {@link pickInput} for how each
- * type token maps to a voodo input. `NoneType` in the alternative
- * set marks the field as optional (clearable).
+ * type token maps to a voodo input. `NoneType` in the alternative set
+ * marks the field as optional.
  */
 
 import * as fos from "@fiftyone/state";
@@ -55,7 +49,7 @@ const useAnchorRect = (ref: React.RefObject<HTMLElement>, active: boolean) => {
   React.useEffect(() => {
     if (!active || !ref.current) {
       setRect(null);
-      return;
+      return undefined;
     }
     const measure = () => {
       const r = ref.current?.getBoundingClientRect();
@@ -179,7 +173,7 @@ const reducer = (state: BarState, action: BarAction): BarState => {
         stages: state.stages.map((s) =>
           s.id === action.id
             ? { ...s, kwargs: { ...s.kwargs, [action.name]: action.value } }
-            : s
+            : s,
         ),
       };
     case "reorderStages": {
@@ -284,7 +278,7 @@ const ParamInput: React.FC<ParamInputProps> = ({
               e.target.value
                 .split(",")
                 .map((s) => s.trim())
-                .filter(Boolean)
+                .filter(Boolean),
             )
           }
         />
@@ -312,7 +306,7 @@ const ParamInput: React.FC<ParamInputProps> = ({
               e.target.value
                 .split(",")
                 .map((s) => s.trim())
-                .filter(Boolean)
+                .filter(Boolean),
             )
           }
         />
@@ -327,8 +321,8 @@ const ParamInput: React.FC<ParamInputProps> = ({
             value == null
               ? ""
               : typeof value === "string"
-              ? value
-              : JSON.stringify(value)
+                ? value
+                : JSON.stringify(value)
           }
           placeholder={`${placeholder} (JSON)`}
           onChange={(e) => onChange(e.target.value)}
@@ -352,11 +346,11 @@ interface StageCardProps {
 }
 
 /**
- * Render the value of `param` as a short preview string for the
- * collapsed stage card. Keeps strings under ~24 chars; lists show
- * the first item with a `+N` tail; numbers/booleans show as-is.
+ * Render a kwarg value as a short preview string for the collapsed
+ * stage card. Keeps strings under ~24 chars; lists show the first item
+ * with a `+N` tail; numbers/booleans show as-is.
  */
-const previewValue = (param: ParamDef, value: unknown): string => {
+const previewValue = (value: unknown): string => {
   if (value == null || value === "") return "—";
   if (typeof value === "boolean") return value ? "true" : "false";
   if (typeof value === "number") return String(value);
@@ -387,7 +381,7 @@ const StageCard: React.FC<StageCardProps> = ({
   // reopen) and the portaled popover content (so interacting with
   // form fields inside doesn't close the popover).
   React.useEffect(() => {
-    if (!expanded) return;
+    if (!expanded) return undefined;
     const onClick = (e: MouseEvent) => {
       const t = e.target as Node;
       if (
@@ -402,7 +396,11 @@ const StageCard: React.FC<StageCardProps> = ({
   }, [expanded, onToggle]);
 
   return (
-    <div ref={triggerRef} style={{ position: "relative" }}>
+    <div
+      ref={triggerRef}
+      style={{ position: "relative" }}
+      data-cy="view-stage-container"
+    >
       <Card background={CardBackground.Primary} outlined compact>
         <Stack
           orientation={Orientation.Row}
@@ -427,7 +425,7 @@ const StageCard: React.FC<StageCardProps> = ({
                   whiteSpace: "nowrap",
                 }}
               >
-                {previewValue(firstParam, stage.kwargs[firstParam.name])}
+                {previewValue(stage.kwargs[firstParam.name])}
               </span>
             )}
           </div>
@@ -492,7 +490,7 @@ const StageCard: React.FC<StageCardProps> = ({
               </Stack>
             </Card>
           </div>,
-          document.body
+          document.body,
         )}
     </div>
   );
@@ -502,7 +500,15 @@ const StageCard: React.FC<StageCardProps> = ({
 // New ViewBar
 // ---------------------------------------------------------------
 
-const NewViewBar: React.FC = () => {
+/**
+ * Discards any working edits and restores the bar to the view that is
+ * actually applied. Assigned by the mounted bar; called by the
+ * `setView` setter when the mutation comes back with errors, so a
+ * rejected view doesn't stay on screen as though it took effect.
+ */
+export let rollbackViewBar: () => void = () => undefined;
+
+const ViewBar: React.FC = () => {
   const stageDefs = useRecoilValue(fos.stageDefinitions);
   const fieldPaths = useRecoilValue(fos.fieldPaths({}));
   const currentView = useRecoilValue(fos.view);
@@ -513,18 +519,26 @@ const NewViewBar: React.FC = () => {
   // a time; clicking another collapses the previous.
   const [editingId, setEditingId] = React.useState<string | null>(null);
 
-  // Hydrate working stages from the applied view on every change.
   // Stage definitions provide the param schema; the view itself
   // carries kwargs as an ordered `kwargs: [[name, value], ...]` list.
   useEffect(() => {
-    const hydrated: WorkingStage[] = currentView.map(
-      (s: { _cls: string; kwargs: [string, unknown][] }, i) => ({
-        id: `view-${i}-${s._cls}`,
-        cls: classNameFromCls(s._cls),
-        kwargs: Object.fromEntries(s.kwargs ?? []),
-      })
-    );
-    dispatch({ type: "hydrate", stages: hydrated });
+    const hydrate = () => {
+      const hydrated: WorkingStage[] = currentView.map(
+        (s: { _cls: string; kwargs: [string, unknown][] }, i) => ({
+          id: `view-${i}-${s._cls}`,
+          cls: classNameFromCls(s._cls),
+          kwargs: Object.fromEntries(s.kwargs ?? []),
+        }),
+      );
+      dispatch({ type: "hydrate", stages: hydrated });
+      setEditingId(null);
+    };
+
+    hydrate();
+    rollbackViewBar = hydrate;
+    return () => {
+      rollbackViewBar = () => undefined;
+    };
   }, [currentView]);
 
   const defsByName = useMemo(
@@ -533,9 +547,9 @@ const NewViewBar: React.FC = () => {
         stageDefs.map((d) => [
           d.name,
           d as { name: string; params: ParamDef[] },
-        ])
+        ]),
       ),
-    [stageDefs]
+    [stageDefs],
   );
 
   const fieldOptions = useMemo(
@@ -544,16 +558,7 @@ const NewViewBar: React.FC = () => {
         id: path,
         data: { label: path },
       })),
-    [fieldPaths]
-  );
-
-  const stageOptions = useMemo(
-    () =>
-      stageDefs.map((d) => ({
-        id: d.name,
-        data: { label: d.name },
-      })),
-    [stageDefs]
+    [fieldPaths],
   );
 
   /**
@@ -623,7 +628,7 @@ const NewViewBar: React.FC = () => {
     const rect = useAnchorRect(containerRef, open);
 
     React.useEffect(() => {
-      if (!open) return;
+      if (!open) return undefined;
       const onClick = (e: MouseEvent) => {
         if (!containerRef.current?.contains(e.target as Node)) {
           setOpen(false);
@@ -753,7 +758,7 @@ const NewViewBar: React.FC = () => {
                 </div>
               ))}
             </div>,
-            document.body
+            document.body,
           )}
       </div>
     );
@@ -785,7 +790,7 @@ const NewViewBar: React.FC = () => {
         borderRadius: 4,
         boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.02)",
       }}
-      data-cy="view-bar-new"
+      data-cy="view-bar"
     >
       <InsertSlot index={0} />
       {state.stages.map((stage, i) => {
@@ -840,7 +845,7 @@ const NewViewBar: React.FC = () => {
           size={Size.Xs}
           onClick={apply}
           title="Apply view"
-          data-cy="view-bar-new-apply"
+          data-cy="btn-apply-view-bar"
         >
           Apply
         </Button>
@@ -859,4 +864,4 @@ const classNameFromCls = (cls: string): string => {
   return idx >= 0 ? cls.slice(idx + 1) : cls;
 };
 
-export default NewViewBar;
+export default ViewBar;

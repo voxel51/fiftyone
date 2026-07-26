@@ -10,10 +10,10 @@ import {
   Header,
   iconContainer,
 } from "@fiftyone/components";
-import { ViewBar } from "@fiftyone/core";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { useRefresh } from "@fiftyone/state";
+import { ViewBar } from "@fiftyone/view-bar";
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import React, { Suspense, useCallback, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
@@ -104,9 +104,7 @@ const Nav: React.FC<
       >
         {hasDataset && (
           <Suspense
-            fallback={
-              <div style={{ flex: 1, marginLeft: "1.5rem" }} />
-            }
+            fallback={<div style={{ flex: 1, marginLeft: "1.5rem" }} />}
           >
             {/* Explicit `marginLeft` here as a belt-and-suspenders
                 gap — the header's flex `gap` should already separate
