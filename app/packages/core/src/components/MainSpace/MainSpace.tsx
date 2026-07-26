@@ -27,7 +27,10 @@ function MainSpace() {
 
   useEffect(() => {
     const incoming = sessionSpaces?._version;
-    if (incoming !== undefined && incoming < versionRef.current) {
+    // an echo carrying our current version is our own reflection: the
+    // local tree is at least as new (a just-clicked change may not have
+    // been stamped yet), so only strictly newer versions apply
+    if (incoming !== undefined && incoming <= versionRef.current) {
       return;
     }
     if (incoming !== undefined) {
