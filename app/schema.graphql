@@ -842,8 +842,44 @@ type StageDefinition {
 type StageParameter {
   name: String!
   type: String!
+  tokens: [String!]!
+  nullable: Boolean!
+  required: Boolean!
+  choices: StageParameterChoices!
   default: String
   placeholder: String
+}
+
+enum StageParameterChoiceSource {
+  FIELDS
+  GROUP_SLICES
+  CONSTANTS
+  FREE_TEXT
+}
+
+type StageParameterChoices {
+  source: StageParameterChoiceSource!
+  fields: [StageParameterFieldConstraint!]!
+  values: [String!]!
+}
+
+type StageParameterFieldConstraint {
+  level: StageParameterFieldLevel!
+  existence: StageParameterFieldExistence!
+  ftypes: [String!]!
+  labelTypes: [String!]!
+}
+
+enum StageParameterFieldExistence {
+  EXISTING
+  EXISTING_ROOT
+  ANY
+}
+
+enum StageParameterFieldLevel {
+  ANY
+  SAMPLE
+  FRAME
 }
 
 input StateForm {
