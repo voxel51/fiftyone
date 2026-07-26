@@ -92,21 +92,104 @@ type InputKind =
   | "id"
   | "idList";
 
-export const pickInput = (typeString: string): InputKind => {
+/**
+ * Every control a param can legitimately be edited with, most specific first.
+ *
+ * Param types are pipe-delimited alternatives, and several params accept more
+ * than one genuinely different thing — `SortBy.field_or_expr` is
+ * `field|str|json`, meaning a field path *or* an expression. Collapsing that to
+ * a single winner is what made expressions unreachable in `SortBy`, `GroupBy`,
+ * and `ToClips`, so the alternatives are all returned and the caller picks.
+ */
+export const paramModes = (typeString: string): InputKind[] => {
   const tokens = typeString.split("|").map((t) => t.trim());
   const has = (t: string) => tokens.includes(t);
+  const modes: InputKind[] = [];
 
-  // Highest specificity first.
-  if (has("list<field>")) return "fieldList";
-  if (has("field")) return "field";
-  if (has("bool")) return "bool";
-  if (has("int") || has("float")) return "numeric";
-  if (has("list<id>")) return "idList";
-  if (has("id")) return "id";
-  if (has("list<str>")) return "stringList";
-  if (has("str")) return "string";
-  // `json` is the catch-all — Mongo expressions, arbitrary BSON, etc.
-  return "json";
+  // Most specific first, so `modes[0]` is the default the bar opens with.
+  if (has("list<field>")) modes.push("fieldList");
+  if (has("field")) modes.push("field");
+  if (has("bool")) modes.push("bool");
+  if (has("int") || has("float")) modes.push("numeric");
+  if (has("list<id>")) modes.push("idList");
+  if (has("id")) modes.push("id");
+  if (has("list<str>")) modes.push("stringList");
+  if (has("str")) modes.push("string");
+  if (has("json") || has("dict")) modes.push("json");
+
+  // `json` is also the catch-all for a type this build doesn't recognize.
+  return modes.length ? modes : ["json"];
+};
+
+export const pickInput = (typeString: string): InputKind =>
+  paramModes(typeString)[0];
+
+/** Short label for a mode, for the switcher. */
+export const MODE_LABELS: Record<InputKind, string> = {
+  bool: "bool",
+  field: "field",
+  fieldList: "fields",
+  numeric: "number",
+  string: "text",
+  stringList: "list",
+  id: "id",
+  idList: "ids",
+  json: "expr",
+};
+
+/**
+ * Which mode a value already in the view belongs to, so a hydrated stage opens
+ * in the editor that matches what is actually there rather than in whichever
+ * mode happens to be first.
+ */
+export const inferMode = (
+  param: ParamDef,
+  value: unknown,
+  isFieldPath: (path: string) => boolean,
+): InputKind => {
+  const modes = paramModes(param.type);
+  const allows = (kind: InputKind) => modes.includes(kind);
+
+  if (value === undefined || value === null || value === "") {
+    return modes[0];
+  }
+
+  // An operator-keyed object or a nested array is an expression, never a field
+  if (typeof value === "object" && !Array.isArray(value) && allows("json")) {
+    return "json";
+  }
+
+  if (Array.isArray(value)) {
+    if (value.some((v) => typeof v === "object" && v !== null)) {
+      if (allows("json")) return "json";
+    }
+    if (allows("fieldList") && value.every((v) => typeof v === "string")) {
+      const paths = value as string[];
+      if (paths.every(isFieldPath)) return "fieldList";
+    }
+    if (allows("idList")) return "idList";
+    if (allows("stringList")) return "stringList";
+    if (allows("json")) return "json";
+    return modes[0];
+  }
+
+  if (typeof value === "boolean" && allows("bool")) return "bool";
+
+  if (typeof value === "number" && allows("numeric")) return "numeric";
+
+  if (typeof value === "string") {
+    if (allows("field") && isFieldPath(value)) return "field";
+    if (
+      allows("numeric") &&
+      value.trim() !== "" &&
+      Number.isFinite(Number(value))
+    )
+      return "numeric";
+    if (allows("string")) return "string";
+    if (allows("id")) return "id";
+  }
+
+  return modes[0];
 };
 
 /** `true` when a kwarg carries nothing the server should receive. */
@@ -135,12 +218,11 @@ export const isRequired = (param: ParamDef): boolean =>
 export const validateParam = (
   param: ParamDef,
   value: unknown,
+  kind: InputKind,
 ): string | null => {
   if (isEmptyValue(value)) {
     return isRequired(param) ? "Required" : null;
   }
-
-  const kind = pickInput(param.type);
 
   if (kind === "numeric") {
     const text = String(value).trim();
@@ -208,6 +290,8 @@ const initialState: BarState = { stages: [] };
 
 const NO_ERRORS: ReadonlyMap<string, string> = new Map();
 
+const NO_KINDS: ReadonlyMap<string, InputKind> = new Map();
+
 const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 const reducer = (state: BarState, action: BarAction): BarState => {
@@ -260,6 +344,8 @@ interface ParamDef {
 interface ParamInputProps {
   param: ParamDef;
   value: unknown;
+  /** The control in force, chosen from {@link paramModes}. */
+  kind: InputKind;
   /** Why this value cannot be sent, if it cannot. */
   error?: string | null;
   onChange: (next: unknown) => void;
@@ -293,12 +379,12 @@ const Labelled: React.FC<
 const ParamControl: React.FC<ParamInputProps> = ({
   param,
   value,
+  kind,
   error,
   onChange,
   fieldOptions,
 }) => {
   const invalid = Boolean(error);
-  const kind = pickInput(param.type);
   // Controls name themselves, so the required marker rides along with the name
   const name = isRequired(param) ? `${param.name} *` : param.name;
   const placeholder = param.placeholder ?? name;
@@ -427,21 +513,55 @@ const ParamControl: React.FC<ParamInputProps> = ({
  * A parameter's control plus the reason its value was rejected. voodo's `Input`
  * takes only a boolean error, so the message is rendered here.
  */
-const ParamInput: React.FC<ParamInputProps> = (props) => (
-  <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-    <ParamControl {...props} />
-    {props.error && (
-      <span
-        style={{
-          fontSize: 11,
-          color: "var(--fo-palette-error-plainColor)",
-        }}
-      >
-        {props.error}
-      </span>
-    )}
-  </Stack>
-);
+const ParamInput: React.FC<
+  ParamInputProps & { onModeChange: (kind: InputKind) => void }
+> = ({ onModeChange, ...props }) => {
+  const modes = paramModes(props.param.type);
+
+  return (
+    <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+      {modes.length > 1 && (
+        <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
+          {modes.map((mode) => (
+            <span
+              key={mode}
+              onClick={() => onModeChange(mode)}
+              role="button"
+              title={`Enter ${props.param.name} as ${MODE_LABELS[mode]}`}
+              style={{
+                fontSize: 10,
+                cursor: "pointer",
+                padding: "1px 5px",
+                borderRadius: 3,
+                color:
+                  mode === props.kind
+                    ? "var(--fo-palette-text-primary)"
+                    : "var(--fo-palette-text-secondary)",
+                background:
+                  mode === props.kind
+                    ? "var(--fo-palette-background-level3)"
+                    : undefined,
+              }}
+            >
+              {MODE_LABELS[mode]}
+            </span>
+          ))}
+        </Stack>
+      )}
+      <ParamControl {...props} />
+      {props.error && (
+        <span
+          style={{
+            fontSize: 11,
+            color: "var(--fo-palette-error-plainColor)",
+          }}
+        >
+          {props.error}
+        </span>
+      )}
+    </Stack>
+  );
+};
 
 // ---------------------------------------------------------------
 // Stage card
@@ -453,6 +573,9 @@ interface StageCardProps {
   fieldOptions: { id: string; data: { label: string } }[];
   /** Why each of this stage's params was rejected, by param name. */
   errors: ReadonlyMap<string, string>;
+  /** The control in force for each param, by param name. */
+  kinds: ReadonlyMap<string, InputKind>;
+  onModeChange: (param: string, kind: InputKind) => void;
   expanded: boolean;
   onToggle: () => void;
   onChange: (name: string, value: unknown) => void;
@@ -481,6 +604,8 @@ const StageCard: React.FC<StageCardProps> = ({
   definition,
   fieldOptions,
   errors,
+  kinds,
+  onModeChange,
   expanded,
   onToggle,
   onChange,
@@ -586,6 +711,8 @@ const StageCard: React.FC<StageCardProps> = ({
                     param={p}
                     value={stage.kwargs[p.name]}
                     error={errors.get(p.name)}
+                    kind={kinds.get(p.name) ?? pickInput(p.type)}
+                    onModeChange={(kind) => onModeChange(p.name, kind)}
                     onChange={(v) => onChange(p.name, v)}
                     fieldOptions={fieldOptions}
                   />
@@ -621,6 +748,12 @@ const ViewBar: React.FC = () => {
   // Which stage's editor popover is open, by stage id. Only one at
   // a time; clicking another collapses the previous.
   const [editingId, setEditingId] = React.useState<string | null>(null);
+  // Modes the user chose explicitly, keyed `${stageId}:${paramName}`. Absent
+  // means the mode is inferred from the value, so a hydrated stage opens in the
+  // editor matching what is already there.
+  const [modeOverrides, setModeOverrides] = React.useState<
+    Record<string, InputKind>
+  >({});
 
   // Stage definitions provide the param schema; the view itself
   // carries kwargs as an ordered `kwargs: [[name, value], ...]` list.
@@ -655,6 +788,8 @@ const ViewBar: React.FC = () => {
     [stageDefs],
   );
 
+  const fieldPathSet = useMemo(() => new Set(fieldPaths), [fieldPaths]);
+
   const fieldOptions = useMemo(
     () =>
       fieldPaths.map((path) => ({
@@ -662,6 +797,51 @@ const ViewBar: React.FC = () => {
         data: { label: path },
       })),
     [fieldPaths],
+  );
+
+  /**
+   * The mode in force for each param, by stage id then param name: the user's
+   * explicit choice when there is one, otherwise inferred from the value.
+   */
+  const activeKinds = useMemo(() => {
+    const byStage = new Map<string, Map<string, InputKind>>();
+    for (const stage of state.stages) {
+      const def = defsByName.get(stage.cls);
+      const kinds = new Map<string, InputKind>();
+      for (const param of def?.params ?? []) {
+        const override = modeOverrides[`${stage.id}:${param.name}`];
+        kinds.set(
+          param.name,
+          override ??
+            inferMode(param, stage.kwargs[param.name], (path) =>
+              fieldPathSet.has(path),
+            ),
+        );
+      }
+      byStage.set(stage.id, kinds);
+    }
+    return byStage;
+  }, [state.stages, defsByName, modeOverrides, fieldPathSet]);
+
+  const kindOf = useCallback(
+    (stage: WorkingStage, param: ParamDef): InputKind =>
+      activeKinds.get(stage.id)?.get(param.name) ?? pickInput(param.type),
+    [activeKinds],
+  );
+
+  /**
+   * Switching mode clears the value: a field path is not an expression, and
+   * reinterpreting one as the other would silently change what gets applied.
+   */
+  const changeMode = useCallback(
+    (stage: WorkingStage, param: string, kind: InputKind) => {
+      setModeOverrides((current) => ({
+        ...current,
+        [`${stage.id}:${param}`]: kind,
+      }));
+      dispatch({ type: "setKwarg", id: stage.id, name: param, value: "" });
+    },
+    [],
   );
 
   /**
@@ -682,7 +862,7 @@ const ViewBar: React.FC = () => {
           const value = s.kwargs[p.name];
           // Numeric controls hold what was typed; validation has already
           // rejected anything that is not a number by the time Apply runs
-          if (pickInput(p.type) === "numeric" && typeof value === "string") {
+          if (kindOf(s, p) === "numeric" && typeof value === "string") {
             return [p.name, Number(value.trim())];
           }
           return [p.name, value];
@@ -704,7 +884,11 @@ const ViewBar: React.FC = () => {
     for (const stage of state.stages) {
       const def = defsByName.get(stage.cls);
       for (const param of def?.params ?? []) {
-        const message = validateParam(param, stage.kwargs[param.name]);
+        const message = validateParam(
+          param,
+          stage.kwargs[param.name],
+          kindOf(stage, param),
+        );
         if (!message) continue;
 
         let messages = byStage.get(stage.id);
@@ -717,7 +901,7 @@ const ViewBar: React.FC = () => {
       }
     }
     return { byStage, labels };
-  }, [state.stages, defsByName]);
+  }, [state.stages, defsByName, kindOf]);
 
   const apply = useCallback(() => {
     if (paramErrors.labels.length) return;
@@ -961,6 +1145,8 @@ const ViewBar: React.FC = () => {
           <React.Fragment key={stage.id}>
             <StageCard
               errors={paramErrors.byStage.get(stage.id) ?? NO_ERRORS}
+              kinds={activeKinds.get(stage.id) ?? NO_KINDS}
+              onModeChange={(param, kind) => changeMode(stage, param, kind)}
               stage={stage}
               definition={def}
               fieldOptions={fieldOptions}
