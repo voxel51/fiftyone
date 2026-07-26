@@ -11,6 +11,5 @@ from typing import Literal
 
 FeatureFlag = Literal[
     "VFF_MULTIMODAL",
-    "VFF_NEW_VIEW_BAR",
 ]
 """Enumeration of active feature flags."""
