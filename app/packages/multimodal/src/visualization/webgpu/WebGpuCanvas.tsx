@@ -61,6 +61,12 @@ const styles: Record<string, CSSProperties> = {
  * Props for the shared React Three Fiber WebGPU canvas root.
  */
 export interface WebGpuCanvasProps {
+  /**
+   * Enables multisample antialiasing for the renderer. Sampled when the
+   * renderer is created because Three cannot change its default sample count
+   * after the swapchain attachments exist.
+   */
+  readonly antialias?: boolean;
   readonly camera?: CanvasProps["camera"];
   readonly children: ReactNode;
   readonly className?: string;
@@ -85,6 +91,7 @@ export interface WebGpuCanvasProps {
  * R3F root backed by Three's WebGPU renderer.
  */
 export function WebGpuCanvas({
+  antialias = true,
   camera,
   children,
   className,
@@ -100,6 +107,7 @@ export function WebGpuCanvas({
 }: WebGpuCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const canvasStateRef = useRef<WebGpuRootState | null>(null);
+  const antialiasRef = useRef(antialias);
   const clearColorRef = useRef(clearColor);
   const mountedRef = useRef(true);
   const onErrorRef = useRef(onError);
@@ -115,6 +123,7 @@ export function WebGpuCanvas({
   const rendererRef = useRef<THREE.WebGPURenderer | null>(null);
   const readyNotifiedRef = useRef(false);
   const surfaceRef = useRef(surface);
+  antialiasRef.current = antialias;
   surfaceRef.current = surface;
 
   const [isReady, setIsReady] = useState(false);
@@ -138,7 +147,7 @@ export function WebGpuCanvas({
   >((canvas) => {
     const renderer = new THREE.WebGPURenderer({
       alpha: false,
-      antialias: true,
+      antialias: antialiasRef.current,
       canvas: canvas as HTMLCanvasElement,
       depth: true,
       powerPreference: "high-performance",

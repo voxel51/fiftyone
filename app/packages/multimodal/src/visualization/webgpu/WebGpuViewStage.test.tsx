@@ -6,6 +6,7 @@ const harness = vi.hoisted(() => ({
   canvasMounts: 0,
   invalidate: vi.fn(),
   latestCanvasProps: null as {
+    antialias?: boolean;
     dpr?: number;
     frameloop?: string;
     style?: CSSProperties;
@@ -17,6 +18,7 @@ const harness = vi.hoisted(() => ({
 vi.mock("./WebGpuCanvas", () => ({
   WebGpuCanvas: ({
     children: _children,
+    antialias,
     dpr,
     frameloop,
     onError,
@@ -25,6 +27,7 @@ vi.mock("./WebGpuCanvas", () => ({
     surface,
   }: {
     readonly children: ReactNode;
+    readonly antialias?: boolean;
     readonly dpr?: number;
     readonly frameloop?: string;
     readonly onError?: (error: string | null) => void;
@@ -32,7 +35,13 @@ vi.mock("./WebGpuCanvas", () => ({
     readonly style?: CSSProperties;
     readonly surface?: string;
   }) => {
-    harness.latestCanvasProps = { dpr, frameloop, style, surface };
+    harness.latestCanvasProps = {
+      antialias,
+      dpr,
+      frameloop,
+      style,
+      surface,
+    };
     harness.onError = onError ?? null;
     useLayoutEffect(() => {
       harness.canvasMounts += 1;
@@ -45,6 +54,7 @@ vi.mock("./WebGpuCanvas", () => ({
 import {
   WebGpuView,
   WebGpuViewStage,
+  SharedStageFrameCoordinator,
   updateWebGpuViewNodes,
   webGpuViewBounds,
   useWebGpuViewStage,
@@ -146,6 +156,7 @@ describe("WebGpuViewStage", () => {
     expect(document.querySelectorAll("[data-webgpu-view]")).toHaveLength(2);
     expect(harness.canvasMounts).toBe(1);
     expect(harness.latestCanvasProps).toMatchObject({
+      antialias: false,
       dpr: 1,
       frameloop: "demand",
       surface: "modal-images",
@@ -297,6 +308,39 @@ describe("WebGpuViewStage", () => {
   });
 });
 
+describe("SharedStageFrameCoordinator", () => {
+  it("folds the clear into the first renderable view", () => {
+    const coordinator = new SharedStageFrameCoordinator();
+    const renderer = sharedStageRenderer();
+
+    coordinator.begin();
+    coordinator.render(renderer, () => {
+      renderer.calls.push(`render:${String(renderer.autoClear)}`);
+    });
+    coordinator.render(renderer, () => {
+      renderer.calls.push(`render:${String(renderer.autoClear)}`);
+    });
+    coordinator.finish(renderer);
+
+    expect(renderer.calls).toEqual([
+      "scissor:false",
+      "render:true",
+      "render:false",
+    ]);
+    expect(renderer.autoClear).toBe(true);
+  });
+
+  it("retains a fallback clear when no view renders", () => {
+    const coordinator = new SharedStageFrameCoordinator();
+    const renderer = sharedStageRenderer();
+
+    coordinator.begin();
+    coordinator.finish(renderer);
+
+    expect(renderer.calls).toEqual(["scissor:false", "clear:true:true:true"]);
+  });
+});
+
 describe("webGpuViewBounds", () => {
   const canvas = {
     height: 600,
@@ -382,6 +426,30 @@ function ViewHarness({
       ) : null}
     </WebGpuViewStage>
   );
+}
+
+function sharedStageRenderer() {
+  return {
+    autoClear: true,
+    calls: [] as string[],
+    clear(color?: boolean, depth?: boolean, stencil?: boolean) {
+      this.calls.push(
+        `clear:${String(color)}:${String(depth)}:${String(stencil)}`,
+      );
+    },
+    render() {
+      // noop: render behavior is supplied to the coordinator callback
+    },
+    setScissor() {
+      // noop: bounds are covered by webGpuViewBounds tests
+    },
+    setScissorTest(enabled: boolean) {
+      this.calls.push(`scissor:${String(enabled)}`);
+    },
+    setViewport() {
+      // noop: bounds are covered by webGpuViewBounds tests
+    },
+  };
 }
 
 function StageState() {

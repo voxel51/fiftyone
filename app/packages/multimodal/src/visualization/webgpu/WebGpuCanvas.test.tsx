@@ -21,6 +21,7 @@ interface FakeRenderer {
 const harness = vi.hoisted(() => ({
   initMode: "resolve" as "resolve" | "reject" | "manual",
   pendingInits: [] as Array<() => void>,
+  rendererOptions: [] as Array<{ readonly antialias?: boolean }>,
   renderers: [] as Array<{ disposeCalls: number }>,
 }));
 
@@ -34,7 +35,8 @@ vi.mock("three/webgpu", () => {
     disposeCalls = 0;
     outputColorSpace = "";
 
-    constructor() {
+    constructor(options: { readonly antialias?: boolean }) {
+      harness.rendererOptions.push(options);
       harness.renderers.push(this);
     }
 
@@ -114,6 +116,7 @@ beforeEach(() => {
   resetWebGpuDeviceRegistryForTests();
   harness.initMode = "resolve";
   harness.pendingInits = [];
+  harness.rendererOptions = [];
   harness.renderers = [];
 });
 
@@ -123,6 +126,23 @@ afterEach(() => {
 });
 
 describe("WebGpuCanvas device registration", () => {
+  it("uses antialiasing by default and allows a surface to disable it", () => {
+    const { unmount } = render(
+      <WebGpuCanvas>
+        <div />
+      </WebGpuCanvas>,
+    );
+    expect(harness.rendererOptions.at(-1)?.antialias).toBe(true);
+
+    unmount();
+    render(
+      <WebGpuCanvas antialias={false}>
+        <div />
+      </WebGpuCanvas>,
+    );
+    expect(harness.rendererOptions.at(-1)?.antialias).toBe(false);
+  });
+
   it("registers on construction and releases on unmount", async () => {
     const { unmount } = render(
       <WebGpuCanvas surface="test-surface">

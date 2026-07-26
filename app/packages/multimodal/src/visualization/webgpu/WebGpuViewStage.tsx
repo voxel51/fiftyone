@@ -34,6 +34,8 @@ const LazyWebGpuCanvas = lazy(async () => {
 });
 
 const SHARED_VIEW_SURFACE = "modal-images";
+const SHARED_VIEW_MIN_RENDER_PRIORITY = 1;
+const SHARED_STAGE_FINISH_PRIORITY = Number.MAX_SAFE_INTEGER;
 
 // Image tiles share one demand-rendered device because playback invalidates
 // them together. The interactive 3D scene intentionally keeps its own canvas:
@@ -41,6 +43,7 @@ const SHARED_VIEW_SURFACE = "modal-images";
 
 interface WebGpuViewStageContextValue {
   readonly error: string | null;
+  readonly frame: SharedStageFrameCoordinator;
   readonly invalidate: () => void;
   readonly pointCloudBudget: PointCloudCanvasBudget;
   readonly ready: boolean;
@@ -81,6 +84,7 @@ export function WebGpuViewStage({
   const [pointCloudBudget] = useState(
     () => new PointCloudCanvasBudget(DEFAULT_MAX_RENDERED_POINTS),
   );
+  const [frame] = useState(() => new SharedStageFrameCoordinator());
   const [dpr, setDpr] = useState(currentStageDpr);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -184,13 +188,22 @@ export function WebGpuViewStage({
   const context = useMemo<WebGpuViewStageContextValue>(
     () => ({
       error,
+      frame,
       invalidate,
       pointCloudBudget,
       ready,
       registerView,
       updateView,
     }),
-    [error, invalidate, pointCloudBudget, ready, registerView, updateView],
+    [
+      error,
+      frame,
+      invalidate,
+      pointCloudBudget,
+      ready,
+      registerView,
+      updateView,
+    ],
   );
 
   return (
@@ -204,6 +217,7 @@ export function WebGpuViewStage({
         {viewCount > 0 && error === null ? (
           <Suspense fallback={null}>
             <LazyWebGpuCanvas
+              antialias={false}
               dpr={dpr}
               frameloop="demand"
               onError={handleError}
@@ -212,7 +226,7 @@ export function WebGpuViewStage({
               style={canvasStyle}
               surface={SHARED_VIEW_SURFACE}
             >
-              <SharedStageFrame />
+              <SharedStageFrame frame={frame} />
               {Array.from(viewNodes, ([id, node]) => (
                 <Fragment key={id}>{node}</Fragment>
               ))}
@@ -266,7 +280,7 @@ export function WebGpuView({
   if (!stage) {
     throw new Error("WebGpuView must be rendered inside WebGpuViewStage");
   }
-  const { invalidate, registerView, updateView } = stage;
+  const { frame, invalidate, registerView, updateView } = stage;
 
   const viewId = useId();
   const viewRef = useRef<HTMLDivElement | null>(null);
@@ -323,11 +337,16 @@ export function WebGpuView({
 
   const portal = useMemo(
     () => (
-      <SharedViewPortal index={index} rect={rect} visible={visible}>
+      <SharedViewPortal
+        frame={frame}
+        index={index}
+        rect={rect}
+        visible={visible}
+      >
         {children}
       </SharedViewPortal>
     ),
-    [children, index, rect, visible],
+    [children, frame, index, rect, visible],
   );
 
   useLayoutEffect(() => {
@@ -347,6 +366,7 @@ export function WebGpuView({
 
 interface SharedViewPortalProps {
   readonly children?: ReactNode;
+  readonly frame: SharedStageFrameCoordinator;
   readonly index?: number;
   readonly rect: DOMRectReadOnly | null;
   readonly visible?: boolean;
@@ -355,6 +375,7 @@ interface SharedViewPortalProps {
 /** Portals one image scene into the shared canvas without Drei's WebGL Y flip. */
 function SharedViewPortal({
   children,
+  frame,
   index = 1,
   rect,
   visible = true,
@@ -368,8 +389,9 @@ function SharedViewPortal({
 
   return createPortal(
     <SharedViewRenderer
-      index={index}
       canvasSize={canvasSize}
+      frame={frame}
+      index={index}
       rect={rect}
       visible={visible}
     >
@@ -390,88 +412,100 @@ function SharedViewPortal({
 function SharedViewRenderer({
   canvasSize,
   children,
+  frame,
   index,
   rect,
   visible,
 }: {
   readonly canvasSize: RootState["size"];
   readonly children?: ReactNode;
+  readonly frame: SharedStageFrameCoordinator;
   readonly index: number;
   readonly rect: DOMRectReadOnly;
   readonly visible: boolean;
 }) {
-  useFrame((state) => {
-    if (!visible) {
-      return;
-    }
+  useFrame(
+    (state) => {
+      if (!visible) {
+        return;
+      }
 
-    // DOM measurement is the source of truth for a tile. The portal owns an
-    // independent scene/camera, while this callback maps it onto one region of
-    // the shared physical canvas.
-    const bounds = webGpuViewBounds(canvasSize, rect);
-    if (!bounds) {
-      return;
-    }
-    if (
-      state.size.width !== bounds.width ||
-      state.size.height !== bounds.height ||
-      state.size.left !== rect.left ||
-      state.size.top !== rect.top
-    ) {
-      // `createPortal()` mirrors the root's `setSize`, whose closure would
-      // resize the shared canvas itself. Mutate only this portal store so
-      // image-fit subscribers receive the tracked tile dimensions.
-      state.set((current) => ({
-        size: {
-          ...current.size,
-          height: bounds.height,
-          left: rect.left,
-          top: rect.top,
-          width: bounds.width,
-        },
-      }));
-      state.invalidate();
-    }
-    updateViewCamera(state.camera, bounds.width, bounds.height);
+      // DOM measurement is the source of truth for a tile. The portal owns an
+      // independent scene/camera, while this callback maps it onto one region of
+      // the shared physical canvas.
+      const bounds = webGpuViewBounds(canvasSize, rect);
+      if (!bounds) {
+        return;
+      }
+      if (
+        state.size.width !== bounds.width ||
+        state.size.height !== bounds.height ||
+        state.size.left !== rect.left ||
+        state.size.top !== rect.top
+      ) {
+        // `createPortal()` mirrors the root's `setSize`, whose closure would
+        // resize the shared canvas itself. Mutate only this portal store so
+        // image-fit subscribers receive the tracked tile dimensions.
+        state.set((current) => ({
+          size: {
+            ...current.size,
+            height: bounds.height,
+            left: rect.left,
+            top: rect.top,
+            width: bounds.width,
+          },
+        }));
+        state.invalidate();
+      }
+      updateViewCamera(state.camera, bounds.width, bounds.height);
 
-    const renderer = state.gl as unknown as SharedStageRenderer;
-    const autoClear = renderer.autoClear;
-    renderer.autoClear = false;
-    // WebGPURenderer currently accepts the DOM-style top-left logical
-    // coordinates produced below; DPR scaling remains renderer-owned.
-    renderer.setViewport(
-      bounds.viewportX,
-      bounds.viewportY,
-      bounds.scissorWidth,
-      bounds.scissorHeight,
-    );
-    renderer.setScissor(
-      bounds.scissorX,
-      bounds.scissorY,
-      bounds.scissorWidth,
-      bounds.scissorHeight,
-    );
-    renderer.setScissorTest(true);
-    try {
-      renderer.render(state.scene, state.camera);
-    } finally {
-      renderer.setScissorTest(false);
-      renderer.autoClear = autoClear;
-    }
-  }, index);
+      const renderer = state.gl as unknown as SharedStageRenderer;
+      // WebGPURenderer currently accepts the DOM-style top-left logical
+      // coordinates produced below; DPR scaling remains renderer-owned.
+      renderer.setViewport(
+        bounds.viewportX,
+        bounds.viewportY,
+        bounds.scissorWidth,
+        bounds.scissorHeight,
+      );
+      renderer.setScissor(
+        bounds.scissorX,
+        bounds.scissorY,
+        bounds.scissorWidth,
+        bounds.scissorHeight,
+      );
+      renderer.setScissorTest(true);
+      try {
+        frame.render(renderer, () =>
+          renderer.render(state.scene, state.camera),
+        );
+      } finally {
+        renderer.setScissorTest(false);
+      }
+    },
+    Math.min(
+      SHARED_STAGE_FINISH_PRIORITY - 1,
+      Math.max(SHARED_VIEW_MIN_RENDER_PRIORITY, index),
+    ),
+  );
 
   return <>{children}</>;
 }
 
-/** Clears once before the independently-scissored image scenes render. */
-function SharedStageFrame() {
-  // Individual views disable autoClear so later scissored views do not erase
-  // earlier ones. Clear the shared target exactly once at render priority 0.
+/**
+ * Starts and finishes one shared-stage frame. The first renderable view owns
+ * the target clear; the finishing callback clears only when every view was
+ * hidden or outside the canvas.
+ */
+function SharedStageFrame({
+  frame,
+}: {
+  readonly frame: SharedStageFrameCoordinator;
+}) {
+  useFrame(() => frame.begin(), 0);
   useFrame(({ gl }) => {
-    const renderer = gl as unknown as SharedStageRenderer;
-    renderer.setScissorTest(false);
-    renderer.clear(true, true, true);
-  }, 0);
+    frame.finish(gl as unknown as SharedStageRenderer);
+  }, SHARED_STAGE_FINISH_PRIORITY);
   return null;
 }
 
@@ -482,6 +516,45 @@ interface SharedStageRenderer {
   setScissor(x: number, y: number, width: number, height: number): void;
   setScissorTest(enabled: boolean): void;
   setViewport(x: number, y: number, width: number, height: number): void;
+}
+
+/**
+ * Coordinates clearing across the independently-scissored scenes rendered
+ * into one physical WebGPU canvas.
+ */
+export class SharedStageFrameCoordinator {
+  private rendered = false;
+
+  /** Resets render ownership before the view callbacks for a frame run. */
+  begin(): void {
+    this.rendered = false;
+  }
+
+  /** Renders one view, allowing only the first view to clear the target. */
+  render(renderer: SharedStageRenderer, render: () => void): void {
+    const autoClear = renderer.autoClear;
+    const firstView = !this.rendered;
+    renderer.autoClear = firstView;
+    if (firstView) {
+      // The viewport already confines this scene to its tile. Disable scissor
+      // for the automatic load-op clear so layout changes cannot leave stale
+      // pixels elsewhere on the shared target.
+      renderer.setScissorTest(false);
+    }
+    this.rendered = true;
+    try {
+      render();
+    } finally {
+      renderer.autoClear = autoClear;
+    }
+  }
+
+  /** Clears a frame for which no view produced a valid scissored render. */
+  finish(renderer: SharedStageRenderer): void {
+    if (this.rendered) return;
+    renderer.setScissorTest(false);
+    renderer.clear(true, true, true);
+  }
 }
 
 /** Logical viewport and scissor bounds for one tracked WebGPU view. */
