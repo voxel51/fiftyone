@@ -52,10 +52,9 @@ beforeEach(() => {
 });
 
 describe("DataStreamScheduler", () => {
-  it("refreshes lookahead after forward and backward seeks", () => {
+  it("routes rolling lookahead through idle and playback lanes", () => {
     const harness = createSchedulerHarness();
     const cleanup = harness.register();
-    playbackState.isPlaying = true;
 
     movePlayhead(5);
     expect(backgroundFetchCount(harness.prefetcher.fetchBatch)).toBe(1);
@@ -64,12 +63,16 @@ describe("DataStreamScheduler", () => {
     movePlayhead(5.01);
     expect(backgroundFetchCount(harness.prefetcher.fetchBatch)).toBe(1);
 
+    playbackState.isPlaying = true;
     movePlayhead(6);
-    expect(backgroundFetchCount(harness.prefetcher.fetchBatch)).toBe(2);
+    expect(backgroundFetchCount(harness.prefetcher.fetchBatch)).toBe(1);
+    expect(
+      operationFetchCount(harness.prefetcher.fetchBatch, "playback-prefetch"),
+    ).toBe(1);
 
-    // Moving backward invalidates the forward refresh watermark immediately.
+    playbackState.isPlaying = false;
     movePlayhead(1);
-    expect(backgroundFetchCount(harness.prefetcher.fetchBatch)).toBe(3);
+    expect(backgroundFetchCount(harness.prefetcher.fetchBatch)).toBe(2);
     cleanup();
   });
 
@@ -167,7 +170,12 @@ function movePlayhead(timeSec: number): void {
 }
 
 function backgroundFetchCount(fetchBatch: ReturnType<typeof vi.fn>): number {
-  return fetchBatch.mock.calls.filter(
-    (call) => call[2] === "background-lookahead",
-  ).length;
+  return operationFetchCount(fetchBatch, "background-lookahead");
+}
+
+function operationFetchCount(
+  fetchBatch: ReturnType<typeof vi.fn>,
+  operation: string,
+): number {
+  return fetchBatch.mock.calls.filter((call) => call[2] === operation).length;
 }

@@ -95,12 +95,13 @@ export function batchReadPriority(
   return operation === "background-lookahead" ? "idle" : "playback";
 }
 
-/** Queues bounded background batches for missing rolling lookahead. */
+/** Queues bounded batches for missing rolling lookahead. */
 export function fillMissingLookaheadFrom({
   activeStreams,
   collectMissingTicks,
   fetchBatch,
   lookaheadSeconds,
+  operation = "background-lookahead",
   policy,
   timeSec,
 }: {
@@ -116,6 +117,7 @@ export function fillMissingLookaheadFrom({
     operation: DataOperation,
   ) => boolean;
   readonly lookaheadSeconds: number;
+  readonly operation?: DataOperation;
   readonly policy: DerivedPlaybackPolicy;
   readonly timeSec: number;
 }): boolean {
@@ -132,7 +134,7 @@ export function fillMissingLookaheadFrom({
       policy.maxPrefetchBatch,
     );
     if (missing.length === 0) return queued;
-    if (!fetchBatch(missing, activeStreams, "background-lookahead")) {
+    if (!fetchBatch(missing, activeStreams, operation)) {
       return queued;
     }
     queued = true;

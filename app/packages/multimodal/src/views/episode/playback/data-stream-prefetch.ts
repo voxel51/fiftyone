@@ -756,6 +756,10 @@ export class DataStreamScheduler {
         return;
       }
       if (this.warmLoopStartRunway(timeSec, activeStreams)) return;
+      const operation =
+        getIsPlaying(options.store) || getIsPlayPending(options.store)
+          ? "playback-prefetch"
+          : "background-lookahead";
       fillMissingLookaheadFrom({
         activeStreams,
         collectMissingTicks: (startSec, endSec, maxTicks) =>
@@ -767,6 +771,7 @@ export class DataStreamScheduler {
           ),
         fetchBatch: options.prefetcher.fetchBatch,
         lookaheadSeconds: options.getBackgroundLookaheadSeconds(),
+        operation,
         policy: options.policy,
         timeSec,
       });

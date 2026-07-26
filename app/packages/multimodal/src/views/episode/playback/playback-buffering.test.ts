@@ -68,6 +68,27 @@ describe("episode playback buffering policy", () => {
     );
   });
 
+  it("can put rolling lookahead on the playback lane", () => {
+    const fetchBatch = vi.fn(() => true);
+
+    expect(
+      fillMissingLookaheadFrom({
+        activeStreams: ["camera"],
+        collectMissingTicks: () => [1n],
+        fetchBatch,
+        lookaheadSeconds: 1,
+        operation: "playback-prefetch",
+        policy: derivePlaybackPolicy(DEFAULT_PLAYBACK_POLICY, 10),
+        timeSec: 0,
+      }),
+    ).toBe(true);
+    expect(fetchBatch).toHaveBeenCalledWith(
+      [1n],
+      ["camera"],
+      "playback-prefetch",
+    );
+  });
+
   it("uses the smaller startup window for first-play readiness", () => {
     const collectMissingTicks = vi.fn(() => [3n]);
     const fetchBatch = vi.fn(() => true);
