@@ -14,7 +14,7 @@ import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { useRefresh } from "@fiftyone/state";
 import { ViewBar } from "@fiftyone/view-bar";
-import { Icon, IconName, Size } from "@voxel51/voodo";
+import { DarkMode, LightMode } from "@mui/icons-material";
 import React, { Suspense, useCallback, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
@@ -134,10 +134,11 @@ const Nav: React.FC<
               color: "var(--fo-palette-text-secondary)",
             }}
           >
-            <Icon
-              name={mode === "dark" ? IconName.Sun : IconName.Moon}
-              size={Size.Lg}
-            />
+            {mode === "dark" ? (
+              <LightMode color="inherit" />
+            ) : (
+              <DarkMode color="inherit" />
+            )}
           </div>
           <DiscordLink />
           <GitHubLink />
