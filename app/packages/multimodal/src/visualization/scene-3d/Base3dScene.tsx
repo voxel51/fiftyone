@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unknown-property */
-import { GizmoHelper, GizmoViewport, OrbitControls } from "@react-three/drei";
-import { useThree } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { mix, screenUV, vec3 } from "three/tsl";
 import {
@@ -13,12 +13,13 @@ import {
 } from "react";
 
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../panel-ui/style-tokens";
+import {
+  CameraOrientationGizmo,
+  type CameraOrientationDirection,
+} from "./CameraOrientationGizmo";
 
-const AXIS_COLORS: [string, string, string] = ["#ef4444", "#22c55e", "#3b82f6"];
-const AXIS_LABEL_COLOR = "#f8fafc";
 const DEFAULT_AMBIENT_LIGHT_INTENSITY = 0.8;
-const GIZMO_MARGIN_PIXELS: [number, number] = [42, 42];
-const GIZMO_RENDER_PRIORITY = 1;
+const GIZMO_TWEEN_DURATION_SECONDS = 0.3;
 const CAMERA_POSE_EPSILON = 0.000001;
 const DEFAULT_FOCUS_DIRECTION = new THREE.Vector3(1, -1, 0.75).normalize();
 const FOCUS_PADDING = 1.2;
@@ -42,9 +43,6 @@ const SCENE_UP_AXES: Record<
 // pushes the target ahead of the camera instead (fly-through), keeping
 // a constant working distance — and therefore constant zoom/pan speed.
 const ORBIT_ZOOM_DISTANCE_FLOOR_M = 2;
-
-// 20% smaller than drei's default so the gizmo crowds the scene less.
-const GIZMO_SCALE = 0.7;
 
 type MutableVectorHandle = {
   readonly x: number;
@@ -71,6 +69,14 @@ type OrbitControlsHandle = {
 type SceneHandle = {
   updateWorldMatrix: (updateParents: boolean, updateChildren: boolean) => void;
 };
+
+interface CameraGizmoTween {
+  elapsedSeconds: number;
+  readonly fromDirection: THREE.Vector3;
+  readonly radius: number;
+  readonly rotation: THREE.Quaternion;
+  readonly target: THREE.Vector3;
+}
 
 /**
  * Controlled camera pose for shared 3D views.
@@ -140,21 +146,8 @@ export function Base3dScene({
         cameraPose={cameraPose}
         focusSceneRequestKey={focusSceneRequestKey}
         onCameraPoseChange={onCameraPoseChange}
+        showGizmo={showGizmo}
       />
-      {showGizmo ? (
-        <GizmoHelper
-          alignment="top-left"
-          margin={GIZMO_MARGIN_PIXELS}
-          renderPriority={GIZMO_RENDER_PRIORITY}
-        >
-          <mesh scale={GIZMO_SCALE}>
-            <GizmoViewport
-              axisColors={AXIS_COLORS}
-              labelColor={AXIS_LABEL_COLOR}
-            />
-          </mesh>
-        </GizmoHelper>
-      ) : null}
     </>
   );
 }
@@ -222,6 +215,7 @@ function ControlledOrbitControls({
   cameraPose,
   focusSceneRequestKey,
   onCameraPoseChange,
+  showGizmo,
 }: {
   readonly cameraPose?: ThreeCameraPose | null;
   readonly focusSceneRequestKey?: number;
@@ -229,9 +223,11 @@ function ControlledOrbitControls({
     pose: ThreeCameraPose,
     source: ThreeCameraPoseChangeSource,
   ) => void;
+  readonly showGizmo: boolean;
 }) {
   const applyingPoseRef = useRef(false);
   const emittedInitialPoseRef = useRef(false);
+  const gizmoTweenRef = useRef<CameraGizmoTween | null>(null);
   const interactingRef = useRef(false);
   const lastEmittedPoseRef = useRef<ThreeCameraPose | null>(null);
   const [controls, setControls] = useState<OrbitControlsHandle | null>(null);
@@ -251,6 +247,7 @@ function ControlledOrbitControls({
       return;
     }
 
+    gizmoTweenRef.current = null;
     if (!cameraPoseEquals(cameraPoseFromScene(camera, controls), cameraPose)) {
       applyingPoseRef.current = true;
       setCameraPose(camera, controls, cameraPose);
@@ -283,6 +280,7 @@ function ControlledOrbitControls({
     }
 
     applyingPoseRef.current = true;
+    gizmoTweenRef.current = null;
     const pose = focusCameraOnScene({
       camera,
       controls,
@@ -331,6 +329,7 @@ function ControlledOrbitControls({
       if (distance >= ORBIT_ZOOM_DISTANCE_FLOOR_M || distance === 0) {
         return;
       }
+      gizmoTweenRef.current = null;
       const scale = ORBIT_ZOOM_DISTANCE_FLOOR_M / distance;
       controls.target.set(
         camera.position.x + dx * scale,
@@ -351,6 +350,7 @@ function ControlledOrbitControls({
   }, [camera, controls, gl, invalidate]);
 
   const handleStart = useCallback(() => {
+    gizmoTweenRef.current = null;
     interactingRef.current = true;
   }, []);
   const handleEnd = useCallback(() => {
@@ -372,16 +372,81 @@ function ControlledOrbitControls({
     onCameraPoseChange?.(pose, "interaction");
   }, [camera, controls, onCameraPoseChange]);
 
+  const handleGizmoDirection = useCallback(
+    (direction: CameraOrientationDirection) => {
+      if (!controls) return;
+      const target = vectorFromHandle(controls.target);
+      const fromDirection = vectorFromHandle(camera.position).sub(target);
+      const radius = fromDirection.length();
+      if (radius <= CAMERA_POSE_EPSILON) return;
+
+      fromDirection.divideScalar(radius);
+      gizmoTweenRef.current = {
+        elapsedSeconds: 0,
+        fromDirection,
+        radius,
+        rotation: new THREE.Quaternion().setFromUnitVectors(
+          fromDirection,
+          new THREE.Vector3(...direction).normalize(),
+        ),
+        target,
+      };
+      invalidate();
+    },
+    [camera, controls, invalidate],
+  );
+
+  useFrame((_, deltaSeconds) => {
+    const tween = gizmoTweenRef.current;
+    if (!tween || !controls) return;
+
+    tween.elapsedSeconds += deltaSeconds;
+    const progress = Math.min(
+      1,
+      tween.elapsedSeconds / GIZMO_TWEEN_DURATION_SECONDS,
+    );
+    const easedProgress = progress * progress * (3 - 2 * progress);
+    const rotation = new THREE.Quaternion().slerp(
+      tween.rotation,
+      easedProgress,
+    );
+    const position = tween.fromDirection
+      .clone()
+      .applyQuaternion(rotation)
+      .multiplyScalar(tween.radius)
+      .add(tween.target);
+
+    applyingPoseRef.current = true;
+    camera.position.set(position.x, position.y, position.z);
+    controls.update();
+    applyingPoseRef.current = false;
+
+    if (progress < 1) {
+      invalidate();
+      return;
+    }
+
+    gizmoTweenRef.current = null;
+    const pose = cameraPoseFromScene(camera, controls);
+    lastEmittedPoseRef.current = pose;
+    onCameraPoseChange?.(pose, "interaction");
+  });
+
   return (
-    <OrbitControls
-      enableDamping={false}
-      makeDefault
-      onChange={handleChange}
-      onEnd={handleEnd}
-      onStart={handleStart}
-      ref={setControlsRef}
-      zoomToCursor
-    />
+    <>
+      <OrbitControls
+        enableDamping={false}
+        makeDefault
+        onChange={handleChange}
+        onEnd={handleEnd}
+        onStart={handleStart}
+        ref={setControlsRef}
+        zoomToCursor
+      />
+      {showGizmo ? (
+        <CameraOrientationGizmo onDirection={handleGizmoDirection} />
+      ) : null}
+    </>
   );
 }
 

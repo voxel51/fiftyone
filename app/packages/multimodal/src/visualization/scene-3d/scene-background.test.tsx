@@ -19,8 +19,7 @@ vi.mock("@react-three/fiber", () => ({
 }));
 
 vi.mock("@react-three/drei", () => ({
-  GizmoHelper: () => null,
-  GizmoViewport: () => null,
+  Html: () => null,
   OrbitControls: () => null,
 }));
 
