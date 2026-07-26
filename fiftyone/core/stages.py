@@ -345,6 +345,10 @@ class ViewStage(object):
             "kwargs": self._kwargs(),
         }
 
+        expr_asts = _encode_expressions(self._expressions())
+        if expr_asts:
+            d["_expr_asts"] = expr_asts
+
         if include_uuid:
             if self._uuid is None:
                 self._uuid = str(uuid.uuid4())
@@ -361,6 +365,21 @@ class ViewStage(object):
             a list of ``[name, value]`` lists
         """
         raise NotImplementedError("subclasses must implement `_kwargs()`")
+
+    def _expressions(self):
+        """Returns the parameters of this stage instance whose values may be
+        view expressions.
+
+        :meth:`_kwargs` lowers such parameters to MongoDB, which cannot be
+        decompiled; this reports the values the caller actually provided so that
+        :meth:`_serialize` can record how they were built.
+
+        Returns:
+            a dict mapping parameter name to the value provided for it, which
+            need not be a
+            :class:`fiftyone.core.expressions.ViewExpression`
+        """
+        return {}
 
     @classmethod
     def _params(cls):
@@ -392,6 +411,18 @@ class ViewStage(object):
             name: _decode_expressions(value)
             for name, value in dict(d["kwargs"]).items()
         }
+
+        for name, envelope in (d.get("_expr_asts") or {}).items():
+            if name not in kwargs:
+                continue
+
+            try:
+                kwargs[name] = foea.from_envelope(envelope)
+            except ValueError:
+                # A tree this build doesn't understand; the lowered MongoDB
+                # already in `kwargs` remains correct
+                pass
+
         stage = view_stage_cls(**kwargs)
         stage._uuid = d.get("_uuid", None)
         return stage
@@ -401,6 +432,31 @@ class ViewStageError(Exception):
     """An error raised when a problem with a :class:`ViewStage` is encountered."""
 
     pass
+
+
+def _encode_expressions(expressions):
+    """Records how a stage's expression-valued parameters were built.
+
+    The envelopes are serialized alongside the lowered MongoDB rather than in
+    place of it, and only for expressions that can be reconstructed, so a stage
+    whose parameters carry no syntax to record serializes exactly as it did
+    before this existed.
+
+    Args:
+        expressions: a dict mapping parameter name to the value provided for it,
+            as returned by :meth:`ViewStage._expressions`
+
+    Returns:
+        a dict mapping parameter name to envelope, possibly empty
+    """
+    envelopes = {}
+    for name, value in expressions.items():
+        if isinstance(value, foe.ViewExpression) and foea.is_reconstructible(
+            value
+        ):
+            envelopes[name] = foea.to_envelope(value)
+
+    return envelopes
 
 
 def _decode_expressions(value):
@@ -2084,6 +2140,9 @@ class FilterField(ViewStage):
             ["only_matches", self._only_matches],
         ]
 
+    def _expressions(self):
+        return {"filter": self._filter}
+
     @classmethod
     def _params(cls):
         return [
@@ -2677,6 +2736,9 @@ class FilterLabels(ViewStage):
             ["trajectories", self._trajectories],
         ]
 
+    def _expressions(self):
+        return {"filter": self._filter}
+
     @classmethod
     def _params(cls):
         return [
@@ -3130,6 +3192,11 @@ class FilterKeypoints(ViewStage):
             ["labels", self._labels],
             ["only_matches", self._only_matches],
         ]
+
+    def _expressions(self):
+        # `_validate_params()` lowers `filter` into `_filter_dict`, which is what
+        # `to_mongo()` consumes; the expression itself is retained unmodified
+        return {"filter": self._filter}
 
     def _validate_params(self):
         if self._filter is None:
@@ -3902,6 +3969,13 @@ class GroupBy(ViewStage):
             ["create_index", self._create_index],
             ["order_by_key", self._order_by_key],
         ]
+
+    def _expressions(self):
+        return {
+            "field_or_expr": self._field_or_expr,
+            "match_expr": self._match_expr,
+            "sort_expr": self._sort_expr,
+        }
 
     @classmethod
     def _params(cls):
@@ -4794,6 +4868,9 @@ class SetField(ViewStage):
             ["_allow_missing", self._allow_missing],
         ]
 
+    def _expressions(self):
+        return {"expr": self._expr}
+
     @classmethod
     def _params(cls):
         return [
@@ -4977,6 +5054,9 @@ class Match(ViewStage):
 
     def _kwargs(self):
         return [["filter", self._get_mongo_expr()]]
+
+    def _expressions(self):
+        return {"filter": self._filter}
 
     def _validate_params(self):
         if not isinstance(self._filter, (foe.ViewExpression, dict, bool)):
@@ -5579,6 +5659,9 @@ class MatchFrames(ViewStage):
             ["omit_empty", self._omit_empty],
         ]
 
+    def _expressions(self):
+        return {"filter": self._filter}
+
     @classmethod
     def _params(cls):
         return [
@@ -5842,6 +5925,9 @@ class MatchLabels(ViewStage):
             ["fields", self._fields],
             ["bool", self._bool],
         ]
+
+    def _expressions(self):
+        return {"filter": self._filter}
 
     @classmethod
     def _params(cls):
@@ -7819,6 +7905,9 @@ class SortBy(ViewStage):
             ["create_index", self._create_index],
         ]
 
+    def _expressions(self):
+        return {"field_or_expr": self._field_or_expr}
+
     @classmethod
     def _params(cls):
         return [
@@ -8748,6 +8837,9 @@ class ToClips(ViewStage):
             ["config", self._config],
             ["_state", self._state],
         ]
+
+    def _expressions(self):
+        return {"field_or_expr": self._field_or_expr}
 
     @classmethod
     def _params(self):

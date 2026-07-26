@@ -4820,11 +4820,28 @@ def _do_freeze_prefix(val, prefix):
 
 
 def _do_apply_memo(val, old, new):
+    return _apply_memo(val, old, new, [])
+
+
+def _apply_memo(val, old, new, replaced):
     def fcn(val):
         if val is old:
+            replaced.append(val)
             return new
 
-        val._expr = _do_apply_memo(val._expr, old, new)
+        num_replaced = len(replaced)
+        val._expr = _apply_memo(val._expr, old, new, replaced)
+
+        if len(replaced) > num_replaced:
+            #
+            # `let_in()` rewrites subexpressions in place, and the substitution
+            # it performs relies on object identity, which a syntax tree cannot
+            # express. The recorded syntax no longer describes this expression,
+            # so it is dropped and the expression falls back to reporting its
+            # MongoDB
+            #
+            val._ast = None
+
         return val
 
     return _do_recurse(val, fcn)

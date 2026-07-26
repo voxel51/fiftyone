@@ -382,8 +382,11 @@ def _is_reconstructible_node(node: Node) -> bool:
     if t == "mongo":
         return False
 
-    if t in ("field", "lit"):
+    if t == "field":
         return True
+
+    if t == "lit":
+        return "as" in node or _is_json_literal(node["v"])
 
     if t == "list":
         return all(_is_reconstructible_node(n) for n in node["items"])
@@ -400,6 +403,29 @@ def _is_reconstructible_node(node: Node) -> bool:
         children.append(node["self"])
 
     return all(_is_reconstructible_node(n) for n in children)
+
+
+def _is_json_literal(value: Any) -> bool:
+    """Whether a literal survives serialization.
+
+    Operands that are neither expressions nor JSON — a ``slice`` handed to
+    ``__getitem__``, say — are recorded verbatim by :func:`_encode`, and a tree
+    containing one cannot be written to a saved view. Such a tree reports as not
+    reconstructible so callers fall back to the MongoDB instead.
+    """
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return True
+
+    if isinstance(value, (list, tuple)):
+        return all(_is_json_literal(v) for v in value)
+
+    if isinstance(value, dict):
+        return all(
+            isinstance(k, str) and _is_json_literal(v)
+            for k, v in value.items()
+        )
+
+    return False
 
 
 def to_envelope(expr: "ViewExpression") -> Envelope:
