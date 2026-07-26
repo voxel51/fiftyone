@@ -15,10 +15,7 @@ import { useRecoilValue } from "recoil";
  * portaled dropdown directly below its trigger without being
  * clipped by ancestor `overflow` rules.
  */
-const useAnchorRect = (
-  ref: React.RefObject<HTMLElement>,
-  active: boolean
-) => {
+const useAnchorRect = (ref: React.RefObject<HTMLElement>, active: boolean) => {
   const [rect, setRect] = useState<{
     top: number;
     left: number;
@@ -28,7 +25,7 @@ const useAnchorRect = (
   useEffect(() => {
     if (!active || !ref.current) {
       setRect(null);
-      return;
+      return undefined;
     }
     const measure = () => {
       const r = ref.current?.getBoundingClientRect();
@@ -66,6 +63,11 @@ const DatasetSelector: React.FC<{
   // name; the input snaps back on blur if nothing was picked.
   const [query, setQuery] = useState<string>(dataset ?? "");
   const [open, setOpen] = useState(false);
+  // The dataset just picked, held until `datasetName` catches up. Loading a
+  // dataset is asynchronous, so without this the snap-back below would
+  // overwrite the pick with the dataset still applied — blank, when picking
+  // the first dataset from the empty page.
+  const [pending, setPending] = useState<string | null>(null);
 
   // `useSearch` debounces internally — re-runs the server query as
   // `query` changes. Returns the current visible result set.
@@ -74,32 +76,40 @@ const DatasetSelector: React.FC<{
   // Snap input text back to the applied dataset name when the
   // dataset selection changes (e.g., via URL or external setter).
   useEffect(() => {
-    if (!open) setQuery(dataset ?? "");
-  }, [dataset, open]);
+    if (open) return;
+
+    if (pending !== null) {
+      if (dataset === pending) setPending(null);
+      return;
+    }
+
+    setQuery(dataset ?? "");
+  }, [dataset, open, pending]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const rect = useAnchorRect(containerRef, open);
 
   // Close on outside click.
   useEffect(() => {
-    if (!open) return;
+    if (!open) return undefined;
     const onClick = (e: MouseEvent) => {
       if (!containerRef.current?.contains(e.target as Node)) {
         setOpen(false);
-        setQuery(dataset ?? "");
+        setQuery(pending ?? dataset ?? "");
       }
     };
     window.addEventListener("mousedown", onClick);
     return () => window.removeEventListener("mousedown", onClick);
-  }, [open, dataset]);
+  }, [open, dataset, pending]);
 
   const pick = useCallback(
     (name: string) => {
+      setPending(name);
       setDataset(name);
       setQuery(name);
       setOpen(false);
     },
-    [setDataset]
+    [setDataset],
   );
 
   return (
@@ -142,65 +152,68 @@ const DatasetSelector: React.FC<{
         aria-label="Dataset"
         style={{ background: "transparent", border: "none" }}
       />
-      {open && values.length > 0 && rect && createPortal(
-        <div
-          // Portaled to document.body so ancestor `overflow:auto`
-          // rules can't clip the dropdown. Position is computed
-          // from the trigger's bounding rect via `useAnchorRect`.
-          style={{
-            position: "fixed",
-            top: rect.top + 4,
-            left: rect.left,
-            width: rect.width,
-            background: "var(--fo-palette-background-level3)",
-            border: "1px solid var(--fo-palette-primary-plainBorder)",
-            borderRadius: 4,
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
-            maxHeight: 280,
-            overflowY: "auto",
-            zIndex: 10000,
-          }}
-          role="listbox"
-        >
-          {values.map((name) => (
-            <div
-              key={name}
-              role="option"
-              aria-selected={name === dataset}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                pick(name);
-              }}
-              style={{
-                padding: "6px 10px",
-                cursor: "pointer",
-                background:
-                  name === dataset
-                    ? "var(--fo-palette-background-level2)"
-                    : undefined,
-                color: "var(--fo-palette-text-primary)",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-              title={name}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLDivElement).style.background =
-                  "var(--fo-palette-background-level2)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLDivElement).style.background =
-                  name === dataset
-                    ? "var(--fo-palette-background-level2)"
-                    : "";
-              }}
-            >
-              {name}
-            </div>
-          ))}
-        </div>,
-        document.body
-      )}
+      {open &&
+        values.length > 0 &&
+        rect &&
+        createPortal(
+          <div
+            // Portaled to document.body so ancestor `overflow:auto`
+            // rules can't clip the dropdown. Position is computed
+            // from the trigger's bounding rect via `useAnchorRect`.
+            style={{
+              position: "fixed",
+              top: rect.top + 4,
+              left: rect.left,
+              width: rect.width,
+              background: "var(--fo-palette-background-level3)",
+              border: "1px solid var(--fo-palette-primary-plainBorder)",
+              borderRadius: 4,
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
+              maxHeight: 280,
+              overflowY: "auto",
+              zIndex: 10000,
+            }}
+            role="listbox"
+          >
+            {values.map((name) => (
+              <div
+                key={name}
+                role="option"
+                aria-selected={name === dataset}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  pick(name);
+                }}
+                style={{
+                  padding: "6px 10px",
+                  cursor: "pointer",
+                  background:
+                    name === dataset
+                      ? "var(--fo-palette-background-level2)"
+                      : undefined,
+                  color: "var(--fo-palette-text-primary)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+                title={name}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.background =
+                    "var(--fo-palette-background-level2)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.background =
+                    name === dataset
+                      ? "var(--fo-palette-background-level2)"
+                      : "";
+                }}
+              >
+                {name}
+              </div>
+            ))}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 };
