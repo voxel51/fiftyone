@@ -109,6 +109,21 @@ export const pickInput = (typeString: string): InputKind => {
   return "json";
 };
 
+/** `true` when a kwarg carries nothing the server should receive. */
+export const isEmptyValue = (value: unknown): boolean =>
+  value === undefined ||
+  value === null ||
+  value === "" ||
+  (Array.isArray(value) && value.length === 0);
+
+/**
+ * `true` when the stage's constructor will not accept this param being
+ * omitted. Verified against every stage's `__init__` signature: a param is
+ * required exactly when it declares no default and does not accept `NoneType`.
+ */
+export const isRequired = (param: ParamDef): boolean =>
+  param.default == null && !isNullable(param.type);
+
 /** `true` when the param accepts `NoneType` — i.e. is clearable. */
 export const isNullable = (typeString: string): boolean =>
   typeString
@@ -149,6 +164,8 @@ type BarAction =
   | { type: "reorderStages"; ids: string[] };
 
 const initialState: BarState = { stages: [] };
+
+const NO_MISSING: ReadonlySet<string> = new Set();
 
 const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -202,6 +219,8 @@ interface ParamDef {
 interface ParamInputProps {
   param: ParamDef;
   value: unknown;
+  /** Required, but nothing entered yet. */
+  invalid?: boolean;
   onChange: (next: unknown) => void;
   fieldOptions: { id: string; data: { label: string } }[];
 }
@@ -211,16 +230,17 @@ interface ParamInputProps {
  * placeholder, so the field pickers get a leading label; every other control
  * carries the param name in its own placeholder.
  */
-const Labelled: React.FC<React.PropsWithChildren<{ name: string }>> = ({
-  name,
-  children,
-}) => (
+const Labelled: React.FC<
+  React.PropsWithChildren<{ name: string; invalid?: boolean }>
+> = ({ name, invalid, children }) => (
   <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
     <span
       style={{
         fontSize: 12,
         fontWeight: 500,
-        color: "var(--fo-palette-text-secondary)",
+        color: invalid
+          ? "var(--fo-palette-error-plainColor)"
+          : "var(--fo-palette-text-secondary)",
       }}
     >
       {name}
@@ -232,11 +252,14 @@ const Labelled: React.FC<React.PropsWithChildren<{ name: string }>> = ({
 const ParamInput: React.FC<ParamInputProps> = ({
   param,
   value,
+  invalid,
   onChange,
   fieldOptions,
 }) => {
   const kind = pickInput(param.type);
-  const placeholder = param.placeholder ?? param.name;
+  // Controls name themselves, so the required marker rides along with the name
+  const name = isRequired(param) ? `${param.name} *` : param.name;
+  const placeholder = param.placeholder ?? name;
 
   switch (kind) {
     case "bool":
@@ -251,7 +274,7 @@ const ParamInput: React.FC<ParamInputProps> = ({
 
     case "field":
       return (
-        <Labelled name={param.name}>
+        <Labelled name={name} invalid={invalid}>
           <Select
             exclusive
             portal
@@ -266,7 +289,7 @@ const ParamInput: React.FC<ParamInputProps> = ({
 
     case "fieldList":
       return (
-        <Labelled name={param.name}>
+        <Labelled name={name} invalid={invalid}>
           <Select
             portal
             value={Array.isArray(value) ? (value as string[]) : []}
@@ -279,6 +302,7 @@ const ParamInput: React.FC<ParamInputProps> = ({
     case "numeric":
       return (
         <Input
+          error={invalid}
           size={Size.Sm}
           value={value == null ? "" : String(value)}
           placeholder={placeholder}
@@ -296,6 +320,7 @@ const ParamInput: React.FC<ParamInputProps> = ({
       // free-form so a textual list is the simplest honest input.
       return (
         <Input
+          error={invalid}
           size={Size.Sm}
           value={Array.isArray(value) ? (value as string[]).join(", ") : ""}
           placeholder={`${placeholder} (comma separated)`}
@@ -314,6 +339,7 @@ const ParamInput: React.FC<ParamInputProps> = ({
     case "string":
       return (
         <Input
+          error={invalid}
           size={Size.Sm}
           value={value == null ? "" : String(value)}
           placeholder={placeholder}
@@ -324,6 +350,7 @@ const ParamInput: React.FC<ParamInputProps> = ({
     case "idList":
       return (
         <Input
+          error={invalid}
           size={Size.Sm}
           value={Array.isArray(value) ? (value as string[]).join(", ") : ""}
           placeholder={`${placeholder} (id, id, …)`}
@@ -342,6 +369,7 @@ const ParamInput: React.FC<ParamInputProps> = ({
     default:
       return (
         <Input
+          error={invalid}
           size={Size.Sm}
           value={
             value == null
@@ -365,6 +393,8 @@ interface StageCardProps {
   stage: WorkingStage;
   definition: { name: string; params: ParamDef[] };
   fieldOptions: { id: string; data: { label: string } }[];
+  /** Required param names on this stage with nothing entered. */
+  missing: ReadonlySet<string>;
   expanded: boolean;
   onToggle: () => void;
   onChange: (name: string, value: unknown) => void;
@@ -392,6 +422,7 @@ const StageCard: React.FC<StageCardProps> = ({
   stage,
   definition,
   fieldOptions,
+  missing,
   expanded,
   onToggle,
   onChange,
@@ -496,6 +527,7 @@ const StageCard: React.FC<StageCardProps> = ({
                     key={p.name}
                     param={p}
                     value={stage.kwargs[p.name]}
+                    invalid={missing.has(p.name)}
                     onChange={(v) => onChange(p.name, v)}
                     fieldOptions={fieldOptions}
                   />
@@ -583,11 +615,7 @@ const ViewBar: React.FC = () => {
    * Omitting them lets the Python stage class use its own default.
    */
   const serializeWorking = useCallback(() => {
-    const isEmpty = (v: unknown) =>
-      v === undefined ||
-      v === null ||
-      v === "" ||
-      (Array.isArray(v) && v.length === 0);
+    const isEmpty = isEmptyValue;
     return state.stages.map((s) => {
       const def = defsByName.get(s.cls);
       const kwargs: [string, unknown][] = (def?.params ?? [])
@@ -597,9 +625,37 @@ const ViewBar: React.FC = () => {
     });
   }, [state.stages, defsByName]);
 
+  /**
+   * Required params with nothing entered, keyed `${stageId}:${paramName}`.
+   *
+   * Serialization drops empty kwargs, so without this an unfilled required
+   * param is simply omitted and the server builds a broken stage — an empty
+   * `Limit` becomes `Limit()`, which raises rather than doing nothing.
+   */
+  const missingRequired = useMemo(() => {
+    const byStage = new Map<string, Set<string>>();
+    const labels: string[] = [];
+    for (const stage of state.stages) {
+      const def = defsByName.get(stage.cls);
+      for (const param of def?.params ?? []) {
+        if (isRequired(param) && isEmptyValue(stage.kwargs[param.name])) {
+          let names = byStage.get(stage.id);
+          if (!names) {
+            names = new Set();
+            byStage.set(stage.id, names);
+          }
+          names.add(param.name);
+          labels.push(`${stage.cls}.${param.name}`);
+        }
+      }
+    }
+    return { byStage, labels };
+  }, [state.stages, defsByName]);
+
   const apply = useCallback(() => {
+    if (missingRequired.labels.length) return;
     setView(serializeWorking());
-  }, [serializeWorking, setView]);
+  }, [missingRequired, serializeWorking, setView]);
 
   /**
    * Pending changes detector: whether the working state differs
@@ -837,6 +893,7 @@ const ViewBar: React.FC = () => {
         return (
           <React.Fragment key={stage.id}>
             <StageCard
+              missing={missingRequired.byStage.get(stage.id) ?? NO_MISSING}
               stage={stage}
               definition={def}
               fieldOptions={fieldOptions}
@@ -882,7 +939,12 @@ const ViewBar: React.FC = () => {
           variant={Variant.Primary}
           size={Size.Xs}
           onClick={apply}
-          title="Apply view"
+          disabled={missingRequired.labels.length > 0}
+          title={
+            missingRequired.labels.length
+              ? `Required: ${missingRequired.labels.join(", ")}`
+              : "Apply view"
+          }
           data-cy="btn-apply-view-bar"
         >
           Apply
