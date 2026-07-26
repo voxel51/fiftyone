@@ -624,6 +624,9 @@ const ViewBar: React.FC = () => {
   const InsertSlot: React.FC<{ index: number }> = ({ index }) => {
     const [open, setOpen] = React.useState(false);
     const [query, setQuery] = React.useState("");
+    // Highlighted stage, driven by the arrow keys. Clamped on read rather than
+    // reset by an effect, so it stays valid as the filtered set changes.
+    const [highlight, setHighlight] = React.useState(0);
     const containerRef = React.useRef<HTMLDivElement | null>(null);
     const rect = useAnchorRect(containerRef, open);
 
@@ -646,6 +649,8 @@ const ViewBar: React.FC = () => {
         .map((d) => d.name)
         .filter((n) => n.toLowerCase().includes(q));
     }, [query]);
+
+    const active = Math.min(highlight, Math.max(0, filtered.length - 1));
 
     const insert = (cls: string) => {
       // Mint the id here so we can dispatch AND immediately set
@@ -698,15 +703,30 @@ const ViewBar: React.FC = () => {
           value={query}
           placeholder="Add stage…"
           autoFocus
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setHighlight(0);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               setOpen(false);
               setQuery("");
-            } else if (e.key === "Enter" && filtered[0]) {
-              insert(filtered[0]);
+            } else if (e.key === "ArrowDown") {
+              // Arrow keys must not also move the text cursor
+              e.preventDefault();
+              setHighlight(Math.min(active + 1, filtered.length - 1));
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setHighlight(Math.max(active - 1, 0));
+            } else if (e.key === "Enter" && filtered[active]) {
+              insert(filtered[active]);
             }
           }}
+          role="combobox"
+          aria-expanded={open}
+          aria-activedescendant={
+            filtered[active] ? `view-bar-stage-${active}` : undefined
+          }
           style={{ background: "transparent", border: "none" }}
         />
         {filtered.length > 0 &&
@@ -732,26 +752,31 @@ const ViewBar: React.FC = () => {
               role="listbox"
               onMouseDown={(e) => e.stopPropagation()}
             >
-              {filtered.map((name) => (
+              {filtered.map((name, i) => (
                 <div
                   key={name}
+                  id={`view-bar-stage-${i}`}
                   role="option"
+                  aria-selected={i === active}
+                  ref={(el) => {
+                    if (i === active) {
+                      el?.scrollIntoView({ block: "nearest" });
+                    }
+                  }}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     insert(name);
                   }}
+                  onMouseEnter={() => setHighlight(i)}
                   style={{
                     padding: "6px 10px",
                     cursor: "pointer",
                     color: "var(--fo-palette-text-primary)",
                     whiteSpace: "nowrap",
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.background =
-                      "var(--fo-palette-background-level2)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.background = "";
+                    background:
+                      i === active
+                        ? "var(--fo-palette-background-level2)"
+                        : undefined,
                   }}
                 >
                   {name}

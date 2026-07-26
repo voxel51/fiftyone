@@ -68,6 +68,9 @@ const DatasetSelector: React.FC<{
   // overwrite the pick with the dataset still applied — blank, when picking
   // the first dataset from the empty page.
   const [pending, setPending] = useState<string | null>(null);
+  // Highlighted option, driven by the arrow keys. Clamped on read rather than
+  // reset by an effect, so it stays valid as the result set changes underneath.
+  const [highlight, setHighlight] = useState(0);
 
   // `useSearch` debounces internally — re-runs the server query as
   // `query` changes. Returns the current visible result set.
@@ -108,9 +111,12 @@ const DatasetSelector: React.FC<{
       setDataset(name);
       setQuery(name);
       setOpen(false);
+      setHighlight(0);
     },
     [setDataset],
   );
+
+  const active = Math.min(highlight, Math.max(0, values.length - 1));
 
   return (
     <div
@@ -139,16 +145,31 @@ const DatasetSelector: React.FC<{
         onFocus={() => setOpen(true)}
         onChange={(e) => {
           setQuery(e.target.value);
+          setHighlight(0);
           if (!open) setOpen(true);
         }}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             setOpen(false);
-            setQuery(dataset ?? "");
-          } else if (e.key === "Enter" && values.length > 0) {
-            pick(values[0]);
+            setQuery(pending ?? dataset ?? "");
+          } else if (e.key === "ArrowDown") {
+            // Arrow keys must not also move the text cursor
+            e.preventDefault();
+            setOpen(true);
+            setHighlight(Math.min(active + 1, values.length - 1));
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setHighlight(Math.max(active - 1, 0));
+          } else if (e.key === "Enter" && values[active]) {
+            pick(values[active]);
           }
         }}
+        role="combobox"
+        aria-expanded={open}
+        aria-controls="dataset-selector-options"
+        aria-activedescendant={
+          open && values[active] ? `dataset-option-${active}` : undefined
+        }
         aria-label="Dataset"
         style={{ background: "transparent", border: "none" }}
       />
@@ -174,21 +195,29 @@ const DatasetSelector: React.FC<{
               zIndex: 10000,
             }}
             role="listbox"
+            id="dataset-selector-options"
           >
-            {values.map((name) => (
+            {values.map((name, i) => (
               <div
                 key={name}
+                id={`dataset-option-${i}`}
                 role="option"
-                aria-selected={name === dataset}
+                aria-selected={i === active}
+                ref={(el) => {
+                  if (i === active) {
+                    el?.scrollIntoView({ block: "nearest" });
+                  }
+                }}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   pick(name);
                 }}
+                onMouseEnter={() => setHighlight(i)}
                 style={{
                   padding: "6px 10px",
                   cursor: "pointer",
                   background:
-                    name === dataset
+                    i === active || name === dataset
                       ? "var(--fo-palette-background-level2)"
                       : undefined,
                   color: "var(--fo-palette-text-primary)",
@@ -197,16 +226,6 @@ const DatasetSelector: React.FC<{
                   textOverflow: "ellipsis",
                 }}
                 title={name}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.background =
-                    "var(--fo-palette-background-level2)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.background =
-                    name === dataset
-                      ? "var(--fo-palette-background-level2)"
-                      : "";
-                }}
               >
                 {name}
               </div>
