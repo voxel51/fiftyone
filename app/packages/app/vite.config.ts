@@ -99,21 +99,13 @@ async function loadConfig() {
           }
           warn(warning);
         },
-        output: {
-          // Give the heavy, lazily-loaded vendor libs their own deterministic
-          // chunks so rollup doesn't hoist them into the entry or glue them
-          // together (e.g. mapbox + plotly landing in one blob). Each only
-          // loads when its panel/view opens.
-          manualChunks(id) {
-            if (id.includes("node_modules")) {
-              if (/[\\/](mapbox-gl|@mapbox)[\\/]/.test(id)) return "mapbox-gl";
-              if (/[\\/]plotly\.js/.test(id) || /react-plotly\.js/.test(id))
-                return "plotly";
-              if (/[\\/]recharts[\\/]/.test(id)) return "recharts";
-              if (/[\\/]html2canvas[\\/]/.test(id)) return "html2canvas";
-            }
-          },
-        },
+        // No manual chunking: rolldown's emulation of function-form
+        // manualChunks pulls each matched library's entire dependency
+        // closure (react-dom, clsx, transition-group, lodash internals)
+        // into the forced chunk and re-exports module-init helpers across
+        // chunk boundaries, which can execute modules before their
+        // initializers run. Rolldown already gives dynamically-imported
+        // panels (plotly, mapbox, recharts, html2canvas) their own chunks.
       },
     },
     server: {
