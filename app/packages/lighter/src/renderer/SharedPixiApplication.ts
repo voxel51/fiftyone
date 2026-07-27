@@ -75,7 +75,7 @@ class SharedPixiApplication {
       const message =
         err instanceof Error ? err.message : "Unknown error during WebGL init";
       throw new Error(
-        `Pixi.js failed to initialize a WebGL context. This is usually caused by a missing or incompatible GPU driver.\n\nDetails: ${message}`
+        `Pixi.js failed to initialize a WebGL context. This is usually caused by a missing or incompatible GPU driver.\n\nDetails: ${message}`,
       );
     }
 

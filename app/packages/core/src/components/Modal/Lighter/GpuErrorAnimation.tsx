@@ -1,14 +1,18 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  */
-import Lottie from "lottie-react";
-import gpuErrorAnimation from "./assets/gpu-error.json";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+// Explicit ?url import — .lottie isn't one of Vite's built-in recognized
+// asset extensions, so this forces URL-asset handling without a
+// vite.config.ts change (see Vite's "Explicit URL Imports").
+import gpuErrorAnimationUrl from "./assets/gpu-error.lottie?url";
 
 export default function GpuErrorAnimation() {
   return (
-    <Lottie
-      animationData={gpuErrorAnimation}
+    <DotLottieReact
+      src={gpuErrorAnimationUrl}
       loop
+      autoplay
       style={{ width: 220, height: 220 }}
     />
   );
