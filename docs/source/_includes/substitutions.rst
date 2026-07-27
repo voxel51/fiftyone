@@ -143,6 +143,7 @@
 .. |ClassificationResults| replace:: :class:`ClassificationResults <fiftyone.utils.eval.classification.ClassificationResults>`
 .. |BinaryClassificationResults| replace:: :class:`BinaryClassificationResults <fiftyone.utils.eval.classification.BinaryClassificationResults>`
 .. |DetectionResults| replace:: :class:`DetectionResults <fiftyone.utils.eval.detection.DetectionResults>`
+.. |TrackingResults| replace:: :class:`TrackingResults <fiftyone.utils.eval.tracking.TrackingResults>`
 .. |SegmentationResults| replace:: :class:`SegmentationResults <fiftyone.utils.eval.segmentation.SegmentationResults>`
 .. |COCOEvaluationConfig| replace:: :class:`COCOEvaluationConfig <fiftyone.utils.eval.coco.COCOEvaluationConfig>`
 .. |OpenImagesEvaluationConfig| replace:: :class:`OpenImagesEvaluationConfig <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`

@@ -184,6 +184,8 @@ class BaseRunConfig(Config):
             return foue.ClassificationEvaluationConfig
         if type == "detection":
             return foue.DetectionEvaluationConfig
+        if type == "tracking":
+            return foue.TrackingEvaluationConfig
         if type == "segmentation":
             return foue.SegmentationEvaluationConfig
 
@@ -1058,6 +1060,8 @@ class BaseRunResults(etas.Serializable):
             return foue.ClassificationResults
         if type == "detection":
             return foue.DetectionResults
+        if type == "tracking":
+            return foue.TrackingResults
         if type == "segmentation":
             return foue.SegmentationResults
 

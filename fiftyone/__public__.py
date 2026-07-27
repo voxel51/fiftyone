@@ -309,4 +309,9 @@ from .utils.eval.segmentation import (
     SegmentationEvaluationConfig,
     SegmentationResults,
 )
+from .utils.eval.tracking import (
+    evaluate_tracks,
+    TrackingEvaluationConfig,
+    TrackingResults,
+)
 from .utils.quickstart import quickstart
