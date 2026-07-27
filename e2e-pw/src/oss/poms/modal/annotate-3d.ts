@@ -264,6 +264,8 @@ export class ModalAnnotate3dPom {
       await this.page.mouse.move(x, y);
       await this.page.mouse.down();
       await this.page.mouse.up();
+      // the double-click window is itself a timeout; spacing is the semantics
+      // eslint-disable-next-line playwright/no-wait-for-timeout
       await this.page.waitForTimeout(250);
     }
 
