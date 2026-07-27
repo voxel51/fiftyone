@@ -19,6 +19,7 @@ import {
 import React from "react";
 import { createPortal } from "react-dom";
 
+import type { Kind, Operator } from "./builder/catalog";
 import { ParamInput } from "./controls";
 import {
   blockedBy,
@@ -76,6 +77,10 @@ interface StageCardProps {
   fieldOptions: { id: string; data: { label: string } }[];
   /** The field paths a param accepts, narrowed by the constraints it declares. */
   allowedFor: (param: ParamDef) => string[];
+  /** The served operator catalog, for expression suggestions. */
+  operators?: Operator[];
+  /** Resolves a full field path to the kind of value it holds. */
+  fieldKind?: (path: string) => Kind | undefined;
   /** The editor switcher, for controls that lay it out themselves. */
   tabs?: React.ReactNode;
   /** Why each of this stage's params was rejected, by param name. */
@@ -117,6 +122,8 @@ export const StageCard: React.FC<StageCardProps> = ({
   allPaths,
   invalid,
   allowedFor,
+  operators,
+  fieldKind,
   errors,
   kinds,
   onModeChange,
@@ -338,6 +345,8 @@ export const StageCard: React.FC<StageCardProps> = ({
                         onChange={(v) => onChange(p.name, v)}
                         fieldOptions={fieldOptions}
                         allowedFor={allowedFor}
+                        operators={operators}
+                        fieldKind={fieldKind}
                         scope={expressionScope(
                           p,
                           definition.params,

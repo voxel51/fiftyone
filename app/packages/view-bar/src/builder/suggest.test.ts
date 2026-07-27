@@ -3,8 +3,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { CATALOG } from "./catalog";
-import type { Kind } from "./catalog";
+import type { Kind, Operator } from "./catalog";
 import {
   caretContext,
   completeField,
@@ -13,6 +12,63 @@ import {
   suggestFields,
   suggestOperators,
 } from "./suggest";
+
+const op = (
+  name: string,
+  display: string,
+  selfKind: Kind,
+  argKinds: Kind[],
+  returns: Kind,
+  minArgs: number,
+  maxArgs: number | null,
+  summary: string,
+): Operator => ({
+  name,
+  display,
+  selfKind,
+  argKinds,
+  returns,
+  minArgs,
+  maxArgs,
+  summary,
+});
+
+/** A hand-picked slice of the served catalog, spanning every self kind. */
+const CATALOG: Operator[] = [
+  op("__gt__", ">", "ANY", ["ANY"], "BOOLEAN", 1, 1, "greater than"),
+  op("__lt__", "<", "ANY", ["ANY"], "BOOLEAN", 1, 1, "less than"),
+  op("__eq__", "==", "ANY", ["ANY"], "BOOLEAN", 1, 1, "equals"),
+  op("exists", "exists", "ANY", ["BOOLEAN"], "BOOLEAN", 0, 1, "is not None"),
+  op("is_in", "is_in", "ANY", ["ARRAY"], "BOOLEAN", 1, 1, "is in the values"),
+  op("abs", "abs", "NUMBER", [], "NUMBER", 0, 0, "the absolute value"),
+  op("round", "round", "NUMBER", ["NUMBER"], "NUMBER", 0, 1, "rounded"),
+  op(
+    "contains",
+    "contains",
+    "STRING",
+    ["STRING"],
+    "BOOLEAN",
+    1,
+    2,
+    "contains the substring",
+  ),
+  op(
+    "starts_with",
+    "starts_with",
+    "STRING",
+    ["STRING"],
+    "BOOLEAN",
+    1,
+    2,
+    "starts with the prefix",
+  ),
+  op("lower", "lower", "STRING", [], "STRING", 0, 0, "lowercased"),
+  op("length", "length", "ARRAY", [], "NUMBER", 0, 0, "the element count"),
+  op("filter", "filter", "ARRAY", ["BOOLEAN"], "ARRAY", 1, 1, "the matches"),
+  op("any", "any", "ARRAY", [], "BOOLEAN", 0, 0, "any element truthy"),
+  op("year", "year", "DATE", [], "NUMBER", 0, 0, "the year"),
+  op("to_string", "to_string", "ID", [], "STRING", 0, 0, "as a string"),
+];
 
 const KINDS: Record<string, Kind> = {
   confidence: "NUMBER",

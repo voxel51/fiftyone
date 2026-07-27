@@ -29,6 +29,7 @@ import {
 } from "@voxel51/voodo";
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 
+import { kindsByFtype, operatorsFrom } from "./builder/catalog";
 import { fromSource, isEnvelope, sourceOf } from "./builder/envelope";
 import { allowedFields } from "./fields";
 import {
@@ -189,6 +190,26 @@ const ViewBar: React.FC = () => {
     (param: ParamDef) =>
       allowedFields(fieldPaths, param.choices.fields, fieldTypes),
     [fieldPaths, fieldTypes],
+  );
+
+  // The expression editor suggests from the served catalog — null until the
+  // query resolves, which reads as "suggest nothing rather than something
+  // wrong". Field kinds resolve through the schema: path → ftype → kind.
+  const catalog = fos.useExpressionCatalog();
+  const operators = useMemo(
+    () => operatorsFrom(catalog?.viewExpressionOperators ?? []),
+    [catalog],
+  );
+  const kindByFtype = useMemo(
+    () => kindsByFtype(catalog?.viewExpressionFieldKinds ?? []),
+    [catalog],
+  );
+  const fieldKind = useCallback(
+    (path: string) => {
+      const field = fieldTypes.get(path);
+      return field ? kindByFtype.get(field.ftype) : undefined;
+    },
+    [fieldTypes, kindByFtype],
   );
 
   /**
@@ -648,6 +669,8 @@ const ViewBar: React.FC = () => {
               fieldOptions={fieldOptions}
               allPaths={fieldPaths}
               allowedFor={allowedFor}
+              operators={operators}
+              fieldKind={fieldKind}
               expanded={editingId === stage.id}
               onToggle={() =>
                 setEditingId((id) => (id === stage.id ? null : stage.id))

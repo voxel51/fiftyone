@@ -85,22 +85,38 @@ export const allowedFields = (
  * `Classification`'s `label`, `confidence`, `logits` — keeps them all.
  */
 export const scopedTo = (root: string, paths: readonly string[]): string[] => {
+  return [...scopedEntries(root, paths).keys()];
+};
+
+/**
+ * {@link scopedTo}, keeping the full dataset path each scoped name stands for.
+ *
+ * A scoped name is what the expression says, but the schema knows fields by
+ * their full paths — resolving what kind of value `label` holds means asking
+ * about `predictions.detections.label`.
+ */
+export const scopedEntries = (
+  root: string,
+  paths: readonly string[],
+): Map<string, string> => {
   const prefix = `${root}.`;
   const children = paths
     .filter((path) => path.startsWith(prefix))
-    .map((path) => path.slice(prefix.length));
+    .map((path) => [path.slice(prefix.length), path] as const);
 
-  if (!children.length) return [];
+  if (!children.length) return new Map();
 
-  const heads = new Set(children.map((child) => child.split(".")[0]));
-  if (heads.size > 1) return children.sort();
+  const heads = new Set(children.map(([child]) => child.split(".")[0]));
+  const sorted = (entries: (readonly [string, string])[]) =>
+    new Map(entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+  if (heads.size > 1) return sorted(children);
 
   // Only strip the shared segment when there is something under it — a field
   // with a single leaf child shares a head too, and that leaf is the answer
   const nested = `${[...heads][0]}.`;
   const deeper = children
-    .filter((child) => child.startsWith(nested))
-    .map((child) => child.slice(nested.length));
+    .filter(([child]) => child.startsWith(nested))
+    .map(([child, path]) => [child.slice(nested.length), path] as const);
 
-  return (deeper.length ? deeper : children).sort();
+  return sorted(deeper.length ? deeper : children);
 };

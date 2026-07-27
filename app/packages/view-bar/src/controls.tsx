@@ -25,9 +25,10 @@ import {
 } from "@voxel51/voodo";
 import React from "react";
 
+import type { Kind, Operator } from "./builder/catalog";
 import { ExpressionEditor } from "./builder/ExpressionEditor";
 import { isEnvelope, sourceOf } from "./builder/envelope";
-import { scopedTo } from "./fields";
+import { scopedEntries } from "./fields";
 import {
   EDITOR_HEADER_HEIGHT,
   EXPRESSION_BOX_HEIGHT,
@@ -61,6 +62,10 @@ interface ParamInputProps {
   allPaths?: readonly string[];
   /** The server's lowering of this param's expression, when it has one. */
   lowered?: unknown;
+  /** The served operator catalog, for the expression editor's suggestions. */
+  operators?: Operator[];
+  /** Resolves a full field path to the kind of value it holds. */
+  fieldKind?: (path: string) => Kind | undefined;
   /** Names this parameter's control group for tests. */
   testId?: string;
 }
@@ -119,6 +124,8 @@ const ParamControl: React.FC<ParamInputProps> = ({
   scope,
   allPaths = [],
   lowered,
+  operators,
+  fieldKind,
 }) => {
   const invalid = Boolean(error);
   // Controls name themselves, and say they are required in the same breath —
@@ -238,13 +245,15 @@ const ParamControl: React.FC<ParamInputProps> = ({
       );
 
     case "python": {
-      // TODO: pass a `fieldKind` resolver once `viewExpressionFieldKinds` is
-      // in Relay and the field schema is reachable through a state accessor.
-      // Until then every field reads as ANY, so no operator is filtered out.
       const source = sourceOf(value);
       // A filter on a label field is applied to each label, so the expression
-      // names the label's own fields rather than paths from the sample
-      const suggestable = scope ? scopedTo(scope, allPaths) : allowed;
+      // names the label's own fields rather than paths from the sample —
+      // and kinds are resolved against the schema, which knows the full path
+      const scoped = scope ? scopedEntries(scope, allPaths) : null;
+      const suggestable = scoped ? [...scoped.keys()] : allowed;
+      const kindAt = scoped
+        ? (path: string) => fieldKind?.(scoped.get(path) ?? path)
+        : fieldKind;
       return (
         <ExpressionEditor
           disabled={disabled}
@@ -255,6 +264,8 @@ const ParamControl: React.FC<ParamInputProps> = ({
           value={source ?? ""}
           error={error ?? undefined}
           fields={suggestable}
+          fieldKind={kindAt}
+          operators={operators}
           onChange={onChange}
         />
       );

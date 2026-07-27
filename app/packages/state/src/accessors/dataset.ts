@@ -5,6 +5,7 @@ import {
   dataset,
   datasetId,
   datasetName,
+  expressionCatalog,
   fieldSchema,
   groupMediaTypes,
   isGroup,
@@ -159,3 +160,10 @@ export const useGroupSlices = (mediaTypes: GroupSliceMediaType[]): string[] => {
     )
     .map(({ name }) => name);
 };
+
+/**
+ * The operator catalog the expression editor suggests from, exactly as the
+ * server describes it — or null before the query has resolved, which callers
+ * treat as "suggest nothing rather than something wrong".
+ */
+export const useExpressionCatalog = () => useRecoilValue(expressionCatalog);

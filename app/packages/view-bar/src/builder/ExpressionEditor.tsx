@@ -31,7 +31,6 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 
 import { tryParse } from "../expression/parse";
 import type { Node } from "../expression/types";
-import { CATALOG } from "./catalog";
 import type { Kind, Operator } from "./catalog";
 import { EDITOR_HEADER_HEIGHT, EXPRESSION_BOX_HEIGHT } from "../params";
 import {
@@ -51,6 +50,7 @@ export interface ExpressionEditorProps {
   fields?: string[];
   /** Resolves a field path to the kind of value it holds. */
   fieldKind?: (path: string) => Kind | undefined;
+  /** The served operator catalog; suggestions come only from here. */
   operators?: Operator[];
   /** Names the parameter from inside the input, so no label sits above it. */
   placeholder?: string;
@@ -159,7 +159,8 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
   onChange,
   fields = [],
   fieldKind = () => undefined,
-  operators = CATALOG,
+  // No catalog yet means no operator suggestions — never a stale local copy
+  operators = [],
   placeholder = 'F("confidence") > 0.5',
   tabs,
   disabled,
