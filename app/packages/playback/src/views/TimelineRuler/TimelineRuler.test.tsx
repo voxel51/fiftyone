@@ -9,6 +9,7 @@ import {
 } from "../../lib/playback/PlaybackProvider";
 import { viewEndAtom, viewStartAtom } from "../../lib/playback/atoms";
 import { setHoverTime } from "../../lib/playback/store-access";
+import type { TimelineMode } from "../../lib/playback/types";
 import { useHoverTime } from "../../lib/playback/use-playback-state";
 import TimelineRuler from "./TimelineRuler";
 import styles from "./TimelineRuler.module.css";
@@ -62,6 +63,7 @@ interface RenderOpts {
   viewEnd?: number;
   defaultLoopStart?: number;
   defaultLoopEnd?: number;
+  mode?: TimelineMode;
 }
 
 /** Renders the ruler inside a positioned outer so getBoundingClientRect-driven math works. */
@@ -74,6 +76,7 @@ function renderRuler(opts: RenderOpts = {}) {
     viewEnd,
     defaultLoopStart,
     defaultLoopEnd,
+    mode,
   } = opts;
   return render(
     <PlaybackProvider
@@ -81,6 +84,7 @@ function renderRuler(opts: RenderOpts = {}) {
       stepInterval={1 / 30}
       defaultLoopStart={defaultLoopStart}
       defaultLoopEnd={defaultLoopEnd}
+      mode={mode}
     >
       {viewStart !== undefined && viewEnd !== undefined ? (
         <ViewSetter start={viewStart} end={viewEnd} />
@@ -294,6 +298,63 @@ describe("TimelineRuler", () => {
       expect(labels).toContain("1:00");
       expect(labels).toContain("1:30");
       expect(labels).toContain("2:00");
+    });
+  });
+
+  describe("mode-aware ticks", () => {
+    it("labels sequence-mode ticks as frame numbers, spaced on frame boundaries", () => {
+      const { container } = renderRuler({
+        duration: 1,
+        viewStart: 0,
+        viewEnd: 1,
+        mode: { kind: "sequence", fps: 10 },
+      });
+      const labels = Array.from(
+        container.querySelectorAll(`.${styles.tick}`),
+      ).map((el) => el.textContent);
+      // 1s at 10fps = frames 0..10, one tick per frame (smallest interval).
+      expect(labels).toEqual([
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+      ]);
+    });
+
+    it("labels absolute-mode ticks as HH:MM:SS.mmm wall-clock time", () => {
+      const { container } = renderRuler({
+        duration: 2,
+        viewStart: 0,
+        viewEnd: 2,
+        // 1970-01-01T00:00:10.000Z
+        mode: { kind: "absolute", epochAnchorMs: 10_000 },
+      });
+      const labels = Array.from(
+        container.querySelectorAll(`.${styles.tick}`),
+      ).map((el) => el.textContent);
+      expect(labels[0]).toBe("00:00:10.000");
+      expect(labels[labels.length - 1]).toBe("00:00:12.000");
+    });
+
+    it("caps the tick count instead of hanging on a corrupt/huge duration", () => {
+      // A mismeasured scene (e.g. streams disagreeing on epoch vs. elapsed
+      // time) can blow the duration out to years; the ruler must degrade
+      // gracefully rather than render millions of ticks.
+      const { container } = renderRuler({
+        duration: 1_600_000_000,
+        viewStart: 0,
+        viewEnd: 1_600_000_000,
+        mode: { kind: "sequence", fps: 12 },
+      });
+      const ticks = container.querySelectorAll(`.${styles.tick}`);
+      expect(ticks.length).toBeLessThanOrEqual(500);
     });
   });
 

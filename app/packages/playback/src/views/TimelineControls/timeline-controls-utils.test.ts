@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatTime } from "./timeline-controls-utils";
+import {
+  fmtBound,
+  formatDisplayValue,
+  formatTime,
+  formatTimeOfDay,
+} from "./timeline-controls-utils";
 
 describe("formatTime", () => {
   it("renders sub-minute values as 0:ss.cs", () => {
@@ -22,5 +27,44 @@ describe("formatTime", () => {
     expect(formatTime(NaN)).toBe("0:00.00");
     expect(formatTime(-5)).toBe("0:00.00");
     expect(formatTime(Infinity)).toBe("0:00.00");
+  });
+});
+
+describe("formatTimeOfDay", () => {
+  it("renders a Date as HH:MM:SS.mmm", () => {
+    expect(formatTimeOfDay(new Date("1970-01-01T00:00:10.500Z"))).toBe(
+      "00:00:10.500",
+    );
+  });
+
+  it("renders a sentinel instead of throwing on an out-of-range Date", () => {
+    // Date's valid range is ~±8.64e15ms from the epoch.
+    expect(formatTimeOfDay(new Date(1e17))).toBe("--:--:--.---");
+  });
+});
+
+describe("formatDisplayValue", () => {
+  it("formats sequence mode as a #-prefixed frame number", () => {
+    expect(formatDisplayValue(5, { kind: "sequence", fps: 12 })).toBe("#5");
+    expect(formatDisplayValue(5.9, { kind: "sequence", fps: 12 })).toBe("#6");
+  });
+
+  it("formats absolute mode as a wall-clock time", () => {
+    expect(
+      formatDisplayValue(new Date("1970-01-01T00:00:10.000Z"), {
+        kind: "absolute",
+        epochAnchorMs: 0,
+      }),
+    ).toBe("00:00:10.000");
+  });
+
+  it("defaults duration mode to formatTime (m:ss.cs)", () => {
+    expect(formatDisplayValue(83.45, { kind: "duration" })).toBe("1:23.45");
+  });
+
+  it("uses a caller-supplied formatter for duration mode", () => {
+    expect(formatDisplayValue(2.5, { kind: "duration" }, fmtBound)).toBe(
+      "2.50s",
+    );
   });
 });
