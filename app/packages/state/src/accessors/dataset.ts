@@ -44,6 +44,17 @@ export const useCurrentDatasetName = (): string | null =>
 export const useSampleSchema = () =>
   useRecoilValue(fieldSchema({ space: State.SPACE.SAMPLE }));
 
+/**
+ * The dataset's media type, with group datasets reporting `group` — matching
+ * how a view stage declares the media types it applies to.
+ *
+ * @returns the media type, or null when no dataset is loaded
+ */
+export const useDatasetMediaType = (): string | null => {
+  const current = useRecoilValue(dataset);
+  return current?.mediaType ?? null;
+};
+
 /** What a field holds, for callers matching paths against a type constraint. */
 export interface FieldType {
   ftype: string;
