@@ -1,0 +1,27 @@
+.errorPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+  color: var(--fo-palette-text-secondary);
+}
+
+.errorTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fo-palette-text-primary);
+}
+
+.errorMessage {
+  margin: 0;
+  font-size: 0.825rem;
+  color: var(--fo-palette-text-secondary);
+  max-width: 360px;
+  line-height: 1.5;
+}
