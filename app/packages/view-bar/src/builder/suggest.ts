@@ -148,6 +148,21 @@ export const caretContext = (
     return { prefix: "", openCall };
   }
 
+  // `F(conf` — the quotes are optional in the editor, so a bare path inside
+  // `F(` is being typed just as much as a quoted one is
+  if (openCall?.op === fieldVar) {
+    const frame = stack[stack.length - 1];
+    const typed = source.slice(frame.start + 1, offset);
+
+    if (/^[A-Za-z0-9_.]*$/.test(typed)) {
+      return {
+        prefix: "",
+        openCall,
+        field: { typed, start: frame.start + 1 },
+      };
+    }
+  }
+
   let start = offset;
   while (start > 0 && IDENT.test(source[start - 1])) start--;
   const prefix = source.slice(start, offset);

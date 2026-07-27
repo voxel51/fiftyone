@@ -203,3 +203,36 @@ describe("field completion", () => {
     expect(caretContext(source, source.length).field).toBeUndefined();
   });
 });
+
+describe("unquoted field completion", () => {
+  const PATHS = ["label", "labels", "confidence"];
+
+  it("completes a bare path inside F(", () => {
+    const source = "F(l";
+    const context = caretContext(source, source.length);
+    expect(context.field).toEqual({ typed: "l", start: 2 });
+    expect(suggestFields(context.field!.typed, PATHS)[0]).toBe("label");
+  });
+
+  it("offers everything the moment F( opens", () => {
+    const source = "F(";
+    expect(caretContext(source, source.length).field?.typed).toBe("");
+  });
+
+  it("completes a bare dotted path", () => {
+    const source = "F(ground_truth.la";
+    expect(caretContext(source, source.length).field?.typed).toBe(
+      "ground_truth.la",
+    );
+  });
+
+  it("stops offering fields once the path is not a path", () => {
+    const source = "F(a + ";
+    expect(caretContext(source, source.length).field).toBeUndefined();
+  });
+
+  it("does not treat another call's argument as a field", () => {
+    const source = "F(conf).is_in(1";
+    expect(caretContext(source, source.length).field).toBeUndefined();
+  });
+});

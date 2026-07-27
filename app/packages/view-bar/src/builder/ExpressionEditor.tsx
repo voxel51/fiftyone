@@ -12,13 +12,15 @@
 
 import {
   Align,
+  Anchor,
   Card,
   CardBackground,
-  EmptyState,
+  Icon,
   FormField,
   IconName,
   Input,
-  ListItem,
+  Justify,
+  Clickable,
   Orientation,
   Pill,
   Size,
@@ -89,8 +91,41 @@ const applySuggestion = (
  */
 const RESULTS_HEIGHT = 148;
 
-/** Reserved for the status line, so its arrival moves nothing. */
-const STATUS_LINE_HEIGHT = 15;
+/**
+ * What the box has to say about the expression as it stands.
+ *
+ * `empty` invites, `valid` confirms, `invalid` explains. A half-typed
+ * expression is `invalid` and says so where the suggestions were, rather than
+ * pushing a message in underneath and moving everything.
+ */
+export type Status =
+  | { state: "empty" }
+  | { state: "valid" }
+  | { state: "invalid"; message: string };
+
+export const statusOf = (source: string, error?: string | null): Status => {
+  // A reason the value was rejected outranks anything read from the text
+  if (error) return { state: "invalid", message: error };
+
+  if (!source.trim()) return { state: "empty" };
+
+  const parsed = tryParse(source);
+  return "error" in parsed
+    ? { state: "invalid", message: parsed.error.message }
+    : { state: "valid" };
+};
+
+const STATUS_ICON: Record<Status["state"], IconName> = {
+  empty: IconName.Add,
+  valid: IconName.Check,
+  invalid: IconName.Error,
+};
+
+const STATUS_COLOR: Record<Status["state"], TextColor> = {
+  empty: TextColor.Muted,
+  valid: TextColor.Success,
+  invalid: TextColor.Destructive,
+};
 
 const KIND_LABEL: Record<Kind, string> = {
   ANY: "any",
@@ -193,9 +228,7 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
     [value, offset, onChange, restoreCaret],
   );
 
-  // Shown only once the expression is complete enough to be judged
-  const parsed = value.trim() ? tryParse(value) : undefined;
-  const settled = parsed && "error" in parsed ? parsed.error.message : null;
+  const status = statusOf(value, error);
 
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
@@ -247,37 +280,38 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
         One slot, one height. The hint, the field list and the operator list
         are alternatives for the same region, so it is sized once — otherwise
         the popover grows and shrinks under the caret as they swap.
+
+        Only the lists scroll. The hint is a fixed thing that fits, and a
+        scrollbar on it suggests there is more to read when there is not.
       */}
-      <Card background={CardBackground.Primary} outlined compact>
+      <Card
+        background={CardBackground.Primary}
+        outlined
+        compact
+        style={
+          status.state === "invalid"
+            ? { borderColor: "var(--fo-palette-error-plainColor)" }
+            : undefined
+        }
+      >
         <div
           style={{
             height: RESULTS_HEIGHT,
-            overflowY: "auto",
-            overflowX: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
           }}
         >
           {fieldMatches.length > 0 ? (
-            <Stack orientation={Orientation.Column} spacing={Spacing.None}>
+            <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
               {fieldMatches.slice(0, 24).map((path) => (
-                <ListItem
-                  key={path}
-                  onClick={() => chooseField(path)}
-                  role="option"
-                  aria-selected={false}
-                  style={{ cursor: "pointer" }}
-                  primaryContent={
-                    <Text
-                      variant={TextVariant.Caption}
-                      color={TextColor.Primary}
-                    >
-                      {path}
-                    </Text>
-                  }
-                />
+                <Row key={path} onChoose={() => chooseField(path)}>
+                  {path}
+                </Row>
               ))}
-            </Stack>
+            </div>
           ) : suggestions.length > 0 ? (
-            <Stack orientation={Orientation.Column} spacing={Spacing.None}>
+            <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
               {suggestions.map(({ operator, applicable, reason }) => (
                 <Suggestion
                   key={operator.name}
@@ -287,29 +321,36 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
                   onChoose={() => choose(operator)}
                 />
               ))}
-            </Stack>
+            </div>
           ) : (
-            <EmptyState
-              icon={IconName.Add}
-              title="Start with a field"
-              description='Type F("…") and a dot to see what you can do with it'
-            />
+            <Stack
+              orientation={Orientation.Column}
+              justify={Justify.Center}
+              align={Align.Center}
+              spacing={Spacing.Xs}
+              style={{ flex: 1, overflow: "hidden", textAlign: "center" }}
+            >
+              <Icon
+                name={STATUS_ICON[status.state]}
+                size={Size.Sm}
+                color={STATUS_COLOR[status.state]}
+              />
+              <Text variant={TextVariant.Sm} color={STATUS_COLOR[status.state]}>
+                {status.state === "invalid"
+                  ? status.message
+                  : status.state === "valid"
+                    ? "Ready to apply"
+                    : "Start with a field"}
+              </Text>
+              {status.state === "empty" && (
+                <Text variant={TextVariant.Caption} color={TextColor.Muted}>
+                  {'Type F("…") then a dot'}
+                </Text>
+              )}
+            </Stack>
           )}
         </div>
       </Card>
-
-      {/*
-        One reserved line for whatever there is to say. A rejection outranks a
-        parse complaint, and the line is held open when there is neither, so
-        nothing below it moves as the expression is typed.
-      */}
-      <Text
-        variant={TextVariant.Caption}
-        color={error ? TextColor.Destructive : TextColor.Muted}
-        style={{ minHeight: STATUS_LINE_HEIGHT }}
-      >
-        {error ?? settled ?? " "}
-      </Text>
     </Stack>
   );
 };
@@ -335,6 +376,39 @@ const Signature: React.FC<{
 );
 
 /**
+ * One line, one thing to pick.
+ *
+ * `MenuTextItem` is the design system's compact row but it is a headlessui
+ * menu item and throws without a `Menu` above it, which an always-open list
+ * inside a popover has no reason to be. `Clickable` carries the affordance and
+ * the text component carries the type, so the row stays a row.
+ */
+const Row: React.FC<
+  React.PropsWithChildren<{ onChoose?: () => void; muted?: boolean }>
+> = ({ onChoose, muted, children }) => (
+  <Clickable
+    onClick={onChoose}
+    role="option"
+    aria-selected={false}
+    aria-disabled={!onChoose}
+    style={{
+      display: "block",
+      padding: "3px 6px",
+      borderRadius: 3,
+      opacity: onChoose ? 1 : 0.6,
+      cursor: onChoose ? "pointer" : "not-allowed",
+    }}
+  >
+    <Text
+      variant={TextVariant.Sm}
+      color={muted ? TextColor.Muted : TextColor.Primary}
+    >
+      {children}
+    </Text>
+  </Clickable>
+);
+
+/**
  * An operator that does not apply is offered anyway, carrying its reason —
  * hiding it is only legible to someone who already knows the type system.
  */
@@ -345,33 +419,18 @@ const Suggestion: React.FC<{
   onChoose: () => void;
 }> = ({ operator, applicable, reason, onChoose }) => {
   const row = (
-    <ListItem
-      onClick={applicable ? onChoose : undefined}
-      role="option"
-      aria-disabled={!applicable}
-      aria-selected={false}
-      style={{
-        cursor: applicable ? "pointer" : "not-allowed",
-        opacity: applicable ? 1 : 0.55,
-      }}
-      primaryContent={
-        <Text
-          variant={TextVariant.Caption}
-          color={applicable ? TextColor.Primary : TextColor.Muted}
-        >
-          {operator.display}
-        </Text>
-      }
-      secondaryContent={
-        <Text variant={TextVariant.Caption} color={TextColor.Muted}>
-          {reason ?? operator.summary}
-        </Text>
-      }
-      actions={<Pill size={Size.Xs}>{KIND_LABEL[operator.returns]}</Pill>}
-    />
+    <Row onChoose={applicable ? onChoose : undefined} muted={!applicable}>
+      {operator.display}
+    </Row>
   );
 
-  return reason ? <Tooltip content={reason}>{row}</Tooltip> : row;
+  return reason ? (
+    <Tooltip content={reason} anchor={Anchor.Right}>
+      {row}
+    </Tooltip>
+  ) : (
+    row
+  );
 };
 
 export default ExpressionEditor;

@@ -475,15 +475,7 @@ class Parser {
     if (value === "False") return { t: "lit", v: false };
 
     if (value === this.fieldVar) {
-      const { args } = this.callArgs();
-      const path = args[0];
-      if (!path || path.t !== "lit" || typeof path.v !== "string") {
-        throw new ExpressionSyntaxError(
-          `${this.fieldVar}() takes a field path`,
-          token.start,
-        );
-      }
-      return { t: "field", path: path.v };
+      return { t: "field", path: this.fieldPath(token.start) };
     }
 
     if (value === this.exprVar) {
@@ -529,6 +521,41 @@ class Parser {
     }
 
     throw new ExpressionSyntaxError(`Unknown name: ${name}`, token.start);
+  }
+
+  /**
+   * The path inside `F(...)`, quoted or not.
+   *
+   * Python requires the quotes and {@link print} always writes them, but a
+   * field path is a bare word in every other part of the App, and typing
+   * `F(confidence)` is what people reach for. Accepting it here costs nothing:
+   * the tree records the path either way, so what leaves the editor is quoted
+   * regardless of how it was typed.
+   */
+  private fieldPath(start: number): string {
+    this.expect("op", "(");
+
+    const token = this.peek();
+    if (token.kind === "string") {
+      this.next();
+      this.expect("op", ")");
+      return token.literal as string;
+    }
+
+    if (token.kind === "name") {
+      let path = this.next().value;
+      while (this.at(".")) {
+        this.next();
+        path += `.${this.expect("name").value}`;
+      }
+      this.expect("op", ")");
+      return path;
+    }
+
+    throw new ExpressionSyntaxError(
+      `${this.fieldVar}() takes a field path`,
+      start,
+    );
   }
 
   /**

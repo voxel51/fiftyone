@@ -69,3 +69,37 @@ export const allowedFields = (
     return constraints.some((constraint) => satisfies(constraint, field));
   });
 };
+
+/**
+ * The paths an expression written for `root` can name.
+ *
+ * A filter on a label field is applied to each label, not to the sample, so
+ * `FilterLabels("detections", ...)` is written as `F("label")` — not
+ * `F("detections.detections.label")`. The suggestions have to match, so they
+ * are the field's own children with the path to them stripped off.
+ *
+ * A list of labels nests them under a single attribute (`detections.detections`)
+ * which is not part of what the expression names either, so a lone shared first
+ * segment is stripped with it. A field whose children fan out — a
+ * `Classification`'s `label`, `confidence`, `logits` — keeps them all.
+ */
+export const scopedTo = (root: string, paths: readonly string[]): string[] => {
+  const prefix = `${root}.`;
+  const children = paths
+    .filter((path) => path.startsWith(prefix))
+    .map((path) => path.slice(prefix.length));
+
+  if (!children.length) return [];
+
+  const heads = new Set(children.map((child) => child.split(".")[0]));
+  if (heads.size > 1) return children.sort();
+
+  // Only strip the shared segment when there is something under it — a field
+  // with a single leaf child shares a head too, and that leaf is the answer
+  const nested = `${[...heads][0]}.`;
+  const deeper = children
+    .filter((child) => child.startsWith(nested))
+    .map((child) => child.slice(nested.length));
+
+  return (deeper.length ? deeper : children).sort();
+};

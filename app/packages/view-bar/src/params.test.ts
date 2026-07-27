@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { paramModes } from "./ViewBar";
+import { paramModes } from "./params";
 
 type Source = "FIELDS" | "GROUP_SLICES" | "CONSTANTS" | "FREE_TEXT";
 type Existence = "EXISTING" | "EXISTING_ROOT" | "ANY";

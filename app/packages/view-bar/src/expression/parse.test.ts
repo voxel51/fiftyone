@@ -219,3 +219,28 @@ describe("parse", () => {
     expect(tryParse("E({'$gt': [F('x'), 1]})")).toHaveProperty("error");
   });
 });
+
+describe("unquoted field paths", () => {
+  it("accepts a bare path, as if it were quoted", () => {
+    expect(parse("F(confidence)")).toEqual({ t: "field", path: "confidence" });
+  });
+
+  it("accepts a bare dotted path", () => {
+    expect(parse("F(ground_truth.label)")).toEqual({
+      t: "field",
+      path: "ground_truth.label",
+    });
+  });
+
+  it("still accepts the quoted form", () => {
+    expect(parse('F("a b")')).toEqual({ t: "field", path: "a b" });
+  });
+
+  it("reads the same either way", () => {
+    expect(parse("F(conf) > 0.5")).toEqual(parse('F("conf") > 0.5'));
+  });
+
+  it("still refuses an empty call", () => {
+    expect(() => parse("F()")).toThrow(ExpressionSyntaxError);
+  });
+});
