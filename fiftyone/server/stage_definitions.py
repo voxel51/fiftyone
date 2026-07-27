@@ -106,7 +106,15 @@ class StageParameter:
 
 @gql.type
 class StageDefinition:
+    """A view stage and its parameters.
+
+    ``mediaTypes`` names the media types the stage applies to and is empty when
+    it applies to any, so a caller offering stages to a user can leave out the
+    ones that would only fail. A group dataset reports ``group``.
+    """
+
     name: str
+    media_types: t.List[str]
     params: t.List[StageParameter]
 
 
@@ -183,6 +191,7 @@ def stage_definitions() -> t.List[StageDefinition]:
     return [
         StageDefinition(
             name=stage.__name__,
+            media_types=list(stage._media_types() or []),
             params=[_stage_parameter(param) for param in stage._params()],
         )
         for stage in _STAGES

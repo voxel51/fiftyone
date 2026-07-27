@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<df3c75e12404e411caa0ca85f57b6a72>>
+ * @generated SignedSource<<2eb97c6a0546da900bf16fe647a74e46>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,6 +15,7 @@ export type StageParameterFieldLevel = "ANY" | "FRAME" | "SAMPLE" | "%future add
 import { FragmentRefs } from "relay-runtime";
 export type stageDefinitionsFragment$data = {
   readonly stageDefinitions: ReadonlyArray<{
+    readonly mediaTypes: ReadonlyArray<string>;
     readonly name: string;
     readonly params: ReadonlyArray<{
       readonly choices: {
@@ -66,6 +67,13 @@ return {
       "plural": true,
       "selections": [
         (v0/*: any*/),
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "mediaTypes",
+          "storageKey": null
+        },
         {
           "alias": null,
           "args": null,
@@ -193,6 +201,6 @@ return {
 };
 })();
 
-(node as any).hash = "e936c6e393c21a0e7786ce7b804d05e8";
+(node as any).hash = "838ffbf2f9e0f5d41b40188fb1b10679";
 
 export default node;

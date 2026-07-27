@@ -382,6 +382,20 @@ class ViewStage(object):
         return {}
 
     @classmethod
+    def _media_types(cls):
+        """Returns the media types this stage applies to, or None if it
+        applies to any.
+
+        A stage that only makes sense for some collections — the group stages,
+        the video ones — says so here, so a caller offering stages to a user
+        can leave out the ones that would only fail.
+
+        Returns:
+            a tuple of media types, or None
+        """
+        return None
+
+    @classmethod
     def _params(cls):
         """Returns a list of JSON dicts describing the stage's supported
         parameters.
@@ -1377,6 +1391,10 @@ class ExcludeFrames(ViewStage):
         ]
 
     @classmethod
+    def _media_types(cls):
+        return (fom.VIDEO,)
+
+    @classmethod
     def _params(cls):
         return [
             {
@@ -1453,6 +1471,10 @@ class ExcludeGroups(ViewStage):
 
     def _kwargs(self):
         return [["group_ids", self._group_ids]]
+
+    @classmethod
+    def _media_types(cls):
+        return (fom.GROUP,)
 
     @classmethod
     def _params(cls):
@@ -5389,6 +5411,10 @@ class SelectGroupSlices(ViewStage):
         ]
 
     @classmethod
+    def _media_types(cls):
+        return (fom.GROUP,)
+
+    @classmethod
     def _params(cls):
         return [
             {
@@ -5559,6 +5585,10 @@ class ExcludeGroupSlices(ViewStage):
         ]
 
     @classmethod
+    def _media_types(cls):
+        return (fom.GROUP,)
+
+    @classmethod
     def _params(cls):
         return [
             {
@@ -5661,6 +5691,10 @@ class MatchFrames(ViewStage):
 
     def _expressions(self):
         return {"filter": self._filter}
+
+    @classmethod
+    def _media_types(cls):
+        return (fom.VIDEO,)
 
     @classmethod
     def _params(cls):
@@ -7043,6 +7077,10 @@ class SelectFrames(ViewStage):
         ]
 
     @classmethod
+    def _media_types(cls):
+        return (fom.VIDEO,)
+
+    @classmethod
     def _params(cls):
         return [
             {
@@ -7149,6 +7187,10 @@ class SelectGroups(ViewStage):
 
     def _kwargs(self):
         return [["group_ids", self._group_ids], ["ordered", self._ordered]]
+
+    @classmethod
+    def _media_types(cls):
+        return (fom.GROUP,)
 
     @classmethod
     def _params(cls):
@@ -8842,6 +8884,10 @@ class ToClips(ViewStage):
         return {"field_or_expr": self._field_or_expr}
 
     @classmethod
+    def _media_types(cls):
+        return (fom.VIDEO,)
+
+    @classmethod
     def _params(self):
         return [
             {
@@ -9000,6 +9046,10 @@ class ToTrajectories(ViewStage):
             ["config", self._config],
             ["_state", self._state],
         ]
+
+    @classmethod
+    def _media_types(cls):
+        return (fom.VIDEO,)
 
     @classmethod
     def _params(self):
@@ -9217,6 +9267,10 @@ class ToFrames(ViewStage):
             ["config", self._config],
             ["_state", self._state],
         ]
+
+    @classmethod
+    def _media_types(cls):
+        return (fom.VIDEO,)
 
     @classmethod
     def _params(self):

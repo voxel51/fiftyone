@@ -836,6 +836,7 @@ input SidebarGroupInput {
 
 type StageDefinition {
   name: String!
+  mediaTypes: [String!]!
   params: [StageParameter!]!
 }
 
