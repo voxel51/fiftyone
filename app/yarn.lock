@@ -3309,6 +3309,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/view-bar@workspace:packages/view-bar"
   dependencies:
+    "@fiftyone/components": "npm:*"
     "@fiftyone/relay": "npm:*"
     "@fiftyone/state": "npm:*"
     "@testing-library/react": "npm:^16.2.0"
