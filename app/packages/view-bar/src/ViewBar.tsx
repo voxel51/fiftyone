@@ -15,6 +15,7 @@
  */
 
 import * as fos from "@fiftyone/state";
+import { Code } from "@fiftyone/components";
 import {
   Align,
   Button,
@@ -28,10 +29,18 @@ import {
   Size,
   Spacing,
   Stack,
+  Text,
+  TextColor,
+  TextVariant,
   Toggle,
+  Tooltip,
   Variant,
 } from "@voxel51/voodo";
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
+
+import { ExpressionEditor } from "./builder/ExpressionEditor";
+import { fromSource, isEnvelope, sourceOf } from "./builder/envelope";
+import { allowedFields } from "./fields";
 import { createPortal } from "react-dom";
 import { useRecoilValue } from "recoil";
 
@@ -89,6 +98,7 @@ type InputKind =
   | "string"
   | "stringList"
   | "json"
+  | "python"
   | "id"
   | "idList";
 
@@ -110,7 +120,12 @@ type InputKind =
  */
 export const paramModes = (param: ParamDef): InputKind[] => {
   const has = (t: string) => param.tokens.includes(t);
-  const expression: InputKind[] = has("json") || has("dict") ? ["json"] : [];
+  // The expression editor leads: it is what these params are for. Not every
+  // `json` param holds an expression though — `Mongo.pipeline` is a pipeline,
+  // `ExcludeLabels.labels` a list of dicts — and nothing in the parameter's
+  // description says which, so the raw editor stays available behind it.
+  const expression: InputKind[] =
+    has("json") || has("dict") ? ["python", "json"] : [];
 
   if (param.choices.source === "FIELDS") {
     const picker: InputKind = has("list<field>") ? "fieldList" : "field";
@@ -146,7 +161,8 @@ export const MODE_LABELS: Record<InputKind, string> = {
   stringList: "list",
   id: "id",
   idList: "ids",
-  json: "expr",
+  json: "json",
+  python: "expr",
 };
 
 /**
@@ -164,6 +180,12 @@ export const inferMode = (
 
   if (value === undefined || value === null || value === "") {
     return modes[0];
+  }
+
+  // An envelope carries the syntax the expression was written in, so it opens
+  // in the editor that can show it
+  if (isEnvelope(value) && allows("python")) {
+    return "python";
   }
 
   // An operator-keyed object or a nested array is an expression, never a field
@@ -245,6 +267,18 @@ export const validateParam = (
       JSON.parse(value);
     } catch (e) {
       return `Invalid JSON: ${(e as Error).message}`;
+    }
+  }
+
+  if (kind === "python") {
+    const source = sourceOf(value);
+    if (source === null) {
+      return "This expression was not written here, so it cannot be edited as Python";
+    }
+
+    const result = fromSource(source);
+    if (result.status === "error") {
+      return result.message;
     }
   }
 
@@ -375,32 +409,74 @@ interface ParamInputProps {
   kind: InputKind;
   /** Why this value cannot be sent, if it cannot. */
   error?: string | null;
+  /** Waiting on a required parameter declared before it. */
+  disabled?: boolean;
   onChange: (next: unknown) => void;
   fieldOptions: { id: string; data: { label: string } }[];
+  /** The field paths a param accepts, narrowed by the constraints it declares. */
+  allowedFor: (param: ParamDef) => string[];
+  /** The editor switcher, for controls that lay it out themselves. */
+  tabs?: React.ReactNode;
 }
 
 /**
- * Names a control that cannot name itself. voodo's `Select` takes no
- * placeholder, so the field pickers get a leading label; every other control
- * carries the param name in its own placeholder.
+ * The required parameter this one is waiting on, if any.
+ *
+ * Parameters are declared in the order the stage's constructor takes them, and
+ * the later ones are written against the earlier: a `FilterLabels` filter has
+ * nothing to filter until a field is chosen. Rather than let someone write an
+ * expression against nothing, a parameter waits for the required ones before
+ * it.
  */
-const Labelled: React.FC<
-  React.PropsWithChildren<{ name: string; invalid?: boolean }>
-> = ({ name, invalid, children }) => (
-  <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-    <span
-      style={{
-        fontSize: 12,
-        fontWeight: 500,
-        color: invalid
-          ? "var(--fo-palette-error-plainColor)"
-          : "var(--fo-palette-text-secondary)",
-      }}
-    >
-      {name}
-    </span>
+export const blockedBy = (
+  param: ParamDef,
+  params: ParamDef[],
+  kwargs: Record<string, unknown>,
+): string | null => {
+  for (const earlier of params) {
+    if (earlier.name === param.name) return null;
+    if (earlier.required && isEmptyValue(kwargs[earlier.name])) {
+      return earlier.name;
+    }
+  }
+
+  return null;
+};
+
+/** `only_matches` is how Python spells it; "only matches" is how it reads. */
+export const humanize = (name: string): string =>
+  name.replace(/^_+/, "").replace(/_/g, " ");
+
+/**
+ * Names a `Select` from the inside.
+ *
+ * voodo's `Select` takes no placeholder, so an unset picker shows nothing at
+ * all and the parameter has to be named somewhere. A label above costs a line
+ * per control and reads as a form; the name belongs in the control it names.
+ * Removable once `placeholder` lands on `Select` in voxel51/design-system.
+ */
+const PlaceheldSelect: React.FC<
+  React.PropsWithChildren<{ placeholder: string; empty: boolean }>
+> = ({ placeholder, empty, children }) => (
+  <div style={{ position: "relative" }}>
     {children}
-  </Stack>
+    {empty && (
+      <Text
+        variant={TextVariant.Caption}
+        color={TextColor.Placeholder}
+        style={{
+          position: "absolute",
+          left: 10,
+          top: "50%",
+          transform: "translateY(-50%)",
+          // The click belongs to the select underneath
+          pointerEvents: "none",
+        }}
+      >
+        {placeholder}
+      </Text>
+    )}
+  </div>
 );
 
 /**
@@ -417,56 +493,68 @@ const ParamControl: React.FC<ParamInputProps> = ({
   value,
   kind,
   error,
+  disabled,
   onChange,
   fieldOptions,
+  allowedFor,
+  tabs,
 }) => {
   const invalid = Boolean(error);
-  // Controls name themselves, so the required marker rides along with the name
-  const name = param.required ? `${param.name} *` : param.name;
-  const placeholder = param.placeholder ?? name;
+  // Controls name themselves, and say they are required in the same breath —
+  // a bare `*` beside the name is a second thing to look at and decode
+  const allowed = allowedFor(param);
+  const options = fieldOptions.filter((option) => allowed.includes(option.id));
+  const label = humanize(param.name);
+  const described = param.placeholder?.trim() || label;
+  const placeholder = param.required ? `${described} (required)` : described;
+  const name = placeholder;
 
   switch (kind) {
     case "bool":
       return (
         <Toggle
+          disabled={disabled}
           checked={Boolean(value)}
           onChange={(v) => onChange(v)}
-          label={param.name}
+          label={humanize(param.name)}
           aria-label={param.name}
         />
       );
 
     case "field":
       return (
-        <Labelled name={name} invalid={invalid}>
+        <PlaceheldSelect placeholder={name} empty={typeof value !== "string"}>
           <Select
             exclusive
             portal
+            disabled={disabled}
             value={typeof value === "string" ? value : undefined}
-            options={fieldOptions}
+            options={options}
             onChange={(v) => {
               if (typeof v === "string") onChange(v);
             }}
           />
-        </Labelled>
+        </PlaceheldSelect>
       );
 
     case "fieldList":
       return (
-        <Labelled name={name} invalid={invalid}>
+        <PlaceheldSelect placeholder={name} empty={asList(value).length === 0}>
           <Select
             portal
+            disabled={disabled}
             value={asList(value)}
-            options={fieldOptions}
+            options={options}
             onChange={(v) => onChange(Array.isArray(v) ? v : v ? [v] : [])}
           />
-        </Labelled>
+        </PlaceheldSelect>
       );
 
     case "numeric":
       return (
         <Input
           error={invalid}
+          disabled={disabled}
           size={Size.Sm}
           value={value == null ? "" : String(value)}
           placeholder={placeholder}
@@ -481,6 +569,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
       return (
         <Input
           error={invalid}
+          disabled={disabled}
           size={Size.Sm}
           value={asList(value).join(", ")}
           placeholder={`${placeholder} (comma separated)`}
@@ -500,6 +589,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
       return (
         <Input
           error={invalid}
+          disabled={disabled}
           size={Size.Sm}
           value={value == null ? "" : String(value)}
           placeholder={placeholder}
@@ -511,6 +601,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
       return (
         <Input
           error={invalid}
+          disabled={disabled}
           size={Size.Sm}
           value={asList(value).join(", ")}
           placeholder={`${placeholder} (id, id, …)`}
@@ -525,76 +616,222 @@ const ParamControl: React.FC<ParamInputProps> = ({
         />
       );
 
+    case "python": {
+      // TODO: pass a `fieldKind` resolver once `viewExpressionFieldKinds` is
+      // in Relay and the field schema is reachable through a state accessor.
+      // Until then every field reads as ANY, so no operator is filtered out.
+      const source = sourceOf(value);
+      return (
+        <ExpressionEditor
+          disabled={disabled}
+          tabs={tabs}
+          // Named from inside the input, beside the example it is asking for —
+          // a label above would be a whole line to say one word
+          placeholder={`${placeholder} — F("label") == "cat"`}
+          value={source ?? ""}
+          error={error ?? undefined}
+          fields={allowed}
+          onChange={onChange}
+        />
+      );
+    }
+
     case "json":
     default:
+      // A real editor, not a one-line input: these values are nested documents,
+      // and bracket matching and syntax colouring are what make them editable
       return (
-        <Input
-          error={invalid}
-          size={Size.Sm}
-          value={
-            value == null
-              ? ""
-              : typeof value === "string"
-                ? value
-                : JSON.stringify(value)
-          }
-          placeholder={`${placeholder} (JSON)`}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+          {/*
+            A tall editor gets its switcher in a header row rather than beside
+            it — a column of tabs next to 132px of editor is mostly empty space
+          */}
+          <Stack
+            orientation={Orientation.Row}
+            spacing={Spacing.Sm}
+            align={Align.Center}
+          >
+            {tabs}
+            <Text
+              variant={TextVariant.Caption}
+              color={invalid ? TextColor.Destructive : TextColor.Muted}
+            >
+              {name}
+            </Text>
+          </Stack>
+          {/*
+            Monaco lays itself out against a definite box. The popover sizes to
+            its content, which leaves the editor no width to measure, so the box
+            is given here and the editor told to keep watching it.
+          */}
+          <div
+            style={{
+              width: JSON_EDITOR_WIDTH,
+              height: JSON_EDITOR_HEIGHT,
+              maxWidth: "100%",
+              overflow: "hidden",
+              borderRadius: 4,
+              border: "1px solid var(--fo-palette-primary-plainBorder)",
+            }}
+          >
+            <Code
+              height="100%"
+              width="100%"
+              defaultLanguage="json"
+              value={
+                value == null
+                  ? ""
+                  : typeof value === "string"
+                    ? value
+                    : JSON.stringify(value, null, 2)
+              }
+              onChange={(next) => onChange(next ?? "")}
+              options={{
+                readOnly: disabled,
+                automaticLayout: true,
+                minimap: { enabled: false },
+                lineNumbers: "off",
+                folding: false,
+                scrollBeyondLastLine: false,
+                fontSize: 12,
+                lineHeight: 18,
+                wordWrap: "on",
+                renderLineHighlight: "none",
+                overviewRulerLanes: 0,
+                padding: { top: 6, bottom: 6 },
+                scrollbar: {
+                  vertical: "auto",
+                  horizontal: "hidden",
+                  verticalScrollbarSize: 8,
+                },
+              }}
+            />
+          </div>
+        </Stack>
       );
   }
 };
 
+/** Reserved for a rejection reason, so its arrival moves nothing. */
+const STATUS_LINE_HEIGHT = 15;
+
+/** Tall enough for a nested document without dominating the popover. */
+const JSON_EDITOR_HEIGHT = 132;
+
 /**
- * A parameter's control plus the reason its value was rejected. voodo's `Input`
- * takes only a boolean error, so the message is rendered here.
+ * Wide enough that a nested document does not wrap every line. Monaco measures
+ * a real box rather than inheriting one, so this also sets what the popover
+ * grows to when the raw editor is showing.
+ */
+const JSON_EDITOR_WIDTH = 340;
+
+/** Controls tall enough that a switcher beside them would leave a gap. */
+const LAYS_OUT_ITS_OWN_TABS: ReadonlySet<InputKind> = new Set<InputKind>([
+  "python",
+  "json",
+]);
+
+/**
+ * Kinds that get no reserved status line: one reports its own reason, and a
+ * toggle has no invalid state to report, so the line would only be dead space.
+ */
+const NO_STATUS_LINE: ReadonlySet<InputKind> = new Set<InputKind>([
+  "python",
+  "bool",
+]);
+
+/**
+ * A parameter's control, the editors it can be entered with, and the reason its
+ * value was rejected. voodo's `Input` takes only a boolean error, so for most
+ * controls the message is rendered here.
  */
 const ParamInput: React.FC<
   ParamInputProps & { onModeChange: (kind: InputKind) => void }
 > = ({ onModeChange, ...props }) => {
   const modes = paramModes(props.param);
 
+  const tabs = modes.length > 1 && (
+    <Stack
+      orientation={Orientation.Row}
+      spacing={Spacing.None}
+      role="tablist"
+      style={{ flexShrink: 0 }}
+    >
+      {modes.map((mode) => {
+        // An expression cannot be recovered from lowered MongoDB, so the
+        // editor that would show it is refused rather than shown empty
+        const unavailable =
+          mode === "python" &&
+          !isEmptyValue(props.value) &&
+          sourceOf(props.value) === null;
+
+        // A segmented control: the selected editor is filled, the rest are
+        // borderless, so the set reads as a choice rather than as buttons
+        const tab = (
+          <Button
+            key={mode}
+            size={Size.Xs}
+            variant={
+              mode === props.kind ? Variant.Secondary : Variant.Borderless
+            }
+            role="tab"
+            aria-selected={mode === props.kind}
+            disabled={unavailable}
+            onClick={unavailable ? undefined : () => onModeChange(mode)}
+          >
+            {MODE_LABELS[mode]}
+          </Button>
+        );
+
+        return unavailable ? (
+          <Tooltip
+            key={mode}
+            content="This filter was not written as an expression, so it can only be edited as JSON"
+          >
+            {tab}
+          </Tooltip>
+        ) : (
+          tab
+        );
+      })}
+    </Stack>
+  );
+
+  // Controls taller than a line place the switcher themselves: beside them it
+  // would stand in a column of its own dead space
+  if (LAYS_OUT_ITS_OWN_TABS.has(props.kind)) {
+    return <ParamControl {...props} tabs={tabs} />;
+  }
+
   return (
-    <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-      {modes.length > 1 && (
-        <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
-          {modes.map((mode) => (
-            <span
-              key={mode}
-              onClick={() => onModeChange(mode)}
-              role="button"
-              title={`Enter ${props.param.name} as ${MODE_LABELS[mode]}`}
-              style={{
-                fontSize: 10,
-                cursor: "pointer",
-                padding: "1px 5px",
-                borderRadius: 3,
-                color:
-                  mode === props.kind
-                    ? "var(--fo-palette-text-primary)"
-                    : "var(--fo-palette-text-secondary)",
-                background:
-                  mode === props.kind
-                    ? "var(--fo-palette-background-level3)"
-                    : undefined,
-              }}
-            >
-              {MODE_LABELS[mode]}
-            </span>
-          ))}
-        </Stack>
-      )}
-      <ParamControl {...props} />
-      {props.error && (
-        <span
-          style={{
-            fontSize: 11,
-            color: "var(--fo-palette-error-plainColor)",
-          }}
-        >
-          {props.error}
-        </span>
-      )}
+    // The editor choice sits beside what it governs rather than above it: a row
+    // of its own would cost a line per parameter and read as unrelated chrome
+    <Stack
+      orientation={Orientation.Row}
+      spacing={Spacing.Sm}
+      align={Align.Start}
+    >
+      {tabs}
+      <Stack
+        orientation={Orientation.Column}
+        spacing={Spacing.None}
+        style={{ flex: 1, minWidth: 0 }}
+      >
+        <ParamControl {...props} />
+        {/*
+          Always present, so a value going bad does not push everything below
+          it down — reserved whether or not there is anything to say
+        */}
+        {!NO_STATUS_LINE.has(props.kind) && (
+          <Text
+            variant={TextVariant.Caption}
+            color={TextColor.Destructive}
+            style={{ minHeight: STATUS_LINE_HEIGHT }}
+          >
+            {props.error ?? " "}
+          </Text>
+        )}
+      </Stack>
     </Stack>
   );
 };
@@ -607,6 +844,10 @@ interface StageCardProps {
   stage: WorkingStage;
   definition: { name: string; params: ParamDef[] };
   fieldOptions: { id: string; data: { label: string } }[];
+  /** The field paths a param accepts, narrowed by the constraints it declares. */
+  allowedFor: (param: ParamDef) => string[];
+  /** The editor switcher, for controls that lay it out themselves. */
+  tabs?: React.ReactNode;
   /** Why each of this stage's params was rejected, by param name. */
   errors: ReadonlyMap<string, string>;
   /** The control in force for each param, by param name. */
@@ -635,10 +876,33 @@ const previewValue = (value: unknown): string => {
   return s.length > 24 ? `${s.slice(0, 21)}…` : s;
 };
 
+/**
+ * Groups the params into rows. Toggles are small and read as a set of options,
+ * so consecutive ones share a row instead of each claiming a full one; anything
+ * that needs the width gets a row to itself.
+ */
+export const rows = (
+  params: ParamDef[],
+  kindOfParam: (param: ParamDef) => InputKind,
+): ParamDef[][] =>
+  params.reduce<ParamDef[][]>((grouped, param) => {
+    const last = grouped[grouped.length - 1];
+    const toggle = kindOfParam(param) === "bool";
+
+    if (toggle && last && kindOfParam(last[0]) === "bool") {
+      last.push(param);
+    } else {
+      grouped.push([param]);
+    }
+
+    return grouped;
+  }, []);
+
 const StageCard: React.FC<StageCardProps> = ({
   stage,
   definition,
   fieldOptions,
+  allowedFor,
   errors,
   kinds,
   onModeChange,
@@ -652,24 +916,39 @@ const StageCard: React.FC<StageCardProps> = ({
   const popoverContentRef = React.useRef<HTMLDivElement | null>(null);
   const rect = useAnchorRect(triggerRef, expanded);
 
-  // Outside-click closes the editing popover. Must check BOTH the
-  // trigger (so re-clicking the card doesn't close-then-immediately-
-  // reopen) and the portaled popover content (so interacting with
-  // form fields inside doesn't close the popover).
+  // A stage the user has not finished describing cannot be applied, so closing
+  // its editor would only hide work that is going nowhere
+  const incomplete = definition.params.some(
+    (param) => param.required && isEmptyValue(stage.kwargs[param.name]),
+  );
+
+  // Outside-click closes the editing popover. Must check the trigger (so
+  // re-clicking the card doesn't close-then-immediately-reopen), the portaled
+  // popover content (so interacting with form fields inside doesn't close it),
+  // and the layer a portaled dropdown opens into — a select's options render
+  // outside this subtree, and picking one is not a click away.
   React.useEffect(() => {
-    if (!expanded) return undefined;
+    if (!expanded || incomplete) return undefined;
     const onClick = (e: MouseEvent) => {
       const t = e.target as Node;
+      const element = t instanceof Element ? t : null;
+
       if (
-        !triggerRef.current?.contains(t) &&
-        !popoverContentRef.current?.contains(t)
+        triggerRef.current?.contains(t) ||
+        popoverContentRef.current?.contains(t) ||
+        element?.closest("[data-headlessui-portal]") ||
+        // Already detached: the click landed on something that has since gone,
+        // which is what a menu closing under the pointer looks like
+        !t.isConnected
       ) {
-        onToggle();
+        return;
       }
+
+      onToggle();
     };
     window.addEventListener("mousedown", onClick);
     return () => window.removeEventListener("mousedown", onClick);
-  }, [expanded, onToggle]);
+  }, [expanded, incomplete, onToggle]);
 
   return (
     <div
@@ -731,7 +1010,11 @@ const StageCard: React.FC<StageCardProps> = ({
               top: rect.top + 6,
               left: rect.left,
               zIndex: 10000,
-              minWidth: 260,
+              // Sized by what it holds. A fixed minimum left short controls —
+              // a toggle, a tab strip — sitting in their own dead space
+              width: "max-content",
+              minWidth: rect.width,
+              maxWidth: 420,
               boxShadow: "0 8px 24px rgba(0, 0, 0, 0.45)",
               borderRadius: 6,
             }}
@@ -740,18 +1023,36 @@ const StageCard: React.FC<StageCardProps> = ({
               {/* Each control names itself — text inputs through their
                   placeholder, toggles through their label — so there is no
                   label column and no gutter beside the narrow controls. */}
-              <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
-                {definition.params.map((p) => (
-                  <ParamInput
-                    key={p.name}
-                    param={p}
-                    value={stage.kwargs[p.name]}
-                    error={errors.get(p.name)}
-                    kind={kinds.get(p.name) ?? pickInput(p)}
-                    onModeChange={(kind) => onModeChange(p.name, kind)}
-                    onChange={(v) => onChange(p.name, v)}
-                    fieldOptions={fieldOptions}
-                  />
+              <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+                {rows(
+                  definition.params,
+                  (p) => kinds.get(p.name) ?? pickInput(p),
+                ).map((row) => (
+                  <Stack
+                    key={row.map((p) => p.name).join(",")}
+                    orientation={
+                      row.length > 1 ? Orientation.Row : Orientation.Column
+                    }
+                    spacing={Spacing.Md}
+                    style={row.length > 1 ? { flexWrap: "wrap" } : undefined}
+                  >
+                    {row.map((p) => (
+                      <ParamInput
+                        key={p.name}
+                        param={p}
+                        value={stage.kwargs[p.name]}
+                        error={errors.get(p.name)}
+                        disabled={
+                          blockedBy(p, definition.params, stage.kwargs) !== null
+                        }
+                        kind={kinds.get(p.name) ?? pickInput(p)}
+                        onModeChange={(kind) => onModeChange(p.name, kind)}
+                        onChange={(v) => onChange(p.name, v)}
+                        fieldOptions={fieldOptions}
+                        allowedFor={allowedFor}
+                      />
+                    ))}
+                  </Stack>
                 ))}
               </Stack>
             </Card>
@@ -777,6 +1078,7 @@ export let rollbackViewBar: () => void = () => undefined;
 const ViewBar: React.FC = () => {
   const stageDefs = useRecoilValue(fos.stageDefinitions);
   const fieldPaths = useRecoilValue(fos.fieldPaths({}));
+  const fieldTypes = fos.useFieldTypes();
   const currentView = useRecoilValue(fos.view);
   const setView = fos.useSetView();
 
@@ -852,6 +1154,17 @@ const ViewBar: React.FC = () => {
   );
 
   /**
+   * The fields a param accepts. Each stage declares its own constraints — a
+   * label field, a frame-level one, a `GeoLocation` — so a picker that offered
+   * every path would be offering values the stage rejects.
+   */
+  const allowedFor = useCallback(
+    (param: ParamDef) =>
+      allowedFields(fieldPaths, param.choices.fields, fieldTypes),
+    [fieldPaths, fieldTypes],
+  );
+
+  /**
    * The mode in force for each param, by stage id then param name: the user's
    * explicit choice when there is one, otherwise inferred from the value.
    */
@@ -882,8 +1195,13 @@ const ViewBar: React.FC = () => {
   );
 
   /**
-   * Switching mode clears the value: a field path is not an expression, and
+   * Switching mode clears the value unless it means the same thing in the
+   * editor being switched to: a field path is not an expression, and
    * reinterpreting one as the other would silently change what gets applied.
+   *
+   * The one crossing that survives is an envelope opened as Python, since that
+   * is the syntax it was built from. Going the other way does not — the App
+   * cannot lower an expression to MongoDB, only the server can.
    */
   const changeMode = useCallback(
     (stage: WorkingStage, param: string, kind: InputKind) => {
@@ -891,7 +1209,14 @@ const ViewBar: React.FC = () => {
         ...current,
         [`${stage.id}:${param}`]: kind,
       }));
-      dispatch({ type: "setKwarg", id: stage.id, name: param, value: "" });
+
+      const value = stage.kwargs[param];
+      const carries =
+        isEmptyValue(value) || (kind === "python" && sourceOf(value) !== null);
+
+      if (!carries) {
+        dispatch({ type: "setKwarg", id: stage.id, name: param, value: "" });
+      }
     },
     [],
   );
@@ -912,10 +1237,17 @@ const ViewBar: React.FC = () => {
         .filter((p) => !isEmpty(s.kwargs[p.name]))
         .map((p) => {
           const value = s.kwargs[p.name];
+          const kind = kindOf(s, p);
           // Numeric controls hold what was typed; validation has already
           // rejected anything that is not a number by the time Apply runs
-          if (kindOf(s, p) === "numeric" && typeof value === "string") {
+          if (kind === "numeric" && typeof value === "string") {
             return [p.name, Number(value.trim())];
+          }
+          // The Python editor holds source; the server takes the envelope it
+          // parses to, and decodes that back into the expression it describes
+          if (kind === "python" && typeof value === "string") {
+            const result = fromSource(value);
+            return [p.name, result.status === "ok" ? result.envelope : value];
           }
           return [p.name, value];
         });
@@ -1218,6 +1550,7 @@ const ViewBar: React.FC = () => {
               stage={stage}
               definition={def}
               fieldOptions={fieldOptions}
+              allowedFor={allowedFor}
               expanded={editingId === stage.id}
               onToggle={() =>
                 setEditingId((id) => (id === stage.id ? null : stage.id))

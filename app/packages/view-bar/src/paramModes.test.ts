@@ -40,9 +40,12 @@ describe("paramModes", () => {
     expect(paramModes(param("field|str", "FIELDS"))).toEqual(["field"]);
   });
 
-  it("keeps the expression alternative beside a field", () => {
+  it("keeps the expression alternatives beside a field", () => {
+    // Both editors for the expression: not every `json` param holds one, so
+    // Python is offered rather than assumed
     expect(paramModes(param("field|str|json", "FIELDS"))).toEqual([
       "field",
+      "python",
       "json",
     ]);
   });
@@ -82,8 +85,11 @@ describe("paramModes", () => {
     ]);
   });
 
-  it("falls back to an expression for a type it does not recognize", () => {
-    expect(paramModes(param("json"))).toEqual(["json"]);
+  it("offers both editors for an expression", () => {
+    expect(paramModes(param("json"))).toEqual(["python", "json"]);
+  });
+
+  it("falls back to the raw editor for a type it does not recognize", () => {
     expect(paramModes(param("something_new"))).toEqual(["json"]);
   });
 });

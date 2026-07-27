@@ -11,6 +11,7 @@
     ],
     "main": "src/index.ts",
     "dependencies": {
+        "@fiftyone/components": "*",
         "@fiftyone/relay": "*",
         "@fiftyone/state": "*",
         "@voxel51/voodo": "^0.0.39"
