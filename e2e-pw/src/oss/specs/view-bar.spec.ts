@@ -4,7 +4,14 @@ import { ViewBarPom } from "src/oss/poms/viewbar/viewbar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { clsOf, getSessionView, kwargsOf } from "src/shared/session-state";
 
-const datasetName = getUniqueDatasetNameWithPrefix("view-bar");
+//
+// One dataset per test. The applied view lives in the server session, per
+// dataset, and survives page loads — a shared dataset couples every test to
+// whatever view the previous one applied.
+//
+const limitDataset = getUniqueDatasetNameWithPrefix("view-bar-limit");
+const exprDataset = getUniqueDatasetNameWithPrefix("view-bar-expr");
+const pythonDataset = getUniqueDatasetNameWithPrefix("view-bar-python");
 
 const test = base.extend<{ viewBar: ViewBarPom; grid: GridPom }>({
   viewBar: async ({ page }, use) => {
@@ -25,38 +32,39 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await fiftyoneLoader.executePythonCode(`
     import fiftyone as fo
 
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-    dataset.add_samples([
-        fo.Sample(
-            filepath=f"/tmp/${datasetName}-{i}.png",
-            index=i,
-            ground_truth=fo.Detections(
-                detections=[
-                    fo.Detection(
-                        label="cat" if i % 2 == 0 else "dog",
-                        confidence=i / 10,
-                        bounding_box=[0, 0, 1, 1],
-                    )
-                ]
-            ),
-        )
-        for i in range(10)
-    ])
+    for name in ("${limitDataset}", "${exprDataset}", "${pythonDataset}"):
+        dataset = fo.Dataset(name)
+        dataset.persistent = True
+        dataset.add_samples([
+            fo.Sample(
+                filepath=f"/tmp/{name}-{i}.png",
+                index=i,
+                ground_truth=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="cat" if i % 2 == 0 else "dog",
+                            confidence=i / 10,
+                            bounding_box=[0, 0, 1, 1],
+                        )
+                    ]
+                ),
+            )
+            for i in range(10)
+        ])
   `);
-});
-
-test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
 test.describe("view bar", () => {
   test("a stage built in the bar reaches the session view", async ({
+    fiftyoneLoader,
+    page,
     viewBar,
     grid,
     request,
     baseURL,
   }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, limitDataset);
+
     await viewBar.addStage("Limit");
     await viewBar.fill("limit", "3");
 
@@ -65,7 +73,7 @@ test.describe("view bar", () => {
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
 
-    const stages = await getSessionView(request, baseURL, datasetName);
+    const stages = await getSessionView(request, baseURL, limitDataset);
     expect(stages).toHaveLength(1);
     expect(clsOf(stages[0])).toBe("Limit");
     expect(kwargsOf(stages[0])).toMatchObject({ limit: 3 });
@@ -78,18 +86,23 @@ test.describe("view bar", () => {
   // reopening has to show it.
   //
   test("an expression survives being applied and reopened", async ({
+    fiftyoneLoader,
+    page,
     viewBar,
     grid,
     request,
     baseURL,
   }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, exprDataset);
+
     await viewBar.addStage("FilterLabels");
     await viewBar.chooseField("field", "ground_truth");
     await viewBar.fill("filter", 'F("label") == "cat"');
 
     await grid.run(() => viewBar.apply());
 
-    const stages = await getSessionView(request, baseURL, datasetName);
+    const stages = await getSessionView(request, baseURL, exprDataset);
+    expect(stages).toHaveLength(1);
     expect(clsOf(stages[0])).toBe("FilterLabels");
 
     await viewBar.editStage(0);
@@ -106,11 +119,11 @@ test.describe("view bar", () => {
       import fiftyone as fo
       from fiftyone import ViewField as F
 
-      dataset = fo.load_dataset("${datasetName}")
+      dataset = fo.load_dataset("${pythonDataset}")
       dataset.save_view("built-in-python", dataset.match(F("index") > 4))
     `);
 
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+    await fiftyoneLoader.waitUntilGridVisible(page, pythonDataset, {
       searchParams: new URLSearchParams({ view: "built-in-python" }),
     });
 
