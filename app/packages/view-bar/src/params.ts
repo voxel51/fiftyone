@@ -261,16 +261,18 @@ export interface ParamDef {
  * The required parameter this one is waiting on, if any.
  *
  * Parameters are declared in the order the stage's constructor takes them, and
- * the later ones are written against the earlier: a `FilterLabels` filter has
- * nothing to filter until a field is chosen. Rather than let someone write an
- * expression against nothing, a parameter waits for the required ones before
- * it.
+ * an expression is written against the earlier ones: a `FilterLabels` filter
+ * has nothing to filter until a field is chosen, so rather than let someone
+ * write an expression against nothing, it waits. Only expressions wait —
+ * a toggle like `only_matches` means the same thing whatever else is chosen.
  */
 export const blockedBy = (
   param: ParamDef,
   params: ParamDef[],
   kwargs: Record<string, unknown>,
 ): string | null => {
+  if (!paramModes(param).includes("python")) return null;
+
   for (const earlier of params) {
     if (earlier.name === param.name) return null;
     if (isPrivate(earlier)) continue;
