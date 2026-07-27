@@ -139,7 +139,7 @@ export const StageCard: React.FC<StageCardProps> = ({
   const rect = useAnchorRect(triggerRef, expanded);
 
   // A stage still missing required values cannot be finished with Enter, and
-  // wears a red outline while its editor is closed
+  // wears the brand-orange outline while its editor is closed
   const incomplete = definition.params.some(
     (param) =>
       !isPrivate(param) &&
@@ -219,9 +219,13 @@ export const StageCard: React.FC<StageCardProps> = ({
         outlined
         compact
         style={
+          // Red says "fix me" (a rejected value); orange says "finish me" (a
+          // required value not yet given). Red wins when a stage is both.
           !expanded && invalid
             ? { borderColor: "var(--fo-palette-error-plainColor)" }
-            : undefined
+            : !expanded && incomplete
+              ? { borderColor: "var(--fo-palette-primary-plainColor)" }
+              : undefined
         }
       >
         <Stack

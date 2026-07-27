@@ -390,9 +390,9 @@ const ViewBar: React.FC = () => {
   serializeWorkingRef.current = serializeWorking;
 
   //
-  // Leaving the bar without applying abandons the draft. A view the user
-  // walked away from is not one they asked for — the working state snaps back
-  // to what is actually applied, exactly as if the edits had never happened.
+  // Leaving the bar closes the editor but keeps the draft — a half-described
+  // stage the user clicked away from is work in progress, not a mistake to
+  // undo. Its card stays in the bar with an outline saying what it needs.
   // Clicks inside the bar, the editing popover, or a picker's portaled options
   // are all still "working"; everything else is leaving.
   //
@@ -406,23 +406,12 @@ const ViewBar: React.FC = () => {
       if (element?.closest("[data-cy='view-stage-editor']")) return;
       if (element?.closest("[data-headlessui-portal]")) return;
 
-      // Nothing pending, nothing to abandon
-      if (
-        viewFingerprint(currentView) ===
-        viewFingerprint(serializeWorkingRef.current())
-      ) {
-        return;
-      }
-
       setEditingId(null);
-      setTouched(new Set());
-      setModeOverrides({});
-      dispatch({ type: "hydrate", stages: workingStagesFromView(currentView) });
     };
 
     window.addEventListener("mousedown", onDown);
     return () => window.removeEventListener("mousedown", onDown);
-  }, [currentView]);
+  }, []);
 
   const hasPendingChanges = useMemo(
     () => viewFingerprint(serializeWorking()) !== viewFingerprint(currentView),
@@ -661,7 +650,12 @@ const ViewBar: React.FC = () => {
           <React.Fragment key={stage.id}>
             <StageCard
               errors={visibleErrors.get(stage.id) ?? NO_ERRORS}
-              invalid={paramErrors.byStage.has(stage.id)}
+              // A stage holding a rejected value is invalid; one merely
+              // missing required values is incomplete, which the card sees
+              // for itself — orange says "finish me", red says "fix me"
+              invalid={[
+                ...(paramErrors.byStage.get(stage.id)?.values() ?? []),
+              ].some((message) => message !== "Required")}
               kinds={activeKinds.get(stage.id) ?? NO_KINDS}
               onModeChange={(param, kind) => changeMode(stage, param, kind)}
               stage={stage}
