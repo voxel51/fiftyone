@@ -93,6 +93,32 @@ export const reducer = (state: BarState, action: BarAction): BarState => {
 };
 
 /**
+ * Working stages built from a serialized view — how the bar reads what the
+ * server holds.
+ *
+ * A stage serializes its expressions twice: as the lowered MongoDB its
+ * pipeline runs, and — beside `kwargs`, not inside it — as the syntax they
+ * were written in. The lowering is one-way, so the envelope is the only thing
+ * that can reopen as `F(...)`; it is overlaid exactly as
+ * `ViewStage._from_dict` does on the way back in, while the lowering it
+ * displaces is kept for the json editor to show.
+ */
+export const workingStagesFromView = (
+  view: readonly SerializedStage[],
+): WorkingStage[] =>
+  view.map((s, i) => ({
+    id: `view-${i}-${s._cls}`,
+    cls: s._cls.slice(s._cls.lastIndexOf(".") + 1),
+    kwargs: {
+      ...Object.fromEntries(s.kwargs ?? []),
+      ...(s._expr_asts ?? {}),
+    },
+    lowered: Object.fromEntries(
+      (s.kwargs ?? []).filter(([name]) => name in (s._expr_asts ?? {})),
+    ),
+  }));
+
+/**
  * JSON with keys sorted at every level, so two values that mean the same
  * thing compare equal however they were built — an envelope assembled by the
  * App's parser and the same envelope serialized by Python differ only in key

@@ -29,6 +29,8 @@ import { ExpressionEditor } from "./builder/ExpressionEditor";
 import { isEnvelope, sourceOf } from "./builder/envelope";
 import { scopedTo } from "./fields";
 import {
+  EDITOR_HEADER_HEIGHT,
+  EXPRESSION_BOX_HEIGHT,
   humanize,
   isEmptyValue,
   MODE_LABELS,
@@ -264,7 +266,33 @@ const ParamControl: React.FC<ParamInputProps> = ({
       // and bracket matching and syntax colouring are what make them editable
       return (
         <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-          {tabs}
+          {/*
+            The same header the expression editor has: switcher and status on
+            one line, the box below carrying the outline
+          */}
+          <Stack
+            orientation={Orientation.Row}
+            spacing={Spacing.Sm}
+            align={Align.Center}
+            style={{ height: EDITOR_HEADER_HEIGHT }}
+          >
+            {tabs}
+            {invalid && (
+              <Text
+                variant={TextVariant.Caption}
+                color={TextColor.Destructive}
+                title={error ?? undefined}
+                style={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  minWidth: 0,
+                }}
+              >
+                {error}
+              </Text>
+            )}
+          </Stack>
           {/*
             Monaco lays itself out against a definite box. Its parent is the
             popover's fixed width, so 100% is a real number here — and it keeps
@@ -273,10 +301,15 @@ const ParamControl: React.FC<ParamInputProps> = ({
           <div
             style={{
               width: "100%",
-              height: JSON_EDITOR_HEIGHT,
+              height: EXPRESSION_BOX_HEIGHT,
               overflow: "hidden",
               borderRadius: 4,
-              border: "1px solid var(--fo-palette-primary-plainBorder)",
+              // Monaco's loading state paints nothing, so the box holds the
+              // editor's surface color from the first frame
+              background: "var(--fo-palette-background-level2)",
+              border: invalid
+                ? "1px solid var(--fo-palette-error-plainColor)"
+                : "1px solid var(--fo-palette-primary-plainBorder)",
             }}
           >
             <Code
@@ -326,9 +359,6 @@ const ParamControl: React.FC<ParamInputProps> = ({
 /** Reserved for a rejection reason, so its arrival moves nothing. */
 const STATUS_LINE_HEIGHT = 15;
 
-/** Tall enough for a nested document without dominating the popover. */
-const JSON_EDITOR_HEIGHT = 104;
-
 /**
  * A parameter's control, the editors it can be entered with, and the reason its
  * value was rejected. voodo's `Input` takes only a boolean error, so for most
@@ -354,19 +384,27 @@ export const ParamInput: React.FC<
           !isEmptyValue(props.value) &&
           sourceOf(props.value) === null;
 
-        // A segmented control: the selected editor is filled, the rest are
-        // borderless, so the set reads as a choice rather than as buttons
+        // One Button variant for every state: the active tab holds the same
+        // pill the hover state draws, so nothing changes shape — mixing
+        // variants gave hover a pill and active an outline
         const tab = (
           <Button
             key={mode}
             size={Size.Xs}
-            variant={
-              mode === props.kind ? Variant.Secondary : Variant.Borderless
-            }
+            variant={Variant.Borderless}
             role="tab"
             aria-selected={mode === props.kind}
             disabled={unavailable}
             onClick={unavailable ? undefined : () => onModeChange(mode)}
+            style={
+              mode === props.kind
+                ? {
+                    background:
+                      "color-mix(in srgb, var(--fo-palette-primary-plainColor) 12%, transparent)",
+                    color: "var(--fo-palette-text-primary)",
+                  }
+                : undefined
+            }
           >
             {MODE_LABELS[mode]}
           </Button>

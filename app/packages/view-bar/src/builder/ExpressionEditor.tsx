@@ -14,12 +14,8 @@ import { Code } from "@fiftyone/components";
 import {
   Align,
   Anchor,
-  Card,
-  CardBackground,
   Icon,
-  FormField,
   IconName,
-  Justify,
   Clickable,
   Orientation,
   Pill,
@@ -37,6 +33,7 @@ import { tryParse } from "../expression/parse";
 import type { Node } from "../expression/types";
 import { CATALOG } from "./catalog";
 import type { Kind, Operator } from "./catalog";
+import { EDITOR_HEADER_HEIGHT, EXPRESSION_BOX_HEIGHT } from "../params";
 import {
   caretContext,
   completeField,
@@ -55,7 +52,6 @@ export interface ExpressionEditorProps {
   /** Resolves a field path to the kind of value it holds. */
   fieldKind?: (path: string) => Kind | undefined;
   operators?: Operator[];
-  label?: string;
   /** Names the parameter from inside the input, so no label sits above it. */
   placeholder?: string;
   /** The editor switcher, laid out inline with the input it governs. */
@@ -66,7 +62,13 @@ export interface ExpressionEditorProps {
   error?: string | null;
 }
 
-/** How the operator is written into the source once chosen. */
+/**
+ * How the operator is written into the source once chosen.
+ *
+ * A named operator is a method call — it brings its own dot and parentheses.
+ * A symbolic one (`>`, `==`, `&`) is written infix: it replaces any dot the
+ * user had typed, because `F("x").>` is not a thing anyone means.
+ */
 const applySuggestion = (
   source: string,
   offset: number,
@@ -75,22 +77,27 @@ const applySuggestion = (
   let start = offset;
   while (start > 0 && /[A-Za-z0-9_]/.test(source[start - 1])) start--;
 
-  const takesArgs = operator.maxArgs === null || operator.maxArgs > 0;
-  const call = `${operator.display}(${takesArgs ? "" : ")"}`;
-  const insert = takesArgs ? `${operator.display}()` : call;
+  const symbolic = !/^[A-Za-z_]/.test(operator.display);
+  const hasDot = source[start - 1] === ".";
 
+  if (symbolic) {
+    const from = hasDot ? start - 1 : start;
+    const head = `${source.slice(0, from)} ${operator.display} `;
+    return { source: head + source.slice(offset), offset: head.length };
+  }
+
+  const takesArgs = operator.maxArgs === null || operator.maxArgs > 0;
+  const dot = hasDot ? "" : ".";
+  const head =
+    source.slice(0, start) +
+    `${dot}${operator.display}(` +
+    (takesArgs ? "" : ")");
   return {
-    source: source.slice(0, start) + insert + source.slice(offset),
+    source: head + (takesArgs ? ")" : "") + source.slice(offset),
     // Land the caret inside the parentheses when there is something to type
-    offset: start + operator.display.length + (takesArgs ? 1 : 2),
+    offset: head.length + (takesArgs ? 0 : 0),
   };
 };
-
-/**
- * Tall enough for the empty-state hint, which is the tallest of the three
- * things this region shows, so swapping between them never moves the input.
- */
-const RESULTS_HEIGHT = 148;
 
 /**
  * The editor instance, as `Code`'s `onMount` hands it over — typed through the
@@ -99,9 +106,6 @@ const RESULTS_HEIGHT = 148;
 type CodeEditor = Parameters<
   NonNullable<React.ComponentProps<typeof Code>["onMount"]>
 >[0];
-
-/** Three comfortable lines of expression, plus padding. */
-const EDITOR_HEIGHT = 68;
 
 /**
  * What the box has to say about the expression as it stands.
@@ -156,7 +160,6 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
   fields = [],
   fieldKind = () => undefined,
   operators = CATALOG,
-  label,
   placeholder = 'F("confidence") > 0.5',
   tabs,
   disabled,
@@ -244,171 +247,164 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
 
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
-      <FormField
-        label={label}
-        description={
-          signature ? (
-            <Signature
-              operator={signature.operator}
-              argIndex={signature.argIndex}
-              argKind={signature.argKind}
-            />
-          ) : (
-            receiverKind && (
-              <Text variant={TextVariant.Caption} color={TextColor.Muted}>
-                {KIND_LABEL[receiverKind]}
-              </Text>
-            )
-          )
-        }
-        control={
+      {/*
+        The switcher and the status share a line: the status is one glyph and a
+        few words, and a row of its own pushed the editor down for nothing.
+      */}
+      <Stack
+        orientation={Orientation.Row}
+        spacing={Spacing.Sm}
+        align={Align.Center}
+        style={{ height: EDITOR_HEADER_HEIGHT }}
+      >
+        {tabs}
+        {signature ? (
+          <Signature
+            operator={signature.operator}
+            argIndex={signature.argIndex}
+            argKind={signature.argKind}
+          />
+        ) : (
           <Stack
             orientation={Orientation.Row}
-            spacing={Spacing.Sm}
+            spacing={Spacing.Xs}
             align={Align.Center}
           >
-            {tabs}
-            <div
+            <Icon
+              name={STATUS_ICON[status.state]}
+              size={Size.Sm}
+              color={STATUS_COLOR[status.state]}
+            />
+            <Text
+              variant={TextVariant.Caption}
+              color={STATUS_COLOR[status.state]}
+              title={status.state === "invalid" ? status.message : undefined}
               style={{
-                position: "relative",
-                flex: 1,
-                minWidth: 0,
-                height: EDITOR_HEIGHT,
+                whiteSpace: "nowrap",
                 overflow: "hidden",
-                borderRadius: 4,
-                border: "1px solid var(--fo-palette-primary-plainBorder)",
+                textOverflow: "ellipsis",
+                minWidth: 0,
               }}
             >
-              <Code
-                height="100%"
-                width="100%"
-                defaultLanguage="python"
-                value={value}
-                onChange={(next) => onChange(next ?? "")}
-                onMount={onMount}
-                options={{
-                  readOnly: disabled,
-                  automaticLayout: true,
-                  minimap: { enabled: false },
-                  lineNumbers: "off",
-                  folding: false,
-                  glyphMargin: false,
-                  lineDecorationsWidth: 4,
-                  scrollBeyondLastLine: false,
-                  fontSize: 12,
-                  lineHeight: 18,
-                  wordWrap: "on",
-                  renderLineHighlight: "none",
-                  overviewRulerLanes: 0,
-                  padding: { top: 6, bottom: 6 },
-                  scrollbar: {
-                    vertical: "auto",
-                    horizontal: "hidden",
-                    verticalScrollbarSize: 8,
-                  },
-                  // This editor's suggestions come from the catalog below,
-                  // not from Monaco's own machinery
-                  quickSuggestions: false,
-                  suggestOnTriggerCharacters: false,
-                  parameterHints: { enabled: false },
-                  wordBasedSuggestions: "off",
-                }}
-              />
-              {!value.trim() && (
-                <Text
-                  variant={TextVariant.Caption}
-                  color={TextColor.Placeholder}
-                  style={{
-                    position: "absolute",
-                    left: 10,
-                    top: 7,
-                    // The click belongs to the editor underneath
-                    pointerEvents: "none",
-                  }}
-                >
-                  {placeholder}
-                </Text>
-              )}
-            </div>
+              {status.state === "invalid"
+                ? status.message
+                : status.state === "valid"
+                  ? "Ready to apply"
+                  : 'Start with a field — F("…") then a dot'}
+            </Text>
           </Stack>
-        }
-      />
+        )}
+      </Stack>
 
-      {/*
-        One slot, one height. The hint, the field list and the operator list
-        are alternatives for the same region, so it is sized once — otherwise
-        the popover grows and shrinks under the caret as they swap.
-
-        Only the lists scroll. The hint is a fixed thing that fits, and a
-        scrollbar on it suggests there is more to read when there is not.
-      */}
-      <Card
-        background={CardBackground.Primary}
-        outlined
-        compact
-        style={
-          status.state === "invalid"
-            ? { borderColor: "var(--fo-palette-error-plainColor)" }
-            : undefined
-        }
-      >
+      <div style={{ position: "relative" }}>
         <div
           style={{
-            height: RESULTS_HEIGHT,
-            display: "flex",
-            flexDirection: "column",
+            position: "relative",
+            height: EXPRESSION_BOX_HEIGHT,
             overflow: "hidden",
+            borderRadius: 4,
+            // Monaco's loading state paints nothing, so the box holds the
+            // editor's surface color from the first frame
+            background: "var(--fo-palette-background-level2)",
+            border:
+              status.state === "invalid"
+                ? "1px solid var(--fo-palette-error-plainColor)"
+                : "1px solid var(--fo-palette-primary-plainBorder)",
           }}
         >
-          {fieldMatches.length > 0 ? (
-            <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
-              {fieldMatches.slice(0, 24).map((path) => (
-                <Row key={path} onChoose={() => chooseField(path)}>
-                  {path}
-                </Row>
-              ))}
-            </div>
-          ) : suggestions.length > 0 ? (
-            <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
-              {suggestions.map(({ operator, applicable, reason }) => (
-                <Suggestion
-                  key={operator.name}
-                  operator={operator}
-                  applicable={applicable}
-                  reason={reason}
-                  onChoose={() => choose(operator)}
-                />
-              ))}
-            </div>
-          ) : (
-            <Stack
-              orientation={Orientation.Column}
-              justify={Justify.Center}
-              align={Align.Center}
-              spacing={Spacing.Xs}
-              style={{ flex: 1, overflow: "hidden", textAlign: "center" }}
+          <Code
+            height="100%"
+            width="100%"
+            defaultLanguage="python"
+            value={value}
+            onChange={(next) => onChange(next ?? "")}
+            onMount={onMount}
+            options={{
+              readOnly: disabled,
+              automaticLayout: true,
+              minimap: { enabled: false },
+              lineNumbers: "off",
+              folding: false,
+              glyphMargin: false,
+              lineDecorationsWidth: 4,
+              scrollBeyondLastLine: false,
+              fontSize: 12,
+              lineHeight: 18,
+              wordWrap: "on",
+              renderLineHighlight: "none",
+              overviewRulerLanes: 0,
+              padding: { top: 6, bottom: 6 },
+              scrollbar: {
+                vertical: "auto",
+                horizontal: "hidden",
+                verticalScrollbarSize: 8,
+              },
+              // This editor's suggestions come from the catalog below,
+              // not from Monaco's own machinery
+              quickSuggestions: false,
+              suggestOnTriggerCharacters: false,
+              parameterHints: { enabled: false },
+              wordBasedSuggestions: "off",
+            }}
+          />
+          {!value.trim() && (
+            <Text
+              variant={TextVariant.Caption}
+              color={TextColor.Placeholder}
+              style={{
+                position: "absolute",
+                left: 10,
+                top: 7,
+                // The click belongs to the editor underneath
+                pointerEvents: "none",
+              }}
             >
-              <Icon
-                name={STATUS_ICON[status.state]}
-                size={Size.Sm}
-                color={STATUS_COLOR[status.state]}
-              />
-              <Text variant={TextVariant.Sm} color={STATUS_COLOR[status.state]}>
-                {status.state === "invalid"
-                  ? status.message
-                  : status.state === "valid"
-                    ? "Ready to apply"
-                    : "Start with a field"}
-              </Text>
-              {status.state === "empty" && (
-                <Text variant={TextVariant.Caption} color={TextColor.Muted}>
-                  {'Type F("…") then a dot'}
-                </Text>
-              )}
-            </Stack>
+              {placeholder}
+            </Text>
           )}
         </div>
-      </Card>
+
+        {/*
+          Suggestions float over whatever is below instead of holding a box
+          open — they exist only while the caret has something to offer.
+        */}
+        {(fieldMatches.length > 0 || suggestions.length > 0) && (
+          <div
+            role="listbox"
+            style={{
+              position: "absolute",
+              top: "100%",
+              left: 0,
+              right: 0,
+              marginTop: 4,
+              zIndex: 10001,
+              maxHeight: 240,
+              overflowY: "auto",
+              overflowX: "hidden",
+              borderRadius: 4,
+              border: "1px solid var(--fo-palette-primary-plainBorder)",
+              background: "var(--fo-palette-background-level2)",
+              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.45)",
+            }}
+          >
+            {fieldMatches.length > 0
+              ? fieldMatches.slice(0, 24).map((path) => (
+                  <Row key={path} onChoose={() => chooseField(path)}>
+                    {path}
+                  </Row>
+                ))
+              : suggestions.map(({ operator, applicable, reason }) => (
+                  <Suggestion
+                    key={operator.name}
+                    operator={operator}
+                    applicable={applicable}
+                    reason={reason}
+                    onChoose={() => choose(operator)}
+                  />
+                ))}
+          </div>
+        )}
+      </div>
     </Stack>
   );
 };
@@ -427,7 +423,17 @@ const Signature: React.FC<{
       {operator.display}(arg {argIndex + 1})
     </Text>
     <Pill size={Size.Xs}>{KIND_LABEL[argKind]}</Pill>
-    <Text variant={TextVariant.Caption} color={TextColor.Muted}>
+    <Text
+      variant={TextVariant.Caption}
+      color={TextColor.Muted}
+      title={operator.summary}
+      style={{
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        minWidth: 0,
+      }}
+    >
       {operator.summary}
     </Text>
   </Stack>
@@ -482,12 +488,12 @@ const Suggestion: React.FC<{
     </Row>
   );
 
-  return reason ? (
-    <Tooltip content={reason} anchor={Anchor.Right}>
+  // Every operator explains itself on hover — its docstring summary from the
+  // catalog, or the reason it does not apply here
+  return (
+    <Tooltip content={reason ?? operator.summary} anchor={Anchor.Right}>
       {row}
     </Tooltip>
-  ) : (
-    row
   );
 };
 

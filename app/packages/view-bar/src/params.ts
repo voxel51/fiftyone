@@ -368,11 +368,19 @@ export const PLACES_ITS_OWN_TABS: ReadonlySet<InputKind> = new Set<InputKind>([
 ]);
 
 /**
+ * Both expression editors are exactly this tall, and their header rows exactly
+ * `EDITOR_HEADER_HEIGHT` — flipping between expr and json must move nothing.
+ */
+export const EXPRESSION_BOX_HEIGHT = 104;
+export const EDITOR_HEADER_HEIGHT = 24;
+
+/**
  * Kinds that get no reserved status line: one reports its own reason, and a
  * toggle has no invalid state to report, so the line would only be dead space.
  */
 export const NO_STATUS_LINE: ReadonlySet<InputKind> = new Set<InputKind>([
   "python",
+  "json",
   "bool",
 ]);
 

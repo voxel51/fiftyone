@@ -80,6 +80,8 @@ interface StageCardProps {
   tabs?: React.ReactNode;
   /** Why each of this stage's params was rejected, by param name. */
   errors: ReadonlyMap<string, string>;
+  /** The stage cannot be applied as it stands. */
+  invalid: boolean;
   /** The control in force for each param, by param name. */
   kinds: ReadonlyMap<string, InputKind>;
   onModeChange: (param: string, kind: InputKind) => void;
@@ -113,6 +115,7 @@ export const StageCard: React.FC<StageCardProps> = ({
   definition,
   fieldOptions,
   allPaths,
+  invalid,
   allowedFor,
   errors,
   kinds,
@@ -128,8 +131,8 @@ export const StageCard: React.FC<StageCardProps> = ({
   const popoverContentRef = React.useRef<HTMLDivElement | null>(null);
   const rect = useAnchorRect(triggerRef, expanded);
 
-  // A stage the user has not finished describing cannot be applied, so closing
-  // its editor would only hide work that is going nowhere
+  // A stage still missing required values cannot be finished with Enter, and
+  // wears a red outline while its editor is closed
   const incomplete = definition.params.some(
     (param) =>
       !isPrivate(param) &&
@@ -159,18 +162,15 @@ export const StageCard: React.FC<StageCardProps> = ({
     focused.current = true;
 
     const popover = popoverContentRef.current;
+    // Not a combobox: voodo's Select opens its options on focus, and opening
+    // a dropdown nobody asked for is not what starting the keyboard means
     const typeable = popover?.querySelector<HTMLElement>(
-      "input:not([disabled]), textarea:not([disabled])",
+      "input:not([disabled]):not([role='combobox']), textarea:not([disabled])",
     );
 
-    // A stage whose first parameter is a picker or a toggle has nothing to
-    // type into, so the keyboard starts on whatever it does have
-    (
-      typeable ??
-      popover?.querySelector<HTMLElement>(
-        "button:not([disabled]), [tabindex]:not([tabindex='-1'])",
-      )
-    )?.focus();
+    // Otherwise the popover itself takes focus, so Tab reaches the first
+    // control in one keystroke and Escape and Enter already work
+    (typeable ?? popover)?.focus();
   }, [expanded, rect]);
 
   // Outside-click closes the editing popover. Must check the trigger (so
@@ -179,7 +179,7 @@ export const StageCard: React.FC<StageCardProps> = ({
   // and the layer a portaled dropdown opens into — a select's options render
   // outside this subtree, and picking one is not a click away.
   React.useEffect(() => {
-    if (!expanded || incomplete) return undefined;
+    if (!expanded) return undefined;
     const onClick = (e: MouseEvent) => {
       const t = e.target as Node;
       const element = t instanceof Element ? t : null;
@@ -207,7 +207,16 @@ export const StageCard: React.FC<StageCardProps> = ({
       style={{ position: "relative" }}
       data-cy="view-stage-container"
     >
-      <Card background={CardBackground.Primary} outlined compact>
+      <Card
+        background={CardBackground.Primary}
+        outlined
+        compact
+        style={
+          !expanded && invalid
+            ? { borderColor: "var(--fo-palette-error-plainColor)" }
+            : undefined
+        }
+      >
         <Stack
           orientation={Orientation.Row}
           spacing={Spacing.Sm}
@@ -273,6 +282,7 @@ export const StageCard: React.FC<StageCardProps> = ({
         createPortal(
           <div
             ref={popoverContentRef}
+            tabIndex={-1}
             data-cy="view-stage-editor"
             onKeyDown={(e) => {
               // Enter finishes the stage and hands the keyboard to Apply, so a

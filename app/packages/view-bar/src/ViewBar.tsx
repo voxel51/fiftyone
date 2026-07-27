@@ -49,6 +49,7 @@ import {
   NO_KINDS,
   reducer,
   viewFingerprint,
+  workingStagesFromView,
 } from "./state";
 import type { SerializedStage } from "./state";
 import type { WorkingStage } from "./state";
@@ -151,36 +152,7 @@ const ViewBar: React.FC = () => {
         return;
       }
 
-      const hydrated: WorkingStage[] = currentView.map(
-        (
-          s: {
-            _cls: string;
-            kwargs: [string, unknown][];
-            _expr_asts?: Record<string, unknown>;
-          },
-          i,
-        ) => ({
-          id: `view-${i}-${s._cls}`,
-          cls: classNameFromCls(s._cls),
-          //
-          // A stage serializes its expressions twice: as the lowered MongoDB
-          // its pipeline runs, and — beside `kwargs`, not inside it — as the
-          // syntax they were written in. The lowering is one-way, so the
-          // envelope is the only thing that can reopen as `F(...)`; overlay it
-          // exactly as `ViewStage._from_dict` does on the way back in.
-          //
-          kwargs: {
-            ...Object.fromEntries(s.kwargs ?? []),
-            ...(s._expr_asts ?? {}),
-          },
-          // Keep the lowering the overlay displaced: the App cannot lower an
-          // expression itself, but it can remember the lowering it was given,
-          // which is what the json editor shows for the same parameter
-          lowered: Object.fromEntries(
-            (s.kwargs ?? []).filter(([name]) => name in (s._expr_asts ?? {})),
-          ),
-        }),
-      );
+      const hydrated = workingStagesFromView(currentView);
       dispatch({ type: "hydrate", stages: hydrated });
       setEditingId(null);
     };
@@ -395,6 +367,41 @@ const ViewBar: React.FC = () => {
    * kwargs don't cause false positives.
    */
   serializeWorkingRef.current = serializeWorking;
+
+  //
+  // Leaving the bar without applying abandons the draft. A view the user
+  // walked away from is not one they asked for — the working state snaps back
+  // to what is actually applied, exactly as if the edits had never happened.
+  // Clicks inside the bar, the editing popover, or a picker's portaled options
+  // are all still "working"; everything else is leaving.
+  //
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const element = target instanceof Element ? target : null;
+
+      if (!target.isConnected) return;
+      if (element?.closest("[data-cy='view-bar']")) return;
+      if (element?.closest("[data-cy='view-stage-editor']")) return;
+      if (element?.closest("[data-headlessui-portal]")) return;
+
+      // Nothing pending, nothing to abandon
+      if (
+        viewFingerprint(currentView) ===
+        viewFingerprint(serializeWorkingRef.current())
+      ) {
+        return;
+      }
+
+      setEditingId(null);
+      setTouched(new Set());
+      setModeOverrides({});
+      dispatch({ type: "hydrate", stages: workingStagesFromView(currentView) });
+    };
+
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [currentView]);
 
   const hasPendingChanges = useMemo(
     () => viewFingerprint(serializeWorking()) !== viewFingerprint(currentView),
@@ -633,6 +640,7 @@ const ViewBar: React.FC = () => {
           <React.Fragment key={stage.id}>
             <StageCard
               errors={visibleErrors.get(stage.id) ?? NO_ERRORS}
+              invalid={paramErrors.byStage.has(stage.id)}
               kinds={activeKinds.get(stage.id) ?? NO_KINDS}
               onModeChange={(param, kind) => changeMode(stage, param, kind)}
               stage={stage}
@@ -698,16 +706,6 @@ const ViewBar: React.FC = () => {
       </div>
     </Stack>
   );
-};
-
-/**
- * Strip the `fiftyone.core.stages.` prefix off a serialized stage
- * class name to get the short name that {@link stageDefinitions}
- * keys by (e.g. `"fiftyone.core.stages.SortBy"` → `"SortBy"`).
- */
-const classNameFromCls = (cls: string): string => {
-  const idx = cls.lastIndexOf(".");
-  return idx >= 0 ? cls.slice(idx + 1) : cls;
 };
 
 export default ViewBar;

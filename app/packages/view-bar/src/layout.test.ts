@@ -116,9 +116,11 @@ describe("where the switcher goes", () => {
 
 describe("the reserved status line", () => {
   it("is skipped where it would only be dead space", () => {
-    // A toggle has no invalid state, and the expression editor says it itself
+    // A toggle has no invalid state, and both tall editors report their own
+    // status inline beside their tabs
     expect(NO_STATUS_LINE.has("bool")).toBe(true);
     expect(NO_STATUS_LINE.has("python")).toBe(true);
+    expect(NO_STATUS_LINE.has("json")).toBe(true);
   });
 
   it("is held open for every control that can be wrong", () => {
@@ -130,7 +132,6 @@ describe("the reserved status line", () => {
       "numeric",
       "id",
       "idList",
-      "json",
     ] as InputKind[]) {
       expect(NO_STATUS_LINE.has(kind)).toBe(false);
     }

@@ -170,6 +170,21 @@ export const caretContext = (
   const prefix = source.slice(start, offset);
 
   if (source[start - 1] !== ".") {
+    //
+    // The caret sits right after a complete atom — `F(label)‸` or `F("x")‸`.
+    // Operators belong here just as much as after a dot: a method completes
+    // with its own dot, and `>` was never going to be typed through one.
+    //
+    if (
+      !prefix &&
+      (source[start - 1] === ")" || /["']/.test(source[start - 1] ?? ""))
+    ) {
+      const parsed = tryParse(source.slice(0, offset));
+      if (!("error" in parsed)) {
+        return { receiver: parsed.node, prefix, openCall };
+      }
+    }
+
     return { prefix, openCall };
   }
 

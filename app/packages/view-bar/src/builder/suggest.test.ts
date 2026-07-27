@@ -276,3 +276,25 @@ describe("completeField", () => {
     expect(done.source).toBe('F("ground_truth.label")');
   });
 });
+
+describe("operators after a complete atom", () => {
+  it("offers operators right after a closed call", () => {
+    const source = "F(label)";
+    const context = caretContext(source, source.length);
+    expect(context.receiver).toEqual({ t: "field", path: "label" });
+  });
+
+  it("offers operators right after a quoted call", () => {
+    const source = 'F("label")';
+    expect(caretContext(source, source.length).receiver).toEqual({
+      t: "field",
+      path: "label",
+    });
+  });
+
+  it("does not parse mid-identifier", () => {
+    const source = "F(label).lo";
+    const context = caretContext(source, source.length);
+    expect(context.prefix).toBe("lo");
+  });
+});
