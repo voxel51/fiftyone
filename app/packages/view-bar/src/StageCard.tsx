@@ -217,6 +217,14 @@ export const StageCard: React.FC<StageCardProps> = ({
               Click opens the editing popover below. */}
           <div
             onClick={onToggle}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onToggle();
+              }
+            }}
+            role="button"
+            tabIndex={0}
             style={{ cursor: "pointer", display: "inline-flex", gap: 6 }}
             title={expanded ? "Close editor" : "Edit stage"}
           >
@@ -238,6 +246,15 @@ export const StageCard: React.FC<StageCardProps> = ({
 
           <div
             onClick={onRemove}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onRemove();
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label="Remove stage"
             title="Remove stage"
             style={{ cursor: "pointer", display: "inline-flex", padding: 2 }}
           >
@@ -317,6 +334,7 @@ export const StageCard: React.FC<StageCardProps> = ({
                           stage.kwargs,
                         )}
                         allPaths={allPaths}
+                        lowered={stage.lowered[p.name]}
                         testId={`view-stage-param-${p.name}`}
                       />
                     ))}

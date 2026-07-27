@@ -29,7 +29,7 @@ import {
 } from "@voxel51/voodo";
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 
-import { fromSource, sourceOf } from "./builder/envelope";
+import { fromSource, isEnvelope, sourceOf } from "./builder/envelope";
 import { allowedFields } from "./fields";
 import {
   appliesTo,
@@ -42,7 +42,15 @@ import {
 } from "./params";
 import type { InputKind, ParamDef, StageDefinition } from "./params";
 import { StageCard, useAnchorRect } from "./StageCard";
-import { initialState, makeId, NO_ERRORS, NO_KINDS, reducer } from "./state";
+import {
+  initialState,
+  makeId,
+  NO_ERRORS,
+  NO_KINDS,
+  reducer,
+  viewFingerprint,
+} from "./state";
+import type { SerializedStage } from "./state";
 import type { WorkingStage } from "./state";
 import { createPortal } from "react-dom";
 import { useRecoilValue } from "recoil";
@@ -125,8 +133,24 @@ const ViewBar: React.FC = () => {
 
   // Stage definitions provide the param schema; the view itself
   // carries kwargs as an ordered `kwargs: [[name, value], ...]` list.
+  const serializeWorkingRef = React.useRef<() => SerializedStage[]>(() => []);
+
   useEffect(() => {
     const hydrate = () => {
+      //
+      // After Apply the server echoes the view back — the same stages, with
+      // expressions lowered into `kwargs` and their syntax beside them.
+      // Rebuilding from an echo would close the editor the user just opened
+      // and discard anything mid-edit, so an arriving view that means what
+      // the bar already holds is left alone.
+      //
+      if (
+        viewFingerprint(currentView) ===
+        viewFingerprint(serializeWorkingRef.current())
+      ) {
+        return;
+      }
+
       const hydrated: WorkingStage[] = currentView.map(
         (
           s: {
@@ -149,6 +173,12 @@ const ViewBar: React.FC = () => {
             ...Object.fromEntries(s.kwargs ?? []),
             ...(s._expr_asts ?? {}),
           },
+          // Keep the lowering the overlay displaced: the App cannot lower an
+          // expression itself, but it can remember the lowering it was given,
+          // which is what the json editor shows for the same parameter
+          lowered: Object.fromEntries(
+            (s.kwargs ?? []).filter(([name]) => name in (s._expr_asts ?? {})),
+          ),
         }),
       );
       dispatch({ type: "hydrate", stages: hydrated });
@@ -236,10 +266,29 @@ const ViewBar: React.FC = () => {
       }));
 
       const value = stage.kwargs[param];
-      const carries =
-        isEmptyValue(value) || (kind === "python" && sourceOf(value) !== null);
 
-      if (!carries) {
+      // An expression is one value with two representations, and flipping
+      // between its editors must not destroy it. Source text is parsed into
+      // the envelope on the way to the json editor, which shows the lowering
+      // the server sent for it — or nothing yet, never a fabrication.
+      if (kind === "python" && sourceOf(value) !== null) return;
+      if (kind === "json") {
+        if (isEnvelope(value)) return;
+        if (typeof value === "string" && value.trim()) {
+          const parsed = fromSource(value);
+          if (parsed.status === "ok") {
+            dispatch({
+              type: "setKwarg",
+              id: stage.id,
+              name: param,
+              value: parsed.envelope,
+            });
+            return;
+          }
+        }
+      }
+
+      if (!isEmptyValue(value)) {
         dispatch({ type: "setKwarg", id: stage.id, name: param, value: "" });
       }
     },
@@ -278,7 +327,7 @@ const ViewBar: React.FC = () => {
         });
       return { _cls: `fiftyone.core.stages.${s.cls}`, kwargs };
     });
-  }, [state.stages, defsByName]);
+  }, [state.stages, defsByName, kindOf]);
 
   /**
    * Required params with nothing entered, keyed `${stageId}:${paramName}`.
@@ -345,17 +394,12 @@ const ViewBar: React.FC = () => {
    * would push), so kwarg-order differences and dropped-empty
    * kwargs don't cause false positives.
    */
-  const hasPendingChanges = useMemo(() => {
-    const working = serializeWorking();
-    // Strip `_uuid` from currentView entries (the view atom may
-    // carry it; our working stages don't) so the comparison is
-    // payload-only.
-    const applied = currentView.map((s: { _cls: string; kwargs: unknown }) => ({
-      _cls: s._cls,
-      kwargs: s.kwargs ?? [],
-    }));
-    return JSON.stringify(working) !== JSON.stringify(applied);
-  }, [serializeWorking, currentView]);
+  serializeWorkingRef.current = serializeWorking;
+
+  const hasPendingChanges = useMemo(
+    () => viewFingerprint(serializeWorking()) !== viewFingerprint(currentView),
+    [serializeWorking, currentView],
+  );
 
   /**
    * Insertion slot styled as a typeahead {@link Input} — same shape
@@ -423,6 +467,15 @@ const ViewBar: React.FC = () => {
       return (
         <div
           onClick={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setOpen(true);
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label="Insert stage"
           title="Insert stage"
           style={{
             cursor: "pointer",

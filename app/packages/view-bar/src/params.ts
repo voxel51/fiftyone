@@ -195,7 +195,9 @@ export const validateParam = (
     }
   }
 
-  if (kind === "json" && typeof value === "string") {
+  // An envelope under the json editor is an expression being displayed as
+  // its lowering, not text to parse
+  if (kind === "json" && typeof value === "string" && !isEnvelope(value)) {
     try {
       JSON.parse(value);
     } catch (e) {

@@ -58,6 +58,8 @@ export const useDatasetMediaType = (): string | null => {
 /** What a field holds, for callers matching paths against a type constraint. */
 export interface FieldType {
   ftype: string;
+  /** A list field's element type. */
+  subfield: string | null;
   embeddedDocType: string | null;
   /** Frame-level fields are addressed as `frames.<path>`. */
   frame: boolean;
@@ -72,6 +74,7 @@ const flatten = (
     const path = frame ? `frames.${field.path}` : field.path;
     into.set(path, {
       ftype: field.ftype,
+      subfield: field.subfield ?? null,
       embeddedDocType: field.embeddedDocType,
       frame,
     });

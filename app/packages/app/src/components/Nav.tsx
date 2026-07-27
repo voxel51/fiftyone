@@ -126,14 +126,18 @@ const Nav: React.FC<
           <Teams />
         </div>
         <div className={iconContainer}>
-          <div
+          <button
+            type="button"
             title={mode === "dark" ? "Light mode" : "Dark mode"}
+            aria-label={mode === "dark" ? "Light mode" : "Dark mode"}
             onClick={toggleTheme}
             style={{
               cursor: "pointer",
               display: "inline-flex",
               alignItems: "center",
               padding: "0.5rem",
+              background: "none",
+              border: "none",
               color: "var(--fo-palette-text-secondary)",
             }}
           >
@@ -142,7 +146,7 @@ const Nav: React.FC<
             ) : (
               <DarkMode color="inherit" />
             )}
-          </div>
+          </button>
           <DiscordLink />
           <GitHubLink />
           <DocsLink />

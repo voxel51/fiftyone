@@ -7,6 +7,7 @@ import { CATALOG } from "./catalog";
 import type { Kind } from "./catalog";
 import {
   caretContext,
+  completeField,
   kindOf,
   signatureAt,
   suggestFields,
@@ -45,12 +46,12 @@ describe("caretContext", () => {
   it("finds the call the caret is inside, and which argument", () => {
     const source = 'F("label").contains("a", ';
     const context = caretContext(source, source.length);
-    expect(context.openCall).toEqual({ op: "contains", argIndex: 1 });
+    expect(context.openCall).toMatchObject({ op: "contains", argIndex: 1 });
   });
 
   it("does not count commas from a nested bracket", () => {
     const source = 'F("x").is_in([1, 2, 3], ';
-    expect(caretContext(source, source.length).openCall).toEqual({
+    expect(caretContext(source, source.length).openCall).toMatchObject({
       op: "is_in",
       argIndex: 1,
     });
@@ -58,7 +59,7 @@ describe("caretContext", () => {
 
   it("ignores brackets and commas inside a string", () => {
     const source = 'F("label").contains("a, (b", ';
-    expect(caretContext(source, source.length).openCall).toEqual({
+    expect(caretContext(source, source.length).openCall).toMatchObject({
       op: "contains",
       argIndex: 1,
     });
@@ -234,5 +235,44 @@ describe("unquoted field completion", () => {
   it("does not treat another call's argument as a field", () => {
     const source = "F(conf).is_in(1";
     expect(caretContext(source, source.length).field).toBeUndefined();
+  });
+});
+
+describe("completeField", () => {
+  it("closes the quote and the call, quoted", () => {
+    const source = 'F("l';
+    const done = completeField(source, { typed: "l", start: 3 }, "label");
+    expect(done.source).toBe('F("label")');
+    expect(done.offset).toBe(done.source.length);
+  });
+
+  it("closes the call, unquoted", () => {
+    const done = completeField("F(l", { typed: "l", start: 2 }, "label");
+    expect(done.source).toBe("F(label)");
+    expect(done.offset).toBe(done.source.length);
+  });
+
+  it("does not double closers that are already there", () => {
+    const source = 'F("l") > 3';
+    const done = completeField(source, { typed: "l", start: 3 }, "label");
+    expect(done.source).toBe('F("label") > 3');
+    expect(done.offset).toBe('F("label")'.length);
+  });
+
+  it("keeps what follows an unquoted completion", () => {
+    const source = "F(l) > 3";
+    const done = completeField(source, { typed: "l", start: 2 }, "label");
+    expect(done.source).toBe("F(label) > 3");
+    expect(done.offset).toBe("F(label)".length);
+  });
+
+  it("replaces a deeper typed path", () => {
+    const source = 'F("ground_truth.la';
+    const done = completeField(
+      source,
+      { typed: "ground_truth.la", start: 3 },
+      "ground_truth.label",
+    );
+    expect(done.source).toBe('F("ground_truth.label")');
   });
 });

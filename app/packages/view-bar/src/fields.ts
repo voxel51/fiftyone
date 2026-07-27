@@ -34,6 +34,7 @@ const matchesLevel = (level: string, field: FieldType): boolean => {
 const matchesType = (ftypes: readonly string[], field: FieldType): boolean =>
   ftypes.length === 0 ||
   ftypes.includes(field.ftype) ||
+  (field.subfield !== null && ftypes.includes(field.subfield)) ||
   (field.embeddedDocType !== null && ftypes.includes(field.embeddedDocType));
 
 const matchesLabel = (

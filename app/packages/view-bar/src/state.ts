@@ -15,6 +15,13 @@ export interface WorkingStage {
   /** Mutable kwargs keyed by param name; values are whatever the
    *  user has typed/picked so far, not yet serialized. */
   kwargs: Record<string, unknown>;
+  /**
+   * The lowered MongoDB the server sent for expression params, keyed by param
+   * name. The working value is the syntax; this is what the json editor shows
+   * for it — the App cannot lower an expression itself, only remember the
+   * lowering it was given.
+   */
+  lowered: Record<string, unknown>;
 }
 
 export interface BarState {
@@ -59,6 +66,7 @@ export const reducer = (state: BarState, action: BarAction): BarState => {
         id: action.id,
         cls: action.cls,
         kwargs: action.kwargs,
+        lowered: {},
       });
       return { stages };
     }
@@ -83,3 +91,58 @@ export const reducer = (state: BarState, action: BarAction): BarState => {
       return state;
   }
 };
+
+/**
+ * JSON with keys sorted at every level, so two values that mean the same
+ * thing compare equal however they were built — an envelope assembled by the
+ * App's parser and the same envelope serialized by Python differ only in key
+ * order.
+ */
+const stable = (value: unknown): string => {
+  if (Array.isArray(value)) {
+    return `[${value.map(stable).join(",")}]`;
+  }
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `${JSON.stringify(k)}:${stable(v)}`);
+    return `{${entries.join(",")}}`;
+  }
+  return JSON.stringify(value);
+};
+
+export interface SerializedStage {
+  _cls: string;
+  kwargs?: [string, unknown][];
+  _expr_asts?: Record<string, unknown>;
+}
+
+/**
+ * A view reduced to what it means, for deciding whether two views are the
+ * same one.
+ *
+ * `_uuid` is server bookkeeping. `_expr_asts` is the syntax of an expression
+ * whose lowering sits in `kwargs`, so it is overlaid exactly as hydration
+ * overlays it — a view echoed back after Apply then compares equal to the
+ * working state that produced it. Empty values are dropped from both sides,
+ * because serialization omits kwargs the user never filled while the server
+ * echoes them as nulls.
+ */
+export const viewFingerprint = (stages: readonly SerializedStage[]): string =>
+  stable(
+    stages.map((stage) => {
+      const asts = stage._expr_asts ?? {};
+      const kwargs = (stage.kwargs ?? []).filter(
+        ([, value]) =>
+          value !== null &&
+          value !== undefined &&
+          value !== "" &&
+          !(Array.isArray(value) && value.length === 0),
+      );
+
+      return {
+        cls: stage._cls,
+        kwargs: kwargs.map(([name, value]) => [name, asts[name] ?? value]),
+      };
+    }),
+  );

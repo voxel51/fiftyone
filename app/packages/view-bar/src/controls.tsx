@@ -26,7 +26,7 @@ import {
 import React from "react";
 
 import { ExpressionEditor } from "./builder/ExpressionEditor";
-import { sourceOf } from "./builder/envelope";
+import { isEnvelope, sourceOf } from "./builder/envelope";
 import { scopedTo } from "./fields";
 import {
   humanize,
@@ -57,6 +57,8 @@ interface ParamInputProps {
   scope?: string | null;
   /** Every field path in the dataset, for scoping an expression's suggestions. */
   allPaths?: readonly string[];
+  /** The server's lowering of this param's expression, when it has one. */
+  lowered?: unknown;
   /** Names this parameter's control group for tests. */
   testId?: string;
 }
@@ -114,6 +116,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
   tabs,
   scope,
   allPaths = [],
+  lowered,
 }) => {
   const invalid = Boolean(error);
   // Controls name themselves, and say they are required in the same breath —
@@ -281,11 +284,17 @@ const ParamControl: React.FC<ParamInputProps> = ({
               width="100%"
               defaultLanguage="json"
               value={
-                value == null
-                  ? ""
-                  : typeof value === "string"
-                    ? value
-                    : JSON.stringify(value, null, 2)
+                // An expression's json view is the lowering the server sent
+                // for it; before a first apply there is nothing true to show
+                isEnvelope(value)
+                  ? lowered !== undefined
+                    ? JSON.stringify(lowered, null, 2)
+                    : ""
+                  : value == null
+                    ? ""
+                    : typeof value === "string"
+                      ? value
+                      : JSON.stringify(value, null, 2)
               }
               onChange={(next) => onChange(next ?? "")}
               options={{

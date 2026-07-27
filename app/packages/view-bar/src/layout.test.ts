@@ -19,6 +19,7 @@ import {
   rows,
 } from "./params";
 import type { InputKind } from "./params";
+import { viewFingerprint } from "./state";
 
 const param = (name: string, type = "str") => ({
   name,
@@ -181,5 +182,81 @@ describe("defaultKwargs", () => {
       param("field", "field|str"),
     ];
     expect(defaultKwargs(params)).toEqual({});
+  });
+});
+
+describe("viewFingerprint", () => {
+  const lowered = { $eq: ["$ground_truth.label", "cat"] };
+  const envelope = {
+    _fo_expr: { version: 1, node: { t: "lit", v: "cat" } },
+  };
+  const reordered = {
+    _fo_expr: { node: { v: "cat", t: "lit" }, version: 1 },
+  };
+
+  it("treats the server's echo as the view that produced it", () => {
+    // The bar sends the envelope inside kwargs; the server echoes the
+    // lowered MongoDB with the syntax beside it
+    const sent = [
+      {
+        _cls: "fiftyone.core.stages.FilterLabels",
+        kwargs: [
+          ["field", "ground_truth"],
+          ["filter", envelope],
+        ] as [string, unknown][],
+      },
+    ];
+    const echoed = [
+      {
+        _cls: "fiftyone.core.stages.FilterLabels",
+        kwargs: [
+          ["field", "ground_truth"],
+          ["filter", lowered],
+        ] as [string, unknown][],
+        _expr_asts: { filter: reordered },
+        _uuid: "abc",
+      },
+    ];
+    expect(viewFingerprint(sent)).toBe(viewFingerprint(echoed));
+  });
+
+  it("ignores key order, which differs between Python and the parser", () => {
+    const a = [
+      {
+        _cls: "S",
+        kwargs: [["filter", envelope]] as [string, unknown][],
+      },
+    ];
+    const b = [
+      {
+        _cls: "S",
+        kwargs: [["filter", reordered]] as [string, unknown][],
+      },
+    ];
+    expect(viewFingerprint(a)).toBe(viewFingerprint(b));
+  });
+
+  it("ignores empty values the server echoes as nulls", () => {
+    const working = [
+      { _cls: "S", kwargs: [["limit", 3]] as [string, unknown][] },
+    ];
+    const echoed = [
+      {
+        _cls: "S",
+        kwargs: [
+          ["limit", 3],
+          ["seed", null],
+        ] as [string, unknown][],
+      },
+    ];
+    expect(viewFingerprint(working)).toBe(viewFingerprint(echoed));
+  });
+
+  it("distinguishes views that actually differ", () => {
+    const three = [
+      { _cls: "S", kwargs: [["limit", 3]] as [string, unknown][] },
+    ];
+    const four = [{ _cls: "S", kwargs: [["limit", 4]] as [string, unknown][] }];
+    expect(viewFingerprint(three)).not.toBe(viewFingerprint(four));
   });
 });

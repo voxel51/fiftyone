@@ -28,7 +28,7 @@ export interface CaretContext {
   /** Identifier characters already typed after the `.`, used to filter. */
   prefix: string;
   /** The operator whose argument list the caret sits in, if any. */
-  openCall?: { op: string; argIndex: number };
+  openCall?: { op: string; argIndex: number; frame?: Frame };
   /**
    * The caret is inside the string a field path is written in — `F("conf‸")`.
    * A field name is the first thing anyone types, so it is also the first thing
@@ -98,13 +98,13 @@ const calleeBefore = (source: string, paren: number): string => {
 const openCallAt = (
   source: string,
   stack: Frame[],
-): { op: string; argIndex: number } | undefined => {
+): { op: string; argIndex: number; frame: Frame } | undefined => {
   for (let depth = stack.length - 1; depth >= 0; depth--) {
     const frame = stack[depth];
     if (source[frame.start] !== "(") continue;
 
     const op = calleeBefore(source, frame.start);
-    if (op) return { op, argIndex: frame.commas };
+    if (op) return { op, argIndex: frame.commas, frame };
   }
 
   return undefined;
@@ -149,9 +149,11 @@ export const caretContext = (
   }
 
   // `F(conf` — the quotes are optional in the editor, so a bare path inside
-  // `F(` is being typed just as much as a quoted one is
-  if (openCall?.op === fieldVar) {
-    const frame = stack[stack.length - 1];
+  // `F(` is being typed just as much as a quoted one is. The slice is anchored
+  // to the `F(` frame itself: the top of the stack may be a bracket inside it,
+  // and completing from there would splice the path into the wrong offset
+  if (openCall?.op === fieldVar && openCall.frame === stack[stack.length - 1]) {
+    const { frame } = openCall;
     const typed = source.slice(frame.start + 1, offset);
 
     if (/^[A-Za-z0-9_.]*$/.test(typed)) {
@@ -322,4 +324,38 @@ export const signatureAt = (
     argIndex,
     argKind: beyondArity ? "ANY" : (operator.argKinds[argIndex] ?? "ANY"),
   };
+};
+
+/**
+ * Splices a chosen field path into the source, closing the `F(...)` call it
+ * was typed in.
+ *
+ * Completion happens mid-call — `F("l` or `F(l` — and leaving the caret
+ * inside the parentheses means the next keystroke is still part of the path:
+ * typing `.` offers deeper fields, never operators. Closing the quote and the
+ * call is what hands the caret to operator territory.
+ */
+export const completeField = (
+  source: string,
+  field: { typed: string; start: number },
+  path: string,
+): { source: string; offset: number } => {
+  const { start, typed } = field;
+  const quote = source[start - 1];
+  const quoted = quote === '"' || quote === "'";
+
+  // Whatever already follows the typed path is kept; the quote and paren are
+  // consumed from it when present and written when not
+  let rest = source.slice(start + typed.length);
+  let closer = "";
+
+  if (quoted) {
+    if (rest.startsWith(quote)) rest = rest.slice(1);
+    closer += quote;
+  }
+  if (rest.startsWith(")")) rest = rest.slice(1);
+  closer += ")";
+
+  const head = source.slice(0, start) + path + closer;
+  return { source: head + rest, offset: head.length };
 };

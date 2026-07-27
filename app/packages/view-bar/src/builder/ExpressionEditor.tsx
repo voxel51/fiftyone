@@ -10,6 +10,7 @@
  * rather than the parse, so a half-typed expression still suggests well.
  */
 
+import { Code } from "@fiftyone/components";
 import {
   Align,
   Anchor,
@@ -18,7 +19,6 @@ import {
   Icon,
   FormField,
   IconName,
-  Input,
   Justify,
   Clickable,
   Orientation,
@@ -39,6 +39,7 @@ import { CATALOG } from "./catalog";
 import type { Kind, Operator } from "./catalog";
 import {
   caretContext,
+  completeField,
   kindOf,
   signatureAt,
   suggestFields,
@@ -90,6 +91,17 @@ const applySuggestion = (
  * things this region shows, so swapping between them never moves the input.
  */
 const RESULTS_HEIGHT = 148;
+
+/**
+ * The editor instance, as `Code`'s `onMount` hands it over — typed through the
+ * wrapper so this package does not depend on monaco directly.
+ */
+type CodeEditor = Parameters<
+  NonNullable<React.ComponentProps<typeof Code>["onMount"]>
+>[0];
+
+/** Three comfortable lines of expression, plus padding. */
+const EDITOR_HEIGHT = 68;
 
 /**
  * What the box has to say about the expression as it stands.
@@ -150,21 +162,18 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
   disabled,
   error,
 }) => {
-  //
-  // The caret offset is the whole basis for what gets suggested, and reading it
-  // means holding the input element. voodo's `Input` is a plain function
-  // component, so it accepts no ref and the element has to be found through the
-  // wrapper. Removable once `Input` is wrapped in `forwardRef` upstream in
-  // voxel51/design-system, which would also let the editor place the caret
-  // without reaching into the DOM at all.
-  //
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const input = () => wrapperRef.current?.querySelector("input") ?? null;
+  // The caret offset is the whole basis for what gets suggested; Monaco
+  // reports it through cursor events rather than DOM selection state
+  const editorRef = useRef<CodeEditor | null>(null);
   const [offset, setOffset] = useState(value.length);
 
-  const syncCaret = useCallback(() => {
-    setOffset(input()?.selectionStart ?? value.length);
-  }, [value.length]);
+  const onMount = useCallback((editor: CodeEditor) => {
+    editorRef.current = editor;
+    editor.onDidChangeCursorPosition((e) => {
+      const model = editor.getModel();
+      if (model) setOffset(model.getOffsetAt(e.position));
+    });
+  }, []);
 
   const context = useMemo(
     () => caretContext(value, Math.min(offset, value.length)),
@@ -200,21 +209,24 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
   /** Writes the caret back after React has rendered the new value. */
   const restoreCaret = useCallback((at: number) => {
     requestAnimationFrame(() => {
-      const el = input();
-      el?.setSelectionRange(at, at);
+      const editor = editorRef.current;
+      const model = editor?.getModel();
+      if (!editor || !model) return;
+      editor.setPosition(model.getPositionAt(at));
       setOffset(at);
-      el?.focus();
+      editor.focus();
     });
   }, []);
 
   const chooseField = useCallback(
     (path: string) => {
       if (!context.field) return;
-      const { start, typed } = context.field;
-      const next =
-        value.slice(0, start) + path + value.slice(start + typed.length);
-      onChange(next);
-      restoreCaret(start + path.length);
+      // Completing the whole call, closers included, is what hands the caret
+      // to operator territory — left inside `F(`, the next `.` would only
+      // ever offer deeper field paths
+      const next = completeField(value, context.field, path);
+      onChange(next.source);
+      restoreCaret(next.offset);
     },
     [context.field, value, onChange, restoreCaret],
   );
@@ -256,21 +268,67 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
             align={Align.Center}
           >
             {tabs}
-            <div ref={wrapperRef} style={{ flex: 1, minWidth: 0 }}>
-              <Input
-                disabled={disabled}
-                size={Size.Sm}
+            <div
+              style={{
+                position: "relative",
+                flex: 1,
+                minWidth: 0,
+                height: EDITOR_HEIGHT,
+                overflow: "hidden",
+                borderRadius: 4,
+                border: "1px solid var(--fo-palette-primary-plainBorder)",
+              }}
+            >
+              <Code
+                height="100%"
+                width="100%"
+                defaultLanguage="python"
                 value={value}
-                placeholder={placeholder}
-                spellCheck={false}
-                onChange={(e) => {
-                  onChange(e.target.value);
-                  setOffset(e.target.selectionStart ?? e.target.value.length);
+                onChange={(next) => onChange(next ?? "")}
+                onMount={onMount}
+                options={{
+                  readOnly: disabled,
+                  automaticLayout: true,
+                  minimap: { enabled: false },
+                  lineNumbers: "off",
+                  folding: false,
+                  glyphMargin: false,
+                  lineDecorationsWidth: 4,
+                  scrollBeyondLastLine: false,
+                  fontSize: 12,
+                  lineHeight: 18,
+                  wordWrap: "on",
+                  renderLineHighlight: "none",
+                  overviewRulerLanes: 0,
+                  padding: { top: 6, bottom: 6 },
+                  scrollbar: {
+                    vertical: "auto",
+                    horizontal: "hidden",
+                    verticalScrollbarSize: 8,
+                  },
+                  // This editor's suggestions come from the catalog below,
+                  // not from Monaco's own machinery
+                  quickSuggestions: false,
+                  suggestOnTriggerCharacters: false,
+                  parameterHints: { enabled: false },
+                  wordBasedSuggestions: "off",
                 }}
-                onKeyUp={syncCaret}
-                onClick={syncCaret}
-                onSelect={syncCaret}
               />
+              {!value.trim() && (
+                <Text
+                  variant={TextVariant.Caption}
+                  color={TextColor.Placeholder}
+                  style={{
+                    position: "absolute",
+                    left: 10,
+                    top: 7,
+                    // The click belongs to the editor underneath
+                    pointerEvents: "none",
+                  }}
+                >
+                  {placeholder}
+                </Text>
+              )}
             </div>
           </Stack>
         }

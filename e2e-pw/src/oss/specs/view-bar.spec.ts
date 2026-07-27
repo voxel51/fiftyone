@@ -107,7 +107,8 @@ test.describe("view bar", () => {
 
     await viewBar.editStage(0);
     await viewBar.assert.activeEditor("filter", "expr");
-    await viewBar.assert.paramText("filter", 'F("label") == "cat"');
+    // What reopens is the printed canonical form, not the keystrokes
+    await viewBar.assert.paramText("filter", "F('label') == 'cat'");
   });
 
   test("a view built in Python hydrates into the bar", async ({
@@ -133,6 +134,6 @@ test.describe("view bar", () => {
     // An expression is an expression whoever wrote it, so it opens as Python
     await viewBar.editStage(0);
     await viewBar.assert.activeEditor("filter", "expr");
-    await viewBar.assert.paramText("filter", 'F("index") > 4');
+    await viewBar.assert.paramText("filter", "F('index') > 4");
   });
 });
