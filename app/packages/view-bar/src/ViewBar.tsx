@@ -113,16 +113,25 @@ const ViewBar: React.FC = () => {
   const applyRef = React.useRef<HTMLDivElement | null>(null);
 
   /**
+   * Puts the keyboard on Apply. Deferred a frame because the button only
+   * renders once the working state diverges — it may not exist until the
+   * change that wants it focused has painted.
+   */
+  const focusApply = useCallback(() => {
+    requestAnimationFrame(() => {
+      applyRef.current?.querySelector("button")?.focus();
+    });
+  }, []);
+
+  /**
    * Finishing a stage closes it and puts the keyboard on Apply, so the same key
    * that finished the stage runs the view — no reaching for the mouse between
    * describing a view and seeing it.
    */
   const commitStage = useCallback(() => {
     setEditingId(null);
-    requestAnimationFrame(() => {
-      applyRef.current?.querySelector("button")?.focus();
-    });
-  }, []);
+    focusApply();
+  }, [focusApply]);
 
   const markTouched = useCallback((stageId: string, param: string) => {
     setTouched((current) => {
@@ -679,6 +688,8 @@ const ViewBar: React.FC = () => {
               onRemove={() => {
                 if (editingId === stage.id) setEditingId(null);
                 dispatch({ type: "removeStage", id: stage.id });
+                // Removing a stage is an edit like any other — Enter applies it
+                focusApply();
               }}
             />
             <InsertSlot index={i + 1} />
