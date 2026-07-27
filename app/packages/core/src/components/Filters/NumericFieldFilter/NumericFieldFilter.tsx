@@ -38,6 +38,11 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   // suspends on the field (via hasBounds). Otherwise the tree waterfalls:
   // useShow reads the field, suspends, and RangeSlider/<Nonfinites> only
   // request the parent once it resolves. No-op on the lightning path.
+  //
+  // The discarded value is the point — this is a render-phase read purely to
+  // start the fetches. It can't be an effect: React won't commit a tree
+  // containing a suspended component, so an effect here wouldn't fire until
+  // the bounds read had already resolved, leaving the fetches serial.
   useRecoilValue(state.numericFilterPrefetch({ path, modal }));
   const show = useShow(modal, named, path);
   const icon = useQueryPerformanceIcon(modal, named, path, color);
