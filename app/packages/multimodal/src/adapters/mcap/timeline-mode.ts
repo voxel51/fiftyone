@@ -43,9 +43,16 @@ export function resolveMcapTimelineMode(
       // No explicit anchor override — the engine's internal clock is
       // 0-based from the scene's first message, so the anchor is that
       // message's real time.
-      const sceneStartTimeNs = BigInt(
-        tagged.metadata[SCENE_START_TIME_NS_METADATA_KEY] ?? "0",
-      );
+      let sceneStartTimeNs: bigint;
+      try {
+        sceneStartTimeNs = BigInt(
+          tagged.metadata[SCENE_START_TIME_NS_METADATA_KEY] ?? "0",
+        );
+      } catch {
+        // Malformed metadata (e.g. non-integer) — fall back to duration
+        // rather than crashing playback.
+        return { kind: "duration" };
+      }
       return {
         kind: "absolute",
         epochAnchorMs: Number(sceneStartTimeNs / 1_000_000n),

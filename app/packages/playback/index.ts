@@ -39,13 +39,13 @@ export type { TemporalTagTimelineProps } from "./src/views/TemporalTag/TemporalT
 // re-exported above / via the `export *` lines.)
 export {
   PlaybackProvider,
+  useMode,
   usePlayback,
 } from "./src/lib/playback/PlaybackProvider";
 export {
   useCurrentTime,
   useDuration,
   useIsPlaying,
-  useMode,
   usePlayhead,
 } from "./src/lib/playback/use-playback-state";
 export {

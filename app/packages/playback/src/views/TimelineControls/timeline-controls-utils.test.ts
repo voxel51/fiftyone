@@ -41,6 +41,13 @@ describe("formatTimeOfDay", () => {
     // Date's valid range is ~±8.64e15ms from the epoch.
     expect(formatTimeOfDay(new Date(1e17))).toBe("--:--:--.---");
   });
+
+  it("renders the time-of-day correctly for extended-year (year > 9999) dates", () => {
+    // Years outside 0000-9999 make toISOString() emit an extended
+    // `±YYYYYY-MM-DD` date portion, shifting where the time substring
+    // starts — a fixed slice(11, 23) would grab the wrong characters.
+    expect(formatTimeOfDay(new Date(8.64e15))).toBe("00:00:00.000");
+  });
 });
 
 describe("formatDisplayValue", () => {

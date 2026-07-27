@@ -230,6 +230,17 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
     () => resolveMcapTimelineMode(shellTopics),
     [shellTopics],
   );
+  // PlaybackProvider reads `mode` only at creation (see MultiModalPlayback's
+  // `mode` prop doc). Keying MultiModalPlayback by every resolved mode field
+  // forces a remount — and a fresh provider/store — whenever navigating to a
+  // source resolves a different timeline mode, instead of silently retaining
+  // the previous mode's stale presentation.
+  const timelineModeKey =
+    timelineMode.kind === "sequence"
+      ? `sequence:${timelineMode.fps}`
+      : timelineMode.kind === "absolute"
+        ? `absolute:${timelineMode.epochAnchorMs}`
+        : "duration";
   const playbackSource = readyInventory && !navigationPending ? source : null;
   const effectiveLayoutScopeKey =
     layoutScopeKey ?? (source ? `mcap-source:${source.sourceId}` : undefined);
@@ -356,6 +367,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                             onChange={onImageAspectRatioChange}
                           >
                             <MultiModalPlayback
+                              key={timelineModeKey}
                               fileName={fileName}
                               decorateTrack={decorateTrack}
                               headerCaption={headerCaption}

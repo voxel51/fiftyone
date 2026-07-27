@@ -25,7 +25,6 @@ import {
   isPlayingAtom,
   loopEndAtom,
   loopStartAtom,
-  modeAtom,
   playheadAtom,
   seekEventAtom,
   speedAtom,
@@ -34,7 +33,7 @@ import {
   viewStartAtom,
 } from "./atoms";
 import { usePlaybackStore } from "./playback-store-context";
-import type { BufferedRanges, SeekEvent, TimelineMode } from "./types";
+import type { BufferedRanges, SeekEvent } from "./types";
 
 /** Visual playhead position in seconds — updates every RAF tick + on scrub. */
 export function usePlayhead(): number {
@@ -104,18 +103,6 @@ export function useDuration(): number {
 export function useStepInterval(): number {
   const store = usePlaybackStore();
   return useAtomValue(stepIntervalAtom, { store });
-}
-
-/**
- * How the timeline's shared clock is presented to and driven by consumers.
- * Static for the lifetime of the provider — set once from
- * `PlaybackConfig.mode`, defaulting to `{ kind: "duration" }`. Most
- * components should use `useTimelineDisplay()` (in `timeline-display.ts`)
- * instead of reading this directly.
- */
-export function useMode(): TimelineMode {
-  const store = usePlaybackStore();
-  return useAtomValue(modeAtom, { store });
 }
 
 /** Left edge of the visible timeline window, in seconds. */

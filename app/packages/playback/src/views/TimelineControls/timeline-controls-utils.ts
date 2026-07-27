@@ -26,9 +26,12 @@ export function fmtBound(t: number): string {
  * than returning a sentinel string.
  */
 export function formatTimeOfDay(d: Date): string {
-  return Number.isFinite(d.getTime())
-    ? d.toISOString().slice(11, 23)
-    : "--:--:--.---";
+  if (!Number.isFinite(d.getTime())) return "--:--:--.---";
+  // Slice relative to the `T` separator rather than a fixed index — years
+  // outside 0000-9999 make `toISOString()` emit an extended `±YYYYYY-MM-DD`
+  // date portion, which shifts where the time-of-day substring starts.
+  const iso = d.toISOString();
+  return iso.slice(iso.indexOf("T") + 1, -1);
 }
 
 /**

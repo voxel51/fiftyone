@@ -111,6 +111,17 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const hoverTime = useHoverTime();
   const store = usePlaybackStore();
 
+  // Sequence mode has no such thing as frame 2.5 — `quantizeDuringScrub`
+  // (see timeline-display.ts) says the display conversion should round
+  // mid-drag positions onto whole frames. This is mode-intrinsic and
+  // independent of `snapToFrameOnSettle` (a separate, provider-level
+  // opt-in for snapping only at drag-end), so it's applied here before
+  // handing the value to `seekSnapped` rather than left to that setting.
+  const quantizeForScrub = (seconds: number): number =>
+    displayConversion.quantizeDuringScrub
+      ? displayConversion.fromDisplay(displayConversion.toDisplay(seconds))
+      : seconds;
+
   const rulerRef = useRef<HTMLDivElement>(null);
 
   // Publish the timeline time under the pointer so every hover-capable
@@ -192,7 +203,11 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       // playhead now tracks discrete frame numbers continuously during the
       // drag, matching the frame-indexed mental model the annotation surface
       // uses elsewhere.
-      seekSnapped(clamp(startValue + (delta / laneWidth) * vd, 0, duration));
+      seekSnapped(
+        quantizeForScrub(
+          clamp(startValue + (delta / laneWidth) * vd, 0, duration),
+        ),
+      );
     },
     // Redundant when `seekSnapped` already landed each mid-drag tick on a
     // frame boundary — kept as a belt-and-suspenders settle (cheap no-op
@@ -270,7 +285,11 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       const ve = dragRef.current.startVe;
       // `seekSnapped` lands the click on a frame boundary in one step when
       // snapping is enabled; falls back to a continuous seek otherwise.
-      seekSnapped(clamp(vs + (laneX / laneWidth) * (ve - vs), 0, duration));
+      seekSnapped(
+        quantizeForScrub(
+          clamp(vs + (laneX / laneWidth) * (ve - vs), 0, duration),
+        ),
+      );
     },
   });
 

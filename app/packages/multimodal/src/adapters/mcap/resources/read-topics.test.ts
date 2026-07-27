@@ -1,5 +1,5 @@
 import type { McapTypes } from "@mcap/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { McapIndexedReaderLike } from "../reader";
 import { readMcapTopics } from "./read-topics";
 
@@ -22,6 +22,13 @@ function createReader(
   return {
     channelsById: options.channelsById ?? new Map(),
     chunkIndexes: options.chunkIndexes ?? [],
+    readMessages:
+      options.readMessages ??
+      vi.fn(async function* () {
+        for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
+          yield message;
+        }
+      }),
     schemasById: options.schemasById ?? new Map(),
     statistics: options.statistics,
   };

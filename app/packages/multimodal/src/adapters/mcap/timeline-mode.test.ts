@@ -93,6 +93,16 @@ describe("resolveMcapTimelineMode", () => {
     });
   });
 
+  it("falls back to duration when scene_start_time_ns is malformed", () => {
+    const topics = [
+      createTopic({
+        "mcap.channel_metadata.timeline_mode": "absolute",
+        "mcap.scene_start_time_ns": "not-an-integer",
+      }),
+    ];
+    expect(resolveMcapTimelineMode(topics)).toEqual({ kind: "duration" });
+  });
+
   it("defaults absolute mode's epoch anchor to 0 when neither is present", () => {
     const topics = [
       createTopic({ "mcap.channel_metadata.timeline_mode": "absolute" }),

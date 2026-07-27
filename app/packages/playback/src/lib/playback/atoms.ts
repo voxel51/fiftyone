@@ -21,7 +21,7 @@
 
 import { atom, type PrimitiveAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
-import type { BufferedRanges, SeekEvent, TimelineMode } from "./types";
+import type { BufferedRanges, SeekEvent } from "./types";
 
 /**
  * Per-stream reactive value atom, keyed by stream id. Lazily created on first
@@ -125,16 +125,6 @@ export const loopEndAtom = atom(0); // initialised to duration by PlaybackProvid
 // Static config — set once by PlaybackProvider, never changed.
 export const durationAtom = atom(0);
 export const stepIntervalAtom = atom(1 / 30);
-
-/**
- * How the timeline's shared clock is presented to and driven by consumers.
- * See {@link TimelineMode}. Static config, set once by PlaybackProvider from
- * `PlaybackConfig.mode` — never changed after creation. The engine's
- * internal clock domain (this atom's presence notwithstanding) is always
- * seconds; consumers convert via `useTimelineDisplay()` in
- * `timeline-display.ts`.
- */
-export const modeAtom = atom<TimelineMode>({ kind: "duration" });
 
 /**
  * Playback speed multiplier. 1.0 = normal speed, 2.0 = double speed,

@@ -1,10 +1,54 @@
 import React, { createContext, useContext, useMemo } from "react";
 import { PlaybackStoreContext } from "./playback-store-context";
-import type { PlaybackConfig, PlaybackContextValue } from "./types";
+import type {
+  PlaybackConfig,
+  PlaybackContextValue,
+  TimelineMode,
+} from "./types";
 import { useDuration, useStepInterval } from "./use-playback-state";
 import { usePlaybackEngine } from "./use-playback-engine";
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null);
+
+const DEFAULT_MODE: TimelineMode = { kind: "duration" };
+
+/**
+ * Falls back to `duration` mode when a caller-provided `TimelineMode`'s
+ * numeric fields can't produce a sane conversion — a non-finite/non-positive
+ * `sequence.fps` would make `stepInterval` (and every frame conversion)
+ * `Infinity`/`NaN`/`0`; a non-finite `absolute.epochAnchorMs` would make
+ * every converted timestamp an Invalid Date. Validated once here so every
+ * consumer (the engine's stepInterval fallback, `TimelineModeContext`,
+ * ruler tick math) sees only sane values.
+ */
+function normalizeTimelineMode(mode: TimelineMode): TimelineMode {
+  switch (mode.kind) {
+    case "sequence":
+      return Number.isFinite(mode.fps) && mode.fps > 0 ? mode : DEFAULT_MODE;
+    case "absolute":
+      return Number.isFinite(mode.epochAnchorMs) ? mode : DEFAULT_MODE;
+    default:
+      return mode;
+  }
+}
+
+/**
+ * How the timeline's shared clock is presented to and driven by consumers.
+ * Static for the lifetime of the provider — set once from
+ * `PlaybackConfig.mode` when `PlaybackProvider` mounts. This is Context
+ * rather than a Jotai atom because it's static-ish config for a bounded
+ * tree, not reactive global state (see CODING_STANDARDS.md).
+ */
+const TimelineModeContext = createContext<TimelineMode>(DEFAULT_MODE);
+
+/**
+ * How the timeline's shared clock is presented to and driven by consumers.
+ * Most components should use `useTimelineDisplay()` (in `timeline-display.ts`)
+ * instead of reading this directly.
+ */
+export function useMode(): TimelineMode {
+  return useContext(TimelineModeContext);
+}
 
 /**
  * Reads the live duration / stepInterval (which our reactive hooks pull
@@ -47,6 +91,10 @@ export function PlaybackProvider({
   snapToFrameOnSettle,
   mode,
 }: PlaybackConfig & { children: React.ReactNode }) {
+  const resolvedMode = useMemo(
+    () => normalizeTimelineMode(mode ?? DEFAULT_MODE),
+    [mode],
+  );
   const { store, contextValue } = usePlaybackEngine({
     duration,
     stepInterval,
@@ -54,7 +102,7 @@ export function PlaybackProvider({
     defaultLoopEnd,
     defaultSpeed,
     snapToFrameOnSettle,
-    mode,
+    mode: resolvedMode,
   });
 
   // We deliberately do NOT mount a Jotai `<Provider>` here. Every reactive
@@ -65,11 +113,13 @@ export function PlaybackProvider({
   // TilingProvider) used to shadow the playback store and silently
   // route every read to the wrong atoms — that's the bug this avoids.
   return (
-    <PlaybackStoreContext.Provider value={store}>
-      <PlaybackContextHost baseContext={contextValue}>
-        {children}
-      </PlaybackContextHost>
-    </PlaybackStoreContext.Provider>
+    <TimelineModeContext.Provider value={resolvedMode}>
+      <PlaybackStoreContext.Provider value={store}>
+        <PlaybackContextHost baseContext={contextValue}>
+          {children}
+        </PlaybackContextHost>
+      </PlaybackStoreContext.Provider>
+    </TimelineModeContext.Provider>
   );
 }
 

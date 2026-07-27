@@ -10,8 +10,7 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useMemo } from "react";
-import { usePlayback } from "./PlaybackProvider";
-import { useMode } from "./use-playback-state";
+import { useMode, usePlayback } from "./PlaybackProvider";
 import type { TimelineMode } from "./types";
 
 export interface TimelineDisplayConversion {
