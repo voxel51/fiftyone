@@ -1,7 +1,7 @@
 .. _workflows-annotation:
 
-Annotation
-==========
+Annotation __SUB_NEW__
+======================
 
 Once you know what to label, FiftyOne helps you get it labeled. You can
 annotate :ref:`directly in the FiftyOne App <in-app-annotation>`, or round-trip

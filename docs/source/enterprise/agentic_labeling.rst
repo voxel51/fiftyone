@@ -6,38 +6,40 @@ Agentic Labeling
 .. default-role:: code
 
 Agentic Labeling labels your images with a prompt-driven vision-language
-model (VLM). You describe what you want in plain language, optionally show the model
-a few examples, and it produces labels like classifications, detections, captions, or
-per-region labels across your dataset for review. Agentic Labeling is
-available as a panel in the FiftyOne Enterprise App.
+model (VLM). You describe what you want in plain language, optionally show
+the model a few examples, and it produces labels like classifications,
+detections, captions, or per-region labels across your dataset for review.
+Agentic Labeling is available as a panel in the FiftyOne Enterprise App.
 
 .. _agentic-labeling-vs-auto-labeling:
 
 Agentic Labeling vs Auto-Labeling
 _________________________________
 
-Agentic Labeling is a form of auto-labeling. Where :ref:`verified-auto-labeling`
-applies a fixed set of learned classes from the FiftyOne Model Zoo and foundation models
-through a delegated pipeline with a confidence-scored review-and-approval
-workflow, Agentic Labeling uses a VLM that you steer with natural language and
-visual prompts, then refine until the output matches your ontology. The two are
-complementary: Agentic Labeling is often the first step to produce an initial
-labeled set quickly, and those labels can go on to train a custom model for
-large-scale Auto-Labeling.
+Agentic Labeling is a form of auto-labeling. Where
+:ref:`verified-auto-labeling` applies a fixed set of learned classes from the
+FiftyOne Model Zoo and foundation models through a delegated pipeline with a
+confidence-scored review-and-approval workflow, Agentic Labeling uses a VLM
+that you steer with natural language and visual prompts, then refine until the
+output matches your ontology. The two are complementary: Agentic Labeling is
+often the first step to produce an initial labeled set quickly, and those
+labels can go on to train a custom model for large-scale Auto-Labeling.
 
 .. _agentic-labeling-availability:
 
 Availability and prerequisites
 ______________________________
 
-Agentic Labeling is a FiftyOne Enterprise only feature and requires a running Agentic Labeler
-service.
+Agentic Labeling is a FiftyOne Enterprise only feature and requires a running
+Agentic Labeler service.
 
-Agentic labeling is supported for image datasets and frames views of video datasets. 3D, grouped, and multimodal datasets are not yet supported.
+Agentic Labeling is supported for image datasets and frames views of video
+datasets. 3D, grouped, and multimodal datasets are not yet supported.
 
 .. note::
 
-    Agentic Labeling is a Beta feature. Its behavior may change in future releases.
+    Agentic Labeling is a Beta feature. Its behavior may change in future
+    releases.
 
 .. _agentic-labeling-how-it-works:
 
@@ -85,7 +87,8 @@ Labeling** panel from the new-panel (`+`) menu above the samples grid.
 Dashboard
 ---------
 
-The Dashboard is the landing page with **Runs** and **Agents** sub-tabs. Click **Train Agent** to author your first agent.
+The Dashboard is the landing page with **Runs** and **Agents** sub-tabs. Click
+**Train Agent** to author your first agent.
 
 .. image:: https://cdn.voxel51.com/enterprise_agentic_labeling/al_dashboard_coldstart.webp
     :alt: agentic-labeling-dashboard-coldstart
@@ -96,26 +99,30 @@ The Dashboard is the landing page with **Runs** and **Agents** sub-tabs. Click *
 Training an agent
 -----------------
 
-Training an agent consists of writing a **Text prompt**, picking a **Task**, optionally setting **Allowed classes**, and optionally adding a few visual **Examples**. 
-This is an iterative process: test the agent on a few samples, refine the prompt and examples, and repeat until the agent produces the desired outputs.
+Training an agent consists of writing a **Text prompt**, picking a **Task**,
+optionally setting **Allowed classes**, and optionally adding a few visual
+**Examples**. This is an iterative process: test the agent on a few samples,
+refine the prompt and examples, and repeat until the agent produces the
+desired outputs.
 
 .. image:: https://cdn.voxel51.com/enterprise_agentic_labeling/al_train_overview.webp
     :alt: agentic-labeling-train-overview
     :align: center
 
 In **Text prompt**, describe what to label, and be specific. For example,
-*frayed cables visible against the sky*. Then choose a **Task**: Classification, Detection, Caption, Region Classification, or
-Region Captioning. See
-:ref:`agentic-labeling-tasks` for more information on the task types.
+*frayed cables visible against the sky*. Then choose a **Task**:
+Classification, Detection, Caption, Region Classification, or Region
+Captioning. See :ref:`agentic-labeling-tasks` for more information on the task
+types.
 
 .. image:: https://cdn.voxel51.com/enterprise_agentic_labeling/al_task_picker.webp
     :alt: agentic-labeling-task-picker
     :align: center
 
 For Classification and Detection you can set **Allowed classes** to constrain
-the model's output. Classification accepts
-multiple classes and Detection accepts exactly one. Leave the field empty to let the model choose any label.
-Allowed classes constrain the output only, define what each class means in the
+the model's output. Classification accepts multiple classes and Detection
+accepts exactly one. Leave the field empty to let the model choose any label.
+Allowed classes constrain the output only; define what each class means in the
 text prompt. See :ref:`agentic-labeling-prompting`.
 
 .. _agentic-labeling-examples:
@@ -124,14 +131,17 @@ Adding examples
 ^^^^^^^^^^^^^^^
 
 A few good examples sharpen the agent's behavior. Select samples in the
-FiftyOne grid, then use the **Visual prompts** section. You can provide a max of 5
-**Positive** and **Negative** examples each.
+FiftyOne grid, then use the **Visual prompts** section. You can provide a max
+of 5 **Positive** and **Negative** examples each.
 
-When you choose to **Pick from grid**, you can add selected samples from the grid. Additionally, you can  provide existing labels on your dataset as prompts, or you can manually add example labels directly in the panel by click on the sample thumbnails.
+When you choose to **Pick from grid**, you can add selected samples from the
+grid. Additionally, you can provide existing labels on your dataset as
+prompts, or you can manually add example labels directly in the panel by
+clicking on the sample thumbnails.
 
-..note 
+.. note::
 
-The **Upload** button next to **Pick from grid** is not yet available.
+    The **Upload** button next to **Pick from grid** is not yet available.
 
 .. image:: https://cdn.voxel51.com/enterprise_agentic_labeling/al_pick_from_grid.webp
     :alt: agentic-labeling-pick-from-grid
@@ -146,14 +156,16 @@ as `(2/5)`.
 
 .. note::
 
-    Positive examples generally provide a greater benefit to results. See :ref:`agentic-labeling-prompting`.
+    Positive examples generally provide a greater benefit to results. See
+    :ref:`agentic-labeling-prompting`.
 
 .. _agentic-labeling-test:
 
 Testing an agent
 ----------------
 
-With FiftyOne, you can quickly iterate on your prompts by testing your agent on a few samples at a time. 
+With FiftyOne, you can quickly iterate on your prompts by testing your agent
+on a few samples at a time.
 
 Scroll to **Test results**, select some representative samples in the grid,
 then click **Run test**. The agent runs on just those samples and previews
@@ -166,29 +178,31 @@ the resulting labels of your selected **Task**. Test previews are
 
 Click any thumbnail to open the prediction editor. Inspect or correct a
 prediction and step through the results with **Previous** and **Next**, drop
-one with **Remove from results**. Edits change only the preview, they do not persist to your
-dataset or modify the agent.
+one with **Remove from results**. Edits change only the preview; they do not
+persist to your dataset or modify the agent.
 
 .. image:: https://cdn.voxel51.com/enterprise_agentic_labeling/al_prediction_editor.webp
     :alt: agentic-labeling-prediction-editor
     :align: center
 
 Refine the prompt, adjust allowed classes, add or remove examples, and run the
-test again until the previews are mostly correct on a representative handful. 
+test again until the previews are mostly correct on a representative handful.
 
 .. _agentic-labeling-save:
 
 Saving an agent
 ---------------
 
-When you're satisfied with the agent's behavior on test samples, click **Save agent** in the sticky footer to save your prompts and prepare the agent for a Run on the full dataset. 
+When you're satisfied with the agent's behavior on test samples, click **Save
+agent** in the sticky footer to save your prompts and prepare the agent for a
+Run on the full dataset.
 
 .. image:: https://cdn.voxel51.com/enterprise_agentic_labeling/al_save_agent_modal.webp
     :alt: agentic-labeling-save-agent
     :align: center
 
-Saved agents appear on the Dashboard's **Agents** tab with a menu offering **Edit**, **New run**,
-and **Delete** options. 
+Saved agents appear on the Dashboard's **Agents** tab with a menu offering
+**Edit**, **New run**, and **Delete** options.
 
 .. image:: https://cdn.voxel51.com/enterprise_agentic_labeling/al_agents_tab.webp
     :alt: agentic-labeling-agents-tab
@@ -199,8 +213,8 @@ and **Delete** options.
 Configuring and launching a run
 -------------------------------
 
-
-After training and saving an agent, launch a **Run** to label your data at scale.
+After training and saving an agent, launch a **Run** to label your data at
+scale.
 
 Open **Run Config** from the Dashboard's **New Run** button or an agent row's
 **New run** menu item, then configure the run:
@@ -208,7 +222,7 @@ Open **Run Config** from the Dashboard's **New Run** button or an agent row's
 - **Agent** (required) — the saved agent to run.
 - **Target** — the scope to label: **All samples**, **Current view**
   (:ref:`the current view <using-views>`), or **Current selection**
-  (:ref:`currently-selected samples <app-select-samples>`). 
+  (:ref:`currently-selected samples <app-select-samples>`).
 - **Label field** — the name of a new or existing field where predictions are
   written; use a new field name to avoid changing existing labels. On a
   patches target this becomes a **Detection attribute** selector instead — the
@@ -254,7 +268,9 @@ If a run fails, a red banner shows the error and a collapsible **Stack trace**.
     :align: center
 
 When the run completes, its labels are written to your chosen field, ready to
-review in the grid. Consider creating an :ref:`annotation workflow <enterprise-workflows>` for your annotators to review the results.
+review in the grid. Consider creating an
+:ref:`annotation workflow <enterprise-workflows>` for your annotators to
+review the results.
 
 .. _agentic-labeling-tasks:
 
@@ -278,7 +294,7 @@ Region Captioning      A caption per object
 Classification
 --------------
 
-Assign a single label to the whole image. Use the **Text prompt** to 
+Assign a single label to the whole image. Use the **Text prompt** to
 describe the classes and the decision you want. Use **Allowed classes** to hold
 the model to a fixed set of labels, or leave it empty to let the model choose
 freely.
@@ -320,19 +336,19 @@ Region tasks
 **Region Classification** and **Region Captioning** apply the same ideas as
 their whole-image versions, but to **one object at a time**. Region
 Classification gives each object a label, and Region Captioning gives each
-object a caption. 
+object a caption.
 
 Region tasks require an existing Detections field on the dataset.
 
 Both add two controls:
 
 - **Regions from** — where the objects come from. On a normal view, pick a
-  source **Detections** field and each detection becomes one object to label. On a
-  patches view this control is hidden, because the patches themselves are the
-  objects.
+  source **Detections** field and each detection becomes one object to label.
+  On a patches view this control is hidden, because the patches themselves are
+  the objects.
 - **Show region as** — **Cropped** (the model sees only the object's patch) or
   **In context** (the model sees the full image with the object highlighted).
-  Use Cropped when the object stands alone, use In context when its
+  Use Cropped when the object stands alone; use In context when its
   surroundings matter.
 
 Predictions attach to each object, so every object carries its own label or
