@@ -317,6 +317,7 @@ export const StageCard: React.FC<StageCardProps> = ({
                           stage.kwargs,
                         )}
                         allPaths={allPaths}
+                        testId={`view-stage-param-${p.name}`}
                       />
                     ))}
                   </Stack>

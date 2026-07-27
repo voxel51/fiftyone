@@ -57,6 +57,8 @@ interface ParamInputProps {
   scope?: string | null;
   /** Every field path in the dataset, for scoping an expression's suggestions. */
   allPaths?: readonly string[];
+  /** Names this parameter's control group for tests. */
+  testId?: string;
 }
 
 /**
@@ -390,7 +392,11 @@ export const ParamInput: React.FC<
   // starting past the tabs
   if (PLACES_ITS_OWN_TABS.has(props.kind)) {
     return (
-      <Stack orientation={Orientation.Column} spacing={Spacing.None}>
+      <Stack
+        orientation={Orientation.Column}
+        spacing={Spacing.None}
+        data-cy={props.testId}
+      >
         <ParamControl {...props} tabs={tabs} />
         {status}
       </Stack>
@@ -403,6 +409,7 @@ export const ParamInput: React.FC<
       orientation={Orientation.Row}
       spacing={Spacing.Sm}
       align={Align.Start}
+      data-cy={props.testId}
     >
       {tabs}
       <Stack
