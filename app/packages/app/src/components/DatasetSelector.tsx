@@ -142,6 +142,7 @@ const DatasetSelector: React.FC<{
         size={Size.Sm}
         value={query}
         placeholder="Select dataset"
+        data-cy="selector-dataset"
         onFocus={() => setOpen(true)}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -196,11 +197,20 @@ const DatasetSelector: React.FC<{
             }}
             role="listbox"
             id="dataset-selector-options"
+            data-cy="selector-results-container-dataset"
+            ref={(el) =>
+              // The harness arms a listener for this before opening the
+              // dropdown; the old selector announced its results the same way
+              el?.dispatchEvent(
+                new CustomEvent("selector-results-dataset", { bubbles: true }),
+              )
+            }
           >
             {values.map((name, i) => (
               <div
                 key={name}
                 id={`dataset-option-${i}`}
+                data-cy={`selector-result-${name}`}
                 role="option"
                 aria-selected={i === active}
                 ref={(el) => {
