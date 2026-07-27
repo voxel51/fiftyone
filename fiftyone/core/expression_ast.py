@@ -580,7 +580,9 @@ def _render(node: Node, fvar: str, evar: str) -> Tuple[str, Optional[int]]:
 
     if op in _BUILTIN_CALL:
         inner, _ = _render(target, fvar, evar)
-        return "%s(%s)" % (_BUILTIN_CALL[op], inner), None
+        args = _render_args(node, fvar, evar)
+        extra = ", %s" % args if args else ""
+        return "%s(%s%s)" % (_BUILTIN_CALL[op], inner, extra), None
 
     if op == "__getitem__":
         inner, prec = _render(target, fvar, evar)

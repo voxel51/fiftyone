@@ -129,7 +129,9 @@ const call = (node: CallNode, fvar: string, evar: string): Rendered => {
   }
 
   if (op in BUILTIN_CALL) {
-    return [`${BUILTIN_CALL[op]}(${render(node.self, fvar, evar)[0]})`, null];
+    const rest = args(node, fvar, evar);
+    const inner = render(node.self, fvar, evar)[0];
+    return [`${BUILTIN_CALL[op]}(${inner}${rest ? `, ${rest}` : ""})`, null];
   }
 
   if (op === "__getitem__") {

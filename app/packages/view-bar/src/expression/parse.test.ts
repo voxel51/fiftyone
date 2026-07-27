@@ -244,3 +244,16 @@ describe("unquoted field paths", () => {
     expect(() => parse("F()")).toThrow(ExpressionSyntaxError);
   });
 });
+
+describe("builtin arguments", () => {
+  it("round trips a builtin's extra arguments", () => {
+    // `round(F("x"), 2)` must not silently become `round(F("x"))`
+    const node = parse('round(F("x"), 2)');
+    expect(print(node)).toBe("round(F('x'), 2)");
+    expect(parse(print(node))).toEqual(node);
+  });
+
+  it("keeps argument-less builtins bare", () => {
+    expect(print(parse('abs(F("x"))'))).toBe("abs(F('x'))");
+  });
+});
