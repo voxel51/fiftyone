@@ -368,6 +368,17 @@ export const PLACES_ITS_OWN_TABS: ReadonlySet<InputKind> = new Set<InputKind>([
 ]);
 
 /**
+ * Spread into every text input: the bar brings its own suggestions, and the
+ * browser's autofill dropdown painted over them is two lists fighting for one
+ * input.
+ */
+export const NO_BROWSER_SUGGESTIONS = {
+  autoComplete: "off",
+  autoCorrect: "off",
+  spellCheck: false,
+} as const;
+
+/**
  * Both expression editors are exactly this tall, and their header rows exactly
  * `EDITOR_HEADER_HEIGHT` — flipping between expr and json must move nothing.
  */

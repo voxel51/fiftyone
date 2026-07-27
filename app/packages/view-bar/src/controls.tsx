@@ -35,6 +35,7 @@ import {
   humanize,
   isEmptyValue,
   MODE_LABELS,
+  NO_BROWSER_SUGGESTIONS,
   NO_STATUS_LINE,
   paramModes,
   PLACES_ITS_OWN_TABS,
@@ -184,6 +185,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
           error={invalid}
           disabled={disabled}
           size={Size.Sm}
+          {...NO_BROWSER_SUGGESTIONS}
           value={value == null ? "" : String(value)}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
@@ -199,6 +201,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
           error={invalid}
           disabled={disabled}
           size={Size.Sm}
+          {...NO_BROWSER_SUGGESTIONS}
           value={asList(value).join(", ")}
           placeholder={`${placeholder} (comma separated)`}
           onChange={(e) =>
@@ -219,6 +222,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
           error={invalid}
           disabled={disabled}
           size={Size.Sm}
+          {...NO_BROWSER_SUGGESTIONS}
           value={value == null ? "" : String(value)}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
@@ -231,6 +235,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
           error={invalid}
           disabled={disabled}
           size={Size.Sm}
+          {...NO_BROWSER_SUGGESTIONS}
           value={asList(value).join(", ")}
           placeholder={`${placeholder} (id, id, …)`}
           onChange={(e) =>

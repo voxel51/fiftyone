@@ -143,6 +143,11 @@ const DatasetSelector: React.FC<{
         value={query}
         placeholder="Select dataset"
         data-cy="selector-dataset"
+        // The typeahead brings its own suggestions; the browser's autofill
+        // dropdown painted over them is two lists fighting for one input
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
         onFocus={() => setOpen(true)}
         onChange={(e) => {
           setQuery(e.target.value);

@@ -37,6 +37,7 @@ import {
   defaultKwargs,
   inferMode,
   isEmptyValue,
+  NO_BROWSER_SUGGESTIONS,
   isPrivate,
   pickInput,
   validateParam,
@@ -528,6 +529,7 @@ const ViewBar: React.FC = () => {
           value={query}
           placeholder="Add stage…"
           autoFocus
+          {...NO_BROWSER_SUGGESTIONS}
           onChange={(e) => {
             setQuery(e.target.value);
             setHighlight(0);
