@@ -76,6 +76,7 @@ import {
   useMcapModalLayout,
 } from "./use-mcap-modal-layout";
 import { useMcapSceneInventory } from "./use-mcap-scene-inventory";
+import { resolveMcapTimelineMode } from "../timeline-mode";
 
 const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
 
@@ -225,6 +226,10 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   const shellInventory = readyInventory ?? retainedInventoryRef.current;
   const shellSources = shellInventory?.sources ?? sources;
   const shellTopics = shellInventory?.topics ?? topics;
+  const timelineMode = useMemo(
+    () => resolveMcapTimelineMode(shellTopics),
+    [shellTopics],
+  );
   const playbackSource = readyInventory && !navigationPending ? source : null;
   const effectiveLayoutScopeKey =
     layoutScopeKey ?? (source ? `mcap-source:${source.sourceId}` : undefined);
@@ -360,6 +365,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                               addTileMenu={<McapAddTileMenu />}
                               timelineExtraActions={<McapTimestampReadout />}
                               sceneSources={shellSources}
+                              mode={timelineMode}
                               deselectFocusedTileOnRepeatSelect={false}
                               initialTiles={initialTiles}
                               initialManualTileTitles={initialManualTileTitles}
