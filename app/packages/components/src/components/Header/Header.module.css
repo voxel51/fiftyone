@@ -16,7 +16,10 @@
    * container). Within `.left` is its own gap; this one separates
    * the dataset selector from the bar. */
   gap: 1.5rem;
-  padding-right: 0.75rem;
+  /* The icon links carry 0.5rem of their own padding for the hover circle,
+   * so the header contributes the difference — the rightmost glyph then sits
+   * 0.75rem from the edge, the same as the logo on the left. */
+  padding-right: 0.25rem;
 }
 
 .title {
@@ -28,8 +31,8 @@
 }
 
 .logo {
-  height: 36px;
-  width: 36px;
+  height: 28px;
+  width: 28px;
   cursor: pointer;
   margin-right: 0.75rem;
   will-change: transform;
@@ -49,9 +52,8 @@
 .fiftyone {
   color: var(--fo-palette-text-primary);
   font-weight: bold;
-  /* Was 1.8rem (~29px) — way larger than the 36px row. Drop to a
-   * size that fits cleanly inside the row's height. */
-  font-size: 1.1rem;
+  /* Big enough to carry the wordmark, small enough for the 36px row */
+  font-size: 1.35rem;
   align-items: center;
   display: flex;
   white-space: nowrap;

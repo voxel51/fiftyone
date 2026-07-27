@@ -106,22 +106,13 @@ const Nav: React.FC<
         navChildren={<DatasetSelector useSearch={useSearch} />}
       >
         {hasDataset && (
-          <Suspense
-            fallback={<div style={{ flex: 1, marginLeft: "1.5rem" }} />}
-          >
-            {/* Explicit `marginLeft` here as a belt-and-suspenders
-                gap — the header's flex `gap` should already separate
-                the dataset selector from the bar, but a few
-                experiments showed the gap collapsing in some
-                browser/zoom combinations. The hard margin guarantees
-                visible separation. `flex: 1` lets the bar absorb
-                the remaining horizontal space. */}
-            <div style={{ flex: 1, marginLeft: "1.5rem", minWidth: 0 }}>
+          <Suspense fallback={<div style={{ flex: 1 }} />}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <ViewBar />
             </div>
           </Suspense>
         )}
-        {!hasDataset && <div style={{ flex: 1, marginLeft: "1.5rem" }} />}
+        {!hasDataset && <div style={{ flex: 1 }} />}
         <div style={{ padding: "0.5rem" }}>
           <Teams />
         </div>
