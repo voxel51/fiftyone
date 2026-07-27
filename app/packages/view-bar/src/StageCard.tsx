@@ -335,32 +335,38 @@ export const StageCard: React.FC<StageCardProps> = ({
                     spacing={Spacing.Md}
                     style={row.length > 1 ? { flexWrap: "wrap" } : undefined}
                   >
-                    {row.map((p) => (
-                      <ParamInput
-                        key={p.name}
-                        param={p}
-                        value={stage.kwargs[p.name]}
-                        error={errors.get(p.name)}
-                        disabled={
-                          blockedBy(p, definition.params, stage.kwargs) !== null
-                        }
-                        kind={kinds.get(p.name) ?? pickInput(p)}
-                        onModeChange={(kind) => onModeChange(p.name, kind)}
-                        onChange={(v) => onChange(p.name, v)}
-                        fieldOptions={fieldOptions}
-                        allowedFor={allowedFor}
-                        operators={operators}
-                        fieldKind={fieldKind}
-                        scope={expressionScope(
-                          p,
-                          definition.params,
-                          stage.kwargs,
-                        )}
-                        allPaths={allPaths}
-                        lowered={stage.lowered[p.name]}
-                        testId={`view-stage-param-${p.name}`}
-                      />
-                    ))}
+                    {row.map((p) => {
+                      const blockedOn = blockedBy(
+                        p,
+                        definition.params,
+                        stage.kwargs,
+                      );
+                      return (
+                        <ParamInput
+                          key={p.name}
+                          param={p}
+                          value={stage.kwargs[p.name]}
+                          error={errors.get(p.name)}
+                          disabled={blockedOn !== null}
+                          blockedOn={blockedOn}
+                          kind={kinds.get(p.name) ?? pickInput(p)}
+                          onModeChange={(kind) => onModeChange(p.name, kind)}
+                          onChange={(v) => onChange(p.name, v)}
+                          fieldOptions={fieldOptions}
+                          allowedFor={allowedFor}
+                          operators={operators}
+                          fieldKind={fieldKind}
+                          scope={expressionScope(
+                            p,
+                            definition.params,
+                            stage.kwargs,
+                          )}
+                          allPaths={allPaths}
+                          lowered={stage.lowered[p.name]}
+                          testId={`view-stage-param-${p.name}`}
+                        />
+                      );
+                    })}
                   </Stack>
                 ))}
               </Stack>

@@ -58,6 +58,8 @@ export interface ExpressionEditorProps {
   tabs?: React.ReactNode;
   /** Waiting on a parameter declared before it. */
   disabled?: boolean;
+  /** Why the editor is locked, e.g. `Choose "field" first`. */
+  disabledReason?: string;
   /** Committed elsewhere — the editor never reports a parse error while typing. */
   error?: string | null;
 }
@@ -164,6 +166,7 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
   placeholder = 'F("confidence") > 0.5',
   tabs,
   disabled,
+  disabledReason,
   error,
 }) => {
   // The caret offset is the whole basis for what gets suggested; Monaco
@@ -259,7 +262,29 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
         style={{ height: EDITOR_HEADER_HEIGHT }}
       >
         {tabs}
-        {signature ? (
+        {disabled ? (
+          // A locked editor's whole header says why, so no one types into a
+          // box that cannot answer
+          <Stack
+            orientation={Orientation.Row}
+            spacing={Spacing.Xs}
+            align={Align.Center}
+          >
+            <Icon name={IconName.Lock} size={Size.Sm} color={TextColor.Muted} />
+            <Text
+              variant={TextVariant.Caption}
+              color={TextColor.Muted}
+              style={{
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                minWidth: 0,
+              }}
+            >
+              {disabledReason ?? "Waiting on required values"}
+            </Text>
+          </Stack>
+        ) : signature ? (
           <Signature
             operator={signature.operator}
             argIndex={signature.argIndex}
@@ -297,13 +322,23 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
         )}
       </Stack>
 
-      <div style={{ position: "relative" }}>
+      <div
+        style={{
+          position: "relative",
+          // The box below swallows no events while disabled, so the cursor
+          // that says so lives here — the same one every voodo control shows
+          cursor: disabled ? "not-allowed" : undefined,
+        }}
+      >
         <div
           style={{
             position: "relative",
             height: EXPRESSION_BOX_HEIGHT,
             overflow: "hidden",
             borderRadius: 4,
+            // Disabled means disabled: no clicks, no caret, and the same
+            // dimming every other locked control wears
+            ...(disabled ? { pointerEvents: "none", opacity: 0.5 } : null),
             // Monaco's loading state paints nothing, so the box holds the
             // editor's surface color from the first frame
             background: "var(--fo-palette-background-level2)",
@@ -322,6 +357,9 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
             onMount={onMount}
             options={{
               readOnly: disabled,
+              // Out of the tab order while disabled, like any other locked
+              // control — the pointer already cannot get in
+              tabIndex: disabled ? -1 : 0,
               automaticLayout: true,
               minimap: { enabled: false },
               lineNumbers: "off",
@@ -360,7 +398,7 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
                 pointerEvents: "none",
               }}
             >
-              {placeholder}
+              {disabled ? (disabledReason ?? "") : placeholder}
             </Text>
           )}
         </div>

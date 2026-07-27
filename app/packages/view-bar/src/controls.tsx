@@ -10,6 +10,8 @@ import { Code } from "@fiftyone/components";
 import {
   Align,
   Button,
+  Icon,
+  IconName,
   Input,
   Orientation,
   Select,
@@ -51,6 +53,8 @@ interface ParamInputProps {
   error?: string | null;
   /** Waiting on a required parameter declared before it. */
   disabled?: boolean;
+  /** The parameter it waits on, for saying so. */
+  blockedOn?: string | null;
   onChange: (next: unknown) => void;
   fieldOptions: { id: string; data: { label: string } }[];
   /** The field paths a param accepts, narrowed by the constraints it declares. */
@@ -127,6 +131,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
   lowered,
   operators,
   fieldKind,
+  blockedOn,
 }) => {
   const invalid = Boolean(error);
   // Controls name themselves, and say they are required in the same breath —
@@ -137,6 +142,9 @@ const ParamControl: React.FC<ParamInputProps> = ({
   const described = param.placeholder?.trim() || label;
   const placeholder = param.required ? `${described} (required)` : described;
   const name = placeholder;
+  const blockedReason = blockedOn
+    ? `Choose ${humanize(blockedOn)} first`
+    : undefined;
 
   switch (kind) {
     case "bool":
@@ -262,6 +270,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
       return (
         <ExpressionEditor
           disabled={disabled}
+          disabledReason={blockedReason}
           tabs={tabs}
           // Named from inside the input, beside the example it is asking for —
           // a label above would be a whole line to say one word
@@ -281,7 +290,11 @@ const ParamControl: React.FC<ParamInputProps> = ({
       // A real editor, not a one-line input: these values are nested documents,
       // and bracket matching and syntax colouring are what make them editable
       return (
-        <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+        <Stack
+          orientation={Orientation.Column}
+          spacing={Spacing.Xs}
+          style={{ cursor: disabled ? "not-allowed" : undefined }}
+        >
           {/*
             The same header the expression editor has: switcher and status on
             one line, the box below carrying the outline
@@ -293,20 +306,48 @@ const ParamControl: React.FC<ParamInputProps> = ({
             style={{ height: EDITOR_HEADER_HEIGHT }}
           >
             {tabs}
-            {invalid && (
-              <Text
-                variant={TextVariant.Caption}
-                color={TextColor.Destructive}
-                title={error ?? undefined}
-                style={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  minWidth: 0,
-                }}
+            {disabled && blockedReason ? (
+              // The same lock the expression editor's header shows, so the
+              // two tabs say the same thing the same way
+              <Stack
+                orientation={Orientation.Row}
+                spacing={Spacing.Xs}
+                align={Align.Center}
               >
-                {error}
-              </Text>
+                <Icon
+                  name={IconName.Lock}
+                  size={Size.Sm}
+                  color={TextColor.Muted}
+                />
+                <Text
+                  variant={TextVariant.Caption}
+                  color={TextColor.Muted}
+                  style={{
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    minWidth: 0,
+                  }}
+                >
+                  {blockedReason}
+                </Text>
+              </Stack>
+            ) : (
+              invalid && (
+                <Text
+                  variant={TextVariant.Caption}
+                  color={TextColor.Destructive}
+                  title={error ?? undefined}
+                  style={{
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    minWidth: 0,
+                  }}
+                >
+                  {error}
+                </Text>
+              )
             )}
           </Stack>
           {/*
@@ -320,6 +361,9 @@ const ParamControl: React.FC<ParamInputProps> = ({
               height: EXPRESSION_BOX_HEIGHT,
               overflow: "hidden",
               borderRadius: 4,
+              // Disabled means disabled: no clicks, no caret, the dimming and
+              // cursor every other locked control wears
+              ...(disabled ? { pointerEvents: "none", opacity: 0.5 } : null),
               // Monaco's loading state paints nothing, so the box holds the
               // editor's surface color from the first frame
               background: "var(--fo-palette-background-level2)",
@@ -348,6 +392,12 @@ const ParamControl: React.FC<ParamInputProps> = ({
               onChange={(next) => onChange(next ?? "")}
               options={{
                 readOnly: disabled,
+                // What typing into the locked editor pops up — without it,
+                // Monaco's stock "cannot edit" tooltip appears clipped by the
+                // popover, an unexplained sliver
+                readOnlyMessage: blockedReason
+                  ? { value: blockedReason }
+                  : undefined,
                 automaticLayout: true,
                 minimap: { enabled: false },
                 lineNumbers: "off",
