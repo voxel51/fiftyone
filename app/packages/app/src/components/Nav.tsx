@@ -15,6 +15,7 @@ import * as fos from "@fiftyone/state";
 import { useRefresh } from "@fiftyone/state";
 import { ViewBar } from "@fiftyone/view-bar";
 import { DarkMode, LightMode } from "@mui/icons-material";
+import { useColorScheme } from "@mui/material";
 import React, { Suspense, useCallback, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
@@ -83,17 +84,19 @@ const Nav: React.FC<
 
   const useSearch = getUseSearch(data);
   const refresh = useRefresh();
-  // Theme mode comes from the recoil `fos.theme` atom — same atom
-  // MUI's `useColorScheme` was being shadowed onto, just read
-  // directly so we don't pull MUI into the Nav.
-  const mode = useRecoilValue(fos.theme);
+  // Two theme owners, both of which must hear a toggle: MUI's color scheme
+  // paints the `--fo-palette-*` variables everything is styled with, and the
+  // recoil atom is what the rest of the app reads. Setting only the atom
+  // leaves the palette stale until a reload re-derives the mode.
+  const { mode, setMode } = useColorScheme();
   const setTheme = useSetRecoilState(fos.theme);
   const trackEvent = useTrackEvent();
   const toggleTheme = useCallback(() => {
     const nextMode = mode === "dark" ? "light" : "dark";
+    setMode(nextMode);
     setTheme(nextMode);
     trackEvent("switch_app_theme", { theme: nextMode });
-  }, [mode, setTheme, trackEvent]);
+  }, [mode, setMode, setTheme, trackEvent]);
 
   return (
     <>
