@@ -179,7 +179,7 @@ IF %SOURCE_ETA_INSTALL%==true (
   )
   IF %DEV_INSTALL%==true (
     echo Performing dev install
-    CALL :pip_install .
+    CALL :pip_install -e .
   ) else (
     echo Performing install
     CALL :pip_install .

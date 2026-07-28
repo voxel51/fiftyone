@@ -13,6 +13,7 @@ Run the same selection locally with:
 
 ```shell
 uv sync --locked --no-default-groups --extra multimodal --group test
+uv run --locked --no-sync python tests/utils/setup_config.py
 uv run --locked --no-sync python tests/utils/pytest_wrapper.py \
   $(grep -Ev '^[[:space:]]*(#|$)' tests/intensive/scheduled.txt) \
   --verbose \
