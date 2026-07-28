@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ,
   resolveMcapActiveTimeline,
   resolveMcapTimelineStrategy,
 } from "./timeline";
@@ -32,9 +31,5 @@ describe("MCAP timeline helpers", () => {
     expect(() => resolveMcapActiveTimeline("publish")).toThrow(
       "Unsupported MCAP active timeline 'publish'",
     );
-  });
-
-  it("keeps the default MCAP playback cadence at 30 Hz", () => {
-    expect(DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ).toBe(30);
   });
 });

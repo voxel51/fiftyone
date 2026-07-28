@@ -9,11 +9,6 @@ import {
 } from "../contracts/index";
 
 /**
- * Default playback timeline tick cadence used to sample MCAP ranges.
- */
-export const DEFAULT_MCAP_TIMELINE_TICK_RATE_HZ = 30;
-
-/**
  * MCAP timeline strategy that owns how adapter playback time maps to MCAP data.
  */
 export interface McapTimelineStrategy {

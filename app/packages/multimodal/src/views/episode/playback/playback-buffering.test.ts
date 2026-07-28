@@ -27,6 +27,16 @@ describe("episode playback buffering policy", () => {
     });
   });
 
+  it("keeps startup media duration stable across sampling rates", () => {
+    expect(
+      derivePlaybackPolicy(DEFAULT_PLAYBACK_POLICY, 1).startupLookaheadSeconds,
+    ).toBe(0.5);
+    expect(
+      derivePlaybackPolicy(DEFAULT_PLAYBACK_POLICY, 120)
+        .startupLookaheadSeconds,
+    ).toBe(0.5);
+  });
+
   it("keeps background work idle and user-visible reads foregrounded", () => {
     expect(batchReadPriority("background-lookahead")).toBe("idle");
     expect(batchReadPriority("loopback-lookahead")).toBe("playback");

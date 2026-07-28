@@ -6,11 +6,7 @@ import {
   type PlaybackStore,
 } from "@fiftyone/playback";
 import type { DecodedFrame, SynchronizedFrameWindow } from "../../../ir";
-import {
-  DEFAULT_TIMELINE_TICK_RATE_HZ,
-  type EpisodeStreamCache,
-  type TimelineIndex,
-} from "../../../runtime";
+import { type EpisodeStreamCache, type TimelineIndex } from "../../../runtime";
 
 /** Read lanes used by the episode playback prefetch scheduler. */
 export type DataOperation =
@@ -23,7 +19,6 @@ export type DataOperation =
 export interface PlaybackPolicy {
   readonly lookaheadSeconds: number;
   readonly startupBufferSeconds: number;
-  readonly startupMaxTicks: number;
   readonly startupMinTicks: number;
   readonly pausedWarmupRunwaySeconds: number;
   readonly prefetchBatchSeconds: number;
@@ -51,7 +46,6 @@ export const DEFAULT_PLAYBACK_POLICY: PlaybackPolicy = {
   prefetchBatchesPerPass: 1,
   prefetchRefreshSeconds: 0.5,
   startupBufferSeconds: INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS,
-  startupMaxTicks: 15,
   startupMinTicks: 3,
   streamCacheLookaheadMultiplier: 2,
 };
@@ -59,13 +53,14 @@ export const DEFAULT_PLAYBACK_POLICY: PlaybackPolicy = {
 /** Resolves a playback policy against the active timeline tick rate. */
 export function derivePlaybackPolicy(
   policy: PlaybackPolicy,
-  tickRateHz = DEFAULT_TIMELINE_TICK_RATE_HZ,
+  tickRateHz = 30,
 ): DerivedPlaybackPolicy {
-  const startupLookaheadSeconds = clampNumber(
-    policy.startupBufferSeconds,
-    policy.startupMinTicks / tickRateHz,
-    policy.startupMaxTicks / tickRateHz,
-  );
+  if (!Number.isFinite(tickRateHz) || tickRateHz <= 0) {
+    throw new Error("Playback tick rate must be finite and greater than zero");
+  }
+  // Keep the amount of media buffered stable as sampling fidelity changes.
+  // Tick-count limits are derived from these durations below.
+  const startupLookaheadSeconds = policy.startupBufferSeconds;
   const pausedWarmupRunwaySeconds = clampNumber(
     policy.pausedWarmupRunwaySeconds,
     startupLookaheadSeconds,
@@ -247,7 +242,7 @@ export function contiguousBufferedSecondsFromPlayhead({
   if (startIndex === undefined) return 0;
 
   const endNs = index.secToNs(timeSec + maxSeconds);
-  const nominalTickSec = 1 / DEFAULT_TIMELINE_TICK_RATE_HZ;
+  const nominalTickSec = Number(index.stepNs) / 1_000_000_000;
   let lastCoveredTick: bigint | null = null;
   for (
     let indexPosition = startIndex;
@@ -385,7 +380,7 @@ export function computeBufferedRanges({
   indexes.sort((left, right) => left - right);
 
   const ranges: Array<[number, number]> = [];
-  const nominalTickSec = 1 / DEFAULT_TIMELINE_TICK_RATE_HZ;
+  const nominalTickSec = Number(index.stepNs) / 1_000_000_000;
   const pushRange = (startIndex: number, endIndex: number): void => {
     const startTick = index.tickAt(startIndex);
     const endTick = index.tickAt(endIndex);

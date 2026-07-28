@@ -6,6 +6,7 @@ describe("timeline index", () => {
     const timeline = createTimelineIndex({ endNs: 100_000_000n, startNs: 0n });
 
     expect(timeline.stepNs).toBe(33_333_333n);
+    expect(timeline.tickRateHz).toBe(30);
     expect(timeline.tickCount).toBe(4);
     expect([0, 1, 2, 3].map((index) => timeline.tickAt(index))).toEqual([
       0n,
@@ -40,6 +41,17 @@ describe("timeline index", () => {
     expect(timeline.indexAtOrAfter(startNs + 1_000_000_001n)).toBe(3);
     expect(timeline.nsToSec(startNs + 500_000_000n)).toBe(0.5);
     expect(timeline.secToNs(0.5)).toBe(startNs + 500_000_000n);
+  });
+
+  it("uses an explicit 60 Hz cadence without materializing ticks", () => {
+    const timeline = createTimelineIndex(
+      { endNs: 1_000_000_000n, startNs: 0n },
+      60,
+    );
+
+    expect(timeline.stepNs).toBe(16_666_667n);
+    expect(timeline.tickRateHz).toBe(60);
+    expect(timeline.tickCount).toBe(60);
   });
 
   it("handles a zero-duration range and invalid tick indexes", () => {

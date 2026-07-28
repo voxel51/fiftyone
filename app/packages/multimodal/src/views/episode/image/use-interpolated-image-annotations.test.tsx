@@ -78,6 +78,7 @@ function makeTimeline(ticks: readonly bigint[]): TimelineIndex {
     startTimeNs,
     stepNs,
     tickAt: (index) => ticks[index],
+    tickRateHz: 1_000_000_000 / Number(stepNs),
     tickCount: ticks.length,
     secToNs: toNs,
     nearestTick: (sec) => {
@@ -683,20 +684,23 @@ describe("image annotation interpolation caches", () => {
   });
 
   it("reuses a positive next-message lookup while the pair remains current", () => {
-    const ticks = Array.from({ length: 130 }, (_, index) => BigInt(index));
+    const ticks = Array.from(
+      { length: 130 },
+      (_, index) => BigInt(index) * 33_333_333n,
+    );
     const timeline = makeTimeline(ticks);
     const cache = new EpisodeStreamCache();
     const current = message(0n, emptyViz());
-    const next = message(125n, emptyViz());
-    cache.set(6n, current);
-    cache.set(125n, next);
+    const next = message(ticks[125], emptyViz());
+    cache.set(ticks[6], current);
+    cache.set(ticks[125], next);
     const lookupCache = new WeakMap();
 
     expect(
       nextDistinctCachedMessage({
         cache,
         currentMessage: current,
-        currentTick: 6n,
+        currentTick: ticks[6],
         currentTimelineTimeNs: 0n,
         lookupCache,
         timeline,
@@ -708,7 +712,7 @@ describe("image annotation interpolation caches", () => {
       nextDistinctCachedMessage({
         cache,
         currentMessage: current,
-        currentTick: 7n,
+        currentTick: ticks[7],
         currentTimelineTimeNs: 0n,
         lookupCache,
         timeline,
@@ -718,21 +722,24 @@ describe("image annotation interpolation caches", () => {
   });
 
   it("rescans a cached miss as its bounded window advances", () => {
-    const ticks = Array.from({ length: 130 }, (_, index) => BigInt(index));
+    const ticks = Array.from(
+      { length: 130 },
+      (_, index) => BigInt(index) * 33_333_333n,
+    );
     const timeline = makeTimeline(ticks);
     const cache = new EpisodeStreamCache();
     const current = message(0n, emptyViz());
-    const next = message(125n, emptyViz());
-    cache.set(0n, current);
-    cache.set(6n, current);
-    cache.set(125n, next);
+    const next = message(ticks[125], emptyViz());
+    cache.set(ticks[0], current);
+    cache.set(ticks[6], current);
+    cache.set(ticks[125], next);
     const lookupCache = new WeakMap();
 
     expect(
       nextDistinctCachedMessage({
         cache,
         currentMessage: current,
-        currentTick: 0n,
+        currentTick: ticks[0],
         currentTimelineTimeNs: 0n,
         lookupCache,
         timeline,
@@ -742,7 +749,7 @@ describe("image annotation interpolation caches", () => {
       nextDistinctCachedMessage({
         cache,
         currentMessage: current,
-        currentTick: 6n,
+        currentTick: ticks[6],
         currentTimelineTimeNs: 0n,
         lookupCache,
         timeline,

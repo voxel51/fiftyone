@@ -12,11 +12,7 @@ import {
   type ByteSourceReadProfile,
   type ByteTimelinePoint,
 } from "../../../ir";
-import {
-  DEFAULT_TIMELINE_TICK_RATE_HZ,
-  type EpisodeStreamCache,
-  type TimelineIndex,
-} from "../../../runtime";
+import { type EpisodeStreamCache, type TimelineIndex } from "../../../runtime";
 import { getNetworkHealth } from "./network-health";
 import {
   bufferWindowCoverage,
@@ -363,6 +359,7 @@ export function publishStartupCushionProgress({
 }): void {
   if (
     !getIsPlayPending(store) ||
+    index === null ||
     tick === null ||
     activeBlockingStreams.length === 0
   ) {
@@ -386,7 +383,7 @@ export function publishStartupCushionProgress({
     lookaheadSeconds: cushion.cushionSeconds,
     maxTicks: Math.max(
       policy.startupMinTicks,
-      Math.ceil(DEFAULT_TIMELINE_TICK_RATE_HZ * cushion.cushionSeconds),
+      Math.ceil(index.tickRateHz * cushion.cushionSeconds),
     ),
     timeSec: playheadSec,
   });

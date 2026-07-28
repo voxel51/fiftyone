@@ -14,11 +14,7 @@ import {
 import type { StreamSyncPolicies } from "../../../ir";
 import type { PlaybackReadCapability } from "../../../ports";
 import { isEpisodeReadCancelledError } from "../../../ports";
-import {
-  DEFAULT_TIMELINE_TICK_RATE_HZ,
-  type EpisodeStreamCache,
-  type TimelineIndex,
-} from "../../../runtime";
+import { type EpisodeStreamCache, type TimelineIndex } from "../../../runtime";
 import { monotonicNowMs } from "../../../utils/monotonic-time";
 import {
   activeStreamsInCaches,
@@ -605,7 +601,7 @@ export class DataStreamScheduler {
     const index = options.getIndex();
     if (!index || !options.isSourceAvailable()) return () => undefined;
 
-    const nativeStep = 1 / DEFAULT_TIMELINE_TICK_RATE_HZ;
+    const nativeStep = Number(index.stepNs) / 1_000_000_000;
     let lastCommittedTickKey: string | null = null;
     const stream: PlaybackStream = {
       id: STREAM_ID,

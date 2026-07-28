@@ -11,6 +11,8 @@ export interface TimelineIndex {
   readonly endTimeNs: bigint;
   readonly startTimeNs: bigint;
   readonly stepNs: bigint;
+  /** Requested presentation cadence used to derive `stepNs`. */
+  readonly tickRateHz: number;
   readonly tickCount: number;
   indexAtOrAfter(timeNs: bigint): number;
   indexOfTick(tickNs: bigint): number | undefined;
@@ -117,6 +119,7 @@ export function createTimelineIndex(
     startTimeNs,
     stepNs: timelineStepNs,
     tickAt,
+    tickRateHz,
     tickCount,
     secToNs,
     nearestTick,

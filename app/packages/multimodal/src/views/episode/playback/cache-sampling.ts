@@ -4,9 +4,10 @@ import type { DecodedFrame } from "../../../ir";
 import type { EpisodeStreamCache, TimelineIndex } from "../../../runtime";
 import type { DataStream } from "./data-stream-context";
 
-// Forward-scan budget for locating the next distinct cached message. At the
-// timeline's ~30 Hz tick rate, 120 ticks spans about four seconds.
-const MAX_NEXT_MESSAGE_SCAN_TICKS = 120;
+// Duration budget for locating the next distinct cached message. Deriving the
+// tick count from the active timeline preserves the same interpolation horizon
+// when users change the presentation sampling rate.
+const MAX_NEXT_MESSAGE_SCAN_SECONDS = 4;
 
 /** Cached result of a bounded search for the next distinct source message. */
 export interface NextMessageCacheEntry {
@@ -121,7 +122,7 @@ export function nextDistinctCachedMessage({
   const startIndex = currentIndex + 1;
   const endIndex = Math.min(
     timeline.tickCount,
-    startIndex + MAX_NEXT_MESSAGE_SCAN_TICKS,
+    startIndex + Math.ceil(timeline.tickRateHz * MAX_NEXT_MESSAGE_SCAN_SECONDS),
   );
   for (let index = startIndex; index < endIndex; index++) {
     const tick = timeline.tickAt(index);
