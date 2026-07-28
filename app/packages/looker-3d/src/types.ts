@@ -172,16 +172,29 @@ export interface EventHandlers {
 }
 
 /**
+ * The minimal shape `useEventHandlers()`'s implementation actually reads
+ * (`_id`, `path`, plus assorted optional fields accessed loosely) — kept
+ * structural rather than `OverlayLabel` itself because the instanced batch's
+ * `ReconciledDetection3D`/`ReconciledPolyline3D` labels omit `selected`
+ * (see `ReconciledDetection3D`), so they aren't assignable to `OverlayLabel`
+ * even though every label type used here is a strict superset of this.
+ */
+export type InstancedLabel = {
+  _id: string;
+  path: string | string[];
+} & Record<string, unknown>;
+
+/**
  * `useEventHandlers()`'s raw shape — `label` is a call-time argument rather
  * than curried in, so one set of handlers can be shared across every label
  * in an instanced batch. `Cuboid` curries its own label once into the
  * `EventHandlers` shape above for the standalone path.
  */
 export interface InstancedEventHandlers {
-  onPointerOver: (label: any, e?: ThreeEvent<PointerEvent>) => void;
-  onPointerOut: (label: any) => void;
+  onPointerOver: (label: InstancedLabel, e?: ThreeEvent<PointerEvent>) => void;
+  onPointerOut: (label: InstancedLabel) => void;
   onPointerMissed: () => void;
-  onPointerMove: (label: any, e: ThreeEvent<PointerEvent>) => void;
+  onPointerMove: (label: InstancedLabel, e: ThreeEvent<PointerEvent>) => void;
 }
 
 export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";

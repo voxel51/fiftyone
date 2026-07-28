@@ -108,7 +108,11 @@ function makeLabel(id: string) {
 
 describe("useEventHandlers", () => {
   afterEach(() => {
+    // `clearAllMocks` only clears call records, not implementations — a test
+    // that sets `getHoveredSpy.mockReturnValue(...)` would otherwise leak
+    // that return value into later tests, so reset it explicitly.
     vi.clearAllMocks();
+    mocks.getHoveredSpy.mockReturnValue([]);
     mocks.atomValues.clear();
     mocks.isAnnotateMode = false;
   });
@@ -138,10 +142,9 @@ describe("useEventHandlers", () => {
 
   it("does not set tooltipDetail for the label currently selected for annotation", () => {
     const labelA = makeLabel("a");
-    mocks.atomValues.set(
-      mocks.atoms.selectedLabelForAnnotationAtom,
-      { _id: "a" },
-    );
+    mocks.atomValues.set(mocks.atoms.selectedLabelForAnnotationAtom, {
+      _id: "a",
+    });
 
     const { result } = renderHook(() => useEventHandlers());
     act(() => {

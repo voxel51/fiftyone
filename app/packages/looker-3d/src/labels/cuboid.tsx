@@ -487,7 +487,7 @@ export const Cuboid = ({
     onPointerOver: onPointerOverForLabel,
     onPointerOut: onPointerOutForLabel,
     onPointerMove: onPointerMoveForLabel,
-    ...restEventHandlersBase
+    onPointerMissed,
   } = useEventHandlers();
 
   // `useEventHandlers()` takes the label as a call-time argument so it can be
@@ -502,13 +502,18 @@ export const Cuboid = ({
     () => onPointerOutForLabel(labelWoQuaternion),
     [onPointerOutForLabel, labelWoQuaternion],
   );
+  // Destructuring `onPointerMissed` directly (rather than rest-spreading the
+  // remainder of `useEventHandlers()`'s return value) keeps it a stable
+  // reference across renders, so this `useMemo` actually memoizes instead of
+  // rebuilding every render (a plain object rest-spread always allocates a
+  // new object, which would otherwise poison the dependency array below).
   const restEventHandlers = useMemo(
     () => ({
-      ...restEventHandlersBase,
+      onPointerMissed,
       onPointerMove: (e: ThreeEvent<PointerEvent>) =>
         onPointerMoveForLabel(labelWoQuaternion, e),
     }),
-    [restEventHandlersBase, onPointerMoveForLabel, labelWoQuaternion],
+    [onPointerMissed, onPointerMoveForLabel, labelWoQuaternion],
   );
 
   const { strokeAndFillColor, isSimilarLabelHovered } = useLabelColor(

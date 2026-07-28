@@ -24,9 +24,15 @@ UNIT_ARROWHEAD_GEOMETRY.setAttribute(
   "position",
   new THREE.Float32BufferAttribute(
     [
-      1, 0, 0, // apex
-      0, 1, 0, // base1
-      0, -1, 0, // base2
+      1,
+      0,
+      0, // apex
+      0,
+      1,
+      0, // base1
+      0,
+      -1,
+      0, // base2
     ],
     3,
   ),
@@ -160,11 +166,18 @@ export function computeArrowheadMatrix(
   return boxMatrix.multiply(localMatrix);
 }
 
-export function segmentsPerBoxFor(showOrientation: boolean): number {
-  return (
-    EDGES_PER_BOX +
-    (showOrientation ? SHAFT_SEGMENTS_PER_BOX + AXES_SEGMENTS_PER_BOX : 0)
-  );
+/**
+ * Segment count per box in the *orientation* buffer (shaft + 3 axes) — kept
+ * separate from `EDGES_PER_BOX` because edges and orientation markers now
+ * live in two different `LineSegmentsGeometry`/`LineMaterial` pairs (see
+ * `CuboidInstances`): edges need normal depth testing (they sit exactly on
+ * the box surface and rely on a render-order tie-break), while orientation
+ * markers need `depthTest: false` (their lines run from the box's *center*
+ * outward — since `ORIENTATION_AXES_LENGTH_RATIO < 1`, they never reach the
+ * surface, so normal depth testing would bury them inside the opaque body).
+ */
+export function orientationSegmentsPerBoxFor(showOrientation: boolean): number {
+  return showOrientation ? SHAFT_SEGMENTS_PER_BOX + AXES_SEGMENTS_PER_BOX : 0;
 }
 
 export const setSegmentColor = (

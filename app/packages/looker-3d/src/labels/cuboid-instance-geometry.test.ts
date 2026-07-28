@@ -6,8 +6,8 @@ import {
   computeBodyMatrix,
   computeBoxEdgePositions,
   EDGES_PER_BOX,
+  orientationSegmentsPerBoxFor,
   resolveCuboidGeometry,
-  segmentsPerBoxFor,
 } from "./cuboid-instance-geometry";
 
 function createLabel(
@@ -186,12 +186,12 @@ describe("computeArrowheadMatrix", () => {
   });
 });
 
-describe("segmentsPerBoxFor", () => {
-  it("is just the 12 outline edges when orientation markers are off", () => {
-    expect(segmentsPerBoxFor(false)).toBe(12);
+describe("orientationSegmentsPerBoxFor", () => {
+  it("is 0 when orientation markers are off", () => {
+    expect(orientationSegmentsPerBoxFor(false)).toBe(0);
   });
 
-  it("adds the shaft + 3 axes segments when orientation markers are on", () => {
-    expect(segmentsPerBoxFor(true)).toBe(12 + 1 + 3);
+  it("is the shaft + 3 axes segments when orientation markers are on", () => {
+    expect(orientationSegmentsPerBoxFor(true)).toBe(1 + 3);
   });
 });
