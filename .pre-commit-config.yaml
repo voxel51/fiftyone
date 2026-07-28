@@ -8,6 +8,12 @@ repos:
           uv run --locked --no-sync ruff check
           --config pyproject.toml
         types_or: [python, pyi]
+      - id: ty-check
+        name: ty check
+        language: system
+        entry: uv run --locked --no-sync ty check
+        pass_filenames: false
+        types_or: [python, pyi]
   - repo: local
     hooks:
       - id: pylint

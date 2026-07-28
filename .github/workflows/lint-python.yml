@@ -34,6 +34,9 @@ jobs:
           uv sync --locked --no-default-groups
           --group lint --group type
 
+      - name: Validate pre-commit configuration
+        run: uv run --locked --no-sync pre-commit validate-config
+
       - name: Check Python correctness
         run: >-
           uv run --locked --no-sync ruff check
