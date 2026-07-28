@@ -383,7 +383,12 @@ const ViewBar: React.FC = () => {
 
   const apply = useCallback(() => {
     if (paramErrors.labels.length) return;
-    setView(serializeWorking());
+    const serialized = serializeWorking();
+    setView(serialized);
+    // Rebuild the bar from exactly what was sent, so an applied expression
+    // reopens printed from its envelope — `F("x")` as typed becomes the
+    // canonical `F('x')` — without waiting on any echo from the server
+    dispatch({ type: "hydrate", stages: workingStagesFromView(serialized) });
   }, [paramErrors, serializeWorking, setView]);
 
   /**
