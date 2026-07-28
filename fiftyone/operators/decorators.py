@@ -14,7 +14,6 @@ import signal
 import os
 
 import fiftyone as fo
-from fiftyone.plugins.core import _iter_plugin_metadata_files
 
 
 def coroutine_timeout(seconds):
@@ -84,6 +83,10 @@ def plugins_cache(func):
 
 
 def dir_state(dirpath):
+    # Import lazily so importing `fiftyone.operators` does not initialize the
+    # plugins package while its operator decorators are still loading
+    from fiftyone.plugins.core import _iter_plugin_metadata_files
+
     try:
         state = hash(os.path.getmtime(dirpath))
     except Exception:
