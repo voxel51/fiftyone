@@ -218,6 +218,12 @@ export namespace State {
     _cls: string;
     kwargs: [string, unknown][];
     _uuid?: string;
+    /**
+     * The syntax an expression parameter was written in, keyed by parameter
+     * name. `kwargs` carries the lowered MongoDB the pipeline runs, which
+     * cannot be turned back into `F(...)`; this is what can.
+     */
+    _expr_asts?: Record<string, unknown>;
   }
 
   export interface SelectedLabelData {

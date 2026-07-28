@@ -21,6 +21,7 @@ import numpy as np
 
 import eta.core.utils as etau
 
+import fiftyone.core.expression_ast as foea
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
@@ -33,7 +34,12 @@ from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
-from fiftyone.core.fields import EmbeddedDocumentField, ListField
+from fiftyone.core.fields import (
+    EmbeddedDocumentField,
+    FloatField,
+    FrameSupportField,
+    ListField,
+)
 
 fob = fou.lazy_import("fiftyone.brain")
 focl = fou.lazy_import("fiftyone.core.clips")
@@ -339,6 +345,10 @@ class ViewStage(object):
             "kwargs": self._kwargs(),
         }
 
+        expr_asts = _encode_expressions(self._expressions())
+        if expr_asts:
+            d["_expr_asts"] = expr_asts
+
         if include_uuid:
             if self._uuid is None:
                 self._uuid = str(uuid.uuid4())
@@ -356,10 +366,43 @@ class ViewStage(object):
         """
         raise NotImplementedError("subclasses must implement `_kwargs()`")
 
+    def _expressions(self):
+        """Returns the parameters of this stage instance whose values may be
+        view expressions.
+
+        :meth:`_kwargs` lowers such parameters to MongoDB, which cannot be
+        decompiled; this reports the values the caller actually provided so that
+        :meth:`_serialize` can record how they were built.
+
+        Returns:
+            a dict mapping parameter name to the value provided for it, which
+            need not be a
+            :class:`fiftyone.core.expressions.ViewExpression`
+        """
+        return {}
+
+    @classmethod
+    def _media_types(cls):
+        """Returns the media types this stage applies to, or None if it
+        applies to any.
+
+        A stage that only makes sense for some collections — the group stages,
+        the video ones — says so here, so a caller offering stages to a user
+        can leave out the ones that would only fail.
+
+        Returns:
+            a tuple of media types, or None
+        """
+        return None
+
     @classmethod
     def _params(cls):
         """Returns a list of JSON dicts describing the stage's supported
         parameters.
+
+        A parameter whose valid values cannot be derived from its ``type`` may
+        declare them under a ``choices`` key; see :func:`_field_choices`,
+        :func:`_constant_choices` and :func:`_group_slice_choices`.
 
         Returns:
             a list of JSON dicts
@@ -378,7 +421,23 @@ class ViewStage(object):
             a :class:`ViewStage`
         """
         view_stage_cls = etau.get_class(d["_cls"])
-        stage = view_stage_cls(**dict(d["kwargs"]))
+        kwargs = {
+            name: _decode_expressions(value)
+            for name, value in dict(d["kwargs"]).items()
+        }
+
+        for name, envelope in (d.get("_expr_asts") or {}).items():
+            if name not in kwargs:
+                continue
+
+            try:
+                kwargs[name] = foea.from_envelope(envelope)
+            except ValueError:
+                # A tree this build doesn't understand; the lowered MongoDB
+                # already in `kwargs` remains correct
+                pass
+
+        stage = view_stage_cls(**kwargs)
         stage._uuid = d.get("_uuid", None)
         return stage
 
@@ -387,6 +446,133 @@ class ViewStageError(Exception):
     """An error raised when a problem with a :class:`ViewStage` is encountered."""
 
     pass
+
+
+def _encode_expressions(expressions):
+    """Records how a stage's expression-valued parameters were built.
+
+    The envelopes are serialized alongside the lowered MongoDB rather than in
+    place of it, and only for expressions that can be reconstructed, so a stage
+    whose parameters carry no syntax to record serializes exactly as it did
+    before this existed.
+
+    Args:
+        expressions: a dict mapping parameter name to the value provided for it,
+            as returned by :meth:`ViewStage._expressions`
+
+    Returns:
+        a dict mapping parameter name to envelope, possibly empty
+    """
+    envelopes = {}
+    for name, value in expressions.items():
+        if isinstance(value, foe.ViewExpression) and foea.is_reconstructible(
+            value
+        ):
+            envelopes[name] = foea.to_envelope(value)
+
+    return envelopes
+
+
+def _decode_expressions(value):
+    """Reconstructs any view expression envelopes in a serialized stage
+    parameter.
+
+    A parameter may hold a raw MongoDB expression instead, which is what stages
+    serialize today; those are returned unchanged, as is anything else.
+    """
+    if foea.is_envelope(value):
+        return foea.from_envelope(value)
+
+    if isinstance(value, dict):
+        return {k: _decode_expressions(v) for k, v in value.items()}
+
+    if isinstance(value, list):
+        return [_decode_expressions(v) for v in value]
+
+    return value
+
+
+# The schema a field constraint draws from
+_ANY_LEVEL = "any"
+_SAMPLE_LEVEL = "sample"
+_FRAME_LEVEL = "frame"
+
+# Whether a field constraint accepts a name that does not exist yet
+_EXISTING = "existing"
+_EXISTING_ROOT = "existing_root"
+_ANY_NAME = "any"
+
+
+def _type_paths(types):
+    return sorted("%s.%s" % (t.__module__, t.__name__) for t in types)
+
+
+def _concrete_label_types():
+    """The label classes a label field can hold, walked from
+    :class:`fiftyone.core.labels.Label` so label types registered after this
+    module is imported are included.
+    """
+    types = []
+    seen = set()
+    todo = [fol.Label]
+    while todo:
+        for label_type in todo.pop().__subclasses__():
+            if label_type in seen:
+                continue
+
+            seen.add(label_type)
+            if not label_type.__name__.startswith("_"):
+                types.append(label_type)
+
+            todo.append(label_type)
+
+    return types
+
+
+def _label_list_types():
+    """The label classes that hold a list of labels."""
+    return [
+        label_type
+        for label_type in _concrete_label_types()
+        if issubclass(label_type, fol._HasLabelList)
+    ]
+
+
+def _label_field(*label_types, level=_ANY_LEVEL, existence=_EXISTING):
+    """A field constraint accepting a label field holding any of the given
+    label classes, or any label class if none are given.
+    """
+    return {
+        "level": level,
+        "existence": existence,
+        "ftypes": [],
+        "label_types": _type_paths(label_types or _concrete_label_types()),
+    }
+
+
+def _typed_field(*ftypes, level=_ANY_LEVEL, existence=_EXISTING):
+    """A field constraint accepting a field of any of the given field types."""
+    return {
+        "level": level,
+        "existence": existence,
+        "ftypes": _type_paths(ftypes),
+        "label_types": [],
+    }
+
+
+def _field_choices(*fields):
+    """A parameter satisfied by a field matching any of the given constraints,
+    or by any field at all if none are given.
+    """
+    return {"source": "fields", "fields": list(fields) or [_typed_field()]}
+
+
+def _constant_choices(values):
+    return {"source": "constants", "values": sorted(values)}
+
+
+def _group_slice_choices():
+    return {"source": "group_slices"}
 
 
 class Concat(ViewStage):
@@ -1205,6 +1391,10 @@ class ExcludeFrames(ViewStage):
         ]
 
     @classmethod
+    def _media_types(cls):
+        return (fom.VIDEO,)
+
+    @classmethod
     def _params(cls):
         return [
             {
@@ -1281,6 +1471,10 @@ class ExcludeGroups(ViewStage):
 
     def _kwargs(self):
         return [["group_ids", self._group_ids]]
+
+    @classmethod
+    def _media_types(cls):
+        return (fom.GROUP,)
 
     @classmethod
     def _params(cls):
@@ -1571,6 +1765,7 @@ class ExcludeLabels(ViewStage):
                 "type": "NoneType|list<field>|field|list<str>|str",
                 "placeholder": "fields",
                 "default": "None",
+                "choices": _field_choices(_label_field()),
             },
             {
                 "name": "omit_empty",
@@ -1966,6 +2161,9 @@ class FilterField(ViewStage):
             ["filter", self._get_mongo_filter()],
             ["only_matches", self._only_matches],
         ]
+
+    def _expressions(self):
+        return {"filter": self._filter}
 
     @classmethod
     def _params(cls):
@@ -2560,10 +2758,17 @@ class FilterLabels(ViewStage):
             ["trajectories", self._trajectories],
         ]
 
+    def _expressions(self):
+        return {"filter": self._filter}
+
     @classmethod
     def _params(cls):
         return [
-            {"name": "field", "type": "field|str"},
+            {
+                "name": "field",
+                "type": "field|str",
+                "choices": _field_choices(_label_field()),
+            },
             {"name": "filter", "type": "json", "placeholder": ""},
             {
                 "name": "only_matches",
@@ -3010,6 +3215,11 @@ class FilterKeypoints(ViewStage):
             ["only_matches", self._only_matches],
         ]
 
+    def _expressions(self):
+        # `_validate_params()` lowers `filter` into `_filter_dict`, which is what
+        # `to_mongo()` consumes; the expression itself is retained unmodified
+        return {"filter": self._filter}
+
     def _validate_params(self):
         if self._filter is None:
             return
@@ -3035,7 +3245,13 @@ class FilterKeypoints(ViewStage):
     @classmethod
     def _params(cls):
         return [
-            {"name": "field", "type": "field|str"},
+            {
+                "name": "field",
+                "type": "field|str",
+                "choices": _field_choices(
+                    _label_field(fol.Keypoint, fol.Keypoints)
+                ),
+            },
             {
                 "name": "filter",
                 "type": "NoneType|json",
@@ -3304,6 +3520,9 @@ class GeoNear(_GeoStage):
                 "type": "NoneType|field|str",
                 "placeholder": "",
                 "default": "None",
+                "choices": _field_choices(
+                    _label_field(fol.GeoLocation, level=_SAMPLE_LEVEL)
+                ),
             },
             {
                 "name": "min_distance",
@@ -3434,6 +3653,9 @@ class GeoWithin(_GeoStage):
                 "type": "NoneType|field|str",
                 "placeholder": "",
                 "default": "None",
+                "choices": _field_choices(
+                    _label_field(fol.GeoLocation, level=_SAMPLE_LEVEL)
+                ),
             },
             {
                 "name": "strict",
@@ -3769,6 +3991,13 @@ class GroupBy(ViewStage):
             ["create_index", self._create_index],
             ["order_by_key", self._order_by_key],
         ]
+
+    def _expressions(self):
+        return {
+            "field_or_expr": self._field_or_expr,
+            "match_expr": self._match_expr,
+            "sort_expr": self._sort_expr,
+        }
 
     @classmethod
     def _params(cls):
@@ -4181,7 +4410,11 @@ class LimitLabels(ViewStage):
     @classmethod
     def _params(cls):
         return [
-            {"name": "field", "type": "field"},
+            {
+                "name": "field",
+                "type": "field",
+                "choices": _field_choices(_label_field(*_label_list_types())),
+            },
             {"name": "limit", "type": "int", "placeholder": "int"},
         ]
 
@@ -4339,7 +4572,11 @@ class MapLabels(ViewStage):
     @classmethod
     def _params(cls):
         return [
-            {"name": "field", "type": "field"},
+            {
+                "name": "field",
+                "type": "field",
+                "choices": _field_choices(_label_field()),
+            },
             {"name": "map", "type": "dict", "placeholder": "map"},
         ]
 
@@ -4653,10 +4890,21 @@ class SetField(ViewStage):
             ["_allow_missing", self._allow_missing],
         ]
 
+    def _expressions(self):
+        return {"expr": self._expr}
+
     @classmethod
     def _params(cls):
         return [
-            {"name": "field", "type": "field|str"},
+            {
+                "name": "field",
+                "type": "field|str",
+                # a new embedded field may be set, but its root field must
+                # already exist, else the dataset's schema would be violated
+                "choices": _field_choices(
+                    _typed_field(existence=_EXISTING_ROOT)
+                ),
+            },
             {"name": "expr", "type": "json", "placeholder": ""},
             {"name": "_allow_missing", "type": "bool", "default": "False"},
         ]
@@ -4828,6 +5076,9 @@ class Match(ViewStage):
 
     def _kwargs(self):
         return [["filter", self._get_mongo_expr()]]
+
+    def _expressions(self):
+        return {"filter": self._filter}
 
     def _validate_params(self):
         if not isinstance(self._filter, (foe.ViewExpression, dict, bool)):
@@ -5160,6 +5411,10 @@ class SelectGroupSlices(ViewStage):
         ]
 
     @classmethod
+    def _media_types(cls):
+        return (fom.GROUP,)
+
+    @classmethod
     def _params(cls):
         return [
             {
@@ -5167,12 +5422,14 @@ class SelectGroupSlices(ViewStage):
                 "type": "NoneType|list<str>|str",
                 "placeholder": "slices (default=None)",
                 "default": "None",
+                "choices": _group_slice_choices(),
             },
             {
                 "name": "media_type",
                 "type": "NoneType|list<str>|str",
                 "placeholder": "media_type (default=None)",
                 "default": "None",
+                "choices": _constant_choices(fom.MEDIA_TYPES),
             },
             {
                 "name": "flat",
@@ -5328,6 +5585,10 @@ class ExcludeGroupSlices(ViewStage):
         ]
 
     @classmethod
+    def _media_types(cls):
+        return (fom.GROUP,)
+
+    @classmethod
     def _params(cls):
         return [
             {
@@ -5335,12 +5596,14 @@ class ExcludeGroupSlices(ViewStage):
                 "type": "NoneType|list<str>|str",
                 "placeholder": "slices (default=None)",
                 "default": "None",
+                "choices": _group_slice_choices(),
             },
             {
                 "name": "media_type",
                 "type": "NoneType|list<str>|str",
                 "placeholder": "media_type (default=None)",
                 "default": "None",
+                "choices": _constant_choices(fom.MEDIA_TYPES),
             },
         ]
 
@@ -5425,6 +5688,13 @@ class MatchFrames(ViewStage):
             ["filter", self._get_mongo_expr()],
             ["omit_empty", self._omit_empty],
         ]
+
+    def _expressions(self):
+        return {"filter": self._filter}
+
+    @classmethod
+    def _media_types(cls):
+        return (fom.VIDEO,)
 
     @classmethod
     def _params(cls):
@@ -5690,6 +5960,9 @@ class MatchLabels(ViewStage):
             ["bool", self._bool],
         ]
 
+    def _expressions(self):
+        return {"filter": self._filter}
+
     @classmethod
     def _params(cls):
         return [
@@ -5728,6 +6001,7 @@ class MatchLabels(ViewStage):
                 "type": "NoneType|list<field>|field|list<str>|str",
                 "placeholder": "fields",
                 "default": "None",
+                "choices": _field_choices(_label_field()),
             },
             {
                 "name": "bool",
@@ -6803,6 +7077,10 @@ class SelectFrames(ViewStage):
         ]
 
     @classmethod
+    def _media_types(cls):
+        return (fom.VIDEO,)
+
+    @classmethod
     def _params(cls):
         return [
             {
@@ -6909,6 +7187,10 @@ class SelectGroups(ViewStage):
 
     def _kwargs(self):
         return [["group_ids", self._group_ids], ["ordered", self._ordered]]
+
+    @classmethod
+    def _media_types(cls):
+        return (fom.GROUP,)
 
     @classmethod
     def _params(cls):
@@ -7199,6 +7481,7 @@ class SelectLabels(ViewStage):
                 "type": "NoneType|list<field>|field|list<str>|str",
                 "placeholder": "fields",
                 "default": "None",
+                "choices": _field_choices(_label_field()),
             },
             {
                 "name": "omit_empty",
@@ -7664,6 +7947,9 @@ class SortBy(ViewStage):
             ["create_index", self._create_index],
         ]
 
+    def _expressions(self):
+        return {"field_or_expr": self._field_or_expr}
+
     @classmethod
     def _params(cls):
         return [
@@ -7896,6 +8182,11 @@ class SortBySimilarity(ViewStage):
                 "type": "NoneType|field|str",
                 "default": "None",
                 "placeholder": "dist_field (default=None)",
+                # the stage writes the distances here, so the field need not
+                # exist yet
+                "choices": _field_choices(
+                    _typed_field(FloatField, existence=_ANY_NAME)
+                ),
             },
             {
                 "name": "brain_key",
@@ -8229,7 +8520,19 @@ class ToPatches(ViewStage):
     @classmethod
     def _params(self):
         return [
-            {"name": "field", "type": "field", "placeholder": "label field"},
+            {
+                "name": "field",
+                "type": "field",
+                "placeholder": "label field",
+                "choices": _field_choices(
+                    _label_field(
+                        fol.Detections,
+                        fol.Keypoints,
+                        fol.Polylines,
+                        level=_SAMPLE_LEVEL,
+                    )
+                ),
+            },
             {
                 "name": "config",
                 "type": "NoneType|json",
@@ -8577,6 +8880,13 @@ class ToClips(ViewStage):
             ["_state", self._state],
         ]
 
+    def _expressions(self):
+        return {"field_or_expr": self._field_or_expr}
+
+    @classmethod
+    def _media_types(cls):
+        return (fom.VIDEO,)
+
     @classmethod
     def _params(self):
         return [
@@ -8584,6 +8894,15 @@ class ToClips(ViewStage):
                 "name": "field_or_expr",
                 "type": "field|str|json",
                 "placeholder": "field or expression",
+                "choices": _field_choices(
+                    _label_field(
+                        fol.TemporalDetection,
+                        fol.TemporalDetections,
+                        level=_SAMPLE_LEVEL,
+                    ),
+                    _typed_field(FrameSupportField, level=_SAMPLE_LEVEL),
+                    _label_field(*_label_list_types(), level=_FRAME_LEVEL),
+                ),
             },
             {
                 "name": "config",
@@ -8729,12 +9048,24 @@ class ToTrajectories(ViewStage):
         ]
 
     @classmethod
+    def _media_types(cls):
+        return (fom.VIDEO,)
+
+    @classmethod
     def _params(self):
         return [
             {
                 "name": "field",
                 "type": "field",
                 "placeholder": "field",
+                "choices": _field_choices(
+                    _label_field(
+                        fol.Detections,
+                        fol.Keypoints,
+                        fol.Polylines,
+                        level=_FRAME_LEVEL,
+                    )
+                ),
             },
             {
                 "name": "config",
@@ -8936,6 +9267,10 @@ class ToFrames(ViewStage):
             ["config", self._config],
             ["_state", self._state],
         ]
+
+    @classmethod
+    def _media_types(cls):
+        return (fom.VIDEO,)
 
     @classmethod
     def _params(self):
