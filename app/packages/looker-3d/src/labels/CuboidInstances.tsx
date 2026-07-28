@@ -242,6 +242,7 @@ export const CuboidInstances = ({
   onClick,
 }: CuboidInstancesProps) => {
   const { upVector } = useFo3dContext();
+  const hoveredLabel = useRecoilValue(hoveredLabelAtom);
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
 
   const bodyMeshRef = useRef<THREE.InstancedMesh>(null);
@@ -523,26 +524,15 @@ export const CuboidInstances = ({
 
   const handlePointerOver = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
-      // eslint-disable-next-line no-console
-      console.log("[CuboidInstances DEBUG] pointerOver", {
-        instanceId: e.instanceId,
-        buttons: e.nativeEvent.buttons,
-        hoverSource,
-        labelsByIndexLength: labelsByIndex.length,
-      });
       if (hoverSource === PANEL_ID_MAIN && e.nativeEvent.buttons !== 0) return;
       const label = resolveLabel(e.instanceId);
-      if (!label) {
-        // eslint-disable-next-line no-console
-        console.log("[CuboidInstances DEBUG] pointerOver: no label resolved");
-        return;
-      }
+      if (!label) return;
 
       hoveredIndexRef.current = e.instanceId ?? null;
       setHoveredLabel({ id: label._id, source: hoverSource });
       onPointerOverForLabel(label, e);
     },
-    [resolveLabel, hoverSource, setHoveredLabel, onPointerOverForLabel, labelsByIndex],
+    [resolveLabel, hoverSource, setHoveredLabel, onPointerOverForLabel],
   );
 
   const handlePointerOut = useCallback(() => {
@@ -576,21 +566,12 @@ export const CuboidInstances = ({
 
   const handleClick = useCallback(
     (e: ThreeEvent<MouseEvent>) => {
-      // eslint-disable-next-line no-console
-      console.log("[CuboidInstances DEBUG] click", {
-        instanceId: e.instanceId,
-        isClick: isClick(),
-      });
       if (!isClick()) {
         e.stopPropagation();
         return;
       }
       const label = resolveLabel(e.instanceId);
-      if (!label) {
-        // eslint-disable-next-line no-console
-        console.log("[CuboidInstances DEBUG] click: no label resolved");
-        return;
-      }
+      if (!label) return;
       onClick(label, e);
     },
     [isClick, resolveLabel, onClick],
@@ -600,11 +581,20 @@ export const CuboidInstances = ({
     return null;
   }
 
+  // At most one instanced label is ever hovered at a time, so the hover
+  // wireframe (matching the standalone Cuboid's `shouldShowWireframe`
+  // overlay) doesn't need instancing — just one conditionally-mounted mesh
+  // for whichever label currently matches `hoveredLabelAtom`.
+  const hoveredBatchLabel = hoveredLabel
+    ? (labelsByIndex.find((label) => label._id === hoveredLabel.id) ?? null)
+    : null;
+
   return (
     <>
       <instancedMesh
         ref={bodyMeshRef}
         args={[UNIT_BOX_GEOMETRY, bodyMaterial, count]}
+        renderOrder={0}
         onPointerDown={onPointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={onPointerUp}
@@ -617,6 +607,14 @@ export const CuboidInstances = ({
         <lineSegments2
           geometry={outlineGeometry}
           material={outlineMaterial}
+          // Both this and the body mesh sit at the same local origin (all
+          // real per-box placement lives in instance matrices / the merged
+          // buffer, not the object's own transform), so three.js's
+          // transparency depth-sort sees them as equidistant and falls back
+          // to unreliable tie-breaking. Force a deterministic order instead:
+          // draw the outline after the body so it always wins the depth
+          // test at their coincident surface and stays visible.
+          renderOrder={1}
           raycast={() => null}
         />
       )}
@@ -641,7 +639,68 @@ export const CuboidInstances = ({
             showOrientation={showOrientation}
           />
         ))}
+      {hoveredBatchLabel && (
+        <CuboidHoverWireframe
+          label={hoveredBatchLabel}
+          baseColor={getColor(hoveredBatchLabel)}
+          useLegacyCoordinates={useLegacyCoordinates}
+          overlayRotationFallback={overlayRotationFallback}
+        />
+      )}
     </>
+  );
+};
+
+interface CuboidHoverWireframeProps {
+  label: ReconciledDetection3D;
+  baseColor: string;
+  useLegacyCoordinates: boolean;
+  overlayRotationFallback: THREE.Vector3Tuple;
+}
+
+/**
+ * Mirrors the standalone `Cuboid`'s `shouldShowWireframe` overlay — a plain
+ * `BoxGeometry` rendered `wireframe`, whose default 2-triangle-per-face
+ * triangulation is what produces the diagonal line across each face. Only
+ * ever mounted for the single (if any) hovered label in this batch.
+ */
+const CuboidHoverWireframe = ({
+  label,
+  baseColor,
+  useLegacyCoordinates,
+  overlayRotationFallback,
+}: CuboidHoverWireframeProps) => {
+  const isSimilarLabelHovered = useSimilarLabels3d(label);
+  const selected = Boolean((label as { selected?: boolean }).selected);
+
+  const strokeAndFillColor = use3dLabelColor({
+    isSelected: selected,
+    isHovered: true,
+    isSimilarLabelHovered,
+    defaultColor: baseColor,
+    isSelectedForAnnotation: false,
+  });
+  const complementaryColor = useMemo(
+    () => getComplementaryColor(strokeAndFillColor),
+    [strokeAndFillColor],
+  );
+
+  const geometry = useMemo(
+    () =>
+      resolveCuboidGeometry(label, useLegacyCoordinates, overlayRotationFallback),
+    [label, useLegacyCoordinates, overlayRotationFallback],
+  );
+
+  return (
+    <mesh
+      position={geometry.position}
+      quaternion={geometry.quaternion}
+      renderOrder={2}
+      raycast={() => null}
+    >
+      <boxGeometry args={geometry.dimensions} />
+      <meshBasicMaterial wireframe color={complementaryColor} />
+    </mesh>
   );
 };
 
