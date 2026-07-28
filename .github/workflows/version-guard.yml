@@ -1,7 +1,7 @@
 name: Version Guard
 
 # Fails a PR that changes the package VERSION outside the release flow. This is
-# the deterministic replacement for routing setup.py through a human reviewer:
+# the deterministic replacement for routing VERSION through a human reviewer:
 # the version number is owned by the release process, not ad-hoc PRs.
 
 on:
@@ -26,18 +26,15 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          parse() { sed -E 's/^VERSION = ["'\'']([^"'\'']+)["'\''].*/\1/'; }
-
-          # Only setup.py is guarded. package/db/setup.py (fiftyone-db) is versioned
-          # independently of the release, so it isn't guarded here.
-          changed=$(git diff "$BASE_SHA...$HEAD_SHA" -- setup.py \
-            | grep -E '^[+-]VERSION = ' || true)
+          # Only the root VERSION file is guarded. package/db/setup.py
+          # (fiftyone-db) is versioned independently of the release.
+          changed=$(git diff "$BASE_SHA...$HEAD_SHA" -- VERSION || true)
           if [ -z "$changed" ]; then
-            echo "No VERSION change in setup.py. OK."
+            echo "No root VERSION change. OK."
             exit 0
           fi
 
-          got=$(grep -E '^VERSION = ' setup.py | head -1 | parse)
+          got=$(tr -d '\r\n' < VERSION)
 
           # On a release branch the VERSION must MATCH the branch name:
           # release/v<X> -> <X>, exactly.
@@ -47,7 +44,7 @@ jobs:
               echo "VERSION $got matches release branch release/v$want. OK."
               exit 0
             fi
-            echo "::error::setup.py VERSION ($got) does not match release branch release/v$want."
+            echo "::error::VERSION ($got) does not match release branch release/v$want."
             echo "On a release branch the package version must match the branch name."
             exit 1
           fi
@@ -59,7 +56,7 @@ jobs:
             exit 0
           fi
 
-          echo "::error::This PR changes setup.py VERSION ($got) outside the release flow:"
+          echo "::error::This PR changes VERSION ($got) outside the release flow:"
           echo "$changed"
           echo "Bump it on a release/v* branch (where it must match the branch name), or add"
           echo "the 'version-bump' label if this is intentional."
