@@ -12,8 +12,8 @@ python: app
 	@uv build --clear --sdist
 	@test "$$(find dist -maxdepth 1 -type f -name 'fiftyone-*.tar.gz' | wc -l | tr -d ' ')" -eq 1
 	@uv build --wheel dist/fiftyone-*.tar.gz
-	@uv run --locked --no-sync twine check --strict dist/*
-	@uv run --locked --no-sync check-wheel-contents dist/*.whl
+	@uv run --locked --only-group build twine check --strict dist/*
+	@uv run --locked --only-group build check-wheel-contents dist/*.whl
 
 docker: python
 	@docker build -t local/fiftyone .

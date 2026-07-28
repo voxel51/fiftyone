@@ -42,7 +42,16 @@ def _validate_wheel(wheel_path, expected_version):
         names = archive.namelist()
 
         metadata_name = next(
-            name for name in names if name.endswith(".dist-info/METADATA")
+            (
+                name
+                for name in names
+                if name.endswith(".dist-info/METADATA")
+            ),
+            None,
+        )
+        _require(
+            metadata_name is not None,
+            "wheel is missing dist-info METADATA",
         )
         package_metadata = email.message_from_bytes(
             archive.read(metadata_name)
@@ -57,16 +66,25 @@ def _validate_wheel(wheel_path, expected_version):
         )
 
         entry_points_name = next(
-            name
-            for name in names
-            if name.endswith(".dist-info/entry_points.txt")
+            (
+                name
+                for name in names
+                if name.endswith(".dist-info/entry_points.txt")
+            ),
+            None,
+        )
+        _require(
+            entry_points_name is not None,
+            "wheel is missing dist-info entry_points.txt",
         )
         entry_points = configparser.ConfigParser()
         entry_points.read_string(
             archive.read(entry_points_name).decode("utf-8")
         )
         _require(
-            entry_points["console_scripts"][CONSOLE_SCRIPT] == CONSOLE_TARGET,
+            entry_points.has_option("console_scripts", CONSOLE_SCRIPT)
+            and entry_points["console_scripts"][CONSOLE_SCRIPT]
+            == CONSOLE_TARGET,
             "fiftyone console script is missing or has the wrong target",
         )
 

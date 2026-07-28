@@ -85,7 +85,7 @@ jobs:
         python: ${{ fromJSON(inputs.python-versions || '["3.10", "3.11", "3.12", "3.13"]') }}
         profile:
           - core
-          - full
+          - ml-cloud
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -121,5 +121,5 @@ jobs:
           tags: |
             ${{ env.TEST_IMAGE_NAME }}:${{ matrix.python }}-${{ matrix.profile }}
             ${{ env.TEST_IMAGE_NAME }}:${{ matrix.python }}-${{ matrix.profile }}-${{ github.sha }}
-            ${{ matrix.profile == 'full' && format('{0}:{1}', env.TEST_IMAGE_NAME, matrix.python) || '' }}
-            ${{ matrix.profile == 'full' && format('{0}:{1}-{2}', env.TEST_IMAGE_NAME, matrix.python, github.sha) || '' }}
+            ${{ matrix.profile == 'ml-cloud' && format('{0}:{1}', env.TEST_IMAGE_NAME, matrix.python) || '' }}
+            ${{ matrix.profile == 'ml-cloud' && format('{0}:{1}-{2}', env.TEST_IMAGE_NAME, matrix.python, github.sha) || '' }}

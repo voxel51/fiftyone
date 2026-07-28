@@ -148,7 +148,8 @@ jobs:
         wait: sync-docs-environment
       - name: Install system dependencies and source ETA
         run: |
-          sudo apt-get install pandoc
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pandoc
           uv pip install --python "$VIRTUAL_ENV/bin/python" --no-deps eta/dist/*.whl
       - name: Build docs
         # PR builds skip the markdown mirror pass; it is only needed for

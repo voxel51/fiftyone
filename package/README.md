@@ -72,8 +72,10 @@ version - no extra steps are necessary.
 This package can be built from within the `package/db` directory. The wheel for
 this package is platform-specific but will work with any supported Python
 version. Windows wheels target x86-64, matching the MongoDB binaries available
-for the bundled version. To target a platform other than your current one, add
-`--plat-name mac` or `--plat-name linux` to the `bdist_wheel` command.
+for the bundled version. To target a platform other than your current one, set
+`FODB_SYSTEM` and `FODB_MACHINE` before building. For example,
+`FODB_SYSTEM=Darwin FODB_MACHINE=arm64 python -m build` produces a macOS arm64
+wheel.
 
 Platforms without a mapped upstream MongoDB archive can still install the
 package for use with an external `FIFTYONE_DATABASE_URI`; those builds do not

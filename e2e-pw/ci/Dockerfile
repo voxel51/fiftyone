@@ -29,11 +29,12 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.32@sha256:df4cae8f3a96d175e2e5f992e5975500
 
 # Bake the locked dependency tree without the project itself. The shard job
 # syncs the PR checkout into the same stable environment.
-COPY . /tmp/fiftyone-src
-RUN cd /tmp/fiftyone-src \
-    && uv sync --locked --no-default-groups --no-install-project \
+COPY pyproject.toml uv.lock VERSION /tmp/fiftyone-src/
+WORKDIR /tmp/fiftyone-src
+RUN uv sync --locked --no-default-groups --no-install-project \
         --extra multimodal --group e2e \
-    && rm -rf /tmp/fiftyone-src
+    && rm -rf /root/.cache/uv
+WORKDIR /
 
 # Bake the Chromium build matching e2e-pw's Playwright lockfile.
 COPY e2e-pw/package.json e2e-pw/yarn.lock e2e-pw/.yarnrc.yml /tmp/e2e-pw/

@@ -79,12 +79,15 @@ fi
 
 echo "Python $PY_VER is supported."
 
-# Ensure pip targets this Python interpreter
-if command -v uv >/dev/null 2>&1; then
-    PIP="uv pip"
-else
-    PIP="$PYTHON -m pip"
-fi
+# Ensure package installs target an explicit Python interpreter
+PIP_PYTHON=$PYTHON
+pip_install() {
+    if command -v uv >/dev/null 2>&1; then
+        uv pip install --python "$PIP_PYTHON" "$@"
+    else
+        "$PIP_PYTHON" -m pip install "$@"
+    fi
+}
 
 if { [ "$DEV_INSTALL" = true ] || [ "$DOCS_INSTALL" = true ]; } \
     && ! command -v uv >/dev/null 2>&1; then
@@ -134,11 +137,13 @@ if [ "$DEV_INSTALL" = true ]; then
     uv sync --locked --python "$PYTHON" --no-install-project
     VIRTUAL_ENV="$(pwd)/.venv"
     export VIRTUAL_ENV
+    PIP_PYTHON="$VIRTUAL_ENV/bin/python"
 elif [ "$DOCS_INSTALL" = true ]; then
     uv sync --locked --python "$PYTHON" --no-default-groups --group docs \
         --no-install-project
     VIRTUAL_ENV="$(pwd)/.venv"
     export VIRTUAL_ENV
+    PIP_PYTHON="$VIRTUAL_ENV/bin/python"
 fi
 
 if [ "$SCRATCH_MONGODB_INSTALL" = true ]; then
@@ -184,7 +189,7 @@ else
     if [ "$DEV_INSTALL" = true ] || [ "$DOCS_INSTALL" = true ]; then
         echo "Using fiftyone-db from the locked environment"
     else
-        $PIP install fiftyone-db
+        pip_install fiftyone-db
     fi
 fi
 
@@ -204,14 +209,14 @@ if [ "$SOURCE_BRAIN_INSTALL" = true ]; then
         sh install.sh -d
     else
         echo "Performing install"
-        $PIP install .
+        pip_install .
     fi
     cd -
 else
     if [ "$DEV_INSTALL" = true ] || [ "$DOCS_INSTALL" = true ]; then
         echo "Using fiftyone-brain from the locked environment"
     else
-        $PIP install --upgrade fiftyone-brain
+        pip_install --upgrade fiftyone-brain
     fi
 fi
 
@@ -225,7 +230,7 @@ elif [ "$DOCS_INSTALL" = true ]; then
     uv sync --locked --python "$PYTHON" --no-default-groups --group docs
 else
     echo "Performing install"
-    $PIP install .
+    pip_install .
 fi
 
 if [ "$SOURCE_ETA_INSTALL" = true ]; then
@@ -241,10 +246,10 @@ if [ "$SOURCE_ETA_INSTALL" = true ]; then
     fi
     if [ "$DEV_INSTALL" = true ]; then
         echo "Performing dev install"
-        $PIP install -e .
+        pip_install -e .
     else
         echo "Performing install"
-        $PIP install .
+        pip_install .
     fi
     if [ ! -f eta/config.json ]; then
         echo "Installing default ETA config"

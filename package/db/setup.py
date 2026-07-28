@@ -13,11 +13,11 @@ import pathlib
 import platform
 import shutil
 import tarfile
-from urllib.request import urlopen
 import warnings
 import zipfile
 
 from setuptools import setup
+from urllib.request import urlopen
 from wheel.bdist_wheel import bdist_wheel
 
 DARWIN = "Darwin"
@@ -212,8 +212,8 @@ class CustomBdistWheel(bdist_wheel):
     def finalize_options(self):
         bdist_wheel.finalize_options(self)
         self.root_is_pure = False
-        is_platform = lambda sys, isa=None: (
-            sys == SYSTEM and (not isa or isa == MACHINE)
+        is_platform = lambda sys, isa=None: sys == SYSTEM and (
+            not isa or isa == MACHINE
         )
 
         if is_platform("Linux", "aarch64"):

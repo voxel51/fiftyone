@@ -99,12 +99,12 @@ include-package-data = true
 [tool.setuptools.packages.find]
 namespaces = false
 exclude = [
-  "app",
-  "eta",
-  "package",
-  "requirements",
-  "tests",
-  "tools",
+  "app*",
+  "eta*",
+  "package*",
+  "requirements*",
+  "tests*",
+  "tools*",
 ]
 
 [tool.setuptools.dynamic]

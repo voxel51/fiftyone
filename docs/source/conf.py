@@ -29,7 +29,10 @@ from redirects import generate_api_redirects, generate_redirects
 
 import fiftyone.constants as foc
 
-with open("../../VERSION", encoding="utf-8") as f:
+_VERSION_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "..", "VERSION"
+)
+with open(_VERSION_FILE, encoding="utf-8") as f:
     setup_version = f.read().strip()
 
 if setup_version != foc.VERSION:

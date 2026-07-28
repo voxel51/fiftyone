@@ -19,8 +19,8 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.32@sha256:df4cae8f3a96d175e2e5f992e5975500
 ENV UV_PROJECT_ENVIRONMENT=/e2e/venv
 ENV PATH="/e2e/venv/bin:${PATH}"
 
-RUN cd /e2e/fiftyone \
-    && uv sync --locked --no-default-groups \
+WORKDIR /e2e/fiftyone
+RUN uv sync --locked --python /usr/bin/python3.10 --no-default-groups \
         --extra multimodal --group e2e
 
 ENV IS_UTILITY_DOCKER=true

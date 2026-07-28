@@ -28,7 +28,7 @@ jobs:
         run: |
           # Only the root VERSION file is guarded. package/db/setup.py
           # (fiftyone-db) is versioned independently of the release.
-          changed=$(git diff "$BASE_SHA...$HEAD_SHA" -- VERSION || true)
+          changed=$(git diff "$BASE_SHA...$HEAD_SHA" -- VERSION)
           if [ -z "$changed" ]; then
             echo "No root VERSION change. OK."
             exit 0

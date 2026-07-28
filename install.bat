@@ -76,13 +76,8 @@ IF "%DOCS_INSTALL%"=="true" (
   )
 )
 
-:: Resolve pip backend
-where uv >nul 2>&1
-IF NOT ERRORLEVEL 1 (
-  set PIP=uv pip
-) else (
-  set PIP=%PYTHON_CMD% -m pip
-)
+:: Ensure package installs target an explicit Python interpreter
+set "PIP_PYTHON=%PYTHON_CMD%"
 
 :: Do this first so pip installs with a built app
 if %BUILD_APP%==true (
@@ -98,11 +93,13 @@ if %BUILD_APP%==true (
 IF %DEV_INSTALL%==true (
   uv sync --locked --python %PYTHON_CMD% --no-install-project
   IF ERRORLEVEL 1 exit /b 1
-  set VIRTUAL_ENV=%CD%\.venv
+  set "VIRTUAL_ENV=%CD%\.venv"
+  set "PIP_PYTHON=%CD%\.venv\Scripts\python.exe"
 ) else if %DOCS_INSTALL%==true (
   uv sync --locked --python %PYTHON_CMD% --no-default-groups --group docs --no-install-project
   IF ERRORLEVEL 1 exit /b 1
-  set VIRTUAL_ENV=%CD%\.venv
+  set "VIRTUAL_ENV=%CD%\.venv"
+  set "PIP_PYTHON=%CD%\.venv\Scripts\python.exe"
 )
 
 IF %USE_FIFTY_ONE_DB%==true (
@@ -112,7 +109,7 @@ IF %USE_FIFTY_ONE_DB%==true (
   ) else if %DOCS_INSTALL%==true (
     echo Using fiftyone-db from the locked environment
   ) else (
-    %PIP% install fiftyone-db
+    CALL :pip_install fiftyone-db
   )
 ) else (
   echo ***** USING LOCAL MONGODB *****
@@ -137,7 +134,7 @@ IF %SOURCE_BRAIN_INSTALL%==true (
     CALL install.bat -d
   ) else (
     echo Performing install
-    %PIP% install .
+    CALL :pip_install .
   )
   popd
 ) else (
@@ -146,7 +143,7 @@ IF %SOURCE_BRAIN_INSTALL%==true (
   ) else if %DOCS_INSTALL%==true (
     echo Using fiftyone-brain from the locked environment
   ) else (
-    %PIP% install --upgrade fiftyone-brain
+    CALL :pip_install --upgrade fiftyone-brain
   )
 )
 
@@ -163,7 +160,7 @@ IF %DEV_INSTALL%==true (
   IF ERRORLEVEL 1 exit /b 1
 ) else (
   echo Performing install
-  %PIP% install .
+  CALL :pip_install .
 )
 
 IF %SOURCE_ETA_INSTALL%==true (
@@ -182,10 +179,10 @@ IF %SOURCE_ETA_INSTALL%==true (
   )
   IF %DEV_INSTALL%==true (
     echo Performing dev install
-    %PIP% install .
+    CALL :pip_install .
   ) else (
     echo Performing install
-    %PIP% install .
+    CALL :pip_install .
   )
   if not exist "eta\config.json" (
     echo "Installing default ETA config"
@@ -207,3 +204,12 @@ echo -m      Use local mongodb instead of installing fiftyone-db.
 echo -p      Install only the core python package, not the App.
 echo -o      Install docs dependencies.
 exit /b
+
+:pip_install
+where uv >nul 2>&1
+IF NOT ERRORLEVEL 1 (
+  uv pip install --python "%PIP_PYTHON%" %*
+) else (
+  "%PIP_PYTHON%" -m pip install %*
+)
+exit /b %ERRORLEVEL%

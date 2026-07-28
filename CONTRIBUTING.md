@@ -100,6 +100,9 @@ FiftyOne maintainer or community member for input.
 
 ### Installation
 
+These commands require uv 0.11.32, the exact version declared in
+`pyproject.toml`.
+
 Install the default contributor environment from the committed lockfile:
 
 ```shell
@@ -137,8 +140,8 @@ If you are making a change to the FiftyOne App, refer to the
 ### Pre-commit hooks
 
 Performing a developer install per the above instructions will install some
-[pre-commit hooks](https://pre-commit.com/) that will automatically apply code
-formatting before allowing you to create a git commit.
+[pre-commit hooks](https://pre-commit.com/) that run the configured project
+checks before allowing you to create a git commit.
 
 See `.pre-commit-config.yaml` for the definitions of our hooks.
 

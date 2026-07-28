@@ -100,6 +100,10 @@ jobs:
           mapfile -t test_paths < <(
             grep -Ev '^[[:space:]]*(#|$)' tests/intensive/scheduled.txt
           )
+          if ((${#test_paths[@]} == 0)); then
+            echo "::error::No intensive tests are scheduled"
+            exit 1
+          fi
           set -o pipefail
           uv run --locked --no-sync python tests/utils/pytest_wrapper.py \
             "${test_paths[@]}" \
