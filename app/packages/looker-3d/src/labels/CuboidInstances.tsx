@@ -23,7 +23,7 @@ import {
   useCurrentSelected3dAnnotationLabel,
   useHoveredLabel3d,
   useSetHoveredLabel3d,
-} from "../state";
+} from "../state/accessors";
 import type { HoveredLabelSource } from "../types";
 import { getComplementaryColor } from "../utils";
 import {

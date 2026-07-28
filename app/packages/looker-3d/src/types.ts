@@ -172,17 +172,18 @@ export interface EventHandlers {
 }
 
 /**
- * The minimal shape `useEventHandlers()`'s implementation actually reads
- * (`_id`, `path`, plus assorted optional fields accessed loosely) — kept
- * structural rather than `OverlayLabel` itself because the instanced batch's
- * `ReconciledDetection3D`/`ReconciledPolyline3D` labels omit `selected`
- * (see `ReconciledDetection3D`), so they aren't assignable to `OverlayLabel`
- * even though every label type used here is a strict superset of this.
+ * The minimal shape `useEventHandlers()`'s public contract needs (`_id`,
+ * `path`) — kept structural rather than `OverlayLabel` itself because the
+ * instanced batch's `ReconciledDetection3D`/`ReconciledPolyline3D` labels
+ * omit `selected` (see `ReconciledDetection3D`), so they aren't assignable
+ * to `OverlayLabel` even though every label type used here is a strict
+ * superset of this. No index signature needed — structural typing already
+ * lets every concrete label type (with its extra fields) satisfy this.
  */
 export type InstancedLabel = {
   _id: string;
   path: string | string[];
-} & Record<string, unknown>;
+};
 
 /**
  * `useEventHandlers()`'s raw shape — `label` is a call-time argument rather
