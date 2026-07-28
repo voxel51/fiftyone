@@ -16,15 +16,6 @@ repos:
         types_or: [python, pyi]
   - repo: local
     hooks:
-      - id: pylint
-        name: pylint
-        language: system
-        files: \.py$
-        entry: pylint
-        args: ["--errors-only"]
-        exclude: (^docs/theme/|app/|(^|.*/)__generated__/)
-  - repo: local
-    hooks:
       - id: ipynb-strip
         name: ipynb-strip
         language: system

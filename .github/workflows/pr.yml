@@ -67,7 +67,6 @@ jobs:
               - 'uv.lock'
               - 'VERSION'
               - 'pytest.ini'
-              - 'pylintrc'
               - '.github/workflows/build.yml'
               - '.github/workflows/pr.yml'
               - '.github/workflows/test.yml'

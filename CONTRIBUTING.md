@@ -167,13 +167,6 @@ uv run --locked --no-sync ty check
 
 CI runs both commands directly and is authoritative.
 
-Note that the pylint component of the pre-commit hook only checks for errors.
-To see the full output, run:
-
-```shell
-uv run --locked --no-sync pylint <file>
-```
-
 ### Python API
 
 The [FiftyOne API](https://voxel51.com/docs/fiftyone/user_guide/basics.html) is

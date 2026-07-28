@@ -113,7 +113,6 @@ version = { file = ["VERSION"] }
 [dependency-groups]
 lint = [
   "pre-commit==4.6.0",
-  "pylint==4.0.5",
   "ruff==0.16.0",
 ]
 type = [
