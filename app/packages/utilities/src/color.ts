@@ -83,7 +83,7 @@ export const rgbToHexCached = (color: RGB) => {
  */
 export const rgbStringToHex = (rgb: string): string => {
   const match = rgb.match(
-    /^rgb\(\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*\)$/i
+    /^rgb\(\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*\)$/i,
   );
 
   if (!match) {
@@ -127,7 +127,7 @@ let cachedColorscale = null;
 
 export const getColorscaleArray = (
   colorscale: RGB[],
-  alpha: number
+  alpha: number,
 ): Readonly<Uint32Array> => {
   if (cachedColorscale !== colorscale) {
     cachedColorscale = colorscale;
@@ -215,7 +215,7 @@ export const createColorGenerator = (() => {
 
   return (
     colorPool: readonly string[],
-    seed: number
+    seed: number,
   ): ((value: string | number | boolean | null) => string) => {
     if (JSON.stringify(poolCache) !== JSON.stringify(colorPool)) {
       colorMaps = {};
@@ -252,7 +252,7 @@ export const createColorGenerator = (() => {
 export const getColor = (
   pool: readonly string[],
   seed: number,
-  fieldOrValue: string | number | boolean | null
+  fieldOrValue: string | number | boolean | null,
 ) => {
   return createColorGenerator(pool ?? default_app_color, seed)(fieldOrValue);
 };
@@ -272,7 +272,7 @@ export const hexToRgb = (hex: string): RGB => {
 export const interpolateColorsHex = (
   color1: string,
   color2: string,
-  factor: number
+  factor: number,
 ): string => {
   const rgb1 = hexToRgb(color1);
   const rgb2 = hexToRgb(color2);
@@ -290,7 +290,7 @@ export const interpolateColorsHex = (
 export const interpolateColorsRgb = (
   rgb1: RGB,
   rgb2: RGB,
-  factor: number
+  factor: number,
 ): RGB => {
   return [
     Math.round(rgb1[0] + (rgb2[0] - rgb1[0]) * factor),

@@ -13,7 +13,7 @@ import type { Dimensions, Rect } from "@fiftyone/lighter";
  */
 export function relativeToImagePixels(
   relative: Rect,
-  originalDimensions: Dimensions
+  originalDimensions: Dimensions,
 ): Rect {
   return {
     x: relative.x * originalDimensions.width,
@@ -33,12 +33,17 @@ export function relativeToImagePixels(
 export function imagePixelsToCanvasPixels(
   imageRect: Rect,
   originalDimensions: Dimensions,
-  renderedBounds: Rect
+  renderedBounds: Rect,
 ): Rect {
   return {
-    x: renderedBounds.x + (imageRect.x / originalDimensions.width) * renderedBounds.width,
-    y: renderedBounds.y + (imageRect.y / originalDimensions.height) * renderedBounds.height,
+    x:
+      renderedBounds.x +
+      (imageRect.x / originalDimensions.width) * renderedBounds.width,
+    y:
+      renderedBounds.y +
+      (imageRect.y / originalDimensions.height) * renderedBounds.height,
     width: (imageRect.width / originalDimensions.width) * renderedBounds.width,
-    height: (imageRect.height / originalDimensions.height) * renderedBounds.height,
+    height:
+      (imageRect.height / originalDimensions.height) * renderedBounds.height,
   };
 }

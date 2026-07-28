@@ -2,9 +2,8 @@ import {
   Resizable as ReResizable,
   ResizableProps as ReResizableProps,
 } from "re-resizable";
-import React from "react";
 import { useTheme } from "../ThemeProvider";
-import { resizeHandle } from "./index.module.css";
+import styles from "./index.module.css";
 
 /**
  * Currently, only supports resizing left and right
@@ -48,7 +47,7 @@ export default function Resizable(props: ResizableProps) {
         [direction]: { right: 0, width: 4 },
       }}
       handleClasses={{
-        [direction]: resizeHandle,
+        [direction]: styles.resizeHandle,
       }}
     />
   );

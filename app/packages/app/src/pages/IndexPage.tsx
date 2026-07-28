@@ -3,7 +3,6 @@
  */
 
 import { Snackbar, Starter } from "@fiftyone/core";
-import React from "react";
 import { usePreloadedQuery } from "react-relay";
 import { graphql } from "relay-runtime";
 import Nav from "../components/Nav";

@@ -43,7 +43,7 @@ export class ListBrainRuns extends Operator {
 
     if (type === "visualization") {
       result = brainMethods.filter((brainMethod) =>
-        brainMethod.config.cls.includes("fiftyone.brain.visualization")
+        brainMethod.config.cls.includes("fiftyone.brain.visualization"),
       );
     } else if (type === "similarity") {
       result = brainMethods.filter((brainMethod) => {

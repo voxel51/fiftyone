@@ -16,7 +16,7 @@ export const usePushUndoable = (contextId?: string) => {
     (
       id: string,
       execFn: () => void | Promise<void>,
-      undoFn: () => void | Promise<void>
+      undoFn: () => void | Promise<void>,
     ) => {
       const manager = CommandContextManager.instance();
 
@@ -25,7 +25,7 @@ export const usePushUndoable = (contextId?: string) => {
         context = manager.getCommandContext(contextId);
         if (!context) {
           console.warn(
-            `usePushUndoable: Context "${contextId}" not found. Skipping undo registration.`
+            `usePushUndoable: Context "${contextId}" not found. Skipping undo registration.`,
           );
           return;
         }
@@ -43,7 +43,7 @@ export const usePushUndoable = (contextId?: string) => {
         throw e;
       }
     },
-    [contextId]
+    [contextId],
   );
 
   return {

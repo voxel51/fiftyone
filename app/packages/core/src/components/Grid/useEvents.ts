@@ -41,7 +41,7 @@ export default ({
     const timeout = setTimeout(() => {
       if (info) {
         window.dispatchEvent(
-          new QueryPerformanceToastEvent(info.path, info.isFrameField)
+          new QueryPerformanceToastEvent(info.path, info.isFrameField),
         );
       }
     }, QP_WAIT);

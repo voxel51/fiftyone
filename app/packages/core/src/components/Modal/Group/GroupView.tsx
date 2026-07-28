@@ -23,7 +23,7 @@ export const GroupView = () => {
   const isMainVisible = fos.useIsGroupMain2dViewerVisible();
   const [width, setWidth] = useBrowserStorage(
     "group-modal-split-view-width",
-    DEFAULT_SPLIT_VIEW_LEFT_WIDTH
+    DEFAULT_SPLIT_VIEW_LEFT_WIDTH,
   );
 
   const shouldRender3DBelow = useMemo(() => {
@@ -31,7 +31,7 @@ export const GroupView = () => {
   }, [is3dVisible, isCarouselVisible, isMainVisible]);
 
   const activeSliceDescriptorLabel = useRecoilValue(
-    fos.activeSliceDescriptorLabel
+    fos.activeSliceDescriptorLabel,
   );
   const [_, setPanelTitle, resetPanelTitle] = usePanelTitle();
   const panelTitleHandlersRef = useRef({

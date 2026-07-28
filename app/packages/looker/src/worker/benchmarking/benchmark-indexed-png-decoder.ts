@@ -31,7 +31,7 @@ export const benchmarkIndexedPngDecode = () => {
     const elapsedTime = endTime - startTime;
 
     console.log(
-      `Sample size: ${size}, elapsed time: ${elapsedTime.toFixed(2)} ms`
+      `Sample size: ${size}, elapsed time: ${elapsedTime.toFixed(2)} ms`,
     );
   }
 };

@@ -19,7 +19,7 @@ describe("DecoderRegistry", () => {
     registry.register(createDecoder("first-decoder"));
 
     expect(() => registry.register(createDecoder("second-decoder"))).toThrow(
-      "Decoder already registered"
+      "Decoder already registered",
     );
   });
 
@@ -29,7 +29,7 @@ describe("DecoderRegistry", () => {
         encoding: "protobuf",
         schema: "example.PointCloud",
         schemaEncoding: "protobuf",
-      })
+      }),
     ).toBe('["protobuf","protobuf","example.PointCloud"]');
   });
 });

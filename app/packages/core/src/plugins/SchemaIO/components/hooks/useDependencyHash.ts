@@ -17,7 +17,7 @@ export type DependencyHash = string | null;
  */
 export function useDependencyHash(
   params: Record<string, unknown>,
-  dependencies?: string[]
+  dependencies?: string[],
 ): DependencyHash {
   return useMemo(() => {
     if (!dependencies || dependencies.length === 0) {

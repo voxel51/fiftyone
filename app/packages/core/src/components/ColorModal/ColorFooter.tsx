@@ -27,7 +27,7 @@ const ColorFooter: React.FC = () => {
 
   useEffect(
     () => foq.subscribe((_, { set }) => set(activeColorEntry, null)),
-    []
+    [],
   );
 
   if (!activeColorModalField) return null;
@@ -42,7 +42,7 @@ const ColorFooter: React.FC = () => {
           onClick={() => {
             const { id: _, ...update } = fos.ensureColorScheme(
               datasetDefault,
-              configDefault
+              configDefault,
             );
             setColorScheme({
               id: colorScheme.id,
@@ -89,7 +89,7 @@ const ColorFooter: React.FC = () => {
                 const config = datasetRecord?.getLinkedRecord("appConfig");
                 if (!config) {
                   console.error(
-                    "dataset.appConfig record not found and thus can not be updated"
+                    "dataset.appConfig record not found and thus can not be updated",
                   );
                   return;
                 }

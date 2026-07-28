@@ -10,7 +10,7 @@ export const getDataView = (
   offset: number,
   type: PCDFileFormat,
   size: number,
-  littleEndian: boolean
+  littleEndian: boolean,
 ): number => {
   switch (type) {
     case "F":

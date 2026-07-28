@@ -17,7 +17,7 @@ export const OVERLAY_STATUSES = [
   OVERLAY_STATUS_ERROR,
 ] as const;
 
-export type OverlayStatus = typeof OVERLAY_STATUSES[number];
+export type OverlayStatus = (typeof OVERLAY_STATUSES)[number];
 
 /**
  * Manages the rendering status of overlays in a scene.

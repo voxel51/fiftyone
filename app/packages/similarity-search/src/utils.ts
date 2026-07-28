@@ -42,13 +42,13 @@ export const pluralizeSearches = (count: number): string => {
 };
 
 export const getDateRange = (
-  preset: DateFilterPreset
+  preset: DateFilterPreset,
 ): { start: Date | null; end: Date | null } => {
   const now = new Date();
   const startOfToday = new Date(
     now.getFullYear(),
     now.getMonth(),
-    now.getDate()
+    now.getDate(),
   );
 
   switch (preset) {
@@ -87,7 +87,7 @@ export const matchesText = (run: SimilarityRun, text: string): boolean => {
 export const matchesDate = (
   run: SimilarityRun,
   start: Date | null,
-  end: Date | null
+  end: Date | null,
 ): boolean => {
   if (!start && !end) return true;
   if (!run.creation_time) return false;
@@ -104,7 +104,7 @@ export const canSubmitSearch = (
   queryType: QueryType,
   textQuery: string,
   queryIdCount: number,
-  hasUploadedImage?: boolean
+  hasUploadedImage?: boolean,
 ): boolean => {
   if (!brainKey) return false;
   if (queryType === QueryType.Text && !textQuery.trim()) return false;
@@ -140,7 +140,7 @@ export type BuildExecutionParamsInput = {
  * Convert a File to base64-encoded content string (without data URI prefix).
  */
 export function fileToBase64(
-  file: File
+  file: File,
 ): Promise<{ result?: string; error?: ProgressEvent<EventTarget> }> {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -155,7 +155,7 @@ export function fileToBase64(
 }
 
 export const buildExecutionParams = (
-  input: BuildExecutionParamsInput
+  input: BuildExecutionParamsInput,
 ): SimilaritySearchParams => {
   const {
     brainKey,

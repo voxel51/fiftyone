@@ -7,15 +7,15 @@ import { PANEL_ORDER_ANIMATIONS } from "../constants";
 export const useAnimationSelect = (
   assetLabel: string,
   animationClips: AnimationClip[],
-  mixer: AnimationMixer | null
+  mixer: AnimationMixer | null,
 ) => {
   const availableAnimationClips = useMemo(
     () => animationClips.filter(Boolean),
-    [animationClips]
+    [animationClips],
   );
 
   const [currentAnimationIndex, setCurrentAnimationIndex] = useState(
-    availableAnimationClips.length > 0 ? 0 : null
+    availableAnimationClips.length > 0 ? 0 : null,
   );
 
   useEffect(() => {
@@ -109,7 +109,7 @@ export const useAnimationSelect = (
         {
           order: PANEL_ORDER_ANIMATIONS,
           render: () => availableAnimationClips.length > 0,
-        }
+        },
       ),
     };
   }, [

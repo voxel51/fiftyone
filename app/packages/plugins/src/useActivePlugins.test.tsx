@@ -55,7 +55,7 @@ describe("useActivePlugins: runtime behavior", () => {
     const { result } = renderHook(() =>
       useActivePlugins(PluginComponentType.Component, {
         dataset: { mediaType: "video" },
-      })
+      }),
     );
 
     const names = result.current.map((p) => p.name).sort();
@@ -86,7 +86,7 @@ describe("useActivePlugins: runtime behavior", () => {
         initialProps: {
           ctx: { mediaType: "video" } as Record<string, unknown>,
         },
-      }
+      },
     );
 
     expect(result.current.map((p) => p.name)).toEqual(["video-only"]);
@@ -97,7 +97,7 @@ describe("useActivePlugins: runtime behavior", () => {
 
   it("reflects plugins registered after mount", () => {
     const { result } = renderHook(() =>
-      useActivePlugins(PluginComponentType.Component, {})
+      useActivePlugins(PluginComponentType.Component, {}),
     );
 
     expect(result.current).toEqual([]);
@@ -115,7 +115,7 @@ describe("useActivePlugins: runtime behavior", () => {
     // back in.
     register("probe", () => true);
     expect(() =>
-      renderHook(() => useActivePlugins(PluginComponentType.Component, {}))
+      renderHook(() => useActivePlugins(PluginComponentType.Component, {})),
     ).not.toThrow();
   });
 });
@@ -128,7 +128,7 @@ describe("usePluginComponent: runtime behavior", () => {
     const { result, rerender } = renderHook(
       ({ allow }: { allow: boolean }) =>
         usePluginComponent("Target", { allow }),
-      { initialProps: { allow: true } }
+      { initialProps: { allow: true } },
     );
     expect(result.current?.name).toBe("Target");
 

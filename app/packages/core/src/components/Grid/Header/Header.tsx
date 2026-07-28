@@ -2,7 +2,7 @@ import { LoadingDots, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
 import { Apps, ImageAspectRatio } from "@mui/icons-material";
-import React, { Suspense, useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { constSelector, useRecoilValue, useResetRecoilState } from "recoil";
 import { Slider } from "../../Common/RangeSlider";
 import ResourceCount from "../../ResourceCount";
@@ -15,6 +15,7 @@ import {
   SamplesHeader,
   SliderContainer,
 } from "./Containers";
+import GridHeaderSampleRendererControls from "./GridHeaderSampleRendererControls";
 import GroupSlice from "./GroupSlice";
 import Sort from "./Sort";
 
@@ -80,7 +81,7 @@ const Header = () => {
   const groupSlices = useRecoilValue(fos.groupSlices);
   const shouldShowSliceSelector = useMemo(
     () => isGroup && groupSlices.length > 1,
-    [isGroup, groupSlices]
+    [isGroup, groupSlices],
   );
 
   return (
@@ -96,6 +97,7 @@ const Header = () => {
         >
           <ResourceCount />
         </Suspense>
+        <GridHeaderSampleRendererControls />
         {shouldShowSliceSelector && (
           <RightDiv>
             <GroupSlice />

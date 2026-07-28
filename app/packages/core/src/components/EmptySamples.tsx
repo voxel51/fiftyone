@@ -2,7 +2,7 @@ import { Button, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import ClearAll from "@mui/icons-material/ClearAll";
 import { Typography } from "@mui/material";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import ErrorImg from "../images/error.svg";
@@ -41,7 +41,7 @@ const ActionContainer = styled(TextContainer)`
 export default function EmptySamples() {
   const loadedView = useRecoilValue(fos.view);
   const totalSamples = useRecoilValue(
-    fos.count({ path: "", extended: true, modal: false })
+    fos.count({ path: "", extended: true, modal: false }),
   );
 
   const theme = useTheme();
@@ -49,12 +49,12 @@ export default function EmptySamples() {
 
   const showEmptyDataset = useMemo(
     () => !loadedView?.length && !totalSamples,
-    [totalSamples, loadedView]
+    [totalSamples, loadedView],
   );
 
   const showEmptyView = useMemo(
     () => loadedView?.length && !totalSamples,
-    [totalSamples, loadedView]
+    [totalSamples, loadedView],
   );
 
   if (!showEmptyView && !showEmptyDataset) {

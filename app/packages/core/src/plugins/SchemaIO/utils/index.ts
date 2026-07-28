@@ -26,7 +26,7 @@ export function getPath(basePath: string, propertyKey: string) {
 
 export function getComponent(
   schema: SchemaType,
-  customComponents?: CustomComponentsType
+  customComponents?: CustomComponentsType,
 ) {
   const { component } = schema?.view || {};
   return (
@@ -37,18 +37,18 @@ export function getComponent(
 export function getComponentProps<P>(
   props: ViewPropsType,
   id: string,
-  baseProps?: P
+  baseProps?: P,
 ) {
   return merge(
     baseProps || {},
-    get(props, `schema.view.componentsProps.${id}`, {})
+    get(props, `schema.view.componentsProps.${id}`, {}),
   );
 }
 
 export function getProps<P>(
   props: ViewPropsType,
   id: string,
-  baseProps?: P
+  baseProps?: P,
 ): P {
   return merge(baseProps, getLayoutProps(props), getComponentProps(props, id));
 }
@@ -190,7 +190,7 @@ export function getLiteValue(value, schema) {
       }
     } else {
       console.warn(
-        `FileView lite mode is only supported for object type schemas, got ${type}`
+        `FileView lite mode is only supported for object type schemas, got ${type}`,
       );
     }
   }

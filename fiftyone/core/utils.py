@@ -375,8 +375,9 @@ def install_package(requirement_str, error_level=None, error_msg=None):
 
     Args:
         requirement_str: a PEP 440 compliant package requirement, like
-            "tensorflow", "tensorflow<2", "tensorflow==2.3.0", or
-            "tensorflow>=1.13,<1.15"
+            "tensorflow", "tensorflow<2", "tensorflow==2.3.0",
+            "tensorflow>=1.13,<1.15", or
+            "clip @ git+https://github.com/openai/CLIP.git"
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if the install fails
@@ -409,11 +410,12 @@ def ensure_package(
 
     Args:
         requirement_str: a PEP 440 compliant package requirement, like
-            "tensorflow", "tensorflow<2", "tensorflow==2.3.0", or
-            "tensorflow>=1.13,<1.15". This can also be an iterable of multiple
-            requirements, all of which must be installed, or this can be a
-            single "|"-delimited string specifying multiple requirements, at
-            least one of which must be installed
+            "tensorflow", "tensorflow<2", "tensorflow==2.3.0",
+            "tensorflow>=1.13,<1.15", or
+            "clip @ git+https://github.com/openai/CLIP.git". This can also be
+            an iterable of multiple requirements, all of which must be
+            installed, or this can be a single "|"-delimited string specifying
+            multiple requirements, at least one of which must be installed
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
@@ -528,11 +530,11 @@ def ensure_import(
 
     Args:
         requirement_str: a PEP 440-like module requirement, like "tensorflow",
-            "tensorflow<2", "tensorflow==2.3.0", or "tensorflow>=1.13,<1.15".
-            This can also be an iterable of multiple requirements, all of which
-            must be installed, or this can be a single "|"-delimited string
-            specifying multiple requirements, at least one of which must be
-            installed
+            "tensorflow<2", "tensorflow==2.3.0", "tensorflow>=1.13,<1.15", or
+            "clip @ git+https://github.com/openai/CLIP.git". This can also be
+            an iterable of multiple requirements, all of which must be
+            installed, or this can be a single "|"-delimited string specifying
+            multiple requirements, at least one of which must be installed
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
@@ -3124,6 +3126,81 @@ def get_cpu_count():
             "Unable to determine CPU count, defaulting to 1", exc_info=True
         )
         return 1
+
+
+# cgroup v1 reports "no limit" as a near-maxint sentinel (rather than a
+# string like v2's "max"); anything at/above this is unlimited.
+_CGROUP_V1_MEMORY_UNLIMITED = 0x7FFFFFFFFFFFF000
+
+
+def get_memory_limit():
+    """Returns the memory limit in bytes available to the current process.
+
+    Analogous to :func:`get_cpu_count`, this reflects container memory
+    limits in environments like Kubernetes (via cgroups) rather than the
+    host's total physical RAM. Use it to size memory-hungry work to the
+    container without requiring a hand-set environment variable that
+    matches the deployment's limits.
+
+    The function checks the following sources, in order:
+
+    1. cgroup v2 memory limit (``/sys/fs/cgroup/memory.max``)
+    2. cgroup v1 memory limit
+       (``/sys/fs/cgroup/memory/memory.limit_in_bytes``)
+    3. physical RAM (``psutil.virtual_memory``)
+
+    A cgroup limit is capped at physical RAM (a cgroup can nominally be
+    configured above it), and cgroup "unlimited" values (``"max"`` in v2,
+    a near-maxint sentinel in v1) fall through to physical RAM.
+
+    Returns:
+        the memory limit in bytes, or ``None`` if it cannot be determined
+    """
+    try:
+        physical = None
+        try:
+            physical = psutil.virtual_memory().total
+        except Exception:
+            pass
+
+        cgroup = None
+        if sys.platform.startswith("linux"):
+            # cgroup v2. Only the leaf ``memory.max`` is read: in a nested
+            # v2 hierarchy this can report "max" while an ancestor cgroup
+            # enforces a lower limit (v2 exposes no "effective" memory file,
+            # unlike cpuset.cpus.effective for CPUs). Same leaf-only
+            # limitation as get_cpu_count(); walking ancestry would be a
+            # larger change.
+            try:
+                with open("/sys/fs/cgroup/memory.max") as f:
+                    value = f.read().strip()
+                    if value != "max":
+                        cgroup = int(value)
+            except Exception:
+                pass
+
+            # cgroup v1 fallback
+            if cgroup is None:
+                try:
+                    with open(
+                        "/sys/fs/cgroup/memory/memory.limit_in_bytes"
+                    ) as f:
+                        value = int(f.read().strip())
+                        if 0 < value < _CGROUP_V1_MEMORY_UNLIMITED:
+                            cgroup = value
+                except Exception:
+                    pass
+
+        candidates = [v for v in (cgroup, physical) if v and v > 0]
+        if not candidates:
+            return None
+
+        # A cgroup can be configured above physical RAM; cap at physical.
+        return min(candidates)
+
+    except Exception:
+        logger.debug("Unable to determine memory limit", exc_info=True)
+        return None
 
 
 sync_task_executor = None

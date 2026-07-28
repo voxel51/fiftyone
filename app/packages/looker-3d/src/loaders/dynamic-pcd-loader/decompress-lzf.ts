@@ -15,7 +15,7 @@
  */
 export const decompressLZF = (
   inData: Uint8Array,
-  outLength: number
+  outLength: number,
 ): Uint8Array => {
   const inLen = inData.length;
   const out = new Uint8Array(outLength);

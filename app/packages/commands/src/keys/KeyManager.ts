@@ -11,14 +11,21 @@ export type KeyMatchState = {
   full?: Command;
 };
 
+type KeyBindingEntry = {
+  command: Command;
+  priority: number;
+  order: number;
+};
+
 /**
  * Manages a set of key bindings in a context.
- * Each context must contain unique bindings.
+ * Duplicate bindings are allowed; the highest-priority enabled command wins.
  * @see KeyParser for documentation on the binding format.
  */
 export class KeyManager {
-  private bindings = new Map<string, Command>();
+  private bindings = new Map<string, KeyBindingEntry[]>();
   private priorMatches = new Array<KeyboardEvent>();
+  private bindingOrder = 0;
   /**
    * @param commandRegistry For testing we want a local command registry.
    * If not provided it will use the global one.
@@ -36,7 +43,7 @@ export class KeyManager {
     };
     let hasMatch = false;
     let command: Command | undefined = undefined;
-    for (const [binding, cmd] of this.bindings) {
+    for (const [binding, commands] of this.bindings) {
       if (command) {
         break;
       }
@@ -52,7 +59,9 @@ export class KeyManager {
           if (sequence.matches(event)) {
             //If there are no more sequences to match, return the command
             if (index === sequences.length - 1) {
-              command = cmd;
+              command = commands.find(({ command: cmd }) =>
+                cmd.isEnabled(),
+              )?.command;
               break;
             }
             //Matches a subset of the sequences. Mark the match so we can add the event to prior matches
@@ -84,35 +93,32 @@ export class KeyManager {
     return this.priorMatches.length > 0;
   }
   /**
-   * Checks if a binding is bound in a particular scope
-   * @param bindings The scope to check in
-   * @param test The sequences to check for
-   * @returns true if it is, false if not
-   */
-  private isKeyBound(test: Array<KeySequence>): boolean {
-    const normal = this.normalizeBinding(test);
-    return this.bindings.has(normal);
-  }
-  /**
    * @see KeyParser for documentation of the sequence specification
    * @param sequence The sequence, ie "ctrl+shift+F12"
    * @param commandId A previously registered command id. @see CommandRegistry
    */
-  public bindKey(sequence: string, commandId: string) {
+  public bindKey(sequence: string, commandId: string, priority = 0) {
     const keySequences = KeyParser.parseBinding(sequence);
     const command = this.commandRegistry.getCommand(commandId);
     if (!command) {
       throw new Error(
-        `The command id ${commandId} is not registered for binding ${sequence}`
+        `The command id ${commandId} is not registered for binding ${sequence}`,
       );
     }
 
-    if (this.isKeyBound(keySequences)) {
-      throw new Error(
-        `The binding ${sequence} is already bound in this context`
-      );
-    }
-    this.bindings.set(this.normalizeBinding(keySequences), command);
+    const binding = this.normalizeBinding(keySequences);
+    const commands = this.bindings.get(binding) ?? [];
+    this.bindings.set(
+      binding,
+      [
+        ...commands,
+        {
+          command,
+          priority,
+          order: this.bindingOrder++,
+        },
+      ].sort((a, b) => b.priority - a.priority || a.order - b.order),
+    );
   }
 
   private normalizeBinding(sequences: KeySequence[]) {
@@ -123,10 +129,27 @@ export class KeyManager {
     return strings.join(",");
   }
 
-  public unbindKey(sequence: string) {
-    this.bindings.delete(
-      this.normalizeBinding(KeyParser.parseBinding(sequence))
+  public unbindKey(sequence: string, commandId?: string) {
+    const binding = this.normalizeBinding(KeyParser.parseBinding(sequence));
+
+    if (!commandId) {
+      this.bindings.delete(binding);
+      return;
+    }
+
+    const commands = this.bindings.get(binding);
+    if (!commands) {
+      return;
+    }
+
+    const remainingCommands = commands.filter(
+      ({ command }) => command.id !== commandId,
     );
+    if (remainingCommands.length === 0) {
+      this.bindings.delete(binding);
+    } else {
+      this.bindings.set(binding, remainingCommands);
+    }
   }
 
   public resetKeyState() {

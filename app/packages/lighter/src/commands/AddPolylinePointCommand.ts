@@ -24,7 +24,7 @@ export class AddPolylinePointCommand implements Undoable {
     private pointId: string,
     private relativePosition: [number, number],
     private variant?: string,
-    private createsNewSegment: boolean = false
+    private createsNewSegment: boolean = false,
   ) {
     this.id = `add-polyline-point-${pointId}-${Date.now()}`;
     this.description = `Add polyline point ${pointId}`;
@@ -36,7 +36,7 @@ export class AddPolylinePointCommand implements Undoable {
         this.segmentIdx,
         this.relativePosition,
         this.variant,
-        this.pointId
+        this.pointId,
       );
     } else {
       this.overlay.insertPointInSegment(
@@ -44,7 +44,7 @@ export class AddPolylinePointCommand implements Undoable {
         this.indexInSegment,
         this.relativePosition,
         this.variant,
-        this.pointId
+        this.pointId,
       );
     }
   }

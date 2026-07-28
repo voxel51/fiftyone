@@ -17,7 +17,7 @@ import React, {
   useLayoutEffect,
 } from "react";
 import { ErrorBoundary as Boundary, FallbackProps } from "react-error-boundary";
-import { scrollable } from "../../scrollable.module.css";
+import scrollableStyles from "../../scrollable.module.css";
 import CodeBlock from "../CodeBlock";
 import Loading from "../Loading";
 import style from "./ErrorBoundary.module.css";
@@ -58,10 +58,14 @@ export const ErrorDisplayMarkup = <T extends AppError>({
   let messages: { message: string; content: string }[] = [];
 
   if (error instanceof GraphQLError) {
-    messages = error.errors.map((e: any) => ({
-      message: e.message,
-      content: "\n\n" + e.extensions.stack.join("\n"),
-    }));
+    messages = error.errors.map((e: any) => {
+      const stack = e?.extensions?.stack;
+      const trace = Array.isArray(stack) ? stack.join("\n") : stack;
+      return {
+        message: e?.message,
+        content: typeof trace === "string" && trace ? "\n\n" + trace : "",
+      };
+    });
   } else if (error instanceof NetworkError) {
     messages = [];
     if (error.code)
@@ -97,10 +101,10 @@ export const ErrorDisplayMarkup = <T extends AppError>({
 
   return (
     <div
-      className={classnames(style.wrapper, scrollable)}
+      className={classnames(style.wrapper, scrollableStyles.scrollable)}
       data-cy={"error-boundary"}
     >
-      <div className={classnames(style.container, scrollable)}>
+      <div className={classnames(style.container, scrollableStyles.scrollable)}>
         <div className={style.heading}>
           <div>
             {error.name}
@@ -134,7 +138,7 @@ export const ErrorDisplayMarkup = <T extends AppError>({
 
 const ErrorsDisplayWithSideEffects = (
   onReset?: () => void,
-  disableReset?: boolean
+  disableReset?: boolean,
 ) => {
   const FallbackComponent = <T extends AppError>({
     error,
@@ -161,7 +165,7 @@ const TrackFallback =
   (
     Fallback: ComponentType<any> | undefined,
     onReset?: () => void,
-    disableReset?: boolean
+    disableReset?: boolean,
   ) =>
   (props: any) => {
     const ActualFallback =

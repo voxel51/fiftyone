@@ -6,8 +6,8 @@ import styled from "styled-components";
 export const ActionDiv = styled.div.withConfig({
   shouldForwardProp: (prop) => {
     // Don't forward non-DOM props
-    return !['variant', 'closeOverflow', 'refresh'].includes(prop);
-  }
+    return !["variant", "closeOverflow", "refresh"].includes(prop);
+  },
 })`
   position: relative;
 `;
@@ -35,7 +35,7 @@ export const SwitchDiv = animated(styled.div`
 export const useHighlightHover = (
   disabled: boolean,
   override: null | boolean = null,
-  color: null | string = null
+  color: null | string = null,
 ) => {
   const [hovering, setHovering] = useState(false);
   const theme = useTheme();
@@ -73,7 +73,7 @@ export const getStringAndNumberProps = (props?: Record<string, unknown>) => {
 
   return Object.fromEntries(
     Object.entries(props).filter(
-      ([_key, value]) => typeof value === "string" || typeof value === "number"
-    )
+      ([_key, value]) => typeof value === "string" || typeof value === "number",
+    ),
   );
 };

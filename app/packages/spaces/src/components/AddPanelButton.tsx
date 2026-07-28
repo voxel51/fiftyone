@@ -25,7 +25,7 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
       const isGridPanel = !surface || surface.includes("grid");
       return isModalActive ? isModalPanel : isGridPanel;
     },
-    [isModalActive]
+    [isModalActive],
   );
   const panels = usePanels(panelsPredicate);
   const spaceNodes = useSpaceNodes(spaceId);

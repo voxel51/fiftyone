@@ -20,7 +20,7 @@ export class JSONEditorPom {
     readonly page: Page,
     readonly eventUtils: EventUtils,
     readonly field: string,
-    readonly schemaManager: SchemaManagerPom
+    readonly schemaManager: SchemaManagerPom,
   ) {
     this.assert = new JSONEditorAsserter(this);
   }
@@ -42,7 +42,7 @@ export class JSONEditorPom {
       .getByTestId("errors-list")
       .locator("li");
     return await Promise.all(
-      (await items.all()).map((item) => item.textContent())
+      (await items.all()).map((item) => item.textContent()),
     );
   }
 
@@ -74,7 +74,7 @@ export class JSONEditorPom {
   async setJSON(json: JSONValue) {
     await this.page.evaluate(
       (json) => navigator.clipboard.writeText(json),
-      JSON.stringify(json, undefined, 2)
+      JSON.stringify(json, undefined, 2),
     );
     await this.selectAllJSON();
     await this.page.keyboard.press("ControlOrMeta+KeyV");
@@ -91,22 +91,18 @@ export class JSONEditorPom {
    * Scan the dataset and populate label schema values
    */
   async scan() {
-    const event = this.eventUtils.getEventReceivedPromiseForPredicate(
-      "schema-manager-scan-complete"
-    );
+    const event = await this.eventUtils.arm("schema-manager-scan-complete");
     await this.schemaManager.locator.getByTestId("scan").click();
-    await event;
+    await event.received;
   }
 
   /**
    * Save the changes
    */
   async save() {
-    const event = this.eventUtils.getEventReceivedPromiseForPredicate(
-      "schema-manager-save-complete"
-    );
+    const event = await this.eventUtils.arm("schema-manager-save-complete");
     await this.schemaManager.footer.getByTestId("primary-button").click();
-    await event;
+    await event.received;
   }
 
   /**
@@ -128,10 +124,8 @@ export class JSONEditorPom {
    *
    * @returns A promise
    */
-  waitForInvalidJSON() {
-    return this.eventUtils.getEventReceivedPromiseForPredicate(
-      "schema-manager-invalid-json"
-    );
+  armInvalidJSON() {
+    return this.eventUtils.arm("schema-manager-invalid-json");
   }
 
   /**
@@ -139,10 +133,8 @@ export class JSONEditorPom {
    *
    * @returns A promise
    */
-  waitForValidJSON() {
-    return this.eventUtils.getEventReceivedPromiseForPredicate(
-      "schema-manager-valid-json"
-    );
+  armValidJSON() {
+    return this.eventUtils.arm("schema-manager-valid-json");
   }
 }
 

@@ -9,7 +9,7 @@ import {
   useLighterEventHandler,
   useLighterSetupWithPixi,
 } from "@fiftyone/lighter";
-import type { Sample } from "@fiftyone/state";
+import type { ModalSample } from "@fiftyone/state";
 import { getSampleSrc, useModalLookerOptions } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import React, {
@@ -30,7 +30,7 @@ export interface LighterSampleRendererProps {
   /** Custom CSS class name */
   className?: string;
   /** Sample to display */
-  sample: Sample;
+  sample: ModalSample;
 }
 
 /**
@@ -57,7 +57,7 @@ export const LighterSampleRenderer = ({
     // sceneId should be deterministic, but unique for a given sample snapshot
     const sample = sampleRef.current;
     setSceneId(
-      `${sample?.sample?._id}-${sample?.sample?.last_modified_at?.datetime}`
+      `${sample?.sample?._id}-${sample?.sample?.last_modified_at?.datetime}`,
     );
   }, []);
 
@@ -94,7 +94,7 @@ export const LighterSampleRenderer = ({
 const LighterSetupImpl = (props: {
   containerRef: React.RefObject<HTMLDivElement>;
   sceneId: string;
-  sampleRef: React.RefObject<Sample>;
+  sampleRef: React.RefObject<ModalSample>;
   onReveal: () => void;
 }) => {
   const { containerRef, sceneId, sampleRef, onReveal } = props;
@@ -112,7 +112,7 @@ const LighterSetupImpl = (props: {
       ...options,
       activePaths: jotaiActivePaths ?? options.activePaths,
     }),
-    [options, jotaiActivePaths]
+    [options, jotaiActivePaths],
   );
 
   const canvas = singletonCanvas.getCanvas(containerRef.current ?? undefined);
@@ -138,7 +138,7 @@ const LighterSetupImpl = (props: {
       {
         src: mediaUrl,
         maintainAspectRatio: true,
-      }
+      },
     );
     scene.addOverlay(mediaOverlay);
 
@@ -147,7 +147,7 @@ const LighterSetupImpl = (props: {
   }, [scene, sceneId]);
 
   const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
   );
   useEventHandler("lighter:viewport-init-complete", onReveal, { once: true });
 

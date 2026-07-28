@@ -66,14 +66,14 @@ export function SchemaIOComponent(props) {
             ancestorPath,
             ancestorValue,
             ancestorSchema,
-            updatedState
+            updatedState,
           );
         }
       }
 
       return updatedState;
     },
-    [onChange, onPathChange]
+    [onChange, onPathChange],
   );
 
   const onIOValidationErrors = useCallback(
@@ -87,7 +87,7 @@ export function SchemaIOComponent(props) {
         [basePath]: errorsWithBasePath,
       }));
     },
-    [setValidationErrors]
+    [setValidationErrors],
   );
 
   useEffect(() => {

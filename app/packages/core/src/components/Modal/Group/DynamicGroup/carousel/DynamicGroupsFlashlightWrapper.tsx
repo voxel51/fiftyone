@@ -23,7 +23,7 @@ export const DYNAMIC_GROUPS_FLASHLIGHT_ELEMENT_ID =
 const useLookerRender = (
   store: fos.LookerStore<fos.Lookers>,
   createLooker: ReturnType<typeof fos.useCreateLooker>,
-  selectSample: React.MutableRefObject<ReturnType<typeof fos.useSelectSample>>
+  selectSample: React.MutableRefObject<ReturnType<typeof fos.useSelectSample>>,
 ) =>
   useCallback(
     (
@@ -31,7 +31,7 @@ const useLookerRender = (
       element: HTMLElement,
       dimensions: [number, number],
       soft: boolean,
-      hide: boolean
+      hide: boolean,
     ) => {
       const result = store.samples.get(sampleId);
       const looker = store.lookers.get(sampleId);
@@ -47,13 +47,13 @@ const useLookerRender = (
           "selectthumbnail",
           ({ detail }: CustomEvent) => {
             selectSample.current(detail.id, detail.altKey);
-          }
+          },
         );
         store.lookers.set(sampleId, newLooker);
         newLooker.attach(element, dimensions);
       }
     },
-    [createLooker, selectSample, store]
+    [createLooker, selectSample, store],
   );
 
 /**
@@ -66,7 +66,7 @@ const useUpdateItems = (
   options: ReturnType<typeof fos.useLookerOptions>,
   highlight: (sample: fos.Sample) => boolean,
   selected: Set<string>,
-  style: fos.SelectionStyle
+  style: fos.SelectionStyle,
 ) => {
   const updateItem = useCallback(
     async (id: string) => {
@@ -75,7 +75,7 @@ const useUpdateItems = (
         selected,
         style,
         id,
-        isSelected
+        isSelected,
       );
       store.lookers.get(id)?.updateOptions({
         ...options,
@@ -85,7 +85,7 @@ const useUpdateItems = (
         highlight: highlight(store.samples.get(id)!.sample as Sample),
       });
     },
-    [highlight, options, selected, store, style]
+    [highlight, options, selected, store, style],
   );
 
   useEffect(() => {
@@ -105,12 +105,12 @@ const useUpdateItems = (
  */
 const useCreateFlashlight = (
   page: (page: number) => Promise<Response<number>>,
-  store: fos.LookerStore<fos.Lookers>
+  store: fos.LookerStore<fos.Lookers>,
 ) => {
   const modalSampleId = useRecoilValue(fos.modalSampleId);
   const highlight = useCallback(
     (sample) => sample._id === modalSampleId,
-    [modalSampleId]
+    [modalSampleId],
   );
   const select = fos.useSelectSample();
   const selectSample = useRef(select);
@@ -126,7 +126,7 @@ const useCreateFlashlight = (
       thumbnailTitle: (sample) =>
         field?.orderBy ? get(sample, field.orderBy) : null,
     },
-    highlight
+    highlight,
   );
   const render = useLookerRender(store, createLooker, selectSample);
 
@@ -178,7 +178,7 @@ const pageParams = selector({
             after: page ? String(page * pageSize - 1) : null,
             count: pageSize,
           };
-        }
+        },
     );
   },
 });
@@ -198,7 +198,7 @@ export const DynamicGroupsFlashlightWrapper = React.memo(() => {
   const { page, reset } = useFlashlightPager(store, pageParams);
   const { createFlashlight, highlight, options } = useCreateFlashlight(
     page,
-    store
+    store,
   );
 
   const key = fos.useGroupByFieldValue();

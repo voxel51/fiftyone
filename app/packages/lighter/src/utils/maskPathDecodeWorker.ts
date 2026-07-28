@@ -38,7 +38,20 @@ export type DecodeResponse = DecodeSuccess | DecodeFailure;
 // is sufficient and keeps the worker free of state/recoil dependencies.
 const STUB_COLORING = {} as Coloring;
 
-self.onmessage = async (event: MessageEvent<DecodeRequest>) => {
+/**
+ * True only when this module is running as a dedicated worker.
+ */
+const isWorkerScope = (): boolean => {
+  // `WorkerGlobalScope` is only a runtime global inside a worker; reach it via
+  // `globalThis` so this type-checks without the `webworker` lib.
+  const scope = globalThis as { WorkerGlobalScope?: new () => unknown };
+  return (
+    typeof scope.WorkerGlobalScope !== "undefined" &&
+    self instanceof scope.WorkerGlobalScope
+  );
+};
+
+const handleMessage = async (event: MessageEvent<DecodeRequest>) => {
   const { uuid, url, field, cls } = event.data;
 
   // Defensive: callers should never reach the worker with a non-string URL,
@@ -93,3 +106,7 @@ self.onmessage = async (event: MessageEvent<DecodeRequest>) => {
     (self as DedicatedWorkerGlobalScope).postMessage(payload);
   }
 };
+
+if (isWorkerScope()) {
+  self.onmessage = handleMessage;
+}

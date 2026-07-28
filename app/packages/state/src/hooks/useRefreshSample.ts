@@ -20,6 +20,6 @@ export const useRefreshSample = () => {
       updateSamples([[sample._id, sample]]);
       setRefresher((curr) => curr + 1);
     },
-    [setRefresher, updateSamples]
+    [setRefresher, updateSamples],
   );
 };

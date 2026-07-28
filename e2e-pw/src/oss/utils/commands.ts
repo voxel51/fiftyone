@@ -13,7 +13,7 @@ export const getPythonCommand = (argv: string[]) => {
 };
 
 export const getStringifiedKwargs = (
-  kwargs: Record<string, string | number | boolean>
+  kwargs: Record<string, string | number | boolean>,
 ) => {
   const kwargsStringified =
     Object.values(kwargs).length > 0

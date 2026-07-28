@@ -44,10 +44,9 @@ Playback uses `src/adapters/mcap/worker` so MCAP scans, decompression, and
 payload decoding do not block the main UI thread. The worker owns the same MCAP
 resource client as inline execution, but exposes it through prioritized RPC:
 
--   current-frame requests run before speculative playback batches,
--   streaming reads return incremental values to the main thread,
--   transferable buffers move decoded image/point-cloud data without extra
-    copies
+- current-frame requests run before speculative playback batches,
+- streaming reads return incremental values to the main thread,
+- transferable buffers move decoded image/point-cloud data without extra copies
 
 ## Decompression
 

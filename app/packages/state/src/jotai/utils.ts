@@ -6,7 +6,7 @@
  * @returns A custom storage implementation
  */
 export const createDatasetKeyedStorage = <T>(
-  getDatasetName: () => string | null | undefined
+  getDatasetName: () => string | null | undefined,
 ) => {
   return {
     getItem: (key: string, initialValue: T): T => {
@@ -40,7 +40,7 @@ export const createDatasetKeyedStorage = <T>(
     subscribe: (
       key: string,
       callback: (value: T) => void,
-      initialValue: T
+      initialValue: T,
     ): (() => void) | undefined => {
       if (
         typeof window === "undefined" ||

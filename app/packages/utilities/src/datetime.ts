@@ -17,14 +17,14 @@ export function dateFromDateTimeString(timeZone: string, v: string): number {
     const [hour, minute, second] = times.map(Number);
     return DateTime.fromObject(
       { year, month, day, hour, minute, second },
-      { zone: timeZone }
+      { zone: timeZone },
     ).valueOf();
   }
 
   const [hour, minute] = times.map(Number);
   return DateTime.fromObject(
     { year, month, day, hour, minute },
-    { zone: timeZone }
+    { zone: timeZone },
   ).valueOf();
 }
 
@@ -39,7 +39,7 @@ export function formatDateTimePicker(timeZone: string, v: number): string {
     timeZone,
   }).format(date);
   const day = Intl.DateTimeFormat("en", { day: "2-digit", timeZone }).format(
-    date
+    date,
   );
   const hour = Intl.DateTimeFormat("en", {
     hour: "2-digit",
@@ -56,7 +56,7 @@ export function formatDateTimePicker(timeZone: string, v: number): string {
   }).format(date);
 
   return `${year}-${month}-${day}T${hour}:${handleDigits(
-    minutes
+    minutes,
   )}:${handleDigits(seconds)}`;
 }
 
@@ -84,3 +84,113 @@ const handleDigits = (digits: string) => {
     useGrouping: false,
   });
 };
+
+/**
+ * Format an absolute timestamp as a relative time string, e.g. "3 hours ago"
+ * @param timestamp - epoch milliseconds
+ * @returns the relative time string, or null for an invalid timestamp
+ */
+export function formatRelativeTime(timestamp: number): string | null {
+  return DateTime.fromMillis(timestamp).toRelative();
+}
+
+/**
+ * FiftyOne renders `date` fields as the UTC calendar date and `datetime`
+ * fields in the app timezone (`fo.config.timezone`, "UTC" by default),
+ * while react-datepicker only operates on Date objects interpreted in the
+ * browser's local timezone. The helpers below translate between the two so
+ * pickers show and store the same dates and times the rest of the app
+ * displays.
+ */
+
+export type DateFieldType = "date" | "datetime";
+
+/**
+ * Convert an absolute timestamp into a Date whose local-timezone components
+ * match what the app displays for the field, suitable for react-datepicker
+ * @param type - the type of the field
+ * @param timestamp - epoch milliseconds
+ * @param timeZone - the app display timezone (IANA name, "UTC", or "local")
+ * @returns a Date whose local-time components carry the displayed date and time
+ */
+export function toPickerDate(
+  type: DateFieldType,
+  timestamp: number,
+  timeZone: string,
+): Date {
+  if (type === "date") {
+    const date = new Date(timestamp);
+    return new Date(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      12,
+    );
+  }
+
+  const dt = DateTime.fromMillis(timestamp, { zone: timeZone });
+
+  // an invalid zone or timestamp yields NaN components; throw instead of
+  // handing the picker an Invalid Date
+  if (!dt.isValid) {
+    throw new Error(`invalid date or timezone: ${timestamp} (${timeZone})`);
+  }
+
+  return new Date(
+    dt.year,
+    dt.month - 1,
+    dt.day,
+    dt.hour,
+    dt.minute,
+    dt.second,
+    dt.millisecond,
+  );
+}
+
+/**
+ * Serialize a picker Date's calendar date to an absolute instant at noon
+ * UTC, so the stored value renders as the same calendar date in every
+ * timezone
+ */
+export function dateOnlyToUTC(date: Date): string {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const day = date.getDate();
+
+  return new Date(Date.UTC(year, month, day, 12, 0, 0, 0)).toISOString();
+}
+
+export function serializeDateValue(
+  type: DateFieldType,
+  date: Date,
+  timeZone: string,
+): string {
+  if (type === "date") {
+    return dateOnlyToUTC(date);
+  }
+
+  // the picker's Date components are the displayed date and time in the app
+  // timezone; interpret them there to recover the absolute instant
+  const iso = DateTime.fromObject(
+    {
+      year: date.getFullYear(),
+      month: date.getMonth() + 1,
+      day: date.getDate(),
+      hour: date.getHours(),
+      minute: date.getMinutes(),
+      second: date.getSeconds(),
+      millisecond: date.getMilliseconds(),
+    },
+    { zone: timeZone },
+  )
+    .toUTC()
+    .toISO();
+
+  // an invalid zone or date yields null; throw so callers skip the mutation
+  // instead of treating the value as missing and deleting the field
+  if (iso === null) {
+    throw new Error(`invalid date or timezone: ${date} (${timeZone})`);
+  }
+
+  return iso;
+}

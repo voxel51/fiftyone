@@ -31,11 +31,11 @@ export const appReadyState = atom<AppReadyState>({
 
 export const processState = (
   session: Session,
-  state: { [key: string]: unknown }
+  state: { [key: string]: unknown },
 ): Partial<LocationState<DatasetPageQuery>> => {
   const unsubscribe = subscribeBefore<DatasetPageQuery>(({ data }) => {
     session.colorScheme = ensureColorScheme(
-      state.color_scheme as ColorSchemeInput
+      state.color_scheme as ColorSchemeInput,
     );
 
     session.sessionGroupSlice =
@@ -160,9 +160,20 @@ const resolveView = (state: { view?: object[] }) => {
 
 const resolveWorkspace = (
   session: Session,
-  state: { spaces?: SpaceNodeJSON }
+  state: { spaces?: SpaceNodeJSON },
 ) => {
   if (env().VITE_NO_STATE) {
+    return session.sessionSpaces;
+  }
+
+  // state replays (reconnects, refreshes) carry the server's spaces without
+  // the client's ordering stamp, lagging local writes by the push debounce;
+  // once this session has written (its copy is stamped), an unstamped replay
+  // must not clobber it
+  if (
+    session.sessionSpaces?._version !== undefined &&
+    state.spaces?._version === undefined
+  ) {
     return session.sessionSpaces;
   }
 

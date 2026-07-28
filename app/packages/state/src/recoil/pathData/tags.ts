@@ -19,8 +19,8 @@ export const labelTagCounts = selectorFamily<
             modal,
             path: `${path}.tags`,
             mixed: get(groupStatistics(modal)) === "group",
-          })
-        )
+          }),
+        ),
       );
 
       const result = {};
@@ -60,13 +60,13 @@ export const sampleTagCounts = selectorFamily<
           isQueryPerformance: false,
           path: "tags",
           mixed: get(groupStatistics(params.modal)) === "group",
-        })
+        }),
       );
       if (data.__typename !== "StringAggregation") {
         throw new Error("unexpected");
       }
       return Object.fromEntries(
-        data.values.map(({ value, count }) => [value, count])
+        data.values.map(({ value, count }) => [value, count]),
       );
     },
 });

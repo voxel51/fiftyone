@@ -46,6 +46,8 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels. By
             default, IoUs are computed directly on the dense pixel masks
+        keypoint_sigmas (None): an optional list of per-keypoint OKS sigmas to
+            use when evaluating :class:`fiftyone.core.labels.Keypoints`
         max_preds (None): the maximum number of predicted objects to evaluate
             when computing mAP and PR curves
         error_level (1): the error level to use when manipulating instance
@@ -84,6 +86,7 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         use_masks=False,
         use_boxes=False,
         tolerance=None,
+        keypoint_sigmas=None,
         max_preds=None,
         error_level=1,
         hierarchy=None,
@@ -107,6 +110,7 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         self.use_masks = use_masks
         self.use_boxes = use_boxes
         self.tolerance = tolerance
+        self.keypoint_sigmas = keypoint_sigmas
         self.max_preds = max_preds
         self.error_level = error_level
         self.hierarchy = hierarchy
@@ -529,6 +533,9 @@ def _open_images_evaluation_setup(
 
     if config.use_boxes:
         iou_kwargs.update(use_boxes=True)
+
+    if config.keypoint_sigmas is not None:
+        iou_kwargs.update(keypoint_sigmas=config.keypoint_sigmas)
 
     # Organize ground truth and predictions by category
 

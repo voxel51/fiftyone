@@ -22,10 +22,10 @@ const useSetSpaces: EventHandlerHook = ({ router }) => {
             workspace: payload.spaces._name ?? null,
           },
         }),
-        { ...state, event: "spaces", workspace: payload.spaces }
+        { ...state, event: "spaces", workspace: payload.spaces },
       );
     },
-    [router, setter]
+    [router, setter],
   );
 };
 

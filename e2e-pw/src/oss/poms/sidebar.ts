@@ -34,7 +34,7 @@ export class SidebarPom {
 
   fieldArrow(fieldName: string, enabled: boolean) {
     return this.fieldContainer(fieldName).getByTestId(
-      `sidebar-field-arrow-${enabled ? "enabled" : "disabled"}-${fieldName}`
+      `sidebar-field-arrow-${enabled ? "enabled" : "disabled"}-${fieldName}`,
     );
   }
 
@@ -80,7 +80,7 @@ export class SidebarPom {
 
   async clickFieldDropdown(field: string) {
     const selector = this.sidebar.getByTestId(
-      `sidebar-field-arrow-enabled-${field}`
+      `sidebar-field-arrow-enabled-${field}`,
     );
     return selector.click();
   }
@@ -112,7 +112,10 @@ export class SidebarPom {
     const selectionDiv = this.sidebar
       .getByTestId("checkbox-" + label)
       .getByTitle(label);
-    await selectionDiv.click({ force: true });
+    // no force: the actionability wait keeps the click from landing while
+    // the filter dropdown is still animating open (a forced click computes
+    // its point once and misses a moving checkbox)
+    await selectionDiv.click();
   }
 
   async applySearch(field: string, search: string) {
@@ -132,14 +135,14 @@ export class SidebarPom {
     await currentMode.click();
     // make sure the pop out panel is fully expanded, to make sure click is successful
     const targetMode = this.sidebar.getByTestId(
-      `filter-option-${targetModeId}`
+      `filter-option-${targetModeId}`,
     );
     return targetMode.click();
   }
 
   async resetAttribute(attribute: string) {
     const container = this.sidebar.getByTestId(
-      `categorical-filter-${attribute}`
+      `categorical-filter-${attribute}`,
     );
     const reset = container.getByTestId("filter-reset");
     return reset.click();
@@ -160,13 +163,13 @@ class SidebarAsserter {
 
   async assertCheckboxEnabled(fieldName: string) {
     await expect(
-      this.sb.sidebar.getByTestId(`checkbox-${fieldName}`)
+      this.sb.sidebar.getByTestId(`checkbox-${fieldName}`),
     ).toBeVisible();
   }
 
   async assertCheckboxDisabled(fieldName: string) {
     await expect(
-      this.sb.sidebar.getByTestId(`checkbox-${fieldName}`)
+      this.sb.sidebar.getByTestId(`checkbox-${fieldName}`),
     ).toHaveCount(0);
   }
 
@@ -192,14 +195,14 @@ class SidebarAsserter {
 
   async assertSubfieldHasQueryPerformance(
     fieldName: string,
-    filterType?: "categorical" | "numeric"
+    filterType?: "categorical" | "numeric",
   ) {
     await expect(this.sb.queryPerformance(fieldName, filterType)).toBeVisible();
   }
 
   async assertSubfieldMissingQueryPerformance(
     fieldName: string,
-    filterType?: "categorical" | "numeric"
+    filterType?: "categorical" | "numeric",
   ) {
     await expect(this.sb.queryPerformance(fieldName, filterType)).toBeHidden();
   }
@@ -285,20 +288,20 @@ class SidebarAsserter {
     expect(draggableSidebarFieldArea.getAttribute("draggable")).toBeTruthy();
     await expect(draggableSidebarFieldArea).toHaveAttribute(
       "data-draggable",
-      "true"
+      "true",
     );
   }
 
   async assertCanDragField(fieldName: string) {
     await expect(this.sb.sidebarEntryDraggableArea(fieldName)).toHaveAttribute(
       "data-draggable",
-      "true"
+      "true",
     );
   }
 
   async assertCannotDragField(fieldName: string) {
     await expect(
-      this.sb.sidebarEntryDraggableArea(fieldName)
+      this.sb.sidebarEntryDraggableArea(fieldName),
     ).not.toHaveAttribute("data-draggable", "true");
   }
 }

@@ -1,7 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { SettingsBackupRestore } from "@mui/icons-material";
 import { Divider, Slider, Typography } from "@mui/material";
-import { default as React } from "react";
 import { useRecoilState } from "recoil";
 import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
@@ -60,7 +59,7 @@ const GlobalSetting = () => {
         </LabelTitle>
         <Slider
           value={Number(colorScheme.opacity)}
-          onChange={(event: Event, newValue: number | number[]) => {
+          onChange={(_event: Event, newValue: number | number[]) => {
             setColorScheme({ ...colorScheme, opacity: newValue as number });
           }}
           min={0}

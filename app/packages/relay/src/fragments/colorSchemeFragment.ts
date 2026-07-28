@@ -17,6 +17,13 @@ export default r(graphql`
         value
       }
     }
+    temporalTags {
+      fieldColor
+      valueColors {
+        color
+        value
+      }
+    }
     defaultMaskTargetsColors {
       intTarget
       color
