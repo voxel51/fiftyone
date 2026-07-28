@@ -59,6 +59,8 @@ interface ParamInputProps {
   fieldOptions: { id: string; data: { label: string } }[];
   /** The field paths a param accepts, narrowed by the constraints it declares. */
   allowedFor: (param: ParamDef) => string[];
+  /** The values a closed-choice param picks from, resolved from the dataset. */
+  choicesFor?: (param: ParamDef) => string[];
   /** The editor switcher, for controls that place it themselves. */
   tabs?: React.ReactNode;
   /** The field an expression on this param is evaluated against, if any. */
@@ -125,6 +127,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
   onChange,
   fieldOptions,
   allowedFor,
+  choicesFor,
   tabs,
   scope,
   allPaths = [],
@@ -158,13 +161,59 @@ const ParamControl: React.FC<ParamInputProps> = ({
         />
       );
 
-    case "field":
+    case "select": {
+      const values = choicesFor?.(param) ?? [];
+      // A picker with nothing to pick is disabled and says so, rather than
+      // opening an empty list
+      const barren = values.length === 0;
+      const picks = values.map((v) => ({ id: v, data: { label: v } }));
+      // A list-taking param picks several — `SelectGroupSlices` takes one
+      // media type or many
+      if (param.tokens.some((token) => token.startsWith("list<"))) {
+        return (
+          <PlaceheldSelect
+            placeholder={barren ? "No choices available" : name}
+            empty={asList(value).length === 0}
+          >
+            <Select
+              portal
+              disabled={disabled || barren}
+              value={asList(value)}
+              options={picks}
+              onChange={(v) => onChange(Array.isArray(v) ? v : v ? [v] : [])}
+            />
+          </PlaceheldSelect>
+        );
+      }
       return (
-        <PlaceheldSelect placeholder={name} empty={typeof value !== "string"}>
+        <PlaceheldSelect
+          placeholder={barren ? "No choices available" : name}
+          empty={typeof value !== "string"}
+        >
           <Select
             exclusive
             portal
-            disabled={disabled}
+            disabled={disabled || barren}
+            value={typeof value === "string" ? value : undefined}
+            options={picks}
+            onChange={(v) => {
+              if (typeof v === "string") onChange(v);
+            }}
+          />
+        </PlaceheldSelect>
+      );
+    }
+
+    case "field":
+      return (
+        <PlaceheldSelect
+          placeholder={options.length ? name : "No choices available"}
+          empty={typeof value !== "string"}
+        >
+          <Select
+            exclusive
+            portal
+            disabled={disabled || options.length === 0}
             value={typeof value === "string" ? value : undefined}
             options={options}
             onChange={(v) => {
@@ -176,10 +225,13 @@ const ParamControl: React.FC<ParamInputProps> = ({
 
     case "fieldList":
       return (
-        <PlaceheldSelect placeholder={name} empty={asList(value).length === 0}>
+        <PlaceheldSelect
+          placeholder={options.length ? name : "No choices available"}
+          empty={asList(value).length === 0}
+        >
           <Select
             portal
-            disabled={disabled}
+            disabled={disabled || options.length === 0}
             value={asList(value)}
             options={options}
             onChange={(v) => onChange(Array.isArray(v) ? v : v ? [v] : [])}
@@ -357,6 +409,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
           */}
           <div
             style={{
+              position: "relative",
               width: "100%",
               height: EXPRESSION_BOX_HEIGHT,
               overflow: "hidden",
@@ -419,6 +472,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
           </div>
         </Stack>
       );
+    }
   }
 };
 

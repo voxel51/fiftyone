@@ -12,6 +12,7 @@ parameter may be omitted, and learns where its valid values come from.
 """
 
 from enum import Enum
+import inspect
 import typing as t
 
 import strawberry as gql
@@ -32,6 +33,7 @@ class StageParameterChoiceSource(Enum):
     FIELDS = "fields"
     GROUP_SLICES = "group_slices"
     CONSTANTS = "constants"
+    EVALUATION_KEYS = "evaluation_keys"
     FREE_TEXT = "free_text"
 
 
@@ -83,8 +85,9 @@ class StageParameterChoices:
 
     ``source`` discriminates: ``fields`` is populated only for ``FIELDS``,
     where each entry is an alternative the parameter accepts, and ``values``
-    only for ``CONSTANTS``. ``GROUP_SLICES`` carries no payload because the App
-    resolves group slices from the dataset, and neither does ``FREE_TEXT``.
+    only for ``CONSTANTS``. ``GROUP_SLICES`` and ``EVALUATION_KEYS`` carry no
+    payload because the App resolves them from the dataset, and neither does
+    ``FREE_TEXT``.
     """
 
     source: StageParameterChoiceSource
@@ -114,6 +117,7 @@ class StageDefinition:
     """
 
     name: str
+    description: t.Optional[str]
     media_types: t.List[str]
     params: t.List[StageParameter]
 
@@ -187,10 +191,23 @@ def _stage_parameter(param: t.Dict[str, t.Any]) -> StageParameter:
     )
 
 
+def _summary(stage: type) -> t.Optional[str]:
+    """The first sentence of the stage's docstring, which every stage opens
+    with a one-line statement of what it does."""
+    doc = inspect.getdoc(stage)
+    if not doc:
+        return None
+
+    first = doc.split("\n\n", 1)[0].replace("\n", " ")
+    sentence = first.split(". ", 1)[0].strip()
+    return sentence if sentence.endswith(".") else sentence + "."
+
+
 def stage_definitions() -> t.List[StageDefinition]:
     return [
         StageDefinition(
             name=stage.__name__,
+            description=_summary(stage),
             media_types=list(stage._media_types() or []),
             params=[_stage_parameter(param) for param in stage._params()],
         )

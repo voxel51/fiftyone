@@ -86,6 +86,14 @@ import { useRecoilValue } from "recoil";
  */
 export let rollbackViewBar: () => void = () => undefined;
 
+/** Every slice qualifies — a slice-picking param is not media-type fussy. */
+const ALL_SLICE_MEDIA_TYPES: fos.GroupSliceMediaType[] = [
+  "image",
+  "video",
+  "3d",
+  "multimodal",
+];
+
 const ViewBar: React.FC = () => {
   const stageDefs = useRecoilValue(fos.stageDefinitions);
   const fieldPaths = useRecoilValue(fos.fieldPaths({}));
@@ -220,6 +228,24 @@ const ViewBar: React.FC = () => {
       return field ? kindByFtype.get(field.ftype) : undefined;
     },
     [fieldTypes, kindByFtype],
+  );
+
+  // Closed-choice params pick from a list: the stage's own constants, or
+  // names only the dataset knows — its group slices, its evaluation keys
+  const evaluationKeys = fos.useEvaluationKeys();
+  const groupSlices = fos.useGroupSlices(ALL_SLICE_MEDIA_TYPES);
+  const choicesFor = useCallback(
+    (param: ParamDef): string[] => {
+      switch (param.choices.source) {
+        case "GROUP_SLICES":
+          return groupSlices;
+        case "EVALUATION_KEYS":
+          return evaluationKeys;
+        default:
+          return [...param.choices.values];
+      }
+    },
+    [groupSlices, evaluationKeys],
   );
 
   /**
@@ -599,6 +625,9 @@ const ViewBar: React.FC = () => {
                   id={`view-bar-stage-${i}`}
                   role="option"
                   aria-selected={i === active}
+                  // What the stage does, without leaving the list — its
+                  // docstring's opening sentence, served with the schema
+                  title={defsByName.get(name)?.description ?? undefined}
                   ref={(el) => {
                     if (i === active) {
                       el?.scrollIntoView({ block: "nearest" });
@@ -679,6 +708,7 @@ const ViewBar: React.FC = () => {
               fieldOptions={fieldOptions}
               allPaths={fieldPaths}
               allowedFor={allowedFor}
+              choicesFor={choicesFor}
               operators={operators}
               fieldKind={fieldKind}
               expanded={editingId === stage.id}

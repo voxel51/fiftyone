@@ -33,7 +33,8 @@ export type InputKind =
   | "json"
   | "python"
   | "id"
-  | "idList";
+  | "idList"
+  | "select";
 
 /**
  * Every control a param can legitimately be edited with, most specific first.
@@ -60,6 +61,12 @@ export const paramModes = (param: ParamDef): InputKind[] => {
   const expression: InputKind[] =
     has("json") || has("dict") ? ["python", "json"] : [];
 
+  // A closed set of valid values — constants from the stage itself, or names
+  // the App resolves from the dataset — is a picker, not a text box
+  if (RESOLVED_CHOICES.has(param.choices.source)) {
+    return ["select"];
+  }
+
   if (param.choices.source === "FIELDS") {
     const picker: InputKind = has("list<field>") ? "fieldList" : "field";
     const newNames = param.choices.fields.some(
@@ -84,6 +91,13 @@ export const paramModes = (param: ParamDef): InputKind[] => {
 
 export const pickInput = (param: ParamDef): InputKind => paramModes(param)[0];
 
+/** The choice sources whose values arrive as a list to pick from. */
+export const RESOLVED_CHOICES: ReadonlySet<ParamChoices["source"]> = new Set([
+  "CONSTANTS",
+  "GROUP_SLICES",
+  "EVALUATION_KEYS",
+] as const);
+
 /** Short label for a mode, for the switcher. */
 export const MODE_LABELS: Record<InputKind, string> = {
   bool: "bool",
@@ -96,6 +110,7 @@ export const MODE_LABELS: Record<InputKind, string> = {
   idList: "ids",
   json: "json",
   python: "expr",
+  select: "pick",
 };
 
 /**
@@ -239,6 +254,7 @@ export interface ParamChoices {
     | "FIELDS"
     | "GROUP_SLICES"
     | "CONSTANTS"
+    | "EVALUATION_KEYS"
     | "FREE_TEXT"
     | "%future added value";
   fields: readonly FieldConstraint[];
@@ -400,6 +416,8 @@ export const NO_STATUS_LINE: ReadonlySet<InputKind> = new Set<InputKind>([
 /** A stage as the server describes it. */
 export interface StageDefinition {
   name: string;
+  /** What the stage does — its docstring's opening sentence. */
+  description?: string | null;
   /** The media types it applies to; empty means any. */
   mediaTypes: readonly string[];
   params: ParamDef[];

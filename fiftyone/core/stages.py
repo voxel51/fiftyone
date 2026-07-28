@@ -575,6 +575,13 @@ def _group_slice_choices():
     return {"source": "group_slices"}
 
 
+def _evaluation_key_choices():
+    """A parameter naming one of the dataset's evaluation runs. No payload:
+    the App resolves the keys from the dataset itself.
+    """
+    return {"source": "evaluation_keys"}
+
+
 class Concat(ViewStage):
     """Concatenates the contents of the given
     :class:`fiftyone.core.collections.SampleCollection` to this collection.
@@ -8700,7 +8707,12 @@ class ToEvaluationPatches(ViewStage):
     @classmethod
     def _params(self):
         return [
-            {"name": "eval_key", "type": "str", "placeholder": "eval key"},
+            {
+                "name": "eval_key",
+                "type": "str",
+                "placeholder": "eval key",
+                "choices": _evaluation_key_choices(),
+            },
             {
                 "name": "config",
                 "type": "NoneType|json",

@@ -56,6 +56,20 @@ export const useDatasetMediaType = (): string | null => {
   return current?.mediaType ?? null;
 };
 
+/**
+ * The keys of the dataset's evaluation runs, for parameters that name one —
+ * `ToEvaluationPatches.eval_key` being the reason this exists.
+ *
+ * @returns the evaluation keys, empty when no dataset is loaded
+ */
+export const useEvaluationKeys = (): string[] => {
+  const current = useRecoilValue(dataset);
+  return useMemo(
+    () => (current?.evaluations ?? []).map((run) => run.key),
+    [current?.evaluations],
+  );
+};
+
 /** What a field holds, for callers matching paths against a type constraint. */
 export interface FieldType {
   ftype: string;

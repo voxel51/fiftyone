@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2eb97c6a0546da900bf16fe647a74e46>>
+ * @generated SignedSource<<cb8d9e40baa1d4e0c427e71be396c141>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,12 +9,13 @@
 // @ts-nocheck
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
-export type StageParameterChoiceSource = "CONSTANTS" | "FIELDS" | "FREE_TEXT" | "GROUP_SLICES" | "%future added value";
+export type StageParameterChoiceSource = "CONSTANTS" | "EVALUATION_KEYS" | "FIELDS" | "FREE_TEXT" | "GROUP_SLICES" | "%future added value";
 export type StageParameterFieldExistence = "ANY" | "EXISTING" | "EXISTING_ROOT" | "%future added value";
 export type StageParameterFieldLevel = "ANY" | "FRAME" | "SAMPLE" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type stageDefinitionsFragment$data = {
   readonly stageDefinitions: ReadonlyArray<{
+    readonly description: string | null;
     readonly mediaTypes: ReadonlyArray<string>;
     readonly name: string;
     readonly params: ReadonlyArray<{
@@ -67,6 +68,13 @@ return {
       "plural": true,
       "selections": [
         (v0/*: any*/),
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "description",
+          "storageKey": null
+        },
         {
           "alias": null,
           "args": null,
@@ -201,6 +209,6 @@ return {
 };
 })();
 
-(node as any).hash = "838ffbf2f9e0f5d41b40188fb1b10679";
+(node as any).hash = "f88a1d31e099a8ec4f1caad9fdebed81";
 
 export default node;

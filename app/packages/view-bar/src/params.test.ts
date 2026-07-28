@@ -74,7 +74,7 @@ describe("paramModes", () => {
 
   it("offers one control for a fixed set of values", () => {
     expect(paramModes(param("NoneType|list<str>|str", "CONSTANTS"))).toEqual([
-      "stringList",
+      "select",
     ]);
   });
 

@@ -4,6 +4,7 @@ export default graphql`
   fragment stageDefinitionsFragment on Query {
     stageDefinitions {
       name
+      description
       mediaTypes
       params {
         name

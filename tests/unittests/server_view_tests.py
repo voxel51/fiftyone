@@ -1351,6 +1351,7 @@ class StageDefinitionTests(unittest.TestCase):
             "fields": "fields",
             "constants": "values",
             "group_slices": None,
+            "evaluation_keys": None,
             "free_text": None,
         }
         levels = {"any", "sample", "frame"}
@@ -1389,6 +1390,31 @@ class StageDefinitionTests(unittest.TestCase):
 
                 if source == "fields":
                     self.assertTrue(choices["fields"], where)
+
+    def test_evaluation_key_choices(self):
+        params = {
+            param["name"]: param
+            for param in fosg.ToEvaluationPatches._params()
+        }
+        self.assertEqual(
+            params["eval_key"]["choices"], {"source": "evaluation_keys"}
+        )
+
+    def test_stage_descriptions(self):
+        for definition in fosd.stage_definitions():
+            self.assertTrue(definition.description, definition.name)
+            self.assertTrue(
+                definition.description.endswith("."), definition.name
+            )
+
+        flatten = next(
+            d for d in fosd.stage_definitions() if d.name == "Flatten"
+        )
+        self.assertEqual(
+            flatten.description,
+            "Returns a flattened view that contains all samples in a "
+            "dynamic grouped collection.",
+        )
 
     def test_choices(self):
         choices = _choices()

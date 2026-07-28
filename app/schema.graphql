@@ -836,6 +836,7 @@ input SidebarGroupInput {
 
 type StageDefinition {
   name: String!
+  description: String
   mediaTypes: [String!]!
   params: [StageParameter!]!
 }
@@ -855,6 +856,7 @@ enum StageParameterChoiceSource {
   FIELDS
   GROUP_SLICES
   CONSTANTS
+  EVALUATION_KEYS
   FREE_TEXT
 }
 

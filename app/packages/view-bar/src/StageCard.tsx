@@ -77,6 +77,8 @@ interface StageCardProps {
   fieldOptions: { id: string; data: { label: string } }[];
   /** The field paths a param accepts, narrowed by the constraints it declares. */
   allowedFor: (param: ParamDef) => string[];
+  /** The values a closed-choice param picks from, resolved from the dataset. */
+  choicesFor?: (param: ParamDef) => string[];
   /** The served operator catalog, for expression suggestions. */
   operators?: Operator[];
   /** Resolves a full field path to the kind of value it holds. */
@@ -122,6 +124,7 @@ export const StageCard: React.FC<StageCardProps> = ({
   allPaths,
   invalid,
   allowedFor,
+  choicesFor,
   operators,
   fieldKind,
   errors,
@@ -354,6 +357,7 @@ export const StageCard: React.FC<StageCardProps> = ({
                           onChange={(v) => onChange(p.name, v)}
                           fieldOptions={fieldOptions}
                           allowedFor={allowedFor}
+                          choicesFor={choicesFor}
                           operators={operators}
                           fieldKind={fieldKind}
                           scope={expressionScope(
