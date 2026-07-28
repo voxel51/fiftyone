@@ -10,6 +10,8 @@ import unittest.mock as _mock
 
 import pytest
 
+pytestmark = pytest.mark.ml
+
 
 @pytest.fixture(autouse=True)
 def _stub_lazy_sharp(monkeypatch):

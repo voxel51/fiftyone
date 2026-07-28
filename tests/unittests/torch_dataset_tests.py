@@ -8,6 +8,12 @@ FiftyOne torch dataset unit tests.
 import os
 import unittest
 
+import pytest
+
+pytest.importorskip("torch", reason="ML test requires PyTorch")
+pytest.importorskip("torchvision", reason="ML test requires torchvision")
+pytestmark = pytest.mark.ml
+
 import fiftyone as fo
 from fiftyone.utils.torch import GetItem
 

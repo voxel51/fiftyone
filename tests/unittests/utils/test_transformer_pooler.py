@@ -11,7 +11,9 @@ from unittest import mock
 
 import numpy as np
 import pytest
-import torch
+
+torch = pytest.importorskip("torch", reason="ML test requires PyTorch")
+pytestmark = pytest.mark.ml
 
 
 def _make_mixin(get_text_features_return):

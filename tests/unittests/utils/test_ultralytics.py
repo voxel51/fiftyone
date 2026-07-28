@@ -14,6 +14,8 @@ import pytest
 
 import fiftyone.core.labels as fol
 
+pytestmark = pytest.mark.ml
+
 
 class TestDetectionsToVisualPrompts:
     def test_single_class_normalized_to_absolute(self):

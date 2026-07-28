@@ -48,31 +48,47 @@ jobs:
         run: cd app && yarn test
 
   test-python:
+    name: Python ${{ matrix.python }} (${{ matrix.profile }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
-    # The prebaked image (built by build-ci-images.yml) carries the matching
-    # Python plus fiftyone's dependency tree and ffmpeg, so test jobs skip
-    # all toolchain setup.
+    # The core leg uses a clean Python base until the new profile tags are
+    # first published. The ml-cloud leg keeps using the existing test image.
     container:
-      # fiftyone-teams overrides the image name via repo var (superset deps)
-      image: ${{ vars.FIFTYONE_TEST_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-test' }}:${{ matrix.python }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      image: >-
+        ${{ matrix.profile == 'core' &&
+        format('python:{0}-slim-bookworm', matrix.python) ||
+        format('{0}:{1}', vars.FIFTYONE_TEST_IMAGE_NAME ||
+        'ghcr.io/voxel51/fiftyone-test', matrix.python) }}
     env:
       FIFTYONE_DO_NOT_TRACK: true
+      PYTHONPATH: .
       # Assuming no pytest should take more than 60 seconds
       PYTEST_TIMEOUT: 60
+      TEST_GROUP: ${{ matrix.profile == 'core' && 'test-core' || 'test' }}
+      TEST_MARKER: >-
+        ${{ matrix.profile == 'core' &&
+        'not ml and not cloud' || 'ml or cloud' }}
     strategy:
       fail-fast: false
       matrix:
         os:
           - ubuntu-latest
         python: ${{ fromJSON(inputs.python-versions) }}
+        profile:
+          - core
+          - ml-cloud
     defaults:
       run:
         shell: bash
     steps:
+      - name: Install core system dependencies
+        if: matrix.profile == 'core'
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates git ffmpeg libcurl4
+          rm -rf /var/lib/apt/lists/*
+
       - name: Checkout
         uses: actions/checkout@v6
         with:
@@ -82,15 +98,30 @@ jobs:
             /*
             !/docs/**
           sparse-checkout-cone-mode: false
-      - name: Install fiftyone
-        # dependencies are baked into the image; this only builds fiftyone
-        # itself from the PR's source (plus any deps added since the last
-        # image build)
-        run: |
-          uv pip install --system '.[multimodal]' -r requirements/github.txt
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.32"
+          enable-cache: true
+          cache-suffix: test-${{ matrix.python }}-${{ matrix.profile }}
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Sync test environment
+        run: >-
+          uv sync --locked --no-default-groups
+          --extra multimodal --group "$TEST_GROUP"
+
+      - name: Validate test environment
+        run: >-
+          uv run --locked --no-sync python
+          tests/utils/validate_test_environment.py
+          "${{ matrix.profile }}"
+
       - name: Configure
-        run: |
-          python tests/utils/setup_config.py
+        run: uv run --locked --no-sync python tests/utils/setup_config.py
 
       # Important: use pytest_wrapper.py instead of pytest directly to ensure
       # that services shut down cleanly and do not conflict with steps later in
@@ -98,46 +129,52 @@ jobs:
       - name: Run tests
         run: |
           mkdir -p junit
-          python tests/utils/pytest_wrapper.py tests/ --verbose \
+          uv run --locked --no-sync python tests/utils/pytest_wrapper.py tests/ --verbose \
             --junitxml junit/main.xml \
-            --cov --cov-report xml \
+            -m "$TEST_MARKER" \
             --ignore tests/benchmarking/ \
             --ignore tests/isolated/ \
             --ignore tests/utils/ \
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
-      - name: Upload
-        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.13' }}
-        uses: codecov/codecov-action@v7
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml
-          flags: python
+
+      - name: Audit test partitions
+        if: matrix.python == '3.13' && matrix.profile == 'ml-cloud'
+        run: >-
+          uv run --locked --no-sync python
+          tests/utils/validate_test_partitions.py
+
       - name: Run no wrapper tests
+        if: matrix.profile == 'core'
         run: |
-          pytest tests/no_wrapper --verbose --junitxml junit/no-wrapper.xml
+          uv run --locked --no-sync pytest tests/no_wrapper --verbose \
+            --junitxml junit/no-wrapper.xml
+
       # Intended to run even if the tests above failed
       - name: Run isolated tests
-        if: success() || failure()
-        # every file runs even if one fails, matching xargs semantics, with
-        # a junit report per file
+        if: >-
+          matrix.profile == 'core' &&
+          (success() || failure())
         run: |
           mkdir -p junit
           fail=0
           while IFS= read -r -d '' f; do
             rel="${f#tests/isolated/}"
             mkdir -p "junit/isolated/$(dirname "$rel")"
-            python tests/utils/pytest_wrapper.py "$f" --verbose \
+            uv run --locked --no-sync python tests/utils/pytest_wrapper.py \
+              "$f" --verbose \
               --junitxml "junit/isolated/${rel%.py}.xml" || fail=1
           done < <(find tests/isolated/ -name '*.py' -print0)
           exit $fail
+
       - name: Upload pytest results
         # junit reports feed the python section of the authoritative CI
         # comment (.github/scripts/python-section.mjs)
         if: success() || failure()
         uses: actions/upload-artifact@v7
         with:
-          name: pytest-results-${{ matrix.python }}
+          name: >-
+            pytest-results-${{ matrix.python }}-${{ matrix.profile }}
           path: junit/
           if-no-files-found: ignore
           retention-days: 3

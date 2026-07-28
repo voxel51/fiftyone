@@ -973,6 +973,7 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
         # <class>/_images/<filename>
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
 
+    @pytest.mark.ml
     @drop_datasets
     def test_tf_image_classification_dataset(self):
         dataset = self._make_dataset()
@@ -1042,6 +1043,7 @@ class ImageChannelsDatasetTests(ImageDatasetTests):
 
         return dataset
 
+    @pytest.mark.ml
     @skipwindows
     @drop_datasets
     def test_tf_image_classification_channels(self):
@@ -1316,6 +1318,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         # _images/<filename>
         self.assertEqual(len(relpath.split(os.path.sep)), 2)
 
+    @pytest.mark.ml
     @drop_datasets
     def test_tf_object_detection_dataset(self):
         dataset = self._make_dataset()

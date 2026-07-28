@@ -7,25 +7,25 @@ FiftyOne Server mutation endpoint unit tests.
 """
 
 import datetime
+import json
+import time
 
 # pylint: disable=no-value-for-parameter
-from unittest.mock import MagicMock, AsyncMock, patch
-import json
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from bson import ObjectId, json_util
+import numpy as np
 import pytest
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
 
 import fiftyone as fo
+from fiftyone import DynamicEmbeddedDocument
 import fiftyone.core.labels as fol
 from fiftyone.core.labels import _read_mask, _write_mask
-import fiftyone.server.routes.sample as fors
-from fiftyone import DynamicEmbeddedDocument
-import numpy as np
-
 import fiftyone.core.utils as fou
+import fiftyone.server.routes.sample as fors
 
 
 def _create_dummy_instance(cls_type: type) -> dict:
@@ -308,6 +308,9 @@ class TestSampleRoutes:
     ):
         """Tests that a 412 response with the current sample is returned
         for a stale If-Match."""
+        # MongoDB stores datetimes with millisecond precision. Ensure this
+        # save cannot retain the timestamp captured by the if_match fixture.
+        time.sleep(0.002)
         sample["primitive_field"] = "new_value"
         sample.save()
         sample.reload()
@@ -1501,6 +1504,9 @@ class TestSampleFieldRoute:
         """Tests that a 412 response with the current sample is returned
         for a stale If-Match."""
         # Update the sample to change its last_modified_at
+        # MongoDB stores datetimes with millisecond precision. Ensure this
+        # save cannot retain the timestamp captured by the if_match fixture.
+        time.sleep(0.002)
         sample["primitive_field"] = "new_value"
         sample.save()
         sample.reload()

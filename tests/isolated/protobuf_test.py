@@ -19,13 +19,15 @@ MODULES = [
 ]
 
 
-def _pip_install(spec):
-    subprocess.check_call([sys.executable, "-m", "pip", "install", spec])
-
-
-def _pip_uninstall(package):
+def _install(spec):
     subprocess.check_call(
-        [sys.executable, "-m", "pip", "uninstall", "-y", package]
+        ["uv", "pip", "install", "--python", sys.executable, spec]
+    )
+
+
+def _uninstall(package):
+    subprocess.check_call(
+        ["uv", "pip", "uninstall", "--python", sys.executable, package]
     )
 
 
@@ -40,7 +42,7 @@ def test_incompatible_protobuf():
     original_version = _current_version("protobuf")
 
     try:
-        _pip_install("protobuf==4.25.9")
+        _install("protobuf==4.25.9")
 
         env = os.environ.copy()
         env.pop("VFF_MULTIMODAL", None)
@@ -58,6 +60,6 @@ def test_incompatible_protobuf():
             )
     finally:
         if original_version is None:
-            _pip_uninstall("protobuf")
+            _uninstall("protobuf")
         else:
-            _pip_install(f"protobuf=={original_version}")
+            _install(f"protobuf=={original_version}")

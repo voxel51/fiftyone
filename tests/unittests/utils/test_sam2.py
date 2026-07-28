@@ -11,6 +11,10 @@ from unittest import mock
 
 import pytest
 
+pytest.importorskip("torch", reason="ML test requires PyTorch")
+pytest.importorskip("torchvision", reason="ML test requires torchvision")
+pytestmark = pytest.mark.ml
+
 import fiftyone.utils.sam2 as fosam2
 
 

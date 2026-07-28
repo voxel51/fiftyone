@@ -10,6 +10,7 @@ import gc
 import os
 import random
 import string
+import time
 import unittest
 from collections import Counter
 from copy import copy, deepcopy
@@ -33,6 +34,11 @@ import fiftyone.core.media as fom
 import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
 from fiftyone.operators.store import ExecutionStoreService
+
+
+def _wait_for_mongo_timestamp_tick():
+    # MongoDB stores datetimes with millisecond precision
+    time.sleep(0.002)
 
 
 class DatasetTests(unittest.TestCase):
@@ -4111,6 +4117,7 @@ class DatasetTests(unittest.TestCase):
         created_at = dataset.get_field("field").created_at
         lma1a = sample.last_modified_at
         lma1b = dataset.values("last_modified_at")[0]
+        _wait_for_mongo_timestamp_tick()
         dataset.clone_sample_field("field", "field_copy")
         schema = dataset.get_field_schema()
         lma2a = sample.last_modified_at
@@ -4131,6 +4138,7 @@ class DatasetTests(unittest.TestCase):
 
         lma1a = sample.last_modified_at
         lma1b = dataset.values("last_modified_at")[0]
+        _wait_for_mongo_timestamp_tick()
         dataset.clear_sample_field("field")
         schema = dataset.get_field_schema()
         lma2a = sample.last_modified_at
@@ -4143,6 +4151,7 @@ class DatasetTests(unittest.TestCase):
 
         lma1a = sample.last_modified_at
         lma1b = dataset.values("last_modified_at")[0]
+        _wait_for_mongo_timestamp_tick()
         dataset.delete_sample_field("field")
         lma2a = sample.last_modified_at
         lma2b = dataset.values("last_modified_at")[0]
@@ -4154,6 +4163,7 @@ class DatasetTests(unittest.TestCase):
 
         lma1a = sample.last_modified_at
         lma1b = dataset.values("last_modified_at")[0]
+        _wait_for_mongo_timestamp_tick()
         dataset.rename_sample_field("field_copy", "field")
         lma2a = sample.last_modified_at
         lma2b = dataset.values("last_modified_at")[0]
@@ -4405,6 +4415,7 @@ class DatasetTests(unittest.TestCase):
 
         lma1a = frame.last_modified_at
         lma1b = dataset.values("frames.last_modified_at", unwind=True)[0]
+        _wait_for_mongo_timestamp_tick()
         dataset.clone_frame_field("field", "field_copy")
         schema = dataset.get_frame_field_schema()
         lma2a = frame.last_modified_at
@@ -4422,6 +4433,7 @@ class DatasetTests(unittest.TestCase):
 
         lma1a = frame.last_modified_at
         lma1b = dataset.values("frames.last_modified_at", unwind=True)[0]
+        _wait_for_mongo_timestamp_tick()
         dataset.clear_frame_field("field")
         schema = dataset.get_frame_field_schema()
         lma2a = frame.last_modified_at
@@ -4434,6 +4446,7 @@ class DatasetTests(unittest.TestCase):
 
         lma1a = frame.last_modified_at
         lma1b = dataset.values("frames.last_modified_at", unwind=True)[0]
+        _wait_for_mongo_timestamp_tick()
         dataset.delete_frame_field("field")
         lma2a = frame.last_modified_at
         lma2b = dataset.values("frames.last_modified_at", unwind=True)[0]
@@ -4445,6 +4458,7 @@ class DatasetTests(unittest.TestCase):
 
         lma1a = frame.last_modified_at
         lma1b = dataset.values("frames.last_modified_at", unwind=True)[0]
+        _wait_for_mongo_timestamp_tick()
         dataset.rename_frame_field("field_copy", "field")
         lma2a = frame.last_modified_at
         lma2b = dataset.values("frames.last_modified_at", unwind=True)[0]

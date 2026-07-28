@@ -6,11 +6,14 @@ Tests for fiftyone/utils/qwen3_vl.py output processor and parsing.
 |
 """
 
+from unittest import mock
+
+import numpy as np
 import PIL.Image
 import pytest
-import numpy as np
-import torch
-from unittest import mock
+
+torch = pytest.importorskip("torch", reason="ML test requires PyTorch")
+pytestmark = pytest.mark.ml
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
