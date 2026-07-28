@@ -60,6 +60,8 @@
         "xstate": "^4.14.0"
     },
     "devDependencies": {
+        "@testing-library/dom": "catalog:",
+        "@testing-library/react": "catalog:",
         "@types/lodash": "catalog:",
         "@types/mime": "catalog:",
         "@types/react": "catalog:",

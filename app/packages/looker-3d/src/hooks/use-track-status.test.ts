@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import { LoadingManager } from "three";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LoadingStatus } from "../types";

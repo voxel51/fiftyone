@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react-hooks";
+import { renderHook } from "@testing-library/react";
 import type { CameraControls } from "@react-three/drei";
 import type { RefObject } from "react";
 import type { PerspectiveCamera } from "three";

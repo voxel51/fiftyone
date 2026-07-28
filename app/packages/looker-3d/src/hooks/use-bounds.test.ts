@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import { Box3, type Group } from "three";
 import { type Mock, afterEach, describe, expect, it, vi } from "vitest";
 import { useFo3dBounds } from "./use-bounds";
