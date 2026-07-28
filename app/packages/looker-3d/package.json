@@ -15,7 +15,7 @@
     "dependencies": {
         "@emotion/react": "^11.14.0",
         "@emotion/styled": "^11.14.0",
-        "@react-three/drei": "^10.7.6",
+        "@react-three/drei": "^9.122.0",
         "@react-three/fiber": "catalog:",
         "@sparkjsdev/spark": "2.1.0",
         "chroma-js": "^3.1.2",
@@ -30,10 +30,12 @@
     "devDependencies": {
         "@types/chroma-js": "^3.1.1",
         "@types/node": "^20.11.10",
+        "@types/react": "18.3.12",
         "@types/three": "^0.176.0",
         "@vitejs/plugin-react": "catalog:",
         "nodemon": "^3.0.3",
-        "rollup-plugin-external-globals": "^0.6.1",
+        "react": "18.2.0",
+        "react-dom": "18.2.0",
         "vite": "catalog:",
         "vite-plugin-externals": "catalog:"
     },

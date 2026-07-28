@@ -99,8 +99,20 @@
         "uplot": "^1.6.32"
     },
     "devDependencies": {
+        "@types/react": "18.3.12",
         "@types/three": "^0.182.0",
+        "babel-plugin-relay": "^14.1.0",
         "concurrently": "^7.2.1",
+        "react": "18.2.0",
+        "react-dom": "18.2.0",
+        "react-error-boundary": "catalog:",
+        "react-is": "^18.2.0",
+        "react-relay": "^14.1.0",
+        "recoil": "catalog:",
+        "recoil-relay": "catalog:",
+        "relay-runtime": "^14.1.0",
+        "styled-components": "^6.1.8",
+        "vite": "catalog:",
         "vite-plugin-relay": "catalog:"
     }
 }

@@ -28,8 +28,20 @@
         "three": "^0.182.0"
     },
     "devDependencies": {
+        "@react-spring/web": "^9.7.3",
         "@testing-library/react": "^14.0.0",
+        "@types/react": "18.3.12",
         "@types/three": "^0.182.0",
+        "jotai": "catalog:",
+        "react": "18.2.0",
+        "react-dom": "18.2.0",
+        "react-error-boundary": "catalog:",
+        "react-is": "^18.3.1",
+        "react-relay": "^14.1.0",
+        "recoil": "catalog:",
+        "recoil-relay": "catalog:",
+        "relay-runtime": "^14.1.0",
+        "styled-components": "^6.1.8",
         "vitest": "catalog:"
     },
     "peerDependencies": {

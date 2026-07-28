@@ -9,8 +9,14 @@
         "jotai": "catalog:",
         "react-mosaic-component": "^6.1.1"
     },
+    "devDependencies": {
+        "react": "18.2.0",
+        "react-dom": "18.2.0",
+        "react-is": "^18.2.0"
+    },
     "peerDependencies": {
         "react": "*",
-        "react-dom": "*"
+        "react-dom": "*",
+        "react-is": "*"
     }
 }

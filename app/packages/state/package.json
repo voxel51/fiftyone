@@ -18,6 +18,7 @@
         "README.md"
     ],
     "peerDependencies": {
+        "jotai": "*",
         "react": "*",
         "react-error-boundary": "*",
         "react-relay": "*",
@@ -25,9 +26,14 @@
         "recoil-relay": "*"
     },
     "devDependencies": {
-        "@testing-library/react-hooks": "latest",
+        "@testing-library/dom": "catalog:",
+        "@testing-library/react": "^16.2.0",
         "babel-plugin-relay": "^14.1.0",
+        "jotai": "catalog:",
         "prettier": "catalog:",
+        "react": "18.2.0",
+        "react-dom": "18.2.0",
+        "react-is": "^18.2.0",
         "vite": "catalog:"
     },
     "dependencies": {

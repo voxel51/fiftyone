@@ -22,11 +22,14 @@
         "@fiftyone/utilities": "workspace:^",
         "@testing-library/react": "^14.0.0",
         "prettier": "catalog:",
+        "react": "18.2.0",
+        "react-dom": "18.2.0",
         "vite": "catalog:",
         "vitest": "catalog:"
     },
     "peerDependencies": {
         "@mui/icons-material": "*",
-        "@mui/material": "*"
+        "@mui/material": "*",
+        "react": "*"
     }
 }

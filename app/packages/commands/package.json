@@ -19,6 +19,9 @@
         "@typescript-eslint/parser": "^6.0.0",
         "eslint": "catalog:",
         "jsdom": "^26.0.0",
+        "react": "18.2.0",
+        "react-dom": "18.2.0",
+        "typescript": "catalog:",
         "vite": "catalog:",
         "vite-plugin-externals": "catalog:",
         "vitest": "catalog:"

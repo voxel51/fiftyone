@@ -20,7 +20,21 @@
         "@voxel51/voodo": "^0.0.39"
     },
     "devDependencies": {
+        "@mui/icons-material": "catalog:",
+        "@mui/material": "catalog:",
+        "@react-spring/web": "^9.7.3",
+        "@types/react": "18.3.12",
         "@vitejs/plugin-react": "catalog:",
+        "jotai": "catalog:",
+        "react": "18.2.0",
+        "react-dom": "18.2.0",
+        "react-error-boundary": "catalog:",
+        "react-is": "^18.2.0",
+        "react-relay": "^14.1.0",
+        "recoil": "catalog:",
+        "recoil-relay": "catalog:",
+        "relay-runtime": "^14.1.0",
+        "styled-components": "^6.1.8",
         "vite": "catalog:",
         "vite-plugin-externals": "catalog:"
     },
@@ -29,7 +43,16 @@
     },
     "peerDependencies": {
         "@mui/icons-material": "*",
+        "@mui/material": "*",
+        "@react-spring/web": "*",
         "jotai": "*",
-        "recoil": "*"
+        "react": "*",
+        "react-dom": "*",
+        "react-error-boundary": "*",
+        "react-is": "*",
+        "react-relay": "*",
+        "recoil": "*",
+        "recoil-relay": "*",
+        "styled-components": "*"
     }
 }
