@@ -120,7 +120,9 @@ describe("parse", () => {
     });
 
     it("leaves a literal-only division alone", () => {
-      // the shape `datetime.utcfromtimestamp(<ms> / 1000)` relies on
+      // the shape `datetime.utcfromtimestamp(<ms> / 1000)` relies on plain
+      // numeric division staying a `__truediv__` call rather than being
+      // folded — the printer needs the structure to render the date back
       expect(parse("1000 / 2")).toEqual({
         t: "call",
         op: "__truediv__",

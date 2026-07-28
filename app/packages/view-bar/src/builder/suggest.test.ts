@@ -242,6 +242,13 @@ describe("field completion", () => {
     expect(suggestFields("", PATHS)).toHaveLength(PATHS.length);
   });
 
+  it("does not read a bracket inside F( as a field being typed", () => {
+    // The caret sits inside `[`, not inside `F(` — completing a field here
+    // would splice the path into the bracket's offset
+    const source = "F(conf[0";
+    expect(caretContext(source, source.length).field).toBeUndefined();
+  });
+
   it("prefers a prefix match, then the shorter path", () => {
     expect(suggestFields("label", PATHS)).toEqual([
       "label",

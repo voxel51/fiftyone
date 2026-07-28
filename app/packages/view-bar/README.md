@@ -96,7 +96,4 @@ different act — the server's `existence` axis is what distinguishes them.
 
 ## Known gaps
 
-- The operator catalog in `builder/catalog.ts` is a stub. The real
-  `viewExpressionOperators` query is served and unwired, so kind filtering is
-  inert — every field reads as `ANY` and nothing is ranked down yet.
 - Suggestions are click-only; no arrow-key navigation.
