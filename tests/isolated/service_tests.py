@@ -176,13 +176,13 @@ def test_db():
         assert MONGOD_EXE_NAME not in get_child_process_names()
 
 
-def test_server():
+def test_server(unused_tcp_port):
     with cleanup_subprocesses(strict=True):
-        server = fos.ServerService(5151)
+        server = fos.ServerService(unused_tcp_port)
         server.start()
         p = wait_for_subprocess(lambda p: "main.py" in p.cmdline())
         assert p.is_running()
-        res = get_json_retry("http://127.0.0.1:5151/fiftyone")
+        res = get_json_retry(f"http://127.0.0.1:{unused_tcp_port}/fiftyone")
         assert res["version"] == foc.VERSION
         server.stop()
         assert not p.is_running()
