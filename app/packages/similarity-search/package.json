@@ -17,7 +17,7 @@
         "@fiftyone/plugins": "*",
         "@fiftyone/spaces": "*",
         "@fiftyone/state": "*",
-        "@voxel51/voodo": "^0.0.39"
+        "@voxel51/voodo": "^0.0.41"
     },
     "devDependencies": {
         "vite": "^7.3.2",
