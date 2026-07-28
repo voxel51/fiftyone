@@ -28,7 +28,6 @@ import torch
 
 import fiftyone.utils.torch as fout
 
-
 # The nuScenes ``PTv3-base`` backbone configuration. These match the upstream
 # config the released checkpoint was trained with; see
 # https://github.com/Pointcept/Pointcept/blob/main/configs/nuscenes
@@ -110,9 +109,7 @@ class PointTransformerV3ModelConfig(foc.Config, fozm.HasZooModel):
                 % (self.grid_size,)
             )
         self.feature_keys = tuple(
-            self.parse_array(
-                d, "feature_keys", default=["coord", "strength"]
-            )
+            self.parse_array(d, "feature_keys", default=["coord", "strength"])
         )
         self.point_cloud_range = self.parse_array(
             d, "point_cloud_range", default=None
@@ -421,18 +418,17 @@ def _load_point_cloud(filepath):
     else:
         pcd_path = filepath
 
-    pc = fou3d.o3d.io.read_point_cloud(pcd_path)
-    points = np.asarray(pc.points, dtype=np.float32)
+    raw_points, raw_colors = fou3d._read_point_cloud(pcd_path)
+    points = np.asarray(raw_points, dtype=np.float32)
     if points.size == 0:
         raise ValueError("Point cloud '%s' contains no points" % pcd_path)
 
     # FiftyOne stores per-point LiDAR intensity in the PCD color channel,
-    # normalized to [0, 1] by Open3D, so surface the red channel as a fourth
-    # feature column for models trained with intensity (e.g. the nuScenes PTv3
-    # backbone). Note: for a genuinely RGB-colored point cloud this feeds the
-    # red channel as the intensity feature; there is no portable way to tell
-    # intensity-in-color apart from true RGB
-    colors = np.asarray(pc.colors, dtype=np.float32)
+    # normalized to [0, 1], so the red channel becomes a fourth feature column
+    # for models trained with intensity (e.g. the nuScenes PTv3 backbone). A
+    # genuinely RGB-colored point cloud feeds its red channel here; the two
+    # cannot be told apart portably
+    colors = np.asarray(raw_colors, dtype=np.float32)
     if colors.ndim == 2 and colors.shape[0] == points.shape[0]:
         points = np.concatenate([points, colors[:, :1]], axis=1)
 
@@ -465,7 +461,7 @@ def _load_backbone_state_dict(model_path: str) -> dict:
 
     prefix = "module.backbone."
     backbone = {
-        key[len(prefix):]: value
+        key[len(prefix) :]: value
         for key, value in state_dict.items()
         if key.startswith(prefix)
     }

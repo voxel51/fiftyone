@@ -29,7 +29,9 @@ def _make_model(
     model = PointTransformerV3Model.__new__(PointTransformerV3Model)
     model._device = "cpu"
     model._use_half_precision = False
-    model._coord_index = PointTransformerV3Model._build_coord_index(feature_keys)
+    model._coord_index = PointTransformerV3Model._build_coord_index(
+        feature_keys
+    )
 
     cfg = type("Cfg", (), {})()
     cfg.grid_size = grid_size
@@ -109,10 +111,10 @@ class TestBuildInput:
         model = _make_model(point_cloud_range=[-1, -1, -1, 1, 1, 1])
         cloud = np.array(
             [
-                [0.0, 0.0, 0.0, 0.5],   # inside
+                [0.0, 0.0, 0.0, 0.5],  # inside
                 [0.5, -0.5, 0.2, 0.1],  # inside
                 [10.0, 0.0, 0.0, 0.3],  # outside (x)
-                [0.0, 0.0, 5.0, 0.7],   # outside (z)
+                [0.0, 0.0, 5.0, 0.7],  # outside (z)
             ],
             dtype=np.float32,
         )
@@ -177,7 +179,9 @@ class TestStateDictLoading:
         sd = {
             "module.backbone.embedding.stem.conv.weight": torch.zeros(3),
             "module.backbone.enc.enc0.block0.norm.bias": torch.zeros(2),
-            "module.criteria.0.weight": torch.zeros(1),  # not a backbone weight
+            "module.criteria.0.weight": torch.zeros(
+                1
+            ),  # not a backbone weight
         }
         path = str(tmp_path / "ckpt.pth")
         torch.save({"state_dict": sd}, path)
@@ -273,16 +277,9 @@ class TestLoadSamplePointCloud:
     def _patch_reader(monkeypatch, points, colors):
         import fiftyone.utils.utils3d as fou3d
 
-        pc = type("PC", (), {})()
-        pc.points = points
-        pc.colors = colors
-
-        reader = type("IO", (), {})()
-        reader.read_point_cloud = staticmethod(lambda path: pc)
-
-        fake = type("O3d", (), {})()
-        fake.io = reader
-        monkeypatch.setattr(fou3d, "o3d", fake)
+        monkeypatch.setattr(
+            fou3d, "_read_point_cloud", lambda path: (points, colors)
+        )
 
     def test_appends_intensity_from_color_channel(self, monkeypatch):
         from fiftyone.utils.ptv3 import _load_point_cloud
@@ -302,7 +299,7 @@ class TestLoadSamplePointCloud:
         from fiftyone.utils.ptv3 import _load_point_cloud
 
         xyz = np.random.rand(12, 3)
-        empty = np.zeros((0, 3))  # Open3D returns no colors for xyz-only PCDs
+        empty = np.zeros((0, 3))  # no colors for xyz-only PCDs
         self._patch_reader(monkeypatch, xyz, empty)
 
         points = _load_point_cloud("/data/foo.pcd")
