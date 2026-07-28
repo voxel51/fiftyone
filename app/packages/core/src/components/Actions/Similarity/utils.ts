@@ -2,7 +2,7 @@ import type { Method } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { selectedLabels } from "@fiftyone/state";
 import type { Snapshot } from "recoil";
-import { selectorFamily } from "recoil";
+import { selectorFamily, useRecoilValueLoadable } from "recoil";
 
 export type QueryIds = {
   queryIds: string[] | string | undefined;
@@ -100,6 +100,27 @@ export const availableSimilarityKeys = selectorFamily<
     },
 });
 
+/**
+ * Reads {@link availableSimilarityKeys} as a loadable so a pending dependency
+ * (e.g. the modal sample in patches views) suspends neither the action row nor
+ * the global boundary. Returns `null` while pending and rethrows selector
+ * errors so they reach the error boundary.
+ */
+export const useAvailableSimilarityKeys = (
+  modal: boolean,
+  isImageSearch: boolean,
+): string[] | null => {
+  const keys = useRecoilValueLoadable(
+    availableSimilarityKeys({ modal, isImageSearch }),
+  );
+
+  if (keys.state === "hasError") {
+    throw keys.contents;
+  }
+
+  return keys.state === "hasValue" ? keys.contents : null;
+};
+
 const availablePatchesSimilarityKeys = selectorFamily<
   Method[],
   {
@@ -117,6 +138,12 @@ const availablePatchesSimilarityKeys = selectorFamily<
         methods = methods.filter(([method]) => method.supportsPrompts === true);
       }
       patches = methods.map(([method, field]) => [method, field]);
+
+      // avoid the async modal sample dependency below when there is nothing
+      // to filter
+      if (!patches.length) {
+        return [];
+      }
 
       if (params.modal) {
         if (get(fos.hasSelectedLabels)) {
