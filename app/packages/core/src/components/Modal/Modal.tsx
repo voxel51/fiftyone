@@ -18,7 +18,7 @@ import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
-import { MEDIA_TYPE_MULTIMODAL, is3d } from "@fiftyone/utilities";
+import { is3d, MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import React, { Fragment, Suspense, useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import {

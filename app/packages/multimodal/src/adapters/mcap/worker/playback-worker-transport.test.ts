@@ -137,6 +137,44 @@ describe("MCAP playback worker transport", () => {
       value: undefined,
     });
   });
+
+  it("yields batched worker stream items in order", async () => {
+    const worker = createWorker();
+    const transport = new McapPlaybackWorkerTransport(() => true);
+    const stream = transport.stream(worker, "source:1", "readDecodedMessages", {
+      source: createSource(),
+      topics: ["/diagnostics"],
+    });
+    const firstMessage = createDecodedMessage(1n);
+    const secondMessage = createDecodedMessage(2n);
+    const first = stream.next();
+
+    transport.handleResponse({
+      done: false,
+      id: 1,
+      items: [firstMessage, secondMessage],
+      ok: true,
+      stream: true,
+    });
+
+    await expect(first).resolves.toEqual({
+      done: false,
+      value: firstMessage,
+    });
+    await expect(stream.next()).resolves.toEqual({
+      done: false,
+      value: secondMessage,
+    });
+
+    const done = stream.next();
+    transport.handleResponse({
+      done: true,
+      id: 1,
+      ok: true,
+      stream: true,
+    });
+    await expect(done).resolves.toEqual({ done: true, value: undefined });
+  });
 });
 
 function createWorker(): Worker {
@@ -152,7 +190,7 @@ function createSource() {
   };
 }
 
-function createDecodedMessage() {
+function createDecodedMessage(timeNs = 1n) {
   return {
     activeTimeline: "log" as const,
     channelId: 1,
@@ -166,10 +204,10 @@ function createDecodedMessage() {
         encoding: "protobuf",
       },
     },
-    logTimeNs: 1n,
-    publishTimeNs: 1n,
+    logTimeNs: timeNs,
+    publishTimeNs: timeNs,
     sequence: 1,
-    timelineTimeNs: 1n,
+    timelineTimeNs: timeNs,
     topic: "/camera",
   };
 }

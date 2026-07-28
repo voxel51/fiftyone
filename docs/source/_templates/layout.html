@@ -1,6 +1,13 @@
 {% extends "!layout.html" %} {% block extrahead %}
 <meta property="og:image" content="{{og_image}}" />
 
+<!-- Preload webfonts so text renders in Geist at first paint -->
+<link rel="preload" href="{{ pathto('_static/fonts/geist-v3-latin-regular.woff2', 1) }}" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="{{ pathto('_static/fonts/geist-v3-latin-500.woff2', 1) }}" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="{{ pathto('_static/fonts/geist-v3-latin-600.woff2', 1) }}" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="{{ pathto('_static/fonts/geist-v3-latin-700.woff2', 1) }}" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="{{ pathto('_static/fonts/geist-mono-v3-latin-regular.woff2', 1) }}" as="font" type="font/woff2" crossorigin />
+
 <!-- Google Tag Manager -->
 <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],

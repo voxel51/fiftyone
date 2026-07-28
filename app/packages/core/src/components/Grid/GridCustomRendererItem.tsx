@@ -12,6 +12,7 @@ import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { Checkbox } from "@mui/material";
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
+import classes from "./GridCustomRendererItem.module.css";
 import GridTagBubbles from "./GridTagBubbles";
 
 type GridCustomRendererItemConfig = {
@@ -31,11 +32,6 @@ type GridSizeHintSample = {
   metadata?: {
     size_bytes?: number | null;
   } | null;
-};
-
-type GridSelectionSample = {
-  _id?: string;
-  id?: string;
 };
 
 /** Error boundary for a sample renderer with fallback behavior. */
@@ -197,7 +193,9 @@ const GridCustomRendererWrapper = ({
 
   return (
     <div
+      className={classes.container}
       style={CONTAINER_STYLES}
+      data-cy="grid-custom-renderer"
       onMouseEnter={() => setHovering(true)}
       onMouseMove={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
@@ -217,17 +215,36 @@ const GridCustomRendererWrapper = ({
           onClick={onSelect}
         />
       )}
-      {hovering && (
-        <button
-          aria-label="Open sample modal"
-          title="Open sample modal"
-          onClick={onOpenModal}
-          style={OPEN_MODAL_BUTTON_STYLES}
-        >
-          <OpenInFullIcon fontSize="inherit" />
-        </button>
-      )}
+      <button
+        aria-label="Open sample modal"
+        className={classes.openModalButton}
+        title="Open sample modal"
+        onClick={onOpenModal}
+        style={OPEN_MODAL_BUTTON_STYLES}
+      >
+        <OpenInFullIcon fontSize="inherit" />
+      </button>
     </div>
+  );
+};
+
+const GridCustomRenderer = ({
+  Renderer,
+  ctx,
+  onRetainedBytesChange,
+}: {
+  readonly Renderer: React.ComponentType<SampleRendererProps>;
+  readonly ctx: SampleRendererRenderContext;
+  readonly onRetainedBytesChange: (retainedBytes: number) => void;
+}) => {
+  const modalActive = fos.useModalActive();
+
+  return (
+    <Renderer
+      ctx={ctx}
+      isGridActive={!modalActive}
+      onRetainedBytesChange={onRetainedBytesChange}
+    />
   );
 };
 
@@ -254,6 +271,7 @@ export class GridCustomRendererItem {
   private destroyed = false;
   private selected = false;
   private inSelectionMode = false;
+  private retainedSizeBytes?: number;
   private dimensions?: GridItemDimensions;
 
   constructor(private readonly config: GridCustomRendererItemConfig) {
@@ -282,6 +300,16 @@ export class GridCustomRendererItem {
   private dispatchEvent(eventType: string, detail?: unknown) {
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
   }
+
+  private handleRetainedBytesChange = (retainedBytes: number) => {
+    const normalized = getFiniteSizeBytes(retainedBytes);
+    if (this.retainedSizeBytes === normalized) {
+      return;
+    }
+
+    this.retainedSizeBytes = normalized;
+    this.dispatchEvent("refresh");
+  };
 
   private isDatasetFailOpen() {
     return fos.isGridCustomRendererFailOpen(this.config.ctx.dataset.name);
@@ -317,7 +345,11 @@ export class GridCustomRendererItem {
             onOpenModal={this.handleOpenModalClick}
             onSelect={this.handleSelectSampleClick}
           >
-            <Renderer ctx={ctx} />
+            <GridCustomRenderer
+              Renderer={Renderer}
+              ctx={ctx}
+              onRetainedBytesChange={this.handleRetainedBytesChange}
+            />
             <div style={FOOTER_STYLES}>
               <GridTagBubbles sample={sample} />
               {ctx.media?.mediaType === MEDIA_TYPE_MULTIMODAL ? (
@@ -509,13 +541,12 @@ export class GridCustomRendererItem {
       isSampleFile && safeSample
         ? getFiniteSizeBytes(safeSample.metadata?.size_bytes)
         : 0;
-    const sourceSizeHintBytes = getSourceSizeHintBytes(
-      sourceSizeBytes,
-      this.config.ctx.media.mediaType,
-    );
+    const retainedSizeBytes =
+      this.retainedSizeBytes ??
+      getSourceSizeHintBytes(sourceSizeBytes, this.config.ctx.media.mediaType);
 
     return Math.ceil(
-      MIN_GRID_RENDERER_SIZE_BYTES + renderedSizeBytes + sourceSizeHintBytes,
+      MIN_GRID_RENDERER_SIZE_BYTES + renderedSizeBytes + retainedSizeBytes,
     );
   }
 }

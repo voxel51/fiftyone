@@ -34,11 +34,9 @@ const RegisterTiles: React.FC<{ entries: RegisteredTile[] }> = ({
 describe("TilingHeader", () => {
   beforeEach(() => {
     // voodo's Dropdown (headlessui Menu) uses ResizeObserver internally.
-    global.ResizeObserver = vi.fn().mockImplementation(() => ({
-      observe: vi.fn(),
-      unobserve: vi.fn(),
-      disconnect: vi.fn(),
-    }));
+    global.ResizeObserver = vi.fn().mockImplementation(function () {
+      return { observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn() };
+    });
   });
 
   afterEach(() => {
@@ -82,39 +80,55 @@ describe("TilingHeader", () => {
       screen.queryByTestId("tiling-header-toggle-left-sidebar"),
     ).toBeNull();
     expect(
+      screen.queryByTestId("tiling-header-toggle-timeline-tracks"),
+    ).toBeNull();
+    expect(
       screen.queryByTestId("tiling-header-toggle-right-sidebar"),
     ).toBeNull();
   });
 
-  it("renders sidebar toggles and reflects open state via aria-pressed", () => {
+  it("renders panel toggles in positional order and reflects their open state", () => {
     const onLeft = vi.fn();
+    const onTimeline = vi.fn();
     const onRight = vi.fn();
     render(
       <TilingProvider>
         <TilingHeader
           fileName="x"
           leftSidebarOpen
+          timelineTracksOpen={false}
           rightSidebarOpen={false}
           onToggleLeftSidebar={onLeft}
+          onToggleTimelineTracks={onTimeline}
           onToggleRightSidebar={onRight}
         />
       </TilingProvider>,
     );
 
     const left = screen.getByTestId("tiling-header-toggle-left-sidebar");
+    const bottom = screen.getByTestId("tiling-header-toggle-timeline-tracks");
     const right = screen.getByTestId("tiling-header-toggle-right-sidebar");
     expect(left.getAttribute("aria-pressed")).toBe("true");
+    expect(bottom.getAttribute("aria-pressed")).toBe("false");
     expect(right.getAttribute("aria-pressed")).toBe("false");
     expect(left.getAttribute("aria-label")).toBe("Hide settings");
+    expect(bottom.getAttribute("aria-label")).toBe("Show timeline tracks");
     expect(right.getAttribute("aria-label")).toBe("Show inspector");
+    expect(
+      screen
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("aria-label")),
+    ).toEqual(["Hide settings", "Show timeline tracks", "Show inspector"]);
 
     fireEvent.click(left);
+    fireEvent.click(bottom);
     fireEvent.click(right);
     expect(onLeft).toHaveBeenCalledOnce();
+    expect(onTimeline).toHaveBeenCalledOnce();
     expect(onRight).toHaveBeenCalledOnce();
   });
 
-  it("renders the add-tile button once tiles are registered", () => {
+  it("renders a labeled add-tile button once tiles are registered", () => {
     render(
       <TilingProvider>
         <RegisterTiles
@@ -136,7 +150,11 @@ describe("TilingHeader", () => {
         <TilingHeader fileName="x" />
       </TilingProvider>,
     );
-    expect(screen.getByTestId("tiling-header-add-tile")).toBeTruthy();
+    const button = screen.getByTestId("tiling-header-add-tile");
+    expect(button).toBeTruthy();
+    expect(button.getAttribute("aria-label")).toBe("Add Tile");
+    expect(button.textContent).toBe("Add Tile");
+    expect(button.className).toContain("border-1");
   });
 
   it("clicking a menu item calls addTile with the registered tile type", () => {

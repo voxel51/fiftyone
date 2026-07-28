@@ -3,6 +3,7 @@ import {
   chooseAnnotationTopic,
   chooseCalibrationTopic,
   filterDefaultTopicEquivalents,
+  findBestMatchingAnnotationTopics,
   orderDefaultTopicEquivalents,
   topicPrefix,
 } from "./topic-matching";
@@ -24,6 +25,16 @@ describe("chooseCalibrationTopic", () => {
         "/calibration/front_info",
       ]),
     ).toBe("/calibration/front_info");
+  });
+
+  it("returns no match when fuzzy calibration candidates tie", () => {
+    expect(
+      chooseCalibrationTopic("/boxi/hesai/intensity_image", [
+        "/boxi/alphasense/front_left/camera_info",
+        "/boxi/alphasense/front_right/camera_info",
+        "/boxi/hdr/front/camera_info",
+      ]),
+    ).toBeNull();
   });
 
   it("returns null when nothing matches", () => {
@@ -51,6 +62,25 @@ describe("chooseAnnotationTopic", () => {
         "/labels/front_camera",
       ]),
     ).toBe("/labels/front_camera");
+  });
+
+  it("groups every strongest camera match without weaker siblings", () => {
+    expect(
+      findBestMatchingAnnotationTopics("/sensors/front/image_rect_compressed", [
+        "/sensors/front/detections",
+        "/sensors/back/detections",
+        "/sensors/front/segmentations",
+        "/unrelated/labels",
+      ]),
+    ).toEqual(["/sensors/front/detections", "/sensors/front/segmentations"]);
+  });
+
+  it("returns no matches when topics share no camera identity", () => {
+    expect(
+      findBestMatchingAnnotationTopics("/CAM_FRONT/image_rect", [
+        "/unrelated/labels",
+      ]),
+    ).toEqual([]);
   });
 });
 

@@ -13,6 +13,7 @@ describe("buildMcapTopicInventoryRows", () => {
   it("keeps all topics and buckets them by customer job", () => {
     const topics = [
       topic("/camera/front", "sensor_msgs/Image", "ros1", "ros1msg", "12"),
+      topic("/gps", "sensor_msgs/NavSatFix", "ros1", "ros1msg", "10"),
       topic("/lidar/top", "sensor_msgs/PointCloud2", "ros1", "ros1msg", "8"),
       topic(
         "/markers",
@@ -58,6 +59,7 @@ describe("buildMcapTopicInventoryRows", () => {
 
     expect(rows.map((row) => row.topic)).toEqual([
       "/camera/front",
+      "/gps",
       "/imu",
       "/lidar/top",
       "/markers",
@@ -78,6 +80,11 @@ describe("buildMcapTopicInventoryRows", () => {
       category: MCAP_TOPIC_CATEGORY.ANNOTATIONS_PLANNING,
       supportStatus: "renderable",
       capabilities: [MCAP_TOPIC_CAPABILITY.THREE_D, MCAP_TOPIC_CAPABILITY.RAW],
+    });
+    expect(row(rows, "/gps")).toMatchObject({
+      category: MCAP_TOPIC_CATEGORY.SENSORS,
+      supportStatus: "renderable",
+      capabilities: [MCAP_TOPIC_CAPABILITY.MAP, MCAP_TOPIC_CAPABILITY.RAW],
     });
     expect(row(rows, "/tf_static")).toMatchObject({
       category: MCAP_TOPIC_CATEGORY.TRANSFORMS_POSES,

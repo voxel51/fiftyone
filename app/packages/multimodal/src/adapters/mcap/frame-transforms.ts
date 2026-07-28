@@ -19,8 +19,11 @@ const DEFAULT_FRAME_TRANSFORM_POLICY: McapFrameTransformPolicy = {
   boundaryClampNs: 50_000_000n,
   maxInterpolationGapNs: 0n,
 };
+const MAX_ADJACENCY_CACHE_ENTRIES = 8;
 
 export interface McapFrameGraphSummary {
+  /** Bidirectional transform components, normalized and sorted by stable id. */
+  readonly components: readonly (readonly string[])[];
   readonly dataBearingReachableCountsByFrameId: ReadonlyMap<string, number>;
   readonly reachableCountsByFrameId: ReadonlyMap<string, number>;
   readonly roots: readonly string[];
@@ -28,6 +31,7 @@ export interface McapFrameGraphSummary {
 }
 
 export const EMPTY_MCAP_FRAME_GRAPH_SUMMARY: McapFrameGraphSummary = {
+  components: [],
   dataBearingReachableCountsByFrameId: new Map(),
   reachableCountsByFrameId: new Map(),
   roots: [],
@@ -48,11 +52,12 @@ export class McapFrameTransformStore {
     McapFrameTransformSample[]
   >();
   private dynamicRanges: readonly McapFrameTransformTimeRange[] = [];
+  private graphRevision = 0;
   private readonly frameIdsById = new Set<string>();
-  private adjacencyCache: {
-    readonly adjacency: Map<string, McapComposedFrameTransform[]>;
-    readonly timeKey: string;
-  } | null = null;
+  private readonly adjacencyCache = new Map<
+    string,
+    Map<string, McapComposedFrameTransform[]>
+  >();
   private readonly staticSamplesByEdge = new Map<
     string,
     McapFrameTransformSample
@@ -62,12 +67,16 @@ export class McapFrameTransformStore {
     for (const sample of samples) {
       const normalized = cleanSample(sample);
       if (normalized) {
-        this.staticSamplesByEdge.set(
-          frameTransformEdgeKey(normalized),
-          normalized,
-        );
+        const key = frameTransformEdgeKey(normalized);
+        if (
+          !this.staticSamplesByEdge.has(key) &&
+          !this.dynamicSamplesByEdge.has(key)
+        ) {
+          this.graphRevision += 1;
+        }
+        this.staticSamplesByEdge.set(key, normalized);
         this.addFrameIds(normalized);
-        this.adjacencyCache = null;
+        this.adjacencyCache.clear();
       }
     }
   }
@@ -85,6 +94,12 @@ export class McapFrameTransformStore {
       }
 
       const key = frameTransformEdgeKey(normalized);
+      if (
+        !this.dynamicSamplesByEdge.has(key) &&
+        !this.staticSamplesByEdge.has(key)
+      ) {
+        this.graphRevision += 1;
+      }
       const edgeSamples = this.dynamicSamplesByEdge.get(key) ?? [];
       edgeSamples.push(normalized);
       this.dynamicSamplesByEdge.set(key, edgeSamples);
@@ -99,7 +114,7 @@ export class McapFrameTransformStore {
     }
 
     this.dynamicRanges = sortAndMergeTimeRanges([...this.dynamicRanges, range]);
-    this.adjacencyCache = null;
+    this.adjacencyCache.clear();
   }
 
   isTimeIndexed(timeNs: bigint): boolean {
@@ -132,6 +147,11 @@ export class McapFrameTransformStore {
     return [...this.frameIdsById].sort(compareStrings);
   }
 
+  /** Monotonic signal that changes only when a transform edge is first seen. */
+  topologyRevision(): number {
+    return this.graphRevision;
+  }
+
   summarizeGraph(
     dataBearingFrameIds: ReadonlySet<string>,
   ): McapFrameGraphSummary {
@@ -142,6 +162,7 @@ export class McapFrameTransformStore {
 
     const childFrameIds = new Set<string>();
     const childrenByParent = new Map<string, string[]>();
+    const undirectedAdjacency = new Map<string, string[]>();
     const frameIds = new Set<string>();
     const parentFrameIds = new Set<string>();
 
@@ -151,6 +172,8 @@ export class McapFrameTransformStore {
       frameIds.add(edge.parentFrameId);
       parentFrameIds.add(edge.parentFrameId);
       pushAdjacency(childrenByParent, edge.parentFrameId, edge.childFrameId);
+      pushAdjacency(undirectedAdjacency, edge.parentFrameId, edge.childFrameId);
+      pushAdjacency(undirectedAdjacency, edge.childFrameId, edge.parentFrameId);
     }
 
     for (const children of childrenByParent.values()) {
@@ -158,6 +181,10 @@ export class McapFrameTransformStore {
     }
 
     const tfConnectedFrameIds = [...frameIds].sort(compareStrings);
+    const components = connectedComponents(
+      tfConnectedFrameIds,
+      undirectedAdjacency,
+    );
     const roots = [...parentFrameIds]
       .filter((frameId) => !childFrameIds.has(frameId))
       .sort(compareStrings);
@@ -179,6 +206,7 @@ export class McapFrameTransformStore {
     }
 
     return {
+      components,
       dataBearingReachableCountsByFrameId,
       reachableCountsByFrameId,
       roots,
@@ -261,8 +289,11 @@ export class McapFrameTransformStore {
     policy: McapFrameTransformPolicy,
   ) {
     const timeKey = frameTransformTimeKey(timeNs, policy);
-    if (this.adjacencyCache?.timeKey === timeKey) {
-      return this.adjacencyCache.adjacency;
+    const cached = this.adjacencyCache.get(timeKey);
+    if (cached) {
+      this.adjacencyCache.delete(timeKey);
+      this.adjacencyCache.set(timeKey, cached);
+      return cached;
     }
 
     const adjacency = new Map<string, McapComposedFrameTransform[]>();
@@ -279,10 +310,11 @@ export class McapFrameTransformStore {
       );
     }
 
-    this.adjacencyCache = {
-      adjacency,
-      timeKey,
-    };
+    this.adjacencyCache.set(timeKey, adjacency);
+    if (this.adjacencyCache.size > MAX_ADJACENCY_CACHE_ENTRIES) {
+      const oldestKey = this.adjacencyCache.keys().next().value;
+      if (oldestKey !== undefined) this.adjacencyCache.delete(oldestKey);
+    }
 
     return adjacency;
   }
@@ -351,6 +383,37 @@ export class McapFrameTransformStore {
         : parentOrder;
     });
   }
+}
+
+function connectedComponents(
+  frameIds: readonly string[],
+  adjacency: ReadonlyMap<string, readonly string[]>,
+): readonly (readonly string[])[] {
+  const components: string[][] = [];
+  const visited = new Set<string>();
+
+  for (const frameId of frameIds) {
+    if (visited.has(frameId)) continue;
+    const component: string[] = [];
+    const stack = [frameId];
+    while (stack.length > 0) {
+      const current = stack.pop();
+      if (!current || visited.has(current)) continue;
+      visited.add(current);
+      component.push(current);
+      const neighbors = adjacency.get(current) ?? [];
+      for (let index = neighbors.length - 1; index >= 0; index -= 1) {
+        const neighbor = neighbors[index];
+        if (neighbor && !visited.has(neighbor)) stack.push(neighbor);
+      }
+    }
+    component.sort(compareStrings);
+    components.push(component);
+  }
+
+  return components.sort((left, right) =>
+    compareStrings(left[0] ?? "", right[0] ?? ""),
+  );
 }
 
 /**

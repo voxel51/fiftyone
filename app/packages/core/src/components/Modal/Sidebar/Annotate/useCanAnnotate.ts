@@ -7,7 +7,7 @@ import {
   useGroupSlices,
   useIsGroupDataset,
 } from "@fiftyone/state";
-import { isAnnotationSupported } from "@fiftyone/utilities";
+import { isAnnotationSupported, isMultimodal } from "@fiftyone/utilities";
 import { useRecoilValue } from "recoil";
 
 /**
@@ -22,6 +22,7 @@ export type AnnotationDisabledReason =
   | "generatedView"
   | "groupDatasetNoSupportedSlices"
   | "videoDataset"
+  | "multimodalDataset"
   | null;
 
 export interface CanAnnotateResult {
@@ -54,6 +55,13 @@ export default function useCanAnnotate(): CanAnnotateResult {
     return {
       showAnnotationTab: true,
       disabledReason: "groupDatasetNoSupportedSlices",
+    };
+  }
+
+  if (!isGroup && isMultimodal(currentMediaType)) {
+    return {
+      showAnnotationTab: true,
+      disabledReason: "multimodalDataset",
     };
   }
 

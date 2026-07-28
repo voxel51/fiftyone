@@ -117,20 +117,13 @@ export function mcapTileTypesFor(
   );
 }
 
-export interface UseMcapTilesOptions {
-  /** Unique scene-source types present in the current scene. */
-  presentTypes: readonly string[];
-}
-
 /**
- * Registers one tile kind per renderable source type present. The "Add
- * tile" menu shows one item per kind (Image, 3D, …); each new instance
- * discovers its sources through the scene inventory.
+ * Registers every tile archetype so Add tile and Change panel type stay
+ * type-first; each new instance discovers its sources through the scene
+ * inventory, and individual tile settings handle empty/missing sources.
  */
-export function useMcapTiles(_options: UseMcapTilesOptions): void {
+export function useMcapTiles(): void {
   const { registerTile } = useTileRegistry();
-  // Register every archetype so Add tile and Change panel type stay
-  // type-first. Individual tile settings handle empty/missing sources.
   const tileTypes = TILE_TYPES;
 
   useEffect(() => {

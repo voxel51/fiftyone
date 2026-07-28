@@ -363,6 +363,24 @@ def handle_group_filter(
     elif filter.id:
         view = fov.make_optimized_select_view(view, filter.id, groups=True)
 
+        for stage in stages:
+            # inject _group so modal sample records stay consistent with
+            # slice-filtered requests, which also carry the dynamic group
+            # value
+            if isinstance(stage, fosg.GroupBy):
+                view = view._add_view_stage(
+                    fosg.Mongo(
+                        [
+                            {
+                                "$addFields": {
+                                    "_group": stage._get_group_expr(view)[0]
+                                }
+                            }
+                        ]
+                    ),
+                    validate=False,
+                )
+
     if not group_by and filter.slices:
         # use 'match' to select requested slices, and avoid media type
         # validation

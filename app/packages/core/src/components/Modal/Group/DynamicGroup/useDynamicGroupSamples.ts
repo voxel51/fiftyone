@@ -31,8 +31,9 @@ export const useDynamicGroupSamples = () => {
         return null;
       }
 
-      // group key hasn't settled yet — skip the query
-      if (dynamicGroup === undefined) {
+      // group key hasn't settled (undefined) or is transiently null while
+      // modal group state initializes — skip the query
+      if (dynamicGroup == null) {
         return null;
       }
 

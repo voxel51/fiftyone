@@ -11,6 +11,7 @@ import type { McapDecodedMessage } from "../types";
 import { MCAP_ACTIVE_TIMELINE } from "../types";
 import { pushTickToStore } from "./mcap-playback-frame-push";
 import { McapTopicCache } from "./mcap-topic-cache";
+import { getMcapTopicDiagnostics } from "./mcap-stream-status-state";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
 
 const TOPIC = "/LIDAR_TOP";
@@ -157,5 +158,37 @@ describe("pushTickToStore", () => {
     push(1n);
     const frame = frameAt(store);
     expect(frame?.contentTimeNs).toBe(1n);
+  });
+
+  it("publishes capability diagnostics from attributes-only messages", () => {
+    const { cache, push, store } = createHarness();
+    const unavailable = message(0n);
+    cache.set(0n, {
+      ...unavailable,
+      decoded: {
+        ...unavailable.decoded,
+        output: {
+          diagnostics: [
+            {
+              capability: "camera-calibration",
+              code: "camera-calibration-unavailable",
+              message: "Camera calibration is unavailable",
+              severity: "warning",
+            },
+          ],
+        },
+      },
+    });
+
+    push(0n);
+
+    expect(frameAt(store)).toBeNull();
+    expect(getMcapTopicDiagnostics(store, TOPIC)).toEqual([
+      expect.objectContaining({ code: "camera-calibration-unavailable" }),
+    ]);
+
+    cache.set(1n, message(1n));
+    push(1n);
+    expect(getMcapTopicDiagnostics(store, TOPIC)).toEqual([]);
   });
 });
