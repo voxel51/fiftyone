@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import { TrackProvider, type Track } from "../../lib/tracks/TrackProvider";
@@ -41,11 +41,9 @@ describe("TimelineWithTracks", () => {
   beforeEach(() => {
     // useElementSize relies on ResizeObserver which jsdom doesn't support.
     // Provide a no-op stub so the hook mounts without errors.
-    global.ResizeObserver = vi.fn().mockImplementation(() => ({
-      observe: vi.fn(),
-      unobserve: vi.fn(),
-      disconnect: vi.fn(),
-    }));
+    global.ResizeObserver = vi.fn().mockImplementation(function () {
+      return { observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn() };
+    });
   });
 
   afterEach(() => {
@@ -74,6 +72,25 @@ describe("TimelineWithTracks", () => {
       });
       expect(screen.getAllByText("Track A").length).toBeGreaterThan(0);
       expect(screen.getAllByText("Track B").length).toBeGreaterThan(0);
+    });
+
+    it("reports drawer changes when its open state is controlled", () => {
+      const onDrawerOpenChange = vi.fn();
+      render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TrackProvider tracks={[TRACK_A]} initialPinnedIds={[]}>
+            <TimelineWithTracks
+              drawerOpen={false}
+              onDrawerOpenChange={onDrawerOpenChange}
+            />
+          </TrackProvider>
+        </PlaybackProvider>,
+      );
+
+      fireEvent.click(screen.getByTestId("timeline-controls-divider"));
+
+      expect(onDrawerOpenChange).toHaveBeenCalledOnce();
+      expect(onDrawerOpenChange).toHaveBeenCalledWith(true);
     });
   });
 

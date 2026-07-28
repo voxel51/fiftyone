@@ -114,17 +114,15 @@ export const ToggleGridHelper = () => {
 
   const { primary } = useTheme();
 
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    setIsGridOn((prev) => {
-      if (isFirstLoad) {
-        setIsFirstLoad(false);
-      }
-
-      return !prev;
-    });
-    e.stopPropagation();
-    e.preventDefault();
-  }, []);
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      setIsFirstLoad(false);
+      setIsGridOn((prev) => !prev);
+      e.stopPropagation();
+      e.preventDefault();
+    },
+    [setIsGridOn],
+  );
 
   return (
     <>

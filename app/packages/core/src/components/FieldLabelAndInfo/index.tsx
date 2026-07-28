@@ -1,4 +1,4 @@
-import { InfoIcon, useTheme } from "@fiftyone/components";
+import { InfoIcon, Markdown, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { coloring } from "@fiftyone/state";
 import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
@@ -349,10 +349,9 @@ const CustomizeColor: React.FunctionComponent<CustomizeColorProp> = ({
 
 function ExpFieldInfoDesc({ collapsed, description }) {
   return (
-    <FieldInfoDesc
-      $collapsed={collapsed}
-      dangerouslySetInnerHTML={{ __html: description }}
-    />
+    <FieldInfoDesc $collapsed={collapsed}>
+      <Markdown>{description}</Markdown>
+    </FieldInfoDesc>
   );
 }
 

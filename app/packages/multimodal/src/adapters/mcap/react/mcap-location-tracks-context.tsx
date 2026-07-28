@@ -2,7 +2,6 @@
 // components whose relay fragments cannot evaluate under vitest, and this
 // bridge mirrors the pose-trajectory bulk fetch path.
 import { PlaybackStoreContext } from "@fiftyone/playback/src/lib/playback/playback-store-context";
-import { getIsPlaying } from "@fiftyone/playback/src/lib/playback/store-access";
 import React, {
   createContext,
   useContext,
@@ -15,12 +14,11 @@ import type { ByteSourceDescriptor } from "../../../query/bytes";
 import { byteSourceAccessKey } from "../../../query/bytes";
 import type { SceneSource } from "../../../scene-inventory";
 import { VISUALIZATION_KIND } from "../../../visualization";
-import { markMcapLatencyEvent } from "../mcap-latency-debug";
 import { MCAP_ACTIVE_TIMELINE, type McapResourceClient } from "../types";
 import {
-  getMcapNetworkHealth,
-  shouldDeferMcapIdleWorkForStore,
-} from "./mcap-network-health";
+  shouldDeferMcapBulkHistory,
+  startMcapBulkTopicLifecycle,
+} from "./mcap-bulk-topic-lifecycle";
 import {
   decimateLocationTrackSegments,
   locationPointFromVisualization,
@@ -32,13 +30,16 @@ import {
 } from "./mcap-location-track";
 
 const LOCATION_TRACK_READ_LIMIT = 25_000;
-const LOCATION_TRACK_START_DELAY_MS = 1_500;
 const LOCATION_TRACK_DEFERRED_RETRY_MS = 2_000;
 
 const EMPTY_LOCATION_TRACKS: McapLocationTracks = new Map();
 
 interface McapLocationTracksContextValue {
-  readonly setTracks: (state: McapLocationTracks) => void;
+  readonly setTracks: (
+    sourceKey: string | null,
+    tracks: McapLocationTracks,
+  ) => void;
+  readonly sourceKey: string | null;
   readonly tracks: McapLocationTracks;
 }
 
@@ -53,10 +54,17 @@ const McapLocationTracksContext =
 export const McapLocationTracksProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
-  const [tracks, setTracks] = useState<McapLocationTracks>(
-    EMPTY_LOCATION_TRACKS,
+  const [state, setState] = useState<{
+    readonly sourceKey: string | null;
+    readonly tracks: McapLocationTracks;
+  }>({ sourceKey: null, tracks: EMPTY_LOCATION_TRACKS });
+  const setTracks = React.useCallback(
+    (sourceKey: string | null, tracks: McapLocationTracks) => {
+      setState({ sourceKey, tracks });
+    },
+    [],
   );
-  const value = useMemo(() => ({ setTracks, tracks }), [tracks]);
+  const value = useMemo(() => ({ ...state, setTracks }), [setTracks, state]);
 
   return (
     <McapLocationTracksContext.Provider value={value}>
@@ -67,6 +75,11 @@ export const McapLocationTracksProvider: React.FC<{
 
 export function useMcapLocationTracksContext(): McapLocationTracks {
   return useContextValue().tracks;
+}
+
+/** Returns the source key associated with the published location tracks. */
+export function useMcapLocationTracksSourceKey(): string | null {
+  return useContextValue().sourceKey;
 }
 
 /**
@@ -86,67 +99,34 @@ export function McapLocationTracksBridge({
 }) {
   const { setTracks } = useContextValue();
   const sourceKey = source ? byteSourceAccessKey(source) : null;
-  const fetchedTopicsRef = useRef(new Set<string>());
   const tracksRef = useRef(new Map<string, McapLocationTrackState>());
   const playbackStore = useContext(PlaybackStoreContext);
 
+  // This effect loads and publishes location tracks for the active source.
   useEffect(() => {
-    fetchedTopicsRef.current = new Set();
     tracksRef.current = new Map();
-    setTracks(EMPTY_LOCATION_TRACKS);
+    setTracks(sourceKey, EMPTY_LOCATION_TRACKS);
 
     if (!sourceKey || !source || locationSources.length === 0) {
       return undefined;
     }
 
-    let cancelled = false;
-    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
     const commit = (topic: string, state: McapLocationTrackState) => {
-      if (cancelled) {
-        return;
-      }
       tracksRef.current.set(topic, state);
-      setTracks(new Map(tracksRef.current));
+      setTracks(sourceKey, new Map(tracksRef.current));
     };
 
-    const shouldStandDown = (): boolean => {
-      if (!playbackStore) {
-        return false;
-      }
-      if (
-        getIsPlaying(playbackStore) &&
-        getMcapNetworkHealth(playbackStore).limited
-      ) {
-        return true;
-      }
-      return shouldDeferMcapIdleWorkForStore(playbackStore, null);
-    };
-
-    const scheduleRetry = (delayMs: number) => {
-      if (cancelled || retryTimeout !== null) {
-        return;
-      }
-      retryTimeout = setTimeout(() => {
-        retryTimeout = null;
-        start();
-      }, delayMs);
-    };
-
-    const start = () => {
-      if (cancelled) {
-        return;
-      }
-      if (shouldStandDown()) {
-        scheduleRetry(LOCATION_TRACK_DEFERRED_RETRY_MS);
-        return;
-      }
-
-      locationSources.forEach((locationSource, index) => {
-        const topic = locationSource.id;
-        if (fetchedTopicsRef.current.has(topic)) {
-          return;
-        }
-        fetchedTopicsRef.current.add(topic);
+    return startMcapBulkTopicLifecycle({
+      initialDelayMs: 0,
+      retryDelayMs: LOCATION_TRACK_DEFERRED_RETRY_MS,
+      shouldStandDown: () => shouldDeferMcapBulkHistory(playbackStore),
+      topics: locationSources.map((locationSource) => locationSource.id),
+      runTopic: async (topic, control) => {
+        const index = locationSources.findIndex(
+          (locationSource) => locationSource.id === topic,
+        );
+        const locationSource = locationSources[index];
+        if (!locationSource) return;
         const color = locationTrackColor(index);
         const baseState = {
           color,
@@ -157,78 +137,58 @@ export function McapLocationTracksBridge({
         } satisfies Omit<McapLocationTrackState, "status">;
         commit(topic, { ...baseState, status: "loading" });
 
-        void (async () => {
-          const points: McapLocationTrackPoint[] = [];
-          let messageCount = 0;
-          try {
-            for await (const message of client.readDecodedMessages(
-              {
-                activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-                limit: LOCATION_TRACK_READ_LIMIT,
-                source,
-                topics: [topic],
-              },
-              { priority: "bulk" },
-            )) {
-              if (cancelled) {
-                return;
-              }
-              messageCount += 1;
-              if (shouldStandDown()) {
-                fetchedTopicsRef.current.delete(topic);
-                scheduleRetry(LOCATION_TRACK_DEFERRED_RETRY_MS);
-                return;
-              }
-              const visualization = message.decoded.output.visualization;
-              if (visualization?.kind !== VISUALIZATION_KIND.LOCATION) {
-                continue;
-              }
-              points.push(
-                locationPointFromVisualization(
-                  visualization,
-                  message.timelineTimeNs,
-                ),
-              );
+        const points: McapLocationTrackPoint[] = [];
+        let messageCount = 0;
+        try {
+          for await (const message of client.readDecodedMessages(
+            {
+              activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+              limit: LOCATION_TRACK_READ_LIMIT,
+              source,
+              topics: [topic],
+            },
+            { priority: "bulk" },
+          )) {
+            if (control.isCancelled()) return;
+            messageCount += 1;
+            if (control.standDown()) return;
+            const visualization = message.decoded.output.visualization;
+            if (visualization?.kind !== VISUALIZATION_KIND.LOCATION) {
+              continue;
             }
-
-            const result = decimateLocationTrackSegments(
-              segmentLocationTrack(points),
+            points.push(
+              locationPointFromVisualization(
+                visualization,
+                message.timelineTimeNs,
+              ),
             );
-            const truncated =
-              result.truncated || messageCount >= LOCATION_TRACK_READ_LIMIT;
-            if (truncated) {
-              markMcapLatencyEvent("location track downsampled", {
-                points: result.pointCount,
-                topic,
-              });
-            }
-            commit(topic, {
-              ...baseState,
-              pointCount: result.pointCount,
-              segments: result.segments,
-              status: "ready",
-              ...(truncated ? { truncated: true } : {}),
-            });
-          } catch {
-            commit(topic, { ...baseState, status: "error" });
           }
-        })();
-      });
-    };
 
-    scheduleRetry(LOCATION_TRACK_START_DELAY_MS);
-
-    return () => {
-      cancelled = true;
-      if (retryTimeout !== null) {
-        clearTimeout(retryTimeout);
-      }
-    };
+          const result = decimateLocationTrackSegments(
+            segmentLocationTrack(points),
+          );
+          const truncated =
+            result.truncated || messageCount >= LOCATION_TRACK_READ_LIMIT;
+          if (control.isCancelled()) return;
+          commit(topic, {
+            ...baseState,
+            pointCount: result.pointCount,
+            segments: result.segments,
+            status: "ready",
+            ...(truncated ? { truncated: true } : {}),
+          });
+        } catch {
+          if (control.isCancelled()) return;
+          commit(topic, { ...baseState, status: "error" });
+        }
+      },
+    });
   }, [client, locationSources, playbackStore, setTracks, source, sourceKey]);
 
+  // This effect clears provider state when the bridge unmounts.
   useEffect(
     () => () => {
-      setTracks(EMPTY_LOCATION_TRACKS);
+      setTracks(null, EMPTY_LOCATION_TRACKS);
     },
     [setTracks],
   );

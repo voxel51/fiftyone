@@ -1,19 +1,29 @@
 import { Icon, IconName, Size } from "@voxel51/voodo";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useThree } from "@react-three/fiber";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import * as THREE from "three";
 
 import MeasureRulerIcon from "../../../components/MeasureRulerIcon";
 import type { PointCloudBounds } from "../../../decoders";
 import { Base3DScene } from "../base-3d-scene";
 import { WebGpuCanvas } from "../gpu/webgpu-canvas";
+import { PanelNotices } from "../panel-notices";
+import { useKeyedIdentityMap } from "../use-keyed-identity-map";
 import {
+  DEFAULT_POINT_CLOUD_CAMERA_PROJECTION,
   PERSPECTIVE_POINT_CAMERA,
   cameraPoseForBounds,
   sceneBoundsForLayers,
 } from "./camera-fit-bounds";
 import { CameraFrustumSceneLayer } from "./CameraFrustumSceneLayer";
 import { GridSceneLayer } from "./GridSceneLayer";
-import { NOTICE_SEVERITY_ICON_COLORS, styles } from "./panel-styles";
+import { styles } from "./panel-styles";
 import {
   DEFAULT_MAX_RENDERED_POINTS,
   EMPTY_POINT_CLOUD_BOUNDS_SIZE,
@@ -44,13 +54,14 @@ import {
   type MeasurementState,
 } from "./measurement";
 import { SceneAnnotationLayer } from "./SceneAnnotationLayer";
+import { SceneRayLayer } from "./SceneRayLayer";
 import { ScenePickingContext } from "./scene-interactivity";
 import { WorldGridLayer } from "./WorldGridLayer";
 import { colormapCssGradient, pointCloudColormapKey } from "./colormaps";
 import type {
   PanelNotice,
-  PanelNoticeSeverity,
   PointCloudCameraPose,
+  PointCloudCameraProjection,
   PointCloudColorRamp,
   PointCloudPanelLayer,
   PointCloudPanelProps,
@@ -75,9 +86,12 @@ export function PointCloudPanel({
   annotationLayers = [],
   background,
   cameraPose,
+  cameraProjection = DEFAULT_POINT_CLOUD_CAMERA_PROJECTION,
+  cameraRig,
   canvasSurface,
   className,
   colorBy,
+  controls,
   fit = "initial",
   fitResetKey,
   frustumLayers = [],
@@ -89,6 +103,7 @@ export function PointCloudPanel({
   onCameraPoseChange,
   onRenderStats,
   pointSize = DEFAULT_POINT_SIZE,
+  rayLayers = [],
   sceneUp = "z",
   showGizmo = true,
   showColorLegend = false,
@@ -98,62 +113,83 @@ export function PointCloudPanel({
   worldGrid = null,
 }: PointCloudPanelProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
+  const [frustumTextureErrors, setFrustumTextureErrors] = useState<
+    Readonly<Record<string, string>>
+  >({});
+  const updateFrustumTextureError = useCallback(
+    (layerId: string, message: string | null) => {
+      setFrustumTextureErrors((current) => {
+        if (message === null) {
+          if (!(layerId in current)) return current;
+          const next = { ...current };
+          delete next[layerId];
+          return next;
+        }
+        if (current[layerId] === message) return current;
+        return { ...current, [layerId]: message };
+      });
+    },
+    [],
+  );
   const pointPickerRegistry = useMemo(
     // The 3D canvas is its own invalidation/device domain. Keep its picker
     // registry local rather than sharing resources with the modal image stage.
     () => createGpuPointCloud3dPickerRegistry(),
     [],
   );
-  const renderLayers = useMemo(
-    () =>
-      layers.map((layer): PreparedPointCloudPanelLayer => {
-        const colorOptions = pointCloudColorOptions(layer, colorBy);
-        const payload = layer.frame.renderPayload;
-        if (!payload) {
-          // Compatibility path for custom/legacy producers. Built-in MCAP
-          // frames take the worker-prepared branch below and never expand
-          // positions/colors on the main thread.
-          return {
-            data: buildPointCloudRenderData(
-              layer.frame.positions,
-              maxRenderedPoints,
-              colorOptions,
-            ),
-            layer,
-          };
-        }
-
-        const gpuColor = resolveGpuPointCloudColor(payload, colorOptions);
-        const renderedPointCount = gpuPointCloudDrawCount(
-          payload.sampledPointCount,
-          maxRenderedPoints,
-        );
+  // Keyed identity: a prepared wrapper survives renders its own layer didn't
+  // cause, so the memoized scene layers below skip reconciliation (and their
+  // per-frame layout effects) for clouds whose content didn't change.
+  const renderLayers = useKeyedIdentityMap(layers, {
+    build: (layer): PreparedPointCloudPanelLayer => {
+      const colorOptions = pointCloudColorOptions(layer, colorBy);
+      const payload = layer.frame.renderPayload;
+      if (!payload) {
+        // Compatibility path for custom/legacy producers. Built-in MCAP
+        // frames take the worker-prepared branch below and never expand
+        // positions/colors on the main thread.
         return {
-          // Scene fitting, legends, and render stats consume this compact
-          // summary. The 3D layer reads typed arrays only from `gpu.payload`.
-          data: {
-            bounds: pointCloudPayloadBounds(payload.bounds),
-            colorRamp: gpuColor.colorRamp,
-            colors: EMPTY_GPU_RENDER_ARRAY,
-            finitePointCount: payload.finitePointCount,
-            positions: EMPTY_GPU_RENDER_ARRAY,
-            renderedPointCount,
-          },
-          gpu: {
-            color: gpuColor,
-            payload,
-            renderedPointCount,
-            ...(layer.contentTimeNs === undefined
-              ? {}
-              : {
-                  resourceKey: `${layer.id}\n${layer.contentTimeNs.toString()}`,
-                }),
-          },
+          data: buildPointCloudRenderData(
+            layer.frame.positions,
+            maxRenderedPoints,
+            colorOptions,
+          ),
           layer,
         };
-      }),
-    [colorBy, layers, maxRenderedPoints],
-  );
+      }
+
+      const gpuColor = resolveGpuPointCloudColor(payload, colorOptions);
+      const renderedPointCount = gpuPointCloudDrawCount(
+        payload.sampledPointCount,
+        maxRenderedPoints,
+      );
+      return {
+        // Scene fitting, legends, and render stats consume this compact
+        // summary. The 3D layer reads typed arrays only from `gpu.payload`.
+        data: {
+          bounds: pointCloudPayloadBounds(payload.bounds),
+          colorRamp: gpuColor.colorRamp,
+          colors: EMPTY_GPU_RENDER_ARRAY,
+          finitePointCount: payload.finitePointCount,
+          positions: EMPTY_GPU_RENDER_ARRAY,
+          renderedPointCount,
+        },
+        gpu: {
+          color: gpuColor,
+          payload,
+          renderedPointCount,
+          ...(layer.contentTimeNs === undefined
+            ? {}
+            : {
+                resourceKey: `${layer.id}\n${layer.contentTimeNs.toString()}`,
+              }),
+        },
+        layer,
+      };
+    },
+    inputs: (layer) => [layer, colorBy, maxRenderedPoints],
+    key: (layer) => layer.id,
+  });
   const gpuPickData = useMemo(() => {
     // CPU metadata only. GPU buffers are registered by mounted scene layers;
     // this map translates the winning sampled ID back to decoded hover data.
@@ -187,13 +223,23 @@ export function PointCloudPanel({
     return ramps;
   }, [renderLayers]);
 
-  const frameFitPose = useMemo(
-    () =>
-      cameraPoseForBounds(
-        sceneBoundsForLayers(renderLayers, annotationLayers, gridLayers),
-      ),
+  const frameFitBounds = useMemo(
+    () => sceneBoundsForLayers(renderLayers, annotationLayers, gridLayers),
     [annotationLayers, gridLayers, renderLayers],
   );
+  const frameFitPose = useMemo(
+    () => cameraPoseForBounds(frameFitBounds, cameraProjection.fovDegrees),
+    [cameraProjection.fovDegrees, frameFitBounds],
+  );
+  const sceneBoundsSummary = useMemo(() => {
+    if (!frameFitBounds) return undefined;
+    const center = frameFitBounds.getCenter(new THREE.Vector3());
+    const size = frameFitBounds.getSize(new THREE.Vector3());
+    return {
+      center: [center.x, center.y, center.z] as const,
+      radius: size.length() / 2,
+    } as const;
+  }, [frameFitBounds]);
   const [initialFitPose, setInitialFitPose] =
     useState<PointCloudCameraPose | null>(null);
   const [appliedFitResetKey, setAppliedFitResetKey] = useState(fitResetKey);
@@ -274,6 +320,7 @@ export function PointCloudPanel({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [measureArmed, measurement]);
+  // This effect clears a measurement when its supporting plane changes.
   useEffect(() => {
     setMeasurement(null);
   }, [measurePlaneUp]);
@@ -310,6 +357,23 @@ export function PointCloudPanel({
     annotationLayers.length > 0 ||
     gridLayers.length > 0 ||
     frustumLayers.length > 0;
+  const frustumTextureNotices = useMemo<readonly PanelNotice[]>(
+    () =>
+      Object.entries(frustumTextureErrors).map(([layerId, message]) => ({
+        detail:
+          frustumLayers.find((layer) => layer.id === layerId)?.imageTopic ??
+          layerId,
+        id: `camera-texture:${layerId}`,
+        message,
+        severity: "warning",
+      })),
+    [frustumLayers, frustumTextureErrors],
+  );
+  const panelNotices = useMemo(
+    () => [...notices, ...frustumTextureNotices],
+    [frustumTextureNotices, notices],
+  );
+  // This effect reports scene render statistics after React commits the frame.
   useEffect(() => {
     if (!onRenderStats || !hasSceneLayers) return;
 
@@ -330,6 +394,7 @@ export function PointCloudPanel({
           (sum, layer) => sum + layer.data.renderedPointCount,
           0,
         ),
+        ...(sceneBoundsSummary ? { sceneBounds: sceneBoundsSummary } : {}),
       });
     });
 
@@ -349,7 +414,12 @@ export function PointCloudPanel({
     layers.length,
     onRenderStats,
     renderLayers,
+    sceneBoundsSummary,
   ]);
+  const showControlStack =
+    showControls &&
+    !canvasError &&
+    Boolean(controls || frameFitPose || measureReadout);
 
   return (
     <div className={className} style={{ ...styles.panel, ...style }}>
@@ -364,6 +434,7 @@ export function PointCloudPanel({
         }
         surface={canvasSurface}
       >
+        <PerspectiveCameraProjection projection={cameraProjection} />
         <Base3DScene
           background={background}
           cameraPose={effectiveCameraPose}
@@ -371,6 +442,7 @@ export function PointCloudPanel({
           showGizmo={showGizmo}
           up={sceneUp}
         >
+          {cameraRig}
           <ScenePickingContext.Provider value={!measureArmed}>
             <GpuPointCloud3dPickerRegistryContext.Provider
               value={pointPickerRegistry}
@@ -401,7 +473,14 @@ export function PointCloudPanel({
                 <SceneAnnotationLayer key={layer.id} layer={layer} />
               ))}
               {frustumLayers.map((layer) => (
-                <CameraFrustumSceneLayer key={layer.id} layer={layer} />
+                <CameraFrustumSceneLayer
+                  key={layer.id}
+                  layer={layer}
+                  onTextureError={updateFrustumTextureError}
+                />
+              ))}
+              {rayLayers.map((layer) => (
+                <SceneRayLayer key={layer.id} layer={layer} />
               ))}
               <PointCloudPickingLayer
                 gpuPickData={gpuPickData}
@@ -437,43 +516,69 @@ export function PointCloudPanel({
       {!canvasError && showColorLegend && colorRamps.length > 0 ? (
         <ColorRampLegend ramps={colorRamps} />
       ) : null}
-      {showControls && !canvasError && frameFitPose ? (
-        <button
-          aria-label="Recenter view"
-          onClick={handleRecenter}
-          style={styles.recenter}
-          title="Recenter the view on the current scene"
-          type="button"
-        >
-          <Icon
-            name={IconName.Fullscreen}
-            size={Size.Xs}
-            style={styles.noticesIcon}
-          />
-        </button>
-      ) : null}
-      {showControls && !canvasError && frameFitPose ? (
-        <button
-          aria-label="Measure distance"
-          aria-pressed={measureArmed}
-          onClick={handleMeasureToggle}
-          style={
-            measureArmed ? styles.measureToggleActive : styles.measureToggle
-          }
-          title="Measure distance on the grid plane (Esc clears)"
-          type="button"
-        >
-          <MeasureRulerIcon />
-        </button>
-      ) : null}
-      {showControls && !canvasError && measureReadout ? (
-        <div data-testid="measure-readout" style={styles.measureReadout}>
-          {measureReadout}
+      {showControlStack ? (
+        <div style={styles.controls}>
+          {measureReadout ? (
+            <div data-testid="measure-readout" style={styles.measureReadout}>
+              {measureReadout}
+            </div>
+          ) : null}
+          {controls}
+          {frameFitPose ? (
+            <button
+              aria-label="Measure distance"
+              aria-pressed={measureArmed}
+              onClick={handleMeasureToggle}
+              style={
+                measureArmed ? styles.measureToggleActive : styles.measureToggle
+              }
+              title="Measure distance on the grid plane (Esc clears)"
+              type="button"
+            >
+              <MeasureRulerIcon />
+            </button>
+          ) : null}
+          {frameFitPose ? (
+            <button
+              aria-label="Recenter view"
+              onClick={handleRecenter}
+              style={styles.recenter}
+              title="Recenter the view on the current scene"
+              type="button"
+            >
+              <Icon
+                name={IconName.Fullscreen}
+                size={Size.Xs}
+                style={styles.controlIcon}
+              />
+            </button>
+          ) : null}
         </div>
       ) : null}
-      <PanelNotices notices={notices} />
+      <PanelNotices notices={panelNotices} scope="scene" />
     </div>
   );
+}
+
+function PerspectiveCameraProjection({
+  projection,
+}: {
+  readonly projection: PointCloudCameraProjection;
+}) {
+  const camera = useThree((state) => state.camera);
+  const invalidate = useThree((state) => state.invalidate);
+
+  // This layout effect updates the Three camera before the next frame paints.
+  useLayoutEffect(() => {
+    if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    camera.fov = projection.fovDegrees;
+    camera.near = projection.near;
+    camera.far = projection.far;
+    camera.updateProjectionMatrix();
+    invalidate();
+  }, [camera, invalidate, projection]);
+
+  return null;
 }
 
 function pointCloudColorOptions(
@@ -558,76 +663,6 @@ function ColorRampLegend({
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-/** Worst severity across the chip's notices; drives the icon color only. */
-function worstNoticeSeverity(
-  notices: readonly PanelNotice[],
-): PanelNoticeSeverity {
-  let worst: PanelNoticeSeverity = "info";
-  for (const notice of notices) {
-    if (notice.severity === "error") return "error";
-    if (notice.severity === "warning") worst = "warning";
-  }
-  return worst;
-}
-
-/**
- * Collapsed-by-default diagnostics chip in the panel's bottom-left
- * corner. Transform/placement notices are informative but verbose, so
- * the resting state is a warning glyph plus a count; the full messages
- * expand on demand.
- *
- * Rows are keyed by notice id, so a notice whose detail text updates per
- * playback tick edits its row in place instead of remounting it.
- */
-function PanelNotices({
-  notices,
-}: {
-  readonly notices: readonly PanelNotice[];
-}) {
-  const [expanded, setExpanded] = useState(false);
-
-  if (notices.length === 0) {
-    return null;
-  }
-
-  return (
-    <div style={styles.notices}>
-      {expanded ? (
-        <ul aria-label="3D scene notices" style={styles.noticesList}>
-          {notices.map((notice) => (
-            <li key={notice.id} style={styles.noticesItem}>
-              <div>{notice.message}</div>
-              {notice.detail ? (
-                <div style={styles.noticesItemDetail}>{notice.detail}</div>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      <button
-        aria-expanded={expanded}
-        aria-label={`${notices.length} scene ${
-          notices.length === 1 ? "notice" : "notices"
-        }`}
-        onClick={() => setExpanded((current) => !current)}
-        style={styles.noticesToggle}
-        title={expanded ? "Hide scene notices" : "Show scene notices"}
-        type="button"
-      >
-        <Icon
-          name={IconName.Warning}
-          size={Size.Xs}
-          style={{
-            ...styles.noticesIcon,
-            color: NOTICE_SEVERITY_ICON_COLORS[worstNoticeSeverity(notices)],
-          }}
-        />
-        {notices.length}
-      </button>
     </div>
   );
 }

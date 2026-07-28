@@ -204,7 +204,23 @@ describe("ImagePanel", () => {
   it("surfaces video keyframe wait states from the shared image panel", async () => {
     render(<ImagePanel frame={deltaVideoFrame()} />);
 
-    expect(await screen.findByText("Waiting for H.264 keyframe")).toBeTruthy();
+    const noticeToggle = await screen.findByLabelText("1 image notice");
+    expect(screen.queryByText("Waiting for H.264 keyframe")).toBeNull();
+
+    fireEvent.click(noticeToggle);
+    expect(screen.getByText("Waiting for H.264 keyframe")).toBeTruthy();
+  });
+
+  it("does not start parent panning from image notices", async () => {
+    const onPointerDown = vi.fn();
+    render(
+      <div onPointerDown={onPointerDown}>
+        <ImagePanel frame={deltaVideoFrame()} />
+      </div>,
+    );
+
+    fireEvent.pointerDown(await screen.findByLabelText("1 image notice"));
+    expect(onPointerDown).not.toHaveBeenCalled();
   });
 });
 

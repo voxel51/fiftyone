@@ -5,6 +5,7 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 import os
 from collections import Counter
@@ -19,6 +20,7 @@ from .mesh import FbxMesh, GltfMesh, ObjMesh, PlyMesh, StlMesh
 from .object_3d import Object3D
 from .pointcloud import PointCloud
 from .shape_3d import Shape3D
+from .splat import GaussianSplat
 from .utils import FO3D_VERSION_KEY, convert_keys_to_snake_case
 from .validators import BaseValidatedDataClass, validate_color, validate_list
 
@@ -30,6 +32,7 @@ fo3d_path_attributes = [
     "fbx_path",
     "stl_path",
     "gltf_path",
+    "splat_path",
 ]
 
 
@@ -312,6 +315,7 @@ class Scene(Object3D):
             "fbxs": node_types[FbxMesh],
             "stls": node_types[StlMesh],
             "plys": node_types[PlyMesh],
+            "gaussian splats": node_types[GaussianSplat],
             "shapes": node_types[Shape3D],
         }
 

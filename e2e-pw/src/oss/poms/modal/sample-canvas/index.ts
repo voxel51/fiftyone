@@ -230,7 +230,8 @@ export class SampleCanvasPom {
    * Wait for the cursor to change
    */
   async waitForCursorChange() {
-    await this.eventUtils.getEventReceivedPromiseForPredicate("cursor-change");
+    const armed = await this.eventUtils.arm("cursor-change");
+    await armed.received;
   }
 
   /**

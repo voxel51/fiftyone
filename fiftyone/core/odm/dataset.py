@@ -319,6 +319,12 @@ class ColorScheme(EmbeddedDocument):
 
             -   ``fieldColor`` (optional): a color to assign to all label tags
             -   ``valueColors`` (optional): a list of dicts
+        temporal_tags (None): an optional dict specifying custom colors for
+            temporal tags with the following keys:
+
+            -   ``fieldColor`` (optional): a color to assign to all temporal
+                tags
+            -   ``valueColors`` (optional): a list of dicts
     """
 
     # strict=False lets this class ignore unknown fields from other versions
@@ -333,6 +339,7 @@ class ColorScheme(EmbeddedDocument):
     color_by = StringField(null=True)
     fields = ListField(DictField(), null=True)
     label_tags = DictField(null=True)
+    temporal_tags = DictField(null=True)
     multicolor_keypoints = BooleanField(null=True)
     opacity = FloatField(null=True)
     show_skeletons = BooleanField(null=True)

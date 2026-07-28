@@ -15,18 +15,22 @@ export class ModalAnnotateEditPom {
     this.locator = page.getByTestId("modal").getByTestId("sidebar");
   }
 
+  // Undo/redo render in both the create toolbar and the edit-form header; only
+  // one is on-screen at a time (the create toolbar is hidden while editing), so
+  // scope to the visible instance to avoid a strict-mode match on both.
+
   /**
    * The undo button locator
    */
   get undoButton() {
-    return this.locator.getByTestId("undo-button");
+    return this.locator.locator('[data-cy="undo-button"]:visible');
   }
 
   /**
    * The redo button locator
    */
   get redoButton() {
-    return this.locator.getByTestId("redo-button");
+    return this.locator.locator('[data-cy="redo-button"]:visible');
   }
 
   /**
