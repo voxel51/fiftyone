@@ -8,8 +8,12 @@ app:
 clean:
 	@rm -rf ./dist/*
 
-python: app clean
-	@python -Im build
+python: app
+	@uv build --clear --sdist
+	@test "$$(find dist -maxdepth 1 -type f -name 'fiftyone-*.tar.gz' | wc -l | tr -d ' ')" -eq 1
+	@uv build --wheel dist/fiftyone-*.tar.gz
+	@uv run --locked --no-sync twine check --strict dist/*
+	@uv run --locked --no-sync check-wheel-contents dist/*.whl
 
 docker: python
 	@docker build -t local/fiftyone .

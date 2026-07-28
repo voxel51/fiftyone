@@ -241,11 +241,8 @@ development environment:
 
     .. code-block:: shell
 
-        # Install FiftyOne as an editable package with pre-commit hooks
-        bash install.sh -d
-
-        # Install docs dependencies
-        pip install -r requirements/docs.txt
+        # Install FiftyOne and the docs dependencies from the lockfile
+        uv sync --locked --no-default-groups --group docs
 
     **Step 3: Add FiftyOne to your PYTHONPATH**
 

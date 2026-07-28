@@ -10,7 +10,6 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 """
 
 import os
-import re
 import sys
 
 sys.path.insert(0, os.path.abspath("."))
@@ -30,12 +29,12 @@ from redirects import generate_api_redirects, generate_redirects
 
 import fiftyone.constants as foc
 
-with open("../../setup.py") as f:
-    setup_version = re.search(r'VERSION = "(.+?)"', f.read()).group(1)
+with open("../../VERSION", encoding="utf-8") as f:
+    setup_version = f.read().strip()
 
 if setup_version != foc.VERSION:
     raise RuntimeError(
-        "FiftyOne version in setup.py (%r) does not match installed version "
+        "FiftyOne version in VERSION (%r) does not match installed version "
         "(%r). If this is a dev install, reinstall with `pip install -e .` "
         "and try again." % (setup_version, foc.VERSION)
     )

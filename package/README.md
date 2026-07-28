@@ -34,7 +34,7 @@ built when the workflow runs, and are downloadable as workflow artifacts.
 Wheels are also published to PyPI under the following circumstances:
 
 - `fiftyone` wheels (and documentation) are published when a tag matching `v*`
-  is pushed. `*` must match the version in `setup.py`.
+  is pushed. `*` must match the version in the root `VERSION` file.
 - `fiftyone-db` wheels are published when a tag matching `db-v*` is pushed. `*`
   must match the version in `package/db/setup.py`.
 
@@ -57,11 +57,10 @@ give `*.whl` files that can be uploaded.
 
 FiftyOne and its related packages can also be built manually. The `package`
 folder contains supporting code to package `fiftyone-db`; the main `fiftyone`
-package is handled by the top-level `setup.py`.
+package is configured by the top-level `pyproject.toml`.
 
-For each package, `python setup.py bdist_wheel` in the appropriate folder will
-generate a wheel for the current platform. For some packages, this is
-configurable as detailed below.
+Run `uv build --sdist --wheel` at the repository root to build `fiftyone`. The
+`fiftyone-db` package retains its custom build described below.
 
 ### Packaging `fiftyone`
 
@@ -72,8 +71,14 @@ version - no extra steps are necessary.
 
 This package can be built from within the `package/db` directory. The wheel for
 this package is platform-specific but will work with any supported Python
-version. To target a platform other than your current one, add
+version. Windows wheels target x86-64, matching the MongoDB binaries available
+for the bundled version. To target a platform other than your current one, add
 `--plat-name mac` or `--plat-name linux` to the `bdist_wheel` command.
+
+Platforms without a mapped upstream MongoDB archive can still install the
+package for use with an external `FIFTYONE_DATABASE_URI`; those builds do not
+contain an embedded `mongod`. Release CI publishes wheels only for mapped
+platforms and verifies that every published wheel contains its binary.
 
 As part of the build process, MongoDB is downloaded and cached in
 `package/db/cache`. If you have already downloaded MongoDB and would like to

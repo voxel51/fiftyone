@@ -55,8 +55,8 @@ set -e
 NODE_VERSION=22.14.0
 OS=$(uname -s)
 
-MIN_MINOR=9
-MAX_MINOR=12
+MIN_MINOR=10
+MAX_MINOR=13
 
 if command -v python >/dev/null 2>&1; then
     PYTHON=python
@@ -84,6 +84,12 @@ if command -v uv >/dev/null 2>&1; then
     PIP="uv pip"
 else
     PIP="$PYTHON -m pip"
+fi
+
+if { [ "$DEV_INSTALL" = true ] || [ "$DOCS_INSTALL" = true ]; } \
+    && ! command -v uv >/dev/null 2>&1; then
+    echo "ERROR: uv 0.11.32 is required for development and docs installs."
+    exit 1
 fi
 
 # Do this first so pip installs with a built app
@@ -122,6 +128,17 @@ if [ "$BUILD_APP" = true ]; then
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0 yarn install >/dev/null 2>&1
     yarn build
     cd ..
+fi
+
+if [ "$DEV_INSTALL" = true ]; then
+    uv sync --locked --python "$PYTHON" --no-install-project
+    VIRTUAL_ENV="$(pwd)/.venv"
+    export VIRTUAL_ENV
+elif [ "$DOCS_INSTALL" = true ]; then
+    uv sync --locked --python "$PYTHON" --no-default-groups --group docs \
+        --no-install-project
+    VIRTUAL_ENV="$(pwd)/.venv"
+    export VIRTUAL_ENV
 fi
 
 if [ "$SCRATCH_MONGODB_INSTALL" = true ]; then
@@ -164,7 +181,11 @@ if [ "$SCRATCH_MONGODB_INSTALL" = true ]; then
     cd -
 else
     echo "***** INSTALLING FIFTYONE-DB *****"
-    $PIP install fiftyone-db
+    if [ "$DEV_INSTALL" = true ] || [ "$DOCS_INSTALL" = true ]; then
+        echo "Using fiftyone-db from the locked environment"
+    else
+        $PIP install fiftyone-db
+    fi
 fi
 
 echo "***** INSTALLING FIFTYONE-BRAIN *****"
@@ -187,19 +208,21 @@ if [ "$SOURCE_BRAIN_INSTALL" = true ]; then
     fi
     cd -
 else
-    $PIP install --upgrade fiftyone-brain
+    if [ "$DEV_INSTALL" = true ] || [ "$DOCS_INSTALL" = true ]; then
+        echo "Using fiftyone-brain from the locked environment"
+    else
+        $PIP install --upgrade fiftyone-brain
+    fi
 fi
 
 echo "***** INSTALLING FIFTYONE *****"
 if [ "$DEV_INSTALL" = true ]; then
     echo "Performing dev install"
-    $PIP install -r requirements/dev.txt
-    pre-commit install
-    $PIP install -e .
+    uv sync --locked --python "$PYTHON"
+    uv run --locked --no-sync pre-commit install
 elif [ "$DOCS_INSTALL" = true ]; then
     echo "Performing docs install"
-    $PIP install -r requirements/docs.txt
-    $PIP install -e .
+    uv sync --locked --python "$PYTHON" --no-default-groups --group docs
 else
     echo "Performing install"
     $PIP install .

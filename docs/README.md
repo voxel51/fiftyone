@@ -27,20 +27,14 @@ Before building the docs locally, ensure you have:
 
 To build the documentation locally, follow these steps:
 
-1. Install FiftyOne:
+1. Sync the locked documentation environment:
 
     ```shell
     cd ..
-    bash install.sh
+    uv sync --locked --no-default-groups --group docs
     ```
 
-2. Install documentation-specific requirements:
-
-    ```shell
-    pip install -r requirements/docs.txt
-    ```
-
-3. To use the `fiftyone` repository to autogenerate docs, you need to add it to
+2. To use the `fiftyone` repository to autogenerate docs, you need to add it to
    your `PYTHONPATH`:
 
     ```shell
