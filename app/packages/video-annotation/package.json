@@ -2,8 +2,8 @@
     "name": "@fiftyone/video-annotation",
     "main": "./index.ts",
     "scripts": {
-        "lint": "eslint src index.ts",
-        "lint:fix": "eslint src index.ts --fix",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
         "typecheck": "tsc --noEmit -p tsconfig.json"
     },
     "dependencies": {
