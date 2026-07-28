@@ -18,7 +18,7 @@
     "dependencies": {
         "@fiftyone/commands": "workspace:^",
         "@fiftyone/tiling": "*",
-        "@voxel51/voodo": "^0.0.39",
+        "@voxel51/voodo": "catalog:",
         "jotai": "catalog:",
         "jotai-optics": "^0.4.0",
         "optics-ts": "^2.4.1",

@@ -41,7 +41,7 @@
         "@fiftyone/relay": "*",
         "@fiftyone/utilities": "*",
         "@microsoft/fetch-event-source": "catalog:",
-        "@voxel51/voodo": "^0.0.39",
+        "@voxel51/voodo": "catalog:",
         "html2canvas": "1.0.0-rc.7",
         "lodash": "catalog:",
         "resize-observer-polyfill": "catalog:"

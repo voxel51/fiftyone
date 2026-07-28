@@ -27,7 +27,7 @@
         "@fiftyone/video-annotation": "workspace:*",
         "@types/react": "catalog:",
         "@use-gesture/react": "10.1.1",
-        "@voxel51/voodo": "^0.0.39",
+        "@voxel51/voodo": "catalog:",
         "classnames": "^2.2.6",
         "history": "catalog:",
         "jotai": "catalog:",
