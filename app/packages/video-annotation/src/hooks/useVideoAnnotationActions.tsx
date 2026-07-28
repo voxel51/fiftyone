@@ -18,6 +18,7 @@ import {
 } from "../state/useVideoInteraction";
 import { useFrameKeyframeState } from "./useFrameKeyframeState";
 import { useVideoSurfaceActions } from "./useVideoSurfaceActions";
+import { AiTrackUpsellButton } from "../components/AiTrackUpsellButton";
 
 /**
  * Small SVG diamond glyph used by the Mark Keyframe toolbar button. Filled
@@ -187,6 +188,20 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
 
               actions.splitTrack(selectedIds[0], frameAt(playhead, fps));
             },
+          },
+          {
+            // Upsell for AI-powered object tracking (not in the OSS app): an
+            // always-present, disabled-styled button whose only action is a
+            // hover callout. Owns its own presentation via the custom-component
+            // hatch; onClick is a required no-op.
+            id: "ai-track",
+            label: "AI Track",
+            icon: <Icon name={IconName.AI} size={Size.Sm} />,
+            // Required by the item type but unreachable — the toolbar renders
+            // `customComponent` instead of wiring `onClick`.
+            // eslint-disable-next-line @typescript-eslint/no-empty-function
+            onClick: () => {},
+            customComponent: <AiTrackUpsellButton />,
           },
         ],
       },

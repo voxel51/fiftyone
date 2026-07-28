@@ -30,6 +30,37 @@ afterEach(() => {
 });
 
 describe("McapRawMessageBridge records", () => {
+  it("reads complete message JSON only for an explicit request", async () => {
+    const fullJson = JSON.stringify({ data: new Array(100).fill(7) });
+    const client = createClient({
+      readRawMessageRecord: vi.fn(async (request) => ({
+        ...recordResult(request),
+        fullJson: request.includeFullJson ? fullJson : undefined,
+      })),
+    });
+    const context = createContextRef();
+
+    render(<Harness client={client} contextRef={context} />);
+    await act(flushMicrotasks);
+
+    let copiedJson: string | undefined;
+    await act(async () => {
+      copiedJson = await context.current?.readFullMessageJson(
+        "/imu",
+        42_000_000_000n,
+      );
+    });
+
+    expect(copiedJson).toBe(fullJson);
+    expect(client.readRawMessageRecord).toHaveBeenCalledTimes(1);
+    expect(client.readRawMessageRecord).toHaveBeenCalledWith({
+      includeFullJson: true,
+      source: createSource(),
+      timeNs: 42_000_000_000n,
+      topic: "/imu",
+    });
+  });
+
   it("fetches the subscribed topic's record at the playhead", async () => {
     const client = createClient();
     const context = createContextRef();

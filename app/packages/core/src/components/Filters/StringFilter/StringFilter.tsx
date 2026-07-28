@@ -46,6 +46,11 @@ interface Props {
   named?: boolean;
   resultsAtom: ResultsAtom;
   selectedAtom: RecoilState<(string | null)[]>;
+  /**
+   * Optional per-value color for the checkbox dot (e.g. temporal-tag colors),
+   * so each value shows its own color rather than the shared field color.
+   */
+  resultColor?: (value: string | null) => string;
 }
 
 const useName = (path: string) => {
@@ -70,6 +75,7 @@ const StringFilter = ({
   path,
   resultsAtom,
   selectedAtom,
+  resultColor,
 }: Props) => {
   const name = useName(path);
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
@@ -133,6 +139,7 @@ const StringFilter = ({
         )}
         <Checkboxes
           color={color}
+          resultColor={resultColor}
           excludeAtom={excludeAtom}
           modal={modal}
           isMatchingAtom={isMatchingAtom}

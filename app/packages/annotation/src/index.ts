@@ -1,3 +1,4 @@
+export * from "./components";
 export * from "./engine";
 // Seam for the video-annotation surface (which owns the video-coupled
 // hooks). Explicit re-exports rather than `export * from "./agents"` so the

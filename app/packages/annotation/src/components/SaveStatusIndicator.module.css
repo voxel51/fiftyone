@@ -1,0 +1,29 @@
+/* Slow opacity pulse for the in-flight state. A local keyframe until a shared
+ * animation token lands in voodo. */
+@keyframes save-status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.pulsing {
+  animation: save-status-pulse 1.6s ease-in-out infinite;
+}
+
+/* Respect users who opt out of motion — hold the icon steady. */
+@media (prefers-reduced-motion: reduce) {
+  .pulsing {
+    animation: none;
+  }
+}

@@ -1,15 +1,36 @@
 import { useAtomValue } from "jotai";
 import { useCallback, useRef, useState } from "react";
-import { Round } from "../Actions";
+import { Redo, Round, Undo } from "../Actions";
 
 import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
 import { West as Back } from "@mui/icons-material";
-import { Box, Menu, MenuItem, Stack } from "@mui/material";
-import { Clickable, Icon, IconName, Size, Text } from "@voxel51/voodo";
+import { Box, Menu, MenuItem } from "@mui/material";
+import {
+  Align,
+  Clickable,
+  Icon,
+  IconName,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+  Text,
+} from "@voxel51/voodo";
 import { DETECTION } from "@fiftyone/utilities";
+import styled from "styled-components";
 import { ItemLeft, ItemRight } from "../Components";
 import { ICONS } from "../Icons";
 import { Row } from "./Components";
+
+// The voodo Divider's line renders too faint against the header; an explicit
+// rule in the theme divider colour keeps the status / action groups legible.
+const VerticalDivider = styled.div`
+  width: 1px;
+  height: 1.25rem;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+  background: ${({ theme }) => theme.divider};
+`;
 
 import { labels } from "../useLabels";
 import * as fos from "@fiftyone/state";
@@ -23,7 +44,11 @@ import useColor from "./useColor";
 import useExit from "./useExit";
 import { useDetectionMode } from "./useDetectionMode";
 import { useSegmentationMode } from "./useSegmentationMode";
-import { useAnnotationController } from "@fiftyone/annotation";
+import {
+  AnnotationSaveIndicator,
+  useAnnotationController,
+  useAnnotationEngine,
+} from "@fiftyone/annotation";
 
 const LabelHamburgerMenu = () => {
   const [open, setOpen] = useState<boolean>(false);
@@ -36,7 +61,8 @@ const LabelHamburgerMenu = () => {
 
   // Permission and read-only state
   const canEditLabels = useRecoilValue(fos.canEditLabels);
-  const { selected, setData } = useAnnotationContext();
+  const { selected, setData, setEditingMask } = useAnnotationContext();
+  const engine = useAnnotationEngine();
   const currentFieldIsReadOnly = selected?.isFieldReadOnly ?? false;
   const { openSchemaManager } = useSchemaManagerModal();
   const isGenerated = useRecoilValue(isGeneratedView);
@@ -47,9 +73,17 @@ const LabelHamburgerMenu = () => {
   const overlay = selected?.overlay;
   const { isEditingMask } = useSegmentationMode();
 
-  // `mask`/`mask_path` are Detection-only fields; the union narrows them
-  // out. Cast at the access site.
-  const maskFields = data as { mask?: unknown; mask_path?: unknown } | null;
+  // Read mask state from the engine-reconciled row (data truth) rather
+  // than the selection-time editing copy, which nothing refreshes on
+  // engine-originated changes (undo/redo). `mask`/`mask_path` are
+  // Detection-only fields; the union narrows them out — cast at the
+  // access site.
+  const rows = useAtomValue(labels);
+  const row = rows.find((l) => l.data._id === data?._id);
+  const maskFields = (row?.data ?? data) as {
+    mask?: unknown;
+    mask_path?: unknown;
+  } | null;
   const isMaskDetection = !!(
     maskFields?.mask ||
     maskFields?.mask_path ||
@@ -65,12 +99,28 @@ const LabelHamburgerMenu = () => {
   }, [overlay]);
 
   const handleRemoveMask = useCallback(() => {
+    // removal is a data operation: the engine write persists (and owns
+    // undo) whether or not the decoded overlay has mounted yet — the
+    // bridge discards an in-flight decode whose mask was removed. The
+    // overlay call is live-canvas cleanup only.
     if (overlay instanceof DetectionOverlay) {
       overlay.removeMask();
-      setData({ mask: undefined, mask_path: undefined });
-      setOpen(false);
+    } else if (selected?.ref) {
+      // null, not undefined: the engine's partial merge drops undefined
+      // keys; null serializes into the delta and clears the field
+      engine.updateLabel(selected.ref, {
+        mask: null,
+        mask_path: null,
+      });
+      // the overlay path ends mask-edit mode via its commit event; the
+      // data path must end it explicitly
+      if (data?._id) {
+        setEditingMask(data._id, false);
+      }
     }
-  }, [overlay, setData]);
+    setData({ mask: undefined, mask_path: undefined });
+    setOpen(false);
+  }, [data, engine, overlay, selected, setData, setEditingMask]);
 
   const handleOpenSchemaManager = () => {
     openSchemaManager();
@@ -119,7 +169,11 @@ const LabelHamburgerMenu = () => {
             onClick={deleteCommand.callback}
             data-cy="label-menu-delete"
           >
-            <Stack direction="row" gap={1} alignItems="center">
+            <Stack
+              orientation={Orientation.Row}
+              align={Align.Center}
+              spacing={Spacing.Sm}
+            >
               <Icon name={IconName.Delete} size={Size.Md} />
               <Text>{deleteCommand.descriptor.label}</Text>
             </Stack>
@@ -175,11 +229,19 @@ const Header = () => {
           <Back />
         </Round>
         {Icon && <Icon fill={color} />}
-        <div>Edit {type}</div>
+        <div style={{ marginRight: "0.75rem" }}>Edit {type}</div>
       </ItemLeft>
       {currentFieldIsReadOnly && <span>Read-only</span>}
       <ItemRight>
-        <Stack direction="row" alignItems="center">
+        <Stack
+          orientation={Orientation.Row}
+          align={Align.Center}
+          spacing={Spacing.Xs}
+        >
+          <AnnotationSaveIndicator />
+          <VerticalDivider />
+          <Undo />
+          <Redo />
           {annotationContext.selected?.label != null && <LabelHamburgerMenu />}
         </Stack>
       </ItemRight>

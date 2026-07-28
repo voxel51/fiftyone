@@ -125,6 +125,14 @@ export interface PlaybackStream {
   startupBufferSeconds?: number;
 
   /**
+   * Maximum wall-clock time a play request may wait for
+   * `startupBufferSeconds` coverage. Once elapsed, the engine may start as
+   * soon as the current frame is ready, even if the wider startup window is
+   * incomplete. Omit to preserve an unbounded startup-coverage wait.
+   */
+  startupBufferMaxWaitSeconds?: number;
+
+  /**
    * How this stream resolves the best cached entry for a given time. Used
    * both in bufferState (to determine readiness) and in onCommit (to pick
    * the data to push to the reactive atom). Use resolveAtTime() from

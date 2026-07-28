@@ -13,7 +13,7 @@ describe("instanceIdFromTrackId", () => {
     );
   });
 
-  it("returns null for a legacy index-only track (no engine identity)", () => {
-    expect(instanceIdFromTrackId("track-4")).toBeNull();
+  it("returns an index-based track id unchanged (its own engine identity)", () => {
+    expect(instanceIdFromTrackId("track-4")).toBe("track-4");
   });
 });

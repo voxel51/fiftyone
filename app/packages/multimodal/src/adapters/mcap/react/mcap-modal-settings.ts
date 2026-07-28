@@ -3,14 +3,16 @@ import {
   createStore,
   useAtomValue,
   useSetAtom,
+  type Getter,
   type Setter,
 } from "jotai";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import {
   DEFAULT_MCAP_IMAGE_PROJECTION,
   DEFAULT_MCAP_POINT_CLOUD_COLOR,
   DEFAULT_MCAP_TEMPORAL_POLICY,
+  EMPTY_MCAP_SCOPED_SETTINGS,
   normalizeMcapFidelityMode,
   normalizeMcapImageProjection,
   normalizeMcapPinholeCamera,
@@ -31,6 +33,8 @@ import {
   type McapSceneBackgroundSettings,
   type McapTemporalPolicySettings,
 } from "./mcap-modal-settings-storage";
+import type { McapScopedModalSettings } from "./mcap-modal-settings-storage";
+export type { McapScopedModalSettings };
 export type {
   McapImageDisplayMode,
   McapImageGeometryMode,
@@ -48,6 +52,7 @@ export {
   DEFAULT_MCAP_SCENE_BACKGROUND,
   DEFAULT_MCAP_TEMPORAL_POLICY,
   MAX_MCAP_POINT_CLOUD_POINT_SIZE,
+  MAX_MCAP_SETTINGS_SCOPES,
   MCAP_POINT_CLOUD_POINT_SIZE_STEP,
   MIN_MCAP_POINT_CLOUD_POINT_SIZE,
   defaultMcapPointCloudColorForIndex,
@@ -71,6 +76,63 @@ const mcapModalSettingsStore = createStore();
 const mcapModalSettingsAtom = atom<McapPersistedModalSettings>(
   readMcapModalSettings(),
 );
+
+/**
+ * Active settings scope — one dataset (or ad hoc recording source). While
+ * set, topic-keyed styling reads scoped-first with the legacy global maps
+ * as fallback, and writes land under the scope, so `/lidar_top` in one
+ * dataset stops styling `/lidar_top` in every other. Empty means unscoped:
+ * reads and writes use the global maps, the pre-scoping behavior.
+ */
+const mcapSettingsScopeAtom = atom("");
+
+/**
+ * Resolves one topic-keyed styling map against the active scope: scoped
+ * entries shadow global ones per topic. Returns the global map identity
+ * while the scope adds nothing, so unscoped consumers never re-render.
+ */
+function resolveTopicKeyedMap<Key extends keyof McapScopedModalSettings>(
+  get: Getter,
+  key: Key,
+): McapPersistedModalSettings[Key] {
+  const settings = get(mcapModalSettingsAtom);
+  const scope = get(mcapSettingsScopeAtom);
+  const scoped = scope ? settings.scoped[scope]?.[key] : undefined;
+  if (!scoped || Object.keys(scoped).length === 0) {
+    return settings[key];
+  }
+  return { ...settings[key], ...scoped };
+}
+
+/**
+ * Routes one topic-keyed write to the active scope (re-inserted last so
+ * pruning drops least-recently-written scopes first), or to the legacy
+ * global map while unscoped.
+ */
+function updateTopicKeyedSettings<Key extends keyof McapScopedModalSettings>(
+  get: Getter,
+  set: Setter,
+  key: Key,
+  updateMap: (
+    current: McapScopedModalSettings[Key],
+  ) => McapScopedModalSettings[Key],
+): void {
+  const scope = get(mcapSettingsScopeAtom);
+  updateModalSettings(set, (current) => {
+    if (!scope) {
+      return { ...current, [key]: updateMap(current[key]) };
+    }
+    const previousScoped = current.scoped[scope] ?? EMPTY_MCAP_SCOPED_SETTINGS;
+    const nextScoped = {
+      ...previousScoped,
+      [key]: updateMap(previousScoped[key]),
+    };
+    const scoped = { ...current.scoped };
+    delete scoped[scope];
+    scoped[scope] = nextScoped;
+    return { ...current, scoped };
+  });
+}
 
 const fidelityModeAtom = atom(
   (get) => get(mcapModalSettingsAtom).fidelityMode,
@@ -142,9 +204,9 @@ const sceneBackgroundAtom = atom(
 );
 
 const pointCloudColorsAtom = atom(
-  (get) => get(mcapModalSettingsAtom).pointCloudColors,
+  (get) => resolveTopicKeyedMap(get, "pointCloudColors"),
   (
-    _get,
+    get,
     set,
     {
       topic,
@@ -157,16 +219,17 @@ const pointCloudColorsAtom = atom(
     const normalizedTopic = topic.trim();
     if (!normalizedTopic) return;
 
-    updateModalSettings(set, (current) => ({
-      ...current,
-      pointCloudColors: {
-        ...current.pointCloudColors,
-        [normalizedTopic]: normalizeMcapPointCloudColor({
-          ...(current.pointCloudColors[normalizedTopic] ??
-            DEFAULT_MCAP_POINT_CLOUD_COLOR),
-          ...settings,
-        }),
-      },
+    // Merge over the resolved value: an edit in a scope starts from what
+    // the user currently sees, even when that came from the global map.
+    const previous =
+      resolveTopicKeyedMap(get, "pointCloudColors")[normalizedTopic] ??
+      DEFAULT_MCAP_POINT_CLOUD_COLOR;
+    updateTopicKeyedSettings(get, set, "pointCloudColors", (colors) => ({
+      ...colors,
+      [normalizedTopic]: normalizeMcapPointCloudColor({
+        ...previous,
+        ...settings,
+      }),
     }));
   },
 );
@@ -192,9 +255,9 @@ const showPointCloudColorLegendAtom = atom(
 );
 
 const imageLabelTopicsAtom = atom(
-  (get) => get(mcapModalSettingsAtom).imageLabelTopics,
+  (get) => resolveTopicKeyedMap(get, "imageLabelTopics"),
   (
-    _get,
+    get,
     set,
     {
       imageTopic,
@@ -208,20 +271,17 @@ const imageLabelTopicsAtom = atom(
     if (!normalizedImageTopic) return;
     const normalizedLabelTopics = normalizeMcapTopicList(labelTopics);
 
-    updateModalSettings(set, (current) => ({
-      ...current,
-      imageLabelTopics: {
-        ...current.imageLabelTopics,
-        [normalizedImageTopic]: normalizedLabelTopics,
-      },
+    updateTopicKeyedSettings(get, set, "imageLabelTopics", (topics) => ({
+      ...topics,
+      [normalizedImageTopic]: normalizedLabelTopics,
     }));
   },
 );
 
 const imageProjectionAtom = atom(
-  (get) => get(mcapModalSettingsAtom).imageProjection,
+  (get) => resolveTopicKeyedMap(get, "imageProjection"),
   (
-    _get,
+    get,
     set,
     {
       imageTopic,
@@ -234,33 +294,30 @@ const imageProjectionAtom = atom(
     const normalizedImageTopic = imageTopic.trim();
     if (!normalizedImageTopic) return;
 
-    updateModalSettings(set, (current) => {
-      const previous =
-        current.imageProjection[normalizedImageTopic] ??
-        DEFAULT_MCAP_IMAGE_PROJECTION;
-      let topics =
-        settings.topics !== undefined ? settings.topics : previous.topics;
-      if (settings.enabled === false) {
-        topics = [];
-      } else if (
-        settings.enabled === true &&
-        settings.topics === undefined &&
-        !previous.enabled
-      ) {
-        topics = null;
-      }
-      return {
-        ...current,
-        imageProjection: {
-          ...current.imageProjection,
-          [normalizedImageTopic]: normalizeMcapImageProjection({
-            ...previous,
-            ...settings,
-            topics,
-          }),
-        },
-      };
-    });
+    // Merge over the resolved value: an edit in a scope starts from what
+    // the user currently sees, even when that came from the global map.
+    const previous =
+      resolveTopicKeyedMap(get, "imageProjection")[normalizedImageTopic] ??
+      DEFAULT_MCAP_IMAGE_PROJECTION;
+    let topics =
+      settings.topics !== undefined ? settings.topics : previous.topics;
+    if (settings.enabled === false) {
+      topics = [];
+    } else if (
+      settings.enabled === true &&
+      settings.topics === undefined &&
+      !previous.enabled
+    ) {
+      topics = null;
+    }
+    updateTopicKeyedSettings(get, set, "imageProjection", (projections) => ({
+      ...projections,
+      [normalizedImageTopic]: normalizeMcapImageProjection({
+        ...previous,
+        ...settings,
+        topics,
+      }),
+    }));
   },
 );
 
@@ -276,6 +333,31 @@ function updateModalSettings(
     writeMcapModalSettings(next);
     return next;
   });
+}
+
+/**
+ * Scopes topic-keyed styling (point-cloud colors, image projection, label
+ * topics) to the mounted playback host's dataset. Reads resolve scoped
+ * entries first and fall back to the legacy global maps; writes land under
+ * the scope. Call once from the playback host; an empty/undefined scope key
+ * leaves settings unscoped (global maps, the pre-scoping behavior).
+ */
+export function useMcapModalSettingsScopeSync(
+  scopeKey: string | null | undefined,
+): void {
+  // This effect binds the settings scope to the active dataset for this
+  // host's mounted lifetime, and releases only its own scope on unmount so
+  // an interleaved mount of another host is never reset.
+  useEffect(() => {
+    const scope = scopeKey?.trim() ?? "";
+    if (!scope) return undefined;
+    mcapModalSettingsStore.set(mcapSettingsScopeAtom, scope);
+    return () => {
+      mcapModalSettingsStore.set(mcapSettingsScopeAtom, (current) =>
+        current === scope ? "" : current,
+      );
+    };
+  }, [scopeKey]);
 }
 
 /**
@@ -515,9 +597,22 @@ export function useMcapImageProjectionSettingsByTopic(): Readonly<
   return useAtomValue(imageProjectionAtom, { store: mcapModalSettingsStore });
 }
 
+/** Updates camera geometry settings for an image without requiring its tile. */
+export function useSetMcapImageProjection() {
+  const setStoredProjection = useSetAtom(imageProjectionAtom, {
+    store: mcapModalSettingsStore,
+  });
+  return useCallback(
+    (imageTopic: string, settings: Partial<McapImageProjectionSettings>) =>
+      setStoredProjection({ imageTopic, settings }),
+    [setStoredProjection],
+  );
+}
+
 /**
  * Resyncs the private settings store from localStorage for isolated tests.
  */
 export function __resetMcapModalSettingsForTests(): void {
   mcapModalSettingsStore.set(mcapModalSettingsAtom, readMcapModalSettings());
+  mcapModalSettingsStore.set(mcapSettingsScopeAtom, "");
 }

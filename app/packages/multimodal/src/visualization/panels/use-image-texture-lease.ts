@@ -7,9 +7,15 @@ import {
   acquireImageTexture,
   type ImageTextureLease,
 } from "./image-texture-cache";
+import { VideoTextureWaitError } from "./video-texture";
+
+const EMPTY_IMAGE_DECODE_RUNWAY: readonly ImageVisualization[] = [];
 
 /** Loading state for an encoded-image texture lease. */
 export type ImageTextureLeaseStatus = "idle" | "loading" | "loaded" | "error";
+
+/** Whether a texture error is terminal or awaiting more stream data. */
+export type ImageTextureLeaseErrorKind = "failure" | "waiting";
 
 interface HeldImageTexture {
   readonly handle: ImageTextureHandle;
@@ -18,6 +24,7 @@ interface HeldImageTexture {
 
 /** Inputs for `useImageTextureLease`, including cache identity and decode data. */
 export interface UseImageTextureLeaseOptions {
+  readonly decodeRunway?: readonly ImageVisualization[];
   readonly disabledStatus?: ImageTextureLeaseStatus;
   readonly enabled?: boolean;
   readonly frame: ImageVisualization | null | undefined;
@@ -31,6 +38,7 @@ export interface UseImageTextureLeaseOptions {
  * releases the previous lease when the requested image changes.
  */
 export function useImageTextureLease({
+  decodeRunway = EMPTY_IMAGE_DECODE_RUNWAY,
   disabledStatus = "idle",
   enabled = true,
   frame,
@@ -38,6 +46,7 @@ export function useImageTextureLease({
   onLoaded,
   textureKey,
 }: UseImageTextureLeaseOptions): {
+  readonly errorKind: ImageTextureLeaseErrorKind | null;
   readonly errorMessage: string | null;
   readonly handle: ImageTextureHandle | null;
   readonly status: ImageTextureLeaseStatus;
@@ -47,20 +56,28 @@ export function useImageTextureLease({
   const hasVisibleTextureRef = useRef(false);
   const onLoadedRef = useRef(onLoaded);
   onLoadedRef.current = onLoaded;
+  const [errorKind, setErrorKind] = useState<ImageTextureLeaseErrorKind | null>(
+    null,
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [handle, setHandle] = useState<ImageTextureHandle | null>(null);
   const [status, setStatus] = useState<ImageTextureLeaseStatus>(() =>
     enabled && hasImageData(frame) ? "loading" : disabledStatus,
   );
 
-  // This effect releases the held texture lease on unmount — release, not
+  // This effect retires the held texture lease on unmount — release, not
   // dispose: keyed texture sources may be retained by the cache for instant
-  // re-acquire; keyless private leases dispose themselves on release.
+  // re-acquire; keyless private leases dispose themselves on release. The
+  // deferred release also matters when this view leaves a shared WebGPU stage:
+  // an already-submitted command buffer may still reference its texture.
   useEffect(
     () => () => {
-      heldTextureRef.current?.release();
+      const heldTexture = heldTextureRef.current;
       heldTextureRef.current = null;
-      releaseRetiredTextures(retiredTexturesRef);
+      retireImageTextures([
+        ...(heldTexture ? [heldTexture] : []),
+        ...takeRetiredTextures(retiredTexturesRef),
+      ]);
     },
     [],
   );
@@ -68,12 +85,15 @@ export function useImageTextureLease({
   // A replacement first has to commit through the image scene before its old
   // GPU texture can be destroyed. Releasing from the promise callback races
   // the shared WebGPU stage: it can still encode the previous portal while
-  // React is committing the new handle. This effect runs on the following
-  // committed render, after the scene has stopped referring to each retired
-  // texture. It intentionally precedes the request effect so a synchronous
-  // disable/error transition cannot retire and release in one effect flush.
+  // React is committing the new handle. Even releasing on this following
+  // committed render is too early for WebGPU: a command buffer submitted by
+  // the previous frame can still own the texture. Keep retired leases through
+  // two browser frames so the replacement portal commits and renders before
+  // disposal. It intentionally precedes the request effect so a synchronous
+  // disable/error transition cannot retire and schedule release in one effect
+  // flush.
   useEffect(() => {
-    releaseRetiredTextures(retiredTexturesRef);
+    retireImageTextures(takeRetiredTextures(retiredTexturesRef));
   });
 
   // This effect resolves the current encoded image into a leased texture.
@@ -85,6 +105,7 @@ export function useImageTextureLease({
     if (!enabled || !hasImageData(frame)) {
       hasVisibleTextureRef.current = false;
       replaceHeldTexture(null, heldTextureRef, retiredTexturesRef, setHandle);
+      setErrorKind(null);
       setErrorMessage(null);
       setStatus(disabledStatus);
       return undefined;
@@ -92,12 +113,13 @@ export function useImageTextureLease({
 
     let cancelled = false;
     if (!hasVisibleTextureRef.current) {
+      setErrorKind(null);
       setErrorMessage(null);
       setStatus("loading");
     }
 
     const lease = acquireImageTexture(textureKey, () =>
-      createImageTexture(frame, textureKey),
+      createImageTexture(frame, textureKey, decodeRunway),
     );
     lease.promise
       .then((decodedHandle) => {
@@ -113,6 +135,7 @@ export function useImageTextureLease({
           setHandle,
         );
         hasVisibleTextureRef.current = true;
+        setErrorKind(null);
         setErrorMessage(null);
         setStatus("loaded");
         onLoadedRef.current?.(decodedHandle);
@@ -125,6 +148,9 @@ export function useImageTextureLease({
 
         hasVisibleTextureRef.current = false;
         replaceHeldTexture(null, heldTextureRef, retiredTexturesRef, setHandle);
+        setErrorKind(
+          error instanceof VideoTextureWaitError ? "waiting" : "failure",
+        );
         setErrorMessage(errorMessageFromUnknown(error));
         setStatus("error");
       });
@@ -135,9 +161,9 @@ export function useImageTextureLease({
     // `identity`, not the frame object, is the requested lifecycle key. Keyed
     // MCAP callers deliberately keep identity stable across fresh wrappers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [disabledStatus, enabled, identity, textureKey]);
+  }, [decodeRunway, disabledStatus, enabled, identity, textureKey]);
 
-  return { errorMessage, handle, status };
+  return { errorKind, errorMessage, handle, status };
 }
 
 export function hasImageData(
@@ -179,16 +205,44 @@ function replaceHeldTexture(
   setHandle(next?.handle ?? null);
 }
 
-function releaseRetiredTextures(
+function takeRetiredTextures(
   retiredRef: MutableRefObject<HeldImageTexture[]>,
-): void {
+): HeldImageTexture[] {
   const retired = retiredRef.current;
   if (retired.length === 0) {
-    return;
+    return [];
   }
 
   retiredRef.current = [];
-  for (const texture of retired) {
+  return retired;
+}
+
+/**
+ * Releases texture leases after two paints. React commits an ImagePanel before
+ * the shared WebGPU portal and GPU queue necessarily stop using its previous
+ * texture; immediate disposal can otherwise trigger a destroyed-texture
+ * validation error during rapid playback or seek churn.
+ */
+function retireImageTextures(textures: readonly HeldImageTexture[]): void {
+  if (textures.length === 0) {
+    return;
+  }
+
+  if (
+    typeof window === "undefined" ||
+    typeof window.requestAnimationFrame !== "function"
+  ) {
+    releaseImageTextures(textures);
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => releaseImageTextures(textures));
+  });
+}
+
+function releaseImageTextures(textures: readonly HeldImageTexture[]): void {
+  for (const texture of textures) {
     texture.release();
   }
 }

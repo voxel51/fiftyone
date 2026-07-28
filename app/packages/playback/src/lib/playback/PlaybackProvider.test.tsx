@@ -417,6 +417,140 @@ describe("PlaybackProvider engine actions", () => {
       expect(result.current.store.get(bufferedRangesAtom)).toBe(dataRanges);
     });
 
+    it("bounds how long startup coverage may hold a ready current frame", async () => {
+      vi.useFakeTimers();
+      try {
+        const ranges: Array<[number, number]> = [[0, 0.05]];
+        const { result } = renderEngine({ duration: 10 });
+
+        act(() => {
+          result.current.api.registerStream({
+            id: "mcap",
+            blocking: true,
+            startupBufferSeconds: 3,
+            startupBufferMaxWaitSeconds: 1,
+            bufferState: () => "ready",
+            bufferedRanges: () => ranges,
+          });
+          result.current.api.subscribeStream("mcap");
+          result.current.api.play();
+        });
+
+        expect(result.current.isPlayPending).toBe(true);
+        await act(() => vi.advanceTimersByTimeAsync(999));
+        expect(result.current.isPlaying).toBe(false);
+
+        await act(() => vi.advanceTimersByTimeAsync(1));
+        expect(result.current.isPlaying).toBe(true);
+        expect(result.current.isPlayPending).toBe(false);
+        expect(result.current.isBuffering).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("keeps the startup deadline stable across wall-clock changes", async () => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+        const ranges: Array<[number, number]> = [[0, 0.05]];
+        const { result } = renderEngine({ duration: 10 });
+
+        act(() => {
+          result.current.api.registerStream({
+            id: "mcap",
+            blocking: true,
+            startupBufferSeconds: 3,
+            startupBufferMaxWaitSeconds: 1,
+            bufferState: () => "ready",
+            bufferedRanges: () => ranges,
+          });
+          result.current.api.subscribeStream("mcap");
+          result.current.api.play();
+        });
+
+        vi.setSystemTime(new Date("2026-01-02T00:00:00Z"));
+        act(() => bumpStreamRangesVersion(result.current.store));
+        expect(result.current.isPlayPending).toBe(true);
+        expect(result.current.isPlaying).toBe(false);
+
+        await act(() => vi.advanceTimersByTimeAsync(1_000));
+        expect(result.current.isPlaying).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("does not bypass an unready current frame after the startup deadline", async () => {
+      vi.useFakeTimers();
+      try {
+        let currentReady = false;
+        const ranges: Array<[number, number]> = [];
+        const { result } = renderEngine({ duration: 10 });
+
+        act(() => {
+          result.current.api.registerStream({
+            id: "mcap",
+            blocking: true,
+            startupBufferSeconds: 3,
+            startupBufferMaxWaitSeconds: 0.1,
+            bufferState: () => (currentReady ? "ready" : "missing"),
+            bufferedRanges: () => ranges,
+          });
+          result.current.api.subscribeStream("mcap");
+          result.current.api.play();
+        });
+
+        await act(() => vi.advanceTimersByTimeAsync(100));
+        expect(result.current.isPlaying).toBe(false);
+        expect(result.current.isPlayPending).toBe(true);
+
+        act(() => {
+          currentReady = true;
+          bumpStreamRangesVersion(result.current.store);
+        });
+        expect(result.current.isPlaying).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("advances through distinct blocking-stream startup deadlines", async () => {
+      vi.useFakeTimers();
+      try {
+        const { result } = renderEngine({ duration: 10 });
+        const ranges: Array<[number, number]> = [[0, 0.05]];
+
+        act(() => {
+          for (const [id, maxWaitSeconds] of [
+            ["fast-deadline", 0.1],
+            ["slow-deadline", 0.2],
+          ] as const) {
+            result.current.api.registerStream({
+              id,
+              blocking: true,
+              startupBufferSeconds: 3,
+              startupBufferMaxWaitSeconds: maxWaitSeconds,
+              bufferState: () => "ready",
+              bufferedRanges: () => ranges,
+            });
+            result.current.api.subscribeStream(id);
+          }
+          result.current.api.play();
+        });
+
+        await act(() => vi.advanceTimersByTimeAsync(100));
+        expect(result.current.isPlaying).toBe(false);
+        expect(result.current.isPlayPending).toBe(true);
+
+        await act(() => vi.advanceTimersByTimeAsync(100));
+        expect(result.current.isPlaying).toBe(true);
+        expect(result.current.isPlayPending).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("starts immediately when the startup buffer window is already covered", () => {
       const ranges: Array<[number, number]> = [[0, 0.3]];
       const prefetch = vi.fn();

@@ -1,4 +1,5 @@
 import type { McapTypes } from "@mcap/core";
+import { compareBigInt } from "../bigint";
 import { chunkMessageIndexRange } from "./chunk-index-ranges";
 import { channelIdsForTopics } from "./message-index";
 
@@ -269,12 +270,4 @@ function chunkHasAnyChannel(
   }
 
   return false;
-}
-
-function compareBigInt(left: bigint, right: bigint) {
-  if (left === right) {
-    return 0;
-  }
-
-  return left < right ? -1 : 1;
 }

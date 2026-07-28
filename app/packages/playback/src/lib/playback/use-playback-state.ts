@@ -14,6 +14,7 @@
 
 import { useAtomValue } from "jotai";
 import {
+  achievedSpeedAtom,
   bufferedRangesAtom,
   bufferingDetailAtom,
   currentTimeAtom,
@@ -130,6 +131,12 @@ export function useLoopEnd(): number {
 export function useSpeed(): number {
   const store = usePlaybackStore();
   return useAtomValue(speedAtom, { store });
+}
+
+/** Rolling media-seconds-per-wall-second actually committed by the engine. */
+export function useAchievedSpeed(): number | null {
+  const store = usePlaybackStore();
+  return useAtomValue(achievedSpeedAtom, { store });
 }
 
 /**
