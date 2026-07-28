@@ -28,8 +28,10 @@ on:
       - examples/**
       - fiftyone/**
       - plugins/**
-      - requirements/**
+      - pyproject.toml
       - setup.py
+      - uv.lock
+      - VERSION
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -99,33 +101,28 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: |
-            requirements/docs.txt
-            setup.py
+      - name: Setup uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.32"
+          python-version: "3.12"
+          activate-environment: true
+          enable-cache: true
+          cache-suffix: docs-3.12
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
       - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
         uses: ./.github/actions/free-disk-space
-      - name: Install pip dependencies
-        run: |
-          pip install --upgrade pip setuptools wheel build
-      - name: Install ETA from source
+      - name: Sync docs environment
+        id: sync-docs-environment
+        run: uv sync --locked --no-default-groups --group docs
+        background: true
+      - name: Build ETA from source
         run: |
           git clone https://github.com/voxel51/eta eta --depth 1 --branch "${{ steps.get_branch.outputs.branch_name }}"
           cd eta
-          python -Im build
-          pip install ./dist/*.whl
-      - name: Install
-        id: install-docs-dependencies
-        run: |
-          echo "Installing system dependencies"
-          sudo apt-get install pandoc
-          echo "Installing docs requirements"
-          pip install -r requirements/docs.txt
-          echo "Installing fiftyone-brain and fiftyone-db"
-          pip install fiftyone-brain fiftyone-db
-          echo "Installing fiftyone"
-          pip install .
-        background: true
+          uv build --wheel
 
       - name: Setup node 22
         uses: actions/setup-node@v7
@@ -147,8 +144,12 @@ jobs:
           key: node-modules-${{ hashFiles('app/yarn.lock') }}
       - name: Install app
         run: cd app && yarn install
-      - name: Wait for docs dependencies
-        wait: install-docs-dependencies
+      - name: Wait for docs environment
+        wait: sync-docs-environment
+      - name: Install system dependencies and source ETA
+        run: |
+          sudo apt-get install pandoc
+          uv pip install --python "$VIRTUAL_ENV/bin/python" --no-deps eta/dist/*.whl
       - name: Build docs
         # PR builds skip the markdown mirror pass; it is only needed for
         # the published site

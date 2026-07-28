@@ -1,4 +1,10 @@
 .git
+.coverage*
+.pytest_cache
+.ruff_cache
+.venv
+**/__pycache__
+dist
 docs
 app
 **/node_modules

@@ -5,8 +5,9 @@ on:
     branches:
       - develop
     paths:
-      - requirements/**
+      - pyproject.toml
       - setup.py
+      - uv.lock
       - e2e-pw/yarn.lock
       - e2e-pw/ci/Dockerfile
       - tests/ci/Dockerfile
@@ -71,11 +72,20 @@ jobs:
   build-test-image:
     timeout-minutes: 45
     runs-on: ubuntu-latest
-    name: Build and push test image (Python ${{ matrix.python }})
+    name: >-
+      Build and push test image
+      (Python ${{ matrix.python }}, ${{ matrix.profile }})
+    env:
+      TEST_IMAGE_NAME: >-
+        ${{ vars.FIFTYONE_TEST_IMAGE_NAME ||
+        'ghcr.io/voxel51/fiftyone-test' }}
     strategy:
       fail-fast: false
       matrix:
         python: ${{ fromJSON(inputs.python-versions || '["3.10", "3.11", "3.12", "3.13"]') }}
+        profile:
+          - core
+          - full
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -101,10 +111,15 @@ jobs:
           context: .
           file: tests/ci/Dockerfile
           push: true
-          cache-from: type=gha,scope=test-image-${{ matrix.python }}
-          cache-to: type=gha,scope=test-image-${{ matrix.python }},mode=max
+          cache-from: >-
+            type=gha,scope=test-image-${{ matrix.python }}-${{ matrix.profile }}
+          cache-to: >-
+            type=gha,scope=test-image-${{ matrix.python }}-${{ matrix.profile }},mode=max
           build-args: |
             PYTHON_VERSION=${{ matrix.python }}
+            TEST_PROFILE=${{ matrix.profile }}
           tags: |
-            ${{ vars.FIFTYONE_TEST_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-test' }}:${{ matrix.python }}
-            ${{ vars.FIFTYONE_TEST_IMAGE_NAME || 'ghcr.io/voxel51/fiftyone-test' }}:${{ matrix.python }}-${{ github.sha }}
+            ${{ env.TEST_IMAGE_NAME }}:${{ matrix.python }}-${{ matrix.profile }}
+            ${{ env.TEST_IMAGE_NAME }}:${{ matrix.python }}-${{ matrix.profile }}-${{ github.sha }}
+            ${{ matrix.profile == 'full' && format('{0}:{1}', env.TEST_IMAGE_NAME, matrix.python) || '' }}
+            ${{ matrix.profile == 'full' && format('{0}:{1}-{2}', env.TEST_IMAGE_NAME, matrix.python, github.sha) || '' }}
