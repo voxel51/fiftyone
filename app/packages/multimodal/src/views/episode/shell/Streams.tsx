@@ -43,6 +43,8 @@ export interface StreamsProps {
   budgetAccount?: SourceReadBudgetAccount | null;
   /** Byte source currently feeding the playback shell. */
   source: ByteSourceDescriptor | null;
+  /** Episode-wide synchronized-read presentation cadence. */
+  timelineTickRateHz: number;
 }
 
 /**
@@ -57,6 +59,7 @@ export function Streams({
   onPlayheadDataReady,
   session,
   source,
+  timelineTickRateHz,
 }: StreamsProps) {
   const sources = useSceneInventory();
   const fullHistoryStreams = useFullHistoryStreamsByFeature();
@@ -157,6 +160,7 @@ export function Streams({
     staleWarningStreams,
     streamNames,
     streamPolicies,
+    timelineTickRateHz,
   });
   useRegisterTiles(availableTileTypes);
 

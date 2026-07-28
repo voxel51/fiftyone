@@ -32,7 +32,11 @@ import type {
 } from "../../../ir";
 import { EpisodeReadCancelledError, type EpisodeSession } from "../../../ports";
 import type { DecodeResult } from "../../../query/decoding";
-import { DataStreamProvider, useDataStream } from "./data-stream-context";
+import {
+  DataStreamProvider,
+  useDataStream,
+  type DataStream,
+} from "./data-stream-context";
 import type { StreamPlaybackFrame } from "./use-stream-values";
 import {
   cancelIdleReads,
@@ -168,6 +172,61 @@ describe("useRegisterDataStream", () => {
 
     unmount();
     expect(getSeekFetchDebounceMs(store)).toBe(0);
+  });
+
+  it("reindexes at a committed sampling rate without resetting the playhead", async () => {
+    const source = createSource("sampling-rate");
+    const storeCapture = capturePlaybackStore();
+    let dataStream: DataStream | null = null;
+    let api: ReturnType<typeof usePlayback> | null = null;
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    const { rerender } = render(
+      <Harness
+        client={client}
+        onApi={(next) => {
+          api = next;
+        }}
+        onDataStream={(next) => {
+          dataStream = next;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+        timelineTickRateHz={24}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(dataStream?.getTimelineIndex()?.tickRateHz).toBe(24);
+    });
+    act(() => {
+      api?.seek(0.5);
+    });
+    expect(getPlayhead(storeCapture.store())).toBe(0.5);
+
+    rerender(
+      <Harness
+        client={client}
+        onApi={(next) => {
+          api = next;
+        }}
+        onDataStream={(next) => {
+          dataStream = next;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+        timelineTickRateHz={60}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(dataStream?.getTimelineIndex()?.tickRateHz).toBe(60);
+    });
+    expect(getPlayhead(storeCapture.store())).toBe(0.5);
   });
 
   it("renders through mandatory session reads without playback acceleration", async () => {
@@ -2229,24 +2288,28 @@ function Harness({
   client,
   onStore,
   onApi,
+  onDataStream,
   playbackAcceleration = true,
   source,
   staleWarningStreams = DEFAULT_TEST_STREAMS,
   subscribe = true,
   subscribedStreams = DEFAULT_TEST_STREAMS,
   streamPolicies = {},
+  timelineTickRateHz = 30,
 }: {
   readonly allStreams?: readonly string[];
   readonly blockingStreams?: readonly string[];
   readonly client: ResourceClient;
   readonly onStore: (store: PlaybackStore) => void;
   readonly onApi?: (api: ReturnType<typeof usePlayback>) => void;
+  readonly onDataStream?: (dataStream: DataStream | null) => void;
   readonly playbackAcceleration?: boolean;
   readonly source: ByteSourceDescriptor | null;
   readonly staleWarningStreams?: readonly string[];
   readonly subscribe?: boolean;
   readonly subscribedStreams?: readonly string[];
   readonly streamPolicies?: StreamSyncPolicies;
+  readonly timelineTickRateHz?: number;
 }) {
   const dataStream = useDataStream();
   const store = usePlaybackStore();
@@ -2269,6 +2332,7 @@ function Harness({
     staleWarningStreams,
     streamNames,
     streamPolicies: streamPolicies as unknown as StreamSyncPolicies,
+    timelineTickRateHz,
   });
 
   // This effect exposes the playback store to each test case.
@@ -2280,6 +2344,10 @@ function Harness({
   useEffect(() => {
     onApi?.(api);
   }, [onApi, api]);
+
+  useEffect(() => {
+    onDataStream?.(dataStream);
+  }, [dataStream, onDataStream]);
 
   // This effect mirrors fixture subscriptions through the registered stream.
   useEffect(() => {

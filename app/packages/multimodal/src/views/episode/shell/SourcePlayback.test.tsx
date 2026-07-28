@@ -31,7 +31,9 @@ const playbackHarness = vi.hoisted(() => {
       onLeftOpenChange: vi.fn(),
       onLeftSidebarWidthChange: vi.fn(),
       onSceneUpAxisChange: vi.fn(),
+      onTimelineSamplingRateChange: vi.fn(),
       sceneUpAxis: "z",
+      timelineSamplingRateHz: 30,
     })),
     useSceneInventory: vi.fn(),
   };

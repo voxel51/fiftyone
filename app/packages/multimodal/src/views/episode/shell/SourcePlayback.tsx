@@ -297,6 +297,8 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
     onPreferredCameraTargetFrameIdChange,
     defaultTrackingMode,
     onDefaultTrackingModeChange,
+    timelineSamplingRateHz,
+    onTimelineSamplingRateChange,
   } = useModalLayout({
     availableTileTypes,
     cameraPreferenceField,
@@ -429,8 +431,14 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                               onTagDelete={onTagDelete}
                               leftSidebar={
                                 <SettingsSidebar
+                                  onTimelineSamplingRateChange={
+                                    onTimelineSamplingRateChange
+                                  }
                                   streams={shellStreams}
                                   terminology={shellInventory?.terminology}
+                                  timelineSamplingRateHz={
+                                    timelineSamplingRateHz
+                                  }
                                 />
                               }
                               mainOverlay={
@@ -471,6 +479,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 onPlayheadDataReady={handlePlayheadDataReady}
                                 session={readyInventory ? session : null}
                                 source={playbackSource}
+                                timelineTickRateHz={timelineSamplingRateHz}
                               />
                               <NetworkHealthTracker
                                 playback={session?.playback ?? null}

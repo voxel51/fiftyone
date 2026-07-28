@@ -95,6 +95,24 @@ describe("EpisodeStreamCache", () => {
     expect(cache.isActive).toBe(false);
   });
 
+  it("resizes placement capacity without losing subscribers or listeners", () => {
+    const cache = new EpisodeStreamCache(3);
+    const listener = vi.fn();
+    cache.subscribeToChanges(listener);
+    const release = cache.subscribe();
+    cache.set(1n, MESSAGE);
+    cache.set(2n, { ...MESSAGE, recordId: "second", timestampNs: 2n });
+    cache.set(3n, { ...MESSAGE, recordId: "third", timestampNs: 3n });
+
+    cache.resize(2);
+
+    expect(cache.isActive).toBe(true);
+    expect(cache.stats().entryCount).toBe(2);
+    expect(cache.get(1n)).toBeUndefined();
+    expect(listener).toHaveBeenCalledTimes(4);
+    release();
+  });
+
   it("keeps pinned runway entries outside normal LRU churn", () => {
     const cache = new EpisodeStreamCache(2);
 

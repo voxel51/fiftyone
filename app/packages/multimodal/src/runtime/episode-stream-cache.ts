@@ -49,7 +49,7 @@ export interface EpisodeStreamCacheSetResult {
  */
 export class EpisodeStreamCache {
   private readonly cadence = new EpisodeCadenceTracker();
-  private readonly cache: LRUCache<string, CacheEntry>;
+  private cache: LRUCache<string, CacheEntry>;
   private readonly listeners = new Set<() => void>();
   private readonly messageRetention = new Map<DecodedFrame, MessageRetention>();
   private readonly messagesByRecordId = new Map<string, DecodedFrame>();
@@ -59,7 +59,11 @@ export class EpisodeStreamCache {
   private _revision = 0;
 
   constructor(maxEntries = DEFAULT_MAX_ENTRIES) {
-    this.cache = new LRUCache({
+    this.cache = this.createCache(maxEntries);
+  }
+
+  private createCache(maxEntries: number): LRUCache<string, CacheEntry> {
+    return new LRUCache({
       dispose: (entry) => this.releaseEntry(entry),
       max: maxEntries,
     });
@@ -136,6 +140,33 @@ export class EpisodeStreamCache {
     for (const key of this.pinned.keys()) ticks.push(BigInt(key));
     for (const key of this.cache.keys()) ticks.push(BigInt(key));
     return ticks;
+  }
+
+  /**
+   * Changes the ordinary placement budget without replacing this external
+   * store. Existing tile subscriptions and cache listeners therefore survive
+   * a timeline sampling-rate change.
+   */
+  resize(maxEntries: number): void {
+    if (!Number.isSafeInteger(maxEntries) || maxEntries <= 0) {
+      throw new Error("Episode stream cache size must be a positive integer");
+    }
+    if (this.cache.max === maxEntries) return;
+
+    // LRU iteration is newest-first. Retain the entries that fit, insert them
+    // oldest-first into the replacement, then release the old cache so decoded
+    // message reference accounting remains balanced.
+    const currentEntries = [...this.cache.entries()];
+    const retainedEntries = currentEntries.slice(0, maxEntries).reverse();
+    const next = this.createCache(maxEntries);
+    for (const [tick, entry] of retainedEntries) {
+      this.retainEntry(entry);
+      next.set(tick, entry);
+    }
+    const droppedEntries = currentEntries.length - retainedEntries.length;
+    this.cache.clear();
+    this.cache = next;
+    if (droppedEntries > 0) this.bumpRevision();
   }
 
   set(

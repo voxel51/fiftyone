@@ -42,7 +42,6 @@ import { monotonicNowMs } from "../../../utils/monotonic-time";
 import {
   createEpisodePlaybackRuntime,
   createTimelineIndex,
-  DEFAULT_TIMELINE_TICK_RATE_HZ,
   episodeSourceAccessKey,
   type StreamSubscriptionOptions,
   type TimelineIndex,
@@ -84,17 +83,11 @@ import type { StreamPlaybackFrame } from "./use-stream-values";
  */
 const BUFFERED_RANGES_PUBLISH_INTERVAL_MS = 500;
 const REMOTE_SEEK_FETCH_DEBOUNCE_MS = 150;
-const PLAYBACK_POLICY = derivePlaybackPolicy(DEFAULT_PLAYBACK_POLICY);
 // Local files need only a current-frame guard before rolling prefetch takes
 // over. Keeping this grant short prevents cold multi-image batches from
 // monopolizing the foreground worker; remote sources retain the adaptive
 // half-second floor and bandwidth cushion.
-const LOCAL_STARTUP_TICKS = 3;
-const LOCAL_PLAYBACK_POLICY: DerivedPlaybackPolicy = {
-  ...PLAYBACK_POLICY,
-  startupLookaheadSeconds: LOCAL_STARTUP_TICKS / DEFAULT_TIMELINE_TICK_RATE_HZ,
-  startupMaxPrefetchBatch: LOCAL_STARTUP_TICKS,
-};
+const LOCAL_STARTUP_BUFFER_SECONDS = 0.1;
 
 const noop = (): void => undefined;
 
@@ -121,6 +114,8 @@ export interface UseDataStreamOptions {
   /** Human-readable names keyed by the stream IDs used for data access. */
   streamNames: ReadonlyMap<string, string>;
   streamPolicies: StreamSyncPolicies;
+  /** Presentation cadence for the virtual synchronized-read tick grid. */
+  timelineTickRateHz: number;
 }
 
 /**
@@ -145,6 +140,7 @@ export function useRegisterDataStream({
   staleWarningStreams,
   streamNames,
   streamPolicies,
+  timelineTickRateHz,
 }: UseDataStreamOptions): void {
   const { pause, registerStream, seek, subscribeStream } = usePlayback();
   const store = usePlaybackStore();
@@ -161,10 +157,25 @@ export function useRegisterDataStream({
     [source],
   );
   const sourceReadProfile = source?.readProfile;
-  const playbackPolicy =
-    sourceReadProfile === BYTE_SOURCE_READ_PROFILE.LOCAL
-      ? LOCAL_PLAYBACK_POLICY
-      : PLAYBACK_POLICY;
+  const playbackPolicy = useMemo(() => {
+    const policy = derivePlaybackPolicy(
+      DEFAULT_PLAYBACK_POLICY,
+      timelineTickRateHz,
+    );
+    if (sourceReadProfile !== BYTE_SOURCE_READ_PROFILE.LOCAL) return policy;
+    return {
+      ...policy,
+      startupLookaheadSeconds: LOCAL_STARTUP_BUFFER_SECONDS,
+      startupMaxPrefetchBatch: Math.max(
+        1,
+        Math.ceil(timelineTickRateHz * LOCAL_STARTUP_BUFFER_SECONDS),
+      ),
+      startupMinTicks: 1,
+    } satisfies DerivedPlaybackPolicy;
+  }, [sourceReadProfile, timelineTickRateHz]);
+  // Locality does not make compressed MCAP decode or transform work cheap.
+  // Coalesce intermediate scrub targets for classified byte sources;
+  // settleSeek still releases the final target immediately on pointer-up.
   const seekFetchDebounceMs =
     sourceReadProfile === BYTE_SOURCE_READ_PROFILE.REMOTE
       ? REMOTE_SEEK_FETCH_DEBOUNCE_MS
@@ -192,9 +203,7 @@ export function useRegisterDataStream({
       reportedDeviceMemoryGb(),
     );
   }
-  const backgroundLookaheadSecondsRef = useRef(
-    PLAYBACK_POLICY.lookaheadSeconds,
-  );
+  const backgroundLookaheadSecondsRef = useRef(playbackPolicy.lookaheadSeconds);
   const [fetchState] = useState(createDataStreamFetchState);
   const lastFrameRef = useRef<Map<string, StreamPlaybackFrame<unknown>>>(
     new Map(),
@@ -383,14 +392,17 @@ export function useRegisterDataStream({
   // This effect ensures a cache exists for every known stream.
   useEffect(() => {
     for (const stream of allStreams) {
-      if (!streamCachesRef.current.has(stream)) {
+      const cache = streamCachesRef.current.get(stream);
+      if (cache) {
+        cache.resize(playbackPolicy.streamCacheMaxEntries);
+      } else {
         streamCachesRef.current.set(
           stream,
-          new EpisodeStreamCache(PLAYBACK_POLICY.streamCacheMaxEntries),
+          new EpisodeStreamCache(playbackPolicy.streamCacheMaxEntries),
         );
       }
     }
-  }, [allStreams]);
+  }, [allStreams, playbackPolicy.streamCacheMaxEntries]);
 
   // This effect loads the timeline range once the source is available. On source
   // change, reset every piece of cached state synchronously so we
@@ -408,9 +420,13 @@ export function useRegisterDataStream({
     autoSeekSourceEpochRef.current = null;
     autoSeekScheduleEpochRef.current = null;
     startupCushionPlanner.resetPendingPlan();
-    backgroundLookaheadSecondsRef.current = PLAYBACK_POLICY.lookaheadSeconds;
+    backgroundLookaheadSecondsRef.current = playbackPolicy.lookaheadSeconds;
     clearPausedIdleWarmupTimer();
+    // Advancing the source epoch makes every in-flight result stale; cancel
+    // speculative idle work as well so the old cadence stops consuming I/O.
+    cancelIdleReads(session);
     for (const cache of streamCachesRef.current.values()) {
+      cache.resize(playbackPolicy.streamCacheMaxEntries);
       cache.clear();
     }
     for (const stream of streamCachesRef.current.keys()) {
@@ -430,7 +446,7 @@ export function useRegisterDataStream({
     let cancelled = false;
     const range = playback.timeline;
     byteTimelineRef.current = range.byteTimeline ?? null;
-    const nextIndex = createTimelineIndex(range);
+    const nextIndex = createTimelineIndex(range, timelineTickRateHz);
     // Publish the data-stream subscription surface before committing the
     // timeline. Tiles can then register as one active set, preserving the
     // proven all-pane startup batch and blocking-before-overlay ordering.
@@ -466,10 +482,14 @@ export function useRegisterDataStream({
     clearPausedIdleWarmupTimer,
     fetchState,
     playback,
+    playbackPolicy.lookaheadSeconds,
+    playbackPolicy.streamCacheMaxEntries,
     scheduleAutoSeekToFirstData,
+    session,
     source,
     startupCushionPlanner,
     store,
+    timelineTickRateHz,
   ]);
 
   // This effect retries the initial auto-seek once the timeline index is
@@ -575,14 +595,14 @@ export function useRegisterDataStream({
         caches: streamCachesRef.current,
         currentLookaheadSeconds: backgroundLookaheadSecondsRef.current,
         index: indexRef.current,
-        maxLookaheadSeconds: PLAYBACK_POLICY.lookaheadSeconds,
-        minLookaheadSeconds: PLAYBACK_POLICY.startupLookaheadSeconds,
+        maxLookaheadSeconds: playbackPolicy.lookaheadSeconds,
+        minLookaheadSeconds: playbackPolicy.startupLookaheadSeconds,
         pruneSpeculative,
-        stepSeconds: PLAYBACK_POLICY.prefetchBatchSeconds,
+        stepSeconds: playbackPolicy.prefetchBatchSeconds,
         store,
       });
     },
-    [store],
+    [playbackPolicy, store],
   );
 
   const prefetcher = useMemo(
@@ -676,19 +696,19 @@ export function useRegisterDataStream({
           )
         ) {
           schedulePausedIdleWarmupRef.current?.(
-            PLAYBACK_POLICY.prefetchRefreshSeconds * 1000,
+            playbackPolicy.prefetchRefreshSeconds * 1000,
           );
           return;
         }
         const queuedFetch = runPausedIdleWarmup();
         if (queuedFetch) {
           schedulePausedIdleWarmupRef.current?.(
-            PLAYBACK_POLICY.prefetchRefreshSeconds * 1000,
+            playbackPolicy.prefetchRefreshSeconds * 1000,
           );
         }
       }, delayMs);
     },
-    [runPausedIdleWarmup, store],
+    [playbackPolicy.prefetchRefreshSeconds, runPausedIdleWarmup, store],
   );
 
   // This effect exposes the current idle-warmup scheduler to timer callbacks.

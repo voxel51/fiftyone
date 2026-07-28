@@ -20,6 +20,7 @@ import SceneWorldSettings from "./SceneWorldSettings";
 import styles from "./SettingsSidebar.module.css";
 import { TileStreamNoticeStrip } from "../../tiles/TileStreamState";
 import StreamsSettings from "./StreamsSettings";
+import TimelinePlaybackSettings from "./TimelinePlaybackSettings";
 
 type ActiveSettingsTab = "panel" | "scene" | "streams";
 type StreamTerminology = NonNullable<EpisodeTerminology["stream"]>;
@@ -33,9 +34,9 @@ const DEFAULT_STREAM_TERMINOLOGY: StreamTerminology = {
  * episode-specific left sidebar. Each tab is one scope of the viewer's
  * information hierarchy and shows only that scope's facts:
  *
- * - **Scene** — the shared world: scene-wide status, the coordinate system
- *   (world frame, up axis), and opt-in diagnostics. Nothing here reaches into
- *   a single tile.
+ * - **Scene** — the shared world: scene-wide status, coordinate system,
+ *   playback sampling, and opt-in diagnostics. Nothing here reaches into a
+ *   single tile.
  * - **stream catalog** — the recording's catalog: what streams exist and what
  *   can be opened from them. Its visible name is selected by the format.
  * - **\<focused tile\>** — everything about one view: its stream status,
@@ -43,9 +44,16 @@ const DEFAULT_STREAM_TERMINOLOGY: StreamTerminology = {
  *   registry.
  */
 const SettingsSidebar: React.FC<{
+  readonly onTimelineSamplingRateChange: (rateHz: number) => void;
   readonly streams?: readonly StreamDescriptor[];
   readonly terminology?: EpisodeTerminology;
-}> = ({ streams = [], terminology }) => {
+  readonly timelineSamplingRateHz: number;
+}> = ({
+  onTimelineSamplingRateChange,
+  streams = [],
+  terminology,
+  timelineSamplingRateHz,
+}) => {
   const streamTerminology = terminology?.stream ?? DEFAULT_STREAM_TERMINOLOGY;
   const { focusedTileId, tiles } = useTiling();
   const registeredPanelSettings = useTileSettings(focusedTileId);
@@ -81,7 +89,12 @@ const SettingsSidebar: React.FC<{
         id: "scene",
         data: {
           label: "Scene",
-          content: <GlobalSceneSettings />,
+          content: (
+            <GlobalSceneSettings
+              onTimelineSamplingRateChange={onTimelineSamplingRateChange}
+              timelineSamplingRateHz={timelineSamplingRateHz}
+            />
+          ),
         },
       },
       {
@@ -122,6 +135,8 @@ const SettingsSidebar: React.FC<{
     streamTerminology,
     suppressNextPanelAutoSwitch,
     streams,
+    onTimelineSamplingRateChange,
+    timelineSamplingRateHz,
   ]);
   const selectedTab =
     hasPanelTab &&
@@ -191,17 +206,26 @@ function PanelSettingsContent({
 }
 
 /**
- * The Scene tab: status first, then the world's coordinate system, then opt-in
- * diagnostics last — configuration reads top-down from "is the scene healthy"
- * to "how do I debug it".
+ * The Scene tab: status first, followed by episode-wide world and playback
+ * settings, then opt-in performance diagnostics.
  */
-function GlobalSceneSettings() {
+function GlobalSceneSettings({
+  onTimelineSamplingRateChange,
+  timelineSamplingRateHz,
+}: {
+  readonly onTimelineSamplingRateChange: (rateHz: number) => void;
+  readonly timelineSamplingRateHz: number;
+}) {
   const sampling = usePointCloudSamplingSummary();
 
   return (
     <div className={`${styles.root} ${styles.tabContent}`}>
       <SceneStatusStrip sampling={sampling} />
       <SceneWorldSettings />
+      <TimelinePlaybackSettings
+        onRateChange={onTimelineSamplingRateChange}
+        rateHz={timelineSamplingRateHz}
+      />
       <PerformanceStats sampling={sampling} />
     </div>
   );

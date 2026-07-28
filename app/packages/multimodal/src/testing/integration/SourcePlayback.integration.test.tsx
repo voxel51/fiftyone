@@ -23,10 +23,12 @@ const layout = vi.hoisted(() => ({
   onPreferredCameraTargetFrameIdChange: vi.fn(),
   onPreferredWorldFrameIdChange: vi.fn(),
   onSceneUpAxisChange: vi.fn(),
+  onTimelineSamplingRateChange: vi.fn(),
   preferredCameraTargetFrameId: null,
   preferredWorldFrameId: null,
   resetTiles: vi.fn(),
   sceneUpAxis: "z",
+  timelineSamplingRateHz: 30,
 }));
 
 vi.mock("../../views/episode/shell/PlaybackShell", () => ({

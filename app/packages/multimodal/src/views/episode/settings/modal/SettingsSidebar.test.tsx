@@ -163,16 +163,20 @@ const TilingStateProbe: React.FC<{
 };
 
 function renderSidebar({
+  onTimelineSamplingRateChange = vi.fn(),
   registeredStreamStreams,
   sources = SOURCES,
   streams = [],
   terminology,
+  timelineSamplingRateHz = 30,
 }: {
+  readonly onTimelineSamplingRateChange?: (rateHz: number) => void;
   /** Stream streams declared by the registered tiles' registrations. */
   readonly registeredStreamStreams?: readonly string[];
   readonly sources?: readonly SceneSource[];
   readonly streams?: readonly StreamDescriptor[];
   readonly terminology?: EpisodeTerminology;
+  readonly timelineSamplingRateHz?: number;
 } = {}) {
   const probeState: { current: TilingProbeState | null } = { current: null };
   const result = render(
@@ -194,7 +198,12 @@ function renderSidebar({
             />
             <FocusButton id={CAMERA_TILE_ID} testId="focus-camera" />
             <FocusButton id={LIDAR_TILE_ID} testId="focus-lidar" />
-            <SettingsSidebar streams={streams} terminology={terminology} />
+            <SettingsSidebar
+              onTimelineSamplingRateChange={onTimelineSamplingRateChange}
+              streams={streams}
+              terminology={terminology}
+              timelineSamplingRateHz={timelineSamplingRateHz}
+            />
           </TileSettingsProvider>
         </TilingProvider>
       </SceneInventoryProvider>
@@ -254,9 +263,11 @@ describe("SettingsSidebar", () => {
     expect(screen.getByText('No topics match "nothing"')).toBeTruthy();
   });
 
-  it("keeps temporal playback policy out of scene settings", () => {
+  it("shows episode-wide playback sampling without tile timing policy", () => {
     renderSidebar();
 
+    fireEvent.click(screen.getByRole("button", { name: /Playback/ }));
+    expect(screen.getByLabelText("Data sampling preset")).toBeTruthy();
     expect(screen.queryByText("Images")).toBeNull();
     expect(screen.queryByText("3D")).toBeNull();
     expect(screen.queryByLabelText("Between messages")).toBeNull();
@@ -320,7 +331,7 @@ describe("SettingsSidebar", () => {
         .getAttribute("aria-expanded"),
     ).toBe("true");
     expect(screen.getByText("Performance diagnostics")).toBeTruthy();
-    expect(screen.getByText("Playback")).toBeTruthy();
+    expect(screen.getAllByText("Playback").length).toBeGreaterThan(0);
     expect(screen.getByText("Rendering")).toBeTruthy();
     expect(screen.getByText("WebGPU")).toBeTruthy();
     expect(screen.getByText("Grid & snapshots")).toBeTruthy();
