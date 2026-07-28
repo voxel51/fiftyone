@@ -6,7 +6,7 @@ export default function PanelNotFound(props: PanelNotFoundPropsType) {
   const { panelName } = props;
   const CustomPanelNotFound = usePluginComponent(
     "PanelNotFound",
-    {}
+    {},
   )?.component;
 
   if (CustomPanelNotFound) {

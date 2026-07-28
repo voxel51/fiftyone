@@ -16,7 +16,7 @@ function renderInProvider(opts: {
       defaultLoopEnd={opts.defaultLoopEnd}
     >
       <LoopBounds />
-    </PlaybackProvider>
+    </PlaybackProvider>,
   );
 }
 

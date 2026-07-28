@@ -7,7 +7,6 @@ import {
   TableContainer,
   TableRow,
 } from "@mui/material";
-import React from "react";
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 import { isPlainObject } from "lodash";
@@ -19,8 +18,8 @@ export default function KeyValueView(props) {
   const keyValue = isPlainObject(data)
     ? data
     : isPlainObject(defaultValue)
-    ? defaultValue
-    : {};
+      ? defaultValue
+      : {};
 
   return (
     <Box {...getComponentProps(props, "container")}>

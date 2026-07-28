@@ -13,6 +13,18 @@ export function setMockAtoms(newMockValues: { [key: string]: any }) {
 }
 
 export const getValue = (atom) => {
+  // ``waitForAll`` resolves its dependencies eagerly here (the mock has no
+  // async/loadable machinery): map ``getValue`` over the deps, preserving the
+  // array/object shape the caller passed.
+  if (atom && atom.__waitForAll) {
+    const { deps } = atom;
+    return Array.isArray(deps)
+      ? deps.map(getValue)
+      : Object.fromEntries(
+          Object.entries(deps).map(([k, v]) => [k, getValue(v)]),
+        );
+  }
+
   if (mockValuesStore[atom.key]) {
     const str = JSON.stringify(atom.params);
     if (Object.hasOwn(mockValuesStore[atom.key], str)) {
@@ -52,12 +64,16 @@ const setValue = (atom, value) => {
   }
 };
 
+export function waitForAll<T>(deps: T) {
+  return { __waitForAll: true, deps };
+}
+
 export function atom<T>(options: Parameters<typeof recoil.atom<T>>[0]) {
   return { key: options.key };
 }
 
 export function atomFamily<T, P extends recoil.SerializableParam>(
-  options: Parameters<typeof recoil.atomFamily<T, P>>[0]
+  options: Parameters<typeof recoil.atomFamily<T, P>>[0],
 ) {
   return (params: P) => ({
     key: options.key,
@@ -67,7 +83,7 @@ export function atomFamily<T, P extends recoil.SerializableParam>(
 
 const getCallback = (callback) => {
   throw new Error(
-    "A getCallback unit test mock has not been implemented. Please test within a hook"
+    "A getCallback unit test mock has not been implemented. Please test within a hook",
   ); // TODO complete mocking of getCallback
   return (...args: readonly unknown[]) =>
     callback({
@@ -82,7 +98,7 @@ const getCallback = (callback) => {
 };
 
 export function selector<T extends unknown>(
-  options: recoil.ReadWriteSelectorOptions<T>
+  options: recoil.ReadWriteSelectorOptions<T>,
 ): { (): T; key: string; set: (value: T) => void } {
   function resolver() {
     return options.get({
@@ -98,9 +114,9 @@ export function selector<T extends unknown>(
 
 export function selectorFamily<
   T extends unknown,
-  P extends recoil.SerializableParam
+  P extends recoil.SerializableParam,
 >(
-  options: recoil.ReadWriteSelectorFamilyOptions<T, P>[0]
+  options: recoil.ReadWriteSelectorFamilyOptions<T, P>[0],
 ): (params: P) => { (): T; key: string; set: (value: T) => void } {
   return (params) => {
     function resolver() {
@@ -114,7 +130,7 @@ export function selectorFamily<
     resolver.set = (value) =>
       options.set(params)(
         { set: setValue, get: getValue, reset: resetValue },
-        value
+        value,
       );
     return resolver;
   };
@@ -128,7 +144,7 @@ export type TestSelector<T extends recoil.RecoilValueReadOnly<K>, K = any> = {
 export type TestSelectorFamily<
   T extends (params: P) => recoil.RecoilValueReadOnly<K>,
   K = any,
-  P = any
+  P = any,
 > = {
   (): ReturnType<T>["__tag"][0];
   set: (params: ReturnType<T>["__tag"][0]) => void;

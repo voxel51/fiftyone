@@ -19,6 +19,7 @@ from fiftyone import ViewField as F
 
 
 _SAM_PROMPT_FIELD = "prompt_field"
+_APP_PORT = 5151
 
 
 def test_all_models():
@@ -114,6 +115,84 @@ def test_sam2_video():
         max_samples=2,
         max_frames=3,
         apply_kwargs={_SAM_PROMPT_FIELD: "frames.detections"},
+    )
+
+
+def test_sam3_image_concept():
+    models = ["segment-anything-3-image-torch"]
+    _apply_models(
+        models,
+        max_samples=3,
+        model_kwargs=dict(classes=["person"], operation_mode="concept"),
+    )
+
+
+def test_sam3_image_concept_multi_prompt():
+    models = ["segment-anything-3-image-torch"]
+    _apply_models(
+        models,
+        max_samples=3,
+        model_kwargs=dict(classes=["person", "car"], operation_mode="concept"),
+    )
+
+
+def test_sam3_image_visual_boxes():
+    models = ["segment-anything-3-image-torch"]
+    _apply_models(
+        models,
+        max_samples=3,
+        model_kwargs=dict(operation_mode="visual"),
+        apply_kwargs={_SAM_PROMPT_FIELD: "ground_truth"},
+    )
+
+
+def test_sam3_image_visual_points():
+    models = ["segment-anything-3-image-torch"]
+    _apply_models(
+        models,
+        max_samples=3,
+        model_kwargs=dict(operation_mode="visual"),
+        apply_kwargs={_SAM_PROMPT_FIELD: "ground_truth"},
+        prompt_type="keypoints",
+    )
+
+
+def test_sam3_video_concept():
+    _apply_video_models(
+        ["segment-anything-3-video-torch"],
+        max_samples=2,
+        max_frames=5,
+        model_kwargs=dict(classes=["car"], operation_mode="concept"),
+    )
+
+
+def test_sam3_video_concept_multi_prompt():
+    _apply_video_models(
+        ["segment-anything-3-video-torch"],
+        max_samples=2,
+        max_frames=5,
+        model_kwargs=dict(classes=["person", "car"], operation_mode="concept"),
+    )
+
+
+def test_sam3_video_visual_boxes():
+    _apply_video_models(
+        ["segment-anything-3-video-torch"],
+        max_samples=2,
+        max_frames=5,
+        model_kwargs=dict(operation_mode="visual"),
+        apply_kwargs={_SAM_PROMPT_FIELD: "frames.detections"},
+    )
+
+
+def test_sam3_video_visual_points():
+    _apply_video_models(
+        ["segment-anything-3-video-torch"],
+        max_samples=2,
+        max_frames=5,
+        model_kwargs=dict(operation_mode="visual", prompt_frame_indices=[1]),
+        apply_kwargs={_SAM_PROMPT_FIELD: "frames.detections"},
+        prompt_type="keypoints",
     )
 
 
@@ -236,7 +315,7 @@ def _apply_models(
             model, label_field=label_field, batch_size=batch_size, **kwargs
         )
 
-    session = fo.launch_app(dataset)
+    session = fo.launch_app(dataset, port=_APP_PORT)
     session.wait()
 
 
@@ -247,6 +326,7 @@ def _apply_video_models(
     pass_confidence_thresh=False,
     max_samples=10,
     max_frames=10,
+    prompt_type=None,
     model_kwargs=None,
     apply_kwargs=None,
 ):
@@ -266,9 +346,28 @@ def _apply_video_models(
     dataset.match_frames(F("frame_number") <= max_frames).keep_frames()
 
     if _SAM_PROMPT_FIELD in kwargs:
-        dataset.match_frames(F("frame_number") > 1).set_field(
-            kwargs[_SAM_PROMPT_FIELD], None
-        ).save()
+        if prompt_type == "keypoints":
+            if not kwargs[_SAM_PROMPT_FIELD].startswith("frames."):
+                raise ValueError(
+                    f"Prompt field must start with 'frames.' for video models, "
+                    f"got: {kwargs[_SAM_PROMPT_FIELD]}"
+                )
+            frame_field = kwargs[_SAM_PROMPT_FIELD][len("frames.") :]
+            kp_field = frame_field + "_points"
+            for sample in dataset:
+                first_frame = None
+                if 1 in sample.frames:
+                    first_frame = sample.frames[1]
+                if first_frame is not None and first_frame[frame_field]:
+                    first_frame[kp_field] = _detections_to_keypoints(
+                        first_frame[frame_field].detections
+                    )
+                    sample.save()
+            kwargs[_SAM_PROMPT_FIELD] = f"frames.{kp_field}"
+        else:
+            dataset.match_frames(F("frame_number") > 1).set_field(
+                kwargs[_SAM_PROMPT_FIELD], None
+            ).save()
 
     for idx, model_name in enumerate(model_names, 1):
         print(
@@ -289,7 +388,7 @@ def _apply_video_models(
                 assert last_frame[label_field] is not None
                 assert len(last_frame[label_field].detections) > 0
 
-    session = fo.launch_app(dataset)
+    session = fo.launch_app(dataset, port=_APP_PORT)
     session.wait()
 
 
@@ -406,7 +505,7 @@ def _apply_person_keypoint_models(model_names):
         label_field = model_name.lower().replace("-", "_").replace(".", "_")
         person_samples.apply_model(model, label_field=label_field)
 
-    session = fo.launch_app(view=person_samples)
+    session = fo.launch_app(view=person_samples, port=_APP_PORT)
     session.wait()
 
 

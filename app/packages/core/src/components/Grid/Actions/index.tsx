@@ -7,7 +7,7 @@ import {
 } from "@fiftyone/operators";
 import { useItemsWithOrderPersistence } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import BrowseOperationsAction from "../../Actions/BrowseOperations";
 import ColorSchemeAction from "../../Actions/ColorScheme";
 import OptionsAction from "../../Actions/Options";
@@ -57,10 +57,10 @@ const Options = (props: AdaptiveMenuItemComponentPropsType) => (
 
 export default () => {
   const { placements: primaryPlacements } = useOperatorPlacements(
-    types.Places.SAMPLES_GRID_ACTIONS
+    types.Places.SAMPLES_GRID_ACTIONS,
   );
   const { placements: secondaryPlacements } = useOperatorPlacements(
-    types.Places.SAMPLES_GRID_SECONDARY_ACTIONS
+    types.Places.SAMPLES_GRID_SECONDARY_ACTIONS,
   );
   const initialItems = useMemo(() => {
     return [
@@ -133,7 +133,7 @@ export default () => {
   }, [primaryPlacements, secondaryPlacements]);
   const { orderedItems, setOrder } = useItemsWithOrderPersistence(
     initialItems,
-    "grid-actions-row"
+    "grid-actions-row",
   );
 
   return (

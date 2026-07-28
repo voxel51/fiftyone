@@ -83,7 +83,7 @@ const Input = React.memo(
         title,
         id = undefined,
       }: InputProps,
-      ref
+      ref,
     ) => {
       const theme = useTheme();
       color = color ?? theme.primary.plainColor;
@@ -125,8 +125,8 @@ const Input = React.memo(
           />
         </StyledInputContainer>
       );
-    }
-  )
+    },
+  ),
 );
 
 export default Input;
@@ -151,7 +151,7 @@ export const NumberInput = React.memo(
         style,
         title,
       }: NumberInputProps,
-      ref
+      ref,
     ) => {
       const theme = useTheme();
       color = color ?? theme.primary.plainColor;
@@ -238,8 +238,8 @@ export const NumberInput = React.memo(
           {error && <ErrorMessage>{error}</ErrorMessage>}
         </div>
       );
-    }
-  )
+    },
+  ),
 );
 
 // catches "00" and 00

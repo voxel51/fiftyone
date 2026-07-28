@@ -319,6 +319,12 @@ class ColorScheme(EmbeddedDocument):
 
             -   ``fieldColor`` (optional): a color to assign to all label tags
             -   ``valueColors`` (optional): a list of dicts
+        temporal_tags (None): an optional dict specifying custom colors for
+            temporal tags with the following keys:
+
+            -   ``fieldColor`` (optional): a color to assign to all temporal
+                tags
+            -   ``valueColors`` (optional): a list of dicts
     """
 
     # strict=False lets this class ignore unknown fields from other versions
@@ -333,6 +339,7 @@ class ColorScheme(EmbeddedDocument):
     color_by = StringField(null=True)
     fields = ListField(DictField(), null=True)
     label_tags = DictField(null=True)
+    temporal_tags = DictField(null=True)
     multicolor_keypoints = BooleanField(null=True)
     opacity = FloatField(null=True)
     show_skeletons = BooleanField(null=True)
@@ -946,6 +953,58 @@ class DatasetDocument(Document):
     runs = DictField(ReferenceField(RunDocument))
     active_label_schemas = ListField(StringField())
     label_schemas = DictField()
+    frame_label_schemas = DictField()
+
+    # Frame label schemas are stored under their relative field name (dot-free,
+    # so they survive as Mongo dict keys) but addressed everywhere else by their
+    # full ``frames.<field>`` path. These helpers are the single place that
+    # routes a full path to the right store and presents a unified view.
+    _FRAMES_PREFIX = "frames."
+
+    def get_stored_label_schema(self, field):
+        """Returns the stored label schema for a field path, or ``None``."""
+        if field.startswith(self._FRAMES_PREFIX):
+            relative = field[len(self._FRAMES_PREFIX) :]
+            return (self.frame_label_schemas or {}).get(relative)
+
+        return (self.label_schemas or {}).get(field)
+
+    def set_stored_label_schema(self, field, label_schema):
+        """Stores the label schema for a field path in the right store."""
+        if field.startswith(self._FRAMES_PREFIX):
+            relative = field[len(self._FRAMES_PREFIX) :]
+            schemas = dict(self.frame_label_schemas or {})
+            schemas[relative] = label_schema
+            self.frame_label_schemas = schemas
+            return
+
+        schemas = dict(self.label_schemas or {})
+        schemas[field] = label_schema
+        self.label_schemas = schemas
+
+    def all_stored_label_schemas(self):
+        """Returns all stored label schemas keyed by full path, with frame
+        schemas re-keyed to their ``frames.<field>`` path."""
+        schemas = dict(self.label_schemas or {})
+        for relative, label_schema in (self.frame_label_schemas or {}).items():
+            schemas[self._FRAMES_PREFIX + relative] = label_schema
+
+        return schemas
+
+    def set_all_stored_label_schemas(self, label_schemas):
+        """Replaces all stored label schemas from a full-path-keyed dict,
+        splitting frame paths into the frame schema store."""
+        sample_schemas = {}
+        frame_schemas = {}
+        for field, label_schema in (label_schemas or {}).items():
+            if field.startswith(self._FRAMES_PREFIX):
+                frame_schemas[field[len(self._FRAMES_PREFIX) :]] = label_schema
+                continue
+
+            sample_schemas[field] = label_schema
+
+        self.label_schemas = sample_schemas
+        self.frame_label_schemas = frame_schemas
 
     def get_saved_views(self):
         saved_views = []

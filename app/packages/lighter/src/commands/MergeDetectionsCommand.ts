@@ -9,7 +9,7 @@ import type { PaintStrokeData } from "../overlay/MaskCanvas";
 export interface MergeDetectionsCommandDeps {
   /** Persists deletion of the source label to the backend. */
   deleteSource: () => void | Promise<void>;
-  /** Re-adds the source overlay to the scene (does not re-persist). */
+  /** Restores the source label; overlay/row hydration follows from it. */
   restoreSource: () => void | Promise<void>;
 }
 
@@ -32,7 +32,7 @@ export class MergeDetectionsCommand implements Undoable {
     private paintData: PaintStrokeData,
     private deps: MergeDetectionsCommandDeps,
     targetId: string,
-    sourceId: string
+    sourceId: string,
   ) {
     this.id = `merge-${targetId}-${sourceId}-${Date.now()}`;
   }
@@ -40,7 +40,7 @@ export class MergeDetectionsCommand implements Undoable {
   async execute(): Promise<void> {
     this.target.restoreMaskSnapshot(
       this.paintData.afterSnapshot,
-      this.paintData.afterBounds
+      this.paintData.afterBounds,
     );
     await this.deps.deleteSource();
   }
@@ -48,7 +48,7 @@ export class MergeDetectionsCommand implements Undoable {
   async undo(): Promise<void> {
     this.target.restoreMaskSnapshot(
       this.paintData.beforeSnapshot,
-      this.paintData.beforeBounds
+      this.paintData.beforeBounds,
     );
     await this.deps.restoreSource();
   }

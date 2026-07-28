@@ -105,7 +105,7 @@ export const Seekbar = React.forwardRef<
         buffered: "var(--fo-palette-secondary-main)",
         loading: "#a86738",
       }),
-    [loadedScaled, loadingScaled, value]
+    [loadedScaled, loadingScaled, value],
   );
 
   return (
@@ -175,7 +175,7 @@ export const Speed = React.forwardRef<
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSpeed(parseFloat(e.target.value));
     },
-    [setSpeed]
+    [setSpeed],
   );
 
   const rangeValue = React.useMemo(() => (speed / 2) * 100, [speed]);

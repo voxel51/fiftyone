@@ -60,13 +60,13 @@ interface CreateVideoOptions {
  * });
  */
 export const createVideo = async (
-  options: CreateVideoOptions
+  options: CreateVideoOptions,
 ): Promise<void> => {
   const { duration, width, height, frameRate, color, outputPath } = options;
   const startTime = performance.now();
 
   const ffmpegCommand = `ffmpeg -filter_complex 'color=c=${color}:s=${width}x${height}' -t ${duration} -r ${String(
-    frameRate
+    frameRate,
   )} -c:v libvpx -b:v 1M -pix_fmt yuv420p ${outputPath}`;
 
   spawnSync(ffmpegCommand, {
@@ -77,6 +77,6 @@ export const createVideo = async (
   const endTime = performance.now();
   const timeTaken = endTime - startTime;
   console.log(
-    `Video generation, path = ${outputPath}, completed in ${timeTaken} milliseconds`
+    `Video generation, path = ${outputPath}, completed in ${timeTaken} milliseconds`,
   );
 };

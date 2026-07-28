@@ -2,49 +2,58 @@
 // @generated from file common.proto (package fiftyone.multimodal.schemas.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
+import type {
+  GenEnum,
+  GenFile,
+  GenMessage,
+} from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file common.proto.
  */
-export const file_common: GenFile = /*@__PURE__*/
-  fileDesc("Cgxjb21tb24ucHJvdG8SHmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MSJ3ChFQYXlsb2FkRGVzY3JpcHRvchIQCghlbmNvZGluZxgBIAEoCRITCgZzY2hlbWEYAiABKAlIAIgBARIcCg9zY2hlbWFfZW5jb2RpbmcYAyABKAlIAYgBAUIJCgdfc2NoZW1hQhIKEF9zY2hlbWFfZW5jb2RpbmciQQoOVGltZVZhbHVlUmFuZ2USEQoFc3RhcnQYASABKANCAjABEhQKA2VuZBgCIAEoA0ICMAFIAIgBAUIGCgRfZW5kIskECglUaW1lVHJhY2sSFQoNdGltZV90cmFja19pZBgBIAEoCRI7CgR0eXBlGAIgASgOMi0uZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlRpbWVUcmFja1R5cGUSOwoEcm9sZRgDIAEoDjItLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5UaW1lVHJhY2tSb2xlEhQKDGRpc3BsYXlfbmFtZRgEIAEoCRIYCgtzb3VyY2VfcGF0aBgFIAEoCUgAiAEBEhYKCXN0cmVhbV9pZBgGIAEoCUgBiAEBEkMKC3ZhbHVlX3JhbmdlGAcgASgLMi4uZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlRpbWVWYWx1ZVJhbmdlEkEKCnNvcnRfb3JkZXIYCCABKA4yLS5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuVGltZVNvcnRPcmRlchJBCgpzb3J0X3Njb3BlGAkgASgOMi0uZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlRpbWVTb3J0U2NvcGUSSQoIbWV0YWRhdGEYCiADKAsyNy5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuVGltZVRyYWNrLk1ldGFkYXRhRW50cnkaLwoNTWV0YWRhdGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBQg4KDF9zb3VyY2VfcGF0aEIMCgpfc3RyZWFtX2lkIo0BChFTb3VyY2VGaW5nZXJwcmludBIWCgpzaXplX2J5dGVzGAEgASgEQgIwARIcCg9maXJzdF9jaHVua19jcmMYAiABKA1IAIgBARIbCg5sYXN0X2NodW5rX2NyYxgDIAEoDUgBiAEBQhIKEF9maXJzdF9jaHVua19jcmNCEQoPX2xhc3RfY2h1bmtfY3JjKpEBCg1UaW1lVHJhY2tUeXBlEh8KG1RJTUVfVFJBQ0tfVFlQRV9VTlNQRUNJRklFRBAAEhwKGFRJTUVfVFJBQ0tfVFlQRV9TRVFVRU5DRRABEh8KG1RJTUVfVFJBQ0tfVFlQRV9EVVJBVElPTl9OUxACEiAKHFRJTUVfVFJBQ0tfVFlQRV9USU1FU1RBTVBfTlMQAyq0AQoNVGltZVRyYWNrUm9sZRIfChtUSU1FX1RSQUNLX1JPTEVfVU5TUEVDSUZJRUQQABIcChhUSU1FX1RSQUNLX1JPTEVfTE9HX1RJTUUQARIgChxUSU1FX1RSQUNLX1JPTEVfUFVCTElTSF9USU1FEAISIAocVElNRV9UUkFDS19ST0xFX0NBUFRVUkVfVElNRRADEiAKHFRJTUVfVFJBQ0tfUk9MRV9TQU1QTEVfSU5ERVgQBCqKAQoNVGltZVNvcnRPcmRlchIfChtUSU1FX1NPUlRfT1JERVJfVU5TUEVDSUZJRUQQABIbChdUSU1FX1NPUlRfT1JERVJfVU5LTk9XThABEh0KGVRJTUVfU09SVF9PUkRFUl9NT05PVE9OSUMQAhIcChhUSU1FX1NPUlRfT1JERVJfVU5TT1JURUQQAyqEAQoNVGltZVNvcnRTY29wZRIfChtUSU1FX1NPUlRfU0NPUEVfVU5TUEVDSUZJRUQQABIZChVUSU1FX1NPUlRfU0NPUEVfU0NFTkUQARIaChZUSU1FX1NPUlRfU0NPUEVfU1RSRUFNEAISGwoXVElNRV9TT1JUX1NDT1BFX1NFR01FTlQQA2IGcHJvdG8z");
+export const file_common: GenFile =
+  /*@__PURE__*/
+  fileDesc(
+    "Cgxjb21tb24ucHJvdG8SHmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MSJ3ChFQYXlsb2FkRGVzY3JpcHRvchIQCghlbmNvZGluZxgBIAEoCRITCgZzY2hlbWEYAiABKAlIAIgBARIcCg9zY2hlbWFfZW5jb2RpbmcYAyABKAlIAYgBAUIJCgdfc2NoZW1hQhIKEF9zY2hlbWFfZW5jb2RpbmciQQoOVGltZVZhbHVlUmFuZ2USEQoFc3RhcnQYASABKANCAjABEhQKA2VuZBgCIAEoA0ICMAFIAIgBAUIGCgRfZW5kIskECglUaW1lVHJhY2sSFQoNdGltZV90cmFja19pZBgBIAEoCRI7CgR0eXBlGAIgASgOMi0uZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlRpbWVUcmFja1R5cGUSOwoEcm9sZRgDIAEoDjItLmZpZnR5b25lLm11bHRpbW9kYWwuc2NoZW1hcy52MS5UaW1lVHJhY2tSb2xlEhQKDGRpc3BsYXlfbmFtZRgEIAEoCRIYCgtzb3VyY2VfcGF0aBgFIAEoCUgAiAEBEhYKCXN0cmVhbV9pZBgGIAEoCUgBiAEBEkMKC3ZhbHVlX3JhbmdlGAcgASgLMi4uZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlRpbWVWYWx1ZVJhbmdlEkEKCnNvcnRfb3JkZXIYCCABKA4yLS5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuVGltZVNvcnRPcmRlchJBCgpzb3J0X3Njb3BlGAkgASgOMi0uZmlmdHlvbmUubXVsdGltb2RhbC5zY2hlbWFzLnYxLlRpbWVTb3J0U2NvcGUSSQoIbWV0YWRhdGEYCiADKAsyNy5maWZ0eW9uZS5tdWx0aW1vZGFsLnNjaGVtYXMudjEuVGltZVRyYWNrLk1ldGFkYXRhRW50cnkaLwoNTWV0YWRhdGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBQg4KDF9zb3VyY2VfcGF0aEIMCgpfc3RyZWFtX2lkIo0BChFTb3VyY2VGaW5nZXJwcmludBIWCgpzaXplX2J5dGVzGAEgASgEQgIwARIcCg9maXJzdF9jaHVua19jcmMYAiABKA1IAIgBARIbCg5sYXN0X2NodW5rX2NyYxgDIAEoDUgBiAEBQhIKEF9maXJzdF9jaHVua19jcmNCEQoPX2xhc3RfY2h1bmtfY3JjKpEBCg1UaW1lVHJhY2tUeXBlEh8KG1RJTUVfVFJBQ0tfVFlQRV9VTlNQRUNJRklFRBAAEhwKGFRJTUVfVFJBQ0tfVFlQRV9TRVFVRU5DRRABEh8KG1RJTUVfVFJBQ0tfVFlQRV9EVVJBVElPTl9OUxACEiAKHFRJTUVfVFJBQ0tfVFlQRV9USU1FU1RBTVBfTlMQAyq0AQoNVGltZVRyYWNrUm9sZRIfChtUSU1FX1RSQUNLX1JPTEVfVU5TUEVDSUZJRUQQABIcChhUSU1FX1RSQUNLX1JPTEVfTE9HX1RJTUUQARIgChxUSU1FX1RSQUNLX1JPTEVfUFVCTElTSF9USU1FEAISIAocVElNRV9UUkFDS19ST0xFX0NBUFRVUkVfVElNRRADEiAKHFRJTUVfVFJBQ0tfUk9MRV9TQU1QTEVfSU5ERVgQBCqKAQoNVGltZVNvcnRPcmRlchIfChtUSU1FX1NPUlRfT1JERVJfVU5TUEVDSUZJRUQQABIbChdUSU1FX1NPUlRfT1JERVJfVU5LTk9XThABEh0KGVRJTUVfU09SVF9PUkRFUl9NT05PVE9OSUMQAhIcChhUSU1FX1NPUlRfT1JERVJfVU5TT1JURUQQAyqEAQoNVGltZVNvcnRTY29wZRIfChtUSU1FX1NPUlRfU0NPUEVfVU5TUEVDSUZJRUQQABIZChVUSU1FX1NPUlRfU0NPUEVfU0NFTkUQARIaChZUSU1FX1NPUlRfU0NPUEVfU1RSRUFNEAISGwoXVElNRV9TT1JUX1NDT1BFX1NFR01FTlQQA2IGcHJvdG8z",
+  );
 
 /**
  * Encoded payload identity shared by source inventories and decode planners.
  *
  * @generated from message fiftyone.multimodal.schemas.v1.PayloadDescriptor
  */
-export type PayloadDescriptor = Message<"fiftyone.multimodal.schemas.v1.PayloadDescriptor"> & {
-  /**
-   * Encoding or codec used by the payload bytes.
-   *
-   * @generated from field: string encoding = 1;
-   */
-  encoding: string;
+export type PayloadDescriptor =
+  Message<"fiftyone.multimodal.schemas.v1.PayloadDescriptor"> & {
+    /**
+     * Encoding or codec used by the payload bytes.
+     *
+     * @generated from field: string encoding = 1;
+     */
+    encoding: string;
 
-  /**
-   * Optional upstream schema, message, or logical type identifier.
-   *
-   * @generated from field: optional string schema = 2;
-   */
-  schema?: string;
+    /**
+     * Optional upstream schema, message, or logical type identifier.
+     *
+     * @generated from field: optional string schema = 2;
+     */
+    schema?: string;
 
-  /**
-   * Optional encoding used by the schema descriptor itself.
-   *
-   * @generated from field: optional string schema_encoding = 3;
-   */
-  schemaEncoding?: string;
-};
+    /**
+     * Optional encoding used by the schema descriptor itself.
+     *
+     * @generated from field: optional string schema_encoding = 3;
+     */
+    schemaEncoding?: string;
+  };
 
 /**
  * Describes the message fiftyone.multimodal.schemas.v1.PayloadDescriptor.
  * Use `create(PayloadDescriptorSchema)` to create a new message.
  */
-export const PayloadDescriptorSchema: GenMessage<PayloadDescriptor> = /*@__PURE__*/
+export const PayloadDescriptorSchema: GenMessage<PayloadDescriptor> =
+  /*@__PURE__*/
   messageDesc(file_common, 0);
 
 /**
@@ -54,27 +63,29 @@ export const PayloadDescriptorSchema: GenMessage<PayloadDescriptor> = /*@__PURE_
  *
  * @generated from message fiftyone.multimodal.schemas.v1.TimeValueRange
  */
-export type TimeValueRange = Message<"fiftyone.multimodal.schemas.v1.TimeValueRange"> & {
-  /**
-   * Inclusive lower bound.
-   *
-   * @generated from field: int64 start = 1 [jstype = JS_STRING];
-   */
-  start: string;
+export type TimeValueRange =
+  Message<"fiftyone.multimodal.schemas.v1.TimeValueRange"> & {
+    /**
+     * Inclusive lower bound.
+     *
+     * @generated from field: int64 start = 1 [jstype = JS_STRING];
+     */
+    start: string;
 
-  /**
-   * Optional exclusive upper bound.
-   *
-   * @generated from field: optional int64 end = 2 [jstype = JS_STRING];
-   */
-  end?: string;
-};
+    /**
+     * Optional exclusive upper bound.
+     *
+     * @generated from field: optional int64 end = 2 [jstype = JS_STRING];
+     */
+    end?: string;
+  };
 
 /**
  * Describes the message fiftyone.multimodal.schemas.v1.TimeValueRange.
  * Use `create(TimeValueRangeSchema)` to create a new message.
  */
-export const TimeValueRangeSchema: GenMessage<TimeValueRange> = /*@__PURE__*/
+export const TimeValueRangeSchema: GenMessage<TimeValueRange> =
+  /*@__PURE__*/
   messageDesc(file_common, 1);
 
 /**
@@ -161,7 +172,8 @@ export type TimeTrack = Message<"fiftyone.multimodal.schemas.v1.TimeTrack"> & {
  * Describes the message fiftyone.multimodal.schemas.v1.TimeTrack.
  * Use `create(TimeTrackSchema)` to create a new message.
  */
-export const TimeTrackSchema: GenMessage<TimeTrack> = /*@__PURE__*/
+export const TimeTrackSchema: GenMessage<TimeTrack> =
+  /*@__PURE__*/
   messageDesc(file_common, 2);
 
 /**
@@ -169,35 +181,37 @@ export const TimeTrackSchema: GenMessage<TimeTrack> = /*@__PURE__*/
  *
  * @generated from message fiftyone.multimodal.schemas.v1.SourceFingerprint
  */
-export type SourceFingerprint = Message<"fiftyone.multimodal.schemas.v1.SourceFingerprint"> & {
-  /**
-   * Source size in bytes.
-   *
-   * @generated from field: uint64 size_bytes = 1 [jstype = JS_STRING];
-   */
-  sizeBytes: string;
+export type SourceFingerprint =
+  Message<"fiftyone.multimodal.schemas.v1.SourceFingerprint"> & {
+    /**
+     * Source size in bytes.
+     *
+     * @generated from field: uint64 size_bytes = 1 [jstype = JS_STRING];
+     */
+    sizeBytes: string;
 
-  /**
-   * Optional first-chunk CRC. Some sources are not file-backed or are too
-   * expensive to spot-check, so adapters may omit these fields.
-   *
-   * @generated from field: optional uint32 first_chunk_crc = 2;
-   */
-  firstChunkCrc?: number;
+    /**
+     * Optional first-chunk CRC. Some sources are not file-backed or are too
+     * expensive to spot-check, so adapters may omit these fields.
+     *
+     * @generated from field: optional uint32 first_chunk_crc = 2;
+     */
+    firstChunkCrc?: number;
 
-  /**
-   * Optional last-chunk CRC. See first_chunk_crc for why this may be omitted.
-   *
-   * @generated from field: optional uint32 last_chunk_crc = 3;
-   */
-  lastChunkCrc?: number;
-};
+    /**
+     * Optional last-chunk CRC. See first_chunk_crc for why this may be omitted.
+     *
+     * @generated from field: optional uint32 last_chunk_crc = 3;
+     */
+    lastChunkCrc?: number;
+  };
 
 /**
  * Describes the message fiftyone.multimodal.schemas.v1.SourceFingerprint.
  * Use `create(SourceFingerprintSchema)` to create a new message.
  */
-export const SourceFingerprintSchema: GenMessage<SourceFingerprint> = /*@__PURE__*/
+export const SourceFingerprintSchema: GenMessage<SourceFingerprint> =
+  /*@__PURE__*/
   messageDesc(file_common, 3);
 
 /**
@@ -241,7 +255,8 @@ export enum TimeTrackType {
 /**
  * Describes the enum fiftyone.multimodal.schemas.v1.TimeTrackType.
  */
-export const TimeTrackTypeSchema: GenEnum<TimeTrackType> = /*@__PURE__*/
+export const TimeTrackTypeSchema: GenEnum<TimeTrackType> =
+  /*@__PURE__*/
   enumDesc(file_common, 0);
 
 /**
@@ -290,7 +305,8 @@ export enum TimeTrackRole {
 /**
  * Describes the enum fiftyone.multimodal.schemas.v1.TimeTrackRole.
  */
-export const TimeTrackRoleSchema: GenEnum<TimeTrackRole> = /*@__PURE__*/
+export const TimeTrackRoleSchema: GenEnum<TimeTrackRole> =
+  /*@__PURE__*/
   enumDesc(file_common, 1);
 
 /**
@@ -334,7 +350,8 @@ export enum TimeSortOrder {
 /**
  * Describes the enum fiftyone.multimodal.schemas.v1.TimeSortOrder.
  */
-export const TimeSortOrderSchema: GenEnum<TimeSortOrder> = /*@__PURE__*/
+export const TimeSortOrderSchema: GenEnum<TimeSortOrder> =
+  /*@__PURE__*/
   enumDesc(file_common, 2);
 
 /**
@@ -378,6 +395,6 @@ export enum TimeSortScope {
 /**
  * Describes the enum fiftyone.multimodal.schemas.v1.TimeSortScope.
  */
-export const TimeSortScopeSchema: GenEnum<TimeSortScope> = /*@__PURE__*/
+export const TimeSortScopeSchema: GenEnum<TimeSortScope> =
+  /*@__PURE__*/
   enumDesc(file_common, 3);
-

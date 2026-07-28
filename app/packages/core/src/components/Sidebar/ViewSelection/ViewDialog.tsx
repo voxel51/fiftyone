@@ -103,7 +103,7 @@ export default function ViewDialog(props: Props) {
   });
 
   const savedViewSlugs = new Set(
-    savedViews.map((sv: fos.State.SavedView) => sv.slug.toLowerCase())
+    savedViews.map((sv: fos.State.SavedView) => sv.slug.toLowerCase()),
   );
   const slugValue = toSlug(nameValue);
   const nameExists =
@@ -172,7 +172,7 @@ export default function ViewDialog(props: Props) {
           resetValues();
           onEditSuccess(saveView, true);
           setIsOpen(false);
-        }
+        },
       );
     } else {
       handleUpdateSavedView(
@@ -184,7 +184,7 @@ export default function ViewDialog(props: Props) {
           resetValues();
           onEditSuccess(saveView, initialName !== nameValue);
           setIsOpen(false);
-        }
+        },
       );
     }
   }, [

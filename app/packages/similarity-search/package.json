@@ -16,19 +16,19 @@
         "@fiftyone/operators": "*",
         "@fiftyone/plugins": "*",
         "@fiftyone/spaces": "*",
-        "@fiftyone/state": "*"
+        "@fiftyone/state": "*",
+        "@voxel51/voodo": "^0.0.39"
     },
     "devDependencies": {
-        "vite": "^7.3.2",
-        "vite-plugin-externals": "^0.5.0"
+        "@vitejs/plugin-react": "catalog:",
+        "vite": "catalog:",
+        "vite-plugin-externals": "catalog:"
     },
     "fiftyone": {
         "script": "dist/index.umd.js"
     },
-    "packageManager": "yarn@4.9.1",
     "peerDependencies": {
         "@mui/icons-material": "*",
-        "@voxel51/voodo": "*",
         "jotai": "*",
         "recoil": "*"
     }

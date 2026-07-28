@@ -1,6 +1,5 @@
 import { Markdown } from "@fiftyone/components";
 import { Alert, AlertTitle, Typography } from "@mui/material";
-import React from "react";
 import { getComponentProps } from "../utils";
 
 export default function AlertView(props) {

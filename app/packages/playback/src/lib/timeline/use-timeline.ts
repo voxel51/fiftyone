@@ -7,8 +7,10 @@ import {
   getFrameNumberAtom,
   getPlayheadStateAtom,
   getTimelineConfigAtom,
+  removeSubscriberAtom,
   SequenceTimelineSubscription,
   setFrameNumberAtom,
+  SubscriptionId,
   TimelineName,
   updatePlayheadStateAtom,
   updateTimelineConfigAtom,
@@ -44,6 +46,7 @@ export const useTimeline = (name?: TimelineName) => {
   const playHeadState = useAtomValue(getPlayheadStateAtom(timelineName));
   const setPlayheadStateWrapper = useSetAtom(updatePlayheadStateAtom);
   const subscribeImpl = useSetAtom(addSubscriberAtom);
+  const unsubscribeImpl = useSetAtom(removeSubscriberAtom);
   const updateConfig = useSetAtom(updateTimelineConfigAtom);
 
   useEffect(() => {
@@ -57,8 +60,8 @@ export const useTimeline = (name?: TimelineName) => {
         const currFramenumber = get(getFrameNumberAtom(timelineName));
         return currFramenumber;
       },
-      [timelineName]
-    )
+      [timelineName],
+    ),
   );
 
   const refresh = useAtomCallback(
@@ -71,8 +74,8 @@ export const useTimeline = (name?: TimelineName) => {
           newFrameNumber: currentFrameNumber,
         });
       },
-      [timelineName]
-    )
+      [timelineName],
+    ),
   );
 
   useEffect(() => {
@@ -87,13 +90,13 @@ export const useTimeline = (name?: TimelineName) => {
 
   const play = useCallback(() => {
     dispatchEvent(
-      new CustomEvent("play", { detail: { timelineName: timelineName } })
+      new CustomEvent("play", { detail: { timelineName: timelineName } }),
     );
   }, [timelineName]);
 
   const pause = useCallback(() => {
     dispatchEvent(
-      new CustomEvent("pause", { detail: { timelineName: timelineName } })
+      new CustomEvent("pause", { detail: { timelineName: timelineName } }),
     );
   }, [timelineName]);
 
@@ -102,15 +105,15 @@ export const useTimeline = (name?: TimelineName) => {
       (get) => {
         return get(getPlayheadStateAtom(timelineName));
       },
-      [timelineName]
-    )
+      [timelineName],
+    ),
   );
 
   const setPlayHeadState = useCallback(
     (newState: PlayheadState) => {
       setPlayheadStateWrapper({ name: timelineName, state: newState });
     },
-    [timelineName]
+    [timelineName],
   );
 
   const setSpeed = useCallback(
@@ -120,14 +123,21 @@ export const useTimeline = (name?: TimelineName) => {
         configDelta: { speed },
       });
     },
-    [updateConfig, timelineName]
+    [updateConfig, timelineName],
   );
 
   const subscribe = useCallback(
     (subscription: SequenceTimelineSubscription) => {
       subscribeImpl({ name: timelineName, subscription });
     },
-    [subscribeImpl, timelineName]
+    [subscribeImpl, timelineName],
+  );
+
+  const unsubscribe = useCallback(
+    (id: SubscriptionId) => {
+      unsubscribeImpl({ name: timelineName, id });
+    },
+    [unsubscribeImpl, timelineName],
   );
 
   return {
@@ -169,5 +179,10 @@ export const useTimeline = (name?: TimelineName) => {
      * Subscribe to the timeline for frame updates.
      */
     subscribe,
+    /**
+     * Remove a previously-added subscription by id. Pairs with `subscribe` for
+     * consumers that outlive a single render and need explicit teardown.
+     */
+    unsubscribe,
   };
 };

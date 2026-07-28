@@ -5,14 +5,7 @@ import {
   VersionMismatchError,
 } from "@fiftyone/core/src/client";
 import type { Sample } from "@fiftyone/looker";
-import type { Field } from "@fiftyone/utilities";
 import { NotFoundError } from "@fiftyone/utilities";
-import {
-  buildAnnotationPath,
-  buildJsonPath,
-  buildLabelDeltas,
-  LabelProxy,
-} from "../deltas";
 import { isSampleIsh } from "@fiftyone/looker/src/util";
 import type { OpType } from "../types";
 
@@ -109,7 +102,7 @@ export const doPatchSample = async ({
         } else {
           console.error(
             "response data does not adhere to sample format",
-            cleanedSample
+            cleanedSample,
           );
         }
       } else {
@@ -140,74 +133,4 @@ export const doPatchSample = async ({
   }
 
   return true;
-};
-
-export type LabelPersistenceArgs = {
-  sample: Sample | null;
-  applyPatch: (
-    deltas: JSONDeltas,
-    patchOptions?: {
-      labelId?: string;
-      labelPath?: string;
-      opType?: OpType;
-    }
-  ) => Promise<boolean>;
-  annotationLabel: LabelProxy | null;
-  schema: Field;
-  opType: OpType;
-  isGenerated?: boolean;
-};
-
-/**
- * Handle persisting a label update for a sample.
- *
- * @param sample Sample to modify
- * @param applyPatch Function which applies the calculated patch
- * @param annotationLabel Label to persist
- * @param schema Field schema for the label
- * @param opType Operation type
- * @param isGenerated Whether this is from a generated view (patches/clips/frames)
- */
-export const handleLabelPersistence = async ({
-  sample,
-  applyPatch,
-  annotationLabel,
-  schema,
-  opType,
-  isGenerated = false,
-}: LabelPersistenceArgs): Promise<boolean> => {
-  if (!sample) {
-    console.error("missing sample data!");
-    return false;
-  }
-
-  if (!annotationLabel) {
-    console.error("missing annotation label!");
-    return false;
-  }
-
-  // calculate label deltas between current sample data and new label data
-  const sampleDeltas = buildLabelDeltas(
-    sample,
-    annotationLabel,
-    schema,
-    opType,
-    isGenerated
-  ).map((delta) => ({
-    ...delta,
-    // Convert label delta to sample delta
-    // Operation path is the label path for patches views
-    path: buildJsonPath(isGenerated ? null : annotationLabel.path, delta.path),
-  }));
-
-  // For SampleField patch updates on generated views
-  const patchOptions = isGenerated
-    ? {
-        labelId: (annotationLabel as { data?: { _id?: string } }).data?._id,
-        labelPath: buildAnnotationPath(annotationLabel, isGenerated),
-        opType,
-      }
-    : undefined;
-
-  return await applyPatch(sampleDeltas, patchOptions);
 };

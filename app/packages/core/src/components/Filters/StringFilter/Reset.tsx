@@ -1,6 +1,5 @@
 import * as fos from "@fiftyone/state";
 import { isSidebarFilterMode } from "@fiftyone/state";
-import React from "react";
 import { useRecoilCallback } from "recoil";
 import { Button } from "../../utils";
 
@@ -16,7 +15,7 @@ export default function (params: {
 
         reset(isFilterMode ? fos.filter(params) : fos.visibility(params));
       },
-    [params.modal, params.path]
+    [params.modal, params.path],
   );
 
   return (

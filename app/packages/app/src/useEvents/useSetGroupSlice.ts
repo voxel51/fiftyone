@@ -25,7 +25,7 @@ const useSetGroupSlice: EventHandlerHook = ({ router, session }) => {
         groupSlice: slice,
       });
     },
-    [router, session]
+    [router, session],
   );
 };
 

@@ -39,6 +39,9 @@ DEFAULT_DEPTH_ESTIMATION_PATH = "Intel/dpt-hybrid-midas"
 DEFAULT_ZERO_SHOT_CLASSIFICATION_PATH = "openai/clip-vit-large-patch14"
 DEFAULT_ZERO_SHOT_DETECTION_PATH = "google/owlvit-base-patch32"
 DEFAULT_POSE_ESTIMATION_PATH = "usyd-community/vitpose-base-simple"
+DEFAULT_UNIVERSAL_SEGMENTATION_PATH = (
+    "facebook/mask2former-swin-tiny-coco-instance"
+)
 
 
 def convert_transformers_model(model, task=None, **kwargs):
@@ -104,11 +107,15 @@ def get_model_type(model, task=None):
         "semantic-segmentation",
         "depth-estimation",
         "pose-estimation",
+        "universal-segmentation",
     )
     if task is not None and task not in supported_tasks:
         raise ValueError(
             f"Unknown task: {task}. Valid tasks are {supported_tasks}"
         )
+
+    if task == "universal-segmentation":
+        return "universal-segmentation"
 
     zs = _is_zero_shot_model(model)
 
@@ -557,6 +564,7 @@ class ZeroShotTransformerPromptMixin(PromptMixin):
     def _embed_prompts(self, prompts):
         # I don't think this is ever called with preprocess = False
         # but just in case
+        inputs = None
         if self.preprocess:
             inputs = self.transforms.processor(
                 text=prompts,
@@ -566,6 +574,26 @@ class ZeroShotTransformerPromptMixin(PromptMixin):
             text_features = self._model.base_model.get_text_features(
                 **inputs.to(self._device)
             )
+            if isinstance(text_features, torch.Tensor):
+                # transformers < 5 returns the pooled embedding directly
+                pass
+            elif isinstance(
+                text_features,
+                transformers.modeling_outputs.BaseModelOutputWithPooling,
+            ):
+                # transformers 5.x returns a ``BaseModelOutputWithPooling``
+                # object instead of a plain tensor; pull the pooled embedding.
+                if text_features.pooler_output is None:
+                    raise ValueError(
+                        "get_text_features() returned a "
+                        "BaseModelOutputWithPooling without a pooler_output"
+                    )
+                text_features = text_features.pooler_output
+            else:
+                raise ValueError(
+                    "get_text_features() returned an unsupported output "
+                    f"type: {type(text_features)}"
+                )
         return text_features
 
 
@@ -701,7 +729,38 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
         )
 
     def _load_transforms(self, config):
-        processor = super()._load_transforms(config)
+        try:
+            processor = super()._load_transforms(config)
+        except AttributeError:
+            # AutoProcessor can't resolve the tokenizer for some models; resolve
+            # the processor class from the config and load it directly.
+            from transformers.models.auto.processing_auto import (
+                PROCESSOR_MAPPING,
+            )
+
+            ta = dict(config.transforms_args or {})
+            name = ta.pop("pretrained_model_name_or_path", None)
+            name = name or ta.pop("name_or_path", None)
+
+            proc_cls = PROCESSOR_MAPPING.get(
+                type(transformers.AutoConfig.from_pretrained(name, **ta)), None
+            )
+            if proc_cls is None:
+                raise
+
+            if getattr(proc_cls, "tokenizer_class", None) is None:
+                # No tokenizer_class to auto-resolve; build the fast tokenizer
+                # directly.
+                processor = proc_cls(
+                    image_processor=transformers.AutoImageProcessor.from_pretrained(
+                        name, **ta
+                    ),
+                    tokenizer=transformers.PreTrainedTokenizerFast.from_pretrained(
+                        name, **ta
+                    ),
+                )
+            else:
+                processor = proc_cls.from_pretrained(name, **ta)
         return _HFTransformsHandler(
             processor, **(config.transformers_processor_kwargs)
         )
@@ -1090,6 +1149,86 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
         self.transforms.return_image_sizes = True
 
 
+class FiftyOneTransformerForUniversalSegmentationConfig(
+    FiftyOneTransformerConfig
+):
+    """Configuration for a
+    :class:`FiftyOneTransformerForUniversalSegmentation`.
+
+    Args:
+        model (None): a ``transformers`` model
+        name_or_path (None): the name or path to a checkpoint file to load
+        task ("instance"): segmentation task — ``"semantic"``, ``"instance"``,
+            or ``"panoptic"``
+        output_processor_args (None): optional dict of kwargs forwarded to the
+            output processor constructor, e.g.
+            ``{"mask_threshold": 0.3, "overlap_mask_area_threshold": 0.6}``
+    """
+
+    def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            d["name_or_path"] = DEFAULT_UNIVERSAL_SEGMENTATION_PATH
+        super().__init__(d)
+        self.task = self.parse_string(d, "task", default="instance")
+        valid_tasks = {"semantic", "instance", "panoptic"}
+        if self.task not in valid_tasks:
+            raise ValueError(
+                f"Invalid task '{self.task}'. Must be one of {sorted(valid_tasks)}"
+            )
+
+
+class FiftyOneTransformerForUniversalSegmentation(FiftyOneTransformer):
+    """FiftyOne wrapper around a ``transformers`` universal segmentation model.
+
+    Supports Mask2Former and similar architectures that handle semantic,
+    instance, and panoptic segmentation through a unified model.  The
+    ``task`` config parameter selects the post-processing path:
+
+    * ``"semantic"``  → :class:`fiftyone.core.labels.Segmentation`
+    * ``"instance"``  → :class:`fiftyone.core.labels.Detections` (with masks)
+    * ``"panoptic"``  → :class:`fiftyone.core.labels.Detections` (with masks)
+
+    Args:
+        config: a
+            :class:`FiftyOneTransformerForUniversalSegmentationConfig`
+    """
+
+    def __init__(self, config):
+        if config.entrypoint_fcn is None:
+            config.entrypoint_fcn = "transformers.AutoModelForUniversalSegmentation.from_pretrained"
+
+        if config.output_processor_cls is None:
+            if config.task == "semantic":
+                config.output_processor_cls = "fiftyone.utils.transformers.TransformersUniversalSemanticSegmentatorOutputProcessor"
+                if config.output_processor_args is None:
+                    config.output_processor_args = {}
+                config.output_processor_args.setdefault(
+                    "no_background_cls", True
+                )
+            else:
+                config.output_processor_cls = "fiftyone.utils.transformers.TransformersUniversalSegmentatorOutputProcessor"
+                if config.output_processor_args is None:
+                    config.output_processor_args = {}
+                config.output_processor_args["task"] = config.task
+
+        super().__init__(config)
+        self._output_processor.processor = self.transforms.processor
+        self.transforms.return_image_sizes = True
+
+        # OneFormerProcessor requires task_inputs at preprocessing time.
+        import inspect
+
+        try:
+            sig = inspect.signature(self.transforms.processor.__call__)
+            if "task_inputs" in sig.parameters:
+                self.transforms.task_inputs = config.task
+        except (ValueError, TypeError):
+            pass
+
+
 class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
     """Configuration for a :class:`FiftyOneTransformerForPoseEstimation`.
 
@@ -1395,6 +1534,10 @@ class _HFTransformsHandler:
             self.kwargs["return_tensors"] = "pt"
         self.text = None  # passed in by model after init
         self.text_per_image = False  # passed in by model after init
+        # task_inputs is popped from kwargs so it is not forwarded verbatim to
+        # the processor; instead it is expanded per-image at call time (e.g.
+        # OneFormer requires task_inputs=[task]*batch_size at preprocessing).
+        self.task_inputs = self.kwargs.pop("task_inputs", None)
 
     def __call__(self, args):
         image_size = None
@@ -1421,7 +1564,13 @@ class _HFTransformsHandler:
                     if isinstance(args, list)
                     else [_get_image_size(args)]
                 )
-            if self.text:
+            if self.task_inputs is not None:
+                res = self.processor(
+                    images=args,
+                    task_inputs=[self.task_inputs] * num_images,
+                    **self.kwargs,
+                )
+            elif self.text:
                 res = self.processor(
                     images=args,
                     text=self.text
@@ -1593,6 +1742,171 @@ class TransformersSemanticSegmentatorOutputProcessor(
         )
 
 
+class TransformersUniversalSemanticSegmentatorOutputProcessor(
+    fout.SemanticSegmenterOutputProcessor
+):
+    """Output processor for universal segmentation models in semantic mode.
+
+    Calls ``post_process_semantic_segmentation`` and returns
+    :class:`fiftyone.core.labels.Segmentation` labels (one per image).
+    """
+
+    def __init__(self, classes=None, no_background_cls=False, **kwargs):
+        super().__init__(classes=classes, no_background_cls=no_background_cls)
+        self._processor = None
+
+    @property
+    def processor(self):
+        return self._processor
+
+    @processor.setter
+    def processor(self, value):
+        self._processor = value
+
+    def __call__(
+        self,
+        output,
+        image_sizes,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
+        if hasattr(image_sizes, "tolist"):
+            target_sizes = [tuple(sz) for sz in image_sizes.tolist()]
+        else:
+            target_sizes = [tuple(int(x) for x in sz) for sz in image_sizes]
+        # confidence_thresh is not applicable to semantic segmentation because
+        # post_process_semantic_segmentation returns a per-pixel argmax with no
+        # associated per-pixel confidence score.
+        seg_maps = self._processor.post_process_semantic_segmentation(
+            output, target_sizes=target_sizes
+        )
+        effective_classes = classes if classes is not None else self.classes
+        results = []
+        for m in seg_maps:
+            mask = m.cpu().numpy().astype(np.int16)
+            if self.no_background_cls:
+                mask += 1
+            if effective_classes is not None and self.classes is not None:
+                allowed_indices = {
+                    i + (1 if self.no_background_cls else 0)
+                    for i, c in enumerate(self.classes)
+                    if c in effective_classes
+                }
+                mask = np.where(np.isin(mask, list(allowed_indices)), mask, 0)
+            results.append(fol.Segmentation(mask=mask))
+        return results
+
+
+class TransformersUniversalSegmentatorOutputProcessor(
+    fout.InstanceSegmenterOutputProcessor
+):
+    """Output processor for universal segmentation models in instance/panoptic mode.
+
+    Args:
+        task ("instance"): ``"instance"`` calls
+            ``post_process_instance_segmentation``; ``"panoptic"`` calls
+            ``post_process_panoptic_segmentation``
+        mask_threshold (0.5): mask binarisation threshold
+        overlap_mask_area_threshold (0.8): overlap threshold for mask merging
+    """
+
+    def __init__(
+        self,
+        classes=None,
+        task="instance",
+        mask_threshold=0.5,
+        overlap_mask_area_threshold=0.8,
+        **kwargs,
+    ):
+        self.classes = classes
+        self.task = task
+        self.mask_thresh = mask_threshold
+        self.overlap_mask_area_threshold = overlap_mask_area_threshold
+        self._processor = None
+
+    @property
+    def processor(self):
+        return self._processor
+
+    @processor.setter
+    def processor(self, value):
+        self._processor = value
+
+    def __call__(
+        self,
+        output,
+        image_sizes,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
+        threshold = confidence_thresh if confidence_thresh is not None else 0.0
+        if hasattr(image_sizes, "tolist"):
+            target_sizes = [tuple(sz) for sz in image_sizes.tolist()]
+        else:
+            target_sizes = [tuple(int(x) for x in sz) for sz in image_sizes]
+        post_process_kwargs = dict(
+            threshold=threshold,
+            mask_threshold=self.mask_thresh,
+            overlap_mask_area_threshold=self.overlap_mask_area_threshold,
+            target_sizes=target_sizes,
+        )
+        if self.task == "panoptic":
+            processed = self._processor.post_process_panoptic_segmentation(
+                output, **post_process_kwargs
+            )
+            use_binary_maps = False
+        else:
+            import inspect
+
+            use_binary_maps = (
+                "return_binary_maps"
+                in inspect.signature(
+                    self._processor.post_process_instance_segmentation
+                ).parameters
+            )
+            extra = {"return_binary_maps": True} if use_binary_maps else {}
+            processed = self._processor.post_process_instance_segmentation(
+                output, **post_process_kwargs, **extra
+            )
+        results = []
+        for item in processed:
+            segmentation = item.get("segmentation")
+            segments_info = item.get("segments_info", [])
+            detections = []
+            if segmentation is not None:
+                seg_np = segmentation.cpu().numpy()
+                for i, seg in enumerate(segments_info):
+                    score = seg.get("score", 1.0)
+                    if (
+                        confidence_thresh is not None
+                        and score < confidence_thresh
+                    ):
+                        continue
+                    idx = int(seg["label_id"])
+                    label = (
+                        self.classes[idx]
+                        if self.classes is not None and idx < len(self.classes)
+                        else str(idx)
+                    )
+                    if classes is not None and label not in classes:
+                        continue
+                    if use_binary_maps:
+                        binary_mask = seg_np[i] > 0
+                    else:
+                        binary_mask = seg_np == seg["id"]
+                    if not binary_mask.any():
+                        continue
+                    detections.append(
+                        fol.Detection.from_mask(
+                            binary_mask, label=label, confidence=score
+                        )
+                    )
+            results.append(fol.Detections(detections=detections))
+        return results
+
+
 class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1702,6 +2016,8 @@ def _get_image_size(img):
         width, height = img.size
     elif isinstance(img, np.ndarray):
         height, width = img.shape[:2]
+    else:
+        raise ValueError(f"Unsupported image type: {type(img)}")
 
     return height, width
 
@@ -1723,6 +2039,7 @@ MODEL_TYPE_TO_CONFIG_CLASS = {
     "image-classification": FiftyOneTransformerForImageClassificationConfig,
     "object-detection": FiftyOneTransformerForObjectDetectionConfig,
     "semantic-segmentation": FiftyOneTransformerForSemanticSegmentationConfig,
+    "universal-segmentation": FiftyOneTransformerForUniversalSegmentationConfig,
     "depth-estimation": FiftyOneTransformerForDepthEstimationConfig,
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassificationConfig,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetectionConfig,
@@ -1735,6 +2052,7 @@ MODEL_TYPE_TO_MODEL_CLASS = {
     "image-classification": FiftyOneTransformerForImageClassification,
     "object-detection": FiftyOneTransformerForObjectDetection,
     "semantic-segmentation": FiftyOneTransformerForSemanticSegmentation,
+    "universal-segmentation": FiftyOneTransformerForUniversalSegmentation,
     "depth-estimation": FiftyOneTransformerForDepthEstimation,
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassification,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetection,

@@ -233,13 +233,14 @@ class ModalSidebarAsserter {
   async waitUntilSidebarEntryTextEquals(key: string, value: string) {
     return this.modalSidebarPom.page.waitForFunction(
       ({ key_, value_ }: { key_: string; value_: string }) => {
+        // a not-yet-mounted entry is "not equal yet", not a crash
         return (
           document.querySelector(`[data-cy='sidebar-entry-${key_}']`)
-            .textContent === value_
+            ?.textContent === value_
         );
       },
       { key_: key, value_: value },
-      { timeout: 5000 }
+      { timeout: 5000 },
     );
   }
 
@@ -257,8 +258,8 @@ class ModalSidebarAsserter {
   }) {
     await Promise.all(
       Object.entries(entries).map(([key, value]) =>
-        this.waitUntilSidebarEntryTextEquals(key, value)
-      )
+        this.waitUntilSidebarEntryTextEquals(key, value),
+      ),
     );
   }
 
@@ -272,8 +273,8 @@ class ModalSidebarAsserter {
   async verifySidebarEntryTexts(entries: { [key: string]: string }) {
     await Promise.all(
       Object.entries(entries).map(([key, value]) =>
-        this.verifySidebarEntryText(key, value)
-      )
+        this.verifySidebarEntryText(key, value),
+      ),
     );
   }
 
@@ -286,7 +287,9 @@ class ModalSidebarAsserter {
    */
   async verifySidebarFieldCount(field: string, count: string | number) {
     await expect(
-      this.modalSidebarPom.getSidebarField(field).getByTestId("entry-count-all")
+      this.modalSidebarPom
+        .getSidebarField(field)
+        .getByTestId("entry-count-all"),
     ).toHaveText(String(count));
   }
 
@@ -299,17 +302,18 @@ class ModalSidebarAsserter {
   async verifySampleTagCount(count: number) {
     await this.modalSidebarPom.page.waitForFunction(
       (count_) => {
+        // a not-yet-mounted entry is "not equal yet", not a crash
         return (
           Number(
             document.querySelector("#modal [data-cy='sidebar-entry-tags']")
-              .textContent
+              ?.textContent,
           ) === count_
         );
       },
       count,
       {
         timeout: Duration.Seconds(1),
-      }
+      },
     );
   }
 
@@ -343,18 +347,19 @@ class ModalSidebarAsserter {
   async verifyLabelTagCount(count: number) {
     await this.modalSidebarPom.page.waitForFunction(
       (count_) => {
+        // a not-yet-mounted entry is "not equal yet", not a crash
         return (
           Number(
             document.querySelector(
-              "#modal [data-cy='sidebar-field-container-_label_tags'] [data-cy='entry-count-all']"
-            ).textContent
+              "#modal [data-cy='sidebar-field-container-_label_tags'] [data-cy='entry-count-all']",
+            )?.textContent,
           ) === count_
         );
       },
       count,
       {
         timeout: Duration.Seconds(1),
-      }
+      },
     );
   }
 
@@ -363,7 +368,7 @@ class ModalSidebarAsserter {
    */
   async hasDisabledMessage(messageSubstring: string) {
     await expect(
-      this.modalSidebarPom.locator.getByText(messageSubstring)
+      this.modalSidebarPom.locator.getByText(messageSubstring),
     ).toBeVisible();
   }
 }

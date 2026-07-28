@@ -39,7 +39,7 @@ describe("syncAndGetNewFields", () => {
     const result = syncAndGetNewLabels(
       newLookerId,
       lut,
-      currentActiveLabelFields
+      currentActiveLabelFields,
     );
     expect(result).toEqual(["seg1", "heatmap1"]);
 

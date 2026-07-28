@@ -20,6 +20,6 @@ export default function useTrackEvent() {
         console.warn("Failed to track event", err);
       }
     },
-    [info]
+    [info],
   );
 }

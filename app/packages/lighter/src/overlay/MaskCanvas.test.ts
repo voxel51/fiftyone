@@ -57,7 +57,7 @@ const seedCanvas = (bounds: Rect, paintRect: Rect): MaskCanvas => {
     Math.round(paintRect.x - bounds.x),
     Math.round(paintRect.y - bounds.y),
     Math.round(paintRect.width),
-    Math.round(paintRect.height)
+    Math.round(paintRect.height),
   );
   return mc;
 };
@@ -86,7 +86,7 @@ describe("MaskCanvas.mergeFrom", () => {
     const newBounds = target.mergeFrom(
       sourceCanvas,
       sourceBounds,
-      targetBounds
+      targetBounds,
     );
 
     // Union: (0,0) → (18,18). The post-merge crop is a no-op here because
@@ -147,7 +147,7 @@ describe("MaskCanvas.mergeFrom", () => {
     const newBounds = target.mergeFrom(
       sourceCanvas,
       sourceBounds,
-      targetBounds
+      targetBounds,
     );
 
     // Source is inside target; bounds shouldn't grow. (Crop is a no-op in
@@ -156,6 +156,53 @@ describe("MaskCanvas.mergeFrom", () => {
     expect(newBounds.y).toBe(targetBounds.y);
     expect(newBounds.width).toBe(targetBounds.width);
     expect(newBounds.height).toBe(targetBounds.height);
+  });
+});
+
+describe("MaskCanvas.updateSource guards an in-flight paint encode", () => {
+  // Regression: a server-echo reconcile reprojects onto the overlay mid-edit.
+  // While a paint encode is still in flight, those canvas pixels are an
+  // uncommitted stroke absent from any source, so a reset() would drop them (and
+  // abort the encode). Once the encode resolves the pixels live in the source, so
+  // a genuine reproject (e.g. undo) must be free to replace the canvas.
+
+  const flushEncode = async (): Promise<void> => {
+    // paintEnd's encode chain is then→finally; flush enough microtasks for the
+    // finally (which decrements encodingInFlight) to run.
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+  };
+
+  it("keeps the editing canvas while a paint encode is in flight (returns false)", () => {
+    const bounds: Rect = { x: 0, y: 0, width: 10, height: 10 };
+    const mc = seedCanvas(bounds, { x: 0, y: 0, width: 4, height: 4 });
+
+    // paintEnd increments encodingInFlight (and rebuilds the canvas); the encode
+    // has not resolved yet, so capture the post-paint canvas as the baseline.
+    mc.paintEnd(bounds);
+    const canvasInFlight = mc.getPreviewSource();
+    expect(canvasInFlight).toBeInstanceOf(HTMLCanvasElement);
+
+    expect(mc.updateSource("echoed-serialized-mask")).toBe(false);
+    expect(mc.getPreviewSource()).toBe(canvasInFlight);
+  });
+
+  it("adopts a new source once the encode has resolved (returns true)", async () => {
+    const bounds: Rect = { x: 0, y: 0, width: 10, height: 10 };
+    const mc = seedCanvas(bounds, { x: 0, y: 0, width: 4, height: 4 });
+
+    mc.paintEnd(bounds);
+    await flushEncode();
+
+    // An undo / genuine reproject carrying a different value must replace the
+    // canvas — the earlier over-broad "canvas exists" guard blocked this and left
+    // undo restoring bounds but not the mask.
+    expect(mc.updateSource("different-mask")).toBe(true);
+  });
+
+  it("still swaps the source when there is no editing canvas (returns true)", () => {
+    const mc = new MaskCanvas("initial-mask");
+
+    expect(mc.updateSource("different-mask")).toBe(true);
   });
 });
 
@@ -248,7 +295,7 @@ describe("MaskCanvas onEncoded plumbing", () => {
       source.getPreviewSource() as HTMLCanvasElement,
       sourceBounds,
       targetBounds,
-      onEncoded
+      onEncoded,
     );
 
     await Promise.resolve();

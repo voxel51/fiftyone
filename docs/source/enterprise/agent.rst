@@ -47,9 +47,16 @@ To add a provider, fill in the following fields:
 
 - **Name**: a label for this provider configuration
 - **Provider**: select from the list of supported providers
-- **Endpoint** (optional): use this if your model is hosted at a custom URL
+- **Endpoint** (optional): use this to route requests to a custom URL, such
+  as an internal enterprise gateway or a self-hosted model server
 - **API key**: your provider's API key
 - **Models**: select one or more models to make available
+- **Custom model names** (optional): enter model identifiers that are not in
+  the standard picker, such as non-standard IDs used by an enterprise gateway.
+  Prefix with the provider slug (e.g. ``openai/my-model-id``) to ensure
+  correct routing when the model name alone is ambiguous
+- **Extra headers** (optional): static key-value HTTP headers sent with every
+  request (e.g. ``User-Agent``, project tokens required by your gateway)
 - **Default**: mark this provider as the default
 
 .. image:: https://cdn.voxel51.com/voxel-agent/enterprise/provider_more_details.webp
@@ -63,6 +70,77 @@ You can click **Test connection** to verify your credentials before saving.
     Need help configuring a provider? Contact your Customer Success
     representative, or see :ref:`Secrets <enterprise-secrets>` for how to
     store API keys securely in your deployment.
+
+.. _enterprise-agent-custom-gateway:
+
+Custom endpoints and enterprise gateways
+_________________________________________
+
+If your organization routes LLM traffic through an internal gateway or proxy,
+you can point the Agent at it using the **Endpoint** and **Extra headers**
+fields on any provider configuration.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/custom_gateway_screenshot.webp
+   :alt: fiftyone-agent-custom-gateway
+   :align: center
+
+**Provider, match the API format, not the model brand**
+
+The **Provider** field controls the request format the Agent uses, not which
+model it calls. Set it to match what your gateway expects:
+
+- If your gateway exposes an OpenAI-compatible API (``/chat/completions``),
+  select ``openai``, even if the underlying model is Claude or Gemini
+- If your gateway exposes the Anthropic Messages API (``/v1/messages``)
+  natively, select ``anthropic``
+
+**Endpoint, base URL only**
+
+Enter only the base URL of your gateway — do not include the API path. The
+Agent appends the correct path automatically based on the provider you
+selected. For example:
+
+.. code-block:: text
+
+   ✓  https://gateway.internal/api/openai/v1
+   ✗  https://gateway.internal/api/openai/v1/chat/completions
+
+**Model names, always prefix with the provider slug**
+
+Use the model identifier your gateway provides, prefixed with the provider
+slug. The prefix prevents the model ID from being misrouted to a cloud
+provider instead of your gateway, and is stripped before the name is sent:
+
+.. code-block:: text
+
+   openai/your-model-id
+   anthropic/your-model-id
+
+This is especially important when your gateway returns model IDs that start
+with a vendor name (e.g. ``anthropic.claude-sonnet``). Without the prefix,
+those IDs may be misrouted to a cloud provider instead of your gateway.
+
+Use **Test connection** to verify the full configuration works before saving.
+
+.. image:: https://cdn.voxel51.com/voxel-agent/enterprise/custom_gateway_headers_screenshot.webp
+   :alt: fiftyone-agent-extra-headers
+   :align: center
+
+Use **Extra headers** for any additional authentication or routing headers your
+gateway requires, such as project tokens or custom ``User-Agent`` values.
+
+**Per-user attribution**
+
+When a custom endpoint is configured, the Agent automatically adds an
+``X-FiftyOne-User-Email`` header to every request containing the email address
+of the currently logged-in user. Gateways can use this header to attribute
+requests to individual users rather than a shared system account, which is
+useful for enforcing per-user quotas or audit logging.
+
+.. note::
+
+    Admins are responsible for ensuring that the configured endpoint's data
+    handling and retention align with their organization's privacy policy.
 
 .. _enterprise-agent-using:
 
@@ -113,3 +191,8 @@ agent exactly how to perform a task, step by step.
     You can also build and add your own custom skills to extend the agent's
     capabilities. See :ref:`Developing skills <agents-developing>` for full
     instructions.
+
+.. customanimatedcta::
+    :button_text: Browse Enterprise Skills
+    :button_link: ../agents/index.html?tag=Enterprise
+    :align: right

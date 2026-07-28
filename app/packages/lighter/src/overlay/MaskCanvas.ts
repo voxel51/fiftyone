@@ -11,10 +11,10 @@ import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 import type { SerializedMask } from "@fiftyone/utilities";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { DrawStyle, Point, Rect } from "../types";
-import { parseColorToRGBA } from "../utils/color";
 import {
   createMaskCanvas,
   decodeMask,
+  decodeMaskToRaster,
   encodeMask,
   maskBounds,
   type MaskBounds,
@@ -64,8 +64,6 @@ export class MaskCanvas {
   private rawMaskData?: string | OverlayMask;
   /** True while an async decode is in flight. */
   private decoding = false;
-  /** The color used for the current decoded bitmap, so we can re-decode on color change. */
-  private decodedColor?: string;
 
   /** Raw single-channel pixel data for hit-testing via containsMaskPixel(). */
   private rawPixels?: { src: Uint8Array; width: number; height: number };
@@ -73,12 +71,19 @@ export class MaskCanvas {
   // canvas contents encoded for persistence to backend
   private pendingMask?: string;
 
+  /**
+   * Count of in-flight async paint/snapshot encodes. While positive, a freshly
+   * painted mask hasn't yet produced its `pendingMask`, so the owning overlay
+   * must NOT drop the mask on a maskless reproject — destroying the canvas would
+   * abort the encode (it bails on canvas-swap) and lose the mask. See
+   * {@link DetectionOverlay.applyLabel}.
+   */
+  private encodingInFlight = 0;
+
   // ---- Editing canvas state ----
   private canvas?: HTMLCanvasElement;
   private context?: CanvasRenderingContext2D;
   private lastPoint?: Point;
-  private currentColor?: string;
-  private lastColor?: string;
 
   // ---- snapshots for undo/redo ----
   private preStrokeSnapshot?: MaskSnapshot;
@@ -96,7 +101,7 @@ export class MaskCanvas {
    * Plain `undefined` and `{ $binary: { base64 } }` wrappers are unwrapped.
    */
   private static extractSource(
-    mask?: SerializedMask | OverlayMask
+    mask?: SerializedMask | OverlayMask,
   ): string | OverlayMask | undefined {
     if (!mask) return undefined;
     if (typeof mask === "string") return mask;
@@ -113,6 +118,14 @@ export class MaskCanvas {
   updateSource(mask?: SerializedMask | OverlayMask): boolean {
     const source = MaskCanvas.extractSource(mask);
     if (source === this.rawMaskData) return false;
+
+    // Never reset while a paint encode is still in flight: those canvas pixels
+    // are an uncommitted stroke not yet reflected in any source, so a reconcile
+    // echo reproject (which carries the older, pre-stroke value) would drop them
+    // — and the in-flight encode bails on the canvas swap, losing the stroke for
+    // good. Once the encode has resolved the pixels live in `source`, so a reset
+    // here is recoverable (ensureCanvas re-seeds from `rawMaskData`).
+    if (this.encodingInFlight > 0) return false;
 
     this.reset();
     this.rawMaskData = source;
@@ -135,8 +148,6 @@ export class MaskCanvas {
     this.context = undefined;
     this.pendingMask = undefined;
 
-    this.decodedColor = undefined;
-    this.lastColor = undefined;
     this.lastPoint = undefined;
 
     this.preStrokeSnapshot = undefined;
@@ -154,21 +165,24 @@ export class MaskCanvas {
 
   /**
    * Kicks off async mask decoding if raw data is present and hasn't been
-   * decoded yet (or needs re-decoding due to color change).
-   * Also populates rawPixels for hit-testing on first decode.
+   * decoded yet. The decoded bitmap is color-INDEPENDENT (white+alpha), so it
+   * is decoded once and never re-decoded on a color change — color is applied
+   * at draw time via GPU tint. Also populates rawPixels for hit-testing on
+   * first decode.
    */
-  private decodeMaskIfNeeded(color: string, onDecoded?: () => void): void {
+  private decodeMaskIfNeeded(onDecoded?: () => void): void {
     if (!this.rawMaskData || this.decoding) return;
 
-    // Already decoded with this color and raw pixels are available
-    if (this.maskBitmap && this.decodedColor === color) return;
+    // Already decoded — the bitmap carries no color, so it stays valid across
+    // color changes.
+    if (this.maskBitmap) return;
 
     // Snapshot the source so a concurrent updateSource() can invalidate this
     // decode without stale data overwriting the new source on resolution.
     const sourceToken = this.rawMaskData;
     this.decoding = true;
 
-    decodeMask(sourceToken, color)
+    decodeMask(sourceToken)
       .then(({ bitmap, rawPixels }) => {
         this.decoding = false;
 
@@ -181,7 +195,6 @@ export class MaskCanvas {
 
         this.maskBitmap?.close();
         this.maskBitmap = bitmap;
-        this.decodedColor = color;
 
         if (rawPixels) {
           this.rawPixels = rawPixels;
@@ -206,25 +219,21 @@ export class MaskCanvas {
     containerId: string,
     color: string,
     opacity: number,
-    onDecoded?: () => void
+    onDecoded?: () => void,
   ): void {
-    this.currentColor = color;
-    this.decodeMaskIfNeeded(color, onDecoded);
+    this.decodeMaskIfNeeded(onDecoded);
 
     if (!this.hasRenderable()) return;
 
+    // The canvas/bitmap is color-independent (white+alpha); the overlay color
+    // is applied on the GPU via `tint`, so a color change is a re-tint with no
+    // per-pixel CPU recolor.
     if (this.canvas) {
-      // When the overlay color first becomes available or changes, rebuild the
-      // canvas so every pixel is recolored and alpha-thresholded in one pass.
-      if (this.currentColor !== this.lastColor) {
-        this.updateCanvas(this.canvas.width, this.canvas.height);
-      }
-
       renderer.drawImage(
         { type: "canvas", canvas: this.canvas },
         bounds,
-        { opacity },
-        containerId
+        { opacity, tint: color },
+        containerId,
       );
 
       return;
@@ -234,8 +243,8 @@ export class MaskCanvas {
       renderer.drawImage(
         { type: "bitmap", bitmap: this.maskBitmap },
         bounds,
-        { opacity },
-        containerId
+        { opacity, tint: color },
+        containerId,
       );
 
       return;
@@ -271,10 +280,57 @@ export class MaskCanvas {
       this.context.imageSmoothingEnabled = prevSmoothing;
       this.maskBitmap.close();
       this.maskBitmap = undefined;
+    } else if (this.rawMaskData) {
+      // No decoded bitmap yet — e.g. `updateSource` just reset us from a
+      // reconcile reproject (echo or undo) and the async decode hasn't run. Seed
+      // the canvas synchronously from the raw source so a stroke that begins now
+      // paints onto the existing mask instead of a blank canvas (the mask-drop
+      // bug).
+      this.seedCanvasFromRawSync(width, height);
     }
 
     this.rawMaskData = undefined;
-    this.decodedColor = undefined;
+  }
+
+  /**
+   * Synchronously rasterizes {@link rawMaskData} into the (already-created)
+   * editing canvas, scaled to fit. The raster is color-INDEPENDENT (white+alpha)
+   * to match painted strokes; the display color is applied at draw time via
+   * tint. Best-effort: a decode failure leaves the canvas blank rather than
+   * throwing, matching the pre-seed behavior.
+   */
+  private seedCanvasFromRawSync(width: number, height: number): void {
+    if (!this.rawMaskData || !this.context) return;
+
+    try {
+      const {
+        rgba,
+        width: srcWidth,
+        height: srcHeight,
+        rawPixels,
+      } = decodeMaskToRaster(this.rawMaskData);
+
+      const { maskCanvas: srcCanvas, maskContext: srcContext } =
+        createMaskCanvas(srcWidth, srcHeight);
+      srcContext.putImageData(
+        new ImageData(new Uint8ClampedArray(rgba), srcWidth, srcHeight),
+        0,
+        0,
+      );
+
+      const prevSmoothing = this.context.imageSmoothingEnabled;
+      this.context.imageSmoothingEnabled = false;
+      this.context.drawImage(srcCanvas, 0, 0, width, height);
+      this.context.imageSmoothingEnabled = prevSmoothing;
+
+      // Keep hit-testing working immediately: ensureCanvas clears `rawMaskData`
+      // right after this, so the async decode never runs to backfill
+      // `rawPixels`. Adopt the freshly rasterized pixels now (they're at the
+      // mask's native resolution, which is what containsMaskPixel maps against).
+      this.rawPixels = { src: rawPixels, width: srcWidth, height: srcHeight };
+    } catch (err) {
+      console.error("[MaskCanvas] ensureCanvas sync seed failed:", err);
+    }
   }
 
   /**
@@ -291,6 +347,11 @@ export class MaskCanvas {
     this.pendingMask = undefined;
 
     return mask;
+  }
+
+  /** True while a paint/snapshot encode is still resolving (no `pendingMask` yet). */
+  hasPendingEncode(): boolean {
+    return this.encodingInFlight > 0;
   }
 
   /**
@@ -363,7 +424,8 @@ export class MaskCanvas {
   private paint(
     point: Point,
     toolState: SegmentationToolState,
-    style: DrawStyle | undefined
+    // color comes from the draw-time tint; strokes are painted white
+    _style: DrawStyle | undefined,
   ) {
     if (!this.context) return;
 
@@ -376,11 +438,8 @@ export class MaskCanvas {
       this.context.fillStyle = "rgba(0,0,0,1)";
     } else {
       this.context.globalCompositeOperation = "source-over";
-      this.context.fillStyle =
-        style?.strokeStyle ||
-        style?.fillStyle ||
-        this.currentColor ||
-        "#ffffff";
+      // Paint white; the display color is applied at draw time via tint.
+      this.context.fillStyle = "#ffffff";
     }
 
     this.context.beginPath();
@@ -399,7 +458,7 @@ export class MaskCanvas {
     worldPoint: Point,
     bounds: Rect,
     toolState: SegmentationToolState,
-    style: DrawStyle | undefined
+    style: DrawStyle | undefined,
   ): Rect | undefined {
     this.ensureCanvas(bounds);
 
@@ -446,7 +505,8 @@ export class MaskCanvas {
     worldPoints: Point[],
     bounds: Rect,
     toolState: SegmentationToolState,
-    style: DrawStyle | undefined
+    // color comes from the draw-time tint; strokes are painted white
+    _style: DrawStyle | undefined,
   ): Rect | undefined {
     if (worldPoints.length < 3) return undefined;
 
@@ -487,11 +547,8 @@ export class MaskCanvas {
       this.context.fillStyle = "rgba(0,0,0,1)";
     } else {
       this.context.globalCompositeOperation = "source-over";
-      this.context.fillStyle =
-        style?.strokeStyle ||
-        style?.fillStyle ||
-        this.currentColor ||
-        "#ffffff";
+      // Paint white; the display color is applied at draw time via tint.
+      this.context.fillStyle = "#ffffff";
     }
 
     this.context.beginPath();
@@ -512,15 +569,15 @@ export class MaskCanvas {
    * {@link getPaintStrokeData} after to retrieve before/after for undo.
    *
    * `otherSource` is the source's drawable mask (canvas or bitmap, typically
-   * obtained via {@link getPreviewSource}). The recolor/threshold pass at
-   * the end of {@link paintEnd} snaps composited pixels to this overlay's
-   * current color, so source pixels lose their original color.
+   * obtained via {@link getPreviewSource}). The threshold pass at the end of
+   * {@link paintEnd} snaps composited pixels to opaque white+alpha; the
+   * display color is applied per-overlay at draw time via tint.
    */
   mergeFrom(
     otherSource: HTMLCanvasElement | ImageBitmap,
     otherBounds: Rect,
     ourBounds: Rect,
-    onEncoded?: (encoded: string) => void
+    onEncoded?: (encoded: string) => void,
   ): Rect {
     this.ensureCanvas(ourBounds);
     this.paintStart(ourBounds);
@@ -529,11 +586,11 @@ export class MaskCanvas {
     const minY = Math.min(ourBounds.y, otherBounds.y);
     const maxX = Math.max(
       ourBounds.x + ourBounds.width,
-      otherBounds.x + otherBounds.width
+      otherBounds.x + otherBounds.width,
     );
     const maxY = Math.max(
       ourBounds.y + ourBounds.height,
-      otherBounds.y + otherBounds.height
+      otherBounds.y + otherBounds.height,
     );
 
     const newBounds =
@@ -567,7 +624,7 @@ export class MaskCanvas {
 
     this.lastPoint = undefined;
 
-    // Rebuild the canvas to recolor + threshold anti-aliased edge pixels
+    // Rebuild the canvas to threshold anti-aliased edge pixels to white+alpha
     // before computing tight bounds and snapshotting.
     this.updateCanvas(this.canvas.width, this.canvas.height);
 
@@ -581,6 +638,7 @@ export class MaskCanvas {
     this.updateRawPixelsFromCanvas();
 
     const capturedCanvas = this.canvas;
+    this.encodingInFlight++;
     encodeMask(capturedCanvas)
       .then((encoded) => {
         if (this.canvas !== capturedCanvas) return;
@@ -589,6 +647,9 @@ export class MaskCanvas {
       })
       .catch((err) => {
         console.error("[MaskCanvas] paintEnd encode failed:", err);
+      })
+      .finally(() => {
+        this.encodingInFlight--;
       });
 
     return finalBounds;
@@ -618,7 +679,7 @@ export class MaskCanvas {
     from: Point,
     to: Point,
     tool: SegmentationToolState,
-    style: DrawStyle | undefined
+    style: DrawStyle | undefined,
   ): void {
     const dx = to.x - from.x;
     const dy = to.y - from.y;
@@ -650,19 +711,23 @@ export class MaskCanvas {
   }
 
   /**
-   * Allocates a new canvas, copies existing pixels into it, and recolors
-   * every non-transparent pixel to {@link currentColor} while snapping alpha
-   * to 0 or 255.  This serves double duty:
+   * Allocates a new canvas, copies existing pixels into it, and snaps every
+   * non-transparent pixel to opaque white while snapping alpha to 0 or 255.
+   * The mask is kept color-INDEPENDENT (white+alpha); the display color is
+   * applied at draw time via GPU tint. This serves double duty:
    *
    * 1. Resizing the canvas when the mask bounds expand during painting.
-   * 2. Correcting wrong-colored pixels and eliminating anti-aliased edges
-   *    produced by Canvas 2D path drawing (arc/fill always anti-alias).
+   * 2. Eliminating anti-aliased edges produced by Canvas 2D path drawing
+   *    (arc/fill always anti-alias) by thresholding alpha to 0 or 255.
+   *
+   * Runs only on a data change (paint / merge / resize) — never on a color
+   * change, which is now a free re-tint.
    */
   private updateCanvas(
     width: number,
     height: number,
     offsetX = 0,
-    offsetY = 0
+    offsetY = 0,
   ) {
     const { maskCanvas, maskContext } = createMaskCanvas(width, height);
 
@@ -670,23 +735,17 @@ export class MaskCanvas {
       const { width, height } = this.canvas;
       const imageData = this.context.getImageData(0, 0, width, height);
 
-      // Recolor + threshold: snap every non-transparent pixel to the
-      // overlay color with full alpha, eliminating anti-aliased fringes
-      // and correcting any pixels painted before the color was known.
-      if (this.currentColor) {
-        const { r, g, b } = parseColorToRGBA(this.currentColor);
-        const data = imageData.data;
+      // Threshold: snap every non-transparent pixel to opaque white,
+      // eliminating anti-aliased fringes. Color comes from the draw-time tint.
+      const data = imageData.data;
 
-        for (let i = 0; i < data.length; i += 4) {
-          if (data[i + 3] > 0) {
-            data[i] = r;
-            data[i + 1] = g;
-            data[i + 2] = b;
-            data[i + 3] = 255;
-          }
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] > 0) {
+          data[i] = 255;
+          data[i + 1] = 255;
+          data[i + 2] = 255;
+          data[i + 3] = 255;
         }
-
-        this.lastColor = this.currentColor;
       }
 
       maskContext.putImageData(imageData, offsetX, offsetY);
@@ -705,7 +764,7 @@ export class MaskCanvas {
    */
   private updateBounds(
     oldBounds: Rect,
-    extent: { minX: number; minY: number; maxX: number; maxY: number }
+    extent: { minX: number; minY: number; maxX: number; maxY: number },
   ): Rect | undefined {
     if (!this.canvas || !this.context) return undefined;
 
@@ -830,7 +889,7 @@ export class MaskCanvas {
    */
   restoreSnapshot(
     snapshot: MaskSnapshot | undefined,
-    onEncoded?: (encoded: string) => void
+    onEncoded?: (encoded: string) => void,
   ): void {
     if (!snapshot) {
       this.canvas = undefined;
@@ -843,7 +902,7 @@ export class MaskCanvas {
 
     const { maskCanvas, maskContext } = createMaskCanvas(
       snapshot.width,
-      snapshot.height
+      snapshot.height,
     );
     maskContext.putImageData(snapshot.imageData, 0, 0);
 
@@ -855,6 +914,7 @@ export class MaskCanvas {
     this.updateRawPixelsFromCanvas();
 
     const capturedCanvas = this.canvas;
+    this.encodingInFlight++;
     encodeMask(capturedCanvas)
       .then((encoded) => {
         if (this.canvas !== capturedCanvas) return;
@@ -863,6 +923,9 @@ export class MaskCanvas {
       })
       .catch((err) => {
         console.error("[MaskCanvas] restoreSnapshot encode failed:", err);
+      })
+      .finally(() => {
+        this.encodingInFlight--;
       });
   }
 

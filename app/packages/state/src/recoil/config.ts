@@ -13,7 +13,7 @@ export const configData = graphQLSyncFragmentAtom<
   { fragments: [configFragment], default: null },
   {
     key: "configData",
-  }
+  },
 );
 
 export const config = selector({

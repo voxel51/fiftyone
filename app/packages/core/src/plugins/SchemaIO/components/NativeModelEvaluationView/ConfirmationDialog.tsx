@@ -17,12 +17,12 @@ const ConfirmationDialog = ({
 }) => {
   const dialogTitle = "Delete model evaluation?";
   const [selectedEvaluation, setSelectedEvaluation] = useRecoilState(
-    selectedModelEvaluation
+    selectedModelEvaluation,
   );
 
   const handleConfirm = () => {
     const evalId = evaluations.find(
-      (evaluation) => evaluation.key === selectedEvaluation
+      (evaluation) => evaluation.key === selectedEvaluation,
     ).id;
     handleDelete(evalId, selectedEvaluation);
     setSelectedEvaluation(null);

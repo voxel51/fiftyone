@@ -11,12 +11,12 @@ const useSessionSpaces = () => {
 
   const computedSessionSpaces = useMemo(
     () => toAppFormat(sessionSpacesState),
-    [sessionSpacesState]
+    [sessionSpacesState],
   );
 
   const computedPanelsState = useMemo(
     () => extractPanelsState(computedSessionSpaces),
-    [computedSessionSpaces]
+    [computedSessionSpaces],
   );
 
   const setSessionSpaces = useCallback(
@@ -24,7 +24,7 @@ const useSessionSpaces = () => {
       const formattedSpaces = toAPIFormat(spaces, panelsState);
       setSessionSpacesState(formattedSpaces);
     },
-    [setSessionSpacesState]
+    [setSessionSpacesState],
   );
 
   const setSessionSpacesDebounced = useMemo(() => {
@@ -56,6 +56,8 @@ function toAPIFormat(state, panelsState = {}) {
     _cls: nonPanelTypes.includes(state.type) ? "Space" : "Panel",
     component_id: state.id,
   };
+  // ordering clock for two-way sync; rides the root only (see MainSpace)
+  if (state._version !== undefined) apiState._version = state._version;
   if (apiState._cls === "Panel") {
     const isPinned = state.pinned;
     const panelState = panelsState[state.id];
@@ -73,8 +75,8 @@ function toAPIFormat(state, panelsState = {}) {
 
 function toAppFormat(state) {
   if (Array.isArray(state)) return state.map(toAppFormat);
-  if (state._cls)
-    return {
+  if (state._cls) {
+    const appState = {
       id: state.component_id,
       children: state.children ? toAppFormat(state.children) : [],
       layout: state.orientation,
@@ -84,6 +86,9 @@ function toAppFormat(state) {
       pinned: state.pinned,
       sizes: state.sizes,
     };
+    if (state._version !== undefined) appState._version = state._version;
+    return appState;
+  }
   return state;
 }
 
@@ -94,7 +99,7 @@ function extractPanelsState(space) {
     return space.reduce(
       (spaceState, itemState) =>
         Object.assign(spaceState, extractPanelsState(itemState)),
-      {}
+      {},
     );
   // expects state from session to always be an object
   if (size(space.state) > 0) spaceState[space.id] = space.state;

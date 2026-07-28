@@ -194,6 +194,18 @@ $(document).ready(function () {
   // Initialize the filter system
   window.filterTags.bind();
 
+  // Auto-select tag from URL ?tag= parameter (e.g., ?tag=Enterprise)
+  var urlParams = new URLSearchParams(window.location.search);
+  var tagParam = urlParams.get("tag");
+  if (tagParam && /^[a-zA-Z0-9 _-]+$/.test(tagParam)) {
+    var tagBtn = document.querySelector(
+      '.tutorial-filter[data-tag="' + tagParam + '"]'
+    );
+    if (tagBtn) {
+      tagBtn.click();
+    }
+  }
+
   // Tutorial cards functionality
   $(document).on("click", ".tutorials-card", function () {
     window.location = $(this).attr("link");

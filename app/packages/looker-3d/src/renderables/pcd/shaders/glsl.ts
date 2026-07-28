@@ -1,43 +1,85 @@
-export const ShadeByRgbShaders = {
-  vertexShader: /* glsl */ `
-  // this uniform is used to pass the point size to the vertex shader from JS
-  uniform float pointSize;
+import { POINT_CLOUD_CROP_BOUNDS_EPSILON } from "../../../constants";
 
-  // this uniform is used to indicate whether the point size should be attenuated based on distance from camera
-  uniform bool isPointSizeAttenuated;
+const PointCloudCropVertexDeclarations = /* glsl */ `
+  uniform bool pointCloudCropEnabled;
+  uniform mat4 pointCloudCropWorldToBox;
+  uniform vec3 pointCloudCropHalfSize;
 
-  // these attributes are injected into the vertex shader based on geometry
-  in vec3 rgb;
+  out float vPointCloudCropVisible;
 
-  // this attribute is used to pass the color to the fragment shader
-  out vec3 vColor;
+  bool isInsidePointCloudCrop(vec3 localPosition) {
+    if (!pointCloudCropEnabled) {
+      return true;
+    }
 
-  void main() {
-    // assign color to the varying variable so that it can be used in fragment shader
-    vColor = rgb;
+    vec3 boxPosition = (
+      pointCloudCropWorldToBox *
+      modelMatrix *
+      vec4(localPosition, 1.0)
+    ).xyz;
 
-    // do a model-view transform to get the position of the point in camera space
-    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-
-    // (1.0 / length(mvPosition.xyz)) is used to scale the point size based on distance from camera
-    gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
-
-    // do a projection transform to get the position of the point in clip space
-    gl_Position = projectionMatrix * mvPosition;
+    return all(
+      lessThanEqual(
+        abs(boxPosition),
+        pointCloudCropHalfSize + vec3(${POINT_CLOUD_CROP_BOUNDS_EPSILON})
+      )
+    );
   }
 
+  void setPointCloudCropVisibility(vec3 localPosition) {
+    vPointCloudCropVisible = isInsidePointCloudCrop(localPosition) ? 1.0 : 0.0;
+  }
+
+  float croppedPointSize(float requestedPointSize) {
+    return vPointCloudCropVisible < 0.5 ? 0.0 : requestedPointSize;
+  }
+`;
+
+const PointCloudCropFragmentDeclarations = /* glsl */ `
+  in float vPointCloudCropVisible;
+
+  void discardPointCloudCrop() {
+    if (vPointCloudCropVisible < 0.5) {
+      discard;
+    }
+  }
+`;
+
+export const ShadeByRgbShaders = {
+  vertexShader: /* glsl */ `
+  uniform float pointSize;
+  uniform bool isPointSizeAttenuated;
+
+  in vec3 rgb;
+  out vec3 vColor;
+
+  ${PointCloudCropVertexDeclarations}
+
+  void main() {
+    vec3 pos = position;
+    vColor = rgb;
+    setPointCloudCropVisibility(pos);
+
+    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+    float resolvedPointSize = pointSize * (
+      isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0
+    );
+
+    gl_PointSize = croppedPointSize(resolvedPointSize);
+    gl_Position = projectionMatrix * mvPosition;
+  }
   `,
   fragmentShader: /* glsl */ `
   in vec3 vColor;
-  
-  // this uniform is used to pass the opacity
   uniform float opacity;
-
   out vec4 fragColor;
 
+  ${PointCloudCropFragmentDeclarations}
+
   void main() {
+    discardPointCloudCrop();
     fragColor = vec4(vColor, opacity);
-  } 
+  }
   `,
 };
 
@@ -51,6 +93,8 @@ export const ShadeByHeightShaders = {
   uniform bool isPointSizeAttenuated;
 
   out float hValue;
+
+  ${PointCloudCropVertexDeclarations}
 
   float remap(float minval, float maxval, float curval) {
     return (curval - minval) / (maxval - minval);
@@ -69,19 +113,23 @@ export const ShadeByHeightShaders = {
 
   void main() {
     vec3 pos = position;
-    
+    setPointCloudCropVisibility(pos);
+
     vec3 rotatedUpVector = upVector;
     if (quaternion.w != 0.0 || quaternion.x != 0.0 || quaternion.y != 0.0 || quaternion.z != 0.0) {
       mat3 rotationMatrix = quaternionToMatrix(quaternion);
       rotatedUpVector = rotationMatrix * upVector;
     }
-    
+
     float projectedHeight = dot(pos, rotatedUpVector);
     hValue = remap(min, max, projectedHeight);
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+    float resolvedPointSize = pointSize * (
+      isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0
+    );
 
-    gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
+    gl_PointSize = croppedPointSize(resolvedPointSize);
     gl_Position = projectionMatrix * mvPosition;
   }`,
   fragmentShader: /* glsl */ `
@@ -90,7 +138,10 @@ export const ShadeByHeightShaders = {
   in float hValue;
   out vec4 fragColor;
 
+  ${PointCloudCropFragmentDeclarations}
+
   void main() {
+    discardPointCloudCrop();
     float v = clamp(hValue, 0., 1.);
     // sample from the middle of the gradient map to avoid border artifacts
     vec3 col = texture(gradientMap, vec2(0.5, v)).rgb;
@@ -110,24 +161,30 @@ export const ShadeByIntensityShaders = {
   uniform float thresholdMin;
   uniform float thresholdMax;
 
+  ${PointCloudCropVertexDeclarations}
+
   float remap ( float minval, float maxval, float curval ) {
     return ( curval - minval ) / ( maxval - minval );
   }
 
   void main() {
     vec3 pos = position;
+    setPointCloudCropVisibility(pos);
     vNorm = clamp(remap(uMin, uMax, intensity), 0.0, 1.0);
     vIntensity = intensity;
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+    float resolvedPointSize = pointSize * (
+      isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0
+    );
 
     // hide points outside threshold range by setting size to 0
     if (intensity < thresholdMin || intensity > thresholdMax) {
       gl_PointSize = 0.0;
     } else {
-      gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
+      gl_PointSize = croppedPointSize(resolvedPointSize);
     }
-    
+
     gl_Position = projectionMatrix * mvPosition;
   }
 `,
@@ -140,12 +197,15 @@ export const ShadeByIntensityShaders = {
   in float vIntensity;
   out vec4 fragColor;
 
+  ${PointCloudCropFragmentDeclarations}
+
   void main() {
-    // discard fragments outside threshold range
+    discardPointCloudCrop();
+
     if (vIntensity < thresholdMin || vIntensity > thresholdMax) {
       discard;
     }
-    
+
     vec3 col = texture(gradientMap, vec2(0.5, vNorm)).rgb;
     fragColor = vec4(col, opacity);
   }
@@ -163,26 +223,32 @@ export const ShadeByLegacyIntensityShaders = {
     uniform bool isPointSizeAttenuated;
     uniform float thresholdMin;
     uniform float thresholdMax;
-  
+
+    ${PointCloudCropVertexDeclarations}
+
     float remap ( float minval, float maxval, float curval ) {
       return ( curval - minval ) / ( maxval - minval );
     }
-  
+
     void main() {
       vec3 pos = position;
+      setPointCloudCropVisibility(pos);
       float intensity = rgb.r;
       vNorm = clamp(remap(uMin, uMax, intensity), 0.0, 1.0);
       vIntensity = intensity;
-  
+
       vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-  
+      float resolvedPointSize = pointSize * (
+        isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0
+      );
+
       // hide points outside threshold range by setting size to 0
       if (intensity < thresholdMin || intensity > thresholdMax) {
         gl_PointSize = 0.0;
       } else {
-        gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
+        gl_PointSize = croppedPointSize(resolvedPointSize);
       }
-      
+
       gl_Position = projectionMatrix * mvPosition;
     }
   `,
@@ -194,14 +260,16 @@ export const ShadeByLegacyIntensityShaders = {
     in float vNorm;
     in float vIntensity;
     out vec4 fragColor;
-  
+
+    ${PointCloudCropFragmentDeclarations}
+
     void main() {
-      // discard fragments outside threshold range
+      discardPointCloudCrop();
+
       if (vIntensity < thresholdMin || vIntensity > thresholdMax) {
         discard;
       }
-      
-      // sample from the middle of the gradient map to avoid border artifacts
+
       vec3 col = texture(gradientMap, vec2(0.5, vNorm)).rgb;
       fragColor = vec4(col, opacity);
     }
@@ -215,22 +283,68 @@ export const ShadeByCustomColorShaders = {
   uniform vec3 color;
   out vec3 vColor;
 
-  void main() {
-    vColor = color;
+  ${PointCloudCropVertexDeclarations}
 
-    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-    gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);    gl_Position = projectionMatrix * mvPosition;
+  void main() {
+    vec3 pos = position;
+    vColor = color;
+    setPointCloudCropVisibility(pos);
+
+    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+    float resolvedPointSize = pointSize * (
+      isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0
+    );
+
+    gl_PointSize = croppedPointSize(resolvedPointSize);
     gl_Position = projectionMatrix * mvPosition;
   }
 `,
   fragmentShader: /* glsl */ `
   in vec3 vColor;
-
   uniform float opacity;
-
   out vec4 fragColor;
 
+  ${PointCloudCropFragmentDeclarations}
+
   void main() {
+    discardPointCloudCrop();
+    fragColor = vec4(vColor, opacity);
+  }
+`,
+};
+
+export const ShadeByVertexColorShaders = {
+  vertexShader: /* glsl */ `
+  uniform float pointSize;
+  uniform bool isPointSizeAttenuated;
+  in vec3 color;
+  out vec3 vColor;
+
+  ${PointCloudCropVertexDeclarations}
+
+  void main() {
+    vec3 pos = position;
+    vColor = color;
+    setPointCloudCropVisibility(pos);
+
+    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+    float resolvedPointSize = pointSize * (
+      isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0
+    );
+
+    gl_PointSize = croppedPointSize(resolvedPointSize);
+    gl_Position = projectionMatrix * mvPosition;
+  }
+`,
+  fragmentShader: /* glsl */ `
+  in vec3 vColor;
+  uniform float opacity;
+  out vec4 fragColor;
+
+  ${PointCloudCropFragmentDeclarations}
+
+  void main() {
+    discardPointCloudCrop();
     fragColor = vec4(vColor, opacity);
   }
 `,
@@ -249,23 +363,30 @@ export const DynamicAttributeShaders = {
   out float vNorm;
   out float vAttrValue;
 
+  ${PointCloudCropVertexDeclarations}
+
   float remap(float minval, float maxval, float curval) {
     return (curval - minval) / (maxval - minval);
   }
 
   void main() {
+    vec3 pos = position;
+    setPointCloudCropVisibility(pos);
     vNorm = clamp(remap(uMin, uMax, dynamicAttr), 0.0, 1.0);
     vAttrValue = dynamicAttr;
-    
-    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    
+
+    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+    float resolvedPointSize = pointSize * (
+      isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0
+    );
+
     // hide points outside threshold range by setting size to 0
     if (dynamicAttr < thresholdMin || dynamicAttr > thresholdMax) {
       gl_PointSize = 0.0;
     } else {
-      gl_PointSize = pointSize * (isPointSizeAttenuated ? (1.0 / length(mvPosition.xyz)) : 1.0);
+      gl_PointSize = croppedPointSize(resolvedPointSize);
     }
-    
+
     gl_Position = projectionMatrix * mvPosition;
   }
   `,
@@ -278,12 +399,15 @@ export const DynamicAttributeShaders = {
   in float vAttrValue;
   out vec4 fragColor;
 
+  ${PointCloudCropFragmentDeclarations}
+
   void main() {
-    // discard fragments outside threshold range
+    discardPointCloudCrop();
+
     if (vAttrValue < thresholdMin || vAttrValue > thresholdMax) {
       discard;
     }
-    
+
     vec3 col = texture(gradientMap, vec2(0.5, vNorm)).rgb;
     fragColor = vec4(col, opacity);
   }

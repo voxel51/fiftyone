@@ -59,7 +59,7 @@ private PyPI server as shown below:
    structure as :doc:`fiftyone <../api/fiftyone>`, so any existing scripts you
    built using open source will continue to run after you upgrade!
 
-Next Steps
+Next steps
 __________
 
 After installing the Enterprise Python SDK in your virtual environment, you'll need
@@ -161,11 +161,22 @@ credentials for use by all app users <enterprise-cloud-storage-page>`.
 Cross-origin resource sharing (CORS)
 ____________________________________
 
-If your datasets include cloud-backed
-:ref:`point clouds <point-cloud-datasets>` or
-:ref:`segmentation maps <semantic-segmentation>`, you may need to configure
-cross-origin resource sharing (CORS) for your cloud buckets. Details are
-provided below for each cloud platform.
+We strongly recommend configuring cross-origin resource sharing (CORS) on your
+cloud storage buckets/containers. Most media renders in the App via standard ``<img>``/``<video>``
+elements that do not require CORS, but any media that the App fetches and
+decodes directly in the browser **requires** it, including cloud-backed
+:ref:`point clouds <point-cloud-datasets>`,
+:ref:`segmentation maps <semantic-segmentation>`, in-App annotation, and
+multimodal (MCAP) datasets. Without CORS, these assets fail to load with a
+``No 'Access-Control-Allow-Origin' header is present on the requested resource``
+browser error, even when other media displays correctly in the App.
+
+When configuring CORS, set the allowed origin(s) to the URL(s) from which your
+users access the FiftyOne Enterprise App, and allow the ``GET`` and ``HEAD``
+methods. For media that is read in byte ranges (such as MCAP), also allow the
+``Range`` request header and expose the ``Content-Range``, ``Content-Length``,
+and ``Accept-Ranges`` response headers. Details are provided below for each
+cloud platform.
 
 Browser caching
 _______________
@@ -257,7 +268,7 @@ here is an example configuration:
             "AllowedHeaders": ["*"],
             "AllowedMethods": ["GET", "HEAD"],
             "AllowedOrigins": ["https://fiftyone-enterprise-deployment.yourcompany.com"],
-            "ExposeHeaders": [],
+            "ExposeHeaders": ["Content-Range", "Content-Length", "Accept-Ranges"],
             "MaxAgeSeconds": 86400
         }
     ]
@@ -315,7 +326,7 @@ here is an example configuration:
         {
             "origin": ["https://fiftyone-enterprise-deployment.yourcompany.com"],
             "method": ["GET", "HEAD"],
-            "responseHeader": ["*"],
+            "responseHeader": ["Content-Range", "Content-Length", "Accept-Ranges"],
             "maxAgeSeconds": 3600
         }
     ]
@@ -449,6 +460,25 @@ alias:
     `AZURE_STORAGE_ACCOUNT_URL` environment variable or by including the
     `account_url` key in your credentials `.ini` file.
 
+If you need to configure CORS on your Azure Blob storage account, you can do so
+at the storage-account level (Blob service) via the Azure portal
+(**Settings > Resource sharing (CORS)**) or the Azure CLI:
+
+.. code-block:: shell
+
+    az storage cors add \
+        --services b \
+        --methods GET HEAD \
+        --origins "https://fiftyone-enterprise-deployment.yourcompany.com" \
+        --allowed-headers "*" \
+        --exposed-headers "Content-Range" "Content-Length" "Accept-Ranges" \
+        --max-age 3600 \
+        --account-name "<account-name>"
+
+See the
+`Azure Storage CORS documentation <https://learn.microsoft.com/en-us/rest/api/storageservices/cross-origin-resource-sharing--cors--support-for-the-azure-storage-services>`_
+for more details.
+
 If you would like to take advantage of browser caching you can
 `specify cache-control headers on Azure blobs <https://learn.microsoft.com/en-us/azure/cdn/cdn-manage-expiration-of-blob-content#setting-cache-control-headers-by-using-azure-powershell>`_.
 By default Azure does not provide cache-control headers so it will be up to your browser's
@@ -564,7 +594,7 @@ Provider names and the class that extra kwargs are passed to:
 
 .. _enterprise-cloud-storage-page:
 
-Managed Cloud Credentials
+Managed cloud credentials
 -------------------------
 
 Cloud provider credentials can be managed directly on the Enterprise server.
@@ -619,7 +649,7 @@ stopping once the first credential is found:
 6.  If any global default credentials for the provider of the media being
     accessed exist, those credentials will be used
 
-Setting Managed Credentials
+Setting managed credentials
 ___________________________
 
 Admins can configure cloud credentials via the Settings > Cloud storage page.
@@ -667,8 +697,9 @@ appropriate provider or specific bucket.
 
 .. _enterprise-cloud-creds-origin-preference:
 
-Cloud Credentials Origin Preference
+Cloud credentials origin preference
 ___________________________________
+
 If credentials are configured both on the local machine and remotely via the
 Enterprise server, the behavior is for the Enterprise SDK to use the first
 matching set of credentials found. 
@@ -690,8 +721,8 @@ credentials from the other source will be attempted before giving up.
 
 .. _enterprise-cloud-creds-local-download:
 
-Cloud Credentials Local Download
-___________________________________
+Cloud credentials local download
+________________________________
 
 By default, users must set up local credentials when using the Enterprise SDK
 with an API connection. This is to prevent downloading credentials from the
@@ -703,8 +734,8 @@ downloading of credentials to machines, set the environment variable
 
 .. _enterprise-ai-model-weights:
 
-AI Model Weights
-________________
+AI model weights
+----------------
 
 The FiftyOne Enterprise App ships with AI-assisted mask segmentation for annotation
 workflows. By default, the required model weights are served from Voxel51's

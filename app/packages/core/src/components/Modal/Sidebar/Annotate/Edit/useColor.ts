@@ -1,14 +1,14 @@
 import { useTheme } from "@fiftyone/components";
 import type { BaseOverlay } from "@fiftyone/lighter";
 import { getOverlayColor } from "@fiftyone/lighter";
-import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import useColorMappingContext from "../../../Lighter/useColorMappingContext";
-import { current } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 export default function useColor(overlay?: BaseOverlay) {
   const coloring = useColorMappingContext();
-  const refresh = useAtomValue(current);
+  const { selected } = useAnnotationContext();
+  const refresh = selected?.label;
   const brand = useTheme().primary.plainColor;
 
   return useMemo(() => {

@@ -16,7 +16,10 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 /** Read a cached ArrayBuffer by key, or undefined on miss. */
-function idbGet(db: IDBDatabase, key: string): Promise<ArrayBuffer | undefined> {
+function idbGet(
+  db: IDBDatabase,
+  key: string,
+): Promise<ArrayBuffer | undefined> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readonly");
     const req = tx.objectStore(STORE_NAME).get(key);
@@ -27,7 +30,11 @@ function idbGet(db: IDBDatabase, key: string): Promise<ArrayBuffer | undefined> 
 }
 
 /** Write an ArrayBuffer to the cache, keyed by URL. */
-function idbPut(db: IDBDatabase, key: string, value: ArrayBuffer): Promise<void> {
+function idbPut(
+  db: IDBDatabase,
+  key: string,
+  value: ArrayBuffer,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readwrite");
 
@@ -44,7 +51,7 @@ function idbPut(db: IDBDatabase, key: string, value: ArrayBuffer): Promise<void>
  */
 async function fetchWithProgress(
   url: string,
-  onProgress?: (loaded: number, total: number) => void
+  onProgress?: (loaded: number, total: number) => void,
 ): Promise<ArrayBuffer> {
   let lastError: Error | null = null;
 
@@ -58,10 +65,16 @@ async function fetchWithProgress(
       const response = await fetch(url, { signal: controller.signal });
 
       if (!response.ok) {
-        lastError = new Error(`${response.status} ${response.statusText} (${url})`);
+        lastError = new Error(
+          `${response.status} ${response.statusText} (${url})`,
+        );
         // Retry transient errors (5xx, 408 timeout, 429 throttle). Break (and throw) on other 4xx
-        if (response.status >= 400 && response.status < 500
-          && response.status !== 408 && response.status !== 429)
+        if (
+          response.status >= 400 &&
+          response.status < 500 &&
+          response.status !== 408 &&
+          response.status !== 429
+        )
           break;
         continue;
       }
@@ -79,8 +92,7 @@ async function fetchWithProgress(
 
       for (;;) {
         const { done, value } = await reader.read();
-        if (done)
-          break;
+        if (done) break;
 
         result.set(value, loaded);
         loaded += value.byteLength;
@@ -88,7 +100,9 @@ async function fetchWithProgress(
       }
 
       if (loaded !== total)
-        throw new Error(`Truncated response: received ${loaded} of ${total} bytes (${url})`);
+        throw new Error(
+          `Truncated response: received ${loaded} of ${total} bytes (${url})`,
+        );
       return result.buffer;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
@@ -97,7 +111,10 @@ async function fetchWithProgress(
     }
   }
 
-  throw lastError ?? new Error(`Failed to fetch ${url} after ${MAX_RETRIES} attempts`);
+  throw (
+    lastError ??
+    new Error(`Failed to fetch ${url} after ${MAX_RETRIES} attempts`)
+  );
 }
 
 /**
@@ -115,7 +132,7 @@ export async function loadModelWeights(
   url: string,
   cacheKey: string,
   onProgress?: (loaded: number, total: number) => void,
-  onWarning?: (message: string) => void
+  onWarning?: (message: string) => void,
 ): Promise<ArrayBuffer> {
   let db: IDBDatabase | null = null;
 

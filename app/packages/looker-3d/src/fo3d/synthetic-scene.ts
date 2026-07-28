@@ -1,9 +1,11 @@
 import type { ModalSample } from "@fiftyone/state";
 import {
+  GAUSSIAN_SPLAT_EXTENSIONS,
   getSamplePathExtension,
   isWrappableDirect3dSamplePath,
 } from "@fiftyone/utilities";
 import type { FiftyoneSceneRawJson, FoSceneRawNode } from "../utils";
+import { DEFAULT_SPLAT_OPACITY, DEFAULT_SPLAT_TINT } from "./splat/settings";
 import { getMediaPathForFo3dSample } from "./utils";
 
 type SliceToSampleMap = Record<string, ModalSample>;
@@ -12,16 +14,26 @@ type Direct3dMediaFieldName =
   | "plyPath"
   | "gltfPath"
   | "fbxPath"
-  | "stlPath";
+  | "stlPath"
+  | "splatPath";
 type SyntheticSceneNode = Omit<
   FiftyoneSceneRawJson,
   "background" | "camera" | "lights"
 > &
-  Partial<Record<Direct3dMediaFieldName, string>>;
+  Partial<Record<Direct3dMediaFieldName, string>> & {
+    format?: string;
+    centerGeometry?: boolean;
+    opacity?: number;
+    tint?: string;
+  };
 type SyntheticNodeConfig = {
   nodeType: string;
   mediaFieldName: Direct3dMediaFieldName;
   defaultMaterial: FoSceneRawNode["defaultMaterial"];
+  format?: string;
+  centerGeometry?: boolean;
+  opacity?: number;
+  tint?: string;
 };
 
 const DEFAULT_MESH_MATERIAL: FoSceneRawNode["defaultMaterial"] = {
@@ -65,6 +77,9 @@ const DEFAULT_SCENE_CAMERA: FiftyoneSceneRawJson["camera"] = {
 };
 
 const Y_UP_NODE_TYPES = new Set(["GltfMesh", "FbxMesh"]);
+const GAUSSIAN_SPLAT_EXTENSION_SET: ReadonlySet<string> = new Set(
+  GAUSSIAN_SPLAT_EXTENSIONS,
+);
 
 const DEFAULT_SCENE_BACKGROUND: FiftyoneSceneRawJson["background"] = {
   color: null,
@@ -77,9 +92,24 @@ const DEFAULT_SCENE_BACKGROUND: FiftyoneSceneRawJson["background"] = {
  * Returns the synthetic FO3D node metadata for a supported direct-3D file.
  */
 const getNodeConfigForExtension = (
-  extension: string | null
+  extension: string | null,
 ): SyntheticNodeConfig | null => {
   const normalizedExtension = extension?.toLowerCase() ?? null;
+
+  if (
+    normalizedExtension &&
+    GAUSSIAN_SPLAT_EXTENSION_SET.has(normalizedExtension)
+  ) {
+    return {
+      nodeType: "GaussianSplat",
+      mediaFieldName: "splatPath",
+      defaultMaterial: DEFAULT_MESH_MATERIAL,
+      format: normalizedExtension.slice(1),
+      centerGeometry: true,
+      opacity: DEFAULT_SPLAT_OPACITY,
+      tint: DEFAULT_SPLAT_TINT,
+    };
+  }
 
   switch (normalizedExtension) {
     case ".pcd":
@@ -148,6 +178,18 @@ const buildSyntheticNode = ({
 
   // Each loader expects the source path on a node-type-specific media field.
   node[nodeConfig.mediaFieldName] = mediaPath;
+  if (nodeConfig.format) {
+    node.format = nodeConfig.format;
+  }
+  if (nodeConfig.centerGeometry !== undefined) {
+    node.centerGeometry = nodeConfig.centerGeometry;
+  }
+  if (nodeConfig.opacity !== undefined) {
+    node.opacity = nodeConfig.opacity;
+  }
+  if (nodeConfig.tint !== undefined) {
+    node.tint = nodeConfig.tint;
+  }
 
   return node as FiftyoneSceneRawJson;
 };
@@ -175,7 +217,7 @@ export const buildSyntheticSceneNodesForDirect3dSamples = ({
         sample: currentSample,
         slice,
         mediaField,
-      })
+      }),
     )
     .filter((node): node is FiftyoneSceneRawJson => Boolean(node));
 };
@@ -205,7 +247,7 @@ export const buildSyntheticSceneForDirect3dSamples = ({
 
   // glTF/FBX assets are usually authored in Y-up, while the rest of the scene defaults to Z-up.
   const defaultUpAxis = children.every((child) =>
-    Y_UP_NODE_TYPES.has(child._type)
+    Y_UP_NODE_TYPES.has(child._type),
   )
     ? "Y"
     : "Z";

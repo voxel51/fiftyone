@@ -30,7 +30,7 @@ describe("usePlaybackStream", () => {
         usePlaybackStream(stream);
         return usePlayback();
       },
-      { wrapper: wrap }
+      { wrapper: wrap },
     );
     expect(result.current.duration).toBe(12);
   });
@@ -42,13 +42,15 @@ describe("usePlaybackStream", () => {
         usePlaybackStream(stream);
         return usePlayback();
       },
-      { wrapper: wrap }
+      { wrapper: wrap },
     );
     expect(result.current.duration).toBe(12);
     unmount();
 
     // Re-mount a probe hook to read post-unmount duration.
-    const { result: probe } = renderHook(() => usePlayback(), { wrapper: wrap });
+    const { result: probe } = renderHook(() => usePlayback(), {
+      wrapper: wrap,
+    });
     expect(probe.current.duration).toBe(5);
   });
 });

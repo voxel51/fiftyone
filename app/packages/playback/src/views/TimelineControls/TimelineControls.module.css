@@ -6,8 +6,64 @@
   border-bottom: 1px solid var(--color-content-border-default);
 }
 
+/* Suppress focus rings from pointer clicks on the row itself and its children.
+   Keyboard rings still show via :focus-visible so accessibility is preserved. */
+.root:focus:not(:focus-visible),
+.root :focus:not(:focus-visible) {
+  outline: none;
+}
+
 .clickable {
   cursor: pointer;
+}
+
+.speed {
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+.speedGroup {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.achievedSpeed {
+  color: var(--color-content-text-secondary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Scrubbable speed field: ns-resize hints the vertical drag; a subtle border
+   appears on hover and turns into a focus ring while typing. Fixed width so
+   the row doesn't jitter as the value changes (0.1×…8×). */
+.speedInput {
+  width: 42px;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-content-text-secondary);
+  font-size: 12px;
+  text-align: center;
+  cursor: ns-resize;
+}
+
+.speedInput:hover {
+  border-color: var(--color-content-border-default);
+}
+
+.speedInput:focus {
+  border-color: var(--color-brand-primary);
+  color: var(--color-content-text-primary);
+  cursor: text;
+}
+
+/* Drop the ring only for pointer focus; keyboard focus keeps the native ring. */
+.speedInput:focus:not(:focus-visible) {
+  outline: none;
 }
 
 .divider {
@@ -18,3 +74,13 @@
   margin: 0 6px;
 }
 
+.buffering {
+  align-items: center;
+  color: var(--color-content-text-secondary);
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 11px;
+  gap: 4px;
+  margin-left: 6px;
+  white-space: nowrap;
+}

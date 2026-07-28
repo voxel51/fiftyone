@@ -5,7 +5,6 @@
 import { Box, Typography } from "@mui/material";
 import { FieldTemplateProps } from "@rjsf/utils";
 import { Text, TextColor } from "@voxel51/voodo";
-import React from "react";
 
 export default function FieldTemplate(props: FieldTemplateProps) {
   const { classNames, style, rawErrors, help, children, hidden, id } = props;

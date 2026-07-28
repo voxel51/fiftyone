@@ -39,7 +39,7 @@ const onSetDataset: RegisteredSetter =
       sessionRef.current.fieldVisibilityStage = undefined;
       sessionRef.current.colorScheme = ensureColorScheme(
         entry.data.dataset?.appConfig?.colorScheme,
-        entry.data.config
+        entry.data.config,
       );
       sessionRef.current.sessionGroupSlice =
         entry.data.dataset?.defaultGroupSlice || undefined;
@@ -62,7 +62,7 @@ const onSetDataset: RegisteredSetter =
       {
         view: [],
         workspace: null,
-      }
+      },
     );
   };
 

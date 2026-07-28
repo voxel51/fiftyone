@@ -1,5 +1,5 @@
 /**
- * Temporal-tag route client and React hooks.
+ * Tag route client and React hooks.
  */
 export { createTemporalTagsClient } from "./client";
 export { useSampleRendererTemporalTags, useSampleTemporalTags } from "./hooks";

@@ -94,7 +94,7 @@ describe("useTrackStatus", () => {
       ({ manager }: { manager: LoadingManager }) => useTrackStatus(manager),
       {
         initialProps: { manager: managerA },
-      }
+      },
     );
 
     await act(async () => {
@@ -139,7 +139,7 @@ describe("useTrackStatus", () => {
       ({ manager }: { manager: LoadingManager }) => useTrackStatus(manager),
       {
         initialProps: { manager: managerA },
-      }
+      },
     );
 
     await act(async () => {
@@ -172,7 +172,7 @@ describe("useTrackStatus", () => {
       }) => useTrackStatus(currentManager, isSceneReady),
       {
         initialProps: { currentManager: manager, isSceneReady: false },
-      }
+      },
     );
 
     await act(async () => {

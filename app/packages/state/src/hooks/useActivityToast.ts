@@ -132,6 +132,6 @@ export const useActivityToast = (): IActivityToast => {
       setTimeout: (timeout) => setConfig((prev) => ({ ...prev, timeout })),
       setVariant: (variant) => setConfig((prev) => ({ ...prev, variant })),
     }),
-    [config, open, setConfig]
+    [config, open, setConfig],
   );
 };

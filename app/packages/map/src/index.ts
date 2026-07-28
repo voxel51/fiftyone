@@ -1,10 +1,10 @@
 import { registerComponent, PluginComponentType } from "@fiftyone/plugins";
 import { BUILT_IN_PANEL_PRIORITY_CONST, Schema } from "@fiftyone/utilities";
-import Map from "./Map";
 import MapIcon from "@mui/icons-material/Map";
+import { lazy } from "react";
 import MapTabIndicator from "./MapTabIndicator";
 
-export { default as Map } from "./Map";
+const Map = lazy(() => import("./Map"));
 
 registerComponent({
   name: "Map",

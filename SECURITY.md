@@ -32,8 +32,8 @@ When we receive a security bug report, we will:
 3. Prepare fixes for all supported releases
 4. Release patched versions as soon as possible
 
-We kindly ask that you give us a reasonable amount of time to address the
-issue before any public disclosure.
+We kindly ask that you give us a reasonable amount of time to address the issue
+before any public disclosure.
 
 ## Supported Versions
 
