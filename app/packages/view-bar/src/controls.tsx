@@ -73,6 +73,8 @@ interface ParamInputProps {
   operators?: Operator[];
   /** Resolves a full field path to the kind of value it holds. */
   fieldKind?: (path: string) => Kind | undefined;
+  /** The stage is done being described; close it and move on. */
+  onCommit?: () => void;
   /** Names this parameter's control group for tests. */
   testId?: string;
 }
@@ -135,6 +137,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
   operators,
   fieldKind,
   blockedOn,
+  onCommit,
 }) => {
   const invalid = Boolean(error);
   // Controls name themselves, and say they are required in the same breath —
@@ -323,6 +326,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
         <ExpressionEditor
           disabled={disabled}
           disabledReason={blockedReason}
+          onSubmit={onCommit}
           tabs={tabs}
           // Named from inside the input, beside the example it is asking for —
           // a label above would be a whole line to say one word
@@ -338,7 +342,19 @@ const ParamControl: React.FC<ParamInputProps> = ({
     }
 
     case "json":
-    default:
+    default: {
+      // An expression's json view is the lowering the server sent for it;
+      // before a first apply there is nothing true to show
+      const shownJson = isEnvelope(value)
+        ? lowered !== undefined
+          ? JSON.stringify(lowered, null, 2)
+          : ""
+        : value == null
+          ? ""
+          : typeof value === "string"
+            ? value
+            : JSON.stringify(value, null, 2);
+
       // A real editor, not a one-line input: these values are nested documents,
       // and bracket matching and syntax colouring are what make them editable
       return (
@@ -401,6 +417,22 @@ const ParamControl: React.FC<ParamInputProps> = ({
                 </Text>
               )
             )}
+            {/* The json here is a lowered ViewExpression — the same corner
+                link every stage carries, pointed at the format's docs */}
+            <a
+              href="https://docs.voxel51.com/api/fiftyone.core.expressions.html#fiftyone.core.expressions.ViewExpression"
+              target="_blank"
+              rel="noreferrer"
+              title="View expression documentation"
+              aria-label="View expression documentation"
+              style={{
+                marginLeft: "auto",
+                display: "inline-flex",
+                color: "var(--fo-palette-text-secondary)",
+              }}
+            >
+              <Icon name={IconName.ExternalLink} size={Size.Sm} />
+            </a>
           </Stack>
           {/*
             Monaco lays itself out against a definite box. Its parent is the
@@ -429,19 +461,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
               height="100%"
               width="100%"
               defaultLanguage="json"
-              value={
-                // An expression's json view is the lowering the server sent
-                // for it; before a first apply there is nothing true to show
-                isEnvelope(value)
-                  ? lowered !== undefined
-                    ? JSON.stringify(lowered, null, 2)
-                    : ""
-                  : value == null
-                    ? ""
-                    : typeof value === "string"
-                      ? value
-                      : JSON.stringify(value, null, 2)
-              }
+              value={shownJson}
               onChange={(next) => onChange(next ?? "")}
               options={{
                 readOnly: disabled,
@@ -469,6 +489,21 @@ const ParamControl: React.FC<ParamInputProps> = ({
                 },
               }}
             />
+            {!shownJson.trim() && !disabled && (
+              <Text
+                variant={TextVariant.Caption}
+                color={TextColor.Placeholder}
+                style={{
+                  position: "absolute",
+                  left: 10,
+                  top: 7,
+                  // The click belongs to the editor underneath
+                  pointerEvents: "none",
+                }}
+              >
+                {`${placeholder} — {"$gt": ["$confidence", 0.5]}`}
+              </Text>
+            )}
           </div>
         </Stack>
       );
@@ -578,7 +613,9 @@ export const ParamInput: React.FC<
       align={Align.Start}
       data-cy={props.testId}
     >
-      {tabs}
+      {/* The Xs tab strip is shorter than the control beside it; nudge it
+          to the control's vertical center rather than its top edge */}
+      <div style={{ marginTop: 4 }}>{tabs}</div>
       <Stack
         orientation={Orientation.Column}
         spacing={Spacing.None}

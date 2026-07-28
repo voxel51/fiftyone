@@ -322,10 +322,32 @@ export const StageCard: React.FC<StageCardProps> = ({
             }}
           >
             <Card background={CardBackground.Primary} outlined compact>
+              {/* The stage's full story lives in its API docs — one quiet
+                  corner link, present on every stage the same way */}
+              <a
+                href={`https://docs.voxel51.com/api/fiftyone.core.stages.html#fiftyone.core.stages.${definition.name}`}
+                target="_blank"
+                rel="noreferrer"
+                title={`${definition.name} API documentation`}
+                aria-label={`${definition.name} API documentation`}
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  display: "inline-flex",
+                  color: "var(--fo-palette-text-secondary)",
+                }}
+              >
+                <Icon name={IconName.ExternalLink} size={Size.Sm} />
+              </a>
               {/* Each control names itself — text inputs through their
                   placeholder, toggles through their label — so there is no
                   label column and no gutter beside the narrow controls. */}
-              <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+              <Stack
+                orientation={Orientation.Column}
+                spacing={Spacing.Xs}
+                style={{ paddingRight: 20 }}
+              >
                 {rows(
                   definition.params.filter((p) => !isPrivate(p)),
                   (p) => kinds.get(p.name) ?? pickInput(p),
@@ -367,6 +389,9 @@ export const StageCard: React.FC<StageCardProps> = ({
                           )}
                           allPaths={allPaths}
                           lowered={stage.lowered[p.name]}
+                          onCommit={() => {
+                            if (!incomplete) onCommit();
+                          }}
                           testId={`view-stage-param-${p.name}`}
                         />
                       );

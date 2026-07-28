@@ -62,6 +62,8 @@ export interface ExpressionEditorProps {
   disabledReason?: string;
   /** Committed elsewhere — the editor never reports a parse error while typing. */
   error?: string | null;
+  /** The stage is done being described — wired to Shift+Enter. */
+  onSubmit?: () => void;
 }
 
 /**
@@ -105,9 +107,9 @@ const applySuggestion = (
  * The editor instance, as `Code`'s `onMount` hands it over — typed through the
  * wrapper so this package does not depend on monaco directly.
  */
-type CodeEditor = Parameters<
-  NonNullable<React.ComponentProps<typeof Code>["onMount"]>
->[0];
+type OnMount = NonNullable<React.ComponentProps<typeof Code>["onMount"]>;
+type CodeEditor = Parameters<OnMount>[0];
+type Monaco = Parameters<OnMount>[1];
 
 /**
  * What the box has to say about the expression as it stands.
@@ -168,17 +170,29 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
   disabled,
   disabledReason,
   error,
+  onSubmit,
 }) => {
   // The caret offset is the whole basis for what gets suggested; Monaco
   // reports it through cursor events rather than DOM selection state
   const editorRef = useRef<CodeEditor | null>(null);
   const [offset, setOffset] = useState(value.length);
+  // Suggestions belong to the keyboard owning the box — they close on blur
+  const [focused, setFocused] = useState(false);
+  // The mounted command reads through a ref, so it never goes stale
+  const onSubmitRef = useRef(onSubmit);
+  onSubmitRef.current = onSubmit;
 
-  const onMount = useCallback((editor: CodeEditor) => {
+  const onMount = useCallback((editor: CodeEditor, monaco: Monaco) => {
     editorRef.current = editor;
     editor.onDidChangeCursorPosition((e) => {
       const model = editor.getModel();
       if (model) setOffset(model.getOffsetAt(e.position));
+    });
+    editor.onDidFocusEditorWidget(() => setFocused(true));
+    editor.onDidBlurEditorWidget(() => setFocused(false));
+    // An expression is one line; Shift+Enter finishes it rather than growing it
+    editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.Enter, () => {
+      onSubmitRef.current?.();
     });
   }, []);
 
@@ -407,9 +421,12 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
           Suggestions float over whatever is below instead of holding a box
           open — they exist only while the caret has something to offer.
         */}
-        {(fieldMatches.length > 0 || suggestions.length > 0) && (
+        {focused && (fieldMatches.length > 0 || suggestions.length > 0) && (
           <div
             role="listbox"
+            // Choosing a suggestion must not blur the editor — the list
+            // would close under the pointer before the click lands
+            onMouseDown={(e) => e.preventDefault()}
             style={{
               position: "absolute",
               top: "100%",
