@@ -8,9 +8,9 @@
         "eslint-plugin-react-hooks": "rc",
         "globals": "catalog:",
         "prettier": "catalog:",
-        "react": "18.2.0",
-        "react-dom": "18.2.0",
-        "react-is": "^18.2.0",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "react-is": "catalog:",
         "typescript": "catalog:",
         "typescript-eslint": "catalog:eslint9",
         "vite": "catalog:"

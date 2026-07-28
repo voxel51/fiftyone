@@ -18,21 +18,21 @@
         "README.md"
     ],
     "devDependencies": {
-        "@types/react-relay": "^14.1.0",
-        "@types/relay-runtime": "^14.1.23",
+        "@types/react-relay": "catalog:",
+        "@types/relay-runtime": "catalog:",
         "prettier": "catalog:",
-        "react": "18.2.0",
+        "react": "catalog:",
         "recoil": "catalog:",
-        "relay-compiler": "^14.0.0",
+        "relay-compiler": "catalog:",
         "relay-compiler-language-typescript": "^15.0.1",
         "relay-config": "^12.0.1",
-        "relay-runtime": "^14.1.0",
+        "relay-runtime": "catalog:",
         "typescript": "catalog:",
         "vite": "catalog:"
     },
     "dependencies": {
         "@recoiljs/refine": "^0.1.1",
-        "react-relay": "^14.1.0",
+        "react-relay": "catalog:",
         "recoil-sync": "^0.2.0"
     }
 }

@@ -27,13 +27,13 @@
     },
     "devDependencies": {
         "@testing-library/dom": "catalog:",
-        "@testing-library/react": "^16.2.0",
-        "babel-plugin-relay": "^14.1.0",
+        "@testing-library/react": "catalog:",
+        "babel-plugin-relay": "catalog:",
         "jotai": "catalog:",
         "prettier": "catalog:",
-        "react": "18.2.0",
-        "react-dom": "18.2.0",
-        "react-is": "^18.2.0",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "react-is": "catalog:",
         "vite": "catalog:"
     },
     "dependencies": {

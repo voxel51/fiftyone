@@ -23,19 +23,19 @@
         "lodash": "catalog:",
         "r3f-perf": "^7.2.3",
         "react-color": "catalog:",
-        "styled-components": "^6.1.18",
+        "styled-components": "catalog:",
         "three": "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch",
         "tunnel-rat": "^0.1.2"
     },
     "devDependencies": {
         "@types/chroma-js": "^3.1.1",
         "@types/node": "^20.11.10",
-        "@types/react": "18.3.12",
+        "@types/react": "catalog:",
         "@types/three": "^0.176.0",
         "@vitejs/plugin-react": "catalog:",
         "nodemon": "^3.0.3",
-        "react": "18.2.0",
-        "react-dom": "18.2.0",
+        "react": "catalog:",
+        "react-dom": "catalog:",
         "vite": "catalog:",
         "vite-plugin-externals": "catalog:"
     },

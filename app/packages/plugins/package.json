@@ -21,7 +21,7 @@
     "devDependencies": {
         "@fiftyone/utilities": "workspace:^",
         "prettier": "catalog:",
-        "react": "18.2.0",
+        "react": "catalog:",
         "vite": "catalog:"
     }
 }
