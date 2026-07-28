@@ -38,8 +38,7 @@ test.describe.serial("Display Options", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  // flaky: histogram load races the statistics-mode switch (2026-07-20, teams#3392)
-  test.skip("switching display options statistics to group should be successful when histogram is open", async ({
+  test("switching display options statistics to group should be successful when histogram is open", async ({
     actionsRow,
     histogram,
     panel,
@@ -47,8 +46,10 @@ test.describe.serial("Display Options", () => {
     await panel.open("Histograms");
     await panel.bringPanelToForeground("Samples");
     await actionsRow.toggleDisplayOptions();
+    const histogramLoaded = await histogram.armLoad();
     await actionsRow.displayActions.setSidebarStatisticsMode("group");
     await panel.bringPanelToForeground("Histograms");
+    await histogramLoaded.received;
 
     await histogram.assert.isLoaded();
     await panel.bringPanelToForeground("Samples");

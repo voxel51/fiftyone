@@ -1,28 +1,20 @@
 import fs from "node:fs";
 import path from "node:path";
-import reactRefresh from "@vitejs/plugin-react-refresh";
+import react from "@vitejs/plugin-react";
 import nodePolyfills from "rollup-plugin-polyfill-node";
 import { defineConfig, normalizePath, type Plugin } from "vite";
 import relay from "vite-plugin-relay";
 import svgr from "vite-plugin-svgr";
 import wasm from "vite-plugin-wasm";
-import { basePlugins } from "../../vite.base.config";
 
 async function loadConfig() {
-  const pluginRewriteAll = (await import("vite-plugin-rewrite-all")).default;
-
   return defineConfig({
     base: "",
     plugins: [
-      ...basePlugins,
       svgr(),
-      reactRefresh({
-        parserPlugins: ["classProperties", "classPrivateProperties"],
-      }),
+      react(),
       relay,
       nodePolyfills(),
-      // pluginRewriteAll to address this vite bug: https://github.com/vitejs/vite/issues/2415
-      pluginRewriteAll(),
       foxgloveWasmAsUrl(),
       wasm(),
       // Vite's worker bundling breaks ort's WASM resolution and emits hashed
@@ -107,21 +99,13 @@ async function loadConfig() {
           }
           warn(warning);
         },
-        output: {
-          // Give the heavy, lazily-loaded vendor libs their own deterministic
-          // chunks so rollup doesn't hoist them into the entry or glue them
-          // together (e.g. mapbox + plotly landing in one blob). Each only
-          // loads when its panel/view opens.
-          manualChunks(id) {
-            if (id.includes("node_modules")) {
-              if (/[\\/](mapbox-gl|@mapbox)[\\/]/.test(id)) return "mapbox-gl";
-              if (/[\\/]plotly\.js/.test(id) || /react-plotly\.js/.test(id))
-                return "plotly";
-              if (/[\\/]recharts[\\/]/.test(id)) return "recharts";
-              if (/[\\/]html2canvas[\\/]/.test(id)) return "html2canvas";
-            }
-          },
-        },
+        // No manual chunking: rolldown's emulation of function-form
+        // manualChunks pulls each matched library's entire dependency
+        // closure (react-dom, clsx, transition-group, lodash internals)
+        // into the forced chunk and re-exports module-init helpers across
+        // chunk boundaries, which can execute modules before their
+        // initializers run. Rolldown already gives dynamically-imported
+        // panels (plotly, mapbox, recharts, html2canvas) their own chunks.
       },
     },
     server: {

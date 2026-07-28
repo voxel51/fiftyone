@@ -97,7 +97,9 @@ jobs:
       # this workflow
       - name: Run tests
         run: |
+          mkdir -p junit
           python tests/utils/pytest_wrapper.py tests/ --verbose \
+            --junitxml junit/main.xml \
             --cov --cov-report xml \
             --ignore tests/benchmarking/ \
             --ignore tests/isolated/ \
@@ -113,9 +115,29 @@ jobs:
           flags: python
       - name: Run no wrapper tests
         run: |
-          pytest tests/no_wrapper --verbose
+          pytest tests/no_wrapper --verbose --junitxml junit/no-wrapper.xml
       # Intended to run even if the tests above failed
       - name: Run isolated tests
         if: success() || failure()
+        # every file runs even if one fails, matching xargs semantics, with
+        # a junit report per file
         run: |
-          find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose
+          mkdir -p junit
+          fail=0
+          while IFS= read -r -d '' f; do
+            rel="${f#tests/isolated/}"
+            mkdir -p "junit/isolated/$(dirname "$rel")"
+            python tests/utils/pytest_wrapper.py "$f" --verbose \
+              --junitxml "junit/isolated/${rel%.py}.xml" || fail=1
+          done < <(find tests/isolated/ -name '*.py' -print0)
+          exit $fail
+      - name: Upload pytest results
+        # junit reports feed the python section of the authoritative CI
+        # comment (.github/scripts/python-section.mjs)
+        if: success() || failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pytest-results-${{ matrix.python }}
+          path: junit/
+          if-no-files-found: ignore
+          retention-days: 3

@@ -2,6 +2,7 @@ import { test as base } from "@playwright/test";
 import { DatasetFactory } from "src/shared/dataset-factory";
 import { EventUtils } from "src/shared/event-utils";
 import { MediaFactory } from "src/shared/media-factory";
+import { reserveWorkerPort } from "src/shared/network-utils/port";
 import { SAM2_MOCK_WORKER_SRC } from "src/shared/sam2-mock-worker";
 import { AbstractFiftyoneLoader } from "../../shared/abstract-loader";
 import { AggregationWatcher } from "./aggregation-watcher";
@@ -52,12 +53,7 @@ const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
         return;
       }
 
-      // random number [0, 99] to avoid port collisions (rare edge case)
-      const rand = Math.floor(Math.random() * 100);
-
-      await use(
-        3050 + workerInfo.workerIndex + workerInfo.parallelIndex + rand,
-      );
+      await use(await reserveWorkerPort(workerInfo.parallelIndex));
     },
     { scope: "worker" },
   ],

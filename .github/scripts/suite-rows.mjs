@@ -6,12 +6,23 @@ const IGNORE = new Set([
   "modified-files",
   "triage",
   "enterprise-sync",
-  "e2e-comment-suites",
+  "ci-comment",
   // enterprise plumbing jobs, not suites; report-to-oss also runs after the
   // refresh job, so its row could never settle
   "report-to-oss",
   "oss-merged-check",
 ]);
+
+export const jobsIcon = (js) =>
+  js.some((j) =>
+    ["failure", "timed_out", "action_required"].includes(j.conclusion),
+  )
+    ? "❌"
+    : js.some((j) => j.status !== "completed")
+      ? "⏳"
+      : js.some((j) => j.conclusion === "cancelled")
+        ? "🚫 cancelled"
+        : "✅";
 
 export function buildSuiteRows(jobs) {
   const groups = new Map();
@@ -24,14 +35,7 @@ export function buildSuiteRows(jobs) {
     }
     groups.set(group, [...(groups.get(group) ?? []), job]);
   }
-  const icon = (js) =>
-    js.some((j) => j.conclusion === "failure")
-      ? "❌"
-      : js.some((j) => j.status !== "completed")
-        ? "⏳"
-        : js.some((j) => j.conclusion === "cancelled")
-          ? "🚫 cancelled"
-          : "✅";
+  const icon = jobsIcon;
   return [...groups.entries()]
     .sort()
     .filter(([, js]) => !js.every((j) => j.conclusion === "skipped"))

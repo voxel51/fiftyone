@@ -1,5 +1,5 @@
 import { act, cleanup, render, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, type Mock, vi } from "vitest";
 
 import type {
   EncodedVideoVisualization,
@@ -547,7 +547,7 @@ describe("BitmapCanvasHost", () => {
 });
 
 interface FakeBitmap extends ImageBitmap {
-  readonly close: ReturnType<typeof vi.fn>;
+  readonly close: Mock<() => void>;
 }
 
 function fakeBitmap(width: number, height: number): FakeBitmap {
