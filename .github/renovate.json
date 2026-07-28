@@ -8,17 +8,43 @@
     "schedule": ["* * * * 3"],
     "labels": ["dependencies"],
     "enabledManagers": [
-        "pip_requirements",
-        "pip_setup",
+        "pep621",
+        "pre-commit",
+        "dockerfile",
         "github-actions",
-        "npm"
+        "npm",
+        "custom.regex"
     ],
-    "pip_requirements": {
-        "managerFilePatterns": [
-            "/(^|/)[\\w-]*requirements([-._]\\w+)?\\.(txt|pip)$/",
-            "/(^|/)requirements/[^/]+\\.(txt|pip)$/"
-        ]
+    "lockFileMaintenance": {
+        "enabled": true,
+        "schedule": ["* * * * 3"]
     },
+    "customManagers": [
+        {
+            "customType": "regex",
+            "managerFilePatterns": ["/^pyproject\\.toml$/"],
+            "matchStrings": [
+                "\\[tool\\.ruff\\][\\s\\S]*?required-version = \"==(?<currentValue>[^\"]+)\""
+            ],
+            "depNameTemplate": "ruff",
+            "datasourceTemplate": "pypi"
+        },
+        {
+            "customType": "regex",
+            "managerFilePatterns": [
+                "/^pyproject\\.toml$/",
+                "/^\\.github/workflows/[^/]+\\.ya?ml$/"
+            ],
+            "matchStrings": [
+                "\\[tool\\.uv\\][\\s\\S]*?required-version = \"==(?<currentValue>[^\"]+)\"",
+                "uses: astral-sh/setup-uv@[^\\n]+\\n(?:[^\\n]*\\n){0,8}\\s+version: \"(?<currentValue>[^\"]+)\""
+            ],
+            "depNameTemplate": "uv",
+            "datasourceTemplate": "github-releases",
+            "packageNameTemplate": "astral-sh/uv",
+            "versioningTemplate": "semver-coerced"
+        }
+    ],
     "ignoreDeps": [
         "pymongo",
         "motor",
@@ -29,8 +55,18 @@
     ],
     "packageRules": [
         {
-            "matchManagers": ["pip_requirements", "pip_setup"],
+            "matchManagers": ["pep621"],
             "groupName": "stable-python-packages",
+            "addLabels": ["python"]
+        },
+        {
+            "matchPackageNames": ["ruff"],
+            "groupName": "ruff-toolchain",
+            "addLabels": ["python"]
+        },
+        {
+            "matchPackageNames": ["uv", "ghcr.io/astral-sh/uv"],
+            "groupName": "uv-toolchain",
             "addLabels": ["python"]
         },
         {

@@ -1,6 +1,0 @@
--r extras.txt
--r test.txt
-
-ipython==8.39.0
-pre-commit==4.6.0
-pylint==4.0.5
