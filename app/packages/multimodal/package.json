@@ -86,7 +86,7 @@
         "@mcap/support": "^1.1.0",
         "@react-three/drei": "9.105.4",
         "@react-three/fiber": "^8.18.0",
-        "@voxel51/voodo": "^0.0.41",
+        "@voxel51/voodo": "^0.1.0",
         "buffer": "^6.0.3",
         "colormap": "^2.3.2",
         "date-fns": "^4.1.0",
