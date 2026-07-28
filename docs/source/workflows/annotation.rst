@@ -1,7 +1,7 @@
 .. _workflows-annotation:
 
-Annotation __SUB_NEW__
-======================
+Annotation
+==========
 
 Once you know what to label, FiftyOne helps you get it labeled. You can
 annotate :ref:`directly in the FiftyOne App <in-app-annotation>`, or round-trip
@@ -20,6 +20,6 @@ Auto-Labeling 🚀 to generate high-quality labels automatically.
 
    Annotating datasets <../user_guide/annotation>
    Annotation Workflows 🚀 __SUB_NEW__ <../enterprise/workflows>
-   Auto-Labeling 🚀 <../enterprise/verified_auto_labeling>
    Agentic Labeling 🚀 __SUB_NEW__ <../enterprise/agentic_labeling>
+   Auto-Labeling 🚀 <../enterprise/verified_auto_labeling>
    Building Annotation Workflows and Ontologies __SUB_NEW__ <../tutorials/fiftyone_annotation_workflows.ipynb>

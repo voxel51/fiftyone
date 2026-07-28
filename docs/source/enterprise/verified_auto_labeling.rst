@@ -19,8 +19,7 @@ infrastructure.
 
 .. note::
 
-    Want to try auto-labeling with a VLM? Check out :ref:`Agentic Labeling
-    <agentic-labeling>` in FiftyOne Enterprise.
+    Check out :ref:`Agentic Labeling <agentic-labeling>` to explore using a VLM for auto-labeling!
 
 .. _verified-auto-labeling-how-it-works:
 

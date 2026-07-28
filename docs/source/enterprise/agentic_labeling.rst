@@ -30,8 +30,8 @@ labels can go on to train a custom model for large-scale Auto-Labeling.
 Availability and prerequisites
 ______________________________
 
-Agentic Labeling is a FiftyOne Enterprise only feature and requires a running
-Agentic Labeler service.
+Agentic Labeling is a `FiftyOne Enterprise <https://voxel51.com/enterprise/>`_
+only feature and requires a running Agentic Labeler service.
 
 Agentic Labeling is supported for image datasets and frames views of video
 datasets. 3D, grouped, and multimodal datasets are not yet supported.
