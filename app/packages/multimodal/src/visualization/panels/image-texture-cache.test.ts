@@ -4,9 +4,11 @@ import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import type { ImageTextureHandle } from "./base-2d-scene";
 import {
   acquireImageTexture,
+  IMAGE_TEXTURE_RETENTION_BYTE_CAP,
   IMAGE_TEXTURE_RETENTION_CAP,
   imageTextureCacheKey,
   imageTextureCacheStats,
+  releaseRetainedImageTextures,
   resetImageTextureCacheForTests,
 } from "./image-texture-cache";
 
@@ -63,6 +65,7 @@ describe("acquireImageTexture (shared keys)", () => {
     first.release();
     expect(firstDispose).toHaveBeenCalledTimes(1);
     expect(imageTextureCacheStats().retainedCount).toBe(1);
+    expect(imageTextureCacheStats().retainedDecodedBytes).toBe(4);
 
     const second = acquireImageTexture("k", decode);
     const secondHandle = await second.promise;
@@ -71,6 +74,7 @@ describe("acquireImageTexture (shared keys)", () => {
     expect(decode).toHaveBeenCalledTimes(1);
     expect(imageTextureCacheStats().decodeCount).toBe(1);
     expect(imageTextureCacheStats().retainedCount).toBe(0);
+    expect(imageTextureCacheStats().retainedDecodedBytes).toBe(0);
     expect(dispose).not.toHaveBeenCalled();
 
     second.release();
@@ -101,6 +105,96 @@ describe("acquireImageTexture (shared keys)", () => {
     await reacquired.promise;
     reacquired.release();
     expect(firstDispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("evicts the oldest entries when decoded bytes reach the byte cap", async () => {
+    const bytesPerFrame = 2048 * 1024 * 4;
+    expect(IMAGE_TEXTURE_RETENTION_BYTE_CAP / bytesPerFrame).toBe(16);
+
+    const first = makeHandle({ height: 1024, width: 2048 });
+    const firstLease = acquireImageTexture("byte-0", async () => first.handle);
+    await firstLease.promise;
+    firstLease.release();
+
+    for (let index = 1; index <= 16; index += 1) {
+      const next = makeHandle({ height: 1024, width: 2048 });
+      const lease = acquireImageTexture(
+        `byte-${index}`,
+        async () => next.handle,
+      );
+      await lease.promise;
+      lease.release();
+    }
+
+    expect(first.dispose).toHaveBeenCalledTimes(1);
+    expect(imageTextureCacheStats()).toMatchObject({
+      entryCount: 16,
+      retainedCount: 16,
+      retainedDecodedBytes: IMAGE_TEXTURE_RETENTION_BYTE_CAP,
+    });
+  });
+
+  it("does not retain one decoded image larger than the byte cap", async () => {
+    const oversized = makeHandle({ height: 8192, width: 8192 });
+    const lease = acquireImageTexture(
+      "oversized",
+      async () => oversized.handle,
+    );
+    await lease.promise;
+
+    expect(oversized.dispose).not.toHaveBeenCalled();
+    expect(imageTextureCacheStats().entryCount).toBe(1);
+
+    lease.release();
+    expect(oversized.dispose).toHaveBeenCalledTimes(1);
+    expect(imageTextureCacheStats()).toMatchObject({
+      entryCount: 0,
+      retainedCount: 0,
+      retainedDecodedBytes: 0,
+    });
+  });
+
+  it("never evicts a live lease to satisfy the retained-byte budget", async () => {
+    const live = makeHandle({ height: 8192, width: 8192 });
+    const liveLease = acquireImageTexture("live", async () => live.handle);
+    await liveLease.promise;
+
+    for (let index = 0; index < 4; index += 1) {
+      const retained = makeHandle({ height: 1024, width: 2048 });
+      const lease = acquireImageTexture(
+        `retained-${index}`,
+        async () => retained.handle,
+      );
+      await lease.promise;
+      lease.release();
+    }
+
+    expect(live.dispose).not.toHaveBeenCalled();
+    expect(imageTextureCacheStats()).toMatchObject({
+      entryCount: 5,
+      retainedCount: 4,
+      retainedDecodedBytes: 4 * 2048 * 1024 * 4,
+    });
+
+    liveLease.release();
+    expect(live.dispose).toHaveBeenCalledTimes(1);
+    expect(imageTextureCacheStats().entryCount).toBe(4);
+  });
+
+  it("clears retained byte accounting at a session boundary", async () => {
+    const cached = makeHandle({ height: 20, width: 10 });
+    const lease = acquireImageTexture("session", async () => cached.handle);
+    await lease.promise;
+    lease.release();
+    expect(imageTextureCacheStats().retainedDecodedBytes).toBe(800);
+
+    releaseRetainedImageTextures();
+    expect(cached.dispose).toHaveBeenCalledTimes(1);
+    expect(imageTextureCacheStats()).toMatchObject({
+      entryCount: 0,
+      retainedCount: 0,
+      retainedDecodedBytes: 0,
+    });
   });
 
   it("evicts a failed decode and rejects every waiter", async () => {
@@ -186,6 +280,7 @@ describe("acquireImageTexture (shared keys)", () => {
       decodeCount: 0,
       entryCount: 0,
       retainedCount: 0,
+      retainedDecodedBytes: 0,
     });
 
     const { handle: handleA } = makeHandle();
@@ -198,6 +293,7 @@ describe("acquireImageTexture (shared keys)", () => {
       decodeCount: 2,
       entryCount: 2,
       retainedCount: 0,
+      retainedDecodedBytes: 0,
     });
 
     leaseA.release();
@@ -205,6 +301,7 @@ describe("acquireImageTexture (shared keys)", () => {
       decodeCount: 2,
       entryCount: 2,
       retainedCount: 1,
+      retainedDecodedBytes: 4,
     });
 
     leaseB.release();
@@ -248,7 +345,12 @@ describe("acquireImageTexture (keyless)", () => {
   });
 });
 
-function makeHandle(): { dispose: Mock; handle: ImageTextureHandle } {
+function makeHandle(
+  dimensions: { readonly height: number; readonly width: number } = {
+    height: 1,
+    width: 1,
+  },
+): { dispose: Mock; handle: ImageTextureHandle } {
   const dispose = vi.fn();
   const texture = new THREE.Texture({} as TexImageSource);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -261,8 +363,8 @@ function makeHandle(): { dispose: Mock; handle: ImageTextureHandle } {
     handle: {
       aspectRatio: 1,
       dispose,
-      imageHeight: 1,
-      imageWidth: 1,
+      imageHeight: dimensions.height,
+      imageWidth: dimensions.width,
       texture,
     },
   };

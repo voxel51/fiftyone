@@ -25,6 +25,7 @@ import styles from "./TemporalTag.module.css";
 
 const NUDGE_STEP = 0.1;
 const NEW_TAG_SENTINEL = "__new__";
+const NO_EXISTING_TAGS: readonly string[] = [];
 
 /** Gap (px) between the anchor point and the popup — enough to clear a track
  *  row so an edit popup doesn't sit on top of the clicked interval. */
@@ -66,7 +67,7 @@ const TemporalTagPopup: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const { state, actions } = ctx ?? {};
-  const existingTags = ctx?.existingTags ?? [];
+  const existingTags = ctx?.existingTags ?? NO_EXISTING_TAGS;
   const hasExisting = existingTags.length > 0;
 
   // Always start in new-tag mode so the user can type a fresh label immediately.
@@ -93,6 +94,7 @@ const TemporalTagPopup: React.FC = () => {
     return undefined;
   }, [state?.phase, hasExisting]);
 
+  // Exit temporal-tag mode when the popup receives an Escape keypress.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") actions?.exitTagMode();
@@ -127,6 +129,7 @@ const TemporalTagPopup: React.FC = () => {
           end: selection.end,
           tag: pendingLabel.trim(),
         });
+        seek(selection.start);
       }
       ctx.actions.exitTagMode();
     } catch (err) {
@@ -134,7 +137,7 @@ const TemporalTagPopup: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [ctx]);
+  }, [ctx, seek]);
 
   const selectOptions = useMemo<Descriptor<{ label: string }>[]>(
     () => [

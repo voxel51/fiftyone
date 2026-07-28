@@ -9,6 +9,7 @@ import {
 import type { PlaybackStore } from "@fiftyone/playback/src/lib/playback/types";
 import type { McapTopicCache } from "./mcap-topic-cache";
 import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
+import { setMcapTopicDiagnostics } from "./mcap-stream-status-state";
 
 /**
  * Publishes each active topic's frame at `tick` into the playback store.
@@ -19,9 +20,9 @@ import type { McapTopicPlaybackFrame } from "./use-mcap-topic-stream";
  * while the clock is frozen on a stall (buffering or a pending play press)
  * or the topic's failed fetches were sealed as empty ticks, the last real
  * frame stays up instead of blanking the tile: the time readout is not
- * advancing past real data, so holding is truthful. Seeks are time jumps
- * and clear `lastFrame` before their first push, so a held frame can never
- * survive into a different position's loading state.
+ * advancing past real data, so holding is truthful. Seeks also retain the
+ * previous frame until the target resolves; tile chrome identifies it as
+ * previous content while the target is loading.
  */
 export function pushTickToStore(
   activeTopics: string[],
@@ -37,6 +38,13 @@ export function pushTickToStore(
     if (!cache) continue;
     const msg = cache.get(tick);
     const viz = msg?.decoded.output.visualization ?? null;
+    if (msg !== undefined) {
+      setMcapTopicDiagnostics(
+        store,
+        topic,
+        msg?.decoded.output.diagnostics ?? [],
+      );
+    }
     let toWrite: McapTopicPlaybackFrame<unknown> | null;
     if (msg === undefined) {
       toWrite = lastFrame.get(topic) ?? null;

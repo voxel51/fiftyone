@@ -3,6 +3,7 @@ import {
   useActiveAnnotationSampleId,
   useAnnotationEngine,
   useDeleteAnnotation,
+  useDeleteTrack,
 } from "@fiftyone/annotation";
 import { useLighter } from "@fiftyone/lighter";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "@fiftyone/looker-3d";
@@ -19,6 +20,24 @@ import { useRecoilValue } from "recoil";
 import { useAnnotationContext } from "./useAnnotationContext";
 import useExit from "./useExit";
 
+interface KeypointVertexSelection {
+  getSelectedPointIndex(): number | null;
+}
+
+/** True while a specific polyline/keypoint vertex is sub-selected on the canvas. */
+const isVertexSubSelected = (overlay: unknown): boolean => {
+  if (
+    !overlay ||
+    typeof (overlay as KeypointVertexSelection).getSelectedPointIndex !==
+      "function"
+  ) {
+    return false;
+  }
+
+  const index = (overlay as KeypointVertexSelection).getSelectedPointIndex();
+  return index != null && index >= 0;
+};
+
 export default function useDelete() {
   const { scene, removeOverlay } = useLighter();
   const { selected } = useAnnotationContext();
@@ -26,8 +45,10 @@ export default function useDelete() {
   // engine identity from the anchor — carries the track instanceId + frame +
   // `frames.<field>` path a video frame label needs; null for sample-level
   const ref = selected?.ref ?? undefined;
+  const selectedOverlay = selected?.overlay;
   const engine = useAnnotationEngine();
   const deleteAnnotation = useDeleteAnnotation();
+  const deleteTrack = useDeleteTrack();
   const sample = useActiveAnnotationSampleId();
   // The combined sample + frame schema: a video frame label's path is
   // `frames.<field>`, and the frame fields live in the FRAME space — absent from
@@ -45,6 +66,14 @@ export default function useDelete() {
   // on Ctrl-Z, so no DelegatingUndoable / command-context undo is registered.
   const performDelete = useCallback(async () => {
     if (!label) {
+      return;
+    }
+
+    // A sub-selected polyline/keypoint vertex is removed by the canvas keydown
+    // handler; defer to it so Backspace edits the vertex instead of deleting
+    // the whole label/track. The command bus fires before that handler, so the
+    // sub-point index still reads its pre-removal value here.
+    if (isVertexSubSelected(selectedOverlay)) {
       return;
     }
 
@@ -85,9 +114,16 @@ export default function useDelete() {
         return;
       }
 
-      // the engine's read-half does the rest: the bridge loop unmounts
-      // the overlay and the list mirror drops the row on the delete tick
-      await deleteAnnotation(label, ref ? { ref } : undefined);
+      // A video frame label's anchor carries a `frame`; Delete removes the
+      // whole track (every occurrence), matching the timeline's "Delete track".
+      // Image / sample-level labels (no `frame`) delete just their one entry.
+      // The engine's read-half does the rest: the bridge loop unmounts the
+      // overlay and the list mirror drops the row(s) on the delete tick.
+      if (ref?.frame != null) {
+        await deleteTrack(label, ref);
+      } else {
+        await deleteAnnotation(label, ref ? { ref } : undefined);
+      }
 
       exit();
     } catch (error) {
@@ -98,6 +134,7 @@ export default function useDelete() {
     }
   }, [
     deleteAnnotation,
+    deleteTrack,
     engine,
     exit,
     label,
@@ -106,6 +143,7 @@ export default function useDelete() {
     sample,
     scene,
     schema,
+    selectedOverlay,
     setNotification,
   ]);
 

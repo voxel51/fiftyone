@@ -4,6 +4,11 @@ import type React from "react";
 /** Axis whose movement is reported to {@link UsePointerLockDragOptions.onDelta}. */
 export type PointerLockDragAxis = "horizontal" | "vertical";
 
+/** Modifier keys held during a drag move, for sensitivity switching. */
+export interface PointerLockDragModifiers {
+  readonly shiftKey: boolean;
+}
+
 export interface UsePointerLockDragOptions {
   /** Axis whose movement is reported to `onDelta`. */
   axis: PointerLockDragAxis;
@@ -18,9 +23,10 @@ export interface UsePointerLockDragOptions {
    * Fired on every move once dragging, with the cumulative signed movement
    * along `axis` since the drag began (positive = right / down). Because it is
    * fed by Pointer Lock movement deltas, this value is unbounded — it keeps
-   * growing past the edge of the screen.
+   * growing past the edge of the screen. `modifiers` carries the move event's
+   * live modifier keys so callers can vary sensitivity mid-drag.
    */
-  onDelta: (delta: number) => void;
+  onDelta: (delta: number, modifiers: PointerLockDragModifiers) => void;
   /** Fired once when a press is released without ever crossing the threshold. */
   onClick?: () => void;
   /** Fired once when a real drag ends (pointer released after dragging). */
@@ -133,7 +139,7 @@ export function usePointerLockDrag({
           }
           cbRef.current.onDragStart?.();
         }
-        cbRef.current.onDelta(accum);
+        cbRef.current.onDelta(accum, { shiftKey: ev.shiftKey });
       };
 
       const teardown = () => {

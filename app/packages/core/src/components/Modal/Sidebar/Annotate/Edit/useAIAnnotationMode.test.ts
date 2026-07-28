@@ -46,6 +46,8 @@ const hoisted = vi.hoisted(() => ({
 
 vi.mock("@fiftyone/annotation/src/agents", () => ({
   AgentTaskType: hoisted.AgentTaskType,
+  isAgentSelectable: (d: { available?: boolean; unlisted?: boolean }) =>
+    d.available !== false && !d.unlisted,
   useActiveTask: () => ({
     activeTask: null,
     setActiveTask: hoisted.activeTaskSpies.setActiveTask,

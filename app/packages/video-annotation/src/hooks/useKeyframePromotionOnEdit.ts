@@ -12,17 +12,14 @@ import { useCallback } from "react";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 
 /**
- * Builds the bridge's `onEditCommit` callback: after a box drag / resize lands
- * on the engine, promote the touched frame to a keyframe (clearing any
- * interpolation provenance) and dispatch `annotation:keyframeChanged` so
+ * Builds the bridge's `onEditCommit` callback: after a geometry drag / resize
+ * lands on the engine, promote the touched frame to a keyframe and dispatch
+ * `annotation:keyframeChanged` so
  * {@link useAutoInterpolate} re-lerps the bracketing segments against the new
- * geometry. This is the engine-era equivalent of the wiring the pre-engine
- * `upsertFromOverlay` carried via `toLocalDetection`. The promotion write folds
- * into the edit's undo unit via the gesture `undoKey` the commit landed under,
- * so one Ctrl-Z reverts the whole nudge.
+ * geometry. The promotion write folds into the edit's undo unit via the gesture
+ * `undoKey` the commit landed under, so one Ctrl-Z reverts the whole nudge.
  *
- * Bbox-only and frame-scoped: a sample-level temporal detection has no keyframe,
- * and a keypoint / polyline carries no `bounding_box` for the linear lerp.
+ * Frame-scoped: a sample-level temporal detection has no keyframe.
  */
 export const useKeyframePromotionOnEdit = (): ((
   overlayId: string,
@@ -44,22 +41,25 @@ export const useKeyframePromotionOnEdit = (): ((
       const ref = { sample, path, instanceId: overlayId, frame };
       const det = engine.getLabel(ref);
 
-      // bbox tracks only — the linear interpolation lerps `bounding_box`
-      if (!det || !Array.isArray(det.bounding_box)) {
+      if (!det) {
+        return;
+      }
+
+      // geometry-bearing frame labels only: box tracks lerp `bounding_box`;
+      // keypoint / polyline tracks carry `points` and persist as keyframes
+      // (points don't interpolate, so the keyframe is what makes the edit stick)
+      if (!Array.isArray(det.bounding_box) && !Array.isArray(det.points)) {
         return;
       }
 
       // Promote the touched frame to a keyframe when it isn't one already,
-      // clearing interpolation provenance, folded into the edit's undo unit (the
-      // commit's `undoKey`). An already-keyframe edit writes nothing here (no
-      // empty undo entry) but still re-lerps below against its new geometry.
+      // folded into the edit's undo unit (the commit's `undoKey`). An
+      // already-keyframe edit writes nothing here (no empty undo entry) but
+      // still re-lerps below against its new geometry.
       if (!det.keyframe) {
         engine.transaction(
           () => {
-            engine.updateLabel(ref, {
-              keyframe: true,
-              ...(det.propagation ? { propagation: null } : {}),
-            });
+            engine.updateLabel(ref, { keyframe: true });
           },
           { undoKey },
         );

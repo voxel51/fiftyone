@@ -2,11 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   isValidMosaicLayout,
   mcapTileTypeFromId,
+  readMcapCameraPreferences,
   readMcapModalLayout,
+  sanitizeLogSettings,
   sanitizeMapSettings,
   sanitizePlotSeries,
   sanitizeRawTopics,
   sanitizeTileTitles,
+  writeMcapCameraPreferences,
   writeMcapModalLayout,
 } from "./mcap-layout-persistence";
 
@@ -114,6 +117,9 @@ describe("mcap-layout-persistence", () => {
       JSON.stringify({
         version: 1,
         fallback: {
+          cameraPreferences: {
+            mcap: { preferredWorldFrameId: "map" },
+          },
           leftSidebarOpen: true,
           plotSeries: {
             "plot-1": [{ color: "#3987e5", fieldPath: "x", topic: "/odom" }],
@@ -181,6 +187,97 @@ describe("mcap-layout-persistence", () => {
       const read = readMcapModalLayout("dataset-a");
       expect(read?.leftSidebarOpen).toBe(false);
       expect(read?.layout).toBeUndefined();
+    });
+  });
+
+  describe("camera preferences", () => {
+    it("isolates conventions by dataset and selected media field", () => {
+      writeMcapCameraPreferences(
+        { defaultTrackingMode: "free", preferredWorldFrameId: "map" },
+        "dataset-a",
+        "mcap",
+      );
+      writeMcapCameraPreferences(
+        { defaultTrackingMode: "pose" },
+        "dataset-a",
+        "alternate_mcap",
+      );
+      writeMcapCameraPreferences(
+        { defaultTrackingMode: "heading" },
+        "dataset-b",
+        "mcap",
+      );
+
+      expect(readMcapCameraPreferences("dataset-a", "mcap")).toEqual({
+        defaultTrackingMode: "free",
+        preferredWorldFrameId: "map",
+      });
+      expect(readMcapCameraPreferences("dataset-a", "alternate_mcap")).toEqual({
+        defaultTrackingMode: "pose",
+      });
+      expect(readMcapCameraPreferences("dataset-b", "mcap")).toEqual({
+        defaultTrackingMode: "heading",
+      });
+    });
+
+    it("merges partial convention writes without erasing siblings", () => {
+      writeMcapCameraPreferences(
+        { preferredWorldFrameId: "map" },
+        "dataset-a",
+        "mcap",
+      );
+      writeMcapCameraPreferences(
+        { preferredCameraTargetFrameId: "base_link" },
+        "dataset-a",
+        "mcap",
+      );
+
+      expect(readMcapCameraPreferences("dataset-a", "mcap")).toEqual({
+        preferredCameraTargetFrameId: "base_link",
+        preferredWorldFrameId: "map",
+      });
+    });
+
+    it("sanitizes invalid modes and oversized frame ids", () => {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          version: 1,
+          byDataset: {
+            "dataset-a": {
+              cameraPreferences: {
+                mcap: {
+                  defaultTrackingMode: "orbit",
+                  preferredCameraTargetFrameId: "x".repeat(513),
+                  preferredWorldFrameId: "  map  ",
+                  sceneUpAxis: "z",
+                },
+              },
+              updatedAtMs: 1,
+            },
+          },
+        }),
+      );
+
+      expect(readMcapCameraPreferences("dataset-a", "mcap")).toEqual({
+        preferredWorldFrameId: "map",
+        sceneUpAxis: "z",
+      });
+    });
+
+    it("keeps the newest field when the preference table reaches its limit", () => {
+      for (let index = 0; index < 17; index += 1) {
+        writeMcapCameraPreferences(
+          { preferredWorldFrameId: `map-${index}` },
+          "dataset-a",
+          `mcap-${index}`,
+        );
+      }
+
+      expect(readMcapCameraPreferences("dataset-a", "mcap-0")).toBeNull();
+      expect(readMcapCameraPreferences("dataset-a", "mcap-16")).toEqual({
+        preferredWorldFrameId: "map-16",
+      });
     });
   });
 
@@ -393,6 +490,64 @@ describe("mcap-layout-persistence", () => {
       expect(sanitizeRawTopics([])).toBeUndefined();
       expect(sanitizeRawTopics("x")).toBeUndefined();
       expect(sanitizeRawTopics({})).toBeUndefined();
+    });
+  });
+
+  describe("logSettings", () => {
+    const SETTINGS = {
+      "log-1": {
+        enabledTopics: ["/rosout"],
+        followPlayhead: false,
+        // Canonical severity order, as the sanitizer normalizes it.
+        selectedLevels: ["warn", "error"],
+      },
+    };
+
+    it("round-trips per-dataset log tile settings", () => {
+      writeMcapModalLayout({ logSettings: SETTINGS as never }, "ds-a");
+      expect(readMcapModalLayout("ds-a")?.logSettings).toEqual(SETTINGS);
+    });
+
+    it("sanitizes malformed log settings rows individually", () => {
+      writeMcapModalLayout(
+        {
+          logSettings: {
+            "log-1": {
+              enabledTopics: ["/rosout", "", "/rosout", 5],
+              followPlayhead: false,
+              selectedLevels: ["error", "shout"],
+            },
+            "image-1": {
+              followPlayhead: true,
+              selectedLevels: ["info"],
+            },
+            "log-2": {
+              followPlayhead: "yes",
+              selectedLevels: [],
+            },
+          } as never,
+        },
+        "ds-a",
+      );
+
+      expect(readMcapModalLayout("ds-a")?.logSettings).toEqual({
+        "log-1": {
+          enabledTopics: ["/rosout"],
+          followPlayhead: false,
+          selectedLevels: ["error"],
+        },
+        // Non-boolean follow falls back to the default; an explicitly
+        // empty level selection survives — all-off is a deliberate view.
+        "log-2": {
+          followPlayhead: true,
+          selectedLevels: [],
+        },
+      });
+    });
+
+    it("sanitizeLogSettings rejects non-object payloads", () => {
+      expect(sanitizeLogSettings(null)).toBeUndefined();
+      expect(sanitizeLogSettings([])).toBeUndefined();
     });
   });
 

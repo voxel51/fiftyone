@@ -24,12 +24,12 @@ import {
 // plus the hook's interpolation seam. The pure interpolation math is covered by
 // interpolate-image-annotations.test.
 //
-// usePlayhead is mocked so the tests are hermetic (no real PlaybackProvider RAF
-// engine / shared Jotai store that could leak across tests) and the playhead is
-// deterministic and controllable.
+// The optional playhead surface is mocked so the tests are hermetic (no real
+// PlaybackProvider RAF engine / shared Jotai store that could leak across
+// tests) and the playhead is deterministic and controllable.
 const playhead = vi.hoisted(() => ({ seconds: 0 }));
-vi.mock("@fiftyone/playback", () => ({
-  usePlayhead: () => playhead.seconds,
+vi.mock("./use-optional-playhead", () => ({
+  useOptionalPlayhead: () => playhead.seconds,
 }));
 
 type AnnotationSets = ReturnType<typeof useInterpolatedImageAnnotationSets>;

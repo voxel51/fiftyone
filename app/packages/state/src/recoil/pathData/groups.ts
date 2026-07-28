@@ -1,7 +1,7 @@
 import type { SerializableParam } from "recoil";
 import { selectorFamily } from "recoil";
 import { aggregationQuery } from "../aggregations";
-import { groupByFieldValue } from "../dynamicGroups";
+import { groupByFieldValue, isDynamicGroup } from "../dynamicGroups";
 
 export const dynamicGroupsElementCount = selectorFamily({
   key: "dynamicGroupsElementCount",
@@ -14,10 +14,19 @@ export const dynamicGroupsElementCount = selectorFamily({
       modal: boolean;
     }) =>
     ({ get }) => {
+      const dynamicGroup = value === null ? get(groupByFieldValue) : value;
+
+      // groupByFieldValue settles to null while the modal's group state
+      // initializes; suspend instead of counting against a null group, which
+      // returns a bogus result that clobbers the last good count
+      if (dynamicGroup === null && get(isDynamicGroup)) {
+        return new Promise<number>(() => {});
+      }
+
       return (
         get(
           aggregationQuery({
-            dynamicGroup: value === null ? get(groupByFieldValue) : value,
+            dynamicGroup,
             extended: false,
             modal,
             paths: [""],

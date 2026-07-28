@@ -213,6 +213,7 @@ from .core.threed import (
     ObjMesh,
     PlyMesh,
     StlMesh,
+    GaussianSplat,
     PerspectiveCamera,
     PointLight,
     DirectionalLight,

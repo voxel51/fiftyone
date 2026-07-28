@@ -9,23 +9,6 @@
  * shapes with no React / state deps.
  */
 
-/** ObjectId hex string. */
-export type ObjectIdHex = string;
-
-export type PropagationMethod = "linear" | "sam2";
-
-/** Provenance written on labels created by a propagation run. */
-export interface PropagationBlob {
-  method: PropagationMethod;
-  run_id: ObjectIdHex;
-  /**
-   * Source keyframes' `_id`s. Two for a bracketed run (linear interp,
-   * or SAM2 between two keyframes); one for a SAM2 forward run that tracks
-   * from a single seed keyframe to the end of the clip.
-   */
-  parent_keyframes: [ObjectIdHex, ...ObjectIdHex[]];
-}
-
 export interface SyntheticBox {
   id: string;
   /**
@@ -56,8 +39,6 @@ export interface SyntheticBox {
   instance?: { _cls: "Instance"; _id?: string };
   /** `true` for user-authored / propagation source; `false` for interpolated. */
   keyframe: boolean;
-  /** Provenance for propagation-created labels; `null` for keyframes. */
-  propagation: PropagationBlob | null;
 }
 
 export interface FrameLabelSnapshot {
@@ -75,7 +56,6 @@ export interface RawDetection {
   mask_path?: string;
   mask?: unknown;
   keyframe?: boolean;
-  propagation?: PropagationBlob | null;
 }
 
 export interface RawDetectionsField {
@@ -92,7 +72,6 @@ export interface RawPolyline {
   filled?: boolean;
   instance?: { _cls: "Instance"; _id?: string } | null;
   keyframe?: boolean;
-  propagation?: PropagationBlob | null;
 }
 
 export interface RawPolylinesField {
@@ -119,9 +98,4 @@ export interface LocalDetection {
    * value through `updateLabel`'s shallow merge.
    */
   keyframe?: boolean;
-  /**
-   * Propagation provenance. User edits clear this (`null`); leave
-   * undefined to preserve the existing value through the shallow merge.
-   */
-  propagation?: PropagationBlob | null;
 }

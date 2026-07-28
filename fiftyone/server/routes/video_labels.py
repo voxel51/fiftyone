@@ -34,6 +34,13 @@ from fiftyone.server.decorators import route
 import fiftyone.server.view as fosv
 
 
+# Synthetic instance-id prefix for an index-based track (a label with no
+# ``instance._id`` but a persisted ``index``). Must match the client's
+# ``TRACK_INDEX_PREFIX`` (``@fiftyone/annotation``) so the baseline index and
+# the engine address the same track by the same id.
+TRACK_INDEX_PREFIX = "track-"
+
+
 def run_length_encode(frames: t.Iterable[int]) -> t.List[t.List[int]]:
     """Fold a set of frame numbers into contiguous ``[start, end]`` runs.
 
@@ -120,10 +127,11 @@ def index_post_pipeline(
 
     Appended after ``frames_only`` makes per-frame documents the pipeline's
     input. Groups by ``instance._id`` (the engine's track keystone), falling
-    back to the per-frame label ``_id`` so instance-less legacy detections
-    fragment into single-frame entries — exactly as the client's frame walk
-    does today. The run-length encoding itself happens in Python on the
-    grouped output; see :func:`run_length_encode`.
+    back to the synthetic ``track-<index>`` for an instance-less label carrying
+    a persisted ``index`` (so its frames coalesce into one track), and finally
+    to the per-frame label ``_id`` for a bare detection with neither. This
+    mirrors the client ``addressIdOf`` exactly. The run-length encoding itself
+    happens in Python on the grouped output; see :func:`run_length_encode`.
 
     When ``dynamic_attributes`` is non-empty the group also pushes each present
     frame's value for those attributes (one ``{fn, <attr>: ...}`` sample per
@@ -134,8 +142,21 @@ def index_post_pipeline(
     """
     labels_expr = "$%s.%s" % (field, list_field) if list_field else "$" + field
 
+    index_track_id = {
+        "$cond": [
+            {"$ne": ["$labels.index", None]},
+            {"$concat": [TRACK_INDEX_PREFIX, {"$toString": "$labels.index"}]},
+            None,
+        ]
+    }
+
     group: dict = {
-        "_id": {"$ifNull": ["$labels.instance._id", "$labels._id"]},
+        "_id": {
+            "$ifNull": [
+                "$labels.instance._id",
+                {"$ifNull": [index_track_id, "$labels._id"]},
+            ]
+        },
         "frames": {"$addToSet": "$fn"},
         "keyframes": {
             "$addToSet": {

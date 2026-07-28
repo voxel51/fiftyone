@@ -10,7 +10,7 @@ Installs FiftyOne.
 import os
 from setuptools import setup, find_packages
 
-VERSION = "1.20.0"
+VERSION = "1.21.0"
 
 
 def get_version():
@@ -79,7 +79,7 @@ setup(
         "retrying>=1,<2",
         "sseclient-py>=1.7.2,<2",
         "sse-starlette>=0.10.3,<4",
-        "starlette>=0.49.1,<1.1",
+        "starlette>=1.3.1,<1.4",
         "strawberry-graphql>=0.315.7,<0.317.0",
         "tabulate>=0.7,<0.11",
         "tqdm>=2,<5",
@@ -90,6 +90,7 @@ setup(
         "numpy<3",
         "opencv-python-headless<5",
         "pandas<4",
+        "pypcd4>=1.4,<2",
         "rtree<2",
         "scikit-learn<2",
         "scikit-image<1",
@@ -117,6 +118,7 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.10",

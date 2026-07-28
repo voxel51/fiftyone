@@ -1,5 +1,5 @@
-import { cleanup, render, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, type Mock, vi } from "vitest";
 
 import type {
   EncodedVideoVisualization,
@@ -11,7 +11,9 @@ import {
   BitmapCanvasHost,
   BitmapImageFrameView,
   BitmapImageView,
+  bitmapDecodeOptions,
   bitmapDrawRect,
+  encodedImageDimensions,
 } from "./bitmap-image-view";
 import { resetVideoTextureDecodersForTests } from "./video-texture";
 
@@ -89,6 +91,78 @@ describe("bitmapDrawRect", () => {
   });
 });
 
+describe("grid bitmap decode sizing", () => {
+  it("decodes only the pixels a covered tile can display", () => {
+    expect(
+      bitmapDecodeOptions(
+        { height: 200, width: 200 },
+        { height: 2_000, width: 4_000 },
+        "cover",
+      ),
+    ).toEqual({
+      colorSpaceConversion: "none",
+      resizeHeight: 200,
+      resizeQuality: "high",
+      resizeWidth: 400,
+    });
+  });
+
+  it("reads PNG dimensions without decoding full-resolution pixels", () => {
+    const bytes = new Uint8Array(24);
+    bytes.set([0x89, 0x50, 0x4e, 0x47], 0);
+    bytes.set([0x49, 0x48, 0x44, 0x52], 12);
+    bytes.set([0, 0, 0x0f, 0xa0], 16);
+    bytes.set([0, 0, 0x07, 0xd0], 20);
+
+    expect(encodedImageDimensions(bytes)).toEqual({
+      height: 2_000,
+      width: 4_000,
+    });
+  });
+
+  it("reads JPEG and WebP variants and rejects truncated headers", () => {
+    const jpeg = Uint8Array.of(
+      0xff,
+      0xd8,
+      0xff,
+      0xc0,
+      0,
+      7,
+      8,
+      0x01,
+      0xe0,
+      0x02,
+      0x80,
+    );
+    const vp8x = webpHeader("VP8X");
+    writeUint24Le(vp8x, 24, 639);
+    writeUint24Le(vp8x, 27, 479);
+    const vp8 = webpHeader("VP8 ");
+    vp8.set([0x9d, 0x01, 0x2a], 23);
+    vp8.set([0x80, 0x02, 0xe0, 0x01], 26);
+    const vp8l = webpHeader("VP8L");
+    vp8l[20] = 0x2f;
+    const vp8lBits = 639 | (479 << 14);
+    vp8l.set(
+      [
+        vp8lBits & 0xff,
+        (vp8lBits >>> 8) & 0xff,
+        (vp8lBits >>> 16) & 0xff,
+        (vp8lBits >>> 24) & 0xff,
+      ],
+      21,
+    );
+
+    for (const bytes of [jpeg, vp8x, vp8, vp8l]) {
+      expect(encodedImageDimensions(bytes)).toEqual({
+        height: 480,
+        width: 640,
+      });
+      expect(encodedImageDimensions(bytes.subarray(0, 10))).toBeNull();
+    }
+  });
+});
+
 describe("BitmapImageFrameView", () => {
   it("reuses the raw-image source canvas across frame updates", async () => {
     stubElementSize(100, 50);
@@ -122,6 +196,100 @@ describe("BitmapImageFrameView", () => {
 });
 
 describe("BitmapImageView", () => {
+  it("re-decodes at a larger size when the tile grows", async () => {
+    const decodes = stubCreateImageBitmap();
+    let width = 100;
+    let height = 50;
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+      () =>
+        ({
+          bottom: height,
+          height,
+          left: 0,
+          right: width,
+          top: 0,
+          width,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        }) as DOMRect,
+    );
+    let resize: ResizeObserverCallback | null = null;
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resize = callback;
+        }
+        disconnect() {
+          // no-op in the test observer
+        }
+        observe() {
+          // no-op in the test observer
+        }
+        unobserve() {
+          // no-op in the test observer
+        }
+      },
+    );
+    sharedMockContext();
+    const bytes = new Uint8Array(24);
+    bytes.set([0x89, 0x50, 0x4e, 0x47], 0);
+    bytes.set([0x49, 0x48, 0x44, 0x52], 12);
+    bytes.set([0, 0, 0x0f, 0xa0], 16);
+    bytes.set([0, 0, 0x07, 0xd0], 20);
+
+    render(<BitmapImageView bytes={bytes} />);
+    expect(createImageBitmap).toHaveBeenCalledTimes(1);
+    decodes.settle(0, fakeBitmap(100, 50));
+
+    width = 200;
+    height = 100;
+    act(() => {
+      resize?.([], {} as ResizeObserver);
+    });
+
+    await waitFor(() => expect(createImageBitmap).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(createImageBitmap).mock.calls[1]?.[1]).toMatchObject({
+      resizeHeight: 100,
+      resizeWidth: 200,
+    });
+  });
+
+  it("requests a tile-sized bitmap while preserving natural dimensions", async () => {
+    const decodes = stubCreateImageBitmap();
+    stubElementSize(200, 200);
+    sharedMockContext();
+    const onBitmapRetainedBytesChange = vi.fn();
+    const onImageLoaded = vi.fn();
+    const bytes = new Uint8Array(24);
+    bytes.set([0x89, 0x50, 0x4e, 0x47], 0);
+    bytes.set([0x49, 0x48, 0x44, 0x52], 12);
+    bytes.set([0, 0, 0x0f, 0xa0], 16);
+    bytes.set([0, 0, 0x07, 0xd0], 20);
+
+    render(
+      <BitmapImageView
+        bytes={bytes}
+        onBitmapRetainedBytesChange={onBitmapRetainedBytesChange}
+        onImageLoaded={onImageLoaded}
+      />,
+    );
+
+    expect(createImageBitmap).toHaveBeenCalledWith(expect.any(Blob), {
+      colorSpaceConversion: "none",
+      resizeHeight: 200,
+      resizeQuality: "high",
+      resizeWidth: 400,
+    });
+
+    decodes.settle(0, fakeBitmap(400, 200));
+    await waitFor(() =>
+      expect(onImageLoaded).toHaveBeenCalledWith(4_000, 2_000),
+    );
+    expect(onBitmapRetainedBytesChange).toHaveBeenCalledWith(400 * 200 * 4);
+  });
+
   it("decodes, sizes the backing store to CSS pixels, and draws with cover math", async () => {
     const decodes = stubCreateImageBitmap();
     stubElementSize(100, 50);
@@ -379,11 +547,33 @@ describe("BitmapCanvasHost", () => {
 });
 
 interface FakeBitmap extends ImageBitmap {
-  readonly close: ReturnType<typeof vi.fn>;
+  readonly close: Mock<() => void>;
 }
 
 function fakeBitmap(width: number, height: number): FakeBitmap {
   return { close: vi.fn(), height, width } as unknown as FakeBitmap;
+}
+
+function webpHeader(chunk: "VP8 " | "VP8L" | "VP8X"): Uint8Array {
+  const bytes = new Uint8Array(30);
+  writeAscii(bytes, 0, "RIFF");
+  writeAscii(bytes, 8, "WEBP");
+  writeAscii(bytes, 12, chunk);
+  return bytes;
+}
+
+function writeAscii(bytes: Uint8Array, offset: number, value: string): void {
+  bytes.set(
+    [...value].map((character) => character.charCodeAt(0)),
+    offset,
+  );
+}
+
+function writeUint24Le(bytes: Uint8Array, offset: number, value: number): void {
+  bytes.set(
+    [value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff],
+    offset,
+  );
 }
 
 function rawFrame(rgba: readonly number[]): RawImageVisualization {

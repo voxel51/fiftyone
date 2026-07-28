@@ -298,7 +298,7 @@ function CirclePrimitive({
         onClick && styles.selectable,
         isSelected && styles.selected,
       )}
-      style={primitiveStyle(color, INTERIOR_FILL)}
+      style={primitiveStyle(color)}
       onClick={onClick}
     >
       {transformedCircle ? (
@@ -386,7 +386,7 @@ function PolylinePrimitive({
           onClick && styles.selectable,
           isSelected && styles.selected,
         )}
-        style={primitiveStyle(color, undefined)}
+        style={primitiveStyle(color)}
         onClick={onClick}
       >
         {displayPoints.map(([x, y], i) => (
@@ -411,7 +411,7 @@ function PolylinePrimitive({
         onClick && styles.selectable,
         isSelected && styles.selected,
       )}
-      style={primitiveStyle(color, closed ? INTERIOR_FILL : undefined)}
+      style={primitiveStyle(color)}
       onClick={onClick}
     >
       {closed ? (
@@ -513,7 +513,7 @@ function LineListGroups({
               onClick && styles.selectable,
               isSelected && styles.selected,
             )}
-            style={primitiveStyle(color, INTERIOR_FILL)}
+            style={primitiveStyle(color)}
             onClick={onClick}
           >
             <rect
@@ -848,13 +848,8 @@ function boundsKey(b: Bounds): string {
   )}`;
 }
 
-function primitiveStyle(
-  color: string,
-  interior: string | undefined,
-): CSSProperties {
-  const out: Record<string, string> = { "--ann-stroke": color };
-  if (interior) out["--ann-interior"] = interior;
-  return out as CSSProperties;
+function primitiveStyle(color: string): CSSProperties {
+  return { "--ann-stroke": color } as CSSProperties;
 }
 
 function pickHandler(
@@ -897,7 +892,6 @@ function clamp01(v: number): number {
 }
 
 const HOVER_STROKE = "#ff7a18";
-const INTERIOR_FILL = "rgba(0, 0, 0, 0.001)";
 
 const containerStyle: CSSProperties = {
   inset: 0,

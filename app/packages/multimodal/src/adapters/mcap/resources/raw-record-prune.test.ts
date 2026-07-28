@@ -8,6 +8,7 @@ import {
   DEFAULT_RAW_PRUNE_BUDGETS,
   pruneRawRecord,
   rawNodeToJson,
+  rawRecordToJsonText,
 } from "./raw-record-prune";
 
 describe("pruneRawRecord", () => {
@@ -186,6 +187,31 @@ describe("rawNodeToJson", () => {
       big: "9007199254740993",
       nan: "NaN",
       small: 12,
+    });
+  });
+});
+
+describe("rawRecordToJsonText", () => {
+  it("serializes complete arrays, strings, bytes, and 64-bit values", () => {
+    const text = rawRecordToJsonText({
+      big: 9_007_199_254_740_993n,
+      bytes: Uint8Array.from([0, 1, 2, 255]),
+      data: Array.from({ length: 100 }, (_, index) => index),
+      long: {
+        high: 1,
+        low: 2,
+        toNumber: () => 42,
+        toString: () => "4294967298",
+      },
+      note: "x".repeat(600),
+    });
+
+    expect(JSON.parse(text)).toEqual({
+      big: "9007199254740993",
+      bytes: [0, 1, 2, 255],
+      data: Array.from({ length: 100 }, (_, index) => index),
+      long: 4_294_967_298,
+      note: "x".repeat(600),
     });
   });
 });

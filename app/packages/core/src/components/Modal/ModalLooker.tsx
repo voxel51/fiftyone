@@ -30,10 +30,13 @@ export const useClearSelectedLabels = () => {
 
 interface LookerProps {
   sample?: fos.ModalSample;
+  sampleTransitioning?: boolean;
   showControls?: boolean;
 }
 
-const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
+type NativeLookerProps = LookerProps & { sample: fos.ModalSample };
+
+const ModalLookerNoTimeline = React.memo((props: NativeLookerProps) => {
   const { id, ref, looker } = useLooker<ImageLooker>(props);
   const theme = useTheme();
 
@@ -47,6 +50,7 @@ const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
       style={{
         width: "100%",
         height: "100%",
+        minHeight: 0,
         background: theme.background.level2,
         position: "relative",
       }}
@@ -55,9 +59,12 @@ const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
 });
 
 export const ModalLooker = React.memo(
-  ({ sample: propsSampleData }: LookerProps) => {
+  ({ sample: propsSampleData, sampleTransitioning }: LookerProps) => {
     return propsSampleData ? (
-      <ModalLookerContent sample={propsSampleData} />
+      <ModalLookerContent
+        sample={propsSampleData}
+        sampleTransitioning={sampleTransitioning}
+      />
     ) : (
       <ModalLookerCurrentSample />
     );
@@ -71,7 +78,13 @@ const ModalLookerCurrentSample = React.memo(() => {
 });
 
 const ModalLookerContent = React.memo(
-  ({ sample }: { sample: fos.ModalSample }) => {
+  ({
+    sample,
+    sampleTransitioning = false,
+  }: {
+    sample: fos.ModalSample;
+    sampleTransitioning?: boolean;
+  }) => {
     const mode = useAtomValue(fos.modalMode);
     const shouldRenderImavid = useRecoilValue(
       fos.shouldRenderImaVidLooker(true),
@@ -127,7 +140,11 @@ const ModalLookerContent = React.memo(
     }
 
     return (
-      <ModalSampleRenderer sample={sample} modalMediaField={modalMediaField} />
+      <ModalSampleRenderer
+        sample={sample}
+        modalMediaField={modalMediaField}
+        transitioning={sampleTransitioning}
+      />
     );
   },
 );

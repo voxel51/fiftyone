@@ -1,4 +1,3 @@
-import { usePlayhead } from "@fiftyone/playback";
 import {
   useCallback,
   useEffect,
@@ -24,6 +23,7 @@ import {
 } from "./mcap-data-stream-context";
 import type { McapTimelineIndex } from "./mcap-timeline-index";
 import type { McapTopicCache } from "./mcap-topic-cache";
+import { useOptionalPlayhead } from "./use-optional-playhead";
 
 /** Options for the interpolated image-annotation hooks. */
 export interface UseInterpolatedImageAnnotationsOptions {
@@ -107,20 +107,26 @@ export function useInterpolatedImageAnnotationSets(
     [],
   );
 
-  // Re-render every RAF tick so the lerp tracks the playhead.
-  const playhead = usePlayhead();
+  // Smooth mode tracks every RAF tick. As-recorded mode samples placement time
+  // only when stream/cache content renders for another reason.
+  const playhead = useOptionalPlayhead(interpolate);
   const timeline = dataStream?.getTimelineIndex() ?? null;
   const cacheSnapshot = useTopicCacheSnapshot(dataStream, stableTopics);
-  const interpolationCache = useMemo(
-    () => createInterpolationCache(dataStream, timeline),
+  // Fresh caches whenever the stream or timeline changes so entries keyed by
+  // now-unreachable visualization objects don't linger. The deps are the
+  // reset triggers, not values the factories read — hence the lint disables.
+  const interpolationCache = useMemo<InterpolationCache>(
+    () => new WeakMap(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [dataStream, timeline],
   );
-  const nextMessageCache = useMemo(
-    () => createNextMessageCache(dataStream, timeline),
-    [dataStream, timeline],
-  );
-  const renderMetadataCache = useMemo(
-    () => createRenderMetadataCache(dataStream, timeline),
+  const nextMessageCache = useMemo<
+    WeakMap<McapTopicCache, NextMessageCacheEntry>
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  >(() => new WeakMap(), [dataStream, timeline]);
+  const renderMetadataCache = useMemo<RenderMetadataCache>(
+    () => new WeakMap(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [dataStream, timeline],
   );
 
@@ -378,27 +384,6 @@ function currentAnnotationFrame({
     nextViz,
   );
   return sampleImageAnnotationInterpolation(prepared, f);
-}
-
-function createInterpolationCache(
-  _dataStream: McapDataStream | null,
-  _timeline: McapTimelineIndex | null,
-): InterpolationCache {
-  return new WeakMap();
-}
-
-function createNextMessageCache(
-  _dataStream: McapDataStream | null,
-  _timeline: McapTimelineIndex | null,
-): WeakMap<McapTopicCache, NextMessageCacheEntry> {
-  return new WeakMap();
-}
-
-function createRenderMetadataCache(
-  _dataStream: McapDataStream | null,
-  _timeline: McapTimelineIndex | null,
-): RenderMetadataCache {
-  return new WeakMap();
 }
 
 function annotationFrameWithMetadata(

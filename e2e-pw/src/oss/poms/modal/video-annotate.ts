@@ -27,9 +27,17 @@ export class VideoAnnotatePom {
     this.statusSlot = page.getByTestId("video-annotation-status-slot");
   }
 
-  /** Wait until the video-annotation surface (top bar) has mounted. */
+  /**
+   * Wait until the video-annotation surface has mounted AND the timeline
+   * has committed its tracks (`data-timeline-loaded="true"` — stamped once
+   * label schemas land and the frame index resolves). Track reads after
+   * this are deterministic single-shots; no polling required.
+   */
   async waitForSurface() {
     await expect(this.topBar).toBeVisible();
+    await expect(
+      this.page.locator('[data-timeline-loaded="true"]'),
+    ).toBeAttached();
   }
 
   /** All distinct timeline track ids (object instanceIds + `td-…` rows). */
@@ -112,6 +120,45 @@ export class VideoAnnotatePom {
   /** Click a timeline track row (selects it via engine interaction). */
   async clickTrack(trackId: string) {
     await this.track(trackId).click();
+  }
+
+  /**
+   * Expand the tracks drawer. The playback controls row is the drawer toggle
+   * (`role="button"`); focus it and press Enter so the keypress toggles the
+   * drawer rather than landing on a nested playback button. It toggles, so call
+   * only from the closed default.
+   */
+  async openTracksDrawer() {
+    const toggle = this.page
+      .locator('[data-testid="timeline-controls-root"]')
+      .first();
+    await toggle.focus();
+    await toggle.press("Enter");
+  }
+
+  /** Collapse the tracks drawer back to the closed default — see {@link openTracksDrawer}. */
+  async closeTracksDrawer() {
+    const toggle = this.page
+      .locator('[data-testid="timeline-controls-root"]')
+      .first();
+    await toggle.focus();
+    await toggle.press("Enter");
+  }
+
+  /**
+   * Pin an object track so its row stays in the always-visible timeline header
+   * once the drawer closes. The pin button only mounts while the row is
+   * rendered, so open the drawer to reach it, pin, then restore the closed
+   * default — the pinned row remains in the header, ready for interaction
+   * without the drawer open. Call once from the closed default.
+   */
+  async pinTrack(trackId: string) {
+    await this.openTracksDrawer();
+    await this.page
+      .locator(`[data-testid="timeline-track-pin-${trackId}"]`)
+      .first()
+      .click();
+    await this.closeTracksDrawer();
   }
 
   /**
@@ -387,6 +434,36 @@ class VideoAnnotateAsserter {
     await expect
       .poll(async () => (await this.va.trackIds()).includes(trackId))
       .toBe(present);
+  }
+
+  /**
+   * Assert a track's interval bar is (not) actionable. A closed drawer keeps the
+   * bar mounted and on-screen but non-interactive; pinning the row into the
+   * header or opening the drawer makes it clickable again. Actionability — not
+   * mere visibility — is what timeline interactions (clicks, context menus)
+   * actually depend on.
+   */
+  async trackBarActionable(trackId: string, actionable = true) {
+    const bar = this.va.trackBar(trackId);
+    if (actionable) {
+      await bar.click({ trial: true });
+      return;
+    }
+
+    // the bar must stay mounted and on-screen — otherwise a rejected trial
+    // click would prove "gone", not "non-actionable"
+    await expect(bar).toBeVisible();
+
+    let rejected = false;
+    try {
+      await bar.click({ trial: true, timeout: 1500 });
+    } catch {
+      rejected = true;
+    }
+    expect(
+      rejected,
+      "expected the track bar to be non-actionable while the drawer is closed",
+    ).toBe(true);
   }
 
   /** Assert a label (by class text) is / isn't listed in the annotate sidebar. */

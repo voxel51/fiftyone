@@ -1007,63 +1007,62 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
     ):
         """Read per-frame exemplar prompts in concept mode.
 
-        Concept mode returns a dict of 0-based frame index to lists of
-        normalised prompt dicts::
+        Returns a nested dict arranged by frame then class label so that each
+        ``add_prompt`` request maps naturally to one canvas (frame)::
 
-            {0: [{"box": [x1, y1, x2, y2], "_label": "dog"}], ...}
-            {0: [{"points": [[x1, y1], [x2, y2]], "labels": [1, 0], _label": "dog"}], ...}
+            {
+                0: {                              # 0-based SAM3 frame index
+                    "dog": {
+                        "boxes":    [[x, y, w, h], ...],
+                        "polarity": [1|0, ...],
+                    },
+                    ...
+                },
+                ...
+            }
+
+        ``polarity`` values are 1 for positive exemplar, 0 for negative.
+        Frame indices are 0-based SAM3 indices (FiftyOne frame number − 1).
+        Only ``Detections`` fields are accepted; ``Keypoints`` (point prompts)
+        are not supported in concept mode.
         """
         _frame_indices = (
             frame_indices if frame_indices else sorted(sample.frames.keys())
         )
 
         prompts = {}
+
         for frame_number in _frame_indices:
             if frame_number not in sample.frames:
                 raise ValueError(
-                    f"Frame index {frame_number} not valid for sample with frame keys {sorted(sample.frames.keys())}."
+                    f"Frame index {frame_number} not valid for sample with "
+                    f"frame keys {sorted(sample.frames.keys())}."
                 )
 
             value = sample.frames[frame_number].get_field(frame_field_name)
             if value is None:
                 continue
+
             frame_idx = int(frame_number - 1)
+
             if isinstance(value, fol.Detections):
-                frame_prompts = []
                 for det in value.detections:
                     rx, ry, rw, rh = det.bounding_box
-                    frame_prompts.append(
-                        {
-                            "box": [rx, ry, rx + rw, ry + rh],
-                            "_label": det.label,
-                        }
+                    sam_label = det.get_field("sam_label")
+                    polarity = int(sam_label) if sam_label is not None else 1
+                    label = det.label if det.label is not None else "visual"
+                    frame_entry = prompts.setdefault(frame_idx, {})
+                    label_entry = frame_entry.setdefault(
+                        label, {"boxes": [], "polarity": []}
                     )
-                if frame_prompts:
-                    prompts[frame_idx] = frame_prompts
-
-            elif isinstance(value, fol.Keypoints):
-                frame_prompts = []
-                for kp in value.keypoints:
-                    points_norm, labels = fosam._to_sam_points(
-                        kp.points,
-                        width=1,
-                        height=1,
-                        point_labels=fosam._get_sam_point_labels(kp),
-                    )
-                    frame_prompts.append(
-                        {
-                            "points": points_norm.tolist(),
-                            "labels": labels.tolist(),
-                            "_label": kp.label,
-                        }
-                    )
-                if frame_prompts:
-                    prompts[frame_idx] = frame_prompts
+                    label_entry["boxes"].append([rx, ry, rw, rh])
+                    label_entry["polarity"].append(polarity)
 
             else:
                 raise ValueError(
                     f"Unsupported prompt type {type(value)} on frame "
-                    f"{frame_number}. Use Detections or Keypoints. "
+                    f"{frame_number}. Concept mode exemplar prompts must be "
+                    f"stored as Detections (bounding boxes)."
                 )
 
         return prompts
@@ -1151,54 +1150,86 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
         session_id = response["session_id"]
 
         sample_detections = {
-            i + 1: fol.Detections(detections=[])
+            i: fol.Detections(detections=[])
             for i in sorted(sample.frames.keys())
         }
 
         try:
-            # Each add_prompt call resets model state, so we run a separate
-            # propagation pass per prompt and accumulate results across passes.
+            # add_prompt resets session state, so we do exactly ONE propagation
+            # pass per label.  When exemplar boxes exist on multiple frames for
+            # the same label we pick a single anchor frame (most boxes; earliest
+            # frame on tie) to avoid accumulating duplicate detections.
             if self.config.classes:
                 text_frame = self._get_text_frame_idx()
+
                 for text_prompt in self.config.classes:
-                    prompt_response = self.concept_predictor.handle_request(
-                        request=dict(
-                            type="add_prompt",
+                    # Collect frames that carry exemplar boxes for this label.
+                    matching_frames = {
+                        fi: frame_data[text_prompt]
+                        for fi, frame_data in self._curr_exemplar_prompts.items()
+                        if text_prompt in frame_data
+                    }
+
+                    if matching_frames:
+                        # Pick the single best anchor: most boxes, then earliest.
+                        anchor_fi = min(
+                            matching_frames,
+                            key=lambda fi: (
+                                -len(matching_frames[fi]["boxes"]),
+                                fi,
+                            ),
+                        )
+                        if len(matching_frames) > 1:
+                            other_frames = sorted(
+                                fi + 1
+                                for fi in matching_frames
+                                if fi != anchor_fi
+                            )
+                            logger.warning(
+                                "Concept prompt %r has exemplar boxes on "
+                                "multiple frames %s. Anchoring to frame %d "
+                                "(%d boxes). Boxes on frames %s will be "
+                                "ignored.",
+                                text_prompt,
+                                sorted(fi + 1 for fi in matching_frames),
+                                anchor_fi + 1,
+                                len(matching_frames[anchor_fi]["boxes"]),
+                                other_frames,
+                            )
+                        label_data = matching_frames[anchor_fi]
+                        self._concept_add_and_propagate(
+                            session_id=session_id,
+                            frame_index=anchor_fi,
+                            label=text_prompt,
+                            sample_detections=sample_detections,
+                            boxes=label_data["boxes"],
+                            box_labels=label_data["polarity"],
+                        )
+                    else:
+                        # Text-only at anchor frame.
+                        self._concept_add_and_propagate(
                             session_id=session_id,
                             frame_index=text_frame - 1,
-                            text=text_prompt,
+                            label=text_prompt,
+                            sample_detections=sample_detections,
                         )
-                    )
-                    outputs = prompt_response.get("outputs", prompt_response)
-                    label_map = {
-                        oid: text_prompt
-                        for oid in outputs.get("out_obj_ids", [])
-                    }
-                    self._accumulate_concept_propagation(
-                        session_id, label_map, text_prompt, sample_detections
-                    )
 
-            for frame_idx, prompt_list in self._curr_exemplar_prompts.items():
-                for prompt_dict in prompt_list:
-                    label = prompt_dict.get("_label", None)
-                    request = dict(
-                        type="add_prompt",
-                        session_id=session_id,
-                        frame_index=frame_idx,
-                    )
-                    request.update(
-                        {k: v for k, v in prompt_dict.items() if k != "_label"}
-                    )
-                    prompt_response = self.concept_predictor.handle_request(
-                        request=request
-                    )
-                    outputs = prompt_response.get("outputs", prompt_response)
-                    label_map = {
-                        oid: label for oid in outputs.get("out_obj_ids", [])
-                    }
-                    self._accumulate_concept_propagation(
-                        session_id, label_map, label, sample_detections
-                    )
+            else:
+                # Exemplar-only mode (no text prompts): run every label on
+                # every frame without filtering.
+                for fi, frame_data in sorted(
+                    self._curr_exemplar_prompts.items()
+                ):
+                    for label, label_data in frame_data.items():
+                        self._concept_add_and_propagate(
+                            session_id=session_id,
+                            frame_index=fi,
+                            label=label,
+                            sample_detections=sample_detections,
+                            boxes=label_data["boxes"],
+                            box_labels=label_data["polarity"],
+                            start_frame_index=fi,
+                        )
 
         finally:
             self.concept_predictor.handle_request(
@@ -1210,18 +1241,60 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
 
         return sample_detections
 
+    def _concept_add_and_propagate(
+        self,
+        session_id,
+        frame_index,
+        label,
+        sample_detections,
+        boxes=None,
+        box_labels=None,
+        start_frame_index=None,
+    ):
+        text = None if label == "visual" else label
+        request = dict(
+            type="add_prompt",
+            session_id=session_id,
+            frame_index=frame_index,
+            text=text,
+        )
+        if boxes is not None:
+            request["bounding_boxes"] = boxes
+        if box_labels is not None:
+            request["bounding_box_labels"] = box_labels
+        prompt_response = self.concept_predictor.handle_request(
+            request=request
+        )
+        outputs = prompt_response.get("outputs", prompt_response)
+        label_map = {oid: label for oid in outputs.get("out_obj_ids", [])}
+        self._accumulate_concept_propagation(
+            session_id,
+            label_map,
+            label,
+            sample_detections,
+            start_frame_index=start_frame_index,
+        )
+
     def _accumulate_concept_propagation(
-        self, session_id, label_map, default_label, sample_detections
+        self,
+        session_id,
+        label_map,
+        default_label,
+        sample_detections,
+        start_frame_index=None,
     ):
         """Propagate the current session state and merge detections into
         ``sample_detections``, using ``default_label`` for any object whose
         ID is not in ``label_map`` (e.g. newly discovered instances)."""
+        request = dict(
+            type="propagate_in_video",
+            session_id=session_id,
+            propagation_direction=self.config.propagation_direction,
+        )
+        if start_frame_index is not None:
+            request["start_frame_index"] = start_frame_index
         for frame_result in self.concept_predictor.handle_stream_request(
-            request=dict(
-                type="propagate_in_video",
-                session_id=session_id,
-                propagation_direction=self.config.propagation_direction,
-            )
+            request=request
         ):
             out_frame_idx = frame_result.get("frame_index", 0)
             outputs = frame_result.get("outputs", frame_result)

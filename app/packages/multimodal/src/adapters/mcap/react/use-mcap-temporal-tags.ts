@@ -4,7 +4,10 @@ import type {
   TemporalTagCreatePayload,
   TemporalTagUpdatePayload,
 } from "@fiftyone/playback";
-import { useActiveTemporalTagFilterValues } from "@fiftyone/state";
+import {
+  useActiveTemporalTagFilterValues,
+  useTemporalTagColor,
+} from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
 import { useSampleRendererTemporalTags } from "../../../temporal-tags";
 
@@ -16,25 +19,6 @@ const NO_IDS: string[] = [];
 const TEMPORAL_TAG_TRACK_PREFIX = "temporal-tag::";
 const temporalTagTrackId = (label: string): string =>
   `${TEMPORAL_TAG_TRACK_PREFIX}${label}`;
-
-const TAG_COLORS = [
-  "#f97316",
-  "#3b82f6",
-  "#10b981",
-  "#8b5cf6",
-  "#f43f5e",
-  "#f59e0b",
-  "#06b6d4",
-  "#ec4899",
-];
-
-function hashLabel(label: string): number {
-  let hash = 0;
-  for (let i = 0; i < label.length; i++) {
-    hash = (hash * 31 + label.charCodeAt(i)) >>> 0;
-  }
-  return hash;
-}
 
 export interface McapTemporalTagsResult {
   tracks: Track[];
@@ -52,6 +36,7 @@ export function useMcapTemporalTags(
     delete: deleteTags,
     temporalTags,
   } = useSampleRendererTemporalTags(ctx);
+  const colorForTag = useTemporalTagColor();
 
   const onTagDelete = useCallback(
     async (event: { data?: unknown }) => {
@@ -108,7 +93,7 @@ export function useMcapTemporalTags(
     return sorted.map(([label, events]) => ({
       id: temporalTagTrackId(label),
       label,
-      color: TAG_COLORS[hashLabel(label) % TAG_COLORS.length],
+      color: colorForTag(label),
       events: events.map((t) => ({
         data: t.id,
         label: t.tag,
@@ -116,7 +101,7 @@ export function useMcapTemporalTags(
         endSec: t.end / 1_000_000_000,
       })),
     }));
-  }, [temporalTags]);
+  }, [temporalTags, colorForTag]);
 
   return { tracks, onTagCreate, onTagUpdate, onTagDelete };
 }

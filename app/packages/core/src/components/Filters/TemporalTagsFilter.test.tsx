@@ -18,6 +18,7 @@ vi.mock("@fiftyone/state", async () => {
   const family = (key: string) => atomFamily({ key, default: null });
   return {
     useSyncTemporalTagResults: syncSpy,
+    useTemporalTagColor: () => () => "#ffffff",
     temporalTagResults: atom({
       key: "test_temporalTagResults",
       default: { results: [], count: null },

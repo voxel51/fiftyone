@@ -30,6 +30,12 @@ const mockResult = vi.hoisted(
     reload: vi.fn(async () => []),
   }),
 );
+const colorForTag = vi.hoisted(() => vi.fn(() => "#123456"));
+
+vi.mock("@fiftyone/state", () => ({
+  useActiveTemporalTagFilterValues: () => [],
+  useTemporalTagColor: () => colorForTag,
+}));
 
 vi.mock("../../../temporal-tags", () => ({
   useSampleRendererTemporalTags: vi.fn(() => mockResult),
