@@ -1,5 +1,5 @@
 import { IconButton, useTheme, ColoredDot } from "@fiftyone/components";
-import { DEFAULT_SELECTED } from "@fiftyone/state";
+import { DEFAULT_SELECTED, constants } from "@fiftyone/state";
 import { CloseRounded } from "@mui/icons-material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { ListSubheader, MenuItem, Select, Typography } from "@mui/material";
@@ -7,8 +7,9 @@ import { debounce } from "lodash";
 import React, { useCallback, useState, useRef } from "react";
 import SelectionOption, { DatasetViewOption } from "./Option";
 import { SearchBox } from "./SearchBox";
-import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
 import { CustomBox, LastOption } from "./styledComponents";
+
+const { DEFAULT_COLOR_OPTION } = constants;
 
 type SelectionProps = {
   id: string;
@@ -86,7 +87,7 @@ export default function Selection(props: SelectionProps) {
     debounce((term: string) => {
       onSearch?.(term?.toLowerCase());
     }, 300),
-    [onSearch]
+    [onSearch],
   );
 
   if (!selected) {

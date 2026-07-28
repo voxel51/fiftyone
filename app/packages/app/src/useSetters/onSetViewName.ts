@@ -1,5 +1,13 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { setView, type setViewMutation } from "@fiftyone/relay";
-import { datasetName, stateSubscription } from "@fiftyone/state";
+import {
+  DEFAULT_SELECTION_STYLE,
+  datasetName,
+  stateSubscription,
+} from "@fiftyone/state";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
@@ -10,10 +18,7 @@ const onSetViewName: RegisteredSetter =
   ({ environment, router, sessionRef }) =>
   ({ get, set }, value: string | DefaultValue | null) => {
     set(pendingEntry, true);
-    let slug = value;
-    if (slug instanceof DefaultValue) {
-      slug = null;
-    }
+    const slug = value instanceof DefaultValue ? null : value;
 
     const dataset = get(datasetName);
     if (!dataset) {
@@ -32,7 +37,8 @@ const onSetViewName: RegisteredSetter =
     });
 
     sessionRef.current.selectedLabels = [];
-    sessionRef.current.selectedSamples = new Set();
+    sessionRef.current.selectedSamples = new Map();
+    sessionRef.current.sampleSelectionStyle = DEFAULT_SELECTION_STYLE;
     sessionRef.current.fieldVisibilityStage = undefined;
     router.history.push(
       resolveURL({
@@ -43,7 +49,7 @@ const onSetViewName: RegisteredSetter =
       }),
       {
         view: [],
-      }
+      },
     );
   };
 

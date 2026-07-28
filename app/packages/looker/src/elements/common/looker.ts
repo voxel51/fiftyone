@@ -19,6 +19,11 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 
   getEvents(): Events<State> {
     return {
+      click: ({ update }) => {
+        update(({ config: { thumbnail } }) =>
+          thumbnail ? { hovering: false } : {},
+        );
+      },
       keydown: ({ event, update, dispatchEvent }) => {
         if (event.altKey || event.ctrlKey || event.metaKey) {
           return;
@@ -69,7 +74,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
                 update,
                 dispatchEvent,
                 e.key,
-                e.shiftKey
+                e.shiftKey,
               );
             }
           }

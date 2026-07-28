@@ -1,6 +1,12 @@
+import { OpType } from "@fiftyone/annotation/src/types";
 import type {
-  BoundingBoxOverlay,
   ClassificationOverlay,
+  DetectionOverlay,
+  KeypointLabel,
+  KeypointOverlay,
+  PolylineOverlay,
+  TemporalLabel,
+  TemporalOverlay,
 } from "@fiftyone/lighter";
 import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
@@ -37,7 +43,6 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-import type { PrimitiveAtom } from "jotai";
 import type { VariablesOf } from "react-relay";
 import { commitMutation } from "react-relay";
 import {
@@ -51,14 +56,14 @@ import {
 import { collapseFields, getCurrentEnvironment } from "../utils";
 import * as atoms from "./atoms";
 import { getBrowserStorageEffectForKey } from "./customEffects";
+import { activeModalSidebarSample } from "./groups";
+import { isLargeVideo } from "./options";
+import { cumulativeValues, values } from "./pathData";
 import {
   active3dSlices,
   active3dSlicesToSampleMap,
-  activeModalSidebarSample,
-  pinned3DSampleSlice,
-} from "./groups";
-import { isLargeVideo } from "./options";
-import { cumulativeValues, values } from "./pathData";
+  is3dPinned,
+} from "./renderConfig3d.atoms";
 import {
   buildSchema,
   field,
@@ -72,6 +77,7 @@ import { isFieldVisibilityActive } from "./schemaSettings.atoms";
 import {
   datasetName,
   disableFrameFiltering,
+  isMultimodalDataset,
   isVideoDataset,
   stateSubscription,
 } from "./selectors";
@@ -84,7 +90,6 @@ import {
   unsupportedMatcher,
 } from "./utils";
 import * as viewAtoms from "./view";
-import { OpType } from "@fiftyone/annotation/src/types";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -145,7 +150,7 @@ export interface ClassificationAnnotationLabel extends Label {
 
 export interface DetectionAnnotationLabel extends Label {
   data: DetectionLabel;
-  overlay: BoundingBoxOverlay;
+  overlay: DetectionOverlay;
   type: "Detection";
 }
 
@@ -157,15 +162,29 @@ export interface Detection3DAnnotationLabel extends Label {
 
 export interface PolylineAnnotationLabel extends Label {
   data: PolylineLabel;
-  overlay: GenericOverlay<PolylineLabel>;
+  overlay: PolylineOverlay | GenericOverlay<PolylineLabel>;
   type: "Polyline";
+}
+
+export interface KeypointAnnotationLabel extends Label {
+  data: KeypointLabel;
+  overlay: KeypointOverlay;
+  type: "Keypoint";
+}
+
+export interface TemporalDetectionAnnotationLabel extends Label {
+  data: TemporalLabel;
+  overlay: TemporalOverlay;
+  type: "TemporalDetection";
 }
 
 export type AnnotationLabel =
   | ClassificationAnnotationLabel
   | DetectionAnnotationLabel
   | Detection3DAnnotationLabel
-  | PolylineAnnotationLabel;
+  | PolylineAnnotationLabel
+  | KeypointAnnotationLabel
+  | TemporalDetectionAnnotationLabel;
 
 export type AnnotationLabelData = AnnotationLabel["data"];
 
@@ -178,8 +197,10 @@ export interface PrimitiveValue {
 
 export interface LabelEntry {
   kind: EntryKind.LABEL;
-  atom: PrimitiveAtom<AnnotationLabel>;
   id: string;
+  path: string;
+  /** Occurrence frame for video frame labels; absent for sample-level labels. */
+  frame?: number;
 }
 
 export interface LoadingEntry {
@@ -215,20 +236,20 @@ export const readableTags = selectorFamily<
               modal,
               ...MATCH_LABEL_TAGS,
             })
-          : values({ extended: false, modal, path: "tags" })
+          : values({ extended: false, modal, path: "tags" }),
       );
     },
 });
 
 export const useGridEntries = (): [
   SidebarEntry[],
-  (entries: SidebarEntry[]) => void
+  (entries: SidebarEntry[]) => void,
 ] => {
   const [entries, setEntries] = useRecoilStateLoadable(
-    sidebarEntries({ modal: false, loading: false, filtered: true })
+    sidebarEntries({ modal: false, loading: false, filtered: true }),
   );
   const loadingEntries = useRecoilValueLoadable(
-    sidebarEntries({ modal: false, loading: true, filtered: true })
+    sidebarEntries({ modal: false, loading: true, filtered: true }),
   );
 
   return [
@@ -239,13 +260,13 @@ export const useGridEntries = (): [
 
 export const useModalExplorEntries = (): [
   SidebarEntry[],
-  (entries: SidebarEntry[]) => void
+  (entries: SidebarEntry[]) => void,
 ] => {
   const [entries, setEntries] = useRecoilStateLoadable(
-    sidebarEntries({ modal: true, loading: false, filtered: true })
+    sidebarEntries({ modal: true, loading: false, filtered: true }),
   );
   const loadingEntries = useRecoilValueLoadable(
-    sidebarEntries({ modal: true, loading: true, filtered: true })
+    sidebarEntries({ modal: true, loading: true, filtered: true }),
   );
 
   return [
@@ -278,6 +299,11 @@ export const validateGroupName = (current: string[], name: string): boolean => {
   }
   return true;
 };
+
+export const TAGS_FIELD = "tags";
+export const LABEL_TAGS_FIELD = "_label_tags";
+export const TEMPORAL_TAGS_FIELD = "_temporal_tags";
+export const OTHER_GROUP = "other";
 
 export const RESERVED_GROUPS = new Set([
   "frame tags",
@@ -312,15 +338,15 @@ export const resolveGroups = (
   sampleFields: StrictField[],
   frameFields: StrictField[],
   currentGroups: State.SidebarGroup[],
-  configGroups: State.SidebarGroup[]
+  configGroups: State.SidebarGroup[],
 ): State.SidebarGroup[] => {
   let groups = currentGroups.length
     ? currentGroups
     : configGroups.length
-    ? configGroups
-    : frameFields.length
-    ? DEFAULT_VIDEO_GROUPS
-    : DEFAULT_IMAGE_GROUPS;
+      ? configGroups
+      : frameFields.length
+        ? DEFAULT_VIDEO_GROUPS
+        : DEFAULT_IMAGE_GROUPS;
 
   const expanded = configGroups.reduce((map, { name, expanded }) => {
     map[name] = expanded;
@@ -354,26 +380,26 @@ export const resolveGroups = (
   const updater = groupUpdater(
     groups,
     buildSchema(sampleFields, frameFields),
-    present
+    present,
   );
 
   updater(
     "labels",
     fieldsMatcher(sampleFields, labelsMatcher(), present),
-    true
+    true,
   );
 
   frameFields.length &&
     updater(
       "frame labels",
       fieldsMatcher(frameFields, labelsMatcher(), present, "frames."),
-      true
+      true,
     );
 
   updater(
     "primitives",
     fieldsMatcher(sampleFields, primitivesMatcher, present),
-    true
+    true,
   );
 
   for (const { fields, name } of sampleFields
@@ -381,7 +407,7 @@ export const resolveGroups = (
     .filter(({ name }) => !present.has(name))) {
     updater(
       name,
-      fieldsMatcher(fields || [], () => true, present, `${name}.`)
+      fieldsMatcher(fields || [], () => true, present, `${name}.`),
     );
   }
 
@@ -393,7 +419,7 @@ export const resolveGroups = (
       updater(
         `frames.${name}`,
         fieldsMatcher(fields || [], () => true, present, `frames.${name}.`),
-        true
+        true,
       );
     }
   }
@@ -402,7 +428,7 @@ export const resolveGroups = (
 
   updater(
     "other",
-    fieldsMatcher(frameFields, () => true, present, "frames.")
+    fieldsMatcher(frameFields, () => true, present, "frames."),
   );
   return groups;
 };
@@ -410,7 +436,7 @@ export const resolveGroups = (
 const groupUpdater = (
   groups: State.SidebarGroup[],
   schema: Schema,
-  present: Set<string>
+  present: Set<string>,
 ) => {
   const groupNames = groups.map(({ name }) => name);
 
@@ -454,14 +480,14 @@ export const sidebarGroupsDefinition = (() => {
         current = resolveGroups(
           collapseFields(
             readFragment(sampleFieldsFragment, data as sampleFieldsFragment$key)
-              .sampleFields
+              .sampleFields,
           ),
           collapseFields(
             readFragment(frameFieldsFragment, data as frameFieldsFragment$key)
-              .frameFields
+              .frameFields,
           ),
           data?.datasetId === prev?.datasetId ? current : [],
-          configGroups
+          configGroups,
         );
 
         return current;
@@ -480,7 +506,7 @@ export const sidebarGroupsDefinition = (() => {
               },
             ],
       key: "sidebarGroupsDefinition",
-    }
+    },
   );
 })();
 
@@ -503,7 +529,7 @@ export const sidebarGroups = selectorFamily<
             : paths,
         }))
         .filter(
-          ({ name, paths }) => paths.length || name !== "other"
+          ({ name, paths }) => paths.length || name !== "other",
         ) as State.SidebarGroup[];
 
       if (!groups.length) return [];
@@ -515,7 +541,12 @@ export const sidebarGroups = selectorFamily<
       }
 
       const tagGroupIndex = groupNames.indexOf("tags");
-      groups[tagGroupIndex].paths = ["_label_tags", "tags"];
+      // Temporal tags are a multimodal-only concept for now, so only surface
+      // the filter for `multimodal` datasets (e.g. not `quickstart`). We may
+      // extend this to videos later.
+      groups[tagGroupIndex].paths = get(isMultimodalDataset)
+        ? ["_label_tags", "_temporal_tags", "tags"]
+        : ["_label_tags", "tags"];
 
       const framesIndex = groupNames.indexOf("frame labels");
       const video = get(isVideoDataset);
@@ -569,7 +600,7 @@ export const sidebarGroups = selectorFamily<
               group: name,
               loading: false,
               filtered: false,
-            })
+            }),
           ),
         ];
 
@@ -622,7 +653,7 @@ export const sidebarGroups = selectorFamily<
 });
 
 export const persistSidebarGroups = (
-  variables: VariablesOf<setSidebarGroupsMutation>
+  variables: VariablesOf<setSidebarGroupsMutation>,
 ) => {
   commitMutation<setSidebarGroupsMutation>(getCurrentEnvironment(), {
     mutation: setSidebarGroups,
@@ -664,7 +695,7 @@ export const sidebarEntries = selectorFamily<
               group: name,
               modal: params.modal,
               loading: params.loading,
-            })
+            }),
           );
 
           return [
@@ -680,15 +711,16 @@ export const sidebarEntries = selectorFamily<
               shown: shown && !hidden.paths.has(path),
             })),
           ];
-        }
+        },
       );
 
       // switch position of labelTag and sampleTag
       const labelTagId = entries.findIndex(
-        (entry) => entry.kind === EntryKind.PATH && entry.path === "_label_tags"
+        (entry) =>
+          entry.kind === EntryKind.PATH && entry.path === "_label_tags",
       );
       const sampleTagId = entries.findIndex(
-        (entry) => entry.kind === EntryKind.PATH && entry.path === "tags"
+        (entry) => entry.kind === EntryKind.PATH && entry.path === "tags",
       );
       [entries[labelTagId], entries[sampleTagId]] = [
         entries[sampleTagId],
@@ -717,7 +749,7 @@ export const sidebarEntries = selectorFamily<
                   modal: params.modal,
                   group: entry.name,
                   loading: params.loading,
-                })
+                }),
               ),
               paths: [],
             });
@@ -737,7 +769,7 @@ export const sidebarEntries = selectorFamily<
 
           result[result.length - 1].paths.push(entry.path);
           return result;
-        }, [] as State.SidebarGroup[])
+        }, [] as State.SidebarGroup[]),
       );
     },
   cachePolicy_UNSTABLE: {
@@ -807,7 +839,7 @@ export const fullyDisabledPaths = selector({
           );
         },
         undefined,
-        `${parent.name}.`
+        `${parent.name}.`,
       )) {
         paths.add(path);
       }
@@ -818,7 +850,7 @@ export const fullyDisabledPaths = selector({
       frameFields,
       primitivesMatcher,
       undefined,
-      "frames."
+      "frames.",
     )) {
       paths.add(path);
     }
@@ -838,7 +870,7 @@ export const fullyDisabledPaths = selector({
           return !LABELS.includes(field.embeddedDocType);
         },
         undefined,
-        `frames.${parent.name}.`
+        `frames.${parent.name}.`,
       )) {
         paths.add(path);
       }
@@ -879,25 +911,25 @@ export const collapsedPaths = selector<Set<string>>({
     paths = [
       ...paths,
       ...get(fieldPaths({ ftype: LIST_FIELD })).filter((path) =>
-        UNSUPPORTED_FILTER_TYPES.includes(get(field(path)).subfield)
+        UNSUPPORTED_FILTER_TYPES.includes(get(field(path)).subfield),
       ),
     ];
 
     for (const { fields: fieldsData, name: prefix } of get(
-      fields({ ftype: EMBEDDED_DOCUMENT_FIELD, space: State.SPACE.SAMPLE })
+      fields({ ftype: EMBEDDED_DOCUMENT_FIELD, space: State.SPACE.SAMPLE }),
     )) {
       for (const { name } of Object.values(fieldsData).filter(
         ({ ftype, subfield }) =>
           ftype === DICT_FIELD ||
           subfield === DICT_FIELD ||
-          (ftype === LIST_FIELD && !subfield)
+          (ftype === LIST_FIELD && !subfield),
       )) {
         paths.push(`${prefix}.${name}`);
       }
     }
 
     for (const { name, embeddedDocType } of get(
-      fields({ space: State.SPACE.FRAME })
+      fields({ space: State.SPACE.FRAME }),
     )) {
       if (LABELS.includes(embeddedDocType)) {
         continue;
@@ -923,7 +955,7 @@ export const sidebarGroupMapping = selectorFamily<
     ({ get }) => {
       const groups = get(sidebarGroups(params));
       return Object.fromEntries(
-        groups.map(({ name, ...rest }) => [name, rest])
+        groups.map(({ name, ...rest }) => [name, rest]),
       );
     },
 });
@@ -937,7 +969,7 @@ export const sidebarGroup = selectorFamily<
     ({ group, ...params }) =>
     ({ get }) => {
       const match = get(sidebarGroups(params)).filter(
-        ({ name }) => name === group
+        ({ name }) => name === group,
       );
 
       return match.length ? match[0].paths : [];
@@ -961,7 +993,7 @@ export const sidebarGroupNames = selectorFamily<string[], boolean>({
     (modal) =>
     ({ get }) => {
       return get(sidebarGroups({ modal, loading: true })).map(
-        ({ name }) => name
+        ({ name }) => name,
       );
     },
   cachePolicy_UNSTABLE: {
@@ -979,7 +1011,7 @@ export const groupIsEmpty = selectorFamily<
     ({ get }) => {
       return Boolean(
         get(sidebarGroup({ ...params, loading: true, filtered: false }))
-          .length === 0
+          .length === 0,
       );
     },
   cachePolicy_UNSTABLE: {
@@ -1019,8 +1051,8 @@ export const groupShown = selectorFamily<
         current.map(({ name, ...data }) =>
           name === group
             ? { name, ...data, expanded: Boolean(expanded) }
-            : { name, ...data }
-        )
+            : { name, ...data },
+        ),
       );
     },
 });
@@ -1053,7 +1085,7 @@ export const hiddenNoneGroups = selector({
     }
 
     const groups = get(
-      sidebarGroups({ modal: true, loading: false, filtered: true })
+      sidebarGroups({ modal: true, loading: false, filtered: true }),
     ).filter((group) => group.name !== "tags"); // always show tags
 
     let samples: { [key: string]: { sample: object } } = {
@@ -1062,15 +1094,14 @@ export const hiddenNoneGroups = selector({
     let slices = ["default"];
 
     const multipleSlices =
-      Boolean(get(pinned3DSampleSlice)) &&
-      (get(active3dSlices)?.length || 1) > 1;
+      Boolean(get(is3dPinned)) && (get(active3dSlices)?.length || 1) > 1;
     if (multipleSlices) {
       samples = get(active3dSlicesToSampleMap);
       slices = Array.from(get(active3dSlices) || []).sort();
     }
 
     const items = groups.flatMap(({ name: group, paths }) =>
-      paths.map((path) => ({ group, path }))
+      paths.map((path) => ({ group, path })),
     );
 
     const result = {
@@ -1086,7 +1117,7 @@ export const hiddenNoneGroups = selector({
           get(field(keys[0])),
           keys,
           samples[slice]?.sample,
-          isList
+          isList,
         );
 
         if (data !== null && data !== undefined) {
@@ -1104,7 +1135,7 @@ export const pullSidebarValue = (
   inputField: Pick<Field, "dbField" | "fields">,
   keys: string[],
   input: null | object | undefined,
-  isList: boolean
+  isList: boolean,
 ) => {
   let data = input;
   let field = inputField;

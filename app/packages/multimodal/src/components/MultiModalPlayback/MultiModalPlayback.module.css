@@ -1,0 +1,55 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-content-bg-background);
+  overflow: hidden;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.main {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+}
+
+/* The shared canvas sits below the mosaic DOM. Its tracked views can only
+   show through when the window shell stops painting an opaque card; tile
+   bodies that do not use the shared stage retain their own backgrounds. */
+.sharedViewStage :global(.mosaic .mosaic-window) {
+  background: transparent;
+}
+
+/* Width comes from an inline style: the left pane tracks the resizable
+   drawer width, the right pane stays at the fixed default. */
+.sidebarPane {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Sits over the Drawer's built-in 4px resize strip (absolute, right: 0,
+   z-index: 10 in the same stacking context) so pointer events reach our
+   clamped handle instead of the drawer's own shrink-to-close drag. */
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 6px;
+  cursor: ew-resize;
+  z-index: 20;
+  touch-action: none;
+  background: transparent;
+  transition: background 0.12s;
+}
+
+.resizeHandle:hover {
+  background: var(--color-brand-primary);
+}

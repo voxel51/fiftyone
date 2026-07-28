@@ -4,7 +4,7 @@ import ColorLensIcon from "@mui/icons-material/ColorLens";
 import { animated, useSpring } from "@react-spring/web";
 import { useCallback, useState } from "react";
 import { ChromePicker } from "react-color";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState } from "recoil";
 import styled from "styled-components";
 import {
   ACTION_SHADE_BY,
@@ -54,7 +54,7 @@ const ColorSpaceChoices = () => {
         setCurrent(shadeBy);
       };
     },
-    [current, setCurrent]
+    [current, setCurrent],
   );
 
   return (
@@ -104,8 +104,8 @@ const CustomColorSpace = () => {
     config: { duration: 400 },
   });
 
-  const activePcdSlices = useRecoilValue(fos.active3dSlices);
-  const defaultPcdSlice = useRecoilValue(fos.pinned3DSampleSlice);
+  const { activeSlices: activePcdSlices, pinnedSlice: defaultPcdSlice } =
+    fos.useRenderConfig3dState();
   const [customColorMap, setCustomColorMap] =
     useRecoilState(customColorMapAtom);
   const [isColorPickerOn, setIsColorPickerOn] = useState(false);
@@ -122,13 +122,13 @@ const CustomColorSpace = () => {
         });
       };
     },
-    [setCustomColorMap]
+    [setCustomColorMap],
   );
 
   if (!defaultPcdSlice || activePcdSlices?.length < 2) {
     const slice =
       activePcdSlices?.length > 0
-        ? activePcdSlices?.at(0) ?? defaultPcdSlice
+        ? (activePcdSlices?.at(0) ?? defaultPcdSlice)
         : "default";
     return (
       <animated.div style={{ display: "flex", ...springProps }}>

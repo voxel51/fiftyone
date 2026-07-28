@@ -105,7 +105,20 @@ export class ModalSidebarPom {
   }
 
   /**
+   * Retrieves the count value displayed for a given sidebar field
+   *
+   * @param field - The field identifier whose count should be retrieved
+   * @returns A promise resolving to the field count text, or null if not found
+   */
+  async getSidebarFieldCount(field: string) {
+    return this.getSidebarField(field)
+      .getByTestId("entry-count-all")
+      .textContent();
+  }
+
+  /**
    * Retrieves the number of sample tags displayed in the sidebar
+   *
    * @returns A promise resolving to the sample tag count as a number
    */
   async getSampleTagCount() {
@@ -118,11 +131,7 @@ export class ModalSidebarPom {
    *  @returns A promise resolving to the label tag count as a number.
    */
   async getLabelTagCount() {
-    return Number(
-      await this.getSidebarField("_label_tags")
-        .getByTestId("entry-count-all")
-        .textContent()
-    );
+    return Number(await this.getSidebarFieldCount("_label_tags"));
   }
 
   /**
@@ -224,13 +233,14 @@ class ModalSidebarAsserter {
   async waitUntilSidebarEntryTextEquals(key: string, value: string) {
     return this.modalSidebarPom.page.waitForFunction(
       ({ key_, value_ }: { key_: string; value_: string }) => {
+        // a not-yet-mounted entry is "not equal yet", not a crash
         return (
           document.querySelector(`[data-cy='sidebar-entry-${key_}']`)
-            .textContent === value_
+            ?.textContent === value_
         );
       },
       { key_: key, value_: value },
-      { timeout: 5000 }
+      { timeout: 5000 },
     );
   }
 
@@ -248,8 +258,8 @@ class ModalSidebarAsserter {
   }) {
     await Promise.all(
       Object.entries(entries).map(([key, value]) =>
-        this.waitUntilSidebarEntryTextEquals(key, value)
-      )
+        this.waitUntilSidebarEntryTextEquals(key, value),
+      ),
     );
   }
 
@@ -263,9 +273,24 @@ class ModalSidebarAsserter {
   async verifySidebarEntryTexts(entries: { [key: string]: string }) {
     await Promise.all(
       Object.entries(entries).map(([key, value]) =>
-        this.verifySidebarEntryText(key, value)
-      )
+        this.verifySidebarEntryText(key, value),
+      ),
     );
+  }
+
+  /**
+   * Asserts that the count displayed for a sidebar field matches the expected
+   * value
+   *
+   * @param field - The field identifier whose count should be checked
+   * @param count - The expected count value for the field
+   */
+  async verifySidebarFieldCount(field: string, count: string | number) {
+    await expect(
+      this.modalSidebarPom
+        .getSidebarField(field)
+        .getByTestId("entry-count-all"),
+    ).toHaveText(String(count));
   }
 
   /**
@@ -277,17 +302,18 @@ class ModalSidebarAsserter {
   async verifySampleTagCount(count: number) {
     await this.modalSidebarPom.page.waitForFunction(
       (count_) => {
+        // a not-yet-mounted entry is "not equal yet", not a crash
         return (
           Number(
             document.querySelector("#modal [data-cy='sidebar-entry-tags']")
-              .textContent
+              ?.textContent,
           ) === count_
         );
       },
       count,
       {
         timeout: Duration.Seconds(1),
-      }
+      },
     );
   }
 
@@ -321,18 +347,19 @@ class ModalSidebarAsserter {
   async verifyLabelTagCount(count: number) {
     await this.modalSidebarPom.page.waitForFunction(
       (count_) => {
+        // a not-yet-mounted entry is "not equal yet", not a crash
         return (
           Number(
             document.querySelector(
-              "#modal [data-cy='sidebar-field-container-_label_tags'] [data-cy='entry-count-all']"
-            ).textContent
+              "#modal [data-cy='sidebar-field-container-_label_tags'] [data-cy='entry-count-all']",
+            )?.textContent,
           ) === count_
         );
       },
       count,
       {
         timeout: Duration.Seconds(1),
-      }
+      },
     );
   }
 
@@ -341,7 +368,7 @@ class ModalSidebarAsserter {
    */
   async hasDisabledMessage(messageSubstring: string) {
     await expect(
-      this.modalSidebarPom.locator.getByText(messageSubstring)
+      this.modalSidebarPom.locator.getByText(messageSubstring),
     ).toBeVisible();
   }
 }

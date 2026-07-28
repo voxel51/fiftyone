@@ -38,9 +38,10 @@ export function useEmptyCanvasInteraction({
 
   const plane = useMemo(
     () => createPlane(planeNormal, planeConstant),
-    [planeNormal, planeConstant]
+    [planeNormal, planeConstant],
   );
 
+  // This effect attaches canvas pointer listeners and removes them on cleanup.
   useEffect(() => {
     const el = (events.connected ?? gl.domElement) as HTMLCanvasElement;
 

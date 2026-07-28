@@ -20,7 +20,7 @@ import type {
   FoScene,
   FoSceneNode,
 } from "../hooks";
-import { SavedCameraState } from "../types";
+import type { SavedCameraState } from "../types";
 
 export const getCameraPositionKey = (datasetName?: string) =>
   `${datasetName ?? "fiftyone"}-fo3d-camera-position`;
@@ -29,7 +29,7 @@ export const getCameraPositionKey = (datasetName?: string) =>
  * Retrieve camera state from local storage for given dataset, if available
  */
 export const getSavedCameraState = (
-  datasetName?: string
+  datasetName?: string,
 ): SavedCameraState | null => {
   const raw = window?.localStorage.getItem(getCameraPositionKey(datasetName));
   if (!raw) return null;
@@ -54,11 +54,11 @@ export const getSavedCameraState = (
 export const saveCameraState = (
   datasetName: string | undefined,
   position: number[],
-  target: number[]
+  target: number[],
 ) => {
   window?.localStorage.setItem(
     getCameraPositionKey(datasetName),
-    JSON.stringify({ position, target })
+    JSON.stringify({ position, target }),
   );
 };
 
@@ -66,7 +66,7 @@ export const getAssetUrlForSceneNode = (node: FoSceneNode): string => {
   if (!node.asset) return null;
 
   const assetUrlProperty = Object.keys(node.asset ?? []).find((key) =>
-    key.endsWith("Url")
+    key.endsWith("Url"),
   );
 
   return node.asset[assetUrlProperty];
@@ -112,17 +112,17 @@ export const getNodeFromSceneByName = (scene: FoScene, name: string) => {
 };
 
 export const getVisibilityMapFromFo3dParsed = (
-  foSceneGraph: FoScene
+  foSceneGraph: FoScene,
 ): Record<string, boolean> => {
   if (!foSceneGraph) return null;
 
-  const getVisibilityMapForChild = (child: FoSceneNode, isNested: boolean) => {
+  const getVisibilityMapForChild = (child: FoSceneNode, _isNested: boolean) => {
     if (child.children?.length > 0) {
       const folderName =
         child.name.charAt(0).toUpperCase() + child.name.slice(1);
 
       const childrenVisibilityMap = child.children.map((child) =>
-        getVisibilityMapForChild(child, true)
+        getVisibilityMapForChild(child, true),
       );
 
       return {
@@ -133,7 +133,7 @@ export const getVisibilityMapFromFo3dParsed = (
           },
           ...childrenVisibilityMap.reduce(
             (acc, curr) => ({ ...acc, ...curr }),
-            {}
+            {},
           ),
         }),
       };
@@ -151,18 +151,14 @@ export const getVisibilityMapFromFo3dParsed = (
 
 export const getMediaPathForFo3dSample = (
   sample: ModalSample,
-  mediaField: string
+  mediaField: string,
 ) => {
-  let mediaPath: string;
-
   if (Array.isArray(sample.urls)) {
     const mediaFieldObj = sample.urls.find((url) => url.field === mediaField);
-    mediaPath = mediaFieldObj?.url ?? sample.urls[0].url;
-  } else {
-    mediaPath = sample.urls[mediaField];
+    return mediaFieldObj?.url ?? sample.urls[0]?.url ?? sample.sample.filepath;
   }
 
-  return mediaPath;
+  return sample.urls?.[mediaField] ?? sample.sample.filepath;
 };
 
 export const getFo3dRoot = (fo3dPath: string) => {
@@ -174,7 +170,7 @@ export const getFo3dRoot = (fo3dPath: string) => {
 
 export const getResolvedUrlForFo3dAsset = (
   assetUrl: string,
-  fo3dRoot: string
+  fo3dRoot: string,
 ) => {
   if (
     assetUrl.startsWith("s3://") ||
@@ -192,7 +188,7 @@ export const getResolvedUrlForFo3dAsset = (
 
 export const getThreeMaterialFromFo3dMaterial = (
   foMtl: Record<string, number | string | boolean>,
-  avoidZFighting: boolean = true
+  avoidZFighting = true,
 ) => {
   const { _type, ...props } = foMtl;
   props["transparent"] = (props.opacity as number) < 1;
@@ -271,9 +267,50 @@ export const getOrthonormalAxis = (vec: Vector3Tuple | Vector3) => {
   return null;
 };
 
+export const ORTHONORMAL_AXIS_OPTIONS = [
+  "X",
+  "Y",
+  "Z",
+  "-X",
+  "-Y",
+  "-Z",
+] as const;
+
+export type OrthonormalAxis = (typeof ORTHONORMAL_AXIS_OPTIONS)[number];
+
+export const getUpVectorFromAxis = (
+  axis: string | null | undefined,
+): Vector3 | null => {
+  if (axis === "X") {
+    return new Vector3(1, 0, 0);
+  }
+
+  if (axis === "Y") {
+    return new Vector3(0, 1, 0);
+  }
+
+  if (axis === "Z") {
+    return new Vector3(0, 0, 1);
+  }
+
+  if (axis === "-X") {
+    return new Vector3(-1, 0, 0);
+  }
+
+  if (axis === "-Y") {
+    return new Vector3(0, -1, 0);
+  }
+
+  if (axis === "-Z") {
+    return new Vector3(0, 0, -1);
+  }
+
+  return null;
+};
+
 export const getBasePathForTextures = (
   fo3dRoot: string,
-  primaryAssetUrl: string
+  primaryAssetUrl: string,
 ) => {
   const assetUrlDecoded = new URL(decodeURIComponent(primaryAssetUrl));
   const assetUrlSearchParams = assetUrlDecoded.searchParams;
@@ -287,7 +324,7 @@ export const getBasePathForTextures = (
     const assetFilePath = assetUrlSearchParams.get("filepath");
     const assetFilePathWithFilenameStripped = assetFilePath.replace(
       /[^/]*$/,
-      ""
+      "",
     );
 
     return `${assetUrlDecoded.origin}${assetUrlDecoded.pathname}?filepath=${assetFilePathWithFilenameStripped}`;
@@ -298,7 +335,7 @@ export const getBasePathForTextures = (
 
   const fo3dOrigin = fo3dRoot.slice(
     0,
-    fo3dRoot.lastIndexOf(assetPathnameWithFilenameStripped)
+    fo3dRoot.lastIndexOf(assetPathnameWithFilenameStripped),
   );
 
   return `${fo3dOrigin}${assetPathnameWithFilenameStripped}`;

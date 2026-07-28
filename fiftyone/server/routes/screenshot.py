@@ -20,10 +20,8 @@ from fiftyone.server.events import dispatch_event
 
 
 class Screenshot(HTTPEndpoint):
-    @route
-    async def get(
-        self, request: Request, data: t.Dict
-    ) -> t.Union[t.Dict, Response]:
+    @route(parse_body=False)
+    async def get(self, request: Request) -> t.Union[t.Dict, Response]:
         img = request.path_params["img"]
         if "." not in img:
             dispatch_event(img, DeactivateNotebookCell())

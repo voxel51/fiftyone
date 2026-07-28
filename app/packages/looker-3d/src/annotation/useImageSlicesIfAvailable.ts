@@ -15,14 +15,15 @@ type GroupResponse = {
 /**
  * Hook that fetches and returns available image slices for group samples.
  *
- * @param sample - The modal sample to check for image slices
+ * @param sample - The modal sample to check for image slices, or `undefined`
+ *   while the sample is still loading
  * @returns An object containing:
  *   - `imageSlices`: Array of image slice names available for the group sample
  *   - `resolveUrlForImageSlice`: Function that takes a slice name and returns its URL, or null if not found
  *   - `isLoadingImageSlices`: Boolean indicating whether the image slices are currently being fetched
  */
 export const useImageSlicesIfAvailable = (
-  sample: ModalSample
+  sample: ModalSample | undefined,
 ): {
   imageSlices: string[];
   resolveUrlForImageSlice: (sliceName: string) => string | null;
@@ -41,7 +42,7 @@ export const useImageSlicesIfAvailable = (
       setIsLoadingImageSlices(false);
       setImageSlices([]);
       setSliceUrls({});
-      return;
+      return undefined;
     }
 
     let cancelled = false;
@@ -49,6 +50,7 @@ export const useImageSlicesIfAvailable = (
     const fetchImageSlices = async () => {
       try {
         setIsLoadingImageSlices(true);
+
         const fetchFunction = getFetchFunction({ cache: true });
         const path = `/dataset/${dataset}/groups/${groupId}?fields=filepath&resolve_urls=true&media_type=image`;
 
@@ -109,7 +111,7 @@ export const useImageSlicesIfAvailable = (
     (sliceName: string): string | null => {
       return sliceUrls[sliceName] || null;
     },
-    [sliceUrls]
+    [sliceUrls],
   );
 
   if (!hasGroup) {

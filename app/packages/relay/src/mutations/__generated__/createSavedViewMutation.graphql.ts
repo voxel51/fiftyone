@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f8346f627e276994bc8a3f060df74c74>>
+ * @generated SignedSource<<4d5d398b91f782a06a9331549a5118ae>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -23,6 +23,7 @@ export type SelectedLabel = {
   instanceId?: string | null;
   labelId: string;
   sampleId: string;
+  type?: string | null;
 };
 export type createSavedViewMutation$variables = {
   color?: string | null;

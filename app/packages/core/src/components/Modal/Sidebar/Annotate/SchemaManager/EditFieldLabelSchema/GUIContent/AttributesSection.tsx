@@ -3,10 +3,14 @@
  */
 
 import {
+  Align,
   Button,
+  Orientation,
   Pill,
   RichList,
   Size,
+  Spacing,
+  Stack,
   Text,
   TextColor,
   TextVariant,
@@ -51,7 +55,7 @@ const AttributesSection = ({
 
   const existingAttributeNames = useMemo(
     () => attributes.map((attr) => attr.name),
-    [attributes]
+    [attributes],
   );
 
   const editNameError =
@@ -59,7 +63,7 @@ const AttributesSection = ({
       ? getAttributeNameError(
           editingFormState.name,
           existingAttributeNames,
-          editingAttribute
+          editingAttribute,
         )
       : null;
 
@@ -76,7 +80,7 @@ const AttributesSection = ({
       onAddAttribute(config);
       setIsAdding(false);
     },
-    [onAddAttribute]
+    [onAddAttribute],
   );
 
   const handleStartEdit = useCallback(
@@ -87,7 +91,7 @@ const AttributesSection = ({
         setEditingFormState(toFormData(config));
       }
     },
-    [attributes]
+    [attributes],
   );
 
   const handleEditSave = useCallback(() => {
@@ -127,6 +131,7 @@ const AttributesSection = ({
           onDelete: handleDeleteAttribute,
           canDrag: true,
           isEditing: true,
+          readOnly: !!config._source,
         });
       }
 
@@ -136,7 +141,7 @@ const AttributesSection = ({
       const secondaryParts = [typeLabel];
       if (optionCount !== undefined && optionCount > 0) {
         secondaryParts.push(
-          `${optionCount} option${optionCount !== 1 ? "s" : ""}`
+          `${optionCount} option${optionCount !== 1 ? "s" : ""}`,
         );
       }
 
@@ -147,14 +152,18 @@ const AttributesSection = ({
           canDrag: true,
           primaryContent: name,
           secondaryContent: (
-            <>
-              {secondaryParts.join(" · ")}
-              {config.read_only && (
-                <Pill size={Size.Md} style={{ marginLeft: 8 }}>
-                  Read-only
-                </Pill>
-              )}
-            </>
+            <Stack
+              orientation={Orientation.Row}
+              spacing={Spacing.Sm}
+              align={Align.Center}
+            >
+              <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+                {secondaryParts.join(" · ")}
+              </Text>
+              {config.read_only && <Pill size={Size.Md}>Read-only</Pill>}
+              {config.dynamic && <Pill size={Size.Md}>Dynamic</Pill>}
+              {config._source && <Pill size={Size.Md}>{config._source}</Pill>}
+            </Stack>
           ),
           actions: <EditAction onEdit={() => handleStartEdit(name)} />,
         } as ListItemProps,
@@ -180,7 +189,7 @@ const AttributesSection = ({
         .filter((attr): attr is AttributeConfig => attr !== undefined);
       onOrderChange?.(newOrder);
     },
-    [attributes, onOrderChange]
+    [attributes, onOrderChange],
   );
 
   return (

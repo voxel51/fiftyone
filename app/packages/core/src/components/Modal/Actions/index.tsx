@@ -1,7 +1,7 @@
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import Draggable from "react-draggable";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -18,7 +18,7 @@ import HiddenLabels from "./HiddenLabels";
 import ToggleFullscreen from "./ToggleFullscreen";
 import { useAtomValue } from "jotai";
 import { EXPLORE, modalMode } from "@fiftyone/state";
- 
+
 const MODAL_ACTION_BAR_HANDLE_CLASS = "fo-modal-action-bar-handle";
 
 const Container = styled.div<{ $isFullScreen: boolean }>`
@@ -81,13 +81,13 @@ export default () => {
   const mode = useAtomValue(modalMode);
   const isGroup = useMemo(
     () => isActualGroup || isDynamicGroup,
-    [isActualGroup, isDynamicGroup]
+    [isActualGroup, isDynamicGroup],
   );
 
   const [defaultXCoord, setDefaultXCoord] = fos.useBrowserStorage<number>(
     "modal-actions-row-x-coord",
     0,
-    false
+    false,
   );
 
   return (
@@ -102,9 +102,10 @@ export default () => {
       <Container $isFullScreen={isFullScreen}>
         <DragActionsRow />
         <HiddenLabels modal />
-        { mode === EXPLORE && <Selected modal lookerRef={activeLookerRef} /> }
+        {mode === EXPLORE && <Selected modal lookerRef={activeLookerRef} />}
+        {mode === EXPLORE && <Similarity modal />}
         <ColorScheme modal />
-        { mode === EXPLORE && <Tag modal lookerRef={activeLookerRef} />}
+        {mode === EXPLORE && <Tag modal lookerRef={activeLookerRef} />}
         <Options modal />
         {isGroup && <GroupVisibility />}
         <BrowseOperations modal />

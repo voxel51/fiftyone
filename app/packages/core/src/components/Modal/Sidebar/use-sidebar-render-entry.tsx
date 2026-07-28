@@ -18,17 +18,22 @@ export const useModalSidebarRenderEntry = () => {
       trigger: (
         event: React.MouseEvent<HTMLDivElement>,
         key: string,
-        cb: () => void
-      ) => void
+        cb: () => void,
+      ) => void,
     ) => {
       switch (entry.kind) {
         case fos.EntryKind.PATH: {
-          const isTag = entry.path === "tags";
-          const isLabelTag = entry.path === "_label_tags";
+          const isTag = entry.path === fos.TAGS_FIELD;
+          const isLabelTag = entry.path === fos.LABEL_TAGS_FIELD;
+          const isTemporalTag = entry.path === fos.TEMPORAL_TAGS_FIELD;
           const isLabel = labelPaths.includes(entry.path);
           const isOther = disabled.has(entry.path);
           const isFieldPrimitive =
-            !isLabelTag && !isLabel && !isOther && !(isTag && mode === "group");
+            !isLabelTag &&
+            !isTemporalTag &&
+            !isLabel &&
+            !isOther &&
+            !(isTag && mode === "group");
 
           return {
             children: (
@@ -36,6 +41,7 @@ export const useModalSidebarRenderEntry = () => {
                 {(isLabel ||
                   isOther ||
                   isLabelTag ||
+                  isTemporalTag ||
                   (isTag && mode === "group")) && (
                   <Entries.FilterablePath
                     entryKey={key}
@@ -74,6 +80,9 @@ export const useModalSidebarRenderEntry = () => {
                 name={entry.name}
                 modal={true}
                 key={key}
+                mutable={
+                  ![fos.OTHER_GROUP, fos.TAGS_FIELD].includes(entry.name)
+                }
                 trigger={trigger}
               />
             ),
@@ -99,6 +108,6 @@ export const useModalSidebarRenderEntry = () => {
           throw new Error("invalid entry");
       }
     },
-    [disabled, labelPaths, mode]
+    [disabled, labelPaths, mode],
   );
 };

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<07b44a3efc8ce3040603cea5234717c3>>
+ * @generated SignedSource<<04432a274b5a1f3c68bc90c93ac71928>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -23,6 +23,7 @@ export type SelectedLabel = {
   instanceId?: string | null;
   labelId: string;
   sampleId: string;
+  type?: string | null;
 };
 export type setViewMutation$variables = {
   datasetName: string;

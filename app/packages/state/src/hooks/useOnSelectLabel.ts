@@ -13,6 +13,7 @@ export interface SelectEvent {
     sampleId: string;
     instanceId?: string;
     isShiftPressed?: boolean;
+    isAltPressed?: boolean;
   };
 }
 
@@ -27,6 +28,7 @@ export function useOnSelectLabel() {
           sampleId,
           instanceId,
           isShiftPressed,
+          isAltPressed,
         },
       }: SelectEvent) => {
         if (isShiftPressed) {
@@ -35,7 +37,7 @@ export function useOnSelectLabel() {
               sourceInstanceId: instanceId,
               sourceSampleId: sampleId,
               sourceLabelId: id,
-            })
+            }),
           );
           return;
         }
@@ -50,6 +52,7 @@ export function useOnSelectLabel() {
             sampleId,
             frameNumber,
             instanceId,
+            type: isAltPressed ? "alt" : "default",
           };
         }
         set(
@@ -57,9 +60,9 @@ export function useOnSelectLabel() {
           Object.entries(labels).map(([labelId, data]) => ({
             ...data,
             labelId,
-          }))
+          })),
         );
       },
-    []
+    [],
   );
 }

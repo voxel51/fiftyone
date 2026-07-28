@@ -12,7 +12,7 @@ const EXECUTION_STORE_SUBSCRIBE_PATH = "/operators/subscribe-execution-store";
 export type ExecutionStoreSubscribeCallback<T> = (
   key: string,
   value: T,
-  metadata: Record<string, unknown>
+  metadata: Record<string, unknown>,
 ) => void;
 
 /**
@@ -65,7 +65,10 @@ export const useExecutionStoreSubscribe = <T>({
     }
 
     if (!event.data) {
-      console.error("No data in execution store subscribe event");
+      // Empty-data frames are emitted by sse-starlette keep-alive
+      // comments / unnamed events. Not an error — just skip silently
+      // (debug-level so it's still discoverable if you need it).
+      console.debug("No data in execution store subscribe event");
       return;
     }
 
@@ -75,7 +78,7 @@ export const useExecutionStoreSubscribe = <T>({
     } catch (error) {
       console.error(
         "Error parsing execution store subscribe event data:",
-        error
+        error,
       );
     }
   }, []);
@@ -121,14 +124,14 @@ export const useExecutionStoreSubscribe = <T>({
               onclose: onCloseHandler,
             },
             abortControllerRef.current.signal,
-            data
+            data,
           );
           setIsSubscriptionHealthy(true);
         } catch (error) {
           console.error("Error subscribing to execution store:", error);
         }
       },
-    [operatorUri, datasetId, onMessageHandler, onErrorHandler, onCloseHandler]
+    [operatorUri, datasetId, onMessageHandler, onErrorHandler, onCloseHandler],
   );
 
   const unsubscribe = useCallback(() => {

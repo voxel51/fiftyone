@@ -1,0 +1,96 @@
+import {
+  ToolsContext,
+  useToolsContext,
+  useToolsState,
+} from "./useToolsContext";
+import { useCallback, useEffect } from "react";
+import { v4 as uuidv4 } from "uuid";
+import { useLighter } from "@fiftyone/lighter";
+import { useAnnotationAgent } from "./useAnnotationAgent";
+import { useAgentSelector } from "./useAgentSelector";
+import { useApplyInferenceResult } from "./useApplyInferenceResult";
+import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
+import { useRegisterPointSelectionEventHandlers } from "./useRegisterPointSelectionEventHandlers";
+import { useRegisterAgentLifecycleEvents } from "./useRegisterAgentLifecycleEvents";
+import { usePointSelectionSeed } from "./usePointSelectionSeed";
+
+const isToolsContextValid = (context: ToolsContext): boolean => {
+  return (
+    !!context.taskType &&
+    ((context.positivePoints?.length ?? 0) > 0 ||
+      (context.negativePoints?.length ?? 0) > 0 ||
+      (context.regionsOfInterest?.length ?? 0) > 0 ||
+      !!context.textPrompt)
+  );
+};
+
+/**
+ * Hook which registers event handlers related to AI-assisted annotation tools,
+ * e.g. point selection.
+ *
+ * **Note: this hook must only be invoked in a single top-level component;
+ * reuse will cause duplicate event handler registration.**
+ */
+export const useRegisterAnnotationToolEventHandlers = () => {
+  const toolsContext = useToolsContext();
+  const { reset: resetToolsState } = useToolsState();
+  const { selected, createNew } = useAnnotationContext();
+  const { scene } = useLighter();
+
+  const agent = useAnnotationAgent(useAgentSelector().activeAgent?.agent);
+  const { consumeSeedNew } = usePointSelectionSeed();
+  const createDetection = useCallback(
+    () => createNew("Detection"),
+    [createNew],
+  );
+  const applyInferenceResult = useApplyInferenceResult(createDetection);
+
+  // register handlers for specific tools
+  useRegisterPointSelectionEventHandlers();
+
+  // bridge agent lifecycle → annotation event bus + inference status atoms
+  useRegisterAgentLifecycleEvents();
+
+  // inference trigger
+  useEffect(
+    () => {
+      let cancelled = false;
+
+      if (isToolsContextValid(toolsContext) && agent) {
+        // A finalized session seeds a fresh mask even while the just-committed
+        // label is still selected; otherwise refine the selection in place.
+        const seedNew = consumeSeedNew();
+        const labelId =
+          seedNew || !selected?.label?.overlay?.id
+            ? uuidv4()
+            : selected.label.overlay.id;
+
+        agent
+          .infer(labelId)
+          .then((res) => {
+            if (cancelled) return;
+            if (res) applyInferenceResult(res);
+          })
+          .catch(() => {
+            // Status transitions are driven by the agent's lifecycle events;
+            // nothing to do here on rejection.
+          });
+      }
+
+      return () => {
+        cancelled = true;
+      };
+    },
+    // trigger inference every time the input context changes
+    [toolsContext],
+  );
+
+  // Reset tools state on mount, unmount, and whenever the lighter scene is
+  // rebuilt (sample navigation) so prompts from a previous sample don't leak
+  // into inference on the new one.
+  useEffect(() => {
+    resetToolsState();
+
+    return resetToolsState;
+  }, [scene]);
+};

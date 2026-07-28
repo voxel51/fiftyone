@@ -46,6 +46,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
           if (!moved && overlays.length) {
             const top = overlays[0];
             const isShiftPressed = event.shiftKey;
+            const isAltPressed = event.altKey;
 
             top.containsPoint(state) &&
               dispatchEvent("select", {
@@ -53,6 +54,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
                 sampleId: sample.id ?? sample._id,
                 instanceId: top.label?.instance?._id,
                 isShiftPressed,
+                isAltPressed,
               });
           }
         });
@@ -128,7 +130,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
                 [width, height],
                 dimensions,
                 event.deltaY < 0 ? scale * SCALE_FACTOR : scale / SCALE_FACTOR,
-                zoomPad
+                zoomPad,
               );
 
               if (scale === newScale) {
@@ -151,8 +153,8 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
                   (state, overlays) =>
                     dispatchTooltipEvent(dispatchEvent, state.disableOverlays)(
                       state,
-                      overlays
-                    )
+                      overlays,
+                    ),
                 );
               }, 200);
 
@@ -167,7 +169,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
                 disableOverlays: true,
               };
             },
-            dispatchTooltipEvent(dispatchEvent, true)
+            dispatchTooltipEvent(dispatchEvent, true),
           );
         });
       },

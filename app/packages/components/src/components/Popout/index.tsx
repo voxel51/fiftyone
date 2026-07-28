@@ -9,12 +9,12 @@ export type PopoutProps = PropsWithChildren<{
   style?: CSSProperties;
   modal?: boolean;
   onClose?: () => void;
-  popoutProps: React.HTMLAttributes<HTMLDivElement>;
+  popoutProps?: React.HTMLAttributes<HTMLDivElement>;
 }>;
 
 function Popout(
   { children, style = {}, modal, onClose, popoutProps = {} }: PopoutProps,
-  ref: ForwardedRef<HTMLDivElement>
+  ref: ForwardedRef<HTMLDivElement>,
 ) {
   const show = useSpring({
     opacity: 1,

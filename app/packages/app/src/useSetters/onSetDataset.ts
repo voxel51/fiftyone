@@ -1,9 +1,14 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import {
   setDataset,
   type setDatasetMutation,
   subscribeBefore,
 } from "@fiftyone/relay";
 import {
+  DEFAULT_SELECTION_STYLE,
   GRID_SPACES_DEFAULT,
   ensureColorScheme,
   stateSubscription,
@@ -28,12 +33,13 @@ const onSetDataset: RegisteredSetter =
 
     const unsubscribe = subscribeBefore<DatasetPageQuery>((entry) => {
       sessionRef.current.selectedLabels = [];
-      sessionRef.current.selectedSamples = new Set();
+      sessionRef.current.selectedSamples = new Map();
+      sessionRef.current.sampleSelectionStyle = DEFAULT_SELECTION_STYLE;
       sessionRef.current.sessionSpaces = GRID_SPACES_DEFAULT;
       sessionRef.current.fieldVisibilityStage = undefined;
       sessionRef.current.colorScheme = ensureColorScheme(
         entry.data.dataset?.appConfig?.colorScheme,
-        entry.data.config
+        entry.data.config,
       );
       sessionRef.current.sessionGroupSlice =
         entry.data.dataset?.defaultGroupSlice || undefined;
@@ -56,7 +62,7 @@ const onSetDataset: RegisteredSetter =
       {
         view: [],
         workspace: null,
-      }
+      },
     );
   };
 

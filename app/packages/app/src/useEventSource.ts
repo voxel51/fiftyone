@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { Session } from "@fiftyone/state";
 import { stateSubscription, useClearModal } from "@fiftyone/state";
 import { env, getEventSource } from "@fiftyone/utilities";
@@ -14,7 +18,7 @@ import { getDatasetName, getParam } from "./utils";
 
 const useEventSource = (
   router: RoutingContext<Queries>,
-  session: MutableRefObject<Session>
+  session: MutableRefObject<Session>,
 ) => {
   const [readyState, setReadyState] = useRecoilState(appReadyState);
   const readyStateRef = useRef<AppReadyState>(readyState);
@@ -25,7 +29,7 @@ const useEventSource = (
     controller,
     router,
     readyStateRef,
-    session
+    session,
   );
   const handleError = useErrorHandler();
   const clearModal = useClearModal();
@@ -64,7 +68,7 @@ const useEventSource = (
         },
         subscription,
         events: subscriptions,
-      }
+      },
     );
 
     return () => {

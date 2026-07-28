@@ -1,12 +1,11 @@
-import { ModalSample } from "@fiftyone/state";
-import { CameraControls, View } from "@react-three/drei";
+import { View } from "@react-three/drei";
 import styled from "styled-components";
 import * as THREE from "three";
 import { Vector3 } from "three";
 import { PANEL_ID_MAIN, getPanelElementId } from "../constants";
-import { Fo3dPointCloudSettings } from "../fo3d/context";
+import type { Fo3dCameraControls } from "../fo3d/camera-controls";
 import { Fo3dSceneContent } from "../fo3d/Fo3dCanvas";
-import { FoScene } from "../hooks";
+import type { FoScene } from "../fo3d/render-types";
 import { AnnotationMultiViewGizmoOverlayWrapper } from "./CustomAnnotationGizmo";
 
 const MainPanelContainer = styled.div`
@@ -17,14 +16,12 @@ const MainPanelContainer = styled.div`
 
 export interface MainPanelProps {
   cameraRef: React.RefObject<THREE.PerspectiveCamera>;
-  cameraControlsRef: React.RefObject<CameraControls>;
+  cameraControlsRef: React.RefObject<Fo3dCameraControls>;
   defaultCameraPosition: THREE.Vector3;
   autoRotate: boolean;
   foScene: FoScene;
   upVector: Vector3 | null;
   isSceneInitialized: boolean;
-  sample: ModalSample;
-  pointCloudSettings: Fo3dPointCloudSettings;
   assetsGroupRef: React.RefObject<THREE.Group>;
 }
 
@@ -36,8 +33,6 @@ export const MainPanel = ({
   foScene,
   upVector,
   isSceneInitialized,
-  sample,
-  pointCloudSettings,
   assetsGroupRef,
 }: MainPanelProps) => {
   return (
@@ -57,15 +52,12 @@ export const MainPanel = ({
           near={foScene?.cameraProps.near ?? 0.1}
           far={foScene?.cameraProps.far ?? 2500}
           aspect={foScene?.cameraProps.aspect ?? 1}
-          zoom={10}
           autoRotate={autoRotate}
           cameraControlsRef={cameraControlsRef}
           cameraPosition={defaultCameraPosition}
           foScene={foScene}
           isSceneInitialized={isSceneInitialized}
           isGizmoHelperVisible={false}
-          sample={sample}
-          pointCloudSettings={pointCloudSettings}
           assetsGroupRef={assetsGroupRef}
           cameraRef={cameraRef}
         />

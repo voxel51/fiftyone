@@ -130,8 +130,7 @@
                 "type": "fiftyone.utils.sam.SegmentAnythingModel",
                 "config": {
                     "entrypoint_fcn": "segment_anything.build_sam.build_sam_vit_b",
-                    "entrypoint_args": {},
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                    "entrypoint_args": {}
                 }
             },
             "requirements": {
@@ -178,8 +177,7 @@
                 "type": "fiftyone.utils.sam.SegmentAnythingModel",
                 "config": {
                     "entrypoint_fcn": "segment_anything.build_sam.build_sam_vit_h",
-                    "entrypoint_args": {},
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                    "entrypoint_args": {}
                 }
             },
             "requirements": {
@@ -226,8 +224,7 @@
                 "type": "fiftyone.utils.sam.SegmentAnythingModel",
                 "config": {
                     "entrypoint_fcn": "segment_anything.build_sam.build_sam_vit_l",
-                    "entrypoint_args": {},
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                    "entrypoint_args": {}
                 }
             },
             "requirements": {
@@ -274,8 +271,7 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_t.yaml" },
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                    "entrypoint_args": { "config_file": "sam2_hiera_t.yaml" }
                 }
             },
             "requirements": {
@@ -319,8 +315,7 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_s.yaml" },
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                    "entrypoint_args": { "config_file": "sam2_hiera_s.yaml" }
                 }
             },
             "requirements": {
@@ -370,8 +365,7 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_b+.yaml" },
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                    "entrypoint_args": { "config_file": "sam2_hiera_b+.yaml" }
                 }
             },
             "requirements": {
@@ -421,8 +415,7 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2ImageModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_l.yaml" },
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                    "entrypoint_args": { "config_file": "sam2_hiera_l.yaml" }
                 }
             },
             "requirements": {
@@ -472,7 +465,7 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_t.yaml" }
+                    "entrypoint_args": { "config_file": "sam2_hiera_t.yaml" }
                 }
             },
             "requirements": {
@@ -523,8 +516,7 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_s.yaml" },
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                    "entrypoint_args": { "config_file": "sam2_hiera_s.yaml" }
                 }
             },
             "requirements": {
@@ -575,8 +567,7 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_b+.yaml" },
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                    "entrypoint_args": { "config_file": "sam2_hiera_b+.yaml" }
                 }
             },
             "requirements": {
@@ -627,8 +618,7 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_l.yaml" },
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                    "entrypoint_args": { "config_file": "sam2_hiera_l.yaml" }
                 }
             },
             "requirements": {
@@ -661,6 +651,200 @@
             "date_added": "2024-08-05 14:38:20"
         },
         {
+            "base_name": "segment-anything-3-image-torch",
+            "base_filename": "sam3.pt",
+            "version": null,
+            "description": "Open-vocabulary instance segmentation that finds and segments all objects matching a text concept like 'person' or 'yellow school bus'",
+            "source": "https://github.com/facebookresearch/sam3",
+            "author": "Nicolas Carion, Laura Gustafson, Yuan-Ting Hu, et al.",
+            "license": "SAM License",
+            "size_bytes": 3704365056,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {}
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sam3.SegmentAnything3ImageModel",
+                "config": {
+                    "entrypoint_fcn": "sam3.model_builder.build_sam3_image_model",
+                    "tokenizer_source": "https://raw.githubusercontent.com/openai/CLIP/main/clip/bpe_simple_vocab_16e6.txt.gz"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "sam3"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-1B",
+                    "url": "https://ai.meta.com/datasets/segment-anything/"
+                },
+                {
+                    "name": "SA-Co",
+                    "url": "https://github.com/facebookresearch/sam3"
+                }
+            ],
+            "date_added": "2026-01-30"
+        },
+        {
+            "base_name": "segment-anything-3-video-torch",
+            "base_filename": "sam3_video.pt",
+            "version": null,
+            "description": "Open-vocabulary video segmentation that finds, segments, and tracks all objects matching a text concept across video frames",
+            "source": "https://github.com/facebookresearch/sam3",
+            "author": "Nicolas Carion, Laura Gustafson, Yuan-Ting Hu, et al.",
+            "license": "SAM License",
+            "size_bytes": 3704365056,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {}
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sam3.SegmentAnything3VideoModel",
+                "config": {
+                    "entrypoint_fcn": "sam3.model_builder.build_sam3_video_model",
+                    "tokenizer_source": "https://raw.githubusercontent.com/openai/CLIP/main/clip/bpe_simple_vocab_16e6.txt.gz",
+                    "concept_predictor_fcn": "sam3.model_builder.build_sam3_video_predictor"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "sam3"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-1B",
+                    "url": "https://ai.meta.com/datasets/segment-anything/"
+                },
+                {
+                    "name": "SA-Co",
+                    "url": "https://github.com/facebookresearch/sam3"
+                }
+            ],
+            "date_added": "2026-01-30"
+        },
+        {
+            "base_name": "fc-clip-coco-instance-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Open-vocabulary instance segmentation with FC-CLIP (COCO); returns only \"thing\" segments as instance masks. Uses frozen ConvNeXt-Large CLIP backbone + Mask2Former decoder.",
+            "source": "https://huggingface.co/Voxel51/fc-clip",
+            "author": "Jiarui Xu, et al. (ByteDance)",
+            "license": "Apache 2.0",
+            "size_bytes": 83001551,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.fcclip.FCCLIPModel",
+                "config": {
+                    "name_or_path": "Voxel51/fc-clip",
+                    "revision": "be25e3eac3dd8cc3c482b0b4251309bae3ab8419",
+                    "task": "instance"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers",
+                    "open_clip_torch",
+                    "safetensors",
+                    "timm>=1.0.17"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "instances",
+                "zero-shot",
+                "torch",
+                "transformers",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "COCO 2017 Panoptic",
+                    "url": "https://cocodataset.org/"
+                }
+            ],
+            "date_added": "2026-06-26 00:00:00"
+        },
+        {
+            "base_name": "fc-clip-coco-panoptic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Open-vocabulary panoptic segmentation with FC-CLIP (COCO); returns both thing and stuff segments as instance masks. Uses frozen ConvNeXt-Large CLIP backbone + Mask2Former decoder.",
+            "source": "https://huggingface.co/Voxel51/fc-clip",
+            "author": "Jiarui Xu, et al. (ByteDance)",
+            "license": "Apache 2.0",
+            "size_bytes": 83001551,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.fcclip.FCCLIPModel",
+                "config": {
+                    "name_or_path": "Voxel51/fc-clip",
+                    "revision": "be25e3eac3dd8cc3c482b0b4251309bae3ab8419",
+                    "task": "panoptic"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers",
+                    "open_clip_torch",
+                    "safetensors",
+                    "timm>=1.0.17"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "panoptic",
+                "zero-shot",
+                "torch",
+                "transformers",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "COCO 2017 Panoptic",
+                    "url": "https://cocodataset.org/"
+                }
+            ],
+            "date_added": "2026-06-26 00:00:00"
+        },
+        {
             "base_name": "med-sam-2-video-torch",
             "base_filename": "med-sam-2_pretrain.pth",
             "version": null,
@@ -679,7 +863,7 @@
                 "type": "fiftyone.utils.sam2.SegmentAnything2VideoModel",
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
-                    "entrypoint_args": { "model_cfg": "sam2_hiera_t.yaml" }
+                    "entrypoint_args": { "config_file": "sam2_hiera_t.yaml" }
                 }
             },
             "requirements": {
@@ -732,9 +916,8 @@
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
                     "entrypoint_args": {
-                        "model_cfg": "configs/sam2.1/sam2.1_hiera_t.yaml"
-                    },
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                        "config_file": "configs/sam2.1/sam2.1_hiera_t.yaml"
+                    }
                 }
             },
             "requirements": {
@@ -746,7 +929,13 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "SA-V",
@@ -779,9 +968,8 @@
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
                     "entrypoint_args": {
-                        "model_cfg": "configs/sam2.1/sam2.1_hiera_s.yaml"
-                    },
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                        "config_file": "configs/sam2.1/sam2.1_hiera_s.yaml"
+                    }
                 }
             },
             "requirements": {
@@ -832,9 +1020,8 @@
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
                     "entrypoint_args": {
-                        "model_cfg": "configs/sam2.1/sam2.1_hiera_b+.yaml"
-                    },
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                        "config_file": "configs/sam2.1/sam2.1_hiera_b+.yaml"
+                    }
                 }
             },
             "requirements": {
@@ -885,9 +1072,8 @@
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2",
                     "entrypoint_args": {
-                        "model_cfg": "configs/sam2.1/sam2.1_hiera_l.yaml"
-                    },
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                        "config_file": "configs/sam2.1/sam2.1_hiera_l.yaml"
+                    }
                 }
             },
             "requirements": {
@@ -938,7 +1124,7 @@
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
                     "entrypoint_args": {
-                        "model_cfg": "configs/sam2.1/sam2.1_hiera_t.yaml"
+                        "config_file": "configs/sam2.1/sam2.1_hiera_t.yaml"
                     }
                 }
             },
@@ -991,7 +1177,7 @@
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
                     "entrypoint_args": {
-                        "model_cfg": "configs/sam2.1/sam2.1_hiera_s.yaml"
+                        "config_file": "configs/sam2.1/sam2.1_hiera_s.yaml"
                     },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
                 }
@@ -1045,9 +1231,8 @@
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
                     "entrypoint_args": {
-                        "model_cfg": "configs/sam2.1/sam2.1_hiera_b+.yaml"
-                    },
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                        "config_file": "configs/sam2.1/sam2.1_hiera_b+.yaml"
+                    }
                 }
             },
             "requirements": {
@@ -1099,9 +1284,8 @@
                 "config": {
                     "entrypoint_fcn": "sam2.build_sam.build_sam2_video_predictor",
                     "entrypoint_args": {
-                        "model_cfg": "configs/sam2.1/sam2.1_hiera_l.yaml"
-                    },
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor"
+                        "config_file": "configs/sam2.1/sam2.1_hiera_l.yaml"
+                    }
                 }
             },
             "requirements": {
@@ -2414,7 +2598,14 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "retinanet", "resnet", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "retinanet",
+                "resnet",
+                "official"
+            ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
             ],
@@ -2573,7 +2764,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch", "squeezenet", "official"],
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "squeezenet",
+                "official"
+            ],
             "training_data": [
                 {
                     "name": "ImageNet-1K",
@@ -3387,6 +3584,39 @@
             "date_added": "2024-01-17 14:25:51"
         },
         {
+            "base_name": "universal-segmentation-transformer-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hugging Face Transformers model for universal segmentation (instance, panoptic, or semantic)",
+            "source": "https://huggingface.co/docs/transformers/en/model_doc/mask2former",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {}
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "instances",
+                "panoptic",
+                "segmentation",
+                "torch",
+                "transformers",
+                "official"
+            ],
+            "training_data": [],
+            "date_added": "2025-06-29 00:00:00"
+        },
+        {
             "base_name": "depth-estimation-transformer-torch",
             "base_filename": null,
             "version": null,
@@ -3993,7 +4223,12 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.51", "timm<1.0.24"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.51",
+                    "timm"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -4025,6 +4260,826 @@
                 }
             ],
             "date_added": "2024-01-17 14:25:51"
+        },
+        {
+            "base_name": "grounding-dino-tiny-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Compact open-set object detector that finds objects described in natural language, using a Swin-T vision backbone and BERT text encoder",
+            "source": "https://huggingface.co/IDEA-Research/grounding-dino-tiny",
+            "author": "IDEA Research",
+            "license": "Apache 2.0",
+            "size_bytes": 659000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "IDEA-Research/grounding-dino-tiny"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "training_data": [
+                { "name": "Objects365v1", "url": "https://www.objects365.org" },
+                { "name": "GoldG", "url": "https://github.com/microsoft/GLIP" },
+                { "name": "Cap4M", "url": "https://arxiv.org/abs/2112.03857" }
+            ],
+            "date_added": "2026-06-26 00:00:00"
+        },
+        {
+            "base_name": "grounding-dino-base-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Full-size open-set object detector using a Swin-B vision backbone and BERT text encoder, with higher accuracy across a wide range of vocabulary",
+            "source": "https://huggingface.co/IDEA-Research/grounding-dino-base",
+            "author": "IDEA Research",
+            "license": "Apache 2.0",
+            "size_bytes": 892000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "IDEA-Research/grounding-dino-base"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "training_data": [
+                { "name": "Objects365v1", "url": "https://www.objects365.org" },
+                { "name": "GoldG", "url": "https://github.com/microsoft/GLIP" },
+                { "name": "Cap4M", "url": "https://arxiv.org/abs/2112.03857" }
+            ],
+            "date_added": "2026-06-26 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-tiny-coco-instance-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-T backbone for instance segmentation on COCO, returning per-instance binary masks",
+            "source": "https://huggingface.co/facebook/mask2former-swin-tiny-coco-instance",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 190840832,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-tiny-coco-instance",
+                    "task": "instance"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "torch", "transformers", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-small-coco-instance-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-S backbone for instance segmentation on COCO, returning per-instance binary masks",
+            "source": "https://huggingface.co/facebook/mask2former-swin-small-coco-instance",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 275775488,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-small-coco-instance",
+                    "task": "instance"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "torch", "transformers", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-base-coco-instance-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-B backbone for instance segmentation on COCO, returning per-instance binary masks",
+            "source": "https://huggingface.co/facebook/mask2former-swin-base-coco-instance",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 432013312,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-base-coco-instance",
+                    "task": "instance"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "torch", "transformers", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-large-coco-instance-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-L backbone for instance segmentation on COCO, returning per-instance binary masks",
+            "source": "https://huggingface.co/facebook/mask2former-swin-large-coco-instance",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 867172352,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-large-coco-instance",
+                    "task": "instance"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["instances", "torch", "transformers", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-tiny-coco-panoptic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-T backbone for panoptic segmentation on COCO, unifying things and stuff into a single segmentation",
+            "source": "https://huggingface.co/facebook/mask2former-swin-tiny-coco-panoptic",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 190840832,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-tiny-coco-panoptic",
+                    "task": "panoptic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["panoptic", "torch", "transformers", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-small-coco-panoptic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-S backbone for panoptic segmentation on COCO, unifying things and stuff into a single segmentation",
+            "source": "https://huggingface.co/facebook/mask2former-swin-small-coco-panoptic",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 275775488,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-small-coco-panoptic",
+                    "task": "panoptic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["panoptic", "torch", "transformers", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-base-coco-panoptic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-B backbone for panoptic segmentation on COCO, unifying things and stuff into a single segmentation",
+            "source": "https://huggingface.co/facebook/mask2former-swin-base-coco-panoptic",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 432013312,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-base-coco-panoptic",
+                    "task": "panoptic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["panoptic", "torch", "transformers", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-large-coco-panoptic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-L backbone for panoptic segmentation on COCO, unifying things and stuff into a single segmentation",
+            "source": "https://huggingface.co/facebook/mask2former-swin-large-coco-panoptic",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 1825361101,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-large-coco-panoptic",
+                    "task": "panoptic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["panoptic", "torch", "transformers", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-tiny-ade-semantic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-T backbone for semantic segmentation on ADE20K (150 classes)",
+            "source": "https://huggingface.co/facebook/mask2former-swin-tiny-ade-semantic",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 380633088,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-tiny-ade-semantic",
+                    "task": "semantic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["segmentation", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "https://groups.csail.mit.edu/vision/datasets/ADE20K/"
+                }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-small-ade-semantic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-S backbone for semantic segmentation on ADE20K (150 classes)",
+            "source": "https://huggingface.co/facebook/mask2former-swin-small-ade-semantic",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 275775488,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-small-ade-semantic",
+                    "task": "semantic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["segmentation", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "https://groups.csail.mit.edu/vision/datasets/ADE20K/"
+                }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-base-ade-semantic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-B backbone for semantic segmentation on ADE20K (150 classes)",
+            "source": "https://huggingface.co/facebook/mask2former-swin-base-ade-semantic",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 432013312,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-base-ade-semantic",
+                    "task": "semantic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["segmentation", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "https://groups.csail.mit.edu/vision/datasets/ADE20K/"
+                }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "mask2former-swin-large-ade-semantic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Mask2Former with Swin-L backbone for semantic segmentation on ADE20K (150 classes)",
+            "source": "https://huggingface.co/facebook/mask2former-swin-large-ade-semantic",
+            "author": "Bowen Cheng, et al.",
+            "license": "MIT",
+            "size_bytes": 867172352,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "facebook/mask2former-swin-large-ade-semantic",
+                    "task": "semantic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["segmentation", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "https://groups.csail.mit.edu/vision/datasets/ADE20K/"
+                }
+            ],
+            "date_added": "2026-06-29 00:00:00"
+        },
+        {
+            "base_name": "oneformer-ade20k-swin-tiny-semantic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "OneFormer with Swin-T backbone trained on ADE20K for semantic segmentation",
+            "source": "https://huggingface.co/shi-labs/oneformer_ade20k_swin_tiny",
+            "author": "Jitesh Jain, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 408375190,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "shi-labs/oneformer_ade20k_swin_tiny",
+                    "task": "semantic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "http://sceneparsing.csail.mit.edu/"
+                }
+            ],
+            "date_added": "2026-07-06 00:00:00"
+        },
+        {
+            "base_name": "oneformer-ade20k-swin-tiny-instance-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "OneFormer with Swin-T backbone trained on ADE20K for instance segmentation, returning per-instance binary masks",
+            "source": "https://huggingface.co/shi-labs/oneformer_ade20k_swin_tiny",
+            "author": "Jitesh Jain, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 408375190,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "shi-labs/oneformer_ade20k_swin_tiny",
+                    "task": "instance"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "http://sceneparsing.csail.mit.edu/"
+                }
+            ],
+            "date_added": "2026-07-06 00:00:00"
+        },
+        {
+            "base_name": "oneformer-ade20k-swin-tiny-panoptic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "OneFormer with Swin-T backbone trained on ADE20K for panoptic segmentation, returning per-segment binary masks",
+            "source": "https://huggingface.co/shi-labs/oneformer_ade20k_swin_tiny",
+            "author": "Jitesh Jain, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 408375190,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "shi-labs/oneformer_ade20k_swin_tiny",
+                    "task": "panoptic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["panoptic", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "http://sceneparsing.csail.mit.edu/"
+                }
+            ],
+            "date_added": "2026-07-06 00:00:00"
+        },
+        {
+            "base_name": "oneformer-ade20k-swin-large-semantic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "OneFormer with Swin-L backbone trained on ADE20K for semantic segmentation",
+            "source": "https://huggingface.co/shi-labs/oneformer_ade20k_swin_large",
+            "author": "Jitesh Jain, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 1760587260,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "shi-labs/oneformer_ade20k_swin_large",
+                    "task": "semantic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "http://sceneparsing.csail.mit.edu/"
+                }
+            ],
+            "date_added": "2026-07-06 00:00:00"
+        },
+        {
+            "base_name": "oneformer-ade20k-swin-large-instance-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "OneFormer with Swin-L backbone trained on ADE20K for instance segmentation, returning per-instance binary masks",
+            "source": "https://huggingface.co/shi-labs/oneformer_ade20k_swin_large",
+            "author": "Jitesh Jain, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 1760587260,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "shi-labs/oneformer_ade20k_swin_large",
+                    "task": "instance"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "http://sceneparsing.csail.mit.edu/"
+                }
+            ],
+            "date_added": "2026-07-06 00:00:00"
+        },
+        {
+            "base_name": "oneformer-ade20k-swin-large-panoptic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "OneFormer with Swin-L backbone trained on ADE20K for panoptic segmentation, returning per-segment binary masks",
+            "source": "https://huggingface.co/shi-labs/oneformer_ade20k_swin_large",
+            "author": "Jitesh Jain, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 1760587260,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "shi-labs/oneformer_ade20k_swin_large",
+                    "task": "panoptic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["panoptic", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "http://sceneparsing.csail.mit.edu/"
+                }
+            ],
+            "date_added": "2026-07-06 00:00:00"
+        },
+        {
+            "base_name": "oneformer-cityscapes-swin-large-semantic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "OneFormer with Swin-L backbone trained on Cityscapes for semantic segmentation",
+            "source": "https://huggingface.co/shi-labs/oneformer_cityscapes_swin_large",
+            "author": "Jitesh Jain, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 1760303173,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "shi-labs/oneformer_cityscapes_swin_large",
+                    "task": "semantic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "Cityscapes",
+                    "url": "https://www.cityscapes-dataset.com/"
+                }
+            ],
+            "date_added": "2026-07-06 00:00:00"
+        },
+        {
+            "base_name": "oneformer-cityscapes-swin-large-instance-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "OneFormer with Swin-L backbone trained on Cityscapes for instance segmentation, returning per-instance binary masks",
+            "source": "https://huggingface.co/shi-labs/oneformer_cityscapes_swin_large",
+            "author": "Jitesh Jain, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 1760303173,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "shi-labs/oneformer_cityscapes_swin_large",
+                    "task": "instance"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "Cityscapes",
+                    "url": "https://www.cityscapes-dataset.com/"
+                }
+            ],
+            "date_added": "2026-07-06 00:00:00"
+        },
+        {
+            "base_name": "oneformer-cityscapes-swin-large-panoptic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "OneFormer with Swin-L backbone trained on Cityscapes for panoptic segmentation, returning per-segment binary masks",
+            "source": "https://huggingface.co/shi-labs/oneformer_cityscapes_swin_large",
+            "author": "Jitesh Jain, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 1760303173,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "shi-labs/oneformer_cityscapes_swin_large",
+                    "task": "panoptic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["panoptic", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "Cityscapes",
+                    "url": "https://www.cityscapes-dataset.com/"
+                }
+            ],
+            "date_added": "2026-07-06 00:00:00"
+        },
+        {
+            "base_name": "oneformer-coco-swin-large-semantic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "OneFormer with Swin-L backbone trained on MS COCO 2017 for semantic segmentation",
+            "source": "https://huggingface.co/shi-labs/oneformer_coco_swin_large",
+            "author": "Jitesh Jain, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 1760343799,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "shi-labs/oneformer_coco_swin_large",
+                    "task": "semantic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
+            ],
+            "date_added": "2026-07-06 00:00:00"
+        },
+        {
+            "base_name": "oneformer-coco-swin-large-instance-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "OneFormer with Swin-L backbone trained on MS COCO 2017 for instance segmentation, returning per-instance binary masks",
+            "source": "https://huggingface.co/shi-labs/oneformer_coco_swin_large",
+            "author": "Jitesh Jain, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 1760343799,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "shi-labs/oneformer_coco_swin_large",
+                    "task": "instance"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
+            ],
+            "date_added": "2026-07-06 00:00:00"
+        },
+        {
+            "base_name": "oneformer-coco-swin-large-panoptic-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "OneFormer with Swin-L backbone trained on MS COCO 2017 for panoptic segmentation, returning per-segment binary masks",
+            "source": "https://huggingface.co/shi-labs/oneformer_coco_swin_large",
+            "author": "Jitesh Jain, et al.",
+            "license": "Apache-2.0",
+            "size_bytes": 1760343799,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForUniversalSegmentation",
+                "config": {
+                    "name_or_path": "shi-labs/oneformer_coco_swin_large",
+                    "task": "panoptic"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["panoptic", "torch", "transformers", "official"],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
+            ],
+            "date_added": "2026-07-06 00:00:00"
         },
         {
             "base_name": "clip-vit-base32-torch",
@@ -6106,7 +7161,10 @@
             },
             "tags": ["classification", "imagenet", "torch", "yolo", "official"],
             "training_data": [
-                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6149,7 +7207,10 @@
             },
             "tags": ["classification", "imagenet", "torch", "yolo", "official"],
             "training_data": [
-                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6192,7 +7253,10 @@
             },
             "tags": ["classification", "imagenet", "torch", "yolo", "official"],
             "training_data": [
-                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6235,7 +7299,10 @@
             },
             "tags": ["classification", "imagenet", "torch", "yolo", "official"],
             "training_data": [
-                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6278,7 +7345,10 @@
             },
             "tags": ["classification", "imagenet", "torch", "yolo", "official"],
             "training_data": [
-                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2026-01-15 12:00:00"
         },
@@ -6740,7 +7810,8 @@
                 "packages": [
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
-                    "ultralytics>=8.3.99"
+                    "ultralytics>=8.3.99",
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -6798,7 +7869,8 @@
                 "packages": [
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
-                    "ultralytics>=8.3.99"
+                    "ultralytics>=8.3.99",
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -6856,7 +7928,8 @@
                 "packages": [
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
-                    "ultralytics>=8.3.99"
+                    "ultralytics>=8.3.99",
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -6914,7 +7987,8 @@
                 "packages": [
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
-                    "ultralytics>=8.3.99"
+                    "ultralytics>=8.3.99",
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -6972,7 +8046,8 @@
                 "packages": [
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
-                    "ultralytics>=8.3.99"
+                    "ultralytics>=8.3.99",
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7030,7 +8105,8 @@
                 "packages": [
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
-                    "ultralytics>=8.3.99"
+                    "ultralytics>=8.3.99",
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7059,6 +8135,631 @@
                 }
             ],
             "date_added": "2025-04-10 12:24:41"
+        },
+        {
+            "base_name": "yoloe26n-seg-torch",
+            "base_filename": "yoloe-26n-seg.pt",
+            "description": "Open-vocabulary nano segmentation with text/visual prompts",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 11463019,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26n-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOEVPModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26n-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.YOLOEVPSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0",
+                    "clip @ git+https://github.com/openai/CLIP.git"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26s-seg-torch",
+            "base_filename": "yoloe-26s-seg.pt",
+            "description": "Open-vocabulary small segmentation with text/visual prompts",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 30759531,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26s-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOEVPModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26s-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.YOLOEVPSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0",
+                    "clip @ git+https://github.com/openai/CLIP.git"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26m-seg-torch",
+            "base_filename": "yoloe-26m-seg.pt",
+            "description": "Open-vocabulary medium segmentation with text/visual prompts",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 70048027,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26m-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOEVPModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26m-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.YOLOEVPSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0",
+                    "clip @ git+https://github.com/openai/CLIP.git"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26l-seg-torch",
+            "base_filename": "yoloe-26l-seg.pt",
+            "description": "Open-vocabulary large segmentation with text/visual prompts",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 78909291,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26l-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOEVPModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26l-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.YOLOEVPSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0",
+                    "clip @ git+https://github.com/openai/CLIP.git"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26x-seg-torch",
+            "base_filename": "yoloe-26x-seg.pt",
+            "description": "Open-vocabulary extra-large segmentation with text/visual prompts",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 171013099,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26x-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOEVPModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26x-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.YOLOEVPSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0",
+                    "clip @ git+https://github.com/openai/CLIP.git"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26n-seg-pf-torch",
+            "base_filename": "yoloe-26n-seg-pf.pt",
+            "description": "Prompt-free nano segmentation with 4,585 built-in classes",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 15748710,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26n-seg-pf.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26n-seg-pf.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0",
+                    "clip @ git+https://github.com/openai/CLIP.git"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "prompt-free",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26s-seg-pf-torch",
+            "base_filename": "yoloe-26s-seg-pf.pt",
+            "description": "Prompt-free small segmentation with 4,585 built-in classes",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 35163686,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26s-seg-pf.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26s-seg-pf.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0",
+                    "clip @ git+https://github.com/openai/CLIP.git"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "prompt-free",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26m-seg-pf-torch",
+            "base_filename": "yoloe-26m-seg-pf.pt",
+            "description": "Prompt-free medium segmentation with 4,585 built-in classes",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 75324434,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26m-seg-pf.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26m-seg-pf.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0",
+                    "clip @ git+https://github.com/openai/CLIP.git"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "prompt-free",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26l-seg-pf-torch",
+            "base_filename": "yoloe-26l-seg-pf.pt",
+            "description": "Prompt-free large segmentation with 4,585 built-in classes",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 84185830,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26l-seg-pf.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26l-seg-pf.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0",
+                    "clip @ git+https://github.com/openai/CLIP.git"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "prompt-free",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26x-seg-pf-torch",
+            "base_filename": "yoloe-26x-seg-pf.pt",
+            "description": "Prompt-free extra-large segmentation with 4,585 built-in classes",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 175571686,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26x-seg-pf.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26x-seg-pf.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0",
+                    "clip @ git+https://github.com/openai/CLIP.git"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "instances",
+                "torch",
+                "yolo",
+                "zero-shot",
+                "prompt-free",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
         },
         {
             "base_name": "rtdetr-l-coco-torch",
@@ -7188,7 +8889,8 @@
                 "packages": [
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
-                    "ultralytics>=8.1.0"
+                    "ultralytics>=8.1.0",
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7242,7 +8944,8 @@
                 "packages": [
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
-                    "ultralytics>=8.1.0"
+                    "ultralytics>=8.1.0",
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7296,7 +8999,8 @@
                 "packages": [
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
-                    "ultralytics>=8.1.0"
+                    "ultralytics>=8.1.0",
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -7350,7 +9054,8 @@
                 "packages": [
                     "torch>=1.7.0",
                     "torchvision>=0.8.1",
-                    "ultralytics>=8.1.0"
+                    "ultralytics>=8.1.0",
+                    "clip @ git+https://github.com/openai/CLIP.git"
                 ],
                 "cpu": {
                     "support": true
@@ -8801,6 +10506,47 @@
             "date_added": "2025-07-03 12:00:00"
         },
         {
+            "base_name": "rtdetr-v2-l-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "High-accuracy real-time object detector with ResNet-101 backbone, offering the best accuracy in the RT-DETRv2 family",
+            "source": "https://huggingface.co/PekingU/rtdetr_v2_r101vd",
+            "author": "Wenyu Lv, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 307332000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "PekingU/rtdetr_v2_r101vd",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "embeddings",
+                "torch",
+                "transformers",
+                "rtdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-06-25 12:00:00"
+        },
+        {
             "base_name": "dfine-nano-coco-torch",
             "base_filename": null,
             "version": null,
@@ -9733,7 +11479,13 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["detection", "torch", "transformers", "zero-shot", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
             "date_added": "2025-08-11 15:00:08"
         },
         {
@@ -9756,7 +11508,13 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["detection", "torch", "transformers", "zero-shot", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
             "date_added": "2025-08-11 15:00:08"
         },
         {
@@ -9779,7 +11537,13 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["detection", "torch", "transformers", "zero-shot", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
             "date_added": "2025-08-11 15:00:08"
         },
         {
@@ -9799,7 +11563,13 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.51.0", "accelerate", "qwen-vl-utils"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.51.0",
+                    "accelerate",
+                    "qwen-vl-utils"
+                ],
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
@@ -9824,7 +11594,13 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.51.0", "accelerate", "qwen-vl-utils"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.51.0",
+                    "accelerate",
+                    "qwen-vl-utils"
+                ],
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
@@ -9849,7 +11625,13 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.51.0", "accelerate", "qwen-vl-utils"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.51.0",
+                    "accelerate",
+                    "qwen-vl-utils"
+                ],
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
@@ -9873,7 +11655,13 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.57.0", "accelerate", "qwen-vl-utils"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.57.0",
+                    "accelerate",
+                    "qwen-vl-utils"
+                ],
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
@@ -9897,13 +11685,382 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.57.0", "accelerate", "qwen-vl-utils"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=4.57.0",
+                    "accelerate",
+                    "qwen-vl-utils"
+                ],
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
             "tags": ["embeddings", "vlm", "torch", "transformer"],
             "training_data": [],
             "date_added": "2026-01-22 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-nano-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Nano real-time object detector trained on COCO. Ultra-fast, suitable for edge devices.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 122000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRNano"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-small-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Small real-time object detector trained on COCO. Fast with good accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 128000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRSmall"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-medium-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Medium real-time object detector trained on COCO. Balanced speed and accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 135000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRMedium"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-base-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Base real-time object detector trained on COCO. High accuracy for general use.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 116000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRBase"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-large-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Large real-time object detector trained on COCO. Maximum detection accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 136000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRDetectionModel",
+                "config": {
+                    "model_type": "RFDETRLarge"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-nano-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg Nano instance segmentation model trained on COCO. Ultra-fast, suitable for edge devices.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 134000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegNano"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-small-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg Small instance segmentation model trained on COCO. Fast with good accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 135000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegSmall"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-medium-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg Medium instance segmentation model trained on COCO. Balanced speed and accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 143000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegMedium"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-large-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg Large instance segmentation model trained on COCO. High accuracy segmentation.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 145000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegLarge"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-xlarge-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg XLarge instance segmentation model trained on COCO. Very high accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 152000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSegXLarge"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-03-06 12:00:00"
+        },
+        {
+            "base_name": "rfdetr-seg-2xlarge-coco-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "RF-DETR Seg 2XLarge instance segmentation model trained on COCO. Maximum segmentation accuracy.",
+            "source": "https://github.com/roboflow/rf-detr",
+            "author": "Roboflow",
+            "license": "Apache 2.0",
+            "size_bytes": 154000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.rfdetr.RFDETRSegmentationModel",
+                "config": {
+                    "model_type": "RFDETRSeg2XLarge"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "rfdetr"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "transformer",
+                "rfdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-03-06 12:00:00"
         },
         {
             "base_name": "apple-sharp-torch",
@@ -9929,9 +12086,186 @@
                     "support": true
                 }
             },
-            "tags": ["3d", "gaussian-splatting", "novel-view", "torch", "transformer"],
+            "tags": [
+                "3d",
+                "gaussian-splatting",
+                "novel-view",
+                "torch",
+                "transformer"
+            ],
             "training_data": [],
             "date_added": "2026-01-28 12:00:00"
+        },
+        {
+            "base_name": "paddle-ocr-v6-medium-det-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "PP-OCRv6 medium text detection model that locates text regions in images",
+            "source": "https://huggingface.co/collections/PaddlePaddle/pp-ocrv6",
+            "author": "PaddlePaddle Authors",
+            "license": "Apache 2.0",
+            "size_bytes": 88020412,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.paddleocr.PaddleOCRDetectionModel",
+                "config": {
+                    "det_model_name": "PP-OCRv6_medium_det"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "paddleocr>=3.7", "transformers>=5.13"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "ocr", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-13 00:00:00"
+        },
+        {
+            "base_name": "paddle-ocr-v6-small-det-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "PP-OCRv6 small text detection model that locates text regions in images",
+            "source": "https://huggingface.co/collections/PaddlePaddle/pp-ocrv6",
+            "author": "PaddlePaddle Authors",
+            "license": "Apache 2.0",
+            "size_bytes": 9938124,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.paddleocr.PaddleOCRDetectionModel",
+                "config": {
+                    "det_model_name": "PP-OCRv6_small_det"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "paddleocr>=3.7", "transformers>=5.13"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "ocr", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-13 00:00:00"
+        },
+        {
+            "base_name": "paddle-ocr-v6-tiny-det-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "PP-OCRv6 tiny text detection model that locates text regions in images",
+            "source": "https://huggingface.co/collections/PaddlePaddle/pp-ocrv6",
+            "author": "PaddlePaddle Authors",
+            "license": "Apache 2.0",
+            "size_bytes": 1786412,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.paddleocr.PaddleOCRDetectionModel",
+                "config": {
+                    "det_model_name": "PP-OCRv6_tiny_det"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "paddleocr>=3.7", "transformers>=5.13"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "ocr", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-13 00:00:00"
+        },
+        {
+            "base_name": "paddle-ocr-v6-medium-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "PP-OCRv6 medium OCR model that detects and reads text in images",
+            "source": "https://huggingface.co/collections/PaddlePaddle/pp-ocrv6",
+            "author": "PaddlePaddle Authors",
+            "license": "Apache 2.0",
+            "size_bytes": 164762132,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.paddleocr.PaddleOCRModel",
+                "config": {
+                    "det_model_name": "PP-OCRv6_medium_det",
+                    "rec_model_name": "PP-OCRv6_medium_rec"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "paddleocr>=3.7", "transformers>=5.13"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["ocr", "detection", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-13 00:00:00"
+        },
+        {
+            "base_name": "paddle-ocr-v6-small-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "PP-OCRv6 small OCR model that detects and reads text in images",
+            "source": "https://huggingface.co/collections/PaddlePaddle/pp-ocrv6",
+            "author": "PaddlePaddle Authors",
+            "license": "Apache 2.0",
+            "size_bytes": 31142860,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.paddleocr.PaddleOCRModel",
+                "config": {
+                    "det_model_name": "PP-OCRv6_small_det",
+                    "rec_model_name": "PP-OCRv6_small_rec"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "paddleocr>=3.7", "transformers>=5.13"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["ocr", "detection", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-13 00:00:00"
+        },
+        {
+            "base_name": "paddle-ocr-v6-tiny-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "PP-OCRv6 tiny OCR model that detects and reads text in images",
+            "source": "https://huggingface.co/collections/PaddlePaddle/pp-ocrv6",
+            "author": "PaddlePaddle Authors",
+            "license": "Apache 2.0",
+            "size_bytes": 6260676,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.paddleocr.PaddleOCRModel",
+                "config": {
+                    "det_model_name": "PP-OCRv6_tiny_det",
+                    "rec_model_name": "PP-OCRv6_tiny_rec"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "paddleocr>=3.7", "transformers>=5.13"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["ocr", "detection", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-13 00:00:00"
         },
         {
             "base_name": "c-radio-v4-h-torch",
@@ -9949,7 +12283,16 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers", "timm", "einops", "open-clip-torch", "scikit-learn", "scipy"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers",
+                    "timm",
+                    "einops",
+                    "open-clip-torch",
+                    "scikit-learn",
+                    "scipy"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -9957,7 +12300,14 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "heatmap", "torch", "transformer", "nvidia", "foundation"],
+            "tags": [
+                "embeddings",
+                "heatmap",
+                "torch",
+                "transformer",
+                "nvidia",
+                "foundation"
+            ],
             "training_data": [
                 {
                     "name": "Multi-teacher distillation (SigLIP2, DINOv3, SAM3)",
@@ -9982,7 +12332,16 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers", "timm", "einops", "open-clip-torch", "scikit-learn", "scipy"],
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers",
+                    "timm",
+                    "einops",
+                    "open-clip-torch",
+                    "scikit-learn",
+                    "scipy"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -9990,7 +12349,14 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "heatmap", "torch", "transformer", "nvidia", "foundation"],
+            "tags": [
+                "embeddings",
+                "heatmap",
+                "torch",
+                "transformer",
+                "nvidia",
+                "foundation"
+            ],
             "training_data": [
                 {
                     "name": "Multi-teacher distillation (SigLIP2, DINOv3, SAM3)",

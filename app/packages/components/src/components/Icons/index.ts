@@ -1,7 +1,11 @@
 export {
+  ClassificationIcon,
   Close,
   Copy,
+  DetectionIcon,
+  DiscordLink,
   DocsLink,
+  EraserIcon,
   GitHubLink,
   HelpIcon,
   IconButton,
@@ -12,5 +16,8 @@ export {
   KeyboardArrowUp,
   LookerArrowLeftIcon,
   LookerArrowRightIcon,
-  DiscordLink,
+  RedoIcon,
+  SegmentationIcon,
+  SelectIcon,
+  UndoIcon,
 } from "./Icons";

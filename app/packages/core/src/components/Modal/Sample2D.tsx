@@ -8,10 +8,15 @@ import {
   useModalMode,
 } from "@fiftyone/state";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
-import { RecoilValueReadOnly, useRecoilValue } from "recoil";
+import {
+  RecoilValueReadOnly,
+  useRecoilValue,
+  useRecoilValueLoadable,
+} from "recoil";
 import styled from "styled-components";
 import { ModalLooker } from "./ModalLooker";
 import { SelectSampleCheckbox } from "./SelectSampleCheckbox";
+import { useRetainedModalSample } from "./use-modal-sample-renderer-persistence";
 
 const CheckboxWrapper = styled.div`
   position: absolute;
@@ -23,8 +28,10 @@ const CheckboxWrapper = styled.div`
 export const SampleWrapper = ({
   children,
   sampleAtom = modalSample,
+  sample: providedSample,
 }: React.PropsWithChildren<{
   sampleAtom?: RecoilValueReadOnly<ModalSample>;
+  sample?: ModalSample;
 }>) => {
   const [hovering, setHovering] = useState(false);
   const modalMode = useModalMode();
@@ -51,7 +58,8 @@ export const SampleWrapper = ({
     };
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
-  const sample = useRecoilValue(sampleAtom);
+  const recoilSample = useRecoilValueLoadable(sampleAtom);
+  const sample = providedSample ?? recoilSample.getValue();
   const { handlers: hoverEventHandlers } = useHoveredSample(sample.sample, {
     update,
     clear,
@@ -80,10 +88,17 @@ export const SampleWrapper = ({
 
 export const Sample2D = () => {
   const id = useRecoilValue(modalSampleId);
+  // Renderers that persist across samples keep the looker subtree mounted
+  // through navigation; everything else keeps the per-sample remount.
+  const { persistenceKey, sample, transitioning } = useRetainedModalSample();
 
   return (
-    <SampleWrapper>
-      <ModalLooker key={`looker-${id}`} />
+    <SampleWrapper sample={sample}>
+      <ModalLooker
+        key={persistenceKey ?? `looker-${id}`}
+        sample={sample}
+        sampleTransitioning={transitioning}
+      />
     </SampleWrapper>
   );
 };

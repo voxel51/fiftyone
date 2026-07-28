@@ -1,0 +1,106 @@
+{
+    "name": "@fiftyone/multimodal",
+    "version": "0.0.0",
+    "private": true,
+    "main": "./src/index.ts",
+    "types": "./src/index.ts",
+    "exports": {
+        ".": "./src/index.ts",
+        "./query": "./src/query/index.ts",
+        "./query/bytes": "./src/query/bytes/index.ts",
+        "./query/decode": "./src/query/decode/index.ts",
+        "./decoders": "./src/decoders/index.ts",
+        "./temporal-tags": "./src/temporal-tags/index.ts",
+        "./inject": "./src/inject/index.ts",
+        "./extensions/mcap": "./src/extensions/mcap/index.ts",
+        "./adapters/mcap": "./src/adapters/mcap/index.ts",
+        "./adapters/mcap/react/TemporalTagGridOverlay": "./src/adapters/mcap/react/TemporalTagGridOverlay.tsx",
+        "./schemas/v1": "./src/schemas/v1/index.ts",
+        "./visualization": "./src/visualization/index.ts",
+        "./visualization/panels/image": "./src/visualization/panels/image.tsx",
+        "./visualization/panels/point-cloud": "./src/visualization/panels/point-cloud/index.ts"
+    },
+    "typesVersions": {
+        "*": {
+            "decoders": [
+                "src/decoders/index.ts"
+            ],
+            "temporal-tags": [
+                "src/temporal-tags/index.ts"
+            ],
+            "query": [
+                "src/query/index.ts"
+            ],
+            "query/bytes": [
+                "src/query/bytes/index.ts"
+            ],
+            "query/decode": [
+                "src/query/decode/index.ts"
+            ],
+            "inject": [
+                "src/inject/index.ts"
+            ],
+            "extensions/mcap": [
+                "src/extensions/mcap/index.ts"
+            ],
+            "adapters/mcap": [
+                "src/adapters/mcap/index.ts"
+            ],
+            "adapters/mcap/react/TemporalTagGridOverlay": [
+                "src/adapters/mcap/react/TemporalTagGridOverlay.tsx"
+            ],
+            "schemas/v1": [
+                "src/schemas/v1/index.ts"
+            ],
+            "visualization": [
+                "src/visualization/index.ts"
+            ],
+            "visualization/panels/image": [
+                "src/visualization/panels/image.tsx"
+            ],
+            "visualization/panels/point-cloud": [
+                "src/visualization/panels/point-cloud/index.ts"
+            ]
+        }
+    },
+    "scripts": {
+        "lint": "yarn check",
+        "check": "concurrently -g \"yarn:check:lint\" \"yarn:check:deps\" \"yarn:check:types\"",
+        "check:types": "node ./scripts/check-types.mjs",
+        "check:lint": "node ./scripts/check-lint.mjs",
+        "check:deps": "node ./scripts/check-deps.mjs"
+    },
+    "dependencies": {
+        "@bufbuild/protobuf": "^2.11.0",
+        "@date-fns/tz": "^1.5.0",
+        "@fiftyone/components": "*",
+        "@fiftyone/plugins": "*",
+        "@fiftyone/state": "*",
+        "@fiftyone/tiling": "*",
+        "@fiftyone/utilities": "*",
+        "@foxglove/ros2idl-parser": "^0.3.6",
+        "@foxglove/rosmsg": "^5.0.5",
+        "@foxglove/rosmsg-serialization": "^2.1.2",
+        "@foxglove/rosmsg2-serialization": "^3.1.2",
+        "@mcap/core": "^2.2.1",
+        "@mcap/support": "^1.1.0",
+        "@react-three/drei": "9.105.4",
+        "@react-three/fiber": "catalog:",
+        "@voxel51/voodo": "^0.0.39",
+        "buffer": "catalog:",
+        "colormap": "catalog:",
+        "date-fns": "^4.1.0",
+        "jotai": "catalog:",
+        "lru-cache": "catalog:",
+        "maplibre-gl": "^4.7.1",
+        "meshoptimizer": "^0.22.0",
+        "protobufjs": "^7.6.4",
+        "three": "patch:three@npm%3A0.185.1#~/.yarn/patches/three-npm-0.185.1-e07195d8b4.patch",
+        "uplot": "^1.6.32"
+    },
+    "devDependencies": {
+        "@types/three": "^0.182.0",
+        "concurrently": "^7.2.1",
+        "vite-plugin-relay": "catalog:"
+    }
+}

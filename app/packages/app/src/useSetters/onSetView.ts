@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { rollbackViewBar } from "@fiftyone/core";
 import { setView, type setViewMutation } from "@fiftyone/relay";
 import {
@@ -42,7 +46,7 @@ const onSetView: RegisteredSetter =
         }
 
         sessionRef.current.selectedLabels = [];
-        sessionRef.current.selectedSamples = new Set();
+        sessionRef.current.selectedSamples = new Map();
         sessionRef.current.fieldVisibilityStage = undefined;
         router.history.push(
           resolveURL({
@@ -52,7 +56,7 @@ const onSetView: RegisteredSetter =
           }),
           {
             view,
-          }
+          },
         );
       },
     });

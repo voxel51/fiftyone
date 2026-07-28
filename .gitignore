@@ -24,6 +24,8 @@ dist/
 /docs/build/
 /docs/source/api/
 /docs/source/plugins/plugins_ecosystem/
+/docs/source/labs/labs_ecosystem/
+/docs/source/agents/skills_ecosystem/
 
 /bin
 /lib
@@ -32,3 +34,5 @@ coverage.xml
 pyvenv.cfg
 
 .env
+
+.playwright-mcp

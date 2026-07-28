@@ -5,7 +5,6 @@
  * in RJSF forms by reusing the existing SchemaIO implementation.
  */
 
-import React from "react";
 import { WidgetProps } from "@rjsf/utils";
 import AutocompleteView from "../../../../../../core/src/plugins/SchemaIO/components/AutocompleteView";
 

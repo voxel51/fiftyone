@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { Session } from "@fiftyone/state";
 import { snakeCase } from "lodash";
 import type { MutableRefObject } from "react";

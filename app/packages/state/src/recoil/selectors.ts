@@ -12,11 +12,13 @@ import { fieldVisibilityStage, gridSortBy } from "@fiftyone/state";
 import { is3d } from "@fiftyone/utilities";
 import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
+import { getGridCustomRendererFailoverForcedSubscription } from "../gridCustomRendererFailover";
 import * as atoms from "./atoms";
 import { config } from "./config";
 import { dataset as datasetAtom } from "./dataset";
 import { modalSample, modalSelector } from "./modal";
 import { pathFilter } from "./pathFilters";
+import type { SelectionType } from "./types";
 import { State } from "./types";
 import { isPatchesView } from "./view";
 
@@ -35,7 +37,7 @@ export const datasetName = graphQLSyncFragmentAtom<
   },
   {
     key: "datasetName",
-  }
+  },
 );
 
 export const datasetId = graphQLSyncFragmentAtom<
@@ -50,7 +52,7 @@ export const datasetId = graphQLSyncFragmentAtom<
   },
   {
     key: "datasetId",
-  }
+  },
 );
 
 export const isNotebook = selector<boolean>({
@@ -65,6 +67,13 @@ export const isNotebook = selector<boolean>({
 export const stateSubscription = selector<string>({
   key: "stateSubscription",
   get: () => {
+    const forcedSubscription =
+      getGridCustomRendererFailoverForcedSubscription();
+
+    if (forcedSubscription) {
+      return forcedSubscription;
+    }
+
     const params = new URLSearchParams(window.location.search);
 
     return params.get("subscription") || uuid();
@@ -90,6 +99,11 @@ export const parentMediaTypeSelector = selector({
 export const isVideoDataset = selector({
   key: "isVideoDataset",
   get: ({ get }) => get(atoms.mediaType) === "video",
+});
+
+export const isMultimodalDataset = selector({
+  key: "isMultimodalDataset",
+  get: ({ get }) => get(atoms.mediaType) === "multimodal",
 });
 
 export const is3DDataset = selector({
@@ -124,7 +138,7 @@ export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
   {
     key: "appConfigOptions",
     default: appConfigDefault,
-  }
+  },
 );
 
 export const datasetAppConfig = graphQLSyncFragmentAtom<
@@ -139,7 +153,7 @@ export const datasetAppConfig = graphQLSyncFragmentAtom<
   },
   {
     key: "datasetAppConfig",
-  }
+  },
 );
 
 export const activeFieldsConfig = selector({
@@ -153,7 +167,7 @@ export const disableFrameFiltering = selector<boolean>({
     const datasetDisableFrameFiltering =
       get(datasetAppConfig)?.disableFrameFiltering;
     const globalDisableFrameFiltering = Boolean(
-      get(appConfigOption({ modal: true, key: "disableFrameFiltering" }))
+      get(appConfigOption({ modal: true, key: "disableFrameFiltering" })),
     );
 
     return datasetDisableFrameFiltering !== null
@@ -207,7 +221,7 @@ export const getSkeleton = selector<(field: string) => KeypointSkeleton | null>(
 
       return (field: string) => skeletons[field] || dataset.defaultSkeleton;
     },
-  }
+  },
 );
 
 export const skeleton = selectorFamily<KeypointSkeleton | null, string>({
@@ -233,7 +247,7 @@ export const getTarget = selector({
 
       if (isRgbMaskTargets(maskTargets)) {
         const maskTargetTuple = Object.entries(maskTargets).find(
-          ([_, el]) => el.intTarget === target
+          ([_, el]) => el.intTarget === target,
         );
 
         if (maskTargetTuple) {
@@ -257,7 +271,7 @@ export const selectedLabelMap = selector<State.SelectedLabelMap>({
         [labelId]: label,
         ...acc,
       }),
-      {}
+      {},
     );
   },
   set: ({ set }, newValue) => {
@@ -270,7 +284,7 @@ export const selectedLabelMap = selector<State.SelectedLabelMap>({
       Object.entries(newValue).map(([labelId, label]) => ({
         ...label,
         labelId,
-      }))
+      })),
     );
   },
 });
@@ -283,6 +297,18 @@ export const selectedLabelIds = selector<Set<string>>({
   },
 });
 
+export const selectedLabelTypes = selector<Record<string, SelectionType>>({
+  key: "selectedLabelTypes",
+  get: ({ get }) => {
+    const labels = get(selectedLabelMap);
+    const types: Record<string, SelectionType> = {};
+    for (const [labelId, label] of Object.entries(labels)) {
+      types[labelId] = label.type === "alt" ? "alt" : "default";
+    }
+    return types;
+  },
+});
+
 export const anyTagging = selector<boolean>({
   key: "anyTagging",
   get: ({ get }) => {
@@ -290,7 +316,7 @@ export const anyTagging = selector<boolean>({
     [true, false].forEach((i) =>
       [true, false].forEach((j) => {
         values.push(get(atoms.tagging({ modal: i, labels: j })));
-      })
+      }),
     );
     return values.some((v) => v);
   },
@@ -298,7 +324,7 @@ export const anyTagging = selector<boolean>({
     [true, false].forEach((i) =>
       [true, false].forEach((j) => {
         set(atoms.tagging({ modal: i, labels: j }), value);
-      })
+      }),
     );
   },
   cachePolicy_UNSTABLE: {
@@ -379,7 +405,7 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
       if (_id) {
         return Object.entries(labels)
           .filter(
-            ([_, { sampleId: id, field }]) => _id === id && field === fieldName
+            ([_, { sampleId: id, field }]) => _id === id && field === fieldName,
           )
           .map(([labelId]) => labelId);
       }
@@ -408,7 +434,7 @@ export const similarityMethods = selector<{
     return methods
       .filter(
         ({ config: { type, cls } }) =>
-          type == "similarity" || cls.toLowerCase().includes("similarity")
+          type == "similarity" || cls.toLowerCase().includes("similarity"),
       )
       .reduce(
         (
@@ -422,7 +448,7 @@ export const similarityMethods = selector<{
               maxK,
             },
             key,
-          }
+          },
         ) => {
           if (patchesField) {
             patches.push([
@@ -439,7 +465,7 @@ export const similarityMethods = selector<{
           }
           return { patches, samples };
         },
-        { patches: [], samples: [] }
+        { patches: [], samples: [] },
       );
   },
   cachePolicy_UNSTABLE: {
@@ -454,7 +480,7 @@ export const extendedStagesUnsorted = selector({
     const sampleIds = extendedSelection?.selection;
     const spatialSelection = extendedSelection?.spatialSelection;
     const extendedSelectionOverrideStage = get(
-      atoms.extendedSelectionOverrideStage
+      atoms.extendedSelectionOverrideStage,
     );
 
     if (extendedSelectionOverrideStage) {
@@ -552,10 +578,10 @@ export const selectedPatchIds = selectorFamily({
       const selectedSampleObjects = get(atoms.selectedSampleObjects);
 
       if (isPatches || modal) {
-        return selectedSamples;
+        return new Set(selectedSamples.keys());
       }
       let patchIds: string[] = [];
-      for (const sampleId of Array.from(selectedSamples)) {
+      for (const sampleId of Array.from(selectedSamples.keys())) {
         if (selectedSampleObjects.has(sampleId)) {
           const sample = selectedSampleObjects.get(sampleId);
           patchIds = [
@@ -563,7 +589,7 @@ export const selectedPatchIds = selectorFamily({
             ...getLabelIdsFromSample(
               sample,
               patchesField,
-              get(pathFilter(false))
+              get(pathFilter(false)),
             ),
           ];
         }
@@ -581,7 +607,7 @@ export const selectedPatchSamples = selector({
 
     if (isPatches) {
       let sampleIds: string[] = [];
-      for (const patchId of Array.from(selectedPatches)) {
+      for (const patchId of Array.from(selectedPatches.keys())) {
         if (selectedSampleObjects.has(patchId)) {
           const sample = selectedSampleObjects.get(patchId);
           sampleIds = [...sampleIds, sample?._sample_id as unknown as string];

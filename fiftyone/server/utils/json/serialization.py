@@ -4,6 +4,7 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import datetime
 from typing import Any, Union
 
@@ -52,6 +53,8 @@ def deserialize(value: Any) -> Any:
                         fol.Detections,
                         fol.Polyline,
                         fol.Polylines,
+                        fol.TemporalDetection,
+                        fol.TemporalDetections,
                     )
                     if cls.__name__ == cls_name
                 ),
@@ -64,6 +67,7 @@ def deserialize(value: Any) -> Any:
                 )
 
             return cls.from_dict(value)
+
     elif isinstance(value, str):
         if parsed_dt := _try_parse_datetime(value):
             return parsed_dt

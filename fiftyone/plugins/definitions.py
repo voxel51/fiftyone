@@ -5,6 +5,7 @@ Plugin definitions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import hashlib
 import os
 
@@ -81,6 +82,11 @@ class PluginDefinition(object):
         return self._metadata.get("description", None)
 
     @property
+    def tags(self):
+        """The tags of the plugin."""
+        return self._metadata.get("tags", None) or []
+
+    @property
     def fiftyone_compatibility(self):
         """The FiftyOne compatibility version."""
         return self._metadata.get("fiftyone", {}).get("version", None)
@@ -105,6 +111,11 @@ class PluginDefinition(object):
         return self._metadata.get("operators", []) + self._metadata.get(
             "panels", []
         )
+
+    @property
+    def skills(self):
+        """The skills of the plugin."""
+        return self._metadata.get("skills", [])
 
     @property
     def package_json_path(self):
@@ -218,9 +229,11 @@ class PluginDefinition(object):
             "url": self.url,
             "license": self.license,
             "description": self.description,
+            "tags": self.tags,
             "fiftyone_compatibility": self.fiftyone_compatibility,
             "operators": self._metadata.get("operators", []),
             "panels": self._metadata.get("panels", []),
+            "skills": self._metadata.get("skills", []),
             "js_bundle": self.js_bundle,
             "py_entry": self.py_entry,
             "js_bundle_exists": self.has_js,

@@ -25,7 +25,7 @@ export function stringifyError(error, fallback?) {
 }
 
 export function onEnter(
-  handler: (e: KeyboardEvent) => void
+  handler: (e: KeyboardEvent) => void,
 ): KeyboardEventHandler {
   // @ts-ignore
   return (e: KeyboardEvent) => {
@@ -60,8 +60,8 @@ export function getOperatorPromptConfigs(operatorPrompt: OperatorPromptType) {
   const submitButtonOptions = operatorPrompt.submitOptions.options;
   const submitButtonLoading = operatorPrompt.submitOptions.isLoading;
   const hasSubmitButtonOptions = operatorPrompt.submitOptions.hasOptions;
-  const showWarning = operatorPrompt.submitOptions.showWarning;
-  const warningMessage = operatorPrompt.submitOptions.warningMessage;
+  const requiresOrchestratorSetup =
+    operatorPrompt.submitOptions.requiresOrchestratorSetup;
   let cancelButtonText = "Cancel";
   let onSubmit, onCancel;
 
@@ -84,7 +84,7 @@ export function getOperatorPromptConfigs(operatorPrompt: OperatorPromptType) {
   const hasValidationErrors = operatorPrompt.validationErrors?.length > 0;
   const { resolving: loading } = operatorPrompt;
   const validationErrorsStr = formatValidationErrors(
-    operatorPrompt.validationErrors
+    operatorPrompt.validationErrors,
   );
   const disableSubmit = hasValidationErrors || loading;
   const disabledReason = hasValidationErrors
@@ -106,8 +106,7 @@ export function getOperatorPromptConfigs(operatorPrompt: OperatorPromptType) {
     submitButtonOptions,
     submitButtonLoading,
     hasSubmitButtonOptions,
-    showWarning,
-    warningMessage,
+    requiresOrchestratorSetup,
     cancelButtonText,
     onSubmit,
     onCancel,
@@ -124,7 +123,7 @@ export function getOperatorPromptConfigs(operatorPrompt: OperatorPromptType) {
 export function memoizedDebounce(
   func,
   wait = 0,
-  options?: MemoizedDebounceOptions
+  options?: MemoizedDebounceOptions,
 ) {
   const memoizedFunc = memoize(function () {
     return debounce(func, wait, options);

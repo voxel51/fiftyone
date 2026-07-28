@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { NestedGroup } from "./NestedGroup";
 import { NonNestedDynamicGroup } from "./NonNestedGroup";
@@ -9,15 +9,15 @@ export const DynamicGroup = () => {
 
   const shouldRenderImaVid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
   const [dynamicGroupsViewMode, setDynamicGroupsViewMode] = useRecoilState(
-    fos.dynamicGroupsViewMode(true)
+    fos.dynamicGroupsViewMode(true),
   );
   const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
 
   const setDynamicGroupCurrentElementIndex = useSetRecoilState(
-    fos.dynamicGroupCurrentElementIndex
+    fos.dynamicGroupCurrentElementIndex,
   );
   const imaVidIndex = useRecoilValue(
-    fos.imaVidLookerState("currentFrameNumber")
+    fos.imaVidLookerState("currentFrameNumber"),
   );
 
   useEffect(() => {

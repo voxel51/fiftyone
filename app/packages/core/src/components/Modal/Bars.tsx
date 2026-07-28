@@ -1,5 +1,4 @@
 import { Bar, useTheme } from "@fiftyone/components";
-import { VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { Checkbox } from "@mui/material";
 import React, { MutableRefObject, useMemo, useRef } from "react";
@@ -26,7 +25,7 @@ const SelectableBar: React.FC<
       onMouseLeave={() => hoveringRef && (hoveringRef.current = false)}
       ref={headerRef}
       onClick={(event) =>
-        event.target === headerRef.current && select(sampleId)
+        event.target === headerRef.current && select(sampleId, event.altKey)
       }
       style={{ cursor: "pointer", ...style }}
       data-cy={"selectable-bar"}
@@ -36,7 +35,7 @@ const SelectableBar: React.FC<
           title={selected ? "Select sample" : "Selected"}
           checked={selected}
           style={{ color: theme.primary.plainColor }}
-          onClick={() => select(sampleId)}
+          onClick={(e) => select(sampleId, e.altKey)}
         />
       </div>
       {children}
@@ -60,7 +59,7 @@ export const SampleBar: React.FC<{
 
 export const GroupBar = () => {
   const activeSliceDescriptorLabel = useRecoilValue(
-    fos.activeSliceDescriptorLabel
+    fos.activeSliceDescriptorLabel,
   );
 
   const pinnedSliceLabel = useMemo(() => {
@@ -114,7 +113,7 @@ export const GroupSampleBar: React.FC<{
   hoveringRef: MutableRefObject<boolean>;
 }> = ({ hoveringRef, pinned, sampleId }) => {
   const activeSliceDescriptorLabel = useRecoilValue(
-    fos.activeSliceDescriptorLabel
+    fos.activeSliceDescriptorLabel,
   );
 
   return (

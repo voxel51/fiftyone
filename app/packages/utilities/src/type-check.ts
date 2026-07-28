@@ -19,7 +19,7 @@ export function isObjectIdString(value: string, strict = true) {
 }
 
 export function isFunctionalComponent(
-  value?: unknown
+  value?: unknown,
 ): value is React.FunctionComponent {
   if (typeof value !== "function") return false;
 
@@ -29,7 +29,7 @@ export function isFunctionalComponent(
     /return\s*\(.*<\w+/.test(fnStr) || /React\.createElement/.test(fnStr);
   const usesHooks =
     /\buse(State|Effect|Context|Reducer|Memo|Callback|Ref|LayoutEffect|ImperativeHandle)\b/.test(
-      fnStr
+      fnStr,
     );
 
   return returnsJSX || usesHooks;
@@ -40,3 +40,12 @@ export type NumberKeyObjectType<V = unknown> = {
 };
 
 const PRIMITIVE_TYPES = ["string", "number", "boolean"];
+
+/**
+ * Return true if the provided data is an object.
+ *
+ * @param data Data to check
+ */
+export const isObject = (data: unknown): data is object => {
+  return data !== null && typeof data === "object" && !Array.isArray(data);
+};

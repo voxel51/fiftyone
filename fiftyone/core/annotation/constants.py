@@ -6,6 +6,8 @@ Annotation constants
 |
 """
 
+from datetime import date, datetime
+
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -46,14 +48,18 @@ STR_LIST = "list<str>"
 ### Settings
 
 
+APPLIED_ONTOLOGY = "applied_ontology"
+APPLIED_TAXONOMY = "applied_taxonomy"
 ATTRIBUTES = "attributes"
 CLASSES = "classes"
 COMPONENT = "component"
 DEFAULT = "default"
+DYNAMIC = "dynamic"
 NAME = "name"
 PRECISION = "precision"
 RANGE = "range"
 READ_ONLY = "read_only"
+TAXONOMY = "taxonomy"
 TYPE = "type"
 VALUES = "values"
 
@@ -74,7 +80,7 @@ STR_LIST_COMPONENTS = {CHECKBOXES, DROPDOWN, TEXT}
 ### Settings constraints
 
 
-ALL_TYPES_SETTINGS = {COMPONENT, READ_ONLY, TYPE}
+ALL_TYPES_SETTINGS = {COMPONENT, DYNAMIC, READ_ONLY, TYPE}
 BOOL_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 DATE_DATETIME_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 DICT_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
@@ -82,10 +88,30 @@ FLOAT_INT_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 FLOAT_SETTINGS = {PRECISION}
 FLOAT_INT_LIST_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 ID_SETTINGS = ALL_TYPES_SETTINGS
-LABEL_SETTINGS = ALL_TYPES_SETTINGS.union({ATTRIBUTES, DEFAULT})
+LABEL_SETTINGS = ALL_TYPES_SETTINGS.union(
+    {APPLIED_ONTOLOGY, ATTRIBUTES, DEFAULT}
+)
 STR_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 STR_LIST_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 VALUES_COMPONENTS = {CHECKBOXES, DROPDOWN, RADIO}
+
+
+### Valid components per type
+
+
+TYPE_TO_COMPONENTS = {
+    BOOL: BOOL_COMPONENTS,
+    DATE: DATE_DATETIME_COMPONENTS,
+    DATETIME: DATE_DATETIME_COMPONENTS,
+    DICT: DICT_COMPONENTS,
+    FLOAT: FLOAT_INT_COMPONENTS,
+    FLOAT_LIST: FLOAT_INT_LIST_COMPONENTS,
+    ID: ID_COMPONENTS,
+    INT: FLOAT_INT_COMPONENTS,
+    INT_LIST: FLOAT_INT_LIST_COMPONENTS,
+    STR: STR_COMPONENTS,
+    STR_LIST: STR_LIST_COMPONENTS,
+}
 
 
 ### Default components
@@ -178,11 +204,42 @@ SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE = {
     fom.IMAGE: {
         fol.Detection,
         fol.Detections,
+        fol.Polyline,
+        fol.Polylines,
     },
     fom.THREE_D: {fol.Detection, fol.Detections, fol.Polyline, fol.Polylines},
+    fom.VIDEO: {
+        fol.Detection,
+        fol.Detections,
+        fol.Polyline,
+        fol.Polylines,
+        fol.TemporalDetection,
+        fol.TemporalDetections,
+    },
 }
+# Label types that support tracks (an ``instance`` linking the same object
+# across frames). Used to backfill legacy ``index``-based tracks into
+# ``instance``. Mirrors the types accepted by
+# :func:`fiftyone.utils.labels.index_to_instance`.
+TRACK_LABEL_TYPES = (
+    fol.Detection,
+    fol.Detections,
+    fol.Polyline,
+    fol.Polylines,
+    fol.Keypoint,
+    fol.Keypoints,
+)
+# Spatial label types that are only meaningful per-frame on video (a video
+# sample is the whole clip, so spatial detections/polylines belong to its
+# frames). Excluded from sample-level annotation fields for video; still
+# allowed at the frame level.
+SPATIAL_LABEL_TYPES = (
+    fol.Detection,
+    fol.Detections,
+    fol.Polyline,
+    fol.Polylines,
+)
 SUPPORTED_LISTS_OF_PRIMITIVES = (
-    fof.BooleanField,
     fof.FloatField,
     fof.IntField,
     fof.StringField,
@@ -211,10 +268,8 @@ SUPPORTED_PRIMITIVES = (
     fof.UUIDField,
 )
 # label types whose subfields cannot yet be represented by a type/component in
-# annotation, e.g. the TemporalDetection.support field
+# annotation.
 UNSUPPORTED_LABEL_TYPES = {
     fol.GeoLocation,
     fol.GeoLocations,
-    fol.TemporalDetection,
-    fol.TemporalDetections,
 }

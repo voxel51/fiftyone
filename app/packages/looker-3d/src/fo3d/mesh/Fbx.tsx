@@ -34,12 +34,12 @@ export const Fbx = ({
     () =>
       preTransformedFbxPath ??
       getSampleSrc(getResolvedUrlForFo3dAsset(fbxPath, fo3dRoot)),
-    [fbxPath, preTransformedFbxPath, fo3dRoot]
+    [fbxPath, preTransformedFbxPath, fo3dRoot],
   );
 
   const resourcePath = useMemo(
     () => getBasePathForTextures(fo3dRoot, fbxUrl),
-    [fo3dRoot, fbxUrl]
+    [fo3dRoot, fbxUrl],
   );
 
   const { material } = useMeshMaterialControls(name, defaultMaterial, true);
@@ -64,7 +64,7 @@ export const Fbx = ({
     return fbx?.animations || [];
   }, [fbx]);
 
-  const mixer = useMemo(() => new AnimationMixer(fbx), [fbx]);
+  const mixer = useMemo(() => (fbx ? new AnimationMixer(fbx) : null), [fbx]);
 
   useAnimationSelect(name, animationClips, mixer);
 

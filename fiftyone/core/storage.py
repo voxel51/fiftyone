@@ -5,9 +5,10 @@ File storage utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from contextlib import contextmanager
+
 from datetime import datetime
 import enum
+import io
 import json
 import logging
 import multiprocessing.dummy
@@ -26,7 +27,6 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.utils as fou
-
 
 logger = logging.getLogger(__name__)
 
@@ -923,6 +923,7 @@ def _run(fcn, tasks, return_results=True, num_workers=None, progress=None):
     num_workers = fou.recommend_thread_pool_workers(num_workers)
     kwargs = dict(total=num_tasks, iters_str="files", progress=progress)
 
+    results = None
     if num_workers <= 1:
         with fou.ProgressBar(**kwargs) as pb:
             if return_results:
@@ -1036,3 +1037,30 @@ def _to_bytes(val, encoding="utf-8"):
         raise TypeError("Failed to convert %s to bytes" % type(b))
 
     return b
+
+
+def get_file_size(path_or_file):
+    """
+    Returns the size of the file at the given path in bytes.
+
+    Args:
+        path_or_file: the filepath, or an open binary file handle
+
+    Returns:
+        the file size in bytes
+    """
+    # If given a seekable file handle, use seek/tell to get the size.
+    if hasattr(path_or_file, "seek") and hasattr(path_or_file, "tell"):
+        if isinstance(path_or_file, io.TextIOBase):
+            raise TypeError(
+                "get_file_size() requires a binary file handle; got a "
+                "text-mode file. Open the file in binary mode ('rb') instead."
+            )
+        position = path_or_file.tell()
+        try:
+            path_or_file.seek(0, os.SEEK_END)
+            return path_or_file.tell()
+        finally:
+            path_or_file.seek(position)
+
+    return os.path.getsize(path_or_file)

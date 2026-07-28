@@ -7,7 +7,12 @@ import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities/src/constants";
 import { folder, useControls } from "leva";
 import type { OnChangeHandler } from "leva/plugin";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { atom, atomFamily, useRecoilState, useRecoilValue } from "recoil";
+import {
+  atomFamily,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import { BufferGeometry } from "three";
 import {
   DEFAULT_PCD_SHADING_GRADIENTS_RED_TO_BLUE,
@@ -32,12 +37,17 @@ const ColormapSource = {
   OVERRIDE: "Custom Override",
 } as const;
 
-const activeThresholdAtomFamily = atomFamily<Range, string>({
+type ThresholdStateKey = {
+  name: string;
+  shadeBy: string;
+};
+
+const activeThresholdAtomFamily = atomFamily<Range, ThresholdStateKey>({
   key: "activeThreshold",
   default: [0, 1],
 });
 
-const boundsAtom = atom<Range>({
+const boundsAtomFamily = atomFamily<Range, ThresholdStateKey>({
   key: "bounds",
   default: [0, 1],
 });
@@ -45,11 +55,11 @@ const boundsAtom = atom<Range>({
 export const usePcdMaterialControls = (
   name: string,
   geometry: BufferGeometry,
-  defaultMaterial: FoPointcloudMaterialProps
+  defaultMaterial: FoPointcloudMaterialProps,
 ) => {
   const { numPrimaryAssets } = useFo3dContext();
   const [isColormapModalOpen, setIsColormapModalOpen] = useRecoilState(
-    isColormapModalOpenAtom
+    isColormapModalOpenAtom,
   );
 
   const shadeModes = useMemo(() => {
@@ -65,7 +75,7 @@ export const usePcdMaterialControls = (
     return [SHADE_BY_NONE, SHADE_BY_HEIGHT, SHADE_BY_CUSTOM].concat(
       Array.from(new Set(attributeNames))
         .sort()
-        .filter((name) => name !== "position" && name !== "dynamicAttr")
+        .filter((name) => name !== "position" && name !== "dynamicAttr"),
     );
   }, [geometry]);
 
@@ -82,20 +92,20 @@ export const usePcdMaterialControls = (
         return value;
       },
       stringify: (value) => value,
-    }
+    },
   );
   const [customColor, setCustomColor] = useState(defaultMaterial.customColor);
   const [pointSize, setPointSize] = fos.useBrowserStorage(
     "fo3dPcdPointSize",
-    defaultMaterial.pointSize
+    defaultMaterial.pointSize,
   );
   const [isPointSizeAttenuated, setIsPointSizeAttenuated] =
     fos.useBrowserStorage(
       "fo3dIsPointSizeAttenuated",
-      defaultMaterial.attenuateByDistance
+      defaultMaterial.attenuateByDistance,
     );
 
-  const [opacity, setOpacity] = useState(defaultMaterial.opacity);
+  const [opacity] = useState(defaultMaterial.opacity);
 
   const colorScheme = useRecoilValue(fos.colorScheme);
 
@@ -144,25 +154,35 @@ export const usePcdMaterialControls = (
 
       return normalized;
     },
-    [shadeBy, thresholdsLut]
+    [shadeBy, thresholdsLut],
   );
 
-  const [bounds, setBounds] = useRecoilState(boundsAtom);
+  const thresholdStateKey = useMemo(
+    () => ({
+      name,
+      shadeBy,
+    }),
+    [name, shadeBy],
+  );
+  const setBounds = useSetRecoilState(boundsAtomFamily(thresholdStateKey));
 
+  // This effect resets bounds to sanitized min/max for the active shading attribute.
   useEffect(() => {
-    const min = thresholdsLut[shadeBy]?.min;
-    const max = thresholdsLut[shadeBy]?.max;
+    const thresholds = thresholdsLut[shadeBy];
+    if (!thresholds) {
+      return;
+    }
 
-    const sanitized = getSanitizedThreshold(min, max);
+    const sanitized = getSanitizedThreshold(thresholds.min, thresholds.max);
 
     setBounds([sanitized.min, sanitized.max]);
-  }, [thresholdsLut, shadeBy]);
+  }, [getSanitizedThreshold, setBounds, shadeBy, thresholdsLut]);
 
   const isExplicitAppConfigColormapAvailable = useMemo(() => {
     if (colorScheme.colorscales && colorScheme.colorscales.length > 0) {
       const path = `::fo3d::pcd::${shadeBy}`;
       const colorScale = colorScheme.colorscales.find(
-        (colorScale) => colorScale.path === path
+        (colorScale) => colorScale.path === path,
       );
       return Boolean(colorScale?.name || colorScale?.list);
     }
@@ -172,7 +192,8 @@ export const usePcdMaterialControls = (
 
   const isDefaultAppConfigColormapAvailable = useMemo(() => {
     return Boolean(
-      colorScheme.defaultColorscale?.name || colorScheme.defaultColorscale?.list
+      colorScheme.defaultColorscale?.name ||
+      colorScheme.defaultColorscale?.list,
     );
   }, [colorScheme.defaultColorscale]);
 
@@ -202,7 +223,7 @@ export const usePcdMaterialControls = (
     if (isExplicitAppConfigColormapAvailable) {
       const path = `::fo3d::pcd::${shadeBy}`;
       const colorScale = colorScheme.colorscales.find(
-        (colorScale) => colorScale.path === path
+        (colorScale) => colorScale.path === path,
       );
 
       // `list` is prioritized over `name`
@@ -297,15 +318,18 @@ export const usePcdMaterialControls = (
   const theme = useTheme();
 
   const [activeThreshold, setActiveThreshold] = useRecoilState(
-    activeThresholdAtomFamily(shadeBy)
+    activeThresholdAtomFamily(thresholdStateKey),
   );
 
+  // This effect resets active threshold defaults when shading attributes change.
   useEffect(() => {
-    const min = thresholdsLut[shadeBy]?.min ?? 0;
-    const max = thresholdsLut[shadeBy]?.max ?? 1;
+    const thresholds = thresholdsLut[shadeBy];
+    if (!thresholds) {
+      return;
+    }
 
-    setActiveThreshold([min, max]);
-  }, [shadeBy, thresholdsLut]);
+    setActiveThreshold([thresholds.min, thresholds.max]);
+  }, [setActiveThreshold, shadeBy, thresholdsLut]);
 
   const thresholdControl = useMemo(() => {
     const attribute = geometry.attributes[shadeBy];
@@ -327,14 +351,14 @@ export const usePcdMaterialControls = (
       <RangeSlider
         style={{ padding: "1em 0" }}
         alternateThumbLabelDirection={true}
-        valueAtom={activeThresholdAtomFamily(shadeBy)}
-        boundsAtom={boundsAtom}
+        valueAtom={activeThresholdAtomFamily(thresholdStateKey)}
+        boundsAtom={boundsAtomFamily(thresholdStateKey)}
         color={theme.primary.main}
         showBounds={true}
         fieldType={fieldType}
       />
     );
-  }, [shadeBy, thresholdsLut, theme.primary.main, activeThresholdAtomFamily]);
+  }, [geometry, shadeBy, theme.primary.main, thresholdStateKey]);
 
   const onChangeTextBox: OnChangeHandler = useCallback((newValue: number) => {
     setPointSize(newValue);
@@ -345,7 +369,7 @@ export const usePcdMaterialControls = (
       setColormapOverride({ [shadeBy]: colorscaleList });
       setIsColormapModalOpen(false);
     },
-    [setColormapOverride, shadeBy]
+    [setColormapOverride, shadeBy],
   );
 
   useControls(
@@ -400,13 +424,13 @@ export const usePcdMaterialControls = (
             render: () => {
               return Boolean(
                 shadeBy !== SHADE_BY_HEIGHT &&
-                  shadeBy !== SHADE_BY_NONE &&
-                  shadeBy !== SHADE_BY_RGB &&
-                  !(
-                    shadeBy === SHADE_BY_INTENSITY &&
-                    !geometry.hasAttribute("intensity")
-                  ) &&
-                  shadeBy !== SHADE_BY_CUSTOM
+                shadeBy !== SHADE_BY_NONE &&
+                shadeBy !== SHADE_BY_RGB &&
+                !(
+                  shadeBy === SHADE_BY_INTENSITY &&
+                  !geometry.hasAttribute("intensity")
+                ) &&
+                shadeBy !== SHADE_BY_CUSTOM,
               );
             },
           }),
@@ -426,7 +450,7 @@ export const usePcdMaterialControls = (
           order: PANEL_ORDER_PCD_CONTROLS,
           // collapse only if there's more than one primary asset in the scene
           collapsed: numPrimaryAssets > 1,
-        }
+        },
       ),
     }),
     [
@@ -446,7 +470,7 @@ export const usePcdMaterialControls = (
       numPrimaryAssets,
       name,
       shadeModes,
-    ]
+    ],
   );
 
   return {

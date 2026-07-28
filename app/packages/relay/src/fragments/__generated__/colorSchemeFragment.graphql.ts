@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<025d078c4ae2fea256541d4dd4c76b64>>
+ * @generated SignedSource<<d2236f5310861d0e081b7574ae239c08>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -59,6 +59,13 @@ export type colorSchemeFragment$data = {
   readonly multicolorKeypoints: boolean | null;
   readonly opacity: number | null;
   readonly showSkeletons: boolean | null;
+  readonly temporalTags: {
+    readonly fieldColor: string | null;
+    readonly valueColors: ReadonlyArray<{
+      readonly color: string;
+      readonly value: string;
+    }> | null;
+  } | null;
   readonly " $fragmentType": "colorSchemeFragment";
 };
 export type colorSchemeFragment$key = {
@@ -102,6 +109,10 @@ v3 = {
   "storageKey": null
 },
 v4 = [
+  (v0/*: any*/),
+  (v3/*: any*/)
+],
+v5 = [
   {
     "alias": null,
     "args": null,
@@ -111,14 +122,14 @@ v4 = [
   },
   (v1/*: any*/)
 ],
-v5 = {
+v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "name",
   "storageKey": null
 },
-v6 = {
+v7 = {
   "alias": null,
   "args": null,
   "concreteType": "ColorscaleList",
@@ -131,14 +142,14 @@ v6 = {
   ],
   "storageKey": null
 },
-v7 = {
+v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "rgb",
   "storageKey": null
 },
-v8 = {
+v9 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
@@ -200,10 +211,17 @@ return {
       "kind": "LinkedField",
       "name": "labelTags",
       "plural": false,
-      "selections": [
-        (v0/*: any*/),
-        (v3/*: any*/)
-      ],
+      "selections": (v4/*: any*/),
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "TemporalTagColor",
+      "kind": "LinkedField",
+      "name": "temporalTags",
+      "plural": false,
+      "selections": (v4/*: any*/),
       "storageKey": null
     },
     {
@@ -213,7 +231,7 @@ return {
       "kind": "LinkedField",
       "name": "defaultMaskTargetsColors",
       "plural": true,
-      "selections": (v4/*: any*/),
+      "selections": (v5/*: any*/),
       "storageKey": null
     },
     {
@@ -224,9 +242,9 @@ return {
       "name": "defaultColorscale",
       "plural": false,
       "selections": [
-        (v5/*: any*/),
         (v6/*: any*/),
-        (v7/*: any*/)
+        (v7/*: any*/),
+        (v8/*: any*/)
       ],
       "storageKey": null
     },
@@ -238,10 +256,10 @@ return {
       "name": "colorscales",
       "plural": true,
       "selections": [
-        (v8/*: any*/),
-        (v5/*: any*/),
+        (v9/*: any*/),
         (v6/*: any*/),
-        (v7/*: any*/)
+        (v7/*: any*/),
+        (v8/*: any*/)
       ],
       "storageKey": null
     },
@@ -261,7 +279,7 @@ return {
           "storageKey": null
         },
         (v0/*: any*/),
-        (v8/*: any*/),
+        (v9/*: any*/),
         (v3/*: any*/),
         {
           "alias": null,
@@ -270,7 +288,7 @@ return {
           "kind": "LinkedField",
           "name": "maskTargetsColors",
           "plural": true,
-          "selections": (v4/*: any*/),
+          "selections": (v5/*: any*/),
           "storageKey": null
         }
       ],
@@ -282,6 +300,6 @@ return {
 };
 })();
 
-(node as any).hash = "9aff4993141a4d45f20c54463124cf42";
+(node as any).hash = "a99a0687254882b429a29287ad0fe7b9";
 
 export default node;

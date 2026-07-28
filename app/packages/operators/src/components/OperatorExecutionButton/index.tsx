@@ -1,10 +1,7 @@
 import { Button } from "@mui/material";
 import { OperatorExecutionTrigger } from "../OperatorExecutionTrigger";
 import React from "react";
-import {
-  ExecutionCallback,
-  ExecutionErrorCallback,
-} from "../../types-internal";
+import { ExecutionCallback, ExecutionErrorCallback } from "../../ts";
 import { OperatorExecutionOption } from "../../state";
 
 /**

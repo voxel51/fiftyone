@@ -1,5 +1,12 @@
-/// <reference types="./env.d.ts" />
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { ErrorBoundary, ThemeProvider } from "@fiftyone/components";
+import {
+  GatedDynamicImports,
+  type GatedDynamicImport,
+} from "@fiftyone/core/src/components/GatedDynamicImports";
 import { BeforeScreenshotContext, screenshotCallbacks } from "@fiftyone/state";
 import { SnackbarProvider } from "notistack";
 import type React from "react";
@@ -10,14 +17,33 @@ import "./index.css";
 import "@voxel51/voodo/theme.css";
 import { useRouter } from "./routing";
 
-if (process.env.NODE_ENV === "development" && import.meta.env.VITE_DEV_WORKTREE_NAME) {
+if (
+  process.env.NODE_ENV === "development" &&
+  import.meta.env.VITE_DEV_WORKTREE_NAME
+) {
   document.title = `${document.title} (${import.meta.env.VITE_DEV_WORKTREE_NAME})`;
 }
+
+/**
+ * Register future feature-gated modules here.
+ */
+const GATED_DYNAMIC_IMPORTS: GatedDynamicImport[] = [];
+
+// Dynamically import multimodal to keep its heavy dependencies out of the
+// app's initial bundle.
+import("@fiftyone/multimodal/inject").catch((error) => {
+  console.warn("Failed to register module: multimodal", error);
+});
 
 const App: React.FC = () => {
   const { context, environment } = useRouter();
 
-  return <Network environment={environment} context={context} />;
+  return (
+    <>
+      <GatedDynamicImports gatedImports={GATED_DYNAMIC_IMPORTS} />
+      <Network environment={environment} context={context} />
+    </>
+  );
 };
 
 createRoot(document.getElementById("root") as HTMLDivElement).render(
@@ -31,5 +57,5 @@ createRoot(document.getElementById("root") as HTMLDivElement).render(
         </BeforeScreenshotContext.Provider>
       </ErrorBoundary>
     </ThemeProvider>
-  </RecoilRoot>
+  </RecoilRoot>,
 );

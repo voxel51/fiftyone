@@ -94,7 +94,8 @@ $(document).ready(function () {
           (
             document.getElementById("plugin-search") ||
             document.getElementById("model-search") ||
-            document.getElementById("dataset-search")
+            document.getElementById("dataset-search") ||
+            document.getElementById("skill-search")
           )?.value || ""
         )
           .toLowerCase()
@@ -171,7 +172,8 @@ $(document).ready(function () {
       var searchInput =
         document.getElementById("plugin-search") ||
         document.getElementById("model-search") ||
-        document.getElementById("dataset-search");
+        document.getElementById("dataset-search") ||
+        document.getElementById("skill-search");
       if (searchInput) {
         searchInput.addEventListener("input", function () {
           updateList();
@@ -191,6 +193,18 @@ $(document).ready(function () {
 
   // Initialize the filter system
   window.filterTags.bind();
+
+  // Auto-select tag from URL ?tag= parameter (e.g., ?tag=Enterprise)
+  var urlParams = new URLSearchParams(window.location.search);
+  var tagParam = urlParams.get("tag");
+  if (tagParam && /^[a-zA-Z0-9 _-]+$/.test(tagParam)) {
+    var tagBtn = document.querySelector(
+      '.tutorial-filter[data-tag="' + tagParam + '"]'
+    );
+    if (tagBtn) {
+      tagBtn.click();
+    }
+  }
 
   // Tutorial cards functionality
   $(document).on("click", ".tutorials-card", function () {

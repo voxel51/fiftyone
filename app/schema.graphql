@@ -147,6 +147,7 @@ type ColorScheme {
   colorBy: ColorBy
   fields: [CustomizeColor!]
   labelTags: LabelTagColor
+  temporalTags: TemporalTagColor
   multicolorKeypoints: Boolean
   opacity: Float
   showSkeletons: Boolean
@@ -161,6 +162,7 @@ input ColorSchemeInput {
   colorBy: String = null
   fields: [CustomizeColorInput!] = null
   labelTags: LabelTagColorInput = null
+  temporalTags: TemporalTagColorInput = null
   multicolorKeypoints: Boolean = null
   opacity: Float = null
   showSkeletons: Boolean = null
@@ -459,6 +461,16 @@ input LabelTagColorInput {
   valueColors: [ValueColorInput!] = null
 }
 
+type TemporalTagColor {
+  fieldColor: String
+  valueColors: [ValueColor!]
+}
+
+input TemporalTagColorInput {
+  fieldColor: String = null
+  valueColors: [ValueColorInput!] = null
+}
+
 input LightningInput {
   dataset: String!
   match: JSON = null
@@ -547,6 +559,21 @@ type Mutation {
     subscription: String!
     session: String
     selected: [String!]!
+  ): Boolean!
+  setSelectedSamples(
+    subscription: String!
+    session: String
+    selectedSamples: JSON!
+  ): Boolean!
+  setSampleSelectionStyle(
+    subscription: String!
+    session: String
+    style: JSON!
+  ): Boolean!
+  setLabelSelectionStyle(
+    subscription: String!
+    session: String
+    style: JSON!
   ): Boolean!
   setSelectedLabels(
     subscription: String!
@@ -770,6 +797,7 @@ input SelectedLabel {
   sampleId: ID!
   frameNumber: Int = null
   instanceId: ID = null
+  type: String = null
 }
 
 type SidebarGroup {

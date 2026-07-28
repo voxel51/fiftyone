@@ -17,7 +17,7 @@ export class ModalGroupActionsPom {
 
   get toggleMediaButton() {
     return this.modal.locator.getByTestId(
-      "action-toggle-group-media-visibility"
+      "action-toggle-group-media-visibility",
     );
   }
 
@@ -39,7 +39,7 @@ export class ModalGroupActionsPom {
         await this.modal.locator.getByTestId("checkbox-Carousel").click();
         break;
       case "viewer":
-        await this.modal.locator.getByTestId("checkbox-Viewer").click();
+        await this.modal.locator.getByTestId("checkbox-2D Viewer").click();
         break;
       default:
         throw new Error(`Unknown media type: ${media}`);
@@ -54,7 +54,7 @@ export class ModalGroupActionsPom {
   }
 
   async setDynamicGroupsNavigationMode(
-    mode: "carousel" | "pagination" | "video"
+    mode: "carousel" | "pagination" | "video",
   ) {
     // using force=true because react-draggable is intercepting click event
     await this.modal.toggleDisplayOptionsButton.click({ force: true });
@@ -94,13 +94,13 @@ class ModalGroupActionsAsserter {
 
   async assertIsPaginationBarVisible() {
     await expect(
-      this.groupActionsPom.dynamicGroupPagination.locator
+      this.groupActionsPom.dynamicGroupPagination.locator,
     ).toBeVisible();
   }
 
   async assertIsPaginationBarNotVisible() {
     await expect(
-      this.groupActionsPom.dynamicGroupPagination.locator
+      this.groupActionsPom.dynamicGroupPagination.locator,
     ).toBeHidden();
   }
 }

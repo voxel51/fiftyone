@@ -1,28 +1,62 @@
 import * as fos from "@fiftyone/state";
 import { Box, Typography } from "@mui/material";
-import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { currentData } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
+import type { Coordinates } from "@fiftyone/looker/src/state";
+
+/**
+ * Counts the number of segments in the coordinates matrix.
+ *
+ * Coordinates are expressed in the form
+ * ```typescript
+ * [
+ *   // segment 0
+ *   [vertex0, vertex1, vertex2],
+ *   // segment 1
+ *   [vertex3, vertex4],
+ *   // ...
+ * ]
+ * ```
+ * @param points Coordinate array
+ */
+const countSegments = (points: Coordinates[][] | undefined): number => {
+  return points?.length ?? 0;
+};
+
+/**
+ * Counts the number of vertices in the coordinates matrix.
+ *
+ * Coordinates are expressed in the form
+ * ```typescript
+ * [
+ *   // segment 0
+ *   [vertex0, vertex1, vertex2],
+ *   // segment 1
+ *   [vertex3, vertex4],
+ *   // ...
+ * ]
+ * ```
+ * @param points Coordinate array
+ */
+const countVertices = (points: Coordinates[][] | undefined): number => {
+  return (
+    points?.reduce((total, segment) => {
+      return total + segment.length;
+    }, 0) ?? 0
+  );
+};
 
 export const PolylineDetails = () => {
-  const currentDataValue = useAtomValue(
-    currentData
-  ) as fos.PolylineAnnotationLabel["data"];
+  const { selected } = useAnnotationContext();
+  const currentDataValue = selected?.data as
+    | fos.PolylineAnnotationLabel["data"]
+    | null;
 
   const { segmentCount, vertexCount } = useMemo(() => {
-    if (!currentDataValue?.points3d) {
-      return { segmentCount: 0, vertexCount: 0 };
-    }
-
-    const segments = currentDataValue.points3d?.length ?? 0;
-    const totalVertices =
-      currentDataValue.points3d?.reduce((total, segment) => {
-        return total + segment.length;
-      }, 0) ?? 0;
-
+    const points = currentDataValue?.points3d ?? currentDataValue?.points;
     return {
-      segmentCount: segments,
-      vertexCount: totalVertices,
+      segmentCount: countSegments(points),
+      vertexCount: countVertices(points),
     };
   }, [currentDataValue]);
 

@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { Loading } from "@fiftyone/components";
 import { usePlugins } from "@fiftyone/plugins";
 import {
@@ -33,6 +37,7 @@ import type { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphq
 import type {
   DatasetPageQuery,
   DatasetPageQuery$data,
+  DatasetPageQuery$variables,
 } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
 import { type Entry, useRouterContext } from "./routing";
 import useEventSource from "./useEventSource";
@@ -136,14 +141,15 @@ const dispatchSideEffect = ({
   }
 
   session.selectedLabels = [];
-  session.selectedSamples = new Set();
+  session.selectedSamples = new Map();
+  session.sampleSelectionStyle = fos.DEFAULT_SELECTION_STYLE;
 
-  const currentDataset: string | undefined =
-    // @ts-ignore
-    currentEntry.preloadedQuery.variables.name;
-  const nextDataset: string | undefined =
-    // @ts-ignore
-    nextEntry.preloadedQuery.variables.name;
+  const currentDataset = (
+    currentEntry.preloadedQuery.variables as Partial<DatasetPageQuery$variables>
+  ).name;
+  const nextDataset = (
+    nextEntry.preloadedQuery.variables as Partial<DatasetPageQuery$variables>
+  ).name;
 
   if (!nextDataset) {
     session.sessionSpaces = fos.GRID_SPACES_DEFAULT;
@@ -156,8 +162,7 @@ const dispatchSideEffect = ({
     return;
   }
 
-  // @ts-ignore
-  const data: DatasetPageQuery$data = nextEntry.data;
+  const data = nextEntry.data as DatasetPageQuery$data;
 
   session.modalSelector = nextEntry.state?.modalSelector;
   const updateSlice =
@@ -168,13 +173,13 @@ const dispatchSideEffect = ({
 
   let update = !fos.viewsAreEqual(
     currentEntry.state.view,
-    nextEntry.state.view
+    nextEntry.state.view,
   );
   if (currentDataset !== nextDataset) {
     update = true;
     session.colorScheme = fos.ensureColorScheme(
       data.dataset?.appConfig?.colorScheme,
-      data.config
+      data.config,
     );
     session.fieldVisibilityStage = nextEntry.state.fieldVisibility;
     session.sessionSpaces =

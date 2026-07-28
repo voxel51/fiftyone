@@ -1,8 +1,4 @@
-import {
-  ModalSample,
-  getSampleSrc,
-  getStandardizedUrls,
-} from "@fiftyone/state";
+import { ModalSample, getNormalizedUrls, getSampleSrc } from "@fiftyone/state";
 import {
   BufferManager,
   DETECTION,
@@ -75,11 +71,11 @@ export class ImaVidFrameSamples {
   async fetchImageForSample(
     sampleId: string,
     urls: ModalSample["urls"],
-    mediaField: string
+    mediaField: string,
   ): Promise<string> {
-    const standardizedUrls = getStandardizedUrls(urls);
+    const normalizedUrls = getNormalizedUrls(urls);
     const image = new Image();
-    const source = getSampleSrc(standardizedUrls[mediaField]);
+    const source = getSampleSrc(normalizedUrls[mediaField]);
 
     return new Promise((resolve) => {
       image.addEventListener(
@@ -93,7 +89,7 @@ export class ImaVidFrameSamples {
             // todo: handle this case better
             console.error(
               "Sample was removed from cache before image loaded",
-              sampleId
+              sampleId,
             );
             image.src = BASE64_BLACK_IMAGE;
             return;
@@ -102,7 +98,7 @@ export class ImaVidFrameSamples {
           sample.image = image;
           resolve(sampleId);
         },
-        { signal: this.abortController?.signal }
+        { signal: this.abortController?.signal },
       );
 
       image.addEventListener(
@@ -112,14 +108,14 @@ export class ImaVidFrameSamples {
             "Failed to load image for sample with id",
             sampleId,
             "at url",
-            source
+            source,
           );
 
           // use a placeholder blank black image to not block animation
           // setting src should trigger the load event
           image.src = BASE64_BLACK_IMAGE;
         },
-        { signal: this.abortController?.signal }
+        { signal: this.abortController?.signal },
       );
 
       image.src = source;
@@ -149,11 +145,11 @@ export class ImaVidFrameSamples {
    */
   resetMaskForSample(
     sample: ModalSampleExtendedWithImage,
-    newRenderStatus = RENDER_STATUS_PENDING
+    _newRenderStatus = RENDER_STATUS_PENDING,
   ) {
     this.updateSample(
       sample.id ?? sample.sample._id,
-      getSampleWithResettedMasks(sample.sample)
+      getSampleWithResettedMasks(sample.sample),
     );
   }
 
@@ -162,7 +158,7 @@ export class ImaVidFrameSamples {
    */
   resetMaskForFrame(
     frameNumber: number,
-    newRenderStatus = RENDER_STATUS_PENDING
+    newRenderStatus = RENDER_STATUS_PENDING,
   ) {
     const sampleId = this.frameIndex.get(frameNumber);
     if (!sampleId) {

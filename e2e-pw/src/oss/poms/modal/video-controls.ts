@@ -21,7 +21,7 @@ export class ModalVideoControlsPom {
     this.optionsPanel = this.modal.locator.getByTestId("looker-options-panel");
     this.time = this.modal.locator.getByTestId("looker-video-time");
     this.playPauseButton = this.controls.getByTestId(
-      "looker-video-play-button"
+      "looker-video-play-button",
     );
     this.speedButton = this.controls.getByTestId("looker-video-speed-button");
   }
@@ -33,6 +33,7 @@ export class ModalVideoControlsPom {
   }
 
   private async clickSettings() {
+    await this.modal.sampleCanvas.move(0.5, 0.5);
     return this.controls.getByTestId("looker-controls-settings").click();
   }
 
@@ -57,7 +58,7 @@ export class ModalVideoControlsPom {
 
     await this.page.waitForFunction((durationText_) => {
       const time = document.querySelector(
-        "[data-cy=looker-video-time]"
+        "[data-cy=looker-video-time]",
       )?.textContent;
       return time.startsWith(durationText_);
     }, durationText);
@@ -71,14 +72,14 @@ export class ModalVideoControlsPom {
     await this.page.waitForFunction(
       ({ frameText_, matchBeginning_ }) => {
         const frameTextDom = document.querySelector(
-          "[data-cy=looker-video-time]"
+          "[data-cy=looker-video-time]",
         )?.textContent;
         if (matchBeginning_) {
           return frameTextDom?.startsWith(frameText_);
         }
         return frameTextDom === frameText_;
       },
-      { frameText_: frameText, matchBeginning_: matchBeginning }
+      { frameText_: frameText, matchBeginning_: matchBeginning },
     );
 
     await this.togglePlay();
@@ -99,19 +100,19 @@ export class ModalVideoControlsPom {
       case "low":
         await this.page.mouse.click(
           sliderBoundingBox.x + sliderWidth * 0.05,
-          sliderBoundingBox.y
+          sliderBoundingBox.y,
         );
         break;
       case "middle":
         await this.page.mouse.click(
           sliderBoundingBox.x + sliderWidth * 0.5,
-          sliderBoundingBox.y
+          sliderBoundingBox.y,
         );
         break;
       case "high":
         await this.page.mouse.click(
           sliderBoundingBox.x + sliderWidth * 0.95,
-          sliderBoundingBox.y
+          sliderBoundingBox.y,
         );
         break;
     }

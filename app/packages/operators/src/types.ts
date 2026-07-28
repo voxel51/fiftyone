@@ -1,6 +1,6 @@
 import { ExecutionContext } from "./operators";
 import { useOperatorPrompt } from "./state";
-import { ParamsType, ResolvablePropertyOptions } from "./types-internal";
+import { ParamsType, ResolvablePropertyOptions } from "./ts";
 
 export class BaseType {}
 
@@ -9,7 +9,7 @@ export class BaseType {}
  *  type can be useful for displaying a informational-only views.
  */
 export class Void extends BaseType {
-  static fromJSON(json: any) {
+  static fromJSON(_json: any) {
     return new Void();
   }
 }
@@ -146,7 +146,7 @@ class OperatorObject extends BaseType {
     return this.defineProperty(
       name,
       new OperatorMap(keyType, valueType),
-      options
+      options,
     );
   }
   /**
@@ -187,7 +187,7 @@ class OperatorObject extends BaseType {
   }
   static propertiesFromJSON(json: any): ObjectProperties {
     const entries: Array<[string, Property]> = Object.entries(
-      json.properties
+      json.properties,
     ).map(([k, v]) => [k, Property.fromJSON(v)]);
     return new Map(entries);
   }
@@ -343,7 +343,7 @@ export { OperatorString as String };
  * Operator type for representing a boolean value for operator input/output.
  */
 class OperatorBoolean extends BaseType {
-  static fromJSON(json: any) {
+  static fromJSON(_json: any) {
     const Type = this;
     const type = new Type();
     return type;
@@ -365,7 +365,12 @@ class OperatorNumber extends BaseType {
    * number
    */
   constructor(
-    options: { min?: number; max?: number; int?: boolean; float?: boolean } = {}
+    options: {
+      min?: number;
+      max?: number;
+      int?: boolean;
+      float?: boolean;
+    } = {},
   ) {
     super();
     this.min = options.min;
@@ -390,7 +395,7 @@ export class List extends BaseType {
   constructor(
     public elementType: ANY_TYPE,
     public minItems?: number,
-    public maxItems?: number
+    public maxItems?: number,
   ) {
     super();
   }
@@ -404,7 +409,7 @@ export class List extends BaseType {
  * Operator type for representing a sampled id value for operator input/output.
  */
 export class SampleID extends OperatorString {
-  static fromJSON(json: any) {
+  static fromJSON(_json: any) {
     const Type = this;
     const type = new Type();
     return type;
@@ -459,7 +464,10 @@ export class Tuple extends BaseType {
  * {@link OperatorString|String} and value can be any one of operator type.
  */
 class OperatorMap extends BaseType {
-  constructor(public keyType: ANY_TYPE, public valueType: ANY_TYPE) {
+  constructor(
+    public keyType: ANY_TYPE,
+    public valueType: ANY_TYPE,
+  ) {
     super();
   }
 
@@ -473,7 +481,10 @@ export { OperatorMap as Map };
  * Operator type for defining a trigger for an operator.
  */
 export class Trigger extends BaseType {
-  constructor(public operator: string, public params: object) {
+  constructor(
+    public operator: string,
+    public params: object,
+  ) {
     super();
   }
   static fromJSON({ operator, params }) {
@@ -554,11 +565,14 @@ export class UploadedFile extends OperatorObject {
  *  that can be rendered at various places in the app
  */
 export class Placement {
-  constructor(public place: Places, public view: View = null) {}
+  constructor(
+    public place: Places,
+    public view: View = null,
+  ) {}
   static fromJSON(json) {
     return new Placement(
       json.place,
-      json.view ? View.fromJSON(json.view) : null
+      json.view ? View.fromJSON(json.view) : null,
     );
   }
 }
@@ -617,7 +631,7 @@ export class Form extends View {
     public live: boolean = false,
     public submitButtonLabel: string = "Execute",
     public cancelButtonLabel: string = "Close",
-    options: ViewProps
+    options: ViewProps,
   ) {
     super(options);
     this.name = "Form";
@@ -627,7 +641,7 @@ export class Form extends View {
       json.live as boolean,
       json.submitButtonLabel as string,
       json.cancelButtonLabel as string,
-      json
+      json,
     );
   }
 }
@@ -1035,7 +1049,10 @@ export class KeyValueView extends View {
  * operator type. Must be used in conjunction with {@link TableView}
  */
 export class Column extends View {
-  constructor(public key: string, options: ViewProps) {
+  constructor(
+    public key: string,
+    options: ViewProps,
+  ) {
     super(options);
     this.name = "Column";
   }
@@ -1173,7 +1190,7 @@ export class PromptView extends View {
   constructor(
     public label: string,
     public submitButtonLabel: string,
-    public cancelButtonLabel: string
+    public cancelButtonLabel: string,
   ) {
     super({ label });
     this.name = "PromptView";
@@ -1182,7 +1199,7 @@ export class PromptView extends View {
     return new PromptView(
       json.label,
       json.submit_button_label,
-      json.cancel_button_label
+      json.cancel_button_label,
     );
   }
 }
@@ -1304,13 +1321,28 @@ export class ToastView extends View {
  * Operator class for rendering a execution button.
  */
 
-class OperatorExecutionButtonView extends View {
+export class OperatorExecutionButtonView extends View {
   constructor(options: ViewProps) {
     super(options);
     this.name = "OperatorExecutionButtonView";
   }
   static fromJSON(json) {
     return new OperatorExecutionButtonView(json);
+  }
+}
+
+/**
+ * Operator class for describing a ComponentView {@link View} for an
+ * operator type. When using ComponentView, you can render a registered custom
+ * plugin component.
+ */
+export class ComponentView extends View {
+  constructor(component: string, options: ViewProps) {
+    super({ ...options, component });
+    this.name = "ComponentView";
+  }
+  static fromJSON(json) {
+    return new ComponentView(json.component, json);
   }
 }
 
@@ -1326,6 +1358,7 @@ export enum Places {
   MAP_ACTIONS = "map-actions",
   MAP_SECONDARY_ACTIONS = "map-secondary-actions",
   DISPLAY_OPTIONS = "display-options",
+  HEADER_ACTIONS = "header-actions",
 }
 
 // NOTE: keys should always match fiftyone/operators/types.py
@@ -1389,6 +1422,8 @@ const VIEWS = {
   PillBadgeView,
   ModalView,
   ToastView,
+  OperatorExecutionButtonView,
+  ComponentView,
 };
 
 export function typeFromJSON({ name, ...rest }): ANY_TYPE {
@@ -1457,3 +1492,19 @@ export type OperatorPromptPropsType = {
 };
 
 export type ValidationErrorsType = Array<{ path: string; reason: string }>;
+
+/**
+ * Response type returned from operator execution.
+ */
+export type OperatorResponse<T> = {
+  result: {
+    id?: string;
+    result: T;
+  };
+  error?: string;
+  error_message?: string;
+  delegated: boolean;
+  executor?: {
+    id?: string;
+  };
+};

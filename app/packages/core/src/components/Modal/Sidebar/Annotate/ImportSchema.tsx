@@ -15,12 +15,12 @@ import {
 import { useAtomValue } from "jotai";
 import React from "react";
 import styled from "styled-components";
-import { isEditing } from "./Edit";
+import { useAnnotationContext } from "./Edit/useAnnotationContext";
 import RequiredFieldPrompt from "./RequiredFieldPrompt";
 import { activeLabelSchemas } from "./state";
 import useCanManageSchema from "./useCanManageSchema";
 import type { RequiredField } from "./useSourceFieldToActivate";
-import useShowModal from "./useShowModal";
+import { useSchemaManagerModal } from "./SchemaManager/hooks";
 
 const DISABLED_DEFAULT =
   "Annotation is not yet supported for this type of media or view.";
@@ -58,10 +58,10 @@ const AlertBox = styled.div`
 
 export function useShowImportSchema(
   disabled: boolean,
-  requiredField: RequiredField | null
+  requiredField: RequiredField | null,
 ): boolean {
   const noActiveSchemas = !useAtomValue(activeLabelSchemas)?.length;
-  const isEditingValue = useAtomValue(isEditing);
+  const isEditingValue = useAnnotationContext().isEditing;
   return (
     noActiveSchemas || disabled || (requiredField != null && !isEditingValue)
   );
@@ -110,18 +110,18 @@ export interface ImportSchemaProps {
 const ImportSchema = (
   { disabled, disabledMsg, requiredField }: ImportSchemaProps = {
     disabled: false,
-  }
+  },
 ) => {
   const canManage = useCanManageSchema();
-  const showModal = useShowModal();
+  const { openSchemaManager } = useSchemaManagerModal();
 
   const showRequiredFieldPrompt = requiredField != null && !disabled;
 
   const alertMessage = disabled
     ? disabledMsg || DISABLED_DEFAULT
     : !canManage
-    ? "Only dataset managers can add schemas."
-    : null;
+      ? "Only dataset managers can add schemas."
+      : null;
 
   return (
     <Container>
@@ -145,7 +145,7 @@ const ImportSchema = (
             <SetupPrompt
               disabled={disabled}
               canManage={canManage}
-              onAddSchema={showModal}
+              onAddSchema={openSchemaManager}
             />
           )}
         </Stack>

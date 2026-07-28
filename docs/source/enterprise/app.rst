@@ -151,6 +151,22 @@ just as you would via the :ref:`FiftyOne App <fiftyone-app>`.
    Did you know? You can also navigate directly to a dataset of interest by
    pasting its URL into your browser's URL bar.
 
+
+.. _enterprise-comments:
+
+Comments
+--------
+
+When using a dataset in the FiftyOne Enterprise App, you can add comments
+to samples and start threads with your team. Comments are a great way to
+provide feedback, ask questions, or collaborate with your team. They are
+especially useful for
+:ref:`annotation workflows <enterprise-workflows>`, where you can leave
+comments on samples that need work while reviewing labels.
+
+.. image:: https://cdn.voxel51.com/enterprise/app/comments.webp
+   :alt: Discussion panel with a comment thread on a sample
+
 .. _enterprise-managing-datasets:
 
 Managing a dataset
@@ -225,3 +241,11 @@ the modal to confirm this action.
 .. warning::
 
    Deleting a dataset is permanent!
+
+.. note::
+
+   The FiftyOne Enterprise App ships with AI-assisted mask segmentation for
+   annotation workflows. The feature works out of the box with no
+   configuration. Deployments that prefer to serve the model weights from
+   their own infrastructure can do so via the
+   :ref:`AI model weights <enterprise-ai-model-weights>` setting.

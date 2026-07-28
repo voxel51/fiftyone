@@ -10,7 +10,7 @@ import { selectorFamily } from "recoil";
  */
 export const overrideFilters = (
   modal: boolean,
-  selectedSamples: Set<string>
+  selectedSamples: Map<string, fos.SelectionType>,
 ) => {
   return modal && !!selectedSamples.size;
 };
@@ -52,7 +52,7 @@ export const tagStatistics = selectorFamily<
           targetLabels: countLabels,
           view: get(fos.view),
           extended: !modal ? get(fos.extendedStages) : null,
-        })
+        }),
       );
     },
 });
@@ -92,8 +92,8 @@ export const tagStats = selectorFamily<
             get(
               labels
                 ? fos.labelTagCounts({ modal: false, extended: false })
-                : fos.sampleTagCounts({ modal: false, extended: false })
-            )
+                : fos.sampleTagCounts({ modal: false, extended: false }),
+            ),
           ).map((t) => [t, 0]);
 
       return {
@@ -117,7 +117,7 @@ export const tagParameters = ({
   modal: boolean;
   view: fos.State.Stage[];
   filters: fos.State.Filters;
-  selectedSamples: Set<string>;
+  selectedSamples: Map<string, fos.SelectionType>;
   selectedLabels: fos.State.SelectedLabel[];
   hiddenLabels: fos.State.SelectedLabel[];
   activeFields: string[];
@@ -149,7 +149,7 @@ export const tagParameters = ({
       return [sampleId];
     }
     if (selectedSamples.size) {
-      return [...selectedSamples];
+      return [...selectedSamples.keys()];
     }
 
     return null;

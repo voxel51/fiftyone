@@ -1513,6 +1513,9 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
         if value is None:
             return None
 
+        if isinstance(value, str):
+            value = fou.deserialize_numpy_array(value, ascii=True)
+
         bytes = fou.serialize_numpy_array(value)
         return super().to_mongo(bytes)
 
@@ -1520,7 +1523,8 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
         if value is None or isinstance(value, np.ndarray):
             return value
 
-        return fou.deserialize_numpy_array(value)
+        is_str = isinstance(value, str)
+        return fou.deserialize_numpy_array(value, ascii=is_str)
 
     def validate(self, value):
         if not isinstance(value, (np.ndarray, Binary)):

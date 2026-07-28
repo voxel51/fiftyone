@@ -1,6 +1,6 @@
 import { PointInfo, type Sample } from "@fiftyone/looker";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
-import { atom, selector } from "recoil";
+import { atom, selector, useRecoilValue } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import type { Lookers } from "../hooks";
@@ -14,11 +14,13 @@ import {
   groupSlice,
   hasGroupSlices,
   modalGroupSlice,
-  pinned3DSample,
-  pinned3DSampleSlice,
-  pinned3d,
 } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
+import {
+  interaction3dSample,
+  is3dPinned,
+  pinned3DSampleSlice,
+} from "./renderConfig3d.atoms";
 import { datasetName } from "./selectors";
 import { mapSampleResponse } from "./utils";
 import { view } from "./view";
@@ -53,8 +55,8 @@ export const sidebarSampleId = selector<null | string>({
 
     const override = get(pinned3DSampleSlice);
 
-    return get(pinned3d) && override
-      ? get(pinned3DSample).id
+    return get(is3dPinned) && override
+      ? get(interaction3dSample).id
       : get(modalSampleId);
   },
 });
@@ -65,8 +67,8 @@ export const currentSampleId = selector({
     const override = get(pinned3DSampleSlice);
 
     const id =
-      get(pinned3d) && override
-        ? get(pinned3DSample).id
+      get(is3dPinned) && override
+        ? get(interaction3dSample).id
         : get(nullableModalSampleId);
 
     if (id?.endsWith("-modal")) {
@@ -104,9 +106,30 @@ export const isModalActive = selector<boolean>({
   get: ({ get }) => Boolean(get(modalSelector)),
 });
 
+/** Returns whether the sample modal is currently active. */
+export function useModalActive(): boolean {
+  return useRecoilValue(isModalActive);
+}
+
+export type ModalNavigationPeek = {
+  id: string;
+  /**
+   * The paginated sample node for the peeked position ({ sample, urls, ... }),
+   * as loaded by the grid. Typed loosely because the paginator's node type
+   * belongs to the relay layer.
+   */
+  sample: unknown;
+};
+
 export type ModalNavigation = {
   next: (offset?: number) => Promise<ModalSelector>;
   previous: (offset?: number) => Promise<ModalSelector>;
+  /**
+   * Resolves the sample `offset` steps from the current one without
+   * navigating, or null past either boundary. Negative offsets peek
+   * backwards. Renderers use this to prewarm adjacent samples' media.
+   */
+  peek?: (offset: number) => Promise<ModalNavigationPeek | null>;
 };
 
 export const modalNavigation = (() => {
@@ -157,12 +180,12 @@ export const modalSample = graphQLSelector<
     if (!data.sample) {
       if (variables.filter.group) {
         throw new GroupSampleNotFound(
-          `sample with group id ${variables.filter.id} and slice ${variables.filter.group.slices[0]} not found`
+          `sample with group id ${variables.filter.id} and slice ${variables.filter.group.slices[0]} not found`,
         );
       }
 
       throw new SampleNotFound(
-        `sample with id ${variables.filter.id} not found`
+        `sample with id ${variables.filter.id} not found`,
       );
     }
 
@@ -188,6 +211,57 @@ export const modalSample = graphQLSelector<
         group: slice
           ? { slice, slices: [sliceSelect], id: get(groupId) }
           : null,
+      },
+    };
+  },
+});
+
+/**
+ * Same as {@link modalSample} but always pinned to the dataset's main
+ * `groupSlice` for both the active slice and the requested slices. Used by
+ * `groupByFieldValue` so the dynamic group value is always read from the
+ * main slice's sample regardless of which slice the modal is currently
+ * displaying. Has its own Relay cache key so it can resolve independently.
+ */
+export const groupSampleAtMainSlice = graphQLSelector<
+  VariablesOf<mainSampleQuery>,
+  ModalSample
+>({
+  environment: RelayEnvironmentKey,
+  key: "groupSampleAtMainSlice",
+  query: mainSample,
+  mapResponse: (data: ModalSampleResponse, { variables }) => {
+    if (!data.sample) {
+      if (variables.filter.group) {
+        throw new GroupSampleNotFound(
+          `sample with group id ${variables.filter.id} and slice ${variables.filter.group.slices[0]} not found`,
+        );
+      }
+
+      throw new SampleNotFound(
+        `sample with id ${variables.filter.id} not found`,
+      );
+    }
+
+    return mapSampleResponse(data.sample) as ModalSample;
+  },
+  variables: ({ get }) => {
+    const current = get(modalSelector);
+
+    if (current === null) return null;
+
+    const slice = get(groupSlice);
+
+    if (get(hasGroupSlices) && !slice) {
+      return null;
+    }
+
+    return {
+      dataset: get(datasetName),
+      view: get(view),
+      filter: {
+        id: current.id,
+        group: slice ? { slice, slices: [slice], id: get(groupId) } : null,
       },
     };
   },

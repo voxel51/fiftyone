@@ -180,7 +180,9 @@ class Qwen3VLModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             raise ValueError(
                 f"video_fps must be positive, got {self.video_fps}"
             )
-        self.max_video_frames = self.parse_int(d, "max_video_frames", default=128)
+        self.max_video_frames = self.parse_int(
+            d, "max_video_frames", default=128
+        )
         if self.max_video_frames <= 0:
             raise ValueError(
                 f"max_video_frames must be positive, got {self.max_video_frames}"
@@ -275,11 +277,22 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         model_cls = transformers.Qwen3VLForConditionalGeneration
         dtype = torch.bfloat16 if self._using_gpu else torch.float32
 
+        # HuggingFace models loaded with `device_map="auto"` may end up on an
+        # unexpected GPU in multi-GPU environments. If the user explicitly
+        # requested a device via `device=...`, honor it by disabling auto
+        # device mapping and moving the model to `self._device`.
+        device_map = None
+        if self._using_gpu:
+            device_map = "auto" if config.device is None else None
+
         model = model_cls.from_pretrained(
             config.name_or_path,
             torch_dtype=dtype,
-            device_map="auto" if self._using_gpu else None,
+            device_map=device_map,
         )
+
+        if device_map is None:
+            model = model.to(self._device)
         model.eval()
 
         self._processor = transformers.AutoProcessor.from_pretrained(
@@ -346,7 +359,7 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             )
 
             generated_ids_trimmed = [
-                out_ids[len(in_ids):]
+                out_ids[len(in_ids) :]
                 for in_ids, out_ids in zip(inputs["input_ids"], generated_ids)
             ]
 
@@ -416,7 +429,9 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             if img.shape[0] in (1, 3, 4) and img.shape[2] not in (1, 3, 4):
                 img = np.transpose(img, (1, 2, 0))
 
-        if isinstance(img, np.ndarray) and np.issubdtype(img.dtype, np.floating):
+        if isinstance(img, np.ndarray) and np.issubdtype(
+            img.dtype, np.floating
+        ):
             if img.max() <= 1.0:
                 img = img * 255.0
             img = np.clip(img, 0, 255).astype(np.uint8)
@@ -452,6 +467,55 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             a ``num_images x embedding_dim`` numpy array
         """
         return self._predict_all(args)
+
+    def embed_frames(self, frames, fps=None):
+        """Generates a single embedding for an ordered list of in-memory
+        frames.
+
+        The frames are treated as one clip and embedded together via
+        Qwen3-VL's native video input, yielding a single vector that
+        captures their full temporal context. This is the in-memory
+        counterpart to passing an ``eta.core.video.FFmpegVideoReader`` to
+        :meth:`embed`, for callers that already hold decoded frames.
+
+        The frames are subsampled toward ``config.video_fps`` (treating
+        ``fps`` as the source rate) and capped at
+        ``config.max_video_frames``, matching how :meth:`embed` handles a
+        video file.
+
+        Args:
+            frames: an ordered iterable of in-memory frames (PIL images,
+                numpy arrays, or torch tensors)
+            fps (None): the rate the frames were sampled at, used to decide
+                how aggressively to subsample. If ``None`` or non-positive,
+                the frames are used as-is and ``config.video_fps`` is
+                reported to the model as the playback rate
+
+        Returns:
+            a 1D numpy array embedding
+        """
+        frames = list(frames)
+        if not frames:
+            raise ValueError("Cannot embed an empty list of frames")
+
+        sample_fps = self.config.video_fps
+
+        has_fps = fps is not None and fps > 0
+
+        if has_fps and sample_fps > 0:
+            step = max(1, round(fps / sample_fps))
+        else:
+            step = 1
+
+        sampled = []
+        for i in range(0, len(frames), step):
+            sampled.append(self._prepare_image(frames[i]))
+            if len(sampled) >= self.config.max_video_frames:
+                break
+
+        effective_fps = fps / step if has_fps else sample_fps
+
+        return self._embed_frame_list(sampled, effective_fps)
 
     def embed_prompt(self, prompt):
         """Generates an embedding for the given text prompt.
@@ -554,6 +618,19 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
 
         effective_fps = raw_fps / step if raw_fps > 0 else sample_fps
 
+        return self._embed_frame_list(frames, effective_fps)
+
+    def _embed_frame_list(self, frames, fps):
+        """Embeds an ordered list of prepared frames as one native Qwen3-VL
+        video message and returns a 1D numpy array embedding.
+
+        Args:
+            frames: a list of prepared frames (e.g. PIL images), in order
+            fps: the playback frame rate to report to the model
+
+        Returns:
+            a 1D numpy array embedding
+        """
         messages = [
             {
                 "role": "user",
@@ -561,13 +638,15 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
                     {
                         "type": "video",
                         "video": frames,
-                        "fps": effective_fps,
+                        "fps": fps,
                     },
                 ],
             }
         ]
 
-        image_inputs, video_inputs = qwen_vl_utils.process_vision_info(messages)
+        image_inputs, video_inputs = qwen_vl_utils.process_vision_info(
+            messages
+        )
         text = self._processor.apply_chat_template(
             messages,
             tokenize=False,

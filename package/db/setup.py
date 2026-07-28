@@ -6,6 +6,7 @@ Installs the ``fiftyone-db`` package.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import csv
 import os
 import pathlib
@@ -345,10 +346,9 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
     ],
-    python_requires=">=3.9",
+    python_requires=">=3.10",
     cmdclass=cmdclass,
 )

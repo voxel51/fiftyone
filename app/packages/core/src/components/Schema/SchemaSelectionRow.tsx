@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { Box, Typography } from "@mui/material";
 
 import Checkbox from "@mui/material/Checkbox";
@@ -181,7 +181,7 @@ export const SchemaSelectionRow = (props: Props) => {
               } else {
                 const newPaths = Object.assign({}, expandedPaths);
                 const element = finalSchema.filter(
-                  (sc) => sc.path === path
+                  (sc) => sc.path === path,
                 )?.[0];
 
                 newPaths[path] = {

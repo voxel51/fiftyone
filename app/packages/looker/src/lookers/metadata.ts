@@ -13,17 +13,19 @@ import { getMetadataElements } from "../elements";
  * Looker which renders metadata for non-visual samples.
  */
 export class MetadataLooker extends AbstractLooker<BaseState> {
-  updateOptions(options: Partial<BaseOptions>): void {}
+  updateOptions(options: Partial<BaseOptions>, _disableReload = false): void {
+    this.updater({ options, disabled: false });
+  }
 
   protected hasDefaultZoom(
-    state: BaseState,
-    overlays: Overlay<BaseState>[]
+    _state: BaseState,
+    _overlays: Overlay<BaseState>[],
   ): boolean {
     return false;
   }
 
   protected getElements(
-    config: Readonly<BaseConfig>
+    config: Readonly<BaseConfig>,
   ): LookerElement<BaseState> {
     return getMetadataElements({
       abortController: this.abortController,
@@ -39,7 +41,7 @@ export class MetadataLooker extends AbstractLooker<BaseState> {
 
   protected getInitialState(
     config: BaseConfig,
-    options: Partial<BaseOptions>
+    options: Partial<BaseOptions>,
   ): BaseState {
     return {
       ...this.getInitialBaseState(),

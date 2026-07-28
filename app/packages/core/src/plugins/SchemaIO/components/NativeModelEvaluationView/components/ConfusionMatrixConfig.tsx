@@ -26,7 +26,7 @@ export default function ConfusionMatrixConfig(props) {
     Array.isArray(chosenClasses) && chosenClasses.length > 0;
   const showClassesFilter = classes.length > 0;
   const sortByLabel = CONFUSION_MATRIX_SORT_OPTIONS.find(
-    (option) => option.value === sortBy
+    (option) => option.value === sortBy,
   )?.label?.toLowerCase();
   const classFilterLabel = hasChosenClasses ? "chosen" : "all";
   const limitLabel =
@@ -70,7 +70,7 @@ export default function ConfusionMatrixConfig(props) {
                 disableCloseOnSelect
                 options={classes}
                 defaultValue={state.classes}
-                onChange={(e, value) => {
+                onChange={(_e, value) => {
                   setState((state) => ({
                     ...state,
                     classes: value,
@@ -155,7 +155,7 @@ export default function ConfusionMatrixConfig(props) {
             control={
               <Checkbox
                 defaultChecked={log}
-                onChange={(e, checked) => {
+                onChange={(_e, checked) => {
                   setState((state) => ({ ...state, log: checked }));
                 }}
               />

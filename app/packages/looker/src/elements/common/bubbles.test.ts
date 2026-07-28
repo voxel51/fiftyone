@@ -30,7 +30,6 @@ const TEST_SAMPLE = {
   _id: "1",
   filepath: "/path",
   tags: ["foo"],
-  _label_tags: ["bar"],
   _media_type: "image" as const,
 };
 
@@ -142,7 +141,7 @@ const TEST_SCHEMA: Schema = {
 describe("text bubble tests", () => {
   it("unwind unwinds values", () => {
     expect(
-      unwind("key", [{ key: ["one"] }, { key: ["two"] }]).flat()
+      unwind("key", [{ key: ["one"] }, { key: ["two"] }]).flat(),
     ).toStrictEqual(["one", "two"]);
 
     expect(unwind("_id", { id: "value" }).flat()).toStrictEqual(["value"]);
@@ -169,8 +168,8 @@ describe("text bubble tests", () => {
           my: {
             ...listField,
           },
-        }
-      )
+        },
+      ),
     ).toStrictEqual([listField, [{ list: "value" }]]);
 
     const field = {
@@ -194,8 +193,8 @@ describe("text bubble tests", () => {
           my: {
             ...field,
           },
-        }
-      )
+        },
+      ),
     ).toStrictEqual([field.fields.value, ["value"]]);
 
     const classifications = {
@@ -210,8 +209,8 @@ describe("text bubble tests", () => {
       getBubbles(
         "classes",
         { classes: { classifications: [{ label: "label" }] } },
-        { classes: classifications }
-      )
+        { classes: classifications },
+      ),
     );
 
     const temporalDetections = {
@@ -226,8 +225,8 @@ describe("text bubble tests", () => {
       getBubbles(
         "temporal",
         { temporal: { detections: [{ label: "label" }] } },
-        { temporal: temporalDetections }
-      )
+        { temporal: temporalDetections },
+      ),
     );
   });
 
@@ -248,7 +247,7 @@ describe("text bubble tests", () => {
             },
           },
         },
-      })
+      }),
     ).toStrictEqual({ ...FIELD_DATA, ftype: "value" });
   });
 
@@ -262,7 +261,7 @@ describe("text bubble tests", () => {
     let [resultField, _] = getBubbles(
       "test.int_field",
       TEST_SAMPLE,
-      TEST_SCHEMA
+      TEST_SCHEMA,
     );
     expect(resultField.name).toEqual("int_field");
 
@@ -277,7 +276,7 @@ describe("text bubble tests", () => {
     const [resultField, _] = getBubbles(
       "test.str_list_field",
       TEST_SAMPLE,
-      TEST_SCHEMA
+      TEST_SCHEMA,
     );
     expect(resultField.name).toEqual("str_list_field");
   });

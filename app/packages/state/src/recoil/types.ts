@@ -1,15 +1,44 @@
 import type { CustomizeColorInput } from "@fiftyone/relay";
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
+import type { RecognizedMediaType } from "@fiftyone/utilities";
+
+export type SelectionType = "default" | "alt";
+export type SelectionIconStyle =
+  | "checkmark"
+  | "green-checkmark"
+  | "red-checkmark"
+  | "thumbsup"
+  | "thumbsdown"
+  | "pin"
+  | "star"
+  | "x"
+  | "bookmark";
+export type SelectionStyle = {
+  default: SelectionIconStyle;
+  alt: SelectionIconStyle;
+};
+
+export const DEFAULT_SELECTION_STYLE: SelectionStyle = {
+  default: "checkmark",
+  alt: "checkmark",
+};
+
+export type LabelSelectionStyleName = "dashed" | "dashed-green" | "dashed-red";
+export type LabelSelectionStyle = {
+  default: LabelSelectionStyleName;
+  alt: LabelSelectionStyleName;
+};
+
+export const DEFAULT_LABEL_SELECTION_STYLE: LabelSelectionStyle = {
+  default: "dashed",
+  alt: "dashed",
+};
 
 export namespace State {
   export type MediaType =
-    | "image"
-    | "group"
+    | RecognizedMediaType
     | "point_cloud"
-    | "point-cloud"
     | "three_d"
-    | "3d"
-    | "video"
     | "unknown";
 
   export enum SPACE {
@@ -196,6 +225,7 @@ export namespace State {
     field: string;
     frameNumber?: number;
     instanceId?: string;
+    type?: SelectionType;
   }
 
   export interface SelectedLabelMap {

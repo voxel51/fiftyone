@@ -24,6 +24,8 @@ from fiftyone.core.session.events import (
     SetColorScheme,
     SetGroupSlice,
     SetSample,
+    SetLabelSelectionStyle,
+    SetSampleSelectionStyle,
     SetSpaces,
     StateUpdate,
     SetFieldVisibilityStage,
@@ -53,7 +55,7 @@ async def dispatch_event(
         state.selected_labels = event.labels
 
     if isinstance(event, SelectSamples):
-        state.selected = event.sample_ids
+        state.selected_samples = event.samples
 
     if isinstance(event, SetColorScheme):
         state.color_scheme = foo.ColorScheme.from_dict(
@@ -69,6 +71,12 @@ async def dispatch_event(
 
     if isinstance(event, SetFieldVisibilityStage):
         state.field_visibility_stage = event.stage
+
+    if isinstance(event, SetSampleSelectionStyle):
+        state.sample_selection_style = event.style
+
+    if isinstance(event, SetLabelSelectionStyle):
+        state.label_selection_style = event.style
 
     if isinstance(event, SetGroupSlice):
         state.group_slice = event.slice or state.dataset.default_group_slice

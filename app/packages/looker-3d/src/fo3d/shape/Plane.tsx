@@ -26,9 +26,9 @@ export const Plane = ({
         plane.width,
         plane.height,
         DEFAULT_SEGMENTS,
-        DEFAULT_SEGMENTS
+        DEFAULT_SEGMENTS,
       ),
-    [plane]
+    [plane],
   );
   const { material } = useMeshMaterialControls(name, plane.defaultMaterial);
 

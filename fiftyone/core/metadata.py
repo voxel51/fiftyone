@@ -5,6 +5,7 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 import itertools
 import logging
@@ -24,8 +25,9 @@ import fiftyone.core.storage as fos
 import fiftyone.core.threed as fo3d
 import fiftyone.core.utils as fou
 
-
 logger = logging.getLogger(__name__)
+
+multimodal_metadata = fou.lazy_import("fiftyone.multimodal.metadata")
 
 
 class Metadata(DynamicEmbeddedDocument):

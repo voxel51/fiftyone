@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import type { MutableRefObject } from "react";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { ActionOption } from "../Common";
 import Popout from "../Popout";
@@ -23,12 +23,12 @@ export default ({
         ...cur,
         {
           _cls: `fiftyone.core.stages.${name}`,
-          kwargs: [["sample_ids", [...selected]]],
+          kwargs: [["sample_ids", [...selected.keys()]]],
         },
       ]);
       close();
     },
-    [close, selected, setView]
+    [close, selected, setView],
   );
   const selectedLabels = useRecoilValue(fos.selectedLabelIds);
   const items = [

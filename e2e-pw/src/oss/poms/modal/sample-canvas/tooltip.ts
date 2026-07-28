@@ -9,7 +9,10 @@ import type { EventUtils } from "src/shared/event-utils";
 export class TooltipPom {
   readonly assert: TooltipAsserter;
 
-  constructor(readonly page: Page, readonly eventUtils: EventUtils) {
+  constructor(
+    readonly page: Page,
+    readonly eventUtils: EventUtils,
+  ) {
     this.assert = new TooltipAsserter(this);
   }
 
@@ -76,7 +79,7 @@ export class TooltipPom {
  * Sample canvas tooltip asserter
  */
 class TooltipAsserter {
-  constructor(private readonly tooltipPom: TooltipPom) { }
+  constructor(private readonly tooltipPom: TooltipPom) {}
 
   /**
    * Is the tooltip locked
@@ -130,7 +133,7 @@ class TooltipAsserter {
    * @param attributes A list of attributes
    */
   async hasAttributes(
-    attributes: { attribute: string; value: string; hidden?: boolean }[]
+    attributes: { attribute: string; value: string; hidden?: boolean }[],
   ) {
     const promises: Promise<void>[] = [];
     for (const attribute of attributes) {
@@ -138,8 +141,8 @@ class TooltipAsserter {
         this.hasAttribute(
           attribute.attribute,
           attribute.value,
-          attribute.hidden
-        )
+          attribute.hidden,
+        ),
       );
     }
 
@@ -157,14 +160,14 @@ class TooltipAsserter {
     const bbox = await this.tooltipPom.locked.boundingBox();
     if (!bbox) {
       throw new Error(
-        "Tooltip must be visible and locked to check stacking order"
+        "Tooltip must be visible and locked to check stacking order",
       );
     }
 
     const isCovered = await isElementCoveredBy(
       this.tooltipPom.page,
       { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 },
-      '[data-cy="schema-manager"]'
+      '[data-cy="schema-manager"]',
     );
 
     expect(isCovered).toBe(true);

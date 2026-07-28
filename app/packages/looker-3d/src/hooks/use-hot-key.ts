@@ -17,7 +17,7 @@ export const useHotkey = (
   props: {
     useTransaction?: boolean;
     ignoreModifiers?: boolean;
-  } = { useTransaction: true, ignoreModifiers: true }
+  } = { useTransaction: true, ignoreModifiers: true },
 ) => {
   if (typeof props.useTransaction === "undefined") {
     props.useTransaction = true;
@@ -58,9 +58,10 @@ export const useHotkey = (
         decoratedCb();
       }
     },
-    [decoratedCb, keyCode]
+    [decoratedCb, keyCode],
   );
 
+  // This effect registers and cleans up the global keydown listener.
   useEffect(() => {
     window.addEventListener(KEYBOARD_EVENT_NAME, handle);
 

@@ -4,8 +4,14 @@
 
 import { COLOR_BY, REGRESSION, getColor } from "@fiftyone/utilities";
 import colorString from "color-string";
-import { INFO_COLOR, SELECTED_AND_HOVERED_COLOR } from "../constants";
+import {
+  INFO_COLOR,
+  LABEL_SELECTION_GREEN,
+  LABEL_SELECTION_RED,
+  SELECTED_AND_HOVERED_COLOR,
+} from "../constants";
 import type {
+  BaseOptions,
   BaseState,
   Coloring,
   Coordinates,
@@ -24,7 +30,7 @@ export const t = (state: BaseState, x: number, y: number): Coordinates => {
 const strokeRect = (
   ctx: CanvasRenderingContext2D,
   state: Readonly<BaseState>,
-  color: string
+  color: string,
 ) => {
   ctx.strokeStyle = color;
   ctx.beginPath();
@@ -39,7 +45,7 @@ const strokeRect = (
 export const strokeCanvasRect = (
   ctx: CanvasRenderingContext2D,
   state: Readonly<BaseState>,
-  color: string
+  color: string,
 ): void => {
   ctx.lineWidth = state.strokeWidth;
   ctx.setLineDash([]);
@@ -53,7 +59,7 @@ export const strokeCanvasRect = (
  * Returns true if mask targets is RGB
  */
 export function isRgbMaskTargets(
-  maskTargets: MaskTargets
+  maskTargets: MaskTargets,
 ): maskTargets is RgbMaskTargets {
   if (!maskTargets || typeof maskTargets !== "object") {
     throw new Error("mask targets is invalid");
@@ -96,7 +102,7 @@ export const convertId = (obj: Record<string, any>): Record<string, any> => {
         return [key, value.map((item) => ({ ...item, id: item["_id"] }))];
       }
       return [key, value];
-    })
+    }),
   );
 };
 
@@ -121,11 +127,11 @@ export const getHashLabelColorByInstance = (label: RegularLabel): string => {
 
 export const shouldShowLabelTag = (
   selectedLabelTags?: null | string[], // labelTags that are active
-  labelTags?: null | string[] // current label's tags
+  labelTags?: null | string[], // current label's tags
 ) => {
   return Boolean(
     (selectedLabelTags?.length === 0 && labelTags?.length > 0) ||
-      selectedLabelTags?.some((tag) => labelTags?.includes(tag))
+    selectedLabelTags?.some((tag) => labelTags?.includes(tag)),
   );
 };
 
@@ -156,7 +162,7 @@ export const getLabelColor = ({
     return getColor(
       coloring.pool,
       coloring.seed,
-      getHashLabelColorByInstance(label)
+      getHashLabelColorByInstance(label),
     );
   }
 
@@ -184,7 +190,7 @@ export const getLabelColor = ({
       // specified tag color > color by label tag's value > label tag field color > default label tag color
 
       const tagColor = labelTagColors?.valueColors?.find((pair) =>
-        label.tags.includes(pair.value)
+        label.tags.includes(pair.value),
       )?.color;
 
       if (isValidColor(tagColor)) {
@@ -230,7 +236,7 @@ const getLabelColorKey = (
   field: CustomizeColor,
   label: RegularLabel,
   is3D: boolean,
-  embeddedDocType: string
+  embeddedDocType: string,
 ) => {
   let key;
   if (field.colorByAttribute) {
@@ -238,8 +244,8 @@ const getLabelColorKey = (
       key = ["string", "number"].includes(typeof label.index)
         ? "index"
         : is3D
-        ? "_id"
-        : "id";
+          ? "_id"
+          : "id";
     } else {
       key = field.colorByAttribute;
     }
@@ -313,14 +319,17 @@ export function getInstanceStrokeStyles({
   getColor,
   isHoveringInstance,
   dashLength,
+  labelSelectionColor,
 }: {
   isSelected: boolean;
   getColor: () => string;
   isHoveringInstance: boolean;
   dashLength: number;
+  labelSelectionColor?: string | null;
 }) {
-  // Main stroke color
-  let strokeColor = getColor();
+  // Main stroke color — override with label selection color when selected
+  let strokeColor =
+    labelSelectionColor && isSelected ? labelSelectionColor : getColor();
   let overlayStrokeColor: string | null = null;
   let overlayDash: number | null = null;
 
@@ -337,4 +346,38 @@ export function getInstanceStrokeStyles({
   }
 
   return { strokeColor, overlayStrokeColor, overlayDash };
+}
+
+export interface LabelSelectionVisuals {
+  styleName: string;
+  /** The override color for the label, or null to keep the field's color */
+  color: string | null;
+}
+
+/**
+ * Resolves the visual style for a selected label based on its type and the
+ * configured label selection style. Returns null if the label is not selected.
+ */
+export function resolveLabelSelectionVisuals(
+  labelId: string,
+  options: BaseOptions,
+): LabelSelectionVisuals | null {
+  const { selectedLabels, selectedLabelTypes, labelSelectionStyle } = options;
+
+  if (!selectedLabels.includes(labelId)) {
+    return null;
+  }
+
+  const labelType = selectedLabelTypes[labelId] || "default";
+  const styleName = labelSelectionStyle[labelType] || "dashed";
+
+  switch (styleName) {
+    case "dashed-green":
+      return { styleName, color: LABEL_SELECTION_GREEN };
+    case "dashed-red":
+      return { styleName, color: LABEL_SELECTION_RED };
+    case "dashed":
+    default:
+      return { styleName, color: null };
+  }
 }

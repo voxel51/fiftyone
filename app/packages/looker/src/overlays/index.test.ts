@@ -8,19 +8,19 @@ import { getHashLabelColorByInstance } from "./util";
 describe("label overlay processing", () => {
   it("omits undefined labels", () => {
     expect(index.fromLabel(DetectionOverlay)("field", undefined)).toStrictEqual(
-      []
+      [],
     );
   });
 
   it("resolves empty label lists", () => {
     expect(
-      index.fromLabelList(DetectionOverlay, "detections")("field", undefined)
+      index.fromLabelList(DetectionOverlay, "detections")("field", undefined),
     ).toStrictEqual([]);
   });
 
   it("resolves empty object label lists", () => {
     expect(
-      index.fromLabelList(DetectionOverlay, "detections")("field", {})
+      index.fromLabelList(DetectionOverlay, "detections")("field", {}),
     ).toStrictEqual([]);
   });
 
@@ -50,7 +50,7 @@ describe("label overlay processing", () => {
     expect(hashLabelWithIndex1).toEqual("one-index-label-1-");
     expect(hashLabelWithUndefinedIndex).toEqual("label-no-index.id-no-index");
     expect(hashLabelWithUndefinedIndexUndefinedId).toEqual(
-      "only-label-no-index-no-id"
+      "only-label-no-index-no-id",
     );
   });
 });

@@ -3,7 +3,7 @@ import { zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { Schema } from "@fiftyone/utilities";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { VariablesOf, fetchQuery, useRelayEnvironment } from "react-relay";
 import { RecoilValueReadOnly, selector, useRecoilValue } from "recoil";
@@ -15,7 +15,7 @@ const processSamplePageData = (
   store: fos.LookerStore<fos.Lookers>,
   data: fos.ResponseFrom<foq.paginateSamplesQuery>,
   schema: Schema,
-  zoom?: boolean
+  zoom?: boolean,
 ) => {
   return data.samples.edges.map((edge, i) => {
     if (edge.node.__typename === "%other") {
@@ -45,10 +45,10 @@ const useFlashlightPager = (
   pageSelector: RecoilValueReadOnly<
     (
       page: number,
-      pageSize: number
+      pageSize: number,
     ) => Promise<VariablesOf<foq.paginateSamplesQuery>>
   >,
-  zoomSelector?: RecoilValueReadOnly<() => Promise<boolean>>
+  zoomSelector?: RecoilValueReadOnly<() => Promise<boolean>>,
 ) => {
   const environment = useRelayEnvironment();
   const page = useRecoilValue(pageSelector);
@@ -56,7 +56,7 @@ const useFlashlightPager = (
   const [isEmpty, setIsEmpty] = useState(false);
   const handleError = useErrorHandler();
   const schema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
   );
 
   const pager = useMemo(() => {
@@ -67,7 +67,7 @@ const useFlashlightPager = (
         const subscription = fetchQuery<foq.paginateSamplesQuery>(
           environment,
           foq.paginateSamples,
-          variables
+          variables,
         ).subscribe({
           next: (data) => {
             const items = processSamplePageData(
@@ -75,7 +75,7 @@ const useFlashlightPager = (
               store,
               data,
               schema,
-              zoomValue
+              zoomValue,
             );
 
             subscription.unsubscribe();
@@ -100,7 +100,7 @@ const useFlashlightPager = (
   return {
     isEmpty,
     reset: page,
-    page: (page: number) => ref.current(page),
+    page: useCallback((page: number) => ref.current(page), []),
   };
 };
 

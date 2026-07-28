@@ -52,8 +52,6 @@ export interface FrustumData {
   errorMessage?: string;
   /** URL to the image for this slice (for texture projection) */
   imageUrl?: string;
-  /** Aspect ratio of the image (width/height) for accurate frustum shape */
-  imageAspectRatio?: number;
 }
 
 /**

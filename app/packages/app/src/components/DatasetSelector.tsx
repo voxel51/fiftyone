@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { Selector, type UseSearch } from "@fiftyone/components";
 import { datasetName, useSetDataset } from "@fiftyone/state";
 import React from "react";

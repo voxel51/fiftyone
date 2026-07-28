@@ -12,6 +12,8 @@ import os
 import pathlib
 import stat
 import mimetypes
+from contextlib import asynccontextmanager
+
 import eta.core.utils as etau
 import strawberry as gql
 from starlette.applications import Starlette
@@ -30,6 +32,7 @@ from starlette.types import Scope
 
 import fiftyone as fo
 import fiftyone.constants as foc
+import fiftyone.core.context as focx
 from fiftyone.operators.store.notification_service import (
     MongoChangeStreamNotificationServiceLifecycleManager,
     default_notification_service,
@@ -56,14 +59,12 @@ class Static(StaticFiles):
         scope: Scope,
         status_code: int = 200,
     ) -> Response:
-        method = scope["method"]
         request_headers = Headers(scope=scope)
 
         response = FileResponse(
             full_path,
             status_code=status_code,
             stat_result=stat_result,
-            method=method,
         )
         if response.path.endswith("index.html"):
             response.headers["cache-control"] = "no-store"
@@ -76,7 +77,7 @@ class Static(StaticFiles):
         response = await super().get_response(path, scope)
         if response.status_code == 404:
             parts = pathlib.Path(path).parts
-            path = pathlib.Path(*parts[1:])
+            path = str(pathlib.Path(*parts[1:]))
             if parts and parts[0] == "datasets":
                 full_path, stat_result = self.lookup_path(path)
                 if stat_result and stat.S_ISREG(stat_result.st_mode):
@@ -97,6 +98,14 @@ class HeadersMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         response = await call_next(request)
         response.headers["x-colab-notebook-cache-control"] = "no-cache"
+        # Enable cross-origin isolation for multi-threaded WASM
+        # (SharedArrayBuffer).
+        # Skipped in notebook/iframe contexts (Jupyter, Colab) where
+        # COOP: same-origin would prevent the app from loading inside
+        # the iframe.
+        if not focx.is_notebook_context():
+            response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+            response.headers["Cross-Origin-Embedder-Policy"] = "credentialless"
         return response
 
 
@@ -108,29 +117,95 @@ schema = gql.Schema(
 )
 
 mtypes = (  # ensure mimetypes for Windows
-    ('application/javascript', '.js'),
-    ('text/css', '.css'),
-    ('application/wasm', '.wasm'),
+    ("application/javascript", ".js"),
+    ("text/css", ".css"),
+    ("application/wasm", ".wasm"),
 )
 for mtype, ext in mtypes:
     mimetypes.add_type(mtype, ext)
 
-app = Starlette(
-    middleware=[
+
+_middleware = [Middleware(HeadersMiddleware)]
+
+_allowed_origins = [
+    o.strip()
+    for o in (fo.config.allowed_origins or "").split(",")
+    if o.strip()
+]
+if _allowed_origins:
+    _middleware.append(
         Middleware(
             CORSMiddleware,
-            allow_origins=["*"],
-            allow_methods=["GET", "PATCH", "POST", "HEAD", "OPTIONS"],
+            allow_origins=_allowed_origins,
+            allow_methods=[
+                "GET",
+                "PATCH",
+                "POST",
+                "DELETE",
+                "HEAD",
+                "OPTIONS",
+            ],
             allow_headers=[
-                "access-control-allow-origin",
                 "authorization",
                 "content-type",
                 "if-match",
+                "range",
             ],
-        ),
-        Middleware(HeadersMiddleware),
-    ],
+            expose_headers=[
+                "accept-ranges",
+                "content-range",
+                "content-length",
+            ],
+        )
+    )
+    if "*" in _allowed_origins:
+        logger.warning(
+            "FIFTYONE_ALLOWED_ORIGINS contains '*', so all cross-origin "
+            "requests are allowed."
+        )
+
+
+@asynccontextmanager
+async def lifespan(app: Starlette):
+    if is_notification_service_disabled():
+        logger.info("Execution Store notification service is disabled")
+        yield
+        return
+
+    app.state.lifecycle_manager = (
+        MongoChangeStreamNotificationServiceLifecycleManager(
+            default_notification_service
+        )
+    )
+    app.state.lifecycle_manager.start_in_dedicated_thread()
+
+    try:
+        yield
+    finally:
+        if (
+            hasattr(app.state, "lifecycle_manager")
+            and app.state.lifecycle_manager
+        ):
+            logger.info("Shutting down notification service...")
+            try:
+                await asyncio.wait_for(
+                    app.state.lifecycle_manager.stop(), timeout=5
+                )
+                logger.info("Notification service shutdown complete")
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "Notification service shutdown timed out after 5 seconds"
+                )
+            except Exception as e:
+                logger.exception(
+                    f"Error during notification service shutdown: {e}"
+                )
+
+
+app = Starlette(
+    middleware=_middleware,
     debug=True,
+    lifespan=lifespan,
     routes=[Route(route, endpoint) for route, endpoint in routes]
     + [
         Route(
@@ -158,36 +233,3 @@ app = Starlette(
         ),
     ],
 )
-
-
-@app.on_event("startup")
-async def startup_event():
-    if is_notification_service_disabled():
-        logger.info("Execution Store notification service is disabled")
-        return
-
-    app.state.lifecycle_manager = (
-        MongoChangeStreamNotificationServiceLifecycleManager(
-            default_notification_service
-        )
-    )
-    app.state.lifecycle_manager.start_in_dedicated_thread()
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    if hasattr(app.state, "lifecycle_manager") and app.state.lifecycle_manager:
-        logger.info("Shutting down notification service...")
-        try:
-            await asyncio.wait_for(
-                app.state.lifecycle_manager.stop(), timeout=5
-            )
-            logger.info("Notification service shutdown complete")
-        except asyncio.TimeoutError:
-            logger.warning(
-                "Notification service shutdown timed out after 5 seconds"
-            )
-        except Exception as e:
-            logger.exception(
-                f"Error during notification service shutdown: {e}"
-            )

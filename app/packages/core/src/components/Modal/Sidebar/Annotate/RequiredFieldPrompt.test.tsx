@@ -12,7 +12,7 @@ import { InitializationStatus } from "./useAnnotationContextManager";
 import type { RequiredField } from "./useSourceFieldToActivate";
 
 const mockActivateField = vi.fn(() =>
-  Promise.resolve({ status: InitializationStatus.Success })
+  Promise.resolve({ status: InitializationStatus.Success }),
 );
 const mockNotify = vi.fn();
 
@@ -20,17 +20,25 @@ vi.mock("./useCanManageSchema", () => ({
   default: vi.fn(() => true),
 }));
 
-vi.mock("./useAnnotationContextManager", async (importOriginal) => {
-  const actual = await importOriginal<
-    typeof import("./useAnnotationContextManager")
-  >();
-  return {
-    ...actual,
-    useAnnotationContextManager: vi.fn(() => ({
-      activateField: mockActivateField,
-    })),
-  };
-});
+vi.mock("./useDeactivateAllModes", () => ({
+  useDeactivateAllModes: () => vi.fn(),
+}));
+
+// no importOriginal here: the real module's import graph cycles back into
+// this mock (useSave → @fiftyone/annotation → useAnnotationController →
+// this module), and awaiting the original inside the factory deadlocks
+// vite-node. Component and test both read InitializationStatus from this
+// mock, so the stub values only need to be self-consistent.
+vi.mock("./useAnnotationContextManager", () => ({
+  InitializationStatus: {
+    InsufficientPermissions: 0,
+    ServerError: 1,
+    Success: 2,
+  },
+  useAnnotationContextManager: vi.fn(() => ({
+    activateField: mockActivateField,
+  })),
+}));
 
 vi.mock("@fiftyone/state", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@fiftyone/state")>();
@@ -72,7 +80,7 @@ describe("RequiredFieldPrompt", () => {
     render(<RequiredFieldPrompt requiredField={fieldWithoutSchema} />);
 
     fireEvent.click(
-      screen.getByRole("button", { name: /add "ground_truth" to schema/i })
+      screen.getByRole("button", { name: /add "ground_truth" to schema/i }),
     );
 
     await waitFor(() => {
@@ -88,7 +96,7 @@ describe("RequiredFieldPrompt", () => {
 
     render(<RequiredFieldPrompt requiredField={fieldWithoutSchema} />);
     fireEvent.click(
-      screen.getByRole("button", { name: /add "ground_truth" to schema/i })
+      screen.getByRole("button", { name: /add "ground_truth" to schema/i }),
     );
 
     await waitFor(() => {

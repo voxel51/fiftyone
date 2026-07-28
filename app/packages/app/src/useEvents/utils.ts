@@ -1,8 +1,22 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { ColorSchemeInput } from "@fiftyone/relay";
 import { subscribeBefore } from "@fiftyone/relay";
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
-import type { Session, State } from "@fiftyone/state";
-import { ensureColorScheme } from "@fiftyone/state";
+import type {
+  LabelSelectionStyle,
+  SelectionStyle,
+  SelectionType,
+  Session,
+  State,
+} from "@fiftyone/state";
+import {
+  DEFAULT_LABEL_SELECTION_STYLE,
+  DEFAULT_SELECTION_STYLE,
+  ensureColorScheme,
+} from "@fiftyone/state";
 import { env, toCamelCase } from "@fiftyone/utilities";
 import { atom } from "recoil";
 import type { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
@@ -17,17 +31,19 @@ export const appReadyState = atom<AppReadyState>({
 
 export const processState = (
   session: Session,
-  state: { [key: string]: unknown }
+  state: { [key: string]: unknown },
 ): Partial<LocationState<DatasetPageQuery>> => {
   const unsubscribe = subscribeBefore<DatasetPageQuery>(({ data }) => {
     session.colorScheme = ensureColorScheme(
-      state.color_scheme as ColorSchemeInput
+      state.color_scheme as ColorSchemeInput,
     );
 
     session.sessionGroupSlice =
       groupSlice || data.dataset?.defaultGroupSlice || undefined;
     session.selectedLabels = resolveSelectedLabels(state);
     session.selectedSamples = resolveSelected(state);
+    session.sampleSelectionStyle = resolveSampleSelectionStyle(state);
+    session.labelSelectionStyle = resolveLabelSelectionStyle(state);
     session.sessionSpaces = workspace;
     session.fieldVisibilityStage = fieldVisibility;
     session.modalSelector = modalSelector;
@@ -49,12 +65,18 @@ export const processState = (
     workspace,
   };
 };
-const resolveSelected = (state: { selected?: string[] }) => {
+const resolveSelected = (state: {
+  selected_samples?: Array<{ id: string; type: SelectionType }>;
+}) => {
   if (env().VITE_NO_STATE) {
-    return new Set<string>();
+    return new Map<string, SelectionType>();
   }
 
-  return new Set<string>(state.selected || []);
+  const map = new Map<string, SelectionType>();
+  for (const s of state.selected_samples || []) {
+    map.set(s.id, s.type || "default");
+  }
+  return map;
 };
 
 const resolveSelectedLabels = (state: { selected_labels?: string[] }) => {
@@ -66,6 +88,29 @@ const resolveSelectedLabels = (state: { selected_labels?: string[] }) => {
     (toCamelCase(state.selected_labels as object) as State.SelectedLabel[]) ||
     []
   );
+};
+
+const resolveSampleSelectionStyle = (state: {
+  sample_selection_style?: SelectionStyle;
+}): SelectionStyle => {
+  if (env().VITE_NO_STATE) {
+    return DEFAULT_SELECTION_STYLE;
+  }
+
+  return state.sample_selection_style || DEFAULT_SELECTION_STYLE;
+};
+
+const resolveLabelSelectionStyle = (state: {
+  label_selection_style?: LabelSelectionStyle;
+}): LabelSelectionStyle => {
+  if (env().VITE_NO_STATE) {
+    return DEFAULT_LABEL_SELECTION_STYLE;
+  }
+
+  return {
+    ...DEFAULT_LABEL_SELECTION_STYLE,
+    ...(state.label_selection_style || {}),
+  };
 };
 
 const resolveFieldVisibility = (state: {
@@ -115,9 +160,20 @@ const resolveView = (state: { view?: object[] }) => {
 
 const resolveWorkspace = (
   session: Session,
-  state: { spaces?: SpaceNodeJSON }
+  state: { spaces?: SpaceNodeJSON },
 ) => {
   if (env().VITE_NO_STATE) {
+    return session.sessionSpaces;
+  }
+
+  // state replays (reconnects, refreshes) carry the server's spaces without
+  // the client's ordering stamp, lagging local writes by the push debounce;
+  // once this session has written (its copy is stamped), an unstamped replay
+  // must not clobber it
+  if (
+    session.sessionSpaces?._version !== undefined &&
+    state.spaces?._version === undefined
+  ) {
     return session.sessionSpaces;
   }
 

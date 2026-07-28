@@ -1654,12 +1654,9 @@ class PlotlyWidgetMixin(object):
 
         from IPython.display import display
 
-        # Create an empty display that we'll use for `freeze()` later
-        # Replacing the widget with an image in the same handle didn't work...
-        self._handle = display(display_id=True)
-        self._handle.display({"text/plain": ""}, raw=True)
-
-        display(self._widget)
+        # Display the widget in the same handle that `freeze()` will update
+        # so we replace output rather than appending a second one.
+        self._handle = display(self._widget, display_id=True)
 
     def _freeze(self):
         if not foc.is_jupyter_context():
@@ -1670,6 +1667,9 @@ class PlotlyWidgetMixin(object):
 
     def _screenshot(self):
         from IPython.display import Image
+
+        if self._handle is None:
+            return
 
         width = self._widget.layout.width
         height = self._widget.layout.height

@@ -12,6 +12,7 @@ export interface PrimitiveSchema {
   values?: string[] | number[];
   range?: [number, number];
   readOnly?: boolean;
+  taxonomy?: string;
 }
 
 const getLabel = (value?: unknown): string => {
@@ -26,13 +27,23 @@ const getLabel = (value?: unknown): string => {
   return value as string;
 };
 
+const getPrimitiveSchemaType = (type: string): string => {
+  if (type === "float" || type === "int") return "number";
+  if (type === "bool") return "boolean";
+  if (type === "dict") return "object";
+  return "string";
+};
+
 /**
  * Creates a disabled text input for read-only fields.
  * For array values, the data should be formatted as comma-separated before passing to the component.
  */
-export const createReadOnly = (name: string): SchemaType => {
+export const createReadOnly = (
+  name: string,
+  type: string = "string",
+): SchemaType => {
   return {
-    type: "string",
+    type: getPrimitiveSchemaType(type),
     view: {
       name: "LabelValueView",
       label: name,
@@ -43,14 +54,14 @@ export const createReadOnly = (name: string): SchemaType => {
 
 export const createInput = (
   name: string,
-  { ftype, multipleOf }: { ftype: string; multipleOf: number }
+  { ftype, multipleOf }: { ftype: string; multipleOf: number },
 ): SchemaType => {
   const type =
     ftype === STRING_FIELD
       ? "string"
       : ftype === BOOLEAN_FIELD
-      ? "boolean"
-      : "number";
+        ? "boolean"
+        : "number";
 
   const schema: SchemaType = {
     type,
@@ -76,7 +87,7 @@ export const createSlider = (
     labeled?: boolean;
     minLabel?: string;
     maxLabel?: string;
-  }
+  },
 ): SchemaType => {
   const {
     bare = false,
@@ -103,7 +114,7 @@ export const createSlider = (
 export const createRadio = (
   name: string,
   choices: string[] | number[],
-  type: string = "string"
+  type: string = "string",
 ) => {
   return {
     type,
@@ -124,7 +135,7 @@ export const createRadio = (
  */
 export const createCheckboxList = (
   name: string,
-  choices: string[] | number[]
+  choices: string[] | number[],
 ) => {
   return {
     type: "array",
@@ -166,7 +177,7 @@ export const createTags = (name: string, choices: string[] | number[]) => {
 export const createSelect = (
   name: string,
   choices: string[] | number[],
-  type: string = "string"
+  type: string = "string",
 ) => {
   return {
     type,
@@ -179,6 +190,36 @@ export const createSelect = (
         label: getLabel(choice),
         value: choice,
       })),
+    },
+  };
+};
+
+export const createTree = (
+  name: string,
+  taxonomy: string,
+  multiSelect: boolean,
+): SchemaType => {
+  if (multiSelect) {
+    return {
+      type: "array",
+      items: { type: "string", view: {} },
+      view: {
+        name: "TaxonomyView",
+        component: "TaxonomyView",
+        label: name,
+        taxonomy,
+        multiSelect: true,
+      },
+    };
+  }
+  return {
+    type: "string",
+    view: {
+      name: "TaxonomyView",
+      component: "TaxonomyView",
+      label: name,
+      taxonomy,
+      multiSelect: false,
     },
   };
 };
@@ -218,7 +259,7 @@ export const createText = (name: string, type: string): SchemaType => {
 
 export const createDatePicker = (
   name: string,
-  dateOnly: boolean
+  dateOnly: boolean,
 ): SchemaType => {
   return {
     type: "string",
@@ -248,7 +289,7 @@ export const createJsonInput = (name: string): SchemaType => {
  */
 export const createNumericList = (
   name: string,
-  choices: string[] | number[]
+  choices: string[] | number[],
 ) => {
   return {
     type: "array",
@@ -274,10 +315,18 @@ export const createNumericList = (
  */
 export function generatePrimitiveSchema(
   name: string,
-  schema: PrimitiveSchema
+  schema: PrimitiveSchema,
 ): SchemaType | undefined {
   if (schema.readOnly) {
-    return createReadOnly(name);
+    return createReadOnly(name, schema.type);
+  }
+
+  if (
+    schema.taxonomy &&
+    schema.component === "dropdown" &&
+    (schema.type === "str" || schema.type === "list<str>")
+  ) {
+    return createTree(name, schema.taxonomy, schema.type === "list<str>");
   }
 
   if (schema.type === "list<float>" || schema.type === "list<int>") {

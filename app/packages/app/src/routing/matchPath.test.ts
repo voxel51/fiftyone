@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { describe, expect, it } from "vitest";
 import { matchPath } from "./matchPath";
 
@@ -13,7 +17,7 @@ describe("matches with proxy", () => {
       "/my/proxy/datasets/my-dataset",
       { path: "/datasets/:name" },
       search,
-      {}
+      {},
     );
 
   it("resolves with proxy", () => {

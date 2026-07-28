@@ -29,7 +29,7 @@ class PerspectiveCamera(BaseValidatedDataClass):
         up (None): the orthonormal axis that is considered up. Must be one of
             "X", "Y", "Z", "-X", "-Y", or "-Z". If ``None``, it will fallback
             to the global ``up`` as defined in 3D plugin settings. If that too
-            is not defined, it will fallback to "Y"
+            is not defined, it will fallback to "Z"
         aspect (None): the aspect ratio of the camera. If ``None``, the aspect
             ratio is calculated based on the width and height of the canvas
         fov (50): camera frustum vertical field of view in degrees. If

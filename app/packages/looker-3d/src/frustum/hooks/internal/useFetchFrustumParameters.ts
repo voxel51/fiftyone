@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { useImageSlicesIfAvailable } from "../../../annotation/useImageSlicesIfAvailable";
 import type {
@@ -10,24 +10,6 @@ import type {
   GroupStaticTransformResponse,
   StaticTransform,
 } from "../../types";
-
-/**
- * Loads an image and returns its dimensions.
- */
-function loadImageDimensions(
-  url: string
-): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    };
-    img.onerror = () => {
-      reject(new Error(`Failed to load image: ${url}`));
-    };
-    img.src = url;
-  });
-}
 
 /**
  * Fetches camera frustum data (static transforms and intrinsics) for all 2D slices
@@ -40,16 +22,14 @@ export function useFetchFrustumParameters() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [fetchTrigger, setFetchTrigger] = useState(0);
+  const allNon3dSlices = fos.useNon3dSlices();
 
   const datasetId = useRecoilValue(fos.datasetId);
-  const sampleId = useRecoilValue(fos.currentSampleId);
+  const sampleId = fos.useCurrentSampleId();
   const isGroup = useRecoilValue(fos.isGroup);
-  const currentFo3dSlice = useRecoilValue(fos.fo3dSlice);
-  const allNon3dSlices = useRecoilValue(fos.allNon3dSlices);
-  const modalSample = useRecoilValue(fos.modalSample);
+  const modalSample = fos.useStableModalSample();
 
-  const { resolveUrlForImageSlice, isLoadingImageSlices } =
-    useImageSlicesIfAvailable(modalSample);
+  const { resolveUrlForImageSlice } = useImageSlicesIfAvailable(modalSample);
 
   const refetch = useCallback(() => {
     setFetchTrigger((prev) => prev + 1);
@@ -81,26 +61,22 @@ export function useFetchFrustumParameters() {
             fetch<void, GroupStaticTransformResponse>(
               "GET",
               `/dataset/${encodeURIComponent(
-                datasetId
-              )}/sample/${encodeURIComponent(sampleId)}/group/static_transforms`
+                datasetId,
+              )}/sample/${encodeURIComponent(sampleId)}/group/static_transforms`,
             ),
             fetch<void, GroupIntrinsicsResponse>(
               "GET",
               `/dataset/${encodeURIComponent(
-                datasetId
-              )}/sample/${encodeURIComponent(sampleId)}/group/intrinsics`
+                datasetId,
+              )}/sample/${encodeURIComponent(sampleId)}/group/intrinsics`,
             ),
-          ]
+          ],
         );
 
         // Build frustum data for each non-3D slice
         const frustums: FrustumData[] = [];
 
         for (const sliceName of allNon3dSlices) {
-          if (sliceName === currentFo3dSlice) {
-            continue;
-          }
-
           const staticTransformResult =
             staticTransformResponse.results[sliceName];
           const intrinsicsResult = intrinsicsResponse.results[sliceName];
@@ -130,42 +106,16 @@ export function useFetchFrustumParameters() {
             intrinsics = intrinsicsResult.intrinsics as CameraIntrinsics | null;
           }
 
-          const imageUrl = resolveUrlForImageSlice(sliceName) ?? undefined;
-
           frustums.push({
             sliceName,
             staticTransform,
             intrinsics,
-            imageUrl,
           });
         }
 
         if (cancelled) return;
 
-        // Load image dimensions in parallel to get aspect ratios
-        const frustumsWithAspectRatios = await Promise.all(
-          frustums.map(async (frustum) => {
-            if (!frustum.imageUrl) {
-              return frustum;
-            }
-
-            try {
-              const { width, height } = await loadImageDimensions(
-                frustum.imageUrl
-              );
-              return {
-                ...frustum,
-                imageAspectRatio: width / height,
-              };
-            } catch {
-              return frustum;
-            }
-          })
-        );
-
-        if (!cancelled) {
-          setData(frustumsWithAspectRatios);
-        }
+        setData(frustums);
       } catch (err) {
         if (!cancelled) {
           console.error("Failed to fetch frustum data:", err);
@@ -184,19 +134,20 @@ export function useFetchFrustumParameters() {
     return () => {
       cancelled = true;
     };
-  }, [
-    isGroup,
-    datasetId,
-    sampleId,
-    currentFo3dSlice,
-    allNon3dSlices,
-    resolveUrlForImageSlice,
-    fetchTrigger,
-  ]);
+  }, [isGroup, datasetId, sampleId, allNon3dSlices, fetchTrigger]);
+
+  const dataWithImageUrls = useMemo(
+    () =>
+      data.map((frustum) => ({
+        ...frustum,
+        imageUrl: resolveUrlForImageSlice(frustum.sliceName) ?? undefined,
+      })),
+    [data, resolveUrlForImageSlice],
+  );
 
   return {
-    data,
-    isLoading: isLoading || isLoadingImageSlices,
+    data: dataWithImageUrls,
+    isLoading,
     error,
     refetch,
   };

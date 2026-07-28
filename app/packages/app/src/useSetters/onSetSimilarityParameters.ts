@@ -1,5 +1,10 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { subscribe } from "@fiftyone/relay";
 import {
+  DEFAULT_SELECTION_STYLE,
   hiddenLabels,
   savedLookerOptions,
   similaritySorting,
@@ -10,7 +15,8 @@ const onSetSimilarityParameters: RegisteredSetter =
   ({ router, sessionRef }) =>
   () => {
     sessionRef.current.selectedLabels = [];
-    sessionRef.current.selectedSamples = new Set();
+    sessionRef.current.selectedSamples = new Map();
+    sessionRef.current.sampleSelectionStyle = DEFAULT_SELECTION_STYLE;
     const unsubscribe = subscribe((_, { set }) => {
       set(similaritySorting, false);
       set(savedLookerOptions, (cur) => ({

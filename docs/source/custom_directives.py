@@ -319,33 +319,28 @@ class CustomImageLinkDirective(Directive):
         "image_link": directives.unchanged,
         "image_src": directives.unchanged,
         "image_title": directives.unchanged,
+        "class": directives.unchanged,
     }
 
     def run(self):
         image_link = self.options.get("image_link", "")
         image_src = self.options.get("image_src", "")
         image_title = self.options.get("image_title", "")
+        css_class = self.options.get("class", "")
 
-        callout_rst = _CUSTOM_IMAGE_LINK_TEMPLATE.format(
+        html = _CUSTOM_IMAGE_LINK_TEMPLATE.format(
             image_link=image_link,
             image_src=image_src,
             image_title=image_title,
+            css_class=(' class="' + css_class + '"') if css_class else '',
         )
 
-        image_list = StringList(callout_rst.split("\n"))
-        image = nodes.paragraph()
-        self.state.nested_parse(image_list, self.content_offset, image)
-        return [image]
+        return [nodes.raw("", html, format="html")]
 
 
-_CUSTOM_IMAGE_LINK_TEMPLATE = """
-.. raw:: html
-
-    <div>
-        <a href="{image_link}" title="{image_title}">
-          <img src="{image_src}" alt="{image_title}"/>
-        </a>
-    </div>
+_CUSTOM_IMAGE_LINK_TEMPLATE = """<a href="{image_link}" title="{image_title}"{css_class}>
+  <img src="{image_src}" alt="{image_title}"/>
+</a>
 """
 
 
@@ -418,6 +413,58 @@ _CUSTOM_ANIMATED_CTA_TEMPLATE = """
                 </svg>  
             </div>
             <div class="text">{button_text}</div>
+        </a>
+    </div>
+"""
+
+
+class CustomUseCaseCardDirective(Directive):
+    """A custom use-case card with image, title, description, and link.
+
+    Renders a responsive card for industry use-case sections on the landing page.
+
+    Example usage::
+
+        .. customusecasecard::
+            :title: Medical Imaging
+            :description: Explore medical imaging workflows with DICOM and CT scans.
+            :link: getting_started/medical_imaging/index.html
+            :image: https://cdn.voxel51.com/all_patients_ct.webp
+    """
+
+    option_spec = {
+        "title": directives.unchanged,
+        "description": directives.unchanged,
+        "link": directives.unchanged,
+        "image": directives.unchanged,
+    }
+
+    def run(self):
+        title = self.options.get("title", "")
+        description = self.options.get("description", "")
+        link = self.options.get("link", "")
+        image = self.options.get("image", "")
+
+        html = _CUSTOM_USE_CASE_CARD_TEMPLATE.format(
+            title=title,
+            description=description,
+            link=link,
+            image=image,
+        )
+
+        return [nodes.raw("", html, format="html")]
+
+
+_CUSTOM_USE_CASE_CARD_TEMPLATE = """
+    <div class="col-md-4 col-sm-6 use-case-card-container">
+        <a href="{link}" class="use-case-card">
+            <div class="use-case-card-image">
+                <img src="{image}" alt="{title}" loading="lazy" decoding="async" />
+            </div>
+            <div class="use-case-card-body">
+                <h5>{title}</h5>
+                <p>{description}</p>
+            </div>
         </a>
     </div>
 """

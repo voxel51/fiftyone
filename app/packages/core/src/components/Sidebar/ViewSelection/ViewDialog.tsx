@@ -1,12 +1,4 @@
-import {
-  COLOR_OPTIONS,
-  COLOR_OPTIONS_MAP,
-  DEFAULT_COLOR,
-  DEFAULT_COLOR_OPTION,
-  DatasetViewOption,
-  Selection,
-  useTheme,
-} from "@fiftyone/components";
+import { DatasetViewOption, Selection, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { extendedStages } from "@fiftyone/state";
 import { toSlug } from "@fiftyone/utilities";
@@ -18,7 +10,7 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   atom,
   useRecoilState,
@@ -45,6 +37,13 @@ interface Props {
   onDeleteSuccess: (slug: string) => void;
   canEdit?: boolean;
 }
+
+const {
+  COLOR_OPTIONS,
+  COLOR_OPTIONS_MAP,
+  DEFAULT_COLOR,
+  DEFAULT_COLOR_OPTION,
+} = fos.constants;
 
 export const viewDialogContent = atom({
   key: "viewDialogContent",
@@ -104,7 +103,7 @@ export default function ViewDialog(props: Props) {
   });
 
   const savedViewSlugs = new Set(
-    savedViews.map((sv: fos.State.SavedView) => sv.slug.toLowerCase())
+    savedViews.map((sv: fos.State.SavedView) => sv.slug.toLowerCase()),
   );
   const slugValue = toSlug(nameValue);
   const nameExists =
@@ -173,7 +172,7 @@ export default function ViewDialog(props: Props) {
           resetValues();
           onEditSuccess(saveView, true);
           setIsOpen(false);
-        }
+        },
       );
     } else {
       handleUpdateSavedView(
@@ -185,7 +184,7 @@ export default function ViewDialog(props: Props) {
           resetValues();
           onEditSuccess(saveView, initialName !== nameValue);
           setIsOpen(false);
-        }
+        },
       );
     }
   }, [

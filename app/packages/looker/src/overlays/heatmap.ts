@@ -21,7 +21,7 @@ import {
   SelectData,
   isShown,
 } from "./base";
-import { strokeCanvasRect, t } from "./util";
+import { resolveLabelSelectionVisuals, strokeCanvasRect, t } from "./util";
 
 interface HeatmapLabel extends BaseLabel {
   map?: LabelMask;
@@ -35,9 +35,9 @@ interface HeatmapInfo extends BaseLabel {
   range?: [number, number];
 }
 
-export default class HeatmapOverlay<State extends BaseState>
-  implements Overlay<State>
-{
+export default class HeatmapOverlay<
+  State extends BaseState,
+> implements Overlay<State> {
   readonly field: string;
   readonly label: HeatmapLabel;
   private targets?: TypedArray;
@@ -52,13 +52,13 @@ export default class HeatmapOverlay<State extends BaseState>
     }
 
     this.targets = new ARRAY_TYPES[this.label.map.data.arrayType](
-      this.label.map.data.buffer
+      this.label.map.data.buffer,
     );
     this.range = this.label.range
       ? label.range
       : isFloatArray(this.targets)
-      ? [0, 1]
-      : [0, 255];
+        ? [0, 1]
+        : [0, 255];
     const [height, width] = this.label.map.data.shape;
 
     if (!width || !height) {
@@ -92,14 +92,19 @@ export default class HeatmapOverlay<State extends BaseState>
     }
 
     if (this.isSelected(state)) {
+      const labelVisuals = resolveLabelSelectionVisuals(
+        this.label.id,
+        state.options,
+      );
       strokeCanvasRect(
         ctx,
         state,
-        getColor(
-          state.options.coloring.pool,
-          state.options.coloring.seed,
-          this.field
-        )
+        labelVisuals?.color ||
+          getColor(
+            state.options.coloring.pool,
+            state.options.coloring.seed,
+            this.field,
+          ),
       );
     }
   }
@@ -176,7 +181,7 @@ export default class HeatmapOverlay<State extends BaseState>
         value,
         start,
         stop,
-        state.options.coloring.scale.length
+        state.options.coloring.scale.length,
       );
 
       if (index < 0) {
@@ -185,7 +190,7 @@ export default class HeatmapOverlay<State extends BaseState>
 
       // first check if we have a predefined colorscale for this field
       const fieldSetting = state.options.colorscale.fields?.find(
-        (x) => x.path === this.field
+        (x) => x.path === this.field,
       );
 
       if (fieldSetting?.rgb?.length) {
@@ -198,7 +203,7 @@ export default class HeatmapOverlay<State extends BaseState>
     const color = getColor(
       state.options.coloring.pool,
       state.options.coloring.seed,
-      this.field
+      this.field,
     );
     const max = Math.max(Math.abs(start), Math.abs(stop));
 
@@ -234,7 +239,7 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 }
 
-export const getHeatmapPoints = (labels: HeatmapLabel[]): Coordinates[] => {
+export const getHeatmapPoints = (_labels: HeatmapLabel[]): Coordinates[] => {
   return [
     [0, 0],
     [0, 1],

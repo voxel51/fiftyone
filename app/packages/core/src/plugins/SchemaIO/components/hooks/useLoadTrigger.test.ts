@@ -36,7 +36,7 @@ describe("useLoadTrigger", () => {
     it("shouldLoad is false without dependencies", () => {
       const { result, rerender } = renderHook(
         ({ state }) => useLoadTrigger(state, null),
-        { initialProps: { state: "idle" as LoaderState } }
+        { initialProps: { state: "idle" as LoaderState } },
       );
 
       expect(result.current.shouldLoad).toBe(true);
@@ -50,7 +50,7 @@ describe("useLoadTrigger", () => {
     it("shouldLoad stays false on subsequent rerenders", () => {
       const { result, rerender } = renderHook(
         ({ state }) => useLoadTrigger(state, null),
-        { initialProps: { state: "idle" as LoaderState } }
+        { initialProps: { state: "idle" as LoaderState } },
       );
 
       act(() => result.current.markLoaded());
@@ -67,7 +67,7 @@ describe("useLoadTrigger", () => {
       const hash = JSON.stringify(["Toyota"]);
       const { result, rerender } = renderHook(
         ({ state, hash }) => useLoadTrigger(state, hash),
-        { initialProps: { state: "idle" as LoaderState, hash } }
+        { initialProps: { state: "idle" as LoaderState, hash } },
       );
 
       act(() => result.current.markLoaded());
@@ -84,7 +84,7 @@ describe("useLoadTrigger", () => {
             state: "idle" as LoaderState,
             hash: '["Toyota"]',
           },
-        }
+        },
       );
 
       act(() => result.current.markLoaded());
@@ -101,7 +101,7 @@ describe("useLoadTrigger", () => {
             state: "idle" as LoaderState,
             hash: "[null]",
           },
-        }
+        },
       );
 
       act(() => result.current.markLoaded());
@@ -125,7 +125,7 @@ describe("useLoadTrigger", () => {
             state: "idle" as LoaderState,
             hash: '["Toyota"]',
           },
-        }
+        },
       );
 
       act(() => result.current.markLoaded());
@@ -144,7 +144,7 @@ describe("useLoadTrigger", () => {
             state: "idle" as LoaderState,
             hash: '["Toyota"]',
           },
-        }
+        },
       );
 
       // First load

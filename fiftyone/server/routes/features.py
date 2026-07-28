@@ -9,6 +9,7 @@ FiftyOne Server feature endpoints.
 from dataclasses import dataclass, asdict
 
 from starlette.endpoints import HTTPEndpoint
+from starlette.requests import Request
 
 from fiftyone.internal.features.registry import list_enabled_features
 from fiftyone.server import decorators
@@ -25,8 +26,8 @@ class ListFeaturesResponse:
 class Features(HTTPEndpoint):
     """Endpoints supporting feature flags for safer internal development."""
 
-    @decorators.route
-    async def get(self, *args) -> dict:
+    @decorators.route(parse_body=False)
+    async def get(self, _request: Request) -> dict:
         """Get a list of enabled features."""
         return asdict(
             ListFeaturesResponse(

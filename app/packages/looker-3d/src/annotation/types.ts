@@ -1,25 +1,9 @@
-import { ReactNode } from "react";
 import type { OverlayLabel } from "../labels/loader";
 
-export interface AnnotationAction {
-  id: string;
-  label: string;
-  icon: ReactNode;
-  shortcut?: string;
-  tooltip?: string | ReactNode;
-  isActive?: boolean;
-  isDisabled?: boolean;
-  isVisible?: boolean;
-  onClick: () => void;
-  customComponent?: ReactNode;
-}
-
-export interface AnnotationActionGroup {
-  id: string;
-  label?: string;
-  isHidden?: boolean;
-  actions: AnnotationAction[];
-}
+export type {
+  ToolbarActionItem,
+  ToolbarActionGroup,
+} from "@fiftyone/components";
 
 export interface AnnotationToolbarProps {
   className?: string;

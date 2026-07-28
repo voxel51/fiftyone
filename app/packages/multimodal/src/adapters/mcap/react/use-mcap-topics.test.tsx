@@ -1,0 +1,249 @@
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { useEffect } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ByteSourceDescriptor } from "../../../query/bytes";
+import type { StreamInventory } from "../../../schemas/v1";
+import type { McapResourceClient } from "../types";
+import {
+  publishMcapSourceBootstrap,
+  resetMcapSourceBootstrapCacheForTests,
+} from "../source-bootstrap-cache";
+import { useMcapTopics, type McapTopicsState } from "./use-mcap-topics";
+
+afterEach(() => {
+  cleanup();
+  resetMcapSourceBootstrapCacheForTests();
+});
+
+describe("useMcapTopics", () => {
+  it("stays idle for a null source", () => {
+    const client = createTopicsClient();
+
+    render(<TopicsHarness client={client} label="topics" source={null} />);
+
+    expect(screen.getByTestId("topics").textContent).toBe("idle:0:");
+    expect(client.readTopics).not.toHaveBeenCalled();
+  });
+
+  it("loads topics for a valid source", async () => {
+    const source = createSource("loads");
+    const client = createTopicsClient(async () => [createTopic("camera")]);
+
+    render(<TopicsHarness client={client} label="topics" source={source} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("topics").textContent).toBe("ready:1:");
+    });
+    expect(client.readTopics).toHaveBeenCalledWith({ source });
+  });
+
+  it("renders grid bootstrap topics immediately while revalidating", async () => {
+    const source = createSource("bootstrapped");
+    const cachedTopic = createTopic("cached-camera");
+    let releaseRead = () => undefined as void;
+    const pendingRead = new Promise<void>((resolve) => {
+      releaseRead = resolve;
+    });
+    const client = createTopicsClient(async () => {
+      await pendingRead;
+      return [createTopic("fresh-camera")];
+    });
+    publishMcapSourceBootstrap(source, { topics: [cachedTopic] });
+    const states: McapTopicsState[] = [];
+
+    render(
+      <TopicsHarness
+        client={client}
+        label="topics"
+        onState={(state) => states.push(state)}
+        source={source}
+      />,
+    );
+
+    expect(screen.getByTestId("topics").textContent).toBe("ready:1:");
+    expect(states.at(-1)?.topics.map((topic) => topic.streamId)).toEqual([
+      "cached-camera",
+    ]);
+    expect(client.readTopics).toHaveBeenCalledWith({ source });
+
+    releaseRead();
+    await waitFor(() => {
+      expect(states.at(-1)?.topics.map((topic) => topic.streamId)).toEqual([
+        "fresh-camera",
+      ]);
+    });
+  });
+
+  it("observes bootstrap topics published after the source first renders", () => {
+    const source = createSource("late-bootstrap");
+    const client = createTopicsClient(
+      () => new Promise<readonly StreamInventory[]>(() => undefined),
+    );
+    const { rerender } = render(
+      <TopicsHarness client={client} label="topics" source={source} />,
+    );
+    expect(screen.getByTestId("topics").textContent).toBe("loading:0:");
+
+    publishMcapSourceBootstrap(source, {
+      topics: [createTopic("cached-camera")],
+    });
+    rerender(<TopicsHarness client={client} label="topics" source={source} />);
+
+    expect(screen.getByTestId("topics").textContent).toBe("ready:1:");
+  });
+
+  it("surfaces failed reads and retries the same source later", async () => {
+    const source = createSource("retry");
+    const failedClient = createTopicsClient(async () => {
+      throw new Error("boom");
+    });
+
+    const { unmount } = render(
+      <TopicsHarness client={failedClient} label="failed" source={source} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("failed").textContent).toBe("error:0:boom");
+    });
+    unmount();
+
+    const retryClient = createTopicsClient(async () => [createTopic("camera")]);
+    render(
+      <TopicsHarness client={retryClient} label="retry" source={source} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("retry").textContent).toBe("ready:1:");
+    });
+    expect(retryClient.readTopics).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports loading, not the previous inventory, while a swapped source settles", async () => {
+    const firstSource = createSource("swap-a");
+    const secondSource = createSource("swap-b");
+    let releaseSecond = () => undefined as void;
+    const secondRead = new Promise<void>((resolve) => {
+      releaseSecond = resolve;
+    });
+    const client = createTopicsClient(async ({ source }) => {
+      if (source.sourceId === secondSource.sourceId) {
+        await secondRead;
+      }
+      return [createTopic(source.sourceId)];
+    });
+
+    const { rerender } = render(
+      <TopicsHarness client={client} label="topics" source={firstSource} />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("topics").textContent).toBe("ready:1:");
+    });
+
+    // The persistent renderer swaps sources on the same mount; the first
+    // render after the swap must not present the old inventory as ready.
+    rerender(
+      <TopicsHarness client={client} label="topics" source={secondSource} />,
+    );
+    expect(screen.getByTestId("topics").textContent).toBe("loading:0:");
+
+    releaseSecond();
+    await waitFor(() => {
+      expect(screen.getByTestId("topics").textContent).toBe("ready:1:");
+    });
+  });
+
+  it("reads again when the source key changes", async () => {
+    const firstSource = createSource("source-a");
+    const secondSource = createSource("source-b");
+    const client = createTopicsClient(async ({ source }) => [
+      createTopic(source.sourceId),
+    ]);
+
+    const { rerender } = render(
+      <TopicsHarness client={client} label="topics" source={firstSource} />,
+    );
+
+    await waitFor(() => {
+      expect(client.readTopics).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(
+      <TopicsHarness client={client} label="topics" source={secondSource} />,
+    );
+
+    await waitFor(() => {
+      expect(client.readTopics).toHaveBeenCalledTimes(2);
+    });
+    expect(client.readTopics).toHaveBeenLastCalledWith({
+      source: secondSource,
+    });
+  });
+});
+
+function TopicsHarness({
+  client,
+  label,
+  onState,
+  source,
+}: {
+  readonly client: McapResourceClient;
+  readonly label: string;
+  readonly onState?: (state: McapTopicsState) => void;
+  readonly source: ByteSourceDescriptor | null;
+}) {
+  const state = useMcapTopics({ client, source });
+
+  useEffect(() => {
+    onState?.(state);
+  }, [onState, state]);
+
+  return (
+    <div data-testid={label}>
+      {state.status}:{state.topics.length}:{state.error ?? ""}
+    </div>
+  );
+}
+
+function createTopicsClient(
+  readTopics: McapResourceClient["readTopics"] = vi.fn(async () => []),
+): McapResourceClient {
+  return {
+    dispose: vi.fn(),
+    readDecodedMessages: vi.fn(async function* () {
+      for (const item of [] as never[]) {
+        yield item;
+      }
+    }),
+    readFrameTransformBootstrap: vi.fn(),
+    readFrameTransformWindow: vi.fn(),
+    readSynchronizedMessageBatch: vi.fn(async () => []),
+    readRawMessageRecord: vi.fn(),
+    readSynchronizedMessages: vi.fn(),
+    readTimelineRange: vi.fn(),
+    readTopics: vi.fn(readTopics),
+    readTopicTimeBounds: vi.fn(async () => []),
+    enumerateNumericFields: vi.fn(async () => []),
+    readNumericSeries: vi.fn(async () => ({
+      baseTimeNs: 0n,
+      fields: [],
+      messageCount: 0,
+      topic: "",
+      truncated: false,
+    })),
+  };
+}
+
+function createSource(id: string): ByteSourceDescriptor {
+  return {
+    sourceId: id,
+    url: `memory://${id}.mcap`,
+  };
+}
+
+function createTopic(streamId: string): StreamInventory {
+  return {
+    $typeName: "fiftyone.multimodal.schemas.v1.StreamInventory",
+    metadata: {},
+    streamId,
+  };
+}

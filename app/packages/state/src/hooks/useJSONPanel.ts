@@ -32,13 +32,13 @@ export const JSON_COLORS = {
 export default function useJSONPanel() {
   const { containerRef, open, close, toggle, state } = usePanel(
     "json",
-    fos.lookerPanels
+    fos.lookerPanels,
   );
 
   const { sample, isOpen } = state || {};
   const json = useMemo(
     () => (sample ? JSON.stringify(sample, null, 2) : null),
-    [sample]
+    [sample],
   );
 
   const updateSample = (sample) => (s) => ({ ...s, sample });

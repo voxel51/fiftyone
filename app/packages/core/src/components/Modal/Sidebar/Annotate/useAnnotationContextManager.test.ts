@@ -31,19 +31,30 @@ let mockMgmtOps: {
   activateSchemas: typeof mockActivateSchemas;
 } | null = null;
 
+// mocked whole (no importOriginal): the real package's graph re-enters core,
+// and this module only needs the contract enum + the entrance-label setter
 vi.mock("@fiftyone/annotation", () => ({
-  useSampleMutationManager: () => ({ reset: vi.fn() }),
+  InitializationStatus: {
+    InsufficientPermissions: 0,
+    ServerError: 1,
+    Success: 2,
+  },
+  useSetEntranceLabel: () => vi.fn(),
 }));
 
 vi.mock("@fiftyone/state", () => ({
-  DefaultContextManager: vi.fn(() => ({
-    isActive: () => false,
-    enter: vi.fn(),
-    exit: vi.fn(),
-    registerExitCallback: vi.fn(),
-  })),
+  DefaultContextManager: vi.fn(function () {
+    return {
+      isActive: () => false,
+      enter: vi.fn(),
+      exit: vi.fn(),
+      registerExitCallback: vi.fn(),
+    };
+  }),
   useActiveModalFields: () => [[], vi.fn()],
+  useModalSample: () => ({ sample: { _id: "test-sample-id" } }),
   useQueryPerformanceSampleLimit: () => 1000,
+  useUnboundStateRef: (val: unknown) => ({ current: val }),
 }));
 
 vi.mock("@fiftyone/state/src/jotai", () => ({
@@ -74,6 +85,10 @@ vi.mock("./useCanManageSchema", () => ({
   default: vi.fn(() => mockCanManageSchema),
 }));
 
+vi.mock("./useDeactivateAllModes", () => ({
+  useDeactivateAllModes: () => vi.fn(),
+}));
+
 vi.mock("./useSchemaResolver", async () => {
   const { atom } = await import("jotai");
 
@@ -85,9 +100,8 @@ vi.mock("./useSchemaResolver", async () => {
   };
 });
 
-const { useAnnotationContextManager, InitializationStatus } = await import(
-  "./useAnnotationContextManager"
-);
+const { useAnnotationContextManager, InitializationStatus } =
+  await import("./useAnnotationContextManager");
 
 describe("activateField", () => {
   beforeEach(() => {
@@ -127,12 +141,12 @@ describe("activateField", () => {
       });
 
       expect(enterResult!.status).toBe(
-        InitializationStatus.InsufficientPermissions
+        InitializationStatus.InsufficientPermissions,
       );
       expect(mockListSchemas).not.toHaveBeenCalled();
       expect(mockInitializeSchema).not.toHaveBeenCalled();
       expect(mockActivateSchemas).not.toHaveBeenCalled();
-    }
+    },
   );
 
   it("uses schemaResolver for reads and mgmtOps for writes", async () => {

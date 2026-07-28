@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { describe, expect, it } from "vitest";
 import { resolveURL } from "./utils";
 
@@ -8,13 +12,13 @@ describe("resolves datasets", () => {
         currentPathname: "/datasets/my-dataset",
         currentSearch: "",
         nextDataset: null,
-      })
+      }),
     ).toBe("/");
     expect(
       resolveURL({
         currentPathname: "/datasets/my-dataset",
         currentSearch: "",
-      })
+      }),
     ).toBe("/datasets/my-dataset");
   });
 });
@@ -26,15 +30,15 @@ describe("resolves wih proxy", () => {
         currentPathname: "/datasets/my-dataset",
         currentSearch: "?proxy=/my/proxy",
         nextDataset: null,
-      })
+      }),
     ).toBe(`/my/proxy?proxy=${encodeURIComponent("/my/proxy")}`);
     expect(
       resolveURL({
         currentPathname: "/my/proxy/datasets/my-dataset",
         currentSearch: "?proxy=/my/proxy",
-      })
+      }),
     ).toBe(
-      `/my/proxy/datasets/my-dataset?proxy=${encodeURIComponent("/my/proxy")}`
+      `/my/proxy/datasets/my-dataset?proxy=${encodeURIComponent("/my/proxy")}`,
     );
   });
 });
@@ -47,7 +51,7 @@ describe("resolves views", () => {
         currentSearch: "",
         nextDataset: null,
         nextView: "view",
-      })
+      }),
     ).toThrowError();
   });
 
@@ -57,7 +61,7 @@ describe("resolves views", () => {
         currentPathname: "",
         currentSearch: "",
         nextView: "view",
-      })
+      }),
     ).toThrowError();
   });
 
@@ -68,7 +72,7 @@ describe("resolves views", () => {
         currentSearch: "",
         nextDataset: "my-dataset",
         nextView: "view",
-      })
+      }),
     ).toBe("/datasets/my-dataset?view=view");
   });
 });
@@ -79,7 +83,7 @@ describe("resolves current", () => {
       resolveURL({
         currentPathname: "/datasets/my-dataset",
         currentSearch: "?view=view",
-      })
+      }),
     ).toBe("/datasets/my-dataset?view=view");
   });
 });

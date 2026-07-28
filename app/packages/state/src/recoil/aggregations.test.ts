@@ -75,4 +75,21 @@ describe("test aggregation path accumulation", () => {
       "frames.frames_predictions.detections.numeric",
     ]);
   });
+
+  it("falls back to an empty aggregation list when the query is skipped", () => {
+    const testAggregations = <
+      TestSelectorFamily<typeof aggregations.aggregations>
+    >(<unknown>aggregations.aggregations({
+      extended: false,
+      modal: false,
+      paths: ["ground_truth"],
+    }));
+
+    setMockAtoms({
+      aggregationQuery: null,
+      hasFilters: () => false,
+    });
+
+    expect(testAggregations()).toStrictEqual([]);
+  });
 });

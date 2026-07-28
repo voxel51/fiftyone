@@ -11,10 +11,13 @@ import usePanelEvent, { usePendingPanelEventError } from "./usePanelEvent";
 
 vi.mock("@fiftyone/spaces", () => ({
   usePanelStateByIdCallback: vi.fn(
-    (cb) => (panelId, options) => cb(panelId, undefined, [options])
+    (cb) => (panelId, options) => cb(panelId, undefined, [options]),
   ),
 }));
-vi.mock("@fiftyone/state", () => ({ useNotification: vi.fn() }));
+vi.mock("@fiftyone/state", () => ({
+  useNotification: vi.fn(),
+  constants: { COLOR_OPTIONS: [{ color: "#000000" }] },
+}));
 vi.mock("./hooks", () => ({ useActivePanelEventsCount: vi.fn() }));
 vi.mock("./operators", async () => {
   const actual = await vi.importActual("./operators");
@@ -122,7 +125,7 @@ describe("usePanelEvent", () => {
       }),
       expect.objectContaining({
         callback: expect.any(Function),
-      })
+      }),
     );
   });
 

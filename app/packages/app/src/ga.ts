@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 export default {
   app_ids: {
     prod: "G-NT3FLN0QHF",

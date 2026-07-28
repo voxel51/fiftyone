@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react-hooks";
-import { Box3, Group } from "three";
-import { afterEach, describe, expect, it, Mock, vi } from "vitest";
+import { Box3, type Group } from "three";
+import { type Mock, afterEach, describe, expect, it, vi } from "vitest";
 import { useFo3dBounds } from "./use-bounds";
 
 vi.useFakeTimers();
@@ -42,7 +42,7 @@ describe("useFo3dBounds", () => {
 
     // Mock Box3 to return unstable boxes initially, then stabilize
     let callCount = 0;
-    const MockBox3 = vi.fn().mockImplementation(() => {
+    const MockBox3 = vi.fn().mockImplementation(function () {
       callCount++;
       // Return different boxes for the first 3 calls (unstable)
       // Then return a consistent stable box (calls 4+)
@@ -96,9 +96,14 @@ describe("useFo3dBounds", () => {
     } as unknown as React.RefObject<Group>;
 
     // Mock Box3 to return a box with non-finite values
-    const MockBox3 = vi.fn().mockImplementation(() => {
+    const MockBox3 = vi.fn().mockImplementation(function () {
       return {
-        min: { x: Infinity, y: 0, z: 0, equals: vi.fn(() => true) },
+        min: {
+          x: Number.POSITIVE_INFINITY,
+          y: 0,
+          z: 0,
+          equals: vi.fn(() => true),
+        },
         max: { x: 1, y: 1, z: 1, equals: vi.fn(() => true) },
         setFromObject: vi.fn().mockReturnThis(),
       };
@@ -126,7 +131,7 @@ describe("useFo3dBounds", () => {
     } as unknown as React.RefObject<Group>;
 
     // Mock Box3 to return a valid stable box
-    const MockBox3 = vi.fn().mockImplementation(() => {
+    const MockBox3 = vi.fn().mockImplementation(function () {
       return {
         min: { x: 0, y: 0, z: 0, equals: vi.fn(() => true) },
         max: { x: 1, y: 1, z: 1, equals: vi.fn(() => true) },
@@ -139,7 +144,7 @@ describe("useFo3dBounds", () => {
     // Initially not ready
     const { result, rerender } = renderHook(
       ({ isReady }: { isReady: boolean }) => useFo3dBounds(objectRef, isReady),
-      { initialProps: { isReady: false } }
+      { initialProps: { isReady: false } },
     );
 
     expect(result.current.boundingBox).toBeNull();
@@ -172,7 +177,7 @@ describe("useFo3dBounds", () => {
 
     // Mock Box3 to return a stable box after multiple calls
     let callCount = 0;
-    const MockBox3 = vi.fn().mockImplementation(() => {
+    const MockBox3 = vi.fn().mockImplementation(function () {
       callCount++;
       return {
         min: { x: 0.5, y: 0.5, z: 0.5 },
@@ -207,8 +212,7 @@ describe("useFo3dBounds", () => {
     } as unknown as React.RefObject<Group>;
 
     let computeCallCount = 0;
-    let computeCycleCount = 0; // Track which computation cycle we're in
-    const MockBox3 = vi.fn().mockImplementation(() => {
+    const MockBox3 = vi.fn().mockImplementation(function () {
       computeCallCount++;
       // Return different boxes based on compute cycle
       // Cycle 1: small values, Cycle 2: large values
@@ -259,7 +263,7 @@ describe("useFo3dBounds", () => {
     } as unknown as React.RefObject<Group>;
 
     let computeCount = 0;
-    const MockBox3 = vi.fn().mockImplementation(() => {
+    const MockBox3 = vi.fn().mockImplementation(function () {
       computeCount++;
       return {
         min: { x: 0.5, y: 0.5, z: 0.5 },
@@ -272,7 +276,7 @@ describe("useFo3dBounds", () => {
 
     // With stableSamples=1, should stabilize after just 1 consistent box
     const { result, unmount } = renderHook(() =>
-      useFo3dBounds(objectRef, undefined, { stableSamples: 1 })
+      useFo3dBounds(objectRef, undefined, { stableSamples: 1 }),
     );
 
     expect(result.current.boundingBox).toBeNull();
@@ -297,7 +301,7 @@ describe("useFo3dBounds", () => {
 
     let callCount = 0;
     // Create boxes that are slightly different but within epsilon tolerance
-    const MockBox3 = vi.fn().mockImplementation(() => {
+    const MockBox3 = vi.fn().mockImplementation(function () {
       callCount++;
       const baseMin = 0.5;
       const baseMax = 1.5;
@@ -322,7 +326,7 @@ describe("useFo3dBounds", () => {
 
     // Use looser epsilon tolerance (0.001) so boxes are considered equal
     const { result, unmount } = renderHook(() =>
-      useFo3dBounds(objectRef, undefined, { stableSamples: 3, epsilon: 0.001 })
+      useFo3dBounds(objectRef, undefined, { stableSamples: 3, epsilon: 0.001 }),
     );
 
     act(() => {

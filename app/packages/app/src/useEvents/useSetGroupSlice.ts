@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { subscribeBefore } from "@fiftyone/relay";
 import { useCallback } from "react";
 import type { EventHandlerHook } from "./registerEvent";
@@ -21,7 +25,7 @@ const useSetGroupSlice: EventHandlerHook = ({ router, session }) => {
         groupSlice: slice,
       });
     },
-    [router, session]
+    [router, session],
   );
 };
 

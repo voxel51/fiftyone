@@ -1,3 +1,8 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
+import { useTrackEvent } from "@fiftyone/analytics";
 import {
   DiscordLink,
   DocsLink,
@@ -6,12 +11,12 @@ import {
   IconButton,
   iconContainer,
 } from "@fiftyone/components";
-import { useTrackEvent } from "@fiftyone/analytics";
 import { ViewBar } from "@fiftyone/core";
+import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { useRefresh } from "@fiftyone/state";
 import { DarkMode, LightMode } from "@mui/icons-material";
-import { useColorScheme } from "@mui/material";
+import { Box, useColorScheme } from "@mui/material";
 import React, { Suspense, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
@@ -42,7 +47,7 @@ const getUseSearch = (fragment: NavDatasets$key) => {
           }
         }
       `,
-      fragment
+      fragment,
     );
 
     useDebounce(
@@ -50,7 +55,7 @@ const getUseSearch = (fragment: NavDatasets$key) => {
         refetch({ search });
       },
       200,
-      [search, refresh]
+      [search, refresh],
     );
 
     return useMemo(() => {
@@ -75,7 +80,7 @@ const Nav: React.FC<
         ...NavDatasets
       }
     `,
-    fragment
+    fragment,
   );
 
   const useSearch = getUseSearch(data);
@@ -97,7 +102,7 @@ const Nav: React.FC<
           </Suspense>
         )}
         {!hasDataset && <div style={{ flex: 1 }} />}
-        <div style={{ padding: '0.5rem' }}>
+        <div style={{ padding: "0.5rem" }}>
           <Teams />
         </div>
         <div className={iconContainer}>
@@ -120,6 +125,9 @@ const Nav: React.FC<
           <DiscordLink />
           <GitHubLink />
           <DocsLink />
+          <Box ml={1}>
+            <OperatorPlacements place={types.Places.HEADER_ACTIONS} />
+          </Box>
         </div>
       </Header>
       {children}

@@ -8,12 +8,17 @@ FiftyOne annotation unit tests.
 
 from exceptiongroup import ExceptionGroup
 import unittest
+from unittest.mock import MagicMock, patch
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
 from fiftyone.core.annotation import validate_label_schemas
+from fiftyone.core.ontology import AnnotationOntology, Node, Taxonomy
 
-from decorators import drop_datasets
+from decorators import (  # pylint: disable=import-error
+    drop_datasets,
+    drop_ontologies,
+)
 
 
 class LabelSchemaValidationTests(unittest.TestCase):
@@ -1007,3 +1012,319 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 fields="new_field",
                 allow_new_fields=True,
             )
+
+    @drop_datasets
+    @drop_ontologies
+    def test_applied_ontology_recognized_on_label_field(self):
+        dataset = _make_applied_ontology_test_dataset()
+        validate_label_schemas(
+            dataset,
+            {"type": "detections", "applied_ontology": "my_ontology"},
+            fields="detections",
+        )
+
+    @drop_datasets
+    @drop_ontologies
+    def test_applied_ontology_unknown_reference_raises(self):
+        dataset = _make_applied_ontology_test_dataset()
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "detections",
+                    "applied_ontology": "nonexistent_ontology_xyz",
+                },
+                fields="detections",
+            )
+
+    @drop_datasets
+    @drop_ontologies
+    def test_applied_ontology_wrong_type_rejected(self):
+        dataset = _make_applied_ontology_test_dataset()
+        # Taxonomy() raises NotImplementedError, so we can't seed a real one.
+        non_annotation = MagicMock(is_annotation_ontology=False)
+        with patch(
+            "fiftyone.core.ontology.load_ontology",
+            return_value=non_annotation,
+        ):
+            with self.assertRaises(ExceptionGroup):
+                validate_label_schemas(
+                    dataset,
+                    {
+                        "type": "detections",
+                        "applied_ontology": "my_ontology",
+                    },
+                    fields="detections",
+                )
+
+    @drop_datasets
+    @drop_ontologies
+    def test_applied_ontology_rejected_on_non_label_field(self):
+        dataset = _make_applied_ontology_test_dataset()
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "str",
+                    "component": "text",
+                    "applied_ontology": "my_ontology",
+                },
+                fields="str_field",
+            )
+
+
+class TaxonomySettingValidationTests(unittest.TestCase):
+    """Tests for the ``taxonomy`` setting on str / list<str> dropdown
+    attributes in :func:`validate_label_schemas`."""
+
+    # -- str field --
+
+    @drop_datasets
+    @drop_ontologies
+    def test_str_dropdown_with_taxonomy_passes(self):
+        dataset = _make_taxonomy_test_dataset()
+        validate_label_schemas(
+            dataset,
+            {
+                "type": "str",
+                "component": "dropdown",
+                "taxonomy": "vehicle_type",
+            },
+            fields="str_field",
+        )
+
+    @drop_datasets
+    def test_str_radio_with_taxonomy_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field("str_field", fo.StringField)
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "str",
+                    "component": "radio",
+                    "taxonomy": "vehicle_type",
+                },
+                fields="str_field",
+            )
+
+    @drop_datasets
+    def test_str_dropdown_taxonomy_and_values_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field("str_field", fo.StringField)
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "str",
+                    "component": "dropdown",
+                    "taxonomy": "vehicle_type",
+                    "values": ["a", "b"],
+                },
+                fields="str_field",
+            )
+
+    @drop_datasets
+    def test_str_dropdown_taxonomy_empty_string_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field("str_field", fo.StringField)
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {"type": "str", "component": "dropdown", "taxonomy": ""},
+                fields="str_field",
+            )
+
+    @drop_datasets
+    def test_str_dropdown_taxonomy_non_string_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field("str_field", fo.StringField)
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {"type": "str", "component": "dropdown", "taxonomy": 123},
+                fields="str_field",
+            )
+
+    # -- list<str> field --
+
+    @drop_datasets
+    @drop_ontologies
+    def test_str_list_dropdown_with_taxonomy_passes(self):
+        dataset = _make_taxonomy_test_dataset()
+        validate_label_schemas(
+            dataset,
+            {
+                "type": "list<str>",
+                "component": "dropdown",
+                "taxonomy": "vehicle_type",
+            },
+            fields="str_list_field",
+        )
+
+    @drop_datasets
+    def test_str_list_checkboxes_with_taxonomy_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field(
+            "str_list_field", fo.ListField, subfield=fo.StringField
+        )
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "list<str>",
+                    "component": "checkboxes",
+                    "taxonomy": "vehicle_type",
+                },
+                fields="str_list_field",
+            )
+
+    @drop_datasets
+    def test_str_list_dropdown_taxonomy_and_values_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field(
+            "str_list_field", fo.ListField, subfield=fo.StringField
+        )
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "list<str>",
+                    "component": "dropdown",
+                    "taxonomy": "vehicle_type",
+                    "values": ["a", "b"],
+                },
+                fields="str_list_field",
+            )
+
+    @drop_datasets
+    def test_str_list_dropdown_taxonomy_empty_string_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field(
+            "str_list_field", fo.ListField, subfield=fo.StringField
+        )
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "list<str>",
+                    "component": "dropdown",
+                    "taxonomy": "",
+                },
+                fields="str_list_field",
+            )
+
+    @drop_datasets
+    def test_str_list_dropdown_taxonomy_non_string_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field(
+            "str_list_field", fo.ListField, subfield=fo.StringField
+        )
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "list<str>",
+                    "component": "dropdown",
+                    "taxonomy": 123,
+                },
+                fields="str_list_field",
+            )
+
+    # -- attribute-level (nested under a label field) --
+
+    @drop_datasets
+    @drop_ontologies
+    def test_label_attribute_with_taxonomy_passes(self):
+        dataset = _make_taxonomy_test_dataset()
+        validate_label_schemas(
+            dataset,
+            {
+                "type": "detections",
+                "attributes": [
+                    {
+                        "name": "vehicle_make",
+                        "type": "str",
+                        "component": "dropdown",
+                        "taxonomy": "vehicle_type",
+                    },
+                ],
+            },
+            fields="detections",
+            allow_new_attrs=True,
+        )
+
+    @drop_datasets
+    def test_label_attribute_with_taxonomy_wrong_component_rejected(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                detections=fo.Detections(
+                    detections=[fo.Detection(label="one")]
+                ),
+            )
+        )
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "detections",
+                    "attributes": [
+                        {
+                            "name": "vehicle_make",
+                            "type": "str",
+                            "component": "radio",
+                            "taxonomy": "vehicle_type",
+                        },
+                    ],
+                },
+                fields="detections",
+                allow_new_attrs=True,
+            )
+
+
+def _make_applied_ontology_test_dataset(ontology_name: str = "my_ontology"):
+    """Dataset with a `detections` label field and a `str_field`, with a real
+    `AnnotationOntology` named ``ontology_name`` persisted to the `ontologies`
+    collection so the validator can resolve the reference.
+    """
+    AnnotationOntology(name=ontology_name).save()
+
+    dataset = fo.Dataset()
+    dataset.add_sample(
+        fo.Sample(
+            filepath="image.png",
+            detections=fo.Detections(detections=[fo.Detection(label="one")]),
+        )
+    )
+    dataset.add_sample_field("str_field", fo.StringField)
+
+    return dataset
+
+
+def _make_taxonomy_test_dataset(taxonomy_name: str = "vehicle_type"):
+    """Dataset with `str_field`, `str_list_field`, and a `detections` label
+    field, with a real `Taxonomy` named ``taxonomy_name`` persisted to the
+    `ontologies` collection so the validator can resolve the reference.
+    """
+    Taxonomy(
+        name=taxonomy_name,
+        root=Node(
+            name="root", values=[Node(name="sedan"), Node(name="truck")]
+        ),
+    ).save()
+
+    dataset = fo.Dataset()
+    dataset.add_sample(
+        fo.Sample(
+            filepath="image.png",
+            detections=fo.Detections(detections=[fo.Detection(label="one")]),
+        )
+    )
+    dataset.add_sample_field("str_field", fo.StringField)
+    dataset.add_sample_field(
+        "str_list_field", fo.ListField, subfield=fo.StringField
+    )
+
+    return dataset

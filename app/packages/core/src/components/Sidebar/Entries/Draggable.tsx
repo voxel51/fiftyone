@@ -12,7 +12,7 @@ const Draggable: React.FC<
     trigger?: (
       event: React.MouseEvent<HTMLDivElement>,
       key: string,
-      cb: () => void
+      cb: () => void,
     ) => void;
   }>
 > = ({ children, color, entryKey, trigger }) => {
@@ -23,10 +23,22 @@ const Draggable: React.FC<
   const disabled = canModifySidebarGroup.enabled !== true;
   const isFieldVisibilityApplied = useRecoilValue(fos.isFieldVisibilityActive);
 
+  const entryPath = useMemo(() => {
+    if (!entryKey) return undefined;
+    try {
+      const parsed = JSON.parse(entryKey);
+      return Array.isArray(parsed)
+        ? (parsed[1] as string | undefined)
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  }, [entryKey]);
+
   const disableDrag =
     !entryKey ||
-    entryKey.split(",")[1]?.includes("tags") ||
-    entryKey.split(",")[1]?.includes("_label_tags") ||
+    entryPath === fos.TAGS_FIELD ||
+    entryPath === fos.LABEL_TAGS_FIELD ||
     disabled ||
     isFieldVisibilityApplied;
   const active = trigger && (dragging || hovering) && !disableDrag;
@@ -34,35 +46,25 @@ const Draggable: React.FC<
   const style = useSpring({
     width: active ? 20 : 5,
     left: active ? -10 : 0,
-    cursor: disableDrag
-      ? "default"
-      : entryKey && trigger
-      ? dragging
-        ? "grabbing"
-        : "grab"
-      : "pointer",
+    cursor:
+      !trigger || disableDrag ? "default" : dragging ? "grabbing" : "grab",
   });
-  const dataCyKey = entryKey
-    ?.split(",")?.[1]
-    ?.replace(/["]/g, "")
-    ?.replace("]", "");
-
   const isDraggable = useMemo(
     () => !disableDrag && trigger && !disabled,
-    [disableDrag, trigger, disabled]
+    [disableDrag, trigger, disabled],
   );
 
   const title = disabled
     ? canModifySidebarGroup.message || "Can not reorder in read-only mode"
     : trigger
-    ? "Drag to reorder"
-    : undefined;
+      ? "Drag to reorder"
+      : undefined;
 
   return (
     <>
       <animated.div
         data-draggable={isDraggable}
-        data-cy={`sidebar-entry-draggable-${dataCyKey}`}
+        data-cy={`sidebar-entry-draggable-${entryPath}`}
         onClick={(event) => {
           event.stopPropagation();
         }}
@@ -94,7 +96,7 @@ const Draggable: React.FC<
         }}
         title={title}
       >
-        {active && <DragIndicator style={{ color: theme.background.level1 }} />}
+        {active && <DragIndicator style={{ color: theme.background.level2 }} />}
       </animated.div>
       <div style={{ width: "100%" }}>{children}</div>
     </>

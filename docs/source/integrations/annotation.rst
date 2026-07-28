@@ -509,12 +509,13 @@ more details:
     If a `label_schema` is also provided, this parameter determines which
     attributes are included for all fields that do not explicitly define their
     per-field attributes (in addition to any per-class attributes)
--   **mask_targets** (*None*): a dict mapping pixel values to semantic label
-    strings. Only applicable when annotating semantic segmentations. All new
-    label fields must have mask targets provided via one of the supported
-    methods. For existing label fields, if mask targets are not provided by
-    this argument nor `label_schema`, any applicable mask targets stored on
-    your dataset will be used, if available
+-   **mask_targets** (*None*): a dict mapping pixel values (2D masks) or RGB
+    hex strings (3D masks) to semantic label strings. Only applicable when
+    annotating semantic segmentations. All new label fields must have mask
+    targets provided via one of the supported methods. For existing label
+    fields, if mask targets are not provided by this argument nor
+    `label_schema`, any applicable mask targets stored on your dataset will be
+    used, if available
 -   **allow_additions** (*True*): whether to allow new labels to be added. Only
     applicable when editing existing label fields
 -   **allow_deletions** (*True*): whether to allow labels to be deleted. Only

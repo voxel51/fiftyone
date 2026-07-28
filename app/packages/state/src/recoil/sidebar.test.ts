@@ -240,7 +240,7 @@ describe("test sidebar groups resolution", () => {
       mockFields.sampleFields,
       [],
       mockSidebarGroups,
-      []
+      [],
     );
 
     expect(test.length).toBe(7);
@@ -279,7 +279,7 @@ describe("test sidebar groups resolution", () => {
       mockFields.sampleFields,
       [],
       [],
-      mockSidebarGroups
+      mockSidebarGroups,
     );
 
     expect(test.length).toBe(7);
@@ -332,7 +332,7 @@ describe("test sidebar groups resolution", () => {
       mockFields.sampleFields,
       [],
       [],
-      mockSidebarGroups
+      mockSidebarGroups,
     );
 
     const tags = test[0];
@@ -380,8 +380,8 @@ describe("test pullSidebarValue", () => {
         { ...TEST_FIELD_DATA, dbField: "_id" },
         ["id"],
         { _id: "idValue" },
-        false
-      )
+        false,
+      ),
     ).toBe("idValue");
   });
 
@@ -391,8 +391,8 @@ describe("test pullSidebarValue", () => {
         TEST_FIELD_DATA,
         ["nested", "field"],
         { nested: [{ field: "nestedListValue" }] },
-        true
-      )
+        true,
+      ),
     ).toStrictEqual(["nestedListValue"]);
   });
 
@@ -402,8 +402,8 @@ describe("test pullSidebarValue", () => {
         TEST_FIELD_DATA,
         ["nested", "field"],
         { nested: { field: "nestedValue" } },
-        false
-      )
+        false,
+      ),
     ).toBe("nestedValue");
   });
 
@@ -413,8 +413,8 @@ describe("test pullSidebarValue", () => {
         TEST_FIELD_DATA,
         ["undefined", "value"],
         {},
-        false
-      )
+        false,
+      ),
     ).toBe(undefined);
   });
 });
@@ -423,7 +423,7 @@ describe("hiddenNoneGroups selector", () => {
   const assertSidebarGroupsRequest = (
     filtered: boolean,
     loading: boolean,
-    modal: boolean
+    modal: boolean,
   ) => {
     if (!filtered) {
       throw new Error("'filtered' should be 'true'");
@@ -541,6 +541,7 @@ describe("hiddenNoneGroups selector", () => {
           sample: {},
         },
       },
+      is3dPinned: true,
       pinned3DSampleSlice: "one",
     });
 
@@ -560,6 +561,30 @@ describe("hiddenNoneGroups selector", () => {
           },
         },
       },
+      is3dPinned: true,
+      pinned3DSampleSlice: "one",
+    });
+
+    expect(testHiddenNoneGroups()).toStrictEqual(present);
+  });
+
+  it("falls back to the active modal sample when 3d is no longer pinned", () => {
+    setMockAtoms(base);
+    setMockAtoms({
+      active3dSlices: ["one", "two"],
+      active3dSlicesToSampleMap: {
+        one: {
+          sample: {},
+        },
+        two: {
+          sample: {},
+        },
+      },
+      activeModalSidebarSample: {
+        my_field: "value",
+        my_list_field: [{ subfield: "value" }],
+      },
+      is3dPinned: false,
       pinned3DSampleSlice: "one",
     });
 

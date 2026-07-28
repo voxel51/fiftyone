@@ -52,11 +52,11 @@ describe("useUpdateSamples", () => {
 
     expect(record.setValue).toHaveBeenCalledWith(
       JSON.stringify(sample),
-      "sample"
+      "sample",
     );
     expect(modalRecord.setValue).toHaveBeenCalledWith(
       JSON.stringify(sample),
-      "sample"
+      "sample",
     );
   });
 

@@ -8,12 +8,14 @@ FiftyOne Camera data model unit tests.
 
 import math
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 import numpy.testing as nptest
 from decorators import drop_datasets
 
 import fiftyone as fo
+import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 from fiftyone.core.camera import (
     CAMERA_CONVENTION_OPENGL,
@@ -1239,8 +1241,8 @@ class DatasetIntegrationTests(unittest.TestCase):
         self.assertIsNone(result)
 
     @drop_datasets
-    def test_resolve_transformation_chain_via_dataset_level(self):
-        """Test resolve_transformation with chain_via using dataset-level transforms."""
+    def test_resolve_transformation_auto_chain_dataset_level(self):
+        """Test resolve_transformation auto-chain on dataset transforms."""
         dataset = fo.Dataset()
 
         # camera -> ego (dataset level)
@@ -1266,13 +1268,16 @@ class DatasetIntegrationTests(unittest.TestCase):
         sample = fo.Sample(filepath="test.jpg")
         dataset.add_sample(sample)
 
-        # Direct lookup should fail (no camera::world)
-        resolved_direct = dataset.resolve_transformation(
+        # Auto-chain should find camera -> ego -> world
+        resolved_auto = dataset.resolve_transformation(
             sample, "camera", "world"
         )
-        self.assertIsNone(resolved_direct)
+        self.assertIsNotNone(resolved_auto)
+        nptest.assert_array_almost_equal(
+            resolved_auto.translation, [1.0, 10.0, 0.0]
+        )
 
-        # Chain via ego should work
+        # Explicit chain_via still works
         resolved_chain = dataset.resolve_transformation(
             sample, "camera", "world", chain_via=["ego"]
         )
@@ -1286,8 +1291,28 @@ class DatasetIntegrationTests(unittest.TestCase):
         self.assertEqual(resolved_chain.target_frame, "world")
 
     @drop_datasets
-    def test_resolve_transformation_chain_via_mixed_levels(self):
-        """Test resolve_transformation with chain_via mixing sample and dataset levels."""
+    def test_resolve_transformation_normalizes_world_shorthand_target(self):
+        """Test world shorthand returns a transform with target_frame set."""
+        dataset = fo.Dataset()
+
+        dataset.static_transforms = {
+            "camera": StaticTransform(
+                translation=[1.0, 2.0, 3.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="camera",
+            ),
+        }
+
+        sample = fo.Sample(filepath="test.jpg")
+        dataset.add_sample(sample)
+
+        resolved = dataset.resolve_transformation(sample, "camera")
+        self.assertIsNotNone(resolved)
+        self.assertEqual(resolved.target_frame, "world")
+
+    @drop_datasets
+    def test_resolve_transformation_auto_chain_mixed_levels(self):
+        """Test auto-chain mixing sample and dataset transforms."""
         dataset = fo.Dataset()
 
         # camera -> ego (dataset level, static calibration)
@@ -1311,16 +1336,181 @@ class DatasetIntegrationTests(unittest.TestCase):
         sample["ego_pose"] = ego_to_world
         dataset.add_sample(sample)
 
-        # Chain via ego: dataset-level camera->ego + sample-level ego->world
-        resolved = dataset.resolve_transformation(
-            sample, "camera", "world", chain_via=["ego"]
+        resolved_auto = dataset.resolve_transformation(
+            sample, "camera", "world"
         )
-        self.assertIsNotNone(resolved)
+        self.assertIsNotNone(resolved_auto)
 
         # Composed transform: [1, 0, 0] + [100, 50, 0] = [101, 50, 0]
         nptest.assert_array_almost_equal(
-            resolved.translation, [101.0, 50.0, 0.0]
+            resolved_auto.translation, [101.0, 50.0, 0.0]
         )
+
+        resolved_chain = dataset.resolve_transformation(
+            sample, "camera", "world", chain_via=["ego"]
+        )
+        self.assertIsNotNone(resolved_chain)
+
+    @drop_datasets
+    def test_resolve_transformation_auto_chain_two_intermediates(self):
+        """Test auto-chain with up to two intermediate frames."""
+        dataset = fo.Dataset()
+
+        dataset.static_transforms = {
+            "camera::sensor": StaticTransform(
+                translation=[1.0, 0.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="camera",
+                target_frame="sensor",
+            ),
+            "sensor::ego": StaticTransform(
+                translation=[0.0, 2.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="sensor",
+                target_frame="ego",
+            ),
+            "ego::world": StaticTransform(
+                translation=[0.0, 0.0, 3.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="ego",
+                target_frame="world",
+            ),
+        }
+
+        sample = fo.Sample(filepath="test.jpg")
+        dataset.add_sample(sample)
+
+        resolved = dataset.resolve_transformation(sample, "camera", "world")
+        self.assertIsNotNone(resolved)
+        nptest.assert_array_almost_equal(resolved.translation, [1.0, 2.0, 3.0])
+
+    @drop_datasets
+    def test_resolve_transformation_auto_chain_max_intermediates_config(self):
+        """Test configurable max intermediates for auto-chain resolution."""
+        dataset = fo.Dataset()
+
+        dataset.static_transforms = {
+            "camera::sensor": StaticTransform(
+                translation=[1.0, 0.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="camera",
+                target_frame="sensor",
+            ),
+            "sensor::ego": StaticTransform(
+                translation=[0.0, 2.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="sensor",
+                target_frame="ego",
+            ),
+            "ego::world": StaticTransform(
+                translation=[0.0, 0.0, 3.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="ego",
+                target_frame="world",
+            ),
+        }
+
+        sample = fo.Sample(filepath="test.jpg")
+        dataset.add_sample(sample)
+
+        with patch.object(fod, "_AUTO_TRANSFORMATION_MAX_INTERMEDIATES", 1):
+            resolved = dataset.resolve_transformation(
+                sample, "camera", "world"
+            )
+
+        self.assertIsNone(resolved)
+
+    @drop_datasets
+    def test_resolve_transformation_auto_chain_ambiguous_returns_none(self):
+        """Test auto-chain returns None when multiple valid paths exist."""
+        dataset = fo.Dataset()
+
+        dataset.static_transforms = {
+            "camera::ego": StaticTransform(
+                translation=[1.0, 0.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="camera",
+                target_frame="ego",
+            ),
+            "ego::world": StaticTransform(
+                translation=[0.0, 10.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="ego",
+                target_frame="world",
+            ),
+            "camera::vehicle": StaticTransform(
+                translation=[2.0, 0.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="camera",
+                target_frame="vehicle",
+            ),
+            "vehicle::world": StaticTransform(
+                translation=[0.0, 20.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="vehicle",
+                target_frame="world",
+            ),
+        }
+
+        sample = fo.Sample(filepath="test.jpg")
+        dataset.add_sample(sample)
+
+        resolved = dataset.resolve_transformation(sample, "camera", "world")
+        self.assertIsNone(resolved)
+
+    @drop_datasets
+    def test_resolve_transformation_auto_chain_non_world_target(self):
+        """Test auto-chain is disabled when target frame is not world."""
+        dataset = fo.Dataset()
+
+        dataset.static_transforms = {
+            "camera::ego": StaticTransform(
+                translation=[1.0, 0.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="camera",
+                target_frame="ego",
+            ),
+            "ego::map": StaticTransform(
+                translation=[0.0, 10.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="ego",
+                target_frame="map",
+            ),
+        }
+
+        sample = fo.Sample(filepath="test.jpg")
+        dataset.add_sample(sample)
+
+        resolved = dataset.resolve_transformation(sample, "camera", "map")
+        self.assertIsNone(resolved)
+
+    @drop_datasets
+    def test_resolve_transformation_explicit_chain_no_auto_fallback(self):
+        """Test explicit chain_via does not fall back to auto-chaining."""
+        dataset = fo.Dataset()
+
+        dataset.static_transforms = {
+            "camera::ego": StaticTransform(
+                translation=[1.0, 0.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="camera",
+                target_frame="ego",
+            ),
+            "ego::world": StaticTransform(
+                translation=[0.0, 10.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="ego",
+                target_frame="world",
+            ),
+        }
+
+        sample = fo.Sample(filepath="test.jpg")
+        dataset.add_sample(sample)
+
+        resolved = dataset.resolve_transformation(
+            sample, "camera", "world", chain_via=["vehicle"]
+        )
+        self.assertIsNone(resolved)
 
     @drop_datasets
     def test_resolve_transformation_chain_via_missing_hop(self):
@@ -1388,6 +1578,43 @@ class DatasetIntegrationTests(unittest.TestCase):
         # Composed: [1.5, 0.5, 1.2] + [100, 50, 0] = [101.5, 50.5, 1.2]
         nptest.assert_array_almost_equal(
             resolved.translation, [101.5, 50.5, 1.2]
+        )
+
+    @drop_datasets
+    def test_resolve_transformation_direct_takes_priority_over_auto_chain(
+        self,
+    ):
+        """Test direct match is preferred over implicit auto-chain path."""
+        dataset = fo.Dataset()
+
+        dataset.static_transforms = {
+            "camera::world": StaticTransform(
+                translation=[999.0, 888.0, 777.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="camera",
+                target_frame="world",
+            ),
+            "camera::ego": StaticTransform(
+                translation=[1.0, 0.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="camera",
+                target_frame="ego",
+            ),
+            "ego::world": StaticTransform(
+                translation=[0.0, 10.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="ego",
+                target_frame="world",
+            ),
+        }
+
+        sample = fo.Sample(filepath="test.jpg")
+        dataset.add_sample(sample)
+
+        resolved = dataset.resolve_transformation(sample, "camera", "world")
+        self.assertIsNotNone(resolved)
+        nptest.assert_array_almost_equal(
+            resolved.translation, [999.0, 888.0, 777.0]
         )
 
     @drop_datasets

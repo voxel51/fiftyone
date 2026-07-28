@@ -1,93 +1,73 @@
 import type { Method } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
-import { selectedLabels, useBrowserStorage } from "@fiftyone/state";
-import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
-import { useMemo } from "react";
+import { selectedLabels } from "@fiftyone/state";
 import type { Snapshot } from "recoil";
-import { selectorFamily, useRecoilCallback } from "recoil";
+import { selectorFamily, useRecoilValueLoadable } from "recoil";
+
+export type QueryIds = {
+  queryIds: string[] | string | undefined;
+  negativeQueryIds?: string[];
+};
 
 export const getQueryIds = async (
   snapshot: Snapshot,
-  brainKey?: string
-): Promise<string[] | string | undefined> => {
-  const selectedLabelIds = await snapshot.getPromise(fos.selectedLabelIds);
-  const selectedLabels = await snapshot.getPromise(fos.selectedLabels);
+  brainKey?: string,
+): Promise<QueryIds> => {
+  const isModal = await snapshot.getPromise(fos.isModalActive);
 
-  if (selectedLabelIds.size) {
-    const methods = await snapshot.getPromise(fos.similarityMethods);
-    const labels_field = methods.patches
-      .filter(([method]) => method.key === brainKey)
-      .map(([_, value]) => value)[0];
-    return [...selectedLabelIds].filter(
-      (id) => selectedLabels[id].field === labels_field
-    );
+  // In modal: check selected labels for patch-based similarity
+  if (isModal) {
+    const selectedLabelIds = await snapshot.getPromise(fos.selectedLabelIds);
+    const selectedLabelMap = await snapshot.getPromise(fos.selectedLabelMap);
+
+    if (selectedLabelIds.size) {
+      const methods = await snapshot.getPromise(fos.similarityMethods);
+      const labels_field = methods.patches
+        .filter(([method]) => method.key === brainKey)
+        .map(([_, value]) => value)[0];
+
+      const matching = [...selectedLabelIds].filter(
+        (id) => selectedLabelMap[id]?.field === labels_field,
+      );
+
+      // Separate positive (default) and negative (alt) labels
+      const positive = matching.filter(
+        (id) => selectedLabelMap[id]?.type !== "alt",
+      );
+      const negative = matching.filter(
+        (id) => selectedLabelMap[id]?.type === "alt",
+      );
+
+      return {
+        queryIds: positive.length > 0 ? positive : undefined,
+        negativeQueryIds: negative.length > 0 ? negative : undefined,
+      };
+    }
+
+    return { queryIds: await snapshot.getPromise(fos.modalSampleId) };
   }
 
-  const selectedSamples = Array.from(
-    await snapshot.getPromise(fos.selectedSamples)
-  );
+  // Grid: use selected samples
+  const selectedSamplesMap = await snapshot.getPromise(fos.selectedSamples);
+  const positive: string[] = [];
+  const negative: string[] = [];
 
-  if (selectedSamples.length) {
-    return [...selectedSamples];
+  for (const [id, type] of selectedSamplesMap.entries()) {
+    if (type === "alt") {
+      negative.push(id);
+    } else {
+      positive.push(id);
+    }
   }
 
-  return await snapshot.getPromise(fos.modalSampleId);
-};
+  if (positive.length > 0 || negative.length > 0) {
+    return {
+      queryIds: positive.length > 0 ? positive : undefined,
+      negativeQueryIds: negative.length > 0 ? negative : undefined,
+    };
+  }
 
-export const useSortBySimilarity = (close) => {
-  const [lastUsedBrainkeys, setLastUsedBrainKeys] =
-    useBrowserStorage("lastUsedBrainKeys");
-  const current = useMemo(() => {
-    return lastUsedBrainkeys ? JSON.parse(lastUsedBrainkeys) : {};
-  }, [lastUsedBrainkeys]);
-
-  return useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (parameters: fos.State.SortBySimilarityParameters) => {
-        set(fos.similaritySorting, true);
-        const dataset = await snapshot.getPromise(fos.dataset);
-        if (!dataset) {
-          throw new Error("dataset is not defined");
-        }
-
-        const queryIds = parameters.query
-          ? undefined
-          : await getQueryIds(snapshot, parameters.brainKey);
-
-        const view = await snapshot.getPromise(fos.view);
-        const subscription = await snapshot.getPromise(fos.stateSubscription);
-        const slice = await snapshot.getPromise(fos.sessionGroupSlice);
-
-        const { query, ...commonParams } = parameters;
-
-        const combinedParameters: fos.State.SortBySimilarityParameters = {
-          ...commonParams,
-        };
-
-        combinedParameters.query = query ?? queryIds;
-        const filters = await snapshot.getPromise(fos.filters);
-
-        // save the brainkey into local storage
-        setLastUsedBrainKeys(
-          JSON.stringify({
-            ...current,
-            [dataset.datasetId]: combinedParameters.brainKey,
-          })
-        );
-
-        const stage = await getFetchFunction()("POST", "/sort", {
-          dataset: dataset.name,
-          view,
-          subscription,
-          filters,
-          extended: toSnakeCase(combinedParameters),
-          slice,
-        });
-        set(fos.similarityParameters, Object.fromEntries(stage.kwargs));
-        close();
-      },
-    []
-  );
+  return { queryIds: undefined };
 };
 
 export const availableSimilarityKeys = selectorFamily<
@@ -103,7 +83,7 @@ export const availableSimilarityKeys = selectorFamily<
         (params.modal && get(fos.hasSelectedLabels))
       ) {
         return get(availablePatchesSimilarityKeys(params)).map(
-          ({ key }) => key
+          ({ key }) => key,
         );
       }
 
@@ -119,6 +99,27 @@ export const availableSimilarityKeys = selectorFamily<
         .sort();
     },
 });
+
+/**
+ * Reads {@link availableSimilarityKeys} as a loadable so a pending dependency
+ * (e.g. the modal sample in patches views) suspends neither the action row nor
+ * the global boundary. Returns `null` while pending and rethrows selector
+ * errors so they reach the error boundary.
+ */
+export const useAvailableSimilarityKeys = (
+  modal: boolean,
+  isImageSearch: boolean,
+): string[] | null => {
+  const keys = useRecoilValueLoadable(
+    availableSimilarityKeys({ modal, isImageSearch }),
+  );
+
+  if (keys.state === "hasError") {
+    throw keys.contents;
+  }
+
+  return keys.state === "hasValue" ? keys.contents : null;
+};
 
 const availablePatchesSimilarityKeys = selectorFamily<
   Method[],
@@ -138,10 +139,16 @@ const availablePatchesSimilarityKeys = selectorFamily<
       }
       patches = methods.map(([method, field]) => [method, field]);
 
+      // avoid the async modal sample dependency below when there is nothing
+      // to filter
+      if (!patches.length) {
+        return [];
+      }
+
       if (params.modal) {
         if (get(fos.hasSelectedLabels)) {
           const fields = new Set(
-            Object.values(get(selectedLabels)).map(({ field }) => field)
+            Object.values(get(selectedLabels)).map(({ field }) => field),
           );
 
           return patches
@@ -155,25 +162,9 @@ const availablePatchesSimilarityKeys = selectorFamily<
 
       return patches
         .filter(([_, field]) =>
-          get(fos.labelPaths({ expanded: false })).includes(field)
+          get(fos.labelPaths({ expanded: false })).includes(field),
         )
         .map(([key]) => key);
-    },
-});
-
-export const currentSimilarityKeys = selectorFamily<
-  { total: number; choices: string[] },
-  { modal: boolean; isImageSearch: boolean }
->({
-  key: "currentSimilarityKeys",
-  get:
-    ({ modal, isImageSearch }) =>
-    ({ get }) => {
-      const keys = get(availableSimilarityKeys({ modal, isImageSearch }));
-      return {
-        total: keys.length,
-        choices: keys,
-      };
     },
 });
 
@@ -196,20 +187,5 @@ export const sortType = selectorFamily<string, boolean>({
     },
 });
 
-export const currentBrainConfig = selectorFamily<Method | undefined, string>({
-  key: "currenBrainConfig",
-  get:
-    (key) =>
-    ({ get }) => {
-      if (get(fos.isPatchesView)) {
-        const { patches } = get(fos.similarityMethods);
-        const patch = patches.find(([method, _]) => method.key === key);
-        if (patch) {
-          return patch[0];
-        }
-      }
-
-      const { samples: methods } = get(fos.similarityMethods);
-      return methods.find((method) => method.key === key);
-    },
-});
+// Re-export from utilities so existing callers within core still work.
+export { buildSimilarityRunName as buildRunName } from "@fiftyone/utilities";

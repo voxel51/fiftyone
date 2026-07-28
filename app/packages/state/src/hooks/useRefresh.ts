@@ -18,7 +18,7 @@ const useRefresh = () => {
         });
         set(refresh, undefined);
       },
-    []
+    [],
   );
 };
 

@@ -13,6 +13,11 @@ export type WaitUntilGridVisibleOptions = {
   searchParams?: URLSearchParams;
 
   /**
+   * Optional selector that indicates the dataset is ready for interaction.
+   */
+  readySelector?: string;
+
+  /**
    * Whether to wait for the grid to be visible.
    */
   withGrid?: boolean;
@@ -30,7 +35,7 @@ export abstract class AbstractFiftyoneLoader {
   abstract loadZooDataset(
     zooDatasetName: string,
     id: string,
-    kwargs?: Record<string, string | number | boolean>
+    kwargs?: Record<string, string | number | boolean>,
   ): Promise<void>;
 
   /**
@@ -56,7 +61,7 @@ export abstract class AbstractFiftyoneLoader {
    */
   abstract selectDatasetFromSelector(
     page: Page,
-    datasetName: string
+    datasetName: string,
   ): Promise<void>;
 
   /**
@@ -69,6 +74,6 @@ export abstract class AbstractFiftyoneLoader {
   abstract waitUntilGridVisible(
     page: Page,
     datasetName: string,
-    options?: WaitUntilGridVisibleOptions
+    options?: WaitUntilGridVisibleOptions,
   ): Promise<void>;
 }

@@ -20,8 +20,13 @@ import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
+import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.core.session.constants import (
+    DEFAULT_LABEL_SELECTION_STYLE,
+    DEFAULT_SELECTION_STYLE,
+)
 from fiftyone.operators import constants
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.message import GeneratedMessage, MessageType
@@ -769,41 +774,84 @@ class ExecutionContext(contextlib.AbstractContextManager):
 
         return self._view
 
-    def target_view(self, param_name="view_target"):
+    def target_view(self, param_name="view_target", require_flat=False):
         """The target view for the operator being executed.
 
         Args:
             param_name ("view_target"): the name of the enum parameter defining
                 the target view choice
+            require_flat (False): whether the operation requires a flattened
+                (non-grouped) collection. When ``False``, grouped collections
+                are returned as-is. When ``True``, grouped collections are
+                flattened to the current active slice.
 
         Returns:
             a :class:`fiftyone.core.collections.SampleCollection`
         """
         target = self.params.get(param_name)
 
-        if target == constants.ViewTarget.CURRENT_VIEW:
-            return self.view
-        if target == constants.ViewTarget.DATASET:
-            return self.dataset
-        if target == constants.ViewTarget.BASE_VIEW:
-            return self.view._base_view  # pylint: disable=protected-access
-        if target == constants.ViewTarget.SELECTED_SAMPLES:
-            return self.view.select(self.selected)
-        if target == constants.ViewTarget.SELECTED_LABELS:
-            return self.view.select_labels(self.selected_labels)
-        if target == constants.ViewTarget.DATASET_VIEW:
-            return self.dataset.view()
-        if target == constants.ViewTarget.CUSTOM_VIEW_TARGET:
-            if (
+        match target:
+            case constants.ViewTarget.DATASET:
+                return self.dataset
+            case constants.ViewTarget.BASE_VIEW:
+                # pylint: disable-next-line=protected-access
+                return self.view._base_view
+            case constants.ViewTarget.CUSTOM_VIEW_TARGET if (
                 view_stages := self.params.get("custom_view_target")
             ) is not None:
                 # pylint: disable-next-line=protected-access
                 return fov.DatasetView._build(self.dataset, view_stages)
+            case constants.ViewTarget.DATASET_VIEW:
+                sample_collection = self.dataset.view()
+            case (
+                constants.ViewTarget.CURRENT_VIEW
+                | constants.ViewTarget.SELECTED_SAMPLES
+                | constants.ViewTarget.SELECTED_LABELS
+            ):
+                sample_collection = self.view
+            case _:
+                sample_collection = (
+                    self.view if self.has_custom_view else self.dataset
+                )
 
-        return self.view if self.has_custom_view else self.dataset
+        # scoping to the active slice compiles to a no-op pipeline, so the
+        # ordering relative to the selections below is immaterial
+        sample_collection = self._get_active_view(
+            sample_collection, require_flat=require_flat
+        )
+
+        if target == constants.ViewTarget.SELECTED_SAMPLES:
+            return sample_collection.select(self.selected)
+
+        if target == constants.ViewTarget.SELECTED_LABELS:
+            return sample_collection.select_labels(self.selected_labels)
+
+        return sample_collection
 
     # Alias for common word reversal
     view_target = target_view
+
+    def _get_active_view(self, sample_collection=None, require_flat=False):
+        # when a flat collection is required, grouped collections are scoped
+        # to the active group slice, unless the view already selects slices
+        if sample_collection is None:
+            sample_collection = self.dataset
+
+        if (
+            not require_flat
+            or self.group_slice is None
+            or sample_collection.media_type != fom.GROUP
+        ):
+            return sample_collection
+
+        stages = getattr(sample_collection, "_stages", None) or []
+        if any(isinstance(s, fosg.SelectGroupSlices) for s in stages):
+            raise ValueError(
+                "This operation requires a flattened view. Apply "
+                "select_group_slices(flat=True) to flatten the grouped view"
+            )
+
+        return sample_collection.select_group_slices(self.group_slice)
 
     @property
     def has_custom_view(self):
@@ -829,8 +877,54 @@ class ExecutionContext(contextlib.AbstractContextManager):
 
     @property
     def selected(self):
-        """The list of selected sample IDs (if any)."""
-        return self.request_params.get("selected", [])
+        """The list of selected IDs (if any).
+
+        Derived from :attr:`selected_samples` when available, otherwise
+        falls back to ``request_params["selected"]``.
+        """
+        selected_samples = self.request_params.get("selected_samples", None)
+        if selected_samples:
+            return [
+                s["id"] if isinstance(s, dict) else s for s in selected_samples
+            ]
+
+        return self.request_params.get("selected") or []
+
+    @property
+    def selected_samples(self):
+        """A list of selected sample dicts, if any.
+
+        Each dict has ``id`` and ``type`` (``"default"`` or ``"alt"``),
+        where type corresponds to a key in :attr:`sample_selection_style`.
+
+        Despite its name, ``selected_samples`` represents whatever sample grid
+        items are in the current view: samples, patches, clips, or frames.
+        """
+        return self.request_params.get("selected_samples") or []
+
+    @property
+    def sample_selection_style(self):
+        """The current sample grid selection style config, if any.
+
+        A dict with a ``default`` key and optional ``alt`` key specifying
+        icon styles.
+        """
+        return self.request_params.get(
+            "sample_selection_style",
+            dict(DEFAULT_SELECTION_STYLE),
+        )
+
+    @property
+    def label_selection_style(self):
+        """The current label selection style config (if any).
+
+        A dict with a ``default`` key and optional ``alt`` key specifying
+        label selection visual styles.
+        """
+        return self.request_params.get(
+            "label_selection_style",
+            dict(DEFAULT_LABEL_SELECTION_STYLE),
+        )
 
     @property
     def selected_labels(self):
@@ -843,6 +937,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
         -   ``field``: the field name containing the label
         -   ``frame_number``: the frame number containing the label (only
             applicable to video samples)
+        -   ``type``: the selection type (``"default"`` or ``"alt"``)
         """
         return self.request_params.get("selected_labels", [])
 
@@ -864,6 +959,20 @@ class ExecutionContext(contextlib.AbstractContextManager):
     def active_fields(self):
         """The list of currently active fields in the FiftyOne App sidebar."""
         return self.request_params.get("active_fields", [])
+
+    @property
+    def active_media_type(self):
+        """The media type being processed, accounting for the active group
+        slice of grouped datasets.
+        """
+        dataset = self.dataset
+        if dataset is None:
+            return None
+
+        if dataset.media_type == fom.GROUP:
+            return dataset.group_media_types.get(dataset.group_slice)
+
+        return dataset.media_type
 
     @property
     def user_id(self):

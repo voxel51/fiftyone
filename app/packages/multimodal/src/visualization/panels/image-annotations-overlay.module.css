@@ -1,0 +1,35 @@
+.primitive {
+  stroke: var(--ann-stroke);
+  transition: stroke 80ms linear;
+}
+
+.primitive:hover,
+.selected {
+  stroke: var(--ann-hover, #ff7a18);
+}
+
+/* Selected reads differently from a transient hover: same highlight
+   color, but a dashed outline. */
+.selected {
+  stroke-dasharray: 6 4;
+}
+
+.fillInterior {
+  fill: transparent;
+  stroke: none;
+}
+
+.primitiveDot {
+  fill: var(--ann-stroke);
+  transition: fill 80ms linear;
+}
+
+.primitive:hover .primitiveDot,
+.selected .primitiveDot {
+  fill: var(--ann-hover, #ff7a18);
+}
+
+.selectable {
+  cursor: pointer;
+  pointer-events: all;
+}

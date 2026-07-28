@@ -46,6 +46,7 @@ from .database import (
     drop_orphan_runs,
     drop_orphan_delegated_ops,
     drop_orphan_stores,
+    drop_orphan_tags,
     list_collections,
     get_collection_stats,
     get_indexed_values,
@@ -82,6 +83,7 @@ from .frame import (
     NoDatasetFrameDocument,
 )
 from .mixins import get_default_fields
+from .ontology import OntologyDocument, OntologyType
 from .runs import RunDocument
 from .sample import (
     DatasetSampleDocument,

@@ -1,6 +1,12 @@
 name: Windows Tests
 
-on: workflow_call
+on:
+  workflow_call:
+    inputs:
+      python-versions:
+        description: JSON array of Python versions for the Windows test matrix
+        type: string
+        default: '["3.10", "3.11", "3.12", "3.13"]'
 
 jobs:
   test-python:
@@ -15,11 +21,7 @@ jobs:
       matrix:
         os:
           - windows-latest
-        python:
-          - "3.9"
-          - "3.10"
-          - "3.11"
-          - "3.12"
+        python: ${{ fromJSON(inputs.python-versions) }}
     defaults:
       run:
         shell: bash
@@ -45,26 +47,23 @@ jobs:
             requirements/common.txt
             requirements/github.txt
             requirements/test.txt
+      - name: Setup FFmpeg
+        id: setup-ffmpeg
+        uses: ./.github/actions/setup-ffmpeg
+        background: true
       - name: Install requirements
         run: |
           uv pip install --system -U wheel setuptools
           uv pip install --system -r requirements/github.txt
       - name: Install fiftyone
         run: |
-          uv pip install --system . -r requirements/github.txt
+          uv pip install --system '.[multimodal]' -r requirements/github.txt
       - name: Configure
-        id: test_config
         run: |
           python tests/utils/setup_config.py
-          python tests/utils/github_actions_flags.py
 
-      # - name: Setup FFmpeg (with retries)
-      #   uses: FedericoCarboni/setup-ffmpeg@v3
-
-      # Use this until https://github.com/federicocarboni/setup-ffmpeg/pull/23
-      # is merged or the maintainer addresses the root issue.
-      - name: Setup FFmpeg (with retries)
-        uses: afoley587/setup-ffmpeg@main
+      - name: Wait for FFmpeg
+        wait: setup-ffmpeg
 
       # Important: use pytest_wrapper.py instead of pytest directly to ensure
       # that services shut down cleanly and do not conflict with steps later in

@@ -55,6 +55,29 @@ from .core.expressions import (
     ViewExpression,
     VALUE,
 )
+from .core.annotation.attributes import (
+    AttributeSpec,
+    When,
+    WhenAnd,
+    WhenCondition,
+    WhenEquals,
+    WhenIn,
+    WhenOperator,
+    WhenOr,
+)
+from .core.annotation.nodes import (
+    Node,
+)
+from .core.ontology import (
+    AnnotationOntology,
+    Taxonomy,
+    apply_ontology,
+    delete_ontology,
+    list_ontologies,
+    load_ontology,
+    ontology_exists,
+    save_ontology,
+)
 from .core.fields import (
     flatten_schema,
     ArrayField,
@@ -190,6 +213,7 @@ from .core.threed import (
     ObjMesh,
     PlyMesh,
     StlMesh,
+    GaussianSplat,
     PerspectiveCamera,
     PointLight,
     DirectionalLight,

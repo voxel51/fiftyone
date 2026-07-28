@@ -18,6 +18,7 @@ interface ComponentTypeButtonProps {
   isSelected: boolean;
   onClick: () => void;
   largeText?: boolean;
+  disabled?: boolean;
 }
 
 const ComponentTypeButton = ({
@@ -26,12 +27,13 @@ const ComponentTypeButton = ({
   isSelected,
   onClick,
   largeText = false,
+  disabled = false,
 }: ComponentTypeButtonProps) => {
   const theme = useTheme();
 
   return (
-    <div style={{ flex: 1 }}>
-      <Clickable onClick={onClick}>
+    <div style={{ flex: 1, opacity: disabled ? 0.5 : 1 }}>
+      <Clickable onClick={disabled ? undefined : onClick}>
         <div
           style={{
             display: "flex",
@@ -46,7 +48,7 @@ const ComponentTypeButton = ({
             backgroundColor: isSelected
               ? `${theme.voxel[500]}1A`
               : "transparent",
-            cursor: "pointer",
+            cursor: disabled ? "not-allowed" : "pointer",
           }}
         >
           <Icon

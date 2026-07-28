@@ -3,7 +3,7 @@ import { fo3dLoadingStatusThisSample } from "../state";
 import { LoadingStatus } from "../types";
 
 /**
- * Custom hook to easily access and work with the loading status
+ * Custom hook to easily access and work with three.js loading status
  */
 export const useLoadingStatus = () => {
   const loadingStatus = useRecoilValue(fo3dLoadingStatusThisSample);

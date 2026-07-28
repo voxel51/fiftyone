@@ -1,42 +1,43 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useSetAtom } from "jotai";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { useSchemaManagerModal } from "./SchemaManager/hooks";
 import {
   activeLabelSchemas,
   activePathsOrder,
   labelSchemasData,
-  showModal,
 } from "./state";
 
 export default function useLoadSchemas() {
   const setData = useSetAtom(labelSchemasData);
   const setActive = useSetAtom(activeLabelSchemas);
   const setActivePathsOrder = useSetAtom(activePathsOrder);
-  const setShowModal = useSetAtom(showModal);
+  const { closeSchemaManager } = useSchemaManagerModal();
   const get = useOperatorExecutor("get_label_schemas");
 
   useEffect(() => {
     if (!get.result) {
       return;
     }
-
-    // Set new schema data
     setData(get.result.label_schemas);
     setActive(get.result.active_label_schemas);
   }, [get.result, setData, setActive]);
 
-  // Reset schema data and close modal, then fetch new data
-  // Note: UI state (currentField, selection, JSON editor) is reset on
-  // SchemaManager Modal unmount via useSchemaManagerCleanup hook
+  // `get.execute` identity can change across renders (its
+  // `useRecoilCallback` deps include `currentSample` / `context`).
+  // Mirror it through a ref so the returned callback uses the latest
+  // `execute` without churning its own identity — Sidebar.tsx consumes
+  // this callback as an effect dep.
+  const executeRef = useRef(get.execute);
+  executeRef.current = get.execute;
+
+  // Refetch without pre-clearing the schema atoms: the `get.result`
+  // effect above swaps them atomically once the response lands, so
+  // consumers (`useLabels`, `useFormAnchor`'s `labelMap` lookup) never
+  // see a transient null mid-refetch.
   return useCallback(() => {
-    // Reset schema data to trigger loading state
-    setData(null);
-    setActive(null);
-
-    // Reset paths order and close modal
     setActivePathsOrder(null);
-    setShowModal(false);
-
-    get.execute({});
-  }, []);
+    closeSchemaManager();
+    executeRef.current({});
+  }, [setActivePathsOrder, closeSchemaManager]);
 }

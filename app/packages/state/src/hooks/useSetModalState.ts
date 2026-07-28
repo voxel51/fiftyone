@@ -5,23 +5,24 @@ import { useRecoilCallback } from "recoil";
 import * as atoms from "../recoil/atoms";
 import * as filterAtoms from "../recoil/filters";
 import * as groupAtoms from "../recoil/groups";
+import * as group3dAtoms from "../recoil/renderConfig3d.atoms";
 import * as modalAtoms from "../recoil/modal";
 import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
 import * as sidebarAtoms from "../recoil/sidebar";
 import * as sidebarExpandedAtoms from "../recoil/sidebarExpanded";
-import { isPointCloud } from "@fiftyone/utilities";
+import { is3d } from "@fiftyone/utilities";
 
 const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
   const paths = await snapshot.getPromise(
-    schemaAtoms.labelPaths({ expanded: false })
+    schemaAtoms.labelPaths({ expanded: false }),
   );
   const filters = await snapshot.getPromise(filterAtoms.filters);
   const modalFilters = Object.fromEntries(
     Object.entries(filters).filter(
       ([path]) =>
-        paths.some((p) => path.startsWith(p)) || path === "_label_tags"
-    )
+        paths.some((p) => path.startsWith(p)) || path === "_label_tags",
+    ),
   );
 
   set(filterAtoms.modalFilters, modalFilters);
@@ -34,6 +35,7 @@ const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
  */
 export default () => {
   const environment = useRelayEnvironment();
+
   return useRecoilCallback(
     (cbInterface) => async (navigation?: modalAtoms.ModalNavigation) => {
       const { snapshot, set } = cbInterface;
@@ -66,25 +68,18 @@ export default () => {
       ];
 
       const slice = await snapshot.getPromise(groupAtoms.groupSlice);
+      const map = await snapshot.getPromise(groupAtoms.groupMediaTypesMap);
+      const pinned3d = Boolean(slice && is3d(map[slice]));
+      const activeSlices = pinned3d && slice ? [slice] : [];
 
-      let pinned3d = false;
-      let activeSlices = [];
-      if (slice) {
-        // when a 3D slice is shown in the grid for group datasets, attempt
-        // to find an alternative 2D slice to present by default in the main
-        // view
-        const map = await snapshot.getPromise(groupAtoms.groupMediaTypesMap);
-        if (isPointCloud(map[slice])) {
-          pinned3d = true;
-          activeSlices = [slice];
-        }
-      }
-
-      set(groupAtoms.pinned3d, pinned3d);
-      set(groupAtoms.active3dSlices, activeSlices);
+      set(group3dAtoms.is3dPinned, pinned3d);
+      set(group3dAtoms.active3dSlices, activeSlices);
+      set(group3dAtoms.pinned3DSampleSlice, pinned3d ? slice : null);
 
       const results = await Promise.all(
-        data.map(([_, get]) => snapshot.getPromise(get as RecoilState<unknown>))
+        data.map(([_, get]) =>
+          snapshot.getPromise(get as RecoilState<unknown>),
+        ),
       );
 
       for (const i in results) {
@@ -94,6 +89,6 @@ export default () => {
       navigation && (await setModalFilters(cbInterface));
       navigation && modalAtoms.modalNavigation.set(navigation);
     },
-    [environment]
+    [environment],
   );
 };

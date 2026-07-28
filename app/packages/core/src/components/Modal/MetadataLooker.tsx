@@ -50,13 +50,20 @@ const SampleMetadata = ({ sample }: { sample: Sample }) => {
 
 export const MetadataLooker = ({ sample }: { sample: ModalSample }) => {
   return (
-    <Box sx={{ width: "100%", height: "100%", p: 2, pr: 0 }}>
-      <Stack direction="column" spacing={2}>
+    <Box sx={{ width: "100%", height: "100%", minHeight: 0, p: 2, pr: 0 }}>
+      <Stack
+        direction="column"
+        spacing={2}
+        sx={{ height: "100%", minHeight: 0 }}
+      >
         <Paper sx={{ p: 2 }}>
           <SampleMetadata sample={sample.sample} />
         </Paper>
-        <Paper sx={{ p: 2 }}>
-          <JSONViewer value={sample.sample} />
+        <Paper sx={{ p: 2, flex: 1, minHeight: 0, overflow: "auto" }}>
+          <JSONViewer
+            value={sample.sample}
+            containerProps={{ style: { minHeight: "100%" } }}
+          />
         </Paper>
       </Stack>
     </Box>

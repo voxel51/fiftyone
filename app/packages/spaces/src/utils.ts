@@ -1,5 +1,7 @@
 import SpaceNode from "./SpaceNode";
+import { panelAreaRenderers } from "./state";
 import { SpaceNodeJSON, SpaceNodeType } from "./types";
+import { ReactNode } from "react";
 
 export function spaceNodeFromJSON(json: SpaceNodeJSON, parent?: SpaceNode) {
   const node = new SpaceNode(json.id);
@@ -7,7 +9,7 @@ export function spaceNodeFromJSON(json: SpaceNodeJSON, parent?: SpaceNode) {
   if (json.type) node.type = json.type;
   node.activeChild = json.activeChild;
   node.children = (json.children ?? []).map((child) =>
-    spaceNodeFromJSON(child, node)
+    spaceNodeFromJSON(child, node),
   );
   node.parent = parent;
   node.pinned = json.pinned;
@@ -29,4 +31,16 @@ export function getNodes(node: SpaceNode): SpaceNode[] {
 export function warnPanelNotFound(name: SpaceNodeType) {
   console.warn(`Panel with name ${name} cannot be found`);
   return null;
+}
+
+export function registerPanelAreaRenderer(areaId: string, renderer: ReactNode) {
+  panelAreaRenderers.set(areaId, renderer);
+}
+
+export function unregisterPanelAreaRenderer(areaId: string) {
+  panelAreaRenderers.delete(areaId);
+}
+
+export function getPanelAreaRenderer(areaId: string) {
+  return panelAreaRenderers.get(areaId);
 }

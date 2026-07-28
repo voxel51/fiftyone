@@ -57,7 +57,7 @@ const fetchSimilarLabels = async ({
         numFrames,
         dataset,
         view,
-      }
+      },
     );
 
     return response as SimilarLabelsResponse;
@@ -123,7 +123,7 @@ export const useOnShiftClickLabel = () => {
             "sourceInstanceId",
             sourceInstanceId,
             "does not match currentlyHoveredInstanceId",
-            currentlyHoveredInstanceId
+            currentlyHoveredInstanceId,
           );
           return;
         }
@@ -133,11 +133,11 @@ export const useOnShiftClickLabel = () => {
           .getValue();
 
         const currentSelectedInstances = Object.values(
-          currentSelectedLabels
+          currentSelectedLabels,
         ).filter((label) => sourceInstanceId === label.instanceId);
         const currentSelectedInstanceCount = currentSelectedInstances.length;
         const currentHoveredInstanceCount = Object.keys(
-          currentlyHoveredInstanceLabels
+          currentlyHoveredInstanceLabels,
         ).length;
 
         // scenario 1, when no similar instances are selected
@@ -162,7 +162,7 @@ export const useOnShiftClickLabel = () => {
         if (currentSelectedInstanceCount === currentHoveredInstanceCount) {
           set(selectedLabels, (prev) => {
             return prev.filter(
-              (label) => label.instanceId !== currentlyHoveredInstanceId
+              (label) => label.instanceId !== currentlyHoveredInstanceId,
             );
           });
           e.stopImmediatePropagation();
@@ -188,7 +188,7 @@ export const useOnShiftClickLabel = () => {
             set(selectedLabels, (prev) => {
               return [...prev, ...labelsToAdd].filter(
                 (v, i, self) =>
-                  self.findIndex((t) => t.labelId === v.labelId) === i
+                  self.findIndex((t) => t.labelId === v.labelId) === i,
               );
             });
             e.stopImmediatePropagation();
@@ -197,7 +197,7 @@ export const useOnShiftClickLabel = () => {
           return;
         }
       },
-    []
+    [],
   );
 
   const handleVideo = useRecoilCallback(
@@ -216,7 +216,7 @@ export const useOnShiftClickLabel = () => {
           sampleId: e.detail.sourceSampleId,
           numFrames:
             jotaiStore.get(
-              getTimelineConfigAtom(`timeline-${e.detail.sourceSampleId}`)
+              getTimelineConfigAtom(`timeline-${e.detail.sourceSampleId}`),
             ).totalFrames ?? 1,
           dataset: snapshot.getLoadable(datasetName).getValue(),
           view: currentView,
@@ -245,7 +245,7 @@ export const useOnShiftClickLabel = () => {
             frameNumber,
             field: fieldName,
             instanceId: sourceInstanceId,
-          })
+          }),
         );
 
         // if current label is already selected, and shift + click pressed,
@@ -266,7 +266,7 @@ export const useOnShiftClickLabel = () => {
           });
         }
       },
-    []
+    [],
   );
 
   return useRecoilCallback(
@@ -314,6 +314,6 @@ export const useOnShiftClickLabel = () => {
           return handleGroup(e);
         }
       },
-    [handleGroup, handleVideo]
+    [handleGroup, handleVideo],
   );
 };

@@ -26,8 +26,8 @@ import {
   useNewFieldMode,
   useSchemaEditorGUIJSONToggle,
   useSchemaManagerCleanup,
+  useSchemaManagerModal,
   useSelectedFieldCounts,
-  useShowSchemaManagerModal,
 } from "./hooks";
 import NewFieldSchema from "./NewFieldSchema";
 import {
@@ -172,6 +172,8 @@ const Modal = () => {
   // and JSON editor state is reset by useFullSchemaEditor's cleanup effect.
   useSchemaManagerCleanup();
 
+  const { closeSchemaManager } = useSchemaManagerModal();
+
   const element = useMemo(() => {
     const el = document.getElementById("annotation");
     if (!el) {
@@ -179,7 +181,6 @@ const Modal = () => {
     }
     return el;
   }, []);
-  const setShowModal = useShowSchemaManagerModal();
 
   useEffect(() => {
     element.style.display = "block";
@@ -190,7 +191,7 @@ const Modal = () => {
   }, [element]);
 
   return createPortal(
-    <ModalBackground onClick={() => setShowModal(false)}>
+    <ModalBackground onClick={() => closeSchemaManager()}>
       <ModalContainer
         data-cy="schema-manager"
         onClick={(e) => e.stopPropagation()}
@@ -202,7 +203,7 @@ const Modal = () => {
             borderless
             size={Size.Sm}
             data-cy="close-schema-manager"
-            onClick={() => setShowModal(false)}
+            onClick={() => closeSchemaManager()}
             style={{ marginRight: "14px" }}
           >
             <Icon
@@ -220,7 +221,7 @@ const Modal = () => {
         <SchemaManagerFooter />
       </ModalContainer>
     </ModalBackground>,
-    element
+    element,
   );
 };
 

@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { RelayEnvironmentContext } from "@fiftyone/relay";
 import { RelayEnvironmentKey } from "@fiftyone/state";
 import React from "react";

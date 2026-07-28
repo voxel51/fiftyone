@@ -77,6 +77,10 @@ export class KeySequence {
       }
       if (this.key === " ") {
         ret += "space";
+      } else if (this.key === ",") {
+        // "," is the reserved sequence delimiter, so it must be re-escaped
+        // here to survive the parseBinding round-trip in KeyManager.
+        ret += "\\,";
       } else {
         ret += this.key;
       }
@@ -181,7 +185,7 @@ export class KeyParser {
         } else {
           if (keySequence.key !== "") {
             throw new Error(
-              `Multiple standard keys in keybinding: ${sequence}`
+              `Multiple standard keys in keybinding: ${sequence}`,
             );
           }
           switch (keyLow) {
@@ -204,7 +208,7 @@ export class KeyParser {
                   throw new Error(`The binding ${binding} is missing a key.`);
                 }
                 throw new Error(
-                  `The binding ${binding} contains an invalid key ${key.trim()}`
+                  `The binding ${binding} contains an invalid key ${key.trim()}`,
                 );
               }
               break;

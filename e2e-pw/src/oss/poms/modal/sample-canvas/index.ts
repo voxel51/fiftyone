@@ -1,4 +1,4 @@
-import { Page, expect } from "src/oss/fixtures";
+import { expect, Page } from "src/oss/fixtures";
 import type { EventUtils } from "src/shared/event-utils";
 import { ToolbarPom } from "./toolbar";
 import { TooltipPom } from "./tooltip";
@@ -26,8 +26,13 @@ export enum SampleCanvasType {
 export class SampleCanvasPom {
   readonly assert: SampleCanvasAsserter;
   #box?: Box;
+  #mouseX = 0;
+  #mouseY = 0;
 
-  constructor(readonly page: Page, readonly eventUtils: EventUtils) {
+  constructor(
+    readonly page: Page,
+    readonly eventUtils: EventUtils,
+  ) {
     this.assert = new SampleCanvasAsserter(this);
   }
 
@@ -65,7 +70,7 @@ export class SampleCanvasPom {
   get cursor(): Promise<string> {
     // eslint-disable-next-line
     // @ts-ignore
-    return this.page.evaluate(() => window.CURRENT_CURSOR);
+    return this.page.evaluate(() => window.__FO_PLAYWRIGHT_CURRENT_CURSOR);
   }
 
   /**
@@ -76,6 +81,8 @@ export class SampleCanvasPom {
    */
   async click(x: number, y: number) {
     const xy = await this.#toScreenCoordinates(x, y);
+    this.#mouseX = xy.x;
+    this.#mouseY = xy.y;
     await this.page.mouse.click(xy.x, xy.y);
   }
 
@@ -87,7 +94,55 @@ export class SampleCanvasPom {
    */
   async dblclick(x: number, y: number) {
     const xy = await this.#toScreenCoordinates(x, y);
+    this.#mouseX = xy.x;
+    this.#mouseY = xy.y;
     await this.page.mouse.dblclick(xy.x, xy.y);
+  }
+
+  /**
+   * Mouse right-click on the sample canvas.
+   *
+   * @param x The x coordinate between [0, 1]
+   * @param y The y coordinate between [0, 1]
+   */
+  async rightClick(x: number, y: number) {
+    const xy = await this.#toScreenCoordinates(x, y);
+    this.#mouseX = xy.x;
+    this.#mouseY = xy.y;
+    await this.page.mouse.click(xy.x, xy.y, { button: "right" });
+  }
+
+  /**
+   * Drag the mouse from (x1,y1) to (x2,y2) with interpolated intermediate
+   * moves. Used for the brush tool, which paints a dab per `onMove` — a
+   * naive two-point move with no intermediates would leave a discontinuous
+   * stroke (only endpoints dabbed).
+   *
+   * @param x1 Start x in [0, 1]
+   * @param y1 Start y in [0, 1]
+   * @param x2 End x in [0, 1]
+   * @param y2 End y in [0, 1]
+   * @param steps Number of intermediate moves between start and end
+   */
+  async drag(x1: number, y1: number, x2: number, y2: number, steps = 10) {
+    const start = await this.#toScreenCoordinates(x1, y1);
+    const end = await this.#toScreenCoordinates(x2, y2);
+
+    this.#mouseX = start.x;
+    this.#mouseY = start.y;
+    await this.page.mouse.move(start.x, start.y);
+    await this.page.mouse.down();
+
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const x = start.x + (end.x - start.x) * t;
+      const y = start.y + (end.y - start.y) * t;
+      this.#mouseX = x;
+      this.#mouseY = y;
+      await this.page.mouse.move(x, y);
+    }
+
+    await this.page.mouse.up();
   }
 
   /**
@@ -102,11 +157,47 @@ export class SampleCanvasPom {
    *
    * @param x The x coordinate between [0, 1]
    * @param y The y coordinate between [0, 1]
-   * @param cursor An optional cursor value to expect after moving
+   * @param cursor An optional cursor value to expect after moving. When
+   *   provided, the move is retried until the cursor matches. This is
+   *   necessary because the cursor is event-driven — it only updates when a
+   *   mouse event fires — so the underlying state (e.g. detection mode) may
+   *   not have settled yet on the first move attempt.
    */
   async move(x: number, y: number, cursor?: string) {
     const xy = await this.#toScreenCoordinates(x, y);
-    await this.page.mouse.move(xy.x, xy.y);
+    this.#mouseX = xy.x;
+    this.#mouseY = xy.y;
+
+    if (cursor) {
+      // The cursor flag only updates on mouse events, so it can hold a stale
+      // value from a previous hover (e.g. a just-clicked sidebar button).
+      // Reset it so the gate below is only satisfied by a fresh hover-driven
+      // update at the target position — otherwise the click can fire before
+      // the canvas has rendered the element the test intends to hit.
+      await this.page.evaluate(() => {
+        window.__FO_PLAYWRIGHT_CURRENT_CURSOR = "";
+      });
+      await expect(async () => {
+        await this.page.mouse.move(xy.x, xy.y);
+        await this.assert.hasCursor(cursor);
+      }).toPass();
+    } else {
+      await this.page.mouse.move(xy.x, xy.y);
+    }
+  }
+
+  /**
+   * Mouse move on the sample canvas by x and y
+   *
+   * @param x The distance to move along the x-axis
+   * @param y The distance to move along the y-axis
+   * @param cursor An optional cursor value to expect after moving
+   */
+  async movePixels(x: number, y: number, cursor?: string) {
+    this.#mouseX += x;
+    this.#mouseY += y;
+    await this.page.mouse.move(this.#mouseX, this.#mouseY);
+
     if (cursor) {
       await this.assert.hasCursor(cursor);
     }
@@ -120,10 +211,27 @@ export class SampleCanvasPom {
   }
 
   /**
+   * Wheel in or out at the current cursor position.
+   *
+   * Each step applies one wheel event, which Looker translates into a single
+   * SCALE_FACTOR (1.09×) multiplication. Positive values zoom in, negative
+   * values zoom out.
+   *
+   * @param steps Number of wheel steps (positive = in, negative = out)
+   */
+  async wheel(steps: number) {
+    const deltaY = steps > 0 ? -1 : 1;
+    for (let i = 0; i < Math.abs(steps); i++) {
+      await this.page.mouse.wheel(0, deltaY);
+    }
+  }
+
+  /**
    * Wait for the cursor to change
    */
   async waitForCursorChange() {
-    await this.eventUtils.getEventReceivedPromiseForPredicate("cursor-change");
+    const armed = await this.eventUtils.arm("cursor-change");
+    await armed.received;
   }
 
   /**
@@ -162,7 +270,7 @@ class SampleCanvasAsserter {
   /**
    * Does the mouse have this cursor style
    *
-   * @param name the cursor style
+   * @param cursor the cursor style
    */
   async hasCursor(cursor: string) {
     const value = await this.sampleCanvasPom.cursor;
@@ -179,7 +287,9 @@ class SampleCanvasAsserter {
     await this.sampleCanvasPom.tooltip.assert.isVisible(false);
     await this.sampleCanvasPom.moveMouseToViewportEdge();
     await this.sampleCanvasPom.toolbar.assert.isVisible(false);
-    await expect(this.sampleCanvasPom.locator).toBeVisible();
+    await this.sampleCanvasPom.page.addStyleTag({
+      content: ".segmentation-toolbar { display: none !important; }",
+    });
     await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name, {
       maxDiffPixelRatio: 0.0,
     });

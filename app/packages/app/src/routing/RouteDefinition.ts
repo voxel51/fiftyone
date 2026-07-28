@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import type { Resource } from "@fiftyone/utilities";
 import type {
   ConcreteRequest,
@@ -19,7 +23,7 @@ export interface RouteOptions<T extends OperationType> {
   searchParams?: { [key: string]: string };
   transform?: (
     state: LocationState<T>,
-    variables: Partial<VariablesOf<T>>
+    variables: Partial<VariablesOf<T>>,
   ) => Partial<VariablesOf<T>>;
 }
 

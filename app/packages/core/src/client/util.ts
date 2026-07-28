@@ -23,10 +23,10 @@ export const parseTimestamp = (timestamp?: DateTime): Date | null => {
     return typeof timestamp === "string"
       ? new Date(timestamp)
       : "$date" in timestamp
-      ? new Date(timestamp.$date)
-      : "datetime" in timestamp
-      ? new Date(timestamp.datetime)
-      : null;
+        ? new Date(timestamp.$date)
+        : "datetime" in timestamp
+          ? new Date(timestamp.datetime)
+          : null;
   }
 
   return null;
@@ -79,13 +79,4 @@ export const parseETag = (headerValue?: string): string | null => {
   }
 
   return cleanedValue;
-};
-
-/**
- * Return true if the provided data is an object.
- *
- * @param data Data to check
- */
-export const isObject = (data: unknown): boolean => {
-  return data && typeof data === "object" && !Array.isArray(data);
 };

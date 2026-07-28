@@ -1,6 +1,5 @@
 import {
   useAutoSave,
-  useRegisterAnnotationCommandHandlers,
   useRegisterAnnotationEventHandlers,
   useRegisterAnnotationKeybindings,
   useRegisterRendererEventHandlers,
@@ -10,25 +9,35 @@ import {
   KnownContexts,
   useKeyBindings,
 } from "@fiftyone/commands";
-import { HelpPanel, JSONPanel } from "@fiftyone/components";
+import { ErrorDisplayMarkup, HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { canAnnotate, ModalMode, useModalMode } from "@fiftyone/state";
+import { ModalMode, canAnnotate, useModalMode } from "@fiftyone/state";
 import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
-import React, { Fragment, useCallback, useMemo, useRef } from "react";
+import { is3d, MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
+import React, { Fragment, Suspense, useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  FallbackProps,
+  ErrorBoundary as ReactErrorBoundary,
+} from "react-error-boundary";
+import {
+  useRecoilCallback,
+  useRecoilValue,
+  useRecoilValueLoadable,
+} from "recoil";
 import styled from "styled-components";
 import Actions from "./Actions";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
+import { ModalStatusBar } from "./ModalStatusBar";
 import { Sidebar } from "./Sidebar";
-import SchemaManagementProvider from "./Sidebar/Annotate/SchemaManagementProvider";
-import useCanManageSchema from "./Sidebar/Annotate/useCanManageSchema";
+import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
+import { useAnnotationStatus } from "./Sidebar/Annotate/Edit/useAnnotationStatus";
 import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
@@ -59,6 +68,7 @@ const ModalContainer = styled.div`
 `;
 
 const SpacesContainer = styled.div`
+  position: relative;
   width: 100%;
   height: 100%;
   display: flex;
@@ -68,25 +78,50 @@ const SpacesContainer = styled.div`
 `;
 
 const AnnotationHandlerRegistration = () => {
-  useRegisterAnnotationCommandHandlers();
+  // Sparse groups can have no sample on the active slice; the annotation
+  // hooks below read modalSample and would throw GroupSampleNotFound. Skip
+  // registration entirely until the slice has a sample.
+  const modal = useRecoilValueLoadable(fos.modalSample);
+  if (
+    modal.state === "hasError" &&
+    modal.contents instanceof fos.GroupSampleNotFound
+  ) {
+    return <Fragment />;
+  }
+  return <AnnotationHandlerRegistrationInner />;
+};
+
+const AnnotationHandlerRegistrationInner = () => {
   useRegisterAnnotationEventHandlers();
   useRegisterAnnotationKeybindings();
   useRegisterRendererEventHandlers();
   useAnnotationTracking();
 
   const modalMode = useModalMode();
-  const canManageSchema = useCanManageSchema();
 
   useAutoSave(modalMode === ModalMode.ANNOTATE);
 
-  return canManageSchema ? <SchemaManagementProvider /> : <Fragment />;
+  return <Fragment />;
+};
+
+const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
+  return (
+    <ErrorDisplayMarkup
+      error={error as Error}
+      resetErrorBoundary={resetErrorBoundary}
+    />
+  );
 };
 
 const Modal = () => {
+  useAnnotationStatus();
+
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pointerDownTargetRef = useRef<EventTarget | null>(null);
   const { enabled: isAnnotationEnabled } = useRecoilValue(canAnnotate);
   const clearModal = fos.useClearModal();
+  const is3dVisible = fos.useIs3dVisible();
+  const modalSelector = useRecoilValue(fos.modalSelector);
 
   const onPointerDownModalWrapper = useCallback((e: React.PointerEvent) => {
     // Track where the pointer down started
@@ -105,7 +140,7 @@ const Modal = () => {
       // Reset the tracked target
       pointerDownTargetRef.current = null;
     },
-    [clearModal]
+    [clearModal],
   );
 
   const { jsonPanel, helpPanel } = useLookerHelpers();
@@ -114,7 +149,7 @@ const Modal = () => {
     ({ snapshot, set }) =>
       async () => {
         const isTooltipCurrentlyLocked = await snapshot.getPromise(
-          fos.isTooltipLocked
+          fos.isTooltipLocked,
         );
         if (isTooltipCurrentlyLocked) {
           set(fos.isTooltipLocked, false);
@@ -134,14 +169,14 @@ const Modal = () => {
         clearModal();
         activeLookerRef.current?.removeEventListener(
           "close",
-          modalCloseHandler
+          modalCloseHandler,
         );
 
         selectiveRenderingEventBus.removeAllListeners();
 
         jotaiStore.set(currentModalUniqueIdJotaiAtom, "");
       },
-    [clearModal, jsonPanel, helpPanel]
+    [clearModal, jsonPanel, helpPanel],
   );
 
   const selectCallback = useRecoilCallback(
@@ -149,18 +184,18 @@ const Modal = () => {
       async () => {
         const current = await snapshot.getPromise(fos.modalSelector);
         set(fos.selectedSamples, (selected) => {
-          const newSelected = new Set([...Array.from(selected)]);
+          const newSelected = new Map(selected);
           if (current?.id) {
             if (newSelected.has(current.id)) {
               newSelected.delete(current.id);
             } else {
-              newSelected.add(current.id);
+              newSelected.set(current.id, "default");
             }
           }
           return newSelected;
         });
       },
-    []
+    [],
   );
 
   const sidebarFn = useRecoilCallback(
@@ -168,7 +203,7 @@ const Modal = () => {
       async () => {
         set(fos.sidebarVisible(true), (prev) => !prev);
       },
-    []
+    [],
   );
 
   const fullscreenFn = useRecoilCallback(
@@ -176,24 +211,31 @@ const Modal = () => {
       async () => {
         set(fos.fullscreen, (prev) => !prev);
       },
-    []
+    [],
   );
 
   const closeFn = useRecoilCallback(
     ({ snapshot }) =>
       async () => {
         const mediaType = await snapshot.getPromise(fos.mediaType);
-        const is3dVisible = await snapshot.getPromise(
-          fos.groupMediaIs3dVisible
-        );
-        if (activeLookerRef.current || mediaType === "3d" || is3dVisible) {
+        // Temporary: multimodal viewers own Escape handling for now, so the
+        // shared modal close shortcut should leave them mounted.
+        if (mediaType === MEDIA_TYPE_MULTIMODAL) {
+          return;
+        }
+
+        if (
+          activeLookerRef.current ||
+          (mediaType && is3d(mediaType)) ||
+          is3dVisible
+        ) {
           // we handle close logic in modal + other places
           return;
         }
 
         await modalCloseHandler();
       },
-    [modalCloseHandler]
+    [is3dVisible, modalCloseHandler],
   );
 
   const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
@@ -259,10 +301,10 @@ const Modal = () => {
           currentModalUniqueIdJotaiAtom,
           `${snapshot.getLoadable(fos.groupId).getValue()}-${snapshot
             .getLoadable(fos.nullableModalSampleId)
-            .getValue()}`
+            .getValue()}`,
         );
       },
-    [modalCloseHandler, addTooltipEventHandler]
+    [modalCloseHandler, addTooltipEventHandler],
   );
 
   const setActiveLookerRef = useCallback(
@@ -270,7 +312,7 @@ const Modal = () => {
       activeLookerRef.current = looker;
       onLookerSet(looker);
     },
-    [onLookerSet]
+    [onLookerSet],
   );
 
   return ReactDOM.createPortal(
@@ -287,36 +329,47 @@ const Modal = () => {
         data-cy="modal"
       >
         <Actions />
-        {isAnnotationEnabled && <AnnotationHandlerRegistration />}
+        {isAnnotationEnabled && (
+          <Suspense>
+            <AnnotationHandlerRegistration />
+          </Suspense>
+        )}
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>
-          <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
-          <ModalNavigation closePanels={closePanels} />
-          <SpacesContainer>
-            <ModalSpace />
-          </SpacesContainer>
-          {isSidebarVisible && <Sidebar />}
-          <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
+          <ReactErrorBoundary
+            FallbackComponent={ModalErrorFallback}
+            resetKeys={[modalSelector?.id, modalSelector?.groupId]}
+          >
+            <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
+            <ModalNavigation closePanels={closePanels} />
+            <SegmentationToolbar />
+            <SpacesContainer>
+              <ModalSpace />
+              <ModalStatusBar />
+            </SpacesContainer>
+            {isSidebarVisible && <Sidebar />}
+            <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
 
-          {jsonPanel.isOpen && (
-            <JSONPanel
-              containerRef={jsonPanel.containerRef}
-              onClose={() => jsonPanel.close()}
-              onCopy={() => jsonPanel.copy()}
-              json={jsonPanel.json}
-            />
-          )}
-          {helpPanel.isOpen && (
-            <HelpPanel
-              containerRef={helpPanel.containerRef}
-              onClose={() => helpPanel.close()}
-              items={helpPanel.items}
-            />
-          )}
+            {jsonPanel.isOpen && (
+              <JSONPanel
+                containerRef={jsonPanel.containerRef}
+                onClose={() => jsonPanel.close()}
+                onCopy={() => jsonPanel.copy()}
+                json={jsonPanel.json}
+              />
+            )}
+            {helpPanel.isOpen && (
+              <HelpPanel
+                containerRef={helpPanel.containerRef}
+                onClose={() => helpPanel.close()}
+                items={helpPanel.items}
+              />
+            )}
+          </ReactErrorBoundary>
         </ModalContainer>
       </ModalWrapper>
     </modalContext.Provider>,
-    document.getElementById("modal") as HTMLDivElement
+    document.getElementById("modal") as HTMLDivElement,
   );
 };
 

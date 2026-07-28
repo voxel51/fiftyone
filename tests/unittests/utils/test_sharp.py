@@ -6,7 +6,21 @@ Tests for fiftyone/utils/sharp.py Apple SHARP model wrapper.
 |
 """
 
+import unittest.mock as _mock
+
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _stub_lazy_sharp(monkeypatch):
+    """Replace the lazy_import sentinels so mock.patch("...sharp_utils.X")
+    doesn't trigger _ensure_sharp → pip install (Windows libheif DLL lock).
+    _ensure_sharp itself is covered by TestEnsureSharp below.
+    """
+    import fiftyone.utils.sharp as _fou_sharp
+
+    monkeypatch.setattr(_fou_sharp, "sharp_utils", _mock.MagicMock())
+    monkeypatch.setattr(_fou_sharp, "sharp_models", _mock.MagicMock())
 
 
 class TestAppleSharpModelConfig:
@@ -42,10 +56,12 @@ class TestAppleSharpModelConfig:
         """Test multiple custom values together."""
         from fiftyone.utils.sharp import AppleSharpModelConfig
 
-        config = AppleSharpModelConfig({
-            "focal_length_mm": 35.0,
-            "output_dir": "/custom/path",
-        })
+        config = AppleSharpModelConfig(
+            {
+                "focal_length_mm": 35.0,
+                "output_dir": "/custom/path",
+            }
+        )
 
         assert config.focal_length_mm == 35.0
         assert config.output_dir == "/custom/path"
@@ -259,9 +275,9 @@ class TestAppleSharpExportGaussians:
         from unittest.mock import patch
         import fiftyone.core.labels as fol
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
-                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
-                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), patch(
+            "fiftyone.utils.sharp.fo3d.Scene.write"
+        ):
             model = self._make_model(str(tmp_path))
             result = model._export_gaussians(None, 1000.0, 1080, 1920)
 
@@ -271,23 +287,24 @@ class TestAppleSharpExportGaussians:
         """Test result has splat_path attribute."""
         from unittest.mock import patch
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
-                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
-                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), patch(
+            "fiftyone.utils.sharp.fo3d.Scene.write"
+        ):
             model = self._make_model(str(tmp_path))
             result = model._export_gaussians(None, 1000.0, 1080, 1920)
 
         assert hasattr(result, "splat_path")
-        assert result.splat_path is not None
-        assert result.splat_path.endswith(".ply")
+        splat_path = result.get_field("splat_path")
+        assert splat_path is not None
+        assert splat_path.endswith(".ply")
 
     def test_export_label_value(self, tmp_path):
         """Test label is '3d_gaussians'."""
         from unittest.mock import patch
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
-                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
-                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), patch(
+            "fiftyone.utils.sharp.fo3d.Scene.write"
+        ):
             model = self._make_model(str(tmp_path))
             result = model._export_gaussians(None, 1000.0, 1080, 1920)
 
@@ -297,14 +314,16 @@ class TestAppleSharpExportGaussians:
         """Test multiple exports produce unique paths."""
         from unittest.mock import patch
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
-                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
-                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), patch(
+            "fiftyone.utils.sharp.fo3d.Scene.write"
+        ):
             model = self._make_model(str(tmp_path))
             result1 = model._export_gaussians(None, 1000.0, 1080, 1920)
             result2 = model._export_gaussians(None, 1000.0, 1080, 1920)
 
-        assert result1.splat_path != result2.splat_path
+        assert result1.get_field("splat_path") != result2.get_field(
+            "splat_path"
+        )
 
     def test_export_path_in_output_dir(self, tmp_path):
         """Test splat file is created in output_dir."""
@@ -314,13 +333,31 @@ class TestAppleSharpExportGaussians:
         output_dir = str(tmp_path / "splats")
         os.makedirs(output_dir)
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
-                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
-                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), patch(
+            "fiftyone.utils.sharp.fo3d.Scene.write"
+        ):
             model = self._make_model(output_dir)
             result = model._export_gaussians(None, 1000.0, 1080, 1920)
 
-        assert result.splat_path.startswith(output_dir)
+        assert result.get_field("splat_path").startswith(output_dir)
+
+    def test_export_scene_uses_gaussian_splat(self, tmp_path):
+        """Test exported scene points at the raw Gaussian splat asset."""
+        from unittest.mock import patch
+
+        model = self._make_model(str(tmp_path))
+
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), patch(
+            "fiftyone.utils.sharp.fo3d.Scene.write"
+        ), patch("fiftyone.utils.sharp.fo3d.GaussianSplat") as gaussian_splat:
+            model._export_gaussians(None, 1000.0, 1080, 1920)
+
+        gaussian_splat.assert_called_once()
+        _, args, kwargs = gaussian_splat.mock_calls[0]
+        assert args[0] == "gaussians"
+        assert args[1].startswith("splat_")
+        assert args[1].endswith(".ply")
+        assert kwargs == {"format": "ply", "center_geometry": True}
 
 
 class TestAppleSharpPredictAll:
@@ -359,12 +396,13 @@ class TestAppleSharpPredictAll:
 
         img = Image.new("RGB", (640, 480), color=(128, 128, 128))
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
-                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
-                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
-            with patch("fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
-                       return_value=torch.zeros(100, 14)):
-                result = model._predict_all(img)
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), patch(
+            "fiftyone.utils.sharp.fo3d.Scene.write"
+        ), patch(
+            "fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
+            return_value=torch.zeros(100, 14),
+        ):
+            result = model._predict_all(img)
 
         assert len(result) == 1
         assert isinstance(result[0], fol.Classification)
@@ -385,12 +423,13 @@ class TestAppleSharpPredictAll:
             Image.new("RGB", (1024, 768), color=(0, 0, 255)),
         ]
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
-                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
-                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
-            with patch("fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
-                       return_value=torch.zeros(100, 14)):
-                result = model._predict_all(imgs)
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), patch(
+            "fiftyone.utils.sharp.fo3d.Scene.write"
+        ), patch(
+            "fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
+            return_value=torch.zeros(100, 14),
+        ):
+            result = model._predict_all(imgs)
 
         assert len(result) == 3
         for r in result:
@@ -405,14 +444,13 @@ class TestAppleSharpPredictAll:
         model._model = MagicMock(return_value=torch.zeros(1, 100, 14))
         imgs = torch.randint(0, 255, (2, 3, 480, 640), dtype=torch.uint8)
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
-                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
-                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
-            with patch(
-                "fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
-                return_value=torch.zeros(100, 14),
-            ):
-                result = model._predict_all(imgs)
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), patch(
+            "fiftyone.utils.sharp.fo3d.Scene.write"
+        ), patch(
+            "fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
+            return_value=torch.zeros(100, 14),
+        ):
+            result = model._predict_all(imgs)
 
         assert len(result) == 2
 
@@ -426,14 +464,13 @@ class TestAppleSharpPredictAll:
         model._model = MagicMock(return_value=torch.zeros(1, 100, 14))
         imgs = np.random.randint(0, 255, (2, 480, 640, 3), dtype=np.uint8)
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
-                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
-                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
-            with patch(
-                "fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
-                return_value=torch.zeros(100, 14),
-            ):
-                result = model._predict_all(imgs)
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), patch(
+            "fiftyone.utils.sharp.fo3d.Scene.write"
+        ), patch(
+            "fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
+            return_value=torch.zeros(100, 14),
+        ):
+            result = model._predict_all(imgs)
 
         assert len(result) == 2
 
@@ -449,16 +486,43 @@ class TestAppleSharpPredictAll:
 
         img = Image.new("RGB", (640, 480), color=(100, 100, 100))
 
-        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), \
-                 patch("fiftyone.utils.sharp.AppleSharpModel._splat_to_pointcloud"), \
-                 patch("fiftyone.utils.sharp.fo3d.Scene.write"):
-            with patch("fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
-                       return_value=torch.zeros(100, 14)):
-                result = model._predict_all([img])
+        with patch("fiftyone.utils.sharp.sharp_utils.save_ply"), patch(
+            "fiftyone.utils.sharp.fo3d.Scene.write"
+        ), patch(
+            "fiftyone.utils.sharp.sharp_utils.unproject_gaussians",
+            return_value=torch.zeros(100, 14),
+        ):
+            result = model._predict_all([img])
 
         assert isinstance(result[0], fol.Classification)
         assert result[0].label == "3d_gaussians"
         assert hasattr(result[0], "splat_path")
+
+
+class TestEnsureSharp:
+    """Verify _ensure_sharp wires fou.{ensure,install}_package correctly."""
+
+    def test_installs_when_missing(self):
+        from fiftyone.utils.sharp import _ensure_sharp, _SHARP_REQ
+
+        with _mock.patch(
+            "fiftyone.utils.sharp.fou.ensure_package", return_value=False
+        ) as ep, _mock.patch("fiftyone.utils.sharp.fou.install_package") as ip:
+            _ensure_sharp()
+
+        ep.assert_called_once_with(_SHARP_REQ, error_level=2)
+        ip.assert_called_once_with(_SHARP_REQ)
+
+    def test_skips_when_already_installed(self):
+        from fiftyone.utils.sharp import _ensure_sharp, _SHARP_REQ
+
+        with _mock.patch(
+            "fiftyone.utils.sharp.fou.ensure_package", return_value=True
+        ) as ep, _mock.patch("fiftyone.utils.sharp.fou.install_package") as ip:
+            _ensure_sharp()
+
+        ep.assert_called_once_with(_SHARP_REQ, error_level=2)
+        ip.assert_not_called()
 
 
 if __name__ == "__main__":

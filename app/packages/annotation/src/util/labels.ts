@@ -119,7 +119,7 @@ export const getFieldSchema = (schema: Schema, path: string): Field | null => {
  */
 const getFieldSchemaHelper = (
   field: Field,
-  pathParts: string[]
+  pathParts: string[],
 ): Field | null => {
   if (!field) {
     return null;

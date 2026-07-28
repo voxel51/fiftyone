@@ -254,7 +254,10 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
     original_fields = fields
     is_scalar = etau.is_str(fields)
     all_fields = foau.list_valid_annotation_fields(
-        sample_collection, require_app_support=True, flatten=True
+        sample_collection,
+        require_app_support=True,
+        flatten=True,
+        include_frames=True,
     )
     if is_scalar:
         fields = [fields]
@@ -277,6 +280,12 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
             sample_collection,
             label_schema,
             fields=field_name,
+        )
+
+        # Regeneration builds a fresh schema from sample data, which loses
+        # the user-set ``applied_ontology`` reference; carry it forward.
+        label_schema = _preserve_applied_ontology(
+            sample_collection, field_name, label_schema
         )
 
         if is_scalar:
@@ -364,9 +373,23 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
             # [0, 1] floats, omit for special handling by the App
             continue
 
-        if f.name == foac.POINTS and field.document_type == fol.Polyline:
+        if f.name == foac.POINTS and field.document_type in (
+            fol.Polyline,
+            fol.Keypoint,
+        ):
             # points is a list of (x, y) or (x, y, z) coordinate lists that
-            # define the polyline shape, omit for special handling by the App
+            # define the polyline/keypoint shape, omit for special handling by
+            # the App
+            continue
+
+        if (
+            f.name == "support"
+            and field.document_type is fol.TemporalDetection
+        ):
+            # support is a FrameSupportField ([first, last]); user-provided
+            # schemas configure `first`/`last` as int attributes if desired,
+            # and the sidebar form translates the `[first, last]` range at
+            # the form boundary.
             continue
 
         try:
@@ -414,6 +437,22 @@ def _handle_float_or_int(
         settings[foac.RANGE] = [mn, mx]
 
     return settings
+
+
+def _preserve_applied_ontology(
+    sample_collection, field_name: str, label_schema: dict
+) -> dict:
+    # Carries a stored applied_ontology reference through regeneration.
+    # Dangling references are not re-validated here; the next save handles it.
+    stored_field_schema = (
+        sample_collection._dataset._doc.get_stored_label_schema(field_name)
+        or {}
+    )
+    applied_ontology = stored_field_schema.get(foac.APPLIED_ONTOLOGY)
+    if applied_ontology is not None:
+        label_schema[foac.APPLIED_ONTOLOGY] = applied_ontology
+
+    return label_schema
 
 
 def _handle_str(collection, field_name, is_list, settings, scan_samples):

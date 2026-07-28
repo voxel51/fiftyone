@@ -1,0 +1,102 @@
+import { Text, TextColor, TextVariant } from "@voxel51/voodo";
+import { AnnotationSaveIndicator } from "@fiftyone/annotation";
+import { EntryKind, isGeneratedView } from "@fiftyone/state";
+import { useRecoilValue } from "recoil";
+import styled from "styled-components";
+import Sidebar from "../../../Sidebar";
+import { useAnnotationContext } from "./Edit/useAnnotationContext";
+import GroupEntry from "./GroupEntry";
+import LabelEntry from "./LabelEntry";
+import LoadingEntry from "./LoadingEntry";
+import PrimitiveEntry from "./PrimitiveEntry";
+import useEntries from "./useEntries";
+import { usePrimitivesCount } from "./usePrimitivesCount";
+
+const EmptyLabelsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem 1rem;
+  gap: 0.5rem;
+`;
+
+export default function AnnotateSidebar() {
+  usePrimitivesCount();
+  const isEditingValue = useAnnotationContext().isEditing;
+  const isGenerated = useRecoilValue(isGeneratedView);
+
+  // Don't show label list in edit mode or in generated views (patches/clips/frames)
+  // In generated views, only the edit panel should be visible
+  if (isEditingValue || isGenerated) return null;
+
+  const headerStyle = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginInline: "1rem",
+    paddingBottom: "0.5rem",
+  };
+
+  return (
+    <>
+      <div style={headerStyle}>
+        <Text variant={TextVariant.Lg} color={TextColor.Primary}>
+          Edit
+        </Text>
+        <AnnotationSaveIndicator />
+      </div>
+      <Sidebar
+        isDisabled={() => true}
+        render={(_key, _group, entry) => {
+          if (entry.kind === EntryKind.GROUP) {
+            return { children: <GroupEntry name={entry.name} /> };
+          }
+
+          if (entry.kind === EntryKind.LABEL) {
+            const { id, path, frame } = entry;
+            return {
+              children: <LabelEntry id={id} path={path} frame={frame} />,
+              disabled: true,
+            };
+          }
+
+          if (entry.kind === EntryKind.EMPTY_ANNOTATIONS) {
+            return {
+              children: (
+                <EmptyLabelsContainer>
+                  <Text variant={TextVariant.Lg}>No labels to annotate</Text>
+                  <Text
+                    color={TextColor.Secondary}
+                    variant={TextVariant.Md}
+                    style={{ textAlign: "center" }}
+                  >
+                    Check that your fields are enabled on Explore.
+                  </Text>
+                </EmptyLabelsContainer>
+              ),
+              disabled: true,
+            };
+          }
+
+          if (entry.kind === EntryKind.LOADING) {
+            return {
+              children: <LoadingEntry />,
+              disabled: true,
+            };
+          }
+
+          if (entry.kind === EntryKind.PATH) {
+            return {
+              children: <PrimitiveEntry path={entry.path} />,
+              disabled: false,
+            };
+          }
+
+          throw new Error("unexpected");
+        }}
+        useEntries={useEntries}
+        modal={true}
+      />
+    </>
+  );
+}

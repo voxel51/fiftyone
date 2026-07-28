@@ -1,0 +1,148 @@
+syntax = "proto3";
+
+package fiftyone.multimodal.schemas.v1;
+
+// Encoded payload identity shared by source inventories and decode planners.
+message PayloadDescriptor {
+  // Encoding or codec used by the payload bytes.
+  string encoding = 1;
+
+  // Optional upstream schema, message, or logical type identifier.
+  optional string schema = 2;
+
+  // Optional encoding used by the schema descriptor itself.
+  optional string schema_encoding = 3;
+}
+
+// Physical interpretation of values on a time track.
+enum TimeTrackType {
+  // No physical interpretation has been declared.
+  TIME_TRACK_TYPE_UNSPECIFIED = 0;
+
+  // Unitless integer positions with no clock semantics.
+  // Use case: frame numbers, row indexes, sample indexes, or event counters.
+  TIME_TRACK_TYPE_SEQUENCE = 1;
+
+  // Elapsed nanoseconds relative to a source or scene origin.
+  // Use case: session time, media presentation time, or episode-relative time.
+  TIME_TRACK_TYPE_DURATION_NS = 2;
+
+  // Absolute Unix epoch nanoseconds.
+  // Use case: wall-clock capture, publish, or record times across sources.
+  TIME_TRACK_TYPE_TIMESTAMP_NS = 3;
+}
+
+// Semantic role a time track plays in playback and synchronization.
+enum TimeTrackRole {
+  // No semantic role has been declared. Unknown provenance.
+  TIME_TRACK_ROLE_UNSPECIFIED = 0;
+
+  // Time when a container or sink recorded a payload.
+  TIME_TRACK_ROLE_LOG_TIME = 1;
+
+  // Time when a producer emitted or published a record.
+  TIME_TRACK_ROLE_PUBLISH_TIME = 2;
+
+  // Time when a sensor or producer captured the measurement.
+  TIME_TRACK_ROLE_CAPTURE_TIME = 3;
+
+  // Ordinal sample position rather than a measured time.
+  // Use case: datasets or episodes whose natural clock is row or frame index.
+  TIME_TRACK_ROLE_SAMPLE_INDEX = 4;
+}
+
+// Whether time-track values are known to be ordered in their declared scope.
+enum TimeSortOrder {
+  // No ordering contract has been declared.
+  TIME_SORT_ORDER_UNSPECIFIED = 0;
+
+  // The adapter did not verify ordering.
+  // Avoid assuming binary search or streaming cursor safety.
+  TIME_SORT_ORDER_UNKNOWN = 1;
+
+  // Values never decrease (but may stay constant) within the declared scope.
+  // Allows efficient seeking and range queries.
+  TIME_SORT_ORDER_MONOTONIC = 2;
+
+  // Values may move backward within the declared scope.
+  // Scan, index, or sort before exact seeking or range filtering.
+  TIME_SORT_ORDER_UNSORTED = 3;
+}
+
+// Scope over which TimeSortOrder applies.
+enum TimeSortScope {
+  // No ordering scope has been declared.
+  TIME_SORT_SCOPE_UNSPECIFIED = 0;
+
+  // Ordering applies across the entire scene.
+  // Use case: global clocks and global sample indexes.
+  TIME_SORT_SCOPE_SCENE = 1;
+
+  // Ordering applies independently within each stream.
+  // Use case: camera, lidar, audio, telemetry, and annotation streams.
+  TIME_SORT_SCOPE_STREAM = 2;
+
+  // Ordering applies only within each segment or shard.
+  // Use case: chunked logs, parquet row groups, files, or episode partitions.
+  TIME_SORT_SCOPE_SEGMENT = 3;
+}
+
+// Range of values on a time track. The active TimeTrack.type determines
+// whether values are sequence numbers, duration nanoseconds, or epoch
+// timestamp nanoseconds.
+message TimeValueRange {
+  // Inclusive lower bound.
+  int64 start = 1 [jstype = JS_STRING];
+
+  // Optional exclusive upper bound.
+  optional int64 end = 2 [jstype = JS_STRING];
+}
+
+// Named time axis discovered during ingest and reused by playback planning.
+message TimeTrack {
+  // Stable identifier referenced by inventories, clocks, streams, and panels.
+  string time_track_id = 1;
+
+  // Physical value type carried by this track.
+  TimeTrackType type = 2;
+
+  // Semantic meaning of this track.
+  TimeTrackRole role = 3;
+
+  // Human-readable label for UI controls.
+  string display_name = 4;
+
+  // Adapter-native path or column name, such as "log_time", "header.stamp",
+  // or "row_index". This is provenance only; clients should reference
+  // time_track_id for playback behavior.
+  optional string source_path = 5;
+
+  // Stream that owns this track when the track is stream-local. Omitted for
+  // scene-wide tracks.
+  optional string stream_id = 6;
+
+  // Value bounds for this track.
+  TimeValueRange value_range = 7;
+
+  // How values are ordered within sort_scope.
+  TimeSortOrder sort_order = 8;
+
+  // Scope over which sort_order was evaluated.
+  TimeSortScope sort_scope = 9;
+
+  // Adapter-provided metadata that does not affect playback semantics.
+  map<string, string> metadata = 10;
+}
+
+// Deterministic source identity for caching and idempotent ingest.
+message SourceFingerprint {
+  // Source size in bytes.
+  uint64 size_bytes = 1 [jstype = JS_STRING];
+
+  // Optional first-chunk CRC. Some sources are not file-backed or are too
+  // expensive to spot-check, so adapters may omit these fields.
+  optional uint32 first_chunk_crc = 2;
+
+  // Optional last-chunk CRC. See first_chunk_crc for why this may be omitted.
+  optional uint32 last_chunk_crc = 3;
+}

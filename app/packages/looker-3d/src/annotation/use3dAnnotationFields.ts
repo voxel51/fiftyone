@@ -24,7 +24,7 @@ export const use3dAnnotationFields = (predicate: FieldPredicate): string[] => {
         const fieldType = (fieldTypesVal[field] ?? "").toLocaleLowerCase();
         return predicate(fieldType);
       }),
-    [activeSchema, fieldTypesVal, predicate]
+    [activeSchema, fieldTypesVal, predicate],
   );
 
   return fields;

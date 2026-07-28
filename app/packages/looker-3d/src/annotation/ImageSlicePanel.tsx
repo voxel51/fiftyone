@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import styled from "styled-components";
+import type { Vector3 } from "three";
 import { PANEL_ID_SIDE_TOP, VIEW_TYPE_LEFT, VIEW_TYPE_TOP } from "../constants";
 import { useFetchFrustumParameters } from "../frustum/hooks/internal/useFetchFrustumParameters";
 import type { SidePanelId, SidePanelViewType } from "../types";
@@ -24,7 +25,7 @@ const ImageSliceImg = styled.img`
 `;
 
 // Image slice prefix to distinguish them from cardinal views
-const IMAGE_SLICE_PREFIX = "slice_";
+export const IMAGE_SLICE_PREFIX = "slice_";
 
 /**
  * Check if a view string represents an image slice (prefixed with "slice_")
@@ -46,7 +47,9 @@ export const encodeImageSliceView = (sliceName: string): string => {
  * Example: "slice_camera_01" -> "camera_01"
  * Returns null if the view is not an image slice.
  */
-const decodeImageSliceView = (view: SidePanelViewType): string | null => {
+export const decodeImageSliceView = (
+  view: SidePanelViewType,
+): string | null => {
   if (!isImageSliceView(view)) {
     return null;
   }
@@ -58,7 +61,7 @@ const decodeImageSliceView = (view: SidePanelViewType): string | null => {
  */
 const isImageSliceAvailable = (
   view: SidePanelViewType,
-  availableSlices: string[]
+  availableSlices: string[],
 ): boolean => {
   const sliceName = decodeImageSliceView(view);
   if (!sliceName) {
@@ -82,6 +85,7 @@ export interface ImageSlicePanelProps {
   imageSlices: string[];
   isLoadingImageSlices: boolean;
   resolveUrlForImageSlice: (sliceName: string) => string | null;
+  upVector?: Vector3 | null;
 }
 
 /**
@@ -97,6 +101,7 @@ export const ImageSlicePanel = ({
   imageSlices,
   isLoadingImageSlices,
   resolveUrlForImageSlice,
+  upVector,
 }: ImageSlicePanelProps) => {
   const { data: frustumData } = useFetchFrustumParameters();
 
@@ -129,7 +134,7 @@ export const ImageSlicePanel = ({
         const defaultView = getDefaultViewForPanel(panelId);
         console.warn(
           `Image slice view "${view}" is no longer available. Falling back to "${defaultView}" view.`,
-          { view, availableSlices: imageSlices }
+          { view, availableSlices: imageSlices },
         );
         setView(defaultView);
         return;
@@ -151,7 +156,11 @@ export const ImageSlicePanel = ({
     <ImageSliceContainer>
       <ImageSliceImg src={imageUrl} />
       {activeFrustum && (
-        <Projected3dOverlays frustumData={activeFrustum} panelId={panelId} />
+        <Projected3dOverlays
+          frustumData={activeFrustum}
+          panelId={panelId}
+          upVector={upVector}
+        />
       )}
     </ImageSliceContainer>
   );

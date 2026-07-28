@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import {
   colorSchemeFragment,
   type colorSchemeFragment$key,
@@ -31,9 +35,9 @@ const onSetColorScheme: RegisteredSetter =
           ensureColorScheme(
             readFragment<colorSchemeFragment$key>(
               colorSchemeFragment,
-              colorScheme.setColorScheme
-            )
-          )
+              colorScheme.setColorScheme,
+            ),
+          ),
         );
       },
     });

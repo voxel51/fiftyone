@@ -1,6 +1,6 @@
-export { OPERATOR_PROMPT_AREAS } from "./constants";
+export { OPERATOR_PROMPT_AREAS, RiskLevel } from "./constants";
 export { useFirstExistingUri } from "./hooks";
-export { useOperators } from "./loader";
+export { useOperators, useRefreshOperators } from "./loader";
 export { default as OperatorBrowser } from "./OperatorBrowser";
 export { default as OperatorCore } from "./OperatorCore";
 export { default as OperatorInvocationRequestExecutor } from "./OperatorInvocationRequestExecutor";
@@ -26,6 +26,7 @@ export {
   useOperatorBrowser,
   useOperatorExecutor,
   useOperatorPlacements,
+  usePromptOperatorInput,
 } from "./state";
 export * as types from "./types";
 export {

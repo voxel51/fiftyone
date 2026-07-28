@@ -24,14 +24,14 @@ export const usePointCloudHoverFromRaycast = ({
 }: UsePointCloudHoverFromRaycastProps) => {
   const { pointCloudSettings, setHoverMetadata } = useFo3dContext();
   const [currentHoveredPoint, setCurrentHoveredPoint] = useRecoilState(
-    currentHoveredPointAtom
+    currentHoveredPointAtom,
   );
   const raycastResult = useRaycastResult();
 
   const lastProcessedTimestampRef = useRef<number>(0);
   const isActiveHoverSourceRef = useRef<boolean>(false);
 
-  // This effect processes raycast result when it changes
+  // This effect maps the latest raycast hit to hovered point metadata.
   useEffect(() => {
     if (!pointCloudSettings.enableTooltip) {
       return;
@@ -102,7 +102,7 @@ export const usePointCloudHoverFromRaycast = ({
     shadingMode,
   ]);
 
-  // This effect cleans up marker on unmount
+  // This effect clears hover state when the hook unmounts.
   useEffect(() => {
     return () => {
       if (isActiveHoverSourceRef.current) {

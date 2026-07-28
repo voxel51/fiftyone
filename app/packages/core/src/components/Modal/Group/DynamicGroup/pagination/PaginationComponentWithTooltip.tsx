@@ -17,7 +17,7 @@ export const PaginationComponentWithTooltip = React.memo(
         isButton: boolean;
         orderByValue?: string | number | boolean;
       },
-      ref: React.Ref<HTMLDivElement>
+      ref: React.Ref<HTMLDivElement>,
     ) => {
       const { orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
 
@@ -46,6 +46,6 @@ export const PaginationComponentWithTooltip = React.memo(
       }
 
       return <div ref={ref} {...props} />;
-    }
-  )
+    },
+  ),
 );

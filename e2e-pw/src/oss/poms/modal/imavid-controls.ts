@@ -25,7 +25,7 @@ export class ModalImaAsVideoControlsPom {
     this.optionsPanel = this.controls.getByTestId("looker-options-panel");
     this.playPauseButton = this.controls.getByTestId("imavid-playhead");
     this.settingsButton = this.lookerControls.getByTestId(
-      "looker-controls-settings"
+      "looker-controls-settings",
     );
     this.speedButton = this.controls.getByTestId("imavid-speed");
     this.time = this.modal.locator.getByTestId("imavid-status-indicator");
@@ -44,15 +44,15 @@ export class ModalImaAsVideoControlsPom {
       () =>
         document
           .querySelector("[data-cy=imavid-playhead]")
-          ?.getAttribute("data-playhead-state") !== "buffering"
+          ?.getAttribute("data-playhead-state") !== "buffering",
     );
   }
 
-  private async togglePlay() {
+  public async togglePlay() {
     await this.waitUntilBufferingIsFinished();
 
     let currentPlayHeadStatus = await this.playPauseButton.getAttribute(
-      "data-playhead-state"
+      "data-playhead-state",
     );
 
     const original = currentPlayHeadStatus;
@@ -61,7 +61,7 @@ export class ModalImaAsVideoControlsPom {
     while (currentPlayHeadStatus === original) {
       await this.playPauseButton.click();
       currentPlayHeadStatus = await this.playPauseButton.getAttribute(
-        "data-playhead-state"
+        "data-playhead-state",
       );
     }
   }
@@ -78,14 +78,14 @@ export class ModalImaAsVideoControlsPom {
     await this.page.waitForFunction(
       ({ frameText_, matchBeginning_ }) => {
         const frameTextDom = document.querySelector(
-          `[data-cy=imavid-status-indicator]`
+          `[data-cy=imavid-status-indicator]`,
         )?.textContent;
         if (matchBeginning_) {
           return frameTextDom?.startsWith(frameText_);
         }
         return frameTextDom === frameText_;
       },
-      { frameText_: frameText, matchBeginning_: matchBeginning }
+      { frameText_: frameText, matchBeginning_: matchBeginning },
     );
   }
 
@@ -118,7 +118,7 @@ export class ModalImaAsVideoControlsPom {
 
   async setLooping(isLooping: boolean) {
     const loopLabel = this.modal.locator.getByTestId(
-      "looker-checkbox-Loop video"
+      "looker-checkbox-Loop video",
     );
     const loopInput = loopLabel.getByTestId("looker-checkbox-input-Loop video");
 
@@ -146,19 +146,19 @@ export class ModalImaAsVideoControlsPom {
       case "low":
         await this.page.mouse.click(
           sliderBoundingBox.x + sliderWidth * 0.15,
-          sliderBoundingBox.y
+          sliderBoundingBox.y,
         );
         break;
       case "middle":
         await this.page.mouse.click(
           sliderBoundingBox.x + sliderWidth * 0.5,
-          sliderBoundingBox.y
+          sliderBoundingBox.y,
         );
         break;
       case "high":
         await this.page.mouse.click(
           sliderBoundingBox.x + sliderWidth * 0.95,
-          sliderBoundingBox.y
+          sliderBoundingBox.y,
         );
         break;
     }

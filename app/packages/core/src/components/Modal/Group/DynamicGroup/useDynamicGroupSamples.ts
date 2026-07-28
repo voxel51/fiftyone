@@ -9,7 +9,7 @@ export const useDynamicGroupSamples = () => {
   const slice = useRecoilValue(fos.groupSlice);
   const modalSlice = useRecoilValue(fos.modalGroupSlice);
   const view = useRecoilValue(fos.view);
-  const dynamicGroup = useRecoilValue(fos.groupByFieldValue);
+  const dynamicGroup = fos.useGroupByFieldValue();
   const dataset = useRecoilValue(fos.datasetName);
   const dynamicGroupIndex = useRecoilValue(fos.dynamicGroupIndex);
   const shouldRenderImavid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
@@ -18,7 +18,7 @@ export const useDynamicGroupSamples = () => {
     // slice is how the group was accessed, i.e. from the grid
     // modalSlice is the currently selected modal slice
     () => (slice ? { group: { slice, slices: [modalSlice] } } : {}),
-    [slice, modalSlice]
+    [slice, modalSlice],
   );
   const loadDynamicGroupSamples = useCallback(
     (cursor?: number) => {
@@ -31,6 +31,12 @@ export const useDynamicGroupSamples = () => {
         return null;
       }
 
+      // group key hasn't settled (undefined) or is transiently null while
+      // modal group state initializes — skip the query
+      if (dynamicGroup == null) {
+        return null;
+      }
+
       return loadQuery<foq.paginateSamplesQuery>(
         environment,
         foq.paginateSamples,
@@ -40,15 +46,15 @@ export const useDynamicGroupSamples = () => {
           filter,
           dynamicGroup,
           view,
-        }
+        },
       );
     },
-    [dataset, dynamicGroup, environment, filter, shouldRenderImavid, view]
+    [dataset, dynamicGroup, environment, filter, shouldRenderImavid, view],
   );
 
   const queryRef = useMemo(
     () => loadDynamicGroupSamples(dynamicGroupIndex),
-    [loadDynamicGroupSamples, dynamicGroupIndex]
+    [loadDynamicGroupSamples, dynamicGroupIndex],
   );
 
   return {

@@ -6,9 +6,34 @@ FiftyOne operators.
 |
 """
 
-from .types import PromptView
+from typing import Union
+from .types import PromptView, RiskLevel
 
 BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"
+
+
+def _normalize_risk_level(
+    risk_level: Union[str, RiskLevel, None],
+) -> RiskLevel:
+    if risk_level is None:
+        return RiskLevel.DANGEROUS
+
+    if isinstance(risk_level, str):
+        try:
+            return RiskLevel[risk_level.upper()]
+        except KeyError as err:
+            raise ValueError(
+                "Invalid risk level '%s'. Valid values are: %s"
+                % (risk_level, [r.value for r in RiskLevel])
+            ) from err
+
+    if not isinstance(risk_level, RiskLevel):
+        raise ValueError(
+            "Invalid risk level '%s'. Must be a string or RiskLevel enum."
+            % risk_level
+        )
+
+    return risk_level
 
 
 class OperatorConfig(object):
@@ -46,6 +71,10 @@ class OperatorConfig(object):
         allow_distributed_execution (False): whether the operator supports
             distributing delegated execution across parallel workers.
         rerunnable (True): whether the operator can be re-run
+        risk_level (RiskLevel.DANGEROUS): the declared :class:`RiskLevel` for
+            this operator is mainly used by guardrail systems of an agent to
+            classify tool calls. If ``None``, the operator defaults to
+            :attr:`RiskLevel.DANGEROUS`
     """
 
     def __init__(
@@ -69,6 +98,7 @@ class OperatorConfig(object):
         resolve_execution_options_on_change=None,
         allow_distributed_execution=False,  # Enterprise only
         rerunnable=True,
+        risk_level=RiskLevel.DANGEROUS,
         **kwargs
     ):
         self.name = name
@@ -89,6 +119,7 @@ class OperatorConfig(object):
         self.default_choice_to_delegated = default_choice_to_delegated
         self.allow_distributed_execution = False  # Enterprise only
         self.rerunnable = rerunnable
+        self._risk_level = _normalize_risk_level(risk_level)
         if resolve_execution_options_on_change is None:
             self.resolve_execution_options_on_change = dynamic
         else:
@@ -96,6 +127,11 @@ class OperatorConfig(object):
                 resolve_execution_options_on_change
             )
         self.kwargs = kwargs  # unused, placeholder for future extensibility
+
+    @property
+    def risk_level(self):
+        """The declared :class:`RiskLevel` for this operator."""
+        return self._risk_level
 
     def to_json(self):
         return {
@@ -118,6 +154,7 @@ class OperatorConfig(object):
             "default_choice_to_delegated": self.default_choice_to_delegated,
             "resolve_execution_options_on_change": self.resolve_execution_options_on_change,
             "allow_distributed_execution": self.allow_distributed_execution,
+            "risk_level": self.risk_level.value,
         }
 
 
@@ -158,6 +195,12 @@ class Operator(object):
     def config(self):
         """The :class:`OperatorConfig` for the operator."""
         raise NotImplementedError("subclass must implement config")
+
+    @property
+    def risk_level(self):
+        """The effective risk level of the operator, which is used by guardrail
+        systems of an agent to classify tool calls."""
+        return self.config.risk_level
 
     def resolve_delegation(self, ctx):
         """Returns the resolved *forced* delegation flag.

@@ -18,6 +18,7 @@ import os
 import random
 import string
 from datetime import datetime
+from typing import Optional
 
 import cachetools
 import eta.core.serial as etas
@@ -53,9 +54,11 @@ fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 food = fou.lazy_import("fiftyone.operators.delegated")
 foos = fou.lazy_import("fiftyone.operators.store")
+fota = fou.lazy_import("fiftyone.core.tags")
 
 
 _SUMMARY_FIELD_KEY = "_summary_field"
+_AUTO_TRANSFORMATION_MAX_INTERMEDIATES = 2
 
 logger = logging.getLogger(__name__)
 
@@ -344,6 +347,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if not _virtual:
             self._update_last_loaded_at()
 
+        if doc.media_type:
+            self._configure_media_type(doc.media_type)
+
     def __eq__(self, other):
         return type(other) == type(self) and self.name == other.name
 
@@ -469,15 +475,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self._contains_videos(any_slice=True):
             self._init_frames()
 
+        should_reload = self._configure_media_type(media_type)
+        self.save()
+        if should_reload:
+            self.reload()
+
+    def _configure_media_type(self, media_type):
+        """
+        Return:
+            True/False whether when a save is done a reload should also be done
+        """
+        self._doc.media_type = media_type
+
+        if self._contains_videos(any_slice=True):
+            self._init_frames()
+
         if media_type == fom.GROUP:
             # The `metadata` field of group datasets always stays as the
             # generic `Metadata` type because slices may have different types
-            self.save()
+            return False
         else:
             self._update_metadata_field(media_type)
-
-            self.save()
-            self.reload()
+            return True
 
     def _update_metadata_field(self, media_type):
         idx = None
@@ -1366,18 +1385,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Try to infer from group slice
         if self.media_type == fom.GROUP:
-            group = None
-            if self.group_field is not None:
-                group = getattr(sample, self.group_field, None)
-            if group is None and self.group_field == "group":
-                group = getattr(sample, "group", None)
-
-            if group is not None:
-                try:
-                    slice_name = group.name
-                    return intrinsics_map.get(slice_name)
-                except (AttributeError, KeyError):
-                    pass
+            slice_name = fog.get_group_slice_name(sample, self.group_field)
+            if slice_name is not None:
+                return intrinsics_map.get(slice_name)
 
         return None
 
@@ -1403,6 +1413,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             4. If ``chain_via`` is provided and no direct match is found,
                chain transforms through the intermediate frames
+
+            5. If no direct match is found, ``chain_via`` is not provided,
+               and ``target_frame`` is ``"world"``, attempt automatic chaining
+               through a bounded number of intermediate frames (default 2).
+               This is only used when exactly one valid path exists
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
@@ -1438,21 +1453,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # Try to infer source_frame from group slice if not provided
         if source_frame is None:
             if self.media_type == fom.GROUP:
-                group = None
-                if self.group_field is not None:
-                    group = getattr(sample, self.group_field, None)
-                if group is None and self.group_field == "group":
-                    group = getattr(sample, "group", None)
+                source_frame = fog.get_group_slice_name(
+                    sample, self.group_field
+                )
 
-                if group is not None:
-                    try:
-                        source_frame = group.name
-                    except (AttributeError, KeyError):
-                        pass
+        direct_transforms = self._get_direct_transformations(
+            sample, transforms
+        )
 
         # Try direct resolution first
         result = self._resolve_transformation_direct(
-            sample, source_frame, target_frame, transforms
+            source_frame, target_frame, direct_transforms
         )
         if result is not None:
             return result
@@ -1460,64 +1471,182 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # If chain_via is provided, try chaining through intermediate frames
         if chain_via is not None and source_frame is not None:
             return self._resolve_transformation_chain(
-                sample, source_frame, target_frame, chain_via, transforms
+                source_frame, target_frame, chain_via, direct_transforms
+            )
+
+        # Auto-chain only for source -> world when no explicit chain is given
+        if (
+            chain_via is None
+            and source_frame is not None
+            and target_frame == focam.DEFAULT_TRANSFORM_TARGET_FRAME
+        ):
+            return self._resolve_transformation_auto_chain(
+                source_frame, target_frame, direct_transforms
             )
 
         return None
 
-    def _resolve_transformation_direct(
-        self, sample, source_frame, target_frame, transforms
-    ):
-        """Directly resolve transform without chaining."""
-        # Check for sample-level transforms by matching type
-        for _, value in sample.iter_fields():
-            if isinstance(value, list):
-                for item in value:
-                    if isinstance(
-                        item,
-                        (focam.StaticTransform, focam.StaticTransformRef),
-                    ):
-                        t = self._resolve_single_transformation(
-                            item, source_frame, target_frame
-                        )
-                        if t is not None:
-                            return t
-            elif isinstance(
-                value, (focam.StaticTransform, focam.StaticTransformRef)
-            ):
-                t = self._resolve_single_transformation(
-                    value, source_frame, target_frame
-                )
-                if t is not None:
-                    return t
+    def _get_direct_transformations(self, sample, transforms):
+        """Builds direct transforms keyed by ``(source_frame, target_frame)``."""
+        sample_transforms = {}
+        dataset_transforms = {}
+        world_shorthand = {}
 
+        def _add_transform(target, source_frame, target_frame, transform):
+            if source_frame is None:
+                return
+
+            if target_frame is None:
+                target_frame = focam.DEFAULT_TRANSFORM_TARGET_FRAME
+
+            target.setdefault((source_frame, target_frame), transform)
+
+        for _, value in sample.iter_fields():
+            values = value if isinstance(value, list) else (value,)
+            for item in values:
+                if isinstance(item, focam.StaticTransform):
+                    _add_transform(
+                        sample_transforms,
+                        item.source_frame,
+                        item.target_frame,
+                        item,
+                    )
+                elif isinstance(item, focam.StaticTransformRef):
+                    transform = transforms.get(item.ref, None)
+                    if transform is None:
+                        continue
+
+                    source_frame, target_frame = self._parse_transform_ref(
+                        item.ref
+                    )
+                    _add_transform(
+                        sample_transforms,
+                        source_frame,
+                        target_frame,
+                        transform,
+                    )
+
+        for key, transform in transforms.items():
+            source_frame, target_frame = self._parse_transform_ref(key)
+            entry_key = (source_frame, target_frame)
+
+            # Normalize implicit "source -> world" dataset entries so the
+            # returned transform object matches the normalized lookup key.
+            if (
+                isinstance(transform, focam.StaticTransform)
+                and transform.target_frame is None
+                and target_frame == focam.DEFAULT_TRANSFORM_TARGET_FRAME
+            ):
+                transform = copy.deepcopy(transform)
+                transform.target_frame = focam.DEFAULT_TRANSFORM_TARGET_FRAME
+
+            if "::" in key:
+                dataset_transforms[entry_key] = transform
+            else:
+                world_shorthand[entry_key] = transform
+
+        for entry_key, transform in world_shorthand.items():
+            # Preserve explicit "source::world" entries over shorthand
+            # "source" entries when both are present.
+            dataset_transforms.setdefault(entry_key, transform)
+
+        # Sample-level transforms win over dataset-level transforms.
+        dataset_transforms.update(sample_transforms)
+        return dataset_transforms
+
+    def _resolve_transformation_direct(
+        self, source_frame, target_frame, direct_transforms
+    ):
+        """Directly resolves a transform from the normalized direct map."""
         if source_frame is None:
             return None
 
-        # Look up in dataset-level transforms
-        key = f"{source_frame}::{target_frame}"
-        if key in transforms:
-            return transforms[key]
-
-        # Try without target frame (implies world)
-        if (
-            target_frame == focam.DEFAULT_TRANSFORM_TARGET_FRAME
-            and source_frame in transforms
-        ):
-            return transforms[source_frame]
-
-        return None
+        return direct_transforms.get((source_frame, target_frame), None)
 
     def _resolve_transformation_chain(
-        self, sample, source_frame, target_frame, chain_via, transforms
+        self, source_frame, target_frame, chain_via, direct_transforms
     ):
         """Resolve transform by chaining through intermediate frames."""
         frames = [source_frame] + list(chain_via) + [target_frame]
 
+        return self._resolve_transformation_chain_frames(
+            frames, direct_transforms
+        )
+
+    def _resolve_transformation_auto_chain(
+        self,
+        source_frame,
+        target_frame,
+        direct_transforms,
+        max_intermediates=None,
+    ):
+        """Resolve a unique source -> ... -> world chain automatically.
+
+        We use a deterministic DFS (depth-limited) over simple paths in the
+        direct-transform graph
+        """
+        if max_intermediates is None:
+            max_intermediates = _AUTO_TRANSFORMATION_MAX_INTERMEDIATES
+
+        if max_intermediates < 1:
+            return None
+
+        # Convert the normalized direct transforms into an adjacency list
+        adjacency = defaultdict(list)
+        for (src, tgt), transform in direct_transforms.items():
+            adjacency[src].append((tgt, transform))
+
+        for edges in adjacency.values():
+            edges.sort(key=lambda item: item[0])
+
+        max_hops = max_intermediates + 1
+        valid_path_count = 0
+        valid_transform = None
+        # Track the current path so our depth-limited DFS can both compose
+        # transforms in order and prevent revisiting frames within a
+        # candidate simple path.
+        pending = [([source_frame], None)]
+
+        while pending:
+            path, composed = pending.pop()
+            current = path[-1]
+            if current == target_frame:
+                # Direct source -> target resolution was already attempted
+                # before auto-chaining, so only count paths with at least one
+                # intermediate frame here
+                if len(path) > 2:
+                    valid_path_count += 1
+                    if valid_path_count == 1:
+                        valid_transform = composed
+                    else:
+                        # If more than one forward path works,
+                        # implicit chaining is ambiguous, so resolve nothing.
+                        return None
+
+                continue
+
+            if len(path) - 1 >= max_hops:
+                continue
+
+            for next_frame, transform in reversed(adjacency.get(current, ())):
+                if next_frame in path:
+                    continue
+
+                next_composed = (
+                    transform
+                    if composed is None
+                    else composed.compose(transform)
+                )
+                pending.append((path + [next_frame], next_composed))
+
+        return valid_transform
+
+    def _resolve_transformation_chain_frames(self, frames, direct_transforms):
+        """Resolve a transform by composing direct transforms in frame order."""
         result = None
         for src, tgt in zip(frames, frames[1:]):
             transform = self._resolve_transformation_direct(
-                sample, src, tgt, transforms
+                src, tgt, direct_transforms
             )
 
             if transform is None:
@@ -1530,37 +1659,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return result
 
-    def _resolve_single_transformation(
-        self, value, source_frame, target_frame
-    ):
-        """Helper to resolve a single transform value."""
-        transforms = self.static_transforms or {}
+    def _parse_transform_ref(self, ref):
+        """Parses frame names from 'source::target' or 'source' ref keys."""
+        parts = ref.split("::", 1)
+        source_frame = parts[0]
+        target_frame = (
+            parts[1]
+            if len(parts) > 1
+            else focam.DEFAULT_TRANSFORM_TARGET_FRAME
+        )
 
-        if isinstance(value, focam.StaticTransform):
-            val_target = (
-                value.target_frame or focam.DEFAULT_TRANSFORM_TARGET_FRAME
-            )
-            if (
-                value.source_frame == source_frame
-                and val_target == target_frame
-            ):
-                return value
-        elif isinstance(value, focam.StaticTransformRef):
-            # Look up the reference
-            ref_value = transforms.get(value.ref)
-            if ref_value is not None:
-                # Parse the ref to check frames
-                parts = value.ref.split("::", 1)
-                ref_source = parts[0]
-                ref_target = (
-                    parts[1]
-                    if len(parts) > 1
-                    else focam.DEFAULT_TRANSFORM_TARGET_FRAME
-                )
-                if ref_source == source_frame and ref_target == target_frame:
-                    return ref_value
-
-        return None
+        return source_frame, target_frame
 
     def get_transform_chain(
         self, source_frame, target_frame, intermediate_frames=None
@@ -1634,8 +1743,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def active_label_schemas(self, fields):
         fields = _as_str_list(fields)
 
+        label_schemas = self.label_schemas
         for field in fields:
-            if field not in self._doc.label_schemas:
+            if field not in label_schemas:
                 raise ValueError(
                     f"field '{field}' does not have a label schema"
                 )
@@ -1655,7 +1765,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             the dataset's label schemas ``dict``
         """
-        return copy.deepcopy(self._doc.label_schemas) or {}
+        return copy.deepcopy(self._doc.all_stored_label_schemas()) or {}
 
     def set_label_schemas(self, label_schemas):
         """Set the dataset's :ref:`label schemas <annotation-label-schema>`
@@ -1689,7 +1799,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_schemas = {}
 
         foa.validate_label_schemas(self, label_schemas)
-        self._doc.label_schemas = label_schemas
+        self._doc.set_all_stored_label_schemas(label_schemas)
         self._doc.active_label_schemas = [
             field
             for field in self.active_label_schemas
@@ -1724,6 +1834,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Raises:
             ExceptionGroup: if the label schema is invalid
         """
+        # Defensive: the frontend is expected to submit a schema with no
+        # ontology-sourced attributes or _source markers, but strip them here
+        # regardless so a hand-edited / malformed payload cannot persist
+        # ontology content as local copies.
+        label_schema = foa.dehydrate_applied_ontology(label_schema)
         foa.validate_label_schemas(
             self,
             label_schema,
@@ -1731,9 +1846,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             allow_new_fields=allow_new_fields,
             fields=field,
         )
-        label_schemas = self.label_schemas
-        label_schemas[field] = copy.deepcopy(label_schema)
-        self._doc.label_schemas = label_schemas
+        self._doc.set_stored_label_schema(field, copy.deepcopy(label_schema))
         self.save()
 
     def delete_label_schemas(self, fields=None):
@@ -1779,9 +1892,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         fields = _as_str_list(fields)
 
+        label_schemas = self.label_schemas
         result = self.active_label_schemas
         for field in fields:
-            if field not in self._doc.label_schemas:
+            if field not in label_schemas:
                 raise ValueError(f"field '{field}' is not in the label schema")
 
             if field not in result:
@@ -1810,9 +1924,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         fields = _as_str_list(fields)
 
+        label_schemas = self.label_schemas
         result = self.active_label_schemas
         for field in fields:
-            if field not in self._doc.label_schemas:
+            if field not in label_schemas:
                 raise ValueError(
                     f"field '{field}' does not have a label schema"
                 )
@@ -2318,11 +2433,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             via this method.
 
         Args:
-            fields (None): an optional field or iterable of fields for which to
-                add dynamic fields, or a pre-computed dict mapping paths to
-                :class:`fiftyone.core.fields.Field` instances generated by
-                :meth:`get_dynamic_field_schema` to use. By default, all fields
-                are considered
+            fields (None): an optional parent field or iterable of parent
+                fields to scope the search for dynamic fields, e.g.
+                ``"ground_truth"`` or ``"ground_truth.detections"``. All
+                dynamic fields discovered within the given parents are added.
+                Specifying a candidate dynamic path itself (e.g.
+                ``"ground_truth.detections.my_new_field"``) is not supported;
+                use the parent path instead. You may also pass a pre-computed
+                dict mapping paths to :class:`fiftyone.core.fields.Field`
+                instances generated by :meth:`get_dynamic_field_schema`. By
+                default, all fields are considered
             recursive (True): whether to recursively inspect nested lists and
                 embedded documents for dynamic fields
             add_mixed (False): whether to declare fields that contain values
@@ -5908,6 +6028,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ops.append(DeleteMany({}))
 
         foo.bulk_write(ops, self._sample_collection)
+
+        if sample_ids is None:
+            fota.delete_for_dataset_id(self._doc.id)
+        else:
+            fota.delete_for_sample_ids(self._doc.id, sample_ids)
+
         self._update_last_deletion_at(now)
 
         fos.Sample._reset_docs(
@@ -8940,7 +9066,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _expand_schema(self, sample, dynamic):
         expanded = False
+        schema = None
 
+        schema = None
         if not dynamic:
             schema = self.get_field_schema(include_private=True)
 
@@ -8998,6 +9126,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.add_group_slice(slice_name, media_type)
 
     def _expand_frame_schema(self, frames, dynamic):
+        schema = None
         if not dynamic:
             schema = self.get_frame_field_schema(include_private=True)
 
@@ -9276,12 +9405,21 @@ def _create_dataset(
     obj,
     name,
     persistent=False,
+    media_type=None,
     _patches=False,
     _frames=False,
     _clips=False,
     _src_collection=None,
 ):
     slug = _validate_dataset_name(name)
+
+    if media_type is not None and (
+        not isinstance(media_type, str) or media_type not in fom.MEDIA_TYPES
+    ):
+        raise ValueError(
+            "Invalid media type '%s'. Must be one of %s"
+            % (media_type, sorted(fom.MEDIA_TYPES))
+        )
 
     _id = ObjectId()
     now = datetime.utcnow()
@@ -9315,7 +9453,7 @@ def _create_dataset(
         version=focn.VERSION,
         created_at=now,
         last_modified_at=now,
-        media_type=None,  # will be inferred when first sample is added
+        media_type=media_type,
         sample_collection_name=sample_collection_name,
         frame_collection_name=frame_collection_name,
         persistent=persistent,
@@ -9910,6 +10048,8 @@ def _delete_dataset_extras(dataset):
     svc = foos.ExecutionStoreService(dataset_id=dataset_id)
     svc.cleanup()
 
+    fota.delete_for_dataset_id(dataset_id)
+
 
 def _clone_collection(
     sample_collection,
@@ -9919,6 +10059,9 @@ def _clone_collection(
 ):
     slug = _validate_dataset_name(name)
 
+    if sample_collection._is_dynamic_groups:
+        sample_collection = sample_collection.flatten()
+
     contains_videos = sample_collection._contains_videos(any_slice=True)
 
     if isinstance(sample_collection, fov.DatasetView):
@@ -9927,9 +10070,6 @@ def _clone_collection(
 
         if view.media_type == fom.MIXED:
             raise ValueError("Cloning mixed views is not allowed")
-
-        if view._is_dynamic_groups:
-            raise ValueError("Cloning dynamic grouped views is not allowed")
     else:
         dataset = sample_collection
         view = None
@@ -10034,9 +10174,14 @@ def _clone_collection(
 
     clone_dataset = load_dataset(name)
 
+    fota.clone_tags(
+        dataset, clone_dataset, sample_collection=sample_collection, now=now
+    )
+
     # Clone extras (full datasets only)
     if view is None and (
-        dataset.has_saved_views
+        _extras_cloners
+        or dataset.has_saved_views
         or dataset.has_workspaces
         or dataset.has_annotation_runs
         or dataset.has_brain_runs
@@ -10417,9 +10562,38 @@ def _update_no_overwrite(d, dnew):
     d.update({k: v for k, v in dnew.items() if k not in d})
 
 
+# Hooks invoked when a full dataset is cloned, as
+# ``cloner(src_dataset, dst_dataset, now, id_map)``. This lets downstream code
+# register additional "extras" to clone (e.g. execution store records) without
+# this module needing to know about those concepts. See
+# :func:`register_extras_cloner`.
+_extras_cloners = []
+
+
+def register_extras_cloner(cloner):
+    """Registers a callable to be invoked during :func:`_clone_extras`.
+
+    Each registered cloner is called as ``cloner(src_dataset, dst_dataset,
+    now, id_map)`` whenever a full dataset (not a view) is cloned, where
+    ``id_map`` is a ``{str(old_id): str(new_id)}`` dict mapping the source
+    dataset doc id and every cloned run doc id to their newly-minted clone
+    counterparts. Failures in a cloner are logged but do not abort the clone.
+
+    Args:
+        cloner: a callable with signature
+            ``cloner(src_dataset, dst_dataset, now, id_map)``
+    """
+    if cloner not in _extras_cloners:
+        _extras_cloners.append(cloner)
+
+
 def _clone_extras(src_dataset, dst_dataset, now):
     src_doc = src_dataset._doc
     dst_doc = dst_dataset._doc
+
+    # Maps source ids (dataset doc + cloned run docs) to their new clone ids,
+    # so extras cloners can rewrite references that change on clone
+    id_map = {str(src_doc.id): str(dst_doc.id)}
 
     # Clone saved views
     for _view_doc in src_doc.get_saved_views():
@@ -10448,6 +10622,7 @@ def _clone_extras(src_dataset, dst_dataset, now):
         run_doc.timestamp = now
         run_doc.save(upsert=True)
 
+        id_map[str(_run_doc.id)] = str(run_doc.id)
         dst_doc.annotation_runs[anno_key] = run_doc
 
     # Clone brain method runs
@@ -10457,6 +10632,7 @@ def _clone_extras(src_dataset, dst_dataset, now):
         run_doc.timestamp = now
         run_doc.save(upsert=True)
 
+        id_map[str(_run_doc.id)] = str(run_doc.id)
         dst_doc.brain_methods[brain_key] = run_doc
 
     # Clone evaluation runs
@@ -10466,6 +10642,7 @@ def _clone_extras(src_dataset, dst_dataset, now):
         run_doc.timestamp = now
         run_doc.save(upsert=True)
 
+        id_map[str(_run_doc.id)] = str(run_doc.id)
         dst_doc.evaluations[eval_key] = run_doc
 
     # Clone other runs
@@ -10475,9 +10652,21 @@ def _clone_extras(src_dataset, dst_dataset, now):
         run_doc.timestamp = now
         run_doc.save(upsert=True)
 
+        id_map[str(_run_doc.id)] = str(run_doc.id)
         dst_doc.runs[run_key] = run_doc
 
     dst_doc.save()
+
+    # Run any registered extras cloners (e.g. execution store cloning).
+    # Best-effort: a failure here must not abort the clone, which has already
+    # copied the dataset and its samples.
+    for cloner in _extras_cloners:
+        try:
+            cloner(src_dataset, dst_dataset, now, id_map)
+        except Exception:
+            logger.warning(
+                "Failed to run extras cloner %r", cloner, exc_info=True
+            )
 
 
 def _clone_reference_doc(ref_doc):

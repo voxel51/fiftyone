@@ -4,12 +4,16 @@ import { Duration } from "../../utils";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { ModalPanelPom } from "../panels/modal-panel";
 import { UrlPom } from "../url";
+import { ModalAnnotate3dPom } from "./annotate-3d";
 import { ModalGroupActionsPom } from "./group-actions";
 import { ModalImaAsVideoControlsPom } from "./imavid-controls";
 import { Looker3DControlsPom } from "./looker-3d-controls";
 import { ModalSidebarPom } from "./modal-sidebar";
 import { SampleCanvasPom } from "./sample-canvas";
+import { VideoAnnotatePom } from "./video-annotate";
 import { ModalVideoControlsPom } from "./video-controls";
+
+const SAMPLE_LOAD_TIMEOUT = Duration.Seconds(20);
 
 export class ModalPom {
   readonly assert: ModalAsserter;
@@ -28,10 +32,12 @@ export class ModalPom {
   readonly tagger: ModalTaggerPom;
   readonly url: UrlPom;
   readonly video: ModalVideoControlsPom;
+  readonly videoAnnotate: VideoAnnotatePom;
+  readonly annotate3d: ModalAnnotate3dPom;
 
   constructor(
     private readonly page: Page,
-    private readonly eventUtils: EventUtils
+    private readonly eventUtils: EventUtils,
   ) {
     this.assert = new ModalAsserter(this);
     this.locator = page.getByTestId("modal");
@@ -49,6 +55,8 @@ export class ModalPom {
     this.tagger = new ModalTaggerPom(page, this);
     this.url = new UrlPom(page, eventUtils);
     this.video = new ModalVideoControlsPom(page, this);
+    this.videoAnnotate = new VideoAnnotatePom(page, this);
+    this.annotate3d = new ModalAnnotate3dPom(page, this);
   }
 
   get modalSamplePluginTitle() {
@@ -80,16 +88,13 @@ export class ModalPom {
     return this.locator.getByTestId("action-display-options");
   }
 
-  getLookerAttachedEvent() {
-    return this.eventUtils.getEventReceivedPromiseForPredicate(
-      "looker-attached",
-      () => true
-    );
+  armLookerAttached() {
+    return this.eventUtils.arm("looker-attached");
   }
 
   getSampleNavigation(direction: "forward" | "backward") {
     return this.locator.getByTestId(
-      `nav-${direction === "forward" ? "right" : "left"}-button`
+      `nav-${direction === "forward" ? "right" : "left"}-button`,
     );
   }
 
@@ -124,6 +129,8 @@ export class ModalPom {
       }
 
       await this.page.keyboard.press("c");
+      // Controls take time to hide
+      // eslint-disable-next-line playwright/no-wait-for-timeout
       await this.page.waitForTimeout(300);
 
       attempts++;
@@ -142,7 +149,7 @@ export class ModalPom {
 
   async navigateSample(
     direction: "forward" | "backward",
-    allowErrorInfo = false
+    allowErrorInfo = false,
   ) {
     const currentSampleId = await this.sidebar.getSampleId();
 
@@ -153,7 +160,7 @@ export class ModalPom {
     // wait for sample id to change
     await this.page.waitForFunction((currentSampleId) => {
       const sampleId = document.querySelector(
-        "[data-cy=sidebar-entry-id]"
+        "[data-cy=sidebar-entry-id]",
       )?.textContent;
       return sampleId !== currentSampleId;
     }, currentSampleId);
@@ -167,6 +174,30 @@ export class ModalPom {
     }, left);
   }
 
+  async scrollCarouselTo(slice: string) {
+    await this.groupCarousel
+      .getByTestId("flashlight")
+      .evaluate(async (el, targetText) => {
+        const hasTarget = () => {
+          for (const t of el.querySelectorAll('[data-cy="thumbnail-title"]')) {
+            if (t.textContent === targetText) return true;
+          }
+          return false;
+        };
+
+        if (hasTarget()) return;
+
+        // 384ms is the debounce time for Flashlight's zooming plus two frames of margin
+        const ZOOMING_DEBOUNCE_MS = 384;
+        const step = Math.max(el.clientWidth, 200);
+        for (let pos = 0; pos <= el.scrollWidth; pos += step) {
+          el.scrollTo({ left: pos });
+          await new Promise((r) => setTimeout(r, ZOOMING_DEBOUNCE_MS));
+          if (hasTarget()) return;
+        }
+      }, slice);
+  }
+
   async navigateCarousel(index: number, allowErrorInfo = false) {
     const looker = this.groupCarousel.getByTestId("looker").nth(index);
 
@@ -177,12 +208,12 @@ export class ModalPom {
 
   async panSample(
     direction: "left" | "right" | "up" | "down",
-    offsetPixels = 100
+    offsetPixels = 100,
   ) {
     const modalBoundingBox = await this.modalContainer.boundingBox();
     await this.page.mouse.move(
       modalBoundingBox.width / 2,
-      modalBoundingBox.height / 2
+      modalBoundingBox.height / 2,
     );
     await this.page.mouse.down();
 
@@ -222,7 +253,7 @@ export class ModalPom {
   async navigateSlice(
     groupField: string,
     slice: string,
-    allowErrorInfo = false
+    allowErrorInfo = false,
   ) {
     const currentSlice = await this.sidebar.getSidebarEntryText(groupField);
     const lookers = this.groupCarousel.getByTestId("looker");
@@ -234,11 +265,12 @@ export class ModalPom {
     await this.page.waitForFunction(
       ({ currentSlice, groupField }) => {
         const slice = document.querySelector(
-          `[data-cy="sidebar-entry-${groupField}"]`
+          `[data-cy="sidebar-entry-${groupField}"]`,
         )?.textContent;
         return slice !== currentSlice;
       },
-      { currentSlice, groupField }
+      { currentSlice, groupField },
+      { timeout: SAMPLE_LOAD_TIMEOUT },
     );
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
@@ -289,7 +321,7 @@ export class ModalPom {
         if (
           allowErrorInfo &&
           document.querySelector(
-            "[data-cy=modal-looker-container] [data-cy=looker-error-info]"
+            "[data-cy=modal-looker-container] [data-cy=looker-error-info]",
           )
         ) {
           return true;
@@ -302,7 +334,20 @@ export class ModalPom {
         );
       },
       allowErrorInfo,
-      { timeout: Duration.Seconds(20) }
+      { timeout: SAMPLE_LOAD_TIMEOUT },
+    );
+  }
+
+  async waitForLighterReady() {
+    return this.page.waitForFunction(
+      () =>
+        (
+          document.querySelector(
+            `[data-cy=lighter-sample-renderer]`,
+          ) as HTMLElement | null
+        )?.style.visibility === "visible",
+      undefined,
+      { timeout: Duration.Seconds(20) },
     );
   }
 }
@@ -323,6 +368,19 @@ class ModalAsserter {
     await expect(this.modalPom.locator).toBeVisible();
   }
 
+  async verifyHasNoViewerError() {
+    await expect(
+      this.modalPom.modalContainer.getByTestId("looker-error-info"),
+    ).toHaveCount(0);
+  }
+
+  async verifyPrimary2dRendererVisible() {
+    await expect(this.modalPom.groupLooker).toBeVisible();
+  }
+
+  async verify3dRendererVisible() {
+    await expect(this.modalPom.looker3d).toBeVisible();
+  }
   async verifySelectionCount(n: number) {
     const action = this.modalPom.locator.getByTestId("action-manage-selected");
 
@@ -343,10 +401,12 @@ class ModalAsserter {
 
   async verifyModalSamplePluginTitle(
     title: string,
-    { pinned }: { pinned: boolean } = { pinned: false }
+    { pinned }: { pinned: boolean } = { pinned: false },
   ) {
-    const actualTitle = await this.modalPom.modalSamplePluginTitle;
-    const expectedTitle = pinned ? `📌 ${title}` : title;
-    expect(actualTitle).toBe(expectedTitle);
+    await expect
+      .poll(async () => this.modalPom.modalSamplePluginTitle, {
+        timeout: 5000,
+      })
+      .toBe(pinned ? `📌 ${title}` : title);
   }
 }

@@ -3,7 +3,6 @@ import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { BUILT_IN_PANEL_PRIORITY_CONST } from "@fiftyone/utilities";
 import AppsIcon from "@mui/icons-material/Apps";
-import React from "react";
 import { useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import Grid from "../components/Grid";
@@ -36,7 +35,7 @@ registerComponent({
 function TabIndicator() {
   const similarityParameters = useRecoilValue(fos.similarityParameters);
   const resetSimilarityParameters = useResetRecoilState(
-    fos.similarityParameters
+    fos.similarityParameters,
   );
   const selectedSamples = useRecoilValue(fos.selectedSamples);
   const resetSelectedSamples = useResetRecoilState(fos.selectedSamples);

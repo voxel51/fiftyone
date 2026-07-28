@@ -1990,6 +1990,11 @@ as per the table below:
     the new filepath must have the same media type. In other words,
     `media_type` is immutable.
 
+.. note::
+
+    When creating new 3D datasets from direct 3D asset files such as `.glb`,
+    `.pcd`, or `.ply`, pass `media_type="3d"` explicitly.
+
 .. _using-tags:
 
 Tags
@@ -5320,17 +5325,46 @@ objects across the frames of a |Sample|:
 3D datasets
 ___________
 
-Any |Sample| whose `filepath` is a file with extension `.fo3d` is
-recognized as a 3D sample, and datasets composed of 3D
-samples have media type `3d`.
+3D datasets have `media_type="3d"` and can be created from supported 3D asset
+files directly, or from `.fo3d` scene files.
 
-An FO3D file encapsulates a 3D scene constructed using the
+Direct assets are the simplest choice when a sample is a single
+:ref:`mesh <3d-meshes>`, :ref:`point cloud <3d-point-clouds>`, or
+:ref:`Gaussian splat reconstruction <3d-gaussian-splats>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    samples = [
+        fo.Sample(filepath="/path/to/model.glb", media_type="3d"),
+        fo.Sample(filepath="/path/to/point-cloud.pcd", media_type="3d"),
+        fo.Sample(filepath="/path/to/mesh.ply", media_type="3d"),
+        fo.Sample(filepath="/path/to/reconstruction.spz", media_type="3d"),
+    ]
+
+    dataset = fo.Dataset()
+    dataset.add_samples(samples)
+
+    print(dataset.media_type)  # 3d
+
+Features such as
+:ref:`camera intrinsics and extrinsics <camera-intrinsics-extrinsics>`, camera
+frustum rendering, and :ref:`3D annotation <creating-3d-polylines>` are
+available whether your sample points directly to a
+supported 3D asset or to an `.fo3d` scene.
+
+Wrap assets in `.fo3d` when you need advanced scene customization such as
+lights, camera configuration, transformations, materials, shapes, or multiple
+assets in one scene. An FO3D file encapsulates a 3D scene constructed using the
 :class:`Scene <fiftyone.core.threed.Scene>` class, which provides methods
 to add, remove, and manipulate 3D objects in the scene. A scene is
 internally represented as a n-ary tree of 3D objects, where each
 object is a node in the tree. A 3D object is either a
 :ref:`3D mesh <3d-meshes>`, :ref:`point cloud <3d-point-clouds>`,
-or a :ref:`3D shape geometry <3d-shapes>`.
+:ref:`Gaussian splat <3d-gaussian-splats>`, or
+:ref:`3D shape geometry <3d-shapes>`.
 
 A scene may be explicitly initialized with additional attributes, such as
 :class:`camera <fiftyone.core.threed.camera>`,
@@ -5485,16 +5519,18 @@ Here's how a typical PCD file is structured:
     :linenos:
 
     import numpy as np
-    import open3d as o3d
+    from pypcd4 import PointCloud
 
-    points = np.array([(x1, y1, z1), (x2, y2, z2), ...])
-    colors = np.array([(r1, g1, b1), (r2, g2, b2), ...])
+    # XYZ coordinates
+    points = np.array([(x1, y1, z1), (x2, y2, z2), ...], dtype=np.float32)
 
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(points)
-    pcd.colors = o3d.utility.Vector3dVector(colors)
+    # RGB values in [0, 255]
+    colors = np.array([(r1, g1, b1), (r2, g2, b2), ...], dtype=np.uint8)
 
-    o3d.io.write_point_cloud("/path/to/point-cloud.pcd", pcd)
+    rgb = PointCloud.encode_rgb(colors)
+    pcd = PointCloud.from_xyzrgb_points(np.column_stack((points, rgb)))
+
+    pcd.save("/path/to/point-cloud.pcd")
 
 .. note::
 
@@ -5505,6 +5541,37 @@ Here's how a typical PCD file is structured:
     When coloring by intensity :ref:`in the App <app-3d-visualizer>`, the
     intensity values are automatically scaled to use the full dynamic range of
     the colorscale.
+
+.. _3d-gaussian-splats:
+
+3D Gaussian splats
+------------------
+
+FiftyOne supports Gaussian splat reconstructions in PLY, SPZ, SPLAT, KSPLAT,
+SOG, and RAD formats. Splat files can be used directly as 3D samples or added
+to FO3D scenes via
+:class:`GaussianSplat <fiftyone.core.threed.GaussianSplat>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Use a splat file directly as a 3D sample
+    sample = fo.Sample(
+        filepath="/path/to/reconstruction.spz",
+        media_type="3d",
+    )
+
+    # Or add one or more splats to an FO3D scene
+    splat = fo.GaussianSplat("reconstruction", "reconstruction.spz")
+
+    scene = fo.Scene()
+    scene.add(splat)
+    scene.write("/path/to/scene.fo3d")
+
+You can tune each splat's appearance and rendering from its settings panel in
+the App's :ref:`3D visualizer <app-3d-visualizer>`.
 
 .. _3d-shapes:
 
@@ -5725,6 +5792,9 @@ ____________________
     While we'll keep supporting the `point-cloud` media type for backward
     compatibility, we recommend using the `3d` media type for new datasets.
 
+    To use a PCD file as a 3D sample in a new dataset, create it with
+    `media_type="3d"` explicitly.
+
 Any |Sample| whose `filepath` is a
 `PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
 with extension `.pcd` is recognized as a point cloud sample, and datasets
@@ -5898,6 +5968,18 @@ specify the desired transformation. The ``chain_via`` parameter enables
 composing transformations through intermediate frames (e.g., camera → ego →
 world).
 
+Resolution precedence for extrinsics is:
+
+1.  Direct ``source_frame -> target_frame`` match
+2.  If provided, explicit ``chain_via`` path only
+3.  If ``chain_via`` is omitted and ``target_frame="world"``, automatic
+    chaining through up to two intermediate frames
+
+Automatic chaining only applies when a unique forward path exists. If no valid
+path exists, or more than one valid path exists, no automatic chain is chosen
+and resolution returns ``None``. When deterministic path selection matters,
+provide ``chain_via`` explicitly.
+
 .. note::
 
     For :ref:`grouped datasets <groups>`, the group slice name plays an
@@ -6053,6 +6135,11 @@ When a |Sample| is created, a custom value can be provided as the `media_type`
 keyword argument. Adding the sample to a |Dataset| will result in a dataset
 with `media_type` inherited from the sample. Custom media types can be used
 to extend functionality for sample types that are not natively supported.
+
+For App support in the grid or the modal, pair custom media types with
+:ref:`custom sample renderers <custom-sample-renderers>`. This plugin feature
+lets you provide domain-specific rendering for custom media types whose samples
+may not be handled by FiftyOne's built-in media renderers.
 
 .. code:: python
     :linenos:

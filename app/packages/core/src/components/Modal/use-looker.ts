@@ -1,5 +1,12 @@
 import * as fos from "@fiftyone/state";
-import React, { useEffect, useRef, useState } from "react";
+import { modalBridge, useSaveModalViewport } from "@fiftyone/state";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
@@ -23,7 +30,7 @@ function useLooker<L extends fos.Lookers>({
 
   const lookerOptions = React.useMemo(
     () => ({ ...baseLookerOptions }),
-    [baseLookerOptions]
+    [baseLookerOptions],
   );
 
   const createLooker = fos.useCreateLooker(
@@ -31,7 +38,7 @@ function useLooker<L extends fos.Lookers>({
     false,
     lookerOptions,
     undefined,
-    true
+    true,
   );
   const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
   const colorScheme = useRecoilValue(fos.colorScheme);
@@ -78,7 +85,7 @@ function useLooker<L extends fos.Lookers>({
 
   useEffect(() => {
     ref.current?.dispatchEvent(
-      new CustomEvent("looker-attached", { bubbles: true })
+      new CustomEvent("looker-attached", { bubbles: true }),
     );
   }, []);
 
@@ -89,6 +96,8 @@ function useLooker<L extends fos.Lookers>({
   useEffect(() => {
     return () => looker?.destroy();
   }, [looker]);
+
+  useSyncViewport(looker, sampleRef);
 
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
@@ -109,9 +118,9 @@ function useLooker<L extends fos.Lookers>({
       }
 
       updateLookerOptions({}, (updatedOptions) =>
-        looker.updateOptions(updatedOptions)
+        looker.updateOptions(updatedOptions),
       );
-    }
+    },
   );
 
   useKeyEvents(initialRef, sample.sample._id, looker);
@@ -134,3 +143,43 @@ function useLooker<L extends fos.Lookers>({
 }
 
 export default useLooker;
+
+/**
+ * Persists the looker's zoom/pan state when it unmounts, and restores it on
+ * mount, so the viewport survives switching between EXPLORE and ANNOTATE modes.
+ */
+function useSyncViewport<L extends fos.Lookers>(
+  looker: L,
+  sampleRef: RefObject<fos.ModalSample>,
+) {
+  const setViewportState = useSaveModalViewport();
+
+  // Capture zoom/pan before the looker is removed from the DOM
+  // so the position can be restored when EXPLORE mode (Looker) remounts.
+  useLayoutEffect(() => {
+    return () => {
+      if (
+        looker?.state?.loaded &&
+        looker.state.dimensions &&
+        sampleRef.current
+      ) {
+        setViewportState({
+          sampleId: sampleRef.current.sample._id,
+          ...looker.getViewportState(),
+        });
+      }
+    };
+  }, [looker]);
+
+  // Seed the saved viewport into the looker after mount. This runs after
+  // unmounting component's useLayoutEffect cleanup has already written to the atom.
+  useLayoutEffect(() => {
+    const savedViewport = modalBridge.getModalViewport();
+    if (
+      sampleRef.current &&
+      savedViewport?.sampleId === sampleRef.current.sample._id
+    ) {
+      looker.updateOptions({ initialViewport: savedViewport }, true);
+    }
+  }, [looker]);
+}

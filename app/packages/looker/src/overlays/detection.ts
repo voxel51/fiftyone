@@ -19,7 +19,11 @@ import {
   PointInfo,
   RegularLabel,
 } from "./base";
-import { getInstanceStrokeStyles, t } from "./util";
+import {
+  getInstanceStrokeStyles,
+  resolveLabelSelectionVisuals,
+  t,
+} from "./util";
 
 let cache: Record<
   string,
@@ -32,7 +36,7 @@ let lastModalUniqueId = "";
 
 const getIndexIdFromInstanceIdForLabel = (
   instanceId: string,
-  label: DetectionLabel
+  label: DetectionLabel,
 ) => {
   const currentModalUniqueId = jotaiStore.get(currentModalUniqueIdJotaiAtom);
 
@@ -41,7 +45,9 @@ const getIndexIdFromInstanceIdForLabel = (
     cache = {};
   }
 
-  const key = `${currentModalUniqueId}-${label.label.toLocaleLowerCase()}`;
+  const key = `${currentModalUniqueId}-${(
+    label?.label ?? ""
+  ).toLocaleLowerCase()}`;
 
   if (
     cache[key] &&
@@ -80,7 +86,7 @@ export interface DetectionLabel extends RegularLabel {
 }
 
 export default class DetectionOverlay<
-  State extends BaseState
+  State extends BaseState,
 > extends CoordinateOverlay<State, DetectionLabel> {
   private labelBoundingBox: BoundingBox;
 
@@ -117,6 +123,9 @@ export default class DetectionOverlay<
       this.label.instance?._id &&
       isHoveringParticularLabelWithInstanceConfig(this.label.instance._id);
     const isSelected = this.isSelected(state);
+    const labelVisuals = isSelected
+      ? resolveLabelSelectionVisuals(this.label.id, state.options)
+      : null;
 
     const { strokeColor, overlayStrokeColor, overlayDash } =
       getInstanceStrokeStyles({
@@ -124,6 +133,7 @@ export default class DetectionOverlay<
         getColor: () => this.getColor(state),
         isHoveringInstance: !!doesInstanceMatch,
         dashLength: state.dashLength,
+        labelSelectionColor: labelVisuals?.color,
       });
 
     if (
@@ -231,7 +241,7 @@ export default class DetectionOverlay<
       x,
       y,
       w * state.canvasBBox[2],
-      h * state.canvasBBox[3]
+      h * state.canvasBBox[3],
     );
     ctx.globalAlpha = tmp;
   }
@@ -258,7 +268,7 @@ export default class DetectionOverlay<
       } else {
         text += `${getIndexIdFromInstanceIdForLabel(
           this.label.instance._id,
-          this.label
+          this.label,
         )}`;
       }
     }
@@ -295,7 +305,7 @@ export default class DetectionOverlay<
   private fillRectFor3d(
     ctx: CanvasRenderingContext2D,
     state: Readonly<State>,
-    color: string
+    color: string,
   ) {
     const convexHull = this.label.convexHull;
 
@@ -329,7 +339,7 @@ export default class DetectionOverlay<
     ctx: CanvasRenderingContext2D,
     state: Readonly<State>,
     color: string,
-    dash?: number
+    dash?: number,
   ) {
     const [tlx, tly, w, h] = this.label.bounding_box;
     ctx.beginPath();

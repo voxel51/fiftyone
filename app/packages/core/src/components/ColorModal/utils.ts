@@ -5,22 +5,7 @@ import {
   MaskColorInput,
 } from "@fiftyone/relay";
 import colorString from "color-string";
-import { inRange, isEmpty, xor } from "lodash";
-
-// Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their
-// website Color Universal Design (CUD). This palette is a “Set of colors that
-// is unambiguous both to colorblinds and non-colorblinds”.
-//
-// https://jfly.uni-koeln.de/color/
-export const colorBlindFriendlyPalette = [
-  "#E69F00", // orange
-  "#56b4e9", // skyblue
-  "#009e74", // bluegreen
-  "#f0e442", // yellow
-  "#0072b2", // blue
-  "#d55e00", // vermillion
-  "#cc79a7", // reddish purple
-];
+import { isEmpty, xor } from "lodash";
 
 export enum ACTIVE_FIELD {
   JSON = "JSON editor",
@@ -51,7 +36,7 @@ const getValidLabelColors = (labelColors: unknown[]) => {
 
 // should return a valid customize color object that can be used to setCustomizeColor
 export const validateJSONSetting = (
-  json: ColorSchemeInput["fields"]
+  json: ColorSchemeInput["fields"],
 ): ColorSchemeInput["fields"] => {
   const filtered =
     json?.filter((s) => s && isObject(s) && isString(s["path"])) || [];
@@ -84,7 +69,7 @@ export const validateJSONSetting = (
 };
 
 export const validateLabelTags = (
-  obj: ColorSchemeInput["labelTags"]
+  obj: ColorSchemeInput["labelTags"],
 ): ColorSchemeInput["labelTags"] => {
   if (typeof obj === "object" && obj !== null) {
     const f = {
@@ -118,7 +103,7 @@ const getValidMaskColors = (maskColors: unknown[]) => {
 };
 
 export const validateMaskColor = (
-  arr: any
+  arr: any,
 ): ColorSchemeInput["defaultMaskTargetsColors"] => {
   return Array.isArray(arr) ? getValidMaskColors(arr) : null;
 };
@@ -145,7 +130,7 @@ const getValidColorscaleList = (list: unknown[]) => {
 };
 
 export const validateDefaultColorscale = (
-  obj: any
+  obj: any,
 ): ColorSchemeInput["defaultColorscale"] => {
   if (typeof obj === "object" && obj !== null) {
     const list = Array.isArray(obj["list"])
@@ -164,7 +149,7 @@ export const validateDefaultColorscale = (
 };
 
 export const validateColorscales = (
-  arr: any
+  arr: any,
 ): ColorSchemeInput["colorscales"] => {
   const result = Array.isArray(arr)
     ? arr
@@ -192,6 +177,9 @@ export const getDisplayName = (path: ACTIVE_FIELD | { path: string }) => {
     }
     if (path.path === "_label_tags") {
       return "label tags";
+    }
+    if (path.path === "_temporal_tags") {
+      return "temporal tags";
     }
     return path.path;
   }

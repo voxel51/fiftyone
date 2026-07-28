@@ -45,6 +45,7 @@ fob = fou.lazy_import("fiftyone.core.brain")
 fod = fou.lazy_import("fiftyone.core.dataset")
 foe = fou.lazy_import("fiftyone.core.evaluation")
 fors = fou.lazy_import("fiftyone.core.runs")
+fota = fou.lazy_import("fiftyone.core.tags")
 
 
 logger = logging.getLogger(__name__)
@@ -835,6 +836,34 @@ def drop_orphan_stores(dry_run=False):
             _delete_stores(conn, orphan_store_ids)
 
 
+def drop_orphan_tags(dry_run=False):
+    """Drops all orphan tags from the database.
+
+    Orphan tags are those that are associated with a dataset that no longer
+    exists in the database.
+
+    Args:
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_ids = set(conn.datasets.distinct("_id"))
+    orphan_dataset_ids = fota.get_orphan_dataset_ids(dataset_ids)
+    num_tags = fota.count_for_dataset_ids(orphan_dataset_ids)
+
+    if num_tags:
+        _logger.info(
+            "Deleting %d orphan tag(s) for %d dataset(s): %s",
+            num_tags,
+            len(orphan_dataset_ids),
+            orphan_dataset_ids,
+        )
+        if not dry_run:
+            fota.delete_for_dataset_ids(orphan_dataset_ids)
+
+
 def stream_collection(collection_name):
     """Streams the contents of the collection to stdout.
 
@@ -1416,6 +1445,13 @@ def delete_dataset(name, dry_run=False):
         _logger.info("Dropping collection '%s'", frame_collection_name)
         if not dry_run:
             conn.drop_collection(frame_collection_name)
+
+    _id = dataset_dict["_id"]
+    num_tags = fota.count_for_dataset_id(_id)
+    if num_tags > 0:
+        _logger.info("Deleting %d tag(s)", num_tags)
+        if not dry_run:
+            fota.delete_for_dataset_id(_id)
 
     view_ids = _get_saved_view_ids(dataset_dict)
 

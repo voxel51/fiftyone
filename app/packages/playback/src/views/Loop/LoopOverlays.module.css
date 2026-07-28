@@ -1,0 +1,11 @@
+/* Greyed-out overlay covering a region outside the active loop. Sits above
+   tracks (z-index 1) but below the playhead line (z-index 3). Pointer
+   events pass through so tracks remain clickable. */
+.mask {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  z-index: 2;
+}

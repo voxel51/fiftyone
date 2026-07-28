@@ -1,0 +1,325 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.recommendButton {
+  align-self: flex-start;
+  background: transparent;
+  border: 0;
+  color: var(--color-content-text-muted);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.recommendButton:hover {
+  color: var(--color-content-text);
+}
+
+.sectionHeader {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.optionStack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.labelGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.colorPreview {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  height: 12px;
+  width: 100%;
+}
+
+.colorPreviewLarge {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  height: 32px;
+  width: 100%;
+}
+
+.colormapEditor {
+  background: var(--color-background-primary);
+  color: var(--color-content-text);
+  min-width: 520px;
+  padding: 16px;
+}
+
+.colorStopHeader,
+.colorStopRow {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 88px minmax(0, 1fr) 36px 72px;
+}
+
+.colorSwatchInput {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  height: 28px;
+  padding: 0;
+  width: 32px;
+}
+
+.colorSourceList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.colorSourceItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.colorSourceRow {
+  align-items: center;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.colorSourceSummary {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-content-text);
+  cursor: pointer;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(76px, 1fr) minmax(0, 1.75fr) auto;
+  min-height: 30px;
+  padding: 4px 6px;
+  text-align: left;
+}
+
+.colorSourceSummary[aria-expanded="true"],
+.colorSourceSummary:hover {
+  border-color: var(--color-content-border-focus);
+}
+
+.colorSourceName {
+  font-size: 12px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.colorSummaryChips {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.colorChip {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-content-text-muted);
+  flex: 0 0 auto;
+  font-size: 10px;
+  line-height: 1;
+  max-width: 96px;
+  overflow: hidden;
+  padding: 3px 5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.colorSourcePreview {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  flex: 0 0 auto;
+  height: 14px;
+  width: 32px;
+}
+
+.colorSourceEditor {
+  border-left: 1px solid var(--color-border);
+  margin-left: 8px;
+  padding-left: 8px;
+}
+
+.metaText,
+.emptyText {
+  color: var(--color-content-text-muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.labelWithTooltip {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.select {
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-content-text);
+  font-size: 12px;
+  line-height: 1.25;
+  min-height: 28px;
+  padding: 4px 8px;
+  width: 100%;
+}
+
+.select:disabled {
+  opacity: 0.6;
+}
+
+.tooltipIcon {
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  color: var(--color-content-text-muted);
+  cursor: help;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 10px;
+  height: 16px;
+  justify-content: center;
+  line-height: 1;
+  position: relative;
+  width: 16px;
+}
+
+.tooltipIcon::after {
+  background: rgb(18 24 38);
+  border: 1px solid rgb(71 85 105);
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 55%);
+  color: rgb(248 250 252);
+  content: attr(data-tooltip);
+  font-size: 11px;
+  left: calc(100% + 8px);
+  line-height: 1.35;
+  max-width: 220px;
+  opacity: 0;
+  padding: 8px 10px;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translateX(-2px) translateY(-50%);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+  visibility: hidden;
+  white-space: normal;
+  width: 220px;
+  z-index: 1000;
+}
+
+.tooltipIcon:hover::after,
+.tooltipIcon:focus::after,
+.tooltipIcon:focus-visible::after {
+  opacity: 1;
+  transform: translateY(-50%);
+  visibility: visible;
+}
+
+/* Row shared by list-style settings: control + trailing metadata. */
+.fieldRow {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.fieldRow > :first-child {
+  min-width: 0;
+}
+
+.filterInput {
+  background: transparent;
+  border: 1px solid var(--color-content-border-default, #383835);
+  border-radius: 4px;
+  color: var(--color-content-text-primary);
+  font-size: 12px;
+  padding: 4px 8px;
+  width: 100%;
+}
+
+.filterInput::placeholder {
+  color: var(--color-content-text-secondary);
+}
+
+/* Native radio rows for single-select lists too rich for a dropdown. */
+.radioRow {
+  cursor: pointer;
+}
+
+.radioRow input[type="radio"] {
+  accent-color: var(--color-brand-primary);
+  cursor: pointer;
+  flex: none;
+  margin: 0;
+}
+
+.radioRowLabel {
+  color: var(--color-content-text);
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.25;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Scrubbable number field: read-only display until clicked, drag to scrub. */
+.numberFieldWrap {
+  align-items: center;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.numberField {
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-content-text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  min-height: 28px;
+  min-width: 0;
+  padding: 4px 8px;
+  width: 100%;
+}
+
+.numberField[readonly]:not(:disabled) {
+  cursor: ew-resize;
+  user-select: none;
+}
+
+.numberFieldUnit {
+  color: var(--color-content-text-muted);
+  font-size: 10px;
+  line-height: 1;
+}

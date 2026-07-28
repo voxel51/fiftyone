@@ -73,7 +73,7 @@ const SearchResult = React.memo(
         )}
       </SearchResultDiv>
     );
-  }
+  },
 );
 
 const SearchResultsDiv = animated(styled.div`
@@ -157,7 +157,7 @@ const SearchResults = React.memo(
         ))}
       </SearchResultsDiv>
     );
-  }
+  },
 );
 
 export default SearchResults;

@@ -10,7 +10,7 @@ describe("range selection tests", () => {
         ["0", 0],
         ["1", 1],
         ["2", 2],
-      ])
+      ]),
     );
     expect(result).toStrictEqual(new Set(["0", "1", "2", "other"]));
   });
@@ -22,7 +22,7 @@ describe("range selection tests", () => {
       new Map([
         ["0", 0],
         ["1", 1],
-      ])
+      ]),
     );
     expect(result).toStrictEqual(new Set(["other"]));
   });
