@@ -136,6 +136,7 @@ describe("layout-persistence", () => {
           },
           sceneUpAxis: "z",
           tileTitles: { "image-1": "Front Camera" },
+          timelineSamplingRateHz: 60,
         },
       }),
     );
@@ -763,6 +764,37 @@ describe("layout-persistence", () => {
       const read = readModalLayout("ds-a");
       expect(read?.leftSidebarOpen).toBe(true);
       expect(read?.sceneUpAxis).toBeUndefined();
+    });
+  });
+
+  describe("timelineSamplingRateHz", () => {
+    it("round-trips a supported integer per dataset", () => {
+      writeModalLayout({ timelineSamplingRateHz: 60 }, "ds-a");
+
+      expect(readModalLayout("ds-a")?.timelineSamplingRateHz).toBe(60);
+      expect(readModalLayout("ds-b")).toBeNull();
+    });
+
+    it("drops out-of-range and fractional persisted rates", () => {
+      for (const timelineSamplingRateHz of [0, 121, 30.5]) {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            version: 3,
+            byDataset: {
+              "ds-a": {
+                leftSidebarOpen: true,
+                timelineSamplingRateHz,
+                updatedAtMs: 1,
+              },
+            },
+          }),
+        );
+
+        const read = readModalLayout("ds-a");
+        expect(read?.leftSidebarOpen).toBe(true);
+        expect(read?.timelineSamplingRateHz).toBeUndefined();
+      }
     });
   });
 });

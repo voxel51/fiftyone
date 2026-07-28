@@ -62,6 +62,10 @@ import {
   type PlaybackLayoutTile,
 } from "./playback-layout";
 import MissingTile from "../tiles/MissingTile";
+import {
+  defaultTimelineSamplingRateHz,
+  normalizeTimelineSamplingRateHz,
+} from "../playback/timeline-sampling";
 
 export interface ModalLayout {
   initialTiles: Record<string, TilingTile>;
@@ -86,6 +90,8 @@ export interface ModalLayout {
   onPreferredCameraTargetFrameIdChange: (frameId: string) => void;
   defaultTrackingMode: Scene3dTrackingMode;
   onDefaultTrackingModeChange: (mode: Scene3dTrackingMode) => void;
+  timelineSamplingRateHz: number;
+  onTimelineSamplingRateChange: (rateHz: number) => void;
 }
 
 export interface UseModalLayoutOptions {
@@ -200,12 +206,19 @@ export function useModalLayout({
   const [defaultTrackingMode, setDefaultTrackingMode] = useState(
     persistedDefaultTrackingMode,
   );
+  const persistedTimelineSamplingRateHz =
+    persisted?.timelineSamplingRateHz ??
+    defaultTimelineSamplingRateHz(readProfile);
+  const [timelineSamplingRateHz, setTimelineSamplingRateHz] = useState(
+    persistedTimelineSamplingRateHz,
+  );
   // This effect restores the dataset-scoped scene axis after a source change.
   useEffect(() => {
     setSceneUpAxis(persistedSceneUpAxis);
     setPreferredWorldFrameId(persistedPreferredWorldFrameId);
     setPreferredCameraTargetFrameId(persistedPreferredCameraTargetFrameId);
     setDefaultTrackingMode(persistedDefaultTrackingMode);
+    setTimelineSamplingRateHz(persistedTimelineSamplingRateHz);
   }, [
     cameraPreferenceField,
     datasetId,
@@ -213,6 +226,7 @@ export function useModalLayout({
     persistedPreferredCameraTargetFrameId,
     persistedPreferredWorldFrameId,
     persistedSceneUpAxis,
+    persistedTimelineSamplingRateHz,
   ]);
 
   const onLeftOpenChange = useCallback(
@@ -283,6 +297,15 @@ export function useModalLayout({
     [cameraPreferenceField, datasetId],
   );
 
+  const onTimelineSamplingRateChange = useCallback(
+    (rateHz: number) => {
+      const normalized = normalizeTimelineSamplingRateHz(rateHz);
+      setTimelineSamplingRateHz(normalized);
+      writeModalLayout({ timelineSamplingRateHz: normalized }, datasetId);
+    },
+    [datasetId],
+  );
+
   return {
     initialTiles: restored?.tiles ?? defaultTiles,
     initialManualTileTitles: restored?.manualTileTitles ?? {},
@@ -301,6 +324,8 @@ export function useModalLayout({
     onPreferredCameraTargetFrameIdChange,
     defaultTrackingMode,
     onDefaultTrackingModeChange,
+    timelineSamplingRateHz,
+    onTimelineSamplingRateChange,
   };
 }
 

@@ -15,6 +15,7 @@ import {
   normalizeMapBaseLayer,
   type MapTileSettings,
 } from "../map/tile/tile-state";
+import { validTimelineSamplingRateHz } from "../playback/timeline-sampling";
 import { TILE_TYPE } from "../tiles/tile-types";
 
 /**
@@ -83,6 +84,8 @@ export interface PersistedModalLayout {
   cameraPreferences?: Record<string, PersistedCameraPreferences>;
   /** Left sidebar width in px; the shell clamps it on restore. */
   sidebarWidthPx?: number;
+  /** Episode data-sampling cadence. Dataset/source-scoped only. */
+  timelineSamplingRateHz?: number;
 }
 
 /** Durable 3D coordinate conventions for one dataset media field. */
@@ -168,6 +171,7 @@ const FALLBACK_OMITTED_FIELDS = [
   "scene3dSettings",
   "sceneUpAxis",
   "tileTitles",
+  "timelineSamplingRateHz",
 ] as const;
 
 // Cap the per-dataset table so heavy multi-dataset use can't grow the
@@ -221,6 +225,9 @@ function sanitizeEntry(raw: unknown): PersistedModalLayout | undefined {
         ? candidate.sidebarWidthPx
         : undefined,
     tileTitles: sanitizeTileTitles(candidate.tileTitles),
+    timelineSamplingRateHz: validTimelineSamplingRateHz(
+      candidate.timelineSamplingRateHz,
+    ),
   };
 }
 

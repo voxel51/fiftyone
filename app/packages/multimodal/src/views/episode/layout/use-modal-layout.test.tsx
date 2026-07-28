@@ -5,6 +5,10 @@ import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SceneSource } from "../../../scene-inventory";
 import {
+  BYTE_SOURCE_READ_PROFILE,
+  type ByteSourceReadProfile,
+} from "../../../ir";
+import {
   readCameraPreferences,
   writeCameraPreferences,
   readModalLayout,
@@ -61,6 +65,7 @@ function renderLayoutHook(
   sources: readonly SceneSource[],
   datasetId?: string,
   cameraPreferenceField?: string,
+  readProfile?: ByteSourceReadProfile,
 ) {
   return renderHook(() =>
     useModalLayout({
@@ -74,6 +79,7 @@ function renderLayoutHook(
       datasetId,
       cameraPreferenceField,
       capabilities: STRONG_CAPABILITIES,
+      readProfile,
     }),
   );
 }
@@ -106,6 +112,39 @@ describe("useModalLayout", () => {
       second: "image-1",
     });
     expect(result.current.defaultLeftOpen).toBe(true);
+  });
+
+  it("defaults remote sampling to Economy and local sampling to Balanced", () => {
+    const remote = renderLayoutHook(
+      SCENE_SOURCES,
+      "remote",
+      undefined,
+      BYTE_SOURCE_READ_PROFILE.REMOTE,
+    );
+    expect(remote.result.current.timelineSamplingRateHz).toBe(24);
+    remote.unmount();
+
+    const local = renderLayoutHook(
+      SCENE_SOURCES,
+      "local",
+      undefined,
+      BYTE_SOURCE_READ_PROFILE.LOCAL,
+    );
+    expect(local.result.current.timelineSamplingRateHz).toBe(30);
+  });
+
+  it("persists an explicit sampling rate in the active layout scope", () => {
+    const { result } = renderLayoutHook(
+      SCENE_SOURCES,
+      "dataset-a",
+      undefined,
+      BYTE_SOURCE_READ_PROFILE.REMOTE,
+    );
+
+    act(() => result.current.onTimelineSamplingRateChange(60));
+
+    expect(result.current.timelineSamplingRateHz).toBe(60);
+    expect(readModalLayout("dataset-a")?.timelineSamplingRateHz).toBe(60);
   });
 
   it("opens one tile per image source bound to distinct streams", () => {
