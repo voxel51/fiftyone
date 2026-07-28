@@ -1,6 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { Line as LineDrei } from "@react-three/drei";
-import { useEffect, useMemo, useRef } from "react";
+import type { ThreeEvent } from "@react-three/fiber";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { useTransientPolyline } from "../annotation/store";
@@ -46,8 +47,32 @@ export const Polyline = ({
   useHoverState();
   const hoveredLabel = useRecoilValue(hoveredLabelAtom);
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
-  const { onPointerOver, onPointerOut, ...restEventHandlers } =
-    useEventHandlers(label);
+  const {
+    onPointerOver: onPointerOverForLabel,
+    onPointerOut: onPointerOutForLabel,
+    onPointerMove: onPointerMoveForLabel,
+    ...restEventHandlersBase
+  } = useEventHandlers();
+
+  // `useEventHandlers()` takes the label as a call-time argument so it can be
+  // shared across an instanced batch; curry our own label once here so the
+  // rest of this component can call these exactly as before.
+  const onPointerOver = useCallback(
+    (e?: ThreeEvent<PointerEvent>) => onPointerOverForLabel(label, e),
+    [onPointerOverForLabel, label],
+  );
+  const onPointerOut = useCallback(
+    () => onPointerOutForLabel(label),
+    [onPointerOutForLabel, label],
+  );
+  const restEventHandlers = useMemo(
+    () => ({
+      ...restEventHandlersBase,
+      onPointerMove: (e: ThreeEvent<PointerEvent>) =>
+        onPointerMoveForLabel(label, e),
+    }),
+    [restEventHandlersBase, onPointerMoveForLabel, label],
+  );
 
   const isHovered = hoveredLabel?.id === label._id;
 

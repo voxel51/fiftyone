@@ -171,6 +171,19 @@ export interface EventHandlers {
   onPointerMove: (e: ThreeEvent<PointerEvent>) => void;
 }
 
+/**
+ * `useEventHandlers()`'s raw shape — `label` is a call-time argument rather
+ * than curried in, so one set of handlers can be shared across every label
+ * in an instanced batch. `Cuboid` curries its own label once into the
+ * `EventHandlers` shape above for the standalone path.
+ */
+export interface InstancedEventHandlers {
+  onPointerOver: (label: any, e?: ThreeEvent<PointerEvent>) => void;
+  onPointerOut: (label: any) => void;
+  onPointerMissed: () => void;
+  onPointerMove: (label: any, e: ThreeEvent<PointerEvent>) => void;
+}
+
 export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";
 
 /**

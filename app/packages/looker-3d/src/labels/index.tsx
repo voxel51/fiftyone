@@ -39,6 +39,7 @@ import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
 import type { Archetype3d, PanelId } from "../types";
 import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
+import { CuboidInstances } from "./CuboidInstances";
 import { DragGate3D } from "./DragGate3D";
 import { type OverlayLabel, load3dOverlays } from "./loader";
 import { type PolyLineProps, Polyline } from "./polyline";
@@ -342,10 +343,31 @@ export const ThreeDLabels = ({
     [effectiveUnfocusedLabelOpacity, focusedLabelIds, labelAlpha],
   );
 
-  // Detections render model -> JSX
+  // The single label actively being edited (if any) keeps its full
+  // interactive standalone path (TransformControls, face-resize handles,
+  // orientation markers) unchanged; every other label renders through the
+  // batched CuboidInstances path. Both arrays derive from the same
+  // detectionsToRender read in the same render, so a box popping between the
+  // two paths lands at the identical transform in the same commit — no
+  // flicker or jump (see the looker3dInstanceMesh plan, §7).
+  const editedLabelId = selectedLabelForAnnotation?._id;
+  const { standaloneDetections, instancedDetections } = useMemo(() => {
+    if (!editedLabelId) {
+      return { standaloneDetections: [], instancedDetections: detectionsToRender };
+    }
+
+    const standalone: ReconciledDetection3D[] = [];
+    const instanced: ReconciledDetection3D[] = [];
+    for (const overlay of detectionsToRender) {
+      (overlay._id === editedLabelId ? standalone : instanced).push(overlay);
+    }
+    return { standaloneDetections: standalone, instancedDetections: instanced };
+  }, [detectionsToRender, editedLabelId]);
+
+  // Detections render model -> JSX (standalone / actively-edited path)
   const cuboidOverlays = useMemo(
     () =>
-      detectionsToRender.map((overlay) => {
+      standaloneDetections.map((overlay) => {
         // ReconciledDetection3D omits OverlayLabel["selected"], so its
         // `selected` is typed `unknown` via the index signature; restoring it
         // is the single narrowing needed to treat the overlay as OverlayLabel.
@@ -375,7 +397,7 @@ export const ThreeDLabels = ({
         );
       }),
     [
-      detectionsToRender,
+      standaloneDetections,
       cuboidLineWidth,
       overlayRotation,
       itemRotation,
@@ -387,6 +409,38 @@ export const ThreeDLabels = ({
       showCuboidOrientation,
     ],
   );
+
+  // Batched (non-edited) cuboids. `InstancedMesh`'s instanceColor is RGB
+  // only — there's no per-instance alpha — so the whole batch shares one
+  // opacity value: full (labelAlpha) unless dimming is active anywhere,
+  // matching the "at most two live opacity values, focused label always
+  // popped out" reasoning in the plan's §6 (a hover on a *different*,
+  // non-edited label while dimming is active is the one accepted edge case
+  // that can't be represented — that label dims along with the rest).
+  const instancedOpacity = focusedLabelIds
+    ? (effectiveUnfocusedLabelOpacity ?? labelAlpha)
+    : labelAlpha;
+
+  const cuboidInstances =
+    instancedDetections.length > 0 ? (
+      <CuboidInstances
+        detections={instancedDetections}
+        getColor={getOverlayColor}
+        opacity={instancedOpacity}
+        lineWidth={cuboidLineWidth}
+        useLegacyCoordinates={settings.useLegacyCoordinates}
+        overlayRotationFallback={overlayRotation}
+        hoverSource={hoverSource}
+        showOrientation={showCuboidOrientation}
+        onClick={(label, e) =>
+          handleSelect(
+            label as ReconciledDetection3D & { selected: boolean },
+            ANNOTATION_CUBOID,
+            e,
+          )
+        }
+      />
+    ) : null;
 
   // Polylines render model -> JSX
   const polylineOverlays = useMemo(() => {
@@ -442,7 +496,10 @@ export const ThreeDLabels = ({
   return (
     <group>
       {workingStoreManager}
-      <mesh rotation={overlayRotation}>{cuboidOverlays}</mesh>
+      <mesh rotation={overlayRotation}>
+        {cuboidOverlays}
+        {cuboidInstances}
+      </mesh>
       {polylineOverlays}
     </group>
   );
