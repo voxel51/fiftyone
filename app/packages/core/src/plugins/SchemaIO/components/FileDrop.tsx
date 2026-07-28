@@ -1,4 +1,3 @@
-import React from "react";
 import { Box, Chip, Typography } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { FileDrop as ReactFileDrop } from "react-file-drop";
@@ -71,7 +70,7 @@ export default function FileDrop({
         onTargetClick={() => {
           fileInputRef.current.click();
         }}
-        onDrop={(files, e) => {
+        onDrop={(files) => {
           addUniqueFiles(files);
           if (active) setActive(false);
         }}
@@ -160,7 +159,7 @@ function FileList({ files, onUpdateFiles }: FileListProps) {
             label={name}
             onDelete={() => {
               onUpdateFiles(
-                files.filter(({ name: fileName }) => fileName !== name)
+                files.filter(({ name: fileName }) => fileName !== name),
               );
             }}
           />
@@ -174,7 +173,7 @@ function filterFiles(files: Array<File>, types: FileDropProps["types"]) {
   if (typeof types !== "string" || types.trim().length === 0) return files;
   const typesArray = types.split(",");
   return files.filter((file) =>
-    typesArray.some((type) => file.name.endsWith(type))
+    typesArray.some((type) => file.name.endsWith(type)),
   );
 }
 

@@ -1,5 +1,4 @@
 import { Box, Grid } from "@mui/material";
-import React from "react";
 import { HeaderView } from ".";
 import { getComponentProps, getPath } from "../utils";
 import DynamicIO from "./DynamicIO";
@@ -23,7 +22,7 @@ export default function ObjectView(props) {
         sx={{ pl: 1 }}
         {...getComponentProps(props, "gridContainer")}
       >
-        {propertiesAsArray.map((property, i) => {
+        {propertiesAsArray.map((property) => {
           const space = property?.view?.space || 12;
           const { id } = property;
           return (

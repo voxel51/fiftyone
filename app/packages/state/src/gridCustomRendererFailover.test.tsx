@@ -20,14 +20,14 @@ describe("gridCustomRendererFailover", () => {
 
   it("marks only the failed dataset as fail-open and keeps banner dismiss state per dataset", () => {
     const { result } = renderHook(() =>
-      useGridCustomRendererFailover("render_claims_grouped_pdf_grid")
+      useGridCustomRendererFailover("render_claims_grouped_pdf_grid"),
     );
 
     expect(result.current.isDisabled).toBe(false);
     expect(result.current.isBannerVisible).toBe(false);
     expect(result.current.forcedSubscription).toBeNull();
     expect(isGridCustomRendererFailOpen("render_claims_grouped_pdf_grid")).toBe(
-      false
+      false,
     );
 
     act(() => {
@@ -39,7 +39,7 @@ describe("gridCustomRendererFailover", () => {
     });
 
     expect(
-      getGridCustomRendererFailover("render_claims_grouped_pdf_grid")
+      getGridCustomRendererFailover("render_claims_grouped_pdf_grid"),
     ).toMatchObject({
       datasetName: "render_claims_grouped_pdf_grid",
       errorMessage: "render failed",
@@ -49,7 +49,7 @@ describe("gridCustomRendererFailover", () => {
     expect(result.current.isBannerVisible).toBe(true);
     expect(result.current.forcedSubscription).toMatch(/^failopen-\d+$/);
     expect(isGridCustomRendererFailOpen("render_claims_grouped_pdf_grid")).toBe(
-      true
+      true,
     );
     expect(isGridCustomRendererFailOpen("quickstart")).toBe(false);
 
@@ -64,10 +64,10 @@ describe("gridCustomRendererFailover", () => {
 
   it("rotates the forced subscription when a second dataset fails for the first time", () => {
     const { result: grouped } = renderHook(() =>
-      useGridCustomRendererFailover("render_claims_grouped_pdf_grid")
+      useGridCustomRendererFailover("render_claims_grouped_pdf_grid"),
     );
     const { result: csv } = renderHook(() =>
-      useGridCustomRendererFailover("render_claims_csv_media_type")
+      useGridCustomRendererFailover("render_claims_csv_media_type"),
     );
 
     const nowSpy = vi.spyOn(Date, "now").mockReturnValueOnce(101);
@@ -96,7 +96,7 @@ describe("gridCustomRendererFailover", () => {
       expect(csv.current.isDisabled).toBe(true);
       expect(grouped.current.forcedSubscription).toMatch(/^failopen-\d+$/);
       expect(grouped.current.forcedSubscription).not.toBe(
-        firstForcedSubscription
+        firstForcedSubscription,
       );
     } finally {
       nowSpy.mockRestore();

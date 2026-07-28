@@ -41,7 +41,7 @@ const BarContainer = styled.div`
 
 type OnPageChange = (
   e: React.ChangeEvent<HTMLInputElement>,
-  newElementIndex?: number
+  newElementIndex?: number,
 ) => void;
 
 /**
@@ -75,7 +75,7 @@ const PaginationBarContent = ({
   const data = usePreloadedQuery(foq.paginateSamples, queryRef);
 
   const dynamicGroupParameters = useRecoilValue(
-    fos.dynamicGroupParameters
+    fos.dynamicGroupParameters,
   ) as fos.State.DynamicGroupParameters;
   const groupField = useRecoilValue(fos.groupField);
   const setSample = useRecoilCallback(
@@ -93,7 +93,7 @@ const PaginationBarContent = ({
           }));
         }
       },
-    [dynamicGroupParameters, groupField]
+    [dynamicGroupParameters, groupField],
   );
 
   const groupByFieldValue = fos.useGroupByFieldValue();
@@ -228,7 +228,7 @@ export const GroupElementsLinkBar = React.memo(() => {
         }, 100);
       }
     },
-    [setDynamicGroupCurrentElementIndex, deferred, elementsCount]
+    [setDynamicGroupCurrentElementIndex, deferred, elementsCount],
   );
 
   const keyNavigationHandler = useRecoilCallback(
@@ -237,17 +237,17 @@ export const GroupElementsLinkBar = React.memo(() => {
         e.preventDefault();
         isPaginationChangeRef.current = true;
         setDynamicGroupCurrentElementIndex((prev) =>
-          prev <= 1 ? prev : prev - 1
+          prev <= 1 ? prev : prev - 1,
         );
       } else if (e.key === ".") {
         e.preventDefault();
         isPaginationChangeRef.current = true;
         setDynamicGroupCurrentElementIndex((prev) =>
-          prev >= elementsCount ? prev : prev + 1
+          prev >= elementsCount ? prev : prev + 1,
         );
       }
     },
-    [elementsCount, setDynamicGroupCurrentElementIndex]
+    [elementsCount, setDynamicGroupCurrentElementIndex],
   );
 
   fos.useEventHandler(document, "keydown", keyNavigationHandler);

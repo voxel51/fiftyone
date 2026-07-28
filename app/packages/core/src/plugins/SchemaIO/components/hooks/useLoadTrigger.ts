@@ -26,7 +26,7 @@ export interface UseLoadTriggerResult {
  */
 export function useLoadTrigger(
   state: LoaderState,
-  dependencyHash: DependencyHash
+  dependencyHash: DependencyHash,
 ): UseLoadTriggerResult {
   const hasLoadedOnceRef = useRef(false);
   const lastHashRef = useRef<DependencyHash | undefined>(undefined);

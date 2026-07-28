@@ -40,7 +40,7 @@ export type ViewPropsType<Schema extends SchemaType = SchemaType> = {
     path: string,
     value: any,
     schema?: Schema,
-    ancestors?: AncestorsType
+    ancestors?: AncestorsType,
   ) => void;
   parentSchema?: SchemaType;
   relativePath: string;
@@ -72,12 +72,12 @@ export type ViewPropsType<Schema extends SchemaType = SchemaType> = {
   onClick?: (
     e: React.MouseEvent,
     params: Record<string, unknown>,
-    props: ViewPropsType
+    props: ViewPropsType,
   ) => void;
   fullData?: Record<string, unknown>;
   onValidationErrors?: (
     basePath: string,
-    errors: ValidationErrorType[]
+    errors: ValidationErrorType[],
   ) => void;
 };
 

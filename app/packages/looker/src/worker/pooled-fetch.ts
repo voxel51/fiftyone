@@ -17,7 +17,7 @@ let activeRequests = 0;
 const requestQueue: QueueItem[] = [];
 
 export const enqueueFetch = (
-  request: QueueItem["request"]
+  request: QueueItem["request"],
 ): Promise<Response> => {
   return new Promise((resolve, reject) => {
     requestQueue.push({ request, resolve, reject });

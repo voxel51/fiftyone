@@ -77,7 +77,7 @@ describe("useRegisterCommandHandler", () => {
 
     // Handler should be unregistered, so execution should fail
     await expect(bus.execute(new TestCommand(5))).rejects.toThrow(
-      "No handler registered for TestCommand"
+      "No handler registered for TestCommand",
     );
   });
 
@@ -96,7 +96,7 @@ describe("useRegisterCommandHandler", () => {
       },
       {
         initialProps: { handler: handler1 },
-      }
+      },
     );
 
     const bus = getCommandBus();
@@ -139,7 +139,7 @@ describe("useRegisterCommandHandler", () => {
       },
       {
         initialProps: { type: TestCommand, handler: handler1 },
-      }
+      },
     );
 
     const bus = getCommandBus();
@@ -155,7 +155,7 @@ describe("useRegisterCommandHandler", () => {
 
     // Old handler should be unregistered
     await expect(bus.execute(new TestCommand(5))).rejects.toThrow(
-      "No handler registered for TestCommand"
+      "No handler registered for TestCommand",
     );
 
     // New handler should work
@@ -185,7 +185,7 @@ describe("useRegisterCommandHandler", () => {
       },
       {
         initialProps: { type: TestCommand, handler: handler1 },
-      }
+      },
     );
 
     const bus = getCommandBus();
@@ -200,7 +200,7 @@ describe("useRegisterCommandHandler", () => {
     });
 
     await expect(bus.execute(new TestCommand(5))).rejects.toThrow(
-      "No handler registered for TestCommand"
+      "No handler registered for TestCommand",
     );
 
     const result = await bus.execute(new AnotherCommand("HELLO"));
@@ -231,7 +231,7 @@ describe("useRegisterCommandHandler", () => {
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       expect.stringContaining("Failed to register handler for TestCommand"),
-      expect.any(Error)
+      expect.any(Error),
     );
 
     await expect(bus.execute(new TestCommand(5))).resolves.toEqual({
@@ -252,7 +252,7 @@ describe("useRegisterCommandHandler", () => {
       },
       {
         initialProps: { handler },
-      }
+      },
     );
 
     const bus = getCommandBus();
@@ -309,7 +309,7 @@ describe("useRegisterCommandHandler", () => {
       },
       {
         initialProps: { handler: createHandler() },
-      }
+      },
     );
 
     const bus = getCommandBus();

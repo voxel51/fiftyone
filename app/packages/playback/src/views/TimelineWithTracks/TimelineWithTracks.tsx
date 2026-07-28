@@ -1,9 +1,8 @@
-import { Drawer, useElementSize } from "@voxel51/voodo";
+import { Drawer } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
-  TIMELINE_DEFAULT_DRAWER_SIZE,
   TIMELINE_DRAWER_MAX_SIZE,
   TIMELINE_LABEL_WIDTH,
 } from "../../lib/constants";
@@ -15,10 +14,20 @@ import {
 import LoopOverlays from "../Loop/LoopOverlays";
 import PlayheadLine from "../Playhead/PlayheadLine";
 import TimelineHeader from "../TimelineHeader/TimelineHeader";
-import TimelineTrack from "../TimelineTrack/TimelineTrack";
+import TimelineTrack, {
+  type TimelineTrackProps,
+  type TrackEventMenuItem,
+} from "../TimelineTrack/TimelineTrack";
+import { partitionTracksByPin } from "./partitionTracksByPin";
 import styles from "./TimelineWithTracks.module.css";
 
 export interface TimelineWithTracksProps {
+  /**
+   * Optional readiness signal stamped on the root as
+   * `data-timeline-loaded` so tests can wait for tracks to be committed
+   * instead of polling. Omit to leave the attribute off entirely.
+   */
+  loaded?: boolean;
   /** @default TIMELINE_LABEL_WIDTH */
   labelWidth?: number;
   /**
@@ -32,6 +41,45 @@ export interface TimelineWithTracksProps {
    */
   maxSize?: number;
   className?: string;
+  /**
+   * Whether the drawer starts open. Mount-time only — user toggles thereafter
+   * persist until the next remount. Defaults closed; callers that want the
+   * timeline visible immediately pass `true`.
+   * @default false
+   */
+  defaultDrawerOpen?: boolean;
+  /** Controlled open state for the tracks drawer. */
+  drawerOpen?: boolean;
+  /** Called when the tracks drawer requests an open-state change. */
+  onDrawerOpenChange?: (open: boolean) => void;
+  /** Overlay rendered on top of the ruler row in each TimelineHeader. */
+  rulerOverlay?: React.ReactNode;
+  /**
+   * Custom context-menu items added to every track's events. Per-row overrides
+   * can still be supplied via {@link decorateTrack}. See
+   * {@link TimelineTrackProps.eventMenuItems}.
+   */
+  eventMenuItems?: TrackEventMenuItem[];
+  /**
+   * Optional content rendered inline between the playback control buttons and
+   * the playhead time display. Forwarded to {@link TimelineHeader}'s
+   * `extraControls`; renders in both the empty-timeline and drawer layouts.
+   */
+  extraControls?: React.ReactNode;
+  /**
+   * Optional content rendered far-right after the playhead time, preceded by a
+   * divider. Forwarded to {@link TimelineHeader}'s `extraActions`; renders in
+   * both the empty-timeline and drawer layouts.
+   */
+  extraActions?: React.ReactNode;
+  /**
+   * Per-row prop override. Returned partial is merged onto the props
+   * passed to each {@link TimelineTrack}.
+   */
+  decorateTrack?: (
+    track: Track,
+    pinned: boolean,
+  ) => Partial<TimelineTrackProps>;
 }
 
 /**
@@ -42,55 +90,48 @@ export interface TimelineWithTracksProps {
  * the controls and ruler. When the drawer is **open**, all tracks —
  * pinned at the top, unpinned below — live in the drawer body and
  * scroll together as one unit.
- *
- * The drawer's minimum drag size equals the pinned section height, so
- * the user can never drag below the pinned rows while the drawer is open.
  */
 const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
+  loaded,
   labelWidth: requestedLabelWidth = TIMELINE_LABEL_WIDTH,
-  defaultSize = TIMELINE_DEFAULT_DRAWER_SIZE,
   maxSize = TIMELINE_DRAWER_MAX_SIZE,
   className,
+  defaultDrawerOpen = false,
+  drawerOpen: controlledDrawerOpen,
+  onDrawerOpenChange,
+  rulerOverlay,
+  eventMenuItems,
+  extraControls,
+  extraActions,
+  decorateTrack,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tracks = useTracks();
   const { pinnedIds, togglePin } = useTrackPinning();
-  const { seek } = usePlayback();
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  const { seekSnapped } = usePlayback();
+  // Uncontrolled open state, seeded once from `defaultDrawerOpen`.
+  // User-initiated collapses/expands persist until the next remount.
+  const [uncontrolledDrawerOpen, setUncontrolledDrawerOpen] =
+    useState(defaultDrawerOpen);
+  const drawerOpen = controlledDrawerOpen ?? uncontrolledDrawerOpen;
+  const handleDrawerOpenChange = useCallback(
+    (open: boolean) => {
+      if (controlledDrawerOpen === undefined) {
+        setUncontrolledDrawerOpen(open);
+      }
+      onDrawerOpenChange?.(open);
+    },
+    [controlledDrawerOpen, onDrawerOpenChange],
+  );
 
-  // No tracks → no label column. The ruler/playhead/overlays span the
-  // full width so the timeline doesn't look oddly off-center with a
-  // wide empty column on the left.
   const labelWidth = tracks.length === 0 ? 0 : requestedLabelWidth;
 
-  const { pinned, unpinned } = useMemo(() => {
-    const p: Track[] = [];
-    const u: Track[] = [];
-    for (const t of tracks) {
-      if (pinnedIds.has(t.id)) p.push(t);
-      else u.push(t);
-    }
-    return { pinned: p, unpinned: u };
-  }, [tracks, pinnedIds]);
-
-  // pinnedSectionRef is attached to whichever DOM node currently holds
-  // the pinned tracks (header when closed, body when open) so the height
-  // measurement stays accurate across both states.
-  const { ref: pinnedSectionRef, height: pinnedHeight } = useElementSize();
-  const { ref: unpinnedSectionRef, height: unpinnedHeight } = useElementSize();
-
-  // When open, minSize = pinned section height so the user can't drag
-  // below the pinned rows. Total content caps the open size so the drawer
-  // doesn't have dead space.
-  const minDrawerSize = pinnedHeight;
-  const totalContent = pinnedHeight + unpinnedHeight;
-  const effectiveMaxSize =
-    totalContent > 0
-      ? Math.max(minDrawerSize, Math.min(totalContent, maxSize))
-      : maxSize;
-  const effectiveDefaultSize = Math.max(
-    minDrawerSize,
-    Math.min(defaultSize, effectiveMaxSize)
+  // Sub-rows follow their parent's pin state via `parentId` so a partial pin
+  // doesn't strand attribute children above unrelated parents — see
+  // {@link partitionTracksByPin}.
+  const { pinned, unpinned } = useMemo(
+    () => partitionTracksByPin(tracks, pinnedIds),
+    [tracks, pinnedIds],
   );
 
   const renderPinnedTrack = (track: Track) => (
@@ -103,87 +144,97 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       labelWidth={labelWidth}
       pinned
       onPinClick={() => togglePin(track.id)}
-      onEventClick={(e) => seek(e.startSec)}
+      onEventClick={(e) => seekSnapped(e.startSec)}
+      eventMenuItems={eventMenuItems}
+      {...(decorateTrack ? decorateTrack(track, true) : null)}
     />
   );
 
-  // No tracks at all → there's nothing for the drawer body to ever
-  // hold, so skip the Drawer entirely and just render the controls +
-  // ruler inline. Avoids an empty resize-handle / mystery-band layout
-  // and dodges the Drawer's "defaultSize set on first render and never
-  // shrinks" behaviour.
+  const loadedAttribute = loaded === undefined ? undefined : String(loaded);
+
   if (tracks.length === 0) {
     return (
       <div
         ref={containerRef}
-        className={clsx(styles.root, styles.noTracks, className)}
+        className={clsx(styles.root, className)}
+        data-timeline-loaded={loadedAttribute}
       >
-        <TimelineHeader labelWidth={labelWidth} zoomRef={containerRef} />
+        <TimelineHeader
+          labelWidth={labelWidth}
+          zoomRef={containerRef}
+          rulerOverlay={rulerOverlay}
+          extraControls={extraControls}
+          extraActions={extraActions}
+        />
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} className={clsx(styles.root, className)}>
+    <div
+      ref={containerRef}
+      className={clsx(styles.root, className)}
+      data-timeline-loaded={loadedAttribute}
+    >
       <Drawer
         side="bottom"
         open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-        defaultSize={effectiveDefaultSize}
-        minSize={minDrawerSize}
-        maxSize={effectiveMaxSize}
+        onOpenChange={handleDrawerOpenChange}
+        maxSize={maxSize}
         mode="push"
         header={({ toggle }) => (
           <TimelineHeader
             labelWidth={labelWidth}
             zoomRef={containerRef}
             onToggle={toggle}
+            rulerOverlay={rulerOverlay}
+            extraControls={extraControls}
+            extraActions={extraActions}
           >
-            {/* Pinned tracks live here when the drawer is closed so they
-                stay on-screen. The host div is position:relative so the
-                PlayheadLine and LoopOverlays anchor to it and cover the
-                visible tracks. */}
-            {!drawerOpen && pinned.length > 0 && (
-              <div ref={pinnedSectionRef} className={styles.pinnedOverlayHost}>
-                {pinned.map(renderPinnedTrack)}
-                <LoopOverlays labelWidth={labelWidth} />
-                <PlayheadLine labelWidth={labelWidth} />
-              </div>
-            )}
+            <div className={styles.pinnedOverlayHost}>
+              {/* Pinned rows live here only while the drawer is closed; when it
+                  opens they move into the body below. Rendering both
+                  unconditionally double-mounts every pinned row under the same
+                  track id, so selecting one hit both. */}
+              {!drawerOpen && pinned.map(renderPinnedTrack)}
+              <LoopOverlays labelWidth={labelWidth} />
+              <PlayheadLine labelWidth={labelWidth} />
+            </div>
           </TimelineHeader>
         )}
       >
         <div className={styles.tracksOuter}>
           <div className={styles.tracksArea}>
             {/* When the drawer is open, pinned tracks move into the body
-                so they scroll together with the unpinned section below. */}
-            <div
-              ref={drawerOpen ? pinnedSectionRef : undefined}
-              className={styles.pinnedTracks}
-            >
-              {pinned.map(renderPinnedTrack)}
+                so they scroll together with the unpinned section below; the
+                header slot above stops rendering them so each row mounts once. */}
+            <div className={styles.pinnedTracks}>
+              {drawerOpen && pinned.map(renderPinnedTrack)}
             </div>
-            <div ref={unpinnedSectionRef}>
-              {unpinned.map((track) => (
-                <TimelineTrack
-                  key={track.id}
-                  id={track.id}
-                  label={track.label}
-                  color={track.color}
-                  events={track.events}
-                  labelWidth={labelWidth}
-                  pinned={false}
-                  onPinClick={() => togglePin(track.id)}
-                  onEventClick={(e) => seek(e.startSec)}
-                  className={styles.unpinnedTrack}
-                />
-              ))}
+            <div>
+              {unpinned.map((track) => {
+                const extra = decorateTrack
+                  ? decorateTrack(track, false)
+                  : null;
+                return (
+                  <TimelineTrack
+                    key={track.id}
+                    id={track.id}
+                    label={track.label}
+                    color={track.color}
+                    events={track.events}
+                    labelWidth={labelWidth}
+                    pinned={false}
+                    onPinClick={() => togglePin(track.id)}
+                    onEventClick={(e) => seekSnapped(e.startSec)}
+                    eventMenuItems={eventMenuItems}
+                    {...extra}
+                    className={clsx(styles.unpinnedTrack, extra?.className)}
+                  />
+                );
+              })}
             </div>
           </div>
-
-          {/* Overlays sit on the non-scrolling outer wrapper so they
-              anchor to the visible height and don't scroll with the
-              tracks. */}
           <LoopOverlays labelWidth={labelWidth} />
           <PlayheadLine labelWidth={labelWidth} />
         </div>

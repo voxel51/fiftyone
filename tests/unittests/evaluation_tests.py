@@ -5,6 +5,7 @@ FiftyOne evaluation-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 import random
 import string
@@ -1535,6 +1536,34 @@ class DetectionsTests(unittest.TestCase):
 
         return dataset
 
+    def _make_keypoints_dataset(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="image.jpg",
+            ground_truth=fo.Keypoints(
+                keypoints=[
+                    fo.Keypoint(
+                        label="pose",
+                        points=[(0, 0), (1, 1)],
+                    )
+                ]
+            ),
+            predictions=fo.Keypoints(
+                keypoints=[
+                    fo.Keypoint(
+                        label="pose",
+                        points=[(0, 0), (0.7, 1)],
+                        confidence=[0.9, 0.9],
+                    )
+                ]
+            ),
+        )
+
+        dataset.add_sample(sample)
+
+        return dataset
+
     def _evaluate_coco(self, dataset, kwargs):
         _, gt_eval_field = dataset._get_label_field_path(
             "ground_truth", "eval"
@@ -1976,6 +2005,72 @@ class DetectionsTests(unittest.TestCase):
         kwargs = {}
 
         self._evaluate_coco(dataset, kwargs)
+
+    @drop_datasets
+    def test_evaluate_keypoints_with_custom_sigmas(self):
+        dataset = self._make_keypoints_dataset()
+
+        results = dataset.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="default",
+            method="coco",
+            iou=0.9,
+        )
+
+        self.assertEqual(results.metrics()["support"], 1)
+        self.assertListEqual(dataset.values("default_tp"), [1])
+        self.assertListEqual(dataset.values("default_fp"), [0])
+        self.assertListEqual(dataset.values("default_fn"), [0])
+
+        results = dataset.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="strict",
+            method="coco",
+            iou=0.9,
+            keypoint_sigmas=[1, 0.05],
+            compute_mAP=True,
+        )
+
+        self.assertEqual(results.config.keypoint_sigmas, [1, 0.05])
+        self.assertListEqual(dataset.values("strict_tp"), [0])
+        self.assertListEqual(dataset.values("strict_fp"), [1])
+        self.assertListEqual(dataset.values("strict_fn"), [1])
+
+    def test_compute_ious_with_custom_keypoint_sigmas(self):
+        gts = [
+            fo.Keypoint(
+                label="pose",
+                points=[(0, 0), (1, 1)],
+            )
+        ]
+        preds = [
+            fo.Keypoint(
+                label="pose",
+                points=[(0, 0), (0.7, 1)],
+            )
+        ]
+
+        default = foui.compute_ious(preds, gts)[0, 0]
+        strict = foui.compute_ious(preds, gts, keypoint_sigmas=[1, 0.05])[0, 0]
+
+        self.assertGreater(default, 0.9)
+        self.assertLess(strict, 0.9)
+
+        with self.assertRaises(ValueError):
+            foui.compute_ious(preds, gts, keypoint_sigmas=[1])
+
+    def test_compute_ious_degenerate_mask_box(self):
+        # a detection whose box has zero width or height has no area to
+        # overlap, so its mask IoU is 0 rather than a ZeroDivisionError
+        mask = np.ones((10, 10), dtype=bool)
+        gts = [fo.Detection(label="x", bounding_box=[0, 0, 0, 0.5], mask=mask)]
+        preds = [fo.Detection(label="x", bounding_box=[0, 0, 0.5, 0.5], mask=mask)]
+
+        ious = foui.compute_ious(preds, gts, use_masks=True)
+
+        self.assertEqual(ious[0, 0], 0.0)
 
     @drop_datasets
     def test_evaluate_detections_open_images(self):

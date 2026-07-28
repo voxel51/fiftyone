@@ -47,7 +47,7 @@ export const usePersistenceRetryController = (): AnnotationRetryController => {
     if (!canAttempt) {
       const timeout = setTimeout(
         () => setCanRetry(false),
-        FALLBACK_TIMEOUT_PERIOD_MS
+        FALLBACK_TIMEOUT_PERIOD_MS,
       );
       setIsUnhealthy(true);
 
@@ -73,6 +73,6 @@ export const usePersistenceRetryController = (): AnnotationRetryController => {
       recordAttempt,
       reset: resetController,
     }),
-    [canRetry, isUnhealthy, recordAttempt, resetController]
+    [canRetry, isUnhealthy, recordAttempt, resetController],
   );
 };

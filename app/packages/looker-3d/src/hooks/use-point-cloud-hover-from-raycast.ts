@@ -24,7 +24,7 @@ export const usePointCloudHoverFromRaycast = ({
 }: UsePointCloudHoverFromRaycastProps) => {
   const { pointCloudSettings, setHoverMetadata } = useFo3dContext();
   const [currentHoveredPoint, setCurrentHoveredPoint] = useRecoilState(
-    currentHoveredPointAtom
+    currentHoveredPointAtom,
   );
   const raycastResult = useRaycastResult();
 

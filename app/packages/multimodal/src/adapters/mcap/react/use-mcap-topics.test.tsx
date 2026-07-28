@@ -4,10 +4,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import type { StreamInventory } from "../../../schemas/v1";
 import type { McapResourceClient } from "../types";
+import {
+  publishMcapSourceBootstrap,
+  resetMcapSourceBootstrapCacheForTests,
+} from "../source-bootstrap-cache";
 import { useMcapTopics, type McapTopicsState } from "./use-mcap-topics";
 
 afterEach(() => {
   cleanup();
+  resetMcapSourceBootstrapCacheForTests();
 });
 
 describe("useMcapTopics", () => {
@@ -32,6 +37,61 @@ describe("useMcapTopics", () => {
     expect(client.readTopics).toHaveBeenCalledWith({ source });
   });
 
+  it("renders grid bootstrap topics immediately while revalidating", async () => {
+    const source = createSource("bootstrapped");
+    const cachedTopic = createTopic("cached-camera");
+    let releaseRead = () => undefined as void;
+    const pendingRead = new Promise<void>((resolve) => {
+      releaseRead = resolve;
+    });
+    const client = createTopicsClient(async () => {
+      await pendingRead;
+      return [createTopic("fresh-camera")];
+    });
+    publishMcapSourceBootstrap(source, { topics: [cachedTopic] });
+    const states: McapTopicsState[] = [];
+
+    render(
+      <TopicsHarness
+        client={client}
+        label="topics"
+        onState={(state) => states.push(state)}
+        source={source}
+      />,
+    );
+
+    expect(screen.getByTestId("topics").textContent).toBe("ready:1:");
+    expect(states.at(-1)?.topics.map((topic) => topic.streamId)).toEqual([
+      "cached-camera",
+    ]);
+    expect(client.readTopics).toHaveBeenCalledWith({ source });
+
+    releaseRead();
+    await waitFor(() => {
+      expect(states.at(-1)?.topics.map((topic) => topic.streamId)).toEqual([
+        "fresh-camera",
+      ]);
+    });
+  });
+
+  it("observes bootstrap topics published after the source first renders", () => {
+    const source = createSource("late-bootstrap");
+    const client = createTopicsClient(
+      () => new Promise<readonly StreamInventory[]>(() => undefined),
+    );
+    const { rerender } = render(
+      <TopicsHarness client={client} label="topics" source={source} />,
+    );
+    expect(screen.getByTestId("topics").textContent).toBe("loading:0:");
+
+    publishMcapSourceBootstrap(source, {
+      topics: [createTopic("cached-camera")],
+    });
+    rerender(<TopicsHarness client={client} label="topics" source={source} />);
+
+    expect(screen.getByTestId("topics").textContent).toBe("ready:1:");
+  });
+
   it("surfaces failed reads and retries the same source later", async () => {
     const source = createSource("retry");
     const failedClient = createTopicsClient(async () => {
@@ -39,7 +99,7 @@ describe("useMcapTopics", () => {
     });
 
     const { unmount } = render(
-      <TopicsHarness client={failedClient} label="failed" source={source} />
+      <TopicsHarness client={failedClient} label="failed" source={source} />,
     );
 
     await waitFor(() => {
@@ -49,13 +109,47 @@ describe("useMcapTopics", () => {
 
     const retryClient = createTopicsClient(async () => [createTopic("camera")]);
     render(
-      <TopicsHarness client={retryClient} label="retry" source={source} />
+      <TopicsHarness client={retryClient} label="retry" source={source} />,
     );
 
     await waitFor(() => {
       expect(screen.getByTestId("retry").textContent).toBe("ready:1:");
     });
     expect(retryClient.readTopics).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports loading, not the previous inventory, while a swapped source settles", async () => {
+    const firstSource = createSource("swap-a");
+    const secondSource = createSource("swap-b");
+    let releaseSecond = () => undefined as void;
+    const secondRead = new Promise<void>((resolve) => {
+      releaseSecond = resolve;
+    });
+    const client = createTopicsClient(async ({ source }) => {
+      if (source.sourceId === secondSource.sourceId) {
+        await secondRead;
+      }
+      return [createTopic(source.sourceId)];
+    });
+
+    const { rerender } = render(
+      <TopicsHarness client={client} label="topics" source={firstSource} />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("topics").textContent).toBe("ready:1:");
+    });
+
+    // The persistent renderer swaps sources on the same mount; the first
+    // render after the swap must not present the old inventory as ready.
+    rerender(
+      <TopicsHarness client={client} label="topics" source={secondSource} />,
+    );
+    expect(screen.getByTestId("topics").textContent).toBe("loading:0:");
+
+    releaseSecond();
+    await waitFor(() => {
+      expect(screen.getByTestId("topics").textContent).toBe("ready:1:");
+    });
   });
 
   it("reads again when the source key changes", async () => {
@@ -66,7 +160,7 @@ describe("useMcapTopics", () => {
     ]);
 
     const { rerender } = render(
-      <TopicsHarness client={client} label="topics" source={firstSource} />
+      <TopicsHarness client={client} label="topics" source={firstSource} />,
     );
 
     await waitFor(() => {
@@ -74,7 +168,7 @@ describe("useMcapTopics", () => {
     });
 
     rerender(
-      <TopicsHarness client={client} label="topics" source={secondSource} />
+      <TopicsHarness client={client} label="topics" source={secondSource} />,
     );
 
     await waitFor(() => {
@@ -111,7 +205,7 @@ function TopicsHarness({
 }
 
 function createTopicsClient(
-  readTopics: McapResourceClient["readTopics"] = vi.fn(async () => [])
+  readTopics: McapResourceClient["readTopics"] = vi.fn(async () => []),
 ): McapResourceClient {
   return {
     dispose: vi.fn(),
@@ -123,9 +217,19 @@ function createTopicsClient(
     readFrameTransformBootstrap: vi.fn(),
     readFrameTransformWindow: vi.fn(),
     readSynchronizedMessageBatch: vi.fn(async () => []),
+    readRawMessageRecord: vi.fn(),
     readSynchronizedMessages: vi.fn(),
     readTimelineRange: vi.fn(),
     readTopics: vi.fn(readTopics),
+    readTopicTimeBounds: vi.fn(async () => []),
+    enumerateNumericFields: vi.fn(async () => []),
+    readNumericSeries: vi.fn(async () => ({
+      baseTimeNs: 0n,
+      fields: [],
+      messageCount: 0,
+      topic: "",
+      truncated: false,
+    })),
   };
 }
 

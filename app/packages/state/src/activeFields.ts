@@ -10,11 +10,11 @@ export const computeActiveFields = (
   config?: {
     readonly exclude: boolean | null;
     readonly paths: ReadonlyArray<string> | null;
-  }
+  },
 ) => {
   const allLabels = [...allSampleLabels, ...allFrameLabels];
   const denseLabelsFrames = getDenseLabelNames(frameSchema).map(
-    (l) => `frames.${l}`
+    (l) => `frames.${l}`,
   );
   const denseLabelsSamples = getDenseLabelNames(sampleSchema);
   const denseLabels = [...denseLabelsSamples, ...denseLabelsFrames];

@@ -1,0 +1,14 @@
+/* Plot tile body: chart surface matches sibling visualization panels. */
+.body {
+  background: var(--plot-surface, #050b12);
+  height: 100%;
+  position: relative;
+  width: 100%;
+}
+
+.swatch {
+  border-radius: 2px;
+  flex: none;
+  height: 10px;
+  width: 10px;
+}

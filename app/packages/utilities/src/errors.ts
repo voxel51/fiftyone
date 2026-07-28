@@ -72,7 +72,7 @@ export class NetworkError extends AppError {
       requestHeaders: HeadersInit;
       responseHeaders: Headers;
     },
-    message: string
+    message: string,
   ) {
     super({ name: "Network Error" }, message);
     this.code = code;
@@ -141,7 +141,7 @@ export class ServerError extends NetworkError {
       statusText: string;
       stack?: string;
     },
-    message: string
+    message: string,
   ) {
     super(
       {
@@ -153,7 +153,7 @@ export class ServerError extends NetworkError {
         requestHeaders,
         responseHeaders,
       },
-      message
+      message,
     );
     this.stack = stack;
   }
@@ -170,7 +170,7 @@ export class OperatorError extends AppError {
   constructor(
     public message: string,
     public stack: string,
-    public operator: string
+    public operator: string,
   ) {
     super({ name: "Uncaught Operator Error" }, message);
     this.stack = stack;
@@ -184,7 +184,7 @@ export class PanelEventError extends OperatorError {
     public message: string,
     public stack: string,
     public operator: string,
-    public event: any
+    public event: any,
   ) {
     super(message, stack, operator);
     this.event = event;

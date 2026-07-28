@@ -6,7 +6,7 @@ import type { useMeshMaterialControls } from "./use-mesh-material-controls";
 const setOpacity = (
   mtl: Material,
   newMaterial: ReturnType<typeof useMeshMaterialControls>["material"],
-  userData: Record<string, any>
+  userData: Record<string, any>,
 ) => {
   if (!userData[FO_USER_DATA.FO_ORIGINAL_MATERIAL_CONFIG]) {
     userData[FO_USER_DATA.FO_ORIGINAL_MATERIAL_CONFIG] = {
@@ -41,7 +41,7 @@ const setOpacity = (
  */
 export const usePercolateMaterial = (
   scene: Object3D,
-  newMaterial: ReturnType<typeof useMeshMaterialControls>["material"]
+  newMaterial: ReturnType<typeof useMeshMaterialControls>["material"],
 ) => {
   // This effect applies opacity and wireframe settings across scene materials.
   useEffect(() => {

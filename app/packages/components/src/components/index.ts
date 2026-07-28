@@ -10,8 +10,13 @@ export { default as ColoredDot } from "./ColoredDot";
 export { default as CopyButton } from "./CopyButton";
 export { default as Dialog } from "./Dialog";
 export { default as EditableLabel } from "./EditableLabel";
+export {
+  default as EnterpriseUpsellCallout,
+  ENTERPRISE_LEARN_MORE_URL,
+} from "./EnterpriseUpsellCallout";
+export type { EnterpriseUpsellCalloutProps } from "./EnterpriseUpsellCallout";
 export { default as ErrorBoundary, ErrorDisplayMarkup } from "./ErrorBoundary";
-export { default as ExternalLink, useExternalLink } from "./ExternalLink";
+export { default as ExternalLink } from "./ExternalLink";
 export { default as FilterAndSelectionIndicator } from "./FilterAndSelectionIndicator";
 export { ActionToolbar } from "./ActionToolbar";
 export type {

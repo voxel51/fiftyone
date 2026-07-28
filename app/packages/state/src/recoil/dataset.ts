@@ -17,7 +17,7 @@ export const dataset = foq.graphQLSyncFragmentAtom<
   },
   {
     key: "dataset",
-  }
+  },
 );
 
 const estimatedCounts =
@@ -28,15 +28,15 @@ const estimatedCounts =
     },
     {
       key: "estimatedCounts",
-    }
+    },
   );
 
-export const datasetSampleCount = selector({
+export const datasetSampleCount = selector<number | null>({
   key: "datasetSampleCount",
-  get: ({ get }) => get(estimatedCounts).estimatedSampleCount,
+  get: ({ get }) => get(estimatedCounts)?.estimatedSampleCount ?? null,
 });
 
-export const datasetFrameCount = selector({
+export const datasetFrameCount = selector<number | null>({
   key: "datasetFrameCount",
-  get: ({ get }) => get(estimatedCounts).estimatedFrameCount,
+  get: ({ get }) => get(estimatedCounts)?.estimatedFrameCount ?? null,
 });

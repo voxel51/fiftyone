@@ -47,7 +47,7 @@ describe("AnnotationSchema", () => {
         mockOverlay,
         "overlay-1",
         { x: 0, y: 0, width: 100, height: 100 },
-        { x: 10, y: 10, width: 110, height: 110 }
+        { x: 10, y: 10, width: 110, height: 110 },
       );
 
       const event = {

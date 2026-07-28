@@ -18,7 +18,7 @@ import { getDatasetName, getParam } from "./utils";
 
 const useEventSource = (
   router: RoutingContext<Queries>,
-  session: MutableRefObject<Session>
+  session: MutableRefObject<Session>,
 ) => {
   const [readyState, setReadyState] = useRecoilState(appReadyState);
   const readyStateRef = useRef<AppReadyState>(readyState);
@@ -29,7 +29,7 @@ const useEventSource = (
     controller,
     router,
     readyStateRef,
-    session
+    session,
   );
   const handleError = useErrorHandler();
   const clearModal = useClearModal();
@@ -68,7 +68,7 @@ const useEventSource = (
         },
         subscription,
         events: subscriptions,
-      }
+      },
     );
 
     return () => {

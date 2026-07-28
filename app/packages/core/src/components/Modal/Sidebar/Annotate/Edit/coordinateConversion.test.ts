@@ -12,7 +12,7 @@ describe("relativeToImagePixels", () => {
   it("converts normalized coords to image pixel coords", () => {
     const result = relativeToImagePixels(
       { x: 0.1, y: 0.2, width: 0.5, height: 0.4 },
-      { width: 1920, height: 1080 }
+      { width: 1920, height: 1080 },
     );
 
     expect(result.x).toBeCloseTo(192);
@@ -24,7 +24,7 @@ describe("relativeToImagePixels", () => {
   it("maps (0, 0) origin to image top-left", () => {
     const result = relativeToImagePixels(
       { x: 0, y: 0, width: 1, height: 1 },
-      { width: 800, height: 600 }
+      { width: 800, height: 600 },
     );
 
     expect(result.x).toBe(0);
@@ -36,7 +36,7 @@ describe("relativeToImagePixels", () => {
   it("supports negative x/y for boxes that extend beyond the image edge", () => {
     const result = relativeToImagePixels(
       { x: -0.1, y: 0, width: 0.5, height: 0.5 },
-      { width: 1000, height: 1000 }
+      { width: 1000, height: 1000 },
     );
 
     expect(result.x).toBeCloseTo(-100);
@@ -46,7 +46,7 @@ describe("relativeToImagePixels", () => {
   it("supports width/height > 1 for boxes that extend beyond the image edge", () => {
     const result = relativeToImagePixels(
       { x: 0, y: 0, width: 1.2, height: 1.1 },
-      { width: 500, height: 400 }
+      { width: 500, height: 400 },
     );
 
     expect(result.width).toBeCloseTo(600);
@@ -57,7 +57,7 @@ describe("relativeToImagePixels", () => {
     // Non-square image: 2000 wide, 500 tall
     const result = relativeToImagePixels(
       { x: 0.5, y: 0.5, width: 0.5, height: 0.5 },
-      { width: 2000, height: 500 }
+      { width: 2000, height: 500 },
     );
 
     expect(result.x).toBeCloseTo(1000);
@@ -76,7 +76,7 @@ describe("imagePixelsToCanvasPixels", () => {
     const result = imagePixelsToCanvasPixels(
       { x: 100, y: 50, width: 200, height: 150 },
       dims,
-      rendered
+      rendered,
     );
 
     expect(result.x).toBeCloseTo(100);
@@ -93,7 +93,7 @@ describe("imagePixelsToCanvasPixels", () => {
     const result = imagePixelsToCanvasPixels(
       { x: 480, y: 270, width: 960, height: 540 },
       dims,
-      rendered
+      rendered,
     );
 
     expect(result.x).toBeCloseTo(240);
@@ -111,7 +111,7 @@ describe("imagePixelsToCanvasPixels", () => {
     const result = imagePixelsToCanvasPixels(
       { x: 0, y: 0, width: 800, height: 400 },
       dims,
-      rendered
+      rendered,
     );
 
     expect(result.x).toBeCloseTo(0);
@@ -129,7 +129,7 @@ describe("imagePixelsToCanvasPixels", () => {
     const result = imagePixelsToCanvasPixels(
       { x: 0, y: 0, width: 400, height: 600 },
       dims,
-      rendered
+      rendered,
     );
 
     expect(result.x).toBeCloseTo(200); // offset from pillarbox
@@ -166,7 +166,7 @@ describe("imagePixelsToCanvasPixels", () => {
     const result = imagePixelsToCanvasPixels(
       { x: -100, y: 0, width: 600, height: 500 },
       dims,
-      rendered
+      rendered,
     );
 
     expect(result.x).toBeCloseTo(-50);

@@ -9,7 +9,7 @@ import type { MaskSnapshot, PaintStrokeData } from "../overlay/MaskCanvas";
 import type { Rect } from "../types";
 
 const makeSnapshot = (tag: string): MaskSnapshot =>
-  ({ tag, width: 4, height: 4, imageData: {} } as unknown as MaskSnapshot);
+  ({ tag, width: 4, height: 4, imageData: {} }) as unknown as MaskSnapshot;
 
 const makeBounds = (tag: number): Rect => ({
   x: tag,
@@ -45,7 +45,7 @@ describe("MergeDetectionsCommand", () => {
       paintData,
       { deleteSource, restoreSource },
       "target-id",
-      "source-id"
+      "source-id",
     );
 
     await command.execute();
@@ -53,7 +53,7 @@ describe("MergeDetectionsCommand", () => {
     expect(restoreMaskSnapshot).toHaveBeenCalledTimes(1);
     expect(restoreMaskSnapshot).toHaveBeenCalledWith(
       paintData.afterSnapshot,
-      paintData.afterBounds
+      paintData.afterBounds,
     );
     expect(deleteSource).toHaveBeenCalledTimes(1);
     expect(restoreSource).not.toHaveBeenCalled();
@@ -70,7 +70,7 @@ describe("MergeDetectionsCommand", () => {
       paintData,
       { deleteSource, restoreSource },
       "target-id",
-      "source-id"
+      "source-id",
     );
 
     await command.undo();
@@ -78,7 +78,7 @@ describe("MergeDetectionsCommand", () => {
     expect(restoreMaskSnapshot).toHaveBeenCalledTimes(1);
     expect(restoreMaskSnapshot).toHaveBeenCalledWith(
       paintData.beforeSnapshot,
-      paintData.beforeBounds
+      paintData.beforeBounds,
     );
     expect(restoreSource).toHaveBeenCalledTimes(1);
     expect(deleteSource).not.toHaveBeenCalled();
@@ -95,7 +95,7 @@ describe("MergeDetectionsCommand", () => {
       paintData,
       { deleteSource, restoreSource },
       "target",
-      "source"
+      "source",
     );
 
     await command.execute();
@@ -121,7 +121,7 @@ describe("MergeDetectionsCommand", () => {
       makePaintData(),
       { deleteSource: vi.fn(), restoreSource: vi.fn() },
       "tgt",
-      "src"
+      "src",
     );
     expect(command.id).toMatch(/^merge-tgt-src-\d+$/);
   });

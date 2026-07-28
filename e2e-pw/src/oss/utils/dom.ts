@@ -14,13 +14,13 @@ import { Page } from "src/oss/fixtures";
 export async function isElementCoveredBy(
   page: Page,
   coords: { x: number; y: number },
-  targetSelector: string
+  targetSelector: string,
 ): Promise<boolean> {
   return page.evaluate(
     ({ x, y, selector }) => {
       const el = document.elementFromPoint(x, y);
       return el?.closest(selector) !== null || el?.matches(selector) === true;
     },
-    { x: coords.x, y: coords.y, selector: targetSelector }
+    { x: coords.x, y: coords.y, selector: targetSelector },
   );
 }

@@ -1,19 +1,19 @@
 import {
-  DetectionOverlay,
-  TransformOverlayCommand,
-  UNDEFINED_LIGHTER_SCENE_ID,
-  useLighter,
-  useLighterEventHandler,
-} from "@fiftyone/lighter";
-import { useAtom, useAtomValue } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
+  encodeEntityId,
+  GEOMETRY_SIGNAL,
+  type GeometrySignal,
+  type LabelRef,
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
+  useEngineSelector,
+  useSignalValue,
+} from "@fiftyone/annotation";
+import { useCurrentDatasetId } from "@fiftyone/state";
+import type { LabelData } from "@fiftyone/utilities";
+import { useEffect, useMemo, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
-import {
-  imagePixelsToCanvasPixels,
-  relativeToImagePixels,
-} from "./coordinateConversion";
-import { currentData, currentOverlay } from "./state";
+import { useAnnotationContext } from "./useAnnotationContext";
 
 const createInput = (name: string, readOnly?: boolean) => {
   return {
@@ -25,7 +25,8 @@ const createInput = (name: string, readOnly?: boolean) => {
         component: "FieldView",
         readOnly,
       },
-      multipleOf: 0.01,
+      // relative [0,1] coordinates — fine step, no snapping of stored values
+      multipleOf: 0.0001,
     },
   };
 };
@@ -56,75 +57,69 @@ export default function Position({ readOnly = false }: PositionProps) {
     dimensions: {},
   });
 
-  const overlay = useAtomValue(currentOverlay);
-  const [data, setData] = useAtom(currentData);
+  const { selected } = useAnnotationContext();
+  const overlay = selected?.overlay;
+  const engine = useAnnotationEngine();
+  const sample = useActiveAnnotationSampleId();
+  const dataset = useCurrentDatasetId() ?? "";
 
-  const { scene } = useLighter();
-  const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  // address the box by its engine ref — the anchor's full ref (carries the
+  // video frame + track instanceId + frames.<field> path) when the form was
+  // opened from a surface; falls back to the schema-field + overlay id, which is
+  // already correct for an image / sample-level label. The engine is the source
+  // of truth for geometry; the overlay is no longer read here.
+  const ref = useMemo<LabelRef | null>(
+    () =>
+      selected?.ref ??
+      (overlay && sample
+        ? { sample, path: overlay.field, instanceId: overlay.id }
+        : null),
+    [selected?.ref, overlay, sample],
   );
 
-  const toImagePixels = useCallback(
-    (relative: Parameters<typeof relativeToImagePixels>[0]) => {
-      const dims = scene
-        ?.getCanonicalMedia()
-        ?.getOriginalDimensions() ?? { width: 1, height: 1 };
-      return relativeToImagePixels(relative, dims);
-    },
-    [scene]
-  );
-
-  const toCanvasPixels = useCallback(
-    (imageRect: Parameters<typeof imagePixelsToCanvasPixels>[0]) => {
-      const canonicalMedia = scene?.getCanonicalMedia();
-      const dims = canonicalMedia?.getOriginalDimensions() ?? { width: 1, height: 1 };
-      const rendered = canonicalMedia?.getRenderedBounds() ?? { x: 0, y: 0, width: 1, height: 1 };
-      return imagePixelsToCanvasPixels(imageRect, dims, rendered);
-    },
-    [scene]
+  // committed baseline — the box's stored RELATIVE bounds, read reactively from
+  // the engine so it re-syncs on EVERY committed change (drag-end, number input,
+  // undo/redo, playhead move to another frame of the track); absolute pixels are
+  // arbitrary and drift through the round-trip.
+  const committedBounds = useEngineSelector(engine, (e) =>
+    ref ? (e.getLabel(ref)?.bounding_box as number[] | undefined) : undefined,
   );
 
   useEffect(() => {
-    if (!(overlay instanceof DetectionOverlay) || !overlay.hasValidBounds()) {
+    if (!committedBounds || committedBounds.length !== 4) {
       return;
     }
 
-    const rect = toImagePixels(overlay.relativeBounds);
-
+    const [x, y, width, height] = committedBounds;
     setState({
-      position: { x: rect.x, y: rect.y },
-      dimensions: { width: rect.width, height: rect.height },
+      position: { x, y },
+      dimensions: { width, height },
     });
-  }, [overlay, toImagePixels]);
+  }, [committedBounds]);
 
-  const handleBoundsChange = useCallback(
-    (payload: { id: string }) => {
-      if (
-        !(overlay instanceof DetectionOverlay) ||
-        !overlay.hasValidBounds() ||
-        payload.id !== data?._id
-      ) {
-        return;
-      }
-
-      const rect = toImagePixels(overlay.relativeBounds);
-
-      setState({
-        position: { x: rect.x, y: rect.y },
-        dimensions: { width: rect.width, height: rect.height },
-      });
-
-      const relative = overlay.relativeBounds;
-      setData({
-        bounding_box: [relative.x, relative.y, relative.width, relative.height],
-      });
-    },
-    [data?._id, overlay, toImagePixels, setData]
+  // LIVE geometry from the engine — the 2D scene publishes mid-drag relative
+  // bounds; we render them directly, never touching Lighter. Render-only: the
+  // committed write happens on drag-end through the bridge.
+  const key = useMemo(
+    () => (ref ? encodeEntityId(dataset, ref) : null),
+    [dataset, ref],
   );
 
-  useEventHandler("lighter:overlay-bounds-changed", handleBoundsChange);
-  useEventHandler("lighter:overlay-drag-move", handleBoundsChange);
-  useEventHandler("lighter:overlay-resize-move", handleBoundsChange);
+  const live = useSignalValue<GeometrySignal | null>(
+    engine,
+    GEOMETRY_SIGNAL,
+    key,
+    null,
+  );
+
+  useEffect(() => {
+    if (!live || live.kind !== "2d") {
+      return;
+    }
+
+    const { x, y, width, height } = live.bounds;
+    setState({ position: { x, y }, dimensions: { width, height } });
+  }, [live]);
 
   const schema: SchemaType = useMemo(
     () => ({
@@ -151,36 +146,72 @@ export default function Position({ readOnly = false }: PositionProps) {
         },
       },
     }),
-    [readOnly]
+    [readOnly],
   );
 
   return (
     <div style={{ width: "100%" }}>
       <SchemaIOComponent
-        key={overlay?.id}
+        key={ref?.instanceId ?? overlay?.id}
         smartForm={true}
         schema={schema}
         data={state}
-        onChange={(data: Coordinates) => {
+        onChange={(input: Coordinates) => {
+          if (readOnly || !ref) {
+            return;
+          }
+
+          // current bounds from the engine (source of truth), falling back to
+          // what's displayed — never from the Lighter overlay, which a video
+          // frame label doesn't carry for the current playhead.
+          const stored = engine.getLabel(ref)?.bounding_box as
+            | number[]
+            | undefined;
+          const current =
+            stored && stored.length === 4
+              ? {
+                  x: stored[0],
+                  y: stored[1],
+                  width: stored[2],
+                  height: stored[3],
+                }
+              : {
+                  x: state.position.x,
+                  y: state.position.y,
+                  width: state.dimensions.width,
+                  height: state.dimensions.height,
+                };
+
+          const merged = {
+            ...current,
+            ...input.dimensions,
+            ...input.position,
+          };
+
           if (
-            readOnly ||
-            !(overlay instanceof DetectionOverlay) ||
-            !overlay.hasValidBounds()
+            [merged.x, merged.y, merged.width, merged.height].some(
+              (v) => typeof v !== "number",
+            )
           ) {
             return;
           }
 
-          const oldBounds = overlay.bounds;
-          const currentImagePixels = toImagePixels(overlay.relativeBounds);
-          const newImagePixels = {
-            ...currentImagePixels,
-            ...data.dimensions,
-            ...data.position,
-          };
-          const newCanvasBounds = toCanvasPixels(newImagePixels);
-          scene?.executeCommand(
-            new TransformOverlayCommand(overlay, overlay.id, oldBounds, newCanvasBounds)
-          );
+          // immediate display of the typed value
+          setState({
+            position: { x: merged.x, y: merged.y },
+            dimensions: { width: merged.width, height: merged.height },
+          });
+
+          // commit through the engine: it persists (autosave diffs the engine)
+          // and the Lighter bridge read-half re-homes the overlay. A bare
+          // updateLabel is one implicit transaction, so the engine bridge pushes
+          // the single value-based undo entry — don't also push our own (that
+          // double-counts the edit on the shared command stack).
+          const next = [merged.x, merged.y, merged.width, merged.height];
+
+          engine.updateLabel(ref, {
+            bounding_box: next,
+          } as Partial<LabelData>);
         }}
       />
     </div>

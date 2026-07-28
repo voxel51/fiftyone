@@ -54,10 +54,10 @@ const getAxisTick = (isDateTime, timeZone) => {
             {isDateTime && typeof v !== "string"
               ? formatDateTime(v, timeZone)
               : isFloat(v)
-              ? v.toFixed(3)
-              : v.length > 24
-              ? v.slice(0, 21) + "..."
-              : v}
+                ? v.toFixed(3)
+                : v.length > 24
+                  ? v.slice(0, 21) + "..."
+                  : v}
           </text>
         </g>
       );
@@ -85,31 +85,36 @@ const getTicks = (data: { key: number; edges: [number, number] }[]) => {
 };
 
 const useData = (path: string) => {
-  const data = useRecoilValue(distribution(path));
+  // raw carries the resolved aggregation's identity: a new object exactly
+  // when a new distribution resolves, unlike the mapped data built fresh
+  // every render
+  const raw = useRecoilValue(distribution(path));
 
-  switch (data.__typename) {
+  switch (raw.__typename) {
     case "BoolCountValuesResponse":
       return {
-        data: data.values.map(({ value, bool }) => ({
+        data: raw.values.map(({ value, bool }) => ({
           key: bool,
           count: value,
           ticks: null,
         })),
         ticks: null,
+        raw,
       };
     case "DatetimeHistogramValuesResponse":
-      return makeData(data.counts, data.datetimes);
+      return { ...makeData(raw.counts, raw.datetimes), raw };
     case "FloatHistogramValuesResponse":
-      return makeData(data.counts, data.floats);
+      return { ...makeData(raw.counts, raw.floats), raw };
     case "IntHistogramValuesResponse":
-      return makeData(data.counts, data.ints);
+      return { ...makeData(raw.counts, raw.ints), raw };
     case "StrCountValuesResponse":
       return {
-        data: data.values.map(({ value, str }) => ({
+        data: raw.values.map(({ value, str }) => ({
           key: str,
           count: value,
         })),
         ticks: null,
+        raw,
       };
 
     default:
@@ -135,14 +140,14 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
   const [ref, { height }] = useMeasure();
   const theme = useTheme();
 
-  const { data, ticks } = useData(path);
+  const { data, ticks, raw } = useData(path);
   const hasMore = data.length >= LIMIT;
 
   const barWidth = 24;
   const stroke = theme.text.secondary;
   const fill = stroke;
   const isDateTime = useRecoilValue(
-    fos.meetsType({ path, ftype: DATE_TIME_FIELD })
+    fos.meetsType({ path, ftype: DATE_TIME_FIELD }),
   );
   const isDate = useRecoilValue(fos.meetsType({ path, ftype: DATE_FIELD }));
   const timeZone = useRecoilValue(fos.timeZone);
@@ -157,12 +162,12 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
       ...acc,
       [cur.key]: cur.edges,
     }),
-    {}
+    {},
   );
 
   const CustomizedAxisTick = getAxisTick(
     isDateTime || isDate,
-    isDate ? "UTC" : timeZone
+    isDate ? "UTC" : timeZone,
   );
   const ticksSetting =
     ticks === null
@@ -172,82 +177,86 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
         };
 
   useLayoutEffect(() => {
-    document
-      .getElementById(`histogram-${path}`)
-      ?.dispatchEvent(new CustomEvent(`histogram-${path}`, { bubbles: true }));
-  }, [path, ref]);
+    // the empty-data state renders no container; completion must still
+    // signal, so fall back to the document
+    const el = document.getElementById(`histogram-${path}`) ?? document;
+    el.dispatchEvent(new CustomEvent(`histogram-${path}`, { bubbles: true }));
+    el.dispatchEvent(
+      new CustomEvent("histograms-loaded", { bubbles: true, detail: { path } }),
+    );
+  }, [path, raw, ref]);
 
   return data.length ? (
     <Container id={`histogram-${path}`} ref={ref}>
       {hasMore && <Title>{`First ${data?.length} results`}</Title>}
       <div style={{ display: "flex", justifyContent: "center" }}>
-      <BarChart
-        height={height - 37}
-        width={data.length * (barWidth + 4) + 50}
-        barCategoryGap={"4px"}
-        data={strData}
-        margin={{ top: 0, left: 0, bottom: 5, right: 5 }}
-      >
-        <XAxis
-          dataKey="key"
-          height={0.2 * height}
-          axisLine={false}
-          tick={<CustomizedAxisTick {...{ fill }} />}
-          tickLine={{ stroke }}
-          {...ticksSetting}
-        />
-        <YAxis
-          dataKey="count"
-          axisLine={false}
-          tick={{ fill }}
-          tickLine={{ stroke }}
-        />
-        <Tooltip
-          cursor={false}
-          content={(point) => {
-            const key = point?.payload[0]?.payload?.key;
-            const count = point?.payload[0]?.payload?.count;
-            if (typeof count !== "number") return null;
+        <BarChart
+          height={height - 37}
+          width={data.length * (barWidth + 4) + 50}
+          barCategoryGap={"4px"}
+          data={strData}
+          margin={{ top: 0, left: 0, bottom: 5, right: 5 }}
+        >
+          <XAxis
+            dataKey="key"
+            height={0.2 * height}
+            axisLine={false}
+            tick={<CustomizedAxisTick {...{ fill }} />}
+            tickLine={{ stroke }}
+            {...ticksSetting}
+          />
+          <YAxis
+            dataKey="count"
+            axisLine={false}
+            tick={{ fill }}
+            tickLine={{ stroke }}
+          />
+          <Tooltip
+            cursor={false}
+            content={(point) => {
+              const key = point?.payload[0]?.payload?.key;
+              const count = point?.payload[0]?.payload?.count;
+              if (typeof count !== "number") return null;
 
-            let title = `Value: ${key}`;
+              let title = `Value: ${key}`;
 
-            if (map[key]) {
-              if (isDateTime || isDate) {
-                const [start, end] = map[key];
-                const { common: cFmt, diff: dFmt } =
-                  getDateTimeRangeFormattersWithPrecision(
-                    isDate ? "UTC" : timeZone,
-                    start,
-                    end
-                  );
-                let range = dFmt.formatRange(start, end);
+              if (map[key]) {
+                if (isDateTime || isDate) {
+                  const [start, end] = map[key];
+                  const { common: cFmt, diff: dFmt } =
+                    getDateTimeRangeFormattersWithPrecision(
+                      isDate ? "UTC" : timeZone,
+                      start,
+                      end,
+                    );
+                  let range = dFmt.formatRange(start, end);
 
-                if (dFmt.resolvedOptions().fractionalSecondDigits === 3) {
-                  range = range.replaceAll(",", ".");
+                  if (dFmt.resolvedOptions().fractionalSecondDigits === 3) {
+                    range = range.replaceAll(",", ".");
+                  }
+                  title = `Range: ${cFmt ? cFmt.format(start) : ""} ${range}`;
+                } else {
+                  title = `Range: [${map[key]
+                    .map((e) => (Number.isInteger(e) ? e : e.toFixed(3)))
+                    .join(", ")})`;
                 }
-                title = `Range: ${cFmt ? cFmt.format(start) : ""} ${range}`;
-              } else {
-                title = `Range: [${map[key]
-                  .map((e) => (Number.isInteger(e) ? e : e.toFixed(3)))
-                  .join(", ")})`;
               }
-            }
 
-            return <PlotTooltip title={title} count={count} />;
-          }}
-          contentStyle={{
-            background: "hsl(210, 20%, 23%)",
-            borderColor: "rgb(255, 109, 4)",
-          }}
-        />
-        <Bar
-          dataKey="count"
-          fill="rgb(255, 109, 4)"
-          barCategoryGap={0}
-          barSize={barWidth}
-          isAnimationActive={false}
-        />
-      </BarChart>
+              return <PlotTooltip title={title} count={count} />;
+            }}
+            contentStyle={{
+              background: "hsl(210, 20%, 23%)",
+              borderColor: "rgb(255, 109, 4)",
+            }}
+          />
+          <Bar
+            dataKey="count"
+            fill="rgb(255, 109, 4)"
+            barCategoryGap={0}
+            barSize={barWidth}
+            isAnimationActive={false}
+          />
+        </BarChart>
       </div>
     </Container>
   ) : (

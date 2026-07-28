@@ -34,12 +34,12 @@ export const Fbx = ({
     () =>
       preTransformedFbxPath ??
       getSampleSrc(getResolvedUrlForFo3dAsset(fbxPath, fo3dRoot)),
-    [fbxPath, preTransformedFbxPath, fo3dRoot]
+    [fbxPath, preTransformedFbxPath, fo3dRoot],
   );
 
   const resourcePath = useMemo(
     () => getBasePathForTextures(fo3dRoot, fbxUrl),
-    [fo3dRoot, fbxUrl]
+    [fo3dRoot, fbxUrl],
   );
 
   const { material } = useMeshMaterialControls(name, defaultMaterial, true);

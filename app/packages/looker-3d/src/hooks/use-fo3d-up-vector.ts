@@ -42,14 +42,14 @@ const UP_VECTOR_STORAGE_CODEC = {
  */
 export const useFo3dUpVector = (
   foScene: FoScene | null,
-  pluginDefaultUp: Looker3dSettings["defaultUp"] | undefined
+  pluginDefaultUp: Looker3dSettings["defaultUp"] | undefined,
 ) => {
   const [localUpVector, setLocalUpVectorVal] =
     fos.useBrowserStorage<Vector3 | null>(
       UP_VECTOR_STORAGE_KEY,
       null,
       false,
-      UP_VECTOR_STORAGE_CODEC
+      UP_VECTOR_STORAGE_CODEC,
     );
 
   const [sessionUpVector, setSessionUpVectorVal] =
@@ -57,7 +57,7 @@ export const useFo3dUpVector = (
       UP_VECTOR_STORAGE_KEY,
       null,
       true,
-      UP_VECTOR_STORAGE_CODEC
+      UP_VECTOR_STORAGE_CODEC,
     );
 
   const sceneUpAxis = foScene?.cameraProps.up;
@@ -73,7 +73,7 @@ export const useFo3dUpVector = (
 
       setLocalUpVectorVal(value);
     },
-    [sceneDefinesUpVector, setLocalUpVectorVal, setSessionUpVectorVal]
+    [sceneDefinesUpVector, setLocalUpVectorVal, setSessionUpVectorVal],
   );
 
   const resolveEffectiveUpVector = useCallback(
@@ -83,7 +83,7 @@ export const useFo3dUpVector = (
         pluginDefaultUp,
         storedUpVector,
       }),
-    [sceneUpAxis, pluginDefaultUp]
+    [sceneUpAxis, pluginDefaultUp],
   );
 
   // This effect keeps storage normalized to the resolved vector; equality guards
@@ -102,7 +102,7 @@ export const useFo3dUpVector = (
 
   const upVector = useMemo(
     () => resolveEffectiveUpVector(activeUpVector),
-    [activeUpVector, resolveEffectiveUpVector]
+    [activeUpVector, resolveEffectiveUpVector],
   );
 
   const setUpVectorVal = useCallback(
@@ -118,7 +118,7 @@ export const useFo3dUpVector = (
         return nextUpVector;
       });
     },
-    [setActiveUpVectorVal]
+    [setActiveUpVectorVal],
   );
 
   return [upVector, setUpVectorVal] as const;

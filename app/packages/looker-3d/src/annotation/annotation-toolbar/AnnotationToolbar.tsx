@@ -12,7 +12,7 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
   const { actions } = useAnnotationActions();
   const canAnnotate = useCanAnnotate();
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
-    null
+    null,
   );
   const isFullscreen = useRecoilValue(fos.fullscreen);
 
@@ -45,6 +45,6 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
       yOffset={isFullscreen ? 55 : 100}
       zIndex={ZIndex.AboveModal}
     />,
-    portalContainer
+    portalContainer,
   );
 };

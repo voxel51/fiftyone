@@ -52,6 +52,12 @@ class LabelTagColor:
 
 
 @gql.type
+class TemporalTagColor:
+    fieldColor: t.Optional[str] = None
+    valueColors: t.Optional[t.List[ValueColor]] = None
+
+
+@gql.type
 class ColorscaleList:
     color: str
     value: float
@@ -100,6 +106,7 @@ class ColorScheme:
     color_by: t.Optional[ColorBy] = None
     fields: t.Optional[t.List[CustomizeColor]] = None
     label_tags: t.Optional[LabelTagColor] = None
+    temporal_tags: t.Optional[TemporalTagColor] = None
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
@@ -155,12 +162,19 @@ class LabelTagColorInput:
 
 
 @gql.input
+class TemporalTagColorInput:
+    fieldColor: t.Optional[str] = None
+    valueColors: t.Optional[t.List[ValueColorInput]] = None
+
+
+@gql.input
 class ColorSchemeInput:
     color_pool: t.List[str]
     id: t.Optional[gql.ID] = None
     color_by: t.Optional[str] = None
     fields: t.Optional[t.List[CustomizeColorInput]] = None
     label_tags: t.Optional[LabelTagColorInput] = None
+    temporal_tags: t.Optional[TemporalTagColorInput] = None
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
@@ -237,6 +251,11 @@ def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
         ),
         label_tags=(
             asdict(color_scheme.label_tags) if color_scheme.label_tags else {}
+        ),
+        temporal_tags=(
+            asdict(color_scheme.temporal_tags)
+            if color_scheme.temporal_tags
+            else {}
         ),
         default_colorscale=(
             asdict(color_scheme.default_colorscale)

@@ -5,7 +5,7 @@ import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
 
 export default function useQueryPerformanceTimeout(
   modal: boolean,
-  path: string
+  path: string,
 ) {
   const shouldOptimize = useRecoilValue(pathCanBeOptimized(path));
   useEffect(() => {
@@ -15,7 +15,7 @@ export default function useQueryPerformanceTimeout(
 
     const timeout = setTimeout(() => {
       window.dispatchEvent(
-        new QueryPerformanceToastEvent(path, shouldOptimize.isFrameField)
+        new QueryPerformanceToastEvent(path, shouldOptimize.isFrameField),
       );
     }, QP_WAIT);
 

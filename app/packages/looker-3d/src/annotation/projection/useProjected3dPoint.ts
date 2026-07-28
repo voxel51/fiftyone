@@ -21,7 +21,7 @@ export function useProjected3dPoint(
     sourcePanel: PanelId | null;
   },
   frustumData: FrustumData,
-  currentPanelId: PanelId
+  currentPanelId: PanelId,
 ): ProjectedCorner | null {
   return useMemo(() => {
     if (!raycastResult.worldPosition || !raycastResult.sourcePanel) {

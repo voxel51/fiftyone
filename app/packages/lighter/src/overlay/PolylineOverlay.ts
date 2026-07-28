@@ -7,8 +7,9 @@ import {
   LABEL_ARCHETYPE_PRIORITY,
   PREVIEW_LINE_OPACITY,
 } from "../constants";
+import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
-import type { DrawStyle, Point, RawLookerLabel } from "../types";
+import type { DrawStyle, Point, RawLookerLabel, Rect } from "../types";
 import {
   distance,
   distanceFromLineSegment,
@@ -19,6 +20,7 @@ import {
   type KeypointLabel,
   type KeypointRenderContext,
 } from "./KeypointOverlay";
+import { BaseOverlay } from "./BaseOverlay";
 
 export type PolylineLabel = RawLookerLabel & {
   label?: string;
@@ -50,7 +52,7 @@ export type SegmentEndpoint = {
  * `segmentBoundaries` array marking the end-index of each segment.
  */
 const flattenPolylinePoints = (
-  segments: [number, number][][]
+  segments: [number, number][][],
 ): {
   flatPoints: [number, number][];
   connections: number[][];
@@ -114,6 +116,12 @@ export class PolylineOverlay extends KeypointOverlay {
    */
   private previewAnchorPointId: string | null = null;
 
+  /**
+   * Absolute-space rect of the most recently drawn label text (background
+   * box), or `undefined` when no label is drawn.
+   */
+  private textBounds?: Rect;
+
   constructor(options: PolylineOptions) {
     const { flatPoints, connections, segmentBoundaries } =
       flattenPolylinePoints(options.label.points ?? []);
@@ -147,9 +155,9 @@ export class PolylineOverlay extends KeypointOverlay {
     return "PolylineOverlay";
   }
 
-  override updateLabel(label: PolylineLabel): void {
-    super.updateLabel(label as unknown as KeypointLabel);
-
+  override applyLabel(label: PolylineLabel): void {
+    // Apply polyline-specific state (`closed`/`filled`/points) before the base
+    // label set so the overlay's derived getters are current.
     const { flatPoints, connections, segmentBoundaries } =
       flattenPolylinePoints(label.points ?? []);
 
@@ -160,6 +168,8 @@ export class PolylineOverlay extends KeypointOverlay {
     this.setRelativePoints(flatPoints);
     this.setConnections(connections);
     this.setClosed(this.polylineClosed);
+
+    super.applyLabel(label as unknown as KeypointLabel);
   }
 
   override getSelectionPriority(): number {
@@ -309,11 +319,11 @@ export class PolylineOverlay extends KeypointOverlay {
     indexInSegment: number,
     relPoint: [number, number],
     variant?: string,
-    id?: string
+    id?: string,
   ): string {
     if (segmentIdx < 0 || segmentIdx >= this.segmentBoundaries.length) {
       throw new RangeError(
-        `PolylineOverlay: segmentIdx ${segmentIdx} out of bounds`
+        `PolylineOverlay: segmentIdx ${segmentIdx} out of bounds`,
       );
     }
 
@@ -321,7 +331,7 @@ export class PolylineOverlay extends KeypointOverlay {
     const segLen = this.segmentBoundaries[segmentIdx] - segStart;
     if (indexInSegment < 0 || indexInSegment > segLen) {
       throw new RangeError(
-        `PolylineOverlay: indexInSegment ${indexInSegment} out of bounds [0, ${segLen}]`
+        `PolylineOverlay: indexInSegment ${indexInSegment} out of bounds [0, ${segLen}]`,
       );
     }
 
@@ -335,7 +345,7 @@ export class PolylineOverlay extends KeypointOverlay {
       segStart + indexInSegment,
       relPoint,
       variant,
-      id
+      id,
     );
 
     this.setConnections(this.rebuildConnectionsFromBoundaries());
@@ -359,14 +369,14 @@ export class PolylineOverlay extends KeypointOverlay {
     segmentIdx: number,
     relPoint: [number, number],
     variant?: string,
-    id?: string
+    id?: string,
   ): string {
     return this.insertPointInSegment(
       segmentIdx,
       this.getSegmentLength(segmentIdx),
       relPoint,
       variant,
-      id
+      id,
     );
   }
 
@@ -424,11 +434,11 @@ export class PolylineOverlay extends KeypointOverlay {
     segmentIdx: number,
     relPoint: [number, number],
     variant?: string,
-    id?: string
+    id?: string,
   ): string {
     if (segmentIdx < 0 || segmentIdx > this.segmentBoundaries.length) {
       throw new RangeError(
-        `PolylineOverlay: segmentIdx ${segmentIdx} out of bounds [0, ${this.segmentBoundaries.length}]`
+        `PolylineOverlay: segmentIdx ${segmentIdx} out of bounds [0, ${this.segmentBoundaries.length}]`,
       );
     }
 
@@ -446,7 +456,7 @@ export class PolylineOverlay extends KeypointOverlay {
    */
   getPointIdInSegment(
     segmentIdx: number,
-    indexInSegment: number
+    indexInSegment: number,
   ): string | null {
     if (segmentIdx < 0 || segmentIdx >= this.segmentBoundaries.length) {
       return null;
@@ -468,7 +478,7 @@ export class PolylineOverlay extends KeypointOverlay {
    * @param pointId Id of the point to locate.
    */
   findPointLocationById(
-    pointId: string
+    pointId: string,
   ): { segmentIdx: number; indexInSegment: number } | null {
     const total = this.getRelativePoints().length;
 
@@ -503,7 +513,7 @@ export class PolylineOverlay extends KeypointOverlay {
    */
   findEdgeAt(
     worldPoint: Point,
-    thresholdOverride?: number
+    thresholdOverride?: number,
   ): {
     segmentIdx: number;
     edgeIdx: number;
@@ -528,7 +538,7 @@ export class PolylineOverlay extends KeypointOverlay {
       const end = this.segmentBoundaries[segIdx];
       const segPointsRel = flatRel.slice(prev, end);
       const segPointsAbs = segPointsRel.map((rp) =>
-        this.relativePointToAbsolute(rp)
+        this.relativePointToAbsolute(rp),
       );
 
       for (let edgeIdx = 0; edgeIdx < segPointsAbs.length - 1; edgeIdx++) {
@@ -543,7 +553,7 @@ export class PolylineOverlay extends KeypointOverlay {
             projectedRel: projectOntoSegment2d(
               [wpRel[0], wpRel[1]],
               segPointsRel[edgeIdx],
-              segPointsRel[edgeIdx + 1]
+              segPointsRel[edgeIdx + 1],
             ),
             dist: d,
           };
@@ -563,7 +573,7 @@ export class PolylineOverlay extends KeypointOverlay {
             projectedRel: projectOntoSegment2d(
               [wpRel[0], wpRel[1]],
               segPointsRel[segPointsRel.length - 1],
-              segPointsRel[0]
+              segPointsRel[0],
             ),
             dist: d,
           };
@@ -602,7 +612,7 @@ export class PolylineOverlay extends KeypointOverlay {
   findNearestEndpoint(
     worldPoint: Point,
     restrictToSegmentIdx?: number,
-    preferFar?: boolean
+    preferFar?: boolean,
   ): SegmentEndpoint {
     const flatRel = this.getRelativePoints();
     if (flatRel.length === 0) {
@@ -652,7 +662,7 @@ export class PolylineOverlay extends KeypointOverlay {
           worldPoint.x,
           worldPoint.y,
           tailAbs.x,
-          tailAbs.y
+          tailAbs.y,
         );
         if (isBetter(dTail)) {
           best = { segmentIdx: segIdx, end: "tail", dist: dTail };
@@ -759,7 +769,7 @@ export class PolylineOverlay extends KeypointOverlay {
    */
   protected override renderPreviewLine(
     renderer: Renderer2D,
-    ctx: KeypointRenderContext
+    ctx: KeypointRenderContext,
   ): void {
     if (!this.previewPoint || ctx.absPoints.length === 0) {
       return;
@@ -787,7 +797,7 @@ export class PolylineOverlay extends KeypointOverlay {
           segmentIdx = loc.segmentIdx;
           const anchorId = this.getPointIdInSegment(
             loc.segmentIdx,
-            anchorIndexInSegment
+            anchorIndexInSegment,
           );
 
           primaryEntry = anchorId ? this.getPointById(anchorId) : null;
@@ -799,7 +809,7 @@ export class PolylineOverlay extends KeypointOverlay {
       const nearest = this.findNearestEndpoint(
         this.previewPoint,
         this.previewAnchorSegmentIdx ?? undefined,
-        this.previewAnchorFlipped
+        this.previewAnchorFlipped,
       );
       if (!nearest) {
         return;
@@ -814,7 +824,7 @@ export class PolylineOverlay extends KeypointOverlay {
       const indexInSegment = nearest.end === "head" ? 0 : segLen - 1;
       const anchorId = this.getPointIdInSegment(
         nearest.segmentIdx,
-        indexInSegment
+        indexInSegment,
       );
       primaryEntry = anchorId ? this.getPointById(anchorId) : null;
     }
@@ -851,7 +861,7 @@ export class PolylineOverlay extends KeypointOverlay {
   private drawPreviewLineTo(
     renderer: Renderer2D,
     ctx: KeypointRenderContext,
-    relativeAnchor: [number, number]
+    relativeAnchor: [number, number],
   ): void {
     if (!this.previewPoint) {
       return;
@@ -866,13 +876,112 @@ export class PolylineOverlay extends KeypointOverlay {
         dashPattern: [6, 4],
         opacity: PREVIEW_LINE_OPACITY,
       },
-      this.containerId
+      this.containerId,
+    );
+  }
+
+  /**
+   * Renders the label text at the centroid of the polyline's points.
+   * Anchoring on the centroid reads more clearly for polylines/polygons,
+   * where the bounding-box corner can sit far from any actual geometry.
+   */
+  protected override renderLabelText(
+    renderer: Renderer2D,
+    ctx: KeypointRenderContext,
+  ): void {
+    // Reset first so a no-draw frame clears any stale hit region.
+    this.textBounds = undefined;
+
+    if (!this.label || !this.label.label?.length) {
+      return;
+    }
+
+    if (ctx.absPoints.length === 0) {
+      return;
+    }
+
+    if (!BaseOverlay.validBounds(this.bounds)) {
+      return;
+    }
+
+    const centroid = PolylineOverlay.computeCentroid(ctx.absPoints);
+
+    // `drawText` returns the absolute-space background rect; retain it for
+    // hover/selection hit-testing.
+    this.textBounds = renderer.drawText(
+      this.label.label,
+      centroid,
+      {
+        fontColor: "#ffffff",
+        backgroundColor: ctx.style.fillStyle || ctx.style.strokeStyle || "#000",
+        anchor: { vertical: "center", horizontal: "center" },
+      },
+      this.containerId,
+    );
+  }
+
+  /**
+   * Extends the inherited point/edge/interior hit-testing so the label text
+   * box is also a hit target. A point landing on the label (but not on the
+   * geometry) reports `BORDER`.
+   */
+  override getContainmentLevel(point: Point): CONTAINS {
+    const base = super.getContainmentLevel(point);
+    if (base !== CONTAINS.NONE) {
+      return base;
+    }
+
+    if (
+      this.textBounds &&
+      PolylineOverlay.pointInRect(point, this.textBounds)
+    ) {
+      return CONTAINS.BORDER;
+    }
+
+    return CONTAINS.NONE;
+  }
+
+  /**
+   * Treats a cursor over the label text as a direct hit (distance 0), so the
+   * label wins overlay-ordering ties.
+   */
+  override getMouseDistance(point: Point): number {
+    const wp = this.renderer?.screenToWorld(point) ?? point;
+    if (this.textBounds && PolylineOverlay.pointInRect(wp, this.textBounds)) {
+      return 0;
+    }
+
+    return super.getMouseDistance(point);
+  }
+
+  /**
+   * Returns the centroid (mean position) of the given points. Callers are
+   * responsible for ensuring the array is non-empty.
+   */
+  private static computeCentroid(points: Point[]): Point {
+    let sumX = 0;
+    let sumY = 0;
+
+    for (const p of points) {
+      sumX += p.x;
+      sumY += p.y;
+    }
+
+    return {
+      x: sumX / points.length,
+      y: sumY / points.length,
+    };
+  }
+
+  private static pointInRect(p: Point, r: Rect): boolean {
+    return (
+      p.x >= r.x && p.y >= r.y && p.x <= r.x + r.width && p.y <= r.y + r.height
     );
   }
 
   protected override renderFill(
     renderer: Renderer2D,
-    ctx: KeypointRenderContext
+    ctx: KeypointRenderContext,
   ): void {
     if (!this.polylineFilled || !this.polylineClosed) return;
 
@@ -888,7 +997,7 @@ export class PolylineOverlay extends KeypointOverlay {
           fillStyle: ctx.style.fillStyle ?? ctx.strokeColor,
           opacity: ctx.style.opacity ?? DEFAULT_FILL_OPACITY,
         },
-        this.containerId
+        this.containerId,
       );
     }
   }

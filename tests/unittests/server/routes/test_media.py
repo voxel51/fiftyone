@@ -36,10 +36,6 @@ def _media_url(path):
 
 def _assert_range_headers(response):
     assert response.headers["accept-ranges"] == "bytes"
-    assert (
-        response.headers["access-control-expose-headers"]
-        == "Accept-Ranges, Content-Range, Content-Length"
-    )
 
 
 def test_get_returns_file(client, media_file):

@@ -46,7 +46,7 @@ Resources and Further Reading
 
 * `FiftyOne Dataset Zoo <../../user_guide/dataset_zoo/index.html>`_
 
-* `FiftyOne Brain Documentation <../../brain.html>`_
+* `FiftyOne Brain Documentation <../../brain/index.html>`_
 
 * `COCO Evaluation Protocol <https://cocodataset.org/#detection-eval>`_
 

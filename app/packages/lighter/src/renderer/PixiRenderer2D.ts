@@ -53,6 +53,9 @@ export class PixiRenderer2D implements Renderer2D {
   // Container tracking for visibility management
   private containers = new Map<string, PIXI.Container>();
 
+  // track created textures to ensure their removal
+  private ownedTextures = new Map<string, PIXI.Texture[]>();
+
   /** Minimum zoom scale (10%). */
   private static readonly ZOOM_MIN = 0.1;
 
@@ -73,7 +76,26 @@ export class PixiRenderer2D implements Renderer2D {
     this.eventBus = getEventBus(channelId);
   }
 
+  private static async waitForFonts(): Promise<void> {
+    const fonts = globalThis.document?.fonts;
+    if (!fonts) {
+      return;
+    }
+    try {
+      // the app's stylesheets register the face well before lighter mounts,
+      // so this waits on the specific load rather than document-wide
+      // fonts.ready, which can stall renderer startup on unrelated fonts
+      await fonts.load(`${FONT_WEIGHT} ${FONT_SIZE}px ${FONT_FAMILY}`);
+    } catch {
+      // draw with whatever font is available
+    }
+  }
+
   public async initializePixiJS(): Promise<void> {
+    // Text measured before the webfont loads uses fallback-font metrics,
+    // shifting label pill geometry by a few pixels
+    await PixiRenderer2D.waitForFonts();
+
     this.app = await sharedPixiApp.initialize(this.canvas);
 
     this.resizeObserver = new ResizeObserver((entries) => {
@@ -165,7 +187,7 @@ export class PixiRenderer2D implements Renderer2D {
     bounds: Rect,
     width: number,
     color: number | string,
-    alpha: number
+    alpha: number,
   ): void {
     const halfWidth = width / 2;
 
@@ -174,19 +196,19 @@ export class PixiRenderer2D implements Renderer2D {
       bounds.x + bounds.width - halfWidth,
       bounds.y - halfWidth,
       width,
-      width
+      width,
     );
     graphics.rect(
       bounds.x - halfWidth,
       bounds.y + bounds.height - halfWidth,
       width,
-      width
+      width,
     );
     graphics.rect(
       bounds.x + bounds.width - halfWidth,
       bounds.y + bounds.height - halfWidth,
       width,
-      width
+      width,
     );
 
     graphics.setFillStyle({
@@ -201,7 +223,7 @@ export class PixiRenderer2D implements Renderer2D {
     bounds: Rect,
     width: number,
     color: number | string,
-    containerId: string
+    containerId: string,
   ): void {
     width *= HANDLE_FACTOR / this.getScale();
     const graphics = new PIXI.Graphics();
@@ -216,14 +238,14 @@ export class PixiRenderer2D implements Renderer2D {
   drawScrim(
     bounds: Rect,
     canonicalMediaBounds: Rect,
-    containerId: string
+    containerId: string,
   ): void {
     const mask = new PIXI.Graphics();
     mask.rect(
       canonicalMediaBounds.x,
       canonicalMediaBounds.y,
       canonicalMediaBounds.width,
-      canonicalMediaBounds.height
+      canonicalMediaBounds.height,
     );
     mask.setFillStyle({ color: SELECTED_COLOR, alpha: SELECTED_ALPHA });
     mask.fill();
@@ -232,12 +254,12 @@ export class PixiRenderer2D implements Renderer2D {
     const y = Math.max(bounds.y, canonicalMediaBounds.y);
     const maxRight = Math.min(
       canonicalMediaBounds.x + canonicalMediaBounds.width,
-      bounds.x + bounds.width
+      bounds.x + bounds.width,
     );
     const w = maxRight - x;
     const maxBottom = Math.min(
       canonicalMediaBounds.y + canonicalMediaBounds.height,
-      bounds.y + bounds.height
+      bounds.y + bounds.height,
     );
     const h = maxBottom - y;
 
@@ -291,7 +313,7 @@ export class PixiRenderer2D implements Renderer2D {
   private drawBorder(
     bounds: Rect,
     options: TextOptions | undefined,
-    containerId: string
+    containerId: string,
   ): void {
     if (options?.dashline) {
       const border = new PIXI.Graphics();
@@ -362,7 +384,7 @@ export class PixiRenderer2D implements Renderer2D {
   private drawBackground(
     bounds: Rect,
     options: TextOptions | undefined,
-    containerId: string
+    containerId: string,
   ): void {
     if (options?.backgroundColor) {
       const background = new PIXI.Graphics();
@@ -419,7 +441,7 @@ export class PixiRenderer2D implements Renderer2D {
     position: Point,
     finalHeight: number,
     finalWidth: number,
-    options: TextOptions | undefined
+    options: TextOptions | undefined,
   ): { txt: Point; bg: Rect } {
     const padding =
       (options?.padding ?? DEFAULT_TEXT_PADDING) / this.getScale();
@@ -497,7 +519,7 @@ export class PixiRenderer2D implements Renderer2D {
     text: string,
     position: Point,
     options: TextOptions | undefined,
-    containerId: string
+    containerId: string,
   ): Rect {
     if (text?.length === 0) {
       return { x: 0, y: 0, width: 0, height: 0 };
@@ -527,7 +549,7 @@ export class PixiRenderer2D implements Renderer2D {
       position,
       finalHeight,
       finalWidth,
-      options
+      options,
     );
 
     pixiText.x = txt.x;
@@ -543,7 +565,7 @@ export class PixiRenderer2D implements Renderer2D {
     center: Point,
     radius: number,
     style: DrawStyle,
-    containerId: string
+    containerId: string,
   ): void {
     const graphics = new PIXI.Graphics();
     const scaledRadius = radius / this.getScale();
@@ -574,7 +596,7 @@ export class PixiRenderer2D implements Renderer2D {
     centers: Point[],
     radius: number,
     style: DrawStyle,
-    containerId: string
+    containerId: string,
   ): void {
     if (centers.length === 0) return;
     const graphics = new PIXI.Graphics();
@@ -660,12 +682,12 @@ export class PixiRenderer2D implements Renderer2D {
   drawLines(
     segments: Array<[Point, Point]>,
     style: DrawStyle,
-    containerId: string
+    containerId: string,
   ): void {
     if (segments.length === 0) return;
     const graphics = new PIXI.Graphics();
     const { color, alpha } = parseColorWithAlpha(
-      style.strokeStyle || "#000000"
+      style.strokeStyle || "#000000",
     );
 
     if (style.dashPattern && style.dashPattern.length > 0) {
@@ -700,11 +722,11 @@ export class PixiRenderer2D implements Renderer2D {
     start: Point,
     end: Point,
     style: DrawStyle,
-    containerId: string
+    containerId: string,
   ): void {
     const graphics = new PIXI.Graphics();
     const { color, alpha } = parseColorWithAlpha(
-      style.strokeStyle || "#000000"
+      style.strokeStyle || "#000000",
     );
 
     if (style.dashPattern && style.dashPattern.length > 0) {
@@ -735,7 +757,7 @@ export class PixiRenderer2D implements Renderer2D {
     image: ImageSource,
     destination: Rect,
     options: ImageOptions | undefined,
-    containerId: string
+    containerId: string,
   ): void {
     let sprite: PIXI.Sprite;
     switch (image.type) {
@@ -748,10 +770,12 @@ export class PixiRenderer2D implements Renderer2D {
         break;
       case "canvas":
         if (image.canvas) {
-          const texture = PIXI.Texture.from(image.canvas);
+          // 'skipCache: true'
+          const texture = PIXI.Texture.from(image.canvas, true);
           texture.source.update();
           texture.source.scaleMode = "nearest";
           sprite = new PIXI.Sprite(texture);
+          this.trackOwnedTexture(containerId, texture);
         } else {
           return;
         }
@@ -819,6 +843,10 @@ export class PixiRenderer2D implements Renderer2D {
         sprite.scale.x = options.scaleX ?? 1;
         sprite.scale.y = options.scaleY ?? 1;
       }
+      if (options.tint !== undefined) {
+        // GPU multiply: white texture × tint = tint, no per-pixel CPU work.
+        sprite.tint = options.tint;
+      }
     }
     this.addToContainer(sprite, containerId, false);
   }
@@ -873,7 +901,7 @@ export class PixiRenderer2D implements Renderer2D {
 
     const clampedScale = Math.min(
       Math.max(scale, PixiRenderer2D.ZOOM_MIN),
-      PixiRenderer2D.ZOOM_MAX
+      PixiRenderer2D.ZOOM_MAX,
     );
 
     if (clampedScale !== scale) {
@@ -911,7 +939,7 @@ export class PixiRenderer2D implements Renderer2D {
     const scaleY = (canvasH * squeeze) / worldRect.height;
     const scale = Math.min(
       Math.max(Math.min(scaleX, scaleY), PixiRenderer2D.ZOOM_MIN),
-      PixiRenderer2D.ZOOM_MAX
+      PixiRenderer2D.ZOOM_MAX,
     );
 
     const rectCenterX = worldRect.x + worldRect.width / 2;
@@ -938,7 +966,7 @@ export class PixiRenderer2D implements Renderer2D {
     if (!this.viewport || this.viewport.destroyed) return;
     const clamped = Math.max(
       PixiRenderer2D.ZOOM_MIN,
-      Math.min(PixiRenderer2D.ZOOM_MAX, next)
+      Math.min(PixiRenderer2D.ZOOM_MAX, next),
     );
     if (clamped !== current) {
       this.viewport.setZoom(clamped, true);
@@ -952,7 +980,7 @@ export class PixiRenderer2D implements Renderer2D {
     const current = this.viewport.scaled;
     const next = Math.min(
       current * PixiRenderer2D.ZOOM_FACTOR,
-      PixiRenderer2D.ZOOM_MAX
+      PixiRenderer2D.ZOOM_MAX,
     );
     this.applyZoom(current, next);
   }
@@ -962,7 +990,7 @@ export class PixiRenderer2D implements Renderer2D {
     const current = this.viewport.scaled;
     const next = Math.max(
       current / PixiRenderer2D.ZOOM_FACTOR,
-      PixiRenderer2D.ZOOM_MIN
+      PixiRenderer2D.ZOOM_MIN,
     );
     this.applyZoom(current, next);
   }
@@ -1095,7 +1123,7 @@ export class PixiRenderer2D implements Renderer2D {
   private addToContainer(
     element: PIXI.Container | PIXI.Graphics | PIXI.Text | PIXI.Sprite,
     containerId: string,
-    addToForeground: boolean = true
+    addToForeground: boolean = true,
   ): void {
     let container = this.containers.get(containerId);
     if (!container) {
@@ -1111,14 +1139,34 @@ export class PixiRenderer2D implements Renderer2D {
     container.addChild(element);
   }
 
+  private trackOwnedTexture(containerId: string, texture: PIXI.Texture): void {
+    const existing = this.ownedTextures.get(containerId);
+    if (existing) {
+      existing.push(texture);
+    } else {
+      this.ownedTextures.set(containerId, [texture]);
+    }
+  }
+
+  private destroyOwnedTextures(containerId: string): void {
+    const textures = this.ownedTextures.get(containerId);
+    if (textures) {
+      for (const texture of textures) {
+        texture.destroy(true);
+      }
+      this.ownedTextures.delete(containerId);
+    }
+  }
+
   /**
    * Disposes of a container
    * @param containerId - The container ID to dispose
    */
   dispose(containerId: string): void {
+    this.destroyOwnedTextures(containerId);
     const container = this.containers.get(containerId);
     if (container) {
-      container.destroy({ children: true });
+      container.destroy({ children: true, context: true });
       this.containers.delete(containerId);
     }
   }
@@ -1245,7 +1293,13 @@ export class PixiRenderer2D implements Renderer2D {
     }
 
     this.resetTickHandler();
-    this.viewport?.destroy({ children: true });
+    for (const textures of this.ownedTextures.values()) {
+      for (const texture of textures) {
+        texture.destroy(true);
+      }
+    }
+    this.ownedTextures.clear();
+    this.viewport?.destroy({ children: true, context: true });
     this.viewport?.removeChildren();
     this.containers.clear();
     this.resizeObserver?.disconnect();
