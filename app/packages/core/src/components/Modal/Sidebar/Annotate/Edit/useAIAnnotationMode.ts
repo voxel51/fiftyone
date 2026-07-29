@@ -35,17 +35,34 @@ export const useIsAIAnnotationModeActive = (): boolean =>
 const useDefaultAgent = () => {
   const agentSelector = useAgentSelector();
 
-  // Select the first *selectable* agent as the default once the agents have
-  // resolved; the user can change it from the AgentSelect dropdown. Bootstrap
-  // from the same filter the selector uses — picking a hidden/unavailable
-  // entry here would just be cleared by the dropdown and reselected in a loop.
+  // Restore the remembered agent once it's selectable, else fall back to the
+  // first selectable one. Bootstrap from the same filter the selector uses —
+  // picking a hidden/unavailable entry here would just be cleared by the
+  // dropdown and reselected in a loop.
+  //
+  // Keeps re-evaluating rather than firing once: service-backed agents register
+  // a beat after the static ones (their binding resolves async), so the
+  // remembered pick often isn't selectable yet on the first resolve. Adopting
+  // it whenever it shows up is safe because a user pick writes `lastAgentId`
+  // too — once the two agree, this can't fight the dropdown.
   useEffect(() => {
     if (!agentSelector.isResolved) return;
-    if (agentSelector.activeAgent) return;
 
-    const [first] = agentSelector.agents.filter(isAgentSelectable);
-    if (first) {
-      agentSelector.setActiveAgent(first);
+    const selectable = agentSelector.agents.filter(isAgentSelectable);
+    const remembered = selectable.find(
+      (d) => d.id === agentSelector.lastAgentId,
+    );
+
+    if (remembered) {
+      if (remembered.id !== agentSelector.activeAgent?.id) {
+        agentSelector.setDefaultAgent(remembered);
+      }
+
+      return;
+    }
+
+    if (!agentSelector.activeAgent && selectable[0]) {
+      agentSelector.setDefaultAgent(selectable[0]);
     }
   }, [agentSelector]);
 };
