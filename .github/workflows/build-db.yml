@@ -28,7 +28,7 @@ jobs:
       - name: Set up Python 3.10
         uses: actions/setup-python@v6
         with:
-          python-version: "3.10"
+          python-version: "3.10 || 3.14"
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools wheel build
@@ -95,7 +95,7 @@ jobs:
       - name: Set up Python 3.10
         uses: actions/setup-python@v6
         with:
-          python-version: "3.10"
+          python-version: "3.10 || 3.14"
       - name: Wait for fiftyone-db
         wait: download-fiftyone-db
       - name: Install fiftyone-db
@@ -130,4 +130,4 @@ jobs:
       # See
       # [fiftyone-db](https://pypi.org/manage/project/fiftyone-db/settings/publishing/)
       - name: Publish
-        uses: pypa/gh-action-pypi-publish@v1.14.0
+        uses: pypa/gh-action-pypi-publish@v1.14.1
