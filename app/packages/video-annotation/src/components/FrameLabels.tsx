@@ -27,6 +27,7 @@ import {
   TrackProvider,
   type Track,
   type TrackEventMenuItem,
+  useActivateStream,
   useDuration,
   usePlaybackStream,
 } from "@fiftyone/playback";
@@ -227,7 +228,20 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
     stream.setPrimaryField(props.frameField);
   }, [stream, props.frameField]);
 
+  // The stream holds mask borrows in the process-wide bitmap cache; nothing
+  // else can return them after unmount, so this teardown is what keeps a
+  // sample change from pinning cache entries forever. (A StrictMode re-mount
+  // is fine: the next commit's hold window simply re-borrows.)
+  useEffect(() => () => stream.dispose(), [stream]);
+
   usePlaybackStream(streamRef.current);
+
+  // Registration alone leaves the stream dormant, which the engine skips
+  // entirely — no readiness barrier, no prefetch. Nothing renders from its
+  // published snapshot (the engine owns labels; this stream seeds them via
+  // `subscribeToEdits`), so activate it explicitly: the clock must wait on
+  // label readiness rather than run ahead of the overlays.
+  useActivateStream(LABELS_STREAM_ID);
 
   // Publish so consumers above the surface reach it via useFrameLabelsStream.
   usePublishFrameLabelsStream(streamRef.current);
