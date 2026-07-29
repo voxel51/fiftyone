@@ -194,8 +194,8 @@ are included in the current view.
 
 .. _analyzing-scenarios:
 
-Analyzing scenarios  __SUB_NEW__
---------------------------------
+Analyzing scenarios
+-------------------
 
 .. note::
 
@@ -412,8 +412,8 @@ The example below demonstrates the basic interface:
 
 .. _model-evaluation-panel:
 
-Model Evaluation panel __SUB_NEW__
-__________________________________
+Model Evaluation panel
+______________________
 
 When you load a dataset in the App that contains one or more
 :ref:`evaluations <evaluating-models>`, you can open the

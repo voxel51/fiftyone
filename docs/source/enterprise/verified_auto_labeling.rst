@@ -17,6 +17,10 @@ Auto-Labeling is powered by
 enabling you to perform Auto-Labeling in the background using your existing GPU
 infrastructure.
 
+.. note::
+
+    Check out :ref:`Agentic Labeling <agentic-labeling>` to explore using a VLM for auto-labeling!
+
 .. _verified-auto-labeling-how-it-works:
 
 How it works
