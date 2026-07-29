@@ -3483,7 +3483,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@napi-rs/wasm-runtime@npm:^1.1.4, @napi-rs/wasm-runtime@npm:^1.1.6":
+"@napi-rs/wasm-runtime@npm:^1.1.4":
+  version: 1.2.0
+  resolution: "@napi-rs/wasm-runtime@npm:1.2.0"
+  dependencies:
+    "@tybys/wasm-util": "npm:^0.10.3"
+  peerDependencies:
+    "@emnapi/core": ^2.0.0-alpha.3
+    "@emnapi/runtime": ^2.0.0-alpha.3
+  checksum: 10/e227c1d9405e0e0830f810bd5aebbcda79168842ce3ec124704cad94d326611b23e013e4602366c86f7c25449ab99c145aa71e3e1e3112a59a0ca906332b989a
+  languageName: node
+  linkType: hard
+
+"@napi-rs/wasm-runtime@npm:^1.1.6":
   version: 1.1.6
   resolution: "@napi-rs/wasm-runtime@npm:1.1.6"
   dependencies:
@@ -7016,9 +7028,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:^0.0.39":
-  version: 0.0.39
-  resolution: "@voxel51/voodo@npm:0.0.39"
+"@voxel51/voodo@npm:^0.1.0":
+  version: 0.1.0
+  resolution: "@voxel51/voodo@npm:0.1.0"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -7034,7 +7046,7 @@ __metadata:
     react: ^18.0.0
     react-dom: ^18.0.0
     react-is: ^18.0.0
-  checksum: 10/96c469628e093db589b292bd80c1aa5aa532da6de570c621cc61996ff525dda3d1b2d4764d03bd7f57b133d0f86162f3f5c1aa1c36f1d645bd20f29af7879466
+  checksum: 10/fb6f49778b5ad74527b110bbd5a091c24c22dd795f6b3307ed518cbb72426d83cf9511e7f393e63d6b6827db4060085aec5de14f2af7445ef27e6d5770154bc9
   languageName: node
   linkType: hard
 
