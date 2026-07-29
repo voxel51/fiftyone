@@ -1,15 +1,268 @@
 [build-system]
-requires = ["setuptools", "wheel"]
-[tool.black]
+requires = ["setuptools==83.0.0", "wheel==0.47.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fiftyone"
+dynamic = ["version"]
+description = "FiftyOne: the open-source tool for building high-quality datasets and computer vision models"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.10,<3.14"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+  { name = "Voxel51, Inc.", email = "info@voxel51.com" },
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering :: Image Processing",
+  "Topic :: Scientific/Engineering :: Image Recognition",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+  "Topic :: Scientific/Engineering :: Visualization",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: Microsoft :: Windows",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+  "Deprecated",
+  "packaging",
+  "setuptools",
+  "aiofiles>=20,<26",
+  "argcomplete>=2,<4",
+  "async_lru>=2,<3",
+  "beautifulsoup4>=2,<5",
+  "boto3>=1,<2",
+  "cachetools>=5,<8",
+  "dacite>=1.6.0,<2",
+  "dill>=0.1,<0.5",
+  "exceptiongroup>=1,<2",
+  "ftfy>=4,<7",
+  "humanize>=2,<5",
+  "hypercorn>=0.13.2,<0.19",
+  "Jinja2>=3,<4",
+  "jsonpatch>=1,<2",
+  "mongoengine~=0.29.1",
+  "motor~=3.6.0",
+  "Pillow>=12.2",
+  "plotly>=6.1.1,<7",
+  "pprintpp>=0.1,<0.5",
+  "psutil>=5,<8",
+  "pydash>=6,<9",
+  "pymongo~=4.9.2",
+  "pytz",
+  "PyYAML>=4,<7",
+  "regex",
+  "retrying>=1,<2",
+  "sseclient-py>=1.7.2,<2",
+  "sse-starlette>=0.10.3,<4",
+  "starlette>=1.3.1,<1.4",
+  "strawberry-graphql>=0.315.7,<0.317.0",
+  "tabulate>=0.7,<0.11",
+  "tqdm>=2,<5",
+  "xmltodict>=1,<2",
+  "universal-analytics-python3>=1.0.1,<2",
+  "matplotlib<4",
+  "numpy<3",
+  "opencv-python-headless<5",
+  "pandas<4",
+  "pypcd4>=1.4,<2",
+  "rtree<2",
+  "scikit-learn<2",
+  "scikit-image<1",
+  "scipy<2",
+  "fiftyone-brain>=0.22.0,<0.23",
+  "fiftyone-db>=0.4,<2.0",
+  "voxel51-eta>=0.16.0,<0.17",
+]
+
+[project.urls]
+Homepage = "https://github.com/voxel51/fiftyone"
+
+[project.scripts]
+fiftyone = "fiftyone.core.cli:main"
+
+[project.optional-dependencies]
+multimodal-mcap = ["protobuf==6.33.6"]
+multimodal = ["fiftyone[multimodal-mcap]"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+namespaces = false
+exclude = [
+  "app*",
+  "eta*",
+  "package*",
+  "requirements*",
+  "tests*",
+  "tools*",
+]
+
+[tool.setuptools.dynamic]
+version = { file = ["VERSION"] }
+
+[dependency-groups]
+lint = [
+  "pre-commit==4.6.0",
+  "ruff==0.16.0",
+]
+type = [
+  "ty==0.0.63",
+]
+test-core = [
+  "freezegun==1.5.5",
+  "mcap==1.3.1",
+  "pydicom>=2.2.0",
+  "pytest==9.0.3",
+  "pytest-asyncio",
+  "pytest-mock==3.15.1",
+  "pytest-timeout==2.4.0",
+  "shapely",
+  "werkzeug>=3.1.8",
+]
+test-ml = [
+  "tensorflow",
+  "tensorflow-datasets",
+  "torch>=2.12.0",
+  "torchvision>=0.27.0",
+  "transformers",
+]
+test-cloud = [
+  "awscli==1.45.22",
+]
+test = [
+  { include-group = "test-core" },
+  { include-group = "test-ml" },
+  { include-group = "test-cloud" },
+]
+integrations = [
+  "google-api-python-client>=2.197.0",
+  "google-cloud-storage>=3.11.0",
+  "httplib2>=0.31.2",
+  "ipywidgets>=8.1.8",
+  "notebook>=7.5.6",
+  "pydicom>=2.2.0",
+  "shapely>=2.1.2",
+]
+docs = [
+  { include-group = "lint" },
+  "pycocotools",
+  "tensorflow",
+  "torch",
+  "torchvision",
+  "typing_extensions==4.15.0",
+  "jupyter-client==8.9.1",
+  "autodocsumm==0.2.15",
+  "docutils==0.22.4",
+  "pypandoc>=1.17",
+  "sphinx-markdown-builder==0.6.10",
+  "huggingface_hub>=1.17.0",
+  "requests>=2.34.2",
+  "ipykernel==7.3.0",
+  "ipython_genutils==0.2.0",
+  "Jinja2==3.1.6",
+  "MarkupSafe==3.0.3",
+  "jsx-lexer==2.0.1",
+  "libsass==0.23.0",
+  "myst-parser==5.1.0",
+  "nbsphinx==0.9.8",
+  "pydata-sphinx-theme==0.20.0",
+  "sphinx-autobuild==2025.8.25",
+  "sphinx-tabs==3.5.0",
+  "sphinx-design==0.7.0",
+  "Sphinx==9.1.0",
+  "sphinx-copybutton==0.5.2",
+  "sphinxcontrib-jquery==4.1",
+  "sphinx-pushfeedback==0.1.8",
+  "sphinx-docsearch==0.3.0",
+  "sphinx-remove-toctrees==1.0.0.post1",
+  "sphinx-autoapi==3.8.0",
+  "sphinx-sitemap==2.9.0",
+]
+e2e = [
+  "umap-learn>=0.5.12",
+  "numba>=0.66.0",
+  "numpy<3",
+  "open3d>=0.19.0",
+]
+build = [
+  "check-wheel-contents==0.6.3",
+  "twine==6.2.0",
+]
+dev = [
+  { include-group = "lint" },
+  { include-group = "type" },
+  { include-group = "test-core" },
+  "ipython==8.39.0",
+]
+dev-full = [
+  { include-group = "dev" },
+  # awscli requires docutils<=0.19, which conflicts with the docs stack.
+  { include-group = "test-ml" },
+  { include-group = "docs" },
+  { include-group = "integrations" },
+]
+
+[tool.uv]
+required-version = "==0.11.32"
+default-groups = ["dev"]
+config-settings = { editable_mode = "compat" }
+conflicts = [
+  [
+    { group = "test-cloud" },
+    { group = "docs" },
+  ],
+]
+
+[tool.uv.dependency-groups]
+docs = { requires-python = ">=3.12,<3.14" }
+dev-full = { requires-python = ">=3.12,<3.14" }
+e2e = { requires-python = ">=3.10,<3.11" }
+
+[tool.check-wheel-contents]
+# The public wheel intentionally ships the built-in plugins package beside
+# fiftyone. MANIFEST.in currently contributes two identical package markers.
+toplevel = ["fiftyone", "plugins"]
+ignore = ["W002"]
+
+[tool.ruff]
+required-version = "==0.16.0"
+target-version = "py310"
 line-length = 79
-include = '\.pyi?$'
-exclude = '''
-/(
-  | \.git
-)/
-'''
-[tool.isort]
-profile = "black"
-line_length = 79
-known_first_party = ["eta", "brain"]
-force_sort_within_sections = true
+include = ["*.py", "*.pyi", "*.md"]
+extend-exclude = ["**/__generated__/**", "*.ipynb"]
+force-exclude = true
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82", "F811"]
+fixable = []
+exclude = ["*.md"]
+
+[tool.ty.environment]
+python-version = "3.10"
+
+[tool.ty.src]
+include = [
+  "fiftyone/core/threed/__init__.py",
+  "fiftyone/core/threed/material_3d.py",
+  "fiftyone/core/threed/mesh.py",
+  "fiftyone/core/threed/pointcloud.py",
+  "fiftyone/core/threed/scene_3d.py",
+  "fiftyone/core/threed/shape_3d.py",
+  "fiftyone/core/threed/splat.py",
+  "fiftyone/core/threed/utils.py",
+  "fiftyone/factory/repos/__init__.py",
+  "fiftyone/operators/store/__init__.py",
+  "fiftyone/operators/store/clone.py",
+  "fiftyone/operators/store/subscription_registry.py",
+]
+exclude = ["**/__generated__/"]

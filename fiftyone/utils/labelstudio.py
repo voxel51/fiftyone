@@ -18,7 +18,6 @@ import random
 import string
 import webbrowser
 
-import os
 from bson import ObjectId
 import numpy as np
 

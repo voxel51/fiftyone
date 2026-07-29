@@ -194,6 +194,7 @@ jobs:
       FIFTYONE_DATABASE_NAME: playwright
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      UV_PROJECT_ENVIRONMENT: /opt/fiftyone-venv
       FIFTYONE_PLUGINS_DIR: ${{ github.workspace }}/e2e-pw/src/shared/assets/plugins
       VFF_EXP_ANNOTATION: true
     defaults:
@@ -241,16 +242,26 @@ jobs:
       - name: Restore built app static assets
         run: tar -xzf e2e-app-static.tgz -C .
 
-      - name: Install fiftyone
-        # dependencies are baked into the image; this only builds fiftyone
-        # itself from the PR's source (plus any deps added since the last
-        # image build)
-        run: |
-          uv pip install --system '.[multimodal]' -r requirements/e2e.txt
+      - name: Setup uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.32"
+          enable-cache: true
+          cache-suffix: e2e
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Sync e2e environment
+        run: >-
+          uv sync --locked --no-default-groups
+          --extra multimodal --group e2e
+
+      - name: Activate synced e2e environment
+        run: echo "$UV_PROJECT_ENVIRONMENT/bin" >> "$GITHUB_PATH"
 
       - name: Configure
-        run: |
-          python tests/utils/setup_config.py
+        run: uv run --locked --no-sync python tests/utils/setup_config.py
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
@@ -330,6 +341,7 @@ jobs:
       FIFTYONE_DATABASE_NAME: playwright
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      UV_PROJECT_ENVIRONMENT: /opt/fiftyone-venv
       FIFTYONE_PLUGINS_DIR: ${{ github.workspace }}/e2e-pw/src/shared/assets/plugins
       VFF_EXP_ANNOTATION: true
     defaults:
@@ -365,17 +377,27 @@ jobs:
       - name: Restore built app static assets
         run: tar -xzf e2e-app-static.tgz -C .
 
-      - name: Install fiftyone
-        # dependencies are baked into the image; this only builds fiftyone
-        # itself from the PR's source (plus any deps added since the last
-        # image build)
-        run: |
-          uv pip install --system '.[multimodal]' -r requirements/e2e.txt
+      - name: Setup uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.32"
+          enable-cache: true
+          cache-suffix: e2e-burn-in
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Sync e2e environment
+        run: >-
+          uv sync --locked --no-default-groups
+          --extra multimodal --group e2e
+
+      - name: Activate synced e2e environment
+        run: echo "$UV_PROJECT_ENVIRONMENT/bin" >> "$GITHUB_PATH"
 
       - name: Configure
         id: test_config
-        run: |
-          python tests/utils/setup_config.py
+        run: uv run --locked --no-sync python tests/utils/setup_config.py
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache

@@ -20,7 +20,6 @@ jobs:
           - sdist
           - darwin-arm64
           - darwin-x86_64
-          - windows-32
           - windows-x86_64
     steps:
       - name: Clone fiftyone
@@ -31,7 +30,9 @@ jobs:
           python-version: "3.10"
       - name: Install dependencies
         run: |
-          pip install --upgrade pip setuptools wheel build
+          pip install --upgrade \
+            pip setuptools wheel build \
+            twine==6.2.0 check-wheel-contents==0.6.3
       - name: Set environment
         env:
           RELEASE_TAG: ${{ github.ref }}
@@ -49,11 +50,6 @@ jobs:
         run: |
           cd package/db
           FODB_MACHINE=x86_64 FODB_SYSTEM=Darwin python -Im build
-      - name: Build Windows 32 wheel
-        if: ${{ matrix.platform == 'windows-32' }}
-        run: |
-          cd package/db
-          FODB_MACHINE=32 FODB_SYSTEM=Windows python -Im build
       - name: Build Windows x86_64 wheel
         if: ${{ matrix.platform == 'windows-x86_64' }}
         run: |
@@ -64,6 +60,97 @@ jobs:
         run: |
           cd package/db
           python -Im build --sdist
+      - name: Validate sdist metadata
+        if: ${{ matrix.platform == 'sdist' }}
+        run: python -m twine check --strict package/db/dist/*.tar.gz
+      - name: Validate wheel contents
+        if: ${{ matrix.platform != 'sdist' }}
+        run: |
+          cd package/db
+          python -m twine check --strict dist/*.whl
+          check-wheel-contents dist/*.whl
+          python - <<'PY'
+          from email.parser import BytesParser
+          from pathlib import Path
+          import zipfile
+
+          wheel = next(Path("dist").glob("*.whl"))
+          with zipfile.ZipFile(wheel) as archive:
+              names = archive.namelist()
+              metadata_name = next(
+                  name
+                  for name in names
+                  if name.endswith(".dist-info/METADATA")
+              )
+              package_metadata = BytesParser().parsebytes(
+                  archive.read(metadata_name)
+              )
+
+              if package_metadata["Name"] != "fiftyone_db":
+                  raise SystemExit("unexpected fiftyone-db project name")
+
+              binaries = [
+                  name
+                  for name in names
+                  if name.endswith(("/mongod", "/mongod.exe"))
+              ]
+              if len(binaries) != 1 or archive.getinfo(binaries[0]).file_size == 0:
+                  raise SystemExit("wheel must contain exactly one mongod binary")
+
+              forbidden = [
+                  name
+                  for name in names
+                  if "tests" in Path(name).parts
+                  or "__pycache__" in Path(name).parts
+                  or name.endswith((".pyc", ".pyo"))
+              ]
+              if forbidden:
+                  raise SystemExit(
+                      "source-only files found in wheel: "
+                      + ", ".join(forbidden[:10])
+                  )
+          PY
+      - name: Smoke test wheel in a clean target
+        if: ${{ matrix.platform != 'sdist' }}
+        run: |
+          wheel=$(find package/db/dist -maxdepth 1 -name '*.whl' -print -quit)
+          wheel_stem=${wheel%.whl}
+          wheel_platform=${wheel_stem##*-}
+          target="$RUNNER_TEMP/fiftyone-db-wheel"
+          python -m pip install \
+            --target "$target" \
+            --platform "$wheel_platform" \
+            --only-binary=:all: \
+            --no-deps \
+            "$wheel"
+          cd "$RUNNER_TEMP"
+          python -I - "$target" <<'PY'
+          from importlib import metadata
+          from pathlib import Path
+          import sys
+
+          target = Path(sys.argv[1])
+          sys.path.insert(0, str(target))
+
+          distribution = next(
+              dist
+              for dist in metadata.distributions(path=[target])
+              if dist.metadata["Name"] == "fiftyone_db"
+          )
+          if not distribution.version:
+              raise SystemExit("installed fiftyone-db version is empty")
+
+          import fiftyone.db as fodb
+
+          binary_names = ("mongod", "mongod.exe")
+          binaries = [
+              Path(fodb.FIFTYONE_DB_BIN_DIR) / name
+              for name in binary_names
+              if (Path(fodb.FIFTYONE_DB_BIN_DIR) / name).is_file()
+          ]
+          if len(binaries) != 1 or binaries[0].stat().st_size == 0:
+              raise SystemExit("installed mongod binary is missing or empty")
+          PY
       - name: Upload
         uses: actions/upload-artifact@v7
         if: ${{ matrix.platform == 'sdist' }}

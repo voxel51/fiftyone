@@ -6,7 +6,10 @@ Tests for KeypointOutputProcessor numpy serialization.
 |
 """
 
-import torch
+import pytest
+
+torch = pytest.importorskip("torch", reason="ML test requires PyTorch")
+pytestmark = pytest.mark.ml
 
 from fiftyone.utils.torch import KeypointOutputProcessor
 

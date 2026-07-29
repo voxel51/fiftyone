@@ -13,7 +13,7 @@ import pathlib
 import platform
 import shutil
 import tarfile
-import traceback
+import warnings
 import zipfile
 
 from setuptools import setup
@@ -189,6 +189,7 @@ def _get_download():
 
 # mongodb binaries to distribute
 MONGODB_BINARIES = ["mongod"]
+DOWNLOAD_TIMEOUT_SECONDS = 60
 
 
 VERSION = "1.4.1"
@@ -215,9 +216,7 @@ class CustomBdistWheel(bdist_wheel):
             not isa or isa == MACHINE
         )
 
-        if is_platform("Linux", "i686"):
-            self.plat_name = "manylinux1_i686"
-        elif is_platform("Linux", "aarch64"):
+        if is_platform("Linux", "aarch64"):
             self.plat_name = "manylinux2014_aarch64"
         elif is_platform("Linux", "x86_64"):
             self.plat_name = "manylinux1_x86_64"
@@ -227,13 +226,14 @@ class CustomBdistWheel(bdist_wheel):
             self.plat_name = "macosx_10_13_x86_64"
         elif is_platform("Windows", "x86_64"):
             self.plat_name = "win_amd64"
-        elif is_platform("Windows", "32"):
-            self.plat_name = "win32"
 
     def get_tag(self):
         impl = "py3"
         abi_tag = "none"
-        return impl, abi_tag, self.plat_name
+        platform_tag = (
+            self.plat_name.lower().replace("-", "_").replace(".", "_")
+        )
+        return impl, abi_tag, platform_tag
 
     def write_wheelfile(self, *args, **kwargs):
         bdist_wheel.write_wheelfile(self, *args, **kwargs)
@@ -245,6 +245,12 @@ class CustomBdistWheel(bdist_wheel):
 
         mongo_zip_url = _get_download()
         if mongo_zip_url is None:
+            warnings.warn(
+                "No bundled MongoDB binary is available for %s/%s; "
+                "configure FIFTYONE_DATABASE_URI to use an external database"
+                % (SYSTEM, MACHINE),
+                RuntimeWarning,
+            )
             return
 
         mongo_zip_filename = os.path.basename(mongo_zip_url)
@@ -253,64 +259,82 @@ class CustomBdistWheel(bdist_wheel):
             os.path.dirname(os.path.abspath(__file__)),
             mongo_zip_filename,
         )
+        partial_zip_dest = mongo_zip_dest + ".part"
 
         try:
             if not os.path.exists(mongo_zip_dest):
-                with urlopen(mongo_zip_url) as conn, open(
-                    mongo_zip_dest, "wb"
-                ) as dest:
-                    shutil.copyfileobj(conn, dest)
-
-        except:
-            exc_dest = os.path.join(
-                bin_dir,
-                "exception.txt",
-            )
-            with open(exc_dest, "w", encoding="utf-8") as f:
-                f.write(traceback.format_exc())
-            return
-
-        if mongo_zip_dest.endswith(".zip"):
-            # Windows
-            mongo_zip = zipfile.ZipFile(mongo_zip_dest)
-            for filename in MONGODB_BINARIES:
-                filename = filename + ".exe"
                 try:
-                    zip_entry = next(
-                        entry
-                        for entry in mongo_zip.filelist
-                        if entry.filename.endswith("bin/" + filename)
-                    )
-                except StopIteration:
-                    raise IOError(
-                        "Could not find %r in MongoDB archive" % filename
-                    )
-                # strip the leading directories (zipfile doesn't have an
-                # equivalent of tarfile.extractfile to support this)
-                zip_entry.filename = os.path.basename(zip_entry.filename)
-                mongo_zip.extract(zip_entry, bin_dir)
-        else:
-            # assume tar
-            mongo_tar = tarfile.open(mongo_zip_dest)
-            for filename in MONGODB_BINARIES:
-                try:
-                    tar_entry_name = next(
-                        name
-                        for name in mongo_tar.getnames()
-                        if name.endswith("bin/" + filename)
-                    )
-                except StopIteration:
-                    raise IOError(
-                        "Could not find %r in MongoDB archive" % filename
-                    )
+                    with (
+                        urlopen(
+                            mongo_zip_url,
+                            timeout=DOWNLOAD_TIMEOUT_SECONDS,
+                        ) as conn,
+                        open(partial_zip_dest, "wb") as dest,
+                    ):
+                        shutil.copyfileobj(conn, dest)
+                    os.replace(partial_zip_dest, mongo_zip_dest)
+                except Exception:
+                    pathlib.Path(partial_zip_dest).unlink(missing_ok=True)
+                    raise
 
-                tar_entry = mongo_tar.getmember(tar_entry_name)
-                dest_path = os.path.join(bin_dir, filename)
-                with mongo_tar.extractfile(tar_entry) as src, open(
-                    dest_path, "wb"
-                ) as dest:
-                    shutil.copyfileobj(src, dest)
-                os.chmod(dest_path, tar_entry.mode)
+        except Exception as error:
+            raise RuntimeError(
+                "Failed to download MongoDB from %s" % mongo_zip_url
+            ) from error
+
+        try:
+            if mongo_zip_dest.endswith(".zip"):
+                # Windows
+                with zipfile.ZipFile(mongo_zip_dest) as mongo_zip:
+                    for filename in MONGODB_BINARIES:
+                        filename = filename + ".exe"
+                        try:
+                            zip_entry = next(
+                                entry
+                                for entry in mongo_zip.filelist
+                                if entry.filename.endswith("bin/" + filename)
+                            )
+                        except StopIteration:
+                            raise IOError(
+                                "Could not find %r in MongoDB archive"
+                                % filename
+                            )
+                        # strip the leading directories (zipfile doesn't have
+                        # an equivalent of tarfile.extractfile to support this)
+                        zip_entry.filename = os.path.basename(
+                            zip_entry.filename
+                        )
+                        mongo_zip.extract(zip_entry, bin_dir)
+            else:
+                # assume tar
+                with tarfile.open(mongo_zip_dest) as mongo_tar:
+                    for filename in MONGODB_BINARIES:
+                        try:
+                            tar_entry_name = next(
+                                name
+                                for name in mongo_tar.getnames()
+                                if name.endswith("bin/" + filename)
+                            )
+                        except StopIteration:
+                            raise IOError(
+                                "Could not find %r in MongoDB archive"
+                                % filename
+                            )
+
+                        tar_entry = mongo_tar.getmember(tar_entry_name)
+                        dest_path = os.path.join(bin_dir, filename)
+                        with (
+                            mongo_tar.extractfile(tar_entry) as src,
+                            open(dest_path, "wb") as dest,
+                        ):
+                            shutil.copyfileobj(src, dest)
+                        os.chmod(dest_path, tar_entry.mode)
+        except Exception as error:
+            pathlib.Path(mongo_zip_dest).unlink(missing_ok=True)
+            raise RuntimeError(
+                "Invalid MongoDB archive %s; removed cached file"
+                % mongo_zip_dest
+            ) from error
 
 
 cmdclass = {

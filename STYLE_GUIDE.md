@@ -12,15 +12,31 @@ idiosyncrasies.
 ## Python Style Guide
 
 Our Python style is derived from
-[Google Python style](https://google.github.io/styleguide/pyguide.html), with
-the exception that we do not use type annotations.
+[Google Python style](https://google.github.io/styleguide/pyguide.html).
+
+### Type annotations
+
+Type annotations are encouraged in all new and substantially changed Python
+code, and are required for new public functions in modules covered by the
+repository's `ty` configuration. Existing untyped code can be improved
+incrementally.
+
+Annotations must not force eager imports of optional ML dependencies. `Any` is
+acceptable at legacy or dynamic boundaries when the surrounding API explains
+why a more precise type is impractical. Prefer type-safe refactors; when one is
+not practical, use a targeted `# ty: ignore[rule]` comment rather than a broad
+suppression.
+
+The top-level package does not declare `py.typed`. Public installed API typing
+will be enabled only after its coverage has been reviewed deliberately.
 
 ### Pre-commit hooks
 
-All Python code is formatted with [black](https://github.com/python/black) and
-[pylint](https://github.com/PyCQA/pylint) via
-[pre-commit hooks](CONTRIBUTING.md#developer-guide), which automatically
-enforces much of the whitespace-related components of our style.
+[Ruff](https://docs.astral.sh/ruff/) checks repository-wide Python correctness,
+and `ty` checks the deliberately configured type baseline. These tools run
+through [pre-commit hooks](CONTRIBUTING.md#developer-guide) and directly in CI.
+Python formatting and import sorting are not automated; preserve the existing
+style of files you edit.
 
 ### Highlights
 
@@ -48,8 +64,19 @@ Here are some highlights of our Python style:
 - Names should follow the conventions:
 
 ```py
-module_name, package_name, ClassName, method_name, ExceptionName,
-function_name, GLOBAL_CONSTANT_NAME, global_var_name, instance_var_name,
+(
+    module_name,
+    package_name,
+    ClassName,
+    method_name,
+    ExceptionName,
+)
+(
+    function_name,
+    GLOBAL_CONSTANT_NAME,
+    global_var_name,
+    instance_var_name,
+)
 function_parameter_name, local_var_name
 ```
 
@@ -61,10 +88,6 @@ function_parameter_name, local_var_name
 
 - If a class inherits from no other base classes, explicitly inherit from
   `object`
-
-- When encountering a pylint error during a commit that cannot be addressed for
-  whatever reason, add an inline comment `# pylint: disable=rule` where `rule`
-  is the rule in question
 
 - Use `@todo` to mark todo items in the source code when appropriate
 
@@ -114,8 +137,9 @@ import fiftyone.utils.image as fouv
 ### Docstrings
 
 Our docstring style is derived from
-[Google Python style](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings),
-with the exception that we do not use type annotations.
+[Google Python style](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings).
+Annotations describe machine-checkable types. Docstrings still explain meaning,
+shape, units, defaults, and behavior.
 
 Note that the docstrings of all public methods and classes are automatically
 included in the [documentation](docs/README.md) via
@@ -266,52 +290,11 @@ for _ in range(100):
     warnings.warn(msg)
 ```
 
-### Customizing black
+### Customizing Ruff
 
-You don't customize [black](https://github.com/python/black), silly! From the
-docs:
-
-> Pro-tip: If you’re asking yourself “Do I need to configure anything?” the
-> answer is “No”. Black is all about sensible defaults.
-
-With that said, we do maintain a limited configuration in the `[tool.black]`
-section of `pyproject.toml`.
-
-### Customizing pylint
-
-To permanently disable a pylint message, add it to the `disable` field in the
-`pylintrc` file:
-
-```shell
-[MESSAGES CONTROL]
-disable=too-few-public-methods,too-many-arguments
-```
-
-To disable a pylint message for the rest of the current block (indentation
-level) in a module, add the comment:
-
-```py
-# pylint: disable=too-many-instance-attributes
-```
-
-To disable a pylint message for the current line:
-
-```py
-from builtins import *  # pylint disable=wildcard-import
-```
-
-To disable pylint errors temporarily in a module:
-
-```py
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: enable=wildcard-import
-from builtins import *
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=wildcard-import
-```
-
-See the [pylint user guide](https://pylint.readthedocs.io/en/latest/) for more
-information.
+Ruff's shared correctness policy is configured under `[tool.ruff]` in
+`pyproject.toml`. Its formatter and import-sorting rules are intentionally not
+enabled. Do not add per-directory policy without a documented project boundary.
 
 ## App Style Guide
 

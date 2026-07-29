@@ -38,8 +38,8 @@ SHIFT
 GOTO parse
 :endparse
 
-set MINOR_MIN=9
-set MINOR_MAX=12
+set MINOR_MIN=10
+set MINOR_MAX=13
 
 where python >nul 2>&1
 IF NOT ERRORLEVEL 1 (
@@ -55,24 +55,29 @@ IF NOT ERRORLEVEL 1 (
 
 for /f %%v in ('%PYTHON_CMD% -c "import sys; print(""{}.{}"".format(sys.version_info[0], sys.version_info[1]))"') do set PY_VER=%%v
 for /f %%s in ('%PYTHON_CMD% -c "import sys; print('SUPPORTED' if (sys.version_info[0] == 3 and %MINOR_MIN% <= sys.version_info[1] <= %MINOR_MAX%) else 'UNSUPPORTED')"') do set PY_STATUS=%%s
-IF /I "%PY_STATUS%"=="UNSUPPORTED" (
-  echo Warning: Python %PY_VER% is not officially supported. It is recommended to use Python 3.%MINOR_MIN% - 3.%MINOR_MAX%.
-) else (
-  echo Python %PY_VER% is supported.
+IF /I NOT "%PY_STATUS%"=="SUPPORTED" (
+  echo Python %PY_VER% is NOT supported. Please use Python 3.%MINOR_MIN% - 3.%MINOR_MAX%.
+  exit /b 1
 )
+echo Python %PY_VER% is supported.
 
-:: Resolve pip backend
-where uv >nul 2>&1
-IF NOT ERRORLEVEL 1 (
-  set PIP=uv pip
-) else (
-  where pip >nul 2>&1
+IF "%DEV_INSTALL%"=="true" (
+  where uv >nul 2>&1
   IF ERRORLEVEL 1 (
-    echo ERROR: Neither 'uv' nor 'pip' found in PATH. Please install one before running this script.
+    echo ERROR: uv 0.11.32 is required for development installs.
     exit /b 1
   )
-  set PIP=pip
 )
+IF "%DOCS_INSTALL%"=="true" (
+  where uv >nul 2>&1
+  IF ERRORLEVEL 1 (
+    echo ERROR: uv 0.11.32 is required for docs installs.
+    exit /b 1
+  )
+)
+
+:: Ensure package installs target an explicit Python interpreter
+set "PIP_PYTHON=%PYTHON_CMD%"
 
 :: Do this first so pip installs with a built app
 if %BUILD_APP%==true (
@@ -85,9 +90,27 @@ if %BUILD_APP%==true (
   cd ..
 )
 
+IF %DEV_INSTALL%==true (
+  uv sync --locked --python %PYTHON_CMD% --no-install-project
+  IF ERRORLEVEL 1 exit /b 1
+  set "VIRTUAL_ENV=%CD%\.venv"
+  set "PIP_PYTHON=%CD%\.venv\Scripts\python.exe"
+) else if %DOCS_INSTALL%==true (
+  uv sync --locked --python %PYTHON_CMD% --no-default-groups --group docs --no-install-project
+  IF ERRORLEVEL 1 exit /b 1
+  set "VIRTUAL_ENV=%CD%\.venv"
+  set "PIP_PYTHON=%CD%\.venv\Scripts\python.exe"
+)
+
 IF %USE_FIFTY_ONE_DB%==true (
   echo ***** INSTALLING FIFTYONE-DB *****
-  %PIP% install fiftyone-db
+  IF %DEV_INSTALL%==true (
+    echo Using fiftyone-db from the locked environment
+  ) else if %DOCS_INSTALL%==true (
+    echo Using fiftyone-db from the locked environment
+  ) else (
+    CALL :pip_install fiftyone-db
+  )
 ) else (
   echo ***** USING LOCAL MONGODB *****
 )
@@ -111,26 +134,33 @@ IF %SOURCE_BRAIN_INSTALL%==true (
     CALL install.bat -d
   ) else (
     echo Performing install
-    %PIP% install .
+    CALL :pip_install .
   )
   popd
 ) else (
-  %PIP% install --upgrade fiftyone-brain
+  IF %DEV_INSTALL%==true (
+    echo Using fiftyone-brain from the locked environment
+  ) else if %DOCS_INSTALL%==true (
+    echo Using fiftyone-brain from the locked environment
+  ) else (
+    CALL :pip_install --upgrade fiftyone-brain
+  )
 )
 
 echo ***** INSTALLING FIFTYONE *****
 IF %DEV_INSTALL%==true (
   echo Performing dev install
-  %PIP% install -r requirements/dev.txt
-  pre-commit install
-  %PIP% install .
+  uv sync --locked --python %PYTHON_CMD%
+  IF ERRORLEVEL 1 exit /b 1
+  uv run --locked --no-sync pre-commit install
+  IF ERRORLEVEL 1 exit /b 1
 ) else if %DOCS_INSTALL%==true (
   echo Performing docs install
-  %PIP% install -r requirements/docs.txt
-  %PIP% install -e .
+  uv sync --locked --python %PYTHON_CMD% --no-default-groups --group docs
+  IF ERRORLEVEL 1 exit /b 1
 ) else (
   echo Performing install
-  %PIP% install .
+  CALL :pip_install .
 )
 
 IF %SOURCE_ETA_INSTALL%==true (
@@ -149,10 +179,10 @@ IF %SOURCE_ETA_INSTALL%==true (
   )
   IF %DEV_INSTALL%==true (
     echo Performing dev install
-    %PIP% install .
+    CALL :pip_install -e .
   ) else (
     echo Performing install
-    %PIP% install .
+    CALL :pip_install .
   )
   if not exist "eta\config.json" (
     echo "Installing default ETA config"
@@ -174,3 +204,12 @@ echo -m      Use local mongodb instead of installing fiftyone-db.
 echo -p      Install only the core python package, not the App.
 echo -o      Install docs dependencies.
 exit /b
+
+:pip_install
+where uv >nul 2>&1
+IF NOT ERRORLEVEL 1 (
+  uv pip install --python "%PIP_PYTHON%" %*
+) else (
+  "%PIP_PYTHON%" -m pip install %*
+)
+exit /b %ERRORLEVEL%

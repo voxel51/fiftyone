@@ -13,13 +13,15 @@ RUN apt-get update && apt-get install -y software-properties-common \
 WORKDIR /e2e
 
 COPY .build /e2e/fiftyone
+COPY --from=ghcr.io/astral-sh/uv:0.11.32@sha256:df4cae8f3a96d175e2e5f992e597550000edbe78fdc2594d5cd8de1a217f504c \
+    /uv /uvx /usr/local/bin/
 
-RUN python -m venv /e2e/venv \
-    && . /e2e/venv/bin/activate \
-    && cd /e2e/fiftyone \
-    && pip install --upgrade pip \
-    && pip install -r requirements/e2e.txt \
-    && pip install -e .
+ENV UV_PROJECT_ENVIRONMENT=/e2e/venv
+ENV PATH="/e2e/venv/bin:${PATH}"
+
+WORKDIR /e2e/fiftyone
+RUN uv sync --locked --python /usr/bin/python3.10 --no-default-groups \
+        --extra multimodal --group e2e
 
 ENV IS_UTILITY_DOCKER=true
 ENV FIFTYONE_ROOT_DIR=/e2e/fiftyone

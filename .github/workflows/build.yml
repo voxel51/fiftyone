@@ -17,7 +17,11 @@ jobs:
               - 'app/**'
               - '.github/**'
               - 'fiftyone/**'
+              - 'MANIFEST.in'
+              - 'pyproject.toml'
               - 'setup.py'
+              - 'uv.lock'
+              - 'VERSION'
 
   build:
     runs-on: ubuntu-latest
@@ -30,9 +34,19 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.10"
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip setuptools wheel build
+      - name: Setup uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.32"
+          python-version: "3.10"
+          activate-environment: true
+          enable-cache: true
+          cache-suffix: build-3.10
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+      - name: Sync build environment
+        run: uv sync --locked --only-group build
 
       - name: Setup node 22
         uses: actions/setup-node@v6
@@ -78,11 +92,100 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
-          if [[ $RELEASE_TAG =~ ^refs\/tags\/v[0-9]+.[0-9]+.[0-9]+rc[0-9]+ ]]; then
-             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/v//")" >> $GITHUB_ENV
+          base_version=$(tr -d '\r\n' < VERSION)
+          if [[ "$RELEASE_TAG" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+rc[0-9]+$ ]]; then
+            release_version=${RELEASE_TAG#refs/tags/v}
+            escaped_base=${base_version//./\\.}
+            if [[ ! "$release_version" =~ ^${escaped_base}rc[0-9]+$ ]]; then
+              echo "::error::RC tag $release_version does not start with base version $base_version"
+              exit 1
+            fi
+            printf '%s\n' "$release_version" > VERSION
+          elif [[ "$RELEASE_TAG" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            release_version=${RELEASE_TAG#refs/tags/v}
+            if [ "$release_version" != "$base_version" ]; then
+              echo "::error::Stable tag $release_version does not match VERSION $base_version"
+              exit 1
+            fi
           fi
       - name: Build python
-        run: make python -o app
+        run: |
+          uv build --clear --sdist
+          sdist_count=$(find dist -maxdepth 1 -type f \
+            -name 'fiftyone-*.tar.gz' | wc -l)
+          if [ "$sdist_count" -ne 1 ]; then
+            echo "::error::Expected exactly one FiftyOne sdist, found $sdist_count"
+            exit 1
+          fi
+          uv build --wheel dist/fiftyone-*.tar.gz
+      - name: Verify artifact versions
+        run: |
+          python - <<'PY'
+          import email
+          from pathlib import Path
+          import tarfile
+          import zipfile
+
+          expected = Path("VERSION").read_text(encoding="utf-8").strip()
+
+          wheel = next(Path("dist").glob("*.whl"))
+          with zipfile.ZipFile(wheel) as archive:
+              metadata_name = next(
+                  name
+                  for name in archive.namelist()
+                  if name.endswith(".dist-info/METADATA")
+              )
+              wheel_metadata = email.message_from_bytes(
+                  archive.read(metadata_name)
+              )
+
+          sdist = next(Path("dist").glob("*.tar.gz"))
+          with tarfile.open(sdist) as archive:
+              pkg_info_name = next(
+                  name
+                  for name in archive.getnames()
+                  if name.endswith("/PKG-INFO")
+              )
+              pkg_info = email.message_from_binary_file(
+                  archive.extractfile(pkg_info_name)
+              )
+
+          for artifact, metadata in (
+              (wheel.name, wheel_metadata),
+              (sdist.name, pkg_info),
+          ):
+              actual = metadata["Version"]
+              if actual != expected:
+                  raise SystemExit(
+                      f"{artifact} reports {actual}, expected {expected}"
+                  )
+          PY
+          uv run --locked --no-sync twine check --strict dist/*
+          uv run --locked --no-sync check-wheel-contents dist/*.whl
+          uv run --locked --no-sync python \
+            tests/utils/validate_distribution.py wheel dist/*.whl \
+            --version "$(tr -d '\r\n' < VERSION)"
+
+      - name: Create clean wheel environment
+        env:
+          UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/fiftyone-wheel-venv
+        run: >-
+          uv sync --locked --no-default-groups
+          --no-install-project
+
+      - name: Install and smoke test wheel
+        env:
+          WHEEL_ENV: ${{ runner.temp }}/fiftyone-wheel-venv
+        run: |
+          uv pip install --python "$WHEEL_ENV/bin/python" \
+            --no-deps --reinstall dist/*.whl
+          expected_version=$(tr -d '\r\n' < VERSION)
+          cd "$RUNNER_TEMP"
+          "$WHEEL_ENV/bin/python" -I \
+            "$GITHUB_WORKSPACE/tests/utils/validate_distribution.py" \
+            installed --version "$expected_version"
+          "$WHEEL_ENV/bin/fiftyone" --help
+
       - name: Upload dist
         uses: actions/upload-artifact@v7
         with:

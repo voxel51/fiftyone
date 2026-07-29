@@ -11,6 +11,7 @@ import string
 import unittest
 
 import numpy as np
+import pytest
 
 import eta.core.utils as etau
 import eta.core.video as etav
@@ -213,6 +214,7 @@ class VideoDatasetTests(unittest.TestCase):
         return os.path.join(self.root_dir, self._new_name())
 
 
+@pytest.mark.ml
 class VideoModelTests(VideoDatasetTests):
     def _make_dataset(self):
         samples = []

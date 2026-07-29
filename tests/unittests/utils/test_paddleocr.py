@@ -12,6 +12,8 @@ import pytest
 
 import fiftyone.core.labels as fol
 
+pytestmark = pytest.mark.ml
+
 
 class _FakeRes:
     """Mimics a paddleocr result object exposing ``.json`` -> {"res": {...}}."""

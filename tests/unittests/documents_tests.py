@@ -3,7 +3,7 @@ FiftyOne document-related unit tests.
 
 To run the unit tests, use the following command:
 
-    pytest tests/unittests/documents.py
+    pytest tests/unittests/documents_tests.py
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_

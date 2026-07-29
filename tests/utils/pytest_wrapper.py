@@ -11,14 +11,17 @@ import psutil
 import pytest
 
 
-try:
-    code = pytest.main(sys.argv[1:])
-finally:
-    for child in reversed(psutil.Process().children(recursive=True)):
-        try:
-            child.kill()
-            child.wait()
-        except psutil.Error:
-            pass
+def main():
+    try:
+        return pytest.main(sys.argv[1:])
+    finally:
+        for child in reversed(psutil.Process().children(recursive=True)):
+            try:
+                child.kill()
+                child.wait()
+            except psutil.Error:
+                pass
 
-exit(code)
+
+if __name__ == "__main__":
+    raise SystemExit(main())

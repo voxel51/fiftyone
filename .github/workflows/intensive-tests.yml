@@ -1,0 +1,185 @@
+name: Intensive tests
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: intensive-tests
+  cancel-in-progress: false
+
+jobs:
+  intensive:
+    name: Python 3.13 intensive suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    container:
+      image: >-
+        ${{ vars.FIFTYONE_TEST_IMAGE_NAME ||
+        'ghcr.io/voxel51/fiftyone-test' }}:3.13
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: read
+      packages: read
+    env:
+      FIFTYONE_DO_NOT_TRACK: true
+      PYTHONPATH: .
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.32"
+          enable-cache: true
+          cache-suffix: intensive
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Configure zoo cache paths
+        run: |
+          echo "FIFTYONE_DATASET_ZOO_DIR=$GITHUB_WORKSPACE/.cache/fiftyone/zoo/datasets" >> "$GITHUB_ENV"
+          echo "FIFTYONE_MODEL_ZOO_DIR=$GITHUB_WORKSPACE/.cache/fiftyone/zoo/models" >> "$GITHUB_ENV"
+
+      - name: Restore zoo assets
+        uses: actions/cache@v5
+        with:
+          path: .cache/fiftyone/zoo
+          key: >-
+            intensive-zoo-${{ runner.os }}-${{
+            hashFiles('tests/intensive/scheduled.txt') }}
+          restore-keys: |
+            intensive-zoo-${{ runner.os }}-
+
+      - name: Verify suite requirements
+        run: |
+          available_kb=$(df -Pk "$GITHUB_WORKSPACE" | awk 'NR == 2 {print $4}')
+          if [ "$available_kb" -lt 10485760 ]; then
+            echo "::error::The intensive suite requires at least 10 GiB free"
+            exit 1
+          fi
+
+          while IFS= read -r test_path; do
+            case "$test_path" in
+              ""|\#*) continue ;;
+              tests/intensive/*_tests.py) ;;
+              *)
+                echo "::error::Invalid scheduled test path: $test_path"
+                exit 1
+                ;;
+            esac
+            if [ ! -f "$test_path" ]; then
+              echo "::error::Scheduled test file is missing: $test_path"
+              exit 1
+            fi
+          done < tests/intensive/scheduled.txt
+
+          echo "No service credentials are used by the scheduled selection."
+          echo "Outbound HTTPS and downloadable FiftyOne Zoo assets are required."
+
+      - name: Sync pinned full environment
+        run: >-
+          uv sync --locked --no-default-groups
+          --extra multimodal --group test
+
+      - name: Configure
+        run: uv run --locked --no-sync python tests/utils/setup_config.py
+
+      - name: Run intensive tests
+        run: |
+          mapfile -t test_paths < <(
+            grep -Ev '^[[:space:]]*(#|$)' tests/intensive/scheduled.txt
+          )
+          if ((${#test_paths[@]} == 0)); then
+            echo "::error::No intensive tests are scheduled"
+            exit 1
+          fi
+          set -o pipefail
+          uv run --locked --no-sync python tests/utils/pytest_wrapper.py \
+            "${test_paths[@]}" \
+            --verbose \
+            --timeout=600 \
+            --junitxml=intensive-junit.xml \
+            2>&1 | tee intensive.log
+
+      - name: Upload intensive results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: intensive-python-3.13-${{ github.run_attempt }}
+          path: |
+            intensive-junit.xml
+            intensive.log
+          if-no-files-found: error
+          retention-days: 14
+
+  notify:
+    name: Track repeated scheduled failures
+    needs: intensive
+    if: ${{ always() && github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      INTENSIVE_RESULT: ${{ needs.intensive.result }}
+      ISSUE_TITLE: "[CI] Repeated intensive test failure"
+    steps:
+      - name: Open or update repeated-failure issue
+        if: env.INTENSIVE_RESULT == 'failure'
+        run: |
+          previous_result=$(gh api \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/intensive-tests.yml/runs?event=schedule&per_page=10" \
+            --jq "[.workflow_runs[] | select(.id != $GITHUB_RUN_ID)][0].conclusion")
+          if [ "$previous_result" != "failure" ]; then
+            echo "Previous scheduled run was $previous_result; not repeated yet"
+            exit 0
+          fi
+
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          issue_number=$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --search "\"$ISSUE_TITLE\" in:title" \
+            --json number \
+            --jq '.[0].number // empty')
+          if [ -n "$issue_number" ]; then
+            gh issue comment "$issue_number" \
+              --repo "$GITHUB_REPOSITORY" \
+              --body "Another scheduled intensive run failed: $run_url"
+          else
+            gh issue create \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$ISSUE_TITLE" \
+              --body "Two consecutive scheduled intensive runs failed. Latest run: $run_url"
+          fi
+
+      - name: Close issue after recovery
+        if: env.INTENSIVE_RESULT == 'success'
+        run: |
+          issue_number=$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --search "\"$ISSUE_TITLE\" in:title" \
+            --json number \
+            --jq '.[0].number // empty')
+          if [ -n "$issue_number" ]; then
+            run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            gh issue comment "$issue_number" \
+              --repo "$GITHUB_REPOSITORY" \
+              --body "The scheduled intensive suite recovered: $run_url"
+            gh issue close "$issue_number" --repo "$GITHUB_REPOSITORY"
+          fi

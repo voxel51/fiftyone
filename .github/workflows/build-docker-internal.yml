@@ -44,9 +44,23 @@ jobs:
       - name: Docker login
         run: |
           gcloud auth configure-docker "${{ env.GCP_LOCATION }}-docker.pkg.dev" --quiet
+      - name: Wait for dist
+        wait: download-dist
       - name: Set Env Vars
         run: |
-          fo_version=$(python3 -c 'import re; f=open("./setup.py").read(); print(re.search(r"VERSION\s*=\s*\"([^\"]+)\"", f).group(1))')
+          fo_version=$(tr -d '\r\n' < VERSION)
+          shopt -s nullglob
+          wheels=(dist/fiftyone-*.whl)
+          if ((${#wheels[@]} == 1)); then
+            wheel_name="${wheels[0]##*/}"
+            fo_version="${wheel_name#fiftyone-}"
+            fo_version="${fo_version%%-*}"
+          elif ((${#wheels[@]} > 1)); then
+            echo "::error::Expected at most one FiftyOne wheel"
+            exit 1
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            fo_version="${GITHUB_REF#refs/tags/v}"
+          fi
           short_sha="$(git rev-parse --short HEAD)"
           echo "fo_version=$fo_version" >> "$GITHUB_ENV"
           echo "pyver=${{ matrix.python }}" >> "$GITHUB_ENV"
@@ -54,8 +68,6 @@ jobs:
           echo "today=$(date +%Y%m%d)" >> "$GITHUB_ENV"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
-      - name: Wait for dist
-        wait: download-dist
       - name: Build and push internal image
         uses: docker/build-push-action@v7
         with:

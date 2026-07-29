@@ -6,11 +6,18 @@ Tests for fiftyone/utils/depth_anything.py Depth Anything V3 model wrapper.
 |
 """
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
-import torch
+
+torch = pytest.importorskip("torch", reason="ML test requires PyTorch")
+pytestmark = pytest.mark.ml
 
 import fiftyone.core.labels as fol
+
+if TYPE_CHECKING:
+    from fiftyone.utils.depth_anything import DepthAnythingV3OutputProcessor
 
 
 class TestDepthAnythingV3ModelConfig:

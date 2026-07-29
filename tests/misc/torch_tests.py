@@ -9,8 +9,13 @@ import unittest
 
 import numpy as np
 from PIL import Image
-import torch
-import torchvision
+import pytest
+
+torch = pytest.importorskip("torch", reason="ML test requires PyTorch")
+torchvision = pytest.importorskip(
+    "torchvision", reason="ML test requires torchvision"
+)
+pytestmark = pytest.mark.ml
 
 import fiftyone as fo
 import fiftyone.utils.torch as fout

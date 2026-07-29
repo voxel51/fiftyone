@@ -100,8 +100,28 @@ FiftyOne maintainer or community member for input.
 
 ### Installation
 
-To contribute any feature to FiftyOne, you must install from source, including
-the `-d` flag to install developer dependencies, pre-commit hooks, etc:
+These commands require uv 0.11.32, the exact version declared in
+`pyproject.toml`.
+
+Install the default contributor environment from the committed lockfile:
+
+```shell
+uv sync --locked
+uv run --locked --no-sync pre-commit install
+uv run --locked --no-sync pytest tests/unittests
+```
+
+Additional environments are opt-in:
+
+```shell
+uv sync --locked --group test
+uv sync --locked --group docs
+uv sync --locked --group dev-full --all-extras
+```
+
+The source installers remain the full-stack bootstrap when you also want them
+to orchestrate the App and related source checkouts. Their `-d` mode requires
+uv and delegates the Python environment to `uv sync --locked`:
 
 ```shell
 # Mac or Linux
@@ -109,7 +129,6 @@ bash install.sh -d
 
 # Windows
 .\install.bat -d
-
 ```
 
 Refer to the [main README](README.md#installing-from-source) to make sure you
@@ -121,37 +140,39 @@ If you are making a change to the FiftyOne App, refer to the
 ### Pre-commit hooks
 
 Performing a developer install per the above instructions will install some
-[pre-commit hooks](https://pre-commit.com/) that will automatically apply code
-formatting before allowing you to create a git commit.
+[pre-commit hooks](https://pre-commit.com/) that run the configured project
+checks before allowing you to create a git commit.
 
 See `.pre-commit-config.yaml` for the definitions of our hooks.
 
 To manually install our pre-commit hooks, simply run:
 
 ```shell
-pre-commit install
+uv run --locked --no-sync pre-commit install
 ```
 
 To manually lint a file, run the following:
 
 ```shell
 # Manually run linting configured in the pre-commit hook
-pre-commit run --files <file>
+uv run --locked --no-sync pre-commit run --files <file>
 ```
 
-Note that the pylint component of the pre-commit hook only checks for errors.
-To see the full output, run:
+The merge-authoritative Python quality checks are:
 
 ```shell
-pylint <file>
+uv run --locked --no-sync ruff check --config pyproject.toml .
+uv run --locked --no-sync ty check
 ```
+
+CI runs both commands directly and is authoritative.
 
 ### Python API
 
 The [FiftyOne API](https://voxel51.com/docs/fiftyone/user_guide/basics.html) is
 implemented in Python and the source code lives in
 [fiftyone/fiftyone](https://github.com/voxel51/fiftyone/tree/develop/fiftyone).
-Refer to `setup.py` to see the Python versions that the project supports.
+Refer to `pyproject.toml` to see the Python versions that the project supports.
 
 All Python code contributed to FiftyOne must follow our
 [style guide](STYLE_GUIDE.md#python-style-guide).

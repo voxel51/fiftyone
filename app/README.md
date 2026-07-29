@@ -85,9 +85,7 @@ All new feature and bug fix pull requests should contain associated unit tests.
 Each subpackage in the monorepo has a `./test` directory in which each module
 should have a corresponding `<module-name>.test.ts` module. Tests are
 implemented and run with [Vitest](https://vitest.dev), a testing framework very
-similar to Jest, with the `yarn test` script. Coverage is monitored in all pull
-requests that modify App source code via
-[Codecov](https://app.codecov.io/gh/voxel51/fiftyone/).
+similar to Jest, with the `yarn test` script.
 
 A recommended approach to local development is to have a running Vitest UI open
 with coverage to watch for failures as you develop. Coverage can be monitored

@@ -11,7 +11,9 @@
 FROM python:3.10.16-slim-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive \
-    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    UV_PROJECT_ENVIRONMENT=/opt/fiftyone-venv \
+    PATH="/opt/fiftyone-venv/bin:${PATH}"
 
 # procps: tree-kill shells out to `ps` to kill FiftyOne server process trees
 RUN apt-get update \
@@ -22,16 +24,17 @@ RUN apt-get update \
     && corepack enable \
     && corepack prepare yarn@4.9.1 --activate
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.32@sha256:df4cae8f3a96d175e2e5f992e597550000edbe78fdc2594d5cd8de1a217f504c \
+    /uv /uvx /usr/local/bin/
 
-# Bake fiftyone's dependency tree exactly as setup.py resolves it, then drop
-# fiftyone itself — the shard job reinstalls it from the PR's source, which
-# is fast once the dependencies are already present.
-COPY . /tmp/fiftyone-src
-RUN uv pip install --system '/tmp/fiftyone-src[multimodal]' \
-        -r /tmp/fiftyone-src/requirements/e2e.txt \
-    && uv pip uninstall --system fiftyone \
-    && rm -rf /tmp/fiftyone-src
+# Bake the locked dependency tree without the project itself. The shard job
+# syncs the PR checkout into the same stable environment.
+COPY pyproject.toml uv.lock VERSION /tmp/fiftyone-src/
+WORKDIR /tmp/fiftyone-src
+RUN uv sync --locked --no-default-groups --no-install-project \
+        --extra multimodal --group e2e \
+    && rm -rf /root/.cache/uv
+WORKDIR /
 
 # Bake the Chromium build matching e2e-pw's Playwright lockfile.
 COPY e2e-pw/package.json e2e-pw/yarn.lock e2e-pw/.yarnrc.yml /tmp/e2e-pw/

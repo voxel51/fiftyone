@@ -1,0 +1,12 @@
+# Credential-free intensive tests that run in weekly CI
+tests/intensive/collections_tests.py
+tests/intensive/evaluation_tests.py
+tests/intensive/import_export_tests.py
+tests/intensive/merge_tests.py
+tests/intensive/patches_tests.py
+tests/intensive/plot_tests.py
+tests/intensive/session_tests.py
+tests/intensive/similarity_tests.py
+tests/intensive/utils_tests.py
+tests/intensive/video_tests.py
+tests/intensive/view_tests.py

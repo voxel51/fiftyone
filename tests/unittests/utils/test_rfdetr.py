@@ -13,7 +13,9 @@ from typing import Any, Optional
 import numpy as np
 from PIL import Image
 import pytest
-import torch
+
+torch = pytest.importorskip("torch", reason="ML test requires PyTorch")
+pytestmark = pytest.mark.ml
 
 import fiftyone as fo
 import fiftyone.core.labels as fol

@@ -1,32 +1,40 @@
 # Prebaked environment for the Python unit-test jobs (.github/workflows/test.yml).
 # Rebuilt by .github/workflows/build-ci-images.yml on develop pushes that
-# touch the Python dependency tree; one image per Python minor version.
+# touch the Python dependency tree; core and ml-cloud images are built for
+# every Python minor version.
 #
-# The image bakes everything a test job used to install at runtime: the
-# fiftyone dependency tree (including torch/tensorflow from
-# requirements/github.txt) and ffmpeg. libcurl4 is required by the bundled
-# mongod that fiftyone-db starts during tests; gnupg by the codecov
-# uploader's signature check. The test job only installs fiftyone itself
-# from the PR's source.
+# The core profile bakes the locked core-test dependency tree; the ml-cloud
+# profile additionally includes ML and cloud dependencies. Both profiles include
+# ffmpeg. libcurl4 is required by the bundled mongod that fiftyone-db starts
+# during tests. The test job only installs fiftyone itself from the PR's
+# source.
 
 ARG PYTHON_VERSION=3.10
 FROM python:${PYTHON_VERSION}-slim-bookworm
+ARG TEST_PROFILE=ml-cloud
 
-ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive \
+    UV_PROJECT_ENVIRONMENT=/opt/fiftyone-venv \
+    PATH="/opt/fiftyone-venv/bin:${PATH}"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        ca-certificates curl git gnupg ffmpeg libcurl4 \
+        ca-certificates curl git ffmpeg libcurl4 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.32@sha256:df4cae8f3a96d175e2e5f992e597550000edbe78fdc2594d5cd8de1a217f504c \
+    /uv /uvx /usr/local/bin/
 
-# Bake fiftyone's dependency tree exactly as setup.py resolves it, then drop
-# fiftyone itself — the test job reinstalls it from the PR's source, which
-# is fast once the dependencies are already present.
-COPY . /tmp/fiftyone-src
-RUN uv pip install --system -U wheel setuptools \
-    && uv pip install --system '/tmp/fiftyone-src[multimodal]' \
-        -r /tmp/fiftyone-src/requirements/github.txt \
-    && uv pip uninstall --system fiftyone \
-    && rm -rf /tmp/fiftyone-src
+# Bake the locked dependency tree without the project itself. The test job
+# syncs the PR checkout into the same stable environment.
+COPY pyproject.toml uv.lock VERSION /tmp/fiftyone-src/
+WORKDIR /tmp/fiftyone-src
+RUN case "$TEST_PROFILE" in \
+        core) test_group=test-core ;; \
+        ml-cloud) test_group=test ;; \
+        *) echo "Unsupported test profile: $TEST_PROFILE" >&2; exit 1 ;; \
+    esac \
+    && uv sync --locked --no-default-groups --no-install-project \
+        --extra multimodal --group "$test_group" \
+    && rm -rf /root/.cache/uv
+WORKDIR /

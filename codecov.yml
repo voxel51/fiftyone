@@ -1,5 +1,0 @@
-coverage:
-  status:
-    patch: off
-    project: off
-github_checks: false
