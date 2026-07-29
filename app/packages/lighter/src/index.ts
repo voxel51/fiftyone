@@ -129,6 +129,9 @@ export {
   type ColorMappingContext,
 } from "./utils/colorMapping";
 export { decodeMaskPath } from "./utils/maskPathDecoding";
+export { MaskBitmapCache, maskBitmapCache } from "./utils/maskBitmapCache";
+export type { MaskSource } from "./utils/maskBitmapCache";
+export { maskSourceOf } from "./utils/maskSource";
 
 // Constants
 export { DEFAULT_ZOOM_PAD } from "./constants";
