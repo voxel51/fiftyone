@@ -481,7 +481,14 @@ def _decode_expressions(value):
     serialize today; those are returned unchanged, as is anything else.
     """
     if foea.is_envelope(value):
-        return foea.from_envelope(value)
+        try:
+            return foea.from_envelope(value)
+        except ValueError:
+            # Not actually ours — a raw dict that happens to carry the key,
+            # or an envelope from a newer syntax than this build reads.
+            # Either way it passes through untouched, as every dict did
+            # before envelopes existed.
+            return value
 
     if isinstance(value, dict):
         return {k: _decode_expressions(v) for k, v in value.items()}

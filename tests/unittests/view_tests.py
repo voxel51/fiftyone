@@ -4484,6 +4484,48 @@ class ViewStageTests(unittest.TestCase):
         self.assertIsInstance(decoded._filter, dict)
         self.assertEqual(decoded._get_mongo_expr(), stage._get_mongo_expr())
 
+    def test_foreign_fo_expr_dict_passes_through(self):
+        # A raw kwarg dict that happens to carry the envelope key is not an
+        # envelope; it loads untouched, exactly as it did before envelopes
+        filter_dict = {"_fo_expr": {"$exists": True}}
+        stage = fosg.Match(filter_dict)
+        decoded = fosg.ViewStage._from_dict(stage._serialize())
+        self.assertEqual(decoded._filter, filter_dict)
+
+    def test_newer_envelope_in_kwargs_degrades(self):
+        # App->server traffic carries envelopes inside kwargs; a version this
+        # build cannot read passes through rather than failing the load
+        stage = fosg.Match(F("num") > 0.5)
+        d = stage._serialize()
+        envelope = {
+            foea.AST_KEY: {
+                "version": foea.AST_VERSION + 1,
+                "node": {"t": "lit", "v": 1},
+            }
+        }
+        d["kwargs"] = [["filter", envelope]]
+        d.pop("_expr_asts")
+
+        decoded = fosg.ViewStage._from_dict(d)
+        self.assertEqual(decoded._filter, envelope)
+
+    def test_decode_refuses_unknown_operators(self):
+        # `op` dispatches through getattr; anything outside the recorded
+        # operator vocabulary is refused, not resolved
+        for op in ("mro", "__subclasses__", "__class__", "__globals__"):
+            static = {"t": "static", "op": op, "args": [], "kwargs": {}}
+            call = {
+                "t": "call",
+                "op": op,
+                "self": {"t": "field", "path": "num"},
+                "args": [],
+                "kwargs": {},
+            }
+            with self.assertRaises(ValueError):
+                foea.from_node(static)
+            with self.assertRaises(ValueError):
+                foea.from_node(call)
+
     def test_stage_without_expr_asts_key_loads(self):
         stage = fosg.Match(F("num") > 0.5)
         d = stage._serialize()

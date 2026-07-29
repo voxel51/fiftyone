@@ -242,6 +242,12 @@ _PRECEDENCE = {
 }
 
 
+#: Every operator the decorator wraps — the complete legal ``op`` vocabulary.
+#: Decoding refuses anything else, so a crafted envelope cannot reach
+#: arbitrary attributes through ``getattr``.
+_RECORDED_OPS = set()
+
+
 def records_expression_syntax(cls: type) -> type:
     """Class decorator that records how each expression was constructed.
 
@@ -261,6 +267,7 @@ def records_expression_syntax(cls: type) -> type:
 
         wrapper = _record(func, name, static=static)
         setattr(cls, name, staticmethod(wrapper) if static else wrapper)
+        _RECORDED_OPS.add(name)
 
     return cls
 
@@ -488,7 +495,7 @@ def _decode(node: Node) -> Any:
         return foe.ViewExpression(node["expr"])
 
     if t == "static":
-        func = getattr(foe.ViewExpression, node["op"])
+        func = getattr(foe.ViewExpression, _operator(node["op"]))
         return func(
             *[_decode(n) for n in node["args"]],
             **{k: _decode(v) for k, v in node.get("kwargs", {}).items()},
@@ -496,13 +503,26 @@ def _decode(node: Node) -> Any:
 
     if t == "call":
         target = _decode(node["self"])
-        method = getattr(target, node["op"])
+        method = getattr(target, _operator(node["op"]))
         return method(
             *[_decode(n) for n in node["args"]],
             **{k: _decode(v) for k, v in node.get("kwargs", {}).items()},
         )
 
     raise ValueError("unknown view expression node type %r" % t)
+
+
+def _operator(op: Any) -> str:
+    """The operator name, if it is one an expression can record.
+
+    ``getattr`` on an arbitrary name would hand a crafted envelope the whole
+    attribute graph — ``mro``, ``__subclasses__`` and onward — so only the
+    vocabulary the recording decorator wrapped is dispatchable.
+    """
+    if op not in _RECORDED_OPS:
+        raise ValueError("unknown view expression operator %r" % op)
+
+    return op
 
 
 def _decode_literal(node: LiteralNode) -> Any:
