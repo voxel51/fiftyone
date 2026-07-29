@@ -3,6 +3,8 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-enterprise-v2.22.0:
+
 FiftyOne Enterprise 2.22.0
 --------------------------
 *Released July 14, 2026*
