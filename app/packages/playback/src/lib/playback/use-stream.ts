@@ -97,6 +97,29 @@ function equalSelectedArrays<Value>(
 }
 
 /**
+ * Mark a stream active WITHOUT reading its value.
+ *
+ * Activation is what makes the engine drive a stream at all — a registered but
+ * dormant stream is skipped by the readiness barrier, so its `blocking` flag is
+ * inert and it receives no `bufferState` / `prefetch` / `onCommit`. For streams
+ * whose committed value has a React consumer, `useStream` covers this as a side
+ * effect of reading. This hook is for the case with no such consumer: a stream
+ * that seeds another store directly and needs only its readiness respected.
+ *
+ * The inverse is {@link useStreamValue} — read without activating.
+ */
+export function useActivateStream(id: string): void {
+  const { subscribeStream } = usePlayback();
+
+  // This effect keeps the engine subscription aligned with the requested id.
+  // An empty id is a no-op because the engine never registers one.
+  useEffect(() => {
+    if (!id) return undefined;
+    return subscribeStream(id);
+  }, [id, subscribeStream]);
+}
+
+/**
  * Subscribe to a stream's current data and re-render when it changes.
  *
  * Returns `null` until the stream is registered and produces its first
@@ -113,14 +136,7 @@ function equalSelectedArrays<Value>(
  * ```
  */
 export function useStream<T = unknown>(id: string): T | null {
-  const { subscribeStream } = usePlayback();
-
-  // This effect keeps the engine subscription aligned with the requested id.
-  // An empty id is a no-op because the engine never registers one.
-  useEffect(() => {
-    if (!id) return undefined;
-    return subscribeStream(id);
-  }, [id, subscribeStream]);
+  useActivateStream(id);
 
   return useStreamValue<T>(id);
 }

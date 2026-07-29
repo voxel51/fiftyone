@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ComponentProps } from "react";
+import { afterEach, describe, expect, it, type Mock, vi } from "vitest";
 import { Mcap3dViewSettingsProvider } from "./mcap-3d-view-settings-context";
 import {
   McapSceneFramesProvider,
@@ -28,7 +29,9 @@ function renderWorldSettings({
   setSceneUpAxis = vi.fn(),
 }: {
   readonly frameControls?: McapSceneFrameControls;
-  readonly setSceneUpAxis?: ReturnType<typeof vi.fn>;
+  readonly setSceneUpAxis?: Mock<
+    ComponentProps<typeof Mcap3dViewSettingsProvider>["setSceneUpAxis"]
+  >;
 } = {}) {
   render(
     <Mcap3dViewSettingsProvider
