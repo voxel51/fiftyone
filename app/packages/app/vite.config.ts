@@ -63,7 +63,7 @@ async function loadConfig() {
     },
     optimizeDeps: {
       exclude: ["onnxruntime-web"],
-      esbuildOptions: {
+      rolldownOptions: {
         plugins: [foxgloveWasmOptimizeAsUrl()],
       },
     },
@@ -74,6 +74,7 @@ async function loadConfig() {
     resolve: {
       alias: {
         path: "path-browserify",
+        fs: path.resolve(__dirname, "fs-stub.js"),
       },
       dedupe: ["react", "react-dom", "react/jsx-runtime"],
     },
@@ -95,6 +96,14 @@ async function loadConfig() {
       rollupOptions: {
         onwarn(warning, warn) {
           if (warning.code === "MODULE_LEVEL_DIRECTIVE") {
+            return;
+          }
+          // @foxglove/rosmsg-serialization compiles message writers with
+          // eval by design; the warning is not actionable from here
+          if (
+            warning.code === "EVAL" &&
+            warning.id?.includes("@foxglove/rosmsg-serialization")
+          ) {
             return;
           }
           warn(warning);
@@ -174,34 +183,32 @@ function foxgloveWasmAsUrl(): Plugin {
   };
 }
 
-function foxgloveWasmOptimizeAsUrl() {
-  const namespace = "foxglove-wasm-url";
+function foxgloveWasmOptimizeAsUrl(): Plugin {
+  const prefix = "\0foxglove-wasm-url:";
   const wrapperPattern =
     /[\\/]node_modules[\\/]@foxglove[\\/](?:wasm-(lz4|zstd)[\\/]dist[\\/]wasm-(lz4|zstd)|wasm-bz2[\\/]wasm[\\/]module)\.js$/;
 
   return {
     name: "foxglove-wasm-url",
-    setup(build) {
-      build.onResolve(
-        { filter: /^\.\/(?:wasm-(?:lz4|zstd)|module)\.wasm$/ },
-        (args) => {
-          if (!wrapperPattern.test(args.importer)) {
-            return undefined;
-          }
+    resolveId(source, importer) {
+      if (
+        !/^\.\/(?:wasm-(?:lz4|zstd)|module)\.wasm$/.test(source) ||
+        !importer ||
+        !wrapperPattern.test(importer)
+      ) {
+        return null;
+      }
 
-          return {
-            namespace,
-            path: path.resolve(args.resolveDir, args.path),
-          };
-        },
-      );
+      return prefix + path.resolve(path.dirname(importer), source);
+    },
+    load(id) {
+      if (!id.startsWith(prefix)) {
+        return null;
+      }
 
-      build.onLoad({ filter: /.*/, namespace }, (args) => ({
-        contents: `module.exports = ${JSON.stringify(
-          `/@fs/${normalizePath(args.path)}`,
-        )};`,
-        loader: "js",
-      }));
+      return `module.exports = ${JSON.stringify(
+        `/@fs/${normalizePath(id.slice(prefix.length))}`,
+      )};`;
     },
   };
 }

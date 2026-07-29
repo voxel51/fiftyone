@@ -1086,7 +1086,9 @@ class PatchPanelState extends Operator {
 }
 
 function createFunctionFromSource(src) {
-  return eval(src.trim());
+  // indirect eval: the reducer source is self-contained, and global-scope
+  // evaluation lets the bundler minify this module normally
+  return (0, eval)(src.trim());
 }
 
 class ReducePanelState extends Operator {
