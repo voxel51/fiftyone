@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.23.0
 --------------------------
-*Released HOLD*
+*Released July 30, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
 
@@ -25,6 +25,11 @@ Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
   indices, bidirectional tracking, and concurrent tracking runs with
   aggregate progress reporting; extending a segmented track carries its
   mask across filled frames
+- **Embeddings refresh**: update an existing embeddings visualization with
+  just the samples added since it was computed — no full recompute —
+  directly from the Embeddings panel
+- Video annotation AI now defaults to the large SAM2 model, with the model
+  size configurable via environment variable
 - Annotation AI services are consolidated into a single `annotation-ai`
   service image, and the Services page and annotation AI panel are now
   always visible
@@ -37,12 +42,14 @@ Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
   start in a stopped state
 - Auto Labeling now automatically discovers its backing service via the
   orchestrator binding
+- The datasets listing page now displays the multimodal dataset type
 - Delegated operations improvements: named delegation targets are hidden
   from the schedule dropdown, fixed delegated operation log persistence and
   an infinite `DocumentTooLarge` error, and improved progress log capture
 - Multimodal fixes, including projection writes now using FiftyOne
   Enterprise credentials
-- Fixed GPU metrics in telemetry reporting
+- Fixed GPU metrics in telemetry reporting and enabled GPU metrics for
+  delegated executor services
 - Fixed workflow canvas back-edge connections after page reloads
 - Datasets no longer appear locked when dataset locking routes are
   unavailable
@@ -53,7 +60,7 @@ Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
 
 FiftyOne 1.20.0
 ---------------
-*Released HOLD*
+*Released July 30, 2026*
 
 App
 ^^^
@@ -71,6 +78,9 @@ App
 - Updated the annotation sidebar UX, including a save indicator that shows
   pending and saved edits
   `#7970 <https://github.com/voxel51/fiftyone/pull/7970>`_
+- Added dismissible callouts in the annotation surface highlighting more
+  capable annotation models
+  `#8087 <https://github.com/voxel51/fiftyone/pull/8087>`_
 - Improved track deletion behavior in the video annotation timeline
   `#8047 <https://github.com/voxel51/fiftyone/pull/8047>`_
 - Shift-drag now pans the canvas while in overlay-creation modes
@@ -83,6 +93,11 @@ App
 - Fixed segmentation mask edits not persisting while annotating with
   autosave enabled
   `#8028 <https://github.com/voxel51/fiftyone/pull/8028>`_
+- Fixed overlapping in-browser SAM2 inference requests failing with
+  "session already started" errors
+  `#8101 <https://github.com/voxel51/fiftyone/pull/8101>`_
+- Fixed dropdowns scroll-locking the page and re-rendering the grid
+  `#8125 <https://github.com/voxel51/fiftyone/pull/8125>`_
 - Polyline labels are now anchored at the centroid of their points
   `#7719 <https://github.com/voxel51/fiftyone/pull/7719>`_
 - Temporal tag routes are now always registered with the App server,
@@ -100,6 +115,9 @@ Performance
   GPU, for smoother rendering of mask-heavy samples
   `#7859 <https://github.com/voxel51/fiftyone/pull/7859>`_,
   `#7861 <https://github.com/voxel51/fiftyone/pull/7861>`_
+- Smoother video annotation playback: decoded masks are cached around the
+  playhead and playback waits for mask readiness, eliminating flicker
+  `#8131 <https://github.com/voxel51/fiftyone/pull/8131>`_
 - Fixed App memory leaks in the annotation renderer, undo history, and
   sidebar, reducing memory growth during long annotation sessions
   `#8015 <https://github.com/voxel51/fiftyone/pull/8015>`_
@@ -124,6 +142,26 @@ Models
   `#7987 <https://github.com/voxel51/fiftyone/pull/7987>`_
 - Fixes and updates for FC-CLIP zero-shot segmentation models
   `#7981 <https://github.com/voxel51/fiftyone/pull/7981>`_
+
+Brain
+^^^^^
+- Embeddings visualizations can now be updated incrementally: new samples
+  are embedded and projected into an existing visualization without
+  recomputing it from scratch
+  `#289 <https://github.com/voxel51/fiftyone-brain/pull/289>`_
+- Visualization results are now stored in a binary format that loads
+  dramatically faster for large runs
+  `#295 <https://github.com/voxel51/fiftyone-brain/pull/295>`_
+- Upgraded the Databricks vector search integration
+  `#294 <https://github.com/voxel51/fiftyone-brain/pull/294>`_
+
+FiftyOne Enterprise 2.22.1
+--------------------------
+*Released July 22, 2026*
+
+App
+
+- Fixed a bug that caused the App to crash for users with the Guest role
 
 FiftyOne Enterprise 2.22.0
 --------------------------

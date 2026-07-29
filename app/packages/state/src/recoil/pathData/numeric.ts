@@ -1,4 +1,4 @@
-import { selectorFamily } from "recoil";
+import { selectorFamily, waitForAll } from "recoil";
 import { aggregation } from "../aggregations";
 import { queryPerformance } from "../queryPerformance";
 import { count } from "./counts";
@@ -34,12 +34,20 @@ export const nonfiniteData = selectorFamily({
         return get(lightningNonfinites(params.path));
       }
 
-      const data = get(aggregation(params));
-      const { count: parentCount } = get(
-        aggregation({
-          ...params,
-          path: params.path.split(".").slice(0, -1).join("."),
-        }),
+      // Fetch the field's aggregation and its parent's concurrently:
+      // reading them with sequential ``get``s makes Recoil suspend on
+      // the first, then fire the second only after it resolves — a
+      // waterfall that doubles latency when each aggregation is
+      // expensive (large datasets, cold caches, slower backends).
+      // ``waitForAll`` puts both in flight at once.
+      const [data, { count: parentCount }] = get(
+        waitForAll([
+          aggregation(params),
+          aggregation({
+            ...params,
+            path: params.path.split(".").slice(0, -1).join("."),
+          }),
+        ]),
       );
 
       if (data.__typename === "IntAggregation") {

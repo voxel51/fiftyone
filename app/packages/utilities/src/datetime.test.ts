@@ -3,9 +3,19 @@ import { describe, expect, it } from "vitest";
 import {
   dateFromDateString,
   dateFromDateTimeString,
+  dateOnlyToUTC,
   formatDatePicker,
   formatDateTimePicker,
+  formatRelativeTime,
+  serializeDateValue,
+  toPickerDate,
 } from "./datetime";
+
+// midnight UTC, July 22 2026 — how a `date` field value is stored
+const JULY_22_DATE_MS = Date.UTC(2026, 6, 22);
+
+// an arbitrary instant: 2026-07-22T00:30:00Z
+const INSTANT_MS = Date.UTC(2026, 6, 22, 0, 30);
 
 describe("dateFromDateString", () => {
   it("returns the UTC timestamp for a valid date string", () => {
@@ -87,5 +97,101 @@ describe("formatDatePicker", () => {
     const utcMidnight = 1704067200000;
     const result = formatDatePicker(utcMidnight);
     expect(result).toBe("2024-01-01");
+  });
+});
+
+describe("formatRelativeTime", () => {
+  it("formats past timestamps relative to now", () => {
+    expect(formatRelativeTime(Date.now() - 3_600_000)).toMatch(/ago/);
+  });
+
+  it("returns null for invalid timestamps", () => {
+    expect(formatRelativeTime(Number.NaN)).toBeNull();
+  });
+});
+
+describe("toPickerDate", () => {
+  it("preserves the UTC calendar date for date fields in any local timezone", () => {
+    const picker = toPickerDate("date", JULY_22_DATE_MS, "UTC");
+    expect(picker.getFullYear()).toBe(2026);
+    expect(picker.getMonth()).toBe(6);
+    expect(picker.getDate()).toBe(22);
+  });
+
+  it("shows datetime fields as the local time in the app timezone", () => {
+    // 2026-07-22T00:30Z is 2026-07-21T20:30 in New York (EDT)
+    const picker = toPickerDate("datetime", INSTANT_MS, "America/New_York");
+    expect(picker.getFullYear()).toBe(2026);
+    expect(picker.getMonth()).toBe(6);
+    expect(picker.getDate()).toBe(21);
+    expect(picker.getHours()).toBe(20);
+    expect(picker.getMinutes()).toBe(30);
+  });
+
+  it("shows datetime fields as UTC time for the default timezone", () => {
+    const picker = toPickerDate("datetime", INSTANT_MS, "UTC");
+    expect(picker.getFullYear()).toBe(2026);
+    expect(picker.getMonth()).toBe(6);
+    expect(picker.getDate()).toBe(22);
+    expect(picker.getHours()).toBe(0);
+    expect(picker.getMinutes()).toBe(30);
+  });
+
+  it("ignores the app timezone for date fields", () => {
+    const picker = toPickerDate("date", JULY_22_DATE_MS, "America/New_York");
+    expect(picker.getFullYear()).toBe(2026);
+    expect(picker.getMonth()).toBe(6);
+    expect(picker.getDate()).toBe(22);
+  });
+
+  it("throws on an invalid timezone instead of returning an Invalid Date", () => {
+    expect(() => toPickerDate("datetime", INSTANT_MS, "Not/AZone")).toThrow(
+      "invalid date or timezone",
+    );
+  });
+});
+
+describe("serializeDateValue", () => {
+  it("stores date fields at noon UTC of the picked calendar date", () => {
+    const picker = toPickerDate("date", JULY_22_DATE_MS, "UTC");
+    expect(serializeDateValue("date", picker, "UTC")).toBe(
+      "2026-07-22T12:00:00.000Z",
+    );
+  });
+
+  it("interprets datetime picker values in the app timezone", () => {
+    const picker = toPickerDate("datetime", INSTANT_MS, "America/New_York");
+    expect(serializeDateValue("datetime", picker, "America/New_York")).toBe(
+      new Date(INSTANT_MS).toISOString(),
+    );
+  });
+
+  it("round-trips datetime values through the picker in UTC", () => {
+    const picker = toPickerDate("datetime", INSTANT_MS, "UTC");
+    expect(serializeDateValue("datetime", picker, "UTC")).toBe(
+      new Date(INSTANT_MS).toISOString(),
+    );
+  });
+
+  it("throws on an invalid timezone instead of returning null", () => {
+    const picker = new Date(INSTANT_MS);
+    expect(() => serializeDateValue("datetime", picker, "Not/AZone")).toThrow(
+      "invalid date or timezone",
+    );
+  });
+});
+
+describe("dateOnlyToUTC", () => {
+  it("keeps the same calendar date when re-parsed", () => {
+    const picker = toPickerDate("date", JULY_22_DATE_MS, "UTC");
+    const stored = dateOnlyToUTC(picker);
+    const roundTripped = toPickerDate(
+      "date",
+      new Date(stored).getTime(),
+      "UTC",
+    );
+    expect(roundTripped.getDate()).toBe(picker.getDate());
+    expect(roundTripped.getMonth()).toBe(picker.getMonth());
+    expect(roundTripped.getFullYear()).toBe(picker.getFullYear());
   });
 });

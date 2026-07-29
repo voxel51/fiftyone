@@ -5,6 +5,8 @@ export * from "./useAgentSelector";
 export * from "./useAIAnnotationActionGroup";
 export * from "./useAnnotationAgent";
 export * from "./useApplyInferenceResult";
+export * from "./useClearPointPrompts";
+export * from "./useEndPointSession";
 export { useInferenceStatus } from "./useInferenceStatus";
 export type {
   InferenceError,

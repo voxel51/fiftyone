@@ -48,6 +48,7 @@ export { default as useSetSessionColorScheme } from "./useSetSessionColorScheme"
 export { default as useSetSpaces } from "./useSetSpaces";
 export { default as useSetView } from "./useSetView";
 export { default as useTimeout } from "./useTimeout";
+export { default as useTimeZone } from "./useTimeZone";
 export { default as useToClips } from "./useToClips";
 export { default as useToEvaluationPatches } from "./useToEvaluationPatches";
 export { default as useTooltip } from "./useTooltip";

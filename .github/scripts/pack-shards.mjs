@@ -21,12 +21,12 @@ if (!shard || !total || shard < 1 || shard > total) {
 
 const timings = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../ci/spec-timings.json", import.meta.url)),
+    fileURLToPath(new URL("../../e2e-pw/ci/spec-timings.json", import.meta.url)),
     "utf8",
   ),
 );
 
-const root = fileURLToPath(new URL("../src", import.meta.url));
+const root = fileURLToPath(new URL("../../e2e-pw/src", import.meta.url));
 const files = [];
 const walk = (dir) => {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

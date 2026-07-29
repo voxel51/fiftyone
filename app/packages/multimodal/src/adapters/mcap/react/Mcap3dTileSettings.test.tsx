@@ -1,6 +1,15 @@
 import { PlaybackProvider } from "@fiftyone/playback";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Dispatch, SetStateAction } from "react";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type Mock,
+  vi,
+} from "vitest";
 import type { DecodedDiagnostic } from "../../../decoders";
 import type { SceneSource } from "../../../scene-inventory";
 import { MCAP_SOURCE_TYPE } from "../scene-sources";
@@ -791,15 +800,21 @@ interface SettingsTestProps {
   readonly sceneBackground: McapSceneBackgroundSettings;
   readonly selectedPointCloudSources: readonly SceneSource[];
   readonly selectedPoseSources: readonly SceneSource[];
-  readonly setSourcesEnabled: ReturnType<typeof vi.fn>;
-  readonly setTrackingMode: ReturnType<typeof vi.fn>;
-  readonly setTrajectoryFrameOverrides: ReturnType<typeof vi.fn>;
+  readonly setSourcesEnabled: Mock<
+    (ids: readonly string[], checked: boolean) => void
+  >;
+  readonly setTrackingMode: Mock<
+    (mode: "free" | "position" | "heading" | "pose") => void
+  >;
+  readonly setTrajectoryFrameOverrides: Mock<
+    Dispatch<SetStateAction<Readonly<Record<string, string>>>>
+  >;
   readonly showPointCloudColorLegend: boolean;
-  readonly toggleSource: ReturnType<typeof vi.fn>;
+  readonly toggleSource: Mock<(id: string, checked: boolean) => void>;
   readonly trackingMode: "free" | "position" | "heading" | "pose";
   readonly trajectories: Map<string, never>;
   readonly trajectoryFrameByTopic: Map<string, string>;
-  readonly updateCameraTargetFrameId: ReturnType<typeof vi.fn>;
+  readonly updateCameraTargetFrameId: Mock<(frameId: string) => void>;
   readonly worldFrameId: string;
 }
 
