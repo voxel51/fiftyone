@@ -1,9 +1,13 @@
+import * as fos from "@fiftyone/state";
 import { useEffect, useMemo } from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import type { Vector3 } from "three";
 import { PANEL_ID_SIDE_TOP, VIEW_TYPE_LEFT, VIEW_TYPE_TOP } from "../constants";
 import { useFetchFrustumParameters } from "../frustum/hooks/internal/useFetchFrustumParameters";
 import type { SidePanelId, SidePanelViewType } from "../types";
+import { Native2dAnnotations } from "./native2d/Native2dAnnotations";
+import type { Native2dLabel } from "./native2d/types";
 import { Projected3dOverlays } from "./projection";
 
 const ImageSliceContainer = styled.div`
@@ -85,6 +89,7 @@ export interface ImageSlicePanelProps {
   imageSlices: string[];
   isLoadingImageSlices: boolean;
   resolveUrlForImageSlice: (sliceName: string) => string | null;
+  resolveLabelsForImageSlice: (sliceName: string) => Native2dLabel[];
   upVector?: Vector3 | null;
 }
 
@@ -101,6 +106,7 @@ export const ImageSlicePanel = ({
   imageSlices,
   isLoadingImageSlices,
   resolveUrlForImageSlice,
+  resolveLabelsForImageSlice,
   upVector,
 }: ImageSlicePanelProps) => {
   const { data: frustumData } = useFetchFrustumParameters();
@@ -111,6 +117,18 @@ export const ImageSlicePanel = ({
     if (!sliceName) return null;
     return frustumData.find((f) => f.sliceName === sliceName) ?? null;
   }, [frustumData, view]);
+
+  // Stored 2D labels for this slice, filtered to the sidebar's active fields so
+  // they toggle in sync with the rest of the app.
+  const activeFields = useRecoilValue(fos.activeFields({ modal: true }));
+  const native2dLabels = useMemo(() => {
+    const sliceName = decodeImageSliceView(view);
+    if (!sliceName) return [];
+    const active = new Set(activeFields);
+    return resolveLabelsForImageSlice(sliceName).filter((l) =>
+      active.has(l.path),
+    );
+  }, [view, activeFields, resolveLabelsForImageSlice]);
 
   /**
    * Validation effect: restore view to a cardinal view only if absolutely certain
@@ -155,6 +173,7 @@ export const ImageSlicePanel = ({
   return (
     <ImageSliceContainer>
       <ImageSliceImg src={imageUrl} />
+      <Native2dAnnotations labels={native2dLabels} imageUrl={imageUrl} />
       {activeFrustum && (
         <Projected3dOverlays
           frustumData={activeFrustum}
