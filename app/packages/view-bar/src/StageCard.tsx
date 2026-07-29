@@ -7,6 +7,7 @@
 
 import {
   Align,
+  Anchor,
   Card,
   CardBackground,
   Icon,
@@ -17,6 +18,7 @@ import {
   Stack,
   Tooltip,
 } from "@voxel51/voodo";
+import { CHROME_CONTROL_HEIGHT } from "@fiftyone/components";
 import React from "react";
 import { createPortal } from "react-dom";
 
@@ -69,6 +71,15 @@ export const useAnchorRect = (
 
 /** Every stage's editor is this wide, so none of them surprises the next. */
 const POPOVER_WIDTH = 360;
+
+/**
+ * A pill sits inside the bar's gutter with a hair of it showing above and
+ * below, so the gutter reads as the thing the stages live in rather than a
+ * border drawn around them — derived from the gutter's own height so there is
+ * one number to change.
+ */
+const PILL_INSET = 4;
+const PILL_HEIGHT = CHROME_CONTROL_HEIGHT - PILL_INSET * 2;
 
 interface StageCardProps {
   stage: WorkingStage;
@@ -143,7 +154,7 @@ export const StageCard: React.FC<StageCardProps> = ({
   const rect = useAnchorRect(triggerRef, expanded);
 
   // A stage still missing required values cannot be finished with Enter, and
-  // wears the brand-orange outline while its editor is closed
+  // wears the same red outline a rejected value does
   const incomplete = definition.params.some(
     (param) =>
       !isPrivate(param) &&
@@ -222,15 +233,16 @@ export const StageCard: React.FC<StageCardProps> = ({
         background={CardBackground.Primary}
         outlined
         compact
-        style={
-          // Red says "fix me" (a rejected value); orange says "finish me" (a
-          // required value not yet given). Red wins when a stage is both.
-          !expanded && invalid
+        style={{
+          height: PILL_HEIGHT,
+          display: "flex",
+          alignItems: "center",
+          // A stage that cannot be applied says so, whether its editor is
+          // open or closed and whether the value is missing or rejected
+          ...(invalid || incomplete
             ? { borderColor: "var(--fo-palette-error-plainColor)" }
-            : !expanded && incomplete
-              ? { borderColor: "var(--fo-palette-primary-plainColor)" }
-              : undefined
-        }
+            : null),
+        }}
       >
         <Stack
           orientation={Orientation.Row}
@@ -239,7 +251,10 @@ export const StageCard: React.FC<StageCardProps> = ({
         >
           {/* Always-visible compact preview: name + first-arg value.
               Click opens the editing popover below. */}
-          <Tooltip content={expanded ? "Close editor" : "Edit stage"}>
+          <Tooltip
+            anchor={Anchor.Bottom}
+            content={expanded ? "Close editor" : "Edit stage"}
+          >
             <div
               onClick={onToggle}
               onKeyDown={(e) => {
@@ -272,7 +287,10 @@ export const StageCard: React.FC<StageCardProps> = ({
 
           {/* The stage's full story lives in its API docs — a quiet link on
               the pill itself, out of the popover's way */}
-          <Tooltip content={`${definition.name} API documentation`}>
+          <Tooltip
+            anchor={Anchor.Bottom}
+            content={`${definition.name} API documentation`}
+          >
             <a
               href={`https://docs.voxel51.com/api/fiftyone.core.stages.html#fiftyone.core.stages.${definition.name}`}
               target="_blank"
@@ -291,7 +309,7 @@ export const StageCard: React.FC<StageCardProps> = ({
             </a>
           </Tooltip>
 
-          <Tooltip content="Remove stage">
+          <Tooltip anchor={Anchor.Bottom} content="Remove stage">
             <div
               onClick={onRemove}
               onKeyDown={(e) => {

@@ -9,6 +9,7 @@
 import { Code } from "@fiftyone/components";
 import {
   Align,
+  Anchor,
   Button,
   Icon,
   IconName,
@@ -427,7 +428,10 @@ const ParamControl: React.FC<ParamInputProps> = ({
             )}
             {/* The json here is a lowered ViewExpression — the same corner
                 link every stage carries, pointed at the format's docs */}
-            <Tooltip content="View expression documentation">
+            <Tooltip
+              anchor={Anchor.Bottom}
+              content="View expression documentation"
+            >
               <a
                 href="https://docs.voxel51.com/api/fiftyone.core.expressions.html#fiftyone.core.expressions.ViewExpression"
                 target="_blank"

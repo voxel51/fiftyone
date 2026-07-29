@@ -14,13 +14,12 @@
  * marks the field as optional.
  */
 
+import { CHROME_CONTROL_HEIGHT } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
   Align,
   Anchor,
   Button,
-  Icon,
-  IconName,
   Input,
   Orientation,
   Size,
@@ -34,6 +33,7 @@ import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { kindsByFtype, operatorsFrom } from "./builder/catalog";
 import { fromSource, isEnvelope, sourceOf } from "./builder/envelope";
 import { allowedFields } from "./fields";
+import { InsertSlot } from "./InsertSlot";
 import {
   appliesTo,
   defaultKwargs,
@@ -41,7 +41,6 @@ import {
   OPEN_CAPABILITIES,
   inferMode,
   isEmptyValue,
-  NO_BROWSER_SUGGESTIONS,
   isPrivate,
   pickInput,
   validateParam,
@@ -52,7 +51,7 @@ import type {
   StageDefinition,
   ViewBarCapabilities,
 } from "./params";
-import { StageCard, useAnchorRect } from "./StageCard";
+import { StageCard } from "./StageCard";
 import {
   initialState,
   makeId,
@@ -64,7 +63,6 @@ import {
 } from "./state";
 import type { SerializedStage } from "./state";
 import type { WorkingStage } from "./state";
-import { createPortal } from "react-dom";
 import { useRecoilValue } from "recoil";
 
 // ---------------------------------------------------------------
@@ -103,6 +101,26 @@ const ALL_SLICE_MEDIA_TYPES: fos.GroupSliceMediaType[] = [
   "multimodal",
 ];
 
+/**
+ * Hides the gutter's scrollbar in every engine — `scrollbar-width` covers
+ * Firefox and recent Chrome, the pseudo-element covers the rest. A 36px row
+ * has no room to give a scrollbar, and stages clipping at the border is the
+ * affordance instead.
+ */
+const SCROLLER_CLASS = "view-bar-scroller";
+const SCROLLER_STYLE_ID = "view-bar-scroller-style";
+if (
+  typeof document !== "undefined" &&
+  !document.getElementById(SCROLLER_STYLE_ID)
+) {
+  const style = document.createElement("style");
+  style.id = SCROLLER_STYLE_ID;
+  style.textContent =
+    `.${SCROLLER_CLASS}{scrollbar-width:none;-ms-overflow-style:none}` +
+    `.${SCROLLER_CLASS}::-webkit-scrollbar{display:none;width:0;height:0}`;
+  document.head.appendChild(style);
+}
+
 const ViewBar: React.FC<{
   /** What this surface may offer; everything, unless the host says less. */
   capabilities?: ViewBarCapabilities;
@@ -135,6 +153,21 @@ const ViewBar: React.FC<{
     () => new Set(),
   );
   const applyRef = React.useRef<HTMLDivElement | null>(null);
+
+  /**
+   * Puts the keyboard on the trailing insert slot — where describing the next
+   * stage begins. Deferred a frame because applying re-renders the bar.
+   */
+  const focusLastSlot = useCallback(() => {
+    requestAnimationFrame(() => {
+      // voodo's Stack forwards no ref, so the bar is found by the test id it
+      // already carries
+      const slots = document
+        .querySelector("[data-cy='view-bar']")
+        ?.querySelectorAll<HTMLElement>("[aria-label='Insert stage']");
+      slots?.[slots.length - 1]?.focus();
+    });
+  }, []);
 
   /**
    * Puts the keyboard on Apply. Deferred a frame because the button only
@@ -238,6 +271,37 @@ const ViewBar: React.FC<{
     () => kindsByFtype(catalog?.viewExpressionFieldKinds ?? []),
     [catalog],
   );
+  // Every slot offers the same stages, so the media-type filter runs once for
+  // the bar rather than once per slot
+  const insertableNames = useMemo(
+    () => stageDefs.filter((d) => appliesTo(d, mediaType)).map((d) => d.name),
+    [stageDefs, mediaType],
+  );
+
+  const describeStage = useCallback(
+    (name: string) => defsByName.get(name)?.description ?? undefined,
+    [defsByName],
+  );
+
+  /**
+   * Inserting mints the id here so the new stage's editor can be opened in the
+   * same pass, ready for its first parameter.
+   */
+  const insertStage = useCallback(
+    (cls: string, index: number) => {
+      const id = makeId();
+      dispatch({
+        type: "insertStage",
+        index,
+        cls,
+        id,
+        kwargs: defaultKwargs(defsByName.get(cls)?.params ?? []),
+      });
+      setEditingId(id);
+    },
+    [defsByName],
+  );
+
   const fieldKind = useCallback(
     (path: string) => {
       const field = fieldTypes.get(path);
@@ -431,7 +495,10 @@ const ViewBar: React.FC<{
     // reopens printed from its envelope — `F("x")` as typed becomes the
     // canonical `F('x')` — without waiting on any echo from the server
     dispatch({ type: "hydrate", stages: workingStagesFromView(serialized) });
-  }, [paramErrors, serializeWorking, setView]);
+    // Apply itself vanishes once there is nothing pending, so the keyboard
+    // moves to where the next stage starts rather than nowhere
+    focusLastSlot();
+  }, [paramErrors, serializeWorking, setView, focusLastSlot]);
 
   /**
    * Pending changes detector: whether the working state differs
@@ -485,227 +552,14 @@ const ViewBar: React.FC<{
    * Collapsed by default to a single "+" icon to keep the bar
    * compact; expands inline to a full text input on focus/click.
    */
-  const InsertSlot: React.FC<{ index: number }> = ({ index }) => {
-    const [open, setOpen] = React.useState(false);
-    const [query, setQuery] = React.useState("");
-    // Highlighted stage, driven by the arrow keys. Clamped on read rather than
-    // reset by an effect, so it stays valid as the filtered set changes.
-    const [highlight, setHighlight] = React.useState(0);
-    const containerRef = React.useRef<HTMLDivElement | null>(null);
-    const rect = useAnchorRect(containerRef, open);
-
-    React.useEffect(() => {
-      if (!open) return undefined;
-      const onClick = (e: MouseEvent) => {
-        if (!containerRef.current?.contains(e.target as Node)) {
-          setOpen(false);
-          setQuery("");
-        }
-      };
-      window.addEventListener("mousedown", onClick);
-      return () => window.removeEventListener("mousedown", onClick);
-    }, [open]);
-
-    const filtered = React.useMemo(() => {
-      const q = query.trim().toLowerCase();
-      // A stage the dataset cannot take is not a choice, it is a later error
-      const names = stageDefs
-        .filter((d) => appliesTo(d, mediaType))
-        .map((d) => d.name);
-
-      if (!q) return names;
-      return names.filter((n) => n.toLowerCase().includes(q));
-    }, [query, mediaType]);
-
-    const active = Math.min(highlight, Math.max(0, filtered.length - 1));
-
-    const insert = (cls: string) => {
-      // Mint the id here so we can dispatch AND immediately set
-      // the bar's `editingId` to the same id — the next render
-      // will render the new stage card with its editing popover
-      // already open, ready for kwargs entry.
-      const id = makeId();
-      dispatch({
-        type: "insertStage",
-        index,
-        cls,
-        id,
-        kwargs: defaultKwargs(defsByName.get(cls)?.params ?? []),
-      });
-      setEditingId(id);
-      setOpen(false);
-      setQuery("");
-    };
-
-    if (!open) {
-      return (
-        <Tooltip content="Insert stage">
-          <div
-            onClick={() => setOpen(true)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setOpen(true);
-              }
-            }}
-            role="button"
-            tabIndex={0}
-            aria-label="Insert stage"
-            style={{
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 24,
-              height: 24,
-              borderRadius: 12,
-              color: "var(--fo-palette-text-secondary)",
-              flexShrink: 0,
-            }}
-          >
-            <Icon name={IconName.Add} size={Size.Sm} />
-          </div>
-        </Tooltip>
-      );
-    }
-
-    return (
-      <div
-        ref={containerRef}
-        style={{
-          position: "relative",
-          width: 200,
-          flexShrink: 0,
-          background: "var(--fo-palette-background-level2)",
-          borderRadius: 4,
-          border: "1px solid var(--fo-palette-text-placeholder)",
-        }}
-      >
-        <Input
-          size={Size.Sm}
-          value={query}
-          placeholder="Add stage…"
-          autoFocus
-          {...NO_BROWSER_SUGGESTIONS}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setHighlight(0);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setOpen(false);
-              setQuery("");
-            } else if (e.key === "ArrowDown") {
-              // Arrow keys must not also move the text cursor
-              e.preventDefault();
-              setHighlight(Math.min(active + 1, filtered.length - 1));
-            } else if (e.key === "ArrowUp") {
-              e.preventDefault();
-              setHighlight(Math.max(active - 1, 0));
-            } else if (e.key === "Enter" && filtered[active]) {
-              insert(filtered[active]);
-            }
-          }}
-          role="combobox"
-          aria-expanded={open}
-          aria-activedescendant={
-            filtered[active] ? `view-bar-stage-${active}` : undefined
-          }
-          style={{ background: "transparent", border: "none" }}
-        />
-        {filtered.length > 0 &&
-          rect &&
-          createPortal(
-            <div
-              // Portaled to body — avoids being clipped by the bar's
-              // overflow rules. Width follows the trigger; top sits
-              // 4px below the trigger's bottom edge.
-              style={{
-                position: "fixed",
-                top: rect.top + 4,
-                left: rect.left,
-                width: rect.width,
-                background: "var(--fo-palette-background-level3)",
-                border: "1px solid var(--fo-palette-primary-plainBorder)",
-                borderRadius: 4,
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
-                maxHeight: 280,
-                overflowY: "auto",
-                zIndex: 10000,
-              }}
-              role="listbox"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              {filtered.map((name, i) => (
-                // What the stage does, without leaving the list — its
-                // docstring's opening sentence, served with the schema
-                <Tooltip
-                  key={name}
-                  content={defsByName.get(name)?.description ?? name}
-                  anchor={Anchor.Right}
-                >
-                  <div
-                    id={`view-bar-stage-${i}`}
-                    role="option"
-                    aria-selected={i === active}
-                    ref={(el) => {
-                      if (i === active) {
-                        el?.scrollIntoView({ block: "nearest" });
-                      }
-                    }}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      insert(name);
-                    }}
-                    onMouseEnter={() => setHighlight(i)}
-                    style={{
-                      padding: "6px 10px",
-                      cursor: "pointer",
-                      color: "var(--fo-palette-text-primary)",
-                      whiteSpace: "nowrap",
-                      background:
-                        i === active
-                          ? "var(--fo-palette-background-level2)"
-                          : undefined,
-                    }}
-                  >
-                    {name}
-                  </div>
-                </Tooltip>
-              ))}
-            </div>,
-            document.body,
-          )}
-      </div>
-    );
-  };
-
   return (
     <Stack
       orientation={Orientation.Row}
       spacing={Spacing.Xs}
       align={Align.Center}
-      style={{
-        width: "100%",
-        height: 36,
-        // No `overflow` on this container — CSS forces overflowY to
-        // clip whenever any axis has `auto/hidden/scroll`, which
-        // would chop the InsertSlot's dropdown of stage names.
-        // Horizontal scroll for long stage chains is a follow-up
-        // (likely portal the dropdown via createPortal so the
-        // scroll container can clip safely).
-        padding: "0 6px",
-        // Darker / cooler surface than level-2 — pulls from the
-        // header background token (the same dark navy the nav uses)
-        // with a slightly cool overlay so the bar reads as
-        // "form builder canvas" distinct from the chrome around it.
-        // Border uses the primary plain border for the same cool
-        // palette family as the rest of the chrome.
-        background: "var(--fo-palette-background-level1)",
-        border: "1px solid var(--fo-palette-primary-plainBorder)",
-        borderRadius: 4,
-        boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.02)",
-      }}
+      // The outer row carries no surface of its own: the gutter below is the
+      // bar, and Apply sits beside it rather than inside it
+      style={{ width: "100%", height: CHROME_CONTROL_HEIGHT, minWidth: 0 }}
       data-cy="view-bar"
       onKeyDown={(e) => {
         // The editor popover is portaled, so an Escape here means nothing is
@@ -713,84 +567,129 @@ const ViewBar: React.FC<{
         // (Escape inside the popover closes it and refocuses the pill, so the
         // next press lands here.)
         if (e.key !== "Escape") return;
+
+        // Pending work goes back to what is applied. With nothing pending
+        // there is nothing to undo — but Escape still means "I am done here".
         if (
-          viewFingerprint(currentView) ===
+          viewFingerprint(currentView) !==
           viewFingerprint(serializeWorkingRef.current())
         ) {
-          return;
+          setTouched(new Set());
+          setModeOverrides({});
+          dispatch({
+            type: "hydrate",
+            stages: workingStagesFromView(currentView),
+          });
         }
-        setTouched(new Set());
-        setModeOverrides({});
-        dispatch({
-          type: "hydrate",
-          stages: workingStagesFromView(currentView),
-        });
+
+        // Either way the bar gives the keyboard back: the stage that held
+        // focus may not even exist after a rebuild
+        (document.activeElement as HTMLElement | null)?.blur();
       }}
     >
+      {/*
+        The gutter: the bar's own surface, a darker and cooler one than
+        level-2, pulled from the header background so the bar reads as a form
+        canvas distinct from the chrome around it. `overflow: hidden` is what
+        makes stages disappear into its border as the row scrolls — safe
+        because every popout (editor, insert list, tooltips) is portaled.
+      */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 4,
-          // The bar scrolls sideways for long stage chains; everything that
-          // pops out of it is portaled, so nothing gets clipped
-          overflowX: "auto",
-          overflowY: "hidden",
           flex: 1,
           minWidth: 0,
-          scrollbarWidth: "thin",
-          padding: "2px 0",
+          height: "100%",
+          // Counts its own border, so the bar and the dataset selector are
+          // the same height on screen and not one border apart
+          boxSizing: "border-box",
+          // No padding here: any inset would clip the stages short of the
+          // border and show a sliver of this surface beside them
+          background: "var(--fo-palette-background-level1)",
+          border: "1px solid var(--fo-palette-primary-plainBorder)",
+          borderRadius: 4,
+          overflow: "hidden",
         }}
       >
-        <InsertSlot index={0} />
-        {state.stages.map((stage, i) => {
-          const def = defsByName.get(stage.cls);
-          if (!def) return null;
-          return (
-            <React.Fragment key={stage.id}>
-              <StageCard
-                errors={visibleErrors.get(stage.id) ?? NO_ERRORS}
-                // A stage holding a rejected value is invalid; one merely
-                // missing required values is incomplete, which the card sees
-                // for itself — orange says "finish me", red says "fix me"
-                invalid={[
-                  ...(paramErrors.byStage.get(stage.id)?.values() ?? []),
-                ].some((message) => message !== "Required")}
-                kinds={activeKinds.get(stage.id) ?? NO_KINDS}
-                onModeChange={(param, kind) => changeMode(stage, param, kind)}
-                stage={stage}
-                definition={def}
-                fieldOptions={fieldOptions}
-                allPaths={fieldPaths}
-                allowedFor={allowedFor}
-                choicesFor={choicesFor}
-                operators={operators}
-                fieldKind={fieldKind}
-                expanded={editingId === stage.id}
-                onToggle={() =>
-                  setEditingId((id) => (id === stage.id ? null : stage.id))
-                }
-                onChange={(name, value) => {
-                  markTouched(stage.id, name);
-                  dispatch({ type: "setKwarg", id: stage.id, name, value });
-                }}
-                onCommit={commitStage}
-                onRemove={() => {
-                  if (editingId === stage.id) setEditingId(null);
-                  dispatch({ type: "removeStage", id: stage.id });
-                  // Removing a stage is an edit like any other — Enter applies it
-                  focusApply();
-                }}
-              />
-              <InsertSlot index={i + 1} />
-            </React.Fragment>
-          );
-        })}
+        <div
+          className={SCROLLER_CLASS}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            height: "100%",
+            // Scrolls sideways for long stage chains; the scrollbar itself is
+            // hidden in every engine by SCROLLER_CLASS
+            overflowX: "auto",
+            overflowY: "hidden",
+            flex: 1,
+            minWidth: 0,
+            // The breathing room lives inside the scroller, so it scrolls
+            // away with the content and the stages meet the border exactly
+            padding: "0 4px",
+          }}
+        >
+          <InsertSlot
+            index={0}
+            names={insertableNames}
+            describe={describeStage}
+            onInsert={insertStage}
+          />
+          {state.stages.map((stage, i) => {
+            const def = defsByName.get(stage.cls);
+            if (!def) return null;
+            return (
+              <React.Fragment key={stage.id}>
+                <StageCard
+                  errors={visibleErrors.get(stage.id) ?? NO_ERRORS}
+                  // A stage holding a rejected value is invalid; one merely
+                  // missing required values is incomplete, which the card sees
+                  // for itself — orange says "finish me", red says "fix me"
+                  invalid={[
+                    ...(paramErrors.byStage.get(stage.id)?.values() ?? []),
+                  ].some((message) => message !== "Required")}
+                  kinds={activeKinds.get(stage.id) ?? NO_KINDS}
+                  onModeChange={(param, kind) => changeMode(stage, param, kind)}
+                  stage={stage}
+                  definition={def}
+                  fieldOptions={fieldOptions}
+                  allPaths={fieldPaths}
+                  allowedFor={allowedFor}
+                  choicesFor={choicesFor}
+                  operators={operators}
+                  fieldKind={fieldKind}
+                  expanded={editingId === stage.id}
+                  onToggle={() =>
+                    setEditingId((id) => (id === stage.id ? null : stage.id))
+                  }
+                  onChange={(name, value) => {
+                    markTouched(stage.id, name);
+                    dispatch({ type: "setKwarg", id: stage.id, name, value });
+                  }}
+                  onCommit={commitStage}
+                  onRemove={() => {
+                    if (editingId === stage.id) setEditingId(null);
+                    dispatch({ type: "removeStage", id: stage.id });
+                    // Removing a stage is an edit like any other — Enter applies it
+                    focusApply();
+                  }}
+                />
+                <InsertSlot
+                  index={i + 1}
+                  names={insertableNames}
+                  describe={describeStage}
+                  onInsert={insertStage}
+                />
+              </React.Fragment>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Apply — only animates in when the working state diverges
-          from the applied view. It sits outside the scrolling region so the
-          one action that runs the view never scrolls out of reach. */}
+      {/* Apply — only animates in when the working state diverges from the
+          applied view, and lives outside the gutter so the one action that
+          runs the view is never scrolled away or clipped by it. */}
       <div
         ref={applyRef}
         style={{
@@ -810,6 +709,7 @@ const ViewBar: React.FC<{
         aria-hidden={!hasPendingChanges}
       >
         <Tooltip
+          anchor={Anchor.Bottom}
           content={
             paramErrors.labels.length
               ? `Fix: ${paramErrors.labels.join(", ")}`
