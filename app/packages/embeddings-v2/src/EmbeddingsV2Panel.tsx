@@ -44,8 +44,16 @@ export default function EmbeddingsV2Panel() {
     true,
   );
 
+  // Switching datasets mid-session must not carry the open run along:
+  // brain keys are not unique across datasets, so a stale key could
+  // silently open a same-named run on the new dataset. The render-time
+  // check covers the frame before the effect persists the reset
+  const prevDataset = useRef(datasetName);
+  const datasetSwitched = prevDataset.current !== datasetName;
+
   const isFirstMountThisPageLoad = !mountedPanels.has(panelId);
-  const openKey = isFirstMountThisPageLoad ? null : (openKeyState ?? null);
+  const openKey =
+    isFirstMountThisPageLoad || datasetSwitched ? null : (openKeyState ?? null);
 
   useEffect(() => {
     if (!mountedPanels.has(panelId)) {
@@ -55,10 +63,6 @@ export default function EmbeddingsV2Panel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panelId]);
 
-  // Switching datasets mid-session must not carry the open run along:
-  // brain keys are not unique across datasets, so a stale key could
-  // silently open a same-named run on the new dataset
-  const prevDataset = useRef(datasetName);
   useEffect(() => {
     if (prevDataset.current !== datasetName) {
       prevDataset.current = datasetName;

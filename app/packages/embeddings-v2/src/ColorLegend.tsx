@@ -35,18 +35,25 @@ export function ColorLegend({
   onToggle: (label: string) => void;
   onSolo: (label: string) => void;
 }) {
-  const clickTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // per-label: a pending single-click toggle on one row must only be
+  // cancelled by a second click on the same row, not a click elsewhere
+  const clickTimeouts = useRef(
+    new Map<string, ReturnType<typeof setTimeout>>(),
+  );
   useEffect(
     () => () => {
-      if (clickTimeout.current) clearTimeout(clickTimeout.current);
+      for (const timeout of clickTimeouts.current.values()) {
+        clearTimeout(timeout);
+      }
     },
     [],
   );
 
   const handleRowClick = (label: string, detail: number) => {
-    if (clickTimeout.current) {
-      clearTimeout(clickTimeout.current);
-      clickTimeout.current = null;
+    const pending = clickTimeouts.current.get(label);
+    if (pending) {
+      clearTimeout(pending);
+      clickTimeouts.current.delete(label);
     }
     if (detail >= 2) {
       onSolo(label);
@@ -58,10 +65,13 @@ export function ColorLegend({
       onToggle(label);
       return;
     }
-    clickTimeout.current = setTimeout(() => {
-      clickTimeout.current = null;
-      onToggle(label);
-    }, DOUBLE_CLICK_DELAY_MS);
+    clickTimeouts.current.set(
+      label,
+      setTimeout(() => {
+        clickTimeouts.current.delete(label);
+        onToggle(label);
+      }, DOUBLE_CLICK_DELAY_MS),
+    );
   };
 
   const classes = meta.style === "categorical" ? (meta.classes ?? []) : [];

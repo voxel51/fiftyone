@@ -63,6 +63,21 @@ describe("ColorLegend click handling", () => {
     expect(onToggle).not.toHaveBeenCalled();
   });
 
+  it("rapid clicks on different rows toggle both", () => {
+    // regression: a shared timer let a click on one row cancel another
+    // row's pending toggle, silently dropping the first action
+    const { onToggle, onSolo } = renderLegend();
+
+    fireEvent.click(screen.getByText("cat"), { detail: 1 });
+    fireEvent.click(screen.getByText("dog"), { detail: 1 });
+
+    vi.advanceTimersByTime(400);
+    expect(onToggle).toHaveBeenCalledTimes(2);
+    expect(onToggle).toHaveBeenCalledWith("cat");
+    expect(onToggle).toHaveBeenCalledWith("dog");
+    expect(onSolo).not.toHaveBeenCalled();
+  });
+
   it("keyboard activation toggles immediately", () => {
     // Enter/Space on a button fires a click with detail 0; no double
     // press exists on that path, so there is nothing to wait for

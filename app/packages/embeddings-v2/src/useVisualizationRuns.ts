@@ -21,17 +21,27 @@ export function useVisualizationRuns(datasetName: string | null): {
   error: string | null;
   refresh: () => void;
 } {
-  const [runs, setRuns] = useState<VisualizationRun[] | null>(null);
+  // runs are tagged with the dataset they were fetched for so a dataset
+  // switch never serves the previous dataset's runs, even for the one
+  // render before the fetch effect runs
+  const [state, setState] = useState<{
+    dataset: string | null;
+    runs: VisualizationRun[] | null;
+  }>({ dataset: null, runs: null });
   const [error, setError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
+
+  const runs = state.dataset === datasetName ? state.runs : null;
 
   useEffect(() => {
     if (!datasetName) return undefined;
     let stale = false;
-    setRuns(null);
+    setState({ dataset: datasetName, runs: null });
     setError(null);
     fetchRuns(datasetName)
-      .then((result) => !stale && setRuns(result))
+      .then(
+        (result) => !stale && setState({ dataset: datasetName, runs: result }),
+      )
       .catch((e) => !stale && setError(String(e)));
     return () => {
       stale = true;
@@ -47,10 +57,11 @@ export function useVisualizationRuns(datasetName: string | null): {
       fetchRuns(datasetName)
         .then((result) => {
           if (stale) return;
-          setRuns((current) =>
-            JSON.stringify(current) === JSON.stringify(result)
+          setState((current) =>
+            current.dataset === datasetName &&
+            JSON.stringify(current.runs) === JSON.stringify(result)
               ? current
-              : result,
+              : { dataset: datasetName, runs: result },
           );
         })
         .catch(() => undefined);

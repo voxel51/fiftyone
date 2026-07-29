@@ -28,7 +28,7 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./panel.css";
 import type { VisualizationRun } from "./protocol";
 import { RunCard } from "./RunCard";
@@ -74,6 +74,16 @@ export default function RunsList({
     key: string;
     anchor: HTMLElement;
   } | null>(null);
+
+  // Polling can delete a run or flip its readiness under an open menu or
+  // an armed confirmation; both must not outlive the ready card they
+  // belong to (a recreated same-name run must not inherit them)
+  useEffect(() => {
+    const isReady = (key: string | null) =>
+      Boolean(key && runs?.some((r) => r.brainKey === key && r.ready));
+    if (menu && !isReady(menu.key)) setMenu(null);
+    if (confirmKey && !isReady(confirmKey)) setConfirmKey(null);
+  }, [runs, menu, confirmKey]);
 
   if (error) {
     return (
