@@ -13,8 +13,8 @@
     ],
     "main": "./src/index.ts",
     "dependencies": {
-        "@emotion/react": "^11.14.0",
-        "@emotion/styled": "^11.14.0",
+        "@emotion/react": "catalog:",
+        "@emotion/styled": "catalog:",
         "@react-three/drei": "^9.122.0",
         "@react-three/fiber": "catalog:",
         "@sparkjsdev/spark": "2.1.0",
