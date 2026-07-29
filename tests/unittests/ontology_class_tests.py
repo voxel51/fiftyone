@@ -7,6 +7,7 @@ FiftyOne ontology data class unit tests.
 """
 
 import unittest
+from unittest import mock
 
 from fiftyone.core.annotation.attributes import (
     MAX_CONDITION_DEPTH,
@@ -1070,84 +1071,84 @@ class OntologySDKTests(unittest.TestCase):
         self.assertEqual(load_ontology("forwarded").description, "rev 2")
 
 
-class OntologyColdProcessTests(unittest.TestCase):
-    """Ontology entry points must bootstrap the DB connection themselves —
-    the first SDK call in a process may be an ontology call.
-
-    Each check runs in a fresh subprocess: a genuine cold process. Tearing
-    down the connection in this process instead would close the client out
-    from under every other test that holds a reference to it.
+class OntologyConnectionBootstrapTests(unittest.TestCase):
+    """Ontology entry points must bootstrap the DB connection before their
+    first query — the first SDK call in a cold process may be an ontology
+    call, and ``OntologyDocument.objects()`` alone does not establish the
+    mongoengine default connection.
     """
 
-    def setUp(self):
-        import fiftyone.core.odm as foo
-
-        foo.get_db_conn().drop_collection("ontologies")
-
-    def tearDown(self):
-        import fiftyone.core.odm as foo
-
-        foo.get_db_conn().drop_collection("ontologies")
-
-    def _run_cold(self, body: str) -> None:
-        import subprocess
-        import sys
-
-        result = subprocess.run(
-            [sys.executable, "-c", body],
-            capture_output=True,
-            text=True,
-            timeout=120,
+    def _run_with_mocks(self, fn):
+        """Runs ``fn`` with the module's ``ensure_connection`` and
+        ``OntologyDocument`` replaced by children of one shared mock, and
+        returns the ordered method names recorded on that mock.
+        """
+        manager = mock.Mock()
+        manager.OntologyDocument.objects.return_value.distinct.return_value = (
+            []
         )
+        manager.OntologyDocument.objects.return_value.count.return_value = 0
+        manager.OntologyDocument.objects.return_value.order_by.return_value.first.return_value = (
+            None
+        )
+
+        with (
+            mock.patch(
+                "fiftyone.core.ontology.ensure_connection",
+                manager.ensure_connection,
+            ),
+            mock.patch(
+                "fiftyone.core.ontology.OntologyDocument",
+                manager.OntologyDocument,
+            ),
+        ):
+            fn()
+
+        return [name for name, _, _ in manager.mock_calls]
+
+    def _assert_bootstraps_first(self, fn):
+        calls = self._run_with_mocks(fn)
+        self.assertTrue(calls, "expected at least one recorded call")
         self.assertEqual(
-            result.returncode,
-            0,
-            f"cold-process check failed:\n{result.stderr}",
+            calls[0],
+            "ensure_connection",
+            f"connection must be established before any query; got {calls}",
         )
 
-    _MAKE_ONTOLOGY = (
-        "from fiftyone.core.annotation.attributes import AttributeSpec\n"
-        "from fiftyone.core.ontology import AnnotationOntology\n"
-        "ao = AnnotationOntology(\n"
-        "    name='cold_ontology',\n"
-        "    attributes=[\n"
-        "        AttributeSpec(name='x', type='bool', component='checkbox')\n"
-        "    ],\n"
-        ")\n"
-    )
-
-    def test_list_ontologies_cold(self):
-        self._run_cold(
-            "from fiftyone.core.ontology import list_ontologies\n"
-            "assert list_ontologies() == []\n"
+    @staticmethod
+    def _make_ontology() -> AnnotationOntology:
+        return AnnotationOntology(
+            name="cold_ontology",
+            attributes=[
+                AttributeSpec(name="x", type="bool", component="checkbox"),
+            ],
         )
 
-    def test_ontology_exists_cold(self):
-        self._run_cold(
-            "from fiftyone.core.ontology import ontology_exists\n"
-            "assert not ontology_exists('cold_ontology')\n"
-        )
+    def test_list_ontologies_bootstraps(self):
+        from fiftyone.core.ontology import list_ontologies
 
-    def test_load_ontology_cold(self):
-        self._run_cold(
-            "from fiftyone.core.ontology import load_ontology\n"
-            "try:\n"
-            "    load_ontology('nonexistent')\n"
-            "except ValueError:\n"
-            "    pass\n"
-            "else:\n"
-            "    raise AssertionError('expected ValueError')\n"
-        )
+        self._assert_bootstraps_first(list_ontologies)
 
-    def test_save_cold(self):
-        self._run_cold(
-            self._MAKE_ONTOLOGY + "ao.save()\nassert ao.version == 1\n"
-        )
+    def test_ontology_exists_bootstraps(self):
+        from fiftyone.core.ontology import ontology_exists
 
-    def test_save_overwrite_cold_first_creation(self):
-        self._run_cold(
-            self._MAKE_ONTOLOGY
-            + "ao.save(overwrite=True)\nassert ao.version == 1\n"
+        self._assert_bootstraps_first(lambda: ontology_exists("cold"))
+
+    def test_load_ontology_bootstraps(self):
+        def load_missing():
+            with self.assertRaises(ValueError):
+                load_ontology("nonexistent")
+
+        self._assert_bootstraps_first(load_missing)
+
+    def test_save_bootstraps(self):
+        self._assert_bootstraps_first(self._make_ontology().save)
+
+    def test_save_overwrite_bootstraps(self):
+        # overwrite=True on a first save queries for an existing lineage
+        # via _find_latest_doc(), so it too needs the bootstrap first
+        self._assert_bootstraps_first(
+            lambda: self._make_ontology().save(overwrite=True)
         )
 
 
