@@ -135,6 +135,9 @@ Brain
   `#289 <https://github.com/voxel51/fiftyone-brain/pull/289>`_
 - Visualization results load dramatically faster for large runs
   `#295 <https://github.com/voxel51/fiftyone-brain/pull/295>`_
+- Visualization results saved with `fiftyone-brain` 0.23 cannot be loaded
+  by earlier versions. If you connect to your deployment with the SDK, be
+  sure to upgrade your local `fiftyone-brain` as well
 - Upgraded the Databricks vector search integration
   `#294 <https://github.com/voxel51/fiftyone-brain/pull/294>`_
 
