@@ -1070,6 +1070,71 @@ class OntologySDKTests(unittest.TestCase):
         self.assertEqual(load_ontology("forwarded").description, "rev 2")
 
 
+class OntologyColdProcessTests(unittest.TestCase):
+    """Ontology entry points must bootstrap the DB connection themselves —
+    the first SDK call in a process may be an ontology call.
+    """
+
+    def setUp(self):
+        import fiftyone.core.odm as foo
+
+        foo.get_db_conn().drop_collection("ontologies")
+
+    def tearDown(self):
+        import fiftyone.core.odm as foo
+
+        foo.get_db_conn().drop_collection("ontologies")
+
+    @staticmethod
+    def _simulate_cold_process():
+        # A cold process has neither a pymongo client nor a registered
+        # mongoengine default connection; both are created lazily by
+        # ensure_connection()/get_db_conn()
+        import fiftyone.core.odm.database as food
+
+        food._disconnect()
+
+    @staticmethod
+    def _make_ontology(name: str = "cold_ontology") -> AnnotationOntology:
+        return AnnotationOntology(
+            name=name,
+            attributes=[
+                AttributeSpec(name="x", type="bool", component="checkbox"),
+            ],
+        )
+
+    def test_list_ontologies_cold(self):
+        from fiftyone.core.ontology import list_ontologies
+
+        self._simulate_cold_process()
+        self.assertEqual(list_ontologies(), [])
+
+    def test_ontology_exists_cold(self):
+        from fiftyone.core.ontology import ontology_exists
+
+        self._simulate_cold_process()
+        self.assertFalse(ontology_exists("cold_ontology"))
+
+    def test_load_ontology_cold(self):
+        from fiftyone.core.ontology import load_ontology
+
+        self._simulate_cold_process()
+        with self.assertRaises(ValueError):
+            load_ontology("nonexistent")
+
+    def test_save_cold(self):
+        self._simulate_cold_process()
+        ao = self._make_ontology()
+        ao.save()
+        self.assertEqual(ao.version, 1)
+
+    def test_save_overwrite_cold_first_creation(self):
+        self._simulate_cold_process()
+        ao = self._make_ontology()
+        ao.save(overwrite=True)
+        self.assertEqual(ao.version, 1)
+
+
 class NodeTests(unittest.TestCase):
     def test_create_leaf(self):
         n = Node(name="car")

@@ -19,6 +19,7 @@ from fiftyone.core.annotation.attributes import (
     attr_insert_to_dict,
 )
 from fiftyone.core.annotation.nodes import Node
+from fiftyone.core.odm.database import ensure_connection
 from fiftyone.core.odm.ontology import OntologyDocument, OntologyType
 
 
@@ -108,6 +109,7 @@ class Ontology(abc.ABC):
                 ontology is rejected.
         """
         self._validate()
+        ensure_connection()
         if self._doc is None and overwrite:
             self._doc = self._find_latest_doc()
 
@@ -487,6 +489,7 @@ def load_ontology(name: str) -> Ontology:
     Raises:
         ValueError: if no ontology with the given name exists
     """
+    ensure_connection()
     doc = _objects_by_slug(name).order_by("-version").first()
     if doc is None:
         raise ValueError(f"Ontology '{name}' not found")
@@ -503,6 +506,7 @@ def list_ontologies(glob_patt: Optional[str] = None) -> list[str]:
     Returns:
         a sorted list of ontology names
     """
+    ensure_connection()
     if glob_patt is not None:
         regex = fnmatch.translate(glob_patt)
         docs = OntologyDocument.objects(  # pylint: disable=no-member
@@ -523,6 +527,7 @@ def ontology_exists(name: str) -> bool:
     Returns:
         True/False
     """
+    ensure_connection()
     return _objects_by_slug(name).count() > 0
 
 
