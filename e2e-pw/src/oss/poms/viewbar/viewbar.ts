@@ -43,7 +43,7 @@ export class ViewBarPom {
 
   /** Appends a stage and leaves its editor open. */
   async addStage(name: string) {
-    await this.locator.getByTitle("Insert stage").last().click();
+    await this.locator.getByLabel("Insert stage").last().click();
     await this.page
       .getByRole("listbox")
       .getByRole("option", { name, exact: true })
@@ -53,7 +53,7 @@ export class ViewBarPom {
 
   /** Reopens an already-applied stage's editor. */
   async editStage(index: number) {
-    await this.viewStages.nth(index).getByTitle("Edit stage").click();
+    await this.viewStages.nth(index).getByLabel("Edit stage").click();
     await expect(this.editor).toBeVisible();
   }
 

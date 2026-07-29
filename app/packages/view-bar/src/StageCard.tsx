@@ -250,6 +250,7 @@ export const StageCard: React.FC<StageCardProps> = ({
               }}
               role="button"
               tabIndex={0}
+              aria-label={expanded ? "Close editor" : "Edit stage"}
               style={{ cursor: "pointer", display: "inline-flex", gap: 6 }}
             >
               <span style={{ fontWeight: 600, fontSize: 13 }}>
@@ -323,6 +324,20 @@ export const StageCard: React.FC<StageCardProps> = ({
             tabIndex={-1}
             data-cy="view-stage-editor"
             onKeyDown={(e) => {
+              // Escape closes the editor and puts the keyboard back on the
+              // pill, so the next Escape reaches the bar
+              if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggle();
+                requestAnimationFrame(() => {
+                  triggerRef.current
+                    ?.querySelector<HTMLElement>("[role='button']")
+                    ?.focus();
+                });
+                return;
+              }
+
               // Enter finishes the stage and hands the keyboard to Apply, so a
               // second Enter runs the view. The code editor keeps its newlines,
               // and a stage still missing a required value is not finished.
@@ -335,7 +350,12 @@ export const StageCard: React.FC<StageCardProps> = ({
             style={{
               position: "fixed",
               top: rect.top + 6,
-              left: rect.left,
+              // Clamped to the viewport: a stage far right in the bar would
+              // otherwise push its editor partially off-screen
+              left: Math.max(
+                8,
+                Math.min(rect.left, window.innerWidth - POPOVER_WIDTH - 8),
+              ),
               zIndex: 10000,
               // One width for every stage. Sizing to content made the popover
               // jump as the editor changed and gave two stages holding the

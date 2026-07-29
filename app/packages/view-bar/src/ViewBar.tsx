@@ -693,56 +693,90 @@ const ViewBar: React.FC = () => {
         boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.02)",
       }}
       data-cy="view-bar"
+      onKeyDown={(e) => {
+        // The editor popover is portaled, so an Escape here means nothing is
+        // open: it walks the working state back to what is actually applied.
+        // (Escape inside the popover closes it and refocuses the pill, so the
+        // next press lands here.)
+        if (e.key !== "Escape") return;
+        if (
+          viewFingerprint(currentView) ===
+          viewFingerprint(serializeWorkingRef.current())
+        ) {
+          return;
+        }
+        setTouched(new Set());
+        setModeOverrides({});
+        dispatch({
+          type: "hydrate",
+          stages: workingStagesFromView(currentView),
+        });
+      }}
     >
-      <InsertSlot index={0} />
-      {state.stages.map((stage, i) => {
-        const def = defsByName.get(stage.cls);
-        if (!def) return null;
-        return (
-          <React.Fragment key={stage.id}>
-            <StageCard
-              errors={visibleErrors.get(stage.id) ?? NO_ERRORS}
-              // A stage holding a rejected value is invalid; one merely
-              // missing required values is incomplete, which the card sees
-              // for itself — orange says "finish me", red says "fix me"
-              invalid={[
-                ...(paramErrors.byStage.get(stage.id)?.values() ?? []),
-              ].some((message) => message !== "Required")}
-              kinds={activeKinds.get(stage.id) ?? NO_KINDS}
-              onModeChange={(param, kind) => changeMode(stage, param, kind)}
-              stage={stage}
-              definition={def}
-              fieldOptions={fieldOptions}
-              allPaths={fieldPaths}
-              allowedFor={allowedFor}
-              choicesFor={choicesFor}
-              operators={operators}
-              fieldKind={fieldKind}
-              expanded={editingId === stage.id}
-              onToggle={() =>
-                setEditingId((id) => (id === stage.id ? null : stage.id))
-              }
-              onChange={(name, value) => {
-                markTouched(stage.id, name);
-                dispatch({ type: "setKwarg", id: stage.id, name, value });
-              }}
-              onCommit={commitStage}
-              onRemove={() => {
-                if (editingId === stage.id) setEditingId(null);
-                dispatch({ type: "removeStage", id: stage.id });
-                // Removing a stage is an edit like any other — Enter applies it
-                focusApply();
-              }}
-            />
-            <InsertSlot index={i + 1} />
-          </React.Fragment>
-        );
-      })}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          // The bar scrolls sideways for long stage chains; everything that
+          // pops out of it is portaled, so nothing gets clipped
+          overflowX: "auto",
+          overflowY: "hidden",
+          flex: 1,
+          minWidth: 0,
+          scrollbarWidth: "thin",
+          padding: "2px 0",
+        }}
+      >
+        <InsertSlot index={0} />
+        {state.stages.map((stage, i) => {
+          const def = defsByName.get(stage.cls);
+          if (!def) return null;
+          return (
+            <React.Fragment key={stage.id}>
+              <StageCard
+                errors={visibleErrors.get(stage.id) ?? NO_ERRORS}
+                // A stage holding a rejected value is invalid; one merely
+                // missing required values is incomplete, which the card sees
+                // for itself — orange says "finish me", red says "fix me"
+                invalid={[
+                  ...(paramErrors.byStage.get(stage.id)?.values() ?? []),
+                ].some((message) => message !== "Required")}
+                kinds={activeKinds.get(stage.id) ?? NO_KINDS}
+                onModeChange={(param, kind) => changeMode(stage, param, kind)}
+                stage={stage}
+                definition={def}
+                fieldOptions={fieldOptions}
+                allPaths={fieldPaths}
+                allowedFor={allowedFor}
+                choicesFor={choicesFor}
+                operators={operators}
+                fieldKind={fieldKind}
+                expanded={editingId === stage.id}
+                onToggle={() =>
+                  setEditingId((id) => (id === stage.id ? null : stage.id))
+                }
+                onChange={(name, value) => {
+                  markTouched(stage.id, name);
+                  dispatch({ type: "setKwarg", id: stage.id, name, value });
+                }}
+                onCommit={commitStage}
+                onRemove={() => {
+                  if (editingId === stage.id) setEditingId(null);
+                  dispatch({ type: "removeStage", id: stage.id });
+                  // Removing a stage is an edit like any other — Enter applies it
+                  focusApply();
+                }}
+              />
+              <InsertSlot index={i + 1} />
+            </React.Fragment>
+          );
+        })}
+      </div>
 
       {/* Apply — only animates in when the working state diverges
-          from the applied view. Always occupies the right edge via
-          `marginLeft: auto` on its wrapper so other items don't
-          shift sideways when Apply appears/disappears. */}
+          from the applied view. It sits outside the scrolling region so the
+          one action that runs the view never scrolls out of reach. */}
       <div
         ref={applyRef}
         style={{

@@ -12,6 +12,7 @@ import { clsOf, getSessionView, kwargsOf } from "src/shared/session-state";
 const limitDataset = getUniqueDatasetNameWithPrefix("view-bar-limit");
 const exprDataset = getUniqueDatasetNameWithPrefix("view-bar-expr");
 const pythonDataset = getUniqueDatasetNameWithPrefix("view-bar-python");
+const scrollDataset = getUniqueDatasetNameWithPrefix("view-bar-scroll");
 
 const test = base.extend<{ viewBar: ViewBarPom; grid: GridPom }>({
   viewBar: async ({ page }, use) => {
@@ -32,7 +33,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await fiftyoneLoader.executePythonCode(`
     import fiftyone as fo
 
-    for name in ("${limitDataset}", "${exprDataset}", "${pythonDataset}"):
+    for name in ("${limitDataset}", "${exprDataset}", "${pythonDataset}", "${scrollDataset}"):
         dataset = fo.Dataset(name)
         dataset.persistent = True
         dataset.add_samples([
@@ -55,6 +56,58 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
 });
 
 test.describe("view bar", () => {
+  //
+  // A long chain of stages scrolls INSIDE the bar: the pills overflow their
+  // own scroller, the page keeps its width, the bar keeps its height, and
+  // Apply stays reachable without scrolling.
+  //
+  test("a long view scrolls inside the bar without breaking the layout", async ({
+    fiftyoneLoader,
+    page,
+    viewBar,
+    grid,
+  }) => {
+    await fiftyoneLoader.executePythonCode(`
+      import fiftyone as fo
+      from fiftyone import ViewField as F
+
+      dataset = fo.load_dataset("${scrollDataset}")
+      view = dataset
+      for i in range(8):
+          view = view.match(F("index") >= 0)
+      dataset.save_view("long-chain", view)
+    `);
+    await fiftyoneLoader.waitUntilGridVisible(page, scrollDataset, {
+      searchParams: new URLSearchParams({ view: "long-chain" }),
+    });
+
+    await expect(viewBar.viewStages).toHaveCount(8);
+
+    const bar = page.getByTestId("view-bar");
+    const layout = await bar.evaluate((element) => {
+      const scroller = element.firstElementChild as HTMLElement;
+      return {
+        barHeight: element.getBoundingClientRect().height,
+        pillsOverflow: scroller.scrollWidth > scroller.clientWidth,
+        pageOverflow:
+          document.documentElement.scrollWidth > window.innerWidth,
+      };
+    });
+
+    // The pills overflow their scroller; the page does not grow sideways
+    expect(layout.pillsOverflow).toBe(true);
+    expect(layout.pageOverflow).toBe(false);
+    // One-row bar: nothing wrapped or spilled vertically
+    expect(layout.barHeight).toBeLessThan(48);
+
+    // Apply is pinned outside the scroll region, visible without scrolling —
+    // prove it by running the view from where the bar sits untouched
+    await viewBar.viewStages.first().getByLabel("Remove stage").click();
+    await expect(viewBar.applyBtn).toBeVisible();
+    await grid.run(() => viewBar.applyBtn.click());
+    await expect(viewBar.viewStages).toHaveCount(7);
+  });
+
   test("a stage built in the bar reaches the session view", async ({
     fiftyoneLoader,
     page,
