@@ -16,6 +16,6 @@ separate model errors from label errors.
    :maxdepth: 1
    :hidden:
 
-   Evaluating models __SUB_NEW__ <../user_guide/evaluation>
+   Evaluating models <../user_guide/evaluation>
    Evaluating object detections <../tutorials/evaluate_detections.ipynb>
    Evaluating a classifier <../tutorials/evaluate_classifications.ipynb>
