@@ -80,6 +80,26 @@ const resetMode = (result: {
   act(() => result.current.deactivate());
 };
 
+type SelectorSpies = {
+  setActiveAgent: ReturnType<typeof vi.fn>;
+  setDefaultAgent: ReturnType<typeof vi.fn>;
+};
+
+/** Installs a selector state for the bootstrap to read; returns its spies. */
+const givenSelector = (state: Record<string, unknown>): SelectorSpies => {
+  hoisted.agentSelectorRef.value = {
+    isResolved: true,
+    activeAgent: undefined,
+    agents: [],
+    lastAgentId: null,
+    setActiveAgent: vi.fn(),
+    setDefaultAgent: vi.fn(),
+    ...state,
+  };
+
+  return hoisted.agentSelectorRef.value as SelectorSpies;
+};
+
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe("useAIAnnotationMode", () => {
@@ -92,6 +112,7 @@ describe("useAIAnnotationMode", () => {
       activeAgent: { id: "agent-1" },
       agents: [{ id: "agent-1" }],
       setActiveAgent: vi.fn(),
+      setDefaultAgent: vi.fn(),
     };
   });
 
@@ -160,52 +181,90 @@ describe("useAIAnnotationMode", () => {
 
   describe("default-agent bootstrap", () => {
     it("auto-selects the first agent when none is active and the selector has resolved", () => {
-      hoisted.agentSelectorRef.value = {
-        isResolved: true,
-        activeAgent: undefined,
+      const spies = givenSelector({
         agents: [{ id: "agent-1" }, { id: "agent-2" }],
-        setActiveAgent: vi.fn(),
-      };
+      });
 
       renderHook(() => useAIAnnotationMode());
 
-      expect(
-        (
-          hoisted.agentSelectorRef.value as {
-            setActiveAgent: ReturnType<typeof vi.fn>;
-          }
-        ).setActiveAgent,
-      ).toHaveBeenCalledWith({ id: "agent-1" });
+      expect(spies.setDefaultAgent).toHaveBeenCalledWith({ id: "agent-1" });
+    });
+
+    // The fallback is not a user choice. Persisting it would overwrite the
+    // remembered pick on every reload — and it always would, because a
+    // service-backed agent isn't registered yet on the first resolve.
+    it("does NOT remember the fallback it picked", () => {
+      const spies = givenSelector({
+        agents: [{ id: "agent-1" }],
+        lastAgentId: "agent-2",
+      });
+
+      renderHook(() => useAIAnnotationMode());
+
+      expect(spies.setDefaultAgent).toHaveBeenCalledWith({ id: "agent-1" });
+      expect(spies.setActiveAgent).not.toHaveBeenCalled();
     });
 
     it("does NOT change the active agent when one is already selected", () => {
       renderHook(() => useAIAnnotationMode());
-      expect(
-        (
-          hoisted.agentSelectorRef.value as {
-            setActiveAgent: ReturnType<typeof vi.fn>;
-          }
-        ).setActiveAgent,
-      ).not.toHaveBeenCalled();
+
+      const spies = hoisted.agentSelectorRef.value as SelectorSpies;
+      expect(spies.setDefaultAgent).not.toHaveBeenCalled();
+      expect(spies.setActiveAgent).not.toHaveBeenCalled();
     });
 
-    it("does NOT auto-select before the selector has resolved", () => {
-      hoisted.agentSelectorRef.value = {
-        isResolved: false,
-        activeAgent: undefined,
-        agents: [],
-        setActiveAgent: vi.fn(),
-      };
+    it("restores the remembered agent rather than the first one", () => {
+      const spies = givenSelector({
+        agents: [{ id: "agent-1" }, { id: "agent-2" }],
+        lastAgentId: "agent-2",
+      });
 
       renderHook(() => useAIAnnotationMode());
 
-      expect(
-        (
-          hoisted.agentSelectorRef.value as {
-            setActiveAgent: ReturnType<typeof vi.fn>;
-          }
-        ).setActiveAgent,
-      ).not.toHaveBeenCalled();
+      expect(spies.setDefaultAgent).toHaveBeenCalledWith({ id: "agent-2" });
+    });
+
+    it("falls back to the first agent when the remembered one isn't selectable", () => {
+      const spies = givenSelector({
+        // The remembered agent is registered but its service is down.
+        agents: [{ id: "agent-1" }, { id: "agent-2", available: false }],
+        lastAgentId: "agent-2",
+      });
+
+      renderHook(() => useAIAnnotationMode());
+
+      expect(spies.setDefaultAgent).toHaveBeenCalledWith({ id: "agent-1" });
+    });
+
+    // Service-backed agents register after the static ones, so the remembered
+    // pick is routinely absent on the first resolve and must still be adopted
+    // when it lands.
+    it("adopts the remembered agent when it registers after the fallback", () => {
+      const spies = givenSelector({
+        activeAgent: { id: "agent-1" },
+        agents: [{ id: "agent-1" }],
+        lastAgentId: "agent-2",
+      });
+
+      const { rerender } = renderHook(() => useAIAnnotationMode());
+      expect(spies.setDefaultAgent).not.toHaveBeenCalled();
+
+      const late = givenSelector({
+        activeAgent: { id: "agent-1" },
+        agents: [{ id: "agent-1" }, { id: "agent-2" }],
+        lastAgentId: "agent-2",
+      });
+      rerender();
+
+      expect(late.setDefaultAgent).toHaveBeenCalledWith({ id: "agent-2" });
+    });
+
+    it("does NOT auto-select before the selector has resolved", () => {
+      const spies = givenSelector({ isResolved: false });
+
+      renderHook(() => useAIAnnotationMode());
+
+      expect(spies.setDefaultAgent).not.toHaveBeenCalled();
     });
   });
 
