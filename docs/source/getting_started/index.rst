@@ -42,13 +42,6 @@ Each guide is designed as a sequential learning experience with navigation betwe
     :tags: FiftyOne-Enterprise
 
 .. customcarditem::
-    :header: Building Plugins with AI Agents __SUB_NEW__
-    :description: Build custom FiftyOne operators and panels using natural language. Prompt your AI coding agent to create, test, and iterate on plugins end to end, without writing boilerplate.
-    :link: agents/index.html
-    :image: https://cdn.voxel51.com/getting_started_agents/agentic_plugin_dev.webp
-    :tags: Core-Fiftyone,Development
-
-.. customcarditem::
     :header: Auto Labeling Guide
     :description: Bootstrap datasets rapidly with FiftyOne Auto Labeling. Generate auto labels with foundation models and systematically review predictions with confidence-based filtering and embeddings.
     :link: auto_labeling/index.html
@@ -144,7 +137,6 @@ Each guide is designed as a sequential learning experience with navigation betwe
    :hidden:
 
    Getting Started with Enterprise <../enterprise/getting_started>
-   Building Plugins with AI Agents __SUB_NEW__ <agents/index>
    Auto Labeling Guide <auto_labeling/index>
    Annotation Guide __SUB_NEW__ <annotation/index>
    Object Detection Guide <object_detection/index>

@@ -17,13 +17,10 @@ loop using the media caching utilities.
    :maxdepth: 1
    :hidden:
 
-   Inference Overview __SUB_NEW__ <../user_guide/inference/index>
+   Inference Overview <../user_guide/inference/index>
    Inference for Classifications <../user_guide/inference/classifications>
    Inference for Detections <../user_guide/inference/detections>
    Inference for Segmentations <../user_guide/inference/segmentations>
    Inference for Keypoints <../user_guide/inference/keypoints>
    Inference for Heatmaps <../user_guide/inference/heatmaps>
    Advanced Inference Usage <../user_guide/inference/advanced>
-   Adding object detections <../recipes/adding_detections.ipynb>
-   Adding classifier predictions <../recipes/adding_classifications.ipynb>
-   Zero-shot classification <../tutorials/zero_shot_classification.ipynb>
