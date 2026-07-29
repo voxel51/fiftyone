@@ -99,10 +99,7 @@ describe("getCuboidOrientationMarkerProps", () => {
     // The apex sits headLength further along X than the anchor, at the
     // same Y/Z.
     const [apex] = composed.headVertices;
-    expect(apex[0] - decomposed.anchor.x).toBeCloseTo(
-      decomposed.headLength,
-      6,
-    );
+    expect(apex[0] - decomposed.anchor.x).toBeCloseTo(decomposed.headLength, 6);
     expect(apex[1]).toBeCloseTo(decomposed.anchor.y, 6);
     expect(apex[2]).toBeCloseTo(decomposed.anchor.z, 6);
 
@@ -110,13 +107,11 @@ describe("getCuboidOrientationMarkerProps", () => {
     // axis spreadAlongZ selects.
     const [, base1, base2] = composed.headVertices;
     const spreadAxis = decomposed.spreadAlongZ ? 2 : 1;
-    expect(base1[spreadAxis] - decomposed.anchor.getComponent(spreadAxis)).toBeCloseTo(
-      decomposed.headHalfWidth,
-      6,
-    );
-    expect(base2[spreadAxis] - decomposed.anchor.getComponent(spreadAxis)).toBeCloseTo(
-      -decomposed.headHalfWidth,
-      6,
-    );
+    expect(
+      base1[spreadAxis] - decomposed.anchor.getComponent(spreadAxis),
+    ).toBeCloseTo(decomposed.headHalfWidth, 6);
+    expect(
+      base2[spreadAxis] - decomposed.anchor.getComponent(spreadAxis),
+    ).toBeCloseTo(-decomposed.headHalfWidth, 6);
   });
 });

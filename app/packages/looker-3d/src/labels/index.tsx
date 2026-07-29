@@ -353,7 +353,10 @@ export const ThreeDLabels = ({
   const editedLabelId = selectedLabelForAnnotation?._id;
   const { standaloneDetections, instancedDetections } = useMemo(() => {
     if (!editedLabelId) {
-      return { standaloneDetections: [], instancedDetections: detectionsToRender };
+      return {
+        standaloneDetections: [],
+        instancedDetections: detectionsToRender,
+      };
     }
 
     const standalone: ReconciledDetection3D[] = [];
