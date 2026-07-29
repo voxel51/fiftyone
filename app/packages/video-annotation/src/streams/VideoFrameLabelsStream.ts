@@ -470,8 +470,10 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       });
 
       // A frame the playhead has already left, or whose document was replaced
-      // mid-decode, must not become held — its borrows would never be released.
-      if (!this.maskHoldWanted(frame)) {
+      // mid-decode, must not become held — its borrows would never be released,
+      // and holding the old document's masks would report the frame ready
+      // while the new document's are undecoded.
+      if (!this.maskHoldWanted(frame, sources)) {
         for (const source of borrowed) {
           maskBitmapCache.release(source);
         }
@@ -491,10 +493,20 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   }
 
   /**
-   * Whether `frame` is still inside the window the hold pass was started for.
-   * Guards the async completion against a playhead that has moved on.
+   * Whether `frame` still wants the hold pass it started: inside the window,
+   * not already held, and — because a document replaced mid-decode carries
+   * different masks — still describing the same sources the pass decoded.
    */
-  private maskHoldWanted(frame: number): boolean {
+  private maskHoldWanted(frame: number, startedFor: MaskSource[]): boolean {
+    const current = this.maskSourcesAt(frame);
+
+    if (
+      current.length !== startedFor.length ||
+      current.some((source, index) => source !== startedFor[index])
+    ) {
+      return false;
+    }
+
     return (
       frame >= this.maskHoldStart &&
       frame <= this.maskHoldEnd &&

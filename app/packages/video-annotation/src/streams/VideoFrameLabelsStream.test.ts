@@ -373,6 +373,27 @@ describe("VideoFrameLabelsStream mask gate", () => {
     expect(stream.bufferState(timeOfFrame(10, 30))).toBe("missing");
   });
 
+  it("does not hold stale masks when the document is replaced mid-decode", async () => {
+    const stream = buildStream();
+    seedFrame(stream, 10, ["mask-a"]);
+
+    stream.prefetch([timeOfFrame(10, 30), timeOfFrame(10, 30)]);
+
+    // The chunk lands over the frame while the hold pass is still in flight.
+    // @ts-expect-error — test-only: the invalidation a landed chunk performs
+    stream.maskSourceCache.delete(10);
+    // @ts-expect-error — test-only: the release path a landed chunk triggers
+    stream.releaseMasksAt(10);
+    seedFrame(stream, 10, ["mask-c"]);
+
+    await flush();
+
+    // Without source revalidation the pass holds mask-a and the frame reports
+    // ready while mask-c is undecoded.
+    expect(maskCache.borrows("mask-a")).toBe(0);
+    expect(stream.bufferState(timeOfFrame(10, 30))).toBe("missing");
+  });
+
   it("re-gates a frame whose document is replaced", async () => {
     const stream = buildStream();
     seedFrame(stream, 10, ["mask-a"]);

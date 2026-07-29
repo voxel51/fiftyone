@@ -143,12 +143,18 @@ export class MaskCanvas {
     // here is recoverable (ensureCanvas re-seeds from `rawMaskData`).
     if (this.encodingInFlight > 0) return false;
 
-    // Hold the outgoing bitmap as a fallback so the mask doesn't blink out
-    // while the incoming source decodes. Playback advances frames faster than
-    // an uncached decode resolves, so clearing here shows a maskless frame and
-    // reads as flicker; the previous frame's mask is a far better stand-in for
-    // the fraction of a frame it takes the real one to land.
-    this.retainStale();
+    if (source) {
+      // Hold the outgoing bitmap as a fallback so the mask doesn't blink out
+      // while the incoming source decodes. Playback advances frames faster
+      // than an uncached decode resolves, so clearing here shows a maskless
+      // frame and reads as flicker; the previous frame's mask is a far better
+      // stand-in for the fraction of a frame it takes the real one to land.
+      this.retainStale();
+    } else {
+      // A vanishing mask has no incoming decode to converge on — a retained
+      // fallback would be drawn (and hit-tested) forever.
+      this.releaseStale();
+    }
 
     this.reset();
     this.rawMaskData = source;
