@@ -34,16 +34,6 @@ _MODEL_TEMPLATE = """
 {{ header_name }}
 {{ '_' * header_name|length }}
 
-{% if oss_version or enterprise_version %}
-.. customavailablein::
-{% if oss_version %}
-    :oss_version: {{ oss_version }}
-{% endif %}
-{% if enterprise_version %}
-    :enterprise_version: {{ enterprise_version }}
-{% endif %}
-
-{% endif %}
 {{ description }}.
 
 **Details**
@@ -386,31 +376,6 @@ _MODEL_TEMPLATE = """
 """
 
 
-# Introduction versions for models whose "Added ..." bullet in
-# `release-notes.rst` was verified during the Available-in badge rollout.
-# Models not listed here render without a badge rather than guessing.
-_MODEL_AVAILABILITY = {
-    "centernet-resnet101-v1-fpn-512-coco-tf2": ("0.14.3", "1.0"),
-    "centernet-mobilenet-v2-fpn-512-coco-tf2": ("0.14.3", "1.0"),
-    "centernet-hg104-512-coco-tf2": ("0.7.1", "1.0"),
-    "centernet-hg104-1024-coco-tf2": ("0.14.3", "1.0"),
-    "centernet-resnet50-v2-512-coco-tf2": ("0.14.3", "1.0"),
-    "efficientdet-d0-512-coco-tf2": ("0.14.3", "1.0"),
-    "efficientdet-d1-640-coco-tf2": ("0.14.3", "1.0"),
-    "efficientdet-d2-768-coco-tf2": ("0.14.3", "1.0"),
-    "efficientdet-d3-896-coco-tf2": ("0.14.3", "1.0"),
-    "efficientdet-d4-1024-coco-tf2": ("0.14.3", "1.0"),
-    "efficientdet-d5-1280-coco-tf2": ("0.14.3", "1.0"),
-    "efficientdet-d6-1280-coco-tf2": ("0.14.3", "1.0"),
-    "efficientdet-d7-1536-coco-tf2": ("0.14.3", "1.0"),
-    "clip-vit-base32-torch": ("0.17.0", "1.0"),
-    "segment-anything-2-hiera-base-plus-image-torch": ("0.25.0", "2.0.0"),
-    "segment-anything-vitb-torch": ("0.21.5", "1.3.5"),
-    "ssd-mobilenet-v1-fpn-640-coco17": ("0.14.3", "1.0"),
-    "ssd-mobilenet-v2-320-coco17": ("0.14.3", "1.0"),
-}
-
-
 def _render_card_model_content(template, model_name):
     """Render card content for a model (following original pattern)."""
     zoo_model = foz.get_zoo_model(model_name)
@@ -510,10 +475,6 @@ def _render_model_content(template, model_name):
     if gpu_packages is not None:
         gpu_packages = ", ".join(gpu_packages)
 
-    oss_version, enterprise_version = _MODEL_AVAILABILITY.get(
-        zoo_model.name, (None, None)
-    )
-
     content = template.render(
         name=zoo_model.name,
         header_name=header_name,
@@ -529,8 +490,6 @@ def _render_model_content(template, model_name):
         cpu_packages=cpu_packages,
         supports_gpu=supports_gpu,
         gpu_packages=gpu_packages,
-        oss_version=oss_version,
-        enterprise_version=enterprise_version,
     )
 
     return content
