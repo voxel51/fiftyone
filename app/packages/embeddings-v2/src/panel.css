@@ -113,6 +113,12 @@
   background: color-mix(in srgb, var(--emb-brand) 6%, transparent);
 }
 
+/* In the runs list the banner needs air before the first card; the card
+   stack itself has no top margin (the runs header sits tight on purpose) */
+.emb-runs-scroll > .emb-callout {
+  margin-bottom: 0.75rem;
+}
+
 .emb-callout[data-aside="true"] {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: stretch;
