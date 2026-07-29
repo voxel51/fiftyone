@@ -3,9 +3,9 @@ import {
   isAgentSelectable,
   useActiveTask,
   useAgentSelector,
+  useClearPointPrompts,
   usePointSelection,
   usePointSelectionSeed,
-  useToolsState,
 } from "@fiftyone/annotation/src/agents";
 import { useCallback, useEffect, useMemo } from "react";
 import { atom, getDefaultStore, useAtom, useAtomValue } from "jotai";
@@ -57,7 +57,6 @@ export const useAIAnnotationMode = (): AIAnnotationMode => {
   const [isActive, setIsActive] = useAtom(isActiveAtom);
 
   const { setActiveTask } = useActiveTask();
-  const { reset: resetToolsState } = useToolsState();
   const pointSelection = usePointSelection();
   const { clearSeedNew } = usePointSelectionSeed();
 
@@ -65,15 +64,14 @@ export const useAIAnnotationMode = (): AIAnnotationMode => {
   useDefaultAgent();
 
   // Clears prompt state without tearing down point selection. The SAM2 point
-  // context is reset only at real session boundaries — here on deactivate, and
-  // implicitly on the deactivate→activate cycle a right-click finalize runs.
-  // It is deliberately NOT cleared on selection changes: an inference creating
-  // and selecting a fresh mask IS a selection change, so clearing there wiped
-  // the seed point of every mask after the first.
-  const resetTools = useCallback(() => {
-    pointSelection.clearPoints();
-    resetToolsState();
-  }, [pointSelection, resetToolsState]);
+  // context is reset at real session boundaries — here on deactivate, and
+  // implicitly on the deactivate→activate cycle a right-click finalize runs —
+  // plus wherever the prompted frame stops being the frame on screen (see
+  // `useEndPointSessionOnFrameChange`). It is deliberately NOT cleared on
+  // selection changes: an inference creating and selecting a fresh mask IS a
+  // selection change, so clearing there wiped the seed point of every mask
+  // after the first.
+  const clearPointPrompts = useClearPointPrompts();
 
   // Guards read fresh from the jotai store so back-to-back deactivate /
   // activate calls (e.g. AI right-click finalize) don't no-op on a stale
@@ -96,11 +94,11 @@ export const useAIAnnotationMode = (): AIAnnotationMode => {
     if (!getDefaultStore().get(isActiveAtom)) return;
 
     pointSelection.deactivate();
-    resetTools();
+    clearPointPrompts();
 
     setActiveTask(null);
     setIsActive(false);
-  }, [resetTools, pointSelection, setActiveTask, setIsActive]);
+  }, [clearPointPrompts, pointSelection, setActiveTask, setIsActive]);
 
   return useMemo(
     () => ({
