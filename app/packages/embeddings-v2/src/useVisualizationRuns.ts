@@ -21,28 +21,35 @@ export function useVisualizationRuns(datasetName: string | null): {
   error: string | null;
   refresh: () => void;
 } {
-  // runs are tagged with the dataset they were fetched for so a dataset
-  // switch never serves the previous dataset's runs, even for the one
-  // render before the fetch effect runs
+  // runs/error are tagged with the dataset they were fetched for so a
+  // dataset switch never serves the previous dataset's state, even for
+  // the one render before the fetch effect runs
   const [state, setState] = useState<{
     dataset: string | null;
     runs: VisualizationRun[] | null;
-  }>({ dataset: null, runs: null });
-  const [error, setError] = useState<string | null>(null);
+    error: string | null;
+  }>({ dataset: null, runs: null, error: null });
   const [nonce, setNonce] = useState(0);
 
-  const runs = state.dataset === datasetName ? state.runs : null;
+  const current = state.dataset === datasetName ? state : null;
+  const runs = current?.runs ?? null;
+  const error = current?.error ?? null;
 
   useEffect(() => {
     if (!datasetName) return undefined;
     let stale = false;
-    setState({ dataset: datasetName, runs: null });
-    setError(null);
+    setState({ dataset: datasetName, runs: null, error: null });
     fetchRuns(datasetName)
       .then(
-        (result) => !stale && setState({ dataset: datasetName, runs: result }),
+        (result) =>
+          !stale &&
+          setState({ dataset: datasetName, runs: result, error: null }),
       )
-      .catch((e) => !stale && setError(String(e)));
+      .catch(
+        (e) =>
+          !stale &&
+          setState({ dataset: datasetName, runs: null, error: String(e) }),
+      );
     return () => {
       stale = true;
     };
@@ -57,11 +64,11 @@ export function useVisualizationRuns(datasetName: string | null): {
       fetchRuns(datasetName)
         .then((result) => {
           if (stale) return;
-          setState((current) =>
-            current.dataset === datasetName &&
-            JSON.stringify(current.runs) === JSON.stringify(result)
-              ? current
-              : { dataset: datasetName, runs: result },
+          setState((prev) =>
+            prev.dataset === datasetName &&
+            JSON.stringify(prev.runs) === JSON.stringify(result)
+              ? prev
+              : { dataset: datasetName, runs: result, error: null },
           );
         })
         .catch(() => undefined);
