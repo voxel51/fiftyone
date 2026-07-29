@@ -3,9 +3,15 @@ import {
   type LocalDetection,
   type RawDetection,
   type RawDetectionsField,
+  type SerializedMask,
   type Stage,
   type SyntheticBox,
 } from "@fiftyone/utilities";
+import {
+  maskBitmapCache,
+  maskSourceOf,
+  type MaskSource,
+} from "@fiftyone/lighter";
 import { type FrameDoc } from "../../../core/src/client/framesClient";
 import { getVideoLabelsWindow } from "../../../core/src/client/videoLabelsClient";
 import {
@@ -58,6 +64,49 @@ export interface VideoFrameLabelsStreamOptions {
 const DEFAULT_CHUNK_SIZE = 60;
 const DEFAULT_FRAME_FIELD = "detections";
 
+/** localStorage key + Vite env var for the mask gate toggle (see below). */
+const MASK_GATE_LOCALSTORAGE_KEY = "fo:maskGate";
+
+/**
+ * Whether the clock waits for a frame's masks to be decoded and pinned, not just
+ * fetched. On by default: an annotation surface should stall rather than present
+ * a frame alongside another frame's mask. Kill switch for comparing behavior, or
+ * for a session where stalling is worse than staleness:
+ *
+ *   localStorage.setItem("fo:maskGate", "0")   // off
+ *   localStorage.removeItem("fo:maskGate")     // back to the default
+ */
+const readMaskGateEnabled = (): boolean => {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = window.localStorage?.getItem(MASK_GATE_LOCALSTORAGE_KEY);
+
+      if (stored !== null && stored !== undefined) {
+        return stored !== "0" && stored !== "false";
+      }
+    } catch {
+      // localStorage can throw in locked-down contexts; fall through to env.
+    }
+  }
+
+  const env = (import.meta as unknown as { env?: Record<string, string> }).env;
+  const fromEnv = env?.VITE_MASK_GATE;
+
+  return fromEnv ? fromEnv !== "0" && fromEnv !== "false" : true;
+};
+
+const MASK_GATE_ENABLED = readMaskGateEnabled();
+
+/**
+ * Frames whose masks are decoded and pinned ahead of the playhead — the
+ * decode-ahead lead. Sized so the pinned set stays small next to any sane cache
+ * capacity, since held masks are exempt from eviction.
+ */
+const MASK_HOLD_AHEAD_FRAMES = 12;
+
+/** Frames kept pinned behind the playhead, so small jitter doesn't re-decode. */
+const MASK_HOLD_BEHIND_FRAMES = 2;
+
 /**
  * Labels stream backed by the `POST /video-labels/window` endpoint.
  *
@@ -85,6 +134,30 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   private readonly cache = new Map<number, FrameDoc>();
   private readonly inflight = new Map<number, Promise<void>>();
   private readonly fetchedRanges: Array<[number, number]> = [];
+  /**
+   * Frames whose masks are decoded AND borrowed, keyed to the sources borrowed
+   * for them — see {@link holdMasks}. A borrow is what makes readiness mean
+   * something: the cache can't evict a mask the gate has promised.
+   */
+  private readonly maskHeld = new Map<number, MaskSource[]>();
+  /** Current hold window in frames — see {@link holdWindow}. */
+  private maskHoldStart = 0;
+  private maskHoldEnd = -1;
+  /** Frames with a hold pass currently running. */
+  private readonly maskWarmInFlight = new Set<number>();
+  /**
+   * Frames whose masks failed to decode. Reported ready so one broken mask can't
+   * stall the clock forever — same escape hatch `frameBitmapStream` uses to play
+   * through a frame whose bitmap will never arrive.
+   */
+  private readonly maskUndecodable = new Set<number>();
+  /**
+   * Memoized per-frame mask sources. Deriving these walks every detection on the
+   * frame, and the hold window re-checks the same frames on every commit, so
+   * without memoization that walk dominates the commit. Invalidated when a
+   * frame's document is replaced.
+   */
+  private readonly maskSourceCache = new Map<number, MaskSource[]>();
   // Notified whenever a chunk lands. The annotation engine's frame store
   // re-seeds from `cachedFrames()` on this signal (via `subscribeToEdits`);
   // the stream itself holds no edit state — it is a read-only window seed
@@ -216,7 +289,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     const frame = this.timeToFrame(time);
 
     if (this.cache.has(frame)) {
-      return "ready";
+      return this.maskReadiness(frame);
     }
 
     if (this.isInflight(frame)) {
@@ -230,10 +303,296 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     return "missing";
   }
 
+  /**
+   * Readiness of this frame's decoded masks, folded into {@link bufferState} so
+   * the clock waits for masks it can actually draw rather than merely for the
+   * bytes they decode from. Without this the stream reports ready as soon as
+   * the label document lands, and a mask decoded a few frames later paints
+   * against whatever frame the playhead has since reached.
+   *
+   * Ready means this frame's masks are BORROWED, not merely that a decode pass
+   * ran for it once. An earlier version settled a frame permanently after one
+   * pass, which made the gate a first-visit-only check: on a looping play-through
+   * every frame was already settled, so the clock advanced against masks the
+   * cache had long since evicted and the draw path decoded them late. Holding
+   * borrows re-gates every visit and keeps the cache from evicting what the gate
+   * has promised.
+   */
+  private maskReadiness(frame: number): BufferReadiness {
+    if (!MASK_GATE_ENABLED) {
+      return "ready";
+    }
+
+    if (this.maskHeld.has(frame) || this.maskUndecodable.has(frame)) {
+      return "ready";
+    }
+
+    if (this.maskWarmInFlight.has(frame)) {
+      return "loading";
+    }
+
+    // Nothing to hold, so nothing to wait for. Cheap (sources are memoized) and
+    // load-bearing: without it every frame of a maskless clip would cost an
+    // extra barrier round-trip waiting on a hold pass with no work to do.
+    if (this.maskSourcesAt(frame).length === 0) {
+      return "ready";
+    }
+
+    // Not held yet — `prefetch`/`onCommit` will start the hold. Reporting
+    // missing (not loading) is what keeps the engine calling prefetch.
+    return "missing";
+  }
+
+  /**
+   * Distinct inline mask sources across every cached frame — the clip's mask
+   * working set. Compare against `entries` from {@link maskBitmapCache}'s stats:
+   * a working set larger than what the cache holds at capacity means a looping
+   * playthrough re-decodes on every pass rather than reusing, because LRU evicts
+   * whichever frame the loop is about to come back around to.
+   */
+  maskWorkingSetSize(): number {
+    const distinct = new Set<MaskSource>();
+
+    for (const frame of this.cache.keys()) {
+      for (const source of this.maskSourcesAt(frame)) {
+        distinct.add(source);
+      }
+    }
+
+    return distinct.size;
+  }
+
+  /** Every inline mask source carried by this frame's cached document. */
+  private maskSourcesAt(frame: number): MaskSource[] {
+    const memoized = this.maskSourceCache.get(frame);
+
+    if (memoized) {
+      return memoized;
+    }
+
+    const sources = this.deriveMaskSourcesAt(frame);
+
+    // Only memoize once the document has landed; an empty result for an
+    // unfetched frame would otherwise stick after the chunk arrives.
+    if (this.cache.has(frame)) {
+      this.maskSourceCache.set(frame, sources);
+    }
+
+    return sources;
+  }
+
+  private deriveMaskSourcesAt(frame: number): MaskSource[] {
+    const doc = this.cache.get(frame);
+
+    if (!doc) {
+      return [];
+    }
+
+    const sources: MaskSource[] = [];
+
+    for (const field of this.frameFields) {
+      const raw = doc[field] as RawDetectionsField | undefined;
+
+      for (const detection of raw?.detections ?? []) {
+        const source = maskSourceOf(detection.mask as SerializedMask);
+
+        if (source) {
+          sources.push(source);
+        }
+      }
+    }
+
+    return sources;
+  }
+
+  /**
+   * Decode this frame's masks and BORROW them, so the cache cannot evict them
+   * out from under the readiness this frame is about to report.
+   *
+   * Borrows are released as the playhead leaves the frame (see
+   * {@link releaseMasksOutside}), which bounds what is pinned to the hold window
+   * regardless of cache capacity — the reason this can hold without starving a
+   * cache too small for the whole clip.
+   */
+  private holdMasks(frame: number): void {
+    if (this.maskHeld.has(frame) || this.maskUndecodable.has(frame)) {
+      return;
+    }
+
+    if (this.maskWarmInFlight.has(frame)) {
+      return;
+    }
+
+    const sources = this.maskSourcesAt(frame);
+
+    if (sources.length === 0) {
+      // Held with no borrows: nothing to draw, so the frame is ready, and the
+      // entry doubles as the "already checked" marker.
+      this.maskHeld.set(frame, []);
+      return;
+    }
+
+    // Every source already resident: acquire synchronously so this frame is
+    // ready within the current tick rather than a microtask later.
+    if (sources.every((source) => maskBitmapCache.has(source))) {
+      const borrowed = sources.filter(
+        (source) => maskBitmapCache.acquire(source) !== undefined,
+      );
+
+      if (borrowed.length === sources.length) {
+        this.maskHeld.set(frame, borrowed);
+        return;
+      }
+
+      // Raced an eviction between `has` and `acquire` — hand back whatever we
+      // took and fall through to the async path.
+      for (const source of borrowed) {
+        maskBitmapCache.release(source);
+      }
+    }
+
+    this.maskWarmInFlight.add(frame);
+
+    void Promise.allSettled(
+      sources.map((source) => maskBitmapCache.acquireAsync(source)),
+    ).then((results) => {
+      this.maskWarmInFlight.delete(frame);
+
+      const borrowed: MaskSource[] = [];
+      let failed = false;
+
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+          borrowed.push(sources[index]);
+        } else {
+          failed = true;
+        }
+      });
+
+      // A frame the playhead has already left, or whose document was replaced
+      // mid-decode, must not become held — its borrows would never be released.
+      if (!this.maskHoldWanted(frame)) {
+        for (const source of borrowed) {
+          maskBitmapCache.release(source);
+        }
+        return;
+      }
+
+      if (failed) {
+        for (const source of borrowed) {
+          maskBitmapCache.release(source);
+        }
+        this.maskUndecodable.add(frame);
+        return;
+      }
+
+      this.maskHeld.set(frame, borrowed);
+    });
+  }
+
+  /**
+   * Whether `frame` is still inside the window the hold pass was started for.
+   * Guards the async completion against a playhead that has moved on.
+   */
+  private maskHoldWanted(frame: number): boolean {
+    return (
+      frame >= this.maskHoldStart &&
+      frame <= this.maskHoldEnd &&
+      !this.maskHeld.has(frame)
+    );
+  }
+
+  /** Return the borrows for every held frame outside the current hold window. */
+  private releaseMasksOutside(start: number, end: number): void {
+    for (const [frame, sources] of this.maskHeld) {
+      if (frame >= start && frame <= end) {
+        continue;
+      }
+
+      for (const source of sources) {
+        maskBitmapCache.release(source);
+      }
+
+      this.maskHeld.delete(frame);
+    }
+  }
+
+  /**
+   * Return every mask borrow this stream holds. Must be called when the
+   * surface unmounts (sample change, modal close): the stream is the sole
+   * owner of its holds, and an unreturned borrow pins its entry in the
+   * process-wide cache for good — the bitmap can never be closed.
+   *
+   * The window is emptied FIRST so a warm pass still in flight releases its
+   * borrows on completion instead of re-holding ({@link maskHoldWanted} is
+   * window-scoped).
+   */
+  dispose(): void {
+    this.maskHoldStart = 0;
+    this.maskHoldEnd = -1;
+
+    // Nothing is inside an empty window, so this releases every held frame.
+    this.releaseMasksOutside(this.maskHoldStart, this.maskHoldEnd);
+  }
+
+  /** Drop any hold on `frame` — its masks may no longer be the right ones. */
+  private releaseMasksAt(frame: number): void {
+    const sources = this.maskHeld.get(frame);
+
+    if (!sources) {
+      return;
+    }
+
+    for (const source of sources) {
+      maskBitmapCache.release(source);
+    }
+
+    this.maskHeld.delete(frame);
+  }
+
+  /**
+   * Re-centre the hold window on the committed frame: hold forward, release
+   * behind.
+   *
+   * Called from `onCommit` as well as `prefetch` because the engine only calls
+   * `prefetch` while a stream reports NOT ready — decode-ahead has to keep
+   * running through the ready stretches too, which is what `frameBitmapStream`
+   * does for the same reason.
+   *
+   * The window is sized in FRAMES rather than from `lookaheadSeconds` (~58
+   * frames here) because every frame in it pins its masks: a window that large
+   * would hold most of a small cache, and holds are exempt from eviction.
+   */
+  private holdWindow(time: number): void {
+    const frame = this.timeToFrame(time);
+    const start = Math.max(1, frame - MASK_HOLD_BEHIND_FRAMES);
+    const end = Math.min(this.frameCount, frame + MASK_HOLD_AHEAD_FRAMES);
+
+    this.maskHoldStart = start;
+    this.maskHoldEnd = end;
+
+    this.releaseMasksOutside(start, end);
+
+    // Forward only — decoding frames the playhead has already passed buys
+    // nothing, though ones still held from behind stay held for jitter.
+    for (let f = frame; f <= end; f++) {
+      this.holdMasks(f);
+    }
+  }
+
   prefetch(range: [number, number]): void {
     const [startSec, endSec] = range;
     const startFrame = this.timeToFrame(startSec);
     const endFrame = this.timeToFrame(endSec);
+
+    // Decode-ahead: frames whose documents are already cached still need their
+    // masks rasterized before they can be drawn, and that is the stage the
+    // playhead actually outruns. Holding across the window (rather than
+    // first-missing-wins, as the chunk fetch below does) is what turns a cold
+    // play-through into cache hits.
+    if (MASK_GATE_ENABLED) {
+      this.holdWindow(startSec);
+    }
 
     // Find the first missing frame in the range and issue one chunk
     // starting there. The engine calls prefetch again as the playhead
@@ -249,22 +608,30 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     }
   }
 
+  /**
+   * Whether a frame has a publishable snapshot — the cheap half of
+   * {@link getValue}, which `onCommit` uses to decide whether building one is
+   * worth it. Keep in step with `getValue`'s null case.
+   */
+  private hasSnapshotAt(frame: number): boolean {
+    return this.cache.has(frame) || isInFetchedRange(this.fetchedRanges, frame);
+  }
+
   getValue(time: number): FrameLabelSnapshot | null {
     const frame = this.timeToFrame(time);
-    const sample = this.cache.get(frame);
-    if (!sample) {
-      // Chunk fetched, this frame had no labels — return an empty
-      // snapshot so consumers can tell "no labels here" from "not fetched".
-      if (isInFetchedRange(this.fetchedRanges, frame)) {
-        return { frameNumber: frame, detections: [] };
-      }
+
+    if (!this.hasSnapshotAt(frame)) {
       return null;
     }
 
+    const sample = this.cache.get(frame);
+
     return {
       frameNumber: frame,
+      // No cached sample but the chunk was fetched: this frame genuinely has no
+      // labels, and an empty list tells consumers that apart from "not fetched".
       // todo - adapter pattern for other label types
-      detections: extractDetections(sample, this.frameField),
+      detections: sample ? extractDetections(sample, this.frameField) : [],
     };
   }
 
@@ -274,18 +641,31 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
    * re-publishing identical content on every intra-frame tick.
    */
   override onCommit(time: number, store: PlaybackStore): void {
-    const next = this.getValue(time);
+    const frame = this.timeToFrame(time);
     const prev = this.readPublished(store);
 
-    if (prev && next && prev.frameNumber === next.frameNumber) {
+    if (MASK_GATE_ENABLED) {
+      // Before the frame-dedupe below: warming has to keep running even on ticks
+      // that publish nothing new, since that is most of them.
+      this.holdWindow(time);
+    }
+
+    // Dedupe BEFORE building the snapshot. The engine commits several times per
+    // frame and `getValue` walks every detection on the frame, so the snapshots
+    // thrown away here outnumber the ones published — a cost that scales with
+    // labels per frame, i.e. worst on exactly the dense samples this stream
+    // gates for.
+    const hasSnapshot = this.hasSnapshotAt(frame);
+
+    if (prev !== null && prev.frameNumber === frame && hasSnapshot) {
       return;
     }
 
-    if (prev === null && next === null) {
+    if (prev === null && !hasSnapshot) {
       return;
     }
 
-    this.publish(store, next);
+    this.publish(store, this.getValue(time));
   }
 
   /**
@@ -365,6 +745,11 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
           frame_number: Number(frameNumber),
           ...fields,
         });
+        // A replaced document may carry different masks, so drop the memoized
+        // sources and any hold taken against the old ones.
+        this.maskSourceCache.delete(Number(frameNumber));
+        this.maskUndecodable.delete(Number(frameNumber));
+        this.releaseMasksAt(Number(frameNumber));
         landed++;
       }
 
