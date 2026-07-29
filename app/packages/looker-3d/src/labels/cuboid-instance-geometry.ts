@@ -97,23 +97,64 @@ export function computeBodyMatrix(geometry: CuboidGeometry): THREE.Matrix4 {
   );
 }
 
+// A unit box's edge topology (which corners each of the 12 edges connects)
+// never changes — only the per-box position/quaternion/dimensions do. Reused
+// across every `computeBoxEdgePositions` call instead of building and
+// disposing a `BoxGeometry` + `EdgesGeometry` pair per box (which for ~3k
+// cuboids meant 6k geometry allocations per rebuild).
+const UNIT_BOX_CORNERS: THREE.Vector3Tuple[] = [
+  [-0.5, -0.5, -0.5],
+  [0.5, -0.5, -0.5],
+  [0.5, 0.5, -0.5],
+  [-0.5, 0.5, -0.5],
+  [-0.5, -0.5, 0.5],
+  [0.5, -0.5, 0.5],
+  [0.5, 0.5, 0.5],
+  [-0.5, 0.5, 0.5],
+];
+const BOX_EDGE_CORNER_INDICES: ReadonlyArray<readonly [number, number]> = [
+  [0, 1],
+  [1, 2],
+  [2, 3],
+  [3, 0],
+  [4, 5],
+  [5, 6],
+  [6, 7],
+  [7, 4],
+  [0, 4],
+  [1, 5],
+  [2, 6],
+  [3, 7],
+];
+const _edgeMatrix = new THREE.Matrix4();
+const _edgeCorners = UNIT_BOX_CORNERS.map(() => new THREE.Vector3());
+
 /**
  * World-space edge endpoints for one box's outline, in the flat pairs format
  * `LineSegmentsGeometry.setPositions()` expects (each consecutive 2 vertices
- * = one edge). `EdgesGeometry` already emits exactly this shape.
+ * = one edge).
  */
 export function computeBoxEdgePositions(
   geometry: CuboidGeometry,
 ): Float32Array {
-  const box = new THREE.BoxGeometry(...geometry.dimensions);
-  box.applyQuaternion(geometry.quaternion);
-  box.translate(...geometry.position);
-  const edges = new THREE.EdgesGeometry(box);
-  const positions = new Float32Array(
-    edges.attributes.position.array as Float32Array,
+  _edgeMatrix.compose(
+    new THREE.Vector3(...geometry.position),
+    geometry.quaternion,
+    new THREE.Vector3(...geometry.dimensions),
   );
-  box.dispose();
-  edges.dispose();
+  for (let i = 0; i < UNIT_BOX_CORNERS.length; i++) {
+    _edgeCorners[i].set(...UNIT_BOX_CORNERS[i]).applyMatrix4(_edgeMatrix);
+  }
+  const positions = new Float32Array(EDGES_PER_BOX * 6);
+  let offset = 0;
+  for (const [a, b] of BOX_EDGE_CORNER_INDICES) {
+    positions[offset++] = _edgeCorners[a].x;
+    positions[offset++] = _edgeCorners[a].y;
+    positions[offset++] = _edgeCorners[a].z;
+    positions[offset++] = _edgeCorners[b].x;
+    positions[offset++] = _edgeCorners[b].y;
+    positions[offset++] = _edgeCorners[b].z;
+  }
   return positions;
 }
 
@@ -193,4 +234,6 @@ export const setSegmentColor = (
     | undefined;
   start?.setXYZ(segmentIndex, color.r, color.g, color.b);
   end?.setXYZ(segmentIndex, color.r, color.g, color.b);
+  if (start) start.data.needsUpdate = true;
+  if (end) end.data.needsUpdate = true;
 };
