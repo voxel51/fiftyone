@@ -22,8 +22,8 @@
         "@fiftyone/spaces": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
-        "@mui/icons-material": "*",
-        "@mui/material": "*",
+        "@mui/icons-material": "catalog:",
+        "@mui/material": "catalog:",
         "@voxel51/voodo": "catalog:",
         "three": "^0.182.0"
     },
