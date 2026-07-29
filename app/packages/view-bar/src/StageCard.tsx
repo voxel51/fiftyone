@@ -15,6 +15,7 @@ import {
   Size,
   Spacing,
   Stack,
+  Tooltip,
 } from "@voxel51/voodo";
 import React from "react";
 import { createPortal } from "react-dom";
@@ -238,51 +239,74 @@ export const StageCard: React.FC<StageCardProps> = ({
         >
           {/* Always-visible compact preview: name + first-arg value.
               Click opens the editing popover below. */}
-          <div
-            onClick={onToggle}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onToggle();
-              }
-            }}
-            role="button"
-            tabIndex={0}
-            style={{ cursor: "pointer", display: "inline-flex", gap: 6 }}
-            title={expanded ? "Close editor" : "Edit stage"}
-          >
-            <span style={{ fontWeight: 600, fontSize: 13 }}>
-              {definition.name}
-            </span>
-            {firstParam && (
-              <span
-                style={{
-                  fontSize: 12,
-                  color: "var(--fo-palette-text-secondary)",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {previewValue(stage.kwargs[firstParam.name])}
+          <Tooltip content={expanded ? "Close editor" : "Edit stage"}>
+            <div
+              onClick={onToggle}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onToggle();
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              style={{ cursor: "pointer", display: "inline-flex", gap: 6 }}
+            >
+              <span style={{ fontWeight: 600, fontSize: 13 }}>
+                {definition.name}
               </span>
-            )}
-          </div>
+              {firstParam && (
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: "var(--fo-palette-text-secondary)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {previewValue(stage.kwargs[firstParam.name])}
+                </span>
+              )}
+            </div>
+          </Tooltip>
 
-          <div
-            onClick={onRemove}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onRemove();
-              }
-            }}
-            role="button"
-            tabIndex={0}
-            aria-label="Remove stage"
-            title="Remove stage"
-            style={{ cursor: "pointer", display: "inline-flex", padding: 2 }}
-          >
-            <Icon name={IconName.Close} size={Size.Sm} />
-          </div>
+          {/* The stage's full story lives in its API docs — a quiet link on
+              the pill itself, out of the popover's way */}
+          <Tooltip content={`${definition.name} API documentation`}>
+            <a
+              href={`https://docs.voxel51.com/api/fiftyone.core.stages.html#fiftyone.core.stages.${definition.name}`}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`${definition.name} API documentation`}
+              onClick={(e) => e.stopPropagation()}
+              // The same wrapper metrics as the remove button beside it, so the
+              // two icons sit on one baseline at one size
+              style={{
+                display: "inline-flex",
+                padding: 2,
+                color: "var(--fo-palette-text-secondary)",
+              }}
+            >
+              <Icon name={IconName.ExternalLink} size={Size.Sm} />
+            </a>
+          </Tooltip>
+
+          <Tooltip content="Remove stage">
+            <div
+              onClick={onRemove}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onRemove();
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label="Remove stage"
+              style={{ cursor: "pointer", display: "inline-flex", padding: 2 }}
+            >
+              <Icon name={IconName.Close} size={Size.Sm} />
+            </div>
+          </Tooltip>
         </Stack>
       </Card>
 
@@ -322,32 +346,10 @@ export const StageCard: React.FC<StageCardProps> = ({
             }}
           >
             <Card background={CardBackground.Primary} outlined compact>
-              {/* The stage's full story lives in its API docs — one quiet
-                  corner link, present on every stage the same way */}
-              <a
-                href={`https://docs.voxel51.com/api/fiftyone.core.stages.html#fiftyone.core.stages.${definition.name}`}
-                target="_blank"
-                rel="noreferrer"
-                title={`${definition.name} API documentation`}
-                aria-label={`${definition.name} API documentation`}
-                style={{
-                  position: "absolute",
-                  top: 8,
-                  right: 8,
-                  display: "inline-flex",
-                  color: "var(--fo-palette-text-secondary)",
-                }}
-              >
-                <Icon name={IconName.ExternalLink} size={Size.Sm} />
-              </a>
               {/* Each control names itself — text inputs through their
                   placeholder, toggles through their label — so there is no
                   label column and no gutter beside the narrow controls. */}
-              <Stack
-                orientation={Orientation.Column}
-                spacing={Spacing.Xs}
-                style={{ paddingRight: 20 }}
-              >
+              <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
                 {rows(
                   definition.params.filter((p) => !isPrivate(p)),
                   (p) => kinds.get(p.name) ?? pickInput(p),

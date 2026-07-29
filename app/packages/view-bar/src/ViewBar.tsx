@@ -17,6 +17,7 @@
 import * as fos from "@fiftyone/state";
 import {
   Align,
+  Anchor,
   Button,
   Icon,
   IconName,
@@ -25,6 +26,7 @@ import {
   Size,
   Spacing,
   Stack,
+  Tooltip,
   Variant,
 } from "@voxel51/voodo";
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
@@ -523,32 +525,33 @@ const ViewBar: React.FC = () => {
 
     if (!open) {
       return (
-        <div
-          onClick={() => setOpen(true)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              setOpen(true);
-            }
-          }}
-          role="button"
-          tabIndex={0}
-          aria-label="Insert stage"
-          title="Insert stage"
-          style={{
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 24,
-            height: 24,
-            borderRadius: 12,
-            color: "var(--fo-palette-text-secondary)",
-            flexShrink: 0,
-          }}
-        >
-          <Icon name={IconName.Add} size={Size.Sm} />
-        </div>
+        <Tooltip content="Insert stage">
+          <div
+            onClick={() => setOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setOpen(true);
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label="Insert stage"
+            style={{
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 24,
+              height: 24,
+              borderRadius: 12,
+              color: "var(--fo-palette-text-secondary)",
+              flexShrink: 0,
+            }}
+          >
+            <Icon name={IconName.Add} size={Size.Sm} />
+          </div>
+        </Tooltip>
       );
     }
 
@@ -620,37 +623,41 @@ const ViewBar: React.FC = () => {
               onMouseDown={(e) => e.stopPropagation()}
             >
               {filtered.map((name, i) => (
-                <div
+                // What the stage does, without leaving the list — its
+                // docstring's opening sentence, served with the schema
+                <Tooltip
                   key={name}
-                  id={`view-bar-stage-${i}`}
-                  role="option"
-                  aria-selected={i === active}
-                  // What the stage does, without leaving the list — its
-                  // docstring's opening sentence, served with the schema
-                  title={defsByName.get(name)?.description ?? undefined}
-                  ref={(el) => {
-                    if (i === active) {
-                      el?.scrollIntoView({ block: "nearest" });
-                    }
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    insert(name);
-                  }}
-                  onMouseEnter={() => setHighlight(i)}
-                  style={{
-                    padding: "6px 10px",
-                    cursor: "pointer",
-                    color: "var(--fo-palette-text-primary)",
-                    whiteSpace: "nowrap",
-                    background:
-                      i === active
-                        ? "var(--fo-palette-background-level2)"
-                        : undefined,
-                  }}
+                  content={defsByName.get(name)?.description ?? name}
+                  anchor={Anchor.Right}
                 >
-                  {name}
-                </div>
+                  <div
+                    id={`view-bar-stage-${i}`}
+                    role="option"
+                    aria-selected={i === active}
+                    ref={(el) => {
+                      if (i === active) {
+                        el?.scrollIntoView({ block: "nearest" });
+                      }
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      insert(name);
+                    }}
+                    onMouseEnter={() => setHighlight(i)}
+                    style={{
+                      padding: "6px 10px",
+                      cursor: "pointer",
+                      color: "var(--fo-palette-text-primary)",
+                      whiteSpace: "nowrap",
+                      background:
+                        i === active
+                          ? "var(--fo-palette-background-level2)"
+                          : undefined,
+                    }}
+                  >
+                    {name}
+                  </div>
+                </Tooltip>
               ))}
             </div>,
             document.body,
@@ -754,20 +761,23 @@ const ViewBar: React.FC = () => {
         }}
         aria-hidden={!hasPendingChanges}
       >
-        <Button
-          variant={Variant.Primary}
-          size={Size.Xs}
-          onClick={apply}
-          disabled={paramErrors.labels.length > 0}
-          title={
+        <Tooltip
+          content={
             paramErrors.labels.length
               ? `Fix: ${paramErrors.labels.join(", ")}`
               : "Apply view"
           }
-          data-cy="btn-apply-view-bar"
         >
-          Apply
-        </Button>
+          <Button
+            variant={Variant.Primary}
+            size={Size.Xs}
+            onClick={apply}
+            disabled={paramErrors.labels.length > 0}
+            data-cy="btn-apply-view-bar"
+          >
+            Apply
+          </Button>
+        </Tooltip>
       </div>
     </Stack>
   );

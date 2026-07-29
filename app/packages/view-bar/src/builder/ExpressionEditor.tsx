@@ -315,23 +315,32 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
               size={Size.Sm}
               color={STATUS_COLOR[status.state]}
             />
-            <Text
-              variant={TextVariant.Caption}
-              color={STATUS_COLOR[status.state]}
-              title={status.state === "invalid" ? status.message : undefined}
-              style={{
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                minWidth: 0,
-              }}
+            <Tooltip
+              content={
+                status.state === "invalid"
+                  ? status.message
+                  : status.state === "valid"
+                    ? "Ready to apply"
+                    : 'Start with a field — F("…") then a dot'
+              }
             >
-              {status.state === "invalid"
-                ? status.message
-                : status.state === "valid"
-                  ? "Ready to apply"
-                  : 'Start with a field — F("…") then a dot'}
-            </Text>
+              <Text
+                variant={TextVariant.Caption}
+                color={STATUS_COLOR[status.state]}
+                style={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  minWidth: 0,
+                }}
+              >
+                {status.state === "invalid"
+                  ? status.message
+                  : status.state === "valid"
+                    ? "Ready to apply"
+                    : 'Start with a field — F("…") then a dot'}
+              </Text>
+            </Tooltip>
           </Stack>
         )}
       </Stack>
@@ -479,19 +488,20 @@ const Signature: React.FC<{
       {operator.display}(arg {argIndex + 1})
     </Text>
     <Pill size={Size.Xs}>{KIND_LABEL[argKind]}</Pill>
-    <Text
-      variant={TextVariant.Caption}
-      color={TextColor.Muted}
-      title={operator.summary}
-      style={{
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        minWidth: 0,
-      }}
-    >
-      {operator.summary}
-    </Text>
+    <Tooltip content={operator.summary}>
+      <Text
+        variant={TextVariant.Caption}
+        color={TextColor.Muted}
+        style={{
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          minWidth: 0,
+        }}
+      >
+        {operator.summary}
+      </Text>
+    </Tooltip>
   </Stack>
 );
 

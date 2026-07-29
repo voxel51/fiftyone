@@ -402,37 +402,39 @@ const ParamControl: React.FC<ParamInputProps> = ({
               </Stack>
             ) : (
               invalid && (
-                <Text
-                  variant={TextVariant.Caption}
-                  color={TextColor.Destructive}
-                  title={error ?? undefined}
-                  style={{
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    minWidth: 0,
-                  }}
-                >
-                  {error}
-                </Text>
+                <Tooltip content={error ?? ""}>
+                  <Text
+                    variant={TextVariant.Caption}
+                    color={TextColor.Destructive}
+                    style={{
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      minWidth: 0,
+                    }}
+                  >
+                    {error}
+                  </Text>
+                </Tooltip>
               )
             )}
             {/* The json here is a lowered ViewExpression — the same corner
                 link every stage carries, pointed at the format's docs */}
-            <a
-              href="https://docs.voxel51.com/api/fiftyone.core.expressions.html#fiftyone.core.expressions.ViewExpression"
-              target="_blank"
-              rel="noreferrer"
-              title="View expression documentation"
-              aria-label="View expression documentation"
-              style={{
-                marginLeft: "auto",
-                display: "inline-flex",
-                color: "var(--fo-palette-text-secondary)",
-              }}
-            >
-              <Icon name={IconName.ExternalLink} size={Size.Sm} />
-            </a>
+            <Tooltip content="View expression documentation">
+              <a
+                href="https://docs.voxel51.com/api/fiftyone.core.expressions.html#fiftyone.core.expressions.ViewExpression"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="View expression documentation"
+                style={{
+                  marginLeft: "auto",
+                  display: "inline-flex",
+                  color: "var(--fo-palette-text-secondary)",
+                }}
+              >
+                <Icon name={IconName.ExternalLink} size={Size.Sm} />
+              </a>
+            </Tooltip>
           </Stack>
           {/*
             Monaco lays itself out against a definite box. Its parent is the
