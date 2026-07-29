@@ -16,7 +16,7 @@
         "@fiftyone/state": "workspace:*",
         "@fiftyone/tiling": "workspace:*",
         "@fiftyone/utilities": "workspace:*",
-        "@voxel51/voodo": "^0.0.39",
+        "@voxel51/voodo": "^0.1.0",
         "clsx": "^2.1.0",
         "jotai": "catalog:",
         "lru-cache": "catalog:",
