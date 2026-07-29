@@ -3,3 +3,4 @@
  */
 
 export { default as ViewBar, rollbackViewBar } from "./ViewBar";
+export type { ViewBarCapabilities } from "./params";

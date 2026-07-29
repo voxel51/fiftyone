@@ -263,6 +263,8 @@ export interface ParamChoices {
 
 export interface ParamDef {
   name: string;
+  /** Withheld from the form by the surface's capabilities; still serialized. */
+  hidden?: boolean;
   type: string;
   /** `type`'s alternatives, already split by the server. */
   tokens: readonly string[];
@@ -272,6 +274,73 @@ export interface ParamDef {
   default: string | null | undefined;
   placeholder: string | null | undefined;
 }
+
+/**
+ * What the embedding surface allows the bar to offer. OSS offers everything;
+ * a host that meters who may create indexes or fields passes its own answer.
+ */
+export interface ViewBarCapabilities {
+  /** May toggle `create_index` where a stage offers it. */
+  createIndexes: boolean;
+  /** May name a field the stage will create. */
+  createFields: boolean;
+}
+
+export const OPEN_CAPABILITIES: ViewBarCapabilities = {
+  createIndexes: true,
+  createFields: true,
+};
+
+/**
+ * The stage definitions as the capabilities allow them, rewritten once so
+ * everything downstream — pickers, modes, validation, blocking — follows
+ * without ever consulting capabilities again. Hiding a `create_index`
+ * param removes its toggle while leaving any value it already carries
+ * untouched; tightening a constraint to `EXISTING` turns a
+ * name-a-new-field control into a picker over fields the dataset
+ * already has.
+ */
+export const gateDefinitions = (
+  defs: readonly StageDefinition[],
+  capabilities: ViewBarCapabilities,
+): StageDefinition[] => {
+  if (capabilities.createIndexes && capabilities.createFields) {
+    return [...defs];
+  }
+
+  return defs.map((def) => ({
+    ...def,
+    params: def.params
+      .map((param) =>
+        // Hidden, not dropped: a view built by someone who could create the
+        // index re-applies here with that choice intact
+        capabilities.createIndexes || param.name !== "create_index"
+          ? param
+          : { ...param, hidden: true },
+      )
+      .map((param) => {
+        if (
+          capabilities.createFields ||
+          param.choices.source !== "FIELDS" ||
+          param.choices.fields.every(
+            (constraint) => constraint.existence === "EXISTING",
+          )
+        ) {
+          return param;
+        }
+        return {
+          ...param,
+          choices: {
+            ...param.choices,
+            fields: param.choices.fields.map((constraint) => ({
+              ...constraint,
+              existence: "EXISTING" as const,
+            })),
+          },
+        };
+      }),
+  }));
+};
 
 /**
  * The required parameter this one is waiting on, if any.
@@ -369,7 +438,7 @@ export const expressionScope = (
  * they are still serialized, because dropping one changes what the stage does.
  */
 export const isPrivate = (param: ParamDef): boolean =>
-  param.name.startsWith("_");
+  Boolean(param.hidden) || param.name.startsWith("_");
 
 /** `only_matches` is how Python spells it; "only matches" is how it reads. */
 export const humanize = (name: string): string =>

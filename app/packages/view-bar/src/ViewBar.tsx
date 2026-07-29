@@ -37,6 +37,8 @@ import { allowedFields } from "./fields";
 import {
   appliesTo,
   defaultKwargs,
+  gateDefinitions,
+  OPEN_CAPABILITIES,
   inferMode,
   isEmptyValue,
   NO_BROWSER_SUGGESTIONS,
@@ -44,7 +46,12 @@ import {
   pickInput,
   validateParam,
 } from "./params";
-import type { InputKind, ParamDef, StageDefinition } from "./params";
+import type {
+  InputKind,
+  ParamDef,
+  StageDefinition,
+  ViewBarCapabilities,
+} from "./params";
 import { StageCard, useAnchorRect } from "./StageCard";
 import {
   initialState,
@@ -96,8 +103,15 @@ const ALL_SLICE_MEDIA_TYPES: fos.GroupSliceMediaType[] = [
   "multimodal",
 ];
 
-const ViewBar: React.FC = () => {
-  const stageDefs = useRecoilValue(fos.stageDefinitions);
+const ViewBar: React.FC<{
+  /** What this surface may offer; everything, unless the host says less. */
+  capabilities?: ViewBarCapabilities;
+}> = ({ capabilities = OPEN_CAPABILITIES }) => {
+  const servedDefs = useRecoilValue(fos.stageDefinitions);
+  const stageDefs = useMemo(
+    () => gateDefinitions(servedDefs as StageDefinition[], capabilities),
+    [servedDefs, capabilities],
+  );
   const fieldPaths = useRecoilValue(fos.fieldPaths({}));
   const fieldTypes = fos.useFieldTypes();
   const mediaType = fos.useDatasetMediaType();

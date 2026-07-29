@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { paramModes } from "./params";
+import { gateDefinitions, paramModes } from "./params";
 
 type Source = "FIELDS" | "GROUP_SLICES" | "CONSTANTS" | "FREE_TEXT";
 type Existence = "EXISTING" | "EXISTING_ROOT" | "ANY";
@@ -91,5 +91,61 @@ describe("paramModes", () => {
 
   it("falls back to the raw editor for a type it does not recognize", () => {
     expect(paramModes(param("something_new"))).toEqual(["json"]);
+  });
+});
+
+describe("gateDefinitions", () => {
+  const defs = [
+    {
+      name: "SortBy",
+      mediaTypes: [],
+      params: [
+        param("str", "FREE_TEXT"),
+        { ...param("bool", "FREE_TEXT"), name: "create_index" },
+        {
+          ...param("field|str", "FIELDS"),
+          name: "dist_field",
+          choices: {
+            source: "FIELDS" as const,
+            values: [],
+            fields: [
+              {
+                level: "ANY" as const,
+                existence: "ANY" as const,
+                ftypes: [],
+                labelTypes: [],
+              },
+            ],
+          },
+        },
+      ],
+    },
+  ];
+
+  it("changes nothing when everything is allowed", () => {
+    expect(
+      gateDefinitions(defs, { createIndexes: true, createFields: true }),
+    ).toEqual(defs);
+  });
+
+  it("hides create_index rather than dropping it", () => {
+    const [gated] = gateDefinitions(defs, {
+      createIndexes: false,
+      createFields: true,
+    });
+    const createIndex = gated.params.find((p) => p.name === "create_index");
+    expect(createIndex?.hidden).toBe(true);
+    expect(gated.params).toHaveLength(defs[0].params.length);
+  });
+
+  it("tightens created-field constraints to existing fields", () => {
+    const [gated] = gateDefinitions(defs, {
+      createIndexes: true,
+      createFields: false,
+    });
+    const distField = gated.params.find((p) => p.name === "dist_field");
+    expect(
+      distField?.choices.fields.every((c) => c.existence === "EXISTING"),
+    ).toBe(true);
   });
 });
