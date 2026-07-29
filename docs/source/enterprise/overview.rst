@@ -62,6 +62,13 @@ source project:
         Pre-label data with foundation and zoo models, then verify it with
         built-in QA workflows.
 
+    .. grid-item-card:: Agentic Labeling
+        :link: agentic_labeling
+        :link-type: doc
+
+        Label images with a prompt-driven vision-language model — classify,
+        detect, caption, or label regions for review.
+
     .. grid-item-card:: FiftyOne Agent __SUB_NEW__
         :link: agent
         :link-type: doc
@@ -223,6 +230,11 @@ links in each row for details.
     <th class="stub"><p><a href="verified_auto_labeling.html">Auto-labeling &amp; QA</a></p></th>
     <td><p class="none">Not available</p></td>
     <td><p>Auto-label with foundation and zoo models, with confidence scoring and verified review</p></td>
+    </tr>
+    <tr>
+    <th class="stub"><p><a href="agentic_labeling.html">Agentic Labeling</a></p></th>
+    <td><p class="none">Not available</p></td>
+    <td><p>Prompt-driven VLM labeling: classification, detection, captioning, and region labels</p></td>
     </tr>
     <tr>
     <th class="stub"><p><a href="data_quality.html">Data quality</a></p></th>

@@ -349,6 +349,14 @@ Labels are not the only type of metadata available for edits in FiftyOne's in-Ap
 How to: 2D Label Annotation
 ----------------------------
 
+.. admonition:: Label faster with AI
+   :class: tip
+
+   FiftyOne can help you label images with AI: prompt masks with
+   :ref:`AI-assisted segmentation <in-app-ai-segmentation>`, or auto-label a
+   whole dataset from a few examples with
+   :ref:`Agentic Labeling <agentic-labeling>`.
+
 Creating a Classification label
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -379,8 +387,17 @@ A detection label's size and shape can be adjusted directly in the annotation ca
 .. image:: /_static/images/annotation/edit_bounding_box_canvas.gif
    :alt: Editing detection on canvas
 
+.. _creating-a-segmentation-label:
+
 Creating a Segmentation label
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. admonition:: Prompt masks with AI
+   :class: tip
+
+   Rather than painting a mask by hand, you can prompt one with a model using
+   the AI assistance tool — see
+   :ref:`AI-assisted image segmentation <in-app-ai-segmentation>`.
 
 .. image:: /_static/images/annotation/create_mask_button.png
    :alt: Create new mask button
@@ -466,8 +483,16 @@ The editing panel also enables editing the label, tags, confidence, index proper
 
 ----
 
+.. _how-to-video-annotation:
+
 How to: Video Annotation
 ------------------------
+
+.. admonition:: Label faster with AI
+   :class: tip
+
+   Track an object's mask across frames automatically with
+   :ref:`AI-assisted video tracking <in-app-video-tracking>`.
 
 .. |video-kf-icon| image:: https://cdn.voxel51.com/user_guide/annotation/video_toolbar_mark_keyframe_button.webp
    :height: 1.6em
@@ -518,6 +543,13 @@ Video annotation requires:
 
 Creating Object Tracks
 ~~~~~~~~~~~~~~~~~~~~~~
+
+.. admonition:: Track objects with AI
+   :class: tip
+
+   Instead of annotating each frame, you can prompt an object's mask on one
+   frame and track it across the rest — see
+   :ref:`AI-assisted video tracking <in-app-video-tracking>`.
 
 To create an object track, the
 :ref:`Annotation Schema <annotation-schema-format>` needs to contain a
@@ -943,3 +975,76 @@ Clicking on a primitive field in the "Annotate" tab will open the editing panel 
 
 .. image:: /_static/images/annotation/primitive_editing_panel.png
    :alt: Editing primitives in the right sidebar
+
+----
+
+.. _in-app-ai-annotation:
+
+How to: AI assisted annotation 🚀 __SUB_NEW__
+---------------------------------------------
+
+FiftyOne can put models to work in the annotation editor so you spend less time
+labeling by hand. Prompt masks with a segmentation model, track objects across
+video frames, or auto-label a whole dataset from a few examples with Agentic
+Labeling. These are `FiftyOne Enterprise <https://voxel51.com/enterprise/>`_
+features that run on your own GPU infrastructure as
+:ref:`services <enterprise-services>` started by an administrator.
+
+.. _in-app-ai-segmentation:
+
+Image segmentation
+~~~~~~~~~~~~~~~~~~
+
+Instead of drawing a mask by hand, you can prompt one with a segmentation
+model. Select the AI assistance tool in the mask toolbar, then click positive
+points on the object and negative points on regions to exclude; the model
+returns a mask after each click, so you can add points to refine it before
+saving. A built-in model works out of the box, and FiftyOne Enterprise
+deployments can run larger, finetuned models as a
+:ref:`service <enterprise-services>` on their own GPUs.
+
+.. image:: https://cdn.voxel51.com/user_guide/annotation/image_segmentation.webp
+   :alt: in-app-ai-segmentation
+   :align: center
+
+See :ref:`Creating a Segmentation label <creating-a-segmentation-label>` for
+the mask toolbar and drawing basics.
+
+.. _in-app-video-tracking:
+
+Video object tracking
+~~~~~~~~~~~~~~~~~~~~~
+
+On video, prompt an object's mask on one frame and track it across the
+remaining frames automatically. Review the tracked masks and add prompts on
+any frame to correct them. Video tracking is a FiftyOne Enterprise feature
+powered by a segmentation model running as a
+:ref:`service <enterprise-services>`.
+
+.. raw:: html
+
+   <video autoplay controls muted loop playsinline width="100%"
+          style="max-width:720px"
+          aria-label="Tracking an object's mask across video frames">
+     <source src="https://cdn.voxel51.com/user_guide/annotation/video_segmentation.mp4"
+             type="video/mp4">
+   </video>
+
+See :ref:`How to: Video Annotation <how-to-video-annotation>` for the video
+annotation basics.
+
+Agentic Labeling
+~~~~~~~~~~~~~~~~~
+
+Agentic Labeling uses a prompt-driven vision-language model to label an image
+dataset from a few examples: describe what you want, optionally add positive
+and negative example samples, preview the results, then apply the agent across
+your dataset for review. It runs as a FiftyOne Enterprise
+:ref:`service <enterprise-services>` that an administrator starts.
+
+.. image:: https://cdn.voxel51.com/enterprise_agentic_labeling/al_test_results.webp
+   :alt: agentic-labeling-test-results
+   :align: center
+
+See the :ref:`Agentic Labeling <agentic-labeling>` guide for the full
+workflow, supported tasks, and prompting tips.
