@@ -11,9 +11,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { HoverPopover } from "./HoverPopover";
-
-const CLOSE_DELAY_MS = 120;
+import { CLOSE_DELAY_MS, HoverPopover } from "./HoverPopover";
 
 const subject = () => (
   <HoverPopover label="Status" content={<div>the card</div>}>

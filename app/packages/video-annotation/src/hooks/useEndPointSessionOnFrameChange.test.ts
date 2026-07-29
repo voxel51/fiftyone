@@ -26,9 +26,16 @@ describe("useEndPointSessionOnFrameChange", () => {
     hoisted.frame.value = 1;
   });
 
+  // Mounting isn't a frame change, and AI mode survives a surface remount, so
+  // a session in progress must survive one too.
+  it("does nothing on mount", () => {
+    renderHook(() => useEndPointSessionOnFrameChange());
+
+    expect(hoisted.endPointSession).not.toHaveBeenCalled();
+  });
+
   it("ends the session when the playhead moves to another frame", () => {
     const { rerender } = renderHook(() => useEndPointSessionOnFrameChange());
-    vi.clearAllMocks();
 
     hoisted.frame.value = 2;
     rerender();
@@ -38,7 +45,6 @@ describe("useEndPointSessionOnFrameChange", () => {
 
   it("does nothing on a re-render that stays on the same frame", () => {
     const { rerender } = renderHook(() => useEndPointSessionOnFrameChange());
-    vi.clearAllMocks();
 
     rerender();
 
