@@ -22,6 +22,7 @@ import {
 import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
+import { shouldSuppressHoverOnPointer } from "./shared/shouldSuppressHoverOnPointer";
 import { Transformable } from "./shared/TransformControls";
 
 export interface PolyLineProps extends OverlayProps {
@@ -313,8 +314,11 @@ export const Polyline = ({
           {...restEventHandlers}
           onPointerOver={(e) => {
             if (
-              isCurrentlyTransforming ||
-              (hoverSource === PANEL_ID_MAIN && e.nativeEvent.buttons !== 0)
+              shouldSuppressHoverOnPointer(
+                hoverSource,
+                isCurrentlyTransforming,
+                e.nativeEvent.buttons,
+              )
             ) {
               return;
             }

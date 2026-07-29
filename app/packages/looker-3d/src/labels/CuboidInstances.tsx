@@ -54,6 +54,7 @@ import {
   getFiniteMagnitude,
 } from "./shared/cuboid-orientation-geometry";
 import { useEventHandlers } from "./shared/hooks";
+import { shouldSuppressHoverOnPointer } from "./shared/shouldSuppressHoverOnPointer";
 import "./shared/registerLineElements";
 import { useDragGate } from "./shared/useDragGate";
 
@@ -444,8 +445,11 @@ export const CuboidInstances = ({
   const handlePointerOver = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
       if (
-        isCurrentlyTransforming ||
-        (hoverSource === PANEL_ID_MAIN && e.nativeEvent.buttons !== 0)
+        shouldSuppressHoverOnPointer(
+          hoverSource,
+          isCurrentlyTransforming,
+          e.nativeEvent.buttons,
+        )
       ) {
         return;
       }
