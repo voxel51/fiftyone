@@ -248,6 +248,27 @@ describe("MaskCanvas decode convergence", () => {
     expect(r.drawn.length).toBe(drawsBefore);
     expect(maskCacheStub.released).toContain("mask-1");
   });
+
+  it("does not restart a decode that already failed for the same source", async () => {
+    const errors = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    // Never enqueued, so the stub's acquireAsync rejects — a broken source.
+    const mc = new MaskCanvas("mask-err");
+    const r = recordingRenderer();
+
+    draw(mc, r);
+    await maskCacheStub.settle();
+    expect(errors).toHaveBeenCalledTimes(1);
+
+    // A repaint must not pay for (or log) the same doomed decode again.
+    draw(mc, r);
+    await maskCacheStub.settle();
+    expect(errors).toHaveBeenCalledTimes(1);
+
+    errors.mockRestore();
+  });
 });
 
 describe("MaskCanvas.mergeFrom", () => {

@@ -76,6 +76,13 @@ export class MaskCanvas {
   private staleSource?: MaskSource;
   private stalePixels?: { src: Uint8Array; width: number; height: number };
   /**
+   * Source whose decode failed. Skipped by {@link decodeMaskIfNeeded} so a
+   * permanently broken mask costs one decode, not one per render. Never
+   * cleared: a decode is a pure function of its source, and any edit yields a
+   * different source anyway.
+   */
+  private failedSource?: MaskSource;
+  /**
    * Raw mask source awaiting decode (deferred until color is known). Either
    * a base64-encoded numpy string (inline `mask` field) or a pre-decoded
    * {@link OverlayMask} produced from a `mask_path` fetch.
@@ -256,6 +263,12 @@ export class MaskCanvas {
       return;
     }
 
+    // After the cache probe, not before: if this source ever does become
+    // resident (another consumer decoded it), the hit above still draws it.
+    if (sourceToken === this.failedSource) {
+      return;
+    }
+
     this.decoding = true;
     void this.decodeUntilCurrent(onDecoded);
   }
@@ -275,9 +288,13 @@ export class MaskCanvas {
    * {@link decodeMaskIfNeeded} so a hit is still adopted in the calling tick.
    */
   private async decodeUntilCurrent(onDecoded?: () => void): Promise<void> {
+    // Tracked outside the loop so the catch blacklists the source that
+    // actually failed, not whatever `rawMaskData` has moved on to since.
+    let sourceToken = this.rawMaskData;
+
     try {
       for (;;) {
-        const sourceToken = this.rawMaskData;
+        sourceToken = this.rawMaskData;
 
         if (!sourceToken) {
           return;
@@ -307,6 +324,7 @@ export class MaskCanvas {
       }
     } catch (err) {
       console.error("[MaskCanvas] mask decode failed:", err);
+      this.failedSource = sourceToken;
 
       // Nothing is coming, so stop showing the previous frame's mask — a stale
       // mask held indefinitely is worse than none.
