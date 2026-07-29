@@ -5,6 +5,9 @@ Agentic Labeling
 
 .. default-role:: code
 
+.. customavailablein::
+    :enterprise_version: 2.23.0
+
 Agentic Labeling labels your images with a prompt-driven vision-language
 model (VLM). You describe what you want in plain language, optionally show
 the model a few examples, and it produces labels like classifications,
@@ -30,8 +33,7 @@ labels can go on to train a custom model for large-scale Auto-Labeling.
 Availability and prerequisites
 ______________________________
 
-Agentic Labeling is a `FiftyOne Enterprise <https://voxel51.com/enterprise/>`_
-only feature and requires a running Agentic Labeler service.
+Agentic Labeling requires a running Agentic Labeler service.
 
 Agentic Labeling is supported for image datasets and frames views of video
 datasets. 3D, grouped, and multimodal datasets are not yet supported.

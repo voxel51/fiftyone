@@ -544,6 +544,9 @@ for further details.
 Services
 ________
 
+.. customavailablein::
+    :enterprise_version: 2.23.0
+
 Some builtin operators run as long-lived *services*: always-on model servers
 that stay ready between uses instead of spinning up a new job per run. Services
 are hosted by a **service orchestrator** and power GPU-backed, interactive

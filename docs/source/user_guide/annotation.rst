@@ -987,11 +987,13 @@ Clicking on a primitive field in the "Annotate" tab will open the editing panel 
 How to: AI assisted annotation 🚀 __SUB_NEW__
 ---------------------------------------------
 
+.. customavailablein::
+    :enterprise_version: 2.23.0
+
 FiftyOne can put models to work in the annotation editor so you spend less time
 labeling by hand. Prompt masks with a segmentation model, track objects across
 video frames, or auto-label a whole dataset from a few examples with Agentic
-Labeling. These are `FiftyOne Enterprise <https://voxel51.com/enterprise/>`_
-features that run on your own GPU infrastructure as
+Labeling. These features run on your own GPU infrastructure as
 :ref:`services <enterprise-services>` started by an administrator.
 
 .. _in-app-ai-segmentation:
