@@ -150,7 +150,7 @@ export default function RunsList({
             )}
           </div>
         ) : (
-          <div className="emb-runs-stack" style={{ marginTop: "1rem" }}>
+          <div className="emb-runs-stack">
             {runs.map((run) => (
               <RunCard
                 key={run.brainKey}

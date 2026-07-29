@@ -440,6 +440,17 @@
   width: 0.5rem;
   border-radius: 9999px;
   flex-shrink: 0;
+  /* optical: center against the glyphs' x-height rather than the full
+     line box, which reads a hair high next to lowercase labels */
+  position: relative;
+  top: 1px;
+}
+
+/* Strip the labels' leading so the flex centering aligns glyph-sized
+   boxes; with the default line-height the extra descent space made both
+   the text and the dot read high against the row */
+.emb-legend-row > * {
+  line-height: 1;
 }
 
 /* --- Continuous (spectrum) legend -------------------------------------- */
@@ -530,9 +541,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  /* extra top breathing room per design review (landing page felt
-     cramped against the panel chrome) */
-  padding: 1.5rem 1rem 0.75rem;
+  /* top-heavy on purpose per design review: clear separation from the
+     panel chrome above, while the count/button stay tight to the run
+     cards they describe (~2:1 against .emb-runs-scroll's top padding) */
+  padding: 2rem 1rem 0.25rem;
   flex-shrink: 0;
 }
 
