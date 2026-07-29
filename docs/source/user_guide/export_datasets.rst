@@ -506,6 +506,9 @@ refer to the corresponding dataset format when writing the dataset to disk.
     | :ref:`BDD <BDDDataset-export>`                                     | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                    | saved in `Berkeley DeepDrive (BDD) format <http://bdd-data.berkeley.edu>`_.        |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`VQA <VQADataset-export>`                                     | A labeled dataset consisting of images and their associated visual question        |
+    |                                                                    | answering (VQA) labels stored in a simple JSON format.                             |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`CSV <CSVDataset-export>`                                     | A flexible CSV format that represents slice(s) of a dataset's values as columns of |
     |                                                                    | a CSV file.                                                                        |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
@@ -3312,6 +3315,81 @@ the `labels_path` parameter instead of `export_dir`:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.BDDDataset \
             --kwargs labels_path=$LABELS_PATH
+
+.. _VQADataset-export:
+
+VQA
+---
+
+The :class:`fiftyone.types.VQADataset` type represents a labeled dataset
+consisting of images and their associated
+:ref:`visual question answering (VQA) <vqa>` labels stored in a simple JSON
+format.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <export_dir>/
+        data/
+            <filename1>.<ext>
+            <filename2>.<ext>
+            ...
+        labels.json
+
+where `labels.json` contains one entry per question in the following format:
+
+.. code-block:: text
+
+    {
+        "questions": [
+            {
+                "image": <filename1>,
+                "question": "...",
+                "question_id": "...",
+                "answer": "...",
+                "answers": ["...", ...],
+                "choices": ["...", ...],
+                "answer_index": 0,
+                "question_type": "...",
+                "answer_type": "...",
+                "confidence": 0.9
+            },
+            ...
+        ]
+    }
+
+|VQAs| fields are unwound into one entry per question; only populated
+attributes are written, and any ``answer_index`` dynamic attributes are
+preserved.
+
+.. note::
+
+    See :class:`VQADatasetExporter <fiftyone.utils.vqa.VQADatasetExporter>`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.export() <fiftyone.core.dataset.Dataset.export>` to
+    customize the export of datasets of this type.
+
+You can export a FiftyOne dataset as a VQA dataset in the above format as
+follows:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    export_dir = "/path/for/vqa-dataset"
+    label_field = "questions"  # for example
+
+    # The Dataset or DatasetView to export
+    dataset_or_view = fo.load_dataset(...)
+
+    # Export the dataset
+    dataset_or_view.export(
+        export_dir=export_dir,
+        dataset_type=fo.types.VQADataset,
+        label_field=label_field,
+    )
 
 .. _CSVDataset-export:
 

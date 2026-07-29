@@ -3902,6 +3902,142 @@ attributes populated as shown below:
     Did you know? You can view custom attributes in the
     :ref:`App tooltip <app-sample-view>` by hovering over the objects.
 
+.. _vqa:
+
+Visual question answering
+-------------------------
+
+The |VQA| class represents a visual question answering (VQA) pair for a
+sample.
+
+The :attr:`question <fiftyone.core.labels.VQA.question>` attribute stores the
+question about the media, and the
+:attr:`answer <fiftyone.core.labels.VQA.answer>` attribute stores the answer
+to it:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+    sample["question"] = fo.VQA(
+        question="What color is the cat?",
+        answer="black",
+    )
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'media_type': 'image',
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'created_at': None,
+        'last_modified_at': None,
+        'question': <VQA: {
+            'id': '6a46ebccfd6d484ba80505e0',
+            'tags': [],
+            'question': 'What color is the cat?',
+            'answer': 'black',
+            'answers': [],
+            'choices': [],
+            'question_type': None,
+            'answer_type': None,
+            'question_id': None,
+            'confidence': None,
+        }>,
+    }>
+
+The optional attributes of the class support the common shapes of VQA
+datasets:
+
+-   :attr:`answers <fiftyone.core.labels.VQA.answers>` stores multiple
+    reference answers, for datasets that provide several ground truth
+    answers per question
+-   :attr:`choices <fiftyone.core.labels.VQA.choices>` stores the allowed
+    answers, for multiple-choice datasets
+-   :attr:`question_type <fiftyone.core.labels.VQA.question_type>` and
+    :attr:`answer_type <fiftyone.core.labels.VQA.answer_type>` store
+    categorizations that you can use to break down
+    :ref:`evaluation results <evaluating-vqa>`
+-   :attr:`question_id <fiftyone.core.labels.VQA.question_id>` stores a
+    stable identifier that is used to match predictions with ground truth
+    during :ref:`evaluation <evaluating-vqa>`
+-   :attr:`confidence <fiftyone.core.labels.VQA.confidence>` can store a
+    model prediction score
+
+You can also add :ref:`custom attributes <using-labels>`, which can be
+visualized in the App.
+
+The |VQAs| class holds a list of VQA labels for a sample:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+    sample["questions"] = fo.VQAs(
+        vqas=[
+            fo.VQA(
+                question="What color is the cat?",
+                answer="black",
+                question_id="q1",
+            ),
+            fo.VQA(
+                question="How many cats are there?",
+                answer="1",
+                question_id="q2",
+            ),
+        ]
+    )
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'media_type': 'image',
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'created_at': None,
+        'last_modified_at': None,
+        'questions': <VQAs: {
+            'vqas': [
+                <VQA: {
+                    'id': '6a46ebccfd6d484ba80505e1',
+                    'tags': [],
+                    'question': 'What color is the cat?',
+                    'answer': 'black',
+                    'answers': [],
+                    'choices': [],
+                    'question_type': None,
+                    'answer_type': None,
+                    'question_id': 'q1',
+                    'confidence': None,
+                }>,
+                <VQA: {
+                    'id': '6a46ebccfd6d484ba80505e2',
+                    'tags': [],
+                    'question': 'How many cats are there?',
+                    'answer': '1',
+                    'answers': [],
+                    'choices': [],
+                    'question_type': None,
+                    'answer_type': None,
+                    'question_id': 'q2',
+                    'confidence': None,
+                }>,
+            ],
+        }>,
+    }>
+
 .. _geolocation:
 
 Geolocation

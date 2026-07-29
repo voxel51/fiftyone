@@ -55,6 +55,8 @@
 .. |Heatmap| replace:: :class:`Heatmap <fiftyone.core.labels.Heatmap>`
 .. |TemporalDetection| replace:: :class:`TemporalDetection <fiftyone.core.labels.TemporalDetection>`
 .. |TemporalDetections| replace:: :class:`TemporalDetections <fiftyone.core.labels.TemporalDetections>`
+.. |VQA| replace:: :class:`VQA <fiftyone.core.labels.VQA>`
+.. |VQAs| replace:: :class:`VQAs <fiftyone.core.labels.VQAs>`
 .. |GeoLocation| replace:: :class:`GeoLocation <fiftyone.core.labels.GeoLocation>`
 .. |GeoLocations| replace:: :class:`GeoLocations <fiftyone.core.labels.GeoLocations>`
 
@@ -142,6 +144,7 @@
 .. |RegressionResults| replace:: :class:`RegressionResults <fiftyone.utils.eval.regression.RegressionResults>`
 .. |ClassificationResults| replace:: :class:`ClassificationResults <fiftyone.utils.eval.classification.ClassificationResults>`
 .. |BinaryClassificationResults| replace:: :class:`BinaryClassificationResults <fiftyone.utils.eval.classification.BinaryClassificationResults>`
+.. |VQAResults| replace:: :class:`VQAResults <fiftyone.utils.eval.vqa.VQAResults>`
 .. |DetectionResults| replace:: :class:`DetectionResults <fiftyone.utils.eval.detection.DetectionResults>`
 .. |SegmentationResults| replace:: :class:`SegmentationResults <fiftyone.utils.eval.segmentation.SegmentationResults>`
 .. |COCOEvaluationConfig| replace:: :class:`COCOEvaluationConfig <fiftyone.utils.eval.coco.COCOEvaluationConfig>`
