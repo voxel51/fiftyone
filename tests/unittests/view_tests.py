@@ -4484,6 +4484,36 @@ class ViewStageTests(unittest.TestCase):
         self.assertIsInstance(decoded._filter, dict)
         self.assertEqual(decoded._get_mongo_expr(), stage._get_mongo_expr())
 
+    def test_compound_sort_records_each_expression(self):
+        dataset = self._setUp_envelopes()
+        view = dataset.sort_by([(F("num") * 2, 1), ("filepath", -1)])
+        stage = view._stages[0]
+
+        d = stage._serialize()
+        # The list shape survives, with an envelope only where syntax existed
+        envelopes = d["_expr_asts"]["field_or_expr"]
+        self.assertEqual(len(envelopes), 2)
+        self.assertIsNotNone(envelopes[0])
+        self.assertIsNone(envelopes[1])
+
+        decoded = fosg.ViewStage._from_dict(d)
+        restored = decoded._field_or_expr
+        self.assertEqual(len(restored), 2)
+        self.assertIsInstance(restored[0][0], foe.ViewExpression)
+        self.assertEqual(restored[0][1], 1)
+        self.assertEqual(restored[1][0], "filepath")
+        self.assertEqual(restored[1][1], -1)
+        self.assertEqual(
+            decoded._get_mongo_field_or_expr(),
+            stage._get_mongo_field_or_expr(),
+        )
+
+    def test_rendered_date_uses_a_current_api(self):
+        expr = F("created_at") > datetime(2026, 7, 29)
+        source = expr.to_python()
+        self.assertNotIn("utcfromtimestamp", source)
+        self.assertIn("timezone.utc", source)
+
     def test_foreign_fo_expr_dict_passes_through(self):
         # A raw kwarg dict that happens to carry the envelope key is not an
         # envelope; it loads untouched, exactly as it did before envelopes

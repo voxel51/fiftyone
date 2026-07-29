@@ -431,7 +431,7 @@ class ViewStage(object):
                 continue
 
             try:
-                kwargs[name] = foea.from_envelope(envelope)
+                kwargs[name] = _overlay_expressions(kwargs[name], envelope)
             except ValueError:
                 # A tree this build doesn't understand; the lowered MongoDB
                 # already in `kwargs` remains correct
@@ -465,12 +465,58 @@ def _encode_expressions(expressions):
     """
     envelopes = {}
     for name, value in expressions.items():
-        if isinstance(value, foe.ViewExpression) and foea.is_reconstructible(
-            value
-        ):
-            envelopes[name] = foea.to_envelope(value)
+        envelope = _encode_expression(value)
+        if envelope is not None:
+            envelopes[name] = envelope
 
     return envelopes
+
+
+def _encode_expression(value):
+    """The envelope for one parameter's value, or None when there is nothing
+    to record.
+
+    A compound sort holds a list of ``(field_or_expr, order)`` pairs rather
+    than a single expression, so the shape is preserved and each element
+    recorded on its own — an element with no syntax to record travels as
+    ``None`` so the list stays aligned with the lowered kwargs.
+    """
+    if isinstance(value, foe.ViewExpression):
+        if foea.is_reconstructible(value):
+            return foea.to_envelope(value)
+
+        return None
+
+    if isinstance(value, (list, tuple)):
+        encoded = [_encode_expression(item) for item in value]
+        return encoded if any(item is not None for item in encoded) else None
+
+    return None
+
+
+def _overlay_expressions(value, envelope):
+    """The parameter value with any recorded expressions put back.
+
+    A single envelope replaces the value outright. A list of them is applied
+    element-wise, so a compound sort keeps its ``(field_or_expr, order)``
+    pairs and only the elements that recorded syntax are reconstructed.
+    """
+    if envelope is None:
+        return value
+
+    if isinstance(envelope, list):
+        # The encoder mirrors the value's shape, so a compound sort's
+        # `[[expr, order], ...]` arrives as `[[envelope, None], ...]` and
+        # stepping through in parallel restores it without special cases
+        if not isinstance(value, (list, tuple)) or len(value) != len(envelope):
+            return value
+
+        return [
+            _overlay_expressions(item, item_envelope)
+            for item, item_envelope in zip(value, envelope)
+        ]
+
+    return _decode_expressions(envelope)
 
 
 def _decode_expressions(value):
