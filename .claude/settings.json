@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "mcp__claude_ai_Slack__slack_read_thread",
-      "mcp__claude_ai_Slack__slack_read_channel",
-      "mcp__claude_ai_Slack__slack_search_channels"
-    ]
-  }
-}
