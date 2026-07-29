@@ -14,6 +14,8 @@ export type {
   PropagationInferenceResult,
 } from "./agents/types";
 export { useAgentRegistry } from "./agents/hooks/useAgentRegistry";
+export { useClearPointPrompts } from "./agents/hooks/useClearPointPrompts";
+export { useEndPointSession } from "./agents/hooks/useEndPointSession";
 export { useSampleDescriptor } from "./agents/hooks/useSampleDescriptor";
 export {
   useSetSegmentBitmapSource,
