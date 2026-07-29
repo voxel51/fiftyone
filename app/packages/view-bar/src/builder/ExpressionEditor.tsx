@@ -159,13 +159,18 @@ const KIND_LABEL: Record<Kind, string> = {
   ID: "id",
 };
 
+// Stable default identities, so the memos keyed on them hold between renders
+const NO_FIELDS: string[] = [];
+const NO_OPERATORS: Operator[] = [];
+const NO_KIND = () => undefined;
+
 export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
   value,
   onChange,
-  fields = [],
-  fieldKind = () => undefined,
+  fields = NO_FIELDS,
+  fieldKind = NO_KIND,
   // No catalog yet means no operator suggestions — never a stale local copy
-  operators = [],
+  operators = NO_OPERATORS,
   placeholder = 'F("confidence") > 0.5',
   tabs,
   disabled,

@@ -88,7 +88,11 @@ export interface Envelope {
 
 export const AST_KEY = "_fo_expr";
 
-/** The tree format this build understands; a higher version is refused. */
+/**
+ * The tree format this build understands. A higher version is not rendered —
+ * the reader falls back to the lowered form instead, on both sides: the App
+ * shows json, the server keeps the Mongo it was sent.
+ */
 export const AST_VERSION = 1;
 
 export const isEnvelope = (value: unknown): value is Envelope =>

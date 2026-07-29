@@ -12,6 +12,7 @@ lives in :mod:`fiftyone.core.expression_catalog`; this module serves it.
 """
 
 import typing as t
+from functools import lru_cache
 
 import strawberry as gql
 
@@ -56,8 +57,9 @@ class FieldKind:
     kind: Kind
 
 
-def view_expression_operators() -> t.List[ViewExpressionOperator]:
-    return [
+@lru_cache(maxsize=1)
+def _operators() -> t.Tuple[ViewExpressionOperator, ...]:
+    return tuple(
         ViewExpressionOperator(
             name=spec["name"],
             display=spec["display"],
@@ -72,7 +74,13 @@ def view_expression_operators() -> t.List[ViewExpressionOperator]:
             summary=spec["summary"],
         )
         for spec in focx.build_catalog()
-    ]
+    )
+
+
+def view_expression_operators() -> t.List[ViewExpressionOperator]:
+    # The catalog is import-time-static; building it per GraphQL query would
+    # re-run inspect over ~130 operators for identical output
+    return list(_operators())
 
 
 def view_expression_field_kinds() -> t.List[FieldKind]:

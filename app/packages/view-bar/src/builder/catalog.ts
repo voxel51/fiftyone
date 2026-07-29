@@ -11,16 +11,19 @@
  * to the shapes the editor consumes.
  */
 
+const KIND_NAMES = [
+  "ANY",
+  "NUMBER",
+  "STRING",
+  "BOOLEAN",
+  "ARRAY",
+  "OBJECT",
+  "DATE",
+  "ID",
+] as const;
+
 /** The kind of value an operator accepts or produces. */
-export type Kind =
-  | "ANY"
-  | "NUMBER"
-  | "STRING"
-  | "BOOLEAN"
-  | "ARRAY"
-  | "OBJECT"
-  | "DATE"
-  | "ID";
+export type Kind = (typeof KIND_NAMES)[number];
 
 export interface Operator {
   /** Method name on `ViewExpression`, e.g. `__gt__`. */
@@ -36,16 +39,7 @@ export interface Operator {
   summary: string;
 }
 
-const KINDS: ReadonlySet<string> = new Set([
-  "ANY",
-  "NUMBER",
-  "STRING",
-  "BOOLEAN",
-  "ARRAY",
-  "OBJECT",
-  "DATE",
-  "ID",
-]);
+const KINDS: ReadonlySet<string> = new Set(KIND_NAMES);
 
 /**
  * A kind the server sent, as this editor's union. A value this build does not

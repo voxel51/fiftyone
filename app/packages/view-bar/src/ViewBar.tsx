@@ -821,6 +821,9 @@ const ViewBar: React.FC<{
             size={Size.Xs}
             onClick={apply}
             disabled={paramErrors.labels.length > 0}
+            // Hidden means hidden: while the wrapper is aria-hidden the
+            // button also leaves the tab order
+            tabIndex={hasPendingChanges ? undefined : -1}
             data-cy="btn-apply-view-bar"
           >
             Apply

@@ -143,7 +143,18 @@ const ParamControl: React.FC<ParamInputProps> = ({
   // Controls name themselves, and say they are required in the same breath —
   // a bare `*` beside the name is a second thing to look at and decode
   const allowed = allowedFor(param);
-  const options = fieldOptions.filter((option) => allowed.includes(option.id));
+  const allowedSet = React.useMemo(() => new Set(allowed), [allowed]);
+  const options = React.useMemo(
+    () => fieldOptions.filter((option) => allowedSet.has(option.id)),
+    [fieldOptions, allowedSet],
+  );
+  // A filter on a label field is applied to each label, so the expression
+  // names the label's own fields rather than paths from the sample —
+  // and kinds are resolved against the schema, which knows the full path
+  const scoped = React.useMemo(
+    () => (scope ? scopedEntries(scope, allPaths) : null),
+    [scope, allPaths],
+  );
   const label = humanize(param.name);
   const described = param.placeholder?.trim() || label;
   const placeholder = param.required ? `${described} (required)` : described;
@@ -314,10 +325,6 @@ const ParamControl: React.FC<ParamInputProps> = ({
 
     case "python": {
       const source = sourceOf(value);
-      // A filter on a label field is applied to each label, so the expression
-      // names the label's own fields rather than paths from the sample —
-      // and kinds are resolved against the schema, which knows the full path
-      const scoped = scope ? scopedEntries(scope, allPaths) : null;
       const suggestable = scoped ? [...scoped.keys()] : allowed;
       const kindAt = scoped
         ? (path: string) => fieldKind?.(scoped.get(path) ?? path)

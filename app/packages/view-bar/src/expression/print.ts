@@ -230,5 +230,5 @@ const literal = (value: unknown, as?: "date" | "timedelta"): string => {
 /** Python's preferred string quoting. */
 const quote = (value: string): string =>
   value.includes("'") && !value.includes('"')
-    ? `"${value}"`
+    ? `"${value.replace(/\\/g, "\\\\")}"`
     : `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
