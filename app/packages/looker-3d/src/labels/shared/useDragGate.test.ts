@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import type { ThreeEvent } from "@react-three/fiber";
 import { describe, expect, it } from "vitest";
 import { useDragGate } from "./useDragGate";
