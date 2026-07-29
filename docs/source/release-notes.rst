@@ -14,37 +14,37 @@ Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
   examples, preview its predictions live, and save agents as reusable
   snapshots. Supports classification and detection labels, region/patch
   labeling, and grouped datasets
-- **AI-powered video annotation**: SAM2 click-to-segment and AI object
-  tracking on the video annotation surface, with mask and bounding-box
-  prompts, bidirectional tracking, and concurrent tracking runs
+- **AI-powered video annotation**: click to segment objects with SAM2 and
+  track them automatically through the clip — start from a point, box, or
+  existing mask on any frame, track in both directions, and track multiple
+  objects at once
 - **Embeddings refresh**: update an existing embeddings visualization with
   just the samples added since it was computed — no full recompute —
   directly from the Embeddings panel
-- Video annotation AI now defaults to the large SAM2 model, with the model
-  size configurable via environment variable
-- Annotation AI services are consolidated into a single `annotation-ai`
-  service image, and the Services page and annotation AI panel are now
+- Video annotation AI now uses the most capable SAM2 model by default;
+  deployments can opt into a smaller, faster model
+- Annotation AI features now ship as a single `annotation-ai` service — one
+  image to deploy — and the Services page and annotation AI panel are
   always visible
-- Added a service status popover and a Personal > Runs settings page, with
-  service rows linking directly to service logs
-- Improved service orchestration: stopping a managed service now forwards
-  SIGTERM to the workload (releasing GPU memory), health probes respect the
-  configured healthcheck port, worker host resolution is docker-aware for
-  out-of-band compose deployments, and builtin services can be configured to
-  start in a stopped state
-- Auto Labeling now automatically discovers its backing service via the
-  orchestrator binding
+- Check service health at a glance from the new status popover, and review
+  your runs and jump to service logs from the new Personal > Runs settings
+  page
+- More reliable service management: stopping a service frees its GPU
+  memory, health checks honor the configured port, compose deployments
+  resolve service hosts correctly, and builtin services can be configured
+  to start stopped
+- Auto Labeling now finds its backing service automatically — no manual
+  configuration required
 - The datasets listing page now displays the multimodal dataset type
-- Delegated operations improvements: named delegation targets are hidden
-  from the schedule dropdown, fixed delegated operation log persistence and
-  an infinite `DocumentTooLarge` error, and improved progress log capture
-- Multimodal fixes, including projection writes now using FiftyOne
-  Enterprise credentials
-- Fixed GPU metrics in telemetry reporting and enabled GPU metrics for
-  delegated executor services
-- Fixed workflow canvas back-edge connections after page reloads
-- Datasets no longer appear locked when dataset locking routes are
-  unavailable
+- Delegated operations improvements: the schedule dropdown no longer lists
+  named delegation targets, run logs persist reliably — including for very
+  large logs — and progress logs capture more output
+- Multimodal fixes, including writes now honoring your FiftyOne Enterprise
+  cloud credentials
+- Run metrics now report GPU usage correctly, including for delegated
+  executor services
+- Workflow canvas connections now render correctly after page reloads
+- Fixed datasets incorrectly appearing locked in some deployments
 - Upgraded `protobufjs`, `torch`, `torchvision`, and `transformers`
   dependencies to mitigate CVEs and fix `timm` model support
 
@@ -56,13 +56,11 @@ FiftyOne 1.20.0
 
 App
 ^^^
-- **Rebuilt Embeddings panel**: rebuilt from the ground up for scale —
-  embeddings now ship once as binary columns and interactions run
-  client-side, staying interactive into the hundreds of thousands to
-  millions of points. Includes a runs list with readiness status, color-by
-  with categorical and continuous legends, lasso selection synced both ways
-  with the sample grid, hover cards with media previews, and a WebGL
-  density-based renderer. Works with existing visualization results — no
+- **Rebuilt Embeddings panel**: rebuilt from the ground up for scale,
+  staying smooth and interactive into the millions of points. Includes a
+  runs list with readiness status, color-by with categorical and continuous
+  legends, lasso selection synced both ways with the sample grid, and hover
+  cards with media previews. Works with existing visualization results — no
   recompute required — and requires `fiftyone-brain>=0.23`
   `#8042 <https://github.com/voxel51/fiftyone/pull/8042>`_,
   `#8073 <https://github.com/voxel51/fiftyone/pull/8073>`_,
@@ -79,41 +77,36 @@ App
   `#8050 <https://github.com/voxel51/fiftyone/pull/8050>`_
 - Fixed polyline and keypoint point editing in video annotation
   `#8048 <https://github.com/voxel51/fiftyone/pull/8048>`_
-- Fixed video annotation tracks being incorrectly merged; tracks now
-  coalesce by track index
+- Fixed video annotation tracks being incorrectly merged
   `#8046 <https://github.com/voxel51/fiftyone/pull/8046>`_
 - Fixed segmentation mask edits not persisting while annotating with
   autosave enabled
   `#8028 <https://github.com/voxel51/fiftyone/pull/8028>`_
-- Fixed overlapping in-browser SAM2 inference requests failing with
-  "session already started" errors
+- Fixed "session already started" errors when adding segmentation points
+  in quick succession
   `#8101 <https://github.com/voxel51/fiftyone/pull/8101>`_
-- Fixed dropdowns scroll-locking the page and re-rendering the grid
+- Fixed opening a dropdown locking page scroll and flashing the grid
   `#8125 <https://github.com/voxel51/fiftyone/pull/8125>`_
 - Polyline labels are now anchored at the centroid of their points
   `#7719 <https://github.com/voxel51/fiftyone/pull/7719>`_
-- Temporal tag routes are now always registered with the App server,
-  independent of the multimodal feature flag
+- Temporal tags are now available in every App configuration
   `#8072 <https://github.com/voxel51/fiftyone/pull/8072>`_
 - Fixed similarity search on grouped datasets
   `#8049 <https://github.com/voxel51/fiftyone/pull/8049>`_
-- Fixed sidebar selector inputs clobbering in-progress search text when
-  their value updates mid-edit
+- Fixed sidebar search inputs losing in-progress text
   `#8029 <https://github.com/voxel51/fiftyone/pull/8029>`_
 
 Performance
 ^^^^^^^^^^^
-- Detection masks are now decoded off the main thread and tinted on the
-  GPU, for smoother rendering of mask-heavy samples
+- Smoother rendering of mask-heavy samples
   `#7859 <https://github.com/voxel51/fiftyone/pull/7859>`_,
   `#7861 <https://github.com/voxel51/fiftyone/pull/7861>`_
-- Smoother video annotation playback: decoded masks are cached around the
-  playhead and playback waits for mask readiness, eliminating flicker
+- Smoother video annotation playback, with no mask flicker
   `#8131 <https://github.com/voxel51/fiftyone/pull/8131>`_
 - Fixed App memory leaks in the annotation renderer, undo history, and
   sidebar, reducing memory growth during long annotation sessions
   `#8015 <https://github.com/voxel51/fiftyone/pull/8015>`_
-- Optimized default label schema computation for faster dataset loads
+- Faster dataset loads
   `#7841 <https://github.com/voxel51/fiftyone/pull/7841>`_
 
 Core
@@ -137,12 +130,10 @@ Models
 
 Brain
 ^^^^^
-- Embeddings visualizations can now be updated incrementally: new samples
-  are embedded and projected into an existing visualization without
+- Add new samples to an existing embeddings visualization without
   recomputing it from scratch
   `#289 <https://github.com/voxel51/fiftyone-brain/pull/289>`_
-- Visualization results are now stored in a binary format that loads
-  dramatically faster for large runs
+- Visualization results load dramatically faster for large runs
   `#295 <https://github.com/voxel51/fiftyone-brain/pull/295>`_
 - Upgraded the Databricks vector search integration
   `#294 <https://github.com/voxel51/fiftyone-brain/pull/294>`_
