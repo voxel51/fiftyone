@@ -30,6 +30,8 @@ const maskCacheStub = vi.hoisted(() => {
   }
 
   const pending = new Map<string, Pending>();
+  /** Sources handed back, so tests can assert borrows don't leak. */
+  const released: string[] = [];
 
   const decodedOf = (entry: Pending) => ({
     bitmap: entry.bitmap,
@@ -73,7 +75,10 @@ const maskCacheStub = vi.hoisted(() => {
 
     reset() {
       pending.clear();
+      released.length = 0;
     },
+
+    released,
 
     // ---- the surface MaskCanvas consumes ----
     acquire(source: string) {
@@ -86,7 +91,9 @@ const maskCacheStub = vi.hoisted(() => {
       await entry.promise;
       return decodedOf(entry);
     },
-    release: () => undefined,
+    release(source: string) {
+      released.push(source);
+    },
     has(source: string) {
       return pending.get(source)?.stored ?? false;
     },
@@ -218,6 +225,28 @@ describe("MaskCanvas decode convergence", () => {
     draw(mc, r);
 
     expect(r.drawn.at(-1)).toBe(first);
+  });
+
+  it("drops the held mask when the source is removed", async () => {
+    const first = maskCacheStub.enqueue("mask-1");
+
+    const mc = new MaskCanvas("mask-1");
+    const r = recordingRenderer();
+
+    draw(mc, r);
+    maskCacheStub.resolve("mask-1");
+    await maskCacheStub.settle();
+    draw(mc, r);
+    expect(r.drawn.at(-1)).toBe(first);
+
+    // No incoming source means nothing will ever converge — unlike a swap,
+    // hold-last must not kick in, and the borrow has to go back.
+    mc.updateSource(undefined);
+    const drawsBefore = r.drawn.length;
+    draw(mc, r);
+
+    expect(r.drawn.length).toBe(drawsBefore);
+    expect(maskCacheStub.released).toContain("mask-1");
   });
 });
 
