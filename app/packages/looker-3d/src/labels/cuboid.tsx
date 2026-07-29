@@ -547,14 +547,17 @@ export const Cuboid = ({
 
   const setHoveredLabelFromPointer = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
-      if (hoverSource === PANEL_ID_MAIN && e.nativeEvent.buttons !== 0) {
+      if (
+        isCurrentlyTransforming ||
+        (hoverSource === PANEL_ID_MAIN && e.nativeEvent.buttons !== 0)
+      ) {
         return false;
       }
 
       setHoveredLabel({ id: label._id, source: hoverSource });
       return true;
     },
-    [hoverSource, label._id, setHoveredLabel],
+    [hoverSource, isCurrentlyTransforming, label._id, setHoveredLabel],
   );
 
   const transformMode = useRecoilValue(transformModeAtom);

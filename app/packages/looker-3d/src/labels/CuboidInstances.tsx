@@ -11,6 +11,7 @@ import {
   useState,
   type RefObject,
 } from "react";
+import { useRecoilValue } from "recoil";
 import * as THREE from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
@@ -19,6 +20,7 @@ import { PANEL_ID_MAIN } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
 import { use3dLabelColor } from "../hooks/use-3d-label-color";
 import { useSimilarLabels3d } from "../hooks/use-similar-labels-3d";
+import { isCurrentlyTransformingAtom } from "../state";
 import {
   useCurrentSelected3dAnnotationLabel,
   useHoveredLabel3d,
@@ -94,6 +96,7 @@ export const CuboidInstances = ({
 }: CuboidInstancesProps) => {
   const { upVector } = useFo3dContext();
   const hoveredLabel = useHoveredLabel3d();
+  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
   const setHoveredLabel = useSetHoveredLabel3d();
 
   const bodyMeshRef = useRef<THREE.InstancedMesh>(null);
@@ -440,7 +443,12 @@ export const CuboidInstances = ({
 
   const handlePointerOver = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
-      if (hoverSource === PANEL_ID_MAIN && e.nativeEvent.buttons !== 0) return;
+      if (
+        isCurrentlyTransforming ||
+        (hoverSource === PANEL_ID_MAIN && e.nativeEvent.buttons !== 0)
+      ) {
+        return;
+      }
       const label = resolveLabel(e.instanceId);
       if (!label) return;
 
@@ -448,7 +456,13 @@ export const CuboidInstances = ({
       setHoveredLabel({ id: label._id, source: hoverSource });
       onPointerOverForLabel(label, e);
     },
-    [resolveLabel, hoverSource, setHoveredLabel, onPointerOverForLabel],
+    [
+      resolveLabel,
+      hoverSource,
+      isCurrentlyTransforming,
+      setHoveredLabel,
+      onPointerOverForLabel,
+    ],
   );
 
   const handlePointerOut = useCallback(() => {

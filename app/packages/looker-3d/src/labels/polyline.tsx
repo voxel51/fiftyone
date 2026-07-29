@@ -7,7 +7,11 @@ import * as THREE from "three";
 import { useTransientPolyline } from "../annotation/store";
 import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
 import { FO_USER_DATA, PANEL_ID_MAIN } from "../constants";
-import { hoveredLabelAtom, selectedLabelForAnnotationAtom } from "../state";
+import {
+  hoveredLabelAtom,
+  isCurrentlyTransformingAtom,
+  selectedLabelForAnnotationAtom,
+} from "../state";
 import type { HoveredLabelSource } from "../types";
 import { useSetCurrent3dAnnotationMode } from "../state/accessors";
 import {
@@ -47,6 +51,7 @@ export const Polyline = ({
   useHoverState();
   const hoveredLabel = useRecoilValue(hoveredLabelAtom);
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
+  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
   const {
     onPointerOver: onPointerOverForLabel,
     onPointerOut: onPointerOutForLabel,
@@ -307,7 +312,10 @@ export const Polyline = ({
         <group
           {...restEventHandlers}
           onPointerOver={(e) => {
-            if (hoverSource === PANEL_ID_MAIN && e.nativeEvent.buttons !== 0) {
+            if (
+              isCurrentlyTransforming ||
+              (hoverSource === PANEL_ID_MAIN && e.nativeEvent.buttons !== 0)
+            ) {
               return;
             }
 
