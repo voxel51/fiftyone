@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo } from "react";
+import React, { createContext, useContext, useMemo, useRef } from "react";
 import { PlaybackStoreContext } from "./playback-store-context";
 import type {
   PlaybackConfig,
@@ -91,10 +91,18 @@ export function PlaybackProvider({
   snapToFrameOnSettle,
   mode,
 }: PlaybackConfig & { children: React.ReactNode }) {
-  const resolvedMode = useMemo(
-    () => normalizeTimelineMode(mode ?? DEFAULT_MODE),
-    [mode],
-  );
+  // Frozen at mount to match `usePlaybackEngine`'s mount-scoped store: that
+  // store's `resolvedStepInterval` (derived from `mode`) is captured once in
+  // a `useMemo(() => ..., [])`, so a later `mode` prop change without a
+  // remount would otherwise update this context while the engine's
+  // mode-dependent state stays stale. A caller that needs a new mode must
+  // remount the provider (e.g. keyed on the resolved mode, as
+  // `McapSourcePlayback` does).
+  const resolvedModeRef = useRef<TimelineMode>();
+  if (resolvedModeRef.current === undefined) {
+    resolvedModeRef.current = normalizeTimelineMode(mode ?? DEFAULT_MODE);
+  }
+  const resolvedMode = resolvedModeRef.current;
   const { store, contextValue } = usePlaybackEngine({
     duration,
     stepInterval,
