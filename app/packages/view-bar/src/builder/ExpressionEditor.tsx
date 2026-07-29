@@ -14,6 +14,7 @@ import { Code } from "@fiftyone/components";
 import {
   Align,
   Anchor,
+  DatePicker,
   Icon,
   IconName,
   Clickable,
@@ -178,9 +179,26 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
   const [offset, setOffset] = useState(value.length);
   // Suggestions belong to the keyboard owning the box — they close on blur
   const [focused, setFocused] = useState(false);
-  // The mounted command reads through a ref, so it never goes stale
+  // Escape hides the list until the caret moves again
+  const [dismissed, setDismissed] = useState(false);
+  // Which suggestion the arrow keys have landed on
+  const [active, setActive] = useState(0);
+  // The mounted handlers read through refs, so they never go stale
   const onSubmitRef = useRef(onSubmit);
   onSubmitRef.current = onSubmit;
+  const navRef = useRef<{
+    visible: boolean;
+    count: number;
+    move: (delta: number) => void;
+    accept: () => boolean;
+    dismiss: () => void;
+  }>({
+    visible: false,
+    count: 0,
+    move: () => undefined,
+    accept: () => false,
+    dismiss: () => undefined,
+  });
 
   const onMount = useCallback((editor: CodeEditor, monaco: Monaco) => {
     editorRef.current = editor;
@@ -193,6 +211,28 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
     // An expression is one line; Shift+Enter finishes it rather than growing it
     editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.Enter, () => {
       onSubmitRef.current?.();
+    });
+    // The arrow keys drive the suggestion list while it is open; Enter takes
+    // the landed-on suggestion, Escape puts the list away until the caret
+    // moves. With the list closed, every key means what Monaco says it means.
+    editor.onKeyDown((e) => {
+      const nav = navRef.current;
+      if (!nav.visible) return;
+
+      if (e.keyCode === monaco.KeyCode.DownArrow) {
+        nav.move(1);
+      } else if (e.keyCode === monaco.KeyCode.UpArrow) {
+        nav.move(-1);
+      } else if (e.keyCode === monaco.KeyCode.Enter && !e.shiftKey) {
+        if (!nav.accept()) return;
+      } else if (e.keyCode === monaco.KeyCode.Escape) {
+        nav.dismiss();
+      } else {
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
     });
   }, []);
 
@@ -260,6 +300,85 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
     },
     [value, offset, onChange, restoreCaret],
   );
+
+  /** Writes a picked date into the source as `datetime(y, m, d)`. */
+  const chooseDate = useCallback(
+    (picked: Date) => {
+      const text = `datetime(${picked.getFullYear()}, ${
+        picked.getMonth() + 1
+      }, ${picked.getDate()})`;
+      const next = value.slice(0, offset) + text + value.slice(offset);
+      onChange(next);
+      restoreCaret(offset + text.length);
+    },
+    [value, offset, onChange, restoreCaret],
+  );
+
+  /**
+   * The caret sits where a date belongs: as the argument of an operator that
+   * takes one, or on the right of a comparison whose left side is a DATE
+   * field — `F("created_at") > `.
+   */
+  const wantsDate = useMemo(() => {
+    if (signature?.argKind === "DATE") return true;
+
+    const behind = value.slice(0, offset);
+    const comparison = /^(.*?)(==|!=|>=|<=|>|<)\s*$/.exec(behind);
+    if (!comparison) return false;
+
+    const parsed = tryParse(comparison[1]);
+    if ("error" in parsed) return false;
+    return kindOf(parsed.node, operators, fieldKind) === "DATE";
+  }, [signature, value, offset, operators, fieldKind]);
+
+  /**
+   * The rows exactly as rendered, each with what accepting it does — an
+   * operator that does not apply here renders but cannot be landed on.
+   */
+  const entries = useMemo(() => {
+    if (fieldMatches.length > 0) {
+      return fieldMatches.slice(0, 24).map((path) => ({
+        id: `field:${path}`,
+        choose: () => chooseField(path) as void,
+      }));
+    }
+    return suggestions.map(({ operator, applicable }) => ({
+      id: `op:${operator.name}`,
+      choose: applicable ? () => choose(operator) as void : undefined,
+    }));
+  }, [fieldMatches, suggestions, chooseField, choose]);
+
+  const listOpen = focused && !dismissed && (entries.length > 0 || wantsDate);
+
+  // The caret moving is what un-dismisses and re-aims the list
+  React.useEffect(() => {
+    setDismissed(false);
+  }, [value, offset]);
+  React.useEffect(() => {
+    setActive(0);
+  }, [entries]);
+
+  navRef.current = {
+    visible: listOpen && entries.some((entry) => entry.choose),
+    count: entries.length,
+    move: (delta: number) =>
+      setActive((current) => {
+        // Land only on rows that can be accepted
+        let next = current;
+        for (let step = 0; step < entries.length; step++) {
+          next = (next + delta + entries.length) % entries.length;
+          if (entries[next]?.choose) return next;
+        }
+        return current;
+      }),
+    accept: () => {
+      const pick = entries[active]?.choose;
+      if (!pick) return false;
+      pick();
+      return true;
+    },
+    dismiss: () => setDismissed(true),
+  };
 
   const status = statusOf(value, error);
 
@@ -430,7 +549,7 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
           Suggestions float over whatever is below instead of holding a box
           open — they exist only while the caret has something to offer.
         */}
-        {focused && (fieldMatches.length > 0 || suggestions.length > 0) && (
+        {listOpen && (
           <div
             role="listbox"
             // Choosing a suggestion must not blur the editor — the list
@@ -443,7 +562,7 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
               right: 0,
               marginTop: 4,
               zIndex: 10001,
-              maxHeight: 240,
+              maxHeight: wantsDate ? 320 : 240,
               overflowY: "auto",
               overflowX: "hidden",
               borderRadius: 4,
@@ -452,15 +571,27 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
               boxShadow: "0 8px 24px rgba(0, 0, 0, 0.45)",
             }}
           >
+            {wantsDate && (
+              // The caret wants a date, so offer one the way a person picks
+              // one — inserted as `datetime(y, m, d)` at the caret
+              <div style={{ padding: 6 }}>
+                <DatePicker inline onChange={chooseDate} />
+              </div>
+            )}
             {fieldMatches.length > 0
-              ? fieldMatches.slice(0, 24).map((path) => (
-                  <Row key={path} onChoose={() => chooseField(path)}>
+              ? fieldMatches.slice(0, 24).map((path, i) => (
+                  <Row
+                    key={path}
+                    active={i === active}
+                    onChoose={() => chooseField(path)}
+                  >
                     {path}
                   </Row>
                 ))
-              : suggestions.map(({ operator, applicable, reason }) => (
+              : suggestions.map(({ operator, applicable, reason }, i) => (
                   <Suggestion
                     key={operator.name}
+                    active={i === active}
                     operator={operator}
                     applicable={applicable}
                     reason={reason}
@@ -514,28 +645,42 @@ const Signature: React.FC<{
  * the text component carries the type, so the row stays a row.
  */
 const Row: React.FC<
-  React.PropsWithChildren<{ onChoose?: () => void; muted?: boolean }>
-> = ({ onChoose, muted, children }) => (
-  <Clickable
-    onClick={onChoose}
-    role="option"
-    aria-selected={false}
-    aria-disabled={!onChoose}
-    style={{
-      display: "block",
-      padding: "3px 6px",
-      borderRadius: 3,
-      opacity: onChoose ? 1 : 0.6,
-      cursor: onChoose ? "pointer" : "not-allowed",
+  React.PropsWithChildren<{
+    onChoose?: () => void;
+    muted?: boolean;
+    /** The arrow keys have landed here; Enter takes it. */
+    active?: boolean;
+  }>
+> = ({ onChoose, muted, active, children }) => (
+  // voodo's Clickable forwards no ref, so the row's keep-in-view scroll
+  // lives on a wrapping block instead
+  <div
+    ref={(el) => {
+      if (active) el?.scrollIntoView({ block: "nearest" });
     }}
   >
-    <Text
-      variant={TextVariant.Sm}
-      color={muted ? TextColor.Muted : TextColor.Primary}
+    <Clickable
+      onClick={onChoose}
+      role="option"
+      aria-selected={Boolean(active)}
+      aria-disabled={!onChoose}
+      style={{
+        display: "block",
+        padding: "3px 6px",
+        borderRadius: 3,
+        opacity: onChoose ? 1 : 0.6,
+        cursor: onChoose ? "pointer" : "not-allowed",
+        background: active ? "var(--fo-palette-background-level1)" : undefined,
+      }}
     >
-      {children}
-    </Text>
-  </Clickable>
+      <Text
+        variant={TextVariant.Sm}
+        color={muted ? TextColor.Muted : TextColor.Primary}
+      >
+        {children}
+      </Text>
+    </Clickable>
+  </div>
 );
 
 /**
@@ -547,9 +692,15 @@ const Suggestion: React.FC<{
   applicable: boolean;
   reason?: string;
   onChoose: () => void;
-}> = ({ operator, applicable, reason, onChoose }) => {
+  /** The arrow keys have landed here; Enter takes it. */
+  active?: boolean;
+}> = ({ operator, applicable, reason, onChoose, active }) => {
   const row = (
-    <Row onChoose={applicable ? onChoose : undefined} muted={!applicable}>
+    <Row
+      onChoose={applicable ? onChoose : undefined}
+      muted={!applicable}
+      active={active}
+    >
       {operator.display}
     </Row>
   );

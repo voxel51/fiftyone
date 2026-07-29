@@ -119,6 +119,25 @@ describe("parse", () => {
       });
     });
 
+    it("reads a plain datetime call as a date", () => {
+      // What the date picker inserts; prints back canonically as
+      // datetime.utcfromtimestamp
+      expect(parse("datetime(2026, 7, 29)")).toEqual({
+        t: "lit",
+        v: Date.UTC(2026, 6, 29),
+        as: "date",
+      });
+      expect(parse("datetime(2026, 7, 29, 12, 30, 5)")).toEqual({
+        t: "lit",
+        v: Date.UTC(2026, 6, 29, 12, 30, 5),
+        as: "date",
+      });
+    });
+
+    it("refuses a datetime without a full date", () => {
+      expect(() => parse("datetime(2026, 7)")).toThrow(/year, month, day/);
+    });
+
     it("leaves a literal-only division alone", () => {
       // the shape `datetime.utcfromtimestamp(<ms> / 1000)` relies on plain
       // numeric division staying a `__truediv__` call rather than being

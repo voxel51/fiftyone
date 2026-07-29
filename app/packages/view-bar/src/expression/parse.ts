@@ -576,6 +576,34 @@ class Parser {
       return { t: "lit", v: ms.v, as: "timedelta" };
     }
 
+    // `datetime(y, m, d[, h, min, s])` — how a person writes a date, and what
+    // the date picker inserts. It parses to the same millisecond literal the
+    // canonical `datetime.utcfromtimestamp(<ms> / 1000)` form does.
+    if (this.at("(")) {
+      const { args } = this.callArgs();
+      const parts = args.map((arg) => {
+        if (arg.t !== "lit" || typeof arg.v !== "number") {
+          throw new ExpressionSyntaxError(
+            "datetime() takes numbers: year, month, day[, hour, minute, second]",
+            start,
+          );
+        }
+        return arg.v;
+      });
+      if (parts.length < 3 || parts.length > 6) {
+        throw new ExpressionSyntaxError(
+          "datetime() takes year, month, day[, hour, minute, second]",
+          start,
+        );
+      }
+      const [year, month, day, hour = 0, minute = 0, second = 0] = parts;
+      return {
+        t: "lit",
+        v: Date.UTC(year, month - 1, day, hour, minute, second),
+        as: "date",
+      };
+    }
+
     this.expect("op", ".");
     const method = this.expect("name").value;
     if (method !== "utcfromtimestamp") {
