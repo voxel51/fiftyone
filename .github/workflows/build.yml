@@ -42,7 +42,7 @@ jobs:
       - name: Enable corepack
         run: corepack enable
       - name: Prepare yarn 4
-        run: corepack prepare yarn@4.9.1 --activate
+        run: COREPACK_NPM_REGISTRY=https://registry.npmjs.org corepack prepare yarn@4.17.1 --activate
 
       - name: Compute app tree hash
         id: app-tree-hash
