@@ -28,7 +28,19 @@ export const useEndPointSessionOnFrameChange = (): void => {
   const endRef = useRef(endPointSession);
   endRef.current = endPointSession;
 
+  const lastFrame = useRef<number | null>(null);
+
   useEffect(() => {
+    const previousFrame = lastFrame.current;
+    lastFrame.current = frame;
+
+    // Mounting is not a transition. AI mode outlives a surface remount (its
+    // state is module-scoped), so ending the session on the effect's first run
+    // would drop a live one — the very thing this hook exists to scope.
+    if (previousFrame === null) {
+      return;
+    }
+
     endRef.current();
   }, [frame]);
 };

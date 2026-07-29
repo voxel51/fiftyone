@@ -4,8 +4,13 @@ import { createPortal } from "react-dom";
 /**
  * Keeps the card open across the gap between the trigger and the portaled
  * card, so the pointer can travel into the card to reach its actions.
+ *
+ * Exported so tests advance timers by the real delay rather than a copy of it.
  */
-const CLOSE_DELAY_MS = 120;
+export const CLOSE_DELAY_MS = 120;
+
+/** Gap between the card and the trigger / the viewport edge it's clamped to. */
+const CARD_MARGIN = 6;
 
 /** Default card width; wide enough for a title plus a line or two of copy. */
 const DEFAULT_WIDTH = 320;
@@ -79,8 +84,14 @@ export const HoverPopover: React.FC<HoverPopoverProps> = ({
               // Anchor above the trigger: pin the card's bottom just over the
               // trigger's top so it grows upward (a toolbar sits low when the
               // timeline drawer is collapsed, which clips a downward card).
-              bottom: window.innerHeight - rect.top + 6,
-              left: rect.left,
+              bottom: window.innerHeight - rect.top + CARD_MARGIN,
+              // Left-aligned to the trigger, but pulled back in when that would
+              // hang the card off the right edge — nothing clips a fixed,
+              // portaled element back into view.
+              left: Math.max(
+                CARD_MARGIN,
+                Math.min(rect.left, window.innerWidth - width - CARD_MARGIN),
+              ),
               width,
               zIndex: "var(--z-above-modal)",
             }}
