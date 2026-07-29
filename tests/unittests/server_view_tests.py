@@ -1336,10 +1336,13 @@ class StageDefinitionTests(unittest.TestCase):
         for definition in fosd.stage_definitions():
             signature = inspect.signature(stages[definition.name].__init__)
             for param in definition.params:
-                has_default = (
-                    signature.parameters[param.name].default
-                    is not inspect.Parameter.empty
+                declared = signature.parameters.get(param.name)
+                self.assertIsNotNone(
+                    declared,
+                    "%s declares %s, which __init__ does not take"
+                    % (definition.name, param.name),
                 )
+                has_default = declared.default is not inspect.Parameter.empty
                 self.assertEqual(
                     param.required,
                     not has_default,
@@ -1668,7 +1671,9 @@ class AsyncViewBarSchemaTests(unittest.IsolatedAsyncioTestCase):
         )
 
         stages = {d["name"]: d for d in result.data["stageDefinitions"]}
-        param = stages["Match"]["params"][0]
+        param = next(
+            p for p in stages["Match"]["params"] if p["name"] == "filter"
+        )
         self.assertEqual(param["tokens"], ["json"])
         self.assertTrue(param["required"])
         self.assertEqual(param["choices"]["source"], "FREE_TEXT")

@@ -231,8 +231,11 @@ describe("parse", () => {
       );
     });
 
-    it("throws rather than returning for anything but a syntax error", () => {
-      expect(() => parse("F('a') > 1")).not.toThrow();
+    it("returns the error rather than throwing it", () => {
+      // `parse` throws for a syntax error; `tryParse` is the same walk with
+      // the error handed back, so callers can point at the offset
+      expect(() => parse("F('a') > ")).toThrow(ExpressionSyntaxError);
+      expect(tryParse("F('a') > ")).toHaveProperty("error");
     });
   });
 
