@@ -138,6 +138,117 @@ test.describe("view bar keyboard", () => {
 
     await page.keyboard.press("Escape");
     await expect(viewBar.viewStages).toHaveCount(0);
+
+    // Nothing in the bar holds focus once the draft is gone
+    const focusedInBar = await page.evaluate(() => {
+      const bar = document.querySelector("[data-cy='view-bar']");
+      const active = document.activeElement;
+      return Boolean(bar && active && bar.contains(active));
+    });
+    expect(focusedInBar).toBe(false);
+  });
+
+  //
+  // Applying leaves the keyboard where the next stage begins: Apply itself
+  // disappears once nothing is pending, so focus must move on rather than die
+  // with the button.
+  //
+  test("applying moves the keyboard to the next insert slot", async ({
+    viewBar,
+    grid,
+    page,
+  }) => {
+    await viewBar.addStage("Limit");
+    await viewBar.fill("limit", "3");
+    await page.keyboard.press("Enter");
+    await expect(viewBar.applyBtn).toBeFocused();
+
+    await grid.run(() => page.keyboard.press("Enter"));
+
+    const slots = viewBar.locator.getByLabel("Insert stage");
+    await expect(slots.last()).toBeFocused();
+
+    // And that focus is enough to describe the next stage
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Skip");
+    await page.keyboard.press("Enter");
+    await expect(viewBar.editor).toBeVisible();
+  });
+
+  //
+  // Tab walks the bar in reading order and Shift+Tab walks back: the first
+  // insert slot is the entry point, Apply is the exit.
+  //
+  test("Tab and Shift+Tab traverse the bar", async ({
+    viewBar,
+    page,
+  }) => {
+    await viewBar.addStage("Limit");
+    await viewBar.fill("limit", "3");
+    await page.keyboard.press("Enter");
+
+    // Pending changes, so Apply is the last stop
+    const slots = viewBar.locator.getByLabel("Insert stage");
+    await slots.first().focus();
+    await expect(slots.first()).toBeFocused();
+
+    // Forward: through the stage's own controls, ending on Apply
+    const forward: string[] = [];
+    for (let i = 0; i < 8; i++) {
+      await page.keyboard.press("Tab");
+      forward.push(
+        await page.evaluate(
+          () =>
+            document.activeElement?.getAttribute("aria-label") ??
+            document.activeElement?.getAttribute("data-cy") ??
+            document.activeElement?.tagName ??
+            "",
+        ),
+      );
+      if (await viewBar.applyBtn.evaluate((el) => el === document.activeElement))
+        break;
+    }
+    expect(forward).toContain("Edit stage");
+    expect(forward).toContain("Remove stage");
+    await expect(viewBar.applyBtn).toBeFocused();
+
+    // Backward from Apply returns through the same stops to the first slot
+    for (let i = 0; i < 8; i++) {
+      await page.keyboard.press("Shift+Tab");
+      if (await slots.first().evaluate((el) => el === document.activeElement))
+        break;
+    }
+    await expect(slots.first()).toBeFocused();
+  });
+
+  //
+  // Escape means "I am done here" even when there is nothing to undo: an
+  // already-applied stage releases the keyboard rather than holding it.
+  //
+  test("Escape releases an applied stage that has no pending edits", async ({
+    viewBar,
+    grid,
+    page,
+  }) => {
+    await viewBar.addStage("Limit");
+    await viewBar.fill("limit", "3");
+    await page.keyboard.press("Enter");
+    await grid.run(() => viewBar.applyBtn.click());
+
+    // Reopen the applied stage, then walk back out
+    await viewBar.editStage(0);
+    await page.keyboard.press("Escape");
+    await expect(viewBar.editor).toBeHidden();
+
+    await page.keyboard.press("Escape");
+    const focusedInBar = await page.evaluate(() => {
+      const bar = document.querySelector("[data-cy='view-bar']");
+      const active = document.activeElement;
+      return Boolean(bar && active && bar.contains(active));
+    });
+    expect(focusedInBar).toBe(false);
+    // and the applied stage is still there, since nothing was pending
+    await expect(viewBar.viewStages).toHaveCount(1);
   });
 
   //
