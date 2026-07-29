@@ -2,6 +2,7 @@ import { getSampleSrc, useDimensions } from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
 import React, { useMemo, useState } from "react";
 import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
+import { useEndPointSessionOnFrameChange } from "../hooks/useEndPointSessionOnFrameChange";
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
 import { useRegisterVideoSegmentBitmap } from "../hooks/useRegisterVideoSegmentBitmap";
 import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameClock";
@@ -269,6 +270,8 @@ const VideoAnnotationHandlerRegistration: React.FC = () => {
   useRegisterVideoAnnotationKeybindings();
   // expose the active ImaVid frame to the SAM2 agent for click-to-segment
   useRegisterVideoSegmentBitmap();
+  // a point session belongs to the frame it started on; end it on a move
+  useEndPointSessionOnFrameChange();
   useAutoInterpolate();
   // editing a frame label: keep the anchor (and the form) on the playhead's
   // occurrence of the same track as the playhead moves

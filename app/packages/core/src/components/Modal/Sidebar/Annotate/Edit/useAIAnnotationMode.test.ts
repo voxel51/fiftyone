@@ -39,6 +39,9 @@ const hoisted = vi.hoisted(() => ({
     consumeSeedNew: vi.fn(() => false),
     clearSeedNew: vi.fn(),
   },
+  // The combined overlay-points + prompt-state clear; covered end to end in
+  // `useClearPointPrompts.test.ts`.
+  clearPointPrompts: vi.fn(),
   selectedLabelRef: {
     value: null as null | { overlay?: { id: string } },
   },
@@ -53,6 +56,7 @@ vi.mock("@fiftyone/annotation/src/agents", () => ({
     setActiveTask: hoisted.activeTaskSpies.setActiveTask,
   }),
   useAgentSelector: () => hoisted.agentSelectorRef.value,
+  useClearPointPrompts: () => hoisted.clearPointPrompts,
   usePointSelection: () => hoisted.pointSelectionSpies,
   usePointSelectionSeed: () => hoisted.pointSelectionSeedSpies,
   useToolsState: () => hoisted.toolsStateSpies,
@@ -131,7 +135,7 @@ describe("useAIAnnotationMode", () => {
   });
 
   describe("deactivate", () => {
-    it("deactivates point selection, clears prompt + tools state, clears task, flips isActive", () => {
+    it("deactivates point selection, clears the point prompts, clears task, flips isActive", () => {
       const { result } = renderHook(() => useAIAnnotationMode());
       act(() => result.current.activate());
 
@@ -139,8 +143,7 @@ describe("useAIAnnotationMode", () => {
       act(() => result.current.deactivate());
 
       expect(hoisted.pointSelectionSpies.deactivate).toHaveBeenCalledTimes(1);
-      expect(hoisted.pointSelectionSpies.clearPoints).toHaveBeenCalledTimes(1);
-      expect(hoisted.toolsStateSpies.reset).toHaveBeenCalledTimes(1);
+      expect(hoisted.clearPointPrompts).toHaveBeenCalledTimes(1);
       expect(hoisted.activeTaskSpies.setActiveTask).toHaveBeenCalledWith(null);
       expect(result.current.isActive).toBe(false);
     });
@@ -224,8 +227,7 @@ describe("useAIAnnotationMode", () => {
       hoisted.selectedLabelRef.value = { overlay: { id: "label-b" } };
       rerender();
 
-      expect(hoisted.pointSelectionSpies.clearPoints).not.toHaveBeenCalled();
-      expect(hoisted.toolsStateSpies.reset).not.toHaveBeenCalled();
+      expect(hoisted.clearPointPrompts).not.toHaveBeenCalled();
     });
   });
 });
