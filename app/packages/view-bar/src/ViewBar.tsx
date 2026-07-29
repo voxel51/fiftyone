@@ -695,6 +695,11 @@ const ViewBar: React.FC<{
         style={{
           marginLeft: "auto",
           flexShrink: 0,
+          // Squares up with the gutter beside it — same height, same top and
+          // bottom edge, so the row reads as one band
+          height: "100%",
+          display: "flex",
+          alignItems: "stretch",
           // Animated reveal: clip + fade + slide. `width` collapses
           // to 0 when there's nothing to apply so the row stays
           // tight; `opacity` and `transform` ramp for a soft entry.
@@ -715,6 +720,7 @@ const ViewBar: React.FC<{
               ? `Fix: ${paramErrors.labels.join(", ")}`
               : "Apply view"
           }
+          style={{ display: "flex", alignItems: "stretch" }}
         >
           <Button
             variant={Variant.Primary}
@@ -724,6 +730,9 @@ const ViewBar: React.FC<{
             // Hidden means hidden: while the wrapper is aria-hidden the
             // button also leaves the tab order
             tabIndex={hasPendingChanges ? undefined : -1}
+            // Fills the row's height, so it matches the gutter rather than
+            // floating at whatever height an Xs button happens to be
+            style={{ height: "100%", boxSizing: "border-box" }}
             data-cy="btn-apply-view-bar"
           >
             Apply

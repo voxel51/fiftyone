@@ -34,6 +34,7 @@ import { isEnvelope, sourceOf } from "./builder/envelope";
 import { scopedEntries } from "./fields";
 import {
   EDITOR_HEADER_HEIGHT,
+  ERROR_COLOR,
   EXPRESSION_BOX_HEIGHT,
   humanize,
   isEmptyValue,
@@ -466,7 +467,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
               // editor's surface color from the first frame
               background: "var(--fo-palette-background-level2)",
               border: invalid
-                ? "1px solid var(--fo-palette-error-plainColor)"
+                ? `1px solid ${ERROR_COLOR}`
                 : "1px solid var(--fo-palette-primary-plainBorder)",
             }}
           >

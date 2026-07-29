@@ -33,7 +33,11 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { tryParse } from "../expression/parse";
 import type { Node } from "../expression/types";
 import type { Kind, Operator } from "./catalog";
-import { EDITOR_HEADER_HEIGHT, EXPRESSION_BOX_HEIGHT } from "../params";
+import {
+  EDITOR_HEADER_HEIGHT,
+  ERROR_COLOR,
+  EXPRESSION_BOX_HEIGHT,
+} from "../params";
 import {
   caretContext,
   completeField,
@@ -164,6 +168,9 @@ const NO_FIELDS: string[] = [];
 const NO_OPERATORS: Operator[] = [];
 const NO_KIND = () => undefined;
 
+/** Row ids, so the keyboard can bring its landing spot into view. */
+const SUGGESTION_ID = "view-bar-suggestion";
+
 export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
   value,
   onChange,
@@ -186,6 +193,9 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
   const [focused, setFocused] = useState(false);
   // Escape hides the list until the caret moves again
   const [dismissed, setDismissed] = useState(false);
+  // Only the arrow keys drag the list; a wheel or a drag is the user reading
+  // ahead, and yanking their scroll back would fight them
+  const followKeyboard = useRef(false);
   // Which suggestion the arrow keys have landed on
   const [active, setActive] = useState(0);
   // The mounted handlers read through refs, so they never go stale
@@ -363,10 +373,19 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
     setActive(0);
   }, [entries]);
 
+  React.useEffect(() => {
+    if (!followKeyboard.current) return;
+    followKeyboard.current = false;
+    document
+      .getElementById(`${SUGGESTION_ID}-${active}`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [active]);
+
   navRef.current = {
     visible: listOpen && entries.some((entry) => entry.choose),
     count: entries.length,
-    move: (delta: number) =>
+    move: (delta: number) => {
+      followKeyboard.current = true;
       setActive((current) => {
         // Land only on rows that can be accepted
         let next = current;
@@ -375,7 +394,8 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
           if (entries[next]?.choose) return next;
         }
         return current;
-      }),
+      });
+    },
     accept: () => {
       const pick = entries[active]?.choose;
       if (!pick) return false;
@@ -397,7 +417,11 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
         orientation={Orientation.Row}
         spacing={Spacing.Sm}
         align={Align.Center}
-        style={{ height: EDITOR_HEADER_HEIGHT }}
+        style={{
+          height: EDITOR_HEADER_HEIGHT,
+          minWidth: 0,
+          overflow: "hidden",
+        }}
       >
         {tabs}
         {disabled ? (
@@ -491,7 +515,7 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
             background: "var(--fo-palette-background-level2)",
             border:
               status.state === "invalid"
-                ? "1px solid var(--fo-palette-error-plainColor)"
+                ? `1px solid ${ERROR_COLOR}`
                 : "1px solid var(--fo-palette-primary-plainBorder)",
           }}
         >
@@ -587,6 +611,7 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
               ? fieldMatches.slice(0, 24).map((path, i) => (
                   <Row
                     key={path}
+                    id={`${SUGGESTION_ID}-${i}`}
                     active={i === active}
                     onChoose={() => chooseField(path)}
                   >
@@ -596,6 +621,7 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
               : suggestions.map(({ operator, applicable, reason }, i) => (
                   <Suggestion
                     key={operator.name}
+                    id={`${SUGGESTION_ID}-${i}`}
                     active={i === active}
                     operator={operator}
                     applicable={applicable}
@@ -615,24 +641,44 @@ const Signature: React.FC<{
   argIndex: number;
   argKind: Kind;
 }> = ({ operator, argIndex, argKind }) => (
+  // One line, always: the header is a fixed height, so a long summary — an
+  // `if_else` signature, say — ellipses instead of wrapping the box taller.
+  // Every ancestor of the truncating text has to be allowed to shrink, or the
+  // row grows to fit the text instead of clipping it.
   <Stack
     orientation={Orientation.Row}
     spacing={Spacing.Xs}
-    style={{ alignItems: "center" }}
+    style={{
+      alignItems: "center",
+      flex: 1,
+      minWidth: 0,
+      overflow: "hidden",
+      whiteSpace: "nowrap",
+    }}
   >
-    <Text variant={TextVariant.Caption} color={TextColor.Secondary}>
+    <Text
+      variant={TextVariant.Caption}
+      color={TextColor.Secondary}
+      style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+    >
       {operator.display}(arg {argIndex + 1})
     </Text>
-    <Pill size={Size.Xs}>{KIND_LABEL[argKind]}</Pill>
-    <Tooltip content={operator.summary}>
+    <div style={{ flexShrink: 0, display: "inline-flex" }}>
+      <Pill size={Size.Xs}>{KIND_LABEL[argKind]}</Pill>
+    </div>
+    <Tooltip
+      anchor={Anchor.Bottom}
+      content={operator.summary}
+      style={{ minWidth: 0, overflow: "hidden" }}
+    >
       <Text
         variant={TextVariant.Caption}
         color={TextColor.Muted}
         style={{
+          display: "block",
           whiteSpace: "nowrap",
           overflow: "hidden",
           textOverflow: "ellipsis",
-          minWidth: 0,
         }}
       >
         {operator.summary}
@@ -655,15 +701,13 @@ const Row: React.FC<
     muted?: boolean;
     /** The arrow keys have landed here; Enter takes it. */
     active?: boolean;
+    id?: string;
   }>
-> = ({ onChoose, muted, active, children }) => (
-  // voodo's Clickable forwards no ref, so the row's keep-in-view scroll
-  // lives on a wrapping block instead
-  <div
-    ref={(el) => {
-      if (active) el?.scrollIntoView({ block: "nearest" });
-    }}
-  >
+> = ({ onChoose, muted, active, id, children }) => (
+  // The list only scrolls to follow the keyboard, so the row identifies
+  // itself and the editor decides when to bring it into view — scrolling on
+  // every render would drag the list back under the pointer
+  <div id={id}>
     <Clickable
       onClick={onChoose}
       role="option"
@@ -699,9 +743,11 @@ const Suggestion: React.FC<{
   onChoose: () => void;
   /** The arrow keys have landed here; Enter takes it. */
   active?: boolean;
-}> = ({ operator, applicable, reason, onChoose, active }) => {
+  id?: string;
+}> = ({ operator, applicable, reason, onChoose, active, id }) => {
   const row = (
     <Row
+      id={id}
       onChoose={applicable ? onChoose : undefined}
       muted={!applicable}
       active={active}

@@ -69,7 +69,11 @@ export const InsertSlot: React.FC<InsertSlotProps> = ({
 
   if (!open) {
     return (
-      <Tooltip anchor={Anchor.Bottom} content="Insert stage">
+      // Anchored to the right, not below: a centered tooltip on the leftmost
+      // slot extends past the bar's left edge, and voodo's Tooltip does not
+      // slide itself back into view. Beside the "+" it grows away from the
+      // edge instead.
+      <Tooltip anchor={Anchor.Right} content="Insert stage">
         <div
           onClick={() => setOpen(true)}
           onKeyDown={(e) => {

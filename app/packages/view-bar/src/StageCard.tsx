@@ -26,6 +26,7 @@ import type { Kind, Operator } from "./builder/catalog";
 import { ParamInput } from "./controls";
 import {
   blockedBy,
+  ERROR_COLOR,
   expressionScope,
   isEmptyValue,
   isPrivate,
@@ -240,7 +241,11 @@ export const StageCard: React.FC<StageCardProps> = ({
           // A stage that cannot be applied says so, whether its editor is
           // open or closed and whether the value is missing or rejected
           ...(invalid || incomplete
-            ? { borderColor: "var(--fo-palette-error-plainColor)" }
+            ? {
+                borderColor: ERROR_COLOR,
+                outline: `1px solid ${ERROR_COLOR}`,
+                outlineOffset: -1,
+              }
             : null),
         }}
       >
