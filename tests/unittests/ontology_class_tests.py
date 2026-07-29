@@ -1073,6 +1073,10 @@ class OntologySDKTests(unittest.TestCase):
 class OntologyColdProcessTests(unittest.TestCase):
     """Ontology entry points must bootstrap the DB connection themselves —
     the first SDK call in a process may be an ontology call.
+
+    Each check runs in a fresh subprocess: a genuine cold process. Tearing
+    down the connection in this process instead would close the client out
+    from under every other test that holds a reference to it.
     """
 
     def setUp(self):
@@ -1085,54 +1089,66 @@ class OntologyColdProcessTests(unittest.TestCase):
 
         foo.get_db_conn().drop_collection("ontologies")
 
-    @staticmethod
-    def _simulate_cold_process():
-        # A cold process has neither a pymongo client nor a registered
-        # mongoengine default connection; both are created lazily by
-        # ensure_connection()/get_db_conn()
-        import fiftyone.core.odm.database as food
+    def _run_cold(self, body: str) -> None:
+        import subprocess
+        import sys
 
-        food._disconnect()
-
-    @staticmethod
-    def _make_ontology(name: str = "cold_ontology") -> AnnotationOntology:
-        return AnnotationOntology(
-            name=name,
-            attributes=[
-                AttributeSpec(name="x", type="bool", component="checkbox"),
-            ],
+        result = subprocess.run(
+            [sys.executable, "-c", body],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertEqual(
+            result.returncode,
+            0,
+            f"cold-process check failed:\n{result.stderr}",
         )
 
-    def test_list_ontologies_cold(self):
-        from fiftyone.core.ontology import list_ontologies
+    _MAKE_ONTOLOGY = (
+        "from fiftyone.core.annotation.attributes import AttributeSpec\n"
+        "from fiftyone.core.ontology import AnnotationOntology\n"
+        "ao = AnnotationOntology(\n"
+        "    name='cold_ontology',\n"
+        "    attributes=[\n"
+        "        AttributeSpec(name='x', type='bool', component='checkbox')\n"
+        "    ],\n"
+        ")\n"
+    )
 
-        self._simulate_cold_process()
-        self.assertEqual(list_ontologies(), [])
+    def test_list_ontologies_cold(self):
+        self._run_cold(
+            "from fiftyone.core.ontology import list_ontologies\n"
+            "assert list_ontologies() == []\n"
+        )
 
     def test_ontology_exists_cold(self):
-        from fiftyone.core.ontology import ontology_exists
-
-        self._simulate_cold_process()
-        self.assertFalse(ontology_exists("cold_ontology"))
+        self._run_cold(
+            "from fiftyone.core.ontology import ontology_exists\n"
+            "assert not ontology_exists('cold_ontology')\n"
+        )
 
     def test_load_ontology_cold(self):
-        from fiftyone.core.ontology import load_ontology
-
-        self._simulate_cold_process()
-        with self.assertRaises(ValueError):
-            load_ontology("nonexistent")
+        self._run_cold(
+            "from fiftyone.core.ontology import load_ontology\n"
+            "try:\n"
+            "    load_ontology('nonexistent')\n"
+            "except ValueError:\n"
+            "    pass\n"
+            "else:\n"
+            "    raise AssertionError('expected ValueError')\n"
+        )
 
     def test_save_cold(self):
-        self._simulate_cold_process()
-        ao = self._make_ontology()
-        ao.save()
-        self.assertEqual(ao.version, 1)
+        self._run_cold(
+            self._MAKE_ONTOLOGY + "ao.save()\nassert ao.version == 1\n"
+        )
 
     def test_save_overwrite_cold_first_creation(self):
-        self._simulate_cold_process()
-        ao = self._make_ontology()
-        ao.save(overwrite=True)
-        self.assertEqual(ao.version, 1)
+        self._run_cold(
+            self._MAKE_ONTOLOGY
+            + "ao.save(overwrite=True)\nassert ao.version == 1\n"
+        )
 
 
 class NodeTests(unittest.TestCase):
