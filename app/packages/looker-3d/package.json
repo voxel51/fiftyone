@@ -15,6 +15,7 @@
     "dependencies": {
         "@emotion/react": "^11.14.0",
         "@emotion/styled": "^11.14.0",
+        "@miris-inc/core": "0.0.8-25565b3",
         "@miris-inc/three": "0.0.8-25565b3",
         "@react-three/drei": "^10.7.6",
         "@react-three/fiber": "catalog:",
