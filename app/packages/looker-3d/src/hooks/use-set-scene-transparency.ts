@@ -6,7 +6,7 @@ import type { useMeshMaterialControls } from "./use-mesh-material-controls";
 const setOpacity = (
   mtl: Material,
   newMaterial: ReturnType<typeof useMeshMaterialControls>["material"],
-  userData: Record<string, any>,
+  userData: Object3D["userData"],
 ) => {
   if (!userData[FO_USER_DATA.FO_ORIGINAL_MATERIAL_CONFIG]) {
     userData[FO_USER_DATA.FO_ORIGINAL_MATERIAL_CONFIG] = {

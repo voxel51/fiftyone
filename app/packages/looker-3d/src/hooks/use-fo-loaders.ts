@@ -16,7 +16,7 @@ type CredentialAwareLoader = {
   setWithCredentials?: (value: boolean) => unknown;
 };
 
-type FoLoaderNoSuspenseProto<TInput, TResult> = new (...args: any[]) => {
+type FoLoaderNoSuspenseProto<TInput, TResult> = new (...args: never[]) => {
   loadAsync: (
     input: TInput,
     onProgress?: (event: ProgressEvent<EventTarget>) => void,
@@ -24,11 +24,11 @@ type FoLoaderNoSuspenseProto<TInput, TResult> = new (...args: any[]) => {
 } & CredentialAwareLoader;
 
 type FoLoaderNoSuspenseInput<
-  TLoader extends FoLoaderNoSuspenseProto<any, any>,
+  TLoader extends FoLoaderNoSuspenseProto<unknown, unknown>,
 > = Parameters<InstanceType<TLoader>["loadAsync"]>[0];
 
 type FoLoaderNoSuspenseResult<
-  TLoader extends FoLoaderNoSuspenseProto<any, any>,
+  TLoader extends FoLoaderNoSuspenseProto<unknown, unknown>,
 > = Awaited<ReturnType<InstanceType<TLoader>["loadAsync"]>>;
 
 function disposeLoadedResource(resource: unknown) {
@@ -121,7 +121,7 @@ export function useFoLoader<
  * React Three error path.
  */
 export function useFoLoaderNoSuspense<
-  TLoader extends FoLoaderNoSuspenseProto<any, any>,
+  TLoader extends FoLoaderNoSuspenseProto<unknown, unknown>,
 >(
   Loader: TLoader,
   input: FoLoaderNoSuspenseInput<TLoader> | null | undefined,
@@ -164,7 +164,9 @@ export function useFoLoaderNoSuspense<
     );
     latestLoaderFunctionRef.current?.(loader);
 
-    loader.loadAsync(input).then(
+    (
+      loader.loadAsync(input) as Promise<FoLoaderNoSuspenseResult<TLoader>>
+    ).then(
       (nextResult) => {
         if (cancelled) {
           disposeLoadedResource(nextResult);

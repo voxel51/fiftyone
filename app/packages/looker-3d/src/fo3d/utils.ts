@@ -44,7 +44,9 @@ export const getSavedCameraState = (
     ) {
       return parsed as SavedCameraState;
     }
-  } catch {}
+  } catch {
+    // corrupt saved state falls through to null
+  }
   return null;
 };
 

@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRecoilValue } from "recoil";
 
 type GroupResponse = {
-  group: Record<string, any>;
+  group: Record<string, { filepath?: string }>;
   urls?: Record<string, string>;
 };
 

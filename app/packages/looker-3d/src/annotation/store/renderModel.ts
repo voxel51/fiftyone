@@ -26,7 +26,7 @@ export function applyTransientToCuboid(
     return detection;
   }
 
-  let result = { ...detection };
+  const result = { ...detection };
 
   if (transient.positionDelta) {
     result.location = [

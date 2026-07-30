@@ -24,7 +24,7 @@ const CubeBackground = ({
   const { scene } = useThree();
   // images are assumed to correspond to px, nx, py, ny, pz, and nz
   const imageUrls = useMemo(() => cube.map(getSampleSrc), [cube]);
-  // @ts-ignore - types are wrong for CubeTextureLoader
+  // @ts-expect-error types are wrong for CubeTextureLoader
   const [cubeMap]: [CubeTexture] = useFoLoader(CubeTextureLoader, [imageUrls]);
 
   useEffect(() => {

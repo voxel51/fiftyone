@@ -111,7 +111,7 @@ export function useUpdateTransient() {
         return newState;
       });
     },
-    [],
+    [setTransient],
   );
 
   /**
@@ -137,7 +137,7 @@ export function useUpdateTransient() {
         };
       });
     },
-    [],
+    [setTransient],
   );
 
   /**
@@ -207,23 +207,26 @@ export function useStartDrag() {
 export function useEndDrag() {
   const setTransient = useSetRecoilState(transientAtom);
 
-  return useCallback((labelId: LabelId) => {
-    setTransient((prev) => {
-      if (prev.activeDragLabel !== labelId) {
-        return prev;
-      }
+  return useCallback(
+    (labelId: LabelId) => {
+      setTransient((prev) => {
+        if (prev.activeDragLabel !== labelId) {
+          return prev;
+        }
 
-      // Clear both the label's transient state and the active drag
-      const { [labelId]: _cuboid, ...restCuboids } = prev.cuboids;
-      const { [labelId]: _polyline, ...restPolylines } = prev.polylines;
+        // Clear both the label's transient state and the active drag
+        const { [labelId]: _cuboid, ...restCuboids } = prev.cuboids;
+        const { [labelId]: _polyline, ...restPolylines } = prev.polylines;
 
-      return {
-        cuboids: restCuboids,
-        polylines: restPolylines,
-        activeDragLabel: null,
-      };
-    });
-  }, []);
+        return {
+          cuboids: restCuboids,
+          polylines: restPolylines,
+          activeDragLabel: null,
+        };
+      });
+    },
+    [setTransient],
+  );
 }
 
 /**

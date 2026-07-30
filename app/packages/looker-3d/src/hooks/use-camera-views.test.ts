@@ -28,7 +28,7 @@ vi.mock("jotai", () => ({
 vi.mock("recoil", () => ({
   useRecoilValue: (atom: { key?: string } | null) =>
     atom?.key === "annotationPlaneAtom" ? { enabled: false } : null,
-  useSetRecoilState: () => () => {},
+  useSetRecoilState: () => vi.fn(),
 }));
 
 vi.mock("../annotation/store", () => ({

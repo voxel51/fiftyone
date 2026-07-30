@@ -263,6 +263,8 @@ export const usePcdMaterialControls = (
   }, [
     colormapOverride,
     colorScheme.colorscales,
+    colorScheme.defaultColorscale?.list,
+    colorScheme.defaultColorscale?.name,
     shadeBy,
     isExplicitAppConfigColormapAvailable,
     isDefaultAppConfigColormapAvailable,
@@ -308,6 +310,7 @@ export const usePcdMaterialControls = (
       </div>
     );
   }, [
+    setColormapOverride,
     setIsColormapModalOpen,
     shadeBy,
     colorMap.source,
@@ -360,16 +363,19 @@ export const usePcdMaterialControls = (
     );
   }, [geometry, shadeBy, theme.primary.main, thresholdStateKey]);
 
-  const onChangeTextBox: OnChangeHandler = useCallback((newValue: number) => {
-    setPointSize(newValue);
-  }, []);
+  const onChangeTextBox: OnChangeHandler = useCallback(
+    (newValue: number) => {
+      setPointSize(newValue);
+    },
+    [setPointSize],
+  );
 
   const handleColormapSave = useCallback(
     (colorscaleList: ColorscaleInput["list"]) => {
       setColormapOverride({ [shadeBy]: colorscaleList });
       setIsColormapModalOpen(false);
     },
-    [setColormapOverride, shadeBy],
+    [setColormapOverride, setIsColormapModalOpen, shadeBy],
   );
 
   useControls(
