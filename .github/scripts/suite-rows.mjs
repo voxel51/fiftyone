@@ -41,3 +41,25 @@ export function buildSuiteRows(jobs) {
     .filter(([, js]) => !js.every((j) => j.conclusion === "skipped"))
     .map(([name, js]) => `| ${name} | ${icon(js)} |`);
 }
+
+// The headline is posted by the e2e verdict, which only knows e2e. A suite
+// that failed after posting must flip it to ❌; a rerun that turned every
+// row green again must lift that ❌ — but only the exact plain form
+// `## ❌ CI (FLAVOR)`, which can only be a previous downgrade by this
+// function: the verdict's ❌ always carries a `: reason` suffix and stays
+// authoritative for e2e failures.
+export function settleHeadline(lines, rows) {
+  const headline = lines.findIndex((l) => l.startsWith("## "));
+  if (headline === -1) {
+    return;
+  }
+  const e2eRowLine = lines.find((l) => l.startsWith("| e2e |")) ?? "";
+  if (rows.some((r) => r.includes("❌"))) {
+    lines[headline] = lines[headline].replace(/^## [✅⚠️]+ CI/u, "## ❌ CI");
+  } else if (
+    !e2eRowLine.includes("❌") &&
+    /^## ❌ CI \([A-Z]+\)\s*$/u.test(lines[headline])
+  ) {
+    lines[headline] = lines[headline].replace("## ❌ CI", "## ✅ CI");
+  }
+}
