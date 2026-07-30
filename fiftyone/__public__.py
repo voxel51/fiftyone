@@ -73,10 +73,14 @@ from .core.ontology import (
     Taxonomy,
     apply_ontology,
     delete_ontology,
+    delete_taxonomy,
     list_ontologies,
+    list_taxonomies,
     load_ontology,
+    load_taxonomy,
     ontology_exists,
     save_ontology,
+    taxonomy_exists,
 )
 from .core.fields import (
     flatten_schema,

@@ -1070,6 +1070,188 @@ class OntologySDKTests(unittest.TestCase):
         self.assertEqual(load_ontology("forwarded").description, "rev 2")
 
 
+class TaxonomyAccessorTests(unittest.TestCase):
+    """Integration tests for the taxonomy-specific accessor functions."""
+
+    def setUp(self):
+        import fiftyone.core.odm as foo
+
+        db = foo.get_db_conn()
+        db.drop_collection("ontologies")
+
+        from fiftyone.core.odm.ontology import OntologyDocument
+
+        OntologyDocument.ensure_indexes()
+
+    def tearDown(self):
+        import fiftyone.core.odm as foo
+
+        db = foo.get_db_conn()
+        db.drop_collection("ontologies")
+
+    def _make_taxonomy(self, name: str = "vehicle_classes") -> Taxonomy:
+        return Taxonomy(
+            name=name,
+            description="Vehicle class hierarchy",
+            root=Node(
+                name="vehicles",
+                can_select=False,
+                values=[Node(name="car"), Node(name="truck")],
+            ),
+        )
+
+    def _make_annotation_ontology(
+        self, name: str = "vehicle_ontology"
+    ) -> AnnotationOntology:
+        return AnnotationOntology(
+            name=name,
+            attributes=[
+                AttributeSpec(name="damaged", type="bool", component="checkbox"),
+            ],
+        )
+
+    def test_load_taxonomy(self):
+        from fiftyone.core.ontology import load_taxonomy
+
+        self._make_taxonomy().save()
+
+        loaded = load_taxonomy("vehicle_classes")
+        self.assertTrue(loaded.is_taxonomy)
+        self.assertEqual(loaded.root.name, "vehicles")
+
+    def test_load_taxonomy_nonexistent_raises(self):
+        from fiftyone.core.ontology import load_taxonomy
+
+        with self.assertRaises(ValueError):
+            load_taxonomy("nonexistent")
+
+    def test_load_taxonomy_on_annotation_ontology_raises(self):
+        from fiftyone.core.ontology import load_taxonomy
+
+        self._make_annotation_ontology("not_a_taxonomy").save()
+
+        with self.assertRaises(ValueError):
+            load_taxonomy("not_a_taxonomy")
+
+    def test_taxonomy_exists(self):
+        from fiftyone.core.ontology import taxonomy_exists
+
+        self.assertFalse(taxonomy_exists("vehicle_classes"))
+
+        self._make_taxonomy().save()
+        self.assertTrue(taxonomy_exists("vehicle_classes"))
+
+    def test_taxonomy_exists_false_for_annotation_ontology(self):
+        from fiftyone.core.ontology import taxonomy_exists
+
+        self._make_annotation_ontology("not_a_taxonomy").save()
+        self.assertFalse(taxonomy_exists("not_a_taxonomy"))
+
+    def test_list_taxonomies_excludes_annotation_ontologies(self):
+        from fiftyone.core.ontology import list_taxonomies
+
+        self._make_taxonomy("alpha_classes").save()
+        self._make_taxonomy("beta_classes").save()
+        self._make_annotation_ontology("an_ontology").save()
+
+        self.assertEqual(
+            list_taxonomies(), ["alpha_classes", "beta_classes"]
+        )
+
+    def test_list_taxonomies_glob(self):
+        from fiftyone.core.ontology import list_taxonomies
+
+        self._make_taxonomy("vehicle_classes").save()
+        self._make_taxonomy("animal_classes").save()
+
+        self.assertEqual(list_taxonomies("vehicle_*"), ["vehicle_classes"])
+
+    def test_list_ontologies_excludes_taxonomies(self):
+        from fiftyone.core.ontology import list_ontologies
+
+        self._make_taxonomy("vehicle_classes").save()
+        self._make_annotation_ontology("vehicle_ontology").save()
+
+        self.assertEqual(list_ontologies(), ["vehicle_ontology"])
+
+    def test_delete_taxonomy(self):
+        from fiftyone.core.ontology import delete_taxonomy, taxonomy_exists
+
+        self._make_taxonomy().save()
+
+        delete_taxonomy("vehicle_classes")
+        self.assertFalse(taxonomy_exists("vehicle_classes"))
+
+    def test_delete_taxonomy_nonexistent_raises(self):
+        from fiftyone.core.ontology import delete_taxonomy
+
+        with self.assertRaises(ValueError):
+            delete_taxonomy("nonexistent")
+
+    def test_delete_taxonomy_on_annotation_ontology_raises(self):
+        from fiftyone.core.ontology import delete_taxonomy, ontology_exists
+
+        self._make_annotation_ontology("not_a_taxonomy").save()
+
+        with self.assertRaises(ValueError):
+            delete_taxonomy("not_a_taxonomy")
+
+        # the annotation ontology is untouched
+        self.assertTrue(ontology_exists("not_a_taxonomy"))
+
+    def test_delete_referenced_taxonomy_without_force_raises(self):
+        from fiftyone.core.ontology import delete_taxonomy, taxonomy_exists
+
+        taxonomy = self._make_taxonomy()
+        taxonomy.save()
+        AnnotationOntology(name="bundle", taxonomy=taxonomy).save()
+
+        with self.assertRaises(ValueError):
+            delete_taxonomy("vehicle_classes")
+
+        self.assertTrue(taxonomy_exists("vehicle_classes"))
+
+    def test_delete_referenced_taxonomy_with_force_deletes(self):
+        from fiftyone.core.ontology import delete_taxonomy, taxonomy_exists
+
+        taxonomy = self._make_taxonomy()
+        taxonomy.save()
+        AnnotationOntology(name="bundle", taxonomy=taxonomy).save()
+
+        delete_taxonomy("vehicle_classes", force=True)
+        self.assertFalse(taxonomy_exists("vehicle_classes"))
+
+    def test_delete_taxonomy_ignores_stale_reference_in_old_version(self):
+        from fiftyone.core.ontology import (
+            delete_taxonomy,
+            load_ontology,
+            taxonomy_exists,
+        )
+
+        taxonomy = self._make_taxonomy()
+        taxonomy.save()
+
+        # v1 bundles the taxonomy ...
+        AnnotationOntology(name="bundle", taxonomy=taxonomy).save()
+        # ... v2 drops it. Only the latest version should count.
+        ao = load_ontology("bundle")
+        ao.taxonomy = None
+        ao.save()
+
+        # not blocked by the stale v1 reference
+        delete_taxonomy("vehicle_classes")
+        self.assertFalse(taxonomy_exists("vehicle_classes"))
+
+    def test_list_taxonomies_glob_anchored_at_start(self):
+        from fiftyone.core.ontology import list_taxonomies
+
+        self._make_taxonomy("vehicle_classes").save()
+        self._make_taxonomy("myvehicle_classes").save()
+
+        # "vehicle_*" must not match a name that merely contains it
+        self.assertEqual(list_taxonomies("vehicle_*"), ["vehicle_classes"])
+
+
 class NodeTests(unittest.TestCase):
     def test_create_leaf(self):
         n = Node(name="car")

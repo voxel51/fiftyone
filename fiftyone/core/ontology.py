@@ -494,28 +494,39 @@ def load_ontology(name: str) -> Ontology:
     return _from_doc(doc)
 
 
+def _list_by_type(
+    glob_patt: Optional[str], ontology_type: str
+) -> list[str]:
+    """Returns a sorted list of names for ontologies of the given type,
+    optionally filtered by a glob pattern.
+    """
+    query: dict[str, Any] = {"type": ontology_type}
+    if glob_patt is not None:
+        # ``fnmatch.translate`` end-anchors with ``\Z`` but not the start;
+        # Mongo ``$regex`` matches anywhere, so anchor the start ourselves
+        # to avoid ``vehicle_*`` also matching e.g. ``myvehicle_classes``.
+        query["name__regex"] = "^" + fnmatch.translate(glob_patt)
+
+    docs = OntologyDocument.objects(**query)  # pylint: disable=no-member
+    return sorted(docs.distinct("name"))
+
+
 def list_ontologies(glob_patt: Optional[str] = None) -> list[str]:
-    """Lists ontology names in the database.
+    """Lists annotation ontology names in the database.
+
+    Taxonomies are excluded; use :func:`list_taxonomies` for those.
 
     Args:
         glob_patt: an optional glob pattern to filter names
 
     Returns:
-        a sorted list of ontology names
+        a sorted list of annotation ontology names
     """
-    if glob_patt is not None:
-        regex = fnmatch.translate(glob_patt)
-        docs = OntologyDocument.objects(  # pylint: disable=no-member
-            name__regex=regex
-        )
-    else:
-        docs = OntologyDocument.objects()  # pylint: disable=no-member
-
-    return sorted(docs.distinct("name"))
+    return _list_by_type(glob_patt, OntologyType.ANNOTATION_ONTOLOGY.value)
 
 
 def ontology_exists(name: str) -> bool:
-    """Checks if an ontology with the given name exists.
+    """Checks if an ontology (of any type) with the given name exists.
 
     Args:
         name: the ontology name
@@ -524,6 +535,129 @@ def ontology_exists(name: str) -> bool:
         True/False
     """
     return _objects_by_slug(name).count() > 0
+
+
+# ---- Taxonomy-specific accessors ------------------------------------------
+#
+# Thin wrappers over the generic ontology functions above that constrain to
+# taxonomies, so callers can work with taxonomies without reasoning about
+# the shared ``ontologies`` collection or the annotation-ontology type.
+
+
+def load_taxonomy(name: str) -> "Taxonomy":
+    """Loads the latest version of a taxonomy by name.
+
+    Args:
+        name: the taxonomy name
+
+    Returns:
+        a :class:`Taxonomy`
+
+    Raises:
+        ValueError: if no taxonomy with the given name exists, or if the
+            name resolves to a non-taxonomy ontology
+    """
+    try:
+        ontology = load_ontology(name)
+    except ValueError:
+        raise ValueError(f"Taxonomy '{name}' not found") from None
+
+    if not ontology.is_taxonomy:
+        raise ValueError(f"'{name}' is not a taxonomy")
+
+    return ontology
+
+
+def list_taxonomies(glob_patt: Optional[str] = None) -> list[str]:
+    """Lists taxonomy names in the database.
+
+    Args:
+        glob_patt: an optional glob pattern to filter names
+
+    Returns:
+        a sorted list of taxonomy names
+    """
+    return _list_by_type(glob_patt, OntologyType.TAXONOMY.value)
+
+
+def taxonomy_exists(name: str) -> bool:
+    """Checks if a taxonomy with the given name exists.
+
+    Returns ``False`` if the name resolves to a non-taxonomy ontology.
+
+    Args:
+        name: the taxonomy name
+
+    Returns:
+        True/False
+    """
+    if not ontology_exists(name):
+        return False
+
+    return load_ontology(name).is_taxonomy
+
+
+def _find_ontologies_referencing_taxonomy(taxonomy_name: str) -> list[str]:
+    """Returns the names of annotation ontologies that bundle the named
+    taxonomy via their ``taxonomy`` reference.
+
+    Only the latest version of each annotation-ontology lineage is
+    considered, matching how the accessors resolve ontologies: a lineage
+    whose newest version has dropped the taxonomy is not reported, even
+    if an older version still referenced it.
+    """
+    slug = fou.to_slug(taxonomy_name)
+    pipeline = [
+        {"$match": {"type": OntologyType.ANNOTATION_ONTOLOGY.value}},
+        # Highest version first so $first picks the latest per slug.
+        {"$sort": {"slug": 1, "version": -1}},
+        {
+            "$group": {
+                "_id": "$slug",
+                "name": {"$first": "$name"},
+                "taxonomy": {"$first": "$root.taxonomy"},
+            }
+        },
+        # Keep only lineages whose latest version bundles this taxonomy.
+        {"$match": {"taxonomy": slug}},
+    ]
+    # pylint: disable-next=no-member
+    matches = OntologyDocument.objects.aggregate(pipeline)
+    return sorted(m["name"] for m in matches)
+
+
+def delete_taxonomy(name: str, force: bool = False) -> None:
+    """Deletes a taxonomy and all its versions from the database.
+
+    If any annotation ontology bundles this taxonomy (via its
+    ``taxonomy`` reference), the default behavior is to raise rather than
+    leave those ontologies pointing at a deleted taxonomy. Pass
+    ``force=True`` to delete anyway.
+
+    Args:
+        name: the taxonomy name
+        force: if False (default), raise if any annotation ontology
+            references the taxonomy. If True, delete regardless
+
+    Raises:
+        ValueError: if the taxonomy does not exist (or is not a
+            taxonomy), or if it is referenced and ``force=False``
+    """
+    # Validates existence and type before touching anything; raises a
+    # taxonomy-flavored error if not found or not a taxonomy.
+    load_taxonomy(name)
+
+    referencing = _find_ontologies_referencing_taxonomy(name)
+    if referencing and not force:
+        raise ValueError(
+            f"Taxonomy '{name}' is referenced by {len(referencing)} "
+            f"annotation ontolog(y/ies): {referencing}. Pass force=True "
+            "to delete anyway."
+        )
+
+    # Reuse the generic delete; a taxonomy is never an ``applied_ontology``
+    # target, so there are no label-schema references to inline.
+    delete_ontology(name)
 
 
 class LabelSchemaOntologyRef(NamedTuple):
