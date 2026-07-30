@@ -348,9 +348,7 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
         title="3D Labels"
         toggleAriaLabel="Toggle 3D labels"
         toggleSource={toggleSource}
-      />
-
-      {sceneAnnotationSources.length > 0 ? (
+      >
         <SidebarGroup
           defaultExpanded={false}
           summary={smoothTrackedLabels ? "Smoothed" : "Recorded"}
@@ -376,7 +374,7 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
             </div>
           </div>
         </SidebarGroup>
-      ) : null}
+      </SourceGroup>
 
       <SourceGroup
         enabled={enabled}

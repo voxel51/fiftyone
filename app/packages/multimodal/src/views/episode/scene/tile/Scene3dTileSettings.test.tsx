@@ -62,12 +62,15 @@ afterEach(() => {
 });
 
 describe("Scene3dTileSettings", () => {
-  it("keeps tracked-label smoothing collapsed and off by default", () => {
+  it("nests tracked-label playback under 3D labels", () => {
     renderSettings({
       sceneAnnotationSources: [TRACKED_LABELS],
       sceneAnnotationStreams: [TRACKED_LABELS.id],
     });
 
+    const labelsGroup = screen.getByRole("button", {
+      name: /3D Labels/,
+    });
     const group = screen.getByRole("button", {
       name: /3D Label Playback/,
     });
@@ -76,7 +79,13 @@ describe("Scene3dTileSettings", () => {
       screen.queryByRole("switch", { name: "Smooth tracked 3D labels" }),
     ).toBeNull();
 
-    fireEvent.click(group);
+    fireEvent.click(labelsGroup);
+    expect(
+      screen.queryByRole("button", { name: /3D Label Playback/ }),
+    ).toBeNull();
+
+    fireEvent.click(labelsGroup);
+    fireEvent.click(screen.getByRole("button", { name: /3D Label Playback/ }));
     const toggle = screen.getByRole("switch", {
       name: "Smooth tracked 3D labels",
     });
