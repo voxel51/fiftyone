@@ -14,6 +14,20 @@ vi.mock("../../annotation/store", () => ({
   useTransientCuboid: useTransientCuboidMock,
 }));
 
+// The state barrel reaches `@fiftyone/state` and its Relay fragments, which
+// need the Relay Babel transform that vitest doesn't run — importing it threw at
+// load time, so this file never executed. Stand in a real atom (the test drives
+// it through RecoilRoot) without pulling the barrel in.
+vi.mock("../../state", async () => {
+  const { atom } = await import("recoil");
+  return {
+    transformModeAtom: atom({
+      key: "test-transformMode",
+      default: "scale",
+    }),
+  };
+});
+
 function renderWithMode(
   transformMode: "scale" | "rotate" | "translate",
   args: Parameters<typeof useDisplayCuboidTransform>[0],
