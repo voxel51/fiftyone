@@ -62,7 +62,7 @@ afterEach(() => {
 });
 
 describe("Scene3dTileSettings", () => {
-  it("nests tracked-label playback under 3D labels", () => {
+  it("puts label interpolation before the 3D label sources", () => {
     renderSettings({
       sceneAnnotationSources: [TRACKED_LABELS],
       sceneAnnotationStreams: [TRACKED_LABELS.id],
@@ -71,27 +71,20 @@ describe("Scene3dTileSettings", () => {
     const labelsGroup = screen.getByRole("button", {
       name: /3D Labels/,
     });
-    const group = screen.getByRole("button", {
-      name: /3D Label Playback/,
-    });
-    expect(group.getAttribute("aria-expanded")).toBe("false");
-    expect(
-      screen.queryByRole("switch", { name: "Smooth tracked 3D labels" }),
-    ).toBeNull();
-
-    fireEvent.click(labelsGroup);
-    expect(
-      screen.queryByRole("button", { name: /3D Label Playback/ }),
-    ).toBeNull();
-
-    fireEvent.click(labelsGroup);
-    fireEvent.click(screen.getByRole("button", { name: /3D Label Playback/ }));
     const toggle = screen.getByRole("switch", {
-      name: "Smooth tracked 3D labels",
+      name: "Interpolate",
     });
+    const source = screen.getByRole("checkbox", { name: TRACKED_LABELS.label });
+    expect(screen.queryByText("3D Label Playback")).toBeNull();
+    expect(
+      toggle.compareDocumentPosition(source) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(toggle.getAttribute("aria-checked")).toBe("false");
     fireEvent.click(toggle);
     expect(toggle.getAttribute("aria-checked")).toBe("true");
+
+    fireEvent.click(labelsGroup);
+    expect(screen.queryByRole("switch", { name: "Interpolate" })).toBeNull();
   });
 
   it("renders a camera master switch when camera sources exist", () => {

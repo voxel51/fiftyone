@@ -341,27 +341,15 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
       ) : null}
 
       <SourceGroup
-        enabled={enabled}
-        selectedCount={sceneAnnotationStreams.length}
-        setSourcesEnabled={setSourcesEnabled}
-        sources={sceneAnnotationSources}
-        title="3D Labels"
-        toggleAriaLabel="Toggle 3D labels"
-        toggleSource={toggleSource}
-      >
-        <SidebarGroup
-          defaultExpanded={false}
-          summary={smoothTrackedLabels ? "Smoothed" : "Recorded"}
-          title="3D Label Playback"
-        >
+        beforeSources={
           <div className={settingsStyles.field}>
             <div className={settingsStyles.sectionHeader}>
               <SettingsLabel
-                label="Smooth tracked 3D labels"
+                label="Interpolate"
                 tooltip="Interpolates compatible geometry only when consecutive entities share a stable ID and coordinate frame. Recorded labels remain held when matching is unsafe or the message gap is too large."
               />
               <Toggle
-                aria-label="Smooth tracked 3D labels"
+                aria-label="Interpolate"
                 checked={smoothTrackedLabels}
                 onChange={(checked) =>
                   setScene3dTilePlaybackSettings({
@@ -373,8 +361,15 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
               />
             </div>
           </div>
-        </SidebarGroup>
-      </SourceGroup>
+        }
+        enabled={enabled}
+        selectedCount={sceneAnnotationStreams.length}
+        setSourcesEnabled={setSourcesEnabled}
+        sources={sceneAnnotationSources}
+        title="3D Labels"
+        toggleAriaLabel="Toggle 3D labels"
+        toggleSource={toggleSource}
+      />
 
       <SourceGroup
         enabled={enabled}
@@ -500,6 +495,7 @@ function isImageGeometryMode(value: unknown): value is ImageGeometryMode {
 }
 
 function SourceGroup({
+  beforeSources,
   children,
   detailsBySourceId,
   enabled,
@@ -510,6 +506,7 @@ function SourceGroup({
   toggleAriaLabel,
   toggleSource,
 }: {
+  readonly beforeSources?: React.ReactNode;
   readonly children?: React.ReactNode;
   readonly detailsBySourceId?: ReadonlyMap<string, readonly string[]>;
   readonly enabled: ReadonlySet<string>;
@@ -541,6 +538,7 @@ function SourceGroup({
           ),
       }}
     >
+      {beforeSources}
       <div className={settingsStyles.optionStack}>
         {sources.map((s) => {
           const details = detailsBySourceId?.get(s.id) ?? [];
