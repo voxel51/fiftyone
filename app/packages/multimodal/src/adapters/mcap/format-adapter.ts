@@ -332,8 +332,10 @@ export function createMcapNumericSeriesCapability({
   const sourceNameFor = (stream: string) =>
     sourceNamesById.get(stream) ?? stream;
   return {
-    async enumerateNumericFields(requestedStreams) {
+    async enumerateNumericFields(requestedStreams, options) {
       const fields = await client.enumerateNumericFields({
+        includeDataFallback: options?.includeDataFallback,
+        sampleTimeNs: options?.sampleTimeNs,
         source,
         topics: requestedStreams?.map(sourceNameFor),
       });

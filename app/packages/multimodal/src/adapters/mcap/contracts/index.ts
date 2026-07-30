@@ -210,9 +210,21 @@ export interface McapTopicTimeBounds {
  */
 export interface McapEnumerateNumericFieldsRequest {
   /**
+   * Whether dynamic paths may be augmented from one bounded indexed chunk.
+   * Defaults to true.
+   */
+  readonly includeDataFallback?: boolean;
+
+  /**
    * MCAP source to inspect for channel schemas.
    */
   readonly source: ByteSourceDescriptor;
+
+  /**
+   * Preferred log timestamp for bounded fallback sampling. The implementation
+   * still opens at most one indexed chunk.
+   */
+  readonly sampleTimeNs?: bigint;
 
   /**
    * Optional MCAP topics to include. Undefined means all topics.
@@ -265,9 +277,10 @@ export interface McapTopicNumericFields {
   readonly availability: McapNumericFieldAvailability;
 
   /**
-   * True when enumeration sampled decoded messages (JSON channels carry no
-   * walkable schema, and array indexes cannot be known from schemas alone).
-   * Fields appearing only later in the recording may be missing.
+   * True when complete discovery requires bounded message sampling (JSON
+   * channels carry no walkable schema, and dynamic paths cannot be known from
+   * schemas alone). The result is intentionally partial and may be empty when
+   * no usable indexed fallback chunk exists.
    */
   readonly sampled?: boolean;
   readonly fields: readonly McapNumericFieldDescriptor[];

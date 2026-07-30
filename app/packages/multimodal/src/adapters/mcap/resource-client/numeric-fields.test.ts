@@ -205,18 +205,14 @@ describe("enumerateMcapNumericFields", () => {
           createChannel({ id: 2, messageEncoding: "cbor", topic: "/exotic" }),
         ],
       ]),
-      readMessages: vi.fn(async function* (args?: {
-        readonly topics?: readonly string[];
-      }) {
-        if (args?.topics?.includes("/telemetry")) {
-          yield createMessage(jsonBytes({ speed: 3.2, mode: "auto" }), {
-            channelId: 1,
-          });
-          yield createMessage(jsonBytes({ speed: 3.4, battery: 91 }), {
-            channelId: 1,
-          });
-        }
-      }),
+      indexedMessages: [
+        createMessage(jsonBytes({ speed: 3.2, mode: "auto" }), {
+          channelId: 1,
+        }),
+        createMessage(jsonBytes({ speed: 3.4, battery: 91 }), {
+          channelId: 1,
+        }),
+      ],
       schemasById: new Map(),
     });
 
@@ -247,9 +243,7 @@ describe("enumerateMcapNumericFields", () => {
         [1, createChannel({ id: 1, messageEncoding: "json", topic: "/a" })],
         [2, createChannel({ id: 2, messageEncoding: "json", topic: "/b" })],
       ]),
-      readMessages: vi.fn(async function* () {
-        yield createMessage(jsonBytes({ v: 1 }), { channelId: 1 });
-      }),
+      indexedMessages: [createMessage(jsonBytes({ v: 1 }), { channelId: 1 })],
       schemasById: new Map(),
     });
 
@@ -312,13 +306,13 @@ describe("enumerateMcapNumericFields", () => {
           }),
         ],
       ]),
-      readMessages: vi.fn(async function* () {
-        yield createMessage(
+      indexedMessages: [
+        createMessage(
           type
             .encode(type.create({ position: [-0.48, 0.71, 0.7], sequence: 2 }))
             .finish(),
-        );
-      }),
+        ),
+      ],
       schemasById: new Map([
         [
           3,
@@ -514,7 +508,7 @@ describe("enumerateMcapNumericFields", () => {
         topic: "/ros2",
       },
     ]);
-    expect(readMessages).toHaveBeenCalledTimes(3);
+    expect(readMessages).not.toHaveBeenCalled();
   });
 
   it("degrades an unparseable ROS schema to no fields", async () => {
@@ -555,13 +549,9 @@ describe("enumerateMcapNumericFields", () => {
           }),
         ],
       ]),
-      readMessages: vi.fn(async function* (args?: {
-        readonly topics?: readonly string[];
-      }) {
-        if (args?.topics?.includes("/labels")) {
-          yield createMessage(jsonBytes({ label: "idle" }), { channelId: 1 });
-        }
-      }),
+      indexedMessages: [
+        createMessage(jsonBytes({ label: "idle" }), { channelId: 1 }),
+      ],
       schemasById: new Map(),
     });
 
@@ -574,6 +564,317 @@ describe("enumerateMcapNumericFields", () => {
         topic: "/labels",
       },
     ]);
+  });
+
+  it("does not touch message data for schema-complete topics", async () => {
+    const root = Root.fromJSON({
+      nested: {
+        test: {
+          nested: {
+            Scalar: {
+              fields: {
+                speed: { id: 1, type: "double" },
+              },
+            },
+          },
+        },
+      },
+    });
+    const reader = createReader({
+      channelsById: new Map([
+        [
+          1,
+          createChannel({
+            id: 1,
+            messageEncoding: "protobuf",
+            topic: "/scalar",
+          }),
+        ],
+      ]),
+      indexedMessages: [createMessage(new Uint8Array(), { channelId: 1 })],
+      schemasById: new Map([
+        [
+          3,
+          createSchema(protobufDescriptorData(root), {
+            name: "test.Scalar",
+          }),
+        ],
+      ]),
+    });
+
+    expect(await enumerateMcapNumericFields(reader)).toEqual([
+      {
+        availability: "ready",
+        encoding: "protobuf",
+        fields: [{ path: "speed", valueType: "double" }],
+        topic: "/scalar",
+      },
+    ]);
+    expect(reader.readIndexedMessageTimes).not.toHaveBeenCalled();
+    expect(reader.readIndexedMessages).not.toHaveBeenCalled();
+    expect(reader.readMessages).not.toHaveBeenCalled();
+  });
+
+  it("samples at most three messages from one selected indexed chunk", async () => {
+    const firstChunk = createChunkIndex({
+      chunkLength: 1_024n,
+      chunkStartOffset: 1_000n,
+      messageEndTime: 20n,
+      messageIndexOffsets: new Map([[1, 10_000n]]),
+      messageStartTime: 10n,
+    });
+    const playheadChunk = createChunkIndex({
+      chunkLength: 256n,
+      chunkStartOffset: 2_000n,
+      messageEndTime: 120n,
+      messageIndexOffsets: new Map([[1, 20_000n]]),
+      messageStartTime: 110n,
+    });
+    const sampledMessages = [
+      createMessage(jsonBytes({ a: 1 }), { channelId: 1, logTime: 111n }),
+      createMessage(jsonBytes({ b: 2 }), { channelId: 1, logTime: 112n }),
+      createMessage(jsonBytes({ c: 3 }), { channelId: 1, logTime: 113n }),
+      createMessage(jsonBytes({ ignored: 4 }), {
+        channelId: 1,
+        logTime: 114n,
+      }),
+    ];
+    const readIndexedMessageTimes = vi.fn(async function* (args?: {
+      readonly chunkStartOffsets?: readonly bigint[];
+      readonly limit?: number;
+      readonly topics?: readonly string[];
+    }) {
+      expect(args).toMatchObject({
+        chunkStartOffsets: [2_000n],
+        topics: ["/telemetry"],
+      });
+      for (const [index, message] of sampledMessages.entries()) {
+        yield {
+          channelId: 1,
+          chunkStartOffset: 2_000n,
+          logTimeNs: message.logTime,
+          messageOffset: BigInt(index),
+          topic: "/telemetry",
+        };
+      }
+    });
+    const readIndexedMessages = vi.fn(
+      async (request: {
+        readonly entries: readonly { readonly messageOffset: bigint }[];
+      }) =>
+        request.entries.map(
+          (entry) => sampledMessages[Number(entry.messageOffset)],
+        ),
+    );
+    const reader = Object.assign(
+      createReader({
+        channelsById: new Map([
+          [
+            1,
+            createChannel({
+              id: 1,
+              messageEncoding: "json",
+              topic: "/telemetry",
+            }),
+          ],
+        ]),
+        schemasById: new Map(),
+      }),
+      {
+        chunkIndexes: [firstChunk, playheadChunk],
+        readIndexedMessages,
+        readIndexedMessageTimes,
+      },
+    );
+
+    expect(
+      await enumerateMcapNumericFields(reader, { sampleTimeNs: 115n }),
+    ).toEqual([
+      {
+        availability: "ready",
+        encoding: "json",
+        fields: [
+          { path: "a", valueType: "number" },
+          { path: "b", valueType: "number" },
+          { path: "c", valueType: "number" },
+        ],
+        sampled: true,
+        topic: "/telemetry",
+      },
+    ]);
+    expect(readIndexedMessageTimes).toHaveBeenCalledOnce();
+    expect(readIndexedMessages).toHaveBeenCalledOnce();
+    expect(readIndexedMessages.mock.calls[0][0].entries).toHaveLength(3);
+    expect(reader.readMessages).not.toHaveBeenCalled();
+  });
+
+  it("shares one fallback chunk read across dynamic topics", async () => {
+    const reader = createReader({
+      channelsById: new Map([
+        [
+          1,
+          createChannel({
+            id: 1,
+            messageEncoding: "json",
+            topic: "/left",
+          }),
+        ],
+        [
+          2,
+          createChannel({
+            id: 2,
+            messageEncoding: "json",
+            topic: "/right",
+          }),
+        ],
+      ]),
+      indexedMessages: [
+        createMessage(jsonBytes({ left: 1 }), { channelId: 1 }),
+        createMessage(jsonBytes({ right: 2 }), { channelId: 2 }),
+      ],
+      schemasById: new Map(),
+    });
+
+    expect(await enumerateMcapNumericFields(reader)).toEqual([
+      {
+        availability: "ready",
+        encoding: "json",
+        fields: [{ path: "left", valueType: "number" }],
+        sampled: true,
+        topic: "/left",
+      },
+      {
+        availability: "ready",
+        encoding: "json",
+        fields: [{ path: "right", valueType: "number" }],
+        sampled: true,
+        topic: "/right",
+      },
+    ]);
+    expect(reader.readIndexedMessageTimes).toHaveBeenCalledOnce();
+    expect(reader.readIndexedMessages).toHaveBeenCalledOnce();
+    expect(reader.readMessages).not.toHaveBeenCalled();
+  });
+
+  it("returns the schema phase without starting bounded fallback I/O", async () => {
+    const reader = createReader({
+      channelsById: new Map([
+        [
+          1,
+          createChannel({
+            id: 1,
+            messageEncoding: "json",
+            topic: "/telemetry",
+          }),
+        ],
+      ]),
+      indexedMessages: [
+        createMessage(jsonBytes({ speed: 3.2 }), { channelId: 1 }),
+      ],
+      schemasById: new Map(),
+    });
+
+    expect(
+      await enumerateMcapNumericFields(reader, {
+        includeDataFallback: false,
+      }),
+    ).toEqual([
+      {
+        availability: "no-numeric-fields",
+        encoding: "json",
+        fields: [],
+        sampled: true,
+        topic: "/telemetry",
+      },
+    ]);
+    expect(reader.readIndexedMessageTimes).not.toHaveBeenCalled();
+    expect(reader.readIndexedMessages).not.toHaveBeenCalled();
+    expect(reader.readMessages).not.toHaveBeenCalled();
+  });
+
+  it("uses the first indexed chunk when it is cheaper than the playhead chunk", async () => {
+    const readIndexedMessageTimes = vi.fn(async function* (args?: {
+      readonly chunkStartOffsets?: readonly bigint[];
+    }) {
+      expect(args?.chunkStartOffsets).toEqual([1_000n]);
+      for (const entry of [] as Array<{
+        readonly channelId: number;
+        readonly chunkStartOffset: bigint;
+        readonly logTimeNs: bigint;
+        readonly messageOffset: bigint;
+        readonly topic: string;
+      }>) {
+        yield entry;
+      }
+    });
+    const reader = Object.assign(
+      createReader({
+        channelsById: new Map([
+          [
+            1,
+            createChannel({
+              id: 1,
+              messageEncoding: "json",
+              topic: "/telemetry",
+            }),
+          ],
+        ]),
+        schemasById: new Map(),
+      }),
+      {
+        chunkIndexes: [
+          createChunkIndex({
+            chunkLength: 128n,
+            chunkStartOffset: 1_000n,
+            messageIndexOffsets: new Map([[1, 10_000n]]),
+          }),
+          createChunkIndex({
+            chunkLength: 512n,
+            chunkStartOffset: 2_000n,
+            messageEndTime: 120n,
+            messageIndexOffsets: new Map([[1, 20_000n]]),
+            messageStartTime: 110n,
+          }),
+        ],
+        readIndexedMessageTimes,
+      },
+    );
+
+    await enumerateMcapNumericFields(reader, { sampleTimeNs: 115n });
+
+    expect(readIndexedMessageTimes).toHaveBeenCalledOnce();
+    expect(reader.readMessages).not.toHaveBeenCalled();
+  });
+
+  it("does not fall back to an unbounded scan when indexes are unavailable", async () => {
+    const readMessages = vi.fn(async function* () {
+      yield createMessage(jsonBytes({ speed: 3.2 }));
+    });
+    const reader = createReader({
+      channelsById: new Map([
+        [
+          1,
+          createChannel({
+            id: 1,
+            messageEncoding: "json",
+            topic: "/telemetry",
+          }),
+        ],
+      ]),
+      readMessages,
+      schemasById: new Map(),
+    });
+
+    expect(await enumerateMcapNumericFields(reader)).toEqual([
+      {
+        availability: "no-numeric-fields",
+        encoding: "json",
+        fields: [],
+        sampled: true,
+        topic: "/telemetry",
+      },
+    ]);
+    expect(readMessages).not.toHaveBeenCalled();
   });
 });
 
@@ -591,6 +892,7 @@ function protobufDescriptorData(root: Root): Uint8Array {
 
 function createReader({
   channelsById,
+  indexedMessages,
   readMessages,
   schemasById,
 }: {
@@ -598,6 +900,7 @@ function createReader({
     number,
     McapTypes.TypedMcapRecords["Channel"]
   >;
+  readonly indexedMessages?: readonly McapTypes.TypedMcapRecords["Message"][];
   readonly readMessages?: (args?: {
     readonly endTime?: bigint;
     readonly startTime?: bigint;
@@ -608,9 +911,65 @@ function createReader({
     McapTypes.TypedMcapRecords["Schema"]
   >;
 }) {
+  const chunkStartOffset = 1_000n;
+  const messageIndexOffsets = new Map(
+    [
+      ...new Set(indexedMessages?.map((message) => message.channelId) ?? []),
+    ].map((channelId) => [channelId, 2_000n] as const),
+  );
+  const chunkIndexes =
+    indexedMessages === undefined
+      ? []
+      : [
+          createChunkIndex({
+            messageEndTime: 1_000n,
+            messageIndexOffsets,
+            messageStartTime: 0n,
+          }),
+        ];
+  const readIndexedMessageTimes = vi.fn(async function* (args?: {
+    readonly chunkStartOffsets?: readonly bigint[];
+    readonly limit?: number;
+    readonly topics?: readonly string[];
+  }) {
+    let yielded = 0;
+    for (const [index, message] of (indexedMessages ?? []).entries()) {
+      const topic = channelsById.get(message.channelId)?.topic;
+      if (
+        !topic ||
+        (args?.topics && !args.topics.includes(topic)) ||
+        (args?.chunkStartOffsets &&
+          !args.chunkStartOffsets.includes(chunkStartOffset))
+      ) {
+        continue;
+      }
+      yield {
+        channelId: message.channelId,
+        chunkStartOffset,
+        logTimeNs: message.logTime,
+        messageOffset: BigInt(index),
+        topic,
+      };
+      yielded += 1;
+      if (args?.limit !== undefined && yielded >= args.limit) {
+        return;
+      }
+    }
+  });
+  const readIndexedMessages = vi.fn(
+    async (request: {
+      readonly entries: readonly { readonly messageOffset: bigint }[];
+    }) =>
+      request.entries.flatMap((entry) => {
+        const message = indexedMessages?.[Number(entry.messageOffset)];
+        return message ? [message] : [];
+      }),
+  );
   return {
     channelsById,
-    chunkIndexes: [],
+    chunkIndexes,
+    readIndexedMessages,
+    readIndexedMessageTimes,
     readMessages:
       readMessages ??
       vi.fn(async function* () {
@@ -619,6 +978,23 @@ function createReader({
         }
       }),
     schemasById,
+  };
+}
+
+function createChunkIndex(
+  options: Partial<McapTypes.TypedMcapRecords["ChunkIndex"]> = {},
+): McapTypes.TypedMcapRecords["ChunkIndex"] {
+  return {
+    chunkLength: options.chunkLength ?? 256n,
+    chunkStartOffset: options.chunkStartOffset ?? 1_000n,
+    compressedSize: options.compressedSize ?? 0n,
+    compression: options.compression ?? "",
+    messageEndTime: options.messageEndTime ?? 20n,
+    messageIndexLength: options.messageIndexLength ?? 0n,
+    messageIndexOffsets: options.messageIndexOffsets ?? new Map(),
+    messageStartTime: options.messageStartTime ?? 10n,
+    type: "ChunkIndex",
+    uncompressedSize: options.uncompressedSize ?? 0n,
   };
 }
 

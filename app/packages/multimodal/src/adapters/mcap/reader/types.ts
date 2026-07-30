@@ -46,6 +46,12 @@ export interface McapIndexedMessageTime {
  */
 export interface McapReadIndexedMessageTimesRequest {
   /**
+   * Optional exact chunk offsets to inspect. This bounds index work and lets
+   * callers guarantee that materialization touches only selected chunks.
+   */
+  readonly chunkStartOffsets?: readonly bigint[];
+
+  /**
    * Inclusive maximum log timestamp to read, in nanoseconds.
    */
   readonly endTimeNs?: bigint;

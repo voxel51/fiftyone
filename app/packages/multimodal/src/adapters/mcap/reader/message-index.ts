@@ -60,10 +60,24 @@ export async function* readIndexedMessageTimesForReader(
     return;
   }
 
-  if (chunksAreOrdered(reader.chunkIndexes)) {
+  const requestedChunkOffsets = args.chunkStartOffsets
+    ? new Set(args.chunkStartOffsets)
+    : undefined;
+  const chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][] =
+    requestedChunkOffsets
+      ? reader.chunkIndexes.filter(
+          (chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"]) =>
+            requestedChunkOffsets.has(chunkIndex.chunkStartOffset),
+        )
+      : reader.chunkIndexes;
+  if (chunkIndexes.length === 0) {
+    return;
+  }
+
+  if (chunksAreOrdered(chunkIndexes)) {
     let count = 0;
 
-    for (const chunkIndex of reader.chunkIndexes) {
+    for (const chunkIndex of chunkIndexes) {
       if (!chunkOverlapsRange(chunkIndex, args.startTimeNs, args.endTimeNs)) {
         if (
           args.endTimeNs !== undefined &&
@@ -98,7 +112,7 @@ export async function* readIndexedMessageTimesForReader(
 
   const entries: McapIndexedMessageTime[] = [];
 
-  for (const chunkIndex of reader.chunkIndexes) {
+  for (const chunkIndex of chunkIndexes) {
     if (!chunkOverlapsRange(chunkIndex, args.startTimeNs, args.endTimeNs)) {
       continue;
     }

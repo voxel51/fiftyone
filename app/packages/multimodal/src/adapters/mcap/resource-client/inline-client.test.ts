@@ -399,6 +399,68 @@ describe("MCAP resources", () => {
     expect(second).toBe(first);
   });
 
+  it("caches schema and bounded numeric enumeration phases separately", async () => {
+    const source = createMcapSourceDescriptor();
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield {
+        channelId: 7,
+        chunkStartOffset: 1_000n,
+        logTimeNs: 10n,
+        messageOffset: 0n,
+        topic: "/state",
+      };
+    });
+    const readIndexedMessages = vi.fn(async () => [
+      createMessage(new TextEncoder().encode(JSON.stringify({ speed: 3.2 })), {
+        channelId: 7,
+        logTime: 10n,
+      }),
+    ]);
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              7,
+              createChannel({
+                id: 7,
+                messageEncoding: "json",
+                schemaId: 0,
+                topic: "/state",
+              }),
+            ],
+          ]),
+          chunkIndexes: [
+            createChunkIndex({
+              messageIndexOffsets: new Map([[7, 2_000n]]),
+            }),
+          ],
+          readIndexedMessages,
+          readIndexedMessageTimes,
+          schemasById: new Map(),
+        }),
+      ),
+    });
+
+    const schema = await client.enumerateNumericFields({
+      includeDataFallback: false,
+      source,
+    });
+    const bounded = await client.enumerateNumericFields({
+      includeDataFallback: true,
+      source,
+    });
+
+    expect(schema[0]?.fields).toEqual([]);
+    expect(bounded[0]?.fields).toEqual([
+      { path: "speed", valueType: "number" },
+    ]);
+    expect(readIndexedMessageTimes).toHaveBeenCalledOnce();
+    expect(readIndexedMessages).toHaveBeenCalledOnce();
+  });
+
   it("matches MCAP adapter topic fallbacks for missing schema and stats", async () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },

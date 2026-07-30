@@ -59,6 +59,47 @@ describe("MCAP indexed message times", () => {
     expect(exactReads).toEqual(reads);
   });
 
+  it("restricts index reads to exact requested chunk offsets", async () => {
+    const firstIndex = createMessageIndexRecord(7, [[10n, 1n]]);
+    const secondIndex = createMessageIndexRecord(7, [[110n, 2n]]);
+    const firstOffset = 64n;
+    const secondOffset = 256n;
+    const { exactReads, readable } = createReadable([
+      { bytes: firstIndex, offset: firstOffset },
+      { bytes: secondIndex, offset: secondOffset },
+    ]);
+    const reader = createReader({
+      chunkIndexes: [
+        createChunkIndex({
+          chunkStartOffset: 1_000n,
+          messageEndTime: 20n,
+          messageIndexLength: BigInt(firstIndex.byteLength),
+          messageIndexOffsets: new Map([[7, firstOffset]]),
+          messageStartTime: 10n,
+        }),
+        createChunkIndex({
+          chunkStartOffset: 2_000n,
+          messageEndTime: 120n,
+          messageIndexLength: BigInt(secondIndex.byteLength),
+          messageIndexOffsets: new Map([[7, secondOffset]]),
+          messageStartTime: 110n,
+        }),
+      ],
+    });
+
+    const entries = await collect(
+      readIndexedMessageTimesForReader(reader, readable, {
+        chunkStartOffsets: [2_000n],
+        topics: ["/camera"],
+      }),
+    );
+
+    expect(entries.map((entry) => entry.logTimeNs)).toEqual([110n]);
+    expect(exactReads).toEqual([
+      { offset: secondOffset, size: BigInt(secondIndex.byteLength) },
+    ]);
+  });
+
   it("batches nearby requested ranges across an unselected index", async () => {
     const cameraIndex = createMessageIndexRecord(7, [[10n, 1n]]);
     const skippedIndex = createMessageIndexRecord(9, [[10n, 9n]]);

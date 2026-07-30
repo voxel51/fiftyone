@@ -1,3 +1,4 @@
+import type { McapTypes } from "@mcap/core";
 import { Enum, Type } from "protobufjs";
 import {
   isRosMessageEncoding,
@@ -6,7 +7,10 @@ import {
   type RosMessageDefinition,
 } from "../message-decoders/ros/wire";
 import { protobufFromBinaryDescriptor } from "../compatibility/mcap-support";
-import type { McapIndexedReaderLike } from "../reader/index";
+import type {
+  McapIndexedMessageTime,
+  McapIndexedReaderLike,
+} from "../reader/index";
 import type {
   McapEnumerateNumericFieldsRequest,
   McapNumericFieldDescriptor,
@@ -24,8 +28,8 @@ import { DEFAULT_RAW_PRUNE_BUDGETS } from "./raw-record-prune";
 const MAX_FIELD_DEPTH = 6;
 
 /**
- * A few messages are enough to discover ordinary telemetry arrays without
- * making field enumeration scan each topic.
+ * A few messages from one selected indexed chunk are enough to discover
+ * ordinary telemetry arrays without making field enumeration scan a source.
  */
 const FIELD_SAMPLE_MESSAGE_LIMIT = 3;
 
@@ -38,7 +42,21 @@ const SAMPLED_ARRAY_ELEMENT_LIMIT = DEFAULT_RAW_PRUNE_BUDGETS.maxArrayLength;
 
 interface NumericFieldWalkResult {
   readonly fields: McapNumericFieldDescriptor[];
-  hasArrays: boolean;
+  needsSampling: boolean;
+}
+
+type NumericChannel = Pick<
+  McapTypes.TypedMcapRecords["Channel"],
+  "id" | "messageEncoding" | "schemaId"
+>;
+
+interface NumericTopicPlan {
+  readonly channel: NumericChannel;
+  readonly encoding: McapTopicNumericFields["encoding"];
+  readonly needsSampling: boolean;
+  readonly schemaAvailability: McapNumericFieldAvailability;
+  readonly schemaFields: readonly McapNumericFieldDescriptor[];
+  readonly topic: string;
 }
 
 const PROTOBUF_NUMERIC_SCALAR_TYPES: ReadonlySet<string> = new Set([
@@ -78,9 +96,9 @@ const ROS_NUMERIC_SCALAR_TYPES: ReadonlySet<string> = new Set([
 
 /**
  * Enumerates numeric leaf field paths of a protobufjs message type in
- * declaration order. Repeated fields have no schema-level length, so this
- * walk leaves them for bounded message sampling during topic enumeration.
- * Map fields remain unsupported. Nested messages recurse up to
+ * declaration order. Repeated and map fields have data-dependent concrete
+ * paths, so this walk leaves them for bounded message sampling during topic
+ * enumeration. Nested messages recurse up to
  * `MAX_FIELD_DEPTH` with a cycle guard for self-referential schemas.
  */
 export function walkProtobufNumericFields(
@@ -105,14 +123,14 @@ function rosNumericFields(
 ): NumericFieldWalkResult {
   const root = rootRosMessageDefinition(definitions);
   if (!root) {
-    return { fields: [], hasArrays: false };
+    return { fields: [], needsSampling: false };
   }
   const definitionsByName = new Map(
     definitions
       .filter((definition) => definition.name)
       .map((definition) => [definition.name ?? "", definition] as const),
   );
-  const result: NumericFieldWalkResult = { fields: [], hasArrays: false };
+  const result: NumericFieldWalkResult = { fields: [], needsSampling: false };
   const visited = new Set(root.name ? [root.name] : []);
   walkRosDefinition(root, definitionsByName, "", visited, result);
   return result;
@@ -134,7 +152,7 @@ function walkRosDefinition(
       continue;
     }
     if (field.isArray) {
-      result.hasArrays = true;
+      result.needsSampling = true;
       continue;
     }
 
@@ -174,10 +192,11 @@ function walkProtobufType(
   for (const field of type.fieldsArray) {
     field.resolve();
     if (field.map) {
+      result.needsSampling = true;
       continue;
     }
     if (field.repeated) {
-      result.hasArrays = true;
+      result.needsSampling = true;
       continue;
     }
 
@@ -204,7 +223,7 @@ function walkProtobufType(
 }
 
 function protobufNumericFields(type: Type): NumericFieldWalkResult {
-  const result: NumericFieldWalkResult = { fields: [], hasArrays: false };
+  const result: NumericFieldWalkResult = { fields: [], needsSampling: false };
   walkProtobufType(type, "", new Set([type.fullName]), result);
   return result;
 }
@@ -270,22 +289,22 @@ function walkSampleValue(
 /**
  * Enumerates plottable numeric fields for every requested topic.
  * Protobuf channels walk their binary descriptor and ROS channels walk their
- * parsed message definitions. Schemas containing arrays additionally sample
- * a few decoded messages to discover bounded indexed paths; JSON channels do
- * the same because they carry no walkable schema. Other encodings return an
- * explicit unsupported-encoding entry. Never throws per topic; schema parse
- * or sampling failures degrade gracefully so one bad channel cannot hide the
+ * parsed message definitions without touching message data. Schemas
+ * containing dynamic paths and JSON channels fall back to at most three
+ * messages from exactly one indexed chunk. Other encodings return an explicit
+ * unsupported-encoding entry. Never throws per topic; schema parse or bounded
+ * sampling failures degrade gracefully so one bad channel cannot hide the
  * rest.
  */
 export async function enumerateMcapNumericFields(
   reader: McapIndexedReaderLike,
-  request?: Pick<McapEnumerateNumericFieldsRequest, "topics">,
+  request?: Pick<
+    McapEnumerateNumericFieldsRequest,
+    "includeDataFallback" | "sampleTimeNs" | "topics"
+  >,
 ): Promise<readonly McapTopicNumericFields[]> {
   const requestedTopics = request?.topics && new Set(request.topics);
-  const channelsByTopic = new Map<
-    string,
-    { readonly messageEncoding: string; readonly schemaId: number }
-  >();
+  const channelsByTopic = new Map<string, NumericChannel>();
   for (const channel of reader.channelsById.values()) {
     if (requestedTopics && !requestedTopics.has(channel.topic)) {
       continue;
@@ -295,6 +314,7 @@ export async function enumerateMcapNumericFields(
     }
   }
 
+  const plans: NumericTopicPlan[] = [];
   const results: McapTopicNumericFields[] = [];
   for (const [topic, channel] of channelsByTopic) {
     const schema = reader.schemasById.get(channel.schemaId);
@@ -305,18 +325,12 @@ export async function enumerateMcapNumericFields(
       schema.data.byteLength > 0
     ) {
       const schemaFields = protobufFieldsForSchema(schema.data, schema.name);
-      const sampledFields = schemaFields.hasArrays
-        ? await sampleNumericFieldsForTopic(reader, topic, channel)
-        : [];
-      const fields = mergeNumericFields(schemaFields.fields, sampledFields);
-      results.push({
-        availability:
-          schemaFields.availability === "schema-unavailable"
-            ? schemaFields.availability
-            : availabilityForFields(fields),
+      plans.push({
+        channel,
         encoding: "protobuf",
-        fields,
-        ...(schemaFields.hasArrays ? { sampled: true } : {}),
+        needsSampling: schemaFields.needsSampling,
+        schemaAvailability: schemaFields.availability,
+        schemaFields: schemaFields.fields,
         topic,
       });
       continue;
@@ -332,12 +346,12 @@ export async function enumerateMcapNumericFields(
     }
 
     if (channel.messageEncoding === "json") {
-      const fields = await sampleNumericFieldsForTopic(reader, topic, channel);
-      results.push({
-        availability: availabilityForFields(fields),
+      plans.push({
+        channel,
         encoding: "json",
-        fields,
-        sampled: true,
+        needsSampling: true,
+        schemaAvailability: "no-numeric-fields",
+        schemaFields: [],
         topic,
       });
       continue;
@@ -345,18 +359,12 @@ export async function enumerateMcapNumericFields(
 
     if (isRosMessageEncoding(channel.messageEncoding)) {
       const schemaFields = rosFieldsForChannel(reader, channel);
-      const sampledFields = schemaFields.hasArrays
-        ? await sampleNumericFieldsForTopic(reader, topic, channel)
-        : [];
-      const fields = mergeNumericFields(schemaFields.fields, sampledFields);
-      results.push({
-        availability:
-          schemaFields.availability === "schema-unavailable"
-            ? schemaFields.availability
-            : availabilityForFields(fields),
+      plans.push({
+        channel,
         encoding: channel.messageEncoding,
-        fields,
-        ...(schemaFields.hasArrays ? { sampled: true } : {}),
+        needsSampling: schemaFields.needsSampling,
+        schemaAvailability: schemaFields.availability,
+        schemaFields: schemaFields.fields,
         topic,
       });
       continue;
@@ -370,6 +378,31 @@ export async function enumerateMcapNumericFields(
     });
   }
 
+  const sampledFieldsByTopic =
+    request?.includeDataFallback === false
+      ? new Map()
+      : await sampleNumericFieldsForTopics(
+          reader,
+          plans.filter((plan) => plan.needsSampling),
+          request?.sampleTimeNs,
+        );
+  for (const plan of plans) {
+    const fields = mergeNumericFields(
+      plan.schemaFields,
+      sampledFieldsByTopic.get(plan.topic) ?? [],
+    );
+    results.push({
+      availability:
+        plan.schemaAvailability === "schema-unavailable"
+          ? plan.schemaAvailability
+          : availabilityForFields(fields),
+      encoding: plan.encoding,
+      fields,
+      ...(plan.needsSampling ? { sampled: true } : {}),
+      topic: plan.topic,
+    });
+  }
+
   return results.sort((a, b) => a.topic.localeCompare(b.topic));
 }
 
@@ -379,7 +412,7 @@ function rosFieldsForChannel(
 ): {
   readonly availability: McapNumericFieldAvailability;
   readonly fields: readonly McapNumericFieldDescriptor[];
-  readonly hasArrays: boolean;
+  readonly needsSampling: boolean;
 } {
   try {
     const definitions = rosMessageDefinitionsForChannel(reader, channel);
@@ -387,7 +420,7 @@ function rosFieldsForChannel(
       return {
         availability: "schema-unavailable",
         fields: [],
-        hasArrays: false,
+        needsSampling: false,
       };
     }
     const result = rosNumericFields(definitions);
@@ -399,7 +432,7 @@ function rosFieldsForChannel(
     return {
       availability: "schema-unavailable",
       fields: [],
-      hasArrays: false,
+      needsSampling: false,
     };
   }
 }
@@ -410,7 +443,7 @@ function protobufFieldsForSchema(
 ): {
   readonly availability: McapNumericFieldAvailability;
   readonly fields: readonly McapNumericFieldDescriptor[];
-  readonly hasArrays: boolean;
+  readonly needsSampling: boolean;
 } {
   try {
     const root = protobufFromBinaryDescriptor(schemaData);
@@ -426,7 +459,7 @@ function protobufFieldsForSchema(
     return {
       availability: "schema-unavailable",
       fields: [],
-      hasArrays: false,
+      needsSampling: false,
     };
   }
 }
@@ -437,32 +470,156 @@ function availabilityForFields(
   return fields.length > 0 ? "ready" : "no-numeric-fields";
 }
 
-async function sampleNumericFieldsForTopic(
+async function sampleNumericFieldsForTopics(
   reader: McapIndexedReaderLike,
-  topic: string,
-  channel: { readonly messageEncoding: string; readonly schemaId: number },
-): Promise<readonly McapNumericFieldDescriptor[]> {
-  const decodeRecord = genericRecordDecoderForChannel(reader, channel);
-  if (!decodeRecord) {
-    return [];
+  plans: readonly NumericTopicPlan[],
+  sampleTimeNs?: bigint,
+): Promise<ReadonlyMap<string, readonly McapNumericFieldDescriptor[]>> {
+  if (!reader.readIndexedMessageTimes || !reader.readIndexedMessages) {
+    return new Map();
   }
 
-  const samples: Record<string, unknown>[] = [];
+  const decodersByTopic = new Map(
+    plans.flatMap((plan) => {
+      const decoder = genericRecordDecoderForChannel(reader, plan.channel);
+      return decoder ? [[plan.topic, decoder] as const] : [];
+    }),
+  );
+  const decodablePlans = plans.filter((plan) =>
+    decodersByTopic.has(plan.topic),
+  );
+  const chunk = selectSampleChunk(
+    reader,
+    decodablePlans.map((plan) => plan.channel),
+    sampleTimeNs,
+  );
+  if (!chunk || decodablePlans.length === 0) {
+    return new Map();
+  }
+
+  const topics = decodablePlans
+    .filter((plan) => chunk.messageIndexOffsets.has(plan.channel.id))
+    .map((plan) => plan.topic);
+  if (topics.length === 0) {
+    return new Map();
+  }
+  const sampleCounts = new Map<string, number>(
+    topics.map((topic) => [topic, 0]),
+  );
+  const saturatedTopics = new Set<string>();
+  const entries: McapIndexedMessageTime[] = [];
   try {
-    for await (const message of reader.readMessages({ topics: [topic] })) {
-      try {
-        samples.push(decodeRecord(message.data));
-      } catch {
-        // Malformed sample — keep scanning up to the sample limit.
+    for await (const entry of reader.readIndexedMessageTimes({
+      chunkStartOffsets: [chunk.chunkStartOffset],
+      topics,
+    })) {
+      const count = sampleCounts.get(entry.topic);
+      if (count === undefined || count >= FIELD_SAMPLE_MESSAGE_LIMIT) {
+        continue;
       }
-      if (samples.length >= FIELD_SAMPLE_MESSAGE_LIMIT) {
+      entries.push(entry);
+      const nextCount = count + 1;
+      sampleCounts.set(entry.topic, nextCount);
+      if (nextCount === FIELD_SAMPLE_MESSAGE_LIMIT) {
+        saturatedTopics.add(entry.topic);
+      }
+      if (saturatedTopics.size === topics.length) {
         break;
       }
     }
   } catch {
-    // Read failure degrades to whatever samples were collected.
+    return new Map();
   }
-  return numericFieldsFromSamples(samples);
+  if (entries.length === 0) {
+    return new Map();
+  }
+
+  const samplesByTopic = new Map<string, Record<string, unknown>[]>();
+  try {
+    const messages = await reader.readIndexedMessages({ entries });
+    for (const [index, message] of messages.entries()) {
+      const entry = entries[index];
+      const decoder = entry && decodersByTopic.get(entry.topic);
+      if (!entry || !decoder) {
+        continue;
+      }
+      try {
+        const samples = samplesByTopic.get(entry.topic) ?? [];
+        samples.push(decoder(message.data));
+        samplesByTopic.set(entry.topic, samples);
+      } catch {
+        // Malformed sample — keep the other messages from the same chunk.
+      }
+    }
+  } catch {
+    // Read failure degrades to no sampled fields.
+  }
+  return new Map(
+    [...samplesByTopic].map(([topic, samples]) => [
+      topic,
+      numericFieldsFromSamples(samples),
+    ]),
+  );
+}
+
+type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
+
+/**
+ * Chooses one fallback chunk without racing duplicate reads. The first indexed
+ * chunk gives a cheap deterministic baseline; when a playhead is available,
+ * its nearest chunk competes by physical chunk length as the best available
+ * latency proxy. Either way the caller materializes exactly one chunk.
+ */
+function selectSampleChunk(
+  reader: McapIndexedReaderLike,
+  channels: readonly Pick<NumericChannel, "id">[],
+  sampleTimeNs?: bigint,
+): McapChunkIndex | undefined {
+  const channelIds = new Set(channels.map((channel) => channel.id));
+  if (channelIds.size === 0) {
+    return undefined;
+  }
+  const chunks = reader.chunkIndexes
+    .filter((chunk: McapChunkIndex) => {
+      for (const channelId of channelIds) {
+        if (chunk.messageIndexOffsets.has(channelId)) {
+          return true;
+        }
+      }
+      return false;
+    })
+    .sort((left: McapChunkIndex, right: McapChunkIndex) => {
+      if (left.messageStartTime !== right.messageStartTime) {
+        return left.messageStartTime < right.messageStartTime ? -1 : 1;
+      }
+      return left.chunkStartOffset < right.chunkStartOffset ? -1 : 1;
+    });
+  const first = chunks[0];
+  if (!first || sampleTimeNs === undefined) {
+    return first;
+  }
+
+  const nearest = chunks.reduce(
+    (best: McapChunkIndex, candidate: McapChunkIndex) =>
+      distanceToChunk(candidate, sampleTimeNs) <
+      distanceToChunk(best, sampleTimeNs)
+        ? candidate
+        : best,
+  );
+  if (nearest.chunkStartOffset === first.chunkStartOffset) {
+    return first;
+  }
+  return nearest.chunkLength <= first.chunkLength ? nearest : first;
+}
+
+function distanceToChunk(chunk: McapChunkIndex, timeNs: bigint): bigint {
+  if (timeNs < chunk.messageStartTime) {
+    return chunk.messageStartTime - timeNs;
+  }
+  if (timeNs > chunk.messageEndTime) {
+    return timeNs - chunk.messageEndTime;
+  }
+  return 0n;
 }
 
 function mergeNumericFields(

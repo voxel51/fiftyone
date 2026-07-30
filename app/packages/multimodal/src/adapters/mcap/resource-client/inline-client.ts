@@ -199,9 +199,11 @@ export function createInlineMcapResourceClient(
 
     async enumerateNumericFields(request: McapEnumerateNumericFieldsRequest) {
       const sourceKey = byteSourceAccessKey(request.source);
+      const fallbackKey =
+        request.includeDataFallback === false ? "schema" : "bounded";
       const fieldsKey = request.topics
-        ? [sourceKey, ...request.topics].join("\0")
-        : sourceKey;
+        ? [sourceKey, fallbackKey, ...request.topics].join("\0")
+        : [sourceKey, fallbackKey].join("\0");
       const cached = numericFieldReads.get(fieldsKey);
       if (cached) {
         return cached;

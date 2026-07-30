@@ -18,6 +18,7 @@ export interface NumericStreamFields {
   readonly availability: NumericFieldAvailability;
   readonly encoding: string;
   readonly fields: readonly NumericFieldDescriptor[];
+  /** Dynamic discovery used a bounded, potentially partial data fallback. */
   readonly sampled?: boolean;
   readonly sourceName: string;
   readonly streamId: StreamId;

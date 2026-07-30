@@ -220,10 +220,26 @@ export interface PlaybackReadCapability {
   ): () => void;
 }
 
+/** Hints for bounded numeric-field fallback discovery. */
+export interface NumericFieldEnumerationOptions {
+  /**
+   * Whether dynamic paths may be augmented from bounded message data.
+   * False returns the schema-derived catalog without waiting for fallback I/O.
+   */
+  readonly includeDataFallback?: boolean;
+
+  /**
+   * Preferred timestamp for bounded data-backed fallback discovery.
+   * Adapters may ignore it when their schema is fully descriptive.
+   */
+  readonly sampleTimeNs?: bigint;
+}
+
 /** Optional semantic capability for plottable scalar fields. */
 export interface NumericSeriesCapability {
   enumerateNumericFields(
     streams?: readonly StreamId[],
+    options?: NumericFieldEnumerationOptions,
   ): Promise<readonly NumericStreamFields[]>;
   readNumericSeries(request: {
     readonly fields: readonly string[];
