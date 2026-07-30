@@ -28,6 +28,11 @@ from .segmentation import (
     SegmentationEvaluationConfig,
     SegmentationResults,
 )
+from .tracking import (
+    evaluate_tracks,
+    TrackingEvaluationConfig,
+    TrackingResults,
+)
 
 # This tells Sphinx to allow refs to imported objects in this module
 # https://stackoverflow.com/a/31594545/16823653

@@ -1796,6 +1796,400 @@ matched with ground truth segments of different classes.
    :alt: activitynet-confusion-matrix
    :align: center
 
+.. _evaluating-tracks:
+
+Multi-object tracks
+___________________
+
+You can use
+:meth:`evaluate_tracks() <fiftyone.core.collections.SampleCollection.evaluate_tracks>`
+to evaluate multi-object tracks on video datasets. Tracks are stored as
+frame-level |Detections| whose individual |Detection| instances use ``index``
+as the track identity:
+
+.. code-block:: text
+
+    frames.<field>: Detections
+    └── Detection
+        ├── label
+        ├── bounding_box
+        ├── mask          # required for mask tracking
+        ├── confidence    # optional prediction confidence
+        └── index         # required track identity
+
+Track indices must be unique on each frame and must identify a single class
+within each video. The same integer may be reused in a different video, and
+ground-truth and prediction indices are independent.
+
+.. important::
+
+    Tracking evaluation is not automatically selected when detections have
+    ``index`` values. Use ``evaluate_tracks()`` when identities over time
+    matter. :meth:`evaluate_detections()
+    <fiftyone.core.collections.SampleCollection.evaluate_detections>` continues
+    to evaluate each frame independently.
+
+Installation
+------------
+
+Tracking metrics are computed by the optional
+`TrackEval <https://github.com/JonathonLuiten/TrackEval>`_ dependency:
+
+.. code-block:: shell
+
+    pip install trackeval
+
+Mask tracking also requires ``pycocotools``:
+
+.. code-block:: shell
+
+    pip install pycocotools
+
+Box tracking
+------------
+
+The ``"motchallenge"`` method evaluates normalized FiftyOne bounding boxes
+after converting them to absolute video-frame coordinates:
+
+.. code-block:: python
+
+    results = dataset.evaluate_tracks(
+        "frames.predictions",
+        gt_field="frames.ground_truth",
+        eval_key="mot",
+        method="motchallenge",
+        metrics=["HOTA", "CLEAR", "Identity"],
+    )
+
+The evaluator includes all frames reported by the sample's |VideoMetadata|,
+including empty or missing frame documents. Tracks may begin or end on any
+frame, and results from multiple videos and classes are combined using
+TrackEval's protocol aggregation rather than by averaging per-video scores.
+
+Mask tracking
+-------------
+
+The ``"mots"`` method uses each detection's binary ``Detection.mask`` as its
+canonical geometry:
+
+.. code-block:: python
+
+    results = dataset.evaluate_tracks(
+        "frames.predictions",
+        gt_field="frames.ground_truth",
+        eval_key="mots",
+        method="mots",
+        use_masks=True,
+        metrics=["HOTA", "CLEAR", "Identity"],
+    )
+
+FiftyOne instance masks are relative to their detection bounding boxes. The
+evaluator renders them into full-frame raster masks and TrackEval encodes them
+as RLE before computing mask IoUs.
+
+Results
+-------
+
+:meth:`evaluate_tracks()
+<fiftyone.core.collections.SampleCollection.evaluate_tracks>` returns a
+|TrackingResults| instance with aggregate, per-video, and per-class metrics:
+
+.. code-block:: python
+
+    results.print_metrics()  # flat metric table
+    results.print_report(full_names=True)  # grouped report with readable names
+    print(results.metrics())
+    print(results.hota())
+    print(results.idf1())
+    print(results.mota())
+
+    # Collision-safe sequence keys are sample IDs
+    sample = dataset.first()
+    sample_id = str(sample.id)
+    print(results.metrics(sequence=sample_id))
+    print(results.metrics(class_name="person"))
+
+    # Plot TrackEval's HOTA threshold curves for this video
+    results.plot_hota_curves(sample=sample).show()
+
+    # Plot TrackEval identity switches over this video's frames
+    results.plot_id_switches(sample=sample).show()
+
+    # Compare against another saved tracking evaluation
+    results.compare(
+        "candidate",
+        values=["HOTA", "DetA", "AssA", "IDF1", "MOTA"],
+        full_names=True,
+    )
+    results.plot_compare(
+        "candidate",
+        values=["HOTA", "DetA", "AssA", "IDF1", "MOTA"],
+    ).show()
+
+Supported metric families are:
+
+-   ``"HOTA"``: HOTA, DetA, AssA, LocA, detection precision/recall, and
+    association precision/recall
+-   ``"CLEAR"``: MOTA, MOTP, true/false positives, false negatives, identity
+    switches, fragmentations, mostly tracked, partially tracked, and mostly
+    lost counts
+-   ``"Identity"``: IDF1, ID precision/recall, ID true positives, ID false
+    positives, and ID false negatives
+
+Metric reference
+~~~~~~~~~~~~~~~~
+
+The following table describes every metric returned by ``results.metrics()``.
+``results.print_metrics()`` prints these metrics as a flat table, while
+``results.print_report()`` groups them into summary, detection/localization,
+association/identity, track coverage, and custom metric sections. Pass
+``full_names=True`` to include readable metric names alongside their
+abbreviations.
+
+``results.compare()`` accepts another |TrackingResults| instance or the key of
+a saved tracking evaluation on the same dataset. It prints both values and a
+signed ``other - current`` delta. ``results.plot_compare()`` plots grouped
+bars for the headline metrics by default; pass ``values`` to choose another
+set of shared numeric metrics.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 10 12 14 10 54
+
+   * - Metric
+     - Family
+     - Measures
+     - Better
+     - Meaning
+   * - ``HOTA``
+     - HOTA
+     - Overall
+     - Higher
+     - Overall tracking quality that balances detection accuracy and identity
+       association accuracy
+   * - ``DetA``
+     - HOTA
+     - Detection
+     - Higher
+     - Accuracy of frame-level object detection, ignoring track identities
+   * - ``AssA``
+     - HOTA
+     - Association
+     - Higher
+     - Accuracy with which matched detections retain the correct identity over
+       time
+   * - ``IDF1``
+     - Identity
+     - Identity
+     - Higher
+     - F1 score of globally identity-correct detections
+   * - ``MOTA``
+     - CLEAR
+     - Overall
+     - Higher
+     - Traditional tracking score based on missed detections, extra
+       detections, and identity switches
+   * - ``LocA``
+     - HOTA
+     - Localization
+     - Higher
+     - Average localization similarity of HOTA-matched detections
+   * - ``DetRe``
+     - HOTA
+     - Detection
+     - Higher
+     - Fraction of ground-truth detections that were detected
+   * - ``DetPr``
+     - HOTA
+     - Detection
+     - Higher
+     - Fraction of predicted detections that matched ground truth
+   * - ``AssRe``
+     - HOTA
+     - Association
+     - Higher
+     - Fraction of each ground-truth trajectory covered by its matched
+       predicted identity
+   * - ``AssPr``
+     - HOTA
+     - Association
+     - Higher
+     - Fraction of each predicted trajectory belonging to its matched
+       ground-truth identity
+   * - ``MOTP``
+     - CLEAR
+     - Localization
+     - Higher
+     - Average localization similarity of CLEAR-matched detections
+   * - ``TP``
+     - CLEAR
+     - Detection
+     - More matched
+     - Number of frame-level predictions matched to ground-truth detections
+   * - ``FP``
+     - CLEAR
+     - Detection
+     - Lower
+     - Number of predicted detections that did not match ground truth
+   * - ``FN``
+     - CLEAR
+     - Detection
+     - Lower
+     - Number of ground-truth detections that were missed
+   * - ``IDSW``
+     - CLEAR
+     - Identity
+     - Lower
+     - Number of times a ground-truth trajectory changed its matched predicted
+       identity
+   * - ``Frag``
+     - CLEAR
+     - Continuity
+     - Lower
+     - Number of tracked-to-untracked-to-tracked interruptions
+   * - ``MT``
+     - CLEAR
+     - Coverage
+     - Higher
+     - Number of ground-truth trajectories tracked for more than 80% of their
+       lifetimes
+   * - ``PT``
+     - CLEAR
+     - Coverage
+     - Contextual
+     - Number of ground-truth trajectories tracked for 20% to 80% of their
+       lifetimes
+   * - ``ML``
+     - CLEAR
+     - Coverage
+     - Lower
+     - Number of ground-truth trajectories tracked for less than 20% of their
+       lifetimes
+   * - ``IDP``
+     - Identity
+     - Identity
+     - Higher
+     - Fraction of predicted detections with the correct globally assigned
+       identity
+   * - ``IDR``
+     - Identity
+     - Identity
+     - Higher
+     - Fraction of ground-truth detections covered by the correct globally
+       assigned predicted identity
+   * - ``IDTP``
+     - Identity
+     - Identity
+     - More correct
+     - Number of detections with a correct global identity assignment
+   * - ``IDFP``
+     - Identity
+     - Identity
+     - Lower
+     - Number of predicted detections inconsistent with the optimal global
+       identity assignment
+   * - ``IDFN``
+     - Identity
+     - Identity
+     - Lower
+     - Number of ground-truth detections not covered by the optimal global
+       identity assignment
+
+The default report is aggregated over the evaluated videos and classes.
+``results.metrics(sequence=sample_id)`` reports one video, while
+``results.metrics(class_name=...)`` reports one class. The HOTA-family scores
+are averages over localization thresholds from 0.05 through 0.95. Raw counts
+such as ``TP``, ``IDSW``, and ``IDTP`` depend on dataset size and should not be
+compared directly across differently sized datasets.
+
+Use ``HOTA`` as the headline balanced tracking metric, then inspect ``DetA``
+and ``AssA`` to distinguish detection errors from identity errors. ``IDF1`` is
+the clearest summary when identity consistency is the priority, while ``MOTA``
+is useful for comparison with CLEAR MOT benchmarks.
+
+Some similarly named metrics measure different things:
+
+-   ``TP`` is a correct frame-level detection; ``IDTP`` additionally requires
+    a globally consistent identity
+-   ``IDSW`` is an identity change; ``Frag`` is a tracked object becoming
+    unmatched and later tracked again
+-   ``DetA`` measures finding objects; ``AssA`` measures keeping their
+    identities consistent
+-   ``MOTA`` counts missed detections, extra detections, and identity switches;
+    ``HOTA`` balances detection and association accuracy
+-   ``MT``, ``PT``, and ``ML`` count mostly tracked, partially tracked, and
+    mostly lost ground-truth trajectories, respectively
+
+The HOTA plot is also available for a specific video or class via the
+``sample`` and ``class_name`` arguments. ``plot_id_switches()`` draws one line
+per ground-truth track whose values are the predicted track IDs assigned by
+TrackEval's CLEAR matching. An identity switch therefore appears as a
+transition from the old predicted ID to the new one.
+
+When ``eval_key`` is provided, the configuration and results use FiftyOne's
+evaluation run system, so they can be listed, loaded, renamed, and deleted with
+the normal evaluation methods. Applicable per-video values are also stored in
+sample fields such as ``<eval_key>_hota``, ``<eval_key>_mota``,
+``<eval_key>_idf1``, ``<eval_key>_fp``, and ``<eval_key>_idsw``. No
+object-level TP/FP/FN or identity-switch labels are assigned because these
+concepts are protocol- and threshold-dependent.
+
+Complete synthetic example
+--------------------------
+
+The following example creates a three-frame video sample with a perfect track.
+The media file is not read because complete video metadata is provided:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+    sample = fo.Sample(
+        filepath="/tmp/synthetic.mp4",
+        metadata=fo.VideoMetadata(
+            frame_width=640,
+            frame_height=480,
+            total_frame_count=3,
+        ),
+    )
+
+    for frame_number in range(1, 4):
+        ground_truth = fo.Detection(
+            label="person",
+            bounding_box=[0.1, 0.2, 0.2, 0.4],
+            index=1,
+        )
+        prediction = fo.Detection(
+            label="person",
+            bounding_box=[0.1, 0.2, 0.2, 0.4],
+            confidence=0.99,
+            index=42,
+        )
+        sample.frames[frame_number] = fo.Frame(
+            ground_truth=fo.Detections(detections=[ground_truth]),
+            predictions=fo.Detections(detections=[prediction]),
+        )
+
+    dataset.add_sample(sample)
+    results = dataset.evaluate_tracks(
+        "frames.predictions",
+        gt_field="frames.ground_truth",
+        method="motchallenge",
+    )
+    results.print_report()
+
+Current limitations
+-------------------
+
+The initial integration supports raster box and mask tracking with the HOTA,
+CLEAR, and Identity metric families. It does not run trackers, implement
+polygon-native metrics, apply benchmark-specific distractor/crowd preprocessing,
+compute TrackEval's VACE, Track mAP, J & F, or ID Euclidean families, or assign
+per-frame/object error labels. Polygons can be converted to |Detection| masks
+before evaluation.
+
 .. _evaluating-segmentations:
 
 Semantic segmentations
@@ -2587,6 +2981,39 @@ evaluation methods will use it.
     :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
     will automatically use your backend.
 
+  .. group-tab:: Tracking
+
+    You can define custom tracking evaluation backends that can be used by
+    passing the `method` parameter to
+    :meth:`evaluate_tracks() <fiftyone.core.collections.SampleCollection.evaluate_tracks>`:
+
+    .. code:: python
+        :linenos:
+
+        view.evaluate_tracks(..., method="<backend>", ...)
+
+    Tracking backends subclass
+    :class:`TrackingEvaluation <fiftyone.utils.eval.tracking.TrackingEvaluation>`
+    and
+    :class:`TrackingEvaluationConfig <fiftyone.utils.eval.tracking.TrackingEvaluationConfig>`.
+    The evaluation class implements ``evaluate_samples()`` and returns a
+    :class:`TrackingResults <fiftyone.utils.eval.tracking.TrackingResults>`
+    instance or a custom subclass.
+
+    Register a custom backend in `~/.fiftyone/evaluation_config.json`:
+
+    .. code-block:: text
+
+        {
+            "default_tracking_backend": "<backend>",
+            "tracking_backends": {
+                "<backend>": {
+                    "config_cls": "your.custom.TrackingEvaluationConfig"
+                }
+            },
+            ...
+        }
+
   .. group-tab:: Segmentation
 
     You can define custom segmentation evaluation backends that can be used by
@@ -2680,6 +3107,7 @@ and the CLI:
             "default_regresion_backend": "simple",
             "default_classification_backend": "simple",
             "default_detection_backend": "coco",
+            "default_tracking_backend": "motchallenge",
             "default_segmentation_backend": "simple",
             "regression_backends": {
                 "simple": {
@@ -2706,6 +3134,15 @@ and the CLI:
                 },
                 "open-images": {
                     "config_cls": "fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig"
+                }
+            },
+            "tracking_backends": {
+                "motchallenge": {
+                    "config_cls": "fiftyone.utils.eval.tracking.MOTChallengeEvaluationConfig"
+                },
+                "mots": {
+                    "config_cls": "fiftyone.utils.eval.tracking.MOTSEvaluationConfig",
+                    "use_masks": true
                 }
             },
             "segmentation_backends": {
@@ -2728,6 +3165,7 @@ and the CLI:
             "default_regresion_backend": "simple",
             "default_classification_backend": "simple",
             "default_detection_backend": "coco",
+            "default_tracking_backend": "motchallenge",
             "default_segmentation_backend": "simple",
             "regression_backends": {
                 "simple": {
@@ -2754,6 +3192,15 @@ and the CLI:
                 },
                 "open-images": {
                     "config_cls": "fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig"
+                }
+            },
+            "tracking_backends": {
+                "motchallenge": {
+                    "config_cls": "fiftyone.utils.eval.tracking.MOTChallengeEvaluationConfig"
+                },
+                "mots": {
+                    "config_cls": "fiftyone.utils.eval.tracking.MOTSEvaluationConfig",
+                    "use_masks": true
                 }
             },
             "segmentation_backends": {
@@ -2821,8 +3268,8 @@ Setting environment variables
 
 Evaluation config settings may be customized on a per-session basis by setting
 the `FIFTYONE_<TYPE>_XXX` environment variable(s) for the desired config
-settings, where `<TYPE>` can be `REGRESSION`, `CLASSIFICATION`, `DETECTION`, or
-`SEGMENTATION`.
+settings, where `<TYPE>` can be `REGRESSION`, `CLASSIFICATION`, `DETECTION`,
+`TRACKING`, or `SEGMENTATION`.
 
 The `FIFTYONE_DEFAULT_<TYPE>_BACKEND` environment variables allows you to
 configure your default backend:

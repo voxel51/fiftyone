@@ -4421,6 +4421,104 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    def evaluate_tracks(
+        self,
+        pred_field,
+        gt_field="frames.ground_truth",
+        eval_key=None,
+        method=None,
+        metrics=None,
+        classes=None,
+        use_masks=False,
+        iou=0.5,
+        custom_metrics=None,
+        progress=None,
+        **kwargs,
+    ):
+        """Evaluates predicted multi-object tracks in this video collection.
+
+        Tracks must be stored as frame-level
+        :class:`fiftyone.core.labels.Detections`, with every
+        :class:`fiftyone.core.labels.Detection` containing a non-null
+        :attr:`index <fiftyone.core.labels.Detection.index>`.
+
+        Box tracking uses the ``"motchallenge"`` protocol by default. Mask
+        tracking uses the ``"mots"`` protocol and requires ``use_masks=True``
+        and a binary :attr:`mask <fiftyone.core.labels.Detection.mask>` on
+        every evaluated detection. Both protocols use TrackEval to compute the
+        requested metrics.
+
+        Unlike :meth:`evaluate_detections`, this method evaluates identities
+        across the complete video and does not populate frame- or object-level
+        TP/FP/FN attributes. When ``eval_key`` is provided, applicable
+        aggregate metrics for each video are stored in sample fields such as
+        ``<eval_key>_hota``, ``<eval_key>_mota``, and ``<eval_key>_idf1``.
+
+        Args:
+            pred_field: the frame field containing predicted
+                :class:`fiftyone.core.labels.Detections`
+            gt_field ("frames.ground_truth"): the frame field containing
+                ground truth :class:`fiftyone.core.labels.Detections`
+            eval_key (None): a string key for this evaluation
+            method (None): the protocol to use. Supported values are
+                ``fo.evaluation_config.tracking_backends.keys()``
+            metrics (None): one or more metric families to compute. By default,
+                all families are computed. Supported values are:
+
+                -   ``"HOTA"``: balanced detection and association scores,
+                    including HOTA, DetA, AssA, LocA, and
+                    detection/association precision and recall, averaged over
+                    localization thresholds from 0.05 through 0.95
+                -   ``"CLEAR"``: MOTA, MOTP, frame-level TP/FP/FN counts,
+                    identity switches, fragmentations, and
+                    mostly/partially/lost track counts, computed at the
+                    specified ``iou``
+                -   ``"Identity"``: IDF1, identity precision/recall, and
+                    IDTP/IDFP/IDFN counts from a global track assignment
+                    computed at the specified ``iou``
+
+            classes (None): an optional list of classes to evaluate
+            use_masks (False): whether to evaluate instance masks instead of
+                bounding boxes
+            iou (0.5): the IoU threshold for CLEAR and Identity metrics. HOTA
+                uses its own threshold sweep
+            custom_metrics (None): an optional
+                :class:`fiftyone.operators.evaluation_metric.EvaluationMetric`
+                operator URI or list of URIs to run after TrackEval, or a dict
+                mapping URIs to keyword arguments for each operator's
+                ``compute()`` method. Returned aggregate values are included
+                in ``results.metrics()``. See
+                :ref:`custom evaluation metrics <custom-evaluation-metrics>`
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
+            **kwargs: optional keyword arguments for the selected
+                :class:`fiftyone.utils.eval.tracking.TrackingEvaluationConfig`
+                subclass. These are primarily intended for custom tracking
+                backends; the built-in ``"motchallenge"`` and ``"mots"``
+                backends do not forward arbitrary keyword arguments to
+                TrackEval. For example,
+                ``config_cls=CustomTrackingEvaluationConfig`` overrides the
+                configured backend class
+
+        Returns:
+            a :class:`fiftyone.utils.eval.tracking.TrackingResults`
+        """
+        return foue.evaluate_tracks(
+            self,
+            pred_field,
+            gt_field=gt_field,
+            eval_key=eval_key,
+            method=method,
+            metrics=metrics,
+            classes=classes,
+            use_masks=use_masks,
+            iou=iou,
+            custom_metrics=custom_metrics,
+            progress=progress,
+            **kwargs,
+        )
+
     def evaluate_segmentations(
         self,
         pred_field,

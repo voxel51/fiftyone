@@ -735,6 +735,15 @@ class EvaluationConfig(EnvConfig):
                 "config_cls": "fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig",
             },
         },
+        "tracking": {
+            "motchallenge": {
+                "config_cls": "fiftyone.utils.eval.tracking.MOTChallengeEvaluationConfig",
+            },
+            "mots": {
+                "config_cls": "fiftyone.utils.eval.tracking.MOTSEvaluationConfig",
+                "use_masks": True,
+            },
+        },
         "segmentation": {
             "simple": {
                 "config_cls": "fiftyone.utils.eval.segmentation.SimpleEvaluationConfig",
@@ -764,6 +773,12 @@ class EvaluationConfig(EnvConfig):
             env_var="DEFAULT_FIFTYONE_DETECTION_BACKEND",
             default="coco",
         )
+        self.default_tracking_backend = self.parse_string(
+            d,
+            "default_tracking_backend",
+            env_var="FIFTYONE_DEFAULT_TRACKING_BACKEND",
+            default="motchallenge",
+        )
         self.default_segmentation_backend = self.parse_string(
             d,
             "default_segmentation_backend",
@@ -792,6 +807,12 @@ class EvaluationConfig(EnvConfig):
         if self.default_detection_backend not in self.detection_backends:
             self.default_detection_backend = next(
                 iter(sorted(self.detection_backends.keys())), None
+            )
+
+        self.tracking_backends = self._parse_backends(d, "tracking")
+        if self.default_tracking_backend not in self.tracking_backends:
+            self.default_tracking_backend = next(
+                iter(sorted(self.tracking_backends.keys())), None
             )
 
         self.segmentation_backends = self._parse_backends(d, "segmentation")
