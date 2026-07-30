@@ -8,15 +8,22 @@
 | Worktree         | `/Users/sashankaryal/fiftyone/code/voxel51/wt-mm-slop-cleanup`                                  |
 | Branch           | `wt-mm-slop-cleanup`                                                                            |
 | Fork base        | `7eb0ac43632302f199a9343d1584738cb34dd5f3`                                                      |
-| Code cleanup tip | `43ebc287cc`                                                                                    |
+| Code cleanup tip | `1143ba92ec`                                                                                    |
 | Scope            | The findings already documented in this file for `app/packages/multimodal`; no broader re-audit |
-| Change rule      | Presentational, types-only, or proved exact-equivalence cleanup only                            |
-| Excluded         | Any runtime/product/UI/public-contract/timing/ordering/error/resource-policy change             |
+| Change rule      | Initial pass: behavior-neutral only; follow-up: only the explicitly approved §4.2–4.3 policy    |
+| Excluded         | Any other runtime/product/UI/public-contract/timing/ordering/error/resource-policy change       |
 
 This pass followed the `desloppify` audit workflow. Each existing finding was
 rechecked against the fork, classified independently, and either handled with a
 behavior-neutral change or retained below as report-only. Candidate findings
 were never treated as permission to change behavior.
+
+After that pass, product explicitly approved the §4.2–4.3 scene-interaction
+policy: overlapping scene objects remain hovered together and render their
+details as a tooltip-card stack; cursor ownership lasts until the final hover
+leaves; only a primary-button, non-drag click selects; and the established
+four-pixel drag tolerance remains unchanged. Commit `1143ba92ec` implements
+only that approved follow-up.
 
 The worktree was clean at the fork point except for this authorized,
 source-worktree copy of `slop-audit.md`. No unrelated changes were copied in,
@@ -38,6 +45,11 @@ were handled. The cleanup:
   retaining the old internal module as a compatibility re-export; and
 - deliberately leaves policy, lifecycle, public-surface, error-semantic,
   resource-ordering, and candidate behavior changes report-only.
+
+The approved follow-up also consolidates scene-object hover/click lifecycle
+across annotation entities, batched cubes, and camera frustums. Hover
+propagates to every ray hit so overlapping objects can stay emphasized and show
+one tooltip card each; click propagation remains frontmost-only.
 
 The package's required dependency, lint, and type check is green. Focused
 Vitest coverage is green for the changed adapters, utilities, views, camera
@@ -102,8 +114,8 @@ listed as fixed.
 | Finding                                                                                                                                                                                                                               | Status, risk, and proof required                                                                                                                                                                                                                                              |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 4.1 GPU pick-controller lifecycle ×3                                                                                                                                                                                                  | **Report-only.** Depth-function and try/finally drift may be intentional; a factory can alter disposal/readback timing. Specify the policy and prove byte/pick results, stale-generation handling, map failure, and disposal order for all three controllers.                 |
-| 4.2 Scene hover/select lifecycle ×3                                                                                                                                                                                                   | **Report-only.** A shared hook would select one cursor restoration and overlapping-hover policy. Decide that UI behavior and add cross-layer pointer/unmount/picking-disabled tests first.                                                                                    |
-| 4.3 Missing right-button guard                                                                                                                                                                                                        | **Report-only behavior bug.** Adding it changes pointer selection behavior. Product must choose the expected right-drag/next-left-click contract and cover it with interaction tests.                                                                                         |
+| 4.2 Scene hover/select lifecycle ×3                                                                                                                                                                                                   | **Fixed after product approval.** Shared lifecycle and the approved overlap policy are recorded below.                                                                                                                                                                        |
+| 4.3 Missing right-button guard                                                                                                                                                                                                        | **Fixed after product approval.** Shared primary-button policy and proof are recorded below.                                                                                                                                                                                  |
 | 4.4 GPU resource registries ×2                                                                                                                                                                                                        | **Report-only.** Lease retirement, deferred LRU, microtask timing, and disposal order are resource policy. A shared registry needs parity tests for growth, reuse, retirement, release, reset, exceptions, and use-after-release.                                             |
 | 4.5 Stream sync-policy fork                                                                                                                                                                                                           | **Report-only.** Consolidation would choose between the live `UNSPECIFIED→LATEST` behaviors and can change playback selection. Decide canonical normalization, then add parity and end-to-end selection tests.                                                                |
 | 4.6 Fetch-delivery pipeline ×2                                                                                                                                                                                                        | **Report-only.** Even a local closure changes call/stack boundaries around epoch checks, failure filtering, cache distribution, rebalance, and tick delivery. Characterize exact call order, thrown/rejected paths, and stale-epoch suppression first.                        |
@@ -114,6 +126,22 @@ listed as fixed.
 | 4.9 Two-click ruler ×2                                                                                                                                                                                                                | **Fixed.** Shared only the character-identical state transition helper; domain distance math and wrappers remain local.                                                                                                                                                       |
 | 4.9 Bounded stream-list sanitization ×2                                                                                                                                                                                               | **Fixed.** Shared the exact bounded string/dedupe primitive while preserving each caller's cap and return behavior.                                                                                                                                                           |
 | 4.9 Dirty-tracking triads                                                                                                                                                                                                             | **Report-only.** Effect consolidation can alter React timing and persisted writes. Requires mount/update/unmount and fake-timer parity tests.                                                                                                                                 |
+
+The approved §4.2–4.3 policy and proof:
+
+- Annotation entities, batched cubes, and camera frustums share a
+  hit-reference-counted hover lifecycle.
+- Hover propagation remains open across ray hits. Overlapping objects retain
+  independent emphasis and tooltip ownership, and their details render as an
+  ordered tooltip-card stack.
+- One shared cursor lease restores the prior body cursor only after the final
+  hover leaves. Click propagation remains frontmost-only.
+- Selection accepts only primary-button clicks at or below the existing
+  four-pixel drag tolerance. Middle/right clicks neither select nor stop
+  propagation, and a subsequent qualifying primary click still selects.
+- Focused coverage exercises unmount, picking-disabled, record-reconciliation,
+  compound-hit, cross-layer cursor, overlapping-tooltip, modifier, drag, and
+  button behavior.
 
 ### 5. Utility duplication
 
@@ -229,20 +257,22 @@ Validation ran from
 `/Users/sashankaryal/fiftyone/code/voxel51/wt-mm-slop-cleanup/app` unless
 noted.
 
-| Validation                                               | Result                                                                                                       |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Baseline `yarn workspace @fiftyone/multimodal check`     | **Pass** before cleanup                                                                                      |
-| Incremental `check:deps`                                 | **Pass**                                                                                                     |
-| Incremental `check:types`                                | **Pass** after removing newly exposed unused imports                                                         |
-| Incremental `check:lint`                                 | **Pass**; latest-ref dependency warnings were resolved without suppressions                                  |
-| Focused adapter/runtime Vitest batch                     | **15 files, 196 tests passed**                                                                               |
-| Focused view/visualization Vitest batch                  | **17 files, 221 tests passed**                                                                               |
-| Final camera/persistence/measurement/WebGPU Vitest batch | **8 files, 102 tests passed**                                                                                |
-| Additional focused layout persistence                    | **53 tests passed**                                                                                          |
-| Additional focused SourcePlayback                        | **4 tests passed**                                                                                           |
-| Standalone frame-transform focused file                  | **One unchanged fake-timer mismatch:** expected 5 calls, observed 6; identifier-only diff, no test weakening |
-| Final `yarn workspace @fiftyone/multimodal check`        | **Pass**: dependency architecture, lint, package-local TypeScript                                            |
-| `git diff --check` before this audit update              | **Pass**                                                                                                     |
+| Validation                                                | Result                                                                                                       |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Baseline `yarn workspace @fiftyone/multimodal check`      | **Pass** before cleanup                                                                                      |
+| Incremental `check:deps`                                  | **Pass**                                                                                                     |
+| Incremental `check:types`                                 | **Pass** after removing newly exposed unused imports                                                         |
+| Incremental `check:lint`                                  | **Pass**; latest-ref dependency warnings were resolved without suppressions                                  |
+| Focused adapter/runtime Vitest batch                      | **15 files, 196 tests passed**                                                                               |
+| Focused view/visualization Vitest batch                   | **17 files, 221 tests passed**                                                                               |
+| Final camera/persistence/measurement/WebGPU Vitest batch  | **8 files, 102 tests passed**                                                                                |
+| Additional focused layout persistence                     | **53 tests passed**                                                                                          |
+| Additional focused SourcePlayback                         | **4 tests passed**                                                                                           |
+| Standalone frame-transform focused file                   | **One unchanged fake-timer mismatch:** expected 5 calls, observed 6; identifier-only diff, no test weakening |
+| Final `yarn workspace @fiftyone/multimodal check`         | **Pass**: dependency architecture, lint, package-local TypeScript                                            |
+| `git diff --check` before this audit update               | **Pass**                                                                                                     |
+| Approved interaction focused Vitest batch                 | **8 files, 87 tests passed**: shared lifecycle, entities, cubes, frustums, tooltip stack, picking, panel     |
+| Post-approval `yarn workspace @fiftyone/multimodal check` | **Pass**: dependency architecture, lint, package-local TypeScript                                            |
 
 Focused test runs used a temporary Node local-storage file because Node 22's
 ambient `localStorage` otherwise throws before the persistence tests execute.
@@ -256,9 +286,8 @@ order:
 
 1. Decide public-contract removals/renames (extension subpaths, source
    bootstrap, registry/range helpers, reservation naming).
-2. Choose and characterize user-visible policies (right-button selection,
-   cursor restoration, sync normalization, point-cache capacity, decoder
-   coercion, raw-image hints).
+2. Choose and characterize the remaining user-visible policies (sync
+   normalization, point-cache capacity, decoder coercion, raw-image hints).
 3. Add ordering/resource parity tests before pick-controller, resource
    registry, cached-fill, fetch-delivery, predecessor, worker, or memo
    consolidation.
