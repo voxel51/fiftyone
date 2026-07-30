@@ -1604,16 +1604,24 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataset.clone_sample_field("foo", "_private")
 
-        # "pk" is a reserved keyword (MongoEngine's alias for "id")
+        # "pk" is a reserved keyword (MongoEngine's alias for "id");
+        # using it warns but is not (yet) an error
 
-        with self.assertRaises(ValueError):
+        with self.assertWarns(UserWarning):
             dataset.add_sample_field("pk", fo.StringField)
 
-        with self.assertRaises(ValueError):
+        self.assertIn("pk", dataset.get_field_schema())
+        dataset.delete_sample_field("pk")
+
+        with self.assertWarns(UserWarning):
             dataset.rename_sample_field("foo", "pk")
 
-        with self.assertRaises(ValueError):
+        dataset.rename_sample_field("pk", "foo")
+
+        with self.assertWarns(UserWarning):
             dataset.clone_sample_field("foo", "pk")
+
+        dataset.delete_sample_field("pk")
 
     @drop_datasets
     def test_frame_field_names(self):
@@ -1625,9 +1633,12 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataset.add_sample_field("frames", fo.StringField)
 
-        # "pk" is a reserved keyword (MongoEngine's alias for "id")
-        with self.assertRaises(ValueError):
+        # "pk" is a reserved keyword (MongoEngine's alias for "id");
+        # using it warns but is not (yet) an error
+        with self.assertWarns(UserWarning):
             dataset.add_frame_field("pk", fo.StringField)
+
+        dataset.delete_frame_field("pk")
 
         # Field names cannot be empty
 

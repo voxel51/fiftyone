@@ -11,6 +11,7 @@ import inspect
 import json
 import numbers
 import sys
+import warnings
 
 from bson import Binary, json_util, ObjectId, SON
 import numpy as np
@@ -159,9 +160,12 @@ def validate_field_name(field_name, media_type=None, is_frame_field=False):
         )
 
     if field_name == "pk":
-        raise ValueError(
-            "Invalid field name '%s'. 'pk' is a reserved keyword that "
-            "MongoEngine uses as an alias for the 'id' field" % field_name
+        warnings.warn(
+            "'pk' is a reserved keyword that MongoEngine uses as an alias "
+            "for the 'id' field; fields named 'pk' do not behave correctly "
+            "in bulk write operations such as set_field(). Choosing a "
+            "different name is strongly recommended; existing fields can "
+            "be migrated via rename_sample_field()/rename_frame_field()"
         )
 
     if (
