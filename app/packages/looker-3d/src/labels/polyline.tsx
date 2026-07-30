@@ -7,13 +7,12 @@ import * as THREE from "three";
 import { useTransientPolyline } from "../annotation/store";
 import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
 import { FO_USER_DATA, PANEL_ID_MAIN } from "../constants";
-import {
-  hoveredLabelAtom,
-  isCurrentlyTransformingAtom,
-  selectedLabelForAnnotationAtom,
-} from "../state";
+import { hoveredLabelAtom, selectedLabelForAnnotationAtom } from "../state";
 import type { HoveredLabelSource } from "../types";
-import { useSetCurrent3dAnnotationMode } from "../state/accessors";
+import {
+  useIsCurrentlyTransforming,
+  useSetCurrent3dAnnotationMode,
+} from "../state/accessors";
 import {
   isValidPoint3d,
   validatePoints3d,
@@ -52,7 +51,7 @@ export const Polyline = ({
   useHoverState();
   const hoveredLabel = useRecoilValue(hoveredLabelAtom);
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
-  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
+  const isCurrentlyTransforming = useIsCurrentlyTransforming();
   const {
     onPointerOver: onPointerOverForLabel,
     onPointerOut: onPointerOutForLabel,

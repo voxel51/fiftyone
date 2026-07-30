@@ -11,7 +11,6 @@ import {
   useState,
   type RefObject,
 } from "react";
-import { useRecoilValue } from "recoil";
 import * as THREE from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
@@ -20,10 +19,10 @@ import { PANEL_ID_MAIN } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
 import { use3dLabelColor } from "../hooks/use-3d-label-color";
 import { useSimilarLabels3d } from "../hooks/use-similar-labels-3d";
-import { isCurrentlyTransformingAtom } from "../state";
 import {
   useCurrentSelected3dAnnotationLabel,
   useHoveredLabel3d,
+  useIsCurrentlyTransforming,
   useSetHoveredLabel3d,
 } from "../state/accessors";
 import type { HoveredLabelSource } from "../types";
@@ -97,7 +96,7 @@ export const CuboidInstances = ({
 }: CuboidInstancesProps) => {
   const { upVector } = useFo3dContext();
   const hoveredLabel = useHoveredLabel3d();
-  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
+  const isCurrentlyTransforming = useIsCurrentlyTransforming();
   const setHoveredLabel = useSetHoveredLabel3d();
 
   const bodyMeshRef = useRef<THREE.InstancedMesh>(null);
