@@ -155,7 +155,7 @@ describe("scene cube instance buffers", () => {
     const resource = createSceneCubeBatchResource(1);
     disposableResources.push(resource);
 
-    applySceneCubeBatchRecords(resource, [record], record.key);
+    applySceneCubeBatchRecords(resource, [record], new Set([record.key]));
 
     expect(Array.from(resource.colorAttribute.array.slice(0, 3))).toEqual([
       1, 1, 1,
@@ -222,7 +222,7 @@ describe("scene cube instance buffers", () => {
 });
 
 describe("scene cube batch interaction", () => {
-  it("hovers instances without rerendering and transfers hover between layers", () => {
+  it("hovers overlapping instances without rerendering or dropping either layer", () => {
     const firstHover = vi.fn();
     const secondHover = vi.fn();
     const records = buildSceneAnnotationCubeRenderPlan([
@@ -253,25 +253,31 @@ describe("scene cube batch interaction", () => {
 
     const firstEvent = cubePointerEvent({ instanceId: 0 });
     act(() => {
-      result.current.onPointerMove(firstEvent.event);
+      result.current.onPointerOver(firstEvent.event);
     });
-    expect(firstEvent.stopPropagation).toHaveBeenCalledOnce();
+    expect(firstEvent.stopPropagation).not.toHaveBeenCalled();
     expect(firstHover).toHaveBeenCalledWith("a");
     expect(document.body.style.cursor).toBe("pointer");
 
     const secondEvent = cubePointerEvent({ instanceId: 1 });
     act(() => {
-      result.current.onPointerMove(secondEvent.event);
+      result.current.onPointerOver(secondEvent.event);
     });
-    expect(firstHover).toHaveBeenLastCalledWith(null);
     expect(secondHover).toHaveBeenCalledWith("b");
     expect(onHoverChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ key: "/boxes-a:a:cube:0" }),
+      null,
       expect.objectContaining({ key: "/boxes-b:b:cube:0" }),
     );
 
     act(() => {
-      result.current.onPointerOut(cubePointerEvent().event);
+      result.current.onPointerOut(firstEvent.event);
+    });
+    expect(firstHover).toHaveBeenLastCalledWith(null);
+    expect(secondHover).not.toHaveBeenCalledWith(null);
+    expect(document.body.style.cursor).toBe("pointer");
+
+    act(() => {
+      result.current.onPointerOut(secondEvent.event);
     });
     expect(secondHover).toHaveBeenLastCalledWith(null);
     expect(document.body.style.cursor).toBe("");
@@ -312,7 +318,20 @@ describe("scene cube batch interaction", () => {
       result.current.onClick(drag.event);
     });
     expect(drag.stopPropagation).not.toHaveBeenCalled();
+
+    const secondaryClick = cubeClickEvent({ button: 2, instanceId: 0 });
+    act(() => {
+      result.current.onClick(secondaryClick.event);
+    });
+    expect(secondaryClick.stopPropagation).not.toHaveBeenCalled();
     expect(onSelectEntity).toHaveBeenCalledTimes(1);
+
+    const nextPrimaryClick = cubeClickEvent({ instanceId: 0 });
+    act(() => {
+      result.current.onClick(nextPrimaryClick.event);
+    });
+    expect(nextPrimaryClick.stopPropagation).toHaveBeenCalledOnce();
+    expect(onSelectEntity).toHaveBeenCalledTimes(2);
   });
 
   it("clears hover and event blocking when scene picking is disabled", () => {
@@ -334,7 +353,7 @@ describe("scene cube batch interaction", () => {
     );
     act(() => {
       result.current.commitRecords(records);
-      result.current.onPointerMove(cubePointerEvent({ instanceId: 0 }).event);
+      result.current.onPointerOver(cubePointerEvent({ instanceId: 0 }).event);
     });
 
     rerender({ enabled: false });
@@ -469,6 +488,7 @@ function cubePointerEvent(
 
 function cubeClickEvent(
   overrides: {
+    readonly button?: number;
     readonly delta?: number;
     readonly index?: number;
     readonly instanceId?: number;
@@ -476,12 +496,17 @@ function cubeClickEvent(
   } = {},
 ) {
   const stopPropagation = vi.fn();
-  const { delta = 0, shiftKey = false, ...intersection } = overrides;
+  const {
+    button = 0,
+    delta = 0,
+    shiftKey = false,
+    ...intersection
+  } = overrides;
   return {
     event: {
       ...intersection,
       delta,
-      nativeEvent: { shiftKey },
+      nativeEvent: { button, shiftKey },
       stopPropagation,
     } as unknown as ThreeEvent<MouseEvent>,
     stopPropagation,

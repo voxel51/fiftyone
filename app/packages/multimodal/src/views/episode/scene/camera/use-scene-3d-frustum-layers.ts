@@ -26,7 +26,10 @@ import {
 
 interface FrustumLayerActions {
   readonly clearHovered: (stream: string) => boolean;
-  readonly onHoverCamera: (hovered: Scene3dHoveredCamera | null) => void;
+  readonly onHoverCamera: (
+    ownerKey: string,
+    hovered: Scene3dHoveredCamera | null,
+  ) => void;
   readonly openImageTile: (stream: string) => void;
   readonly setHovered: (stream: string) => void;
 }
@@ -96,7 +99,7 @@ export function buildScene3dFrustumLayer({
         onHover: (isHovered) => {
           if (isHovered) {
             setHovered(imageStream);
-            onHoverCamera({
+            onHoverCamera(layer.id, {
               calibrationAssociation,
               calibrationSourceName,
               calibrationStream: layer.id,
@@ -113,7 +116,8 @@ export function buildScene3dFrustumLayer({
             });
             return;
           }
-          if (clearHovered(imageStream)) onHoverCamera(null);
+          clearHovered(imageStream);
+          onHoverCamera(layer.id, null);
         },
         onSelect: ({ metaKey }) => {
           if (metaKey) openImageTile(imageStream);
@@ -178,7 +182,10 @@ export function useScene3dFrustumLayers({
     Record<string, ImageProjectionSettings>
   >;
   readonly imageSources: readonly SceneSource[];
-  readonly onHoverCamera: (hovered: Scene3dHoveredCamera | null) => void;
+  readonly onHoverCamera: (
+    ownerKey: string,
+    hovered: Scene3dHoveredCamera | null,
+  ) => void;
   readonly opacity: number;
   readonly sourceKey: string;
 }): readonly CameraFrustumPanelLayer[] {

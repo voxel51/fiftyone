@@ -88,7 +88,8 @@ type DelayedHover = Scene3dHoveredCamera | Scene3dHoveredEntity;
 
 interface PendingDelayedHover {
   hovered: DelayedHover;
-  readonly key: string;
+  readonly payloadKey: string;
+  readonly timer: ReturnType<typeof setTimeout>;
 }
 
 /**
@@ -111,28 +112,39 @@ export function useScene3dHoverTooltip(): {
     readonly ref: RefObject<HTMLDivElement>;
     readonly onPointerMove: (event: React.PointerEvent) => void;
   };
-  readonly onHoverCamera: (hovered: Scene3dHoveredCamera | null) => void;
-  readonly onHoverEntity: (hovered: Scene3dHoveredEntity | null) => void;
+  readonly onHoverCamera: (
+    ownerKey: string,
+    hovered: Scene3dHoveredCamera | null,
+  ) => void;
+  readonly onHoverEntity: (
+    ownerKey: string,
+    hovered: Scene3dHoveredEntity | null,
+  ) => void;
   readonly onHoverPoint: (hovered: Scene3dHoveredPoint | null) => void;
-  readonly tooltip: Scene3dHoverTooltipState | null;
+  readonly tooltips: readonly Scene3dHoverTooltipState[];
 } {
   const containerRef = useRef<HTMLDivElement>(null);
   const pointerRef = useRef({ x: 0, y: 0 });
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [tooltip, setTooltip] = useState<Scene3dHoverTooltipState | null>(null);
-  const tooltipRef = useRef<Scene3dHoverTooltipState | null>(null);
-  const pendingDelayedHoverRef = useRef<PendingDelayedHover | null>(null);
+  const [tooltips, setTooltips] = useState<readonly Scene3dHoverTooltipState[]>(
+    [],
+  );
+  const tooltipEntriesRef = useRef(new Map<string, Scene3dHoverTooltipState>());
+  const pendingDelayedHoversRef = useRef(
+    new Map<string, PendingDelayedHover>(),
+  );
 
-  const commitTooltip = useCallback((next: Scene3dHoverTooltipState | null) => {
-    tooltipRef.current = next;
-    setTooltip(next);
+  const publishTooltips = useCallback(() => {
+    setTooltips(Array.from(tooltipEntriesRef.current.values()));
   }, []);
 
   // This effect clears a pending show-timer on unmount.
   useEffect(
     () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      pendingDelayedHoverRef.current = null;
+      for (const pending of pendingDelayedHoversRef.current.values()) {
+        clearTimeout(pending.timer);
+      }
+      pendingDelayedHoversRef.current.clear();
+      tooltipEntriesRef.current.clear();
     },
     [],
   );
@@ -150,81 +162,91 @@ export function useScene3dHoverTooltip(): {
   }, []);
 
   const scheduleDelayedHover = useCallback(
-    (kind: DelayedHover["kind"], hovered: DelayedHover | null) => {
+    (ownerKey: string, hovered: DelayedHover | null) => {
+      const pending = pendingDelayedHoversRef.current.get(ownerKey);
       if (!hovered) {
-        if (pendingDelayedHoverRef.current?.hovered.kind === kind) {
-          if (timerRef.current) clearTimeout(timerRef.current);
-          timerRef.current = null;
-          pendingDelayedHoverRef.current = null;
+        if (pending) {
+          clearTimeout(pending.timer);
+          pendingDelayedHoversRef.current.delete(ownerKey);
         }
-        if (tooltipRef.current?.kind === kind) {
-          commitTooltip(null);
-        }
+        if (tooltipEntriesRef.current.delete(ownerKey)) publishTooltips();
         return;
       }
 
-      const key = delayedHoverKey(hovered);
-      const current = tooltipRef.current;
+      const payloadKey = delayedHoverKey(hovered);
+      const current = tooltipEntriesRef.current.get(ownerKey);
       if (
         current &&
         current.kind !== "point" &&
-        delayedHoverKey(current) === key
+        delayedHoverKey(current) === payloadKey
       ) {
-        commitTooltip({
+        tooltipEntriesRef.current.set(ownerKey, {
           ...hovered,
           x: current.x,
           y: current.y,
         });
+        publishTooltips();
         return;
       }
 
-      const pending = pendingDelayedHoverRef.current;
-      if (pending?.key === key) {
+      if (pending?.payloadKey === payloadKey) {
         // Parent position may change every playback tick before the initial
         // dwell completes. Keep the timer but publish the newest payload.
         pending.hovered = hovered;
         return;
       }
 
-      if (timerRef.current) clearTimeout(timerRef.current);
-      if (current?.kind === kind) commitTooltip(null);
-      pendingDelayedHoverRef.current = { hovered, key };
-      timerRef.current = setTimeout(() => {
-        timerRef.current = null;
-        const latest = pendingDelayedHoverRef.current;
-        pendingDelayedHoverRef.current = null;
+      if (pending) clearTimeout(pending.timer);
+      pendingDelayedHoversRef.current.delete(ownerKey);
+      if (tooltipEntriesRef.current.delete(ownerKey)) publishTooltips();
+      const timer = setTimeout(() => {
+        const latest = pendingDelayedHoversRef.current.get(ownerKey);
+        pendingDelayedHoversRef.current.delete(ownerKey);
         if (latest) {
-          commitTooltip({ ...latest.hovered, ...pointerPosition() });
+          tooltipEntriesRef.current.set(ownerKey, {
+            ...latest.hovered,
+            ...pointerPosition(),
+          });
+          publishTooltips();
         }
       }, HOVER_TOOLTIP_DELAY_MS);
+      pendingDelayedHoversRef.current.set(ownerKey, {
+        hovered,
+        payloadKey,
+        timer,
+      });
     },
-    [commitTooltip, pointerPosition],
+    [pointerPosition, publishTooltips],
   );
   const onHoverCamera = useCallback(
-    (hovered: Scene3dHoveredCamera | null) =>
-      scheduleDelayedHover("camera", hovered),
+    (ownerKey: string, hovered: Scene3dHoveredCamera | null) =>
+      scheduleDelayedHover(`camera:${ownerKey}`, hovered),
     [scheduleDelayedHover],
   );
   const onHoverEntity = useCallback(
-    (hovered: Scene3dHoveredEntity | null) =>
-      scheduleDelayedHover("entity", hovered),
+    (ownerKey: string, hovered: Scene3dHoveredEntity | null) =>
+      scheduleDelayedHover(`entity:${ownerKey}`, hovered),
     [scheduleDelayedHover],
   );
 
   const onHoverPoint = useCallback(
     (hovered: Scene3dHoveredPoint | null) => {
       if (!hovered) {
-        if (tooltipRef.current?.kind === "point") commitTooltip(null);
+        if (tooltipEntriesRef.current.delete("point")) publishTooltips();
         return;
       }
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
+      for (const pending of pendingDelayedHoversRef.current.values()) {
+        clearTimeout(pending.timer);
       }
-      pendingDelayedHoverRef.current = null;
-      commitTooltip({ ...hovered, ...pointerPosition() });
+      pendingDelayedHoversRef.current.clear();
+      tooltipEntriesRef.current.clear();
+      tooltipEntriesRef.current.set("point", {
+        ...hovered,
+        ...pointerPosition(),
+      });
+      publishTooltips();
     },
-    [commitTooltip, pointerPosition],
+    [pointerPosition, publishTooltips],
   );
 
   return {
@@ -232,7 +254,7 @@ export function useScene3dHoverTooltip(): {
     onHoverCamera,
     onHoverEntity,
     onHoverPoint,
-    tooltip,
+    tooltips,
   };
 }
 
@@ -308,16 +330,69 @@ export const Scene3dHoverTooltip: React.FC<{
         top: tooltip.y + HOVER_TOOLTIP_OFFSET_PX,
       }}
     >
-      {tooltip.kind === "point" ? (
-        <PointTooltipContent tooltip={tooltip} />
-      ) : tooltip.kind === "camera" ? (
-        <CameraTooltipContent tooltip={tooltip} />
-      ) : (
-        <EntityTooltipContent tooltip={tooltip} />
-      )}
+      <Scene3dHoverTooltipContent tooltip={tooltip} />
     </div>
   );
 };
+
+/** Cursor-adjacent cards for every scene object under the pointer. */
+export const Scene3dHoverTooltipStack: React.FC<{
+  readonly tooltips: readonly Scene3dHoverTooltipState[];
+}> = ({ tooltips }) => {
+  const anchor = tooltips[0];
+  if (!anchor) return null;
+  return (
+    <div
+      data-testid="episode-3d-hover-tooltip-stack"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+        left: anchor.x + HOVER_TOOLTIP_OFFSET_PX,
+        pointerEvents: "none",
+        position: "absolute",
+        top: anchor.y + HOVER_TOOLTIP_OFFSET_PX,
+        zIndex: 3,
+      }}
+    >
+      {tooltips.map((tooltip, index) => (
+        <div
+          data-testid="episode-3d-hover-tooltip"
+          key={`${tooltip.kind}:${index}:${tooltipIdentityKey(tooltip)}`}
+          style={{
+            ...tooltipStyle,
+            left: undefined,
+            position: "relative",
+            top: undefined,
+          }}
+        >
+          <Scene3dHoverTooltipContent tooltip={tooltip} />
+        </div>
+      ))}
+    </div>
+  );
+};
+
+function Scene3dHoverTooltipContent({
+  tooltip,
+}: {
+  readonly tooltip: Scene3dHoverTooltipState;
+}) {
+  return tooltip.kind === "point" ? (
+    <PointTooltipContent tooltip={tooltip} />
+  ) : tooltip.kind === "camera" ? (
+    <CameraTooltipContent tooltip={tooltip} />
+  ) : (
+    <EntityTooltipContent tooltip={tooltip} />
+  );
+}
+
+function tooltipIdentityKey(tooltip: Scene3dHoverTooltipState): string {
+  if (tooltip.kind === "point") {
+    return `${tooltip.stream}:${tooltip.pointIndex}`;
+  }
+  return delayedHoverKey(tooltip);
+}
 
 function CameraTooltipContent({
   tooltip,

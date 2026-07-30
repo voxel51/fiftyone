@@ -48,6 +48,7 @@ describe("buildScene3dFrustumLayer", () => {
     layer.onHover?.(true);
     expect(setHovered).toHaveBeenCalledWith("7");
     expect(onHoverCamera).toHaveBeenCalledWith(
+      "3",
       expect.objectContaining({
         calibrationAssociation: "Auto-matched",
         calibrationSourceName: "/camera/front/camera_info",
@@ -64,7 +65,7 @@ describe("buildScene3dFrustumLayer", () => {
     );
     layer.onHover?.(false);
     expect(clearHovered).toHaveBeenCalledWith("7");
-    expect(onHoverCamera).toHaveBeenLastCalledWith(null);
+    expect(onHoverCamera).toHaveBeenLastCalledWith("3", null);
     layer.onSelect?.({ metaKey: false });
     layer.onSelect?.({ metaKey: true });
     expect(openImageTile).toHaveBeenCalledOnce();

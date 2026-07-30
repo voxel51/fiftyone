@@ -1,8 +1,15 @@
-import { act, render, renderHook, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render,
+  renderHook,
+  screen,
+} from "@testing-library/react";
 import type React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   Scene3dHoverTooltip,
+  Scene3dHoverTooltipStack,
   useScene3dHoverTooltip,
   type Scene3dHoveredEntity,
   type Scene3dHoveredPoint,
@@ -51,6 +58,7 @@ function pointerAt(x: number, y: number) {
 
 describe("useScene3dHoverTooltip", () => {
   afterEach(() => {
+    cleanup();
     vi.useRealTimers();
   });
 
@@ -60,14 +68,14 @@ describe("useScene3dHoverTooltip", () => {
 
     act(() => {
       result.current.containerProps.onPointerMove(pointerAt(120, 80));
-      result.current.onHoverEntity(HOVERED);
+      result.current.onHoverEntity("entity", HOVERED);
     });
-    expect(result.current.tooltip).toBeNull();
+    expect(result.current.tooltips).toEqual([]);
 
     act(() => {
       vi.advanceTimersByTime(120);
     });
-    expect(result.current.tooltip).toMatchObject({
+    expect(result.current.tooltips[0]).toMatchObject({
       ...HOVERED,
       x: 120,
       y: 80,
@@ -79,12 +87,12 @@ describe("useScene3dHoverTooltip", () => {
     const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
-      result.current.onHoverEntity(HOVERED);
+      result.current.onHoverEntity("entity", HOVERED);
       vi.advanceTimersByTime(50);
-      result.current.onHoverEntity(null);
+      result.current.onHoverEntity("entity", null);
       vi.advanceTimersByTime(200);
     });
-    expect(result.current.tooltip).toBeNull();
+    expect(result.current.tooltips).toEqual([]);
   });
 
   it("hides a shown tooltip when the pointer leaves the object", () => {
@@ -92,15 +100,15 @@ describe("useScene3dHoverTooltip", () => {
     const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
-      result.current.onHoverEntity(HOVERED);
+      result.current.onHoverEntity("entity", HOVERED);
       vi.advanceTimersByTime(120);
     });
-    expect(result.current.tooltip).not.toBeNull();
+    expect(result.current.tooltips).toHaveLength(1);
 
     act(() => {
-      result.current.onHoverEntity(null);
+      result.current.onHoverEntity("entity", null);
     });
-    expect(result.current.tooltip).toBeNull();
+    expect(result.current.tooltips).toEqual([]);
   });
 
   it("re-arms the dwell when hopping between objects", () => {
@@ -108,9 +116,9 @@ describe("useScene3dHoverTooltip", () => {
     const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
-      result.current.onHoverEntity(HOVERED);
+      result.current.onHoverEntity("entity", HOVERED);
       vi.advanceTimersByTime(50);
-      result.current.onHoverEntity({
+      result.current.onHoverEntity("entity", {
         ...HOVERED,
         entityId: "ped-3",
         label: "pedestrian",
@@ -118,12 +126,40 @@ describe("useScene3dHoverTooltip", () => {
       vi.advanceTimersByTime(80);
     });
     // 50 + 80 > delay, but the second hover restarted the clock.
-    expect(result.current.tooltip).toBeNull();
+    expect(result.current.tooltips).toEqual([]);
 
     act(() => {
       vi.advanceTimersByTime(30);
     });
-    expect(result.current.tooltip).toMatchObject({ entityId: "ped-3" });
+    expect(result.current.tooltips[0]).toMatchObject({ entityId: "ped-3" });
+  });
+
+  it("stacks independently owned tooltips for overlapping scene objects", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useScene3dHoverTooltip());
+
+    act(() => {
+      result.current.containerProps.onPointerMove(pointerAt(120, 80));
+      result.current.onHoverEntity("front-entity", HOVERED);
+      result.current.onHoverCamera("rear-camera", HOVERED_CAMERA);
+      vi.advanceTimersByTime(120);
+    });
+
+    expect(result.current.tooltips).toHaveLength(2);
+    expect(result.current.tooltips.map((tooltip) => tooltip.kind)).toEqual([
+      "entity",
+      "camera",
+    ]);
+    render(<Scene3dHoverTooltipStack tooltips={result.current.tooltips} />);
+    expect(screen.getAllByTestId("episode-3d-hover-tooltip")).toHaveLength(2);
+    expect(screen.getByText("car")).toBeTruthy();
+    expect(screen.getByText("camera/front/image")).toBeTruthy();
+
+    act(() => {
+      result.current.onHoverEntity("front-entity", null);
+    });
+    expect(result.current.tooltips).toHaveLength(1);
+    expect(result.current.tooltips[0]).toMatchObject({ kind: "camera" });
   });
 
   it("shows point payloads immediately — their dwell already elapsed", () => {
@@ -133,7 +169,7 @@ describe("useScene3dHoverTooltip", () => {
       result.current.containerProps.onPointerMove(pointerAt(40, 60));
       result.current.onHoverPoint(HOVERED_POINT);
     });
-    expect(result.current.tooltip).toMatchObject({
+    expect(result.current.tooltips[0]).toMatchObject({
       ...HOVERED_POINT,
       x: 40,
       y: 60,
@@ -142,7 +178,7 @@ describe("useScene3dHoverTooltip", () => {
     act(() => {
       result.current.onHoverPoint(null);
     });
-    expect(result.current.tooltip).toBeNull();
+    expect(result.current.tooltips).toEqual([]);
   });
 
   it("delays camera details and renders its association metadata", () => {
@@ -150,12 +186,12 @@ describe("useScene3dHoverTooltip", () => {
     const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
-      result.current.onHoverCamera(HOVERED_CAMERA);
+      result.current.onHoverCamera("camera", HOVERED_CAMERA);
       vi.advanceTimersByTime(120);
     });
-    expect(result.current.tooltip).toMatchObject(HOVERED_CAMERA);
+    expect(result.current.tooltips[0]).toMatchObject(HOVERED_CAMERA);
 
-    const tooltip = result.current.tooltip;
+    const tooltip = result.current.tooltips[0];
     if (!tooltip) throw new Error("expected a camera tooltip");
     render(<Scene3dHoverTooltip tooltip={tooltip} />);
     expect(screen.getByText("camera/front/image")).toBeTruthy();
@@ -176,9 +212,9 @@ describe("useScene3dHoverTooltip", () => {
     const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
-      result.current.onHoverCamera(HOVERED_CAMERA);
+      result.current.onHoverCamera("camera", HOVERED_CAMERA);
       vi.advanceTimersByTime(50);
-      result.current.onHoverCamera({
+      result.current.onHoverCamera("camera", {
         ...HOVERED_CAMERA,
         parentPosition: {
           ...HOVERED_CAMERA.parentPosition,
@@ -188,13 +224,13 @@ describe("useScene3dHoverTooltip", () => {
       vi.advanceTimersByTime(60);
     });
 
-    expect(result.current.tooltip).toMatchObject({
+    expect(result.current.tooltips[0]).toMatchObject({
       kind: "camera",
       parentPosition: { origin: [2.5, 3.5, 4.5] },
     });
 
     act(() => {
-      result.current.onHoverCamera({
+      result.current.onHoverCamera("camera", {
         ...HOVERED_CAMERA,
         parentPosition: {
           ...HOVERED_CAMERA.parentPosition,
@@ -202,7 +238,7 @@ describe("useScene3dHoverTooltip", () => {
         },
       });
     });
-    expect(result.current.tooltip).toMatchObject({
+    expect(result.current.tooltips[0]).toMatchObject({
       parentPosition: { origin: [5.5, 6.5, 7.5] },
     });
   });
@@ -270,13 +306,13 @@ describe("useScene3dHoverTooltip", () => {
     const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
-      result.current.onHoverEntity(HOVERED);
+      result.current.onHoverEntity("entity", HOVERED);
       vi.advanceTimersByTime(50);
       result.current.onHoverPoint(HOVERED_POINT);
       vi.advanceTimersByTime(200);
     });
 
-    expect(result.current.tooltip).toMatchObject(HOVERED_POINT);
+    expect(result.current.tooltips[0]).toMatchObject(HOVERED_POINT);
   });
 
   it("preserves a pending entity dwell when point hover misses", () => {
@@ -284,13 +320,13 @@ describe("useScene3dHoverTooltip", () => {
     const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
-      result.current.onHoverEntity(HOVERED);
+      result.current.onHoverEntity("entity", HOVERED);
       vi.advanceTimersByTime(50);
       result.current.onHoverPoint(null);
       vi.advanceTimersByTime(70);
     });
 
-    expect(result.current.tooltip).toMatchObject(HOVERED);
+    expect(result.current.tooltips[0]).toMatchObject(HOVERED);
   });
 
   it("only clears tooltips of its own kind", () => {
@@ -298,20 +334,20 @@ describe("useScene3dHoverTooltip", () => {
     const { result } = renderHook(() => useScene3dHoverTooltip());
 
     act(() => {
-      result.current.onHoverEntity(HOVERED);
+      result.current.onHoverEntity("entity", HOVERED);
       vi.advanceTimersByTime(120);
     });
     act(() => {
       result.current.onHoverPoint(null);
     });
-    expect(result.current.tooltip).toMatchObject({ entityId: "veh-12" });
+    expect(result.current.tooltips[0]).toMatchObject({ entityId: "veh-12" });
 
     act(() => {
       result.current.onHoverPoint(HOVERED_POINT);
     });
     act(() => {
-      result.current.onHoverEntity(null);
+      result.current.onHoverEntity("entity", null);
     });
-    expect(result.current.tooltip).toMatchObject({ pointIndex: 42 });
+    expect(result.current.tooltips[0]).toMatchObject({ pointIndex: 42 });
   });
 });
