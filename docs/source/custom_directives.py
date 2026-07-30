@@ -477,20 +477,15 @@ class CustomAvailableInDirective(Directive):
     version each was introduced in, linking to the corresponding entries
     in the release notes.
 
+    Omit `oss_version` for a feature that is exclusive to FiftyOne
+    Enterprise; a "Book a Demo" CTA is rendered in its place. Omit
+    `enterprise_version` for a feature that isn't available in Enterprise.
+
     Example usage::
 
         .. customavailablein::
             :oss_version: 1.13.0
             :enterprise_version: 2.16.0
-
-    Options:
-        - oss_version: version the feature was introduced in FiftyOne
-        - enterprise_version: version the feature was introduced in
-          FiftyOne Enterprise
-
-    Omit `oss_version` for a feature that is exclusive to FiftyOne
-    Enterprise; a "Book a Demo" CTA is rendered in its place. Omit
-    `enterprise_version` for a feature that isn't available in Enterprise.
     """
 
     option_spec = {
@@ -503,11 +498,8 @@ class CustomAvailableInDirective(Directive):
         enterprise_version = self.options.get("enterprise_version", "").strip()
 
         env = self.state.document.settings.env
-        base_dir = posixpath.dirname(env.docname)
-        prefix = (
-            posixpath.relpath("release-notes", base_dir)
-            if base_dir
-            else "release-notes"
+        prefix = posixpath.relpath(
+            "release-notes", posixpath.dirname(env.docname)
         )
 
         pills = []
