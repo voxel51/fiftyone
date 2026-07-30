@@ -23,28 +23,22 @@ Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
   directly from the Embeddings panel
 - Video annotation AI uses the most capable SAM2 model by default;
   deployments can opt into a smaller, faster model
-- Annotation AI features now ship as a single `annotation-ai` service — one
+- Annotation AI features ship as a single `annotation-ai` service — one
   image to deploy — and the Services page and annotation AI panel are
   always visible
 - Check service health at a glance from the new status popover, and review
   your runs and jump to service logs from the new Personal > Runs settings
   page
-- More reliable service management: stopping a service frees its GPU
-  memory, health checks honor the configured port, compose deployments
-  resolve service hosts correctly, and builtin services can be configured
-  to start stopped
-- Auto Labeling now finds its backing service automatically — no manual
-  configuration required
-- The datasets listing page now displays the multimodal dataset type
-- Delegated operations improvements: the schedule dropdown no longer lists
-  named delegation targets, run logs persist reliably — including for very
-  large logs — and progress logs capture more output
-- Multimodal fixes, including writes now honoring your FiftyOne Enterprise
-  cloud credentials
-- Run metrics now report GPU usage correctly, including for delegated
-  executor services
-- Workflow canvas connections now render correctly after page reloads
-- Fixed datasets incorrectly appearing locked in some deployments
+- More reliable services: stopping a service frees its GPU memory, and
+  Auto Labeling finds its backing service automatically
+- Delegated operation run logs persist reliably — including very large
+  logs — progress logs capture more output, and run metrics report GPU
+  usage correctly, including for delegated executor services
+- Fixes: the datasets listing page shows the multimodal dataset type,
+  multimodal writes honor your FiftyOne Enterprise cloud credentials,
+  workflow canvas connections render after page reloads, the schedule
+  dropdown no longer lists named delegation targets, and datasets no
+  longer incorrectly appear locked
 - Upgraded `protobufjs`, `torch`, `torchvision`, and `transformers`
   dependencies to mitigate CVEs and fix `timm` model support
 
@@ -56,12 +50,11 @@ FiftyOne 1.20.0
 
 App
 ^^^
-- **Rebuilt Embeddings panel**: rebuilt from the ground up for scale,
-  staying smooth and interactive into the millions of points. Includes a
-  runs list with readiness status, color-by with categorical and continuous
-  legends, lasso selection synced both ways with the sample grid, and hover
-  cards with media previews. Works with existing visualization results — no
-  recompute required — and requires `fiftyone-brain>=0.23`
+- **Rebuilt Embeddings panel**: smooth and interactive into the millions of
+  points, with a runs list, categorical and continuous color-by legends,
+  two-way lasso selection synced with the sample grid, and media previews
+  on hover. Works with existing visualization results — no recompute
+  required — and requires `fiftyone-brain>=0.23`
   `#8042 <https://github.com/voxel51/fiftyone/pull/8042>`_,
   `#8073 <https://github.com/voxel51/fiftyone/pull/8073>`_,
   `#8076 <https://github.com/voxel51/fiftyone/pull/8076>`_
