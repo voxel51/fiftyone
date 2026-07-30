@@ -33,11 +33,11 @@ declare module "@miris-inc/three" {
     getBounds(): MirisStreamBounds;
     addEventListener(
       type: "streamloaded" | "rootloaded",
-      listener: (event: unknown) => void
+      listener: (event: unknown) => void,
     ): void;
     removeEventListener(
       type: "streamloaded" | "rootloaded",
-      listener: (event: unknown) => void
+      listener: (event: unknown) => void,
     ): void;
   }
 
@@ -45,7 +45,7 @@ declare module "@miris-inc/three" {
     constructor(
       objects: Object3D | Iterable<Object3D> | null,
       camera: import("three").Camera,
-      domElement: HTMLElement
+      domElement: HTMLElement,
     );
     dispose(): void;
   }

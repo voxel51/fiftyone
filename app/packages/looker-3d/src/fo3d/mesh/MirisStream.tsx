@@ -50,7 +50,8 @@ export const MirisStream = ({
     if (asset.assetUuid && viewerKey) {
       (async () => {
         try {
-          const { MirisStream: MirisStreamSDK } = await ensureMirisRuntime() as any;
+          const { MirisStream: MirisStreamSDK } =
+            (await ensureMirisRuntime()) as any;
           if (cancelled) return;
           constructed = new MirisStreamSDK({
             uuid: asset.assetUuid,
@@ -65,7 +66,7 @@ export const MirisStream = ({
     } else if (asset.assetUuid && !viewerKey) {
       console.warn(
         "[MirisStream] No viewer key resolved (checked asset.viewerKey and " +
-          "dataset.info.miris_viewer_key); skipping stream construction."
+          "dataset.info.miris_viewer_key); skipping stream construction.",
       );
     }
 

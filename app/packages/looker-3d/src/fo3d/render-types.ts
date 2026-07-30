@@ -127,7 +127,7 @@ export class StlAsset {
 export class MirisStreamAsset {
   constructor(
     readonly assetUuid: string,
-    readonly viewerKey?: string
+    readonly viewerKey?: string,
   ) {}
 }
 
