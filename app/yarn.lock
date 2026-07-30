@@ -2010,6 +2010,8 @@ __metadata:
   dependencies:
     "@emotion/react": "npm:^11.14.0"
     "@emotion/styled": "npm:^11.14.0"
+    "@miris-inc/core": "npm:latest"
+    "@miris-inc/three": "npm:latest"
     "@react-three/drei": "npm:^10.7.6"
     "@react-three/fiber": "catalog:"
     "@sparkjsdev/spark": "npm:2.1.0"
@@ -2171,6 +2173,7 @@ __metadata:
   resolution: "@fiftyone/plugins@workspace:packages/plugins"
   dependencies:
     "@fiftyone/utilities": "workspace:^"
+    moment: "npm:^2.29.4"
     prettier: "catalog:"
     vite: "catalog:"
   languageName: unknown
@@ -3180,6 +3183,23 @@ __metadata:
   version: 2.0.1
   resolution: "@microsoft/fetch-event-source@npm:2.0.1"
   checksum: 10/c147055fafe83801efb9834136ba4b7944406a0bba3517afcea6ceeb56714b5ef78c2e89544bd9c1426ad1d2f964a087e3a719169ae04855836a23fb53269f8d
+  languageName: node
+  linkType: hard
+
+"@miris-inc/core@npm:latest":
+  version: 0.0.8-a1b9846
+  resolution: "@miris-inc/core@npm:0.0.8-a1b9846"
+  checksum: 10/6e99f8cdb3e580b5905daa241327f821361aa1054e844b6add10718fe4f48c297d5b27839cc204b0fc7dad71142ace2b41957b6cd8cc271e9d9c52bb859be88b
+  languageName: node
+  linkType: hard
+
+"@miris-inc/three@npm:latest":
+  version: 0.0.8-a1b9846
+  resolution: "@miris-inc/three@npm:0.0.8-a1b9846"
+  peerDependencies:
+    "@miris-inc/core": 0.0.8-a1b9846
+    three: ^0.182.0
+  checksum: 10/d34c36e2463e1b68cb006768e83195cec915e2f21df8548b03ccd6bd14348a8082f253f42f6cc41445adef02d8093a24c48089c905c5c9fbd0257973841cb54f
   languageName: node
   linkType: hard
 
@@ -14855,6 +14875,13 @@ __metadata:
   bin:
     mkdirp: bin/cmd.js
   checksum: 10/d71b8dcd4b5af2fe13ecf3bd24070263489404fe216488c5ba7e38ece1f54daf219e72a833a3a2dc404331e870e9f44963a33399589490956bff003a3404d3b2
+  languageName: node
+  linkType: hard
+
+"moment@npm:^2.29.4":
+  version: 2.30.1
+  resolution: "moment@npm:2.30.1"
+  checksum: 10/ae42d876d4ec831ef66110bdc302c0657c664991e45cf2afffc4b0f6cd6d251dde11375c982a5c0564ccc0fa593fc564576ddceb8c8845e87c15f58aa6baca69
   languageName: node
   linkType: hard
 

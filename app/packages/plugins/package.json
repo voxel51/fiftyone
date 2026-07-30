@@ -22,5 +22,8 @@
         "@fiftyone/utilities": "workspace:^",
         "prettier": "catalog:",
         "vite": "catalog:"
+    },
+    "dependencies": {
+        "moment": "^2.29.4"
     }
 }
