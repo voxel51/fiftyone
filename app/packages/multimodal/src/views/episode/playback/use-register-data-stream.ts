@@ -9,8 +9,8 @@ import {
   useIsPlaying,
   usePlayback,
   usePlaybackStore,
-  useSeekEvent,
 } from "@fiftyone/playback";
+import { seekEventAtom } from "@fiftyone/playback/runtime";
 import {
   useCallback,
   useEffect,
@@ -102,6 +102,17 @@ export function cancelIdleReads(
   }
 }
 
+/** Treats seek-runway cancellation on an already-disposed session as complete. */
+export function cancelRunwayReads(
+  session: Pick<EpisodeSession, "cancelRunway"> | null,
+): void {
+  try {
+    session?.cancelRunway?.();
+  } catch (error) {
+    if (!isEpisodeReadCancelledError(error)) throw error;
+  }
+}
+
 /** Inputs for registering the shared episode playback stream. */
 export interface UseDataStreamOptions {
   blockingStreams: readonly string[];
@@ -146,7 +157,6 @@ export function useRegisterDataStream({
   const store = usePlaybackStore();
   const isPlaying = useIsPlaying();
   const setDataStream = useSetDataStream();
-  const seekEvent = useSeekEvent();
   const playback = useMemo(
     () => (session ? createEpisodePlaybackRuntime(session) : null),
     [session],
@@ -588,22 +598,19 @@ export function useRegisterDataStream({
     store,
   ]);
 
-  const rebalanceDecodedCaches = useCallback(
-    (pruneSpeculative: boolean) => {
-      backgroundLookaheadSecondsRef.current = applyDecodedCachePolicy({
-        budgetBytes: decodedCacheBudgetBytesRef.current,
-        caches: streamCachesRef.current,
-        currentLookaheadSeconds: backgroundLookaheadSecondsRef.current,
-        index: indexRef.current,
-        maxLookaheadSeconds: playbackPolicy.lookaheadSeconds,
-        minLookaheadSeconds: playbackPolicy.startupLookaheadSeconds,
-        pruneSpeculative,
-        stepSeconds: playbackPolicy.prefetchBatchSeconds,
-        store,
-      });
-    },
-    [playbackPolicy, store],
-  );
+  const rebalanceDecodedCaches = useCallback(() => {
+    backgroundLookaheadSecondsRef.current = applyDecodedCachePolicy({
+      backwardCushionSeconds: playbackPolicy.prefetchBatchSeconds,
+      budgetBytes: decodedCacheBudgetBytesRef.current,
+      caches: streamCachesRef.current,
+      currentLookaheadSeconds: backgroundLookaheadSecondsRef.current,
+      index: indexRef.current,
+      maxLookaheadSeconds: playbackPolicy.lookaheadSeconds,
+      minLookaheadSeconds: playbackPolicy.startupLookaheadSeconds,
+      stepSeconds: playbackPolicy.prefetchBatchSeconds,
+      store,
+    });
+  }, [playbackPolicy, store]);
 
   const prefetcher = useMemo(
     () =>
@@ -748,28 +755,31 @@ export function useRegisterDataStream({
     return scheduler?.register(registerStream, subscribeStream);
   }, [index, registerStream, scheduler, source, subscribeStream]);
 
-  // This effect reacts immediately to seek intent without admitting data work.
-  // The playback engine owns missing-data prefetch and applies the source-local
-  // debounce above; committed-time scheduling grows runway after data lands.
+  // Subscribe directly so cancellation runs synchronously after seek intent
+  // publishes and before the playback engine can admit work for the new target.
   useEffect(() => {
-    if (seekEvent) {
+    return store.sub(seekEventAtom, () => {
       // Stamp seeks so the idle-work gate can hold speculative reads while
       // the foreground catch-up fetch owns a constrained link, and reclaim
       // it immediately from speculative transfers already in flight.
       lastSeekAtMsRef.current = monotonicNowMs();
       startupCushionPlanner.resetPendingPlan();
+      // Preference is derived from the current playhead rather than owned by
+      // cached entries. Rebalance synchronously so a far seek immediately
+      // demotes the old neighborhood before new foreground reads arrive.
+      rebalanceDecodedCaches();
       // A source transition can dispose the previous session before this
-      // seek effect runs. Cancelling idle work on that session is already
-      // satisfied, so do not surface its deliberate cancellation through
-      // the episode error boundary.
+      // subscription observes its reset seek. Cancellation on that session is
+      // already satisfied, so do not surface it through the error boundary.
       cancelIdleReads(session);
+      cancelRunwayReads(session);
       // Retain the previous frame while an uncovered target loads. Stream
       // loading state lets scene tiles mark the retained snapshot as previous,
       // and the target frame replaces it as soon as the foreground fetch
       // lands. Source changes and stream unsubscription still clear retained
       // frames at their ownership boundaries.
-    }
-  }, [session, seekEvent, startupCushionPlanner]);
+    });
+  }, [rebalanceDecodedCaches, session, startupCushionPlanner, store]);
 
   // This effect kicks off lookahead so the buffer fills before play or seek.
   // (May be a no-op if no tile has subscribed yet — subscribeToStream also

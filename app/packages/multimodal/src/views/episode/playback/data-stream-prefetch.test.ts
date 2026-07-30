@@ -52,6 +52,30 @@ describe("data stream prefetcher", () => {
     expect(harness.caches.get(IMAGE)?.has(0n)).toBe(false);
   });
 
+  it("returns late loop-continuation reads to ordinary cache ownership", async () => {
+    const lateRead = deferred<readonly SynchronizedFrameWindow[]>();
+    const harness = createHarness({
+      readSynchronizedBatch: vi.fn(() => lateRead.promise),
+    });
+    const cache = harness.caches.get(IMAGE);
+    cache?.resize(1);
+    cache?.subscribe();
+
+    expect(
+      harness.prefetcher.fetchBatch([0n], [IMAGE], "loopback-lookahead"),
+    ).toBe(true);
+    lateRead.resolve([windowAt(0n, [frame(IMAGE, 0n)])]);
+    await settle();
+    expect(cache?.has(0n)).toBe(true);
+    expect(harness.rebalanceDecodedCaches).toHaveBeenLastCalledWith();
+
+    // A loop change needs no cache-tier cleanup: the old same-source frame is
+    // useful ordinary data, but normal recency may evict it immediately.
+    cache?.set(500_000_000n, frame(IMAGE, 500_000_000n));
+    expect(cache?.has(0n)).toBe(false);
+    expect(cache?.has(500_000_000n)).toBe(true);
+  });
+
   it("deduplicates pending ticks and assigns foreground and idle priorities", async () => {
     const firstRead = deferred<readonly SynchronizedFrameWindow[]>();
     const readSynchronizedBatch = vi
@@ -164,7 +188,7 @@ describe("data stream prefetcher", () => {
     targetRead.resolve(windowAt(500_000_000n, []));
     await settle();
     expect(getStreamValue(harness.store, IMAGE)).toBe(held);
-    expect(harness.rebalanceDecodedCaches).toHaveBeenLastCalledWith(false);
+    expect(harness.rebalanceDecodedCaches).toHaveBeenLastCalledWith();
   });
 
   it("publishes the current playhead tick when an older frame read resolves", async () => {

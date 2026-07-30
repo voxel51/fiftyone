@@ -24,6 +24,7 @@ import {
   distributeWindowToCaches,
   fillMissingLookaheadFrom,
   fillMissingStartupBufferFrom,
+  playbackLookaheadSegments,
   type DataOperation,
   type DerivedPlaybackPolicy,
 } from "./playback-buffering";
@@ -75,6 +76,7 @@ export interface DataStreamPrefetcher {
     endSec: number,
     maxTicks: number,
     streams: readonly string[],
+    options?: { readonly endExclusive?: boolean },
   ): bigint[];
   fetchBatch(
     ticks: bigint[],
@@ -115,7 +117,7 @@ export function createDataStreamPrefetcher({
     "readSynchronized" | "readSynchronizedBatch"
   >;
   readonly publishStreamStatuses: () => void;
-  readonly rebalanceDecodedCaches: (pruneSpeculative: boolean) => void;
+  readonly rebalanceDecodedCaches: () => void;
   readonly store: PlaybackStore;
 }): DataStreamPrefetcher {
   const isStreamPending = (tickKey: string, stream: string): boolean =>
@@ -250,7 +252,6 @@ export function createDataStreamPrefetcher({
             activeFetchedStreams.filter(
               (stream) => !window.diagnosticsByStream?.[stream],
             ),
-            { pinned: operation === "loopback-lookahead" },
           );
         }
         for (const [stream, failure] of decodeFailures) {
@@ -260,7 +261,7 @@ export function createDataStreamPrefetcher({
             [stream],
           );
         }
-        rebalanceDecodedCaches(operation === "background-lookahead");
+        rebalanceDecodedCaches();
         const currentIndex = getIndex();
         if (!currentIndex) return;
         const tick = currentIndex.nearestTick(getPlayhead(store));
@@ -334,7 +335,7 @@ export function createDataStreamPrefetcher({
             [stream],
           );
         }
-        rebalanceDecodedCaches(false);
+        rebalanceDecodedCaches();
         const currentIndex = getIndex();
         const currentTick = currentIndex?.nearestTick(getPlayhead(store));
         if (currentTick !== undefined) {
@@ -359,7 +360,7 @@ export function createDataStreamPrefetcher({
   };
 
   const collectMissingTicksForStreams: DataStreamPrefetcher["collectMissingTicksForStreams"] =
-    (startSec, endSec, maxTicks, streams) => {
+    (startSec, endSec, maxTicks, streams, options) => {
       const index = getIndex();
       if (!index || streams.length === 0) return [];
       const startNs = index.secToNs(startSec);
@@ -368,7 +369,12 @@ export function createDataStreamPrefetcher({
       const missing: bigint[] = [];
       for (let position = startIndex; position < index.tickCount; position++) {
         const tick = index.tickAt(position);
-        if (tick === undefined || tick > endNs) break;
+        if (
+          tick === undefined ||
+          (options?.endExclusive ? tick >= endNs : tick > endNs)
+        ) {
+          break;
+        }
         const tickKey = tick.toString();
         if (
           streams.some(
@@ -415,61 +421,67 @@ export interface DataStreamSchedulerOptions {
 }
 
 /**
- * Coordinates current-frame reads, rolling lookahead, loopback runway, idle
- * warmup, and the single playback-engine stream without owning React state.
+ * Coordinates current-frame reads, circular rolling lookahead, idle warmup,
+ * and the single playback-engine stream without owning React state.
  */
 export class DataStreamScheduler {
   private lastObservedCommitSec: number | null = null;
-  private loopRunwayStartTickKey: string | null = null;
   private nextLookaheadRefreshTime = 0;
 
   constructor(private readonly options: DataStreamSchedulerOptions) {}
 
   resetSource(): void {
     this.lastObservedCommitSec = null;
-    this.loopRunwayStartTickKey = null;
     this.nextLookaheadRefreshTime = 0;
   }
 
-  warmLoopStartRunway(timeSec: number, activeStreams: string[]): boolean {
+  /**
+   * Fills the bounded future horizon in playback order. The current loop tail
+   * always gets first admission; only its unused horizon wraps to loop start.
+   */
+  private fillRollingLookaheadFrom(
+    timeSec: number,
+    activeStreams: string[],
+    operation: Exclude<DataOperation, "loopback-lookahead">,
+    lookaheadSeconds: number,
+  ): boolean {
     const { options } = this;
     const index = options.getIndex();
     if (!index || activeStreams.length === 0) return false;
 
-    const loopStartSec = getLoopStart(options.store);
-    const loopEndSec = getLoopEnd(options.store);
-    if (loopEndSec <= loopStartSec) return false;
-    if (timeSec <= loopStartSec + options.policy.startupLookaheadSeconds) {
-      return false;
+    const segments = playbackLookaheadSegments({
+      durationSec: index.durationSec,
+      lookaheadSeconds,
+      loopEndSec: getLoopEnd(options.store),
+      loopStartSec: getLoopStart(options.store),
+      timeSec,
+    });
+    for (const segment of segments) {
+      if (
+        fillMissingLookaheadFrom({
+          activeStreams,
+          collectMissingTicks: (startSec, endSec, maxTicks) =>
+            options.prefetcher.collectMissingTicksForStreams(
+              startSec,
+              endSec,
+              maxTicks,
+              activeStreams,
+              { endExclusive: true },
+            ),
+          fetchBatch: options.prefetcher.fetchBatch,
+          lookaheadSeconds: segment.endSec - segment.startSec,
+          operation:
+            segment.kind === "loop-continuation"
+              ? "loopback-lookahead"
+              : operation,
+          policy: options.policy,
+          timeSec: segment.startSec,
+        })
+      ) {
+        return true;
+      }
     }
-    const secondsToLoopEnd = loopEndSec - timeSec;
-    const lookaheadSeconds = options.getBackgroundLookaheadSeconds();
-    if (secondsToLoopEnd < 0 || secondsToLoopEnd > lookaheadSeconds) {
-      return false;
-    }
-
-    const loopStartTick = index.nearestTick(loopStartSec);
-    if (loopStartTick === undefined) return false;
-    const loopStartTickKey = loopStartTick.toString();
-    if (this.loopRunwayStartTickKey !== loopStartTickKey) {
-      this.loopRunwayStartTickKey = loopStartTickKey;
-      for (const cache of options.caches.values()) cache.clearPinned();
-    }
-
-    const missing = options.prefetcher.collectMissingTicksForStreams(
-      loopStartSec,
-      loopStartSec + lookaheadSeconds,
-      options.policy.maxPrefetchBatch,
-      activeStreams,
-    );
-    return (
-      missing.length > 0 &&
-      options.prefetcher.fetchBatch(
-        missing,
-        activeStreams,
-        "loopback-lookahead",
-      )
-    );
+    return false;
   }
 
   runPausedIdleWarmup(): boolean {
@@ -504,43 +516,25 @@ export class DataStreamScheduler {
     ) {
       return false;
     }
-    if (this.warmLoopStartRunway(timeSec, activeStreams)) return true;
-
-    const endSec =
-      timeSec +
-      Math.min(
-        options.policy.pausedWarmupRunwaySeconds,
-        options.getBackgroundLookaheadSeconds(),
-      );
-    const blockingMissing = options.prefetcher.collectMissingTicksForStreams(
-      timeSec,
-      endSec,
-      options.policy.maxPrefetchBatch,
-      activeBlockingStreams,
+    const pausedLookaheadSeconds = Math.min(
+      options.policy.pausedWarmupRunwaySeconds,
+      options.getBackgroundLookaheadSeconds(),
     );
     if (
-      blockingMissing.length > 0 &&
-      options.prefetcher.fetchBatch(
-        blockingMissing,
+      this.fillRollingLookaheadFrom(
+        timeSec,
         activeBlockingStreams,
         "background-lookahead",
+        pausedLookaheadSeconds,
       )
     ) {
       return true;
     }
-    const allMissing = options.prefetcher.collectMissingTicksForStreams(
+    return this.fillRollingLookaheadFrom(
       timeSec,
-      endSec,
-      options.policy.maxPrefetchBatch,
       activeStreams,
-    );
-    return (
-      allMissing.length > 0 &&
-      options.prefetcher.fetchBatch(
-        allMissing,
-        activeStreams,
-        "background-lookahead",
-      )
+      "background-lookahead",
+      pausedLookaheadSeconds,
     );
   }
 
@@ -756,26 +750,16 @@ export class DataStreamScheduler {
       ) {
         return;
       }
-      if (this.warmLoopStartRunway(timeSec, activeStreams)) return;
       const operation =
         getIsPlaying(options.store) || getIsPlayPending(options.store)
           ? "playback-prefetch"
           : "background-lookahead";
-      fillMissingLookaheadFrom({
-        activeStreams,
-        collectMissingTicks: (startSec, endSec, maxTicks) =>
-          options.prefetcher.collectMissingTicksForStreams(
-            startSec,
-            endSec,
-            maxTicks,
-            activeStreams,
-          ),
-        fetchBatch: options.prefetcher.fetchBatch,
-        lookaheadSeconds: options.getBackgroundLookaheadSeconds(),
-        operation,
-        policy: options.policy,
+      this.fillRollingLookaheadFrom(
         timeSec,
-      });
+        activeStreams,
+        operation,
+        options.getBackgroundLookaheadSeconds(),
+      );
     });
 
     return () => {

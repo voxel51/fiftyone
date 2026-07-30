@@ -18,10 +18,9 @@ interface MessageRetention {
 
 /** Byte and entry retention totals for one stream cache. */
 export interface EpisodeStreamCacheStats {
-  /** Unique decoded bytes referenced by normal and pinned tick placements. */
+  /** Unique decoded bytes referenced by cached tick placements. */
   readonly decodedBytes: number;
   readonly entryCount: number;
-  readonly pinnedEntryCount: number;
 }
 
 /** Result of placing one fetched frame into a stream cache. */
@@ -53,7 +52,6 @@ export class EpisodeStreamCache {
   private readonly listeners = new Set<() => void>();
   private readonly messageRetention = new Map<DecodedFrame, MessageRetention>();
   private readonly messagesByRecordId = new Map<string, DecodedFrame>();
-  private readonly pinned = new Map<string, CacheEntry>();
   private _decodedBytes = 0;
   private _subscriberCount = 0;
   private _revision = 0;
@@ -95,7 +93,6 @@ export class EpisodeStreamCache {
     return {
       decodedBytes: this._decodedBytes,
       entryCount: this.cache.size,
-      pinnedEntryCount: this.pinned.size,
     };
   }
 
@@ -125,19 +122,15 @@ export class EpisodeStreamCache {
   }
 
   has(tick: bigint): boolean {
-    const key = tick.toString();
-    return this.pinned.has(key) || this.cache.has(key);
+    return this.cache.has(tick.toString());
   }
 
   get(tick: bigint): DecodedFrame | null | undefined {
-    const key = tick.toString();
-    const pinned = this.pinned.get(key);
-    return pinned ? pinned.msg : this.cache.get(key)?.msg;
+    return this.cache.get(tick.toString())?.msg;
   }
 
   cachedTicks(): bigint[] {
     const ticks: bigint[] = [];
-    for (const key of this.pinned.keys()) ticks.push(BigInt(key));
     for (const key of this.cache.keys()) ticks.push(BigInt(key));
     return ticks;
   }
@@ -169,30 +162,13 @@ export class EpisodeStreamCache {
     if (droppedEntries > 0) this.bumpRevision();
   }
 
-  set(
-    tick: bigint,
-    msg: DecodedFrame | null,
-    options?: { readonly pinned?: boolean },
-  ): EpisodeStreamCacheSetResult {
+  set(tick: bigint, msg: DecodedFrame | null): EpisodeStreamCacheSetResult {
     const canonical = this.canonicalizeMessage(msg);
     msg = canonical.msg;
     if (msg) {
       this.cadence.observe(msg.timestampNs);
     }
     const key = tick.toString();
-    if (options?.pinned || this.pinned.has(key)) {
-      const previousEntry = this.pinned.get(key);
-      const hadEntry = previousEntry !== undefined;
-      const previous = previousEntry?.msg;
-      this.cache.delete(key);
-      const entry = { msg };
-      this.retainEntry(entry);
-      if (previousEntry) this.releaseEntry(previousEntry);
-      this.pinned.set(key, entry);
-      if (!hadEntry || previous !== msg) this.bumpRevision();
-      return canonical.result;
-    }
-
     const hadEntry = this.cache.has(key);
     // peek() reads the prior value without refreshing LRU recency, so re-setting
     // an unchanged value doesn't promote the entry toward the front of the cache.
@@ -206,15 +182,23 @@ export class EpisodeStreamCache {
     return canonical.result;
   }
 
-  /**
-   * Drops ordinary placements outside an inclusive protected runway. Pinned
-   * loopback entries are deliberately exempt from memory-pressure pruning.
-   */
-  pruneOutside(startTick: bigint, endTick: bigint): number {
+  /** Drops placements outside the inclusive playback-order runways. */
+  pruneOutsideRanges(
+    ranges: readonly {
+      readonly endTick: bigint;
+      readonly startTick: bigint;
+    }[],
+  ): number {
     let removed = 0;
     for (const key of [...this.cache.keys()]) {
       const tick = BigInt(key);
-      if (tick >= startTick && tick <= endTick) continue;
+      if (
+        ranges.some(
+          ({ endTick, startTick }) => tick >= startTick && tick <= endTick,
+        )
+      ) {
+        continue;
+      }
       if (this.cache.delete(key)) removed += 1;
     }
     if (removed > 0) this.bumpRevision();
@@ -227,17 +211,8 @@ export class EpisodeStreamCache {
    *  must not be reused. */
   clear(): void {
     this.cadence.clear();
-    if (this.cache.size === 0 && this.pinned.size === 0) return;
+    if (this.cache.size === 0) return;
     this.cache.clear();
-    for (const entry of this.pinned.values()) this.releaseEntry(entry);
-    this.pinned.clear();
-    this.bumpRevision();
-  }
-
-  clearPinned(): void {
-    if (this.pinned.size === 0) return;
-    for (const entry of this.pinned.values()) this.releaseEntry(entry);
-    this.pinned.clear();
     this.bumpRevision();
   }
 

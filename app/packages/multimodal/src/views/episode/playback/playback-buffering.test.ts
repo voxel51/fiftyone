@@ -11,6 +11,7 @@ import {
   fillMissingLookaheadFrom,
   fillMissingStartupBufferFrom,
   nsToSeconds,
+  playbackLookaheadSegments,
   staleAgeForMessage,
 } from "./playback-buffering";
 
@@ -123,6 +124,72 @@ describe("episode playback buffering policy", () => {
       ["lidar"],
       "startup-lookahead",
     );
+  });
+
+  it("spends only the remainder of lookahead across a non-zero loop seam", () => {
+    expect(
+      playbackLookaheadSegments({
+        durationSec: 20,
+        lookaheadSeconds: 4,
+        loopEndSec: 10,
+        loopStartSec: 2,
+        timeSec: 8,
+      }),
+    ).toEqual([
+      { endSec: 10, kind: "current", startSec: 8 },
+      { endSec: 4, kind: "loop-continuation", startSec: 2 },
+    ]);
+  });
+
+  it("does not reserve loop continuation before lookahead crosses the seam", () => {
+    expect(
+      playbackLookaheadSegments({
+        durationSec: 20,
+        lookaheadSeconds: 4,
+        loopEndSec: 10,
+        loopStartSec: 2,
+        timeSec: 5,
+      }),
+    ).toEqual([{ endSec: 9, kind: "current", startSec: 5 }]);
+  });
+
+  it("bounds a short loop to one loop of decoded coverage", () => {
+    expect(
+      playbackLookaheadSegments({
+        durationSec: 20,
+        lookaheadSeconds: 4,
+        loopEndSec: 3,
+        loopStartSec: 2,
+        timeSec: 2.75,
+      }),
+    ).toEqual([
+      { endSec: 3, kind: "current", startSec: 2.75 },
+      { endSec: 2.75, kind: "loop-continuation", startSec: 2 },
+    ]);
+  });
+
+  it("puts the entire forward runway at loop start when positioned on the seam", () => {
+    expect(
+      playbackLookaheadSegments({
+        durationSec: 20,
+        lookaheadSeconds: 4,
+        loopEndSec: 10,
+        loopStartSec: 2,
+        timeSec: 10,
+      }),
+    ).toEqual([{ endSec: 6, kind: "loop-continuation", startSec: 2 }]);
+  });
+
+  it("falls back to ordinary lookahead when a seek is outside the loop", () => {
+    expect(
+      playbackLookaheadSegments({
+        durationSec: 20,
+        lookaheadSeconds: 4,
+        loopEndSec: 10,
+        loopStartSec: 2,
+        timeSec: 12,
+      }),
+    ).toEqual([{ endSec: 16, kind: "current", startSec: 12 }]);
   });
 });
 

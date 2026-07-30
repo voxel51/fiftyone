@@ -19,6 +19,8 @@ const playbackState = vi.hoisted(() => ({
   currentTimeUnsubscribe: vi.fn(),
   isPlayPending: false,
   isPlaying: false,
+  loopEnd: 10,
+  loopStart: 0,
   pendingListener: null as (() => void) | null,
   pendingUnsubscribe: vi.fn(),
   playhead: 0,
@@ -31,6 +33,8 @@ vi.mock("@fiftyone/playback", async (importOriginal) => {
     getCurrentTime: () => playbackState.currentTime,
     getIsPlayPending: () => playbackState.isPlayPending,
     getIsPlaying: () => playbackState.isPlaying,
+    getLoopEnd: () => playbackState.loopEnd,
+    getLoopStart: () => playbackState.loopStart,
     getPlayhead: () => playbackState.playhead,
     subscribeCurrentTime: (_store: PlaybackStore, listener: () => void) => {
       playbackState.currentTimeListener = listener;
@@ -49,6 +53,8 @@ beforeEach(() => {
   playbackState.currentTimeUnsubscribe.mockReset();
   playbackState.isPlayPending = false;
   playbackState.isPlaying = false;
+  playbackState.loopEnd = 10;
+  playbackState.loopStart = 0;
   playbackState.pendingListener = null;
   playbackState.pendingUnsubscribe.mockReset();
   playbackState.playhead = 0;
@@ -119,6 +125,93 @@ describe("DataStreamScheduler", () => {
     expect(playbackState.pendingUnsubscribe).toHaveBeenCalledOnce();
     expect(playbackState.currentTimeUnsubscribe).toHaveBeenCalledOnce();
   });
+
+  it("fills the current tail before admitting wrapped loop continuation", () => {
+    const harness = createSchedulerHarness();
+    const cleanup = harness.register();
+    playbackState.loopStart = 2;
+    playbackState.loopEnd = 10;
+    playbackState.isPlaying = true;
+    harness.prefetcher.collectMissingTicksForStreams.mockImplementation(
+      (startSec) => (startSec >= 9 ? [9_000_000_000n] : [2_000_000_000n]),
+    );
+
+    commitTime(9);
+
+    expect(harness.prefetcher.fetchBatch).toHaveBeenCalledWith(
+      [9_000_000_000n],
+      ["/camera"],
+      "playback-prefetch",
+    );
+    expect(
+      operationFetchCount(harness.prefetcher.fetchBatch, "loopback-lookahead"),
+    ).toBe(0);
+
+    harness.prefetcher.collectMissingTicksForStreams.mockImplementation(
+      (startSec) => (startSec === 2 ? [2_000_000_000n] : []),
+    );
+    commitTime(9.5);
+
+    expect(harness.prefetcher.fetchBatch).toHaveBeenLastCalledWith(
+      [2_000_000_000n],
+      ["/camera"],
+      "loopback-lookahead",
+    );
+    cleanup();
+  });
+
+  it("derives continuation from the latest loop bounds after a seek", () => {
+    const harness = createSchedulerHarness();
+    const cleanup = harness.register();
+    playbackState.isPlaying = true;
+    harness.prefetcher.collectMissingTicksForStreams.mockImplementation(
+      (startSec) =>
+        startSec === playbackState.loopStart
+          ? [BigInt(startSec) * 1_000_000_000n]
+          : [],
+    );
+
+    commitTime(9.5);
+    expect(harness.prefetcher.fetchBatch).toHaveBeenLastCalledWith(
+      [0n],
+      ["/camera"],
+      "loopback-lookahead",
+    );
+
+    playbackState.loopStart = 2;
+    playbackState.loopEnd = 8;
+    commitTime(7.5);
+    expect(harness.prefetcher.fetchBatch).toHaveBeenLastCalledWith(
+      [2_000_000_000n],
+      ["/camera"],
+      "loopback-lookahead",
+    );
+    cleanup();
+  });
+
+  it("includes streams that become active while approaching the seam", () => {
+    const harness = createSchedulerHarness();
+    const cleanup = harness.register();
+    playbackState.loopStart = 2;
+    playbackState.loopEnd = 10;
+    playbackState.isPlaying = true;
+    harness.prefetcher.collectMissingTicksForStreams.mockImplementation(
+      (startSec, _endSec, _maxTicks, streams) =>
+        startSec === 2 && streams.includes("/lidar") ? [2_000_000_000n] : [],
+    );
+
+    commitTime(9);
+    expect(harness.prefetcher.fetchBatch).not.toHaveBeenCalled();
+
+    harness.activeStreams.push("/lidar");
+    commitTime(9.6);
+    expect(harness.prefetcher.fetchBatch).toHaveBeenLastCalledWith(
+      [2_000_000_000n],
+      ["/camera", "/lidar"],
+      "loopback-lookahead",
+    );
+    cleanup();
+  });
 });
 
 function createSchedulerHarness() {
@@ -132,7 +225,9 @@ function createSchedulerHarness() {
     if (tick !== undefined) cache.set(tick, null);
   }
   const prefetcher = {
-    collectMissingTicksForStreams: vi.fn(() => [9_000_000_000n]),
+    collectMissingTicksForStreams: vi.fn<
+      DataStreamPrefetcher["collectMissingTicksForStreams"]
+    >(() => [9_000_000_000n]),
     fetchBatch: vi.fn(() => true),
     fetchCurrentFrame: vi.fn(() => false),
     isStreamPending: vi.fn(() => false),
@@ -143,13 +238,14 @@ function createSchedulerHarness() {
   const unregisterStream = vi.fn();
   const unsubscribeStream = vi.fn();
   const cancelIdle = vi.fn();
+  const activeStreams = ["/camera"];
   const scheduler = new DataStreamScheduler({
     caches: new Map([["/camera", cache]]),
     cancelIdle,
     computeBufferedRanges: () => [[0, 10]],
     failedStreams: new Set(),
-    getActiveBlockingStreams: () => ["/camera"],
-    getActiveStreams: () => ["/camera"],
+    getActiveBlockingStreams: () => [...activeStreams],
+    getActiveStreams: () => [...activeStreams],
     getBackgroundLookaheadSeconds: () => 2,
     getBlockingStreams: () => new Set(["/camera"]),
     getIndex: () => index,
@@ -168,6 +264,7 @@ function createSchedulerHarness() {
   });
 
   return {
+    activeStreams,
     cancelIdle,
     prefetcher,
     register: () =>

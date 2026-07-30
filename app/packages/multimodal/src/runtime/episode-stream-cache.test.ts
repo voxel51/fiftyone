@@ -113,21 +113,17 @@ describe("EpisodeStreamCache", () => {
     release();
   });
 
-  it("keeps pinned runway entries outside normal LRU churn", () => {
+  it("keeps every placement inside the same LRU capacity", () => {
     const cache = new EpisodeStreamCache(2);
 
-    cache.set(0n, null, { pinned: true });
+    cache.set(0n, null);
     cache.set(1n, null);
     cache.set(2n, null);
-    cache.set(3n, null);
-
-    expect(cache.has(0n)).toBe(true);
-    expect(cache.get(0n)).toBeNull();
-    expect(cache.has(1n)).toBe(false);
-
-    cache.clearPinned();
 
     expect(cache.has(0n)).toBe(false);
+    expect(cache.has(1n)).toBe(true);
+    expect(cache.has(2n)).toBe(true);
+    expect(cache.stats().entryCount).toBe(2);
   });
 
   it("counts one decoded message once across multiple tick placements", () => {
@@ -135,22 +131,20 @@ describe("EpisodeStreamCache", () => {
 
     cache.set(1n, MESSAGE);
     cache.set(2n, MESSAGE);
-    cache.set(3n, MESSAGE, { pinned: true });
+    cache.set(3n, MESSAGE);
 
     expect(cache.stats()).toEqual({
       decodedBytes: 128,
-      entryCount: 2,
-      pinnedEntryCount: 1,
+      entryCount: 3,
     });
 
-    cache.pruneOutside(3n, 3n);
+    cache.pruneOutsideRanges([{ endTick: 3n, startTick: 3n }]);
     expect(cache.stats().decodedBytes).toBe(128);
 
-    cache.clearPinned();
+    cache.clear();
     expect(cache.stats()).toEqual({
       decodedBytes: 0,
       entryCount: 0,
-      pinnedEntryCount: 0,
     });
   });
 
@@ -221,7 +215,6 @@ describe("EpisodeStreamCache", () => {
     expect(cache.stats()).toEqual({
       decodedBytes: 256,
       entryCount: 1,
-      pinnedEntryCount: 0,
     });
 
     cache.set(2n, MESSAGE);
@@ -231,17 +224,22 @@ describe("EpisodeStreamCache", () => {
     expect(cache.stats().decodedBytes).toBe(0);
   });
 
-  it("prunes ordinary placements outside a protected runway", () => {
+  it("prunes outside disjoint playback-order runways", () => {
     const cache = new EpisodeStreamCache();
     cache.set(1n, MESSAGE);
     cache.set(2n, MESSAGE);
     cache.set(3n, MESSAGE);
-    cache.set(4n, MESSAGE, { pinned: true });
+    cache.set(4n, MESSAGE);
 
-    expect(cache.pruneOutside(2n, 3n)).toBe(1);
+    expect(
+      cache.pruneOutsideRanges([
+        { endTick: 2n, startTick: 2n },
+        { endTick: 4n, startTick: 4n },
+      ]),
+    ).toBe(2);
     expect(cache.has(1n)).toBe(false);
     expect(cache.has(2n)).toBe(true);
-    expect(cache.has(3n)).toBe(true);
+    expect(cache.has(3n)).toBe(false);
     expect(cache.has(4n)).toBe(true);
     expect(cache.stats().decodedBytes).toBe(128);
   });

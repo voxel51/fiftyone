@@ -17,6 +17,7 @@ import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { setNetworkHealth } from "./network-health";
+import * as decodedCachePolicy from "./decoded-cache-policy";
 import { getStartupCushionState } from "./startup-cushion-state";
 import { getStreamStatus } from "./stream-status-state";
 import {
@@ -40,6 +41,7 @@ import {
 import type { StreamPlaybackFrame } from "./use-stream-values";
 import {
   cancelIdleReads,
+  cancelRunwayReads,
   useRegisterDataStream,
 } from "./use-register-data-stream";
 
@@ -92,6 +94,7 @@ interface SynchronizedMessageWindow {
 
 interface ResourceClient {
   readonly cancelIdleReads?: () => void;
+  readonly cancelRunwayReads?: () => void;
   readDecodedMessages(
     request: {
       readonly activeTimeline?: "log";
@@ -664,6 +667,77 @@ describe("useRegisterDataStream", () => {
     expect(() => cancelIdleReads(session)).toThrow(failure);
   });
 
+  it("ignores runway cancellation from a session disposed during a seek", () => {
+    const session: Pick<EpisodeSession, "cancelRunway"> = {
+      cancelRunway: () => {
+        throw new EpisodeReadCancelledError();
+      },
+    };
+
+    expect(() => cancelRunwayReads(session)).not.toThrow();
+  });
+
+  it("cancels obsolete runway before admitting local seek work", async () => {
+    const rebalanceDecodedCaches = vi.spyOn(
+      decodedCachePolicy,
+      "rebalanceDecodedCaches",
+    );
+    const source = createSource(
+      "local-seek-cancellation",
+      BYTE_SOURCE_READ_PROFILE.LOCAL,
+    );
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const storeCapture = capturePlaybackStore();
+    const cancelRunway = vi.fn();
+    const readSynchronizedMessageBatch = vi.fn(async () => []);
+    const client = createClient({
+      cancelRunwayReads: cancelRunway,
+      readSynchronizedMessageBatch,
+      readSynchronizedMessages: vi.fn(async (request) =>
+        createEmptyWindow(request.timeNs),
+      ),
+      readTimelineRange: vi.fn(async () =>
+        createTimelineRange(60_000_000_000n),
+      ),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(readSynchronizedMessageBatch).toHaveBeenCalled();
+    });
+    cancelRunway.mockClear();
+    readSynchronizedMessageBatch.mockClear();
+    rebalanceDecodedCaches.mockClear();
+
+    act(() => api?.seek(30));
+
+    expect(cancelRunway).toHaveBeenCalledOnce();
+    expect(rebalanceDecodedCaches).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backwardCushionSeconds: 1,
+      }),
+    );
+    expect(readSynchronizedMessageBatch).toHaveBeenCalled();
+    expect(rebalanceDecodedCaches.mock.invocationCallOrder[0]).toBeLessThan(
+      readSynchronizedMessageBatch.mock.invocationCallOrder[0],
+    );
+    expect(cancelRunway.mock.invocationCallOrder[0]).toBeLessThan(
+      readSynchronizedMessageBatch.mock.invocationCallOrder[0],
+    );
+    rebalanceDecodedCaches.mockRestore();
+  });
+
   it("ignores in-flight batch results after stream unsubscribe", async () => {
     const source = createSource("source");
     const oldBatch = deferred<readonly SynchronizedMessageWindow[]>();
@@ -1052,7 +1126,7 @@ describe("stream status + buffering feedback", () => {
     expect(idleCall?.[0].topics).toEqual([STREAM]);
   });
 
-  it("warms a loop-start runway when the loop end is inside lookahead", async () => {
+  it("warms circular continuation when the loop end is inside lookahead", async () => {
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
@@ -1063,7 +1137,9 @@ describe("stream status + buffering feedback", () => {
       readSynchronizedMessages: vi.fn(async (request) =>
         createEmptyWindow(request.timeNs),
       ),
-      readTimelineRange: vi.fn(async () => createTimelineRange(2_000_000_000n)),
+      readTimelineRange: vi.fn(async () =>
+        createTimelineRange(10_000_000_000n),
+      ),
     });
 
     render(
@@ -1083,14 +1159,23 @@ describe("stream status + buffering feedback", () => {
     });
 
     act(() => {
-      api?.seek(1.75);
+      api?.setLoop(6, 8);
+      api?.seek(7.75);
     });
 
     await waitFor(
       () => {
         expect(
-          vi.mocked(client.readSynchronizedMessageBatch).mock.calls.length,
-        ).toBeGreaterThan(1);
+          vi
+            .mocked(client.readSynchronizedMessageBatch)
+            .mock.calls.slice(1)
+            .some(
+              ([request, options]) =>
+                options?.priority === "playback" &&
+                (request.timeNs[0] ?? 0n) >= 6_000_000_000n &&
+                (request.timeNs[0] ?? 0n) < 6_100_000_000n,
+            ),
+        ).toBe(true);
       },
       { timeout: 2000 },
     );
@@ -1098,10 +1183,18 @@ describe("stream status + buffering feedback", () => {
     const loopbackCall = vi
       .mocked(client.readSynchronizedMessageBatch)
       .mock.calls.slice(1)
-      .find(([, options]) => options?.priority === "playback");
+      .find(
+        ([request, options]) =>
+          options?.priority === "playback" &&
+          (request.timeNs[0] ?? 0n) >= 6_000_000_000n &&
+          (request.timeNs[0] ?? 0n) < 6_100_000_000n,
+      );
     expect(loopbackCall?.[1]?.priority).toBe("playback");
     expect(loopbackCall?.[0].timeNs.length).toBeGreaterThan(0);
-    expect(loopbackCall?.[0].timeNs.at(-1)).toBeLessThanOrEqual(2_000_000_000n);
+    expect(loopbackCall?.[0].timeNs[0]).toBeGreaterThanOrEqual(6_000_000_000n);
+    // Paused warmup has a 1.5s circular horizon. At 7.75s, 0.25s remains on
+    // the current tail, so no more than the remaining 1.25s belongs at 6s.
+    expect(loopbackCall?.[0].timeNs.at(-1)).toBeLessThan(7_250_000_000n);
   });
 
   it("queues covered background lookahead as small idle batches", async () => {
@@ -2436,6 +2529,7 @@ function useTestSession(
         });
         setSession({
           cancelIdle: () => client.cancelIdleReads?.(),
+          cancelRunway: () => client.cancelRunwayReads?.(),
           dispose: () => undefined,
           manifest: {
             episodeId: source.sourceId,
@@ -2546,6 +2640,7 @@ function capturePlaybackStore() {
 }
 
 function createClient({
+  cancelRunwayReads,
   readDecodedMessages = vi.fn(async function* () {
     for (const item of [] as never[]) yield item;
   }),
@@ -2559,6 +2654,7 @@ function createClient({
   ),
   readTopicTimeBounds = vi.fn(async () => []),
 }: {
+  readonly cancelRunwayReads?: ResourceClient["cancelRunwayReads"];
   readonly readDecodedMessages?: ResourceClient["readDecodedMessages"];
   readonly readSynchronizedMessageBatch: ResourceClient["readSynchronizedMessageBatch"];
   readonly readTimelineRange: ResourceClient["readTimelineRange"];
@@ -2566,6 +2662,7 @@ function createClient({
   readonly readTopicTimeBounds?: ResourceClient["readTopicTimeBounds"];
 }): ResourceClient {
   return {
+    cancelRunwayReads,
     readDecodedMessages,
     readSynchronizedMessageBatch,
     readSynchronizedMessages,

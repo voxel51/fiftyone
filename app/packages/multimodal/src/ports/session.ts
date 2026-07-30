@@ -279,6 +279,8 @@ export interface EpisodeSession {
 
   activate?(): void;
   cancelIdle?(): void;
+  /** Cancels lookahead runway made obsolete by a discontinuous seek. */
+  cancelRunway?(): void;
   dispose(): void;
   read(request: ReadRequest): AsyncIterable<FrameBatch>;
   stats?(): SourceStats;

@@ -39,6 +39,13 @@ export interface DerivedPlaybackPolicy extends PlaybackPolicy {
   readonly streamCacheMaxEntries: number;
 }
 
+/** One contiguous portion of the next playback-order lookahead horizon. */
+export interface PlaybackLookaheadSegment {
+  readonly endSec: number;
+  readonly kind: "current" | "loop-continuation";
+  readonly startSec: number;
+}
+
 /** Longest pre-data gap that initial episode setup advances automatically. */
 export const INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS = 0.5;
 
@@ -92,6 +99,94 @@ export function batchReadPriority(
   operation: DataOperation,
 ): "idle" | "playback" {
   return operation === "background-lookahead" ? "idle" : "playback";
+}
+
+/**
+ * Resolves the next bounded lookahead horizon in playback order.
+ *
+ * Inside an active loop, lookahead is circular: the portion before `loopEnd`
+ * stays on the current tail and only the remainder wraps to `loopStart`. The
+ * total protected/fetched duration therefore never exceeds `lookaheadSeconds`;
+ * loop continuation does not create a second cache allowance.
+ */
+export function playbackLookaheadSegments({
+  durationSec,
+  lookaheadSeconds,
+  loopEndSec,
+  loopStartSec,
+  timeSec,
+}: {
+  readonly durationSec: number;
+  readonly lookaheadSeconds: number;
+  readonly loopEndSec: number;
+  readonly loopStartSec: number;
+  readonly timeSec: number;
+}): PlaybackLookaheadSegment[] {
+  if (
+    !Number.isFinite(durationSec) ||
+    !Number.isFinite(lookaheadSeconds) ||
+    !Number.isFinite(loopEndSec) ||
+    !Number.isFinite(loopStartSec) ||
+    !Number.isFinite(timeSec) ||
+    durationSec < 0 ||
+    lookaheadSeconds <= 0
+  ) {
+    return [];
+  }
+
+  const clampedTimeSec = clampNumber(timeSec, 0, durationSec);
+  const ordinaryEndSec = Math.min(
+    durationSec,
+    clampedTimeSec + lookaheadSeconds,
+  );
+  const hasActiveLoop =
+    loopEndSec > loopStartSec &&
+    clampedTimeSec >= loopStartSec &&
+    clampedTimeSec <= loopEndSec;
+  if (!hasActiveLoop) {
+    return ordinaryEndSec > clampedTimeSec
+      ? [
+          {
+            endSec: ordinaryEndSec,
+            kind: "current",
+            startSec: clampedTimeSec,
+          },
+        ]
+      : [];
+  }
+
+  const boundedLoopStartSec = clampNumber(loopStartSec, 0, durationSec);
+  const boundedLoopEndSec = clampNumber(
+    loopEndSec,
+    boundedLoopStartSec,
+    durationSec,
+  );
+  const loopDurationSec = boundedLoopEndSec - boundedLoopStartSec;
+  if (loopDurationSec <= 0) return [];
+
+  const horizonSeconds = Math.min(lookaheadSeconds, loopDurationSec);
+  const tailSeconds = Math.min(
+    horizonSeconds,
+    Math.max(0, boundedLoopEndSec - clampedTimeSec),
+  );
+  const segments: PlaybackLookaheadSegment[] = [];
+  if (tailSeconds > 0) {
+    segments.push({
+      endSec: clampedTimeSec + tailSeconds,
+      kind: "current",
+      startSec: clampedTimeSec,
+    });
+  }
+
+  const continuationSeconds = horizonSeconds - tailSeconds;
+  if (continuationSeconds > 0) {
+    segments.push({
+      endSec: boundedLoopStartSec + continuationSeconds,
+      kind: "loop-continuation",
+      startSec: boundedLoopStartSec,
+    });
+  }
+  return segments;
 }
 
 /** Queues bounded batches for missing rolling lookahead. */
@@ -298,11 +393,10 @@ export function distributeWindowToCaches(
   window: SynchronizedFrameWindow,
   caches: Map<string, EpisodeStreamCache>,
   requestedStreams: readonly string[],
-  options?: { readonly pinned?: boolean },
 ): void {
   for (const stream of requestedStreams) {
     const messages = window.framesByStream[stream];
-    caches.get(stream)?.set(window.timeNs, messages?.[0] ?? null, options);
+    caches.get(stream)?.set(window.timeNs, messages?.[0] ?? null);
   }
 }
 
