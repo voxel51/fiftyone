@@ -1072,83 +1072,45 @@ class OntologySDKTests(unittest.TestCase):
 
 
 class OntologyConnectionBootstrapTests(unittest.TestCase):
-    """Ontology entry points must bootstrap the DB connection before their
-    first query — the first SDK call in a cold process may be an ontology
-    call, and ``OntologyDocument.objects()`` alone does not establish the
-    mongoengine default connection.
+    """``OntologyDocument.objects`` must bootstrap the DB connection before
+    building a queryset — the first SDK call in a cold process may be an
+    ontology call, and mongoengine's default manager does not establish the
+    default connection on its own.
     """
 
-    def _run_with_mocks(self, fn):
-        """Runs ``fn`` with the module's ``ensure_connection`` and
-        ``OntologyDocument`` replaced by children of one shared mock, and
-        returns the ordered method names recorded on that mock.
-        """
+    def test_objects_manager_bootstraps_connection_first(self):
+        import fiftyone.core.odm.ontology as foo_odm
+
         manager = mock.Mock()
-        manager.OntologyDocument.objects.return_value.distinct.return_value = (
-            []
-        )
-        manager.OntologyDocument.objects.return_value.count.return_value = 0
-        manager.OntologyDocument.objects.return_value.order_by.return_value.first.return_value = (
-            None
-        )
 
         with (
-            mock.patch(
-                "fiftyone.core.ontology.ensure_connection",
-                manager.ensure_connection,
+            mock.patch.object(
+                foo_odm, "ensure_connection", manager.ensure_connection
             ),
-            mock.patch(
-                "fiftyone.core.ontology.OntologyDocument",
-                manager.OntologyDocument,
+            mock.patch.object(
+                foo_odm.OntologyDocument,
+                "_get_collection",
+                manager._get_collection,
             ),
         ):
-            fn()
+            foo_odm.OntologyDocument.objects
 
-        return [name for name, _, _ in manager.mock_calls]
-
-    def _assert_bootstraps_first(self, fn):
-        calls = self._run_with_mocks(fn)
-        self.assertTrue(calls, "expected at least one recorded call")
+        calls = [name for name, _, _ in manager.mock_calls]
+        self.assertIn("_get_collection", calls)
         self.assertEqual(
             calls[0],
             "ensure_connection",
             f"connection must be established before any query; got {calls}",
         )
 
-    @staticmethod
-    def _make_ontology() -> AnnotationOntology:
-        return AnnotationOntology(
-            name="cold_ontology",
-            attributes=[
-                AttributeSpec(name="x", type="bool", component="checkbox"),
-            ],
-        )
+    def test_ontology_document_uses_connected_manager(self):
+        import inspect
 
-    def test_list_ontologies_bootstraps(self):
-        from fiftyone.core.ontology import list_ontologies
+        import fiftyone.core.odm.ontology as foo_odm
 
-        self._assert_bootstraps_first(list_ontologies)
-
-    def test_ontology_exists_bootstraps(self):
-        from fiftyone.core.ontology import ontology_exists
-
-        self._assert_bootstraps_first(lambda: ontology_exists("cold"))
-
-    def test_load_ontology_bootstraps(self):
-        def load_missing():
-            with self.assertRaises(ValueError):
-                load_ontology("nonexistent")
-
-        self._assert_bootstraps_first(load_missing)
-
-    def test_save_bootstraps(self):
-        self._assert_bootstraps_first(self._make_ontology().save)
-
-    def test_save_overwrite_bootstraps(self):
-        # overwrite=True on a first save queries for an existing lineage
-        # via _find_latest_doc(), so it too needs the bootstrap first
-        self._assert_bootstraps_first(
-            lambda: self._make_ontology().save(overwrite=True)
+        self.assertIsInstance(
+            inspect.getattr_static(foo_odm.OntologyDocument, "objects"),
+            foo_odm._ConnectedQuerySetManager,
         )
 
 
