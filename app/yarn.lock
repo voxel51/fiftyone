@@ -2010,8 +2010,8 @@ __metadata:
   dependencies:
     "@emotion/react": "npm:^11.14.0"
     "@emotion/styled": "npm:^11.14.0"
-    "@miris-inc/core": "npm:0.0.8-25565b3"
-    "@miris-inc/three": "npm:0.0.8-25565b3"
+    "@miris-inc/core": "npm:latest"
+    "@miris-inc/three": "npm:latest"
     "@react-three/drei": "npm:^10.7.6"
     "@react-three/fiber": "catalog:"
     "@sparkjsdev/spark": "npm:2.1.0"
@@ -3186,20 +3186,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@miris-inc/core@npm:0.0.8-25565b3":
-  version: 0.0.8-25565b3
-  resolution: "@miris-inc/core@npm:0.0.8-25565b3"
-  checksum: 10/4b4c627f67ffa7e922a82e9935ffec909281fcb4d121700cf9ebbe3e2a20c391ada2bf11b57f9c4ca2ca14f20113ef0efaf35f345b713b3d285390d5fdcb973c
+"@miris-inc/core@npm:latest":
+  version: 0.0.8-a1b9846
+  resolution: "@miris-inc/core@npm:0.0.8-a1b9846"
+  checksum: 10/6e99f8cdb3e580b5905daa241327f821361aa1054e844b6add10718fe4f48c297d5b27839cc204b0fc7dad71142ace2b41957b6cd8cc271e9d9c52bb859be88b
   languageName: node
   linkType: hard
 
-"@miris-inc/three@npm:0.0.8-25565b3":
-  version: 0.0.8-25565b3
-  resolution: "@miris-inc/three@npm:0.0.8-25565b3"
+"@miris-inc/three@npm:latest":
+  version: 0.0.8-a1b9846
+  resolution: "@miris-inc/three@npm:0.0.8-a1b9846"
   peerDependencies:
-    "@miris-inc/core": 0.0.8-25565b3
+    "@miris-inc/core": 0.0.8-a1b9846
     three: ^0.182.0
-  checksum: 10/7024956baeb3da20ff3e602f70ab07c1b8b9f8575bf7048a8fc1a0283d16c12a8f2fa9c70bdc318647a2210c7bc745b71bc348e23fa6de86d31f58c93eadde96
+  checksum: 10/d34c36e2463e1b68cb006768e83195cec915e2f21df8548b03ccd6bd14348a8082f253f42f6cc41445adef02d8093a24c48089c905c5c9fbd0257973841cb54f
   languageName: node
   linkType: hard
 
