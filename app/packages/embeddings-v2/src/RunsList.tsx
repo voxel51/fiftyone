@@ -28,7 +28,7 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./panel.css";
 import type { VisualizationRun } from "./protocol";
 import { RunCard } from "./RunCard";
@@ -74,6 +74,60 @@ export default function RunsList({
     key: string;
     anchor: HTMLElement;
   } | null>(null);
+
+  // Polling can delete a run or flip its readiness under an open menu or
+  // an armed confirmation; both must not outlive the ready card they
+  // belong to (a recreated same-name run must not inherit them)
+  useEffect(() => {
+    const isReady = (key: string | null) =>
+      Boolean(key && runs?.some((r) => r.brainKey === key && r.ready));
+    if (menu && !isReady(menu.key)) setMenu(null);
+    if (confirmKey && !isReady(confirmKey)) setConfirmKey(null);
+  }, [runs, menu, confirmKey]);
+
+  const runActions = (run: VisualizationRun) => {
+    // No actions on pending runs: Refresh needs results, and Delete
+    // would remove the run record without stopping the computation
+    // writing it (manage those from the Runs page)
+    if (!run.ready) return undefined;
+    if (confirmKey === run.brainKey) {
+      return (
+        <>
+          <Button
+            variant={Variant.Secondary}
+            size={Size.Xs}
+            onClick={() => setConfirmKey(null)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant={Variant.Danger}
+            size={Size.Xs}
+            onClick={() => {
+              setConfirmKey(null);
+              onDelete(run.brainKey);
+            }}
+          >
+            Delete run
+          </Button>
+        </>
+      );
+    }
+    return (
+      <IconButton
+        size="small"
+        aria-label="Run actions"
+        onClick={(event) =>
+          setMenu({
+            key: run.brainKey,
+            anchor: event.currentTarget,
+          })
+        }
+      >
+        <MoreHoriz fontSize="small" />
+      </IconButton>
+    );
+  };
 
   if (error) {
     return (
@@ -150,7 +204,7 @@ export default function RunsList({
             )}
           </div>
         ) : (
-          <div className="emb-runs-stack" style={{ marginTop: "1rem" }}>
+          <div className="emb-runs-stack">
             {runs.map((run) => (
               <RunCard
                 key={run.brainKey}
@@ -174,42 +228,7 @@ export default function RunsList({
                   formatTimestamp(run.timestamp),
                 ].filter((item): item is string => Boolean(item))}
                 onClick={run.ready ? () => onOpen(run.brainKey) : undefined}
-                actions={
-                  confirmKey === run.brainKey ? (
-                    <>
-                      <Button
-                        variant={Variant.Secondary}
-                        size={Size.Xs}
-                        onClick={() => setConfirmKey(null)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant={Variant.Danger}
-                        size={Size.Xs}
-                        onClick={() => {
-                          setConfirmKey(null);
-                          onDelete(run.brainKey);
-                        }}
-                      >
-                        Delete run
-                      </Button>
-                    </>
-                  ) : (
-                    <IconButton
-                      size="small"
-                      aria-label="Run actions"
-                      onClick={(event) =>
-                        setMenu({
-                          key: run.brainKey,
-                          anchor: event.currentTarget,
-                        })
-                      }
-                    >
-                      <MoreHoriz fontSize="small" />
-                    </IconButton>
-                  )
-                }
+                actions={runActions(run)}
               />
             ))}
           </div>

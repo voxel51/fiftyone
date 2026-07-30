@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import type { Polygon } from "../types";
 import { LassoOverlay } from "./LassoOverlay";
 
@@ -24,7 +24,9 @@ const fire = (
 describe("LassoOverlay", () => {
   let parent: HTMLDivElement;
   let container: HTMLDivElement;
-  let onComplete: ReturnType<typeof vi.fn>;
+  let onComplete: Mock<
+    (screenPolygon: Polygon | null, x: number, y: number) => void
+  >;
   let overlay: LassoOverlay;
 
   beforeEach(() => {

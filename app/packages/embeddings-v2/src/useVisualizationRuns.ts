@@ -21,18 +21,35 @@ export function useVisualizationRuns(datasetName: string | null): {
   error: string | null;
   refresh: () => void;
 } {
-  const [runs, setRuns] = useState<VisualizationRun[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // runs/error are tagged with the dataset they were fetched for so a
+  // dataset switch never serves the previous dataset's state, even for
+  // the one render before the fetch effect runs
+  const [state, setState] = useState<{
+    dataset: string | null;
+    runs: VisualizationRun[] | null;
+    error: string | null;
+  }>({ dataset: null, runs: null, error: null });
   const [nonce, setNonce] = useState(0);
+
+  const current = state.dataset === datasetName ? state : null;
+  const runs = current?.runs ?? null;
+  const error = current?.error ?? null;
 
   useEffect(() => {
     if (!datasetName) return undefined;
     let stale = false;
-    setRuns(null);
-    setError(null);
+    setState({ dataset: datasetName, runs: null, error: null });
     fetchRuns(datasetName)
-      .then((result) => !stale && setRuns(result))
-      .catch((e) => !stale && setError(String(e)));
+      .then(
+        (result) =>
+          !stale &&
+          setState({ dataset: datasetName, runs: result, error: null }),
+      )
+      .catch(
+        (e) =>
+          !stale &&
+          setState({ dataset: datasetName, runs: null, error: String(e) }),
+      );
     return () => {
       stale = true;
     };
@@ -47,10 +64,11 @@ export function useVisualizationRuns(datasetName: string | null): {
       fetchRuns(datasetName)
         .then((result) => {
           if (stale) return;
-          setRuns((current) =>
-            JSON.stringify(current) === JSON.stringify(result)
-              ? current
-              : result,
+          setState((prev) =>
+            prev.dataset === datasetName &&
+            JSON.stringify(prev.runs) === JSON.stringify(result)
+              ? prev
+              : { dataset: datasetName, runs: result, error: null },
           );
         })
         .catch(() => undefined);

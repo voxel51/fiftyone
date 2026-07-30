@@ -50,7 +50,7 @@ jobs:
               cd app
               yarn format:check
 
-          - name: Check multimodal package
+          - name: Check strict packages (multimodal, embeddings-v2)
             run: |
               cd app
               yarn check
