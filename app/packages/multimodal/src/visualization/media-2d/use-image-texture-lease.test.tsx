@@ -48,6 +48,31 @@ describe("useImageTextureLease", () => {
     );
   });
 
+  it("reports a decoded texture to the callback that requested it", async () => {
+    const pending = deferred<ImageTextureHandle>();
+    const requested = vi.fn();
+    const replacement = vi.fn();
+    leases.push({ promise: pending.promise, release: vi.fn() });
+
+    const rendered = renderHook(
+      ({ onLoaded }) =>
+        useImageTextureLease({
+          frame: rawFrame(),
+          identity: 1,
+          onLoaded,
+        }),
+      { initialProps: { onLoaded: requested } },
+    );
+
+    rendered.rerender({ onLoaded: replacement });
+    const handle = textureHandle();
+    await act(() => pending.resolve(handle));
+
+    expect(requested).toHaveBeenCalledWith(handle);
+    expect(replacement).not.toHaveBeenCalled();
+    rendered.unmount();
+  });
+
   it("commits a replacement before releasing the previously visible texture", async () => {
     const animationFrames: FrameRequestCallback[] = [];
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {

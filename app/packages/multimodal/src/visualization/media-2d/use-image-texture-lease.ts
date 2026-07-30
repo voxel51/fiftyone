@@ -112,6 +112,10 @@ export function useImageTextureLease({
     }
 
     let cancelled = false;
+    // Associate completion with the callback from the render that requested
+    // this texture. This lets callers commit timestamp-coupled overlays with
+    // the decoded image, even if a later render supplies another callback.
+    const onLoadedForRequest = onLoadedRef.current;
     if (!hasVisibleTextureRef.current) {
       setErrorKind(null);
       setErrorMessage(null);
@@ -138,7 +142,7 @@ export function useImageTextureLease({
         setErrorKind(null);
         setErrorMessage(null);
         setStatus("loaded");
-        onLoadedRef.current?.(decodedHandle);
+        onLoadedForRequest?.(decodedHandle);
       })
       .catch((error: unknown) => {
         lease.release();
