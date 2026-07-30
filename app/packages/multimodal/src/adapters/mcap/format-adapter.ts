@@ -475,13 +475,14 @@ export function createMcapManifest(
     episodeId,
     streams: topics.map((topic): StreamDescriptor => {
       const count = parseRecordCount(topic.recordCount);
+      const rateCount = topic.recordCount?.trim() ? count : undefined;
       const sourceName = mcapSourceName(topic);
       const calibrationSourceName =
         topic.metadata[SCENE_SOURCE_METADATA.CALIBRATION_STREAM_ID];
       return {
         approxRateHz:
-          count !== undefined && durationSeconds > 0
-            ? count / durationSeconds
+          rateCount !== undefined && durationSeconds > 0
+            ? rateCount / durationSeconds
             : undefined,
         count,
         id: topic.streamId,

@@ -80,6 +80,8 @@ export interface StreamInventoryRow {
   readonly category: StreamCategory;
   readonly countLabel: string;
   readonly encoding: string;
+  readonly rateHz: number | null;
+  readonly rateLabel: string | null;
   readonly recordCount: number | null;
   readonly schemaName: string;
   readonly sourceName: string;
@@ -150,6 +152,7 @@ export function buildStreamInventoryRows({
       const canInspect = decodeStatus === "decodable";
       const schemaName = schemaNameFor(stream);
       const telemetry = isTelemetrySchema(schemaName);
+      const rateHz = messageRateHz(stream.approxRateHz);
 
       return {
         canInspect,
@@ -167,6 +170,8 @@ export function buildStreamInventoryRows({
         }),
         countLabel: messageCountLabel(stream.count),
         encoding: encodingFor(stream),
+        rateHz,
+        rateLabel: messageRateLabel(rateHz),
         recordCount: recordCountFor(stream.count),
         schemaName,
         sourceName,
@@ -212,6 +217,21 @@ export function messageCountLabel(recordCount: number | undefined): string {
     return "unknown msgs";
   }
   return `${count.toLocaleString()} ${count === 1 ? "msg" : "msgs"}`;
+}
+
+function messageRateLabel(
+  approximateRateHz: number | null | undefined,
+): string | null {
+  const rateHz = messageRateHz(approximateRateHz);
+  if (rateHz === null) {
+    return null;
+  }
+  if (rateHz > 0 && rateHz < 0.01) {
+    return "<0.01 Hz";
+  }
+  return `${rateHz.toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+  })} Hz`;
 }
 
 function categoryForStream({
@@ -386,6 +406,20 @@ function recordCountFor(recordCount: number | undefined): number | null {
     recordCount >= 0
     ? recordCount
     : null;
+}
+
+function messageRateHz(
+  approximateRateHz: number | null | undefined,
+): number | null {
+  if (
+    approximateRateHz === null ||
+    approximateRateHz === undefined ||
+    !Number.isFinite(approximateRateHz) ||
+    approximateRateHz < 0
+  ) {
+    return null;
+  }
+  return approximateRateHz === 0 ? 0 : approximateRateHz;
 }
 
 function knownSceneSourceType(

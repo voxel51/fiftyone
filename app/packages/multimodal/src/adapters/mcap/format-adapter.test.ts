@@ -110,6 +110,34 @@ describe("MCAP format adapter", () => {
     }
   });
 
+  it("stores only valid episode-average topic rates", () => {
+    const topic = (recordCount?: string) =>
+      create(StreamInventorySchema, {
+        displayName: "/camera",
+        metadata: { "mcap.topic": "/camera" },
+        ...(recordCount !== undefined ? { recordCount } : {}),
+        streamId: "camera",
+      });
+    const rateFor = (
+      range: { readonly endTimeNs: bigint; readonly startTimeNs: bigint },
+      recordCount?: string,
+    ) =>
+      createMcapManifest("episode", range, [topic(recordCount)]).streams[0]
+        ?.approxRateHz;
+
+    expect(
+      rateFor({ endTimeNs: 10_000_000_000n, startTimeNs: 0n }, "300"),
+    ).toBe(30);
+    expect(rateFor({ endTimeNs: 1n, startTimeNs: 1n }, "300")).toBeUndefined();
+    expect(rateFor({ endTimeNs: 0n, startTimeNs: 1n }, "300")).toBeUndefined();
+    expect(
+      rateFor({ endTimeNs: 10_000_000_000n, startTimeNs: 0n }, "invalid"),
+    ).toBeUndefined();
+    expect(
+      rateFor({ endTimeNs: 10_000_000_000n, startTimeNs: 0n }),
+    ).toBeUndefined();
+  });
+
   it("shares one cumulative bounded-read allowance across jobs", async () => {
     const client = createClient();
     const continuation = { cursor: 1 };

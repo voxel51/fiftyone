@@ -352,6 +352,7 @@ describe("SettingsSidebar", () => {
           schema: "sensor_msgs/PointCloud2",
         }),
         stream("/imu", {
+          approxRateHz: 29.97,
           count: "8",
           decodeStatus: "decodable",
           encoding: "ros1",
@@ -392,7 +393,7 @@ describe("SettingsSidebar", () => {
     ).toBeTruthy();
     expect(screen.getByText("/lidar/top")).toBeTruthy();
     expect(screen.getByText("/imu")).toBeTruthy();
-    expect(screen.getByText("8 msgs · Plot · Raw")).toBeTruthy();
+    expect(screen.getByText("8 msgs · 29.97 Hz · Plot · Raw")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Inspect /imu" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "3D /lidar/top" })).toBeTruthy();
     expect(
@@ -652,12 +653,14 @@ describe("SettingsSidebar", () => {
 function stream(
   name: string,
   {
+    approxRateHz,
     count,
     decodeStatus,
     encoding,
     id = name,
     schema,
   }: {
+    readonly approxRateHz?: number;
     readonly count: string;
     readonly decodeStatus: string;
     readonly encoding: string;
@@ -667,6 +670,7 @@ function stream(
 ): StreamDescriptor {
   const sceneType = testSceneType(schema);
   return {
+    ...(approxRateHz !== undefined ? { approxRateHz } : {}),
     count: Number(count),
     id,
     kind: "unknown",

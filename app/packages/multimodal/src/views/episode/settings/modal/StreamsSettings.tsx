@@ -154,6 +154,7 @@ function StreamRow({
       <div className={styles.streamMetaLine}>
         <span className={styles.streamMeta}>
           {row.countLabel}
+          {row.rateLabel ? ` · ${row.rateLabel}` : ""}
           {capabilitySummary ? ` · ${capabilitySummary}` : ""}
         </span>
         <div className={styles.streamActions}>

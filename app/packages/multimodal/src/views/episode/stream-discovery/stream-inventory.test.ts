@@ -33,6 +33,8 @@ describe("buildStreamInventoryRows", () => {
       buildStreamInventoryRows({ sceneSources, streams: [camera] }),
     ).toEqual([
       expect.objectContaining({
+        rateHz: null,
+        rateLabel: null,
         sourceName: "/camera/front",
         sourceType: SCENE_SOURCE_TYPE.IMAGE,
         streamId: "7",
@@ -182,6 +184,38 @@ describe("buildStreamInventoryRows", () => {
       "/imu",
     ]);
     expect(filterStreamInventoryRows(rows, "unsupported")).toEqual([]);
+  });
+
+  it("carries and formats validated approximate message rates", () => {
+    const rowForRate = (approxRateHz: number | undefined) =>
+      buildStreamInventoryRows({
+        sceneSources: [],
+        streams: [
+          {
+            ...stream("/camera", "sensor_msgs/Image", "ros1", "ros1msg", "12"),
+            approxRateHz,
+          },
+        ],
+      })[0];
+
+    expect(rowForRate(29.976)).toMatchObject({
+      rateHz: 29.976,
+      rateLabel: "29.98 Hz",
+    });
+    expect(rowForRate(30)?.rateLabel).toBe("30 Hz");
+    expect(rowForRate(0.009)?.rateLabel).toBe("<0.01 Hz");
+    expect(rowForRate(0)?.rateLabel).toBe("0 Hz");
+    for (const invalidRate of [
+      undefined,
+      -1,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+    ]) {
+      expect(rowForRate(invalidRate)).toMatchObject({
+        rateHz: null,
+        rateLabel: null,
+      });
+    }
   });
 });
 
