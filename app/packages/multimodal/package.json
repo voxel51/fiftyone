@@ -65,7 +65,7 @@
     },
     "scripts": {
         "lint": "yarn check",
-        "check": "yarn check:lint && yarn check:deps && yarn check:types",
+        "check": "concurrently -g \"yarn:check:lint\" \"yarn:check:deps\" \"yarn:check:types\"",
         "check:types": "node ./scripts/check-types.mjs",
         "check:lint": "node ./scripts/check-lint.mjs",
         "check:deps": "node ./scripts/check-deps.mjs"
@@ -85,13 +85,13 @@
         "@mcap/core": "^2.2.1",
         "@mcap/support": "^1.1.0",
         "@react-three/drei": "9.105.4",
-        "@react-three/fiber": "^8.18.0",
-        "@voxel51/voodo": "^0.0.39",
-        "buffer": "^6.0.3",
-        "colormap": "^2.3.2",
+        "@react-three/fiber": "catalog:",
+        "@voxel51/voodo": "^0.1.0",
+        "buffer": "catalog:",
+        "colormap": "catalog:",
         "date-fns": "^4.1.0",
-        "jotai": "^2.9.3",
-        "lru-cache": "^11.0.1",
+        "jotai": "catalog:",
+        "lru-cache": "catalog:",
         "maplibre-gl": "^4.7.1",
         "meshoptimizer": "^0.22.0",
         "protobufjs": "^7.6.4",
@@ -100,6 +100,7 @@
     },
     "devDependencies": {
         "@types/three": "^0.182.0",
-        "vite-plugin-relay": "^2.0.0"
+        "concurrently": "^7.2.1",
+        "vite-plugin-relay": "catalog:"
     }
 }

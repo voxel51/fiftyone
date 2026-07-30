@@ -200,8 +200,8 @@ are included in the current view.
 
 .. _analyzing-scenarios:
 
-Analyzing scenarios  __SUB_NEW__
---------------------------------
+Analyzing scenarios
+-------------------
 
 .. customavailablein::
     :oss_version: 1.6.0
@@ -422,8 +422,8 @@ The example below demonstrates the basic interface:
 
 .. _model-evaluation-panel:
 
-Model Evaluation panel __SUB_NEW__
-__________________________________
+Model Evaluation panel
+______________________
 
 .. customavailablein::
     :oss_version: 1.1.0

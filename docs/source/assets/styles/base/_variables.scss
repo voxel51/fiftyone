@@ -45,7 +45,7 @@ $desktop: 991.98px;
 
 // Fonts
 $font-family-base: "Geist", "Geist Fallback", sans-serif;
-$font-family-monospace: "Geist Mono", monospace;
+$font-family-monospace: "Geist Mono", "Geist Mono Fallback", monospace;
 
 :root {
   --pst-font-family-base: #{$font-family-base};

@@ -5,7 +5,8 @@
  * provides. Deleting a run is a two-step confirmation handled inline
  * on the card.
  */
-import { DeleteOutlined, MoreHoriz } from "@mui/icons-material";
+import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
+import MoreHoriz from "@mui/icons-material/MoreHoriz";
 import {
   IconButton,
   ListItemIcon,
