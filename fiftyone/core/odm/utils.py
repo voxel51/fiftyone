@@ -159,16 +159,6 @@ def validate_field_name(field_name, media_type=None, is_frame_field=False):
             % field_name
         )
 
-    if field_name == "pk" or field_name.endswith(".pk"):
-        warnings.warn(
-            "'pk' is a reserved keyword in MongoEngine and will likely "
-            "become an invalid field name in a future release; fields "
-            "named 'pk' do not behave correctly in bulk write operations "
-            "such as set_field(), and embedded fields named 'pk' may be "
-            "silently dropped during serialization. Existing fields can "
-            "be migrated via rename_sample_field()/rename_frame_field()"
-        )
-
     if (
         media_type == fom.VIDEO
         and not is_frame_field
@@ -187,6 +177,26 @@ def validate_field_name(field_name, media_type=None, is_frame_field=False):
         raise ValueError(
             "Invalid field name '%s'. 'groups' is a reserved keyword for "
             "grouped datasets" % field_name
+        )
+
+
+def warn_reserved_pk_paths(paths):
+    """Warns once if any of the given field paths contain a component named
+    ``"pk"``, which is a reserved keyword in MongoEngine.
+
+    Args:
+        paths: an iterable of field paths
+    """
+    bad = sorted(p for p in set(paths) if "pk" in p.split("."))
+    if bad:
+        warnings.warn(
+            "Field(s) %s: 'pk' is a reserved keyword in MongoEngine and "
+            "will likely become an invalid field name in a future release; "
+            "fields named 'pk' do not behave correctly in bulk write "
+            "operations such as set_field(), and embedded fields named "
+            "'pk' may be silently dropped during serialization. Existing "
+            "fields can be migrated via "
+            "rename_sample_field()/rename_frame_field()" % bad
         )
 
 
