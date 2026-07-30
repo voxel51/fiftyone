@@ -1,13 +1,16 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import type { ReconciledDetection3D } from "../annotation/types";
+import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
 import {
   computeArrowheadMatrix,
   computeBodyMatrix,
   computeBoxEdgePositions,
   EDGES_PER_BOX,
+  localToWorld,
   orientationSegmentsPerBoxFor,
   resolveCuboidGeometry,
+  setSegmentColor,
 } from "./cuboid-instance-geometry";
 
 function createLabel(
@@ -193,5 +196,120 @@ describe("orientationSegmentsPerBoxFor", () => {
 
   it("is the shaft + 3 axes segments when orientation markers are on", () => {
     expect(orientationSegmentsPerBoxFor(true)).toBe(1 + 3);
+  });
+});
+
+describe("localToWorld", () => {
+  const geometry = {
+    position: [10, -3, 7] as THREE.Vector3Tuple,
+    dimensions: [4, 2, 6] as THREE.Vector3Tuple,
+    quaternion: new THREE.Quaternion(),
+  };
+
+  it("translates by the box position when unrotated", () => {
+    expect(localToWorld([1, 2, 3], geometry)).toEqual([11, -1, 10]);
+  });
+
+  it("maps the local origin to the box position", () => {
+    expect(localToWorld([0, 0, 0], geometry)).toEqual([10, -3, 7]);
+  });
+
+  it("applies the box rotation before translating", () => {
+    // Quarter turn about Z sends local +X to world +Y.
+    const rotated = {
+      ...geometry,
+      position: [0, 0, 0] as THREE.Vector3Tuple,
+      quaternion: new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 0, 1),
+        Math.PI / 2,
+      ),
+    };
+    const [x, y, z] = localToWorld([1, 0, 0], rotated);
+    expect(x).toBeCloseTo(0, 6);
+    expect(y).toBeCloseTo(1, 6);
+    expect(z).toBeCloseTo(0, 6);
+  });
+
+  it("accepts a Vector3 as well as a tuple, without mutating it", () => {
+    const input = new THREE.Vector3(1, 2, 3);
+    expect(localToWorld(input, geometry)).toEqual([11, -1, 10]);
+    // The shared scratch vector must not write back through the caller's input.
+    expect(input.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("does not leak state between calls", () => {
+    // Scratch vectors are module-level, so a stale value could bleed across.
+    expect(localToWorld([1, 0, 0], geometry)).toEqual([11, -3, 7]);
+    expect(localToWorld([0, 0, 0], geometry)).toEqual([10, -3, 7]);
+  });
+});
+
+describe("setSegmentColor", () => {
+  /** A LineSegmentsGeometry with colors allocated for `segments` segments. */
+  const geometryWithColors = (segments: number) => {
+    const geometry = new LineSegmentsGeometry();
+    geometry.setPositions(new Float32Array(segments * 6));
+    geometry.setColors(new Float32Array(segments * 6));
+    return geometry;
+  };
+
+  it("writes the color into both ends of the segment", () => {
+    const geometry = geometryWithColors(2);
+    setSegmentColor(geometry, 1, new THREE.Color(0.25, 0.5, 0.75));
+
+    const start = geometry.attributes
+      .instanceColorStart as THREE.InterleavedBufferAttribute;
+    const end = geometry.attributes
+      .instanceColorEnd as THREE.InterleavedBufferAttribute;
+
+    expect(start.getX(1)).toBeCloseTo(0.25, 5);
+    expect(start.getY(1)).toBeCloseTo(0.5, 5);
+    expect(start.getZ(1)).toBeCloseTo(0.75, 5);
+    expect(end.getX(1)).toBeCloseTo(0.25, 5);
+    expect(end.getY(1)).toBeCloseTo(0.5, 5);
+    expect(end.getZ(1)).toBeCloseTo(0.75, 5);
+  });
+
+  it("flags the interleaved buffers for upload", () => {
+    // Regression guard: without this the recolor lands in the CPU buffer but
+    // never reaches the GPU, so hover/select colors silently don't apply.
+    //
+    // Asserted via `version`, not `needsUpdate`: on three's buffers
+    // `needsUpdate` is a write-only setter that bumps `version`, and reading it
+    // yields `undefined` — so an expectation against it would pass even if the
+    // flag were never set.
+    const geometry = geometryWithColors(1);
+    const start = geometry.attributes
+      .instanceColorStart as THREE.InterleavedBufferAttribute;
+    const end = geometry.attributes
+      .instanceColorEnd as THREE.InterleavedBufferAttribute;
+
+    const startVersion = start.data.version;
+    const endVersion = end.data.version;
+
+    setSegmentColor(geometry, 0, new THREE.Color(1, 0, 0));
+
+    expect(start.data.version).toBeGreaterThan(startVersion);
+    expect(end.data.version).toBeGreaterThan(endVersion);
+  });
+
+  it("leaves other segments untouched", () => {
+    const geometry = geometryWithColors(3);
+    setSegmentColor(geometry, 1, new THREE.Color(1, 1, 1));
+
+    const start = geometry.attributes
+      .instanceColorStart as THREE.InterleavedBufferAttribute;
+    expect(start.getX(0)).toBe(0);
+    expect(start.getX(2)).toBe(0);
+  });
+
+  it("is a no-op when the geometry has no color attributes", () => {
+    // setColors() was never called, so the attributes are absent.
+    const geometry = new LineSegmentsGeometry();
+    geometry.setPositions(new Float32Array(6));
+
+    expect(() =>
+      setSegmentColor(geometry, 0, new THREE.Color(1, 0, 0)),
+    ).not.toThrow();
   });
 });

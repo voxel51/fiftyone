@@ -32,14 +32,13 @@ function renderWithMode(
   transformMode: "scale" | "rotate" | "translate",
   args: Parameters<typeof useDisplayCuboidTransform>[0],
 ) {
-  const wrapper = ({ children }: { children: React.ReactNode }) =>
-    React.createElement(
-      RecoilRoot,
-      {
-        initializeState: ({ set }) => set(transformModeAtom, transformMode),
-      },
+  const wrapper = ({ children }: { children?: React.ReactNode }) =>
+    // `children` goes in the props object: RecoilRootProps requires it, and the
+    // third-argument form doesn't satisfy that overload.
+    React.createElement(RecoilRoot, {
+      initializeState: ({ set }) => set(transformModeAtom, transformMode),
       children,
-    );
+    });
   return renderHook(() => useDisplayCuboidTransform(args), { wrapper });
 }
 
