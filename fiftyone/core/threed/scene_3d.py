@@ -17,6 +17,7 @@ import fiftyone.core.storage as fos
 from .camera import PerspectiveCamera
 from .lights import Light
 from .mesh import FbxMesh, GltfMesh, ObjMesh, PlyMesh, StlMesh
+from .miris_stream import MirisStream
 from .object_3d import Object3D
 from .pointcloud import PointCloud
 from .shape_3d import Shape3D
@@ -316,6 +317,7 @@ class Scene(Object3D):
             "stls": node_types[StlMesh],
             "plys": node_types[PlyMesh],
             "gaussian splats": node_types[GaussianSplat],
+            "miris streams": node_types[MirisStream],
             "shapes": node_types[Shape3D],
         }
 
