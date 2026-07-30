@@ -354,7 +354,7 @@ Remote notebooks
 ~~~~~~~~~~~~~~~~
 
 .. customavailablein::
-    :oss_version: 0.11.2
+    :oss_version: 0.7.2
     :enterprise_version: 1.0
 
 You can also work in a Jupyter notebook in your local browser that is

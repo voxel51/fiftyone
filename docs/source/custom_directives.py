@@ -497,6 +497,12 @@ class CustomAvailableInDirective(Directive):
         oss_version = self.options.get("oss_version", "").strip()
         enterprise_version = self.options.get("enterprise_version", "").strip()
 
+        if not oss_version and not enterprise_version:
+            raise self.error(
+                "customavailablein requires oss_version and/or "
+                "enterprise_version"
+            )
+
         env = self.state.document.settings.env
         prefix = posixpath.relpath(
             "release-notes", posixpath.dirname(env.docname)

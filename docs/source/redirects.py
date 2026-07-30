@@ -230,32 +230,7 @@ def _process_evaluation_redirects(app):
     )
 
 
-def _process_moved_anchor_redirects(app):
-    """Patch pages that still exist but had content moved out of them."""
-    pages = {"brain/index.html": _SIMILARITY_ANCHOR_MAP}
-
-    for page, anchor_map in pages.items():
-        html_path = os.path.join(app.builder.outdir, page)
-        if not os.path.exists(html_path):
-            continue
-
-        with open(html_path, encoding="utf-8") as f:
-            content = f.read()
-
-        script = _INLINE_ANCHOR_REDIRECT_TEMPLATE.format(
-            anchor_map=json.dumps(anchor_map)
-        )
-        idx = content.rfind("</body>")
-        if idx == -1:
-            continue
-
-        content = content[:idx] + script + content[idx:]
-        with open(html_path, "w", encoding="utf-8") as f:
-            f.write(content)
-
-        logger.info(
-            "Patched %d moved anchors into '%s'" % (len(anchor_map), page)
-        )
+_MOVED_ANCHOR_PAGES = {"brain/index": _SIMILARITY_ANCHOR_MAP}
 
 
 def _process_api_redirects(app):
@@ -311,15 +286,22 @@ def generate_api_redirects(app, exception):
     _process_api_redirects(app)
 
 
-def generate_moved_anchor_redirects(app, exception):
-    """Sphinx build-finished handler that patches moved-content anchors."""
-    if exception is not None:
+def inject_moved_anchor_redirects(
+    app, pagename, templatename, context, doctree
+):
+    """Sphinx html-page-context handler that appends a redirect script to
+    pages whose content has moved elsewhere, so old hash-fragment links
+    still resolve. Only fires when Sphinx actually (re)renders the page, so
+    it can't accumulate duplicate scripts across incremental builds.
+    """
+    anchor_map = _MOVED_ANCHOR_PAGES.get(pagename)
+    if not anchor_map:
         return
 
-    if not isinstance(app.builder, builders.StandaloneHTMLBuilder):
-        return
-
-    _process_moved_anchor_redirects(app)
+    script = _INLINE_ANCHOR_REDIRECT_TEMPLATE.format(
+        anchor_map=json.dumps(anchor_map)
+    )
+    context["body"] = context.get("body", "") + script
 
 
 _REDIRECT_TEMPLATE = """

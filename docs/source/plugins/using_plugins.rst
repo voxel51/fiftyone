@@ -924,14 +924,14 @@ curation, and evaluation are performed.
 Setting up an orchestrator
 __________________________
 
+.. customavailablein::
+    :oss_version: 1.1.0
+    :enterprise_version: 2.2.0
+
 .. _delegated-orchestrator-open-source:
 
 FiftyOne Open Source
 --------------------
-
-.. customavailablein::
-    :oss_version: 1.1.0
-    :enterprise_version: 2.2.0
 
 FiftyOne Open Source users can run delegated operations via the
 :ref:`fiftyone delegated launch <cli-fiftyone-delegated-launch>` CLI command:
