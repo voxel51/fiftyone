@@ -6,9 +6,11 @@ import {
   MenuTextItem,
   Select,
   SelectAnchor,
+  Size,
   Text,
   TextColor,
   TextVariant,
+  Toggle,
   ZIndex,
 } from "@voxel51/voodo";
 import React, { useMemo } from "react";
@@ -20,7 +22,10 @@ import {
   POINT_CLOUD_POINT_SIZE_STEP,
   type ImageProjectionSettings,
 } from "../settings/modal/state";
-import { checkboxNoSpaceToggleProps } from "../settings/controls/settings-keyboard";
+import {
+  checkboxNoSpaceToggleProps,
+  settingsBooleanNoSpaceToggleProps,
+} from "../settings/controls/settings-keyboard";
 import { SettingsLabel } from "../settings/controls/SettingsLabel";
 import SidebarGroup from "../settings/controls/SidebarGroup";
 import type {
@@ -57,6 +62,8 @@ const POINT_CLOUD_PROJECTION_HELP =
   "Projects selected 3D point clouds into this camera image using its calibration and frame transforms. Choose which clouds to overlay and adjust their dot size. These settings affect only this image tile.";
 const LABEL_3D_PROJECTION_HELP =
   "Projects selected 3D label topics into this camera image using its calibration and frame transforms. These settings affect only this image tile.";
+const LABEL_3D_INTERPOLATION_HELP =
+  "Interpolates compatible tracked 3D labels at each image's capture time. Recorded geometry is retained when stable matching is unsafe or the message gap is too large.";
 
 interface ImageTileSettingsProps {
   readonly annotationSources: readonly SceneSource[];
@@ -291,89 +298,112 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
           </div>
         </SidebarGroup>
       ) : null}
-      {canProject3dLabels ? (
-        <SidebarGroup
-          summary={`${selectedSceneAnnotationStreams.length} of ${sceneAnnotationSources.length} on`}
-          title="3D labels projections"
-          tooltip={LABEL_3D_PROJECTION_HELP}
-          toggle={{
-            ariaLabel: "Toggle 3D labels projections",
-            checked:
-              label3dProjection.enabled &&
-              selectedSceneAnnotationStreams.length > 0,
-            onChange: (checked) =>
-              setLabel3dProjection(
-                checked
-                  ? { enabled: true, streams: null }
-                  : { enabled: false, streams: [] },
-              ),
-          }}
-        >
-          <div className={settingsStyles.optionStack}>
-            {sceneAnnotationSources.map((source) => (
-              <Checkbox
-                key={source.id}
-                label={source.label}
-                checked={selectedSceneAnnotationStreams.includes(source.id)}
-                onChange={(checked) =>
-                  toggleSceneAnnotationStream(source.id, checked)
-                }
-                {...checkboxNoSpaceToggleProps}
-              />
-            ))}
-          </div>
-        </SidebarGroup>
-      ) : null}
-      {canProjectPointClouds ? (
-        <SidebarGroup
-          summary={`${selectedProjectionStreams.length} of ${pointCloudSources.length} on`}
-          title="Pointcloud projections"
-          tooltip={POINT_CLOUD_PROJECTION_HELP}
-          toggle={{
-            ariaLabel: "Toggle pointcloud projections",
-            checked: selectedProjectionStreams.length > 0,
-            onChange: (checked) =>
-              setPointCloudProjection(
-                checked
-                  ? { enabled: true, streams: null }
-                  : { enabled: false, streams: [] },
-              ),
-          }}
-        >
-          <label className={settingsStyles.field}>
-            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-              Point size
-            </Text>
-            <input
-              aria-label="Point size"
-              className={settingsStyles.select}
-              max={MAX_POINT_CLOUD_POINT_SIZE}
-              min={MIN_POINT_CLOUD_POINT_SIZE}
-              onChange={(event) => {
-                const next = Number(event.target.value);
-                if (Number.isFinite(next)) {
-                  setPointCloudProjection({
-                    pointSize: clampImageProjectionPointSize(next),
-                  });
-                }
-              }}
-              step={POINT_CLOUD_POINT_SIZE_STEP}
-              type="number"
-              value={pointCloudProjection.pointSize}
-            />
-          </label>
-          <div className={settingsStyles.optionStack}>
-            {pointCloudSources.map((source) => (
-              <Checkbox
-                key={source.id}
-                label={source.label}
-                checked={selectedProjectionStreams.includes(source.id)}
-                onChange={(checked) =>
-                  toggleProjectionStream(source.id, checked)
-                }
-                {...checkboxNoSpaceToggleProps}
-              />
-            ))}
+      {canProject3dLabels || canProjectPointClouds ? (
+        <SidebarGroup title="3D Projection">
+          <div className={settingsStyles.projectionGroups}>
+            {canProject3dLabels ? (
+              <SidebarGroup
+                summary={`${selectedSceneAnnotationStreams.length} of ${sceneAnnotationSources.length} on`}
+                title="3D Labels"
+                tooltip={LABEL_3D_PROJECTION_HELP}
+                toggle={{
+                  ariaLabel: "Toggle 3D label projections",
+                  checked:
+                    label3dProjection.enabled &&
+                    selectedSceneAnnotationStreams.length > 0,
+                  onChange: (checked) =>
+                    setLabel3dProjection(
+                      checked
+                        ? { enabled: true, streams: null }
+                        : { enabled: false, streams: [] },
+                    ),
+                }}
+              >
+                <div className={settingsStyles.sectionHeader}>
+                  <SettingsLabel
+                    label="Interpolate projections"
+                    tooltip={LABEL_3D_INTERPOLATION_HELP}
+                  />
+                  <Toggle
+                    aria-label="Interpolate projections"
+                    checked={label3dProjection.interpolate}
+                    onChange={(interpolate) =>
+                      setLabel3dProjection({ interpolate })
+                    }
+                    size={Size.Sm}
+                    {...settingsBooleanNoSpaceToggleProps}
+                  />
+                </div>
+                <div className={settingsStyles.optionStack}>
+                  {sceneAnnotationSources.map((source) => (
+                    <Checkbox
+                      key={source.id}
+                      label={source.label}
+                      checked={selectedSceneAnnotationStreams.includes(
+                        source.id,
+                      )}
+                      onChange={(checked) =>
+                        toggleSceneAnnotationStream(source.id, checked)
+                      }
+                      {...checkboxNoSpaceToggleProps}
+                    />
+                  ))}
+                </div>
+              </SidebarGroup>
+            ) : null}
+            {canProjectPointClouds ? (
+              <SidebarGroup
+                summary={`${selectedProjectionStreams.length} of ${pointCloudSources.length} on`}
+                title="Pointclouds"
+                tooltip={POINT_CLOUD_PROJECTION_HELP}
+                toggle={{
+                  ariaLabel: "Toggle pointcloud projections",
+                  checked: selectedProjectionStreams.length > 0,
+                  onChange: (checked) =>
+                    setPointCloudProjection(
+                      checked
+                        ? { enabled: true, streams: null }
+                        : { enabled: false, streams: [] },
+                    ),
+                }}
+              >
+                <label className={settingsStyles.field}>
+                  <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+                    Point size
+                  </Text>
+                  <input
+                    aria-label="Point size"
+                    className={settingsStyles.select}
+                    max={MAX_POINT_CLOUD_POINT_SIZE}
+                    min={MIN_POINT_CLOUD_POINT_SIZE}
+                    onChange={(event) => {
+                      const next = Number(event.target.value);
+                      if (Number.isFinite(next)) {
+                        setPointCloudProjection({
+                          pointSize: clampImageProjectionPointSize(next),
+                        });
+                      }
+                    }}
+                    step={POINT_CLOUD_POINT_SIZE_STEP}
+                    type="number"
+                    value={pointCloudProjection.pointSize}
+                  />
+                </label>
+                <div className={settingsStyles.optionStack}>
+                  {pointCloudSources.map((source) => (
+                    <Checkbox
+                      key={source.id}
+                      label={source.label}
+                      checked={selectedProjectionStreams.includes(source.id)}
+                      onChange={(checked) =>
+                        toggleProjectionStream(source.id, checked)
+                      }
+                      {...checkboxNoSpaceToggleProps}
+                    />
+                  ))}
+                </div>
+              </SidebarGroup>
+            ) : null}
           </div>
         </SidebarGroup>
       ) : null}

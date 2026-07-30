@@ -43,6 +43,14 @@
   gap: 12px;
 }
 
+.projectionGroups {
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: 8px;
+}
+
 .colorPreview {
   border: 1px solid var(--color-border);
   border-radius: 4px;

@@ -31,7 +31,11 @@ describe("ImageTileSettings", () => {
         geometryStatus: "Original camera · pinhole",
         images: [source("/camera", "Front camera", SCENE_SOURCE_TYPE.IMAGE)],
         labelSourceGroups: { matching: [], remaining: [] },
-        label3dProjection: { enabled: false, streams: [] },
+        label3dProjection: {
+          enabled: false,
+          interpolate: false,
+          streams: [],
+        },
         pointCloudProjection: {
           enabled: true,
           pointSize: 6,
@@ -57,6 +61,8 @@ describe("ImageTileSettings", () => {
     );
 
     expect(screen.getByLabelText("Source")).toBeTruthy();
+    expect(screen.getByText("3D Projection")).toBeTruthy();
+    expect(screen.getByText("Pointclouds")).toBeTruthy();
     fireEvent.change(screen.getByRole("spinbutton", { name: "Point size" }), {
       target: { value: "100" },
     });
@@ -106,7 +112,11 @@ describe("ImageTileSettings", () => {
         geometryStatus: "",
         images: [image],
         labelSourceGroups: groupImageLabelSources(image, annotationSources),
-        label3dProjection: { enabled: true, streams: null },
+        label3dProjection: {
+          enabled: true,
+          interpolate: false,
+          streams: null,
+        },
         pointCloudProjection: {
           enabled: false,
           pointSize: 6,
@@ -177,7 +187,11 @@ describe("ImageTileSettings", () => {
       geometryStatus: "",
       images: [image],
       labelSourceGroups,
-      label3dProjection: { enabled: true, streams: null },
+      label3dProjection: {
+        enabled: true,
+        interpolate: false,
+        streams: null,
+      },
       pointCloudProjection: {
         enabled: false,
         pointSize: 6,
@@ -251,7 +265,11 @@ describe("ImageTileSettings", () => {
         geometryStatus: "",
         images: [camera],
         labelSourceGroups: { matching: [], remaining: [] },
-        label3dProjection: { enabled: false, streams: [] },
+        label3dProjection: {
+          enabled: false,
+          interpolate: false,
+          streams: [],
+        },
         pointCloudProjection: {
           enabled: false,
           pointSize: 6,
@@ -274,7 +292,14 @@ describe("ImageTileSettings", () => {
       }),
     );
 
-    expect(screen.getByText("3D labels projections")).toBeTruthy();
+    expect(screen.getByText("3D Projection")).toBeTruthy();
+    expect(screen.getByText("3D Labels")).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Interpolate projections" }),
+    );
+    expect(setLabel3dProjection).toHaveBeenCalledWith({
+      interpolate: true,
+    });
     fireEvent.click(screen.getByRole("checkbox", { name: detections.label }));
     expect(toggleSceneAnnotationStream).toHaveBeenCalledWith(
       detections.id,
@@ -282,7 +307,7 @@ describe("ImageTileSettings", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("switch", { name: "Toggle 3D labels projections" }),
+      screen.getByRole("switch", { name: "Toggle 3D label projections" }),
     );
     expect(setLabel3dProjection).toHaveBeenCalledWith({
       enabled: true,

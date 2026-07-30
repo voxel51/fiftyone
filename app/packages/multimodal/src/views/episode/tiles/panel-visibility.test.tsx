@@ -147,16 +147,19 @@ describe("episode panel visibility persistence", () => {
 
     expect(first.result.current.projection).toEqual({
       enabled: false,
+      interpolate: false,
       streams: [],
     });
     act(() =>
       first.result.current.setProjection({
         enabled: true,
+        interpolate: true,
         streams: ["/detections_3d"],
       }),
     );
     expect(first.result.current.projection).toEqual({
       enabled: true,
+      interpolate: true,
       streams: ["/detections_3d"],
     });
     expect(sessionStorage.getItem("fiftyone.episode.projections.v1")).toContain(
@@ -173,11 +176,13 @@ describe("episode panel visibility persistence", () => {
     );
     expect(restored.result.current.projection).toEqual({
       enabled: true,
+      interpolate: true,
       streams: ["/detections_3d"],
     });
     act(() => restored.result.current.setProjection({ enabled: false }));
     expect(restored.result.current.projection).toEqual({
       enabled: false,
+      interpolate: true,
       streams: [],
     });
   });
@@ -215,6 +220,7 @@ describe("episode panel visibility persistence", () => {
 
     expect(projection.result.current.projection).toEqual({
       enabled: false,
+      interpolate: false,
       streams: [],
     });
   });

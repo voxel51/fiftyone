@@ -24,6 +24,8 @@ type ImageLabelStreamsByImage = Readonly<Record<string, readonly string[]>>;
 /** 3D-label overlay preferences owned by one image tile. */
 export interface ImageTile3dLabelProjection {
   readonly enabled: boolean;
+  /** Whether compatible tracked entities are interpolated at image time. */
+  readonly interpolate: boolean;
   /** Explicit scene-annotation streams to project; null projects every one. */
   readonly streams: readonly string[] | null;
 }
@@ -101,6 +103,7 @@ const DEFAULT_IMAGE_POINT_CLOUD_PROJECTION: ImageTilePointCloudProjection =
 const DEFAULT_IMAGE_3D_LABEL_PROJECTION: ImageTile3dLabelProjection =
   Object.freeze({
     enabled: false,
+    interpolate: false,
     streams: [],
   });
 const EMPTY_IMAGE_LABEL_STREAMS: readonly string[] = Object.freeze([]);
@@ -627,6 +630,7 @@ function normalizeImage3dLabelProjection(
     candidate.enabled === true && (streams === null || streams.length > 0);
   return {
     enabled,
+    interpolate: candidate.interpolate === true,
     streams: enabled ? streams : [],
   };
 }
