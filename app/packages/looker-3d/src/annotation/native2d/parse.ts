@@ -1,4 +1,9 @@
-import { DETECTION, DETECTIONS, POLYLINE, POLYLINES } from "@fiftyone/utilities";
+import {
+  DETECTION,
+  DETECTIONS,
+  POLYLINE,
+  POLYLINES,
+} from "@fiftyone/utilities";
 import type { Native2dLabel } from "./types";
 
 /**
@@ -52,18 +57,30 @@ const polylineFrom = (
  * Flattens the serialized 2D label fields of a single image-slice sample into a
  * list of normalized {@link Native2dLabel}s ready for SVG rendering.
  *
+ * Discovery is driven by the payload's own `_cls` tags rather than by a list of
+ * schema paths. The schema route was fragile here: a field that only exists on
+ * the image slices doesn't necessarily appear in the group's active-slice sample
+ * schema, so schema-derived paths came back empty and nothing was ever parsed.
+ * The response already says what each field is, so trust that.
+ *
  * @param sliceData - the serialized slice sample (field name -> value)
- * @param labelPaths - the sample field paths that hold Detection(s)/Polyline(s)
+ * @param labelPaths - optional restriction to specific field paths; when
+ *   omitted every top-level field is considered.
  */
 export const extractNative2dLabels = (
   sliceData: Record<string, any> | undefined | null,
-  labelPaths: string[],
+  labelPaths?: string[],
 ): Native2dLabel[] => {
   if (!sliceData) return [];
 
+  const paths =
+    labelPaths && labelPaths.length > 0 ? labelPaths : Object.keys(sliceData);
+
   const out: Native2dLabel[] = [];
 
-  for (const path of labelPaths) {
+  for (const path of paths) {
+    if (path.startsWith("_") || path === "filepath" || path === "id") continue;
+
     const value = sliceData[path];
     if (!value || typeof value !== "object") continue;
 

@@ -61,7 +61,7 @@ export const useImageSlicesIfAvailable = (
         POLYLINE_FIELD,
         POLYLINES_FIELD,
       ],
-    })
+    }),
   );
   const labelFieldsKey = labelFieldPaths.join(",");
 
@@ -84,12 +84,13 @@ export const useImageSlicesIfAvailable = (
         setIsLoadingImageSlices(true);
 
         const fetchFunction = getFetchFunction({ cache: true });
-        // Request filepath (for the image URL) plus the 2D label fields so we
-        // can draw the slice's own Detection(s)/Polyline(s) overlays.
-        const fields = ["filepath", ...labelFieldPaths].join(",");
-        const path = `/dataset/${dataset}/groups/${groupId}?fields=${encodeURIComponent(
-          fields
-        )}&resolve_urls=true&media_type=image`;
+        // Deliberately unrestricted: `fields=` needs schema-derived paths, and a
+        // label field that lives only on the image slices may be absent from the
+        // group's active-slice schema — which left us requesting nothing but
+        // `filepath` and so finding no labels to draw. Slice docs are small, so
+        // take the whole sample and let the parse pick out label fields by
+        // their `_cls`.
+        const path = `/dataset/${dataset}/groups/${groupId}?resolve_urls=true&media_type=image`;
 
         const response = await fetchFunction("GET", path);
 
@@ -123,7 +124,23 @@ export const useImageSlicesIfAvailable = (
             urls[sliceName] = resolveUrl(filepath);
           }
 
-          labels[sliceName] = extractNative2dLabels(sliceData, labelFieldPaths);
+          labels[sliceName] = extractNative2dLabels(sliceData);
+        }
+
+        if (process.env.NODE_ENV !== "production") {
+          // eslint-disable-next-line no-console
+          console.debug("[native2d] fetched slices", {
+            schemaDerivedLabelFields: labelFieldPaths,
+            sliceFieldKeys: Object.fromEntries(
+              Object.entries(data.group).map(([k, v]) => [
+                k,
+                Object.keys((v as Record<string, unknown>) ?? {}),
+              ]),
+            ),
+            perSliceLabelCounts: Object.fromEntries(
+              Object.entries(labels).map(([k, v]) => [k, v.length]),
+            ),
+          });
         }
 
         setImageSlices(imageSliceNames);

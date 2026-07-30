@@ -118,17 +118,43 @@ export const ImageSlicePanel = ({
     return frustumData.find((f) => f.sliceName === sliceName) ?? null;
   }, [frustumData, view]);
 
-  // Stored 2D labels for this slice, filtered to the sidebar's active fields so
-  // they toggle in sync with the rest of the app.
+  // Stored 2D labels for this slice.
+  //
+  // Visibility follows the sidebar, but only for paths the sidebar actually
+  // knows about. A field that lives on the image slices without being in the
+  // main (point-cloud slice) schema never appears in `activeFields`, so keying
+  // purely off membership there hid every such label — which is why none of
+  // these were showing up at all.
   const activeFields = useRecoilValue(fos.activeFields({ modal: true }));
+  const knownLabelFields = useRecoilValue(
+    fos.labelFields({ space: fos.State.SPACE.SAMPLE }),
+  );
   const native2dLabels = useMemo(() => {
     const sliceName = decodeImageSliceView(view);
     if (!sliceName) return [];
+
     const active = new Set(activeFields);
-    return resolveLabelsForImageSlice(sliceName).filter((l) =>
-      active.has(l.path),
-    );
-  }, [view, activeFields, resolveLabelsForImageSlice]);
+    const known = new Set(knownLabelFields);
+    const all = resolveLabelsForImageSlice(sliceName);
+    const visible = all.filter((l) => !known.has(l.path) || active.has(l.path));
+
+    if (process.env.NODE_ENV !== "production") {
+      // eslint-disable-next-line no-console
+      console.debug("[native2d] slice", sliceName, {
+        fetched: all.length,
+        visible: visible.length,
+        paths: [...new Set(all.map((l) => l.path))],
+        sidebarKnows: [...new Set(all.map((l) => l.path))].filter((p) =>
+          known.has(p),
+        ),
+        sidebarActive: [...new Set(all.map((l) => l.path))].filter((p) =>
+          active.has(p),
+        ),
+      });
+    }
+
+    return visible;
+  }, [view, activeFields, knownLabelFields, resolveLabelsForImageSlice]);
 
   /**
    * Validation effect: restore view to a cardinal view only if absolutely certain
