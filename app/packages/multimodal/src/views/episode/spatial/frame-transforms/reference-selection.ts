@@ -271,10 +271,13 @@ export function deriveReferenceDecision(
     userReferenceFrameId !== undefined &&
     componentSet.has(userReferenceFrameId);
   const stableReferenceFrameId = chooseStableReference(component);
+  const automaticReferenceFrameId = chooseStableOrGraphRoot(
+    component,
+    facts.graphSummary,
+  );
   const referenceFrameId = userReferenceAvailable
     ? userReferenceFrameId
-    : stableReferenceFrameId ||
-      chooseGraphRoot(component, facts.graphSummary) ||
+    : automaticReferenceFrameId ||
       choosePreferredFrame(component, EGO_FRAME_IDS) ||
       primaryAnchorFrameId ||
       firstNonOptical(component);
@@ -453,6 +456,14 @@ function choosePrimaryAnchor({
           observation.frameIds.filter((frameId) => componentSet.has(frameId)),
         ),
   );
+}
+
+/** Chooses a conventional stable frame, then the strongest graph root. */
+export function chooseStableOrGraphRoot(
+  frameIds: readonly string[],
+  summary: EpisodeFrameGraphSummary,
+): string {
+  return chooseStableReference(frameIds) || chooseGraphRoot(frameIds, summary);
 }
 
 function chooseStableReference(frameIds: readonly string[]): string {

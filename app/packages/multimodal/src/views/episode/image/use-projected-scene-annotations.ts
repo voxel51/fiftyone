@@ -22,18 +22,24 @@ interface ProjectedSceneAnnotations {
 export function useProjectedSceneAnnotations({
   cameraFrameId,
   cameraModel,
+  imageContentTimeNs,
+  interpolate,
   outputHeight,
   outputWidth,
   streams,
 }: {
   readonly cameraFrameId: string | null | undefined;
   readonly cameraModel: CameraModel | null;
+  readonly imageContentTimeNs: bigint | null | undefined;
+  readonly interpolate: boolean;
   readonly outputHeight: number | null | undefined;
   readonly outputWidth: number | null | undefined;
   readonly streams: readonly string[];
 }): ProjectedSceneAnnotations {
   const active =
     Boolean(cameraFrameId && cameraModel) &&
+    imageContentTimeNs !== null &&
+    imageContentTimeNs !== undefined &&
     Number.isFinite(outputWidth) &&
     Number.isFinite(outputHeight) &&
     (outputWidth ?? 0) > 0 &&
@@ -41,17 +47,26 @@ export function useProjectedSceneAnnotations({
   const activeStreams = active ? streams : EMPTY_STREAMS;
   const heldFrames =
     useStreamPlaybackFrames<SceneUpdateVisualization>(activeStreams);
-  // Even without smoothing, this resolves SceneUpdate deltas into the active
-  // lifecycle snapshot so persistent entities do not disappear between msgs.
+  // The image timestamp owns both recorded lifecycle sampling and optional
+  // interpolation, so held pixels never receive playhead-driven geometry.
   const frames = useInterpolatedSceneUpdateFrames({
     frames: heldFrames,
-    interpolate: false,
+    interpolate,
+    surface: "modal-image",
     streams: activeStreams,
+    targetTimeNs: imageContentTimeNs ?? undefined,
   });
   const { resolve } = useFrameTransformsContext();
 
   const sets = useMemo(() => {
-    if (!cameraFrameId || !cameraModel || !outputWidth || !outputHeight) {
+    if (
+      !cameraFrameId ||
+      !cameraModel ||
+      imageContentTimeNs === null ||
+      imageContentTimeNs === undefined ||
+      !outputWidth ||
+      !outputHeight
+    ) {
       return [];
     }
     const projected: ImageAnnotationSetInput[] = [];
@@ -64,6 +79,7 @@ export function useProjectedSceneAnnotations({
       const set = projectSceneAnnotationsToImage({
         cameraFrameId,
         cameraModel,
+        imageContentTimeNs,
         outputHeight,
         outputWidth,
         playbackFrame,
@@ -79,6 +95,7 @@ export function useProjectedSceneAnnotations({
     cameraFrameId,
     cameraModel,
     frames,
+    imageContentTimeNs,
     outputHeight,
     outputWidth,
     resolve,

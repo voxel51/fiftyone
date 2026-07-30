@@ -25,12 +25,13 @@ import type { StreamPlaybackFrame } from "../../playback/use-stream-values";
 import { useOptionalPlayhead } from "../../playback/use-optional-playhead";
 
 /**
- * Layers smooth-mode interpolation over the 3D tile's scene-annotation
- * playback frames. Each held frame is lerped toward the next distinct
- * cached message by the playhead fraction, producing a synthesized frame
- * stamped at the playhead so transform placement resolves at the same time
- * as the geometry. With interpolation disabled or when no lookahead message
- * is cached yet, the input frames pass through untouched.
+ * Layers smooth-mode interpolation over scene-annotation playback frames.
+ * Each held frame is lerped toward the next distinct
+ * cached message at the requested target time, producing a synthesized frame
+ * stamped at that time so transform placement resolves with the geometry.
+ * The 3D view defaults to the playhead; sensor projections can provide their
+ * observation time explicitly. With interpolation disabled or when no
+ * lookahead message is cached yet, recorded geometry is retained.
  *
  * The caller keeps ownership of stream subscriptions (they ride the base
  * `useStreamPlaybackFrames` call); this hook only reads caches.
@@ -38,18 +39,23 @@ import { useOptionalPlayhead } from "../../playback/use-optional-playhead";
 export function useInterpolatedSceneUpdateFrames({
   frames,
   interpolate,
+  surface = "modal-3d",
   streams,
+  targetTimeNs,
 }: {
   readonly frames: readonly (StreamPlaybackFrame<SceneUpdateVisualization> | null)[];
   readonly interpolate: boolean;
+  readonly surface?: "modal-3d" | "modal-image";
   readonly streams: readonly string[];
+  readonly targetTimeNs?: bigint;
 }): readonly (StreamPlaybackFrame<SceneUpdateVisualization> | null)[] {
   const dataStream = useDataStream();
   const history = useSceneUpdateHistoryContext();
   // Track every RAF tick only when there is annotation work to interpolate.
   // Otherwise, sample placement time only when the content-driven parent
   // renders, avoiding an empty high-frequency subscription.
-  const tracksPlayhead = interpolate && streams.length > 0;
+  const tracksPlayhead =
+    interpolate && streams.length > 0 && targetTimeNs === undefined;
   const playhead = useOptionalPlayhead(tracksPlayhead);
   const timeline = dataStream?.getTimelineIndex() ?? null;
   // Late-arriving lookahead messages must re-derive the lifecycle snapshot and
@@ -62,6 +68,7 @@ export function useInterpolatedSceneUpdateFrames({
       if (!playbackFrame || !stream) {
         return playbackFrame;
       }
+      const placementTimeNs = targetTimeNs ?? playbackFrame.requestedTimeNs;
       const cache = dataStream?.getStreamCache(stream) ?? null;
       const historyStream = history.get(stream);
       const deltas = sceneUpdateDeltasForStream({
@@ -71,9 +78,9 @@ export function useInterpolatedSceneUpdateFrames({
         historyDeltas: historyStream?.deltas,
         historyCoversTarget: sceneUpdateHistoryCovers(
           historyStream,
-          playbackFrame.requestedTimeNs,
+          placementTimeNs,
         ),
-        targetTimeNs: playbackFrame.requestedTimeNs,
+        targetTimeNs: placementTimeNs,
       });
       if (deltas.length === 0) {
         return playbackFrame;
@@ -81,23 +88,29 @@ export function useInterpolatedSceneUpdateFrames({
 
       return {
         ...playbackFrame,
-        frame: sceneUpdateSnapshotAt(deltas, playbackFrame.requestedTimeNs),
+        contentTimeNs:
+          latestSceneUpdateTime(deltas, placementTimeNs) ??
+          playbackFrame.contentTimeNs,
+        frame: sceneUpdateSnapshotAt(deltas, placementTimeNs),
+        requestedTimeNs: placementTimeNs,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- cacheSnapshot is the caches' change digest
-  }, [cacheSnapshot, dataStream, frames, history, streams]);
+  }, [cacheSnapshot, dataStream, frames, history, streams, targetTimeNs]);
 
   return useMemo(() => {
     if (!interpolate || streams.length === 0 || !dataStream || !timeline) {
       return resolvedFrames;
     }
 
-    const currentTick = timeline.nearestTick(playhead);
+    const sampleTimeNs = targetTimeNs ?? timeline.secToNs(playhead);
+    const currentTick =
+      targetTimeNs === undefined
+        ? timeline.nearestTick(playhead)
+        : timeline.nearestTick(timeline.nsToSec(targetTimeNs));
     if (currentTick === undefined) {
       return resolvedFrames;
     }
-    const playheadNs = timeline.secToNs(playhead);
-
     let changed = false;
     const interpolated = resolvedFrames.map((playbackFrame, index) => {
       const stream = streams[index];
@@ -152,7 +165,7 @@ export function useInterpolatedSceneUpdateFrames({
 
       const f = interpolationFraction({
         nextTimelineTimeNs: nextMsg.timestampNs,
-        playheadNs,
+        playheadNs: sampleTimeNs,
         previousTimelineTimeNs: playbackFrame.contentTimeNs,
       });
       if (f === null) {
@@ -163,13 +176,14 @@ export function useInterpolatedSceneUpdateFrames({
       return {
         ...playbackFrame,
         ageNs: 0n,
-        contentTimeNs: playheadNs,
+        contentTimeNs: sampleTimeNs,
         frame: interpolateSceneUpdate(
           playbackFrame.frame,
           nextFrame,
           f,
-          playheadNs,
+          sampleTimeNs,
         ),
+        requestedTimeNs: sampleTimeNs,
       };
     });
 
@@ -180,9 +194,27 @@ export function useInterpolatedSceneUpdateFrames({
     interpolate,
     playhead,
     resolvedFrames,
+    surface,
     timeline,
     streams,
+    targetTimeNs,
   ]);
+}
+
+function latestSceneUpdateTime(
+  deltas: readonly SceneUpdateDelta[],
+  targetTimeNs: bigint,
+): bigint | null {
+  let latest: bigint | null = null;
+  for (const delta of deltas) {
+    if (
+      delta.timeNs <= targetTimeNs &&
+      (latest === null || delta.timeNs > latest)
+    ) {
+      latest = delta.timeNs;
+    }
+  }
+  return latest;
 }
 
 function sceneUpdateDeltasForStream({

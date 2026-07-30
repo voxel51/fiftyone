@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type {
   PointCloudRenderChannelPayload,
@@ -9,7 +9,11 @@ import {
   pointCloudNativeIntegerScalarEncoding,
   VISUALIZATION_KIND,
 } from "../../../ir";
-import { applyPointCloudRenderChannel } from "./use-stream-values";
+import type { DataStream } from "./data-stream-context";
+import {
+  applyPointCloudRenderChannel,
+  pointCloudFramesAtTime,
+} from "./use-stream-values";
 
 describe("point cloud render channel replacement", () => {
   it("reuses the exact geometry buffers when replacing a scalar channel", () => {
@@ -76,6 +80,31 @@ describe("point cloud render channel replacement", () => {
         samplePlanKey: "different-plan",
       }),
     ).toBe(frame);
+  });
+});
+
+describe("point cloud destination-time sampling", () => {
+  it("selects the cached cloud at the destination sensor timestamp", () => {
+    const frame = pointCloudFrame();
+    const get = vi.fn(() => ({
+      output: { visualization: frame },
+      streamId: "/lidar",
+      timestampNs: 8n,
+    }));
+    const nearestTick = vi.fn(() => 0n);
+    const dataStream = {
+      getStreamCache: () => ({ get }),
+      getTimelineIndex: () => ({
+        nearestTick,
+        nsToSec: (timeNs: bigint) => Number(timeNs),
+      }),
+    } as unknown as DataStream;
+
+    expect(pointCloudFramesAtTime(dataStream, ["/lidar"], 10n)).toEqual([
+      { contentTimeNs: 8n, frame },
+    ]);
+    expect(nearestTick).toHaveBeenCalledWith(10);
+    expect(get).toHaveBeenCalledWith(0n);
   });
 });
 

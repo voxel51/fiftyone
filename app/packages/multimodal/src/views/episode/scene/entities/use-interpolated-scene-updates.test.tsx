@@ -7,12 +7,14 @@ import { useInterpolatedSceneUpdateFrames } from "./use-interpolated-scene-updat
 
 const useOptionalPlayhead = vi.hoisted(() => vi.fn(() => 0));
 const sceneHistory = vi.hoisted(() => new Map());
+const timeline = vi.hoisted(() => ({
+  nearestTick: vi.fn(() => 0n),
+  nsToSec: vi.fn((timeNs: bigint) => Number(timeNs)),
+  secToNs: vi.fn(() => 0n),
+}));
 const dataStream = vi.hoisted(() => ({
   getStreamCache: () => undefined,
-  getTimelineIndex: () => ({
-    nearestTick: () => 0n,
-    secToNs: () => 0n,
-  }),
+  getTimelineIndex: () => timeline,
   sourceKey: "test-source",
   subscribeToStream: () => () => undefined,
 }));
@@ -30,6 +32,9 @@ vi.mock("./scene-update-history-context", () => ({
 afterEach(() => {
   cleanup();
   sceneHistory.clear();
+  timeline.nearestTick.mockClear();
+  timeline.nsToSec.mockClear();
+  timeline.secToNs.mockClear();
   useOptionalPlayhead.mockClear();
 });
 
@@ -68,6 +73,21 @@ describe("useInterpolatedSceneUpdateFrames", () => {
     );
 
     expect(useOptionalPlayhead).toHaveBeenLastCalledWith(false);
+  });
+
+  it("samples explicit sensor time without subscribing to the playhead", () => {
+    renderHook(() =>
+      useInterpolatedSceneUpdateFrames({
+        frames: [],
+        interpolate: true,
+        streams: ["/annotations"],
+        targetTimeNs: 25n,
+      }),
+    );
+
+    expect(useOptionalPlayhead).toHaveBeenLastCalledWith(false);
+    expect(timeline.nsToSec).toHaveBeenCalledWith(25n);
+    expect(timeline.nearestTick).toHaveBeenCalledWith(25);
   });
 
   it("uses a progressive history prefix only after it covers the target", () => {

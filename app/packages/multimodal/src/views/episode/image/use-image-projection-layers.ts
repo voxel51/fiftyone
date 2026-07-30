@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Quaternion, Vector3 } from "three";
 
 import { buildPointCloudRenderPayload } from "../../../ir";
 import type {
@@ -9,11 +10,16 @@ import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import type { PointCloudColorOptions } from "../../../visualization/scene-3d";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
 import { useFrameTransformsContext } from "../spatial/frame-transforms/context";
+import type {
+  FrameGraphSummarizer,
+  FrameTransformResolver,
+} from "../spatial/frame-transforms/use-frame-transforms";
 import {
   defaultPointCloudColorForSource,
   usePointCloudStyleSettings,
 } from "../settings/modal/state";
 import { usePointCloudPlaybackFrames } from "../playback/use-stream-values";
+import { chooseStableOrGraphRoot } from "../spatial/frame-transforms/reference-selection";
 
 /** One point-cloud frame prepared for projection into an episode image tile. */
 export interface ImageProjectionLayer {
@@ -49,8 +55,9 @@ export interface ImageProjectionLayer {
 export function useImageProjectionLayers(
   streams: readonly string[],
   cameraFrameId: string | undefined,
+  imageContentTimeNs: bigint | undefined,
 ): readonly ImageProjectionLayer[] {
-  const { resolve } = useFrameTransformsContext();
+  const { resolve, summarizeGraph } = useFrameTransformsContext();
   const pointCloudSources = useSceneSourcesByType(
     SCENE_SOURCE_TYPE.POINT_CLOUD,
   );
@@ -92,10 +99,14 @@ export function useImageProjectionLayers(
       ),
     [colorOptionsByStream, streams],
   );
-  const frames = usePointCloudPlaybackFrames(streams, pointCloudColorBy);
+  const frames = usePointCloudPlaybackFrames(
+    streams,
+    pointCloudColorBy,
+    imageContentTimeNs,
+  );
 
   return useMemo(() => {
-    if (!cameraFrameId) {
+    if (!cameraFrameId || imageContentTimeNs === undefined) {
       return [];
     }
 
@@ -111,15 +122,15 @@ export function useImageProjectionLayers(
         continue;
       }
 
-      // Resolve sensor -> camera at the point frame's content time. The matrix
-      // is therefore a snapshot paired with this payload/resource identity;
-      // later TF updates produce a new immutable layer model.
-      const resolution = resolve(
-        sourceFrameId,
+      const transform = resolvePointCloudProjectionTransform({
         cameraFrameId,
-        playbackFrame.contentTimeNs,
-      );
-      if (resolution.status !== "resolved") {
+        imageContentTimeNs,
+        pointContentTimeNs: playbackFrame.contentTimeNs,
+        resolve,
+        sourceFrameId,
+        summarizeGraph,
+      });
+      if (!transform) {
         continue;
       }
       layers.push({
@@ -127,11 +138,11 @@ export function useImageProjectionLayers(
         contentTimeNs: playbackFrame.contentTimeNs,
         frame,
         payload: pointCloudProjectionPayload(frame),
-        rotation: resolution.transform.rotation,
+        rotation: transform.rotation,
         sourceLabel: source?.label ?? stream,
         sourceName: source?.sourceName ?? stream,
         stream,
-        translation: resolution.transform.translation,
+        translation: transform.translation,
       });
     }
 
@@ -140,10 +151,96 @@ export function useImageProjectionLayers(
     cameraFrameId,
     colorOptionsByStream,
     frames,
+    imageContentTimeNs,
     pointCloudSourcesById,
     resolve,
     streams,
+    summarizeGraph,
   ]);
+}
+
+/**
+ * Places a point observation captured at one time into a camera captured at
+ * another. The stable/root frame separates the two temporal transform queries.
+ */
+export function resolvePointCloudProjectionTransform({
+  cameraFrameId,
+  imageContentTimeNs,
+  pointContentTimeNs,
+  resolve,
+  sourceFrameId,
+  summarizeGraph,
+}: {
+  readonly cameraFrameId: string;
+  readonly imageContentTimeNs: bigint;
+  readonly pointContentTimeNs: bigint;
+  readonly resolve: FrameTransformResolver;
+  readonly sourceFrameId: string;
+  readonly summarizeGraph: FrameGraphSummarizer;
+}): { readonly rotation: Quaternion; readonly translation: Vector3 } | null {
+  if (
+    sourceFrameId === cameraFrameId &&
+    pointContentTimeNs === imageContentTimeNs
+  ) {
+    return {
+      rotation: new Quaternion(),
+      translation: new Vector3(),
+    };
+  }
+  const referenceFrameId = projectionReferenceFrame(
+    sourceFrameId,
+    cameraFrameId,
+    summarizeGraph,
+  );
+  if (!referenceFrameId) {
+    return null;
+  }
+  const sourceToReference = resolve(
+    sourceFrameId,
+    referenceFrameId,
+    pointContentTimeNs,
+  );
+  const referenceToCamera = resolve(
+    referenceFrameId,
+    cameraFrameId,
+    imageContentTimeNs,
+  );
+  if (
+    sourceToReference.status !== "resolved" ||
+    referenceToCamera.status !== "resolved"
+  ) {
+    return null;
+  }
+
+  const sourceRotation = sourceToReference.transform.rotation
+    .clone()
+    .normalize();
+  const cameraRotation = referenceToCamera.transform.rotation
+    .clone()
+    .normalize();
+  return {
+    rotation: cameraRotation.clone().multiply(sourceRotation).normalize(),
+    translation: sourceToReference.transform.translation
+      .clone()
+      .applyQuaternion(cameraRotation)
+      .add(referenceToCamera.transform.translation),
+  };
+}
+
+function projectionReferenceFrame(
+  sourceFrameId: string,
+  cameraFrameId: string,
+  summarizeGraph: FrameGraphSummarizer,
+): string | null {
+  const summary = summarizeGraph(new Set([sourceFrameId, cameraFrameId]));
+  const component = summary.components.find(
+    (candidate) =>
+      candidate.includes(sourceFrameId) && candidate.includes(cameraFrameId),
+  );
+  if (!component) {
+    return null;
+  }
+  return chooseStableOrGraphRoot(component, summary) || null;
 }
 
 const derivedProjectionPayloads = new WeakMap<

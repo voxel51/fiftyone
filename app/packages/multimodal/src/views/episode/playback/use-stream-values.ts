@@ -12,8 +12,12 @@ import type {
   PointCloudRenderPayload,
   PointCloudVisualization,
 } from "../../../ir";
+import { VISUALIZATION_KIND } from "../../../ir";
 import { CANONICAL_POINT_CLOUD_SCALAR_COLOR_FIELDS } from "../../../visualization/scene-3d/point-cloud-color-policy";
 import { normalizeIdentifierName } from "../../../visualization/scene-3d/utils";
+import { useStreamCacheSnapshot } from "./cache-sampling";
+
+const EMPTY_STREAMS: readonly string[] = [];
 
 /** One committed stream value plus its source content time. */
 export interface StreamContentFrame<T = unknown> {
@@ -158,6 +162,7 @@ export function useStreamPlaybackFrames<T = unknown>(
 export function usePointCloudPlaybackFrames(
   streams: readonly string[],
   colorBy: readonly string[],
+  targetTimeNs?: bigint,
 ): readonly (StreamContentFrame<PointCloudVisualization> | null)[] {
   const subscriptionOptions = useMemo(
     () =>
@@ -166,11 +171,24 @@ export function usePointCloudPlaybackFrames(
       })),
     [colorBy, streams],
   );
-  const frames = useStreamContentFrames<PointCloudVisualization>(
+  const playbackFrames = useStreamContentFrames<PointCloudVisualization>(
     streams,
     subscriptionOptions,
   );
   const dataStream = useDataStream();
+  const cacheSnapshot = useStreamCacheSnapshot(
+    dataStream,
+    targetTimeNs === undefined ? EMPTY_STREAMS : streams,
+  );
+  const frames = useMemo(
+    () =>
+      targetTimeNs === undefined
+        ? playbackFrames
+        : pointCloudFramesAtTime(dataStream, streams, targetTimeNs),
+    // cacheSnapshot invalidates direct cache reads when target-time content arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cacheSnapshot, dataStream, playbackFrames, streams, targetTimeNs],
+  );
   const [channels, setChannels] = useState<
     ReadonlyMap<string, PointCloudRenderChannelPayload>
   >(() => new Map());
@@ -264,6 +282,35 @@ export function usePointCloudPlaybackFrames(
       }),
     [channels, colorBy, dataStream?.sourceKey, frames, streams],
   );
+}
+
+/** Selects point-cloud observations at one destination-sensor timestamp. */
+export function pointCloudFramesAtTime(
+  dataStream: DataStream | null,
+  streams: readonly string[],
+  targetTimeNs: bigint,
+): readonly (StreamContentFrame<PointCloudVisualization> | null)[] {
+  const timeline = dataStream?.getTimelineIndex() ?? null;
+  const targetTick = timeline?.nearestTick(timeline.nsToSec(targetTimeNs));
+  if (!dataStream || targetTick === undefined) {
+    return streams.map(() => null);
+  }
+
+  return streams.map((stream) => {
+    const message = dataStream.getStreamCache(stream)?.get(targetTick);
+    const visualization = message?.output.visualization;
+    if (
+      !message ||
+      !visualization ||
+      visualization.kind !== VISUALIZATION_KIND.POINT_CLOUD
+    ) {
+      return null;
+    }
+    return {
+      contentTimeNs: message.timestampNs,
+      frame: visualization as PointCloudVisualization,
+    };
+  });
 }
 
 function useStreamSubscription(

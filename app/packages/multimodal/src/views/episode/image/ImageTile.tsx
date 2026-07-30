@@ -91,6 +91,11 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     width: number;
     height: number;
   } | null>(null);
+  const [committedImage, setCommittedImage] = useState<{
+    contentTimeNs: bigint;
+    sourceKey: string;
+    stream: string;
+  } | null>(null);
   const projectionPickerRef =
     useRef<GpuPointCloudProjectionPickerHandle | null>(null);
   const sharedHover = useHoverEcho();
@@ -194,6 +199,34 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     playbackFrame && sourceKey
       ? imageTextureCacheKey(sourceKey, stream, playbackFrame.contentTimeNs)
       : undefined;
+  const requestedImageContentTimeNs = playbackFrame?.contentTimeNs ?? null;
+  // Image decoding is asynchronous and deliberately keeps the previous texture
+  // visible. Hold projections at that texture's timestamp until its replacement
+  // commits so geometry never advances over stale pixels.
+  const committedImageContentTimeNs =
+    playbackFrame &&
+    committedImage?.sourceKey === sourceKey &&
+    committedImage.stream === stream
+      ? committedImage.contentTimeNs
+      : null;
+  const handleImageLoaded = useCallback(
+    (width: number, height: number) => {
+      if (requestedImageContentTimeNs !== null) {
+        setCommittedImage({
+          contentTimeNs: requestedImageContentTimeNs,
+          sourceKey,
+          stream,
+        });
+      }
+      setImageDims((previous) =>
+        previous?.width === width && previous?.height === height
+          ? previous
+          : { width, height },
+      );
+
+    },
+    [requestedImageContentTimeNs, sourceKey, stream],
+  );
   const selectedImageSource =
     images.find((source) => source.id === stream) ?? null;
   const annotationStreams = useMemo(
@@ -360,6 +393,8 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
         ? calibration?.coordinateFrameId
         : null,
     cameraModel: !projectionDimensionMismatch ? sourceCameraModel : null,
+    imageContentTimeNs: committedImageContentTimeNs,
+    interpolate: label3dProjection.interpolate,
     outputHeight: effectiveImageDims?.height,
     outputWidth: effectiveImageDims?.width,
     streams: selectedSceneAnnotationStreams,
@@ -407,6 +442,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const projectionGeometry =
     effectiveImageDims &&
     playbackFrame &&
+    committedImageContentTimeNs !== null &&
     calibration &&
     calibration.coordinateFrameId &&
     displayCameraModel &&
@@ -414,7 +450,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       ? {
           cameraFrameId: calibration.coordinateFrameId,
           cameraModel: displayCameraModel,
-          imageContentTimeNs: playbackFrame.contentTimeNs,
+          imageContentTimeNs: committedImageContentTimeNs,
           imageDims: effectiveImageDims,
         }
       : null;
@@ -469,6 +505,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const projectionLayers = useImageProjectionLayers(
     projectionSceneStreams,
     projectionScene?.cameraFrameId,
+    projectionScene?.imageContentTimeNs,
   );
   const renderedProjectionLayers = useMemo(() => {
     if (!hasActiveProjection) {

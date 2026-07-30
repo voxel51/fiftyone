@@ -27,6 +27,7 @@ describe("3D scene annotation projection", () => {
     const set = projectSceneAnnotationsToImage({
       cameraFrameId: "camera",
       cameraModel: CAMERA_MODEL,
+      imageContentTimeNs: 30n,
       outputHeight: 100,
       outputWidth: 100,
       playbackFrame: playbackFrame(
@@ -71,7 +72,7 @@ describe("3D scene annotation projection", () => {
     });
   });
 
-  it("resolves source-to-camera transforms at frame-locked time and scales pixels", () => {
+  it("resolves frame-locked transforms at image content time and scales pixels", () => {
     const resolve = vi.fn<FrameTransformResolver>(() => ({
       sourceFrameId: "lidar",
       status: "resolved",
@@ -86,6 +87,7 @@ describe("3D scene annotation projection", () => {
     const set = projectSceneAnnotationsToImage({
       cameraFrameId: "camera",
       cameraModel: CAMERA_MODEL,
+      imageContentTimeNs: 30n,
       outputHeight: 200,
       outputWidth: 200,
       playbackFrame: playbackFrame(
@@ -99,7 +101,7 @@ describe("3D scene annotation projection", () => {
       stream: "/detections_3d",
     });
 
-    expect(resolve).toHaveBeenCalledWith("lidar", "camera", 20n);
+    expect(resolve).toHaveBeenCalledWith("lidar", "camera", 30n);
     const bounds = set?.renderMetadata?.lineListGroups[0]?.[0]?.bounds;
     expect(bounds?.minX).toBeCloseTo(50);
     expect(bounds?.maxX).toBeCloseTo(150);
@@ -107,10 +109,45 @@ describe("3D scene annotation projection", () => {
     expect(bounds?.maxY).toBeCloseTo(150);
   });
 
+  it("preserves source time for non-frame-locked entities", () => {
+    const resolve = vi.fn<FrameTransformResolver>(() => ({
+      sourceFrameId: "lidar",
+      status: "resolved",
+      targetFrameId: "camera",
+      transform: {
+        rotation: new THREE.Quaternion(),
+        sourceFrameId: "lidar",
+        targetFrameId: "camera",
+        translation: new THREE.Vector3(0, 0, 5),
+      },
+    }));
+
+    projectSceneAnnotationsToImage({
+      cameraFrameId: "camera",
+      cameraModel: CAMERA_MODEL,
+      imageContentTimeNs: 30n,
+      outputHeight: 100,
+      outputWidth: 100,
+      playbackFrame: playbackFrame(
+        entity({
+          cubes: [cube()],
+          frameId: "lidar",
+          frameLocked: false,
+          timestampNs: 15n,
+        }),
+      ),
+      resolve,
+      stream: "/detections_3d",
+    });
+
+    expect(resolve).toHaveBeenCalledWith("lidar", "camera", 15n);
+  });
+
   it("clips mixed-validity edges and skips unplaceable entities", () => {
     const straddling = projectSceneAnnotationsToImage({
       cameraFrameId: "camera",
       cameraModel: CAMERA_MODEL,
+      imageContentTimeNs: 30n,
       outputHeight: 100,
       outputWidth: 100,
       playbackFrame: playbackFrame(
@@ -146,6 +183,7 @@ describe("3D scene annotation projection", () => {
     const unresolved = projectSceneAnnotationsToImage({
       cameraFrameId: "camera",
       cameraModel: CAMERA_MODEL,
+      imageContentTimeNs: 30n,
       outputHeight: 100,
       outputWidth: 100,
       playbackFrame: playbackFrame(

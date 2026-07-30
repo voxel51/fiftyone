@@ -56,12 +56,13 @@ type ProjectedSegment = readonly [Point2, Point2];
 
 /**
  * Projects every cuboid in one lifecycle-resolved scene update into an image
- * annotation set. Entity-frame transforms are resolved at the same timestamp
- * semantics used by the 3D tile.
+ * annotation set. Frame-locked entities are resolved at the destination
+ * image's content time so overlays stay registered to the captured pixels.
  */
 export function projectSceneAnnotationsToImage({
   cameraFrameId,
   cameraModel,
+  imageContentTimeNs,
   outputHeight,
   outputWidth,
   playbackFrame,
@@ -70,6 +71,7 @@ export function projectSceneAnnotationsToImage({
 }: {
   readonly cameraFrameId: string;
   readonly cameraModel: CameraModel;
+  readonly imageContentTimeNs: bigint;
   readonly outputHeight: number;
   readonly outputWidth: number;
   readonly playbackFrame: StreamPlaybackFrame<SceneUpdateVisualization>;
@@ -101,7 +103,7 @@ export function projectSceneAnnotationsToImage({
       continue;
     }
     const timeNs = entity.frameLocked
-      ? playbackFrame.requestedTimeNs
+      ? imageContentTimeNs
       : (entity.timestampNs ?? playbackFrame.contentTimeNs);
     const frameTransform =
       entity.frameId === cameraFrameId
