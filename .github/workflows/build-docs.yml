@@ -37,6 +37,11 @@ concurrency:
 
 jobs:
   build:
+    # Fork PRs cannot access the secrets this job requires (RO_FOT_FG_PAT,
+    # FIFTYONE_GITHUB_TOKEN), so the build is guaranteed to fail; skip it
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     env:
       FIFTYONE_DO_NOT_TRACK: true
