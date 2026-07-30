@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ClickDetector } from "./ClickDetector";
 
 const fire = (
@@ -22,7 +22,7 @@ const fire = (
 
 describe("ClickDetector", () => {
   let container: HTMLDivElement;
-  let onClick: ReturnType<typeof vi.fn>;
+  let onClick: Mock<(x: number, y: number) => void>;
 
   beforeEach(() => {
     container = document.createElement("div");

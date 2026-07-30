@@ -222,6 +222,10 @@ a dataset for the first time in a newer version of FiftyOne.
 Downgrading FiftyOne
 --------------------
 
+.. customavailablein::
+    :oss_version: 0.7.3
+    :enterprise_version: 1.0
+
 If you need to downgrade to an older version of FiftyOne for any reason, you
 can do so.
 

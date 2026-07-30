@@ -5,6 +5,10 @@ COCO-2017
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.3.0
+    :enterprise_version: 1.0
+
 COCO is a large-scale object detection, segmentation, and captioning
 dataset.
 

@@ -5,6 +5,10 @@ FiftyOne terminology
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.19.0
+    :enterprise_version: 1.1
+
 This cheat sheet introduces the key terminology in the world of FiftyOne.
 
 The basics

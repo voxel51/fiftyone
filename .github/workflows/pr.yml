@@ -97,7 +97,7 @@ jobs:
           heavy=false
           if [ "$run_ci" = "true" ]; then
             case "$BASE_REF" in
-              develop|main|release/*) heavy=true ;;
+              develop|main|release/*|community) heavy=true ;;
             esac
           fi
           echo "run-ci=$run_ci" >> "$GITHUB_OUTPUT"

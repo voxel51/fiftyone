@@ -340,6 +340,9 @@ By default GCP sets the max-age=0 seconds meaning no caching will occur.
 Microsoft Azure
 _______________
 
+.. customavailablein::
+    :enterprise_version: 1.2.1
+
 To work with FiftyOne datasets whose media are stored in Azure Storage, you
 simply need to provide
 `Azure credentials <https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli>`_
@@ -736,6 +739,9 @@ downloading of credentials to machines, set the environment variable
 
 AI model weights
 ----------------
+
+.. customavailablein::
+    :enterprise_version: 2.19.0
 
 The FiftyOne Enterprise App ships with AI-assisted mask segmentation for annotation
 workflows. By default, the required model weights are served from Voxel51's

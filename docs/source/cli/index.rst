@@ -102,6 +102,10 @@ The FiftyOne command-line interface.
 FiftyOne quickstart
 -------------------
 
+.. customavailablein::
+    :oss_version: 0.5.2
+    :enterprise_version: 1.0
+
 Launch a FiftyOne quickstart.
 
 .. code-block:: text
@@ -405,6 +409,10 @@ Print information about FiftyOne datasets.
 
 Print dataset stats
 ~~~~~~~~~~~~~~~~~~~
+
+.. customavailablein::
+    :oss_version: 0.7.4
+    :enterprise_version: 1.0
 
 Print stats about FiftyOne datasets on disk.
 
@@ -2193,6 +2201,10 @@ Tools for working with the FiftyOne App.
 App Config
 ~~~~~~~~~~
 
+.. customavailablein::
+    :oss_version: 0.7.2
+    :enterprise_version: 1.0
+
 Tools for working with your FiftyOne App config.
 
 .. code-block:: text
@@ -2962,6 +2974,10 @@ Deletes the local copy of the zoo dataset on disk.
 FiftyOne Model Zoo
 ------------------
 
+.. customavailablein::
+    :oss_version: 0.7.0
+    :enterprise_version: 1.0
+
 Tools for working with the FiftyOne Model Zoo.
 
 .. code-block:: text
@@ -3209,6 +3225,10 @@ following:
 
 Apply zoo models to datasets
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. customavailablein::
+    :oss_version: 0.7.0
+    :enterprise_version: 1.0
 
 Apply zoo models to datasets.
 

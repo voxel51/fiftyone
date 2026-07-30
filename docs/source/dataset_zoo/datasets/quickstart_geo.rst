@@ -5,6 +5,10 @@ Quickstart Geo
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.8.0
+    :enterprise_version: 1.0
+
 A small dataset with geolocation data.
 
 The dataset consists of 500 images from the validation split of the BDD100K

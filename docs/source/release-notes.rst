@@ -11,6 +11,8 @@ App
 
 - Fixed a bug that caused the App to crash for users with the Guest role
 
+.. _release-notes-enterprise-v2.22.0:
+
 FiftyOne Enterprise 2.22.0
 --------------------------
 *Released July 14, 2026*
@@ -347,6 +349,8 @@ General
   `#7585 <https://github.com/voxel51/fiftyone/pull/7585>`_
 
 
+.. _release-notes-enterprise-v2.19.0:
+
 FiftyOne Enterprise 2.19.0
 --------------------------
 *Released May 28, 2026*
@@ -528,6 +532,8 @@ Security
 - Updated a number of dependencies in the FiftyOne Enterprise API in order to
   resolve security vulnerabilities: `ujson` and `pyjwt`
 
+.. _release-notes-enterprise-v2.18.0:
+
 FiftyOne Enterprise 2.18.0
 --------------------------
 *Released May 1, 2026*
@@ -637,6 +643,8 @@ FiftyOne 1.14.1
   an :ref:`Orchestrator <enterprise-delegated-orchestrator>`.
   `#7285 <https://github.com/voxel51/fiftyone/pull/7285>`_
 
+
+.. _release-notes-enterprise-v2.17.0:
 
 FiftyOne Enterprise 2.17.0
 --------------------------
@@ -1041,6 +1049,8 @@ App
    `#7001 <https://github.com/voxel51/fiftyone/pull/7001>`_
 
 
+.. _release-notes-enterprise-v2.16.0:
+
 FiftyOne Enterprise 2.16.0
 --------------------------
 *Released February 12, 2026*
@@ -1134,6 +1144,8 @@ CLI
   developing plugins. `#6848 <https://github.com/voxel51/fiftyone/pull/6848>`_
 
 
+
+.. _release-notes-enterprise-v2.15.0:
 
 FiftyOne Enterprise 2.15.0
 --------------------------
@@ -1323,6 +1335,8 @@ Security
   `#6726 <https://github.com/voxel51/fiftyone/pull/6726>`_,
   `eta#683 <https://github.com/voxel51/eta/pull/683>`_
 
+
+.. _release-notes-enterprise-v2.14.0:
 
 FiftyOne Enterprise 2.14.0
 --------------------------
@@ -1747,6 +1761,8 @@ FiftyOne Enterprise 2.11.1
 - Fixed a permissioning edge case that could cause users to view the names of
   datasets they didn't have access to.
 
+.. _release-notes-enterprise-v2.11.0:
+
 FiftyOne Enterprise 2.11.0
 --------------------------
 *Released September 3, 2025*
@@ -2090,6 +2106,8 @@ Zoo
   transformer models with preprocessing disabled
   `#6122 <https://github.com/voxel51/fiftyone/pull/6122>`_
 
+.. _release-notes-enterprise-v2.10.0:
+
 FiftyOne Enterprise 2.10.0
 --------------------------
 *Released July 1, 2025*
@@ -2247,6 +2265,8 @@ Zoo
   `#5919 <https://github.com/voxel51/fiftyone/pull/5919>`_,
   `#5950 <https://github.com/voxel51/fiftyone/pull/5950>`_,
   `#5898 <https://github.com/voxel51/fiftyone/pull/5898>`_
+
+.. _release-notes-enterprise-v2.9.1:
 
 FiftyOne Enterprise 2.9.1
 -------------------------
@@ -2542,6 +2562,8 @@ Docs
   :ref:`CVAT integration <cvat-integration>` with a CVAT server > 2.30
   `#5857 <https://github.com/voxel51/fiftyone/pull/5857>`_
 
+.. _release-notes-enterprise-v2.8.0:
+
 FiftyOne Enterprise 2.8.0
 -------------------------
 *Released May 2, 2025*
@@ -2778,6 +2800,8 @@ FiftyOne Enterprise 2.7.1
 - Fixed the 
   `CVE-2025-29927 <https://github.com/advisories/GHSA-f82v-jwr5-mffw>`_
   vulnerability related to next.js
+
+.. _release-notes-enterprise-v2.7.0:
 
 FiftyOne Enterprise 2.7.0
 -------------------------
@@ -3068,6 +3092,8 @@ FiftyOne Enterprise 2.5.1
 
 - Fixed a bug where we displayed a session error before initial user login
 
+.. _release-notes-enterprise-v2.5.0:
+
 FiftyOne Enterprise 2.5.0
 -------------------------
 *Released January 24, 2025*
@@ -3234,6 +3260,8 @@ FiftyOne Enterprise 2.4.0
 
 - Added ability to set a user-specific auth header when making media queries.
 
+.. _release-notes-enterprise-v2.3.0:
+
 FiftyOne Enterprise 2.3.0
 -------------------------
 *Released December 20, 2024*
@@ -3328,6 +3356,8 @@ Zoo
   :ref:`rtdetr-l-coco-torch <model-zoo-rtdetr-l-coco-torch>` and
   :ref:`rtdetr-x-coco-torch <model-zoo-rtdetr-x-coco-torch>` zoo models
   `#5220 <https://github.com/voxel51/fiftyone/pull/5220>`_
+
+.. _release-notes-enterprise-v2.2.0:
 
 FiftyOne Enterprise 2.2.0
 -------------------------
@@ -3558,6 +3588,8 @@ Core
   :ref:`COCO format <COCODetectionDataset-import>`
   `#4884 <https://github.com/voxel51/fiftyone/pull/4884>`_
 
+.. _release-notes-enterprise-v2.1.0:
+
 FiftyOne Enterprise 2.1.0
 -------------------------
 *Released October 1, 2024*
@@ -3743,6 +3775,8 @@ Plugins
 - Fixed a spurious warning that would appear for delegated operations that
   don't return outputs
   `#4715 <https://github.com/voxel51/fiftyone/pull/4715>`_
+
+.. _release-notes-enterprise-v2.0.0:
 
 FiftyOne Enterprise 2.0.0
 -------------------------
@@ -3981,6 +4015,8 @@ Annotation
 - Added support loading annotations for large CVAT tasks with many jobs
   `#4392 <https://github.com/voxel51/fiftyone/pull/4392>`_
 
+.. _release-notes-enterprise-v1.7.0:
+
 FiftyOne Enterprise 1.7.0
 -------------------------
 *Released May 29, 2024*
@@ -4127,6 +4163,8 @@ FiftyOne Enterprise 1.5.10
 
 - Fixed an issue where video datasets were not loading due to ffmpeg dependency
 
+.. _release-notes-enterprise-v1.5.9:
+
 FiftyOne Enterprise 1.5.9
 -------------------------
 *Released April 15, 2024*
@@ -4258,6 +4296,8 @@ Zoo
   frames of video datasets
   `#4229 <https://github.com/voxel51/fiftyone/pull/4229>`_
 
+.. _release-notes-enterprise-v1.5.8:
+
 FiftyOne Enterprise 1.5.8
 -------------------------
 *Released March 21, 2024*
@@ -4365,6 +4405,8 @@ Core
 - Cloning a dataset or view now includes any custom MongoDB indexes
   `#4115 <https://github.com/voxel51/fiftyone/pull/4115>`_
 
+.. _release-notes-enterprise-v1.5.7:
+
 FiftyOne Enterprise 1.5.7
 -------------------------
 *Released March 6, 2024*
@@ -4470,6 +4512,8 @@ Bugs
   `#4048 <https://github.com/voxel51/fiftyone/pull/4048>`_
 
 
+.. _release-notes-enterprise-v1.5.5:
+
 FiftyOne Enterprise 1.5.5
 -------------------------
 *Released January 25, 2024*
@@ -4496,6 +4540,8 @@ Brain
 - Added support for registering
   :ref:`custom visualization methods <brain-visualization-api>`
   `#4038 <https://github.com/voxel51/fiftyone/pull/4038>`_
+
+.. _release-notes-enterprise-v1.5.4:
 
 FiftyOne Enterprise 1.5.4
 -------------------------
@@ -8547,6 +8593,8 @@ Docs
 - Removed legacy `--index` flags from the install instructions from the
   :ref:`troubleshooting page <troubleshooting>` which prevented a valid
   installation
+
+.. _release-notes-v0.7.2:
 
 FiftyOne 0.7.2
 --------------
