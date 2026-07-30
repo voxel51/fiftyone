@@ -2744,7 +2744,6 @@ Overriding request parameters per stage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. customavailablein::
-    :oss_version: 1.16.0
     :enterprise_version: 2.19.0
 
 By default, each stage in a pipeline inherits the same execution context as the

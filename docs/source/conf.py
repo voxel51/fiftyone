@@ -29,8 +29,8 @@ from custom_directives import (
 from fiftyone.internal.docs import is_hidden_from_docs
 from redirects import (
     generate_api_redirects,
-    generate_moved_anchor_redirects,
     generate_redirects,
+    inject_moved_anchor_redirects,
 )
 
 import fiftyone.constants as foc
@@ -320,7 +320,7 @@ def setup(app):
     app.add_config_value("redirects_file", "redirects", "env")
     app.connect("builder-inited", generate_redirects)
     app.connect("build-finished", generate_api_redirects)
-    app.connect("build-finished", generate_moved_anchor_redirects)
+    app.connect("html-page-context", inject_moved_anchor_redirects)
     # See https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#event-autodoc-skip-member
     app.connect("autodoc-skip-member", _skip_hidden_from_docs)
 
