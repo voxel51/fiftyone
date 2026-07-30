@@ -115,6 +115,7 @@
         "@fiftyone/state": "*",
         "@fiftyone/tiling": "*",
         "@fiftyone/utilities": "*",
+        "@foxglove/crc": "^0.0.3",
         "@foxglove/ros2idl-parser": "^0.3.6",
         "@foxglove/rosmsg": "^5.0.5",
         "@foxglove/rosmsg-serialization": "^2.1.2",

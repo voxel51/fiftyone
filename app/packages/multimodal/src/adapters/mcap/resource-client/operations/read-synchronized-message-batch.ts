@@ -135,6 +135,11 @@ export async function readMcapSynchronizedMessageBatch({
       string,
       Promise<readonly McapRawMessageCandidate[]>
     >();
+    let selectedRawCandidates:
+      | Promise<
+          ReadonlyMap<McapIndexedMessageCandidate, McapRawMessageCandidate>
+        >
+      | undefined;
 
     return decodeWindowsFromCandidates({
       candidates: indexedCandidates,
@@ -154,6 +159,7 @@ export async function readMcapSynchronizedMessageBatch({
           rawDecodeCache,
           rawReadCache,
           reader,
+          selectedRawCandidates,
           pointCloudColorBy:
             request.pointCloudColorByByTopic?.[candidate.topic],
           signal: readSignal?.current ?? undefined,
@@ -162,12 +168,21 @@ export async function readMcapSynchronizedMessageBatch({
         }),
       // Selected candidates name their chunks exactly, so the byte layer can
       // pipeline those chunk fetches while decoding walks them serially.
-      onCandidatesSelected: (selected) =>
+      onCandidatesSelected: (selected) => {
         void reader.prefetchChunkData?.({
           chunkStartOffsets: selected.map(
             (candidate) => candidate.chunkStartOffset,
           ),
-        }),
+        });
+        if (reader.readIndexedMessages) {
+          selectedRawCandidates = materializeIndexedSelection({
+            candidates: selected,
+            reader,
+            signal: readSignal?.current ?? undefined,
+            timeline,
+          });
+        }
+      },
       selectTieBreaker: compareIndexedCandidateTieBreaker,
       timeline,
       topics: request.topics,
@@ -679,28 +694,40 @@ async function collectRawCandidates({
     startTime,
     topics,
   })) {
-    const channel = reader.channelsById.get(message.channelId);
-    if (!channel) {
-      throw new Error(`Missing MCAP channel ${message.channelId}`);
-    }
-
-    const timelineTimeNs = timeline.messageTimeNs(message);
-    if (!isWithinRange(timelineTimeNs, startTimeNs, endTimeNs)) {
+    const candidate = rawCandidateFromMessage({ message, reader, timeline });
+    if (!isWithinRange(candidate.timelineTimeNs, startTimeNs, endTimeNs)) {
       continue;
     }
 
-    const topicCandidates = candidates.get(channel.topic) ?? [];
-    topicCandidates.push({
-      channel,
-      message,
-      schema: reader.schemasById.get(channel.schemaId),
-      timelineTimeNs,
-      topic: channel.topic,
-    });
-    candidates.set(channel.topic, topicCandidates);
+    const topicCandidates = candidates.get(candidate.topic) ?? [];
+    topicCandidates.push(candidate);
+    candidates.set(candidate.topic, topicCandidates);
   }
 
   return candidates;
+}
+
+function rawCandidateFromMessage({
+  message,
+  reader,
+  timeline,
+}: {
+  readonly message: McapTypes.TypedMcapRecords["Message"];
+  readonly reader: McapIndexedReaderLike;
+  readonly timeline: McapTimelineStrategy;
+}): McapRawMessageCandidate {
+  const channel = reader.channelsById.get(message.channelId);
+  if (!channel) {
+    throw new Error(`Missing MCAP channel ${message.channelId}`);
+  }
+
+  return {
+    channel,
+    message,
+    schema: reader.schemasById.get(channel.schemaId),
+    timelineTimeNs: timeline.messageTimeNs(message),
+    topic: channel.topic,
+  };
 }
 
 async function decodeIndexedCandidate({
@@ -710,6 +737,7 @@ async function decodeIndexedCandidate({
   rawDecodeCache,
   rawReadCache,
   reader,
+  selectedRawCandidates,
   pointCloudColorBy,
   signal,
   source,
@@ -724,6 +752,9 @@ async function decodeIndexedCandidate({
     Promise<readonly McapRawMessageCandidate[]>
   >;
   readonly reader: McapIndexedReaderLike;
+  readonly selectedRawCandidates:
+    | Promise<ReadonlyMap<McapIndexedMessageCandidate, McapRawMessageCandidate>>
+    | undefined;
   readonly pointCloudColorBy?: string;
   readonly signal?: AbortSignal;
   readonly source: McapReadSynchronizedMessageBatchRequest["source"];
@@ -739,6 +770,7 @@ async function decodeIndexedCandidate({
       candidate,
       rawReadCache,
       reader,
+      selectedRawCandidates,
       timeline,
     })
       .then((rawCandidate) =>
@@ -763,6 +795,7 @@ async function resolveRawCandidateForIndexedMessage({
   candidate,
   rawReadCache,
   reader,
+  selectedRawCandidates,
   timeline,
 }: {
   readonly candidate: McapIndexedMessageCandidate;
@@ -771,8 +804,19 @@ async function resolveRawCandidateForIndexedMessage({
     Promise<readonly McapRawMessageCandidate[]>
   >;
   readonly reader: McapIndexedReaderLike;
+  readonly selectedRawCandidates:
+    | Promise<ReadonlyMap<McapIndexedMessageCandidate, McapRawMessageCandidate>>
+    | undefined;
   readonly timeline: McapTimelineStrategy;
 }): Promise<McapRawMessageCandidate> {
+  if (selectedRawCandidates) {
+    const rawCandidate = (await selectedRawCandidates).get(candidate);
+    if (!rawCandidate) {
+      throw missingIndexedMessageError(candidate);
+    }
+    return rawCandidate;
+  }
+
   const key = serializeIndexedLookupKey(candidate);
   let rawCandidates = rawReadCache.get(key);
 
@@ -792,11 +836,7 @@ async function resolveRawCandidateForIndexedMessage({
       raw.message.logTime === candidate.logTimeNs,
   );
   if (matches.length === 0) {
-    throw new Error(
-      `Missing MCAP message for indexed ${candidate.topic} entry with channel ${
-        candidate.channelId
-      } at ${candidate.logTimeNs.toString()}`,
-    );
+    throw missingIndexedMessageError(candidate);
   }
 
   // Real recordings can carry several messages on one channel at the
@@ -808,6 +848,75 @@ async function resolveRawCandidateForIndexedMessage({
     return matches[0];
   }
   return [...matches].sort(compareDuplicateRawMatches)[0];
+}
+
+async function materializeIndexedSelection({
+  candidates,
+  reader,
+  signal,
+  timeline,
+}: {
+  readonly candidates: readonly McapIndexedMessageCandidate[];
+  readonly reader: McapIndexedReaderLike;
+  readonly signal?: AbortSignal;
+  readonly timeline: McapTimelineStrategy;
+}): Promise<ReadonlyMap<McapIndexedMessageCandidate, McapRawMessageCandidate>> {
+  const readIndexedMessages = reader.readIndexedMessages;
+  if (!readIndexedMessages || candidates.length === 0) {
+    return new Map();
+  }
+
+  const messages = await readIndexedMessages({
+    entries: candidates.map(
+      ({ channelId, chunkStartOffset, logTimeNs, messageOffset, topic }) => ({
+        channelId,
+        chunkStartOffset,
+        logTimeNs,
+        messageOffset,
+        topic,
+      }),
+    ),
+    signal,
+  });
+  if (messages.length !== candidates.length) {
+    throw new Error(
+      `MCAP indexed message reader returned ${messages.length} messages for ${candidates.length} entries`,
+    );
+  }
+
+  return new Map(
+    candidates.map((candidate, index) => {
+      const message = messages[index];
+      if (!message) {
+        throw missingIndexedMessageError(candidate);
+      }
+      if (
+        message.channelId !== candidate.channelId ||
+        message.logTime !== candidate.logTimeNs
+      ) {
+        throw new Error("MCAP message index/data mismatch");
+      }
+      const rawCandidate = rawCandidateFromMessage({
+        message,
+        reader,
+        timeline,
+      });
+      if (rawCandidate.topic !== candidate.topic) {
+        throw new Error("MCAP message index/channel topic mismatch");
+      }
+      return [candidate, rawCandidate] as const;
+    }),
+  );
+}
+
+function missingIndexedMessageError(
+  candidate: McapIndexedMessageCandidate,
+): Error {
+  return new Error(
+    `Missing MCAP message for indexed ${candidate.topic} entry with channel ${
+      candidate.channelId
+    } at ${candidate.logTimeNs.toString()}`,
+  );
 }
 
 function compareDuplicateRawMatches(

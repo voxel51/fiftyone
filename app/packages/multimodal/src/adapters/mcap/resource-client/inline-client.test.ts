@@ -2279,32 +2279,43 @@ describe("MCAP resources", () => {
       yield createIndexedMessageTime("/lidar", 8, 108n, 1080n);
       yield createIndexedMessageTime("/camera", 7, 130n, 1300n);
     });
-    const readMessages = vi.fn(async function* (args?: {
-      readonly endTime?: bigint;
-      readonly startTime?: bigint;
-      readonly topics?: readonly string[];
-    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
-      expect(args?.startTime).toBe(args?.endTime);
-      const topic = args?.topics?.[0];
-      if (topic === "/camera" && args?.startTime === 90n) {
-        yield camera;
-      }
-      if (topic === "/lidar" && args?.startTime === 108n) {
-        yield lidar;
-      }
-      if (topic === "/camera" && args?.startTime === 130n) {
-        yield lateCamera;
+    const messagesByTime = new Map([
+      [90n, camera],
+      [108n, lidar],
+      [130n, lateCamera],
+    ]);
+    const readIndexedMessages = vi.fn(
+      async ({
+        entries,
+      }: Parameters<
+        NonNullable<McapIndexedReaderLike["readIndexedMessages"]>
+      >[0]) => {
+        return entries.map((entry) => {
+          const message = messagesByTime.get(entry.logTimeNs);
+          if (!message) {
+            throw new Error(`Missing test message at ${entry.logTimeNs}`);
+          }
+          return message;
+        });
+      },
+    );
+    const readMessages = vi.fn(async function* () {
+      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
+        yield message;
       }
     });
+    const controller = new AbortController();
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient,
+      readSignal: { current: controller.signal },
       readerFactory: vi.fn(async () =>
         createReader({
           channelsById: new Map([
             [7, createChannel({ id: 7, topic: "/camera" })],
             [8, createChannel({ id: 8, topic: "/lidar" })],
           ]),
+          readIndexedMessages,
           readIndexedMessageTimes,
           readMessages,
         }),
@@ -2334,11 +2345,57 @@ describe("MCAP resources", () => {
       startTimeNs: 80n,
       topics: ["/camera", "/lidar"],
     });
-    expect(readMessages.mock.calls.map(([args]) => args)).toEqual([
-      { endTime: 90n, startTime: 90n, topics: ["/camera"] },
-      { endTime: 108n, startTime: 108n, topics: ["/lidar"] },
-    ]);
+    expect(readIndexedMessages).toHaveBeenCalledExactlyOnceWith({
+      entries: [
+        createIndexedMessageTime("/camera", 7, 90n, 900n),
+        createIndexedMessageTime("/lidar", 8, 108n, 1080n),
+      ],
+      signal: controller.signal,
+    });
+    expect(readMessages).not.toHaveBeenCalled();
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the indexed synchronized-read fallback for readers without exact lookup", async () => {
+    const message = createMessage(new Uint8Array([1]), {
+      channelId: 7,
+      logTime: 90n,
+      publishTime: 91n,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield createIndexedMessageTime("/topic", 7, 90n, 900n);
+    });
+    const readMessages = vi.fn(async function* () {
+      yield message;
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          readIndexedMessageTimes,
+          readMessages,
+        }),
+      ),
+    });
+
+    const [window] = await client.readSynchronizedMessageBatch({
+      defaultStreamPolicy: {
+        mode: PlaybackSyncMode.NEAREST,
+        toleranceAfterNs: 20n,
+        toleranceBeforeNs: 20n,
+      },
+      source: createMcapSourceDescriptor(),
+      timeNs: [100n],
+      topics: ["/topic"],
+    });
+
+    expect(window.messagesByTopic["/topic"]).toHaveLength(1);
+    expect(readMessages).toHaveBeenCalledWith({
+      endTime: 90n,
+      startTime: 90n,
+      topics: ["/topic"],
+    });
   });
 
   it("soft-fails topic time bounds to nulls without summary indexes", async () => {
@@ -3065,6 +3122,7 @@ function createReader({
   channelsById = new Map([[7, createChannel({ id: 7, topic: "/topic" })]]),
   chunkIndexes = [],
   messages = [],
+  readIndexedMessages,
   readIndexedMessageTimes,
   readLatestIndexedMessageTimes,
   readBoundedMessages,
@@ -3078,6 +3136,9 @@ function createReader({
   >;
   readonly chunkIndexes?: readonly McapTypes.TypedMcapRecords["ChunkIndex"][];
   readonly messages?: readonly McapTypes.TypedMcapRecords["Message"][];
+  readonly readIndexedMessages?: NonNullable<
+    McapIndexedReaderLike["readIndexedMessages"]
+  >;
   readonly readIndexedMessageTimes?: (args?: unknown) => AsyncGenerator<
     {
       readonly channelId: number;
@@ -3122,6 +3183,7 @@ function createReader({
   return {
     channelsById,
     chunkIndexes,
+    readIndexedMessages,
     readIndexedMessageTimes,
     readLatestIndexedMessageTimes,
     readBoundedMessages,

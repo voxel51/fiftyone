@@ -2107,6 +2107,7 @@ __metadata:
     "@fiftyone/state": "npm:*"
     "@fiftyone/tiling": "npm:*"
     "@fiftyone/utilities": "npm:*"
+    "@foxglove/crc": "npm:^0.0.3"
     "@foxglove/ros2idl-parser": "npm:^0.3.6"
     "@foxglove/rosmsg": "npm:^5.0.5"
     "@foxglove/rosmsg-serialization": "npm:^2.1.2"

@@ -164,6 +164,12 @@ export interface McapBoundedMessageReadRequest {
   readonly topics?: readonly string[];
 }
 
+/** Raw-message materialization for already-selected message-index entries. */
+export interface McapReadIndexedMessagesRequest {
+  readonly entries: readonly McapIndexedMessageTime[];
+  readonly signal?: AbortSignal;
+}
+
 /** Raw messages and work evidence returned by the bounded MCAP executor. */
 export interface McapBoundedMessageReadResult {
   readonly continuation?: McapReadContinuation;
@@ -204,6 +210,14 @@ export interface McapIndexedReaderLike {
   readBoundedMessages?(
     request: McapBoundedMessageReadRequest,
   ): Promise<McapBoundedMessageReadResult>;
+
+  /**
+   * Resolves exact selected offsets through a stable decompressed-chunk cache.
+   * Results correspond positionally to the requested entries.
+   */
+  readIndexedMessages?(
+    request: McapReadIndexedMessagesRequest,
+  ): Promise<readonly McapTypes.TypedMcapRecords["Message"][]>;
 
   /**
    * Reads timestamp-only message-index entries without decoding chunk records.

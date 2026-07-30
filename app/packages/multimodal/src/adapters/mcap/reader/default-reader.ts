@@ -14,6 +14,7 @@ import type {
   McapPrefetchWindowRequest,
 } from "./prefetch-types";
 import { createCachedMcapDecompressHandlers } from "./decompress-cache";
+import { createMcapIndexedMessageReader } from "./indexed-message-reader";
 import { readLatestIndexedMessageTimesForReader } from "./latest-before";
 import { readIndexedMessageTimesForReader } from "./message-index";
 import { readTopicIndexedTimeBoundsForReader } from "./topic-time-bounds";
@@ -83,6 +84,12 @@ export async function createDefaultMcapReader(
   };
   if (readable instanceof ByteClientReadable) {
     adapterReader.readBoundedMessages = createMcapBoundedReader({
+      decompressHandlers: wasmDecompressHandlers,
+      readable,
+      reader: adapterReader,
+      sourceKey: () => readable.sourceAccessKey(),
+    });
+    adapterReader.readIndexedMessages = createMcapIndexedMessageReader({
       decompressHandlers: wasmDecompressHandlers,
       readable,
       reader: adapterReader,
