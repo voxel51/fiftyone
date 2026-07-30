@@ -29,7 +29,7 @@ import {
 import type { CameraModel } from "../spatial/camera-geometry/camera-model";
 import { toGpuCameraProjection } from "../spatial/camera-geometry/gpu-camera-projection";
 import type { ImageProjectionLayer } from "./use-image-projection-layers";
-import { allocatePointCloudCanvasBudget } from "../../../visualization/scene-3d/gpu/point-cloud-canvas-budget";
+import { allocatePointCloudCanvasBudget } from "../../../visualization/webgpu/point-cloud-canvas-budget";
 import { DEFAULT_MAX_RENDERED_POINTS } from "../../../visualization/scene-3d/point-cloud-colors";
 import { useWebGpuViewPointCloudBudget } from "../../../visualization/webgpu/WebGpuViewStage";
 
