@@ -8,8 +8,8 @@
     "scripts": {
         "build": "yarn check:strict && yarn workspace @fiftyone/app build",
         "build:win32": "yarn check:strict && yarn workspace @fiftyone/app build:win32",
-        "check:strict": "echo 'Running strict lint checks...' && yarn workspace @fiftyone/multimodal check",
-        "check": "yarn workspace @fiftyone/multimodal check",
+        "check:strict": "echo 'Running strict lint checks...' && yarn workspace @fiftyone/multimodal check && yarn workspace @fiftyone/embeddings-v2 check",
+        "check": "yarn workspace @fiftyone/multimodal check && yarn workspace @fiftyone/embeddings-v2 check",
         "typecheck": "tsc --noEmit -p tsconfig.check.json",
         "typecheck:error-count": "yarn typecheck | grep -c \"error TS\"",
         "compile": "yarn relay-compiler",
