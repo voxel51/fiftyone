@@ -1,4 +1,5 @@
 import type { MosaicNode } from "react-mosaic-component";
+import { sanitizeBoundedStringList } from "../../../utils/bounded-string-list";
 import { isEpisodeTileExtensionId } from "../../../extensions/tiles/registry";
 import {
   normalizeScene3dUpAxis,
@@ -569,22 +570,11 @@ function sanitizeStreamList(raw: unknown): readonly string[] | undefined {
   if (!Array.isArray(raw)) {
     return undefined;
   }
-  const streams: string[] = [];
-  const seen = new Set<string>();
-  for (const value of raw) {
-    if (streams.length >= MAX_MAP_STREAMS_PER_TILE) break;
-    if (
-      typeof value !== "string" ||
-      value.length === 0 ||
-      value.length > MAX_MAP_STREAM_LENGTH ||
-      seen.has(value)
-    ) {
-      continue;
-    }
-    seen.add(value);
-    streams.push(value);
-  }
-  return streams;
+  return sanitizeBoundedStringList(
+    raw,
+    MAX_MAP_STREAMS_PER_TILE,
+    MAX_MAP_STREAM_LENGTH,
+  );
 }
 
 /**

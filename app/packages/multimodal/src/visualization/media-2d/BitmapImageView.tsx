@@ -36,6 +36,7 @@ import type {
   ImageVisualization,
   RawImageVisualization,
 } from "../../ir";
+import { useLatestRef } from "../../utils/use-latest-ref";
 import { fittedImageSize } from "./image-fit";
 import {
   createEncodedVideoCanvas,
@@ -283,12 +284,11 @@ export function BitmapImageView({
   style,
 }: BitmapImageViewProps) {
   const { canvasRef, commit, cssSize } = useBitmapCanvas(fit, true);
-  const onErrorRef = useRef(onError);
-  onErrorRef.current = onError;
-  const onImageLoadedRef = useRef(onImageLoaded);
-  onImageLoadedRef.current = onImageLoaded;
-  const onBitmapRetainedBytesChangeRef = useRef(onBitmapRetainedBytesChange);
-  onBitmapRetainedBytesChangeRef.current = onBitmapRetainedBytesChange;
+  const onErrorRef = useLatestRef(onError);
+  const onImageLoadedRef = useLatestRef(onImageLoaded);
+  const onBitmapRetainedBytesChangeRef = useLatestRef(
+    onBitmapRetainedBytesChange,
+  );
 
   // This effect decodes the current bytes and commits the resulting
   // bitmap. The cleanup flag is the out-of-order guard: only the latest
@@ -335,7 +335,16 @@ export function BitmapImageView({
     return () => {
       cancelled = true;
     };
-  }, [bytes, cssSize, mimeType, commit, fit]);
+  }, [
+    bytes,
+    commit,
+    cssSize,
+    fit,
+    mimeType,
+    onBitmapRetainedBytesChangeRef,
+    onErrorRef,
+    onImageLoadedRef,
+  ]);
 
   return (
     <canvas
@@ -409,12 +418,11 @@ function BitmapEncodedVideoView({
   readonly frame: EncodedVideoVisualization;
 }) {
   const { canvasRef, commit } = useBitmapCanvas(fit);
-  const onErrorRef = useRef(onError);
-  onErrorRef.current = onError;
-  const onImageLoadedRef = useRef(onImageLoaded);
-  onImageLoadedRef.current = onImageLoaded;
-  const onBitmapRetainedBytesChangeRef = useRef(onBitmapRetainedBytesChange);
-  onBitmapRetainedBytesChangeRef.current = onBitmapRetainedBytesChange;
+  const onErrorRef = useLatestRef(onError);
+  const onImageLoadedRef = useLatestRef(onImageLoaded);
+  const onBitmapRetainedBytesChangeRef = useLatestRef(
+    onBitmapRetainedBytesChange,
+  );
   const previewTextureKey = useId();
 
   useEffect(() => {
@@ -443,7 +451,14 @@ function BitmapEncodedVideoView({
       cancelled = true;
       releaseEncodedVideoSession(frame, previewTextureKey);
     };
-  }, [commit, frame, previewTextureKey]);
+  }, [
+    commit,
+    frame,
+    onBitmapRetainedBytesChangeRef,
+    onErrorRef,
+    onImageLoadedRef,
+    previewTextureKey,
+  ]);
 
   return (
     <canvas
@@ -467,12 +482,11 @@ function BitmapRawImageView({
   readonly frame: RawImageVisualization;
 }) {
   const { canvasRef, commit } = useBitmapCanvas(fit);
-  const onErrorRef = useRef(onError);
-  onErrorRef.current = onError;
-  const onImageLoadedRef = useRef(onImageLoaded);
-  onImageLoadedRef.current = onImageLoaded;
-  const onBitmapRetainedBytesChangeRef = useRef(onBitmapRetainedBytesChange);
-  onBitmapRetainedBytesChangeRef.current = onBitmapRetainedBytesChange;
+  const onErrorRef = useLatestRef(onError);
+  const onImageLoadedRef = useLatestRef(onImageLoaded);
+  const onBitmapRetainedBytesChangeRef = useLatestRef(
+    onBitmapRetainedBytesChange,
+  );
   const sourceCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -491,7 +505,13 @@ function BitmapRawImageView({
     } catch (error) {
       onErrorRef.current?.(error);
     }
-  }, [commit, frame]);
+  }, [
+    commit,
+    frame,
+    onBitmapRetainedBytesChangeRef,
+    onErrorRef,
+    onImageLoadedRef,
+  ]);
 
   return (
     <canvas

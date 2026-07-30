@@ -30,6 +30,7 @@ import type {
   ReadContinuation,
   ReadWorkBudget,
 } from "../../../ports";
+import { errorMessage } from "../../../utils/errors";
 import { useDataStream } from "../playback/data-stream-context";
 import { shouldDeferIdleWorkForStore } from "../playback/network-health";
 
@@ -574,8 +575,7 @@ export function NumericSeriesBridge({
                 if (isCancelled() || controller.signal.aborted) {
                   return;
                 }
-                const message =
-                  error instanceof Error ? error.message : String(error);
+                const message = errorMessage(error);
                 const failedNow = nowMs();
                 for (const fieldPath of fields) {
                   const key = numericSeriesKey(batch.stream, fieldPath);

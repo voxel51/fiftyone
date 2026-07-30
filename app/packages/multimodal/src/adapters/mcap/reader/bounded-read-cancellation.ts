@@ -1,4 +1,5 @@
 import type { ReadWorkUsage } from "../../../ports";
+import { emptyReadWorkUsage } from "../../../ports/read-work-usage";
 
 /** Best-effort work known to have completed before a bounded read stopped. */
 export interface McapBoundedReadCancellation {
@@ -34,16 +35,7 @@ export function isMcapBoundedReadCancelledError(
 
 /** Zero known work for cancellation before a queued grant starts. */
 export function emptyMcapBoundedReadUsage(): ReadWorkUsage {
-  return {
-    chunksOpened: 0,
-    decompressedBytes: 0,
-    decompressionCacheHits: 0,
-    elapsedMs: 0,
-    logicalSourceBytes: 0,
-    logicalUncompressedBytes: 0,
-    messagesDecoded: 0,
-    transferredBytes: 0,
-  };
+  return emptyReadWorkUsage();
 }
 
 function isReadWorkUsage(value: unknown): value is ReadWorkUsage {

@@ -14,6 +14,7 @@ import React, {
 } from "react";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import { LOG_LEVELS, type LogLevel } from "../../../ir";
+import { errorMessage } from "../../../utils/errors";
 import { useLogTileSettings, useSetLogTileSettings } from "./log-tile-state";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
 import { useDataStream } from "../playback/data-stream-context";
@@ -279,7 +280,7 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
       } catch (error) {
         if (!cancelled) {
           setState((current) => ({
-            error: error instanceof Error ? error.message : String(error),
+            error: errorMessage(error),
             rawRows: reusableWindow
               ? pruneLogRows(current.rawRows, activeWindow)
               : [],

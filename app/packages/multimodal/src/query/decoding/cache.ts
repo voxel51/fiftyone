@@ -6,6 +6,7 @@ import {
   setByteBoundedEntry,
 } from "../cache-utils";
 import { byteSourceCacheKey } from "../bytes";
+import { payloadDescriptorKey } from "../../decoders/registry";
 import type {
   DecodedOutputCache,
   DecodedOutputCacheKey,
@@ -16,17 +17,11 @@ import type {
  * Creates a stable cache key for a decoded output.
  */
 export function decodedOutputCacheKey(key: DecodedOutputCacheKey): string {
-  const payloadKey = serializeCacheKey([
-    key.payload.encoding,
-    key.payload.schemaEncoding ?? null,
-    key.payload.schema ?? null,
-  ]);
-
   return serializeCacheKey([
     key.decoderId,
     key.decoderVersion,
     key.decoderOptionsKey ?? null,
-    payloadKey,
+    payloadDescriptorKey(key.payload),
     key.streamId,
     key.recordId,
     key.timeNs?.toString() ?? null,

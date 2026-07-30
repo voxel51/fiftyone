@@ -13,6 +13,7 @@ import {
   type ImageVisualization,
 } from "../../ir";
 import type { EpisodeSession } from "../../ports";
+import { errorMessage } from "../../utils/errors";
 import { PointCloudPanel } from "../../visualization/composition";
 import { ImagePanel } from "../../visualization/media-2d/ImagePanel";
 
@@ -297,10 +298,6 @@ function bigintToBoundedNumber(value: bigint): number {
 function formatDuration(value: bigint): string {
   const seconds = Number(value) / 1e9;
   return `${Math.max(0, seconds).toFixed(2)}s`;
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 const styles: Readonly<Record<string, CSSProperties>> = {

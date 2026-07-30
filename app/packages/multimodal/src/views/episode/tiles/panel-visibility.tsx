@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { sanitizeBoundedStringList } from "../../../utils/bounded-string-list";
 import {
   DEFAULT_PROJECTION_POINT_SIZE,
   normalizePointSize,
@@ -684,16 +685,11 @@ function normalizeImagePointCloudProjection(
 }
 
 function sanitizeStreamList(raw: readonly unknown[]): readonly string[] {
-  const result: string[] = [];
-  const seen = new Set<string>();
-  for (const stream of raw) {
-    if (result.length >= MAX_STREAMS_PER_TILE) break;
-    if (!isBoundedString(stream, MAX_STREAM_LENGTH) || seen.has(stream))
-      continue;
-    seen.add(stream);
-    result.push(stream);
-  }
-  return result;
+  return sanitizeBoundedStringList(
+    raw,
+    MAX_STREAMS_PER_TILE,
+    MAX_STREAM_LENGTH,
+  );
 }
 
 function isBoundedString(value: unknown, maxLength: number): value is string {

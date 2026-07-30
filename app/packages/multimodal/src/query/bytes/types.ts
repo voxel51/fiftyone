@@ -81,24 +81,14 @@ export interface ByteRangeReadResult {
 
 /** Physical cache-fill outcome behind one logical byte-range result. */
 export interface ByteRangeReadUsage {
-  readonly cacheResult:
-    | "coalesced"
-    | "fill-hit"
-    | "fetched"
-    | "persistent-hit"
-    | "request-hit";
+  readonly cacheResult: ByteCacheReadResult;
   readonly fillRange: ByteRange;
   readonly transferredBytes: number;
 }
 
 export interface ByteReadDebugLog {
   readonly blockFill: boolean;
-  readonly cacheResult:
-    | "coalesced"
-    | "fill-hit"
-    | "fetched"
-    | "persistent-hit"
-    | "request-hit";
+  readonly cacheResult: ByteCacheReadResult;
   readonly durationMs: number;
   readonly fetchedBytes: number;
   readonly fillLength: string;
@@ -109,6 +99,13 @@ export interface ByteReadDebugLog {
   readonly returnedBytes: number;
   readonly sourceId: string;
 }
+
+type ByteCacheReadResult =
+  | "coalesced"
+  | "fill-hit"
+  | "fetched"
+  | "persistent-hit"
+  | "request-hit";
 
 export interface ByteReadDebugOptions {
   readonly enabled?: boolean;

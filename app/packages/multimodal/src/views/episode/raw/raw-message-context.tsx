@@ -15,6 +15,7 @@ import { startDemandBridge } from "../../../runtime";
 import { useDemandRegistry } from "../../../runtime/react";
 import type { RawRecordResult, RawRecordStream } from "../../../ir";
 import type { RawRecordCapability } from "../../../ports";
+import { errorMessage } from "../../../utils/errors";
 import { shouldDeferIdleWorkForStore } from "../playback/network-health";
 import { useDataStream } from "../playback/data-stream-context";
 
@@ -348,7 +349,7 @@ export function RawMessageBridge({
               const previous = published.get(stream);
               if (!previous?.result) {
                 published.set(stream, {
-                  error: error instanceof Error ? error.message : String(error),
+                  error: errorMessage(error),
                   status: "error",
                 });
               }

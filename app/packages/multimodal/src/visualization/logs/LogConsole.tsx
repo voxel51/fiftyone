@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 import type { LogLevel } from "../../ir";
+import { relativeTimeParts } from "../../utils/relative-time";
 import type { EpisodeLogConsoleRow } from "./log-console-rows";
 import { virtualLogRowRange } from "./log-console-virtualization";
 import styles from "./LogConsole.module.css";
@@ -226,12 +227,10 @@ function isSpaceKey(event: React.KeyboardEvent<HTMLElement>): boolean {
 }
 
 function formatRelativeTime(timeNs: bigint, originNs: bigint): string {
-  const deltaNs = timeNs - originNs;
-  const sign = deltaNs < 0n ? "-" : "";
-  const absoluteNs = deltaNs < 0n ? -deltaNs : deltaNs;
-  const seconds = absoluteNs / 1_000_000_000n;
-  const millis = (absoluteNs % 1_000_000_000n) / 1_000_000n;
-  return `${sign}${seconds.toString()}.${millis.toString().padStart(3, "0")}s`;
+  const { milliseconds, negative, seconds } = relativeTimeParts(
+    timeNs - originNs,
+  );
+  return `${negative ? "-" : ""}${seconds}.${milliseconds}s`;
 }
 
 function formatWindowOffset(timeNs: bigint, windowStartNs: bigint): string {

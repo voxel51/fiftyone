@@ -1,5 +1,6 @@
 import type { DecodeContext, Decoder } from "../../../../decoders/index";
 import type { DecodedOutput, PayloadDescriptor } from "../../../../ir/index";
+import { errorMessage } from "../../../../utils/errors";
 import { timingFromContext } from "../foxglove/protobuf/timing";
 import { decodeJsonRecord } from "./decode";
 
@@ -48,7 +49,7 @@ function degradedJsonOutput(
 ): DecodedOutput {
   return {
     attributes: {
-      decodeError: error instanceof Error ? error.message : String(error),
+      decodeError: errorMessage(error),
     },
     timing: timingFromContext(context, undefined),
   };

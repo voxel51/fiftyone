@@ -14,6 +14,7 @@ import RawMessageTileSettings from "./RawMessageTileSettings";
 import { useRegisterTileSettings } from "../tiles/tile-settings-context";
 import styles from "../tiles/Tile.module.css";
 import { useCopyFeedback } from "../../../visualization/panel-ui/use-copy-feedback";
+import { relativeTimeParts } from "../../../utils/relative-time";
 
 /**
  * Raw message tile: the escape hatch that makes every stream at least
@@ -289,14 +290,10 @@ function noticeText(result: RawRecordResult): string {
 }
 
 function formatRelativeSeconds(logTimeNs: bigint, startTimeNs: bigint): string {
-  const deltaNs = logTimeNs - startTimeNs;
-  const negative = deltaNs < 0n;
-  const magnitude = negative ? -deltaNs : deltaNs;
-  const wholeSeconds = magnitude / 1_000_000_000n;
-  const millis = (magnitude % 1_000_000_000n) / 1_000_000n;
-  return `t=${negative ? "-" : "+"}${wholeSeconds.toString()}.${millis
-    .toString()
-    .padStart(3, "0")}s`;
+  const { milliseconds, negative, seconds } = relativeTimeParts(
+    logTimeNs - startTimeNs,
+  );
+  return `t=${negative ? "-" : "+"}${seconds}.${milliseconds}s`;
 }
 
 export default RawMessageTile;
