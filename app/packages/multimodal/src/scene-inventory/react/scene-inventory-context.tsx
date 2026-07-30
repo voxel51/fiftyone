@@ -3,12 +3,7 @@ import type { SceneSource } from "../../ir";
 
 export type { SceneSource } from "../../ir";
 
-/**
- * One discoverable data source in the current scene. `type` is the
- * source kind tiles use to find what they can render ("image",
- * "point-cloud", …). `id` is opaque to the inventory — it is the stable
- * stream identity chosen by the source adapter.
- */
+/** The discoverable data sources in the current scene (see `SceneSource`). */
 interface SceneInventoryContextValue {
   readonly sources: readonly SceneSource[];
 }

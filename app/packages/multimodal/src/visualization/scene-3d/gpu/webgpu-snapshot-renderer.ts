@@ -151,7 +151,7 @@ const realBackend: WebGpuSnapshotBackend = {
     // consumes the frame. Initial size is irrelevant; every job sets its
     // own size.
     const canvas = new OffscreenCanvas(1, 1);
-    // Same construction parameters as `webgpu-canvas.tsx`'s renderer so
+    // Same construction parameters as `WebGpuCanvas.tsx`'s renderer so
     // snapshot output matches the live panels (antialias, opaque, sRGB).
     const renderer = new WebGPURenderer({
       alpha: false,
@@ -170,7 +170,7 @@ const realBackend: WebGpuSnapshotBackend = {
       },
       async renderAndCapture(scene, camera, width, height) {
         // setSize lives on the common Renderer base, which the resolved
-        // types don't surface (same cast as webgpu-canvas.tsx). Sizes are
+        // types don't surface (same cast as WebGpuCanvas.tsx). Sizes are
         // pre-clamped >= 1 by the queue — a zero-size swapchain poisons
         // every later command buffer.
         (
@@ -458,7 +458,8 @@ function buildSnapshotScene(
     PERSPECTIVE_POINT_CAMERA.near,
     PERSPECTIVE_POINT_CAMERA.far,
   );
-  // Z-up, mirroring useZUpSceneCoordinates in the live Base3dScene.
+  // Snapshots pin Z-up; the live Base3dScene resolves its up axis per scene
+  // via useSceneUpCoordinates.
   camera.up.set(0, 0, 1);
   if (pose) {
     camera.position.set(...pose.position);

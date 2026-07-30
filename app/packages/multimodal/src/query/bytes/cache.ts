@@ -4,6 +4,7 @@ import {
   serializeCacheKey,
   setByteBoundedEntry,
 } from "../cache-utils";
+import { safeNumber } from "./bigint-utils";
 import type {
   ByteRangeCache,
   ByteRangeReadRequest,
@@ -61,22 +62,10 @@ export function createMemoryByteRangeCache(
         return undefined;
       }
 
-      const sliceStartOffset =
-        request.range.offset - containingHit.range.offset;
-      const maxSafeNumber = BigInt(Number.MAX_SAFE_INTEGER);
-      if (sliceStartOffset > maxSafeNumber) {
-        throw new Error(
-          `Byte length ${sliceStartOffset.toString()} exceeds safe number range`,
-        );
-      }
-      if (request.range.length > maxSafeNumber) {
-        throw new Error(
-          `Byte length ${request.range.length.toString()} exceeds safe number range`,
-        );
-      }
-
-      const start = Number(sliceStartOffset);
-      const end = start + Number(request.range.length);
+      const start = safeNumber(
+        request.range.offset - containingHit.range.offset,
+      );
+      const end = start + safeNumber(request.range.length);
 
       return {
         bytes: containingHit.bytes.subarray(start, end),

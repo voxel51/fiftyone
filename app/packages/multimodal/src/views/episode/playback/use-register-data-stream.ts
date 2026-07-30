@@ -173,9 +173,9 @@ export function useRegisterDataStream({
       startupMinTicks: 1,
     } satisfies DerivedPlaybackPolicy;
   }, [sourceReadProfile, timelineTickRateHz]);
-  // Locality does not make compressed MCAP decode or transform work cheap.
-  // Coalesce intermediate scrub targets for classified byte sources;
-  // settleSeek still releases the final target immediately on pointer-up.
+  // Only explicitly remote sources coalesce scrub targets; generic and local
+  // playback stay immediate. settleSeek still releases the final target
+  // immediately on pointer-up.
   const seekFetchDebounceMs =
     sourceReadProfile === BYTE_SOURCE_READ_PROFILE.REMOTE
       ? REMOTE_SEEK_FETCH_DEBOUNCE_MS

@@ -1,3 +1,7 @@
+import { getPlayhead, type PlaybackStore } from "@fiftyone/playback";
+
+import type { EpisodeStreamCache, TimelineIndex } from "../../../runtime";
+
 const BYTES_PER_GIBIBYTE = 1024 ** 3;
 const DEFAULT_DECODED_CACHE_BUDGET_BYTES = 256 * 1024 ** 2;
 const MIN_DECODED_CACHE_BUDGET_BYTES = 128 * 1024 ** 2;
@@ -125,6 +129,3 @@ export function reportedDeviceMemoryGb(): number | null {
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
-import { getPlayhead, type PlaybackStore } from "@fiftyone/playback";
-
-import type { EpisodeStreamCache, TimelineIndex } from "../../../runtime";

@@ -293,10 +293,6 @@ export function shouldPublishNetworkHealth(
     return true;
   }
 
-  if (!next.limited) {
-    return false;
-  }
-
   return false;
 }
 

@@ -6,7 +6,11 @@ import {
   type PlaybackStore,
 } from "@fiftyone/playback";
 import type { DecodedFrame, SynchronizedFrameWindow } from "../../../ir";
-import { type EpisodeStreamCache, type TimelineIndex } from "../../../runtime";
+import {
+  DEFAULT_TIMELINE_TICK_RATE_HZ,
+  type EpisodeStreamCache,
+  type TimelineIndex,
+} from "../../../runtime";
 
 /** Read lanes used by the episode playback prefetch scheduler. */
 export type DataOperation =
@@ -53,7 +57,7 @@ export const DEFAULT_PLAYBACK_POLICY: PlaybackPolicy = {
 /** Resolves a playback policy against the active timeline tick rate. */
 export function derivePlaybackPolicy(
   policy: PlaybackPolicy,
-  tickRateHz = 30,
+  tickRateHz = DEFAULT_TIMELINE_TICK_RATE_HZ,
 ): DerivedPlaybackPolicy {
   if (!Number.isFinite(tickRateHz) || tickRateHz <= 0) {
     throw new Error("Playback tick rate must be finite and greater than zero");
