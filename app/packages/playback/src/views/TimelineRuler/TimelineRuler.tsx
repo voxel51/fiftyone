@@ -105,8 +105,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const viewEnd = useViewEnd();
   const loopStart = useLoopStart();
   const loopEnd = useLoopEnd();
-  const { duration, seekSnapped, setView, setLoop, snapPlayheadToFrame } =
-    usePlayback();
+  const { duration, seekSnapped, setView, setLoop, settleSeek } = usePlayback();
   const { mode, ...displayConversion } = useTimelineDisplay();
   const hoverTime = useHoverTime();
   const store = usePlaybackStore();
@@ -209,11 +208,9 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         ),
       );
     },
-    // Redundant when `seekSnapped` already landed each mid-drag tick on a
-    // frame boundary — kept as a belt-and-suspenders settle (cheap no-op
-    // when the playhead is already aligned, thanks to the equality guard
-    // inside `snapPlayheadToFrame`).
-    onDragEnd: () => snapPlayheadToFrame(),
+    // Flush the final target immediately instead of waiting out any trailing
+    // fetch debounce; settle snapping is applied by the same action.
+    onDragEnd: settleSeek,
   });
 
   const loopStartDrag = useDragDelta({
@@ -290,6 +287,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
           clamp(vs + (laneX / laneWidth) * (ve - vs), 0, duration),
         ),
       );
+      settleSeek();
     },
   });
 

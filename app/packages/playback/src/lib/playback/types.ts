@@ -323,6 +323,11 @@ export interface PlaybackContextValue {
   pause: () => void;
   seek: (time: number) => void;
   /**
+   * Ends a human-driven scrub. Flushes any trailing seek-fetch debounce
+   * immediately and applies settle snapping when configured.
+   */
+  settleSeek: () => void;
+  /**
    * Snap the playhead to the start of the displayed frame. No-op unless the
    * provider was configured with `snapToFrameOnSettle`. Call at scrub
    * settle points (e.g. a playhead drag-end) — pausing snaps automatically.

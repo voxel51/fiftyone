@@ -59,7 +59,7 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
   }, [enumeration.streams]);
   const dataStream = useDataStream();
   const durationSec = dataStream?.getTimelineIndex()?.durationSec ?? 0;
-  const { seek } = usePlayback();
+  const { seek, settleSeek } = usePlayback();
   const store = usePlaybackStore();
 
   // This effect kicks the plottable-field enumeration for the settings
@@ -195,6 +195,7 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
           durationSec={durationSec}
           onHoverTime={onHoverTime}
           onSeek={seek}
+          onSeekEnd={settleSeek}
           registerHoverTimeListener={registerHoverTimeListener}
           registerPlayheadListener={registerPlayheadListener}
           series={chartSeries}

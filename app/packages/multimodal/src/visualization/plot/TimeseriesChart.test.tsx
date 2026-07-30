@@ -210,13 +210,15 @@ describe("TimeseriesChart interactions", () => {
 
   it("keeps tap-to-seek and ignores pointer travel from a pan", () => {
     const onSeek = vi.fn();
-    const { unmount } = renderChart(onSeek);
+    const onSeekEnd = vi.fn();
+    const { unmount } = renderChart(onSeek, onSeekEnd);
     const over = lastChart().over;
 
     dispatchPointer(over, "pointerdown", 5, 5);
     dispatchPointer(over, "pointerup", 5, 5);
     expect(onSeek).toHaveBeenCalledOnce();
     expect(onSeek).toHaveBeenCalledWith(5);
+    expect(onSeekEnd).toHaveBeenCalledOnce();
 
     dispatchPointer(over, "pointerdown", 5, 5);
     dispatchPointer(over, "pointerup", 5, 20);
@@ -227,16 +229,19 @@ describe("TimeseriesChart interactions", () => {
     dispatchPointer(over, "pointerup", 15, 5, 2);
     dispatchPointer(over, "pointerup", 5, 5, 1);
     expect(onSeek).toHaveBeenCalledOnce();
+    expect(onSeekEnd).toHaveBeenCalledOnce();
     unmount();
   });
 
   it("scrubs continuously when the playhead marker is grabbed", () => {
     const onSeek = vi.fn();
+    const onSeekEnd = vi.fn();
     const { unmount } = render(
       <TimeseriesChart
         data={DATA}
         durationSec={20}
         onSeek={onSeek}
+        onSeekEnd={onSeekEnd}
         registerPlayheadListener={(listener) => {
           listener(5);
           return vi.fn();
@@ -255,6 +260,7 @@ describe("TimeseriesChart interactions", () => {
 
     dispatchPointer(playhead, "pointerup", 15, 5);
     expect(playhead.className).not.toContain("playheadDragging");
+    expect(onSeekEnd).toHaveBeenCalledOnce();
     unmount();
   });
 });
@@ -264,12 +270,13 @@ const DATA = [
   [1, 2],
 ] as AlignedData;
 
-function renderChart(onSeek = vi.fn()) {
+function renderChart(onSeek = vi.fn(), onSeekEnd?: () => void) {
   return render(
     <TimeseriesChart
       data={DATA}
       durationSec={20}
       onSeek={onSeek}
+      onSeekEnd={onSeekEnd}
       series={[{ color: "#f00", label: "speed" }]}
     />,
   );

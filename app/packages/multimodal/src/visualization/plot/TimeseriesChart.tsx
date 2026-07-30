@@ -34,6 +34,9 @@ export interface TimeseriesChartProps {
   /** Click-to-seek callback with the clicked x value in seconds. */
   readonly onSeek?: (sec: number) => void;
 
+  /** Called when a click or playhead drag settles on its final seek target. */
+  readonly onSeekEnd?: () => void;
+
   /**
    * Shared hover-time feed: called with a listener that moves the echo
    * caret (null hides it); returns an unsubscribe. The caret is a DOM
@@ -109,6 +112,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   durationSec,
   onHoverTime,
   onSeek,
+  onSeekEnd,
   registerHoverTimeListener,
   registerPlayheadListener,
   series,
@@ -127,6 +131,8 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   seriesRef.current = series;
   const onSeekRef = useRef(onSeek);
   onSeekRef.current = onSeek;
+  const onSeekEndRef = useRef(onSeekEnd);
+  onSeekEndRef.current = onSeekEnd;
   const onHoverTimeRef = useRef(onHoverTime);
   onHoverTimeRef.current = onHoverTime;
   const seriesIdentity = JSON.stringify(series);
@@ -328,6 +334,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       if (line.hasPointerCapture?.(event.pointerId)) {
         line.releasePointerCapture(event.pointerId);
       }
+      onSeekEndRef.current?.();
     };
 
     const onPlayheadPointerDown = (event: PointerEvent) => {
@@ -370,6 +377,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       }
       playheadDrag = null;
       line.classList.remove(styles.playheadDragging);
+      onSeekEndRef.current?.();
     };
     // uPlot starts its selection gesture from `mousedown`; stopping the
     // compatibility event keeps grabbing the playhead distinct from the
@@ -422,6 +430,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       const sec = chart.posToVal(event.clientX - rect.left, "x");
       if (Number.isFinite(sec)) {
         seek(Math.min(Math.max(sec, 0), durationSec));
+        onSeekEndRef.current?.();
       }
     };
     const onPointerCancel = (event: PointerEvent) => {

@@ -1284,6 +1284,41 @@ describe("PlaybackProvider engine actions", () => {
       }
     });
 
+    it("flushes the final missing-data target when a scrub settles", () => {
+      vi.useFakeTimers();
+      try {
+        const { result } = renderEngine({
+          duration: 10,
+          seekFetchDebounceMs: 100,
+        });
+        let state: "loading" | "missing" = "missing";
+        const prefetch = vi.fn(() => {
+          state = "loading";
+        });
+        act(() => {
+          result.current.api.registerStream({
+            id: "remote",
+            blocking: true,
+            bufferState: () => state,
+            prefetch,
+          });
+          result.current.api.subscribeStream("remote");
+          result.current.api.seek(1);
+          result.current.api.seek(3);
+        });
+
+        expect(prefetch).not.toHaveBeenCalled();
+        act(() => result.current.api.settleSeek());
+        expect(prefetch).toHaveBeenCalledOnce();
+        expect(prefetch).toHaveBeenCalledWith([3, 6]);
+
+        act(() => vi.advanceTimersByTime(100));
+        expect(prefetch).toHaveBeenCalledOnce();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("commits buffered seeks synchronously despite a configured debounce", () => {
       const { result } = renderEngine({
         duration: 10,

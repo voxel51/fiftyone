@@ -674,18 +674,26 @@ export function usePlaybackEngine({
   );
 
   const actions = useMemo(() => {
-    // Settle-snap: align the playhead to the displayed frame's start. No-op
-    // unless `snapToFrameOnSettle` is configured, so general playback keeps
-    // continuous scrubbing — only the resting position after pause / drag-end
-    // is snapped, never the mid-drag `seek`s. Mirrors `seek`'s set →
-    // fireSeekEvent → commit-if-ready flow so buffering is respected.
-    const snapPlayheadToFrame = () => {
+    const flushPendingSeek = () => {
+      const current = store.get(playheadAtom);
+      if (pendingCommitRef.current === current) {
+        commitWhenReady(current, true);
+      }
+    };
+
+    // Settle-snap: align the playhead to the displayed frame's start when
+    // configured. Scrub settle additionally flushes a pending trailing fetch
+    // when snapping is disabled; pause retains the historical snap-only
+    // behavior.
+    const settlePlayhead = (flushWithoutSnap: boolean) => {
       if (!snapToFrameRef.current) {
+        if (flushWithoutSnap) flushPendingSeek();
         return;
       }
 
       const step = store.get(stepIntervalAtom);
       if (!(step > 0)) {
+        if (flushWithoutSnap) flushPendingSeek();
         return;
       }
 
@@ -700,9 +708,7 @@ export function usePlaybackEngine({
         // A drag may already have landed exactly on a frame boundary. Treat
         // its settle call as an explicit flush even though no visual move is
         // needed.
-        if (pendingCommitRef.current === current) {
-          commitWhenReady(current, true);
-        }
+        flushPendingSeek();
         return;
       }
 
@@ -710,8 +716,11 @@ export function usePlaybackEngine({
       fireSeekEvent(snapped);
       commitWhenReady(snapped, true);
     };
+    const snapPlayheadToFrame = () => settlePlayhead(false);
+    const settleSeek = () => settlePlayhead(true);
 
     return {
+      settleSeek,
       snapPlayheadToFrame,
       seek: (time: number) => {
         const clamped = clamp(time, 0, store.get(durationAtom));
