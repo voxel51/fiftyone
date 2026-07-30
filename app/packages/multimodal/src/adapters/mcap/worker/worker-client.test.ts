@@ -302,6 +302,36 @@ describe("worker-backed MCAP resource client", () => {
     idleWorker.respond({ error: "late", id: 1, ok: false });
   });
 
+  it("cancels obsolete playback runway without touching idle batches", async () => {
+    const { client, workers } = createClientHarness();
+    const request = {
+      timeNs: [1n, 2n],
+      source: createSource("source:1"),
+      topics: ["/camera"],
+    };
+
+    const runway = client.readSynchronizedMessageBatch(request);
+    const foregroundWorker = workers[0];
+    const idle = client.readSynchronizedMessageBatch(request, {
+      priority: "idle",
+    });
+    const idleWorker = workers[1];
+
+    client.cancelRunwayReads?.();
+
+    await expect(runway).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
+    expect(foregroundWorker.messages.at(-1)).toEqual({
+      id: 1,
+      type: "cancel",
+    });
+    expect(idleWorker.messages.at(-1)).toMatchObject({
+      type: "readSynchronizedMessageBatch",
+    });
+
+    idleWorker.respond({ id: 1, ok: true, result: [] });
+    await expect(idle).resolves.toEqual([]);
+  });
+
   it("can demote speculative playback batches to idle-prefetch priority", async () => {
     const { client, workers } = createClientHarness();
     const request = {

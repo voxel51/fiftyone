@@ -661,6 +661,11 @@ class McapEpisodeSession implements EpisodeSession {
     this.client.cancelIdleReads?.();
   }
 
+  cancelRunway(): void {
+    this.ensureOpen();
+    this.client.cancelRunwayReads?.();
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;

@@ -71,6 +71,19 @@ describe("MCAP format adapter", () => {
     session.dispose();
   });
 
+  it("forwards seek-runway cancellation to the resource client", async () => {
+    const client = createClient();
+    client.cancelRunwayReads = vi.fn();
+    const session = await createMcapFormatAdapter({
+      createClient: () => client,
+    }).open(source, io);
+
+    session.cancelRunway?.();
+
+    expect(client.cancelRunwayReads).toHaveBeenCalledOnce();
+    session.dispose();
+  });
+
   it("does not claim ownership when an abandoned open finishes resolving", async () => {
     const controller = new AbortController();
     const client = createClient();

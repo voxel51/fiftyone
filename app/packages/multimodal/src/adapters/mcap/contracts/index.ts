@@ -867,6 +867,12 @@ export interface McapResourceClient {
   cancelIdleReads?(): void;
 
   /**
+   * Cancels queued and in-flight foreground playback batches made obsolete
+   * by a discontinuous seek. Current-frame and placement reads are preserved.
+   */
+  cancelRunwayReads?(): void;
+
+  /**
    * Subscribes to cumulative network-transport snapshots from worker-backed
    * read lanes. Inline clients omit this; network-health consumers treat it as
    * optional.
