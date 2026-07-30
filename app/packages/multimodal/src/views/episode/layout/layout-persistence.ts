@@ -16,7 +16,7 @@ import {
   normalizeMapBaseLayer,
   type MapTileSettings,
 } from "../map/tile/tile-state";
-import { validTimelineSamplingRateHz } from "../playback/timeline-sampling";
+import { sanitizeTimelineSamplingRateHz } from "../playback/timeline-sampling";
 import { TILE_TYPE } from "../tiles/tile-types";
 
 /**
@@ -226,7 +226,7 @@ function sanitizeEntry(raw: unknown): PersistedModalLayout | undefined {
         ? candidate.sidebarWidthPx
         : undefined,
     tileTitles: sanitizeTileTitles(candidate.tileTitles),
-    timelineSamplingRateHz: validTimelineSamplingRateHz(
+    timelineSamplingRateHz: sanitizeTimelineSamplingRateHz(
       candidate.timelineSamplingRateHz,
     ),
   };

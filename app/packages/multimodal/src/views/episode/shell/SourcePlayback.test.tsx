@@ -35,9 +35,11 @@ const playbackHarness = vi.hoisted(() => {
       sceneUpAxis: "z",
       timelineSamplingRateHz: 30,
     })),
-    useSceneInventory: vi.fn(),
+    useSceneInventoryState: vi.fn(),
   };
-  harness.useSceneInventory.mockImplementation(() => harness.sceneInventory);
+  harness.useSceneInventoryState.mockImplementation(
+    () => harness.sceneInventory,
+  );
   return harness;
 });
 
@@ -136,7 +138,7 @@ vi.mock("../layout/use-modal-layout", () => ({
   useModalLayout: playbackHarness.useModalLayout,
 }));
 vi.mock("../stream-discovery/use-scene-inventory", () => ({
-  useSceneInventory: playbackHarness.useSceneInventory,
+  useSceneInventoryState: playbackHarness.useSceneInventoryState,
 }));
 
 describe("SourcePlayback", () => {
@@ -152,7 +154,7 @@ describe("SourcePlayback", () => {
     playbackHarness.shellMounts = 0;
     playbackHarness.shellUnmounts = 0;
     playbackHarness.useModalLayout.mockClear();
-    playbackHarness.useSceneInventory.mockClear();
+    playbackHarness.useSceneInventoryState.mockClear();
   });
 
   afterEach(() => cleanup());

@@ -70,7 +70,7 @@ import {
   useModalLayout,
 } from "../layout/use-modal-layout";
 import { resolveTimelineMode } from "../playback/timeline-mode";
-import { useSceneInventory } from "../stream-discovery/use-scene-inventory";
+import { useSceneInventoryState } from "../stream-discovery/use-scene-inventory";
 
 const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
 
@@ -172,11 +172,12 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
     };
   }, []);
 
-  const { status, error, sources, streams, streamCount } = useSceneInventory({
-    error: sessionError,
-    session,
-    sourceAvailable: source !== null,
-  });
+  const { status, error, sources, streams, streamCount } =
+    useSceneInventoryState({
+      error: sessionError,
+      session,
+      sourceAvailable: source !== null,
+    });
   const sourceKey = useMemo(
     () => (source ? sourceBootstrapKey(source) : ""),
     [source],
@@ -478,7 +479,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                 onPlayheadDataReady={handlePlayheadDataReady}
                                 session={readyInventory ? session : null}
                                 source={playbackSource}
-                                timelineTickRateHz={timelineSamplingRateHz}
+                                timelineSamplingRateHz={timelineSamplingRateHz}
                               />
                               <NetworkHealthTracker
                                 playback={session?.playback ?? null}

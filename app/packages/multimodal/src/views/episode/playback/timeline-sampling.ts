@@ -9,7 +9,7 @@ export const MIN_TIMELINE_SAMPLING_RATE_HZ = 1;
 export const MAX_TIMELINE_SAMPLING_RATE_HZ = 120;
 
 /** Named sampling-rate choices exposed by the playback settings UI. */
-export const TIMELINE_SAMPLING_PRESET = Object.freeze({
+const TIMELINE_SAMPLING_PRESET = Object.freeze({
   ECONOMY: {
     id: "economy",
     label: "Economy",
@@ -54,8 +54,8 @@ export function timelineSamplingPresetForRate(
   return TIMELINE_SAMPLING_PRESETS.find((preset) => preset.rateHz === rateHz);
 }
 
-/** Validates persisted or untyped sampling-rate input. */
-export function validTimelineSamplingRateHz(
+/** Sanitizes persisted or untyped sampling-rate input. */
+export function sanitizeTimelineSamplingRateHz(
   value: unknown,
 ): number | undefined {
   return typeof value === "number" &&
