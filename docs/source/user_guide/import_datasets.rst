@@ -5,6 +5,10 @@ Importing data into FiftyOne
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.3.0
+    :enterprise_version: 1.0
+
 The first step to using FiftyOne is to load your data into a
 :ref:`dataset <using-datasets>`. FiftyOne supports automatic loading of
 datasets stored in various :ref:`common formats <supported-import-formats>`.
@@ -514,6 +518,10 @@ visualizing them :ref:`in the App <fiftyone-app>`.
 Adding model predictions
 ________________________
 
+.. customavailablein::
+    :oss_version: 0.14.1
+    :enterprise_version: 1.0
+
 Once you've created a dataset and ground truth labels, you can easily add model
 predictions to take advantage of FiftyOne's
 :ref:`evaluation capabilities <evaluating-models>`.
@@ -898,6 +906,10 @@ You can create a FiftyOne dataset from a directory of images as follows:
 Video Directory
 _______________
 
+.. customavailablein::
+    :oss_version: 0.6.0
+    :enterprise_version: 1.0
+
 The :class:`fiftyone.types.VideoDirectory` type represents a directory of
 videos.
 
@@ -983,6 +995,10 @@ You can create a FiftyOne dataset from a directory of videos as follows:
 
 Media Directory
 _______________
+
+.. customavailablein::
+    :oss_version: 0.19.0
+    :enterprise_version: 1.1
 
 The :class:`fiftyone.types.MediaDirectory` type represents a directory of media
 files.
@@ -1165,6 +1181,10 @@ stored in the above format as follows:
 Video Classification Dir Tree
 _____________________________
 
+.. customavailablein::
+    :oss_version: 0.6.3
+    :enterprise_version: 1.0
+
 The :class:`fiftyone.types.VideoClassificationDirectoryTree` type represents a
 directory tree whose subfolders define a video classification dataset.
 
@@ -1257,6 +1277,10 @@ stored in the above format as follows:
 
 FiftyOne Image Classification
 _____________________________
+
+.. customavailablein::
+    :oss_version: 0.14.1
+    :enterprise_version: 1.0
 
 The :class:`fiftyone.types.FiftyOneImageClassificationDataset` type represents
 a labeled dataset consisting of images and their associated classification
@@ -1596,6 +1620,10 @@ as a directory of TFRecords in the above format as follows:
 
 COCO
 ____
+
+.. customavailablein::
+    :oss_version: 0.3.0
+    :enterprise_version: 1.0
 
 The :class:`fiftyone.types.COCODetectionDataset` type represents a labeled
 dataset consisting of images and their associated object detections saved in
@@ -2237,6 +2265,10 @@ directory containing the corresponding media files by providing the
 YOLOv4
 ______
 
+.. customavailablein::
+    :oss_version: 0.6.1
+    :enterprise_version: 1.0
+
 The :class:`fiftyone.types.YOLOv4Dataset` type represents a labeled dataset
 consisting of images and their associated object detections saved in
 `YOLOv4 format <https://github.com/AlexeyAB/darknet>`_.
@@ -2495,6 +2527,10 @@ images-and-labels and labels-only data in YOLO format:
 
 YOLOv5
 ______
+
+.. customavailablein::
+    :oss_version: 0.11.0
+    :enterprise_version: 1.0
 
 The :class:`fiftyone.types.YOLOv5Dataset` type represents a labeled dataset
 consisting of images and their associated object detections saved in
@@ -3377,6 +3413,10 @@ directory containing the corresponding media files by providing the
 CVAT Image
 __________
 
+.. customavailablein::
+    :oss_version: 0.3.0
+    :enterprise_version: 1.0
+
 The :class:`fiftyone.types.CVATImageDataset` type represents a labeled dataset
 consisting of images and their associated tags and object detections stored in
 `CVAT image format <https://github.com/opencv/cvat>`_.
@@ -3605,6 +3645,10 @@ directory containing the corresponding media files by providing the
 CVAT Video
 __________
 
+.. customavailablein::
+    :oss_version: 0.6.1
+    :enterprise_version: 1.0
+
 The :class:`fiftyone.types.CVATVideoDataset` type represents a labeled dataset
 consisting of videos and their associated object detections stored in
 `CVAT video format <https://github.com/opencv/cvat>`_.
@@ -3831,6 +3875,10 @@ directory containing the corresponding media files by providing the
 
 OpenLABEL Image
 _______________
+
+.. customavailablein::
+    :oss_version: 0.15.0
+    :enterprise_version: 1.0
 
 The :class:`fiftyone.types.OpenLABELImageDataset` type represents a labeled
 dataset consisting of images and their associated multitask predictions stored =
@@ -4125,6 +4173,10 @@ directory containing the corresponding media files by providing the
 OpenLABEL Video
 _______________
 
+.. customavailablein::
+    :oss_version: 0.15.0
+    :enterprise_version: 1.0
+
 The :class:`fiftyone.types.OpenLABELVideoDataset` type represents a labeled
 dataset consisting of videos and their associated multitask predictions stored
 in `OpenLABEL format <https://www.asam.net/index.php?eID=dumpFile&t=f&f=3876&token=413e8c85031ae64cc35cf42d0768627514868b2f>`_.
@@ -4414,6 +4466,10 @@ directory containing the corresponding media files by providing the
 BDD
 ___
 
+.. customavailablein::
+    :oss_version: 0.3.0
+    :enterprise_version: 1.0
+
 The :class:`fiftyone.types.BDDDataset` type represents a labeled dataset
 consisting of images and their associated multitask predictions saved in
 `Berkeley DeepDrive (BDD) format <http://bdd-data.berkeley.edu>`_.
@@ -4639,6 +4695,10 @@ directory containing the corresponding media files by providing the
 CSV
 ___
 
+.. customavailablein::
+    :oss_version: 0.19.0
+    :enterprise_version: 1.1
+
 The :class:`fiftyone.types.CSVDataset` type represents a dataset consisting
 of images or videos and their associated field values stored as columns of a
 CSV file.
@@ -4795,6 +4855,10 @@ parsed, as demonstrated below:
 
 DICOM
 _____
+
+.. customavailablein::
+    :oss_version: 0.12.0
+    :enterprise_version: 1.0
 
 The :class:`fiftyone.types.DICOMDataset` type represents a dataset consisting
 of images and their associated properties stored in
@@ -5136,6 +5200,10 @@ directory containing the corresponding media files by providing the
 GeoTIFF
 _______
 
+.. customavailablein::
+    :oss_version: 0.13.3
+    :enterprise_version: 1.0
+
 The :class:`fiftyone.types.GeoTIFFDataset` type represents a dataset consisting
 of images and their associated geolocation data stored in
 `GeoTIFF format <https://en.wikipedia.org/wiki/GeoTIFF>`_.
@@ -5279,6 +5347,10 @@ as follows:
 
 FiftyOne Dataset
 ________________
+
+.. customavailablein::
+    :oss_version: 0.5.0
+    :enterprise_version: 1.0
 
 The :class:`fiftyone.types.FiftyOneDataset` provides a disk representation of
 an entire |Dataset| in a serialized JSON format along with its source media.
@@ -5439,6 +5511,10 @@ into FiftyOne to prepend the appropriate prefix to each media path:
 FiftyOne Image Labels
 _____________________
 
+.. customavailablein::
+    :oss_version: 0.5.2
+    :enterprise_version: 1.0
+
 The :class:`fiftyone.types.FiftyOneImageLabelsDataset` type represents a
 labeled dataset consisting of images and their associated multitask predictions
 stored in
@@ -5554,6 +5630,10 @@ above format as follows:
 
 FiftyOne Video Labels
 _____________________
+
+.. customavailablein::
+    :oss_version: 0.6.0
+    :enterprise_version: 1.0
 
 The :class:`fiftyone.types.FiftyOneVideoLabelsDataset` type represents a
 labeled dataset consisting of videos and their associated labels stored in
@@ -5714,6 +5794,10 @@ method:
 
 Writing a custom DatasetImporter
 --------------------------------
+
+.. customavailablein::
+    :oss_version: 0.6.0
+    :enterprise_version: 1.0
 
 |DatasetImporter| is an abstract interface; the concrete interface that you
 should implement is determined by the type of dataset that you are importing.

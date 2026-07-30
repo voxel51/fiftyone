@@ -5,6 +5,10 @@ Pgvector Vector Search Integration
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 1.4.0
+    :enterprise_version: 2.7.0
+
 `Pgvector <https://github.com/pgvector/pgvector>`_ is a vector search extension
 to PostgreSQL, one of the most popular open source databases, and we've made it
 easy to use Pgvector on your computer vision data directly from FiftyOne!

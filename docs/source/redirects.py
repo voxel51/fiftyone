@@ -59,6 +59,99 @@ def _generate_zoo_redirects(app):
     return zoo_mappings
 
 
+_EVALUATION_ANCHOR_MAP = {
+    "evaluating-models": "evaluation/index.html#evaluating-models",
+    "confusion-matrices": "evaluation/index.html#confusion-matrices",
+    "analyzing-scenarios": "evaluation/index.html#analyzing-scenarios",
+    "managing-evaluations": "evaluation/index.html#managing-evaluations",
+    "model-evaluation-panel": "evaluation/index.html#model-evaluation-panel",
+    "model-evaluation-panel-sub-new": (
+        "evaluation/index.html#model-evaluation-panel"
+    ),
+    "evaluating-regressions": (
+        "evaluation/regressions.html#evaluating-regressions"
+    ),
+    "regressions": "evaluation/regressions.html#evaluating-regressions",
+    "evaluating-classifications": (
+        "evaluation/classifications.html#evaluating-classifications"
+    ),
+    "classifications": (
+        "evaluation/classifications.html#evaluating-classifications"
+    ),
+    "binary-evaluation": "evaluation/classifications.html#binary-evaluation",
+    "evaluating-detections": (
+        "evaluation/detections.html#evaluating-detections"
+    ),
+    "detections": "evaluation/detections.html#evaluating-detections",
+    "evaluation-detection-types": (
+        "evaluation/detections.html#evaluation-detection-types"
+    ),
+    "evaluation-patches": "evaluation/detections.html#evaluation-patches",
+    "evaluating-detections-coco": (
+        "evaluation/detections.html#evaluating-detections-coco"
+    ),
+    "evaluating-detections-open-images": (
+        "evaluation/detections.html#evaluating-detections-open-images"
+    ),
+    "open-images-style-evaluation": (
+        "evaluation/detections.html#evaluating-detections-open-images"
+    ),
+    "evaluating-detections-activitynet": (
+        "evaluation/detections.html#evaluating-detections-activitynet"
+    ),
+    "evaluating-segmentations": (
+        "evaluation/segmentations.html#evaluating-segmentations"
+    ),
+    "semantic-segmentations": (
+        "evaluation/segmentations.html#evaluating-segmentations"
+    ),
+    "evaluation-advanced": "evaluation/advanced.html#evaluation-advanced",
+    "advanced-usage": "evaluation/advanced.html#evaluation-advanced",
+    "evaluating-views": "evaluation/advanced.html#evaluating-views",
+    "load-evaluation-view": "evaluation/advanced.html#load-evaluation-view",
+    "evaluating-videos": "evaluation/advanced.html#evaluating-videos",
+    "custom-evaluation-metrics": (
+        "evaluation/advanced.html#custom-evaluation-metrics"
+    ),
+    "custom-evaluation-backends": (
+        "evaluation/advanced.html#custom-evaluation-backends"
+    ),
+    "evaluation-config": "evaluation/advanced.html#evaluation-config",
+}
+
+_SIMILARITY_ANCHOR_MAP = {
+    "similarity": "../user_guide/similarity.html#brain-similarity",
+    "brain-similarity": "../user_guide/similarity.html#brain-similarity",
+    "similarity-search": "../user_guide/similarity.html#brain-similarity",
+    "brain-similarity-backends": (
+        "../user_guide/similarity.html#brain-similarity-backends"
+    ),
+    "image-similarity": (
+        "../user_guide/similarity.html#brain-image-similarity"
+    ),
+    "visual-similarity": (
+        "../user_guide/similarity.html#brain-image-similarity"
+    ),
+    "brain-image-similarity": (
+        "../user_guide/similarity.html#brain-image-similarity"
+    ),
+    "brain-object-similarity": (
+        "../user_guide/similarity.html#brain-object-similarity"
+    ),
+    "text-similarity": ("../user_guide/similarity.html#brain-similarity-text"),
+    "brain-similarity-text": (
+        "../user_guide/similarity.html#brain-similarity-text"
+    ),
+    "brain-similarity-api": (
+        "../user_guide/similarity.html#brain-similarity-api"
+    ),
+    "creating-an-index": "../user_guide/similarity.html#creating-an-index",
+    "brain-similarity-applications": (
+        "../user_guide/similarity.html#brain-similarity-applications"
+    ),
+}
+
+
 def _write_redirect_file(outdir, from_path, to_url, template):
     """Write a redirect HTML file."""
     redirect_path = os.path.join(outdir, from_path)
@@ -99,23 +192,45 @@ def _process_static_redirects(app):
             )
 
 
+def _write_hash_redirect(app, base_page, anchor_map, default_url):
+    """Write a hash-based redirect page for `base_page`."""
+    anchor_map_json = json.dumps(anchor_map, indent=2)
+
+    logger.info(
+        "Creating hash redirect page '%s' with %d anchors"
+        % (base_page, len(anchor_map))
+    )
+
+    redirect_path = os.path.join(app.builder.outdir, base_page)
+    etau.write_file(
+        _HASH_REDIRECT_TEMPLATE.format(
+            anchor_map=anchor_map_json, default_url=default_url
+        ),
+        redirect_path,
+    )
+
+
 def _process_zoo_redirects(app):
     """Process dynamic zoo redirects with hash-based routing."""
     zoo_mappings = _generate_zoo_redirects(app)
 
     for base_page, anchor_map in zoo_mappings.items():
-        anchor_map_json = json.dumps(anchor_map, indent=2)
+        # Old page's directory is being replaced by per-item pages, so with
+        # no hash, fall back to that section's index page
+        _write_hash_redirect(app, base_page, anchor_map, "index.html")
 
-        logger.info(
-            "Creating hash redirect page '%s' with %d anchors"
-            % (base_page, len(anchor_map))
-        )
 
-        redirect_path = os.path.join(app.builder.outdir, base_page)
-        etau.write_file(
-            _HASH_REDIRECT_TEMPLATE.format(anchor_map=anchor_map_json),
-            redirect_path,
-        )
+def _process_evaluation_redirects(app):
+    """Process the hash-based redirect for the split evaluation user guide."""
+    _write_hash_redirect(
+        app,
+        "user_guide/evaluation.html",
+        _EVALUATION_ANCHOR_MAP,
+        "evaluation/index.html",
+    )
+
+
+_MOVED_ANCHOR_PAGES = {"brain/index": _SIMILARITY_ANCHOR_MAP}
 
 
 def _process_api_redirects(app):
@@ -157,6 +272,7 @@ def generate_redirects(app):
 
     _process_static_redirects(app)
     _process_zoo_redirects(app)
+    _process_evaluation_redirects(app)
 
 
 def generate_api_redirects(app, exception):
@@ -168,6 +284,24 @@ def generate_api_redirects(app, exception):
         return
 
     _process_api_redirects(app)
+
+
+def inject_moved_anchor_redirects(
+    app, pagename, templatename, context, doctree
+):
+    """Sphinx html-page-context handler that appends a redirect script to
+    pages whose content has moved elsewhere, so old hash-fragment links
+    still resolve. Only fires when Sphinx actually (re)renders the page, so
+    it can't accumulate duplicate scripts across incremental builds.
+    """
+    anchor_map = _MOVED_ANCHOR_PAGES.get(pagename)
+    if not anchor_map:
+        return
+
+    script = _INLINE_ANCHOR_REDIRECT_TEMPLATE.format(
+        anchor_map=json.dumps(anchor_map)
+    )
+    context["body"] = context.get("body", "") + script
 
 
 _REDIRECT_TEMPLATE = """
@@ -197,11 +331,8 @@ _HASH_REDIRECT_TEMPLATE = """
       if (hash && anchorMap[hash]) {{
         window.location.href = anchorMap[hash];
       }} else {{
-        // No hash provided - redirect to index page
-        var pathParts = window.location.pathname.split('/');
-        pathParts.pop(); // Remove current file (e.g., 'models.html' or 'datasets.html')
-        pathParts.push('index.html');
-        window.location.href = pathParts.join('/');
+        // No hash provided - redirect to the default page
+        window.location.href = "{default_url}";
       }}
     </script>
   </head>
@@ -209,4 +340,16 @@ _HASH_REDIRECT_TEMPLATE = """
     <p>Redirecting...</p>
   </body>
 </html>
+"""
+
+_INLINE_ANCHOR_REDIRECT_TEMPLATE = """
+<script>
+  (function () {{
+    var anchorMap = {anchor_map};
+    var hash = window.location.hash.substring(1);
+    if (hash && anchorMap[hash]) {{
+      window.location.replace(anchorMap[hash]);
+    }}
+  }})();
+</script>
 """

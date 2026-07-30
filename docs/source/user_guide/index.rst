@@ -66,7 +66,7 @@ on your data quickly and easily.
     :header: Evaluating models  __SUB_NEW__
     :description: Use FiftyOne's builtin methods to evaluate your models and analyze their strengths and weaknesses.
     :button_text: Learn more about evaluating models
-    :button_link: evaluation.html
+    :button_link: evaluation/index.html
 
 .. customcalloutitem::
     :header: Using aggregations

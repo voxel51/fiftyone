@@ -5,6 +5,10 @@ Dataset Zoo
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.3.0
+    :enterprise_version: 1.0
+
 Welcome to the FiftyOne Dataset Zoo! 🚀
 
 Here you'll discover dozens of popular benchmark datasets, ready to download
