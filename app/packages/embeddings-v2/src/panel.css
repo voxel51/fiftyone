@@ -113,6 +113,12 @@
   background: color-mix(in srgb, var(--emb-brand) 6%, transparent);
 }
 
+/* In the runs list the banner needs air before the first card; the card
+   stack itself has no top margin (the runs header sits tight on purpose) */
+.emb-runs-scroll > .emb-callout {
+  margin-bottom: 0.75rem;
+}
+
 .emb-callout[data-aside="true"] {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: stretch;
@@ -440,6 +446,20 @@
   width: 0.5rem;
   border-radius: 9999px;
   flex-shrink: 0;
+  /* optical: center against the glyphs' x-height rather than the full
+     line box, which reads a hair high next to lowercase labels */
+  position: relative;
+  top: 1px;
+}
+
+/* Strip the labels' leading so the flex centering aligns glyph-sized
+   boxes; with the default line-height the extra descent space made both
+   the text and the dot read high against the row. VOODO Text variants
+   set their own line-height (e.g. text-md/7), so the rule needs two
+   classes to out-specify that utility regardless of stylesheet order */
+.emb-legend-row .emb-legend-label,
+.emb-legend-row .emb-legend-count {
+  line-height: 1;
 }
 
 /* --- Continuous (spectrum) legend -------------------------------------- */
@@ -530,7 +550,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  /* top-heavy on purpose per design review: clear separation from the
+     panel chrome above, while the count/button stay tight to the run
+     cards they describe (~2:1 against .emb-runs-scroll's top padding) */
+  padding: 2rem 1rem 0.25rem;
   flex-shrink: 0;
 }
 
