@@ -26,6 +26,7 @@ import type {
   McapDecodedMessage,
   McapEnumerateNumericFieldsRequest,
   McapNumericSeriesResult,
+  McapNumericSeriesSliceResult,
   McapPointCloudChannelResult,
   McapReadBoundedMessagesRequest,
   McapReadBoundedMessagesResult,
@@ -34,6 +35,7 @@ import type {
   McapReadFrameTransformWindowRequest,
   McapRawMessageRecordResult,
   McapReadNumericSeriesRequest,
+  McapReadNumericSeriesSliceRequest,
   McapReadPointCloudChannelRequest,
   McapReadRawMessageRecordRequest,
   McapReadSynchronizedMessageBatchRequest,
@@ -232,6 +234,19 @@ class WorkerMcapResourceClient implements McapResourceClient {
       "readNumericSeries",
       request,
       resourcePriorityToWorkerPriority(options?.priority),
+      options?.signal,
+    );
+  }
+
+  readNumericSeriesSlice(
+    request: McapReadNumericSeriesSliceRequest,
+    options?: McapResourceReadOptions,
+  ): Promise<McapNumericSeriesSliceResult> {
+    return this.request(
+      "readNumericSeriesSlice",
+      request,
+      resourcePriorityToWorkerPriority(options?.priority),
+      options?.signal,
     );
   }
 

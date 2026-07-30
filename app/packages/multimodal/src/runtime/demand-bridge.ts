@@ -35,6 +35,7 @@ export interface DemandBridgeRuntime {
   readonly later: (callback: () => void, ms: number) => void;
   readonly nowMs: () => number;
   readonly queueFill: () => void;
+  readonly queueImmediateFill: () => void;
 }
 
 /** Fill context for one queued or playhead-driven demand pass. */
@@ -137,6 +138,7 @@ export function startDemandBridge<
       nowMs,
       playheadSec: playbackStore ? getPlayhead(playbackStore) : 0,
       queueFill,
+      queueImmediateFill,
       timeline,
       userInitiated,
     });
@@ -164,11 +166,25 @@ export function startDemandBridge<
       fill(true);
     });
   };
+  const queueImmediateFill = () => {
+    if (cancelled || fillQueued) return;
+    if (demandFillTimeout !== undefined) {
+      clearTimeout(demandFillTimeout);
+      timeouts.delete(demandFillTimeout);
+      demandFillTimeout = undefined;
+    }
+    fillQueued = true;
+    queueMicrotask(() => {
+      fillQueued = false;
+      fill(false);
+    });
+  };
   const runtime: DemandBridgeRuntime = {
     isCancelled,
     later,
     nowMs,
     queueFill,
+    queueImmediateFill,
   };
   const handlers = makeHandlers(runtime);
   handlersRef.current = handlers;

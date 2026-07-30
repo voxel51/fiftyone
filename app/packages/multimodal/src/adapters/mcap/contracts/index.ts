@@ -361,6 +361,49 @@ export interface McapNumericSeriesResult {
   readonly truncated: boolean;
 }
 
+/** Numeric field projection requested for one MCAP topic in a shared slice. */
+export interface McapNumericSeriesSelection {
+  readonly fieldPaths: readonly string[];
+  readonly topic: string;
+}
+
+/**
+ * Request for one exact, budget-admitted page toward a larger numeric plot
+ * horizon. Topics share one chunk traversal so multi-topic chunks are
+ * decompressed once per page.
+ */
+export interface McapReadNumericSeriesSliceRequest {
+  readonly absoluteBudget: ReadWorkBudget;
+  readonly absoluteMaxChunks: number;
+  readonly activeTimeline?: McapActiveTimeline;
+  readonly budget: ReadWorkBudget;
+  readonly continuation?: ReadContinuation;
+  readonly endTimeNs: bigint;
+  readonly maxChunks: number;
+  readonly maxPointsPerField?: number;
+  readonly preferredTimeNs?: bigint;
+  readonly selections: readonly McapNumericSeriesSelection[];
+  readonly source: ByteSourceDescriptor;
+  readonly startTimeNs: bigint;
+}
+
+/** Packed exact numeric values for one topic in a shared slice result. */
+export interface McapNumericTopicSeries {
+  readonly fields: readonly McapNumericSeriesField[];
+  readonly messageCount: number;
+  readonly topic: string;
+}
+
+/** Partial numeric data and physical-work evidence returned for one page. */
+export interface McapNumericSeriesSliceResult {
+  readonly baseTimeNs: bigint;
+  readonly continuation?: ReadContinuation;
+  readonly coverageByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
+  readonly series: readonly McapNumericTopicSeries[];
+  readonly stopReason: BudgetedReadStopReason;
+  readonly usage: ReadWorkUsage;
+}
+
 /**
  * Budgets bounding how much of a decoded message record crosses the
  * worker boundary. Every budget has a conservative default; callers
@@ -950,6 +993,15 @@ export interface McapResourceClient {
     request: McapReadNumericSeriesRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapNumericSeriesResult>;
+
+  /**
+   * Extracts one cancellable, continuation-paged numeric slice for multiple
+   * topics in a single bounded chunk traversal.
+   */
+  readNumericSeriesSlice?(
+    request: McapReadNumericSeriesSliceRequest,
+    options?: McapResourceReadOptions,
+  ): Promise<McapNumericSeriesSliceResult>;
 
   /**
    * Reads one topic's schema-shaped message record at a playback time,

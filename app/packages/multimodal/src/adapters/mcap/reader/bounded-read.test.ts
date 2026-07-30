@@ -17,6 +17,7 @@ import { ByteClientReadable } from "./byte-readable";
 import type {
   McapBoundedMessageReadRequest,
   McapIndexedReaderLike,
+  McapReadContinuation,
 } from "./types";
 
 interface MessageSpec {
@@ -95,6 +96,41 @@ describe("bounded MCAP reader", () => {
     expect(new Set(messages.map(messageKey)).size).toBe(messages.length);
   });
 
+  it("pages ownership groups from the preferred time outward", async () => {
+    const fixture = buildFixture(
+      Array.from({ length: 10 }, (_, index) => ({
+        messages: [
+          {
+            channelId: 1,
+            logTime: BigInt(index * 10),
+            sequence: index,
+          },
+        ],
+      })),
+    );
+    const harness = createHarness(fixture);
+    const full = budgetFor(fixture.chunkIndexes, 10);
+    const request = requestFor({
+      absoluteBudget: full,
+      absoluteMaxChunks: 10,
+      budget: full,
+      maxChunks: 10,
+      maxGroups: 1,
+      preferredTimeNs: 55n,
+    });
+    const sequences: number[] = [];
+    let continuation: McapReadContinuation | undefined;
+
+    do {
+      const result = await harness.read({ ...request, continuation });
+      sequences.push(...result.messages.map((message) => message.sequence));
+      expect(result.usage.chunksOpened).toBe(1);
+      continuation = result.continuation;
+    } while (continuation);
+
+    expect(sequences).toEqual([5, 6, 4, 7, 3, 8, 2, 9, 1, 0]);
+  });
+
   it("rejects continuations reused after source, topic, or window changes", async () => {
     const fixture = buildFixture([
       { messages: [{ channelId: 1, logTime: 0n }] },
@@ -130,6 +166,13 @@ describe("bounded MCAP reader", () => {
         ...request,
         continuation,
         endTimeNs: 999n,
+      }),
+    ).rejects.toThrow("does not match its source");
+    await expect(
+      harness.read({
+        ...request,
+        continuation,
+        preferredTimeNs: 10n,
       }),
     ).rejects.toThrow("does not match its source");
 

@@ -69,6 +69,10 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY,
   },
+  readNumericSeriesSlice: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY,
+  },
   readPointCloudChannel: {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
@@ -142,6 +146,13 @@ export function runMcapPlaybackWorkerUnaryRequest(
         .then(dehydrateMcapFrameTransformSet);
     case "readNumericSeries":
       return client.readNumericSeries(message.payload);
+    case "readNumericSeriesSlice":
+      if (!client.readNumericSeriesSlice) {
+        return Promise.reject(
+          new Error("Bounded numeric series reads are unavailable"),
+        );
+      }
+      return client.readNumericSeriesSlice(message.payload);
     case "readPointCloudChannel":
       if (!client.readPointCloudChannel) {
         return Promise.reject(

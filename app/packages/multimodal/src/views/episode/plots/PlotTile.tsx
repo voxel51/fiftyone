@@ -166,10 +166,29 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
     (entry) => entry.state?.status === "error",
   ).length;
   const truncated = resolved.some((entry) => entry.state?.truncated);
+  const incompleteCoverage = resolved
+    .map((entry) => entry.state)
+    .filter(
+      (
+        state,
+      ): state is NonNullable<typeof state> & {
+        coverageSeconds: number;
+        targetSeconds: number;
+      } =>
+        state?.coverageSeconds !== undefined &&
+        state.targetSeconds !== undefined &&
+        state.coverageSeconds + 0.001 < state.targetSeconds,
+    )
+    .sort((left, right) => left.coverageSeconds - right.coverageSeconds)[0];
   const statusNotes = [
     loadingCount > 0 ? `loading ${loadingCount}` : null,
+    incompleteCoverage
+      ? `${Math.floor(incompleteCoverage.coverageSeconds)}s of ${Math.ceil(
+          incompleteCoverage.targetSeconds,
+        )}s`
+      : null,
     errorCount > 0 ? `${errorCount} failed` : null,
-    truncated ? "downsampled" : null,
+    truncated ? "partial" : null,
   ].filter(Boolean);
 
   return (

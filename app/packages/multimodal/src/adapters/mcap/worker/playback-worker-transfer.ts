@@ -1,6 +1,7 @@
 import type {
   McapDecodedMessage,
   McapNumericSeriesResult,
+  McapNumericSeriesSliceResult,
   McapSynchronizedMessageWindow,
 } from "../contracts/index";
 
@@ -46,13 +47,18 @@ function pointCloudChannelBuffersFromResult(result: unknown): ArrayBuffer[] {
 }
 
 function numericSeriesBuffersFromResult(result: unknown): ArrayBuffer[] {
-  if (!isNumericSeriesResult(result)) {
+  const fields = isNumericSeriesResult(result)
+    ? result.fields
+    : isNumericSeriesSliceResult(result)
+      ? result.series.flatMap((series) => series.fields)
+      : null;
+  if (!fields) {
     return [];
   }
 
   // Fields may share one underlying buffer (pass-through decimation
   // returns subarray views); the caller's Set dedupes.
-  return result.fields.flatMap((field) => {
+  return fields.flatMap((field) => {
     const buffers: ArrayBuffer[] = [];
     if (field.timesSec.buffer instanceof ArrayBuffer) {
       buffers.push(field.timesSec.buffer);
@@ -61,6 +67,30 @@ function numericSeriesBuffersFromResult(result: unknown): ArrayBuffer[] {
       buffers.push(field.values.buffer);
     }
     return buffers;
+  });
+}
+
+function isNumericSeriesSliceResult(
+  value: unknown,
+): value is McapNumericSeriesSliceResult {
+  const record = recordFromUnknown(value);
+  if (!record || !Array.isArray(record.series)) {
+    return false;
+  }
+  return record.series.every((series) => {
+    const seriesRecord = recordFromUnknown(series);
+    return (
+      !!seriesRecord &&
+      Array.isArray(seriesRecord.fields) &&
+      seriesRecord.fields.every((field) => {
+        const fieldRecord = recordFromUnknown(field);
+        return (
+          !!fieldRecord &&
+          fieldRecord.timesSec instanceof Float64Array &&
+          fieldRecord.values instanceof Float64Array
+        );
+      })
+    );
   });
 }
 

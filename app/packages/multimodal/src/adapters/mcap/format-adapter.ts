@@ -359,7 +359,7 @@ export function createMcapNumericSeriesCapability({
           startTimeNs: request.window.startNs,
           topic: sourceNameFor(request.stream),
         },
-        { priority: "bulk" },
+        { priority: "bulk", signal: request.signal },
       );
       return {
         baseTimeNs: result.baseTimeNs,
@@ -367,6 +367,58 @@ export function createMcapNumericSeriesCapability({
         sampleCount: result.messageCount,
         streamId: request.stream,
         truncated: result.truncated,
+      };
+    },
+    async readNumericSeriesSlice(request) {
+      if (!client.readNumericSeriesSlice) {
+        throw new Error("Bounded numeric series reads are unavailable");
+      }
+      const topicsByStream = new Map(
+        request.selections.map((selection) => [
+          selection.stream,
+          sourceNameFor(selection.stream),
+        ]),
+      );
+      const streamsByTopic = new Map(
+        [...topicsByStream].map(([stream, topic]) => [topic, stream]),
+      );
+      const result = await client.readNumericSeriesSlice(
+        {
+          absoluteBudget: request.absoluteBudget,
+          absoluteMaxChunks: request.absoluteMaxChunks,
+          activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          budget: request.budget,
+          continuation: request.continuation,
+          endTimeNs: request.window.endNs,
+          maxChunks: request.maxChunks,
+          maxPointsPerField: request.maxPointsPerField,
+          preferredTimeNs: request.preferredTimeNs,
+          selections: request.selections.map((selection) => ({
+            fieldPaths: selection.fields,
+            topic: topicsByStream.get(selection.stream) ?? selection.stream,
+          })),
+          source,
+          startTimeNs: request.window.startNs,
+        },
+        { priority: "bulk", signal: request.signal },
+      );
+      return {
+        ...(result.continuation ? { continuation: result.continuation } : {}),
+        coverageByStream: new Map(
+          [...result.coverageByTopic].map(([topic, windows]) => [
+            streamsByTopic.get(topic) ?? topic,
+            windows,
+          ]),
+        ),
+        series: result.series.map((entry) => ({
+          baseTimeNs: result.baseTimeNs,
+          fields: entry.fields,
+          sampleCount: entry.messageCount,
+          streamId: streamsByTopic.get(entry.topic) ?? entry.topic,
+          truncated: false,
+        })),
+        stopReason: result.stopReason,
+        usage: result.usage,
       };
     },
   };

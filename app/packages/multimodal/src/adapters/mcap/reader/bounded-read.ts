@@ -90,16 +90,20 @@ export function createMcapBoundedReader({
         : normalizedTopics(request.topics);
     const topicsKey = topics?.join("\0") ?? "*";
     const channelIds = channelIdsForTopics(reader.channelsById, topics);
-    const groups = collectAdmissionGroups({
-      channelIds,
-      chunkIndexes: reader.chunkIndexes,
-      endTimeNs: request.endTimeNs,
-      startTimeNs: request.startTimeNs,
-    });
+    const groups = orderAdmissionGroups(
+      collectAdmissionGroups({
+        channelIds,
+        chunkIndexes: reader.chunkIndexes,
+        endTimeNs: request.endTimeNs,
+        startTimeNs: request.startTimeNs,
+      }),
+      request.preferredTimeNs,
+    );
     let groupIndex = resolveContinuationIndex({
       continuation: request.continuation,
       endTimeNs: request.endTimeNs,
       groups,
+      preferredTimeNs: request.preferredTimeNs,
       sourceKey: activeSourceKey,
       startTimeNs: request.startTimeNs,
       topicsKey,
@@ -114,6 +118,7 @@ export function createMcapBoundedReader({
     >();
     const orderedMessages: OrderedMessage[] = [];
     let chunksOpened = 0;
+    let groupsOpened = 0;
     let decompressedBytes = 0;
     let decompressionCacheHits = 0;
     let logicalUncompressedBytes = 0;
@@ -136,6 +141,13 @@ export function createMcapBoundedReader({
     try {
       while (groupIndex < groups.length) {
         throwIfAborted(request.signal);
+        if (
+          request.maxGroups !== undefined &&
+          groupsOpened >= request.maxGroups
+        ) {
+          stopReason = "budget-exhausted";
+          break;
+        }
         if (wallTimeExpired(nowMs, startedAtMs, request.budget.maxWallTimeMs)) {
           stopReason = "budget-exhausted";
           break;
@@ -310,6 +322,7 @@ export function createMcapBoundedReader({
           request,
         });
         groupIndex += 1;
+        groupsOpened += 1;
 
         // Give queued foreground work and cancellation a deterministic
         // handoff point between complete ownership groups.
@@ -334,6 +347,7 @@ export function createMcapBoundedReader({
                 endTimeNs: request.endTimeNs,
                 nextChunkStartOffset:
                   groups[groupIndex].chunks[0].chunkStartOffset,
+                preferredTimeNs: request.preferredTimeNs,
                 sourceKey: activeSourceKey,
                 startTimeNs: request.startTimeNs,
                 topicsKey,
@@ -403,6 +417,43 @@ function collectAdmissionGroups({
     }
   }
   return groups;
+}
+
+/**
+ * Orders independent ownership groups from the preferred time outward. The
+ * order is deterministic and encoded into continuations, so a paged caller
+ * resumes the same center-out walk without reopening earlier groups.
+ */
+function orderAdmissionGroups(
+  groups: readonly ChunkGroup[],
+  preferredTimeNs: bigint | undefined,
+): ChunkGroup[] {
+  if (preferredTimeNs === undefined) {
+    return [...groups];
+  }
+  return [...groups].sort((left, right) => {
+    const leftDistance = distanceToGroup(left, preferredTimeNs);
+    const rightDistance = distanceToGroup(right, preferredTimeNs);
+    if (leftDistance !== rightDistance) {
+      return leftDistance < rightDistance ? -1 : 1;
+    }
+    if (left.startTimeNs !== right.startTimeNs) {
+      return left.startTimeNs < right.startTimeNs ? -1 : 1;
+    }
+    const leftOffset = left.chunks[0]?.chunkStartOffset ?? 0n;
+    const rightOffset = right.chunks[0]?.chunkStartOffset ?? 0n;
+    return leftOffset < rightOffset ? -1 : leftOffset > rightOffset ? 1 : 0;
+  });
+}
+
+function distanceToGroup(group: ChunkGroup, preferredTimeNs: bigint): bigint {
+  if (preferredTimeNs < group.startTimeNs) {
+    return group.startTimeNs - preferredTimeNs;
+  }
+  if (preferredTimeNs > group.endTimeNs) {
+    return preferredTimeNs - group.endTimeNs;
+  }
+  return 0n;
 }
 
 async function countSelectedIndexedMessages({
@@ -500,6 +551,7 @@ function resolveContinuationIndex({
   continuation,
   endTimeNs,
   groups,
+  preferredTimeNs,
   sourceKey,
   startTimeNs,
   topicsKey,
@@ -507,6 +559,7 @@ function resolveContinuationIndex({
   readonly continuation: McapReadContinuation | undefined;
   readonly endTimeNs: bigint | undefined;
   readonly groups: readonly ChunkGroup[];
+  readonly preferredTimeNs: bigint | undefined;
   readonly sourceKey: string;
   readonly startTimeNs: bigint | undefined;
   readonly topicsKey: string;
@@ -519,7 +572,8 @@ function resolveContinuationIndex({
     continuation.sourceKey !== sourceKey ||
     continuation.topicsKey !== topicsKey ||
     continuation.startTimeNs !== startTimeNs ||
-    continuation.endTimeNs !== endTimeNs
+    continuation.endTimeNs !== endTimeNs ||
+    continuation.preferredTimeNs !== preferredTimeNs
   ) {
     throw new Error("MCAP bounded read continuation does not match its source");
   }
@@ -732,6 +786,9 @@ function validateRequest(request: McapBoundedMessageReadRequest): void {
   for (const [value, label] of [
     [request.maxChunks, "MCAP bounded maxChunks"],
     [request.absoluteMaxChunks, "MCAP bounded absoluteMaxChunks"],
+    ...(request.maxGroups === undefined
+      ? []
+      : ([[request.maxGroups, "MCAP bounded maxGroups"]] as const)),
   ] as const) {
     if (!Number.isSafeInteger(value) || value < 0) {
       throw new Error(`${label} must be a non-negative safe integer`);

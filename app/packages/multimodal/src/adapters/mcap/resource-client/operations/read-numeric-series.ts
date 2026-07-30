@@ -1,4 +1,8 @@
-import type { McapIndexedReaderLike } from "../../reader/index";
+import {
+  McapBoundedReadCancelledError,
+  type McapIndexedReaderLike,
+  type McapReadContinuation,
+} from "../../reader/index";
 import {
   genericRecordDecoderForChannel,
   mcapChannelForTopic,
@@ -7,8 +11,12 @@ import type { McapTimelineStrategy } from "../timeline";
 import type {
   McapNumericSeriesField,
   McapNumericSeriesResult,
+  McapNumericSeriesSliceResult,
+  McapNumericTopicSeries,
   McapReadNumericSeriesRequest,
+  McapReadNumericSeriesSliceRequest,
 } from "../../contracts/index";
+import type { ReadWorkUsage } from "../../../../ports";
 import { decimateMinMax } from "../numeric-series-decimate";
 import { mcapTimelineRangeFromReader } from "./read-timeline-range";
 
@@ -213,6 +221,232 @@ export async function readMcapNumericSeries({
     topic: request.topic,
     truncated,
   };
+}
+
+/**
+ * Extracts one exact, continuation-paged numeric grant for multiple topics.
+ * The bounded reader owns physical admission and traverses every selected
+ * multi-topic chunk once; projection then fans those decoded messages out to
+ * the requested fields.
+ */
+export async function readMcapNumericSeriesSlice({
+  reader,
+  request,
+  signal,
+  timeline,
+}: {
+  readonly reader: McapIndexedReaderLike;
+  readonly request: McapReadNumericSeriesSliceRequest;
+  readonly signal?: AbortSignal;
+  readonly timeline: McapTimelineStrategy;
+}): Promise<McapNumericSeriesSliceResult> {
+  if (request.selections.length === 0) {
+    throw new Error("Numeric series slice requires at least one selection");
+  }
+  if (!reader.readBoundedMessages) {
+    throw new Error("MCAP bounded reads are unavailable for numeric series");
+  }
+
+  const selectionsByChannelId = new Map<
+    number,
+    {
+      readonly decodeRecord: (data: Uint8Array) => Record<string, unknown>;
+      readonly fieldPaths: readonly string[];
+      readonly pathSegments: readonly (readonly string[])[];
+      readonly topic: string;
+    }
+  >();
+  const seenTopics = new Set<string>();
+  for (const selection of request.selections) {
+    if (selection.fieldPaths.length === 0) {
+      throw new Error(
+        `Numeric series slice topic '${selection.topic}' has no field paths`,
+      );
+    }
+    if (seenTopics.has(selection.topic)) {
+      throw new Error(
+        `Numeric series slice contains duplicate topic '${selection.topic}'`,
+      );
+    }
+    seenTopics.add(selection.topic);
+    const channel = mcapChannelForTopic(reader, selection.topic);
+    const decodeRecord = genericRecordDecoderForChannel(reader, channel);
+    if (!decodeRecord) {
+      throw new Error(
+        `Numeric series extraction does not support encoding '${channel.messageEncoding}'`,
+      );
+    }
+    selectionsByChannelId.set(channel.id, {
+      decodeRecord,
+      fieldPaths: selection.fieldPaths,
+      pathSegments: selection.fieldPaths.map((path) => path.split(".")),
+      topic: selection.topic,
+    });
+  }
+
+  const { endTime, startTime } = timeline.messageReadRange({
+    endTimeNs: request.endTimeNs,
+    startTimeNs: request.startTimeNs,
+  });
+  const boundedRequest = {
+    absoluteBudget: request.absoluteBudget,
+    absoluteMaxChunks: request.absoluteMaxChunks,
+    budget: request.budget,
+    continuation: request.continuation as McapReadContinuation | undefined,
+    endTimeNs: endTime,
+    maxChunks: request.maxChunks,
+    preferredTimeNs: request.preferredTimeNs,
+    signal,
+    startTimeNs: startTime,
+    topics: request.selections.map((selection) => selection.topic),
+  };
+  const first = await reader.readBoundedMessages(boundedRequest);
+  let bounded = first;
+  let usage = first.usage;
+
+  // A normal grant smaller than one overlap group must not create a
+  // zero-progress continuation loop. Escalate exactly one group to the
+  // declared absolute source-unit ceiling; the absolute ceiling remains hard.
+  if (
+    first.stopReason === "budget-exhausted" &&
+    first.continuation &&
+    first.usage.chunksOpened === 0
+  ) {
+    const escalated = await reader.readBoundedMessages({
+      ...boundedRequest,
+      budget: request.absoluteBudget,
+      maxChunks: request.absoluteMaxChunks,
+      maxGroups: 1,
+    });
+    bounded = escalated;
+    usage = addReadUsage(first.usage, escalated.usage);
+  }
+
+  const baseTimeNs = mcapTimelineRangeFromReader(reader, timeline).startTimeNs;
+  const accumulators = new Map<
+    number,
+    {
+      readonly times: number[];
+      readonly valuesByField: number[][];
+      messageCount: number;
+    }
+  >(
+    [...selectionsByChannelId].map(([channelId, selection]) => [
+      channelId,
+      {
+        messageCount: 0,
+        times: [],
+        valuesByField: selection.fieldPaths.map(() => []),
+      },
+    ]),
+  );
+
+  try {
+    await yieldToCancellation();
+    throwIfAborted(signal);
+    for (const [index, message] of bounded.messages.entries()) {
+      if (index > 0 && index % 32 === 0) {
+        await yieldToCancellation();
+      }
+      throwIfAborted(signal);
+      const selection = selectionsByChannelId.get(message.channelId);
+      const accumulator = accumulators.get(message.channelId);
+      if (!selection || !accumulator) {
+        continue;
+      }
+      const deltaNs = timeline.messageTimeNs(message) - baseTimeNs;
+      accumulator.times.push(
+        Number(deltaNs / 1_000_000_000n) +
+          Number(deltaNs % 1_000_000_000n) / 1_000_000_000,
+      );
+      accumulator.messageCount += 1;
+
+      let record: Record<string, unknown> | undefined;
+      try {
+        record = selection.decodeRecord(message.data);
+      } catch {
+        record = undefined;
+      }
+      for (let field = 0; field < selection.pathSegments.length; field += 1) {
+        const value = record
+          ? projectNumericField(record, selection.pathSegments[field])
+          : undefined;
+        accumulator.valuesByField[field].push(value ?? Number.NaN);
+      }
+    }
+  } catch (error) {
+    if (signal?.aborted) {
+      throw new McapBoundedReadCancelledError(usage);
+    }
+    throw error;
+  }
+
+  const maxPoints =
+    request.maxPointsPerField ?? DEFAULT_NUMERIC_SERIES_MAX_POINTS;
+  const series: McapNumericTopicSeries[] = [];
+  for (const [channelId, selection] of selectionsByChannelId) {
+    const accumulator = accumulators.get(channelId);
+    if (!accumulator) {
+      continue;
+    }
+    const sharedTimes = Float64Array.from(accumulator.times);
+    series.push({
+      fields: selection.fieldPaths.map((path, index) => {
+        const decimated = decimateMinMax(
+          sharedTimes,
+          Float64Array.from(accumulator.valuesByField[index]),
+          maxPoints,
+        );
+        return {
+          path,
+          timesSec: decimated.times,
+          values: decimated.values,
+        };
+      }),
+      messageCount: accumulator.messageCount,
+      topic: selection.topic,
+    });
+  }
+
+  return {
+    baseTimeNs,
+    ...(bounded.continuation ? { continuation: bounded.continuation } : {}),
+    coverageByTopic: bounded.coverageByTopic,
+    series,
+    stopReason: bounded.stopReason,
+    usage,
+  };
+}
+
+function addReadUsage(
+  left: ReadWorkUsage,
+  right: ReadWorkUsage,
+): ReadWorkUsage {
+  return {
+    chunksOpened: left.chunksOpened + right.chunksOpened,
+    decompressedBytes: left.decompressedBytes + right.decompressedBytes,
+    decompressionCacheHits:
+      left.decompressionCacheHits + right.decompressionCacheHits,
+    elapsedMs: left.elapsedMs + right.elapsedMs,
+    logicalSourceBytes: left.logicalSourceBytes + right.logicalSourceBytes,
+    logicalUncompressedBytes:
+      left.logicalUncompressedBytes + right.logicalUncompressedBytes,
+    messagesDecoded: left.messagesDecoded + right.messagesDecoded,
+    transferredBytes: left.transferredBytes + right.transferredBytes,
+  };
+}
+
+function yieldToCancellation(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (!signal?.aborted) {
+    return;
+  }
+  const error = new Error("MCAP numeric series slice aborted");
+  error.name = "AbortError";
+  throw error;
 }
 
 function channelRecordCount(

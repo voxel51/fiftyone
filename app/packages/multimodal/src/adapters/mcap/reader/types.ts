@@ -151,6 +151,7 @@ export type McapReaderFactory = (
 export interface McapReadContinuation {
   readonly endTimeNs?: bigint;
   readonly nextChunkStartOffset: bigint;
+  readonly preferredTimeNs?: bigint;
   readonly sourceKey: string;
   readonly startTimeNs?: bigint;
   readonly topicsKey: string;
@@ -165,6 +166,8 @@ export interface McapBoundedMessageReadRequest {
   readonly continuation?: McapReadContinuation;
   readonly endTimeNs?: bigint;
   readonly maxChunks: number;
+  readonly maxGroups?: number;
+  readonly preferredTimeNs?: bigint;
   readonly signal?: AbortSignal;
   readonly startTimeNs?: bigint;
   readonly topics?: readonly string[];

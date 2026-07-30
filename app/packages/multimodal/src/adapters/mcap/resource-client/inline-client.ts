@@ -29,7 +29,10 @@ import {
   readMcapFrameTransformWindow,
 } from "./operations/read-frame-transforms";
 import { enumerateMcapNumericFields } from "./numeric-fields";
-import { readMcapNumericSeries } from "./operations/read-numeric-series";
+import {
+  readMcapNumericSeries,
+  readMcapNumericSeriesSlice,
+} from "./operations/read-numeric-series";
 import { readMcapRawMessageRecord } from "./operations/read-raw-message-record";
 import { readMcapPointCloudChannel } from "./operations/read-point-cloud-channel";
 import { readMcapTopics } from "./operations/read-topics";
@@ -39,6 +42,7 @@ import {
   type McapDecodedMessage,
   type McapEnumerateNumericFieldsRequest,
   type McapNumericSeriesResult,
+  type McapNumericSeriesSliceResult,
   type McapReadDecodedMessagesRequest,
   type McapReadBoundedMessagesRequest,
   type McapReadBoundedMessagesResult,
@@ -47,6 +51,7 @@ import {
   type McapRawMessageRecordResult,
   type McapPointCloudChannelResult,
   type McapReadNumericSeriesRequest,
+  type McapReadNumericSeriesSliceRequest,
   type McapReadRawMessageRecordRequest,
   type McapReadPointCloudChannelRequest,
   type McapReadSynchronizedMessageBatchRequest,
@@ -227,6 +232,20 @@ export function createInlineMcapResourceClient(
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
       const reader = await readerStore.get(request.source);
       return readMcapNumericSeries({ reader, request, timeline });
+    },
+
+    async readNumericSeriesSlice(
+      request: McapReadNumericSeriesSliceRequest,
+      readOptions?: McapResourceReadOptions,
+    ): Promise<McapNumericSeriesSliceResult> {
+      const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
+      const reader = await readerStore.get(request.source);
+      return readMcapNumericSeriesSlice({
+        reader,
+        request,
+        signal: readOptions?.signal ?? options.readSignal?.current ?? undefined,
+        timeline,
+      });
     },
 
     async readRawMessageRecord(

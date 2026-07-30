@@ -9,7 +9,9 @@ import { resolveMcapTimelineStrategy } from "../timeline";
 import {
   projectNumericField,
   readMcapNumericSeries,
+  readMcapNumericSeriesSlice,
 } from "./read-numeric-series";
+import type { ReadWorkBudget, ReadWorkUsage } from "../../../../ports";
 
 const TELEMETRY_ROOT = Root.fromJSON({
   nested: {
@@ -403,6 +405,168 @@ describe("readMcapNumericSeries", () => {
   });
 });
 
+describe("readMcapNumericSeriesSlice", () => {
+  const timeline = resolveMcapTimelineStrategy(undefined);
+  const budget: ReadWorkBudget = {
+    maxMessages: 100,
+    maxSourceBytes: 1_000_000,
+    maxUncompressedBytes: 1_000_000,
+    maxWallTimeMs: 1_000,
+  };
+
+  it("projects multiple topics from one bounded traversal", async () => {
+    const stateChannel = createChannel({
+      id: 1,
+      messageEncoding: "json",
+      schemaId: 0,
+      topic: "/state",
+    });
+    const poseChannel = createChannel({
+      id: 2,
+      messageEncoding: "json",
+      schemaId: 0,
+      topic: "/pose",
+    });
+    const readBoundedMessages = vi.fn(async () => ({
+      coverageByTopic: new Map([
+        ["/state", [{ endNs: 2_000_000_000n, startNs: 1_000_000_000n }]],
+        ["/pose", [{ endNs: 2_000_000_000n, startNs: 1_000_000_000n }]],
+      ]),
+      messages: [
+        createMessage(
+          new TextEncoder().encode(JSON.stringify({ speed: 3, armed: true })),
+          { channelId: 1, logTime: 1_000_000_000n },
+        ),
+        createMessage(new TextEncoder().encode(JSON.stringify({ x: 9 })), {
+          channelId: 2,
+          logTime: 2_000_000_000n,
+        }),
+      ],
+      stopReason: "source-exhausted" as const,
+      usage: createUsage({ chunksOpened: 1, messagesDecoded: 2 }),
+    }));
+    const base = createReader({
+      channel: stateChannel,
+      messages: [],
+      schema: createSchema(new Uint8Array(), { id: 0 }),
+    });
+    const reader = {
+      ...base,
+      channelsById: new Map([
+        [stateChannel.id, stateChannel],
+        [poseChannel.id, poseChannel],
+      ]),
+      readBoundedMessages,
+    };
+    const controller = new AbortController();
+
+    const result = await readMcapNumericSeriesSlice({
+      reader,
+      request: {
+        absoluteBudget: budget,
+        absoluteMaxChunks: 4,
+        budget,
+        endTimeNs: 2_000_000_000n,
+        maxChunks: 2,
+        preferredTimeNs: 1_500_000_000n,
+        selections: [
+          { fieldPaths: ["speed", "armed"], topic: "/state" },
+          { fieldPaths: ["x"], topic: "/pose" },
+        ],
+        source: createSource(),
+        startTimeNs: 1_000_000_000n,
+      },
+      signal: controller.signal,
+      timeline,
+    });
+
+    expect(readBoundedMessages).toHaveBeenCalledOnce();
+    expect(readBoundedMessages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preferredTimeNs: 1_500_000_000n,
+        signal: controller.signal,
+        topics: ["/state", "/pose"],
+      }),
+    );
+    expect(result.series.map((series) => series.topic)).toEqual([
+      "/state",
+      "/pose",
+    ]);
+    expect([...result.series[0].fields[0].values]).toEqual([3]);
+    expect([...result.series[0].fields[1].values]).toEqual([1]);
+    expect([...result.series[1].fields[0].values]).toEqual([9]);
+    expect(result.usage.messagesDecoded).toBe(2);
+  });
+
+  it("escalates exactly one indivisible group after a zero-progress grant", async () => {
+    const continuation = {
+      endTimeNs: 2_000_000_000n,
+      nextChunkStartOffset: 1_000n,
+      preferredTimeNs: 1_500_000_000n,
+      sourceKey: "test",
+      startTimeNs: 1_000_000_000n,
+      topicsKey: "/state",
+      version: 1 as const,
+    };
+    const readBoundedMessages = vi
+      .fn()
+      .mockResolvedValueOnce({
+        continuation,
+        coverageByTopic: new Map(),
+        messages: [],
+        stopReason: "budget-exhausted",
+        usage: createUsage(),
+      })
+      .mockResolvedValueOnce({
+        coverageByTopic: new Map([
+          ["/state", [{ endNs: 2_000_000_000n, startNs: 1_000_000_000n }]],
+        ]),
+        messages: [jsonMessage({ v: 7 }, 1_500_000_000n)],
+        stopReason: "source-exhausted",
+        usage: createUsage({ chunksOpened: 2, messagesDecoded: 1 }),
+      });
+    const reader = {
+      ...createReader({
+        channel: createChannel({
+          messageEncoding: "json",
+          topic: "/state",
+        }),
+      }),
+      readBoundedMessages,
+    };
+    const absoluteBudget = {
+      ...budget,
+      maxSourceBytes: 2_000_000,
+      maxUncompressedBytes: 2_000_000,
+    };
+
+    const result = await readMcapNumericSeriesSlice({
+      reader,
+      request: {
+        absoluteBudget,
+        absoluteMaxChunks: 4,
+        budget,
+        endTimeNs: 2_000_000_000n,
+        maxChunks: 1,
+        preferredTimeNs: 1_500_000_000n,
+        selections: [{ fieldPaths: ["v"], topic: "/state" }],
+        source: createSource(),
+        startTimeNs: 1_000_000_000n,
+      },
+      timeline,
+    });
+
+    expect(readBoundedMessages).toHaveBeenCalledTimes(2);
+    expect(readBoundedMessages.mock.calls[1][0]).toMatchObject({
+      budget: absoluteBudget,
+      maxChunks: 4,
+      maxGroups: 1,
+    });
+    expect([...result.series[0].fields[0].values]).toEqual([7]);
+    expect(result.usage.chunksOpened).toBe(2);
+  });
+});
+
 function telemetryMessage(
   record: Record<string, unknown>,
   logTime: bigint,
@@ -528,6 +692,20 @@ function createStatistics(
     metadataCount: 0,
     schemaCount: 1,
     type: "Statistics",
+  };
+}
+
+function createUsage(overrides: Partial<ReadWorkUsage> = {}): ReadWorkUsage {
+  return {
+    chunksOpened: 0,
+    decompressedBytes: 0,
+    decompressionCacheHits: 0,
+    elapsedMs: 0,
+    logicalSourceBytes: 0,
+    logicalUncompressedBytes: 0,
+    messagesDecoded: 0,
+    transferredBytes: 0,
+    ...overrides,
   };
 }
 

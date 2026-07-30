@@ -244,9 +244,48 @@ export interface NumericSeriesCapability {
   readNumericSeries(request: {
     readonly fields: readonly string[];
     readonly maxPointsPerField?: number;
+    readonly signal?: AbortSignal;
     readonly stream: StreamId;
     readonly window: TimeWindow;
   }): Promise<NumericSeriesResult>;
+
+  /**
+   * Reads one exact, source-bounded numeric slice for every selected stream in
+   * a shared physical traversal. Adapters without chunk/index admission may
+   * omit this and keep the legacy single-stream read above.
+   */
+  readNumericSeriesSlice?(
+    request: NumericSeriesSliceRequest,
+  ): Promise<NumericSeriesSliceResult>;
+}
+
+/** Numeric fields projected for one stream during a shared slice read. */
+export interface NumericSeriesSliceSelection {
+  readonly fields: readonly string[];
+  readonly stream: StreamId;
+}
+
+/** One cancellable, resumable grant toward a larger plot horizon. */
+export interface NumericSeriesSliceRequest {
+  readonly absoluteBudget: ReadWorkBudget;
+  readonly absoluteMaxChunks: number;
+  readonly budget: ReadWorkBudget;
+  readonly continuation?: ReadContinuation;
+  readonly maxChunks: number;
+  readonly maxPointsPerField?: number;
+  readonly preferredTimeNs?: bigint;
+  readonly selections: readonly NumericSeriesSliceSelection[];
+  readonly signal?: AbortSignal;
+  readonly window: TimeWindow;
+}
+
+/** Exact partial numeric data and work evidence for one admitted grant. */
+export interface NumericSeriesSliceResult {
+  readonly continuation?: ReadContinuation;
+  readonly coverageByStream: ReadonlyMap<StreamId, readonly TimeWindow[]>;
+  readonly series: readonly NumericSeriesResult[];
+  readonly stopReason: BudgetedReadStopReason;
+  readonly usage: ReadWorkUsage;
 }
 
 /** Optional semantic capability for bounded raw-record inspection. */

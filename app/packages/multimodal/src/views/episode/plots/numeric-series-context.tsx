@@ -24,7 +24,12 @@ import {
 } from "../../../runtime";
 import { useDemandRegistry } from "../../../runtime/react";
 import type { NumericStreamFields } from "../../../ir";
-import type { NumericSeriesCapability } from "../../../ports";
+import type {
+  NumericSeriesCapability,
+  NumericSeriesSliceSelection,
+  ReadContinuation,
+  ReadWorkBudget,
+} from "../../../ports";
 import { useDataStream } from "../playback/data-stream-context";
 import { shouldDeferIdleWorkForStore } from "../playback/network-health";
 
@@ -73,15 +78,34 @@ const FAILURE_BACKOFF_MS = 5_000;
 const FULL_RANGE_POINT_BUDGET = 4_000;
 const MIN_WINDOW_POINT_BUDGET = 200;
 
-/**
- * Speculative memory is estimated as two packed Float64 values per point
- * (time and value). Reserve against the full-range point cap so accumulated
- * windows cannot silently outgrow the source-level budget.
- */
-const ESTIMATED_SERIES_BYTES_PER_FIELD =
-  FULL_RANGE_POINT_BUDGET * Float64Array.BYTES_PER_ELEMENT * 2;
-const STREAM_PREFETCH_BUDGET_BYTES = 2 * 1024 * 1024;
-const SOURCE_PREFETCH_BUDGET_BYTES = 8 * 1024 * 1024;
+const MIB = 1024 * 1024;
+
+/** Smallest first-paint grant: one ordinary chunk ownership group. */
+const FIRST_NUMERIC_SLICE_BUDGET: ReadWorkBudget = {
+  maxMessages: 50_000,
+  maxSourceBytes: 64 * MIB,
+  maxUncompressedBytes: 128 * MIB,
+  maxWallTimeMs: 750,
+};
+
+/** Steady continuation grant after the first exact playhead-local result. */
+const STEADY_NUMERIC_SLICE_BUDGET: ReadWorkBudget = {
+  maxMessages: 50_000,
+  maxSourceBytes: 256 * MIB,
+  maxUncompressedBytes: 128 * MIB,
+  maxWallTimeMs: 750,
+};
+
+/** Hard ceiling for one indivisible MCAP overlap group. */
+const ABSOLUTE_NUMERIC_SOURCE_UNIT_BUDGET: ReadWorkBudget = {
+  maxMessages: 250_000,
+  maxSourceBytes: 512 * MIB,
+  maxUncompressedBytes: 512 * MIB,
+  maxWallTimeMs: 5_000,
+};
+const FIRST_NUMERIC_SLICE_MAX_CHUNKS = 1;
+const STEADY_NUMERIC_SLICE_MAX_CHUNKS = 8;
+const ABSOLUTE_NUMERIC_SOURCE_UNIT_MAX_CHUNKS = 32;
 
 /** Coverage sentinel for unbounded (windowless fallback) fetches. */
 const FULL_COVERAGE: NsRange = { endNs: 1n << 62n, startNs: 0n };
@@ -105,7 +129,9 @@ export interface NumericFieldsEnumeration {
  */
 export interface NumericSeriesState {
   readonly status: "loading" | "ready" | "error";
+  readonly coverageSeconds?: number;
   readonly timesSec?: Float64Array;
+  readonly targetSeconds?: number;
   readonly values?: Float64Array;
   readonly truncated?: boolean;
   readonly error?: string;
@@ -147,6 +173,14 @@ export interface NumericSeriesContextValue {
 interface NumericSeriesHandlers {
   ensureEnumeration(): void;
   onDemandChanged(): void;
+}
+
+interface NumericSliceJob {
+  readonly continuation?: ReadContinuation;
+  readonly horizonKey: string;
+  readonly preferredTimeNs: bigint;
+  readonly range: NsRange;
+  readonly selections: readonly NumericSeriesSliceSelection[];
 }
 
 interface NumericSeriesInternalValue extends NumericSeriesContextValue {
@@ -282,25 +316,107 @@ export function NumericSeriesBridge({
     }
 
     let enumerationRequested = false;
-    let numericFieldPathsByStream: ReadonlyMap<
-      string,
-      readonly string[]
-    > | null = null;
-    let speculativeBytesReserved = 0;
+    let activeSlice:
+      | {
+          readonly controller: AbortController;
+          readonly job: NumericSliceJob;
+        }
+      | undefined;
+    let pendingSlice: NumericSliceJob | undefined;
+    const legacyControllers = new Set<AbortController>();
     const coverage = new Map<string, NsRange[]>();
     const segments = new Map<string, NumericSeriesSegment[]>();
     const published = new Map<string, NumericSeriesState>();
     const truncatedKeys = new Set<string>();
     const failedAtMs = new Map<string, number>();
-    const speculativelyReservedKeys = new Set<string>();
 
     const publish = (isCancelled: () => boolean) => {
       if (!isCancelled()) {
         setSeriesByKey(new Map(published));
       }
     };
+    const abortActiveWork = () => {
+      activeSlice?.controller.abort();
+      activeSlice = undefined;
+      pendingSlice = undefined;
+      for (const controller of legacyControllers) {
+        controller.abort();
+      }
+      legacyControllers.clear();
+    };
+    const publishResult = ({
+      baseTimeNs,
+      fields,
+      ranges,
+      stream,
+      truncated,
+    }: {
+      readonly baseTimeNs: bigint;
+      readonly fields: readonly {
+        readonly path: string;
+        readonly timesSec: Float64Array;
+        readonly values: Float64Array;
+      }[];
+      readonly ranges: readonly NsRange[];
+      readonly stream: string;
+      readonly truncated: boolean;
+    }) => {
+      for (const field of fields) {
+        const key = numericSeriesKey(stream, field.path);
+        failedAtMs.delete(key);
+        if (truncated) {
+          truncatedKeys.add(key);
+        }
+        let keySegments = segments.get(key) ?? [];
+        for (const range of ranges) {
+          const sliced = sliceNumericFieldToRange(field, baseTimeNs, range);
+          if (sliced.timesSec.length === 0) {
+            continue;
+          }
+          keySegments = insertSeriesSegment(keySegments, {
+            endNs: range.endNs,
+            startNs: range.startNs,
+            timesSec: sliced.timesSec,
+            values: sliced.values,
+          });
+        }
+        if (keySegments.length > 0) {
+          segments.set(key, keySegments);
+        }
+        const flat = flattenSeriesSegments(keySegments);
+        published.set(key, {
+          status: "ready",
+          timesSec: flat.timesSec,
+          truncated: truncatedKeys.has(key) || undefined,
+          values: flat.values,
+        });
+      }
+    };
+    const publishCoverageProgress = (
+      selections: readonly NumericSeriesSliceSelection[],
+      horizon: NsRange,
+    ) => {
+      const targetSeconds = rangeDurationSeconds(horizon);
+      for (const selection of selections) {
+        for (const field of selection.fields) {
+          const key = numericSeriesKey(selection.stream, field);
+          const state = published.get(key);
+          if (!state) {
+            continue;
+          }
+          published.set(key, {
+            ...state,
+            coverageSeconds: coveredSecondsWithin(
+              coverage.get(key) ?? [],
+              horizon,
+            ),
+            targetSeconds,
+          });
+        }
+      }
+    };
 
-    return startDemandBridge<
+    const stopBridge = startDemandBridge<
       NumericSeriesHandlers,
       NonNullable<typeof dataStream>
     >({
@@ -323,18 +439,9 @@ export function NumericSeriesBridge({
           const publishEnumeration = (
             streams: readonly NumericStreamFields[],
           ) => {
-            if (isCancelled()) {
-              return;
+            if (!isCancelled()) {
+              setEnumeration({ status: "ready", streams });
             }
-            numericFieldPathsByStream = new Map(
-              streams
-                .filter((stream) => stream.availability === "ready")
-                .map((stream) => [
-                  stream.streamId,
-                  [...new Set(stream.fields.map((field) => field.path))],
-                ]),
-            );
-            setEnumeration({ status: "ready", streams });
           };
           void capability
             .enumerateNumericFields(undefined, {
@@ -356,25 +463,29 @@ export function NumericSeriesBridge({
                 })
                 .then(publishEnumeration)
                 .catch(() => {
-                  // Keep the already-published schema catalog when optional
-                  // bounded augmentation fails.
+                  // Keep the schema catalog when optional augmentation fails.
                 });
             })
             .catch(() => {
               if (!isCancelled()) {
                 enumerationRequested = false;
-                numericFieldPathsByStream = null;
                 setEnumeration({ status: "error", streams: [] });
               }
             });
         },
-        onDemandChanged: queueFill,
+        onDemandChanged() {
+          abortActiveWork();
+          queueFill();
+        },
       }),
       onFill({
         demandKeys,
         isCancelled,
+        later,
         nowMs,
         playheadSec,
+        queueFill,
+        queueImmediateFill,
         timeline,
         userInitiated,
       }) {
@@ -382,185 +493,330 @@ export function NumericSeriesBridge({
           playbackStore && timeline
             ? quantizedPlayheadWindow(timeline, playheadSec)
             : null;
-
-        const now = nowMs();
         const demandedKeys = new Set(demandKeys);
-        const batches = new Map<
-          string,
-          { fieldPaths: Set<string>; range: NsRange | null; stream: string }
-        >();
-        let publishNeeded = false;
-        for (const key of demandedKeys) {
-          if (!userInitiated) {
-            const failed = failedAtMs.get(key);
-            if (failed !== undefined && now - failed < FAILURE_BACKOFF_MS) {
-              continue;
+        const now = nowMs();
+
+        // Adapters without bounded numeric slices retain the legacy
+        // single-stream path. MCAP always takes the progressive branch below.
+        if (!window || !capability.readNumericSeriesSlice) {
+          if (legacyControllers.size > 0) {
+            return;
+          }
+          const fallbackRange = window ?? FULL_COVERAGE;
+          const batches = new Map<
+            string,
+            { fields: Set<string>; range: NsRange; stream: string }
+          >();
+          let publishNeeded = false;
+          for (const key of demandedKeys) {
+            if (!userInitiated) {
+              const failed = failedAtMs.get(key);
+              if (failed !== undefined && now - failed < FAILURE_BACKOFF_MS) {
+                continue;
+              }
+            }
+            const [stream, fieldPath] = splitSeriesKey(key);
+            for (const range of subtractCoveredRanges(
+              fallbackRange,
+              coverage.get(key) ?? [],
+            )) {
+              const batchKey = `${stream}\0${range.startNs}:${range.endNs}`;
+              let batch = batches.get(batchKey);
+              if (!batch) {
+                batch = { fields: new Set(), range, stream };
+                batches.set(batchKey, batch);
+              }
+              batch.fields.add(fieldPath);
+              coverage.set(
+                key,
+                addCoveredRange(coverage.get(key) ?? [], range),
+              );
+              if (!published.has(key)) {
+                published.set(key, { status: "loading" });
+                publishNeeded = true;
+              }
             }
           }
-          const [stream, fieldPath] = splitSeriesKey(key);
-          let covered = coverage.get(key) ?? [];
-          const missing: readonly (NsRange | null)[] =
-            window === null
-              ? covered.length > 0
-                ? []
-                : [null]
-              : subtractCoveredRanges(window, covered);
-          for (const range of missing) {
-            // Optimistic coverage: marks the range in-flight so throttled
-            // refills never duplicate a pending request; rolled back on
-            // failure.
-            covered = addCoveredRange(covered, range ?? FULL_COVERAGE);
-            const batchKey =
-              range === null
-                ? `${stream}\0full`
-                : `${stream}\0${range.startNs}:${range.endNs}`;
-            let batch = batches.get(batchKey);
-            if (!batch) {
-              batch = { fieldPaths: new Set(), range, stream };
-              batches.set(batchKey, batch);
-            }
-            batch.fieldPaths.add(fieldPath);
+          if (publishNeeded) {
+            publish(isCancelled);
           }
-          coverage.set(key, covered);
-          if (missing.length > 0 && !published.has(key)) {
-            published.set(key, { status: "loading" });
-            publishNeeded = true;
+          for (const batch of batches.values()) {
+            const fields = [...batch.fields];
+            const controller = new AbortController();
+            legacyControllers.add(controller);
+            void capability
+              .readNumericSeries({
+                fields,
+                maxPointsPerField: windowPointBudget(
+                  batch.range,
+                  timeline?.durationSec,
+                ),
+                signal: controller.signal,
+                stream: batch.stream,
+                window: batch.range,
+              })
+              .then((result) => {
+                legacyControllers.delete(controller);
+                if (isCancelled() || controller.signal.aborted) {
+                  return;
+                }
+                publishResult({
+                  baseTimeNs: result.baseTimeNs,
+                  fields: result.fields,
+                  ranges: [batch.range],
+                  stream: batch.stream,
+                  truncated: result.truncated,
+                });
+                publish(isCancelled);
+              })
+              .catch((error: unknown) => {
+                legacyControllers.delete(controller);
+                if (isCancelled() || controller.signal.aborted) {
+                  return;
+                }
+                const message =
+                  error instanceof Error ? error.message : String(error);
+                const failedNow = nowMs();
+                for (const fieldPath of fields) {
+                  const key = numericSeriesKey(batch.stream, fieldPath);
+                  coverage.set(
+                    key,
+                    removeCoveredRange(coverage.get(key) ?? [], batch.range),
+                  );
+                  if (refCountsRef.current.has(key)) {
+                    failedAtMs.set(key, failedNow);
+                    if (!segments.has(key)) {
+                      published.set(key, { error: message, status: "error" });
+                    }
+                  }
+                }
+                publish(isCancelled);
+                later(queueFill, FAILURE_BACKOFF_MS);
+              });
           }
+          return;
+        }
+        if (!timeline) {
+          return;
+        }
+        const preferredTimeNs = timeline.secToNs(playheadSec);
+
+        const horizonKey = `${window.startNs}:${window.endNs}`;
+        if (activeSlice) {
+          if (activeSlice.job.horizonKey === horizonKey) {
+            return;
+          }
+          activeSlice.controller.abort();
+          activeSlice = undefined;
+          pendingSlice = undefined;
         }
 
-        for (const batch of batches.values()) {
-          const streamFieldPaths = numericFieldPathsByStream?.get(batch.stream);
-          if (
-            !streamFieldPaths ||
-            streamFieldPaths.length * ESTIMATED_SERIES_BYTES_PER_FIELD >
-              STREAM_PREFETCH_BUDGET_BYTES
-          ) {
-            continue;
-          }
+        let job = pendingSlice;
+        if (
+          job &&
+          (job.horizonKey !== horizonKey ||
+            job.selections.some((selection) =>
+              selection.fields.some(
+                (field) =>
+                  !demandedKeys.has(numericSeriesKey(selection.stream, field)),
+              ),
+            ))
+        ) {
+          job = undefined;
+          pendingSlice = undefined;
+        }
 
-          const range = batch.range ?? FULL_COVERAGE;
-          const prefetchFieldPaths: string[] = [];
-          let additionalBytes = 0;
-          for (const fieldPath of streamFieldPaths) {
-            const key = numericSeriesKey(batch.stream, fieldPath);
-            if (
-              demandedKeys.has(key) ||
-              subtractCoveredRanges(range, coverage.get(key) ?? []).length === 0
-            ) {
+        if (!job) {
+          const missing = new Map<string, readonly NsRange[]>();
+          const candidates: NsRange[] = [];
+          let publishNeeded = false;
+          for (const key of demandedKeys) {
+            if (!userInitiated) {
+              const failed = failedAtMs.get(key);
+              if (failed !== undefined && now - failed < FAILURE_BACKOFF_MS) {
+                continue;
+              }
+            }
+            const ranges = subtractCoveredRanges(
+              window,
+              coverage.get(key) ?? [],
+            );
+            if (ranges.length === 0) {
               continue;
             }
-            prefetchFieldPaths.push(fieldPath);
-            if (!speculativelyReservedKeys.has(key)) {
-              additionalBytes += ESTIMATED_SERIES_BYTES_PER_FIELD;
-            }
-          }
-          // Prefetch the whole eligible stream or none of it. A partial prefix
-          // would make later checkbox order determine how many scans occur.
-          if (
-            speculativeBytesReserved + additionalBytes >
-            SOURCE_PREFETCH_BUDGET_BYTES
-          ) {
-            continue;
-          }
-
-          for (const fieldPath of prefetchFieldPaths) {
-            const key = numericSeriesKey(batch.stream, fieldPath);
-            batch.fieldPaths.add(fieldPath);
-            coverage.set(key, addCoveredRange(coverage.get(key) ?? [], range));
-            if (!speculativelyReservedKeys.has(key)) {
-              speculativelyReservedKeys.add(key);
-              speculativeBytesReserved += ESTIMATED_SERIES_BYTES_PER_FIELD;
-            }
+            missing.set(key, ranges);
+            candidates.push(...ranges);
             if (!published.has(key)) {
               published.set(key, { status: "loading" });
               publishNeeded = true;
             }
           }
+          if (publishNeeded) {
+            publish(isCancelled);
+          }
+          const range = nearestRange(candidates, preferredTimeNs);
+          if (!range) {
+            return;
+          }
+          const fieldsByStream = new Map<string, Set<string>>();
+          for (const [key, ranges] of missing) {
+            if (
+              !ranges.some((missingRange) => rangesOverlap(missingRange, range))
+            ) {
+              continue;
+            }
+            const [stream, field] = splitSeriesKey(key);
+            let fields = fieldsByStream.get(stream);
+            if (!fields) {
+              fields = new Set();
+              fieldsByStream.set(stream, fields);
+            }
+            fields.add(field);
+          }
+          job = {
+            horizonKey,
+            preferredTimeNs,
+            range,
+            selections: [...fieldsByStream].map(([stream, fields]) => ({
+              fields: [...fields],
+              stream,
+            })),
+          };
         }
 
-        if (publishNeeded) {
-          publish(isCancelled);
-        }
+        const sliceJob = job;
+        pendingSlice = undefined;
+        const controller = new AbortController();
+        activeSlice = { controller, job: sliceJob };
+        const isFirstPage = sliceJob.continuation === undefined;
+        void capability
+          .readNumericSeriesSlice({
+            absoluteBudget: ABSOLUTE_NUMERIC_SOURCE_UNIT_BUDGET,
+            absoluteMaxChunks: ABSOLUTE_NUMERIC_SOURCE_UNIT_MAX_CHUNKS,
+            budget: isFirstPage
+              ? FIRST_NUMERIC_SLICE_BUDGET
+              : STEADY_NUMERIC_SLICE_BUDGET,
+            continuation: sliceJob.continuation,
+            maxChunks: isFirstPage
+              ? FIRST_NUMERIC_SLICE_MAX_CHUNKS
+              : STEADY_NUMERIC_SLICE_MAX_CHUNKS,
+            maxPointsPerField: windowPointBudget(
+              sliceJob.range,
+              timeline.durationSec,
+            ),
+            preferredTimeNs: sliceJob.preferredTimeNs,
+            selections: sliceJob.selections,
+            signal: controller.signal,
+            window: sliceJob.range,
+          })
+          .then((result) => {
+            if (
+              isCancelled() ||
+              controller.signal.aborted ||
+              activeSlice?.controller !== controller
+            ) {
+              return;
+            }
+            activeSlice = undefined;
+            if (
+              result.stopReason === "budget-exhausted" &&
+              !result.continuation &&
+              result.usage.chunksOpened === 0
+            ) {
+              throw new Error("Numeric series slice made no bounded progress");
+            }
 
-        for (const batch of batches.values()) {
-          const fieldPaths = [...batch.fieldPaths];
-          void capability
-            .readNumericSeries({
-              fields: fieldPaths,
-              maxPointsPerField: windowPointBudget(
-                batch.range,
-                timeline?.durationSec,
-              ),
-              stream: batch.stream,
-              window: batch.range ?? FULL_COVERAGE,
-            })
-            .then((result) => {
-              if (isCancelled()) {
-                return;
-              }
-              const range = batch.range ?? FULL_COVERAGE;
-              for (const field of result.fields) {
-                const key = numericSeriesKey(batch.stream, field.path);
+            const terminal =
+              result.stopReason === "source-exhausted" ||
+              result.stopReason === "oversized-source-unit";
+            for (const selection of sliceJob.selections) {
+              const ranges =
+                result.coverageByStream.get(selection.stream) ?? [];
+              for (const field of selection.fields) {
+                const key = numericSeriesKey(selection.stream, field);
+                let covered = coverage.get(key) ?? [];
+                for (const range of ranges) {
+                  covered = addCoveredRange(covered, range);
+                }
+                if (terminal) {
+                  covered = addCoveredRange(covered, sliceJob.range);
+                }
+                coverage.set(key, covered);
                 failedAtMs.delete(key);
-                if (result.truncated) {
+                if (result.stopReason === "oversized-source-unit") {
                   truncatedKeys.add(key);
                 }
-                let keySegments = segments.get(key) ?? [];
-                if (field.timesSec.length > 0) {
-                  keySegments = insertSeriesSegment(keySegments, {
-                    endNs: range.endNs,
-                    startNs: range.startNs,
-                    timesSec: field.timesSec,
-                    values: field.values,
-                  });
-                  segments.set(key, keySegments);
-                }
-                const flat = flattenSeriesSegments(keySegments);
-                published.set(key, {
-                  status: "ready",
-                  timesSec: flat.timesSec,
-                  truncated: truncatedKeys.has(key) || undefined,
-                  values: flat.values,
-                });
               }
-              publish(isCancelled);
-            })
-            .catch((error: unknown) => {
-              if (isCancelled()) {
-                return;
+            }
+
+            const returnedStreams = new Set<string>();
+            for (const series of result.series) {
+              returnedStreams.add(series.streamId);
+              publishResult({
+                baseTimeNs: series.baseTimeNs,
+                fields: series.fields,
+                ranges: result.coverageByStream.get(series.streamId) ?? [
+                  sliceJob.range,
+                ],
+                stream: series.streamId,
+                truncated:
+                  series.truncated ||
+                  result.stopReason === "oversized-source-unit",
+              });
+            }
+            for (const selection of sliceJob.selections) {
+              if (returnedStreams.has(selection.stream)) {
+                continue;
               }
-              const message =
-                error instanceof Error ? error.message : String(error);
-              const failedNow = nowMs();
-              for (const fieldPath of fieldPaths) {
-                const key = numericSeriesKey(batch.stream, fieldPath);
-                if (speculativelyReservedKeys.delete(key)) {
-                  speculativeBytesReserved -= ESTIMATED_SERIES_BYTES_PER_FIELD;
-                }
-                coverage.set(
-                  key,
-                  removeCoveredRange(
-                    coverage.get(key) ?? [],
-                    batch.range ?? FULL_COVERAGE,
-                  ),
-                );
+              publishResult({
+                baseTimeNs: 0n,
+                fields: selection.fields.map((path) => ({
+                  path,
+                  timesSec: new Float64Array(),
+                  values: new Float64Array(),
+                })),
+                ranges: [],
+                stream: selection.stream,
+                truncated: result.stopReason === "oversized-source-unit",
+              });
+            }
+            publishCoverageProgress(sliceJob.selections, sliceJob.range);
+            publish(isCancelled);
+
+            pendingSlice = result.continuation
+              ? { ...sliceJob, continuation: result.continuation }
+              : undefined;
+            queueImmediateFill();
+          })
+          .catch((error: unknown) => {
+            if (activeSlice?.controller === controller) {
+              activeSlice = undefined;
+            }
+            if (
+              isCancelled() ||
+              controller.signal.aborted ||
+              (error instanceof Error && error.name === "AbortError")
+            ) {
+              return;
+            }
+            pendingSlice = undefined;
+            const message =
+              error instanceof Error ? error.message : String(error);
+            const failedNow = nowMs();
+            for (const selection of sliceJob.selections) {
+              for (const field of selection.fields) {
+                const key = numericSeriesKey(selection.stream, field);
                 if (refCountsRef.current.has(key)) {
                   failedAtMs.set(key, failedNow);
-                  // Keep whatever segments already rendered; only surface a
-                  // hard error state when the signal has nothing to show.
                   if (!segments.has(key)) {
                     published.set(key, { error: message, status: "error" });
                   }
-                } else {
-                  failedAtMs.delete(key);
-                  if (!segments.has(key)) {
-                    published.delete(key);
-                  }
                 }
               }
-              publish(isCancelled);
-            });
-        }
+            }
+            publish(isCancelled);
+            later(queueFill, FAILURE_BACKOFF_MS);
+          });
       },
       onHandlersReady(handlers) {
         if (enumerationWantedRef.current) {
@@ -574,6 +830,11 @@ export function NumericSeriesBridge({
       shouldDeferIdleWork: (store) => shouldDeferIdleWorkForStore(store, null),
       timelineRetryMs: TIMELINE_RETRY_MS,
     });
+
+    return () => {
+      abortActiveWork();
+      stopBridge();
+    };
   }, [
     capability,
     enumerationWantedRef,
@@ -625,6 +886,91 @@ function quantizedPlayheadWindow(
   return endNs >= startNs
     ? { endNs, startNs }
     : { endNs: timeline.endTimeNs, startNs: timeline.startTimeNs };
+}
+
+function nearestRange(
+  ranges: readonly NsRange[],
+  preferredTimeNs: bigint,
+): NsRange | undefined {
+  return ranges.reduce<NsRange | undefined>((best, range) => {
+    if (!best) {
+      return range;
+    }
+    const distance = distanceToRange(range, preferredTimeNs);
+    const bestDistance = distanceToRange(best, preferredTimeNs);
+    if (distance !== bestDistance) {
+      return distance < bestDistance ? range : best;
+    }
+    if (range.startNs !== best.startNs) {
+      return range.startNs < best.startNs ? range : best;
+    }
+    return range.endNs < best.endNs ? range : best;
+  }, undefined);
+}
+
+function distanceToRange(range: NsRange, preferredTimeNs: bigint): bigint {
+  if (preferredTimeNs < range.startNs) {
+    return range.startNs - preferredTimeNs;
+  }
+  if (preferredTimeNs > range.endNs) {
+    return preferredTimeNs - range.endNs;
+  }
+  return 0n;
+}
+
+function rangesOverlap(left: NsRange, right: NsRange): boolean {
+  return left.startNs <= right.endNs && right.startNs <= left.endNs;
+}
+
+function coveredSecondsWithin(
+  covered: readonly NsRange[],
+  horizon: NsRange,
+): number {
+  let coveredNs = 0n;
+  for (const range of covered) {
+    const startNs =
+      range.startNs > horizon.startNs ? range.startNs : horizon.startNs;
+    const endNs = range.endNs < horizon.endNs ? range.endNs : horizon.endNs;
+    if (endNs >= startNs) {
+      coveredNs += endNs - startNs;
+    }
+  }
+  return Number(coveredNs) / 1_000_000_000;
+}
+
+function rangeDurationSeconds(range: NsRange): number {
+  return Number(range.endNs - range.startNs) / 1_000_000_000;
+}
+
+function sliceNumericFieldToRange(
+  field: {
+    readonly timesSec: Float64Array;
+    readonly values: Float64Array;
+  },
+  baseTimeNs: bigint,
+  range: NsRange,
+): { readonly timesSec: Float64Array; readonly values: Float64Array } {
+  const startSec = nsDeltaToSeconds(range.startNs - baseTimeNs);
+  const endSec = nsDeltaToSeconds(range.endNs - baseTimeNs);
+  let start = 0;
+  while (start < field.timesSec.length && field.timesSec[start] < startSec) {
+    start += 1;
+  }
+  let end = start;
+  while (end < field.timesSec.length && field.timesSec[end] <= endSec) {
+    end += 1;
+  }
+  return {
+    timesSec: field.timesSec.slice(start, end),
+    values: field.values.slice(start, end),
+  };
+}
+
+function nsDeltaToSeconds(deltaNs: bigint): number {
+  return (
+    Number(deltaNs / 1_000_000_000n) +
+    Number(deltaNs % 1_000_000_000n) / 1_000_000_000
+  );
 }
 
 /**

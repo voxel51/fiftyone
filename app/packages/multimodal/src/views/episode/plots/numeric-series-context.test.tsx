@@ -7,7 +7,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTimelineIndex, type DataStream } from "../../../runtime";
 import { DataStreamProvider, useSetDataStream } from "../../../runtime/react";
 import type { NumericSeriesResult, NumericStreamFields } from "../../../ir";
-import type { NumericSeriesCapability } from "../../../ports";
+import type {
+  NumericSeriesCapability,
+  NumericSeriesSliceRequest,
+  NumericSeriesSliceResult,
+  ReadContinuation,
+  ReadWorkUsage,
+} from "../../../ports";
 import {
   NumericSeriesBridge,
   NumericSeriesProvider,
@@ -219,8 +225,8 @@ describe("NumericSeriesBridge (no playback store: unbounded fallback)", () => {
   });
 });
 
-describe("NumericSeriesBridge bounded stream prefetch", () => {
-  it("prefetches every /imu field once and serves later selections from cache", async () => {
+describe("NumericSeriesBridge active-field demand", () => {
+  it("reads only selected fields instead of projecting an entire schema", async () => {
     const source = createSource();
     const stream = createNumericStream("/imu", 10);
     const client = createClient({
@@ -237,16 +243,15 @@ describe("NumericSeriesBridge bounded stream prefetch", () => {
     });
 
     expect(client.readNumericSeries).toHaveBeenCalledTimes(1);
-    expect(requestOf(client, 0).fields).toEqual(
-      stream.fields.map((field) => field.path),
-    );
+    expect(requestOf(client, 0).fields).toEqual(["field0"]);
 
     await act(async () => {
       context.current?.subscribeSeries("/imu", "field9");
       await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
     });
 
-    expect(client.readNumericSeries).toHaveBeenCalledTimes(1);
+    expect(client.readNumericSeries).toHaveBeenCalledTimes(2);
+    expect(requestOf(client, 1).fields).toEqual(["field9"]);
     expect(
       context.current?.seriesByKey.get(numericSeriesKey("/imu", "field9"))
         ?.status,
@@ -316,7 +321,7 @@ describe("NumericSeriesBridge bounded stream prefetch", () => {
     expect(requestOf(client, 0).fields).toEqual(["field0", "field1"]);
   });
 
-  it("stops speculative prefetch at the 8 MiB source budget", async () => {
+  it("keeps projection proportional to active fields across wide streams", async () => {
     const source = createSource();
     const streams = [
       createNumericStream("/stream0", 32),
@@ -341,12 +346,11 @@ describe("NumericSeriesBridge bounded stream prefetch", () => {
     });
 
     expect(client.readNumericSeries).toHaveBeenCalledTimes(5);
-    for (let index = 0; index < 4; index += 1) {
-      expect(requestForStream(client, `/stream${index}`).fields).toHaveLength(
-        32,
-      );
+    for (let index = 0; index < streams.length; index += 1) {
+      expect(requestForStream(client, `/stream${index}`).fields).toEqual([
+        "field0",
+      ]);
     }
-    expect(requestForStream(client, "/stream4").fields).toEqual(["field0"]);
   });
 
   it("rolls back failed speculative coverage without publishing hidden errors", async () => {
@@ -392,7 +396,7 @@ describe("NumericSeriesBridge bounded stream prefetch", () => {
     ).toBe("ready");
   });
 
-  it("resets prefetched coverage when the episode source changes", async () => {
+  it("resets selected-field coverage when the episode source changes", async () => {
     const stream = createNumericStream("/imu", 10);
     const client = createClient({
       enumerateNumericFields: vi.fn(async () => [stream]),
@@ -427,12 +431,142 @@ describe("NumericSeriesBridge bounded stream prefetch", () => {
     });
 
     expect(client.readNumericSeries).toHaveBeenCalledTimes(2);
-    expect(requestOf(client, 1).fields).toHaveLength(10);
+    expect(requestOf(client, 1).fields).toEqual(["field0"]);
   });
 });
 
 describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
   const DURATION_SEC = 7_200;
+
+  it("batches active topics into one playhead-local bounded slice", async () => {
+    const source = createSource();
+    const client = createSlicedClient();
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+
+    render(
+      <Harness
+        client={client}
+        contextRef={context}
+        durationSec={DURATION_SEC}
+        source={source}
+        store={store}
+      />,
+    );
+
+    await act(async () => {
+      context.current?.subscribeSeries("/imu", "accel.x");
+      context.current?.subscribeSeries("/odom", "speed");
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+
+    expect(client.readNumericSeries).not.toHaveBeenCalled();
+    expect(client.readNumericSeriesSlice).toHaveBeenCalledTimes(1);
+    const request = sliceRequestOf(client, 0);
+    expect(request.maxChunks).toBe(1);
+    expect(request.preferredTimeNs).toBe(60_000_000_000n);
+    expect(request.selections).toEqual([
+      { fields: ["accel.x"], stream: "/imu" },
+      { fields: ["speed"], stream: "/odom" },
+    ]);
+    const state = context.current?.seriesByKey.get(
+      numericSeriesKey("/imu", "accel.x"),
+    );
+    expect(state?.status).toBe("ready");
+  });
+
+  it("publishes the first page before continuing the horizon", async () => {
+    const source = createSource();
+    const continuation = {} as ReadContinuation;
+    let resolveSecond: ((result: NumericSeriesSliceResult) => void) | undefined;
+    const second = new Promise<NumericSeriesSliceResult>((resolve) => {
+      resolveSecond = resolve;
+    });
+    const readNumericSeriesSlice = vi
+      .fn<NonNullable<NumericSeriesCapability["readNumericSeriesSlice"]>>()
+      .mockImplementationOnce(async (request) =>
+        sliceResult(request, {
+          continuation,
+          coverage: [{ endNs: 61_000_000_000n, startNs: 59_000_000_000n }],
+          stopReason: "budget-exhausted",
+        }),
+      )
+      .mockImplementationOnce(() => second);
+    const client = createClient({ readNumericSeriesSlice });
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+
+    render(
+      <Harness
+        client={client}
+        contextRef={context}
+        durationSec={DURATION_SEC}
+        source={source}
+        store={store}
+      />,
+    );
+    await act(async () => {
+      context.current?.subscribeSeries("/imu", "accel.x");
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+      await flushMicrotasks();
+    });
+
+    expect(readNumericSeriesSlice).toHaveBeenCalledTimes(2);
+    expect(sliceRequestOf(client, 1).continuation).toBe(continuation);
+    expect(sliceRequestOf(client, 1).maxChunks).toBe(8);
+    const state = context.current?.seriesByKey.get(
+      numericSeriesKey("/imu", "accel.x"),
+    );
+    expect(state?.status).toBe("ready");
+    expect(state?.coverageSeconds).toBe(2);
+    expect(state?.targetSeconds).toBeCloseTo(60);
+
+    await act(async () => {
+      resolveSecond?.(
+        sliceResult(sliceRequestOf(client, 1), {
+          stopReason: "source-exhausted",
+        }),
+      );
+      await flushMicrotasks();
+    });
+  });
+
+  it("aborts an obsolete slice and starts the seek destination", async () => {
+    const source = createSource();
+    const readNumericSeriesSlice = vi.fn<
+      NonNullable<NumericSeriesCapability["readNumericSeriesSlice"]>
+    >(() => new Promise(() => undefined));
+    const client = createClient({ readNumericSeriesSlice });
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+
+    render(
+      <Harness
+        client={client}
+        contextRef={context}
+        durationSec={DURATION_SEC}
+        source={source}
+        store={store}
+      />,
+    );
+    await act(async () => {
+      context.current?.subscribeSeries("/imu", "accel.x");
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+    const firstSignal = sliceRequestOf(client, 0).signal;
+
+    await act(async () => {
+      store.set(playheadAtom, 1_800);
+      await flushMicrotasks();
+    });
+
+    expect(firstSignal?.aborted).toBe(true);
+    expect(readNumericSeriesSlice).toHaveBeenCalledTimes(2);
+    expect(sliceRequestOf(client, 1).preferredTimeNs).toBe(1_800_000_000_000n);
+  });
 
   it("does not debounce a playhead-driven fill", async () => {
     const source = createSource();
@@ -702,6 +836,63 @@ function createClient(
       seriesResult(request.stream, request.fields),
     ),
     ...overrides,
+  };
+}
+
+function createSlicedClient(): NumericSeriesCapability {
+  return createClient({
+    readNumericSeriesSlice: vi.fn(async (request) =>
+      sliceResult(request, { stopReason: "source-exhausted" }),
+    ),
+  });
+}
+
+function sliceRequestOf(
+  client: NumericSeriesCapability,
+  call: number,
+): NumericSeriesSliceRequest {
+  const read = client.readNumericSeriesSlice;
+  if (!read) {
+    throw new Error("Client has no sliced numeric reader");
+  }
+  return vi.mocked(read).mock.calls[call][0];
+}
+
+function sliceResult(
+  request: NumericSeriesSliceRequest,
+  options: {
+    readonly continuation?: ReadContinuation;
+    readonly coverage?: readonly {
+      readonly endNs: bigint;
+      readonly startNs: bigint;
+    }[];
+    readonly stopReason: NumericSeriesSliceResult["stopReason"];
+  },
+): NumericSeriesSliceResult {
+  const coverage = options.coverage ?? [request.window];
+  return {
+    ...(options.continuation ? { continuation: options.continuation } : {}),
+    coverageByStream: new Map(
+      request.selections.map((selection) => [selection.stream, coverage]),
+    ),
+    series: request.selections.map((selection) =>
+      seriesResult(selection.stream, selection.fields),
+    ),
+    stopReason: options.stopReason,
+    usage: emptyReadUsage(),
+  };
+}
+
+function emptyReadUsage(): ReadWorkUsage {
+  return {
+    chunksOpened: 1,
+    decompressedBytes: 0,
+    decompressionCacheHits: 0,
+    elapsedMs: 1,
+    logicalSourceBytes: 0,
+    logicalUncompressedBytes: 0,
+    messagesDecoded: 1,
+    transferredBytes: 0,
   };
 }
 
