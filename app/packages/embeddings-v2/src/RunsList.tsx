@@ -85,6 +85,50 @@ export default function RunsList({
     if (confirmKey && !isReady(confirmKey)) setConfirmKey(null);
   }, [runs, menu, confirmKey]);
 
+  const runActions = (run: VisualizationRun) => {
+    // No actions on pending runs: Refresh needs results, and Delete
+    // would remove the run record without stopping the computation
+    // writing it (manage those from the Runs page)
+    if (!run.ready) return undefined;
+    if (confirmKey === run.brainKey) {
+      return (
+        <>
+          <Button
+            variant={Variant.Secondary}
+            size={Size.Xs}
+            onClick={() => setConfirmKey(null)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant={Variant.Danger}
+            size={Size.Xs}
+            onClick={() => {
+              setConfirmKey(null);
+              onDelete(run.brainKey);
+            }}
+          >
+            Delete run
+          </Button>
+        </>
+      );
+    }
+    return (
+      <IconButton
+        size="small"
+        aria-label="Run actions"
+        onClick={(event) =>
+          setMenu({
+            key: run.brainKey,
+            anchor: event.currentTarget,
+          })
+        }
+      >
+        <MoreHoriz fontSize="small" />
+      </IconButton>
+    );
+  };
+
   if (error) {
     return (
       <div className="emb-runs-page">
@@ -184,45 +228,7 @@ export default function RunsList({
                   formatTimestamp(run.timestamp),
                 ].filter((item): item is string => Boolean(item))}
                 onClick={run.ready ? () => onOpen(run.brainKey) : undefined}
-                // No actions on pending runs: Refresh needs results, and
-                // Delete would remove the run record without stopping the
-                // computation writing it (manage those from the Runs page)
-                actions={
-                  !run.ready ? undefined : confirmKey === run.brainKey ? (
-                    <>
-                      <Button
-                        variant={Variant.Secondary}
-                        size={Size.Xs}
-                        onClick={() => setConfirmKey(null)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant={Variant.Danger}
-                        size={Size.Xs}
-                        onClick={() => {
-                          setConfirmKey(null);
-                          onDelete(run.brainKey);
-                        }}
-                      >
-                        Delete run
-                      </Button>
-                    </>
-                  ) : (
-                    <IconButton
-                      size="small"
-                      aria-label="Run actions"
-                      onClick={(event) =>
-                        setMenu({
-                          key: run.brainKey,
-                          anchor: event.currentTarget,
-                        })
-                      }
-                    >
-                      <MoreHoriz fontSize="small" />
-                    </IconButton>
-                  )
-                }
+                actions={runActions(run)}
               />
             ))}
           </div>

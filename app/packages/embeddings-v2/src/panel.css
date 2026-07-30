@@ -454,8 +454,11 @@
 
 /* Strip the labels' leading so the flex centering aligns glyph-sized
    boxes; with the default line-height the extra descent space made both
-   the text and the dot read high against the row */
-.emb-legend-row > * {
+   the text and the dot read high against the row. VOODO Text variants
+   set their own line-height (e.g. text-md/7), so the rule needs two
+   classes to out-specify that utility regardless of stylesheet order */
+.emb-legend-row .emb-legend-label,
+.emb-legend-row .emb-legend-count {
   line-height: 1;
 }
 

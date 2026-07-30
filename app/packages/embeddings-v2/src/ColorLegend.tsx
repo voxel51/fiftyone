@@ -113,7 +113,11 @@ export function ColorLegend({
                     {label}
                   </Text>
                 </span>
-                <Text variant={TextVariant.Md} color={TextColor.Tertiary}>
+                <Text
+                  className="emb-legend-count"
+                  variant={TextVariant.Md}
+                  color={TextColor.Tertiary}
+                >
                   {cls.count.toLocaleString()}
                 </Text>
               </button>
