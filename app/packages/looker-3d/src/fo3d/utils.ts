@@ -111,10 +111,25 @@ export const getNodeFromSceneByName = (scene: FoScene, name: string) => {
   return null;
 };
 
+/**
+ * Builds the leva schema for the scene's per-node visibility toggles.
+ *
+ * `savedVisibility` lets a persisted choice win over the scene's authored
+ * `visible` flag, so hiding a point cloud survives a refresh. Only node names
+ * present in the saved map are overridden, so a map left over from a scene with
+ * a different graph degrades to the authored defaults instead of hiding things
+ * that no longer exist.
+ */
 export const getVisibilityMapFromFo3dParsed = (
   foSceneGraph: FoScene,
+  savedVisibility?: Record<string, boolean> | null,
 ): Record<string, boolean> => {
   if (!foSceneGraph) return null;
+
+  const resolveVisible = (child: FoSceneNode) => {
+    const saved = savedVisibility?.[child.name];
+    return typeof saved === "boolean" ? saved : child.visible;
+  };
 
   const getVisibilityMapForChild = (child: FoSceneNode, _isNested: boolean) => {
     if (child.children?.length > 0) {
@@ -128,7 +143,7 @@ export const getVisibilityMapFromFo3dParsed = (
       return {
         [folderName]: folder({
           [child.name]: {
-            value: child.visible,
+            value: resolveVisible(child),
             label: child.name,
           },
           ...childrenVisibilityMap.reduce(
@@ -140,7 +155,7 @@ export const getVisibilityMapFromFo3dParsed = (
     }
 
     return {
-      [child.name]: child.visible,
+      [child.name]: resolveVisible(child),
     };
   };
 
