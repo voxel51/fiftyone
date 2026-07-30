@@ -158,6 +158,12 @@ def validate_field_name(field_name, media_type=None, is_frame_field=False):
             % field_name
         )
 
+    if field_name == "pk":
+        raise ValueError(
+            "Invalid field name '%s'. 'pk' is a reserved keyword that "
+            "MongoEngine uses as an alias for the 'id' field" % field_name
+        )
+
     if (
         media_type == fom.VIDEO
         and not is_frame_field
