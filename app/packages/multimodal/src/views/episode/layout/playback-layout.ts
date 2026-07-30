@@ -6,10 +6,7 @@ import {
 } from "../../../ir";
 import type { SceneSource } from "../../../scene-inventory";
 import { SCENE_SOURCE_TYPE } from "../../../ir";
-import {
-  filterDefaultStreamEquivalents,
-  orderDefaultStreamEquivalents,
-} from "../../../stream-selection";
+import { filterDefaultStreamEquivalents } from "../../../stream-selection";
 import { tileTypeFromId } from "./layout-persistence";
 import { TILE_TYPE, type TileType } from "../tiles/tile-types";
 
@@ -150,19 +147,6 @@ export function rankDefaultImageSources(
   sources: readonly SceneSource[],
 ): readonly SceneSource[] {
   return filterDefaultStreamEquivalents(rankImageSources(sources), {
-    getKind: (source) => source.type,
-    getSourceName: (source) => source.sourceName,
-  });
-}
-
-/**
- * Image sources for manual menus: all sources remain visible, with each
- * equivalence group's automatic default representative listed first.
- */
-export function orderImageSourcesForManualSelection(
-  sources: readonly SceneSource[],
-): readonly SceneSource[] {
-  return orderDefaultStreamEquivalents(rankImageSources(sources), {
     getKind: (source) => source.type,
     getSourceName: (source) => source.sourceName,
   });
@@ -553,22 +537,6 @@ function preferredContextShelfHeightFraction(
     return imageBank.preferredHeightPx / layoutMetrics.height;
   }
   return (viewportAspectRatio * imageWidthFraction) / imageBank.aspectRatio;
-}
-
-/**
- * Packs image tiles into rows whose combined shape best matches the available
- * image bank. Unlike the generic mosaic layout, this preserves the relative
- * widths of landscape, portrait, and square images, minimizing letterboxing.
- */
-export function buildAspectAwareImageLayout(
-  tileIds: readonly string[],
-  aspectRatios: Readonly<Record<string, number>> = {},
-  targetAspectRatio = DEFAULT_IMAGE_BANK_ASPECT_RATIO,
-): MosaicNode<string> | null {
-  return (
-    buildImageBankLayout(tileIds, aspectRatios, targetAspectRatio)?.layout ??
-    null
-  );
 }
 
 function buildImageBankLayout(

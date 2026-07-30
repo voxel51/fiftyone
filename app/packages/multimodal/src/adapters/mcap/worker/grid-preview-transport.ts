@@ -116,10 +116,3 @@ export class McapGridPreviewTransport {
     this.pending.clear();
   }
 }
-
-/**
- * Returns whether an error came from grid preview request cancellation.
- */
-export function isMcapGridPreviewRequestCancelled(error: unknown): boolean {
-  return error instanceof McapGridPreviewRequestCancelledError;
-}

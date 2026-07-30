@@ -2,9 +2,7 @@ import { describe, expect, it } from "vitest";
 import { collectTileIds } from "@fiftyone/tiling";
 import type { SceneSource } from "../../../scene-inventory";
 import {
-  buildAspectAwareImageLayout,
   buildAutoLayout,
-  orderImageSourcesForManualSelection,
   rankDefaultImageSources,
   rankImageSources,
   resolvePlaybackLayout,
@@ -102,18 +100,6 @@ describe("rankDefaultImageSources", () => {
     ]);
 
     expect(ranked.map((s) => s.id)).toEqual(["8", "9"]);
-  });
-});
-
-describe("orderImageSourcesForManualSelection", () => {
-  it("keeps raw image siblings visible after their preferred equivalent", () => {
-    const ordered = orderImageSourcesForManualSelection([
-      imageSource("7", 1_000, "/camera/front/image"),
-      imageSource("9", 900, "/camera/back/image"),
-      imageSource("8", 100, "/camera/front/image_downsampled"),
-    ]);
-
-    expect(ordered.map((s) => s.id)).toEqual(["8", "7", "9"]);
   });
 });
 
@@ -573,36 +559,6 @@ describe("buildAutoLayout", () => {
       first: "plot-1",
       second: "custom-1",
       splitPercentage: 50,
-    });
-  });
-});
-
-describe("buildAspectAwareImageLayout", () => {
-  it("weights panes by their decoded image widths", () => {
-    expect(
-      buildAspectAwareImageLayout(
-        ["image-1", "image-2"],
-        { "image-1": 2, "image-2": 1 },
-        3,
-      ),
-    ).toEqual({
-      direction: "row",
-      first: "image-1",
-      second: "image-2",
-      splitPercentage: 200 / 3,
-    });
-  });
-
-  it("chooses different packing for landscape and portrait images", () => {
-    const ids = ["image-1", "image-2", "image-3", "image-4"];
-    const landscape = Object.fromEntries(ids.map((id) => [id, 16 / 9]));
-    const portrait = Object.fromEntries(ids.map((id) => [id, 9 / 16]));
-
-    expect(buildAspectAwareImageLayout(ids, landscape)).toMatchObject({
-      direction: "column",
-    });
-    expect(buildAspectAwareImageLayout(ids, portrait)).toMatchObject({
-      direction: "row",
     });
   });
 });

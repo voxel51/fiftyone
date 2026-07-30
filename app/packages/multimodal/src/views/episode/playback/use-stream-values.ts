@@ -1,5 +1,4 @@
 import {
-  useStreamValue,
   useStreamValueSelector,
   useStreamValues,
   useStreamValuesSelector,
@@ -73,17 +72,6 @@ export function useStreamContentFrame<T = unknown>(
   return dataStream ? frame : null;
 }
 
-/** Subscribes to one stream and returns its full placement-aware frame. */
-export function useStreamPlaybackFrame<T = unknown>(
-  stream: string,
-): StreamPlaybackFrame<T> | null {
-  const dataStream = useDataStream();
-  useStreamSubscription(stream, dataStream);
-
-  const value = useStreamValue<StreamPlaybackFrame<T> | null>(stream);
-  return dataStream ? value : null;
-}
-
 /**
  * Tile-side hook: subscribes to several episode streams at once and returns
  * their current frames, index-aligned with `streams`. Used by tiles that
@@ -97,22 +85,6 @@ export function useStreamPlaybackFrame<T = unknown>(
  * Pass a referentially stable array — a new identity re-derives the
  * combined atom and re-diffs the subscriptions.
  */
-export function usePlaybackStreamValues<T = unknown>(
-  streams: readonly string[],
-): readonly (T | null)[] {
-  const dataStream = useDataStream();
-  const values = useStreamValuesSelector<StreamPlaybackFrame<T>, T | null>(
-    streams,
-    selectFrame,
-  );
-  useStreamSubscriptions(streams, dataStream);
-  // Only the fallback's length matters; stream identity is intentionally
-  // excluded so unavailable-stream renders keep the same array instance.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const emptyValues = useMemo(() => streams.map(() => null), [streams.length]);
-  return dataStream ? values : emptyValues;
-}
-
 /**
  * Multi-stream content-only subscription. Tick-relative metadata updates are
  * filtered before React, while content time and decoded-frame identity remain

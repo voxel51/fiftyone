@@ -42,14 +42,6 @@ export type { CreateMcapResourceClientOptions } from "./resource-client/index";
 export type { McapIndexedReaderLike, McapReaderFactory } from "./reader";
 
 /**
- * Frame-transform domain types used by 3D renderers.
- */
-export type {
-  McapComposedFrameTransform,
-  McapFrameTransformResolution,
-} from "./transforms/types";
-
-/**
  * Public MCAP resource, playback, and sync policy contracts.
  */
 export type {
