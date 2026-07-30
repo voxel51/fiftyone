@@ -21,7 +21,7 @@ Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
 - **Embeddings refresh**: update an existing embeddings visualization with
   just the samples added since it was computed — no full recompute —
   directly from the Embeddings panel
-- Video annotation AI now uses the most capable SAM2 model by default;
+- Video annotation AI uses the most capable SAM2 model by default;
   deployments can opt into a smaller, faster model
 - Annotation AI features now ship as a single `annotation-ai` service — one
   image to deploy — and the Services page and annotation AI panel are
@@ -140,6 +140,12 @@ Brain
   sure to upgrade your local `fiftyone-brain` as well
 - Upgraded the Databricks vector search integration
   `#294 <https://github.com/voxel51/fiftyone-brain/pull/294>`_
+
+Documentation
+^^^^^^^^^^^^^
+- Docs pages now display Open Source / Enterprise availability badges, with
+  reorganized guide pages for easier navigation
+  `#8108 <https://github.com/voxel51/fiftyone/pull/8108>`_
 
 FiftyOne Enterprise 2.22.1
 --------------------------
