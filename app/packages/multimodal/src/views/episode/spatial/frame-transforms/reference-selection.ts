@@ -1,11 +1,11 @@
 import type { EpisodeComposedFrameTransform } from "../../../../runtime/frame-transform-types";
 import type { EpisodeFrameGraphSummary } from "../../../../runtime/frame-transforms";
+import type { ReferenceSelectionSource } from "../../reference-selection-types";
 
 const STABLE_REFERENCE_FRAME_IDS = ["map", "world", "odom"] as const;
 const EGO_FRAME_IDS = ["base_link", "ego_vehicle", "ego", "vehicle"] as const;
 
-/** Provenance of the current automatic or explicit reference-frame choice. */
-export type ReferenceSelectionSource = "auto-local" | "auto-stable" | "user";
+export type { ReferenceSelectionSource } from "../../reference-selection-types";
 
 /** Coordinate frames observed for one selected source. */
 export interface FrameObservation {

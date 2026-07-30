@@ -44,10 +44,11 @@ import {
   POINT_CLOUD_POINT_SIZE_STEP,
   MIN_POINT_CLOUD_POINT_SIZE,
   defaultPointCloudColorForSource,
-  type PointCloudColorSettings,
+  type PersistedPointCloudColorSettings,
 } from "../../settings/modal/state";
 import { settingsBooleanNoSpaceToggleProps } from "../../settings/controls/settings-keyboard";
 import { SettingsNumberField } from "../../settings/controls/SettingsNumberField";
+import { SettingsNumberInput } from "../../settings/controls/SettingsNumberInput";
 import { SettingsLabel } from "../../settings/controls/SettingsLabel";
 import SidebarGroup from "../../settings/controls/SidebarGroup";
 import settingsStyles from "../../tiles/Tile.settings.module.css";
@@ -69,13 +70,13 @@ export function PointCloudStyleSection({
     string,
     PointCloudColorCapabilities
   >;
-  readonly pointCloudColors: Record<string, PointCloudColorSettings>;
+  readonly pointCloudColors: Record<string, PersistedPointCloudColorSettings>;
   readonly pointCloudPointSize: number;
   readonly pointCloudSources: readonly SceneSource[];
   readonly selectedPointCloudSources: readonly SceneSource[];
   readonly setPointCloudColor: (
     stream: string,
-    settings: Partial<PointCloudColorSettings>,
+    settings: Partial<PersistedPointCloudColorSettings>,
   ) => void;
   readonly setPointCloudPointSize: (pointSize: number) => void;
   readonly setShowPointCloudColorLegend: (visible: boolean) => void;
@@ -104,7 +105,7 @@ export function PointCloudStyleSection({
       summary={summary}
       title="Point Clouds (Style)"
     >
-      <PointCloudNumberInput
+      <SettingsNumberInput
         label="Point size"
         max={MAX_POINT_CLOUD_POINT_SIZE}
         min={MIN_POINT_CLOUD_POINT_SIZE}
@@ -249,7 +250,7 @@ let nextPointCloudColorStopId = 0;
 function PointCloudColorSummary({
   settings,
 }: {
-  readonly settings: PointCloudColorSettings;
+  readonly settings: PersistedPointCloudColorSettings;
 }) {
   const rampActive =
     settings.colorBy !== "rgb" && settings.colorBy !== "uniform";
@@ -308,7 +309,7 @@ function pointCloudColorByLabel(colorBy: string): string {
 function pointCloudRangeLabel({
   rangeMax,
   rangeMin,
-}: PointCloudColorSettings): string | null {
+}: PersistedPointCloudColorSettings): string | null {
   if (rangeMin === null && rangeMax === null) {
     return null;
   }
@@ -317,7 +318,7 @@ function pointCloudRangeLabel({
 }
 
 function isDefaultPointCloudColorSettings(
-  settings: PointCloudColorSettings,
+  settings: PersistedPointCloudColorSettings,
   defaultSettings = DEFAULT_POINT_CLOUD_COLOR,
 ): boolean {
   return (
@@ -345,8 +346,10 @@ function PointCloudColorControls({
 }: {
   readonly capabilities?: PointCloudColorCapabilities;
   readonly defaultColormap?: PointCloudColormap;
-  readonly onChange: (settings: Partial<PointCloudColorSettings>) => void;
-  readonly settings: PointCloudColorSettings;
+  readonly onChange: (
+    settings: Partial<PersistedPointCloudColorSettings>,
+  ) => void;
+  readonly settings: PersistedPointCloudColorSettings;
   readonly sourceLabel?: string;
 }) {
   const [editorOpen, setEditorOpen] = useState(false);
@@ -885,49 +888,5 @@ function SettingsNullableNumberInput({
         />
       }
     />
-  );
-}
-
-function PointCloudNumberInput({
-  disabled,
-  label,
-  mapping,
-  max,
-  min,
-  onChange,
-  step,
-  tooltip,
-  value,
-}: {
-  readonly disabled?: boolean;
-  readonly label: string;
-  readonly mapping?: "linear" | "multiplicative";
-  readonly max?: number;
-  readonly min: number;
-  readonly onChange: (value: number) => void;
-  readonly step: number;
-  readonly tooltip?: string;
-  readonly value: number;
-}) {
-  return (
-    <label className={settingsStyles.field}>
-      {tooltip ? (
-        <SettingsLabel label={label} tooltip={tooltip} />
-      ) : (
-        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-          {label}
-        </Text>
-      )}
-      <SettingsNumberField
-        ariaLabel={label}
-        disabled={disabled}
-        mapping={mapping}
-        max={max}
-        min={min}
-        onCommit={onChange}
-        step={step}
-        value={value}
-      />
-    </label>
   );
 }

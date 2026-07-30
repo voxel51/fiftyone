@@ -12,12 +12,9 @@ import type {
   ImageAnnotationLineListGroup,
   ImageAnnotationRenderMetadata,
 } from "./image-annotation-render-metadata";
+import type { ImagePixelTransform } from "./image-pixel-transform";
 
-/** Maps a source image pixel into the displayed image's pixel space. */
-export type ImagePixelTransform = (
-  u: number,
-  v: number,
-) => readonly [number, number] | null;
+export type { ImagePixelTransform } from "./image-pixel-transform";
 
 /** Shape payload retained for selection and tooltip reconstruction. */
 export type ImageAnnotationPrimitive =

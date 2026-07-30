@@ -22,7 +22,7 @@ import {
   readModalSettings,
   writeModalSettings,
   type PinholeCameraSettings,
-  type PointCloudColorSettings,
+  type PersistedPointCloudColorSettings,
   type ReferenceGridSettings,
   type SceneBackgroundSettings,
 } from "../../settings/modal/state";
@@ -817,7 +817,7 @@ interface SettingsTestProps {
     string,
     { readonly hasRgb: boolean; readonly scalarFields: readonly string[] }
   >;
-  readonly pointCloudColors: Record<string, PointCloudColorSettings>;
+  readonly pointCloudColors: Record<string, PersistedPointCloudColorSettings>;
   readonly pointCloudPointSize: number;
   readonly pointCloudSources: readonly SceneSource[];
   readonly pointCloudStreams: readonly string[];

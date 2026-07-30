@@ -24,7 +24,7 @@ import {
   type ImageProjectionSettings,
   type PersistedModalSettings,
   type PinholeCameraSettings,
-  type PointCloudColorSettings,
+  type PersistedPointCloudColorSettings,
   type ReferenceGridSettings,
   type SceneBackgroundSettings,
 } from "./storage";
@@ -55,7 +55,7 @@ export {
   type ImageProjectionSettings,
   type PersistedModalSettings,
   type PinholeCameraSettings,
-  type PointCloudColorSettings,
+  type PersistedPointCloudColorSettings,
   type ReferenceGridSettings,
   type SceneBackgroundMode,
   type SceneBackgroundSettings,
@@ -167,7 +167,7 @@ const pointCloudColorsAtom = atom(
       settings,
     }: {
       readonly stream: string;
-      readonly settings: Partial<PointCloudColorSettings>;
+      readonly settings: Partial<PersistedPointCloudColorSettings>;
     },
   ) => {
     const normalizedStream = stream.trim();
@@ -392,7 +392,7 @@ export function usePointCloudStyleSettings() {
   );
 
   const updatePointCloudColor = useCallback(
-    (stream: string, settings: Partial<PointCloudColorSettings>) => {
+    (stream: string, settings: Partial<PersistedPointCloudColorSettings>) => {
       setPointCloudColor({ settings, stream });
     },
     [setPointCloudColor],

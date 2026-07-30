@@ -6,6 +6,7 @@ import type {
 } from "../../../../visualization/scene-3d/types";
 import type { Scene3dUpAxis } from "../../spatial/view-preferences";
 import type { Scene3dCameraNavigationMode } from "./scene-3d-view-state";
+import { sceneUpVector } from "./scene-up-vector";
 
 const MIN_CAMERA_DISTANCE = 0.001;
 const MAX_CAMERA_DISTANCE = 1e9;
@@ -163,17 +164,6 @@ export function createScene3dViewpointStore(
       return () => listeners.delete(listener);
     },
   };
-}
-
-function sceneUpVector(axis: Scene3dUpAxis): Vector3 {
-  switch (axis) {
-    case "x":
-      return new Vector3(1, 0, 0);
-    case "y":
-      return new Vector3(0, 1, 0);
-    default:
-      return new Vector3(0, 0, 1);
-  }
 }
 
 function azimuthReference(axis: Scene3dUpAxis): Vector3 {

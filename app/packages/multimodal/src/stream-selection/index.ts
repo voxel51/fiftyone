@@ -80,7 +80,7 @@ export function findBestMatchingAnnotationStreams(
   const imageTokens = streamTokens(imageSourceName);
 
   for (const annotationSourceName of annotationSourceNames) {
-    const score = annotationStreamMatchScore(
+    const score = streamMatchScore(
       annotationSourceName,
       cameraPrefix,
       imageTokens,
@@ -190,7 +190,7 @@ export function streamTokens(stream: string): Set<string> {
   );
 }
 
-function annotationStreamMatchScore(
+function streamMatchScore(
   annotationStream: string,
   cameraPrefix: string,
   imageTokens: ReadonlySet<string>,

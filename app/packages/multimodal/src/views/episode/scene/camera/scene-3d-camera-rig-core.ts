@@ -1,4 +1,5 @@
 import type { PointCloudCameraPose } from "../../../../visualization/scene-3d/index";
+import type { MutableVectorHandle } from "../../../../visualization/scene-3d/mutable-vector-handle";
 import {
   cameraPoseFromTrackingAnchor,
   cameraTrackingAnchorFromPose,
@@ -16,13 +17,6 @@ import type { Scene3dUpAxis } from "../../spatial/view-preferences";
 // burst into one commit; for pointer drags it only delays persistence by an
 // imperceptible beat.
 export const RIG_COMMIT_DEBOUNCE_MS = 200;
-
-interface MutableVectorHandle {
-  readonly x: number;
-  readonly y: number;
-  readonly z: number;
-  set: (x: number, y: number, z: number) => unknown;
-}
 
 export interface RigCameraHandle {
   readonly position: MutableVectorHandle;

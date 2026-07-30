@@ -17,6 +17,7 @@ import {
   CameraOrientationGizmo,
   type CameraOrientationDirection,
 } from "./CameraOrientationGizmo";
+import type { MutableVectorHandle } from "./mutable-vector-handle";
 
 const DEFAULT_AMBIENT_LIGHT_INTENSITY = 0.8;
 const GIZMO_TWEEN_DURATION_SECONDS = 0.3;
@@ -43,13 +44,6 @@ const SCENE_UP_AXES: Record<
 // pushes the target ahead of the camera instead (fly-through), keeping
 // a constant working distance — and therefore constant zoom/pan speed.
 const ORBIT_ZOOM_DISTANCE_FLOOR_M = 2;
-
-type MutableVectorHandle = {
-  readonly x: number;
-  readonly y: number;
-  readonly z: number;
-  set: (x: number, y: number, z: number) => unknown;
-};
 
 type CameraHandle = {
   readonly position: MutableVectorHandle;
