@@ -59,8 +59,6 @@ def _generate_zoo_redirects(app):
     return zoo_mappings
 
 
-# Old `user_guide/evaluation.rst` anchors mapped to their new location now
-# that the page is split across `user_guide/evaluation/*.rst`
 _EVALUATION_ANCHOR_MAP = {
     "evaluating-models": "evaluation/index.html#evaluating-models",
     "confusion-matrices": "evaluation/index.html#confusion-matrices",
@@ -121,10 +119,6 @@ _EVALUATION_ANCHOR_MAP = {
     "evaluation-config": "evaluation/advanced.html#evaluation-config",
 }
 
-# Old `brain/index.rst` anchors mapped to their new location now that the
-# Similarity section was extracted to `user_guide/similarity.rst`. Unlike
-# the evaluation map above, `brain/index.rst` still exists, so these are
-# injected into the still-live page rather than replacing it outright.
 _SIMILARITY_ANCHOR_MAP = {
     "similarity": "../user_guide/similarity.html#brain-similarity",
     "brain-similarity": "../user_guide/similarity.html#brain-similarity",
