@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.23.0
 --------------------------
-*Released July 30, 2026*
+*Released July 31, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
 
@@ -16,21 +16,19 @@ Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
   labeling, and grouped datasets
 - **AI-powered video annotation**: click to segment objects with SAM2 and
   track them automatically through the clip — start from a point, box, or
-  existing mask on any frame, track in both directions, and track multiple
-  objects at once
-- **Embeddings refresh**: update an existing embeddings visualization with
-  just the samples added since it was computed — no full recompute —
-  directly from the Embeddings panel
-- Video annotation AI uses the most capable SAM2 model by default;
-  deployments can opt into a smaller, faster model
+  existing mask on any frame and track in both directions
+- **3D Embeddings**: Visualize and explore embeddings in a 3D plot,
+  and update an existing embedding visualization without a full recompute
 - Annotation AI features ship as a single `annotation-ai` service — one
   image to deploy — and the Services page and annotation AI panel are
   always visible
 - Check service health at a glance from the new status popover, and review
   your runs and jump to service logs from the new Personal > Runs settings
   page
-- More reliable services: stopping a service frees its GPU memory, and
-  Auto Labeling finds its backing service automatically
+- Service orchestrators: start GPU-backed services for powerful
+  new features like agentic labeling and video tracking. Learn more
+  about setting up services
+  `here <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docs/configuring-service-orchestrator.md>`_
 - Delegated operation run logs persist reliably — including very large
   logs — progress logs capture more output, and run metrics report GPU
   usage correctly, including for delegated executor services
@@ -46,7 +44,7 @@ Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
 
 FiftyOne 1.20.0
 ---------------
-*Released July 30, 2026*
+*Released July 31, 2026*
 
 App
 ^^^
