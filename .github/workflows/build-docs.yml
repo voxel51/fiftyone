@@ -95,10 +95,10 @@ jobs:
           path: fiftyone-teams
           token: ${{ secrets.RO_FOT_FG_PAT }}
           ref: ${{ steps.get_branch.outputs.branch_name }}
-      - name: Set up Python 3.12
+      - name: Set up Python 3.13
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
           cache: pip
           cache-dependency-path: |
             requirements/docs.txt
