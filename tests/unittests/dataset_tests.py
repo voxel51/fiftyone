@@ -1623,6 +1623,15 @@ class DatasetTests(unittest.TestCase):
 
         dataset.delete_sample_field("pk")
 
+        dataset.add_sample_field(
+            "spam",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        with self.assertWarns(UserWarning):
+            dataset.add_sample_field("spam.pk", fo.StringField)
+
     @drop_datasets
     def test_frame_field_names(self):
         dataset = fo.Dataset()

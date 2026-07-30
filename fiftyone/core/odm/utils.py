@@ -159,12 +159,13 @@ def validate_field_name(field_name, media_type=None, is_frame_field=False):
             % field_name
         )
 
-    if field_name == "pk":
+    if field_name == "pk" or field_name.endswith(".pk"):
         warnings.warn(
-            "'pk' is a reserved keyword that MongoEngine uses as an alias "
-            "for the 'id' field; fields named 'pk' do not behave correctly "
-            "in bulk write operations such as set_field(). Choosing a "
-            "different name is strongly recommended; existing fields can "
+            "'pk' is a reserved keyword in MongoEngine and will likely "
+            "become an invalid field name in a future release; fields "
+            "named 'pk' do not behave correctly in bulk write operations "
+            "such as set_field(), and embedded fields named 'pk' may be "
+            "silently dropped during serialization. Existing fields can "
             "be migrated via rename_sample_field()/rename_frame_field()"
         )
 
