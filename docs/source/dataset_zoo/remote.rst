@@ -5,6 +5,10 @@ Remotely-Sourced Zoo Datasets
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 1.0.0
+    :enterprise_version: 2.1.0
+
 This page describes how to work with and create zoo datasets whose
 download/preparation methods are hosted via GitHub repositories or public URLs.
 

@@ -5,6 +5,10 @@ Open Images Integration
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.11.0
+    :enterprise_version: 1.0
+
 We've collaborated with the team behind the
 `Open Images Dataset <https://storage.googleapis.com/openimages/web/download.html>`_
 to make it easy to download, visualize, and evaluate on the Open Images dataset
