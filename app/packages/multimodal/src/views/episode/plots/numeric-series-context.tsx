@@ -1,7 +1,7 @@
 // Deep import on purpose: the playback package root barrel pulls view
 // components whose relay fragments cannot evaluate under vitest, and this
 // bridge has direct unit tests.
-import { PlaybackStoreContext } from "@fiftyone/playback/runtime";
+import { getPlayhead, PlaybackStoreContext } from "@fiftyone/playback/runtime";
 import React, {
   createContext,
   useCallback,
@@ -315,20 +315,50 @@ export function NumericSeriesBridge({
           }
           enumerationRequested = true;
           setEnumeration({ status: "loading", streams: [] });
+          const timeline = dataStreamRef.current?.getTimelineIndex() ?? null;
+          const sampleTimeNs =
+            playbackStore && timeline
+              ? timeline.secToNs(getPlayhead(playbackStore))
+              : undefined;
+          const publishEnumeration = (
+            streams: readonly NumericStreamFields[],
+          ) => {
+            if (isCancelled()) {
+              return;
+            }
+            numericFieldPathsByStream = new Map(
+              streams
+                .filter((stream) => stream.availability === "ready")
+                .map((stream) => [
+                  stream.streamId,
+                  [...new Set(stream.fields.map((field) => field.path))],
+                ]),
+            );
+            setEnumeration({ status: "ready", streams });
+          };
           void capability
-            .enumerateNumericFields()
+            .enumerateNumericFields(undefined, {
+              includeDataFallback: false,
+              sampleTimeNs,
+            })
             .then((streams) => {
-              if (!isCancelled()) {
-                numericFieldPathsByStream = new Map(
-                  streams
-                    .filter((stream) => stream.availability === "ready")
-                    .map((stream) => [
-                      stream.streamId,
-                      [...new Set(stream.fields.map((field) => field.path))],
-                    ]),
-                );
-                setEnumeration({ status: "ready", streams });
+              publishEnumeration(streams);
+              if (
+                isCancelled() ||
+                !streams.some((stream) => stream.sampled === true)
+              ) {
+                return;
               }
+              void capability
+                .enumerateNumericFields(undefined, {
+                  includeDataFallback: true,
+                  sampleTimeNs,
+                })
+                .then(publishEnumeration)
+                .catch(() => {
+                  // Keep the already-published schema catalog when optional
+                  // bounded augmentation fails.
+                });
             })
             .catch(() => {
               if (!isCancelled()) {

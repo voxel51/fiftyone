@@ -141,6 +141,54 @@ describe("NumericSeriesBridge (no playback store: unbounded fallback)", () => {
     ).toEqual(["/odom"]);
   });
 
+  it("publishes schema fields before bounded fallback augmentation", async () => {
+    const source = createSource();
+    const schemaStream: NumericStreamFields = {
+      availability: "ready",
+      encoding: "protobuf",
+      fields: [{ path: "speed", valueType: "double" }],
+      sampled: true,
+      sourceName: "/odom",
+      streamId: "/odom",
+    };
+    const augmentedStream: NumericStreamFields = {
+      ...schemaStream,
+      fields: [
+        ...schemaStream.fields,
+        { path: "position.0", valueType: "number" },
+      ],
+    };
+    let resolveFallback:
+      | ((streams: readonly NumericStreamFields[]) => void)
+      | undefined;
+    const fallback = new Promise<readonly NumericStreamFields[]>((resolve) => {
+      resolveFallback = resolve;
+    });
+    const client = createClient({
+      enumerateNumericFields: vi.fn(async (_streams, options) =>
+        options?.includeDataFallback === false ? [schemaStream] : fallback,
+      ),
+    });
+    const context = createContextRef();
+
+    render(<Harness client={client} contextRef={context} source={source} />);
+
+    await act(async () => {
+      context.current?.ensureEnumeration();
+      await flushMicrotasks();
+    });
+
+    expect(client.enumerateNumericFields).toHaveBeenCalledTimes(2);
+    expect(context.current?.enumeration.streams).toEqual([schemaStream]);
+
+    await act(async () => {
+      resolveFallback?.([augmentedStream]);
+      await flushMicrotasks();
+    });
+
+    expect(context.current?.enumeration.streams).toEqual([augmentedStream]);
+  });
+
   it("services interest registered before the bridge mounted", async () => {
     const source = createSource();
     const client = createClient();
