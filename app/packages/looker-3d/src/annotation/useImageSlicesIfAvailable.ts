@@ -1,18 +1,9 @@
 import {
   ModalSample,
-  State,
   datasetId,
-  fieldPaths,
   getSampleSrc as resolveUrl,
 } from "@fiftyone/state";
-import {
-  DETECTIONS_FIELD,
-  DETECTION_FIELD,
-  EMBEDDED_DOCUMENT_FIELD,
-  POLYLINES_FIELD,
-  POLYLINE_FIELD,
-  getFetchFunction,
-} from "@fiftyone/utilities";
+import { getFetchFunction } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { extractNative2dLabels } from "./native2d/parse";
@@ -48,22 +39,6 @@ export const useImageSlicesIfAvailable = (
     Record<string, Native2dLabel[]>
   >({});
   const dataset = useRecoilValue(datasetId);
-
-  // Sample-level Detection(s)/Polyline(s) fields — the 2D labels we render on
-  // the camera slices. Excludes heavier label types (masks, heatmaps).
-  const labelFieldPaths = useRecoilValue(
-    fieldPaths({
-      space: State.SPACE.SAMPLE,
-      ftype: EMBEDDED_DOCUMENT_FIELD,
-      embeddedDocType: [
-        DETECTION_FIELD,
-        DETECTIONS_FIELD,
-        POLYLINE_FIELD,
-        POLYLINES_FIELD,
-      ],
-    }),
-  );
-  const labelFieldsKey = labelFieldPaths.join(",");
 
   const hasGroup = Boolean(sample?.sample?.group?._id);
   const groupId = sample?.sample?.group?._id;
@@ -127,22 +102,6 @@ export const useImageSlicesIfAvailable = (
           labels[sliceName] = extractNative2dLabels(sliceData);
         }
 
-        if (process.env.NODE_ENV !== "production") {
-          // eslint-disable-next-line no-console
-          console.debug("[native2d] fetched slices", {
-            schemaDerivedLabelFields: labelFieldPaths,
-            sliceFieldKeys: Object.fromEntries(
-              Object.entries(data.group).map(([k, v]) => [
-                k,
-                Object.keys((v as Record<string, unknown>) ?? {}),
-              ]),
-            ),
-            perSliceLabelCounts: Object.fromEntries(
-              Object.entries(labels).map(([k, v]) => [k, v.length]),
-            ),
-          });
-        }
-
         setImageSlices(imageSliceNames);
         setSliceUrls(urls);
         setSliceLabels(labels);
@@ -166,7 +125,7 @@ export const useImageSlicesIfAvailable = (
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasGroup, groupId, dataset, labelFieldsKey]);
+  }, [hasGroup, groupId, dataset]);
 
   const resolveUrlForImageSlice = useCallback(
     (sliceName: string): string | null => {

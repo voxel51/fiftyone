@@ -138,21 +138,6 @@ export const ImageSlicePanel = ({
     const all = resolveLabelsForImageSlice(sliceName);
     const visible = all.filter((l) => !known.has(l.path) || active.has(l.path));
 
-    if (process.env.NODE_ENV !== "production") {
-      // eslint-disable-next-line no-console
-      console.debug("[native2d] slice", sliceName, {
-        fetched: all.length,
-        visible: visible.length,
-        paths: [...new Set(all.map((l) => l.path))],
-        sidebarKnows: [...new Set(all.map((l) => l.path))].filter((p) =>
-          known.has(p),
-        ),
-        sidebarActive: [...new Set(all.map((l) => l.path))].filter((p) =>
-          active.has(p),
-        ),
-      });
-    }
-
     return visible;
   }, [view, activeFields, knownLabelFields, resolveLabelsForImageSlice]);
 

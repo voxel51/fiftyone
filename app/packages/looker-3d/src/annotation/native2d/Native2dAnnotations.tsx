@@ -29,15 +29,6 @@ export function Native2dAnnotations({
   const size = useImageNaturalSize(imageUrl);
   const colorOf = useNative2dLabelColor();
 
-  if (process.env.NODE_ENV !== "production" && labels.length > 0 && !size) {
-    // eslint-disable-next-line no-console
-    console.debug(
-      "[native2d] have labels but no image size yet",
-      labels.length,
-      imageUrl,
-    );
-  }
-
   if (!size || labels.length === 0) return null;
 
   const { w, h } = size;
