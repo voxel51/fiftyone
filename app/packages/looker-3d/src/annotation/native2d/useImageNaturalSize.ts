@@ -23,6 +23,7 @@ export const useImageNaturalSize = (url: string | null): ImageSize | null => {
     }
 
     let cancelled = false;
+    setSize(null);
     const img = new Image();
 
     const apply = () => {
