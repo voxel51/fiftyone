@@ -56,7 +56,6 @@ import { tileTypesFor, getTileDefinition } from "./tile-catalog";
 import InspectorSidebar from "../scene/picking/InspectorSidebar";
 import styles from "./ModalRenderer.module.css";
 import { NetworkHealthTracker, NetworkStatusPill } from "./NetworkStatus";
-import { PausedByteBanking } from "../playback/PausedByteBanking";
 import { FullHistoryInterestsProvider } from "../playback/full-history-interests";
 import { PanelVisibilityProvider } from "../tiles/panel-visibility";
 import SettingsSidebar from "../settings/modal/SettingsSidebar";
@@ -483,11 +482,6 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                               />
                               <NetworkHealthTracker
                                 playback={session?.playback ?? null}
-                              />
-                              <PausedByteBanking
-                                budgetAccount={sourceReadBudgetAccount}
-                                playback={session?.playback ?? null}
-                                source={playbackSource}
                               />
                               <SelectionHotkeys />
                               <ExtensionRuntimeBoundary>

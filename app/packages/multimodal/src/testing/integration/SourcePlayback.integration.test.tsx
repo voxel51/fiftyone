@@ -62,9 +62,6 @@ vi.mock("../../views/episode/shell/NetworkStatus", () => ({
   NetworkHealthTracker: () => null,
   NetworkStatusPill: () => null,
 }));
-vi.mock("../../views/episode/playback/PausedByteBanking", () => ({
-  PausedByteBanking: () => null,
-}));
 vi.mock("../../views/episode/settings/modal/SettingsSidebar", () => ({
   default: () => null,
 }));

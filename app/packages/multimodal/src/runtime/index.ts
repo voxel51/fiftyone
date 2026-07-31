@@ -42,8 +42,6 @@ export {
 } from "./adapter-registry";
 /** Public format-neutral episode resource orchestration. */
 export * from "./episode-resources";
-/** Public paused-source cache banking policy. */
-export * from "./episode-byte-banking";
 /** Public source-scoped bounded-read accounting. */
 export * from "./read-budget-account";
 /** Public decoded episode stream cache. */
