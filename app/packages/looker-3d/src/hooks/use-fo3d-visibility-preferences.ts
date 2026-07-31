@@ -1,6 +1,9 @@
 import { useBrowserStorage } from "@fiftyone/state";
 import { useCallback, useMemo, useRef } from "react";
-import { getVisibilityMapFromFo3dParsed } from "../fo3d/utils";
+import {
+  getAuthoredVisibilityMap,
+  getVisibilityMapFromFo3dParsed,
+} from "../fo3d/utils";
 import type { FoScene } from "../fo3d/render-types";
 
 export const FO3D_NODE_VISIBILITY_STORAGE_KEY = "fo3d-nodeVisibility";
@@ -55,6 +58,17 @@ export const useFo3dVisibilityPreferences = (scene: FoScene | null) => {
     [scene],
   );
 
+  // The scene's own defaults, ignoring any saved preference. Only a control
+  // value that diverges from this baseline is a user's explicit choice and
+  // worth persisting -- otherwise every untouched authored default gets
+  // written to storage on mount, permanently shadowing that node's authored
+  // default the next time a different scene reuses the same node name.
+  const authoredVisibilityRef = useRef<Record<string, boolean>>({});
+  authoredVisibilityRef.current = useMemo(
+    () => getAuthoredVisibilityMap(scene),
+    [scene],
+  );
+
   // Serialized snapshot of the last write. leva returns a fresh values object on
   // every render, so without this the persist-on-change effect would write, ,
   // re-render, and write again forever.
@@ -68,14 +82,33 @@ export const useFo3dVisibilityPreferences = (scene: FoScene | null) => {
         return;
       }
 
-      const serialized = JSON.stringify(booleans);
+      const authored = authoredVisibilityRef.current;
+      const overrides = Object.fromEntries(
+        Object.entries(booleans).filter(
+          ([name, value]) => authored[name] !== value,
+        ),
+      );
+
+      const serialized = JSON.stringify(overrides);
 
       if (serialized === lastPersistedRef.current) {
         return;
       }
 
       lastPersistedRef.current = serialized;
-      setStoredVisibility((previous) => ({ ...previous, ...booleans }));
+      setStoredVisibility((previous) => {
+        const next = { ...previous };
+
+        for (const name of Object.keys(booleans)) {
+          if (name in overrides) {
+            next[name] = overrides[name];
+          } else {
+            delete next[name];
+          }
+        }
+
+        return next;
+      });
     },
     [setStoredVisibility],
   );
