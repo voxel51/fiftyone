@@ -52,14 +52,20 @@ To add a provider, fill in the following fields:
 - **Provider**: select from the list of supported providers
 - **Endpoint** (optional): use this to route requests to a custom URL, such
   as an internal enterprise gateway or a self-hosted model server
-- **API key**: your provider's API key
+- **API key** (optional): your provider's API key. Leave this blank to use
+  credentials already configured in the server environment instead, such as
+  a provider's standard API key environment variable, Google Application
+  Default Credentials, or an AWS instance/service role
 - **Models**: select one or more models to make available
 - **Custom model names** (optional): enter model identifiers that are not in
   the standard picker, such as non-standard IDs used by an enterprise gateway.
   Prefix with the provider slug (e.g. ``openai/my-model-id``) to ensure
   correct routing when the model name alone is ambiguous
 - **Extra headers** (optional): static key-value HTTP headers sent with every
-  request (e.g. ``User-Agent``, project tokens required by your gateway)
+  request (e.g. ``User-Agent``, project tokens required by your gateway).
+  When an endpoint is configured, an ``X-FiftyOne-User-Email`` header is also
+  added automatically — see :ref:`Per-user attribution <enterprise-agent-custom-gateway>`
+  below
 - **Default**: mark this provider as the default
 
 .. image:: https://cdn.voxel51.com/voxel-agent/enterprise/provider_more_details.webp
@@ -67,6 +73,48 @@ To add a provider, fill in the following fields:
    :align: center
 
 You can click **Test connection** to verify your credentials before saving.
+
+.. note::
+
+    **Using credentials from the server environment**
+
+    Some providers can authenticate without an API key at all, using
+    credentials already available to the server. For example, if the
+    deployment's runtime has Google Application Default Credentials or a
+    service account with the right IAM role, a Vertex AI provider can be
+    configured with the **API key** field left blank, and requests will
+    authenticate using that ambient identity. The same applies to AWS
+    Bedrock with an instance or service role. Click **Test connection** to
+    confirm the ambient credentials resolve correctly before saving.
+
+.. _enterprise-agent-provider-notes:
+
+Provider-specific configuration notes
+______________________________________
+
+A few providers have configuration details worth knowing about:
+
+- **Google Vertex AI**: model names use the ``vertex_ai/<model>`` format
+  (e.g. ``vertex_ai/gemini-2.5-flash``). The GCP project is inferred from
+  whichever credentials are used (an API key, or ambient credentials as
+  described above), and the region defaults to ``us-central1`` (or the
+  model's first supported region) — there is currently no field to
+  override the region. The credential's identity needs the
+  ``roles/aiplatform.user`` IAM role (or equivalent) granted on the
+  project.
+- **AWS Bedrock**: model names use the ``bedrock/<model-id>`` format. The
+  region is read from the ``AWS_REGION`` or ``AWS_REGION_NAME``
+  environment variable on the server if set, otherwise it defaults to
+  ``us-west-2``. The credential's identity needs ``bedrock:InvokeModel``
+  and ``bedrock:InvokeModelWithResponseStream`` permissions for the
+  models you want to use.
+- **Azure OpenAI**: set the **Endpoint** field to your Azure resource's
+  base URL. The API version defaults to the ``AZURE_API_VERSION``
+  environment variable on the server if set, otherwise a built-in default
+  is used.
+
+Use **Test connection** to confirm a provider is configured correctly for
+your environment.
 
 .. note::
 
