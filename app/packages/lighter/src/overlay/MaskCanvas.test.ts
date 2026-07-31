@@ -7,7 +7,7 @@ import {
   SegmentationToolMode,
   SegmentationToolShape,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MaskCanvas } from "./MaskCanvas";
 import type { Rect } from "../types";
 import { maskBounds } from "../utils";
@@ -16,12 +16,97 @@ import { maskBounds } from "../utils";
 // the jsdom canvas mock in vitest.setup.ts has no real pixel storage, so we
 // can't compute a tight bbox from painted pixels at runtime. encodeMask is
 // stubbed to a known string so tests can observe what onEncoded receives.
+/**
+ * Controllable stand-in for the shared mask bitmap cache, so decode resolution
+ * order can be driven explicitly — the convergence bug only appears when a
+ * decode resolves AFTER the source it was started for has been replaced.
+ */
+const maskCacheStub = vi.hoisted(() => {
+  interface Pending {
+    bitmap: { close: () => void };
+    resolve: () => void;
+    promise: Promise<unknown>;
+    stored: boolean;
+  }
+
+  const pending = new Map<string, Pending>();
+  /** Sources handed back, so tests can assert borrows don't leak. */
+  const released: string[] = [];
+
+  const decodedOf = (entry: Pending) => ({
+    bitmap: entry.bitmap,
+    rawPixels: { src: new Uint8Array(4), width: 2, height: 2 },
+  });
+
+  return {
+    /** Register a decode that will not resolve until `resolve(source)`. */
+    enqueue(source: string) {
+      let release!: () => void;
+      const promise = new Promise<void>((r) => {
+        release = r;
+      });
+
+      const entry: Pending = {
+        bitmap: { close: () => undefined },
+        resolve: release,
+        promise,
+        stored: false,
+      };
+
+      pending.set(source, entry);
+
+      return entry.bitmap;
+    },
+
+    resolve(source: string) {
+      const entry = pending.get(source);
+      if (!entry) throw new Error(`nothing enqueued for ${source}`);
+      entry.stored = true;
+      entry.resolve();
+    },
+
+    /** Flush the microtask queue so awaiting code advances. */
+    async settle() {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    },
+
+    reset() {
+      pending.clear();
+      released.length = 0;
+    },
+
+    released,
+
+    // ---- the surface MaskCanvas consumes ----
+    acquire(source: string) {
+      const entry = pending.get(source);
+      return entry?.stored ? decodedOf(entry) : undefined;
+    },
+    async acquireAsync(source: string) {
+      const entry = pending.get(source);
+      if (!entry) throw new Error(`nothing enqueued for ${source}`);
+      await entry.promise;
+      return decodedOf(entry);
+    },
+    release(source: string) {
+      released.push(source);
+    },
+    has(source: string) {
+      return pending.get(source)?.stored ?? false;
+    },
+  };
+});
+
 vi.mock("../utils", async () => {
   const actual = await vi.importActual<typeof import("../utils")>("../utils");
   return {
     ...actual,
     maskBounds: vi.fn(),
     encodeMask: vi.fn().mockResolvedValue("encoded-mask"),
+    maskBitmapCache: maskCacheStub,
   };
 });
 const mockedMaskBounds = vi.mocked(maskBounds);
@@ -61,6 +146,130 @@ const seedCanvas = (bounds: Rect, paintRect: Rect): MaskCanvas => {
   );
   return mc;
 };
+
+describe("MaskCanvas decode convergence", () => {
+  /** A renderer stub that records what `drawImage` was handed. */
+  const recordingRenderer = () => {
+    const drawn: unknown[] = [];
+
+    return {
+      drawn,
+      renderer: {
+        drawImage: (image: { bitmap?: unknown; canvas?: unknown }) => {
+          drawn.push(image.bitmap ?? image.canvas);
+        },
+      } as unknown as Parameters<MaskCanvas["render"]>[0],
+    };
+  };
+
+  const BOUNDS: Rect = { x: 0, y: 0, width: 10, height: 10 };
+
+  const draw = (
+    mc: MaskCanvas,
+    r: ReturnType<typeof recordingRenderer>,
+    onDecoded: () => void = () => {},
+  ) => mc.render(r.renderer, BOUNDS, "c", WHITE, 1, onDecoded);
+
+  beforeEach(() => {
+    maskCacheStub.reset();
+  });
+
+  it("repaints with the current source when a decode resolves stale", async () => {
+    maskCacheStub.enqueue("mask-1");
+    const second = maskCacheStub.enqueue("mask-2");
+
+    const mc = new MaskCanvas("mask-1");
+    const r = recordingRenderer();
+    // `onDecoded` is the ONLY repaint trigger (DetectionOverlay wires it to
+    // markDirty). Asserting on it — rather than on a render we call ourselves —
+    // is what distinguishes converging from sitting stale until an unrelated
+    // event happens to repaint.
+    const onDecoded = vi.fn();
+
+    draw(mc, r, onDecoded);
+
+    // Playhead advances and settles WHILE mask-1 is still decoding; this render
+    // is gated on `decoding` and starts no decode of its own.
+    mc.updateSource("mask-2");
+    draw(mc, r, onDecoded);
+
+    // mask-1 resolves stale. Without the retry, nothing further happens: no
+    // decode for mask-2, and no repaint request ever.
+    maskCacheStub.resolve("mask-1");
+    await maskCacheStub.settle();
+    maskCacheStub.resolve("mask-2");
+    await maskCacheStub.settle();
+
+    expect(onDecoded).toHaveBeenCalled();
+
+    // And the repaint it asked for lands on the current frame's mask.
+    draw(mc, r, onDecoded);
+    expect(r.drawn.at(-1)).toBe(second);
+  });
+
+  it("holds the previous mask while the next one decodes", async () => {
+    const first = maskCacheStub.enqueue("mask-1");
+    maskCacheStub.enqueue("mask-2");
+
+    const mc = new MaskCanvas("mask-1");
+    const r = recordingRenderer();
+
+    draw(mc, r);
+    maskCacheStub.resolve("mask-1");
+    await maskCacheStub.settle();
+    draw(mc, r);
+    expect(r.drawn.at(-1)).toBe(first);
+
+    // mask-2 is undecoded, so the frame draws mask-1 rather than nothing.
+    mc.updateSource("mask-2");
+    draw(mc, r);
+
+    expect(r.drawn.at(-1)).toBe(first);
+  });
+
+  it("drops the held mask when the source is removed", async () => {
+    const first = maskCacheStub.enqueue("mask-1");
+
+    const mc = new MaskCanvas("mask-1");
+    const r = recordingRenderer();
+
+    draw(mc, r);
+    maskCacheStub.resolve("mask-1");
+    await maskCacheStub.settle();
+    draw(mc, r);
+    expect(r.drawn.at(-1)).toBe(first);
+
+    // No incoming source means nothing will ever converge — unlike a swap,
+    // hold-last must not kick in, and the borrow has to go back.
+    mc.updateSource(undefined);
+    const drawsBefore = r.drawn.length;
+    draw(mc, r);
+
+    expect(r.drawn.length).toBe(drawsBefore);
+    expect(maskCacheStub.released).toContain("mask-1");
+  });
+
+  it("does not restart a decode that already failed for the same source", async () => {
+    const errors = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    // Never enqueued, so the stub's acquireAsync rejects — a broken source.
+    const mc = new MaskCanvas("mask-err");
+    const r = recordingRenderer();
+
+    draw(mc, r);
+    await maskCacheStub.settle();
+    expect(errors).toHaveBeenCalledTimes(1);
+
+    // A repaint must not pay for (or log) the same doomed decode again.
+    draw(mc, r);
+    await maskCacheStub.settle();
+    expect(errors).toHaveBeenCalledTimes(1);
+
+    errors.mockRestore();
+  });
+});
 
 describe("MaskCanvas.mergeFrom", () => {
   it("expands bounds to the union of target and source", () => {
@@ -156,6 +365,53 @@ describe("MaskCanvas.mergeFrom", () => {
     expect(newBounds.y).toBe(targetBounds.y);
     expect(newBounds.width).toBe(targetBounds.width);
     expect(newBounds.height).toBe(targetBounds.height);
+  });
+});
+
+describe("MaskCanvas.updateSource guards an in-flight paint encode", () => {
+  // Regression: a server-echo reconcile reprojects onto the overlay mid-edit.
+  // While a paint encode is still in flight, those canvas pixels are an
+  // uncommitted stroke absent from any source, so a reset() would drop them (and
+  // abort the encode). Once the encode resolves the pixels live in the source, so
+  // a genuine reproject (e.g. undo) must be free to replace the canvas.
+
+  const flushEncode = async (): Promise<void> => {
+    // paintEnd's encode chain is then→finally; flush enough microtasks for the
+    // finally (which decrements encodingInFlight) to run.
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+  };
+
+  it("keeps the editing canvas while a paint encode is in flight (returns false)", () => {
+    const bounds: Rect = { x: 0, y: 0, width: 10, height: 10 };
+    const mc = seedCanvas(bounds, { x: 0, y: 0, width: 4, height: 4 });
+
+    // paintEnd increments encodingInFlight (and rebuilds the canvas); the encode
+    // has not resolved yet, so capture the post-paint canvas as the baseline.
+    mc.paintEnd(bounds);
+    const canvasInFlight = mc.getPreviewSource();
+    expect(canvasInFlight).toBeInstanceOf(HTMLCanvasElement);
+
+    expect(mc.updateSource("echoed-serialized-mask")).toBe(false);
+    expect(mc.getPreviewSource()).toBe(canvasInFlight);
+  });
+
+  it("adopts a new source once the encode has resolved (returns true)", async () => {
+    const bounds: Rect = { x: 0, y: 0, width: 10, height: 10 };
+    const mc = seedCanvas(bounds, { x: 0, y: 0, width: 4, height: 4 });
+
+    mc.paintEnd(bounds);
+    await flushEncode();
+
+    // An undo / genuine reproject carrying a different value must replace the
+    // canvas — the earlier over-broad "canvas exists" guard blocked this and left
+    // undo restoring bounds but not the mask.
+    expect(mc.updateSource("different-mask")).toBe(true);
+  });
+
+  it("still swaps the source when there is no editing canvas (returns true)", () => {
+    const mc = new MaskCanvas("initial-mask");
+
+    expect(mc.updateSource("different-mask")).toBe(true);
   });
 });
 

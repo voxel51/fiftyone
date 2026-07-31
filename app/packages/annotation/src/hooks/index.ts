@@ -2,6 +2,7 @@ export * from "./useAnnotationEventBus";
 export * from "./useAnnotationEventHandler";
 export * from "./useAnnotationController";
 export * from "./useDeleteAnnotation";
+export * from "./useDeleteTrack";
 export * from "./useGetVersionToken";
 export * from "./usePatchSample";
 export * from "./useRegisterAnnotationEventHandlers";

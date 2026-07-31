@@ -28,7 +28,10 @@ import {
   useAnnotationContext,
   useAnnotationFields,
 } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
-import { visibleLabelSchemas } from "../../../core/src/components/Modal/Sidebar/Annotate/state";
+import {
+  activeLabelSchemas,
+  visibleLabelSchemas,
+} from "../../../core/src/components/Modal/Sidebar/Annotate/state";
 
 /**
  * Read accessors for the external recoil / jotai atoms the video surface
@@ -97,6 +100,14 @@ export const useVisibleLabelSchemas = (): ReadonlySet<string> => {
   const visible = useAtomValue(visibleLabelSchemas);
   return useMemo(() => new Set(visible), [visible]);
 };
+
+/**
+ * Whether the `get_label_schemas` operator round-trip has landed. Until it
+ * does, schema-gated derivations (visible fields, TD tracks) see an empty
+ * set rather than the real activation state.
+ */
+export const useLabelSchemasLoaded = (): boolean =>
+  useAtomValue(activeLabelSchemas) !== null;
 
 /**
  * Every schema-active per-frame label field, mapped to its list label type

@@ -1,7 +1,8 @@
-import { getSampleSrc } from "@fiftyone/state";
+import { getSampleSrc, useDimensions } from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
 import React, { useMemo, useState } from "react";
 import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
+import { useEndPointSessionOnFrameChange } from "../hooks/useEndPointSessionOnFrameChange";
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
 import { useRegisterVideoSegmentBitmap } from "../hooks/useRegisterVideoSegmentBitmap";
 import { useSyncAnnotationFrameClock } from "../hooks/useSyncAnnotationFrameClock";
@@ -11,7 +12,7 @@ import { useFollowAnchorFrame } from "../state/useVideoInteraction";
 import { useAnnotatePrerequisites } from "../hooks/useAnnotatePrerequisites";
 import { useDecodeStrategy } from "../hooks/useDecodeStrategy";
 import type { DecodeStrategy } from "../utils/decodeStrategy";
-import { PlaybackProvider } from "@fiftyone/playback";
+import { PlaybackProvider, TIMELINE_DRAWER_MAX_SIZE } from "@fiftyone/playback";
 import {
   AnnotatePrerequisiteChecking,
   AnnotatePrerequisiteNotice,
@@ -37,6 +38,15 @@ import styles from "./VideoAnnotationSurface.module.css";
  * Read once at mount; flipping requires reopening the modal.
  */
 type LabelsMode = "real" | "synthetic";
+
+/**
+ * Fraction of the surface height the timeline may occupy before its body caps
+ * and scrolls internally — so a growing track list never crowds out the media.
+ */
+const TIMELINE_MAX_HEIGHT_FRACTION = 0.25;
+
+/** Floor for the timeline body cap so it stays usable on a short surface. */
+const TIMELINE_MIN_MAX_SIZE = 160;
 
 function useLabelsMode(): LabelsMode {
   const [mode] = useState<LabelsMode>(() => {
@@ -119,6 +129,20 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   const labelsMode = useLabelsMode();
   const prerequisites = useAnnotatePrerequisites(sample);
 
+  // Measure the surface so the timeline body caps at a fraction of it: past the
+  // cap the drawer scrolls internally instead of growing into the media area.
+  const dimensions = useDimensions();
+  const surfaceHeight = dimensions.bounds?.height ?? 0;
+  const timelineMaxSize = surfaceHeight
+    ? Math.min(
+        TIMELINE_DRAWER_MAX_SIZE,
+        Math.max(
+          TIMELINE_MIN_MAX_SIZE,
+          Math.round(surfaceHeight * TIMELINE_MAX_HEIGHT_FRACTION),
+        ),
+      )
+    : undefined;
+
   // Resolved top-level media URL. The `html` tile binds to it and the `extract`
   // source decodes it in a worker; the `fetch` source resolves per-frame URLs
   // instead and ignores it.
@@ -139,7 +163,10 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   // actionable prompt instead of a stream that would throw or blank out.
   if (prerequisites.status === "blocked") {
     return (
-      <div className={styles.root}>
+      <div
+        ref={dimensions.ref as React.RefObject<HTMLDivElement>}
+        className={styles.root}
+      >
         <VideoAnnotationTopBar sample={sample} />
         <div className={styles.media}>
           <AnnotatePrerequisiteNotice blocker={prerequisites.blocker} />
@@ -152,7 +179,10 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   // hold on a spinner so the scaffolding mounts exactly once, on the winner.
   if (resolution.status !== "resolved" || !resolution.strategy) {
     return (
-      <div className={styles.root}>
+      <div
+        ref={dimensions.ref as React.RefObject<HTMLDivElement>}
+        className={styles.root}
+      >
         <VideoAnnotationTopBar sample={sample} />
         <div className={styles.media}>
           <AnnotatePrerequisiteChecking />
@@ -166,7 +196,10 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   const Registrar = STRATEGY_REGISTRAR[strategy];
 
   const layout = (
-    <div className={styles.root}>
+    <div
+      ref={dimensions.ref as React.RefObject<HTMLDivElement>}
+      className={styles.root}
+    >
       <VideoAnnotationTopBar sample={sample} />
       <div className={styles.media}>
         <Tile videoSrc={videoSrc} />
@@ -175,7 +208,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
         {labelsMode === "synthetic" ? (
           <SyntheticTrackTimeline />
         ) : (
-          <FrameLabelsTracks sample={sample} />
+          <FrameLabelsTracks sample={sample} maxSize={timelineMaxSize} />
         )}
       </div>
     </div>
@@ -237,6 +270,8 @@ const VideoAnnotationHandlerRegistration: React.FC = () => {
   useRegisterVideoAnnotationKeybindings();
   // expose the active ImaVid frame to the SAM2 agent for click-to-segment
   useRegisterVideoSegmentBitmap();
+  // a point session belongs to the frame it started on; end it on a move
+  useEndPointSessionOnFrameChange();
   useAutoInterpolate();
   // editing a frame label: keep the anchor (and the form) on the playhead's
   // occurrence of the same track as the playhead moves

@@ -5,6 +5,10 @@ Configuring FiftyOne
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.4.0
+    :enterprise_version: 1.0
+
 FiftyOne can be configured in various ways. This guide covers the various
 options that exist, how to view your current config, and how to customize your
 config as desired.
@@ -369,6 +373,10 @@ session.
 Configuring a MongoDB connection
 --------------------------------
 
+.. customavailablein::
+    :oss_version: 0.13.0
+    :enterprise_version: 1.0
+
 By default, FiftyOne is installed with its own MongoDB database distribution.
 This database is managed by FiftyOne automatically as a service that runs
 whenever at least one FiftyOne Python client is alive.
@@ -414,6 +422,10 @@ You must also add `?authSource=admin` to your database URI:
 
 MongoDB network compression
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. customavailablein::
+    :oss_version: 1.5.0
+    :enterprise_version: 2.8.0
 
 You can optionally configure
 `MongoDB network compression <https://www.mongodb.com/developer/products/mongodb/mongodb-network-compression>`_
@@ -511,6 +523,10 @@ Then, in another shell, configure the database URI and launch FiftyOne:
 
 Database migrations
 -------------------
+
+.. customavailablein::
+    :oss_version: 0.15.1
+    :enterprise_version: 1.0
 
 New FiftyOne versions occasionally introduce data model changes that require
 database migrations when you :ref:`upgrade <upgrading-fiftyone>` or
@@ -709,6 +725,10 @@ Or, you can even dynamically change the timezone while you work in Python:
 
 Configuring the App
 -------------------
+
+.. customavailablein::
+    :oss_version: 0.7.2
+    :enterprise_version: 1.0
 
 The :ref:`FiftyOne App <fiftyone-app>` can also be configured in various ways.
 A new copy of your App config is applied to each |Session| object that is

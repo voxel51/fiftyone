@@ -15,7 +15,7 @@ Prerequisites
 -------------
 
 You will need a working Python installation. FiftyOne currently requires
-**Python 3.10 - 3.12**.
+**Python 3.10 - 3.13**.
 
 On Linux, we recommend installing Python through your system package manager
 (APT, YUM, etc.) if it is available. On other platforms, Python can be
@@ -221,6 +221,10 @@ a dataset for the first time in a newer version of FiftyOne.
 
 Downgrading FiftyOne
 --------------------
+
+.. customavailablein::
+    :oss_version: 0.7.3
+    :enterprise_version: 1.0
 
 If you need to downgrade to an older version of FiftyOne for any reason, you
 can do so.

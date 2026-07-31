@@ -1218,6 +1218,16 @@ class FiftyOneTransformerForUniversalSegmentation(FiftyOneTransformer):
         self._output_processor.processor = self.transforms.processor
         self.transforms.return_image_sizes = True
 
+        # OneFormerProcessor requires task_inputs at preprocessing time.
+        import inspect
+
+        try:
+            sig = inspect.signature(self.transforms.processor.__call__)
+            if "task_inputs" in sig.parameters:
+                self.transforms.task_inputs = config.task
+        except (ValueError, TypeError):
+            pass
+
 
 class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
     """Configuration for a :class:`FiftyOneTransformerForPoseEstimation`.
@@ -1524,6 +1534,10 @@ class _HFTransformsHandler:
             self.kwargs["return_tensors"] = "pt"
         self.text = None  # passed in by model after init
         self.text_per_image = False  # passed in by model after init
+        # task_inputs is popped from kwargs so it is not forwarded verbatim to
+        # the processor; instead it is expanded per-image at call time (e.g.
+        # OneFormer requires task_inputs=[task]*batch_size at preprocessing).
+        self.task_inputs = self.kwargs.pop("task_inputs", None)
 
     def __call__(self, args):
         image_size = None
@@ -1550,7 +1564,13 @@ class _HFTransformsHandler:
                     if isinstance(args, list)
                     else [_get_image_size(args)]
                 )
-            if self.text:
+            if self.task_inputs is not None:
+                res = self.processor(
+                    images=args,
+                    task_inputs=[self.task_inputs] * num_images,
+                    **self.kwargs,
+                )
+            elif self.text:
                 res = self.processor(
                     images=args,
                     text=self.text
@@ -1836,10 +1856,19 @@ class TransformersUniversalSegmentatorOutputProcessor(
             processed = self._processor.post_process_panoptic_segmentation(
                 output, **post_process_kwargs
             )
+            use_binary_maps = False
         else:
-            # for instance segmentation, preserve overlapping instances with return_binary_maps set to True.
+            import inspect
+
+            use_binary_maps = (
+                "return_binary_maps"
+                in inspect.signature(
+                    self._processor.post_process_instance_segmentation
+                ).parameters
+            )
+            extra = {"return_binary_maps": True} if use_binary_maps else {}
             processed = self._processor.post_process_instance_segmentation(
-                output, **post_process_kwargs, return_binary_maps=True
+                output, **post_process_kwargs, **extra
             )
         results = []
         for item in processed:
@@ -1863,10 +1892,10 @@ class TransformersUniversalSegmentatorOutputProcessor(
                     )
                     if classes is not None and label not in classes:
                         continue
-                    if self.task == "panoptic":
-                        binary_mask = seg_np == seg["id"]
-                    else:
+                    if use_binary_maps:
                         binary_mask = seg_np[i] > 0
+                    else:
+                        binary_mask = seg_np == seg["id"]
                     if not binary_mask.any():
                         continue
                     detections.append(

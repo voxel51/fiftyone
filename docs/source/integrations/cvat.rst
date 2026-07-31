@@ -5,6 +5,10 @@ CVAT Integration
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.13.0
+    :enterprise_version: 1.0
+
 `CVAT <https://github.com/opencv/cvat>`_ is one of the most popular
 open-source image and video annotation tools available, and we've made it easy
 to upload your data directly from FiftyOne to CVAT to add or edit labels.
@@ -352,6 +356,10 @@ requests, you can provide them in either of the following ways:
 Requesting annotations
 ______________________
 
+.. customavailablein::
+    :oss_version: 0.13.3
+    :enterprise_version: 1.0
+
 Use the
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` method
 to send the samples and optionally existing labels in a |Dataset| or
@@ -695,6 +703,10 @@ FiftyOne can infer the appropriate values to use:
 
 Label attributes
 ----------------
+
+.. customavailablein::
+    :oss_version: 0.14.0
+    :enterprise_version: 1.0
 
 The `attributes` parameter allows you to configure whether
 :ref:`custom attributes <using-labels>` beyond the default `label` attribute
@@ -1518,6 +1530,10 @@ involves multiple fields:
 Unexpected annotations
 ----------------------
 
+.. customavailablein::
+    :oss_version: 0.14.3
+    :enterprise_version: 1.0
+
 The :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
 method allows you to define the annotation schema that should be followed in
 CVAT. However, CVAT does not explicitly allow for restricting the label types
@@ -1772,6 +1788,10 @@ will be assigned using a round-robin strategy.
 
 Large annotation runs
 ---------------------
+
+.. customavailablein::
+    :oss_version: 0.14.3
+    :enterprise_version: 1.0
 
 The CVAT API imposes a limit on the size of all requests. By default, all
 images are uploaded to a single CVAT task, which can result in errors when
@@ -2401,6 +2421,10 @@ every 10th frame as a keyframe to provide a better editing experience in CVAT:
 
 Annotating 3D data
 __________________
+
+.. customavailablein::
+    :oss_version: 1.4.0
+    :enterprise_version: 2.7.0
 
 CVAT supports annotating 3D detections on point cloud data.
 

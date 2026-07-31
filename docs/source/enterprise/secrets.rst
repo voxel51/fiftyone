@@ -5,6 +5,9 @@ FiftyOne Enterprise Secrets
 
 .. default-role:: code
 
+.. customavailablein::
+    :enterprise_version: 1.4.0
+
 FiftyOne Enterprise provides a Secrets interface for storing sensitive information
 such as API tokens and login credentials in a secure manner for use by your
 :ref:`Team's plugins <enterprise-plugins>`.
