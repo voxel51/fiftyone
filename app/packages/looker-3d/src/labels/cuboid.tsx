@@ -30,7 +30,10 @@ import {
   selectedLabelForAnnotationAtom,
   transformModeAtom,
 } from "../state";
-import { useSetCurrent3dAnnotationMode } from "../state/accessors";
+import {
+  useIsCurrentlyTransforming,
+  useSetCurrent3dAnnotationMode,
+} from "../state/accessors";
 import {
   getComplementaryColor,
   getPlaneIntersection,
@@ -409,7 +412,7 @@ export const Cuboid = ({
   const isCreatingCuboidPointerDown = useRecoilValue(
     isCreatingCuboidPointerDownAtom,
   );
-  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
+  const isCurrentlyTransforming = useIsCurrentlyTransforming();
   const setIsCurrentlyTransforming = useSetRecoilState(
     isCurrentlyTransformingAtom,
   );
