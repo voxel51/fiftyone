@@ -32,6 +32,11 @@ export const useImageNaturalSize = (url: string | null): ImageSize | null => {
     };
 
     img.onload = apply;
+    img.onerror = () => {
+      if (!cancelled) {
+        console.warn(`Failed to load image for natural-size lookup: ${url}`);
+      }
+    };
     img.src = url;
 
     // Already cached/decoded.

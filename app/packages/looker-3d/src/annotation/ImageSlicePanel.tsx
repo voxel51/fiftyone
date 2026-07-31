@@ -1,6 +1,4 @@
-import * as fos from "@fiftyone/state";
 import { useEffect, useMemo } from "react";
-import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import type { Vector3 } from "three";
 import { PANEL_ID_SIDE_TOP, VIEW_TYPE_LEFT, VIEW_TYPE_TOP } from "../constants";
@@ -8,6 +6,7 @@ import { useFetchFrustumParameters } from "../frustum/hooks/internal/useFetchFru
 import type { SidePanelId, SidePanelViewType } from "../types";
 import { Native2dAnnotations } from "./native2d/Native2dAnnotations";
 import type { Native2dLabel } from "./native2d/types";
+import { useVisibleNative2dLabels } from "./native2d/useVisibleNative2dLabels";
 import { Projected3dOverlays } from "./projection";
 
 const ImageSliceContainer = styled.div`
@@ -118,28 +117,13 @@ export const ImageSlicePanel = ({
     return frustumData.find((f) => f.sliceName === sliceName) ?? null;
   }, [frustumData, view]);
 
-  // Stored 2D labels for this slice.
-  //
-  // Visibility follows the sidebar, but only for paths the sidebar actually
-  // knows about. A field that lives on the image slices without being in the
-  // main (point-cloud slice) schema never appears in `activeFields`, so keying
-  // purely off membership there hid every such label — which is why none of
-  // these were showing up at all.
-  const activeFields = useRecoilValue(fos.activeFields({ modal: true }));
-  const knownLabelFields = useRecoilValue(
-    fos.labelFields({ space: fos.State.SPACE.SAMPLE }),
-  );
-  const native2dLabels = useMemo(() => {
+  // Stored 2D labels for this slice, filtered to what the sidebar would show.
+  const allNative2dLabels = useMemo(() => {
     const sliceName = decodeImageSliceView(view);
     if (!sliceName) return [];
-
-    const active = new Set(activeFields);
-    const known = new Set(knownLabelFields);
-    const all = resolveLabelsForImageSlice(sliceName);
-    const visible = all.filter((l) => !known.has(l.path) || active.has(l.path));
-
-    return visible;
-  }, [view, activeFields, knownLabelFields, resolveLabelsForImageSlice]);
+    return resolveLabelsForImageSlice(sliceName);
+  }, [view, resolveLabelsForImageSlice]);
+  const native2dLabels = useVisibleNative2dLabels(allNative2dLabels);
 
   /**
    * Validation effect: restore view to a cardinal view only if absolutely certain

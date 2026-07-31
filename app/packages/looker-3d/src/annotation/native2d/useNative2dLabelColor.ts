@@ -1,4 +1,8 @@
-import { getLabelColor } from "@fiftyone/looker/src/overlays/util";
+import {
+  getLabelColor,
+  type CustomizeColor,
+  type LabelTagColor,
+} from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
@@ -19,13 +23,16 @@ export const useNative2dLabelColor = (): ((label: Native2dLabel) => string) => {
         coloring,
         path: label.path,
         // Minimal label shape: color-by-field uses `path`, color-by-value uses
-        // `label`. We don't carry tags into the side-slice overlay.
-        label: { id: label._id, label: label.label, tags: [] },
+        // `label`. We don't carry tags into the side-slice overlay. `id` (not
+        // just `_id`) is set too since instance-coloring's fallback keys off it.
+        label: { _id: label._id, id: label._id, label: label.label, tags: [] },
         isTagged: false,
-        labelTagColors: colorScheme.labelTags,
-        customizeColorSetting: colorScheme.fields ?? [],
+        // GraphQL input types (readonly arrays, nullable fields) vs. the mutable
+        // shapes `getLabelColor` expects -- same fields, same values at runtime.
+        labelTagColors: colorScheme.labelTags as LabelTagColor,
+        customizeColorSetting: (colorScheme.fields ?? []) as CustomizeColor[],
         embeddedDocType: label._cls,
-      } as Parameters<typeof getLabelColor>[0]),
+      }),
     [coloring, colorScheme],
   );
 };
