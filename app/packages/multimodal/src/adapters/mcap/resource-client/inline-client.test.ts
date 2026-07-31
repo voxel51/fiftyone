@@ -1641,6 +1641,151 @@ describe("MCAP resources", () => {
     expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
   });
 
+  it("reuses fully bootstrapped static channels across transform windows", async () => {
+    const staticMessage = createMessage(
+      FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP,
+      {
+        channelId: 11,
+        logTime: 1n,
+      },
+    );
+    const dynamicMessage = createMessage(FRAME_TRANSFORM_MESSAGE, {
+      channelId: 10,
+      logTime: 7_000_000_020n,
+    });
+    const readMessages = vi.fn(async function* ({
+      topics,
+    }: {
+      readonly topics?: readonly string[];
+    } = {}) {
+      if (topics?.includes("/tf_static")) {
+        yield staticMessage;
+      }
+      if (topics?.includes("/tf")) {
+        yield dynamicMessage;
+      }
+    });
+    const reader = createReader({
+      channelsById: new Map([
+        [
+          10,
+          createChannel({
+            id: 10,
+            schemaId: 10,
+            topic: "/tf",
+          }),
+        ],
+        [
+          11,
+          createChannel({
+            id: 11,
+            schemaId: 10,
+            topic: "/tf_static",
+          }),
+        ],
+      ]),
+      readMessages,
+      schemasById: new Map([
+        [
+          10,
+          createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+            id: 10,
+            name: "foxglove.FrameTransform",
+          }),
+        ],
+      ]),
+      statistics: createStatistics({
+        channelMessageCounts: new Map([
+          [10, 10_000n],
+          [11, 1n],
+        ]),
+      }),
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () => reader),
+    });
+    const source = createMcapSourceDescriptor();
+
+    const bootstrap = await client.readFrameTransformBootstrap({ source });
+    const window = await client.readFrameTransformWindow({
+      endTimeNs: dynamicMessage.logTime,
+      source,
+      startTimeNs: dynamicMessage.logTime,
+    });
+
+    expect(bootstrap.samples).toHaveLength(1);
+    expect(window.samples).toHaveLength(1);
+    expect(readMessages).toHaveBeenNthCalledWith(1, {
+      topics: ["/tf_static"],
+    });
+    expect(readMessages).toHaveBeenNthCalledWith(2, {
+      endTime: dynamicMessage.logTime,
+      startTime: dynamicMessage.logTime,
+      topics: ["/tf"],
+    });
+  });
+
+  it("keeps deferred static channels in transform windows", async () => {
+    const staticMessage = createMessage(
+      FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP,
+      {
+        channelId: 11,
+        logTime: 7_000_000_020n,
+      },
+    );
+    const readMessages = vi.fn(async function* () {
+      yield staticMessage;
+    });
+    const reader = createReader({
+      channelsById: new Map([
+        [
+          11,
+          createChannel({
+            id: 11,
+            schemaId: 10,
+            topic: "/tf_static",
+          }),
+        ],
+      ]),
+      readMessages,
+      schemasById: new Map([
+        [
+          10,
+          createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+            id: 10,
+            name: "foxglove.FrameTransform",
+          }),
+        ],
+      ]),
+      statistics: createStatistics({
+        channelMessageCounts: new Map([[11, 10_000n]]),
+      }),
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () => reader),
+    });
+    const source = createMcapSourceDescriptor();
+
+    const bootstrap = await client.readFrameTransformBootstrap({ source });
+    const window = await client.readFrameTransformWindow({
+      endTimeNs: staticMessage.logTime,
+      source,
+      startTimeNs: staticMessage.logTime,
+    });
+
+    expect(bootstrap.samples).toEqual([]);
+    expect(window.samples).toHaveLength(1);
+    expect(readMessages).toHaveBeenCalledExactlyOnceWith({
+      endTime: staticMessage.logTime,
+      startTime: staticMessage.logTime,
+      topics: ["/tf_static"],
+    });
+  });
+
   it("anchors indexed transform windows with cached predecessor messages", async () => {
     const anchorTimeNs = 7_000_000_020n;
     const earlierAnchorTimeNs = 6_000_000_020n;

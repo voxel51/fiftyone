@@ -116,6 +116,16 @@ interface FrameTransformReadStats {
 }
 
 /**
+ * Static channels whose whole-file bootstrap read completed on this reader.
+ * Dynamic runway reads can safely omit only these exact channels; deferred
+ * bootstrap channels retain the existing window/predecessor fallback.
+ */
+const bootstrappedStaticChannelIdsByReader = new WeakMap<
+  McapIndexedReaderLike,
+  ReadonlySet<number>
+>();
+
+/**
  * Discovers transform-capable channels from MCAP summary metadata. Footer-only;
  * does not read messages. A channel qualifies when its schema is a known
  * Foxglove frame transform schema or a ROS tf2_msgs/TFMessage schema and both
@@ -207,6 +217,7 @@ export async function readMcapFrameTransformBootstrap(
   reader: McapIndexedReaderLike,
 ): Promise<McapFrameTransformSet> {
   const boundedMessages: McapMessage[] = [];
+  const completedStaticChannelIds = new Set<number>();
   const fallbackChannels: FrameTransformChannel[] = [];
   const bootstrapChannelsById = new Map<number, FrameTransformChannel>();
   // Admission stays per-channel so a missing footer count cannot hide one
@@ -223,6 +234,7 @@ export async function readMcapFrameTransformBootstrap(
     if (isStaticTransformBootstrapTopic(entry.channel.topic)) {
       if (bounded.kind === "complete") {
         boundedMessages.push(...bounded.messages);
+        completedStaticChannelIds.add(entry.channel.id);
         bootstrapChannelsById.set(entry.channel.id, entry);
       } else {
         fallbackChannels.push(entry);
@@ -244,6 +256,7 @@ export async function readMcapFrameTransformBootstrap(
     }
   }
   if (boundedMessages.length === 0 && fallbackChannels.length === 0) {
+    rememberBootstrappedStaticChannels(reader, completedStaticChannelIds);
     return createMcapFrameTransformSet({ samples: [] });
   }
   const bootstrapChannels = [...bootstrapChannelsById.values()];
@@ -272,9 +285,29 @@ export async function readMcapFrameTransformBootstrap(
         samples,
       });
     }
+    for (const entry of fallbackChannels) {
+      if (isStaticTransformBootstrapTopic(entry.channel.topic)) {
+        completedStaticChannelIds.add(entry.channel.id);
+      }
+    }
   }
 
+  rememberBootstrappedStaticChannels(reader, completedStaticChannelIds);
   return createMcapFrameTransformSet({ readStats, samples });
+}
+
+function rememberBootstrappedStaticChannels(
+  reader: McapIndexedReaderLike,
+  channelIds: ReadonlySet<number>,
+): void {
+  if (channelIds.size === 0) {
+    return;
+  }
+  const previous = bootstrappedStaticChannelIdsByReader.get(reader);
+  bootstrappedStaticChannelIdsByReader.set(
+    reader,
+    previous ? new Set([...previous, ...channelIds]) : new Set(channelIds),
+  );
 }
 
 function recordBootstrapMessage({
@@ -518,7 +551,11 @@ export async function readMcapFrameTransformWindow({
   readonly request: McapReadFrameTransformWindowRequest;
   readonly timeline: McapTimelineStrategy;
 }): Promise<McapFrameTransformSet> {
-  const transformChannels = discoverFrameTransformChannels(reader);
+  const bootstrappedStaticChannelIds =
+    bootstrappedStaticChannelIdsByReader.get(reader);
+  const transformChannels = discoverFrameTransformChannels(reader).filter(
+    (entry) => !bootstrappedStaticChannelIds?.has(entry.channel.id),
+  );
   if (transformChannels.length === 0) {
     return createMcapFrameTransformSet({ samples: [] });
   }
