@@ -194,7 +194,7 @@ export const modalSample = graphQLSelector<
   variables: ({ get }) => {
     const current = get(modalSelector);
 
-    if (current === null) return null;
+    if (current === null || current === undefined) return null;
 
     const slice = get(groupSlice);
     const sliceSelect = get(modalGroupSlice);
@@ -248,7 +248,7 @@ export const groupSampleAtMainSlice = graphQLSelector<
   variables: ({ get }) => {
     const current = get(modalSelector);
 
-    if (current === null) return null;
+    if (current === null || current === undefined) return null;
 
     const slice = get(groupSlice);
 
