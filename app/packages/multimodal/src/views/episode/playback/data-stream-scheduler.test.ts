@@ -2,6 +2,7 @@ import type { PlaybackStore, PlaybackStream } from "@fiftyone/playback";
 import { createStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { ByteTimelinePoint } from "../../../ir";
 import { createTimelineIndex, EpisodeStreamCache } from "../../../runtime";
 import {
   DataStreamScheduler,
@@ -10,6 +11,7 @@ import {
 import {
   DEFAULT_PLAYBACK_POLICY,
   derivePlaybackPolicy,
+  type PlaybackPolicy,
 } from "./playback-buffering";
 import type { StartupCushionPlanner } from "./startup-cushion";
 
@@ -212,17 +214,199 @@ describe("DataStreamScheduler", () => {
     );
     cleanup();
   });
+
+  it("keeps repeated engine startup batches inside one anchored chunk budget", () => {
+    const harness = createSchedulerHarness({
+      byteTimeline: byteTimelineAtTenths(),
+      policy: {
+        startupMaxCompressedBytes: 1_000,
+        startupMaxChunks: 1,
+      },
+    });
+    const cleanup = harness.register();
+    harness.prefetcher.collectMissingTicksForStreams
+      .mockReturnValueOnce([50_000_000n])
+      .mockReturnValueOnce([150_000_000n]);
+
+    harness.stream().prefetch?.([0, 1]);
+
+    expect(harness.prefetcher.fetchBatch).toHaveBeenCalledOnce();
+    expect(harness.prefetcher.fetchBatch).toHaveBeenCalledWith(
+      [50_000_000n],
+      ["/camera"],
+      "playback-prefetch",
+    );
+    cleanup();
+  });
+
+  it("bounds paused current-time startup recovery by the same chunk budget", () => {
+    const harness = createSchedulerHarness({
+      byteTimeline: byteTimelineAtTenths(),
+      fillCache: false,
+      policy: {
+        startupMaxCompressedBytes: 1_000,
+        startupMaxChunks: 1,
+      },
+    });
+    const cleanup = harness.register();
+    harness.prefetcher.collectMissingTicksForStreams.mockReturnValue([
+      50_000_000n,
+      150_000_000n,
+    ]);
+
+    commitTime(0);
+
+    expect(harness.prefetcher.fetchBatch).toHaveBeenCalledWith(
+      [50_000_000n],
+      ["/camera"],
+      "startup-lookahead",
+    );
+    cleanup();
+  });
+
+  it("does not apply paused speculative caps to active playback", () => {
+    const harness = createSchedulerHarness({
+      byteTimeline: byteTimelineAtTenths(),
+      policy: {
+        pausedWarmupMaxCompressedBytes: 1,
+        pausedWarmupMaxChunks: 1,
+      },
+    });
+    const cleanup = harness.register();
+    playbackState.isPlaying = true;
+    harness.prefetcher.collectMissingTicksForStreams.mockReturnValue([
+      2_000_000_000n,
+    ]);
+
+    commitTime(0.5);
+
+    expect(harness.prefetcher.fetchBatch).toHaveBeenCalledWith(
+      [2_000_000_000n],
+      ["/camera"],
+      "playback-prefetch",
+    );
+    cleanup();
+  });
+
+  it("preserves the required play-press cushion outside paused caps", () => {
+    const harness = createSchedulerHarness({
+      byteTimeline: byteTimelineAtTenths(),
+      policy: {
+        startupMaxCompressedBytes: 1,
+        startupMaxChunks: 1,
+      },
+    });
+    const cleanup = harness.register();
+    playbackState.isPlayPending = true;
+    harness.prefetcher.collectMissingTicksForStreams.mockReturnValue([
+      50_000_000n,
+      150_000_000n,
+    ]);
+
+    harness.stream().prefetch?.([0, 1]);
+
+    expect(harness.prefetcher.fetchBatch).toHaveBeenCalledWith(
+      [50_000_000n, 150_000_000n],
+      ["/camera"],
+      "playback-prefetch",
+    );
+    cleanup();
+  });
+
+  it("warms paused runway from an unsnapped playhead after its nearest tick is ready", () => {
+    const harness = createSchedulerHarness();
+    // At 10 Hz this rounds forward to 200 ms. The former zero-width
+    // coverage gate compared that tick to a 160 ms end and rejected it.
+    playbackState.playhead = 0.16;
+    harness.prefetcher.collectMissingTicksForStreams.mockReturnValue([
+      200_000_000n,
+    ]);
+
+    expect(harness.scheduler.runPausedIdleWarmup()).toBe(true);
+    expect(harness.prefetcher.fetchBatch).toHaveBeenCalledWith(
+      [200_000_000n],
+      ["/camera"],
+      "background-lookahead",
+    );
+  });
+
+  it("applies paused chunk admission to warmup batches", () => {
+    const harness = createSchedulerHarness({
+      byteTimeline: byteTimelineAtTenths(),
+      policy: {
+        pausedWarmupMaxCompressedBytes: 1_000,
+        pausedWarmupMaxChunks: 1,
+      },
+    });
+    harness.prefetcher.collectMissingTicksForStreams.mockReturnValue([
+      50_000_000n,
+      150_000_000n,
+    ]);
+
+    expect(harness.scheduler.runPausedIdleWarmup()).toBe(true);
+    expect(harness.prefetcher.fetchBatch).toHaveBeenCalledWith(
+      [50_000_000n],
+      ["/camera"],
+      "background-lookahead",
+    );
+  });
+
+  it("shares one paused chunk budget across loop-tail segments", () => {
+    const harness = createSchedulerHarness({
+      byteTimeline: [
+        {
+          cumulativeCompressedBytes: 10,
+          endTimeNs: 99_000_000n,
+          startOffsetBytes: 0n,
+        },
+        {
+          cumulativeCompressedBytes: 20,
+          endTimeNs: 999_000_000n,
+          startOffsetBytes: 10n,
+        },
+      ],
+      policy: {
+        pausedWarmupMaxCompressedBytes: 1_000,
+        pausedWarmupMaxChunks: 1,
+      },
+    });
+    playbackState.loopStart = 0;
+    playbackState.loopEnd = 1;
+    playbackState.playhead = 0.95;
+    harness.prefetcher.collectMissingTicksForStreams.mockImplementation(
+      (startSec) => (startSec === 0 ? [50_000_000n] : []),
+    );
+
+    expect(harness.scheduler.runPausedIdleWarmup()).toBe(false);
+    expect(harness.prefetcher.fetchBatch).not.toHaveBeenCalled();
+  });
 });
 
-function createSchedulerHarness() {
+function createSchedulerHarness({
+  byteTimeline = [
+    {
+      cumulativeCompressedBytes: 1_024,
+      endTimeNs: 60_000_000_000n,
+      startOffsetBytes: 0n,
+    },
+  ],
+  fillCache = true,
+  policy = {},
+}: {
+  readonly byteTimeline?: readonly ByteTimelinePoint[];
+  readonly fillCache?: boolean;
+  readonly policy?: Partial<PlaybackPolicy>;
+} = {}) {
   const index = createTimelineIndex({
     endNs: 10_000_000_000n,
     startNs: 0n,
   });
   const cache = new EpisodeStreamCache();
-  for (let position = 0; position < index.tickCount; position++) {
-    const tick = index.tickAt(position);
-    if (tick !== undefined) cache.set(tick, null);
+  if (fillCache) {
+    for (let position = 0; position < index.tickCount; position++) {
+      const tick = index.tickAt(position);
+      if (tick !== undefined) cache.set(tick, null);
+    }
   }
   const prefetcher = {
     collectMissingTicksForStreams: vi.fn<
@@ -239,6 +423,7 @@ function createSchedulerHarness() {
   const unsubscribeStream = vi.fn();
   const cancelIdle = vi.fn();
   const activeStreams = ["/camera"];
+  let registeredStream: PlaybackStream | null = null;
   const scheduler = new DataStreamScheduler({
     caches: new Map([["/camera", cache]]),
     cancelIdle,
@@ -247,12 +432,13 @@ function createSchedulerHarness() {
     getActiveBlockingStreams: () => [...activeStreams],
     getActiveStreams: () => [...activeStreams],
     getBackgroundLookaheadSeconds: () => 2,
+    getByteTimeline: () => byteTimeline,
     getBlockingStreams: () => new Set(["/camera"]),
     getIndex: () => index,
     getLastSeekAtMs: () => null,
     isSourceAvailable: () => true,
     lastFrames: new Map(),
-    policy: derivePlaybackPolicy(DEFAULT_PLAYBACK_POLICY, 10),
+    policy: derivePlaybackPolicy({ ...DEFAULT_PLAYBACK_POLICY, ...policy }, 10),
     prefetcher,
     publishStreamStatuses: vi.fn(),
     resolveStartupCushion: () => ({
@@ -269,13 +455,41 @@ function createSchedulerHarness() {
     prefetcher,
     register: () =>
       scheduler.register(
-        (_stream: PlaybackStream) => unregisterStream,
+        (stream: PlaybackStream) => {
+          registeredStream = stream;
+          return unregisterStream;
+        },
         () => unsubscribeStream,
       ),
+    scheduler,
     startupCushionPlanner,
+    stream: () => {
+      if (!registeredStream) throw new Error("stream is not registered");
+      return registeredStream;
+    },
     unregisterStream,
     unsubscribeStream,
   };
+}
+
+function byteTimelineAtTenths(): readonly ByteTimelinePoint[] {
+  return [
+    {
+      cumulativeCompressedBytes: 10,
+      endTimeNs: 99_000_000n,
+      startOffsetBytes: 0n,
+    },
+    {
+      cumulativeCompressedBytes: 20,
+      endTimeNs: 199_000_000n,
+      startOffsetBytes: 10n,
+    },
+    {
+      cumulativeCompressedBytes: 30,
+      endTimeNs: 299_000_000n,
+      startOffsetBytes: 20n,
+    },
+  ];
 }
 
 function commitTime(timeSec: number): void {

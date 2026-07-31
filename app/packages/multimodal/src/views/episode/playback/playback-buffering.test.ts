@@ -3,6 +3,7 @@ import type { DecodedFrame, SynchronizedFrameWindow } from "../../../ir";
 import { createTimelineIndex, EpisodeStreamCache } from "../../../runtime";
 import {
   bufferedRangesEqual,
+  boundSpeculativeTicksByByteTimeline,
   decodeFailuresByStream,
   DEFAULT_PLAYBACK_POLICY,
   derivePlaybackPolicy,
@@ -21,8 +22,12 @@ describe("episode playback buffering policy", () => {
 
     expect(policy).toMatchObject({
       maxPrefetchBatch: 10,
+      pausedWarmupMaxCompressedBytes: 128 * 1024 * 1024,
+      pausedWarmupMaxChunks: 64,
       pausedWarmupRunwaySeconds: 1.5,
       startupLookaheadSeconds: 0.5,
+      startupMaxCompressedBytes: 96 * 1024 * 1024,
+      startupMaxChunks: 32,
       startupMaxPrefetchBatch: 5,
       streamCacheMaxEntries: 80,
     });
@@ -43,6 +48,156 @@ describe("episode playback buffering policy", () => {
     expect(batchReadPriority("loopback-lookahead")).toBe("playback");
     expect(batchReadPriority("playback-prefetch")).toBe("playback");
     expect(batchReadPriority("startup-lookahead")).toBe("playback");
+  });
+
+  it("bounds speculative ticks by chunk and byte budgets", () => {
+    const byteTimeline = [
+      {
+        cumulativeCompressedBytes: 40,
+        endTimeNs: 99n,
+        startOffsetBytes: 1_000n,
+      },
+      {
+        cumulativeCompressedBytes: 90,
+        endTimeNs: 199n,
+        startOffsetBytes: 1_040n,
+      },
+      {
+        cumulativeCompressedBytes: 120,
+        endTimeNs: 299n,
+        startOffsetBytes: 1_090n,
+      },
+    ];
+
+    expect(
+      boundSpeculativeTicksByByteTimeline({
+        anchorTimeNs: 0n,
+        byteTimeline,
+        maxBytes: 80,
+        maxChunks: 3,
+        ticks: [0n, 50n, 100n, 200n],
+      }),
+    ).toEqual([0n, 50n]);
+    expect(
+      boundSpeculativeTicksByByteTimeline({
+        anchorTimeNs: 0n,
+        byteTimeline,
+        maxBytes: 1_000,
+        maxChunks: 2,
+        ticks: [0n, 100n, 200n],
+      }),
+    ).toEqual([0n, 100n]);
+  });
+
+  it("admits one boundary chunk even when it exceeds the byte budget", () => {
+    expect(
+      boundSpeculativeTicksByByteTimeline({
+        anchorTimeNs: 0n,
+        byteTimeline: [
+          {
+            cumulativeCompressedBytes: 100,
+            endTimeNs: 99n,
+            startOffsetBytes: 1_000n,
+          },
+        ],
+        maxBytes: 10,
+        maxChunks: 1,
+        ticks: [0n, 50n],
+      }),
+    ).toEqual([0n, 50n]);
+    expect(
+      boundSpeculativeTicksByByteTimeline({
+        anchorTimeNs: 0n,
+        byteTimeline: null,
+        maxBytes: 10,
+        maxChunks: 1,
+        ticks: [0n, 50n],
+      }),
+    ).toEqual([0n, 50n]);
+  });
+
+  it("anchors the same fixed budget across repeated passes", () => {
+    const byteTimeline = [
+      {
+        cumulativeCompressedBytes: 10,
+        endTimeNs: 99n,
+        startOffsetBytes: 0n,
+      },
+      {
+        cumulativeCompressedBytes: 20,
+        endTimeNs: 199n,
+        startOffsetBytes: 10n,
+      },
+      {
+        cumulativeCompressedBytes: 30,
+        endTimeNs: 299n,
+        startOffsetBytes: 20n,
+      },
+    ];
+    const input = {
+      anchorTimeNs: 100n,
+      byteTimeline,
+      maxBytes: 1_000,
+      maxChunks: 1,
+    } as const;
+
+    expect(
+      boundSpeculativeTicksByByteTimeline({
+        ...input,
+        ticks: [50n, 100n, 150n, 200n],
+      }),
+    ).toEqual([100n, 150n]);
+    expect(
+      boundSpeculativeTicksByByteTimeline({
+        ...input,
+        ticks: [200n],
+      }),
+    ).toEqual([]);
+  });
+
+  it("returns no speculative work when the anchor is beyond the index", () => {
+    expect(
+      boundSpeculativeTicksByByteTimeline({
+        anchorTimeNs: 300n,
+        byteTimeline: [
+          {
+            cumulativeCompressedBytes: 10,
+            endTimeNs: 299n,
+            startOffsetBytes: 0n,
+          },
+        ],
+        maxBytes: 1_000,
+        maxChunks: 1,
+        ticks: [300n],
+      }),
+    ).toEqual([]);
+  });
+
+  it("fails tick admission closed for invalid speculative budgets", () => {
+    const byteTimeline = [
+      {
+        cumulativeCompressedBytes: 10,
+        endTimeNs: 99n,
+        startOffsetBytes: 0n,
+      },
+    ];
+
+    for (const [maxBytes, maxChunks] of [
+      [0, 1],
+      [1, 0],
+      [Number.POSITIVE_INFINITY, 1],
+      [1, 1.5],
+    ]) {
+      expect(
+        boundSpeculativeTicksByByteTimeline({
+          anchorTimeNs: 0n,
+          byteTimeline,
+          maxBytes,
+          maxChunks,
+          ticks: [0n],
+        }),
+      ).toEqual([]);
+    }
   });
 
   it("queues bounded background batches and stops when coverage is complete", () => {

@@ -431,7 +431,13 @@ export function publishDataStreamStatuses({
   } else {
     scheduleBufferedRangesPublish();
   }
-  if (startupReady && !getIsPlaying(store) && !getIsPlayPending(store)) {
+  if (
+    tick !== null &&
+    blockingTotal > 0 &&
+    blockingCovered === blockingTotal &&
+    !getIsPlaying(store) &&
+    !getIsPlayPending(store)
+  ) {
     schedulePausedIdleWarmup(policy.prefetchRefreshSeconds * 1000);
   }
 }

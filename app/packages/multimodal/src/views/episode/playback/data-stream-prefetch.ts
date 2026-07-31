@@ -11,7 +11,7 @@ import {
   type PlaybackStream,
 } from "@fiftyone/playback";
 
-import type { StreamSyncPolicies } from "../../../ir";
+import type { ByteTimelinePoint, StreamSyncPolicies } from "../../../ir";
 import type { PlaybackReadCapability } from "../../../ports";
 import { isEpisodeReadCancelledError } from "../../../ports";
 import { type EpisodeStreamCache, type TimelineIndex } from "../../../runtime";
@@ -19,6 +19,7 @@ import { monotonicNowMs } from "../../../utils/monotonic-time";
 import {
   activeStreamsInCaches,
   batchReadPriority,
+  boundSpeculativeTicksByByteTimeline,
   bufferWindowCoverage,
   decodeFailuresByStream,
   distributeWindowToCaches,
@@ -407,6 +408,7 @@ export interface DataStreamSchedulerOptions {
   readonly getActiveBlockingStreams: () => string[];
   readonly getActiveStreams: () => string[];
   readonly getBackgroundLookaheadSeconds: () => number;
+  readonly getByteTimeline: () => readonly ByteTimelinePoint[] | null;
   readonly getBlockingStreams: () => ReadonlySet<string>;
   readonly getIndex: () => TimelineIndex | null;
   readonly getLastSeekAtMs: () => number | null;
@@ -429,6 +431,36 @@ export class DataStreamScheduler {
   private nextLookaheadRefreshTime = 0;
 
   constructor(private readonly options: DataStreamSchedulerOptions) {}
+
+  private collectStartupTicks(
+    startSec: number,
+    endSec: number,
+    maxTicks: number,
+    activeStreams: string[],
+  ): bigint[] {
+    const { options } = this;
+    const ticks = options.prefetcher.collectMissingTicksForStreams(
+      startSec,
+      endSec,
+      maxTicks,
+      activeStreams,
+    );
+    // Once the user has asked to play, the adaptive anti-stall cushion is
+    // required playback work rather than paused speculation. Preserve that
+    // existing contract; the engine already caps it in time and wall wait.
+    if (getIsPlaying(options.store) || getIsPlayPending(options.store)) {
+      return ticks;
+    }
+    const index = options.getIndex();
+    if (!index) return [];
+    return boundSpeculativeTicksByByteTimeline({
+      anchorTimeNs: index.secToNs(startSec),
+      byteTimeline: options.getByteTimeline(),
+      maxBytes: options.policy.startupMaxCompressedBytes,
+      maxChunks: options.policy.startupMaxChunks,
+      ticks,
+    });
+  }
 
   resetSource(): void {
     this.lastObservedCommitSec = null;
@@ -456,18 +488,43 @@ export class DataStreamScheduler {
       loopStartSec: getLoopStart(options.store),
       timeSec,
     });
-    for (const segment of segments) {
+    for (
+      let segmentIndex = 0;
+      segmentIndex < segments.length;
+      segmentIndex += 1
+    ) {
+      const segment = segments[segmentIndex];
+      const pausedMaxBytes = distributedBudget(
+        options.policy.pausedWarmupMaxCompressedBytes,
+        segmentIndex,
+        segments.length,
+      );
+      const pausedMaxChunks = distributedBudget(
+        options.policy.pausedWarmupMaxChunks,
+        segmentIndex,
+        segments.length,
+      );
       if (
         fillMissingLookaheadFrom({
           activeStreams,
-          collectMissingTicks: (startSec, endSec, maxTicks) =>
-            options.prefetcher.collectMissingTicksForStreams(
+          collectMissingTicks: (startSec, endSec, maxTicks) => {
+            const ticks = options.prefetcher.collectMissingTicksForStreams(
               startSec,
               endSec,
               maxTicks,
               activeStreams,
               { endExclusive: true },
-            ),
+            );
+            return operation === "background-lookahead"
+              ? boundSpeculativeTicksByByteTimeline({
+                  anchorTimeNs: index.secToNs(segment.startSec),
+                  byteTimeline: options.getByteTimeline(),
+                  maxBytes: pausedMaxBytes,
+                  maxChunks: pausedMaxChunks,
+                  ticks,
+                })
+              : ticks;
+          },
           fetchBatch: options.prefetcher.fetchBatch,
           lookaheadSeconds: segment.endSec - segment.startSec,
           operation:
@@ -502,17 +559,12 @@ export class DataStreamScheduler {
     if (activeStreams.length === 0 || activeBlockingStreams.length === 0) {
       return false;
     }
-    const startupCoverage = bufferWindowCoverage({
-      activeStreams: activeBlockingStreams,
-      caches: options.caches,
-      index,
-      lookaheadSeconds: options.policy.startupLookaheadSeconds,
-      maxTicks: options.policy.startupMaxPrefetchBatch,
-      timeSec,
-    });
+    const currentTick = index.nearestTick(timeSec);
     if (
-      !startupCoverage?.total ||
-      startupCoverage.covered < startupCoverage.total
+      currentTick === undefined ||
+      !activeBlockingStreams.every((stream) =>
+        options.caches.get(stream)?.has(currentTick),
+      )
     ) {
       return false;
     }
@@ -574,12 +626,7 @@ export class DataStreamScheduler {
     fillMissingStartupBufferFrom({
       activeStreams: heavyStreams,
       collectMissingTicks: (startSec, endSec, maxTicks) =>
-        options.prefetcher.collectMissingTicksForStreams(
-          startSec,
-          endSec,
-          maxTicks,
-          heavyStreams,
-        ),
+        this.collectStartupTicks(startSec, endSec, maxTicks, heavyStreams),
       fetchBatch: options.prefetcher.fetchBatch,
       policy: options.policy,
       timeSec,
@@ -604,7 +651,9 @@ export class DataStreamScheduler {
       nativeStepSeconds: nativeStep,
       get lookaheadSeconds() {
         if (options.getActiveBlockingStreams().length === 0) return 0;
-        return options.resolveStartupCushion().cushionSeconds;
+        return getIsPlaying(options.store)
+          ? options.getBackgroundLookaheadSeconds()
+          : options.resolveStartupCushion().cushionSeconds;
       },
       get startupBufferSeconds() {
         if (options.getActiveBlockingStreams().length === 0) return 0;
@@ -645,7 +694,7 @@ export class DataStreamScheduler {
           batch < MAX_ENGINE_PREFETCH_BATCHES_PER_CALL;
           batch++
         ) {
-          const missing = options.prefetcher.collectMissingTicksForStreams(
+          const missing = this.collectStartupTicks(
             startSec,
             endSec,
             options.policy.maxPrefetchBatch,
@@ -724,7 +773,7 @@ export class DataStreamScheduler {
         fillMissingStartupBufferFrom({
           activeStreams: activeBlockingStreams,
           collectMissingTicks: (startSec, endSec, maxTicks) =>
-            options.prefetcher.collectMissingTicksForStreams(
+            this.collectStartupTicks(
               startSec,
               endSec,
               maxTicks,
@@ -769,4 +818,24 @@ export class DataStreamScheduler {
       unsubCurrentTime();
     };
   }
+}
+
+function distributedBudget(
+  total: number,
+  segmentIndex: number,
+  segmentCount: number,
+): number {
+  if (
+    !Number.isSafeInteger(total) ||
+    total <= 0 ||
+    !Number.isSafeInteger(segmentIndex) ||
+    segmentIndex < 0 ||
+    !Number.isSafeInteger(segmentCount) ||
+    segmentCount <= 0 ||
+    segmentIndex >= segmentCount
+  ) {
+    return 0;
+  }
+  const base = Math.floor(total / segmentCount);
+  return base + (segmentIndex < total % segmentCount ? 1 : 0);
 }

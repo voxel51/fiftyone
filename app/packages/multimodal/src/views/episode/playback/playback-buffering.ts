@@ -5,7 +5,11 @@ import {
   setIsBuffering,
   type PlaybackStore,
 } from "@fiftyone/playback";
-import type { DecodedFrame, SynchronizedFrameWindow } from "../../../ir";
+import type {
+  ByteTimelinePoint,
+  DecodedFrame,
+  SynchronizedFrameWindow,
+} from "../../../ir";
 import {
   DEFAULT_TIMELINE_TICK_RATE_HZ,
   type EpisodeStreamCache,
@@ -22,7 +26,11 @@ export type DataOperation =
 /** Human-scale settings for startup and rolling episode buffering. */
 export interface PlaybackPolicy {
   readonly lookaheadSeconds: number;
+  readonly pausedWarmupMaxCompressedBytes: number;
+  readonly pausedWarmupMaxChunks: number;
   readonly startupBufferSeconds: number;
+  readonly startupMaxCompressedBytes: number;
+  readonly startupMaxChunks: number;
   readonly startupMinTicks: number;
   readonly pausedWarmupRunwaySeconds: number;
   readonly prefetchBatchSeconds: number;
@@ -52,11 +60,15 @@ export const INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS = 0.5;
 /** Default buffering policy for episode playback. */
 export const DEFAULT_PLAYBACK_POLICY: PlaybackPolicy = {
   lookaheadSeconds: 4,
+  pausedWarmupMaxCompressedBytes: 128 * 1024 * 1024,
+  pausedWarmupMaxChunks: 64,
   pausedWarmupRunwaySeconds: 1.5,
   prefetchBatchSeconds: 1,
   prefetchBatchesPerPass: 1,
   prefetchRefreshSeconds: 0.5,
   startupBufferSeconds: INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS,
+  startupMaxCompressedBytes: 96 * 1024 * 1024,
+  startupMaxChunks: 32,
   startupMinTicks: 3,
   streamCacheLookaheadMultiplier: 2,
 };
@@ -266,6 +278,105 @@ export function fillMissingStartupBufferFrom({
   );
   if (missing.length === 0) return false;
   return fetchBatch(missing, activeStreams, "startup-lookahead");
+}
+
+/**
+ * Caps speculative ticks by the MCAP chunk curve already loaded with the
+ * timeline. The first intersecting chunk is always admitted: it is the
+ * synchronization boundary for the requested interval and can legitimately
+ * exceed the byte budget by itself. Later chunks must fit both hard budgets.
+ *
+ * Sources without a byte curve cannot support an indexed byte-admission bound,
+ * so they retain the existing time/tick window. Indexed MCAP sources receive
+ * time, chunk-count, and compressed-chunk-byte admission bounds. Physical
+ * Range transfer can be wider because the reader may fill aligned blocks; the
+ * cleanroom Range ledger remains the authority for that separate plateau.
+ */
+export function boundSpeculativeTicksByByteTimeline({
+  anchorTimeNs,
+  byteTimeline,
+  maxBytes,
+  maxChunks,
+  ticks,
+}: {
+  readonly anchorTimeNs: bigint;
+  readonly byteTimeline: readonly ByteTimelinePoint[] | null;
+  readonly maxBytes: number;
+  readonly maxChunks: number;
+  readonly ticks: readonly bigint[];
+}): bigint[] {
+  if (
+    ticks.length === 0 ||
+    !Number.isSafeInteger(maxBytes) ||
+    maxBytes <= 0 ||
+    !Number.isSafeInteger(maxChunks) ||
+    maxChunks <= 0
+  ) {
+    return [];
+  }
+  if (!byteTimeline || byteTimeline.length === 0) {
+    return [...ticks];
+  }
+
+  const firstEligibleChunk = lowerBoundByteTimeline(byteTimeline, anchorTimeNs);
+  if (firstEligibleChunk >= byteTimeline.length) {
+    return [];
+  }
+  const lastEligibleChunk = lastChunkWithinSpeculativeBudget({
+    byteTimeline,
+    firstEligibleChunk,
+    maxBytes,
+    maxChunks,
+  });
+  const endTimeNs = byteTimeline[lastEligibleChunk].endTimeNs;
+  return ticks.filter((tick) => tick >= anchorTimeNs && tick <= endTimeNs);
+}
+
+function lastChunkWithinSpeculativeBudget({
+  byteTimeline,
+  firstEligibleChunk,
+  maxBytes,
+  maxChunks,
+}: {
+  readonly byteTimeline: readonly ByteTimelinePoint[];
+  readonly firstEligibleChunk: number;
+  readonly maxBytes: number;
+  readonly maxChunks: number;
+}): number {
+  const bytesBeforeFirst =
+    byteTimeline[firstEligibleChunk - 1]?.cumulativeCompressedBytes ?? 0;
+  let lastEligibleChunk = firstEligibleChunk;
+  for (
+    let chunkIndex = firstEligibleChunk + 1;
+    chunkIndex < byteTimeline.length;
+    chunkIndex += 1
+  ) {
+    const chunkCount = chunkIndex - firstEligibleChunk + 1;
+    const compressedBytes =
+      byteTimeline[chunkIndex].cumulativeCompressedBytes - bytesBeforeFirst;
+    if (chunkCount > maxChunks || compressedBytes > maxBytes) {
+      break;
+    }
+    lastEligibleChunk = chunkIndex;
+  }
+  return lastEligibleChunk;
+}
+
+function lowerBoundByteTimeline(
+  byteTimeline: readonly ByteTimelinePoint[],
+  timeNs: bigint,
+): number {
+  let low = 0;
+  let high = byteTimeline.length;
+  while (low < high) {
+    const middle = low + Math.floor((high - low) / 2);
+    if (byteTimeline[middle].endTimeNs < timeNs) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
+  return low;
 }
 
 function clampNumber(value: number, min: number, max: number): number {

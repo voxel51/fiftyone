@@ -652,6 +652,10 @@ export function useRegisterDataStream({
             getActiveStreams,
             getBackgroundLookaheadSeconds: () =>
               backgroundLookaheadSecondsRef.current,
+            getByteTimeline: () =>
+              sourceReadProfile === BYTE_SOURCE_READ_PROFILE.REMOTE
+                ? byteTimelineRef.current
+                : null,
             getBlockingStreams: () => blockingStreamsRef.current,
             getIndex: () => indexRef.current,
             getLastSeekAtMs: () => lastSeekAtMsRef.current,
@@ -678,6 +682,7 @@ export function useRegisterDataStream({
       startupCushionPlanner,
       store,
       session,
+      sourceReadProfile,
     ],
   );
 
