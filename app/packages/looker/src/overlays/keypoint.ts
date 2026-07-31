@@ -11,7 +11,12 @@ import {
   NONFINITE,
   Point,
 } from "../state";
-import { distance, distanceFromLineSegment, multiply } from "../util";
+import {
+  distance,
+  distanceFromLineSegment,
+  getRenderedScale,
+  multiply,
+} from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { resolveLabelSelectionVisuals, t } from "./util";
 import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
@@ -34,7 +39,7 @@ export default class KeypointOverlay<
 
     const result = this.getDistanceAndMaybePoint(state);
 
-    if (result && result[0] <= state.pointRadius) {
+    if (result && result[0] <= this.getHitRadius(state)) {
       return CONTAINS.BORDER;
     }
     return CONTAINS.NONE;
@@ -133,16 +138,33 @@ export default class KeypointOverlay<
     return getKeypointPoints([this.label]);
   }
 
+  /**
+   * Hit radius in image-pixel space. `pointRadius` is sized for canvas/window
+   * coords (constant on-screen size); divide by the media fit scale so large
+   * images keep hover/click targets matching the drawn dots.
+   */
+  private getHitRadius(state: Readonly<State>): number {
+    const pointRadius = this.isSelected(state)
+      ? state.pointRadius * 2
+      : state.pointRadius;
+    return (
+      pointRadius /
+      getRenderedScale(
+        [state.windowBBox[2], state.windowBBox[3]],
+        state.dimensions,
+      )
+    );
+  }
+
   private getDistanceAndMaybePoint(
     state: Readonly<State>,
   ): [number, number | null] | null {
     const distances: [number, number][] = [];
-    let {
+    const {
       dimensions,
-      pointRadius,
       pixelCoordinates: [x, y],
     } = state;
-    pointRadius = this.isSelected(state) ? pointRadius * 2 : pointRadius;
+    const hitRadius = this.getHitRadius(state);
 
     const skeleton = getSkeleton(this.field, state);
     const points = this.getFilteredPoints(state, skeleton);
@@ -158,7 +180,7 @@ export default class KeypointOverlay<
         y,
         ...(multiply(dimensions, point) as [number, number]),
       );
-      if (d <= pointRadius * TOLERANCE) {
+      if (d <= hitRadius * TOLERANCE) {
         distances.push([0, i]);
       } else {
         distances.push([d, i]);
