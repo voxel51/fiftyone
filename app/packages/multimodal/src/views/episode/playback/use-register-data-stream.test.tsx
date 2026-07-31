@@ -742,7 +742,9 @@ describe("useRegisterDataStream", () => {
     const source = createSource("source");
     const oldBatch = deferred<readonly SynchronizedMessageWindow[]>();
     const storeCapture = capturePlaybackStore();
+    const cancelRunwayReads = vi.fn();
     const client = createClient({
+      cancelRunwayReads,
       readSynchronizedMessageBatch: vi.fn(() => oldBatch.promise),
       readTimelineRange: vi.fn(async () => createTimelineRange()),
     });
@@ -769,6 +771,7 @@ describe("useRegisterDataStream", () => {
         subscribe={false}
       />,
     );
+    expect(cancelRunwayReads).toHaveBeenCalled();
 
     await act(async () => {
       oldBatch.resolve([
@@ -1347,6 +1350,64 @@ describe("stream status + buffering feedback", () => {
     });
     // No message was ever resolved, so no frame is published either.
     expect(getStreamValue(store, STREAM)).toBeNull();
+  });
+
+  it("cancels shared speculative reads only after the final tile closes", async () => {
+    const source = createSource("shared-tile-session");
+    const storeCapture = capturePlaybackStore();
+    const cancelIdleReads = vi.fn();
+    const cancelRunwayReads = vi.fn();
+    let dataStream: DataStream | null = null;
+    const client = createClient({
+      cancelIdleReads,
+      cancelRunwayReads,
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    render(
+      <Harness
+        allStreams={[STREAM, LIDAR_STREAM]}
+        blockingStreams={[STREAM, LIDAR_STREAM]}
+        client={client}
+        onDataStream={(next) => {
+          dataStream = next;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+        subscribe={false}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(dataStream?.getTimelineIndex()).not.toBeNull();
+    });
+    const currentDataStream = dataStream as DataStream | null;
+    if (!currentDataStream) throw new Error("data stream was not registered");
+    let closeImage: () => void = () => undefined;
+    let closePointCloud: () => void = () => undefined;
+    act(() => {
+      closeImage = currentDataStream.subscribeToStream(STREAM);
+      closePointCloud = currentDataStream.subscribeToStream(LIDAR_STREAM);
+    });
+    expect(currentDataStream.getStreamCache(STREAM)?.isActive).toBe(true);
+    expect(currentDataStream.getStreamCache(LIDAR_STREAM)?.isActive).toBe(true);
+    cancelIdleReads.mockClear();
+    cancelRunwayReads.mockClear();
+
+    act(() => closeImage());
+    expect(currentDataStream.getStreamCache(STREAM)?.isActive).toBe(false);
+    expect(currentDataStream.getStreamCache(LIDAR_STREAM)?.isActive).toBe(true);
+    expect(cancelIdleReads).not.toHaveBeenCalled();
+    expect(cancelRunwayReads).not.toHaveBeenCalled();
+
+    act(() => closePointCloud());
+    expect(currentDataStream.getStreamCache(LIDAR_STREAM)?.isActive).toBe(
+      false,
+    );
+    expect(cancelIdleReads).toHaveBeenCalledOnce();
+    expect(cancelRunwayReads).toHaveBeenCalledOnce();
   });
 
   it("keeps displaying old media and marks it stale past the adaptive threshold", async () => {
@@ -2640,6 +2701,7 @@ function capturePlaybackStore() {
 }
 
 function createClient({
+  cancelIdleReads,
   cancelRunwayReads,
   readDecodedMessages = vi.fn(async function* () {
     for (const item of [] as never[]) yield item;
@@ -2654,6 +2716,7 @@ function createClient({
   ),
   readTopicTimeBounds = vi.fn(async () => []),
 }: {
+  readonly cancelIdleReads?: ResourceClient["cancelIdleReads"];
   readonly cancelRunwayReads?: ResourceClient["cancelRunwayReads"];
   readonly readDecodedMessages?: ResourceClient["readDecodedMessages"];
   readonly readSynchronizedMessageBatch: ResourceClient["readSynchronizedMessageBatch"];
@@ -2662,6 +2725,7 @@ function createClient({
   readonly readTopicTimeBounds?: ResourceClient["readTopicTimeBounds"];
 }): ResourceClient {
   return {
+    cancelIdleReads,
     cancelRunwayReads,
     readDecodedMessages,
     readSynchronizedMessageBatch,

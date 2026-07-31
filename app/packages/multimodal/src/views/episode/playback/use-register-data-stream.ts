@@ -837,10 +837,25 @@ export function useRegisterDataStream({
         // Cache cleared itself in its own cleanup once the count hit 0;
         // also drop the held-last-frame so a future re-subscribe can't
         // flash stale content from the previous session.
-        if (!cache.isActive) lastFrameRef.current.delete(stream);
+        if (!cache.isActive) {
+          lastFrameRef.current.delete(stream);
+          // Batches are source-session shared. Keep them alive while another
+          // tile still consumes the result; the final consumer releases all
+          // speculative ownership.
+          if (getActiveStreams().length === 0) {
+            cancelIdleReads(session);
+            cancelRunwayReads(session);
+          }
+        }
       };
     },
-    [prefetchLookaheadFrom, scheduleAutoSeekToFirstData, store],
+    [
+      getActiveStreams,
+      prefetchLookaheadFrom,
+      scheduleAutoSeekToFirstData,
+      session,
+      store,
+    ],
   );
 
   const getStreamCache = useCallback(
