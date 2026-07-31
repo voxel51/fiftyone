@@ -1939,6 +1939,7 @@ __metadata:
   resolution: "@fiftyone/fiftyone@workspace:."
   dependencies:
     "@bufbuild/protoc-gen-es": "npm:^2.11.0"
+    "@lottiefiles/dotlottie-react": "npm:^0.19.12"
     "@rjsf/core": "npm:^6.0.2"
     "@rjsf/mui": "npm:^6.0.2"
     "@rjsf/utils": "npm:^6.0.2"
@@ -2804,6 +2805,24 @@ __metadata:
   version: 3.4.0
   resolution: "@juggle/resize-observer@npm:3.4.0"
   checksum: 10/73d1d00ee9132fb6f0aea0531940a6b93603e935590bd450fc6285a328d906102eeeb95dea77b2edac0e779031a9708aa8c82502bd298ee4dd26e7dff48f397a
+  languageName: node
+  linkType: hard
+
+"@lottiefiles/dotlottie-react@npm:^0.19.12":
+  version: 0.19.12
+  resolution: "@lottiefiles/dotlottie-react@npm:0.19.12"
+  dependencies:
+    "@lottiefiles/dotlottie-web": "npm:0.78.2"
+  peerDependencies:
+    react: ^17 || ^18 || ^19
+  checksum: 10/2a782c9671ab35e05db53777678a7ec91d7865d344728d30112693f840747e4fa734626b6ee8e837e3cf4616e7688fccac8662941b1f49cf06a6346ffa967c37
+  languageName: node
+  linkType: hard
+
+"@lottiefiles/dotlottie-web@npm:0.78.2":
+  version: 0.78.2
+  resolution: "@lottiefiles/dotlottie-web@npm:0.78.2"
+  checksum: 10/c0f29c1ddb916b4d67f3bab48db9a7ac89eb3bce16472132b8913c89230e20c5b1266126d3f6626c1e9aaf1242a75189f9213c2712146217a8c1cac5224a1d3e
   languageName: node
   linkType: hard
 
