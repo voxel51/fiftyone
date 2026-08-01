@@ -97,11 +97,21 @@ export const currentActionAtom = atom<Actions>({
 export const isLevaConfigPanelOnAtom = atom<boolean>({
   key: "fo3d-isLevaConfigPanelOn",
   default: false,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-isLevaConfigPanelOn", {
+      valueClass: "boolean",
+    }),
+  ],
 });
 
 export const isStatusBarOnAtom = atom<boolean>({
   key: "fo3d-isStatusBarOn",
   default: false,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-isStatusBarOn", {
+      valueClass: "boolean",
+    }),
+  ],
 });
 
 export type Fo3dPerformanceStats = {
@@ -143,11 +153,21 @@ export const isGridOnAtom = atom<boolean>({
 export const gridCellSizeAtom = atom<number>({
   key: "fo3d-gridCellSize",
   default: 1,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-gridCellSize", {
+      valueClass: "number",
+    }),
+  ],
 });
 
 export const gridSectionSizeAtom = atom<number>({
   key: "fo3d-gridSectionSize",
   default: 10,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-gridSectionSize", {
+      valueClass: "number",
+    }),
+  ],
 });
 
 export const isGridInfinitelyLargeAtom = atom<boolean>({
