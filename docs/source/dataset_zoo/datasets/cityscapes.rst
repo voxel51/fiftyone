@@ -27,6 +27,7 @@ The dataset is intended for:
 
         source_dir/
             leftImg8bit_trainvaltest.zip
+            leftImg8bit_trainextra.zip          # optional, required for train_extra split
             gtFine_trainvaltest.zip             # optional
             gtCoarse.zip                        # optional
             gtBbox_cityPersons_trainval.zip     # optional
@@ -41,7 +42,7 @@ The dataset is intended for:
 -   Dataset license: https://www.cityscapes-dataset.com/license
 -   Dataset size: 11.80 GB
 -   Tags: ``image, multilabel, automotive, manual``
--   Supported splits: ``train, validation, test``
+-   Supported splits: ``train, train_extra, validation, test``
 -   ZooDataset class:
     :class:`CityscapesDataset <fiftyone.zoo.datasets.base.CityscapesDataset>`
 
