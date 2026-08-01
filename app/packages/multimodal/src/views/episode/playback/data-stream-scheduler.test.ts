@@ -63,6 +63,61 @@ beforeEach(() => {
 });
 
 describe("DataStreamScheduler", () => {
+  it("admits image current-frame reads before remaining blocking streams", () => {
+    const harness = createSchedulerHarness({
+      activeStreams: ["/camera/left", "/lidar", "/camera/right"],
+      currentFrameFirstStreams: ["/camera/left", "/camera/right"],
+    });
+
+    harness.scheduler.prefetchLookaheadFrom(0);
+
+    expect(harness.prefetcher.fetchCurrentFrame.mock.calls.slice(0, 2)).toEqual(
+      [
+        [0n, ["/camera/left", "/camera/right"]],
+        [0n, ["/lidar"]],
+      ],
+    );
+  });
+
+  it("keeps current-frame reads atomic when no image split applies", () => {
+    const harness = createSchedulerHarness({
+      activeStreams: ["/camera/left", "/camera/right"],
+      currentFrameFirstStreams: ["/camera/left", "/camera/right"],
+    });
+
+    harness.scheduler.prefetchLookaheadFrom(0);
+
+    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledOnce();
+    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledWith(0n, [
+      "/camera/left",
+      "/camera/right",
+    ]);
+  });
+
+  it("keeps playback prefetch batches atomic across the image-first boundary", () => {
+    const streams = ["/camera/left", "/lidar", "/camera/right"];
+    const harness = createSchedulerHarness({
+      activeStreams: streams,
+      currentFrameFirstStreams: ["/camera/left", "/camera/right"],
+    });
+    const cleanup = harness.register();
+
+    harness.stream().prefetch?.([0, 1]);
+
+    expect(harness.prefetcher.fetchCurrentFrame.mock.calls.slice(0, 2)).toEqual(
+      [
+        [0n, ["/camera/left", "/camera/right"]],
+        [0n, ["/lidar"]],
+      ],
+    );
+    expect(harness.prefetcher.fetchBatch).toHaveBeenCalledWith(
+      expect.any(Array),
+      streams,
+      "playback-prefetch",
+    );
+    cleanup();
+  });
+
   it("routes rolling lookahead through idle and playback lanes", () => {
     const harness = createSchedulerHarness();
     const cleanup = harness.register();
@@ -383,6 +438,7 @@ describe("DataStreamScheduler", () => {
 });
 
 function createSchedulerHarness({
+  activeStreams: configuredActiveStreams = ["/camera"],
   byteTimeline = [
     {
       cumulativeCompressedBytes: 1_024,
@@ -390,10 +446,13 @@ function createSchedulerHarness({
       startOffsetBytes: 0n,
     },
   ],
+  currentFrameFirstStreams = ["/camera"],
   fillCache = true,
   policy = {},
 }: {
+  readonly activeStreams?: string[];
   readonly byteTimeline?: readonly ByteTimelinePoint[];
+  readonly currentFrameFirstStreams?: readonly string[];
   readonly fillCache?: boolean;
   readonly policy?: Partial<PlaybackPolicy>;
 } = {}) {
@@ -401,12 +460,16 @@ function createSchedulerHarness({
     endNs: 10_000_000_000n,
     startNs: 0n,
   });
-  const cache = new EpisodeStreamCache();
-  if (fillCache) {
-    for (let position = 0; position < index.tickCount; position++) {
-      const tick = index.tickAt(position);
-      if (tick !== undefined) cache.set(tick, null);
+  const caches = new Map<string, EpisodeStreamCache>();
+  for (const stream of configuredActiveStreams) {
+    const cache = new EpisodeStreamCache();
+    if (fillCache) {
+      for (let position = 0; position < index.tickCount; position++) {
+        const tick = index.tickAt(position);
+        if (tick !== undefined) cache.set(tick, null);
+      }
     }
+    caches.set(stream, cache);
   }
   const prefetcher = {
     collectMissingTicksForStreams: vi.fn<
@@ -422,10 +485,10 @@ function createSchedulerHarness({
   const unregisterStream = vi.fn();
   const unsubscribeStream = vi.fn();
   const cancelIdle = vi.fn();
-  const activeStreams = ["/camera"];
+  const activeStreams = [...configuredActiveStreams];
   let registeredStream: PlaybackStream | null = null;
   const scheduler = new DataStreamScheduler({
-    caches: new Map([["/camera", cache]]),
+    caches,
     cancelIdle,
     computeBufferedRanges: () => [[0, 10]],
     failedStreams: new Set(),
@@ -433,7 +496,8 @@ function createSchedulerHarness({
     getActiveStreams: () => [...activeStreams],
     getBackgroundLookaheadSeconds: () => 2,
     getByteTimeline: () => byteTimeline,
-    getBlockingStreams: () => new Set(["/camera"]),
+    getBlockingStreams: () => new Set(activeStreams),
+    getCurrentFrameFirstStreams: () => new Set(currentFrameFirstStreams),
     getIndex: () => index,
     getLastSeekAtMs: () => null,
     isSourceAvailable: () => true,

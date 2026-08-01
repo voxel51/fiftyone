@@ -116,6 +116,8 @@ export function cancelRunwayReads(
 /** Inputs for registering the shared episode playback stream. */
 export interface UseDataStreamOptions {
   blockingStreams: readonly string[];
+  /** Streams admitted first for single-tick current-frame reads. */
+  currentFrameFirstStreams: readonly string[];
   session: EpisodeSession | null;
   /** Called whenever every blocking stream covers the current playhead. */
   onPlayheadDataReady?: () => void;
@@ -144,6 +146,7 @@ export interface UseDataStreamOptions {
  */
 export function useRegisterDataStream({
   blockingStreams,
+  currentFrameFirstStreams,
   session,
   onPlayheadDataReady,
   source,
@@ -251,6 +254,9 @@ export function useRegisterDataStream({
   const blockingStreamsRef = useRef<ReadonlySet<string>>(
     new Set(blockingStreams),
   );
+  const currentFrameFirstStreamsRef = useRef<ReadonlySet<string>>(
+    new Set(currentFrameFirstStreams),
+  );
   const staleWarningStreamsRef = useRef<ReadonlySet<string>>(
     new Set(staleWarningStreams),
   );
@@ -265,6 +271,9 @@ export function useRegisterDataStream({
   useEffect(() => {
     blockingStreamsRef.current = new Set(blockingStreams);
   }, [blockingStreams]);
+  useEffect(() => {
+    currentFrameFirstStreamsRef.current = new Set(currentFrameFirstStreams);
+  }, [currentFrameFirstStreams]);
   // This effect keeps the readiness callback current without rebuilding streams.
   useEffect(() => {
     onPlayheadDataReadyRef.current = onPlayheadDataReady;
@@ -657,6 +666,8 @@ export function useRegisterDataStream({
                 ? byteTimelineRef.current
                 : null,
             getBlockingStreams: () => blockingStreamsRef.current,
+            getCurrentFrameFirstStreams: () =>
+              currentFrameFirstStreamsRef.current,
             getIndex: () => indexRef.current,
             getLastSeekAtMs: () => lastSeekAtMsRef.current,
             isSourceAvailable: () => source !== null,

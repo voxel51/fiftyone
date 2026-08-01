@@ -410,6 +410,7 @@ export interface DataStreamSchedulerOptions {
   readonly getBackgroundLookaheadSeconds: () => number;
   readonly getByteTimeline: () => readonly ByteTimelinePoint[] | null;
   readonly getBlockingStreams: () => ReadonlySet<string>;
+  readonly getCurrentFrameFirstStreams: () => ReadonlySet<string>;
   readonly getIndex: () => TimelineIndex | null;
   readonly getLastSeekAtMs: () => number | null;
   readonly isSourceAvailable: () => boolean;
@@ -465,6 +466,28 @@ export class DataStreamScheduler {
   resetSource(): void {
     this.lastObservedCommitSec = null;
     this.nextLookaheadRefreshTime = 0;
+  }
+
+  /**
+   * Admits image current-frame work before the remaining synchronized sources.
+   * Each group stays atomic, while shared pending state preserves dedupe and
+   * the all-blocking-stream readiness gate remains unchanged.
+   */
+  private fetchCurrentFrame(tick: bigint, activeStreams: string[]): void {
+    const firstSet = this.options.getCurrentFrameFirstStreams();
+    const firstStreams = activeStreams.filter((stream) => firstSet.has(stream));
+    if (
+      firstStreams.length === 0 ||
+      firstStreams.length === activeStreams.length
+    ) {
+      this.options.prefetcher.fetchCurrentFrame(tick, activeStreams);
+      return;
+    }
+    this.options.prefetcher.fetchCurrentFrame(tick, firstStreams);
+    this.options.prefetcher.fetchCurrentFrame(
+      tick,
+      activeStreams.filter((stream) => !firstSet.has(stream)),
+    );
   }
 
   /**
@@ -618,7 +641,7 @@ export class DataStreamScheduler {
         options.store,
         options.failedStreams,
       );
-      options.prefetcher.fetchCurrentFrame(tick, heavyStreams);
+      this.fetchCurrentFrame(tick, heavyStreams);
       if (overlayStreams.length > 0) {
         options.prefetcher.fetchCurrentFrame(tick, overlayStreams);
       }
@@ -687,7 +710,7 @@ export class DataStreamScheduler {
         const activeStreams = options.getActiveStreams();
         const tick = index.nearestTick(startSec);
         if (tick !== undefined) {
-          options.prefetcher.fetchCurrentFrame(tick, activeStreams);
+          this.fetchCurrentFrame(tick, activeStreams);
         }
         for (
           let batch = 0;

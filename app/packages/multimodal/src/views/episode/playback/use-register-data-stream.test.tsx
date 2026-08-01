@@ -2439,6 +2439,7 @@ describe("bandwidth-aware startup cushion + stall rendering", () => {
 function Harness({
   allStreams = DEFAULT_TEST_STREAMS,
   blockingStreams = DEFAULT_TEST_STREAMS,
+  currentFrameFirstStreams = [],
   client,
   onStore,
   onApi,
@@ -2453,6 +2454,7 @@ function Harness({
 }: {
   readonly allStreams?: readonly string[];
   readonly blockingStreams?: readonly string[];
+  readonly currentFrameFirstStreams?: readonly string[];
   readonly client: ResourceClient;
   readonly onStore: (store: PlaybackStore) => void;
   readonly onApi?: (api: ReturnType<typeof usePlayback>) => void;
@@ -2481,6 +2483,7 @@ function Harness({
   useRegisterDataStream({
     allStreams,
     blockingStreams,
+    currentFrameFirstStreams,
     session,
     source,
     staleWarningStreams,

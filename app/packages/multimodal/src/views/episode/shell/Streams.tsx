@@ -89,6 +89,13 @@ export function Streams({
     () => new Map(sources.map((s) => [s.id, s.sourceName])),
     [sources],
   );
+  const imageStreams = useMemo(
+    () =>
+      sources
+        .filter((source) => source.type === SCENE_SOURCE_TYPE.IMAGE)
+        .map((source) => source.id),
+    [sources],
+  );
   const staleWarningStreams = useMemo(
     () =>
       sources
@@ -153,6 +160,7 @@ export function Streams({
 
   useRegisterDataStream({
     blockingStreams,
+    currentFrameFirstStreams: imageStreams,
     onPlayheadDataReady,
     session,
     source,
