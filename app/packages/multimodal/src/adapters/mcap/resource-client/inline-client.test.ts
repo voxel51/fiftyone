@@ -760,8 +760,12 @@ describe("MCAP resources", () => {
       ),
     });
 
-    const set = await client.readFrameTransformBootstrap({
-      source: createMcapSourceDescriptor(),
+    const source = createMcapSourceDescriptor();
+    const set = await client.readFrameTransformBootstrap({ source });
+    const window = await client.readFrameTransformWindow({
+      endTimeNs: 100n,
+      source,
+      startTimeNs: 100n,
     });
 
     expect(readMessages).not.toHaveBeenCalled();
@@ -778,7 +782,87 @@ describe("MCAP resources", () => {
       childFrameId: "lidar",
       parentFrameId: "map",
     });
+    expect(window.samples).toEqual([]);
   });
+
+  it.each([
+    { bounded: true, kind: "bounded" },
+    { bounded: false, kind: "fallback" },
+  ])(
+    "keeps timestamped static-topic samples window-readable after $kind bootstrap",
+    async ({ bounded }) => {
+      const timeNs = 7_000_000_020n;
+      const message = createMessage(FRAME_TRANSFORM_MESSAGE, {
+        channelId: 10,
+        logTime: timeNs,
+      });
+      const readBoundedMessages = vi.fn(async () =>
+        createBoundedReadResult([message]),
+      );
+      const readMessages = vi.fn(async function* () {
+        yield message;
+      });
+      const client = createInlineMcapResourceClient({
+        byteClient: { readBytes: vi.fn() },
+        decodeClient: createTestDecodeClient(),
+        readerFactory: vi.fn(async () =>
+          createReader({
+            channelsById: new Map([
+              [
+                10,
+                createChannel({
+                  id: 10,
+                  schemaId: 10,
+                  topic: "/tf_static",
+                }),
+              ],
+            ]),
+            chunkIndexes: bounded
+              ? [
+                  createChunkIndex({
+                    messageIndexLength: 64n,
+                    messageIndexOffsets: new Map([[10, 900n]]),
+                    uncompressedSize: 256n,
+                  }),
+                ]
+              : [],
+            readBoundedMessages,
+            readMessages,
+            schemasById: new Map([
+              [
+                10,
+                createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                  id: 10,
+                  name: "foxglove.FrameTransform",
+                }),
+              ],
+            ]),
+            statistics: createStatistics({
+              channelMessageCounts: new Map([[10, 1n]]),
+            }),
+          }),
+        ),
+      });
+      const source = createMcapSourceDescriptor();
+
+      const bootstrap = await client.readFrameTransformBootstrap({ source });
+      const window = await client.readFrameTransformWindow({
+        endTimeNs: timeNs,
+        source,
+        startTimeNs: timeNs,
+      });
+
+      expect(bootstrap.samples).toEqual([]);
+      expect(window.samples).toHaveLength(1);
+      expect(window.samples[0]).toMatchObject({
+        childFrameId: "lidar",
+        parentFrameId: "map",
+        timeNs,
+      });
+      expect(readBoundedMessages).toHaveBeenCalledTimes(bounded ? 1 : 0);
+      expect(readMessages).toHaveBeenCalledTimes(bounded ? 1 : 2);
+    },
+  );
 
   it("drains bounded transform bootstrap continuations without partial results", async () => {
     const continuation = {

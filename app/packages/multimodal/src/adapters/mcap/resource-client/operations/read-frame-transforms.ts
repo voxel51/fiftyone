@@ -218,6 +218,7 @@ export async function readMcapFrameTransformBootstrap(
 ): Promise<McapFrameTransformSet> {
   const boundedMessages: McapMessage[] = [];
   const completedStaticChannelIds = new Set<number>();
+  const windowedSampleChannelIds = new Set<number>();
   const fallbackChannels: FrameTransformChannel[] = [];
   const bootstrapChannelsById = new Map<number, FrameTransformChannel>();
   // Admission stays per-channel so a missing footer count cannot hide one
@@ -272,6 +273,7 @@ export async function readMcapFrameTransformBootstrap(
       message,
       readStats,
       samples,
+      windowedSampleChannelIds,
     });
   }
   if (fallbackChannels.length > 0) {
@@ -283,6 +285,7 @@ export async function readMcapFrameTransformBootstrap(
         message,
         readStats,
         samples,
+        windowedSampleChannelIds,
       });
     }
     for (const entry of fallbackChannels) {
@@ -290,6 +293,13 @@ export async function readMcapFrameTransformBootstrap(
         completedStaticChannelIds.add(entry.channel.id);
       }
     }
+  }
+
+  // A complete read is reusable only when bootstrap retained every decoded
+  // sample. Timestamped transforms remain window-scoped, so their channels
+  // must keep the regular window and predecessor path.
+  for (const channelId of windowedSampleChannelIds) {
+    completedStaticChannelIds.delete(channelId);
   }
 
   rememberBootstrappedStaticChannels(reader, completedStaticChannelIds);
@@ -315,11 +325,13 @@ function recordBootstrapMessage({
   message,
   readStats,
   samples,
+  windowedSampleChannelIds,
 }: {
   readonly channelsById: ReadonlyMap<number, FrameTransformChannel>;
   readonly message: McapMessage;
   readonly readStats: FrameTransformReadStats;
   readonly samples: McapFrameTransformSample[];
+  readonly windowedSampleChannelIds: Set<number>;
 }): void {
   const entry = channelsById.get(message.channelId);
   if (!entry) {
@@ -333,6 +345,8 @@ function recordBootstrapMessage({
     })) {
       if (sample.timeNs === undefined) {
         samples.push(sample);
+      } else {
+        windowedSampleChannelIds.add(entry.channel.id);
       }
     }
   } catch {
