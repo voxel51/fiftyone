@@ -108,6 +108,30 @@ describe("data stream prefetcher", () => {
     });
   });
 
+  it("leaves refused batch ticks available for a later admission pass", async () => {
+    let admitBatch = false;
+    const readSynchronizedBatch = vi.fn(async () => []);
+    const harness = createHarness({
+      readSynchronizedBatch,
+      shouldAdmitBatch: () => admitBatch,
+    });
+    harness.caches.get(IMAGE)?.subscribe();
+
+    expect(
+      harness.prefetcher.fetchBatch([0n], [IMAGE], "playback-prefetch"),
+    ).toBe(false);
+    expect(readSynchronizedBatch).not.toHaveBeenCalled();
+    expect(
+      harness.prefetcher.collectMissingTicksForStreams(0, 0, 1, [IMAGE]),
+    ).toEqual([0n]);
+
+    admitBatch = true;
+    expect(
+      harness.prefetcher.fetchBatch([0n], [IMAGE], "playback-prefetch"),
+    ).toBe(true);
+    expect(readSynchronizedBatch).toHaveBeenCalledOnce();
+  });
+
   it("releases pending ticks after an idle read is cancelled", async () => {
     const idleRead = deferred<readonly SynchronizedFrameWindow[]>();
     const harness = createHarness({
@@ -217,9 +241,13 @@ describe("data stream prefetcher", () => {
 function createHarness({
   readSynchronized = vi.fn(async (request) => windowAt(request.timeNs, [])),
   readSynchronizedBatch = vi.fn(async () => []),
+  shouldAdmitBatch,
 }: {
   readonly readSynchronized?: ReturnType<typeof vi.fn>;
   readonly readSynchronizedBatch?: ReturnType<typeof vi.fn>;
+  readonly shouldAdmitBatch?: Parameters<
+    typeof createDataStreamPrefetcher
+  >[0]["shouldAdmitBatch"];
 } = {}) {
   const store = createStore() as PlaybackStore;
   const caches = new Map([
@@ -254,6 +282,7 @@ function createHarness({
     },
     publishStreamStatuses: vi.fn(),
     rebalanceDecodedCaches,
+    shouldAdmitBatch,
     store,
   });
   return harness;

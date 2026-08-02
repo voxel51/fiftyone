@@ -104,6 +104,7 @@ export function createDataStreamPrefetcher({
   playback,
   publishStreamStatuses,
   rebalanceDecodedCaches,
+  shouldAdmitBatch = () => true,
   store,
 }: {
   readonly caches: Map<string, EpisodeStreamCache>;
@@ -119,6 +120,11 @@ export function createDataStreamPrefetcher({
   >;
   readonly publishStreamStatuses: () => void;
   readonly rebalanceDecodedCaches: () => void;
+  /**
+   * Admission boundary for speculative batch work. Returning false leaves the
+   * ticks unclaimed so a later playback or idle pass can admit them.
+   */
+  readonly shouldAdmitBatch?: (operation: DataOperation) => boolean;
   readonly store: PlaybackStore;
 }): DataStreamPrefetcher {
   const isStreamPending = (tickKey: string, stream: string): boolean =>
@@ -203,6 +209,7 @@ export function createDataStreamPrefetcher({
     operation,
   ) => {
     if (ticks.length === 0 || activeStreams.length === 0) return false;
+    if (!shouldAdmitBatch(operation)) return false;
 
     const sourceEpoch = getSourceEpoch();
     const toFetch = ticks.filter((tick) => {
@@ -551,7 +558,8 @@ export class DataStreamScheduler {
           fetchBatch: options.prefetcher.fetchBatch,
           lookaheadSeconds: segment.endSec - segment.startSec,
           operation:
-            segment.kind === "loop-continuation"
+            segment.kind === "loop-continuation" &&
+            operation !== "background-lookahead"
               ? "loopback-lookahead"
               : operation,
           policy: options.policy,
@@ -667,6 +675,13 @@ export class DataStreamScheduler {
 
     const nativeStep = Number(index.stepNs) / 1_000_000_000;
     let lastCommittedTickKey: string | null = null;
+    let pendingPlayRetryTimer: ReturnType<typeof setTimeout> | null = null;
+    let registered = true;
+    const clearPendingPlayRetry = () => {
+      if (pendingPlayRetryTimer === null) return;
+      clearTimeout(pendingPlayRetryTimer);
+      pendingPlayRetryTimer = null;
+    };
     const stream: PlaybackStream = {
       id: STREAM_ID,
       blocking: true,
@@ -759,7 +774,18 @@ export class DataStreamScheduler {
     const unsubPlayPending = subscribeIsPlayPending(options.store, () => {
       if (getIsPlayPending(options.store)) {
         options.cancelIdle();
+        // Idle cancellation rejects its promises immediately, but per-tick
+        // pending ownership is released from their finally handlers. Retry on
+        // the next task so required play-start runway is admitted after that
+        // cleanup rather than being skipped behind stale idle markers.
+        clearPendingPlayRetry();
+        pendingPlayRetryTimer = setTimeout(() => {
+          pendingPlayRetryTimer = null;
+          if (!registered || !getIsPlayPending(options.store)) return;
+          this.prefetchLookaheadFrom(getPlayhead(options.store));
+        }, 0);
       } else {
+        clearPendingPlayRetry();
         options.startupCushionPlanner.resetPendingPlan();
       }
       options.publishStreamStatuses();
@@ -835,6 +861,8 @@ export class DataStreamScheduler {
     });
 
     return () => {
+      registered = false;
+      clearPendingPlayRetry();
       unregister();
       unsubscribe();
       unsubPlayPending();

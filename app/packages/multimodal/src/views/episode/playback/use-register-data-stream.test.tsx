@@ -677,7 +677,7 @@ describe("useRegisterDataStream", () => {
     expect(() => cancelRunwayReads(session)).not.toThrow();
   });
 
-  it("cancels obsolete runway before admitting local seek work", async () => {
+  it("cancels obsolete runway before admitting only local seek-target work", async () => {
     const rebalanceDecodedCaches = vi.spyOn(
       decodedCachePolicy,
       "rebalanceDecodedCaches",
@@ -690,12 +690,13 @@ describe("useRegisterDataStream", () => {
     const storeCapture = capturePlaybackStore();
     const cancelRunway = vi.fn();
     const readSynchronizedMessageBatch = vi.fn(async () => []);
+    const readSynchronizedMessages = vi.fn(async (request) =>
+      createEmptyWindow(request.timeNs),
+    );
     const client = createClient({
       cancelRunwayReads: cancelRunway,
       readSynchronizedMessageBatch,
-      readSynchronizedMessages: vi.fn(async (request) =>
-        createEmptyWindow(request.timeNs),
-      ),
+      readSynchronizedMessages,
       readTimelineRange: vi.fn(async () =>
         createTimelineRange(60_000_000_000n),
       ),
@@ -718,6 +719,7 @@ describe("useRegisterDataStream", () => {
     });
     cancelRunway.mockClear();
     readSynchronizedMessageBatch.mockClear();
+    readSynchronizedMessages.mockClear();
     rebalanceDecodedCaches.mockClear();
 
     act(() => api?.seek(30));
@@ -728,12 +730,13 @@ describe("useRegisterDataStream", () => {
         backwardCushionSeconds: 1,
       }),
     );
-    expect(readSynchronizedMessageBatch).toHaveBeenCalled();
+    expect(readSynchronizedMessages).toHaveBeenCalled();
+    expect(readSynchronizedMessageBatch).not.toHaveBeenCalled();
     expect(rebalanceDecodedCaches.mock.invocationCallOrder[0]).toBeLessThan(
-      readSynchronizedMessageBatch.mock.invocationCallOrder[0],
+      readSynchronizedMessages.mock.invocationCallOrder[0],
     );
     expect(cancelRunway.mock.invocationCallOrder[0]).toBeLessThan(
-      readSynchronizedMessageBatch.mock.invocationCallOrder[0],
+      readSynchronizedMessages.mock.invocationCallOrder[0],
     );
     rebalanceDecodedCaches.mockRestore();
   });
@@ -1174,7 +1177,7 @@ describe("stream status + buffering feedback", () => {
             .mock.calls.slice(1)
             .some(
               ([request, options]) =>
-                options?.priority === "playback" &&
+                options?.priority === "idle" &&
                 (request.timeNs[0] ?? 0n) >= 6_000_000_000n &&
                 (request.timeNs[0] ?? 0n) < 6_100_000_000n,
             ),
@@ -1188,11 +1191,11 @@ describe("stream status + buffering feedback", () => {
       .mock.calls.slice(1)
       .find(
         ([request, options]) =>
-          options?.priority === "playback" &&
+          options?.priority === "idle" &&
           (request.timeNs[0] ?? 0n) >= 6_000_000_000n &&
           (request.timeNs[0] ?? 0n) < 6_100_000_000n,
       );
-    expect(loopbackCall?.[1]?.priority).toBe("playback");
+    expect(loopbackCall?.[1]?.priority).toBe("idle");
     expect(loopbackCall?.[0].timeNs.length).toBeGreaterThan(0);
     expect(loopbackCall?.[0].timeNs[0]).toBeGreaterThanOrEqual(6_000_000_000n);
     // Paused warmup has a 1.5s circular horizon. At 7.75s, 0.25s remains on
@@ -1798,9 +1801,6 @@ describe("stream status + buffering feedback", () => {
     expect(readSynchronizedMessages).toHaveBeenCalledTimes(initialCurrentCalls);
 
     await waitFor(() => {
-      expect(readSynchronizedMessageBatch).toHaveBeenCalledTimes(
-        initialBatchCalls + 1,
-      );
       expect(readSynchronizedMessages).toHaveBeenCalledTimes(
         initialCurrentCalls + 1,
       );
@@ -1809,10 +1809,108 @@ describe("stream status + buffering feedback", () => {
     const settledCurrentRequest =
       readSynchronizedMessages.mock.calls.at(-1)?.[0];
     expect(settledCurrentRequest?.timeNs).toBeGreaterThan(29_000_000_000n);
-    const settledBatchRequest =
-      readSynchronizedMessageBatch.mock.calls.at(-1)?.[0];
-    expect(settledBatchRequest?.timeNs.length).toBeGreaterThan(0);
-    expect(settledBatchRequest?.timeNs.length).toBeLessThanOrEqual(15);
+    expect(readSynchronizedMessageBatch).toHaveBeenCalledTimes(
+      initialBatchCalls,
+    );
+  });
+
+  it("reclaims paused idle work and admits required runway when play becomes pending", async () => {
+    const source = createSource("paused-seek-play");
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    let idleRead:
+      | {
+          readonly promise: Promise<readonly SynchronizedMessageWindow[]>;
+          readonly reject: (reason?: unknown) => void;
+        }
+      | undefined;
+    const readSynchronizedMessageBatch = vi.fn(
+      (
+        request: Parameters<ResourceClient["readSynchronizedMessageBatch"]>[0],
+        options?: Parameters<ResourceClient["readSynchronizedMessageBatch"]>[1],
+      ) => {
+        if (options?.priority === "idle") {
+          idleRead = deferred<readonly SynchronizedMessageWindow[]>();
+          return idleRead.promise;
+        }
+        return Promise.resolve(request.timeNs.map(createEmptyWindow));
+      },
+    );
+    const cancelIdleReads = vi.fn(() => {
+      idleRead?.reject(new EpisodeReadCancelledError());
+    });
+    const readSynchronizedMessages = vi.fn(async (request) =>
+      createEmptyWindow(request.timeNs),
+    );
+    const client = createClient({
+      cancelIdleReads,
+      readSynchronizedMessageBatch,
+      readSynchronizedMessages,
+      readTimelineRange: vi.fn(async () =>
+        createTimelineRange(60_000_000_000n),
+      ),
+    });
+
+    render(
+      <Harness
+        client={client}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(readSynchronizedMessageBatch).toHaveBeenCalled();
+      expect(readSynchronizedMessages).toHaveBeenCalled();
+    });
+
+    act(() => api?.seek(30));
+    await waitFor(() => {
+      expect(
+        readSynchronizedMessages.mock.calls.at(-1)?.[0].timeNs ?? 0n,
+      ).toBeGreaterThan(29_900_000_000n);
+    });
+    await waitFor(
+      () => {
+        expect(
+          readSynchronizedMessageBatch.mock.calls.some(
+            ([, options]) => options?.priority === "idle",
+          ),
+        ).toBe(true);
+      },
+      { timeout: 2_000 },
+    );
+    const playbackCallsBeforePlay =
+      readSynchronizedMessageBatch.mock.calls.filter(
+        ([, options]) => options?.priority === "playback",
+      ).length;
+
+    act(() => api?.play());
+
+    await waitFor(() => {
+      expect(cancelIdleReads).toHaveBeenCalled();
+      expect(
+        readSynchronizedMessageBatch.mock.calls.filter(
+          ([, options]) => options?.priority === "playback",
+        ).length,
+      ).toBeGreaterThan(playbackCallsBeforePlay);
+    });
+    const resumedRunway = [...readSynchronizedMessageBatch.mock.calls]
+      .reverse()
+      .find(
+        ([request, options]) =>
+          options?.priority === "playback" &&
+          (request.timeNs[0] ?? 0n) > 29_900_000_000n,
+      );
+    expect(resumedRunway).toBeDefined();
+    await waitFor(() => {
+      expect(getIsPlaying(storeCapture.store())).toBe(true);
+      expect(getIsBuffering(storeCapture.store())).toBe(false);
+    });
   });
 
   it("seeks and prefetches virtual ticks beyond the old materialized tick cap", async () => {

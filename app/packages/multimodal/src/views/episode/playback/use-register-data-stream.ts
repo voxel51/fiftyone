@@ -438,6 +438,7 @@ export function useRegisterDataStream({
     streamStartTimesNsRef.current.clear();
     autoSeekSourceEpochRef.current = null;
     autoSeekScheduleEpochRef.current = null;
+    lastSeekAtMsRef.current = null;
     startupCushionPlanner.resetPendingPlan();
     backgroundLookaheadSecondsRef.current = playbackPolicy.lookaheadSeconds;
     clearPausedIdleWarmupTimer();
@@ -636,6 +637,16 @@ export function useRegisterDataStream({
             playback,
             publishStreamStatuses,
             rebalanceDecodedCaches,
+            // Once a discontinuous seek has occurred, a fully paused target
+            // owns only its current frame on foreground lanes. Nearby runway
+            // remains unclaimed until the delayed, bounded idle warmup proves
+            // the target is still relevant. Play-pending and active playback
+            // continue to admit their required startup/playback batches.
+            shouldAdmitBatch: (operation) =>
+              operation === "background-lookahead" ||
+              lastSeekAtMsRef.current === null ||
+              getIsPlaying(store) ||
+              getIsPlayPending(store),
             store,
           })
         : null,

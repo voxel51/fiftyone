@@ -183,6 +183,52 @@ describe("DataStreamScheduler", () => {
     expect(playbackState.currentTimeUnsubscribe).toHaveBeenCalledOnce();
   });
 
+  it("retries required runway after play-pending idle cancellation settles", () => {
+    vi.useFakeTimers();
+    try {
+      const harness = createSchedulerHarness({ fillCache: false });
+      const cleanup = harness.register();
+      harness.prefetcher.fetchBatch.mockClear();
+      harness.prefetcher.fetchCurrentFrame.mockClear();
+
+      playbackState.isPlayPending = true;
+      playbackState.pendingListener?.();
+
+      expect(harness.cancelIdle).toHaveBeenCalledOnce();
+      expect(harness.prefetcher.fetchBatch).not.toHaveBeenCalled();
+
+      vi.runAllTimers();
+
+      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalled();
+      expect(harness.prefetcher.fetchBatch).toHaveBeenCalledWith(
+        expect.any(Array),
+        ["/camera"],
+        "startup-lookahead",
+      );
+      cleanup();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not retry play-pending runway after stream cleanup", () => {
+    vi.useFakeTimers();
+    try {
+      const harness = createSchedulerHarness({ fillCache: false });
+      const cleanup = harness.register();
+      harness.prefetcher.fetchBatch.mockClear();
+
+      playbackState.isPlayPending = true;
+      playbackState.pendingListener?.();
+      cleanup();
+      vi.runAllTimers();
+
+      expect(harness.prefetcher.fetchBatch).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("fills the current tail before admitting wrapped loop continuation", () => {
     const harness = createSchedulerHarness();
     const cleanup = harness.register();
