@@ -582,7 +582,7 @@ describe("useFrameTransforms", () => {
     expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(5);
   });
 
-  it("uses edge-complete point placement while paused and resumes runway on Play", async () => {
+  it("uses edge-complete point placement while paused or Play-pending", async () => {
     const source = createSource("paused-point-placement");
     const dynamicSample = sample("map", "lidar", { x: 1, y: 0, z: 0 }, 100n);
     const unrelatedSample = sample("odom", "other", { x: 0, y: 1, z: 0 }, 100n);
@@ -664,6 +664,27 @@ describe("useFrameTransforms", () => {
       },
       { priority: "playback" },
     );
+
+    rerender(
+      <PlaybackFrameTransformsHarness
+        client={client}
+        dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
+        holdPlayPending
+        label="frames"
+        onPlayback={(api) => {
+          playback = api;
+        }}
+        placementScope={{ frameIds: ["lidar"], targetFrameId: "map" }}
+        source={source}
+        timeNs={5_000_000_000n}
+      />,
+    );
+    await waitFor(() => {
+      expect(readFrameTransformPlacement).toHaveBeenNthCalledWith(2, {
+        requiredDynamicChildFrameIds: ["lidar"],
+        timeNs: 5_000_000_000n,
+      });
+    });
   });
 
   it("uses one window instead of probing a path without cadence evidence", async () => {
@@ -816,7 +837,7 @@ describe("useFrameTransforms", () => {
     expect(client.readFrameTransformWindow).toHaveBeenLastCalledWith(
       {
         activeTimeline: undefined,
-        endTimeNs: 3_000_000_000n,
+        endTimeNs: 2_250_000_000n,
         source,
         startTimeNs: 1_500_000_000n,
       },

@@ -45,6 +45,7 @@ import { shouldDeferIdleWorkForStore } from "../../playback/network-health";
 // once the first truthy placement is available.
 const DYNAMIC_TRANSFORM_LOOKBACK_NS = 500_000_000n;
 const DYNAMIC_TRANSFORM_PLACEMENT_LOOKAHEAD_NS = 1_000_000_000n;
+const PAUSED_TRANSFORM_PLACEMENT_LOOKAHEAD_NS = 250_000_000n;
 const EXACT_PLACEMENT_CADENCE_MULTIPLIER = 3n;
 const DYNAMIC_TRANSFORM_RUNWAY_LOOKAHEAD_NS = 4_000_000_000n;
 const DYNAMIC_TRANSFORM_RUNWAY_REFRESH_LOOKAHEAD_NS = 2_000_000_000n;
@@ -353,7 +354,20 @@ export function useFrameTransforms({
         return;
       }
 
-      const fallbackRange = dynamicPlacementRangeForTime(requestTimeNs);
+      // Read the store synchronously: a seek can land before React commits the
+      // isPlaying subscription update from the preceding Pause click. A
+      // paused (or Play-pending) placement owns only the current pose; runway
+      // is a separate playback-priority read. Keep the broader window only
+      // while the clock is actually moving so coverage spans multiple ticks.
+      const activelyPlaying = playbackStore
+        ? getIsPlaying(playbackStore)
+        : false;
+      const fallbackRange = dynamicPlacementRangeForTime(
+        requestTimeNs,
+        playbackStore && !activelyPlaying
+          ? PAUSED_TRANSFORM_PLACEMENT_LOOKAHEAD_NS
+          : DYNAMIC_TRANSFORM_PLACEMENT_LOOKAHEAD_NS,
+      );
       const placementScopes = normalizedPlacementScopes([
         ...placementScopesRef.current.values(),
         ...(requestScope ? [requestScope] : []),
@@ -367,12 +381,13 @@ export function useFrameTransforms({
         requiredDynamicChildFrameIds === null
           ? null
           : store.maxObservedCadenceNsForChildren(requiredDynamicChildFrameIds);
-      // The point path may inspect at most one third of the 1.5 s fallback
-      // window. Sparse or uncertain children go straight to that window so a
-      // cold seek can never pay both full costs.
+      // The point path is capped at a small predecessor tail and is used only
+      // when three observed cadences fit inside the 500 ms anchor lookback.
+      // Sparse or uncertain children go straight to the window so a cold seek
+      // can never pay both full costs.
       const useExactPlacement =
         playbackStore !== null &&
-        !hasPlayIntent &&
+        !activelyPlaying &&
         readPlacement !== undefined &&
         requiredDynamicChildFrameIds !== null &&
         requiredDynamicChildFrameIds.length > 0 &&
@@ -536,7 +551,6 @@ export function useFrameTransforms({
     [
       capability,
       dynamicRangeMode,
-      hasPlayIntent,
       boundaryClampNs,
       playbackStore,
       sourceKey,
@@ -969,9 +983,10 @@ function clearRetryTimeouts(
 
 function dynamicPlacementRangeForTime(
   timeNs: bigint,
+  lookaheadNs = DYNAMIC_TRANSFORM_PLACEMENT_LOOKAHEAD_NS,
 ): EpisodeFrameTransformTimeRange {
   return {
-    endTimeNs: timeNs + DYNAMIC_TRANSFORM_PLACEMENT_LOOKAHEAD_NS,
+    endTimeNs: timeNs + lookaheadNs,
     startTimeNs:
       timeNs > DYNAMIC_TRANSFORM_LOOKBACK_NS
         ? timeNs - DYNAMIC_TRANSFORM_LOOKBACK_NS
