@@ -192,6 +192,7 @@ export function useFrameTransforms({
   );
   const runwayRangeKeyRef = useRef<string | null>(null);
   const placementScopesRef = useRef(new Map<symbol, FramePlacementScope>());
+  const discontinuousPlacementRequestedRef = useRef(false);
   const sourceGenerationRef = useRef(0);
   // Nullable on purpose: callers inside the playback shell provide the store
   // (enabling the idle-work gate); standalone callers and tests get null and
@@ -254,6 +255,7 @@ export function useFrameTransforms({
     inFlightPlacementRangesRef.current = [];
     surrenderedPlacementRangesRef.current = [];
     inFlightRunwayRangesRef.current = [];
+    discontinuousPlacementRequestedRef.current = false;
     retryCountRef.current.clear();
     sourceGenerationRef.current += 1;
     const sourceGeneration = sourceGenerationRef.current;
@@ -325,6 +327,10 @@ export function useFrameTransforms({
       return undefined;
     }
     return playbackStore.sub(seekEventAtom, () => {
+      // The seek event is the synchronous authority for a discontinuous
+      // playhead move. React's isPlaying subscription can still reflect the
+      // pre-seek state when the new placement request reaches this hook.
+      discontinuousPlacementRequestedRef.current = true;
       if (surrenderedPlacementRangesRef.current.length === 0) {
         return;
       }
@@ -362,9 +368,11 @@ export function useFrameTransforms({
       const activelyPlaying = playbackStore
         ? getIsPlaying(playbackStore)
         : false;
+      const discontinuousPlacement = discontinuousPlacementRequestedRef.current;
+      const exactPlacementIntent = !activelyPlaying || discontinuousPlacement;
       const fallbackRange = dynamicPlacementRangeForTime(
         requestTimeNs,
-        playbackStore && !activelyPlaying
+        playbackStore && exactPlacementIntent
           ? PAUSED_TRANSFORM_PLACEMENT_LOOKAHEAD_NS
           : DYNAMIC_TRANSFORM_PLACEMENT_LOOKAHEAD_NS,
       );
@@ -387,7 +395,7 @@ export function useFrameTransforms({
       // can never pay both full costs.
       const useExactPlacement =
         playbackStore !== null &&
-        !activelyPlaying &&
+        exactPlacementIntent &&
         readPlacement !== undefined &&
         requiredDynamicChildFrameIds !== null &&
         requiredDynamicChildFrameIds.length > 0 &&
@@ -397,6 +405,10 @@ export function useFrameTransforms({
       const requestedRange = useExactPlacement
         ? { endTimeNs: requestTimeNs, startTimeNs: requestTimeNs }
         : fallbackRange;
+      // Consume the event only once a placement read has actually been
+      // admitted. If bootstrap is not ready yet, the early returns above keep
+      // the intent alive for the first request at the new playhead.
+      discontinuousPlacementRequestedRef.current = false;
       const requestedRangeKey = frameTransformRangeKey(requestedRange);
       const sourceGeneration = sourceGenerationRef.current;
       inFlightPlacementRangesRef.current = [
