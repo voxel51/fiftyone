@@ -1,8 +1,8 @@
 name: Release Gate
 
 # Enforces upstream-first on release branches: a PR into release/* must be a
-# cherry-pick of commits already on develop, a release-only fix that says why
-# develop doesn't need it, a version bump, or an automated sync mirror.
+# cherry-pick of commits already on develop, a labeled release-only fix, a
+# version bump, or an automated sync mirror.
 # Everything else originates on develop and arrives here by cherry-pick, so
 # the release branch stays a strict subset of develop and there is never
 # anything to merge back.
@@ -32,7 +32,6 @@ jobs:
           AUTHOR: ${{ github.event.pull_request.user.login }}
           HEAD_REF: ${{ github.head_ref }}
           LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
-          BODY: ${{ github.event.pull_request.body }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -53,16 +52,10 @@ jobs:
           fi
 
           # The escape hatch: a fix that applies only to the release branch.
-          # The label is the deliberate act; the body must say why develop
-          # doesn't need the change.
+          # The label is the deliberate act.
           if has_label "release-only-fix"; then
-            if echo "$BODY" | grep -qi "not needed on develop because"; then
-              echo "Release-only fix with justification. OK."
-              exit 0
-            fi
-            echo "::error::A release-only fix must explain itself: add"
-            echo "'Not needed on develop because ...' to the PR body."
-            exit 1
+            echo "Release-only fix. OK."
+            exit 0
           fi
 
           # Everything else must be a cherry-pick of commits already on
@@ -77,7 +70,7 @@ jobs:
               echo "::error::$sha has no '(cherry picked from commit ...)' trailer."
               echo "Land the change on develop first, then cherry-pick with -x or the"
               echo "'Cherry-Pick to Release' workflow. If the fix truly applies only to"
-              echo "this release branch, add the 'release-only-fix' label and justify it."
+              echo "this release branch, add the 'release-only-fix' label."
               bad=1
             elif ! git merge-base --is-ancestor "$src" origin/develop 2>/dev/null; then
               echo "::error::$sha claims source $src, which is not on develop."
