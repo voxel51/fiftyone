@@ -30,6 +30,7 @@ import { compareBigInt, type TransformSample } from "../../../../ir";
 import { errorMessage } from "../../status/error-message";
 import {
   isEpisodeReadCancelledError,
+  type TransformPlacementReadResult,
   type TransformReadAcceleration,
 } from "../../../../ports";
 import {
@@ -93,7 +94,15 @@ export type FramePlacementReadinessGetter = ({
   readonly timeNs?: bigint;
 }) => FramePlacementReadiness;
 
-export type FramePlacementPrefetcher = (timeNs: bigint) => void;
+export interface FramePlacementScope {
+  readonly frameIds: readonly string[];
+  readonly targetFrameId: string;
+}
+
+export type FramePlacementPrefetcher = (
+  timeNs: bigint,
+  scope?: FramePlacementScope,
+) => void;
 
 /** Source-scoped transform graph, placement resolver, and load state. */
 export interface FrameTransformsState {
@@ -104,6 +113,8 @@ export interface FrameTransformsState {
   /** Whether transform discovery for a playhead has completed or exhausted retries. */
   readonly isPlacementTimeSettled?: (timeNs: bigint) => boolean;
   readonly prefetchPlacement: FramePlacementPrefetcher;
+  /** Registers a persistent consumer scope used to bound placement reads. */
+  readonly registerPlacementScope?: (scope: FramePlacementScope) => () => void;
   readonly resolve: FrameTransformResolver;
   readonly resolveParent?: ParentFrameTransformResolver;
   readonly status: FrameTransformsStatus;
@@ -131,6 +142,17 @@ interface FrameTransformsInternalState {
   readonly status: FrameTransformsStatus;
   readonly version: number;
 }
+
+type PlacementReadResult =
+  | {
+      readonly kind: "exact";
+      readonly placement: TransformPlacementReadResult;
+    }
+  | {
+      readonly indexedRange: EpisodeFrameTransformTimeRange;
+      readonly kind: "window";
+      readonly samples: readonly TransformSample[];
+    };
 
 const IDLE_FRAME_TRANSFORMS_STATE = {
   error: null,
@@ -167,6 +189,7 @@ export function useFrameTransforms({
     new Map(),
   );
   const runwayRangeKeyRef = useRef<string | null>(null);
+  const placementScopesRef = useRef(new Map<symbol, FramePlacementScope>());
   const sourceGenerationRef = useRef(0);
   // Nullable on purpose: callers inside the playback shell provide the store
   // (enabling the idle-work gate); standalone callers and tests get null and
@@ -199,6 +222,25 @@ export function useFrameTransforms({
       unsubscribePending();
     };
   }, [playbackStore]);
+
+  const registerPlacementScope = useCallback((scope: FramePlacementScope) => {
+    const normalized = normalizePlacementScope(scope);
+    if (!normalized) return () => undefined;
+
+    const token = Symbol("frame-placement-scope");
+    placementScopesRef.current.set(token, normalized);
+    setState((current) => ({
+      ...current,
+      version: current.version + 1,
+    }));
+    return () => {
+      if (!placementScopesRef.current.delete(token)) return;
+      setState((current) => ({
+        ...current,
+        version: current.version + 1,
+      }));
+    };
+  }, []);
 
   // This effect resets transform state when the source changes and loads the
   // initial static transform bootstrap before dynamic windows are requested.
@@ -292,7 +334,7 @@ export function useFrameTransforms({
   }, [playbackStore]);
 
   const requestPlacementRangeForTime = useCallback(
-    (requestTimeNs: bigint) => {
+    (requestTimeNs: bigint, requestScope?: FramePlacementScope) => {
       const store = storeRef.current;
       if (dynamicRangeMode === "pending") {
         return;
@@ -310,12 +352,20 @@ export function useFrameTransforms({
       }
 
       const fallbackRange = dynamicPlacementRangeForTime(requestTimeNs);
-      const requiredDynamicChildFrameIds = store.dynamicChildFrameIds();
+      const placementScopes = normalizedPlacementScopes([
+        ...placementScopesRef.current.values(),
+        ...(requestScope ? [requestScope] : []),
+      ]);
+      const requiredDynamicChildFrameIds = dynamicChildrenForPlacementScopes(
+        store,
+        placementScopes,
+      );
       const readPlacement = capability.readPlacement;
       const useExactPlacement =
         playbackStore !== null &&
         !hasPlayIntent &&
         readPlacement !== undefined &&
+        requiredDynamicChildFrameIds !== null &&
         requiredDynamicChildFrameIds.length > 0;
       const requestedRange = useExactPlacement
         ? { endTimeNs: requestTimeNs, startTimeNs: requestTimeNs }
@@ -326,52 +376,76 @@ export function useFrameTransforms({
         ...inFlightPlacementRangesRef.current,
         requestedRange,
       ];
-      const read =
-        useExactPlacement && readPlacement
-          ? readPlacement({
-              requiredDynamicChildFrameIds,
-              timeNs: requestTimeNs,
-            }).then((placement) =>
-              placement
-                ? {
-                    indexedRange: {
-                      endTimeNs: placement.indexedWindow.endNs,
-                      startTimeNs: placement.indexedWindow.startNs,
-                    },
-                    samples: placement.samples,
-                  }
-                : capability
-                    .readTransforms({
-                      streams: [],
-                      window: {
-                        endNs: fallbackRange.endTimeNs,
-                        startNs: fallbackRange.startTimeNs,
-                      },
-                    })
-                    .then((samples) => ({
-                      indexedRange: fallbackRange,
-                      samples,
-                    })),
-            )
-          : capability
-              .readTransforms({
-                streams: [],
-                window: {
-                  endNs: requestedRange.endTimeNs,
-                  startNs: requestedRange.startTimeNs,
-                },
-              })
-              .then((samples) => ({ indexedRange: requestedRange, samples }));
+      const read: Promise<PlacementReadResult> = (async () => {
+        if (
+          useExactPlacement &&
+          readPlacement &&
+          requiredDynamicChildFrameIds
+        ) {
+          const placement = await readPlacement({
+            requiredDynamicChildFrameIds,
+            timeNs: requestTimeNs,
+          });
+          return placement
+            ? { kind: "exact", placement }
+            : readFallbackPlacement(capability, fallbackRange);
+        }
+        const samples = await capability.readTransforms({
+          streams: [],
+          window: {
+            endNs: requestedRange.endTimeNs,
+            startNs: requestedRange.startTimeNs,
+          },
+        });
+        return {
+          indexedRange: requestedRange,
+          kind: "window",
+          samples,
+        };
+      })();
       read
-        .then(({ indexedRange, samples }) => {
+        .then(async (result) => {
           if (sourceGeneration !== sourceGenerationRef.current) {
             return;
           }
 
-          storeRef.current?.addDynamic(
-            samples.map(runtimeTransformSample),
-            indexedRange,
-          );
+          let indexedRange: EpisodeFrameTransformTimeRange;
+          if (result.kind === "exact") {
+            indexedRange = {
+              endTimeNs: result.placement.indexedWindow.endNs,
+              startTimeNs: result.placement.indexedWindow.startNs,
+            };
+            storeRef.current?.addDynamic(
+              result.placement.samples.map(runtimeTransformSample),
+              indexedRange,
+            );
+
+            if (
+              !placementScopesResolve(
+                storeRef.current,
+                placementScopes,
+                requestTimeNs,
+                policy,
+              )
+            ) {
+              const fallback = await readFallbackPlacement(
+                capability,
+                fallbackRange,
+              );
+              if (sourceGeneration !== sourceGenerationRef.current) return;
+              indexedRange = fallback.indexedRange;
+              storeRef.current?.addDynamic(
+                fallback.samples.map(runtimeTransformSample),
+                indexedRange,
+              );
+            }
+          } else {
+            indexedRange = result.indexedRange;
+            storeRef.current?.addDynamic(
+              result.samples.map(runtimeTransformSample),
+              indexedRange,
+            );
+          }
           retryCountRef.current.delete(requestedRangeKey);
           inFlightPlacementRangesRef.current =
             inFlightPlacementRangesRef.current.filter(
@@ -439,6 +513,7 @@ export function useFrameTransforms({
       capability,
       dynamicRangeMode,
       hasPlayIntent,
+      policy,
       playbackStore,
       sourceKey,
       state.status,
@@ -472,10 +547,15 @@ export function useFrameTransforms({
     ) {
       return;
     }
-    // Runway extensions are speculative idle reads; while a constrained
-    // network is the reason playback waits, leave the link to foreground
-    // catch-up. The next playhead move retries once the wait clears.
-    if (playbackStore && shouldDeferIdleWorkForStore(playbackStore, null)) {
+    // Ordinary runway extensions are speculative idle reads. The first
+    // extension while Play is pending is demanded startup work, so it must
+    // bypass the limited-network idle gate or Play could wait forever.
+    const playPending = playbackStore ? getIsPlayPending(playbackStore) : false;
+    if (
+      playbackStore &&
+      !playPending &&
+      shouldDeferIdleWorkForStore(playbackStore, null)
+    ) {
       return;
     }
 
@@ -508,7 +588,10 @@ export function useFrameTransforms({
 
     capability
       .readTransforms({
-        priority: "idle",
+        // The first runway segment while Play is pending is demanded startup
+        // work. Foreground priority avoids a limited-network deadlock and a
+        // priority inversion behind speculative reads.
+        priority: playPending ? undefined : "idle",
         streams: [],
         window: {
           endNs: runwayRange.endTimeNs,
@@ -657,6 +740,15 @@ export function useFrameTransforms({
         }
       }
 
+      const unresolvedFrameIds = [...missingFrameIds, ...pendingFrameIds].sort(
+        compareStrings,
+      );
+      if (
+        unresolvedFrameIds.length > 0 &&
+        isTimeInRanges(inFlightPlacementRangesRef.current, requestTimeNs)
+      ) {
+        return { frameIds: unresolvedFrameIds, status: "loading" };
+      }
       if (missingFrameIds.length > 0) {
         return {
           frameIds: missingFrameIds.sort(compareStrings),
@@ -721,6 +813,7 @@ export function useFrameTransforms({
       indexedDynamicRanges,
       isPlacementTimeSettled,
       prefetchPlacement: requestPlacementRangeForTime,
+      registerPlacementScope,
       resolve,
       resolveParent,
       status: state.status,
@@ -733,6 +826,7 @@ export function useFrameTransforms({
       indexedDynamicRanges,
       isPlacementTimeSettled,
       requestPlacementRangeForTime,
+      registerPlacementScope,
       resolve,
       resolveParent,
       state.error,
@@ -740,6 +834,84 @@ export function useFrameTransforms({
       summarizeGraph,
     ],
   );
+}
+
+function normalizePlacementScope(
+  scope: FramePlacementScope,
+): FramePlacementScope | null {
+  const targetFrameId = scope.targetFrameId.trim();
+  const frameIds = uniqueNonEmptySortedFrameIds(scope.frameIds).filter(
+    (frameId) => frameId !== targetFrameId,
+  );
+  if (!targetFrameId || frameIds.length === 0) return null;
+  return { frameIds, targetFrameId };
+}
+
+function normalizedPlacementScopes(
+  scopes: readonly FramePlacementScope[],
+): readonly FramePlacementScope[] {
+  const scopesByKey = new Map<string, FramePlacementScope>();
+  for (const scope of scopes) {
+    const normalized = normalizePlacementScope(scope);
+    if (!normalized) continue;
+    scopesByKey.set(
+      `${normalized.targetFrameId}\0${normalized.frameIds.join("\0")}`,
+      normalized,
+    );
+  }
+  return [...scopesByKey.values()];
+}
+
+function dynamicChildrenForPlacementScopes(
+  store: EpisodeFrameTransformStore,
+  scopes: readonly FramePlacementScope[],
+): readonly string[] | null {
+  if (scopes.length === 0) return null;
+  const children = new Set<string>();
+  for (const scope of scopes) {
+    const scoped = store.dynamicChildFrameIdsForPlacement(scope);
+    if (!scoped) return null;
+    for (const childFrameId of scoped) children.add(childFrameId);
+  }
+  return [...children].sort(compareStrings);
+}
+
+function placementScopesResolve(
+  store: EpisodeFrameTransformStore | null,
+  scopes: readonly FramePlacementScope[],
+  timeNs: bigint,
+  policy: EpisodeFrameTransformPolicy | undefined,
+): boolean {
+  if (!store || scopes.length === 0) return false;
+  return scopes.every((scope) =>
+    scope.frameIds.every(
+      (sourceFrameId) =>
+        store.resolve({
+          ...(policy ? { policy } : {}),
+          sourceFrameId,
+          targetFrameId: scope.targetFrameId,
+          timeNs,
+        }).status === "resolved",
+    ),
+  );
+}
+
+async function readFallbackPlacement(
+  capability: TransformReadAcceleration,
+  range: EpisodeFrameTransformTimeRange,
+) {
+  const samples = await capability.readTransforms({
+    streams: [],
+    window: {
+      endNs: range.endTimeNs,
+      startNs: range.startTimeNs,
+    },
+  });
+  return {
+    indexedRange: range,
+    kind: "window" as const,
+    samples,
+  };
 }
 
 function runtimeTransformSample(sample: TransformSample) {

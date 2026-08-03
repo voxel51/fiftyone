@@ -1,6 +1,11 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
-import { PlaybackProvider, usePlayback } from "@fiftyone/playback/runtime";
+import {
+  PlaybackProvider,
+  useBufferingDetail,
+  usePlayback,
+} from "@fiftyone/playback/runtime";
 import { useIsPlayPending } from "@fiftyone/playback/runtime";
+import { useIsPlaying } from "@fiftyone/playback/runtime";
 import { useEffect, useMemo, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EMPTY_EPISODE_FRAME_GRAPH_SUMMARY } from "../../../../runtime/frame-transforms";
@@ -11,8 +16,12 @@ import {
   useDataStream,
   useSetDataStream,
 } from "../../playback/data-stream-context";
-import { useScene3dPlacementStream } from "./use-scene-3d-placement-stream";
+import {
+  SCENE_3D_PLACEMENT_BUFFERING_DETAIL,
+  useScene3dPlacementStream,
+} from "./use-scene-3d-placement-stream";
 import type {
+  FramePlacementScope,
   FramePlacementReadinessStatus,
   FrameTransformsState,
 } from "../../spatial/frame-transforms/use-frame-transforms";
@@ -67,7 +76,84 @@ describe("useScene3dPlacementStream", () => {
         "placement-test:pending:loading",
       );
     });
-    expect(prefetchPlacement).toHaveBeenCalledWith(0n);
+    expect(prefetchPlacement).toHaveBeenCalledWith(0n, {
+      frameIds: ["lidar"],
+      targetFrameId: "map",
+    });
+  });
+
+  it("keeps Play pending with an explicit detail until startup runway is covered", async () => {
+    let playback: ReturnType<typeof usePlayback> | null = null;
+    const prefetchPlacement = vi.fn();
+
+    render(
+      <PlaybackProvider duration={10} stepInterval={1 / 30}>
+        <DataStreamProvider>
+          <DataStreamPublisher />
+          <PlacementHarness
+            indexedRanges={[{ endTimeNs: 0n, startTimeNs: 0n }]}
+            initialStatus="ready"
+            markLoadingOnPrefetch={false}
+            onPlayback={(next) => {
+              playback = next;
+            }}
+            onPrefetchPlacement={prefetchPlacement}
+          />
+        </DataStreamProvider>
+      </PlaybackProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("placement-status").textContent).toBe(
+        "placement-test:idle:ready",
+      );
+    });
+    act(() => playback?.play());
+
+    await waitFor(() => {
+      expect(screen.getByTestId("placement-status").textContent).toBe(
+        "placement-test:pending:ready",
+      );
+      expect(screen.getByTestId("buffering-detail").textContent).toBe(
+        SCENE_3D_PLACEMENT_BUFFERING_DETAIL,
+      );
+    });
+    expect(prefetchPlacement).toHaveBeenCalledWith(0n, {
+      frameIds: ["lidar"],
+      targetFrameId: "map",
+    });
+  });
+
+  it("starts static-only placement without waiting for runway", async () => {
+    let playback: ReturnType<typeof usePlayback> | null = null;
+    const prefetchPlacement = vi.fn();
+
+    render(
+      <PlaybackProvider duration={10} stepInterval={1 / 30}>
+        <DataStreamProvider>
+          <DataStreamPublisher />
+          <PlacementHarness
+            initialStatus="ready"
+            markLoadingOnPrefetch={false}
+            onPlayback={(next) => {
+              playback = next;
+            }}
+            onPrefetchPlacement={prefetchPlacement}
+          />
+        </DataStreamProvider>
+      </PlaybackProvider>,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("placement-status").textContent).toBe(
+        "placement-test:idle:ready",
+      );
+    });
+    act(() => playback?.play());
+
+    await waitFor(() => {
+      expect(screen.getByTestId("playback-playing").textContent).toBe("yes");
+    });
+    expect(prefetchPlacement).not.toHaveBeenCalled();
   });
 });
 
@@ -84,26 +170,40 @@ function DataStreamPublisher() {
 }
 
 function PlacementHarness({
+  indexedRanges = [],
+  initialStatus = "needsFetch",
+  markLoadingOnPrefetch = true,
   onPlayback,
   onPrefetchPlacement,
 }: {
+  readonly indexedRanges?: readonly {
+    readonly endTimeNs: bigint;
+    readonly startTimeNs: bigint;
+  }[];
+  readonly initialStatus?: FramePlacementReadinessStatus;
+  readonly markLoadingOnPrefetch?: boolean;
   readonly onPlayback: (playback: ReturnType<typeof usePlayback>) => void;
-  readonly onPrefetchPlacement: (timeNs: bigint) => void;
+  readonly onPrefetchPlacement: (
+    timeNs: bigint,
+    scope?: FramePlacementScope,
+  ) => void;
 }) {
   const dataStream = useDataStream();
   const isPlayPending = useIsPlayPending();
+  const isPlaying = useIsPlaying();
   const playback = usePlayback();
+  const bufferingDetail = useBufferingDetail();
   const [status, setStatus] =
-    useState<FramePlacementReadinessStatus>("needsFetch");
+    useState<FramePlacementReadinessStatus>(initialStatus);
   const frameTransforms = useMemo<FrameTransformsState>(
     () => ({
       error: null,
       frameIds: ["lidar"],
       getPlacementReadiness: ({ frameIds }) => ({ frameIds, status }),
-      indexedDynamicRanges: () => [],
-      prefetchPlacement: (timeNs) => {
-        onPrefetchPlacement(timeNs);
-        setStatus("loading");
+      indexedDynamicRanges: () => indexedRanges,
+      prefetchPlacement: (timeNs, scope) => {
+        onPrefetchPlacement(timeNs, scope);
+        if (markLoadingOnPrefetch) setStatus("loading");
       },
       resolve: (sourceFrameId, targetFrameId) => ({
         sourceFrameId,
@@ -113,7 +213,7 @@ function PlacementHarness({
       status: "ready",
       summarizeGraph: () => EMPTY_EPISODE_FRAME_GRAPH_SUMMARY,
     }),
-    [onPrefetchPlacement, status],
+    [indexedRanges, markLoadingOnPrefetch, onPrefetchPlacement, status],
   );
   const readiness = useScene3dPlacementStream({
     active: true,
@@ -130,10 +230,14 @@ function PlacementHarness({
   }, [onPlayback, playback]);
 
   return (
-    <div data-testid="placement-status">
-      {`${dataStream?.sourceKey ?? "none"}:${
-        isPlayPending ? "pending" : "idle"
-      }:${readiness.status}`}
-    </div>
+    <>
+      <div data-testid="placement-status">
+        {`${dataStream?.sourceKey ?? "none"}:${
+          isPlayPending ? "pending" : "idle"
+        }:${readiness.status}`}
+      </div>
+      <div data-testid="buffering-detail">{bufferingDetail ?? "none"}</div>
+      <div data-testid="playback-playing">{isPlaying ? "yes" : "no"}</div>
+    </>
   );
 }

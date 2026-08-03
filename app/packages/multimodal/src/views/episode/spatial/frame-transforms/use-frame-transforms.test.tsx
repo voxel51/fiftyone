@@ -1,5 +1,9 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
-import { PlaybackProvider, usePlayback } from "@fiftyone/playback/runtime";
+import {
+  PlaybackProvider,
+  usePlayback,
+  usePlaybackStream,
+} from "@fiftyone/playback/runtime";
 import { type ComponentProps, useEffect, useMemo } from "react";
 import { Quaternion, Vector3 } from "three";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -11,6 +15,7 @@ import type {
 } from "../../../../runtime/frame-transform-types";
 import {
   useFrameTransforms,
+  type FramePlacementScope,
   type FrameTransformsState,
 } from "./use-frame-transforms";
 
@@ -506,6 +511,7 @@ describe("useFrameTransforms", () => {
   it("uses edge-complete point placement while paused and resumes runway on Play", async () => {
     const source = createSource("paused-point-placement");
     const dynamicSample = sample("map", "lidar", { x: 1, y: 0, z: 0 }, 100n);
+    const unrelatedSample = sample("odom", "other", { x: 0, y: 1, z: 0 }, 100n);
     const readFrameTransformPlacement = vi.fn(
       async ({ timeNs }: { readonly timeNs: bigint }) => ({
         indexedWindow: { endNs: timeNs, startNs: timeNs - 10n },
@@ -514,17 +520,19 @@ describe("useFrameTransforms", () => {
     );
     const client = createFrameTransformClient({
       readFrameTransformPlacement,
-      windowSamples: [dynamicSample],
+      windowSamples: [dynamicSample, unrelatedSample],
     });
     let playback: ReturnType<typeof usePlayback> | null = null;
     const { rerender } = render(
       <PlaybackFrameTransformsHarness
         client={client}
         dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
+        holdPlayPending
         label="frames"
         onPlayback={(api) => {
           playback = api;
         }}
+        placementScope={{ frameIds: ["lidar"], targetFrameId: "map" }}
         source={source}
         timeNs={100n}
       />,
@@ -540,10 +548,12 @@ describe("useFrameTransforms", () => {
       <PlaybackFrameTransformsHarness
         client={client}
         dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
+        holdPlayPending
         label="frames"
         onPlayback={(api) => {
           playback = api;
         }}
+        placementScope={{ frameIds: ["lidar"], targetFrameId: "map" }}
         source={source}
         timeNs={2_000_000_000n}
       />,
@@ -572,8 +582,63 @@ describe("useFrameTransforms", () => {
         source,
         startTimeNs: 1_900_000_000n,
       },
-      { priority: "idle" },
+      { priority: undefined },
     );
+  });
+
+  it("falls back when scoped anchors do not resolve after a parent change", async () => {
+    const source = createSource("parent-change-placement");
+    const initialSample = sample("map", "lidar", undefined, 100n);
+    const targetTimeNs = 2_000_000_000n;
+    const readFrameTransformPlacement = vi.fn(async () => ({
+      indexedWindow: {
+        endNs: targetTimeNs,
+        startNs: targetTimeNs - 10n,
+      },
+      samples: [sample("odom", "lidar", undefined, targetTimeNs - 1n)],
+    }));
+    const readFrameTransformWindow = vi
+      .fn()
+      .mockResolvedValueOnce({ samples: [initialSample] })
+      .mockResolvedValueOnce({
+        samples: [sample("map", "lidar", undefined, targetTimeNs)],
+      });
+    const client = createFrameTransformClient({
+      readFrameTransformPlacement,
+      readFrameTransformWindow,
+    });
+    const { rerender } = render(
+      <PlaybackFrameTransformsHarness
+        client={client}
+        dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
+        label="frames"
+        onPlayback={() => undefined}
+        placementScope={{ frameIds: ["lidar"], targetFrameId: "map" }}
+        source={source}
+        timeNs={100n}
+      />,
+    );
+    await waitFor(() => {
+      expect(readFrameTransformWindow).toHaveBeenCalledOnce();
+    });
+
+    rerender(
+      <PlaybackFrameTransformsHarness
+        client={client}
+        dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
+        label="frames"
+        onPlayback={() => undefined}
+        placementScope={{ frameIds: ["lidar"], targetFrameId: "map" }}
+        source={source}
+        timeNs={targetTimeNs}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(readFrameTransformPlacement).toHaveBeenCalledOnce();
+      expect(readFrameTransformWindow).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId("frames").textContent).toBe("ready:missing:");
+    });
   });
 
   it("falls back to the full placement window when point closure is incomplete", async () => {
@@ -590,6 +655,7 @@ describe("useFrameTransforms", () => {
         dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
         label="frames"
         onPlayback={() => undefined}
+        placementScope={{ frameIds: ["lidar"], targetFrameId: "map" }}
         source={source}
         timeNs={100n}
       />,
@@ -604,6 +670,7 @@ describe("useFrameTransforms", () => {
         dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
         label="frames"
         onPlayback={() => undefined}
+        placementScope={{ frameIds: ["lidar"], targetFrameId: "map" }}
         source={source}
         timeNs={2_000_000_000n}
       />,
@@ -626,17 +693,39 @@ describe("useFrameTransforms", () => {
 });
 
 function PlaybackFrameTransformsHarness({
+  holdPlayPending = false,
   onPlayback,
   ...props
 }: ComponentProps<typeof FrameTransformsHarness> & {
+  readonly holdPlayPending?: boolean;
   readonly onPlayback: (playback: ReturnType<typeof usePlayback>) => void;
 }) {
   return (
     <PlaybackProvider duration={10} stepInterval={1 / 30}>
+      {holdPlayPending ? <PendingPlaybackBlocker /> : null}
       <PlaybackControlsBridge onPlayback={onPlayback} />
       <FrameTransformsHarness {...props} />
     </PlaybackProvider>
   );
+}
+
+function PendingPlaybackBlocker() {
+  const { subscribeStream } = usePlayback();
+  usePlaybackStream(
+    useMemo(
+      () => ({
+        blocking: true,
+        bufferState: () => "ready" as const,
+        bufferedRanges: () => [],
+        id: "pending-playback-test",
+        prefetch: () => undefined,
+        startupBufferSeconds: 1,
+      }),
+      [],
+    ),
+  );
+  useEffect(() => subscribeStream("pending-playback-test"), [subscribeStream]);
+  return null;
 }
 
 function PlaybackControlsBridge({
@@ -660,6 +749,7 @@ function FrameTransformsHarness({
   dynamicRange,
   label,
   onState,
+  placementScope,
   source,
   timeNs,
 }: {
@@ -671,6 +761,7 @@ function FrameTransformsHarness({
   } | null;
   readonly label: string;
   readonly onState?: (state: FrameTransformsState) => void;
+  readonly placementScope?: FramePlacementScope;
   readonly source: ByteSourceDescriptor | null;
   readonly timeNs?: bigint;
 }) {
@@ -733,6 +824,12 @@ function FrameTransformsHarness({
   useEffect(() => {
     onState?.(state);
   }, [onState, state]);
+
+  const registerPlacementScope = state.registerPlacementScope;
+  useEffect(() => {
+    if (!placementScope) return undefined;
+    return registerPlacementScope?.(placementScope);
+  }, [placementScope, registerPlacementScope]);
 
   return (
     <div data-testid={label}>

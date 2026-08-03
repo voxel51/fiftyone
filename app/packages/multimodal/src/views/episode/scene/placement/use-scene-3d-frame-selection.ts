@@ -357,7 +357,10 @@ export function useScene3dFrameSelection({
       readiness.status === "needsFetch" &&
       pendingPromotion.timeNs !== undefined
     ) {
-      prefetchPlacementRef.current(pendingPromotion.timeNs);
+      prefetchPlacementRef.current(pendingPromotion.timeNs, {
+        frameIds: pendingPromotion.frameIds,
+        targetFrameId: pendingPromotion.candidateFrameId,
+      });
     }
   }, [indexedRangeKey, pendingPromotion]);
 

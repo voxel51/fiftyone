@@ -12,6 +12,7 @@ import { PlaybackSyncMode } from "../../../schemas/v1/index";
 import { VISUALIZATION_KIND } from "../../../ir/index";
 import type {
   McapBoundedMessageReadResult,
+  McapIndexedMessageTime,
   McapIndexedReaderLike,
 } from "../reader/index";
 import { createInlineMcapResourceClient } from "./inline-client";
@@ -2063,7 +2064,7 @@ describe("MCAP resources", () => {
     expect(readMessages).not.toHaveBeenCalled();
     expect(set.placementCoverage).toEqual({
       complete: true,
-      startTimeNs: fastEntry.logTimeNs,
+      startTimeNs: slowEntry.logTimeNs,
     });
     expect(set.samples.map((sample) => sample.childFrameId).sort()).toEqual([
       "lidar",
@@ -2112,6 +2113,101 @@ describe("MCAP resources", () => {
     expect(readIndexedMessages).toHaveBeenCalledOnce();
     expect(set.placementCoverage).toEqual({ complete: false });
     expect(set.samples).toHaveLength(1);
+  });
+
+  it("bounds scoped placement coverage by every transform topic's probe floor", async () => {
+    const timeNs = 10_000_000_000n;
+    const sparseEntry = createIndexedMessageTime(
+      "/sparse_transforms",
+      10,
+      5_000_000_000n,
+      100n,
+    );
+    const busyEntry = createIndexedMessageTime(
+      "/busy_transforms",
+      11,
+      9_900_000_000n,
+      200n,
+    );
+    const messagesByOffset = new Map([
+      [
+        sparseEntry.messageOffset,
+        createMessage(FRAME_TRANSFORM_MESSAGE, {
+          channelId: 10,
+          logTime: sparseEntry.logTimeNs,
+        }),
+      ],
+      [
+        busyEntry.messageOffset,
+        createMessage(replaceAscii(FRAME_TRANSFORM_MESSAGE, "lidar", "other"), {
+          channelId: 11,
+          logTime: busyEntry.logTimeNs,
+        }),
+      ],
+    ]);
+    const readLatestIndexedMessageTimes = vi.fn(
+      async () =>
+        new Map([
+          ["/sparse_transforms", [sparseEntry]],
+          ["/busy_transforms", [busyEntry]],
+        ]),
+    );
+    const readIndexedMessages = vi.fn(
+      async ({
+        entries,
+      }: {
+        readonly entries: readonly McapIndexedMessageTime[];
+      }) =>
+        entries.map(
+          (entry) =>
+            messagesByOffset.get(
+              entry.messageOffset,
+            ) as McapTypes.TypedMcapRecords["Message"],
+        ),
+    );
+    const channelsById = new Map([
+      [
+        10,
+        createChannel({
+          id: 10,
+          schemaId: 10,
+          topic: "/sparse_transforms",
+        }),
+      ],
+      [
+        11,
+        createChannel({
+          id: 11,
+          schemaId: 10,
+          topic: "/busy_transforms",
+        }),
+      ],
+    ]);
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById,
+          readIndexedMessages,
+          readLatestIndexedMessageTimes,
+          schemasById: transformSchemasById(),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: timeNs,
+      requiredDynamicChildFrameIds: ["lidar"],
+      source: createMcapSourceDescriptor(),
+      startTimeNs: timeNs,
+    });
+
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledOnce();
+    expect(set.placementCoverage).toEqual({
+      complete: true,
+      startTimeNs: busyEntry.logTimeNs,
+    });
   });
 
   it("keeps cancellation canonical after the worker advances its signal slot", async () => {

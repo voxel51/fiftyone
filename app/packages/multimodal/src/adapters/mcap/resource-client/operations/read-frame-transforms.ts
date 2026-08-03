@@ -786,10 +786,8 @@ async function readIndexedTransformPlacement({
   const requiredChildren = new Set(requiredDynamicChildFrameIds);
   const entriesByIdentity = new Map<string, McapIndexedMessageTime>();
   const samplesByIdentity = new Map<string, McapFrameTransformSample>();
-  const newestEvidenceByChild = new Map<
-    string,
-    { readonly availableTimeNs: bigint; readonly sampleTimeNs: bigint }
-  >();
+  const newestEvidenceTimeNsByChild = new Map<string, bigint>();
+  const uniqueTopics = [...new Set(topics)].sort();
 
   for (const limitPerTopic of TRANSFORM_PLACEMENT_PREDECESSOR_LIMITS) {
     throwIfFrameTransformReadCancelled(signal);
@@ -853,15 +851,9 @@ async function readIndexedTransformPlacement({
           if (!requiredChildren.has(sample.childFrameId)) {
             continue;
           }
-          const current = newestEvidenceByChild.get(sample.childFrameId);
-          if (current === undefined || current.sampleTimeNs < sample.timeNs) {
-            newestEvidenceByChild.set(sample.childFrameId, {
-              availableTimeNs: maxBigIntValues([
-                indexedMessageTimeNs(entry),
-                sample.timeNs,
-              ]),
-              sampleTimeNs: sample.timeNs,
-            });
+          const current = newestEvidenceTimeNsByChild.get(sample.childFrameId);
+          if (current === undefined || current < sample.timeNs) {
+            newestEvidenceTimeNsByChild.set(sample.childFrameId, sample.timeNs);
           }
         }
       } catch {
@@ -871,17 +863,28 @@ async function readIndexedTransformPlacement({
 
     if (
       requiredDynamicChildFrameIds.every((childFrameId) =>
-        newestEvidenceByChild.has(childFrameId),
+        newestEvidenceTimeNsByChild.has(childFrameId),
       )
     ) {
-      const coverageStartTimeNs = maxBigIntValues(
-        requiredDynamicChildFrameIds.map(
-          (childFrameId) =>
-            newestEvidenceByChild.get(childFrameId)?.availableTimeNs ?? timeNs,
-        ),
-      );
+      // The runtime store's indexed ranges are global, not scoped to the
+      // requested placement. Bound coverage by the oldest entry materialized
+      // from every transform topic in the successful probe round. From the
+      // newest-N contract, every message after this maximum per-topic floor is
+      // present, including messages for non-path consumers.
+      const topicFloors = uniqueTopics.flatMap((topic) => {
+        const entries = resolved.get(topic) ?? [];
+        return entries.length === 0
+          ? []
+          : [minBigIntValues(entries.map(indexedMessageTimeNs))];
+      });
+      if (topicFloors.length === 0) {
+        return { coverage: { complete: false }, samples: [] };
+      }
       return {
-        coverage: { complete: true, startTimeNs: coverageStartTimeNs },
+        coverage: {
+          complete: true,
+          startTimeNs: maxBigIntValues(topicFloors),
+        },
         samples: [...samplesByIdentity.values()],
       };
     }

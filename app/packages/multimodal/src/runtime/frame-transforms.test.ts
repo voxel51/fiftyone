@@ -31,6 +31,30 @@ describe("episode frame transform store", () => {
     });
   });
 
+  it("scopes placement reads to dynamic edges on the requested path", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 100n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("base_link", "lidar", undefined, 100n),
+        sample("odom", "unrelated", undefined, 100n),
+      ],
+      staticSamples: [sample("map", "base_link")],
+    });
+
+    expect(
+      store.dynamicChildFrameIdsForPlacement({
+        frameIds: ["lidar"],
+        targetFrameId: "map",
+      }),
+    ).toEqual(["lidar"]);
+    expect(
+      store.dynamicChildFrameIdsForPlacement({
+        frameIds: ["unknown"],
+        targetFrameId: "map",
+      }),
+    ).toBeNull();
+  });
+
   it("interpolates dynamic samples around playback time", () => {
     const store = createStore({
       dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },

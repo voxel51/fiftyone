@@ -3,6 +3,7 @@ import { usePlaybackStore } from "@fiftyone/playback/runtime";
 import {
   bumpStreamRangesVersion,
   getBufferingDetail,
+  getIsPlaying,
   getPlayhead,
   setBufferingDetail,
 } from "@fiftyone/playback/runtime";
@@ -21,6 +22,7 @@ import type {
   FrameTransformsState,
 } from "../../spatial/frame-transforms/use-frame-transforms";
 import { useDataStream } from "../../playback/data-stream-context";
+import { MAX_STARTUP_CUSHION_WAIT_SECONDS } from "../../playback/startup-cushion";
 
 const PLACEMENT_LOOKAHEAD_SECONDS = 1;
 const PLACEMENT_STARTUP_BUFFER_SECONDS = 0.5;
@@ -78,6 +80,31 @@ export function useScene3dPlacementStream({
     .map(frameTransformRangeKey)
     .join("|");
   const readinessKey = `${readiness.status}:${readiness.frameIds.join(",")}`;
+  const frameIdsKey = frameIds.join("\0");
+  const startupCoverageReady = placementStartupCoverageReady({
+    frameTransforms,
+    playbackTimeNs,
+    readiness,
+    timeline,
+  });
+
+  // Persistent registration lets the transform hook scope automatic seek
+  // reads without starving consumers that do not own a placement stream.
+  useEffect(() => {
+    if (!active || !worldFrameId) return undefined;
+    return frameTransforms.registerPlacementScope?.({
+      frameIds,
+      targetFrameId: worldFrameId,
+    });
+    // `frameIdsKey` carries the structural dependency without making callers
+    // memoize the array identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    active,
+    frameIdsKey,
+    frameTransforms.registerPlacementScope,
+    worldFrameId,
+  ]);
 
   // This effect invalidates playback's buffered-range snapshot when transform
   // coverage or placement readiness changes.
@@ -91,7 +118,9 @@ export function useScene3dPlacementStream({
     const shouldPublish =
       playPending &&
       active &&
-      (readiness.status === "loading" || readiness.status === "needsFetch");
+      (readiness.status === "loading" ||
+        readiness.status === "needsFetch" ||
+        (readiness.status === "ready" && !startupCoverageReady));
     const next = shouldPublish ? SCENE_3D_PLACEMENT_BUFFERING_DETAIL : null;
     const current = getBufferingDetail(store);
     if (next) {
@@ -103,7 +132,7 @@ export function useScene3dPlacementStream({
     if (current === SCENE_3D_PLACEMENT_BUFFERING_DETAIL) {
       setBufferingDetail(store, null);
     }
-  }, [active, playPending, readiness.status, store]);
+  }, [active, playPending, readiness.status, startupCoverageReady, store]);
 
   const stream = useMemo<PlaybackStream>(
     () => ({
@@ -115,6 +144,7 @@ export function useScene3dPlacementStream({
           ? undefined
           : Number(timeline.stepNs) / 1_000_000_000,
       startupBufferSeconds: PLACEMENT_STARTUP_BUFFER_SECONDS,
+      startupBufferMaxWaitSeconds: MAX_STARTUP_CUSHION_WAIT_SECONDS,
       bufferState: (timeSec) => placementBufferState(refs.current, timeSec),
       bufferedRanges: () => placementBufferedRanges(refs.current, store),
       prefetch: ([startSec]) => {
@@ -126,7 +156,12 @@ export function useScene3dPlacementStream({
         if (tick === undefined) {
           return;
         }
-        currentTransforms.prefetchPlacement(tick);
+        const { frameIds: currentFrameIds, worldFrameId: currentWorldFrameId } =
+          refs.current;
+        currentTransforms.prefetchPlacement(tick, {
+          frameIds: currentFrameIds,
+          targetFrameId: currentWorldFrameId,
+        });
       },
     }),
     [active, streamId, store, timeline?.stepNs],
@@ -203,6 +238,7 @@ function placementBufferedRanges(
     return fullTimelineRange(timeline);
   }
   const tick = timeline.nearestTick(getPlayhead(store));
+  const indexedRanges = frameTransforms.indexedDynamicRanges();
   if (tick !== undefined) {
     const readiness = frameTransforms.getPlacementReadiness({
       frameIds,
@@ -212,14 +248,16 @@ function placementBufferedRanges(
     // A held pose is a resolved placement, not a buffering condition. Once
     // the current scene can be placed (or is definitively unplaceable), keep
     // playback continuous while transform runway reads catch up.
+    if (readiness.status === "definitiveMissing") {
+      return fullTimelineRange(timeline);
+    }
     if (
-      readiness.status === "ready" ||
-      readiness.status === "definitiveMissing"
+      readiness.status === "ready" &&
+      (getIsPlaying(store) || indexedRanges.length === 0)
     ) {
       return fullTimelineRange(timeline);
     }
   }
-  const indexedRanges = frameTransforms.indexedDynamicRanges();
   if (indexedRanges.length === 0) {
     if (tick === undefined) {
       return [];
@@ -235,6 +273,41 @@ function placementBufferedRanges(
       : [];
   }
   return indexedRanges.map((range) => transformRangeToSeconds(timeline, range));
+}
+
+function placementStartupCoverageReady({
+  frameTransforms,
+  playbackTimeNs,
+  readiness,
+  timeline,
+}: {
+  readonly frameTransforms: FrameTransformsState;
+  readonly playbackTimeNs?: bigint;
+  readonly readiness: FramePlacementReadiness;
+  readonly timeline: TimelineIndex | null;
+}): boolean {
+  if (
+    readiness.status === "definitiveMissing" ||
+    !timeline ||
+    playbackTimeNs === undefined
+  ) {
+    return true;
+  }
+  const ranges = frameTransforms.indexedDynamicRanges();
+  if (readiness.status === "ready" && ranges.length === 0) {
+    return true;
+  }
+  const startupEndTimeNs = timeline.secToNs(
+    Math.min(
+      timeline.durationSec,
+      timeline.nsToSec(playbackTimeNs) + PLACEMENT_STARTUP_BUFFER_SECONDS,
+    ),
+  );
+  return ranges.some(
+    (range) =>
+      range.startTimeNs <= playbackTimeNs &&
+      startupEndTimeNs <= range.endTimeNs,
+  );
 }
 
 function fullTimelineRange(

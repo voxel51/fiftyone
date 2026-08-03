@@ -51,6 +51,7 @@ export const EMPTY_EPISODE_FRAME_GRAPH_SUMMARY: EpisodeFrameGraphSummary = {
 
 interface EpisodeFrameGraphEdge {
   readonly childFrameId: string;
+  readonly dynamic: boolean;
   readonly parentFrameId: string;
 }
 
@@ -197,6 +198,40 @@ export class EpisodeFrameTransformStore {
   /** Dynamic child-frame inventory already observed for this source. */
   dynamicChildFrameIds(): readonly string[] {
     return [...this.dynamicSamplesByChild.keys()].sort(compareStrings);
+  }
+
+  /**
+   * Returns the dynamic child edges on one known topology path from every
+   * requested frame to the target. The result is a read hint, not a
+   * correctness proof: callers must still resolve the requested placements
+   * after materializing the anchors because parent relationships can change
+   * over time. `null` means the observed union topology cannot prove a path.
+   */
+  dynamicChildFrameIdsForPlacement({
+    frameIds,
+    targetFrameId,
+  }: {
+    readonly frameIds: readonly string[];
+    readonly targetFrameId: string;
+  }): readonly string[] | null {
+    const target = nonEmpty(targetFrameId);
+    if (!target) return null;
+
+    const adjacency = frameGraphEdgeAdjacency(this.graphEdges());
+    const requiredChildren = new Set<string>();
+    for (const frameId of [...new Set(frameIds)].sort(compareStrings)) {
+      const source = nonEmpty(frameId);
+      if (!source) return null;
+      if (source === target) continue;
+
+      const path = findFrameGraphPath(adjacency, source, target);
+      if (!path) return null;
+      for (const edge of path) {
+        if (edge.dynamic) requiredChildren.add(edge.childFrameId);
+      }
+    }
+
+    return [...requiredChildren].sort(compareStrings);
   }
 
   frameIds(): readonly string[] {
@@ -490,6 +525,7 @@ export class EpisodeFrameTransformStore {
     for (const [key, sample] of this.staticSamplesByEdge.entries()) {
       edges.set(key, {
         childFrameId: sample.childFrameId,
+        dynamic: false,
         parentFrameId: sample.parentFrameId,
       });
     }
@@ -501,6 +537,7 @@ export class EpisodeFrameTransformStore {
       }
       edges.set(key, {
         childFrameId: sample.childFrameId,
+        dynamic: true,
         parentFrameId: sample.parentFrameId,
       });
     }
@@ -515,6 +552,72 @@ export class EpisodeFrameTransformStore {
         : parentOrder;
     });
   }
+}
+
+interface EpisodeFrameGraphTraversalEdge extends EpisodeFrameGraphEdge {
+  readonly nextFrameId: string;
+}
+
+function frameGraphEdgeAdjacency(
+  edges: readonly EpisodeFrameGraphEdge[],
+): ReadonlyMap<string, readonly EpisodeFrameGraphTraversalEdge[]> {
+  const adjacency = new Map<string, EpisodeFrameGraphTraversalEdge[]>();
+  for (const edge of edges) {
+    pushAdjacency(adjacency, edge.childFrameId, {
+      ...edge,
+      nextFrameId: edge.parentFrameId,
+    });
+    pushAdjacency(adjacency, edge.parentFrameId, {
+      ...edge,
+      nextFrameId: edge.childFrameId,
+    });
+  }
+  for (const candidates of adjacency.values()) {
+    candidates.sort((left, right) => {
+      const frameOrder = compareStrings(left.nextFrameId, right.nextFrameId);
+      if (frameOrder !== 0) return frameOrder;
+      if (left.dynamic !== right.dynamic) return left.dynamic ? 1 : -1;
+      return compareStrings(left.childFrameId, right.childFrameId);
+    });
+  }
+  return adjacency;
+}
+
+function findFrameGraphPath(
+  adjacency: ReadonlyMap<string, readonly EpisodeFrameGraphTraversalEdge[]>,
+  sourceFrameId: string,
+  targetFrameId: string,
+): readonly EpisodeFrameGraphTraversalEdge[] | null {
+  const queue = [sourceFrameId];
+  const visited = new Set(queue);
+  const predecessorByFrameId = new Map<
+    string,
+    { readonly edge: EpisodeFrameGraphTraversalEdge; readonly frameId: string }
+  >();
+
+  for (let index = 0; index < queue.length; index += 1) {
+    const frameId = queue[index];
+    if (!frameId) continue;
+    for (const edge of adjacency.get(frameId) ?? []) {
+      if (visited.has(edge.nextFrameId)) continue;
+      visited.add(edge.nextFrameId);
+      predecessorByFrameId.set(edge.nextFrameId, { edge, frameId });
+      if (edge.nextFrameId === targetFrameId) {
+        const path: EpisodeFrameGraphTraversalEdge[] = [];
+        let current = targetFrameId;
+        while (current !== sourceFrameId) {
+          const predecessor = predecessorByFrameId.get(current);
+          if (!predecessor) return null;
+          path.push(predecessor.edge);
+          current = predecessor.frameId;
+        }
+        return path.reverse();
+      }
+      queue.push(edge.nextFrameId);
+    }
+  }
+
+  return null;
 }
 
 function connectedComponents(
