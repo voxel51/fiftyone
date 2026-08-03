@@ -1,0 +1,73 @@
+name: Cherry-Pick to Release
+
+# Opens the release-branch PR for a merged develop PR: cherry-picks its merge
+# result with -x (which the release gate verifies) and opens a PR that waits
+# for the 'cherry-pick-approved' label. A conflicting cherry-pick fails the
+# run — resolving it is a human decision, and often the signal that the fix
+# needs the release-only escape hatch instead.
+#
+# PRs opened with GITHUB_TOKEN don't trigger CI; close and reopen the PR to
+# start checks, or dispatch with a bot PAT once one is provisioned.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Merged develop PR number to cherry-pick"
+        required: true
+      release_branch:
+        description: "Target release branch, e.g. release/v1.8.0"
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  cherry-pick:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.release_branch }}
+          fetch-depth: 0
+      - name: Cherry-pick and open PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          RELEASE_BRANCH: ${{ inputs.release_branch }}
+        run: |
+          fields=$(gh pr view "$PR_NUMBER" --json state,baseRefName,mergeCommit,title \
+            --jq '[.state, .baseRefName, .mergeCommit.oid, .title] | @tsv')
+          IFS=$'\t' read -r state base sha title <<< "$fields"
+
+          if [ "$state" != "MERGED" ] || [ "$base" != "develop" ]; then
+            echo "::error::PR #$PR_NUMBER must be a merged develop PR (state=$state, base=$base)."
+            exit 1
+          fi
+
+          git fetch --quiet origin develop
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          branch="cherry-pick/${RELEASE_BRANCH#release/}/pr-$PR_NUMBER"
+          git checkout -b "$branch"
+
+          mainline=""
+          if [ "$(git rev-list --parents -n 1 "$sha" | wc -w)" -gt 2 ]; then
+            mainline="-m 1"
+          fi
+          if ! git cherry-pick -x $mainline "$sha"; then
+            git cherry-pick --abort
+            echo "::error::Cherry-pick of $sha onto $RELEASE_BRANCH conflicts."
+            echo "Resolve by hand with 'git cherry-pick -x', or consider the"
+            echo "release-only-fix escape hatch if develop has moved on."
+            exit 1
+          fi
+
+          git push origin "$branch"
+          gh pr create \
+            --base "$RELEASE_BRANCH" \
+            --head "$branch" \
+            --title "[$RELEASE_BRANCH] $title" \
+            --body "Cherry-pick of #$PR_NUMBER. Awaiting \`cherry-pick-approved\`."

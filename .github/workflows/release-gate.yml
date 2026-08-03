@@ -1,0 +1,102 @@
+name: Release Gate
+
+# Enforces upstream-first on release branches: a PR into release/* must be an
+# approved cherry-pick of commits already on develop, an approved release-only
+# fix that justifies why develop doesn't need it, a version bump, or an
+# automated sync mirror. Everything else originates on develop and arrives
+# here by cherry-pick, so the release branch stays a strict subset of develop
+# and there is never anything to merge back.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled, edited]
+    branches:
+      - release/**
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Gate release branch PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_REF: ${{ github.head_ref }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          APPROVERS: ${{ vars.RELEASE_GATE_APPROVERS }}
+        run: |
+          has_label() { echo "$LABELS" | grep -q "\"$1\""; }
+
+          # Automation the release process already owns: sync mirrors were
+          # gated on the upstream side, version bumps are guarded by the
+          # version-guard workflow.
+          if [ "$AUTHOR" = "voxel51-bot" ] && [[ "$HEAD_REF" == oss-sync/* ]]; then
+            echo "Sync mirror PR; gated upstream. OK."
+            exit 0
+          fi
+          if has_label "version-bump"; then
+            echo "Version bump PR. OK."
+            exit 0
+          fi
+
+          if ! has_label "cherry-pick-approved"; then
+            echo "::error::PRs into release/* need the 'cherry-pick-approved' label."
+            echo "Release branches take only approved cherry-picks of develop commits"
+            echo "(regression, critical bug, or security fix). Land the change on"
+            echo "develop first, then use the 'Cherry-Pick to Release' workflow."
+            exit 1
+          fi
+
+          # The label only counts if a release approver applied it.
+          # RELEASE_GATE_APPROVERS is a comma-separated list of GitHub logins
+          # (repo or org variable); unset means label presence alone gates.
+          if [ -n "$APPROVERS" ]; then
+            actor=$(gh api "repos/$REPO/issues/$PR_NUMBER/events" --paginate --jq \
+              '[.[] | select(.event == "labeled" and .label.name == "cherry-pick-approved")] | last | .actor.login')
+            if ! echo ",$APPROVERS," | grep -qi ",$actor,"; then
+              echo "::error::'cherry-pick-approved' was applied by '$actor', who is not in RELEASE_GATE_APPROVERS."
+              exit 1
+            fi
+          fi
+
+          if has_label "release-only-fix"; then
+            if echo "$BODY" | grep -qi "not needed on develop because"; then
+              echo "Approved release-only fix with justification. OK."
+              exit 0
+            fi
+            echo "::error::A release-only fix must explain itself: add"
+            echo "'Not needed on develop because ...' to the PR body."
+            exit 1
+          fi
+
+          # Every commit must be a cherry-pick of a commit already on develop:
+          # git cherry-pick -x stamps the source sha, and that sha must be an
+          # ancestor of develop.
+          git fetch --quiet origin develop
+          bad=0
+          for sha in $(git rev-list --no-merges "$BASE_SHA..$HEAD_SHA"); do
+            src=$(git log -1 --format=%B "$sha" \
+              | sed -nE 's/^\(cherry picked from commit ([0-9a-f]{40})\)$/\1/p' | tail -1)
+            if [ -z "$src" ]; then
+              echo "::error::$sha has no '(cherry picked from commit ...)' trailer."
+              echo "Cherry-pick with -x, or use the 'Cherry-Pick to Release' workflow."
+              bad=1
+            elif ! git merge-base --is-ancestor "$src" origin/develop 2>/dev/null; then
+              echo "::error::$sha claims source $src, which is not on develop."
+              bad=1
+            fi
+          done
+          [ "$bad" -eq 0 ] || exit 1
+          echo "Approved cherry-pick of develop commits. OK."
