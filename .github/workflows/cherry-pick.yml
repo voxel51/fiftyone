@@ -1,10 +1,10 @@
 name: Cherry-Pick to Release
 
 # Opens the release-branch PR for a merged develop PR: cherry-picks its merge
-# result with -x (which the release gate verifies) and opens a PR that waits
-# for the 'cherry-pick-approved' label. A conflicting cherry-pick fails the
-# run — resolving it is a human decision, and often the signal that the fix
-# needs the release-only escape hatch instead.
+# result with -x, which the release gate verifies against develop. A
+# conflicting cherry-pick fails the run — resolving it is a human decision,
+# and often the signal that the fix needs the release-only escape hatch
+# instead.
 #
 # PRs opened with GITHUB_TOKEN don't trigger CI; close and reopen the PR to
 # start checks, or dispatch with a bot PAT once one is provisioned.
@@ -70,4 +70,4 @@ jobs:
             --base "$RELEASE_BRANCH" \
             --head "$branch" \
             --title "[$RELEASE_BRANCH] $title" \
-            --body "Cherry-pick of #$PR_NUMBER. Awaiting \`cherry-pick-approved\`."
+            --body "Cherry-pick of #$PR_NUMBER."
