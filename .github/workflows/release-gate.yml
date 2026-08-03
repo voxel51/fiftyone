@@ -13,6 +13,10 @@ on:
     branches:
       - release/**
 
+concurrency:
+  group: release-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -32,6 +36,8 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
+          set -euo pipefail
+
           has_label() { echo "$LABELS" | grep -q "\"$1\""; }
 
           # Automation the release process already owns: sync mirrors were

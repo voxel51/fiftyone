@@ -37,6 +37,13 @@ jobs:
           PR_NUMBER: ${{ inputs.pr_number }}
           RELEASE_BRANCH: ${{ inputs.release_branch }}
         run: |
+          set -euo pipefail
+
+          if [[ "$RELEASE_BRANCH" != release/* ]]; then
+            echo "::error::Target must be a release/* branch, got '$RELEASE_BRANCH'."
+            exit 1
+          fi
+
           fields=$(gh pr view "$PR_NUMBER" --json state,baseRefName,mergeCommit,title \
             --jq '[.state, .baseRefName, .mergeCommit.oid, .title] | @tsv')
           IFS=$'\t' read -r state base sha title <<< "$fields"
