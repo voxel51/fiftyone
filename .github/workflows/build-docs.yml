@@ -20,7 +20,6 @@ on:
   pull_request:
     branches:
       - develop
-      - main
       - release/*
     paths:
       - .github/workflows/build-docs.yml
@@ -64,11 +63,16 @@ jobs:
             TAG_SHA=$(git rev-parse ${{ github.ref }})
             case "${{ github.ref_name }}" in
               docs-publish|v*)
-                MAIN_SHA=$(git rev-parse origin/main)
-                if [[ "${MAIN_SHA}" == "${TAG_SHA}" ]]; then
+                # Published docs must match the latest released product: the
+                # tag must be the newest final release tag, or sit on top of
+                # it (a docs/v* line carrying doc cherry-picks).
+                # branch_name=main refers to fiftyone-teams/eta checkouts
+                # below, not this repo.
+                LATEST=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+                if git merge-base --is-ancestor "$(git rev-parse ${LATEST}^{commit})" "${TAG_SHA}"; then
                   echo "branch_name=main" >> "${GITHUB_OUTPUT}"
                 else
-                  echo "docs-publish should only be performed on 'main'"
+                  echo "docs publish only from the latest release (${LATEST}) or a docs/v* line on it"
                   exit 1
                 fi
                 ;;
