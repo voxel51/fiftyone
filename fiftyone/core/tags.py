@@ -38,6 +38,7 @@ foms = fou.lazy_import("fiftyone.multimodal.schemas.v1")
 
 __all__ = [
     "TAGS_EXPORT_FILENAME",
+    "TAGS_COLLECTION_NAME",
     "TemporalTagNotFoundError",
     "clone_tags",
     "count_for_dataset_id",
@@ -48,6 +49,15 @@ __all__ = [
     "export_tags",
     "get_orphan_dataset_ids",
     "import_tags",
+    "TagKind",
+    "TemporalTag",
+    "TemporalTagFilter",
+    "TemporalTags",
+    "add_temporal_tags",
+    "count_temporal_tags",
+    "delete_temporal_tags",
+    "list_temporal_tags",
+    "update_temporal_tag",
 ]
 
 TAGS_COLLECTION_NAME = "tags"
@@ -69,7 +79,110 @@ class TagKind(str, enum.Enum):
     TEMPORAL = "temporal"
 
 
-class TemporalTag(object):
+def _ensure_kind(kind):
+    if kind is None:
+        raise ValueError("Tag kind must be specified")
+    elif isinstance(kind, TagKind):
+        return kind
+    elif isinstance(kind, str):
+        try:
+            return TagKind(kind)
+        except ValueError as e:
+            raise ValueError("Invalid tag kind: %r" % kind) from e
+    raise ValueError("Invalid tag kind: %r" % kind)
+
+
+class Tag(object):
+    """A tag.
+
+    Args:
+        sample_id: the sample ID this tag applies to
+        tag: the tag value
+        created_by (None): an optional actor that created the tag
+        last_modified_by (None): an optional actor that last modified the tag
+        created_at (None): the creation timestamp, when available
+        last_modified_at (None): the last-modified timestamp, when available
+        id: the persisted tag ID, when available
+    """
+
+    def __init__(
+        self,
+        *,
+        created_at=None,
+        created_by=None,
+        id=None,
+        kind=None,
+        last_modified_at=None,
+        last_modified_by=None,
+        sample_id=None,
+        tag=None,
+    ):
+        self.created_at = _coerce_optional_datetime(created_at, "created_at")
+        self.created_by = created_by
+        self.id = id
+        self.kind = _ensure_kind(kind)
+        self.last_modified_at = _coerce_optional_datetime(
+            last_modified_at, "last_modified_at"
+        )
+        self.last_modified_by = last_modified_by
+        self.sample_id = sample_id
+        self.tag = tag
+
+    def __repr__(self):
+        return (
+            "%s(sample_id=%r, tag=%r, created_by=%r, "
+            "last_modified_by=%r, created_at=%r, last_modified_at=%r, id=%r)"
+            % (
+                self.__class__.__name__,
+                self.sample_id,
+                self.tag,
+                self.created_by,
+                self.last_modified_by,
+                self.created_at,
+                self.last_modified_at,
+                self.id,
+            )
+        )
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
+        return self.to_dict() == other.to_dict()
+
+    def to_dict(self):
+        """Serializes the tag to a JSON dictionary."""
+        d = {
+            "sample_id": self.sample_id,
+            "tag": self.tag,
+        }
+
+        if self.created_by is not None:
+            d["created_by"] = self.created_by
+
+        if self.last_modified_by is not None:
+            d["last_modified_by"] = self.last_modified_by
+
+        if self.created_at is not None:
+            d["created_at"] = _serialize_datetime(
+                self.created_at, "created_at"
+            )
+
+        if self.last_modified_at is not None:
+            d["last_modified_at"] = _serialize_datetime(
+                self.last_modified_at, "last_modified_at"
+            )
+
+        if self.id is not None:
+            d["id"] = self.id
+
+        if self.kind is not None:
+            d["kind"] = self.kind.value
+
+        return d
+
+
+class TemporalTag(Tag):
     """A temporal tag interval on one multimodal sample.
 
     Args:
@@ -102,26 +215,25 @@ class TemporalTag(object):
         created_at=None,
         last_modified_at=None,
         id=None,
-        kind=TagKind.TEMPORAL,
     ):
-        self.sample_id = sample_id
+        super().__init__(
+            created_at=created_at,
+            created_by=created_by,
+            id=id,
+            kind=TagKind.TEMPORAL,
+            last_modified_at=last_modified_at,
+            last_modified_by=last_modified_by,
+            sample_id=sample_id,
+            tag=tag,
+        )
         self.start = start
         self.end = end
-        self.tag = tag
         self.index_type = (
             index_type
             if index_type is not None
             else foms.TimeTrackType.TIME_TRACK_TYPE_DURATION_NS
         )
         self.anchor = anchor
-        self.created_by = created_by
-        self.last_modified_by = last_modified_by
-        self.created_at = _coerce_optional_datetime(created_at, "created_at")
-        self.last_modified_at = _coerce_optional_datetime(
-            last_modified_at, "last_modified_at"
-        )
-        self.id = id
-        self.kind = _ensure_kind(kind)
 
     def __repr__(self):
         return (
@@ -144,12 +256,6 @@ class TemporalTag(object):
             )
         )
 
-    def __eq__(self, other):
-        if not isinstance(other, TemporalTag):
-            return False
-
-        return self.to_dict() == other.to_dict()
-
     def copy(self):
         """Returns a copy of this temporal tag."""
         return self.__class__(
@@ -164,42 +270,18 @@ class TemporalTag(object):
             created_at=self.created_at,
             last_modified_at=self.last_modified_at,
             id=self.id,
-            kind=self.kind,
         )
 
     def to_dict(self):
         """Serializes the temporal tag to a JSON dictionary."""
-        d = {
-            "sample_id": self.sample_id,
-            "index_type": self.index_type,
-            "start": self.start,
-            "end": self.end,
-            "tag": self.tag,
-        }
+        d = super().to_dict()
+        d.update(
+            index_type=self.index_type,
+            start=self.start,
+            end=self.end,
+        )
         if self.anchor is not None:
             d["anchor"] = self.anchor
-
-        if self.created_by is not None:
-            d["created_by"] = self.created_by
-
-        if self.last_modified_by is not None:
-            d["last_modified_by"] = self.last_modified_by
-
-        if self.created_at is not None:
-            d["created_at"] = _serialize_datetime(
-                self.created_at, "created_at"
-            )
-
-        if self.last_modified_at is not None:
-            d["last_modified_at"] = _serialize_datetime(
-                self.last_modified_at, "last_modified_at"
-            )
-
-        if self.id is not None:
-            d["id"] = self.id
-
-        if self.kind is not None:
-            d["kind"] = self.kind
 
         return d
 
@@ -272,7 +354,10 @@ class TemporalTags(object):
             return 0
 
         query = _build_query(
-            self._dataset._doc.id, None, sample_ids=self._sample_ids
+            self._dataset._doc.id,
+            None,
+            sample_ids=self._sample_ids,
+            kind=TagKind.TEMPORAL,
         )
         return collection.count_documents(query)
 
@@ -344,7 +429,10 @@ class TemporalTags(object):
             an iterator over :class:`TemporalTag` instances
         """
         query = _build_query(
-            self._dataset._doc.id, filter, sample_ids=self._sample_ids
+            self._dataset._doc.id,
+            filter,
+            sample_ids=self._sample_ids,
+            kind=TagKind.TEMPORAL,
         )
         collection = _get_existing_collection()
         if collection is None:
@@ -538,7 +626,10 @@ class TemporalTags(object):
             the number of deleted temporal tags
         """
         query = _build_query(
-            self._dataset._doc.id, filter, sample_ids=self._sample_ids
+            self._dataset._doc.id,
+            filter,
+            sample_ids=self._sample_ids,
+            kind=TagKind.TEMPORAL,
         )
         has_selector = filter is not None and not _is_empty_filter(filter)
 
@@ -601,6 +692,7 @@ class TemporalTags(object):
                 self._dataset._doc.id,
                 filter,
                 sample_ids=self._sample_ids,
+                kind=TagKind.TEMPORAL,
             )
         }
         if by_sample:
@@ -768,9 +860,7 @@ def delete_for_dataset_id(dataset_id) -> int:
     if collection is None:
         return 0
 
-    return collection.delete_many(
-        {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
-    ).deleted_count
+    return collection.delete_many({"_dataset_id": dataset_id}).deleted_count
 
 
 def delete_for_sample_ids(dataset_id, sample_ids) -> int:
@@ -792,7 +882,6 @@ def delete_for_sample_ids(dataset_id, sample_ids) -> int:
         num_deleted += collection.delete_many(
             {
                 "_dataset_id": dataset_id,
-                "kind": TagKind.TEMPORAL.value,
                 "_sample_id": {"$in": sample_oids},
             }
         ).deleted_count
@@ -805,9 +894,7 @@ def count_for_dataset_id(dataset_id) -> int:
     if collection is None:
         return 0
 
-    return collection.count_documents(
-        {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
-    )
+    return collection.count_documents({"_dataset_id": dataset_id})
 
 
 def get_orphan_dataset_ids(dataset_ids) -> list:
@@ -837,7 +924,6 @@ def count_for_dataset_ids(dataset_ids) -> int:
     return collection.count_documents(
         {
             "_dataset_id": _build_in_query(dataset_ids),
-            "kind": TagKind.TEMPORAL.value,
         }
     )
 
@@ -854,7 +940,6 @@ def delete_for_dataset_ids(dataset_ids) -> int:
     return collection.delete_many(
         {
             "_dataset_id": _build_in_query(dataset_ids),
-            "kind": TagKind.TEMPORAL.value,
         }
     ).deleted_count
 
@@ -1114,19 +1199,23 @@ def _build_update_fields(
 
 
 def _from_storage_doc(doc) -> TemporalTag:
-    return TemporalTag(
-        id=str(doc["_id"]),
-        kind=TagKind(doc.get("kind", TagKind.TEMPORAL)),
-        sample_id=str(doc["_sample_id"]),
-        index_type=doc["index_type"],
-        anchor=doc.get("anchor", None),
-        start=doc["start"],
-        end=doc["end"],
-        tag=doc["tag"],
-        created_by=doc.get("created_by", None),
-        last_modified_by=doc.get("last_modified_by", None),
-        created_at=doc.get("created_at", None),
-        last_modified_at=doc.get("last_modified_at", None),
+    kind = TagKind(doc.get("kind", TagKind.TEMPORAL))
+    if kind == TagKind.TEMPORAL:
+        return TemporalTag(
+            id=str(doc["_id"]),
+            sample_id=str(doc["_sample_id"]),
+            index_type=doc["index_type"],
+            anchor=doc.get("anchor", None),
+            start=doc["start"],
+            end=doc["end"],
+            tag=doc["tag"],
+            created_by=doc.get("created_by", None),
+            last_modified_by=doc.get("last_modified_by", None),
+            created_at=doc.get("created_at", None),
+            last_modified_at=doc.get("last_modified_at", None),
+        )
+    raise ValueError(
+        "Expected a temporal tag document, but found kind=%s" % kind.value
     )
 
 
@@ -1166,25 +1255,31 @@ def _to_export_doc(doc):
 
 def _from_export_doc(doc) -> TemporalTag:
     kind = doc.get("kind", None)
-    return TemporalTag(
-        sample_id=doc.get("sample_id", None),
-        index_type=doc.get("index_type", None),
-        start=doc.get("start", None),
-        end=doc.get("end", None),
-        tag=doc.get("tag", None),
-        anchor=doc.get("anchor", None),
-        kind=TagKind.TEMPORAL if kind is None else TagKind(kind),
-        created_by=doc.get("created_by", None),
-        last_modified_by=doc.get("last_modified_by", None),
-        created_at=doc.get("created_at", None),
-        last_modified_at=doc.get("last_modified_at", None),
+    tag_kind = TagKind.TEMPORAL if kind is None else TagKind(kind)
+    if tag_kind == TagKind.TEMPORAL:
+        return TemporalTag(
+            sample_id=doc.get("sample_id", None),
+            index_type=doc.get("index_type", None),
+            start=doc.get("start", None),
+            end=doc.get("end", None),
+            tag=doc.get("tag", None),
+            anchor=doc.get("anchor", None),
+            created_by=doc.get("created_by", None),
+            last_modified_by=doc.get("last_modified_by", None),
+            created_at=doc.get("created_at", None),
+            last_modified_at=doc.get("last_modified_at", None),
+        )
+    raise ValueError(
+        "Expected a temporal tag document, but found kind=%s" % kind.value
     )
 
 
 def _build_query(
-    dataset_id, filter: TemporalTagFilter | None, sample_ids=None
+    dataset_id, filter: TemporalTagFilter | None, sample_ids=None, kind=None
 ):
-    query = {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
+    query = {"_dataset_id": dataset_id}
+    if kind is not None:
+        query["kind"] = kind.value
 
     if sample_ids is not None:
         query["_sample_id"] = _build_in_query(list(sample_ids))
@@ -1542,31 +1637,3 @@ def _ensure_indexes(collection) -> None:
         ],
         name="temporal_tag_counts",
     )
-
-
-def _ensure_kind(kind):
-    if kind is None:
-        return TagKind.TEMPORAL
-    elif isinstance(kind, TagKind):
-        return kind
-    elif isinstance(kind, str):
-        try:
-            return TagKind(kind)
-        except ValueError as e:
-            raise ValueError("Invalid temporal tag kind: %r" % kind) from e
-    raise ValueError("Invalid temporal tag kind: %r" % kind)
-
-
-__all__ = [
-    "TAGS_EXPORT_FILENAME",
-    "TAGS_COLLECTION_NAME",
-    "TagKind",
-    "TemporalTag",
-    "TemporalTagFilter",
-    "TemporalTags",
-    "add_temporal_tags",
-    "count_temporal_tags",
-    "delete_temporal_tags",
-    "list_temporal_tags",
-    "update_temporal_tag",
-]

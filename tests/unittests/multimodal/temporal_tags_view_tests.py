@@ -105,13 +105,12 @@ def _make_tagged_dataset():
     dataset.add_samples(samples)
     ids = [str(sample.id) for sample in samples]
 
-    temporal = fota.TagKind.TEMPORAL
     fota.add_temporal_tags(
         dataset,
         [
-            fota.TemporalTag(ids[0], 0, 1, "review", kind=temporal),
-            fota.TemporalTag(ids[1], 0, 1, "keep", kind=temporal),
-            fota.TemporalTag(ids[2], 2, 3, "review", kind=temporal),
+            fota.TemporalTag(ids[0], 0, 1, "review"),
+            fota.TemporalTag(ids[1], 0, 1, "keep"),
+            fota.TemporalTag(ids[2], 2, 3, "review"),
         ],
     )
 

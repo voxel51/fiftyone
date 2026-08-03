@@ -375,7 +375,6 @@ class TagsImportExportTests(ImageDatasetTests):
                     "keep",
                     anchor="camera_front",
                     created_by="alice",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[1],
@@ -384,14 +383,12 @@ class TagsImportExportTests(ImageDatasetTests):
                     "drop",
                     anchor="lidar_top",
                     last_modified_by="carol",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
                 fota.TemporalTag(
                     sample_ids[2],
                     20,
                     30,
                     "keep",
-                    kind=fota.TagKind.TEMPORAL,
                 ),
             ],
         )
