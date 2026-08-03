@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ByteSourceDescriptor } from "../../../query/bytes/index";
 import type { DecodeClient } from "../../../query/decoding/index";
 import type { DecodedOutput } from "../../../ir/index";
+import { isEpisodeReadCancelledError } from "../../../ports/index";
 import { PlaybackSyncMode } from "../../../schemas/v1/index";
 import { VISUALIZATION_KIND } from "../../../ir/index";
 import type {
@@ -1669,6 +1670,14 @@ describe("MCAP resources", () => {
   });
 
   it("reads dynamic frame transform windows from any schema-discovered topic", async () => {
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield createIndexedMessageTime(
+        "/robot_transforms",
+        10,
+        7_000_000_020n,
+        200n,
+      );
+    });
     const readMessages = vi.fn(async function* () {
       yield createMessage(FRAME_TRANSFORM_MESSAGE, {
         channelId: 10,
@@ -1690,6 +1699,7 @@ describe("MCAP resources", () => {
               }),
             ],
           ]),
+          readIndexedMessageTimes,
           readMessages,
           schemasById: new Map([
             [
@@ -1715,6 +1725,7 @@ describe("MCAP resources", () => {
       startTime: 7_000_000_020n,
       topics: ["/robot_transforms"],
     });
+    expect(readIndexedMessageTimes).not.toHaveBeenCalled();
     expect(set.samples).toHaveLength(1);
     expect(set.samples[0]).toMatchObject({
       childFrameId: "lidar",
@@ -1723,6 +1734,287 @@ describe("MCAP resources", () => {
     });
     expect(set.samples[0]?.rotation.toArray()).toEqual([0, 0, 0, 1]);
     expect(set.samples[0]?.translation.toArray()).toEqual([1, 2, 3]);
+  });
+
+  it("materializes inclusive transform-window boundaries from exact indexed offsets", async () => {
+    const startTimeNs = 7_000_000_020n;
+    const endTimeNs = 8_000_000_020n;
+    const startEntry = createIndexedMessageTime(
+      "/robot_transforms",
+      10,
+      startTimeNs,
+      200n,
+    );
+    const endEntry = createIndexedMessageTime(
+      "/robot_transforms",
+      10,
+      endTimeNs,
+      300n,
+    );
+    const entries = [
+      createIndexedMessageTime("/robot_transforms", 10, startTimeNs - 1n, 100n),
+      startEntry,
+      endEntry,
+      createIndexedMessageTime("/robot_transforms", 10, endTimeNs + 1n, 400n),
+    ];
+    const endPayload = FRAME_TRANSFORM_MESSAGE.slice();
+    // Foxglove Timestamp.seconds is the one-byte varint at this offset in the
+    // pinned fixture.
+    endPayload[3] = 8;
+    const messagesByTime = new Map([
+      [
+        startTimeNs,
+        createMessage(FRAME_TRANSFORM_MESSAGE, {
+          channelId: 10,
+          logTime: startTimeNs,
+        }),
+      ],
+      [
+        endTimeNs,
+        createMessage(endPayload, { channelId: 10, logTime: endTimeNs }),
+      ],
+    ]);
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield* entries;
+    });
+    const readIndexedMessages = vi.fn(
+      async ({
+        entries: selected,
+      }: Parameters<
+        NonNullable<McapIndexedReaderLike["readIndexedMessages"]>
+      >[0]) =>
+        selected.map((entry) => {
+          const message = messagesByTime.get(entry.logTimeNs);
+          if (!message) {
+            throw new Error(`Missing test message at ${entry.logTimeNs}`);
+          }
+          return message;
+        }),
+    );
+    const readMessages = vi.fn(async function* () {
+      yield* [];
+    });
+    const prefetchChunkData = vi.fn(async () => undefined);
+    const prefetchWindow = vi.fn(async () => undefined);
+    const controller = new AbortController();
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readSignal: { current: controller.signal },
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: transformChannelsById(),
+          prefetchChunkData,
+          prefetchWindow,
+          readIndexedMessages,
+          readIndexedMessageTimes,
+          readMessages,
+          schemasById: transformSchemasById(),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs,
+      source: createMcapSourceDescriptor(),
+      startTimeNs,
+    });
+
+    expect(prefetchWindow).toHaveBeenCalledExactlyOnceWith({
+      endTimeNs,
+      includeChunkData: false,
+      startTimeNs,
+      topics: ["/robot_transforms"],
+    });
+    expect(readIndexedMessageTimes).toHaveBeenCalledExactlyOnceWith({
+      endTimeNs,
+      startTimeNs,
+      topics: ["/robot_transforms"],
+    });
+    expect(readIndexedMessages).toHaveBeenCalledExactlyOnceWith({
+      entries: [startEntry, endEntry],
+      signal: controller.signal,
+    });
+    expect(prefetchChunkData).toHaveBeenCalledExactlyOnceWith({
+      chunkStartOffsets: [1_000n],
+    });
+    expect(readMessages).not.toHaveBeenCalled();
+    expect(set.messageCount).toBe(2);
+    expect(set.samples.map((sample) => sample.timeNs)).toEqual([
+      startTimeNs,
+      endTimeNs,
+    ]);
+  });
+
+  it("matches fallback semantics when header time lands inside the window", async () => {
+    const startTimeNs = 10_000_000_000n;
+    const endTimeNs = 11_000_000_000n;
+    const logTimeNs = 10_500_000_000n;
+    const entry = createIndexedMessageTime(
+      "/robot_transforms",
+      10,
+      logTimeNs,
+      200n,
+    );
+    const message = createMessage(FRAME_TRANSFORM_MESSAGE, {
+      channelId: 10,
+      logTime: logTimeNs,
+    });
+    const exactReadIndexedMessageTimes = vi.fn(async function* () {
+      yield entry;
+    });
+    const exactReadIndexedMessages = vi.fn(async () => [message]);
+    const exactReadMessages = vi.fn(async function* () {
+      yield* [];
+    });
+    const fallbackReadMessages = vi.fn(async function* () {
+      yield message;
+    });
+    const createTransformClient = (reader: ReturnType<typeof createReader>) =>
+      createInlineMcapResourceClient({
+        byteClient: { readBytes: vi.fn() },
+        decodeClient: createTestDecodeClient(),
+        readerFactory: vi.fn(async () => reader),
+      });
+    const exact = createTransformClient(
+      createReader({
+        channelsById: transformChannelsById(),
+        readIndexedMessages: exactReadIndexedMessages,
+        readIndexedMessageTimes: exactReadIndexedMessageTimes,
+        readMessages: exactReadMessages,
+        schemasById: transformSchemasById(),
+      }),
+    );
+    const fallback = createTransformClient(
+      createReader({
+        channelsById: transformChannelsById(),
+        readMessages: fallbackReadMessages,
+        schemasById: transformSchemasById(),
+      }),
+    );
+    const request = {
+      endTimeNs,
+      source: createMcapSourceDescriptor(),
+      startTimeNs,
+    };
+
+    const exactSet = await exact.readFrameTransformWindow(request);
+    const fallbackSet = await fallback.readFrameTransformWindow(request);
+
+    expect(exactSet).toEqual(fallbackSet);
+    expect(exactSet.samples).toHaveLength(1);
+    expect(exactSet.samples[0]?.timeNs).toBe(7_000_000_020n);
+    expect(exactReadMessages).not.toHaveBeenCalled();
+    expect(fallbackReadMessages).toHaveBeenCalledExactlyOnceWith({
+      endTime: endTimeNs,
+      startTime: startTimeNs,
+      topics: ["/robot_transforms"],
+    });
+  });
+
+  it("materializes predecessor anchors through the same exact chunk cache", async () => {
+    const anchorTimeNs = 7_000_000_020n;
+    const anchor = createIndexedMessageTime(
+      "/robot_transforms",
+      10,
+      anchorTimeNs,
+      200n,
+    );
+    const message = createMessage(FRAME_TRANSFORM_MESSAGE, {
+      channelId: 10,
+      logTime: anchorTimeNs,
+    });
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield* [];
+    });
+    const readLatestIndexedMessageTimes = vi.fn(
+      async () => new Map([["/robot_transforms", [anchor]]]),
+    );
+    const readIndexedMessages = vi.fn(async () => [message]);
+    const readMessages = vi.fn(async function* () {
+      yield* [];
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: transformChannelsById(),
+          readIndexedMessages,
+          readIndexedMessageTimes,
+          readLatestIndexedMessageTimes,
+          readMessages,
+          schemasById: transformSchemasById(),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: 11_000_000_000n,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: 10_000_000_000n,
+    });
+
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledExactlyOnceWith({
+      limitPerTopic: 32,
+      timeNs: 10_000_000_000n,
+      topics: ["/robot_transforms"],
+    });
+    expect(readIndexedMessages).toHaveBeenCalledExactlyOnceWith({
+      entries: [anchor],
+      signal: undefined,
+    });
+    expect(readMessages).not.toHaveBeenCalled();
+    expect(set.samples).toHaveLength(1);
+    expect(set.samples[0]?.timeNs).toBe(anchorTimeNs);
+  });
+
+  it("keeps cancellation canonical after the worker advances its signal slot", async () => {
+    const timeNs = 7_000_000_020n;
+    const entry = createIndexedMessageTime(
+      "/robot_transforms",
+      10,
+      timeNs,
+      200n,
+    );
+    const controller = new AbortController();
+    const readSignal = { current: controller.signal as AbortSignal | null };
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield entry;
+    });
+    const readIndexedMessages = vi.fn(async () => {
+      controller.abort();
+      readSignal.current = new AbortController().signal;
+      const error = new Error("MCAP indexed message read aborted");
+      error.name = "AbortError";
+      throw error;
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readSignal,
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: transformChannelsById(),
+          readIndexedMessages,
+          readIndexedMessageTimes,
+          schemasById: transformSchemasById(),
+        }),
+      ),
+    });
+
+    const read = client.readFrameTransformWindow({
+      endTimeNs: timeNs,
+      source: createMcapSourceDescriptor(),
+      startTimeNs: timeNs,
+    });
+
+    await expect(read).rejects.toSatisfy(isEpisodeReadCancelledError);
+    expect(readSignal.current?.aborted).toBe(false);
+    expect(readIndexedMessages).toHaveBeenCalledExactlyOnceWith({
+      entries: [entry],
+      signal: controller.signal,
+    });
   });
 
   it("reuses fully bootstrapped static channels across transform windows", async () => {
@@ -3413,6 +3705,8 @@ function createReader({
   channelsById = new Map([[7, createChannel({ id: 7, topic: "/topic" })]]),
   chunkIndexes = [],
   messages = [],
+  prefetchChunkData,
+  prefetchWindow,
   readIndexedMessages,
   readIndexedMessageTimes,
   readLatestIndexedMessageTimes,
@@ -3427,6 +3721,12 @@ function createReader({
   >;
   readonly chunkIndexes?: readonly McapTypes.TypedMcapRecords["ChunkIndex"][];
   readonly messages?: readonly McapTypes.TypedMcapRecords["Message"][];
+  readonly prefetchChunkData?: NonNullable<
+    McapIndexedReaderLike["prefetchChunkData"]
+  >;
+  readonly prefetchWindow?: NonNullable<
+    McapIndexedReaderLike["prefetchWindow"]
+  >;
   readonly readIndexedMessages?: NonNullable<
     McapIndexedReaderLike["readIndexedMessages"]
   >;
@@ -3474,6 +3774,8 @@ function createReader({
   return {
     channelsById,
     chunkIndexes,
+    prefetchChunkData,
+    prefetchWindow,
     readIndexedMessages,
     readIndexedMessageTimes,
     readLatestIndexedMessageTimes,
@@ -3488,6 +3790,31 @@ function createReader({
     schemasById,
     statistics,
   };
+}
+
+function transformChannelsById() {
+  return new Map([
+    [
+      10,
+      createChannel({
+        id: 10,
+        schemaId: 10,
+        topic: "/robot_transforms",
+      }),
+    ],
+  ]);
+}
+
+function transformSchemasById() {
+  return new Map([
+    [
+      10,
+      createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+        id: 10,
+        name: "foxglove.FrameTransform",
+      }),
+    ],
+  ]);
 }
 
 function createBoundedReadResult(

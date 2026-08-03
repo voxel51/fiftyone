@@ -1,5 +1,8 @@
 import type { McapTypes } from "@mcap/core";
-import { EpisodeReadCancelledError } from "../../../../ports/index";
+import {
+  EpisodeReadCancelledError,
+  isEpisodeReadCancelledError,
+} from "../../../../ports/index";
 import type { Type } from "protobufjs";
 import { Quaternion, Vector3 } from "three";
 import { decodeProtobufMessage } from "../../message-decoders/foxglove/protobuf/index";
@@ -36,6 +39,7 @@ import {
   compareFrameTransformSamplesByTime,
   frameTransformEdgeKey,
 } from "../../transforms/wire";
+import { isWithinRange } from "../../synchronization/policy";
 import type { McapReadFrameTransformWindowRequest } from "../../contracts/index";
 
 const PROTOBUF_ENCODING = "protobuf";
@@ -565,6 +569,43 @@ export async function readMcapFrameTransformWindow({
   readonly request: McapReadFrameTransformWindowRequest;
   readonly timeline: McapTimelineStrategy;
 }): Promise<McapFrameTransformSet> {
+  // The worker replaces this mutable slot as newer reads supersede older ones.
+  // Capture this operation's signal so a late AbortError is still recognized
+  // after the slot has advanced to a fresh, non-aborted signal.
+  const signal = readSignal?.current ?? undefined;
+  try {
+    return await readMcapFrameTransformWindowImpl({
+      predecessorStore,
+      reader,
+      request,
+      signal,
+      timeline,
+    });
+  } catch (error) {
+    if (
+      signal?.aborted ||
+      readSignal?.current?.aborted ||
+      isEpisodeReadCancelledError(error)
+    ) {
+      throw new EpisodeReadCancelledError();
+    }
+    throw error;
+  }
+}
+
+async function readMcapFrameTransformWindowImpl({
+  predecessorStore,
+  reader,
+  request,
+  signal,
+  timeline,
+}: {
+  readonly predecessorStore?: McapPredecessorStore;
+  readonly reader: McapIndexedReaderLike;
+  readonly request: McapReadFrameTransformWindowRequest;
+  readonly signal?: AbortSignal;
+  readonly timeline: McapTimelineStrategy;
+}): Promise<McapFrameTransformSet> {
   const bootstrappedStaticChannelIds =
     bootstrappedStaticChannelIdsByReader.get(reader);
   const transformChannels = discoverFrameTransformChannels(reader).filter(
@@ -583,28 +624,23 @@ export async function readMcapFrameTransformWindow({
   });
 
   const transformTopics = transformChannels.map((entry) => entry.channel.topic);
-  // Transform payloads are tiny but interleaved into mixed chunks, so the
-  // serial read loop below otherwise pays one round trip per chunk touch on
-  // remote transports. Racing reads coalesce on shared byte-cache fill keys.
-  void reader.prefetchWindow?.({
-    endTimeNs: endTime,
-    startTimeNs: startTime,
-    topics: transformTopics,
-  });
 
   const samples: McapFrameTransformSample[] = [];
   const inWindowPredecessorByEdge = new Map<string, McapFrameTransformSample>();
   const nextKnownTimeNsByTopic = new Map(
     transformTopics.map((topic) => [topic, request.endTimeNs + 1n] as const),
   );
-  for await (const message of reader.readMessages({
+  for await (const message of readFrameTransformWindowMessages({
     endTime,
+    endTimeNs: request.endTimeNs,
+    reader,
+    signal,
     startTime,
+    startTimeNs: request.startTimeNs,
+    timeline,
     topics: transformTopics,
   })) {
-    if (readSignal?.current?.aborted) {
-      throw new EpisodeReadCancelledError();
-    }
+    throwIfFrameTransformReadCancelled(signal);
     const entry = channelsById.get(message.channelId);
     if (!entry) {
       continue;
@@ -644,8 +680,8 @@ export async function readMcapFrameTransformWindow({
     nextKnownTimeNsByTopic,
     predecessorStore,
     reader,
-    readSignal,
     readStats,
+    signal,
     timeline,
     timeNs: request.startTimeNs,
     topics: transformTopics,
@@ -670,6 +706,116 @@ export async function readMcapFrameTransformWindow({
 }
 
 /**
+ * Materializes transform records from exact MCAP message-index offsets when
+ * the reader and active timeline support it. This uses the reader's stable,
+ * source-keyed decompressed-chunk LRU, so adjacent placement windows do not
+ * repeatedly decompress and CRC the same mixed chunks. Unsupported timelines
+ * and readers retain the core indexed-reader path.
+ */
+async function* readFrameTransformWindowMessages({
+  endTime,
+  endTimeNs,
+  reader,
+  signal,
+  startTime,
+  startTimeNs,
+  timeline,
+  topics,
+}: {
+  readonly endTime: bigint | undefined;
+  readonly endTimeNs: bigint;
+  readonly reader: McapIndexedReaderLike;
+  readonly signal?: AbortSignal;
+  readonly startTime: bigint | undefined;
+  readonly startTimeNs: bigint;
+  readonly timeline: McapTimelineStrategy;
+  readonly topics: readonly string[];
+}): AsyncGenerator<McapMessage, void, void> {
+  const readIndexedMessages = reader.readIndexedMessages?.bind(reader);
+  const readIndexedMessageTimes = reader.readIndexedMessageTimes?.bind(reader);
+  const indexedMessageTimeNs = timeline.indexedMessageTimeNs;
+  const indexedMessageTimesRequest = timeline.indexedMessageTimesRequest;
+  if (
+    readIndexedMessages &&
+    readIndexedMessageTimes &&
+    indexedMessageTimeNs &&
+    indexedMessageTimesRequest
+  ) {
+    const indexedRequest = indexedMessageTimesRequest({
+      endTimeNs,
+      startTimeNs,
+      topics,
+    });
+
+    // Message indexes are small. Await their bounded parallel prefetch so the
+    // following index scan does not serialize one remote read per chunk/topic.
+    await reader.prefetchWindow?.({
+      endTimeNs: indexedRequest.endTimeNs,
+      includeChunkData: false,
+      startTimeNs: indexedRequest.startTimeNs,
+      topics: indexedRequest.topics,
+    });
+    throwIfFrameTransformReadCancelled(signal);
+
+    const entries: McapIndexedMessageTime[] = [];
+    for await (const entry of readIndexedMessageTimes(indexedRequest)) {
+      throwIfFrameTransformReadCancelled(signal);
+      if (isWithinRange(indexedMessageTimeNs(entry), startTimeNs, endTimeNs)) {
+        entries.push(entry);
+      }
+    }
+    throwIfFrameTransformReadCancelled(signal);
+    if (entries.length === 0) {
+      return;
+    }
+
+    // Chunk-data prefetch is advisory and bounded by the byte layer. Keep it
+    // concurrent with exact materialization, which processes one chunk at a
+    // time and retains only the reader's bounded decompressed LRU.
+    void reader.prefetchChunkData?.({
+      chunkStartOffsets: [
+        ...new Set(entries.map((entry) => entry.chunkStartOffset)),
+      ],
+    });
+    const messages = await readIndexedMessages({ entries, signal });
+    if (messages.length !== entries.length) {
+      throw new Error(
+        `MCAP indexed transform reader returned ${messages.length} messages for ${entries.length} entries`,
+      );
+    }
+    for (const message of messages) {
+      throwIfFrameTransformReadCancelled(signal);
+      yield message;
+    }
+    return;
+  }
+
+  // The core reader is also message-index driven. Warm the relevant byte
+  // ranges so its per-window chunk loads can overlap on remote transports.
+  void reader.prefetchWindow?.({
+    endTimeNs: endTime,
+    startTimeNs: startTime,
+    topics,
+  });
+  for await (const message of reader.readMessages({
+    endTime,
+    startTime,
+    topics,
+  })) {
+    throwIfFrameTransformReadCancelled(signal);
+    yield message;
+  }
+}
+
+function throwIfFrameTransformReadCancelled(
+  signal: AbortSignal | undefined,
+): void {
+  if (signal?.aborted) {
+    throw new EpisodeReadCancelledError();
+  }
+}
+
+/**
  * Resolves a bounded set of indexed messages before a random-seek window,
  * then keeps only the newest dynamic sample per transform edge. This gives
  * the runtime a truthful pose to hold without scanning transform history.
@@ -679,8 +825,8 @@ async function readIndexedTransformPredecessorAnchors({
   nextKnownTimeNsByTopic,
   predecessorStore,
   reader,
-  readSignal,
   readStats,
+  signal,
   timeline,
   timeNs,
   topics,
@@ -689,8 +835,8 @@ async function readIndexedTransformPredecessorAnchors({
   readonly nextKnownTimeNsByTopic: ReadonlyMap<string, bigint>;
   readonly predecessorStore?: McapPredecessorStore;
   readonly reader: McapIndexedReaderLike;
-  readonly readSignal?: { readonly current: AbortSignal | null };
   readonly readStats: FrameTransformReadStats;
+  readonly signal?: AbortSignal;
   readonly timeline: McapTimelineStrategy;
   readonly timeNs: bigint;
   readonly topics: readonly string[];
@@ -757,14 +903,37 @@ async function readIndexedTransformPredecessorAnchors({
     return [];
   }
   void reader.prefetchChunkData?.({
-    chunkStartOffsets: entries.map((entry) => entry.chunkStartOffset),
+    chunkStartOffsets: [
+      ...new Set(entries.map((entry) => entry.chunkStartOffset)),
+    ],
   });
 
   const newestSampleByEdge = new Map<string, McapFrameTransformSample>();
-  for (const [topic, groupedEntries] of entriesByTopic) {
-    if (readSignal?.current?.aborted) {
-      throw new EpisodeReadCancelledError();
+  const readIndexedMessages = reader.readIndexedMessages?.bind(reader);
+  if (readIndexedMessages) {
+    const messages = await readIndexedMessages({ entries, signal });
+    if (messages.length !== entries.length) {
+      throw new Error(
+        `MCAP indexed transform reader returned ${messages.length} messages for ${entries.length} predecessor entries`,
+      );
     }
+    for (const message of messages) {
+      throwIfFrameTransformReadCancelled(signal);
+      recordNewestFrameTransformSamples({
+        channelsById,
+        message,
+        newestSampleByEdge,
+        readStats,
+        timeNs,
+      });
+    }
+    return [...newestSampleByEdge.values()].sort(
+      compareFrameTransformSamplesByTime,
+    );
+  }
+
+  for (const [topic, groupedEntries] of entriesByTopic) {
+    throwIfFrameTransformReadCancelled(signal);
     if (groupedEntries.length === 0) {
       continue;
     }
@@ -782,9 +951,7 @@ async function readIndexedTransformPredecessorAnchors({
       startTime,
       topics: [topic],
     })) {
-      if (readSignal?.current?.aborted) {
-        throw new EpisodeReadCancelledError();
-      }
+      throwIfFrameTransformReadCancelled(signal);
       if (
         !indexedIdentities.has(
           `${message.channelId}\0${message.logTime.toString()}`,
@@ -792,30 +959,52 @@ async function readIndexedTransformPredecessorAnchors({
       ) {
         continue;
       }
-      const channel = channelsById.get(message.channelId);
-      if (!channel) {
-        continue;
-      }
-      recordFrameTransformMessage(readStats, channel.channel.topic, message);
-      try {
-        for (const sample of normalizeFrameTransformMessage({
-          entry: channel,
-          message,
-        })) {
-          if (sample.timeNs === undefined || sample.timeNs > timeNs) {
-            continue;
-          }
-          setNewestFrameTransformSample(newestSampleByEdge, sample);
-        }
-      } catch {
-        continue;
-      }
+      recordNewestFrameTransformSamples({
+        channelsById,
+        message,
+        newestSampleByEdge,
+        readStats,
+        timeNs,
+      });
     }
   }
 
   return [...newestSampleByEdge.values()].sort(
     compareFrameTransformSamplesByTime,
   );
+}
+
+function recordNewestFrameTransformSamples({
+  channelsById,
+  message,
+  newestSampleByEdge,
+  readStats,
+  timeNs,
+}: {
+  readonly channelsById: ReadonlyMap<number, FrameTransformChannel>;
+  readonly message: McapMessage;
+  readonly newestSampleByEdge: Map<string, McapFrameTransformSample>;
+  readonly readStats: FrameTransformReadStats;
+  readonly timeNs: bigint;
+}): void {
+  const channel = channelsById.get(message.channelId);
+  if (!channel) {
+    return;
+  }
+  recordFrameTransformMessage(readStats, channel.channel.topic, message);
+  try {
+    for (const sample of normalizeFrameTransformMessage({
+      entry: channel,
+      message,
+    })) {
+      if (sample.timeNs === undefined || sample.timeNs > timeNs) {
+        continue;
+      }
+      setNewestFrameTransformSample(newestSampleByEdge, sample);
+    }
+  } catch {
+    return;
+  }
 }
 
 function indexedTransformMessageIdentity(entry: McapIndexedMessageTime) {
