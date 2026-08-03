@@ -20,7 +20,9 @@ on:
       release_branch:
         description: "Target release branch, e.g. release/v1.8.0"
         required: true
-  pull_request:
+  # pull_request_target so fork PRs get the bot token; safe because nothing
+  # here checks out or executes PR-head code — only the already-merged commit.
+  pull_request_target:
     types: [closed, labeled]
     branches:
       - develop
