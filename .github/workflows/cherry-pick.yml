@@ -1,10 +1,12 @@
 name: Cherry-Pick to Release
 
 # Opens the release-branch PR for a merged develop PR: cherry-picks its merge
-# result with -x, which the release gate verifies against develop. A
-# conflicting cherry-pick fails the run — resolving it is a human decision,
-# and often the signal that the fix needs the release-only escape hatch
-# instead.
+# result with -x, which the release gate verifies against develop. Two ways in:
+# dispatch with a PR number + target branch, or label a develop PR
+# 'needs-cherry-pick' and the release PR opens itself when the develop PR
+# merges. Conflicts fail the run and comment on the source PR — resolving is
+# a human decision, and often the signal that the fix needs the release-only
+# escape hatch instead.
 #
 # PRs opened with GITHUB_TOKEN don't trigger CI; close and reopen the PR to
 # start checks, or dispatch with a bot PAT once one is provisioned.
@@ -18,6 +20,10 @@ on:
       release_branch:
         description: "Target release branch, e.g. release/v1.8.0"
         required: true
+  pull_request:
+    types: [closed, labeled]
+    branches:
+      - develop
 
 permissions:
   contents: write
@@ -25,22 +31,32 @@ permissions:
 
 jobs:
   cherry-pick:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       contains(github.event.pull_request.labels.*.name, 'needs-cherry-pick'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.release_branch }}
           fetch-depth: 0
       - name: Cherry-pick and open PR
         env:
           GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ inputs.pr_number }}
-          RELEASE_BRANCH: ${{ inputs.release_branch }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr_number || github.event.pull_request.number }}
+          RELEASE_BRANCH: ${{ inputs.release_branch || '' }}
         run: |
           set -euo pipefail
 
+          # The labeled flow targets the live release line; there is one at a
+          # time.
+          if [ -z "$RELEASE_BRANCH" ]; then
+            RELEASE_BRANCH=$(gh api "repos/$REPO/branches" --paginate \
+              --jq '.[].name | select(startswith("release/v"))' | sort -V | tail -1)
+          fi
           if [[ "$RELEASE_BRANCH" != release/* ]]; then
-            echo "::error::Target must be a release/* branch, got '$RELEASE_BRANCH'."
+            echo "::error::No release/* branch to target (got '${RELEASE_BRANCH:-none}')."
             exit 1
           fi
 
@@ -53,12 +69,12 @@ jobs:
             exit 1
           fi
 
-          git fetch --quiet origin develop
+          git fetch --quiet origin develop "$RELEASE_BRANCH"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           branch="cherry-pick/${RELEASE_BRANCH#release/}/pr-$PR_NUMBER"
-          git checkout -b "$branch"
+          git checkout -b "$branch" "origin/$RELEASE_BRANCH"
 
           mainline=""
           if [ "$(git rev-list --parents -n 1 "$sha" | wc -w)" -gt 2 ]; then
@@ -66,9 +82,8 @@ jobs:
           fi
           if ! git cherry-pick -x $mainline "$sha"; then
             git cherry-pick --abort
+            gh pr comment "$PR_NUMBER" --body "Cherry-pick to \`$RELEASE_BRANCH\` conflicts — pick it manually with \`git cherry-pick -x\`, or use the \`release-only-fix\` escape hatch if develop has moved on."
             echo "::error::Cherry-pick of $sha onto $RELEASE_BRANCH conflicts."
-            echo "Resolve by hand with 'git cherry-pick -x', or consider the"
-            echo "release-only-fix escape hatch if develop has moved on."
             exit 1
           fi
 
