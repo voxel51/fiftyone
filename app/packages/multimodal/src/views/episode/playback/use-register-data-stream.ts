@@ -638,12 +638,10 @@ export function useRegisterDataStream({
             publishStreamStatuses,
             rebalanceDecodedCaches,
             // Once a discontinuous seek has occurred, a fully paused target
-            // owns only its current frame on foreground lanes. Nearby runway
-            // remains unclaimed until the delayed, bounded idle warmup proves
-            // the target is still relevant. Play-pending and active playback
-            // continue to admit their required startup/playback batches.
-            shouldAdmitBatch: (operation) =>
-              operation === "background-lookahead" ||
+            // owns only its current frame. No speculative lane may readmit
+            // nearby runway: play-pending is the explicit ownership transfer
+            // that restores required startup/playback batches.
+            shouldAdmitBatch: () =>
               lastSeekAtMsRef.current === null ||
               getIsPlaying(store) ||
               getIsPlayPending(store),

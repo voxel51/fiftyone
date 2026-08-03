@@ -1132,7 +1132,7 @@ describe("stream status + buffering feedback", () => {
     expect(idleCall?.[0].topics).toEqual([STREAM]);
   });
 
-  it("warms circular continuation when the loop end is inside lookahead", async () => {
+  it("defers circular continuation after a paused seek until play is pending", async () => {
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
@@ -1163,21 +1163,28 @@ describe("stream status + buffering feedback", () => {
     await waitFor(() => {
       expect(client.readSynchronizedMessageBatch).toHaveBeenCalled();
     });
+    const mountBatchCalls = vi.mocked(client.readSynchronizedMessageBatch).mock
+      .calls.length;
 
     act(() => {
       api?.setLoop(6, 8);
       api?.seek(7.75);
     });
+    expect(client.readSynchronizedMessageBatch).toHaveBeenCalledTimes(
+      mountBatchCalls,
+    );
+
+    act(() => api?.play());
 
     await waitFor(
       () => {
         expect(
           vi
             .mocked(client.readSynchronizedMessageBatch)
-            .mock.calls.slice(1)
+            .mock.calls.slice(mountBatchCalls)
             .some(
               ([request, options]) =>
-                options?.priority === "idle" &&
+                options?.priority === "playback" &&
                 (request.timeNs[0] ?? 0n) >= 6_000_000_000n &&
                 (request.timeNs[0] ?? 0n) < 6_100_000_000n,
             ),
@@ -1188,22 +1195,19 @@ describe("stream status + buffering feedback", () => {
 
     const loopbackCall = vi
       .mocked(client.readSynchronizedMessageBatch)
-      .mock.calls.slice(1)
+      .mock.calls.slice(mountBatchCalls)
       .find(
         ([request, options]) =>
-          options?.priority === "idle" &&
+          options?.priority === "playback" &&
           (request.timeNs[0] ?? 0n) >= 6_000_000_000n &&
           (request.timeNs[0] ?? 0n) < 6_100_000_000n,
       );
-    expect(loopbackCall?.[1]?.priority).toBe("idle");
+    expect(loopbackCall?.[1]?.priority).toBe("playback");
     expect(loopbackCall?.[0].timeNs.length).toBeGreaterThan(0);
     expect(loopbackCall?.[0].timeNs[0]).toBeGreaterThanOrEqual(6_000_000_000n);
-    // Paused warmup has a 1.5s circular horizon. At 7.75s, 0.25s remains on
-    // the current tail, so no more than the remaining 1.25s belongs at 6s.
-    expect(loopbackCall?.[0].timeNs.at(-1)).toBeLessThan(7_250_000_000n);
   });
 
-  it("queues covered background lookahead as small idle batches", async () => {
+  it("does not readmit idle lookahead after a paused seek", async () => {
     const source = createSource("source");
     const batches: Array<{
       readonly request: Parameters<
@@ -1251,24 +1255,16 @@ describe("stream status + buffering feedback", () => {
       ]);
       await Promise.resolve();
     });
+    vi.mocked(client.readSynchronizedMessageBatch).mockClear();
 
     act(() => {
       api?.seek(0.001);
     });
 
-    await waitFor(() => {
-      expect(
-        vi
-          .mocked(client.readSynchronizedMessageBatch)
-          .mock.calls.some(([, options]) => options?.priority === "idle"),
-      ).toBe(true);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
     });
-
-    const idleCall = vi
-      .mocked(client.readSynchronizedMessageBatch)
-      .mock.calls.find(([, options]) => options?.priority === "idle");
-    expect(idleCall?.[0].timeNs.length).toBeGreaterThan(0);
-    expect(idleCall?.[0].timeNs.length).toBeLessThanOrEqual(30);
+    expect(client.readSynchronizedMessageBatch).not.toHaveBeenCalled();
   });
 
   it("reports 'loading' while the current frame is in flight, then 'ready' when it lands", async () => {
@@ -1814,7 +1810,7 @@ describe("stream status + buffering feedback", () => {
     );
   });
 
-  it("reclaims paused idle work and admits required runway when play becomes pending", async () => {
+  it("keeps a paused seek current-only and admits runway when play becomes pending", async () => {
     const source = createSource("paused-seek-play");
     const storeCapture = capturePlaybackStore();
     let api: ReturnType<typeof usePlayback> | undefined;
@@ -1867,6 +1863,7 @@ describe("stream status + buffering feedback", () => {
       expect(readSynchronizedMessageBatch).toHaveBeenCalled();
       expect(readSynchronizedMessages).toHaveBeenCalled();
     });
+    const batchCallsBeforeSeek = readSynchronizedMessageBatch.mock.calls.length;
 
     act(() => api?.seek(30));
     await waitFor(() => {
@@ -1874,15 +1871,8 @@ describe("stream status + buffering feedback", () => {
         readSynchronizedMessages.mock.calls.at(-1)?.[0].timeNs ?? 0n,
       ).toBeGreaterThan(29_900_000_000n);
     });
-    await waitFor(
-      () => {
-        expect(
-          readSynchronizedMessageBatch.mock.calls.some(
-            ([, options]) => options?.priority === "idle",
-          ),
-        ).toBe(true);
-      },
-      { timeout: 2_000 },
+    expect(readSynchronizedMessageBatch).toHaveBeenCalledTimes(
+      batchCallsBeforeSeek,
     );
     const playbackCallsBeforePlay =
       readSynchronizedMessageBatch.mock.calls.filter(
@@ -1913,7 +1903,7 @@ describe("stream status + buffering feedback", () => {
     });
   });
 
-  it("seeks and prefetches virtual ticks beyond the old materialized tick cap", async () => {
+  it("seeks current-only, then prefetches virtual ticks when play is pending", async () => {
     const source = createSource("source");
     const storeCapture = capturePlaybackStore();
     const currentFrameTicks: bigint[] = [];
@@ -1948,6 +1938,7 @@ describe("stream status + buffering feedback", () => {
     await waitFor(() => {
       expect(currentFrameTicks.length).toBeGreaterThan(0);
     });
+    const initialBatchTicks = batchTicks.length;
 
     act(() => api?.seek(3_600));
 
@@ -1956,6 +1947,9 @@ describe("stream status + buffering feedback", () => {
         true,
       );
     });
+    expect(batchTicks).toHaveLength(initialBatchTicks);
+
+    act(() => api?.play());
     await waitFor(() => {
       expect(batchTicks.some((tick) => tick > 3_000_000_000_000n)).toBe(true);
     });
