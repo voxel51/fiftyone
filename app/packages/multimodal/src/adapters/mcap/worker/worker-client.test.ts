@@ -225,6 +225,43 @@ describe("worker-backed MCAP resource client", () => {
     await expect(transforms).resolves.toEqual({ samples: [] });
   });
 
+  it("cancels placement transforms superseded by a newer playhead", async () => {
+    const { client, workers } = createClientHarness();
+    const source = createSource("source:1");
+    const stale = client.readFrameTransformWindow({
+      endTimeNs: 20n,
+      source,
+      startTimeNs: 10n,
+    });
+    const latest = client.readFrameTransformWindow({
+      endTimeNs: 40n,
+      source,
+      startTimeNs: 30n,
+    });
+    const worker = workers[0];
+
+    await expect(stale).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
+    expect(worker.messages.slice(1)).toEqual([
+      expect.objectContaining({
+        id: 1,
+        type: "readFrameTransformWindow",
+      }),
+      { id: 1, type: "cancel" },
+      expect.objectContaining({
+        id: 2,
+        payload: expect.objectContaining({ endTimeNs: 40n }),
+        type: "readFrameTransformWindow",
+      }),
+    ]);
+
+    worker.respond({
+      id: 2,
+      ok: true,
+      result: structuredClone(dehydrateMcapFrameTransformSet({ samples: [] })),
+    });
+    await expect(latest).resolves.toEqual({ samples: [] });
+  });
+
   it("can demote frame transform windows to idle-prefetch priority", async () => {
     const { client, workers } = createClientHarness();
     const request = {

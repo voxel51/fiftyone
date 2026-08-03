@@ -474,6 +474,18 @@ export function useFrameTransforms({
             return;
           }
 
+          // A newer seek supersedes placement for the old playhead. The worker
+          // has already started the replacement, so cancellation is successful
+          // scheduling rather than a transform failure or a reason to retry.
+          if (isEpisodeReadCancelledError(caughtError)) {
+            retryCountRef.current.delete(requestedRangeKey);
+            inFlightPlacementRangesRef.current =
+              inFlightPlacementRangesRef.current.filter(
+                (candidate) => candidate !== requestedRange,
+              );
+            return;
+          }
+
           const retryCount = retryCountRef.current.get(requestedRangeKey) ?? 0;
           setState((current) => ({
             ...current,
@@ -603,7 +615,7 @@ export function useFrameTransforms({
         // The first runway segment while Play is pending is demanded startup
         // work. Foreground priority avoids a limited-network deadlock and a
         // priority inversion behind speculative reads.
-        priority: playPending ? undefined : "idle",
+        priority: playPending ? "playback" : "idle",
         streams: [],
         window: {
           endNs: runwayRange.endTimeNs,

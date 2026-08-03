@@ -8,9 +8,10 @@ import { MCAP_PLAYBACK_WORKER_PRIORITY } from "./playback-worker-types";
 const SUPERSESSION_KEY_SEPARATOR = "\0";
 
 /**
- * Returns per-topic keys for current-frame presentation work. A newer request
- * with any matching key makes the older whole synchronized window obsolete.
- * Playback runway and non-presentation RPCs deliberately return no keys.
+ * Returns keys for request families where a newer user intent makes older
+ * work obsolete. Current-frame media is scoped per topic; transform placement
+ * is scoped per source because only the newest playhead needs to be placed.
+ * Playback runway and unrelated RPCs deliberately return no keys.
  */
 export function mcapForegroundSupersessionKeys<
   Type extends McapPlaybackWorkerUnaryType,
@@ -27,6 +28,16 @@ export function mcapForegroundSupersessionKeys<
   readonly sourceKey: string;
   readonly type: Type;
 }): readonly string[] {
+  if (
+    priority === MCAP_PLAYBACK_WORKER_PRIORITY.PLACEMENT_FRAME &&
+    type === "readFrameTransformWindow"
+  ) {
+    return [
+      [sourceKey, generation, "frame-transform-placement"].join(
+        SUPERSESSION_KEY_SEPARATOR,
+      ),
+    ];
+  }
   if (priority !== MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME) {
     return [];
   }

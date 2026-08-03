@@ -13,6 +13,7 @@ import type {
   EpisodeFrameTransformSample,
   EpisodeFrameTransformSet,
 } from "../../../../runtime/frame-transform-types";
+import { EpisodeReadCancelledError } from "../../../../ports";
 import {
   useFrameTransforms,
   type FramePlacementScope,
@@ -485,6 +486,49 @@ describe("useFrameTransforms", () => {
     expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(5);
   });
 
+  it("treats superseded placement reads as benign", async () => {
+    const source = createSource("superseded-placement");
+    const staleRead = deferred<EpisodeFrameTransformSet>();
+    const latestRead = deferred<EpisodeFrameTransformSet>();
+    const client = createFrameTransformClient({
+      readFrameTransformWindow: vi
+        .fn()
+        .mockImplementationOnce(() => staleRead.promise)
+        .mockImplementationOnce(() => latestRead.promise),
+    });
+    const { rerender } = render(
+      <FrameTransformsHarness
+        client={client}
+        label="frames"
+        source={source}
+        timeNs={100n}
+      />,
+    );
+    await waitFor(() => {
+      expect(client.readFrameTransformWindow).toHaveBeenCalledOnce();
+    });
+
+    rerender(
+      <FrameTransformsHarness
+        client={client}
+        label="frames"
+        source={source}
+        timeNs={2_000_000_000n}
+      />,
+    );
+    await waitFor(() => {
+      expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
+    });
+
+    latestRead.resolve({ samples: [] });
+    await flushReactWork();
+    staleRead.reject(new EpisodeReadCancelledError());
+    await flushReactWork();
+
+    expect(screen.getByTestId("frames").textContent).toBe("ready:missing:");
+    expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
+  });
+
   it("clears surrendered placement windows on an explicit seek", async () => {
     vi.useFakeTimers();
     const source = createSource("retry-seek");
@@ -618,7 +662,7 @@ describe("useFrameTransforms", () => {
         source,
         startTimeNs: 1_900_000_000n,
       },
-      { priority: undefined },
+      { priority: "playback" },
     );
   });
 
