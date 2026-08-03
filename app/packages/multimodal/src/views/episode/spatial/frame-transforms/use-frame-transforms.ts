@@ -45,6 +45,7 @@ import { shouldDeferIdleWorkForStore } from "../../playback/network-health";
 // once the first truthy placement is available.
 const DYNAMIC_TRANSFORM_LOOKBACK_NS = 500_000_000n;
 const DYNAMIC_TRANSFORM_PLACEMENT_LOOKAHEAD_NS = 1_000_000_000n;
+const EXACT_PLACEMENT_CADENCE_MULTIPLIER = 3n;
 const DYNAMIC_TRANSFORM_RUNWAY_LOOKAHEAD_NS = 4_000_000_000n;
 const DYNAMIC_TRANSFORM_RUNWAY_REFRESH_LOOKAHEAD_NS = 2_000_000_000n;
 const DYNAMIC_TRANSFORM_RUNWAY_SEGMENT_NS = 1_500_000_000n;
@@ -362,12 +363,22 @@ export function useFrameTransforms({
         placementScopes,
       );
       const readPlacement = capability.readPlacement;
+      const maxObservedCadenceNs =
+        requiredDynamicChildFrameIds === null
+          ? null
+          : store.maxObservedCadenceNsForChildren(requiredDynamicChildFrameIds);
+      // The point path may inspect at most one third of the 1.5 s fallback
+      // window. Sparse or uncertain children go straight to that window so a
+      // cold seek can never pay both full costs.
       const useExactPlacement =
         playbackStore !== null &&
         !hasPlayIntent &&
         readPlacement !== undefined &&
         requiredDynamicChildFrameIds !== null &&
-        requiredDynamicChildFrameIds.length > 0;
+        requiredDynamicChildFrameIds.length > 0 &&
+        maxObservedCadenceNs !== null &&
+        maxObservedCadenceNs * EXACT_PLACEMENT_CADENCE_MULTIPLIER <=
+          DYNAMIC_TRANSFORM_LOOKBACK_NS;
       const requestedRange = useExactPlacement
         ? { endTimeNs: requestTimeNs, startTimeNs: requestTimeNs }
         : fallbackRange;

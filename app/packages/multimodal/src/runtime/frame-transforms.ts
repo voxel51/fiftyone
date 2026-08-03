@@ -201,6 +201,30 @@ export class EpisodeFrameTransformStore {
   }
 
   /**
+   * Returns the slowest observed cadence across the requested dynamic children.
+   * `null` means at least one edge lacks enough evidence for a bounded point
+   * lookup, so callers should use their correctness-preserving window path.
+   */
+  maxObservedCadenceNsForChildren(
+    childFrameIds: readonly string[],
+  ): bigint | null {
+    let maximum: bigint | null = null;
+    for (const childFrameId of new Set(childFrameIds)) {
+      const samples = this.dynamicSamplesByChild.get(childFrameId);
+      if (!samples || samples.length === 0) return null;
+      const edgeKeys = new Set(samples.map(frameTransformEdgeKey));
+      for (const edgeKey of edgeKeys) {
+        const cadence = this.dynamicCadenceByEdge
+          .get(edgeKey)
+          ?.medianCadenceNs();
+        if (cadence === undefined || cadence === null) return null;
+        maximum = maximum === null || cadence > maximum ? cadence : maximum;
+      }
+    }
+    return maximum;
+  }
+
+  /**
    * Returns the dynamic child edges on one known topology path from every
    * requested frame to the target. The result is a read hint, not a
    * correctness proof: callers must still resolve the requested placements
@@ -227,7 +251,12 @@ export class EpisodeFrameTransformStore {
       const path = findFrameGraphPath(adjacency, source, target);
       if (!path) return null;
       for (const edge of path) {
-        if (edge.dynamic) requiredChildren.add(edge.childFrameId);
+        // Runtime resolution gives a dynamic relationship precedence over a
+        // static relationship for the same child. Preserve that invariant even
+        // when the deterministic union-topology path traverses the static edge.
+        if (edge.dynamic || this.dynamicSamplesByChild.has(edge.childFrameId)) {
+          requiredChildren.add(edge.childFrameId);
+        }
       }
     }
 

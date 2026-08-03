@@ -50,9 +50,7 @@ const FOXGLOVE_FRAME_TRANSFORMS_CDR_SCHEMA =
 const FOXGLOVE_FRAME_TRANSFORMS_SCHEMA = "foxglove.FrameTransforms";
 const TF_MESSAGE_BATCH_FIELD = "transforms";
 const TRANSFORM_PREDECESSOR_MESSAGES_PER_TOPIC = 32;
-const TRANSFORM_PLACEMENT_PREDECESSOR_LIMITS = [
-  32, 128, 512, 2_048, 4_096,
-] as const;
+const TRANSFORM_PLACEMENT_PREDECESSOR_LIMITS = [32, 128] as const;
 const BOOTSTRAP_BOUNDED_MAX_SOURCE_BYTES = 64 * 1024 * 1024;
 const BOOTSTRAP_BOUNDED_MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 const BOOTSTRAP_BOUNDED_MAX_WALL_TIME_MS = 10_000;
@@ -808,7 +806,31 @@ async function readIndexedTransformPlacement({
         }
       }
     }
+    const everyTopicExhausted = uniqueTopics.every(
+      (topic) => (resolved.get(topic)?.length ?? 0) < limitPerTopic,
+    );
+    const completeResult = (): IndexedTransformPlacementResult => {
+      // The runtime store's indexed ranges are global, not scoped to the
+      // requested placement. Bound coverage by the oldest entry materialized
+      // from every transform topic in this probe round.
+      const topicFloors = uniqueTopics.flatMap((topic) => {
+        const entries = resolved.get(topic) ?? [];
+        return entries.length === 0
+          ? []
+          : [minBigIntValues(entries.map(indexedMessageTimeNs))];
+      });
+      return topicFloors.length === 0
+        ? { coverage: { complete: false }, samples: [] }
+        : {
+            coverage: {
+              complete: true,
+              startTimeNs: maxBigIntValues(topicFloors),
+            },
+            samples: [...samplesByIdentity.values()],
+          };
+    };
     if (newEntries.length === 0) {
+      if (everyTopicExhausted) return completeResult();
       break;
     }
 
@@ -866,27 +888,20 @@ async function readIndexedTransformPlacement({
         newestEvidenceTimeNsByChild.has(childFrameId),
       )
     ) {
-      // The runtime store's indexed ranges are global, not scoped to the
-      // requested placement. Bound coverage by the oldest entry materialized
-      // from every transform topic in the successful probe round. From the
-      // newest-N contract, every message after this maximum per-topic floor is
-      // present, including messages for non-path consumers.
-      const topicFloors = uniqueTopics.flatMap((topic) => {
-        const entries = resolved.get(topic) ?? [];
-        return entries.length === 0
-          ? []
-          : [minBigIntValues(entries.map(indexedMessageTimeNs))];
-      });
-      if (topicFloors.length === 0) {
-        return { coverage: { complete: false }, samples: [] };
-      }
-      return {
-        coverage: {
-          complete: true,
-          startTimeNs: maxBigIntValues(topicFloors),
-        },
-        samples: [...samplesByIdentity.values()],
-      };
+      return completeResult();
+    }
+
+    if (
+      everyTopicExhausted &&
+      limitPerTopic ===
+        TRANSFORM_PLACEMENT_PREDECESSOR_LIMITS[
+          TRANSFORM_PLACEMENT_PREDECESSOR_LIMITS.length - 1
+        ]
+    ) {
+      // The newest-N query returned every predecessor on every transform
+      // topic. Missing requested children are therefore proven absent at this
+      // time, not an invitation to repeat the same work through a window read.
+      return completeResult();
     }
   }
 

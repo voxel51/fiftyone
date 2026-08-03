@@ -112,6 +112,11 @@ export class EpisodeCadenceTracker {
   interpolationGapLimitNs(): bigint {
     return transformInterpolationGapLimitNs(this.timestamps);
   }
+
+  /** Median cadence when enough observations exist to make a cost decision. */
+  medianCadenceNs(): bigint | null {
+    return recentMedianCadenceNs(this.timestamps);
+  }
 }
 
 function cadenceDerivedLimitNs({

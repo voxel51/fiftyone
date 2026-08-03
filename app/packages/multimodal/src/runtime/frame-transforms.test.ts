@@ -55,6 +55,44 @@ describe("episode frame transform store", () => {
     ).toBeNull();
   });
 
+  it("includes a dynamic child when the union path traverses its static edge", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("odom", "lidar", undefined, 0n),
+        sample("odom", "lidar", undefined, 100n),
+        sample("odom", "lidar", undefined, 200n),
+        sample("odom", "lidar", undefined, 300n),
+      ],
+      staticSamples: [sample("map", "lidar")],
+    });
+
+    expect(
+      store.dynamicChildFrameIdsForPlacement({
+        frameIds: ["lidar"],
+        targetFrameId: "map",
+      }),
+    ).toEqual(["lidar"]);
+  });
+
+  it("reports the slowest observed cadence for a scoped point-read budget", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 600n, startTimeNs: 0n },
+      dynamicSamples: [
+        ...[0n, 100n, 200n, 300n].map((timeNs) =>
+          sample("map", "fast", undefined, timeNs),
+        ),
+        ...[0n, 200n, 400n, 600n].map((timeNs) =>
+          sample("map", "slow", undefined, timeNs),
+        ),
+        sample("map", "unknown", undefined, 0n),
+      ],
+    });
+
+    expect(store.maxObservedCadenceNsForChildren(["fast", "slow"])).toBe(200n);
+    expect(store.maxObservedCadenceNsForChildren(["unknown"])).toBeNull();
+  });
+
   it("interpolates dynamic samples around playback time", () => {
     const store = createStore({
       dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },

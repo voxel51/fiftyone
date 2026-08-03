@@ -57,8 +57,10 @@ describe("cadence-derived temporal policy", () => {
 
     expect(tracker.observationStaleThresholdNs()).toBe(600n * MS);
     expect(tracker.interpolationGapLimitNs()).toBe(600n * MS);
+    expect(tracker.medianCadenceNs()).toBe(200n * MS);
 
     tracker.clear();
+    expect(tracker.medianCadenceNs()).toBeNull();
     expect(tracker.observationStaleThresholdNs()).toBe(
       DEFAULT_OBSERVATION_STALE_THRESHOLD_NS,
     );

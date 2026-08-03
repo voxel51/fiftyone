@@ -545,12 +545,18 @@ describe("useFrameTransforms", () => {
     const readFrameTransformPlacement = vi.fn(
       async ({ timeNs }: { readonly timeNs: bigint }) => ({
         indexedWindow: { endNs: timeNs, startNs: timeNs - 10n },
-        samples: [dynamicSample],
+        samples: [sample("map", "lidar", { x: 1, y: 0, z: 0 }, timeNs)],
       }),
     );
     const client = createFrameTransformClient({
       readFrameTransformPlacement,
-      windowSamples: [dynamicSample, unrelatedSample],
+      windowSamples: [
+        ...[70n, 80n, 90n].map((timeNs) =>
+          sample("map", "lidar", { x: 1, y: 0, z: 0 }, timeNs),
+        ),
+        dynamicSample,
+        unrelatedSample,
+      ],
     });
     let playback: ReturnType<typeof usePlayback> | null = null;
     const { rerender } = render(
@@ -616,9 +622,55 @@ describe("useFrameTransforms", () => {
     );
   });
 
+  it("uses one window instead of probing a path without cadence evidence", async () => {
+    const source = createSource("paused-window-placement");
+    const dynamicSample = sample("map", "lidar", undefined, 100n);
+    const readFrameTransformPlacement = vi.fn(async () => ({
+      indexedWindow: { endNs: 2_000_000_000n, startNs: 1_999_999_990n },
+      samples: [dynamicSample],
+    }));
+    const client = createFrameTransformClient({
+      readFrameTransformPlacement,
+      windowSamples: [dynamicSample],
+    });
+    const { rerender } = render(
+      <PlaybackFrameTransformsHarness
+        client={client}
+        dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
+        label="frames"
+        onPlayback={() => undefined}
+        placementScope={{ frameIds: ["lidar"], targetFrameId: "map" }}
+        source={source}
+        timeNs={100n}
+      />,
+    );
+    await waitFor(() => {
+      expect(client.readFrameTransformWindow).toHaveBeenCalledOnce();
+    });
+
+    rerender(
+      <PlaybackFrameTransformsHarness
+        client={client}
+        dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
+        label="frames"
+        onPlayback={() => undefined}
+        placementScope={{ frameIds: ["lidar"], targetFrameId: "map" }}
+        source={source}
+        timeNs={2_000_000_000n}
+      />,
+    );
+    await waitFor(() => {
+      expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
+    });
+    expect(readFrameTransformPlacement).not.toHaveBeenCalled();
+  });
+
   it("falls back when scoped anchors do not resolve after a parent change", async () => {
     const source = createSource("parent-change-placement");
     const initialSample = sample("map", "lidar", undefined, 100n);
+    const initialCadenceSamples = [70n, 80n, 90n].map((timeNs) =>
+      sample("map", "lidar", undefined, timeNs),
+    );
     const targetTimeNs = 2_000_000_000n;
     const readFrameTransformPlacement = vi.fn(async () => ({
       indexedWindow: {
@@ -629,7 +681,9 @@ describe("useFrameTransforms", () => {
     }));
     const readFrameTransformWindow = vi
       .fn()
-      .mockResolvedValueOnce({ samples: [initialSample] })
+      .mockResolvedValueOnce({
+        samples: [...initialCadenceSamples, initialSample],
+      })
       .mockResolvedValueOnce({
         samples: [sample("map", "lidar", undefined, targetTimeNs)],
       });
@@ -677,7 +731,12 @@ describe("useFrameTransforms", () => {
     const readFrameTransformPlacement = vi.fn(async () => null);
     const client = createFrameTransformClient({
       readFrameTransformPlacement,
-      windowSamples: [dynamicSample],
+      windowSamples: [
+        ...[70n, 80n, 90n].map((timeNs) =>
+          sample("map", "lidar", { x: 1, y: 0, z: 0 }, timeNs),
+        ),
+        dynamicSample,
+      ],
     });
     const { rerender } = render(
       <PlaybackFrameTransformsHarness

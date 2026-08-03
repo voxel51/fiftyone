@@ -2072,7 +2072,7 @@ describe("MCAP resources", () => {
     ]);
   });
 
-  it("reports incomplete placement tails instead of settling missing children", async () => {
+  it("settles missing children when every topic predecessor is exhausted", async () => {
     const timeNs = 10_000_000_000n;
     const entry = createIndexedMessageTime(
       "/robot_transforms",
@@ -2111,7 +2111,10 @@ describe("MCAP resources", () => {
 
     expect(readLatestIndexedMessageTimes).toHaveBeenCalledTimes(2);
     expect(readIndexedMessages).toHaveBeenCalledOnce();
-    expect(set.placementCoverage).toEqual({ complete: false });
+    expect(set.placementCoverage).toEqual({
+      complete: true,
+      startTimeNs: entry.logTimeNs,
+    });
     expect(set.samples).toHaveLength(1);
   });
 
