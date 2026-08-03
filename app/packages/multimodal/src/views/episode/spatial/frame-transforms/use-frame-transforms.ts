@@ -201,6 +201,7 @@ export function useFrameTransforms({
       : dynamicRange === undefined
         ? "fallback"
         : "range";
+  const boundaryClampNs = policy?.boundaryClampNs;
 
   // A paused seek needs only current placement. Subscribe explicitly so a
   // later Play press re-opens idle runway work even before the clock advances.
@@ -425,7 +426,7 @@ export function useFrameTransforms({
                 storeRef.current,
                 placementScopes,
                 requestTimeNs,
-                policy,
+                boundaryClampNs,
               )
             ) {
               const fallback = await readFallbackPlacement(
@@ -513,7 +514,7 @@ export function useFrameTransforms({
       capability,
       dynamicRangeMode,
       hasPlayIntent,
-      policy,
+      boundaryClampNs,
       playbackStore,
       sourceKey,
       state.status,
@@ -880,14 +881,16 @@ function placementScopesResolve(
   store: EpisodeFrameTransformStore | null,
   scopes: readonly FramePlacementScope[],
   timeNs: bigint,
-  policy: EpisodeFrameTransformPolicy | undefined,
+  boundaryClampNs: bigint | undefined,
 ): boolean {
   if (!store || scopes.length === 0) return false;
   return scopes.every((scope) =>
     scope.frameIds.every(
       (sourceFrameId) =>
         store.resolve({
-          ...(policy ? { policy } : {}),
+          ...(boundaryClampNs === undefined
+            ? {}
+            : { policy: { boundaryClampNs } }),
           sourceFrameId,
           targetFrameId: scope.targetFrameId,
           timeNs,

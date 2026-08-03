@@ -25,6 +25,36 @@ afterEach(() => {
 });
 
 describe("useFrameTransforms", () => {
+  it("keeps resolver identity stable for semantically equal policies", async () => {
+    const onState = vi.fn();
+    const props = {
+      client: createFrameTransformClient(),
+      label: "frames",
+      onState,
+      source: null,
+    } as const;
+    const { rerender } = render(
+      <FrameTransformsHarness
+        {...props}
+        policy={{ boundaryClampNs: 1_000_000n }}
+      />,
+    );
+    await flushReactWork();
+    const settledState = onState.mock.lastCall?.[0];
+    const settledCallCount = onState.mock.calls.length;
+
+    rerender(
+      <FrameTransformsHarness
+        {...props}
+        policy={{ boundaryClampNs: 1_000_000n }}
+      />,
+    );
+    await flushReactWork();
+
+    expect(onState).toHaveBeenCalledTimes(settledCallCount);
+    expect(onState.mock.lastCall?.[0]).toBe(settledState);
+  });
+
   it("loads bootstrap transforms without waiting for a playback time", async () => {
     const source = createSource("bootstrap");
     const client = createFrameTransformClient({
@@ -750,6 +780,7 @@ function FrameTransformsHarness({
   label,
   onState,
   placementScope,
+  policy,
   source,
   timeNs,
 }: {
@@ -762,6 +793,7 @@ function FrameTransformsHarness({
   readonly label: string;
   readonly onState?: (state: FrameTransformsState) => void;
   readonly placementScope?: FramePlacementScope;
+  readonly policy?: { readonly boundaryClampNs: bigint };
   readonly source: ByteSourceDescriptor | null;
   readonly timeNs?: bigint;
 }) {
@@ -815,6 +847,7 @@ function FrameTransformsHarness({
   const state = useFrameTransforms({
     capability,
     dynamicRange,
+    policy,
     sourceKey: source?.sourceId ?? null,
     timeNs,
   });
