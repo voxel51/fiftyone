@@ -186,7 +186,10 @@ describe("DataStreamScheduler", () => {
   it("retries required runway after play-pending idle cancellation settles", () => {
     vi.useFakeTimers();
     try {
-      const harness = createSchedulerHarness({ fillCache: false });
+      const harness = createSchedulerHarness({
+        deferredBatchAdmission: true,
+        fillCache: false,
+      });
       const cleanup = harness.register();
       harness.prefetcher.fetchBatch.mockClear();
       harness.prefetcher.fetchCurrentFrame.mockClear();
@@ -211,10 +214,32 @@ describe("DataStreamScheduler", () => {
     }
   });
 
-  it("does not retry play-pending runway after stream cleanup", () => {
+  it("does not perturb ordinary play when no batch admission was deferred", () => {
     vi.useFakeTimers();
     try {
       const harness = createSchedulerHarness({ fillCache: false });
+      const cleanup = harness.register();
+      harness.prefetcher.fetchBatch.mockClear();
+
+      playbackState.isPlayPending = true;
+      playbackState.pendingListener?.();
+      vi.runAllTimers();
+
+      expect(harness.cancelIdle).toHaveBeenCalledOnce();
+      expect(harness.prefetcher.fetchBatch).not.toHaveBeenCalled();
+      cleanup();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not retry play-pending runway after stream cleanup", () => {
+    vi.useFakeTimers();
+    try {
+      const harness = createSchedulerHarness({
+        deferredBatchAdmission: true,
+        fillCache: false,
+      });
       const cleanup = harness.register();
       harness.prefetcher.fetchBatch.mockClear();
 
@@ -493,12 +518,14 @@ function createSchedulerHarness({
     },
   ],
   currentFrameFirstStreams = ["/camera"],
+  deferredBatchAdmission = false,
   fillCache = true,
   policy = {},
 }: {
   readonly activeStreams?: string[];
   readonly byteTimeline?: readonly ByteTimelinePoint[];
   readonly currentFrameFirstStreams?: readonly string[];
+  readonly deferredBatchAdmission?: boolean;
   readonly fillCache?: boolean;
   readonly policy?: Partial<PlaybackPolicy>;
 } = {}) {
@@ -546,6 +573,7 @@ function createSchedulerHarness({
     getCurrentFrameFirstStreams: () => new Set(currentFrameFirstStreams),
     getIndex: () => index,
     getLastSeekAtMs: () => null,
+    hasDeferredBatchAdmission: () => deferredBatchAdmission,
     isSourceAvailable: () => true,
     lastFrames: new Map(),
     policy: derivePlaybackPolicy({ ...DEFAULT_PLAYBACK_POLICY, ...policy }, 10),

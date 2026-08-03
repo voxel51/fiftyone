@@ -209,7 +209,6 @@ export function createDataStreamPrefetcher({
     operation,
   ) => {
     if (ticks.length === 0 || activeStreams.length === 0) return false;
-    if (!shouldAdmitBatch(operation)) return false;
 
     const sourceEpoch = getSourceEpoch();
     const toFetch = ticks.filter((tick) => {
@@ -228,6 +227,7 @@ export function createDataStreamPrefetcher({
       }),
     );
     if (streamsToFetch.length === 0) return false;
+    if (!shouldAdmitBatch(operation)) return false;
 
     markStreamsPending(keys, streamsToFetch);
     void playback
@@ -420,6 +420,7 @@ export interface DataStreamSchedulerOptions {
   readonly getCurrentFrameFirstStreams: () => ReadonlySet<string>;
   readonly getIndex: () => TimelineIndex | null;
   readonly getLastSeekAtMs: () => number | null;
+  readonly hasDeferredBatchAdmission: () => boolean;
   readonly isSourceAvailable: () => boolean;
   readonly lastFrames: Map<string, StreamPlaybackFrame<unknown>>;
   readonly policy: DerivedPlaybackPolicy;
@@ -778,12 +779,14 @@ export class DataStreamScheduler {
         // pending ownership is released from their finally handlers. Retry on
         // the next task so required play-start runway is admitted after that
         // cleanup rather than being skipped behind stale idle markers.
-        clearPendingPlayRetry();
-        pendingPlayRetryTimer = setTimeout(() => {
-          pendingPlayRetryTimer = null;
-          if (!registered || !getIsPlayPending(options.store)) return;
-          this.prefetchLookaheadFrom(getPlayhead(options.store));
-        }, 0);
+        if (options.hasDeferredBatchAdmission()) {
+          clearPendingPlayRetry();
+          pendingPlayRetryTimer = setTimeout(() => {
+            pendingPlayRetryTimer = null;
+            if (!registered || !getIsPlayPending(options.store)) return;
+            this.prefetchLookaheadFrom(getPlayhead(options.store));
+          }, 0);
+        }
       } else {
         clearPendingPlayRetry();
         options.startupCushionPlanner.resetPendingPlan();

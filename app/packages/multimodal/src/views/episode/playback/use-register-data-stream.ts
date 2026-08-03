@@ -247,6 +247,7 @@ export function useRegisterDataStream({
   >(new Map());
   const autoSeekSourceEpochRef = useRef<number | null>(null);
   const autoSeekScheduleEpochRef = useRef<number | null>(null);
+  const deferredBatchAdmissionRef = useRef(false);
   const lastSeekAtMsRef = useRef<number | null>(null);
   const [startupCushionPlanner] = useState(() => new StartupCushionPlanner());
   const indexRef = useRef<TimelineIndex | null>(null);
@@ -449,6 +450,7 @@ export function useRegisterDataStream({
     streamStartTimesNsRef.current.clear();
     autoSeekSourceEpochRef.current = null;
     autoSeekScheduleEpochRef.current = null;
+    deferredBatchAdmissionRef.current = false;
     lastSeekAtMsRef.current = null;
     startupCushionPlanner.resetPendingPlan();
     backgroundLookaheadSecondsRef.current = playbackPolicy.lookaheadSeconds;
@@ -652,10 +654,14 @@ export function useRegisterDataStream({
             // owns only its current frame. No speculative lane may readmit
             // nearby runway: play-pending is the explicit ownership transfer
             // that restores required startup/playback batches.
-            shouldAdmitBatch: () =>
-              lastSeekAtMsRef.current === null ||
-              getIsPlaying(store) ||
-              getIsPlayPending(store),
+            shouldAdmitBatch: () => {
+              const shouldAdmit =
+                lastSeekAtMsRef.current === null ||
+                getIsPlaying(store) ||
+                getIsPlayPending(store);
+              deferredBatchAdmissionRef.current = !shouldAdmit;
+              return shouldAdmit;
+            },
             store,
           })
         : null,
@@ -690,6 +696,7 @@ export function useRegisterDataStream({
               currentFrameFirstStreamsRef.current,
             getIndex: () => indexRef.current,
             getLastSeekAtMs: () => lastSeekAtMsRef.current,
+            hasDeferredBatchAdmission: () => deferredBatchAdmissionRef.current,
             isSourceAvailable: () => source !== null,
             lastFrames: lastFrameRef.current,
             policy: playbackPolicy,
@@ -795,6 +802,7 @@ export function useRegisterDataStream({
   // publishes and before the playback engine can admit work for the new target.
   useEffect(() => {
     return store.sub(seekEventAtom, () => {
+      deferredBatchAdmissionRef.current = false;
       // Source reset and first-data alignment establish the initial playhead;
       // they are not user discontinuities and must retain startup warmup.
       if (!lifecycleSeekInProgressRef.current) {
