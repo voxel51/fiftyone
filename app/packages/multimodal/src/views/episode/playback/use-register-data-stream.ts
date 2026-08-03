@@ -193,6 +193,7 @@ export function useRegisterDataStream({
     sourceReadProfile === BYTE_SOURCE_READ_PROFILE.REMOTE
       ? REMOTE_SEEK_FETCH_DEBOUNCE_MS
       : 0;
+  const lifecycleSeekInProgressRef = useRef(false);
 
   // This layout effect resets recording-local time before paint while the
   // playback store—and therefore the modal workspace—survives navigation. It
@@ -202,7 +203,12 @@ export function useRegisterDataStream({
   useLayoutEffect(() => {
     setSeekFetchDebounceMs(store, seekFetchDebounceMs);
     pause();
-    seek(0);
+    lifecycleSeekInProgressRef.current = true;
+    try {
+      seek(0);
+    } finally {
+      lifecycleSeekInProgressRef.current = false;
+    }
     return () => setSeekFetchDebounceMs(store, 0);
   }, [pause, seek, seekFetchDebounceMs, sourceKey, store]);
 
@@ -388,7 +394,12 @@ export function useRegisterDataStream({
     if (targetSec <= 0) return;
 
     autoSeekSourceEpochRef.current = currentEpoch;
-    seek(targetSec);
+    lifecycleSeekInProgressRef.current = true;
+    try {
+      seek(targetSec);
+    } finally {
+      lifecycleSeekInProgressRef.current = false;
+    }
   }, [getActiveStreams, seek, store]);
 
   // Stream subscriptions mount as one React effect batch. Coalescing their
@@ -784,10 +795,11 @@ export function useRegisterDataStream({
   // publishes and before the playback engine can admit work for the new target.
   useEffect(() => {
     return store.sub(seekEventAtom, () => {
-      // Stamp seeks so the idle-work gate can hold speculative reads while
-      // the foreground catch-up fetch owns a constrained link, and reclaim
-      // it immediately from speculative transfers already in flight.
-      lastSeekAtMsRef.current = monotonicNowMs();
+      // Source reset and first-data alignment establish the initial playhead;
+      // they are not user discontinuities and must retain startup warmup.
+      if (!lifecycleSeekInProgressRef.current) {
+        lastSeekAtMsRef.current = monotonicNowMs();
+      }
       startupCushionPlanner.resetPendingPlan();
       // Preference is derived from the current playhead rather than owned by
       // cached entries. Rebalance synchronously so a far seek immediately
