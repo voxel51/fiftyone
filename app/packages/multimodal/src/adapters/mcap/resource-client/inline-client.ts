@@ -317,7 +317,12 @@ export function createInlineMcapResourceClient(
     ): Promise<McapFrameTransformSet> {
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
       const sourceKey = byteSourceAccessKey(request.source);
-      const windowKey = `${sourceKey}\0${timeline.id}\0${request.startTimeNs}\0${request.endTimeNs}`;
+      const requiredChildrenKey = [
+        ...(request.requiredDynamicChildFrameIds ?? []),
+      ]
+        .sort()
+        .join("\0");
+      const windowKey = `${sourceKey}\0${timeline.id}\0${request.startTimeNs}\0${request.endTimeNs}\0${requiredChildrenKey}`;
       const cached = frameTransformWindowReads.get(windowKey);
       if (cached) {
         return cached;

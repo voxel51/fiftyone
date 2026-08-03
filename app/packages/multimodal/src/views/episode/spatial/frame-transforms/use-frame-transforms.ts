@@ -1,8 +1,14 @@
 // Deep import on purpose: the playback package root barrel pulls view
 // components whose relay fragments cannot evaluate under vitest, and this
 // hook has direct unit tests.
-import { PlaybackStoreContext } from "@fiftyone/playback/runtime";
-import { seekEventAtom } from "@fiftyone/playback/runtime";
+import {
+  getIsPlayPending,
+  getIsPlaying,
+  isPlayingAtom,
+  PlaybackStoreContext,
+  seekEventAtom,
+  subscribeIsPlayPending,
+} from "@fiftyone/playback/runtime";
 import {
   useCallback,
   useContext,
@@ -146,6 +152,7 @@ export function useFrameTransforms({
     ...IDLE_FRAME_TRANSFORMS_STATE,
     version: 0,
   });
+  const [hasPlayIntent, setHasPlayIntent] = useState(false);
   const inFlightPlacementRangesRef = useRef<
     readonly EpisodeFrameTransformTimeRange[]
   >([]);
@@ -171,6 +178,27 @@ export function useFrameTransforms({
       : dynamicRange === undefined
         ? "fallback"
         : "range";
+
+  // A paused seek needs only current placement. Subscribe explicitly so a
+  // later Play press re-opens idle runway work even before the clock advances.
+  useEffect(() => {
+    if (!playbackStore) {
+      setHasPlayIntent(false);
+      return undefined;
+    }
+    const update = () => {
+      setHasPlayIntent(
+        getIsPlaying(playbackStore) || getIsPlayPending(playbackStore),
+      );
+    };
+    update();
+    const unsubscribePlaying = playbackStore.sub(isPlayingAtom, update);
+    const unsubscribePending = subscribeIsPlayPending(playbackStore, update);
+    return () => {
+      unsubscribePlaying();
+      unsubscribePending();
+    };
+  }, [playbackStore]);
 
   // This effect resets transform state when the source changes and loads the
   // initial static transform bootstrap before dynamic windows are requested.
@@ -281,29 +309,68 @@ export function useFrameTransforms({
         return;
       }
 
-      const requestedRange = dynamicPlacementRangeForTime(requestTimeNs);
+      const fallbackRange = dynamicPlacementRangeForTime(requestTimeNs);
+      const requiredDynamicChildFrameIds = store.dynamicChildFrameIds();
+      const readPlacement = capability.readPlacement;
+      const useExactPlacement =
+        playbackStore !== null &&
+        !hasPlayIntent &&
+        readPlacement !== undefined &&
+        requiredDynamicChildFrameIds.length > 0;
+      const requestedRange = useExactPlacement
+        ? { endTimeNs: requestTimeNs, startTimeNs: requestTimeNs }
+        : fallbackRange;
       const requestedRangeKey = frameTransformRangeKey(requestedRange);
       const sourceGeneration = sourceGenerationRef.current;
       inFlightPlacementRangesRef.current = [
         ...inFlightPlacementRangesRef.current,
         requestedRange,
       ];
-      capability
-        .readTransforms({
-          streams: [],
-          window: {
-            endNs: requestedRange.endTimeNs,
-            startNs: requestedRange.startTimeNs,
-          },
-        })
-        .then((samples) => {
+      const read =
+        useExactPlacement && readPlacement
+          ? readPlacement({
+              requiredDynamicChildFrameIds,
+              timeNs: requestTimeNs,
+            }).then((placement) =>
+              placement
+                ? {
+                    indexedRange: {
+                      endTimeNs: placement.indexedWindow.endNs,
+                      startTimeNs: placement.indexedWindow.startNs,
+                    },
+                    samples: placement.samples,
+                  }
+                : capability
+                    .readTransforms({
+                      streams: [],
+                      window: {
+                        endNs: fallbackRange.endTimeNs,
+                        startNs: fallbackRange.startTimeNs,
+                      },
+                    })
+                    .then((samples) => ({
+                      indexedRange: fallbackRange,
+                      samples,
+                    })),
+            )
+          : capability
+              .readTransforms({
+                streams: [],
+                window: {
+                  endNs: requestedRange.endTimeNs,
+                  startNs: requestedRange.startTimeNs,
+                },
+              })
+              .then((samples) => ({ indexedRange: requestedRange, samples }));
+      read
+        .then(({ indexedRange, samples }) => {
           if (sourceGeneration !== sourceGenerationRef.current) {
             return;
           }
 
           storeRef.current?.addDynamic(
             samples.map(runtimeTransformSample),
-            requestedRange,
+            indexedRange,
           );
           retryCountRef.current.delete(requestedRangeKey);
           inFlightPlacementRangesRef.current =
@@ -368,7 +435,14 @@ export function useFrameTransforms({
           retryTimeoutsRef.current.set(requestedRangeKey, timeout);
         });
     },
-    [capability, dynamicRangeMode, sourceKey, state.status],
+    [
+      capability,
+      dynamicRangeMode,
+      hasPlayIntent,
+      playbackStore,
+      sourceKey,
+      state.status,
+    ],
   );
 
   // This effect warms a short transform runway on the idle lane. It stays
@@ -386,6 +460,9 @@ export function useFrameTransforms({
       state.status !== "ready" ||
       timeNs === undefined
     ) {
+      return;
+    }
+    if (playbackStore && !hasPlayIntent) {
       return;
     }
     const coverageRange = dynamicRunwayCoverageRangeForTime(timeNs);
@@ -484,6 +561,7 @@ export function useFrameTransforms({
   }, [
     capability,
     dynamicRangeMode,
+    hasPlayIntent,
     playbackStore,
     sourceKey,
     state.status,

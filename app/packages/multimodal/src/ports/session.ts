@@ -171,7 +171,27 @@ export interface SynchronizedReadAcceleration {
 /** Optional fast path for transform-window assembly. */
 export interface TransformReadAcceleration {
   readBootstrap?(): Promise<readonly TransformSample[]>;
+  /**
+   * Reads an edge-complete held placement at one timeline time. A null result
+   * means completeness could not be proven within the adapter's bounded
+   * lookup policy; callers must retain their normal window fallback.
+   */
+  readPlacement?(
+    request: TransformPlacementReadRequest,
+  ): Promise<TransformPlacementReadResult | null>;
   readTransforms(request: ReadRequest): Promise<readonly TransformSample[]>;
+}
+
+/** Exact-time transform placement requested from an accelerated adapter. */
+export interface TransformPlacementReadRequest {
+  readonly requiredDynamicChildFrameIds: readonly string[];
+  readonly timeNs: bigint;
+}
+
+/** Proven transform placement plus the timeline interval it safely indexes. */
+export interface TransformPlacementReadResult {
+  readonly indexedWindow: TimeWindow;
+  readonly samples: readonly TransformSample[];
 }
 
 /** One synchronized playback read around a single presentation time. */

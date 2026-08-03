@@ -31,6 +31,7 @@ import type {
 import type { McapTimelineStrategy } from "../timeline";
 import type { McapPredecessorStore } from "../predecessor-store";
 import type {
+  McapFrameTransformPlacementCoverage,
   McapFrameTransformSample,
   McapFrameTransformSet,
   McapFrameTransformTopicStats,
@@ -49,6 +50,9 @@ const FOXGLOVE_FRAME_TRANSFORMS_CDR_SCHEMA =
 const FOXGLOVE_FRAME_TRANSFORMS_SCHEMA = "foxglove.FrameTransforms";
 const TF_MESSAGE_BATCH_FIELD = "transforms";
 const TRANSFORM_PREDECESSOR_MESSAGES_PER_TOPIC = 32;
+const TRANSFORM_PLACEMENT_PREDECESSOR_LIMITS = [
+  32, 128, 512, 2_048, 4_096,
+] as const;
 const BOOTSTRAP_BOUNDED_MAX_SOURCE_BYTES = 64 * 1024 * 1024;
 const BOOTSTRAP_BOUNDED_MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 const BOOTSTRAP_BOUNDED_MAX_WALL_TIME_MS = 10_000;
@@ -618,6 +622,29 @@ async function readMcapFrameTransformWindowImpl({
   const readStats = createFrameTransformReadStats(
     transformChannels.map((entry) => entry.channel.topic),
   );
+  const requiredDynamicChildFrameIds = [
+    ...new Set(request.requiredDynamicChildFrameIds?.filter(Boolean) ?? []),
+  ].sort();
+  if (
+    requiredDynamicChildFrameIds.length > 0 &&
+    request.startTimeNs === request.endTimeNs
+  ) {
+    const placement = await readIndexedTransformPlacement({
+      channelsById,
+      reader,
+      readStats,
+      requiredDynamicChildFrameIds,
+      signal,
+      timeline,
+      timeNs: request.startTimeNs,
+      topics: transformChannels.map((entry) => entry.channel.topic),
+    });
+    return createMcapFrameTransformSet({
+      placementCoverage: placement.coverage,
+      readStats,
+      samples: placement.samples,
+    });
+  }
   const { endTime, startTime } = timeline.messageReadRange({
     endTimeNs: request.endTimeNs,
     startTimeNs: request.startTimeNs,
@@ -703,6 +730,171 @@ async function readMcapFrameTransformWindowImpl({
   }
 
   return createMcapFrameTransformSet({ readStats, samples });
+}
+
+interface IndexedTransformPlacementResult {
+  readonly coverage: McapFrameTransformPlacementCoverage;
+  readonly samples: readonly McapFrameTransformSample[];
+}
+
+/**
+ * Resolves a bounded, contiguous predecessor tail until every dynamic child
+ * already known by the runtime has an anchor. A partial tail is returned as
+ * explicitly incomplete so callers can use their full-window fallback
+ * without ever marking missing edges settled.
+ */
+async function readIndexedTransformPlacement({
+  channelsById,
+  reader,
+  readStats,
+  requiredDynamicChildFrameIds,
+  signal,
+  timeline,
+  timeNs,
+  topics,
+}: {
+  readonly channelsById: ReadonlyMap<number, FrameTransformChannel>;
+  readonly reader: McapIndexedReaderLike;
+  readonly readStats: FrameTransformReadStats;
+  readonly requiredDynamicChildFrameIds: readonly string[];
+  readonly signal?: AbortSignal;
+  readonly timeline: McapTimelineStrategy;
+  readonly timeNs: bigint;
+  readonly topics: readonly string[];
+}): Promise<IndexedTransformPlacementResult> {
+  const indexedMessageTimeNs = timeline.indexedMessageTimeNs;
+  const indexedMessageTimesRequest = timeline.indexedMessageTimesRequest;
+  const readIndexedMessages = reader.readIndexedMessages?.bind(reader);
+  const readLatestIndexedMessageTimes =
+    reader.readLatestIndexedMessageTimes?.bind(reader);
+  if (
+    !indexedMessageTimeNs ||
+    !indexedMessageTimesRequest ||
+    !readIndexedMessages ||
+    !readLatestIndexedMessageTimes
+  ) {
+    return { coverage: { complete: false }, samples: [] };
+  }
+
+  const probeTimeNs = indexedMessageTimesRequest({
+    endTimeNs: timeNs,
+  }).endTimeNs;
+  if (probeTimeNs === undefined) {
+    return { coverage: { complete: false }, samples: [] };
+  }
+
+  const requiredChildren = new Set(requiredDynamicChildFrameIds);
+  const entriesByIdentity = new Map<string, McapIndexedMessageTime>();
+  const samplesByIdentity = new Map<string, McapFrameTransformSample>();
+  const newestEvidenceByChild = new Map<
+    string,
+    { readonly availableTimeNs: bigint; readonly sampleTimeNs: bigint }
+  >();
+
+  for (const limitPerTopic of TRANSFORM_PLACEMENT_PREDECESSOR_LIMITS) {
+    throwIfFrameTransformReadCancelled(signal);
+    const resolved = await readLatestIndexedMessageTimes({
+      limitPerTopic,
+      timeNs: probeTimeNs,
+      topics,
+    });
+    throwIfFrameTransformReadCancelled(signal);
+
+    const newEntries: McapIndexedMessageTime[] = [];
+    for (const entries of resolved.values()) {
+      for (const entry of entries) {
+        const identity = indexedTransformEntryIdentity(entry);
+        if (!entriesByIdentity.has(identity)) {
+          entriesByIdentity.set(identity, entry);
+          newEntries.push(entry);
+        }
+      }
+    }
+    if (newEntries.length === 0) {
+      break;
+    }
+
+    void reader.prefetchChunkData?.({
+      chunkStartOffsets: [
+        ...new Set(newEntries.map((entry) => entry.chunkStartOffset)),
+      ],
+    });
+    const messages = await readIndexedMessages({
+      entries: newEntries,
+      signal,
+    });
+    if (messages.length !== newEntries.length) {
+      throw new Error(
+        `MCAP indexed transform reader returned ${messages.length} messages for ${newEntries.length} placement entries`,
+      );
+    }
+
+    for (let index = 0; index < messages.length; index += 1) {
+      throwIfFrameTransformReadCancelled(signal);
+      const message = messages[index];
+      const entry = newEntries[index];
+      if (!message || !entry) {
+        continue;
+      }
+      const channel = channelsById.get(message.channelId);
+      if (!channel) {
+        continue;
+      }
+      recordFrameTransformMessage(readStats, channel.channel.topic, message);
+      try {
+        for (const sample of normalizeFrameTransformMessage({
+          entry: channel,
+          message,
+        })) {
+          if (sample.timeNs === undefined || sample.timeNs > timeNs) {
+            continue;
+          }
+          samplesByIdentity.set(frameTransformSampleIdentity(sample), sample);
+          if (!requiredChildren.has(sample.childFrameId)) {
+            continue;
+          }
+          const current = newestEvidenceByChild.get(sample.childFrameId);
+          if (current === undefined || current.sampleTimeNs < sample.timeNs) {
+            newestEvidenceByChild.set(sample.childFrameId, {
+              availableTimeNs: maxBigIntValues([
+                indexedMessageTimeNs(entry),
+                sample.timeNs,
+              ]),
+              sampleTimeNs: sample.timeNs,
+            });
+          }
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    if (
+      requiredDynamicChildFrameIds.every((childFrameId) =>
+        newestEvidenceByChild.has(childFrameId),
+      )
+    ) {
+      const coverageStartTimeNs = maxBigIntValues(
+        requiredDynamicChildFrameIds.map(
+          (childFrameId) =>
+            newestEvidenceByChild.get(childFrameId)?.availableTimeNs ?? timeNs,
+        ),
+      );
+      return {
+        coverage: { complete: true, startTimeNs: coverageStartTimeNs },
+        samples: [...samplesByIdentity.values()],
+      };
+    }
+  }
+
+  return {
+    coverage: { complete: false },
+    samples: [...samplesByIdentity.values()],
+  };
+}
+
+function indexedTransformEntryIdentity(entry: McapIndexedMessageTime): string {
+  return `${entry.chunkStartOffset}\0${entry.messageOffset}\0${entry.channelId}\0${entry.logTimeNs}`;
 }
 
 /**
@@ -1421,9 +1613,11 @@ function fieldByName(type: Type, ...names: string[]) {
 }
 
 function createMcapFrameTransformSet({
+  placementCoverage,
   readStats,
   samples,
 }: {
+  readonly placementCoverage?: McapFrameTransformPlacementCoverage;
   readonly readStats?: FrameTransformReadStats;
   readonly samples: readonly McapFrameTransformSample[];
 }): McapFrameTransformSet {
@@ -1438,6 +1632,7 @@ function createMcapFrameTransformSet({
           topics: readStats.topics,
         }
       : {}),
+    ...(placementCoverage ? { placementCoverage } : {}),
     samples: sortedSamples,
   };
 }

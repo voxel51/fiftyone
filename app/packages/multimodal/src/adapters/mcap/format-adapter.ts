@@ -1001,6 +1001,31 @@ class McapEpisodeSession implements EpisodeSession {
           throw this.normalizeReadError(error);
         }
       },
+      readPlacement: async ({ requiredDynamicChildFrameIds, timeNs }) => {
+        this.ensureOpen();
+        try {
+          const result = await this.client.readFrameTransformWindow({
+            activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+            endTimeNs: timeNs,
+            requiredDynamicChildFrameIds,
+            source: this.source,
+            startTimeNs: timeNs,
+          });
+          const coverage = result.placementCoverage;
+          if (!coverage?.complete || coverage.startTimeNs === undefined) {
+            return null;
+          }
+          return {
+            indexedWindow: {
+              endNs: timeNs,
+              startNs: coverage.startTimeNs,
+            },
+            samples: result.samples.map(transformSampleFromMcap),
+          };
+        } catch (error) {
+          throw this.normalizeReadError(error);
+        }
+      },
       readTransforms: async (request) => {
         this.ensureOpen();
         try {

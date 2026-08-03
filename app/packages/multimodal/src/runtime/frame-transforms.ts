@@ -194,6 +194,11 @@ export class EpisodeFrameTransformStore {
     return this.dynamicRanges;
   }
 
+  /** Dynamic child-frame inventory already observed for this source. */
+  dynamicChildFrameIds(): readonly string[] {
+    return [...this.dynamicSamplesByChild.keys()].sort(compareStrings);
+  }
+
   frameIds(): readonly string[] {
     return [...this.frameIdsById].sort(compareStrings);
   }

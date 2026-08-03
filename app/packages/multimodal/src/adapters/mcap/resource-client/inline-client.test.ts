@@ -1969,6 +1969,151 @@ describe("MCAP resources", () => {
     expect(set.samples[0]?.timeNs).toBe(anchorTimeNs);
   });
 
+  it("expands exact placement tails until every known dynamic child is anchored", async () => {
+    const timeNs = 10_000_000_000n;
+    const slowPayload = replaceAscii(FRAME_TRANSFORM_MESSAGE, "lidar", "slow1");
+    const fastEntry = createIndexedMessageTime(
+      "/robot_transforms",
+      10,
+      9_000_000_000n,
+      200n,
+    );
+    const slowEntry = createIndexedMessageTime(
+      "/robot_transforms",
+      10,
+      8_000_000_000n,
+      100n,
+    );
+    const messagesByOffset = new Map([
+      [
+        fastEntry.messageOffset,
+        createMessage(FRAME_TRANSFORM_MESSAGE, {
+          channelId: 10,
+          logTime: fastEntry.logTimeNs,
+        }),
+      ],
+      [
+        slowEntry.messageOffset,
+        createMessage(slowPayload, {
+          channelId: 10,
+          logTime: slowEntry.logTimeNs,
+        }),
+      ],
+    ]);
+    const readLatestIndexedMessageTimes = vi.fn(
+      async ({ limitPerTopic }: { readonly limitPerTopic?: number }) =>
+        new Map([
+          [
+            "/robot_transforms",
+            limitPerTopic === 32 ? [fastEntry] : [slowEntry, fastEntry],
+          ],
+        ]),
+    );
+    const readIndexedMessages = vi.fn(
+      async ({
+        entries,
+      }: Parameters<
+        NonNullable<McapIndexedReaderLike["readIndexedMessages"]>
+      >[0]) =>
+        entries.map((entry) => {
+          const message = messagesByOffset.get(entry.messageOffset);
+          if (!message) {
+            throw new Error(`Missing test message at ${entry.messageOffset}`);
+          }
+          return message;
+        }),
+    );
+    const readMessages = vi.fn(async function* () {
+      yield* [];
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: transformChannelsById(),
+          readIndexedMessages,
+          readLatestIndexedMessageTimes,
+          readMessages,
+          schemasById: transformSchemasById(),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: timeNs,
+      requiredDynamicChildFrameIds: ["lidar", "slow1"],
+      source: createMcapSourceDescriptor(),
+      startTimeNs: timeNs,
+    });
+
+    expect(readLatestIndexedMessageTimes).toHaveBeenNthCalledWith(1, {
+      limitPerTopic: 32,
+      timeNs,
+      topics: ["/robot_transforms"],
+    });
+    expect(readLatestIndexedMessageTimes).toHaveBeenNthCalledWith(2, {
+      limitPerTopic: 128,
+      timeNs,
+      topics: ["/robot_transforms"],
+    });
+    expect(readIndexedMessages).toHaveBeenCalledTimes(2);
+    expect(readIndexedMessages.mock.calls[0]?.[0].entries).toEqual([fastEntry]);
+    expect(readIndexedMessages.mock.calls[1]?.[0].entries).toEqual([slowEntry]);
+    expect(readMessages).not.toHaveBeenCalled();
+    expect(set.placementCoverage).toEqual({
+      complete: true,
+      startTimeNs: fastEntry.logTimeNs,
+    });
+    expect(set.samples.map((sample) => sample.childFrameId).sort()).toEqual([
+      "lidar",
+      "slow1",
+    ]);
+  });
+
+  it("reports incomplete placement tails instead of settling missing children", async () => {
+    const timeNs = 10_000_000_000n;
+    const entry = createIndexedMessageTime(
+      "/robot_transforms",
+      10,
+      9_000_000_000n,
+      200n,
+    );
+    const readLatestIndexedMessageTimes = vi.fn(
+      async () => new Map([["/robot_transforms", [entry]]]),
+    );
+    const readIndexedMessages = vi.fn(async () => [
+      createMessage(FRAME_TRANSFORM_MESSAGE, {
+        channelId: 10,
+        logTime: entry.logTimeNs,
+      }),
+    ]);
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: transformChannelsById(),
+          readIndexedMessages,
+          readLatestIndexedMessageTimes,
+          schemasById: transformSchemasById(),
+        }),
+      ),
+    });
+
+    const set = await client.readFrameTransformWindow({
+      endTimeNs: timeNs,
+      requiredDynamicChildFrameIds: ["lidar", "missing"],
+      source: createMcapSourceDescriptor(),
+      startTimeNs: timeNs,
+    });
+
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledTimes(2);
+    expect(readIndexedMessages).toHaveBeenCalledOnce();
+    expect(set.placementCoverage).toEqual({ complete: false });
+    expect(set.samples).toHaveLength(1);
+  });
+
   it("keeps cancellation canonical after the worker advances its signal slot", async () => {
     const timeNs = 7_000_000_020n;
     const entry = createIndexedMessageTime(
@@ -3815,6 +3960,33 @@ function transformSchemasById() {
       }),
     ],
   ]);
+}
+
+function replaceAscii(
+  source: Uint8Array,
+  from: string,
+  to: string,
+): Uint8Array {
+  const fromBytes = new TextEncoder().encode(from);
+  const toBytes = new TextEncoder().encode(to);
+  if (fromBytes.length !== toBytes.length) {
+    throw new Error("Test protobuf replacement must preserve byte length");
+  }
+  const result = source.slice();
+  let start = -1;
+  for (let index = 0; index <= result.length - fromBytes.length; index += 1) {
+    if (
+      fromBytes.every((expected, offset) => result[index + offset] === expected)
+    ) {
+      start = index;
+      break;
+    }
+  }
+  if (start < 0) {
+    throw new Error(`Missing '${from}' in test protobuf payload`);
+  }
+  result.set(toBytes, start);
+  return result;
 }
 
 function createBoundedReadResult(

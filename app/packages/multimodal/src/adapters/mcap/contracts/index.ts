@@ -652,6 +652,13 @@ export interface McapReadFrameTransformWindowRequest {
   readonly endTimeNs: bigint;
 
   /**
+   * Dynamic child frames that an exact-time placement read must anchor.
+   * When present, the adapter returns explicit placement coverage metadata
+   * instead of silently treating a partial predecessor tail as complete.
+   */
+  readonly requiredDynamicChildFrameIds?: readonly string[];
+
+  /**
    * MCAP source to inspect for dynamic transform messages.
    */
   readonly source: ByteSourceDescriptor;

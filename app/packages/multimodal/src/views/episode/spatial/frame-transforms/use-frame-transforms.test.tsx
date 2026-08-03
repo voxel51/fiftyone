@@ -499,9 +499,129 @@ describe("useFrameTransforms", () => {
     act(() => {
       playback?.seek(1);
     });
-    await runNextTimer();
     await flushReactWork();
     expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(5);
+  });
+
+  it("uses edge-complete point placement while paused and resumes runway on Play", async () => {
+    const source = createSource("paused-point-placement");
+    const dynamicSample = sample("map", "lidar", { x: 1, y: 0, z: 0 }, 100n);
+    const readFrameTransformPlacement = vi.fn(
+      async ({ timeNs }: { readonly timeNs: bigint }) => ({
+        indexedWindow: { endNs: timeNs, startNs: timeNs - 10n },
+        samples: [dynamicSample],
+      }),
+    );
+    const client = createFrameTransformClient({
+      readFrameTransformPlacement,
+      windowSamples: [dynamicSample],
+    });
+    let playback: ReturnType<typeof usePlayback> | null = null;
+    const { rerender } = render(
+      <PlaybackFrameTransformsHarness
+        client={client}
+        dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
+        label="frames"
+        onPlayback={(api) => {
+          playback = api;
+        }}
+        source={source}
+        timeNs={100n}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(1);
+    });
+    await flushReactWork();
+    expect(readFrameTransformPlacement).not.toHaveBeenCalled();
+
+    rerender(
+      <PlaybackFrameTransformsHarness
+        client={client}
+        dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
+        label="frames"
+        onPlayback={(api) => {
+          playback = api;
+        }}
+        source={source}
+        timeNs={2_000_000_000n}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(readFrameTransformPlacement).toHaveBeenCalledExactlyOnceWith({
+        requiredDynamicChildFrameIds: ["lidar"],
+        timeNs: 2_000_000_000n,
+      });
+    });
+    await flushReactWork();
+    expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      playback?.play();
+    });
+    await waitFor(() => {
+      expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
+    });
+    expect(client.readFrameTransformWindow).toHaveBeenNthCalledWith(
+      2,
+      {
+        activeTimeline: undefined,
+        endTimeNs: 3_400_000_000n,
+        source,
+        startTimeNs: 1_900_000_000n,
+      },
+      { priority: "idle" },
+    );
+  });
+
+  it("falls back to the full placement window when point closure is incomplete", async () => {
+    const source = createSource("incomplete-point-placement");
+    const dynamicSample = sample("map", "lidar", { x: 1, y: 0, z: 0 }, 100n);
+    const readFrameTransformPlacement = vi.fn(async () => null);
+    const client = createFrameTransformClient({
+      readFrameTransformPlacement,
+      windowSamples: [dynamicSample],
+    });
+    const { rerender } = render(
+      <PlaybackFrameTransformsHarness
+        client={client}
+        dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
+        label="frames"
+        onPlayback={() => undefined}
+        source={source}
+        timeNs={100n}
+      />,
+    );
+    await waitFor(() => {
+      expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(
+      <PlaybackFrameTransformsHarness
+        client={client}
+        dynamicRange={{ endTimeNs: 10_000_000_000n, startTimeNs: 0n }}
+        label="frames"
+        onPlayback={() => undefined}
+        source={source}
+        timeNs={2_000_000_000n}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(readFrameTransformPlacement).toHaveBeenCalledOnce();
+      expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
+    });
+    expect(client.readFrameTransformWindow).toHaveBeenLastCalledWith(
+      {
+        activeTimeline: undefined,
+        endTimeNs: 3_000_000_000n,
+        source,
+        startTimeNs: 1_500_000_000n,
+      },
+      { priority: undefined },
+    );
   });
 });
 
@@ -562,6 +682,23 @@ function FrameTransformsHarness({
               (
                 await client.readFrameTransformBootstrap({ source })
               ).samples.map(toIrTransformSample),
+            ...(client.readFrameTransformPlacement
+              ? {
+                  readPlacement: async (request: {
+                    readonly requiredDynamicChildFrameIds: readonly string[];
+                    readonly timeNs: bigint;
+                  }) => {
+                    const placement =
+                      await client.readFrameTransformPlacement?.(request);
+                    return placement
+                      ? {
+                          indexedWindow: placement.indexedWindow,
+                          samples: placement.samples.map(toIrTransformSample),
+                        }
+                      : null;
+                  },
+                }
+              : {}),
             readTransforms: async (request: {
               readonly priority?: "bulk" | "current" | "idle" | "playback";
               readonly window: {
@@ -638,10 +775,12 @@ function requireLatestState({
 
 function createFrameTransformClient({
   bootstrapSamples = [],
+  readFrameTransformPlacement,
   readFrameTransformWindow,
   windowSamples = [],
 }: {
   readonly bootstrapSamples?: readonly EpisodeFrameTransformSample[];
+  readonly readFrameTransformPlacement?: FrameTransformClient["readFrameTransformPlacement"];
   readonly readFrameTransformWindow?: FrameTransformClient["readFrameTransformWindow"];
   readonly windowSamples?: readonly EpisodeFrameTransformSample[];
 } = {}): FrameTransformClient {
@@ -649,6 +788,7 @@ function createFrameTransformClient({
     readFrameTransformBootstrap: vi.fn(async () => ({
       samples: bootstrapSamples,
     })),
+    ...(readFrameTransformPlacement ? { readFrameTransformPlacement } : {}),
     readFrameTransformWindow:
       readFrameTransformWindow ??
       vi.fn(async () => ({
@@ -661,6 +801,16 @@ interface FrameTransformClient {
   readFrameTransformBootstrap(request: {
     readonly source: ByteSourceDescriptor;
   }): Promise<EpisodeFrameTransformSet>;
+  readFrameTransformPlacement?(request: {
+    readonly requiredDynamicChildFrameIds: readonly string[];
+    readonly timeNs: bigint;
+  }): Promise<{
+    readonly indexedWindow: {
+      readonly endNs: bigint;
+      readonly startNs: bigint;
+    };
+    readonly samples: readonly EpisodeFrameTransformSample[];
+  } | null>;
   readFrameTransformWindow(
     request: {
       readonly activeTimeline?: "log";

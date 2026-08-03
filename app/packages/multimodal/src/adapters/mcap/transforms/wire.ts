@@ -17,6 +17,9 @@ export function dehydrateMcapFrameTransformSet(
     ...(set.messageCount !== undefined
       ? { messageCount: set.messageCount }
       : {}),
+    ...(set.placementCoverage !== undefined
+      ? { placementCoverage: set.placementCoverage }
+      : {}),
     samples: set.samples.map((sample) => ({
       ...sample,
       rotation: {
@@ -46,6 +49,9 @@ export function hydrateMcapFrameTransformSet(
       : {}),
     ...(set.messageCount !== undefined
       ? { messageCount: set.messageCount }
+      : {}),
+    ...(set.placementCoverage !== undefined
+      ? { placementCoverage: set.placementCoverage }
       : {}),
     samples: set.samples.map((sample) => ({
       ...sample,

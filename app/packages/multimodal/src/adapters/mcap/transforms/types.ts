@@ -47,9 +47,16 @@ export interface McapFrameTransformTopicStats {
 export interface McapFrameTransformSet {
   readonly encodedPayloadBytes?: number;
   readonly messageCount?: number;
+  readonly placementCoverage?: McapFrameTransformPlacementCoverage;
   readonly samples: readonly McapFrameTransformSample[];
   readonly topicStats?: readonly McapFrameTransformTopicStats[];
   readonly topics?: readonly string[];
+}
+
+/** Completeness proof for one exact-time dynamic placement query. */
+export interface McapFrameTransformPlacementCoverage {
+  readonly complete: boolean;
+  readonly startTimeNs?: bigint;
 }
 
 export interface McapQuaternionWire {
@@ -76,6 +83,7 @@ export interface McapFrameTransformSampleWire {
 export interface McapFrameTransformSetWire {
   readonly encodedPayloadBytes?: number;
   readonly messageCount?: number;
+  readonly placementCoverage?: McapFrameTransformPlacementCoverage;
   readonly samples: readonly McapFrameTransformSampleWire[];
   readonly topicStats?: readonly McapFrameTransformTopicStats[];
   readonly topics?: readonly string[];
