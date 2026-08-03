@@ -5,6 +5,7 @@ import {
   PlaybackProvider,
   usePlayback,
 } from "../../lib/playback/PlaybackProvider";
+import type { TimelineMode } from "../../lib/playback/types";
 import PlayheadTime from "./PlayheadTime";
 
 /**
@@ -21,9 +22,9 @@ function Seeker({ time }: { time: number }) {
   return null;
 }
 
-function renderTime(duration: number, seekTo?: number) {
+function renderTime(duration: number, seekTo?: number, mode?: TimelineMode) {
   return render(
-    <PlaybackProvider duration={duration} stepInterval={1 / 30}>
+    <PlaybackProvider duration={duration} stepInterval={1 / 30} mode={mode}>
       {seekTo !== undefined ? <Seeker time={seekTo} /> : null}
       <PlayheadTime />
     </PlaybackProvider>,
@@ -65,5 +66,16 @@ describe("PlayheadTime", () => {
     const { container } = renderTime(8);
     // Just one <span> — the voodo Text wrapper.
     expect(container.querySelectorAll("span")).toHaveLength(1);
+  });
+
+  it("renders frame numbers in sequence mode", () => {
+    // 10fps -> step 0.1s; playhead 0.5s = frame 5, duration 1s = frame 10.
+    renderTime(1, 0.5, { kind: "sequence", fps: 10 });
+    expect(screen.getByText("#5 / #10")).toBeTruthy();
+  });
+
+  it("renders wall-clock time in absolute mode", () => {
+    renderTime(2, 1, { kind: "absolute", epochAnchorMs: 10_000 });
+    expect(screen.getByText("00:00:11.000 / 00:00:12.000")).toBeTruthy();
   });
 });
