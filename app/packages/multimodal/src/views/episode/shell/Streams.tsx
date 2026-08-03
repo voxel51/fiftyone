@@ -233,14 +233,19 @@ function FrameTransformsBridge({
     timeNs,
   });
 
-  // This effect publishes the latest transform resolver into episode context and
-  // clears it when the bridge unmounts.
+  // Publish resolver updates without clearing the context between ordinary
+  // state changes. A transient idle publication tears down registered
+  // placement scopes, which can feed back into another resolver update.
   useEffect(() => {
     setFrameTransforms(frameTransforms);
+  }, [frameTransforms, setFrameTransforms]);
+
+  // Clear the shared resolver only when the bridge actually unmounts.
+  useEffect(() => {
     return () => {
       setFrameTransforms(idleFrameTransformsState());
     };
-  }, [frameTransforms, setFrameTransforms]);
+  }, [setFrameTransforms]);
 
   return null;
 }
