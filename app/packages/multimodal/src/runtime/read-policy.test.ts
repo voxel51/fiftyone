@@ -152,6 +152,30 @@ describe("session read policy", () => {
     ]);
   });
 
+  it("preserves accelerated exact placement reads", async () => {
+    const placement = {
+      indexedWindow: { endNs: 5n, startNs: 4n },
+      samples: [transform("lidar", 5n)],
+    };
+    const readPlacement = vi.fn().mockResolvedValue(placement);
+    const session = sessionWithBatches([], {
+      transformRead: {
+        readPlacement,
+        readTransforms: vi.fn().mockResolvedValue([]),
+      },
+    });
+    const transforms = createEpisodeTransformReadRuntime(session);
+    const placementRequest = {
+      requiredDynamicChildFrameIds: ["lidar"],
+      timeNs: 5n,
+    };
+
+    await expect(transforms.readPlacement?.(placementRequest)).resolves.toBe(
+      placement,
+    );
+    expect(readPlacement).toHaveBeenCalledExactlyOnceWith(placementRequest);
+  });
+
   it("loads timeless transform bootstrap data through mandatory reads", async () => {
     const base = sessionWithBatches([batch(2n, [transform("static")])]);
     const session: EpisodeSession = {

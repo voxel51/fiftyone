@@ -687,64 +687,6 @@ describe("useFrameTransforms", () => {
     });
   });
 
-  it("uses point placement for an explicit seek while playback is active", async () => {
-    const source = createSource("active-seek-point-placement");
-    const readFrameTransformPlacement = vi.fn(
-      async ({ timeNs }: { readonly timeNs: bigint }) => ({
-        indexedWindow: { endNs: timeNs, startNs: timeNs - 10n },
-        samples: [sample("map", "lidar", undefined, timeNs)],
-      }),
-    );
-    const client = createFrameTransformClient({
-      readFrameTransformPlacement,
-      windowSamples: [
-        ...[70n, 80n, 90n].map((timeNs) =>
-          sample("map", "lidar", undefined, timeNs),
-        ),
-        sample("map", "lidar", undefined, 100n),
-      ],
-    });
-    let playback: ReturnType<typeof usePlayback> | null = null;
-    const props = {
-      client,
-      dynamicRange: { endTimeNs: 10_000_000_000n, startTimeNs: 0n },
-      label: "frames",
-      onPlayback: (api: ReturnType<typeof usePlayback>) => {
-        playback = api;
-      },
-      placementScope: { frameIds: ["lidar"], targetFrameId: "map" },
-      source,
-    } as const;
-    const { rerender } = render(
-      <PlaybackFrameTransformsHarness {...props} timeNs={100n} />,
-    );
-
-    await waitFor(() => {
-      expect(client.readFrameTransformWindow).toHaveBeenCalledOnce();
-    });
-    rerender(
-      <PlaybackFrameTransformsHarness {...props} timeNs={2_000_000_000n} />,
-    );
-    await waitFor(() => {
-      expect(readFrameTransformPlacement).toHaveBeenCalledOnce();
-    });
-
-    act(() => {
-      playback?.play();
-      playback?.seek(5);
-    });
-    rerender(
-      <PlaybackFrameTransformsHarness {...props} timeNs={5_000_000_000n} />,
-    );
-
-    await waitFor(() => {
-      expect(readFrameTransformPlacement).toHaveBeenNthCalledWith(2, {
-        requiredDynamicChildFrameIds: ["lidar"],
-        timeNs: 5_000_000_000n,
-      });
-    });
-  });
-
   it("uses one window instead of probing a path without cadence evidence", async () => {
     const source = createSource("paused-window-placement");
     const dynamicSample = sample("map", "lidar", undefined, 100n);

@@ -118,10 +118,12 @@ export function createEpisodeTransformReadRuntime(
   session: EpisodeSession,
 ): TransformReadAcceleration {
   const acceleration = session.transformRead;
+  const readPlacement = acceleration?.readPlacement?.bind(acceleration);
   return {
     readBootstrap: () =>
       acceleration?.readBootstrap?.() ??
       readTransformBootstrapFallback(session),
+    ...(readPlacement ? { readPlacement } : {}),
     readTransforms: (request) => readTransformWindow(session, request),
   };
 }
