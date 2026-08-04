@@ -391,6 +391,7 @@ describe("useSelectionBridge", () => {
 
     expect(opts.resetExtended).toHaveBeenCalled();
     expect(opts.publishSelection).toHaveBeenCalledWith({
+      stage: null,
       count: null,
       decorate: null,
     });

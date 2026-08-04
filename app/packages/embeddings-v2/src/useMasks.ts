@@ -22,7 +22,7 @@ export function useMasks(
   /** Whether the server can answer masks for this run. An extension-owned run
    * resolves its own view/filter masks from its storage, and its points are
    * not sample-keyed, so the server cannot answer for it at all. */
-  serverMasks: boolean = true,
+  serverMasks = true,
 ): {
   visibleMask: Uint8Array | null;
   visibleCount: number | null;

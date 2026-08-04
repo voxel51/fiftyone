@@ -51,7 +51,7 @@ export function SettingsMenu({
         onClick={() => setOpen((o) => !o)}
       />
       {open && (
-        <div className="emb-facet-panel emb-settings-panel" role="menu">
+        <div className="emb-facet-panel emb-settings-panel">
           {renderBefore?.(close)}
 
           {/* A ramp is a choice about where contrast sits, so the swatch is
@@ -67,6 +67,7 @@ export function SettingsMenu({
               key={id}
               type="button"
               className="emb-facet-row"
+              aria-pressed={rampId === id}
               onClick={() => id !== rampId && onRampChange(id)}
             >
               <span className="emb-facet-check">

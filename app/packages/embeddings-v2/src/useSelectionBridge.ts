@@ -100,6 +100,7 @@ export function useSelectionBridge({
     // published in; the count is what the chip and the panel tab's pill
     // both read
     publishSelection({
+      stage: null,
       count: null,
       decorate: decorateSelection?.(null) ?? null,
     });
@@ -173,6 +174,7 @@ export function useSelectionBridge({
     if (!kept.length) {
       resetExtended();
       publishSelection({
+        stage: null,
         count: null,
         decorate: decorateSelection?.(null) ?? null,
       });

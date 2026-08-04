@@ -12,12 +12,19 @@ function isLassoGesture(polygon: Polygon): boolean {
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
-  for (const [x, y] of polygon) {
+  // Twice the polygon's signed area (shoelace formula); zero means every
+  // point is collinear, so the "polygon" has no interior to select with
+  let signedArea2 = 0;
+  for (let i = 0; i < polygon.length; i++) {
+    const [x, y] = polygon[i];
+    const [nx, ny] = polygon[(i + 1) % polygon.length];
     if (x < minX) minX = x;
     if (x > maxX) maxX = x;
     if (y < minY) minY = y;
     if (y > maxY) maxY = y;
+    signedArea2 += x * ny - nx * y;
   }
+  if (signedArea2 === 0) return false;
   return Math.hypot(maxX - minX, maxY - minY) >= LASSO_MIN_EXTENT_PX;
 }
 

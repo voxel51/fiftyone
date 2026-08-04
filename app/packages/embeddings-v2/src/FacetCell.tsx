@@ -13,7 +13,7 @@
  * coordinates are relative to that cell's canvas.
  */
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 import HoverCard from "./HoverCard";
 import "./panel.css";
 import {
@@ -89,6 +89,10 @@ export default function FacetCell({
   hover,
 }: FacetCellProps) {
   const sceneRef = useRef<HTMLDivElement>(null);
+  const setChart = useCallback(
+    (handle: EmbeddingsViewHandle | null) => registerChart(cellKey, handle),
+    [cellKey, registerChart],
+  );
 
   const label = [rowLabel, colLabel].filter((v) => v !== null).join(" · ");
   const showHover = hover != null && visible[hover.hit.index] === 1;
@@ -107,7 +111,7 @@ export default function FacetCell({
       )}
       <div ref={sceneRef} className="emb-facet-cell-scene">
         <EmbeddingsView
-          ref={(handle) => registerChart(cellKey, handle)}
+          ref={setChart}
           points={loaded.points}
           colors={colors}
           visible={visible}

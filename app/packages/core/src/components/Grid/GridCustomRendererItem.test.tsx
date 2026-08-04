@@ -82,8 +82,9 @@ describe("GridCustomRendererItem", () => {
     ));
     const host = document.createElement("div");
     document.body.appendChild(host);
+    let looker: GridCustomRendererItem | undefined;
     try {
-      const looker = new GridCustomRendererItem({
+      looker = new GridCustomRendererItem({
         pluginName: "mcap-renderer",
         Renderer: () => <div data-testid="renderer" />,
         RecoilBridge: TestBridge,
@@ -101,6 +102,7 @@ describe("GridCustomRendererItem", () => {
         ).toBeTruthy();
       });
     } finally {
+      looker?.destroy();
       unregister();
       host.remove();
     }
@@ -109,8 +111,9 @@ describe("GridCustomRendererItem", () => {
   it("renders no edition overlay before anything registers", async () => {
     const host = document.createElement("div");
     document.body.appendChild(host);
+    let looker: GridCustomRendererItem | undefined;
     try {
-      const looker = new GridCustomRendererItem({
+      looker = new GridCustomRendererItem({
         pluginName: "mcap-renderer",
         Renderer: () => <div data-testid="renderer" />,
         RecoilBridge: TestBridge,
@@ -129,6 +132,7 @@ describe("GridCustomRendererItem", () => {
         host.querySelector("[data-testid='registered-overlay']"),
       ).toBeNull();
     } finally {
+      looker?.destroy();
       host.remove();
     }
   });
@@ -443,9 +447,14 @@ describe("GridCustomRendererItem", () => {
     // How the grid actually destroys items: the looker cache evicts during a
     // render, so destroy() lands in an effect cleanup while React is mid-commit
     // — unmounting the plugin's own root from there warned and raced the commit
+    const rendererUnmounted = vi.fn();
+    const TestRenderer = () => {
+      React.useEffect(() => () => rendererUnmounted(), [rendererUnmounted]);
+      return <div data-testid="rendered" />;
+    };
     const looker = new GridCustomRendererItem({
       pluginName: "renderer",
-      Renderer: () => <div data-testid="rendered" />,
+      Renderer: TestRenderer,
       RecoilBridge: TestBridge,
       ctx: BASE_CTX as any,
       symbol: BASE_SYMBOL,
@@ -453,6 +462,10 @@ describe("GridCustomRendererItem", () => {
     const host = document.createElement("div");
     document.body.appendChild(host);
     looker.attach(host, [320, 180], 14);
+
+    await waitFor(() =>
+      expect(host.querySelector("[data-testid='rendered']")).toBeTruthy(),
+    );
 
     const Evictor = () => {
       React.useEffect(() => () => looker.destroy(), []);
@@ -466,7 +479,7 @@ describe("GridCustomRendererItem", () => {
 
     unmount();
     // The deferred unmount has to actually happen, not merely be postponed
-    await waitFor(() => expect(host.childElementCount).toBe(0));
+    await waitFor(() => expect(rendererUnmounted).toHaveBeenCalledTimes(1));
 
     expect(
       consoleErrorSpy.mock.calls.some((call) =>

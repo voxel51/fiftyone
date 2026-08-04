@@ -23,8 +23,8 @@ function hostileStorage() {
 
 describe("run settings storage", () => {
   beforeEach(() => {
-    window.localStorage.clear();
     vi.restoreAllMocks();
+    window.localStorage.clear();
   });
 
   it("gives a run back the settings it was last read with", () => {

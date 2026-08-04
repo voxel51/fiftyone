@@ -147,18 +147,21 @@ describe("LassoOverlay", () => {
   });
 
   it("skips sub-3px moves to keep the polygon small", () => {
+    // Last point off the (0,0)-(10,10) line: a collinear drag has no
+    // enclosing area and would otherwise be rejected as a degenerate lasso,
+    // which isn't what this test is about
     drag([
       [0, 0],
       [1, 1],
       [2, 2],
       [10, 10],
-      [20, 20],
+      [20, 21],
     ]);
     const polygon = onComplete.mock.calls[0][0];
     expect(polygon).toEqual([
       [0, 0],
       [10, 10],
-      [20, 20],
+      [20, 21],
     ]);
   });
 

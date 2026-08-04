@@ -109,7 +109,7 @@ export const RAMP_IDS = Object.keys(RAMPS) as RampId[];
  * given build, so a renamed or dropped ramp comes back as a string that would
  * index RAMPS to undefined. */
 export const isRampId = (value: unknown): value is RampId =>
-  typeof value === "string" && value in RAMPS;
+  typeof value === "string" && Object.hasOwn(RAMPS, value);
 
 /** The rgb at position `t` in [0, 1] along a ramp's stops. */
 function rampAt(ramp: Ramp, t: number): Rgb {

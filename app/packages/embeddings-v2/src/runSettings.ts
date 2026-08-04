@@ -35,10 +35,10 @@ export interface RunSettings {
 
 type Store = Record<string, RunSettings>;
 
-/** NUL-joined: a dataset or brain key containing the separator would otherwise
- * collide with a different run whose halves split the other way. */
+/** Serialized as a tuple so the two identifiers can't collide by splitting a
+ * shared separator differently. */
 const runKey = (datasetName: string, brainKey: string): string =>
-  `${datasetName}\u0000${brainKey}`;
+  JSON.stringify([datasetName, brainKey]);
 
 function readStore(): Store {
   try {

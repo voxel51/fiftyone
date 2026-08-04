@@ -337,9 +337,6 @@
   border: 1px solid var(--emb-border-subtle);
   background: var(--emb-card-elevated);
   box-shadow: 0 6px 20px rgb(0 0 0 / 0.4);
-}
-
-.emb-facet-panel {
   top: calc(100% + 4px);
   /* Facet is the leftmost control, so the panel opens left-aligned and the
      submenu extends further RIGHT into the header/scene (room is there) */
@@ -351,11 +348,20 @@
 }
 
 /* Settings cog sits at the right of the header, so its panel opens
-   right-aligned (left:0 would push it off-screen) */
+   right-aligned (left:0 would push it off-screen). Three sections of
+   controls outgrow a short panel, and the bottom one holds the result cap —
+   a menu that cannot be scrolled to hides a setting. Safe here where it is
+   not on .emb-facet-panel: the cog's menu has no submenu positioned outside
+   it to clip away */
 .emb-settings-panel {
   left: auto;
   right: 0;
   min-width: 15rem;
+  max-height: min(70vh, 34rem);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--emb-fg) 25%, transparent)
+    transparent;
 }
 
 /* Two-line option (label + hint); plain direction, unlike the rtl stream
@@ -374,18 +380,6 @@
   height: 0.375rem;
   border-radius: 9999px;
   margin: 0.1875rem 0;
-}
-
-/* Three sections of controls outgrow a short panel, and the bottom one holds
-   the result cap — a menu that cannot be scrolled to hides a setting. Safe
-   here where it is not on .emb-facet-panel: the cog's menu has no submenu
-   positioned outside it to clip away */
-.emb-settings-panel {
-  max-height: min(70vh, 34rem);
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--emb-fg) 25%, transparent)
-    transparent;
 }
 
 .emb-facet-section {
@@ -435,6 +429,7 @@
   white-space: nowrap;
   /* show the meaningful tail of long stream paths */
   direction: rtl;
+  unicode-bidi: plaintext;
   text-align: left;
 }
 
@@ -676,6 +671,7 @@
   /* Clip the head, keep the meaningful tail of a dotted field path
      (SEMANTIC_LABELS.label); full value via the title tooltip */
   direction: rtl;
+  unicode-bidi: plaintext;
   text-align: left;
 }
 
@@ -827,6 +823,7 @@
      (human.pedestrian.adult, /CAM_BACK/image_rect_compressed) the meaningful
      part is the end, so clip the left and keep the suffix visible */
   direction: rtl;
+  unicode-bidi: plaintext;
   text-align: left;
 }
 
@@ -869,6 +866,7 @@
   white-space: nowrap;
   /* Show the meaningful tail of long stream paths / model tags */
   direction: rtl;
+  unicode-bidi: plaintext;
   text-align: left;
 }
 
@@ -971,9 +969,9 @@
   gap: 8px;
   max-width: min(560px, calc(100% - 32px));
   padding: 8px 10px 8px 12px;
-  border: 1px solid var(--fo-palette-divider, rgba(255, 255, 255, 0.15));
+  border: 1px solid var(--emb-border-subtle);
   border-radius: 6px;
-  background: var(--fo-palette-background-level1, #262626);
+  background: var(--emb-card-elevated);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
@@ -987,5 +985,5 @@
 }
 
 .emb-toast-close:hover {
-  background: var(--fo-palette-background-level2, rgba(255, 255, 255, 0.08));
+  background: color-mix(in srgb, var(--emb-fg) 8%, transparent);
 }

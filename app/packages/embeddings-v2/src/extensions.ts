@@ -34,7 +34,7 @@ import { useLocalColorMask } from "./useLocalColorMask";
 
 /** The panel's interaction mode: the renderer's own modes, plus at most one
  * extension-registered mode (see {@link RunFeatures.extraMode}). */
-export type PanelMode = InteractionMode | (string & {});
+export type PanelMode = InteractionMode | (string & NonNullable<unknown>);
 
 /** Streams a run's geometry client-side. Present only once the extension
  * holds the run's access path; absent → server streaming. */

@@ -103,14 +103,27 @@ export function useSampleRendererEmbeddingWindows(
     if (!selection || !episodeId) return NO_WINDOWS;
     const marks = selection.byEpisode[episodeId];
     if (!marks || marks.length === 0) return NO_WINDOWS;
-    return marks.map((m, i) => ({
-      // Synthetic, stable per (episode, stream, time) — a namespace for the
-      // read-only track id, NOT a fiftyone label id (none exist here).
-      labelId: `${episodeId}:${m.stream}:${m.startNs}:${i}`,
-      stream: m.stream,
-      startNs: BigInt(m.startNs),
-      endNs: BigInt(m.endNs),
-    }));
+    const windows: EmbeddingWindow[] = [];
+    marks.forEach((m, i) => {
+      let startNs: bigint;
+      let endNs: bigint;
+      try {
+        startNs = BigInt(m.startNs);
+        endNs = BigInt(m.endNs);
+      } catch {
+        // A malformed mark must not take the whole tile's selection down with it
+        return;
+      }
+      windows.push({
+        // Synthetic, stable per (episode, stream, time) — a namespace for the
+        // read-only track id, NOT a fiftyone label id (none exist here).
+        labelId: `${episodeId}:${m.stream}:${m.startNs}:${i}`,
+        stream: m.stream,
+        startNs,
+        endNs,
+      });
+    });
+    return windows.length === 0 ? NO_WINDOWS : windows;
   }, [selection, episodeId]);
 }
 

@@ -605,8 +605,8 @@ export function useRegisterMcapDataStream({
 
     autoSeekSourceEpochRef.current = currentEpoch;
     trace("seeking", { targetSec });
-    seek(targetSec);
-  }, [firstDataTimeNs, seek, store]);
+    seekRef.current(targetSec);
+  }, [firstDataTimeNs, store]);
 
   // Pending helpers — wrap the per-tick topic sets so call sites read
   // like simple predicates instead of repeating the get/has dance.

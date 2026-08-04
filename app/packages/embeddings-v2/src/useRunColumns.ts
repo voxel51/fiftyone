@@ -34,7 +34,7 @@ export function useRunColumns(
   loadGeometry: GeometryLoader | null = null,
   /** Whether an extension owns this run: gates the wait for its loader, so a
    * run whose loader is still resolving does not fall through to the server */
-  ownsGeometry: boolean = false,
+  ownsGeometry = false,
 ): { loaded: Loaded | null; error: string | null } {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
