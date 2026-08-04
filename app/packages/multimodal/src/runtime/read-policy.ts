@@ -101,8 +101,8 @@ export function createEpisodePlaybackRuntime(
     readStreamTimeBounds: (streams) =>
       acceleration?.readStreamTimeBounds(streams) ??
       Promise.resolve(streamTimeBoundsFromManifest(session.manifest, streams)),
-    readSynchronized: (request, options) =>
-      acceleration?.readSynchronized(request, options) ??
+    readSynchronized: (request) =>
+      acceleration?.readSynchronized(request) ??
       readSynchronizedPlaybackFallback(session, request),
     readSynchronizedBatch: (request, options) =>
       acceleration?.readSynchronizedBatch(request, options) ??

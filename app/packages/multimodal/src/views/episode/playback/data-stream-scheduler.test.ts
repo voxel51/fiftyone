@@ -74,7 +74,7 @@ describe("DataStreamScheduler", () => {
     expect(harness.prefetcher.fetchCurrentFrame.mock.calls.slice(0, 2)).toEqual(
       [
         [0n, ["/camera/left", "/camera/right"]],
-        [0n, ["/lidar"], { isolation: "isolated" }],
+        [0n, ["/lidar"]],
       ],
     );
   });
@@ -107,7 +107,7 @@ describe("DataStreamScheduler", () => {
     expect(harness.prefetcher.fetchCurrentFrame.mock.calls.slice(0, 2)).toEqual(
       [
         [0n, ["/camera/left", "/camera/right"]],
-        [0n, ["/lidar"], { isolation: "isolated" }],
+        [0n, ["/lidar"]],
       ],
     );
     expect(harness.prefetcher.fetchBatch).toHaveBeenCalledWith(
@@ -145,7 +145,6 @@ describe("DataStreamScheduler", () => {
       expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenLastCalledWith(
         latestTick,
         ["/lidar"],
-        { isolation: "isolated" },
       );
     } finally {
       vi.useRealTimers();
@@ -202,7 +201,6 @@ describe("DataStreamScheduler", () => {
       expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenLastCalledWith(
         harness.prefetcher.fetchCurrentFrame.mock.calls[3]?.[0],
         ["/lidar"],
-        { isolation: "isolated" },
       );
     } finally {
       vi.useRealTimers();
@@ -665,10 +663,8 @@ function createSchedulerHarness({
     >(() => [9_000_000_000n]),
     fetchBatch: vi.fn(() => true),
     fetchCurrentFrame: vi.fn<DataStreamPrefetcher["fetchCurrentFrame"]>(
-      (_tick, _activeStreams, options) => {
-        if (options?.onSettled) {
-          currentFrameSettlers.push(options.onSettled);
-        }
+      (_tick, _activeStreams, onSettled) => {
+        if (onSettled) currentFrameSettlers.push(onSettled);
         return true;
       },
     ),

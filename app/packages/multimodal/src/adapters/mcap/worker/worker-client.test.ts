@@ -437,49 +437,6 @@ describe("worker-backed MCAP resource client", () => {
     await expect(idle).resolves.toEqual([]);
   });
 
-  it("isolates heavy current-frame work on a second interactive worker", async () => {
-    const { client, workers } = createClientHarness();
-    const source = createSource("source:1");
-    const image = client.readSynchronizedMessages({
-      timeNs: 1n,
-      source,
-      topics: ["/camera"],
-    });
-    const heavy = client.readSynchronizedMessages(
-      {
-        timeNs: 1n,
-        source,
-        topics: ["/lidar"],
-      },
-      { isolation: "isolated" },
-    );
-
-    expect(workers).toHaveLength(2);
-    expect(workers[0].messages[0]).toMatchObject({
-      payload: { fillSlotClass: "priority", lane: "interactive" },
-      type: "init",
-    });
-    expect(workers[1].messages[0]).toMatchObject({
-      payload: { fillSlotClass: "priority", lane: "interactive-heavy" },
-      type: "init",
-    });
-    expect(workers[0].messages[1]).toMatchObject({
-      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-      type: "readSynchronizedMessages",
-    });
-    expect(workers[1].messages[1]).toMatchObject({
-      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
-      type: "readSynchronizedMessages",
-    });
-
-    const imageWindow = createSynchronizedWindow(1n);
-    const heavyWindow = createSynchronizedWindow(1n);
-    workers[0].respond({ id: 1, ok: true, result: imageWindow });
-    workers[1].respond({ id: 1, ok: true, result: heavyWindow });
-    await expect(image).resolves.toEqual(imageWindow);
-    await expect(heavy).resolves.toEqual(heavyWindow);
-  });
-
   it("admits a current frame while foreground playback is unresolved", async () => {
     const { client, workers } = createClientHarness();
     const source = createSource("source:1");

@@ -93,10 +93,7 @@ export interface DataStreamPrefetcher {
   fetchCurrentFrame(
     tick: bigint,
     activeStreams: string[],
-    options?: {
-      readonly isolation?: "isolated" | "shared";
-      readonly onSettled?: () => void;
-    },
+    onSettled?: () => void,
   ): boolean;
   isStreamPending(tickKey: string, stream: string): boolean;
 }
@@ -358,7 +355,7 @@ export function createDataStreamPrefetcher({
   const fetchCurrentFrame: DataStreamPrefetcher["fetchCurrentFrame"] = (
     tick,
     activeStreams,
-    options,
+    onSettled,
   ) => {
     if (activeStreams.length === 0) return false;
 
@@ -369,25 +366,18 @@ export function createDataStreamPrefetcher({
         !caches.get(stream)?.has(tick) && !isStreamPending(tickKey, stream),
     );
     if (streamsToFetch.length === 0) {
-      notifyWhenCurrentFrameStreamsSettle(
-        tickKey,
-        activeStreams,
-        options?.onSettled,
-      );
+      notifyWhenCurrentFrameStreamsSettle(tickKey, activeStreams, onSettled);
       return false;
     }
 
     markStreamsPending([tickKey], streamsToFetch);
     const settlement = playback
-      .readSynchronized(
-        {
-          pointCloudColorBy: getPointCloudColorBy(),
-          streamPolicies: getStreamPolicies(),
-          streams: streamsToFetch,
-          timeNs: tick,
-        },
-        options?.isolation ? { isolation: options.isolation } : undefined,
-      )
+      .readSynchronized({
+        pointCloudColorBy: getPointCloudColorBy(),
+        streamPolicies: getStreamPolicies(),
+        streams: streamsToFetch,
+        timeNs: tick,
+      })
       .then((window) => {
         if (getSourceEpoch() !== sourceEpoch) return;
         const decodeFailures = decodeFailuresByStream([window]);
@@ -441,11 +431,7 @@ export function createDataStreamPrefetcher({
         }
       });
     trackCurrentFrameSettlement(tickKey, streamsToFetch, settlement);
-    notifyWhenCurrentFrameStreamsSettle(
-      tickKey,
-      activeStreams,
-      options?.onSettled,
-    );
+    notifyWhenCurrentFrameStreamsSettle(tickKey, activeStreams, onSettled);
 
     return true;
   };
@@ -626,57 +612,52 @@ export class DataStreamScheduler {
       !getIsPlayPending(this.options.store);
     if (!coalesceRemainingStreams) {
       this.options.prefetcher.fetchCurrentFrame(tick, firstStreams);
-      this.options.prefetcher.fetchCurrentFrame(tick, remainingStreams, {
-        isolation: "isolated",
-      });
+      this.options.prefetcher.fetchCurrentFrame(tick, remainingStreams);
       return;
     }
-    this.options.prefetcher.fetchCurrentFrame(tick, firstStreams, {
-      onSettled: () => {
-        const admitRemainingStreams = () => {
-          if (
-            this.currentFrameTargetVersion !== targetVersion ||
-            this.currentFrameTargetTick !== tick
-          ) {
-            return;
-          }
-          const currentTick = this.options
-            .getIndex()
-            ?.nearestTick(getPlayhead(this.options.store));
-          if (currentTick !== tick) return;
-
-          const activeSet = new Set(this.options.getActiveStreams());
-          const activeRemainingStreams = remainingStreams.filter((stream) =>
-            activeSet.has(stream),
-          );
-          if (activeRemainingStreams.length > 0) {
-            this.options.prefetcher.fetchCurrentFrame(
-              tick,
-              activeRemainingStreams,
-              { isolation: "isolated" },
-            );
-          }
-        };
-
-        const burstDelayMs =
-          !getIsPlaying(this.options.store) &&
-          !getIsPlayPending(this.options.store) &&
-          this.currentFrameBurstUntilMs !== null
-            ? Math.max(0, this.currentFrameBurstUntilMs - monotonicNowMs())
-            : 0;
-        if (burstDelayMs <= 0) {
-          admitRemainingStreams();
+    this.options.prefetcher.fetchCurrentFrame(tick, firstStreams, () => {
+      const admitRemainingStreams = () => {
+        if (
+          this.currentFrameTargetVersion !== targetVersion ||
+          this.currentFrameTargetTick !== tick
+        ) {
           return;
         }
+        const currentTick = this.options
+          .getIndex()
+          ?.nearestTick(getPlayhead(this.options.store));
+        if (currentTick !== tick) return;
 
-        if (this.deferredCurrentFrameTimer !== null) {
-          clearTimeout(this.deferredCurrentFrameTimer);
+        const activeSet = new Set(this.options.getActiveStreams());
+        const activeRemainingStreams = remainingStreams.filter((stream) =>
+          activeSet.has(stream),
+        );
+        if (activeRemainingStreams.length > 0) {
+          this.options.prefetcher.fetchCurrentFrame(
+            tick,
+            activeRemainingStreams,
+          );
         }
-        this.deferredCurrentFrameTimer = setTimeout(() => {
-          this.deferredCurrentFrameTimer = null;
-          admitRemainingStreams();
-        }, burstDelayMs);
-      },
+      };
+
+      const burstDelayMs =
+        !getIsPlaying(this.options.store) &&
+        !getIsPlayPending(this.options.store) &&
+        this.currentFrameBurstUntilMs !== null
+          ? Math.max(0, this.currentFrameBurstUntilMs - monotonicNowMs())
+          : 0;
+      if (burstDelayMs <= 0) {
+        admitRemainingStreams();
+        return;
+      }
+
+      if (this.deferredCurrentFrameTimer !== null) {
+        clearTimeout(this.deferredCurrentFrameTimer);
+      }
+      this.deferredCurrentFrameTimer = setTimeout(() => {
+        this.deferredCurrentFrameTimer = null;
+        admitRemainingStreams();
+      }, burstDelayMs);
     });
   }
 

@@ -935,27 +935,20 @@ class McapEpisodeSession implements EpisodeSession {
           streamId: this.streamIdFor(bound.topic),
         }));
       },
-      readSynchronized: async (request, options) => {
+      readSynchronized: async (request) => {
         this.ensureOpen();
         try {
-          const window = await this.client.readSynchronizedMessages(
-            {
-              activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-              defaultStreamPolicy: toMcapSyncPolicy(
-                request.defaultStreamPolicy,
-              ),
-              pointCloudColorByByTopic: this.toMcapPointCloudColorBy(
-                request.pointCloudColorBy,
-              ),
-              source: this.source,
-              streamPolicies: this.toMcapSyncPolicies(request.streamPolicies),
-              timeNs: request.timeNs,
-              topics: request.streams.map((stream) =>
-                this.sourceNameFor(stream),
-              ),
-            },
-            options,
-          );
+          const window = await this.client.readSynchronizedMessages({
+            activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+            defaultStreamPolicy: toMcapSyncPolicy(request.defaultStreamPolicy),
+            pointCloudColorByByTopic: this.toMcapPointCloudColorBy(
+              request.pointCloudColorBy,
+            ),
+            source: this.source,
+            streamPolicies: this.toMcapSyncPolicies(request.streamPolicies),
+            timeNs: request.timeNs,
+            topics: request.streams.map((stream) => this.sourceNameFor(stream)),
+          });
           return this.fromMcapWindow(window);
         } catch (error) {
           throw this.normalizeReadError(error);
