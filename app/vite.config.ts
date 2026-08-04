@@ -8,9 +8,10 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
-    // reuse each worker's module graph across test files instead of
-    // re-importing per file; files needing fresh module state must mock it
-    isolate: false,
+    // fresh module registry per file (so vi.mock stays file-local) over a
+    // shared compiled-code cache — keeps most of the import savings without
+    // cross-file module-graph leakage
+    pool: "vmThreads",
     server: {
       deps: {
         inline: ["plotly.js", "react-plotly.js", "@rjsf/mui", "@rjsf/core"],
