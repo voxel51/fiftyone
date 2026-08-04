@@ -67,53 +67,9 @@ SELECT_STAGE_MAX = 10000
 
 _HEADER_FORMAT = "<IHBBII"
 
-_VISUALIZATION_CLS = "fiftyone.brain.visualization."
-
-
 def get_sample_filter(slices):
     if slices:
         return SampleFilter(group=GroupElementFilter(id=None, slices=slices))
-
-
-class EmbeddingsV2Runs(HTTPEndpoint):
-    @route
-    async def post(self, request: Request, data: dict) -> dict:
-        """Lists the dataset's visualization runs (cheap; run docs only)."""
-        return await run_sync_task(self._post_sync, data)
-
-    def _post_sync(self, data):
-        dataset_name = data["datasetName"]
-        dataset = fosu.load_and_cache_dataset(dataset_name)
-
-        runs = []
-        for brain_key in dataset.list_brain_runs():
-            info = dataset.get_brain_info(brain_key)
-            config = info.config
-            if not config.cls.startswith(_VISUALIZATION_CLS):
-                continue
-
-            # Results-blob POINTER presence, not a blob load: the run
-            # doc's GridFS reference is only set once results are saved,
-            # so a run mid-computation (or whose computation died) lists
-            # as not ready. Presence says nothing about how the run
-            # ended — status semantics beyond ready/pending need the
-            # run-status sidecar
-            ready = bool(dataset._doc.brain_methods[brain_key].results)
-
-            runs.append(
-                {
-                    "brainKey": brain_key,
-                    "method": getattr(config, "method", None),
-                    "dims": getattr(config, "num_dims", None),
-                    "patchesField": getattr(config, "patches_field", None),
-                    "pointsField": getattr(config, "points_field", None),
-                    "model": getattr(config, "model", None),
-                    "ready": ready,
-                    "timestamp": _timestamp(info),
-                }
-            )
-
-        return {"runs": runs}
 
 
 class EmbeddingsV2RunInfo(HTTPEndpoint):
@@ -443,7 +399,6 @@ class EmbeddingsV2SampleInfo(HTTPEndpoint):
 
 
 EmbeddingsV2Routes = [
-    ("/embeddings/v2/runs", EmbeddingsV2Runs),
     ("/embeddings/v2/run-info", EmbeddingsV2RunInfo),
     ("/embeddings/v2/geometry", EmbeddingsV2Geometry),
     ("/embeddings/v2/ids", EmbeddingsV2Ids),

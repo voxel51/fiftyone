@@ -20,12 +20,16 @@ export default graphql`
       version
       timestamp
       viewStages
+      ready
       config {
         cls
         embeddingsField
         method
         patchesField
         supportsPrompts
+        numDims
+        pointsField
+        model
         type
         maxK
         supportsLeastSimilarity

@@ -99,19 +99,9 @@ def _make_patches_run():
 
 class ServerEmbeddingsV2Tests(unittest.TestCase):
     @drop_datasets
-    def test_runs_and_run_info(self):
+    def test_run_info(self):
         dataset, points = _make_samples_run()
         base = {"datasetName": dataset.name, "brainKey": "viz"}
-
-        runs = v2.EmbeddingsV2Runs._post_sync(
-            None, {"datasetName": dataset.name}
-        )["runs"]
-        self.assertEqual(len(runs), 1)
-        self.assertEqual(runs[0]["brainKey"], "viz")
-        self.assertEqual(runs[0]["method"], "manual")
-        self.assertEqual(runs[0]["dims"], 2)
-        self.assertTrue(runs[0]["ready"])
-        self.assertIsNotNone(runs[0]["timestamp"])
 
         info = v2.EmbeddingsV2RunInfo._post_sync(None, base)
         self.assertEqual(info["n"], len(points))
@@ -119,20 +109,27 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         self.assertIsNone(info["patchesField"])
         self.assertIsNotNone(info["timestamp"])
 
-    @drop_datasets
-    def test_runs_without_results_are_not_ready(self):
+    def test_dataset_query_reports_run_readiness(self):
         # A run doc exists as soon as a computation registers, but its
         # results-blob pointer is only set when results save — clicking
-        # such a run must be preventable, so the list reports readiness
-        dataset, _ = _make_samples_run()
-        run_doc = dataset._doc.brain_methods["viz"]
-        run_doc.results = None
-        run_doc.save()
+        # such a run must be preventable, so the dataset query reports
+        # readiness on every brain run (presence of the reference, never
+        # a load of it)
+        from fiftyone.server.query import Dataset as DatasetQuery
 
-        runs = v2.EmbeddingsV2Runs._post_sync(
-            None, {"datasetName": dataset.name}
-        )["runs"]
-        self.assertFalse(runs[0]["ready"])
+        doc = {
+            "_id": "5f99d2eb0e6c99c377f8886c",
+            "brain_methods": {
+                "done": {"key": "done", "results": "gridfs-ref"},
+                "pending": {"key": "pending", "results": None},
+            },
+        }
+        modified = DatasetQuery.modifier(doc)
+        ready = {
+            run["key"]: run["ready"] for run in modified["brain_methods"]
+        }
+        self.assertTrue(ready["done"])
+        self.assertFalse(ready["pending"])
 
     @drop_datasets
     def test_geometry_columns(self):

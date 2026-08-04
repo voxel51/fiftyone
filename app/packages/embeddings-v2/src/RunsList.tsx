@@ -42,7 +42,6 @@ const formatTimestamp = (timestamp: string | null): string | null => {
 
 export default function RunsList({
   runs,
-  error,
   actionError = null,
   showUpsell = true,
   onCreate,
@@ -50,7 +49,6 @@ export default function RunsList({
   onDelete,
 }: {
   runs: VisualizationRun[] | null;
-  error: string | null;
   /** A failed mutation (e.g. delete); shown without replacing the list */
   actionError?: string | null;
   /** Advertise capabilities this build lacks; off where they exist */
@@ -75,9 +73,9 @@ export default function RunsList({
     anchor: HTMLElement;
   } | null>(null);
 
-  // Polling can delete a run or flip its readiness under an open menu or
-  // an armed confirmation; both must not outlive the ready card they
-  // belong to (a recreated same-name run must not inherit them)
+  // A refreshed run list can delete a run or flip its readiness under an
+  // open menu or an armed confirmation; both must not outlive the ready
+  // card they belong to (a recreated same-name run must not inherit them)
   useEffect(() => {
     const isReady = (key: string | null) =>
       Boolean(key && runs?.some((r) => r.brainKey === key && r.ready));
@@ -128,18 +126,6 @@ export default function RunsList({
       </IconButton>
     );
   };
-
-  if (error) {
-    return (
-      <div className="emb-runs-page">
-        <div className="emb-runs-center">
-          <Text variant={TextVariant.Md} color={TextColor.Destructive}>
-            {error}
-          </Text>
-        </div>
-      </div>
-    );
-  }
 
   if (!runs) {
     return (

@@ -110,6 +110,12 @@ class BrainRunConfig(RunConfig):
     method: t.Optional[str]
     patches_field: t.Optional[str]
     supports_prompts: t.Optional[bool]
+    #: Visualization runs. Carried here so a plot can list and open a run from
+    #: the dataset query the App already makes, rather than asking a route for
+    #: what this document already holds
+    num_dims: t.Optional[int]
+    points_field: t.Optional[str]
+    model: t.Optional[str]
 
     @gql.field
     def type(self) -> t.Optional[BrainRunType]:
@@ -148,6 +154,11 @@ class BrainRunConfig(RunConfig):
 @gql.type
 class BrainRun(Run):
     config: t.Optional[BrainRunConfig]
+    #: Whether the run's results have been saved. The results reference is set
+    #: only once a computation finishes, so a run that is still computing (or
+    #: whose computation died) reports False. See ``Dataset.modifier``, which
+    #: derives this rather than exposing the reference itself
+    ready: t.Optional[bool]
 
 
 @gql.type
@@ -321,7 +332,12 @@ class Dataset:
         doc["sample_fields"] = flat
 
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
-        doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
+        # ``ready`` is the presence of the results reference, never a load of
+        # it — the reference itself stays server-side
+        doc["brain_methods"] = [
+            {**run, "ready": run.get("results") is not None}
+            for run in doc.get("brain_methods", {}).values()
+        ]
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
         doc["saved_views"] = doc.get("saved_views", [])
         doc["skeletons"] = list(

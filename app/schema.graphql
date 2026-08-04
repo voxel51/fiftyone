@@ -116,7 +116,7 @@ type BrainRun implements Run {
   version: String
   timestamp: datetime
   config: BrainRunConfig
-  viewStages: [String!]
+  viewStages: [String!]  ready: Boolean
 }
 
 type BrainRunConfig implements RunConfig {
@@ -125,6 +125,9 @@ type BrainRunConfig implements RunConfig {
   method: String
   patchesField: String
   supportsPrompts: Boolean
+  numDims: Int
+  pointsField: String
+  model: String
   type: BrainRunType
   maxK: Int
   supportsLeastSimilarity: Boolean

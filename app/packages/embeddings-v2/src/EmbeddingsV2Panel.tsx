@@ -71,7 +71,10 @@ export default function EmbeddingsV2Panel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetName]);
 
-  const { runs, error, refresh } = useVisualizationRuns(datasetName);
+  // The runs come from the dataset the page already loaded; deleting one
+  // refetches that query rather than a list this panel owns
+  const { runs } = useVisualizationRuns();
+  const refresh = fos.useRefresh();
   const deleteExecutor = useOperatorExecutor(DELETE_RUN_OPERATOR);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -113,7 +116,6 @@ export default function EmbeddingsV2Panel() {
   return (
     <RunsList
       runs={runs}
-      error={error}
       actionError={actionError}
       onOpen={handleOpen}
       onDelete={handleDelete}

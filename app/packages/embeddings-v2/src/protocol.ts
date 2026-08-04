@@ -72,18 +72,6 @@ export interface Geometry {
 /** Raw 12-byte ObjectIds in wire order; decode lazily via idAt() */
 export type IdColumn = Uint8Array;
 
-export async function fetchRuns(
-  datasetName: string,
-): Promise<VisualizationRun[]> {
-  const response = await getFetchFunction()<
-    { datasetName: string },
-    { runs: (Omit<VisualizationRun, "ready"> & { ready?: boolean })[] }
-  >("POST", "/embeddings/v2/runs", { datasetName });
-  // Servers predating the flag omit it; absent means ready, or every
-  // run on an older deployment would render pending forever
-  return response.runs.map((run) => ({ ...run, ready: run.ready !== false }));
-}
-
 export interface RunInfo extends VisualizationRun {
   n: number;
 }
