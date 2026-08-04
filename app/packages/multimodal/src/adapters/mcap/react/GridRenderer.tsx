@@ -28,6 +28,7 @@ import {
 } from "./mcap-grid-stream-state";
 import { useMcapGridCameraPose } from "./mcap-grid-camera-state";
 import { mcapCameraScopeKey } from "./mcap-camera-scope";
+import { useSampleRendererFirstMatch } from "../../../extensions/mcap";
 import {
   useMcapGridPreview,
   type McapGridPreviewStatus,
@@ -76,9 +77,15 @@ export function GridRenderer({
   const [selectedStreamTopic] = useMcapGridSelectedStreamTopic(
     ctx.dataset.name,
   );
+  // A lasso/search in the embeddings panel posters this tile at its earliest
+  // matched window, so the still frame is the match rather than the recording
+  // start. Null whenever nothing matched this episode.
+  const firstMatch = useSampleRendererFirstMatch(ctx);
   const preview = useMcapGridPreview({
     enabled: visible,
     hovered,
+    posterStartTimeNs: firstMatch?.startNs ?? null,
+    posterStreamTopic: firstMatch?.stream ?? null,
     selectedStreamTopic:
       selectedStreamTopic === MCAP_GRID_STREAM_AUTO
         ? null

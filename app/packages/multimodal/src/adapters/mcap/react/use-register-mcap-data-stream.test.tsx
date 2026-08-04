@@ -131,6 +131,147 @@ describe("useRegisterMcapDataStream", () => {
     expect(client.readTopicTimeBounds).toHaveBeenCalledTimes(2);
   });
 
+  it("opens the recording at an embeddings match, not the first data tick", async () => {
+    const storeCapture = capturePlaybackStore();
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(
+        () =>
+          new Promise<readonly McapSynchronizedMessageWindow[]>(
+            () => undefined,
+          ),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+      readTopicTimeBounds: vi.fn(async () => [
+        {
+          firstMessageTimeNs: 0n,
+          lastMessageTimeNs: 1_000_000_000n,
+          topic: TOPIC,
+        },
+      ]),
+    });
+
+    render(
+      <Harness
+        client={client}
+        initialSeekTimeNs={500_000_000n}
+        onStore={storeCapture.onStore}
+        source={createSource("matched")}
+        subscribe={false}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+
+    // The match snaps forward to the tick that can render it; data starts at
+    // zero, so the first-data path this overrides would have left it there.
+    await waitFor(() => {
+      expect(getPlayhead(store)).toBeCloseTo(16 / 30, 3);
+    });
+    expect(getIsPlaying(store)).toBe(false);
+  });
+
+  it("waits for a duration that can hold the match before seeking to it", async () => {
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(
+        () =>
+          new Promise<readonly McapSynchronizedMessageWindow[]>(
+            () => undefined,
+          ),
+      ),
+      readTimelineRange: vi.fn(async () =>
+        createTimelineRange(20_000_000_000n),
+      ),
+      readTopicTimeBounds: vi.fn(async () => [
+        {
+          firstMessageTimeNs: 0n,
+          lastMessageTimeNs: 20_000_000_000n,
+          topic: TOPIC,
+        },
+      ]),
+    });
+
+    // A match well past the provider's 1s fallback duration. The engine
+    // clamps every seek to the duration known when it is called, so the
+    // opening seek must not be spent before a real length is published.
+    render(
+      <Harness
+        client={client}
+        initialSeekTimeNs={10_000_000_000n}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={createSource("late-duration")}
+        subscribe={false}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+    await waitFor(() => {
+      expect(client.readTopicTimeBounds).toHaveBeenCalled();
+    });
+
+    // A later stream publishing a longer duration must not disturb a match
+    // that already landed, and must let a withheld one through.
+    act(() => {
+      api?.registerStream({
+        blocking: false,
+        bufferState: () => "ready",
+        duration: 20,
+        id: "late-duration-stream",
+      } as Parameters<NonNullable<typeof api>["registerStream"]>[0]);
+    });
+
+    // 10s snaps up to the next 1/30s tick the index can render.
+    await waitFor(() => {
+      expect(getPlayhead(store)).toBeCloseTo(10.03, 1);
+    });
+  });
+
+  it("leaves a match seek unapplied once the viewer has scrubbed", async () => {
+    const timeline = deferred<McapTimelineRange>();
+    const storeCapture = capturePlaybackStore();
+    let api: ReturnType<typeof usePlayback> | undefined;
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(
+        () =>
+          new Promise<readonly McapSynchronizedMessageWindow[]>(
+            () => undefined,
+          ),
+      ),
+      readTimelineRange: vi.fn(() => timeline.promise),
+    });
+
+    render(
+      <Harness
+        client={client}
+        initialSeekTimeNs={500_000_000n}
+        onApi={(value) => {
+          api = value;
+        }}
+        onStore={storeCapture.onStore}
+        source={createSource("scrubbed")}
+        subscribe={false}
+      />,
+      { wrapper: TestProviders },
+    );
+    const store = storeCapture.store();
+
+    // Scrubbing before the timeline index lands must win: the match is where
+    // the recording opens, never a jump out from under the viewer.
+    act(() => {
+      api?.seek(0.25);
+    });
+    await act(async () => {
+      timeline.resolve(createTimelineRange());
+      await timeline.promise;
+    });
+
+    expect(getPlayhead(store)).toBe(0.25);
+  });
+
   it("ignores in-flight batch results after the source changes", async () => {
     const sourceA = createSource("source-a");
     const sourceB = createSource("source-b");
@@ -1750,6 +1891,7 @@ function Harness({
   allTopics = DEFAULT_TEST_TOPICS,
   blockingTopics = DEFAULT_TEST_TOPICS,
   client,
+  initialSeekTimeNs,
   onStore,
   onApi,
   source,
@@ -1762,6 +1904,7 @@ function Harness({
   readonly allTopics?: readonly string[];
   readonly blockingTopics?: readonly string[];
   readonly client: McapResourceClient;
+  readonly initialSeekTimeNs?: bigint | null;
   readonly onStore: (store: PlaybackStore) => void;
   readonly onApi?: (api: ReturnType<typeof usePlayback>) => void;
   readonly source: ByteSourceDescriptor | null;
@@ -1778,6 +1921,7 @@ function Harness({
     allTopics,
     blockingTopics,
     client,
+    initialSeekTimeNs,
     source,
     staleMediaWarningNs,
     staleWarningTopics,

@@ -1,8 +1,38 @@
 const PKG = "^packages/embeddings-v2/src/";
 const SRC = "^packages/embeddings-v2/src/renderer/";
+const ENTERPRISE = "^packages/embeddings-v2/src/enterprise/";
 
 module.exports = {
   forbidden: [
+    {
+      // The edition boundary: shared panel code never imports enterprise/ —
+      // enterprise/ is a LIBRARY an edition package composes and registers
+      // through the extensions.ts seam, so no shared edge may reach it.
+      name: "shared-panel-does-not-import-enterprise",
+      severity: "error",
+      from: {
+        path: PKG,
+        pathNot: ENTERPRISE,
+      },
+      to: { path: ENTERPRISE },
+    },
+    {
+      // The extension seam itself stays implementation-free: it may not
+      // depend on enterprise code, or registration order would matter.
+      name: "extensions-seam-stays-abstract",
+      severity: "error",
+      from: { path: `${PKG}extensions\\.ts$` },
+      to: { path: ENTERPRISE },
+    },
+    {
+      // The dependency direction is edition → this package, never back:
+      // multimodal semantics live in @fiftyone/multimodal, which imports
+      // this library — an edge the other way is a layering inversion.
+      name: "no-multimodal-imports",
+      severity: "error",
+      from: { path: PKG },
+      to: { path: "node_modules/@fiftyone/multimodal(/|$)|^packages/multimodal/" },
+    },
     {
       // The renderer was a standalone package before it merged into the
       // panel; these three boundary rules preserve that shape. First:

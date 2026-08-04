@@ -110,6 +110,47 @@ describe("MCAP grid preview", () => {
     });
   });
 
+  it("still publishes source facts when the first read is already seeked", async () => {
+    const readDecodedMessages = vi.fn(async function* (
+      request: Parameters<McapResourceClient["readDecodedMessages"]>[0],
+    ) {
+      yield createImageMessage(
+        request.topics?.[0] ?? "/camera",
+        [1, 2, 3],
+        900n,
+      );
+    });
+    const inventory = [createTopic("/camera/front")];
+    const timelineRange = createTimelineRange();
+    const client = createClient({
+      readDecodedMessages,
+      readTimelineRange: vi.fn(async () => timelineRange),
+      readTopics: vi.fn(async () => inventory),
+    });
+    const entry = { client };
+
+    // An embeddings match posters the tile at its matched window, so this
+    // source's very first read carries a start time. Every read after it is a
+    // seeked playback read, so suppressing here would strand the tile — and
+    // its time-bar overlays — with no recording range for its whole life.
+    const first = await decodeGridPreview(entry, {
+      source: createSource(),
+      startTimeNs: 800n,
+    });
+    const second = await decodeGridPreview(entry, {
+      source: createSource(),
+      startTimeNs: first.nextStartTimeNs,
+    });
+
+    expect(first.bootstrapTimelineRange).toBe(timelineRange);
+    expect(first.bootstrapTopics).toBe(inventory);
+    expect(second.bootstrapTimelineRange).toBeUndefined();
+    expect(second.bootstrapTopics).toBeUndefined();
+    expect(readDecodedMessages.mock.calls[0]?.[0]).toMatchObject({
+      startTimeNs: 800n,
+    });
+  });
+
   it("reads raw image frames as image previews", async () => {
     const readDecodedMessages = vi.fn(async function* (
       request: Parameters<McapResourceClient["readDecodedMessages"]>[0],

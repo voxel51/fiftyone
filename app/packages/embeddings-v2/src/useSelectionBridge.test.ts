@@ -2,6 +2,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { SelectionType } from "@fiftyone/state";
+import type { LassoStageInput } from "./extensions";
 import { fetchLassoStage, fetchSampleInfo, idAt } from "./protocol";
 import type { SampleInfo } from "./protocol";
 import type { Loaded } from "./useRunColumns";
@@ -33,6 +34,31 @@ const LOADED: Loaded = {
   total: 2,
 };
 
+// The extension's client-side resolver, as the tests need it: a spatial
+// stage for a polygon over a stored points field, else an id stage
+const resolveLassoStage = ({
+  indices,
+  polygon,
+  ids,
+  pointsField,
+}: LassoStageInput): Record<string, unknown> | null => {
+  if (polygon?.length && pointsField) {
+    return {
+      "fiftyone.core.stages.Mongo": {
+        pipeline: [
+          { $match: { [pointsField]: { $geoWithin: { $polygon: polygon } } } },
+        ],
+      },
+    };
+  }
+  return {
+    "fiftyone.core.stages.Select": {
+      sample_ids: indices.map((index) => idAt(ids, index)),
+      ordered: false,
+    },
+  };
+};
+
 const options = (
   overrides: Partial<SelectionBridgeOptions> = {},
 ): SelectionBridgeOptions => ({
@@ -41,22 +67,114 @@ const options = (
   view: [],
   loaded: LOADED,
   patchesField: null,
+  pointsField: null,
+  visible: null,
   chart: { current: { resetCamera: vi.fn(), clearSelection: vi.fn() } },
-  setOverrideStage: vi.fn(),
+  // Stage, decoration and count land in ONE transaction, so a lasso
+  // invalidates the App's view once instead of once per setter
+  publishSelection: vi.fn(),
   resetExtended: vi.fn(),
   selectedSamples: new Map<string, SelectionType>(),
   setSelectedSamples: vi.fn(),
+  decorateSelection: null,
+  resolveLassoStage,
   ...overrides,
 });
 
 describe("useSelectionBridge", () => {
-  it("resolves a lasso polygon to a view stage on the grid", async () => {
-    vi.mocked(fetchLassoStage).mockResolvedValue({
-      _cls: "fiftyone.core.stages.GeoWithin",
-      kwargs: { boundary: [] },
-      count: 2,
+  it("builds a spatial stage client-side when fully loaded", () => {
+    // Every point is loaded, so the hit-test is complete: the gesture
+    // resolves to a $geoWithin stage locally with no server round trip
+    vi.mocked(fetchLassoStage).mockClear();
+    const opts = options({ pointsField: "embedding" });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    const polygon: Array<[number, number]> = [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+    ];
+    act(() => result.current.handleSelection([0, 1], polygon));
+
+    expect(opts.publishSelection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stage: {
+          "fiftyone.core.stages.Mongo": {
+            pipeline: [
+              { $match: { embedding: { $geoWithin: { $polygon: polygon } } } },
+            ],
+          },
+        },
+      }),
+    );
+    expect(fetchLassoStage).not.toHaveBeenCalled();
+  });
+
+  it("selects only visible points, skipping the spatial shortcut, when filtered", () => {
+    // point 0 passes the filter, point 1 is hidden
+    vi.mocked(fetchLassoStage).mockClear();
+    const opts = options({
+      pointsField: "embedding",
+      visible: new Uint8Array([1, 0]),
     });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() =>
+      result.current.handleSelection(
+        [0, 1],
+        [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+        ],
+      ),
+    );
+
+    // Only the visible point survives, resolved by id (not $geoWithin)
+    expect(opts.publishSelection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stage: {
+          "fiftyone.core.stages.Select": {
+            sample_ids: [idAt(IDS, 0)],
+            ordered: false,
+          },
+        },
+      }),
+    );
+    expect(fetchLassoStage).not.toHaveBeenCalled();
+  });
+
+  it("builds an id stage client-side from indices when no polygon", () => {
+    vi.mocked(fetchLassoStage).mockClear();
     const opts = options();
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() => result.current.handleSelection([1], null));
+
+    expect(opts.publishSelection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stage: {
+          "fiftyone.core.stages.Select": {
+            sample_ids: [idAt(IDS, 1)],
+            ordered: false,
+          },
+        },
+      }),
+    );
+    expect(fetchLassoStage).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the server for a mid-load gesture", async () => {
+    // Fewer points loaded than the run holds: the client hit-test is
+    // incomplete, so the server resolves the polygon against the full run
+    vi.mocked(fetchLassoStage)
+      .mockClear()
+      .mockResolvedValue({
+        _cls: "fiftyone.core.stages.GeoWithin",
+        kwargs: { boundary: [] },
+        count: 2,
+      });
+    const opts = options({ loaded: { ...LOADED, total: 5 } });
     const { result } = renderHook(() => useSelectionBridge(opts));
 
     const polygon: Array<[number, number]> = [
@@ -67,28 +185,13 @@ describe("useSelectionBridge", () => {
     act(() => result.current.handleSelection([0, 1], polygon));
 
     await waitFor(() =>
-      expect(opts.setOverrideStage).toHaveBeenCalledWith({
-        "fiftyone.core.stages.GeoWithin": { boundary: [] },
-      }),
+      expect(opts.publishSelection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stage: { "fiftyone.core.stages.GeoWithin": { boundary: [] } },
+        }),
+      ),
     );
     expect(fetchLassoStage).toHaveBeenCalledWith("ds", "viz", [], { polygon });
-  });
-
-  it("falls back to indices when no data polygon exists", async () => {
-    vi.mocked(fetchLassoStage).mockClear().mockResolvedValue({
-      _cls: "fiftyone.core.stages.Select",
-      kwargs: {},
-      count: 1,
-    });
-    const opts = options();
-    const { result } = renderHook(() => useSelectionBridge(opts));
-
-    act(() => result.current.handleSelection([1], null));
-
-    await waitFor(() => expect(fetchLassoStage).toHaveBeenCalled());
-    expect(fetchLassoStage).toHaveBeenCalledWith("ds", "viz", [], {
-      indices: [1],
-    });
   });
 
   it("treats an empty lasso as a selection reset", () => {
@@ -117,22 +220,23 @@ describe("useSelectionBridge", () => {
         () => new Promise((resolve) => (resolveFirst = resolve)),
       )
       .mockResolvedValueOnce(stage(2));
-    const setOverrideStage = vi.fn();
-    const { result } = renderHook(() =>
-      useSelectionBridge(options({ setOverrideStage })),
-    );
+    // Partially loaded, so both gestures resolve server-side
+    const opts = options({ loaded: { ...LOADED, total: 5 } });
+    const { result } = renderHook(() => useSelectionBridge(opts));
 
     act(() => result.current.handleSelection([0], null));
     act(() => result.current.handleSelection([0, 1], null));
-    await waitFor(() => expect(result.current.selectionCount).toBe(2));
+    await waitFor(() =>
+      expect(opts.publishSelection).toHaveBeenCalledWith(
+        expect.objectContaining({ stage: { S: { n: 2 } }, count: 2 }),
+      ),
+    );
 
     await act(async () => {
       resolveFirst(stage(1));
     });
-    // The newer selection stands
-    expect(result.current.selectionCount).toBe(2);
-    expect(setOverrideStage).toHaveBeenCalledTimes(1);
-    expect(setOverrideStage).toHaveBeenCalledWith({ S: { n: 2 } });
+    // The newer selection stands: the late loser publishes nothing
+    expect(opts.publishSelection).toHaveBeenCalledTimes(1);
   });
 
   // A failure banner describes the gesture that failed; it must not
@@ -142,7 +246,10 @@ describe("useSelectionBridge", () => {
       .mockClear()
       .mockRejectedValueOnce(new Error("boom"))
       .mockImplementationOnce(() => new Promise(() => undefined));
-    const { result } = renderHook(() => useSelectionBridge(options()));
+    // Partially loaded, so the gesture resolves server-side and can fail
+    const { result } = renderHook(() =>
+      useSelectionBridge(options({ loaded: { ...LOADED, total: 5 } })),
+    );
 
     act(() => result.current.handleSelection([0], null));
     await waitFor(() => expect(result.current.error).toMatch("boom"));
@@ -155,7 +262,10 @@ describe("useSelectionBridge", () => {
     vi.mocked(fetchLassoStage)
       .mockClear()
       .mockRejectedValueOnce(new Error("boom"));
-    const { result } = renderHook(() => useSelectionBridge(options()));
+    // Partially loaded, so the gesture resolves server-side and can fail
+    const { result } = renderHook(() =>
+      useSelectionBridge(options({ loaded: { ...LOADED, total: 5 } })),
+    );
 
     act(() => result.current.handleSelection([0], null));
     await waitFor(() => expect(result.current.error).toMatch("boom"));
@@ -245,15 +355,12 @@ describe("useSelectionBridge", () => {
     expect(result.current.selectedIndices).toBeNull();
   });
 
-  it("tracks the lasso's point count for chrome, until cleared", async () => {
-    vi.mocked(fetchLassoStage).mockClear().mockResolvedValue({
-      _cls: "fiftyone.core.stages.GeoWithin",
-      kwargs: {},
-      count: 42,
-    });
+  it("publishes the lasso's point count in the same transaction as its stage", () => {
+    // Chrome reads the count; publishing it separately would invalidate the
+    // App's view a second time for one gesture
+    vi.mocked(fetchLassoStage).mockClear();
     const opts = options();
     const { result } = renderHook(() => useSelectionBridge(opts));
-    expect(result.current.selectionCount).toBeNull();
 
     act(() =>
       result.current.handleSelection(
@@ -265,10 +372,48 @@ describe("useSelectionBridge", () => {
         ],
       ),
     );
-    await waitFor(() => expect(result.current.selectionCount).toBe(42));
+
+    expect(opts.publishSelection).toHaveBeenCalledTimes(1);
+    // Client-side resolution counts the selected points directly
+    expect(opts.publishSelection).toHaveBeenCalledWith(
+      expect.objectContaining({ count: 2 }),
+    );
+  });
+
+  it("drops every overlay when the selection is cleared", () => {
+    // The count clears in the same transaction as the indices: it is what the
+    // chip and the panel tab's pill both read, so a stale one keeps claiming
+    // a selection that no longer exists
+    const opts = options();
+    const { result } = renderHook(() => useSelectionBridge(opts));
 
     act(() => result.current.clearAll());
-    expect(result.current.selectionCount).toBeNull();
+
+    expect(opts.resetExtended).toHaveBeenCalled();
+    expect(opts.publishSelection).toHaveBeenCalledWith({
+      count: null,
+      decorate: null,
+    });
+  });
+
+  it("decorates the publish with the kept points' artifacts", () => {
+    // The decoration is the extension's to build; the bridge hands it exactly
+    // the surviving (visible) points and its decorator joins the same
+    // transaction as the stage. Point 0 is hidden, so only 1 survives
+    const decorator = vi.fn();
+    const decorateSelection = vi.fn(() => decorator);
+    const opts = options({
+      decorateSelection,
+      visible: new Uint8Array([0, 1]),
+    });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() => result.current.handleSelection([0, 1], null));
+
+    expect(decorateSelection).toHaveBeenCalledWith([1]);
+    expect(opts.publishSelection).toHaveBeenCalledWith(
+      expect.objectContaining({ decorate: decorator }),
+    );
   });
 
   it("clears every selection layer on Escape", () => {

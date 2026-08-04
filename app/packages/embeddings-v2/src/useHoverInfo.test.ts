@@ -88,8 +88,26 @@ describe("useHoverInfo", () => {
 
     act(() => result.current.handleHover(hit(1)));
     await waitFor(() => expect(result.current.hover).not.toBeNull());
+    // The card survives a short grace after the pointer leaves the point, so
+    // the pointer can reach the card's own actions
     act(() => result.current.handleHover(null));
-    expect(result.current.hover).toBeNull();
+    await waitFor(() => expect(result.current.hover).toBeNull());
+  });
+
+  it("keeps the card when the pointer enters it", async () => {
+    vi.mocked(fetchSampleInfo).mockResolvedValue(info(1));
+    const { result } = renderHook(() =>
+      useHoverInfo("ds", "viz", null, mediaUrl),
+    );
+
+    act(() => result.current.handleHover(hit(1)));
+    await waitFor(() => expect(result.current.hover).not.toBeNull());
+    act(() => {
+      result.current.handleHover(null);
+      result.current.keepHover();
+    });
+    await new Promise((r) => setTimeout(r, 320));
+    expect(result.current.hover).not.toBeNull();
   });
 
   // The guard must be the FULL request identity: same index, previous

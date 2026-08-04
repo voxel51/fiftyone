@@ -1,0 +1,144 @@
+/**
+ * One plot cell: a single embeddings chart over the run's SHARED
+ * `points`/`colors`/`selected` arrays, scoped to this cell by its
+ * `visible` mask. Cells never own selection/color state — they read the
+ * run-level composition from {@link useRunPlotData} — so a lasso, a color,
+ * and a grid selection stay identical across every cell for free.
+ *
+ * The plain panel renders exactly one full-size cell; an extension layout
+ * may render many (each with its own mask over the same arrays). The cell
+ * registers its imperative chart handle with the run (so clear/reset fan
+ * out to all cells) and renders its own hover card: cell membership is
+ * exclusive, so the hovered point belongs to exactly one cell and its
+ * coordinates are relative to that cell's canvas.
+ */
+import { Text, TextColor, TextVariant } from "@voxel51/voodo";
+import { useRef } from "react";
+import HoverCard from "./HoverCard";
+import "./panel.css";
+import {
+  EmbeddingsView,
+  type CameraAdapterFactory,
+  type HoverHit,
+  type InteractionMode,
+} from "./renderer";
+import type { HoverAction } from "./extensions";
+import type { HoverContent } from "./HoverCard";
+import type { Loaded } from "./useRunColumns";
+import type { EmbeddingsViewHandle } from "./renderer";
+
+export interface FacetCellProps {
+  cellKey: string;
+  /** Row/col category labels for this cell; null when that axis is absent */
+  rowLabel: string | null;
+  colLabel: string | null;
+  /** Number of points visible in this cell (from the cell mask) */
+  count: number;
+
+  loaded: Loaded;
+  colors: Float32Array | null;
+  selected: number[] | null;
+  /** plot visibility ∧ this cell's membership */
+  visible: Uint8Array;
+  /** The renderer's own mode — the shell maps any extension mode before
+   * it reaches the cell */
+  mode: InteractionMode;
+  zCamera?: () => Promise<CameraAdapterFactory>;
+
+  onLasso: (
+    indices: number[],
+    polygon?: Array<[number, number]> | null,
+  ) => void;
+  /** What a point click does in the current mode; undefined = clicks do
+   * nothing (explore) */
+  onPointClick: ((hit: HoverHit) => void) | undefined;
+  onBackgroundClick: () => void;
+  /** The cell's renderer failed; the run surfaces it as the plot's error */
+  onError: (e: Error) => void;
+  onHover: (hit: HoverHit | null) => void;
+  /** Keeps the hover card alive while the pointer is over it */
+  onKeepHover: () => void;
+  /** An extension action offered on the hover card; null = no button */
+  hoverAction: HoverAction | null;
+  registerChart: (key: string, handle: EmbeddingsViewHandle | null) => void;
+
+  /** Shared hover state; the card shows only when the hovered point is a
+   * member of this cell */
+  hover: HoverContent | null;
+}
+
+export default function FacetCell({
+  cellKey,
+  rowLabel,
+  colLabel,
+  count,
+  loaded,
+  colors,
+  selected,
+  visible,
+  mode,
+  zCamera,
+  onLasso,
+  onPointClick,
+  onBackgroundClick,
+  onError,
+  onHover,
+  onKeepHover,
+  hoverAction,
+  registerChart,
+  hover,
+}: FacetCellProps) {
+  const sceneRef = useRef<HTMLDivElement>(null);
+
+  const label = [rowLabel, colLabel].filter((v) => v !== null).join(" · ");
+  const showHover = hover != null && visible[hover.hit.index] === 1;
+
+  return (
+    <div className="emb-facet-cell">
+      {label && (
+        <div className="emb-facet-cell-header">
+          <Text variant={TextVariant.Sm} color={TextColor.Fg}>
+            {label}
+          </Text>
+          <Text variant={TextVariant.Xs} color={TextColor.Tertiary}>
+            {count.toLocaleString()}
+          </Text>
+        </div>
+      )}
+      <div ref={sceneRef} className="emb-facet-cell-scene">
+        <EmbeddingsView
+          ref={(handle) => registerChart(cellKey, handle)}
+          points={loaded.points}
+          colors={colors}
+          visible={visible}
+          selected={selected}
+          tooltip={false}
+          mode={mode}
+          zCamera={zCamera}
+          onSelection={onLasso}
+          onPointClick={onPointClick}
+          onBackgroundClick={onBackgroundClick}
+          onError={onError}
+          onHover={onHover}
+        />
+        {showHover && (
+          <div onMouseEnter={onKeepHover} onMouseLeave={() => onHover(null)}>
+            <HoverCard
+              content={hover}
+              containerWidth={sceneRef.current?.clientWidth ?? 0}
+              containerHeight={sceneRef.current?.clientHeight ?? 0}
+              action={
+                hoverAction
+                  ? {
+                      label: hoverAction.label,
+                      run: () => hoverAction.run(hover.hit),
+                    }
+                  : undefined
+              }
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

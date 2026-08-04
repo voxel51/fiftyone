@@ -29,6 +29,8 @@ const FRAME_TRANSFORM_RANGE_PADDING_NS = 1_000_000_000n;
 export interface McapStreamsProps {
   /** Shared adapter resource client owned by the modal renderer. */
   client: McapResourceClient;
+  /** Capture time to open the recording at, ahead of the first-data tick. */
+  initialSeekTimeNs?: bigint | null;
   /** Called after every blocking stream covers the current playhead. */
   onPlayheadDataReady?: () => void;
   /** Byte source currently feeding the playback shell. */
@@ -43,6 +45,7 @@ export interface McapStreamsProps {
  */
 export function McapStreams({
   client,
+  initialSeekTimeNs,
   onPlayheadDataReady,
   source,
 }: McapStreamsProps) {
@@ -102,6 +105,7 @@ export function McapStreams({
   useRegisterMcapDataStream({
     blockingTopics,
     client,
+    initialSeekTimeNs,
     onPlayheadDataReady,
     source,
     allTopics,

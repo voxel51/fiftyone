@@ -1,13 +1,23 @@
-import { fireEvent, waitFor } from "@testing-library/react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 import {
   __resetGridCustomRendererFailoverForTests,
   getGridCustomRendererFailover,
   modalSelector,
 } from "@fiftyone/state";
+import { registerMcapGridOverlay } from "@fiftyone/multimodal/extensions/mcap";
 import React from "react";
 import { RecoilRoot } from "recoil";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GridCustomRendererItem } from "./GridCustomRendererItem";
+
+// The multimodal guard also mounts the temporal-tag overlay, which reaches
+// for an mcap source these tests do not build
+vi.mock(
+  "@fiftyone/multimodal/adapters/mcap/react/TemporalTagGridOverlay",
+  () => ({
+    TemporalTagGridOverlay: () => null,
+  }),
+);
 
 vi.mock("./GridTagBubbles", () => ({
   default: ({ sample }: { sample?: { filepath?: string } }) => (
@@ -64,6 +74,63 @@ describe("GridCustomRendererItem", () => {
   afterEach(() => {
     __resetGridCustomRendererFailoverForTests();
     consoleErrorSpy.mockRestore();
+  });
+
+  it("renders registered mcap overlays inside the multimodal guard", async () => {
+    const unregister = registerMcapGridOverlay(() => (
+      <div data-testid="registered-overlay" />
+    ));
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    try {
+      const looker = new GridCustomRendererItem({
+        pluginName: "mcap-renderer",
+        Renderer: () => <div data-testid="renderer" />,
+        RecoilBridge: TestBridge,
+        ctx: {
+          ...BASE_CTX,
+          media: { ...BASE_CTX.media, mediaType: "multimodal" },
+        } as any,
+        symbol: BASE_SYMBOL,
+      });
+      looker.attach(host, [200, 120], 12);
+
+      await waitFor(() => {
+        expect(
+          host.querySelector("[data-testid='registered-overlay']"),
+        ).toBeTruthy();
+      });
+    } finally {
+      unregister();
+      host.remove();
+    }
+  });
+
+  it("renders no edition overlay before anything registers", async () => {
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    try {
+      const looker = new GridCustomRendererItem({
+        pluginName: "mcap-renderer",
+        Renderer: () => <div data-testid="renderer" />,
+        RecoilBridge: TestBridge,
+        ctx: {
+          ...BASE_CTX,
+          media: { ...BASE_CTX.media, mediaType: "multimodal" },
+        } as any,
+        symbol: BASE_SYMBOL,
+      });
+      looker.attach(host, [200, 120], 12);
+
+      await waitFor(() => {
+        expect(host.querySelector("[data-testid='renderer']")).toBeTruthy();
+      });
+      expect(
+        host.querySelector("[data-testid='registered-overlay']"),
+      ).toBeNull();
+    } finally {
+      host.remove();
+    }
   });
 
   it("mounts plugin renderer and leaves dataset fail-open disabled on success", async () => {
@@ -369,6 +436,47 @@ describe("GridCustomRendererItem", () => {
     ).toBe(false);
 
     looker.destroy();
+    host.remove();
+  });
+
+  it("survives a destroy() from inside a React effect cleanup", async () => {
+    // How the grid actually destroys items: the looker cache evicts during a
+    // render, so destroy() lands in an effect cleanup while React is mid-commit
+    // — unmounting the plugin's own root from there warned and raced the commit
+    const looker = new GridCustomRendererItem({
+      pluginName: "renderer",
+      Renderer: () => <div data-testid="rendered" />,
+      RecoilBridge: TestBridge,
+      ctx: BASE_CTX as any,
+      symbol: BASE_SYMBOL,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    looker.attach(host, [320, 180], 14);
+
+    const Evictor = () => {
+      React.useEffect(() => () => looker.destroy(), []);
+      return <div data-testid="evictor" />;
+    };
+    const { unmount } = render(
+      <TestBridge>
+        <Evictor />
+      </TestBridge>,
+    );
+
+    unmount();
+    // The deferred unmount has to actually happen, not merely be postponed
+    await waitFor(() => expect(host.childElementCount).toBe(0));
+
+    expect(
+      consoleErrorSpy.mock.calls.some((call) =>
+        call.some(
+          (arg) =>
+            typeof arg === "string" && arg.includes("synchronously unmount"),
+        ),
+      ),
+    ).toBe(false);
+
     host.remove();
   });
 });

@@ -174,6 +174,9 @@
 .emb-plot-header {
   display: flex;
   align-items: center;
+  /* Controls wrap to more rows on a narrow panel rather than pushing the
+     mode toggle / reset off-screen (which would break lassoing) */
+  flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.625rem 1rem;
   flex-shrink: 0;
@@ -190,7 +193,10 @@
   flex-direction: column;
   line-height: 1.25;
   min-width: 0;
-  flex: 1;
+  /* Size to content and yield the rest of the row to the controls, so they
+     have room instead of wrapping while the title hogs the left */
+  flex: 0 1 auto;
+  max-width: 40%;
 }
 
 .emb-plot-title > * {
@@ -202,26 +208,243 @@
 .emb-plot-controls {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.375rem;
-  flex-shrink: 0;
+  /* Take the row's remaining width and stay right-aligned; wrapping keeps
+     Explore/Select + reset visible instead of clipped off the panel edge */
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .emb-nowrap {
   white-space: nowrap;
 }
 
-/* Compact pill-sized trigger: the Select root is w-full, so the width
- * lives here; the inner input is styled like a full-size form Input */
+/* Sized like the Facet control: the range lives on the flex item so the row
+ * reserves the trigger's real width. Putting it on the trigger instead lets it
+ * outgrow this box and paint over the buttons to its right */
 .emb-colorby {
-  width: 10.5rem;
+  flex-shrink: 0;
+  min-width: 9rem;
+  max-width: 16rem;
+}
+
+.emb-colorby .emb-facet-trigger {
+  width: 100%;
+  max-width: none;
+}
+
+/* Holds the closed width while open, so swapping the label for the filter
+   input does not resize the control under the pointer */
+.emb-colorby[data-open="true"] {
+  width: 16rem;
+}
+
+/* While open the trigger IS the filter box: borderless, filling the same
+   bordered shell the label sat in */
+.emb-colorby-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--emb-fg);
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0;
+  outline: none;
+}
+
+.emb-colorby-caret {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Compound selector on purpose: .emb-facet-panel's `overflow: visible` (it has
+   a submenu to let escape) is declared later in this file, and at equal
+   specificity would win and stop this list from ever scrolling */
+.emb-facet-panel.emb-colorby-panel {
+  /* As wide as the longest field path rather than as wide as the trigger,
+     which would clip nearly every `imu_signals.*` entry */
+  width: max-content;
+  min-width: 100%;
+  max-width: 28rem;
+  /* Color-by sits at the right of the header, so the panel opens
+     right-aligned; left:0 pushes 28rem of it past the viewport, which grows
+     the scroll area and shifts everything below it */
+  left: auto;
+  right: 0;
+  /* No submenu to escape this one, so it may scroll — and must, or dozens of
+     fields render outside the panel and overflow the page. Bounded by a fixed
+     height as well as vh: the embeddings panel is usually far shorter than the
+     window, so 60vh alone still spills out the bottom of it */
+  max-height: min(60vh, 22rem);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--emb-fg) 25%, transparent)
+    transparent;
+}
+
+/* --- Facet menu (dropdown trigger + Mac-menubar panel w/ hover submenus) --- */
+.emb-facet {
+  position: relative;
   flex-shrink: 0;
 }
 
-.emb-colorby input {
+/* Minimal, matching the Color-by dropdown: subtle bordered field + caret,
+   transparent fill — deliberately NOT a filled/heavy button */
+.emb-facet-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   height: 2rem;
-  padding-top: 0;
-  padding-bottom: 0;
+  min-width: 9rem;
+  max-width: 16rem;
+  padding: 0 0.5rem;
+  /* Visible outline like the Color-by dropdown (transparent fill, not a
+     filled button) */
+  border: 1px solid var(--emb-border-strong);
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--emb-fg);
   font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.emb-facet-trigger:hover,
+.emb-facet-trigger[data-open="true"] {
+  border-color: var(--emb-fg);
+}
+
+.emb-facet-trigger-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emb-facet-panel {
+  position: absolute;
+  z-index: 30;
+  min-width: 12rem;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--emb-border-subtle);
+  background: var(--emb-card-elevated);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.4);
+}
+
+.emb-facet-panel {
+  top: calc(100% + 4px);
+  /* Facet is the leftmost control, so the panel opens left-aligned and the
+     submenu extends further RIGHT into the header/scene (room is there) */
+  left: 0;
+  /* MUST stay visible on both axes: the value submenu is absolutely
+     positioned OUTSIDE this panel, and any non-visible overflow (even
+     overflow-y:auto forces overflow-x:auto) would clip it away */
+  overflow: visible;
+}
+
+/* Settings cog sits at the right of the header, so its panel opens
+   right-aligned (left:0 would push it off-screen) */
+.emb-settings-panel {
+  left: auto;
+  right: 0;
+  min-width: 15rem;
+}
+
+/* Two-line option (label + hint); plain direction, unlike the rtl stream
+   labels the facet submenu reuses */
+.emb-settings-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+  min-width: 0;
+  text-align: left;
+}
+
+/* Palette preview inside a menu option: the ramp itself, so the choice is made
+   by looking rather than by reading its name */
+.emb-settings-ramp {
+  height: 0.375rem;
+  border-radius: 9999px;
+  margin: 0.1875rem 0;
+}
+
+/* Three sections of controls outgrow a short panel, and the bottom one holds
+   the result cap — a menu that cannot be scrolled to hides a setting. Safe
+   here where it is not on .emb-facet-panel: the cog's menu has no submenu
+   positioned outside it to clip away */
+.emb-settings-panel {
+  max-height: min(70vh, 34rem);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--emb-fg) 25%, transparent)
+    transparent;
+}
+
+.emb-facet-section {
+  padding: 0.375rem 0.5rem 0.25rem;
+}
+
+.emb-facet-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.3125rem 0.5rem;
+  border: none;
+  background: transparent;
+  color: var(--emb-fg);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.emb-facet-row:hover {
+  background: color-mix(in srgb, var(--emb-fg) 8%, transparent);
+}
+
+/* Listed but not choosable: still readable, since the row is there to say the
+   model exists and why it cannot be used */
+.emb-facet-row:disabled {
+  cursor: not-allowed;
+  color: color-mix(in srgb, var(--emb-fg) 45%, transparent);
+}
+
+.emb-facet-row:disabled:hover {
+  background: transparent;
+}
+
+.emb-facet-check {
+  display: inline-flex;
+  width: 1rem;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.emb-facet-row-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* show the meaningful tail of long stream paths */
+  direction: rtl;
+  text-align: left;
+}
+
+.emb-facet-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.emb-facet-panel::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--emb-fg) 25%, transparent);
+  border-radius: 3px;
 }
 
 .emb-plot-divider {
@@ -272,6 +495,57 @@
   background: color-mix(in srgb, var(--emb-card-bg) 30%, transparent);
 }
 
+/* Faceted grid: fills the scene; one cell per (row category, col
+   category). minmax(0,1fr) tracks so a cell never overflows its column. */
+.emb-facet-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  /* a 1D wrap can produce more cells than fit the height */
+  overflow: auto;
+}
+
+/* Faceted: gap + padding separate the bordered cell cards. The 0-facet
+   single plot needs neither (it already sits inside the scene's border). */
+.emb-facet-grid[data-faceted="true"] {
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+
+.emb-facet-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* A faceted cell is a distinctly bordered card — a header (its category
+   label + count) over its own plot scene — so each plot reads as separate. */
+.emb-facet-grid[data-faceted="true"] .emb-facet-cell {
+  border: 1px solid var(--emb-border-strong);
+  border-radius: 0.375rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--emb-card-bg) 30%, transparent);
+}
+
+.emb-facet-cell-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--emb-border-strong);
+  background: var(--emb-card-bg);
+}
+
+.emb-facet-cell-scene {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .emb-plot-overlay {
   position: absolute;
   display: flex;
@@ -319,6 +593,36 @@
   left: 0.75rem;
   bottom: 0.75rem;
   pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.375rem;
+}
+
+/* The "apply to all points" action — a real button, clickable even
+   though the counter overlay itself is pass-through */
+.emb-update-btn {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--emb-border-strong);
+  background: var(--emb-card-elevated);
+  color: var(--emb-fg);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.emb-update-btn:hover:not(:disabled) {
+  border-color: var(--emb-fg);
+}
+
+.emb-update-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 /* Color-by column fetch in flight; fixed-size slot beside the label */
@@ -369,6 +673,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Clip the head, keep the meaningful tail of a dotted field path
+     (SEMANTIC_LABELS.label); full value via the title tooltip */
+  direction: rtl;
+  text-align: left;
 }
 
 .emb-floating-panel-body {
@@ -399,6 +707,29 @@
      box so it doesn't get cut */
   margin: 0 -0.375rem;
   padding: 0 0.375rem;
+  /* Thin, minimal, theme-aware scrollbar (the default is a bright wide bar
+     that clashes in dark mode). --emb-fg tracks the theme, so the translucent
+     thumb reads right in both light and dark. */
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--emb-fg) 25%, transparent)
+    transparent;
+}
+
+.emb-legend-rows::-webkit-scrollbar {
+  width: 6px;
+}
+
+.emb-legend-rows::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.emb-legend-rows::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--emb-fg) 25%, transparent);
+  border-radius: 3px;
+}
+
+.emb-legend-rows::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--emb-fg) 40%, transparent);
 }
 
 .emb-legend-row {
@@ -492,6 +823,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Truncate the HEAD, not the tail: for dotted class names / stream paths
+     (human.pedestrian.adult, /CAM_BACK/image_rect_compressed) the meaningful
+     part is the end, so clip the left and keep the suffix visible */
+  direction: rtl;
+  text-align: left;
 }
 
 /* --- Hover card --------------------------------------------------------- */
@@ -509,6 +845,31 @@
   border: 1px solid var(--emb-border-subtle);
   background: var(--emb-popover);
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.35);
+}
+
+/* A card with actions must receive the pointer so its button is clickable
+   (and so the grace-keep mouseenter fires) */
+.emb-hover-card[data-interactive="true"] {
+  pointer-events: auto;
+}
+
+/* Multimodal hover: cheap per-point detail rows in place of the mcap image */
+.emb-hover-detail {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.emb-hover-detail-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Show the meaningful tail of long stream paths / model tags */
+  direction: rtl;
+  text-align: left;
 }
 
 .emb-hover-image {
@@ -595,4 +956,36 @@
   justify-content: center;
   height: 100%;
   gap: 0.75rem;
+}
+
+/* An extension notice (e.g. a capped result). Floats over the grid rather
+   than reflowing it, so a plot never resizes to make room for a message. */
+.emb-toast {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(560px, calc(100% - 32px));
+  padding: 8px 10px 8px 12px;
+  border: 1px solid var(--fo-palette-divider, rgba(255, 255, 255, 0.15));
+  border-radius: 6px;
+  background: var(--fo-palette-background-level1, #262626);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.emb-toast-close {
+  display: flex;
+  padding: 2px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+.emb-toast-close:hover {
+  background: var(--fo-palette-background-level2, rgba(255, 255, 255, 0.08));
 }

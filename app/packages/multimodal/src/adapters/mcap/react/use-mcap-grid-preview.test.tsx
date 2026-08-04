@@ -449,6 +449,157 @@ describe("useMcapGridPreview", () => {
 
     expect(poolHarness.pool.request).toHaveBeenCalledTimes(1);
   });
+
+  it("posters the still frame at an embeddings match", async () => {
+    poolHarness.pool.request.mockResolvedValueOnce(
+      readyResult({ bytes: [9], nextStartTimeNs: 1_700n }),
+    );
+    const source = sourceForId("poster-match");
+
+    render(
+      <PreviewHarness
+        id="poster-match"
+        posterStartTimeNs={1_500n}
+        source={source}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("preview-poster-match").textContent).toBe(
+        "ready:1:frame:",
+      );
+    });
+    expect(poolHarness.pool.request.mock.calls[0]?.[0]).toEqual({
+      source,
+      startTimeNs: 1_500n,
+    });
+  });
+
+  it("re-posters when the match moves to another window", async () => {
+    poolHarness.pool.request
+      .mockResolvedValueOnce(readyResult({ bytes: [1] }))
+      .mockResolvedValueOnce(readyResult({ bytes: [2] }));
+    const source = sourceForId("poster-relasso");
+    const { rerender } = render(
+      <PreviewHarness
+        id="poster-relasso"
+        posterStartTimeNs={1_000n}
+        source={source}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(poolHarness.pool.request).toHaveBeenCalledTimes(1);
+    });
+    rerender(
+      <PreviewHarness
+        id="poster-relasso"
+        posterStartTimeNs={2_000n}
+        source={source}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(poolHarness.pool.request).toHaveBeenCalledTimes(2);
+    });
+    expect(poolHarness.pool.request.mock.calls[1]?.[0]).toMatchObject({
+      startTimeNs: 2_000n,
+    });
+  });
+
+  it("posters from the matched stream once it is known previewable", async () => {
+    // The reported /camera/rear topic triggers a third request beyond the
+    // two asserted below; leave it pending so the mock never returns undefined
+    poolHarness.pool.request
+      .mockResolvedValueOnce(
+        readyResult({ bytes: [1], streamTopic: "/camera/front" }),
+      )
+      .mockResolvedValueOnce(
+        readyResult({ bytes: [2], streamTopic: "/camera/rear" }),
+      )
+      .mockReturnValue(deferred<McapGridPreviewResult>().promise);
+    const source = sourceForId("poster-stream");
+
+    render(
+      <PreviewHarness
+        id="poster-stream"
+        posterStartTimeNs={500n}
+        posterStreamTopic="/camera/front"
+        source={source}
+      />,
+    );
+
+    // The first request cannot name the stream — nothing has reported which
+    // topics this source can preview yet.
+    await waitFor(() => {
+      expect(poolHarness.pool.request).toHaveBeenCalledTimes(2);
+    });
+    expect(poolHarness.pool.request.mock.calls[0]?.[0]).toEqual({
+      source,
+      startTimeNs: 500n,
+    });
+    expect(poolHarness.pool.request.mock.calls[1]?.[0]).toEqual({
+      selectedStreamTopic: "/camera/front",
+      source,
+      startTimeNs: 500n,
+    });
+  });
+
+  it("keeps the automatic stream when the match is not previewable", async () => {
+    poolHarness.pool.request.mockResolvedValue(
+      readyResult({ bytes: [1], streamTopic: "/camera/front" }),
+    );
+    const source = sourceForId("poster-fused");
+
+    render(
+      <PreviewHarness
+        id="poster-fused"
+        posterStartTimeNs={500n}
+        posterStreamTopic="fused::cameras"
+        source={source}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("preview-poster-fused").textContent).toBe(
+        "ready:1:frame:",
+      );
+    });
+    expect(poolHarness.pool.request).toHaveBeenCalledTimes(1);
+    expect(poolHarness.pool.request.mock.calls[0]?.[0]).toEqual({
+      source,
+      startTimeNs: 500n,
+    });
+  });
+
+  it("lets an explicit grid stream choice outrank the matched stream", async () => {
+    poolHarness.pool.request.mockResolvedValue(
+      readyResult({ bytes: [1], streamTopic: "/camera/rear" }),
+    );
+    const source = sourceForId("poster-explicit");
+
+    render(
+      <PreviewHarness
+        id="poster-explicit"
+        posterStartTimeNs={500n}
+        posterStreamTopic="/camera/front"
+        selectedStreamTopic="/camera/rear"
+        source={source}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("preview-poster-explicit").textContent).toBe(
+        "ready:1:frame:",
+      );
+    });
+    expect(poolHarness.pool.request).toHaveBeenCalledTimes(1);
+    expect(poolHarness.pool.request.mock.calls[0]?.[0]).toEqual({
+      selectedStreamTopic: "/camera/rear",
+      source,
+      startTimeNs: 500n,
+    });
+  });
 });
 
 function PreviewHarness({
@@ -456,6 +607,8 @@ function PreviewHarness({
   hovered,
   id,
   onState,
+  posterStartTimeNs,
+  posterStreamTopic,
   selectedStreamTopic,
   source,
 }: {
@@ -463,12 +616,16 @@ function PreviewHarness({
   readonly hovered?: boolean;
   readonly id: string;
   readonly onState?: (state: McapGridPreviewState) => void;
+  readonly posterStartTimeNs?: bigint | null;
+  readonly posterStreamTopic?: string | null;
   readonly selectedStreamTopic?: string | null;
   readonly source: ByteSourceDescriptor | null;
 }) {
   const state = useMcapGridPreview({
     enabled,
     hovered,
+    posterStartTimeNs,
+    posterStreamTopic,
     selectedStreamTopic,
     source,
   });

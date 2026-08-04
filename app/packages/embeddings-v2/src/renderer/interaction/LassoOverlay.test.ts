@@ -120,6 +120,32 @@ describe("LassoOverlay", () => {
     expect(onComplete).toHaveBeenCalledExactlyOnceWith(null, 6, 6);
   });
 
+  // Hand jitter during a click clears the 3px move filter several times over,
+  // so point count alone called it a lasso — one that encloses nothing and
+  // (before the extent test) reached the plot as a real gesture
+  it("reports a jittery click as a click, not a pinprick lasso", () => {
+    drag([
+      [40, 40],
+      [44, 40],
+      [48, 41],
+      [48, 44],
+    ]);
+    expect(onComplete).toHaveBeenCalledExactlyOnceWith(null, 48, 44);
+  });
+
+  it.each([
+    ["under the extent threshold", 8, null],
+    ["over the extent threshold", 40, "polygon"],
+  ])("treats a drag %s accordingly", (_label, span, expected) => {
+    drag([
+      [0, 0],
+      [span, 0],
+      [span, span],
+    ]);
+    const [polygon] = onComplete.mock.calls[0];
+    expect(polygon === null ? null : "polygon").toBe(expected);
+  });
+
   it("skips sub-3px moves to keep the polygon small", () => {
     drag([
       [0, 0],

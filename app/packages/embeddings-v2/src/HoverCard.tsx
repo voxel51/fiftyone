@@ -9,10 +9,14 @@
 import {
   BackgroundColor,
   BorderColor,
+  Button,
   getColorCssVar,
+  IconName,
+  Size,
   Text,
   TextColor,
   TextVariant,
+  Variant,
 } from "@voxel51/voodo";
 import { useEffect, useState, type CSSProperties } from "react";
 import "./panel.css";
@@ -25,24 +29,32 @@ const TOKEN_VARS = {
 
 export interface HoverContent {
   hit: HoverHit;
-  /** Resolved image URL, or null when hover media is unavailable */
+  /** Resolved image URL, or null when hover media is unavailable — or, for
+   * multimodal runs, deliberately skipped (the mcap frame is too expensive) */
   src: string | null;
   /** The point's color-by value, when a color field is active */
   value: { label: string; swatch: string | null } | null;
   /** The sample's media filename (basename), when known */
   filename: string | null;
+  /** Cheap per-point detail (multimodal): label/value rows shown instead of
+   * an image, e.g. Stream, Time, Model — all held client-side */
+  details?: { label: string; value: string }[];
 }
 
 export default function HoverCard({
   content,
   containerWidth,
   containerHeight,
+  action,
 }: {
   content: HoverContent;
   containerWidth: number;
   containerHeight: number;
+  /** When set, the card renders the action's button and becomes
+   * pointer-interactive (so the button is clickable) */
+  action?: { label: string; run: () => void };
 }) {
-  const { hit, src, value, filename } = content;
+  const { hit, src, value, filename, details } = content;
   const [settled, setSettled] = useState<{ src: string; ok: boolean } | null>(
     null,
   );
@@ -72,6 +84,7 @@ export default function HoverCard({
   return (
     <div
       className="emb-hover-card"
+      data-interactive={action ? "true" : "false"}
       style={{
         ...TOKEN_VARS,
         left: hit.x,
@@ -84,6 +97,18 @@ export default function HoverCard({
       {showImage && (
         <img key={src} src={src} alt="" className="emb-hover-image" />
       )}
+      {details?.map((d) => (
+        <div className="emb-hover-detail" key={d.label} title={d.value}>
+          <Text variant={TextVariant.Sm} color={TextColor.Muted}>
+            {d.label}
+          </Text>
+          <span className="emb-hover-detail-value">
+            <Text variant={TextVariant.Sm} color={TextColor.Fg}>
+              {d.value}
+            </Text>
+          </span>
+        </div>
+      ))}
       {value && (
         <div className="emb-hover-value">
           {value.swatch && (
@@ -105,6 +130,16 @@ export default function HoverCard({
             {filename}
           </Text>
         </span>
+      )}
+      {action && (
+        <Button
+          variant={Variant.Secondary}
+          size={Size.Xs}
+          leadingIcon={IconName.Search}
+          onClick={action.run}
+        >
+          {action.label}
+        </Button>
       )}
     </div>
   );

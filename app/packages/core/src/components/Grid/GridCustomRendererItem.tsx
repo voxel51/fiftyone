@@ -7,6 +7,7 @@ import {
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { TemporalTagGridOverlay } from "@fiftyone/multimodal/adapters/mcap/react/TemporalTagGridOverlay";
+import { useMcapGridOverlays } from "@fiftyone/multimodal/extensions/mcap";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { Checkbox } from "@mui/material";
@@ -228,6 +229,23 @@ const GridCustomRendererWrapper = ({
   );
 };
 
+/** Edition-registered grid-tile overlays (rendered inside the multimodal
+ * guard); nothing renders before anything registers. */
+const McapGridOverlays = ({
+  ctx,
+}: {
+  readonly ctx: SampleRendererRenderContext;
+}) => {
+  const overlays = useMcapGridOverlays();
+  return (
+    <>
+      {overlays.map((Overlay, index) => (
+        <Overlay key={index} ctx={ctx} />
+      ))}
+    </>
+  );
+};
+
 const GridCustomRenderer = ({
   Renderer,
   ctx,
@@ -353,7 +371,10 @@ export class GridCustomRendererItem {
             <div style={FOOTER_STYLES}>
               <GridTagBubbles sample={sample} />
               {ctx.media?.mediaType === MEDIA_TYPE_MULTIMODAL ? (
-                <TemporalTagGridOverlay ctx={ctx} />
+                <>
+                  <TemporalTagGridOverlay ctx={ctx} />
+                  <McapGridOverlays ctx={ctx} />
+                </>
               ) : null}
             </div>
           </GridCustomRendererWrapper>
@@ -478,8 +499,20 @@ export class GridCustomRendererItem {
   }
 
   private unmountPluginRenderer() {
-    this.pluginRoot?.unmount();
+    const root = this.pluginRoot;
     this.pluginRoot = null;
+
+    if (!root) {
+      return;
+    }
+
+    // Deferred out of the caller's stack: destroy() runs from the grid cache's
+    // eviction, which fires inside a React effect cleanup, and unmounting
+    // another root from there races the commit React is still finishing
+    // ("Attempted to synchronously unmount a root while React was already
+    // rendering"). The host element is detached before this, so nothing of the
+    // renderer is on screen while the unmount waits.
+    setTimeout(() => root.unmount(), 0);
   }
 
   updateOptions(options: unknown, disableReload?: boolean) {
