@@ -606,6 +606,15 @@ export class DataStreamScheduler {
     const remainingStreams = activeStreams.filter(
       (stream) => !firstSet.has(stream),
     );
+    const coalesceRemainingStreams =
+      this.currentFrameBurstUntilMs !== null &&
+      !getIsPlaying(this.options.store) &&
+      !getIsPlayPending(this.options.store);
+    if (!coalesceRemainingStreams) {
+      this.options.prefetcher.fetchCurrentFrame(tick, firstStreams);
+      this.options.prefetcher.fetchCurrentFrame(tick, remainingStreams);
+      return;
+    }
     this.options.prefetcher.fetchCurrentFrame(tick, firstStreams, () => {
       const admitRemainingStreams = () => {
         if (

@@ -78,7 +78,7 @@ describe("MCAP playback worker transport", () => {
       "readTimelineRange",
       { source: createSource() },
       undefined,
-      { keys: [] },
+      [],
       controller.signal,
     );
 
@@ -114,7 +114,7 @@ describe("MCAP playback worker transport", () => {
         topics: ["/camera"],
       },
       undefined,
-      { keys: [] },
+      [],
       controller.signal,
     );
     const rejected = vi.fn();

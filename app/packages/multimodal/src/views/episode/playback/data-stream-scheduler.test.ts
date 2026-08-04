@@ -63,7 +63,7 @@ beforeEach(() => {
 });
 
 describe("DataStreamScheduler", () => {
-  it("admits remaining current-frame streams only after images settle", async () => {
+  it("admits images before remaining streams for a one-off target", () => {
     const harness = createSchedulerHarness({
       activeStreams: ["/camera/left", "/lidar", "/camera/right"],
       currentFrameFirstStreams: ["/camera/left", "/camera/right"],
@@ -71,19 +71,12 @@ describe("DataStreamScheduler", () => {
 
     harness.scheduler.prefetchLookaheadFrom(0);
 
-    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledOnce();
-    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledWith(
-      0n,
-      ["/camera/left", "/camera/right"],
-      expect.any(Function),
+    expect(harness.prefetcher.fetchCurrentFrame.mock.calls.slice(0, 2)).toEqual(
+      [
+        [0n, ["/camera/left", "/camera/right"]],
+        [0n, ["/lidar"]],
+      ],
     );
-
-    harness.settleCurrentFrame();
-    await Promise.resolve();
-
-    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenLastCalledWith(0n, [
-      "/lidar",
-    ]);
   });
 
   it("keeps current-frame reads atomic when no image split applies", () => {
@@ -101,7 +94,7 @@ describe("DataStreamScheduler", () => {
     ]);
   });
 
-  it("keeps playback prefetch batches atomic across the image-first boundary", async () => {
+  it("keeps playback prefetch batches atomic across the image-first boundary", () => {
     const streams = ["/camera/left", "/lidar", "/camera/right"];
     const harness = createSchedulerHarness({
       activeStreams: streams,
@@ -111,12 +104,12 @@ describe("DataStreamScheduler", () => {
 
     harness.stream().prefetch?.([0, 1]);
 
-    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledOnce();
-    harness.settleCurrentFrame();
-    await Promise.resolve();
-    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenLastCalledWith(0n, [
-      "/lidar",
-    ]);
+    expect(harness.prefetcher.fetchCurrentFrame.mock.calls.slice(0, 2)).toEqual(
+      [
+        [0n, ["/camera/left", "/camera/right"]],
+        [0n, ["/lidar"]],
+      ],
+    );
     expect(harness.prefetcher.fetchBatch).toHaveBeenCalledWith(
       expect.any(Array),
       streams,
@@ -126,41 +119,54 @@ describe("DataStreamScheduler", () => {
   });
 
   it("does not admit the deferred group for a stale current-frame target", async () => {
-    const harness = createSchedulerHarness({
-      activeStreams: ["/camera", "/lidar"],
-      currentFrameFirstStreams: ["/camera"],
-    });
+    vi.useFakeTimers();
+    try {
+      const harness = createSchedulerHarness({
+        activeStreams: ["/camera", "/lidar"],
+        currentFrameFanoutDebounceMs: 150,
+        currentFrameFirstStreams: ["/camera"],
+      });
 
-    harness.scheduler.prefetchLookaheadFrom(0);
-    playbackState.playhead = 1;
-    harness.scheduler.prefetchLookaheadFrom(1);
-    const latestTick = harness.prefetcher.fetchCurrentFrame.mock.calls[1]?.[0];
+      harness.scheduler.prefetchLookaheadFrom(0);
+      playbackState.playhead = 1;
+      harness.scheduler.prefetchLookaheadFrom(1);
+      playbackState.playhead = 2;
+      harness.scheduler.prefetchLookaheadFrom(2);
+      const latestTick =
+        harness.prefetcher.fetchCurrentFrame.mock.calls[3]?.[0];
 
-    harness.settleCurrentFrame();
-    await Promise.resolve();
-    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(2);
+      harness.settleCurrentFrame();
+      await Promise.resolve();
+      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(4);
 
-    harness.settleCurrentFrame();
-    await Promise.resolve();
-    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenLastCalledWith(
-      latestTick,
-      ["/lidar"],
-    );
+      harness.settleCurrentFrame();
+      await Promise.resolve();
+      vi.advanceTimersByTime(150);
+      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenLastCalledWith(
+        latestTick,
+        ["/lidar"],
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("does not admit a deferred group after scheduler cleanup", async () => {
     const harness = createSchedulerHarness({
       activeStreams: ["/camera", "/lidar"],
+      currentFrameFanoutDebounceMs: 150,
       currentFrameFirstStreams: ["/camera"],
     });
     const cleanup = harness.register();
 
     harness.stream().prefetch?.([0, 1]);
+    playbackState.playhead = 1;
+    harness.scheduler.prefetchLookaheadFrom(1);
     cleanup();
     harness.settleCurrentFrame();
     await Promise.resolve();
 
-    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledOnce();
+    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(3);
   });
 
   it("coalesces secondary streams only during a rapid paused-target burst", async () => {
@@ -173,8 +179,6 @@ describe("DataStreamScheduler", () => {
       });
 
       harness.scheduler.prefetchLookaheadFrom(0);
-      harness.settleCurrentFrame();
-      await Promise.resolve();
       expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(2);
 
       vi.advanceTimersByTime(80);
@@ -203,7 +207,7 @@ describe("DataStreamScheduler", () => {
     }
   });
 
-  it("keeps secondary streams immediate during ordinary playback", async () => {
+  it("keeps secondary streams immediate during ordinary playback", () => {
     vi.useFakeTimers();
     try {
       const harness = createSchedulerHarness({
@@ -214,13 +218,9 @@ describe("DataStreamScheduler", () => {
       playbackState.isPlaying = true;
 
       harness.scheduler.prefetchLookaheadFrom(0);
-      harness.settleCurrentFrame();
-      await Promise.resolve();
       vi.advanceTimersByTime(80);
       playbackState.playhead = 1;
       harness.scheduler.prefetchLookaheadFrom(1);
-      harness.settleCurrentFrame();
-      await Promise.resolve();
 
       expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(4);
     } finally {
