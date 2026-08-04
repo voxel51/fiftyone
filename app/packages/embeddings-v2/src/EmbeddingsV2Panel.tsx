@@ -71,8 +71,8 @@ export default function EmbeddingsV2Panel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetName]);
 
-  // The runs come from the dataset the page already loaded; deleting one
-  // refetches that query rather than a list this panel owns
+  // The runs are coupled to the dataset the page already loadss and
+  // should not maintain an independent list.
   const { runs } = useVisualizationRuns();
   const refresh = fos.useRefresh();
   const deleteExecutor = useOperatorExecutor(DELETE_RUN_OPERATOR);

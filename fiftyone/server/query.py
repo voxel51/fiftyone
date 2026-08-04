@@ -112,9 +112,6 @@ class BrainRunConfig(RunConfig):
     method: t.Optional[str]
     patches_field: t.Optional[str]
     supports_prompts: t.Optional[bool]
-    #: Visualization runs. Carried here so a plot can list and open a run from
-    #: the dataset query the App already makes, rather than asking a route for
-    #: what this document already holds
     num_dims: t.Optional[int]
     points_field: t.Optional[str]
     model: t.Optional[str]
@@ -156,17 +153,11 @@ class BrainRunConfig(RunConfig):
 @gql.type
 class BrainRun(Run):
     config: t.Optional[BrainRunConfig]
-    #: Whether the run's results have been saved. The results reference is set
-    #: only once a computation finishes, so a run that is still computing (or
-    #: whose computation died) reports False. See ``Dataset.modifier``, which
-    #: derives this rather than exposing the reference itself
+    #: Whether the run's results have been saved.
     ready: t.Optional[bool]
     #: Why this run cannot be used, when that is knowable WITHOUT loading its
     #: results — a config class that no longer imports (a rename the run
-    #: predates), or a malformed run document. Deliberately never derived
-    #: from the results blob: that would put a per-run blob load on every
-    #: dataset query. Problems inside the results surface when the run is
-    #: opened, not here
+    #: predates), or a malformed run document.
     error: t.Optional[str]
 
 
@@ -375,9 +366,6 @@ class Dataset:
         doc["sample_fields"] = flat
 
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
-        # ``ready`` is the presence of the results reference, never a load of
-        # it — the reference itself stays server-side. ``error`` is likewise
-        # IO-free (see _brain_run_error)
         doc["brain_methods"] = [
             {
                 **run,
