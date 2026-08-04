@@ -692,6 +692,7 @@ export function useRegisterDataStream({
                 ? byteTimelineRef.current
                 : null,
             getBlockingStreams: () => blockingStreamsRef.current,
+            getCurrentFrameFanoutDebounceMs: () => seekFetchDebounceMs,
             getCurrentFrameFirstStreams: () =>
               currentFrameFirstStreamsRef.current,
             getIndex: () => indexRef.current,
@@ -716,6 +717,7 @@ export function useRegisterDataStream({
       playbackPolicy,
       publishStreamStatuses,
       resolveStartupCushion,
+      seekFetchDebounceMs,
       source,
       startupCushionPlanner,
       store,

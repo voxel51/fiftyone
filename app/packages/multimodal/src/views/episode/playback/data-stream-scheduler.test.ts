@@ -163,6 +163,71 @@ describe("DataStreamScheduler", () => {
     expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledOnce();
   });
 
+  it("coalesces secondary streams only during a rapid paused-target burst", async () => {
+    vi.useFakeTimers();
+    try {
+      const harness = createSchedulerHarness({
+        activeStreams: ["/camera", "/lidar"],
+        currentFrameFanoutDebounceMs: 150,
+        currentFrameFirstStreams: ["/camera"],
+      });
+
+      harness.scheduler.prefetchLookaheadFrom(0);
+      harness.settleCurrentFrame();
+      await Promise.resolve();
+      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(2);
+
+      vi.advanceTimersByTime(80);
+      playbackState.playhead = 1;
+      harness.scheduler.prefetchLookaheadFrom(1);
+      harness.settleCurrentFrame();
+      await Promise.resolve();
+      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(3);
+
+      vi.advanceTimersByTime(80);
+      playbackState.playhead = 2;
+      harness.scheduler.prefetchLookaheadFrom(2);
+      harness.settleCurrentFrame();
+      await Promise.resolve();
+      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(4);
+
+      vi.advanceTimersByTime(149);
+      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(4);
+      vi.advanceTimersByTime(1);
+      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenLastCalledWith(
+        harness.prefetcher.fetchCurrentFrame.mock.calls[3]?.[0],
+        ["/lidar"],
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps secondary streams immediate during ordinary playback", async () => {
+    vi.useFakeTimers();
+    try {
+      const harness = createSchedulerHarness({
+        activeStreams: ["/camera", "/lidar"],
+        currentFrameFanoutDebounceMs: 150,
+        currentFrameFirstStreams: ["/camera"],
+      });
+      playbackState.isPlaying = true;
+
+      harness.scheduler.prefetchLookaheadFrom(0);
+      harness.settleCurrentFrame();
+      await Promise.resolve();
+      vi.advanceTimersByTime(80);
+      playbackState.playhead = 1;
+      harness.scheduler.prefetchLookaheadFrom(1);
+      harness.settleCurrentFrame();
+      await Promise.resolve();
+
+      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(4);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("routes rolling lookahead through idle and playback lanes", () => {
     const harness = createSchedulerHarness();
     const cleanup = harness.register();
@@ -563,6 +628,7 @@ function createSchedulerHarness({
     },
   ],
   currentFrameFirstStreams = ["/camera"],
+  currentFrameFanoutDebounceMs = 0,
   deferredBatchAdmission = false,
   fillCache = true,
   policy = {},
@@ -570,6 +636,7 @@ function createSchedulerHarness({
   readonly activeStreams?: string[];
   readonly byteTimeline?: readonly ByteTimelinePoint[];
   readonly currentFrameFirstStreams?: readonly string[];
+  readonly currentFrameFanoutDebounceMs?: number;
   readonly deferredBatchAdmission?: boolean;
   readonly fillCache?: boolean;
   readonly policy?: Partial<PlaybackPolicy>;
@@ -621,6 +688,7 @@ function createSchedulerHarness({
     getBackgroundLookaheadSeconds: () => 2,
     getByteTimeline: () => byteTimeline,
     getBlockingStreams: () => new Set(activeStreams),
+    getCurrentFrameFanoutDebounceMs: () => currentFrameFanoutDebounceMs,
     getCurrentFrameFirstStreams: () => new Set(currentFrameFirstStreams),
     getIndex: () => index,
     getLastSeekAtMs: () => null,

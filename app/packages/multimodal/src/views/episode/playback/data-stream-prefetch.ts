@@ -486,6 +486,7 @@ export interface DataStreamSchedulerOptions {
   readonly getBackgroundLookaheadSeconds: () => number;
   readonly getByteTimeline: () => readonly ByteTimelinePoint[] | null;
   readonly getBlockingStreams: () => ReadonlySet<string>;
+  readonly getCurrentFrameFanoutDebounceMs: () => number;
   readonly getCurrentFrameFirstStreams: () => ReadonlySet<string>;
   readonly getIndex: () => TimelineIndex | null;
   readonly getLastSeekAtMs: () => number | null;
@@ -507,6 +508,10 @@ export interface DataStreamSchedulerOptions {
 export class DataStreamScheduler {
   private currentFrameTargetTick: bigint | null = null;
   private currentFrameTargetVersion = 0;
+  private currentFrameTargetChangedAtMs: number | null = null;
+  private currentFrameBurstUntilMs: number | null = null;
+  private deferredCurrentFrameTimer: ReturnType<typeof setTimeout> | null =
+    null;
   private lastObservedCommitSec: number | null = null;
   private nextLookaheadRefreshTime = 0;
 
@@ -543,8 +548,14 @@ export class DataStreamScheduler {
   }
 
   resetSource(): void {
+    if (this.deferredCurrentFrameTimer !== null) {
+      clearTimeout(this.deferredCurrentFrameTimer);
+      this.deferredCurrentFrameTimer = null;
+    }
     this.currentFrameTargetTick = null;
     this.currentFrameTargetVersion += 1;
+    this.currentFrameTargetChangedAtMs = null;
+    this.currentFrameBurstUntilMs = null;
     this.lastObservedCommitSec = null;
     this.nextLookaheadRefreshTime = 0;
   }
@@ -556,8 +567,31 @@ export class DataStreamScheduler {
    */
   private fetchCurrentFrame(tick: bigint, activeStreams: string[]): void {
     if (this.currentFrameTargetTick !== tick) {
+      const changedAtMs = monotonicNowMs();
+      const fanoutDebounceMs = this.options.getCurrentFrameFanoutDebounceMs();
+      const followsRecentTarget =
+        this.currentFrameTargetChangedAtMs !== null &&
+        changedAtMs - this.currentFrameTargetChangedAtMs < fanoutDebounceMs;
+      const burstIsActive =
+        this.currentFrameBurstUntilMs !== null &&
+        changedAtMs < this.currentFrameBurstUntilMs;
+      const isPausedTarget =
+        !getIsPlaying(this.options.store) &&
+        !getIsPlayPending(this.options.store);
+
+      this.currentFrameBurstUntilMs =
+        fanoutDebounceMs > 0 &&
+        isPausedTarget &&
+        (followsRecentTarget || burstIsActive)
+          ? changedAtMs + fanoutDebounceMs
+          : null;
+      this.currentFrameTargetChangedAtMs = changedAtMs;
       this.currentFrameTargetTick = tick;
       this.currentFrameTargetVersion += 1;
+      if (this.deferredCurrentFrameTimer !== null) {
+        clearTimeout(this.deferredCurrentFrameTimer);
+        this.deferredCurrentFrameTimer = null;
+      }
     }
     const targetVersion = this.currentFrameTargetVersion;
     const firstSet = this.options.getCurrentFrameFirstStreams();
@@ -573,24 +607,48 @@ export class DataStreamScheduler {
       (stream) => !firstSet.has(stream),
     );
     this.options.prefetcher.fetchCurrentFrame(tick, firstStreams, () => {
-      if (
-        this.currentFrameTargetVersion !== targetVersion ||
-        this.currentFrameTargetTick !== tick
-      ) {
+      const admitRemainingStreams = () => {
+        if (
+          this.currentFrameTargetVersion !== targetVersion ||
+          this.currentFrameTargetTick !== tick
+        ) {
+          return;
+        }
+        const currentTick = this.options
+          .getIndex()
+          ?.nearestTick(getPlayhead(this.options.store));
+        if (currentTick !== tick) return;
+
+        const activeSet = new Set(this.options.getActiveStreams());
+        const activeRemainingStreams = remainingStreams.filter((stream) =>
+          activeSet.has(stream),
+        );
+        if (activeRemainingStreams.length > 0) {
+          this.options.prefetcher.fetchCurrentFrame(
+            tick,
+            activeRemainingStreams,
+          );
+        }
+      };
+
+      const burstDelayMs =
+        !getIsPlaying(this.options.store) &&
+        !getIsPlayPending(this.options.store) &&
+        this.currentFrameBurstUntilMs !== null
+          ? Math.max(0, this.currentFrameBurstUntilMs - monotonicNowMs())
+          : 0;
+      if (burstDelayMs <= 0) {
+        admitRemainingStreams();
         return;
       }
-      const currentTick = this.options
-        .getIndex()
-        ?.nearestTick(getPlayhead(this.options.store));
-      if (currentTick !== tick) return;
 
-      const activeSet = new Set(this.options.getActiveStreams());
-      const activeRemainingStreams = remainingStreams.filter((stream) =>
-        activeSet.has(stream),
-      );
-      if (activeRemainingStreams.length > 0) {
-        this.options.prefetcher.fetchCurrentFrame(tick, activeRemainingStreams);
+      if (this.deferredCurrentFrameTimer !== null) {
+        clearTimeout(this.deferredCurrentFrameTimer);
       }
+      this.deferredCurrentFrameTimer = setTimeout(() => {
+        this.deferredCurrentFrameTimer = null;
+        admitRemainingStreams();
+      }, burstDelayMs);
     });
   }
 
