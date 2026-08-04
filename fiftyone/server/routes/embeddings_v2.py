@@ -133,9 +133,10 @@ class EmbeddingsV2RunInfo(HTTPEndpoint):
         # nothing cached in the pod — and load the blob only when nothing
         # does. Saving results records the counts, so only a legacy run pays
         # the load, and only until it is re-saved.
+        # num_points lives ONLY in results_meta — no released brain config
+        # records it, so there is no config fallback for it (num_dims is a
+        # real config field and keeps one)
         n = meta.get("num_points")
-        if n is None:
-            n = config.get("num_points")
 
         dims = meta.get("num_dims")
         if dims is None:
