@@ -158,6 +158,36 @@ describe("data stream prefetcher", () => {
     ).toEqual([0n]);
   });
 
+  it("settles current-frame followers after pending ownership is released", async () => {
+    const imageRead = deferred<SynchronizedFrameWindow>();
+    const harness = createHarness({
+      readSynchronized: vi.fn(() => imageRead.promise),
+    });
+    harness.caches.get(IMAGE)?.subscribe();
+    const firstSettled = vi.fn();
+    const followerSettled = vi.fn();
+
+    expect(
+      harness.prefetcher.fetchCurrentFrame(0n, [IMAGE], firstSettled),
+    ).toBe(true);
+    expect(
+      harness.prefetcher.fetchCurrentFrame(0n, [IMAGE], followerSettled),
+    ).toBe(false);
+    expect(firstSettled).not.toHaveBeenCalled();
+    expect(followerSettled).not.toHaveBeenCalled();
+
+    imageRead.reject(new EpisodeReadCancelledError());
+    await settle();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(firstSettled).toHaveBeenCalledOnce();
+    expect(followerSettled).toHaveBeenCalledOnce();
+    expect(harness.fetchState.pendingCurrentFrameSettlementsByTick).toEqual(
+      new Map(),
+    );
+    expect(harness.prefetcher.isStreamPending("0", IMAGE)).toBe(false);
+  });
+
   it("isolates decode failures and seals only the repeatedly broken stream", async () => {
     const warning = vi
       .spyOn(console, "warn")

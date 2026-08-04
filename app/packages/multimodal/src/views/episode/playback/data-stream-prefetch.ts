@@ -51,6 +51,10 @@ const EMPTY_POINT_CLOUD_COLOR_BY: Readonly<Record<string, string>> = {};
 export interface DataStreamFetchState {
   readonly failedStreams: Set<string>;
   readonly failureStreaks: Map<string, number>;
+  readonly pendingCurrentFrameSettlementsByTick: Map<
+    string,
+    Map<string, Promise<void>>
+  >;
   readonly pendingStreamsByTick: Map<string, Set<string>>;
 }
 
@@ -59,6 +63,7 @@ export function createDataStreamFetchState(): DataStreamFetchState {
   return {
     failedStreams: new Set(),
     failureStreaks: new Map(),
+    pendingCurrentFrameSettlementsByTick: new Map(),
     pendingStreamsByTick: new Map(),
   };
 }
@@ -67,6 +72,7 @@ export function createDataStreamFetchState(): DataStreamFetchState {
 export function resetDataStreamFetchState(state: DataStreamFetchState): void {
   state.failedStreams.clear();
   state.failureStreaks.clear();
+  state.pendingCurrentFrameSettlementsByTick.clear();
   state.pendingStreamsByTick.clear();
 }
 
@@ -84,7 +90,11 @@ export interface DataStreamPrefetcher {
     activeStreams: string[],
     operation: DataOperation,
   ): boolean;
-  fetchCurrentFrame(tick: bigint, activeStreams: string[]): boolean;
+  fetchCurrentFrame(
+    tick: bigint,
+    activeStreams: string[],
+    onSettled?: () => void,
+  ): boolean;
   isStreamPending(tickKey: string, stream: string): boolean;
 }
 
@@ -129,6 +139,54 @@ export function createDataStreamPrefetcher({
 }): DataStreamPrefetcher {
   const isStreamPending = (tickKey: string, stream: string): boolean =>
     fetchState.pendingStreamsByTick.get(tickKey)?.has(stream) ?? false;
+
+  const notifyWhenCurrentFrameStreamsSettle = (
+    tickKey: string,
+    streams: readonly string[],
+    onSettled: (() => void) | undefined,
+  ): void => {
+    if (!onSettled) return;
+    const settlements =
+      fetchState.pendingCurrentFrameSettlementsByTick.get(tickKey);
+    const pending = [
+      ...new Set(
+        streams
+          .map((stream) => settlements?.get(stream))
+          .filter((value): value is Promise<void> => value !== undefined),
+      ),
+    ];
+    void Promise.all(pending).then(onSettled);
+  };
+
+  const trackCurrentFrameSettlement = (
+    tickKey: string,
+    streams: readonly string[],
+    settlement: Promise<void>,
+  ): void => {
+    let settlements =
+      fetchState.pendingCurrentFrameSettlementsByTick.get(tickKey);
+    if (!settlements) {
+      settlements = new Map();
+      fetchState.pendingCurrentFrameSettlementsByTick.set(tickKey, settlements);
+    }
+    for (const stream of streams) settlements.set(stream, settlement);
+  };
+
+  const clearCurrentFrameSettlement = (
+    tickKey: string,
+    streams: readonly string[],
+    settlement: Promise<void>,
+  ): void => {
+    const settlements =
+      fetchState.pendingCurrentFrameSettlementsByTick.get(tickKey);
+    if (!settlements) return;
+    for (const stream of streams) {
+      if (settlements.get(stream) === settlement) settlements.delete(stream);
+    }
+    if (settlements.size === 0) {
+      fetchState.pendingCurrentFrameSettlementsByTick.delete(tickKey);
+    }
+  };
 
   const markStreamsPending = (
     tickKeys: readonly string[],
@@ -297,6 +355,7 @@ export function createDataStreamPrefetcher({
   const fetchCurrentFrame: DataStreamPrefetcher["fetchCurrentFrame"] = (
     tick,
     activeStreams,
+    onSettled,
   ) => {
     if (activeStreams.length === 0) return false;
 
@@ -306,10 +365,13 @@ export function createDataStreamPrefetcher({
       (stream) =>
         !caches.get(stream)?.has(tick) && !isStreamPending(tickKey, stream),
     );
-    if (streamsToFetch.length === 0) return false;
+    if (streamsToFetch.length === 0) {
+      notifyWhenCurrentFrameStreamsSettle(tickKey, activeStreams, onSettled);
+      return false;
+    }
 
     markStreamsPending([tickKey], streamsToFetch);
-    void playback
+    const settlement = playback
       .readSynchronized({
         pointCloudColorBy: getPointCloudColorBy(),
         streamPolicies: getStreamPolicies(),
@@ -362,7 +424,14 @@ export function createDataStreamPrefetcher({
         if (isEpisodeReadCancelledError(error)) return;
         handleFetchFailure(error, [tick], streamsToFetch);
       })
-      .finally(() => finishFetch(sourceEpoch, [tickKey], streamsToFetch));
+      .finally(() => {
+        finishFetch(sourceEpoch, [tickKey], streamsToFetch);
+        if (getSourceEpoch() === sourceEpoch) {
+          clearCurrentFrameSettlement(tickKey, streamsToFetch, settlement);
+        }
+      });
+    trackCurrentFrameSettlement(tickKey, streamsToFetch, settlement);
+    notifyWhenCurrentFrameStreamsSettle(tickKey, activeStreams, onSettled);
 
     return true;
   };
@@ -436,6 +505,8 @@ export interface DataStreamSchedulerOptions {
  * and the single playback-engine stream without owning React state.
  */
 export class DataStreamScheduler {
+  private currentFrameTargetTick: bigint | null = null;
+  private currentFrameTargetVersion = 0;
   private lastObservedCommitSec: number | null = null;
   private nextLookaheadRefreshTime = 0;
 
@@ -472,6 +543,8 @@ export class DataStreamScheduler {
   }
 
   resetSource(): void {
+    this.currentFrameTargetTick = null;
+    this.currentFrameTargetVersion += 1;
     this.lastObservedCommitSec = null;
     this.nextLookaheadRefreshTime = 0;
   }
@@ -482,6 +555,11 @@ export class DataStreamScheduler {
    * the all-blocking-stream readiness gate remains unchanged.
    */
   private fetchCurrentFrame(tick: bigint, activeStreams: string[]): void {
+    if (this.currentFrameTargetTick !== tick) {
+      this.currentFrameTargetTick = tick;
+      this.currentFrameTargetVersion += 1;
+    }
+    const targetVersion = this.currentFrameTargetVersion;
     const firstSet = this.options.getCurrentFrameFirstStreams();
     const firstStreams = activeStreams.filter((stream) => firstSet.has(stream));
     if (
@@ -491,11 +569,29 @@ export class DataStreamScheduler {
       this.options.prefetcher.fetchCurrentFrame(tick, activeStreams);
       return;
     }
-    this.options.prefetcher.fetchCurrentFrame(tick, firstStreams);
-    this.options.prefetcher.fetchCurrentFrame(
-      tick,
-      activeStreams.filter((stream) => !firstSet.has(stream)),
+    const remainingStreams = activeStreams.filter(
+      (stream) => !firstSet.has(stream),
     );
+    this.options.prefetcher.fetchCurrentFrame(tick, firstStreams, () => {
+      if (
+        this.currentFrameTargetVersion !== targetVersion ||
+        this.currentFrameTargetTick !== tick
+      ) {
+        return;
+      }
+      const currentTick = this.options
+        .getIndex()
+        ?.nearestTick(getPlayhead(this.options.store));
+      if (currentTick !== tick) return;
+
+      const activeSet = new Set(this.options.getActiveStreams());
+      const activeRemainingStreams = remainingStreams.filter((stream) =>
+        activeSet.has(stream),
+      );
+      if (activeRemainingStreams.length > 0) {
+        this.options.prefetcher.fetchCurrentFrame(tick, activeRemainingStreams);
+      }
+    });
   }
 
   /**
@@ -865,6 +961,7 @@ export class DataStreamScheduler {
 
     return () => {
       registered = false;
+      this.resetSource();
       clearPendingPlayRetry();
       unregister();
       unsubscribe();
