@@ -102,7 +102,8 @@ export default function EmbeddingsV2Panel() {
 
   // A stale key (deleted run, switched dataset, results not yet
   // saved) falls back to the list — a pending run has nothing to plot
-  const openRun = runs?.find((r) => r.brainKey === openKey && r.ready) ?? null;
+  const openRun =
+    runs?.find((r) => r.brainKey === openKey && r.ready && !r.error) ?? null;
 
   if (openRun) {
     return (

@@ -77,17 +77,20 @@ export default function RunsList({
   // open menu or an armed confirmation; both must not outlive the ready
   // card they belong to (a recreated same-name run must not inherit them)
   useEffect(() => {
-    const isReady = (key: string | null) =>
-      Boolean(key && runs?.some((r) => r.brainKey === key && r.ready));
-    if (menu && !isReady(menu.key)) setMenu(null);
-    if (confirmKey && !isReady(confirmKey)) setConfirmKey(null);
+    const isActionable = (key: string | null) =>
+      Boolean(
+        key && runs?.some((r) => r.brainKey === key && (r.ready || r.error)),
+      );
+    if (menu && !isActionable(menu.key)) setMenu(null);
+    if (confirmKey && !isActionable(confirmKey)) setConfirmKey(null);
   }, [runs, menu, confirmKey]);
 
   const runActions = (run: VisualizationRun) => {
     // No actions on pending runs: Refresh needs results, and Delete
     // would remove the run record without stopping the computation
-    // writing it (manage those from the Runs page)
-    if (!run.ready) return undefined;
+    // writing it (manage those from the Runs page). An ERRORED run is
+    // not pending — Delete is its recovery path
+    if (!run.ready && !run.error) return undefined;
     if (confirmKey === run.brainKey) {
       return (
         <>

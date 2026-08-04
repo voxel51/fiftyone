@@ -189,10 +189,11 @@ def _brain_run_error(run: dict) -> t.Optional[str]:
     from its results (loading those per run per dataset query is exactly the
     cost the ``ready``/``error`` fields exist to avoid)."""
     config = run.get("config")
-    if not isinstance(config, dict) or not config.get("cls"):
+    cls_path = config.get("cls") if isinstance(config, dict) else None
+    if not isinstance(cls_path, str) or not cls_path:
         return "run document has no config"
 
-    return _run_cls_error(config["cls"])
+    return _run_cls_error(cls_path)
 
 
 @gql.type

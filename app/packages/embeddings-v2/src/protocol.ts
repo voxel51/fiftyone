@@ -89,8 +89,9 @@ export async function fetchRunInfo(
     Omit<RunInfo, "ready"> & { ready?: boolean }
   >("POST", "/embeddings/v2/run-info", { datasetName, brainKey });
   // run-info answering at all implies loadable results; the endpoint
-  // doesn't send the flag
-  return { ...info, ready: info.ready !== false };
+  // doesn't send the flag, and structural errors belong to the LIST
+  // contract (BrainRun.error) — this endpoint never reports one
+  return { ...info, ready: info.ready !== false, error: null };
 }
 
 export interface Slice {

@@ -15,6 +15,7 @@ const run = (
   pointsField: null,
   model: "clip-vit-base32-torch",
   ready: true,
+  error: null,
   timestamp: null,
   ...extra,
 });
