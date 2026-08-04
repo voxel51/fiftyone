@@ -18,6 +18,7 @@ import {
   emptyMcapBoundedReadUsage,
   McapBoundedReadCancelledError,
 } from "../reader/bounded-read-cancellation";
+import type { McapForegroundSupersession } from "./playback-worker-supersession";
 
 type PendingRequest<
   Type extends McapPlaybackWorkerUnaryType = McapPlaybackWorkerUnaryType,
@@ -27,7 +28,7 @@ type PendingRequest<
   readonly reject: (error: Error) => void;
   readonly resolve: (result: McapPlaybackWorkerResultByType[Type]) => void;
   readonly sourceKey: string;
-  readonly supersessionKeys: readonly string[];
+  readonly supersession: McapForegroundSupersession;
   readonly type: McapPlaybackWorkerUnaryType;
 };
 
@@ -62,7 +63,7 @@ export class McapPlaybackWorkerTransport {
     type: Type,
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
     priority?: McapPlaybackWorkerPriority,
-    supersessionKeys: readonly string[] = [],
+    supersession: McapForegroundSupersession = { keys: [] },
     signal?: AbortSignal,
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     const id = this.nextRequestId++;
@@ -107,7 +108,7 @@ export class McapPlaybackWorkerTransport {
         reject,
         resolve: resolve as PendingRequest["resolve"],
         sourceKey,
-        supersessionKeys,
+        supersession,
         type,
       });
 
@@ -129,7 +130,7 @@ export class McapPlaybackWorkerTransport {
    */
   cancelPending(
     filter: (pending: {
-      readonly supersessionKeys: readonly string[];
+      readonly supersession: McapForegroundSupersession;
       readonly type: McapPlaybackWorkerUnaryType;
     }) => boolean,
   ): number[] {
@@ -137,7 +138,7 @@ export class McapPlaybackWorkerTransport {
     for (const [id, pending] of this.pending) {
       if (
         !filter({
-          supersessionKeys: pending.supersessionKeys,
+          supersession: pending.supersession,
           type: pending.type,
         })
       ) {

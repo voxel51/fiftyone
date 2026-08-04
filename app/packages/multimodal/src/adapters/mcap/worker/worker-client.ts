@@ -52,8 +52,8 @@ import type {
 } from "../contracts/index";
 import type { StreamInventory } from "../../../schemas/v1";
 import {
-  haveMcapSupersessionKeyOverlap,
-  mcapForegroundSupersessionKeys,
+  mcapForegroundSupersession,
+  shouldMcapRequestSupersede,
 } from "./playback-worker-supersession";
 
 type WorkerLane = {
@@ -317,19 +317,16 @@ class WorkerMcapResourceClient implements McapResourceClient {
       return Promise.reject(error);
     }
     const lane = this.laneForPriority(effectivePriority);
-    const supersessionKeys = mcapForegroundSupersessionKeys({
+    const supersession = mcapForegroundSupersession({
       generation: this.foregroundGeneration,
       payload,
       priority: effectivePriority,
       sourceKey,
       type,
     });
-    if (supersessionKeys.length > 0) {
+    if (supersession.keys.length > 0) {
       const cancelledIds = lane.transport.cancelPending((pending) =>
-        haveMcapSupersessionKeyOverlap(
-          pending.supersessionKeys,
-          supersessionKeys,
-        ),
+        shouldMcapRequestSupersede(pending.supersession, supersession),
       );
       this.postCancelRequests(lane, cancelledIds);
       // A burst of obsolete presentation work is also a seek/scrub signal.
@@ -343,7 +340,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
       type,
       payload,
       effectivePriority,
-      supersessionKeys,
+      supersession,
       signal,
     );
   }

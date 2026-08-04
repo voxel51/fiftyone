@@ -521,6 +521,57 @@ describe("worker-backed MCAP resource client", () => {
     await expect(latest).resolves.toEqual(window);
   });
 
+  it("keeps same-target fan-out but cancels stale disjoint current-frame work", async () => {
+    const { client, workers } = createClientHarness();
+    const source = createSource("source:1");
+    const staleImages = client.readSynchronizedMessages({
+      timeNs: 1n,
+      source,
+      topics: ["/camera/left", "/camera/right"],
+    });
+    const staleHeavy = client.readSynchronizedMessages({
+      timeNs: 1n,
+      source,
+      topics: ["/lidar", "/location"],
+    });
+    const worker = workers[0];
+
+    expect(worker.messages.slice(1)).toEqual([
+      expect.objectContaining({
+        id: 1,
+        payload: expect.objectContaining({ timeNs: 1n }),
+        type: "readSynchronizedMessages",
+      }),
+      expect.objectContaining({
+        id: 2,
+        payload: expect.objectContaining({ timeNs: 1n }),
+        type: "readSynchronizedMessages",
+      }),
+    ]);
+
+    const latestImages = client.readSynchronizedMessages({
+      timeNs: 2n,
+      source,
+      topics: ["/camera/left", "/camera/right"],
+    });
+
+    await expect(staleImages).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
+    await expect(staleHeavy).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
+    expect(worker.messages.slice(3)).toEqual([
+      { id: 1, type: "cancel" },
+      { id: 2, type: "cancel" },
+      expect.objectContaining({
+        id: 3,
+        payload: expect.objectContaining({ timeNs: 2n }),
+        type: "readSynchronizedMessages",
+      }),
+    ]);
+
+    const window = createSynchronizedWindow(2n);
+    worker.respond({ id: 3, ok: true, result: window });
+    await expect(latestImages).resolves.toEqual(window);
+  });
+
   it("keeps workers warm and fails stale reads under explicit ownership", async () => {
     const { client, workers } = createClientHarness();
 
