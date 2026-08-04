@@ -1,5 +1,5 @@
 import React from "react";
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import { RecoilRoot, useRecoilValue } from "recoil";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { ModalSelector, Session } from "./session";

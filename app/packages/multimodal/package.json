@@ -86,7 +86,7 @@
         "@mcap/support": "^1.1.0",
         "@react-three/drei": "9.105.4",
         "@react-three/fiber": "catalog:",
-        "@voxel51/voodo": "^0.1.0",
+        "@voxel51/voodo": "catalog:",
         "buffer": "catalog:",
         "colormap": "catalog:",
         "date-fns": "^4.1.0",
@@ -99,8 +99,20 @@
         "uplot": "^1.6.32"
     },
     "devDependencies": {
+        "@types/react": "catalog:",
         "@types/three": "^0.182.0",
+        "babel-plugin-relay": "catalog:",
         "concurrently": "^7.2.1",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "react-error-boundary": "catalog:",
+        "react-is": "catalog:",
+        "react-relay": "catalog:",
+        "recoil": "catalog:",
+        "recoil-relay": "catalog:",
+        "relay-runtime": "catalog:",
+        "styled-components": "catalog:",
+        "vite": "catalog:",
         "vite-plugin-relay": "catalog:"
     }
 }

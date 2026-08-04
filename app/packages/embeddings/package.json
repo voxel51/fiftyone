@@ -20,7 +20,17 @@
         "use-resize-observer": "catalog:"
     },
     "devDependencies": {
+        "@types/react": "catalog:",
         "@vitejs/plugin-react": "catalog:",
+        "jotai": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "react-error-boundary": "catalog:",
+        "react-relay": "catalog:",
+        "recoil": "catalog:",
+        "recoil-relay": "catalog:",
+        "relay-runtime": "catalog:",
+        "styled-components": "catalog:",
         "vite": "catalog:",
         "vite-plugin-externals": "catalog:"
     },

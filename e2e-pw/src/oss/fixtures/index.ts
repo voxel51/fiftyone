@@ -96,6 +96,17 @@ const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
 });
 
 export const test = customFixtures.extend<CustomFixturesWithPage>({
+  page: async ({ page }, use, testInfo) => {
+    page.on("pageerror", (e) => {
+      console.error(`[pageerror] ${testInfo.title}: ${e.message}`);
+    });
+    page.on("console", (message) => {
+      if (message.type() === "error") {
+        console.error(`[browser-error] ${testInfo.title}: ${message.text()}`);
+      }
+    });
+    await use(page);
+  },
   eventUtils: async ({ page }, use) => {
     await use(new EventUtils(page));
   },

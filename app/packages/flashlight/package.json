@@ -19,6 +19,7 @@
     ],
     "devDependencies": {
         "prettier": "catalog:",
+        "typescript": "catalog:",
         "typescript-plugin-css-modules": "^5.1.0",
         "vite": "catalog:"
     }

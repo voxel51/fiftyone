@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FoScene, FoSceneNode } from "../fo3d/render-types";
 import { useFo3dVisibilityPreferences } from "./use-fo3d-visibility-preferences";

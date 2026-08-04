@@ -9,7 +9,7 @@ export class BaseType {}
  *  type can be useful for displaying a informational-only views.
  */
 export class Void extends BaseType {
-  static fromJSON(_json: any) {
+  static fromJSON(_json: unknown) {
     return new Void();
   }
 }
@@ -79,7 +79,7 @@ class OperatorObject extends BaseType {
    * @param options
    * @returns newly defined property
    */
-  obj(name, options: any = {}) {
+  obj(name, options: PropertyOptionsInput = {}) {
     return this.defineProperty(name, new OperatorObject(), options);
   }
   /**
@@ -88,7 +88,7 @@ class OperatorObject extends BaseType {
    * @param options
    * @returns newly defined property
    */
-  str(name, options: any = {}) {
+  str(name, options: PropertyOptionsInput = {}) {
     return this.defineProperty(name, new OperatorString(), options);
   }
   /**
@@ -97,7 +97,7 @@ class OperatorObject extends BaseType {
    * @param options
    * @returns newly defined property
    */
-  bool(name, options: any = {}) {
+  bool(name, options: PropertyOptionsInput = {}) {
     return this.defineProperty(name, new OperatorBoolean(), options);
   }
   /**
@@ -106,7 +106,7 @@ class OperatorObject extends BaseType {
    * @param options
    * @returns newly defined property
    */
-  int(name, options: any = {}) {
+  int(name, options: PropertyOptionsInput = {}) {
     return this.defineProperty(name, new OperatorNumber(), options);
   }
   /**
@@ -115,7 +115,7 @@ class OperatorObject extends BaseType {
    * @param options
    * @returns newly defined property
    */
-  float(name, options: any = {}) {
+  float(name, options: PropertyOptionsInput = {}) {
     return this.defineProperty(name, new OperatorNumber(), options);
   }
   /**
@@ -124,7 +124,7 @@ class OperatorObject extends BaseType {
    * @param options
    * @returns newly defined property
    */
-  list(name, elementType: ANY_TYPE, options: any = {}) {
+  list(name, elementType: ANY_TYPE, options: PropertyOptionsInput = {}) {
     return this.defineProperty(name, new List(elementType), options);
   }
   /**
@@ -133,7 +133,7 @@ class OperatorObject extends BaseType {
    * @param options
    * @returns newly defined property
    */
-  enum(name, values: any[], options: any = {}) {
+  enum(name, values: string[], options: PropertyOptionsInput = {}) {
     return this.defineProperty(name, new Enum(values), options);
   }
   /**
@@ -142,7 +142,12 @@ class OperatorObject extends BaseType {
    * @param options
    * @returns newly defined property
    */
-  map(name, keyType: ANY_TYPE, valueType: ANY_TYPE, options: any = {}) {
+  map(
+    name,
+    keyType: ANY_TYPE,
+    valueType: ANY_TYPE,
+    options: PropertyOptionsInput = {},
+  ) {
     return this.defineProperty(
       name,
       new OperatorMap(keyType, valueType),
@@ -155,7 +160,7 @@ class OperatorObject extends BaseType {
    * @param options
    * @returns newly defined property
    */
-  oneof(name, types: ANY_TYPE[], options: any = {}) {
+  oneof(name, types: ANY_TYPE[], options: PropertyOptionsInput = {}) {
     return this.defineProperty(name, new OneOf(types), options);
   }
   /**
@@ -164,7 +169,7 @@ class OperatorObject extends BaseType {
    * @param options
    * @returns newly defined property
    */
-  tuple(name, items: ANY_TYPE[], options: any = {}) {
+  tuple(name, items: ANY_TYPE[], options: PropertyOptionsInput = {}) {
     return this.defineProperty(name, new Tuple(items), options);
   }
   /**
@@ -173,7 +178,7 @@ class OperatorObject extends BaseType {
    * @param options
    * @returns newly defined property
    */
-  file(name, options: any = {}) {
+  file(name, options: PropertyOptionsInput = {}) {
     return this.defineProperty(name, new File(), options);
   }
   /**
@@ -182,10 +187,10 @@ class OperatorObject extends BaseType {
    * @param options
    * @returns newly defined property
    */
-  uploadedFile(name, options: any = {}) {
+  uploadedFile(name, options: PropertyOptionsInput = {}) {
     return this.defineProperty(name, new UploadedFile(), options);
   }
-  static propertiesFromJSON(json: any): ObjectProperties {
+  static propertiesFromJSON(json: ObjectJSON): ObjectProperties {
     const entries: Array<[string, Property]> = Object.entries(
       json.properties,
     ).map(([k, v]) => [k, Property.fromJSON(v)]);
@@ -196,7 +201,7 @@ class OperatorObject extends BaseType {
    * @param json json object representing the definition of the property
    * @returns operator type `Object` created with json provided
    */
-  static fromJSON(json: any) {
+  static fromJSON(json: ObjectJSON) {
     return new OperatorObject(OperatorObject.propertiesFromJSON(json));
   }
 }
@@ -240,9 +245,12 @@ export class Property {
   onChange?: string;
 
   public resolver: (property: Property, ctx: ExecutionContext) => Property;
-  static fromJSON(json: any) {
-    const { error_message: errorMessage, type, ...rest } = json;
-    return new Property(typeFromJSON(json.type), { errorMessage, ...rest });
+  static fromJSON(json: PropertyJSON) {
+    const { error_message: errorMessage, type: _type, ...rest } = json;
+    return new Property(
+      typeFromJSON(json.type as Parameters<typeof typeFromJSON>[0]),
+      { errorMessage, ...rest },
+    );
   }
   toProps() {
     return {
@@ -300,7 +308,7 @@ export class ResolvableProperty extends BaseType {
     this.trailing = options.trailing ?? true;
   }
 
-  static fromJSON(json: any) {
+  static fromJSON(json: ResolvablePropertyOptions) {
     return new ResolvableProperty({
       resolver: json.resolver,
       debounce: json.debounce,
@@ -333,7 +341,7 @@ class OperatorString extends BaseType {
     this.allowEmpty = options.allowEmpty;
   }
 
-  static fromJSON(json: any) {
+  static fromJSON(json: { allow_empty?: boolean }) {
     return new OperatorString({ allowEmpty: json.allow_empty });
   }
 }
@@ -343,10 +351,8 @@ export { OperatorString as String };
  * Operator type for representing a boolean value for operator input/output.
  */
 class OperatorBoolean extends BaseType {
-  static fromJSON(_json: any) {
-    const Type = this;
-    const type = new Type();
-    return type;
+  static fromJSON(_json: unknown) {
+    return new this();
   }
 }
 export { OperatorBoolean as Boolean };
@@ -382,7 +388,12 @@ class OperatorNumber extends BaseType {
   max: number;
   int: boolean;
   float: boolean;
-  static fromJSON(json: any) {
+  static fromJSON(json: {
+    min?: number;
+    max?: number;
+    int?: boolean;
+    float?: boolean;
+  }) {
     return new OperatorNumber(json);
   }
 }
@@ -409,10 +420,8 @@ export class List extends BaseType {
  * Operator type for representing a sampled id value for operator input/output.
  */
 export class SampleID extends OperatorString {
-  static fromJSON(_json: any) {
-    const Type = this;
-    const type = new Type();
-    return type;
+  static fromJSON(_json: unknown) {
+    return new this();
   }
 }
 
@@ -520,7 +529,7 @@ export class File extends OperatorObject {
     });
   }
 
-  static fromJSON(json: any): File {
+  static fromJSON(json: ObjectJSON): File {
     return new File(OperatorObject.propertiesFromJSON(json));
   }
 }
@@ -555,7 +564,7 @@ export class UploadedFile extends OperatorObject {
     });
   }
 
-  static fromJSON(json: object): File {
+  static fromJSON(json: ObjectJSON): File {
     return new UploadedFile(OperatorObject.propertiesFromJSON(json));
   }
 }
@@ -1098,7 +1107,7 @@ export class TableView extends View {
  */
 export class MapView extends View {
   key: string;
-  value: any;
+  value: unknown;
   constructor(options: ViewProps) {
     super(options);
     this.key = options.key as string;
@@ -1478,10 +1487,19 @@ type PropertyOptions = {
   description?: string;
   view?: View;
   required?: boolean;
-  defaultValue?: any;
-  default?: any;
+  defaultValue?: unknown;
+  default?: unknown;
   invalid?: boolean;
   errorMessage?: string;
+};
+// index signature admits view-specific keys forwarded through defineProperty
+type PropertyOptionsInput = PropertyOptions & { [key: string]: unknown };
+export type PropertyJSON = {
+  error_message?: string;
+  type?: unknown;
+};
+type ObjectJSON = {
+  properties: Record<string, PropertyJSON>;
 };
 type ObjectProperties = Map<string, Property>;
 

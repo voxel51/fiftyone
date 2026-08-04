@@ -2,6 +2,7 @@ import { useAnnotationEngine } from "@fiftyone/annotation";
 import {
   LabelHoveredEvent,
   LabelUnhoveredEvent,
+  type PointInfo,
   selectiveRenderingEventBus,
 } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
@@ -17,16 +18,17 @@ import {
   isCurrentlyTransformingAtom,
   selectedLabelForAnnotationAtom,
 } from "../../state";
+import type { OverlayLabel } from "../loader";
 import type { BaseOverlayProps, EventHandlers, HoverState } from "../../types";
 
-const getDetailsFromLabel = (label: any) => {
+const getDetailsFromLabel = (label: OverlayLabel) => {
   const field = Array.isArray(label.path)
     ? label.path[label.path.length - 1]
     : label.path;
   return {
     field,
-    label,
-    type: label.type,
+    label: label as unknown as PointInfo["label"],
+    type: label.type as string,
     color: label.color,
     sampleId: label.sampleId,
   };
@@ -59,7 +61,7 @@ export const useHoverState = (): HoverState => {
 /**
  * Hook that provides mesh pointer event handlers.
  */
-const useMeshTooltipProps = (label: any) => {
+const useMeshTooltipProps = (label: OverlayLabel) => {
   const onPointerOver = useRecoilCallback(
     ({ snapshot, set }) =>
       (e?: ThreeEvent<PointerEvent>) => {
@@ -90,10 +92,10 @@ const useMeshTooltipProps = (label: any) => {
         selectiveRenderingEventBus.emit(
           new LabelHoveredEvent({
             sampleId: label.sampleId,
-            labelId: label.id,
+            labelId: label.id as string,
             instanceId: label.instance._id,
             field: label.path,
-            frameNumber: label.frame_number,
+            frameNumber: label.frame_number as number | undefined,
           }),
         );
       },
@@ -177,7 +179,7 @@ const useMeshTooltipProps = (label: any) => {
 /**
  * Custom hook for managing event handlers and tooltip integration
  */
-export const useEventHandlers = (label: any): EventHandlers => {
+export const useEventHandlers = (label: OverlayLabel): EventHandlers => {
   const {
     onPointerOver: _onPointerOver,
     onPointerOut: _onPointerOut,
@@ -207,7 +209,7 @@ export const useEventHandlers = (label: any): EventHandlers => {
           return;
         }
 
-        const id = label?._id ?? label?.id;
+        const id = (label?._id ?? label?.id) as string | undefined;
         const path = Array.isArray(label?.path)
           ? label.path.join(".")
           : label?.path;
@@ -246,7 +248,7 @@ export const useEventHandlers = (label: any): EventHandlers => {
 export const useLabelColor = (
   props: Pick<BaseOverlayProps, "selected" | "color">,
   isHovered: boolean,
-  label: any,
+  label: OverlayLabel,
   isSelectedForAnnotation?: boolean,
 ) => {
   const isSimilarLabelHovered = useSimilarLabels3d(label);
