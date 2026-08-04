@@ -36,15 +36,25 @@ _DA3_REQUIREMENT = (
     "@2c21ea849ceec7b469a3e62ea0c0e270afc3281a"
 )
 
+# The inference stack runs on numpy 2; all of these are numpy-2 clean
+_DA3_INFERENCE_DEPS = (
+    "evo",
+    "e3nn",
+    "omegaconf",
+    "einops",
+    "addict",
+    "safetensors",
+)
+
 
 def _install_depth_anything_3() -> None:
     # depth-anything-3 pins numpy<2, but its inference stack (including evo,
     # which pose alignment uses) runs on numpy 2; only the 3D export stack
     # needs the pin. Installing the full dependency set would downgrade the
-    # host numpy, so the package is installed without dependencies, evo is
-    # installed explicitly, and `_stub_da3_export()` absorbs the export
-    # stack when it cannot import
-    for pkg in ("evo", "e3nn"):
+    # host numpy, so the package is installed without dependencies, the
+    # inference dependencies are installed explicitly, and
+    # `_stub_da3_export()` absorbs the export stack when it cannot import
+    for pkg in _DA3_INFERENCE_DEPS:
         fou.ensure_package(pkg, error_level=2) or fou.install_package(pkg)
 
     args = [
@@ -152,10 +162,12 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
             raise ValueError("Model output 'depth' is None")
 
         if isinstance(depth_maps, (list, tuple)):
-            depth_maps = torch.stack([
-                t if isinstance(t, torch.Tensor) else torch.as_tensor(t)
-                for t in depth_maps
-            ])
+            depth_maps = torch.stack(
+                [
+                    t if isinstance(t, torch.Tensor) else torch.as_tensor(t)
+                    for t in depth_maps
+                ]
+            )
 
         if isinstance(depth_maps, torch.Tensor):
             depth_maps = depth_maps.detach().cpu().numpy()
@@ -181,7 +193,9 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
             if len(conf_maps) < len(depth_maps):
                 logger.warning(
                     "Confidence maps (%d) fewer than depth maps (%d), "
-                    "skipping confidence", len(conf_maps), len(depth_maps)
+                    "skipping confidence",
+                    len(conf_maps),
+                    len(depth_maps),
                 )
                 conf_maps = None
             else:
@@ -195,7 +209,9 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
             if len(sky_masks) < len(depth_maps):
                 logger.warning(
                     "Sky masks (%d) fewer than depth maps (%d), "
-                    "skipping sky", len(sky_masks), len(depth_maps)
+                    "skipping sky",
+                    len(sky_masks),
+                    len(depth_maps),
                 )
                 sky_masks = None
             else:
@@ -228,7 +244,9 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
                     depth = np.array(depth_img)
 
             if not np.all(np.isfinite(depth)):
-                logger.warning("Depth map contains NaN/inf values, replacing with 0")
+                logger.warning(
+                    "Depth map contains NaN/inf values, replacing with 0"
+                )
                 depth = np.where(np.isfinite(depth), depth, 0)
 
             max_depth = np.max(depth)
@@ -403,7 +421,9 @@ class DepthAnythingV3Model(fout.TorchImageModel):
 
         snapshot_download(config.name_or_path)
 
-    def _load_model(self, config: DepthAnythingV3ModelConfig) -> torch.nn.Module:
+    def _load_model(
+        self, config: DepthAnythingV3ModelConfig
+    ) -> torch.nn.Module:
         model = da3_api.DepthAnything3.from_pretrained(config.name_or_path)
         model = model.to(self._device)
         if self.using_half_precision:
@@ -480,7 +500,10 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             intrinsics=intrinsics,
         )
 
-        output = {"depth": prediction.depth, "is_metric": self.config.is_metric}
+        output = {
+            "depth": prediction.depth,
+            "is_metric": self.config.is_metric,
+        }
         if prediction.conf is not None:
             output["confidence"] = prediction.conf
         if prediction.sky is not None:
@@ -562,7 +585,13 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             try:
                 self._model.inference(
                     [sample.filepath],
+                    process_res=self.config.process_res,
+                    process_res_method=self.config.process_res_method,
                     infer_gs=infer_gs,
+                    use_ray_pose=self.config.use_ray_pose,
+                    ref_view_strategy=self.config.ref_view_strategy,
+                    align_to_input_ext_scale=self.config.align_to_input_ext_scale,
+                    export_feat_layers=self.config.export_feat_layers or [],
                     export_dir=sample_export_dir,
                     export_format=export_format,
                     conf_thresh_percentile=conf_thresh_percentile,
@@ -584,8 +613,16 @@ class DepthAnythingV3Model(fout.TorchImageModel):
                     sample_export_dir, "gs_ply", "0000.ply"
                 )
             elif export_format == "gs_video":
+                # The directory comes from the sample filepath, so escape it;
+                # only the trailing components are patterns
                 video_paths = sorted(
-                    glob.glob(os.path.join(sample_export_dir, "gs_video", "*.mp4"))
+                    glob.glob(
+                        os.path.join(
+                            glob.escape(sample_export_dir),
+                            "gs_video",
+                            "*.mp4",
+                        )
+                    )
                 )
                 if video_paths:
                     sample["da3_export_path"] = video_paths[-1]
