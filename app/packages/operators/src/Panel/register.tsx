@@ -25,6 +25,7 @@ export default function registerPanel(params) {
       allowDuplicates: params.allow_duplicates,
       helpMarkdown: params.help_markdown,
       surfaces: params.surfaces,
+      scopes: params.scopes,
       alpha: params.alpha,
       beta: params.beta,
       category: params.category,

@@ -190,10 +190,17 @@ export type PanelOptions = {
     | "grid"
     | "modal"
     | "portal"
+    | "sidebar_right"
     | "grid modal"
     | "grid portal"
     | "modal portal"
-    | "grid modal portal";
+    | "grid modal portal"
+    | "grid sidebar_right"
+    | "modal sidebar_right"
+    | "grid modal sidebar_right";
+
+  /** Operator scopes in which this panel can execute. */
+  scopes?: string[];
 
   /**
    * Content displayed on the right side of the label in the panel title bar.

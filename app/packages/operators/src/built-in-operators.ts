@@ -1,7 +1,9 @@
 import {
   Layout,
+  PANEL_AREA,
   SpaceNode,
   useInitializePanel,
+  usePanelArea,
   usePanelTitle,
   usePanels,
   useSetPanelStateById,
@@ -25,7 +27,7 @@ import {
   useSetRecoilState,
 } from "recoil";
 import { loadPlugins } from "@fiftyone/plugins";
-import { useOperatorExecutor } from ".";
+import { OperatorScope, useOperatorExecutor } from ".";
 import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
 import { useRefreshOperators } from "./loader";
 import registerPanel from "./Panel/register";
@@ -54,6 +56,27 @@ import type {
 const { FIFTYONE_GRID_SPACES_ID, FIFTYONE_MODAL_SPACES_ID, PANEL_SURFACE } =
   fos.constants;
 
+const SAMPLES_PAGE_SURFACES = [
+  OperatorScope.DATASET_SAMPLES_GRID,
+  OperatorScope.DATASET_SAMPLE_MODAL,
+];
+
+function useTargetPanelSpaces() {
+  const isModalOpen = useRecoilValue(fos.isModalActive);
+  const spacesId = isModalOpen
+    ? FIFTYONE_MODAL_SPACES_ID
+    : FIFTYONE_GRID_SPACES_ID;
+  const { spaces } = useSpaces(spacesId);
+  const openedPanels = useSpaceNodes(spacesId);
+  const scope = isModalOpen ? PANEL_SURFACE.MODAL : PANEL_SURFACE.GRID;
+  return { openedPanels, scope, spaces };
+}
+
+function isPanelOnSurface(panel, scope) {
+  const surfaces = panel?.panelOptions?.surfaces || PANEL_SURFACE.GRID;
+  return surfaces.includes(scope);
+}
+
 //
 // BUILT-IN OPERATORS
 //
@@ -63,6 +86,7 @@ class ReloadSamples extends Operator {
     return new OperatorConfig({
       name: "reload_samples",
       label: "Reload samples from the dataset",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -76,6 +100,7 @@ class ReloadDataset extends Operator {
     return new OperatorConfig({
       name: "reload_dataset",
       label: "Reload the dataset",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks() {
@@ -111,6 +136,7 @@ class ClearSelectedSamples extends Operator {
     return new OperatorConfig({
       name: "clear_selected_samples",
       label: "Clear selected samples",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -125,6 +151,7 @@ class CopyViewAsJSON extends Operator {
     return new OperatorConfig({
       name: "copy_view_as_json",
       label: "Copy view as JSON",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -140,6 +167,7 @@ class ViewFromJSON extends Operator {
     return new OperatorConfig({
       name: "view_from_clipboard",
       label: "Paste view from clipboard",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -160,6 +188,7 @@ class OpenPanel extends Operator {
       name: "open_panel",
       label: "Open a panel",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -183,6 +212,9 @@ class OpenPanel extends Operator {
     const openedGridPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     const openedModalPanels = useSpaceNodes(FIFTYONE_MODAL_SPACES_ID);
     const initializePanel = useInitializePanel();
+    const { openPanel: openSidebarPanel } = usePanelArea(
+      PANEL_AREA.SIDEBAR_RIGHT,
+    );
 
     return {
       availablePanels,
@@ -192,6 +224,7 @@ class OpenPanel extends Operator {
       openedGridPanels,
       openedModalPanels,
       initializePanel,
+      openSidebarPanel,
     };
   }
   findFirstPanelContainer(node: SpaceNode): SpaceNode | null {
@@ -215,6 +248,7 @@ class OpenPanel extends Operator {
       openedGridPanels,
       openedModalPanels,
       initializePanel,
+      openSidebarPanel,
     } = hooks;
     const {
       data,
@@ -227,17 +261,20 @@ class OpenPanel extends Operator {
     } = params;
     const openedPanels = isModalOpen ? openedModalPanels : openedGridPanels;
     const spaces = isModalOpen ? modalSpaces : gridSpaces;
-    const targetSpace = this.findFirstPanelContainer(spaces.root);
-    if (!targetSpace) {
-      throw new Error("No panel container found");
-    }
     const panel = availablePanels.find((panel) => name === panel.name);
     if (!panel && !force) {
       throw new Error(`Panel with name ${name} does not exist`);
     }
+    if (panel?.panelOptions?.surfaces?.includes("sidebar_right")) {
+      openSidebarPanel(name);
+      return;
+    }
+    const targetSpace = this.findFirstPanelContainer(spaces.root);
+    if (!targetSpace) {
+      throw new Error("No panel container found");
+    }
     const scope = isModalOpen ? PANEL_SURFACE.MODAL : PANEL_SURFACE.GRID;
-    const surfaces = panel?.panelOptions?.surfaces || PANEL_SURFACE.GRID;
-    if (!surfaces.includes(scope)) {
+    if (!isPanelOnSurface(panel, scope) && !force) {
       throw new Error(
         `Panel with name ${name} cannot be opened in a ${scope} surface`,
       );
@@ -266,20 +303,23 @@ class OpenAllPanels extends Operator {
     return new OperatorConfig({
       name: "open_all_panel",
       label: "Open all panels",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks(): object {
     const availablePanels = usePanels();
-    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
+    const { openedPanels, scope } = useTargetPanelSpaces();
     const openPanelOperator = useOperatorExecutor("open_panel");
-    return { availablePanels, openedPanels, openPanelOperator };
+    return { availablePanels, openedPanels, openPanelOperator, scope };
   }
   async execute({ hooks }: ExecutionContext) {
-    const { availablePanels, openedPanels, openPanelOperator } = hooks;
+    const { availablePanels, openedPanels, openPanelOperator, scope } = hooks;
     const openedPanelsTypes = openedPanels.map(({ type }) => type);
     for (const panel of availablePanels) {
       const { name } = panel;
       if (openedPanelsTypes.includes(name)) continue;
+      // open_panel throws for a panel that does not support the surface
+      if (!isPanelOnSurface(panel, scope)) continue;
       openPanelOperator.execute({ name, isActive: false });
     }
   }
@@ -292,6 +332,7 @@ class ClosePanel extends Operator {
       name: "close_panel",
       label: "Close a panel",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -311,8 +352,7 @@ class ClosePanel extends Operator {
     return new types.Property(inputs);
   }
   useHooks(): object {
-    const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
-    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
+    const { openedPanels, spaces } = useTargetPanelSpaces();
     return { openedPanels, spaces };
   }
   async execute({ hooks, params }: ExecutionContext) {
@@ -337,10 +377,11 @@ class CloseAllPanels extends Operator {
     return new OperatorConfig({
       name: "close_all_panel",
       label: "Close all panels",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks(): object {
-    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
+    const { openedPanels } = useTargetPanelSpaces();
     const closePanel = useOperatorExecutor("close_panel");
     return { openedPanels, closePanel };
   }
@@ -349,7 +390,7 @@ class CloseAllPanels extends Operator {
     for (const panel of openedPanels) {
       // do not close pinned, root or space panel
       if (panel.pinned || panel.isRoot() || panel.isSpace()) continue;
-      closePanel.execute(panel);
+      closePanel.execute({ id: panel.id, name: panel.type });
     }
   }
 }
@@ -361,6 +402,7 @@ class SplitPanel extends Operator {
       name: "split_panel",
       label: "Split Panel",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -370,8 +412,7 @@ class SplitPanel extends Operator {
     return new types.Property(inputs);
   }
   useHooks(): object {
-    const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
-    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
+    const { openedPanels, spaces } = useTargetPanelSpaces();
     return { spaces, openedPanels };
   }
   async execute({ hooks, params }: ExecutionContext) {
@@ -391,6 +432,7 @@ class OpenDataset extends Operator {
     return new OperatorConfig({
       name: "open_dataset",
       label: "Open Dataset",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -414,6 +456,7 @@ class ClearView extends Operator {
     return new OperatorConfig({
       name: "clear_view",
       label: "Clear view bar",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -426,6 +469,7 @@ class ClearSidebarFilters extends Operator {
     return new OperatorConfig({
       name: "clear_sidebar_filters",
       label: "Clear sidebar filters",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -439,6 +483,7 @@ class ClearAllStages extends Operator {
     return new OperatorConfig({
       name: "clear_all_stages",
       label: "Clear all selections, filters, and view",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks(): object {
@@ -460,6 +505,7 @@ class RefreshColors extends Operator {
     return new OperatorConfig({
       name: "refresh_colors",
       label: "Refresh colors",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -474,6 +520,7 @@ class ShowSelectedSamples extends Operator {
     return new OperatorConfig({
       name: "show_selected_samples",
       label: "Show selected samples",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -493,6 +540,7 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
     return new OperatorConfig({
       name: "convert_extended_selection_to_selected_samples",
       label: "Convert extended selection to selected samples",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks(): object {
@@ -523,6 +571,7 @@ class SetSelectedSamples extends Operator {
       name: "set_selected_samples",
       label: "Set selected samples",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks(): object {
@@ -554,6 +603,7 @@ class SetSampleSelectionStyle extends Operator {
       name: "set_sample_selection_style",
       label: "Set sample selection style",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async execute({ state, params }: ExecutionContext) {
@@ -573,6 +623,7 @@ class ClearSampleSelectionStyle extends Operator {
       name: "clear_sample_selection_style",
       label: "Clear sample selection style",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -587,6 +638,7 @@ class SetLabelSelectionStyle extends Operator {
       name: "set_label_selection_style",
       label: "Set label selection style",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async execute({ state, params }: ExecutionContext) {
@@ -606,6 +658,7 @@ class ClearLabelSelectionStyle extends Operator {
       name: "clear_label_selection_style",
       label: "Clear label selection style",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -620,6 +673,7 @@ class SetView extends Operator {
       name: "set_view",
       label: "Set view",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks(): object {
@@ -668,6 +722,7 @@ class ShowSamples extends Operator {
       name: "show_samples",
       label: "Show samples",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -714,19 +769,6 @@ class ShowSamples extends Operator {
     hooks.setView(newView);
   }
 }
-
-// class ClearShowSamples extends Operator {
-//   get config(): OperatorConfig {
-//     return new OperatorConfig({
-//       name: "clear_show_samples",
-//       label: "Clear show samples",
-//     });
-//   }
-//   async execute(ctx: ExecutionContext) {
-//     executeOperator("show_samples", { samples: null });
-//   }
-// }
-
 class ConsoleLog extends Operator {
   _builtIn = true;
   get config(): OperatorConfig {
@@ -889,6 +931,7 @@ class SetSelectedLabels extends Operator {
       name: "set_selected_labels",
       label: "Set selected labels",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks(): object {
@@ -917,6 +960,7 @@ class ClearSelectedLabels extends Operator {
     return new OperatorConfig({
       name: "clear_selected_labels",
       label: "Clear selected labels",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -930,6 +974,7 @@ class SetSpaces extends Operator {
       name: "set_spaces",
       label: "Set spaces",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks() {
@@ -1254,6 +1299,7 @@ class SetExtendedSelection extends Operator {
       name: "set_extended_selection",
       label: "Set extended selection",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks(): {} {
@@ -1294,6 +1340,7 @@ export class SetActiveFields extends Operator {
       name: "set_active_fields",
       label: "Set active fields",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks(): {
@@ -1327,6 +1374,7 @@ export class ClearActiveFields extends Operator {
     return new OperatorConfig({
       name: "clear_active_fields",
       label: "Clear active fields",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks(): {
@@ -1413,6 +1461,7 @@ export class SetPlayheadState extends Operator {
       name: "set_playhead_state",
       label: "Set playhead state",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -1444,6 +1493,7 @@ class SetFrameNumber extends Operator {
     return new OperatorConfig({
       name: "set_frame_number",
       label: "Set frame number",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -1484,7 +1534,7 @@ export class SetGroupSlice extends Operator {
     return new OperatorConfig({
       name: "set_group_slice",
       label: "Set group slice",
-      // unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks() {
@@ -1508,6 +1558,7 @@ export class DisableQueryPerformance extends Operator {
     return new OperatorConfig({
       name: "disable_query_performance",
       label: "Disable query performance",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
 
@@ -1526,6 +1577,7 @@ export class EnableQueryPerformance extends Operator {
     return new OperatorConfig({
       name: "enable_query_performance",
       label: "Enable query performance",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
 
@@ -1545,6 +1597,7 @@ class OpenSample extends Operator {
       name: "open_sample",
       label: "Open Sample",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -1586,6 +1639,7 @@ class CloseSample extends Operator {
       name: "close_sample",
       label: "Close Sample",
       unlisted: true,
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks(): object {
@@ -1604,6 +1658,7 @@ class ShowSidebar extends Operator {
     return new OperatorConfig({
       name: "show_sidebar",
       label: "Show sidebar",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks(): object {
@@ -1624,6 +1679,7 @@ class HideSidebar extends Operator {
     return new OperatorConfig({
       name: "hide_sidebar",
       label: "Hide sidebar",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks(): object {
@@ -1644,6 +1700,7 @@ class ToggleSidebar extends Operator {
     return new OperatorConfig({
       name: "toggle_sidebar",
       label: "Toggle sidebar",
+      surfaces: SAMPLES_PAGE_SURFACES,
     });
   }
   useHooks(): object {

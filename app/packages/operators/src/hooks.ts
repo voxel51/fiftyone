@@ -1,37 +1,76 @@
-import { pluginsLoaderAtom } from "@fiftyone/plugins";
-import * as fos from "@fiftyone/state";
-import { debounce, isEqual } from "lodash";
+import { getContextSelector, pluginsLoaderAtom } from "@fiftyone/plugins";
+import debounce from "lodash/debounce";
+import isEqual from "lodash/isEqual";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
-import { RESOLVE_PLACEMENTS_TTL } from "./constants";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { OperatorScope, RESOLVE_PLACEMENTS_TTL } from "./constants";
 import {
   ExecutionContext,
   fetchRemotePlacements,
   listLocalAndRemoteOperators,
+  type RawContext,
   resolveLocalPlacements,
 } from "./operators";
 import {
   activePanelsEventCountAtom,
+  activeScopeAtom,
+  getActiveScope,
+  isInScope,
   operatorPlacementsAtom,
   operatorThrottledContext,
   operatorsInitializedAtom,
-  useCurrentSample,
 } from "./state";
 
+async function resolvePlacements(context: RawContext) {
+  const ctx = new ExecutionContext({}, context);
+  const [remotePlacements, localPlacements] = await Promise.all([
+    fetchRemotePlacements(ctx),
+    resolveLocalPlacements(ctx),
+  ]);
+
+  return [...remotePlacements, ...localPlacements];
+}
+
+type ResolvedPlacements = Awaited<ReturnType<typeof resolvePlacements>>;
+
+let latestPlacementResolution:
+  | {
+      context: RawContext;
+      expiresAt: number;
+      promise: Promise<ResolvedPlacements>;
+    }
+  | undefined;
+
+function resolvePlacementsOnce(context: RawContext) {
+  const now = Date.now();
+  if (
+    latestPlacementResolution &&
+    latestPlacementResolution.expiresAt > now &&
+    isEqual(latestPlacementResolution.context, context)
+  ) {
+    return latestPlacementResolution.promise;
+  }
+
+  const promise = resolvePlacements(context);
+  latestPlacementResolution = {
+    context,
+    expiresAt: now + RESOLVE_PLACEMENTS_TTL,
+    promise,
+  };
+  promise.catch(() => {
+    if (latestPlacementResolution?.promise === promise) {
+      latestPlacementResolution = undefined;
+    }
+  });
+
+  return promise;
+}
+
 function useOperatorThrottledContextSetter() {
-  const datasetName = useRecoilValue(fos.datasetName);
-  const view = useRecoilValue(fos.view);
-  const viewName = useRecoilValue(fos.viewName);
-  const extendedStages = useRecoilValue(fos.extendedStages);
-  const filters = useRecoilValue(fos.filters);
-  const selectedSamples = useRecoilValue(fos.selectedSamples);
-  const sampleSelectionStyle = useRecoilValue(fos.sampleSelectionStyle);
-  const selectedLabels = useRecoilValue(fos.selectedLabels);
-  const groupSlice = useRecoilValue(fos.groupSlice);
-  const currentSample = useCurrentSample();
+  const contextSelector = getContextSelector("operators");
+  const context = useRecoilValue(contextSelector);
   const setContext = useSetRecoilState(operatorThrottledContext);
-  const spaces = useRecoilValue(fos.sessionSpaces);
-  const workspaceName = spaces._name;
+
   const setThrottledContext = useMemo(() => {
     return debounce(
       (context) => {
@@ -43,73 +82,67 @@ function useOperatorThrottledContextSetter() {
   }, [setContext]);
 
   useEffect(() => {
-    setThrottledContext({
-      datasetName,
-      view,
-      extendedStages,
-      filters,
-      selectedSamples,
-      sampleSelectionStyle,
-      selectedLabels,
-      currentSample,
-      viewName,
-      groupSlice,
-      spaces,
-      workspaceName,
-    });
-  }, [
-    setThrottledContext,
-    datasetName,
-    view,
-    extendedStages,
-    filters,
-    selectedSamples,
-    sampleSelectionStyle,
-    selectedLabels,
-    currentSample,
-    viewName,
-    groupSlice,
-    spaces,
-    workspaceName,
-  ]);
+    setThrottledContext(context);
+  }, [context, setThrottledContext]);
+
+  useEffect(() => {
+    return () => {
+      setThrottledContext.cancel();
+    };
+  }, [setThrottledContext]);
+
+  return context;
 }
 
 export function useOperatorPlacementsResolver() {
-  useOperatorThrottledContextSetter();
+  const sourceContext = useOperatorThrottledContextSetter();
   const context = useRecoilValue(operatorThrottledContext);
+  const activeScope = useRecoilValue(activeScopeAtom);
   const operatorsInitialized = useRecoilValue(operatorsInitializedAtom);
   const pluginsLoaderState = useRecoilValue(pluginsLoaderAtom);
   const setOperatorPlacementsAtom = useSetRecoilState(operatorPlacementsAtom);
   const [resolving, setResolving] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const lastContext = useRef(null);
+  const resolution = useRef(0);
 
   useEffect(() => {
     async function updateOperatorPlacementsAtom() {
+      const request = ++resolution.current;
       setResolving(true);
       try {
-        const ctx = new ExecutionContext({}, context);
-        const remotePlacements = await fetchRemotePlacements(ctx);
-        const localPlacements = await resolveLocalPlacements(ctx);
-        const placements = [...remotePlacements, ...localPlacements];
+        const placementContext = {
+          ...context,
+          activeScope,
+        } as RawContext;
+        const placements = await resolvePlacementsOnce(placementContext);
+        if (request !== resolution.current) return;
         setOperatorPlacementsAtom(placements);
       } catch (error) {
+        if (request !== resolution.current) return;
         console.error(error);
       }
+      if (request !== resolution.current) return;
       setResolving(false);
       setInitialized(true);
     }
+    const placementContext = {
+      ...context,
+      activeScope,
+    } as RawContext;
     if (
-      !isEqual(lastContext.current, context) &&
-      context?.datasetName &&
+      isEqual(sourceContext, context) &&
+      !isEqual(lastContext.current, placementContext) &&
       operatorsInitialized &&
       pluginsLoaderState === "ready"
     ) {
-      lastContext.current = context;
+      lastContext.current = placementContext;
       updateOperatorPlacementsAtom();
     }
   }, [
     context,
+    sourceContext,
+    activeScope,
     setOperatorPlacementsAtom,
     operatorsInitialized,
     pluginsLoaderState,
@@ -163,4 +196,27 @@ export function useFirstExistingUri(uris: string[]) {
     const exists = Boolean(existingUri);
     return { firstExistingUri: existingUri, exists };
   }, [availableOperators, uris]);
+}
+
+export function useExecutableOperatorsURIs(scope?: OperatorScope) {
+  const allOperators = useMemo(() => listLocalAndRemoteOperators(), []);
+  const computedScope = useMemo(() => scope ?? getActiveScope(), [scope]);
+  return useMemo(() => {
+    const uris = allOperators.allOperators
+      .filter(
+        (op) =>
+          op.config.canExecute && isInScope(op.config.scopes, computedScope),
+      )
+      .map((op) => op.uri);
+    return uris;
+  }, [allOperators, computedScope]);
+}
+
+export function useCanIExecuteOperators(uris: string[]) {
+  const executableUris = useExecutableOperatorsURIs();
+
+  return useMemo(
+    () => uris.every((uri) => executableUris.includes(uri)),
+    [executableUris, uris],
+  );
 }

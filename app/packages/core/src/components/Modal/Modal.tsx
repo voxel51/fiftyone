@@ -11,7 +11,12 @@ import {
 } from "@fiftyone/commands";
 import { ErrorDisplayMarkup, HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
-import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
+import {
+  OPERATOR_PROMPT_AREAS,
+  OperatorPromptArea,
+  OperatorScope,
+  useSetActiveScope,
+} from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { ModalMode, canAnnotate, useModalMode } from "@fiftyone/state";
 import {
@@ -115,6 +120,7 @@ const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 
 const Modal = () => {
   useAnnotationStatus();
+  useSetActiveScope(OperatorScope.DATASET_SAMPLE_MODAL, true);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pointerDownTargetRef = useRef<EventTarget | null>(null);

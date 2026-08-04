@@ -3,7 +3,8 @@
  */
 
 import { Loading } from "@fiftyone/components";
-import { usePlugins } from "@fiftyone/plugins";
+import { OperatorScope } from "@fiftyone/operators";
+import { PluginsRuntime } from "@fiftyone/plugins";
 import {
   Writer,
   setDataset,
@@ -47,10 +48,29 @@ import useWriters from "./useWriters";
 
 export const SessionContext = React.createContext<Session>(SESSION_DEFAULT);
 
-const Plugins = ({ children }: { children: React.ReactNode }) => {
-  const plugins = usePlugins();
-  if (plugins.isLoading) return <Loading>Pixelating...</Loading>;
-  return <>{children}</>;
+const DatasetPluginsRuntime = ({
+  children,
+}: {
+  children?: React.ReactNode;
+}) => {
+  const datasetName = useRecoilValue(fos.datasetName);
+  const datasetLess = datasetName === null;
+
+  return (
+    <PluginsRuntime
+      activeScope={
+        datasetLess
+          ? OperatorScope.FIFTYONE_LANDING_PAGE
+          : OperatorScope.DATASET_SAMPLES_GRID
+      }
+      datasetLess={datasetLess}
+      datasetName={datasetName ?? undefined}
+      operatorContextSelector={fos.operatorContextSelector}
+      useSpacesContext={fos.useSpacesContext}
+    >
+      {children}
+    </PluginsRuntime>
+  );
 };
 
 const Sync = ({ children }: { children?: React.ReactNode }) => {
@@ -94,7 +114,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
             });
           }}
         >
-          <Plugins>{children}</Plugins>
+          <DatasetPluginsRuntime>{children}</DatasetPluginsRuntime>
         </Writer>
       )}
     </SessionContext.Provider>

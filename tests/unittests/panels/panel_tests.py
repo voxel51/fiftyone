@@ -1,3 +1,5 @@
+# pylint: disable=no-member,no-name-in-module
+
 import pytest
 from unittest.mock import MagicMock
 from fiftyone.operators.operations import build_register_panel_params
@@ -9,6 +11,7 @@ from fiftyone.operators.panel import (
     PanelRefData,
     WriteOnlyError,
 )
+from fiftyone.operators._types.config import OperatorScope
 from fiftyone.operators.types import Object, Property
 
 
@@ -103,6 +106,103 @@ def test_build_register_panel_params_from_panel(panel):
     assert params["allow_duplicates"] is False
     assert params["on_load"].endswith("#on_load")
     assert params["on_change"].endswith("#on_change")
+
+
+GRID = OperatorScope.DATASET_SAMPLES_GRID
+MODAL = OperatorScope.DATASET_SAMPLE_MODAL
+
+
+@pytest.mark.parametrize(
+    "surfaces,expected",
+    [
+        ("grid", [GRID]),
+        ("modal", [MODAL]),
+        ("grid modal", [GRID, MODAL]),
+        # A portal panel is rendered wherever a consumer places it.
+        ("portal", [OperatorScope.ALL]),
+        ("grid portal", [OperatorScope.ALL]),
+        ("modal portal", [OperatorScope.ALL]),
+        ("grid modal portal", [OperatorScope.ALL]),
+    ],
+)
+def test_panel_config_surfaces_derive_scopes(surfaces, expected):
+    config = PanelConfig(name="p", label="P", surfaces=surfaces)
+    assert config.scopes == expected
+
+
+def test_portal_panel_operator_emits_all_surface_on_the_wire():
+    config = PanelConfig(name="p", label="P", surfaces="portal")
+    assert config.to_json()["scopes"] == ["ALL"]
+
+
+@pytest.mark.parametrize(
+    "surfaces",
+    ["grid", "modal", "portal", "grid portal", "grid modal portal"],
+)
+def test_panel_surfaces_reach_the_app_unchanged(surfaces):
+    # The App places the panel by this string, so preserve it verbatim even
+    # though the operator metadata represents a portal as ALL.
+    class PortalPanel(MockPanel):
+        @property
+        def config(self):
+            return PanelConfig(name="p", label="P", surfaces=surfaces)
+
+    assert PortalPanel().resolve_panel_config()["surfaces"] == surfaces
+
+
+@pytest.mark.parametrize("kwargs", [{}, {"surfaces": None}])
+def test_panel_config_surfaces_default_is_grid(kwargs):
+    config = PanelConfig(name="p", label="P", **kwargs)
+    assert config.scopes == [GRID]
+    assert config.surfaces == "grid"
+    assert config.panel_surfaces == "grid"
+
+
+def test_panel_config_surfaces_accepts_operator_surfaces():
+    config = PanelConfig(name="p", label="P", surfaces=[MODAL])
+    assert config.scopes == [MODAL]
+    assert config.panel_surfaces == "modal"
+
+
+def test_panel_config_all_operator_surface_is_a_portal():
+    config = PanelConfig(name="p", label="P", surfaces=[OperatorScope.ALL])
+    assert config.scopes == [OperatorScope.ALL]
+    assert config.panel_surfaces == "portal"
+
+
+def test_panel_config_surfaces_deduplicates():
+    config = PanelConfig(name="p", label="P", surfaces="grid grid")
+    assert config.scopes == [GRID]
+    assert config.panel_surfaces == "grid"
+
+
+def test_panel_config_invalid_surface_raises():
+    with pytest.raises(ValueError):
+        PanelConfig(name="p", label="P", surfaces="main")
+
+
+def test_panel_config_to_json_surfaces_are_operator_surfaces():
+    config = PanelConfig(name="p", label="P", surfaces="grid modal")
+    assert config.to_json()["scopes"] == [
+        "dataset_samples_grid",
+        "dataset_sample_modal",
+    ]
+
+
+def test_sidebar_panel_requires_explicit_scopes():
+    with pytest.raises(ValueError):
+        PanelConfig(name="p", label="P", surfaces="sidebar_right")
+
+
+def test_sidebar_panel_has_independent_surface_and_scope():
+    config = PanelConfig(
+        name="p",
+        label="P",
+        surfaces="sidebar_right",
+        scopes=[GRID],
+    )
+    assert config.surfaces == "sidebar_right"
+    assert config.scopes == [GRID]
 
 
 def test_panel_execute(panel, mock_ctx):

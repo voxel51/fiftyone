@@ -6,13 +6,96 @@ FiftyOne panels.
 |
 """
 
+from typing import Iterable, List, Union
+
 import pydash
 
 import fiftyone.operators.types as types
-from fiftyone.operators.operator import OperatorConfig, Operator
+from fiftyone.operators.operator import (
+    OperatorConfig,
+    Operator,
+    _normalize_scope,
+)
+from fiftyone.operators.types import OperatorScope
 from typing_extensions import Literal
 
-PANEL_SURFACE = Literal["grid", "modal", "grid modal"]
+PANEL_SURFACE = Literal[
+    "grid",
+    "modal",
+    "portal",
+    "sidebar_right",
+    "grid modal",
+    "grid portal",
+    "modal portal",
+    "grid modal portal",
+    "grid sidebar_right",
+    "modal sidebar_right",
+    "grid modal sidebar_right",
+    "portal sidebar_right",
+    "grid portal sidebar_right",
+    "modal portal sidebar_right",
+    "grid modal portal sidebar_right",
+]
+
+_PANEL_TO_OPERATOR_SURFACES = {
+    "grid": (OperatorScope.DATASET_SAMPLES_GRID,),
+    "modal": (OperatorScope.DATASET_SAMPLE_MODAL,),
+    "portal": (OperatorScope.ALL,),
+    "sidebar_right": (),
+}
+_OPERATOR_TO_PANEL_SURFACE = {
+    OperatorScope.DATASET_SAMPLES_GRID: "grid",
+    OperatorScope.DATASET_SAMPLE_MODAL: "modal",
+    OperatorScope.ALL: "portal",
+}
+
+
+def _normalize_panel_surfaces(
+    surfaces: Union[PANEL_SURFACE, Iterable[Union[str, OperatorScope]], None],
+) -> str:
+    """Returns the panel surfaces as a space-separated string, which is what
+    the App reads to place the panel.
+    """
+    if surfaces is None:
+        return "grid"
+
+    if not isinstance(surfaces, str):
+        surfaces = " ".join(
+            _OPERATOR_TO_PANEL_SURFACE[_normalize_scope(s)] for s in surfaces
+        )
+
+    normalized = []
+    for surface in surfaces.split():
+        if surface not in _PANEL_TO_OPERATOR_SURFACES:
+            raise ValueError(
+                "Invalid panel surface '%s'. Valid values are: %s"
+                % (surface, list(_PANEL_TO_OPERATOR_SURFACES))
+            )
+
+        if surface not in normalized:
+            normalized.append(surface)
+
+    return " ".join(normalized)
+
+
+def _derive_scopes(
+    panel_surfaces: str,
+) -> List[OperatorScope]:
+    """Derives scopes from a legacy panel placement declaration.
+
+    A portal panel is explicitly available in :attr:`OperatorScope.ALL`.
+    """
+    normalized = []
+    for surface in panel_surfaces.split():
+        scopes = _PANEL_TO_OPERATOR_SURFACES[surface]
+        if OperatorScope.ALL in scopes:
+            return [OperatorScope.ALL]
+
+        for scope in scopes:
+            if scope not in normalized:
+                normalized.append(scope)
+
+    return normalized
 
 
 class PanelConfig(OperatorConfig):
@@ -28,12 +111,24 @@ class PanelConfig(OperatorConfig):
             in dark mode
         allow_multiple (False): whether to allow multiple instances of the
             panel to be opened
-        surfaces ("grid"): the surfaces on which the panel can be displayed
+        surfaces ("grid"): the surfaces on which the panel can be displayed.
+            Either a space-separated string of ``"grid"``, ``"modal"``, and/or
+            ``"portal"``, and/or ``"sidebar_right"``, or a list of legacy
+            :class:`OperatorScope` values. A ``"portal"`` panel is not placed
+            in a space; a consumer renders it explicitly
+        scopes (None): the :class:`OperatorScope` values in which the panel is
+            available. When omitted, scopes are derived from the legacy
+            ``surfaces`` declaration. A panel that only declares
+            ``"sidebar_right"`` must declare its scopes explicitly
         help_markdown (None): a markdown string to display in the panel's help
             tooltip
         category (Category): the category id of the panel
         priority (None): the priority of the panel for sorting in the UI
     """
+
+    panel_surfaces: str
+    scopes: List[OperatorScope]
+    surfaces: str
 
     def __init__(
         self,
@@ -48,11 +143,23 @@ class PanelConfig(OperatorConfig):
         light_icon=None,
         dark_icon=None,
         allow_multiple=False,
-        surfaces: PANEL_SURFACE = "grid",
+        surfaces: Union[
+            PANEL_SURFACE, Iterable[Union[str, OperatorScope]]
+        ] = "grid",
+        scopes=None,
         priority=None,
         **kwargs
     ):
-        super().__init__(name)
+        panel_surfaces = _normalize_panel_surfaces(surfaces)
+        if scopes is None:
+            scopes = _derive_scopes(panel_surfaces)
+            if not scopes:
+                raise ValueError(
+                    "Panels with only the 'sidebar_right' surface must "
+                    "declare scopes"
+                )
+
+        super().__init__(name, scopes=scopes)
         self.name = name
         self.label = label
         self.help_markdown = help_markdown
@@ -61,7 +168,7 @@ class PanelConfig(OperatorConfig):
         self.dark_icon = dark_icon
         self.allow_multiple = allow_multiple
         self.unlisted = True
-        self.surfaces = surfaces
+        self.panel_surfaces = panel_surfaces
         self.category = category
         self.alpha = alpha
         self.beta = beta
@@ -84,9 +191,16 @@ class PanelConfig(OperatorConfig):
             "allow_multiple": self.allow_multiple,
             "on_startup": self.on_startup,
             "unlisted": self.unlisted,
-            "surfaces": self.surfaces,
+            "scopes": [scope.value for scope in self.scopes],
+            # Older App versions only understand this field.
+            "surfaces": [scope.value for scope in self.scopes],
             "priority": self.priority,
         }
+
+    @property
+    def surfaces(self):
+        """The legacy panel placement declaration."""
+        return self.panel_surfaces
 
 
 class Panel(Operator):
@@ -124,7 +238,8 @@ class Panel(Operator):
             "icon": self.config.icon,
             "dark_icon": self.config.dark_icon,
             "light_icon": self.config.light_icon,
-            "surfaces": self.config.surfaces,
+            "surfaces": self.config.panel_surfaces,
+            "scopes": [scope.value for scope in self.config.scopes],
             "category": self.config.category,
             "alpha": self.config.alpha,
             "beta": self.config.beta,

@@ -202,6 +202,38 @@ class TestOperatorExecutionContext(unittest.TestCase):
 ECHO_URI = "@voxel51/operators/echo"
 
 
+class TestActiveSurface(unittest.TestCase):
+    def test_active_surface_from_string(self):
+        ctx = ExecutionContext(
+            request_params={"active_surface": "dataset_sample_modal"}
+        )
+        self.assertEqual(
+            ctx.active_surface, types.OperatorScope.DATASET_SAMPLE_MODAL
+        )
+
+    def test_active_surface_from_enum(self):
+        ctx = ExecutionContext(
+            request_params={
+                "active_surface": types.OperatorScope.DATASET_SAMPLES_GRID
+            }
+        )
+        self.assertEqual(
+            ctx.active_surface, types.OperatorScope.DATASET_SAMPLES_GRID
+        )
+
+    def test_active_surface_missing_is_none(self):
+        ctx = ExecutionContext(request_params={})
+        self.assertIsNone(ctx.active_surface)
+
+    def test_active_surface_unknown_value_is_none(self):
+        # a newer App may send a surface this version doesn't know about; it
+        # must not break execution
+        ctx = ExecutionContext(
+            request_params={"active_surface": "surface_from_the_future"}
+        )
+        self.assertIsNone(ctx.active_surface)
+
+
 class EchoOperator(Operator):
     @property
     def config(self):
@@ -232,6 +264,54 @@ async def test_execute_or_delegate_operator(list_operators):
     assert isinstance(result, ExecutionResult)
     json_result = result.to_json()
     assert json_result["result"]["message"] == "Hello, World!"
+
+
+class EchoSurfaceOperator(Operator):
+    @property
+    def config(self):
+        return OperatorConfig(name="echo_surface")
+
+    def execute(self, ctx):
+        return {"surface": ctx.active_surface}
+
+
+@pytest.mark.asyncio
+@patch("fiftyone.operators.registry.OperatorRegistry.list_operators")
+async def test_execute_operator_receives_active_surface(list_operators):
+    list_operators.return_value = [EchoSurfaceOperator(_builtin=True)]
+    uri = "@voxel51/operators/echo_surface"
+
+    result = await execute_or_delegate_operator(
+        uri,
+        {
+            "dataset_name": "test_dataset",
+            "operator_uri": uri,
+            "params": {},
+            "active_surface": "dataset_sample_modal",
+        },
+    )
+
+    assert isinstance(result, ExecutionResult)
+    assert result.result["surface"] == types.OperatorScope.DATASET_SAMPLE_MODAL
+
+
+@pytest.mark.asyncio
+@patch("fiftyone.operators.registry.OperatorRegistry.list_operators")
+async def test_execute_operator_without_active_surface(list_operators):
+    list_operators.return_value = [EchoSurfaceOperator(_builtin=True)]
+    uri = "@voxel51/operators/echo_surface"
+
+    result = await execute_or_delegate_operator(
+        uri,
+        {
+            "dataset_name": "test_dataset",
+            "operator_uri": uri,
+            "params": {},
+        },
+    )
+
+    assert isinstance(result, ExecutionResult)
+    assert result.result["surface"] is None
 
 
 @pytest.mark.asyncio

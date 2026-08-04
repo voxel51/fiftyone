@@ -61,6 +61,7 @@ export {
 } from "./useUnboundState";
 export { default as useUpdateSamples } from "./useUpdateSamples";
 export { default as withSuspense } from "./withSuspense";
+export * from "./plugins";
 
 // types
 export * from "./types";

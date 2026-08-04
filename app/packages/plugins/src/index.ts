@@ -1,13 +1,11 @@
-import { useOperators } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
 import { getFetchFunction, getFetchParameters } from "@fiftyone/utilities";
 import * as _ from "lodash";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import * as recoil from "recoil";
 import "./externalize";
 import { usingRegistry } from "./registry";
-import { pluginsLoaderAtom } from "./state";
 
 async function fetchPluginsMetadata(): Promise<PluginDefinition[]> {
   const result = await getFetchFunction()("GET", "/plugins");
@@ -89,6 +87,7 @@ export async function loadPlugins() {
     }),
   );
 }
+
 async function loadScript(name, url) {
   console.debug(`Plugin "${name}": loading script...`);
   return new Promise<void>((resolve, reject) => {
@@ -114,42 +113,6 @@ async function loadScript(name, url) {
     script.addEventListener("load", onDone);
     script.addEventListener("error", onDone);
   });
-}
-
-/**
- * A react hook for loading the plugin system.
- */
-export function usePlugins() {
-  const datasetName = recoil.useRecoilValue(fos.datasetName);
-  const [state, setState] = recoil.useRecoilState(pluginsLoaderAtom);
-  const notify = fos.useNotification();
-  const {
-    ready: operatorsReady,
-    hasError: operatorHasError,
-    isLoading: operatorIsLoading,
-  } = useOperators(datasetName === null);
-
-  useEffect(() => {
-    loadPlugins()
-      .catch(() => {
-        notify({
-          msg:
-            "Failed to initialize Python plugins. You may not be able to use" +
-            " panels, operators, and other artifacts of plugins installed.",
-          variant: "error",
-        });
-        setState("error");
-      })
-      .then(() => {
-        setState("ready");
-      });
-  }, [setState]);
-
-  return {
-    isLoading: state === "loading" || operatorIsLoading,
-    hasError: state === "error" || operatorHasError,
-    ready: state === "ready" && operatorsReady,
-  };
 }
 
 /**
@@ -211,14 +174,20 @@ export function usePluginSettings<T>(
 }
 
 export * from "./registry";
-export * from "./state";
+export {
+  OperatorsRuntime,
+  PluginsLoader,
+  default as PluginsRuntime,
+} from "./Runtime";
+export * from "./Runtime/state";
+export type { PluginsLoaderProps, PluginsRuntimeProps } from "./Runtime/types";
 
 export {
   createSampleRendererMediaContext,
   createSampleRendererRenderContext,
   getMatchingSampleRenderer,
-  getSampleRendererGridSlotComponent,
   getSampleRendererComponent,
+  getSampleRendererGridSlotComponent,
   isSampleRendererModalPersistent,
   SAMPLE_RENDERER_GRID_SLOT,
 } from "./sample-renderer";
@@ -235,3 +204,5 @@ export type {
   SampleRendererRenderContext,
   SampleRendererSampleLike,
 } from "./sample-renderer";
+
+export * from "./context";

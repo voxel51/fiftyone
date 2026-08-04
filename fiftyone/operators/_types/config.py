@@ -16,3 +16,12 @@ class RiskLevel(Enum):
     MEDIUM = "medium"
     HIGH = "high"
     DANGEROUS = "dangerous"
+
+
+class OperatorScope(Enum):
+    """Context in which an operator or panel can be used or is active."""
+
+    DATASET_SAMPLES_GRID = "dataset_samples_grid"
+    DATASET_SAMPLE_MODAL = "dataset_sample_modal"
+    FIFTYONE_LANDING_PAGE = "fiftyone_landing_page"
+    ALL = "ALL"

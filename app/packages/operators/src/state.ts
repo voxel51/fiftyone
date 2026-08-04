@@ -22,6 +22,8 @@ import {
 } from "recoil";
 import {
   BROWSER_CONTROL_KEYS,
+  FALLBACK_OPERATOR_SCOPES,
+  OperatorScope,
   RESOLVE_INPUT_VALIDATION_TTL,
   RESOLVE_TYPE_TTL,
 } from "./constants";
@@ -40,6 +42,7 @@ import { OperatorPromptType, Places } from "./types";
 import { OperatorExecutorOptions } from "./ts";
 import { generateOperatorSessionId, optimizeCtx } from "./utils";
 import { ValidationContext } from "./validation";
+import { getContextSelector } from "@fiftyone/plugins/src/context";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -91,51 +94,12 @@ export const usePromptOperatorInput = () => {
   return prompt;
 };
 
-const globalContextSelector = selector({
-  key: "globalContext",
-  get: ({ get }) => {
-    const modal = !!get(fos.modal);
-    const datasetName = get(fos.datasetName);
-    const view = get(fos.view);
-    const extended = get(fos.extendedStages);
-    const filters = get(fos.filters);
-    const selectedSamples = get(fos.selectedSamples);
-    const sampleSelectionStyle = get(fos.sampleSelectionStyle);
-    const labelSelectionStyle = get(fos.labelSelectionStyle);
-    const selectedLabels = get(fos.selectedLabels);
-    const viewName = get(fos.viewName);
-    const extendedSelection = get(fos.extendedSelection);
-    const groupSlice = get(fos.groupSlice);
-    const queryPerformance = get(fos.queryPerformance);
-    const spaces = get(fos.sessionSpaces);
-    const workspaceName = spaces?._name;
-    const activeFields = get(fos.activeFields({ modal }));
-
-    return {
-      datasetName,
-      view,
-      extended,
-      filters,
-      selectedSamples,
-      sampleSelectionStyle,
-      labelSelectionStyle,
-      selectedLabels,
-      viewName,
-      extendedSelection,
-      groupSlice,
-      queryPerformance,
-      spaces,
-      workspaceName,
-      activeFields,
-    };
-  },
-});
-
 const currentContextSelector = selectorFamily({
   key: "currentContextSelector",
   get:
     (operatorName) =>
     ({ get }) => {
+      const globalContextSelector = getContextSelector("operators");
       const globalContext = get(globalContextSelector);
       const params = get(currentOperatorParamsSelector(operatorName));
       return {
@@ -146,6 +110,7 @@ const currentContextSelector = selectorFamily({
 });
 
 export function useGlobalExecutionContext(): ExecutionContext {
+  const globalContextSelector = getContextSelector("operators");
   const globalCtx = useRecoilValue(globalContextSelector);
   const ctx = useMemo(() => {
     return new ExecutionContext({}, globalCtx);
@@ -199,6 +164,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         workspaceName,
         promptId,
         activeFields,
+        activeScope: getActiveScope(),
       },
       hooks,
     );
@@ -783,6 +749,11 @@ export const operatorsInitializedAtom = atom({
   default: false,
 });
 
+export const activeScopeAtom = atom<OperatorScope>({
+  key: "activeScopeAtom",
+  default: OperatorScope.DATASET_SAMPLES_GRID,
+});
+
 export const availableOperators = selector({
   key: "availableOperators",
   get: ({ get }) => {
@@ -800,10 +771,39 @@ export const availableOperators = selector({
         icon: operator.config.icon,
         darkIcon: operator.config.darkIcon,
         lightIcon: operator.config.lightIcon,
+        scopes: operator.config.scopes,
       };
     });
   },
 });
+
+export function isInScope(
+  scopes: OperatorScope[] | undefined,
+  scope: OperatorScope,
+) {
+  return (
+    (scopes ?? FALLBACK_OPERATOR_SCOPES).includes(scope) ||
+    (scopes ?? FALLBACK_OPERATOR_SCOPES).includes(OperatorScope.ALL)
+  );
+}
+
+/** @deprecated Use `isInScope`. */
+export const isOnSurface = isInScope;
+
+export { operatorRequiresDataset } from "./constants";
+
+export function assertInScope(
+  uri: string,
+  scopes: OperatorScope[] | undefined,
+  scope: OperatorScope,
+) {
+  if (!isInScope(scopes, scope)) {
+    throw new Error(`Operator "${uri}" is not supported in this scope`);
+  }
+}
+
+/** @deprecated Use `assertInScope`. */
+export const assertOnSurface = assertInScope;
 
 export const operatorBrowserVisibleState = atom({
   key: "operatorBrowserVisibleState",
@@ -842,26 +842,31 @@ function sortResults(results, recentlyUsedOperators) {
     });
 }
 
-export const operatorBrowserChoices = selector({
+export const operatorBrowserChoices = selectorFamily({
   key: "operatorBrowserChoices",
-  get: ({ get }) => {
-    const allChoices = get(availableOperators);
-    const query = get(operatorBrowserQueryState);
-    let results = [...allChoices];
-    results = results.filter(({ unlisted }) => !unlisted);
-    if (query && query.length > 0) {
-      results = filterChoicesByQuery(query, results);
-    }
-    return sortResults(results, get(recentlyUsedOperatorsState));
-  },
+  get:
+    (scope: OperatorScope) =>
+    ({ get }) => {
+      const allChoices = get(availableOperators);
+      const query = get(operatorBrowserQueryState);
+      let results = [...allChoices];
+      results = results.filter(({ unlisted }) => !unlisted);
+      results = results.filter(({ scopes }) => isInScope(scopes, scope));
+      if (query && query.length > 0) {
+        results = filterChoicesByQuery(query, results);
+      }
+      return sortResults(results, get(recentlyUsedOperatorsState));
+    },
 });
-export const operatorDefaultChoice = selector({
+export const operatorDefaultChoice = selectorFamily({
   key: "operatorDefaultChoice",
-  get: ({ get }) => {
-    const choices = get(operatorBrowserChoices);
-    const firstOperatorName = choices?.[0]?.value;
-    return firstOperatorName || null;
-  },
+  get:
+    (scope: OperatorScope) =>
+    ({ get }) => {
+      const choices = get(operatorBrowserChoices(scope));
+      const firstOperatorName = choices?.[0]?.value;
+      return firstOperatorName || null;
+    },
 });
 export const operatorChoiceState = atom({
   key: "operatorChoiceState",
@@ -884,12 +889,51 @@ export function useCurrentSample() {
   return currentSample.state === "hasValue" ? currentSample.contents : null;
 }
 
+let activeScope: OperatorScope = OperatorScope.DATASET_SAMPLES_GRID;
+
+export function getActiveScope(): OperatorScope {
+  return activeScope;
+}
+
+export function setActiveScope(scope: OperatorScope) {
+  activeScope = scope;
+}
+
+/**
+ * Declares the scope operators are executed from while the calling component
+ * is mounted. The value rides along on every operator request as
+ * `active_scope`.
+ *
+ * @param scope the scope to activate on mount
+ * @param restore whether to restore the previously active scope on unmount
+ */
+export function useSetActiveScope(scope: OperatorScope, restore = false) {
+  const setActiveScopeAtom = useSetRecoilState(activeScopeAtom);
+  useEffect(() => {
+    const previous = getActiveScope();
+    const owns = previous !== scope;
+
+    if (owns) {
+      setActiveScope(scope);
+      setActiveScopeAtom(scope);
+    }
+
+    return () => {
+      if (owns && restore) {
+        setActiveScope(previous);
+        setActiveScopeAtom(previous);
+      }
+    };
+  }, [scope, restore, setActiveScopeAtom]);
+}
+
 export function useOperatorBrowser() {
   const [isVisible, setIsVisible] = useRecoilState(operatorBrowserVisibleState);
   const [query, setQuery] = useRecoilState(operatorBrowserQueryState);
   const [selected, setSelected] = useRecoilState(operatorChoiceState);
-  const defaultSelected = useRecoilValue(operatorDefaultChoice);
-  const choices = useRecoilValue(operatorBrowserChoices);
+  const activeScope = useRecoilValue(activeScopeAtom);
+  const defaultSelected = useRecoilValue(operatorDefaultChoice(activeScope));
+  const choices = useRecoilValue(operatorBrowserChoices(activeScope));
   const promptForInput = usePromptOperatorInput();
   const isOperatorPaletteOpened = useRecoilValue(operatorPaletteOpened);
   const editingField = useRecoilValue(fos.editingFieldAtom);
@@ -1135,8 +1179,13 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         return;
       }
 
-      const { delegationTarget, requestDelegation, skipOutput, callback } =
-        options || {};
+      const {
+        delegationTarget,
+        requestDelegation,
+        skipOutput,
+        callback,
+        scope,
+      } = options || {};
       setIsExecuting(true);
       const { params, ...currentContext } = await state.snapshot.getPromise(
         currentContextSelector(uri),
@@ -1144,7 +1193,12 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
 
       const ctx = new ExecutionContext(
         paramOverrides || params,
-        { ...currentContext, currentSample },
+        {
+          ...currentContext,
+          currentSample,
+          activeScope: scope ?? getActiveScope(),
+          activeSurface: scope ?? getActiveScope(),
+        },
         hooks,
       );
       ctx.state = state;
@@ -1153,6 +1207,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
       try {
         ctx.hooks = hooks;
         ctx.state = state;
+        assertInScope(uri, operator.config?.scopes, ctx.activeScope);
         const result = await executeOperatorWithContext(uri, ctx);
         setNeedsOutput(
           skipOutput ? false : await operator.needsOutput(ctx, result),

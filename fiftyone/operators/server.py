@@ -32,22 +32,52 @@ from .operator import Operator
 logging_context = contextlib.nullcontext
 
 
-def get_operators(registry: PermissionedOperatorRegistry):
+def get_operators(registry: PermissionedOperatorRegistry, dataset_name=None):
     operators = registry.list_operators(type="operator")
     panels = registry.list_operators(type="panel")
-    return operators + panels
+    operators = operators + panels
+    if dataset_name is None:
+        operators = [
+            operator
+            for operator in operators
+            if not operator.config.requires_dataset
+        ]
+
+    return operators
+
+
+def resolve_dataset_ids(request_params: dict):
+    dataset_name = request_params.get("dataset_name", None)
+    return [dataset_name] if dataset_name is not None else None
+
+
+def create_dataset_required_error(uri):
+    return JSONResponse(
+        {
+            "error": {
+                "code": "DATASET_REQUIRED",
+                "message": "Operator '%s' requires an active dataset" % uri,
+            }
+        },
+        status_code=400,
+    )
+
+
+def requires_dataset(registry, operator_uri):
+    operator = registry.get_operator(operator_uri)
+    return operator is not None and operator.config.requires_dataset
 
 
 class ListOperators(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
         dataset_name = data.get("dataset_name", None)
-        dataset_ids = [dataset_name]
+        dataset_ids = resolve_dataset_ids(data)
         registry = await PermissionedOperatorRegistry.from_list_request(
             request, dataset_ids=dataset_ids
         )
         operators_as_json = []
-        for operator in get_operators(registry):
+        for operator in get_operators(registry, dataset_name):
             serialized_op = operator.to_json()
             config = serialized_op["config"]
             skip_input = not is_method_overridden(
@@ -75,12 +105,12 @@ class ResolvePlacements(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
         dataset_name = data.get("dataset_name", None)
-        dataset_ids = [dataset_name]
+        dataset_ids = resolve_dataset_ids(data)
         registry = await PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
         )
         placements = []
-        for operator in get_operators(registry):
+        for operator in get_operators(registry, dataset_name):
             placement = resolve_placement(operator, data)
             if placement is not None:
                 placements.append(
@@ -97,7 +127,7 @@ class ExecuteOperator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
         dataset_name = data.get("dataset_name", None)
-        dataset_ids = [dataset_name]
+        dataset_ids = resolve_dataset_ids(data)
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
@@ -121,6 +151,11 @@ class ExecuteOperator(HTTPEndpoint):
                     "loading_errors": registry.list_errors(),
                 }
                 raise HTTPException(status_code=404, detail=error_detail)
+
+            if dataset_name is None and requires_dataset(
+                registry, operator_uri
+            ):
+                return create_dataset_required_error(operator_uri)
 
             result = await execute_or_delegate_operator(operator_uri, data)
             return await create_operator_response(result)
@@ -151,8 +186,7 @@ def create_permission_error(uri):
 class ExecuteOperatorAsGenerator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        dataset_name = data.get("dataset_name", None)
-        dataset_ids = [dataset_name]
+        dataset_ids = resolve_dataset_ids(data)
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
@@ -170,6 +204,11 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=error_detail)
+
+        if data.get("dataset_name", None) is None and requires_dataset(
+            registry, operator_uri
+        ):
+            return create_dataset_required_error(operator_uri)
 
         execution_result = await execute_or_delegate_operator(
             operator_uri, data
@@ -196,8 +235,7 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
 class ResolveType(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        dataset_name = data.get("dataset_name", None)
-        dataset_ids = [dataset_name]
+        dataset_ids = resolve_dataset_ids(data)
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
@@ -214,6 +252,11 @@ class ResolveType(HTTPEndpoint):
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=error_detail)
+
+        if data.get("dataset_name", None) is None and requires_dataset(
+            registry, operator_uri
+        ):
+            return create_dataset_required_error(operator_uri)
 
         result = await resolve_type(registry, operator_uri, data)
         return result.to_json() if result else {}
@@ -222,8 +265,7 @@ class ResolveType(HTTPEndpoint):
 class ResolveExecutionOptions(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        dataset_name = data.get("dataset_name", None)
-        dataset_ids = [dataset_name]
+        dataset_ids = resolve_dataset_ids(data)
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
@@ -240,6 +282,11 @@ class ResolveExecutionOptions(HTTPEndpoint):
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=error_detail)
+
+        if data.get("dataset_name", None) is None and requires_dataset(
+            registry, operator_uri
+        ):
+            return create_dataset_required_error(operator_uri)
 
         result = await resolve_execution_options(registry, operator_uri, data)
         return result.to_dict() if result else {}
@@ -248,8 +295,7 @@ class ResolveExecutionOptions(HTTPEndpoint):
 class SubscribeToExecutionStoreAsOperator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> EventSourceResponse:
-        dataset_name = data.get("dataset_name", None)
-        dataset_ids = [dataset_name]
+        dataset_ids = resolve_dataset_ids(data)
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
@@ -266,6 +312,11 @@ class SubscribeToExecutionStoreAsOperator(HTTPEndpoint):
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=error_detail)
+
+        if data.get("dataset_name", None) is None and requires_dataset(
+            registry, operator_uri
+        ):
+            return create_dataset_required_error(operator_uri)
 
         execution_result = await execute_or_delegate_operator(
             operator_uri, data

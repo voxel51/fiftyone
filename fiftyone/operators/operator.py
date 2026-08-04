@@ -6,8 +6,8 @@ FiftyOne operators.
 |
 """
 
-from typing import Union
-from .types import PromptView, RiskLevel
+from typing import Iterable, List, Union
+from .types import PromptView, RiskLevel, OperatorScope
 
 BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"
 
@@ -34,6 +34,60 @@ def _normalize_risk_level(
         )
 
     return risk_level
+
+
+def _normalize_scopes(
+    scopes: Union[Iterable[Union[str, OperatorScope]], None],
+) -> List[OperatorScope]:
+    if scopes is None:
+        return [
+            OperatorScope.DATASET_SAMPLES_GRID,
+            OperatorScope.DATASET_SAMPLE_MODAL,
+            OperatorScope.FIFTYONE_LANDING_PAGE,
+        ]
+
+    return [_normalize_scope(scope) for scope in scopes]
+
+
+def _normalize_scope(
+    scope: Union[str, OperatorScope],
+) -> OperatorScope:
+    if isinstance(scope, str):
+        try:
+            return OperatorScope[scope.upper()]
+        except KeyError as err:
+            raise ValueError(
+                "Invalid scope '%s'. Valid values are: %s"
+                % (scope, [s.value for s in OperatorScope])
+            ) from err
+
+    if not isinstance(scope, OperatorScope):
+        raise ValueError(
+            "Invalid scope '%s'. Must be a string or OperatorScope enum."
+            % scope
+        )
+
+    return scope
+
+
+def scopes_require_dataset(scopes: Iterable[OperatorScope]) -> bool:
+    """Whether all declared scopes guarantee a dataset.
+
+    ``ALL`` includes dataset-less profiles, so it is intentionally not
+    dataset-required. This is the backend counterpart to the App's surface
+    profile contract.
+    """
+    dataset_scopes = {
+        OperatorScope.DATASET_SAMPLES_GRID,
+        OperatorScope.DATASET_SAMPLE_MODAL,
+    }
+    return bool(scopes) and all(scope in dataset_scopes for scope in scopes)
+
+
+# Backward-compatible helper aliases. New code should use the scope names.
+_normalize_surfaces = _normalize_scopes
+_normalize_surface = _normalize_scope
+surfaces_require_dataset = scopes_require_dataset
 
 
 class OperatorConfig(object):
@@ -75,7 +129,19 @@ class OperatorConfig(object):
             this operator is mainly used by guardrail systems of an agent to
             classify tool calls. If ``None``, the operator defaults to
             :attr:`RiskLevel.DANGEROUS`
+        scopes (None): a list of :class:`OperatorScope` values (or their
+            string equivalents) on which the operator should be available. If
+            ``None``, the operator is made available on the existing
+            :attr:`OperatorScope.DATASET_SAMPLES_GRID`,
+            :attr:`OperatorScope.DATASET_SAMPLE_MODAL`, and
+            :attr:`OperatorScope.FIFTYONE_LANDING_PAGE` scopes. An empty list
+            makes the operator available in no scope. ``surfaces`` is a
+            deprecated compatibility alias for this argument.
     """
+
+    scopes: List[OperatorScope]
+    requires_dataset: bool
+    surfaces: List[OperatorScope]
 
     def __init__(
         self,
@@ -99,6 +165,8 @@ class OperatorConfig(object):
         allow_distributed_execution=False,  # Enterprise only
         rerunnable=True,
         risk_level=RiskLevel.DANGEROUS,
+        scopes=None,
+        surfaces=None,
         **kwargs
     ):
         self.name = name
@@ -127,11 +195,24 @@ class OperatorConfig(object):
                 resolve_execution_options_on_change
             )
         self.kwargs = kwargs  # unused, placeholder for future extensibility
+        self.scopes = _normalize_scopes(
+            scopes if scopes is not None else surfaces
+        )
+
+    @property
+    def surfaces(self):
+        """Deprecated alias for :attr:`scopes`."""
+        return self.scopes
 
     @property
     def risk_level(self):
         """The declared :class:`RiskLevel` for this operator."""
         return self._risk_level
+
+    @property
+    def requires_dataset(self):
+        """Whether this operator requires an active dataset to execute."""
+        return scopes_require_dataset(self.scopes)
 
     def to_json(self):
         return {
@@ -155,6 +236,9 @@ class OperatorConfig(object):
             "resolve_execution_options_on_change": self.resolve_execution_options_on_change,
             "allow_distributed_execution": self.allow_distributed_execution,
             "risk_level": self.risk_level.value,
+            "scopes": [s.value for s in self.scopes],
+            # Older App versions only understand this field.
+            "surfaces": [s.value for s in self.scopes],
         }
 
 

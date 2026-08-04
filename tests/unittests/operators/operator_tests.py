@@ -6,9 +6,12 @@ FiftyOne operator config tests.
 |
 """
 
+# pylint: disable=no-member,no-name-in-module
+
 import unittest
 
 from fiftyone.operators.operator import OperatorConfig
+from fiftyone.operators._types.config import OperatorScope
 from fiftyone.operators.types import RiskLevel
 
 
@@ -165,6 +168,115 @@ class TestOperatorConfigRiskLevel(unittest.TestCase):
             config.risk_level = RiskLevel.HIGH
 
 
+class TestOperatorConfigSurfaces(unittest.TestCase):
+    def test_surface_profiles_determine_dataset_requirement(self):
+        self.assertFalse(OperatorConfig("my_op").requires_dataset)
+        self.assertTrue(
+            OperatorConfig(
+                "my_op", surfaces=[OperatorScope.DATASET_SAMPLE_MODAL]
+            ).requires_dataset
+        )
+        self.assertFalse(
+            OperatorConfig(
+                "my_op", surfaces=[OperatorScope.FIFTYONE_LANDING_PAGE]
+            ).requires_dataset
+        )
+        self.assertFalse(
+            OperatorConfig(
+                "my_op", surfaces=[OperatorScope.ALL]
+            ).requires_dataset
+        )
+
+    def test_landing_page_surface(self):
+        config = OperatorConfig(
+            "my_op", surfaces=[OperatorScope.FIFTYONE_LANDING_PAGE]
+        )
+
+        self.assertEqual(
+            config.surfaces, [OperatorScope.FIFTYONE_LANDING_PAGE]
+        )
+        self.assertEqual(
+            config.to_json()["surfaces"], ["fiftyone_landing_page"]
+        )
+
+    def test_default_surfaces_is_all_surfaces(self):
+        config = OperatorConfig("my_op")
+        self.assertEqual(
+            config.surfaces,
+            [
+                OperatorScope.DATASET_SAMPLES_GRID,
+                OperatorScope.DATASET_SAMPLE_MODAL,
+                OperatorScope.FIFTYONE_LANDING_PAGE,
+            ],
+        )
+
+    def test_none_surfaces_normalized_to_all_surfaces(self):
+        config = OperatorConfig("my_op", surfaces=None)
+        self.assertEqual(
+            config.surfaces,
+            [
+                OperatorScope.DATASET_SAMPLES_GRID,
+                OperatorScope.DATASET_SAMPLE_MODAL,
+                OperatorScope.FIFTYONE_LANDING_PAGE,
+            ],
+        )
+
+    def test_empty_surfaces_is_preserved(self):
+        config = OperatorConfig("my_op", surfaces=[])
+        self.assertEqual(config.surfaces, [])
+
+    def test_surfaces_enum(self):
+        for surface in OperatorScope:
+            config = OperatorConfig("my_op", surfaces=[surface])
+            self.assertEqual(config.surfaces, [surface])
+
+    def test_surfaces_from_string_lowercase(self):
+        config = OperatorConfig("my_op", surfaces=["dataset_samples_grid"])
+        self.assertEqual(config.surfaces, [OperatorScope.DATASET_SAMPLES_GRID])
+
+    def test_surfaces_from_string_uppercase(self):
+        config = OperatorConfig("my_op", surfaces=["DATASET_SAMPLE_MODAL"])
+        self.assertEqual(config.surfaces, [OperatorScope.DATASET_SAMPLE_MODAL])
+
+    def test_surfaces_mixed_strings_and_enums(self):
+        config = OperatorConfig(
+            "my_op",
+            surfaces=[
+                "dataset_samples_grid",
+                OperatorScope.DATASET_SAMPLE_MODAL,
+            ],
+        )
+        self.assertEqual(
+            config.surfaces,
+            [
+                OperatorScope.DATASET_SAMPLES_GRID,
+                OperatorScope.DATASET_SAMPLE_MODAL,
+            ],
+        )
+
+    def test_invalid_surface_string_raises(self):
+        with self.assertRaises(ValueError):
+            OperatorConfig("my_op", surfaces=["bogus"])
+
+    def test_invalid_surface_type_raises(self):
+        with self.assertRaises(ValueError):
+            OperatorConfig("my_op", surfaces=[123])
+
+    def test_to_json_surfaces_are_string_values(self):
+        config = OperatorConfig("my_op", surfaces=["dataset_samples_grid"])
+        self.assertEqual(
+            config.to_json()["surfaces"], ["dataset_samples_grid"]
+        )
+
+    def test_to_json_surfaces_from_enums(self):
+        config = OperatorConfig(
+            "my_op", surfaces=[OperatorScope.DATASET_SAMPLE_MODAL]
+        )
+        self.assertEqual(
+            config.to_json()["surfaces"], ["dataset_sample_modal"]
+        )
+
+
 class TestOperatorConfigKwargs(unittest.TestCase):
     def test_extra_kwargs_stored(self):
         config = OperatorConfig("my_op", foo="bar", baz=42)
@@ -199,6 +311,16 @@ class TestOperatorConfigToJson(unittest.TestCase):
             "resolve_execution_options_on_change": False,
             "allow_distributed_execution": False,
             "risk_level": "dangerous",
+            "scopes": [
+                "dataset_samples_grid",
+                "dataset_sample_modal",
+                "fiftyone_landing_page",
+            ],
+            "surfaces": [
+                "dataset_samples_grid",
+                "dataset_sample_modal",
+                "fiftyone_landing_page",
+            ],
         }
         self.assertEqual(config.to_json(), expected)
 

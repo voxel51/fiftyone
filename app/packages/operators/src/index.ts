@@ -1,4 +1,4 @@
-export { OPERATOR_PROMPT_AREAS, RiskLevel } from "./constants";
+export { OPERATOR_PROMPT_AREAS, OperatorScope, RiskLevel } from "./constants";
 export { useFirstExistingUri } from "./hooks";
 export { useOperators, useRefreshOperators } from "./loader";
 export { default as OperatorBrowser } from "./OperatorBrowser";
@@ -22,11 +22,14 @@ export {
   registerOperator,
 } from "./operators";
 export {
+  getActiveScope,
+  setActiveScope,
   useGlobalExecutionContext,
   useOperatorBrowser,
   useOperatorExecutor,
   useOperatorPlacements,
   usePromptOperatorInput,
+  useSetActiveScope,
 } from "./state";
 export * as types from "./types";
 export {
@@ -34,3 +37,4 @@ export {
   useTriggerPanelEvent,
 } from "./usePanelEvent";
 export { validate } from "./validation";
+export { operatorToIOSchema } from "./OperatorIOComponent/utils";
