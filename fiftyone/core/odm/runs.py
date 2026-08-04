@@ -31,3 +31,9 @@ class RunDocument(Document):
     config = DictField()
     view_stages = ListField(StringField(), default=None)
     results = FileField()
+    #: Facts that describe ``results`` — a count, a path — written when the
+    #: results are saved so a reader can answer for them without pulling the
+    #: blob out of GridFS. Empty for runs saved before this existed, and for
+    #: results that describe themselves with nothing (see
+    #: ``BaseRunResults.get_meta``)
+    results_meta = DictField()

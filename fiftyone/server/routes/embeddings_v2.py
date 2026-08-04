@@ -122,14 +122,48 @@ class EmbeddingsV2RunInfo(HTTPEndpoint):
         return await run_sync_task(self._post_sync, data)
 
     def _post_sync(self, data):
-        dataset, results = _load_results(data)
-        info = dataset.get_brain_info(data["brainKey"])
-        config = results.config
+        brain_key = data["brainKey"]
+        dataset = fosu.load_and_cache_dataset(data["datasetName"])
+        info = dataset.get_brain_info(brain_key)
+        config = info.config
+
+        # The counts are a few bytes; the results are a GridFS blob whose
+        # arrays run to hundreds of MB. Read them from what the run already
+        # records, and load the blob only when nothing does — every panel open
+        # otherwise pulls the whole run through the server.
+        run_meta = (
+            getattr(
+                dataset._doc.brain_methods.get(brain_key), "results_meta", None
+            )
+            or {}
+        )
+        n = run_meta.get("num_points")
+        dims = run_meta.get("num_dims")
+
+        # Else the run config, which brain sets at compute time
+        if n is None:
+            n = getattr(config, "num_points", None)
+        if dims is None:
+            dims = getattr(config, "num_dims", None)
+
+        # Last resort: a run that records neither. Saving results records
+        # them, so a run that reaches here does not reach it twice.
+        if n is None or dims is None:
+            results = dataset.load_brain_results(brain_key)
+            if results is None:
+                raise ValueError(
+                    f"Results for brain run with key '{brain_key}' are not "
+                    "yet available"
+                )
+
+            n = len(results.points)
+            dims = int(results.points.shape[1])
+            config = results.config
 
         return {
-            "brainKey": data["brainKey"],
-            "n": len(results.points),
-            "dims": int(results.points.shape[1]),
+            "brainKey": brain_key,
+            "n": n,
+            "dims": dims,
             "patchesField": config.patches_field,
             "pointsField": config.points_field,
             "method": getattr(config, "method", None),
