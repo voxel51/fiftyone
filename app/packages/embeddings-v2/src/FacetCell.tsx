@@ -126,21 +126,23 @@ export default function FacetCell({
           onHover={onHover}
         />
         {showHover && (
-          <div onMouseEnter={onKeepHover} onMouseLeave={() => onHover(null)}>
-            <HoverCard
-              content={hover}
-              containerWidth={sceneRef.current?.clientWidth ?? 0}
-              containerHeight={sceneRef.current?.clientHeight ?? 0}
-              action={
-                hoverAction
-                  ? {
-                      label: hoverAction.label,
-                      run: () => hoverAction.run(hover.hit),
-                    }
-                  : undefined
-              }
-            />
-          </div>
+          <HoverCard
+            content={hover}
+            origin={(() => {
+              const rect = sceneRef.current?.getBoundingClientRect();
+              return { left: rect?.left ?? 0, top: rect?.top ?? 0 };
+            })()}
+            onKeepHover={onKeepHover}
+            onLeave={() => onHover(null)}
+            action={
+              hoverAction
+                ? {
+                    label: hoverAction.label,
+                    run: () => hoverAction.run(hover.hit),
+                  }
+                : undefined
+            }
+          />
         )}
       </div>
     </div>

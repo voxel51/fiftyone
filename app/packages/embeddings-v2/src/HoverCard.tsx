@@ -18,7 +18,14 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import { useEffect, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import { createPortal } from "react-dom";
 import "./panel.css";
 import type { HoverHit } from "./renderer";
 
@@ -43,21 +50,48 @@ export interface HoverContent {
 
 export default function HoverCard({
   content,
-  containerWidth,
-  containerHeight,
+  origin,
   action,
+  onKeepHover,
+  onLeave,
 }: {
   content: HoverContent;
-  containerWidth: number;
-  containerHeight: number;
+  /** The plot container's viewport offset; `hit.x/y` are relative to it */
+  origin: { left: number; top: number };
   /** When set, the card renders the action's button and becomes
    * pointer-interactive (so the button is clickable) */
   action?: { label: string; run: () => void };
+  /** Keeps the hover alive while the pointer is over the card */
+  onKeepHover?: () => void;
+  onLeave?: () => void;
 }) {
   const { hit, src, value, filename, details } = content;
   const [settled, setSettled] = useState<{ src: string; ok: boolean } | null>(
     null,
   );
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  // The card must be able to overlay the plot's bounds — a facet cell is
+  // often shorter than the card — so it renders in a body portal at fixed
+  // viewport coordinates, flipped and clamped against the viewport using
+  // its MEASURED size (quadrant-guessing clipped tall cards near edges)
+  const anchorX = origin.left + hit.x;
+  const anchorY = origin.top + hit.y;
+  const showImage = src !== null && settled?.ok === true;
+  useLayoutEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    let left = anchorX + 14;
+    if (left + w > window.innerWidth - 4) left = anchorX - w - 14;
+    let top = anchorY + 14;
+    if (top + h > window.innerHeight - 4) top = anchorY - h - 14;
+    left = Math.max(4, Math.min(left, window.innerWidth - w - 4));
+    top = Math.max(4, Math.min(top, window.innerHeight - h - 4));
+    setPos({ left, top });
+  }, [anchorX, anchorY, showImage, details, value, filename, action != null]);
 
   // Preload off-DOM; the card appears only once the image is ready — or
   // has failed, in which case the metadata still shows (an unloadable
@@ -75,23 +109,22 @@ export default function HoverCard({
   }, [src]);
 
   if (src && settled?.src !== src) return null;
-  const showImage = src !== null && settled?.ok === true;
 
-  // Flip the card's quadrant so it stays inside the plot container
-  const flipX = hit.x > containerWidth / 2;
-  const flipY = hit.y > containerHeight / 2;
-
-  return (
+  return createPortal(
     <div
+      ref={cardRef}
       className="emb-hover-card"
       data-interactive={action ? "true" : "false"}
+      onMouseEnter={onKeepHover}
+      onMouseLeave={onLeave}
       style={{
         ...TOKEN_VARS,
-        left: hit.x,
-        top: hit.y,
-        transform: `translate(${flipX ? "calc(-100% - 14px)" : "14px"}, ${
-          flipY ? "calc(-100% - 14px)" : "14px"
-        })`,
+        position: "fixed",
+        zIndex: 1000,
+        left: pos?.left ?? anchorX + 14,
+        top: pos?.top ?? anchorY + 14,
+        // Painted only once measured, so the pre-clamp frame never flashes
+        visibility: pos ? "visible" : "hidden",
       }}
     >
       {showImage && (
@@ -141,6 +174,7 @@ export default function HoverCard({
           {action.label}
         </Button>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
