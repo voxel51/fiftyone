@@ -131,13 +131,12 @@ function renderOverlay(
 
 function pickerHandle(
   result: Awaited<ReturnType<GpuImageAnnotationPickerHandle["pick"]>>,
-): GpuImageAnnotationPickerHandle & {
-  readonly invalidate: ReturnType<typeof vi.fn>;
-  readonly pick: ReturnType<typeof vi.fn>;
-} {
+): GpuImageAnnotationPickerHandle {
+  const pick = vi.fn<GpuImageAnnotationPickerHandle["pick"]>();
+  pick.mockResolvedValue(result);
   return {
-    invalidate: vi.fn(),
-    pick: vi.fn().mockResolvedValue(result),
+    invalidate: vi.fn<GpuImageAnnotationPickerHandle["invalidate"]>(),
+    pick,
   };
 }
 

@@ -12,7 +12,10 @@ import type {
   StreamSyncPolicies,
   SynchronizedFrameWindow,
 } from "../../../ir";
-import { EpisodeReadCancelledError } from "../../../ports";
+import {
+  EpisodeReadCancelledError,
+  type PlaybackReadCapability,
+} from "../../../ports";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { createTimelineIndex, EpisodeStreamCache } from "../../../runtime";
 import {
@@ -239,12 +242,16 @@ describe("data stream prefetcher", () => {
 });
 
 function createHarness({
-  readSynchronized = vi.fn(async (request) => windowAt(request.timeNs, [])),
-  readSynchronizedBatch = vi.fn(async () => []),
+  readSynchronized = vi.fn<PlaybackReadCapability["readSynchronized"]>(
+    async (request) => windowAt(request.timeNs, []),
+  ),
+  readSynchronizedBatch = vi.fn<
+    PlaybackReadCapability["readSynchronizedBatch"]
+  >(async () => []),
   shouldAdmitBatch,
 }: {
-  readonly readSynchronized?: ReturnType<typeof vi.fn>;
-  readonly readSynchronizedBatch?: ReturnType<typeof vi.fn>;
+  readonly readSynchronized?: PlaybackReadCapability["readSynchronized"];
+  readonly readSynchronizedBatch?: PlaybackReadCapability["readSynchronizedBatch"];
   readonly shouldAdmitBatch?: Parameters<
     typeof createDataStreamPrefetcher
   >[0]["shouldAdmitBatch"];
