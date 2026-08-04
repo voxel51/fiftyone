@@ -123,32 +123,31 @@ class EmbeddingsV2RunInfo(HTTPEndpoint):
 
     def _post_sync(self, data):
         brain_key = data["brainKey"]
-        dataset = fosu.load_and_cache_dataset(data["datasetName"])
-        info = dataset.get_brain_info(brain_key)
-        config = info.config
+        run = _run_doc(data["datasetName"], brain_key)
+        config = run.get("config") or {}
+        meta = run.get("results_meta") or {}
 
         # The counts are a few bytes; the results are a GridFS blob whose
         # arrays run to hundreds of MB. Read them from what the run already
-        # records, and load the blob only when nothing does — every panel open
-        # otherwise pulls the whole run through the server.
-        run_meta = (
-            getattr(
-                dataset._doc.brain_methods.get(brain_key), "results_meta", None
-            )
-            or {}
-        )
-        n = run_meta.get("num_points")
-        dims = run_meta.get("num_dims")
-
-        # Else the run config, which brain sets at compute time
+        # records — ONE projected aggregation, no Dataset construction and
+        # nothing cached in the pod — and load the blob only when nothing
+        # does. Saving results records the counts, so only a legacy run pays
+        # the load, and only until it is re-saved.
+        n = meta.get("num_points")
         if n is None:
-            n = getattr(config, "num_points", None)
-        if dims is None:
-            dims = getattr(config, "num_dims", None)
+            n = config.get("num_points")
 
-        # Last resort: a run that records neither. Saving results records
-        # them, so a run that reaches here does not reach it twice.
+        dims = meta.get("num_dims")
+        if dims is None:
+            dims = config.get("num_dims")
+
+        method = config.get("method")
+        model = config.get("model")
+        patches_field = config.get("patches_field")
+        points_field = config.get("points_field")
+
         if n is None or dims is None:
+            dataset = fosu.load_and_cache_dataset(data["datasetName"])
             results = dataset.load_brain_results(brain_key)
             if results is None:
                 raise ValueError(
@@ -158,17 +157,23 @@ class EmbeddingsV2RunInfo(HTTPEndpoint):
 
             n = len(results.points)
             dims = int(results.points.shape[1])
-            config = results.config
+            patches_field = results.config.patches_field
+            points_field = results.config.points_field
+            method = getattr(results.config, "method", None)
+            model = getattr(results.config, "model", None)
 
+        timestamp = run.get("timestamp")
         return {
             "brainKey": brain_key,
             "n": n,
             "dims": dims,
-            "patchesField": config.patches_field,
-            "pointsField": config.points_field,
-            "method": getattr(config, "method", None),
-            "model": getattr(config, "model", None),
-            "timestamp": _timestamp(info),
+            "patchesField": patches_field,
+            "pointsField": points_field,
+            "method": method,
+            "model": model,
+            "timestamp": (
+                timestamp.isoformat() if timestamp is not None else None
+            ),
         }
 
 
