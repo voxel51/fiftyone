@@ -368,11 +368,15 @@ class Dataset:
 
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         doc["brain_methods"] = [
-            {
-                **run,
-                "ready": run.get("results") is not None,
-                "error": _brain_run_error(run),
-            }
+            (
+                {
+                    **run,
+                    "ready": run.get("results") is not None,
+                    "error": _brain_run_error(run),
+                }
+                if isinstance(run, dict)
+                else run
+            )
             for run in doc.get("brain_methods", {}).values()
         ]
         doc["evaluations"] = list(doc.get("evaluations", {}).values())

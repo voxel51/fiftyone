@@ -125,11 +125,25 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
             },
         }
         modified = DatasetQuery.modifier(doc)
-        ready = {
-            run["key"]: run["ready"] for run in modified["brain_methods"]
-        }
+        ready = {run["key"]: run["ready"] for run in modified["brain_methods"]}
         self.assertTrue(ready["done"])
         self.assertFalse(ready["pending"])
+
+    def test_dataset_query_passes_run_references_through(self):
+        # Raw dataset docs (the datasets-list paginator) hold brain_methods
+        # as ObjectId REFERENCES, not dicts — only materialized run docs can
+        # be decorated; references pass through untouched, as on develop
+        from bson import ObjectId
+
+        from fiftyone.server.query import Dataset as DatasetQuery
+
+        ref = ObjectId()
+        doc = {
+            "_id": "5f99d2eb0e6c99c377f8886c",
+            "brain_methods": {"viz": ref},
+        }
+        modified = DatasetQuery.modifier(doc)
+        self.assertEqual(modified["brain_methods"], [ref])
 
     def test_dataset_query_reports_run_errors_without_loading_results(self):
         # A run whose stored config class no longer imports (it predates a
