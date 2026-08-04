@@ -30,6 +30,27 @@ const IMAGE = "/camera";
 const LIDAR = "/lidar";
 
 describe("data stream prefetcher", () => {
+  it("forwards current-frame isolation without changing read semantics", async () => {
+    const readSynchronized = vi.fn(async (request) =>
+      windowAt(request.timeNs, [frame(LIDAR, request.timeNs)]),
+    );
+    const harness = createHarness({ readSynchronized });
+    harness.caches.get(LIDAR)?.subscribe();
+
+    expect(
+      harness.prefetcher.fetchCurrentFrame(0n, [LIDAR], {
+        isolation: "isolated",
+      }),
+    ).toBe(true);
+    await settle();
+
+    expect(readSynchronized).toHaveBeenCalledWith(
+      expect.objectContaining({ streams: [LIDAR], timeNs: 0n }),
+      { isolation: "isolated" },
+    );
+    expect(harness.caches.get(LIDAR)?.get(0n)).toEqual(frame(LIDAR, 0n));
+  });
+
   it("drops stale source results and results for an unsubscribed stream", async () => {
     const staleRead = deferred<readonly SynchronizedFrameWindow[]>();
     const unsubscribedRead = deferred<SynchronizedFrameWindow>();
@@ -168,10 +189,14 @@ describe("data stream prefetcher", () => {
     const followerSettled = vi.fn();
 
     expect(
-      harness.prefetcher.fetchCurrentFrame(0n, [IMAGE], firstSettled),
+      harness.prefetcher.fetchCurrentFrame(0n, [IMAGE], {
+        onSettled: firstSettled,
+      }),
     ).toBe(true);
     expect(
-      harness.prefetcher.fetchCurrentFrame(0n, [IMAGE], followerSettled),
+      harness.prefetcher.fetchCurrentFrame(0n, [IMAGE], {
+        onSettled: followerSettled,
+      }),
     ).toBe(false);
     expect(firstSettled).not.toHaveBeenCalled();
     expect(followerSettled).not.toHaveBeenCalled();

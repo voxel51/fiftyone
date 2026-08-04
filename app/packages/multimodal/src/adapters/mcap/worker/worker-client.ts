@@ -91,11 +91,13 @@ class WorkerMcapResourceClient implements McapResourceClient {
     (sample: McapLaneTransportSnapshot) => void
   >();
   private readonly interactiveLane = this.createLane("interactive");
+  private readonly interactiveHeavyLane = this.createLane("interactive-heavy");
   private readonly foregroundLane = this.createLane("foreground");
   private readonly idleLane = this.createLane("idle");
   private readonly bulkLane = this.createLane("bulk");
   private readonly lanes = [
     this.interactiveLane,
+    this.interactiveHeavyLane,
     this.foregroundLane,
     this.idleLane,
     this.bulkLane,
@@ -283,8 +285,15 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   readSynchronizedMessages(
     request: McapReadSynchronizedMessagesRequest,
+    options?: McapResourceReadOptions,
   ): Promise<McapSynchronizedMessageWindow> {
-    return this.request("readSynchronizedMessages", request);
+    return this.request(
+      "readSynchronizedMessages",
+      request,
+      resourcePriorityToWorkerPriority(options?.priority),
+      options?.signal,
+      options?.isolation,
+    );
   }
 
   readSynchronizedMessageBatch(
@@ -303,6 +312,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
     priority?: McapPlaybackWorkerPriority,
     signal?: AbortSignal,
+    isolation?: McapResourceReadOptions["isolation"],
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     if (this.disposed) {
       return Promise.reject(new Error("MCAP worker client is disposed"));
@@ -316,7 +326,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     } catch (error) {
       return Promise.reject(error);
     }
-    const lane = this.laneForPriority(effectivePriority);
+    const lane = this.laneForPriority(effectivePriority, isolation);
     const supersessionKeys = mcapForegroundSupersessionKeys({
       generation: this.foregroundGeneration,
       payload,
@@ -394,7 +404,10 @@ class WorkerMcapResourceClient implements McapResourceClient {
     this.foregroundGeneration += 1;
   }
 
-  private laneForPriority(priority: McapPlaybackWorkerPriority): WorkerLane {
+  private laneForPriority(
+    priority: McapPlaybackWorkerPriority,
+    isolation?: McapResourceReadOptions["isolation"],
+  ): WorkerLane {
     if (priority === MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY) {
       return this.bulkLane;
     }
@@ -402,7 +415,9 @@ class WorkerMcapResourceClient implements McapResourceClient {
       return this.idleLane;
     }
     if (priority === MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME) {
-      return this.interactiveLane;
+      return isolation === "isolated"
+        ? this.interactiveHeavyLane
+        : this.interactiveLane;
     }
     return this.foregroundLane;
   }
@@ -432,7 +447,9 @@ class WorkerMcapResourceClient implements McapResourceClient {
           // for priority fill slots. Idle and bulk work cannot occupy the
           // reserved slot while either user-visible lane needs the link.
           fillSlotClass:
-            lane.name === "interactive" || lane.name === "foreground"
+            lane.name === "interactive" ||
+            lane.name === "interactive-heavy" ||
+            lane.name === "foreground"
               ? "priority"
               : "background",
         },

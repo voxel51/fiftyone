@@ -214,8 +214,13 @@ export interface SynchronizedPlaybackBatchReadRequest {
   readonly timeNs: readonly bigint[];
 }
 
-/** Optional controls for a synchronized playback batch. */
+/** Optional controls for a synchronized playback read. */
 export interface SynchronizedPlaybackReadOptions {
+  /**
+   * Isolated reads may use an adapter-owned lane independent from other work
+   * at the same priority. This changes scheduling only, never read semantics.
+   */
+  readonly isolation?: "isolated" | "shared";
   readonly priority?: ReadPriority;
 }
 
@@ -230,6 +235,7 @@ export interface PlaybackReadCapability {
   ): Promise<readonly StreamTimeBounds[]>;
   readSynchronized(
     request: SynchronizedPlaybackReadRequest,
+    options?: SynchronizedPlaybackReadOptions,
   ): Promise<SynchronizedFrameWindow>;
   readSynchronizedBatch(
     request: SynchronizedPlaybackBatchReadRequest,

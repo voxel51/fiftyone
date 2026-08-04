@@ -69,7 +69,12 @@ export interface EpisodeTimeline {
 }
 
 /** Shared scheduling lane used by source transport telemetry. */
-export type TransportLane = "interactive" | "foreground" | "idle" | "bulk";
+export type TransportLane =
+  | "interactive"
+  | "interactive-heavy"
+  | "foreground"
+  | "idle"
+  | "bulk";
 
 /** Cumulative network counters for one reader context. */
 export interface NetworkTransportSnapshot {

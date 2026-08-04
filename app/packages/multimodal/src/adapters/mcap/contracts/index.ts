@@ -779,6 +779,8 @@ export type McapResourceReadPriority = "bulk" | "current" | "idle" | "playback";
  * Optional scheduling hints for MCAP resource reads.
  */
 export interface McapResourceReadOptions {
+  /** Run independently from shared work at the same user-visible priority. */
+  readonly isolation?: "isolated" | "shared";
   readonly priority?: McapResourceReadPriority;
   readonly signal?: AbortSignal;
 }
@@ -1042,6 +1044,7 @@ export interface McapResourceClient {
    */
   readSynchronizedMessages(
     request: McapReadSynchronizedMessagesRequest,
+    options?: McapResourceReadOptions,
   ): Promise<McapSynchronizedMessageWindow>;
 
   /**
