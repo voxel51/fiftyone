@@ -149,7 +149,10 @@ export interface SharedPlotProps {
   mode: InteractionMode;
   panelMode: PanelMode;
   zCamera?: () => Promise<unknown>;
-  onLasso: (indices: number[], polygon?: Array<[number, number]> | null) => void;
+  onLasso: (
+    indices: number[],
+    polygon?: Array<[number, number]> | null,
+  ) => void;
   onPointClick: ((hit: HoverHit) => void) | undefined;
   onBackgroundClick: () => void;
   onError: (e: Error) => void;

@@ -101,4 +101,3 @@ describe("run settings storage", () => {
     expect(readRunSettings("ds", "viz0")).toEqual({});
   });
 });
-

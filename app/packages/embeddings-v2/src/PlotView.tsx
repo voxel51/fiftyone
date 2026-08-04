@@ -36,10 +36,7 @@ import { counterLabel } from "./plotCounter";
 import { SettingsMenu } from "./SettingsMenu";
 import "./panel.css";
 import { type VisualizationRun } from "./protocol";
-import {
-  type CameraAdapterFactory,
-  type InteractionMode,
-} from "./renderer";
+import { type CameraAdapterFactory, type InteractionMode } from "./renderer";
 import { NONE_FIELD, useRunPlotData } from "./useRunPlotData";
 
 const TOKEN_VARS = {
