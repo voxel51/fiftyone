@@ -16,6 +16,7 @@ export type {
   PlaybackStore,
   PlaybackStream,
   SeekEvent,
+  TimelineMode,
 } from "./src/lib/playback/types";
 export * from "./src/lib/tracks/TrackProvider";
 export * from "./src/views/Timeline/Timeline";
@@ -38,6 +39,7 @@ export type { TemporalTagTimelineProps } from "./src/views/TemporalTag/TemporalT
 // re-exported above / via the `export *` lines.)
 export {
   PlaybackProvider,
+  useMode,
   usePlayback,
 } from "./src/lib/playback/PlaybackProvider";
 export {
@@ -46,6 +48,14 @@ export {
   useIsPlaying,
   usePlayhead,
 } from "./src/lib/playback/use-playback-state";
+export {
+  createTimelineDisplayConversion,
+  useTimelineDisplay,
+} from "./src/lib/playback/timeline-display";
+export type {
+  TimelineDisplayConversion,
+  TimelineDisplayValue,
+} from "./src/lib/playback/timeline-display";
 export { usePlaybackStream } from "./src/lib/playback/use-playback-stream";
 export {
   usePresentedMediaTime,

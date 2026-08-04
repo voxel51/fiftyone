@@ -25,6 +25,7 @@ import {
   TemporalTagTimeline,
   TrackProvider,
   type TemporalTagTimelineProps,
+  type TimelineMode,
   type Track,
 } from "@fiftyone/playback";
 import {
@@ -108,6 +109,15 @@ export interface MultiModalPlaybackProps {
 
   /** Discoverable data sources for the current scene. */
   sceneSources?: readonly SceneSource[];
+
+  /**
+   * Presentation mode for the shared timeline ruler / scrub UI — frame
+   * numbers (`sequence`), wall-clock timestamps (`absolute`), or elapsed
+   * seconds (`duration`, the default). Resolved once, before mount; per
+   * `PlaybackProvider`'s contract this is read only at creation and won't
+   * react to later prop changes.
+   */
+  mode?: TimelineMode;
 
   /**
    * Hosts compatible image panels in one lazily-mounted WebGPU canvas.
@@ -237,6 +247,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   resetLayout,
   resetLayoutStrategy,
   sceneSources = EMPTY_SOURCES,
+  mode,
   sharedImageWebGpuViews = false,
   deselectFocusedTileOnRepeatSelect = true,
   leftSidebar = <TileSettingsSidebar />,
@@ -257,7 +268,7 @@ const MultiModalPlayback: React.FC<MultiModalPlaybackProps> = ({
   className,
 }) => {
   return (
-    <PlaybackProvider>
+    <PlaybackProvider mode={mode}>
       {/* Only the grid-filtered tags (initialPinnedIds) start pinned. Auto-pin
           is off so tracks arriving in async batches don't each pin themselves,
           which would pin everything as the batches land. */}
