@@ -7,6 +7,11 @@ import relay from "vite-plugin-relay";
 import svgr from "vite-plugin-svgr";
 import wasm from "vite-plugin-wasm";
 
+const foxgloveWasmWrapperPattern =
+  /[\\/]node_modules[\\/]@foxglove[\\/](?:wasm-(lz4|zstd)[\\/]dist[\\/]wasm-(lz4|zstd)|wasm-bz2[\\/]wasm[\\/]module)\.js$/;
+const foxgloveWasmRequirePattern =
+  /require\((["'])(\.\/(?:wasm-(?:lz4|zstd)|module)\.wasm)\1\)/g;
+
 async function loadConfig() {
   return defineConfig({
     base: "",
@@ -78,20 +83,6 @@ async function loadConfig() {
       dedupe: ["react", "react-dom", "react/jsx-runtime"],
     },
     build: {
-      commonjsOptions: {
-        // The @foxglove wasm packages locate their .wasm binaries with
-        // `require("./<name>.wasm")`, which foxgloveWasmAsUrl() resolves
-        // to a Vite `?url` module (a single default export holding the
-        // asset URL string). Default CommonJS interop hands `require()`
-        // the frozen module namespace instead of that string, and the
-        // emscripten glue then crashes on `filename.startsWith(...)`.
-        // Returning the default export for exactly these ids gives the
-        // glue the URL string, matching the dev-mode esbuild shim.
-        requireReturnsDefault: (id: string) =>
-          /[\\/]@foxglove[\\/]wasm-(lz4|zstd|bz2)[\\/].*\.wasm\?url$/.test(id)
-            ? "auto"
-            : false,
-      },
       rollupOptions: {
         onwarn(warning, warn) {
           if (warning.code === "MODULE_LEVEL_DIRECTIVE") {
@@ -150,6 +141,23 @@ function foxgloveWasmAsUrl(): Plugin {
   return {
     name: "foxglove-wasm-as-url",
     enforce: "pre",
+    transform(code, id) {
+      if (!foxgloveWasmWrapperPattern.test(id)) {
+        return null;
+      }
+
+      // These Emscripten shims expect webpack-style asset requires to return
+      // the URL string directly. Vite 8's Rolldown build instead returns the
+      // `?url` module namespace, and build.commonjsOptions is now a no-op.
+      // Accept either shape so dev and production keep identical semantics.
+      const transformed = code.replace(
+        foxgloveWasmRequirePattern,
+        (_match, quote, source) =>
+          `((module) => module.default ?? module)(require(${quote}${source}${quote}))`,
+      );
+
+      return transformed === code ? null : { code: transformed, map: null };
+    },
     async resolveId(source, importer, options) {
       if (
         !source.endsWith(".wasm") ||
@@ -176,8 +184,6 @@ function foxgloveWasmAsUrl(): Plugin {
 
 function foxgloveWasmOptimizeAsUrl() {
   const namespace = "foxglove-wasm-url";
-  const wrapperPattern =
-    /[\\/]node_modules[\\/]@foxglove[\\/](?:wasm-(lz4|zstd)[\\/]dist[\\/]wasm-(lz4|zstd)|wasm-bz2[\\/]wasm[\\/]module)\.js$/;
 
   return {
     name: "foxglove-wasm-url",
@@ -185,7 +191,7 @@ function foxgloveWasmOptimizeAsUrl() {
       build.onResolve(
         { filter: /^\.\/(?:wasm-(?:lz4|zstd)|module)\.wasm$/ },
         (args) => {
-          if (!wrapperPattern.test(args.importer)) {
+          if (!foxgloveWasmWrapperPattern.test(args.importer)) {
             return undefined;
           }
 
