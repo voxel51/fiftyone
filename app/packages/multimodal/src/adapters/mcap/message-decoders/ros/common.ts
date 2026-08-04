@@ -225,22 +225,6 @@ export function integerField(
 }
 
 /**
- * Reads a finite numeric field or throws when it is missing/invalid.
- */
-export function requiredFiniteNumber(
-  record: Record<string, unknown> | undefined,
-  field: string,
-  fallbackField?: string,
-): number {
-  const value = numberField(record, field, fallbackField, Number.NaN);
-  if (!Number.isFinite(value)) {
-    throw new Error(`Field '${field}' is not a finite number`);
-  }
-
-  return value;
-}
-
-/**
  * Reads an optional boolean field.
  */
 export function optionalBoolean(

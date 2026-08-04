@@ -15,6 +15,7 @@ import {
 } from "../media-2d/image-texture-cache";
 import { sampleColormap, type PointCloudColorSettings } from "../scene-3d";
 import { POINT_CLOUD_POINTS_MATERIAL_PROPS } from "../scene-3d/PointCloudSceneLayer";
+import * as sceneObjectInteraction from "../scene-3d/use-scene-object-interaction";
 import { PointCloudPanel } from "./PointCloudPanel";
 
 const webGpuCanvasRender = vi.hoisted(() => vi.fn());
@@ -822,6 +823,11 @@ describe("PointCloudPanel", () => {
 
   it("passes command-click state through camera frustum selection", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
+    // React DOM's synthetic click does not carry fiber's `delta`; selection
+    // policy itself is covered by use-scene-object-interaction.test.ts.
+    vi.spyOn(sceneObjectInteraction, "isScenePrimarySelection").mockReturnValue(
+      true,
+    );
     const onSelect = vi.fn();
 
     const { container } = render(

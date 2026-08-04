@@ -1,4 +1,5 @@
 import type { ImageTextureMesh } from "../../../../visualization/media-2d/Base2dScene";
+import type { ImagePixelTransform } from "../../../../visualization/media-2d/image-pixel-transform";
 import {
   projectCameraPoint,
   unprojectCameraPixel,
@@ -10,10 +11,7 @@ const TARGET_CELL_SIZE_PX = 16;
 const MIN_GRID_SEGMENTS = 16;
 const MAX_GRID_SEGMENTS = 256;
 
-export type ImagePixelTransform = (
-  u: number,
-  v: number,
-) => readonly [number, number] | null;
+export type { ImagePixelTransform } from "../../../../visualization/media-2d/image-pixel-transform";
 
 /** Cached mapping from recorded image pixels into a rectified display. */
 export interface RectifiedImageDisplay {

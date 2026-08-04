@@ -3,6 +3,7 @@
  */
 
 import { haversineDistanceMeters, type GeoPoint } from "./wgs84";
+import { nextTwoClickState } from "../../../utils/two-click-state";
 
 export type MapMeasurementPoint = GeoPoint;
 
@@ -20,10 +21,7 @@ export function nextMapMeasurementState(
   current: MapMeasurementState | null,
   pick: MapMeasurementPoint,
 ): MapMeasurementState {
-  if (!current || current.b !== null) {
-    return { a: pick, b: null };
-  }
-  return { a: current.a, b: pick };
+  return nextTwoClickState(current, pick);
 }
 
 /** Great-circle distance of a complete WGS84 measurement, else `null`. */

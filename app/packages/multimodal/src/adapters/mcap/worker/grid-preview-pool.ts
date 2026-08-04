@@ -1,5 +1,6 @@
 import { byteSourceAccessKey } from "../../../query/bytes";
 import { errorMessage, toError } from "../../../utils/errors";
+import { fnv1aString } from "../fnv1a";
 import { McapGridPreviewTransport } from "./grid-preview-transport";
 import type {
   McapGridPreviewRequestPayload,
@@ -197,13 +198,7 @@ export function resetMcapGridPreviewPoolForTests(
  * Hashes a source key (FNV-1a) for deterministic worker affinity.
  */
 export function hashSourceKey(sourceKey: string): number {
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < sourceKey.length; index++) {
-    hash ^= sourceKey.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193);
-  }
-
-  return hash >>> 0;
+  return fnv1aString(sourceKey);
 }
 
 function normalizePoolSize(poolSize: number | undefined): number {

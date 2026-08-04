@@ -103,7 +103,7 @@ import {
   type Scene3dSnapshot,
 } from "../entities/use-scene-3d-snapshot";
 import {
-  Scene3dHoverTooltip,
+  Scene3dHoverTooltipStack,
   useScene3dPickingLayers,
 } from "../picking/use-scene-3d-picking-layers";
 import { useScene3dFrustumLayers } from "../camera/use-scene-3d-frustum-layers";
@@ -498,7 +498,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   const {
     annotationLayers,
     hoverablePointCloudLayers,
-    hoverTooltip,
+    hoverTooltips,
     hoverTooltipContainerProps,
     onHoverCamera,
   } = useScene3dPickingLayers({
@@ -952,7 +952,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
           ) : (
             <TileStatusBadge showWarnings={false} streams={selectedStreams} />
           )}
-          {hoverTooltip ? <Scene3dHoverTooltip tooltip={hoverTooltip} /> : null}
+          <Scene3dHoverTooltipStack tooltips={hoverTooltips} />
         </div>
       ) : (
         <TileEmptyState streams={selectedStreams} />

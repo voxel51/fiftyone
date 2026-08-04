@@ -26,7 +26,7 @@ import { DEFAULT_MAX_RENDERED_POINTS } from "../scene-3d/point-cloud-colors";
 import {
   EMPTY_POINT_CLOUD_BUDGET,
   PointCloudCanvasBudget,
-} from "../scene-3d/gpu/point-cloud-canvas-budget";
+} from "./point-cloud-canvas-budget";
 
 const LazyWebGpuCanvas = lazy(async () => {
   const module = await import("./WebGpuCanvas");

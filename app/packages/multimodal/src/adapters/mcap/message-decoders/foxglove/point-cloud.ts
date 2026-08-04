@@ -12,7 +12,6 @@ import type {
   PointCloudRenderChannelPayload,
   PointCloudRenderRgbChannel,
   PointCloudRenderScalarField,
-  PointCloudScalarField,
 } from "../../../../ir/index";
 import { resourceHintsForArrayBufferViews } from "../../../../decoders/index";
 import {
@@ -74,10 +73,6 @@ const FLOAT32_BYTE_WIDTH = 4;
  */
 export const POINT_COMPONENT_COUNT = 3;
 const COLOR_COMPONENT_COUNT = 3;
-
-const X_COMPONENT_INDEX = 0;
-const Y_COMPONENT_INDEX = 1;
-const Z_COMPONENT_INDEX = 2;
 
 const CANONICAL_SCALAR_FIELDS = Object.freeze([
   "intensity",
@@ -217,15 +212,6 @@ function projectFoxglovePointCloudChannelRecord(
       signal: context.signal,
     },
   );
-}
-
-/**
- * Normalized point cloud buffers shared by Foxglove and ROS decoders.
- */
-export interface DecodedPointCloudData {
-  readonly colors?: Float32Array;
-  readonly positions: Float32Array;
-  readonly scalarFields: readonly PointCloudScalarField[];
 }
 
 /**
@@ -846,61 +832,6 @@ function writePackedColor(
   colors[colorOffset + 2] = data[byteOffset];
 }
 
-/**
- * Extracts positions, optional RGB colors, and scalar channels from packed
- * point data using the supplied field layout.
- */
-export function extractPointCloudData(
-  data: Uint8Array,
-  pointStride: number,
-  fields: readonly PointCloudField[],
-): DecodedPointCloudData {
-  if (pointStride <= 0) {
-    throw new Error(`Invalid point stride ${pointStride}`);
-  }
-
-  const x = requiredFloat32Field(fields, "x");
-  const y = requiredFloat32Field(fields, "y");
-  const z = requiredFloat32Field(fields, "z");
-
-  for (const field of [x, y, z]) {
-    if (field.offset < 0 || field.offset + FLOAT32_BYTE_WIDTH > pointStride) {
-      throw new Error(`Point cloud '${field.name}' field exceeds point stride`);
-    }
-  }
-
-  const pointDataByteLength = alignedPointDataByteLength(data, pointStride);
-  const pointCount = Math.floor(pointDataByteLength / pointStride);
-  const positions = new Float32Array(pointCount * POINT_COMPONENT_COUNT);
-  const colors = extractColorField(data, pointStride, pointCount, fields);
-  const scalarFields = extractScalarFields(
-    data,
-    pointStride,
-    pointCount,
-    fields,
-  );
-  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-
-  for (let index = 0; index < pointCount; index++) {
-    const baseOffset = index * pointStride;
-    const positionOffset = index * POINT_COMPONENT_COUNT;
-    positions[positionOffset + X_COMPONENT_INDEX] = view.getFloat32(
-      baseOffset + x.offset,
-      true,
-    );
-    positions[positionOffset + Y_COMPONENT_INDEX] = view.getFloat32(
-      baseOffset + y.offset,
-      true,
-    );
-    positions[positionOffset + Z_COMPONENT_INDEX] = view.getFloat32(
-      baseOffset + z.offset,
-      true,
-    );
-  }
-
-  return { colors, positions, scalarFields };
-}
-
 function alignedPointDataByteLength(
   data: Uint8Array,
   pointStride: number,
@@ -933,18 +864,6 @@ function isZeroRange(
   }
 
   return true;
-}
-
-function extractScalarFields(
-  data: Uint8Array,
-  pointStride: number,
-  pointCount: number,
-  fields: readonly PointCloudField[],
-): readonly PointCloudScalarField[] {
-  return scalarFieldsForLayout(fields, pointStride).map((field) => ({
-    name: field.name,
-    values: extractNumericValues(data, pointStride, pointCount, field),
-  }));
 }
 
 function scalarFieldsForLayout(
@@ -989,89 +908,6 @@ function scalarFieldsForLayout(
   return orderedFields.slice(0, MAX_SCALAR_FIELDS);
 }
 
-function extractColorField(
-  data: Uint8Array,
-  pointStride: number,
-  pointCount: number,
-  fields: readonly PointCloudField[],
-): Float32Array | undefined {
-  return (
-    extractSeparateColorChannels(data, pointStride, pointCount, fields) ??
-    extractPackedColorField(data, pointStride, pointCount, fields)
-  );
-}
-
-function extractSeparateColorChannels(
-  data: Uint8Array,
-  pointStride: number,
-  pointCount: number,
-  fields: readonly PointCloudField[],
-): Float32Array | undefined {
-  const red = findColorChannel(fields, pointStride, RED_COLOR_CHANNEL_NAMES);
-  const green = findColorChannel(
-    fields,
-    pointStride,
-    GREEN_COLOR_CHANNEL_NAMES,
-  );
-  const blue = findColorChannel(fields, pointStride, BLUE_COLOR_CHANNEL_NAMES);
-  if (!red || !green || !blue) {
-    return undefined;
-  }
-
-  const colors = new Float32Array(pointCount * COLOR_COMPONENT_COUNT);
-  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-
-  for (let index = 0; index < pointCount; index++) {
-    const baseOffset = index * pointStride;
-    const colorOffset = index * COLOR_COMPONENT_COUNT;
-    colors[colorOffset] = normalizeColorChannel(
-      readNumericField(view, baseOffset + red.offset, red.type),
-      red.type,
-    );
-    colors[colorOffset + 1] = normalizeColorChannel(
-      readNumericField(view, baseOffset + green.offset, green.type),
-      green.type,
-    );
-    colors[colorOffset + 2] = normalizeColorChannel(
-      readNumericField(view, baseOffset + blue.offset, blue.type),
-      blue.type,
-    );
-  }
-
-  return colors;
-}
-
-function extractPackedColorField(
-  data: Uint8Array,
-  pointStride: number,
-  pointCount: number,
-  fields: readonly PointCloudField[],
-): Float32Array | undefined {
-  const field = fields.find(
-    (candidate) =>
-      PACKED_COLOR_FIELD_NAMES.includes(normalizedFieldName(candidate.name)) &&
-      canReadNumericField(candidate, pointStride) &&
-      numericFieldByteWidth(candidate.type) === 4,
-  );
-  if (!field) {
-    return undefined;
-  }
-
-  const colors = new Float32Array(pointCount * COLOR_COMPONENT_COUNT);
-
-  for (let index = 0; index < pointCount; index++) {
-    const byteOffset = index * pointStride + field.offset;
-    const colorOffset = index * COLOR_COMPONENT_COUNT;
-    // Packed PCL-style rgb/rgba values are commonly stored as little-endian
-    // 0xAARRGGBB bytes, even when the field type is FLOAT32.
-    colors[colorOffset] = data[byteOffset + 2] / UINT8_MAX_VALUE;
-    colors[colorOffset + 1] = data[byteOffset + 1] / UINT8_MAX_VALUE;
-    colors[colorOffset + 2] = data[byteOffset] / UINT8_MAX_VALUE;
-  }
-
-  return colors;
-}
-
 function findColorChannel(
   fields: readonly PointCloudField[],
   pointStride: number,
@@ -1082,26 +918,6 @@ function findColorChannel(
       names.includes(normalizedFieldName(field.name)) &&
       canReadNumericField(field, pointStride),
   );
-}
-
-function extractNumericValues(
-  data: Uint8Array,
-  pointStride: number,
-  pointCount: number,
-  field: PointCloudField,
-): Float32Array {
-  const values = new Float32Array(pointCount);
-  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-
-  for (let index = 0; index < pointCount; index++) {
-    values[index] = readNumericField(
-      view,
-      index * pointStride + field.offset,
-      field.type,
-    );
-  }
-
-  return values;
 }
 
 function canReadNumericField(

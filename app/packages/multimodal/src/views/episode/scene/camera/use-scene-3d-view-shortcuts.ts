@@ -10,6 +10,7 @@ import {
   DEFAULT_SCENE_3D_UP_AXIS,
   type Scene3dUpAxis,
 } from "../../spatial/view-preferences";
+import { sceneUpVector } from "./scene-up-vector";
 
 // Ego chase view: behind and above the ego along its heading, looking at it.
 // Fixed automotive-scale offsets — the trained looker-3d "ego view" is a
@@ -26,11 +27,6 @@ const TOP_VIEW_DEFAULT_HEIGHT_M = 80;
 // vector) and pins the screen-up direction (~1 degree, visually imperceptible).
 const TOP_VIEW_LEAN_RATIO = 0.02;
 
-const SCENE_UP_VECTORS: Record<Scene3dUpAxis, Vector3> = {
-  x: new Vector3(1, 0, 0),
-  y: new Vector3(0, 1, 0),
-  z: new Vector3(0, 0, 1),
-};
 const HEADING_DIRECTION_EPSILON = 0.000001;
 
 /**
@@ -273,10 +269,6 @@ function headingDirection(
     return fallbackForwardDirection(sceneUpAxis);
   }
   return forward.normalize();
-}
-
-function sceneUpVector(sceneUpAxis: Scene3dUpAxis): Vector3 {
-  return SCENE_UP_VECTORS[sceneUpAxis].clone();
 }
 
 function fallbackForwardDirection(sceneUpAxis: Scene3dUpAxis): Vector3 {

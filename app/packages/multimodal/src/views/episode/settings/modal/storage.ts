@@ -61,7 +61,7 @@ export interface SceneBackgroundSettings {
 /**
  * How one point-cloud stream is colored in the 3D tile.
  */
-export interface PointCloudColorSettings {
+export interface PersistedPointCloudColorSettings {
   readonly colorBy: string;
   readonly colormap: PointCloudColormap;
   readonly rangeMax: number | null;
@@ -98,7 +98,7 @@ export interface ImageProjectionSettings {
 export interface ScopedModalSettings {
   readonly imageLabelStreams: Record<string, readonly string[]>;
   readonly imageProjection: Record<string, ImageProjectionSettings>;
-  readonly pointCloudColors: Record<string, PointCloudColorSettings>;
+  readonly pointCloudColors: Record<string, PersistedPointCloudColorSettings>;
 }
 
 /**
@@ -112,7 +112,7 @@ export interface PersistedModalSettings {
   readonly imageLabelStreams: Record<string, readonly string[]>;
   readonly imageProjection: Record<string, ImageProjectionSettings>;
   readonly pinholeCamera: PinholeCameraSettings;
-  readonly pointCloudColors: Record<string, PointCloudColorSettings>;
+  readonly pointCloudColors: Record<string, PersistedPointCloudColorSettings>;
   readonly pointCloudPointSize: number;
   readonly referenceGrid: ReferenceGridSettings;
   readonly sceneBackground: SceneBackgroundSettings;
@@ -156,7 +156,7 @@ export const DEFAULT_SCENE_BACKGROUND: SceneBackgroundSettings = {
 /**
  * Default point-cloud color override before source-specific defaults apply.
  */
-export const DEFAULT_POINT_CLOUD_COLOR: PointCloudColorSettings = {
+export const DEFAULT_POINT_CLOUD_COLOR: PersistedPointCloudColorSettings = {
   colorBy: "auto",
   colormap: DEFAULT_POINT_CLOUD_COLORMAP,
   rangeMax: null,
@@ -173,7 +173,7 @@ const POINT_CLOUD_COLORMAPS_WITHOUT_TURBO = POINT_CLOUD_COLORMAPS.filter(
  */
 export function defaultPointCloudColorForIndex(
   index: number,
-): PointCloudColorSettings {
+): PersistedPointCloudColorSettings {
   const safeIndex = Number.isFinite(index) ? Math.max(0, Math.floor(index)) : 0;
   return {
     ...DEFAULT_POINT_CLOUD_COLOR,
@@ -193,7 +193,7 @@ interface PointCloudSourceLike {
 export function defaultPointCloudColorForSource(
   source: PointCloudSourceLike,
   sources: readonly PointCloudSourceLike[],
-): PointCloudColorSettings {
+): PersistedPointCloudColorSettings {
   const sourceIndex = sources.findIndex(
     (candidate) => candidate.id === source.id,
   );
@@ -505,12 +505,12 @@ function normalizeOptionalStream(value: unknown): string | null {
  */
 export function normalizePointCloudColorMap(
   value: unknown,
-): Record<string, PointCloudColorSettings> {
+): Record<string, PersistedPointCloudColorSettings> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return {};
   }
 
-  const result: Record<string, PointCloudColorSettings> = {};
+  const result: Record<string, PersistedPointCloudColorSettings> = {};
   for (const [stream, settings] of Object.entries(value)) {
     const normalizedStream = stream.trim();
     if (!normalizedStream) continue;
@@ -524,12 +524,12 @@ export function normalizePointCloudColorMap(
  */
 export function normalizePointCloudColor(
   value: unknown,
-): PointCloudColorSettings {
+): PersistedPointCloudColorSettings {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return DEFAULT_POINT_CLOUD_COLOR;
   }
 
-  const candidate = value as Partial<PointCloudColorSettings>;
+  const candidate = value as Partial<PersistedPointCloudColorSettings>;
   return {
     colorBy:
       typeof candidate.colorBy === "string" && candidate.colorBy.trim()

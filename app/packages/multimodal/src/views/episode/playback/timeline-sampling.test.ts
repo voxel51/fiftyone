@@ -4,21 +4,21 @@ import { BYTE_SOURCE_READ_PROFILE } from "../../../ir";
 import {
   defaultTimelineSamplingRateHz,
   normalizeTimelineSamplingRateHz,
-  TIMELINE_SAMPLING_PRESET,
+  TIMELINE_SAMPLING_PRESETS,
   timelineSamplingPresetForRate,
-  validTimelineSamplingRateHz,
+  sanitizeTimelineSamplingRateHz,
 } from "./timeline-sampling";
 
 describe("timeline sampling", () => {
   it("defaults remote sources to Economy and local sources to Balanced", () => {
     expect(defaultTimelineSamplingRateHz(BYTE_SOURCE_READ_PROFILE.REMOTE)).toBe(
-      TIMELINE_SAMPLING_PRESET.ECONOMY.rateHz,
+      TIMELINE_SAMPLING_PRESETS[0].rateHz,
     );
     expect(defaultTimelineSamplingRateHz(BYTE_SOURCE_READ_PROFILE.LOCAL)).toBe(
-      TIMELINE_SAMPLING_PRESET.BALANCED.rateHz,
+      TIMELINE_SAMPLING_PRESETS[1].rateHz,
     );
     expect(defaultTimelineSamplingRateHz(undefined)).toBe(
-      TIMELINE_SAMPLING_PRESET.BALANCED.rateHz,
+      TIMELINE_SAMPLING_PRESETS[1].rateHz,
     );
   });
 
@@ -30,10 +30,10 @@ describe("timeline sampling", () => {
   });
 
   it("validates persisted integers and clamps interactive custom rates", () => {
-    expect(validTimelineSamplingRateHz(1)).toBe(1);
-    expect(validTimelineSamplingRateHz(120)).toBe(120);
-    expect(validTimelineSamplingRateHz(0)).toBeUndefined();
-    expect(validTimelineSamplingRateHz(30.5)).toBeUndefined();
+    expect(sanitizeTimelineSamplingRateHz(1)).toBe(1);
+    expect(sanitizeTimelineSamplingRateHz(120)).toBe(120);
+    expect(sanitizeTimelineSamplingRateHz(0)).toBeUndefined();
+    expect(sanitizeTimelineSamplingRateHz(30.5)).toBeUndefined();
     expect(normalizeTimelineSamplingRateHz(-10)).toBe(1);
     expect(normalizeTimelineSamplingRateHz(48.6)).toBe(49);
     expect(normalizeTimelineSamplingRateHz(500)).toBe(120);

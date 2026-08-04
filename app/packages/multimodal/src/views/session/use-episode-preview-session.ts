@@ -6,6 +6,7 @@ import type {
   SampleDescriptor,
 } from "../../ports";
 import { openEpisodePreviewSession } from "../../runtime";
+import { errorMessage } from "../../utils/errors";
 
 /** Lifecycle state for a lazily detected lightweight preview session. */
 export type EpisodePreviewSessionState =
@@ -75,7 +76,7 @@ export function useEpisodePreviewSession(
       .catch((error) => {
         if (!active) return;
         setState({
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMessage(error),
           session: null,
           status: "error",
         });

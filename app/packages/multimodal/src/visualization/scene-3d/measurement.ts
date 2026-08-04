@@ -4,6 +4,8 @@
  * the mode toggle and readout.
  */
 
+import { nextTwoClickState } from "../../utils/two-click-state";
+
 export type MeasurementPoint = readonly [number, number, number];
 export type MeasurementPlaneUpAxis = "x" | "y" | "z";
 
@@ -21,10 +23,7 @@ export function nextMeasurementState(
   current: MeasurementState | null,
   pick: MeasurementPoint,
 ): MeasurementState {
-  if (!current || current.b !== null) {
-    return { a: pick, b: null };
-  }
-  return { a: current.a, b: pick };
+  return nextTwoClickState(current, pick);
 }
 
 const GRID_PLANE_DISTANCE_AXES: Record<

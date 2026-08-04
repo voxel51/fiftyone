@@ -17,8 +17,6 @@ import type {
 import type { McapFrameTransformSet } from "../transforms/types";
 import type { PointCloudRenderChannelPayload } from "../../../ir/index";
 
-type McapLaneTransportSnapshot = LaneTransportSnapshot;
-
 /**
  * MCAP timeline selected as the playback clock/time track.
  */
@@ -941,7 +939,7 @@ export interface McapResourceClient {
    * optional.
    */
   subscribeTransport?(
-    listener: (sample: McapLaneTransportSnapshot) => void,
+    listener: (sample: LaneTransportSnapshot) => void,
   ): () => void;
 
   /**

@@ -22,7 +22,7 @@ export interface SceneInventoryState {
  * inventory from it — the discoverable cameras/lidars/annotation
  * streams actually present in the file, whatever produced it.
  */
-export function useSceneInventory(
+export function useSceneInventoryState(
   options: UseStreamsOptions,
 ): SceneInventoryState {
   const { status, error, streams } = useStreams(options);

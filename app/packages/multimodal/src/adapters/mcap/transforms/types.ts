@@ -1,35 +1,5 @@
 import type { Quaternion, Vector3 } from "three";
 
-export interface McapFrameTransformPolicy {
-  readonly boundaryClampNs: bigint;
-}
-
-export type McapFrameTransformResolutionKind =
-  | "identity"
-  | "static"
-  | "exact"
-  | "interpolated"
-  | "held"
-  | "clamped";
-
-/** Why a dynamic MCAP transform edge is holding its latest recorded pose. */
-export type McapHeldFrameTransformReason =
-  | "after-last-sample"
-  | "interpolation-gap"
-  | "parent-change";
-
-/** Worker-safe metadata for one held dynamic transform edge. */
-export interface McapHeldFrameTransform {
-  readonly ageNs: bigint;
-  readonly interpolationGapLimitNs?: bigint;
-  readonly interpolationGapNs?: bigint;
-  readonly reason: McapHeldFrameTransformReason;
-  readonly sourceFrameId: string;
-  readonly sourceTimeNs: bigint;
-  readonly staleAfterNs: bigint;
-  readonly targetFrameId: string;
-}
-
 export interface McapFrameTransformSample {
   readonly childFrameId: string;
   readonly parentFrameId: string;
@@ -87,36 +57,4 @@ export interface McapFrameTransformSetWire {
   readonly samples: readonly McapFrameTransformSampleWire[];
   readonly topicStats?: readonly McapFrameTransformTopicStats[];
   readonly topics?: readonly string[];
-}
-
-export interface McapComposedFrameTransform {
-  readonly heldEdges?: readonly McapHeldFrameTransform[];
-  readonly maxInterpolationGapNs?: bigint;
-  readonly resolutionKind?: McapFrameTransformResolutionKind;
-  readonly rotation: Quaternion;
-  readonly sourceFrameId: string;
-  readonly targetFrameId: string;
-  readonly translation: Vector3;
-}
-
-export type McapFrameTransformResolution = {
-  readonly sourceFrameId: string;
-  readonly targetFrameId: string;
-} & (
-  | {
-      readonly heldEdges?: readonly McapHeldFrameTransform[];
-      readonly maxInterpolationGapNs?: bigint;
-      readonly resolutionKind?: McapFrameTransformResolutionKind;
-      readonly status: "resolved";
-      readonly transform: McapComposedFrameTransform;
-    }
-  | {
-      readonly status: "pending" | "missing";
-      readonly transform?: undefined;
-    }
-);
-
-export interface McapFrameTransformTimeRange {
-  readonly endTimeNs: bigint;
-  readonly startTimeNs: bigint;
 }

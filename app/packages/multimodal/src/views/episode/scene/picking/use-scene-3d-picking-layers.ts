@@ -15,7 +15,7 @@ import type {
   SceneAnnotationPanelLayer,
 } from "../../../../visualization/scene-3d/types";
 import {
-  Scene3dHoverTooltip,
+  Scene3dHoverTooltipStack,
   useScene3dHoverTooltip,
 } from "../../interaction/point-hover/use-hover-tooltip";
 import { hoveredPointForFrame } from "../../interaction/point-hover/point-hover";
@@ -56,7 +56,7 @@ export function useScene3dPickingLayers({
     onHoverCamera,
     onHoverEntity,
     onHoverPoint,
-    tooltip: hoverTooltip,
+    tooltips: hoverTooltips,
   } = useScene3dHoverTooltip();
   const selectedObject = useSelectedObject();
   const setSelectedObject = useCallback(
@@ -96,7 +96,7 @@ export function useScene3dPickingLayers({
           isLabelEcho(selectedObject, label),
         hovered: hoverMatchesSceneEntity(hoverEcho, stream, entityId),
         onHoverEntity: (hoveredId: string | null) => {
-          onHoverEntity(hoveredId ? hoveredEntity : null);
+          onHoverEntity(layer.id, hoveredId ? hoveredEntity : null);
           const published = publishedEntityHoverRefs.current.get(layer.id);
           if (hoveredId) {
             const hover: HoveredSceneAnnotationEcho = {
@@ -279,8 +279,8 @@ export function useScene3dPickingLayers({
       publishedEntityHoverRefs.current.delete(layerId);
       if (jotaiStore.get(hoverEchoAtom) === published) {
         jotaiStore.set(hoverEchoAtom, null);
-        onHoverEntity(null);
       }
+      onHoverEntity(layerId, null);
     }
   }, [jotaiStore, onHoverEntity, sceneAnnotationLayers]);
 
@@ -288,6 +288,9 @@ export function useScene3dPickingLayers({
   // checks preserve a newer hover published by another surface.
   useEffect(
     () => () => {
+      const publishedEntityLayerIds = Array.from(
+        publishedEntityHoverRefs.current.keys(),
+      );
       const publishedEntities = new Set(
         publishedEntityHoverRefs.current.values(),
       );
@@ -301,8 +304,10 @@ export function useScene3dPickingLayers({
         current?.kind === "point" && published.has(current);
       if (ownsEntityHover || ownsPointHover) {
         jotaiStore.set(hoverEchoAtom, null);
-        if (ownsEntityHover) onHoverEntity(null);
         if (ownsPointHover) onHoverPoint(null);
+      }
+      for (const layerId of publishedEntityLayerIds) {
+        onHoverEntity(layerId, null);
       }
     },
     [jotaiStore, onHoverEntity, onHoverPoint],
@@ -311,7 +316,7 @@ export function useScene3dPickingLayers({
   return {
     annotationLayers,
     hoverablePointCloudLayers,
-    hoverTooltip,
+    hoverTooltips,
     hoverTooltipContainerProps,
     onHoverCamera,
   } as const;
@@ -344,4 +349,4 @@ export function toggleSceneEntitySelection(
   };
 }
 
-export { Scene3dHoverTooltip };
+export { Scene3dHoverTooltipStack };

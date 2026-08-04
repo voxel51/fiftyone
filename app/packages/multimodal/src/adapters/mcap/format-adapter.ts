@@ -39,6 +39,7 @@ import {
   type SourceReadBudgetAccount,
   type TransformReadAcceleration,
 } from "../../ports";
+import { emptyReadWorkUsage } from "../../ports/read-work-usage";
 import {
   createSourceReadBudgetLedger,
   type SourceReadBudgetLedger,
@@ -1140,19 +1141,6 @@ function boundedCancellationUsage(
     return error.usage;
   }
   return completedUsage ?? emptyReadWorkUsage();
-}
-
-function emptyReadWorkUsage() {
-  return {
-    chunksOpened: 0,
-    decompressedBytes: 0,
-    decompressionCacheHits: 0,
-    elapsedMs: 0,
-    logicalSourceBytes: 0,
-    logicalUncompressedBytes: 0,
-    messagesDecoded: 0,
-    transferredBytes: 0,
-  } as const;
 }
 
 function sameReadWorkBudget(

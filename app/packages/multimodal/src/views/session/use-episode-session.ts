@@ -6,6 +6,7 @@ import type {
   SampleDescriptor,
 } from "../../ports";
 import { openEpisodeSession } from "../../runtime";
+import { errorMessage } from "../../utils/errors";
 
 /** Lifecycle state for a lazily detected episode session. */
 export type EpisodeSessionState =
@@ -101,7 +102,7 @@ export function useEpisodeSession(
           path,
           source,
           value: {
-            error: error instanceof Error ? error.message : String(error),
+            error: errorMessage(error),
             session: null,
             status: "error",
           },

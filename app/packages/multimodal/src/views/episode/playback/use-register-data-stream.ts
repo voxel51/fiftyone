@@ -128,7 +128,7 @@ export interface UseDataStreamOptions {
   streamNames: ReadonlyMap<string, string>;
   streamPolicies: StreamSyncPolicies;
   /** Presentation cadence for the virtual synchronized-read tick grid. */
-  timelineTickRateHz: number;
+  timelineSamplingRateHz: number;
 }
 
 /**
@@ -154,7 +154,7 @@ export function useRegisterDataStream({
   staleWarningStreams,
   streamNames,
   streamPolicies,
-  timelineTickRateHz,
+  timelineSamplingRateHz,
 }: UseDataStreamOptions): void {
   const { pause, registerStream, seek, subscribeStream } = usePlayback();
   const store = usePlaybackStore();
@@ -173,7 +173,7 @@ export function useRegisterDataStream({
   const playbackPolicy = useMemo(() => {
     const policy = derivePlaybackPolicy(
       DEFAULT_PLAYBACK_POLICY,
-      timelineTickRateHz,
+      timelineSamplingRateHz,
     );
     if (sourceReadProfile !== BYTE_SOURCE_READ_PROFILE.LOCAL) return policy;
     return {
@@ -181,11 +181,11 @@ export function useRegisterDataStream({
       startupLookaheadSeconds: LOCAL_STARTUP_BUFFER_SECONDS,
       startupMaxPrefetchBatch: Math.max(
         1,
-        Math.ceil(timelineTickRateHz * LOCAL_STARTUP_BUFFER_SECONDS),
+        Math.ceil(timelineSamplingRateHz * LOCAL_STARTUP_BUFFER_SECONDS),
       ),
       startupMinTicks: 1,
     } satisfies DerivedPlaybackPolicy;
-  }, [sourceReadProfile, timelineTickRateHz]);
+  }, [sourceReadProfile, timelineSamplingRateHz]);
   // Only explicitly remote sources coalesce scrub targets; generic and local
   // playback stay immediate. settleSeek still releases the final target
   // immediately on pointer-up.
@@ -435,10 +435,10 @@ export function useRegisterDataStream({
     }
   }, [allStreams, playbackPolicy.streamCacheMaxEntries]);
 
-  // This effect loads the timeline range once the source is available. On source
-  // change, reset every piece of cached state synchronously so we
-  // don't run fetches/lookups against the new source with old ticks
-  // or stale frames while the async range load is in flight.
+  // This effect rebuilds the timeline when the source or sampling rate changes.
+  // Reset every piece of cached state synchronously so fetches and lookups never
+  // combine a new timeline with old ticks or stale frames while the async range
+  // load is in flight.
   useEffect(() => {
     sourceEpochRef.current += 1;
     const sourceEpoch = sourceEpochRef.current;
@@ -479,7 +479,7 @@ export function useRegisterDataStream({
     let cancelled = false;
     const range = playback.timeline;
     byteTimelineRef.current = range.byteTimeline ?? null;
-    const nextIndex = createTimelineIndex(range, timelineTickRateHz);
+    const nextIndex = createTimelineIndex(range, timelineSamplingRateHz);
     // Publish the data-stream subscription surface before committing the
     // timeline. Tiles can then register as one active set, preserving the
     // proven all-pane startup batch and blocking-before-overlay ordering.
@@ -522,7 +522,7 @@ export function useRegisterDataStream({
     source,
     startupCushionPlanner,
     store,
-    timelineTickRateHz,
+    timelineSamplingRateHz,
   ]);
 
   // This effect retries the initial auto-seek once the timeline index is

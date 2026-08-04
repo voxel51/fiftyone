@@ -9,6 +9,7 @@ import {
   registerWebGpuRenderer,
   type WebGpuRendererRegistration,
 } from "./webgpu-device-registry";
+import { errorMessage } from "../../utils/errors";
 
 type WebGpuRootState = RootState & {
   readonly gl: THREE.WebGPURenderer;
@@ -220,9 +221,7 @@ export function WebGpuCanvas({
           rendererRef.current = null;
           rendererReadyRef.current = false;
           setIsReady(false);
-          onErrorRef.current?.(
-            error instanceof Error ? error.message : String(error),
-          );
+          onErrorRef.current?.(errorMessage(error));
         }
       });
 

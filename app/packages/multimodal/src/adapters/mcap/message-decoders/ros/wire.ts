@@ -4,6 +4,7 @@ import { MessageReader as Ros1MessageReader } from "@foxglove/rosmsg-serializati
 import { MessageReader as Ros2MessageReader } from "@foxglove/rosmsg2-serialization";
 import type { McapTypes } from "@mcap/core";
 import type { PayloadDescriptor } from "../../../../ir/index";
+import { fnv1aBytesHex } from "../../fnv1a";
 
 const TEXT_DECODER = new TextDecoder();
 const MAX_PARSED_SCHEMA_CACHE_ENTRIES = 256;
@@ -221,15 +222,6 @@ function rosSchemaCacheKey(
     schema.encoding,
     schema.name,
     schema.data.byteLength.toString(),
-    hashSchemaData(schema.data),
+    fnv1aBytesHex(schema.data),
   ].join("\0");
-}
-
-function hashSchemaData(data: Uint8Array): string {
-  let hash = 0x811c9dc5;
-  for (const byte of data) {
-    hash ^= byte;
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return (hash >>> 0).toString(16).padStart(8, "0");
 }

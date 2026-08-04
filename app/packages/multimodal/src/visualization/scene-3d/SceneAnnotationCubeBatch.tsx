@@ -12,10 +12,13 @@ import * as TSL from "three/tsl";
 import { MeshBasicNodeMaterial } from "three/webgpu";
 
 import type { SceneCubePrimitive, SceneEntityVisualization } from "../../ir";
-import { CLICK_DRAG_TOLERANCE_PX } from "../interaction/interaction";
 import { POINT_PICK_BLOCKING_USER_DATA } from "./point-picking";
 import { useScenePicking } from "./scene-interactivity";
 import type { SceneAnnotationPanelLayer } from "./types";
+import {
+  isScenePrimarySelection,
+  useSceneHoverLifecycle,
+} from "./use-scene-object-interaction";
 import {
   DEFAULT_SCENE_CUBE_COLOR,
   SCENE_SELECTED_DASH_SIZE,
@@ -34,6 +37,7 @@ const SELECTED_BOX_EDGE_COUNT = 12;
 const SELECTED_BOX_VERTEX_COUNT = SELECTED_BOX_EDGE_COUNT * 2;
 const SELECTED_BOX_POSITION_COMPONENT_COUNT =
   SELECTED_BOX_VERTEX_COUNT * CUBE_COMPONENT_COUNT;
+const EMPTY_HOVERED_CUBE_KEYS: ReadonlySet<string> = new Set();
 
 const UNIT_BOX_CORNERS = [
   [-0.5, -0.5, -0.5],
@@ -107,10 +111,9 @@ interface HoveredCubeRecord {
 interface CubeBatchInteraction {
   readonly commitRecords: (
     records: readonly SceneCubeBatchRecord[],
-  ) => string | null;
+  ) => ReadonlySet<string>;
   readonly enabled: boolean;
   readonly onClick: (event: ThreeEvent<MouseEvent>) => void;
-  readonly onPointerMove: (event: ThreeEvent<PointerEvent>) => void;
   readonly onPointerOut: (event: ThreeEvent<PointerEvent>) => void;
   readonly onPointerOver: (event: ThreeEvent<PointerEvent>) => void;
 }
@@ -247,8 +250,8 @@ function SceneCubeBatch({
 
   // This layout effect uploads the current frame before the canvas paints.
   useLayoutEffect(() => {
-    const hoveredKey = interaction.commitRecords(records);
-    applySceneCubeBatchRecords(resource, records, hoveredKey);
+    const hoveredKeys = interaction.commitRecords(records);
+    applySceneCubeBatchRecords(resource, records, hoveredKeys);
     invalidate();
   }, [interaction, invalidate, records, resource]);
 
@@ -270,9 +273,6 @@ function SceneCubeBatch({
     <primitive
       object={resource.mesh}
       onClick={interaction.enabled ? interaction.onClick : undefined}
-      onPointerMove={
-        interaction.enabled ? interaction.onPointerMove : undefined
-      }
       onPointerOut={interaction.enabled ? interaction.onPointerOut : undefined}
       onPointerOver={
         interaction.enabled ? interaction.onPointerOver : undefined
@@ -325,9 +325,6 @@ function SelectedSceneCubeBatch({
     <primitive
       object={resource.lines}
       onClick={interaction.enabled ? interaction.onClick : undefined}
-      onPointerMove={
-        interaction.enabled ? interaction.onPointerMove : undefined
-      }
       onPointerOut={interaction.enabled ? interaction.onPointerOut : undefined}
       onPointerOver={
         interaction.enabled ? interaction.onPointerOver : undefined
@@ -382,7 +379,7 @@ export function createSceneCubeBatchResource(
 export function applySceneCubeBatchRecords(
   resource: SceneCubeBatchResource,
   records: readonly SceneCubeBatchRecord[],
-  hoveredKey: string | null = null,
+  hoveredKeys: ReadonlySet<string> = EMPTY_HOVERED_CUBE_KEYS,
 ): void {
   const matrixArray = resource.mesh.instanceMatrix.array as Float32Array;
   const colorArray = resource.colorAttribute.array as Float32Array;
@@ -409,7 +406,7 @@ export function applySceneCubeBatchRecords(
       opacityArray,
       index,
       record,
-      Boolean(record.layer.hovered) || record.key === hoveredKey,
+      Boolean(record.layer.hovered) || hoveredKeys.has(record.key),
     );
   }
 
@@ -535,101 +532,40 @@ export function useCubeBatchInteraction({
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
   const recordsRef = useRef<readonly SceneCubeBatchRecord[]>([]);
-  const hoveredRef = useRef<HoveredCubeRecord | null>(null);
-  const cursorRestoreRef = useRef<string | null>(null);
   const onHoverChangeRef = useRef(onHoverChange);
   onHoverChangeRef.current = onHoverChange;
   const resolveIndexRef = useRef(resolveIndex);
   resolveIndexRef.current = resolveIndex;
-
-  const restoreCursor = useCallback(() => {
-    if (cursorRestoreRef.current === null || typeof document === "undefined") {
-      return;
-    }
-    document.body.style.cursor = cursorRestoreRef.current;
-    cursorRestoreRef.current = null;
-  }, []);
-
-  const showPointerCursor = useCallback(() => {
-    if (cursorRestoreRef.current !== null || typeof document === "undefined") {
-      return;
-    }
-    cursorRestoreRef.current = document.body.style.cursor;
-    document.body.style.cursor = "pointer";
-  }, []);
-
-  const clearHover = useCallback(() => {
-    const previous = hoveredRef.current;
-    if (!previous) {
-      restoreCursor();
-      return;
-    }
-    hoveredRef.current = null;
-    previous.record.layer.onHoverEntity?.(null);
-    onHoverChangeRef.current(previous, null);
-    restoreCursor();
-  }, [restoreCursor]);
-
-  const hoverIndex = useCallback(
-    (index: number | null) => {
-      if (!enabledRef.current || index === null) {
-        clearHover();
-        return;
-      }
-      const record = recordsRef.current[index];
-      if (!record) {
-        clearHover();
-        return;
-      }
-      const previous = hoveredRef.current;
-      if (previous?.key === record.key) {
-        return;
-      }
-      if (previous) {
-        previous.record.layer.onHoverEntity?.(null);
-      }
-      const next = { index, key: record.key, record };
-      hoveredRef.current = next;
-      onHoverChangeRef.current(previous, next);
-      record.layer.onHoverEntity?.(record.entityId);
-      showPointerCursor();
+  const hover = useSceneHoverLifecycle<HoveredCubeRecord>({
+    enabled,
+    keyForTarget: (target) => target.key,
+    onEnter: (next) => {
+      next.record.layer.onHoverEntity?.(next.record.entityId);
+      onHoverChangeRef.current(null, next);
     },
-    [clearHover, showPointerCursor],
-  );
+    onLeave: (previous, reason) => {
+      previous.record.layer.onHoverEntity?.(null);
+      if (reason !== "unmount") {
+        onHoverChangeRef.current(previous, null);
+      }
+    },
+  });
 
   const commitRecords = useCallback(
-    (records: readonly SceneCubeBatchRecord[]): string | null => {
-      const previous = hoveredRef.current;
+    (records: readonly SceneCubeBatchRecord[]): ReadonlySet<string> => {
       recordsRef.current = records;
-      if (!previous || !enabledRef.current) {
-        if (previous) {
-          previous.record.layer.onHoverEntity?.(null);
-          hoveredRef.current = null;
-          restoreCursor();
-        }
-        return null;
-      }
-      const nextIndex = records.findIndex(
-        (record) => record.key === previous.key,
-      );
-      if (nextIndex < 0) {
-        previous.record.layer.onHoverEntity?.(null);
-        hoveredRef.current = null;
-        restoreCursor();
-        return null;
-      }
-      hoveredRef.current = {
-        index: nextIndex,
-        key: previous.key,
-        record: records[nextIndex],
-      };
-      return previous.key;
+      return hover.reconcile((key) => {
+        const index = records.findIndex((record) => record.key === key);
+        if (index < 0) return null;
+        const record = records[index];
+        return { index, key: record.key, record };
+      });
     },
-    [restoreCursor],
+    [hover],
   );
 
   const onClick = useCallback((event: ThreeEvent<MouseEvent>) => {
-    if (!enabledRef.current || event.delta > CLICK_DRAG_TOLERANCE_PX) {
+    if (!enabledRef.current || !isScenePrimarySelection(event)) {
       return;
     }
     const index = resolveIndexRef.current(event);
@@ -643,7 +579,7 @@ export function useCubeBatchInteraction({
     });
   }, []);
 
-  const onPointerMove = useCallback(
+  const onPointerOver = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
       if (!enabledRef.current) {
         return;
@@ -652,51 +588,35 @@ export function useCubeBatchInteraction({
       if (index === null) {
         return;
       }
-      event.stopPropagation();
-      hoverIndex(index);
+      const record = recordsRef.current[index];
+      if (!record) return;
+      hover.onPointerOver(event, { index, key: record.key, record });
     },
-    [hoverIndex],
+    [hover],
   );
 
   const onPointerOut = useCallback(
-    (_event: ThreeEvent<PointerEvent>) => clearHover(),
-    [clearHover],
+    (event: ThreeEvent<PointerEvent>) => hover.onPointerOut(event),
+    [hover],
   );
 
   // This layout effect keeps point-picking blockers aligned with interactivity.
   useLayoutEffect(() => {
     object.userData = enabled ? { ...POINT_PICK_BLOCKING_USER_DATA } : {};
-    if (!enabled) {
-      clearHover();
-    }
     return () => {
       object.userData = {};
     };
-  }, [clearHover, enabled, object]);
-
-  // This effect clears host hover and cursor state if the batch unmounts.
-  useEffect(
-    () => () => {
-      const hovered = hoveredRef.current;
-      if (hovered) {
-        hovered.record.layer.onHoverEntity?.(null);
-        hoveredRef.current = null;
-      }
-      restoreCursor();
-    },
-    [restoreCursor],
-  );
+  }, [enabled, object]);
 
   return useMemo(
     () => ({
       commitRecords,
       enabled,
       onClick,
-      onPointerMove,
       onPointerOut,
-      onPointerOver: onPointerMove,
+      onPointerOver,
     }),
-    [commitRecords, enabled, onClick, onPointerMove, onPointerOut],
+    [commitRecords, enabled, onClick, onPointerOut, onPointerOver],
   );
 }
 

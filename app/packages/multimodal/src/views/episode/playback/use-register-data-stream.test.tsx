@@ -198,7 +198,7 @@ describe("useRegisterDataStream", () => {
         }}
         onStore={storeCapture.onStore}
         source={source}
-        timelineTickRateHz={24}
+        timelineSamplingRateHz={24}
       />,
       { wrapper: TestProviders },
     );
@@ -222,7 +222,7 @@ describe("useRegisterDataStream", () => {
         }}
         onStore={storeCapture.onStore}
         source={source}
-        timelineTickRateHz={60}
+        timelineSamplingRateHz={60}
       />,
     );
 
@@ -2542,7 +2542,7 @@ function Harness({
   subscribe = true,
   subscribedStreams = DEFAULT_TEST_STREAMS,
   streamPolicies = {},
-  timelineTickRateHz = 30,
+  timelineSamplingRateHz = 30,
 }: {
   readonly allStreams?: readonly string[];
   readonly blockingStreams?: readonly string[];
@@ -2557,7 +2557,7 @@ function Harness({
   readonly subscribe?: boolean;
   readonly subscribedStreams?: readonly string[];
   readonly streamPolicies?: StreamSyncPolicies;
-  readonly timelineTickRateHz?: number;
+  readonly timelineSamplingRateHz?: number;
 }) {
   const dataStream = useDataStream();
   const store = usePlaybackStore();
@@ -2581,7 +2581,7 @@ function Harness({
     staleWarningStreams,
     streamNames,
     streamPolicies: streamPolicies as unknown as StreamSyncPolicies,
-    timelineTickRateHz,
+    timelineSamplingRateHz,
   });
 
   // This effect exposes the playback store to each test case.

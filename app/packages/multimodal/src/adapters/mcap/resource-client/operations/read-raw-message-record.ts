@@ -10,6 +10,7 @@ import {
   mcapChannelForTopic,
 } from "../generic-record-decoder";
 import { pruneRawRecord, rawRecordToJsonText } from "../raw-record-prune";
+import { errorMessage } from "../../../../utils/errors";
 
 /**
  * Forward index probe horizon for the result's validity window. Absence
@@ -124,7 +125,7 @@ export async function readMcapRawMessageRecord({
   } catch (error) {
     return {
       ...metadata,
-      decodeError: error instanceof Error ? error.message : String(error),
+      decodeError: errorMessage(error),
       status: "decode-error",
     };
   }

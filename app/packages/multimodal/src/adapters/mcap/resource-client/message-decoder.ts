@@ -6,6 +6,7 @@ import { McapTopicDecodeError } from "../normalization/errors";
 import type { McapIndexedReaderLike } from "../reader/index";
 import type { McapTimelineStrategy } from "./timeline";
 import type { McapDecodedMessage } from "../contracts/index";
+import { fnv1aBytesHex } from "../fnv1a";
 
 /**
  * Inputs needed to decode one MCAP message into the adapter's playback shape.
@@ -130,17 +131,6 @@ export function mcapMessageRecordId(
     message.publishTime.toString(),
     message.sequence.toString(),
     message.data.byteLength.toString(),
-    hashMessageData(message.data),
+    fnv1aBytesHex(message.data),
   ].join(":");
-}
-
-function hashMessageData(data: Uint8Array): string {
-  // FNV-1a is tiny, deterministic, fast; this only guards local cache keys
-  let hash = 0x811c9dc5;
-  for (const byte of data) {
-    hash ^= byte;
-    hash = Math.imul(hash, 0x01000193);
-  }
-
-  return (hash >>> 0).toString(16).padStart(8, "0");
 }

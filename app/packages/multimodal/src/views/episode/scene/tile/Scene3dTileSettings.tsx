@@ -36,7 +36,7 @@ import {
   settingsBooleanNoSpaceToggleProps,
 } from "../../settings/controls/settings-keyboard";
 import { FrameSelect } from "../../settings/controls/FrameSelect";
-import { SettingsNumberField } from "../../settings/controls/SettingsNumberField";
+import { SettingsNumberInput } from "../../settings/controls/SettingsNumberInput";
 import { SettingsSelect } from "../../settings/controls/SettingsSelect";
 import SidebarGroup from "../../settings/controls/SidebarGroup";
 import settingsStyles from "../../tiles/Tile.settings.module.css";
@@ -565,50 +565,6 @@ function SourceGroup({
       </div>
       {children}
     </SidebarGroup>
-  );
-}
-
-function SettingsNumberInput({
-  disabled,
-  label,
-  mapping,
-  max,
-  min,
-  onChange,
-  step,
-  tooltip,
-  value,
-}: {
-  readonly disabled?: boolean;
-  readonly label: string;
-  readonly mapping?: "linear" | "multiplicative";
-  readonly max?: number;
-  readonly min: number;
-  readonly onChange: (value: number) => void;
-  readonly step: number;
-  readonly tooltip?: string;
-  readonly value: number;
-}) {
-  return (
-    <label className={settingsStyles.field}>
-      {tooltip ? (
-        <SettingsLabel label={label} tooltip={tooltip} />
-      ) : (
-        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-          {label}
-        </Text>
-      )}
-      <SettingsNumberField
-        ariaLabel={label}
-        disabled={disabled}
-        mapping={mapping}
-        max={max}
-        min={min}
-        onCommit={onChange}
-        step={step}
-        value={value}
-      />
-    </label>
   );
 }
 

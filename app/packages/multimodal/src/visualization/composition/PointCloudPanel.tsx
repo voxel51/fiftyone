@@ -41,7 +41,7 @@ import {
   GpuPointCloud3dPickerRegistryContext,
 } from "../scene-3d/gpu/gpu-point-cloud-3d-picker";
 import { gpuPointCloudDrawCount } from "../scene-3d/gpu/gpu-point-cloud-sampling";
-import { allocatePointCloudCanvasBudget } from "../scene-3d/gpu/point-cloud-canvas-budget";
+import { allocatePointCloudCanvasBudget } from "../webgpu/point-cloud-canvas-budget";
 import {
   DEFAULT_POINT_SIZE,
   PointCloudSceneLayer,

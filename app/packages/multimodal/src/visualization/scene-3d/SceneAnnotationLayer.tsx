@@ -1,9 +1,8 @@
 /* eslint-disable react/no-unknown-property */
 import { type ThreeEvent } from "@react-three/fiber";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useMemo, useRef, useState } from "react";
 
 import type { SceneEntityVisualization } from "../../ir";
-import { CLICK_DRAG_TOLERANCE_PX } from "../interaction/interaction";
 import {
   SceneArrowMesh,
   SceneCubeMesh,
@@ -20,6 +19,10 @@ import { useScenePicking } from "./scene-interactivity";
 import { pointCloudObjectTransform } from "./transforms";
 import type { SceneAnnotationPanelLayer } from "./types";
 import { useInvalidateOn } from "./use-invalidate-on";
+import {
+  isScenePrimarySelection,
+  useSceneHoverLifecycle,
+} from "./use-scene-object-interaction";
 
 /**
  * Renders one memoized scene-annotation layer in its source-frame transform.
@@ -83,13 +86,23 @@ function SceneAnnotationEntity({
 }) {
   const pickingEnabled = useScenePicking();
   const [hovered, setHovered] = useState(false);
-  const hoveredRef = useRef(hovered);
-  hoveredRef.current = hovered;
   const onHoverEntityRef = useRef(onHoverEntity);
   onHoverEntityRef.current = onHoverEntity;
   const interactive =
     Boolean(onSelectEntity || onHoverEntity) && pickingEnabled;
   const entityId = entity.id || String(entityIndex);
+  const hover = useSceneHoverLifecycle({
+    enabled: interactive,
+    keyForTarget: (target: string) => target,
+    onEnter: (target) => {
+      setHovered(true);
+      onHoverEntityRef.current?.(target);
+    },
+    onLeave: (_target, reason) => {
+      if (reason !== "unmount") setHovered(false);
+      onHoverEntityRef.current?.(null);
+    },
+  });
   // Selection (or cross-tile echo) outranks hover: selected entities draw
   // dashed, hovered ones draw solid in the emphasis color.
   const emphasis: SceneEmphasis = highlighted
@@ -100,43 +113,10 @@ function SceneAnnotationEntity({
 
   useInvalidateOn([emphasis]);
 
-  // This effect clears an active entity hover when the entity unmounts before
-  // its pointer-out handler can run.
-  useEffect(
-    () => () => {
-      if (hoveredRef.current) {
-        hoveredRef.current = false;
-        onHoverEntityRef.current?.(null);
-      }
-    },
-    [],
-  );
-
-  // This effect drops a stale hover when picking is disabled mid-hover
-  // (the pointer-out handler is gone by then).
-  useEffect(() => {
-    if (!interactive && hovered) {
-      hoveredRef.current = false;
-      setHovered(false);
-      onHoverEntity?.(null);
-    }
-  }, [hovered, interactive, onHoverEntity]);
-
-  // This effect shows a pointer cursor while a pickable entity is
-  // hovered; the canvas has no per-object cursor styling of its own.
-  useEffect(() => {
-    if (!hovered) return undefined;
-    const previous = document.body.style.cursor;
-    document.body.style.cursor = "pointer";
-    return () => {
-      document.body.style.cursor = previous;
-    };
-  }, [hovered]);
-
   const handleClick =
     interactive && onSelectEntity
       ? (event: ThreeEvent<MouseEvent>) => {
-          if (event.delta > CLICK_DRAG_TOLERANCE_PX) return;
+          if (!isScenePrimarySelection(event)) return;
           event.stopPropagation();
           onSelectEntity(entityId, {
             shiftKey: event.nativeEvent.shiftKey,
@@ -145,17 +125,12 @@ function SceneAnnotationEntity({
       : undefined;
   const handlePointerOver = interactive
     ? (event: ThreeEvent<PointerEvent>) => {
-        event.stopPropagation();
-        hoveredRef.current = true;
-        setHovered(true);
-        onHoverEntity?.(entityId);
+        hover.onPointerOver(event, entityId);
       }
     : undefined;
   const handlePointerOut = interactive
-    ? () => {
-        hoveredRef.current = false;
-        setHovered(false);
-        onHoverEntity?.(null);
+    ? (event: ThreeEvent<PointerEvent>) => {
+        hover.onPointerOut(event);
       }
     : undefined;
 

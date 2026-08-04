@@ -10,16 +10,12 @@ import {
   type Scene3dTrackingMode,
 } from "../../spatial/view-preferences";
 import type { EpisodeHeldFrameTransform } from "../../../../runtime/frame-transform-types";
+import { sceneUpVector } from "./scene-up-vector";
 export type {
   Scene3dFollowTrackingMode,
   Scene3dTrackingMode,
 } from "../../spatial/view-preferences";
 
-const SCENE_UP_VECTORS: Record<Scene3dUpAxis, Vector3> = {
-  x: new Vector3(1, 0, 0),
-  y: new Vector3(0, 1, 0),
-  z: new Vector3(0, 0, 1),
-};
 const HEADING_FORWARD_EPSILON = 0.000001;
 
 /** Default tracking policy for a newly opened 3D inspection session. */
@@ -208,10 +204,6 @@ export function headingRotation(
     reference.dot(forward),
   );
   return new Quaternion().setFromAxisAngle(up, signedYaw).normalize();
-}
-
-function sceneUpVector(sceneUpAxis: Scene3dUpAxis): Vector3 {
-  return SCENE_UP_VECTORS[sceneUpAxis].clone();
 }
 
 function fallbackForwardDirection(sceneUpAxis: Scene3dUpAxis): Vector3 {

@@ -4,7 +4,6 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
 import type { CameraCalibrationVisualization } from "../../ir";
-import { CLICK_DRAG_TOLERANCE_PX } from "../interaction/interaction";
 import { useImageTextureLease } from "../media-2d/use-image-texture-lease";
 import { POINT_PICK_BLOCKING_USER_DATA } from "../scene-3d/point-picking";
 import { useScenePicking } from "../scene-3d/scene-interactivity";
@@ -21,6 +20,10 @@ import {
   isFinitePositiveNumber,
   withLineDistances,
 } from "../scene-3d/utils";
+import {
+  isScenePrimarySelection,
+  useSceneHoverLifecycle,
+} from "../scene-3d/use-scene-object-interaction";
 
 // Camera frustum wireframes are purely presentational — depth is not data,
 // which is also why frustums never participate in camera-fit bounds.
@@ -118,6 +121,20 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
   const renderOpacity = emphasized
     ? CAMERA_FRUSTUM_HIGHLIGHT_OPACITY
     : baseOpacity;
+  const hover = useSceneHoverLifecycle({
+    enabled: interactive,
+    keyForTarget: (target: string) => target,
+    onEnter: () => {
+      hoveredRef.current = true;
+      setHovered(true);
+      onHoverRef.current?.(true);
+    },
+    onLeave: (_target, reason) => {
+      hoveredRef.current = false;
+      if (reason !== "unmount") setHovered(false);
+      onHoverRef.current?.(false);
+    },
+  });
   // Message identity for the image decode below: the shared texture key
   // when the layer carries one, else image content time, else the frame
   // object itself. Keying on identity instead of `image` survives playback
@@ -164,13 +181,6 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
   useEffect(() => () => imagePlaneGeometry?.dispose(), [imagePlaneGeometry]);
   // This effect disposes the camera-axis marker when it is replaced.
   useEffect(() => () => axisGeometry.dispose(), [axisGeometry]);
-  // This effect clears an active frustum hover when the layer unmounts.
-  useEffect(
-    () => () => {
-      if (hoveredRef.current) onHoverRef.current?.(false);
-    },
-    [],
-  );
   // Publish an active hover through each new callback instance so live
   // parent-frame metadata keeps the visible tooltip in sync. A replacement
   // callback owns the same keyed frustum, so publishing `false` through the
@@ -191,14 +201,6 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
       previousOnHover?.(false);
     }
   }, [layer.imageStream, layer.onHover]);
-  // Pointer-out handlers disappear when picking or interactivity is disabled,
-  // so clear the hover explicitly while the active callback is still known.
-  useEffect(() => {
-    if (interactive || !hoveredRef.current) return;
-    hoveredRef.current = false;
-    setHovered(false);
-    onHoverRef.current?.(false);
-  }, [interactive]);
   useInvalidateOn([
     axisGeometry,
     baseOpacity,
@@ -209,17 +211,6 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
     imagePlaneGeometry,
     objectTransform,
   ]);
-
-  // This effect shows a pointer cursor while a clickable frustum is
-  // hovered; the canvas has no per-object cursor styling of its own.
-  useEffect(() => {
-    if (!hovered || !interactive) return undefined;
-    const previous = document.body.style.cursor;
-    document.body.style.cursor = "pointer";
-    return () => {
-      document.body.style.cursor = previous;
-    };
-  }, [hovered, interactive]);
 
   // Cast, not a type: fiber's bundled three `Texture` type is out of sync
   // with the app's pinned three version — see GridSceneLayer's textureMap.
@@ -235,7 +226,7 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
       onClick={
         interactive
           ? (event: ThreeEvent<MouseEvent>) => {
-              if (event.delta > CLICK_DRAG_TOLERANCE_PX) return;
+              if (!isScenePrimarySelection(event)) return;
               event.stopPropagation();
               layer.onSelect?.({
                 metaKey: event.nativeEvent.metaKey,
@@ -246,19 +237,14 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
       onPointerOver={
         interactive
           ? (event) => {
-              event.stopPropagation();
-              hoveredRef.current = true;
-              setHovered(true);
-              onHoverRef.current?.(true);
+              hover.onPointerOver(event, layer.id);
             }
           : undefined
       }
       onPointerOut={
         interactive
-          ? () => {
-              hoveredRef.current = false;
-              setHovered(false);
-              onHoverRef.current?.(false);
+          ? (event) => {
+              hover.onPointerOut(event);
             }
           : undefined
       }
