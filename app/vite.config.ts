@@ -8,6 +8,9 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
+    // reuse each worker's module graph across test files instead of
+    // re-importing per file; files needing fresh module state must mock it
+    isolate: false,
     server: {
       deps: {
         inline: ["plotly.js", "react-plotly.js", "@rjsf/mui", "@rjsf/core"],
