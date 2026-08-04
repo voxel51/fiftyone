@@ -199,21 +199,30 @@ export default function RunsList({
                 badge={run.dims ? `${run.dims}D` : undefined}
                 badgeAccent={run.dims === 3}
                 status={
-                  run.ready
-                    ? // Icon-tier success: the soft sage the design
-                      // reference uses, not the saturated text green
-                      { label: "Ready", color: IconColor.Success }
-                    : // Deliberately status-agnostic: without run-status
-                      // bookkeeping, "no results yet" cannot distinguish
-                      // still-computing from failed
-                      { label: "Pending", color: TextColor.Secondary }
+                  run.error
+                    ? // Structurally unusable (see BrainRun.error): opening
+                      // it could only fail, but Delete stays available
+                      { label: "Error", color: TextColor.Destructive }
+                    : run.ready
+                      ? // Icon-tier success: the soft sage the design
+                        // reference uses, not the saturated text green
+                        { label: "Ready", color: IconColor.Success }
+                      : // Deliberately status-agnostic: without run-status
+                        // bookkeeping, "no results yet" cannot distinguish
+                        // still-computing from failed
+                        { label: "Pending", color: TextColor.Secondary }
                 }
                 meta={[
+                  run.error,
                   run.method,
                   run.model,
                   formatTimestamp(run.timestamp),
                 ].filter((item): item is string => Boolean(item))}
-                onClick={run.ready ? () => onOpen(run.brainKey) : undefined}
+                onClick={
+                  run.ready && !run.error
+                    ? () => onOpen(run.brainKey)
+                    : undefined
+                }
                 actions={runActions(run)}
               />
             ))}

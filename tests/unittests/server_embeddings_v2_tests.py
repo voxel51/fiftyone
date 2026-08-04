@@ -131,6 +131,36 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         self.assertTrue(ready["done"])
         self.assertFalse(ready["pending"])
 
+    def test_dataset_query_reports_run_errors_without_loading_results(self):
+        # A run whose stored config class no longer imports (it predates a
+        # rename) is unusable, and the list page must say so — derived from
+        # the run DOCUMENT alone, never by loading its results
+        from fiftyone.server.query import Dataset as DatasetQuery
+
+        doc = {
+            "_id": "5f99d2eb0e6c99c377f8886c",
+            "brain_methods": {
+                "ok": {
+                    "key": "ok",
+                    "results": "ref",
+                    "config": {"cls": "fiftyone.core.stages.Select"},
+                },
+                "stale": {
+                    "key": "stale",
+                    "results": "ref",
+                    "config": {"cls": "fiftyone.gone.Missing"},
+                },
+                "malformed": {"key": "malformed", "results": "ref"},
+            },
+        }
+        errors = {
+            run["key"]: run["error"]
+            for run in DatasetQuery.modifier(doc)["brain_methods"]
+        }
+        self.assertIsNone(errors["ok"])
+        self.assertIn("not importable", errors["stale"])
+        self.assertEqual(errors["malformed"], "run document has no config")
+
     @drop_datasets
     def test_geometry_columns(self):
         dataset, points = _make_samples_run()

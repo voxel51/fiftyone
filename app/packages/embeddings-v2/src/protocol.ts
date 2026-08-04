@@ -36,6 +36,9 @@ export interface VisualizationRun {
   /** The run's results blob exists (readiness says nothing about how a
    * computation ended — only whether there is anything to load) */
   ready: boolean;
+  /** Why the run cannot be used, when knowable without loading results
+   * (e.g. its config class no longer imports); null when usable */
+  error: string | null;
   timestamp: string | null;
 }
 

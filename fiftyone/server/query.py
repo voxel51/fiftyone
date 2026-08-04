@@ -9,6 +9,8 @@ FiftyOne Server queries.
 from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
+from functools import lru_cache
+import importlib
 import logging
 import typing as t
 
@@ -159,6 +161,47 @@ class BrainRun(Run):
     #: whose computation died) reports False. See ``Dataset.modifier``, which
     #: derives this rather than exposing the reference itself
     ready: t.Optional[bool]
+    #: Why this run cannot be used, when that is knowable WITHOUT loading its
+    #: results — a config class that no longer imports (a rename the run
+    #: predates), or a malformed run document. Deliberately never derived
+    #: from the results blob: that would put a per-run blob load on every
+    #: dataset query. Problems inside the results surface when the run is
+    #: opened, not here
+    error: t.Optional[str]
+
+
+@lru_cache(maxsize=None)
+def _run_cls_error(cls_path: str) -> t.Optional[str]:
+    """Whether a stored run class still imports. Cached because a failed
+    import is not cached by Python — every miss would re-walk the module
+    search path on every dataset query."""
+    module, _, name = cls_path.rpartition(".")
+    if not module:
+        return f"invalid run config class '{cls_path}'"
+
+    try:
+        cls = getattr(importlib.import_module(module), name, None)
+    except ImportError:
+        cls = None
+
+    if cls is None:
+        return (
+            f"run config class '{cls_path}' is not importable; the run "
+            "likely predates a rename and must be regenerated or migrated"
+        )
+
+    return None
+
+
+def _brain_run_error(run: dict) -> t.Optional[str]:
+    """A run's list-time error: knowable from the run DOCUMENT alone, never
+    from its results (loading those per run per dataset query is exactly the
+    cost the ``ready``/``error`` fields exist to avoid)."""
+    config = run.get("config")
+    if not isinstance(config, dict) or not config.get("cls"):
+        return "run document has no config"
+
+    return _run_cls_error(config["cls"])
 
 
 @gql.type
@@ -333,9 +376,14 @@ class Dataset:
 
         doc["frame_fields"] = _flatten_fields([], doc.get("frame_fields", []))
         # ``ready`` is the presence of the results reference, never a load of
-        # it — the reference itself stays server-side
+        # it — the reference itself stays server-side. ``error`` is likewise
+        # IO-free (see _brain_run_error)
         doc["brain_methods"] = [
-            {**run, "ready": run.get("results") is not None}
+            {
+                **run,
+                "ready": run.get("results") is not None,
+                "error": _brain_run_error(run),
+            }
             for run in doc.get("brain_methods", {}).values()
         ]
         doc["evaluations"] = list(doc.get("evaluations", {}).values())

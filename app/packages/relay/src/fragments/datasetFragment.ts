@@ -21,6 +21,7 @@ export default graphql`
       timestamp
       viewStages
       ready
+      error
       config {
         cls
         embeddingsField

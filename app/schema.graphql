@@ -104,6 +104,7 @@ type BrainRun implements Run {
   config: BrainRunConfig
   viewStages: [String!]
   ready: Boolean
+  error: String
 }
 
 type BrainRunConfig implements RunConfig {

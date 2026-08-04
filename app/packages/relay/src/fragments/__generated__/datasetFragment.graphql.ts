@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c73a0327769845278a698e7298a0f91e>>
+ * @generated SignedSource<<874aead5c3d083a7692921a6811c6015>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -29,6 +29,7 @@ export type datasetFragment$data = {
       readonly supportsPrompts: boolean | null;
       readonly type: BrainRunType | null;
     } | null;
+    readonly error: string | null;
     readonly key: string;
     readonly ready: boolean | null;
     readonly timestamp: number | null;
@@ -259,6 +260,13 @@ return {
           "args": null,
           "kind": "ScalarField",
           "name": "ready",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "error",
           "storageKey": null
         },
         {
@@ -510,6 +518,6 @@ return {
 };
 })();
 
-(node as any).hash = "39917fda250a452418ec4d2f02be13cb";
+(node as any).hash = "0e7782ac2447e52fce829767e05d4f47";
 
 export default node;

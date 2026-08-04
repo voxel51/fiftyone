@@ -37,6 +37,7 @@ export function useVisualizationRuns(): {
         pointsField: run.config?.pointsField ?? null,
         model: run.config?.model ?? null,
         ready: run.ready ?? false,
+        error: run.error ?? null,
         // The run timestamp keys every per-run client cache, so it has to be
         // the same string the columns were cached under
         timestamp: run.timestamp ? String(run.timestamp) : null,

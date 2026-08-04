@@ -115,6 +115,9 @@ export namespace State {
     /** Whether the run's results have been saved. A run still computing (or
      * whose computation died) is not ready. */
     ready: boolean | null;
+    /** Why the run cannot be used, when knowable from the run doc alone
+     * (e.g. its config class no longer imports); null when usable. */
+    error: string | null;
     config: {
       embeddingsField: string | null;
       method: string;
