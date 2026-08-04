@@ -2641,13 +2641,18 @@ def iter_slices(sliceable, batch_size):
     """Iterates over batches of the given object via slicing.
 
     Args:
-        sliceable: an object that supports slicing
+        sliceable: an object that supports slicing, or a dict-like object
+            whose values all support slicing and share a common length
         batch_size: the desired batch size, or None to return the contents in
             a single batch
 
     Returns:
         a generator that emits batches of elements of the requested batch size
         from the input
+
+    Raises:
+        ValueError: if a dict-like ``sliceable`` has values with mismatched
+            lengths
     """
     if batch_size is None:
         yield sliceable
