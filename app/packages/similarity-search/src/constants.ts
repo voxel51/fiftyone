@@ -1,5 +1,5 @@
 import { TextColor } from "@voxel51/voodo";
-import { DateFilterPreset, OwnerFilter, RunStatus, SearchScope } from "./types";
+import { DateFilterPreset, OwnerFilter, RunStatus } from "./types";
 
 export const SEARCH_OPERATOR_URI = "@voxel51/panels/similarity_search";
 export const INIT_RUN_OPERATOR_URI = "@voxel51/panels/init_similarity_run";
@@ -67,10 +67,6 @@ export const OWNER_MINE: OwnerFilter = "mine";
 // File upload constraints
 export const UPLOAD_MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 export const UPLOAD_ACCEPTED_TYPES = ".png,.jpg,.jpeg,.webp,.bmp,.tiff";
-
-// Search scope values
-export const SCOPE_VIEW: SearchScope = "view";
-export const SCOPE_DATASET: SearchScope = "dataset";
 
 // Unicode display characters
 export const MIDDLE_DOT = "\u00B7";

@@ -50,6 +50,15 @@ function channelMetadata(
     "mcap.generic_decode_status",
     genericDecodeStatusForChannel(reader, channel),
   );
+  // Needed to resolve `absolute`-mode's epoch anchor before the engine
+  // mounts (see resolveMcapTimelineMode in ../timeline-mode.ts) — the
+  // engine's internal clock is always 0-based from the scene's first
+  // message, so mapping back to real wall-clock time requires this value.
+  putDerivedMetadata(
+    metadata,
+    "mcap.scene_start_time_ns",
+    (reader.statistics?.messageStartTime ?? 0n).toString(),
+  );
 
   if (schema) {
     putDerivedMetadata(metadata, "mcap.schema_encoding", schema.encoding);

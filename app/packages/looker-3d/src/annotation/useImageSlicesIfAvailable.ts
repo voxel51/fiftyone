@@ -4,8 +4,10 @@ import {
   getSampleSrc as resolveUrl,
 } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
+import { extractNative2dLabels } from "./native2d/parse";
+import type { Native2dLabel } from "./native2d/types";
 
 type GroupResponse = {
   group: Record<string, { filepath?: string }>;
@@ -27,11 +29,15 @@ export const useImageSlicesIfAvailable = (
 ): {
   imageSlices: string[];
   resolveUrlForImageSlice: (sliceName: string) => string | null;
+  resolveLabelsForImageSlice: (sliceName: string) => Native2dLabel[];
   isLoadingImageSlices: boolean;
 } => {
   const [isLoadingImageSlices, setIsLoadingImageSlices] = useState(false);
   const [imageSlices, setImageSlices] = useState<string[]>([]);
   const [sliceUrls, setSliceUrls] = useState<Record<string, string>>({});
+  const [sliceLabels, setSliceLabels] = useState<
+    Record<string, Native2dLabel[]>
+  >({});
   const dataset = useRecoilValue(datasetId);
 
   const hasGroup = Boolean(sample?.sample?.group?._id);
@@ -42,6 +48,7 @@ export const useImageSlicesIfAvailable = (
       setIsLoadingImageSlices(false);
       setImageSlices([]);
       setSliceUrls({});
+      setSliceLabels({});
       return undefined;
     }
 
@@ -52,7 +59,13 @@ export const useImageSlicesIfAvailable = (
         setIsLoadingImageSlices(true);
 
         const fetchFunction = getFetchFunction({ cache: true });
-        const path = `/dataset/${dataset}/groups/${groupId}?fields=filepath&resolve_urls=true&media_type=image`;
+        // Deliberately unrestricted: `fields=` needs schema-derived paths, and a
+        // label field that lives only on the image slices may be absent from the
+        // group's active-slice schema — which left us requesting nothing but
+        // `filepath` and so finding no labels to draw. Slice docs are small, so
+        // take the whole sample and let the parse pick out label fields by
+        // their `_cls`.
+        const path = `/dataset/${dataset}/groups/${groupId}?resolve_urls=true&media_type=image`;
 
         const response = await fetchFunction("GET", path);
 
@@ -63,11 +76,13 @@ export const useImageSlicesIfAvailable = (
         if (!data.group) {
           setImageSlices([]);
           setSliceUrls({});
+          setSliceLabels({});
           return;
         }
 
         const imageSliceNames: string[] = [];
         const urls: Record<string, string> = {};
+        const labels: Record<string, Native2dLabel[]> = {};
 
         for (const [sliceName, sliceData] of Object.entries(data.group)) {
           const filepath = sliceData.filepath;
@@ -83,15 +98,19 @@ export const useImageSlicesIfAvailable = (
             // Fallback to filepath if URL not in response
             urls[sliceName] = resolveUrl(filepath);
           }
+
+          labels[sliceName] = extractNative2dLabels(sliceData);
         }
 
         setImageSlices(imageSliceNames);
         setSliceUrls(urls);
+        setSliceLabels(labels);
       } catch (error) {
         if (!cancelled) {
           console.error("Failed to fetch image slices:", error);
           setImageSlices([]);
           setSliceUrls({});
+          setSliceLabels({});
         }
       } finally {
         if (!cancelled) {
@@ -114,10 +133,19 @@ export const useImageSlicesIfAvailable = (
     [sliceUrls],
   );
 
+  const emptyLabels = useMemo<Native2dLabel[]>(() => [], []);
+  const resolveLabelsForImageSlice = useCallback(
+    (sliceName: string): Native2dLabel[] => {
+      return sliceLabels[sliceName] ?? emptyLabels;
+    },
+    [sliceLabels, emptyLabels],
+  );
+
   if (!hasGroup) {
     return {
       imageSlices: [],
       resolveUrlForImageSlice: () => null,
+      resolveLabelsForImageSlice: () => emptyLabels,
       isLoadingImageSlices: false,
     };
   }
@@ -125,6 +153,7 @@ export const useImageSlicesIfAvailable = (
   return {
     imageSlices,
     resolveUrlForImageSlice,
+    resolveLabelsForImageSlice,
     isLoadingImageSlices,
   };
 };

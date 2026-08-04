@@ -100,22 +100,30 @@ const DEFAULT_PREFETCH_LOOKAHEAD_SECONDS = 3;
 
 export function usePlaybackEngine({
   duration = 0,
-  stepInterval = 1 / 30,
+  stepInterval,
   defaultLoopStart,
   defaultLoopEnd,
   defaultSpeed = 1.0,
   snapToFrameOnSettle = false,
+  mode = { kind: "duration" },
 }: PlaybackConfig = {}): {
   store: PlaybackStore;
   contextValue: PlaybackContextValue;
 } {
+  // `sequence` mode's fps IS the native step rate, so default the fallback
+  // step interval to `1/fps` unless the caller explicitly overrides it —
+  // otherwise a caller could declare `mode: { kind: "sequence", fps: 24 }`
+  // and still get `1/30` until a stream registers, silently mismatched.
+  const resolvedStepInterval =
+    stepInterval ?? (mode.kind === "sequence" ? 1 / mode.fps : 1 / 30);
+
   // The duration / stepInterval props are FALLBACKS when no stream
   // provides them. Stored in refs so the recompute functions can read
   // the latest values without capturing them.
   const fallbackDurationRef = useRef(duration);
   fallbackDurationRef.current = duration;
-  const fallbackStepIntervalRef = useRef(stepInterval);
-  fallbackStepIntervalRef.current = stepInterval;
+  const fallbackStepIntervalRef = useRef(resolvedStepInterval);
+  fallbackStepIntervalRef.current = resolvedStepInterval;
   const snapToFrameRef = useRef(snapToFrameOnSettle);
   snapToFrameRef.current = snapToFrameOnSettle;
 
@@ -135,7 +143,7 @@ export function usePlaybackEngine({
       Number.isFinite(defaultSpeed) && defaultSpeed > 0 ? defaultSpeed : 1;
 
     s.set(durationAtom, initialDuration);
-    s.set(stepIntervalAtom, stepInterval);
+    s.set(stepIntervalAtom, resolvedStepInterval);
     s.set(speedAtom, initialSpeed);
     s.set(viewEndAtom, initialDuration);
     s.set(loopStartAtom, loopStart);
@@ -837,8 +845,8 @@ export function usePlaybackEngine({
   ]);
 
   const contextValue = useMemo<PlaybackContextValue>(
-    () => ({ duration, stepInterval, ...actions }),
-    [duration, stepInterval, actions],
+    () => ({ duration, stepInterval: resolvedStepInterval, ...actions }),
+    [duration, resolvedStepInterval, actions],
   );
 
   return { store, contextValue };

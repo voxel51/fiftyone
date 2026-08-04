@@ -213,6 +213,40 @@ export interface PlaybackClockSource {
 }
 
 // ---------------------------------------------------------------------------
+// Timeline mode (FOEPD-3811)
+// ---------------------------------------------------------------------------
+
+/**
+ * How the timeline's shared clock is presented to and driven by consumers.
+ * This is a display/seek-boundary concern only — the engine's internal
+ * clock domain is always a continuous number of seconds from timeline
+ * start, regardless of `mode`. See `timeline-display.ts::useTimelineDisplay`
+ * for the conversion layer this drives.
+ *
+ * - `duration`   — elapsed seconds, YouTube-style. The default; unchanged
+ *                  behavior for every existing consumer that doesn't pass
+ *                  `mode`.
+ * - `sequence`   — frame-index based (frame 0, 1, 2, ...). `fps` derives
+ *                  the engine's `nativeStepSeconds` (1/fps) and the
+ *                  seconds<->frame-number conversion.
+ * - `absolute`   — anchored to a real-world clock. `epochAnchorMs` is the
+ *                  Unix-epoch millisecond timestamp that internal second 0
+ *                  corresponds to; display converts to/from `Date`.
+ *
+ * A dataset with streams in more than one of these domains does not need a
+ * "mixed" mode: each `PlaybackStream` already privately converts its own
+ * native units (frame numbers, epoch timestamps, ...) into the engine's
+ * shared seconds domain before calling into the engine (this is exactly
+ * what `nativeStepSeconds` / `duration` do today). `mode` only governs what
+ * the *shared* timeline ruler / scrub UI displays and accepts — pick
+ * whichever representation is primary for the dataset.
+ */
+export type TimelineMode =
+  | { kind: "duration" }
+  | { kind: "sequence"; fps: number }
+  | { kind: "absolute"; epochAnchorMs: number };
+
+// ---------------------------------------------------------------------------
 // Config passed to PlaybackProvider
 // ---------------------------------------------------------------------------
 
@@ -247,6 +281,12 @@ export interface PlaybackConfig {
    * @default false
    */
   snapToFrameOnSettle?: boolean;
+  /**
+   * How the timeline's shared clock is presented to and driven by
+   * consumers. See {@link TimelineMode}.
+   * @default { kind: "duration" }
+   */
+  mode?: TimelineMode;
 }
 
 // ---------------------------------------------------------------------------

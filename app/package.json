@@ -66,6 +66,7 @@
     "dependencies": {
         "@emotion/react": "catalog:",
         "@emotion/styled": "catalog:",
+        "@lottiefiles/dotlottie-react": "^0.19.12",
         "@mui/icons-material": "catalog:",
         "@mui/material": "catalog:",
         "@rjsf/core": "^5.24.13",
@@ -88,6 +89,7 @@
         "minimatch": "9.0.7",
         "prettier": "~3.8.4",
         "protobufjs": "^7.6.4",
-        "three-stdlib": "^2.36.1"
+        "three-stdlib": "^2.36.1",
+        "uuid": "^14.0.0"
     }
 }
