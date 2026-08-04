@@ -63,26 +63,24 @@ beforeEach(() => {
 });
 
 describe("DataStreamScheduler", () => {
-  it("admits images before remaining streams for a one-off target", () => {
+  it("admits one atomic current-frame read across image and 3D streams", () => {
+    const streams = ["/camera/left", "/lidar", "/camera/right"];
     const harness = createSchedulerHarness({
-      activeStreams: ["/camera/left", "/lidar", "/camera/right"],
-      currentFrameFirstStreams: ["/camera/left", "/camera/right"],
+      activeStreams: streams,
     });
 
     harness.scheduler.prefetchLookaheadFrom(0);
 
-    expect(harness.prefetcher.fetchCurrentFrame.mock.calls.slice(0, 2)).toEqual(
-      [
-        [0n, ["/camera/left", "/camera/right"]],
-        [0n, ["/lidar"]],
-      ],
+    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledOnce();
+    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledWith(
+      0n,
+      streams,
     );
   });
 
   it("keeps current-frame reads atomic when no image split applies", () => {
     const harness = createSchedulerHarness({
       activeStreams: ["/camera/left", "/camera/right"],
-      currentFrameFirstStreams: ["/camera/left", "/camera/right"],
     });
 
     harness.scheduler.prefetchLookaheadFrom(0);
@@ -94,21 +92,18 @@ describe("DataStreamScheduler", () => {
     ]);
   });
 
-  it("keeps playback prefetch batches atomic across the image-first boundary", () => {
+  it("keeps playback prefetch batches atomic across all active streams", () => {
     const streams = ["/camera/left", "/lidar", "/camera/right"];
     const harness = createSchedulerHarness({
       activeStreams: streams,
-      currentFrameFirstStreams: ["/camera/left", "/camera/right"],
     });
     const cleanup = harness.register();
 
     harness.stream().prefetch?.([0, 1]);
 
-    expect(harness.prefetcher.fetchCurrentFrame.mock.calls.slice(0, 2)).toEqual(
-      [
-        [0n, ["/camera/left", "/camera/right"]],
-        [0n, ["/lidar"]],
-      ],
+    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledWith(
+      0n,
+      streams,
     );
     expect(harness.prefetcher.fetchBatch).toHaveBeenCalledWith(
       expect.any(Array),
@@ -116,116 +111,6 @@ describe("DataStreamScheduler", () => {
       "playback-prefetch",
     );
     cleanup();
-  });
-
-  it("does not admit the deferred group for a stale current-frame target", async () => {
-    vi.useFakeTimers();
-    try {
-      const harness = createSchedulerHarness({
-        activeStreams: ["/camera", "/lidar"],
-        currentFrameFanoutDebounceMs: 150,
-        currentFrameFirstStreams: ["/camera"],
-      });
-
-      harness.scheduler.prefetchLookaheadFrom(0);
-      playbackState.playhead = 1;
-      harness.scheduler.prefetchLookaheadFrom(1);
-      playbackState.playhead = 2;
-      harness.scheduler.prefetchLookaheadFrom(2);
-      const latestTick =
-        harness.prefetcher.fetchCurrentFrame.mock.calls[3]?.[0];
-
-      harness.settleCurrentFrame();
-      await Promise.resolve();
-      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(4);
-
-      harness.settleCurrentFrame();
-      await Promise.resolve();
-      vi.advanceTimersByTime(150);
-      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenLastCalledWith(
-        latestTick,
-        ["/lidar"],
-      );
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("does not admit a deferred group after scheduler cleanup", async () => {
-    const harness = createSchedulerHarness({
-      activeStreams: ["/camera", "/lidar"],
-      currentFrameFanoutDebounceMs: 150,
-      currentFrameFirstStreams: ["/camera"],
-    });
-    const cleanup = harness.register();
-
-    harness.stream().prefetch?.([0, 1]);
-    playbackState.playhead = 1;
-    harness.scheduler.prefetchLookaheadFrom(1);
-    cleanup();
-    harness.settleCurrentFrame();
-    await Promise.resolve();
-
-    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(3);
-  });
-
-  it("coalesces secondary streams only during a rapid paused-target burst", async () => {
-    vi.useFakeTimers();
-    try {
-      const harness = createSchedulerHarness({
-        activeStreams: ["/camera", "/lidar"],
-        currentFrameFanoutDebounceMs: 150,
-        currentFrameFirstStreams: ["/camera"],
-      });
-
-      harness.scheduler.prefetchLookaheadFrom(0);
-      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(2);
-
-      vi.advanceTimersByTime(80);
-      playbackState.playhead = 1;
-      harness.scheduler.prefetchLookaheadFrom(1);
-      harness.settleCurrentFrame();
-      await Promise.resolve();
-      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(3);
-
-      vi.advanceTimersByTime(80);
-      playbackState.playhead = 2;
-      harness.scheduler.prefetchLookaheadFrom(2);
-      harness.settleCurrentFrame();
-      await Promise.resolve();
-      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(4);
-
-      vi.advanceTimersByTime(149);
-      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(4);
-      vi.advanceTimersByTime(1);
-      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenLastCalledWith(
-        harness.prefetcher.fetchCurrentFrame.mock.calls[3]?.[0],
-        ["/lidar"],
-      );
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("keeps secondary streams immediate during ordinary playback", () => {
-    vi.useFakeTimers();
-    try {
-      const harness = createSchedulerHarness({
-        activeStreams: ["/camera", "/lidar"],
-        currentFrameFanoutDebounceMs: 150,
-        currentFrameFirstStreams: ["/camera"],
-      });
-      playbackState.isPlaying = true;
-
-      harness.scheduler.prefetchLookaheadFrom(0);
-      vi.advanceTimersByTime(80);
-      playbackState.playhead = 1;
-      harness.scheduler.prefetchLookaheadFrom(1);
-
-      expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledTimes(4);
-    } finally {
-      vi.useRealTimers();
-    }
   });
 
   it("routes rolling lookahead through idle and playback lanes", () => {
@@ -627,16 +512,12 @@ function createSchedulerHarness({
       startOffsetBytes: 0n,
     },
   ],
-  currentFrameFirstStreams = ["/camera"],
-  currentFrameFanoutDebounceMs = 0,
   deferredBatchAdmission = false,
   fillCache = true,
   policy = {},
 }: {
   readonly activeStreams?: string[];
   readonly byteTimeline?: readonly ByteTimelinePoint[];
-  readonly currentFrameFirstStreams?: readonly string[];
-  readonly currentFrameFanoutDebounceMs?: number;
   readonly deferredBatchAdmission?: boolean;
   readonly fillCache?: boolean;
   readonly policy?: Partial<PlaybackPolicy>;
@@ -656,18 +537,12 @@ function createSchedulerHarness({
     }
     caches.set(stream, cache);
   }
-  const currentFrameSettlers: Array<() => void> = [];
   const prefetcher = {
     collectMissingTicksForStreams: vi.fn<
       DataStreamPrefetcher["collectMissingTicksForStreams"]
     >(() => [9_000_000_000n]),
     fetchBatch: vi.fn(() => true),
-    fetchCurrentFrame: vi.fn<DataStreamPrefetcher["fetchCurrentFrame"]>(
-      (_tick, _activeStreams, onSettled) => {
-        if (onSettled) currentFrameSettlers.push(onSettled);
-        return true;
-      },
-    ),
+    fetchCurrentFrame: vi.fn(() => false),
     isStreamPending: vi.fn(() => false),
   } satisfies DataStreamPrefetcher;
   const startupCushionPlanner = {
@@ -688,8 +563,6 @@ function createSchedulerHarness({
     getBackgroundLookaheadSeconds: () => 2,
     getByteTimeline: () => byteTimeline,
     getBlockingStreams: () => new Set(activeStreams),
-    getCurrentFrameFanoutDebounceMs: () => currentFrameFanoutDebounceMs,
-    getCurrentFrameFirstStreams: () => new Set(currentFrameFirstStreams),
     getIndex: () => index,
     getLastSeekAtMs: () => null,
     hasDeferredBatchAdmission: () => deferredBatchAdmission,
@@ -719,13 +592,6 @@ function createSchedulerHarness({
         () => unsubscribeStream,
       ),
     scheduler,
-    settleCurrentFrame: () => {
-      const settleCurrentFrame = currentFrameSettlers.shift();
-      if (!settleCurrentFrame) {
-        throw new Error("no current-frame settlement is pending");
-      }
-      settleCurrentFrame();
-    },
     startupCushionPlanner,
     stream: () => {
       if (!registeredStream) throw new Error("stream is not registered");

@@ -51,10 +51,6 @@ const EMPTY_POINT_CLOUD_COLOR_BY: Readonly<Record<string, string>> = {};
 export interface DataStreamFetchState {
   readonly failedStreams: Set<string>;
   readonly failureStreaks: Map<string, number>;
-  readonly pendingCurrentFrameSettlementsByTick: Map<
-    string,
-    Map<string, Promise<void>>
-  >;
   readonly pendingStreamsByTick: Map<string, Set<string>>;
 }
 
@@ -63,7 +59,6 @@ export function createDataStreamFetchState(): DataStreamFetchState {
   return {
     failedStreams: new Set(),
     failureStreaks: new Map(),
-    pendingCurrentFrameSettlementsByTick: new Map(),
     pendingStreamsByTick: new Map(),
   };
 }
@@ -72,7 +67,6 @@ export function createDataStreamFetchState(): DataStreamFetchState {
 export function resetDataStreamFetchState(state: DataStreamFetchState): void {
   state.failedStreams.clear();
   state.failureStreaks.clear();
-  state.pendingCurrentFrameSettlementsByTick.clear();
   state.pendingStreamsByTick.clear();
 }
 
@@ -90,11 +84,7 @@ export interface DataStreamPrefetcher {
     activeStreams: string[],
     operation: DataOperation,
   ): boolean;
-  fetchCurrentFrame(
-    tick: bigint,
-    activeStreams: string[],
-    onSettled?: () => void,
-  ): boolean;
+  fetchCurrentFrame(tick: bigint, activeStreams: string[]): boolean;
   isStreamPending(tickKey: string, stream: string): boolean;
 }
 
@@ -139,54 +129,6 @@ export function createDataStreamPrefetcher({
 }): DataStreamPrefetcher {
   const isStreamPending = (tickKey: string, stream: string): boolean =>
     fetchState.pendingStreamsByTick.get(tickKey)?.has(stream) ?? false;
-
-  const notifyWhenCurrentFrameStreamsSettle = (
-    tickKey: string,
-    streams: readonly string[],
-    onSettled: (() => void) | undefined,
-  ): void => {
-    if (!onSettled) return;
-    const settlements =
-      fetchState.pendingCurrentFrameSettlementsByTick.get(tickKey);
-    const pending = [
-      ...new Set(
-        streams
-          .map((stream) => settlements?.get(stream))
-          .filter((value): value is Promise<void> => value !== undefined),
-      ),
-    ];
-    void Promise.all(pending).then(onSettled);
-  };
-
-  const trackCurrentFrameSettlement = (
-    tickKey: string,
-    streams: readonly string[],
-    settlement: Promise<void>,
-  ): void => {
-    let settlements =
-      fetchState.pendingCurrentFrameSettlementsByTick.get(tickKey);
-    if (!settlements) {
-      settlements = new Map();
-      fetchState.pendingCurrentFrameSettlementsByTick.set(tickKey, settlements);
-    }
-    for (const stream of streams) settlements.set(stream, settlement);
-  };
-
-  const clearCurrentFrameSettlement = (
-    tickKey: string,
-    streams: readonly string[],
-    settlement: Promise<void>,
-  ): void => {
-    const settlements =
-      fetchState.pendingCurrentFrameSettlementsByTick.get(tickKey);
-    if (!settlements) return;
-    for (const stream of streams) {
-      if (settlements.get(stream) === settlement) settlements.delete(stream);
-    }
-    if (settlements.size === 0) {
-      fetchState.pendingCurrentFrameSettlementsByTick.delete(tickKey);
-    }
-  };
 
   const markStreamsPending = (
     tickKeys: readonly string[],
@@ -355,7 +297,6 @@ export function createDataStreamPrefetcher({
   const fetchCurrentFrame: DataStreamPrefetcher["fetchCurrentFrame"] = (
     tick,
     activeStreams,
-    onSettled,
   ) => {
     if (activeStreams.length === 0) return false;
 
@@ -365,13 +306,10 @@ export function createDataStreamPrefetcher({
       (stream) =>
         !caches.get(stream)?.has(tick) && !isStreamPending(tickKey, stream),
     );
-    if (streamsToFetch.length === 0) {
-      notifyWhenCurrentFrameStreamsSettle(tickKey, activeStreams, onSettled);
-      return false;
-    }
+    if (streamsToFetch.length === 0) return false;
 
     markStreamsPending([tickKey], streamsToFetch);
-    const settlement = playback
+    void playback
       .readSynchronized({
         pointCloudColorBy: getPointCloudColorBy(),
         streamPolicies: getStreamPolicies(),
@@ -424,14 +362,7 @@ export function createDataStreamPrefetcher({
         if (isEpisodeReadCancelledError(error)) return;
         handleFetchFailure(error, [tick], streamsToFetch);
       })
-      .finally(() => {
-        finishFetch(sourceEpoch, [tickKey], streamsToFetch);
-        if (getSourceEpoch() === sourceEpoch) {
-          clearCurrentFrameSettlement(tickKey, streamsToFetch, settlement);
-        }
-      });
-    trackCurrentFrameSettlement(tickKey, streamsToFetch, settlement);
-    notifyWhenCurrentFrameStreamsSettle(tickKey, activeStreams, onSettled);
+      .finally(() => finishFetch(sourceEpoch, [tickKey], streamsToFetch));
 
     return true;
   };
@@ -486,8 +417,6 @@ export interface DataStreamSchedulerOptions {
   readonly getBackgroundLookaheadSeconds: () => number;
   readonly getByteTimeline: () => readonly ByteTimelinePoint[] | null;
   readonly getBlockingStreams: () => ReadonlySet<string>;
-  readonly getCurrentFrameFanoutDebounceMs: () => number;
-  readonly getCurrentFrameFirstStreams: () => ReadonlySet<string>;
   readonly getIndex: () => TimelineIndex | null;
   readonly getLastSeekAtMs: () => number | null;
   readonly hasDeferredBatchAdmission: () => boolean;
@@ -506,12 +435,6 @@ export interface DataStreamSchedulerOptions {
  * and the single playback-engine stream without owning React state.
  */
 export class DataStreamScheduler {
-  private currentFrameTargetTick: bigint | null = null;
-  private currentFrameTargetVersion = 0;
-  private currentFrameTargetChangedAtMs: number | null = null;
-  private currentFrameBurstUntilMs: number | null = null;
-  private deferredCurrentFrameTimer: ReturnType<typeof setTimeout> | null =
-    null;
   private lastObservedCommitSec: number | null = null;
   private nextLookaheadRefreshTime = 0;
 
@@ -548,117 +471,17 @@ export class DataStreamScheduler {
   }
 
   resetSource(): void {
-    if (this.deferredCurrentFrameTimer !== null) {
-      clearTimeout(this.deferredCurrentFrameTimer);
-      this.deferredCurrentFrameTimer = null;
-    }
-    this.currentFrameTargetTick = null;
-    this.currentFrameTargetVersion += 1;
-    this.currentFrameTargetChangedAtMs = null;
-    this.currentFrameBurstUntilMs = null;
     this.lastObservedCommitSec = null;
     this.nextLookaheadRefreshTime = 0;
   }
 
   /**
-   * Admits image current-frame work before the remaining synchronized sources.
-   * Each group stays atomic, while shared pending state preserves dedupe and
-   * the all-blocking-stream readiness gate remains unchanged.
+   * Keeps one target atomic so every newer target overlaps and supersedes the
+   * whole stale read. The adapter shares index, chunk, and decode work across
+   * all active streams while retaining synchronized stream semantics.
    */
   private fetchCurrentFrame(tick: bigint, activeStreams: string[]): void {
-    if (this.currentFrameTargetTick !== tick) {
-      const changedAtMs = monotonicNowMs();
-      const fanoutDebounceMs = this.options.getCurrentFrameFanoutDebounceMs();
-      const followsRecentTarget =
-        this.currentFrameTargetChangedAtMs !== null &&
-        changedAtMs - this.currentFrameTargetChangedAtMs < fanoutDebounceMs;
-      const burstIsActive =
-        this.currentFrameBurstUntilMs !== null &&
-        changedAtMs < this.currentFrameBurstUntilMs;
-      const isPausedTarget =
-        !getIsPlaying(this.options.store) &&
-        !getIsPlayPending(this.options.store);
-
-      this.currentFrameBurstUntilMs =
-        fanoutDebounceMs > 0 &&
-        isPausedTarget &&
-        (followsRecentTarget || burstIsActive)
-          ? changedAtMs + fanoutDebounceMs
-          : null;
-      this.currentFrameTargetChangedAtMs = changedAtMs;
-      this.currentFrameTargetTick = tick;
-      this.currentFrameTargetVersion += 1;
-      if (this.deferredCurrentFrameTimer !== null) {
-        clearTimeout(this.deferredCurrentFrameTimer);
-        this.deferredCurrentFrameTimer = null;
-      }
-    }
-    const targetVersion = this.currentFrameTargetVersion;
-    const firstSet = this.options.getCurrentFrameFirstStreams();
-    const firstStreams = activeStreams.filter((stream) => firstSet.has(stream));
-    if (
-      firstStreams.length === 0 ||
-      firstStreams.length === activeStreams.length
-    ) {
-      this.options.prefetcher.fetchCurrentFrame(tick, activeStreams);
-      return;
-    }
-    const remainingStreams = activeStreams.filter(
-      (stream) => !firstSet.has(stream),
-    );
-    const coalesceRemainingStreams =
-      this.currentFrameBurstUntilMs !== null &&
-      !getIsPlaying(this.options.store) &&
-      !getIsPlayPending(this.options.store);
-    if (!coalesceRemainingStreams) {
-      this.options.prefetcher.fetchCurrentFrame(tick, firstStreams);
-      this.options.prefetcher.fetchCurrentFrame(tick, remainingStreams);
-      return;
-    }
-    this.options.prefetcher.fetchCurrentFrame(tick, firstStreams, () => {
-      const admitRemainingStreams = () => {
-        if (
-          this.currentFrameTargetVersion !== targetVersion ||
-          this.currentFrameTargetTick !== tick
-        ) {
-          return;
-        }
-        const currentTick = this.options
-          .getIndex()
-          ?.nearestTick(getPlayhead(this.options.store));
-        if (currentTick !== tick) return;
-
-        const activeSet = new Set(this.options.getActiveStreams());
-        const activeRemainingStreams = remainingStreams.filter((stream) =>
-          activeSet.has(stream),
-        );
-        if (activeRemainingStreams.length > 0) {
-          this.options.prefetcher.fetchCurrentFrame(
-            tick,
-            activeRemainingStreams,
-          );
-        }
-      };
-
-      const burstDelayMs =
-        !getIsPlaying(this.options.store) &&
-        !getIsPlayPending(this.options.store) &&
-        this.currentFrameBurstUntilMs !== null
-          ? Math.max(0, this.currentFrameBurstUntilMs - monotonicNowMs())
-          : 0;
-      if (burstDelayMs <= 0) {
-        admitRemainingStreams();
-        return;
-      }
-
-      if (this.deferredCurrentFrameTimer !== null) {
-        clearTimeout(this.deferredCurrentFrameTimer);
-      }
-      this.deferredCurrentFrameTimer = setTimeout(() => {
-        this.deferredCurrentFrameTimer = null;
-        admitRemainingStreams();
-      }, burstDelayMs);
-    });
+    this.options.prefetcher.fetchCurrentFrame(tick, activeStreams);
   }
 
   /**
@@ -1028,7 +851,6 @@ export class DataStreamScheduler {
 
     return () => {
       registered = false;
-      this.resetSource();
       clearPendingPlayRetry();
       unregister();
       unsubscribe();
