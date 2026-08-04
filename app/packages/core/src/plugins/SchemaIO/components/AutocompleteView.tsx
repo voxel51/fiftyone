@@ -24,7 +24,6 @@ export default function AutocompleteView(props) {
         disabled={readOnly}
         autoHighlight
         clearOnBlur={multiple}
-        // opt-in per view: every other multi-select keeps MUI's checkmarks
         filterSelectedOptions={multiple && filterSelected}
         value={getDefaultValue(data, choices, multiple)}
         freeSolo={allowUserInput}

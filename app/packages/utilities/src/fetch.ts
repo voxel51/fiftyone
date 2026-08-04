@@ -319,8 +319,7 @@ export const getFetchParameters = () => {
 // Identical GraphQL QUERIES that are in flight at the same moment share one
 // request. Several independent subscribers commonly derive the same
 // dataset-level aggregation from one view change, and each duplicate costs a
-// full server resolve — on a multimodal dataset that includes standing up a
-// projection context. Only reads are shared: a mutation is never coalesced,
+// full server resolve. Only reads are shared: a mutation is never coalesced,
 // and the entry is dropped the moment the request settles, so nothing is
 // cached across gestures.
 const inFlightQueries = new Map<string, Promise<unknown>>();
@@ -334,9 +333,6 @@ const graphqlQueryKey = (
     return null;
   }
 
-  // Deliberately ONE operation, not every query: this sits on the path of
-  // every request the app makes, and sharing a promise is only provably safe
-  // where we have measured genuine duplicate reads. Widen only with evidence.
   const query = (body as { query?: unknown }).query;
   if (
     typeof query !== "string" ||

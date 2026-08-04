@@ -657,8 +657,6 @@ class BaseRun(Configurable):
             # We use `json_util.dumps` so that run results may contain BSON
             results_bytes = json_util.dumps(run_results.serialize()).encode()
             run_doc.results.put(results_bytes, content_type="application/json")
-            # Written HERE, with the results, so that reading a count or a
-            # path never loads the blob — and never writes one back either
             meta = run_results.get_meta()
             if meta:
                 run_doc.results_meta = dict(meta)

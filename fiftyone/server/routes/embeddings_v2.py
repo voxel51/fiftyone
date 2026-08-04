@@ -37,7 +37,6 @@ from starlette.responses import Response
 
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
-import fiftyone.core.odm as foo
 import fiftyone.core.stages as fos
 import fiftyone.core.storage as fost
 from fiftyone.core.utils import run_sync_task
@@ -123,58 +122,38 @@ class EmbeddingsV2RunInfo(HTTPEndpoint):
 
     def _post_sync(self, data):
         brain_key = data["brainKey"]
-        run = _run_doc(data["datasetName"], brain_key)
-        config = run.get("config") or {}
-        meta = run.get("results_meta") or {}
+        dataset = fosu.load_and_cache_dataset(data["datasetName"])
+        info = dataset.get_brain_info(brain_key)
+        config = info.config
 
-        # The counts are a few bytes; the results are a GridFS blob whose
-        # arrays run to hundreds of MB. Read them from what the run already
-        # records — ONE projected aggregation, no Dataset construction and
-        # nothing cached in the pod — and load the blob only when nothing
-        # does. Saving results records the counts, so only a legacy run pays
-        # the load, and only until it is re-saved.
-        # num_points lives ONLY in results_meta — no released brain config
-        # records it, so there is no config fallback for it (num_dims is a
-        # real config field and keeps one)
-        n = meta.get("num_points")
-
-        dims = meta.get("num_dims")
+        # Avoid loading large GridFS blob results for run-into by
+        # relying on results_meta, which some runs record. However, fallback to
+        # laoding the entire results blob for compatibility.
+        run_meta = (
+            getattr(
+                dataset._doc.brain_methods.get(brain_key), "results_meta", None
+            )
+            or {}
+        )
+        n = run_meta.get("num_points")
+        dims = run_meta.get("num_dims")
         if dims is None:
-            dims = config.get("num_dims")
-
-        method = config.get("method")
-        model = config.get("model")
-        patches_field = config.get("patches_field")
-        points_field = config.get("points_field")
-
+            dims = getattr(config, "num_dims", None)
         if n is None or dims is None:
-            dataset = fosu.load_and_cache_dataset(data["datasetName"])
-            results = dataset.load_brain_results(brain_key)
-            if results is None:
-                raise ValueError(
-                    f"Results for brain run with key '{brain_key}' are not "
-                    "yet available"
-                )
-
+            _, results = _load_results(data)
             n = len(results.points)
             dims = int(results.points.shape[1])
-            patches_field = results.config.patches_field
-            points_field = results.config.points_field
-            method = getattr(results.config, "method", None)
-            model = getattr(results.config, "model", None)
+            config = results.config
 
-        timestamp = run.get("timestamp")
         return {
             "brainKey": brain_key,
             "n": n,
             "dims": dims,
-            "patchesField": patches_field,
-            "pointsField": points_field,
-            "method": method,
-            "model": model,
-            "timestamp": (
-                timestamp.isoformat() if timestamp is not None else None
-            ),
+            "patchesField": config.patches_field,
+            "pointsField": config.points_field,
+            "method": getattr(config, "method", None),
+            "model": getattr(config, "model", None),
+            "timestamp": _timestamp(info),
         }
 
 
