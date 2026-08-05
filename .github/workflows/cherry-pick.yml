@@ -3,7 +3,7 @@ name: Cherry-Pick to Release
 # Opens the release-branch PR for a merged develop PR: cherry-picks its merge
 # result with -x, which the release gate verifies against develop. Two ways in:
 # dispatch with a PR number + target branch, or label a develop PR
-# 'needs-cherry-pick' and the release PR opens itself when the develop PR
+# 'cherry-pick-to-release' and the release PR opens itself when the develop PR
 # merges. Conflicts fail the run and comment on the source PR — resolving is
 # a human decision, and often the signal that the fix needs the release-only
 # escape hatch instead.
@@ -32,11 +32,11 @@ permissions:
   pull-requests: write
 
 jobs:
-  cherry-pick:
+  cherry-pick-to-release-branch:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.pull_request.merged == true &&
-       contains(github.event.pull_request.labels.*.name, 'needs-cherry-pick'))
+       contains(github.event.pull_request.labels.*.name, 'cherry-pick-to-release'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -58,8 +58,8 @@ jobs:
             RELEASE_BRANCH=$(gh api "repos/$REPO/branches" --paginate \
               --jq '.[].name | select(startswith("release/v"))' | sort -V | tail -1)
           fi
-          if [[ "$RELEASE_BRANCH" != release/* ]]; then
-            echo "::error::No release/* branch to target (got '${RELEASE_BRANCH:-none}')."
+          if [[ "$RELEASE_BRANCH" != release/v* ]]; then
+            echo "::error::No release/v* branch to target (got '${RELEASE_BRANCH:-none}')."
             exit 1
           fi
 

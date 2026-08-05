@@ -4,14 +4,14 @@ name: Release Gate
 # cherry-pick of commits already on develop, a labeled release-only fix, a
 # version bump, or an automated sync mirror.
 # Everything else originates on develop and arrives here by cherry-pick, so
-# the release branch stays a strict subset of develop and there is never
-# anything to merge back.
+# the release branch stays a strict subset of the default branch
+# and there is never anything to merge back.
 
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled, edited]
     branches:
-      - release/**
+      - release/v**
 
 concurrency:
   group: release-gate-${{ github.event.pull_request.number }}
