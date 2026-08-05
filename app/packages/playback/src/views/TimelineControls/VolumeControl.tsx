@@ -1,10 +1,4 @@
-import {
-  Button,
-  IconName,
-  SingleValueSlider,
-  Size,
-  Variant,
-} from "@voxel51/voodo";
+import { Button, SingleValueSlider, Size, Variant } from "@voxel51/voodo";
 import React from "react";
 import { DEFAULT_AUDIO_VOLUME } from "../../lib/playback/atoms";
 import { usePlaybackStore } from "../../lib/playback/playback-store-context";
@@ -18,6 +12,7 @@ import {
   useAudioMuted,
   useAudioVolume,
 } from "../../lib/playback/use-playback-state";
+import { VolumeOffIcon, VolumeUpIcon } from "../stableIcons";
 import styles from "./TimelineControls.module.css";
 
 /** Arrow-key volume increment. */
@@ -85,7 +80,7 @@ const VolumeControl: React.FC = () => {
         variant={Variant.Icon}
         size={Size.Xs}
         data-testid="timeline-controls-mute"
-        leadingIcon={muted ? IconName.VolumeOff : IconName.VolumeUp}
+        leadingIcon={muted ? VolumeOffIcon : VolumeUpIcon}
         aria-label={muted ? "Unmute" : "Mute"}
         aria-pressed={muted}
         onClick={muted ? unmute : () => setAudioMuted(store, true)}

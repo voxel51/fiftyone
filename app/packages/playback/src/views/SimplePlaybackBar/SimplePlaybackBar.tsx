@@ -1,4 +1,4 @@
-import { Button, IconName, Size, Variant } from "@voxel51/voodo";
+import { Button, Size, Variant } from "@voxel51/voodo";
 import React from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
@@ -9,6 +9,7 @@ import {
 import PlayheadTime from "../Playhead/PlayheadTime";
 import { clamp } from "../../lib/playback/utils";
 import styles from "./SimplePlaybackBar.module.css";
+import { PauseIcon, PlayIcon } from "../stableIcons";
 
 /**
  * Click-or-drag scrub track. Subscribes to playheadAtom (re-renders on
@@ -110,7 +111,7 @@ const SimplePlaybackBar: React.FC = () => {
         variant={Variant.Borderless}
         size={Size.Xs}
         data-testid="simple-playback-bar-play-pause"
-        leadingIcon={hasPlayIntent ? IconName.Pause : IconName.Play}
+        leadingIcon={hasPlayIntent ? PauseIcon : PlayIcon}
         onClick={hasPlayIntent ? pause : play}
         aria-label={hasPlayIntent ? "Pause" : "Play"}
         aria-pressed={hasPlayIntent}
