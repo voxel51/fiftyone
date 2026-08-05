@@ -63,26 +63,24 @@ beforeEach(() => {
 });
 
 describe("DataStreamScheduler", () => {
-  it("admits image current-frame reads before remaining blocking streams", () => {
+  it("admits one atomic current-frame read across image and 3D streams", () => {
+    const streams = ["/camera/left", "/lidar", "/camera/right"];
     const harness = createSchedulerHarness({
-      activeStreams: ["/camera/left", "/lidar", "/camera/right"],
-      currentFrameFirstStreams: ["/camera/left", "/camera/right"],
+      activeStreams: streams,
     });
 
     harness.scheduler.prefetchLookaheadFrom(0);
 
-    expect(harness.prefetcher.fetchCurrentFrame.mock.calls.slice(0, 2)).toEqual(
-      [
-        [0n, ["/camera/left", "/camera/right"]],
-        [0n, ["/lidar"]],
-      ],
+    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledOnce();
+    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledWith(
+      0n,
+      streams,
     );
   });
 
   it("keeps current-frame reads atomic when no image split applies", () => {
     const harness = createSchedulerHarness({
       activeStreams: ["/camera/left", "/camera/right"],
-      currentFrameFirstStreams: ["/camera/left", "/camera/right"],
     });
 
     harness.scheduler.prefetchLookaheadFrom(0);
@@ -94,21 +92,18 @@ describe("DataStreamScheduler", () => {
     ]);
   });
 
-  it("keeps playback prefetch batches atomic across the image-first boundary", () => {
+  it("keeps playback prefetch batches atomic across all active streams", () => {
     const streams = ["/camera/left", "/lidar", "/camera/right"];
     const harness = createSchedulerHarness({
       activeStreams: streams,
-      currentFrameFirstStreams: ["/camera/left", "/camera/right"],
     });
     const cleanup = harness.register();
 
     harness.stream().prefetch?.([0, 1]);
 
-    expect(harness.prefetcher.fetchCurrentFrame.mock.calls.slice(0, 2)).toEqual(
-      [
-        [0n, ["/camera/left", "/camera/right"]],
-        [0n, ["/lidar"]],
-      ],
+    expect(harness.prefetcher.fetchCurrentFrame).toHaveBeenCalledWith(
+      0n,
+      streams,
     );
     expect(harness.prefetcher.fetchBatch).toHaveBeenCalledWith(
       expect.any(Array),
@@ -517,14 +512,12 @@ function createSchedulerHarness({
       startOffsetBytes: 0n,
     },
   ],
-  currentFrameFirstStreams = ["/camera"],
   deferredBatchAdmission = false,
   fillCache = true,
   policy = {},
 }: {
   readonly activeStreams?: string[];
   readonly byteTimeline?: readonly ByteTimelinePoint[];
-  readonly currentFrameFirstStreams?: readonly string[];
   readonly deferredBatchAdmission?: boolean;
   readonly fillCache?: boolean;
   readonly policy?: Partial<PlaybackPolicy>;
@@ -570,7 +563,6 @@ function createSchedulerHarness({
     getBackgroundLookaheadSeconds: () => 2,
     getByteTimeline: () => byteTimeline,
     getBlockingStreams: () => new Set(activeStreams),
-    getCurrentFrameFirstStreams: () => new Set(currentFrameFirstStreams),
     getIndex: () => index,
     getLastSeekAtMs: () => null,
     hasDeferredBatchAdmission: () => deferredBatchAdmission,

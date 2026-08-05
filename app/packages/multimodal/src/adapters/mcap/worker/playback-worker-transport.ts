@@ -18,7 +18,6 @@ import {
   emptyMcapBoundedReadUsage,
   McapBoundedReadCancelledError,
 } from "../reader/bounded-read-cancellation";
-
 type PendingRequest<
   Type extends McapPlaybackWorkerUnaryType = McapPlaybackWorkerUnaryType,
 > = {

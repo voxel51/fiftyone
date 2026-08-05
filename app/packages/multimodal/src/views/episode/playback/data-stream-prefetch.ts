@@ -417,7 +417,6 @@ export interface DataStreamSchedulerOptions {
   readonly getBackgroundLookaheadSeconds: () => number;
   readonly getByteTimeline: () => readonly ByteTimelinePoint[] | null;
   readonly getBlockingStreams: () => ReadonlySet<string>;
-  readonly getCurrentFrameFirstStreams: () => ReadonlySet<string>;
   readonly getIndex: () => TimelineIndex | null;
   readonly getLastSeekAtMs: () => number | null;
   readonly hasDeferredBatchAdmission: () => boolean;
@@ -477,25 +476,12 @@ export class DataStreamScheduler {
   }
 
   /**
-   * Admits image current-frame work before the remaining synchronized sources.
-   * Each group stays atomic, while shared pending state preserves dedupe and
-   * the all-blocking-stream readiness gate remains unchanged.
+   * Keeps one target atomic so every newer target overlaps and supersedes the
+   * whole stale read. The adapter shares index, chunk, and decode work across
+   * all active streams while retaining synchronized stream semantics.
    */
   private fetchCurrentFrame(tick: bigint, activeStreams: string[]): void {
-    const firstSet = this.options.getCurrentFrameFirstStreams();
-    const firstStreams = activeStreams.filter((stream) => firstSet.has(stream));
-    if (
-      firstStreams.length === 0 ||
-      firstStreams.length === activeStreams.length
-    ) {
-      this.options.prefetcher.fetchCurrentFrame(tick, activeStreams);
-      return;
-    }
-    this.options.prefetcher.fetchCurrentFrame(tick, firstStreams);
-    this.options.prefetcher.fetchCurrentFrame(
-      tick,
-      activeStreams.filter((stream) => !firstSet.has(stream)),
-    );
+    this.options.prefetcher.fetchCurrentFrame(tick, activeStreams);
   }
 
   /**
