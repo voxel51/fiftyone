@@ -134,6 +134,48 @@ describe("h264RunwayFromMessages", () => {
     });
     await waitFor(() => expect(result.current).toEqual([keyframe, delta]));
   });
+
+  it("starts a new read when a stream rejoins before its old read settles", async () => {
+    const resolveReads: Array<(messages: readonly DecodedFrame[]) => void> = [];
+    const readStreamFrames = vi.fn(
+      () =>
+        new Promise<readonly DecodedFrame[]>((resolve) => {
+          resolveReads.push(resolve);
+        }),
+    );
+    vi.mocked(useDataStream).mockReturnValue({
+      getStreamCache: () => undefined,
+      getTimelineIndex: () => createTimelineIndex({ startNs: 0n, endNs: 10n }),
+      readStreamFrames,
+      sourceKey: "recording",
+      subscribeToStream: () => () => undefined,
+    } as DataStream);
+
+    const target = { contentTimeNs: 6n, frame: frame(6n, false) };
+    const { result, rerender } = renderHook(
+      ({ stream }) => useVideoDecodeRunway(stream, target),
+      { initialProps: { stream: "/camera/image" } },
+    );
+    await waitFor(() => expect(readStreamFrames).toHaveBeenCalledOnce());
+
+    rerender({ stream: "" });
+    rerender({ stream: "/camera/image" });
+    await waitFor(() => expect(readStreamFrames).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      resolveReads[0]([message(frame(3n, true)), message(frame(5n, false))]);
+      await Promise.resolve();
+    });
+    expect(result.current).toEqual([]);
+
+    const keyframe = frame(3n, true);
+    const delta = frame(5n, false);
+    await act(async () => {
+      resolveReads[1]([message(keyframe), message(delta)]);
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(result.current).toEqual([keyframe, delta]));
+  });
 });
 
 function frame(

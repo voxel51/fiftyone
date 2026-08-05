@@ -52,6 +52,10 @@ export function useVideoDecodeRunways(
       setRunways({});
     }
     const availableStreams = new Set(streams);
+    for (const stream of inFlightStreamsRef.current.keys()) {
+      if (!availableStreams.has(stream))
+        inFlightStreamsRef.current.delete(stream);
+    }
     for (const stream of initializedStreamsRef.current) {
       if (!availableStreams.has(stream))
         initializedStreamsRef.current.delete(stream);

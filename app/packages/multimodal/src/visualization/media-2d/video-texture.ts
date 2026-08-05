@@ -228,6 +228,9 @@ class H264VideoDecodeSession {
     this.lastTimestampUs = timestampsUs[timestampsUs.length - 1];
 
     const decoder = await this.ensureDecoder(decodable[0]);
+    if (this.closed) {
+      throw new Error("Video decoder closed");
+    }
     const results = await Promise.allSettled(
       decodable.map((frame, index) =>
         this.decodeFrame(
@@ -307,6 +310,9 @@ class H264VideoDecodeSession {
       optimizeForLatency: true,
     };
     const supported = await Decoder.isConfigSupported?.(config);
+    if (this.closed) {
+      throw new Error("Video decoder closed");
+    }
     if (!supported?.supported) {
       throw new Error(`H.264 codec '${codecString}' is unsupported`);
     }

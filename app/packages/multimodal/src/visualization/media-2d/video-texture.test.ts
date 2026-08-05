@@ -341,6 +341,31 @@ describe("createEncodedVideoTexture", () => {
     expect(fakeDecoderInstances[0].closeCalls).toBe(1);
   });
 
+  it("does not create a decoder when its session closes during support lookup", async () => {
+    let resolveSupport!: (result: { supported: boolean }) => void;
+    FakeVideoDecoder.isConfigSupported = vi.fn(
+      () =>
+        new Promise<{ supported: boolean }>((resolve) => {
+          resolveSupport = resolve;
+        }),
+    );
+    const frame = h264Frame({ keyframe: true, timestampNs: 1000n });
+    const texture = createEncodedVideoTexture(
+      frame,
+      "rec\n/camera/video\n1000",
+    );
+    await vi.waitFor(() => {
+      expect(FakeVideoDecoder.isConfigSupported).toHaveBeenCalledOnce();
+    });
+
+    const expectation = expect(texture).rejects.toThrow("Video decoder closed");
+    releaseEncodedVideoSession(frame, "rec\n/camera/video\n1000");
+    resolveSupport({ supported: true });
+
+    await expectation;
+    expect(fakeDecoderInstances).toHaveLength(0);
+  });
+
   it("rejects pending textures and resets the decoder on decode timeout", async () => {
     vi.useFakeTimers();
     FakeVideoDecoder.decodeBehavior = "hold";
