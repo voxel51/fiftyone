@@ -1,6 +1,7 @@
 import type { Decoder } from "../../../../decoders/index";
 import { rosCameraInfoDecoders } from "./camera-info";
 import { rosCompressedImageDecoders } from "./compressed-image";
+import { rosCompressedPointCloud2Decoders } from "./compressed-point-cloud2";
 import { rosImageDecoders } from "./image";
 import { rosLaserScanDecoders } from "./laser-scan";
 import {
@@ -21,6 +22,7 @@ import {
 
 export { rosCameraInfoDecoders } from "./camera-info";
 export { rosCompressedImageDecoders } from "./compressed-image";
+export { rosCompressedPointCloud2Decoders } from "./compressed-point-cloud2";
 export { rosImageDecoders } from "./image";
 export { rosLaserScanDecoders } from "./laser-scan";
 export {
@@ -46,6 +48,7 @@ export * from "./payloads";
 export const rosDecoders: readonly Decoder[] = [
   ...rosCameraInfoDecoders,
   ...rosCompressedImageDecoders,
+  ...rosCompressedPointCloud2Decoders,
   ...rosImageDecoders,
   ...rosLaserScanDecoders,
   ...rosRosgraphLogDecoders,

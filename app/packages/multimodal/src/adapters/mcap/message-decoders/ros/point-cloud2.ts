@@ -175,7 +175,7 @@ export function decodeRosPointCloud2Record(
   };
 }
 
-function projectRosPointCloud2Channel(
+export function projectRosPointCloud2Channel(
   message: Record<string, unknown>,
   context: DecodeContext,
   request: PointCloudChannelProjectionRequest,

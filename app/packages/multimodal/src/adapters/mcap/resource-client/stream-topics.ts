@@ -54,6 +54,7 @@ import {
 import {
   ROS_CAMERA_INFO_PAYLOADS,
   ROS_COMPRESSED_IMAGE_PAYLOADS,
+  ROS_COMPRESSED_POINT_CLOUD2_PAYLOADS,
   ROS_DETECTION_2D_ARRAY_PAYLOADS,
   ROS_DETECTION_3D_ARRAY_PAYLOADS,
   ROS_DIAGNOSTIC_ARRAY_PAYLOADS,
@@ -178,7 +179,7 @@ export function isImageAnnotationsStream(topic: StreamInventory): boolean {
 
 /**
  * Returns whether a stream inventory item is a supported point-cloud-kind
- * stream: Foxglove PointCloud, or LaserScan (decoded into cartesian points).
+ * stream, including packed, compressed, and LaserScan sources.
  */
 export function isPointCloudStream(topic: StreamInventory): boolean {
   return (
@@ -188,6 +189,7 @@ export function isPointCloudStream(topic: StreamInventory): boolean {
     hasAnyPayload(topic, FOXGLOVE_LASER_SCAN_CDR_PAYLOADS) ||
     hasAnyPayload(topic, JSON_ROS_POINT_CLOUD2_PAYLOADS) ||
     hasAnyPayload(topic, JSON_ROS_LASER_SCAN_PAYLOADS) ||
+    hasAnyPayload(topic, ROS_COMPRESSED_POINT_CLOUD2_PAYLOADS) ||
     hasAnyPayload(topic, ROS_POINT_CLOUD2_PAYLOADS) ||
     hasAnyPayload(topic, ROS_LASER_SCAN_PAYLOADS)
   );

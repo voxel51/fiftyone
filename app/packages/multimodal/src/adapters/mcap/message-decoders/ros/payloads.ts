@@ -32,6 +32,23 @@ export const ROS_POINT_CLOUD2_PAYLOADS = rosPayloads(
 );
 
 /**
+ * Payload descriptors for ROS 2 CompressedPointCloud2 messages.
+ */
+export const ROS_COMPRESSED_POINT_CLOUD2_PAYLOADS: readonly PayloadDescriptor[] =
+  [
+    {
+      encoding: "cdr",
+      schema: "point_cloud_interfaces/msg/CompressedPointCloud2",
+      schemaEncoding: "ros2msg",
+    },
+    {
+      encoding: "cdr",
+      schema: "point_cloud_interfaces/msg/CompressedPointCloud2",
+      schemaEncoding: "ros2idl",
+    },
+  ];
+
+/**
  * Payload descriptors for ROS CompressedImage messages.
  */
 export const ROS_COMPRESSED_IMAGE_PAYLOADS = rosPayloads(
