@@ -85,6 +85,15 @@ export const useHoveredLabel3d = () => {
   return useRecoilValue(hoveredLabelAtom);
 };
 
+/**
+ * Hook to set the currently hovered 3D label in annotation mode.
+ *
+ * @returns A function that accepts the new hovered label (or null to clear)
+ */
+export const useSetHoveredLabel3d = () => {
+  return useSetRecoilState(hoveredLabelAtom);
+};
+
 export const useFo3dPerformanceStats = () => {
   return useRecoilValue(fo3dPerformanceStatsAtom);
 };
