@@ -36,14 +36,6 @@ export class GridPom {
     this.locator = page.getByTestId("fo-grid");
   }
 
-  get mountCount(): Promise<number> {
-    return this.page.evaluate(() => window.__FO_PLAYWRIGHT_GRID_MOUNT_COUNT);
-  }
-
-  get unmountCount(): Promise<number> {
-    return this.page.evaluate(() => window.__FO_PLAYWRIGHT_GRID_UNMOUNT_COUNT);
-  }
-
   getBackwardSection() {
     return this.locator.getByTestId("spotlight-section-backward");
   }
@@ -161,17 +153,6 @@ export class GridPom {
 
 class GridAsserter {
   constructor(private readonly gridPom: GridPom) {}
-
-  /**
-   * Asserts the total number of grid lifecycles (`grid-mount` /
-   * `grid-unmount` events) observed since page load. The initial page load
-   * contributes one mount and no unmount; each grid refresh contributes one
-   * of each. Higher counts indicate a redundant teardown.
-   */
-  async hasLifecycleCounts(mounts: number, unmounts: number) {
-    expect(await this.gridPom.mountCount).toBe(mounts);
-    expect(await this.gridPom.unmountCount).toBe(unmounts);
-  }
 
   async isTileCountEqualTo(n: number) {
     const tileCount = await this.gridPom.locator.locator(TILE_SELECTOR).count();

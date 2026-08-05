@@ -9,6 +9,31 @@ export class ArmedEvent {
   constructor(readonly received: Promise<void>) {}
 }
 
+/**
+ * Handle for counting occurrences of a document-level CustomEvent. Created
+ * by {@link EventUtils.counter}; counts accumulate from creation, so create
+ * it at the moment "zero" should mean.
+ */
+export class EventCounter {
+  #count = 0;
+
+  constructor(private readonly page: Page) {}
+
+  /** @internal */
+  increment() {
+    this.#count++;
+  }
+
+  /**
+   * The number of events observed since creation. Fences through a no-op
+   * page evaluation so every event dispatched before this call is included.
+   */
+  async read(): Promise<number> {
+    await this.page.evaluate((): void => undefined);
+    return this.#count;
+  }
+}
+
 export class EventUtils {
   constructor(private readonly page: Page) {}
 
@@ -59,6 +84,38 @@ export class EventUtils {
     );
 
     return new ArmedEvent(received);
+  }
+
+  /**
+   * Install a counter for a document-level CustomEvent. Counting starts when
+   * the returned promise resolves — create the counter BEFORE the actions
+   * whose events it should observe, then assert on `read()` after them:
+   *
+   *   const unmounts = await eventUtils.counter("grid-unmount");
+   *   await actionThatRefreshesGrid();
+   *   expect(await unmounts.read()).toBe(1);
+   */
+  public async counter(eventName: string): Promise<EventCounter> {
+    const counter = new EventCounter(this.page);
+    const exposedFunctionName = getFunctionNameWithRandomSuffix(
+      `counter_${eventName}`,
+    );
+
+    await this.page.exposeFunction(exposedFunctionName, () =>
+      counter.increment(),
+    );
+
+    await this.page.evaluate(
+      ({ eventName_, exposedFunctionName_ }) => {
+        document.addEventListener(eventName_, () => {
+          // @ts-expect-error - the function is exposed at runtime
+          window[exposedFunctionName_]();
+        });
+      },
+      { eventName_: eventName, exposedFunctionName_: exposedFunctionName },
+    );
+
+    return counter;
   }
 }
 

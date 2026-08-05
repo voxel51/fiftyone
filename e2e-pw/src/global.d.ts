@@ -21,14 +21,6 @@ interface Window {
    */
   __FO_PLAYWRIGHT_LOADING_SCREEN_COUNT: number;
 
-  /**
-   * Count how many times the grid has dispatched `grid-mount` and
-   * `grid-unmount`. Each grid lifecycle (spotlight attach through destroy)
-   * contributes one of each; extra counts indicate a redundant teardown.
-   */
-  __FO_PLAYWRIGHT_GRID_MOUNT_COUNT: number;
-  __FO_PLAYWRIGHT_GRID_UNMOUNT_COUNT: number;
-
   /** Disables analytics and QA performance toast banners during test runs. */
   IS_PLAYWRIGHT: boolean;
 }

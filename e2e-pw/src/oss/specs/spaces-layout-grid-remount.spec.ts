@@ -37,13 +37,16 @@ test.afterAll(async ({ foWebServer }) => {
 });
 
 test("grid remounts exactly once per spaces layout change", async ({
+  eventUtils,
   fiftyoneLoader,
   grid,
   page,
   panel,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await grid.assert.hasLifecycleCounts(1, 0);
+
+  const mounts = await eventUtils.counter("grid-mount");
+  const unmounts = await eventUtils.counter("grid-unmount");
 
   // split: a plain panel open places it side-by-side, splitting the layout
   const split = await grid.armGridRefresh();
@@ -51,7 +54,8 @@ test("grid remounts exactly once per spaces layout change", async ({
   await split.received;
   await expect(panel.getContent("Histograms")).toBeVisible();
   await expect(grid.getNthTile(0)).toBeVisible();
-  await grid.assert.hasLifecycleCounts(2, 1);
+  expect(await mounts.read()).toBe(1);
+  expect(await unmounts.read()).toBe(1);
 
   // join: closing the split panel collapses the layout back to a single pane
   const join = await grid.armGridRefresh();
@@ -59,5 +63,6 @@ test("grid remounts exactly once per spaces layout change", async ({
   await join.received;
   await expect(panel.getContent("Histograms")).toBeHidden();
   await expect(grid.getNthTile(0)).toBeVisible();
-  await grid.assert.hasLifecycleCounts(3, 2);
+  expect(await mounts.read()).toBe(2);
+  expect(await unmounts.read()).toBe(2);
 });
