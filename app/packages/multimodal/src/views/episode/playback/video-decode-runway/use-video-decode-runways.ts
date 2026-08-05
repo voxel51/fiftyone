@@ -31,8 +31,12 @@ export function useVideoDecodeRunways(
   const initializedStreamsRef = useRef(new Set<string>());
   const awaitingFirstKeyframeStreamsRef = useRef(new Set<string>());
   const attemptedTargetsRef = useRef(new Map<string, bigint>());
+  const currentTargetsRef = useRef(new Map<string, bigint>());
   const lastSeenTimeRef = useRef(new Map<string, bigint>());
   const dataStreamRef = useRef(dataStream);
+  const latestDataStreamRef = useRef(dataStream);
+  latestDataStreamRef.current = dataStream;
+  currentTargetsRef.current = currentH264DeltaTargets(streams, playbackFrames);
 
   // This effect resets per-recording decoder state, prunes removed streams,
   // and fetches a keyframe runway when playback first lands on a delta frame.
@@ -80,7 +84,6 @@ export function useVideoDecodeRunways(
       return changed ? next : current;
     });
 
-    let cancelled = false;
     streams.forEach((stream, index) => {
       const playbackFrame = playbackFrames[index];
       const frame = playbackFrame?.frame;
@@ -111,10 +114,17 @@ export function useVideoDecodeRunways(
 
       attemptedTargetsRef.current.set(stream, targetTimeNs);
       const requestToken = Symbol(stream);
+      const requestDataStream = dataStream;
       inFlightStreamsRef.current.set(stream, requestToken);
       readH264DecodeRunway(dataStream, stream, targetTimeNs)
         .then((frames) => {
-          if (cancelled) return;
+          if (
+            latestDataStreamRef.current !== requestDataStream ||
+            inFlightStreamsRef.current.get(stream) !== requestToken ||
+            currentTargetsRef.current.get(stream) !== targetTimeNs
+          ) {
+            return;
+          }
           if (frames.length === 0) {
             awaitingFirstKeyframeStreamsRef.current.add(stream);
             return;
@@ -132,10 +142,6 @@ export function useVideoDecodeRunways(
           }
         });
     });
-
-    return () => {
-      cancelled = true;
-    };
   }, [dataStream, playbackFrames, streams]);
 
   return useMemo(
@@ -162,6 +168,27 @@ export function useVideoDecodeRunway(
     [playbackFrame, stream],
   );
   return useVideoDecodeRunways(streams, playbackFrames)[0] ?? EMPTY_RUNWAY;
+}
+
+function currentH264DeltaTargets(
+  streams: readonly string[],
+  playbackFrames: readonly (StreamContentFrame<ImageVisualization> | null)[],
+): Map<string, bigint> {
+  const targets = new Map<string, bigint>();
+  streams.forEach((stream, index) => {
+    const playbackFrame = playbackFrames[index];
+    const frame = playbackFrame?.frame;
+    if (
+      stream &&
+      playbackFrame &&
+      frame?.kind === "encoded-video" &&
+      frame.codec === "h264" &&
+      !frame.keyframe
+    ) {
+      targets.set(stream, playbackFrame.contentTimeNs);
+    }
+  });
+  return targets;
 }
 
 async function readH264DecodeRunway(
