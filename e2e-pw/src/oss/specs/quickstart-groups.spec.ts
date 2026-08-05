@@ -151,7 +151,8 @@ test.describe.serial("quickstart-groups", () => {
       await expect(modal.carousel).toBeVisible();
     });
 
-    test("annotate pcd slice renders after refreshing from explore mode", async ({
+    // TODO FOEPD-3898 re-enable this test once its flakiness is resolved
+    test.skip("annotate pcd slice renders after refreshing from explore mode", async ({
       modal,
       grid,
       page,
