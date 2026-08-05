@@ -27,6 +27,7 @@ export function useVideoDecodeRunways(
   const [runways, setRunways] = useState<
     Readonly<Record<string, VideoDecodeRunway>>
   >({});
+  const [requestRevision, setRequestRevision] = useState(0);
   const inFlightStreamsRef = useRef(new Map<string, symbol>());
   const initializedStreamsRef = useRef(new Set<string>());
   const awaitingFirstKeyframeStreamsRef = useRef(new Set<string>());
@@ -139,10 +140,18 @@ export function useVideoDecodeRunways(
         .finally(() => {
           if (inFlightStreamsRef.current.get(stream) === requestToken) {
             inFlightStreamsRef.current.delete(stream);
+            const currentTarget = currentTargetsRef.current.get(stream);
+            if (
+              latestDataStreamRef.current === requestDataStream &&
+              currentTarget !== undefined &&
+              currentTarget !== targetTimeNs
+            ) {
+              setRequestRevision((revision) => revision + 1);
+            }
           }
         });
     });
-  }, [dataStream, playbackFrames, streams]);
+  }, [dataStream, playbackFrames, requestRevision, streams]);
 
   return useMemo(
     () =>

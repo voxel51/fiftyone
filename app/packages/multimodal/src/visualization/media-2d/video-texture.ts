@@ -202,6 +202,10 @@ class H264VideoDecodeSession {
   private async decodeVideoFrameBatch(
     frames: readonly EncodedVideoVisualization[],
   ): Promise<VideoFrameLike> {
+    const target = frames.at(-1);
+    if (target?.codec !== "h264" || !target.h264?.hasFrame) {
+      throw new VideoTextureWaitError("Waiting for H.264 target frame");
+    }
     const decodable = frames.filter(
       (frame) => frame.codec === "h264" && frame.h264?.hasFrame,
     );

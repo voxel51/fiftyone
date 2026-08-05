@@ -210,6 +210,50 @@ describe("createEncodedVideoTexture", () => {
     handle.dispose();
   });
 
+  it("retains the keyframe immediately before the prerequisite cap", async () => {
+    const runway = [
+      h264Frame({ keyframe: true, timestampNs: 1_000n }),
+      ...Array.from({ length: 600 }, (_, index) =>
+        h264Frame({
+          hasParameterSets: false,
+          keyframe: false,
+          timestampNs: BigInt(index + 2) * 1_000n,
+        }),
+      ),
+    ];
+    const target = h264Frame({
+      hasParameterSets: false,
+      keyframe: false,
+      timestampNs: 602_000n,
+    });
+
+    const handle = await createImageTexture(
+      target,
+      "rec\n/camera/video\n602000",
+      runway,
+    );
+
+    expect(fakeDecoderInstances[0].decodeCalls).toHaveLength(602);
+    expect(fakeDecoderInstances[0].decodeCalls[0]?.type).toBe("key");
+    expect(fakeDecoderInstances[0].decodeCalls[1]?.type).toBe("delta");
+    handle.dispose();
+  });
+
+  it("rejects a missing H.264 target instead of returning a runway frame", async () => {
+    const keyframe = h264Frame({ keyframe: true, timestampNs: 1_000n });
+    const target = h264Frame({
+      hasFrame: false,
+      hasParameterSets: false,
+      keyframe: false,
+      timestampNs: 2_000n,
+    });
+
+    await expect(
+      createEncodedVideoTexture(target, "rec\n/camera/video\n2000", [keyframe]),
+    ).rejects.toThrow("Waiting for H.264 target frame");
+    expect(fakeDecoderInstances).toHaveLength(0);
+  });
+
   it("resets decoder state on backwards timestamps", async () => {
     const keyframe = await createEncodedVideoTexture(
       h264Frame({ keyframe: true, timestampNs: 2000n }),
@@ -387,6 +431,7 @@ function h264Frame({
   ),
   codecString = "avc1.4D001F",
   hasParameterSets = true,
+  hasFrame = true,
   keyframe,
   sps = Uint8Array.of(0x67, 0x4d, 0x00, 0x1f),
   timestampNs,
@@ -394,6 +439,7 @@ function h264Frame({
   readonly bytes?: Uint8Array;
   readonly codecString?: string;
   readonly hasParameterSets?: boolean;
+  readonly hasFrame?: boolean;
   readonly keyframe: boolean;
   readonly sps?: Uint8Array;
   readonly timestampNs: bigint;
@@ -405,7 +451,7 @@ function h264Frame({
     format: "h264",
     h264: {
       ...(hasParameterSets ? { codecString } : {}),
-      hasFrame: true,
+      hasFrame,
       ...(hasParameterSets ? { pps: Uint8Array.of(0x68, 0xce), sps } : {}),
     },
     keyframe,

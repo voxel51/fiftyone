@@ -123,9 +123,8 @@ describe("h264RunwayFromMessages", () => {
     });
     expect(result.current).toEqual([]);
 
-    // A subsequent playback render can request the live target after the
-    // obsolete I/O releases stream ownership.
-    rerender({ playbackFrame: { ...nextTarget } });
+    // Releasing obsolete I/O must request the live target without waiting for
+    // another playback render.
     await waitFor(() => expect(readStreamFrames).toHaveBeenCalledTimes(2));
     const keyframe = frame(7n, true);
     const delta = frame(8n, false);
