@@ -93,6 +93,23 @@ describe("MCAP playback worker transfer collection", () => {
     ).toEqual([]);
   });
 
+  it("filters retained references from an array of mixed windows", () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    const retained = {
+      kind: "retained-decoded-message" as const,
+      recordId: "record",
+      timelineTimeNs: 1n,
+      topic: "/camera",
+    };
+    const fresh = createMessage([bytes.buffer]);
+
+    expect(
+      transferablesForMcapResult([
+        { ...createWindow([fresh]), messages: [retained, fresh] },
+      ]),
+    ).toEqual([bytes.buffer]);
+  });
+
   it("ignores decoded-message-shaped values with invalid resource hints", () => {
     expect(transferablesForMcapResult({ decoded: null })).toEqual([]);
     expect(

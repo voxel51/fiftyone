@@ -122,7 +122,7 @@ function decodedMessagesFromResult(
   if (Array.isArray(result)) {
     return result.flatMap((item) =>
       isSynchronizedWindow(item)
-        ? item.messages
+        ? item.messages.filter(isDecodedMessage)
         : isDecodedMessage(item)
           ? [item]
           : [],
