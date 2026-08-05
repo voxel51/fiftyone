@@ -261,37 +261,26 @@ describe("resolvePlaybackLayout", () => {
     expect(layout).toBe("3d-1");
   });
 
-  it("opens a map tile for location-only scenes", () => {
+  it("does not open a map tile for location-only scenes", () => {
     const { tiles, layout } = resolvePlaybackLayout({
       capabilities: STRONG_LOCAL,
       readProfile: "local",
       sources: [locationSource("/gps/fix", 1_000)],
     });
 
-    expect(tiles).toEqual([
-      {
-        id: "map-1",
-        tileType: "map",
-        title: "Map",
-      },
-    ]);
-    expect(layout).toBe("map-1");
+    expect(tiles).toEqual([]);
+    expect(layout).toBeUndefined();
   });
 
-  it("places location maps beside the 3d view", () => {
+  it("does not add a map tile to the default 3d view", () => {
     const { tiles, layout } = resolvePlaybackLayout({
       capabilities: STRONG_LOCAL,
       readProfile: "local",
       sources: [POINT_CLOUD, locationSource("/gps/fix", 1_000)],
     });
 
-    expect(tiles.map((tile) => tile.id)).toEqual(["3d-1", "map-1"]);
-    expect(layout).toEqual({
-      direction: "row",
-      first: "3d-1",
-      second: "map-1",
-      splitPercentage: 70,
-    });
+    expect(tiles.map((tile) => tile.id)).toEqual(["3d-1"]);
+    expect(layout).toBe("3d-1");
   });
 
   it("opens a log tile for logs-only scenes", () => {
