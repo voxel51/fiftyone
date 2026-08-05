@@ -6,6 +6,7 @@ import { createImageTexture } from "./image-texture";
 import {
   createEncodedVideoCanvas,
   createEncodedVideoTexture,
+  releaseEncodedVideoSession,
   resetVideoTextureDecodersForTests,
 } from "./video-texture";
 
@@ -19,6 +20,7 @@ interface FakeFrame {
   readonly close: ReturnType<typeof vi.fn>;
   readonly displayHeight: number;
   readonly displayWidth: number;
+  readonly timestamp: number;
 }
 
 const fakeDecoderInstances: FakeVideoDecoder[] = [];
@@ -135,6 +137,59 @@ describe("createEncodedVideoTexture", () => {
     handle.dispose();
   });
 
+  it("submits a runway as one atomic decoder job and retains only its target", async () => {
+    FakeVideoDecoder.decodeBehavior = "hold";
+    const keyframe = h264Frame({ keyframe: true, timestampNs: 1000n });
+    const delta = h264Frame({
+      hasParameterSets: false,
+      keyframe: false,
+      timestampNs: 2000n,
+    });
+    const target = h264Frame({
+      hasParameterSets: false,
+      keyframe: false,
+      timestampNs: 3000n,
+    });
+
+    const first = createEncodedVideoTexture(
+      target,
+      "rec\n/camera/video\n3000",
+      [keyframe, delta],
+    );
+    await vi.waitFor(() => {
+      expect(fakeDecoderInstances[0]?.decodeCalls).toHaveLength(3);
+    });
+
+    const second = createEncodedVideoTexture(
+      h264Frame({
+        hasParameterSets: false,
+        keyframe: false,
+        timestampNs: 4000n,
+      }),
+      "rec\n/camera/video\n4000",
+    );
+    await Promise.resolve();
+    expect(fakeDecoderInstances[0].decodeCalls).toHaveLength(3);
+
+    const decoder = fakeDecoderInstances[0];
+    decoder.outputNext();
+    decoder.outputNext();
+    decoder.outputNext();
+    const firstHandle = await first;
+    expect(decoder.outputFrames[0]?.close).toHaveBeenCalledTimes(1);
+    expect(decoder.outputFrames[1]?.close).toHaveBeenCalledTimes(1);
+    expect(decoder.outputFrames[2]?.close).not.toHaveBeenCalled();
+
+    await vi.waitFor(() => expect(decoder.decodeCalls).toHaveLength(4));
+    decoder.outputNext();
+    const secondHandle = await second;
+
+    firstHandle.dispose();
+    secondHandle.dispose();
+    expect(decoder.outputFrames[2]?.close).toHaveBeenCalledTimes(1);
+    expect(decoder.outputFrames[3]?.close).toHaveBeenCalledTimes(1);
+  });
+
   it("bounds prerequisite replay to the latest 600 video frames", async () => {
     const runway = Array.from({ length: 601 }, (_, index) =>
       h264Frame({
@@ -153,6 +208,44 @@ describe("createEncodedVideoTexture", () => {
     expect(fakeDecoderInstances[0].decodeCalls).toHaveLength(601);
     expect(fakeDecoderInstances[0].decodeCalls[0]?.timestamp).toBe(2);
     handle.dispose();
+  });
+
+  it("waits when an overlong GOP pushes its keyframe beyond the cap", async () => {
+    const runway = [
+      h264Frame({ keyframe: true, timestampNs: 1_000n }),
+      ...Array.from({ length: 600 }, (_, index) =>
+        h264Frame({
+          hasParameterSets: false,
+          keyframe: false,
+          timestampNs: BigInt(index + 2) * 1_000n,
+        }),
+      ),
+    ];
+    const target = h264Frame({
+      hasParameterSets: false,
+      keyframe: false,
+      timestampNs: 602_000n,
+    });
+
+    await expect(
+      createImageTexture(target, "rec\n/camera/video\n602000", runway),
+    ).rejects.toThrow("Waiting for H.264 keyframe");
+    expect(fakeDecoderInstances).toHaveLength(0);
+  });
+
+  it("rejects a missing H.264 target instead of returning a runway frame", async () => {
+    const keyframe = h264Frame({ keyframe: true, timestampNs: 1_000n });
+    const target = h264Frame({
+      hasFrame: false,
+      hasParameterSets: false,
+      keyframe: false,
+      timestampNs: 2_000n,
+    });
+
+    await expect(
+      createEncodedVideoTexture(target, "rec\n/camera/video\n2000", [keyframe]),
+    ).rejects.toThrow("Waiting for H.264 target frame");
+    expect(fakeDecoderInstances).toHaveLength(0);
   });
 
   it("resets decoder state on backwards timestamps", async () => {
@@ -217,6 +310,74 @@ describe("createEncodedVideoTexture", () => {
     await expectation;
     expect(fakeDecoderInstances[0].resetCalls).toBe(1);
     expect(fakeDecoderInstances[0].closeCalls).toBe(1);
+  });
+
+  it("cancels the active and queued jobs when their stream session closes", async () => {
+    FakeVideoDecoder.decodeBehavior = "hold";
+    const firstFrame = h264Frame({ keyframe: true, timestampNs: 1000n });
+    const first = createEncodedVideoTexture(
+      firstFrame,
+      "rec\n/camera/video\n1000",
+    );
+    const second = createEncodedVideoTexture(
+      h264Frame({ keyframe: false, timestampNs: 2000n }),
+      "rec\n/camera/video\n2000",
+    );
+    await vi.waitFor(() => {
+      expect(fakeDecoderInstances[0]?.decodeCalls).toHaveLength(1);
+    });
+
+    releaseEncodedVideoSession(firstFrame, "rec\n/camera/video\n1000");
+
+    await expect(first).rejects.toThrow("Video decoder closed");
+    await expect(second).rejects.toThrow("Video decoder closed");
+    expect(fakeDecoderInstances[0].decodeCalls).toHaveLength(1);
+    expect(fakeDecoderInstances[0].closeCalls).toBe(1);
+  });
+
+  it("does not create a decoder when its session closes during support lookup", async () => {
+    let resolveSupport!: (result: { supported: boolean }) => void;
+    FakeVideoDecoder.isConfigSupported = vi.fn(
+      () =>
+        new Promise<{ supported: boolean }>((resolve) => {
+          resolveSupport = resolve;
+        }),
+    );
+    const frame = h264Frame({ keyframe: true, timestampNs: 1000n });
+    const texture = createEncodedVideoTexture(
+      frame,
+      "rec\n/camera/video\n1000",
+    );
+    await vi.waitFor(() => {
+      expect(FakeVideoDecoder.isConfigSupported).toHaveBeenCalledOnce();
+    });
+
+    const expectation = expect(texture).rejects.toThrow("Video decoder closed");
+    releaseEncodedVideoSession(frame, "rec\n/camera/video\n1000");
+    resolveSupport({ supported: true });
+
+    await expectation;
+    expect(fakeDecoderInstances).toHaveLength(0);
+  });
+
+  it("closes an unmatched timestamp without resolving another waiter", async () => {
+    FakeVideoDecoder.decodeBehavior = "hold";
+    const texture = createEncodedVideoTexture(
+      h264Frame({ keyframe: true, timestampNs: 1000n }),
+      "rec\n/camera/video\n1000",
+    );
+    await vi.waitFor(() => {
+      expect(fakeDecoderInstances[0]?.decodeCalls).toHaveLength(1);
+    });
+
+    const decoder = fakeDecoderInstances[0];
+    const unmatched = decoder.outputAtTimestamp(99);
+    expect(unmatched.close).toHaveBeenCalledOnce();
+
+    decoder.outputNext();
+    const handle = await texture;
+    handle.dispose();
+    expect(decoder.outputFrames[1]?.close).toHaveBeenCalledOnce();
   });
 
   it("rejects pending textures and resets the decoder on decode timeout", async () => {
@@ -309,6 +470,7 @@ function h264Frame({
   ),
   codecString = "avc1.4D001F",
   hasParameterSets = true,
+  hasFrame = true,
   keyframe,
   sps = Uint8Array.of(0x67, 0x4d, 0x00, 0x1f),
   timestampNs,
@@ -316,6 +478,7 @@ function h264Frame({
   readonly bytes?: Uint8Array;
   readonly codecString?: string;
   readonly hasParameterSets?: boolean;
+  readonly hasFrame?: boolean;
   readonly keyframe: boolean;
   readonly sps?: Uint8Array;
   readonly timestampNs: bigint;
@@ -327,7 +490,7 @@ function h264Frame({
     format: "h264",
     h264: {
       ...(hasParameterSets ? { codecString } : {}),
-      hasFrame: true,
+      hasFrame,
       ...(hasParameterSets ? { pps: Uint8Array.of(0x68, 0xce), sps } : {}),
     },
     keyframe,
@@ -357,6 +520,7 @@ class FakeVideoDecoder {
   closeCalls = 0;
   configuredCodec: string | null = null;
   resetCalls = 0;
+  private outputIndex = 0;
 
   constructor(
     private readonly init: {
@@ -381,13 +545,33 @@ class FakeVideoDecoder {
       return;
     }
 
+    this.outputNext();
+  }
+
+  outputNext(): void {
+    const chunk = this.decodeCalls[this.outputIndex];
+    if (!chunk) throw new Error("No held decoder output is available");
+    this.outputIndex += 1;
     const frame = {
       close: vi.fn(),
       displayHeight: 480,
       displayWidth: 640,
+      timestamp: chunk.timestamp,
     };
     this.outputFrames.push(frame);
     this.init.output(frame);
+  }
+
+  outputAtTimestamp(timestamp: number): FakeFrame {
+    const frame = {
+      close: vi.fn(),
+      displayHeight: 480,
+      displayWidth: 640,
+      timestamp,
+    };
+    this.outputFrames.push(frame);
+    this.init.output(frame);
+    return frame;
   }
 
   reset(): void {
