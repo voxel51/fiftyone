@@ -41,6 +41,10 @@ import {
   setSegmentColor,
 } from "./cuboid-instance-geometry";
 import {
+  createHoverIndexTracker,
+  resolveLabelByInstanceId,
+} from "./cuboid-instance-interaction";
+import {
   ORIENTATION_AXES_COLORS,
   ORIENTATION_AXES_LENGTH_RATIO,
   ORIENTATION_AXES_MIN_LENGTH,
@@ -425,14 +429,14 @@ export const CuboidInstances = ({
 
   const resolveLabel = useCallback(
     (instanceId: number | undefined) =>
-      instanceId === undefined ? null : (labelsByIndex[instanceId] ?? null),
+      resolveLabelByInstanceId(labelsByIndex, instanceId),
     [labelsByIndex],
   );
 
   // r3f doesn't guarantee `instanceId` on an InstancedMesh's pointer-out
   // event, so track which instance is currently hovered ourselves and
   // resolve the outgoing label from that on pointer-out.
-  const hoveredIndexRef = useRef<number | null>(null);
+  const hoverTrackerRef = useRef(createHoverIndexTracker());
 
   const handlePointerOver = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
@@ -440,7 +444,7 @@ export const CuboidInstances = ({
       const label = resolveLabel(e.instanceId);
       if (!label) return;
 
-      hoveredIndexRef.current = e.instanceId ?? null;
+      hoverTrackerRef.current.setHovered(e.instanceId ?? null);
       setHoveredLabel({ id: label._id, source: hoverSource });
       onPointerOverForLabel(label, e);
     },
@@ -448,11 +452,8 @@ export const CuboidInstances = ({
   );
 
   const handlePointerOut = useCallback(() => {
-    const label =
-      hoveredIndexRef.current !== null
-        ? (labelsByIndex[hoveredIndexRef.current] ?? null)
-        : null;
-    hoveredIndexRef.current = null;
+    const index = hoverTrackerRef.current.consumeHovered();
+    const label = resolveLabelByInstanceId(labelsByIndex, index ?? undefined);
 
     setHoveredLabel(null);
     if (label) {

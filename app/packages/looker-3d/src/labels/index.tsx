@@ -42,6 +42,7 @@ import { Cuboid, type CuboidProps } from "./cuboid";
 import { CuboidInstances } from "./CuboidInstances";
 import { DragGate3D } from "./DragGate3D";
 import { type OverlayLabel, load3dOverlays } from "./loader";
+import { partitionCuboidsByEditedLabel } from "./partition-cuboids";
 import { type PolyLineProps, Polyline } from "./polyline";
 import { WorkingStoreManager } from "./WorkingStoreManager";
 
@@ -351,21 +352,10 @@ export const ThreeDLabels = ({
   // two paths lands at the identical transform in the same commit — no
   // flicker or jump (see the looker3dInstanceMesh plan, §7).
   const editedLabelId = selectedLabelForAnnotation?._id;
-  const { standaloneDetections, instancedDetections } = useMemo(() => {
-    if (!editedLabelId) {
-      return {
-        standaloneDetections: [],
-        instancedDetections: detectionsToRender,
-      };
-    }
-
-    const standalone: ReconciledDetection3D[] = [];
-    const instanced: ReconciledDetection3D[] = [];
-    for (const overlay of detectionsToRender) {
-      (overlay._id === editedLabelId ? standalone : instanced).push(overlay);
-    }
-    return { standaloneDetections: standalone, instancedDetections: instanced };
-  }, [detectionsToRender, editedLabelId]);
+  const { standaloneDetections, instancedDetections } = useMemo(
+    () => partitionCuboidsByEditedLabel(detectionsToRender, editedLabelId),
+    [detectionsToRender, editedLabelId],
+  );
 
   // Detections render model -> JSX (standalone / actively-edited path)
   const cuboidOverlays = useMemo(
