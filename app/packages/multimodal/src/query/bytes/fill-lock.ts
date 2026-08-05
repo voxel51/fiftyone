@@ -83,6 +83,13 @@ export function byteFillSlotName(
  * lookahead, bulk history scans, speculative readahead) start at slot 1 — so
  * however deep the background queue grows, the playhead's next fill always
  * has slot 0 waiting for it.
+ *
+ * Lock-ordering invariant: a class with floor 0 must acquire its shape before
+ * any slot; a class with floor above 0 must acquire one eligible slot before
+ * it waits for its shape, and a shape holder must never wait for a second
+ * slot. Thus slot 0 is a progress path whose holder never waits on a shape,
+ * preventing the mixed ordering from forming a lock cycle. Any new slot class
+ * or ordering change must preserve this invariant.
  */
 export function byteFillSlotFloor(
   slotClass: "background" | "priority" | undefined,
