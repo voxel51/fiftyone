@@ -11,6 +11,7 @@ Includes all updates from :ref:`FiftyOne 1.20.1 <release-notes-v1.20.1>`, plus:
 
 - Fixed a bug that prevented users with the Labeler role from submitting
   annotation tasks
+- Fixed an error when deleting brain runs from the Embeddings panel
 
 .. _release-notes-v1.20.1:
 
