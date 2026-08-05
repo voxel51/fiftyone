@@ -21,7 +21,7 @@ FiftyOne 1.20.1
 
 App
 ^^^
-- Fixed the Embeddings panel crashing when opened
+- Fixed a crash that occurred when opening the Embeddings panel
   `#8181 <https://github.com/voxel51/fiftyone/pull/8181>`_
 
 FiftyOne Enterprise 2.23.0
