@@ -3,7 +3,6 @@ import type { DecodeClient } from "../../../../query/decoding/index";
 import { compareBigInt } from "../../../../ir/index";
 import { EpisodeReadCancelledError } from "../../../../ports/index";
 import {
-  compareByTimelineTime,
   createCandidateSelector,
   createWindowBounds,
   isUnboundedLatestPolicy,
@@ -52,8 +51,26 @@ interface McapIndexedMessageCandidate extends McapIndexedMessageTime {
   readonly timelineTimeNs: bigint;
 }
 
-type McapSettledTopicDecode =
-  | { readonly decoded: McapDecodedMessage; readonly status: "decoded" }
+type McapSynchronizedMessageIdentity = {
+  readonly timelineTimeNs: bigint;
+  readonly topic: string;
+};
+
+export type McapSynchronizedMessageWindowWithMessages<
+  Message extends McapSynchronizedMessageIdentity,
+> = Omit<McapSynchronizedMessageWindow, "messages" | "messagesByTopic"> & {
+  readonly messages: readonly Message[];
+  readonly messagesByTopic: Readonly<Record<string, readonly Message[]>>;
+};
+
+export type McapIndexedMessageReuse<Message> = (candidate: {
+  readonly recordId: string;
+  readonly timelineTimeNs: bigint;
+  readonly topic: string;
+}) => Message | undefined;
+
+type McapSettledTopicDecode<Message> =
+  | { readonly decoded: Message; readonly status: "decoded" }
   | { readonly error: McapTopicDecodeError; readonly status: "error" };
 
 // Raw candidates are materialized once per batch; indexed lookups share them
@@ -67,12 +84,15 @@ type McapRawDecodeCache = Map<
 /**
  * Reads and decodes synchronized MCAP windows for one batched playback request.
  */
-export async function readMcapSynchronizedMessageBatch({
+export async function readMcapSynchronizedMessageBatch<
+  ReusedMessage extends McapSynchronizedMessageIdentity = never,
+>({
   decodeClient,
   predecessorStore,
   reader,
   readSignal,
   request,
+  reuseIndexedMessage,
   timeline,
 }: {
   readonly decodeClient: DecodeClient;
@@ -80,8 +100,13 @@ export async function readMcapSynchronizedMessageBatch({
   readonly reader: McapIndexedReaderLike;
   readonly readSignal?: { readonly current: AbortSignal | null };
   readonly request: McapReadSynchronizedMessageBatchRequest;
+  readonly reuseIndexedMessage?: McapIndexedMessageReuse<ReusedMessage>;
   readonly timeline: McapTimelineStrategy;
-}): Promise<readonly McapSynchronizedMessageWindow[]> {
+}): Promise<
+  readonly McapSynchronizedMessageWindowWithMessages<
+    McapDecodedMessage | ReusedMessage
+  >[]
+> {
   if (request.timeNs.length === 0) {
     return [];
   }
@@ -130,7 +155,11 @@ export async function readMcapSynchronizedMessageBatch({
       timeline,
     });
 
-    const indexedDecodeCache = new Map<string, Promise<McapDecodedMessage>>();
+    const indexedDecodeCache = new Map<
+      string,
+      Promise<McapDecodedMessage | ReusedMessage>
+    >();
+    const reusedIndexedMessages = new Map<string, ReusedMessage>();
     const rawReadCache = new Map<
       string,
       Promise<readonly McapRawMessageCandidate[]>
@@ -162,6 +191,7 @@ export async function readMcapSynchronizedMessageBatch({
           selectedRawCandidates,
           pointCloudColorBy:
             request.pointCloudColorByByTopic?.[candidate.topic],
+          reusedIndexedMessages,
           signal: readSignal?.current ?? undefined,
           source: request.source,
           timeline,
@@ -169,14 +199,27 @@ export async function readMcapSynchronizedMessageBatch({
       // Selected candidates name their chunks exactly, so the byte layer can
       // pipeline those chunk fetches while decoding walks them serially.
       onCandidatesSelected: (selected) => {
+        const misses = selected.filter((candidate) => {
+          const identity = indexedCandidateReuseIdentity({
+            candidate,
+            pointCloudColorBy:
+              request.pointCloudColorByByTopic?.[candidate.topic],
+            timeline,
+          });
+          const reused = reuseIndexedMessage?.(identity);
+          if (reused === undefined) return true;
+          reusedIndexedMessages.set(identity.recordId, reused);
+          return false;
+        });
+        if (misses.length === 0) return;
         void reader.prefetchChunkData?.({
-          chunkStartOffsets: selected.map(
+          chunkStartOffsets: misses.map(
             (candidate) => candidate.chunkStartOffset,
           ),
         });
         if (reader.readIndexedMessages) {
           selectedRawCandidates = materializeIndexedSelection({
-            candidates: selected,
+            candidates: misses,
             reader,
             signal: readSignal?.current ?? undefined,
             timeline,
@@ -430,6 +473,7 @@ async function backfillRawPredecessors({
 
 async function decodeWindowsFromCandidates<
   Candidate extends { readonly timelineTimeNs: bigint; readonly topic: string },
+  Message extends McapSynchronizedMessageIdentity,
 >({
   candidates,
   decodeCandidate,
@@ -441,9 +485,7 @@ async function decodeWindowsFromCandidates<
   windowBounds,
 }: {
   readonly candidates: ReadonlyMap<string, readonly Candidate[]>;
-  readonly decodeCandidate: (
-    candidate: Candidate,
-  ) => Promise<McapDecodedMessage>;
+  readonly decodeCandidate: (candidate: Candidate) => Promise<Message>;
   readonly onCandidatesSelected?: (selected: readonly Candidate[]) => void;
   readonly selectTieBreaker: (left: Candidate, right: Candidate) => number;
   readonly throwIfAborted?: () => void;
@@ -453,7 +495,7 @@ async function decodeWindowsFromCandidates<
     readonly timeNs: bigint;
     readonly streamPolicies: McapSynchronizedMessageWindow["streamPolicies"];
   }[];
-}): Promise<readonly McapSynchronizedMessageWindow[]> {
+}): Promise<readonly McapSynchronizedMessageWindowWithMessages<Message>[]> {
   // Selection is synchronous, so resolve every window's candidate set before
   // any decode read starts: the union names exactly which messages (and
   // therefore chunks) this batch touches.
@@ -501,34 +543,35 @@ async function decodeWindowsFromCandidates<
 
   return Promise.all(
     selections.map(async ({ selectedByTopic, streamPolicies, timeNs }) => {
-      const messagesByTopic: Record<string, readonly McapDecodedMessage[]> = {};
+      const messagesByTopic: Record<string, readonly Message[]> = {};
       const decodeErrorsByTopic: Record<
         string,
         readonly McapTopicDecodeDiagnostic[]
       > = {};
-      const messages: McapDecodedMessage[] = [];
+      const messages: Message[] = [];
 
       for (const [topic, selected] of selectedByTopic) {
         throwIfAborted?.();
-        const settled: readonly McapSettledTopicDecode[] = await Promise.all(
-          selected.map(async (candidate) => {
-            try {
-              return {
-                decoded: await decodeCandidate(candidate),
-                status: "decoded",
-              } as const;
-            } catch (error) {
-              if (!isMcapTopicDecodeError(error)) throw error;
-              return { error, status: "error" } as const;
-            }
-          }),
-        );
+        const settled: readonly McapSettledTopicDecode<Message>[] =
+          await Promise.all(
+            selected.map(async (candidate) => {
+              try {
+                return {
+                  decoded: await decodeCandidate(candidate),
+                  status: "decoded",
+                } as const;
+              } catch (error) {
+                if (!isMcapTopicDecodeError(error)) throw error;
+                return { error, status: "error" } as const;
+              }
+            }),
+          );
         const errors = settled
           .filter(
             (
               result,
             ): result is Extract<
-              McapSettledTopicDecode,
+              McapSettledTopicDecode<Message>,
               { readonly status: "error" }
             > => result.status === "error",
           )
@@ -566,7 +609,7 @@ async function decodeWindowsFromCandidates<
             (
               result,
             ): result is Extract<
-              McapSettledTopicDecode,
+              McapSettledTopicDecode<Message>,
               { readonly status: "decoded" }
             > => result.status === "decoded",
           )
@@ -575,7 +618,9 @@ async function decodeWindowsFromCandidates<
         messages.push(...decoded);
       }
 
-      messages.sort(compareByTimelineTime);
+      messages.sort((left, right) =>
+        compareBigInt(left.timelineTimeNs, right.timelineTimeNs),
+      );
 
       return {
         activeTimeline: timeline.id,
@@ -730,7 +775,9 @@ function rawCandidateFromMessage({
   };
 }
 
-async function decodeIndexedCandidate({
+async function decodeIndexedCandidate<
+  ReusedMessage extends McapSynchronizedMessageIdentity,
+>({
   candidate,
   decodeClient,
   indexedDecodeCache,
@@ -739,13 +786,17 @@ async function decodeIndexedCandidate({
   reader,
   selectedRawCandidates,
   pointCloudColorBy,
+  reusedIndexedMessages,
   signal,
   source,
   timeline,
 }: {
   readonly candidate: McapIndexedMessageCandidate;
   readonly decodeClient: DecodeClient;
-  readonly indexedDecodeCache: Map<string, Promise<McapDecodedMessage>>;
+  readonly indexedDecodeCache: Map<
+    string,
+    Promise<McapDecodedMessage | ReusedMessage>
+  >;
   readonly rawDecodeCache: McapRawDecodeCache;
   readonly rawReadCache: Map<
     string,
@@ -756,39 +807,63 @@ async function decodeIndexedCandidate({
     | Promise<ReadonlyMap<McapIndexedMessageCandidate, McapRawMessageCandidate>>
     | undefined;
   readonly pointCloudColorBy?: string;
+  readonly reusedIndexedMessages: ReadonlyMap<string, ReusedMessage>;
   readonly signal?: AbortSignal;
   readonly source: McapReadSynchronizedMessageBatchRequest["source"];
   readonly timeline: McapTimelineStrategy;
-}): Promise<McapDecodedMessage> {
-  const recordId = `${indexedCandidateRecordId(candidate)}\0${
-    timeline.cacheKeySuffix
-  }\0${pointCloudColorBy ?? "auto"}`;
+}): Promise<McapDecodedMessage | ReusedMessage> {
+  const recordId = indexedCandidateReuseIdentity({
+    candidate,
+    pointCloudColorBy,
+    timeline,
+  }).recordId;
   let decoded = indexedDecodeCache.get(recordId);
 
   if (!decoded) {
-    decoded = resolveRawCandidateForIndexedMessage({
-      candidate,
-      rawReadCache,
-      reader,
-      selectedRawCandidates,
-      timeline,
-    })
-      .then((rawCandidate) =>
-        decodeRawCandidate({
-          candidate: rawCandidate,
-          decodeCache: rawDecodeCache,
-          decodeClient,
-          pointCloudColorBy,
-          signal,
-          source,
+    const reused = reusedIndexedMessages.get(recordId);
+    decoded = reused
+      ? Promise.resolve(reused)
+      : resolveRawCandidateForIndexedMessage({
+          candidate,
+          rawReadCache,
+          reader,
+          selectedRawCandidates,
           timeline,
-        }),
-      )
-      .then((message) => ({ ...message, recordId }));
+        })
+          .then((rawCandidate) =>
+            decodeRawCandidate({
+              candidate: rawCandidate,
+              decodeCache: rawDecodeCache,
+              decodeClient,
+              pointCloudColorBy,
+              signal,
+              source,
+              timeline,
+            }),
+          )
+          .then((message) => ({ ...message, recordId }));
     indexedDecodeCache.set(recordId, decoded);
   }
 
   return decoded;
+}
+
+function indexedCandidateReuseIdentity({
+  candidate,
+  pointCloudColorBy,
+  timeline,
+}: {
+  readonly candidate: McapIndexedMessageCandidate;
+  readonly pointCloudColorBy?: string;
+  readonly timeline: McapTimelineStrategy;
+}) {
+  return {
+    recordId: `${indexedCandidateRecordId(candidate)}\0${
+      timeline.cacheKeySuffix
+    }\0${pointCloudColorBy ?? "auto"}`,
+    timelineTimeNs: candidate.timelineTimeNs,
+    topic: candidate.topic,
+  };
 }
 
 async function resolveRawCandidateForIndexedMessage({

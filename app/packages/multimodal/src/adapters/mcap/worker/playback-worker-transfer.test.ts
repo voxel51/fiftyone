@@ -78,6 +78,21 @@ describe("MCAP playback worker transfer collection", () => {
     ).toEqual([]);
   });
 
+  it("does not transfer buffers for retained decoded-record references", () => {
+    expect(
+      transferablesForMcapResult({
+        messages: [
+          {
+            kind: "retained-decoded-message",
+            recordId: "record",
+            timelineTimeNs: 1n,
+            topic: "/camera",
+          },
+        ],
+      }),
+    ).toEqual([]);
+  });
+
   it("ignores decoded-message-shaped values with invalid resource hints", () => {
     expect(transferablesForMcapResult({ decoded: null })).toEqual([]);
     expect(

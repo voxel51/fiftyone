@@ -21,13 +21,13 @@ import type {
   McapReadTopicsRequest,
   McapReadTopicTimeBoundsRequest,
   McapReadTimelineRangeRequest,
-  McapSynchronizedMessageWindow,
   McapTimelineRange,
   McapTopicNumericFields,
   McapTopicTimeBounds,
 } from "../contracts/index";
 import type { McapBoundedReadCancellation } from "../reader";
 import type { StreamInventory } from "../../../schemas/v1";
+import type { McapSynchronizedMessageWindowWithMessages } from "../resource-client/operations/read-synchronized-message-batch";
 
 /**
  * Priority levels used by the MCAP playback worker scheduler.
@@ -102,6 +102,21 @@ export type McapPlaybackWorkerRequestPayloadByType = {
   readonly readTopicTimeBounds: McapReadTopicTimeBoundsRequest;
 };
 
+/** A decoded record that the requesting main thread has pinned for this RPC. */
+export interface McapRetainedDecodedMessageReference {
+  readonly kind: "retained-decoded-message";
+  readonly recordId: string;
+  readonly timelineTimeNs: bigint;
+  readonly topic: string;
+}
+
+export type McapPlaybackWorkerSynchronizedMessage =
+  | McapDecodedMessage
+  | McapRetainedDecodedMessageReference;
+
+export type McapPlaybackWorkerSynchronizedWindow =
+  McapSynchronizedMessageWindowWithMessages<McapPlaybackWorkerSynchronizedMessage>;
+
 /**
  * Unary result payloads returned by worker RPC calls.
  */
@@ -114,8 +129,8 @@ export type McapPlaybackWorkerResultByType = {
   readonly readNumericSeriesSlice: McapNumericSeriesSliceResult;
   readonly readPointCloudChannel: McapPointCloudChannelResult;
   readonly readRawMessageRecord: McapRawMessageRecordResult;
-  readonly readSynchronizedMessageBatch: readonly McapSynchronizedMessageWindow[];
-  readonly readSynchronizedMessages: McapSynchronizedMessageWindow;
+  readonly readSynchronizedMessageBatch: readonly McapPlaybackWorkerSynchronizedWindow[];
+  readonly readSynchronizedMessages: McapPlaybackWorkerSynchronizedWindow;
   readonly readTimelineRange: McapTimelineRange;
   readonly readTopics: readonly StreamInventory[];
   readonly readTopicTimeBounds: readonly McapTopicTimeBounds[];
@@ -155,6 +170,8 @@ export type McapPlaybackWorkerRpcRequest<
       readonly id: number;
       readonly payload: McapPlaybackWorkerRequestPayloadByType[Type];
       readonly priority: McapPlaybackWorkerPriority;
+      /** Exact records pinned by the main thread until this request settles. */
+      readonly retainedDecodedRecordIds?: readonly string[];
       readonly sourceKey: string;
       readonly type: Type;
     }

@@ -18,7 +18,11 @@ import {
   type McapReaderFactory,
 } from "../reader/index";
 import { mcapTimelineRangeFromReader } from "./operations/read-timeline-range";
-import { readMcapSynchronizedMessageBatch } from "./operations/read-synchronized-message-batch";
+import {
+  readMcapSynchronizedMessageBatch,
+  type McapIndexedMessageReuse,
+  type McapSynchronizedMessageWindowWithMessages,
+} from "./operations/read-synchronized-message-batch";
 import {
   createMcapPredecessorStore,
   type McapPredecessorStore,
@@ -82,12 +86,41 @@ export interface CreateInlineMcapResourceClientOptions {
   readonly readSignal?: { readonly current: AbortSignal | null };
 }
 
+export interface McapSynchronizedMessageReuseClient extends McapResourceClient {
+  readSynchronizedMessageBatchWithReuse<
+    ReusedMessage extends {
+      readonly timelineTimeNs: bigint;
+      readonly topic: string;
+    },
+  >(
+    request: McapReadSynchronizedMessageBatchRequest,
+    reuseIndexedMessage: McapIndexedMessageReuse<ReusedMessage>,
+  ): Promise<
+    readonly McapSynchronizedMessageWindowWithMessages<
+      McapDecodedMessage | ReusedMessage
+    >[]
+  >;
+  readSynchronizedMessagesWithReuse<
+    ReusedMessage extends {
+      readonly timelineTimeNs: bigint;
+      readonly topic: string;
+    },
+  >(
+    request: McapReadSynchronizedMessagesRequest,
+    reuseIndexedMessage: McapIndexedMessageReuse<ReusedMessage>,
+  ): Promise<
+    McapSynchronizedMessageWindowWithMessages<
+      McapDecodedMessage | ReusedMessage
+    >
+  >;
+}
+
 /**
  * Creates an MCAP resource client over the generic byte and decode clients.
  */
 export function createInlineMcapResourceClient(
   options: CreateInlineMcapResourceClientOptions = {},
-): McapResourceClient {
+): McapSynchronizedMessageReuseClient {
   const query = createMultimodalQueryClient();
   const byteClient = options.byteClient ?? query.bytes;
   const decoderRegistry = createMcapDecoderRegistry();
@@ -135,7 +168,7 @@ export function createInlineMcapResourceClient(
     return store;
   };
 
-  const client: McapResourceClient = {
+  const client: McapSynchronizedMessageReuseClient = {
     dispose() {
       topicReads.clear();
       numericFieldReads.clear();
@@ -372,6 +405,26 @@ export function createInlineMcapResourceClient(
       });
     },
 
+    async readSynchronizedMessageBatchWithReuse(request, reuseIndexedMessage) {
+      if (request.timeNs.length === 0) {
+        return [];
+      }
+
+      const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
+      const reader = await readerStore.get(request.source);
+      const sourceKey = byteSourceAccessKey(request.source);
+
+      return readMcapSynchronizedMessageBatch({
+        decodeClient,
+        predecessorStore: predecessorStoreForSource(sourceKey),
+        reader,
+        readSignal: options.readSignal,
+        request,
+        reuseIndexedMessage,
+        timeline,
+      });
+    },
+
     async readSynchronizedMessages(
       request: McapReadSynchronizedMessagesRequest,
     ): Promise<McapSynchronizedMessageWindow> {
@@ -384,6 +437,18 @@ export function createInlineMcapResourceClient(
         throw new Error("Expected synchronized MCAP window");
       }
 
+      return window;
+    },
+
+    async readSynchronizedMessagesWithReuse(request, reuseIndexedMessage) {
+      const windows = await client.readSynchronizedMessageBatchWithReuse(
+        { ...request, timeNs: [request.timeNs] },
+        reuseIndexedMessage,
+      );
+      const window = windows[0];
+      if (!window) {
+        throw new Error("Expected synchronized MCAP window");
+      }
       return window;
     },
   };

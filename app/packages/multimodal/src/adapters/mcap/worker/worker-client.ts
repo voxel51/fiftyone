@@ -2,6 +2,11 @@ import { byteSourceAccessKey } from "../../../query/bytes";
 import { hydrateMcapFrameTransformSet } from "../transforms/wire";
 import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
 import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
+import {
+  DecodedRecordStore,
+  isRetainedDecodedMessageReference,
+  type DecodedRecordLease,
+} from "./decoded-record-store";
 import type {
   McapLaneTransportSnapshot,
   McapTransportLane,
@@ -15,6 +20,8 @@ import {
   type McapPlaybackWorkerRequestPayloadByType,
   type McapPlaybackWorkerResponse,
   type McapPlaybackWorkerResultByType,
+  type McapPlaybackWorkerSynchronizedMessage,
+  type McapPlaybackWorkerSynchronizedWindow,
   type McapPlaybackWorkerStreamItemByType,
   type McapPlaybackWorkerStreamType,
   type McapPlaybackWorkerUnaryType,
@@ -87,6 +94,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
   private foregroundGeneration = 0;
   private disposed = false;
   private explicitOwnership = false;
+  private readonly decodedRecords = new DecodedRecordStore();
   private readonly transportListeners = new Set<
     (sample: McapLaneTransportSnapshot) => void
   >();
@@ -107,6 +115,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   dispose() {
     this.disposed = true;
+    this.decodedRecords.clear();
     this.transportListeners.clear();
     this.resetWorkers("MCAP worker disposed");
   }
@@ -136,6 +145,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     // adapter bootstrap reads and publication of the session to the renderer;
     // later activation races either path into this fail-fast guard.
     this.cancelAllPendingReads();
+    this.decodedRecords.clear();
     this.activeSourceKey = sourceKey;
     this.foregroundGeneration += 1;
   }
@@ -284,18 +294,53 @@ class WorkerMcapResourceClient implements McapResourceClient {
   readSynchronizedMessages(
     request: McapReadSynchronizedMessagesRequest,
   ): Promise<McapSynchronizedMessageWindow> {
-    return this.request("readSynchronizedMessages", request);
+    const lease = this.decodedRecords.acquire(request.topics);
+    return this.request(
+      "readSynchronizedMessages",
+      request,
+      undefined,
+      undefined,
+      lease.recordIds,
+    )
+      .then(
+        (window) =>
+          hydrateSynchronizedWindows([window], lease, this.decodedRecords)[0],
+      )
+      .then((window) => {
+        if (!window) throw new Error("Expected synchronized MCAP window");
+        return window;
+      })
+      .catch((error) => {
+        if (error instanceof RetainedDecodedRecordProtocolError) {
+          this.decodedRecords.clear();
+        }
+        throw error;
+      })
+      .finally(() => lease.release());
   }
 
   readSynchronizedMessageBatch(
     request: McapReadSynchronizedMessageBatchRequest,
     options?: McapResourceReadOptions,
   ): Promise<readonly McapSynchronizedMessageWindow[]> {
+    const lease = this.decodedRecords.acquire(request.topics);
     return this.request(
       "readSynchronizedMessageBatch",
       request,
       resourcePriorityToWorkerPriority(options?.priority),
-    );
+      undefined,
+      lease.recordIds,
+    )
+      .then((windows) =>
+        hydrateSynchronizedWindows(windows, lease, this.decodedRecords),
+      )
+      .catch((error) => {
+        if (error instanceof RetainedDecodedRecordProtocolError) {
+          this.decodedRecords.clear();
+        }
+        throw error;
+      })
+      .finally(() => lease.release());
   }
 
   private request<Type extends McapPlaybackWorkerUnaryType>(
@@ -303,6 +348,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
     priority?: McapPlaybackWorkerPriority,
     signal?: AbortSignal,
+    retainedDecodedRecordIds?: readonly string[],
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     if (this.disposed) {
       return Promise.reject(new Error("MCAP worker client is disposed"));
@@ -345,6 +391,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
       effectivePriority,
       supersessionKeys,
       signal,
+      retainedDecodedRecordIds,
     );
   }
 
@@ -390,6 +437,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     // terminate stays the safe preemption — request order cannot express
     // ownership, so keep-warm would thrash (0.3 s -> ~4.6 s hops).
     this.resetWorkers("MCAP worker reset for a different source");
+    this.decodedRecords.clear();
     this.activeSourceKey = sourceKey;
     this.foregroundGeneration += 1;
   }
@@ -540,6 +588,39 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
     lane.transport.rejectAll(reason);
   }
+}
+
+class RetainedDecodedRecordProtocolError extends Error {}
+
+function hydrateSynchronizedWindows(
+  windows: readonly McapPlaybackWorkerSynchronizedWindow[],
+  lease: DecodedRecordLease,
+  store: DecodedRecordStore,
+): readonly McapSynchronizedMessageWindow[] {
+  const hydrate = (
+    message: McapPlaybackWorkerSynchronizedMessage,
+  ): McapDecodedMessage => {
+    try {
+      return isRetainedDecodedMessageReference(message)
+        ? lease.get(message)
+        : store.canonicalize(message);
+    } catch (error) {
+      throw new RetainedDecodedRecordProtocolError(
+        errorMessage(error, "Invalid retained MCAP record reference"),
+      );
+    }
+  };
+
+  return windows.map((window) => ({
+    ...window,
+    messages: window.messages.map(hydrate),
+    messagesByTopic: Object.fromEntries(
+      Object.entries(window.messagesByTopic).map(([topic, messages]) => [
+        topic,
+        messages.map(hydrate),
+      ]),
+    ),
+  }));
 }
 
 function resourcePriorityToWorkerPriority(

@@ -116,7 +116,7 @@ function decodedMessagesFromResult(
   result: unknown,
 ): readonly McapDecodedMessage[] {
   if (isSynchronizedWindow(result)) {
-    return result.messages;
+    return result.messages.filter(isDecodedMessage);
   }
 
   if (Array.isArray(result)) {
