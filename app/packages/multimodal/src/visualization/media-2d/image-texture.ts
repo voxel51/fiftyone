@@ -7,6 +7,7 @@ import * as THREE from "three";
 
 import type {
   EncodedImageVisualization,
+  EncodedVideoVisualization,
   ImageVisualization,
   RawImageVisualization,
 } from "../../ir";
@@ -27,13 +28,14 @@ export async function createImageTexture(
     return createRawImageTexture(frame);
   }
   if (frame.kind === "encoded-video") {
-    const prerequisites = decodeRunway.slice(-MAX_VIDEO_DECODE_PREREQUISITES);
-    for (const prerequisite of prerequisites) {
-      if (prerequisite.kind !== "encoded-video") continue;
-      const handle = await createEncodedVideoTexture(prerequisite, textureKey);
-      handle.dispose();
-    }
-    return createEncodedVideoTexture(frame, textureKey);
+    const prerequisites = decodeRunway
+      .slice(-MAX_VIDEO_DECODE_PREREQUISITES)
+      .filter(
+        (prerequisite): prerequisite is EncodedVideoVisualization =>
+          prerequisite.kind === "encoded-video" &&
+          prerequisite.codec === "h264",
+      );
+    return createEncodedVideoTexture(frame, textureKey, prerequisites);
   }
   return createEncodedImageTexture(frame);
 }

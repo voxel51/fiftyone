@@ -46,6 +46,8 @@ export interface ImageTextureHandle {
   readonly imageWidth: number;
   readonly imageHeight: number;
   readonly dispose: () => void;
+  /** False when the decoded source must be released after its final lease. */
+  readonly retainWhenUnused?: boolean;
   readonly texture: THREE.Texture;
 }
 

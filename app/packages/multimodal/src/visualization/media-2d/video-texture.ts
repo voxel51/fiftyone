@@ -33,6 +33,7 @@ interface VideoFrameLike {
   readonly codedWidth?: number;
   readonly displayHeight?: number;
   readonly displayWidth?: number;
+  readonly timestamp?: number;
   close?: () => void;
 }
 
@@ -61,7 +62,9 @@ interface VideoDecoderConstructor {
 
 interface PendingVideoFrame {
   readonly reject: (error: Error) => void;
-  readonly resolve: (frame: VideoFrameLike) => void;
+  readonly resolve: (frame: VideoFrameLike | undefined) => void;
+  readonly retain: boolean;
+  readonly timestampUs: number;
   readonly timeout: ReturnType<typeof setTimeout>;
 }
 
@@ -74,13 +77,14 @@ let syntheticTimestampUs = 0;
 export async function createEncodedVideoTexture(
   frame: EncodedVideoVisualization,
   textureKey: string | undefined,
+  decodeRunway: readonly EncodedVideoVisualization[] = [],
 ): Promise<ImageTextureHandle> {
   if (frame.codec !== "h264") {
     throw new Error(`Video codec '${frame.codec}' is unsupported`);
   }
 
   const session = videoDecodeSessionForKey(videoSessionKey(textureKey, frame));
-  return session.decode(frame);
+  return session.decode(frame, decodeRunway);
 }
 
 /**
@@ -169,6 +173,7 @@ function videoSessionKey(
 }
 
 class H264VideoDecodeSession {
+  private closed = false;
   private codecString: string | undefined;
   private configuredCodecString: string | undefined;
   private decoder: VideoDecoderLike | null = null;
@@ -176,35 +181,83 @@ class H264VideoDecodeSession {
   private pending: PendingVideoFrame[] = [];
   private pps: Uint8Array | undefined;
   private sps: Uint8Array | undefined;
+  private jobTail: Promise<void> = Promise.resolve();
 
-  async decode(frame: EncodedVideoVisualization): Promise<ImageTextureHandle> {
-    const output = await this.decodeVideoFrame(frame);
+  async decode(
+    frame: EncodedVideoVisualization,
+    decodeRunway: readonly EncodedVideoVisualization[],
+  ): Promise<ImageTextureHandle> {
+    const output = await this.enqueue(() =>
+      this.decodeVideoFrameBatch([...decodeRunway, frame]),
+    );
     return textureFromVideoFrame(output);
   }
 
   async decodeVideoFrame(
     frame: EncodedVideoVisualization,
   ): Promise<VideoFrameLike> {
-    this.rememberParameterSets(frame);
-    const timestampUs = timestampMicros(frame.timestampNs);
+    return this.enqueue(() => this.decodeVideoFrameBatch([frame]));
+  }
+
+  private async decodeVideoFrameBatch(
+    frames: readonly EncodedVideoVisualization[],
+  ): Promise<VideoFrameLike> {
+    const decodable = frames.filter(
+      (frame) => frame.codec === "h264" && frame.h264?.hasFrame,
+    );
+    if (decodable.length === 0) {
+      throw new VideoTextureWaitError("Waiting for H.264 frame");
+    }
+    for (const frame of decodable) {
+      this.rememberParameterSets(frame);
+    }
+    const timestampsUs = decodable.map((frame) =>
+      timestampMicros(frame.timestampNs),
+    );
 
     if (
       this.lastTimestampUs !== undefined &&
-      timestampUs <= this.lastTimestampUs
+      timestampsUs[0] <= this.lastTimestampUs
     ) {
       this.resetDecoder();
     }
-    this.lastTimestampUs = timestampUs;
+    this.lastTimestampUs = timestampsUs[timestampsUs.length - 1];
 
-    if (!frame.h264?.hasFrame) {
-      throw new VideoTextureWaitError("Waiting for H.264 frame");
+    const decoder = await this.ensureDecoder(decodable[0]);
+    const results = await Promise.allSettled(
+      decodable.map((frame, index) =>
+        this.decodeFrame(
+          decoder,
+          frame,
+          timestampsUs[index],
+          index === decodable.length - 1,
+        ),
+      ),
+    );
+    const outputs: Array<VideoFrameLike | undefined> = [];
+    let failure: unknown;
+    for (const result of results) {
+      if (result.status === "rejected") {
+        failure ??= result.reason;
+      } else {
+        outputs.push(result.value);
+      }
     }
-
-    const decoder = await this.ensureDecoder(frame);
-    return this.decodeFrame(decoder, frame, timestampUs);
+    if (failure !== undefined) {
+      for (const output of outputs) {
+        if (output) closeVideoFrame(output);
+      }
+      throw failure;
+    }
+    const output = outputs.at(-1);
+    if (!output) {
+      throw new Error("H.264 target frame produced no output");
+    }
+    return output;
   }
 
   close(): void {
+    this.closed = true;
     this.rejectPending(new Error("Video decoder closed"));
     this.decoder?.close();
     this.decoder = null;
@@ -266,14 +319,28 @@ class H264VideoDecodeSession {
         this.resetDecoder();
       },
       output: (videoFrame) => {
-        const pending = this.pending.shift();
+        const timestampIndex =
+          videoFrame.timestamp === undefined
+            ? -1
+            : this.pending.findIndex(
+                (entry) => entry.timestampUs === videoFrame.timestamp,
+              );
+        const pending =
+          timestampIndex >= 0
+            ? this.pending.splice(timestampIndex, 1)[0]
+            : this.pending.shift();
         if (!pending) {
           closeVideoFrame(videoFrame);
           return;
         }
 
         clearTimeout(pending.timeout);
-        pending.resolve(videoFrame);
+        if (pending.retain) {
+          pending.resolve(videoFrame);
+        } else {
+          closeVideoFrame(videoFrame);
+          pending.resolve(undefined);
+        }
       },
     });
     this.decoder.configure(config);
@@ -284,7 +351,8 @@ class H264VideoDecodeSession {
     decoder: VideoDecoderLike,
     frame: EncodedVideoVisualization,
     timestampUs: number,
-  ): Promise<VideoFrameLike> {
+    retain: boolean,
+  ): Promise<VideoFrameLike | undefined> {
     const Chunk = encodedVideoChunkConstructor();
     if (!Chunk) {
       throw new Error("WebCodecs encoded video chunks are unavailable");
@@ -301,10 +369,12 @@ class H264VideoDecodeSession {
       type: frame.keyframe ? "key" : "delta",
     });
 
-    return new Promise<VideoFrameLike>((resolve, reject) => {
+    return new Promise<VideoFrameLike | undefined>((resolve, reject) => {
       const pending: PendingVideoFrame = {
         reject,
+        retain,
         resolve,
+        timestampUs,
         timeout: setTimeout(() => {
           this.pending = this.pending.filter((entry) => entry !== pending);
           this.resetDecoder();
@@ -322,6 +392,20 @@ class H264VideoDecodeSession {
         reject(asError(error));
       }
     });
+  }
+
+  private enqueue<T>(job: () => Promise<T>): Promise<T> {
+    const result = this.jobTail.then(() => {
+      if (this.closed) {
+        throw new Error("Video decoder closed");
+      }
+      return job();
+    });
+    this.jobTail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
   }
 
   private rememberParameterSets(frame: EncodedVideoVisualization): void {
@@ -374,6 +458,7 @@ function textureFromVideoFrame(videoFrame: VideoFrameLike): ImageTextureHandle {
     },
     imageHeight: height,
     imageWidth: width,
+    retainWhenUnused: false,
     texture,
   };
 }

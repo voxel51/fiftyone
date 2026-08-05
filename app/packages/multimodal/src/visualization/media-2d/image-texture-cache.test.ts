@@ -1,7 +1,19 @@
 import * as THREE from "three";
-import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mock,
+} from "vitest";
 
 import type { ImageTextureHandle } from "./Base2dScene";
+import {
+  setVisualizationCostObserver,
+  type VisualizationCostObservation,
+} from "../render-cost-observer";
 import {
   acquireImageTexture,
   IMAGE_TEXTURE_RETENTION_BYTE_CAP,
@@ -13,7 +25,12 @@ import {
 } from "./image-texture-cache";
 
 beforeEach(() => {
+  setVisualizationCostObserver(null);
   resetImageTextureCacheForTests();
+});
+
+afterEach(() => {
+  setVisualizationCostObserver(null);
 });
 
 describe("imageTextureCacheKey", () => {
@@ -80,6 +97,71 @@ describe("acquireImageTexture (shared keys)", () => {
     second.release();
   });
 
+  it("releases retention-ineligible decoded sources after their final lease", async () => {
+    const observations: VisualizationCostObservation[] = [];
+    setVisualizationCostObserver((observation) =>
+      observations.push(observation),
+    );
+    const decoded = makeHandle({ height: 480, width: 640 });
+    const handle = { ...decoded.handle, retainWhenUnused: false };
+    const lease = acquireImageTexture("video", async () => handle);
+    await lease.promise;
+
+    lease.release();
+
+    expect(decoded.dispose).toHaveBeenCalledTimes(1);
+    expect(imageTextureCacheStats()).toMatchObject({
+      entryCount: 0,
+      retainedCount: 0,
+      retainedDecodedBytes: 0,
+    });
+    expect(
+      observations.find(
+        (observation) =>
+          observation.operation === "image-texture-retention-ineligible",
+      ),
+    ).toMatchObject({ retainedDecodedBytesDelta: 0 });
+  });
+
+  it("reports stable retained-byte deltas for add, hit, and flush", async () => {
+    const observations: VisualizationCostObservation[] = [];
+    setVisualizationCostObserver((observation) =>
+      observations.push(observation),
+    );
+    const { handle } = makeHandle({ height: 10, width: 20 });
+    const decode = vi.fn(async () => handle);
+
+    const first = acquireImageTexture("recording\n/topic\n1", decode);
+    await first.promise;
+    first.release();
+    const second = acquireImageTexture("recording\n/topic\n1", decode);
+    await second.promise;
+    second.release();
+    releaseRetainedImageTextures();
+
+    const retention = observations.filter((observation) =>
+      observation.operation.startsWith("image-texture-retention-"),
+    );
+    expect(
+      retention.map((observation) => [
+        observation.operation,
+        observation.retainedDecodedBytesDelta,
+      ]),
+    ).toEqual([
+      ["image-texture-retention-add", 800],
+      ["image-texture-retention-hit", -800],
+      ["image-texture-retention-add", 800],
+      ["image-texture-retention-flush", -800],
+    ]);
+    expect(
+      retention.every(
+        (observation) =>
+          observation.sourceHint === "recording\n/topic\n1" &&
+          observation.measurementStatus === "derived",
+      ),
+    ).toBe(true);
+  });
+
   it("disposes an entry exactly once when it ages out of retention", async () => {
     const { dispose: firstDispose, handle: firstHandle } = makeHandle();
     const first = acquireImageTexture("k-0", async () => firstHandle);
@@ -108,6 +190,10 @@ describe("acquireImageTexture (shared keys)", () => {
   });
 
   it("evicts the oldest entries when decoded bytes reach the byte cap", async () => {
+    const observations: VisualizationCostObservation[] = [];
+    setVisualizationCostObserver((observation) =>
+      observations.push(observation),
+    );
     const bytesPerFrame = 2048 * 1024 * 4;
     expect(IMAGE_TEXTURE_RETENTION_BYTE_CAP / bytesPerFrame).toBe(16);
 
@@ -132,6 +218,28 @@ describe("acquireImageTexture (shared keys)", () => {
       retainedCount: 16,
       retainedDecodedBytes: IMAGE_TEXTURE_RETENTION_BYTE_CAP,
     });
+    const deltas = observations
+      .filter((observation) =>
+        observation.operation.startsWith("image-texture-retention-"),
+      )
+      .map((observation) => observation.retainedDecodedBytesDelta ?? 0);
+    let reconstructedBytes = 0;
+    for (const delta of deltas) {
+      reconstructedBytes += delta;
+      expect(reconstructedBytes).toBeGreaterThanOrEqual(0);
+      expect(reconstructedBytes).toBeLessThanOrEqual(
+        IMAGE_TEXTURE_RETENTION_BYTE_CAP,
+      );
+    }
+    expect(reconstructedBytes).toBe(IMAGE_TEXTURE_RETENTION_BYTE_CAP);
+    expect(
+      observations
+        .filter((observation) =>
+          observation.operation.startsWith("image-texture-retention-"),
+        )
+        .slice(-2)
+        .map((observation) => observation.operation),
+    ).toEqual(["image-texture-retention-evict", "image-texture-retention-add"]);
   });
 
   it("does not retain one decoded image larger than the byte cap", async () => {
@@ -190,6 +298,54 @@ describe("acquireImageTexture (shared keys)", () => {
 
     releaseRetainedImageTextures();
     expect(cached.dispose).toHaveBeenCalledTimes(1);
+    expect(imageTextureCacheStats()).toMatchObject({
+      entryCount: 0,
+      retainedCount: 0,
+      retainedDecodedBytes: 0,
+    });
+  });
+
+  it("does not re-retain a live frame released after its session closes", async () => {
+    const observations: VisualizationCostObservation[] = [];
+    setVisualizationCostObserver((observation) =>
+      observations.push(observation),
+    );
+    const active = makeHandle({ height: 20, width: 10 });
+    const lease = acquireImageTexture(
+      "active-session",
+      async () => active.handle,
+    );
+    await lease.promise;
+
+    releaseRetainedImageTextures();
+    expect(active.dispose).not.toHaveBeenCalled();
+    lease.release();
+
+    expect(active.dispose).toHaveBeenCalledTimes(1);
+    expect(imageTextureCacheStats()).toMatchObject({
+      entryCount: 0,
+      retainedCount: 0,
+      retainedDecodedBytes: 0,
+    });
+    expect(
+      observations.find(
+        (observation) =>
+          observation.operation === "image-texture-retention-session-drop",
+      ),
+    ).toMatchObject({ retainedDecodedBytesDelta: 0 });
+  });
+
+  it("does not retain an in-flight frame that settles after its session closes", async () => {
+    const pending = deferredDecode();
+    const lease = acquireImageTexture("pending-session", pending.decode);
+
+    releaseRetainedImageTextures();
+    lease.release();
+    const decoded = makeHandle({ height: 20, width: 10 });
+    pending.resolve(decoded.handle);
+    await lease.promise;
+
+    expect(decoded.dispose).toHaveBeenCalledTimes(1);
     expect(imageTextureCacheStats()).toMatchObject({
       entryCount: 0,
       retainedCount: 0,
@@ -379,3 +535,4 @@ function deferredDecode() {
   });
   return { decode: vi.fn(() => promise), reject, resolve };
 }
+

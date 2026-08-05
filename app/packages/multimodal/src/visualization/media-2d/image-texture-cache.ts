@@ -34,6 +34,10 @@
 import * as THREE from "three";
 
 import type { ImageTextureHandle } from "./Base2dScene";
+import {
+  isVisualizationCostObserved,
+  recordVisualizationCost,
+} from "../render-cost-observer";
 
 type TextureWithNormalized = THREE.Texture & {
   normalized?: boolean;
@@ -78,6 +82,7 @@ interface ImageTextureCacheEntry {
   readonly key: string;
   promise: Promise<ImageTextureHandle>;
   refCount: number;
+  readonly retentionGeneration: number;
   state: "pending" | "rejected" | "resolved";
 }
 
@@ -88,6 +93,7 @@ const entries = new Map<string, ImageTextureCacheEntry>();
 const retained = new Map<string, ImageTextureCacheEntry>();
 let decodeCount = 0;
 let retainedDecodedBytes = 0;
+let retentionGeneration = 0;
 
 /**
  * Canonical shared key for one camera frame:
@@ -124,7 +130,7 @@ export function acquireImageTexture(
     entries.set(key, entry);
   } else if (entry.refCount === 0) {
     // Re-acquired from retention — leased entries live outside the LRU.
-    removeRetainedEntry(entry);
+    removeRetainedEntry(entry, "image-texture-retention-hit");
   }
   entry.refCount += 1;
 
@@ -132,7 +138,7 @@ export function acquireImageTexture(
   let leasedHandle: ImageTextureHandle | null = null;
   let released = false;
   const promise = entry.promise.then((handle) => {
-    const leaseHandle = createLeasedImageTextureHandle(handle);
+    const leaseHandle = createLeasedImageTextureHandle(handle, key);
     if (released) {
       leaseHandle.dispose();
     } else {
@@ -164,18 +170,20 @@ export function imageTextureCacheStats(): ImageTextureCacheStats {
 }
 
 /**
- * Disposes and forgets every zero-ref retained entry. Live leases are
- * untouched. Call at a session boundary (e.g. the episode modal closing) so
- * decoded frames from a finished review session don't stay resident until
- * LRU churn from the next one evicts them.
+ * Disposes and forgets every zero-ref retained entry and invalidates future
+ * retention by currently live/in-flight entries. Live leases remain usable,
+ * but their eventual release disposes instead of re-entering the cache. Call
+ * at a session boundary (e.g. the episode modal closing) so React parent/child
+ * cleanup order cannot leave the final visible frame retained.
  */
 export function releaseRetainedImageTextures(): void {
+  retentionGeneration += 1;
   while (retained.size > 0) {
     const oldest = retained.values().next().value as
       | ImageTextureCacheEntry
       | undefined;
     if (!oldest) break;
-    evictRetainedEntry(oldest);
+    evictRetainedEntry(oldest, "image-texture-retention-flush");
   }
 }
 
@@ -194,6 +202,7 @@ export function resetImageTextureCacheForTests(): void {
   retained.clear();
   decodeCount = 0;
   retainedDecodedBytes = 0;
+  retentionGeneration = 0;
 }
 
 function createEntry(
@@ -206,6 +215,7 @@ function createEntry(
     key,
     promise: undefined as unknown as Promise<ImageTextureHandle>,
     refCount: 0,
+    retentionGeneration,
     state: "pending",
   };
 
@@ -254,6 +264,32 @@ function releaseEntry(entry: ImageTextureCacheEntry): void {
 }
 
 function retainEntry(entry: ImageTextureCacheEntry): void {
+  if (entry.retentionGeneration !== retentionGeneration) {
+    if (entries.get(entry.key) === entry) {
+      entries.delete(entry.key);
+    }
+    entry.handle?.dispose();
+    entry.handle = null;
+    observeImageTextureRetention(
+      entry,
+      "image-texture-retention-session-drop",
+      0,
+    );
+    return;
+  }
+  if (entry.handle?.retainWhenUnused === false) {
+    if (entries.get(entry.key) === entry) {
+      entries.delete(entry.key);
+    }
+    entry.handle.dispose();
+    entry.handle = null;
+    observeImageTextureRetention(
+      entry,
+      "image-texture-retention-ineligible",
+      0,
+    );
+    return;
+  }
   if (entry.decodedBytes > IMAGE_TEXTURE_RETENTION_BYTE_CAP) {
     // An entry that cannot fit by itself must not flush useful smaller frames
     // before being evicted too. retainEntry only runs after the last lease
@@ -263,9 +299,11 @@ function retainEntry(entry: ImageTextureCacheEntry): void {
     }
     entry.handle?.dispose();
     entry.handle = null;
+    observeImageTextureRetention(entry, "image-texture-retention-oversize", 0);
     return;
   }
-  if (retained.has(entry.key)) {
+  const addedToRetention = !retained.has(entry.key);
+  if (!addedToRetention) {
     // Refresh an explicitly re-retained entry to the newest LRU position
     // without double-counting its bytes.
     retained.delete(entry.key);
@@ -273,6 +311,7 @@ function retainEntry(entry: ImageTextureCacheEntry): void {
     retainedDecodedBytes += entry.decodedBytes;
   }
   retained.set(entry.key, entry);
+  const evicted: ImageTextureCacheEntry[] = [];
   while (
     retained.size > IMAGE_TEXTURE_RETENTION_CAP ||
     retainedDecodedBytes > IMAGE_TEXTURE_RETENTION_BYTE_CAP
@@ -281,23 +320,78 @@ function retainEntry(entry: ImageTextureCacheEntry): void {
       | ImageTextureCacheEntry
       | undefined;
     if (!oldest) break;
-    evictRetainedEntry(oldest);
+    if (evictRetainedEntry(oldest)) {
+      evicted.push(oldest);
+    }
+  }
+  // Emit this synchronous transaction in stable-state order: removals first,
+  // then the new retained frame. A reconstructed event curve therefore shows
+  // the bounded post-eviction cache, not an unobservable add-before-evict
+  // implementation detail.
+  for (const evictedEntry of evicted) {
+    observeImageTextureRetention(
+      evictedEntry,
+      "image-texture-retention-evict",
+      -evictedEntry.decodedBytes,
+    );
+  }
+  if (addedToRetention && retained.has(entry.key)) {
+    observeImageTextureRetention(
+      entry,
+      "image-texture-retention-add",
+      entry.decodedBytes,
+    );
   }
 }
 
-function removeRetainedEntry(entry: ImageTextureCacheEntry): boolean {
+function removeRetainedEntry(
+  entry: ImageTextureCacheEntry,
+  operation?: string,
+): boolean {
   if (!retained.delete(entry.key)) return false;
   retainedDecodedBytes -= entry.decodedBytes;
+  if (operation) {
+    observeImageTextureRetention(entry, operation, -entry.decodedBytes);
+  }
   return true;
 }
 
-function evictRetainedEntry(entry: ImageTextureCacheEntry): void {
-  if (!removeRetainedEntry(entry)) return;
+function evictRetainedEntry(
+  entry: ImageTextureCacheEntry,
+  operation?: string,
+): boolean {
+  if (!removeRetainedEntry(entry)) return false;
   if (entries.get(entry.key) === entry) {
     entries.delete(entry.key);
   }
   entry.handle?.dispose();
   entry.handle = null;
+  if (operation) {
+    observeImageTextureRetention(entry, operation, -entry.decodedBytes);
+  }
+  return true;
+}
+
+function observeImageTextureRetention(
+  entry: ImageTextureCacheEntry,
+  operation: string,
+  retainedDecodedBytesDelta: number,
+): void {
+  if (!isVisualizationCostObserved()) return;
+  recordVisualizationCost({
+    count: 1,
+    measurementStatus: "derived",
+    operation,
+    retainedDecodedBytesDelta,
+    sourceHint: entry.key,
+    sourceHintKind: "image-texture-key",
+    stage:
+      retainedDecodedBytesDelta > 0
+        ? "resource-allocate"
+        : retainedDecodedBytesDelta < 0
+          ? "resource-release"
+          : "resource-update",
+  });
 }
 
 function decodedImageBytes(handle: ImageTextureHandle): number {
@@ -316,17 +410,21 @@ function decodedImageBytes(handle: ImageTextureHandle): number {
 
 function createLeasedImageTextureHandle(
   handle: ImageTextureHandle,
+  sourceHint: string,
 ): ImageTextureHandle {
   const template = handle.texture;
   if (template instanceof THREE.DataTexture) {
     const texture = cloneDataTexture(template);
-    return {
-      aspectRatio: handle.aspectRatio,
-      imageHeight: handle.imageHeight,
-      imageWidth: handle.imageWidth,
-      dispose: () => texture.dispose(),
-      texture,
-    };
+    return observeLeasedImageTexture(
+      {
+        aspectRatio: handle.aspectRatio,
+        imageHeight: handle.imageHeight,
+        imageWidth: handle.imageWidth,
+        dispose: () => texture.dispose(),
+        texture,
+      },
+      sourceHint,
+    );
   }
 
   // Three.Texture.clone() shares its Source, which can share renderer
@@ -360,12 +458,48 @@ function createLeasedImageTextureHandle(
   texture.flipY = template.flipY;
   texture.unpackAlignment = template.unpackAlignment;
   texture.needsUpdate = true;
+  return observeLeasedImageTexture(
+    {
+      aspectRatio: handle.aspectRatio,
+      imageHeight: handle.imageHeight,
+      imageWidth: handle.imageWidth,
+      dispose: () => texture.dispose(),
+      texture,
+    },
+    sourceHint,
+  );
+}
+
+function observeLeasedImageTexture(
+  handle: ImageTextureHandle,
+  sourceHint: string,
+): ImageTextureHandle {
+  if (!isVisualizationCostObserved()) return handle;
+  const bytes = handle.imageWidth * handle.imageHeight * 4;
+  recordVisualizationCost({
+    declaredGpuBytesDelta: bytes,
+    measurementStatus: "derived",
+    operation: "image-texture-lease",
+    sourceHint,
+    sourceHintKind: "image-texture-key",
+    stage: "resource-allocate",
+  });
+  let disposed = false;
   return {
-    aspectRatio: handle.aspectRatio,
-    imageHeight: handle.imageHeight,
-    imageWidth: handle.imageWidth,
-    dispose: () => texture.dispose(),
-    texture,
+    ...handle,
+    dispose: () => {
+      if (disposed) return;
+      disposed = true;
+      handle.dispose();
+      recordVisualizationCost({
+        declaredGpuBytesDelta: -bytes,
+        measurementStatus: "derived",
+        operation: "image-texture-lease",
+        sourceHint,
+        sourceHintKind: "image-texture-key",
+        stage: "resource-release",
+      });
+    },
   };
 }
 
@@ -437,3 +571,4 @@ function acquirePrivateTexture(
     },
   };
 }
+
