@@ -108,7 +108,7 @@ describe("indexed MCAP message reader", () => {
     expect(harness.decompress).toHaveBeenCalledTimes(2);
   });
 
-  it("does not admit bytes when a read discovers a new source identity", async () => {
+  it("admits discovered bytes only under the new source identity", async () => {
     const fixture = buildChunkFixture({
       chunkStartOffset: 1_024n,
       marker: 1,
@@ -134,8 +134,8 @@ describe("indexed MCAP message reader", () => {
     await harness.read({ entries: fixture.entries });
     await harness.read({ entries: fixture.entries });
 
-    expect(harness.readContained).toHaveBeenCalledTimes(2);
-    expect(harness.decompress).toHaveBeenCalledTimes(2);
+    expect(harness.readContained).toHaveBeenCalledTimes(1);
+    expect(harness.decompress).toHaveBeenCalledTimes(1);
   });
 
   it("evicts within budget and never retains an oversized chunk", async () => {

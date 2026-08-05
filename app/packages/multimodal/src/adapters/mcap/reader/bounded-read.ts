@@ -3,11 +3,18 @@ import {
   McapStreamReader,
   type McapTypes,
 } from "@mcap/core";
-import { LRUCache } from "lru-cache";
 import type { ByteRange } from "../../../ir";
 import type { ReadWorkBudget, ReadWorkUsage } from "../../../ports";
 import { monotonicNowMs } from "../../../utils/monotonic-time";
 import { ByteClientReadable } from "./byte-readable";
+import {
+  decompressMcapChunkRecord,
+  mcapDecompressedChunkKeyForIndex,
+} from "./chunk-records";
+import {
+  createMcapDecompressedChunkCache,
+  type McapDecompressedChunkCache,
+} from "./decompressed-chunk-cache";
 import {
   channelIdsForTopics,
   collectChunkMessageIndexReadRanges,
@@ -21,15 +28,10 @@ import type {
   McapReadContinuation,
 } from "./types";
 
-const DEFAULT_BOUNDED_DECOMPRESSED_CACHE_BYTES = 64 * 1024 * 1024;
 const DECODE_CANCELLATION_YIELD_INTERVAL = 64;
 
 type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
 type McapMessage = McapTypes.TypedMcapRecords["Message"];
-
-interface CachedChunkRecords {
-  readonly messages: readonly McapMessage[];
-}
 
 interface OrderedMessage {
   readonly chunkStartOffset: bigint;
@@ -45,6 +47,7 @@ interface ChunkGroup {
 
 /** Dependencies for one source-bound bounded MCAP executor. */
 export interface CreateMcapBoundedReaderOptions {
+  readonly decompressedChunkCache?: McapDecompressedChunkCache;
   readonly decompressHandlers: McapTypes.DecompressHandlers;
   readonly nowMs?: () => number;
   readonly readable: ByteClientReadable;
@@ -57,6 +60,7 @@ export interface CreateMcapBoundedReaderOptions {
  * before any chunk body is fetched or decompressed.
  */
 export function createMcapBoundedReader({
+  decompressedChunkCache = createMcapDecompressedChunkCache(),
   decompressHandlers,
   nowMs = monotonicNowMs,
   readable,
@@ -65,25 +69,14 @@ export function createMcapBoundedReader({
 }: CreateMcapBoundedReaderOptions): (
   request: McapBoundedMessageReadRequest,
 ) => Promise<McapBoundedMessageReadResult> {
-  const decompressedChunks = new LRUCache<string, CachedChunkRecords>({
-    maxSize: DEFAULT_BOUNDED_DECOMPRESSED_CACHE_BYTES,
-    sizeCalculation: (_value, key) => {
-      const size = Number(key.slice(key.lastIndexOf(":") + 1));
-      return Number.isSafeInteger(size) && size > 0 ? size : 1;
-    },
-  });
   const channelPreamble = serializeChannelPreamble(reader.channelsById);
-  let decompressedCacheSourceKey: string | undefined;
 
   return async (request) => {
     validateRequest(request);
     const startedAtMs = nowMs();
     const activeSourceKey =
       typeof sourceKey === "function" ? sourceKey() : sourceKey;
-    if (decompressedCacheSourceKey !== activeSourceKey) {
-      decompressedChunks.clear();
-      decompressedCacheSourceKey = activeSourceKey;
-    }
+    decompressedChunkCache.activateSource(activeSourceKey);
     const topics =
       request.topics === undefined
         ? undefined
@@ -240,47 +233,57 @@ export function createMcapBoundedReader({
             chunk.uncompressedSize,
             "MCAP chunk uncompressed bytes",
           );
-          const cacheKey = [
-            chunk.chunkStartOffset.toString(),
-            chunk.uncompressedSize.toString(),
-          ].join(":");
-          let cached = decompressedChunks.get(cacheKey);
-          if (cached) {
-            if (chunk.compression.length > 0) {
-              decompressionCacheHits += 1;
-            }
-          } else {
+          let sourceKeyForChunk =
+            typeof sourceKey === "function" ? sourceKey() : sourceKey;
+          let decompressed = decompressedChunkCache.get(
+            mcapDecompressedChunkKeyForIndex(sourceKeyForChunk, chunk),
+            "bounded-reader",
+          );
+          if (!decompressed) {
             const body = await readable.readContained(
               chunk.chunkStartOffset,
               chunk.chunkLength,
               { signal: request.signal },
             );
             transferredBytes += body.transferredBytes;
-            cached = {
-              messages: parseChunkMessages({
-                bytes: body.bytes,
-                channelPreamble,
-                decompressHandlers,
-              }),
-            };
-            decompressedChunks.set(cacheKey, cached);
+            sourceKeyForChunk =
+              typeof sourceKey === "function" ? sourceKey() : sourceKey;
+            decompressed = decompressedChunkCache.getOrLoad(
+              mcapDecompressedChunkKeyForIndex(sourceKeyForChunk, chunk),
+              "bounded-reader",
+              () =>
+                decompressMcapChunkRecord(
+                  body.bytes,
+                  chunk,
+                  decompressHandlers,
+                ),
+            );
             if (chunk.compression.length > 0) {
-              decompressedBytes += safeBigIntToNumber(
-                chunk.uncompressedSize,
-                "MCAP decompressed bytes",
-              );
+              if (decompressed.cacheHit) {
+                decompressionCacheHits += 1;
+              } else {
+                decompressedBytes += safeBigIntToNumber(
+                  chunk.uncompressedSize,
+                  "MCAP decompressed bytes",
+                );
+              }
             }
 
-            // Decompression and container parsing are synchronous in
-            // @mcap/core. One precharged chunk is therefore the atomic CPU
-            // unit; yield immediately afterward so a worker cancel message can
-            // arrive before payload filtering or another chunk begins.
+            // One precharged decompression is the atomic CPU unit; yield so a
+            // worker cancel message can arrive before record parsing begins.
             await yieldToCancellation();
             throwIfAborted(request.signal);
+          } else if (chunk.compression.length > 0) {
+            decompressionCacheHits += 1;
           }
 
+          const messages = parseChunkMessages({
+            bytes: decompressed.bytes,
+            channelPreamble,
+          });
+
           let recordOrder = 0;
-          for (const message of cached.messages) {
+          for (const message of messages) {
             if (
               recordOrder > 0 &&
               recordOrder % DECODE_CANCELLATION_YIELD_INTERVAL === 0
@@ -504,14 +507,11 @@ async function countSelectedIndexedMessages({
 function parseChunkMessages({
   bytes,
   channelPreamble,
-  decompressHandlers,
 }: {
   readonly bytes: Uint8Array;
   readonly channelPreamble: Uint8Array;
-  readonly decompressHandlers: McapTypes.DecompressHandlers;
 }): readonly McapMessage[] {
   const stream = new McapStreamReader({
-    decompressHandlers,
     noMagicPrefix: true,
     validateCrcs: true,
   });
@@ -826,3 +826,4 @@ function assertUsageWithinGrant(
     throw new Error("MCAP bounded executor exceeded an admitted hard budget");
   }
 }
+

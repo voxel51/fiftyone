@@ -192,6 +192,9 @@ export interface McapBoundedMessageReadResult {
  * Indexed MCAP reader surface used by this adapter.
  */
 export interface McapIndexedReaderLike {
+  /** Releases all source-bound caches owned by this reader. */
+  dispose?(): void;
+
   /**
    * Summary channels keyed by numeric channel id.
    */

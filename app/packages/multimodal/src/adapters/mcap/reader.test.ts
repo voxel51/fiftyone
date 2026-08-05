@@ -418,6 +418,33 @@ describe("MCAP indexed message times", () => {
     expect(readerFactory).toHaveBeenCalledTimes(1);
   });
 
+  it("disposes resolved and in-flight readers at store teardown", async () => {
+    const dispose = vi.fn();
+    let resolveReader!: (reader: McapIndexedReaderLike) => void;
+    const pendingReader = new Promise<McapIndexedReaderLike>((resolve) => {
+      resolveReader = resolve;
+    });
+    const readerStore = createMcapReaderStore({
+      byteClient: { readBytes: vi.fn() },
+      readerFactory: vi.fn(() => pendingReader),
+    });
+    const source = createSource({
+      sourceId: "source:dispose",
+      url: "bytes://dispose",
+    });
+    const read = readerStore.get(source);
+
+    readerStore.dispose();
+    resolveReader({
+      ...createReader({ chunkIndexes: [] }),
+      dispose,
+    });
+    await read;
+
+    expect(dispose).toHaveBeenCalledOnce();
+    await expect(readerStore.get(source)).rejects.toThrow("disposed");
+  });
+
   it("uses descriptor size without waiting on byte clients", async () => {
     // Stat never settles: size() must resolve from the descriptor anyway,
     // proving validator discovery stays off the critical path.
@@ -642,6 +669,44 @@ describe("MCAP indexed message times", () => {
 
     expect(second).toBe(first);
     expect(decompress).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves sliced read buffers to stable source chunks", async () => {
+    const backing = new Uint8Array(96);
+    const readable = new ByteClientReadable(
+      {
+        etag: '"version-1"',
+        sizeBytes: "1024",
+        sourceId: "source:1",
+        url: "mcap-source://sample",
+      },
+      {
+        readBytes: async (request) => ({
+          bytes: backing.subarray(16, 80),
+          range: request.range,
+          source: request.source,
+        }),
+      },
+    );
+    readable.setChunkIndexes([
+      createChunkIndex({
+        chunkLength: 64n,
+        chunkStartOffset: 128n,
+        compression: "zstd",
+        uncompressedSize: 256n,
+      }),
+    ]);
+
+    const bytes = await readable.read(128n, 64n);
+
+    const identity = readable.chunkIdentityForBytes(bytes.subarray(8, 56));
+    expect(identity).toMatchObject({
+      chunkLength: 64n,
+      chunkStartOffset: 128n,
+      compression: "zstd",
+      uncompressedSize: 256n,
+    });
+    expect(identity?.sourceKey).toContain("version-1");
   });
 
   it("logs debug chunk reads with chunk ids and byte counts", async () => {
@@ -898,3 +963,4 @@ function createChannel(
     type: "Channel",
   };
 }
+
