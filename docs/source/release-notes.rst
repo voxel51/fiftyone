@@ -3,6 +3,27 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.23.1
+--------------------------
+*Released August 5, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.20.1 <release-notes-v1.20.1>`, plus:
+
+- Fixed a bug that prevented users with the Labeler role from submitting
+  annotation tasks
+- Fixed an error when deleting brain runs from the Embeddings panel
+
+.. _release-notes-v1.20.1:
+
+FiftyOne 1.20.1
+---------------
+*Released August 5, 2026*
+
+App
+^^^
+- Fixed a crash that occurred when opening the Embeddings panel
+  `#8181 <https://github.com/voxel51/fiftyone/pull/8181>`_
+
 FiftyOne Enterprise 2.23.0
 --------------------------
 *Released July 31, 2026*
