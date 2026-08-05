@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 // `hooks.ts` pulls in a heavy dependency chain (`@fiftyone/annotation`,
