@@ -843,6 +843,9 @@ class McapEpisodeSession implements EpisodeSession {
           absoluteBudget,
           absoluteMaxChunks: this.boundedPolicy.maxChunksPerGrant,
           activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          ...(request.admissionEndNs !== undefined
+            ? { admissionEndNs: request.admissionEndNs }
+            : {}),
           budget: reservation.budget,
           continuation: request.continuation,
           endTimeNs: request.window.endNs,
@@ -880,6 +883,9 @@ class McapEpisodeSession implements EpisodeSession {
             windows,
           ]),
         ),
+        ...(result.resumeAtNs !== undefined
+          ? { resumeAtNs: result.resumeAtNs }
+          : {}),
         stopReason: result.stopReason,
         usage: result.usage,
       };

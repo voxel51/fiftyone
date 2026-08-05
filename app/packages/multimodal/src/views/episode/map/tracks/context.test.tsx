@@ -1,12 +1,14 @@
-import { isPlayingAtom } from "@fiftyone/playback/runtime";
+import { isPlayingAtom, playheadAtom } from "@fiftyone/playback/runtime";
 import { PlaybackStoreContext } from "@fiftyone/playback/runtime";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { createStore } from "jotai";
+import { useEffect, useMemo } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ByteSourceDescriptor } from "../../../../query/bytes";
 import type { SceneSource } from "../../../../scene-inventory";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import type { DecodedFrame } from "../../../../ir";
+import { createTimelineIndex } from "../../../../runtime";
 import type {
   BudgetedReadJob,
   BudgetedReadResult,
@@ -19,6 +21,11 @@ import {
   useLocationTracksContext,
 } from "./context";
 import { setNetworkHealth } from "../../playback/network-health";
+import {
+  DataStreamProvider,
+  type DataStream,
+  useSetDataStream,
+} from "../../playback/data-stream-context";
 
 afterEach(() => {
   cleanup();
@@ -163,6 +170,319 @@ describe("LocationTracksBridge", () => {
     expect(session.read).not.toHaveBeenCalled();
   });
 
+  it("batches visible streams, reveals only the playhead horizon, and reuses forward progress on backward seeks", async () => {
+    const source = createSource("drive");
+    const session = createSession();
+    const store = createStore();
+    const firstContinuation = {};
+    const secondContinuation = {};
+    const read = vi
+      .fn<BudgetedReadJob["read"]>()
+      .mockResolvedValueOnce(
+        boundedResult({
+          continuation: firstContinuation,
+          frames: [
+            locationMessage(1_000_000_000n, 37, -122, 0, "/gps-a"),
+            locationMessage(2_000_000_000n, 38, -121, 0, "/gps-a"),
+            locationMessage(1_200_000_000n, 39, -120, 0, "/gps-b"),
+          ],
+          resumeAtNs: 3_000_000_000n,
+          stopReason: "horizon-reached",
+        }),
+      )
+      .mockResolvedValueOnce(
+        boundedResult({
+          continuation: secondContinuation,
+          frames: [
+            locationMessage(3_000_000_000n, 40, -119, 0, "/gps-a"),
+            locationMessage(3_000_000_000n, 41, -118, 0, "/gps-b"),
+          ],
+          resumeAtNs: 5_000_000_000n,
+          stopReason: "horizon-reached",
+        }),
+      );
+    const budgetAccount = {
+      createJob: () => ({ read }),
+    } as unknown as SourceReadBudgetAccount;
+
+    render(
+      <Harness
+        budgetAccount={budgetAccount}
+        session={session}
+        locationSources={[locationSource("/gps-a"), locationSource("/gps-b")]}
+        playheadSec={1.5}
+        source={source}
+        store={store}
+        streams={["/gps-a", "/gps-b"]}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps-a:ready:1:1:full|/gps-b:ready:1:1:full",
+      );
+    });
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(read.mock.calls[0]?.[0]).toMatchObject({
+      admissionEndNs: 1_500_000_000n,
+      streams: ["/gps-a", "/gps-b"],
+      window: session.manifest.timeRange,
+    });
+
+    act(() => store.set(playheadAtom, 3.5));
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps-a:ready:3:1:full|/gps-b:ready:2:1:full",
+      );
+    });
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(read.mock.calls[1]?.[0]).toMatchObject({
+      admissionEndNs: 3_500_000_000n,
+      continuation: firstContinuation,
+      streams: ["/gps-a", "/gps-b"],
+      window: session.manifest.timeRange,
+    });
+
+    act(() => store.set(playheadAtom, 1.5));
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps-a:ready:1:1:full|/gps-b:ready:1:1:full",
+      );
+    });
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
+  it("retains admitted route data across map close and reopen", async () => {
+    const source = createSource("drive");
+    const session = createSession();
+    const store = createStore();
+    const read = vi.fn<BudgetedReadJob["read"]>().mockResolvedValue(
+      boundedResult({
+        continuation: {},
+        frames: [locationMessage(1_000_000_000n, 37, -122, 0)],
+        resumeAtNs: 3_000_000_000n,
+        stopReason: "horizon-reached",
+      }),
+    );
+    const budgetAccount = {
+      createJob: () => ({ read }),
+    } as unknown as SourceReadBudgetAccount;
+    const view = render(
+      <Harness
+        budgetAccount={budgetAccount}
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        playheadSec={1.5}
+        source={source}
+        store={store}
+        streams={["/gps"]}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:ready:1:1:full",
+      );
+    });
+    expect(read).toHaveBeenCalledTimes(1);
+
+    view.rerender(
+      <Harness
+        budgetAccount={budgetAccount}
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        playheadSec={1.5}
+        source={source}
+        store={store}
+        streams={[]}
+      />,
+    );
+    view.rerender(
+      <Harness
+        budgetAccount={budgetAccount}
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        playheadSec={1.5}
+        source={source}
+        store={store}
+        streams={["/gps"]}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:ready:1:1:full",
+      );
+    });
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets an admitted grant finish when the playhead seeks backward", async () => {
+    const source = createSource("drive");
+    const session = createSession();
+    const store = createStore();
+    let activeSignal: AbortSignal | undefined;
+    const read = vi.fn<BudgetedReadJob["read"]>(
+      (request) =>
+        new Promise<BudgetedReadResult>((_resolve, reject) => {
+          activeSignal = request.signal;
+          request.signal?.addEventListener("abort", () => {
+            const error = new Error("aborted");
+            error.name = "AbortError";
+            reject(error);
+          });
+        }),
+    );
+    const budgetAccount = {
+      createJob: () => ({ read }),
+    } as unknown as SourceReadBudgetAccount;
+    const view = render(
+      <Harness
+        budgetAccount={budgetAccount}
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        playheadSec={5}
+        source={source}
+        store={store}
+      />,
+    );
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
+
+    act(() => store.set(playheadAtom, 1));
+    expect(activeSignal?.aborted).toBe(false);
+    expect(read).toHaveBeenCalledTimes(1);
+
+    view.unmount();
+    expect(activeSignal?.aborted).toBe(true);
+  });
+
+  it("rolls back a cancelled fallback slice before reopening", async () => {
+    const source = createSource("drive");
+    const baseSession = createSession();
+    let readCount = 0;
+    const read = vi.fn<EpisodeSession["read"]>(async function* (request) {
+      readCount += 1;
+      yield {
+        frames: [locationMessage(1_000_000_000n, 37, -122, 0)],
+        stream: "/gps",
+      };
+      if (readCount === 1) {
+        await new Promise<void>((_resolve, reject) => {
+          request.signal?.addEventListener("abort", () => {
+            const error = new Error("aborted");
+            error.name = "AbortError";
+            reject(error);
+          });
+        });
+      }
+    });
+    const session: EpisodeSession = { ...baseSession, read };
+    const store = createStore();
+    const view = render(
+      <Harness
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        playheadSec={1.5}
+        source={source}
+        store={store}
+        streams={["/gps"]}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:loading:1:1:full",
+      );
+    });
+
+    view.rerender(
+      <Harness
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        playheadSec={1.5}
+        source={source}
+        store={store}
+        streams={[]}
+      />,
+    );
+    view.rerender(
+      <Harness
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        playheadSec={1.5}
+        source={source}
+        store={store}
+        streams={["/gps"]}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:ready:1:1:full",
+      );
+    });
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
+  it("cancels active work and discards cached routes on a source change", async () => {
+    const firstSource = createSource("first");
+    const secondSource = createSource("second");
+    const firstSession = createSession();
+    const secondSession = createSession();
+    const store = createStore();
+    let firstSignal: AbortSignal | undefined;
+    const read = vi
+      .fn<BudgetedReadJob["read"]>()
+      .mockImplementationOnce(
+        (request) =>
+          new Promise<BudgetedReadResult>((_resolve, reject) => {
+            firstSignal = request.signal;
+            request.signal?.addEventListener("abort", () => {
+              const error = new Error("aborted");
+              error.name = "AbortError";
+              reject(error);
+            });
+          }),
+      )
+      .mockResolvedValueOnce(
+        boundedResult({
+          continuation: {},
+          frames: [locationMessage(1_000_000_000n, 42, -71, 0)],
+          resumeAtNs: 3_000_000_000n,
+          stopReason: "horizon-reached",
+        }),
+      );
+    const budgetAccount = {
+      createJob: () => ({ read }),
+    } as unknown as SourceReadBudgetAccount;
+    const view = render(
+      <Harness
+        budgetAccount={budgetAccount}
+        session={firstSession}
+        locationSources={[locationSource("/gps")]}
+        playheadSec={1.5}
+        source={firstSource}
+        store={store}
+      />,
+    );
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
+
+    view.rerender(
+      <Harness
+        budgetAccount={budgetAccount}
+        session={secondSession}
+        locationSources={[locationSource("/gps")]}
+        playheadSec={1.5}
+        source={secondSource}
+        store={store}
+      />,
+    );
+
+    expect(firstSignal?.aborted).toBe(true);
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:ready:1:1:full",
+      );
+    });
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps bounded progress when playback pressure interrupts the route", async () => {
     vi.useFakeTimers();
     const source = createSource("drive");
@@ -229,12 +549,14 @@ describe("LocationTracksBridge", () => {
   it("marks streams as error when the bulk read rejects", async () => {
     const source = createSource("drive");
     const locationSources = [locationSource("/gps")];
+    let attempt = 0;
     const session = createSession(async function* () {
-      throw new Error("boom");
-      yield locationMessage(0n, 0, 0, 0);
+      attempt += 1;
+      if (attempt === 1) throw new Error("boom");
+      yield locationMessage(1_000_000_000n, 37, -122, 0);
     });
 
-    render(
+    const view = render(
       <Harness
         session={session}
         locationSources={locationSources}
@@ -247,6 +569,28 @@ describe("LocationTracksBridge", () => {
         "/gps:error:0:0:full",
       );
     });
+
+    view.rerender(
+      <Harness
+        session={session}
+        locationSources={locationSources}
+        source={source}
+        streams={[]}
+      />,
+    );
+    view.rerender(
+      <Harness
+        session={session}
+        locationSources={locationSources}
+        source={source}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:ready:1:1:full",
+      );
+    });
+    expect(session.read).toHaveBeenCalledTimes(2);
   });
 
   it("retries deferred track reads after playback pressure stands down", async () => {
@@ -316,6 +660,7 @@ function Harness({
   budgetAccount,
   session,
   locationSources,
+  playheadSec = 25,
   source,
   store,
   streams,
@@ -323,44 +668,88 @@ function Harness({
   readonly budgetAccount?: SourceReadBudgetAccount;
   readonly session: EpisodeSession;
   readonly locationSources: readonly SceneSource[];
+  readonly playheadSec?: number;
   readonly source: ByteSourceDescriptor;
   readonly store?: ReturnType<typeof createStore>;
   readonly streams?: readonly string[];
 }) {
+  const playbackStore = useMemo(() => store ?? createStore(), [store]);
+  playbackStore.set(playheadAtom, playheadSec);
   const body = (
     <LocationTracksProvider>
-      <LocationTracksBridge
-        budgetAccount={budgetAccount}
-        session={session}
-        locationSources={locationSources}
-        sourceKey={source.sourceId}
-        streams={streams}
-      />
-      <LocationTracksProbe />
+      <DataStreamProvider>
+        <FakeDataStream session={session} sourceKey={source.sourceId} />
+        <LocationTracksBridge
+          budgetAccount={budgetAccount}
+          session={session}
+          locationSources={locationSources}
+          sourceKey={source.sourceId}
+          streams={streams}
+        />
+        <LocationTracksProbe />
+      </DataStreamProvider>
     </LocationTracksProvider>
   );
-  return store ? (
-    <PlaybackStoreContext.Provider value={store}>
+  return (
+    <PlaybackStoreContext.Provider value={playbackStore}>
       {body}
     </PlaybackStoreContext.Provider>
-  ) : (
-    body
   );
+}
+
+function FakeDataStream({
+  session,
+  sourceKey,
+}: {
+  readonly session: EpisodeSession;
+  readonly sourceKey: string;
+}) {
+  const setDataStream = useSetDataStream();
+  useEffect(() => {
+    const timeline = createTimelineIndex({
+      endNs: session.manifest.timeRange.endNs,
+      startNs: session.manifest.timeRange.startNs,
+    });
+    const stream: DataStream = {
+      getStreamCache: () => undefined,
+      getTimelineIndex: () => timeline,
+      sourceKey,
+      subscribeToStream: () => () => undefined,
+    };
+    setDataStream(stream);
+    return () => setDataStream(null);
+  }, [session, setDataStream, sourceKey]);
+  return null;
 }
 
 function boundedResult({
   continuation,
   frames,
+  resumeAtNs,
   stopReason,
 }: {
   readonly continuation?: object;
   readonly frames: readonly DecodedFrame[];
+  readonly resumeAtNs?: bigint;
   readonly stopReason: BudgetedReadResult["stopReason"];
 }): BudgetedReadResult {
+  const framesByStream = new Map<string, DecodedFrame[]>();
+  for (const frame of frames) {
+    let streamFrames = framesByStream.get(frame.streamId);
+    if (!streamFrames) {
+      streamFrames = [];
+      framesByStream.set(frame.streamId, streamFrames);
+    }
+    streamFrames.push(frame);
+  }
   return {
-    batches: [{ frames, stream: "/gps" }],
+    batches: [...framesByStream].map(([stream, streamFrames]) => ({
+      frames: streamFrames,
+      stream,
+    })),
     ...(continuation ? { continuation } : {}),
     coverageByStream: new Map(),
+    ...(resumeAtNs !== undefined ? { resumeAtNs } : {}),
     stopReason,
     usage: {
       chunksOpened: 1,
@@ -398,7 +787,7 @@ function createSession(
     episodeId: "test",
     streams: [],
     timeDomain: { id: "log", kind: "timestamp" as const },
-    timeRange: { endNs: 25_000n, startNs: 0n },
+    timeRange: { endNs: 25_000_000_000n, startNs: 0n },
   };
   return {
     dispose: vi.fn(),
@@ -427,6 +816,7 @@ function locationMessage(
   latitude: number,
   longitude: number,
   fixStatus: number,
+  streamId = "/gps",
 ): DecodedFrame {
   return {
     output: {
@@ -437,7 +827,7 @@ function locationMessage(
         longitude,
       },
     },
-    streamId: "/gps",
+    streamId,
     timestampNs: timelineTimeNs,
   } as unknown as DecodedFrame;
 }

@@ -40,7 +40,6 @@ const MAX_CONTEXT_SHELF_HEIGHT_FRACTION = 0.4;
 
 // Mosaic leaf id of the single default 3D tile.
 const THREE_D_TILE_ID = `${TILE_TYPE.THREE_D}-1`;
-const MAP_TILE_ID = `${TILE_TYPE.MAP}-1`;
 const LOG_TILE_ID = `${TILE_TYPE.LOG}-1`;
 
 /**
@@ -197,10 +196,6 @@ export function resolvePlaybackLayout({
   const hasLogs = sources.some(
     (source) => source.type === SCENE_SOURCE_TYPE.LOG,
   );
-  const hasMap = sources.some(
-    (source) => source.type === SCENE_SOURCE_TYPE.LOCATION,
-  );
-
   const imageTileCount =
     rankedImages.length === 0
       ? 0
@@ -222,13 +217,6 @@ export function resolvePlaybackLayout({
       id: THREE_D_TILE_ID,
       tileType: TILE_TYPE.THREE_D,
       title: "3D",
-    });
-  }
-  if (hasMap) {
-    tiles.push({
-      id: MAP_TILE_ID,
-      tileType: TILE_TYPE.MAP,
-      title: "Map",
     });
   }
   if (hasLogs) {

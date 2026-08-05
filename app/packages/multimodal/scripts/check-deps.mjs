@@ -110,7 +110,6 @@ verifyEpisodeDomainDirection(dependencies);
 // remaining migrations explicit: a new view-owned `session.read()` over the
 // manifest range must use a bounded job instead of joining this allowlist.
 const legacyManifestWideReads = new Map([
-  ["packages/multimodal/src/views/episode/map/tracks/context.tsx", 1],
   [
     "packages/multimodal/src/views/episode/scene/entities/pose-trajectories-context.tsx",
     1,
