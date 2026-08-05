@@ -60,6 +60,7 @@ interface MockChart {
     readonly x: { max: number; min: number };
     readonly y: { max: number; min: number };
   };
+  readonly redraw: ReturnType<typeof vi.fn>;
   readonly setData: ReturnType<typeof vi.fn>;
   readonly setScale: ReturnType<typeof vi.fn>;
 }
@@ -84,6 +85,7 @@ vi.mock("uplot", () => ({
       x: { max: 20, min: 0 },
       y: { max: 10, min: 0 },
     };
+    redraw = vi.fn();
     setData = vi.fn((data: unknown, _resetScales?: boolean) => {
       this.data = data;
     });
@@ -184,6 +186,37 @@ describe("TimeseriesChart interactions", () => {
 
     fireEvent.click(screen.getByLabelText("Reset zoom"));
     expect(chart.setData).toHaveBeenCalledWith(DATA, true);
+    unmount();
+  });
+
+  it("repaints a zoomed chart when new data arrives", () => {
+    const onSeek = vi.fn();
+    const { rerender, unmount } = renderChart(onSeek);
+    const chart = lastChart();
+
+    fireEvent.click(screen.getByLabelText("Zoom in"));
+    chart.setData.mockClear();
+    chart.redraw.mockClear();
+
+    const nextData = [
+      [0, 10, 20],
+      [1, 3, 2],
+    ] as AlignedData;
+    rerender(
+      <TimeseriesChart
+        data={nextData}
+        durationSec={20}
+        onSeek={onSeek}
+        series={[{ color: "#f00", label: "speed" }]}
+      />,
+    );
+
+    expect(uPlotMock.instances).toHaveLength(1);
+    // setData(…, false) swaps the arrays without committing a repaint; the
+    // explicit redraw is what makes newly fetched windows visible while the
+    // user-controlled viewport is preserved.
+    expect(chart.setData).toHaveBeenCalledWith(nextData, false);
+    expect(chart.redraw).toHaveBeenCalledTimes(1);
     unmount();
   });
 

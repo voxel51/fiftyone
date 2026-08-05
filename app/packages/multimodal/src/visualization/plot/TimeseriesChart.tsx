@@ -540,7 +540,12 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       return;
     }
     if (hasInteractiveScaleRef.current) {
+      // setData with resetScales=false swaps the arrays without committing a
+      // repaint, so newly fetched windows would stay invisible until the next
+      // interaction. redraw() re-applies the current (user-zoomed) x scale,
+      // which re-ranges auto y over the visible window and repaints.
       chart.setData(data, false);
+      chart.redraw();
     } else {
       resetTimeseriesChart(chart, data, xMax);
     }
