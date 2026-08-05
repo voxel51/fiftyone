@@ -105,6 +105,13 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
     return;
   }
 
+  if (message.type === "releaseRetainedResources") {
+    disposeAllClients();
+    activeSourceKey = "";
+    mcap = createMcapClient();
+    return;
+  }
+
   scheduler.enqueue({
     id: message.id,
     operation: message.type,

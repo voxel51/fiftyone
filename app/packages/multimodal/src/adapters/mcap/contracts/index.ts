@@ -912,8 +912,9 @@ export interface McapResourceClient {
   dispose(): void;
 
   /**
-   * Releases heavyweight decoded resources when no renderer currently owns
-   * the client, while allowing lightweight readers/workers to remain warm.
+   * Releases heavyweight decoded resources and source-bound reader state when
+   * no renderer currently owns the client, while allowing workers to remain
+   * warm and restart their readers lazily.
    */
   releaseRetainedResources?(): void;
 

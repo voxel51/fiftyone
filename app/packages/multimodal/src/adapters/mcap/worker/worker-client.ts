@@ -121,7 +121,23 @@ class WorkerMcapResourceClient implements McapResourceClient {
   }
 
   releaseRetainedResources() {
+    if (this.disposed) return;
+    this.cancelAllPendingReads();
     this.decodedRecords.clear();
+    this.activeSourceKey = "";
+    this.foregroundGeneration += 1;
+    for (const lane of this.lanes) {
+      const worker = lane.worker;
+      if (!worker) continue;
+      try {
+        const releaseRequest: McapPlaybackWorkerRequest = {
+          type: "releaseRetainedResources",
+        };
+        worker.postMessage(releaseRequest);
+      } catch {
+        this.resetLane(lane, "MCAP worker resource release failed");
+      }
+    }
   }
 
   subscribeTransport(
