@@ -8,7 +8,7 @@ export class EmbeddingsV2Pom {
 
   constructor(readonly page: Page) {
     this.gridPanel = new GridPanelPom(page);
-    this.runsPage = page.locator(".emb-runs-page");
+    this.runsPage = page.getByTestId("embeddings-runs-page");
     this.assert = new EmbeddingsV2Asserter(this);
   }
 

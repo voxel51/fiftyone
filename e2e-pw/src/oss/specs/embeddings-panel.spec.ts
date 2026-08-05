@@ -12,7 +12,7 @@ const test = base.extend<{ embeddings: EmbeddingsV2Pom }>({
 
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await datasetFactory.createDataset({ datasetName, numSamples: 5 });
+  await datasetFactory.createDataset({ datasetName });
 });
 
 test.afterAll(async ({ foWebServer }) => {
