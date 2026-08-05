@@ -14,13 +14,17 @@
     "main": "src/index.ts",
     "devDependencies": {
         "@testing-library/dom": "catalog:",
-        "@testing-library/react": "^16.2.0",
+        "@testing-library/react": "catalog:",
         "@types/lodash": "catalog:",
         "@typescript-eslint/eslint-plugin": "^6.0.0",
         "@typescript-eslint/parser": "^6.0.0",
         "@vitejs/plugin-react": "catalog:",
+        "babel-plugin-relay": "catalog:",
         "eslint": "catalog:",
         "jsdom": "^26.0.0",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "typescript": "catalog:",
         "uuid": "catalog:",
         "vite": "catalog:",
         "vite-plugin-externals": "catalog:",
@@ -37,7 +41,7 @@
     "peerDependencies": {
         "@fiftyone/commands": "*",
         "@fiftyone/events": "*",
-        "@fiftyone/voodo": "*",
+        "@voxel51/voodo": "*",
         "jotai": "*",
         "react": "*"
     }

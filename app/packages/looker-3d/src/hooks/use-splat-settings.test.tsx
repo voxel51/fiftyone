@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-hooks";
+import { act, renderHook } from "@testing-library/react";
 import { createStore, Provider } from "jotai";
 import { createElement, type ReactNode } from "react";
 import { afterEach, describe, expect, it } from "vitest";

@@ -16,7 +16,8 @@ import {
   getFetchParameters,
 } from "@fiftyone/utilities";
 import { RecoilValue, useRecoilValue } from "recoil";
-import { Nullable } from "vitest";
+
+type Nullable<T> = T | null | undefined;
 
 export const getSampleSrc = (url: string) => {
   if (determinePathType(url) === PathType.URL) {

@@ -14,6 +14,7 @@ import {
   useWorkingLabel,
 } from "../annotation/store";
 import type { TransientPolylineState } from "../annotation/store/types";
+import type { OverlayLabel } from "../labels/loader";
 import {
   editSegmentsModeAtom,
   hoveredLabelAtom,
@@ -29,7 +30,7 @@ import {
 } from "./utils/polyline-utils";
 
 interface UsePolylineAnnotationProps {
-  label: any;
+  label: OverlayLabel;
   points3d: Vector3Tuple[][];
   strokeAndFillColor: string;
   isAnnotateMode: boolean;

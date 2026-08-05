@@ -51,7 +51,12 @@ export const MirisStream = ({
       (async () => {
         try {
           const { MirisStream: MirisStreamSDK } =
-            (await ensureMirisRuntime()) as any;
+            (await ensureMirisRuntime()) as {
+              MirisStream: new (options: {
+                uuid: string;
+                viewerKey: string;
+              }) => unknown;
+            };
           if (cancelled) return;
           constructed = new MirisStreamSDK({
             uuid: asset.assetUuid,

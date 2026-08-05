@@ -1,6 +1,6 @@
 import { useAnnotationContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import * as fos from "@fiftyone/state";
-import { useSetAtom } from "jotai";
+import { type PrimitiveAtom, useSetAtom } from "jotai";
 import { atomWithReset, useResetAtom } from "jotai/utils";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -32,7 +32,7 @@ export const useSetEditingToNewCuboid = () => {
       resetCurrentEditing();
       clear();
     };
-  }, [resetCurrentEditing]);
+  }, [resetCurrentEditing, clear]);
 
   return useCallback(
     (labelId: string, transformData: CuboidTransformData, labelClass = "") => {
@@ -66,9 +66,9 @@ export const useSetEditingToNewCuboid = () => {
         ...defaultCuboidLabelData,
       };
 
-      // Note: We use 'as any' here because the 3D cuboid overlay structure differs
-      // from the 2D DetectionOverlay class. The 3D annotation system uses a simpler
-      // object-based overlay pattern similar to polylines.
+      // The 3D cuboid overlay structure differs from the 2D DetectionOverlay
+      // class — the 3D annotation system uses a simpler object-based overlay
+      // pattern similar to polylines — so the cast goes through unknown.
       setCurrentEditing({
         isNew: true,
         data: stagedCuboidLabelData,
@@ -87,13 +87,15 @@ export const useSetEditingToNewCuboid = () => {
             }
           },
         },
-      } as any);
+      } as unknown as fos.AnnotationLabel);
 
       // setCurrentEditing above populated the cuboid atom; select() snapshots
       // its data into savedLabel — the prior explicit set(savedLabel, ...) is
       // redundant since defaultCuboidLabelData and stagedCuboidLabelData are
       // structurally equal.
-      select(currentEditingCuboidAtom as any);
+      select(
+        currentEditingCuboidAtom as unknown as PrimitiveAtom<fos.AnnotationLabel>,
+      );
     },
     [
       clear,
