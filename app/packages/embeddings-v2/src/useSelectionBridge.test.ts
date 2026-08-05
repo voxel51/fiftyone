@@ -110,6 +110,41 @@ describe("useSelectionBridge", () => {
     expect(fetchLassoStage).not.toHaveBeenCalled();
   });
 
+  it("falls back to the server when the resolver declines even though fully loaded", async () => {
+    // The resolver can decline a gesture it doesn't know how to build (e.g. no
+    // stored points field) — that must still fall through to the server route
+    vi.mocked(fetchLassoStage)
+      .mockClear()
+      .mockResolvedValue({
+        _cls: "fiftyone.core.stages.Select",
+        kwargs: { sample_ids: [idAt(IDS, 0)], ordered: false },
+        count: 1,
+      });
+    const opts = options({
+      pointsField: "embedding",
+      resolveLassoStage: () => null,
+    });
+    const { result } = renderHook(() => useSelectionBridge(opts));
+
+    act(() => result.current.handleSelection([0], null));
+
+    await waitFor(() =>
+      expect(opts.publishSelection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stage: {
+            "fiftyone.core.stages.Select": {
+              sample_ids: [idAt(IDS, 0)],
+              ordered: false,
+            },
+          },
+        }),
+      ),
+    );
+    expect(fetchLassoStage).toHaveBeenCalledWith("ds", "viz", [], {
+      indices: [0],
+    });
+  });
+
   it("selects only visible points, skipping the spatial shortcut, when filtered", () => {
     // point 0 passes the filter, point 1 is hidden
     vi.mocked(fetchLassoStage).mockClear();

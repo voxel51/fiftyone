@@ -224,9 +224,10 @@ describe("useRegisterMcapDataStream", () => {
       } as Parameters<NonNullable<typeof api>["registerStream"]>[0]);
     });
 
-    // 10s snaps up to the next 1/30s tick the index can render.
+    // 10s snaps up to the next 1/30s tick the index can render — tight
+    // enough that an un-snapped raw 10 cannot pass.
     await waitFor(() => {
-      expect(getPlayhead(store)).toBeCloseTo(10.03, 1);
+      expect(getPlayhead(store)).toBeCloseTo(10.0333, 3);
     });
   });
 

@@ -39,10 +39,21 @@ export function useRunColumns(
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
   const loadingKeyRef = useRef<string | null>(null);
+  // Read the freshest loader without depending on its identity: an
+  // extension-supplied loadGeometry can be recreated every render, and
+  // depending on it directly would restart an in-flight load for no reason
+  const loadGeometryRef = useRef(loadGeometry);
+  loadGeometryRef.current = loadGeometry;
+  const hasLoadGeometry = Boolean(loadGeometry);
 
   useEffect(() => {
     if (!datasetName || !brainKey) return undefined;
-    if (ownsGeometry && !loadGeometry) return undefined;
+    if (ownsGeometry && !loadGeometryRef.current) {
+      // The previous run's points must not linger while this run waits on
+      // its loader
+      setLoaded(null);
+      return undefined;
+    }
     const loadKey = `${datasetName}::${brainKey}`;
     if (loadingKeyRef.current === loadKey) return undefined;
     loadingKeyRef.current = loadKey;
@@ -52,8 +63,8 @@ export function useRunColumns(
     setLoaded(null);
     setError(null);
     (async () => {
-      if (loadGeometry) {
-        const { points, ids, total } = await loadGeometry(
+      if (loadGeometryRef.current) {
+        const { points, ids, total } = await loadGeometryRef.current(
           (partial, buffer, n) => {
             if (stale) return;
             setLoaded({ brainKey, points: partial, ids: buffer, total: n });
@@ -115,7 +126,7 @@ export function useRunColumns(
         loadingKeyRef.current = null;
       }
     };
-  }, [datasetName, brainKey, loadGeometry, ownsGeometry]);
+  }, [datasetName, brainKey, hasLoadGeometry, ownsGeometry]);
 
   return { loaded, error };
 }

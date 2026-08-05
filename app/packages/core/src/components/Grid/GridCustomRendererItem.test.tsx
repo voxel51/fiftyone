@@ -137,6 +137,59 @@ describe("GridCustomRendererItem", () => {
     }
   });
 
+  it("keeps a still-registered overlay mounted when an earlier one unregisters", async () => {
+    const secondMounts = vi.fn();
+    const First = () => <div data-testid="overlay-first" />;
+    const Second = () => {
+      React.useEffect(() => {
+        secondMounts();
+      }, []);
+      return <div data-testid="overlay-second" />;
+    };
+    const unregisterFirst = registerMcapGridOverlay(First);
+    const unregisterSecond = registerMcapGridOverlay(Second);
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    let looker: GridCustomRendererItem | undefined;
+    try {
+      looker = new GridCustomRendererItem({
+        pluginName: "mcap-renderer",
+        Renderer: () => <div data-testid="renderer" />,
+        RecoilBridge: TestBridge,
+        ctx: {
+          ...BASE_CTX,
+          media: { ...BASE_CTX.media, mediaType: "multimodal" },
+        } as any,
+        symbol: BASE_SYMBOL,
+      });
+      looker.attach(host, [200, 120], 12);
+
+      await waitFor(() => {
+        expect(
+          host.querySelector("[data-testid='overlay-second']"),
+        ).toBeTruthy();
+      });
+      // Settle any renders unrelated to the registry change below before
+      // taking the baseline — this asserts no ADDITIONAL mount happens once
+      // the first overlay unregisters, not that mounting never happens at all
+      const mountsBeforeUnregister = secondMounts.mock.calls.length;
+
+      unregisterFirst();
+
+      await waitFor(() => {
+        expect(host.querySelector("[data-testid='overlay-first']")).toBeNull();
+      });
+      expect(host.querySelector("[data-testid='overlay-second']")).toBeTruthy();
+      // An index-keyed list would shift the second overlay into the first's
+      // old slot and remount it; a reference-keyed one does not
+      expect(secondMounts).toHaveBeenCalledTimes(mountsBeforeUnregister);
+    } finally {
+      looker?.destroy();
+      unregisterSecond();
+      host.remove();
+    }
+  });
+
   it("mounts plugin renderer and leaves dataset fail-open disabled on success", async () => {
     const Renderer = ({ ctx }: { ctx: { media: { url: string | null } } }) => (
       <div data-testid="renderer">{ctx.media.url}</div>

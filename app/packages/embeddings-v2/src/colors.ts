@@ -113,6 +113,7 @@ export const isRampId = (value: unknown): value is RampId =>
 
 /** The rgb at position `t` in [0, 1] along a ramp's stops. */
 function rampAt(ramp: Ramp, t: number): Rgb {
+  if (ramp.stops.length === 1) return ramp.stops[0];
   const clamped = Math.min(1, Math.max(0, t));
   const span = ramp.stops.length - 1;
   const scaled = clamped * span;
@@ -196,7 +197,7 @@ export const rampCss = (t: number, rampId: RampId = DEFAULT_RAMP): string => {
 export const rampGradient = (rampId: RampId = DEFAULT_RAMP): string => {
   const count = RAMPS[rampId].stops.length;
   const stops = Array.from({ length: count }, (_, i) =>
-    rampCss(i / (count - 1), rampId),
+    rampCss(count > 1 ? i / (count - 1) : 0, rampId),
   );
   return `linear-gradient(90deg, ${stops.join(", ")})`;
 };

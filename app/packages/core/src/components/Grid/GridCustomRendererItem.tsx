@@ -229,6 +229,23 @@ const GridCustomRendererWrapper = ({
   );
 };
 
+// Keyed by the overlay's own reference (stable per registration), not its
+// position in the registry's array — an earlier overlay unregistering must
+// not shift a later one's key and force it to remount.
+const overlayIds = new WeakMap<
+  React.ComponentType<SampleRendererProps>,
+  number
+>();
+let nextOverlayId = 0;
+function overlayKey(overlay: React.ComponentType<SampleRendererProps>): number {
+  let id = overlayIds.get(overlay);
+  if (id === undefined) {
+    id = nextOverlayId++;
+    overlayIds.set(overlay, id);
+  }
+  return id;
+}
+
 /** Edition-registered grid-tile overlays (rendered inside the multimodal
  * guard); nothing renders before anything registers. */
 const McapGridOverlays = ({
@@ -239,8 +256,8 @@ const McapGridOverlays = ({
   const overlays = useMcapGridOverlays();
   return (
     <>
-      {overlays.map((Overlay, index) => (
-        <Overlay key={index} ctx={ctx} />
+      {overlays.map((Overlay) => (
+        <Overlay key={overlayKey(Overlay)} ctx={ctx} />
       ))}
     </>
   );

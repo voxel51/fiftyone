@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ColorColumnSource } from "./extensions";
 import { buildColors, DEFAULT_RAMP, type RampId } from "./colors";
 import {
@@ -47,6 +47,12 @@ export function useColorColumn(
   const [meta, setMeta] = useState<ColorMeta | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Read the freshest resolver without depending on its identity: an
+  // extension-supplied source can be recreated every render, and depending
+  // on it directly would restart an in-flight resolve for no reason
+  const sourceRef = useRef(source);
+  sourceRef.current = source;
+  const hasSource = Boolean(source);
 
   // Color-by field choices depend on the run (patches vs samples)
   useEffect(() => {
@@ -91,8 +97,9 @@ export function useColorColumn(
       setMeta(fieldMeta);
     };
 
-    if (source) {
-      source
+    const currentSource = sourceRef.current;
+    if (currentSource) {
+      currentSource
         .resolve(colorField, (partial) => !stale && apply(partial))
         .then((final) => !stale && apply(final))
         .catch((e) => !stale && setError(String(e)))
@@ -120,7 +127,7 @@ export function useColorColumn(
     return () => {
       stale = true;
     };
-  }, [datasetName, brainKey, colorField, source, rampId]);
+  }, [datasetName, brainKey, colorField, hasSource, rampId]);
 
   return { choices, colors, values, meta, loading, error };
 }

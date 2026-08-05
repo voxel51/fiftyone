@@ -65,6 +65,12 @@ export function useMcapGridPreview({
   const [state, setState] =
     useState<McapGridPreviewSnapshot>(IDLE_PREVIEW_STATE);
   const [playing, setPlaying] = useState(false);
+  // Bumped whenever the still-frame load below commits a fresh result
+  // (a poster move included) — the hover loop depends on it so a poster
+  // moving out from under an in-progress loop tears the stale loop down
+  // and restarts against the new frame, rather than continuing to chain
+  // frames from the old poster's timeline
+  const [loadGeneration, setLoadGeneration] = useState(0);
   const initialLoadInFlightRef = useRef(false);
   const loadedRequestRef = useRef<{
     readonly posterStartTimeNs: bigint | null;
@@ -186,6 +192,7 @@ export function useMcapGridPreview({
           frameTimeNsRef.current = result.frameTimeNs;
           nextStartTimeNsRef.current = result.nextStartTimeNs;
           setState(result.state);
+          setLoadGeneration((g) => g + 1);
         }
       })
       .catch((caughtError) => {
@@ -329,6 +336,7 @@ export function useMcapGridPreview({
     effectiveStreamTopic,
     enabled,
     finishBuffering,
+    loadGeneration,
     playing,
     source,
     startBuffering,

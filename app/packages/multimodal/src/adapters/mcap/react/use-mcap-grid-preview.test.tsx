@@ -507,6 +507,90 @@ describe("useMcapGridPreview", () => {
     });
   });
 
+  it("restarts hover playback once a re-postered tile's replacement frame commits", async () => {
+    const latestState = { current: null as McapGridPreviewState | null };
+    const loopFetch = deferred<McapGridPreviewResult>();
+    const replacementLoad = deferred<McapGridPreviewResult>();
+    poolHarness.pool.request
+      // initial still-frame load at the first poster
+      .mockResolvedValueOnce(
+        readyResult({ bytes: [1], nextStartTimeNs: 1_100n }),
+      )
+      // the hover loop's own fetch — left pending so the loop is still "in
+      // flight" when the poster moves underneath it
+      .mockReturnValueOnce(loopFetch.promise)
+      // the replacement still-frame load once posterStartTimeNs moves
+      .mockReturnValueOnce(replacementLoad.promise);
+    const source = sourceForId("poster-hover-restart");
+
+    const { rerender } = render(
+      <PreviewHarness
+        hovered
+        id="poster-hover-restart"
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        posterStartTimeNs={1_000n}
+        source={source}
+      />,
+    );
+    await waitFor(() => expect(latestState.current?.status).toBe("ready"));
+
+    act(() => latestState.current?.play());
+    await waitFor(() =>
+      expect(poolHarness.pool.request).toHaveBeenCalledTimes(2),
+    );
+    const releasesBeforeRepost = poolHarness.pool.release.mock.calls.length;
+    const acquiresBeforeRepost = poolHarness.pool.acquire.mock.calls.length;
+
+    rerender(
+      <PreviewHarness
+        hovered
+        id="poster-hover-restart"
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        posterStartTimeNs={5_000n}
+        source={source}
+      />,
+    );
+    await waitFor(() =>
+      expect(poolHarness.pool.request).toHaveBeenCalledTimes(3),
+    );
+    expect(poolHarness.pool.request.mock.calls[2]?.[0]).toMatchObject({
+      startTimeNs: 5_000n,
+    });
+    // The stale loop must not tear down yet — only once the replacement
+    // frame actually commits, so a poster move mid-loop doesn't flash a gap
+    expect(poolHarness.pool.release.mock.calls.length).toBe(
+      releasesBeforeRepost,
+    );
+
+    replacementLoad.resolve(
+      readyResult({ bytes: [9], nextStartTimeNs: 5_100n }),
+    );
+
+    // The stale loop tears down and a fresh one starts against the new
+    // poster's frame, rather than silently continuing to chain frames from
+    // the old poster's timeline
+    await waitFor(() =>
+      expect(poolHarness.pool.release.mock.calls.length).toBe(
+        releasesBeforeRepost + 1,
+      ),
+    );
+    await waitFor(() =>
+      expect(poolHarness.pool.acquire.mock.calls.length).toBe(
+        acquiresBeforeRepost + 1,
+      ),
+    );
+    await waitFor(() =>
+      expect(poolHarness.pool.request).toHaveBeenCalledTimes(4),
+    );
+    expect(poolHarness.pool.request.mock.calls[3]?.[0]).toMatchObject({
+      startTimeNs: 5_100n,
+    });
+  });
+
   it("posters from the matched stream once it is known previewable", async () => {
     // The reported /camera/rear topic triggers a third request beyond the
     // two asserted below; leave it pending so the mock never returns undefined

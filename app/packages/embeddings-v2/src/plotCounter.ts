@@ -31,15 +31,15 @@ export function counterLabel({
 }: CounterParts): string {
   const size =
     loaded < total
-      ? `${loaded.toLocaleString()} / ${total.toLocaleString()} points`
-      : `${loaded.toLocaleString()} points`;
+      ? `${loaded.toLocaleString("en-US")} / ${total.toLocaleString("en-US")} points`
+      : `${loaded.toLocaleString("en-US")} points`;
 
   if (selected) {
-    return `${selected.toLocaleString()} selected · ${size}`;
+    return `${selected.toLocaleString("en-US")} selected · ${size}`;
   }
 
   if (inView !== null) {
-    return `${size} · ${inView.toLocaleString()} in view`;
+    return `${size} · ${inView.toLocaleString("en-US")} in view`;
   }
 
   return size;

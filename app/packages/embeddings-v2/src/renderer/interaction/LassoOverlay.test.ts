@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { LASSO_MIN_EXTENT_PX } from "../constants";
 import type { Polygon } from "../types";
 import { LassoOverlay } from "./LassoOverlay";
 
@@ -134,8 +135,8 @@ describe("LassoOverlay", () => {
   });
 
   it.each([
-    ["under the extent threshold", 8, null],
-    ["over the extent threshold", 40, "polygon"],
+    ["under the extent threshold", LASSO_MIN_EXTENT_PX - 4, null],
+    ["over the extent threshold", LASSO_MIN_EXTENT_PX + 28, "polygon"],
   ])("treats a drag %s accordingly", (_label, span, expected) => {
     drag([
       [0, 0],

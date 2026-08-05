@@ -30,7 +30,7 @@ function setup(options = streamOptions(), value = NONE) {
 }
 
 describe("ColorByMenu", () => {
-  it("reports the picked field and closes", () => {
+  it("reports the picked field on click and closes", () => {
     const { onChange } = setup();
     fireEvent.click(control());
 
@@ -39,7 +39,7 @@ describe("ColorByMenu", () => {
     expect(onChange).toHaveBeenCalledWith(
       "imu_signals.angular_velocity_norm_3",
     );
-    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.queryByRole("listbox")).toBeNull();
   });
 
   it.each([
@@ -48,15 +48,15 @@ describe("ColorByMenu", () => {
   ])("reopens after dismissing with %s", (_label, dismiss) => {
     setup();
     fireEvent.click(control());
-    expect(screen.getByRole("menu")).toBeTruthy();
+    expect(screen.getByRole("listbox")).toBeTruthy();
 
     dismiss();
-    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.queryByRole("listbox")).toBeNull();
 
     // The VOODO combobox this replaced opened on input focus, so a dismiss
     // that left focus on the input made the very next click a no-op
     fireEvent.click(control());
-    expect(screen.getByRole("menu")).toBeTruthy();
+    expect(screen.getByRole("listbox")).toBeTruthy();
   });
 
   it("closes from the caret without picking anything", () => {
@@ -65,7 +65,7 @@ describe("ColorByMenu", () => {
 
     fireEvent.click(screen.getByLabelText("Close color-by menu"));
 
-    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.queryByRole("listbox")).toBeNull();
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -77,11 +77,11 @@ describe("ColorByMenu", () => {
 
     fireEvent.change(control(), { target: { value: "norm_1" } });
     // norm_1, norm_10, norm_11 — and none of the non-matching entries
-    expect(screen.getAllByRole("menuitemradio")).toHaveLength(3);
+    expect(screen.getAllByRole("option")).toHaveLength(3);
     expect(screen.queryByText("sensor")).toBeNull();
 
     fireEvent.change(control(), { target: { value: "nothing-matches" } });
-    expect(screen.queryAllByRole("menuitemradio")).toHaveLength(0);
+    expect(screen.queryAllByRole("option")).toHaveLength(0);
     expect(screen.getByText("No matching fields")).toBeTruthy();
   });
 
@@ -101,19 +101,19 @@ describe("ColorByMenu", () => {
       "imu_signals.angular_velocity_norm_2",
     );
     fireEvent.click(control());
-    expect(screen.getAllByRole("menuitemradio").length).toBeGreaterThan(3);
+    expect(screen.getAllByRole("option").length).toBeGreaterThan(3);
   });
 
-  it("marks only the selected field as checked", () => {
+  it("marks only the selected field as picked", () => {
     setup(streamOptions(), "imu_signals.angular_velocity_norm_2");
     fireEvent.click(control());
 
-    const checked = screen
-      .getAllByRole("menuitemradio")
-      .filter((el) => el.getAttribute("aria-checked") === "true");
+    const picked = screen
+      .getAllByRole("option")
+      .filter((el) => el.getAttribute("data-selected") === "true");
 
-    expect(checked).toHaveLength(1);
-    expect(checked[0].textContent).toContain(
+    expect(picked).toHaveLength(1);
+    expect(picked[0].textContent).toContain(
       "imu_signals.angular_velocity_norm_2",
     );
   });
@@ -125,6 +125,60 @@ describe("ColorByMenu", () => {
 
     fireEvent.click(control());
 
-    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  it("moves the active option with arrow keys and exposes it via aria-activedescendant", () => {
+    setup();
+    fireEvent.click(control());
+
+    const options = screen.getAllByRole("option");
+    expect(control().getAttribute("aria-activedescendant")).toBe(options[0].id);
+
+    fireEvent.keyDown(control(), { key: "ArrowDown" });
+    expect(control().getAttribute("aria-activedescendant")).toBe(options[1].id);
+
+    fireEvent.keyDown(control(), { key: "ArrowUp" });
+    expect(control().getAttribute("aria-activedescendant")).toBe(options[0].id);
+  });
+
+  it("does not move the active option past either end of the list", () => {
+    setup();
+    fireEvent.click(control());
+
+    fireEvent.keyDown(control(), { key: "ArrowUp" });
+    expect(control().getAttribute("aria-activedescendant")).toBe(
+      screen.getAllByRole("option")[0].id,
+    );
+
+    const last = screen.getAllByRole("option").at(-1);
+    for (let i = 0; i < 20; i++) {
+      fireEvent.keyDown(control(), { key: "ArrowDown" });
+    }
+    expect(control().getAttribute("aria-activedescendant")).toBe(last?.id);
+  });
+
+  it("picks the active option on Enter", () => {
+    const { onChange } = setup();
+    fireEvent.click(control());
+
+    fireEvent.keyDown(control(), { key: "ArrowDown" });
+    fireEvent.keyDown(control(), { key: "Enter" });
+
+    expect(onChange).toHaveBeenCalledWith("sensor");
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  it("resets the active option when the filter narrows the list", () => {
+    setup();
+    fireEvent.click(control());
+    fireEvent.keyDown(control(), { key: "ArrowDown" });
+    fireEvent.keyDown(control(), { key: "ArrowDown" });
+
+    fireEvent.change(control(), { target: { value: "norm_5" } });
+
+    expect(control().getAttribute("aria-activedescendant")).toBe(
+      screen.getAllByRole("option")[0].id,
+    );
   });
 });

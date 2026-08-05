@@ -235,12 +235,6 @@
   max-width: none;
 }
 
-/* Holds the closed width while open, so swapping the label for the filter
-   input does not resize the control under the pointer */
-.emb-colorby[data-open="true"] {
-  width: 16rem;
-}
-
 /* While open the trigger IS the filter box: borderless, filling the same
    bordered shell the label sat in */
 .emb-colorby-input {
@@ -288,6 +282,12 @@
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--emb-fg) 25%, transparent)
     transparent;
+}
+
+/* Keyboard highlight for the combobox's active option — arrow keys need the
+   same visible feedback pointer hover already gives via .emb-facet-row:hover */
+.emb-colorby-panel .emb-facet-row[aria-selected="true"] {
+  background: color-mix(in srgb, var(--emb-fg) 8%, transparent);
 }
 
 /* --- Facet menu (dropdown trigger + Mac-menubar panel w/ hover submenus) --- */
@@ -532,6 +532,14 @@
   flex-shrink: 0;
   border-bottom: 1px solid var(--emb-border-strong);
   background: var(--emb-card-bg);
+}
+
+/* Count + caller-supplied actions cluster at the header's right edge */
+.emb-facet-cell-header-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
 }
 
 .emb-facet-cell-scene {

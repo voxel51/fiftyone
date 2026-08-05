@@ -13,7 +13,7 @@
  * coordinates are relative to that cell's canvas.
  */
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, type ReactNode } from "react";
 import HoverCard from "./HoverCard";
 import "./panel.css";
 import {
@@ -34,6 +34,8 @@ export interface FacetCellProps {
   colLabel: string | null;
   /** Number of points visible in this cell (from the cell mask) */
   count: number;
+  /** Caller-supplied controls rendered at the header's right edge */
+  headerActions?: ReactNode;
 
   loaded: Loaded;
   colors: Float32Array | null;
@@ -72,6 +74,7 @@ export default function FacetCell({
   rowLabel,
   colLabel,
   count,
+  headerActions,
   loaded,
   colors,
   selected,
@@ -104,9 +107,12 @@ export default function FacetCell({
           <Text variant={TextVariant.Sm} color={TextColor.Fg}>
             {label}
           </Text>
-          <Text variant={TextVariant.Xs} color={TextColor.Tertiary}>
-            {count.toLocaleString()}
-          </Text>
+          <span className="emb-facet-cell-header-end">
+            <Text variant={TextVariant.Xs} color={TextColor.Tertiary}>
+              {count.toLocaleString()}
+            </Text>
+            {headerActions}
+          </span>
         </div>
       )}
       <div ref={sceneRef} className="emb-facet-cell-scene">

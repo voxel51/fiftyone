@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { HoverContent } from "./HoverCard";
 import { fetchSampleInfo, type SampleInfo } from "./protocol";
 import type { HoverHit } from "./renderer";
 import { useHoverInfo } from "./useHoverInfo";
@@ -92,6 +93,24 @@ describe("useHoverInfo", () => {
     // the pointer can reach the card's own actions
     act(() => result.current.handleHover(null));
     await waitFor(() => expect(result.current.hover).toBeNull());
+  });
+
+  it("serves local detail synchronously without fetching sample info", async () => {
+    vi.mocked(fetchSampleInfo).mockClear();
+    const localContent: HoverContent = {
+      hit: hit(1),
+      src: null,
+      value: { label: "local", swatch: null },
+      filename: null,
+    };
+    const { result } = renderHook(() =>
+      useHoverInfo("ds", "viz", null, mediaUrl, undefined, () => localContent),
+    );
+
+    act(() => result.current.handleHover(hit(1)));
+
+    expect(result.current.hover).toEqual(localContent);
+    expect(fetchSampleInfo).not.toHaveBeenCalled();
   });
 
   it("keeps the card when the pointer enters it", async () => {

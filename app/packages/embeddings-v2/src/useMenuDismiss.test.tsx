@@ -69,11 +69,19 @@ describe("useMenuDismiss", () => {
   });
 
   it("closes on Escape", () => {
+    // A competing bubble-phase document listener, like useSelectionBridge's
+    // own Escape handler that clears the plot's lasso/grid selection
+    const otherKeydown = vi.fn();
+    document.addEventListener("keydown", otherKeydown);
     render(<Harness onPlotDown={vi.fn()} />);
     fireEvent.click(screen.getByText("open"));
 
-    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.keyDown(screen.getByText("open"), { key: "Escape" });
 
     expect(screen.queryByRole("menu")).toBeNull();
+    // Dismissing the menu must own this Escape — it must not also reach a
+    // sibling bubble-phase handler
+    expect(otherKeydown).not.toHaveBeenCalled();
+    document.removeEventListener("keydown", otherKeydown);
   });
 });
