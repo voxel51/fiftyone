@@ -18,7 +18,6 @@ export default function useRefreshers() {
   const filters = fos.stringifyObj(useRecoilValue(fos.filters));
   const groupSlice = useRecoilValue(fos.groupSlice);
   const mediaField = useRecoilValue(fos.selectedMediaField(false));
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
   const refresher = useRecoilValue(fos.refresher);
   const shouldRenderImaVidLooker = useRecoilValue(
     fos.shouldRenderImaVidLooker(false),
@@ -44,7 +43,6 @@ export default function useRefreshers() {
     extendedStagesUnsorted;
     filters;
     groupSlice;
-    queryPerformance;
     shouldRenderImaVidLooker;
     similarityParameters;
     view;
@@ -54,7 +52,6 @@ export default function useRefreshers() {
     extendedStagesUnsorted,
     filters,
     groupSlice,
-    queryPerformance,
     shouldRenderImaVidLooker,
     similarityParameters,
     sort,
