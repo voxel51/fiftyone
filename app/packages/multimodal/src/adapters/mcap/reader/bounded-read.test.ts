@@ -14,6 +14,7 @@ import {
   type McapBoundedReadCancelledError,
 } from "./bounded-read-cancellation";
 import { ByteClientReadable } from "./byte-readable";
+import { createMcapDecompressedChunkCache } from "./decompressed-chunk-cache";
 import type {
   McapBoundedMessageReadRequest,
   McapIndexedReaderLike,
@@ -656,6 +657,7 @@ function createHarness(
     bytes,
   );
   const read = createMcapBoundedReader({
+    decompressedChunkCache: createMcapDecompressedChunkCache(),
     decompressHandlers: {
       fake: (_compressed: Uint8Array, size: bigint) => {
         options.onDecompress?.();

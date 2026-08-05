@@ -1,6 +1,7 @@
 import { LRUCache } from "lru-cache";
 import {
   createMcapDecompressionCacheOwnerId,
+  isMcapDecompressionCacheMeterEnabled,
   mcapDecompressionChunkIdentity,
   recordMcapDecompressionCache,
   type McapDecompressionCacheSample,
@@ -42,7 +43,7 @@ export interface McapDecompressedChunkCache {
   ): McapDecompressedChunkResult;
   loadUnkeyed(
     input: {
-      readonly chunkIdentity: string;
+      readonly chunkIdentity: () => string;
       readonly compressedBytes: number;
       readonly compression: string;
       readonly decompressedSize: bigint;
@@ -65,7 +66,7 @@ export function createMcapDecompressedChunkCache(
   let disposed = false;
   let evictedBytes = 0;
   let evictions = 0;
-  const cacheOwnerId = createMcapDecompressionCacheOwnerId("shared-reader");
+  let cacheOwnerId: string | undefined;
   const cache = new LRUCache<string, Uint8Array>({
     dispose: (value, _key, reason) => {
       if (reason === "evict") {
@@ -106,6 +107,7 @@ export function createMcapDecompressedChunkCache(
     readonly key: McapDecompressedChunkKey;
     readonly path: McapDecompressionCacheSample["path"];
   }) => {
+    cacheOwnerId ??= createMcapDecompressionCacheOwnerId("shared-reader");
     recordMcapDecompressionCache({
       cacheCapacityBytes: capacityBytes,
       cacheEvictedBytes: evictedBytes - evictedBytesBefore,
@@ -114,8 +116,8 @@ export function createMcapDecompressedChunkCache(
       cacheOwnerId,
       cacheResidentBytes: cache.calculatedSize ?? 0,
       chunkIdentity: mcapDecompressionChunkIdentity({
-        chunkLength: key.compressedLength,
-        chunkStartOffset: key.compressedOffset,
+        compressedLength: key.compressedLength,
+        compressedOffset: key.compressedOffset,
         compression: key.compression,
         sourceKey: key.sourceKey,
         uncompressedSize: key.decompressedSize,
@@ -162,15 +164,17 @@ export function createMcapDecompressedChunkCache(
       const evictionsBefore = evictions;
       const cached = readCached(serializeMcapDecompressedChunkKey(key));
       if (!cached) return undefined;
-      recordAccess({
-        bytes: cached,
-        cacheHit: true,
-        durationMs: 0,
-        evictedBytesBefore,
-        evictionsBefore,
-        key,
-        path,
-      });
+      if (isMcapDecompressionCacheMeterEnabled()) {
+        recordAccess({
+          bytes: cached,
+          cacheHit: true,
+          durationMs: 0,
+          evictedBytesBefore,
+          evictionsBefore,
+          key,
+          path,
+        });
+      }
       return { bytes: cached, cacheHit: true };
     },
 
@@ -182,15 +186,17 @@ export function createMcapDecompressedChunkCache(
       const evictionsBefore = evictions;
       const cached = readCached(serializedKey);
       if (cached) {
-        recordAccess({
-          bytes: cached,
-          cacheHit: true,
-          durationMs: 0,
-          evictedBytesBefore,
-          evictionsBefore,
-          key,
-          path,
-        });
+        if (isMcapDecompressionCacheMeterEnabled()) {
+          recordAccess({
+            bytes: cached,
+            cacheHit: true,
+            durationMs: 0,
+            evictedBytesBefore,
+            evictionsBefore,
+            key,
+            path,
+          });
+        }
         return { bytes: cached, cacheHit: true };
       }
       const loaded = load();
@@ -205,15 +211,17 @@ export function createMcapDecompressedChunkCache(
       if (loaded.bytes.byteLength <= capacityBytes) {
         cache.set(serializedKey, loaded.bytes);
       }
-      recordAccess({
-        bytes: loaded.bytes,
-        cacheHit: false,
-        durationMs: loaded.durationMs,
-        evictedBytesBefore,
-        evictionsBefore,
-        key,
-        path,
-      });
+      if (isMcapDecompressionCacheMeterEnabled()) {
+        recordAccess({
+          bytes: loaded.bytes,
+          cacheHit: false,
+          durationMs: loaded.durationMs,
+          evictedBytesBefore,
+          evictionsBefore,
+          key,
+          path,
+        });
+      }
       return { bytes: loaded.bytes, cacheHit: false };
     },
 
@@ -228,21 +236,24 @@ export function createMcapDecompressedChunkCache(
       if (loaded.bytes.buffer.byteLength === 0) {
         throw new Error("Cannot return a detached decompressed MCAP chunk");
       }
-      recordMcapDecompressionCache({
-        cacheCapacityBytes: capacityBytes,
-        cacheEvictedBytes: 0,
-        cacheEvictions: 0,
-        cacheHit: false,
-        cacheOwnerId,
-        cacheResidentBytes: cache.calculatedSize ?? 0,
-        chunkIdentity: input.chunkIdentity,
-        chunkIdentityStable: false,
-        compressedBytes: input.compressedBytes,
-        compression: input.compression,
-        decompressedBytes: loaded.bytes.byteLength,
-        durationMs: loaded.durationMs,
-        path,
-      });
+      if (isMcapDecompressionCacheMeterEnabled()) {
+        cacheOwnerId ??= createMcapDecompressionCacheOwnerId("shared-reader");
+        recordMcapDecompressionCache({
+          cacheCapacityBytes: capacityBytes,
+          cacheEvictedBytes: 0,
+          cacheEvictions: 0,
+          cacheHit: false,
+          cacheOwnerId,
+          cacheResidentBytes: cache.calculatedSize ?? 0,
+          chunkIdentity: input.chunkIdentity(),
+          chunkIdentityStable: false,
+          compressedBytes: input.compressedBytes,
+          compression: input.compression,
+          decompressedBytes: loaded.bytes.byteLength,
+          durationMs: loaded.durationMs,
+          path,
+        });
+      }
       return { bytes: loaded.bytes, cacheHit: false };
     },
   };
