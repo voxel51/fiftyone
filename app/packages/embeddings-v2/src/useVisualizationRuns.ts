@@ -16,8 +16,8 @@ const VISUALIZATION_CLS = "fiftyone.brain.visualization.";
  * no auto-selection and callers pick their own active run from the list.
  *
  * A run that is still computing arrives with `ready: false` and flips when
- * the dataset query refreshes — no polling, because the list is no longer
- * something this panel owns.
+ * the dataset query refreshes. This hook never fetches on its own; whether
+ * and when to ask for a fresh dataset query is the caller's concern.
  */
 export function useVisualizationRuns(): {
   runs: VisualizationRun[] | null;

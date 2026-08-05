@@ -161,7 +161,7 @@ class BrainRun(Run):
     error: t.Optional[str]
 
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=256)
 def _run_cls_error(cls_path: str) -> t.Optional[str]:
     """Whether a stored run class still imports. Cached because a failed
     import is not cached by Python — every miss would re-walk the module
