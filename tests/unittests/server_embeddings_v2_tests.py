@@ -114,7 +114,7 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
     def test_runs_status(self):
         # The status route peeks at run documents only, so it must agree
         # with the dataset query's own readiness/error verdicts without
-        # loading results or reconstructing the dataset object
+        # loading results
         dataset, _ = _make_samples_run()
         viz_doc = dataset._doc.brain_methods["viz"]
 

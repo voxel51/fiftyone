@@ -81,13 +81,7 @@ def get_sample_filter(slices):
 class EmbeddingsV2RunsStatus(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        """Cheap ready/error peek at the dataset's visualization runs.
-
-        A poll target: one raw collection read keyed by the dataset's ID
-        (the client already has it), no ``Dataset`` object (schema
-        resolution, sample reload) and no results loading — safe to hit
-        on an interval while a run is pending.
-        """
+        """Check the status of a dataset's visualization runs."""
         return await run_sync_task(self._post_sync, data)
 
     def _post_sync(self, data):

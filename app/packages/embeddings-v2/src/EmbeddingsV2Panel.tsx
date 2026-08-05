@@ -16,7 +16,6 @@ import { useOperatorExecutor } from "@fiftyone/operators";
 import { usePanelId, usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { useEffect, useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
 import PlotView from "./PlotView";
 import { fetchRunsStatus } from "./protocol";
 import RunsList from "./RunsList";
@@ -35,8 +34,8 @@ const PENDING_POLL_MS = 5_000;
 const mountedPanels = new Set<string>();
 
 export default function EmbeddingsV2Panel() {
-  const datasetName = useRecoilValue(fos.datasetName) ?? null;
-  const datasetId = useRecoilValue(fos.datasetId) ?? null;
+  const datasetName = fos.useCurrentDatasetName() ?? null;
+  const datasetId = fos.useCurrentDatasetId() ?? null;
   const panelId = usePanelId();
   const [openKeyState, setOpenKey] = usePanelStatePartial<string | null>(
     "openKey",
@@ -99,21 +98,37 @@ export default function EmbeddingsV2Panel() {
   useEffect(() => {
     if (openRun || !datasetId || pendingKeys.length === 0) return undefined;
 
+    // `active` guards against a straggling response outliving this effect
+    // (e.g. the user opens a plot while a request is in flight) — without
+    // it, a late `changed` result would still fire the heavy refresh
+    // against a dataset/view the effect no longer applies to. `inFlight`
+    // just skips overlapping ticks if a response is slow
+    let active = true;
+    let inFlight = false;
+
     const check = () => {
-      if (document.hidden) return;
+      if (document.hidden || inFlight) return;
+      inFlight = true;
       fetchRunsStatus(datasetId)
         .then((statuses) => {
+          if (!active) return;
           const changed = statuses.some(
             (s) => pendingKeys.includes(s.brainKey) && (s.ready || s.error),
           );
           if (changed) refresh();
         })
-        .catch(() => undefined);
+        .catch(() => undefined)
+        .finally(() => {
+          inFlight = false;
+        });
     };
 
     check();
     const id = window.setInterval(check, PENDING_POLL_MS);
-    return () => window.clearInterval(id);
+    return () => {
+      active = false;
+      window.clearInterval(id);
+    };
     // openRun/pendingKeys are summarized as Boolean(openRun)/pendingSignature
     // on purpose: both are new references most renders, and depending on
     // them directly would restart the interval far more often than the
