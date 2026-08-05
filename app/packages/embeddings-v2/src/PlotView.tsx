@@ -64,12 +64,12 @@ import {
   type InteractionMode,
 } from "./renderer";
 import { clearSelectionNonceState, selectionCountState } from "./state";
-import { useColorColumn, usePointColors } from "./useColorColumn";
+import { useColorColumn } from "./useColorColumn";
+import { useColorPalette } from "./useColorPalette";
 import { useHoverInfo } from "./useHoverInfo";
 import { useLocalColorMask } from "./useLocalColorMask";
 import { useMasks } from "./useMasks";
 import { useRunColumns } from "./useRunColumns";
-import { useSchemePalette } from "./useSchemePalette";
 import { useSelectionBridge } from "./useSelectionBridge";
 
 const TOKEN_VARS = {
@@ -161,11 +161,14 @@ export default function PlotView({
     loading: colorLoading,
     error: colorError,
   } = useColorColumn(datasetName, brainKey, run, colorField);
-  // Colors live in the App's color scheme, not in the fetched column:
-  // editing the pool (or a per-value override) recolors the plot in
-  // place, and classes match their labels in the grid
-  const palette = useSchemePalette(colorField, colorMeta);
-  const colors = usePointColors(colorValues, colorMeta, palette);
+  // The palette lives in the App's color scheme, not in the fetched
+  // column: editing the pool (or a per-value override) recolors the plot
+  // in place, and values match their labels in the grid
+  const { palette, colors } = useColorPalette(
+    colorField,
+    colorValues,
+    colorMeta,
+  );
   // The color-by field's filter evaluates client-side when provably
   // faithful (legend clicks never wait on the masks round trip); the
   // rest ships to the masks endpoint, identity-stable
@@ -189,13 +192,13 @@ export default function PlotView({
     localMask,
   );
   // The hover card's swatch mirrors the point's rendered color, which
-  // buildColors derives from the same class column
+  // buildColors derives from the same value column
   const pointSwatch = (index: number): string | null => {
     if (colorValues?.style !== "categorical") return null;
-    const classIndex = colorValues.indices[index];
-    return classIndex === MISSING_CATEGORY
+    const valueIndex = colorValues.indices[index];
+    return valueIndex === MISSING_CATEGORY
       ? null
-      : categoryCss(palette, classIndex);
+      : categoryCss(palette, valueIndex);
   };
 
   const { hover, handleHover } = useHoverInfo(
@@ -472,11 +475,7 @@ export default function PlotView({
           />
         )}
         {colorField && colorMeta && colorMeta.style === "continuous" && (
-          <ContinuousLegend
-            field={colorField}
-            meta={colorMeta}
-            palette={palette}
-          />
+          <ContinuousLegend field={colorField} meta={colorMeta} />
         )}
         {chipCount ? (
           <div className="emb-plot-overlay emb-plot-chip">

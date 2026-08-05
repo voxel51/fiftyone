@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { buildColors, type PlotPalette } from "./colors";
+import { useEffect, useState } from "react";
 import {
   fetchColor,
   fetchColorByChoices,
@@ -75,25 +74,4 @@ export function useColorColumn(
   }, [datasetName, brainKey, colorField]);
 
   return { choices, values, meta, loading, error };
-}
-
-/**
- * The renderer's rgb column for a fetched value column. Kept apart from
- * the fetch so a color scheme edit recolors the plot without refetching.
- */
-export function usePointColors(
-  values: ColorValues | null,
-  meta: ColorMeta | null,
-  palette: PlotPalette,
-): Float32Array | null {
-  return useMemo(
-    () =>
-      values
-        ? buildColors(values, palette, {
-            min: meta?.min ?? null,
-            max: meta?.max ?? null,
-          })
-        : null,
-    [values, meta, palette],
-  );
 }

@@ -2,17 +2,9 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { ContinuousLegend, formatRampValue } from "./ContinuousLegend";
-import { buildColors, rampCss, type PlotPalette } from "./colors";
+import { buildColors, rampCss } from "./colors";
 
 afterEach(cleanup);
-
-const PALETTE: PlotPalette = {
-  classes: [],
-  ramp: [
-    [38, 102, 230],
-    [255, 166, 0],
-  ],
-};
 
 describe("formatRampValue", () => {
   it("shows floats to three significant digits and integers verbatim", () => {
@@ -32,14 +24,14 @@ describe("ContinuousLegend", () => {
       style: "continuous" as const,
       values: new Float32Array([0, 1]),
     };
-    const rgb = buildColors(column, PALETTE, { min: 0, max: 1 });
+    const rgb = buildColors(column, [], { min: 0, max: 1 });
     const css = (offset: number) =>
       `rgb(${Math.round(rgb[offset] * 255)}, ${Math.round(
         rgb[offset + 1] * 255,
       )}, ${Math.round(rgb[offset + 2] * 255)})`;
 
-    expect(rampCss(PALETTE, 0)).toBe(css(0));
-    expect(rampCss(PALETTE, 1)).toBe(css(3));
+    expect(rampCss(0)).toBe(css(0));
+    expect(rampCss(1)).toBe(css(3));
   });
 
   it("renders nothing without bounds (all values missing)", () => {
@@ -47,7 +39,6 @@ describe("ContinuousLegend", () => {
       <ContinuousLegend
         field="uniqueness"
         meta={{ style: "continuous", min: null, max: null }}
-        palette={PALETTE}
       />,
     );
     expect(container.firstChild).toBeNull();
