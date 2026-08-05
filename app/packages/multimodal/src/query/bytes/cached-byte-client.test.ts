@@ -1124,6 +1124,74 @@ describe("createCachedByteClient remote fill slots", () => {
     expect([...queueDepth.values()].every((depth) => depth === 0)).toBe(true);
   });
 
+  it("keeps distinct priority fills progressing on slot zero while duplicate backgrounds park", async () => {
+    const { active, manager, queueDepth } = createFakeLockManager();
+    const shared = createMemoryByteRangeCache({
+      maxSizeBytes: MEMORY_CACHE_BYTES,
+    });
+    const controlled = createControlledReader();
+    const firstBackground = createClient({
+      fillSlotClass: "background",
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const secondBackground = createClient({
+      fillSlotClass: "background",
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const priority = createClient({
+      locks: manager,
+      persistent: shared,
+      reads: controlled.reader,
+    });
+    const backgroundShape = remoteRead(16n);
+
+    const firstX = firstBackground.client.readBytes(backgroundShape);
+    await flushAsync();
+    const secondX = secondBackground.client.readBytes(backgroundShape);
+    await flushAsync();
+    expect(controlled.pending).toHaveLength(1);
+    expect(
+      [1, 2].filter((slot) =>
+        active.has(byteFillSlotName(backgroundShape.source, slot)),
+      ),
+    ).toHaveLength(2);
+
+    const priorityReads = [24n, 32n, 40n].map((offset) =>
+      priority.client.readBytes(remoteRead(offset)),
+    );
+    await flushAsync();
+    expect(
+      controlled.pending.map((entry) => entry.request.range.offset),
+    ).toEqual([16n, 24n]);
+
+    for (const offset of [24n, 32n, 40n]) {
+      const entry = controlled.pending.find(
+        (pending) => pending.request.range.offset === offset,
+      );
+      expect(entry).toBeDefined();
+      entry?.resolve(fillResult(entry.request));
+      await flushAsync();
+    }
+    await Promise.all(priorityReads);
+
+    const backgroundFetch = controlled.pending[0];
+    backgroundFetch.resolve(fillResult(backgroundFetch.request));
+    await Promise.all([firstX, secondX]);
+    await flushAsync();
+
+    expect(
+      controlled.pending.filter(
+        (entry) => entry.request.range.offset === backgroundShape.range.offset,
+      ),
+    ).toHaveLength(1);
+    expect(active.size).toBe(0);
+    expect([...queueDepth.values()].every((depth) => depth === 0)).toBe(true);
+  });
+
   it("retries a failed background shape without leaking either slot", async () => {
     const { active, manager, queueDepth } = createFakeLockManager();
     const shared = createMemoryByteRangeCache({
