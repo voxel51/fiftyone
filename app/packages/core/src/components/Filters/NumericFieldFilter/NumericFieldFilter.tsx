@@ -5,8 +5,10 @@ import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import useLabelAttributeIcon from "../use-label-attribute-icon";
 import useQueryPerformanceIcon from "../use-query-performance-icon";
 import useQueryPerformanceTimeout from "../use-query-performance-timeout";
+import { useRecoilValue } from "recoil";
 import Box from "./Box";
 import RangeSlider from "./RangeSlider";
+import * as state from "./state";
 import useShow from "./use-show";
 
 const Container = styled.div`
@@ -33,6 +35,16 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const name = path.split(".").slice(-1)[0];
   const field = fos.useAssertedRecoilValue(fos.field(path));
 
+  // Issue the field + parent aggregations together, before useShow
+  // suspends on the field (via hasBounds). Otherwise the tree waterfalls:
+  // useShow reads the field, suspends, and RangeSlider/<Nonfinites> only
+  // request the parent once it resolves. No-op on the lightning path.
+  //
+  // The discarded value is the point — this is a render-phase read purely to
+  // start the fetches. It can't be an effect: React won't commit a tree
+  // containing a suspended component, so an effect here wouldn't fire until
+  // the bounds read had already resolved, leaving the fetches serial.
+  useRecoilValue(state.numericFilterPrefetch({ path, modal }));
   const show = useShow(modal, named, path);
   const icon = useQueryPerformanceIcon(modal, named, path, color);
   const attributeIcon = useLabelAttributeIcon(modal, named, path, color);

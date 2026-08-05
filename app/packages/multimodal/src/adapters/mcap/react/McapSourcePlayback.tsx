@@ -76,6 +76,7 @@ import {
   useMcapModalLayout,
 } from "./use-mcap-modal-layout";
 import { useMcapSceneInventory } from "./use-mcap-scene-inventory";
+import { resolveMcapTimelineMode } from "../timeline-mode";
 
 const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
 
@@ -225,6 +226,21 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   const shellInventory = readyInventory ?? retainedInventoryRef.current;
   const shellSources = shellInventory?.sources ?? sources;
   const shellTopics = shellInventory?.topics ?? topics;
+  const timelineMode = useMemo(
+    () => resolveMcapTimelineMode(shellTopics),
+    [shellTopics],
+  );
+  // PlaybackProvider reads `mode` only at creation (see MultiModalPlayback's
+  // `mode` prop doc). Keying MultiModalPlayback by every resolved mode field
+  // forces a remount — and a fresh provider/store — whenever navigating to a
+  // source resolves a different timeline mode, instead of silently retaining
+  // the previous mode's stale presentation.
+  const timelineModeKey =
+    timelineMode.kind === "sequence"
+      ? `sequence:${timelineMode.fps}`
+      : timelineMode.kind === "absolute"
+        ? `absolute:${timelineMode.epochAnchorMs}`
+        : "duration";
   const playbackSource = readyInventory && !navigationPending ? source : null;
   const effectiveLayoutScopeKey =
     layoutScopeKey ?? (source ? `mcap-source:${source.sourceId}` : undefined);
@@ -351,6 +367,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                             onChange={onImageAspectRatioChange}
                           >
                             <MultiModalPlayback
+                              key={timelineModeKey}
                               fileName={fileName}
                               decorateTrack={decorateTrack}
                               headerCaption={headerCaption}
@@ -360,6 +377,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                               addTileMenu={<McapAddTileMenu />}
                               timelineExtraActions={<McapTimestampReadout />}
                               sceneSources={shellSources}
+                              mode={timelineMode}
                               deselectFocusedTileOnRepeatSelect={false}
                               initialTiles={initialTiles}
                               initialManualTileTitles={initialManualTileTitles}

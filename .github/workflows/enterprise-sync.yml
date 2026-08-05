@@ -98,6 +98,10 @@ jobs:
                 state: 'pending',
                 context: 'enterprise / ci',
                 description: 'Awaiting Enterprise sync workflow…',
+                // The sync workflows overwrite this with links to the run
+                // doing the work; until then, link the dispatching run so
+                // a status stuck here is diagnosable from the merge box.
+                target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               });
             }
 

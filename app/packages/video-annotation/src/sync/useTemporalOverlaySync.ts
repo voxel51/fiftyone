@@ -271,19 +271,20 @@ const useOverlayCleanup = (
   overlaysRef: MutableRefObject<Map<string, TemporalOverlay>>,
 ): void => {
   useEffect(() => {
+    // stable Map instance — safe to read in cleanup
+    const overlays = overlaysRef.current;
     return () => {
       if (!scene) {
         return;
       }
 
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      for (const id of overlaysRef.current.keys()) {
+      for (const id of overlays.keys()) {
         scene.removeOverlay(id);
       }
 
-      overlaysRef.current.clear();
+      overlays.clear();
     };
-  }, [scene]);
+  }, [scene, overlaysRef]);
 };
 
 /**

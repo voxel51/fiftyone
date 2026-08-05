@@ -11,19 +11,20 @@
     "main": "./src/index.ts",
     "scripts": {
         "build": "tsc",
-        "test": "jest",
+        "test": "vitest",
         "test:watch": "jest --watch",
         "lint": "eslint src/**/*.ts",
         "type-check": "tsc --noEmit"
     },
     "dependencies": {
-        "lru-cache": "^11.0.1",
+        "lru-cache": "catalog:",
         "pixi.js": "^8.13.1"
     },
     "devDependencies": {
         "@typescript-eslint/eslint-plugin": "^6.0.0",
         "@typescript-eslint/parser": "^6.0.0",
-        "eslint": "^8.0.0"
+        "eslint": "catalog:",
+        "typescript": "catalog:"
     },
     "peerDependencies": {
         "@fiftyone/commands": "*",

@@ -18,12 +18,15 @@ export const use3dAnnotationEventHandlers = () => {
 
   useAnnotationEventHandler(
     "annotation:sidebarLabelSelected",
-    useCallback((payload) => {
-      setSelectedLabelForAnnotation({
-        _id: payload.id,
-        ...payload.data,
-      });
-    }, []),
+    useCallback(
+      (payload) => {
+        setSelectedLabelForAnnotation({
+          _id: payload.id,
+          ...payload.data,
+        });
+      },
+      [setSelectedLabelForAnnotation],
+    ),
   );
 
   useAnnotationEventHandler(
@@ -49,17 +52,20 @@ export const use3dAnnotationEventHandlers = () => {
 
   useAnnotationEventHandler(
     "annotation:sidebarLabelHover",
-    useCallback((payload) => {
-      setHoveredLabel({
-        id: payload.id,
-      });
-    }, []),
+    useCallback(
+      (payload) => {
+        setHoveredLabel({
+          id: payload.id,
+        });
+      },
+      [setHoveredLabel],
+    ),
   );
 
   useAnnotationEventHandler(
     "annotation:sidebarLabelUnhover",
     useCallback(() => {
       setHoveredLabel(null);
-    }, []),
+    }, [setHoveredLabel]),
   );
 };

@@ -157,6 +157,7 @@ class TestScene(unittest.TestCase):
                 "shapes": 1,
                 "stls": 1,
                 "gaussian splats": 1,
+                "miris streams": 0,
             },
         )
 

@@ -6,6 +6,7 @@ import {
   BYTE_SOURCE_READ_PROFILE,
   type ByteSourceDescriptor,
 } from "../../../query/bytes";
+import type { StreamInventory } from "../../../schemas/v1";
 import type { McapResourceClient } from "../types";
 import { McapSourcePlayback } from "./McapSourcePlayback";
 
@@ -16,7 +17,7 @@ const playbackHarness = vi.hoisted(() => {
       error: null as string | null,
       sources: [] as Array<{ id: string; label: string; type: string }>,
       status: "ready" as "error" | "idle" | "loading" | "ready",
-      topics: [] as never[],
+      topics: [] as StreamInventory[],
       topicCount: 3,
     },
     shellMounts: 0,
@@ -367,18 +368,73 @@ describe("McapSourcePlayback", () => {
         ?.hasAttribute("data-mcap-source-transitioning"),
     ).toBe(false);
   });
+
+  it("remounts the shell when the resolved timeline mode changes across a source navigation", () => {
+    const client = {
+      activateSource: vi.fn(),
+    } as unknown as McapResourceClient;
+    const firstSource = createSource("sample-a");
+    const secondSource = createSource("sample-b");
+    playbackHarness.sceneInventory = readyInventory("/camera/a");
+
+    const { rerender } = render(
+      <McapSourcePlayback
+        client={client}
+        fileName="sample-a.mcap"
+        source={firstSource}
+      />,
+    );
+    const durationInstance = screen
+      .getByTestId("playback-shell")
+      .getAttribute("data-instance-id");
+
+    playbackHarness.sceneInventory = readyInventory("/camera/b", [
+      timelineModeTopic("sequence", {
+        "mcap.channel_metadata.timeline_fps": "24",
+      }),
+    ]);
+    rerender(
+      <McapSourcePlayback
+        client={client}
+        fileName="sample-b.mcap"
+        source={secondSource}
+      />,
+    );
+
+    expect(
+      screen.getByTestId("playback-shell").getAttribute("data-instance-id"),
+    ).not.toBe(durationInstance);
+  });
 });
 
 function createSource(sourceId: string, etag?: string): ByteSourceDescriptor {
   return { sourceId, url: `memory://${sourceId}.mcap`, etag };
 }
 
-function readyInventory(topic: string) {
+function timelineModeTopic(
+  mode: "sequence" | "absolute",
+  extraMetadata: Record<string, string> = {},
+): StreamInventory {
+  return {
+    $typeName: "fiftyone.multimodal.schemas.v1.StreamInventory",
+    displayName: "/topic",
+    metadata: { "mcap.channel_metadata.timeline_mode": mode, ...extraMetadata },
+    payload: {
+      $typeName: "fiftyone.multimodal.schemas.v1.PayloadDescriptor",
+      encoding: "protobuf",
+      schema: "foxglove.CompressedImage",
+      schemaEncoding: "protobuf",
+    },
+    streamId: "/topic",
+  };
+}
+
+function readyInventory(topic: string, topics: StreamInventory[] = []) {
   return {
     error: null,
     sources: [{ id: topic, label: topic, type: "image" }],
     status: "ready" as const,
-    topics: [],
+    topics,
     topicCount: 1,
   };
 }

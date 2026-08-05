@@ -10,6 +10,7 @@ import {
   Plane,
   Quaternion,
   type Raycaster,
+  type Vector2,
   type Scene,
   Vector3,
   type Vector3Tuple,
@@ -424,7 +425,7 @@ export function getPlaneIntersection(
   ndc: { x: number; y: number },
   plane: Plane,
 ): Vector3 | null {
-  raycaster.setFromCamera(ndc as any, camera);
+  raycaster.setFromCamera(ndc as Vector2, camera);
   const point = new Vector3();
   if (raycaster.ray.intersectPlane(plane, point)) {
     return point;
