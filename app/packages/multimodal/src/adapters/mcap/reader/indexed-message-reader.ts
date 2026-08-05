@@ -5,10 +5,7 @@ import {
   decompressMcapChunkRecord,
   mcapDecompressedChunkKeyForIndex,
 } from "./chunk-records";
-import {
-  createMcapDecompressedChunkCache,
-  type McapDecompressedChunkCache,
-} from "./decompressed-chunk-cache";
+import { type McapDecompressedChunkCache } from "./decompressed-chunk-cache";
 import type {
   McapIndexedMessageTime,
   McapIndexedReaderLike,
@@ -27,9 +24,9 @@ type McapIndexedMessageReader = (
 
 /** Dependencies for one source-bound exact indexed-message reader. */
 export interface CreateMcapIndexedMessageReaderOptions {
-  readonly decompressedChunkCache?: McapDecompressedChunkCache;
+  /** Caller-owned and disposed with the containing reader. */
+  readonly decompressedChunkCache: McapDecompressedChunkCache;
   readonly decompressHandlers: McapTypes.DecompressHandlers;
-  readonly maxCacheSizeBytes?: number;
   readonly readable: ByteClientReadable;
   readonly reader: McapIndexedReaderLike;
   readonly sourceKey: string | (() => string);
@@ -40,16 +37,12 @@ export interface CreateMcapIndexedMessageReaderOptions {
  * records by stable source and chunk identity.
  */
 export function createMcapIndexedMessageReader({
-  decompressedChunkCache: providedDecompressedChunkCache,
+  decompressedChunkCache,
   decompressHandlers,
-  maxCacheSizeBytes,
   readable,
   reader,
   sourceKey,
 }: CreateMcapIndexedMessageReaderOptions): McapIndexedMessageReader {
-  const decompressedChunkCache =
-    providedDecompressedChunkCache ??
-    createMcapDecompressedChunkCache(maxCacheSizeBytes);
   const chunkIndexes = new Map<bigint, McapChunkIndex>(
     reader.chunkIndexes.map((chunk: McapChunkIndex) => [
       chunk.chunkStartOffset,

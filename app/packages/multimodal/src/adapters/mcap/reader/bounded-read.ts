@@ -11,10 +11,7 @@ import {
   decompressMcapChunkRecord,
   mcapDecompressedChunkKeyForIndex,
 } from "./chunk-records";
-import {
-  createMcapDecompressedChunkCache,
-  type McapDecompressedChunkCache,
-} from "./decompressed-chunk-cache";
+import { type McapDecompressedChunkCache } from "./decompressed-chunk-cache";
 import {
   channelIdsForTopics,
   collectChunkMessageIndexReadRanges,
@@ -47,7 +44,8 @@ interface ChunkGroup {
 
 /** Dependencies for one source-bound bounded MCAP executor. */
 export interface CreateMcapBoundedReaderOptions {
-  readonly decompressedChunkCache?: McapDecompressedChunkCache;
+  /** Caller-owned and disposed with the containing reader. */
+  readonly decompressedChunkCache: McapDecompressedChunkCache;
   readonly decompressHandlers: McapTypes.DecompressHandlers;
   readonly nowMs?: () => number;
   readonly readable: ByteClientReadable;
@@ -60,7 +58,7 @@ export interface CreateMcapBoundedReaderOptions {
  * before any chunk body is fetched or decompressed.
  */
 export function createMcapBoundedReader({
-  decompressedChunkCache = createMcapDecompressedChunkCache(),
+  decompressedChunkCache,
   decompressHandlers,
   nowMs = monotonicNowMs,
   readable,

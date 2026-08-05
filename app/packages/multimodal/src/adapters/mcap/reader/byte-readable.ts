@@ -40,14 +40,6 @@ export interface McapContainedByteRead {
   readonly transferredBytes: number;
 }
 
-export interface McapReadableChunkIdentity {
-  readonly chunkLength: bigint;
-  readonly chunkStartOffset: bigint;
-  readonly compression: string;
-  readonly sourceKey: string;
-  readonly uncompressedSize: bigint;
-}
-
 export interface McapReadableSourceRange {
   readonly length: bigint;
   readonly offset: bigint;
@@ -58,6 +50,7 @@ interface ReadBufferAnchor {
   readonly byteOffset: number;
   readonly length: number;
   readonly sourceOffset: bigint;
+  readonly sourceKey: string;
 }
 
 /**
@@ -92,33 +85,6 @@ export class ByteClientReadable implements McapTypes.IReadable {
     this.chunkIndexes = chunkIndexes;
   }
 
-  /** Resolves an @mcap decompressor input view to its stable source chunk. */
-  chunkIdentityForBytes(
-    bytes: Uint8Array,
-  ): McapReadableChunkIdentity | undefined {
-    const range = this.sourceRangeForBytes(bytes);
-    if (!range) {
-      return undefined;
-    }
-    const absoluteStart = range.offset;
-    const absoluteEnd = absoluteStart + range.length;
-    const chunk = this.chunkIndexes.find(
-      (candidate) =>
-        absoluteStart >= candidate.chunkStartOffset &&
-        absoluteEnd <= candidate.chunkStartOffset + candidate.chunkLength,
-    );
-    if (!chunk) {
-      return undefined;
-    }
-    return {
-      chunkLength: chunk.chunkLength,
-      chunkStartOffset: chunk.chunkStartOffset,
-      compression: chunk.compression,
-      sourceKey: range.sourceKey,
-      uncompressedSize: chunk.uncompressedSize,
-    };
-  }
-
   /** Resolves a returned view or slice to its exact source byte range. */
   sourceRangeForBytes(bytes: Uint8Array): McapReadableSourceRange | undefined {
     const anchors = this.readBufferAnchors.get(bytes.buffer);
@@ -126,21 +92,40 @@ export class ByteClientReadable implements McapTypes.IReadable {
       return undefined;
     }
     const viewEnd = bytes.byteOffset + bytes.byteLength;
-    const anchor = anchors.find(
+    const matchingAnchors = anchors.filter(
       (candidate) =>
         bytes.byteOffset >= candidate.byteOffset &&
         viewEnd <= candidate.byteOffset + candidate.length,
     );
+    const anchor = matchingAnchors[0];
     if (!anchor) {
       return undefined;
     }
     const offset =
       anchor.sourceOffset + BigInt(bytes.byteOffset - anchor.byteOffset);
+    if (
+      matchingAnchors.some(
+        (candidate) =>
+          candidate.sourceKey !== anchor.sourceKey ||
+          candidate.sourceOffset +
+            BigInt(bytes.byteOffset - candidate.byteOffset) !==
+            offset,
+      )
+    ) {
+      // A byte client reused one mutable backing range for different source
+      // identities. There is no collision-safe identity for this view.
+      return undefined;
+    }
     return {
       length: BigInt(bytes.byteLength),
       offset,
-      sourceKey: this.sourceAccessKey(),
+      sourceKey: anchor.sourceKey,
     };
+  }
+
+  /** Source/content-version identity tied to one returned read buffer. */
+  sourceIdentityForBytes(bytes: Uint8Array): string | undefined {
+    return this.sourceRangeForBytes(bytes)?.sourceKey;
   }
 
   /** Current access/content identity, including a discovered validator. */
@@ -331,13 +316,15 @@ export class ByteClientReadable implements McapTypes.IReadable {
       byteOffset: result.bytes.byteOffset,
       length: result.bytes.byteLength,
       sourceOffset: result.range.offset,
+      sourceKey: byteSourceAccessKey(result.source),
     };
     if (
       !anchors.some(
         (candidate) =>
           candidate.byteOffset === anchor.byteOffset &&
           candidate.length === anchor.length &&
-          candidate.sourceOffset === anchor.sourceOffset,
+          candidate.sourceOffset === anchor.sourceOffset &&
+          candidate.sourceKey === anchor.sourceKey,
       )
     ) {
       anchors.push(anchor);

@@ -119,6 +119,42 @@ describe("MCAP decompressed chunk cache", () => {
     expect(load).toHaveBeenCalledTimes(1);
   });
 
+  it("builds unkeyed telemetry identities only while a sink is enabled", () => {
+    const cache = createMcapDecompressedChunkCache();
+    const chunkIdentity = vi.fn(() => "buffer-identity");
+    const input = {
+      chunkIdentity,
+      compressedBytes: 4,
+      compression: "zstd",
+      decompressedSize: 8n,
+    };
+    const load = () => ({ bytes: new Uint8Array(8), durationMs: 1 });
+
+    cache.loadUnkeyed(input, "main-indexed-reader", load);
+    expect(chunkIdentity).not.toHaveBeenCalled();
+
+    setMcapDecompressionCacheSink(() => undefined);
+    cache.loadUnkeyed(input, "main-indexed-reader", load);
+    expect(chunkIdentity).toHaveBeenCalledOnce();
+  });
+
+  it("reloads a cached chunk whose backing buffer was detached", () => {
+    const cache = createMcapDecompressedChunkCache();
+    const first = new Uint8Array(8);
+    const load = vi
+      .fn<() => { bytes: Uint8Array; durationMs: number }>()
+      .mockReturnValueOnce({ bytes: first, durationMs: 1 })
+      .mockReturnValueOnce({ bytes: new Uint8Array(8), durationMs: 1 });
+    cache.getOrLoad(key(), "bounded-reader", load);
+
+    structuredClone(first, { transfer: [first.buffer] });
+
+    expect(cache.getOrLoad(key(), "bounded-reader", load).bytes).toHaveLength(
+      8,
+    );
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
   it("clears on source version changes and rejects use after teardown", () => {
     const cache = createMcapDecompressedChunkCache();
     const load = vi.fn(() => ({

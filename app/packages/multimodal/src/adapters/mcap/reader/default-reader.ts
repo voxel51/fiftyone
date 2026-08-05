@@ -1,6 +1,9 @@
 import "../compatibility/browser-node-globals";
 import { McapIndexedReader, type McapTypes } from "@mcap/core";
-import type { ByteSourceDescriptor } from "../../../query/bytes";
+import {
+  byteSourceAccessKey,
+  type ByteSourceDescriptor,
+} from "../../../query/bytes";
 import { loadDecompressHandlers } from "../compatibility/mcap-support";
 import { createMcapBoundedReader } from "./bounded-read";
 import { ByteClientReadable } from "./byte-readable";
@@ -32,24 +35,18 @@ const DEFAULT_MCAP_MESSAGE_INDEX_CACHE_SIZE_BYTES = 128 * 1024 * 1024;
  * Creates the default indexed MCAP reader with supported chunk decompressors.
  */
 export async function createDefaultMcapReader(
-  _source: ByteSourceDescriptor,
+  source: ByteSourceDescriptor,
   readable: McapTypes.IReadable,
 ): Promise<McapIndexedReaderLike> {
   const wasmDecompressHandlers = await loadDecompressHandlers();
   const decompressedChunkCache = createMcapDecompressedChunkCache();
   const decompressHandlers = createCachedMcapDecompressHandlers(
     wasmDecompressHandlers,
-    undefined,
     {
       cache: decompressedChunkCache,
       ...(readable instanceof ByteClientReadable
-        ? {
-            resolveChunkIdentity: (buffer: Uint8Array) =>
-              readable.chunkIdentityForBytes(buffer),
-            resolveSourceRange: (buffer: Uint8Array) =>
-              readable.sourceRangeForBytes(buffer),
-          }
-        : {}),
+        ? {}
+        : { fallbackSourceKey: byteSourceAccessKey(source) }),
     },
   );
   let reader: McapIndexedReader;
@@ -59,15 +56,17 @@ export async function createDefaultMcapReader(
       messageIndexCacheSizeBytes: DEFAULT_MCAP_MESSAGE_INDEX_CACHE_SIZE_BYTES,
       readable,
     });
+    if (readable instanceof ByteClientReadable) {
+      readable.setChunkIndexes(reader.chunkIndexes);
+    }
+    assertSupportedChunkCompressions(
+      compressedChunkTypes(reader),
+      decompressHandlers,
+    );
   } catch (error) {
     decompressedChunkCache.dispose();
     throw error;
   }
-  if (readable instanceof ByteClientReadable) {
-    readable.setChunkIndexes(reader.chunkIndexes);
-  }
-  const chunkCompressions = compressedChunkTypes(reader);
-  assertSupportedChunkCompressions(chunkCompressions, decompressHandlers);
 
   const adapterReader: McapIndexedReaderLike = {
     channelsById: reader.channelsById,

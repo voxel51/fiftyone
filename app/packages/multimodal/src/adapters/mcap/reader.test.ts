@@ -9,6 +9,7 @@ import {
   type McapIndexedReaderLike,
 } from "./reader";
 import { ByteClientReadable } from "./reader/byte-readable";
+import { createMcapDecompressedChunkCache } from "./reader/decompressed-chunk-cache";
 
 const MCAP_CHUNK_OPCODE = 0x06;
 const MCAP_MESSAGE_INDEX_OPCODE = 0x07;
@@ -646,16 +647,20 @@ describe("MCAP indexed message times", () => {
     );
   });
 
-  it("caches decompressed chunk buffers by compressed byte identity", () => {
-    const decompress = vi.fn(
-      (buffer: Uint8Array, decompressedSize: bigint) =>
-        new Uint8Array([buffer[0] ?? 0, Number(decompressedSize)]),
-    );
+  it("does not cache copied decompressor inputs without stable context", () => {
+    const decompress = vi.fn((buffer: Uint8Array, decompressedSize: bigint) => {
+      const output = new Uint8Array(Number(decompressedSize));
+      output[0] = buffer[0] ?? 0;
+      return output;
+    });
     const handlers = createCachedMcapDecompressHandlers(
       {
         lz4: decompress,
       },
-      1024,
+      {
+        cache: createMcapDecompressedChunkCache(1024),
+        fallbackSourceKey: "source:version-1",
+      },
     );
     const compressed = new Uint8Array([7, 8, 9]);
     const sameBytes = new Uint8Array(
@@ -667,11 +672,39 @@ describe("MCAP indexed message times", () => {
     const first = handlers.lz4(compressed, 3n);
     const second = handlers.lz4(sameBytes, 3n);
 
-    expect(second).toBe(first);
-    expect(decompress).toHaveBeenCalledTimes(1);
+    expect(second).not.toBe(first);
+    expect(decompress).toHaveBeenCalledTimes(2);
   });
 
-  it("resolves sliced read buffers to stable source chunks", async () => {
+  it("falls back to uncached decompression for inconsistent context", () => {
+    const decompress = vi.fn(
+      (_buffer: Uint8Array, decompressedSize: bigint) =>
+        new Uint8Array(Number(decompressedSize)),
+    );
+    const handlers = createCachedMcapDecompressHandlers(
+      { lz4: decompress },
+      {
+        cache: createMcapDecompressedChunkCache(1024),
+      },
+    );
+    const compressed = new Uint8Array([7, 8, 9]);
+    const inconsistentContext: McapTypes.ChunkDecompressionContext = {
+      chunkLength: 64n,
+      chunkStartOffset: 128n,
+      compressedDataLength: 4n,
+      compressedDataStartOffset: 188n,
+      compression: "lz4",
+      sourceIdentity: "source:version-1",
+      uncompressedSize: 3n,
+    };
+
+    handlers.lz4(compressed, 3n, inconsistentContext);
+    handlers.lz4(compressed, 3n, inconsistentContext);
+
+    expect(decompress).toHaveBeenCalledTimes(2);
+  });
+
+  it("resolves sliced read buffers to stable source ranges", async () => {
     const backing = new Uint8Array(96);
     const readable = new ByteClientReadable(
       {
@@ -688,25 +721,71 @@ describe("MCAP indexed message times", () => {
         }),
       },
     );
-    readable.setChunkIndexes([
-      createChunkIndex({
-        chunkLength: 64n,
-        chunkStartOffset: 128n,
-        compression: "zstd",
-        uncompressedSize: 256n,
-      }),
-    ]);
-
     const bytes = await readable.read(128n, 64n);
 
-    const identity = readable.chunkIdentityForBytes(bytes.subarray(8, 56));
-    expect(identity).toMatchObject({
-      chunkLength: 64n,
-      chunkStartOffset: 128n,
-      compression: "zstd",
-      uncompressedSize: 256n,
+    const range = readable.sourceRangeForBytes(bytes.subarray(8, 56));
+    expect(range).toMatchObject({
+      length: 48n,
+      offset: 136n,
     });
-    expect(identity?.sourceKey).toContain("version-1");
+    expect(range?.sourceKey).toContain("version-1");
+  });
+
+  it("binds source identity to each read result instead of current state", async () => {
+    let version = 0;
+    const readable = new ByteClientReadable(
+      {
+        sizeBytes: "1024",
+        sourceId: "source:1",
+        url: "mcap-source://sample",
+      },
+      {
+        readBytes: async (request) => {
+          version += 1;
+          return {
+            bytes: new Uint8Array(Number(request.range.length)),
+            range: request.range,
+            source: { ...request.source, etag: `"version-${version}"` },
+          };
+        },
+      },
+    );
+
+    const first = await readable.read(100n, 8n);
+    const second = await readable.read(200n, 8n);
+
+    expect(readable.sourceIdentityForBytes(first)).toContain("version-1");
+    expect(readable.sourceIdentityForBytes(second)).toContain("version-2");
+    expect(readable.sourceAccessKey()).toContain("version-2");
+  });
+
+  it("rejects ambiguous identities for a reused mutable read buffer", async () => {
+    const shared = new Uint8Array(8);
+    let version = 0;
+    const readable = new ByteClientReadable(
+      {
+        sizeBytes: "1024",
+        sourceId: "source:1",
+        url: "mcap-source://sample",
+      },
+      {
+        readBytes: async (request) => {
+          version += 1;
+          return {
+            bytes: shared,
+            range: request.range,
+            source: { ...request.source, etag: `"version-${version}"` },
+          };
+        },
+      },
+    );
+
+    const first = await readable.read(100n, 8n);
+    expect(readable.sourceIdentityForBytes(first)).toBeDefined();
+    const reused = await readable.read(100n, 8n);
+
+    expect(readable.sourceIdentityForBytes(reused)).toBeUndefined();
+    expect(readable.sourceIdentityForBytes(first)).toBeUndefined();
   });
 
   it("logs debug chunk reads with chunk ids and byte counts", async () => {

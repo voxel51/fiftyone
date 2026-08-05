@@ -3,6 +3,7 @@ import { crc32 } from "@foxglove/crc";
 import { describe, expect, it, vi } from "vitest";
 import type { McapContainedByteRead } from "./byte-readable";
 import { ByteClientReadable } from "./byte-readable";
+import { createMcapDecompressedChunkCache } from "./decompressed-chunk-cache";
 import { createMcapIndexedMessageReader } from "./indexed-message-reader";
 import type { McapIndexedMessageTime, McapIndexedReaderLike } from "./types";
 
@@ -358,10 +359,10 @@ function createHarness(
     return records;
   });
   const read = createMcapIndexedMessageReader({
+    decompressedChunkCache: createMcapDecompressedChunkCache(
+      options.maxCacheSizeBytes,
+    ),
     decompressHandlers: { fake: decompress },
-    ...(options.maxCacheSizeBytes !== undefined
-      ? { maxCacheSizeBytes: options.maxCacheSizeBytes }
-      : {}),
     readable: { readContained } as unknown as ByteClientReadable,
     reader: createReader(fixtures.map((fixture) => fixture.chunkIndex)),
     sourceKey: options.sourceKey ?? "source:etag-a",
