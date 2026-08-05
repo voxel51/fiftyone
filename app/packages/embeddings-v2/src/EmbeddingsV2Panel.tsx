@@ -71,7 +71,7 @@ export default function EmbeddingsV2Panel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetName]);
 
-  // The runs are coupled to the dataset the page already loadss and
+  // The runs are coupled to the dataset the page already loads and
   // should not maintain an independent list.
   const { runs } = useVisualizationRuns();
   const refresh = fos.useRefresh();
