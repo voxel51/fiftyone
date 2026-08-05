@@ -910,6 +910,12 @@ export interface McapResourceClient {
   dispose(): void;
 
   /**
+   * Releases heavyweight decoded resources when no renderer currently owns
+   * the client, while allowing lightweight readers/workers to remain warm.
+   */
+  releaseRetainedResources?(): void;
+
+  /**
    * Declares which source the owning renderer is presenting. Worker-backed
    * clients switch ownership here (cancelling the previous source's pending
    * reads while keeping the worker fleet warm); reads for non-active

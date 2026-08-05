@@ -50,6 +50,9 @@ const TRANSPORT_PROGRESS_INTERVAL_MS = 500;
 // the active request's abort signal without threading it through the
 // reader stack (@mcap/core reads carry no signal parameter).
 const activeReadSignal: { current: AbortSignal | null } = { current: null };
+const activeRetainedDecodedRecordIds: {
+  current: ReadonlySet<string> | null;
+} = { current: null };
 let lastTransportProgressAtMs = -Infinity;
 
 let activeSourceKey = "";
@@ -116,6 +119,10 @@ async function runAndRespond(
   context: McapPlaybackWorkerRunContext,
 ) {
   activeReadSignal.current = context.signal;
+  activeRetainedDecodedRecordIds.current =
+    message.retainedDecodedRecordIds === undefined
+      ? null
+      : new Set(message.retainedDecodedRecordIds);
 
   try {
     throwIfWorkerRequestCancelled(context.signal);
@@ -165,6 +172,7 @@ async function runAndRespond(
     });
   } finally {
     activeReadSignal.current = null;
+    activeRetainedDecodedRecordIds.current = null;
   }
 }
 
@@ -307,6 +315,7 @@ function createMcapClient() {
     ...(fillSlotClass ? { fillSlotClass } : {}),
     onByteRead: handleByteRead,
     readSignal: activeReadSignal,
+    retainedDecodedRecordIds: activeRetainedDecodedRecordIds,
   });
 }
 

@@ -10,6 +10,7 @@ import {
 } from "./playback-worker-types";
 import { dehydrateMcapFrameTransformSet } from "../transforms/wire";
 import type { McapResourceClient } from "../contracts/index";
+import type { McapPlaybackWorkerResourceClient } from "./worker-resource-client";
 
 /**
  * Worker operation descriptor for one unary MCAP RPC.
@@ -128,7 +129,7 @@ export function isMcapPlaybackWorkerStreamRequest(
  * Runs one unary MCAP worker request against a resource client.
  */
 export function runMcapPlaybackWorkerUnaryRequest(
-  client: McapResourceClient,
+  client: McapPlaybackWorkerResourceClient,
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerUnaryType>,
 ): Promise<McapPlaybackWorkerResultByType[McapPlaybackWorkerUnaryType]> {
   switch (message.type) {
@@ -179,7 +180,7 @@ export function runMcapPlaybackWorkerUnaryRequest(
  * Streams results for one streaming MCAP worker request.
  */
 export async function* runMcapPlaybackWorkerStreamRequest(
-  client: McapResourceClient,
+  client: Pick<McapResourceClient, "readDecodedMessages">,
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType>,
 ): AsyncGenerator<
   McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType],

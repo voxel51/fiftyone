@@ -8,8 +8,28 @@ import {
 } from "../../../query/decoding";
 import { createMcapDecoderRegistry } from "../message-decoders/index";
 import { createInlineMcapResourceClient } from "../resource-client/inline-client";
-import type { McapResourceClient } from "../contracts/index";
-import type { McapPlaybackWorkerFetchParameters } from "./playback-worker-types";
+import type {
+  McapReadSynchronizedMessageBatchRequest,
+  McapReadSynchronizedMessagesRequest,
+  McapResourceClient,
+} from "../contracts/index";
+import type {
+  McapPlaybackWorkerFetchParameters,
+  McapPlaybackWorkerSynchronizedWindow,
+  McapRetainedDecodedMessageReference,
+} from "./playback-worker-types";
+
+export type McapPlaybackWorkerResourceClient = Omit<
+  McapResourceClient,
+  "readSynchronizedMessageBatch" | "readSynchronizedMessages"
+> & {
+  readSynchronizedMessageBatch(
+    request: McapReadSynchronizedMessageBatchRequest,
+  ): Promise<readonly McapPlaybackWorkerSynchronizedWindow[]>;
+  readSynchronizedMessages(
+    request: McapReadSynchronizedMessagesRequest,
+  ): Promise<McapPlaybackWorkerSynchronizedWindow>;
+};
 
 const transferSafeNoopDecodedOutputCache: DecodedOutputCache = {
   // A declared-noop cache lets decode callers skip building cache identity
@@ -31,16 +51,30 @@ export interface CreateWorkerResourceClientOptions {
   readonly fillSlotClass?: ByteFillSlotClass;
   readonly onByteRead?: (entry: ByteReadDebugLog) => void;
   readonly readSignal?: { readonly current: AbortSignal | null };
+  readonly retainedDecodedRecordIds?: {
+    readonly current: ReadonlySet<string> | null;
+  };
 }
 
 /**
  * Creates an inline MCAP resource client for code running inside a worker.
  */
+export function createWorkerResourceClient(
+  options: CreateWorkerResourceClientOptions & {
+    readonly retainedDecodedRecordIds: {
+      readonly current: ReadonlySet<string> | null;
+    };
+  },
+): McapPlaybackWorkerResourceClient;
+export function createWorkerResourceClient(
+  options?: CreateWorkerResourceClientOptions,
+): McapResourceClient;
 export function createWorkerResourceClient({
   fillSlotClass,
   onByteRead,
   readSignal,
-}: CreateWorkerResourceClientOptions = {}): McapResourceClient {
+  retainedDecodedRecordIds,
+}: CreateWorkerResourceClientOptions = {}): McapPlaybackWorkerResourceClient {
   const query = createMultimodalQueryClient({
     caches: {
       bytes: {
@@ -50,7 +84,7 @@ export function createWorkerResourceClient({
     },
   });
 
-  return createInlineMcapResourceClient({
+  const client = createInlineMcapResourceClient({
     byteClient: query.bytes,
     readSignal,
     decodeClient: createDecodeClient({
@@ -63,6 +97,42 @@ export function createWorkerResourceClient({
       registry: createMcapDecoderRegistry(),
     }),
   });
+
+  return {
+    ...client,
+    readSynchronizedMessageBatch: (request) =>
+      client.readSynchronizedMessageBatchWithReuse(
+        request,
+        ({ recordId, timelineTimeNs, topic }) => {
+          if (!retainedDecodedRecordIds?.current?.has(recordId)) {
+            return undefined;
+          }
+          const reference: McapRetainedDecodedMessageReference = {
+            kind: "retained-decoded-message",
+            recordId,
+            timelineTimeNs,
+            topic,
+          };
+          return reference;
+        },
+      ),
+    readSynchronizedMessages: (request) =>
+      client.readSynchronizedMessagesWithReuse(
+        request,
+        ({ recordId, timelineTimeNs, topic }) => {
+          if (!retainedDecodedRecordIds?.current?.has(recordId)) {
+            return undefined;
+          }
+          const reference: McapRetainedDecodedMessageReference = {
+            kind: "retained-decoded-message",
+            recordId,
+            timelineTimeNs,
+            topic,
+          };
+          return reference;
+        },
+      ),
+  };
 }
 
 /**

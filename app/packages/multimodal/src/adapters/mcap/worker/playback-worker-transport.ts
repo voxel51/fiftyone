@@ -63,9 +63,17 @@ export class McapPlaybackWorkerTransport {
     priority?: McapPlaybackWorkerPriority,
     supersessionKeys: readonly string[] = [],
     signal?: AbortSignal,
+    retainedDecodedRecordIds?: readonly string[],
   ): Promise<McapPlaybackWorkerResultByType[Type]> {
     const id = this.nextRequestId++;
-    const message = createRpcRequest(id, sourceKey, type, payload, priority);
+    const message = createRpcRequest(
+      id,
+      sourceKey,
+      type,
+      payload,
+      priority,
+      retainedDecodedRecordIds,
+    );
 
     return new Promise((resolve, reject) => {
       const cancel = () => {
@@ -352,6 +360,7 @@ function createRpcRequest<Type extends McapPlaybackWorkerUnaryType>(
   type: Type,
   payload: McapPlaybackWorkerRequestPayloadByType[Type],
   priority?: McapPlaybackWorkerPriority,
+  retainedDecodedRecordIds?: readonly string[],
 ): McapPlaybackWorkerRpcRequest<Type>;
 function createRpcRequest<Type extends McapPlaybackWorkerStreamType>(
   id: number,
@@ -359,6 +368,7 @@ function createRpcRequest<Type extends McapPlaybackWorkerStreamType>(
   type: Type,
   payload: McapPlaybackWorkerRequestPayloadByType[Type],
   priority?: McapPlaybackWorkerPriority,
+  retainedDecodedRecordIds?: readonly string[],
 ): McapPlaybackWorkerRpcRequest<Type>;
 function createRpcRequest(
   id: number,
@@ -366,11 +376,15 @@ function createRpcRequest(
   type: McapPlaybackWorkerRpcRequest["type"],
   payload: McapPlaybackWorkerRpcRequest["payload"],
   priority?: McapPlaybackWorkerPriority,
+  retainedDecodedRecordIds?: readonly string[],
 ): McapPlaybackWorkerRequest {
   return {
     id,
     payload,
     priority: priority ?? mcapPlaybackWorkerOperation(type).priority,
+    ...(retainedDecodedRecordIds && retainedDecodedRecordIds.length > 0
+      ? { retainedDecodedRecordIds }
+      : {}),
     sourceKey,
     type,
   } as McapPlaybackWorkerRequest;

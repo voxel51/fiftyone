@@ -314,6 +314,195 @@ describe("worker-backed MCAP resource client", () => {
     await expect(windows).resolves.toEqual([]);
   });
 
+  it("hydrates worker references from a pinned main-thread decoded record", async () => {
+    const { client, workers } = createClientHarness();
+    const request = {
+      timeNs: [1n],
+      source: createSource("source:1"),
+      topics: ["/camera"],
+    };
+    const decoded = {
+      ...createCacheableDecodedMessage(1n),
+      recordId: "camera-record\0log\0auto",
+    };
+
+    const first = client.readSynchronizedMessageBatch(request);
+    const worker = workers[0];
+    worker.respond({
+      id: 1,
+      ok: true,
+      result: [createSynchronizedWindowWithMessage(decoded)],
+    });
+    const [firstWindow] = await first;
+
+    const second = client.readSynchronizedMessageBatch(request);
+    expect(worker.messages.at(-1)).toMatchObject({
+      retainedDecodedRecordIds: [decoded.recordId],
+      type: "readSynchronizedMessageBatch",
+    });
+    const reference = {
+      kind: "retained-decoded-message" as const,
+      recordId: decoded.recordId,
+      timelineTimeNs: decoded.timelineTimeNs,
+      topic: decoded.topic,
+    };
+    worker.respond({
+      id: 2,
+      ok: true,
+      result: [createSynchronizedWindowWithMessage(reference)],
+    });
+    const [secondWindow] = await second;
+
+    expect(secondWindow?.messages[0]).toBe(firstWindow?.messages[0]);
+    expect(secondWindow?.messagesByTopic["/camera"]?.[0]).toBe(
+      firstWindow?.messages[0],
+    );
+  });
+
+  it("reuses playback-batch records across the interactive scrub lane", async () => {
+    const { client, workers } = createClientHarness();
+    const source = createSource("source:1");
+    const decoded = {
+      ...createCacheableDecodedMessage(1n),
+      recordId: "latched-record\0activeTimeline=log\0auto",
+    };
+    const playback = client.readSynchronizedMessageBatch({
+      source,
+      timeNs: [1n],
+      topics: ["/camera"],
+    });
+    workers[0].respond({
+      id: 1,
+      ok: true,
+      result: [createSynchronizedWindowWithMessage(decoded)],
+    });
+    const [playbackWindow] = await playback;
+
+    const scrub = client.readSynchronizedMessages({
+      source,
+      timeNs: 2n,
+      topics: ["/camera"],
+    });
+    const interactiveWorker = workers[1];
+    expect(interactiveWorker.messages.at(-1)).toMatchObject({
+      retainedDecodedRecordIds: [decoded.recordId],
+      type: "readSynchronizedMessages",
+    });
+    const reference = {
+      kind: "retained-decoded-message" as const,
+      recordId: decoded.recordId,
+      timelineTimeNs: decoded.timelineTimeNs,
+      topic: decoded.topic,
+    };
+    interactiveWorker.respond({
+      id: 1,
+      ok: true,
+      result: createSynchronizedWindowWithMessage(reference),
+    });
+
+    await expect(scrub).resolves.toMatchObject({ messages: [decoded] });
+    expect((await scrub).messages[0]).toBe(playbackWindow?.messages[0]);
+  });
+
+  it("clears retained decoded records when source ownership changes", async () => {
+    const { client, workers } = createClientHarness();
+    const firstSource = createSource("source:1");
+    const secondSource = createSource("source:2");
+    client.activateSource?.(firstSource);
+    const first = client.readSynchronizedMessageBatch({
+      source: firstSource,
+      timeNs: [1n],
+      topics: ["/camera"],
+    });
+    const worker = workers[0];
+    const decoded = {
+      ...createCacheableDecodedMessage(1n),
+      recordId: "same-physical-record\0log\0auto",
+    };
+    worker.respond({
+      id: 1,
+      ok: true,
+      result: [createSynchronizedWindowWithMessage(decoded)],
+    });
+    await first;
+
+    client.activateSource?.(secondSource);
+    const second = client.readSynchronizedMessageBatch({
+      source: secondSource,
+      timeNs: [1n],
+      topics: ["/camera"],
+    });
+    expect(worker.messages.at(-1)).not.toHaveProperty(
+      "retainedDecodedRecordIds",
+    );
+    worker.respond({ id: 2, ok: true, result: [] });
+    await expect(second).resolves.toEqual([]);
+  });
+
+  it("does not lease records before a request-driven source switch", async () => {
+    const { client, workers } = createClientHarness();
+    const firstSource = createSource("source:1");
+    const secondSource = createSource("source:2");
+    const first = client.readSynchronizedMessageBatch({
+      source: firstSource,
+      timeNs: [1n],
+      topics: ["/camera"],
+    });
+    const decoded = {
+      ...createCacheableDecodedMessage(1n),
+      recordId: "same-physical-record\0log\0auto",
+    };
+    workers[0].respond({
+      id: 1,
+      ok: true,
+      result: [createSynchronizedWindowWithMessage(decoded)],
+    });
+    await first;
+
+    const second = client.readSynchronizedMessageBatch({
+      source: secondSource,
+      timeNs: [1n],
+      topics: ["/camera"],
+    });
+    expect(workers).toHaveLength(2);
+    expect(workers[1].messages.at(-1)).not.toHaveProperty(
+      "retainedDecodedRecordIds",
+    );
+    workers[1].respond({ id: 2, ok: true, result: [] });
+    await expect(second).resolves.toEqual([]);
+  });
+
+  it("clears the store after an invalid retained-record reference", async () => {
+    const { client, workers } = createClientHarness();
+    const request = {
+      timeNs: [1n],
+      source: createSource("source:1"),
+      topics: ["/camera"],
+    };
+    const pending = client.readSynchronizedMessageBatch(request);
+    const worker = workers[0];
+    worker.respond({
+      id: 1,
+      ok: true,
+      result: [
+        createSynchronizedWindowWithMessage({
+          kind: "retained-decoded-message",
+          recordId: "not-leased",
+          timelineTimeNs: 1n,
+          topic: "/camera",
+        }),
+      ],
+    });
+
+    await expect(pending).rejects.toThrow("unavailable retained MCAP record");
+    const retry = client.readSynchronizedMessageBatch(request);
+    expect(worker.messages.at(-1)).not.toHaveProperty(
+      "retainedDecodedRecordIds",
+    );
+    worker.respond({ id: 2, ok: true, result: [] });
+    await expect(retry).resolves.toEqual([]);
+  });
+
   it("cancels speculative idle reads and notifies the idle worker", async () => {
     const { client, workers } = createClientHarness();
     const request = {
@@ -956,6 +1145,20 @@ function createSynchronizedWindow(timeNs: bigint) {
   };
 }
 
+function createSynchronizedWindowWithMessage<
+  Message extends { readonly timelineTimeNs: bigint; readonly topic: string },
+>(message: Message) {
+  return {
+    activeTimeline: "log" as const,
+    endTimeNs: message.timelineTimeNs,
+    messages: [message],
+    messagesByTopic: { [message.topic]: [message] },
+    startTimeNs: message.timelineTimeNs,
+    streamPolicies: {},
+    timeNs: message.timelineTimeNs,
+  };
+}
+
 function createSource(
   sourceId: string,
   url = `mcap-source://${encodeURIComponent(sourceId)}`,
@@ -986,6 +1189,24 @@ function createDecodedMessage(timelineTimeNs: bigint) {
     timelineTimeNs,
     activeTimeline: "log" as const,
     topic: "/camera",
+  };
+}
+
+function createCacheableDecodedMessage(timelineTimeNs: bigint) {
+  const message = createDecodedMessage(timelineTimeNs);
+  const buffer = new ArrayBuffer(32);
+  return {
+    ...message,
+    decoded: {
+      ...message.decoded,
+      output: {
+        ...message.decoded.output,
+        resourceHints: {
+          sizeBytes: buffer.byteLength,
+          transferables: [buffer],
+        },
+      },
+    },
   };
 }
 

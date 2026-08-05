@@ -116,13 +116,13 @@ function decodedMessagesFromResult(
   result: unknown,
 ): readonly McapDecodedMessage[] {
   if (isSynchronizedWindow(result)) {
-    return result.messages;
+    return result.messages.filter(isDecodedMessage);
   }
 
   if (Array.isArray(result)) {
     return result.flatMap((item) =>
       isSynchronizedWindow(item)
-        ? item.messages
+        ? item.messages.filter(isDecodedMessage)
         : isDecodedMessage(item)
           ? [item]
           : [],

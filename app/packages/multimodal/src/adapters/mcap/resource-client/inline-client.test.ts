@@ -2930,6 +2930,45 @@ describe("MCAP resources", () => {
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
   });
 
+  it("orders equal-time synchronized messages by topic", async () => {
+    const messages = [
+      createMessage(new Uint8Array([1]), {
+        channelId: 7,
+        logTime: 100n,
+        publishTime: 101n,
+      }),
+      createMessage(new Uint8Array([2]), {
+        channelId: 8,
+        logTime: 100n,
+        publishTime: 101n,
+      }),
+    ];
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [7, createChannel({ id: 7, topic: "/camera" })],
+            [8, createChannel({ id: 8, topic: "/lidar" })],
+          ]),
+          messages,
+        }),
+      ),
+    });
+
+    const [window] = await client.readSynchronizedMessageBatch({
+      source: createMcapSourceDescriptor(),
+      timeNs: [100n],
+      topics: ["/lidar", "/camera"],
+    });
+
+    expect(window.messages.map((message) => message.topic)).toEqual([
+      "/camera",
+      "/lidar",
+    ]);
+  });
+
   it("contains payload decode failures to their topic and preserves shared decode work", async () => {
     const source = createMcapSourceDescriptor();
     const messages = [
@@ -3223,6 +3262,63 @@ describe("MCAP resources", () => {
       startTime: 90n,
       topics: ["/topic"],
     });
+  });
+
+  it("reuses an indexed decoded record before chunk materialization", async () => {
+    const indexed = createIndexedMessageTime("/topic", 7, 90n, 900n);
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      yield indexed;
+    });
+    const readIndexedMessages = vi.fn(async () => {
+      throw new Error("retained records must not materialize their chunk");
+    });
+    const prefetchChunkData = vi.fn(async () => undefined);
+    const decodeClient = createTestDecodeClient();
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient,
+      readerFactory: vi.fn(async () =>
+        createReader({
+          prefetchChunkData,
+          readIndexedMessages,
+          readIndexedMessageTimes,
+        }),
+      ),
+    });
+    const reuse = vi.fn(
+      (identity: {
+        readonly recordId: string;
+        readonly timelineTimeNs: bigint;
+        readonly topic: string;
+      }) => ({ kind: "retained" as const, ...identity }),
+    );
+
+    const [window] = await client.readSynchronizedMessageBatchWithReuse(
+      {
+        defaultStreamPolicy: {
+          mode: PlaybackSyncMode.NEAREST,
+          toleranceAfterNs: 20n,
+          toleranceBeforeNs: 20n,
+        },
+        pointCloudColorByByTopic: { "/topic": "intensity" },
+        source: createMcapSourceDescriptor(),
+        timeNs: [100n],
+        topics: ["/topic"],
+      },
+      reuse,
+    );
+
+    expect(window.messages[0]).toMatchObject({
+      kind: "retained",
+      recordId:
+        "/topic\u00007\u000090\u00001000\u0000900\u0000activeTimeline=log\u0000intensity",
+      timelineTimeNs: 90n,
+      topic: "/topic",
+    });
+    expect(reuse).toHaveBeenCalledTimes(1);
+    expect(prefetchChunkData).not.toHaveBeenCalled();
+    expect(readIndexedMessages).not.toHaveBeenCalled();
+    expect(decodeClient.decode).not.toHaveBeenCalled();
   });
 
   it("soft-fails topic time bounds to nulls without summary indexes", async () => {

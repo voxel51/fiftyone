@@ -8,6 +8,7 @@ import {
 const workerHarness = vi.hoisted(() => {
   const workerClient = {
     dispose: vi.fn(),
+    releaseRetainedResources: vi.fn(),
     readDecodedMessages: vi.fn(async function* () {
       for (const item of [] as never[]) {
         yield item;
@@ -35,6 +36,7 @@ describe("MCAP resource worker option", () => {
   beforeEach(() => {
     workerHarness.createWorkerMcapResourceClient.mockClear();
     workerHarness.workerClient.dispose.mockClear();
+    workerHarness.workerClient.releaseRetainedResources.mockClear();
   });
 
   it("creates the inline client by default", () => {
@@ -65,6 +67,10 @@ describe("MCAP resource worker option", () => {
 });
 
 describe("acquireSharedMcapResourceClient", () => {
+  beforeEach(() => {
+    workerHarness.workerClient.releaseRetainedResources.mockClear();
+  });
+
   it("shares one client across holders and disposes after the linger window", () => {
     vi.useFakeTimers();
     try {
@@ -73,7 +79,13 @@ describe("acquireSharedMcapResourceClient", () => {
       expect(second.client).toBe(first.client);
 
       first.release();
+      expect(
+        workerHarness.workerClient.releaseRetainedResources,
+      ).not.toHaveBeenCalled();
       second.release();
+      expect(
+        workerHarness.workerClient.releaseRetainedResources,
+      ).toHaveBeenCalledTimes(1);
       // Still lingering: a fast grid round trip must find the fleet warm.
       expect(first.client.dispose).not.toHaveBeenCalled();
 
@@ -84,6 +96,9 @@ describe("acquireSharedMcapResourceClient", () => {
       expect(third.client).toBe(first.client);
 
       third.release();
+      expect(
+        workerHarness.workerClient.releaseRetainedResources,
+      ).toHaveBeenCalledTimes(2);
       vi.advanceTimersByTime(60_000);
       expect(first.client.dispose).toHaveBeenCalledTimes(1);
 
