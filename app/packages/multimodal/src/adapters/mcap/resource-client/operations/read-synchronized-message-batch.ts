@@ -618,9 +618,13 @@ async function decodeWindowsFromCandidates<
         messages.push(...decoded);
       }
 
-      messages.sort((left, right) =>
-        compareBigInt(left.timelineTimeNs, right.timelineTimeNs),
-      );
+      messages.sort((left, right) => {
+        const timelineOrder = compareBigInt(
+          left.timelineTimeNs,
+          right.timelineTimeNs,
+        );
+        return timelineOrder || left.topic.localeCompare(right.topic);
+      });
 
       return {
         activeTimeline: timeline.id,

@@ -298,7 +298,12 @@ class WorkerMcapResourceClient implements McapResourceClient {
   readSynchronizedMessages(
     request: McapReadSynchronizedMessagesRequest,
   ): Promise<McapSynchronizedMessageWindow> {
-    const lease = this.decodedRecords.acquire(request.topics);
+    let lease: DecodedRecordLease;
+    try {
+      lease = this.acquireDecodedRecordLease(request);
+    } catch (error) {
+      return Promise.reject(error);
+    }
     return this.request(
       "readSynchronizedMessages",
       request,
@@ -327,7 +332,12 @@ class WorkerMcapResourceClient implements McapResourceClient {
     request: McapReadSynchronizedMessageBatchRequest,
     options?: McapResourceReadOptions,
   ): Promise<readonly McapSynchronizedMessageWindow[]> {
-    const lease = this.decodedRecords.acquire(request.topics);
+    let lease: DecodedRecordLease;
+    try {
+      lease = this.acquireDecodedRecordLease(request);
+    } catch (error) {
+      return Promise.reject(error);
+    }
     return this.request(
       "readSynchronizedMessageBatch",
       request,
@@ -345,6 +355,16 @@ class WorkerMcapResourceClient implements McapResourceClient {
         throw error;
       })
       .finally(() => lease.release());
+  }
+
+  private acquireDecodedRecordLease(
+    request: Pick<McapReadSynchronizedMessageBatchRequest, "source" | "topics">,
+  ): DecodedRecordLease {
+    if (this.disposed) {
+      throw new Error("MCAP worker client is disposed");
+    }
+    this.ensureActiveSource(byteSourceAccessKey(request.source));
+    return this.decodedRecords.acquire(request.topics);
   }
 
   private request<Type extends McapPlaybackWorkerUnaryType>(

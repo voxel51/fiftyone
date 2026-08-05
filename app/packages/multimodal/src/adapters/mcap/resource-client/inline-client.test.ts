@@ -2930,6 +2930,45 @@ describe("MCAP resources", () => {
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
   });
 
+  it("orders equal-time synchronized messages by topic", async () => {
+    const messages = [
+      createMessage(new Uint8Array([1]), {
+        channelId: 7,
+        logTime: 100n,
+        publishTime: 101n,
+      }),
+      createMessage(new Uint8Array([2]), {
+        channelId: 8,
+        logTime: 100n,
+        publishTime: 101n,
+      }),
+    ];
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [7, createChannel({ id: 7, topic: "/camera" })],
+            [8, createChannel({ id: 8, topic: "/lidar" })],
+          ]),
+          messages,
+        }),
+      ),
+    });
+
+    const [window] = await client.readSynchronizedMessageBatch({
+      source: createMcapSourceDescriptor(),
+      timeNs: [100n],
+      topics: ["/lidar", "/camera"],
+    });
+
+    expect(window.messages.map((message) => message.topic)).toEqual([
+      "/camera",
+      "/lidar",
+    ]);
+  });
+
   it("contains payload decode failures to their topic and preserves shared decode work", async () => {
     const source = createMcapSourceDescriptor();
     const messages = [

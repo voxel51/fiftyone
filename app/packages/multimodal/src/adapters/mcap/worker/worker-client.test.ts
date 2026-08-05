@@ -439,6 +439,39 @@ describe("worker-backed MCAP resource client", () => {
     await expect(second).resolves.toEqual([]);
   });
 
+  it("does not lease records before a request-driven source switch", async () => {
+    const { client, workers } = createClientHarness();
+    const firstSource = createSource("source:1");
+    const secondSource = createSource("source:2");
+    const first = client.readSynchronizedMessageBatch({
+      source: firstSource,
+      timeNs: [1n],
+      topics: ["/camera"],
+    });
+    const decoded = {
+      ...createCacheableDecodedMessage(1n),
+      recordId: "same-physical-record\0log\0auto",
+    };
+    workers[0].respond({
+      id: 1,
+      ok: true,
+      result: [createSynchronizedWindowWithMessage(decoded)],
+    });
+    await first;
+
+    const second = client.readSynchronizedMessageBatch({
+      source: secondSource,
+      timeNs: [1n],
+      topics: ["/camera"],
+    });
+    expect(workers).toHaveLength(2);
+    expect(workers[1].messages.at(-1)).not.toHaveProperty(
+      "retainedDecodedRecordIds",
+    );
+    workers[1].respond({ id: 2, ok: true, result: [] });
+    await expect(second).resolves.toEqual([]);
+  });
+
   it("clears the store after an invalid retained-record reference", async () => {
     const { client, workers } = createClientHarness();
     const request = {
