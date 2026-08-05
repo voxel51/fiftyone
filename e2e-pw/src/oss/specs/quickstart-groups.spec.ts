@@ -151,8 +151,7 @@ test.describe.serial("quickstart-groups", () => {
       await expect(modal.carousel).toBeVisible();
     });
 
-    // the annotate pcd slice draws no pixels on release/v1.20.1 CI; the fix
-    // is in develop's looker-3d changes, which are not part of this patch
+    // TODO FOEPD-3898 re-enable this test once its flakiness is resolved
     test.skip("annotate pcd slice renders after refreshing from explore mode", async ({
       modal,
       grid,
