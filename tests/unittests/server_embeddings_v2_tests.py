@@ -15,6 +15,7 @@ import numpy as np
 
 import fiftyone as fo
 import fiftyone.brain as fob
+from fiftyone.core.odm.runs import RunDocument
 
 from fiftyone.server.routes import embeddings_v2 as v2
 
@@ -108,6 +109,48 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         self.assertEqual(info["dims"], 2)
         self.assertIsNone(info["patchesField"])
         self.assertIsNotNone(info["timestamp"])
+
+    @drop_datasets
+    def test_runs_status(self):
+        # The status route peeks at run documents only, so it must agree
+        # with the dataset query's own readiness/error verdicts without
+        # loading results or reconstructing the dataset object
+        dataset, _ = _make_samples_run()
+        viz_doc = dataset._doc.brain_methods["viz"]
+
+        pending_doc = RunDocument(
+            dataset_id=viz_doc.dataset_id,
+            key="pending",
+            version=viz_doc.version,
+            timestamp=viz_doc.timestamp,
+            config=viz_doc.config,
+        )
+        pending_doc.save()
+
+        broken_doc = RunDocument(
+            dataset_id=viz_doc.dataset_id,
+            key="broken",
+            version=viz_doc.version,
+            timestamp=viz_doc.timestamp,
+            config={"cls": "fiftyone.brain.visualization.Removed"},
+        )
+        broken_doc.save()
+
+        dataset._doc.brain_methods["pending"] = pending_doc
+        dataset._doc.brain_methods["broken"] = broken_doc
+        dataset._doc.save()
+
+        statuses = {
+            s["brainKey"]: s
+            for s in v2.EmbeddingsV2RunsStatus._post_sync(
+                None, {"datasetId": str(dataset._doc.id)}
+            )["runs"]
+        }
+        self.assertTrue(statuses["viz"]["ready"])
+        self.assertIsNone(statuses["viz"]["error"])
+        self.assertFalse(statuses["pending"]["ready"])
+        self.assertIsNone(statuses["pending"]["error"])
+        self.assertIn("not importable", statuses["broken"]["error"])
 
     def test_dataset_query_reports_run_readiness(self):
         # A run doc exists as soon as a computation registers, but its

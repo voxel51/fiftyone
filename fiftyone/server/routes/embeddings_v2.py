@@ -29,6 +29,7 @@ import struct
 import threading
 from collections import OrderedDict
 
+from bson import ObjectId
 import numpy as np
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
@@ -36,11 +37,13 @@ from starlette.responses import Response
 
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 import fiftyone.core.stages as fos
 import fiftyone.core.storage as fost
 from fiftyone.core.utils import run_sync_task
 
 from fiftyone.server.decorators import route
+from fiftyone.server.query import _brain_run_error
 import fiftyone.server.utils as fosu
 import fiftyone.server.view as fosv
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
@@ -67,9 +70,51 @@ SELECT_STAGE_MAX = 10000
 
 _HEADER_FORMAT = "<IHBBII"
 
+_VISUALIZATION_CLS = "fiftyone.brain.visualization."
+
+
 def get_sample_filter(slices):
     if slices:
         return SampleFilter(group=GroupElementFilter(id=None, slices=slices))
+
+
+class EmbeddingsV2RunsStatus(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> dict:
+        """Cheap ready/error peek at the dataset's visualization runs.
+
+        A poll target: one raw collection read keyed by the dataset's ID
+        (the client already has it), no ``Dataset`` object (schema
+        resolution, sample reload) and no results loading — safe to hit
+        on an interval while a run is pending.
+        """
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
+        db = foo.get_db_conn()
+        run_docs = db.runs.find(
+            {"_dataset_id": ObjectId(data["datasetId"])},
+            {"key": 1, "config": 1, "results": 1},
+        )
+
+        statuses = []
+        for run_doc in run_docs:
+            config = run_doc.get("config") or {}
+            cls_path = config.get("cls")
+            if not isinstance(cls_path, str) or not cls_path.startswith(
+                _VISUALIZATION_CLS
+            ):
+                continue
+
+            statuses.append(
+                {
+                    "brainKey": run_doc.get("key"),
+                    "ready": run_doc.get("results") is not None,
+                    "error": _brain_run_error({"config": config}),
+                }
+            )
+
+        return {"runs": statuses}
 
 
 class EmbeddingsV2RunInfo(HTTPEndpoint):
@@ -399,6 +444,7 @@ class EmbeddingsV2SampleInfo(HTTPEndpoint):
 
 
 EmbeddingsV2Routes = [
+    ("/embeddings/v2/runs-status", EmbeddingsV2RunsStatus),
     ("/embeddings/v2/run-info", EmbeddingsV2RunInfo),
     ("/embeddings/v2/geometry", EmbeddingsV2Geometry),
     ("/embeddings/v2/ids", EmbeddingsV2Ids),

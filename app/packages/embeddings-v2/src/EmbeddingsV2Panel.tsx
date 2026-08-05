@@ -18,10 +18,14 @@ import * as fos from "@fiftyone/state";
 import { useEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import PlotView from "./PlotView";
+import { fetchRunsStatus } from "./protocol";
 import RunsList from "./RunsList";
 import { useVisualizationRuns } from "./useVisualizationRuns";
 
 const DELETE_RUN_OPERATOR = "@voxel51/operators/delete_brain_run";
+
+/** Poll cadence while the list is showing a pending run */
+const PENDING_POLL_MS = 5_000;
 
 // Panel instances that have already mounted since this page load.
 // Module-scoped on purpose: panel state survives reloads via the
@@ -32,6 +36,7 @@ const mountedPanels = new Set<string>();
 
 export default function EmbeddingsV2Panel() {
   const datasetName = useRecoilValue(fos.datasetName) ?? null;
+  const datasetId = useRecoilValue(fos.datasetId) ?? null;
   const panelId = usePanelId();
   const [openKeyState, setOpenKey] = usePanelStatePartial<string | null>(
     "openKey",
@@ -78,6 +83,44 @@ export default function EmbeddingsV2Panel() {
   const deleteExecutor = useOperatorExecutor(DELETE_RUN_OPERATOR);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // A stale key (deleted run, switched dataset, results not yet
+  // saved) falls back to the list — a pending run has nothing to plot
+  const openRun =
+    runs?.find((r) => r.brainKey === openKey && r.ready && !r.error) ?? null;
+
+  // Polling has no reason to run against the plot (nothing there can
+  // become ready), a fully-ready list, or a backgrounded tab — so it's
+  // gated on all three.
+  const pendingKeys = (runs ?? [])
+    .filter((run) => !run.ready && !run.error)
+    .map((r) => r.brainKey);
+  const pendingSignature = pendingKeys.join(",");
+
+  useEffect(() => {
+    if (openRun || !datasetId || pendingKeys.length === 0) return undefined;
+
+    const check = () => {
+      if (document.hidden) return;
+      fetchRunsStatus(datasetId)
+        .then((statuses) => {
+          const changed = statuses.some(
+            (s) => pendingKeys.includes(s.brainKey) && (s.ready || s.error),
+          );
+          if (changed) refresh();
+        })
+        .catch(() => undefined);
+    };
+
+    check();
+    const id = window.setInterval(check, PENDING_POLL_MS);
+    return () => window.clearInterval(id);
+    // openRun/pendingKeys are summarized as Boolean(openRun)/pendingSignature
+    // on purpose: both are new references most renders, and depending on
+    // them directly would restart the interval far more often than the
+    // plot-opened/pending-set-changed transitions this actually needs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Boolean(openRun), pendingSignature, datasetId, refresh]);
+
   const handleOpen = (brainKey: string) => {
     // every run opens uncolored: a carried-over choice can be invalid
     // for the run (patches fields) or mismatch its geometry
@@ -99,11 +142,6 @@ export default function EmbeddingsV2Panel() {
       },
     );
   };
-
-  // A stale key (deleted run, switched dataset, results not yet
-  // saved) falls back to the list — a pending run has nothing to plot
-  const openRun =
-    runs?.find((r) => r.brainKey === openKey && r.ready && !r.error) ?? null;
 
   if (openRun) {
     return (

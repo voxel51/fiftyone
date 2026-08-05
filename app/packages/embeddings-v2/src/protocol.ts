@@ -75,6 +75,26 @@ export interface Geometry {
 /** Raw 12-byte ObjectIds in wire order; decode lazily via idAt() */
 export type IdColumn = Uint8Array;
 
+export interface RunStatus {
+  brainKey: string;
+  ready: boolean;
+  error: string | null;
+}
+
+/**
+ * Ready/error only, straight off the run documents — no schema, index,
+ * or aggregation work. A cheap way to check whether a pending run has
+ * finished before paying for a full dataset refetch. Keyed by dataset
+ * ID (not name), so the lookup is a single indexed query.
+ */
+export async function fetchRunsStatus(datasetId: string): Promise<RunStatus[]> {
+  const { runs } = await getFetchFunction()<
+    Record<string, unknown>,
+    { runs: RunStatus[] }
+  >("POST", "/embeddings/v2/runs-status", { datasetId });
+  return runs;
+}
+
 export interface RunInfo extends VisualizationRun {
   n: number;
 }
