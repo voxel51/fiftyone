@@ -14,6 +14,7 @@ import type {
   McapPrefetchWindowRequest,
 } from "./prefetch-types";
 import { createCachedMcapDecompressHandlers } from "./decompress-cache";
+import { createMcapDecompressedChunkCache } from "./decompressed-chunk-cache";
 import { createMcapIndexedMessageReader } from "./indexed-message-reader";
 import { readLatestIndexedMessageTimesForReader } from "./latest-before";
 import { readIndexedMessageTimesForReader } from "./message-index";
@@ -35,14 +36,33 @@ export async function createDefaultMcapReader(
   readable: McapTypes.IReadable,
 ): Promise<McapIndexedReaderLike> {
   const wasmDecompressHandlers = await loadDecompressHandlers();
+  const decompressedChunkCache = createMcapDecompressedChunkCache();
   const decompressHandlers = createCachedMcapDecompressHandlers(
     wasmDecompressHandlers,
+    undefined,
+    {
+      cache: decompressedChunkCache,
+      ...(readable instanceof ByteClientReadable
+        ? {
+            resolveChunkIdentity: (buffer: Uint8Array) =>
+              readable.chunkIdentityForBytes(buffer),
+            resolveSourceRange: (buffer: Uint8Array) =>
+              readable.sourceRangeForBytes(buffer),
+          }
+        : {}),
+    },
   );
-  const reader = await McapIndexedReader.Initialize({
-    decompressHandlers,
-    messageIndexCacheSizeBytes: DEFAULT_MCAP_MESSAGE_INDEX_CACHE_SIZE_BYTES,
-    readable,
-  });
+  let reader: McapIndexedReader;
+  try {
+    reader = await McapIndexedReader.Initialize({
+      decompressHandlers,
+      messageIndexCacheSizeBytes: DEFAULT_MCAP_MESSAGE_INDEX_CACHE_SIZE_BYTES,
+      readable,
+    });
+  } catch (error) {
+    decompressedChunkCache.dispose();
+    throw error;
+  }
   if (readable instanceof ByteClientReadable) {
     readable.setChunkIndexes(reader.chunkIndexes);
   }
@@ -52,6 +72,7 @@ export async function createDefaultMcapReader(
   const adapterReader: McapIndexedReaderLike = {
     channelsById: reader.channelsById,
     chunkIndexes: reader.chunkIndexes,
+    dispose: () => decompressedChunkCache.dispose(),
     prefetchChunkData: (request: McapPrefetchChunkDataRequest) =>
       prefetchMcapByteRanges(
         readable,
@@ -84,12 +105,14 @@ export async function createDefaultMcapReader(
   };
   if (readable instanceof ByteClientReadable) {
     adapterReader.readBoundedMessages = createMcapBoundedReader({
+      decompressedChunkCache,
       decompressHandlers: wasmDecompressHandlers,
       readable,
       reader: adapterReader,
       sourceKey: () => readable.sourceAccessKey(),
     });
     adapterReader.readIndexedMessages = createMcapIndexedMessageReader({
+      decompressedChunkCache,
       decompressHandlers: wasmDecompressHandlers,
       readable,
       reader: adapterReader,
@@ -129,3 +152,4 @@ function assertSupportedChunkCompressions(
     );
   }
 }
+

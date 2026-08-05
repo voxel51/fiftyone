@@ -40,6 +40,26 @@ export interface McapContainedByteRead {
   readonly transferredBytes: number;
 }
 
+export interface McapReadableChunkIdentity {
+  readonly chunkLength: bigint;
+  readonly chunkStartOffset: bigint;
+  readonly compression: string;
+  readonly sourceKey: string;
+  readonly uncompressedSize: bigint;
+}
+
+export interface McapReadableSourceRange {
+  readonly length: bigint;
+  readonly offset: bigint;
+  readonly sourceKey: string;
+}
+
+interface ReadBufferAnchor {
+  readonly byteOffset: number;
+  readonly length: number;
+  readonly sourceOffset: bigint;
+}
+
 /**
  * Adapts the generic byte query client to the seekable MCAP readable API.
  */
@@ -49,6 +69,10 @@ export class ByteClientReadable implements McapTypes.IReadable {
   private readonly inFlightReads = new Map<
     string,
     Promise<ByteRangeReadResult>
+  >();
+  private readonly readBufferAnchors = new WeakMap<
+    ArrayBufferLike,
+    ReadBufferAnchor[]
   >();
   private source: ByteSourceDescriptor;
   private resolvedSizeBytes?: bigint;
@@ -66,6 +90,57 @@ export class ByteClientReadable implements McapTypes.IReadable {
     chunkIndexes: readonly McapTypes.TypedMcapRecords["ChunkIndex"][],
   ): void {
     this.chunkIndexes = chunkIndexes;
+  }
+
+  /** Resolves an @mcap decompressor input view to its stable source chunk. */
+  chunkIdentityForBytes(
+    bytes: Uint8Array,
+  ): McapReadableChunkIdentity | undefined {
+    const range = this.sourceRangeForBytes(bytes);
+    if (!range) {
+      return undefined;
+    }
+    const absoluteStart = range.offset;
+    const absoluteEnd = absoluteStart + range.length;
+    const chunk = this.chunkIndexes.find(
+      (candidate) =>
+        absoluteStart >= candidate.chunkStartOffset &&
+        absoluteEnd <= candidate.chunkStartOffset + candidate.chunkLength,
+    );
+    if (!chunk) {
+      return undefined;
+    }
+    return {
+      chunkLength: chunk.chunkLength,
+      chunkStartOffset: chunk.chunkStartOffset,
+      compression: chunk.compression,
+      sourceKey: range.sourceKey,
+      uncompressedSize: chunk.uncompressedSize,
+    };
+  }
+
+  /** Resolves a returned view or slice to its exact source byte range. */
+  sourceRangeForBytes(bytes: Uint8Array): McapReadableSourceRange | undefined {
+    const anchors = this.readBufferAnchors.get(bytes.buffer);
+    if (!anchors || bytes.buffer.byteLength === 0) {
+      return undefined;
+    }
+    const viewEnd = bytes.byteOffset + bytes.byteLength;
+    const anchor = anchors.find(
+      (candidate) =>
+        bytes.byteOffset >= candidate.byteOffset &&
+        viewEnd <= candidate.byteOffset + candidate.length,
+    );
+    if (!anchor) {
+      return undefined;
+    }
+    const offset =
+      anchor.sourceOffset + BigInt(bytes.byteOffset - anchor.byteOffset);
+    return {
+      length: BigInt(bytes.byteLength),
+      offset,
+      sourceKey: this.sourceAccessKey(),
+    };
   }
 
   /** Current access/content identity, including a discovered validator. */
@@ -236,6 +311,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
         source: this.source,
       }));
     this.updateSource(result.source);
+    this.registerReadBuffer(result);
     this.logChunkRead(
       offset,
       size,
@@ -244,6 +320,29 @@ export class ByteClientReadable implements McapTypes.IReadable {
     );
 
     return result;
+  }
+
+  private registerReadBuffer(result: ByteRangeReadResult): void {
+    if (result.bytes.buffer.byteLength === 0) {
+      return;
+    }
+    const anchors = this.readBufferAnchors.get(result.bytes.buffer) ?? [];
+    const anchor: ReadBufferAnchor = {
+      byteOffset: result.bytes.byteOffset,
+      length: result.bytes.byteLength,
+      sourceOffset: result.range.offset,
+    };
+    if (
+      !anchors.some(
+        (candidate) =>
+          candidate.byteOffset === anchor.byteOffset &&
+          candidate.length === anchor.length &&
+          candidate.sourceOffset === anchor.sourceOffset,
+      )
+    ) {
+      anchors.push(anchor);
+      this.readBufferAnchors.set(result.bytes.buffer, anchors);
+    }
   }
 
   private startReadRange(
@@ -434,3 +533,4 @@ function readRangeKey(
 function defaultChunkReadLogger(entry: McapChunkReadDebugLog): void {
   console.log("[mcap] chunk bytes fetched", entry);
 }
+
