@@ -20,7 +20,6 @@ on:
   pull_request:
     branches:
       - develop
-      - main
       - release/*
     paths:
       - .github/workflows/build-docs.yml
@@ -59,16 +58,27 @@ jobs:
         uses: actions/checkout@v7
       - name: Get Branch Name
         id: get_branch
+        env:
+          RO_FOT_FG_PAT: ${{ secrets.RO_FOT_FG_PAT }}
         run: |
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
             TAG_SHA=$(git rev-parse ${{ github.ref }})
             case "${{ github.ref_name }}" in
               docs-publish|v*)
-                MAIN_SHA=$(git rev-parse origin/main)
-                if [[ "${MAIN_SHA}" == "${TAG_SHA}" ]]; then
+                # Published docs must match the latest released product: the
+                # tag must be the newest final release tag, or sit on top of
+                # it (a docs/v* line carrying doc cherry-picks). Enterprise
+                # docs content builds from the latest teams-v* release tag;
+                # branch_name=main is only the eta clone ref below (eta's
+                # current branch, not a release pointer).
+                LATEST=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+                if git merge-base --is-ancestor "$(git rev-parse ${LATEST}^{commit})" "${TAG_SHA}"; then
                   echo "branch_name=main" >> "${GITHUB_OUTPUT}"
+                  TEAMS_TAG=$(git ls-remote --tags "https://x-access-token:${RO_FOT_FG_PAT}@github.com/voxel51/fiftyone-teams.git" 'refs/tags/teams-v*' \
+                    | awk -F/ '{print $NF}' | grep -E '^teams-v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+                  echo "teams_ref=${TEAMS_TAG}" >> "${GITHUB_OUTPUT}"
                 else
-                  echo "docs-publish should only be performed on 'main'"
+                  echo "docs publish only from the latest release (${LATEST}) or a docs/v* line on it"
                   exit 1
                 fi
                 ;;
@@ -99,7 +109,7 @@ jobs:
           repository: voxel51/fiftyone-teams
           path: fiftyone-teams
           token: ${{ secrets.RO_FOT_FG_PAT }}
-          ref: ${{ steps.get_branch.outputs.branch_name }}
+          ref: ${{ steps.get_branch.outputs.teams_ref || steps.get_branch.outputs.branch_name }}
       - name: Set up Python 3.13
         uses: actions/setup-python@v6
         with:
