@@ -13,6 +13,7 @@ import {
   hoveredLabelAtom,
   isActivelySegmentingSelector,
   isCreatingCuboidAtom,
+  isCurrentlyTransformingAtom,
   isFo3dMainPanelPointerDownAtom,
   mainPanelPanSyncIntentAtom,
   mainPanelZoomSyncIntentAtom,
@@ -100,6 +101,14 @@ export const useFo3dPerformanceStats = () => {
 
 export const useSetFo3dPerformanceStats = () => {
   return useSetRecoilState(fo3dPerformanceStatsAtom);
+};
+
+/**
+ * Whether any label is mid-transform (gizmo drag, face-pull resize, heading
+ * drag). Components consume this rather than the atom directly.
+ */
+export const useIsCurrentlyTransforming = () => {
+  return useRecoilValue(isCurrentlyTransformingAtom);
 };
 
 export const useCuboidOrientation = () => {

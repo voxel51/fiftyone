@@ -9,7 +9,10 @@ import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
 import { FO_USER_DATA, PANEL_ID_MAIN } from "../constants";
 import { hoveredLabelAtom, selectedLabelForAnnotationAtom } from "../state";
 import type { HoveredLabelSource } from "../types";
-import { useSetCurrent3dAnnotationMode } from "../state/accessors";
+import {
+  useIsCurrentlyTransforming,
+  useSetCurrent3dAnnotationMode,
+} from "../state/accessors";
 import {
   isValidPoint3d,
   validatePoints3d,
@@ -18,6 +21,7 @@ import {
 import { createFilledPolygonMeshes } from "./polygon-fill-utils";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
+import { shouldSuppressHoverOnPointer } from "./shared/shouldSuppressHoverOnPointer";
 import { Transformable } from "./shared/TransformControls";
 
 export interface PolyLineProps extends OverlayProps {
@@ -47,6 +51,7 @@ export const Polyline = ({
   useHoverState();
   const hoveredLabel = useRecoilValue(hoveredLabelAtom);
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
+  const isCurrentlyTransforming = useIsCurrentlyTransforming();
   const {
     onPointerOver: onPointerOverForLabel,
     onPointerOut: onPointerOutForLabel,
@@ -307,7 +312,13 @@ export const Polyline = ({
         <group
           {...restEventHandlers}
           onPointerOver={(e) => {
-            if (hoverSource === PANEL_ID_MAIN && e.nativeEvent.buttons !== 0) {
+            if (
+              shouldSuppressHoverOnPointer(
+                hoverSource,
+                isCurrentlyTransforming,
+                e.nativeEvent.buttons,
+              )
+            ) {
               return;
             }
 

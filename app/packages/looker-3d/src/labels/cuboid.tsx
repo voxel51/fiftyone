@@ -30,7 +30,10 @@ import {
   selectedLabelForAnnotationAtom,
   transformModeAtom,
 } from "../state";
-import { useSetCurrent3dAnnotationMode } from "../state/accessors";
+import {
+  useIsCurrentlyTransforming,
+  useSetCurrent3dAnnotationMode,
+} from "../state/accessors";
 import {
   getComplementaryColor,
   getPlaneIntersection,
@@ -48,6 +51,7 @@ import {
 import { useDisplayCuboidTransform } from "./shared/useDisplayCuboidTransform";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
 import "./shared/registerLineElements";
+import { shouldSuppressHoverOnPointer } from "./shared/shouldSuppressHoverOnPointer";
 import { Transformable } from "./shared/TransformControls";
 
 const FACE_RESIZE_EDGE_COLOR = "#ff2f2f";
@@ -408,7 +412,7 @@ export const Cuboid = ({
   const isCreatingCuboidPointerDown = useRecoilValue(
     isCreatingCuboidPointerDownAtom,
   );
-  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
+  const isCurrentlyTransforming = useIsCurrentlyTransforming();
   const setIsCurrentlyTransforming = useSetRecoilState(
     isCurrentlyTransformingAtom,
   );
@@ -547,14 +551,20 @@ export const Cuboid = ({
 
   const setHoveredLabelFromPointer = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
-      if (hoverSource === PANEL_ID_MAIN && e.nativeEvent.buttons !== 0) {
+      if (
+        shouldSuppressHoverOnPointer(
+          hoverSource,
+          isCurrentlyTransforming,
+          e.nativeEvent.buttons,
+        )
+      ) {
         return false;
       }
 
       setHoveredLabel({ id: label._id, source: hoverSource });
       return true;
     },
-    [hoverSource, label._id, setHoveredLabel],
+    [hoverSource, isCurrentlyTransforming, label._id, setHoveredLabel],
   );
 
   const transformMode = useRecoilValue(transformModeAtom);

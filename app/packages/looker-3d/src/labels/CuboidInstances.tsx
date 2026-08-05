@@ -22,6 +22,7 @@ import { useSimilarLabels3d } from "../hooks/use-similar-labels-3d";
 import {
   useCurrentSelected3dAnnotationLabel,
   useHoveredLabel3d,
+  useIsCurrentlyTransforming,
   useSetHoveredLabel3d,
 } from "../state/accessors";
 import type { HoveredLabelSource } from "../types";
@@ -52,6 +53,7 @@ import {
   getFiniteMagnitude,
 } from "./shared/cuboid-orientation-geometry";
 import { useEventHandlers } from "./shared/hooks";
+import { shouldSuppressHoverOnPointer } from "./shared/shouldSuppressHoverOnPointer";
 import "./shared/registerLineElements";
 import { useDragGate } from "./shared/useDragGate";
 
@@ -94,6 +96,7 @@ export const CuboidInstances = ({
 }: CuboidInstancesProps) => {
   const { upVector } = useFo3dContext();
   const hoveredLabel = useHoveredLabel3d();
+  const isCurrentlyTransforming = useIsCurrentlyTransforming();
   const setHoveredLabel = useSetHoveredLabel3d();
 
   const bodyMeshRef = useRef<THREE.InstancedMesh>(null);
@@ -440,7 +443,15 @@ export const CuboidInstances = ({
 
   const handlePointerOver = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
-      if (hoverSource === PANEL_ID_MAIN && e.nativeEvent.buttons !== 0) return;
+      if (
+        shouldSuppressHoverOnPointer(
+          hoverSource,
+          isCurrentlyTransforming,
+          e.nativeEvent.buttons,
+        )
+      ) {
+        return;
+      }
       const label = resolveLabel(e.instanceId);
       if (!label) return;
 
@@ -448,7 +459,13 @@ export const CuboidInstances = ({
       setHoveredLabel({ id: label._id, source: hoverSource });
       onPointerOverForLabel(label, e);
     },
-    [resolveLabel, hoverSource, setHoveredLabel, onPointerOverForLabel],
+    [
+      resolveLabel,
+      hoverSource,
+      isCurrentlyTransforming,
+      setHoveredLabel,
+      onPointerOverForLabel,
+    ],
   );
 
   const handlePointerOut = useCallback(() => {
