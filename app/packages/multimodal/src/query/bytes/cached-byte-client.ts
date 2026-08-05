@@ -119,7 +119,7 @@ export function createCachedByteClient(
     return { cacheResult: "fetched", result };
   };
 
-  const fillExclusive = (
+  const fillExclusive = async (
     fillRequest: ByteRangeReadRequest,
     persistent: ByteRangeCache | undefined,
   ): Promise<ByteFillOutcome> => {
@@ -135,54 +135,77 @@ export function createCachedByteClient(
       });
     }
 
-    return new Promise<ByteFillOutcome>((resolve, reject) => {
-      fillLocks
-        .request(
-          byteFillLockName(fillRequest),
-          {
-            mode: "exclusive",
-            ...(fillRequest.signal ? { signal: fillRequest.signal } : {}),
-          },
-          async () => {
-            // Re-check the persistent layer under the lock: when another
-            // context raced this fill, its bytes are already on disk and
-            // this read must not touch the network again.
-            const persisted = await persistent.get(fillRequest);
-            if (persisted) {
-              await caches.memory.put(persisted);
-              resolve({ cacheResult: "persistent-hit", result: persisted });
-              return;
-            }
+    const isRemote =
+      fillRequest.source.readProfile === BYTE_SOURCE_READ_PROFILE.REMOTE;
+    const acquireSlotBeforeShape =
+      isRemote && caches.fillSlotClass === "background";
 
-            // Remote fetches are metered through the source's fill slots:
-            // waiting here (in grant order) keeps block arrival aligned
-            // with need order when the link saturates, instead of every
-            // in-flight fill splitting bandwidth and finishing late.
-            const releaseSlot =
-              fillRequest.source.readProfile === BYTE_SOURCE_READ_PROFILE.REMOTE
-                ? await acquireByteFillSlot(
-                    fillLocks,
-                    fillRequest.source,
-                    fillRequest.signal,
-                    fillSlotFloor,
-                  )
-                : undefined;
-            let outcome: ByteFillOutcome;
-            try {
-              outcome = await fillFromNetwork(fillRequest);
-            } finally {
-              releaseSlot?.();
-            }
-            resolve(outcome);
-            // Waiters are released only after the persistent entry lands —
-            // holding the lock through the put is what turns their fetches
-            // into disk hits. The caller was already resolved above, so
-            // this costs waiters nothing extra and the caller nothing.
-            await persistent.put(outcome.result).catch(() => undefined);
-          },
+    // A queued background fill must not hold the shape lock while both
+    // background-eligible slots are busy: a priority fill for that same
+    // shape would otherwise wait behind it while reserved slot 0 idles.
+    // Priority keeps shape-first ordering so duplicate foreground demand
+    // still single-flights without consuming slots while waiting.
+    const releasePreAcquiredSlot = acquireSlotBeforeShape
+      ? await acquireByteFillSlot(
+          fillLocks,
+          fillRequest.source,
+          fillRequest.signal,
+          fillSlotFloor,
         )
-        .catch(reject);
-    });
+      : undefined;
+    try {
+      return await new Promise<ByteFillOutcome>((resolve, reject) => {
+        fillLocks
+          .request(
+            byteFillLockName(fillRequest),
+            {
+              mode: "exclusive",
+              ...(fillRequest.signal ? { signal: fillRequest.signal } : {}),
+            },
+            async () => {
+              // Re-check the persistent layer under the lock: when another
+              // context raced this fill, its bytes are already on disk and
+              // this read must not touch the network again.
+              const persisted = await persistent.get(fillRequest);
+              if (persisted) {
+                await caches.memory.put(persisted);
+                resolve({ cacheResult: "persistent-hit", result: persisted });
+                return;
+              }
+
+              // Priority remote fills acquire a slot only after winning
+              // their shape. Background remote fills already own one so
+              // they cannot block priority admission before network work.
+              const releaseSlot =
+                isRemote && !releasePreAcquiredSlot
+                  ? await acquireByteFillSlot(
+                      fillLocks,
+                      fillRequest.source,
+                      fillRequest.signal,
+                      fillSlotFloor,
+                    )
+                  : undefined;
+              let outcome: ByteFillOutcome;
+              try {
+                outcome = await fillFromNetwork(fillRequest);
+              } finally {
+                releaseSlot?.();
+              }
+              resolve(outcome);
+              // Waiters are released only after the persistent entry lands —
+              // holding the lock through the put is what turns their fetches
+              // into disk hits. The caller was already resolved above, so
+              // this costs waiters nothing extra and the caller nothing.
+              await persistent.put(outcome.result).catch(() => undefined);
+            },
+          )
+          .catch(reject);
+      });
+    } finally {
+      // This also covers an under-lock persistent hit, abort while queued
+      // on the shape, and every network failure path.
+      releasePreAcquiredSlot?.();
+    }
   };
 
   const queueReadaheadFill = (readahead: ByteRangeReadRequest) => {
@@ -231,9 +254,9 @@ export function createCachedByteClient(
 
       // Speculation runs strictly in the link's spare capacity: no free
       // fill slot (demand owns the link) or the block already filling in
-      // another context → skip without waiting on anything. Never holding
-      // a slot while blocked is what makes slot waits deadlock-free, and
-      // the retrigger TTL revisits skipped shapes once the link clears.
+      // another context → skip without waiting on anything. Its nonblocking
+      // shape request prevents speculation from tying up a slot, and the
+      // retrigger TTL revisits skipped shapes once the link clears.
       // Readahead is background by definition — the reserved priority
       // slot is never its to take, whatever this client's class.
       const releaseSlot = await tryAcquireByteFillSlot(
