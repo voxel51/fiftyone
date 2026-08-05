@@ -190,6 +190,9 @@ export type McapPlaybackWorkerControlRequest =
       readonly type: "cancel";
     }
   | {
+      readonly type: "releaseRetainedResources";
+    }
+  | {
       readonly type: "dispose";
     };
 

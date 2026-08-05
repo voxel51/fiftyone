@@ -439,6 +439,48 @@ describe("worker-backed MCAP resource client", () => {
     await expect(second).resolves.toEqual([]);
   });
 
+  it("releases worker source resources at a renderer ownership boundary", async () => {
+    const { client, workers } = createClientHarness();
+    const source = createSource("source:1");
+    client.activateSource?.(source);
+    const first = client.readSynchronizedMessageBatch({
+      source,
+      timeNs: [1n],
+      topics: ["/camera"],
+    });
+    const worker = workers[0];
+    const decoded = {
+      ...createCacheableDecodedMessage(1n),
+      recordId: "renderer-owned-record\0log\0auto",
+    };
+    worker.respond({
+      id: 1,
+      ok: true,
+      result: [createSynchronizedWindowWithMessage(decoded)],
+    });
+    await first;
+
+    client.releaseRetainedResources?.();
+
+    expect(worker.messages.at(-1)).toEqual({
+      type: "releaseRetainedResources",
+    });
+    expect(worker.terminate).not.toHaveBeenCalled();
+
+    client.activateSource?.(source);
+    const second = client.readSynchronizedMessageBatch({
+      source,
+      timeNs: [1n],
+      topics: ["/camera"],
+    });
+    expect(workers).toHaveLength(1);
+    expect(worker.messages.at(-1)).not.toHaveProperty(
+      "retainedDecodedRecordIds",
+    );
+    worker.respond({ id: 2, ok: true, result: [] });
+    await expect(second).resolves.toEqual([]);
+  });
+
   it("does not lease records before a request-driven source switch", async () => {
     const { client, workers } = createClientHarness();
     const firstSource = createSource("source:1");
