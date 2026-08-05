@@ -23,7 +23,7 @@ class EmbeddingsV2Asserter {
   async verifyPanelLoaded() {
     await expect(this.pom.runsPage).toBeVisible();
     await expect(
-      this.pom.page.getByText("Visualize your embeddings")
+      this.pom.page.getByText("Visualize your embeddings"),
     ).toBeVisible();
     await expect(this.pom.gridPanel.errorBoundary).toBeHidden();
   }
