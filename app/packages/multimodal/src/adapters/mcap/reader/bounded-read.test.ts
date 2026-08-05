@@ -1,6 +1,6 @@
 import { McapRecordBuilder, type McapTypes } from "@mcap/core";
 import { describe, expect, it } from "vitest";
-import type { ReadWorkBudget } from "../../../ports";
+import type { BudgetedReadStopReason, ReadWorkBudget } from "../../../ports";
 import {
   createCachedByteClient,
   createMemoryByteRangeCache,
@@ -16,6 +16,7 @@ import {
 import { ByteClientReadable } from "./byte-readable";
 import type {
   McapBoundedMessageReadRequest,
+  McapBoundedMessageReadResult,
   McapIndexedReaderLike,
   McapReadContinuation,
 } from "./types";
@@ -48,6 +49,154 @@ const source: ByteSourceDescriptor = {
 };
 
 describe("bounded MCAP reader", () => {
+  it("measures map-route horizon admission against a full scan", async () => {
+    const chunkCount = 96;
+    const fixture = buildFixture(
+      Array.from({ length: chunkCount }, (_, index) => ({
+        messages: [
+          {
+            channelId: 1,
+            logTime: BigInt(index * 10),
+            sequence: index,
+          },
+          {
+            channelId: 3,
+            data: new Uint8Array(128 * 1024).fill(index),
+            logTime: BigInt(index * 10),
+            sequence: 10_000 + index,
+          },
+        ],
+      })),
+    );
+    const absolute = budgetFor(fixture.chunkIndexes, chunkCount);
+    const grant = budgetFor(fixture.chunkIndexes.slice(0, 4), 4);
+
+    for (const [label, playheadNs] of [
+      ["early", 100n],
+      ["intermediate", 470n],
+      ["end", 950n],
+    ] as const) {
+      const harness = createHarness(fixture, ["/gps"]);
+      const request = requestFor({
+        absoluteBudget: absolute,
+        absoluteMaxChunks: 4,
+        budget: grant,
+        endTimeNs: 950n,
+        maxChunks: 4,
+        topics: ["/gps"],
+      });
+      let continuation: McapReadContinuation | undefined;
+      let chunksOpened = 0;
+      let logicalSourceBytes = 0;
+      let transferredBytes = 0;
+      do {
+        const result = await harness.read({ ...request, continuation });
+        chunksOpened += result.usage.chunksOpened;
+        logicalSourceBytes += result.usage.logicalSourceBytes;
+        transferredBytes += result.usage.transferredBytes;
+        continuation = result.continuation;
+      } while (continuation);
+      console.info("map-route-baseline", {
+        chunksOpened,
+        label,
+        logicalSourceBytes,
+        playheadNs: playheadNs.toString(),
+        transferredBytes,
+      });
+      expect(chunksOpened).toBe(chunkCount);
+
+      const horizonHarness = createHarness(fixture, ["/gps"]);
+      continuation = undefined;
+      chunksOpened = 0;
+      logicalSourceBytes = 0;
+      transferredBytes = 0;
+      let stopReason: BudgetedReadStopReason;
+      do {
+        const result: McapBoundedMessageReadResult = await horizonHarness.read({
+          ...request,
+          admissionEndNs: playheadNs,
+          continuation,
+        });
+        chunksOpened += result.usage.chunksOpened;
+        logicalSourceBytes += result.usage.logicalSourceBytes;
+        transferredBytes += result.usage.transferredBytes;
+        continuation = result.continuation;
+        stopReason = result.stopReason;
+      } while (continuation && stopReason === "budget-exhausted");
+      console.info("map-route-horizon", {
+        chunksOpened,
+        label,
+        logicalSourceBytes,
+        playheadNs: playheadNs.toString(),
+        transferredBytes,
+      });
+      expect(chunksOpened).toBe(Number(playheadNs / 10n) + 1);
+    }
+  });
+
+  it("keeps continuation identity stable while a horizon advances", async () => {
+    const fixture = buildFixture([
+      {
+        indexEndTime: 15n,
+        indexStartTime: 0n,
+        messages: [
+          { channelId: 1, logTime: 5n, sequence: 1 },
+          { channelId: 1, logTime: 12n, sequence: 2 },
+        ],
+      },
+      {
+        messages: [{ channelId: 1, logTime: 20n, sequence: 3 }],
+      },
+      {
+        messages: [{ channelId: 1, logTime: 30n, sequence: 4 }],
+      },
+    ]);
+    const harness = createHarness(fixture);
+    const full = budgetFor(fixture.chunkIndexes, 4);
+    const request = requestFor({
+      absoluteBudget: full,
+      absoluteMaxChunks: 3,
+      budget: full,
+      endTimeNs: 30n,
+      maxChunks: 3,
+    });
+
+    const early = await harness.read({ ...request, admissionEndNs: 10n });
+    expect(early.messages.map((message) => message.sequence)).toEqual([1, 2]);
+    expect(early.stopReason).toBe("horizon-reached");
+    expect(early.resumeAtNs).toBe(20n);
+    expect(early.continuation).toBeDefined();
+
+    const middle = await harness.read({
+      ...request,
+      admissionEndNs: 20n,
+      continuation: early.continuation,
+    });
+    expect(middle.messages.map((message) => message.sequence)).toEqual([3]);
+    expect(middle.stopReason).toBe("horizon-reached");
+    expect(middle.resumeAtNs).toBe(30n);
+
+    const end = await harness.read({
+      ...request,
+      admissionEndNs: 30n,
+      continuation: middle.continuation,
+    });
+    expect(end.messages.map((message) => message.sequence)).toEqual([4]);
+    expect(end.stopReason).toBe("source-exhausted");
+    expect(end.continuation).toBeUndefined();
+  });
+
+  it("rejects horizon admission with center-out group ordering", async () => {
+    const fixture = buildFixture([
+      { messages: [{ channelId: 1, logTime: 0n }] },
+    ]);
+    const harness = createHarness(fixture);
+
+    await expect(
+      harness.read(requestFor({ admissionEndNs: 0n, preferredTimeNs: 0n })),
+    ).rejects.toThrow("admissionEndNs cannot be combined with preferredTimeNs");
+  });
+
   it("opens no more chunks than one grant and resumes without omissions", async () => {
     const fixture = buildFixture(
       Array.from({ length: 100 }, (_, index) => ({

@@ -154,6 +154,13 @@ export function createMcapBoundedReader({
         }
 
         const group = groups[groupIndex];
+        if (
+          request.admissionEndNs !== undefined &&
+          group.startTimeNs > request.admissionEndNs
+        ) {
+          stopReason = "horizon-reached";
+          break;
+        }
         const indexRanges = group.chunks.flatMap((chunk) =>
           collectChunkMessageIndexReadRanges({
             channelIds,
@@ -361,6 +368,9 @@ export function createMcapBoundedReader({
           ]),
         ),
         messages: orderedMessages.map((entry) => entry.message),
+        ...(stopReason === "horizon-reached" && groupIndex < groups.length
+          ? { resumeAtNs: groups[groupIndex].startTimeNs }
+          : {}),
         stopReason,
         usage,
       };
@@ -783,6 +793,14 @@ function throwIfAborted(signal: AbortSignal | undefined): void {
 function validateRequest(request: McapBoundedMessageReadRequest): void {
   validateBudget(request.budget, "MCAP bounded grant");
   validateBudget(request.absoluteBudget, "MCAP bounded absolute ceiling");
+  if (
+    request.admissionEndNs !== undefined &&
+    request.preferredTimeNs !== undefined
+  ) {
+    throw new Error(
+      "MCAP bounded admissionEndNs cannot be combined with preferredTimeNs",
+    );
+  }
   for (const [value, label] of [
     [request.maxChunks, "MCAP bounded maxChunks"],
     [request.absoluteMaxChunks, "MCAP bounded absoluteMaxChunks"],

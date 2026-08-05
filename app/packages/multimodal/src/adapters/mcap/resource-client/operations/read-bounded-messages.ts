@@ -36,6 +36,9 @@ export async function readMcapBoundedMessages({
   const result = await reader.readBoundedMessages({
     absoluteBudget: request.absoluteBudget,
     absoluteMaxChunks: request.absoluteMaxChunks,
+    ...(request.admissionEndNs !== undefined
+      ? { admissionEndNs: request.admissionEndNs }
+      : {}),
     budget: request.budget,
     continuation: request.continuation as McapReadContinuation | undefined,
     endTimeNs: request.endTimeNs,
@@ -85,6 +88,9 @@ export async function readMcapBoundedMessages({
     ...(result.continuation ? { continuation: result.continuation } : {}),
     coverageByTopic: result.coverageByTopic,
     messages,
+    ...(result.resumeAtNs !== undefined
+      ? { resumeAtNs: result.resumeAtNs }
+      : {}),
     stopReason: result.stopReason,
     usage: {
       ...result.usage,

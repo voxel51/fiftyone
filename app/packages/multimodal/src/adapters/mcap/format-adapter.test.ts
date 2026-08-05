@@ -174,7 +174,8 @@ describe("MCAP format adapter", () => {
           topic: "/camera",
         },
       ],
-      stopReason: "budget-exhausted",
+      resumeAtNs: 2n,
+      stopReason: "horizon-reached",
       usage: {
         chunksOpened: 1,
         decompressedBytes: 300,
@@ -206,6 +207,7 @@ describe("MCAP format adapter", () => {
     };
 
     const result = await account?.createJob().read({
+      admissionEndNs: 1n,
       budget: grant,
       streams: ["camera"],
       window: { endNs: 2n, startNs: 1n },
@@ -213,9 +215,18 @@ describe("MCAP format adapter", () => {
 
     expect(result?.batches).toHaveLength(1);
     expect(result?.continuation).toBe(continuation);
+    expect(result?.resumeAtNs).toBe(2n);
     expect(result?.coverageByStream.get("camera")).toEqual([
       { endNs: 1n, startNs: 1n },
     ]);
+    expect(client.readBoundedMessages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        admissionEndNs: 1n,
+        endTimeNs: 2n,
+        startTimeNs: 1n,
+      }),
+      expect.objectContaining({ priority: "bulk" }),
+    );
     expect(account?.remaining()).toEqual({
       maxMessages: 9,
       maxSourceBytes: 900,

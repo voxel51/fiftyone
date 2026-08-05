@@ -130,6 +130,7 @@ export interface McapReadBoundedMessagesRequest {
   readonly absoluteBudget: ReadWorkBudget;
   readonly absoluteMaxChunks: number;
   readonly activeTimeline?: McapActiveTimeline;
+  readonly admissionEndNs?: bigint;
   readonly budget: ReadWorkBudget;
   readonly continuation?: ReadContinuation;
   readonly endTimeNs?: bigint;
@@ -144,6 +145,7 @@ export interface McapReadBoundedMessagesResult {
   readonly continuation?: ReadContinuation;
   readonly coverageByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
   readonly messages: readonly McapDecodedMessage[];
+  readonly resumeAtNs?: bigint;
   readonly stopReason: BudgetedReadStopReason;
   readonly usage: ReadWorkUsage;
 }

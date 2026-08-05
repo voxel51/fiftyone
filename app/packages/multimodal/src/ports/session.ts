@@ -84,6 +84,7 @@ export interface ReadWorkUsage {
 /** Why a bounded grant returned control to its caller. */
 export type BudgetedReadStopReason =
   | "budget-exhausted"
+  | "horizon-reached"
   | "oversized-source-unit"
   | "source-exhausted";
 
@@ -100,6 +101,12 @@ export type ReadContinuation = object & {
 
 /** One explicit slice requested from a source-scoped budget account. */
 export interface BudgetedReadRequest {
+  /**
+   * Optional inclusive admission horizon within the stable request window.
+   * Atomic source groups wholly after this time remain behind the returned
+   * continuation; a group overlapping the horizon may be admitted in full.
+   */
+  readonly admissionEndNs?: bigint;
   readonly budget: ReadWorkBudget;
   readonly continuation?: ReadContinuation;
   readonly signal?: AbortSignal;
@@ -112,6 +119,8 @@ export interface BudgetedReadResult {
   readonly batches: readonly FrameBatch[];
   readonly continuation?: ReadContinuation;
   readonly coverageByStream: ReadonlyMap<StreamId, readonly TimeWindow[]>;
+  /** Earliest atomic-group start that can resume a horizon-stopped read. */
+  readonly resumeAtNs?: bigint;
   readonly stopReason: BudgetedReadStopReason;
   readonly usage: ReadWorkUsage;
 }
