@@ -225,12 +225,12 @@ class H264VideoDecodeSession {
     ) {
       this.resetDecoder();
     }
-    this.lastTimestampUs = timestampsUs[timestampsUs.length - 1];
 
     const decoder = await this.ensureDecoder(decodable[0]);
     if (this.closed) {
       throw new Error("Video decoder closed");
     }
+    this.lastTimestampUs = timestampsUs[timestampsUs.length - 1];
     const results = await Promise.allSettled(
       decodable.map((frame, index) =>
         this.decodeFrame(
@@ -329,16 +329,18 @@ class H264VideoDecodeSession {
         this.resetDecoder();
       },
       output: (videoFrame) => {
-        const timestampIndex =
-          videoFrame.timestamp === undefined
-            ? -1
-            : this.pending.findIndex(
-                (entry) => entry.timestampUs === videoFrame.timestamp,
-              );
-        const pending =
-          timestampIndex >= 0
-            ? this.pending.splice(timestampIndex, 1)[0]
-            : this.pending.shift();
+        let pending: PendingVideoFrame | undefined;
+        if (videoFrame.timestamp === undefined) {
+          pending = this.pending.shift();
+        } else {
+          const timestampIndex = this.pending.findIndex(
+            (entry) => entry.timestampUs === videoFrame.timestamp,
+          );
+          pending =
+            timestampIndex >= 0
+              ? this.pending.splice(timestampIndex, 1)[0]
+              : undefined;
+        }
         if (!pending) {
           closeVideoFrame(videoFrame);
           return;

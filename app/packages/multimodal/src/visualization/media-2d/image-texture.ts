@@ -32,20 +32,7 @@ export async function createImageTexture(
       (prerequisite): prerequisite is EncodedVideoVisualization =>
         prerequisite.kind === "encoded-video" && prerequisite.codec === "h264",
     );
-    let prerequisites = h264Runway.slice(-MAX_VIDEO_DECODE_PREREQUISITES);
-    if (prerequisites[0] && !prerequisites[0].keyframe) {
-      const capStart = h264Runway.length - prerequisites.length;
-      let precedingKeyframe = -1;
-      for (let index = capStart - 1; index >= 0; index -= 1) {
-        if (h264Runway[index]?.keyframe) {
-          precedingKeyframe = index;
-          break;
-        }
-      }
-      if (precedingKeyframe >= 0) {
-        prerequisites = h264Runway.slice(precedingKeyframe);
-      }
-    }
+    const prerequisites = h264Runway.slice(-MAX_VIDEO_DECODE_PREREQUISITES);
     return createEncodedVideoTexture(frame, textureKey, prerequisites);
   }
   return createEncodedImageTexture(frame);

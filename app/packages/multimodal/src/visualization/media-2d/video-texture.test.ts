@@ -210,7 +210,7 @@ describe("createEncodedVideoTexture", () => {
     handle.dispose();
   });
 
-  it("retains the keyframe immediately before the prerequisite cap", async () => {
+  it("waits when an overlong GOP pushes its keyframe beyond the cap", async () => {
     const runway = [
       h264Frame({ keyframe: true, timestampNs: 1_000n }),
       ...Array.from({ length: 600 }, (_, index) =>
@@ -227,16 +227,10 @@ describe("createEncodedVideoTexture", () => {
       timestampNs: 602_000n,
     });
 
-    const handle = await createImageTexture(
-      target,
-      "rec\n/camera/video\n602000",
-      runway,
-    );
-
-    expect(fakeDecoderInstances[0].decodeCalls).toHaveLength(602);
-    expect(fakeDecoderInstances[0].decodeCalls[0]?.type).toBe("key");
-    expect(fakeDecoderInstances[0].decodeCalls[1]?.type).toBe("delta");
-    handle.dispose();
+    await expect(
+      createImageTexture(target, "rec\n/camera/video\n602000", runway),
+    ).rejects.toThrow("Waiting for H.264 keyframe");
+    expect(fakeDecoderInstances).toHaveLength(0);
   });
 
   it("rejects a missing H.264 target instead of returning a runway frame", async () => {
@@ -364,6 +358,26 @@ describe("createEncodedVideoTexture", () => {
 
     await expectation;
     expect(fakeDecoderInstances).toHaveLength(0);
+  });
+
+  it("closes an unmatched timestamp without resolving another waiter", async () => {
+    FakeVideoDecoder.decodeBehavior = "hold";
+    const texture = createEncodedVideoTexture(
+      h264Frame({ keyframe: true, timestampNs: 1000n }),
+      "rec\n/camera/video\n1000",
+    );
+    await vi.waitFor(() => {
+      expect(fakeDecoderInstances[0]?.decodeCalls).toHaveLength(1);
+    });
+
+    const decoder = fakeDecoderInstances[0];
+    const unmatched = decoder.outputAtTimestamp(99);
+    expect(unmatched.close).toHaveBeenCalledOnce();
+
+    decoder.outputNext();
+    const handle = await texture;
+    handle.dispose();
+    expect(decoder.outputFrames[1]?.close).toHaveBeenCalledOnce();
   });
 
   it("rejects pending textures and resets the decoder on decode timeout", async () => {
@@ -546,6 +560,18 @@ class FakeVideoDecoder {
     };
     this.outputFrames.push(frame);
     this.init.output(frame);
+  }
+
+  outputAtTimestamp(timestamp: number): FakeFrame {
+    const frame = {
+      close: vi.fn(),
+      displayHeight: 480,
+      displayWidth: 640,
+      timestamp,
+    };
+    this.outputFrames.push(frame);
+    this.init.output(frame);
+    return frame;
   }
 
   reset(): void {
