@@ -32,19 +32,32 @@ const Icon = ({
   const Eye = isShown ? VisibilityIcon : VisibilityOffIcon;
 
   return (
-    <Eye
+    <button
+      aria-label={title}
       data-cy={`shown-attribute-${path}`}
+      disabled={locked}
       onClick={(event) => {
         event.stopPropagation();
         toggle.toggle();
       }}
       style={{
-        ...STYLE,
-        color: isShown ? color : theme.text.secondary,
+        background: "none",
+        border: "none",
         cursor: locked ? "not-allowed" : "pointer",
+        display: "inline-flex",
+        margin: 0,
+        padding: 0,
       }}
-      titleAccess={title}
-    />
+      title={title}
+      type="button"
+    >
+      <Eye
+        style={{
+          ...STYLE,
+          color: isShown ? color : theme.text.secondary,
+        }}
+      />
+    </button>
   );
 };
 
