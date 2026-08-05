@@ -22,9 +22,9 @@
         "@fiftyone/spaces": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
-        "@mui/icons-material": "*",
-        "@mui/material": "*",
-        "@voxel51/voodo": "^0.0.35",
+        "@mui/icons-material": "^5.16.7",
+        "@mui/material": "^5.9.0",
+        "@voxel51/voodo": "^0.1.0",
         "three": "^0.182.0"
     },
     "devDependencies": {
