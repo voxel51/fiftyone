@@ -128,6 +128,15 @@ export class OssLoader extends AbstractFiftyoneLoader {
         }
       });
 
+      window.__FO_PLAYWRIGHT_GRID_MOUNT_COUNT = 0;
+      document.addEventListener("grid-mount", () => {
+        window.__FO_PLAYWRIGHT_GRID_MOUNT_COUNT += 1;
+      });
+      window.__FO_PLAYWRIGHT_GRID_UNMOUNT_COUNT = 0;
+      document.addEventListener("grid-unmount", () => {
+        window.__FO_PLAYWRIGHT_GRID_UNMOUNT_COUNT += 1;
+      });
+
       window.IS_PLAYWRIGHT = true;
     });
 

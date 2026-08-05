@@ -1,3 +1,14 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ *
+ * Asserts that the grid tears down and remounts exactly once per spaces
+ * layout change (opening a panel side-by-side, closing a split panel).
+ *
+ * Regression guard: the spotlight memo keyed on the identities of its
+ * callables, so state updates riding along with a layout change (e.g. panel
+ * loading status) could destroy and recreate the grid after it had already
+ * loaded, flashing the loading animation a second time.
+ */
 import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { GridPanelPom } from "src/oss/poms/panels/grid-panel";
@@ -16,47 +27,23 @@ const test = base.extend<{ grid: GridPom; panel: GridPanelPom }>({
   },
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-    dataset.add_samples([fo.Sample(filepath=f"{i}.png") for i in range(5)])
-  `);
+  await datasetFactory.createDataset({ datasetName, numSamples: 5 });
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ fiftyoneLoader, page }) => {
-  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-});
-
 test("grid remounts exactly once per spaces layout change", async ({
+  fiftyoneLoader,
   grid,
   page,
   panel,
 }) => {
-  // count every grid lifecycle event from here on; a redundant teardown
-  // (e.g. a keyed remount of the space tree or a resize-induced spotlight
-  // rebuild) shows up as extra counts before the mount we await
-  type Counted = Window & {
-    __gridLifecycle: { mount: number; unmount: number };
-  };
-  await page.evaluate(() => {
-    const counts = { mount: 0, unmount: 0 };
-    (window as unknown as Counted).__gridLifecycle = counts;
-    document.addEventListener("grid-mount", () => {
-      counts.mount++;
-    });
-    document.addEventListener("grid-unmount", () => {
-      counts.unmount++;
-    });
-  });
-  const counts = () =>
-    page.evaluate(() => (window as unknown as Counted).__gridLifecycle);
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  await grid.assert.hasLifecycleCounts(1, 0);
 
   // split: a plain panel open places it side-by-side, splitting the layout
   const split = await grid.armGridRefresh();
@@ -64,7 +51,7 @@ test("grid remounts exactly once per spaces layout change", async ({
   await split.received;
   await expect(panel.getContent("Histograms")).toBeVisible();
   await expect(grid.getNthTile(0)).toBeVisible();
-  expect(await counts()).toEqual({ mount: 1, unmount: 1 });
+  await grid.assert.hasLifecycleCounts(2, 1);
 
   // join: closing the split panel collapses the layout back to a single pane
   const join = await grid.armGridRefresh();
@@ -72,5 +59,5 @@ test("grid remounts exactly once per spaces layout change", async ({
   await join.received;
   await expect(panel.getContent("Histograms")).toBeHidden();
   await expect(grid.getNthTile(0)).toBeVisible();
-  expect(await counts()).toEqual({ mount: 2, unmount: 2 });
+  await grid.assert.hasLifecycleCounts(3, 2);
 });
