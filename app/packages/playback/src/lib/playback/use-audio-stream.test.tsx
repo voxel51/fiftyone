@@ -4,6 +4,7 @@ import {
   DEFAULT_AUDIO_VOLUME,
   isBufferingAtom,
   isPlayingAtom,
+  playheadAtom,
   seekEventAtom,
   speedAtom,
 } from "./atoms";
@@ -346,13 +347,66 @@ describe("useAudioStream (provider integration)", () => {
     const el = created[0];
     act(() => el._fire("loadedmetadata"));
     act(() => setAudioMuted(result.current.store, false));
-    el._playResult = Promise.reject(new Error("NotAllowedError"));
+    el._playResult = Promise.reject(
+      new DOMException("autoplay is not allowed", "NotAllowedError"),
+    );
     // pre-attach a handler so the rejection is never unobserved
     void el._playResult.catch(() => undefined);
     await act(async () => {
       result.current.store.set(isPlayingAtom, true);
     });
     expect(getAudioMuted(result.current.store)).toBe(true);
+  });
+
+  it("keeps the unmute when the buffering gate interrupts the pending play", async () => {
+    const { result } = renderAudio();
+    const el = created[0];
+    act(() => el._fire("loadedmetadata"));
+
+    // picture is rolling; audio is dormant (session starts muted)
+    await act(async () => {
+      result.current.store.set(isPlayingAtom, true);
+    });
+    expect(el.play).not.toHaveBeenCalled();
+
+    // the unmute's play() stays pending...
+    let rejectPlay: (e: unknown) => void = () => undefined;
+    el._playResult = new Promise<void>((_, reject) => {
+      rejectPlay = reject;
+    });
+    void el._playResult.catch(() => undefined);
+
+    act(() => setAudioMuted(result.current.store, false));
+    expect(el.play).toHaveBeenCalledTimes(1);
+
+    // ...until the engine's barrier pauses for buffering, which rejects
+    // the interrupted play with AbortError
+    await act(async () => {
+      result.current.store.set(isBufferingAtom, true);
+      rejectPlay(new DOMException("interrupted by pause()", "AbortError"));
+    });
+
+    // the user's unmute survives — AbortError is not an autoplay denial
+    expect(getAudioMuted(result.current.store)).toBe(false);
+  });
+
+  it("anchors the element clock to the playhead on activation", async () => {
+    const { result } = renderAudio();
+    const el = created[0];
+    el.duration = 10;
+    act(() => el._fire("loadedmetadata"));
+
+    // playhead advanced while the stream was dormant; the element's clock
+    // never followed (no seek events during continuous playback, and the
+    // drift-chase only runs while the element plays)
+    await act(async () => {
+      result.current.store.set(isPlayingAtom, true);
+      result.current.store.set(playheadAtom, 5);
+    });
+    expect(el.currentTime).toBe(0);
+
+    act(() => setAudioMuted(result.current.store, false));
+    expect(el.currentTime).toBe(5);
   });
 
   it("drops availability and never plays on a conclusive no-track verdict", async () => {

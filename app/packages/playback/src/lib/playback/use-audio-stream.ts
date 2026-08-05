@@ -5,6 +5,7 @@ import {
   audioVolumeAtom,
   isBufferingAtom,
   isPlayingAtom,
+  playheadAtom,
   seekEventAtom,
   speedAtom,
 } from "./atoms";
@@ -292,8 +293,19 @@ export function useAudioStream(
     if (!active) {
       return undefined;
     }
+    // The element's clock only follows seek events and the drift-chase,
+    // neither of which runs while the stream is dormant — a stream
+    // activated mid-play sits at a stale position. Anchor it to the
+    // playhead before the barrier asks for readiness there.
+    const element = elementRef.current;
+    if (element) {
+      const end = Number.isFinite(element.duration)
+        ? element.duration
+        : Number.POSITIVE_INFINITY;
+      element.currentTime = Math.min(Math.max(store.get(playheadAtom), 0), end);
+    }
     return subscribeStream(id);
-  }, [active, id, subscribeStream]);
+  }, [active, id, subscribeStream, store]);
 
   // Transport: play/pause follows the engine, buffering gate first —
   // while any blocking stream is loading the audio must freeze with the
@@ -308,11 +320,15 @@ export function useAudioStream(
       const shouldPlay =
         active && store.get(isPlayingAtom) && !store.get(isBufferingAtom);
       if (shouldPlay && element.paused) {
-        element.play().catch(() => {
-          // Autoplay policy rejected unmuted playback — reflect reality in
-          // the UI instead of pretending sound is on. The next unmute is a
-          // user gesture, which satisfies the policy.
-          setAudioMuted(store, true);
+        element.play().catch((error: unknown) => {
+          // A pause() interrupting the pending play — the buffering gate
+          // does this routinely — rejects with AbortError; the isBuffering
+          // subscription re-issues play() when the gate clears. Only a
+          // genuine autoplay-policy denial reflects back into the UI: the
+          // next unmute is a user gesture, which satisfies the policy.
+          if ((error as DOMException | null)?.name === "NotAllowedError") {
+            setAudioMuted(store, true);
+          }
         });
       } else if (!shouldPlay && !element.paused) {
         element.pause();
