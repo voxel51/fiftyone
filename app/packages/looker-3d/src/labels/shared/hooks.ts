@@ -17,6 +17,7 @@ import {
   isCurrentlyTransformingAtom,
   selectedLabelForAnnotationAtom,
 } from "../../state";
+import type { OverlayLabel } from "../loader";
 import type { BaseOverlayProps, EventHandlers, HoverState } from "../../types";
 import type { OverlayLabel } from "../loader";
 

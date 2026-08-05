@@ -146,7 +146,7 @@ export interface BaseOverlayProps {
   opacity: number;
   rotation: THREE.Vector3Tuple;
   selected: boolean;
-  onClick?: (e: any) => void;
+  onClick?: (e: ThreeEvent<MouseEvent>) => void;
   label: OverlayLabel;
   color: string;
 }
@@ -156,7 +156,7 @@ export interface TransformProps extends TransformControlsProps {
   onTransformStart?: () => void;
   onTransformEnd?: () => void;
   onTransformChange?: () => void;
-  transformControlsRef?: RefObject<any>;
+  transformControlsRef?: RefObject<THREE.Object3D>;
 }
 
 export interface HoverState {

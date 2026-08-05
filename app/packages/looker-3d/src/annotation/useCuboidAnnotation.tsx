@@ -6,7 +6,7 @@ import {
   useSceneSampleId,
 } from "@fiftyone/annotation";
 import { useCurrentDatasetId } from "@fiftyone/state";
-import { TransformControlsProps } from "@react-three/drei";
+import type { TransformControlsProps } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Vector3Tuple } from "three";
 import * as THREE from "three";
@@ -18,8 +18,8 @@ import {
   useWorkingLabel,
 } from "../annotation/store";
 import type { TransientCuboidState } from "../annotation/store/types";
-import { isDetection3dOverlay } from "../types";
 import type { OverlayLabel } from "../labels/loader";
+import { isDetection3dOverlay } from "../types";
 import { radiansToQuaternion } from "../utils";
 
 interface UseCuboidAnnotationProps {
@@ -51,7 +51,9 @@ export const useCuboidAnnotation = ({
   const dataset = useCurrentDatasetId() ?? "";
   const sample = useSceneSampleId();
 
-  const transformControlsRef = useRef<TransformControlsProps>(null);
+  const transformControlsRef = useRef<
+    THREE.Object3D & Pick<TransformControlsProps, "mode">
+  >(null);
   const contentRef = useRef<THREE.Group>(null);
 
   // Compute effective values from working store (or fallback to props)

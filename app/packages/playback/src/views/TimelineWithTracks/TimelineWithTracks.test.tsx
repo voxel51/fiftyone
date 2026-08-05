@@ -41,11 +41,9 @@ describe("TimelineWithTracks", () => {
   beforeEach(() => {
     // useElementSize relies on ResizeObserver which jsdom doesn't support.
     // Provide a no-op stub so the hook mounts without errors.
-    global.ResizeObserver = vi.fn().mockImplementation(() => ({
-      observe: vi.fn(),
-      unobserve: vi.fn(),
-      disconnect: vi.fn(),
-    }));
+    global.ResizeObserver = vi.fn().mockImplementation(function () {
+      return { observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn() };
+    });
   });
 
   afterEach(() => {

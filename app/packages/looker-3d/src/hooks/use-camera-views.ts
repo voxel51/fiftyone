@@ -450,6 +450,7 @@ export const useCameraViews = ({
       enableAnnotationPlaneCameraView,
       shouldReserveTForTransform,
       selectedLabelForAnnotation,
+      setIsFo3dBackgroundOn,
       workingLabel,
       cameraControlsRef,
     ],

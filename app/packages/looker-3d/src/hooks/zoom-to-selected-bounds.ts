@@ -13,7 +13,7 @@ import { isFiniteVector3 } from "../utils";
 
 type SampleMap = Record<string, fos.ModalSample>;
 type LabelWithId = { _id?: string; id?: string };
-type SelectedLabelLike = {
+export type SelectedLabelLike = {
   field?: string;
   path?: string;
   labelId?: string;

@@ -1,5 +1,13 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type Mock,
+  vi,
+} from "vitest";
 
 import {
   buildPointCloudRenderPayload,
@@ -161,12 +169,12 @@ function pickerHandle(
     sourceIndex: number;
   } | null>,
 ): GpuPointCloudProjectionPickerHandle & {
-  invalidate: ReturnType<typeof vi.fn>;
-  pick: ReturnType<typeof vi.fn>;
+  invalidate: Mock<GpuPointCloudProjectionPickerHandle["invalidate"]>;
+  pick: Mock<GpuPointCloudProjectionPickerHandle["pick"]>;
 } {
   return {
     invalidate: vi.fn(),
-    pick: vi.fn(() => result),
+    pick: vi.fn<GpuPointCloudProjectionPickerHandle["pick"]>(() => result),
   };
 }
 

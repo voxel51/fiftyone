@@ -52,7 +52,7 @@ function setSchemaClasses(field: string, classes: string[]) {
 
 function clearSchema(field: string) {
   const store = getDefaultStore();
-  store.set(labelSchemaData(field), undefined as any);
+  store.set(labelSchemaData(field), undefined);
 }
 
 afterEach(() => {

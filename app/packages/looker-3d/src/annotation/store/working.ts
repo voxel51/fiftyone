@@ -187,7 +187,13 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
       },
       initialized: true,
     });
-  }, [mode, currentSampleId, rawOverlays, workingState.initialized]);
+  }, [
+    mode,
+    currentSampleId,
+    rawOverlays,
+    workingState.initialized,
+    setWorking,
+  ]);
 
   const prevRawRef = useRef(rawOverlays);
 

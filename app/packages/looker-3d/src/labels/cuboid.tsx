@@ -677,7 +677,7 @@ export const Cuboid = ({
     if (!label.label.quaternion) {
       return label;
     }
-    const { quaternion, ...rest } = label.label;
+    const { quaternion: _quaternion, ...rest } = label.label;
     return { ...label, label: rest };
   }, [label]);
 
@@ -744,15 +744,13 @@ export const Cuboid = ({
 
   // Compute display position: apply transient delta if present
   const displayPosition = useMemo(() => {
-    let [x, y, z] = effectiveLocation;
+    const [x, rawY, z] = effectiveLocation;
 
     // In legacy coordinate system, location was stored as the top-center of the cuboid
     // (half-height above the geometric center), so we adjust Y downward by half the height
     // to position the cuboid correctly. In the new coordinate system, location is stored
     // as the geometric center, matching Three.js BoxGeometry's center, so no adjustment is needed.
-    if (useLegacyCoordinates) {
-      y -= 0.5 * displayDimensions[1];
-    }
+    const y = useLegacyCoordinates ? rawY - 0.5 * displayDimensions[1] : rawY;
 
     if (transientState?.positionDelta) {
       return [
@@ -782,12 +780,7 @@ export const Cuboid = ({
       return new THREE.Quaternion(...effectiveQuaternion);
     }
     return null;
-  }, [
-    transientState?.quaternionOverride,
-    effectiveQuaternion,
-    rotation,
-    transformMode,
-  ]);
+  }, [transientState?.quaternionOverride, effectiveQuaternion, transformMode]);
 
   // Fallback to euler-based rotation when no quaternion available
   const fallbackEuler = useMemo(() => {
@@ -1164,14 +1157,7 @@ export const Cuboid = ({
         color: strokeAndFillColor,
         linewidth: lineWidth,
       }),
-    [
-      selected,
-      lineWidth,
-      opacity,
-      isHovered,
-      isSimilarLabelHovered,
-      strokeAndFillColor,
-    ],
+    [lineWidth, opacity, strokeAndFillColor],
   );
 
   // This effect cleans up geometries and material on unmount
@@ -1233,7 +1219,6 @@ export const Cuboid = ({
       position={displayPosition}
     >
       {/* Outline */}
-      {/* @ts-ignore */}
       <lineSegments2 geometry={lineSegmentsGeometry} material={material} />
 
       {/* Clickable volume */}

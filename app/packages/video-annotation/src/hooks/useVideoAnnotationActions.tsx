@@ -199,7 +199,6 @@ export const useVideoAnnotationActions = (): ToolbarActionGroup[] => {
             icon: <Icon name={IconName.AI} size={Size.Sm} />,
             // Required by the item type but unreachable — the toolbar renders
             // `customComponent` instead of wiring `onClick`.
-            // eslint-disable-next-line @typescript-eslint/no-empty-function
             onClick: () => {},
             customComponent: <AiTrackUpsellButton />,
           },

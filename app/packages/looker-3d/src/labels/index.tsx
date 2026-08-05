@@ -385,6 +385,7 @@ export const ThreeDLabels = ({
       itemRotation,
       getOverlayOpacity,
       handleSelect,
+      hoverSource,
       settings,
       getOverlayColor,
       showCuboidOrientation,
@@ -423,6 +424,7 @@ export const ThreeDLabels = ({
     getOverlayOpacity,
     polylineWidth,
     handleSelect,
+    hoverSource,
     getOverlayColor,
   ]);
 

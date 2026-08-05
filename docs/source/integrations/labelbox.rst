@@ -5,6 +5,10 @@ Labelbox Integration
 
 .. default-role:: code
 
+.. customavailablein::
+    :oss_version: 0.14.3
+    :enterprise_version: 1.0
+
 `Labelbox <https://labelbox.com/>`_ is one of the most popular cloud-based
 image and video annotation tools available, and we've made it easy to upload
 your data directly from FiftyOne to Labelbox for labeling.

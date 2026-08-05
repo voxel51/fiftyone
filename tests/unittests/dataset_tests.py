@@ -11,6 +11,7 @@ import os
 import random
 import string
 import unittest
+import warnings
 from collections import Counter
 from copy import copy, deepcopy
 from datetime import date, datetime, timedelta
@@ -1604,6 +1605,48 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataset.clone_sample_field("foo", "_private")
 
+        # "pk" is a reserved keyword (MongoEngine's alias for "id");
+        # using it warns but is not (yet) an error
+
+        with self.assertWarns(UserWarning):
+            dataset.add_sample_field("pk", fo.StringField)
+
+        self.assertIn("pk", dataset.get_field_schema())
+        dataset.delete_sample_field("pk")
+
+        with self.assertWarns(UserWarning):
+            dataset.rename_sample_field("foo", "pk")
+
+        dataset.rename_sample_field("pk", "foo")
+
+        with self.assertWarns(UserWarning):
+            dataset.clone_sample_field("foo", "pk")
+
+        dataset.delete_sample_field("pk")
+
+        dataset.add_sample_field(
+            "spam",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        # The warning fires exactly once per operation
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            dataset.add_sample_field("spam.pk", fo.StringField)
+
+        self.assertEqual(
+            len([x for x in w if "reserved" in str(x.message)]), 1
+        )
+
+        # Dynamic schema expansion warns when a `pk` field enters the schema
+        embedded = fo.DynamicEmbeddedDocument()
+        embedded["pk"] = fo.DynamicEmbeddedDocument(value=51)
+        sample = fo.Sample(filepath="image.jpg", embedded=embedded)
+
+        with self.assertWarns(UserWarning):
+            dataset.add_sample(sample, dynamic=True)
+
     @drop_datasets
     def test_frame_field_names(self):
         dataset = fo.Dataset()
@@ -1613,6 +1656,13 @@ class DatasetTests(unittest.TestCase):
         # "frames" is a reserved keyword
         with self.assertRaises(ValueError):
             dataset.add_sample_field("frames", fo.StringField)
+
+        # "pk" is a reserved keyword (MongoEngine's alias for "id");
+        # using it warns but is not (yet) an error
+        with self.assertWarns(UserWarning):
+            dataset.add_frame_field("pk", fo.StringField)
+
+        dataset.delete_frame_field("pk")
 
         # Field names cannot be empty
 

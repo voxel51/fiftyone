@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useMode } from "@fiftyone/playback";
 import { useTiling } from "@fiftyone/tiling";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -132,6 +133,29 @@ describe("MultiModalPlayback shell", () => {
     expect(screen.getByTestId("webgpu-view-stage").className).toContain(
       "sharedViewStage",
     );
+  });
+
+  it("defaults the playback engine to duration mode", () => {
+    const ModeReadout = () => <span data-testid="mode">{useMode().kind}</span>;
+    render(
+      <MultiModalPlayback fileName="session.fo">
+        <ModeReadout />
+      </MultiModalPlayback>,
+    );
+    expect(screen.getByTestId("mode").textContent).toBe("duration");
+  });
+
+  it("forwards the mode prop through to the playback engine", () => {
+    const ModeReadout = () => <span data-testid="mode">{useMode().kind}</span>;
+    render(
+      <MultiModalPlayback
+        fileName="session.fo"
+        mode={{ kind: "sequence", fps: 12 }}
+      >
+        <ModeReadout />
+      </MultiModalPlayback>,
+    );
+    expect(screen.getByTestId("mode").textContent).toBe("sequence");
   });
 
   it("does not mount the shared WebGPU view stage by default", () => {

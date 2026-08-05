@@ -73,7 +73,7 @@ const buildPanelElement = (width = 100, height = 100) =>
         bottom: height,
         x: 0,
         y: 0,
-        toJSON: () => {},
+        toJSON: () => ({}),
       }) as DOMRect,
   }) as HTMLElement;
 

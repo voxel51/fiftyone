@@ -171,8 +171,12 @@ export const SidePanel = ({
   sample,
 }: SidePanelProps) => {
   const { activeSampleMap: labelSampleMap } = fos.useRenderConfig3dState();
-  const { imageSlices, resolveUrlForImageSlice, isLoadingImageSlices } =
-    useImageSlicesIfAvailable(sample);
+  const {
+    imageSlices,
+    resolveUrlForImageSlice,
+    resolveLabelsForImageSlice,
+    isLoadingImageSlices,
+  } = useImageSlicesIfAvailable(sample);
 
   // While a label transform is in progress (e.g. a cuboid face-pull resize
   // started in this panel), suspend panning so the drag doesn't also move the
@@ -239,6 +243,7 @@ export const SidePanel = ({
           imageSlices={imageSlices}
           isLoadingImageSlices={isLoadingImageSlices}
           resolveUrlForImageSlice={resolveUrlForImageSlice}
+          resolveLabelsForImageSlice={resolveLabelsForImageSlice}
           upVector={upVector}
         />
       ) : (

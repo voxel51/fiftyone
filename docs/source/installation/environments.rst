@@ -146,6 +146,10 @@ to the above command.
 Restricting the App address
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. customavailablein::
+    :oss_version: 0.14.0
+    :enterprise_version: 1.0
+
 By default, the App will listen on `localhost`. However, you can provide the
 optional `address` parameter to
 :meth:`launch_app() <fiftyone.core.session.launch_app>` to specify a particular
@@ -348,6 +352,10 @@ call :meth:`session.open_tab() <fiftyone.core.session.Session.open_tab>`:
 
 Remote notebooks
 ~~~~~~~~~~~~~~~~
+
+.. customavailablein::
+    :oss_version: 0.7.2
+    :enterprise_version: 1.0
 
 You can also work in a Jupyter notebook in your local browser that is
 `served from a remote machine <https://ljvmiranda921.github.io/notebook/2018/01/31/running-a-jupyter-notebook>`_

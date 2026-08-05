@@ -31,6 +31,7 @@ from .screenshot import Screenshot
 from .sort import Sort
 from .tag import Tag
 from .tagging import Tagging
+from .temporal_tags import TemporalTagRoutes
 from .values import Values
 from .video_labels import VideoLabelsIndex, VideoLabelsWindow
 
@@ -46,6 +47,7 @@ routes = (
     + EmbeddingsRoutes
     + EmbeddingsV2Routes
     + GroupsRoutes
+    + TemporalTagRoutes
     + multimodal_routes
     + OperatorRoutes
     + RuntimeAssetRoutes

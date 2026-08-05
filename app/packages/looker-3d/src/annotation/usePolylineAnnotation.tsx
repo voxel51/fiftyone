@@ -14,13 +14,13 @@ import {
   useWorkingLabel,
 } from "../annotation/store";
 import type { TransientPolylineState } from "../annotation/store/types";
+import type { OverlayLabel } from "../labels/loader";
 import {
   editSegmentsModeAtom,
   hoveredLabelAtom,
   selectedPolylineVertexAtom,
 } from "../state";
 import type { HoveredLabelSource } from "../types";
-import type { OverlayLabel } from "../labels/loader";
 import { getComplementaryColor } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 import {

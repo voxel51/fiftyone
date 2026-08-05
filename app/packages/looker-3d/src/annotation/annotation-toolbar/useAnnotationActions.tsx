@@ -65,7 +65,9 @@ const createCoordinateAction = (customComponent: React.ReactNode) => ({
       isActive: false,
       isDisabled: false,
       isVisible: true,
-      onClick: () => {},
+      onClick: () => {
+        // interaction is handled by customComponent
+      },
       customComponent,
     },
   ],
@@ -425,6 +427,8 @@ export const useAnnotationActions = () => {
     annotationPlane.quaternion,
     sceneBoundingBox,
     upVector,
+    setAnnotationPlane,
+    setCurrentArchetypeSelectedForTransform,
   ]);
 
   const handleToggleEditSegmentsMode = useCallback(() => {
@@ -472,7 +476,9 @@ export const useAnnotationActions = () => {
             isActive: false,
             isDisabled: false,
             isVisible: true,
-            onClick: () => {},
+            onClick: () => {
+              // interaction is handled by customComponent
+            },
             customComponent: <FieldSelection />,
           },
           {
@@ -646,6 +652,7 @@ export const useAnnotationActions = () => {
     handleCancelSegmentPolyline,
     handleToggleAnnotationPlane,
     snapCloseAutomatically,
+    setSnapCloseAutomatically,
     editSegmentsMode,
     handleToggleEditSegmentsMode,
     editing,

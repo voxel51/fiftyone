@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react-hooks";
+import { renderHook } from "@testing-library/react";
 import type { RefObject } from "react";
 import type { Box3, PerspectiveCamera } from "three";
 import { Box3 as ThreeBox3, Vector3 } from "three";
@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SET_EGO_VIEW_EVENT, SET_TOP_VIEW_EVENT } from "../../constants";
 import { useFo3dCameraViewEvents } from "../../hooks/use-fo3d-camera-view-events";
 import type { Fo3dCameraControls } from "../camera-controls";
+import type { FoScene } from "../render-types";
 
 const hookState = vi.hoisted(() => ({
   overriddenCameraPosition: null as [number, number, number] | null,
@@ -68,7 +69,7 @@ const makeFoScene = (position: [number, number, number] | null = [0, 0, 10]) =>
       position,
       lookAt: [0, 0, 0],
     },
-  }) as any;
+  }) as unknown as FoScene;
 
 describe("useFo3dCameraViewEvents", () => {
   beforeEach(() => {

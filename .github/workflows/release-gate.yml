@@ -1,0 +1,87 @@
+name: Release Gate
+
+# Enforces upstream-first on release branches: a PR into release/* must be a
+# cherry-pick of commits already on develop, a labeled release-only fix, a
+# version bump, or an automated sync mirror.
+# Everything else originates on develop and arrives here by cherry-pick, so
+# the release branch stays a strict subset of the default branch
+# and there is never anything to merge back.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled, edited]
+    branches:
+      - release/v**
+
+concurrency:
+  group: release-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Gate release branch PR
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_REF: ${{ github.head_ref }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          has_label() { echo "$LABELS" | grep -q "\"$1\""; }
+
+          # Automation the release process already owns: sync mirrors were
+          # gated on the upstream side, version bumps are guarded by the
+          # version-guard workflow.
+          if [ "$AUTHOR" = "voxel51-bot" ] && [[ "$HEAD_REF" == oss-sync/* ]]; then
+            echo "Sync mirror PR; gated upstream. OK."
+            exit 0
+          fi
+          if has_label "version-bump"; then
+            echo "Version bump PR. OK."
+            exit 0
+          fi
+
+          # The escape hatch: a fix that applies only to the release branch.
+          # The label is the deliberate act.
+          if has_label "release-only-fix"; then
+            echo "Release-only fix. OK."
+            exit 0
+          fi
+
+          # Everything else must be a cherry-pick of commits already on
+          # develop: git cherry-pick -x stamps the source sha, and that sha
+          # must be an ancestor of develop. Merge commits are rejected — they
+          # can carry unvalidated conflict-resolution changes; update
+          # cherry-pick branches by rebase.
+          git fetch --quiet origin develop
+          if [ -n "$(git rev-list --merges "$BASE_SHA..$HEAD_SHA")" ]; then
+            echo "::error::Merge commits are not allowed in release PRs; rebase instead."
+            exit 1
+          fi
+          bad=0
+          for sha in $(git rev-list "$BASE_SHA..$HEAD_SHA"); do
+            src=$(git log -1 --format=%B "$sha" \
+              | sed -nE 's/^\(cherry picked from commit ([0-9a-f]{40})\)$/\1/p' | tail -1)
+            if [ -z "$src" ]; then
+              echo "::error::$sha has no '(cherry picked from commit ...)' trailer."
+              echo "Land the change on develop first, then cherry-pick with -x or the"
+              echo "'Cherry-Pick to Release' workflow. If the fix truly applies only to"
+              echo "this release branch, add the 'release-only-fix' label."
+              bad=1
+            elif ! git merge-base --is-ancestor "$src" origin/develop 2>/dev/null; then
+              echo "::error::$sha claims source $src, which is not on develop."
+              bad=1
+            fi
+          done
+          [ "$bad" -eq 0 ] || exit 1
+          echo "Cherry-picks of develop commits. OK."
