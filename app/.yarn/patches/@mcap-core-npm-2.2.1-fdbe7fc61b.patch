@@ -1,0 +1,190 @@
+diff --git a/dist/cjs/McapIndexedReader.js b/dist/cjs/McapIndexedReader.js
+index bcbd2c83698fb6c816b891c813507f833371eee9..ccd204d25f322630f3f09b11888850a9edc72ebc 100644
+--- a/dist/cjs/McapIndexedReader.js
++++ b/dist/cjs/McapIndexedReader.js
+@@ -366,6 +366,7 @@ class McapIndexedReader {
+     }
+     async #loadChunkData(chunkIndex, options) {
+         const chunkData = await this.#readable.read(chunkIndex.chunkStartOffset, chunkIndex.chunkLength);
++        const sourceIdentity = this.#readable.sourceIdentityForBytes?.(chunkData);
+         const chunkReader = new Reader_ts_1.default(new DataView(chunkData.buffer, chunkData.byteOffset, chunkData.byteLength));
+         const chunkRecord = (0, parse_ts_1.parseRecord)(chunkReader, options?.validateCrcs ?? true);
+         if (chunkRecord?.type !== "Chunk") {
+@@ -378,7 +379,15 @@ class McapIndexedReader {
+             if (!decompress) {
+                 throw this.#errorWithLibrary(`Unsupported compression ${chunk.compression}`);
+             }
+-            buffer = decompress(buffer, chunk.uncompressedSize);
++            buffer = decompress(buffer, chunk.uncompressedSize, {
++                chunkLength: chunkIndex.chunkLength,
++                chunkStartOffset: chunkIndex.chunkStartOffset,
++                compressedDataLength: BigInt(buffer.byteLength),
++                compressedDataStartOffset: chunkIndex.chunkStartOffset + chunkIndex.chunkLength - BigInt(buffer.byteLength),
++                compression: chunk.compression,
++                sourceIdentity,
++                uncompressedSize: chunk.uncompressedSize,
++            });
+         }
+         if (chunk.uncompressedCrc !== 0 && options?.validateCrcs !== false) {
+             const chunkCrc = (0, crc_1.crc32)(buffer);
+diff --git a/dist/cjs/types.d.ts b/dist/cjs/types.d.ts
+index b73d61e47ac3fa18832fc304c6abd6d47b23797f..da4efa9a812eb71f8a81f92f08b553d528f3bbc7 100644
+--- a/dist/cjs/types.d.ts
++++ b/dist/cjs/types.d.ts
+@@ -127,8 +127,18 @@ export type TypedMcapRecords = {
+ type Values<T> = T[keyof T];
+ export type TypedMcapRecord = Values<TypedMcapRecords>;
+ export type McapRecord = Values<McapRecords>;
++/** Stable source and range metadata for an indexed chunk decompression. */
++export type ChunkDecompressionContext = {
++    chunkLength: bigint;
++    chunkStartOffset: bigint;
++    compressedDataLength: bigint;
++    compressedDataStartOffset: bigint;
++    compression: string;
++    sourceIdentity?: string;
++    uncompressedSize: bigint;
++};
+ export type DecompressHandlers = {
+-    [compression: string]: (buffer: Uint8Array, decompressedSize: bigint) => Uint8Array;
++    [compression: string]: (buffer: Uint8Array, decompressedSize: bigint, context?: ChunkDecompressionContext) => Uint8Array;
+ };
+ /**
+  * IReadable describes a random-access reader interface.
+@@ -136,6 +146,8 @@ export type DecompressHandlers = {
+ export interface IReadable {
+     size(): Promise<bigint>;
+     read(offset: bigint, size: bigint): Promise<Uint8Array>;
++    /** Returns an opaque source/content-version identity for bytes from read(). */
++    sourceIdentityForBytes?(bytes: Uint8Array): string | undefined;
+ }
+ export {};
+ //# sourceMappingURL=types.d.ts.map
+diff --git a/dist/esm/McapIndexedReader.js b/dist/esm/McapIndexedReader.js
+index d9229e60a95387a52affe3bcb11d162f8345790c..9d75ae4bde89d0a95a86d448176acdea4c0a4107 100644
+--- a/dist/esm/McapIndexedReader.js
++++ b/dist/esm/McapIndexedReader.js
+@@ -363,6 +363,7 @@ export class McapIndexedReader {
+     }
+     async #loadChunkData(chunkIndex, options) {
+         const chunkData = await this.#readable.read(chunkIndex.chunkStartOffset, chunkIndex.chunkLength);
++        const sourceIdentity = this.#readable.sourceIdentityForBytes?.(chunkData);
+         const chunkReader = new Reader(new DataView(chunkData.buffer, chunkData.byteOffset, chunkData.byteLength));
+         const chunkRecord = parseRecord(chunkReader, options?.validateCrcs ?? true);
+         if (chunkRecord?.type !== "Chunk") {
+@@ -375,7 +376,15 @@ export class McapIndexedReader {
+             if (!decompress) {
+                 throw this.#errorWithLibrary(`Unsupported compression ${chunk.compression}`);
+             }
+-            buffer = decompress(buffer, chunk.uncompressedSize);
++            buffer = decompress(buffer, chunk.uncompressedSize, {
++                chunkLength: chunkIndex.chunkLength,
++                chunkStartOffset: chunkIndex.chunkStartOffset,
++                compressedDataLength: BigInt(buffer.byteLength),
++                compressedDataStartOffset: chunkIndex.chunkStartOffset + chunkIndex.chunkLength - BigInt(buffer.byteLength),
++                compression: chunk.compression,
++                sourceIdentity,
++                uncompressedSize: chunk.uncompressedSize,
++            });
+         }
+         if (chunk.uncompressedCrc !== 0 && options?.validateCrcs !== false) {
+             const chunkCrc = crc32(buffer);
+diff --git a/dist/esm/types.d.ts b/dist/esm/types.d.ts
+index b73d61e47ac3fa18832fc304c6abd6d47b23797f..da4efa9a812eb71f8a81f92f08b553d528f3bbc7 100644
+--- a/dist/esm/types.d.ts
++++ b/dist/esm/types.d.ts
+@@ -127,8 +127,18 @@ export type TypedMcapRecords = {
+ type Values<T> = T[keyof T];
+ export type TypedMcapRecord = Values<TypedMcapRecords>;
+ export type McapRecord = Values<McapRecords>;
++/** Stable source and range metadata for an indexed chunk decompression. */
++export type ChunkDecompressionContext = {
++    chunkLength: bigint;
++    chunkStartOffset: bigint;
++    compressedDataLength: bigint;
++    compressedDataStartOffset: bigint;
++    compression: string;
++    sourceIdentity?: string;
++    uncompressedSize: bigint;
++};
+ export type DecompressHandlers = {
+-    [compression: string]: (buffer: Uint8Array, decompressedSize: bigint) => Uint8Array;
++    [compression: string]: (buffer: Uint8Array, decompressedSize: bigint, context?: ChunkDecompressionContext) => Uint8Array;
+ };
+ /**
+  * IReadable describes a random-access reader interface.
+@@ -136,6 +146,8 @@ export type DecompressHandlers = {
+ export interface IReadable {
+     size(): Promise<bigint>;
+     read(offset: bigint, size: bigint): Promise<Uint8Array>;
++    /** Returns an opaque source/content-version identity for bytes from read(). */
++    sourceIdentityForBytes?(bytes: Uint8Array): string | undefined;
+ }
+ export {};
+ //# sourceMappingURL=types.d.ts.map
+diff --git a/src/McapIndexedReader.ts b/src/McapIndexedReader.ts
+index 3fc0326ed7f3dd44fad1ee611691f81cff2582a8..b71ba3b9df86d1af1bb4970feb18699513502547 100644
+--- a/src/McapIndexedReader.ts
++++ b/src/McapIndexedReader.ts
+@@ -565,6 +565,7 @@ export class McapIndexedReader {
+       chunkIndex.chunkStartOffset,
+       chunkIndex.chunkLength,
+     );
++    const sourceIdentity = this.#readable.sourceIdentityForBytes?.(chunkData);
+     const chunkReader = new Reader(
+       new DataView(chunkData.buffer, chunkData.byteOffset, chunkData.byteLength),
+     );
+@@ -584,7 +585,16 @@ export class McapIndexedReader {
+       if (!decompress) {
+         throw this.#errorWithLibrary(`Unsupported compression ${chunk.compression}`);
+       }
+-      buffer = decompress(buffer, chunk.uncompressedSize);
++      buffer = decompress(buffer, chunk.uncompressedSize, {
++        chunkLength: chunkIndex.chunkLength,
++        chunkStartOffset: chunkIndex.chunkStartOffset,
++        compressedDataLength: BigInt(buffer.byteLength),
++        compressedDataStartOffset:
++          chunkIndex.chunkStartOffset + chunkIndex.chunkLength - BigInt(buffer.byteLength),
++        compression: chunk.compression,
++        sourceIdentity,
++        uncompressedSize: chunk.uncompressedSize,
++      });
+     }
+     if (chunk.uncompressedCrc !== 0 && options?.validateCrcs !== false) {
+       const chunkCrc = crc32(buffer);
+diff --git a/src/types.ts b/src/types.ts
+index 92f5105d602964478664232fb8912cfcbe588e9b..0b8acb3c72b3231e8e90cfaaf1ad88ac63a06079 100644
+--- a/src/types.ts
++++ b/src/types.ts
+@@ -129,8 +129,23 @@ type Values<T> = T[keyof T];
+ export type TypedMcapRecord = Values<TypedMcapRecords>;
+ export type McapRecord = Values<McapRecords>;
+ 
++/** Stable source and range metadata for an indexed chunk decompression. */
++export type ChunkDecompressionContext = {
++  chunkLength: bigint;
++  chunkStartOffset: bigint;
++  compressedDataLength: bigint;
++  compressedDataStartOffset: bigint;
++  compression: string;
++  sourceIdentity?: string;
++  uncompressedSize: bigint;
++};
++
+ export type DecompressHandlers = {
+-  [compression: string]: (buffer: Uint8Array, decompressedSize: bigint) => Uint8Array;
++  [compression: string]: (
++    buffer: Uint8Array,
++    decompressedSize: bigint,
++    context?: ChunkDecompressionContext,
++  ) => Uint8Array;
+ };
+ 
+ /**
+@@ -139,4 +154,6 @@ export type DecompressHandlers = {
+ export interface IReadable {
+   size(): Promise<bigint>;
+   read(offset: bigint, size: bigint): Promise<Uint8Array>;
++  /** Returns an opaque source/content-version identity for bytes from read(). */
++  sourceIdentityForBytes?(bytes: Uint8Array): string | undefined;
+ }
