@@ -98,6 +98,10 @@ export function acquireSharedMcapResourceClient(
       if (held.refs > 0) {
         return;
       }
+      // Keep the worker fleet warm for quick remounts, but do not make its
+      // largest decoded allocations pay the full linger window after the last
+      // renderer releases ownership.
+      held.client.releaseRetainedResources?.();
       held.disposeTimer = setTimeout(() => {
         if (held.refs === 0 && sharedClients.get(key) === held) {
           sharedClients.delete(key);

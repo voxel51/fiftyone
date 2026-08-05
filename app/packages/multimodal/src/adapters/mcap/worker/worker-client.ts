@@ -120,6 +120,10 @@ class WorkerMcapResourceClient implements McapResourceClient {
     this.resetWorkers("MCAP worker disposed");
   }
 
+  releaseRetainedResources() {
+    this.decodedRecords.clear();
+  }
+
   subscribeTransport(
     listener: (sample: McapLaneTransportSnapshot) => void,
   ): () => void {
