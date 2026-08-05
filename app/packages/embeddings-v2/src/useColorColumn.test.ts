@@ -7,12 +7,35 @@ import {
   type ColorResponse,
   type VisualizationRun,
 } from "./protocol";
-import { useColorColumn } from "./useColorColumn";
+import { useColorColumn, usePointColors } from "./useColorColumn";
+import type { PlotPalette } from "./colors";
 
 vi.mock("./protocol", () => ({
   fetchColorByChoices: vi.fn(),
   fetchColor: vi.fn(),
 }));
+
+const PALETTE: PlotPalette = {
+  classes: ["#ff0000", "#00ff00"],
+  ramp: [
+    [0, 0, 0],
+    [255, 255, 255],
+  ],
+};
+
+/** The pair as PlotView composes it: the column, then its rgb */
+const useColumnWithColors = (
+  datasetName: string | null,
+  brainKey: string | null,
+  run: VisualizationRun | null,
+  colorField: string | null,
+) => {
+  const column = useColorColumn(datasetName, brainKey, run, colorField);
+  return {
+    ...column,
+    colors: usePointColors(column.values, column.meta, PALETTE),
+  };
+};
 
 const RUN: VisualizationRun = {
   brainKey: "viz",
@@ -33,7 +56,9 @@ const RESPONSE: ColorResponse = {
 describe("useColorColumn", () => {
   it("loads field choices for the run", async () => {
     vi.mocked(fetchColorByChoices).mockResolvedValue(["a", "b"]);
-    const { result } = renderHook(() => useColorColumn("ds", "viz", RUN, null));
+    const { result } = renderHook(() =>
+      useColumnWithColors("ds", "viz", RUN, null),
+    );
 
     await waitFor(() => expect(result.current.choices).toEqual(["a", "b"]));
     expect(result.current.colors).toBeNull();
@@ -44,7 +69,7 @@ describe("useColorColumn", () => {
     vi.mocked(fetchColorByChoices).mockResolvedValueOnce(["a"]);
     const { result, rerender } = renderHook(
       ({ run }: { run: VisualizationRun }) =>
-        useColorColumn("ds", "viz", run, null),
+        useColumnWithColors("ds", "viz", run, null),
       { initialProps: { run: RUN } },
     );
     await waitFor(() => expect(result.current.choices).toEqual(["a"]));
@@ -59,7 +84,7 @@ describe("useColorColumn", () => {
     vi.mocked(fetchColorByChoices).mockResolvedValue(["label"]);
     vi.mocked(fetchColor).mockResolvedValue(RESPONSE);
     const { result } = renderHook(() =>
-      useColorColumn("ds", "viz", RUN, "label"),
+      useColumnWithColors("ds", "viz", RUN, "label"),
     );
 
     await waitFor(() => expect(result.current.colors).not.toBeNull());
@@ -74,7 +99,7 @@ describe("useColorColumn", () => {
     vi.mocked(fetchColor).mockResolvedValueOnce(RESPONSE);
     const { result, rerender } = renderHook(
       ({ field }: { field: string | null }) =>
-        useColorColumn("ds", "viz", RUN, field),
+        useColumnWithColors("ds", "viz", RUN, field),
       { initialProps: { field: "a" as string | null } },
     );
     await waitFor(() => expect(result.current.colors).not.toBeNull());
@@ -94,7 +119,9 @@ describe("useColorColumn", () => {
   it("reports color fetch failures", async () => {
     vi.mocked(fetchColorByChoices).mockResolvedValue(["a"]);
     vi.mocked(fetchColor).mockRejectedValue(new Error("boom"));
-    const { result } = renderHook(() => useColorColumn("ds", "viz", RUN, "a"));
+    const { result } = renderHook(() =>
+      useColumnWithColors("ds", "viz", RUN, "a"),
+    );
 
     await waitFor(() => expect(result.current.error).toMatch("boom"));
     // Failure also ends the loading state, or the spinner never leaves
@@ -110,7 +137,7 @@ describe("useColorColumn", () => {
     );
     const { result, rerender } = renderHook(
       ({ field }: { field: string | null }) =>
-        useColorColumn("ds", "viz", RUN, field),
+        useColumnWithColors("ds", "viz", RUN, field),
       { initialProps: { field: "a" as string | null } },
     );
 

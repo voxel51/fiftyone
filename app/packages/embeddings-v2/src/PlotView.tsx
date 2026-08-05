@@ -47,7 +47,7 @@ import {
 } from "recoil";
 import { ColorLegend } from "./ColorLegend";
 import { ContinuousLegend } from "./ContinuousLegend";
-import { categoryHex, MISSING_CATEGORY } from "./colors";
+import { categoryCss, MISSING_CATEGORY } from "./colors";
 import HoverCard from "./HoverCard";
 import {
   legendLabels,
@@ -64,11 +64,12 @@ import {
   type InteractionMode,
 } from "./renderer";
 import { clearSelectionNonceState, selectionCountState } from "./state";
-import { useColorColumn } from "./useColorColumn";
+import { useColorColumn, usePointColors } from "./useColorColumn";
 import { useHoverInfo } from "./useHoverInfo";
 import { useLocalColorMask } from "./useLocalColorMask";
 import { useMasks } from "./useMasks";
 import { useRunColumns } from "./useRunColumns";
+import { useSchemePalette } from "./useSchemePalette";
 import { useSelectionBridge } from "./useSelectionBridge";
 
 const TOKEN_VARS = {
@@ -155,12 +156,16 @@ export default function PlotView({
   const { loaded, error: loadError } = useRunColumns(datasetName, brainKey);
   const {
     choices,
-    colors,
     values: colorValues,
     meta: colorMeta,
     loading: colorLoading,
     error: colorError,
   } = useColorColumn(datasetName, brainKey, run, colorField);
+  // Colors live in the App's color scheme, not in the fetched column:
+  // editing the pool (or a per-value override) recolors the plot in
+  // place, and classes match their labels in the grid
+  const palette = useSchemePalette(colorField, colorMeta);
+  const colors = usePointColors(colorValues, colorMeta, palette);
   // The color-by field's filter evaluates client-side when provably
   // faithful (legend clicks never wait on the masks round trip); the
   // rest ships to the masks endpoint, identity-stable
@@ -188,7 +193,9 @@ export default function PlotView({
   const pointSwatch = (index: number): string | null => {
     if (colorValues?.style !== "categorical") return null;
     const classIndex = colorValues.indices[index];
-    return classIndex === MISSING_CATEGORY ? null : categoryHex(classIndex);
+    return classIndex === MISSING_CATEGORY
+      ? null
+      : categoryCss(palette, classIndex);
   };
 
   const { hover, handleHover } = useHoverInfo(
@@ -458,13 +465,18 @@ export default function PlotView({
           <ColorLegend
             field={colorField}
             meta={colorMeta}
+            palette={palette}
             offLabels={legend?.off ?? null}
             onToggle={handleLegendToggle}
             onSolo={handleLegendSolo}
           />
         )}
         {colorField && colorMeta && colorMeta.style === "continuous" && (
-          <ContinuousLegend field={colorField} meta={colorMeta} />
+          <ContinuousLegend
+            field={colorField}
+            meta={colorMeta}
+            palette={palette}
+          />
         )}
         {chipCount ? (
           <div className="emb-plot-overlay emb-plot-chip">

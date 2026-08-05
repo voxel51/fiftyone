@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { buildColors } from "./colors";
+import { useEffect, useMemo, useState } from "react";
+import { buildColors, type PlotPalette } from "./colors";
 import {
   fetchColor,
   fetchColorByChoices,
@@ -9,13 +9,12 @@ import {
 } from "./protocol";
 
 /**
- * Color-by support: the run-dependent field choices, the built rgb
- * column for the selected field, the raw value column (`values` — the
- * hover card's swatch reads it), and the field's meta (classes/counts
- * for the legend). All of `colors`/`values`/`meta` are null while no
- * field is selected or a fetch is in flight — they clear immediately
- * on any input change so a stale column never colors another run's
- * points.
+ * Color-by support: the run-dependent field choices, the raw value
+ * column for the selected field (`values` — the hover card's swatch
+ * reads it), and the field's meta (classes/counts for the legend). Both
+ * `values` and `meta` are null while no field is selected or a fetch is
+ * in flight — they clear immediately on any input change so a stale
+ * column never colors another run's points.
  */
 export function useColorColumn(
   datasetName: string | null,
@@ -24,7 +23,6 @@ export function useColorColumn(
   colorField: string | null,
 ): {
   choices: string[];
-  colors: Float32Array | null;
   values: ColorValues | null;
   meta: ColorMeta | null;
   /** A column fetch is in flight — the field's first hit aggregates
@@ -33,7 +31,6 @@ export function useColorColumn(
   error: string | null;
 } {
   const [choices, setChoices] = useState<string[]>([]);
-  const [colors, setColors] = useState<Float32Array | null>(null);
   const [values, setValues] = useState<ColorValues | null>(null);
   const [meta, setMeta] = useState<ColorMeta | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,7 +51,6 @@ export function useColorColumn(
   }, [datasetName, run]);
 
   useEffect(() => {
-    setColors(null);
     setValues(null);
     setMeta(null);
     // A stale failure must not banner over a later successful field
@@ -68,12 +64,6 @@ export function useColorColumn(
     fetchColor(datasetName, brainKey, colorField)
       .then(({ values: column, meta: fieldMeta }) => {
         if (stale) return;
-        setColors(
-          buildColors(column, {
-            min: fieldMeta.min ?? null,
-            max: fieldMeta.max ?? null,
-          }),
-        );
         setValues(column);
         setMeta(fieldMeta);
       })
@@ -84,5 +74,26 @@ export function useColorColumn(
     };
   }, [datasetName, brainKey, colorField]);
 
-  return { choices, colors, values, meta, loading, error };
+  return { choices, values, meta, loading, error };
+}
+
+/**
+ * The renderer's rgb column for a fetched value column. Kept apart from
+ * the fetch so a color scheme edit recolors the plot without refetching.
+ */
+export function usePointColors(
+  values: ColorValues | null,
+  meta: ColorMeta | null,
+  palette: PlotPalette,
+): Float32Array | null {
+  return useMemo(
+    () =>
+      values
+        ? buildColors(values, palette, {
+            min: meta?.min ?? null,
+            max: meta?.max ?? null,
+          })
+        : null,
+    [values, meta, palette],
+  );
 }

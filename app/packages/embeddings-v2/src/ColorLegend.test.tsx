@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ColorLegend } from "./ColorLegend";
+import { EMPTY_PALETTE } from "./colors";
 import type { ColorMeta } from "./protocol";
 
 // RTL only auto-cleans up with vitest globals enabled; ours are off
@@ -22,6 +23,7 @@ function renderLegend() {
     <ColorLegend
       field="label"
       meta={meta}
+      palette={EMPTY_PALETTE}
       offLabels={new Set()}
       onToggle={onToggle}
       onSolo={onSolo}
