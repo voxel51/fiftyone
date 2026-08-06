@@ -11,6 +11,8 @@ export interface TimelineIndex {
   readonly endTimeNs: bigint;
   readonly startTimeNs: bigint;
   readonly stepNs: bigint;
+  /** Exact integer-nanosecond tick step expressed in seconds. */
+  readonly tickDurationSec: number;
   /** Requested presentation cadence used to derive `stepNs`. */
   readonly tickRateHz: number;
   readonly tickCount: number;
@@ -27,12 +29,11 @@ export function createTimelineIndex(
   range: TimeWindow,
   tickRateHz = DEFAULT_TIMELINE_TICK_RATE_HZ,
 ): TimelineIndex {
-  if (!Number.isFinite(tickRateHz) || tickRateHz <= 0) {
-    throw new Error("Timeline tick rate must be finite and greater than zero");
-  }
+  assertValidTimelineTickRateHz(tickRateHz);
   const timelineStepNs = BigInt(
     Math.max(1, Math.round(NANOSECONDS_PER_SECOND_NUMBER / tickRateHz)),
   );
+  const tickDurationSec = nsDeltaToSeconds(timelineStepNs);
   const startTimeNs = range.startNs;
   if (range.endNs < range.startNs) {
     throw new Error("Timeline range end cannot be before start");
@@ -42,7 +43,7 @@ export function createTimelineIndex(
   // remainder before casting to `number` — keeps full precision even for
   // multi-day recordings where the raw delta exceeds `Number.MAX_SAFE_INTEGER`.
   const durationNs = range.endNs - range.startNs;
-  const durationSec = nanosecondsDeltaToSeconds(durationNs);
+  const durationSec = nsDeltaToSeconds(durationNs);
   const tickCountBig = durationNs / timelineStepNs + 1n;
   if (tickCountBig > BigInt(Number.MAX_SAFE_INTEGER)) {
     throw new Error("Timeline tick count exceeds safe integer range");
@@ -63,7 +64,7 @@ export function createTimelineIndex(
   }
 
   function nsToSec(timeNs: bigint): number {
-    return nanosecondsDeltaToSeconds(timeNs - startTimeNs);
+    return nsDeltaToSeconds(timeNs - startTimeNs);
   }
 
   function tickAt(index: number): bigint | undefined {
@@ -119,6 +120,7 @@ export function createTimelineIndex(
     startTimeNs,
     stepNs: timelineStepNs,
     tickAt,
+    tickDurationSec,
     tickRateHz,
     tickCount,
     secToNs,
@@ -126,7 +128,18 @@ export function createTimelineIndex(
   };
 }
 
-function nanosecondsDeltaToSeconds(deltaNs: bigint): number {
+/** Fails when a direct caller provides an unusable timeline tick rate. */
+export function assertValidTimelineTickRateHz(
+  tickRateHz: number,
+  owner = "Timeline",
+): void {
+  if (!Number.isFinite(tickRateHz) || tickRateHz <= 0) {
+    throw new Error(`${owner} tick rate must be finite and greater than zero`);
+  }
+}
+
+/** Converts a nanosecond delta to seconds without losing sub-second precision. */
+export function nsDeltaToSeconds(deltaNs: bigint): number {
   return (
     Number(deltaNs / NANOSECONDS_PER_SECOND) +
     Number(deltaNs % NANOSECONDS_PER_SECOND) / NANOSECONDS_PER_SECOND_NUMBER
