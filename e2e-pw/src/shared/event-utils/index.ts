@@ -9,28 +9,34 @@ export class ArmedEvent {
   constructor(readonly received: Promise<void>) {}
 }
 
+declare global {
+  interface Window {
+    /** Per-counter event tallies installed by {@link EventUtils.counter}. */
+    __EVENT_COUNTS__?: Record<string, number>;
+  }
+}
+
 /**
  * Handle for counting occurrences of a document-level CustomEvent. Created
  * by {@link EventUtils.counter}; counts accumulate from creation, so create
  * it at the moment "zero" should mean.
  */
 export class EventCounter {
-  #count = 0;
-
-  constructor(private readonly page: Page) {}
-
-  /** @internal */
-  increment() {
-    this.#count++;
-  }
+  constructor(
+    private readonly page: Page,
+    private readonly key: string,
+  ) {}
 
   /**
-   * The number of events observed since creation. Fences through a no-op
-   * page evaluation so every event dispatched before this call is included.
+   * The number of events observed since creation. The count lives in the
+   * page and is read through an evaluation, which runs after all previously
+   * dispatched events — no event can be in flight and missed.
    */
   async read(): Promise<number> {
-    await this.page.evaluate((): void => undefined);
-    return this.#count;
+    return this.page.evaluate(
+      (key_) => window.__EVENT_COUNTS__?.[key_] ?? 0,
+      this.key,
+    );
   }
 }
 
@@ -96,26 +102,20 @@ export class EventUtils {
    *   expect(await unmounts.read()).toBe(1);
    */
   public async counter(eventName: string): Promise<EventCounter> {
-    const counter = new EventCounter(this.page);
-    const exposedFunctionName = getFunctionNameWithRandomSuffix(
-      `counter_${eventName}`,
-    );
-
-    await this.page.exposeFunction(exposedFunctionName, () =>
-      counter.increment(),
-    );
+    const key = getFunctionNameWithRandomSuffix(`counter_${eventName}`);
 
     await this.page.evaluate(
-      ({ eventName_, exposedFunctionName_ }) => {
+      ({ eventName_, key_ }) => {
+        const store = (window.__EVENT_COUNTS__ ??= {});
+        store[key_] = 0;
         document.addEventListener(eventName_, () => {
-          // @ts-expect-error - the function is exposed at runtime
-          window[exposedFunctionName_]();
+          store[key_] += 1;
         });
       },
-      { eventName_: eventName, exposedFunctionName_: exposedFunctionName },
+      { eventName_: eventName, key_: key },
     );
 
-    return counter;
+    return new EventCounter(this.page, key);
   }
 }
 
