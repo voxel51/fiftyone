@@ -1,0 +1,75 @@
+/*
+ * Rendered before any FiftyOne ThemeProvider mounts, and the Teams shell
+ * publishes --mui-* rather than --fo-*, so tokens fall back through both.
+ */
+.screen,
+.card {
+  --plugin-runtime-loading-fg: var(
+    --fo-palette-text-primary,
+    var(--mui-palette-text-primary, hsl(200, 0%, 100%))
+  );
+  --plugin-runtime-loading-fg-muted: var(
+    --fo-palette-text-secondary,
+    var(--mui-palette-text-secondary, hsl(200, 0%, 70%))
+  );
+  --plugin-runtime-loading-border: var(
+    --fo-palette-divider,
+    var(--mui-palette-divider, hsl(200, 0%, 20%))
+  );
+  font-family: "Palanquin", sans-serif;
+}
+
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: var(
+    --fo-palette-background-body,
+    var(--mui-palette-background-default, hsl(200, 0%, 15%))
+  );
+  color: var(--plugin-runtime-loading-fg);
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--plugin-runtime-loading-fg-muted);
+}
+
+.card {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--plugin-runtime-loading-border);
+  border-radius: 1.5rem;
+  background: var(
+    --fo-palette-background-level2,
+    var(--mui-palette-background-paper, hsl(200, 0%, 10%))
+  );
+  color: var(--plugin-runtime-loading-fg-muted);
+  font-size: 0.8125rem;
+  box-shadow: 0 0.25rem 0.75rem rgb(0 0 0 / 40%);
+  pointer-events: none;
+  animation: enter 200ms ease-out;
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}

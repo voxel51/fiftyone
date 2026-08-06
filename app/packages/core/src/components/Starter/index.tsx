@@ -1,5 +1,4 @@
-import { CodeTabs, Loading, scrollable } from "@fiftyone/components";
-import { OperatorCore, useOperators } from "@fiftyone/operators";
+import { CodeTabs, scrollable } from "@fiftyone/components";
 import {
   useOperatorBrowser,
   useOperatorExecutor,
@@ -30,12 +29,9 @@ const INSTALL_IO_PLUGIN_LABEL = "@voxel51/io";
 
 export function Starter(props: StarterPropsType) {
   const { mode } = props;
-  const { isLoading } = useOperators(true);
   const datasetName = useRecoilValue(datasetNameAtom);
 
   if (!mode) return null;
-
-  if (isLoading) return <Loading>Pixelating...</Loading>;
 
   const { code, codeTitle, learnMoreLabel, learnMoreLink, title } =
     CONTENT_BY_MODE[mode];
@@ -45,7 +41,6 @@ export function Starter(props: StarterPropsType) {
 
   return (
     <>
-      <OperatorCore />
       <Stack
         spacing={6}
         divider={<Divider sx={{ width: "100%" }} />}

@@ -5,17 +5,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import { savedWorkspacesAtom, Workspace } from "../../state";
 import { LIST_WORKSPACES_OPERATOR, LOAD_WORKSPACE_OPERATOR } from "./constants";
-import { operatorsInitializedAtom } from "@fiftyone/operators/src/state";
+import { usePluginRuntimeStatus } from "@fiftyone/plugins/src/Runtime";
 
 export function useWorkspaces() {
   const [state, setState] = useRecoilState(savedWorkspacesAtom);
   const resetState = useResetRecoilState(savedWorkspacesAtom);
   const [listWorkspaceExecuting, setListWorkspaceExecuting] = useState(false);
   const currentDataset = useRecoilValue(datasetName);
-  const operatorsInitialized = useRecoilValue(operatorsInitializedAtom);
+  const { ready: runtimeReady } = usePluginRuntimeStatus();
 
   const listWorkspace = useCallback(() => {
-    if (listWorkspaceExecuting || !operatorsInitialized) return;
+    if (listWorkspaceExecuting || !runtimeReady) return;
     setListWorkspaceExecuting(true);
     executeOperator(
       LIST_WORKSPACES_OPERATOR,
@@ -41,7 +41,7 @@ export function useWorkspaces() {
         skipOutput: true,
       },
     );
-  }, [listWorkspaceExecuting, setState, currentDataset, operatorsInitialized]);
+  }, [listWorkspaceExecuting, setState, currentDataset, runtimeReady]);
 
   const loadWorkspace = useCallback((name: string) => {
     executeOperator(LOAD_WORKSPACE_OPERATOR, { name }, { skipOutput: true });
@@ -64,6 +64,6 @@ export function useWorkspaces() {
     listWorkspace,
     reset: resetState,
     existingSlugs,
-    canInitialize: operatorsInitialized,
+    canInitialize: runtimeReady,
   };
 }
