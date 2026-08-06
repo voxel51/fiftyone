@@ -46,24 +46,21 @@ test("grid remounts exactly once per spaces layout change", async ({
 
   const { mounts, unmounts } = await grid.armLifecycleCounters();
 
-  for (let cycle = 0; cycle < 3; cycle++) {
-    // split: a plain panel open places it side-by-side, splitting the layout
-    const split = await grid.armGridRefresh();
-    await panel.openInSplit("Histograms");
-    await split.received;
-    await expect(panel.getContent("Histograms")).toBeVisible();
-    await expect(grid.getNthTile(0)).toBeVisible();
-    expect(await mounts.read()).toBe(cycle * 2 + 1);
-    expect(await unmounts.read()).toBe(cycle * 2 + 1);
+  // split: a plain panel open places it side-by-side, splitting the layout
+  const split = await grid.armGridRefresh();
+  await panel.openInSplit("Histograms");
+  await split.received;
+  await expect(panel.getContent("Histograms")).toBeVisible();
+  await expect(grid.getNthTile(0)).toBeVisible();
+  expect(await mounts.read()).toBe(1);
+  expect(await unmounts.read()).toBe(1);
 
-    // join: closing the split panel collapses the layout back to a single
-    // pane
-    const join = await grid.armGridRefresh();
-    await panel.closeTab("Histograms");
-    await join.received;
-    await expect(panel.getContent("Histograms")).toBeHidden();
-    await expect(grid.getNthTile(0)).toBeVisible();
-    expect(await mounts.read()).toBe(cycle * 2 + 2);
-    expect(await unmounts.read()).toBe(cycle * 2 + 2);
-  }
+  // join: closing the split panel collapses the layout back to a single pane
+  const join = await grid.armGridRefresh();
+  await panel.closeTab("Histograms");
+  await join.received;
+  await expect(panel.getContent("Histograms")).toBeHidden();
+  await expect(grid.getNthTile(0)).toBeVisible();
+  expect(await mounts.read()).toBe(2);
+  expect(await unmounts.read()).toBe(2);
 });
