@@ -1,5 +1,6 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import styles from "./McapRightSidebar.module.css";
 import McapRightSidebar from "./McapRightSidebar";
@@ -15,11 +16,15 @@ vi.mock("./McapFieldsSidebar", () => ({
 }));
 
 // `ToggleSwitch` itself is voodo's, exercised by its own package's tests;
-// stubbed here to a minimal single-active-tab shim so this test isn't
-// coupled to its internal (HeadlessUI) implementation.
+// stubbed here to a minimal tab-switching shim (clicking a label activates
+// its content) so this test isn't coupled to its internal (HeadlessUI)
+// implementation, while still covering tab selection.
 vi.mock("@voxel51/voodo", () => ({
   Size: { Sm: "sm" },
   ToggleSwitchVariant: { Soft: "soft" },
+  HeadingLevel: { H4: "h4" },
+  Heading: ({ children }: { children: ReactNode }) => <h4>{children}</h4>,
+  Divider: () => <hr />,
   ToggleSwitch: ({
     tabs,
     tabListClassName,
@@ -28,16 +33,25 @@ vi.mock("@voxel51/voodo", () => ({
     tabs: { id: string; data: { label: string; content: ReactNode } }[];
     tabListClassName?: string;
     defaultIndex?: number;
-  }) => (
-    <div>
-      <div role="tablist" className={tabListClassName}>
-        {tabs.map((tab) => (
-          <span key={tab.id}>{tab.data.label}</span>
-        ))}
+  }) => {
+    const [activeIndex, setActiveIndex] = useState(defaultIndex);
+    return (
+      <div>
+        <div role="tablist" className={tabListClassName}>
+          {tabs.map((tab, index) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveIndex(index)}
+            >
+              {tab.data.label}
+            </button>
+          ))}
+        </div>
+        <div>{tabs[activeIndex]?.data.content}</div>
       </div>
-      <div>{tabs[defaultIndex]?.data.content}</div>
-    </div>
-  ),
+    );
+  },
 }));
 
 describe("McapRightSidebar", () => {
@@ -64,5 +78,14 @@ describe("McapRightSidebar", () => {
     render(<McapRightSidebar />);
 
     expect(screen.getByTestId("stub-inspector")).toBeTruthy();
+  });
+
+  it("mounts McapFieldsSidebar when the Fields tab is selected", () => {
+    render(<McapRightSidebar />);
+
+    fireEvent.click(screen.getByText("Fields"));
+
+    expect(screen.getByTestId("stub-fields")).toBeTruthy();
+    expect(screen.queryByTestId("stub-inspector")).toBeNull();
   });
 });

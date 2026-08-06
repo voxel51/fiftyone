@@ -1,14 +1,12 @@
 import {
-  fields as fieldsSelector,
-  State,
-  timeZone as timeZoneSelector,
   useActiveModalSample,
+  useSampleFields,
+  useTimeZone,
 } from "@fiftyone/state";
 import { formatPrimitive } from "@fiftyone/utilities";
 import { getNestedField } from "@fiftyone/utilities/src/sample/pointer";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React from "react";
-import { useRecoilValue } from "recoil";
 import settingsStyles from "./McapTile.settings.module.css";
 
 /**
@@ -86,11 +84,9 @@ const formatFieldValue = (
  * GraphQL query — but each value is read from the active modal sample.
  */
 const McapFieldsSidebar: React.FC = () => {
-  const sampleFields = useRecoilValue(
-    fieldsSelector({ space: State.SPACE.SAMPLE }),
-  );
+  const sampleFields = useSampleFields();
   const activeSample = useActiveModalSample();
-  const timeZone = useRecoilValue(timeZoneSelector);
+  const timeZone = useTimeZone();
   const nonPrivateFields = sampleFields.filter(
     (field) => field && !field.path.startsWith("_"),
   );

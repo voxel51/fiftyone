@@ -13,7 +13,12 @@ import { ErrorDisplayMarkup, HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { ModalMode, canAnnotate, useModalMode } from "@fiftyone/state";
+import {
+  ModalMode,
+  canAnnotate,
+  useIsMediaType,
+  useModalMode,
+} from "@fiftyone/state";
 import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
@@ -239,12 +244,11 @@ const Modal = () => {
   );
 
   const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
-  const mediaType = useRecoilValue(fos.mediaType);
+  const isMultimodal = useIsMediaType(MEDIA_TYPE_MULTIMODAL);
   // Multimodal viewers use their own right-panel tabs (Inspect/Fields) and
   // don't populate the classic sidebar's projection/aggregation data, so
   // mounting it here would only fire redundant queries.
-  const showClassicSidebar =
-    isSidebarVisible && mediaType !== MEDIA_TYPE_MULTIMODAL;
+  const showClassicSidebar = isSidebarVisible && !isMultimodal;
 
   useKeyBindings(KnownContexts.Modal, [
     {

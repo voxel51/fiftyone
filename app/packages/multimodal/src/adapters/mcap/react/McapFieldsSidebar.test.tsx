@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 interface FakeField {
   path: string;
@@ -8,30 +8,18 @@ interface FakeField {
   dbField?: string | null;
 }
 
-const { fieldsSentinel, timeZoneSentinel, fakeFields, useActiveModalSample } =
+const { fakeFields, useActiveModalSample, useSampleFields, useTimeZone } =
   vi.hoisted(() => ({
-    fieldsSentinel: Symbol("fields-selector"),
-    timeZoneSentinel: Symbol("timezone-selector"),
     fakeFields: [] as FakeField[],
     useActiveModalSample: vi.fn(),
+    useSampleFields: vi.fn(),
+    useTimeZone: vi.fn(),
   }));
 
-vi.mock("recoil", () => ({
-  useRecoilValue: (selector: unknown) => {
-    if (selector === timeZoneSentinel) {
-      return "UTC";
-    }
-    // `fields({...})` is called with a fresh params object each render, so
-    // match on the sentinel the mocked `fields` selector always returns.
-    return fakeFields;
-  },
-}));
-
 vi.mock("@fiftyone/state", () => ({
-  fields: () => fieldsSentinel,
-  State: { SPACE: { SAMPLE: "sample" } },
-  timeZone: timeZoneSentinel,
   useActiveModalSample,
+  useSampleFields,
+  useTimeZone,
 }));
 
 import McapFieldsSidebar from "./McapFieldsSidebar";
@@ -42,6 +30,11 @@ function setFields(fields: FakeField[]) {
 }
 
 describe("McapFieldsSidebar", () => {
+  beforeEach(() => {
+    useSampleFields.mockImplementation(() => fakeFields);
+    useTimeZone.mockReturnValue("UTC");
+  });
+
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
