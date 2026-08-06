@@ -2,9 +2,12 @@ import {
   DEFAULT_POINT_CLOUD_COLORMAP,
   POINT_CLOUD_COLORMAPS,
   normalizePointCloudColormap,
+  type PointCloudColorOptions,
   type PointCloudColormap,
 } from "../../../../visualization/scene-3d";
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../../../visualization/panel-ui/style-tokens";
+import { sanitizeBoundedStringList } from "../../../../utils/bounded-string-list";
+import { createTimestampLruScopedStore } from "../../../../utils/scoped-store";
 import type {
   ImageDisplayMode,
   ImageGeometryMode,
@@ -120,7 +123,13 @@ export interface PersistedModalSettings {
   readonly showPointCloudColorLegend: boolean;
 }
 
+type ModalSettingsFallback = Omit<PersistedModalSettings, "scoped">;
+
 const STORAGE_KEY = "fiftyone.episode.modal-settings.v3";
+const STORAGE_VERSION = 3;
+const MAX_SETTINGS_SCOPE_LENGTH = 1_024;
+const MAX_SETTINGS_STREAMS = 128;
+const MAX_SETTINGS_STREAM_LENGTH = 512;
 
 /**
  * Default world reference grid shown in the 3D episode tile.
@@ -181,7 +190,8 @@ export function defaultPointCloudColorForIndex(
   };
 }
 
-interface PointCloudSourceLike {
+/** Source identity used to derive deterministic point-cloud color defaults. */
+export interface PointCloudColorSource {
   readonly id: string;
   readonly label?: string;
   readonly sourceName: string;
@@ -191,8 +201,8 @@ interface PointCloudSourceLike {
  * Chooses a stable default point-cloud color preset for a source list.
  */
 export function defaultPointCloudColorForSource(
-  source: PointCloudSourceLike,
-  sources: readonly PointCloudSourceLike[],
+  source: PointCloudColorSource,
+  sources: readonly PointCloudColorSource[],
 ): PersistedPointCloudColorSettings {
   const sourceIndex = sources.findIndex(
     (candidate) => candidate.id === source.id,
@@ -221,7 +231,31 @@ export function defaultPointCloudColorForSource(
   };
 }
 
-function isLidarSource(source: PointCloudSourceLike): boolean {
+/** Resolves the effective render colors for one point-cloud stream. */
+export function resolvePointCloudColorOptions(
+  stream: string,
+  sources: readonly PointCloudColorSource[],
+  override: PersistedPointCloudColorSettings | undefined,
+): PointCloudColorOptions {
+  const source = sources.find((candidate) => candidate.id === stream) ?? {
+    id: stream,
+    label: stream,
+    sourceName: "",
+  };
+  const settings = {
+    ...defaultPointCloudColorForSource(source, sources),
+    ...override,
+  };
+  return {
+    colorBy: settings.colorBy,
+    colormap: settings.colormap,
+    ...(settings.rangeMax !== null ? { rangeMax: settings.rangeMax } : {}),
+    ...(settings.rangeMin !== null ? { rangeMin: settings.rangeMin } : {}),
+    uniformColor: settings.uniformColor,
+  };
+}
+
+function isLidarSource(source: PointCloudColorSource): boolean {
   return source.sourceName.toLowerCase().includes("lidar");
 }
 
@@ -243,8 +277,8 @@ export const EMPTY_SCOPED_SETTINGS: ScopedModalSettings = {
 };
 
 /**
- * Most scopes retained in the persisted payload. Writes re-insert their
- * scope last, so pruning drops the least recently written datasets first.
+ * Most scopes retained in the persisted payload. The shared store prunes by
+ * each scope's last-write timestamp.
  */
 export const MAX_SETTINGS_SCOPES = 20;
 
@@ -263,56 +297,82 @@ export const DEFAULT_MODAL_SETTINGS: PersistedModalSettings = {
   showPointCloudColorLegend: false,
 };
 
+const modalSettingsStore = createTimestampLruScopedStore<
+  ScopedModalSettings,
+  ModalSettingsFallback
+>({
+  acceptUnversioned: true,
+  fallback: {
+    location: "root",
+    sanitize: normalizeModalSettingsFallback,
+    serialize: (settings) => ({ ...settings }),
+  },
+  key: STORAGE_KEY,
+  maxScopes: MAX_SETTINGS_SCOPES,
+  normalizeScopeKey: normalizeSettingsScopeKey,
+  sanitizeScope: normalizeNonEmptyScopedSettings,
+  scopeField: "scoped",
+  serializeScope: (settings) => ({ ...settings }),
+  storage: () => globalThis.localStorage,
+  version: STORAGE_VERSION,
+});
+
 /**
  * Reads persisted episode modal settings from local storage.
  */
 export function readModalSettings(): PersistedModalSettings {
-  try {
-    const storage = globalThis.localStorage;
-    const raw = storage?.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_MODAL_SETTINGS;
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null) {
-      return DEFAULT_MODAL_SETTINGS;
-    }
-
-    const candidate = parsed as Partial<PersistedModalSettings>;
-    return {
-      imageLabelStreams: normalizeImageLabelStreamMap(
-        candidate.imageLabelStreams,
-      ),
-      imageProjection: normalizeImageProjectionMap(candidate.imageProjection),
-      pinholeCamera: normalizePinholeCamera(candidate.pinholeCamera),
-      pointCloudColors: normalizePointCloudColorMap(candidate.pointCloudColors),
-      pointCloudPointSize: normalizePointCloudPointSize(
-        candidate.pointCloudPointSize,
-      ),
-      referenceGrid: normalizeReferenceGrid(candidate.referenceGrid),
-      sceneBackground: normalizeSceneBackground(candidate.sceneBackground),
-      scoped: normalizeScopedSettingsMap(candidate.scoped),
-      showPointCloudColorLegend:
-        typeof candidate.showPointCloudColorLegend === "boolean"
-          ? candidate.showPointCloudColorLegend
-          : false,
-    };
-  } catch {
-    return DEFAULT_MODAL_SETTINGS;
-  }
+  const snapshot = modalSettingsStore.readSnapshot();
+  return {
+    ...(snapshot.fallback ?? modalSettingsFallback(DEFAULT_MODAL_SETTINGS)),
+    scoped: Object.fromEntries(
+      Object.entries(snapshot.scopes).map(([scope, entry]) => [
+        scope,
+        entry.value,
+      ]),
+    ),
+  };
 }
 
 /**
  * Writes the full persisted episode modal settings payload.
  */
 export function writeModalSettings(settings: PersistedModalSettings): void {
-  try {
-    globalThis.localStorage?.setItem(
-      STORAGE_KEY,
-      JSON.stringify(normalizeModalSettings(settings)),
+  const normalized = normalizeModalSettings(settings);
+  modalSettingsStore.replace({
+    fallback: modalSettingsFallback(normalized),
+    scopes: normalized.scoped,
+  });
+}
+
+/**
+ * Persists one settings mutation without refreshing unrelated scope
+ * timestamps. The returned payload reflects canonical sanitization and any
+ * timestamp-LRU eviction performed by the shared engine.
+ */
+export function persistModalSettingsUpdate(
+  settings: PersistedModalSettings,
+  touchedScope?: string,
+): PersistedModalSettings {
+  if (touchedScope) {
+    const scope = normalizeSettingsScopeKey(touchedScope);
+    if (scope) {
+      const scoped = normalizeNonEmptyScopedSettings(settings.scoped[scope]);
+      modalSettingsStore.updateScope(scope, () => scoped);
+      return {
+        ...settings,
+        scoped: Object.fromEntries(
+          Object.entries(modalSettingsStore.readSnapshot().scopes).map(
+            ([key, entry]) => [key, entry.value],
+          ),
+        ),
+      };
+    }
+  } else {
+    modalSettingsStore.updateFallback(() =>
+      normalizeModalSettingsFallback(settings),
     );
-  } catch {
-    // Settings persistence is a convenience; storage failures should not
-    // interrupt playback.
   }
+  return settings;
 }
 
 /**
@@ -322,25 +382,59 @@ export function normalizeModalSettings(
   settings: PersistedModalSettings,
 ): PersistedModalSettings {
   return {
-    imageLabelStreams: normalizeImageLabelStreamMap(settings.imageLabelStreams),
-    imageProjection: normalizeImageProjectionMap(settings.imageProjection),
-    pinholeCamera: normalizePinholeCamera(settings.pinholeCamera),
-    pointCloudColors: normalizePointCloudColorMap(settings.pointCloudColors),
-    pointCloudPointSize: normalizePointCloudPointSize(
-      settings.pointCloudPointSize,
-    ),
-    referenceGrid: normalizeReferenceGrid(settings.referenceGrid),
-    sceneBackground: normalizeSceneBackground(settings.sceneBackground),
+    ...normalizeModalSettingsFallback(settings),
     scoped: normalizeScopedSettingsMap(settings.scoped),
-    showPointCloudColorLegend: settings.showPointCloudColorLegend === true,
   };
+}
+
+function normalizeModalSettingsFallback(value: unknown): ModalSettingsFallback {
+  const candidate =
+    typeof value === "object" && value !== null && !Array.isArray(value)
+      ? (value as Partial<PersistedModalSettings>)
+      : DEFAULT_MODAL_SETTINGS;
+  return {
+    imageLabelStreams: normalizeImageLabelStreamMap(
+      candidate.imageLabelStreams,
+    ),
+    imageProjection: normalizeImageProjectionMap(candidate.imageProjection),
+    pinholeCamera: normalizePinholeCamera(candidate.pinholeCamera),
+    pointCloudColors: normalizePointCloudColorMap(candidate.pointCloudColors),
+    pointCloudPointSize: normalizePointCloudPointSize(
+      candidate.pointCloudPointSize,
+    ),
+    referenceGrid: normalizeReferenceGrid(candidate.referenceGrid),
+    sceneBackground: normalizeSceneBackground(candidate.sceneBackground),
+    showPointCloudColorLegend: candidate.showPointCloudColorLegend === true,
+  };
+}
+
+function modalSettingsFallback(
+  settings: PersistedModalSettings,
+): ModalSettingsFallback {
+  const { scoped: _scoped, ...fallback } = settings;
+  return fallback;
+}
+
+function normalizeSettingsScopeKey(value: string): string | null {
+  const scope = value.trim();
+  return scope && scope.length <= MAX_SETTINGS_SCOPE_LENGTH ? scope : null;
+}
+
+function normalizeNonEmptyScopedSettings(
+  value: unknown,
+): ScopedModalSettings | null {
+  const scoped = normalizeScopedSettings(value);
+  return Object.keys(scoped.imageLabelStreams).length === 0 &&
+    Object.keys(scoped.imageProjection).length === 0 &&
+    Object.keys(scoped.pointCloudColors).length === 0
+    ? null
+    : scoped;
 }
 
 /**
  * Normalizes the per-scope styling map: each entry's stream maps go through
  * the same normalizers as the top-level maps, entries left empty are
- * dropped, and only the last `MAX_SETTINGS_SCOPES` entries survive —
- * writes re-insert their scope last, so insertion order is recency order.
+ * dropped. Timestamp-LRU capping is owned by the shared store engine.
  */
 export function normalizeScopedSettingsMap(
   value: unknown,
@@ -351,20 +445,14 @@ export function normalizeScopedSettingsMap(
 
   const entries: [string, ScopedModalSettings][] = [];
   for (const [scope, scopedValue] of Object.entries(value)) {
-    const normalizedScope = scope.trim();
+    const normalizedScope = normalizeSettingsScopeKey(scope);
     if (!normalizedScope) continue;
-    const scoped = normalizeScopedSettings(scopedValue);
-    if (
-      Object.keys(scoped.imageLabelStreams).length === 0 &&
-      Object.keys(scoped.imageProjection).length === 0 &&
-      Object.keys(scoped.pointCloudColors).length === 0
-    ) {
-      continue;
-    }
+    const scoped = normalizeNonEmptyScopedSettings(scopedValue);
+    if (!scoped) continue;
     entries.push([normalizedScope, scoped]);
   }
 
-  return Object.fromEntries(entries.slice(-MAX_SETTINGS_SCOPES));
+  return Object.fromEntries(entries);
 }
 
 /**
@@ -409,7 +497,7 @@ export function normalizeImageProjectionMap(
 
   const result: Record<string, ImageProjectionSettings> = {};
   for (const [imageStream, settings] of Object.entries(value)) {
-    const normalizedImageStream = imageStream.trim();
+    const normalizedImageStream = normalizeSettingsStreamKey(imageStream);
     if (!normalizedImageStream) continue;
     result[normalizedImageStream] = normalizeImageProjection(settings);
   }
@@ -469,7 +557,7 @@ export function normalizeImageLabelStreamMap(
 
   const result: Record<string, readonly string[]> = {};
   for (const [imageStream, labelStreams] of Object.entries(value)) {
-    const normalizedImageStream = imageStream.trim();
+    const normalizedImageStream = normalizeSettingsStreamKey(imageStream);
     if (!normalizedImageStream) continue;
     result[normalizedImageStream] = normalizeStreamList(labelStreams);
   }
@@ -483,13 +571,12 @@ export function normalizeStreamList(value: unknown): readonly string[] {
   if (!Array.isArray(value)) {
     return [];
   }
-
-  return Array.from(
-    new Set(
-      value
-        .map((stream) => (typeof stream === "string" ? stream.trim() : ""))
-        .filter(Boolean),
+  return sanitizeBoundedStringList(
+    value.map((stream) =>
+      typeof stream === "string" ? stream.trim() : stream,
     ),
+    MAX_SETTINGS_STREAMS,
+    MAX_SETTINGS_STREAM_LENGTH,
   );
 }
 
@@ -497,7 +584,7 @@ function normalizeOptionalStream(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
   }
-  return value.trim() || null;
+  return normalizeSettingsStreamKey(value);
 }
 
 /**
@@ -512,7 +599,7 @@ export function normalizePointCloudColorMap(
 
   const result: Record<string, PersistedPointCloudColorSettings> = {};
   for (const [stream, settings] of Object.entries(value)) {
-    const normalizedStream = stream.trim();
+    const normalizedStream = normalizeSettingsStreamKey(stream);
     if (!normalizedStream) continue;
     result[normalizedStream] = normalizePointCloudColor(settings);
   }
@@ -532,9 +619,8 @@ export function normalizePointCloudColor(
   const candidate = value as Partial<PersistedPointCloudColorSettings>;
   return {
     colorBy:
-      typeof candidate.colorBy === "string" && candidate.colorBy.trim()
-        ? candidate.colorBy.trim()
-        : DEFAULT_POINT_CLOUD_COLOR.colorBy,
+      normalizeSettingsStreamKey(candidate.colorBy ?? "") ??
+      DEFAULT_POINT_CLOUD_COLOR.colorBy,
     colormap: normalizePointCloudColormap(candidate.colormap),
     // Range ends are kept independently: an inverted pair simply does not
     // apply as a fixed range until the user finishes editing it.
@@ -545,6 +631,12 @@ export function normalizePointCloudColor(
       DEFAULT_POINT_CLOUD_COLOR.uniformColor,
     ),
   };
+}
+
+function normalizeSettingsStreamKey(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const stream = value.trim();
+  return stream && stream.length <= MAX_SETTINGS_STREAM_LENGTH ? stream : null;
 }
 
 /**

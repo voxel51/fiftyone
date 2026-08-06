@@ -1,7 +1,7 @@
 import { TileIdScope, TilingProvider } from "@fiftyone/tiling";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import React from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   PanelVisibilityProvider,
   readScene3dTileVisibility,
@@ -16,6 +16,7 @@ afterEach(() => {
   cleanup();
   localStorage.clear();
   sessionStorage.clear();
+  vi.restoreAllMocks();
 });
 
 describe("episode panel visibility persistence", () => {
@@ -52,7 +53,13 @@ describe("episode panel visibility persistence", () => {
     expect(first.result.current.labelStreams).toBe(defaultLabelStreams);
     act(() => first.result.current.setLabelStreams(["/camera/front/labels"]));
     expect(first.result.current.labelStreams).toEqual(["/camera/front/labels"]);
+    const persistedBeforeUnmount = localStorage.getItem(
+      "fiftyone.episode.panel-visibility.v2",
+    );
     first.unmount();
+    expect(localStorage.getItem("fiftyone.episode.panel-visibility.v2")).toBe(
+      persistedBeforeUnmount,
+    );
 
     const restored = renderHook(
       () => useImageTileLabelStreams("/camera/front/image"),
@@ -61,6 +68,31 @@ describe("episode panel visibility persistence", () => {
     expect(restored.result.current.labelStreams).toEqual([
       "/camera/front/labels",
     ]);
+  });
+
+  it("resets and restores hook state across an in-place scope swap", () => {
+    const activeScope = { current: "dataset-a:field-a" };
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <PanelVisibilityProvider scopeKey={activeScope.current}>
+        <TilingProvider>
+          <TileIdScope tileId="image-1">{children}</TileIdScope>
+        </TilingProvider>
+      </PanelVisibilityProvider>
+    );
+    const hook = renderHook(
+      () => useImageTileLabelStreams("/camera/front/image"),
+      { wrapper },
+    );
+
+    act(() => hook.result.current.setLabelStreams(["/labels/a"]));
+    activeScope.current = "dataset-b:field-a";
+    hook.rerender();
+    expect(hook.result.current.labelStreams).toEqual([]);
+
+    act(() => hook.result.current.setLabelStreams(["/labels/b"]));
+    activeScope.current = "dataset-a:field-a";
+    hook.rerender();
+    expect(hook.result.current.labelStreams).toEqual(["/labels/a"]);
   });
 
   it("keeps opt-in point-cloud projections isolated in session storage", () => {
@@ -228,5 +260,55 @@ describe("episode panel visibility persistence", () => {
   it("fails closed on malformed storage", () => {
     localStorage.setItem("fiftyone.episode.panel-visibility.v2", "{not-json");
     expect(readScene3dTileVisibility("dataset-a", "3d-1")).toBeNull();
+  });
+
+  it("fails closed on malformed projection session storage", () => {
+    sessionStorage.setItem("fiftyone.episode.projections.v1", "{not-json");
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <PanelVisibilityProvider scopeKey="dataset-a:field-a">
+        <TilingProvider>
+          <TileIdScope tileId="image-1">{children}</TileIdScope>
+        </TilingProvider>
+      </PanelVisibilityProvider>
+    );
+    const projection = renderHook(
+      () => useImageTilePointCloudProjection("/camera/front/image"),
+      { wrapper },
+    );
+
+    expect(projection.result.current.projection).toEqual({
+      enabled: false,
+      pointSize: DEFAULT_PROJECTION_POINT_SIZE,
+      streams: [],
+    });
+  });
+
+  it("caps scopes by least-recently-updated timestamp", () => {
+    let now = 1_000;
+    vi.spyOn(Date, "now").mockImplementation(() => now++);
+    for (let index = 0; index < 20; index++) {
+      writeScene3dTileVisibility(`dataset-${index}`, "3d-1", {
+        enabledSourceIds: [`/lidar/${index}`],
+        primarySourceId: `/lidar/${index}`,
+      });
+    }
+
+    now = 5_000;
+    writeScene3dTileVisibility("dataset-0", "3d-1", {
+      enabledSourceIds: ["/lidar/touched"],
+      primarySourceId: "/lidar/touched",
+    });
+    writeScene3dTileVisibility("dataset-20", "3d-1", {
+      enabledSourceIds: ["/lidar/20"],
+      primarySourceId: "/lidar/20",
+    });
+
+    const raw = JSON.parse(
+      localStorage.getItem("fiftyone.episode.panel-visibility.v2") ?? "null",
+    );
+    expect(Object.keys(raw.byScope)).toHaveLength(20);
+    expect(raw.byScope["dataset-0"]).toBeDefined();
+    expect(raw.byScope["dataset-1"]).toBeUndefined();
+    expect(raw.byScope["dataset-20"]).toBeDefined();
   });
 });

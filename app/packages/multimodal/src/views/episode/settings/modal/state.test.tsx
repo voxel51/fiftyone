@@ -6,7 +6,7 @@ import {
   renderHook,
   screen,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   __resetModalSettingsForTests,
   DEFAULT_IMAGE_PROJECTION,
@@ -36,7 +36,10 @@ describe("episode-modal-settings", () => {
     __resetModalSettingsForTests();
   });
 
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
 
   it("returns default settings when nothing is stored", () => {
     expect(DEFAULT_SCENE_BACKGROUND.mode).toBe("abyss");
@@ -87,6 +90,29 @@ describe("episode-modal-settings", () => {
     expect(
       localStorage.getItem("fiftyone.episode.modal-settings.v2"),
     ).not.toBeNull();
+  });
+
+  it("migrates the existing unversioned v3 payload in place", () => {
+    localStorage.setItem(
+      "fiftyone.episode.modal-settings.v3",
+      JSON.stringify({
+        pointCloudPointSize: 4,
+        scoped: {
+          "dataset-a": {
+            imageLabelStreams: { "/camera/front": ["/labels/front"] },
+          },
+        },
+      }),
+    );
+
+    expect(readModalSettings()).toMatchObject({
+      pointCloudPointSize: 4,
+      scoped: {
+        "dataset-a": {
+          imageLabelStreams: { "/camera/front": ["/labels/front"] },
+        },
+      },
+    });
   });
 
   it("round-trips modal appearance and stream settings", () => {
@@ -350,6 +376,23 @@ describe("episode-modal-settings", () => {
     const read = readModalSettings();
     expect(Object.hasOwn(read.imageLabelStreams, "/camera/front")).toBe(true);
     expect(read.imageLabelStreams["/camera/front"]).toEqual([]);
+  });
+
+  it("bounds persisted stream lists through the shared sanitizer", () => {
+    const streams = Array.from(
+      { length: 130 },
+      (_, index) => `/labels/${index}`,
+    );
+    writeModalSettings({
+      ...readModalSettings(),
+      imageLabelStreams: {
+        "/camera/front": [...streams, "x".repeat(513)],
+      },
+    });
+
+    expect(readModalSettings().imageLabelStreams["/camera/front"]).toEqual(
+      streams.slice(0, 128),
+    );
   });
 
   it("updates settings through domain hooks", () => {
@@ -697,6 +740,47 @@ describe("episode-modal-settings", () => {
     expect(datasetB.result.current.hasExplicitLabelStreams).toBe(false);
   });
 
+  it("switches scoped settings in place and restores each scope", () => {
+    const activeScope = { current: "dataset-a" };
+    const hook = renderHook(() => {
+      useModalSettingsScopeSync(activeScope.current);
+      return useImageLabelStreams("/camera/front");
+    });
+
+    act(() => hook.result.current.setLabelStreams(["/labels/a"]));
+    activeScope.current = "dataset-b";
+    hook.rerender();
+    expect(hook.result.current.labelStreams).toEqual([]);
+
+    act(() => hook.result.current.setLabelStreams(["/labels/b"]));
+    activeScope.current = "dataset-a";
+    hook.rerender();
+    expect(hook.result.current.labelStreams).toEqual(["/labels/a"]);
+  });
+
+  it("persists the latest scoped write before unmount and restores it", () => {
+    const first = renderHook(() => {
+      useModalSettingsScopeSync("dataset-a");
+      return useImageLabelStreams("/camera/front");
+    });
+    act(() => first.result.current.setLabelStreams(["/labels/latest"]));
+    const persistedBeforeUnmount = localStorage.getItem(
+      "fiftyone.episode.modal-settings.v3",
+    );
+
+    first.unmount();
+    expect(localStorage.getItem("fiftyone.episode.modal-settings.v3")).toBe(
+      persistedBeforeUnmount,
+    );
+
+    __resetModalSettingsForTests();
+    const restored = renderHook(() => {
+      useModalSettingsScopeSync("dataset-a");
+      return useImageLabelStreams("/camera/front");
+    });
+    expect(restored.result.current.labelStreams).toEqual(["/labels/latest"]);
+  });
+
   it("prunes the least recently written scopes past the retention cap", () => {
     for (let index = 0; index < MAX_SETTINGS_SCOPES + 1; index++) {
       const scope = renderHook(() => {
@@ -715,5 +799,50 @@ describe("episode-modal-settings", () => {
     expect(scopes).toHaveLength(MAX_SETTINGS_SCOPES);
     expect(scopes).not.toContain("dataset-0");
     expect(scopes).toContain(`dataset-${MAX_SETTINGS_SCOPES}`);
+  });
+
+  it("retains a touched old scope when timestamp-LRU pruning runs", () => {
+    let now = 1_000;
+    vi.spyOn(Date, "now").mockImplementation(() => now++);
+    for (let index = 0; index < MAX_SETTINGS_SCOPES; index++) {
+      const scope = renderHook(() => {
+        useModalSettingsScopeSync(`dataset-${index}`);
+        return usePointCloudStyleSettings();
+      });
+      act(() => {
+        scope.result.current.setPointCloudColor("/lidar_top", {
+          colorBy: "height",
+        });
+      });
+      scope.unmount();
+    }
+
+    now = 5_000;
+    const touched = renderHook(() => {
+      useModalSettingsScopeSync("dataset-0");
+      return usePointCloudStyleSettings();
+    });
+    act(() => {
+      touched.result.current.setPointCloudColor("/lidar_top", {
+        rangeMax: 42,
+      });
+    });
+    touched.unmount();
+
+    const newest = renderHook(() => {
+      useModalSettingsScopeSync(`dataset-${MAX_SETTINGS_SCOPES}`);
+      return usePointCloudStyleSettings();
+    });
+    act(() => {
+      newest.result.current.setPointCloudColor("/lidar_top", {
+        colorBy: "intensity",
+      });
+    });
+    newest.unmount();
+
+    const scopes = Object.keys(readModalSettings().scoped);
+    expect(scopes).toHaveLength(MAX_SETTINGS_SCOPES);
+    expect(scopes).toContain("dataset-0");
+    expect(scopes).not.toContain("dataset-1");
   });
 });

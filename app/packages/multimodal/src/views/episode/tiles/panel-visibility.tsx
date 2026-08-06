@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 import { sanitizeBoundedStringList } from "../../../utils/bounded-string-list";
+import { createTimestampLruScopedStore } from "../../../utils/scoped-store";
 import {
   DEFAULT_PROJECTION_POINT_SIZE,
   normalizePointSize,
@@ -59,22 +60,10 @@ interface SessionTileProjections {
 
 interface PersistedVisibilityScope {
   readonly tiles: Readonly<Record<string, PersistedTileVisibility>>;
-  readonly updatedAtMs: number;
-}
-
-interface PersistedVisibilityStore {
-  readonly byScope: Readonly<Record<string, PersistedVisibilityScope>>;
-  readonly version: typeof STORAGE_VERSION;
 }
 
 interface SessionProjectionScope {
   readonly tiles: Readonly<Record<string, SessionTileProjections>>;
-  readonly updatedAtMs: number;
-}
-
-interface SessionProjectionStore {
-  readonly byScope: Readonly<Record<string, SessionProjectionScope>>;
-  readonly version: typeof PROJECTION_STORAGE_VERSION;
 }
 
 const PanelVisibilityScopeContext = createContext<string | null>(null);
@@ -90,11 +79,6 @@ const MAX_STREAM_LENGTH = 512;
 const MAX_SCOPE_LENGTH = 1024;
 const MAX_TILE_ID_LENGTH = 256;
 
-let cachedStorageValue: string | null | undefined;
-let cachedStore: PersistedVisibilityStore | null = null;
-let cachedProjectionStorageValue: string | null | undefined;
-let cachedProjectionStore: SessionProjectionStore | null = null;
-
 const DEFAULT_IMAGE_POINT_CLOUD_PROJECTION: ImageTilePointCloudProjection =
   Object.freeze({
     enabled: false,
@@ -108,6 +92,36 @@ const DEFAULT_IMAGE_3D_LABEL_PROJECTION: ImageTile3dLabelProjection =
     streams: [],
   });
 const EMPTY_IMAGE_LABEL_STREAMS: readonly string[] = Object.freeze([]);
+const EMPTY_IMAGE_LABEL_STREAMS_BY_IMAGE: ImageLabelStreamsByImage =
+  Object.freeze({});
+const EMPTY_IMAGE_3D_LABEL_PROJECTIONS_BY_IMAGE: Image3dLabelProjectionsByImage =
+  Object.freeze({});
+const EMPTY_IMAGE_POINT_CLOUD_PROJECTIONS_BY_IMAGE: ImagePointCloudProjectionsByImage =
+  Object.freeze({});
+
+const visibilityStore = createTimestampLruScopedStore<PersistedVisibilityScope>(
+  {
+    key: STORAGE_KEY,
+    maxScopes: MAX_SCOPES,
+    normalizeScopeKey: normalizeScopeKey,
+    sanitizeScope: sanitizeVisibilityScope,
+    scopeField: "byScope",
+    serializeScope: (scope) => ({ ...scope }),
+    storage: () => globalThis.localStorage,
+    version: STORAGE_VERSION,
+  },
+);
+
+const projectionStore = createTimestampLruScopedStore<SessionProjectionScope>({
+  key: PROJECTION_STORAGE_KEY,
+  maxScopes: MAX_SCOPES,
+  normalizeScopeKey: normalizeScopeKey,
+  sanitizeScope: sanitizeProjectionScope,
+  scopeField: "byScope",
+  serializeScope: (scope) => ({ ...scope }),
+  storage: () => globalThis.sessionStorage,
+  version: PROJECTION_STORAGE_VERSION,
+});
 
 /**
  * Scopes panel visibility to one dataset/source and media field. The scope is
@@ -157,33 +171,23 @@ export function useImageTileLabelStreams(imageStream: string): {
 } {
   const scopeKey = usePanelVisibilityScope();
   const tileId = useTileId();
-  const [streamsByImage, setStreamsByImage] =
-    useState<ImageLabelStreamsByImage>(
-      () => readTileVisibility(scopeKey, tileId)?.imageLabelStreams ?? {},
-    );
-  const streamsByImageRef = useRef(streamsByImage);
-  streamsByImageRef.current = streamsByImage;
-
-  // This layout effect handles an in-place scope/tile swap before paint; the
-  // playback shell normally remounts at a scope boundary.
-  useLayoutEffect(() => {
-    const next = readTileVisibility(scopeKey, tileId)?.imageLabelStreams ?? {};
-    streamsByImageRef.current = next;
-    setStreamsByImage(next);
-  }, [scopeKey, tileId]);
+  const [streamsByImage, updateStreamsByImage] = useScopedTileState({
+    emptyValue: EMPTY_IMAGE_LABEL_STREAMS_BY_IMAGE,
+    read: readImageLabelStreams,
+    scopeKey,
+    tileId,
+    write: writeImageLabelStreams,
+  });
 
   const setLabelStreams = useCallback(
     (streams: readonly string[]) => {
       if (!imageStream) return;
-      const next = {
-        ...streamsByImageRef.current,
+      updateStreamsByImage((current) => ({
+        ...current,
         [imageStream]: sanitizeStreamList(streams),
-      };
-      streamsByImageRef.current = next;
-      setStreamsByImage(next);
-      writeTileVisibility(scopeKey, tileId, { imageLabelStreams: next });
+      }));
     },
-    [imageStream, scopeKey, tileId],
+    [imageStream, updateStreamsByImage],
   );
 
   return {
@@ -206,43 +210,26 @@ export function useImageTile3dLabelProjection(imageStream: string): {
 } {
   const scopeKey = usePanelVisibilityScope();
   const tileId = useTileId();
-  const [projectionsByImage, setProjectionsByImage] =
-    useState<Image3dLabelProjectionsByImage>(
-      () =>
-        readTileProjections(scopeKey, tileId)?.image3dLabelProjections ?? {},
-    );
-  const projectionsByImageRef = useRef(projectionsByImage);
-  projectionsByImageRef.current = projectionsByImage;
-
-  // This layout effect handles an in-place scope/tile swap before paint.
-  useLayoutEffect(() => {
-    const next =
-      readTileProjections(scopeKey, tileId)?.image3dLabelProjections ?? {};
-    projectionsByImageRef.current = next;
-    setProjectionsByImage(next);
-  }, [scopeKey, tileId]);
+  const [projectionsByImage, updateProjectionsByImage] = useScopedTileState({
+    emptyValue: EMPTY_IMAGE_3D_LABEL_PROJECTIONS_BY_IMAGE,
+    read: readImage3dLabelProjections,
+    scopeKey,
+    tileId,
+    write: writeImage3dLabelProjections,
+  });
 
   const setProjection = useCallback(
     (settings: Partial<ImageTile3dLabelProjection>) => {
       if (!imageStream) return;
-      const previous =
-        projectionsByImageRef.current[imageStream] ??
-        DEFAULT_IMAGE_3D_LABEL_PROJECTION;
-      const projection = normalizeImage3dLabelProjectionUpdate(
-        previous,
-        settings,
-      );
-      const next = {
-        ...projectionsByImageRef.current,
-        [imageStream]: projection,
-      };
-      projectionsByImageRef.current = next;
-      setProjectionsByImage(next);
-      writeTileProjections(scopeKey, tileId, {
-        image3dLabelProjections: next,
-      });
+      updateProjectionsByImage((current) => ({
+        ...current,
+        [imageStream]: normalizeImage3dLabelProjectionUpdate(
+          current[imageStream] ?? DEFAULT_IMAGE_3D_LABEL_PROJECTION,
+          settings,
+        ),
+      }));
     },
-    [imageStream, scopeKey, tileId],
+    [imageStream, updateProjectionsByImage],
   );
 
   return {
@@ -267,43 +254,26 @@ export function useImageTilePointCloudProjection(imageStream: string): {
 } {
   const scopeKey = usePanelVisibilityScope();
   const tileId = useTileId();
-  const [projectionsByImage, setProjectionsByImage] =
-    useState<ImagePointCloudProjectionsByImage>(
-      () =>
-        readTileProjections(scopeKey, tileId)?.imagePointCloudProjections ?? {},
-    );
-  const projectionsByImageRef = useRef(projectionsByImage);
-  projectionsByImageRef.current = projectionsByImage;
-
-  // This layout effect handles an in-place scope/tile swap before paint.
-  useLayoutEffect(() => {
-    const next =
-      readTileProjections(scopeKey, tileId)?.imagePointCloudProjections ?? {};
-    projectionsByImageRef.current = next;
-    setProjectionsByImage(next);
-  }, [scopeKey, tileId]);
+  const [projectionsByImage, updateProjectionsByImage] = useScopedTileState({
+    emptyValue: EMPTY_IMAGE_POINT_CLOUD_PROJECTIONS_BY_IMAGE,
+    read: readImagePointCloudProjections,
+    scopeKey,
+    tileId,
+    write: writeImagePointCloudProjections,
+  });
 
   const setProjection = useCallback(
     (settings: Partial<ImageTilePointCloudProjection>) => {
       if (!imageStream) return;
-      const previous =
-        projectionsByImageRef.current[imageStream] ??
-        DEFAULT_IMAGE_POINT_CLOUD_PROJECTION;
-      const projection = normalizeImagePointCloudProjectionUpdate(
-        previous,
-        settings,
-      );
-      const next = {
-        ...projectionsByImageRef.current,
-        [imageStream]: projection,
-      };
-      projectionsByImageRef.current = next;
-      setProjectionsByImage(next);
-      writeTileProjections(scopeKey, tileId, {
-        imagePointCloudProjections: next,
-      });
+      updateProjectionsByImage((current) => ({
+        ...current,
+        [imageStream]: normalizeImagePointCloudProjectionUpdate(
+          current[imageStream] ?? DEFAULT_IMAGE_POINT_CLOUD_PROJECTION,
+          settings,
+        ),
+      }));
     },
-    [imageStream, scopeKey, tileId],
+    [imageStream, updateProjectionsByImage],
   );
 
   return {
@@ -315,12 +285,107 @@ export function useImageTilePointCloudProjection(imageStream: string): {
   };
 }
 
+/**
+ * Keeps one tile-scoped value synchronized across mount and in-place scope
+ * changes. Domain hooks provide their own read, write, and normalization.
+ */
+function useScopedTileState<Value>({
+  emptyValue,
+  read,
+  scopeKey,
+  tileId,
+  write,
+}: {
+  readonly emptyValue: Value;
+  readonly read: (
+    scopeKey: string | null,
+    tileId: string | null,
+  ) => Value | null;
+  readonly scopeKey: string | null;
+  readonly tileId: string | null;
+  readonly write: (
+    scopeKey: string | null,
+    tileId: string | null,
+    value: Value,
+  ) => void;
+}): readonly [Value, (resolver: (current: Value) => Value) => void] {
+  const [value, setValue] = useState<Value>(
+    () => read(scopeKey, tileId) ?? emptyValue,
+  );
+  const valueRef = useRef(value);
+  valueRef.current = value;
+
+  useLayoutEffect(() => {
+    const next = read(scopeKey, tileId) ?? emptyValue;
+    valueRef.current = next;
+    setValue(next);
+  }, [emptyValue, read, scopeKey, tileId]);
+
+  const update = useCallback(
+    (resolver: (current: Value) => Value) => {
+      const next = resolver(valueRef.current);
+      valueRef.current = next;
+      setValue(next);
+      write(scopeKey, tileId, next);
+    },
+    [scopeKey, tileId, write],
+  );
+  return [value, update];
+}
+
+function readImageLabelStreams(
+  scopeKey: string | null,
+  tileId: string | null,
+): ImageLabelStreamsByImage | null {
+  return readTileVisibility(scopeKey, tileId)?.imageLabelStreams ?? null;
+}
+
+function writeImageLabelStreams(
+  scopeKey: string | null,
+  tileId: string | null,
+  value: ImageLabelStreamsByImage,
+): void {
+  writeTileVisibility(scopeKey, tileId, { imageLabelStreams: value });
+}
+
+function readImage3dLabelProjections(
+  scopeKey: string | null,
+  tileId: string | null,
+): Image3dLabelProjectionsByImage | null {
+  return readTileProjections(scopeKey, tileId)?.image3dLabelProjections ?? null;
+}
+
+function writeImage3dLabelProjections(
+  scopeKey: string | null,
+  tileId: string | null,
+  value: Image3dLabelProjectionsByImage,
+): void {
+  writeTileProjections(scopeKey, tileId, { image3dLabelProjections: value });
+}
+
+function readImagePointCloudProjections(
+  scopeKey: string | null,
+  tileId: string | null,
+): ImagePointCloudProjectionsByImage | null {
+  return (
+    readTileProjections(scopeKey, tileId)?.imagePointCloudProjections ?? null
+  );
+}
+
+function writeImagePointCloudProjections(
+  scopeKey: string | null,
+  tileId: string | null,
+  value: ImagePointCloudProjectionsByImage,
+): void {
+  writeTileProjections(scopeKey, tileId, { imagePointCloudProjections: value });
+}
+
 function readTileVisibility(
   scopeKey: string | null,
   tileId: string | null,
 ): PersistedTileVisibility | null {
   if (!scopeKey || !tileId) return null;
-  return readStore()?.byScope[scopeKey]?.tiles[tileId] ?? null;
+  return visibilityStore.readScope(scopeKey)?.tiles[tileId] ?? null;
 }
 
 function writeTileVisibility(
@@ -331,48 +396,11 @@ function writeTileVisibility(
   if (!isBoundedString(scopeKey, MAX_SCOPE_LENGTH)) return;
   if (!isBoundedString(tileId, MAX_TILE_ID_LENGTH)) return;
 
-  try {
-    const storage = globalThis.localStorage;
-    if (!storage) return;
-    const current = readStore();
-    const byScope = { ...current?.byScope };
-    const currentScope = byScope[scopeKey];
+  visibilityStore.updateScope(scopeKey, (currentScope) => {
     const tiles = { ...currentScope?.tiles };
     tiles[tileId] = { ...tiles[tileId], ...patch };
-    byScope[scopeKey] = { tiles, updatedAtMs: Date.now() };
-    evictOldestScopes(byScope);
-    const next: PersistedVisibilityStore = {
-      byScope,
-      version: STORAGE_VERSION,
-    };
-    const serialized = JSON.stringify(next);
-    storage.setItem(STORAGE_KEY, serialized);
-    cachedStorageValue = serialized;
-    cachedStore = next;
-  } catch {
-    // Visibility persistence is best-effort and must never block playback.
-  }
-}
-
-function readStore(): PersistedVisibilityStore | null {
-  try {
-    const storage = globalThis.localStorage;
-    const raw = storage?.getItem(STORAGE_KEY);
-    if (raw === cachedStorageValue) return cachedStore;
-    cachedStorageValue = raw ?? null;
-    cachedStore = null;
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null) return null;
-    const candidate = parsed as Record<string, unknown>;
-    if (candidate.version !== STORAGE_VERSION) return null;
-    const byScope = sanitizeScopes(candidate.byScope);
-    cachedStore = { byScope, version: STORAGE_VERSION };
-    return cachedStore;
-  } catch {
-    cachedStore = null;
-    return null;
-  }
+    return { tiles };
+  });
 }
 
 function readTileProjections(
@@ -380,7 +408,7 @@ function readTileProjections(
   tileId: string | null,
 ): SessionTileProjections | null {
   if (!scopeKey || !tileId) return null;
-  return readProjectionStore()?.byScope[scopeKey]?.tiles[tileId] ?? null;
+  return projectionStore.readScope(scopeKey)?.tiles[tileId] ?? null;
 }
 
 function writeTileProjections(
@@ -391,93 +419,27 @@ function writeTileProjections(
   if (!isBoundedString(scopeKey, MAX_SCOPE_LENGTH)) return;
   if (!isBoundedString(tileId, MAX_TILE_ID_LENGTH)) return;
 
-  try {
-    const storage = globalThis.sessionStorage;
-    if (!storage) return;
-    const current = readProjectionStore();
-    const byScope = { ...current?.byScope };
-    const currentScope = byScope[scopeKey];
+  projectionStore.updateScope(scopeKey, (currentScope) => {
     const tiles = { ...currentScope?.tiles };
     tiles[tileId] = { ...tiles[tileId], ...patch };
-    byScope[scopeKey] = { tiles, updatedAtMs: Date.now() };
-    evictOldestScopes(byScope);
-    const next: SessionProjectionStore = {
-      byScope,
-      version: PROJECTION_STORAGE_VERSION,
-    };
-    const serialized = JSON.stringify(next);
-    storage.setItem(PROJECTION_STORAGE_KEY, serialized);
-    cachedProjectionStorageValue = serialized;
-    cachedProjectionStore = next;
-  } catch {
-    // Projection persistence is best-effort and must never block playback.
-  }
+    return { tiles };
+  });
 }
 
-function readProjectionStore(): SessionProjectionStore | null {
-  try {
-    const storage = globalThis.sessionStorage;
-    const raw = storage?.getItem(PROJECTION_STORAGE_KEY);
-    if (raw === cachedProjectionStorageValue) return cachedProjectionStore;
-    cachedProjectionStorageValue = raw ?? null;
-    cachedProjectionStore = null;
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null) return null;
-    const candidate = parsed as Record<string, unknown>;
-    if (candidate.version !== PROJECTION_STORAGE_VERSION) return null;
-    const byScope = sanitizeProjectionScopes(candidate.byScope);
-    cachedProjectionStore = {
-      byScope,
-      version: PROJECTION_STORAGE_VERSION,
-    };
-    return cachedProjectionStore;
-  } catch {
-    cachedProjectionStore = null;
+function sanitizeVisibilityScope(
+  raw: unknown,
+): PersistedVisibilityScope | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw))
     return null;
-  }
+  return { tiles: sanitizeTiles((raw as Record<string, unknown>).tiles) };
 }
 
-function sanitizeScopes(
-  raw: unknown,
-): Record<string, PersistedVisibilityScope> {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
-  const result: Record<string, PersistedVisibilityScope> = {};
-  for (const [scopeKey, rawScope] of Object.entries(raw)) {
-    if (Object.keys(result).length >= MAX_SCOPES) break;
-    if (!isBoundedString(scopeKey, MAX_SCOPE_LENGTH)) continue;
-    if (typeof rawScope !== "object" || rawScope === null) continue;
-    const scope = rawScope as Record<string, unknown>;
-    const tiles = sanitizeTiles(scope.tiles);
-    const updatedAtMs =
-      typeof scope.updatedAtMs === "number" &&
-      Number.isFinite(scope.updatedAtMs)
-        ? scope.updatedAtMs
-        : 0;
-    result[scopeKey] = { tiles, updatedAtMs };
-  }
-  return result;
-}
-
-function sanitizeProjectionScopes(
-  raw: unknown,
-): Record<string, SessionProjectionScope> {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
-  const result: Record<string, SessionProjectionScope> = {};
-  for (const [scopeKey, rawScope] of Object.entries(raw)) {
-    if (Object.keys(result).length >= MAX_SCOPES) break;
-    if (!isBoundedString(scopeKey, MAX_SCOPE_LENGTH)) continue;
-    if (typeof rawScope !== "object" || rawScope === null) continue;
-    const scope = rawScope as Record<string, unknown>;
-    const tiles = sanitizeProjectionTiles(scope.tiles);
-    const updatedAtMs =
-      typeof scope.updatedAtMs === "number" &&
-      Number.isFinite(scope.updatedAtMs)
-        ? scope.updatedAtMs
-        : 0;
-    result[scopeKey] = { tiles, updatedAtMs };
-  }
-  return result;
+function sanitizeProjectionScope(raw: unknown): SessionProjectionScope | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw))
+    return null;
+  return {
+    tiles: sanitizeProjectionTiles((raw as Record<string, unknown>).tiles),
+  };
 }
 
 function sanitizeTiles(raw: unknown): Record<string, PersistedTileVisibility> {
@@ -698,19 +660,6 @@ function isBoundedString(value: unknown, maxLength: number): value is string {
   );
 }
 
-function evictOldestScopes<T extends { readonly updatedAtMs: number }>(
-  byScope: Record<string, T>,
-): void {
-  while (Object.keys(byScope).length > MAX_SCOPES) {
-    let oldestKey: string | null = null;
-    let oldestTimestamp = Number.POSITIVE_INFINITY;
-    for (const [scopeKey, scope] of Object.entries(byScope)) {
-      if (scope.updatedAtMs < oldestTimestamp) {
-        oldestKey = scopeKey;
-        oldestTimestamp = scope.updatedAtMs;
-      }
-    }
-    if (!oldestKey) return;
-    delete byScope[oldestKey];
-  }
+function normalizeScopeKey(value: string): string | null {
+  return isBoundedString(value, MAX_SCOPE_LENGTH) ? value : null;
 }
