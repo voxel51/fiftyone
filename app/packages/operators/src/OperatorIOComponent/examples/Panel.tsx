@@ -1,5 +1,8 @@
 import { types } from "@fiftyone/operators";
-import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
+import {
+  PluginComponentType,
+  registerComponent,
+} from "@fiftyone/plugins/src/registry";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { BUILT_IN_PANEL_PRIORITY_CONST } from "@fiftyone/utilities";
 import { Box, Button } from "@mui/material";

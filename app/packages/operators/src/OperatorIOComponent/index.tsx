@@ -1,5 +1,8 @@
 import { SchemaIOComponent } from "@fiftyone/core/src/plugins/SchemaIO";
-import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
+import {
+  PluginComponentType,
+  registerComponent,
+} from "@fiftyone/plugins/src/registry";
 import { getErrorsByPath, operatorToIOSchema } from "./utils";
 
 export default function OperatorIOComponent(props) {
