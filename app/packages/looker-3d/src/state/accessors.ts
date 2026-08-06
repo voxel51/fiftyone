@@ -10,6 +10,8 @@ import {
   current3dAnnotationModeAtom,
   currentArchetypeSelectedForTransformAtom,
   fo3dPerformanceStatsAtom,
+  headingUpEditorHoverAtom,
+  headingUpPreviewAtom,
   hoveredLabelAtom,
   isActivelySegmentingSelector,
   isCreatingCuboidAtom,
@@ -109,6 +111,39 @@ export const useSetFo3dPerformanceStats = () => {
  */
 export const useIsCurrentlyTransforming = () => {
   return useRecoilValue(isCurrentlyTransformingAtom);
+};
+
+/**
+ * The face being hovered in the heading/up face picker (popup or sidebar),
+ * for whichever label owns it — read by the 3D scene to preview a ghost
+ * arrow/face highlight and suppress other transform controls while hovered.
+ */
+export const useHeadingUpPreview = () => {
+  return useRecoilValue(headingUpPreviewAtom);
+};
+
+/**
+ * Sets/clears the heading/up hover preview. Callers outside the r3f canvas
+ * (the DOM sidebar) reach the 3D scene through this rather than the atom
+ * directly, matching the rest of this module's convention.
+ */
+export const useSetHeadingUpPreview = () => {
+  return useSetRecoilState(headingUpPreviewAtom);
+};
+
+/**
+ * Whether the pointer is anywhere over the heading/up editor UI as a whole,
+ * for whichever label owns it — read by the 3D scene to suppress the gizmo
+ * and face-resize handles without flickering as the pointer crosses gaps
+ * between face buttons (see {@link useHeadingUpPreview} for the per-face
+ * hover that drives the ghost-arrow preview itself).
+ */
+export const useHeadingUpEditorHover = () => {
+  return useRecoilValue(headingUpEditorHoverAtom);
+};
+
+export const useSetHeadingUpEditorHover = () => {
+  return useSetRecoilState(headingUpEditorHoverAtom);
 };
 
 export const useCuboidOrientation = () => {

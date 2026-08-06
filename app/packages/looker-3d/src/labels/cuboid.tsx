@@ -1,7 +1,9 @@
 import * as fos from "@fiftyone/state";
-import { Line, useCursor } from "@react-three/drei";
+import { Html, Line, useCursor } from "@react-three/drei";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
+import { ContextMenu, MenuTextItem } from "@voxel51/voodo";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
@@ -17,6 +19,7 @@ import {
   isValidCuboidResizeDimensions,
   type CuboidResizeFace,
 } from "../annotation/cuboid-face-resize";
+import { computeCuboidHeadingAndUpRelabel } from "../annotation/cuboid-heading-relabel";
 import { useCuboidAnnotation } from "../annotation/useCuboidAnnotation";
 import { FO_USER_DATA, PANEL_ID_MAIN, getPanelElementId } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
@@ -31,6 +34,8 @@ import {
   transformModeAtom,
 } from "../state";
 import {
+  useHeadingUpEditorHover,
+  useHeadingUpPreview,
   useIsCurrentlyTransforming,
   useSetCurrent3dAnnotationMode,
 } from "../state/accessors";
@@ -48,12 +53,16 @@ import {
   CuboidOrientationMarker,
   ORIENTATION_AXES_COLORS,
 } from "./shared/CuboidOrientationMarkers";
+import { getCuboidOrientationMarkerProps } from "./shared/cuboid-orientation-geometry";
 import {
+  HEADING_GHOST_COLOR,
   HEADING_GHOST_DRAG_OPACITY,
   HEADING_GHOST_HOVER_OPACITY,
   HeadingFaceDots,
   HeadingGhostArrow,
+  UP_GHOST_COLOR,
 } from "./shared/HeadingArrow";
+import { HeadingUpVectorEditor } from "./shared/HeadingUpVectorEditor";
 import { useDisplayCuboidTransform } from "./shared/useDisplayCuboidTransform";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
 import "./shared/registerLineElements";
@@ -588,6 +597,19 @@ export const Cuboid = ({
     useLegacyCoordinates,
   });
 
+  // Set while a face button in the "Edit heading/up vector" popup or sidebar
+  // is hovered — previews the ghost arrow/face highlight below.
+  const headingUpPreview = useHeadingUpPreview();
+  const isHeadingUpPreviewActive = headingUpPreview?.labelId === label._id;
+
+  // Set while the pointer is anywhere over that same UI *as a whole* — used
+  // (instead of the per-face preview above) to hide the gizmo/face-resize
+  // handles, since the per-face atom goes null in the gaps between buttons
+  // and would otherwise flicker those controls back on as the pointer
+  // crosses them.
+  const headingUpEditorHover = useHeadingUpEditorHover();
+  const isHeadingUpEditorHovered = headingUpEditorHover?.labelId === label._id;
+
   const isFaceResizeControlActive =
     Boolean(hoveredResizeFace) || isFaceResizeDragging;
   const canFaceResize =
@@ -597,6 +619,7 @@ export const Cuboid = ({
     transformMode === "scale" &&
     !isCreatingCuboidPointerDown &&
     !isActivelySegmenting &&
+    !isHeadingUpEditorHovered &&
     isValidCuboidResizeDimensions(displayDimensions) &&
     (!isCurrentlyTransforming || isFaceResizeControlActive);
 
@@ -636,6 +659,60 @@ export const Cuboid = ({
     onArrowEnter: clearHoveredResizeFace,
     suppressNextClickRef,
   });
+
+  // Right-click the heading arrow → "Edit heading/up vector" opens a popup
+  // where both faces are picked explicitly, instead of only dragging the
+  // arrow (which infers "up" for you). The popup itself is a fixed-position
+  // overlay portaled to `document.body` — anchoring it to the 3D arrow tip
+  // via `<Html>` put it far from the click (the tip isn't under the cursor)
+  // and, worse, could size an ancestor's scrollable area around wherever it
+  // landed. Anchoring to the click point sidesteps both.
+  const [headingEditorAnchor, setHeadingEditorAnchor] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const arrowTipPosition = useMemo(() => {
+    if (!canEditHeading) {
+      return null;
+    }
+    const markerProps = getCuboidOrientationMarkerProps(
+      displayDimensions,
+      orientationQuaternion,
+      upVector,
+    );
+    return markerProps?.shaftEnd ?? null;
+  }, [canEditHeading, displayDimensions, orientationQuaternion, upVector]);
+
+  const initialUpFace = useMemo(() => {
+    const effectiveUp =
+      upVector && upVector.lengthSq() > 0
+        ? upVector.clone().normalize()
+        : new THREE.Vector3(0, 0, 1);
+    const localUp = effectiveUp
+      .clone()
+      .applyQuaternion(orientationQuaternion.clone().invert());
+    return getCuboidResizeFaceFromNormal(localUp) ?? "+z";
+  }, [upVector, orientationQuaternion]);
+
+  const handleHeadingUpApply = useCallback(
+    (headingFace: CuboidResizeFace, upFace: CuboidResizeFace) => {
+      const relabel = computeCuboidHeadingAndUpRelabel({
+        dimensions: effectiveDimensions,
+        quaternion: orientationQuaternion,
+        headingFace,
+        upFace,
+      });
+      if (relabel) {
+        handleHeadingRelabelCommit(
+          effectiveDimensions,
+          relabel.dimensions,
+          relabel.quaternion,
+        );
+      }
+      setHeadingEditorAnchor(null);
+    },
+    [effectiveDimensions, orientationQuaternion, handleHeadingRelabelCommit],
+  );
 
   useCursor(
     (canFaceResize && isFaceResizeControlActive) ||
@@ -1249,6 +1326,68 @@ export const Cuboid = ({
               />
             </>
           )}
+
+          {/* Hovering a face button in the "Edit heading/up vector" popup or
+              sidebar — same ghost-arrow/face-dot visualization as the drag
+              gesture above, colored by which role (heading vs. up) is being
+              previewed so the two read as distinct. */}
+          {isHeadingUpPreviewActive && headingUpPreview && (
+            <>
+              <HeadingFaceDots
+                dimensions={displayDimensions}
+                activeFace={headingUpPreview.face}
+                color={
+                  headingUpPreview.role === "heading"
+                    ? HEADING_GHOST_COLOR
+                    : UP_GHOST_COLOR
+                }
+              />
+              <HeadingGhostArrow
+                dimensions={displayDimensions}
+                anchorFace={headingUpPreview.face}
+                opacity={HEADING_GHOST_HOVER_OPACITY}
+                color={
+                  headingUpPreview.role === "heading"
+                    ? HEADING_GHOST_COLOR
+                    : UP_GHOST_COLOR
+                }
+              />
+            </>
+          )}
+
+          {canEditHeading && arrowTipPosition && (
+            <Html position={arrowTipPosition} style={{ pointerEvents: "none" }}>
+              <ContextMenu
+                menu={
+                  <MenuTextItem
+                    onClick={(e) => {
+                      setHeadingEditorAnchor({
+                        x: e.clientX,
+                        y: e.clientY,
+                      });
+                    }}
+                  >
+                    Edit heading/up vector
+                  </MenuTextItem>
+                }
+              >
+                <div style={{ width: 28, height: 28, pointerEvents: "auto" }} />
+              </ContextMenu>
+            </Html>
+          )}
+
+          {headingEditorAnchor &&
+            createPortal(
+              <HeadingUpVectorEditor
+                labelId={label._id}
+                anchor={headingEditorAnchor}
+                initialHeadingFace="+x"
+                initialUpFace={initialUpFace}
+                onApply={handleHeadingUpApply}
+                onClose={() => setHeadingEditorAnchor(null)}
+              />,
+              document.body,
+            )}
         </>
       )}
     </group>
@@ -1258,7 +1397,9 @@ export const Cuboid = ({
     <Transformable
       archetype="cuboid"
       isSelectedForTransform={
-        isSelectedForAnnotation && transformMode !== "scale"
+        isSelectedForAnnotation &&
+        transformMode !== "scale" &&
+        !isHeadingUpEditorHovered
       }
       transformControlsRef={transformControlsRef}
       onTransformStart={handleTransformStart}

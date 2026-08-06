@@ -10,15 +10,23 @@ import {
 import { LabeledField } from "@fiftyone/components";
 import { DetectionLabel } from "@fiftyone/looker";
 import {
+  computeCuboidHeadingAndUpRelabel,
+  type CuboidResizeFace,
   formatDegrees,
+  getCuboidResizeFaceFromNormal,
+  HeadingUpVectorFields,
+  isValidHeadingUpFacePair,
   quaternionToRadians,
   radiansToQuaternion,
   useCuboidOperations,
+  useSetHeadingUpEditorHover,
+  useSetHeadingUpPreview,
 } from "@fiftyone/looker-3d";
 import { useCurrentDatasetId } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
 import { Box, Stack, TextField } from "@mui/material";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import * as THREE from "three";
 import { Vector3Tuple } from "three";
 import { useAnnotationContext } from "./useAnnotationContext";
 
@@ -215,6 +223,99 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
     [data, transformState, updateCuboid, readOnly],
   );
 
+  // A cuboid's heading is always local +X by definition — it never has
+  // anything to pick away from itself, so it isn't state at all.
+  const headingFace: CuboidResizeFace = "+x";
+
+  // "Up" isn't stored either — it's whichever local axis currently points
+  // closest to world-up (same world-+Z fallback `computeCuboidHeadingRelabel`
+  // itself uses when it isn't given a real up vector; this DOM sidebar has no
+  // access to the scene's actual one). Re-derived from the *values* of
+  // `transformState.rotation` — not the object itself, which gets a fresh
+  // reference on every field edit in this panel and would otherwise fire on
+  // every keystroke — so it stays correct whether the rotation changed via
+  // this section, a plain rx/ry/rz edit, or a heading-arrow drag in the 3D
+  // view (none of which this component is otherwise told about).
+  const [upFace, setUpFace] = useState<CuboidResizeFace>("+z");
+  const { rx, ry, rz } = transformState.rotation;
+
+  useEffect(() => {
+    if (rx === undefined || ry === undefined || rz === undefined) {
+      return;
+    }
+    const quaternion = new THREE.Quaternion(
+      ...radiansToQuaternion([rx, ry, rz]),
+    );
+    const localUp = new THREE.Vector3(0, 0, 1).applyQuaternion(
+      quaternion.clone().invert(),
+    );
+    setUpFace(getCuboidResizeFaceFromNormal(localUp) ?? "+z");
+    // Re-derive on every genuine rotation change (drag, direct rx/ry/rz edit,
+    // or our own relabel commits below) — but a *different label* also needs
+    // its own fresh read, since rx/ry/rz could coincidentally match the
+    // previous label's.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rx, ry, rz, labelId]);
+
+  const setHeadingUpPreview = useSetHeadingUpPreview();
+  const setHeadingUpEditorHover = useSetHeadingUpEditorHover();
+
+  // Clears any preview/hover left over from this section if the label
+  // changes or the panel unmounts — otherwise a ghost arrow or suppressed
+  // gizmo could get stuck showing for a label this panel no longer edits.
+  useEffect(() => {
+    return () => {
+      setHeadingUpPreview(null);
+      setHeadingUpEditorHover(null);
+    };
+  }, [labelId, setHeadingUpPreview, setHeadingUpEditorHover]);
+
+  const handleHeadingUpChange = useCallback(
+    (nextHeadingFace: CuboidResizeFace, nextUpFace: CuboidResizeFace) => {
+      setUpFace(nextUpFace);
+
+      if (
+        readOnly ||
+        !data?._id ||
+        !isValidHeadingUpFacePair(nextHeadingFace, nextUpFace) ||
+        !hasValidBounds(transformState)
+      ) {
+        return;
+      }
+
+      const dimensions: Vector3Tuple = [
+        transformState.dimensions.lx ?? 0,
+        transformState.dimensions.ly ?? 0,
+        transformState.dimensions.lz ?? 0,
+      ];
+      const quaternion = new THREE.Quaternion(
+        ...radiansToQuaternion([
+          transformState.rotation.rx ?? 0,
+          transformState.rotation.ry ?? 0,
+          transformState.rotation.rz ?? 0,
+        ]),
+      );
+
+      const relabel = computeCuboidHeadingAndUpRelabel({
+        dimensions,
+        quaternion,
+        headingFace: nextHeadingFace,
+        upFace: nextUpFace,
+      });
+
+      if (!relabel) {
+        return;
+      }
+
+      void updateCuboid(data._id, {
+        dimensions: relabel.dimensions,
+        quaternion: relabel.quaternion,
+        rotation: quaternionToRadians(relabel.quaternion),
+      });
+    },
+    [data, transformState, updateCuboid, readOnly],
+  );
+
   return (
     <Box sx={{ width: "100%" }}>
       <Stack
@@ -400,6 +501,29 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
               disabled={readOnly}
             />
           }
+        />
+      </Stack>
+
+      <Stack spacing={0.75} sx={{ pt: 1.5 }}>
+        <HeadingUpVectorFields
+          headingFace={headingFace}
+          upFace={upFace}
+          onHeadingChange={(face) => handleHeadingUpChange(face, upFace)}
+          onUpChange={(face) => handleHeadingUpChange(headingFace, face)}
+          onHeadingFaceHover={(face) =>
+            setHeadingUpPreview(
+              face && labelId ? { labelId, role: "heading", face } : null,
+            )
+          }
+          onUpFaceHover={(face) =>
+            setHeadingUpPreview(
+              face && labelId ? { labelId, role: "up", face } : null,
+            )
+          }
+          onHoverActiveChange={(active) =>
+            setHeadingUpEditorHover(active && labelId ? { labelId } : null)
+          }
+          disabled={readOnly}
         />
       </Stack>
     </Box>

@@ -28,6 +28,9 @@ import {
 
 // Light orange, distinct from the committed arrow's complementary color.
 export const HEADING_GHOST_COLOR = "#ffb266";
+// Cyan, distinct from the heading ghost's orange — used for the "up" preview
+// in the "Edit heading/up vector" popup/sidebar.
+export const UP_GHOST_COLOR = "#5ce1e6";
 export const HEADING_GHOST_HOVER_OPACITY = 0.6;
 export const HEADING_GHOST_DRAG_OPACITY = 0.8;
 

@@ -16,6 +16,7 @@ export {
   HEADING_GHOST_COLOR,
   HEADING_GHOST_DRAG_OPACITY,
   HEADING_GHOST_HOVER_OPACITY,
+  UP_GHOST_COLOR,
 } from "./heading-arrow-geometry";
 
 const GHOST_LINE_WIDTH = 5;

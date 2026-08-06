@@ -66,65 +66,25 @@ const crossAxis = (a: SignedAxis, b: SignedAxis): SignedAxis => {
   return { axis, sign: cross.getComponent(axis) > 0 ? 1 : -1 };
 };
 
-export function computeCuboidHeadingRelabel({
-  dimensions,
-  quaternion,
-  targetFace,
-  upVector,
-}: {
-  dimensions: THREE.Vector3Tuple;
-  quaternion: THREE.Quaternion;
-  targetFace: CuboidResizeFace;
-  upVector?: THREE.Vector3 | null;
-}): CuboidHeadingRelabel | null {
-  if (targetFace === "+x") {
-    // Already the heading — nothing to relabel.
+/**
+ * Builds the relabel from an explicit new-X (heading) axis and a chosen "up"
+ * axis, right-handing the third slot with the cross product. Shared by
+ * {@link computeCuboidHeadingRelabel} (which infers `up` from the world-space
+ * up vector) and {@link computeCuboidHeadingAndUpRelabel} (which takes it
+ * directly from the popup's face picker).
+ */
+const buildRelabelFromAxes = (
+  dimensions: THREE.Vector3Tuple,
+  quaternion: THREE.Quaternion,
+  newX: SignedAxis,
+  up: SignedAxis,
+): CuboidHeadingRelabel | null => {
+  if (newX.axis === up.axis) {
+    // Same axis (parallel or antiparallel) can't serve both roles.
     return null;
   }
 
-  if (!dimensions.every((value) => Number.isFinite(value))) {
-    return null;
-  }
-
-  const newX = getCuboidResizeFaceAxis(targetFace) as SignedAxis;
-
-  // Which local axis currently points most nearly "up" in world space. The
-  // relabel tries to preserve this axis's role so the box's up-ness isn't
-  // arbitrarily reassigned.
-  const effectiveUp =
-    upVector && upVector.lengthSq() > EPSILON
-      ? upVector.clone().normalize()
-      : new THREE.Vector3(0, 0, 1);
-  const localUpFace = getCuboidResizeFaceFromNormal(
-    effectiveUp.clone().applyQuaternion(quaternion.clone().invert()),
-  );
-  const currentUp = (
-    localUpFace ? getCuboidResizeFaceAxis(localUpFace) : { axis: 2, sign: 1 }
-  ) as SignedAxis;
-
-  // The new heading claims one axis; the other two fill the Y and Z slots.
-  // Pick which of them carries the "up" role, and which slot it sits in
-  // (keeping Y as Y / Z as Z wherever possible so dimension labels stay put).
-  let up: SignedAxis;
-  let upSlot: 1 | 2;
-
-  if (currentUp.axis !== newX.axis) {
-    // Up survives the relabel — keep its axis and sign.
-    up = currentUp;
-    // An up along old X has no prior Y/Z slot, so park it in Z.
-    upSlot = currentUp.axis === 0 ? 2 : (currentUp.axis as 1 | 2);
-  } else if (newX.axis !== 0) {
-    // Drone case: the heading consumed the up axis, so the old heading axis
-    // (+X) takes over the up role, parked in Z.
-    up = { axis: 0, sign: 1 };
-    upSlot = 2;
-  } else {
-    // The heading is flipping along the very axis that was up (±x while up is
-    // local X). Neither remaining axis was ever "up", so keep slot order.
-    up = { axis: 2, sign: 1 };
-    upSlot = 2;
-  }
-
+  const upSlot: 1 | 2 = up.axis === 0 ? 2 : (up.axis as 1 | 2);
   const basis: [SignedAxis, SignedAxis, SignedAxis] = [newX, newX, newX];
   basis[upSlot] = up;
 
@@ -168,4 +128,104 @@ export function computeCuboidHeadingRelabel({
     quaternion: newQuaternion.toArray() as THREE.Vector4Tuple,
     basis,
   };
+};
+
+/**
+ * Whether `headingFace` and `upFace` could serve as the heading and up faces
+ * of the same box — i.e. they aren't on the same axis (parallel or
+ * antiparallel). Exposed so the popup can disable its Apply button and show a
+ * warning without needing dimensions/quaternion.
+ */
+export function isValidHeadingUpFacePair(
+  headingFace: CuboidResizeFace,
+  upFace: CuboidResizeFace,
+): boolean {
+  return (
+    getCuboidResizeFaceAxis(headingFace).axis !==
+    getCuboidResizeFaceAxis(upFace).axis
+  );
+}
+
+/**
+ * Explicit heading + up relabel for the "Edit heading/up vector" popup: unlike
+ * {@link computeCuboidHeadingRelabel} (which only takes a target heading face
+ * and infers `up` from the current world-space up vector), this takes both
+ * faces directly from the user's picks.
+ */
+export function computeCuboidHeadingAndUpRelabel({
+  dimensions,
+  quaternion,
+  headingFace,
+  upFace,
+}: {
+  dimensions: THREE.Vector3Tuple;
+  quaternion: THREE.Quaternion;
+  headingFace: CuboidResizeFace;
+  upFace: CuboidResizeFace;
+}): CuboidHeadingRelabel | null {
+  if (!dimensions.every((value) => Number.isFinite(value))) {
+    return null;
+  }
+
+  const newX = getCuboidResizeFaceAxis(headingFace) as SignedAxis;
+  const up = getCuboidResizeFaceAxis(upFace) as SignedAxis;
+
+  return buildRelabelFromAxes(dimensions, quaternion, newX, up);
+}
+
+export function computeCuboidHeadingRelabel({
+  dimensions,
+  quaternion,
+  targetFace,
+  upVector,
+}: {
+  dimensions: THREE.Vector3Tuple;
+  quaternion: THREE.Quaternion;
+  targetFace: CuboidResizeFace;
+  upVector?: THREE.Vector3 | null;
+}): CuboidHeadingRelabel | null {
+  if (targetFace === "+x") {
+    // Already the heading — nothing to relabel.
+    return null;
+  }
+
+  if (!dimensions.every((value) => Number.isFinite(value))) {
+    return null;
+  }
+
+  const newX = getCuboidResizeFaceAxis(targetFace) as SignedAxis;
+
+  // Which local axis currently points most nearly "up" in world space. The
+  // relabel tries to preserve this axis's role so the box's up-ness isn't
+  // arbitrarily reassigned.
+  const effectiveUp =
+    upVector && upVector.lengthSq() > EPSILON
+      ? upVector.clone().normalize()
+      : new THREE.Vector3(0, 0, 1);
+  const localUpFace = getCuboidResizeFaceFromNormal(
+    effectiveUp.clone().applyQuaternion(quaternion.clone().invert()),
+  );
+  const currentUp = (
+    localUpFace ? getCuboidResizeFaceAxis(localUpFace) : { axis: 2, sign: 1 }
+  ) as SignedAxis;
+
+  // The new heading claims one axis; `up` fills whichever of the remaining
+  // two slots it belongs in (see `buildRelabelFromAxes`) — keeping Y as Y /
+  // Z as Z wherever possible so dimension labels stay put.
+  let up: SignedAxis;
+
+  if (currentUp.axis !== newX.axis) {
+    // Up survives the relabel — keep its axis and sign.
+    up = currentUp;
+  } else if (newX.axis !== 0) {
+    // Drone case: the heading consumed the up axis, so the old heading axis
+    // (+X) takes over the up role.
+    up = { axis: 0, sign: 1 };
+  } else {
+    // The heading is flipping along the very axis that was up (±x while up is
+    // local X). Neither remaining axis was ever "up", so default to Z.
+    up = { axis: 2, sign: 1 };
+  }
+
+  return buildRelabelFromAxes(dimensions, quaternion, newX, up);
 }
