@@ -123,9 +123,10 @@ describe("foxgloveRawImageDecoder", () => {
   });
 
   it("degrades unsupported or malformed frames without throwing", () => {
+    const unsupportedData = Uint8Array.of(1, 2);
     mockDecode.mockReturnValue(
       rawImageMessage({
-        data: Uint8Array.of(1, 2),
+        data: unsupportedData,
         encoding: "nv12",
         height: 1,
         step: 2,
@@ -139,6 +140,9 @@ describe("foxgloveRawImageDecoder", () => {
       encoding: "nv12",
       unsupportedReason: "Foxglove RawImage encoding 'nv12' is unsupported",
     });
+    expect(unsupported.resourceHints?.transferables).toContain(
+      unsupportedData.buffer,
+    );
 
     mockDecode.mockReturnValue(
       rawImageMessage({

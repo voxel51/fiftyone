@@ -4,6 +4,7 @@ import type {
   PoseVisualization,
 } from "../../../../ir/index";
 import { VISUALIZATION_KIND } from "../../../../ir/index";
+import { errorMessage } from "../../../../utils/errors";
 // Context-only timing helper; nothing protobuf-specific despite its home.
 import { timingFromContext } from "../foxglove/protobuf/timing";
 import { decodeJsonRecord, finiteNumberField, recordField } from "./decode";
@@ -32,10 +33,7 @@ export const jsonPoseDecoder: Decoder = {
     try {
       message = decodeJsonRecord(bytes);
     } catch (error) {
-      return degraded(
-        context,
-        error instanceof Error ? error.message : "Invalid JSON message",
-      );
+      return degraded(context, errorMessage(error, "Invalid JSON message"));
     }
 
     const position = vector3(recordField(message, "pos", "position"));

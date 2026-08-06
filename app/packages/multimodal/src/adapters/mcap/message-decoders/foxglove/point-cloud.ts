@@ -27,6 +27,7 @@ import {
   progressivePointCloudSourceIndex,
   VISUALIZATION_KIND,
 } from "../../../../ir/index";
+import { throwIfAborted } from "../../../../utils/cancellation";
 import { rosDecodersForPayloads } from "../ros/factory";
 import { decodeProtobufMessage } from "./protobuf/index";
 import {
@@ -701,10 +702,8 @@ function throwIfPointCloudProjectionCancelled(
   signal: AbortSignal | undefined,
   iteration: number,
 ): void {
-  if (iteration % POINT_CLOUD_CANCEL_CHECK_INTERVAL === 0 && signal?.aborted) {
-    const error = new Error("The operation was aborted");
-    error.name = "AbortError";
-    throw error;
+  if (iteration % POINT_CLOUD_CANCEL_CHECK_INTERVAL === 0) {
+    throwIfAborted(signal);
   }
 }
 
