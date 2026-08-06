@@ -19,7 +19,6 @@ import {
 } from "../../state";
 import type { OverlayLabel } from "../loader";
 import type { BaseOverlayProps, EventHandlers, HoverState } from "../../types";
-import type { OverlayLabel } from "../loader";
 
 const getDetailsFromLabel = (overlay: OverlayLabel) => {
   return {
