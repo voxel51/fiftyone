@@ -9,11 +9,7 @@ export interface RegisterTimelineAudioProps {
   hasAudio?: boolean;
 }
 
-/**
- * Timeline audio for the frame-driven decode strategies, whose picture
- * pipelines produce silent bitmaps. The `html` strategy must not mount
- * this — its `<video>` already carries the audio.
- */
+/** The timeline's audio stream — the only source of sound. */
 export const RegisterTimelineAudio: React.FC<RegisterTimelineAudioProps> = ({
   videoSrc,
   hasAudio,

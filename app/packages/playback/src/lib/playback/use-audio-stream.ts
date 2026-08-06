@@ -13,6 +13,7 @@ import { usePlayback } from "./PlaybackProvider";
 import { usePlaybackStore } from "./playback-store-context";
 import {
   bumpStreamRangesVersion,
+  getAudioAvailable,
   setAudioAvailable,
   setAudioMuted,
 } from "./store-access";
@@ -44,6 +45,8 @@ export interface AudioBufferSnapshot {
   buffered: ReadonlyArray<readonly [number, number]>;
   /** Media duration in seconds, or NaN before metadata loads. */
   duration: number;
+  /** Whether the element holds a fatal `MediaError` (`element.error`). */
+  errored?: boolean;
 }
 
 /**
@@ -58,6 +61,13 @@ export function audioBufferReadiness(
   time: number,
   snapshot: AudioBufferSnapshot,
 ): BufferReadiness {
+  // A fatal media error means no further data will ever arrive —
+  // "loading" would hold the barrier forever, so a dead fetch yields to
+  // silence and the timeline plays on without sound.
+  if (snapshot.errored) {
+    return "ready";
+  }
+
   // Past the audio's own end there is nothing to play — silence is ready.
   if (
     Number.isFinite(snapshot.duration) &&
@@ -199,32 +209,49 @@ export function useAudioStream(
         element.removeEventListener("timeupdate", probeHasAudio);
       }
     };
-    // Wake a queued play request when new ranges land — the engine only
-    // re-evaluates pending playback on buffered-ranges signals.
-    const onProgress = () => bumpStreamRangesVersion(store);
+    // Wake a barrier-held engine — it only re-evaluates pending playback
+    // on buffered-ranges signals. "error" is wired to the same signal: a
+    // fatal error flips readiness to "ready" (see audioBufferReadiness),
+    // and the engine must re-poll to see it and release the barrier.
+    const wakeEngine = () => bumpStreamRangesVersion(store);
+    const onError = () => {
+      // `element.error` stays null for non-fatal error events
+      if (element.error) {
+        setAudioAvailable(store, "error");
+      }
+      wakeEngine();
+    };
 
     element.addEventListener("loadedmetadata", onLoadedMetadata);
     element.addEventListener("loadeddata", probeHasAudio);
     // `webkitAudioDecodedByteCount` stays 0 until decode starts, so keep
     // probing on timeupdate until a conclusive answer arrives.
     element.addEventListener("timeupdate", probeHasAudio);
-    element.addEventListener("progress", onProgress);
-    element.addEventListener("canplay", onProgress);
-    element.addEventListener("canplaythrough", onProgress);
+    element.addEventListener("progress", wakeEngine);
+    element.addEventListener("canplay", wakeEngine);
+    element.addEventListener("canplaythrough", wakeEngine);
+    element.addEventListener("error", onError);
 
     return () => {
       element.removeEventListener("loadedmetadata", onLoadedMetadata);
       element.removeEventListener("loadeddata", probeHasAudio);
       element.removeEventListener("timeupdate", probeHasAudio);
-      element.removeEventListener("progress", onProgress);
-      element.removeEventListener("canplay", onProgress);
-      element.removeEventListener("canplaythrough", onProgress);
+      element.removeEventListener("progress", wakeEngine);
+      element.removeEventListener("canplay", wakeEngine);
+      element.removeEventListener("canplaythrough", wakeEngine);
+      element.removeEventListener("error", onError);
       element.pause();
       // Release the media resource — dropping the reference alone leaves
       // the fetch/decoder alive until GC.
       element.removeAttribute("src");
       element.load();
       elementRef.current = null;
+      // An error can land before metadata, when the availability effect
+      // below never ran — its cleanup can't clear the status, so the
+      // element's own teardown must.
+      if (getAudioAvailable(store) === "error") {
+        setAudioAvailable(store, "unavailable");
+      }
       setMetadataReady(false);
       setHasAudio(null);
     };
@@ -280,8 +307,8 @@ export function useAudioStream(
     if (!available) {
       return undefined;
     }
-    setAudioAvailable(store, true);
-    return () => setAudioAvailable(store, false);
+    setAudioAvailable(store, "available");
+    return () => setAudioAvailable(store, "unavailable");
   }, [available, store]);
 
   // Activation: subscribed (and therefore barrier-gating) only while the
@@ -397,5 +424,6 @@ function snapshotElement(element: HTMLAudioElement): AudioBufferSnapshot {
     readyState: element.readyState,
     buffered,
     duration: element.duration,
+    errored: element.error !== null,
   };
 }

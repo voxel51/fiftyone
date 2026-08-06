@@ -18,6 +18,8 @@ import styles from "./TimelineControls.module.css";
 /** Arrow-key volume increment. */
 const KEY_STEP = 0.05;
 
+const ERROR_TITLE = "Audio failed to load";
+
 /**
  * Mute toggle + volume slider for timeline audio. Renders nothing unless
  * an audio integration has published `audioAvailableAtom`.
@@ -26,16 +28,17 @@ const KEY_STEP = 0.05;
  * unmute restores it.
  */
 const VolumeControl: React.FC = () => {
-  const available = useAudioAvailable();
+  const availability = useAudioAvailable();
   const muted = useAudioMuted();
   const volume = useAudioVolume();
   const store = usePlaybackStore();
 
-  if (!available) {
+  if (availability === "unavailable") {
     return null;
   }
+  const errored = availability === "error";
 
-  const shown = muted ? 0 : volume;
+  const shown = errored || muted ? 0 : volume;
 
   const unmute = () => {
     // never unmute into silence
@@ -56,6 +59,9 @@ const VolumeControl: React.FC = () => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (errored) {
+      return;
+    }
     const dir =
       e.key === "ArrowRight" || e.key === "ArrowUp"
         ? 1
@@ -74,22 +80,29 @@ const VolumeControl: React.FC = () => {
     <span
       className={styles.volumeGroup}
       data-testid="timeline-controls-volume-group"
+      title={errored ? ERROR_TITLE : undefined}
       onKeyDown={handleKeyDown}
     >
       <Button
         variant={Variant.Icon}
         size={Size.Xs}
         data-testid="timeline-controls-mute"
-        leadingIcon={muted ? VolumeOffIcon : VolumeUpIcon}
-        aria-label={muted ? "Unmute" : "Mute"}
+        disabled={errored}
+        leadingIcon={muted || errored ? VolumeOffIcon : VolumeUpIcon}
+        aria-label={errored ? ERROR_TITLE : muted ? "Unmute" : "Mute"}
         aria-pressed={muted}
         onClick={muted ? unmute : () => setAudioMuted(store, true)}
       />
       <SingleValueSlider
         bare
-        className={styles.volumeSlider}
+        className={
+          errored
+            ? `${styles.volumeSlider} ${styles.volumeSliderDisabled}`
+            : styles.volumeSlider
+        }
         data-testid="timeline-controls-volume"
         aria-label="Volume"
+        aria-disabled={errored}
         min={0}
         max={1}
         step={0.01}

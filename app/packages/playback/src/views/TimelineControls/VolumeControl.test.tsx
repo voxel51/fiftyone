@@ -1,7 +1,10 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React, { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { DEFAULT_AUDIO_VOLUME } from "../../lib/playback/atoms";
+import {
+  type AudioAvailability,
+  DEFAULT_AUDIO_VOLUME,
+} from "../../lib/playback/atoms";
 import { PlaybackProvider } from "../../lib/playback/PlaybackProvider";
 import { usePlaybackStore } from "../../lib/playback/playback-store-context";
 import {
@@ -16,21 +19,23 @@ import TimelineControls from "./TimelineControls";
 let store: PlaybackStore | null = null;
 
 /** Captures the provider's store and publishes audio availability. */
-const Capture: React.FC<{ available?: boolean }> = ({ available = true }) => {
+const Capture: React.FC<{ availability?: AudioAvailability }> = ({
+  availability = "available",
+}) => {
   const s = usePlaybackStore();
   store = s;
   useEffect(() => {
-    if (available) {
-      setAudioAvailable(s, true);
+    if (availability !== "unavailable") {
+      setAudioAvailable(s, availability);
     }
-  }, [available, s]);
+  }, [availability, s]);
   return null;
 };
 
-function renderControls(opts: { available?: boolean } = {}) {
+function renderControls(opts: { availability?: AudioAvailability } = {}) {
   return render(
     <PlaybackProvider duration={10} stepInterval={1 / 30}>
-      <Capture available={opts.available} />
+      <Capture availability={opts.availability} />
       <TimelineControls />
     </PlaybackProvider>,
   );
@@ -46,8 +51,16 @@ describe("VolumeControl", () => {
   afterEach(() => cleanup());
 
   it("renders nothing while no audio integration has published availability", () => {
-    renderControls({ available: false });
+    renderControls({ availability: "unavailable" });
     expect(screen.queryByTestId("timeline-controls-volume-group")).toBeNull();
+  });
+
+  it("disables the control with an error tooltip on a fatal audio error", () => {
+    renderControls({ availability: "error" });
+    const group = screen.getByTestId("timeline-controls-volume-group");
+    expect(group.getAttribute("title")).toBe("Audio failed to load");
+    const mute = screen.getByTestId("timeline-controls-mute");
+    expect(mute.hasAttribute("disabled")).toBe(true);
   });
 
   it("renders the group once audio is available, muted by default", () => {

@@ -78,6 +78,11 @@
   width: 56px;
 }
 
+.volumeSliderDisabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .divider {
   width: 1px;
   height: 12px;

@@ -251,13 +251,10 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
     // Scrubbing stays continuous — only the settle position snaps.
     <PlaybackProvider snapToFrameOnSettle>
       <VideoAnnotationHandlerRegistration />
-      {/* the `html` tile's <video> carries its own audio */}
-      {strategy !== "html" && (
-        <RegisterTimelineAudio
-          videoSrc={videoSrc}
-          hasAudio={resolution.hasAudio}
-        />
-      )}
+      <RegisterTimelineAudio
+        videoSrc={videoSrc}
+        hasAudio={resolution.hasAudio}
+      />
       {registered}
     </PlaybackProvider>
   );

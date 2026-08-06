@@ -57,8 +57,8 @@ export type {
   TimelineDisplayValue,
 } from "./src/lib/playback/timeline-display";
 export { usePlaybackStream } from "./src/lib/playback/use-playback-stream";
+export type { AudioAvailability } from "./src/lib/playback/atoms";
 export { useAudioStream } from "./src/lib/playback/use-audio-stream";
-export { useMediaElementAudio } from "./src/lib/playback/use-media-element-audio";
 export {
   usePresentedMediaTime,
   useVideoStream,

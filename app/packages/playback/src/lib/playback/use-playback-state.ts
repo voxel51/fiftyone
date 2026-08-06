@@ -15,6 +15,7 @@
 import { useAtomValue } from "jotai";
 import {
   achievedSpeedAtom,
+  type AudioAvailability,
   audioAvailableAtom,
   audioMutedAtom,
   audioVolumeAtom,
@@ -90,8 +91,8 @@ export function useAudioMuted(): boolean {
   return useAtomValue(audioMutedAtom, { store });
 }
 
-/** Whether the timeline has audio to control. Write via `setAudioAvailable`. */
-export function useAudioAvailable(): boolean {
+/** The timeline's audio status. Write via `setAudioAvailable`. */
+export function useAudioAvailable(): AudioAvailability {
   const store = usePlaybackStore();
   return useAtomValue(audioAvailableAtom, { store });
 }

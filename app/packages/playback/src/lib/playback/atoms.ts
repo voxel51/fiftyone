@@ -188,10 +188,14 @@ export const audioMutedAtom = atomWithStorage(
 );
 
 /**
- * Whether the timeline has audio to control. Audio integrations write it;
- * the volume UI renders nothing while false.
+ * Audio status for the volume UI: "unavailable" renders no control,
+ * "available" renders it, "error" (a fatal `MediaError` on the source)
+ * renders it disabled with an explanatory tooltip. Audio integrations
+ * write it.
  */
-export const audioAvailableAtom = atom(false);
+export type AudioAvailability = "unavailable" | "available" | "error";
+
+export const audioAvailableAtom = atom<AudioAvailability>("unavailable");
 
 /**
  * Fired on discontinuous playhead jumps: user seek, step forward/back,

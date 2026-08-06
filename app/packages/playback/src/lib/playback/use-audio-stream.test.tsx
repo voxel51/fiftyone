@@ -7,6 +7,7 @@ import {
   playheadAtom,
   seekEventAtom,
   speedAtom,
+  streamRangesVersionAtom,
 } from "./atoms";
 import { PlaybackProvider, usePlaybackStore } from "./PlaybackProvider";
 import {
@@ -94,6 +95,25 @@ describe("audioBufferReadiness", () => {
         duration: Number.NaN,
       }),
     ).toBe("loading");
+  });
+
+  it("short-circuits to ready on a fatal media error — a dead fetch never gates", () => {
+    expect(
+      audioBufferReadiness(5, {
+        readyState: HAVE_CURRENT_DATA,
+        buffered: [],
+        duration: 60,
+        errored: true,
+      }),
+    ).toBe("ready");
+    expect(
+      audioBufferReadiness(5, {
+        readyState: 0,
+        buffered: [],
+        duration: Number.NaN,
+        errored: true,
+      }),
+    ).toBe("ready");
   });
 });
 
@@ -190,6 +210,7 @@ interface FakeAudioElement {
     start(i: number): number;
     end(i: number): number;
   };
+  error: MediaError | null;
   play: ReturnType<typeof vi.fn>;
   pause: ReturnType<typeof vi.fn>;
   load: ReturnType<typeof vi.fn>;
@@ -216,6 +237,7 @@ function makeAudioElement(): FakeAudioElement {
     volume: 1,
     muted: false,
     buffered: { length: 0, start: () => 0, end: () => 0 },
+    error: null,
     _playResult: Promise.resolve(),
     play: vi.fn(() => {
       el.paused = false;
@@ -284,7 +306,7 @@ describe("useAudioStream (provider integration)", () => {
   it("creates no element and publishes no availability while disabled", () => {
     const { result } = renderAudio({ enabled: false });
     expect(created).toHaveLength(0);
-    expect(getAudioAvailable(result.current.store)).toBe(false);
+    expect(getAudioAvailable(result.current.store)).toBe("unavailable");
   });
 
   it("publishes availability only once metadata arrives", () => {
@@ -292,9 +314,9 @@ describe("useAudioStream (provider integration)", () => {
     expect(created).toHaveLength(1);
     const el = created[0];
     expect(el.preservesPitch).toBe(true);
-    expect(getAudioAvailable(result.current.store)).toBe(false);
+    expect(getAudioAvailable(result.current.store)).toBe("unavailable");
     act(() => el._fire("loadedmetadata"));
-    expect(getAudioAvailable(result.current.store)).toBe(true);
+    expect(getAudioAvailable(result.current.store)).toBe("available");
   });
 
   it("tolerates unmute (subscribe) before metadata (register)", async () => {
@@ -409,6 +431,62 @@ describe("useAudioStream (provider integration)", () => {
     expect(el.currentTime).toBe(5);
   });
 
+  it("wakes a barrier-held engine when the audio fetch dies", () => {
+    const { result } = renderAudio();
+    const el = created[0];
+    act(() => el._fire("loadedmetadata"));
+
+    const before = result.current.store.get(streamRangesVersionAtom);
+    act(() => {
+      el.error = { code: 2 /* MEDIA_ERR_NETWORK */ } as MediaError;
+      el._fire("error");
+    });
+    // the engine re-polls readiness on this signal; with element.error set,
+    // audioBufferReadiness short-circuits to "ready" and the barrier lifts
+    expect(result.current.store.get(streamRangesVersionAtom)).toBeGreaterThan(
+      before,
+    );
+  });
+
+  it("publishes the fatal error for the UI and clears it on teardown", () => {
+    const { result, unmount } = renderAudio();
+    const el = created[0];
+    act(() => el._fire("loadedmetadata"));
+    expect(getAudioAvailable(result.current.store)).toBe("available");
+
+    act(() => {
+      el.error = { code: 2 /* MEDIA_ERR_NETWORK */ } as MediaError;
+      el._fire("error");
+    });
+    expect(getAudioAvailable(result.current.store)).toBe("error");
+
+    const store = result.current.store;
+    unmount();
+    expect(getAudioAvailable(store)).toBe("unavailable");
+  });
+
+  it("clears a pre-metadata fatal error on teardown", () => {
+    const { result, unmount } = renderAudio();
+    const el = created[0];
+    act(() => {
+      el.error = { code: 4 /* MEDIA_ERR_SRC_NOT_SUPPORTED */ } as MediaError;
+      el._fire("error");
+    });
+    expect(getAudioAvailable(result.current.store)).toBe("error");
+
+    const store = result.current.store;
+    unmount();
+    expect(getAudioAvailable(store)).toBe("unavailable");
+  });
+
+  it("ignores non-fatal error events (element.error stays null)", () => {
+    const { result } = renderAudio();
+    const el = created[0];
+    act(() => el._fire("loadedmetadata"));
+    act(() => el._fire("error"));
+    expect(getAudioAvailable(result.current.store)).toBe("available");
+  });
+
   it("drops availability and never plays on a conclusive no-track verdict", async () => {
     const { result } = renderAudio();
     const el = created[0];
@@ -416,7 +494,7 @@ describe("useAudioStream (provider integration)", () => {
     act(() => el._fire("loadedmetadata"));
     act(() => el._fire("loadeddata"));
     expect(result.current.hasAudio).toBe(false);
-    expect(getAudioAvailable(result.current.store)).toBe(false);
+    expect(getAudioAvailable(result.current.store)).toBe("unavailable");
 
     act(() => setAudioMuted(result.current.store, false));
     await act(async () => {
@@ -457,12 +535,12 @@ describe("useAudioStream (provider integration)", () => {
     const el = created[0];
     act(() => el._fire("loadedmetadata"));
     const store = result.current.store;
-    expect(getAudioAvailable(store)).toBe(true);
+    expect(getAudioAvailable(store)).toBe("available");
 
     unmount();
     expect(el.pause).toHaveBeenCalled();
     expect(el.removeAttribute).toHaveBeenCalledWith("src");
     expect(el.load).toHaveBeenCalled();
-    expect(getAudioAvailable(store)).toBe(false);
+    expect(getAudioAvailable(store)).toBe("unavailable");
   });
 });
