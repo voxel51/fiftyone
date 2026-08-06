@@ -56,7 +56,7 @@ import { McapRawMessageProvider } from "./mcap-raw-message-context";
 import { McapSceneUpdateHistoryProvider } from "./mcap-scene-update-history-context";
 import { McapSelectionHotkeys } from "./mcap-selected-object";
 import McapAddTileMenu from "./McapAddTileMenu";
-import McapInspectorSidebar from "./McapInspectorSidebar";
+import McapRightSidebar from "./McapRightSidebar";
 import styles from "./McapModalRenderer.module.css";
 import {
   McapNetworkHealthTracker,
@@ -418,7 +418,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                                   />
                                 ) : null
                               }
-                              rightSidebar={<McapInspectorSidebar />}
+                              rightSidebar={<McapRightSidebar />}
                               sharedImageWebGpuViews
                               defaultRightOpen={false}
                               defaultLeftOpen={defaultLeftOpen}

@@ -239,6 +239,12 @@ const Modal = () => {
   );
 
   const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
+  const mediaType = useRecoilValue(fos.mediaType);
+  // Multimodal viewers use their own right-panel tabs (Inspect/Fields) and
+  // don't populate the classic sidebar's projection/aggregation data, so
+  // mounting it here would only fire redundant queries.
+  const showClassicSidebar =
+    isSidebarVisible && mediaType !== MEDIA_TYPE_MULTIMODAL;
 
   useKeyBindings(KnownContexts.Modal, [
     {
@@ -347,7 +353,7 @@ const Modal = () => {
               <ModalSpace />
               <ModalStatusBar />
             </SpacesContainer>
-            {isSidebarVisible && <Sidebar />}
+            {showClassicSidebar && <Sidebar />}
             <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
 
             {jsonPanel.isOpen && (
