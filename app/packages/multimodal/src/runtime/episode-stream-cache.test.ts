@@ -148,6 +148,28 @@ describe("EpisodeStreamCache", () => {
     });
   });
 
+  it("enumerates each live transferable backing store once", () => {
+    const cache = new EpisodeStreamCache();
+    const first = new ArrayBuffer(16);
+    const second = new ArrayBuffer(32);
+    const message = {
+      ...MESSAGE,
+      output: {
+        resourceHints: {
+          sizeBytes: 48,
+          transferables: [first, second, first],
+        },
+      },
+    } satisfies DecodedFrame;
+
+    cache.set(1n, message);
+    cache.set(2n, message);
+
+    expect(cache.transferableBuffers()).toEqual([first, second]);
+    cache.clear();
+    expect(cache.transferableBuffers()).toEqual([]);
+  });
+
   it("canonicalizes equivalent indexed artifacts while the record is resident", () => {
     const cache = new EpisodeStreamCache();
     const first = { ...MESSAGE, recordId: "record:1" };
