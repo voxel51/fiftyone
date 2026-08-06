@@ -49,6 +49,9 @@ export function reconcilePolyline(
     label: {
       ...overlay.label,
       ...(stagedTransform?.misc ?? {}),
+      // structural fields are never `misc`'s to write
+      _id: overlay.label._id,
+      _cls: overlay.label._cls,
       points3d: finalPoints3d,
     },
   } as ReconciledPolyline3D;
@@ -104,12 +107,14 @@ export function createNewPolyline(
 
   return {
     label: {
+      // `misc` first: extras (closed/filled/…) apply, but the structural and
+      // validated fields below are never `misc`'s to write
+      ...(transformData.misc ?? {}),
       _id: labelId,
       _cls: "Polyline",
       label: transformData.label,
       tags: [],
       points3d: validPoints3d,
-      ...(transformData.misc ?? {}),
     },
     path: transformData.path ?? "",
     sampleId: currentSampleId,

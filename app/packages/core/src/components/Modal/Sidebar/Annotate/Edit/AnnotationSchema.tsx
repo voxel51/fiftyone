@@ -251,7 +251,19 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         applyConditionalOwnerChange(name, allAttributes, data ?? {}, value);
       }
 
-      if (isEqual(value, data)) return;
+      // Guard on the form-managed slice only: `value` merges engine truth,
+      // whose geometry drifts from the form's `data` snapshot as gestures
+      // commit — a full-object compare would turn an unchanged blur into a
+      // no-op undoable transaction.
+      const editedKeys = new Set([
+        ...Object.keys(formResult),
+        ...uniqueConditionalNames,
+      ]);
+      const snapshot = (data ?? {}) as Record<string, unknown>;
+      const changed = [...editedKeys].some(
+        (key) => key && !isEqual(value[key], snapshot[key]),
+      );
+      if (!changed) return;
 
       // `value` is already pure label data: every surface keeps view state
       // outside the document (3D working entries nest it under `ui`), so

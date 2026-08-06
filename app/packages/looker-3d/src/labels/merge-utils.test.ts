@@ -99,6 +99,23 @@ describe("reconcilePolyline", () => {
       ...doc,
     }) as OverlayLabel & { label: { points3d: [number, number, number][][] } };
 
+  it("never lets misc overwrite structural fields on reconcile", () => {
+    const overlay = createPolylineOverlay([
+      [
+        [1, 2, 3],
+        [4, 5, 6],
+      ],
+    ]);
+
+    const result = reconcilePolyline(overlay, {
+      misc: { closed: true, _id: "forged-id", _cls: "Detection" },
+    } as unknown as PolylinePointTransformData);
+
+    expect(result.label._id).toBe(overlay.label._id);
+    expect(result.label._cls).toBe("Polyline");
+    expect(result.label.closed).toBe(true);
+  });
+
   it("returns overlay with original points when no staged transform provided", () => {
     const originalPoints: [number, number, number][][] = [
       [
@@ -310,6 +327,42 @@ describe("createNewDetection", () => {
 });
 
 describe("createNewPolyline", () => {
+  it("never lets misc overwrite structural or validated fields", () => {
+    const result = createNewPolyline(
+      "real-id",
+      {
+        segments: [
+          {
+            points: [
+              [1, 2, 3],
+              [4, 5, 6],
+            ],
+          },
+        ],
+        path: "predictions.polylines",
+        label: "my-polyline",
+        misc: {
+          closed: true,
+          _id: "forged-id",
+          _cls: "Detection",
+          points3d: [[[9, 9, 9]]],
+        },
+      },
+      "sample-789",
+    );
+
+    expect(result!.label._id).toBe("real-id");
+    expect(result!.label._cls).toBe("Polyline");
+    expect(result!.label.points3d).toEqual([
+      [
+        [1, 2, 3],
+        [4, 5, 6],
+      ],
+    ]);
+    // extras still apply
+    expect(result!.label.closed).toBe(true);
+  });
+
   it("creates a new polyline with valid segments", () => {
     const labelId = "new-polyline-123";
     const transformData: PolylinePointTransformData = {

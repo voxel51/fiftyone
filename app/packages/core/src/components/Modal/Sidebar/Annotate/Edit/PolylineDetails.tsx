@@ -64,12 +64,21 @@ export const PolylineDetails = () => {
   const sample = useSceneSampleId();
   const field = selected?.field ?? null;
   const labelId = (currentDataValue?._id as string | undefined) ?? "";
-  const committed = useEngineSelector(engine, (e) =>
-    labelId && field && sample
-      ? (e.getLabel({ sample, path: field, instanceId: labelId }) as
-          | fos.PolylineAnnotationLabel["data"]
-          | undefined)
-      : undefined,
+  const committed = useEngineSelector(
+    engine,
+    (e) =>
+      labelId && field && sample
+        ? (e.getLabel({ sample, path: field, instanceId: labelId }) as
+            | fos.PolylineAnnotationLabel["data"]
+            | undefined)
+        : undefined,
+    // only the vertex data feeds the counts — re-render on geometry changes,
+    // not on every engine version bump
+    (a, b) =>
+      a === b ||
+      (a?._id === b?._id &&
+        a?.points3d === b?.points3d &&
+        a?.points === b?.points),
   );
 
   const { segmentCount, vertexCount } = useMemo(() => {
