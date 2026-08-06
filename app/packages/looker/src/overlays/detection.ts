@@ -1,15 +1,13 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  */
-import { NONFINITES } from "@fiftyone/utilities";
-
 import {
   currentModalUniqueIdJotaiAtom,
   isHoveringParticularLabelWithInstanceConfig,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
 import { INFO_COLOR } from "../constants";
-import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
+import { BaseState, BoundingBox, Coordinates } from "../state";
 import { distanceFromLineSegment } from "../util";
 import { RENDER_STATUS_PAINTED, RENDER_STATUS_PENDING } from "../worker/shared";
 import {
@@ -249,14 +247,14 @@ export default class DetectionOverlay<
 
   private getLabelText(state: Readonly<State>): string {
     const attributes = state.options.shownLabelAttributes?.[this.field];
-    let text = "";
-    if (state.options.showLabel) {
-      text = attributes
-        ? getLabelAttributesText(this.label, attributes)
-        : this.label.label
-          ? `${this.label.label}`
-          : "";
-    }
+    let text = attributes
+      ? getLabelAttributesText(
+          this.label,
+          attributes.filter((name) => name !== "index"),
+        )
+      : this.label.label
+        ? `${this.label.label}`
+        : "";
 
     const hasIndex =
       (typeof this.label.index === "string" ||
@@ -265,7 +263,7 @@ export default class DetectionOverlay<
 
     const hasInstanceId = Boolean(this.label.instance?._id);
 
-    if (state.options.showIndex && (hasIndex || hasInstanceId)) {
+    if (attributes?.includes("index") && (hasIndex || hasInstanceId)) {
       if (text.length > 0) {
         text += " ";
       }
@@ -279,20 +277,6 @@ export default class DetectionOverlay<
           this.label,
         )}`;
       }
-    }
-
-    if (
-      state.options.showConfidence &&
-      !attributes?.includes("confidence") &&
-      (!isNaN(this.label.confidence as number) ||
-        NONFINITES.has(this.label.confidence as NONFINITE))
-    ) {
-      text.length && (text += " ");
-      text += `(${
-        typeof this.label.confidence === "number"
-          ? Number(this.label.confidence).toFixed(2)
-          : this.label.confidence
-      })`;
     }
 
     return text;

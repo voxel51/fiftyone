@@ -193,12 +193,9 @@ export interface BaseOptions {
   };
   selectedLabelTags?: string[];
   attributeVisibility: object;
-  showConfidence: boolean;
   showControls: boolean;
-  showIndex: boolean;
   showJSON: boolean;
   showHelp: boolean;
-  showLabel: boolean;
   showOverlays: boolean;
   showPatchLabels: boolean;
   shownLabelAttributes: { [path: string]: string[] };
@@ -476,12 +473,9 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   selectedLabelTypes: {},
   labelSelectionStyle: { default: "dashed", alt: "dashed" },
   selectedLabelTags: undefined,
-  showConfidence: false,
   showControls: false,
-  showIndex: false,
   showJSON: false,
   showHelp: false,
-  showLabel: false,
   showPatchLabels: false,
   shownLabelAttributes: {},
   showTooltip: false,

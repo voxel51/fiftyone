@@ -308,23 +308,9 @@ export class ClassificationsOverlay<
     label: Label,
   ): string {
     const attributes = state.options.shownLabelAttributes?.[field];
-    let text = "";
-    if (state.options.showLabel) {
-      text = attributes
-        ? getLabelAttributesText(label, attributes)
-        : `${getText(this.getCls(field, state), label)}`;
-    }
-
-    if (
-      state.options.showConfidence &&
-      !attributes?.includes("confidence") &&
-      !isNaN(label.confidence as number)
-    ) {
-      text.length && (text += " ");
-      text += `(${Number(label.confidence).toFixed(2)})`;
-    }
-
-    return text;
+    return attributes
+      ? getLabelAttributesText(label, attributes)
+      : `${getText(this.getCls(field, state), label)}`;
   }
 
   private strokeBorder(

@@ -67,20 +67,11 @@ export const lookerOptions = selectorFamily<
       if (modal) {
         const panels = get(atoms.lookerPanels);
         extra = {
-          showConfidence: get(
-            selectors.appConfigOption({ modal: true, key: "showConfidence" }),
-          ),
           showTooltip: get(
             selectors.appConfigOption({ modal: true, key: "showTooltip" }),
           ),
           showHelp: panels.help.isOpen,
-          showIndex: get(
-            selectors.appConfigOption({ modal: true, key: "showIndex" }),
-          ),
           showJSON: panels.json.isOpen,
-          showLabel: get(
-            selectors.appConfigOption({ modal: true, key: "showLabel" }),
-          ),
           useFrameNumber: get(
             selectors.appConfigOption({ modal: true, key: "useFrameNumber" }),
           ),
