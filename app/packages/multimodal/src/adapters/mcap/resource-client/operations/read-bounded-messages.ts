@@ -1,9 +1,5 @@
 import type { DecodeClient } from "../../../../query/decoding";
-import { isEpisodeReadCancelledError } from "../../../../ports";
-import {
-  isMcapBoundedReadCancelledError,
-  McapBoundedReadCancelledError,
-} from "../../reader/bounded-read-cancellation";
+import { consumeMcapBoundedGrant } from "../../reader/consume-bounded-grant";
 import {
   type McapIndexedReaderLike,
   type McapReadContinuation,
@@ -48,17 +44,9 @@ export async function readMcapBoundedMessages({
     topics: request.topics,
   });
   const messages: McapDecodedMessage[] = [];
-  try {
-    // The raw chunk executor may have completed just before a worker cancel
-    // message arrived. Yield before payload decode/result delivery so that
-    // cancellation still suppresses an obsolete history result.
-    await yieldToCancellation();
-    throwIfAborted(signal);
-    for (const [index, message] of result.messages.entries()) {
-      if (index > 0 && index % 32 === 0) {
-        await yieldToCancellation();
-      }
-      throwIfAborted(signal);
+  await consumeMcapBoundedGrant({
+    items: result.messages,
+    onItem: async (message) => {
       messages.push(
         await decodeMcapMessage({
           decodeClient,
@@ -69,21 +57,13 @@ export async function readMcapBoundedMessages({
           timeline,
         }),
       );
-      throwIfAborted(signal);
-    }
-  } catch (error) {
-    if (
-      signal?.aborted ||
-      isEpisodeReadCancelledError(error) ||
-      isMcapBoundedReadCancelledError(error)
-    ) {
-      throw new McapBoundedReadCancelledError({
-        ...result.usage,
-        messagesDecoded: messages.length,
-      });
-    }
-    throw error;
-  }
+    },
+    signal,
+    usage: () => ({
+      ...result.usage,
+      messagesDecoded: messages.length,
+    }),
+  });
   return {
     ...(result.continuation ? { continuation: result.continuation } : {}),
     coverageByTopic: result.coverageByTopic,
@@ -97,17 +77,4 @@ export async function readMcapBoundedMessages({
       messagesDecoded: messages.length,
     },
   };
-}
-
-function yieldToCancellation(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
-}
-
-function throwIfAborted(signal: AbortSignal | undefined): void {
-  if (!signal?.aborted) {
-    return;
-  }
-  const error = new Error("MCAP bounded read aborted");
-  error.name = "AbortError";
-  throw error;
 }
