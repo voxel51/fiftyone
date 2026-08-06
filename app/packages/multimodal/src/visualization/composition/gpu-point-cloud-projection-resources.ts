@@ -7,11 +7,6 @@ import {
   updateGpuPointCloudChannelResource,
   type GpuPointCloudChannelResource,
 } from "../scene-3d/gpu/gpu-point-cloud-channel-nodes";
-import {
-  isVisualizationCostObserved,
-  recordVisualizationCost,
-  visualizationCostNowMs,
-} from "../render-cost-observer";
 
 const POINT_COMPONENT_COUNT = 3;
 
@@ -179,18 +174,6 @@ function createResource(
     sourceIndices: payload.sourceIndices,
     streamKey,
   };
-  if (isVisualizationCostObserved()) {
-    const bytes = projectionResourceBytes(resource);
-    recordVisualizationCost({
-      declaredGpuBytesDelta: bytes,
-      measurementStatus: "measured",
-      operation: "point-cloud-projection-storage",
-      residentCpuBytesDelta: bytes,
-      sourceHint: streamKey,
-      sourceHintKind: "stream-key",
-      stage: "resource-allocate",
-    });
-  }
   return resource;
 }
 
@@ -199,9 +182,6 @@ function updateResource(
   contentKey: string,
   payload: PointCloudRenderPayload,
 ): void {
-  const observed = isVisualizationCostObserved();
-  const startMs = observed ? visualizationCostNowMs() : 0;
-  const previousBytes = observed ? projectionResourceBytes(resource) : 0;
   // Swap transferred views rather than copying them. Because every camera
   // shares this BufferAttribute object, needsUpdate produces one upload for
   // the new frame instead of one CPU projection/upload per camera.
@@ -272,21 +252,6 @@ function updateResource(
   resource.contentKey = contentKey;
   resource.sampledPointCount = normalizedSampleCount(payload);
   totalFrameUpdates += 1;
-  if (observed) {
-    const nextBytes = projectionResourceBytes(resource);
-    recordVisualizationCost({
-      declaredGpuBytesDelta: nextBytes - previousBytes,
-      durationMs: visualizationCostNowMs() - startMs,
-      inputBytes: nextBytes,
-      measurementStatus: "measured",
-      operation: "point-cloud-projection-storage",
-      outputBytes: nextBytes,
-      residentCpuBytesDelta: nextBytes - previousBytes,
-      sourceHint: resource.streamKey,
-      sourceHintKind: "stream-key",
-      stage: "resource-update",
-    });
-  }
 }
 
 function replaceAttributeArray(
@@ -317,32 +282,5 @@ function normalizedSampleCount(payload: PointCloudRenderPayload): number {
 }
 
 function disposeResource(resource: InternalProjectionResource): void {
-  if (isVisualizationCostObserved()) {
-    const bytes = projectionResourceBytes(resource);
-    recordVisualizationCost({
-      declaredGpuBytesDelta: -bytes,
-      measurementStatus: "measured",
-      operation: "point-cloud-projection-storage",
-      residentCpuBytesDelta: -bytes,
-      sourceHint: resource.streamKey,
-      sourceHintKind: "stream-key",
-      stage: "resource-release",
-    });
-  }
   resource.geometry.dispose();
 }
-
-function projectionResourceBytes(
-  resource: GpuPointCloudProjectionResource,
-): number {
-  return (
-    resource.positionAttribute.array.byteLength +
-    resource.sourceIndexAttribute.array.byteLength +
-    (resource.colorChannel?.attribute.array.byteLength ?? 0) +
-    [...resource.scalarChannels.values()].reduce(
-      (sum, channel) => sum + channel.attribute.array.byteLength,
-      0,
-    )
-  );
-}
-

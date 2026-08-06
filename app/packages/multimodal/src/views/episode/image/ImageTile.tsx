@@ -223,7 +223,6 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           ? previous
           : { width, height },
       );
-
     },
     [requestedImageContentTimeNs, sourceKey, stream],
   );
@@ -729,13 +728,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
             frame={frame}
             className={styles.panel}
             fit={IMAGE_FIT}
-            onImageLoaded={(width, height) =>
-              setImageDims((prev) =>
-                prev?.width === width && prev?.height === height
-                  ? prev
-                  : { width, height },
-              )
-            }
+            onImageLoaded={handleImageLoaded}
             onResetView={imagePanZoom.resetView}
             notices={imageNotices}
             sceneChildren={

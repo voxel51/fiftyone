@@ -222,11 +222,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     const cancelledIds = this.foregroundLane.transport.cancelPending(
       (pending) => pending.type === "readSynchronizedMessageBatch",
     );
-    this.postCancelRequests(
-      this.foregroundLane,
-      cancelledIds,
-      "seek-preemption",
-    );
+    this.postCancelRequests(this.foregroundLane, cancelledIds);
   }
 
   async *readDecodedMessages(

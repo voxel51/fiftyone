@@ -32,11 +32,6 @@ import {
 } from "../../../../ports";
 import { EpisodeFrameTransformStore } from "../../../../runtime/frame-transforms";
 import { mergeFrameTransformTimeRanges } from "../../../../runtime/frame-transform-ranges";
-import {
-  episodeLatencyDurationMs,
-  episodeLatencyNowMs,
-  markEpisodeLatencyEvent,
-} from "../../../../runtime/latency-observer";
 import { shouldDeferIdleWorkForStore } from "../../playback/network-health";
 import {
   dynamicChildrenForPlacementScopes,
@@ -233,10 +228,6 @@ export function useFrameTransformFetchScheduling({
       version: sourceGeneration,
     });
 
-    const bootstrapStartMs = episodeLatencyNowMs();
-    markEpisodeLatencyEvent("frame transform bootstrap request", undefined, {
-      onceKey: "frame-transform-bootstrap-request",
-    });
     Promise.resolve(capability.readBootstrap?.() ?? [])
       .then((samples) => {
         if (!active || sourceGeneration !== sourceGenerationRef.current) {
@@ -244,26 +235,6 @@ export function useFrameTransformFetchScheduling({
         }
 
         store.addStatic(samples.map(runtimeTransformSample));
-        markEpisodeLatencyEvent(
-          "frame transform bootstrap ready",
-          {
-            durationMs: episodeLatencyDurationMs(bootstrapStartMs),
-            samples: samples.length,
-          },
-          { onceKey: "frame-transform-bootstrap-ready" },
-        );
-        markEpisodeLatencyEvent(
-          "frame transforms interactive ready",
-          { frameIds: store.frameIds().length },
-          { onceKey: "frame-transforms-interactive-ready" },
-        );
-        if (dynamicRangeMode !== "range") {
-          markEpisodeLatencyEvent(
-            "frame transforms ready",
-            { frameIds: store.frameIds().length },
-            { onceKey: "frame-transforms-ready" },
-          );
-        }
         setState((current) => ({
           ...current,
           error: null,
@@ -368,19 +339,10 @@ export function useFrameTransformFetchScheduling({
         : fallbackRange;
       const requestedRangeKey = frameTransformRangeKey(requestedRange);
       const sourceGeneration = sourceGenerationRef.current;
-      const requestedRangeStartMs = episodeLatencyNowMs();
       inFlightPlacementRangesRef.current = [
         ...inFlightPlacementRangesRef.current,
         requestedRange,
       ];
-      markEpisodeLatencyEvent(
-        "frame transform current window request",
-        {
-          endTimeNs: requestedRange.endTimeNs,
-          startTimeNs: requestedRange.startTimeNs,
-        },
-        { onceKey: "first-frame-transform-current-window-request" },
-      );
       const read: Promise<PlacementReadResult> = (async () => {
         if (
           useExactPlacement &&
@@ -415,13 +377,11 @@ export function useFrameTransformFetchScheduling({
           }
 
           let indexedRange: EpisodeFrameTransformTimeRange;
-          let sampleCount: number;
           if (result.kind === "exact") {
             indexedRange = {
               endTimeNs: result.placement.indexedWindow.endNs,
               startTimeNs: result.placement.indexedWindow.startNs,
             };
-            sampleCount = result.placement.samples.length;
             storeRef.current?.addDynamic(
               result.placement.samples.map(runtimeTransformSample),
               indexedRange,
@@ -441,7 +401,6 @@ export function useFrameTransformFetchScheduling({
               );
               if (sourceGeneration !== sourceGenerationRef.current) return;
               indexedRange = fallback.indexedRange;
-              sampleCount += fallback.samples.length;
               storeRef.current?.addDynamic(
                 fallback.samples.map(runtimeTransformSample),
                 indexedRange,
@@ -449,20 +408,11 @@ export function useFrameTransformFetchScheduling({
             }
           } else {
             indexedRange = result.indexedRange;
-            sampleCount = result.samples.length;
             storeRef.current?.addDynamic(
               result.samples.map(runtimeTransformSample),
               indexedRange,
             );
           }
-          markEpisodeLatencyEvent(
-            "frame transform current window ready",
-            {
-              durationMs: episodeLatencyDurationMs(requestedRangeStartMs),
-              samples: sampleCount,
-            },
-            { onceKey: "first-frame-transform-current-window-ready" },
-          );
           retryCountRef.current.delete(requestedRangeKey);
           inFlightPlacementRangesRef.current =
             inFlightPlacementRangesRef.current.filter(
@@ -614,16 +564,6 @@ export function useFrameTransformFetchScheduling({
       runwayRange,
     ];
     const sourceGeneration = sourceGenerationRef.current;
-    const runwayRangeStartMs = episodeLatencyNowMs();
-    markEpisodeLatencyEvent(
-      "frame transform runway request",
-      {
-        endTimeNs: runwayRange.endTimeNs,
-        startTimeNs: runwayRange.startTimeNs,
-      },
-      { onceKey: "first-frame-transform-runway-request" },
-    );
-
     capability
       .readTransforms({
         // The first runway segment while Play is pending is demanded startup
@@ -649,14 +589,6 @@ export function useFrameTransformFetchScheduling({
           inFlightRunwayRangesRef.current.filter(
             (candidate) => candidate !== runwayRange,
           );
-        markEpisodeLatencyEvent(
-          "frame transform runway ready",
-          {
-            durationMs: episodeLatencyDurationMs(runwayRangeStartMs),
-            samples: samples.length,
-          },
-          { onceKey: "first-frame-transform-runway-ready" },
-        );
         setState((current) => ({
           ...current,
           error: null,

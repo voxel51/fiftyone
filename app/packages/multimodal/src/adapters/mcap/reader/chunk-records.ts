@@ -1,12 +1,6 @@
 import { crc32 } from "@foxglove/crc";
 import type { McapTypes } from "@mcap/core";
 import { safeNumber } from "../../../query/bytes/bigint-utils";
-import {
-  isMcapDecodeStageMeterEnabled,
-  mcapDecodeStageNowMs,
-  recordMcapDecodeStage,
-} from "../decode-stage-meter";
-import { isMcapDecompressionCacheMeterEnabled } from "../decompression-cache-meter";
 import type {
   McapDecompressedChunkKey,
   McapDecompressedChunkLoad,
@@ -104,34 +98,10 @@ export function decompressMcapChunkRecord(
   }
 
   const encoded = bytes.subarray(offset, recordsEnd);
-  let durationMs = 0;
-  let decompressed: Uint8Array | undefined;
-  if (compression.length === 0) {
-    decompressed = encoded.slice();
-  } else {
-    const handler = handlers[compression];
-    if (handler) {
-      if (
-        isMcapDecodeStageMeterEnabled() ||
-        isMcapDecompressionCacheMeterEnabled()
-      ) {
-        const startedAtMs = mcapDecodeStageNowMs();
-        const output = handler(encoded, uncompressedSize);
-        decompressed = output;
-        durationMs = mcapDecodeStageNowMs() - startedAtMs;
-        if (isMcapDecodeStageMeterEnabled()) {
-          recordMcapDecodeStage({
-            bytes: output.byteLength,
-            label: compression,
-            ms: durationMs,
-            stage: "decompress",
-          });
-        }
-      } else {
-        decompressed = handler(encoded, uncompressedSize);
-      }
-    }
-  }
+  const decompressed =
+    compression.length === 0
+      ? encoded.slice()
+      : handlers[compression]?.(encoded, uncompressedSize);
   if (!decompressed) {
     throw new Error(`Unsupported MCAP chunk compression '${compression}'`);
   }
@@ -148,7 +118,7 @@ export function decompressMcapChunkRecord(
   if (uncompressedCrc !== 0 && crc32(records) !== uncompressedCrc) {
     throw new Error("Incorrect MCAP chunk CRC");
   }
-  return { bytes: records, durationMs };
+  return { bytes: records };
 }
 
 function dataView(bytes: Uint8Array): DataView {

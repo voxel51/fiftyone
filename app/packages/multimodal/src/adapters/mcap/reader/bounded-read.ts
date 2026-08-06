@@ -243,7 +243,6 @@ export function createMcapBoundedReader({
             typeof sourceKey === "function" ? sourceKey() : sourceKey;
           let decompressed = decompressedChunkCache.get(
             mcapDecompressedChunkKeyForIndex(sourceKeyForChunk, chunk),
-            "bounded-reader",
           );
           if (!decompressed) {
             const body = await readable.readContained(
@@ -256,7 +255,6 @@ export function createMcapBoundedReader({
               typeof sourceKey === "function" ? sourceKey() : sourceKey;
             decompressed = decompressedChunkCache.getOrLoad(
               mcapDecompressedChunkKeyForIndex(sourceKeyForChunk, chunk),
-              "bounded-reader",
               () =>
                 decompressMcapChunkRecord(
                   body.bytes,
@@ -834,4 +832,3 @@ function assertUsageWithinGrant(
     throw new Error("MCAP bounded executor exceeded an admitted hard budget");
   }
 }
-

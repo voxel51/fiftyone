@@ -4,12 +4,8 @@ import {
   type IWritable,
   type McapTypes,
 } from "@mcap/core";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ByteClient } from "../../../query/bytes";
-import {
-  setMcapDecompressionCacheSink,
-  type McapDecompressionCacheSample,
-} from "../decompression-cache-meter";
 import { ByteClientReadable } from "./byte-readable";
 import { createCachedMcapDecompressHandlers } from "./decompress-cache";
 import {
@@ -18,8 +14,6 @@ import {
 } from "./decompressed-chunk-cache";
 
 describe("McapIndexedReader decompression cache integration", () => {
-  afterEach(() => setMcapDecompressionCacheSink(null));
-
   it("shares a stable chunk identity across fresh main-reader chunk copies", async () => {
     const mcap = await createIdentityCompressedMcap();
     const source = {
@@ -40,8 +34,6 @@ describe("McapIndexedReader decompression cache integration", () => {
       }),
     };
     const readable = new ByteClientReadable(source, byteClient);
-    const samples: McapDecompressionCacheSample[] = [];
-    setMcapDecompressionCacheSink((sample) => samples.push(sample));
     const decompressorInputs: Uint8Array[] = [];
     const contexts: McapTypes.ChunkDecompressionContext[] = [];
     const decompress = vi.fn(
@@ -91,18 +83,12 @@ describe("McapIndexedReader decompression cache integration", () => {
       },
     ]);
     expect(decompress).toHaveBeenCalledTimes(1);
-    expect(samples).toHaveLength(2);
-    expect(samples.map(({ cacheHit }) => cacheHit)).toEqual([false, true]);
-    expect(samples[0]?.chunkIdentityStable).toBe(true);
-    expect(samples[1]?.chunkIdentity).toBe(samples[0]?.chunkIdentity);
     cache.dispose();
     await expect(collect(reader.readMessages())).rejects.toThrow("disposed");
   });
 
   it("shares concurrent readers for one version and separates source versions", async () => {
     const mcap = await createIdentityCompressedMcap();
-    const samples: McapDecompressionCacheSample[] = [];
-    setMcapDecompressionCacheSink((sample) => samples.push(sample));
     const cache = createMcapDecompressedChunkCache();
     const decompress = vi.fn((buffer: Uint8Array) => buffer.slice());
     const first = await createMainReader({
@@ -124,9 +110,6 @@ describe("McapIndexedReader decompression cache integration", () => {
     ]);
 
     expect(decompress).toHaveBeenCalledTimes(1);
-    expect(samples.map(({ cacheHit }) => cacheHit)).toEqual([false, true]);
-    const versionOneIdentity = samples[0]?.chunkIdentity;
-    expect(versionOneIdentity).toBeDefined();
 
     const changed = await createMainReader({
       cache,
@@ -137,12 +120,6 @@ describe("McapIndexedReader decompression cache integration", () => {
     await collect(changed.reader.readMessages());
 
     expect(decompress).toHaveBeenCalledTimes(2);
-    expect(samples.at(-1)).toMatchObject({
-      cacheHit: false,
-      chunkIdentityStable: true,
-    });
-    expect(samples.at(-1)?.chunkIdentity).not.toBe(versionOneIdentity);
-
     await collect(first.reader.readMessages());
     expect(decompress).toHaveBeenCalledTimes(3);
     cache.dispose();

@@ -1,11 +1,4 @@
 import { LRUCache } from "lru-cache";
-import {
-  createMcapDecompressionCacheOwnerId,
-  isMcapDecompressionCacheMeterEnabled,
-  mcapDecompressionChunkIdentity,
-  recordMcapDecompressionCache,
-  type McapDecompressionCacheSample,
-} from "../decompression-cache-meter";
 
 export const DEFAULT_MCAP_DECOMPRESSED_CHUNK_CACHE_BYTES = 128 * 1024 * 1024;
 
@@ -19,7 +12,6 @@ export interface McapDecompressedChunkKey {
 
 export interface McapDecompressedChunkLoad {
   readonly bytes: Uint8Array;
-  readonly durationMs: number;
 }
 
 export interface McapDecompressedChunkResult {
@@ -32,23 +24,15 @@ export interface McapDecompressedChunkCache {
   activateSource(sourceKey: string): void;
   clear(): void;
   dispose(): void;
-  get(
-    key: McapDecompressedChunkKey,
-    path: McapDecompressionCacheSample["path"],
-  ): McapDecompressedChunkResult | undefined;
+  get(key: McapDecompressedChunkKey): McapDecompressedChunkResult | undefined;
   getOrLoad(
     key: McapDecompressedChunkKey,
-    path: McapDecompressionCacheSample["path"],
     load: () => McapDecompressedChunkLoad,
   ): McapDecompressedChunkResult;
   loadUnkeyed(
     input: {
-      readonly chunkIdentity: () => string;
-      readonly compressedBytes: number;
-      readonly compression: string;
       readonly decompressedSize: bigint;
     },
-    path: McapDecompressionCacheSample["path"],
     load: () => McapDecompressedChunkLoad,
   ): McapDecompressedChunkResult;
 }
@@ -64,16 +48,7 @@ export function createMcapDecompressedChunkCache(
   const capacityBytes = Math.max(1, Math.floor(maxSizeBytes));
   let activeSourceKey: string | undefined;
   let disposed = false;
-  let evictedBytes = 0;
-  let evictions = 0;
-  let cacheOwnerId: string | undefined;
   const cache = new LRUCache<string, Uint8Array>({
-    dispose: (value, _key, reason) => {
-      if (reason === "evict") {
-        evictedBytes += value.byteLength;
-        evictions += 1;
-      }
-    },
     maxSize: capacityBytes,
     sizeCalculation: (value) => Math.max(1, value.byteLength),
   });
@@ -89,46 +64,6 @@ export function createMcapDecompressedChunkCache(
     if (disposed) {
       throw new Error("MCAP decompressed chunk cache is disposed");
     }
-  };
-  const recordAccess = ({
-    bytes,
-    cacheHit,
-    durationMs,
-    evictedBytesBefore,
-    evictionsBefore,
-    key,
-    path,
-  }: {
-    readonly bytes: Uint8Array;
-    readonly cacheHit: boolean;
-    readonly durationMs: number;
-    readonly evictedBytesBefore: number;
-    readonly evictionsBefore: number;
-    readonly key: McapDecompressedChunkKey;
-    readonly path: McapDecompressionCacheSample["path"];
-  }) => {
-    cacheOwnerId ??= createMcapDecompressionCacheOwnerId("shared-reader");
-    recordMcapDecompressionCache({
-      cacheCapacityBytes: capacityBytes,
-      cacheEvictedBytes: evictedBytes - evictedBytesBefore,
-      cacheEvictions: evictions - evictionsBefore,
-      cacheHit,
-      cacheOwnerId,
-      cacheResidentBytes: cache.calculatedSize ?? 0,
-      chunkIdentity: mcapDecompressionChunkIdentity({
-        compressedLength: key.compressedLength,
-        compressedOffset: key.compressedOffset,
-        compression: key.compression,
-        sourceKey: key.sourceKey,
-        uncompressedSize: key.decompressedSize,
-      }),
-      chunkIdentityStable: true,
-      compressedBytes: safeBigIntToNumber(key.compressedLength),
-      compression: key.compression,
-      decompressedBytes: bytes.byteLength,
-      durationMs,
-      path,
-    });
   };
   const readCached = (serializedKey: string) => {
     const cached = cache.get(serializedKey);
@@ -157,46 +92,20 @@ export function createMcapDecompressedChunkCache(
       disposed = true;
     },
 
-    get(key, path) {
+    get(key) {
       assertActive();
       activateSource(key.sourceKey);
-      const evictedBytesBefore = evictedBytes;
-      const evictionsBefore = evictions;
       const cached = readCached(serializeMcapDecompressedChunkKey(key));
       if (!cached) return undefined;
-      if (isMcapDecompressionCacheMeterEnabled()) {
-        recordAccess({
-          bytes: cached,
-          cacheHit: true,
-          durationMs: 0,
-          evictedBytesBefore,
-          evictionsBefore,
-          key,
-          path,
-        });
-      }
       return { bytes: cached, cacheHit: true };
     },
 
-    getOrLoad(key, path, load) {
+    getOrLoad(key, load) {
       assertActive();
       activateSource(key.sourceKey);
       const serializedKey = serializeMcapDecompressedChunkKey(key);
-      const evictedBytesBefore = evictedBytes;
-      const evictionsBefore = evictions;
       const cached = readCached(serializedKey);
       if (cached) {
-        if (isMcapDecompressionCacheMeterEnabled()) {
-          recordAccess({
-            bytes: cached,
-            cacheHit: true,
-            durationMs: 0,
-            evictedBytesBefore,
-            evictionsBefore,
-            key,
-            path,
-          });
-        }
         return { bytes: cached, cacheHit: true };
       }
       const loaded = load();
@@ -211,21 +120,10 @@ export function createMcapDecompressedChunkCache(
       if (loaded.bytes.byteLength <= capacityBytes) {
         cache.set(serializedKey, loaded.bytes);
       }
-      if (isMcapDecompressionCacheMeterEnabled()) {
-        recordAccess({
-          bytes: loaded.bytes,
-          cacheHit: false,
-          durationMs: loaded.durationMs,
-          evictedBytesBefore,
-          evictionsBefore,
-          key,
-          path,
-        });
-      }
       return { bytes: loaded.bytes, cacheHit: false };
     },
 
-    loadUnkeyed(input, path, load) {
+    loadUnkeyed(input, load) {
       assertActive();
       const loaded = load();
       if (BigInt(loaded.bytes.byteLength) !== input.decompressedSize) {
@@ -235,24 +133,6 @@ export function createMcapDecompressedChunkCache(
       }
       if (loaded.bytes.buffer.byteLength === 0) {
         throw new Error("Cannot return a detached decompressed MCAP chunk");
-      }
-      if (isMcapDecompressionCacheMeterEnabled()) {
-        cacheOwnerId ??= createMcapDecompressionCacheOwnerId("shared-reader");
-        recordMcapDecompressionCache({
-          cacheCapacityBytes: capacityBytes,
-          cacheEvictedBytes: 0,
-          cacheEvictions: 0,
-          cacheHit: false,
-          cacheOwnerId,
-          cacheResidentBytes: cache.calculatedSize ?? 0,
-          chunkIdentity: input.chunkIdentity(),
-          chunkIdentityStable: false,
-          compressedBytes: input.compressedBytes,
-          compression: input.compression,
-          decompressedBytes: loaded.bytes.byteLength,
-          durationMs: loaded.durationMs,
-          path,
-        });
       }
       return { bytes: loaded.bytes, cacheHit: false };
     },
@@ -269,14 +149,4 @@ export function serializeMcapDecompressedChunkKey(
     key.compression,
     key.decompressedSize.toString(),
   ]);
-}
-
-function safeBigIntToNumber(value: bigint): number {
-  const number = Number(value);
-  if (!Number.isSafeInteger(number) || number < 0) {
-    throw new Error(
-      "MCAP compressed chunk bytes exceed the safe integer range",
-    );
-  }
-  return number;
 }

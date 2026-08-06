@@ -223,7 +223,11 @@ describe("useRegisterDataStream", () => {
 
     unmount();
 
-    expect(retainedCache.stats()).toEqual({ decodedBytes: 0, entryCount: 0 });
+    expect(retainedCache.stats()).toMatchObject({
+      decodedBytes: 0,
+      entryCount: 0,
+    });
+    expect(retainedCache.stats().accountedBytes).toBe(0);
     expect(transferredBuffer.byteLength).toBe(0);
   });
 
@@ -777,7 +781,9 @@ describe("useRegisterDataStream", () => {
     expect(cancelRunway).toHaveBeenCalledOnce();
     expect(rebalanceDecodedCaches).toHaveBeenCalledWith(
       expect.objectContaining({
-        backwardCushionSeconds: 1,
+        activeStreams: [STREAM],
+        blockingStreams: [STREAM],
+        placementCeiling: 120_000,
       }),
     );
     expect(readSynchronizedMessages).toHaveBeenCalled();

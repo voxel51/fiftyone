@@ -47,7 +47,6 @@ import {
 import { PlaybackSyncMode } from "../../schemas/v1";
 import { isEpisodeReadCancelledError } from "../../ports";
 import { throwIfAborted } from "../../utils/cancellation";
-import { sceneSourcesFromStreamDescriptors } from "../../scene-inventory";
 import type { McapGridPreviewResult } from "./resource-client/grid-preview";
 import { prewarmMcapSource } from "./prewarm-mcap-source";
 import {

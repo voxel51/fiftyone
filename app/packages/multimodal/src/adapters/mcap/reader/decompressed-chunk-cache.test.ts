@@ -1,9 +1,5 @@
 import type { McapTypes } from "@mcap/core";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  setMcapDecompressionCacheSink,
-  type McapDecompressionCacheSample,
-} from "../decompression-cache-meter";
+import { describe, expect, it, vi } from "vitest";
 import {
   createMcapDecompressedChunkCache,
   serializeMcapDecompressedChunkKey,
@@ -21,8 +17,6 @@ const key = (overrides: Partial<McapDecompressedChunkKey> = {}) => ({
 });
 
 describe("MCAP decompressed chunk cache", () => {
-  afterEach(() => setMcapDecompressionCacheSink(null));
-
   it("keeps stable range keys separate across sources and decoder inputs", () => {
     expect(serializeMcapDecompressedChunkKey(key())).toBe(
       serializeMcapDecompressedChunkKey(key()),
@@ -60,16 +54,15 @@ describe("MCAP decompressed chunk cache", () => {
     const cache = createMcapDecompressedChunkCache(16);
     const load = vi.fn(() => ({
       bytes: new Uint8Array(8).fill(7),
-      durationMs: 1,
     }));
     let release!: () => void;
     const gate = new Promise<void>((resolve) => (release = resolve));
-    const read = async (path: "bounded-reader" | "indexed-message-reader") => {
+    const read = async () => {
       await gate;
-      return cache.getOrLoad(key(), path, load);
+      return cache.getOrLoad(key(), load);
     };
-    const first = read("bounded-reader");
-    const second = read("indexed-message-reader");
+    const first = read();
+    const second = read();
     release();
 
     const [left, right] = await Promise.all([first, second]);
@@ -78,25 +71,15 @@ describe("MCAP decompressed chunk cache", () => {
     expect(load).toHaveBeenCalledTimes(1);
   });
 
-  it("evicts by decompressed bytes and reports exact residency", () => {
-    const samples: McapDecompressionCacheSample[] = [];
-    setMcapDecompressionCacheSink((sample) => samples.push(sample));
+  it("evicts by decompressed bytes", () => {
     const cache = createMcapDecompressedChunkCache(12);
-    const load = () => ({ bytes: new Uint8Array(8), durationMs: 1 });
+    const load = vi.fn(() => ({ bytes: new Uint8Array(8) }));
 
-    cache.getOrLoad(key(), "bounded-reader", load);
-    cache.getOrLoad(
-      key({ compressedOffset: 200n }),
-      "indexed-message-reader",
-      load,
-    );
+    cache.getOrLoad(key(), load);
+    cache.getOrLoad(key({ compressedOffset: 200n }), load);
+    cache.getOrLoad(key(), load);
 
-    expect(samples.at(-1)).toMatchObject({
-      cacheCapacityBytes: 12,
-      cacheEvictedBytes: 8,
-      cacheEvictions: 1,
-      cacheResidentBytes: 8,
-    });
+    expect(load).toHaveBeenCalledTimes(3);
   });
 
   it("does not retain failures or aborted loads", () => {
@@ -104,54 +87,30 @@ describe("MCAP decompressed chunk cache", () => {
     const aborted = new Error("aborted");
     aborted.name = "AbortError";
     expect(() =>
-      cache.getOrLoad(key(), "bounded-reader", () => {
+      cache.getOrLoad(key(), () => {
         throw aborted;
       }),
     ).toThrow(aborted);
     const load = vi.fn(() => ({
       bytes: new Uint8Array(8),
-      durationMs: 1,
     }));
 
-    expect(cache.getOrLoad(key(), "bounded-reader", load).bytes).toHaveLength(
-      8,
-    );
+    expect(cache.getOrLoad(key(), load).bytes).toHaveLength(8);
     expect(load).toHaveBeenCalledTimes(1);
-  });
-
-  it("builds unkeyed telemetry identities only while a sink is enabled", () => {
-    const cache = createMcapDecompressedChunkCache();
-    const chunkIdentity = vi.fn(() => "buffer-identity");
-    const input = {
-      chunkIdentity,
-      compressedBytes: 4,
-      compression: "zstd",
-      decompressedSize: 8n,
-    };
-    const load = () => ({ bytes: new Uint8Array(8), durationMs: 1 });
-
-    cache.loadUnkeyed(input, "main-indexed-reader", load);
-    expect(chunkIdentity).not.toHaveBeenCalled();
-
-    setMcapDecompressionCacheSink(() => undefined);
-    cache.loadUnkeyed(input, "main-indexed-reader", load);
-    expect(chunkIdentity).toHaveBeenCalledOnce();
   });
 
   it("reloads a cached chunk whose backing buffer was detached", () => {
     const cache = createMcapDecompressedChunkCache();
     const first = new Uint8Array(8);
     const load = vi
-      .fn<() => { bytes: Uint8Array; durationMs: number }>()
-      .mockReturnValueOnce({ bytes: first, durationMs: 1 })
-      .mockReturnValueOnce({ bytes: new Uint8Array(8), durationMs: 1 });
-    cache.getOrLoad(key(), "bounded-reader", load);
+      .fn<() => { bytes: Uint8Array }>()
+      .mockReturnValueOnce({ bytes: first })
+      .mockReturnValueOnce({ bytes: new Uint8Array(8) });
+    cache.getOrLoad(key(), load);
 
     structuredClone(first, { transfer: [first.buffer] });
 
-    expect(cache.getOrLoad(key(), "bounded-reader", load).bytes).toHaveLength(
-      8,
-    );
+    expect(cache.getOrLoad(key(), load).bytes).toHaveLength(8);
     expect(load).toHaveBeenCalledTimes(2);
   });
 
@@ -159,37 +118,28 @@ describe("MCAP decompressed chunk cache", () => {
     const cache = createMcapDecompressedChunkCache();
     const load = vi.fn(() => ({
       bytes: new Uint8Array(8),
-      durationMs: 1,
     }));
-    cache.getOrLoad(key(), "bounded-reader", load);
-    cache.getOrLoad(
-      key({ sourceKey: "source-a:version-2" }),
-      "bounded-reader",
-      load,
-    );
-    cache.getOrLoad(key(), "bounded-reader", load);
+    cache.getOrLoad(key(), load);
+    cache.getOrLoad(key({ sourceKey: "source-a:version-2" }), load);
+    cache.getOrLoad(key(), load);
     expect(load).toHaveBeenCalledTimes(3);
 
     cache.dispose();
-    expect(() => cache.getOrLoad(key(), "bounded-reader", load)).toThrow(
-      "disposed",
-    );
+    expect(() => cache.getOrLoad(key(), load)).toThrow("disposed");
   });
 
   it("rejects size mismatches without admitting the output", () => {
     const cache = createMcapDecompressedChunkCache();
     const invalid = vi.fn(() => ({
       bytes: new Uint8Array(7),
-      durationMs: 1,
     }));
-    expect(() => cache.getOrLoad(key(), "bounded-reader", invalid)).toThrow(
+    expect(() => cache.getOrLoad(key(), invalid)).toThrow(
       "Expected 8 decompressed bytes",
     );
     const valid = vi.fn(() => ({
       bytes: new Uint8Array(8),
-      durationMs: 1,
     }));
-    cache.getOrLoad(key(), "bounded-reader", valid);
+    cache.getOrLoad(key(), valid);
     expect(valid).toHaveBeenCalledOnce();
   });
 });

@@ -29,9 +29,10 @@ import { setStartupCushionState } from "./startup-cushion-state";
 const THROUGHPUT_PLANNING_DISCOUNT = 0.85;
 
 /**
- * Ceiling on the cushion in content seconds. The per-stream tick caches
- * hold ~8s of decoded lookahead; a cushion must fit inside them with room
- * for in-flight batches, or coverage evicts its own head while filling.
+ * Ceiling on the cushion in content seconds. Forward prefetch remains
+ * deliberately time-bounded even though decoded history may now grow into the
+ * residual memory budget; a longer startup hold would monopolize foreground
+ * decoding and delay the first visible frame.
  */
 export const MAX_STARTUP_CUSHION_SECONDS = 6;
 

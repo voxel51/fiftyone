@@ -123,10 +123,7 @@ async function loadChunkRecords({
     currentSourceKey(),
     chunk,
   );
-  const cached = decompressedChunkCache.get(
-    beforeReadKey,
-    "indexed-message-reader",
-  );
+  const cached = decompressedChunkCache.get(beforeReadKey);
   if (cached) {
     return cached.bytes;
   }
@@ -139,7 +136,6 @@ async function loadChunkRecords({
   throwIfAborted(signal, MCAP_INDEXED_READ_ABORT_MESSAGE);
   const result = decompressedChunkCache.getOrLoad(
     mcapDecompressedChunkKeyForIndex(currentSourceKey(), chunk),
-    "indexed-message-reader",
     () => decompressMcapChunkRecord(body.bytes, chunk, decompressHandlers),
   );
   throwIfAborted(signal, MCAP_INDEXED_READ_ABORT_MESSAGE);
