@@ -18,6 +18,7 @@ const McapRightSidebar: React.FC = () => {
         <ToggleSwitch
           size={Size.Sm}
           variant={ToggleSwitchVariant.Soft}
+          tabListClassName={styles.tabList}
           fullWidth
           tabs={[
             {

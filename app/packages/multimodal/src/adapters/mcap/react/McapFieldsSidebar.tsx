@@ -1,19 +1,96 @@
-import { fields as fieldsSelector, State } from "@fiftyone/state";
+import {
+  fields as fieldsSelector,
+  State,
+  timeZone as timeZoneSelector,
+  useActiveModalSample,
+} from "@fiftyone/state";
+import { formatPrimitive } from "@fiftyone/utilities";
+import { getNestedField } from "@fiftyone/utilities/src/sample/pointer";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import React from "react";
 import { useRecoilValue } from "recoil";
 import settingsStyles from "./McapTile.settings.module.css";
 
 /**
- * "Fields" tab for the MM right sidebar: the FiftyOne schema/metadata
- * fields for the current sample, read from the same `fields()` selector the
- * classic (now-removed-in-Multimodal) sidebar uses. No new GraphQL query —
- * this is schema metadata already resolved by the dataset view.
+ * The raw sample doc keys some fields by their Mongo `dbField` rather than
+ * their schema path — most commonly `id` (schema path) / `_id` (actual key).
+ * Only the field's own last path segment can differ this way (nested
+ * embedded-document fields don't get renamed at the db level), so swapping
+ * just that segment is enough.
+ */
+const resolveDbPath = (field: {
+  path: string;
+  dbField?: string | null;
+}): string => {
+  if (!field.dbField) {
+    return field.path;
+  }
+  const segments = field.path.split(".");
+  segments[segments.length - 1] = field.dbField;
+  return segments.join(".");
+};
+
+/**
+ * Renders a field's value for display. Dates/datetimes go through the same
+ * formatter as the classic sidebar rather than showing their raw
+ * `{"_cls":"DateTime","datetime":<ms>}` wrapper; arrays/objects (tags, …)
+ * get JSON'd rather than showing "[object Object]"; `null`/`undefined` (no
+ * value set — including fields, like `metadata`, that were never computed
+ * for this sample) render as an em dash so they're distinguishable from a
+ * genuinely empty string value.
+ */
+const formatFieldValue = (
+  value: unknown,
+  ftype: string,
+  timeZone: string,
+): string => {
+  if (value === null || value === undefined) {
+    return "—";
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const formatted = formatPrimitive({
+      ftype,
+      timeZone,
+      value: value as never,
+    });
+    return formatted === null ? String(value) : String(formatted);
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  if (
+    typeof value === "object" &&
+    "datetime" in (value as Record<string, unknown>)
+  ) {
+    const formatted = formatPrimitive({
+      ftype,
+      timeZone,
+      value: value as { datetime: number },
+    });
+    if (formatted !== null) {
+      return String(formatted);
+    }
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+/**
+ * "Fields" tab for the MM right sidebar: the current sample's actual field
+ * *values* (not the schema). Field paths/order come from the same
+ * `fields()` selector the classic (now-removed-in-Multimodal) sidebar uses —
+ * that's schema metadata already resolved by the dataset view, so no new
+ * GraphQL query — but each value is read from the active modal sample.
  */
 const McapFieldsSidebar: React.FC = () => {
   const sampleFields = useRecoilValue(
     fieldsSelector({ space: State.SPACE.SAMPLE }),
   );
+  const activeSample = useActiveModalSample();
+  const timeZone = useRecoilValue(timeZoneSelector);
   const nonPrivateFields = sampleFields.filter(
     (field) => field && !field.path.startsWith("_"),
   );
@@ -37,7 +114,11 @@ const McapFieldsSidebar: React.FC = () => {
             {field.path}
           </Text>
           <Text variant={TextVariant.Xs} color={TextColor.Primary}>
-            {field.ftype}
+            {formatFieldValue(
+              getNestedField(activeSample, resolveDbPath(field)),
+              field.ftype,
+              timeZone,
+            )}
           </Text>
           {field.description ? (
             <span className={settingsStyles.metaText}>{field.description}</span>
