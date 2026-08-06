@@ -319,6 +319,22 @@ describe("EpisodeStreamCache", () => {
     ]);
   });
 
+  it("ignores placements outside the configured timeline grid", () => {
+    const index = createTimelineIndex(
+      { endNs: 2_000_000_000n, startNs: 0n },
+      1,
+    );
+    const cache = new EpisodeStreamCache();
+    cache.configureTimeline(index);
+
+    cache.set(500_000_000n, MESSAGE);
+
+    expect(cache.has(500_000_000n)).toBe(false);
+    expect(cache.stats().accountedBytes).toBe(0);
+    expect(cache.cachedTickIndexRanges(index)).toEqual([]);
+    expect(cache.revision).toBe(0);
+  });
+
   it("reports each fully released message once when pruning placements", () => {
     const index = createTimelineIndex(
       { endNs: 2_000_000_000n, startNs: 0n },
@@ -371,27 +387,21 @@ describe("EpisodeStreamCache", () => {
     ]);
   });
 
-  it("bounds metadata-only placements and deduplicates shared decoded payload accounting", () => {
+  it("bounds metadata-only placements and canonicalizes repeated payloads", () => {
     const shared = { ...MESSAGE, recordId: "shared" };
-    const first = new EpisodeStreamCache(3);
-    const second = new EpisodeStreamCache(3);
-    first.set(0n, null);
-    first.set(1n, shared);
-    first.set(2n, { ...shared });
-    first.set(3n, null);
-    second.set(1n, shared);
+    const cache = new EpisodeStreamCache(3);
+    cache.set(0n, null);
+    cache.set(1n, shared);
+    expect(cache.set(2n, { ...shared })).toMatchObject({
+      canonicalEligible: true,
+      canonicalized: true,
+    });
+    cache.set(3n, null);
 
-    expect(first.has(0n)).toBe(false);
-    expect(first.stats().entryCount).toBe(3);
-    expect(first.stats().decodedBytes).toBe(128);
-    expect(first.stats().placementBytes).toBeGreaterThan(0);
-
-    const seen = new Set<DecodedFrame>();
-    const firstStats = first.memoryStats(seen);
-    const secondStats = second.memoryStats(seen);
-    expect(firstStats.decodedBytes).toBe(128);
-    expect(secondStats.decodedBytes).toBe(0);
-    expect(secondStats.accountedBytes).toBeGreaterThan(0);
+    expect(cache.has(0n)).toBe(false);
+    expect(cache.stats().entryCount).toBe(3);
+    expect(cache.stats().decodedBytes).toBe(128);
+    expect(cache.stats().placementBytes).toBeGreaterThan(0);
   });
 
   it("ignores invalid byte hints without hiding measured backing stores", () => {

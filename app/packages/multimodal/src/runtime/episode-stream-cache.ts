@@ -151,30 +151,6 @@ export class EpisodeStreamCache {
     };
   }
 
-  /**
-   * Cache totals with decoded payloads deduplicated against other caches that
-   * share the supplied identity set. Per-cache Map/LRU metadata stays counted
-   * because each cache really owns that bookkeeping.
-   */
-  memoryStats(
-    seenMessages: Set<DecodedFrame> = new Set(),
-  ): EpisodeStreamCacheStats {
-    let decodedBytes = 0;
-    for (const [message, retention] of this.messageRetention) {
-      if (seenMessages.has(message)) continue;
-      seenMessages.add(message);
-      decodedBytes += retention.decodedBytes;
-    }
-    return {
-      accountedBytes:
-        decodedBytes + this._messageMetadataBytes + this._placementBytes,
-      decodedBytes,
-      entryCount: this.cache.size,
-      messageMetadataBytes: this._messageMetadataBytes,
-      placementBytes: this._placementBytes,
-    };
-  }
-
   /** Visits each decoded frame retained by this cache exactly once. */
   forEachRetainedMessage(
     visit: (message: DecodedFrame, decodedBytes: number) => void,
@@ -360,6 +336,16 @@ export class EpisodeStreamCache {
   }
 
   set(tick: bigint, msg: DecodedFrame | null): EpisodeStreamCacheSetResult {
+    if (
+      this.coverage &&
+      tickIndexInCoverage(this.coverage, tick) === undefined
+    ) {
+      return {
+        avoidedDecodedBytes: 0,
+        canonicalized: false,
+        canonicalEligible: Boolean(msg?.recordId),
+      };
+    }
     const canonical = this.canonicalizeMessage(msg);
     msg = canonical.msg;
     if (msg) {
@@ -729,9 +715,6 @@ function addTickIndex(
   const before = next[low - 1];
   const after = next[low];
   if (before && tickIndex <= before.endIndex) return next;
-  if (after && tickIndex >= after.startIndex && tickIndex <= after.endIndex) {
-    return next;
-  }
   if (
     before?.endIndex === tickIndex - 1 &&
     after?.startIndex === tickIndex + 1

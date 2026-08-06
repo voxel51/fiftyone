@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   clampTickRanges,
+  intersectAllTickRanges,
   intersectTickRanges,
   normalizeTickRanges,
+  subtractTickRanges,
+  unionAllTickRanges,
 } from "./tick-ranges";
 
 describe("tick range algebra", () => {
@@ -49,5 +52,75 @@ describe("tick range algebra", () => {
       { endIndex: 2, startIndex: 1 },
       { endIndex: 6, startIndex: 6 },
     ]);
+  });
+
+  it("unions and intersects aggregate range sets", () => {
+    expect(
+      unionAllTickRanges([
+        [{ endIndex: 2, startIndex: 0 }],
+        [
+          { endIndex: 6, startIndex: 5 },
+          { endIndex: 4, startIndex: 2 },
+        ],
+      ]),
+    ).toEqual([{ endIndex: 6, startIndex: 0 }]);
+
+    expect(
+      intersectAllTickRanges([
+        [{ endIndex: 10, startIndex: 0 }],
+        [
+          { endIndex: 4, startIndex: 2 },
+          { endIndex: 9, startIndex: 7 },
+        ],
+        [{ endIndex: 8, startIndex: 3 }],
+      ]),
+    ).toEqual([
+      { endIndex: 4, startIndex: 3 },
+      { endIndex: 8, startIndex: 7 },
+    ]);
+    expect(intersectAllTickRanges([])).toEqual([]);
+  });
+
+  it.each([
+    {
+      expected: [],
+      name: "full removal",
+      removed: [{ endIndex: 10, startIndex: 0 }],
+    },
+    {
+      expected: [{ endIndex: 10, startIndex: 4 }],
+      name: "prefix removal",
+      removed: [{ endIndex: 3, startIndex: 0 }],
+    },
+    {
+      expected: [{ endIndex: 6, startIndex: 0 }],
+      name: "suffix removal",
+      removed: [{ endIndex: 10, startIndex: 7 }],
+    },
+    {
+      expected: [
+        { endIndex: 3, startIndex: 0 },
+        { endIndex: 10, startIndex: 7 },
+      ],
+      name: "split removal",
+      removed: [{ endIndex: 6, startIndex: 4 }],
+    },
+    {
+      expected: [
+        { endIndex: 1, startIndex: 0 },
+        { endIndex: 5, startIndex: 4 },
+        { endIndex: 9, startIndex: 8 },
+      ],
+      name: "multiple cuts",
+      removed: [
+        { endIndex: 3, startIndex: 2 },
+        { endIndex: 7, startIndex: 6 },
+        { endIndex: 10, startIndex: 10 },
+      ],
+    },
+  ])("subtracts inclusive boundaries for $name", ({ expected, removed }) => {
+    expect(
+      subtractTickRanges([{ endIndex: 10, startIndex: 0 }], removed),
+    ).toEqual(expected);
   });
 });

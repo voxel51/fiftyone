@@ -67,13 +67,19 @@ export function nextDecodedCacheLookaheadSeconds({
   readonly retainedEntries?: number;
   readonly stepSeconds: number;
 }): number {
+  const effectiveStepSeconds = effectiveLookaheadStepSeconds({
+    currentSeconds,
+    maxSeconds,
+    minSeconds,
+    stepSeconds,
+  });
   const bytePressure = pressureRatio(decodedBytes, budgetBytes);
   const placementPressure = pressureRatio(retainedEntries, maxEntries);
   const pressure = Math.max(bytePressure, placementPressure);
   if (pressure > 1) {
     const scaledSeconds = currentSeconds / pressure;
     const steppedSeconds =
-      Math.floor(scaledSeconds / stepSeconds) * stepSeconds;
+      Math.floor(scaledSeconds / effectiveStepSeconds) * effectiveStepSeconds;
     return clamp(steppedSeconds, minSeconds, currentSeconds);
   }
 
@@ -82,7 +88,7 @@ export function nextDecodedCacheLookaheadSeconds({
     placementPressure <= RECOVERY_THRESHOLD &&
     currentSeconds < maxSeconds
   ) {
-    return Math.min(maxSeconds, currentSeconds + stepSeconds);
+    return Math.min(maxSeconds, currentSeconds + effectiveStepSeconds);
   }
 
   return currentSeconds;
@@ -120,6 +126,12 @@ export function rebalanceDecodedCaches({
   if (activeCacheEntries.length === 0) return currentLookaheadSeconds;
   const activeCaches = activeCacheEntries.map(([, cache]) => cache);
   for (const cache of activeCaches) cache.configureTimeline(index);
+  const effectiveStepSeconds = effectiveLookaheadStepSeconds({
+    currentSeconds: currentLookaheadSeconds,
+    maxSeconds: maxLookaheadSeconds,
+    minSeconds: minLookaheadSeconds,
+    stepSeconds,
+  });
 
   const blockingCacheEntries = selectBlockingCacheEntries(
     activeCacheEntries,
@@ -166,7 +178,7 @@ export function rebalanceDecodedCaches({
       maxSeconds: maxLookaheadSeconds,
       minSeconds: minLookaheadSeconds,
       retainedEntries: currentForwardStats.entryCount,
-      stepSeconds,
+      stepSeconds: effectiveStepSeconds,
     });
   }
 
@@ -202,7 +214,7 @@ export function rebalanceDecodedCaches({
     commonCoverage,
     currentIndex,
     domain: loopDomain ?? { endIndex: index.tickCount - 1, startIndex: 0 },
-    wraps: isInsideActiveLoop,
+    wraps: loopDomain !== null,
   });
   const historyRanges = normalizeTickRanges(historySegmentsNewestFirst);
 
@@ -286,12 +298,15 @@ export function rebalanceDecodedCaches({
       maxSeconds: maxLookaheadSeconds,
       minSeconds: minLookaheadSeconds,
       retainedEntries: forwardStats.entryCount,
-      stepSeconds,
+      stepSeconds: effectiveStepSeconds,
     });
     nextLookaheadSeconds =
       proposed < nextLookaheadSeconds
         ? proposed
-        : Math.max(minLookaheadSeconds, nextLookaheadSeconds - stepSeconds);
+        : Math.max(
+            minLookaheadSeconds,
+            nextLookaheadSeconds - effectiveStepSeconds,
+          );
     const nextForwardRanges = forwardTickRanges({
       index,
       lookaheadSeconds: nextLookaheadSeconds,
@@ -323,6 +338,25 @@ export function reportedDeviceMemoryGb(): number | null {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function effectiveLookaheadStepSeconds({
+  currentSeconds,
+  maxSeconds,
+  minSeconds,
+  stepSeconds,
+}: {
+  readonly currentSeconds: number;
+  readonly maxSeconds: number;
+  readonly minSeconds: number;
+  readonly stepSeconds: number;
+}): number {
+  if (Number.isFinite(stepSeconds) && stepSeconds > 0) return stepSeconds;
+  return Math.max(
+    Number.EPSILON,
+    currentSeconds - minSeconds,
+    maxSeconds - minSeconds,
+  );
 }
 
 function pressureRatio(value: number, limit: number): number {

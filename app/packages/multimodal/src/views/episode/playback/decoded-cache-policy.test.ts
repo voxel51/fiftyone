@@ -54,6 +54,17 @@ describe("episode decoded cache policy", () => {
         stepSeconds: 1,
       }),
     ).toBe(1);
+
+    expect(
+      nextDecodedCacheLookaheadSeconds({
+        budgetBytes: 1,
+        currentSeconds: 4,
+        decodedBytes: 4,
+        maxSeconds: 4,
+        minSeconds: 1,
+        stepSeconds: 0,
+      }),
+    ).toBe(1);
   });
 
   it("recovers from a constrained horizon using forward bytes rather than retained history", () => {
@@ -80,8 +91,9 @@ describe("episode decoded cache policy", () => {
 
     const index = timeline(30, 1);
     const cache = cacheWithSeconds(range(0, 14));
+    const forwardBytes = rangeStats([cache], [tickRange(10, 12)], index);
     const recovered = rebalance({
-      budgetBytes: Math.ceil(cache.stats().accountedBytes / 0.8),
+      budgetBytes: cache.stats().accountedBytes + forwardBytes,
       caches: new Map([["/camera", cache]]),
       currentLookaheadSeconds: 2,
       index,
@@ -159,6 +171,25 @@ describe("episode decoded cache policy", () => {
     expectTick(smaller, 54, false);
   });
 
+  it("still terminates pressure shrinking when the configured step is non-positive", () => {
+    const index = timeline(100, 1);
+    const cache = cacheWithSeconds(range(50, 54));
+
+    const lookahead = rebalance({
+      budgetBytes: rangeStats([cache], [tickRange(50, 51)], index),
+      caches: new Map([["/camera", cache]]),
+      index,
+      maxLookaheadSeconds: 1,
+      stepSeconds: 0,
+      store: playbackStore(50),
+    });
+
+    expect(lookahead).toBe(1);
+    expectTick(cache, 50, true);
+    expectTick(cache, 51, true);
+    expectTick(cache, 52, false);
+  });
+
   it("coordinates pressure eviction across blocking streams by one time boundary", () => {
     const index = timeline(30, 1);
     const camera = cacheWithSeconds(range(0, 14), "/camera");
@@ -190,6 +221,32 @@ describe("episode decoded cache policy", () => {
     expect(camera.cachedTickIndexRanges(index)).toEqual(
       lidar.cachedTickIndexRanges(index),
     );
+  });
+
+  it("deduplicates one decoded frame shared by multiple active caches", () => {
+    const index = timeline(30, 1);
+    const sharedHistory = sizedFrame(0n, "/camera");
+    const camera = cacheWithSeconds(range(5, 9), "/camera");
+    const lidar = cacheWithSeconds(range(5, 9), "/lidar");
+    camera.set(0n, sharedHistory);
+    lidar.set(0n, sharedHistory);
+    const caches = new Map([
+      ["/camera", camera],
+      ["/lidar", lidar],
+    ]);
+    const retainedRanges = [tickRange(0, 0), tickRange(5, 9)];
+
+    rebalance({
+      activeStreams: ["/camera", "/lidar"],
+      blockingStreams: ["/camera", "/lidar"],
+      budgetBytes: rangeStats([camera, lidar], retainedRanges, index),
+      caches,
+      index,
+      store: playbackStore(5),
+    });
+
+    expectTick(camera, 0, true);
+    expectTick(lidar, 0, true);
   });
 
   it("ignores missing active-stream names without disturbing retained caches", () => {
@@ -302,6 +359,10 @@ describe("episode decoded cache policy", () => {
     expect(cache.cachedTickIndexRanges(index)).toEqual([
       { endIndex: 20, startIndex: 10 },
     ]);
+  });
+
+  it("evicts the oldest cyclic history while preserving the selected ranges", () => {
+    const index = timeline(30, 1);
 
     const cyclicHistory = cacheWithSeconds(range(10, 20));
     const cyclicBudget = rangeStats(
@@ -320,6 +381,10 @@ describe("episode decoded cache policy", () => {
     for (const second of [...range(19, 20), ...range(10, 16)]) {
       expectTick(cyclicHistory, second, true);
     }
+  });
+
+  it("prunes loop history down to the forward-only range", () => {
+    const index = timeline(30, 1);
 
     const forwardOnly = cacheWithSeconds(range(10, 20));
     rebalance({
@@ -360,6 +425,7 @@ function rebalance({
   maxLookaheadSeconds = 4,
   minLookaheadSeconds = 1,
   placementCeiling = 100_000,
+  stepSeconds = 1,
   store,
 }: {
   readonly activeStreams?: readonly string[];
@@ -371,6 +437,7 @@ function rebalance({
   readonly maxLookaheadSeconds?: number;
   readonly minLookaheadSeconds?: number;
   readonly placementCeiling?: number;
+  readonly stepSeconds?: number;
   readonly store: PlaybackStore;
 }): number {
   return rebalanceDecodedCaches({
@@ -383,7 +450,7 @@ function rebalance({
     maxLookaheadSeconds,
     minLookaheadSeconds,
     placementCeiling,
-    stepSeconds: 1,
+    stepSeconds,
     store,
   });
 }
