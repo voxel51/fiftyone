@@ -13,8 +13,162 @@
  */
 
 import type { NsRange } from "../ir";
+import { nsDeltaToSeconds, type TimelineIndex } from "./timeline-index";
 
 export type { NsRange } from "../ir";
+
+/** Width of the plot fetch horizon centered on the playhead. */
+export const PLOT_WINDOW_SECONDS = 60;
+
+/** Coverage sentinel for adapters without bounded numeric-series slices. */
+export const FULL_NUMERIC_SERIES_COVERAGE: NsRange = {
+  endNs: 1n << 62n,
+  startNs: 0n,
+};
+
+const WINDOW_HALF_NS = BigInt(PLOT_WINDOW_SECONDS / 2) * 1_000_000_000n;
+const WINDOW_QUANTUM_NS = 15_000_000_000n;
+const FULL_RANGE_POINT_BUDGET = 4_000;
+const MIN_WINDOW_POINT_BUDGET = 200;
+
+/** Stable cache key for one stream and numeric field path. */
+export function numericSeriesKey(stream: string, fieldPath: string): string {
+  return `${stream}\0${fieldPath}`;
+}
+
+/** Parses a cache key minted by `numericSeriesKey`. */
+export function splitNumericSeriesKey(
+  key: string,
+): [stream: string, fieldPath: string] {
+  const separator = key.indexOf("\0");
+  return [key.slice(0, separator), key.slice(separator + 1)];
+}
+
+/** Quantized, timeline-clamped numeric-series horizon for one playhead. */
+export function quantizedNumericSeriesWindow(
+  timeline: TimelineIndex,
+  playheadSec: number,
+): NsRange {
+  const centerNs = timeline.secToNs(playheadSec);
+  const rawStart = centerNs - WINDOW_HALF_NS;
+  const rawEnd = centerNs + WINDOW_HALF_NS;
+  const base = timeline.startTimeNs;
+  const startOffset = rawStart > base ? rawStart - base : 0n;
+  const endOffset = rawEnd > base ? rawEnd - base : 0n;
+  const quantizedStart =
+    base + (startOffset / WINDOW_QUANTUM_NS) * WINDOW_QUANTUM_NS;
+  const quantizedEnd =
+    base +
+    ((endOffset + WINDOW_QUANTUM_NS - 1n) / WINDOW_QUANTUM_NS) *
+      WINDOW_QUANTUM_NS -
+    1n;
+  const startNs = quantizedStart > base ? quantizedStart : base;
+  const endNs =
+    quantizedEnd < timeline.endTimeNs ? quantizedEnd : timeline.endTimeNs;
+  return endNs >= startNs
+    ? { endNs, startNs }
+    : { endNs: timeline.endTimeNs, startNs: timeline.startTimeNs };
+}
+
+/** Missing range nearest the requested time, with deterministic tie breaks. */
+export function nearestNumericSeriesRange(
+  ranges: readonly NsRange[],
+  preferredTimeNs: bigint,
+): NsRange | undefined {
+  return ranges.reduce<NsRange | undefined>((best, range) => {
+    if (!best) return range;
+    const distance = distanceToRange(range, preferredTimeNs);
+    const bestDistance = distanceToRange(best, preferredTimeNs);
+    if (distance !== bestDistance) {
+      return distance < bestDistance ? range : best;
+    }
+    if (range.startNs !== best.startNs) {
+      return range.startNs < best.startNs ? range : best;
+    }
+    return range.endNs < best.endNs ? range : best;
+  }, undefined);
+}
+
+/** Whether two inclusive numeric-series ranges intersect. */
+export function numericSeriesRangesOverlap(
+  left: NsRange,
+  right: NsRange,
+): boolean {
+  return left.startNs <= right.endNs && right.startNs <= left.endNs;
+}
+
+/** Seconds of `horizon` represented by the supplied covered ranges. */
+export function coveredNumericSeriesSeconds(
+  covered: readonly NsRange[],
+  horizon: NsRange,
+): number {
+  let coveredNs = 0n;
+  for (const range of covered) {
+    const startNs =
+      range.startNs > horizon.startNs ? range.startNs : horizon.startNs;
+    const endNs = range.endNs < horizon.endNs ? range.endNs : horizon.endNs;
+    if (endNs >= startNs) coveredNs += endNs - startNs;
+  }
+  return Number(coveredNs) / 1_000_000_000;
+}
+
+/** Duration of one inclusive numeric-series range in seconds. */
+export function numericSeriesRangeDurationSeconds(range: NsRange): number {
+  return Number(range.endNs - range.startNs) / 1_000_000_000;
+}
+
+/** Clips a decoded numeric field to one recording-time range. */
+export function sliceNumericFieldToRange(
+  field: {
+    readonly timesSec: Float64Array;
+    readonly values: Float64Array;
+  },
+  baseTimeNs: bigint,
+  range: NsRange,
+): { readonly timesSec: Float64Array; readonly values: Float64Array } {
+  const startSec = nsDeltaToSeconds(range.startNs - baseTimeNs);
+  const endSec = nsDeltaToSeconds(range.endNs - baseTimeNs);
+  let start = 0;
+  while (start < field.timesSec.length && field.timesSec[start] < startSec) {
+    start += 1;
+  }
+  let end = start;
+  while (end < field.timesSec.length && field.timesSec[end] <= endSec) {
+    end += 1;
+  }
+  return {
+    timesSec: field.timesSec.slice(start, end),
+    values: field.values.slice(start, end),
+  };
+}
+
+/** Point budget proportional to a requested window's recording share. */
+export function numericSeriesWindowPointBudget(
+  range: NsRange | null,
+  durationSec: number | undefined,
+): number {
+  if (!range || !durationSec || durationSec <= 0) {
+    return FULL_RANGE_POINT_BUDGET;
+  }
+  const rangeSec = Number(range.endNs - range.startNs) / 1_000_000_000;
+  return Math.min(
+    FULL_RANGE_POINT_BUDGET,
+    Math.max(
+      MIN_WINDOW_POINT_BUDGET,
+      Math.round((FULL_RANGE_POINT_BUDGET * rangeSec) / durationSec),
+    ),
+  );
+}
+
+function distanceToRange(range: NsRange, preferredTimeNs: bigint): bigint {
+  if (preferredTimeNs < range.startNs) {
+    return range.startNs - preferredTimeNs;
+  }
+  if (preferredTimeNs > range.endNs) {
+    return preferredTimeNs - range.endNs;
+  }
+  return 0n;
+}
 
 /** One fetched slice of a signal, tagged with the range it covers. */
 export interface NumericSeriesSegment {

@@ -1,12 +1,23 @@
 import { describe, expect, it } from "vitest";
 import {
   addCoveredRange,
+  coveredNumericSeriesSeconds,
   flattenSeriesSegments,
+  FULL_NUMERIC_SERIES_COVERAGE,
   insertSeriesSegment,
+  nearestNumericSeriesRange,
+  numericSeriesKey,
+  numericSeriesRangeDurationSeconds,
+  numericSeriesRangesOverlap,
+  numericSeriesWindowPointBudget,
+  quantizedNumericSeriesWindow,
   removeCoveredRange,
+  sliceNumericFieldToRange,
+  splitNumericSeriesKey,
   subtractCoveredRanges,
   type NsRange,
 } from "./numeric-series-window";
+import { createTimelineIndex } from "./timeline-index";
 
 const range = (startNs: bigint, endNs: bigint): NsRange => ({ endNs, startNs });
 
@@ -184,5 +195,69 @@ describe("flattenSeriesSegments", () => {
       },
     ]);
     expect([...flat.timesSec]).toEqual([5]);
+  });
+});
+
+describe("numeric-series window policy", () => {
+  it("round-trips stream and field cache keys", () => {
+    const key = numericSeriesKey("/odom", "twist.linear.x");
+    expect(splitNumericSeriesKey(key)).toEqual(["/odom", "twist.linear.x"]);
+  });
+
+  it("quantizes the playhead horizon and clamps it to the timeline", () => {
+    const timeline = createTimelineIndex({
+      endNs: 120_000_000_000n,
+      startNs: 0n,
+    });
+
+    expect(quantizedNumericSeriesWindow(timeline, 60)).toEqual({
+      endNs: 89_999_999_999n,
+      startNs: 30_000_000_000n,
+    });
+    expect(quantizedNumericSeriesWindow(timeline, 5).startNs).toBe(0n);
+  });
+
+  it("chooses the nearest missing range deterministically", () => {
+    const ranges = [range(10n, 20n), range(40n, 50n)];
+    expect(nearestNumericSeriesRange(ranges, 35n)).toEqual(range(40n, 50n));
+    expect(nearestNumericSeriesRange(ranges, 30n)).toEqual(range(10n, 20n));
+  });
+
+  it("measures clipped coverage and range overlap", () => {
+    const horizon = range(10_000_000_000n, 20_000_000_000n);
+    expect(
+      coveredNumericSeriesSeconds(
+        [range(0n, 12_000_000_000n), range(18_000_000_000n, 30_000_000_000n)],
+        horizon,
+      ),
+    ).toBe(4);
+    expect(numericSeriesRangeDurationSeconds(horizon)).toBe(10);
+    expect(numericSeriesRangesOverlap(range(0n, 10n), range(10n, 20n))).toBe(
+      true,
+    );
+    expect(numericSeriesRangesOverlap(range(0n, 9n), range(10n, 20n))).toBe(
+      false,
+    );
+  });
+
+  it("clips decoded fields and applies proportional point budgets", () => {
+    const clipped = sliceNumericFieldToRange(
+      {
+        timesSec: Float64Array.from([0, 1, 2, 3]),
+        values: Float64Array.from([10, 11, 12, 13]),
+      },
+      0n,
+      range(1_000_000_000n, 2_000_000_000n),
+    );
+    expect([...clipped.timesSec]).toEqual([1, 2]);
+    expect([...clipped.values]).toEqual([11, 12]);
+    expect(numericSeriesWindowPointBudget(null, undefined)).toBe(4_000);
+    expect(
+      numericSeriesWindowPointBudget(range(0n, 60_000_000_000n), 7_200),
+    ).toBe(200);
+    expect(FULL_NUMERIC_SERIES_COVERAGE).toEqual({
+      endNs: 1n << 62n,
+      startNs: 0n,
+    });
   });
 });
