@@ -38,10 +38,10 @@ export function createMcapResourceClient(
 }
 
 /**
- * Sample navigation remounts the modal renderer per sample, and worker
- * respawn (module eval, WASM decompress handlers, reader init) is the
- * dominant per-navigation cost. Ref-counted sharing with a linger window
- * keeps one fleet alive across next-sample hops and quick grid round trips.
+ * Sample navigation remounts the modal renderer per sample. Ref-counted
+ * sharing keeps one client coordinator across next-sample hops and quick grid
+ * round trips, while the final release tears down its worker isolates so their
+ * allocator high-water state cannot cross a renderer ownership boundary.
  */
 const SHARED_CLIENT_LINGER_MS = 30_000;
 
@@ -55,8 +55,9 @@ const sharedClients = new Map<string, SharedClientEntry>();
 
 /**
  * Acquires the shared MCAP resource client for the given mode and returns a
- * release handle. The client disposes only after every holder released it
- * and the linger window passed without a new acquire.
+ * release handle. Worker lanes stop as soon as every holder releases; the
+ * client coordinator disposes only after the linger window passes without a
+ * new acquire.
  */
 export function acquireSharedMcapResourceClient(
   options: CreateMcapResourceClientOptions = {},
@@ -98,9 +99,10 @@ export function acquireSharedMcapResourceClient(
       if (held.refs > 0) {
         return;
       }
-      // Keep the worker fleet warm for quick remounts, but do not make its
-      // largest decoded allocations pay the full linger window after the last
-      // renderer releases ownership.
+      // End every worker isolate at the renderer ownership boundary. Clearing
+      // its JavaScript caches is insufficient because V8/backing-store
+      // allocators may retain the previous recording's committed high-water
+      // state for the life of the worker.
       held.client.releaseRetainedResources?.();
       held.disposeTimer = setTimeout(() => {
         if (held.refs === 0 && sharedClients.get(key) === held) {

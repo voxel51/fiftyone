@@ -439,7 +439,7 @@ describe("worker-backed MCAP resource client", () => {
     await expect(second).resolves.toEqual([]);
   });
 
-  it("releases worker source resources at a renderer ownership boundary", async () => {
+  it("restarts worker isolates at a renderer ownership boundary", async () => {
     const { client, workers } = createClientHarness();
     const source = createSource("source:1");
     client.activateSource?.(source);
@@ -462,10 +462,8 @@ describe("worker-backed MCAP resource client", () => {
 
     client.releaseRetainedResources?.();
 
-    expect(worker.messages.at(-1)).toEqual({
-      type: "releaseRetainedResources",
-    });
-    expect(worker.terminate).not.toHaveBeenCalled();
+    expect(worker.messages.at(-1)).toEqual({ type: "dispose" });
+    expect(worker.terminate).toHaveBeenCalledOnce();
 
     client.activateSource?.(source);
     const second = client.readSynchronizedMessageBatch({
@@ -473,11 +471,12 @@ describe("worker-backed MCAP resource client", () => {
       timeNs: [1n],
       topics: ["/camera"],
     });
-    expect(workers).toHaveLength(1);
-    expect(worker.messages.at(-1)).not.toHaveProperty(
+    expect(workers).toHaveLength(2);
+    const replacement = workers[1];
+    expect(replacement.messages.at(-1)).not.toHaveProperty(
       "retainedDecodedRecordIds",
     );
-    worker.respond({ id: 2, ok: true, result: [] });
+    replacement.respond({ id: 2, ok: true, result: [] });
     await expect(second).resolves.toEqual([]);
   });
 

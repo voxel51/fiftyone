@@ -126,18 +126,14 @@ class WorkerMcapResourceClient implements McapResourceClient {
     this.decodedRecords.clear();
     this.activeSourceKey = "";
     this.foregroundGeneration += 1;
-    for (const lane of this.lanes) {
-      const worker = lane.worker;
-      if (!worker) continue;
-      try {
-        const releaseRequest: McapPlaybackWorkerRequest = {
-          type: "releaseRetainedResources",
-        };
-        worker.postMessage(releaseRequest);
-      } catch {
-        this.resetLane(lane, "MCAP worker resource release failed");
-      }
-    }
+    // Dropping reader/cache references inside a live worker is not a complete
+    // renderer ownership boundary. The worker's V8 isolate and backing-store
+    // allocator retain their high-water state, so opening a second large
+    // recording during the shared-client linger window can compound the first
+    // recording's committed memory and hit Chrome's renderer OOM trap. End the
+    // isolates here; the shared client remains reusable and recreates each lane
+    // lazily for the next session.
+    this.resetWorkers("MCAP renderer ownership released");
   }
 
   subscribeTransport(
