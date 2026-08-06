@@ -32,7 +32,21 @@ export default (id: string, setResizing: (value: boolean) => void) => {
     const element = el();
     element && observer.observe(element);
 
+    // the grid measures itself when it loads, so resynchronize the baseline
+    // width then. A layout settle that lands between the observer's initial
+    // measurement and the load (e.g. panes applying their sizes) would
+    // otherwise compare against a stale baseline and tear down a grid that
+    // is already correctly sized
+    const sync = () => {
+      const current = el()?.getBoundingClientRect().width;
+      if (current !== undefined) {
+        width = current;
+      }
+    };
+    document.addEventListener("grid-mount", sync);
+
     return () => {
+      document.removeEventListener("grid-mount", sync);
       observer.disconnect();
     };
   }, [id, setResizing]);

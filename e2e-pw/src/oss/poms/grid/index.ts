@@ -129,6 +129,20 @@ export class GridPom {
   }
 
   /**
+   * Install counters for grid lifecycle events. Counting starts at creation —
+   * arm BEFORE the actions whose grid refreshes should be counted, then
+   * assert on the counters' `read()` after them. Each grid refresh
+   * contributes one unmount and one mount; extra counts indicate a redundant
+   * teardown.
+   */
+  async armLifecycleCounters() {
+    return {
+      mounts: await this.eventUtils.counter("grid-mount"),
+      unmounts: await this.eventUtils.counter("grid-unmount"),
+    };
+  }
+
+  /**
    * Arm listeners for a full grid refresh (unmount then remount). Await the
    * arming BEFORE the action that refreshes the grid, then await the handle's
    * `received` after it.
