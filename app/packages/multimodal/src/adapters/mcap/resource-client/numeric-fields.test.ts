@@ -1,5 +1,3 @@
-import { parse as parseRosMessageDefinition } from "@foxglove/rosmsg";
-import { parseRos2idl } from "@foxglove/ros2idl-parser";
 import type { McapTypes } from "@mcap/core";
 import { Root, type INamespace } from "protobufjs";
 import descriptor from "protobufjs/ext/descriptor";
@@ -7,8 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
   enumerateMcapNumericFields,
   numericFieldsFromSamples,
-  walkProtobufNumericFields,
-  walkRosNumericFields,
 } from "./numeric-fields";
 
 const ROS_TELEMETRY_SCHEMA = `float64 speed
@@ -33,8 +29,8 @@ module test_msgs {
 };
 `;
 
-describe("walkProtobufNumericFields", () => {
-  it("collects numeric scalar leaves through nested messages", () => {
+describe("protobuf numeric schema enumeration", () => {
+  it("collects numeric scalar leaves through nested messages", async () => {
     const root = Root.fromJSON({
       nested: {
         Vec3: {
@@ -55,7 +51,7 @@ describe("walkProtobufNumericFields", () => {
       },
     });
 
-    const fields = walkProtobufNumericFields(root.lookupType("Twist"));
+    const fields = await enumerateProtobufNumericFields(root, "Twist");
     expect(fields).toEqual([
       { path: "linear.x", valueType: "double" },
       { path: "linear.y", valueType: "double" },
@@ -65,7 +61,7 @@ describe("walkProtobufNumericFields", () => {
     ]);
   });
 
-  it("skips repeated and map fields", () => {
+  it("skips repeated and map fields", async () => {
     // `keyType` (map fields) is valid descriptor JSON that protobufjs's
     // IField typing does not model.
     const root = Root.fromJSON({
@@ -80,12 +76,12 @@ describe("walkProtobufNumericFields", () => {
       },
     } as unknown as INamespace);
 
-    expect(walkProtobufNumericFields(root.lookupType("Scan"))).toEqual([
+    expect(await enumerateProtobufNumericFields(root, "Scan")).toEqual([
       { path: "angle", valueType: "float" },
     ]);
   });
 
-  it("includes enums as numeric leaves", () => {
+  it("includes enums as numeric leaves", async () => {
     const root = Root.fromJSON({
       nested: {
         Level: { values: { INFO: 0, WARN: 1 } },
@@ -98,12 +94,12 @@ describe("walkProtobufNumericFields", () => {
       },
     });
 
-    expect(walkProtobufNumericFields(root.lookupType("Log"))).toEqual([
+    expect(await enumerateProtobufNumericFields(root, "Log")).toEqual([
       { path: "level", valueType: "enum" },
     ]);
   });
 
-  it("guards against recursive message types", () => {
+  it("guards against recursive message types", async () => {
     const root = Root.fromJSON({
       nested: {
         Node: {
@@ -115,12 +111,12 @@ describe("walkProtobufNumericFields", () => {
       },
     });
 
-    expect(walkProtobufNumericFields(root.lookupType("Node"))).toEqual([
+    expect(await enumerateProtobufNumericFields(root, "Node")).toEqual([
       { path: "value", valueType: "double" },
     ]);
   });
 
-  it("caps nesting depth", () => {
+  it("caps nesting depth", async () => {
     const nested: Record<string, unknown> = {
       L7: { fields: { value: { id: 1, type: "double" } } },
     };
@@ -132,7 +128,7 @@ describe("walkProtobufNumericFields", () => {
     const root = Root.fromJSON({ nested } as unknown as INamespace);
 
     // The deepest leaf lives beyond the depth cap.
-    expect(walkProtobufNumericFields(root.lookupType("L0"))).toEqual([]);
+    expect(await enumerateProtobufNumericFields(root, "L0")).toEqual([]);
   });
 });
 
@@ -165,11 +161,9 @@ describe("numericFieldsFromSamples", () => {
   });
 });
 
-describe("walkRosNumericFields", () => {
-  it("collects numeric scalar leaves through nested ROS message definitions", () => {
-    expect(
-      walkRosNumericFields(parseRosMessageDefinition(ROS_TELEMETRY_SCHEMA)),
-    ).toEqual([
+describe("ROS numeric schema enumeration", () => {
+  it("collects numeric scalar leaves through nested ROS message definitions", async () => {
+    expect(await enumerateRosNumericFields(ROS_TELEMETRY_SCHEMA)).toEqual([
       { path: "speed", valueType: "float64" },
       { path: "armed", valueType: "bool" },
       { path: "linear.x", valueType: "float64" },
@@ -178,9 +172,13 @@ describe("walkRosNumericFields", () => {
     ]);
   });
 
-  it("collects numeric scalar leaves from ROS2 IDL definitions", () => {
+  it("collects numeric scalar leaves from ROS2 IDL definitions", async () => {
     expect(
-      walkRosNumericFields(parseRos2idl(ROS2_IDL_TELEMETRY_SCHEMA)),
+      await enumerateRosNumericFields(ROS2_IDL_TELEMETRY_SCHEMA, {
+        messageEncoding: "cdr",
+        schemaEncoding: "ros2idl",
+        schemaName: "test_msgs/msg/Telemetry",
+      }),
     ).toEqual([
       { path: "speed", valueType: "float64" },
       { path: "armed", valueType: "bool" },
@@ -877,6 +875,49 @@ describe("enumerateMcapNumericFields", () => {
     expect(readMessages).not.toHaveBeenCalled();
   });
 });
+
+async function enumerateProtobufNumericFields(root: Root, schemaName: string) {
+  const [topic] = await enumerateMcapNumericFields(
+    createReader({
+      channelsById: new Map([[1, createChannel()]]),
+      schemasById: new Map([
+        [3, createSchema(protobufDescriptorData(root), { name: schemaName })],
+      ]),
+    }),
+  );
+  return topic?.fields ?? [];
+}
+
+async function enumerateRosNumericFields(
+  schema: string,
+  options: {
+    readonly messageEncoding: string;
+    readonly schemaEncoding: string;
+    readonly schemaName: string;
+  } = {
+    messageEncoding: "ros1",
+    schemaEncoding: "ros1msg",
+    schemaName: "test_msgs/Telemetry",
+  },
+) {
+  const [topic] = await enumerateMcapNumericFields(
+    createReader({
+      channelsById: new Map([
+        [1, createChannel({ messageEncoding: options.messageEncoding })],
+      ]),
+      schemasById: new Map([
+        [
+          3,
+          createSchema(new TextEncoder().encode(schema), {
+            encoding: options.schemaEncoding,
+            name: options.schemaName,
+          }),
+        ],
+      ]),
+    }),
+  );
+  return topic?.fields ?? [];
+}
 
 function protobufDescriptorData(root: Root): Uint8Array {
   return descriptor.FileDescriptorSet.encode(

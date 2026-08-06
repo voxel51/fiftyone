@@ -21,9 +21,8 @@ import { errorMessage } from "../../../../utils/errors";
 const VALIDITY_PROBE_HORIZON_NS = 60_000_000_000n;
 
 /**
- * Bounded lookback used by the raw (non-indexed) fallback path. Readers
- * without message indexes only serve test fakes today (mirrors the
- * synchronized-batch fallback).
+ * Bounded lookback used by the degraded but supported lane for MCAP files
+ * without message indexes (mirrors the synchronized-batch fallback).
  */
 const FALLBACK_LOOKBACK_NS = 10_000_000_000n;
 

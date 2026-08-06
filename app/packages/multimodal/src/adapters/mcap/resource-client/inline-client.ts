@@ -71,8 +71,10 @@ import {
   type McapTopicTimeBounds,
 } from "../contracts/index";
 import type { StreamInventory } from "../../../schemas/v1/index";
+import { memoizedRead } from "./memoized-read";
 
 const FRAME_TRANSFORM_WINDOW_READ_CACHE_LIMIT = 32;
+const MEMOIZED_READ_CACHE_LIMIT = 32;
 
 /**
  * Inline-only options for constructing an MCAP resource client.
@@ -91,10 +93,10 @@ export interface McapSynchronizedMessageReuseClient extends McapResourceClient {
     ReusedMessage extends {
       readonly timelineTimeNs: bigint;
       readonly topic: string;
-    },
+    } = never,
   >(
     request: McapReadSynchronizedMessageBatchRequest,
-    reuseIndexedMessage: McapIndexedMessageReuse<ReusedMessage>,
+    reuseIndexedMessage?: McapIndexedMessageReuse<ReusedMessage>,
   ): Promise<
     readonly McapSynchronizedMessageWindowWithMessages<
       McapDecodedMessage | ReusedMessage
@@ -104,10 +106,10 @@ export interface McapSynchronizedMessageReuseClient extends McapResourceClient {
     ReusedMessage extends {
       readonly timelineTimeNs: bigint;
       readonly topic: string;
-    },
+    } = never,
   >(
     request: McapReadSynchronizedMessagesRequest,
-    reuseIndexedMessage: McapIndexedMessageReuse<ReusedMessage>,
+    reuseIndexedMessage?: McapIndexedMessageReuse<ReusedMessage>,
   ): Promise<
     McapSynchronizedMessageWindowWithMessages<
       McapDecodedMessage | ReusedMessage
@@ -138,27 +140,23 @@ export function createInlineMcapResourceClient(
     readerFactory,
     readSignal: options.readSignal,
   });
-  const topicReads = new Map<string, Promise<readonly StreamInventory[]>>();
-  const numericFieldReads = new Map<
-    string,
-    Promise<readonly McapTopicNumericFields[]>
-  >();
-  const topicTimeBoundsReads = new Map<
-    string,
-    Promise<readonly McapTopicTimeBounds[]>
-  >();
+  const memoizedReadCaches: Array<{ clear(): void }> = [];
+  const createReadCache = <Value>(max = MEMOIZED_READ_CACHE_LIMIT) => {
+    const cache = new LRUCache<string, Promise<Value>>({ max });
+    memoizedReadCaches.push(cache);
+    return cache;
+  };
+  const topicReads = createReadCache<readonly StreamInventory[]>();
+  const numericFieldReads =
+    createReadCache<readonly McapTopicNumericFields[]>();
+  const topicTimeBoundsReads =
+    createReadCache<readonly McapTopicTimeBounds[]>();
   // Per-source predecessor memos; bounded by topic count, dropped on dispose.
   const predecessorStores = new Map<string, McapPredecessorStore>();
-  const frameTransformBootstrapReads = new Map<
-    string,
-    Promise<McapFrameTransformSet>
-  >();
-  const frameTransformWindowReads = new LRUCache<
-    string,
-    Promise<McapFrameTransformSet>
-  >({
-    max: FRAME_TRANSFORM_WINDOW_READ_CACHE_LIMIT,
-  });
+  const frameTransformBootstrapReads = createReadCache<McapFrameTransformSet>();
+  const frameTransformWindowReads = createReadCache<McapFrameTransformSet>(
+    FRAME_TRANSFORM_WINDOW_READ_CACHE_LIMIT,
+  );
   const predecessorStoreForSource = (sourceKey: string) => {
     let store = predecessorStores.get(sourceKey);
     if (!store) {
@@ -170,12 +168,10 @@ export function createInlineMcapResourceClient(
 
   const client: McapSynchronizedMessageReuseClient = {
     dispose() {
-      topicReads.clear();
-      numericFieldReads.clear();
-      topicTimeBoundsReads.clear();
+      for (const cache of memoizedReadCaches) {
+        cache.clear();
+      }
       predecessorStores.clear();
-      frameTransformBootstrapReads.clear();
-      frameTransformWindowReads.clear();
       readerStore.dispose();
     },
 
@@ -218,21 +214,14 @@ export function createInlineMcapResourceClient(
 
     async readTopics(request: McapReadTopicsRequest) {
       const sourceKey = byteSourceAccessKey(request.source);
-      const cached = topicReads.get(sourceKey);
-      if (cached) {
-        return cached;
-      }
-
-      const read = readerStore
-        .get(request.source)
-        .then((reader) => readMcapTopics(reader))
-        .catch((error) => {
-          topicReads.delete(sourceKey);
-          throw error;
-        });
-      topicReads.set(sourceKey, read);
-
-      return read;
+      return memoizedRead<readonly StreamInventory[]>(
+        topicReads,
+        sourceKey,
+        () =>
+          readerStore
+            .get(request.source)
+            .then((reader) => readMcapTopics(reader)),
+      );
     },
 
     async enumerateNumericFields(request: McapEnumerateNumericFieldsRequest) {
@@ -242,21 +231,14 @@ export function createInlineMcapResourceClient(
       const fieldsKey = request.topics
         ? [sourceKey, fallbackKey, ...request.topics].join("\0")
         : [sourceKey, fallbackKey].join("\0");
-      const cached = numericFieldReads.get(fieldsKey);
-      if (cached) {
-        return cached;
-      }
-
-      const read = readerStore
-        .get(request.source)
-        .then((reader) => enumerateMcapNumericFields(reader, request))
-        .catch((error) => {
-          numericFieldReads.delete(fieldsKey);
-          throw error;
-        });
-      numericFieldReads.set(fieldsKey, read);
-
-      return read;
+      return memoizedRead<readonly McapTopicNumericFields[]>(
+        numericFieldReads,
+        fieldsKey,
+        () =>
+          readerStore
+            .get(request.source)
+            .then((reader) => enumerateMcapNumericFields(reader, request)),
+      );
     },
 
     async readNumericSeries(
@@ -307,42 +289,28 @@ export function createInlineMcapResourceClient(
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
       const sourceKey = byteSourceAccessKey(request.source);
       const boundsKey = [sourceKey, timeline.id, ...request.topics].join("\0");
-      const cached = topicTimeBoundsReads.get(boundsKey);
-      if (cached) {
-        return cached;
-      }
-
-      const read = readerStore
-        .get(request.source)
-        .then((reader) => readMcapTopicTimeBounds({ reader, request }))
-        .catch((error) => {
-          topicTimeBoundsReads.delete(boundsKey);
-          throw error;
-        });
-      topicTimeBoundsReads.set(boundsKey, read);
-
-      return read;
+      return memoizedRead<readonly McapTopicTimeBounds[]>(
+        topicTimeBoundsReads,
+        boundsKey,
+        () =>
+          readerStore
+            .get(request.source)
+            .then((reader) => readMcapTopicTimeBounds({ reader, request })),
+      );
     },
 
     async readFrameTransformBootstrap(
       request: McapReadFrameTransformBootstrapRequest,
     ): Promise<McapFrameTransformSet> {
       const sourceKey = byteSourceAccessKey(request.source);
-      const cached = frameTransformBootstrapReads.get(sourceKey);
-      if (cached) {
-        return cached;
-      }
-
-      const read = readerStore
-        .get(request.source)
-        .then((reader) => readMcapFrameTransformBootstrap(reader))
-        .catch((error) => {
-          frameTransformBootstrapReads.delete(sourceKey);
-          throw error;
-        });
-      frameTransformBootstrapReads.set(sourceKey, read);
-
-      return read;
+      return memoizedRead<McapFrameTransformSet>(
+        frameTransformBootstrapReads,
+        sourceKey,
+        () =>
+          readerStore
+            .get(request.source)
+            .then((reader) => readMcapFrameTransformBootstrap(reader)),
+      );
     },
 
     async readFrameTransformWindow(
@@ -356,53 +324,26 @@ export function createInlineMcapResourceClient(
         .sort()
         .join("\0");
       const windowKey = `${sourceKey}\0${timeline.id}\0${request.startTimeNs}\0${request.endTimeNs}\0${requiredChildrenKey}`;
-      const cached = frameTransformWindowReads.get(windowKey);
-      if (cached) {
-        return cached;
-      }
-
-      const read = readerStore
-        .get(request.source)
-        .then((reader) =>
-          readMcapFrameTransformWindow({
-            predecessorStore: predecessorStoreForSource(sourceKey),
-            reader,
-            readSignal: options.readSignal,
-            request,
-            timeline,
-          }),
-        )
-        .catch((error) => {
-          if (frameTransformWindowReads.get(windowKey) === read) {
-            frameTransformWindowReads.delete(windowKey);
-          }
-          throw error;
-        });
-      frameTransformWindowReads.set(windowKey, read);
-
-      return read;
+      return memoizedRead<McapFrameTransformSet>(
+        frameTransformWindowReads,
+        windowKey,
+        () =>
+          readerStore.get(request.source).then((reader) =>
+            readMcapFrameTransformWindow({
+              predecessorStore: predecessorStoreForSource(sourceKey),
+              reader,
+              readSignal: options.readSignal,
+              request,
+              timeline,
+            }),
+          ),
+      );
     },
 
     async readSynchronizedMessageBatch(
       request: McapReadSynchronizedMessageBatchRequest,
     ): Promise<readonly McapSynchronizedMessageWindow[]> {
-      if (request.timeNs.length === 0) {
-        return [];
-      }
-
-      const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
-      const reader = await readerStore.get(request.source);
-      const sourceKey = byteSourceAccessKey(request.source);
-      const predecessorStore = predecessorStoreForSource(sourceKey);
-
-      return readMcapSynchronizedMessageBatch({
-        decodeClient,
-        predecessorStore,
-        reader,
-        readSignal: options.readSignal,
-        request,
-        timeline,
-      });
+      return client.readSynchronizedMessageBatchWithReuse(request);
     },
 
     async readSynchronizedMessageBatchWithReuse(request, reuseIndexedMessage) {
@@ -428,16 +369,7 @@ export function createInlineMcapResourceClient(
     async readSynchronizedMessages(
       request: McapReadSynchronizedMessagesRequest,
     ): Promise<McapSynchronizedMessageWindow> {
-      const windows = await client.readSynchronizedMessageBatch({
-        ...request,
-        timeNs: [request.timeNs],
-      });
-      const window = windows[0];
-      if (!window) {
-        throw new Error("Expected synchronized MCAP window");
-      }
-
-      return window;
+      return client.readSynchronizedMessagesWithReuse(request);
     },
 
     async readSynchronizedMessagesWithReuse(request, reuseIndexedMessage) {

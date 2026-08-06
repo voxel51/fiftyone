@@ -5,7 +5,7 @@ import type {
   McapPointCloudChannelResult,
   McapReadPointCloudChannelRequest,
 } from "../../contracts";
-import { EpisodeReadCancelledError } from "../../../../ports";
+import { throwIfAborted } from "../../../../utils/cancellation";
 
 /** Reads one exact source message and projects only its requested color data. */
 export async function readMcapPointCloudChannel({
@@ -21,7 +21,7 @@ export async function readMcapPointCloudChannel({
   readonly request: McapReadPointCloudChannelRequest;
   readonly timeline: McapTimelineStrategy;
 }): Promise<McapPointCloudChannelResult> {
-  throwIfAborted(readSignal);
+  throwIfAborted(readSignal?.current);
   const { endTime, startTime } = timeline.messageReadRange({
     endTimeNs: request.timeNs,
     startTimeNs: request.timeNs,
@@ -32,7 +32,7 @@ export async function readMcapPointCloudChannel({
     startTime,
     topics: [request.topic],
   })) {
-    throwIfAborted(readSignal);
+    throwIfAborted(readSignal?.current);
     if (timeline.messageTimeNs(message) !== request.timeNs) continue;
     const channel = reader.channelsById.get(message.channelId);
     if (!channel || channel.topic !== request.topic) continue;
@@ -70,19 +70,11 @@ export async function readMcapPointCloudChannel({
         sourceIndices: request.sourceIndices,
       },
     );
-    throwIfAborted(readSignal);
+    throwIfAborted(readSignal?.current);
     return result;
   }
 
   throw new Error(
     `Missing ${request.topic} point cloud at ${request.timeNs.toString()}`,
   );
-}
-
-function throwIfAborted(
-  readSignal: { readonly current: AbortSignal | null } | undefined,
-): void {
-  if (readSignal?.current?.aborted) {
-    throw new EpisodeReadCancelledError();
-  }
 }
