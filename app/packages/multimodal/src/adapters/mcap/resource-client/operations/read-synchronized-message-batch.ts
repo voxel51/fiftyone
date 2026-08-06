@@ -15,9 +15,10 @@ import {
   type McapTopicDecodeError,
 } from "../../normalization/errors";
 import { decodeMcapMessage } from "../message-decoder";
-import type {
-  McapIndexedMessageTime,
-  McapIndexedReaderLike,
+import {
+  materializeIndexedEntries,
+  type McapIndexedMessageTime,
+  type McapIndexedReaderLike,
 } from "../../reader/index";
 import type { McapTimelineStrategy } from "../timeline";
 import type {
@@ -28,14 +29,75 @@ import type {
   McapTopicDecodeDiagnostic,
 } from "../../contracts/index";
 import type { McapPredecessorStore } from "../predecessor-store";
+import { resolveIndexedPredecessorRound } from "../indexed-predecessor-probe";
 
 const INDEXED_LOOKUP_KEY_SEPARATOR = "\0";
+const INDEXED_RECORD_ID_PHYSICAL_PART_COUNT = 5;
+
+/** Decoder-option components appended to one physical indexed record id. */
+export const INDEXED_RECORD_ID_OPTION_PART_COUNT = 2;
+
+/** Physical and decoder-option identities encoded by one indexed record id. */
+export interface IndexedRecordIdentityParts {
+  readonly decoderOptionsIdentity: string;
+  readonly physicalRecordIdentity: string;
+}
+
+/** Mints the stable record id shared by retained-record protocol consumers. */
+export function mintIndexedRecordIdentity(
+  candidate: McapIndexedMessageTime,
+  options: {
+    readonly cacheKeySuffix: string;
+    readonly pointCloudColorBy?: string;
+  },
+): string {
+  const decoderOptionParts = [
+    options.cacheKeySuffix,
+    options.pointCloudColorBy ?? "auto",
+  ];
+  if (decoderOptionParts.length !== INDEXED_RECORD_ID_OPTION_PART_COUNT) {
+    throw new Error("Indexed record decoder-option identity is incomplete");
+  }
+  if (
+    decoderOptionParts.some((part) =>
+      part.includes(INDEXED_LOOKUP_KEY_SEPARATOR),
+    )
+  ) {
+    throw new Error("Indexed record decoder options cannot contain NUL bytes");
+  }
+  return [indexedCandidateRecordId(candidate), ...decoderOptionParts].join(
+    INDEXED_LOOKUP_KEY_SEPARATOR,
+  );
+}
+
+/** Splits a minted indexed record id into physical and option identities. */
+export function parseIndexedRecordIdentity(
+  recordId: string,
+): IndexedRecordIdentityParts {
+  const parts = recordId.split(INDEXED_LOOKUP_KEY_SEPARATOR);
+  if (
+    parts.length <
+    INDEXED_RECORD_ID_PHYSICAL_PART_COUNT + INDEXED_RECORD_ID_OPTION_PART_COUNT
+  ) {
+    return {
+      decoderOptionsIdentity: "unknown",
+      physicalRecordIdentity: recordId,
+    };
+  }
+  return {
+    decoderOptionsIdentity: parts
+      .slice(-INDEXED_RECORD_ID_OPTION_PART_COUNT)
+      .join(INDEXED_LOOKUP_KEY_SEPARATOR),
+    physicalRecordIdentity: parts
+      .slice(0, -INDEXED_RECORD_ID_OPTION_PART_COUNT)
+      .join(INDEXED_LOOKUP_KEY_SEPARATOR),
+  };
+}
 
 /**
- * Bounded lookback used by the raw (non-indexed) fallback path for
- * unbounded-LATEST topics. Readers without chunk indexes cannot start
- * playback today, so this path only serves test fakes — bounded
- * behavior there is acceptable.
+ * Bounded lookback used by the raw fallback for supported MCAP files without
+ * message indexes. This degraded lane cannot probe arbitrary history, so
+ * unbounded-LATEST selection is intentionally limited to recent messages.
  */
 const RAW_PREDECESSOR_LOOKBACK_NS = 10_000_000_000n;
 
@@ -212,11 +274,6 @@ export async function readMcapSynchronizedMessageBatch<
           return false;
         });
         if (misses.length === 0) return;
-        void reader.prefetchChunkData?.({
-          chunkStartOffsets: misses.map(
-            (candidate) => candidate.chunkStartOffset,
-          ),
-        });
         if (reader.readIndexedMessages) {
           selectedRawCandidates = materializeIndexedSelection({
             candidates: misses,
@@ -380,45 +437,35 @@ async function backfillIndexedPredecessors({
     const nextKnownTimeNs = earliestInScanNs ?? scanEndTimeNs + 1n;
     nextKnownByTopic.set(topic, nextKnownTimeNs);
 
-    const memoized = predecessorStore?.lookup(topic, minTickNs, policy.limit);
-    if (memoized) {
-      appendEntries(topic, memoized);
-      predecessorStore?.extend(topic, scanStartTimeNs, nextKnownTimeNs);
-      continue;
-    }
-
     const topics = probeTopicsByLimit.get(policy.limit) ?? [];
     topics.push(topic);
     probeTopicsByLimit.set(policy.limit, topics);
   }
 
   for (const [limitPerTopic, topics] of probeTopicsByLimit) {
-    const resolved = await reader.readLatestIndexedMessageTimes({
+    const resolved = await resolveIndexedPredecessorRound({
+      extendFromTimeNs: scanStartTimeNs,
+      indexedMessageTimeNs,
       limitPerTopic,
-      timeNs: probeBoundNs,
+      nextKnownTimeNs: (topic) => nextKnownByTopic.get(topic) ?? minTickNs + 1n,
+      predecessorStore,
+      probeTimeNs: probeBoundNs,
+      reader,
+      timeNs: minTickNs,
       topics,
     });
 
     for (const topic of topics) {
-      const entries = resolved.get(topic) ?? [];
+      const entries = resolved.entriesByTopic.get(topic) ?? [];
       appendEntries(topic, entries);
-
-      const entryTimes = entries.map(indexedMessageTimeNs);
-      predecessorStore?.record(topic, {
-        entries,
-        limitPerTopic,
-        nextKnownTimeNs: nextKnownByTopic.get(topic) ?? minTickNs + 1n,
-        predecessorTimeNs: entryTimes.length > 0 ? maxBigInt(entryTimes) : null,
-      });
     }
   }
 }
 
 /**
- * Raw-path counterpart of the predecessor backfill, used only when the
- * reader has no message-index capabilities (test fakes — see
- * RAW_PREDECESSOR_LOOKBACK_NS). Lookback is bounded; candidates beyond
- * it stay unresolved.
+ * Raw-path counterpart of predecessor backfill for supported MCAP files
+ * without message indexes. Lookback is bounded; older candidates remain
+ * unresolved as part of the documented degraded experience.
  */
 async function backfillRawPredecessors({
   candidatesByTopic,
@@ -862,9 +909,10 @@ function indexedCandidateReuseIdentity({
   readonly timeline: McapTimelineStrategy;
 }) {
   return {
-    recordId: `${indexedCandidateRecordId(candidate)}\0${
-      timeline.cacheKeySuffix
-    }\0${pointCloudColorBy ?? "auto"}`,
+    recordId: mintIndexedRecordIdentity(candidate, {
+      cacheKeySuffix: timeline.cacheKeySuffix,
+      pointCloudColorBy,
+    }),
     timelineTimeNs: candidate.timelineTimeNs,
     topic: candidate.topic,
   };
@@ -945,35 +993,22 @@ async function materializeIndexedSelection({
     return new Map();
   }
 
-  const messages = await readIndexedMessages({
-    entries: candidates.map(
-      ({ channelId, chunkStartOffset, logTimeNs, messageOffset, topic }) => ({
-        channelId,
-        chunkStartOffset,
-        logTimeNs,
-        messageOffset,
-        topic,
-      }),
-    ),
-    signal,
-  });
-  if (messages.length !== candidates.length) {
-    throw new Error(
-      `MCAP indexed message reader returned ${messages.length} messages for ${candidates.length} entries`,
-    );
-  }
+  const entries = candidates.map(
+    ({ channelId, chunkStartOffset, logTimeNs, messageOffset, topic }) => ({
+      channelId,
+      chunkStartOffset,
+      logTimeNs,
+      messageOffset,
+      topic,
+    }),
+  );
+  const messages = await materializeIndexedEntries(reader, entries, signal);
 
   return new Map(
     candidates.map((candidate, index) => {
       const message = messages[index];
       if (!message) {
         throw missingIndexedMessageError(candidate);
-      }
-      if (
-        message.channelId !== candidate.channelId ||
-        message.logTime !== candidate.logTimeNs
-      ) {
-        throw new Error("MCAP message index/data mismatch");
       }
       const rawCandidate = rawCandidateFromMessage({
         message,
@@ -1108,7 +1143,7 @@ function serializeIndexedLookupKey(candidate: McapIndexedMessageCandidate) {
   );
 }
 
-function indexedCandidateRecordId(candidate: McapIndexedMessageCandidate) {
+function indexedCandidateRecordId(candidate: McapIndexedMessageTime) {
   return [
     candidate.topic,
     candidate.channelId.toString(),

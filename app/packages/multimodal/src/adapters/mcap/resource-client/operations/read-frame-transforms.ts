@@ -3,33 +3,16 @@ import {
   EpisodeReadCancelledError,
   isEpisodeReadCancelledError,
 } from "../../../../ports/index";
-import type { Type } from "protobufjs";
-import { Quaternion, Vector3 } from "three";
-import { decodeProtobufMessage } from "../../message-decoders/foxglove/protobuf/index";
 import {
-  asRecord,
-  optionalBigInt,
-  optionalRecord,
-  optionalString,
-  requiredArray,
-  requiredNumber,
-} from "../../message-decoders/foxglove/protobuf/records";
-import {
-  rosMessageDefinitionsForChannel,
-  rosRecordDecoderForChannel,
-  rootRosMessageDefinition,
-  type RosMessageDefinition,
-} from "../../message-decoders/ros/wire";
-import { protobufFromBinaryDescriptor } from "../../compatibility/mcap-support";
-import { timestampNs } from "../../message-decoders/foxglove/protobuf/timing";
-import type {
-  McapBoundedMessageReadResult,
-  McapIndexedMessageTime,
-  McapIndexedReaderLike,
-  McapReadContinuation,
+  materializeIndexedEntries,
+  type McapBoundedMessageReadResult,
+  type McapIndexedMessageTime,
+  type McapIndexedReaderLike,
+  type McapReadContinuation,
 } from "../../reader/index";
 import type { McapTimelineStrategy } from "../timeline";
 import type { McapPredecessorStore } from "../predecessor-store";
+import { resolveIndexedPredecessorRound } from "../indexed-predecessor-probe";
 import type {
   McapFrameTransformPlacementCoverage,
   McapFrameTransformSample,
@@ -42,48 +25,19 @@ import {
 } from "../../transforms/wire";
 import { isWithinRange } from "../../synchronization/policy";
 import type { McapReadFrameTransformWindowRequest } from "../../contracts/index";
+import { maxBigInt, minBigInt } from "../../../../utils/bigint";
+import {
+  discoverFrameTransformChannels,
+  isStaticTransformBootstrapTopic,
+  normalizeFrameTransformMessage,
+  type FrameTransformChannel,
+} from "./frame-transform-candidates";
 
-const PROTOBUF_ENCODING = "protobuf";
-const FOXGLOVE_FRAME_TRANSFORM_CDR_SCHEMA = "foxglove_msgs/msg/FrameTransform";
-const FOXGLOVE_FRAME_TRANSFORMS_CDR_SCHEMA =
-  "foxglove_msgs/msg/FrameTransforms";
-const FOXGLOVE_FRAME_TRANSFORMS_SCHEMA = "foxglove.FrameTransforms";
-const TF_MESSAGE_BATCH_FIELD = "transforms";
 const TRANSFORM_PREDECESSOR_MESSAGES_PER_TOPIC = 32;
 const TRANSFORM_PLACEMENT_PREDECESSOR_LIMITS = [32, 128] as const;
 const BOOTSTRAP_BOUNDED_MAX_SOURCE_BYTES = 64 * 1024 * 1024;
 const BOOTSTRAP_BOUNDED_MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 const BOOTSTRAP_BOUNDED_MAX_WALL_TIME_MS = 10_000;
-
-const SUPPORTED_TRANSFORM_SCHEMAS: ReadonlySet<string> = new Set([
-  "foxglove.FrameTransform",
-  FOXGLOVE_FRAME_TRANSFORMS_SCHEMA,
-]);
-const ROS_TF_MESSAGE_SCHEMAS: ReadonlySet<string> = new Set([
-  "tf2_msgs/TFMessage",
-  "tf2_msgs/msg/TFMessage",
-]);
-const ROS_TRANSFORM_STAMPED_SCHEMAS: ReadonlySet<string> = new Set([
-  "geometry_msgs/TransformStamped",
-  "geometry_msgs/msg/TransformStamped",
-]);
-const FOXGLOVE_CDR_TRANSFORM_SCHEMAS: ReadonlySet<string> = new Set([
-  FOXGLOVE_FRAME_TRANSFORM_CDR_SCHEMA,
-]);
-const FOXGLOVE_CDR_TRANSFORMS_SCHEMAS: ReadonlySet<string> = new Set([
-  FOXGLOVE_FRAME_TRANSFORMS_CDR_SCHEMA,
-]);
-
-type FrameTransformSchemaMatch =
-  | {
-      readonly format: "foxglove";
-      readonly kind: "single";
-    }
-  | {
-      readonly format: "foxglove" | "ros-tf-message";
-      readonly kind: "batch";
-      readonly repeatedFieldName: string;
-    };
 
 /**
  * Bootstrap only scans channels that are likely static, and only when they
@@ -95,24 +49,8 @@ type FrameTransformSchemaMatch =
 const BOOTSTRAP_CHANNEL_MESSAGE_CAP = 256n;
 const BOOTSTRAP_CHANNEL_MESSAGE_LIMIT =
   Number(BOOTSTRAP_CHANNEL_MESSAGE_CAP) + 1;
-const STATIC_TRANSFORM_TOPIC_SEGMENTS: ReadonlySet<string> = new Set([
-  "static_tf",
-  "static_transform",
-  "static_transforms",
-  "tf_static",
-]);
-
-type McapChannel = McapTypes.TypedMcapRecords["Channel"];
 type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
 type McapMessage = McapTypes.TypedMcapRecords["Message"];
-type McapSchema = McapTypes.TypedMcapRecords["Schema"];
-
-interface FrameTransformChannel {
-  readonly channel: McapChannel;
-  readonly decodeRecord: (message: McapMessage) => Record<string, unknown>;
-  readonly match: FrameTransformSchemaMatch;
-  readonly messageCount: bigint | undefined;
-}
 
 interface FrameTransformReadStats {
   encodedPayloadBytes: number;
@@ -130,86 +68,6 @@ const bootstrappedStaticChannelIdsByReader = new WeakMap<
   McapIndexedReaderLike,
   ReadonlySet<number>
 >();
-
-/**
- * Discovers transform-capable channels from MCAP summary metadata. Footer-only;
- * does not read messages. A channel qualifies when its schema is a known
- * Foxglove frame transform schema or a ROS tf2_msgs/TFMessage schema and both
- * channel and schema encodings are decodable today.
- */
-function discoverFrameTransformChannels(
-  reader: McapIndexedReaderLike,
-): readonly FrameTransformChannel[] {
-  const channels: FrameTransformChannel[] = [];
-  for (const channel of reader.channelsById.values()) {
-    const schema = reader.schemasById.get(channel.schemaId);
-    if (!schema) {
-      continue;
-    }
-    const decoder = frameTransformDecoderForChannel(reader, channel, schema);
-    if (!decoder) {
-      continue;
-    }
-    channels.push({
-      channel,
-      ...decoder,
-      messageCount: reader.statistics?.channelMessageCounts.get(channel.id),
-    });
-  }
-
-  return channels;
-}
-
-function frameTransformDecoderForChannel(
-  reader: McapIndexedReaderLike,
-  channel: McapChannel,
-  schema: McapSchema,
-): Pick<FrameTransformChannel, "decodeRecord" | "match"> | null {
-  if (
-    channel.messageEncoding === PROTOBUF_ENCODING &&
-    schema.encoding === PROTOBUF_ENCODING
-  ) {
-    const match = classifyProtobufFrameTransformSchema(schema);
-    if (!match) {
-      return null;
-    }
-
-    return {
-      decodeRecord: (message) =>
-        decodeProtobufMessage(
-          message.data,
-          {
-            encoding: channel.messageEncoding,
-            schema: schema.name,
-            schemaEncoding: schema.encoding,
-          },
-          {
-            schemaData: schema.data,
-            sourceTimestamps: {
-              logTime: message.logTime,
-              publishTime: message.publishTime,
-            },
-            streamId: channel.topic,
-          },
-        ),
-      match,
-    };
-  }
-
-  const match = classifyRosFrameTransformSchema(reader, channel, schema);
-  if (!match) {
-    return null;
-  }
-  const decodeRosRecord = rosRecordDecoderForChannel(reader, channel);
-  if (!decodeRosRecord) {
-    return null;
-  }
-
-  return {
-    decodeRecord: (message) => decodeRosRecord(message.data),
-    match,
-  };
-}
 
 /**
  * Reads eager static frame transforms by schema discovery. A channel is
@@ -525,29 +383,6 @@ async function firstTransformMessageHasStaticSample(
   return false;
 }
 
-function isStaticTransformBootstrapTopic(topic: string): boolean {
-  const segments = topic
-    .toLowerCase()
-    .split(/[/.:-]+/)
-    .filter(Boolean);
-  if (
-    segments.some((segment) => STATIC_TRANSFORM_TOPIC_SEGMENTS.has(segment))
-  ) {
-    return true;
-  }
-
-  return segments.some((segment, index) => {
-    const nextSegment = segments[index + 1];
-    return (
-      (segment === "tf" && nextSegment === "static") ||
-      (segment === "static" &&
-        (nextSegment === "tf" ||
-          nextSegment === "transform" ||
-          nextSegment === "transforms"))
-    );
-  });
-}
-
 /**
  * Reads dynamic frame transforms in a playback timeline window from every
  * schema-discovered transform channel. Per-sample classification: a sample
@@ -629,6 +464,7 @@ async function readMcapFrameTransformWindowImpl({
   ) {
     const placement = await readIndexedTransformPlacement({
       channelsById,
+      predecessorStore,
       reader,
       readStats,
       requiredDynamicChildFrameIds,
@@ -743,6 +579,7 @@ interface IndexedTransformPlacementResult {
  */
 async function readIndexedTransformPlacement({
   channelsById,
+  predecessorStore,
   reader,
   readStats,
   requiredDynamicChildFrameIds,
@@ -752,6 +589,7 @@ async function readIndexedTransformPlacement({
   topics,
 }: {
   readonly channelsById: ReadonlyMap<number, FrameTransformChannel>;
+  readonly predecessorStore?: McapPredecessorStore;
   readonly reader: McapIndexedReaderLike;
   readonly readStats: FrameTransformReadStats;
   readonly requiredDynamicChildFrameIds: readonly string[];
@@ -789,15 +627,21 @@ async function readIndexedTransformPlacement({
 
   for (const limitPerTopic of TRANSFORM_PLACEMENT_PREDECESSOR_LIMITS) {
     throwIfFrameTransformReadCancelled(signal);
-    const resolved = await readLatestIndexedMessageTimes({
+    const resolved = await resolveIndexedPredecessorRound({
+      indexedMessageTimeNs,
       limitPerTopic,
-      timeNs: probeTimeNs,
+      nextKnownTimeNs: () => timeNs + 1n,
+      predecessorStore,
+      probeTimeNs,
+      reader,
+      throwIfCancelled: () => throwIfFrameTransformReadCancelled(signal),
+      timeNs,
       topics,
     });
     throwIfFrameTransformReadCancelled(signal);
 
     const newEntries: McapIndexedMessageTime[] = [];
-    for (const entries of resolved.values()) {
+    for (const entries of resolved.entriesByTopic.values()) {
       for (const entry of entries) {
         const identity = indexedTransformEntryIdentity(entry);
         if (!entriesByIdentity.has(identity)) {
@@ -806,25 +650,23 @@ async function readIndexedTransformPlacement({
         }
       }
     }
-    const everyTopicExhausted = uniqueTopics.every(
-      (topic) => (resolved.get(topic)?.length ?? 0) < limitPerTopic,
-    );
+    const everyTopicExhausted = resolved.everyTopicExhausted;
     const completeResult = (): IndexedTransformPlacementResult => {
       // The runtime store's indexed ranges are global, not scoped to the
       // requested placement. Bound coverage by the oldest entry materialized
       // from every transform topic in this probe round.
       const topicFloors = uniqueTopics.flatMap((topic) => {
-        const entries = resolved.get(topic) ?? [];
+        const entries = resolved.entriesByTopic.get(topic) ?? [];
         return entries.length === 0
           ? []
-          : [minBigIntValues(entries.map(indexedMessageTimeNs))];
+          : [minBigInt(entries.map(indexedMessageTimeNs))];
       });
       return topicFloors.length === 0
         ? { coverage: { complete: false }, samples: [] }
         : {
             coverage: {
               complete: true,
-              startTimeNs: maxBigIntValues(topicFloors),
+              startTimeNs: maxBigInt(topicFloors),
             },
             samples: [...samplesByIdentity.values()],
           };
@@ -834,20 +676,11 @@ async function readIndexedTransformPlacement({
       break;
     }
 
-    void reader.prefetchChunkData?.({
-      chunkStartOffsets: [
-        ...new Set(newEntries.map((entry) => entry.chunkStartOffset)),
-      ],
-    });
-    const messages = await readIndexedMessages({
-      entries: newEntries,
+    const messages = await materializeIndexedEntries(
+      reader,
+      newEntries,
       signal,
-    });
-    if (messages.length !== newEntries.length) {
-      throw new Error(
-        `MCAP indexed transform reader returned ${messages.length} messages for ${newEntries.length} placement entries`,
-      );
-    }
+    );
 
     for (let index = 0; index < messages.length; index += 1) {
       throwIfFrameTransformReadCancelled(signal);
@@ -979,20 +812,7 @@ async function* readFrameTransformWindowMessages({
       return;
     }
 
-    // Chunk-data prefetch is advisory and bounded by the byte layer. Keep it
-    // concurrent with exact materialization, which processes one chunk at a
-    // time and retains only the reader's bounded decompressed LRU.
-    void reader.prefetchChunkData?.({
-      chunkStartOffsets: [
-        ...new Set(entries.map((entry) => entry.chunkStartOffset)),
-      ],
-    });
-    const messages = await readIndexedMessages({ entries, signal });
-    if (messages.length !== entries.length) {
-      throw new Error(
-        `MCAP indexed transform reader returned ${messages.length} messages for ${entries.length} entries`,
-      );
-    }
+    const messages = await materializeIndexedEntries(reader, entries, signal);
     for (const message of messages) {
       throwIfFrameTransformReadCancelled(signal);
       yield message;
@@ -1068,65 +888,28 @@ async function readIndexedTransformPredecessorAnchors({
     return [];
   }
 
-  const entriesByTopic = new Map<string, readonly McapIndexedMessageTime[]>();
-  const topicsToProbe: string[] = [];
-  for (const topic of topics) {
-    const memoized = predecessorStore?.lookup(
-      topic,
-      timeNs,
-      TRANSFORM_PREDECESSOR_MESSAGES_PER_TOPIC,
-    );
-    if (memoized) {
-      entriesByTopic.set(topic, memoized);
-      predecessorStore?.extend(
-        topic,
-        timeNs,
-        nextKnownTimeNsByTopic.get(topic) ?? timeNs + 1n,
-      );
-    } else {
-      topicsToProbe.push(topic);
-    }
-  }
-
-  if (topicsToProbe.length > 0) {
-    const resolved = await reader.readLatestIndexedMessageTimes({
-      limitPerTopic: TRANSFORM_PREDECESSOR_MESSAGES_PER_TOPIC,
-      timeNs: probeTimeNs,
-      topics: topicsToProbe,
-    });
-    for (const topic of topicsToProbe) {
-      const entries = resolved.get(topic) ?? [];
-      entriesByTopic.set(topic, entries);
-      const entryTimes = entries.map(indexedMessageTimeNs);
-      predecessorStore?.record(topic, {
-        entries,
-        limitPerTopic: TRANSFORM_PREDECESSOR_MESSAGES_PER_TOPIC,
-        nextKnownTimeNs: nextKnownTimeNsByTopic.get(topic) ?? timeNs + 1n,
-        predecessorTimeNs:
-          entryTimes.length > 0 ? maxBigIntValues(entryTimes) : null,
-      });
-    }
-  }
+  const { entriesByTopic } = await resolveIndexedPredecessorRound({
+    extendFromTimeNs: timeNs,
+    indexedMessageTimeNs,
+    limitPerTopic: TRANSFORM_PREDECESSOR_MESSAGES_PER_TOPIC,
+    nextKnownTimeNs: (topic) =>
+      nextKnownTimeNsByTopic.get(topic) ?? timeNs + 1n,
+    predecessorStore,
+    probeTimeNs,
+    reader,
+    throwIfCancelled: () => throwIfFrameTransformReadCancelled(signal),
+    timeNs,
+    topics,
+  });
 
   const entries = [...entriesByTopic.values()].flat();
   if (entries.length === 0) {
     return [];
   }
-  void reader.prefetchChunkData?.({
-    chunkStartOffsets: [
-      ...new Set(entries.map((entry) => entry.chunkStartOffset)),
-    ],
-  });
-
   const newestSampleByEdge = new Map<string, McapFrameTransformSample>();
   const readIndexedMessages = reader.readIndexedMessages?.bind(reader);
   if (readIndexedMessages) {
-    const messages = await readIndexedMessages({ entries, signal });
-    if (messages.length !== entries.length) {
-      throw new Error(
-        `MCAP indexed transform reader returned ${messages.length} messages for ${entries.length} predecessor entries`,
-      );
-    }
+    const messages = await materializeIndexedEntries(reader, entries, signal);
     for (const message of messages) {
       throwIfFrameTransformReadCancelled(signal);
       recordNewestFrameTransformSamples({
@@ -1149,8 +932,8 @@ async function readIndexedTransformPredecessorAnchors({
     }
     const timelineTimes = groupedEntries.map(indexedMessageTimeNs);
     const { endTime, startTime } = timeline.messageReadRange({
-      endTimeNs: maxBigIntValues(timelineTimes),
-      startTimeNs: minBigIntValues(timelineTimes),
+      endTimeNs: maxBigInt(timelineTimes),
+      startTimeNs: minBigInt(timelineTimes),
     });
     const indexedIdentities = new Set(
       groupedEntries.map(indexedTransformMessageIdentity),
@@ -1239,28 +1022,6 @@ function setNewestFrameTransformSample(
   }
 }
 
-function maxBigIntValues(values: readonly bigint[]) {
-  let maximum = values[0] as bigint;
-  for (let index = 1; index < values.length; index += 1) {
-    const value = values[index] as bigint;
-    if (value > maximum) {
-      maximum = value;
-    }
-  }
-  return maximum;
-}
-
-function minBigIntValues(values: readonly bigint[]) {
-  let minimum = values[0] as bigint;
-  for (let index = 1; index < values.length; index += 1) {
-    const value = values[index] as bigint;
-    if (value < minimum) {
-      minimum = value;
-    }
-  }
-  return minimum;
-}
-
 function createFrameTransformReadStats(
   topics: readonly string[],
 ): FrameTransformReadStats {
@@ -1294,340 +1055,6 @@ function recordFrameTransformMessage(
 
 function indexByChannelId(entries: readonly FrameTransformChannel[]) {
   return new Map(entries.map((entry) => [entry.channel.id, entry]));
-}
-
-function normalizeFrameTransformMessage({
-  entry,
-  message,
-}: {
-  readonly entry: FrameTransformChannel;
-  readonly message: McapMessage;
-}): readonly McapFrameTransformSample[] {
-  const record = entry.decodeRecord(message);
-  const staticTopic = isStaticTransformBootstrapTopic(entry.channel.topic);
-
-  if (entry.match.kind === "batch") {
-    return requiredArray(record, entry.match.repeatedFieldName).map(
-      (transform) =>
-        normalizeFrameTransformRecord(asRecord(transform), {
-          format: entry.match.format,
-          staticTopic,
-        }),
-    );
-  }
-
-  return [
-    normalizeFrameTransformRecord(record, {
-      format: entry.match.format,
-      staticTopic,
-    }),
-  ];
-}
-
-function normalizeFrameTransformRecord(
-  record: Record<string, unknown>,
-  {
-    format,
-    staticTopic,
-  }: {
-    readonly format: FrameTransformSchemaMatch["format"];
-    readonly staticTopic: boolean;
-  },
-): McapFrameTransformSample {
-  if (format === "ros-tf-message") {
-    return normalizeRosTransformStampedRecord(record, staticTopic);
-  }
-
-  const parentFrameId = optionalString(
-    record,
-    "parentFrameId",
-    "parent_frame_id",
-  );
-  const childFrameId = optionalString(record, "childFrameId", "child_frame_id");
-  const translation = optionalRecord(record, "translation");
-  const rotation = optionalRecord(record, "rotation");
-  const transformTimeNs = timestampNs(optionalRecord(record, "timestamp"));
-
-  if (!parentFrameId) {
-    throw new Error("FrameTransform parent_frame_id is missing");
-  }
-  if (!childFrameId) {
-    throw new Error("FrameTransform child_frame_id is missing");
-  }
-  if (!translation) {
-    throw new Error("FrameTransform translation is missing");
-  }
-  if (!rotation) {
-    throw new Error("FrameTransform rotation is missing");
-  }
-
-  return {
-    childFrameId,
-    parentFrameId,
-    rotation: new Quaternion(
-      requiredNumber(rotation, "x"),
-      requiredNumber(rotation, "y"),
-      requiredNumber(rotation, "z"),
-      requiredNumber(rotation, "w"),
-    ).normalize(),
-    ...(transformTimeNs !== undefined ? { timeNs: transformTimeNs } : {}),
-    translation: new Vector3(
-      requiredNumber(translation, "x"),
-      requiredNumber(translation, "y"),
-      requiredNumber(translation, "z"),
-    ),
-  };
-}
-
-function normalizeRosTransformStampedRecord(
-  record: Record<string, unknown>,
-  staticTopic: boolean,
-): McapFrameTransformSample {
-  const header = optionalRecord(record, "header");
-  const transform = optionalRecord(record, "transform");
-  const parentFrameId = header
-    ? optionalString(header, "frame_id", "frameId")
-    : undefined;
-  const childFrameId = optionalString(record, "child_frame_id", "childFrameId");
-  const translation = transform
-    ? optionalRecord(transform, "translation")
-    : undefined;
-  const rotation = transform
-    ? optionalRecord(transform, "rotation")
-    : undefined;
-  const transformTimeNs = staticTopic
-    ? undefined
-    : rosTimestampNs(header ? optionalRecord(header, "stamp") : undefined);
-
-  if (!parentFrameId) {
-    throw new Error("TransformStamped header.frame_id is missing");
-  }
-  if (!childFrameId) {
-    throw new Error("TransformStamped child_frame_id is missing");
-  }
-  if (!translation) {
-    throw new Error("TransformStamped translation is missing");
-  }
-  if (!rotation) {
-    throw new Error("TransformStamped rotation is missing");
-  }
-
-  return {
-    childFrameId,
-    parentFrameId,
-    rotation: new Quaternion(
-      requiredNumber(rotation, "x"),
-      requiredNumber(rotation, "y"),
-      requiredNumber(rotation, "z"),
-      requiredNumber(rotation, "w"),
-    ).normalize(),
-    ...(transformTimeNs !== undefined ? { timeNs: transformTimeNs } : {}),
-    translation: new Vector3(
-      requiredNumber(translation, "x"),
-      requiredNumber(translation, "y"),
-      requiredNumber(translation, "z"),
-    ),
-  };
-}
-
-function rosTimestampNs(timestamp: Record<string, unknown> | undefined) {
-  if (!timestamp) {
-    return undefined;
-  }
-
-  const seconds =
-    optionalBigInt(timestamp, "sec") ??
-    optionalBigInt(timestamp, "seconds") ??
-    0n;
-  const nanos =
-    optionalBigInt(timestamp, "nsec") ??
-    optionalBigInt(timestamp, "nanosec") ??
-    optionalBigInt(timestamp, "nanos") ??
-    0n;
-
-  return seconds * 1_000_000_000n + nanos;
-}
-
-function classifyProtobufFrameTransformSchema(
-  schema: McapSchema,
-): FrameTransformSchemaMatch | null {
-  if (schema.encoding !== PROTOBUF_ENCODING) {
-    return null;
-  }
-
-  if (schema.name === FOXGLOVE_FRAME_TRANSFORMS_SCHEMA) {
-    return {
-      format: "foxglove",
-      kind: "batch",
-      repeatedFieldName: "transforms",
-    };
-  }
-  if (SUPPORTED_TRANSFORM_SCHEMAS.has(schema.name)) {
-    return {
-      format: "foxglove",
-      kind: "single",
-    };
-  }
-
-  try {
-    const root = protobufFromBinaryDescriptor(schema.data);
-    const type = root.lookupType(schema.name);
-    type.resolveAll();
-    if (isFrameTransformType(type)) {
-      return {
-        format: "foxglove",
-        kind: "single",
-      };
-    }
-
-    const repeatedTransformField = type.fieldsArray.find(
-      (field) =>
-        field.repeated &&
-        field.resolvedType &&
-        isFrameTransformType(field.resolvedType as Type),
-    );
-    if (repeatedTransformField) {
-      return {
-        format: "foxglove",
-        kind: "batch",
-        repeatedFieldName: repeatedTransformField.name,
-      };
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
-function classifyRosFrameTransformSchema(
-  reader: McapIndexedReaderLike,
-  channel: McapChannel,
-  schema: McapSchema,
-): FrameTransformSchemaMatch | null {
-  const definitions = rosMessageDefinitionsForChannel(reader, channel);
-  const root = definitions ? rootRosMessageDefinition(definitions) : undefined;
-  if (!root) {
-    return null;
-  }
-
-  if (isFoxgloveCdrFrameTransformSchema(schema, root)) {
-    return {
-      format: "foxglove",
-      kind: "single",
-    };
-  }
-
-  if (isFoxgloveCdrFrameTransformsSchema(schema, root)) {
-    return {
-      format: "foxglove",
-      kind: "batch",
-      repeatedFieldName: "transforms",
-    };
-  }
-
-  if (!isRosTfMessageSchema(schema, root)) {
-    return null;
-  }
-
-  const transformsField = root.definitions.find(
-    (field) => field.name === TF_MESSAGE_BATCH_FIELD,
-  );
-  if (
-    !transformsField?.isArray ||
-    !transformsField.isComplex ||
-    !ROS_TRANSFORM_STAMPED_SCHEMAS.has(transformsField.type)
-  ) {
-    return null;
-  }
-
-  return {
-    format: "ros-tf-message",
-    kind: "batch",
-    repeatedFieldName: TF_MESSAGE_BATCH_FIELD,
-  };
-}
-
-function isRosTfMessageSchema(
-  schema: McapSchema,
-  definition: RosMessageDefinition,
-): boolean {
-  return (
-    ROS_TF_MESSAGE_SCHEMAS.has(schema.name) ||
-    (definition.name !== undefined &&
-      ROS_TF_MESSAGE_SCHEMAS.has(definition.name))
-  );
-}
-
-function isFoxgloveCdrFrameTransformSchema(
-  schema: McapSchema,
-  definition: RosMessageDefinition,
-): boolean {
-  return (
-    FOXGLOVE_CDR_TRANSFORM_SCHEMAS.has(schema.name) ||
-    (definition.name !== undefined &&
-      FOXGLOVE_CDR_TRANSFORM_SCHEMAS.has(definition.name))
-  );
-}
-
-function isFoxgloveCdrFrameTransformsSchema(
-  schema: McapSchema,
-  definition: RosMessageDefinition,
-): boolean {
-  return (
-    FOXGLOVE_CDR_TRANSFORMS_SCHEMAS.has(schema.name) ||
-    (definition.name !== undefined &&
-      FOXGLOVE_CDR_TRANSFORMS_SCHEMAS.has(definition.name))
-  );
-}
-
-function isFrameTransformType(type: Type): boolean {
-  const parentField = fieldByName(type, "parentFrameId", "parent_frame_id");
-  const childField = fieldByName(type, "childFrameId", "child_frame_id");
-  const translationField = fieldByName(type, "translation");
-  const rotationField = fieldByName(type, "rotation");
-
-  return (
-    parentField?.type === "string" &&
-    childField?.type === "string" &&
-    isVector3Type(translationField?.resolvedType as Type | null | undefined) &&
-    isQuaternionType(rotationField?.resolvedType as Type | null | undefined)
-  );
-}
-
-function isVector3Type(type: Type | null | undefined): boolean {
-  return Boolean(
-    type &&
-    numericField(type, "x") &&
-    numericField(type, "y") &&
-    numericField(type, "z"),
-  );
-}
-
-function isQuaternionType(type: Type | null | undefined): boolean {
-  return Boolean(
-    type &&
-    numericField(type, "x") &&
-    numericField(type, "y") &&
-    numericField(type, "z") &&
-    numericField(type, "w"),
-  );
-}
-
-function numericField(type: Type, name: string): boolean {
-  const field = fieldByName(type, name);
-  return field?.type === "double" || field?.type === "float";
-}
-
-function fieldByName(type: Type, ...names: string[]) {
-  for (const name of names) {
-    const field = type.fields[name];
-    if (field) {
-      return field;
-    }
-  }
-
-  return undefined;
 }
 
 function createMcapFrameTransformSet({
