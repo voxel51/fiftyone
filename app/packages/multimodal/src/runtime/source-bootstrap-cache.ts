@@ -26,7 +26,6 @@ type CacheEntry = SourceBootstrap & {
 };
 
 const entries = new Map<string, CacheEntry>();
-const listenersBySource = new Map<string, Set<() => void>>();
 let retainedPosterBytes = 0;
 
 /** Publishes cloneable source facts learned by a lightweight grid. */
@@ -60,7 +59,6 @@ export function publishSourceBootstrap(
   entries.set(key, next);
   retainedPosterBytes += next.posterBytes;
   evictBootstrapEntries();
-  notifyListeners(key);
 }
 
 /** Returns the current source bootstrap without changing its LRU position. */
@@ -90,21 +88,6 @@ export function getSourceBootstrapSnapshot(
   return entries.get(sourceBootstrapKey(source)) ?? null;
 }
 
-/** Subscribes to bootstrap publications for one source. */
-export function subscribeSourceBootstrap(
-  source: ByteSourceDescriptor,
-  listener: () => void,
-): () => void {
-  const key = sourceBootstrapKey(source);
-  const listeners = listenersBySource.get(key) ?? new Set<() => void>();
-  listeners.add(listener);
-  listenersBySource.set(key, listeners);
-  return () => {
-    listeners.delete(listener);
-    if (listeners.size === 0) listenersBySource.delete(key);
-  };
-}
-
 /** Cache identity for source facts, including transport validators. */
 export function sourceBootstrapKey(source: ByteSourceDescriptor): string {
   return JSON.stringify([byteSourceAccessKey(source), source.etag ?? null]);
@@ -125,11 +108,6 @@ function copyEntry(entry: CacheEntry | undefined): SourceBootstrap | null {
 export function resetSourceBootstrapCacheForTests(): void {
   entries.clear();
   retainedPosterBytes = 0;
-  for (const key of listenersBySource.keys()) notifyListeners(key);
-}
-
-function notifyListeners(key: string): void {
-  for (const listener of listenersBySource.get(key) ?? []) listener();
 }
 
 function evictBootstrapEntries(): void {
@@ -143,7 +121,6 @@ function evictBootstrapEntries(): void {
     if (!oldest) return;
     entries.delete(oldest[0]);
     retainedPosterBytes -= oldest[1].posterBytes;
-    notifyListeners(oldest[0]);
   }
 }
 
