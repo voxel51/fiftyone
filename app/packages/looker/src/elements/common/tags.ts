@@ -27,6 +27,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private fontSize?: number;
   private labelTagColors: LabelTagColor = {};
   private playing = false;
+  private showPatchLabels: BaseState["options"]["showPatchLabels"];
   private shownLabelAttributes: BaseState["options"]["shownLabelAttributes"];
 
   createHTMLElement() {
@@ -74,6 +75,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         isEqual(this.labelTagColors, labelTagColors) &&
         isEqual(this.attributeVisibility, attributeVisibility) &&
         isEqual(this.shownLabelAttributes, shownLabelAttributes) &&
+        this.showPatchLabels === showPatchLabels &&
         this.colorSeed === coloring.seed) ||
       !sample
     ) {
@@ -102,6 +104,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.labelTagColors = labelTagColors;
     this.colorPool = coloring.pool as string[];
     this.attributeVisibility = attributeVisibility;
+    this.showPatchLabels = showPatchLabels;
     this.shownLabelAttributes = shownLabelAttributes;
 
     this.element.dispatchEvent(
