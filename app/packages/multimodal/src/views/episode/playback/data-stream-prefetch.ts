@@ -203,6 +203,66 @@ export function createDataStreamPrefetcher({
     publishStreamStatuses();
   };
 
+  const deliverWindows = ({
+    activeStreams,
+    sourceEpoch,
+    streams,
+    windows,
+  }: {
+    readonly activeStreams: readonly string[];
+    readonly sourceEpoch: number;
+    readonly streams: readonly string[];
+    readonly windows: Parameters<typeof decodeFailuresByStream>[0];
+  }): void => {
+    if (getSourceEpoch() !== sourceEpoch) return;
+    const decodeFailures = decodeFailuresByStream(windows);
+    handleFetchSuccess(streams.filter((stream) => !decodeFailures.has(stream)));
+
+    const activeFetchedStreams = activeStreamsInCaches(caches, streams);
+    if (activeFetchedStreams.length === 0) return;
+
+    for (const window of windows) {
+      distributeWindowToCaches(
+        window,
+        caches,
+        activeFetchedStreams.filter(
+          (stream) => !window.diagnosticsByStream?.[stream],
+        ),
+      );
+    }
+    for (const [stream, failure] of decodeFailures) {
+      handleFetchFailure(
+        new Error(failure.messages.join("; ")),
+        failure.ticks,
+        [stream],
+      );
+    }
+    rebalanceDecodedCaches();
+    const currentIndex = getIndex();
+    const currentTick = currentIndex?.nearestTick(getPlayhead(store));
+    if (currentTick !== undefined) {
+      pushTickToStore(
+        activeStreamsInCaches(caches, activeStreams),
+        currentTick,
+        caches,
+        lastFrames,
+        store,
+        fetchState.failedStreams,
+      );
+    }
+  };
+
+  const handleRejectedFetch = (
+    error: unknown,
+    sourceEpoch: number,
+    ticks: readonly bigint[],
+    streams: readonly string[],
+  ): void => {
+    if (getSourceEpoch() !== sourceEpoch) return;
+    if (isEpisodeReadCancelledError(error)) return;
+    handleFetchFailure(error, ticks, streams);
+  };
+
   const fetchBatch: DataStreamPrefetcher["fetchBatch"] = (
     ticks,
     activeStreams,
@@ -241,59 +301,26 @@ export function createDataStreamPrefetcher({
         { priority: batchReadPriority(operation) },
       )
       .then((windows) => {
-        if (getSourceEpoch() !== sourceEpoch) return;
-        const decodeFailures = decodeFailuresByStream(windows);
-        handleFetchSuccess(
-          streamsToFetch.filter((stream) => !decodeFailures.has(stream)),
-        );
-
-        const activeFetchedStreams = activeStreamsInCaches(
-          caches,
-          streamsToFetch,
-        );
-        if (activeFetchedStreams.length === 0) return;
-
-        for (const window of windows) {
-          distributeWindowToCaches(
-            window,
-            caches,
-            activeFetchedStreams.filter(
-              (stream) => !window.diagnosticsByStream?.[stream],
-            ),
-          );
-        }
-        for (const [stream, failure] of decodeFailures) {
-          handleFetchFailure(
-            new Error(failure.messages.join("; ")),
-            failure.ticks,
-            [stream],
-          );
-        }
-        rebalanceDecodedCaches();
-        const currentIndex = getIndex();
-        if (!currentIndex) return;
-        const tick = currentIndex.nearestTick(getPlayhead(store));
-        if (tick !== undefined) {
-          pushTickToStore(
-            activeStreamsInCaches(caches, activeStreams),
-            tick,
-            caches,
-            lastFrames,
-            store,
-            fetchState.failedStreams,
-          );
-        }
+        deliverWindows({
+          activeStreams,
+          sourceEpoch,
+          streams: streamsToFetch,
+          windows,
+        });
       })
-      .catch((error) => {
-        if (getSourceEpoch() !== sourceEpoch) return;
-        if (isEpisodeReadCancelledError(error)) return;
-        handleFetchFailure(error, toFetch, streamsToFetch);
-      })
+      .catch((error) =>
+        handleRejectedFetch(error, sourceEpoch, toFetch, streamsToFetch),
+      )
       .finally(() => finishFetch(sourceEpoch, keys, streamsToFetch));
 
     return true;
   };
 
+  /**
+   * Keeps one target atomic so every newer target overlaps and supersedes the
+   * whole stale read. The adapter shares index, chunk, and decode work across
+   * all active streams while retaining synchronized stream semantics.
+   */
   const fetchCurrentFrame: DataStreamPrefetcher["fetchCurrentFrame"] = (
     tick,
     activeStreams,
@@ -317,51 +344,16 @@ export function createDataStreamPrefetcher({
         timeNs: tick,
       })
       .then((window) => {
-        if (getSourceEpoch() !== sourceEpoch) return;
-        const decodeFailures = decodeFailuresByStream([window]);
-        handleFetchSuccess(
-          streamsToFetch.filter((stream) => !decodeFailures.has(stream)),
-        );
-
-        const activeFetchedStreams = activeStreamsInCaches(
-          caches,
-          streamsToFetch,
-        );
-        if (activeFetchedStreams.length === 0) return;
-
-        distributeWindowToCaches(
-          window,
-          caches,
-          activeFetchedStreams.filter(
-            (stream) => !window.diagnosticsByStream?.[stream],
-          ),
-        );
-        for (const [stream, failure] of decodeFailures) {
-          handleFetchFailure(
-            new Error(failure.messages.join("; ")),
-            failure.ticks,
-            [stream],
-          );
-        }
-        rebalanceDecodedCaches();
-        const currentIndex = getIndex();
-        const currentTick = currentIndex?.nearestTick(getPlayhead(store));
-        if (currentTick !== undefined) {
-          pushTickToStore(
-            activeStreamsInCaches(caches, activeStreams),
-            currentTick,
-            caches,
-            lastFrames,
-            store,
-            fetchState.failedStreams,
-          );
-        }
+        deliverWindows({
+          activeStreams,
+          sourceEpoch,
+          streams: streamsToFetch,
+          windows: [window],
+        });
       })
-      .catch((error) => {
-        if (getSourceEpoch() !== sourceEpoch) return;
-        if (isEpisodeReadCancelledError(error)) return;
-        handleFetchFailure(error, [tick], streamsToFetch);
-      })
+      .catch((error) =>
+        handleRejectedFetch(error, sourceEpoch, [tick], streamsToFetch),
+      )
       .finally(() => finishFetch(sourceEpoch, [tickKey], streamsToFetch));
 
     return true;
@@ -473,15 +465,6 @@ export class DataStreamScheduler {
   resetSource(): void {
     this.lastObservedCommitSec = null;
     this.nextLookaheadRefreshTime = 0;
-  }
-
-  /**
-   * Keeps one target atomic so every newer target overlaps and supersedes the
-   * whole stale read. The adapter shares index, chunk, and decode work across
-   * all active streams while retaining synchronized stream semantics.
-   */
-  private fetchCurrentFrame(tick: bigint, activeStreams: string[]): void {
-    this.options.prefetcher.fetchCurrentFrame(tick, activeStreams);
   }
 
   /**
@@ -636,7 +619,7 @@ export class DataStreamScheduler {
         options.store,
         options.failedStreams,
       );
-      this.fetchCurrentFrame(tick, heavyStreams);
+      options.prefetcher.fetchCurrentFrame(tick, heavyStreams);
       if (overlayStreams.length > 0) {
         options.prefetcher.fetchCurrentFrame(tick, overlayStreams);
       }
@@ -660,7 +643,7 @@ export class DataStreamScheduler {
     const index = options.getIndex();
     if (!index || !options.isSourceAvailable()) return () => undefined;
 
-    const nativeStep = Number(index.stepNs) / 1_000_000_000;
+    const nativeStep = index.tickDurationSec;
     let lastCommittedTickKey: string | null = null;
     let pendingPlayRetryTimer: ReturnType<typeof setTimeout> | null = null;
     let registered = true;
@@ -712,7 +695,7 @@ export class DataStreamScheduler {
         const activeStreams = options.getActiveStreams();
         const tick = index.nearestTick(startSec);
         if (tick !== undefined) {
-          this.fetchCurrentFrame(tick, activeStreams);
+          options.prefetcher.fetchCurrentFrame(tick, activeStreams);
         }
         for (
           let batch = 0;

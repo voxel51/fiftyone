@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import TimelinePlaybackSettings from "./TimelinePlaybackSettings";
@@ -7,6 +8,34 @@ afterEach(() => cleanup());
 
 function expandPlayback() {
   fireEvent.click(screen.getByRole("button", { name: /Playback/ }));
+}
+
+function selectSamplingPreset(value: string) {
+  const select = screen.getByRole("combobox", {
+    name: /Data sampling preset/,
+  });
+  fireEvent.focus(select);
+  fireEvent.change(select, { target: { value } });
+  fireEvent.keyDown(select, { key: "Enter" });
+}
+
+function ControlledTimelinePlaybackSettings({
+  initialRateHz,
+  onRateChange,
+}: {
+  readonly initialRateHz: number;
+  readonly onRateChange: (rateHz: number) => void;
+}) {
+  const [rateHz, setRateHz] = useState(initialRateHz);
+  return (
+    <TimelinePlaybackSettings
+      onRateChange={(nextRateHz) => {
+        onRateChange(nextRateHz);
+        setRateHz(nextRateHz);
+      }}
+      rateHz={rateHz}
+    />
+  );
 }
 
 describe("TimelinePlaybackSettings", () => {
@@ -18,12 +47,7 @@ describe("TimelinePlaybackSettings", () => {
 
     expect(screen.getByText("Economy · 24 Hz")).toBeTruthy();
     expandPlayback();
-    const select = screen.getByRole("combobox", {
-      name: /Data sampling preset/,
-    });
-    fireEvent.focus(select);
-    fireEvent.change(select, { target: { value: "smooth" } });
-    fireEvent.keyDown(select, { key: "Enter" });
+    selectSamplingPreset("smooth");
 
     expect(onRateChange).toHaveBeenCalledWith(60);
   });
@@ -47,5 +71,134 @@ describe("TimelinePlaybackSettings", () => {
       screen.getByRole("button", { name: "Apply sampling rate" }),
     );
     expect(onRateChange).toHaveBeenCalledWith(120);
+  });
+
+  it("restores externally committed presets over a custom draft", () => {
+    const onRateChange = vi.fn();
+    const { rerender } = render(
+      <TimelinePlaybackSettings onRateChange={onRateChange} rateHz={48} />,
+    );
+    expandPlayback();
+    const input = screen.getByRole("spinbutton", {
+      name: "Custom data sampling rate",
+    });
+    fireEvent.change(input, { target: { value: "75" } });
+    fireEvent.blur(input);
+
+    rerender(
+      <TimelinePlaybackSettings onRateChange={onRateChange} rateHz={24} />,
+    );
+
+    expect(
+      (
+        screen.getByRole("combobox", {
+          name: /Data sampling preset/,
+        }) as HTMLInputElement
+      ).value,
+    ).toBe("Economy · 24 Hz");
+    expect(
+      screen.queryByRole("spinbutton", {
+        name: "Custom data sampling rate",
+      }),
+    ).toBeNull();
+    expect(onRateChange).not.toHaveBeenCalled();
+  });
+
+  it("moves between preset and custom controls through committed rates", () => {
+    const onRateChange = vi.fn();
+    render(
+      <ControlledTimelinePlaybackSettings
+        initialRateHz={30}
+        onRateChange={onRateChange}
+      />,
+    );
+    expandPlayback();
+
+    selectSamplingPreset("custom");
+    expect(
+      (
+        screen.getByRole("spinbutton", {
+          name: "Custom data sampling rate",
+        }) as HTMLInputElement
+      ).value,
+    ).toBe("30");
+
+    selectSamplingPreset("smooth");
+    expect(onRateChange).toHaveBeenCalledWith(60);
+    expect(
+      (
+        screen.getByRole("combobox", {
+          name: /Data sampling preset/,
+        }) as HTMLInputElement
+      ).value,
+    ).toBe("Smooth · 60 Hz");
+    expect(
+      screen.queryByRole("spinbutton", {
+        name: "Custom data sampling rate",
+      }),
+    ).toBeNull();
+
+    selectSamplingPreset("custom");
+    expect(
+      (
+        screen.getByRole("spinbutton", {
+          name: "Custom data sampling rate",
+        }) as HTMLInputElement
+      ).value,
+    ).toBe("60");
+  });
+
+  it("preserves an unapplied custom draft across same-rate rerenders", () => {
+    const onRateChange = vi.fn();
+    const { rerender } = render(
+      <TimelinePlaybackSettings onRateChange={onRateChange} rateHz={48} />,
+    );
+    expandPlayback();
+    const input = screen.getByRole("spinbutton", {
+      name: "Custom data sampling rate",
+    });
+    fireEvent.change(input, { target: { value: "75" } });
+    fireEvent.blur(input);
+
+    rerender(
+      <TimelinePlaybackSettings onRateChange={onRateChange} rateHz={48} />,
+    );
+
+    expect(
+      (
+        screen.getByRole("spinbutton", {
+          name: "Custom data sampling rate",
+        }) as HTMLInputElement
+      ).value,
+    ).toBe("75");
+    expect(onRateChange).not.toHaveBeenCalled();
+  });
+
+  it("works without a provider and resets the draft on remount", () => {
+    const onRateChange = vi.fn();
+    const first = render(
+      <TimelinePlaybackSettings onRateChange={onRateChange} rateHz={48} />,
+    );
+    expandPlayback();
+    const input = screen.getByRole("spinbutton", {
+      name: "Custom data sampling rate",
+    });
+    fireEvent.change(input, { target: { value: "75" } });
+    fireEvent.blur(input);
+    first.unmount();
+
+    render(
+      <TimelinePlaybackSettings onRateChange={onRateChange} rateHz={48} />,
+    );
+    expandPlayback();
+
+    expect(
+      (
+        screen.getByRole("spinbutton", {
+          name: "Custom data sampling rate",
+        }) as HTMLInputElement
+      ).value,
+    ).toBe("48");
+    expect(onRateChange).not.toHaveBeenCalled();
   });
 });

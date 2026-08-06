@@ -23,6 +23,9 @@ import {
   type ReadRequest,
   type SourceStats,
 } from "../../ports";
+import { nsDeltaToSeconds } from "../../runtime";
+import { throwIfAborted } from "../../utils/cancellation";
+import { toError } from "../../utils/errors";
 
 const INFO_ROLE = "metadata";
 const EPISODE_INDEX_ROLE = "episode-index";
@@ -777,7 +780,7 @@ function demuxVideo(bytes: Uint8Array): Promise<DemuxedVideo> {
     const fail = (error: unknown) => {
       if (settled) return;
       settled = true;
-      reject(error instanceof Error ? error : new Error(String(error)));
+      reject(toError(error));
     };
     file.onError = (error) => fail(new Error(`MP4 demux failed: ${error}`));
     file.onReady = (info) => {
@@ -873,13 +876,6 @@ function secondsToNs(seconds: number): bigint {
   return BigInt(Math.round(seconds * NS_PER_SECOND));
 }
 
-function nsDeltaToSeconds(deltaNs: bigint): number {
-  return (
-    Number(deltaNs / BigInt(NS_PER_SECOND)) +
-    Number(deltaNs % BigInt(NS_PER_SECOND)) / NS_PER_SECOND
-  );
-}
-
 function integer(value: unknown, field: string): number {
   const parsed = optionalInteger(value);
   if (parsed === null) throw new Error(`Invalid LeRobot ${field}`);
@@ -915,14 +911,4 @@ function firstNumber(value: unknown): number | null {
 
 function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
-}
-
-function throwIfAborted(signal: AbortSignal | undefined): void {
-  if (!signal?.aborted) return;
-  if (typeof DOMException === "function") {
-    throw new DOMException("The operation was aborted", "AbortError");
-  }
-  const error = new Error("The operation was aborted");
-  error.name = "AbortError";
-  throw error;
 }

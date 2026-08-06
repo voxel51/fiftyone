@@ -43,6 +43,7 @@ import {
   createEpisodePlaybackRuntime,
   createTimelineIndex,
   episodeSourceAccessKey,
+  nsDeltaToSeconds,
   type StreamSubscriptionOptions,
   type TimelineIndex,
 } from "../../../runtime";
@@ -60,7 +61,6 @@ import {
   derivePlaybackPolicy,
   type DerivedPlaybackPolicy,
   INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS,
-  nsToSeconds,
   resetPlaybackBuffering,
 } from "./playback-buffering";
 import {
@@ -494,10 +494,14 @@ export function useRegisterDataStream({
             bound.streamId,
             bound.firstTimestampNs,
           );
-          const startSec =
+          const startDeltaNs =
             bound.firstTimestampNs === null
               ? null
-              : nsToSeconds(bound.firstTimestampNs - range.startNs);
+              : bound.firstTimestampNs - range.startNs;
+          const startSec =
+            startDeltaNs === null
+              ? null
+              : nsDeltaToSeconds(startDeltaNs < 0n ? 0n : startDeltaNs);
           setStreamStartTimeSec(store, bound.streamId, startSec);
         }
         scheduleAutoSeekToFirstData();

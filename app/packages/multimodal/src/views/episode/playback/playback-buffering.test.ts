@@ -11,7 +11,6 @@ import {
   computeBufferedRanges,
   fillMissingLookaheadFrom,
   fillMissingStartupBufferFrom,
-  nsToSeconds,
   playbackLookaheadSegments,
   staleAgeForMessage,
 } from "./playback-buffering";
@@ -42,6 +41,15 @@ describe("episode playback buffering policy", () => {
         .startupLookaheadSeconds,
     ).toBe(0.5);
   });
+
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects invalid direct tick-rate caller %s",
+    (tickRateHz) => {
+      expect(() =>
+        derivePlaybackPolicy(DEFAULT_PLAYBACK_POLICY, tickRateHz),
+      ).toThrow("Playback tick rate must be finite and greater than zero");
+    },
+  );
 
   it("keeps background work idle and user-visible reads foregrounded", () => {
     expect(batchReadPriority("background-lookahead")).toBe("idle");
@@ -374,8 +382,6 @@ describe("episode playback buffering values", () => {
   it("normalizes time, stale ages, and buffered-range comparisons", () => {
     const message = { timestampNs: 2_000_000_000n } as DecodedFrame;
 
-    expect(nsToSeconds(2_500_000_000n)).toBe(2.5);
-    expect(nsToSeconds(-1n)).toBe(0);
     expect(staleAgeForMessage(5_000_000_000n, message, 1_000_000_000n)).toBe(
       3_000_000_000n,
     );
