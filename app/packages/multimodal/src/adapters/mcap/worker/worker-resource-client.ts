@@ -8,6 +8,7 @@ import {
 } from "../../../query/decoding";
 import { createMcapDecoderRegistry } from "../message-decoders/index";
 import { createInlineMcapResourceClient } from "../resource-client/inline-client";
+import type { McapIndexedMessageReuse } from "../resource-client/operations/read-synchronized-message-batch";
 import type {
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
@@ -97,41 +98,40 @@ export function createWorkerResourceClient({
       registry: createMcapDecoderRegistry(),
     }),
   });
+  const reuseRetainedDecodedMessage = retainedDecodedMessageReuse(
+    retainedDecodedRecordIds,
+  );
 
   return {
     ...client,
     readSynchronizedMessageBatch: (request) =>
       client.readSynchronizedMessageBatchWithReuse(
         request,
-        ({ recordId, timelineTimeNs, topic }) => {
-          if (!retainedDecodedRecordIds?.current?.has(recordId)) {
-            return undefined;
-          }
-          const reference: McapRetainedDecodedMessageReference = {
-            kind: "retained-decoded-message",
-            recordId,
-            timelineTimeNs,
-            topic,
-          };
-          return reference;
-        },
+        reuseRetainedDecodedMessage,
       ),
     readSynchronizedMessages: (request) =>
       client.readSynchronizedMessagesWithReuse(
         request,
-        ({ recordId, timelineTimeNs, topic }) => {
-          if (!retainedDecodedRecordIds?.current?.has(recordId)) {
-            return undefined;
-          }
-          const reference: McapRetainedDecodedMessageReference = {
-            kind: "retained-decoded-message",
-            recordId,
-            timelineTimeNs,
-            topic,
-          };
-          return reference;
-        },
+        reuseRetainedDecodedMessage,
       ),
+  };
+}
+
+function retainedDecodedMessageReuse(
+  retainedDecodedRecordIds:
+    | { readonly current: ReadonlySet<string> | null }
+    | undefined,
+): McapIndexedMessageReuse<McapRetainedDecodedMessageReference> {
+  return ({ recordId, timelineTimeNs, topic }) => {
+    if (!retainedDecodedRecordIds?.current?.has(recordId)) {
+      return undefined;
+    }
+    return {
+      kind: "retained-decoded-message",
+      recordId,
+      timelineTimeNs,
+      topic,
+    };
   };
 }
 

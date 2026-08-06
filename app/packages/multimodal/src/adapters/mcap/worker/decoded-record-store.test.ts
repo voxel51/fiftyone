@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { McapDecodedMessage } from "../contracts";
-import {
-  DecodedRecordStore,
-  estimateDecodedRecordBytes,
-} from "./decoded-record-store";
+import { DecodedRecordStore } from "./decoded-record-store";
 
 describe("decoded MCAP record store", () => {
   it("leases exact topic records and preserves canonical object identity", () => {
@@ -30,13 +27,10 @@ describe("decoded MCAP record store", () => {
     lease.release();
   });
 
-  it("evicts least-recently-used unpinned records by byte budget", () => {
-    const unitBytes =
-      estimateDecodedRecordBytes(createMessage("one", "/camera", 1n, 32)) ?? 0;
+  it("bounds the weak identity index with least-recently-used eviction", () => {
     const events = vi.fn();
     const store = new DecodedRecordStore({
-      maxBytes: unitBytes * 2,
-      maxEntries: 10,
+      maxEntries: 2,
       onEvent: events,
     });
     const one = createMessage("one", "/camera", 1n, 32);
@@ -56,8 +50,7 @@ describe("decoded MCAP record store", () => {
 
   it("does not evict leased records and retries skipped records later", () => {
     const message = createMessage("one", "/camera", 1n, 32);
-    const maxBytes = estimateDecodedRecordBytes(message) ?? 0;
-    const store = new DecodedRecordStore({ maxBytes, maxEntries: 1 });
+    const store = new DecodedRecordStore({ maxBytes: 32, maxEntries: 1 });
     store.canonicalize(message);
     const lease = store.acquire(["/camera"]);
     const skipped = createMessage("two", "/camera", 2n, 32);
@@ -86,20 +79,21 @@ describe("decoded MCAP record store", () => {
     ).toThrow("unavailable retained MCAP record");
   });
 
-  it("skips an individually oversized record and clears retained memory", () => {
+  it("uses the byte bound only as a pin-handshake backstop", () => {
     const store = new DecodedRecordStore({ maxBytes: 1, maxEntries: 1 });
     const message = createMessage("one", "/camera", 1n, 32);
 
     expect(store.canonicalize(message)).toBe(message);
-    expect(store.size).toBe(0);
-    expect(store.bytes).toBe(0);
+    expect(store.size).toBe(1);
+    expect(store.acquire(["/camera"]).recordIds).toEqual([]);
 
     const bounded = new DecodedRecordStore();
     bounded.canonicalize(message);
-    expect(bounded.bytes).toBeGreaterThan(0);
+    const lease = bounded.acquire(["/camera"]);
+    expect(lease.recordIds).toEqual(["one"]);
+    lease.release();
     bounded.clear();
     expect(bounded.size).toBe(0);
-    expect(bounded.bytes).toBe(0);
   });
 
   it("skips records without a trustworthy decoded-size bound", () => {

@@ -26,7 +26,7 @@ import {
   type McapPlaybackWorkerStreamType,
   type McapPlaybackWorkerUnaryType,
 } from "./playback-worker-types";
-import { errorMessage, toError } from "../../../utils/errors";
+import { errorMessage } from "../../../utils/errors";
 import { EpisodeReadCancelledError } from "../../../ports";
 import type { McapFrameTransformSet } from "../transforms/types";
 import type {
@@ -62,6 +62,7 @@ import {
   haveMcapSupersessionKeyOverlap,
   mcapForegroundSupersessionKeys,
 } from "./playback-worker-supersession";
+import { createMcapWorkerSlotLifecycle } from "./worker-slot-lifecycle";
 
 type WorkerLane = {
   readonly name: McapTransportLane;
@@ -108,6 +109,18 @@ class WorkerMcapResourceClient implements McapResourceClient {
     this.idleLane,
     this.bulkLane,
   ] as const;
+  private readonly workerLifecycle = createMcapWorkerSlotLifecycle<
+    WorkerLane,
+    McapPlaybackWorkerRequest,
+    McapPlaybackWorkerResponse
+  >({
+    createWorker: () => this.createWorker(),
+    disposeRequest: { type: "dispose" },
+    handleResponse: (lane, response) => lane.transport.handleResponse(response),
+    rejectAll: (lane, reason) => lane.transport.rejectAll(reason),
+    startupErrorMessage: "MCAP worker startup failed",
+    workerErrorMessage: "MCAP worker error",
+  });
 
   constructor(
     private readonly options: CreateWorkerMcapResourceClientOptions,
@@ -501,42 +514,20 @@ class WorkerMcapResourceClient implements McapResourceClient {
     }
 
     this.resetLane(lane, "MCAP worker reset for a different source");
-    let worker: Worker | undefined;
-    try {
-      worker = this.createWorker();
-      // Wire handlers before init so a synchronous postMessage failure or very
-      // early worker response goes through the same transport/reset paths.
-      lane.worker = worker;
-      worker.onmessage = (event: MessageEvent<McapPlaybackWorkerResponse>) =>
-        lane.transport.handleResponse(event.data);
-      worker.onerror = (event) => {
-        this.resetLane(lane, event.message || "MCAP worker error");
-      };
-
-      const initRequest: McapPlaybackWorkerRequest = {
-        payload: {
-          ...workerFetchParameters(),
-          // Current-frame and ordinary foreground playback remain eligible
-          // for priority fill slots. Idle and bulk work cannot occupy the
-          // reserved slot while either user-visible lane needs the link.
-          fillSlotClass:
-            lane.name === "interactive" || lane.name === "foreground"
-              ? "priority"
-              : "background",
-        },
-        type: "init",
-      };
-      worker.postMessage(initRequest);
-    } catch (error) {
-      if (lane.worker === worker) {
-        this.resetLane(lane, errorMessage(error, "MCAP worker startup failed"));
-      } else {
-        disposeWorker(worker);
-      }
-      throw toError(error);
-    }
-
-    return lane.worker;
+    const initRequest: McapPlaybackWorkerRequest = {
+      payload: {
+        ...workerFetchParameters(),
+        // Current-frame and ordinary foreground playback remain eligible
+        // for priority fill slots. Idle and bulk work cannot occupy the
+        // reserved slot while either user-visible lane needs the link.
+        fillSlotClass:
+          lane.name === "interactive" || lane.name === "foreground"
+            ? "priority"
+            : "background",
+      },
+      type: "init",
+    };
+    return this.workerLifecycle.workerForSlot(lane, initRequest);
   }
 
   private createWorker(): Worker {
@@ -609,24 +600,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
   }
 
   private resetLane(lane: WorkerLane, reason: string) {
-    const worker = lane.worker;
-    lane.worker = undefined;
-
-    if (worker) {
-      worker.onmessage = null;
-      worker.onerror = null;
-      try {
-        const disposeRequest: McapPlaybackWorkerRequest = {
-          type: "dispose",
-        };
-        worker.postMessage(disposeRequest);
-      } catch {
-        // The worker may already be gone.
-      }
-      worker.terminate();
-    }
-
-    lane.transport.rejectAll(reason);
+    this.workerLifecycle.resetSlot(lane, reason);
   }
 }
 
@@ -678,14 +652,4 @@ function resourcePriorityToWorkerPriority(
     case undefined:
       return undefined;
   }
-}
-
-function disposeWorker(worker: Worker | undefined) {
-  if (!worker) {
-    return;
-  }
-
-  worker.onmessage = null;
-  worker.onerror = null;
-  worker.terminate();
 }

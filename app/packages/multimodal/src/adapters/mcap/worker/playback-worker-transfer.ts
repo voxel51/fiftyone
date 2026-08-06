@@ -2,8 +2,8 @@ import type {
   McapDecodedMessage,
   McapNumericSeriesResult,
   McapNumericSeriesSliceResult,
-  McapSynchronizedMessageWindow,
 } from "../contracts/index";
+import { messagesFromMcapWorkerResult } from "./worker-result-traversal";
 
 /**
  * Collects transferable buffers from decoded MCAP results before worker posting.
@@ -18,7 +18,10 @@ export function transferablesForMcapResult(result: unknown): Transferable[] {
     transferables.add(buffer);
   }
 
-  for (const message of decodedMessagesFromResult(result)) {
+  for (const message of messagesFromMcapWorkerResult(
+    result,
+    isDecodedMessage,
+  )) {
     for (const transferable of message.decoded.output.resourceHints
       ?.transferables ?? []) {
       transferables.add(transferable);
@@ -110,32 +113,6 @@ function isNumericSeriesResult(
       fieldRecord.values instanceof Float64Array
     );
   });
-}
-
-function decodedMessagesFromResult(
-  result: unknown,
-): readonly McapDecodedMessage[] {
-  if (isSynchronizedWindow(result)) {
-    return result.messages.filter(isDecodedMessage);
-  }
-
-  if (Array.isArray(result)) {
-    return result.flatMap((item) =>
-      isSynchronizedWindow(item)
-        ? item.messages.filter(isDecodedMessage)
-        : isDecodedMessage(item)
-          ? [item]
-          : [],
-    );
-  }
-
-  return isDecodedMessage(result) ? [result] : [];
-}
-
-function isSynchronizedWindow(
-  value: unknown,
-): value is McapSynchronizedMessageWindow {
-  return Array.isArray(recordFromUnknown(value)?.messages);
 }
 
 function isDecodedMessage(value: unknown): value is McapDecodedMessage {
