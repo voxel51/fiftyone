@@ -16,7 +16,7 @@ import type {
   McapReadNumericSeriesSliceRequest,
 } from "../../contracts/index";
 import type { ReadWorkUsage } from "../../../../ports";
-import { nsDeltaToSeconds } from "../../../../runtime";
+import { nsDeltaToSeconds } from "../../../../runtime/timeline-index";
 import { decimateMinMax } from "../numeric-series-decimate";
 import { mcapTimelineRangeFromReader } from "./read-timeline-range";
 

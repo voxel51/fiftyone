@@ -106,6 +106,54 @@ function verifyEpisodeDomainDirection(edges) {
 
 verifyEpisodeDomainDirection(dependencies);
 
+const dependencyBySource = new Map(
+  graph.modules.map((module) => [module.source, module.dependencies]),
+);
+const mcapWorkerEntrypoints = [
+  `${sourcePrefix}adapters/mcap/worker/grid-preview-worker.ts`,
+  `${sourcePrefix}adapters/mcap/worker/playback-worker.ts`,
+];
+
+function dependencyPath(start, matchesTarget) {
+  const pending = [start];
+  const predecessor = new Map([[start, null]]);
+
+  while (pending.length > 0) {
+    const source = pending.shift();
+    for (const dependency of dependencyBySource.get(source) ?? []) {
+      const target = dependency.resolved;
+      if (predecessor.has(target)) continue;
+      predecessor.set(target, source);
+      if (matchesTarget(target)) {
+        const path = [target];
+        let cursor = source;
+        while (cursor !== null) {
+          path.push(cursor);
+          cursor = predecessor.get(cursor) ?? null;
+        }
+        return path.reverse();
+      }
+      pending.push(target);
+    }
+  }
+
+  return null;
+}
+
+const workerPlaybackPaths = mcapWorkerEntrypoints.flatMap((entrypoint) => {
+  const path = dependencyPath(entrypoint, (target) =>
+    target.startsWith("packages/playback/"),
+  );
+  return path ? [path] : [];
+});
+assert.equal(
+  workerPlaybackPaths.length,
+  0,
+  `MCAP workers must not load the host playback package:\n${workerPlaybackPaths
+    .map((path) => `  ${path.join(" -> ")}`)
+    .join("\n")}`,
+);
+
 // Whole-manifest aggregate reads predate the bounded-read substrate. Keep the
 // remaining migrations explicit: a new view-owned `session.read()` over the
 // manifest range must use a bounded job instead of joining this allowlist.
