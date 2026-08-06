@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import type { LogLevel } from "../../ir";
 import { relativeTimeParts } from "../../utils/relative-time";
+import { booleanNoSpaceToggleProps } from "../../utils/keyboard";
 import type { EpisodeLogConsoleRow } from "./log-console-rows";
 import { virtualLogRowRange } from "./log-console-virtualization";
 import styles from "./LogConsole.module.css";
@@ -120,7 +121,7 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
             checked={followPlayhead}
             label="Follow"
             onChange={onFollowPlayheadChange}
-            {...noSpaceToggleProps}
+            {...booleanNoSpaceToggleProps}
           />
         </div>
         <div className={styles.controlGroup}>
@@ -130,7 +131,7 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
               checked={selectedLevels.includes(level)}
               label={level}
               onChange={(checked) => onLevelChange(level, checked)}
-              {...noSpaceToggleProps}
+              {...booleanNoSpaceToggleProps}
             />
           ))}
         </div>
@@ -142,7 +143,7 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
                 checked={selectedStreams.includes(source.id)}
                 label={source.label}
                 onChange={(checked) => onStreamChange(source.id, checked)}
-                {...noSpaceToggleProps}
+                {...booleanNoSpaceToggleProps}
               />
             ))}
           </div>
@@ -205,26 +206,6 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
     </div>
   );
 };
-
-const noSpaceToggleProps = {
-  onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
-    if (isSpaceKey(event)) event.preventDefault();
-  },
-  onKeyUp: (event: React.KeyboardEvent<HTMLElement>) => {
-    if (isSpaceKey(event)) {
-      event.preventDefault();
-    } else if (event.key === "Enter" || event.code === "Enter") {
-      event.preventDefault();
-      event.currentTarget.click();
-    }
-  },
-};
-
-function isSpaceKey(event: React.KeyboardEvent<HTMLElement>): boolean {
-  return (
-    event.key === " " || event.key === "Spacebar" || event.code === "Space"
-  );
-}
 
 function formatRelativeTime(timeNs: bigint, originNs: bigint): string {
   const { milliseconds, negative, seconds } = relativeTimeParts(

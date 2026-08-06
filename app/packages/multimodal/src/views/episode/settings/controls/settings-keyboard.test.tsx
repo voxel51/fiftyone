@@ -3,9 +3,8 @@ import { Checkbox, Toggle } from "@voxel51/voodo";
 import { useState, type KeyboardEvent } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  checkboxNoSpaceToggleProps,
-  preventSettingsCheckboxSpaceToggle,
   settingsBooleanNoSpaceToggleProps,
+  preventSettingsBooleanSpaceToggle,
 } from "./settings-keyboard";
 
 function keyboardEvent(key: string, code?: string): KeyboardEvent<HTMLElement> {
@@ -16,10 +15,10 @@ function keyboardEvent(key: string, code?: string): KeyboardEvent<HTMLElement> {
   } as unknown as KeyboardEvent<HTMLElement>;
 }
 
-describe("preventSettingsCheckboxSpaceToggle", () => {
+describe("preventSettingsBooleanSpaceToggle", () => {
   it("prevents space key checkbox activation", () => {
     const event = keyboardEvent(" ");
-    preventSettingsCheckboxSpaceToggle(event);
+    preventSettingsBooleanSpaceToggle(event);
     expect(event.preventDefault).toHaveBeenCalledTimes(1);
   });
 
@@ -27,8 +26,8 @@ describe("preventSettingsCheckboxSpaceToggle", () => {
     const keyEvent = keyboardEvent("Spacebar");
     const codeEvent = keyboardEvent("Unidentified", "Space");
 
-    preventSettingsCheckboxSpaceToggle(keyEvent);
-    preventSettingsCheckboxSpaceToggle(codeEvent);
+    preventSettingsBooleanSpaceToggle(keyEvent);
+    preventSettingsBooleanSpaceToggle(codeEvent);
 
     expect(keyEvent.preventDefault).toHaveBeenCalledTimes(1);
     expect(codeEvent.preventDefault).toHaveBeenCalledTimes(1);
@@ -36,7 +35,7 @@ describe("preventSettingsCheckboxSpaceToggle", () => {
 
   it("leaves non-space keys alone", () => {
     const event = keyboardEvent("Enter");
-    preventSettingsCheckboxSpaceToggle(event);
+    preventSettingsBooleanSpaceToggle(event);
     expect(event.preventDefault).not.toHaveBeenCalled();
   });
 });
@@ -44,7 +43,7 @@ describe("preventSettingsCheckboxSpaceToggle", () => {
 // Integration: the predicate above is only correct if cancelling the event on
 // a real voodo Checkbox actually suppresses its Space-toggle. These render a
 // live Checkbox and assert the end-to-end behavior.
-describe("checkboxNoSpaceToggleProps on a voodo Checkbox", () => {
+describe("settingsBooleanNoSpaceToggleProps on a voodo Checkbox", () => {
   afterEach(() => cleanup());
 
   function renderCheckbox(extraProps: Record<string, unknown>) {
@@ -104,19 +103,25 @@ describe("checkboxNoSpaceToggleProps on a voodo Checkbox", () => {
   });
 
   it("does not toggle on Space with the guard props", () => {
-    const { checkbox, onChange } = renderCheckbox(checkboxNoSpaceToggleProps);
+    const { checkbox, onChange } = renderCheckbox(
+      settingsBooleanNoSpaceToggleProps,
+    );
     pressSpace(checkbox);
     expect(onChange).not.toHaveBeenCalled();
   });
 
   it("still toggles on pointer click with the guard props", () => {
-    const { checkbox, onChange } = renderCheckbox(checkboxNoSpaceToggleProps);
+    const { checkbox, onChange } = renderCheckbox(
+      settingsBooleanNoSpaceToggleProps,
+    );
     fireEvent.click(checkbox);
     expect(onChange).toHaveBeenCalled();
   });
 
   it("still toggles on Enter with the guard props", () => {
-    const { checkbox } = renderStatefulCheckbox(checkboxNoSpaceToggleProps);
+    const { checkbox } = renderStatefulCheckbox(
+      settingsBooleanNoSpaceToggleProps,
+    );
     expect(checkbox.getAttribute("aria-checked")).toBe("false");
 
     pressEnter(checkbox);

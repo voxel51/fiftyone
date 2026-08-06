@@ -1,4 +1,11 @@
-import { atom, useAtomValue, useSetAtom, type PrimitiveAtom } from "jotai";
+import { useMemo, useRef } from "react";
+import {
+  atom,
+  useAtomValue,
+  useSetAtom,
+  useStore,
+  type PrimitiveAtom,
+} from "jotai";
 
 /**
  * Cross-pane hover echo for the episode modal: whatever the pointer is
@@ -67,6 +74,73 @@ export function useHoverEcho(): HoverEcho | null {
 /** Returns the setter for the modal-local hover echo. */
 export function useSetHoverEcho() {
   return useSetAtom(hoverEchoAtom);
+}
+
+/** One hover relinquished by an owned publisher. */
+export interface RetiredHoverEcho<Key> {
+  /** Whether this hover was still current and therefore cleared the atom. */
+  readonly cleared: boolean;
+  readonly hover: HoverEcho;
+  readonly key: Key;
+}
+
+/** Identity-safe ownership operations for hover producers. */
+export interface OwnedHoverEchoPublisher<Key> {
+  /** Publishes and records the hover owned under `key`. */
+  publish(key: Key, hover: HoverEcho): void;
+  /** Relinquishes every hover owned by this producer. */
+  disownAll(): readonly RetiredHoverEcho<Key>[];
+  /** Relinquishes one hover without clearing a newer producer's value. */
+  retract(key: Key): RetiredHoverEcho<Key> | null;
+  /** Relinquishes the owned hovers selected by `shouldRetire`. */
+  retire(
+    shouldRetire: (key: Key, hover: HoverEcho) => boolean,
+  ): readonly RetiredHoverEcho<Key>[];
+}
+
+/** Owns hover publications in a ref map and resets the atom by identity. */
+export function useOwnedHoverEchoPublisher<
+  Key,
+>(): OwnedHoverEchoPublisher<Key> {
+  const store = useStore();
+  const ownedRef = useRef(new Map<Key, HoverEcho>());
+
+  return useMemo(() => {
+    const retract = (key: Key): RetiredHoverEcho<Key> | null => {
+      const hover = ownedRef.current.get(key);
+      if (!hover) return null;
+      ownedRef.current.delete(key);
+      let cleared = false;
+      store.set(hoverEchoAtom, (current) => {
+        if (current !== hover) return current;
+        cleared = true;
+        return null;
+      });
+      return { cleared, hover, key };
+    };
+
+    const retire = (
+      shouldRetire: (key: Key, hover: HoverEcho) => boolean,
+    ): readonly RetiredHoverEcho<Key>[] => {
+      const retired: RetiredHoverEcho<Key>[] = [];
+      for (const [key, hover] of ownedRef.current) {
+        if (!shouldRetire(key, hover)) continue;
+        const result = retract(key);
+        if (result) retired.push(result);
+      }
+      return retired;
+    };
+
+    return {
+      publish: (key: Key, hover: HoverEcho) => {
+        ownedRef.current.set(key, hover);
+        store.set(hoverEchoAtom, hover);
+      },
+      disownAll: () => retire(() => true),
+      retract,
+      retire,
+    };
+  }, [store]);
 }
 
 /**

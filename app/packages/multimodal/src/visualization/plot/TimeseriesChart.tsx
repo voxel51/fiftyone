@@ -100,6 +100,41 @@ function resetTimeseriesChart(
   });
 }
 
+function positionTimeMarker(
+  chart: uPlot,
+  line: HTMLDivElement | null,
+  sec: number | null,
+  durationSec: number,
+  suppressed: boolean,
+): void {
+  if (!line) return;
+  if (sec === null || suppressed || sec < 0 || sec > durationSec) {
+    line.style.display = "none";
+    return;
+  }
+  line.style.display = "block";
+  line.style.transform = `translateX(${chart.valToPos(sec, "x")}px)`;
+}
+
+function positionPlayhead(
+  chart: uPlot,
+  line: HTMLDivElement | null,
+  sec: number | null,
+  durationSec: number,
+): void {
+  positionTimeMarker(chart, line, sec, durationSec, false);
+}
+
+function positionHoverCaret(
+  chart: uPlot,
+  line: HTMLDivElement | null,
+  sec: number | null,
+  durationSec: number,
+  suppressed: boolean,
+): void {
+  positionTimeMarker(chart, line, sec, durationSec, suppressed);
+}
+
 /**
  * Dense multi-series line chart on uPlot. Renders on the shared dark
  * visualization surface; identity is carried by the always-present
@@ -178,41 +213,6 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     hasInteractiveScaleRef.current = false;
     const xLimits = [0, xMax] as const;
 
-    const positionPlayhead = (chart: uPlot) => {
-      const line = playheadLineRef.current;
-      if (!line) {
-        return;
-      }
-      const sec = playheadSecRef.current;
-      if (sec === null || sec < 0 || sec > durationSec) {
-        line.style.display = "none";
-        return;
-      }
-      line.style.display = "block";
-      line.style.transform = `translateX(${chart.valToPos(sec, "x")}px)`;
-    };
-
-    const positionHoverCaret = (chart: uPlot) => {
-      const line = hoverLineRef.current;
-      if (!line) {
-        return;
-      }
-      const sec = hoverSecRef.current;
-      // Suppressed while this chart is the hover source: uPlot's own
-      // cursor already marks the time there.
-      if (
-        sec === null ||
-        pointerInsideRef.current ||
-        sec < 0 ||
-        sec > durationSec
-      ) {
-        line.style.display = "none";
-        return;
-      }
-      line.style.display = "block";
-      line.style.transform = `translateX(${chart.valToPos(sec, "x")}px)`;
-    };
-
     const options: uPlot.Options = {
       axes: [
         {
@@ -241,7 +241,23 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       },
       height: Math.max(host.clientHeight, 80),
       hooks: {
-        draw: [positionPlayhead, positionHoverCaret],
+        draw: [
+          (chart) =>
+            positionPlayhead(
+              chart,
+              playheadLineRef.current,
+              playheadSecRef.current,
+              durationSec,
+            ),
+          (chart) =>
+            positionHoverCaret(
+              chart,
+              hoverLineRef.current,
+              hoverSecRef.current,
+              durationSec,
+              pointerInsideRef.current,
+            ),
+        ],
         setSelect: [
           () => {
             hasInteractiveScaleRef.current = true;
@@ -283,14 +299,21 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     line.style.display = "none";
     chart.over.appendChild(line);
     playheadLineRef.current = line;
-    positionPlayhead(chart);
+    positionPlayhead(chart, line, playheadSecRef.current, durationSec);
 
     const hoverLine = document.createElement("div");
     hoverLine.className = styles.hoverCaret;
+    hoverLine.dataset.testid = "timeseries-hover-caret";
     hoverLine.style.display = "none";
     chart.over.appendChild(hoverLine);
     hoverLineRef.current = hoverLine;
-    positionHoverCaret(chart);
+    positionHoverCaret(
+      chart,
+      hoverLine,
+      hoverSecRef.current,
+      durationSec,
+      pointerInsideRef.current,
+    );
 
     // Click-to-seek listens on uPlot's own overlay so plot-area padding
     // and axes never miscount; pointer travel separates click from drag.
@@ -444,7 +467,13 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     };
     const onPointerEnter = () => {
       pointerInsideRef.current = true;
-      positionHoverCaret(chart);
+      positionHoverCaret(
+        chart,
+        hoverLine,
+        hoverSecRef.current,
+        durationSec,
+        true,
+      );
     };
     const onPointerMove = (event: PointerEvent) => {
       const publish = onHoverTimeRef.current;
@@ -462,7 +491,13 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       downPoint = null;
       suppressSeek = false;
       pointerInsideRef.current = false;
-      positionHoverCaret(chart);
+      positionHoverCaret(
+        chart,
+        hoverLine,
+        hoverSecRef.current,
+        durationSec,
+        false,
+      );
       onHoverTimeRef.current?.(null);
     };
     // uPlot resets its scales on double click. In this surface a double click
@@ -560,21 +595,14 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     return registerHoverTimeListener((sec) => {
       hoverSecRef.current = sec;
       const chart = chartRef.current;
-      const line = hoverLineRef.current;
-      if (!chart || !line) {
-        return;
-      }
-      if (
-        sec === null ||
-        pointerInsideRef.current ||
-        sec < 0 ||
-        sec > durationSec
-      ) {
-        line.style.display = "none";
-        return;
-      }
-      line.style.display = "block";
-      line.style.transform = `translateX(${chart.valToPos(sec, "x")}px)`;
+      if (!chart) return;
+      positionHoverCaret(
+        chart,
+        hoverLineRef.current,
+        sec,
+        durationSec,
+        pointerInsideRef.current,
+      );
     });
   }, [durationSec, registerHoverTimeListener]);
 
@@ -587,16 +615,8 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     return registerPlayheadListener((sec) => {
       playheadSecRef.current = sec;
       const chart = chartRef.current;
-      const line = playheadLineRef.current;
-      if (!chart || !line) {
-        return;
-      }
-      if (sec < 0 || sec > durationSec) {
-        line.style.display = "none";
-        return;
-      }
-      line.style.display = "block";
-      line.style.transform = `translateX(${chart.valToPos(sec, "x")}px)`;
+      if (!chart) return;
+      positionPlayhead(chart, playheadLineRef.current, sec, durationSec);
     });
   }, [durationSec, registerPlayheadListener]);
 

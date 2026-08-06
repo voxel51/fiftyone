@@ -36,6 +36,9 @@ interface MockOptions {
       readonly y?: boolean;
     };
   };
+  readonly hooks?: {
+    readonly draw?: MockHook | readonly MockHook[];
+  };
   readonly plugins?: readonly MockHookPlugin[];
   readonly scales?: {
     readonly x?: {
@@ -294,6 +297,56 @@ describe("TimeseriesChart interactions", () => {
     dispatchPointer(playhead, "pointerup", 15, 5);
     expect(playhead.className).not.toContain("playheadDragging");
     expect(onSeekEnd).toHaveBeenCalledOnce();
+    unmount();
+  });
+
+  it("positions playhead and hover markers consistently across feeds and draws", () => {
+    const feeds: {
+      hover?: (sec: number | null) => void;
+      playhead?: (sec: number) => void;
+    } = {};
+    const { unmount } = render(
+      <TimeseriesChart
+        data={DATA}
+        durationSec={20}
+        registerHoverTimeListener={(listener) => {
+          feeds.hover = listener;
+          return vi.fn();
+        }}
+        registerPlayheadListener={(listener) => {
+          feeds.playhead = listener;
+          return vi.fn();
+        }}
+        series={[{ color: "#f00", label: "speed" }]}
+      />,
+    );
+    const chart = lastChart();
+    const playhead = screen.getByTestId("timeseries-playhead");
+    const hover = screen.getByTestId("timeseries-hover-caret");
+
+    feeds.playhead?.(5);
+    expect(playhead.style.display).toBe("block");
+    expect(playhead.style.transform).toBe("translateX(5px)");
+
+    playhead.style.display = "none";
+    runHooks(chart.options.hooks?.draw, chart);
+    expect(playhead.style.display).toBe("block");
+    expect(playhead.style.transform).toBe("translateX(5px)");
+
+    feeds.playhead?.(21);
+    expect(playhead.style.display).toBe("none");
+
+    feeds.hover?.(6);
+    expect(hover.style.display).toBe("block");
+    expect(hover.style.transform).toBe("translateX(6px)");
+
+    dispatchPointer(chart.over, "pointerenter", 0, 0);
+    expect(hover.style.display).toBe("none");
+    dispatchPointer(chart.over, "pointerleave", 0, 0);
+    expect(hover.style.display).toBe("block");
+
+    feeds.hover?.(null);
+    expect(hover.style.display).toBe("none");
     unmount();
   });
 });
