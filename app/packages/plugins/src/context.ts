@@ -1,56 +1,48 @@
+import {
+  createContext,
+  createElement,
+  useContext,
+  type PropsWithChildren,
+} from "react";
 import { selector } from "recoil";
-import type { OperatorContextSelector } from "./Runtime/types";
+import type { PluginRuntimeHostContext } from "./Runtime/types";
 
-let useSpacesContext: (() => unknown) | undefined;
-let useOperatorsContext: (() => unknown) | undefined;
-
-function useEmptyContext() {
+function useEmptySpacesContext() {
   return {};
 }
 
-export function setContextHook(
-  type: "operators" | "spaces",
-  hook: (() => unknown) | undefined,
-) {
-  if (type === "operators") {
-    useOperatorsContext = hook;
-  }
-  if (type === "spaces") {
-    useSpacesContext = hook;
-  }
-}
-
-export function useContextHook(type: "operators" | "spaces") {
-  if (type === "operators") {
-    return useOperatorsContext || useEmptyContext;
-  }
-  if (type === "spaces") {
-    return useSpacesContext || useEmptyContext;
-  }
-  return useEmptyContext;
-}
-
-let operatorsContextSelector: OperatorContextSelector | undefined;
-
 const emptyContextSelector = selector({
   key: "emptyContextSelector",
-  get: ({}) => {
-    return {};
-  },
+  get: () => ({}),
 });
 
-export function setContextSelector(
-  type: "operators" | "spaces",
-  selector: OperatorContextSelector | undefined,
-) {
-  if (type === "operators") {
-    operatorsContextSelector = selector;
-  }
+const defaultHostContext: PluginRuntimeHostContext = {
+  operatorContextSelector: emptyContextSelector,
+  useSpacesContext: useEmptySpacesContext,
+};
+
+const PluginRuntimeHostContext =
+  createContext<PluginRuntimeHostContext>(defaultHostContext);
+
+export function PluginRuntimeHostContextProvider({
+  children,
+  value,
+}: PropsWithChildren<{ value: Partial<PluginRuntimeHostContext> }>) {
+  return createElement(
+    PluginRuntimeHostContext.Provider,
+    { value: { ...defaultHostContext, ...value } },
+    children,
+  );
 }
 
-export function getContextSelector(type: "operators" | "spaces") {
-  if (type === "operators") {
-    return operatorsContextSelector || emptyContextSelector;
-  }
-  return emptyContextSelector;
+function usePluginRuntimeHostContext() {
+  return useContext(PluginRuntimeHostContext);
+}
+
+export function useOperatorContextSelector() {
+  return usePluginRuntimeHostContext().operatorContextSelector;
+}
+
+export function useSpacesContext() {
+  return usePluginRuntimeHostContext().useSpacesContext;
 }

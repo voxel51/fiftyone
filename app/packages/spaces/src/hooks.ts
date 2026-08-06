@@ -4,7 +4,7 @@ import {
   type PlotRegistration,
   subscribeToRegistry,
   useActivePlugins,
-  useContextHook,
+  useSpacesContext,
 } from "@fiftyone/plugins";
 import {
   useCallback,
@@ -136,8 +136,8 @@ export function useSpaceNodes(spaceId: string) {
 export function usePanels(
   predicate?: (panel: SpacePanelRegistration) => boolean,
 ) {
-  const useContext = useContextHook("spaces");
-  const ctx = useContext();
+  const useContext = useSpacesContext();
+  const ctx = useContext() as Record<string, unknown>;
   const plots = useActivePlugins(PluginComponentType.Plot, ctx);
   const panels = useActivePlugins(PluginComponentType.Panel, ctx);
 

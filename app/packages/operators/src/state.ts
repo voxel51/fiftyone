@@ -50,7 +50,8 @@ import {
 } from "./ts";
 import { generateOperatorSessionId, optimizeCtx } from "./utils";
 import { ValidationContext } from "./validation";
-import { getContextSelector } from "@fiftyone/plugins/src/context";
+import { useOperatorContextSelector } from "@fiftyone/plugins/src/context";
+import type { OperatorContextSelector } from "@fiftyone/plugins/src/Runtime/types";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -105,18 +106,23 @@ export const usePromptOperatorInput = () => {
 const currentContextSelector = selectorFamily({
   key: "currentContextSelector",
   get:
-    (operatorName) =>
+    ({
+      contextSelector,
+      operatorName,
+    }: {
+      contextSelector: OperatorContextSelector;
+      operatorName: string;
+    }) =>
     ({ get }) => {
-      const globalContextSelector = getContextSelector("operators");
-      const globalContext = get(globalContextSelector) as object;
+      const globalContext = get(contextSelector) as object;
       const params = get(currentOperatorParamsSelector(operatorName));
       return { ...globalContext, params };
     },
 });
 
 export function useGlobalExecutionContext(): ExecutionContext {
-  const globalContextSelector = getContextSelector("operators");
-  const globalCtx = useRecoilValue(globalContextSelector);
+  const contextSelector = useOperatorContextSelector();
+  const globalCtx = useRecoilValue(contextSelector);
   const activeScope = useRecoilValue(activeScopeAtom);
   const ctx = useMemo(() => {
     return new ExecutionContext({}, {
@@ -128,7 +134,10 @@ export function useGlobalExecutionContext(): ExecutionContext {
 }
 
 const useExecutionContext = (operatorName, hooks = {}) => {
-  const curCtx = useRecoilValue(currentContextSelector(operatorName)) as any;
+  const contextSelector = useOperatorContextSelector();
+  const curCtx = useRecoilValue(
+    currentContextSelector({ contextSelector, operatorName }),
+  ) as any;
   const currentSample = useCurrentSample();
   const {
     datasetName,
@@ -1213,6 +1222,7 @@ export function useOperatorExecutor(
   const [isDelegated, setIsDelegated] = useState(false);
 
   const [needsOutput, setNeedsOutput] = useState(false);
+  const contextSelector = useOperatorContextSelector();
   const context = useExecutionContext(uri);
   const currentSample = useCurrentSample();
   const hooks = operator?.useHooks?.(context) ?? {};
@@ -1248,7 +1258,7 @@ export function useOperatorExecutor(
       const activeScope = scope ?? getActiveScope();
       setIsExecuting(true);
       const { params, ...currentContext } = await state.snapshot.getPromise(
-        currentContextSelector(uri),
+        currentContextSelector({ contextSelector, operatorName: uri }),
       );
 
       const ctx = new ExecutionContext(
@@ -1305,7 +1315,7 @@ export function useOperatorExecutor(
       setHasExecuted(true);
       setIsExecuting(false);
     },
-    [currentSample, context, loadResult],
+    [contextSelector, currentSample, context, loadResult],
   );
   return {
     isExecuting,

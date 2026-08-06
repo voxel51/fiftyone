@@ -1,4 +1,7 @@
-import { getContextSelector, pluginsLoaderAtom } from "@fiftyone/plugins";
+import {
+  pluginsLoaderAtom,
+  useOperatorContextSelector,
+} from "@fiftyone/plugins";
 import { PluginScope } from "@fiftyone/plugins/src/PluginScope";
 import debounce from "lodash/debounce";
 import isEqual from "lodash/isEqual";
@@ -118,7 +121,7 @@ function placementContextKey(context: RawContext) {
 }
 
 function useOperatorThrottledContextSetter() {
-  const contextSelector = getContextSelector("operators");
+  const contextSelector = useOperatorContextSelector();
   const context = useRecoilValue(contextSelector) as RawContext;
   const setContext = useSetRecoilState(operatorThrottledContext);
 

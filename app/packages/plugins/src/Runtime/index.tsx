@@ -5,9 +5,13 @@
 import { Loading, ThemeProvider } from "@fiftyone/components";
 import { OperatorCore } from "@fiftyone/operators";
 import { BaseStylesProvider } from "@fiftyone/operators/src/styled-components";
-import { setContextHook, setContextSelector } from "../context";
+import { PluginRuntimeHostContextProvider } from "../context";
 import { usePluginOperatorsRuntime } from "./operators";
-import type { PluginsLoaderProps, PluginsRuntimeProps } from "./types";
+import type {
+  PluginRuntimeHostContext,
+  PluginsLoaderProps,
+  PluginsRuntimeProps,
+} from "./types";
 import usePlugins, { usePluginsStatus } from "./usePlugins";
 
 export function PluginsLoader({
@@ -23,17 +27,22 @@ export function PluginsLoader({
 }
 
 export function OperatorsRuntime(props: PluginsRuntimeProps) {
-  const {
-    activeScope,
-    children,
-    datasetLess,
-    datasetName,
+  const { operatorContextSelector, useSpacesContext } = props;
+  const hostContext: Partial<PluginRuntimeHostContext> = {
     operatorContextSelector,
     useSpacesContext,
-  } = props;
+  };
 
-  setContextSelector("operators", operatorContextSelector);
-  setContextHook("spaces", useSpacesContext);
+  return (
+    <PluginRuntimeHostContextProvider value={hostContext}>
+      <OperatorsRuntimeContent {...props} />
+    </PluginRuntimeHostContextProvider>
+  );
+}
+
+function OperatorsRuntimeContent(props: PluginsRuntimeProps) {
+  const { activeScope, children, datasetLess, datasetName } = props;
+
   const plugins = usePluginsStatus();
   const operators = usePluginOperatorsRuntime(
     activeScope,
