@@ -191,6 +191,70 @@ describe("GPU pointcloud projection picker", () => {
     controller.dispose();
   });
 
+  it("accepts finite off-image targets but rejects invalid calibration", async () => {
+    const renderer = new FakeProjectionPickRenderer();
+    renderer.enqueueReadback(Promise.resolve(new Uint32Array([1, 1, 1, 1])));
+    const controller = createGpuPointCloudProjectionPickerController(renderer);
+    controller.setScene({
+      calibrationHeight: 100,
+      calibrationWidth: 100,
+      layers: [layer("lidar", 1)],
+    });
+
+    await expect(
+      controller.pick({ radiusPx: 4, targetU: -1, targetV: -2 }),
+    ).resolves.toEqual({
+      layerIndex: 0,
+      resourceKey: "lidar",
+      sampleIndex: 0,
+      sourceIndex: 0,
+    });
+
+    controller.setScene({
+      calibrationHeight: 0,
+      calibrationWidth: 100,
+      layers: [layer("lidar", 1)],
+    });
+    await expect(
+      controller.pick({ radiusPx: 4, targetU: 1, targetV: 2 }),
+    ).resolves.toBeNull();
+    expect(renderer.renderedScenes).toHaveLength(1);
+    controller.dispose();
+  });
+
+  it("propagates current sync and async failures but suppresses stale failures", async () => {
+    const renderer = new FakeProjectionPickRenderer();
+    const controller = createGpuPointCloudProjectionPickerController(renderer);
+    controller.setScene({
+      calibrationHeight: 100,
+      calibrationWidth: 100,
+      layers: [layer("lidar", 1)],
+    });
+    const syncError = new Error("render failed");
+    renderer.enqueueRenderError(syncError);
+    await expect(
+      controller.pick({ radiusPx: 4, targetU: 50, targetV: 50 }),
+    ).rejects.toBe(syncError);
+
+    const asyncError = new Error("readback failed");
+    renderer.enqueueReadback(Promise.reject(asyncError));
+    await expect(
+      controller.pick({ radiusPx: 4, targetU: 50, targetV: 50 }),
+    ).rejects.toBe(asyncError);
+
+    const stale = deferred<ArrayBufferView>();
+    renderer.enqueueReadback(stale.promise);
+    const staleResult = controller.pick({
+      radiusPx: 4,
+      targetU: 50,
+      targetV: 50,
+    });
+    controller.invalidate();
+    stale.reject(new Error("stale readback failed"));
+    await expect(staleResult).resolves.toBeNull();
+    controller.dispose();
+  });
+
   it("rejects an incomplete integer texel", async () => {
     const renderer = new FakeProjectionPickRenderer();
     renderer.enqueueReadback(Promise.resolve(new Uint32Array([1, 1])));
@@ -291,9 +355,14 @@ class FakeProjectionPickRenderer {
   readonly readTargets: THREE.RenderTarget[] = [];
   readonly renderedScenes: THREE.Scene[] = [];
   private readonly readbacks: Promise<ArrayBufferView>[] = [];
+  private readonly renderErrors: unknown[] = [];
 
   enqueueReadback(readback: Promise<ArrayBufferView>): void {
     this.readbacks.push(readback);
+  }
+
+  enqueueRenderError(error: unknown): void {
+    this.renderErrors.push(error);
   }
 
   getClearAlpha(): number {
@@ -322,6 +391,8 @@ class FakeProjectionPickRenderer {
   }
 
   render(scene: THREE.Object3D): void {
+    const error = this.renderErrors.shift();
+    if (error) throw error;
     this.renderedScenes.push(scene as THREE.Scene);
   }
 

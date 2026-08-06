@@ -48,6 +48,27 @@ describe("useImageTextureLease", () => {
     );
   });
 
+  it.each([
+    [
+      "message-bearing browser errors",
+      { message: "Texture upload failed" },
+      "Texture upload failed",
+    ],
+    ["opaque errors", null, "Image unavailable"],
+  ])("renders %s", async (_label, error, expected) => {
+    leases.push({
+      promise: Promise.reject(error),
+      release: vi.fn(),
+    });
+
+    const rendered = renderHook(() =>
+      useImageTextureLease({ frame: rawFrame(), identity: 1 }),
+    );
+
+    await waitFor(() => expect(rendered.result.current.status).toBe("error"));
+    expect(rendered.result.current.errorMessage).toBe(expected);
+  });
+
   it("reports a decoded texture to the callback that requested it", async () => {
     const pending = deferred<ImageTextureHandle>();
     const requested = vi.fn();

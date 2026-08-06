@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { PreparedImageAnnotations } from "./gpu-image-annotation-preparation";
 import {
@@ -51,6 +51,88 @@ describe("GPU image annotation picker", () => {
       controller.pick({ radiusPx: 4, targetU: 250, targetV: 20 }),
     ).resolves.toBeNull();
     expect(renderer.renderedScenes).toHaveLength(1);
+    controller.dispose();
+  });
+
+  it("keeps image-bound validation and four-channel decoding local", async () => {
+    const renderer = new FakePickRenderer();
+    const resource = getGpuImageAnnotationResource("tile", payload(1));
+    const controller = createGpuImageAnnotationPickerController(renderer);
+    controller.setScene({ imageHeight: 100, imageWidth: 200, resource });
+
+    await expect(
+      controller.pick({ radiusPx: 4, targetU: -1, targetV: 20 }),
+    ).resolves.toBeNull();
+    await expect(
+      controller.pick({ radiusPx: 4, targetU: 200, targetV: 20 }),
+    ).resolves.toBeNull();
+    expect(renderer.renderedScenes).toHaveLength(0);
+
+    renderer.enqueueReadback(Promise.resolve(new Uint32Array([1, 1, 0])));
+    await expect(
+      controller.pick({ radiusPx: 4, targetU: 50, targetV: 20 }),
+    ).rejects.toThrow("non-integer texel");
+
+    renderer.enqueueReadback(Promise.resolve(new Uint32Array([1, 2, 0, 1])));
+    await expect(
+      controller.pick({ radiusPx: 4, targetU: 50, targetV: 20 }),
+    ).resolves.toBeNull();
+    controller.dispose();
+  });
+
+  it("propagates current sync and async failures but suppresses stale failures", async () => {
+    const renderer = new FakePickRenderer();
+    const resource = getGpuImageAnnotationResource("tile", payload(1));
+    const controller = createGpuImageAnnotationPickerController(renderer);
+    controller.setScene({ imageHeight: 100, imageWidth: 200, resource });
+    const syncError = new Error("render failed");
+    renderer.enqueueRenderError(syncError);
+
+    await expect(
+      controller.pick({ radiusPx: 4, targetU: 50, targetV: 20 }),
+    ).rejects.toBe(syncError);
+
+    const asyncError = new Error("readback failed");
+    renderer.enqueueReadback(Promise.reject(asyncError));
+    await expect(
+      controller.pick({ radiusPx: 4, targetU: 50, targetV: 20 }),
+    ).rejects.toBe(asyncError);
+
+    const stale = deferred<ArrayBufferView>();
+    renderer.enqueueReadback(stale.promise);
+    const staleResult = controller.pick({
+      radiusPx: 4,
+      targetU: 50,
+      targetV: 20,
+    });
+    controller.invalidate();
+    stale.reject(new Error("stale readback failed"));
+    await expect(staleResult).resolves.toBeNull();
+    controller.dispose();
+  });
+
+  it("disposes a replaced pass before the controller-owned resources", async () => {
+    const renderer = new FakePickRenderer();
+    const controller = createGpuImageAnnotationPickerController(renderer);
+    controller.setScene({
+      imageHeight: 100,
+      imageWidth: 200,
+      resource: getGpuImageAnnotationResource("tile", payload(1)),
+    });
+    renderer.enqueueReadback(Promise.resolve(new Uint32Array([1, 1, 0, 1])));
+    await controller.pick({ radiusPx: 4, targetU: 50, targetV: 20 });
+    const material = (renderer.renderedScenes[0].children[0] as THREE.Sprite)
+      .material;
+    const disposeMaterial = vi.spyOn(material, "dispose");
+
+    controller.setScene({
+      imageHeight: 100,
+      imageWidth: 200,
+      resource: getGpuImageAnnotationResource("tile", payload(2)),
+    });
+
+    expect(disposeMaterial).toHaveBeenCalledOnce();
+    controller.dispose();
     controller.dispose();
   });
 
@@ -119,15 +201,18 @@ function payload(count: number): PreparedImageAnnotations {
 
 interface Deferred<T> {
   readonly promise: Promise<T>;
+  readonly reject: (error: unknown) => void;
   readonly resolve: (value: T) => void;
 }
 
 function deferred<T>(): Deferred<T> {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((resolvePromise) => {
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
     resolve = resolvePromise;
+    reject = rejectPromise;
   });
-  return { promise, resolve };
+  return { promise, reject, resolve };
 }
 
 class FakePickRenderer {
@@ -143,9 +228,14 @@ class FakePickRenderer {
   readonly readTargets: THREE.RenderTarget[] = [];
   readonly renderedScenes: THREE.Scene[] = [];
   private readonly readbacks: Promise<ArrayBufferView>[] = [];
+  private readonly renderErrors: unknown[] = [];
 
   enqueueReadback(readback: Promise<ArrayBufferView>): void {
     this.readbacks.push(readback);
+  }
+
+  enqueueRenderError(error: unknown): void {
+    this.renderErrors.push(error);
   }
 
   getClearAlpha(): number {
@@ -174,6 +264,8 @@ class FakePickRenderer {
   }
 
   render(scene: THREE.Object3D): void {
+    const error = this.renderErrors.shift();
+    if (error) throw error;
     this.renderedScenes.push(scene as THREE.Scene);
   }
 

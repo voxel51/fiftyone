@@ -142,6 +142,44 @@ describe("GPU 3D pointcloud picker", () => {
     controller.dispose();
   });
 
+  it("validates viewport geometry and enforces its two-channel texel contract", async () => {
+    const renderer = new FakePointCloud3dPickRenderer();
+    const controller = createGpuPointCloud3dPickerController(renderer);
+    controller.setScene([layer({ layerId: "lidar" })]);
+
+    await expect(
+      controller.pick(request({ viewportWidthPx: 0 })),
+    ).resolves.toBeNull();
+    expect(renderer.renderedScenes).toHaveLength(0);
+
+    renderer.enqueueReadback(Promise.resolve(new Uint32Array([1])));
+    await expect(controller.pick(request())).rejects.toThrow(
+      "non-integer texel",
+    );
+    controller.dispose();
+  });
+
+  it("propagates current sync and async failures but suppresses stale failures", async () => {
+    const renderer = new FakePointCloud3dPickRenderer();
+    const controller = createGpuPointCloud3dPickerController(renderer);
+    controller.setScene([layer({ layerId: "lidar" })]);
+    const syncError = new Error("render failed");
+    renderer.enqueueRenderError(syncError);
+    await expect(controller.pick(request())).rejects.toBe(syncError);
+
+    const asyncError = new Error("readback failed");
+    renderer.enqueueReadback(Promise.reject(asyncError));
+    await expect(controller.pick(request())).rejects.toBe(asyncError);
+
+    const stale = deferred<ArrayBufferView>();
+    renderer.enqueueReadback(stale.promise);
+    const staleResult = controller.pick(request());
+    controller.invalidate();
+    stale.reject(new Error("stale readback failed"));
+    await expect(staleResult).resolves.toBeNull();
+    controller.dispose();
+  });
+
   it("builds a nearest-depth integer material over the shared flat buffer", () => {
     const source = layer({
       layerId: "lidar",
@@ -284,15 +322,18 @@ function request(
 
 interface Deferred<T> {
   readonly promise: Promise<T>;
+  readonly reject: (error: unknown) => void;
   readonly resolve: (value: T) => void;
 }
 
 function deferred<T>(): Deferred<T> {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((resolvePromise) => {
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
     resolve = resolvePromise;
+    reject = rejectPromise;
   });
-  return { promise, resolve };
+  return { promise, reject, resolve };
 }
 
 class FakePointCloud3dPickRenderer {
@@ -308,9 +349,14 @@ class FakePointCloud3dPickRenderer {
   readonly readTargets: THREE.RenderTarget[] = [];
   readonly renderedScenes: THREE.Scene[] = [];
   private readonly readbacks: Promise<ArrayBufferView>[] = [];
+  private readonly renderErrors: unknown[] = [];
 
   enqueueReadback(readback: Promise<ArrayBufferView>): void {
     this.readbacks.push(readback);
+  }
+
+  enqueueRenderError(error: unknown): void {
+    this.renderErrors.push(error);
   }
 
   getClearAlpha(): number {
@@ -339,6 +385,8 @@ class FakePointCloud3dPickRenderer {
   }
 
   render(scene: THREE.Object3D): void {
+    const error = this.renderErrors.shift();
+    if (error) throw error;
     this.renderedScenes.push(scene as THREE.Scene);
   }
 
