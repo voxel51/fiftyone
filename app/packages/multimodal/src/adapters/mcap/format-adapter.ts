@@ -46,6 +46,8 @@ import {
 } from "../../runtime/read-budget-account";
 import { PlaybackSyncMode } from "../../schemas/v1";
 import { isEpisodeReadCancelledError } from "../../ports";
+import { throwIfAborted } from "../../utils/cancellation";
+import { sceneSourcesFromStreamDescriptors } from "../../scene-inventory";
 import type { McapGridPreviewResult } from "./resource-client/grid-preview";
 import { prewarmMcapSource } from "./prewarm-mcap-source";
 import {
@@ -1281,11 +1283,4 @@ function decodedFrameFromMcap(
     streamId: stream?.id ?? message.topic,
     timestampNs: message.timelineTimeNs,
   };
-}
-
-function throwIfAborted(signal: AbortSignal | undefined): void {
-  if (!signal?.aborted) return;
-  const error = new Error("The operation was aborted");
-  error.name = "AbortError";
-  throw error;
 }

@@ -13,6 +13,7 @@ import {
 } from "@voxel51/voodo";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import type { ByteSourceDescriptor } from "../../ir/index";
+import { diagnosticMessage } from "../../utils/errors";
 import { episodeSourceFromByteSource } from "../session/episode-source";
 import { useEpisodeSession } from "../session/use-episode-session";
 import { SourcePlayback } from "../episode/index";
@@ -70,7 +71,10 @@ const McapExplorerPanel: React.FC = () => {
       });
       setError(null);
     } catch (caught) {
-      setError({ message: errorMessage(caught), target: "file" });
+      setError({
+        message: diagnosticMessage(caught, "Could not open MCAP"),
+        target: "file",
+      });
     }
   }, []);
 
@@ -84,7 +88,10 @@ const McapExplorerPanel: React.FC = () => {
       });
       setError(null);
     } catch (caught) {
-      setError({ message: errorMessage(caught), target: "url" });
+      setError({
+        message: diagnosticMessage(caught, "Could not open MCAP"),
+        target: "url",
+      });
     }
   }, [urlInput]);
 
@@ -303,10 +310,6 @@ const McapExplorerPanel: React.FC = () => {
     </div>
   );
 };
-
-function errorMessage(caught: unknown): string {
-  return caught instanceof Error ? caught.message : "Could not open MCAP";
-}
 
 function isFileDrag(dataTransfer: DataTransfer): boolean {
   if (dataTransfer.files?.length > 0) {
