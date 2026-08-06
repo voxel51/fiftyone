@@ -171,6 +171,27 @@ export interface EventHandlers {
   onPointerMove: (e: ThreeEvent<PointerEvent>) => void;
 }
 
+/**
+ * The label shape `useEventHandlers()`'s public contract takes. Reconciled
+ * labels follow `OverlayLabel` (document under `label`, view state under
+ * `ui`), so the alias is exact for every label the batch or the standalone
+ * path can pass.
+ */
+export type InstancedLabel = OverlayLabel;
+
+/**
+ * `useEventHandlers()`'s raw shape — `label` is a call-time argument rather
+ * than curried in, so one set of handlers can be shared across every label
+ * in an instanced batch. `Cuboid` curries its own label once into the
+ * `EventHandlers` shape above for the standalone path.
+ */
+export interface InstancedEventHandlers {
+  onPointerOver: (label: InstancedLabel, e?: ThreeEvent<PointerEvent>) => void;
+  onPointerOut: (label: InstancedLabel) => void;
+  onPointerMissed: () => void;
+  onPointerMove: (label: InstancedLabel, e: ThreeEvent<PointerEvent>) => void;
+}
+
 export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";
 
 /**

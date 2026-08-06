@@ -13,6 +13,7 @@ import {
   hoveredLabelAtom,
   isActivelySegmentingSelector,
   isCreatingCuboidAtom,
+  isCurrentlyTransformingAtom,
   isFo3dMainPanelPointerDownAtom,
   mainPanelPanSyncIntentAtom,
   mainPanelZoomSyncIntentAtom,
@@ -85,12 +86,29 @@ export const useHoveredLabel3d = () => {
   return useRecoilValue(hoveredLabelAtom);
 };
 
+/**
+ * Hook to set the currently hovered 3D label in annotation mode.
+ *
+ * @returns A function that accepts the new hovered label (or null to clear)
+ */
+export const useSetHoveredLabel3d = () => {
+  return useSetRecoilState(hoveredLabelAtom);
+};
+
 export const useFo3dPerformanceStats = () => {
   return useRecoilValue(fo3dPerformanceStatsAtom);
 };
 
 export const useSetFo3dPerformanceStats = () => {
   return useSetRecoilState(fo3dPerformanceStatsAtom);
+};
+
+/**
+ * Whether any label is mid-transform (gizmo drag, face-pull resize, heading
+ * drag). Components consume this rather than the atom directly.
+ */
+export const useIsCurrentlyTransforming = () => {
+  return useRecoilValue(isCurrentlyTransformingAtom);
 };
 
 export const useCuboidOrientation = () => {

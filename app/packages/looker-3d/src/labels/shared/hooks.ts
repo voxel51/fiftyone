@@ -18,7 +18,11 @@ import {
   selectedLabelForAnnotationAtom,
 } from "../../state";
 import type { OverlayLabel } from "../loader";
-import type { BaseOverlayProps, EventHandlers, HoverState } from "../../types";
+import type {
+  BaseOverlayProps,
+  HoverState,
+  InstancedEventHandlers,
+} from "../../types";
 
 const getDetailsFromLabel = (overlay: OverlayLabel) => {
   return {
@@ -55,12 +59,15 @@ export const useHoverState = (): HoverState => {
 };
 
 /**
- * Hook that provides mesh pointer event handlers.
+ * Hook that provides mesh pointer event handlers. `label` is a call-time
+ * argument (not captured at hook-call time) so one set of handlers can serve
+ * every label in an instanced batch — the standalone path curries its own
+ * label once at its call site (see `Cuboid`).
  */
-const useMeshTooltipProps = (label: OverlayLabel) => {
+const useMeshTooltipProps = () => {
   const onPointerOver = useRecoilCallback(
     ({ snapshot, set }) =>
-      (e?: ThreeEvent<PointerEvent>) => {
+      (label: OverlayLabel, e?: ThreeEvent<PointerEvent>) => {
         const selectedLabel = snapshot
           .getLoadable(selectedLabelForAnnotationAtom)
           .getValue();
@@ -95,12 +102,12 @@ const useMeshTooltipProps = (label: OverlayLabel) => {
           }),
         );
       },
-    [label],
+    [],
   );
 
   const onPointerOut = useRecoilCallback(
     ({ snapshot, set }) =>
-      () => {
+      (label: OverlayLabel) => {
         const isTooltipLocked = snapshot
           .getLoadable(fos.isTooltipLocked)
           .getValue();
@@ -113,7 +120,7 @@ const useMeshTooltipProps = (label: OverlayLabel) => {
 
         selectiveRenderingEventBus.emit(new LabelUnhoveredEvent());
       },
-    [label],
+    [],
   );
 
   const onPointerMissed = useRecoilCallback(
@@ -132,7 +139,7 @@ const useMeshTooltipProps = (label: OverlayLabel) => {
 
   const onPointerMove = useRecoilCallback(
     ({ snapshot, set }) =>
-      (e: ThreeEvent<PointerEvent>) => {
+      (label: OverlayLabel, e: ThreeEvent<PointerEvent>) => {
         const selectedLabel = snapshot
           .getLoadable(selectedLabelForAnnotationAtom)
           .getValue();
@@ -166,21 +173,25 @@ const useMeshTooltipProps = (label: OverlayLabel) => {
           );
         }
       },
-    [label],
+    [],
   );
 
   return { onPointerOver, onPointerOut, onPointerMissed, onPointerMove };
 };
 
 /**
- * Custom hook for managing event handlers and tooltip integration
+ * Custom hook for managing event handlers and tooltip integration. `label`
+ * is a call-time argument on `onPointerOver`/`onPointerOut`/`onPointerMove`
+ * (not captured at hook-call time) so the instanced batch can share one set
+ * of handlers across every label; the standalone path curries its own label
+ * once at its call site (see `Cuboid`).
  */
-export const useEventHandlers = (label: OverlayLabel): EventHandlers => {
+export const useEventHandlers = (): InstancedEventHandlers => {
   const {
     onPointerOver: _onPointerOver,
     onPointerOut: _onPointerOut,
     ...restEventHandlers
-  } = useMeshTooltipProps(label);
+  } = useMeshTooltipProps();
 
   // the renderer is shared with explore; the ENGINE hover write-half only
   // applies in annotate mode (the engine has no registered store in explore).
@@ -198,8 +209,8 @@ export const useEventHandlers = (label: OverlayLabel): EventHandlers => {
   // handler runs first so it is never coupled to annotation state.
   return {
     onPointerOver: useCallback(
-      (e?: ThreeEvent<PointerEvent>) => {
-        _onPointerOver(e);
+      (label: OverlayLabel, e?: ThreeEvent<PointerEvent>) => {
+        _onPointerOver(label, e);
 
         if (!isAnnotateMode) {
           return;
@@ -212,26 +223,29 @@ export const useEventHandlers = (label: OverlayLabel): EventHandlers => {
           engine.interaction.setHovered({ sample, path, instanceId: id }, true);
         }
       },
-      [label, isAnnotateMode, engine, sample, _onPointerOver],
+      [isAnnotateMode, engine, sample, _onPointerOver],
     ),
-    onPointerOut: useCallback(() => {
-      _onPointerOut();
+    onPointerOut: useCallback(
+      (label: OverlayLabel) => {
+        _onPointerOut(label);
 
-      if (!isAnnotateMode) {
-        return;
-      }
+        if (!isAnnotateMode) {
+          return;
+        }
 
-      // resolve from the hovered set itself, so hover-off works even after
-      // the label has been deleted or replaced
-      const id = label.label._id;
-      const ref = engine.interaction
-        .getHovered()
-        .find((hovered) => hovered.instanceId === id);
+        // resolve from the hovered set itself, so hover-off works even after
+        // the label has been deleted or replaced
+        const id = label.label._id;
+        const ref = engine.interaction
+          .getHovered()
+          .find((hovered) => hovered.instanceId === id);
 
-      if (ref) {
-        engine.interaction.setHovered(ref, false);
-      }
-    }, [label, isAnnotateMode, engine, _onPointerOut]),
+        if (ref) {
+          engine.interaction.setHovered(ref, false);
+        }
+      },
+      [isAnnotateMode, engine, _onPointerOut],
+    ),
     ...restEventHandlers,
   };
 };

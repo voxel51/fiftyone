@@ -20,7 +20,6 @@ export const currentEditingCuboidAtom =
 export const useSetEditingToNewCuboid = () => {
   const resetCurrentEditing = useResetAtom(currentEditingCuboidAtom);
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
 
   const setCurrentEditing = useSetAtom(currentEditingCuboidAtom);
   const { clear, readEditing, select } = useAnnotationContext();
