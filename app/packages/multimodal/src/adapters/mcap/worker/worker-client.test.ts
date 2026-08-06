@@ -404,7 +404,7 @@ describe("worker-backed MCAP resource client", () => {
     expect((await scrub).messages[0]).toBe(playbackWindow?.messages[0]);
   });
 
-  it("clears retained decoded records when source ownership changes", async () => {
+  it("restarts worker isolates when active source ownership changes", async () => {
     const { client, workers } = createClientHarness();
     const firstSource = createSource("source:1");
     const secondSource = createSource("source:2");
@@ -427,19 +427,23 @@ describe("worker-backed MCAP resource client", () => {
     await first;
 
     client.activateSource?.(secondSource);
+    expect(worker.messages.at(-1)).toEqual({ type: "dispose" });
+    expect(worker.terminate).toHaveBeenCalledOnce();
     const second = client.readSynchronizedMessageBatch({
       source: secondSource,
       timeNs: [1n],
       topics: ["/camera"],
     });
-    expect(worker.messages.at(-1)).not.toHaveProperty(
+    expect(workers).toHaveLength(2);
+    const replacement = workers[1];
+    expect(replacement.messages.at(-1)).not.toHaveProperty(
       "retainedDecodedRecordIds",
     );
-    worker.respond({ id: 2, ok: true, result: [] });
+    replacement.respond({ id: 2, ok: true, result: [] });
     await expect(second).resolves.toEqual([]);
   });
 
-  it("releases worker source resources at a renderer ownership boundary", async () => {
+  it("keeps worker isolates warm when the same source reclaims ownership", async () => {
     const { client, workers } = createClientHarness();
     const source = createSource("source:1");
     client.activateSource?.(source);
@@ -478,6 +482,43 @@ describe("worker-backed MCAP resource client", () => {
       "retainedDecodedRecordIds",
     );
     worker.respond({ id: 2, ok: true, result: [] });
+    await expect(second).resolves.toEqual([]);
+  });
+
+  it("restarts worker isolates before a different source reclaims ownership", async () => {
+    const { client, workers } = createClientHarness();
+    const firstSource = createSource("source:1");
+    const secondSource = createSource("source:2");
+    client.activateSource?.(firstSource);
+    const first = client.readSynchronizedMessageBatch({
+      source: firstSource,
+      timeNs: [1n],
+      topics: ["/camera"],
+    });
+    const worker = workers[0];
+    worker.respond({ id: 1, ok: true, result: [] });
+    await first;
+
+    client.releaseRetainedResources?.();
+    expect(worker.messages.at(-1)).toEqual({
+      type: "releaseRetainedResources",
+    });
+    expect(worker.terminate).not.toHaveBeenCalled();
+
+    // A redundant lifecycle release must not forget which source left the
+    // warm isolate behind.
+    client.releaseRetainedResources?.();
+
+    client.activateSource?.(secondSource);
+    expect(worker.messages.at(-1)).toEqual({ type: "dispose" });
+    expect(worker.terminate).toHaveBeenCalledOnce();
+    const second = client.readSynchronizedMessageBatch({
+      source: secondSource,
+      timeNs: [1n],
+      topics: ["/camera"],
+    });
+    expect(workers).toHaveLength(2);
+    workers[1].respond({ id: 2, ok: true, result: [] });
     await expect(second).resolves.toEqual([]);
   });
 
@@ -752,7 +793,7 @@ describe("worker-backed MCAP resource client", () => {
     await expect(latest).resolves.toEqual(window);
   });
 
-  it("keeps workers warm and fails stale reads under explicit ownership", async () => {
+  it("restarts workers and fails stale reads under explicit ownership", async () => {
     const { client, workers } = createClientHarness();
 
     client.activateSource?.(createSource("source:1"));
@@ -761,12 +802,14 @@ describe("worker-backed MCAP resource client", () => {
 
     client.activateSource?.(createSource("source:2"));
 
-    // Switching preempts the old source's work by cancelling: the pending
-    // read rejects with the benign cancelled error and the worker is told
-    // to abort the matching job instead of being terminated.
+    // Switching first settles the pending read with the benign cancellation
+    // error, then ends the isolate before the next source can allocate in it.
     await expect(first).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
-    expect(worker.terminate).not.toHaveBeenCalled();
-    expect(worker.messages.at(-1)).toEqual({ id: 1, type: "cancel" });
+    expect(worker.messages.slice(-2)).toEqual([
+      { id: 1, type: "cancel" },
+      { type: "dispose" },
+    ]);
+    expect(worker.terminate).toHaveBeenCalledOnce();
 
     // A late read for the retired source fails fast without flipping
     // ownership back.
@@ -774,10 +817,11 @@ describe("worker-backed MCAP resource client", () => {
       client.readTimelineRange(createTimelineRequest("source:1")),
     ).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
 
-    // The active source proceeds on the same warm worker.
+    // The active source proceeds on a fresh worker.
     const second = client.readTimelineRange(createTimelineRequest("source:2"));
-    expect(workers).toHaveLength(1);
-    worker.respond({
+    expect(workers).toHaveLength(2);
+    const secondWorker = workers[1];
+    secondWorker.respond({
       id: 2,
       ok: true,
       result: createTimelineRange(2n, 3n),
@@ -786,8 +830,10 @@ describe("worker-backed MCAP resource client", () => {
 
     // Back-navigation re-activates the earlier source legitimately.
     client.activateSource?.(createSource("source:1"));
+    expect(secondWorker.terminate).toHaveBeenCalledOnce();
     const third = client.readTimelineRange(createTimelineRequest("source:1"));
-    worker.respond({
+    expect(workers).toHaveLength(3);
+    workers[2].respond({
       id: 3,
       ok: true,
       result: createTimelineRange(1n, 2n),
@@ -811,8 +857,11 @@ describe("worker-backed MCAP resource client", () => {
     // The consumer settles with the benign cancelled error even though a
     // dropped queued job would never produce a worker response.
     await expect(first).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
-    expect(worker.terminate).not.toHaveBeenCalled();
-    expect(worker.messages.at(-1)).toEqual({ id: 1, type: "cancel" });
+    expect(worker.messages.slice(-2)).toEqual([
+      { id: 1, type: "cancel" },
+      { type: "dispose" },
+    ]);
+    expect(worker.terminate).toHaveBeenCalledOnce();
   });
 
   it("resets idle-prefetch work when the active source changes", async () => {

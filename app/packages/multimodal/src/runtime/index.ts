@@ -16,6 +16,7 @@ export * from "./frame-transform-types";
 export * from "./frame-transforms";
 /** Public semantics-preserving session read policy and acceleration fallbacks. */
 export * from "./read-policy";
+export * from "./release-array-buffers";
 /** Public precision-safe episode timeline indexing. */
 export * from "./timeline-index";
 /** Public cadence-derived temporal policies shared by playback consumers. */

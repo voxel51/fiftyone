@@ -72,7 +72,7 @@ import {
 import { pushTickToStore } from "./playback-frame-push";
 import { StartupCushionPlanner, type StartupCushion } from "./startup-cushion";
 import { resetStartupCushionState } from "./startup-cushion-state";
-import { EpisodeStreamCache } from "../../../runtime";
+import { EpisodeStreamCache, releaseArrayBuffers } from "../../../runtime";
 import type { StreamPlaybackFrame } from "./use-stream-values";
 
 /**
@@ -556,7 +556,11 @@ export function useRegisterDataStream({
     }, BUFFERED_RANGES_PUBLISH_INTERVAL_MS);
   }, [computeBufferedRanges, store]);
 
-  // This effect clears deferred range publishing and idle warmup on unmount.
+  // This effect clears every cache owned by the mounted renderer. Individual
+  // tile subscriptions normally release their stream cache when the final
+  // consumer unmounts, but the renderer is the ownership boundary: a stale
+  // subscription or retained callback must not keep hundreds of MiB of
+  // transferred frame buffers alive after the modal closes.
   useEffect(
     () => () => {
       if (bufferedRangesTimerRef.current !== null) {
@@ -564,8 +568,23 @@ export function useRegisterDataStream({
         bufferedRangesTimerRef.current = null;
       }
       clearPausedIdleWarmupTimer();
+      resetDataStreamFetchState(fetchState);
+      const transferableBuffers = new Set<ArrayBuffer>();
+      for (const cache of streamCachesRef.current.values()) {
+        for (const buffer of cache.transferableBuffers()) {
+          transferableBuffers.add(buffer);
+        }
+        cache.clear();
+      }
+      releaseArrayBuffers(transferableBuffers);
+      streamCachesRef.current.clear();
+      lastFrameRef.current.clear();
+      pointCloudChannelReadsRef.current.clear();
+      pointCloudColorSubscriptionsRef.current.clear();
+      activePointCloudColorByRef.current.clear();
+      streamStartTimesNsRef.current.clear();
     },
-    [clearPausedIdleWarmupTimer],
+    [clearPausedIdleWarmupTimer, fetchState],
   );
 
   // This effect retires the pending-start plan once playback begins.

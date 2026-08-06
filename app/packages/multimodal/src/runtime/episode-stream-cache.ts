@@ -96,6 +96,28 @@ export class EpisodeStreamCache {
     };
   }
 
+  /**
+   * Returns the worker-transferred backing stores currently owned by this
+   * cache. A renderer teardown can move these buffers out of the main V8
+   * isolate before dropping its last references, instead of waiting for a
+   * later garbage collection to release their external memory.
+   */
+  transferableBuffers(): readonly ArrayBuffer[] {
+    const buffers = new Set<ArrayBuffer>();
+    for (const message of this.messageRetention.keys()) {
+      for (const transferable of message.output.resourceHints?.transferables ??
+        []) {
+        if (
+          transferable instanceof ArrayBuffer &&
+          transferable.byteLength > 0
+        ) {
+          buffers.add(transferable);
+        }
+      }
+    }
+    return [...buffers];
+  }
+
   subscribe(): () => void {
     this._subscriberCount++;
     let released = false;

@@ -177,6 +177,56 @@ describe("useRegisterDataStream", () => {
     expect(getSeekFetchDebounceMs(store)).toBe(0);
   });
 
+  it("detaches transferred frame buffers when the renderer unmounts", async () => {
+    const source = createSource("renderer-release");
+    const storeCapture = capturePlaybackStore();
+    const transferredBuffer = new ArrayBuffer(1024);
+    let dataStream: DataStream | null = null;
+    const client = createClient({
+      readSynchronizedMessageBatch: vi.fn(async () => []),
+      readSynchronizedMessages: vi.fn(async (request) =>
+        createWindow({
+          resourceHints: {
+            sizeBytes: transferredBuffer.byteLength,
+            transferables: [transferredBuffer],
+          },
+          timeNs: request.timeNs,
+          visualization: {
+            bytes: new Uint8Array(transferredBuffer),
+            kind: VISUALIZATION_KIND.ENCODED_IMAGE,
+          },
+        }),
+      ),
+      readTimelineRange: vi.fn(async () => createTimelineRange()),
+    });
+
+    const { unmount } = render(
+      <Harness
+        client={client}
+        onDataStream={(next) => {
+          dataStream = next;
+        }}
+        onStore={storeCapture.onStore}
+        source={source}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(dataStream?.getStreamCache(STREAM)?.stats().decodedBytes).toBe(
+        1024,
+      );
+    });
+    const currentDataStream = dataStream as DataStream | null;
+    const retainedCache = currentDataStream?.getStreamCache(STREAM);
+    if (!retainedCache) throw new Error("stream cache was not registered");
+
+    unmount();
+
+    expect(retainedCache.stats()).toEqual({ decodedBytes: 0, entryCount: 0 });
+    expect(transferredBuffer.byteLength).toBe(0);
+  });
+
   it("reindexes at a committed sampling rate without resetting the playhead", async () => {
     const source = createSource("sampling-rate");
     const storeCapture = capturePlaybackStore();
@@ -2848,11 +2898,13 @@ function createTimelineRange(endTimeNs = 1_000_000_000n): TimelineRange {
 
 function createWindow({
   messageTimeNs,
+  resourceHints,
   timeNs,
   stream = STREAM,
   visualization,
 }: {
   readonly messageTimeNs?: bigint;
+  readonly resourceHints?: DecodeResult["output"]["resourceHints"];
   readonly timeNs: bigint;
   readonly stream?: string;
   readonly visualization: DecodedMessage["decoded"]["output"]["visualization"];
@@ -2860,6 +2912,7 @@ function createWindow({
   const message = createDecodedMessage({
     timeNs: messageTimeNs ?? timeNs,
     stream,
+    resourceHints,
     visualization,
   });
   return {
@@ -2925,10 +2978,12 @@ function createPartialDecodeWindow(timeNs: bigint): SynchronizedMessageWindow {
 function createDecodedMessage({
   timeNs,
   stream = STREAM,
+  resourceHints,
   visualization,
 }: {
   readonly timeNs: bigint;
   readonly stream?: string;
+  readonly resourceHints?: DecodeResult["output"]["resourceHints"];
   readonly visualization: DecodedMessage["decoded"]["output"]["visualization"];
 }): DecodedMessage {
   return {
@@ -2938,6 +2993,7 @@ function createDecodedMessage({
       decoderId: "test-decoder",
       decoderVersion: "1",
       output: {
+        resourceHints,
         visualization,
       },
       payload: {

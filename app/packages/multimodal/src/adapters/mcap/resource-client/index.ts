@@ -38,10 +38,11 @@ export function createMcapResourceClient(
 }
 
 /**
- * Sample navigation remounts the modal renderer per sample, and worker
- * respawn (module eval, WASM decompress handlers, reader init) is the
- * dominant per-navigation cost. Ref-counted sharing with a linger window
- * keeps one fleet alive across next-sample hops and quick grid round trips.
+ * Sample navigation remounts the modal renderer per sample. Ref-counted
+ * sharing keeps one client coordinator across next-sample hops and quick grid
+ * round trips. A final release clears source resources immediately; warm
+ * worker isolates may survive the linger only until a different source claims
+ * ownership.
  */
 const SHARED_CLIENT_LINGER_MS = 30_000;
 
@@ -55,8 +56,9 @@ const sharedClients = new Map<string, SharedClientEntry>();
 
 /**
  * Acquires the shared MCAP resource client for the given mode and returns a
- * release handle. The client disposes only after every holder released it
- * and the linger window passed without a new acquire.
+ * release handle. Source resources clear as soon as every holder releases;
+ * the client coordinator disposes after the linger window passes without a
+ * new acquire.
  */
 export function acquireSharedMcapResourceClient(
   options: CreateMcapResourceClientOptions = {},
@@ -98,9 +100,9 @@ export function acquireSharedMcapResourceClient(
       if (held.refs > 0) {
         return;
       }
-      // Keep the worker fleet warm for quick remounts, but do not make its
-      // largest decoded allocations pay the full linger window after the last
-      // renderer releases ownership.
+      // Clear readers and decoded caches at the renderer boundary. The client
+      // keeps enough source identity to terminate warm isolates before a
+      // different recording can allocate into their retained high-water state.
       held.client.releaseRetainedResources?.();
       held.disposeTimer = setTimeout(() => {
         if (held.refs === 0 && sharedClients.get(key) === held) {
