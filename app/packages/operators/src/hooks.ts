@@ -15,6 +15,7 @@ import {
 import {
   activePanelsEventCountAtom,
   activeScopeAtom,
+  availableOperatorsRefreshCount,
   isInScope,
   operatorPlacementsAtom,
   operatorThrottledContext,
@@ -41,7 +42,7 @@ const latestPlacementResolutions = new Map<
 
 function resolvePlacementsOnce(context: RawContext) {
   const now = Date.now();
-  const key = JSON.stringify(context);
+  const key = placementContextKey(context);
   const cached = latestPlacementResolutions.get(key);
   if (cached?.expiresAt > now) {
     return cached.promise;
@@ -64,6 +65,56 @@ function resolvePlacementsOnce(context: RawContext) {
   });
 
   return promise;
+}
+
+function normalizeForCache(value: unknown): unknown {
+  if (value instanceof Map) {
+    return Array.from(value.entries())
+      .sort(([left], [right]) => String(left).localeCompare(String(right)))
+      .map(([key, entry]) => [key, normalizeForCache(entry)]);
+  }
+  if (Array.isArray(value)) return value.map(normalizeForCache);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, entry]) => [key, normalizeForCache(entry)]),
+    );
+  }
+  return value;
+}
+
+function placementContextKey(context: RawContext) {
+  const selectedLabels = [...(context.selectedLabels ?? [])]
+    .map(normalizeForCache)
+    .sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right)),
+    );
+  const extendedSelection = context.extendedSelection && {
+    ...context.extendedSelection,
+    selection: context.extendedSelection.selection
+      ? [...context.extendedSelection.selection].sort()
+      : null,
+  };
+  return JSON.stringify(
+    normalizeForCache({
+      activeFields: context.activeFields,
+      activeScope: context.activeScope,
+      currentSample: context.currentSample,
+      datasetName: context.datasetName,
+      extended: context.extended,
+      extendedSelection,
+      filters: context.filters,
+      groupSlice: context.groupSlice,
+      queryPerformance: context.queryPerformance,
+      selectedLabels,
+      selectedSamples: context.selectedSamples,
+      spaces: context.spaces,
+      view: context.view,
+      viewName: context.viewName,
+      workspaceName: context.workspaceName,
+    }),
+  );
 }
 
 function useOperatorThrottledContextSetter() {
@@ -196,7 +247,11 @@ export function useFirstExistingUri(uris: string[]) {
 }
 
 export function useExecutableOperatorsURIs(scope?: PluginScope) {
-  const allOperators = useMemo(() => listLocalAndRemoteOperators(), []);
+  const refreshCount = useRecoilValue(availableOperatorsRefreshCount);
+  const allOperators = useMemo(
+    () => listLocalAndRemoteOperators(),
+    [refreshCount],
+  );
   const activeScope = useRecoilValue(activeScopeAtom);
   const computedScope = scope ?? activeScope;
   return useMemo(() => {
@@ -212,9 +267,13 @@ export function useExecutableOperatorsURIs(scope?: PluginScope) {
 
 export function useCanIExecuteOperators(uris: string[]) {
   const executableUris = useExecutableOperatorsURIs();
+  const executableUriSet = useMemo(
+    () => new Set(executableUris),
+    [executableUris],
+  );
 
   return useMemo(
-    () => uris.every((uri) => executableUris.includes(uri)),
-    [executableUris, uris],
+    () => uris.every((uri) => executableUriSet.has(uri)),
+    [executableUriSet, uris],
   );
 }

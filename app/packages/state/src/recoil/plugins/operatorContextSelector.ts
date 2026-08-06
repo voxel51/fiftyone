@@ -17,6 +17,7 @@ import {
   extendedStages as extendedStagesSelector,
 } from "../selectors";
 import { view as viewAtom, viewName as viewNameAtom } from "../view";
+import { currentSampleId as currentSampleIdSelector } from "../modal";
 
 const operatorContextSelector = selector({
   key: "operatorContextSelector",
@@ -37,6 +38,7 @@ const operatorContextSelector = selector({
     const spaces = get(sessionSpacesAtom);
     const workspaceName = spaces?._name;
     const activeFields = get(activeFieldsSelectorFamily({ modal }));
+    const currentSample = get(currentSampleIdSelector);
 
     return {
       datasetName,
@@ -54,6 +56,7 @@ const operatorContextSelector = selector({
       spaces,
       workspaceName,
       activeFields,
+      currentSample,
     };
   },
 });

@@ -24,7 +24,6 @@ export {
 export type { RawContext } from "./operators";
 export {
   getActiveScope,
-  setActiveScope,
   activeScopeAtom,
   isInScope,
   useGlobalExecutionContext,

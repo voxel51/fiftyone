@@ -110,10 +110,7 @@ const currentContextSelector = selectorFamily({
       const globalContextSelector = getContextSelector("operators");
       const globalContext = get(globalContextSelector) as object;
       const params = get(currentOperatorParamsSelector(operatorName));
-      return {
-        ...globalContext,
-        params,
-      };
+      return { ...globalContext, params };
     },
 });
 
@@ -944,11 +941,6 @@ export function getActiveScope(): PluginScope {
 
 export function useActiveScope(): PluginScope {
   return useRecoilValue(activeScopeAtom);
-}
-
-export function setActiveScope(scope: PluginScope) {
-  activeScope = scope;
-  activeScopeStack.length = 0;
 }
 
 /**

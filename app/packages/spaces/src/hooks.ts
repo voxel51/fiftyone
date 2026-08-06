@@ -523,8 +523,8 @@ export function usePanelArea(areaId: string) {
   );
 
   const openPanel = useCallback(
-    (panelName: string) => {
-      setActivePanel(panelName);
+    (panelName: string, isActive = true) => {
+      if (isActive) setActivePanel(panelName);
       setVisible(true);
       setCurrentRenderers((renderers) => {
         const updatedRenderers = new Map(renderers);

@@ -6,7 +6,11 @@ import { PluginScope } from "@fiftyone/plugins/src/PluginScope";
 import { setOperatorsRuntime } from "@fiftyone/plugins/src/Runtime/operators";
 import { unregisterComponent } from "@fiftyone/plugins/src/registry";
 import { useOperatorPlacementsResolver } from "./hooks";
-import { executeOperatorsForEvent, loadOperatorsFromServer } from "./operators";
+import {
+  executeOperatorsForEvent,
+  loadOperatorsFromServer,
+  StaleOperatorsRequestError,
+} from "./operators";
 import registerPanel from "./Panel/register";
 import {
   availableOperatorsRefreshCount,
@@ -82,25 +86,31 @@ export function useOperators(
     setOperatorsInitialized(false);
     setOperatorPlacements([]);
     if (isPrimitiveString(datasetName) || datasetLess) {
-      loadOperators(datasetName)
-        .then((loaded) => {
-          if (request !== latestOperatorsLoad.current) return;
-          if (!loaded) {
+      const load = () =>
+        loadOperators(datasetName)
+          .then((loaded) => {
+            if (request !== latestOperatorsLoad.current) return;
+            if (!loaded) {
+              setState("error");
+              setOperatorsInitialized(false);
+              return;
+            }
+            // trigger force refresh
+            setAvailableOperatorsRefreshCount((count) => count + 1);
+            setState("ready");
+            setOperatorsInitialized(true);
+          })
+          .catch((error) => {
+            if (request !== latestOperatorsLoad.current) return;
+            if (error instanceof StaleOperatorsRequestError) {
+              load();
+              return;
+            }
             setState("error");
+            setError(error);
             setOperatorsInitialized(false);
-            return;
-          }
-          // trigger force refresh
-          setAvailableOperatorsRefreshCount((count) => count + 1);
-          setState("ready");
-          setOperatorsInitialized(true);
-        })
-        .catch((error) => {
-          if (request !== latestOperatorsLoad.current) return;
-          setState("error");
-          setError(error);
-          setOperatorsInitialized(false);
-        });
+          });
+      load();
     }
     return () => {
       if (request === latestOperatorsLoad.current)
@@ -124,7 +134,7 @@ export function useOperators(
 }
 
 function useOperatorsRuntime(activeScope, datasetName, datasetLess) {
-  useSetActiveScope(activeScope || PluginScope.DATASET_SAMPLES_GRID);
+  useSetActiveScope(activeScope || PluginScope.DATASET_SAMPLES_GRID, true);
   return useOperators(datasetName ?? null, datasetLess ?? false);
 }
 

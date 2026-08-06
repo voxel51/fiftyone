@@ -18,7 +18,7 @@ import {
   types,
   useActiveScope,
 } from "@fiftyone/operators";
-import { PluginScope } from "@fiftyone/plugins";
+import { FALLBACK_PLUGIN_SCOPES, PluginScope } from "@fiftyone/plugins";
 import type { PluginComponentRegistration } from "@fiftyone/plugins";
 import { PANEL_AREA, PanelArea } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
@@ -101,8 +101,13 @@ const Nav: React.FC<
   const setTheme = useSetRecoilState(fos.theme);
   const trackEvent = useTrackEvent();
   const isSidebarPanelEligible = useCallback(
-    (panel: PluginComponentRegistration) =>
-      isInScope(panel.panelOptions?.scopes as PluginScope[], activeScope),
+    (panel: PluginComponentRegistration) => {
+      const scopes = panel.panelOptions?.scopes;
+      const validScopes = scopes?.filter((scope): scope is PluginScope =>
+        Object.values(PluginScope).includes(scope as PluginScope),
+      );
+      return isInScope(validScopes ?? FALLBACK_PLUGIN_SCOPES, activeScope);
+    },
     [activeScope],
   );
 

@@ -1,128 +1,18 @@
 import * as fos from "@fiftyone/state";
-import * as fou from "@fiftyone/utilities";
-import { getFetchFunction, getFetchParameters } from "@fiftyone/utilities";
 import * as _ from "lodash";
 import { useMemo } from "react";
 import * as recoil from "recoil";
-import "./externalize";
+import { PluginDefinition } from "./loadPlugins";
 import { usingRegistry } from "./registry";
 
 export {
-  PluginScope,
+  DATASET_REQUIRED_PLUGIN_SCOPES,
   FALLBACK_PLUGIN_SCOPES,
   normalizePluginScopes,
-  DATASET_REQUIRED_PLUGIN_SCOPES,
-  scopeRequiresDataset,
   pluginRequiresDataset,
+  PluginScope,
+  scopeRequiresDataset,
 } from "./PluginScope";
-
-async function fetchPluginsMetadata(): Promise<PluginDefinition[]> {
-  const result = await getFetchFunction()("GET", "/plugins");
-  if (result && result.plugins) {
-    return result.plugins.map((p) => new PluginDefinition(p));
-  }
-  throw new Error("Failed to fetch plugins metadata");
-}
-
-class PluginDefinition {
-  name: string;
-  version: string;
-  license: string;
-  description: string;
-  fiftyone_compatibility: string;
-  operators: string[];
-  jsBundle: string | null;
-  pyEntry: string | null;
-  jsBundleExists: boolean;
-  jsBundleServerPath: string | null;
-  jsBundleHash: string | null;
-  serverPath: string;
-  hasPy: boolean;
-  hasJS: boolean;
-  builtin: boolean;
-
-  constructor(json: any) {
-    const serverPathPrefix = fou.getFetchPathPrefix();
-    this.name = json.name;
-    this.version = json.version;
-    this.license = json.license;
-    this.description = json.description;
-    this.fiftyone_compatibility = json.fiftyone_compatibility;
-    this.operators = json.operators;
-    this.jsBundle = json.js_bundle;
-    this.pyEntry = json.py_entry;
-
-    this.jsBundleExists = json.js_bundle_exists;
-    this.jsBundleServerPath = `${serverPathPrefix}${json.js_bundle_server_path}`;
-    this.jsBundleHash = json.js_bundle_hash;
-    this.hasPy = json.has_py;
-    this.hasJS = json.has_js;
-    this.serverPath = `${serverPathPrefix}${json.server_path}`;
-    this.builtin = json.builtin;
-  }
-}
-
-export async function loadPlugins() {
-  const plugins = await fetchPluginsMetadata();
-  const { pathPrefix } = getFetchParameters();
-
-  // Inject bundles in parallel so plugin readiness is gated by the slowest
-  // bundle, not the sum of all of them.
-  await Promise.all(
-    plugins.map((plugin) => {
-      const registry = usingRegistry();
-      registry.registerPluginDefinition(plugin);
-      if (!plugin.hasJS) {
-        return undefined;
-      }
-      const name = plugin.name;
-      // Reuse the in-flight (or settled) load so overlapping loadPlugins()
-      // calls resolve only once the bundle has registered its components.
-      const existing = registry.getScript(name);
-      if (existing) {
-        console.debug(`Plugin "${name}": already loaded`);
-        return existing;
-      }
-      const cacheKey = plugin.jsBundleHash ? `?h=${plugin.jsBundleHash}` : "";
-      const promise = loadScript(
-        name,
-        pathPrefix + plugin.jsBundleServerPath + cacheKey,
-      ).catch((e) => {
-        console.error(`Plugin "${name}": failed to load!`);
-        console.error(e);
-      });
-      registry.registerScript(name, promise);
-      return promise;
-    }),
-  );
-}
-
-async function loadScript(name, url) {
-  console.debug(`Plugin "${name}": loading script...`);
-  return new Promise<void>((resolve, reject) => {
-    const onDone = (e) => {
-      script.removeEventListener("load", onDone);
-      script.removeEventListener("error", onDone);
-      console.debug(`Plugin "${name}": loaded!`);
-      if (e?.type === "load") {
-        resolve();
-      } else {
-        reject(new Error(`Plugin "${name}": Failed to load script ${url}`));
-      }
-    };
-    const script = document.createElement("script");
-    script.type = "application/javascript";
-    if (import.meta.env?.VITE_API && !url.startsWith("http")) {
-      script.src = `${import.meta.env?.VITE_API}${url}`;
-    } else {
-      script.src = url;
-    }
-    script.async = true;
-    document.head.prepend(script);
-    script.addEventListener("load", onDone);
-    script.addEventListener("error", onDone);
-  });
-}
 
 /**
  * Get a plugin definition by name.
@@ -182,15 +72,17 @@ export function usePluginSettings<T>(
   return settings as T;
 }
 
+export { loadPlugins } from "./loadPlugins";
 export * from "./registry";
 export {
   OperatorsRuntime,
   PluginsLoader,
   default as PluginsRuntime,
 } from "./Runtime";
-export * from "./Runtime/state";
 export { setOperatorsRuntime } from "./Runtime/operators";
+export * from "./Runtime/state";
 export type { PluginsLoaderProps, PluginsRuntimeProps } from "./Runtime/types";
+export { default as usePlugins } from "./Runtime/usePlugins";
 
 export {
   createSampleRendererMediaContext,

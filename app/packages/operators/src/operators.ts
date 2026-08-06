@@ -458,6 +458,12 @@ const remoteRegistry = new OperatorRegistry();
 let latestRemoteOperatorsRequest = 0;
 export let initializationErrors = [];
 
+export class StaleOperatorsRequestError extends Error {
+  constructor() {
+    super("A newer operator load request superseded this request");
+  }
+}
+
 export function registerOperator(
   OperatorType: typeof Operator,
   pluginName: string,
@@ -484,7 +490,7 @@ export async function loadOperatorsFromServer(datasetName: string | null) {
       Operator.fromRemoteJSON(d),
     );
     if (request !== latestRemoteOperatorsRequest) {
-      return null;
+      throw new StaleOperatorsRequestError();
     }
     remoteRegistry.replace(operatorInstances);
     const pyErrors = errors || [];
@@ -503,6 +509,7 @@ export async function loadOperatorsFromServer(datasetName: string | null) {
       .filter((d: { panel?: { panel_name?: string } }) => d.panel)
       .map((d: { panel?: { panel_name?: string } }) => d.panel);
   } catch (e) {
+    if (e instanceof StaleOperatorsRequestError) throw e;
     initializationErrors.push({
       reason: "Error loading operators from server",
       details: stringifyError(e),

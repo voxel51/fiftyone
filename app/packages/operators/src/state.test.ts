@@ -10,7 +10,6 @@ import {
   assertInScope,
   getActiveScope,
   isInScope,
-  setActiveScope,
   useOperatorPromptSubmitOptions,
   useSetActiveScope,
 } from "./state";
@@ -165,8 +164,12 @@ describe("assertInScope", () => {
 });
 
 describe("activeScope", () => {
+  const setScope = (scope: PluginScope) => {
+    renderHook(() => useSetActiveScope(scope));
+  };
+
   beforeEach(() => {
-    setActiveScope(PluginScope.DATASET_SAMPLES_GRID);
+    setScope(PluginScope.DATASET_SAMPLES_GRID);
   });
 
   it("defaults to the grid scope", () => {
@@ -174,19 +177,23 @@ describe("activeScope", () => {
   });
 
   it("returns the scope that was last set", () => {
-    setActiveScope(PluginScope.DATASET_SAMPLE_MODAL);
+    setScope(PluginScope.DATASET_SAMPLE_MODAL);
     expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLE_MODAL);
   });
 
   it("is shared globally, so a set is visible to every reader", () => {
-    setActiveScope(PluginScope.DATASET_SAMPLE_MODAL);
+    setScope(PluginScope.DATASET_SAMPLE_MODAL);
     expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLE_MODAL);
   });
 });
 
 describe("useSetActiveScope", () => {
+  const setScope = (scope: PluginScope) => {
+    renderHook(() => useSetActiveScope(scope));
+  };
+
   beforeEach(() => {
-    setActiveScope(PluginScope.DATASET_SAMPLES_GRID);
+    setScope(PluginScope.DATASET_SAMPLES_GRID);
   });
 
   it("activates the given scope on mount", () => {
@@ -221,7 +228,7 @@ describe("useSetActiveScope", () => {
   });
 
   it("restores whatever was active at mount, not the default", () => {
-    setActiveScope(PluginScope.DATASET_SAMPLE_MODAL);
+    setScope(PluginScope.DATASET_SAMPLE_MODAL);
     const { unmount } = renderHook(() =>
       useSetActiveScope(PluginScope.DATASET_SAMPLES_GRID, true),
     );
@@ -232,7 +239,7 @@ describe("useSetActiveScope", () => {
   });
 
   it("does not touch the scope when it is already active", () => {
-    setActiveScope(PluginScope.DATASET_SAMPLE_MODAL);
+    setScope(PluginScope.DATASET_SAMPLE_MODAL);
     const { unmount } = renderHook(() =>
       useSetActiveScope(PluginScope.DATASET_SAMPLE_MODAL, true),
     );

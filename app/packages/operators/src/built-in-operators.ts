@@ -266,15 +266,20 @@ class OpenPanel extends Operator {
     if (!panel && !force) {
       throw new Error(`Panel with name ${name} does not exist`);
     }
-    if (panel?.panelOptions?.surfaces?.includes("sidebar_right")) {
-      openSidebarPanel(name);
+    const surface = isModalOpen ? PANEL_SURFACE.MODAL : PANEL_SURFACE.GRID;
+    if (
+      panel?.panelOptions?.surfaces?.includes("sidebar_right") &&
+      !isPanelOnSurface(panel, surface)
+    ) {
+      const panelId = `${PANEL_AREA.SIDEBAR_RIGHT}:${name}`;
+      await initializePanel(panelId, "sidebar_right", state, data);
+      openSidebarPanel(name, isActive);
       return;
     }
     const targetSpace = this.findFirstPanelContainer(spaces.root);
     if (!targetSpace) {
       throw new Error("No panel container found");
     }
-    const surface = isModalOpen ? PANEL_SURFACE.MODAL : PANEL_SURFACE.GRID;
     if (!isPanelOnSurface(panel, surface) && !force) {
       throw new Error(
         `Panel with name ${name} cannot be opened in a ${surface} surface`,

@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { pluginsLoaderAtom } from "./state";
-import { loadPlugins } from "..";
+import { loadPlugins } from "../loadPlugins";
 
 /**
  * A react hook for loading the plugin system.

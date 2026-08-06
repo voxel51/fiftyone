@@ -62,7 +62,7 @@ export type OpenPanelHooks = {
   openedGridPanels: SpaceNode[];
   openedModalPanels: SpaceNode[];
   initializePanel: InitializePanelType;
-  openSidebarPanel: (name: string) => void;
+  openSidebarPanel: (name: string, isActive?: boolean) => void;
 };
 
 export type OpenPanelParams = {
