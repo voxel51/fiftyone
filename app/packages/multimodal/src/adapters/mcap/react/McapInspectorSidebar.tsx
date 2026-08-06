@@ -106,15 +106,11 @@ function ImageObjectFields({
       <Field label="Object" value={selected.label ?? selected.primitiveKind} />
       <Field label="Kind" value={selected.primitiveKind} />
       <Field label="Topic" value={selected.topic} />
-      <div
-        className={`${settingsStyles.field} ${settingsStyles.growField}`}
-      >
+      <div className={`${settingsStyles.field} ${settingsStyles.growField}`}>
         <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
           Geometry
         </Text>
-        <pre
-          className={`${settingsStyles.metaText} ${settingsStyles.growPre}`}
-        >
+        <pre className={`${settingsStyles.metaText} ${settingsStyles.growPre}`}>
           {safeJson(selected.data)}
         </pre>
       </div>
