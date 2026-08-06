@@ -1,5 +1,5 @@
 import { LRUCache } from "lru-cache";
-import { estimateFieldSize } from "../query/cache-utils";
+import { decodedOutputSizeBytes } from "../query/cache-utils";
 import type { DecodedFrame } from "../ir";
 import { EpisodeCadenceTracker } from "./temporal-policy";
 
@@ -14,23 +14,6 @@ interface CacheEntry {
 interface MessageRetention {
   readonly bytes: number;
   refs: number;
-}
-
-/** Byte and entry retention totals for one stream cache. */
-export interface EpisodeStreamCacheStats {
-  /** Unique decoded bytes referenced by cached tick placements. */
-  readonly decodedBytes: number;
-  readonly entryCount: number;
-}
-
-/** Result of placing one fetched frame into a stream cache. */
-export interface EpisodeStreamCacheSetResult {
-  /** Decoded bytes whose duplicate retention was avoided, otherwise zero. */
-  readonly avoidedDecodedBytes: number;
-  /** True when a distinct wrapper reused an already-resident decoded artifact. */
-  readonly canonicalized: boolean;
-  /** Whether the producer supplied a collision-safe canonical record identity. */
-  readonly canonicalEligible: boolean;
 }
 
 /**
@@ -87,13 +70,6 @@ export class EpisodeStreamCache {
   /** Cadence-derived gap limit used by optional observation interpolation. */
   interpolationGapLimitNs(): bigint {
     return this.cadence.interpolationGapLimitNs();
-  }
-
-  stats(): EpisodeStreamCacheStats {
-    return {
-      decodedBytes: this._decodedBytes,
-      entryCount: this.cache.size,
-    };
   }
 
   subscribe(): () => void {
@@ -162,9 +138,8 @@ export class EpisodeStreamCache {
     if (droppedEntries > 0) this.bumpRevision();
   }
 
-  set(tick: bigint, msg: DecodedFrame | null): EpisodeStreamCacheSetResult {
-    const canonical = this.canonicalizeMessage(msg);
-    msg = canonical.msg;
+  set(tick: bigint, msg: DecodedFrame | null): void {
+    msg = this.canonicalizeMessage(msg);
     if (msg) {
       this.cadence.observe(msg.timestampNs);
     }
@@ -179,7 +154,6 @@ export class EpisodeStreamCache {
     // dispose, keeping message-retention byte accounting balanced.
     this.cache.set(key, entry);
     if (!hadEntry || previous !== msg) this.bumpRevision();
-    return canonical.result;
   }
 
   /** Drops placements outside the inclusive playback-order runways. */
@@ -223,7 +197,7 @@ export class EpisodeStreamCache {
       retained.refs += 1;
       return;
     }
-    const bytes = decodedMessageBytes(entry.msg);
+    const bytes = decodedOutputSizeBytes(entry.msg.output);
     this.messageRetention.set(entry.msg, { bytes, refs: 1 });
     this._decodedBytes += bytes;
   }
@@ -244,58 +218,18 @@ export class EpisodeStreamCache {
     this._decodedBytes -= retained.bytes;
   }
 
-  private canonicalizeMessage(msg: DecodedFrame | null): {
-    readonly msg: DecodedFrame | null;
-    readonly result: EpisodeStreamCacheSetResult;
-  } {
-    if (!msg?.recordId) {
-      return {
-        msg,
-        result: {
-          canonicalized: false,
-          canonicalEligible: false,
-          avoidedDecodedBytes: 0,
-        },
-      };
-    }
+  private canonicalizeMessage(msg: DecodedFrame | null): DecodedFrame | null {
+    if (!msg?.recordId) return msg;
 
     const existing = this.messagesByRecordId.get(msg.recordId);
-    if (existing) {
-      return {
-        msg: existing,
-        result: {
-          canonicalized: existing !== msg,
-          canonicalEligible: true,
-          avoidedDecodedBytes: this.messageRetention.get(existing)?.bytes ?? 0,
-        },
-      };
-    }
+    if (existing) return existing;
 
     this.messagesByRecordId.set(msg.recordId, msg);
-    return {
-      msg,
-      result: {
-        canonicalized: false,
-        canonicalEligible: true,
-        avoidedDecodedBytes: 0,
-      },
-    };
+    return msg;
   }
 
   private bumpRevision(): void {
     this._revision++;
     for (const listener of this.listeners) listener();
   }
-}
-
-function decodedMessageBytes(message: DecodedFrame): number {
-  const output = message.output;
-  const hintedBytes = output.resourceHints?.sizeBytes;
-  const bytes =
-    hintedBytes === undefined
-      ? estimateFieldSize(output)
-      : hintedBytes +
-        estimateFieldSize(output.attributes) +
-        estimateFieldSize(output.timing);
-  return Number.isSafeInteger(bytes) && bytes > 0 ? bytes : 0;
 }
