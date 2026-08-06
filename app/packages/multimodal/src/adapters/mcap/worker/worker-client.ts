@@ -91,6 +91,7 @@ export function createWorkerMcapResourceClient(
 
 class WorkerMcapResourceClient implements McapResourceClient {
   private activeSourceKey = "";
+  private releasedSourceKey = "";
   private foregroundGeneration = 0;
   private disposed = false;
   private explicitOwnership = false;
@@ -115,6 +116,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   dispose() {
     this.disposed = true;
+    this.releasedSourceKey = "";
     this.decodedRecords.clear();
     this.transportListeners.clear();
     this.resetWorkers("MCAP worker disposed");
@@ -124,16 +126,25 @@ class WorkerMcapResourceClient implements McapResourceClient {
     if (this.disposed) return;
     this.cancelAllPendingReads();
     this.decodedRecords.clear();
+    // Preserve the last owned source across redundant release calls. This
+    // keeps a later, different source from reusing the old worker isolates.
+    if (this.activeSourceKey) {
+      this.releasedSourceKey = this.activeSourceKey;
+    }
     this.activeSourceKey = "";
     this.foregroundGeneration += 1;
-    // Dropping reader/cache references inside a live worker is not a complete
-    // renderer ownership boundary. The worker's V8 isolate and backing-store
-    // allocator retain their high-water state, so opening a second large
-    // recording during the shared-client linger window can compound the first
-    // recording's committed memory and hit Chrome's renderer OOM trap. End the
-    // isolates here; the shared client remains reusable and recreates each lane
-    // lazily for the next session.
-    this.resetWorkers("MCAP renderer ownership released");
+    for (const lane of this.lanes) {
+      const worker = lane.worker;
+      if (!worker) continue;
+      try {
+        const releaseRequest: McapPlaybackWorkerRequest = {
+          type: "releaseRetainedResources",
+        };
+        worker.postMessage(releaseRequest);
+      } catch {
+        this.resetLane(lane, "MCAP worker resource release failed");
+      }
+    }
   }
 
   subscribeTransport(
@@ -151,17 +162,19 @@ class WorkerMcapResourceClient implements McapResourceClient {
     if (this.activeSourceKey === sourceKey) {
       return;
     }
-    // Ownership follows the renderer lifecycle; requests for retired
-    // sources fail fast instead of flipping ownership back. A declared
-    // switch preempts by cancelling, not terminating: pending reads reject
-    // locally with the benign cancelled error, workers abort the matching
-    // jobs at their read and decode boundaries, and the fleet stays warm —
-    // the next sample skips worker startup and the parked reader keeps its
-    // indexes for a return trip. This depends on activation preceding both
-    // adapter bootstrap reads and publication of the session to the renderer;
-    // later activation races either path into this fail-fast guard.
+    const previousSourceKey = this.activeSourceKey || this.releasedSourceKey;
+    // Cancel first so pending work rejects with the ordinary benign
+    // cancellation error. If ownership is moving to a different recording,
+    // end the isolates before its first read so allocator high-water from the
+    // prior source cannot compound with the next one. A quick round trip back
+    // to the same source can reuse the soft-released isolates and avoid paying
+    // worker module/WASM startup again.
     this.cancelAllPendingReads();
+    if (previousSourceKey && previousSourceKey !== sourceKey) {
+      this.resetWorkers("MCAP worker reset for a different owned source");
+    }
     this.decodedRecords.clear();
+    this.releasedSourceKey = "";
     this.activeSourceKey = sourceKey;
     this.foregroundGeneration += 1;
   }

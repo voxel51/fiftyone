@@ -40,8 +40,9 @@ export function createMcapResourceClient(
 /**
  * Sample navigation remounts the modal renderer per sample. Ref-counted
  * sharing keeps one client coordinator across next-sample hops and quick grid
- * round trips, while the final release tears down its worker isolates so their
- * allocator high-water state cannot cross a renderer ownership boundary.
+ * round trips. A final release clears source resources immediately; warm
+ * worker isolates may survive the linger only until a different source claims
+ * ownership.
  */
 const SHARED_CLIENT_LINGER_MS = 30_000;
 
@@ -55,8 +56,8 @@ const sharedClients = new Map<string, SharedClientEntry>();
 
 /**
  * Acquires the shared MCAP resource client for the given mode and returns a
- * release handle. Worker lanes stop as soon as every holder releases; the
- * client coordinator disposes only after the linger window passes without a
+ * release handle. Source resources clear as soon as every holder releases;
+ * the client coordinator disposes after the linger window passes without a
  * new acquire.
  */
 export function acquireSharedMcapResourceClient(
@@ -99,10 +100,9 @@ export function acquireSharedMcapResourceClient(
       if (held.refs > 0) {
         return;
       }
-      // End every worker isolate at the renderer ownership boundary. Clearing
-      // its JavaScript caches is insufficient because V8/backing-store
-      // allocators may retain the previous recording's committed high-water
-      // state for the life of the worker.
+      // Clear readers and decoded caches at the renderer boundary. The client
+      // keeps enough source identity to terminate warm isolates before a
+      // different recording can allocate into their retained high-water state.
       held.client.releaseRetainedResources?.();
       held.disposeTimer = setTimeout(() => {
         if (held.refs === 0 && sharedClients.get(key) === held) {
