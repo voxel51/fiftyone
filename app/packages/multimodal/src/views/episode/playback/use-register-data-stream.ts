@@ -74,6 +74,10 @@ import { StartupCushionPlanner, type StartupCushion } from "./startup-cushion";
 import { resetStartupCushionState } from "./startup-cushion-state";
 import { EpisodeStreamCache } from "../../../runtime";
 import type { StreamPlaybackFrame } from "./use-stream-values";
+import {
+  evictOldestPointCloudChannels,
+  pointCloudChannelKey,
+} from "./point-cloud-channel-cache";
 
 /**
  * Trailing-throttle interval for republishing buffered ranges to the
@@ -932,13 +936,13 @@ export function useRegisterDataStream({
           samplePlanKey: request.samplePlanKey,
         });
       }
-      const key = [
+      const key = pointCloudChannelKey(
         sourceKey,
         request.stream,
-        request.timestampNs.toString(),
+        request.timestampNs,
         request.samplePlanKey,
         request.activeColorBy,
-      ].join("\0");
+      );
       const cached = pointCloudChannelReadsRef.current.get(key);
       if (cached) return cached;
 
@@ -947,11 +951,7 @@ export function useRegisterDataStream({
         throw error;
       });
       pointCloudChannelReadsRef.current.set(key, read);
-      while (pointCloudChannelReadsRef.current.size > 64) {
-        const oldest = pointCloudChannelReadsRef.current.keys().next().value;
-        if (oldest === undefined) break;
-        pointCloudChannelReadsRef.current.delete(oldest);
-      }
+      evictOldestPointCloudChannels(pointCloudChannelReadsRef.current);
       return read;
     },
     [session, sourceKey],
