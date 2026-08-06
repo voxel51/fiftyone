@@ -3120,6 +3120,93 @@ class SegmentationTests(unittest.TestCase):
 
         return dataset
 
+    def _make_dice_dataset(self):
+        """Two samples whose correct Dice scores differ: 1.0 then 0.0."""
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="perfect.jpg",
+                    ground_truth=fo.Segmentation(
+                        mask=np.array([[1, 1], [1, 1]], dtype=np.uint8)
+                    ),
+                    predictions=fo.Segmentation(
+                        mask=np.array([[1, 1], [1, 1]], dtype=np.uint8)
+                    ),
+                ),
+                fo.Sample(
+                    filepath="wrong.jpg",
+                    ground_truth=fo.Segmentation(
+                        mask=np.array([[1, 1], [1, 1]], dtype=np.uint8)
+                    ),
+                    predictions=fo.Segmentation(
+                        mask=np.array([[2, 2], [2, 2]], dtype=np.uint8)
+                    ),
+                ),
+            ]
+        )
+        return dataset
+
+    @drop_datasets
+    def test_segmentation_dice_is_per_sample(self):
+        """Each sample's Dice must come from that sample's confusion matrix.
+
+        The dataset-wide accumulator is incremented immediately before this
+        value is stored, and _compute_dice_score names its own parameter
+        confusion_matrix, so passing the accumulator reads as correct. It is
+        not: it makes every sample report the running cumulative Dice, which
+        drifts toward the dataset mean and depends on iteration order. The
+        three sibling metrics on the preceding lines use the sample matrix,
+        and the frame-level Dice uses the frame matrix.
+        """
+        dataset = self._make_dice_dataset()
+
+        dataset.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+            compute_dice=True,
+        )
+
+        dice = [sample["eval_dice"] for sample in dataset]
+
+        # A perfect match then a total mismatch. Computed from the cumulative
+        # matrix the second sample reports 0.5 rather than 0.0.
+        self.assertAlmostEqual(dice[0], 1.0)
+        self.assertAlmostEqual(dice[1], 0.0)
+
+    @drop_datasets
+    def test_segmentation_dice_does_not_depend_on_sample_order(self):
+        """The same sample must score the same whichever order it is evaluated in.
+
+        A cumulative Dice is order dependent, so reversing the dataset changes
+        the reported score for identical data. This is the property that makes
+        the defect invisible: with one sample, or with the offending sample
+        first, the number is right by accident.
+        """
+        forward = self._make_dice_dataset()
+        forward.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+            compute_dice=True,
+        )
+        by_path = {s.filepath: s["eval_dice"] for s in forward}
+
+        reverse = fo.Dataset()
+        reverse.add_samples(list(forward)[::-1])
+        reverse.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval2",
+            compute_dice=True,
+        )
+
+        for sample in reverse:
+            self.assertAlmostEqual(
+                sample["eval2_dice"], by_path[sample.filepath]
+            )
+
     @drop_datasets
     def test_evaluate_segmentations_simple(self):
         dataset = self._make_segmentation_dataset()
