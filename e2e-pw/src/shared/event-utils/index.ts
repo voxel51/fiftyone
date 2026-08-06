@@ -9,10 +9,16 @@ export class ArmedEvent {
   constructor(readonly received: Promise<void>) {}
 }
 
+export interface CountedEvent {
+  /** `performance.now()` at dispatch */
+  t: number;
+  detail?: unknown;
+}
+
 declare global {
   interface Window {
-    /** Per-counter event tallies installed by {@link EventUtils.counter}. */
-    __EVENT_COUNTS__?: Record<string, number>;
+    /** Per-counter event records installed by {@link EventUtils.counter}. */
+    __EVENT_COUNTS__?: Record<string, CountedEvent[]>;
   }
 }
 
@@ -28,13 +34,18 @@ export class EventCounter {
   ) {}
 
   /**
-   * The number of events observed since creation. The count lives in the
-   * page and is read through an evaluation, which runs after all previously
+   * The number of events observed since creation. Counts live in the page
+   * and are read through an evaluation, which runs after all previously
    * dispatched events — no event can be in flight and missed.
    */
   async read(): Promise<number> {
+    return (await this.timeline()).length;
+  }
+
+  /** Every observed event with its dispatch time and detail. */
+  async timeline(): Promise<CountedEvent[]> {
     return this.page.evaluate(
-      (key_) => window.__EVENT_COUNTS__?.[key_] ?? 0,
+      (key_) => window.__EVENT_COUNTS__?.[key_] ?? [],
       this.key,
     );
   }
@@ -107,9 +118,12 @@ export class EventUtils {
     await this.page.evaluate(
       ({ eventName_, key_ }) => {
         const store = (window.__EVENT_COUNTS__ ??= {});
-        store[key_] = 0;
-        document.addEventListener(eventName_, () => {
-          store[key_] += 1;
+        const records: { t: number; detail?: unknown }[] = (store[key_] = []);
+        document.addEventListener(eventName_, (e: Event) => {
+          records.push({
+            t: performance.now(),
+            detail: (e as CustomEvent).detail,
+          });
         });
       },
       { eventName_: eventName, key_: key },

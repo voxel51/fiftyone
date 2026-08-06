@@ -45,22 +45,32 @@ test("grid remounts exactly once per spaces layout change", async ({
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 
   const { mounts, unmounts } = await grid.armLifecycleCounters();
+  const now = () => page.evaluate(() => performance.now());
+  const assertCycles = async (n: number, context: Record<string, number>) => {
+    const message = JSON.stringify({
+      ...context,
+      mounts: await mounts.timeline(),
+      unmounts: await unmounts.timeline(),
+    });
+    expect(await mounts.read(), message).toBe(n);
+    expect(await unmounts.read(), message).toBe(n);
+  };
 
   // split: a plain panel open places it side-by-side, splitting the layout
   const split = await grid.armGridRefresh();
+  const splitAt = await now();
   await panel.openInSplit("Histograms");
   await split.received;
   await expect(panel.getContent("Histograms")).toBeVisible();
   await expect(grid.getNthTile(0)).toBeVisible();
-  expect(await mounts.read()).toBe(1);
-  expect(await unmounts.read()).toBe(1);
+  await assertCycles(1, { splitAt });
 
   // join: closing the split panel collapses the layout back to a single pane
   const join = await grid.armGridRefresh();
+  const joinAt = await now();
   await panel.closeTab("Histograms");
   await join.received;
   await expect(panel.getContent("Histograms")).toBeHidden();
   await expect(grid.getNthTile(0)).toBeVisible();
-  expect(await mounts.read()).toBe(2);
-  expect(await unmounts.read()).toBe(2);
+  await assertCycles(2, { splitAt, joinAt });
 });
