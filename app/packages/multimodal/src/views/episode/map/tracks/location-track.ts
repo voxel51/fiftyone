@@ -1,4 +1,5 @@
 import type { LocationVisualization } from "../../../../ir";
+import { lowerBoundBigInt } from "../../../../utils/bigint";
 import { voxel51PrimaryColor } from "../rendering/puck";
 import { bearingDegrees, haversineDistanceMeters } from "../wgs84";
 
@@ -617,20 +618,6 @@ function findPointInterval(timesNs: readonly bigint[], timeNs: bigint): number {
   if (rightIndex <= 0) return 0;
   if (rightIndex >= timesNs.length) return timesNs.length - 2;
   return rightIndex - 1;
-}
-
-function lowerBoundBigInt(values: readonly bigint[], target: bigint): number {
-  let low = 0;
-  let high = values.length;
-  while (low < high) {
-    const middle = low + Math.floor((high - low) / 2);
-    if (values[middle] < target) {
-      low = middle + 1;
-    } else {
-      high = middle;
-    }
-  }
-  return low;
 }
 
 function locationAtIndexedPoint(

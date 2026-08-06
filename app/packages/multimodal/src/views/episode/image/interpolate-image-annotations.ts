@@ -682,17 +682,6 @@ function samplePointTrack(track: PointTrack, fraction: number): Point2 {
   return [track.x + track.deltaX * fraction, track.y + track.deltaY * fraction];
 }
 
-function lowerBoundBigInt(arr: readonly bigint[], target: bigint): number {
-  let lo = 0;
-  let hi = arr.length;
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (arr[mid] < target) lo = mid + 1;
-    else hi = mid;
-  }
-  return lo;
-}
-
 export {
   aabbIoU,
   chamferDistance,
@@ -701,7 +690,6 @@ export {
   interpolateLineList,
   interpolatePointsArray,
   interpolateTexts,
-  lowerBoundBigInt,
   makeGroup,
   matchLineListGroups,
   vizOf,

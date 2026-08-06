@@ -20,6 +20,7 @@ import type {
   SynchronizedPlaybackReadRequest,
   TransformReadAcceleration,
 } from "../ports";
+import { maxBigInt, minBigInt } from "../utils/bigint";
 
 /** Default symmetric tolerance for nearest-frame presentation. */
 export const DEFAULT_EPISODE_SYNC_TOLERANCE_NS = 50_000_000n;
@@ -472,20 +473,6 @@ function assertUnsupportedTolerance(
       `Episode sync policy ${field} for ${stream} is not valid for ${mode}`,
     );
   }
-}
-
-function minBigInt(values: readonly bigint[]): bigint {
-  if (values.length === 0) throw new Error("Expected at least one timestamp");
-  let minimum = values[0];
-  for (const value of values) if (value < minimum) minimum = value;
-  return minimum;
-}
-
-function maxBigInt(values: readonly bigint[]): bigint {
-  if (values.length === 0) throw new Error("Expected at least one timestamp");
-  let maximum = values[0];
-  for (const value of values) if (value > maximum) maximum = value;
-  return maximum;
 }
 
 function absBigInt(value: bigint): bigint {
