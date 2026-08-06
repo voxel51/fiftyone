@@ -10,6 +10,25 @@
   gap: 6px;
 }
 
+.inspectorBody {
+  flex: 1;
+  min-height: 0;
+}
+
+.growField {
+  flex: 1;
+  min-height: 0;
+}
+
+.growPre {
+  flex: 1;
+  margin: 0;
+  min-height: 120px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .recommendButton {
   align-self: flex-start;
   background: transparent;

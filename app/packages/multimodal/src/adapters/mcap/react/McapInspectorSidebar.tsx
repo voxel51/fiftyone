@@ -39,7 +39,10 @@ const McapInspectorSidebar: React.FC = () => {
           inspect it. Esc clears the selection.
         </span>
       ) : (
-        <div className={settingsStyles.root} data-testid="mcap-inspector-body">
+        <div
+          className={`${settingsStyles.root} ${settingsStyles.inspectorBody}`}
+          data-testid="mcap-inspector-body"
+        >
           {selected.kind === "scene-annotation" ? (
             <SceneObjectFields selected={selected} />
           ) : (
@@ -103,11 +106,15 @@ function ImageObjectFields({
       <Field label="Object" value={selected.label ?? selected.primitiveKind} />
       <Field label="Kind" value={selected.primitiveKind} />
       <Field label="Topic" value={selected.topic} />
-      <div className={settingsStyles.field}>
+      <div
+        className={`${settingsStyles.field} ${settingsStyles.growField}`}
+      >
         <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
           Geometry
         </Text>
-        <pre className={settingsStyles.metaText} style={preStyle}>
+        <pre
+          className={`${settingsStyles.metaText} ${settingsStyles.growPre}`}
+        >
           {safeJson(selected.data)}
         </pre>
       </div>
@@ -133,14 +140,6 @@ function Field({
     </div>
   );
 }
-
-const preStyle: React.CSSProperties = {
-  margin: 0,
-  maxHeight: 240,
-  overflow: "auto",
-  whiteSpace: "pre-wrap",
-  wordBreak: "break-word",
-};
 
 function safeJson(value: unknown): string {
   try {
