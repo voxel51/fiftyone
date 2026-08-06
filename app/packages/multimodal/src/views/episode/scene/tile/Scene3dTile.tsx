@@ -66,7 +66,7 @@ import { resolveDepthRay } from "../../spatial/depth-projection";
 import { resolveProjectionCorrespondence } from "../../spatial/projection-correspondence";
 import { useFrameTransformsContext } from "../../spatial/frame-transforms/context";
 import {
-  defaultPointCloudColorForSource,
+  resolvePointCloudColorOptions,
   useImageProjectionSettingsByStream,
   usePinholeCameraSettings,
   usePointCloudStyleSettings,
@@ -255,20 +255,14 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   );
   const pointCloudColorBy = useMemo(
     () =>
-      pointCloudStreams.map((stream) => {
-        const source = pointCloudSources.find(
-          (candidate) => candidate.id === stream,
-        ) ?? {
-          id: stream,
-          label: stream,
-          sourceName: "",
-        };
-        const settings = {
-          ...defaultPointCloudColorForSource(source, pointCloudSources),
-          ...pointCloudColors[stream],
-        };
-        return settings.colorBy;
-      }),
+      pointCloudStreams.map(
+        (stream) =>
+          resolvePointCloudColorOptions(
+            stream,
+            pointCloudSources,
+            pointCloudColors[stream],
+          ).colorBy ?? "auto",
+      ),
     [pointCloudColors, pointCloudSources, pointCloudStreams],
   );
   const frames = usePointCloudPlaybackFrames(
@@ -430,11 +424,6 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     tileId,
     worldFrameId,
   });
-  const pointCloudSourceById = useMemo(
-    () =>
-      new Map(pointCloudSources.map((source) => [source.id, source] as const)),
-    [pointCloudSources],
-  );
   const sourceLabelsById = useMemo(
     () =>
       new Map(
@@ -460,37 +449,19 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   // wrappers survive renders their own inputs didn't cause, so memoized
   // scene layers skip reconciliation for untouched siblings.
   const coloredPointCloudLayers = useKeyedIdentityMap(pointCloudLayers, {
-    build: (layer) => {
-      const source = pointCloudSourceById.get(layer.id) ?? {
-        id: layer.id,
-        label: layer.id,
-        sourceName: "",
-      };
-      const settings = {
-        ...defaultPointCloudColorForSource(source, pointCloudSources),
-        ...pointCloudColors[layer.id],
-      };
-      return {
-        ...layer,
-        colorSettings: {
-          colorBy: settings.colorBy,
-          colormap: settings.colormap,
-          ...(settings.rangeMax !== null
-            ? { rangeMax: settings.rangeMax }
-            : {}),
-          ...(settings.rangeMin !== null
-            ? { rangeMin: settings.rangeMin }
-            : {}),
-          uniformColor: settings.uniformColor,
-        },
-      };
-    },
+    build: (layer) => ({
+      ...layer,
+      colorSettings: resolvePointCloudColorOptions(
+        layer.id,
+        pointCloudSources,
+        pointCloudColors[layer.id],
+      ),
+    }),
     inputs: (layer) => [
       layer.frame,
       layer.contentTimeNs,
       ...frameTransformIdentityInputs(layer.frameTransform),
       pointCloudColors[layer.id],
-      pointCloudSourceById.get(layer.id),
       pointCloudSources,
     ],
     key: (layer) => layer.id,

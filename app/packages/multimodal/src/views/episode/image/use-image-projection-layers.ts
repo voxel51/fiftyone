@@ -15,7 +15,7 @@ import type {
   FrameTransformResolver,
 } from "../spatial/frame-transforms/use-frame-transforms";
 import {
-  defaultPointCloudColorForSource,
+  resolvePointCloudColorOptions,
   usePointCloudStyleSettings,
 } from "../settings/modal/state";
 import { usePointCloudPlaybackFrames } from "../playback/use-stream-values";
@@ -72,26 +72,18 @@ export function useImageProjectionLayers(
     const options = new Map<string, PointCloudColorOptions>();
 
     for (const stream of streams) {
-      const source = pointCloudSourcesById.get(stream) ?? {
-        id: stream,
-        label: stream,
-        sourceName: "",
-      };
-      const settings = {
-        ...defaultPointCloudColorForSource(source, pointCloudSources),
-        ...pointCloudColors[stream],
-      };
-      options.set(stream, {
-        colorBy: settings.colorBy,
-        colormap: settings.colormap,
-        ...(settings.rangeMax !== null ? { rangeMax: settings.rangeMax } : {}),
-        ...(settings.rangeMin !== null ? { rangeMin: settings.rangeMin } : {}),
-        uniformColor: settings.uniformColor,
-      });
+      options.set(
+        stream,
+        resolvePointCloudColorOptions(
+          stream,
+          pointCloudSources,
+          pointCloudColors[stream],
+        ),
+      );
     }
 
     return options;
-  }, [pointCloudColors, pointCloudSources, pointCloudSourcesById, streams]);
+  }, [pointCloudColors, pointCloudSources, streams]);
   const pointCloudColorBy = useMemo(
     () =>
       streams.map(

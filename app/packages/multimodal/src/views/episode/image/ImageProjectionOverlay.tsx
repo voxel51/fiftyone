@@ -25,7 +25,7 @@ import {
   resolveGpuPointCloudColor,
 } from "../../../visualization/scene-3d";
 import {
-  useSetHoverEcho,
+  useOwnedHoverEchoPublisher,
   type HoverEcho,
 } from "../interaction/point-hover/hover-echo";
 import { hoveredPointForFrame } from "../interaction/point-hover/point-hover";
@@ -37,6 +37,7 @@ import type { ImageProjectionLayer } from "./use-image-projection-layers";
 import type { CameraModel } from "../spatial/camera-geometry/camera-model";
 
 const PROJECTION_PICK_RADIUS_SCREEN_PX = 6;
+const PROJECTION_HOVER_OWNER = "image-projection";
 
 /**
  * DOM interaction surface for GPU pointcloud projections. Rendering and hit
@@ -73,8 +74,7 @@ const ImageProjectionOverlay = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [dwellTooltip, setDwellTooltip] =
     useState<Scene3dHoverTooltipState | null>(null);
-  const setSharedHover = useSetHoverEcho();
-  const publishedHoverRef = useRef<HoverEcho | null>(null);
+  const hoverPublisher = useOwnedHoverEchoPublisher<string>();
   const requestGenerationRef = useRef(0);
 
   // Mutable render inputs are read again when an asynchronous pick resolves.
@@ -99,38 +99,43 @@ const ImageProjectionOverlay = ({
     requestGenerationRef.current += 1;
     pickerRef.current?.invalidate();
     setDwellTooltip(null);
-    const published = publishedHoverRef.current;
-    if (!published) {
-      return;
-    }
-    publishedHoverRef.current = null;
-    setSharedHover((current) => (current === published ? null : current));
-  }, [pickerRef, setSharedHover]);
+    hoverPublisher.retract(PROJECTION_HOVER_OWNER);
+  }, [hoverPublisher, pickerRef]);
 
   // This effect clears a frame-scoped projection hover when either its image
   // frame or point resource leaves the tile.
   useEffect(() => {
-    const published = publishedHoverRef.current;
-    if (!published || published.kind !== "point") {
-      return;
-    }
-    const source = published.source;
-    if (source?.kind !== "image-projection") {
-      return;
-    }
-    const imageStillCurrent =
-      source.cameraFrameId === cameraFrameId &&
-      source.imageContentTimeNs === imageContentTimeNs &&
-      source.imageStream === imageStream;
-    const pointStillCurrent = layers.some(
-      (layer) =>
-        layer.stream === published.stream &&
-        layer.contentTimeNs === published.contentTimeNs,
-    );
-    if (!imageStillCurrent || !pointStillCurrent) {
-      clearOwnHover();
-    }
-  }, [cameraFrameId, clearOwnHover, imageContentTimeNs, imageStream, layers]);
+    hoverPublisher.retire((_owner, published) => {
+      if (published.kind !== "point") return false;
+      const source = published.source;
+      if (source?.kind !== "image-projection") return false;
+      const imageStillCurrent =
+        source.cameraFrameId === cameraFrameId &&
+        source.imageContentTimeNs === imageContentTimeNs &&
+        source.imageStream === imageStream;
+      const pointStillCurrent = layers.some(
+        (layer) =>
+          layer.stream === published.stream &&
+          layer.contentTimeNs === published.contentTimeNs,
+      );
+      const shouldRetire = !imageStillCurrent || !pointStillCurrent;
+      if (shouldRetire) {
+        // Keep invalidation ahead of shared-state retraction, matching pointer
+        // cancellation and making late GPU readback inert before publication.
+        requestGenerationRef.current += 1;
+        pickerRef.current?.invalidate();
+        setDwellTooltip(null);
+      }
+      return shouldRetire;
+    });
+  }, [
+    cameraFrameId,
+    hoverPublisher,
+    imageContentTimeNs,
+    imageStream,
+    layers,
+    pickerRef,
+  ]);
 
   // This effect owns pointer-based GPU picking for the projection overlay.
   useEffect(() => {
@@ -261,8 +266,7 @@ const ImageProjectionOverlay = ({
             sourceName: layer.sourceName,
             stream: layer.stream,
           };
-          publishedHoverRef.current = hover;
-          setSharedHover(hover);
+          hoverPublisher.publish(PROJECTION_HOVER_OWNER, hover);
         })
         .catch(() => {
           if (generation === requestGenerationRef.current) {
@@ -286,8 +290,8 @@ const ImageProjectionOverlay = ({
     clearOwnHover,
     imageContentTimeNs,
     imageStream,
+    hoverPublisher,
     pickerRef,
-    setSharedHover,
   ]);
 
   return (
