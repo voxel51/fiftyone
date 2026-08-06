@@ -25,8 +25,8 @@
   margin: 0;
   min-height: 120px;
   overflow: auto;
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
-  word-break: break-word;
 }
 
 .recommendButton {
