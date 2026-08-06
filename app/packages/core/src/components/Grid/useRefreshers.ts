@@ -18,7 +18,7 @@ export default function useRefreshers() {
   const filters = fos.stringifyObj(useRecoilValue(fos.filters));
   const groupSlice = useRecoilValue(fos.groupSlice);
   const mediaField = useRecoilValue(fos.selectedMediaField(false));
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const queryPerformanceSetting = useRecoilValue(fos.queryPerformanceSetting);
   const refresher = useRecoilValue(fos.refresher);
   const shouldRenderImaVidLooker = useRecoilValue(
     fos.shouldRenderImaVidLooker(false),
@@ -34,14 +34,14 @@ export default function useRefreshers() {
     cropToContent;
     fieldVisibilityStage;
     mediaField;
-    queryPerformance;
+    queryPerformanceSetting;
     refresher;
     return uuid();
   }, [
     cropToContent,
     fieldVisibilityStage,
     mediaField,
-    queryPerformance,
+    queryPerformanceSetting,
     refresher,
   ]);
 
