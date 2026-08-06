@@ -33,9 +33,10 @@ export async function openEpisodeSession(
 export async function openEpisodePreviewSession(
   sample: SampleDescriptor,
   source: EpisodeSource,
+  options?: EpisodeOpenOptions,
 ): Promise<EpisodePreviewSession | null> {
   const adapter = await loadFormatAdapter(sample);
-  return adapter?.openPreview?.(source, episodeByteResources) ?? null;
+  return adapter?.openPreview?.(source, episodeByteResources, options) ?? null;
 }
 
 /** Advises an adapter to warm likely startup bytes when it supports prewarm. */

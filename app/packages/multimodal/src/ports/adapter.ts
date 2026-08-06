@@ -68,7 +68,7 @@ export interface EpisodePrewarmOptions {
   readonly signal?: AbortSignal;
 }
 
-/** Cancellation controls for opening one full episode session. */
+/** Cancellation controls for opening one episode session resource. */
 export interface EpisodeOpenOptions {
   readonly signal?: AbortSignal;
 }
@@ -85,6 +85,7 @@ export interface FormatAdapter {
   openPreview?(
     source: EpisodeSource,
     io: ByteResources,
+    options?: EpisodeOpenOptions,
   ): Promise<EpisodePreviewSession>;
   /** Optional byte-level startup warm-up for likely navigation targets. */
   prewarm?(

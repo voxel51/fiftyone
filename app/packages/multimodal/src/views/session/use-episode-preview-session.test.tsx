@@ -1,56 +1,51 @@
 import { renderHook, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { EpisodeSession, EpisodeSource } from "../../ports";
-import { useEpisodeSession } from "./use-episode-session";
+import type { EpisodePreviewSession, EpisodeSource } from "../../ports";
+import { useEpisodePreviewSession } from "./use-episode-preview-session";
 
-const sessionHarness = vi.hoisted(() => ({
-  openEpisodeSession: vi.fn(),
+const previewHarness = vi.hoisted(() => ({
+  openEpisodePreviewSession: vi.fn(),
 }));
 
 vi.mock("../../runtime", () => ({
-  openEpisodeSession: sessionHarness.openEpisodeSession,
+  openEpisodePreviewSession: previewHarness.openEpisodePreviewSession,
 }));
 
-describe("useEpisodeSession", () => {
+describe("useEpisodePreviewSession", () => {
   beforeEach(() => {
-    sessionHarness.openEpisodeSession.mockReset();
+    previewHarness.openEpisodePreviewSession.mockReset();
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("never exposes the previous session under a new source", async () => {
-    const firstSession = createSession();
-    const secondSession = createSession();
+  it("never exposes the previous preview under a new source", async () => {
+    const firstSession = createPreviewSession();
+    const secondOpen = deferred<EpisodePreviewSession>();
     const firstSource = createSource("sample-a");
     const secondSource = createSource("sample-b");
     const renders: Array<{
-      readonly session: EpisodeSession | null;
-      readonly source: EpisodeSource | null;
+      readonly session: EpisodePreviewSession | null;
+      readonly source: EpisodeSource;
       readonly status: string;
     }> = [];
-    sessionHarness.openEpisodeSession
+    previewHarness.openEpisodePreviewSession
       .mockResolvedValueOnce(firstSession)
-      .mockResolvedValueOnce(secondSession);
+      .mockReturnValueOnce(secondOpen.promise);
 
     const { rerender, result, unmount } = renderHook(
-      ({ source }: { source: EpisodeSource | null }) => {
-        const state = useEpisodeSession(
-          { mediaType: "group", path: `${source?.episodeId}.mcap` },
+      ({ source }: { source: EpisodeSource }) => {
+        const state = useEpisodePreviewSession(
+          { mediaType: "group", path: `${source.episodeId}.mcap` },
           source,
+          true,
         );
         renders.push({ session: state.session, source, status: state.status });
         return state;
       },
-      { initialProps: { source: firstSource as EpisodeSource | null } },
+      { initialProps: { source: firstSource } },
     );
 
-    await waitFor(() => expect(result.current.status).toBe("ready"));
-    expect(firstSession.activate).toHaveBeenCalledOnce();
+    await waitFor(() => expect(result.current.session).toBe(firstSession));
     const firstRenderCount = renders.length;
-
     rerender({ source: secondSource });
 
     expect(
@@ -63,36 +58,40 @@ describe("useEpisodeSession", () => {
             render.status === "ready",
         ),
     ).toBe(false);
+    expect(result.current.status).toBe("loading");
     expect(firstSession.dispose).toHaveBeenCalledOnce();
+
+    const secondSession = createPreviewSession();
+    secondOpen.resolve(secondSession);
     await waitFor(() => expect(result.current.session).toBe(secondSession));
-    expect(secondSession.activate).toHaveBeenCalledOnce();
 
     unmount();
     expect(secondSession.dispose).toHaveBeenCalledOnce();
   });
 
-  it("aborts an abandoned session open when the source changes", async () => {
-    const secondSession = createSession();
+  it("aborts an abandoned preview open when the source changes", async () => {
+    const secondSession = createPreviewSession();
     const firstSource = createSource("sample-a");
     const secondSource = createSource("sample-b");
-    sessionHarness.openEpisodeSession
-      .mockReturnValueOnce(new Promise<EpisodeSession>(() => undefined))
+    previewHarness.openEpisodePreviewSession
+      .mockReturnValueOnce(new Promise<EpisodePreviewSession>(() => undefined))
       .mockResolvedValueOnce(secondSession);
 
     const { rerender, result, unmount } = renderHook(
       ({ source }: { source: EpisodeSource }) =>
-        useEpisodeSession(
+        useEpisodePreviewSession(
           { mediaType: "group", path: `${source.episodeId}.mcap` },
           source,
+          true,
         ),
       { initialProps: { source: firstSource } },
     );
 
     await waitFor(() =>
-      expect(sessionHarness.openEpisodeSession).toHaveBeenCalledTimes(1),
+      expect(previewHarness.openEpisodePreviewSession).toHaveBeenCalledOnce(),
     );
     const firstOpenOptions =
-      sessionHarness.openEpisodeSession.mock.calls[0]?.[2];
+      previewHarness.openEpisodePreviewSession.mock.calls[0]?.[2];
     expect(firstOpenOptions?.signal.aborted).toBe(false);
 
     rerender({ source: secondSource });
@@ -102,60 +101,53 @@ describe("useEpisodeSession", () => {
     unmount();
   });
 
-  it("disposes a session that resolves after its request loses ownership", async () => {
-    const firstOpen = deferred<EpisodeSession>();
-    const secondSession = createSession();
+  it("disposes a preview that resolves after its request loses ownership", async () => {
+    const firstOpen = deferred<EpisodePreviewSession>();
+    const secondSession = createPreviewSession();
     const firstSource = createSource("sample-a");
     const secondSource = createSource("sample-b");
-    sessionHarness.openEpisodeSession
+    previewHarness.openEpisodePreviewSession
       .mockReturnValueOnce(firstOpen.promise)
       .mockResolvedValueOnce(secondSession);
 
     const { rerender, result, unmount } = renderHook(
       ({ source }: { source: EpisodeSource }) =>
-        useEpisodeSession(
+        useEpisodePreviewSession(
           { mediaType: "group", path: `${source.episodeId}.mcap` },
           source,
+          true,
         ),
       { initialProps: { source: firstSource } },
     );
 
     await waitFor(() =>
-      expect(sessionHarness.openEpisodeSession).toHaveBeenCalledOnce(),
+      expect(previewHarness.openEpisodePreviewSession).toHaveBeenCalledOnce(),
     );
     rerender({ source: secondSource });
     await waitFor(() => expect(result.current.session).toBe(secondSession));
 
-    const lateSession = createSession();
+    const lateSession = createPreviewSession();
     firstOpen.resolve(lateSession);
     await waitFor(() => expect(lateSession.dispose).toHaveBeenCalledOnce());
-    expect(lateSession.activate).not.toHaveBeenCalled();
     expect(result.current.session).toBe(secondSession);
 
     unmount();
   });
 
-  it("disposes a session that fails to activate", async () => {
-    const session = createSession();
+  it("reports an unavailable adapter preview without leaking ownership", async () => {
     const source = createSource("sample-a");
-    if (!session.activate) {
-      throw new Error("test session must support activation");
-    }
-    vi.mocked(session.activate).mockImplementation(() => {
-      throw new Error("activation failed");
-    });
-    sessionHarness.openEpisodeSession.mockResolvedValue(session);
+    previewHarness.openEpisodePreviewSession.mockResolvedValue(null);
 
-    const { result, unmount } = renderHook(() =>
-      useEpisodeSession({ mediaType: "group", path: "sample-a.mcap" }, source),
+    const { result } = renderHook(() =>
+      useEpisodePreviewSession(
+        { mediaType: "group", path: "sample-a.mcap" },
+        source,
+        true,
+      ),
     );
 
-    await waitFor(() => expect(result.current.status).toBe("error"));
-    expect(result.current.error).toBe("activation failed");
-    expect(session.dispose).toHaveBeenCalledOnce();
-
-    unmount();
-    expect(session.dispose).toHaveBeenCalledOnce();
+    await waitFor(() => expect(result.current.status).toBe("unavailable"));
+    expect(result.current.session).toBeNull();
   });
 });
 
@@ -169,11 +161,10 @@ function createSource(episodeId: string): EpisodeSource {
   };
 }
 
-function createSession(): EpisodeSession {
+function createPreviewSession(): EpisodePreviewSession {
   return {
-    activate: vi.fn(),
     dispose: vi.fn(),
-  } as unknown as EpisodeSession;
+  } as unknown as EpisodePreviewSession;
 }
 
 function deferred<T>(): {
