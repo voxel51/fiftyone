@@ -1,5 +1,6 @@
 import * as THREE from "three";
 
+import { createKeyedLeaseRegistry } from "../keyed-lease-registry";
 import type {
   PreparedImageAnnotationPicks,
   PreparedImageAnnotationPoints,
@@ -66,22 +67,32 @@ interface InternalPickResource extends GpuImageAnnotationPickResource {
 }
 
 interface InternalResource extends GpuImageAnnotationResource {
-  disposed: boolean;
   payload: PreparedImageAnnotations;
   readonly pick: InternalPickResource;
   readonly pickCapacity: number;
   readonly pointCapacity: number;
   readonly points: InternalPointResource;
-  retired: boolean;
-  retainCount: number;
   revision: number;
   readonly segmentCapacity: number;
   readonly segments: InternalSegmentResource;
 }
 
-const entries = new Map<string, InternalResource>();
-const retiredResources = new Set<InternalResource>();
-let evictionScheduled = false;
+const imageAnnotationResourceRegistry = createKeyedLeaseRegistry<
+  string,
+  PreparedImageAnnotations,
+  InternalResource
+>({
+  create: (_key, payload) => createResource(payload),
+  dispose: disposeResource,
+  needsGrowth: (resource, payload) =>
+    payload.points.count > resource.pointCapacity ||
+    payload.segments.count > resource.segmentCapacity ||
+    payload.picks.count > resource.pickCapacity,
+  retentionCap: RESOURCE_RETENTION_CAP,
+  update: (resource, payload) => {
+    if (resource.payload !== payload) updateResource(resource, payload);
+  },
+});
 
 /**
  * Returns reusable, grow-only annotation attributes for one image tile.
@@ -92,57 +103,18 @@ export function getGpuImageAnnotationResource(
   key: string,
   payload: PreparedImageAnnotations,
 ): GpuImageAnnotationResource {
-  let resource = entries.get(key);
-  if (!resource) {
-    resource = createResource(payload);
-    entries.set(key, resource);
-    scheduleEviction();
-    return resource;
-  }
-
-  touch(key, resource);
-  if (
-    payload.points.count > resource.pointCapacity ||
-    payload.segments.count > resource.segmentCapacity ||
-    payload.picks.count > resource.pickCapacity
-  ) {
-    resource.retired = true;
-    retiredResources.add(resource);
-    resource = createResource(payload);
-    entries.set(key, resource);
-    scheduleRetiredDisposal();
-    return resource;
-  }
-
-  if (resource.payload !== payload) {
-    updateResource(resource, payload);
-  }
-  return resource;
+  return imageAnnotationResourceRegistry.get(key, payload);
 }
 
 /** Pins attributes while a committed R3F scene or picker references them. */
 export function retainGpuImageAnnotationResource(
   resource: GpuImageAnnotationResource,
 ): () => void {
-  const internal = resource as InternalResource;
-  if (internal.disposed) return () => undefined;
-  internal.retainCount += 1;
-  let released = false;
-  return () => {
-    if (released) return;
-    released = true;
-    internal.retainCount = Math.max(0, internal.retainCount - 1);
-    if (internal.retired) scheduleRetiredDisposal();
-    else scheduleEviction();
-  };
+  return imageAnnotationResourceRegistry.retain(resource as InternalResource);
 }
 
 function releaseGpuImageAnnotationResources(): void {
-  for (const resource of entries.values()) disposeResource(resource);
-  for (const resource of retiredResources) disposeResource(resource);
-  entries.clear();
-  retiredResources.clear();
-  evictionScheduled = false;
+  imageAnnotationResourceRegistry.releaseAll();
 }
 
 /** Clears all retained resources and counters between unit tests. */
@@ -158,14 +130,11 @@ function createResource(payload: PreparedImageAnnotations): InternalResource {
   const segments = createSegmentResource(segmentCapacity);
   const pick = createPickResource(pickCapacity);
   const resource: InternalResource = {
-    disposed: false,
     payload,
     pick,
     pickCapacity,
     pointCapacity,
     points,
-    retired: false,
-    retainCount: 0,
     revision: 0,
     segmentCapacity,
     segments,
@@ -322,43 +291,7 @@ function nextCapacity(count: number): number {
   return capacity;
 }
 
-function touch(key: string, resource: InternalResource): void {
-  entries.delete(key);
-  entries.set(key, resource);
-}
-
-function scheduleEviction(): void {
-  if (evictionScheduled || entries.size <= RESOURCE_RETENTION_CAP) return;
-  evictionScheduled = true;
-  queueMicrotask(() => {
-    evictionScheduled = false;
-    while (entries.size > RESOURCE_RETENTION_CAP) {
-      let evicted = false;
-      for (const [key, resource] of entries) {
-        if (resource.retainCount !== 0) continue;
-        entries.delete(key);
-        disposeResource(resource);
-        evicted = true;
-        break;
-      }
-      if (!evicted) break;
-    }
-  });
-}
-
-function scheduleRetiredDisposal(): void {
-  queueMicrotask(() => {
-    for (const resource of retiredResources) {
-      if (resource.retainCount !== 0) continue;
-      retiredResources.delete(resource);
-      disposeResource(resource);
-    }
-  });
-}
-
 function disposeResource(resource: InternalResource): void {
-  if (resource.disposed) return;
-  resource.disposed = true;
   resource.points.geometry.dispose();
   resource.segments.geometry.dispose();
   resource.pick.geometry.dispose();

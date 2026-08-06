@@ -1,6 +1,12 @@
 import * as THREE from "three";
 import * as TSL from "three/tsl";
 
+import type {
+  CameraProjectionNode,
+  CameraProjectionTslFacade,
+  CameraProjectionUniformNode,
+} from "../tsl-chainables";
+
 const MIN_PROJECTABLE_DEPTH = 1e-6;
 const MIN_RATIONAL_DENOMINATOR = 1e-6;
 
@@ -40,34 +46,34 @@ export type GpuCameraProjection =
 /** Shared projected pixel nodes produced from one sensor-position node. */
 export interface GpuCameraProjectionNodes {
   readonly bindings: GpuCameraProjectionBindings;
-  readonly depth: TSL.Node;
-  readonly u: TSL.Node;
-  readonly v: TSL.Node;
-  readonly valid: TSL.Node;
+  readonly depth: CameraProjectionNode;
+  readonly u: CameraProjectionNode;
+  readonly v: CameraProjectionNode;
+  readonly valid: CameraProjectionNode;
 }
 
 interface GpuPinholeCameraProjectionBindings {
   readonly kind: "pinhole";
-  readonly projectionMatrix: GpuProjectionUniformNode<THREE.Matrix4>;
+  readonly projectionMatrix: CameraProjectionUniformNode<THREE.Matrix4>;
 }
 
 interface GpuRationalCameraProjectionBindings {
-  readonly cameraMatrix: GpuProjectionUniformNode<THREE.Matrix4>;
-  readonly distortionHigh: GpuProjectionUniformNode<THREE.Vector4>;
-  readonly distortionLow: GpuProjectionUniformNode<THREE.Vector4>;
-  readonly intrinsicsX: GpuProjectionUniformNode<THREE.Vector4>;
-  readonly intrinsicsY: GpuProjectionUniformNode<THREE.Vector4>;
+  readonly cameraMatrix: CameraProjectionUniformNode<THREE.Matrix4>;
+  readonly distortionHigh: CameraProjectionUniformNode<THREE.Vector4>;
+  readonly distortionLow: CameraProjectionUniformNode<THREE.Vector4>;
+  readonly intrinsicsX: CameraProjectionUniformNode<THREE.Vector4>;
+  readonly intrinsicsY: CameraProjectionUniformNode<THREE.Vector4>;
   readonly kind: "rational-polynomial";
-  readonly maxRadiusSquared: GpuProjectionUniformNode<number>;
+  readonly maxRadiusSquared: CameraProjectionUniformNode<number>;
 }
 
 interface GpuEquidistantCameraProjectionBindings {
-  readonly cameraMatrix: GpuProjectionUniformNode<THREE.Matrix4>;
-  readonly distortion: GpuProjectionUniformNode<THREE.Vector4>;
-  readonly intrinsicsX: GpuProjectionUniformNode<THREE.Vector4>;
-  readonly intrinsicsY: GpuProjectionUniformNode<THREE.Vector4>;
+  readonly cameraMatrix: CameraProjectionUniformNode<THREE.Matrix4>;
+  readonly distortion: CameraProjectionUniformNode<THREE.Vector4>;
+  readonly intrinsicsX: CameraProjectionUniformNode<THREE.Vector4>;
+  readonly intrinsicsY: CameraProjectionUniformNode<THREE.Vector4>;
   readonly kind: "equidistant";
-  readonly maxTheta: GpuProjectionUniformNode<number>;
+  readonly maxTheta: CameraProjectionUniformNode<number>;
 }
 
 /** Mutable shader uniforms for one compiled camera-model topology. */
@@ -76,54 +82,17 @@ export type GpuCameraProjectionBindings =
   | GpuPinholeCameraProjectionBindings
   | GpuRationalCameraProjectionBindings;
 
-interface GpuProjectionNode {
-  readonly w: GpuProjectionNode;
-  readonly x: GpuProjectionNode;
-  readonly y: GpuProjectionNode;
-  readonly z: GpuProjectionNode;
-  add(value: GpuProjectionNode | number): GpuProjectionNode;
-  div(value: GpuProjectionNode | number): GpuProjectionNode;
-  mul(value: GpuProjectionNode | number): GpuProjectionNode;
-  sub(value: GpuProjectionNode | number): GpuProjectionNode;
-}
-
-interface GpuProjectionUniformNode<T> extends GpuProjectionNode {
-  value: T;
-}
-
-const cameraTsl = TSL as unknown as {
-  abs(value: GpuProjectionNode): GpuProjectionNode;
-  and(...conditions: readonly GpuProjectionNode[]): GpuProjectionNode;
-  atan(y: GpuProjectionNode, x: GpuProjectionNode): GpuProjectionNode;
-  greaterThan(
-    left: GpuProjectionNode,
-    right: GpuProjectionNode | number,
-  ): GpuProjectionNode;
-  lessThanEqual(
-    left: GpuProjectionNode,
-    right: GpuProjectionNode | number,
-  ): GpuProjectionNode;
-  select(
-    condition: GpuProjectionNode,
-    whenTrue: GpuProjectionNode | number,
-    whenFalse: GpuProjectionNode | number,
-  ): GpuProjectionNode;
-  sqrt(value: GpuProjectionNode): GpuProjectionNode;
-  uniform<T extends number | THREE.Matrix4 | THREE.Vector4>(
-    value: T,
-  ): GpuProjectionUniformNode<T>;
-  vec4(...values: readonly (GpuProjectionNode | number)[]): GpuProjectionNode;
-};
+const cameraTsl: CameraProjectionTslFacade = TSL;
 
 /**
  * Builds the canonical sensor-position to image-pixel node graph. Visible
  * projection and integer picking both call this function.
  */
 export function createGpuCameraProjectionNodes(
-  sensorPosition: TSL.Node,
+  sensorPosition: CameraProjectionNode,
   projection: GpuCameraProjection,
 ): GpuCameraProjectionNodes {
-  const position = sensorPosition as unknown as GpuProjectionNode;
+  const position = sensorPosition;
   if (projection.kind === "pinhole") {
     const projectionMatrix = cameraTsl.uniform(
       projection.projectionMatrix.clone(),
@@ -132,13 +101,10 @@ export function createGpuCameraProjectionNodes(
     const depth = homogeneous.z;
     return {
       bindings: { kind: "pinhole", projectionMatrix },
-      depth: depth as unknown as TSL.Node,
-      u: homogeneous.x.div(depth) as unknown as TSL.Node,
-      v: homogeneous.y.div(depth) as unknown as TSL.Node,
-      valid: cameraTsl.greaterThan(
-        depth,
-        MIN_PROJECTABLE_DEPTH,
-      ) as unknown as TSL.Node,
+      depth: depth,
+      u: homogeneous.x.div(depth),
+      v: homogeneous.y.div(depth),
+      valid: cameraTsl.greaterThan(depth, MIN_PROJECTABLE_DEPTH),
     };
   }
 
@@ -190,17 +156,9 @@ export function createGpuCameraProjectionNodes(
         kind: "rational-polynomial",
         maxRadiusSquared,
       },
-      depth: camera.z as unknown as TSL.Node,
-      u: applyIntrinsics(
-        intrinsicsX,
-        distortedX,
-        distortedY,
-      ) as unknown as TSL.Node,
-      v: applyIntrinsics(
-        intrinsicsY,
-        distortedX,
-        distortedY,
-      ) as unknown as TSL.Node,
+      depth: camera.z,
+      u: applyIntrinsics(intrinsicsX, distortedX, distortedY),
+      v: applyIntrinsics(intrinsicsY, distortedX, distortedY),
       valid: cameraTsl.and(
         cameraTsl.greaterThan(camera.z, MIN_PROJECTABLE_DEPTH),
         cameraTsl.lessThanEqual(r2, maxRadiusSquared),
@@ -208,7 +166,7 @@ export function createGpuCameraProjectionNodes(
           cameraTsl.abs(denominator),
           MIN_RATIONAL_DENOMINATOR,
         ),
-      ) as unknown as TSL.Node,
+      ),
     };
   }
 
@@ -246,21 +204,13 @@ export function createGpuCameraProjectionNodes(
       kind: "equidistant",
       maxTheta,
     },
-    depth: rayLength as unknown as TSL.Node,
-    u: applyIntrinsics(
-      intrinsicsX,
-      distortedX,
-      distortedY,
-    ) as unknown as TSL.Node,
-    v: applyIntrinsics(
-      intrinsicsY,
-      distortedX,
-      distortedY,
-    ) as unknown as TSL.Node,
+    depth: rayLength,
+    u: applyIntrinsics(intrinsicsX, distortedX, distortedY),
+    v: applyIntrinsics(intrinsicsY, distortedX, distortedY),
     valid: cameraTsl.and(
       cameraTsl.greaterThan(rayLength, MIN_PROJECTABLE_DEPTH),
       cameraTsl.lessThanEqual(theta, maxTheta),
-    ) as unknown as TSL.Node,
+    ),
   };
 }
 
@@ -300,9 +250,9 @@ export function updateGpuCameraProjectionBindings(
 }
 
 function applyIntrinsics(
-  row: GpuProjectionNode,
-  x: GpuProjectionNode,
-  y: GpuProjectionNode,
-): GpuProjectionNode {
+  row: CameraProjectionNode,
+  x: CameraProjectionNode,
+  y: CameraProjectionNode,
+): CameraProjectionNode {
   return row.x.mul(x).add(row.y.mul(y)).add(row.z);
 }

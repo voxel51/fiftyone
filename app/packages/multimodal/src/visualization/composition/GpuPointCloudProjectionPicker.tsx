@@ -17,14 +17,16 @@ import {
   type GpuCameraProjectionBindings,
 } from "./gpu-camera-projection";
 import {
-  acquireGpuPickReadbackPool,
-  type GpuPickReadbackLease,
-} from "../webgpu/gpu-pick-readback-pool";
-import {
-  GpuPickRenderTarget,
-  isGpuPickRenderer,
-  type GpuPickRenderer,
-} from "../webgpu/gpu-pick-render-target";
+  createGpuPickController,
+  type GpuPickPass,
+} from "../webgpu/gpu-pick-controller";
+import { isGpuPickRenderer } from "../webgpu/gpu-pick-render-target";
+import type {
+  CameraProjectionNode,
+  PointCloudProjectionPickNode,
+  PointCloudProjectionPickTslFacade,
+  PointCloudProjectionPickUniformNode,
+} from "../tsl-chainables";
 
 const CULLED_POSITION = 1e9;
 
@@ -36,51 +38,15 @@ const CULLED_POSITION = 1e9;
 // No projected UV array is materialized. The pass reads the same prepared
 // point/source-index buffers as the visible camera layers.
 
-interface PickNode {
-  readonly w: PickNode;
-  readonly x: PickNode;
-  readonly y: PickNode;
-  readonly z: PickNode;
-  add(value: PickNode | number): PickNode;
-  div(value: PickNode | number): PickNode;
-  mul(value: PickNode | number): PickNode;
-  sub(value: PickNode | number): PickNode;
-}
-
-interface PickUniformNode<T> extends PickNode {
-  value: T;
-}
-
 interface PickPointsMaterial extends PointsNodeMaterial {
   depthNode: TSL.Node | null;
   fragmentNode: TSL.Node | null;
-  scaleNode: PickNode | null;
+  scaleNode: PointCloudProjectionPickNode | null;
 }
 
 // Three exposes these WebGPU/TSL APIs at runtime, while the available
 // declaration surface covers only the nodes used by live panels.
-const pickTsl = TSL as unknown as {
-  and(...conditions: readonly PickNode[]): PickNode;
-  clamp(value: PickNode, min: number, max: number): PickNode;
-  greaterThan(left: PickNode, right: PickNode | number): PickNode;
-  greaterThanEqual(left: PickNode, right: PickNode | number): PickNode;
-  instanceIndex: PickNode;
-  lessThan(left: PickNode, right: PickNode | number): PickNode;
-  lessThanEqual(left: PickNode, right: PickNode | number): PickNode;
-  select(
-    condition: PickNode,
-    whenTrue: PickNode,
-    whenFalse: PickNode,
-  ): PickNode;
-  uint(value: PickNode | number): PickNode;
-  uniform<T extends number | THREE.Matrix4 | THREE.Vector2>(
-    value: T,
-  ): PickUniformNode<T>;
-  uvec4(...values: readonly (PickNode | number)[]): PickNode;
-  vec2(...values: readonly (PickNode | number)[]): PickNode;
-  vec3(...values: readonly (PickNode | number)[]): PickNode;
-  vec4(...values: readonly (PickNode | number)[]): PickNode;
-};
+const pickTsl: PointCloudProjectionPickTslFacade = TSL;
 
 /** GPU buffers and transform needed to pick one projected cloud layer. */
 export interface GpuPointCloudProjectionPickLayer {
@@ -193,136 +159,40 @@ export function createGpuPointCloudProjectionPickerController(
   if (!isGpuPickRenderer(renderer)) {
     throw new Error("GPU projection picking requires Three WebGPURenderer");
   }
-  return new ProjectionPickerController(renderer);
+  return createGpuPickController(renderer, {
+    createPass: createProjectionPickPass,
+    decodeTexel: decodeProjectionPickTexel,
+    invalidTexelMessage: "GPU projection picker returned a non-integer texel",
+    minimumTexelLength: 3,
+  });
 }
 
-class ProjectionPickerController implements GpuPointCloudProjectionPickerController {
-  private disposed = false;
-  private generation = 0;
-  private readonly readback: GpuPickReadbackLease;
-  private renderPass: ProjectionPickPass | null = null;
-  private readonly target: GpuPickRenderTarget;
-
-  constructor(renderer: GpuPickRenderer) {
-    this.readback = acquireGpuPickReadbackPool(renderer);
-    this.target = new GpuPickRenderTarget(renderer);
+function decodeProjectionPickTexel(
+  pixels: Uint32Array,
+  renderPass: ProjectionPickPass,
+): GpuPointCloudProjectionPickResult | null {
+  // Zero is the cleared target/no-hit sentinel. Valid zero-based indices are
+  // stored as index + 1 so every channel can use the same sentinel.
+  const encodedLayerIndex = pixels[0];
+  const encodedSourceIndex = pixels[1];
+  const encodedSampleIndex = pixels[2];
+  if (
+    encodedLayerIndex === 0 ||
+    encodedSourceIndex === 0 ||
+    encodedSampleIndex === 0
+  ) {
+    return null;
   }
-
-  setScene(scene: GpuPointCloudProjectionPickerScene): void {
-    if (this.disposed) {
-      return;
-    }
-    this.invalidate();
-    // Preserve compiled node materials while only matrices, counts, or frame
-    // identities change. A buffer-identity/calibration-shape change rebuilds
-    // the pass because TSL storage attributes are part of shader topology.
-    if (this.renderPass?.updateScene(scene)) {
-      return;
-    }
-    const previousPass = this.renderPass;
-    this.renderPass = null;
-    try {
-      this.renderPass = createProjectionPickPass(scene);
-    } finally {
-      previousPass?.dispose();
-    }
-  }
-
-  invalidate(): void {
-    // GPU readback is asynchronous. Callers invalidate on pointer, frame, TF,
-    // calibration, or lifecycle changes so an older texel cannot publish a
-    // hover against newer scene state.
-    this.generation += 1;
-  }
-
-  async pick(
-    request: GpuPointCloudProjectionPickRequest,
-  ): Promise<GpuPointCloudProjectionPickResult | null> {
-    // A new request supersedes any previous request from this controller.
-    const generation = ++this.generation;
-    const renderPass = this.renderPass;
-    if (
-      this.disposed ||
-      !renderPass ||
-      !validPickRequest(request) ||
-      !renderPass.hasValidCalibration
-    ) {
-      return null;
-    }
-    if (renderPass.layers.length === 0) {
-      return null;
-    }
-    renderPass.updateRequest(request);
-
-    let readback: Promise<ArrayBufferView>;
-    try {
-      readback = this.target.renderAndRead(
-        renderPass.scene,
-        PICK_CAMERA,
-        this.readback,
-      );
-    } catch (error) {
-      if (generation !== this.generation || this.disposed) {
-        return null;
-      }
-      throw error;
-    }
-
-    let pixels: ArrayBufferView;
-    try {
-      pixels = await readback;
-    } catch (error) {
-      if (generation !== this.generation || this.disposed) {
-        return null;
-      }
-      throw error;
-    }
-
-    if (generation !== this.generation || this.disposed) {
-      return null;
-    }
-    if (!(pixels instanceof Uint32Array) || pixels.length < 3) {
-      throw new Error("GPU projection picker returned a non-integer texel");
-    }
-
-    // Zero is the cleared target/no-hit sentinel. Valid zero-based indices are
-    // stored as index + 1 so every channel can use the same sentinel.
-    const encodedLayerIndex = pixels[0];
-    const encodedSourceIndex = pixels[1];
-    const encodedSampleIndex = pixels[2];
-    if (
-      encodedLayerIndex === 0 ||
-      encodedSourceIndex === 0 ||
-      encodedSampleIndex === 0
-    ) {
-      return null;
-    }
-    const activeLayerIndex = encodedLayerIndex - 1;
-    const layer = renderPass.layers[activeLayerIndex];
-    const sampleIndex = encodedSampleIndex - 1;
-    if (!layer || sampleIndex >= layer.sampledPointCount) {
-      return null;
-    }
-
-    return {
-      layerIndex: layer.layerIndex,
-      resourceKey: layer.resourceKey,
-      sampleIndex,
-      sourceIndex: encodedSourceIndex - 1,
-    };
-  }
-
-  dispose(): void {
-    if (this.disposed) {
-      return;
-    }
-    this.disposed = true;
-    this.invalidate();
-    this.renderPass?.dispose();
-    this.renderPass = null;
-    this.target.dispose();
-    this.readback.release();
-  }
+  const activeLayerIndex = encodedLayerIndex - 1;
+  const layer = renderPass.layers[activeLayerIndex];
+  const sampleIndex = encodedSampleIndex - 1;
+  if (!layer || sampleIndex >= layer.sampledPointCount) return null;
+  return {
+    layerIndex: layer.layerIndex,
+    resourceKey: layer.resourceKey,
+    sampleIndex,
+    sourceIndex: encodedSourceIndex - 1,
+  };
 }
 
 interface ActivePickLayer {
@@ -338,13 +208,11 @@ interface PickLayerBinding {
   readonly sprite: THREE.Sprite;
 }
 
-interface ProjectionPickPass {
-  readonly dispose: () => void;
-  readonly hasValidCalibration: boolean;
+interface ProjectionPickPass extends GpuPickPass<
+  GpuPointCloudProjectionPickerScene,
+  GpuPointCloudProjectionPickRequest
+> {
   readonly layers: readonly ActivePickLayer[];
-  readonly scene: THREE.Scene;
-  readonly updateRequest: (request: GpuPointCloudProjectionPickRequest) => void;
-  readonly updateScene: (scene: GpuPointCloudProjectionPickerScene) => boolean;
 }
 
 function createProjectionPickPass(
@@ -409,14 +277,21 @@ function createProjectionPickPass(
 
   return {
     dispose,
-    hasValidCalibration:
-      sceneConfig.calibrationWidth > 0 && sceneConfig.calibrationHeight > 0,
     layers,
-    scene,
-    updateRequest: (request) => {
+    preparePick: (request) => {
+      if (
+        !validPickRequest(request) ||
+        sceneConfig.calibrationWidth <= 0 ||
+        sceneConfig.calibrationHeight <= 0 ||
+        layers.length === 0
+      ) {
+        return false;
+      }
       target.value.set(request.targetU, request.targetV);
       radius.value = request.radiusPx;
+      return true;
     },
+    scene,
     updateScene: (nextScene) => {
       // Uniform values and instance counts are cheap to mutate. Attribute
       // identity is not: it is captured by the compiled TSL graph.
@@ -509,9 +384,9 @@ function createProjectionPickMaterialNode({
   readonly calibrationWidth: number;
   readonly positionAttribute: THREE.InstancedBufferAttribute;
   readonly projection: GpuCameraProjection;
-  readonly radius: PickUniformNode<number>;
+  readonly radius: PointCloudProjectionPickUniformNode<number>;
   readonly sourceIndexAttribute: THREE.InstancedBufferAttribute;
-  readonly target: PickUniformNode<THREE.Vector2>;
+  readonly target: PointCloudProjectionPickUniformNode<THREE.Vector2>;
 }): ProjectionPickMaterialBinding {
   const material = new PointsNodeMaterial({
     size: 1,
@@ -529,25 +404,22 @@ function createProjectionPickMaterialNode({
     new THREE.Vector2(calibrationWidth, calibrationHeight),
   );
   const radiusSq = radius.mul(radius);
-  const sensorPosition = TSL.instancedBufferAttribute(
-    positionAttribute,
-    "vec3",
-  ) as unknown as PickNode;
-  const sourceIndex = TSL.instancedBufferAttribute(
-    sourceIndexAttribute,
-    "uint",
-  ) as unknown as PickNode;
-  const projected = createGpuCameraProjectionNodes(
-    sensorPosition as unknown as TSL.Node,
-    projection,
-  );
-  const u = projected.u as unknown as PickNode;
-  const v = projected.v as unknown as PickNode;
+  const sensorPosition = TSL.instancedBufferAttribute<
+    CameraProjectionNode & PointCloudProjectionPickNode
+  >(positionAttribute, "vec3");
+  const sourceIndex =
+    TSL.instancedBufferAttribute<PointCloudProjectionPickNode>(
+      sourceIndexAttribute,
+      "uint",
+    );
+  const projected = createGpuCameraProjectionNodes(sensorPosition, projection);
+  const u = projected.u;
+  const v = projected.v;
   const du = u.sub(target.x);
   const dv = v.sub(target.y);
   const distanceSq = du.mul(du).add(dv.mul(dv));
   const visible = pickTsl.and(
-    projected.valid as unknown as PickNode,
+    projected.valid,
     pickTsl.greaterThanEqual(u, 0),
     pickTsl.greaterThanEqual(v, 0),
     pickTsl.lessThan(u, dimensions.x),
@@ -562,7 +434,7 @@ function createProjectionPickMaterialNode({
     visible,
     pickPosition,
     pickTsl.vec3(CULLED_POSITION, CULLED_POSITION, 0),
-  ) as unknown as TSL.Node;
+  );
   material.scaleNode = pickTsl.select(
     visible,
     pickTsl.vec2(1, 1),
@@ -570,11 +442,7 @@ function createProjectionPickMaterialNode({
   );
   // Normalized squared screen distance makes the closest projected center win
   // independent of sensor depth, matching the original 2D hover semantics.
-  material.depthNode = pickTsl.clamp(
-    distanceSq.div(radiusSq),
-    0,
-    1,
-  ) as unknown as TSL.Node;
+  material.depthNode = pickTsl.clamp(distanceSq.div(radiusSq), 0, 1);
   // RGBA32Uint payload: active-layer, decoded-source, sampled-array, marker.
   // Every identity is +1 encoded because target clear writes all zeros.
   material.fragmentNode = pickTsl.uvec4(
@@ -582,7 +450,7 @@ function createProjectionPickMaterialNode({
     sourceIndex.add(1),
     pickTsl.instanceIndex.add(1),
     pickTsl.uint(1),
-  ) as unknown as TSL.Node;
+  );
 
   return { material, projection: projected.bindings };
 }
@@ -631,11 +499,5 @@ function validPickRequest({
     Number.isFinite(targetV)
   );
 }
-
-// The pick material emits pointer-relative clip-space positions directly, so
-// this camera is intentionally fixed and carries no scene semantics.
-const PICK_CAMERA = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 2);
-PICK_CAMERA.position.set(0, 0, 1);
-PICK_CAMERA.updateProjectionMatrix();
 
 export default GpuPointCloudProjectionPicker;

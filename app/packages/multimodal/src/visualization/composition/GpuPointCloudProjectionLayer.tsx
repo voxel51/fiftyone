@@ -34,6 +34,13 @@ import {
 } from "../scene-3d/gpu/gpu-point-cloud-channel-nodes";
 import { gpuPointCloudSampleIndexNode } from "../scene-3d/gpu/gpu-point-cloud-position-nodes";
 import { DEFAULT_POINT_SIZE } from "../scene-3d/PointCloudSceneLayer";
+import type {
+  CameraProjectionNode,
+  PointCloudPositionNode,
+  PointCloudProjectionNode,
+  PointCloudProjectionTslFacade,
+  PointCloudProjectionUniformNode,
+} from "../tsl-chainables";
 
 const CULLED_POSITION = 1e9;
 const MIN_VIEW_SCALE = 1e-6;
@@ -45,58 +52,14 @@ const EMPTY_PROJECTION_CHANNEL_ATTRIBUTES = new Map<
   THREE.InstancedBufferAttribute
 >();
 
-interface ProjectionNode {
-  readonly w: ProjectionNode;
-  readonly x: ProjectionNode;
-  readonly y: ProjectionNode;
-  readonly z: ProjectionNode;
-  div(value: ProjectionNode | number): ProjectionNode;
-  greaterThan(value: ProjectionNode | number): ProjectionNode;
-  length(): ProjectionNode;
-  mul(value: ProjectionNode | number): ProjectionNode;
-  sub(value: ProjectionNode | number): ProjectionNode;
-}
-
-interface ProjectionUniformNode<T> extends ProjectionNode {
-  value: T;
-}
-
-const projectionTsl = TSL as unknown as {
-  Discard(condition: ProjectionNode): void;
-  Fn(callback: () => ProjectionNode): () => ProjectionNode;
-  and(...conditions: readonly ProjectionNode[]): ProjectionNode;
-  greaterThan(
-    left: ProjectionNode,
-    right: ProjectionNode | number,
-  ): ProjectionNode;
-  greaterThanEqual(
-    left: ProjectionNode,
-    right: ProjectionNode | number,
-  ): ProjectionNode;
-  lessThan(
-    left: ProjectionNode,
-    right: ProjectionNode | number,
-  ): ProjectionNode;
-  or(...conditions: readonly ProjectionNode[]): ProjectionNode;
-  select(
-    condition: ProjectionNode,
-    whenTrue: ProjectionNode,
-    whenFalse: ProjectionNode,
-  ): ProjectionNode;
-  uniform<T extends THREE.Matrix4 | THREE.Vector2 | THREE.Vector4>(
-    value: T,
-  ): ProjectionUniformNode<T>;
-  uv(): ProjectionNode;
-  vec2(...values: readonly (ProjectionNode | number)[]): ProjectionNode;
-  vec3(...values: readonly (ProjectionNode | number)[]): ProjectionNode;
-  vec4(...values: readonly (ProjectionNode | number)[]): ProjectionNode;
-  viewportUV: ProjectionNode;
-};
+const projectionTsl: PointCloudProjectionTslFacade = TSL;
 
 type ProjectionPointsMaterial = PointsNodeMaterial & {
   fragmentNode: TSL.Node | null;
-  scaleNode: ProjectionNode | null;
+  scaleNode: PointCloudProjectionNode | null;
 };
+
+type ProjectionSensorNode = CameraProjectionNode & PointCloudPositionNode;
 
 /** Rendering inputs for one GPU-projected point-cloud layer. */
 export interface GpuPointCloudProjectionLayerProps {
@@ -271,8 +234,8 @@ export function GpuPointCloudProjectionLayer({
 export interface GpuPointCloudProjectionMaterial {
   readonly cameraProjection: GpuCameraProjectionBindings;
   readonly colorUniforms: GpuPointCloudColorUniforms;
-  readonly dimensions: ProjectionUniformNode<THREE.Vector2>;
-  readonly imageRect: ProjectionUniformNode<THREE.Vector4>;
+  readonly dimensions: PointCloudProjectionUniformNode<THREE.Vector2>;
+  readonly imageRect: PointCloudProjectionUniformNode<THREE.Vector4>;
   readonly material: ProjectionPointsMaterial;
 }
 
@@ -306,21 +269,18 @@ export function createGpuPointCloudProjectionMaterial({
   );
   const imageRectUniform = projectionTsl.uniform(imageRect.clone());
   const colorUniforms = createGpuPointCloudColorUniforms(color);
-  const sensorPosition = TSL.instancedBufferAttribute(
+  const sensorPosition = TSL.instancedBufferAttribute<ProjectionSensorNode>(
     resource.positionAttribute,
     "vec3",
-  ) as unknown as ProjectionNode;
+  );
   const sampleIndex = gpuPointCloudSampleIndexNode();
   // Direct vertex projection avoids a per-camera compute pass and UV buffer.
   // The shared camera-model graph returns calibration-pixel coordinates.
-  const projected = createGpuCameraProjectionNodes(
-    sensorPosition as unknown as TSL.Node,
-    projection,
-  );
-  const u = projected.u as unknown as ProjectionNode;
-  const v = projected.v as unknown as ProjectionNode;
+  const projected = createGpuCameraProjectionNodes(sensorPosition, projection);
+  const u = projected.u;
+  const v = projected.v;
   const visible = projectionTsl.and(
-    projected.valid as unknown as ProjectionNode,
+    projected.valid,
     projectionTsl.greaterThanEqual(u, 0),
     projectionTsl.greaterThanEqual(v, 0),
     projectionTsl.lessThan(u, dimensionsUniform.x),
@@ -337,7 +297,7 @@ export function createGpuPointCloudProjectionMaterial({
     visible,
     projectedPosition,
     projectionTsl.vec3(CULLED_POSITION, CULLED_POSITION, PROJECTION_Z),
-  ) as unknown as TSL.Node;
+  );
   material.scaleNode = projectionTsl.select(
     visible,
     projectionTsl.vec2(1, 1),
@@ -355,7 +315,7 @@ export function createGpuPointCloudProjectionMaterial({
     {
       color: null,
       colorNode: rgbNode,
-      positionNode: sensorPosition as unknown as TSL.Node,
+      positionNode: sensorPosition,
       scalar: EMPTY_PROJECTION_CHANNEL_ATTRIBUTES,
       scalarNodes,
     },
@@ -371,16 +331,16 @@ export function createGpuPointCloudProjectionMaterial({
     projectionTsl.greaterThan(projectionTsl.viewportUV.x, imageRectUniform.z),
     projectionTsl.greaterThan(projectionTsl.viewportUV.y, imageRectUniform.w),
   );
-  const outsideCircle = projectionTsl
+  const outsideCircle: PointCloudProjectionNode = projectionTsl
     .uv()
     .sub(0.5)
     .length()
-    .greaterThan(0.5) as unknown as ProjectionNode;
+    .greaterThan(0.5);
   material.fragmentNode = projectionTsl.Fn(() => {
     projectionTsl.Discard(outsideImage);
     if (circular) projectionTsl.Discard(outsideCircle);
-    return projectionTsl.vec4(colorNode as unknown as ProjectionNode, 1);
-  })() as unknown as TSL.Node;
+    return projectionTsl.vec4(colorNode, 1);
+  })();
 
   return {
     cameraProjection: projected.bindings,

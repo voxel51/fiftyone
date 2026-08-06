@@ -2,6 +2,11 @@ import * as THREE from "three";
 import * as TSL from "three/tsl";
 
 import { pointCloudChannelEncodingKey } from "../../../ir";
+import type {
+  PointCloudColorNode,
+  PointCloudColorTslFacade,
+  PointCloudColorUniformNode,
+} from "../../tsl-chainables";
 import {
   NEUTRAL_GPU_POINT_COLOR,
   type ResolvedGpuPointCloudColor,
@@ -14,41 +19,7 @@ const MAX_FINITE_FLOAT32 = 3.4e38;
 const COLORMAP_LUT_SIZE = 256;
 const COLORMAP_LUT_LAST_INDEX = COLORMAP_LUT_SIZE - 1;
 
-interface GpuColorNode {
-  readonly rgb: GpuColorNode;
-  readonly x: GpuColorNode;
-  readonly y: GpuColorNode;
-  readonly z: GpuColorNode;
-  add(value: GpuColorNode | number): GpuColorNode;
-  div(value: GpuColorNode | number): GpuColorNode;
-  mul(value: GpuColorNode | number): GpuColorNode;
-  sub(value: GpuColorNode | number): GpuColorNode;
-}
-
-interface GpuColorUniformNode<T> extends GpuColorNode {
-  value: T;
-}
-
-const colorTsl = TSL as unknown as {
-  abs(value: GpuColorNode): GpuColorNode;
-  and(...conditions: readonly GpuColorNode[]): GpuColorNode;
-  clamp(
-    value: GpuColorNode,
-    min: GpuColorNode | number,
-    max: GpuColorNode | number,
-  ): GpuColorNode;
-  equal(left: GpuColorNode, right: GpuColorNode | number): GpuColorNode;
-  lessThanEqual(left: GpuColorNode, right: GpuColorNode | number): GpuColorNode;
-  select(
-    condition: GpuColorNode,
-    whenTrue: GpuColorNode,
-    whenFalse: GpuColorNode,
-  ): GpuColorNode;
-  texture(texture: THREE.Texture, uv: GpuColorNode): GpuColorNode;
-  uniform<T extends number | THREE.Vector3>(value: T): GpuColorUniformNode<T>;
-  vec2(...values: readonly (GpuColorNode | number)[]): GpuColorNode;
-  vec3(...values: readonly (GpuColorNode | number)[]): GpuColorNode;
-};
+const colorTsl: PointCloudColorTslFacade = TSL;
 
 /** GPU attributes or caller-provided nodes available to point-color shaders. */
 export interface GpuPointCloudColorNodeAttributes {
@@ -63,9 +34,9 @@ export interface GpuPointCloudColorNodeAttributes {
 
 /** Mutable uniforms shared by a GPU point-color shader graph. */
 export interface GpuPointCloudColorUniforms {
-  readonly color: GpuColorUniformNode<THREE.Vector3>;
-  readonly minValue: GpuColorUniformNode<number>;
-  readonly valueRange: GpuColorUniformNode<number>;
+  readonly color: PointCloudColorUniformNode<THREE.Vector3>;
+  readonly minValue: PointCloudColorUniformNode<number>;
+  readonly valueRange: PointCloudColorUniformNode<number>;
 }
 
 /** Material topology key; frame-varying color values deliberately stay out. */
@@ -130,26 +101,24 @@ export function createGpuPointCloudColorNode(
 ): TSL.Node {
   const source = color.source;
   if (source.kind === "uniform") {
-    return uniforms.color as unknown as TSL.Node;
+    return uniforms.color;
   }
   if (source.kind === "rgb") {
     return (
       attributes.colorNode ??
       (attributes.color
         ? TSL.instancedBufferAttribute(attributes.color, "vec3")
-        : (colorTsl.vec3(...NEUTRAL_GPU_POINT_COLOR) as unknown as TSL.Node))
+        : colorTsl.vec3(...NEUTRAL_GPU_POINT_COLOR))
     );
   }
 
   const value =
     source.kind === "height"
-      ? ((attributes.positionNode as unknown as GpuColorNode).z as GpuColorNode)
-      : ((attributes.scalarNodes?.get(source.field.name) as
-          | GpuColorNode
-          | undefined) ??
+      ? attributes.positionNode.z
+      : (attributes.scalarNodes?.get(source.field.name) ??
         scalarValueNode(attributes.scalar.get(source.field.name)));
   if (!value) {
-    return colorTsl.vec3(...NEUTRAL_GPU_POINT_COLOR) as unknown as TSL.Node;
+    return colorTsl.vec3(...NEUTRAL_GPU_POINT_COLOR);
   }
 
   const normalized = colorTsl.clamp(
@@ -177,16 +146,13 @@ export function createGpuPointCloudColorNode(
     finite,
     sampled,
     colorTsl.vec3(...NEUTRAL_GPU_POINT_COLOR),
-  ) as unknown as TSL.Node;
+  );
 }
 
 function scalarValueNode(
   attribute: THREE.InstancedBufferAttribute | undefined,
-): GpuColorNode | null {
+): PointCloudColorNode | null {
   return attribute
-    ? (TSL.instancedBufferAttribute(
-        attribute,
-        "float",
-      ) as unknown as GpuColorNode)
+    ? TSL.instancedBufferAttribute<PointCloudColorNode>(attribute, "float")
     : null;
 }

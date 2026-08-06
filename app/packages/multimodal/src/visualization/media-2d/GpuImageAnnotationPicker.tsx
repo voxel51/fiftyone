@@ -11,39 +11,23 @@ import * as TSL from "three/tsl";
 import { PointsNodeMaterial } from "three/webgpu";
 
 import {
-  acquireGpuPickReadbackPool,
-  type GpuPickReadbackLease,
-} from "../webgpu/gpu-pick-readback-pool";
-import {
-  GpuPickRenderTarget,
-  isGpuPickRenderer,
-  type GpuPickRenderer,
-} from "../webgpu/gpu-pick-render-target";
+  createGpuPickController,
+  type GpuPickPass,
+} from "../webgpu/gpu-pick-controller";
+import { isGpuPickRenderer } from "../webgpu/gpu-pick-render-target";
 import { IMAGE_ANNOTATION_PICK_KIND } from "./gpu-image-annotation-preparation";
 import type {
   GpuImageAnnotationPickResource,
   GpuImageAnnotationResource,
 } from "./gpu-image-annotation-resources";
+import type {
+  ImageAnnotationPickNode,
+  ImageAnnotationPickTslFacade,
+  ImageAnnotationPickUniformNode,
+} from "../tsl-chainables";
 
 const CULLED_POSITION = 1e9;
 const DISTANCE_EPSILON = 1e-6;
-
-interface PickNode {
-  readonly x: PickNode;
-  readonly y: PickNode;
-  abs(): PickNode;
-  add(value: PickNode | number): PickNode;
-  div(value: PickNode | number): PickNode;
-  length(): PickNode;
-  max(value: PickNode | number): PickNode;
-  min(value: PickNode | number): PickNode;
-  mul(value: PickNode | number): PickNode;
-  sub(value: PickNode | number): PickNode;
-}
-
-interface PickUniformNode<T> extends PickNode {
-  value: T;
-}
 
 interface PickMaterial {
   alphaToCoverage: boolean;
@@ -55,33 +39,12 @@ interface PickMaterial {
   fog: boolean;
   fragmentNode: TSL.Node | null;
   positionNode: TSL.Node | null;
-  scaleNode: PickNode | null;
+  scaleNode: ImageAnnotationPickNode | null;
   toneMapped: boolean;
   dispose(): void;
 }
 
-const pickTsl = TSL as unknown as {
-  and(...conditions: readonly PickNode[]): PickNode;
-  clamp(value: PickNode, min: number, max: number): PickNode;
-  dot(left: PickNode, right: PickNode): PickNode;
-  float(value: PickNode | number): PickNode;
-  greaterThan(left: PickNode, right: PickNode | number): PickNode;
-  instanceIndex: PickNode;
-  lessThan(left: PickNode, right: PickNode | number): PickNode;
-  lessThanEqual(left: PickNode, right: PickNode | number): PickNode;
-  not(condition: PickNode): PickNode;
-  or(...conditions: readonly PickNode[]): PickNode;
-  select(
-    condition: PickNode,
-    whenTrue: PickNode,
-    whenFalse: PickNode,
-  ): PickNode;
-  uint(value: PickNode | number): PickNode;
-  uniform<T extends number | THREE.Vector2>(value: T): PickUniformNode<T>;
-  uvec4(...values: readonly (PickNode | number)[]): PickNode;
-  vec2(...values: readonly (PickNode | number)[]): PickNode;
-  vec3(...values: readonly (PickNode | number)[]): PickNode;
-};
+const pickTsl: ImageAnnotationPickTslFacade = TSL;
 
 /** Image-pixel target and tolerance for one annotation pick. */
 export interface GpuImageAnnotationPickRequest {
@@ -167,97 +130,33 @@ export function createGpuImageAnnotationPickerController(
       "GPU image annotation picking requires Three WebGPURenderer",
     );
   }
-  return new ImageAnnotationPickerController(renderer);
+  return createGpuPickController(renderer, {
+    createPass: createAnnotationPickPass,
+    decodeTexel: decodeAnnotationPickTexel,
+    invalidTexelMessage:
+      "GPU image annotation picker returned a non-integer texel",
+    minimumTexelLength: 4,
+  });
 }
 
-class ImageAnnotationPickerController implements GpuImageAnnotationPickerController {
-  private disposed = false;
-  private generation = 0;
-  private readonly readback: GpuPickReadbackLease;
-  private renderPass: AnnotationPickPass | null = null;
-  private readonly target: GpuPickRenderTarget;
-
-  constructor(renderer: GpuPickRenderer) {
-    this.readback = acquireGpuPickReadbackPool(renderer);
-    this.target = new GpuPickRenderTarget(renderer);
-  }
-
-  setScene(scene: GpuImageAnnotationPickerScene): void {
-    if (this.disposed) return;
-    this.invalidate();
-    if (this.renderPass?.updateScene(scene)) return;
-    const previous = this.renderPass;
-    this.renderPass = null;
-    try {
-      this.renderPass = createAnnotationPickPass(scene);
-    } finally {
-      previous?.dispose();
-    }
-  }
-
-  invalidate(): void {
-    this.generation += 1;
-  }
-
-  async pick(
-    request: GpuImageAnnotationPickRequest,
-  ): Promise<GpuImageAnnotationPickResult | null> {
-    const generation = ++this.generation;
-    const pass = this.renderPass;
-    if (
-      this.disposed ||
-      !pass ||
-      !validPickRequest(request, pass.imageWidth, pass.imageHeight) ||
-      pass.count === 0
-    ) {
-      return null;
-    }
-    pass.updateRequest(request);
-
-    let pixels: ArrayBufferView;
-    try {
-      pixels = await this.target.renderAndRead(
-        pass.scene,
-        PICK_CAMERA,
-        this.readback,
-      );
-    } catch (error) {
-      if (generation !== this.generation || this.disposed) return null;
-      throw error;
-    }
-
-    if (generation !== this.generation || this.disposed) return null;
-    if (!(pixels instanceof Uint32Array) || pixels.length < 4) {
-      throw new Error(
-        "GPU image annotation picker returned a non-integer texel",
-      );
-    }
-    if (pixels[0] === 0 || pixels[1] === 0 || pixels[3] === 0) return null;
-    const primitiveIndex = pixels[0] - 1;
-    const candidateIndex = pixels[1] - 1;
-    if (candidateIndex >= pass.count) return null;
-    return { primitiveIndex };
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    this.invalidate();
-    this.renderPass?.dispose();
-    this.renderPass = null;
-    this.target.dispose();
-    this.readback.release();
-  }
+function decodeAnnotationPickTexel(
+  pixels: Uint32Array,
+  pass: AnnotationPickPass,
+): GpuImageAnnotationPickResult | null {
+  if (pixels[0] === 0 || pixels[1] === 0 || pixels[3] === 0) return null;
+  const primitiveIndex = pixels[0] - 1;
+  const candidateIndex = pixels[1] - 1;
+  if (candidateIndex >= pass.count) return null;
+  return { primitiveIndex };
 }
 
-interface AnnotationPickPass {
+interface AnnotationPickPass extends GpuPickPass<
+  GpuImageAnnotationPickerScene,
+  GpuImageAnnotationPickRequest
+> {
   count: number;
-  readonly dispose: () => void;
   imageHeight: number;
   imageWidth: number;
-  readonly scene: THREE.Scene;
-  readonly updateRequest: (request: GpuImageAnnotationPickRequest) => void;
-  readonly updateScene: (scene: GpuImageAnnotationPickerScene) => boolean;
 }
 
 function createAnnotationPickPass(
@@ -281,11 +180,18 @@ function createAnnotationPickPass(
     dispose: () => material.dispose(),
     imageHeight: config.imageHeight,
     imageWidth: config.imageWidth,
-    scene,
-    updateRequest: (request) => {
+    preparePick: (request) => {
+      if (
+        !validPickRequest(request, pass.imageWidth, pass.imageHeight) ||
+        pass.count === 0
+      ) {
+        return false;
+      }
       target.value.set(request.targetU, request.targetV);
       radius.value = request.radiusPx;
+      return true;
     },
+    scene,
     updateScene: (next) => {
       if (!samePickStorage(config.resource.pick, next.resource.pick)) {
         return false;
@@ -319,9 +225,9 @@ function createGpuImageAnnotationPickMaterialNode({
   resource,
   target,
 }: {
-  readonly radius: PickUniformNode<number>;
+  readonly radius: ImageAnnotationPickUniformNode<number>;
   readonly resource: GpuImageAnnotationPickResource;
-  readonly target: PickUniformNode<THREE.Vector2>;
+  readonly target: ImageAnnotationPickUniformNode<THREE.Vector2>;
 }): PickMaterial {
   const material = new PointsNodeMaterial({
     size: 1,
@@ -372,7 +278,7 @@ function createGpuImageAnnotationPickMaterialNode({
     visible,
     pickTsl.vec3(0, 0, 0),
     pickTsl.vec3(CULLED_POSITION, CULLED_POSITION, 0),
-  ) as unknown as TSL.Node;
+  );
   material.scaleNode = pickTsl.select(
     visible,
     pickTsl.vec2(1, 1),
@@ -386,21 +292,21 @@ function createGpuImageAnnotationPickMaterialNode({
       .add(pickTsl.float(DISTANCE_EPSILON).div(order.add(1))),
     0,
     1,
-  ) as unknown as TSL.Node;
+  );
   material.fragmentNode = pickTsl.uvec4(
     primitiveIndex.add(1),
     pickTsl.instanceIndex.add(1),
     pickTsl.uint(0),
     pickTsl.uint(1),
-  ) as unknown as TSL.Node;
+  );
   return material;
 }
 
 function segmentDistance(
-  point: PickNode,
-  start: PickNode,
-  end: PickNode,
-): PickNode {
+  point: ImageAnnotationPickNode,
+  start: ImageAnnotationPickNode,
+  end: ImageAnnotationPickNode,
+): ImageAnnotationPickNode {
   const segment = end.sub(start);
   const denominator = pickTsl.dot(segment, segment).max(DISTANCE_EPSILON);
   const t = pickTsl.clamp(
@@ -412,10 +318,10 @@ function segmentDistance(
 }
 
 function annotationRectDelta(
-  point: PickNode,
-  min: PickNode,
-  max: PickNode,
-): PickNode {
+  point: ImageAnnotationPickNode,
+  min: ImageAnnotationPickNode,
+  max: ImageAnnotationPickNode,
+): ImageAnnotationPickNode {
   return pickTsl.vec2(
     min.x.sub(point.x).max(point.x.sub(max.x)).max(0),
     min.y.sub(point.y).max(point.y.sub(max.y)).max(0),
@@ -423,11 +329,11 @@ function annotationRectDelta(
 }
 
 function pointInsideTriangle(
-  point: PickNode,
-  a: PickNode,
-  b: PickNode,
-  c: PickNode,
-): PickNode {
+  point: ImageAnnotationPickNode,
+  a: ImageAnnotationPickNode,
+  b: ImageAnnotationPickNode,
+  c: ImageAnnotationPickNode,
+): ImageAnnotationPickNode {
   const ab = b.sub(a);
   const bc = c.sub(b);
   const ca = a.sub(c);
@@ -454,15 +360,18 @@ function pointInsideTriangle(
   );
 }
 
-function cross2(left: PickNode, right: PickNode): PickNode {
+function cross2(
+  left: ImageAnnotationPickNode,
+  right: ImageAnnotationPickNode,
+): ImageAnnotationPickNode {
   return left.x.mul(right.y).sub(left.y.mul(right.x));
 }
 
 function attribute(
   value: THREE.InstancedBufferAttribute,
   type: "float" | "uint" | "vec2",
-): PickNode {
-  return TSL.instancedBufferAttribute(value, type) as unknown as PickNode;
+): ImageAnnotationPickNode {
+  return TSL.instancedBufferAttribute<ImageAnnotationPickNode>(value, type);
 }
 
 function samePickStorage(
@@ -498,9 +407,5 @@ function validPickRequest(
     request.targetV < imageHeight
   );
 }
-
-const PICK_CAMERA = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 2);
-PICK_CAMERA.position.set(0, 0, 1);
-PICK_CAMERA.updateProjectionMatrix();
 
 export default GpuImageAnnotationPicker;

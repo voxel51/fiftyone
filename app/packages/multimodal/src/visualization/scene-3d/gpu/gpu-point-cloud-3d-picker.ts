@@ -4,20 +4,21 @@ import * as TSL from "three/tsl";
 import { PointsNodeMaterial } from "three/webgpu";
 
 import {
-  acquireGpuPickReadbackPool,
-  type GpuPickReadbackLease,
-} from "../../webgpu/gpu-pick-readback-pool";
-import {
-  GpuPickRenderTarget,
-  isGpuPickRenderer,
-  type GpuPickRenderer,
-} from "../../webgpu/gpu-pick-render-target";
+  createGpuPickController,
+  type GpuPickPass,
+} from "../../webgpu/gpu-pick-controller";
+import { isGpuPickRenderer } from "../../webgpu/gpu-pick-render-target";
 import {
   gpuPointCloudPositionNode,
   gpuPointCloudSampleIndexNode,
-  type GpuPointCloudNode,
   type GpuPointCloudPositionLayout,
 } from "./gpu-point-cloud-position-nodes";
+import type {
+  PointCloud3dPickNode,
+  PointCloud3dPickTslFacade,
+  PointCloud3dPickUniformNode,
+  PointCloudChannelNode,
+} from "../../tsl-chainables";
 
 const CULLED_POSITION = 1e9;
 const MAX_PICK_DISTANCE = 1e30;
@@ -28,54 +29,15 @@ const MIN_CLIP_W = 1e-6;
 // Screen-space distance decides eligibility; distance along the pointer ray
 // is written as depth so the front-most eligible sample wins.
 
-interface PickNode extends TSL.Node {
-  readonly w: PickNode;
-  readonly x: PickNode;
-  readonly xy: PickNode;
-  readonly xyz: PickNode;
-  readonly y: PickNode;
-  readonly z: PickNode;
-  add(value: PickNode | number): PickNode;
-  div(value: PickNode | number): PickNode;
-  dot(value: PickNode): PickNode;
-  mul(value: PickNode | number): PickNode;
-  sub(value: PickNode | number): PickNode;
-}
-
-interface PickUniformNode<T> extends PickNode {
-  value: T;
-}
-
-type PickSampleIndexNode = GpuPointCloudNode & PickNode;
-
 interface PickPointsMaterial extends PointsNodeMaterial {
   depthNode: TSL.Node | null;
   fragmentNode: TSL.Node | null;
-  scaleNode: PickNode | null;
+  scaleNode: PointCloud3dPickNode | null;
 }
 
 // Three exposes these WebGPU/TSL nodes at runtime, while Fiber's bundled
 // declarations expose only a subset.
-const pickTsl = TSL as unknown as {
-  and(...conditions: readonly PickNode[]): PickNode;
-  clamp(value: PickNode, min: number, max: number): PickNode;
-  greaterThan(left: PickNode, right: PickNode | number): PickNode;
-  greaterThanEqual(left: PickNode, right: PickNode | number): PickNode;
-  lessThanEqual(left: PickNode, right: PickNode | number): PickNode;
-  select(
-    condition: PickNode,
-    whenTrue: PickNode,
-    whenFalse: PickNode,
-  ): PickNode;
-  uint(value: PickNode | number): PickNode;
-  uniform<T extends number | THREE.Matrix4 | THREE.Vector2 | THREE.Vector3>(
-    value: T,
-  ): PickUniformNode<T>;
-  uvec4(...values: readonly (PickNode | number)[]): PickNode;
-  vec2(...values: readonly (PickNode | number)[]): PickNode;
-  vec3(...values: readonly (PickNode | number)[]): PickNode;
-  vec4(...values: readonly (PickNode | number)[]): PickNode;
-};
+const pickTsl: PointCloud3dPickTslFacade = TSL;
 
 /** One live 3D cloud sharing its exact position buffer with the GPU picker. */
 export interface GpuPointCloud3dPickLayer {
@@ -180,144 +142,57 @@ export function createGpuPointCloud3dPickerController(
   if (!isGpuPickRenderer(renderer)) {
     throw new Error("GPU 3D point picking requires Three WebGPURenderer");
   }
-  return new PointCloud3dPickerController(renderer);
+  return createGpuPickController(renderer, {
+    createPass: createPointCloud3dPickPass,
+    decodeTexel: decodePointCloud3dPickTexel,
+    invalidTexelMessage: "GPU 3D point picker returned a non-integer texel",
+    minimumTexelLength: 2,
+  });
 }
 
-class PointCloud3dPickerController implements GpuPointCloud3dPickerController {
-  private disposed = false;
-  private generation = 0;
-  private readonly readback: GpuPickReadbackLease;
-  private renderPass: PointCloud3dPickPass | null = null;
-  private readonly target: GpuPickRenderTarget;
-
-  constructor(renderer: GpuPickRenderer) {
-    this.readback = acquireGpuPickReadbackPool(renderer);
-    this.target = new GpuPickRenderTarget(renderer);
-  }
-
-  setScene(layers: readonly GpuPointCloud3dPickLayer[]): void {
-    if (this.disposed) {
-      return;
-    }
-    this.invalidate();
-    // Keep pipelines/materials hot across playback when the same storage
-    // attributes remain bound. Capacity growth replaces those attributes and
-    // forces a safe pass rebuild.
-    if (this.renderPass?.updateScene(layers)) {
-      return;
-    }
-    const previousPass = this.renderPass;
-    this.renderPass = null;
-    try {
-      this.renderPass = createPointCloud3dPickPass(layers);
-    } finally {
-      previousPass?.dispose();
-    }
-  }
-
-  invalidate(): void {
-    // A generation token is cheaper than trying to cancel mapAsync. Results
-    // from superseded frame/camera/pointer state are simply ignored.
-    this.generation += 1;
-  }
-
-  async pick(
-    request: GpuPointCloud3dPickRequest,
-  ): Promise<GpuPointCloud3dPickResult | null> {
-    const generation = ++this.generation;
-    const renderPass = this.renderPass;
-    if (
-      this.disposed ||
-      !renderPass ||
-      renderPass.layers.length === 0 ||
-      !validPickRequest(request)
-    ) {
-      return null;
-    }
-    renderPass.updateRequest(request);
-
-    let pixels: ArrayBufferView;
-    try {
-      pixels = await this.target.renderAndRead(
-        renderPass.scene,
-        PICK_CAMERA,
-        this.readback,
-      );
-    } catch (error) {
-      if (generation !== this.generation || this.disposed) {
-        return null;
-      }
-      throw error;
-    }
-    if (generation !== this.generation || this.disposed) {
-      return null;
-    }
-    if (!(pixels instanceof Uint32Array) || pixels.length < 2) {
-      throw new Error("GPU 3D point picker returned a non-integer texel");
-    }
-
-    // The clear texel is [0, 0, 0, 0]; valid zero-based IDs are +1 encoded.
-    const encodedLayerIndex = pixels[0];
-    const encodedSampleIndex = pixels[1];
-    if (encodedLayerIndex === 0 || encodedSampleIndex === 0) {
-      return null;
-    }
-    const activeLayer = renderPass.layers[encodedLayerIndex - 1];
-    const sampleIndex = encodedSampleIndex - 1;
-    if (!activeLayer || sampleIndex >= activeLayer.sampledPointCount) {
-      return null;
-    }
-    // Readback names one sample, then CPU reconstruction touches only that
-    // sample. The matrix snapshot must match the submitted pass, not whatever
-    // transform the live object may have when mapAsync resolves.
-    const worldPosition = pointCloud3dPickWorldPosition(
-      activeLayer.source,
-      sampleIndex,
-      activeLayer.worldMatrixSnapshot,
-    );
-    if (!worldPosition) {
-      return null;
-    }
-
-    return {
-      color: pointCloud3dPickColor(activeLayer.source, sampleIndex),
-      layerId: activeLayer.source.layerId,
-      resourceKey: activeLayer.source.resourceKey,
-      sampleIndex,
-      worldPosition,
-    };
-  }
-
-  dispose(): void {
-    if (this.disposed) {
-      return;
-    }
-    this.disposed = true;
-    this.invalidate();
-    this.renderPass?.dispose();
-    this.renderPass = null;
-    this.target.dispose();
-    this.readback.release();
-  }
+function decodePointCloud3dPickTexel(
+  pixels: Uint32Array,
+  renderPass: PointCloud3dPickPass,
+): GpuPointCloud3dPickResult | null {
+  // The clear texel is [0, 0, 0, 0]; valid zero-based IDs are +1 encoded.
+  const encodedLayerIndex = pixels[0];
+  const encodedSampleIndex = pixels[1];
+  if (encodedLayerIndex === 0 || encodedSampleIndex === 0) return null;
+  const activeLayer = renderPass.layers[encodedLayerIndex - 1];
+  const sampleIndex = encodedSampleIndex - 1;
+  if (!activeLayer || sampleIndex >= activeLayer.sampledPointCount) return null;
+  // Readback names one sample, then CPU reconstruction touches only that
+  // sample. The matrix snapshot must match the submitted pass, not whatever
+  // transform the live object may have when mapAsync resolves.
+  const worldPosition = pointCloud3dPickWorldPosition(
+    activeLayer.source,
+    sampleIndex,
+    activeLayer.worldMatrixSnapshot,
+  );
+  if (!worldPosition) return null;
+  return {
+    color: pointCloud3dPickColor(activeLayer.source, sampleIndex),
+    layerId: activeLayer.source.layerId,
+    resourceKey: activeLayer.source.resourceKey,
+    sampleIndex,
+    worldPosition,
+  };
 }
 
 interface ActivePointCloud3dPickLayer {
   sampledPointCount: number;
   source: GpuPointCloud3dPickLayer;
   readonly sprite: THREE.Sprite;
-  readonly visible: PickUniformNode<number>;
-  readonly worldMatrix: PickUniformNode<THREE.Matrix4>;
+  readonly visible: PointCloud3dPickUniformNode<number>;
+  readonly worldMatrix: PointCloud3dPickUniformNode<THREE.Matrix4>;
   readonly worldMatrixSnapshot: THREE.Matrix4;
 }
 
-interface PointCloud3dPickPass {
-  readonly dispose: () => void;
+interface PointCloud3dPickPass extends GpuPickPass<
+  readonly GpuPointCloud3dPickLayer[],
+  GpuPointCloud3dPickRequest
+> {
   readonly layers: readonly ActivePointCloud3dPickLayer[];
-  readonly scene: THREE.Scene;
-  readonly updateRequest: (request: GpuPointCloud3dPickRequest) => void;
-  readonly updateScene: (
-    layers: readonly GpuPointCloud3dPickLayer[],
-  ) => boolean;
 }
 
 function createPointCloud3dPickPass(
@@ -363,7 +238,7 @@ function createPointCloud3dPickPass(
         radius,
         rayDirection,
         rayOrigin,
-        sampleIndex: sampleIndex as PickSampleIndexNode,
+        sampleIndex: sampleIndex,
         viewProjection,
         viewport,
         visible,
@@ -419,7 +294,8 @@ function createPointCloud3dPickPass(
       }
       return true;
     },
-    updateRequest: (request) => {
+    preparePick: (request) => {
+      if (layers.length === 0 || !validPickRequest(request)) return false;
       // Freeze all camera/object matrices and visibility for this submission.
       // mapAsync may finish after the live scene has advanced another frame.
       request.camera.updateWorldMatrix(true, false);
@@ -446,6 +322,7 @@ function createPointCloud3dPickPass(
           ? 1
           : 0;
       }
+      return true;
     },
   };
 }
@@ -520,7 +397,7 @@ export function createPointCloud3dPickMaterial({
     radius: pickTsl.uniform(radiusPx),
     rayDirection: pickTsl.uniform(rayDirection.clone()),
     rayOrigin: pickTsl.uniform(rayOrigin.clone()),
-    sampleIndex: gpuPointCloudSampleIndexNode() as PickSampleIndexNode,
+    sampleIndex: gpuPointCloudSampleIndexNode(),
     viewProjection: pickTsl.uniform(viewProjection.clone()),
     viewport: pickTsl.uniform(viewport.clone()),
     visible: pickTsl.uniform(visible === false ? 0 : 1),
@@ -545,19 +422,19 @@ function createPointCloud3dPickMaterialNode({
   worldMatrix,
 }: {
   readonly activeLayerIndex: number;
-  readonly far: PickUniformNode<number>;
-  readonly near: PickUniformNode<number>;
-  readonly pointerNdc: PickUniformNode<THREE.Vector2>;
+  readonly far: PointCloud3dPickUniformNode<number>;
+  readonly near: PointCloud3dPickUniformNode<number>;
+  readonly pointerNdc: PointCloud3dPickUniformNode<THREE.Vector2>;
   readonly positionAttribute: THREE.BufferAttribute;
   readonly positionLayout: GpuPointCloudPositionLayout;
-  readonly radius: PickUniformNode<number>;
-  readonly rayDirection: PickUniformNode<THREE.Vector3>;
-  readonly rayOrigin: PickUniformNode<THREE.Vector3>;
-  readonly sampleIndex: PickSampleIndexNode;
-  readonly viewProjection: PickUniformNode<THREE.Matrix4>;
-  readonly viewport: PickUniformNode<THREE.Vector2>;
-  readonly visible: PickUniformNode<number>;
-  readonly worldMatrix: PickUniformNode<THREE.Matrix4>;
+  readonly radius: PointCloud3dPickUniformNode<number>;
+  readonly rayDirection: PointCloud3dPickUniformNode<THREE.Vector3>;
+  readonly rayOrigin: PointCloud3dPickUniformNode<THREE.Vector3>;
+  readonly sampleIndex: PointCloudChannelNode;
+  readonly viewProjection: PointCloud3dPickUniformNode<THREE.Matrix4>;
+  readonly viewport: PointCloud3dPickUniformNode<THREE.Vector2>;
+  readonly visible: PointCloud3dPickUniformNode<number>;
+  readonly worldMatrix: PointCloud3dPickUniformNode<THREE.Matrix4>;
 }): PickPointsMaterial {
   const material = new PointsNodeMaterial({
     size: 1,
@@ -575,7 +452,7 @@ function createPointCloud3dPickMaterialNode({
     positionAttribute,
     positionLayout,
     sampleIndex,
-  ) as unknown as PickNode;
+  );
   const worldPosition = worldMatrix.mul(pickTsl.vec4(localPosition, 1));
   const clipPosition = viewProjection.mul(worldPosition);
   // Convert NDC deltas back to CSS pixels so pick radius is stable across
@@ -603,7 +480,7 @@ function createPointCloud3dPickMaterialNode({
     pickable,
     pickTsl.vec3(0, 0, 0),
     pickTsl.vec3(CULLED_POSITION, CULLED_POSITION, 0),
-  ) as unknown as TSL.Node;
+  );
   material.scaleNode = pickTsl.select(
     pickable,
     pickTsl.vec2(1, 1),
@@ -611,19 +488,15 @@ function createPointCloud3dPickMaterialNode({
   );
   // d/(d+1) monotonically maps non-negative ray distance into [0, 1), letting
   // the ordinary depth test perform the nearest-hit reduction.
-  material.depthNode = pickTsl.clamp(
-    rayDistance.div(rayDistance.add(1)),
-    0,
-    1,
-  ) as unknown as TSL.Node;
+  material.depthNode = pickTsl.clamp(rayDistance.div(rayDistance.add(1)), 0, 1);
   // Integer payload: active layer and canonical sample, both +1 encoded so
   // the cleared zero texel remains an unambiguous miss.
   material.fragmentNode = pickTsl.uvec4(
     pickTsl.uint(activeLayerIndex + 1),
-    sampleIndex.add(1) as unknown as PickNode,
+    sampleIndex.add(1),
     pickTsl.uint(0),
     pickTsl.uint(1),
-  ) as unknown as TSL.Node;
+  );
 
   return material;
 }
@@ -714,9 +587,3 @@ function normalizedNear(value: number): number {
 function normalizedFar(value: number, near: number): number {
   return Number.isFinite(value) ? Math.max(near, value) : MAX_PICK_DISTANCE;
 }
-
-// Materials emit clip-space positions directly; the fixed camera exists only
-// to satisfy Three's render(scene, camera) contract.
-const PICK_CAMERA = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 2);
-PICK_CAMERA.position.set(0, 0, 1);
-PICK_CAMERA.updateProjectionMatrix();
