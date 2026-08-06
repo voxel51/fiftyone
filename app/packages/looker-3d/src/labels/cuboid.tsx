@@ -48,10 +48,17 @@ import {
   CuboidOrientationMarker,
   ORIENTATION_AXES_COLORS,
 } from "./shared/CuboidOrientationMarkers";
+import {
+  HEADING_GHOST_DRAG_OPACITY,
+  HEADING_GHOST_HOVER_OPACITY,
+  HeadingFaceDots,
+  HeadingGhostArrow,
+} from "./shared/HeadingArrow";
 import { useDisplayCuboidTransform } from "./shared/useDisplayCuboidTransform";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
 import "./shared/registerLineElements";
 import { shouldSuppressHoverOnPointer } from "./shared/shouldSuppressHoverOnPointer";
+import { useHeadingDrag } from "./shared/useHeadingDrag";
 import { Transformable } from "./shared/TransformControls";
 
 const FACE_RESIZE_EDGE_COLOR = "#ff2f2f";
@@ -62,18 +69,6 @@ const FACE_RESIZE_EDGE_LINE_WIDTH = 2;
 // dashSize is the edge length over this count (with a floor for tiny faces).
 const FACE_RESIZE_DASHED_EDGE_SEGMENTS = 22;
 const FACE_RESIZE_DASHED_EDGE_MIN_DASH = 0.01;
-const ORIENTATION_MARKER_LINE_WIDTH = 4;
-const ORIENTATION_MARKER_OPACITY = 0.95;
-// Flat triangular arrowhead, sized relative to the cuboid's heading length.
-const ORIENTATION_MARKER_EXTENSION_RATIO = 0.3;
-const ORIENTATION_MARKER_HEAD_LENGTH_RATIO = 0.16;
-const ORIENTATION_MARKER_MIN_HEAD_LENGTH = 0.08;
-const ORIENTATION_MARKER_MIN_CROSS_SECTION_RATIO = 0.1;
-// Half-width of the arrowhead base, as a fraction of its length and capped
-// against the cuboid's smaller cross-section so it never overhangs the box.
-const ORIENTATION_MARKER_HEAD_WIDTH_RATIO = 0.7;
-const ORIENTATION_MARKER_HEAD_WIDTH_CROSS_CAP = 0.4;
-const ORIENTATION_MARKER_MIN_HEAD_WIDTH = 0.03;
 
 // Face-pull scaling handles (visible only in scale mode). A small cuboid "knob"
 // of the complementary color sits at the end of a thin shaft poking straight
@@ -280,6 +275,7 @@ export interface CuboidProps extends OverlayProps {
   itemRotation: THREE.Vector3Tuple;
   lineWidth?: number;
   enableFaceResize?: boolean;
+  enableHeadingEdit?: boolean;
   hoverSource?: HoveredLabelSource;
   showOrientation?: boolean;
 }
@@ -400,6 +396,7 @@ export const Cuboid = ({
   color,
   useLegacyCoordinates,
   enableFaceResize = false,
+  enableHeadingEdit = false,
   hoverSource = PANEL_ID_MAIN,
   showOrientation = false,
 }: CuboidProps) => {
@@ -425,6 +422,10 @@ export const Cuboid = ({
     hoveredResizeFaceState?.labelId === label._id
       ? hoveredResizeFaceState.face
       : null;
+  const clearHoveredResizeFace = useCallback(
+    () => setHoveredResizeFaceState(null),
+    [setHoveredResizeFaceState],
+  );
   const setHoveredResizeFace = useCallback(
     (face: CuboidResizeFace | null) => {
       setHoveredResizeFaceState((prev) => {
@@ -540,6 +541,9 @@ export const Cuboid = ({
     handleFaceResizeStart,
     handleFaceResizeChange,
     handleFaceResizeEnd,
+    handleHeadingDragStart,
+    handleHeadingRelabelCommit,
+    handleHeadingDragCancel,
   } = useCuboidAnnotation({
     label,
     location,
@@ -596,9 +600,47 @@ export const Cuboid = ({
     isValidCuboidResizeDimensions(displayDimensions) &&
     (!isCurrentlyTransforming || isFaceResizeControlActive);
 
+  // The heading arrow is its own handle rather than part of the gizmo, so
+  // unlike face-resize it isn't tied to a particular transform mode — it just
+  // needs the label selected in annotate mode with the arrow visible.
+  //
+  // Deliberately free of hover/`isCurrentlyTransforming` state: hovering
+  // anywhere on the box arms a resize face, which raises that flag, and a gate
+  // that reacted to it would be false at the moment the arrow is pressed (the
+  // pointer-down and the hover-driven re-render race), silently dropping the
+  // grab. Face-resize's own *drag* is excluded since that owns the pointer.
+  const canEditHeading =
+    enableHeadingEdit &&
+    showOrientation &&
+    isAnnotateMode &&
+    isSelectedForAnnotation &&
+    !isCreatingCuboidPointerDown &&
+    !isActivelySegmenting &&
+    !isFaceResizeDragging &&
+    isValidCuboidResizeDimensions(displayDimensions);
+
+  const headingDrag = useHeadingDrag({
+    labelId: label._id,
+    hoverSource,
+    enabled: canEditHeading,
+    dimensions: effectiveDimensions,
+    orientation: orientationQuaternion,
+    upVector,
+    contentRef,
+    panelElementRef,
+    onDragStart: handleHeadingDragStart,
+    onCommit: handleHeadingRelabelCommit,
+    onCancel: handleHeadingDragCancel,
+    // The arrow stands off the forward face, right where that face's own resize
+    // handle sits; clearing that hover stops the two competing for the drag.
+    onArrowEnter: clearHoveredResizeFace,
+    suppressNextClickRef,
+  });
+
   useCursor(
-    canFaceResize && isFaceResizeControlActive,
-    isFaceResizeDragging ? "grabbing" : "grab",
+    (canFaceResize && isFaceResizeControlActive) ||
+      (canEditHeading && headingDrag.isActive),
+    isFaceResizeDragging || headingDrag.isDragging ? "grabbing" : "grab",
     "auto",
   );
 
@@ -1176,8 +1218,37 @@ export const Cuboid = ({
             color={complementaryColor}
             orientation={orientationQuaternion}
             upVector={upVector}
+            highlighted={canEditHeading && headingDrag.isActive}
+            {...(canEditHeading ? headingDrag.handlers : {})}
           />
           <CuboidAxesMarker dimensions={displayDimensions} />
+
+          {/* Hover/drag affordances: dots marking every face the heading can
+              attach to, plus a ghost arrow tracking the pointer. The committed
+              arrow above stays put until the drop. */}
+          {canEditHeading && headingDrag.isActive && (
+            <>
+              <HeadingFaceDots
+                dimensions={displayDimensions}
+                activeFace={
+                  headingDrag.isDragging ? headingDrag.targetFace : null
+                }
+              />
+              <HeadingGhostArrow
+                dimensions={displayDimensions}
+                // Stands on the face it would move to, perpendicular to it.
+                anchorFace={
+                  (headingDrag.isDragging ? headingDrag.targetFace : null) ??
+                  "+x"
+                }
+                opacity={
+                  headingDrag.isDragging
+                    ? HEADING_GHOST_DRAG_OPACITY
+                    : HEADING_GHOST_HOVER_OPACITY
+                }
+              />
+            </>
+          )}
         </>
       )}
     </group>

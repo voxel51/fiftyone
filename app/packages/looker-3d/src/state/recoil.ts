@@ -578,6 +578,23 @@ export const hoveredResizeFaceAtom = atom<{
 });
 
 /**
+ * The face the heading arrow would snap to if the in-progress heading drag
+ * were released now. Shared across panels (like {@link hoveredResizeFaceAtom})
+ * so the candidate-face highlight shows everywhere the label is drawn, and
+ * `source` records which panel owns the drag so another panel can't clear it.
+ *
+ * Set only while dragging the arrow; the relabel itself commits on release.
+ */
+export const hoveredHeadingTargetFaceAtom = atom<{
+  labelId: string;
+  face: CuboidResizeFace;
+  source: HoveredLabelSource;
+} | null>({
+  key: "fo3d-hoveredHeadingTargetFace",
+  default: null,
+});
+
+/**
  * The current transform mode (translate, rotate, scale).
  * Determines how objects are transformed when manipulated.
  */
