@@ -76,10 +76,9 @@ import { EpisodeStreamCache, releaseArrayBuffers } from "../../../runtime";
 import type { StreamPlaybackFrame } from "./use-stream-values";
 
 /**
- * Trailing-throttle interval for republishing buffered ranges to the
- * timeline strip. Computing ranges walks every timeline tick, so it must
- * not run at the cadence of status publishes (RAF-adjacent during
- * buffering stalls).
+ * Trailing-throttle interval for republishing buffered ranges to the timeline
+ * strip. Compressed cache intervals make each pass cheap, but publishing at
+ * RAF-adjacent status cadence would still create needless playback-store work.
  */
 const BUFFERED_RANGES_PUBLISH_INTERVAL_MS = 500;
 const REMOTE_SEEK_FETCH_DEBOUNCE_MS = 150;
@@ -633,17 +632,19 @@ export function useRegisterDataStream({
 
   const rebalanceDecodedCaches = useCallback(() => {
     backgroundLookaheadSecondsRef.current = applyDecodedCachePolicy({
-      backwardCushionSeconds: playbackPolicy.prefetchBatchSeconds,
+      activeStreams: getActiveStreams(),
+      blockingStreams: getActiveBlockingStreams(),
       budgetBytes: decodedCacheBudgetBytesRef.current,
       caches: streamCachesRef.current,
       currentLookaheadSeconds: backgroundLookaheadSecondsRef.current,
       index: indexRef.current,
       maxLookaheadSeconds: playbackPolicy.lookaheadSeconds,
       minLookaheadSeconds: playbackPolicy.startupLookaheadSeconds,
+      placementCeiling: playbackPolicy.cachePlacementCeiling,
       stepSeconds: playbackPolicy.prefetchBatchSeconds,
       store,
     });
-  }, [playbackPolicy, store]);
+  }, [getActiveBlockingStreams, getActiveStreams, playbackPolicy, store]);
 
   const prefetcher = useMemo(
     () =>

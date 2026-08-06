@@ -12,6 +12,8 @@ import type {
 } from "../../../ir";
 import {
   DEFAULT_TIMELINE_TICK_RATE_HZ,
+  EPISODE_STREAM_CACHE_EMERGENCY_MAX_ENTRIES,
+  intersectTickRanges,
   type EpisodeStreamCache,
   type TimelineIndex,
 } from "../../../runtime";
@@ -36,7 +38,10 @@ export interface PlaybackPolicy {
   readonly prefetchBatchSeconds: number;
   readonly prefetchBatchesPerPass: number;
   readonly prefetchRefreshSeconds: number;
-  readonly streamCacheLookaheadMultiplier: number;
+  /** Wide defense-in-depth ceiling shared by coordinated stream caches. */
+  readonly cachePlacementCeiling: number;
+  /** Last-resort per-stream cap if coordinated rebalancing cannot run. */
+  readonly streamCacheEmergencyMaxEntries: number;
 }
 
 /** Playback policy resolved into concrete timeline and cache limits. */
@@ -70,7 +75,12 @@ export const DEFAULT_PLAYBACK_POLICY: PlaybackPolicy = {
   startupMaxCompressedBytes: 96 * 1024 * 1024,
   startupMaxChunks: 32,
   startupMinTicks: 3,
-  streamCacheLookaheadMultiplier: 2,
+  // At 30 Hz this permits more than an hour for one stream, while the shared
+  // ceiling and decoded-byte budget normally intervene much earlier. It is a
+  // defense against underestimated payloads and metadata-only/null placement
+  // growth, not an ordinary lookahead-derived eviction target.
+  cachePlacementCeiling: EPISODE_STREAM_CACHE_EMERGENCY_MAX_ENTRIES,
+  streamCacheEmergencyMaxEntries: EPISODE_STREAM_CACHE_EMERGENCY_MAX_ENTRIES,
 };
 
 /** Resolves a playback policy against the active timeline tick rate. */
@@ -98,11 +108,7 @@ export function derivePlaybackPolicy(
       policy.startupMinTicks,
       Math.ceil(tickRateHz * startupLookaheadSeconds),
     ),
-    streamCacheMaxEntries: Math.ceil(
-      tickRateHz *
-        policy.lookaheadSeconds *
-        policy.streamCacheLookaheadMultiplier,
-    ),
+    streamCacheMaxEntries: policy.streamCacheEmergencyMaxEntries,
   };
 }
 
@@ -574,44 +580,28 @@ export function computeBufferedRanges({
   const firstCache = caches.get(activeStreams[0]);
   if (!firstCache) return [];
 
-  const indexes: number[] = [];
-  const seenIndexes = new Set<number>();
-  for (const tick of firstCache.cachedTicks()) {
-    const tickIndex = index.indexOfTick(tick);
-    if (tickIndex === undefined || seenIndexes.has(tickIndex)) continue;
-    if (!activeStreams.every((stream) => caches.get(stream)?.has(tick))) {
-      continue;
-    }
-    seenIndexes.add(tickIndex);
-    indexes.push(tickIndex);
+  // Each cache maintains compressed sorted intervals as placements change.
+  // Intersecting those intervals is O(streams * retained islands), independent
+  // of recording duration and of the length of one contiguous warm history.
+  let ranges = [...firstCache.cachedTickIndexRanges(index)];
+  for (const stream of activeStreams.slice(1)) {
+    const cache = caches.get(stream);
+    if (!cache) return [];
+    ranges = intersectTickRanges(ranges, cache.cachedTickIndexRanges(index));
+    if (ranges.length === 0) return [];
   }
-  if (indexes.length === 0) return [];
-  indexes.sort((left, right) => left - right);
 
-  const ranges: Array<[number, number]> = [];
+  const bufferedRanges: Array<[number, number]> = [];
   const nominalTickSec = Number(index.stepNs) / 1_000_000_000;
   const pushRange = (startIndex: number, endIndex: number): void => {
     const startTick = index.tickAt(startIndex);
     const endTick = index.tickAt(endIndex);
     if (startTick === undefined || endTick === undefined) return;
-    ranges.push([
+    bufferedRanges.push([
       index.nsToSec(startTick),
       Math.min(index.nsToSec(endTick) + nominalTickSec, index.durationSec),
     ]);
   };
-
-  let runStartIndex = indexes[0];
-  let runEndIndex = runStartIndex;
-  for (let position = 1; position < indexes.length; position++) {
-    const nextIndex = indexes[position];
-    if (nextIndex === runEndIndex + 1) {
-      runEndIndex = nextIndex;
-      continue;
-    }
-    pushRange(runStartIndex, runEndIndex);
-    runStartIndex = nextIndex;
-    runEndIndex = nextIndex;
-  }
-  pushRange(runStartIndex, runEndIndex);
-  return ranges;
+  for (const range of ranges) pushRange(range.startIndex, range.endIndex);
+  return bufferedRanges;
 }

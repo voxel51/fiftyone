@@ -17,7 +17,7 @@ import {
 } from "./playback-buffering";
 
 describe("episode playback buffering policy", () => {
-  it("derives bounded startup and cache windows from the tick rate", () => {
+  it("derives bounded startup windows and a wide emergency cache ceiling", () => {
     const policy = derivePlaybackPolicy(DEFAULT_PLAYBACK_POLICY, 10);
 
     expect(policy).toMatchObject({
@@ -29,7 +29,8 @@ describe("episode playback buffering policy", () => {
       startupMaxCompressedBytes: 96 * 1024 * 1024,
       startupMaxChunks: 32,
       startupMaxPrefetchBatch: 5,
-      streamCacheMaxEntries: 80,
+      cachePlacementCeiling: 120_000,
+      streamCacheMaxEntries: 120_000,
     });
   });
 
@@ -415,5 +416,33 @@ describe("episode playback buffering values", () => {
     expect(ranges[0]?.[0]).toBe(0);
     expect(ranges[0]?.[1]).toBeCloseTo(2 / 30, 6);
     expect(ranges[1]).toEqual([index.nsToSec(fourth), 0.1]);
+  });
+
+  it("shades long retained history from compressed cross-stream intervals", () => {
+    const index = createTimelineIndex(
+      { endNs: 10_000_000_000n, startNs: 0n },
+      100,
+    );
+    const camera = new EpisodeStreamCache();
+    const lidar = new EpisodeStreamCache();
+    for (let tickIndex = 0; tickIndex < index.tickCount; tickIndex += 1) {
+      const tick = index.tickAt(tickIndex);
+      if (tick === undefined) continue;
+      camera.set(tick, null);
+      if (tickIndex >= 100) lidar.set(tick, null);
+    }
+
+    expect(
+      computeBufferedRanges({
+        activeStreams: ["camera", "lidar"],
+        caches: new Map([
+          ["camera", camera],
+          ["lidar", lidar],
+        ]),
+        index,
+      }),
+    ).toEqual([[1, 10]]);
+    expect(camera.cachedTickIndexRanges(index)).toHaveLength(1);
+    expect(lidar.cachedTickIndexRanges(index)).toHaveLength(1);
   });
 });

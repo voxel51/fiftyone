@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DecodedFrame } from "../ir";
 import { EpisodeStreamCache } from "./episode-stream-cache";
+import { createTimelineIndex } from "./timeline-index";
 
 const MESSAGE = {
   output: { resourceHints: { sizeBytes: 128 } },
@@ -133,19 +134,27 @@ describe("EpisodeStreamCache", () => {
     cache.set(2n, MESSAGE);
     cache.set(3n, MESSAGE);
 
-    expect(cache.stats()).toEqual({
+    expect(cache.stats()).toMatchObject({
       decodedBytes: 128,
       entryCount: 3,
     });
+    expect(cache.stats().placementBytes).toBeGreaterThan(0);
+    expect(cache.stats().accountedBytes).toBeGreaterThan(128);
 
+    const beforePrunePlacementBytes = cache.stats().placementBytes;
     cache.pruneOutsideRanges([{ endTick: 3n, startTick: 3n }]);
     expect(cache.stats().decodedBytes).toBe(128);
+    expect(cache.stats().entryCount).toBe(1);
+    expect(cache.stats().placementBytes).toBeLessThan(
+      beforePrunePlacementBytes,
+    );
 
     cache.clear();
-    expect(cache.stats()).toEqual({
+    expect(cache.stats()).toMatchObject({
       decodedBytes: 0,
       entryCount: 0,
     });
+    expect(cache.stats().accountedBytes).toBe(0);
   });
 
   it("enumerates each live transferable backing store once", () => {
@@ -234,7 +243,7 @@ describe("EpisodeStreamCache", () => {
     expect(cache.stats().decodedBytes).toBe(128);
 
     cache.set(2n, second);
-    expect(cache.stats()).toEqual({
+    expect(cache.stats()).toMatchObject({
       decodedBytes: 256,
       entryCount: 1,
     });
@@ -282,5 +291,130 @@ describe("EpisodeStreamCache", () => {
     cache.clear();
     expect(cache.observationStaleThresholdNs()).toBe(500_000_000n);
     expect(cache.interpolationGapLimitNs()).toBe(2_000_000_000n);
+  });
+
+  it("compresses timeline coverage and prunes index ranges without scanning recording duration", () => {
+    const index = createTimelineIndex(
+      { endNs: 1_000_000_000_000n, startNs: 0n },
+      1,
+    );
+    const cache = new EpisodeStreamCache();
+    for (const second of [10, 11, 12, 900, 901]) {
+      cache.set(BigInt(second) * 1_000_000_000n, null);
+    }
+
+    expect(cache.cachedTickIndexRanges(index)).toEqual([
+      { endIndex: 12, startIndex: 10 },
+      { endIndex: 901, startIndex: 900 },
+    ]);
+
+    const tickAt = vi.spyOn(index, "tickAt");
+    expect(
+      cache.pruneTickIndexRanges([{ endIndex: 900, startIndex: 11 }], index),
+    ).toBe(3);
+    expect(tickAt).toHaveBeenCalledTimes(3);
+    expect(cache.cachedTickIndexRanges(index)).toEqual([
+      { endIndex: 10, startIndex: 10 },
+      { endIndex: 901, startIndex: 901 },
+    ]);
+  });
+
+  it("reports each fully released message once when pruning placements", () => {
+    const index = createTimelineIndex(
+      { endNs: 2_000_000_000n, startNs: 0n },
+      1,
+    );
+    const cache = new EpisodeStreamCache();
+    const unique = { ...MESSAGE };
+    const repeated = { ...MESSAGE };
+    cache.set(0n, unique);
+    cache.set(1_000_000_000n, repeated);
+    cache.set(2_000_000_000n, repeated);
+
+    const result = cache.pruneTickIndexRangesWithStats(
+      [{ endIndex: 2, startIndex: 0 }],
+      index,
+    );
+
+    expect(result.removedEntries).toBe(3);
+    expect(result.releasedMessages).toHaveLength(2);
+    expect(
+      new Set(result.releasedMessages.map(({ message }) => message)),
+    ).toEqual(new Set([unique, repeated]));
+    expect(
+      result.releasedMessages.map(({ decodedBytes }) => decodedBytes),
+    ).toEqual([128, 128]);
+    expect(cache.stats().accountedBytes).toBe(0);
+  });
+
+  it("keeps compressed coverage synchronized through LRU overflow and resize", () => {
+    const index = createTimelineIndex(
+      { endNs: 5_000_000_000n, startNs: 0n },
+      1,
+    );
+    const cache = new EpisodeStreamCache(3);
+    for (const second of [0, 1, 2]) {
+      cache.set(BigInt(second) * 1_000_000_000n, null);
+    }
+    expect(cache.cachedTickIndexRanges(index)).toEqual([
+      { endIndex: 2, startIndex: 0 },
+    ]);
+
+    cache.set(3_000_000_000n, null);
+    expect(cache.cachedTickIndexRanges(index)).toEqual([
+      { endIndex: 3, startIndex: 1 },
+    ]);
+
+    cache.resize(2);
+    expect(cache.cachedTickIndexRanges(index)).toEqual([
+      { endIndex: 3, startIndex: 2 },
+    ]);
+  });
+
+  it("bounds metadata-only placements and deduplicates shared decoded payload accounting", () => {
+    const shared = { ...MESSAGE, recordId: "shared" };
+    const first = new EpisodeStreamCache(3);
+    const second = new EpisodeStreamCache(3);
+    first.set(0n, null);
+    first.set(1n, shared);
+    first.set(2n, { ...shared });
+    first.set(3n, null);
+    second.set(1n, shared);
+
+    expect(first.has(0n)).toBe(false);
+    expect(first.stats().entryCount).toBe(3);
+    expect(first.stats().decodedBytes).toBe(128);
+    expect(first.stats().placementBytes).toBeGreaterThan(0);
+
+    const seen = new Set<DecodedFrame>();
+    const firstStats = first.memoryStats(seen);
+    const secondStats = second.memoryStats(seen);
+    expect(firstStats.decodedBytes).toBe(128);
+    expect(secondStats.decodedBytes).toBe(0);
+    expect(secondStats.accountedBytes).toBeGreaterThan(0);
+  });
+
+  it("ignores invalid byte hints without hiding measured backing stores", () => {
+    const cache = new EpisodeStreamCache();
+    const bytes = new Uint8Array(256);
+    cache.set(0n, {
+      ...MESSAGE,
+      output: {
+        resourceHints: { sizeBytes: Number.NaN },
+        visualization: { bytes, kind: "encoded-image" },
+      } as DecodedFrame["output"],
+    });
+
+    expect(cache.stats().decodedBytes).toBe(256);
+
+    const oversized = new EpisodeStreamCache();
+    oversized.set(0n, {
+      ...MESSAGE,
+      output: {
+        attributes: { label: "still-accounted" },
+        resourceHints: { sizeBytes: Number.MAX_SAFE_INTEGER },
+      },
+    });
+    expect(oversized.stats().decodedBytes).toBe(Number.MAX_SAFE_INTEGER);
   });
 });

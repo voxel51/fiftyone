@@ -2,25 +2,67 @@ import { LRUCache } from "lru-cache";
 import { estimateFieldSize } from "../query/cache-utils";
 import type { DecodedFrame } from "../ir";
 import { EpisodeCadenceTracker } from "./temporal-policy";
+import {
+  clampTickRanges,
+  intersectTickRanges,
+  subtractTickRanges,
+  type TickIndexRange,
+} from "./tick-ranges";
+import type { TimelineIndex } from "./timeline-index";
 
-const DEFAULT_MAX_ENTRIES = 512;
+/**
+ * Last-resort per-stream placement bound. Ordinary retention is coordinated
+ * across streams by decoded-cache-policy; this deliberately wide limit exists
+ * only to keep a missing coordinator or untrustworthy byte hint from allowing
+ * null/repeated tick placements and their string keys to grow without bound.
+ */
+export const EPISODE_STREAM_CACHE_EMERGENCY_MAX_ENTRIES = 120_000;
+
+// Conservative V8/Map/LRU bookkeeping estimates. They are intentionally not
+// presented as exact heap measurements: browsers expose no reliable memory-
+// pressure callback or per-object retained-size API.
+const PLACEMENT_METADATA_BYTES = 192;
+const MESSAGE_METADATA_BYTES = 192;
 
 // LRUCache's value type must extend `{}`, so wrap so we can represent
 // "fetched, no message for this stream" without storing a bare null.
 interface CacheEntry {
   readonly msg: DecodedFrame | null;
+  readonly placementBytes: number;
 }
 
 interface MessageRetention {
-  readonly bytes: number;
+  readonly decodedBytes: number;
+  readonly metadataBytes: number;
   refs: number;
+}
+
+/** Inclusive timeline-index range retained by one stream cache. */
+export type EpisodeStreamCacheTickRange = TickIndexRange;
+
+/** A decoded frame whose final placement in one stream cache was pruned. */
+export interface EpisodeStreamCacheReleasedMessage {
+  readonly decodedBytes: number;
+  readonly message: DecodedFrame;
+}
+
+/** Detailed result used for incremental global memory accounting. */
+export interface EpisodeStreamCachePruneResult {
+  readonly releasedMessages: readonly EpisodeStreamCacheReleasedMessage[];
+  readonly removedEntries: number;
 }
 
 /** Byte and entry retention totals for one stream cache. */
 export interface EpisodeStreamCacheStats {
-  /** Unique decoded bytes referenced by cached tick placements. */
+  /** Payload bytes counted once per distinct decoded-frame object. */
   readonly decodedBytes: number;
   readonly entryCount: number;
+  /** Conservative wrapper/canonical-record bookkeeping estimate. */
+  readonly messageMetadataBytes: number;
+  /** Conservative tick key, entry, and LRU bookkeeping estimate. */
+  readonly placementBytes: number;
+  /** Decoded payload plus message and placement bookkeeping. */
+  readonly accountedBytes: number;
 }
 
 /** Result of placing one fetched frame into a stream cache. */
@@ -49,20 +91,29 @@ export interface EpisodeStreamCacheSetResult {
 export class EpisodeStreamCache {
   private readonly cadence = new EpisodeCadenceTracker();
   private cache: LRUCache<string, CacheEntry>;
+  private coverage: TimelineCoverage | null = null;
   private readonly listeners = new Set<() => void>();
   private readonly messageRetention = new Map<DecodedFrame, MessageRetention>();
   private readonly messagesByRecordId = new Map<string, DecodedFrame>();
   private _decodedBytes = 0;
+  private _messageMetadataBytes = 0;
+  private _placementBytes = 0;
   private _subscriberCount = 0;
   private _revision = 0;
+  private suppressCoverageUpdates = false;
 
-  constructor(maxEntries = DEFAULT_MAX_ENTRIES) {
+  constructor(maxEntries = EPISODE_STREAM_CACHE_EMERGENCY_MAX_ENTRIES) {
     this.cache = this.createCache(maxEntries);
   }
 
   private createCache(maxEntries: number): LRUCache<string, CacheEntry> {
     return new LRUCache({
-      dispose: (entry) => this.releaseEntry(entry),
+      dispose: (entry, key, reason) => {
+        this.releaseEntry(entry);
+        if (!this.suppressCoverageUpdates && reason !== "set") {
+          this.removeCoverageTick(BigInt(key));
+        }
+      },
       max: maxEntries,
     });
   }
@@ -91,9 +142,46 @@ export class EpisodeStreamCache {
 
   stats(): EpisodeStreamCacheStats {
     return {
+      accountedBytes:
+        this._decodedBytes + this._messageMetadataBytes + this._placementBytes,
       decodedBytes: this._decodedBytes,
       entryCount: this.cache.size,
+      messageMetadataBytes: this._messageMetadataBytes,
+      placementBytes: this._placementBytes,
     };
+  }
+
+  /**
+   * Cache totals with decoded payloads deduplicated against other caches that
+   * share the supplied identity set. Per-cache Map/LRU metadata stays counted
+   * because each cache really owns that bookkeeping.
+   */
+  memoryStats(
+    seenMessages: Set<DecodedFrame> = new Set(),
+  ): EpisodeStreamCacheStats {
+    let decodedBytes = 0;
+    for (const [message, retention] of this.messageRetention) {
+      if (seenMessages.has(message)) continue;
+      seenMessages.add(message);
+      decodedBytes += retention.decodedBytes;
+    }
+    return {
+      accountedBytes:
+        decodedBytes + this._messageMetadataBytes + this._placementBytes,
+      decodedBytes,
+      entryCount: this.cache.size,
+      messageMetadataBytes: this._messageMetadataBytes,
+      placementBytes: this._placementBytes,
+    };
+  }
+
+  /** Visits each decoded frame retained by this cache exactly once. */
+  forEachRetainedMessage(
+    visit: (message: DecodedFrame, decodedBytes: number) => void,
+  ): void {
+    for (const [message, retention] of this.messageRetention) {
+      visit(message, retention.decodedBytes);
+    }
   }
 
   /**
@@ -158,6 +246,82 @@ export class EpisodeStreamCache {
   }
 
   /**
+   * Binds compressed coverage bookkeeping to a timeline. Rebinding performs
+   * one cache-sized rebuild; subsequent inserts/deletes update only the small
+   * list of disjoint retained ranges.
+   */
+  configureTimeline(index: TimelineIndex): void {
+    if (
+      this.coverage?.startTimeNs === index.startTimeNs &&
+      this.coverage.stepNs === index.stepNs &&
+      this.coverage.tickCount === index.tickCount
+    ) {
+      return;
+    }
+    this.coverage = createTimelineCoverage(index, this.cache.keys());
+  }
+
+  /** Compressed, sorted tick coverage for range intersection/shading. */
+  cachedTickIndexRanges(
+    index: TimelineIndex,
+  ): readonly EpisodeStreamCacheTickRange[] {
+    this.configureTimeline(index);
+    return (this.coverage?.ranges ?? []).map((range) => ({ ...range }));
+  }
+
+  /**
+   * Accounts only placements inside inclusive timeline-index ranges. The
+   * caller can share `seenMessages` across streams for global payload identity
+   * deduplication. Forward ranges are time-bounded, so this work stays bounded
+   * independently of retained history length.
+   */
+  memoryStatsForTickIndexRanges(
+    ranges: readonly EpisodeStreamCacheTickRange[],
+    index: TimelineIndex,
+    seenMessages: Set<DecodedFrame> = new Set(),
+  ): EpisodeStreamCacheStats {
+    this.configureTimeline(index);
+    const coveredRanges = intersectTickRanges(
+      this.coverage?.ranges ?? [],
+      clampTickRanges(ranges, index.tickCount),
+    );
+    let decodedBytes = 0;
+    let entryCount = 0;
+    let messageMetadataBytes = 0;
+    let placementBytes = 0;
+    const localMessages = new Set<DecodedFrame>();
+    for (const range of coveredRanges) {
+      for (
+        let tickIndex = range.startIndex;
+        tickIndex <= range.endIndex;
+        tickIndex += 1
+      ) {
+        const tick = index.tickAt(tickIndex);
+        if (tick === undefined) continue;
+        const entry = this.cache.peek(tick.toString());
+        if (!entry) continue;
+        entryCount += 1;
+        placementBytes += entry.placementBytes;
+        if (!entry.msg || localMessages.has(entry.msg)) continue;
+        localMessages.add(entry.msg);
+        const retention = this.messageRetention.get(entry.msg);
+        if (!retention) continue;
+        messageMetadataBytes += retention.metadataBytes;
+        if (seenMessages.has(entry.msg)) continue;
+        seenMessages.add(entry.msg);
+        decodedBytes += retention.decodedBytes;
+      }
+    }
+    return {
+      accountedBytes: decodedBytes + messageMetadataBytes + placementBytes,
+      decodedBytes,
+      entryCount,
+      messageMetadataBytes,
+      placementBytes,
+    };
+  }
+
+  /**
    * Changes the ordinary placement budget without replacing this external
    * store. Existing tile subscriptions and cache listeners therefore survive
    * a timeline sampling-rate change.
@@ -179,8 +343,19 @@ export class EpisodeStreamCache {
       next.set(tick, entry);
     }
     const droppedEntries = currentEntries.length - retainedEntries.length;
-    this.cache.clear();
+    this.suppressCoverageUpdates = true;
+    try {
+      this.cache.clear();
+    } finally {
+      this.suppressCoverageUpdates = false;
+    }
     this.cache = next;
+    if (this.coverage) {
+      this.coverage = createTimelineCoverageFromConfig(
+        this.coverage,
+        this.cache.keys(),
+      );
+    }
     if (droppedEntries > 0) this.bumpRevision();
   }
 
@@ -195,13 +370,77 @@ export class EpisodeStreamCache {
     // peek() reads the prior value without refreshing LRU recency, so re-setting
     // an unchanged value doesn't promote the entry toward the front of the cache.
     const previous = this.cache.peek(key)?.msg;
-    const entry = { msg };
+    const entry = { msg, placementBytes: placementBytesForKey(key) };
     this.retainEntry(entry);
     // LRUCache's default noDisposeOnSet=false releases the replaced entry via
     // dispose, keeping message-retention byte accounting balanced.
     this.cache.set(key, entry);
+    if (!hadEntry) this.addCoverageTick(tick);
     if (!hadEntry || previous !== msg) this.bumpRevision();
     return canonical.result;
+  }
+
+  /** Deletes every placement in the supplied inclusive timeline ranges. */
+  pruneTickIndexRanges(
+    ranges: readonly EpisodeStreamCacheTickRange[],
+    index: TimelineIndex,
+  ): number {
+    return this.pruneTickIndexRangesWithStats(ranges, index).removedEntries;
+  }
+
+  /** Prunes ranges and reports decoded frames fully released by this cache. */
+  pruneTickIndexRangesWithStats(
+    ranges: readonly EpisodeStreamCacheTickRange[],
+    index: TimelineIndex,
+  ): EpisodeStreamCachePruneResult {
+    this.configureTimeline(index);
+    const normalized = clampTickRanges(ranges, index.tickCount);
+    const removedRanges = intersectTickRanges(
+      this.coverage?.ranges ?? [],
+      normalized,
+    );
+    if (removedRanges.length === 0) {
+      return { releasedMessages: [], removedEntries: 0 };
+    }
+
+    let removed = 0;
+    const releasedMessages: EpisodeStreamCacheReleasedMessage[] = [];
+    this.suppressCoverageUpdates = true;
+    try {
+      for (const range of removedRanges) {
+        for (
+          let tickIndex = range.startIndex;
+          tickIndex <= range.endIndex;
+          tickIndex += 1
+        ) {
+          const tick = index.tickAt(tickIndex);
+          if (tick === undefined) continue;
+          const entry = this.cache.peek(tick.toString());
+          const retention = entry?.msg
+            ? this.messageRetention.get(entry.msg)
+            : undefined;
+          if (entry?.msg && retention?.refs === 1) {
+            releasedMessages.push({
+              decodedBytes: retention.decodedBytes,
+              message: entry.msg,
+            });
+          }
+          if (this.cache.delete(tick.toString())) {
+            removed += 1;
+          }
+        }
+      }
+    } finally {
+      this.suppressCoverageUpdates = false;
+    }
+    if (this.coverage) {
+      this.coverage.ranges = subtractTickRanges(
+        this.coverage.ranges,
+        normalized,
+      );
+    }
+    if (removed > 0) this.bumpRevision();
+    return { releasedMessages, removedEntries: removed };
   }
 
   /** Drops placements outside the inclusive playback-order runways. */
@@ -234,23 +473,37 @@ export class EpisodeStreamCache {
   clear(): void {
     this.cadence.clear();
     if (this.cache.size === 0) return;
-    this.cache.clear();
+    this.suppressCoverageUpdates = true;
+    try {
+      this.cache.clear();
+    } finally {
+      this.suppressCoverageUpdates = false;
+    }
+    if (this.coverage) this.coverage.ranges = [];
     this.bumpRevision();
   }
 
   private retainEntry(entry: CacheEntry): void {
+    this._placementBytes += entry.placementBytes;
     if (!entry.msg) return;
     const retained = this.messageRetention.get(entry.msg);
     if (retained) {
       retained.refs += 1;
       return;
     }
-    const bytes = decodedMessageBytes(entry.msg);
-    this.messageRetention.set(entry.msg, { bytes, refs: 1 });
-    this._decodedBytes += bytes;
+    const decodedBytes = decodedMessageBytes(entry.msg);
+    const metadataBytes = decodedMessageMetadataBytes(entry.msg);
+    this.messageRetention.set(entry.msg, {
+      decodedBytes,
+      metadataBytes,
+      refs: 1,
+    });
+    this._decodedBytes += decodedBytes;
+    this._messageMetadataBytes += metadataBytes;
   }
 
   private releaseEntry(entry: CacheEntry): void {
+    this._placementBytes -= entry.placementBytes;
     if (!entry.msg) return;
     const retained = this.messageRetention.get(entry.msg);
     if (!retained) return;
@@ -263,7 +516,8 @@ export class EpisodeStreamCache {
     ) {
       this.messagesByRecordId.delete(entry.msg.recordId);
     }
-    this._decodedBytes -= retained.bytes;
+    this._decodedBytes -= retained.decodedBytes;
+    this._messageMetadataBytes -= retained.metadataBytes;
   }
 
   private canonicalizeMessage(msg: DecodedFrame | null): {
@@ -288,7 +542,8 @@ export class EpisodeStreamCache {
         result: {
           canonicalized: existing !== msg,
           canonicalEligible: true,
-          avoidedDecodedBytes: this.messageRetention.get(existing)?.bytes ?? 0,
+          avoidedDecodedBytes:
+            this.messageRetention.get(existing)?.decodedBytes ?? 0,
         },
       };
     }
@@ -308,16 +563,189 @@ export class EpisodeStreamCache {
     this._revision++;
     for (const listener of this.listeners) listener();
   }
+
+  private addCoverageTick(tick: bigint): void {
+    const coverage = this.coverage;
+    if (!coverage) return;
+    const tickIndex = tickIndexInCoverage(coverage, tick);
+    if (tickIndex === undefined) return;
+    coverage.ranges = addTickIndex(coverage.ranges, tickIndex);
+  }
+
+  private removeCoverageTick(tick: bigint): void {
+    const coverage = this.coverage;
+    if (!coverage) return;
+    const tickIndex = tickIndexInCoverage(coverage, tick);
+    if (tickIndex === undefined) return;
+    coverage.ranges = subtractTickRanges(coverage.ranges, [
+      { endIndex: tickIndex, startIndex: tickIndex },
+    ]);
+  }
 }
 
 function decodedMessageBytes(message: DecodedFrame): number {
   const output = message.output;
-  const hintedBytes = output.resourceHints?.sizeBytes;
+  const hint = output.resourceHints?.sizeBytes;
+  const hintedBytes =
+    typeof hint === "number" && Number.isSafeInteger(hint) && hint > 0
+      ? hint
+      : 0;
+  // Decoder hints are useful but are not a browser-retained-size contract.
+  // Walking unique backing stores catches missing/underestimated typed-array
+  // and transferable sizes without double-counting a buffer exposed through
+  // both visualization data and resourceHints.transferables.
+  const binaryBytes = estimateUniqueBinaryBytes(output);
+  const payloadBytes = Math.max(hintedBytes, binaryBytes);
+  const auxiliaryBytes =
+    estimateFieldSize(output.attributes) + estimateFieldSize(output.timing);
   const bytes =
-    hintedBytes === undefined
-      ? estimateFieldSize(output)
-      : hintedBytes +
-        estimateFieldSize(output.attributes) +
-        estimateFieldSize(output.timing);
-  return Number.isSafeInteger(bytes) && bytes > 0 ? bytes : 0;
+    payloadBytes > 0
+      ? payloadBytes + auxiliaryBytes
+      : estimateFieldSize(output);
+  if (Number.isNaN(bytes) || bytes <= 0) return 0;
+  return Math.min(Number.MAX_SAFE_INTEGER, Math.ceil(bytes));
+}
+
+function estimateUniqueBinaryBytes(value: unknown): number {
+  const buffers = new Set<ArrayBufferLike>();
+  const visited = new WeakSet<object>();
+  const visit = (candidate: unknown): number => {
+    if (candidate instanceof ArrayBuffer) {
+      if (buffers.has(candidate)) return 0;
+      buffers.add(candidate);
+      return candidate.byteLength;
+    }
+    if (ArrayBuffer.isView(candidate)) {
+      const buffer = candidate.buffer;
+      if (buffers.has(buffer)) return 0;
+      buffers.add(buffer);
+      // Retaining one view retains its complete backing store, not only the
+      // view's byte range.
+      return buffer.byteLength;
+    }
+    if (!candidate || typeof candidate !== "object") return 0;
+    if (visited.has(candidate)) return 0;
+    visited.add(candidate);
+    if (Array.isArray(candidate)) {
+      return candidate.reduce((bytes, item) => bytes + visit(item), 0);
+    }
+    return Object.values(candidate).reduce(
+      (bytes, item) => bytes + visit(item),
+      0,
+    );
+  };
+  return visit(value);
+}
+
+function decodedMessageMetadataBytes(message: DecodedFrame): number {
+  return (
+    MESSAGE_METADATA_BYTES +
+    utf16Bytes(message.streamId) +
+    utf16Bytes(message.recordId ?? "")
+  );
+}
+
+function placementBytesForKey(key: string): number {
+  return PLACEMENT_METADATA_BYTES + utf16Bytes(key);
+}
+
+function utf16Bytes(value: string): number {
+  return value.length * 2;
+}
+
+interface TimelineCoverage {
+  readonly startTimeNs: bigint;
+  readonly stepNs: bigint;
+  readonly tickCount: number;
+  ranges: EpisodeStreamCacheTickRange[];
+}
+
+function createTimelineCoverage(
+  index: TimelineIndex,
+  keys: Iterable<string>,
+): TimelineCoverage {
+  return createTimelineCoverageFromConfig(
+    {
+      ranges: [],
+      startTimeNs: index.startTimeNs,
+      stepNs: index.stepNs,
+      tickCount: index.tickCount,
+    },
+    keys,
+  );
+}
+
+function createTimelineCoverageFromConfig(
+  config: Omit<TimelineCoverage, "ranges"> | TimelineCoverage,
+  keys: Iterable<string>,
+): TimelineCoverage {
+  const indexes: number[] = [];
+  for (const key of keys) {
+    const tickIndex = tickIndexInCoverage(config, BigInt(key));
+    if (tickIndex !== undefined) indexes.push(tickIndex);
+  }
+  indexes.sort((left, right) => left - right);
+  const ranges: EpisodeStreamCacheTickRange[] = [];
+  for (const tickIndex of indexes) {
+    const last = ranges[ranges.length - 1];
+    if (!last || tickIndex > last.endIndex + 1) {
+      ranges.push({ endIndex: tickIndex, startIndex: tickIndex });
+    } else if (tickIndex > last.endIndex) {
+      ranges[ranges.length - 1] = { ...last, endIndex: tickIndex };
+    }
+  }
+  return {
+    ranges,
+    startTimeNs: config.startTimeNs,
+    stepNs: config.stepNs,
+    tickCount: config.tickCount,
+  };
+}
+
+function tickIndexInCoverage(
+  coverage: Pick<TimelineCoverage, "startTimeNs" | "stepNs" | "tickCount">,
+  tick: bigint,
+): number | undefined {
+  if (tick < coverage.startTimeNs) return undefined;
+  const deltaNs = tick - coverage.startTimeNs;
+  if (deltaNs % coverage.stepNs !== 0n) return undefined;
+  const indexBig = deltaNs / coverage.stepNs;
+  if (indexBig >= BigInt(coverage.tickCount)) return undefined;
+  return Number(indexBig);
+}
+
+function addTickIndex(
+  ranges: readonly EpisodeStreamCacheTickRange[],
+  tickIndex: number,
+): EpisodeStreamCacheTickRange[] {
+  const next = ranges.map((range) => ({ ...range }));
+  let low = 0;
+  let high = next.length;
+  while (low < high) {
+    const middle = low + Math.floor((high - low) / 2);
+    if (next[middle].startIndex <= tickIndex) low = middle + 1;
+    else high = middle;
+  }
+  const before = next[low - 1];
+  const after = next[low];
+  if (before && tickIndex <= before.endIndex) return next;
+  if (after && tickIndex >= after.startIndex && tickIndex <= after.endIndex) {
+    return next;
+  }
+  if (
+    before?.endIndex === tickIndex - 1 &&
+    after?.startIndex === tickIndex + 1
+  ) {
+    next.splice(low - 1, 2, {
+      endIndex: after.endIndex,
+      startIndex: before.startIndex,
+    });
+  } else if (before?.endIndex === tickIndex - 1) {
+    next[low - 1] = { ...before, endIndex: tickIndex };
+  } else if (after?.startIndex === tickIndex + 1) {
+    next[low] = { ...after, startIndex: tickIndex };
+  } else {
+    next.splice(low, 0, { endIndex: tickIndex, startIndex: tickIndex });
+  }
+  return next;
 }
