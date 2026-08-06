@@ -147,6 +147,35 @@ describe("NumericSeriesBridge (no playback store: unbounded fallback)", () => {
     ).toEqual(["/odom"]);
   });
 
+  it("retries enumeration after an error resets the one-shot gate", async () => {
+    const source = createSource();
+    const stream = createNumericStream("/odom", 1);
+    const client = createClient({
+      enumerateNumericFields: vi
+        .fn<NumericSeriesCapability["enumerateNumericFields"]>()
+        .mockRejectedValueOnce(new Error("enumeration failed"))
+        .mockResolvedValueOnce([stream]),
+    });
+    const context = createContextRef();
+
+    render(<Harness client={client} contextRef={context} source={source} />);
+
+    await act(async () => {
+      context.current?.ensureEnumeration();
+      context.current?.ensureEnumeration();
+      await flushMicrotasks();
+    });
+    expect(client.enumerateNumericFields).toHaveBeenCalledOnce();
+    expect(context.current?.enumeration.status).toBe("error");
+
+    await act(async () => {
+      context.current?.ensureEnumeration();
+      await flushMicrotasks();
+    });
+    expect(client.enumerateNumericFields).toHaveBeenCalledTimes(2);
+    expect(context.current?.enumeration.status).toBe("ready");
+  });
+
   it("publishes schema fields before bounded fallback augmentation", async () => {
     const source = createSource();
     const schemaStream: NumericStreamFields = {
@@ -222,6 +251,62 @@ describe("NumericSeriesBridge (no playback store: unbounded fallback)", () => {
     });
 
     expect(client.readNumericSeries).toHaveBeenCalledTimes(1);
+  });
+
+  it("replays enumeration requested before the bridge mounts", async () => {
+    const source = createSource();
+    const client = createClient();
+    const context = createContextRef();
+    const { rerender } = render(
+      <Harness
+        bridge={false}
+        client={client}
+        contextRef={context}
+        source={source}
+      />,
+    );
+
+    act(() => context.current?.ensureEnumeration());
+    expect(client.enumerateNumericFields).not.toHaveBeenCalled();
+
+    rerender(
+      <Harness bridge client={client} contextRef={context} source={source} />,
+    );
+    await act(flushMicrotasks);
+
+    expect(client.enumerateNumericFields).toHaveBeenCalledOnce();
+    expect(context.current?.enumeration.status).toBe("ready");
+  });
+
+  it("clears published series when the bridge unmounts", async () => {
+    const source = createSource();
+    const client = createClient();
+    const context = createContextRef();
+    const { rerender } = render(
+      <Harness client={client} contextRef={context} source={source} />,
+    );
+
+    await act(async () => {
+      context.current?.subscribeSeries("/odom", "speed");
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+    expect(context.current?.seriesByKey.size).toBe(1);
+
+    rerender(
+      <Harness
+        bridge={false}
+        client={client}
+        contextRef={context}
+        source={source}
+      />,
+    );
+    await act(flushMicrotasks);
+
+    expect(context.current?.seriesByKey.size).toBe(0);
+    expect(context.current?.enumeration).toEqual({
+      status: "idle",
+      streams: [],
+    });
   });
 });
 

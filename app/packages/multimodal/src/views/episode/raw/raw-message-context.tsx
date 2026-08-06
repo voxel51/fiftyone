@@ -2,17 +2,17 @@
 // components whose relay fragments cannot evaluate under vitest, and this
 // bridge has direct unit tests (same rule as numeric-series-context).
 import { PlaybackStoreContext } from "@fiftyone/playback/runtime";
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { startDemandBridge } from "../../../runtime";
-import { useDemandRegistry } from "../../../runtime/react";
+import { useCallback, useContext, useEffect, useMemo, useRef } from "react";
+import {
+  createDemandFailureBackoff,
+  createDemandInventoryMachine,
+  startDemandBridge,
+} from "../../../runtime";
+import {
+  createDemandContextProvider,
+  useResetDemandContextOnUnmount,
+  type DemandContextHandlers,
+} from "../../../runtime/react";
 import type { RawRecordResult, RawRecordStream } from "../../../ir";
 import type { RawRecordCapability } from "../../../ports";
 import { errorMessage } from "../../../utils/errors";
@@ -28,10 +28,6 @@ const DEFERRED_RETRY_MS = 2_000;
 /** The timeline index lands moments after stream registration; wait for
  * it instead of fetching at a meaningless time. */
 const TIMELINE_RETRY_MS = 250;
-
-/** Playhead-driven retries of a failed stream back off this long; a user
- * re-subscribe retries immediately. */
-const FAILURE_BACKOFF_MS = 5_000;
 
 /**
  * One stream row for the raw-message stream picker: every channel in the
@@ -85,26 +81,24 @@ export interface RawMessageContextValue {
   subscribeRecord(stream: string): () => void;
 }
 
-interface RawMessageHandlers {
-  ensureStreams(): void;
-  onDemandChanged(): void;
+interface RawMessageHandlers extends DemandContextHandlers {
   readFullMessageJson(stream: string, timeNs: bigint): Promise<string>;
-}
-
-interface RawMessageInternalValue extends RawMessageContextValue {
-  readonly handlersRef: React.MutableRefObject<RawMessageHandlers | null>;
-  readonly refCountsRef: React.MutableRefObject<Map<string, number>>;
-  readonly streamsWantedRef: React.MutableRefObject<boolean>;
-  readonly setStreams: (state: RawStreamsState) => void;
-  readonly setRecordsByStream: (
-    state: ReadonlyMap<string, RawRecordState>,
-  ) => void;
 }
 
 const IDLE_STREAMS: RawStreamsState = { status: "idle", streams: [] };
 const EMPTY_RECORDS: ReadonlyMap<string, RawRecordState> = new Map();
 
-const RawMessageContext = createContext<RawMessageInternalValue | null>(null);
+const rawMessageDemandContext = createDemandContextProvider<
+  RawStreamsState,
+  RawRecordState,
+  RawMessageHandlers
+>({
+  displayName: "RawMessageProvider",
+  emptyValues: EMPTY_RECORDS,
+  idleInventory: IDLE_STREAMS,
+  missingProviderMessage:
+    "episode raw messages must be used inside <RawMessageProvider>",
+});
 
 /**
  * Shares playhead-synced raw message records with raw-message tiles.
@@ -112,21 +106,14 @@ const RawMessageContext = createContext<RawMessageInternalValue | null>(null);
  * `RawMessageBridge` inside the shell owns the client/source and
  * services demand, so a stream shown by several tiles is fetched once.
  */
-export const RawMessageProvider: React.FC<{
-  children: React.ReactNode;
-}> = ({ children }) => {
-  const [streams, setStreams] = useState<RawStreamsState>(IDLE_STREAMS);
-  const [recordsByStream, setRecordsByStream] =
-    useState<ReadonlyMap<string, RawRecordState>>(EMPTY_RECORDS);
-  const { handlersRef, refCountsRef, subscribeKey } =
-    useDemandRegistry<RawMessageHandlers>();
-  const streamsWantedRef = useRef(false);
+export const RawMessageProvider = rawMessageDemandContext.Provider;
 
-  const ensureStreams = useCallback(() => {
-    streamsWantedRef.current = true;
-    handlersRef.current?.ensureStreams();
-  }, [handlersRef]);
-
+/**
+ * Reads the raw-message cache and demand hooks for raw-message tiles.
+ */
+export function useRawMessageContext(): RawMessageContextValue {
+  const { ensureInventory, handlersRef, inventory, subscribeKey, valuesByKey } =
+    useInternalValue();
   const readFullMessageJson = useCallback(
     (stream: string, timeNs: bigint) => {
       const handlers = handlersRef.current;
@@ -139,50 +126,22 @@ export const RawMessageProvider: React.FC<{
     },
     [handlersRef],
   );
-
-  const subscribeRecord = useCallback(
-    (stream: string) => {
-      return subscribeKey(stream);
-    },
-    [subscribeKey],
-  );
-
-  const value = useMemo<RawMessageInternalValue>(
+  return useMemo(
     () => ({
-      ensureStreams,
-      handlersRef,
+      ensureStreams: ensureInventory,
       readFullMessageJson,
-      recordsByStream,
-      refCountsRef,
-      setRecordsByStream,
-      setStreams,
-      subscribeRecord,
-      streams,
-      streamsWantedRef,
+      recordsByStream: valuesByKey,
+      streams: inventory,
+      subscribeRecord: subscribeKey,
     }),
     [
-      ensureStreams,
-      handlersRef,
+      ensureInventory,
+      inventory,
       readFullMessageJson,
-      recordsByStream,
-      refCountsRef,
-      subscribeRecord,
-      streams,
+      subscribeKey,
+      valuesByKey,
     ],
   );
-
-  return (
-    <RawMessageContext.Provider value={value}>
-      {children}
-    </RawMessageContext.Provider>
-  );
-};
-
-/**
- * Reads the raw-message cache and demand hooks for raw-message tiles.
- */
-export function useRawMessageContext(): RawMessageContextValue {
-  return useInternalValue();
 }
 
 /**
@@ -203,10 +162,11 @@ export function RawMessageBridge({
 }) {
   const {
     handlersRef,
+    inventoryReplay,
+    publishValues,
     refCountsRef,
-    setRecordsByStream,
-    setStreams,
-    streamsWantedRef,
+    reset,
+    setInventory,
   } = useInternalValue();
   // Nullable on purpose: callers inside the playback shell provide the
   // store; standalone callers and tests fetch at the timeline start.
@@ -219,22 +179,14 @@ export function RawMessageBridge({
   // handlers, and the playhead-following loop. It re-keys (full reset)
   // when the source changes.
   useEffect(() => {
-    setStreams(IDLE_STREAMS);
-    setRecordsByStream(EMPTY_RECORDS);
+    reset();
     if (!capability || !sourceKey) {
       return undefined;
     }
 
-    let streamsRequested = false;
     const published = new Map<string, RawRecordState>();
     const inflight = new Set<string>();
-    const failedAtMs = new Map<string, number>();
-
-    const publish = (isCancelled: () => boolean) => {
-      if (!isCancelled()) {
-        setRecordsByStream(new Map(published));
-      }
-    };
+    const failures = createDemandFailureBackoff<string>();
 
     return startDemandBridge<
       RawMessageHandlers,
@@ -243,45 +195,36 @@ export function RawMessageBridge({
       dataStreamRef,
       deferredRetryMs: DEFERRED_RETRY_MS,
       handlersRef,
-      makeHandlers: ({ isCancelled, queueFill }) => ({
-        ensureStreams() {
-          if (isCancelled() || streamsRequested) {
-            return;
-          }
-          streamsRequested = true;
-          setStreams({ status: "loading", streams: [] });
-          void capability
-            .listRawRecordStreams()
-            .then((streams) => {
-              if (!isCancelled()) {
-                setStreams({
-                  status: "ready",
-                  streams: streams,
-                });
-              }
-            })
-            .catch(() => {
-              if (!isCancelled()) {
-                streamsRequested = false;
-                setStreams({ status: "error", streams: [] });
-              }
+      inventoryReplay,
+      makeHandlers: ({ isCancelled, queueFill }) => {
+        const inventory = createDemandInventoryMachine({
+          error: { status: "error", streams: [] },
+          isCancelled,
+          async load(publish) {
+            const streams = await capability.listRawRecordStreams();
+            publish({ status: "ready", streams });
+          },
+          loading: { status: "loading", streams: [] },
+          publish: setInventory,
+        });
+        return {
+          ensureInventory: inventory.ensure,
+          onDemandChanged: queueFill,
+          async readFullMessageJson(stream, timeNs) {
+            const result = await capability.readRawRecord({
+              includeFullJson: true,
+              stream,
+              timestampNs: timeNs,
             });
-        },
-        onDemandChanged: queueFill,
-        async readFullMessageJson(stream, timeNs) {
-          const result = await capability.readRawRecord({
-            includeFullJson: true,
-            stream: stream,
-            timestampNs: timeNs,
-          });
-          if (result.status !== "ok" || result.fullJson === undefined) {
-            throw new Error(
-              `Could not read the complete message for ${stream}`,
-            );
-          }
-          return result.fullJson;
-        },
-      }),
+            if (result.status !== "ok" || result.fullJson === undefined) {
+              throw new Error(
+                `Could not read the complete message for ${stream}`,
+              );
+            }
+            return result.fullJson;
+          },
+        };
+      },
       onFill({
         demandKeys,
         isCancelled,
@@ -311,12 +254,7 @@ export function RawMessageBridge({
           ) {
             continue;
           }
-          if (!userInitiated) {
-            const failed = failedAtMs.get(stream);
-            if (failed !== undefined && now - failed < FAILURE_BACKOFF_MS) {
-              continue;
-            }
-          }
+          if (failures.isBlocked(stream, now, userInitiated)) continue;
 
           inflight.add(stream);
           if (!state) {
@@ -330,9 +268,9 @@ export function RawMessageBridge({
                 return;
               }
               inflight.delete(stream);
-              failedAtMs.delete(stream);
+              failures.clear(stream);
               published.set(stream, { result: record, status: "ready" });
-              publish(isCancelled);
+              publishValues(published, isCancelled);
               // The playhead may have left this result's validity window
               // while the read was in flight; re-check instead of waiting
               // for the next playhead move (it may be paused now).
@@ -343,7 +281,7 @@ export function RawMessageBridge({
                 return;
               }
               inflight.delete(stream);
-              failedAtMs.set(stream, nowMs());
+              failures.record(stream, nowMs());
               // Keep whatever record already rendered; only surface a
               // hard error state when the stream has nothing to show.
               const previous = published.get(stream);
@@ -353,16 +291,11 @@ export function RawMessageBridge({
                   status: "error",
                 });
               }
-              publish(isCancelled);
+              publishValues(published, isCancelled);
             });
         }
         if (publishNeeded) {
-          publish(isCancelled);
-        }
-      },
-      onHandlersReady(handlers) {
-        if (streamsWantedRef.current) {
-          handlers.ensureStreams();
+          publishValues(published, isCancelled);
         }
       },
       playbackStore,
@@ -375,34 +308,20 @@ export function RawMessageBridge({
   }, [
     capability,
     handlersRef,
+    inventoryReplay,
     playbackStore,
+    publishValues,
     refCountsRef,
-    setRecordsByStream,
-    setStreams,
+    reset,
+    setInventory,
     sourceKey,
-    streamsWantedRef,
   ]);
 
-  // This effect clears published state when the bridge unmounts while
-  // the provider outlives it.
-  useEffect(
-    () => () => {
-      setStreams(IDLE_STREAMS);
-      setRecordsByStream(EMPTY_RECORDS);
-    },
-    [setRecordsByStream, setStreams],
-  );
+  useResetDemandContextOnUnmount(reset);
 
   return null;
 }
 
-function useInternalValue(): RawMessageInternalValue {
-  const value = useContext(RawMessageContext);
-  if (!value) {
-    throw new Error(
-      "episode raw messages must be used inside <RawMessageProvider>",
-    );
-  }
-
-  return value;
+function useInternalValue() {
+  return rawMessageDemandContext.useDemandContext();
 }

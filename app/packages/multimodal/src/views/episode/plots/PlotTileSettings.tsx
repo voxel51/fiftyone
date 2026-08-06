@@ -7,7 +7,7 @@ import {
   usePlotTileSeries,
   useTogglePlotSeries,
 } from "./plot-tile-state";
-import { checkboxNoSpaceToggleProps } from "../settings/controls/settings-keyboard";
+import { settingsBooleanNoSpaceToggleProps } from "../settings/controls/settings-keyboard";
 import { matchesStreamFilter } from "../stream-discovery/stream-filter";
 import PlotTileStyles from "./PlotTile.module.css";
 import { SettingsFilterInput } from "../settings/controls/SettingsFilterInput";
@@ -144,7 +144,7 @@ function PlotStreamGroup({
                 onChange={(checked) =>
                   toggleSeries(stream.streamId, field.path, checked)
                 }
-                {...checkboxNoSpaceToggleProps}
+                {...settingsBooleanNoSpaceToggleProps}
               />
               {enabled ? (
                 <span

@@ -7,7 +7,7 @@ import {
   useRawTileStream,
   useSetRawTileStream,
 } from "../tiles/raw-message-binding";
-import { checkboxNoSpaceToggleProps } from "../settings/controls/settings-keyboard";
+import { settingsBooleanNoSpaceToggleProps } from "../settings/controls/settings-keyboard";
 import { matchesStreamFilter } from "../stream-discovery/stream-filter";
 import { SettingsFilterInput } from "../settings/controls/SettingsFilterInput";
 import rawStyles from "../../../visualization/message/StructuredMessage.module.css";
@@ -128,7 +128,7 @@ function RawStreamRow({
         onChange={() => onSelect(stream.streamId)}
         type="radio"
         value={stream.streamId}
-        {...checkboxNoSpaceToggleProps}
+        {...settingsBooleanNoSpaceToggleProps}
       />
       <span className={settingsStyles.radioRowLabel}>{stream.sourceName}</span>
       <span className={rawStyles.truncatedText}>{stream.encoding}</span>

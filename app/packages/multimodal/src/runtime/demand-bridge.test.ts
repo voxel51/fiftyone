@@ -4,6 +4,9 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTimelineIndex } from "./timeline-index";
 import {
+  createDemandFailureBackoff,
+  createDemandInventoryMachine,
+  publishDemandMapSnapshot,
   startDemandBridge,
   type DemandHandlers,
   type MutableRef,
@@ -134,6 +137,95 @@ describe("demand bridge", () => {
     await vi.runAllTimersAsync();
     expect(harness.fills).toEqual([true, false]);
     expect(harness.handlersRef.current).toBeNull();
+  });
+
+  it("replays provider inventory demand when handlers become ready", () => {
+    interface InventoryHandlers extends DemandHandlers {
+      ensureInventory(): void;
+    }
+    const ensureInventory = vi.fn();
+    const handlersRef: MutableRef<InventoryHandlers | null> = { current: null };
+    const stop = startDemandBridge({
+      dataStreamRef: {
+        current: { getTimelineIndex: () => null, sourceKey: "source" },
+      },
+      deferredRetryMs: 10,
+      handlersRef,
+      inventoryReplay: {
+        ensure: (handlers) => handlers.ensureInventory(),
+        wantedRef: { current: true },
+      },
+      makeHandlers: ({ queueFill }) => ({
+        ensureInventory,
+        onDemandChanged: queueFill,
+      }),
+      onFill: vi.fn(),
+      playbackStore: null,
+      playheadThrottleMs: 0,
+      refCountsRef: { current: new Map() },
+      requireTimeline: false,
+      timelineRetryMs: 10,
+    });
+
+    expect(ensureInventory).toHaveBeenCalledOnce();
+    stop();
+  });
+
+  it("resets the one-shot inventory gate after an error", async () => {
+    const states: string[] = [];
+    const load = vi
+      .fn<(publish: (state: string) => void) => Promise<void>>()
+      .mockRejectedValueOnce(new Error("failed"))
+      .mockImplementationOnce(async (publish) => publish("ready"));
+    const machine = createDemandInventoryMachine({
+      error: "error",
+      isCancelled: () => false,
+      load,
+      loading: "loading",
+      publish: (state) => states.push(state),
+    });
+
+    machine.ensure();
+    machine.ensure();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(load).toHaveBeenCalledOnce();
+    expect(states).toEqual(["loading", "error"]);
+
+    machine.ensure();
+    await Promise.resolve();
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(states).toEqual(["loading", "error", "loading", "ready"]);
+  });
+
+  it("backs off passive retries while allowing user demand", () => {
+    const failures = createDemandFailureBackoff<string>();
+    failures.record("stream", 1_000);
+
+    expect(failures.isBlocked("stream", 2_000, false)).toBe(true);
+    expect(failures.isBlocked("stream", 2_000, true)).toBe(false);
+    expect(failures.isBlocked("stream", 6_000, false)).toBe(false);
+    failures.clear("stream");
+    expect(failures.isBlocked("stream", 1_001, false)).toBe(false);
+  });
+
+  it("publishes immutable snapshots only for a live epoch", () => {
+    const published: ReadonlyMap<string, number>[] = [];
+    const source = new Map([["stream", 1]]);
+    publishDemandMapSnapshot(
+      source,
+      (value) => published.push(value),
+      () => false,
+    );
+    source.set("stream", 2);
+    publishDemandMapSnapshot(
+      source,
+      (value) => published.push(value),
+      () => true,
+    );
+
+    expect(published).toHaveLength(1);
+    expect(published[0].get("stream")).toBe(1);
   });
 });
 
