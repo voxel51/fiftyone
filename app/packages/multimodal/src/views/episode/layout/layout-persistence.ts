@@ -1,5 +1,6 @@
 import type { MosaicNode } from "react-mosaic-component";
 import { sanitizeBoundedStringList } from "../../../utils/bounded-string-list";
+import { createTimestampLruScopedStore } from "../../../utils/scoped-store";
 import { isEpisodeTileExtensionId } from "../../../extensions/tiles/registry";
 import {
   normalizeScene3dUpAxis,
@@ -148,18 +149,6 @@ const MAX_EXTENSION_SETTINGS_KEY_LENGTH = 256;
 const MAX_EXTENSION_SETTINGS_STRING_LENGTH = 8_192;
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
-interface PersistedDatasetEntry extends PersistedModalLayout {
-  /** Last-write timestamp; drives least-recently-updated eviction. */
-  updatedAtMs: number;
-}
-
-interface PersistedStore {
-  version: typeof STORAGE_VERSION;
-  /** Browser-wide layer used only by unscoped callers. */
-  fallback?: PersistedModalLayout;
-  byDataset?: Record<string, PersistedDatasetEntry>;
-}
-
 const STORAGE_KEY = "fiftyone.episode.modal-layout.v3";
 const STORAGE_VERSION = 3;
 const FALLBACK_OMITTED_FIELDS = [
@@ -181,6 +170,24 @@ const FALLBACK_OMITTED_FIELDS = [
 // datasets; least-recently-updated entries beyond that are evicted and
 // simply use defaults on their next open.
 const MAX_DATASET_ENTRIES = 20;
+
+const modalLayoutStore = createTimestampLruScopedStore<
+  PersistedModalLayout,
+  PersistedModalLayout
+>({
+  fallback: {
+    location: { field: "fallback" },
+    sanitize: sanitizedFallbackLayout,
+    serialize: (layout) => ({ ...layout }),
+  },
+  key: STORAGE_KEY,
+  maxScopes: MAX_DATASET_ENTRIES,
+  sanitizeScope: sanitizeEntry,
+  scopeField: "byDataset",
+  serializeScope: (layout) => ({ ...layout }),
+  storage: () => globalThis.localStorage,
+  version: STORAGE_VERSION,
+});
 
 /** True when the value is a structurally valid mosaic tree of tile ids. */
 export function isValidMosaicLayout(node: unknown): node is MosaicNode<string> {
@@ -606,50 +613,6 @@ export function sanitizeTileTitles(
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
-/** Parse and sanitize whatever is in storage into the current store shape. */
-function readStore(): {
-  fallback?: PersistedModalLayout;
-  byDataset: Record<string, PersistedDatasetEntry>;
-} | null {
-  try {
-    const storage = globalThis.localStorage;
-    const raw = storage?.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null) return null;
-    const version = (parsed as { version?: unknown }).version;
-    if (version !== STORAGE_VERSION) return null;
-    const store = parsed as { fallback?: unknown; byDataset?: unknown };
-    const byDataset: Record<string, PersistedDatasetEntry> = {};
-    if (typeof store.byDataset === "object" && store.byDataset !== null) {
-      for (const [key, value] of Object.entries(store.byDataset)) {
-        const entry = sanitizeEntry(value);
-        if (!entry) continue;
-        const updatedAtMs = (value as { updatedAtMs?: unknown }).updatedAtMs;
-        byDataset[key] = {
-          ...entry,
-          updatedAtMs:
-            typeof updatedAtMs === "number" && Number.isFinite(updatedAtMs)
-              ? updatedAtMs
-              : 0,
-        };
-      }
-    }
-    const fallback =
-      store.fallback === undefined
-        ? undefined
-        : sanitizedFallbackLayout(store.fallback);
-    return {
-      fallback,
-      byDataset,
-    };
-  } catch {
-    // Corrupt JSON / storage unavailable (private mode, SSR) — behave as
-    // if nothing is stored.
-    return null;
-  }
-}
-
 /**
  * Read the persisted modal layout for `datasetKey`, or `null` when
  * nothing valid is stored. Scoped reads restore only the exact entry; a
@@ -659,14 +622,9 @@ function readStore(): {
 export function readModalLayout(
   datasetKey?: string,
 ): PersistedModalLayout | null {
-  const store = readStore();
-  if (!store) return null;
-  if (datasetKey) {
-    const entry = store.byDataset[datasetKey];
-    return entry ? layoutFromDatasetEntry(entry) : null;
-  }
-
-  return store.fallback ?? null;
+  return datasetKey
+    ? modalLayoutStore.readScope(datasetKey)
+    : modalLayoutStore.readFallback();
 }
 
 /**
@@ -681,35 +639,16 @@ export function writeModalLayout(
   patch: Partial<PersistedModalLayout>,
   datasetKey?: string,
 ): void {
-  try {
-    const storage = globalThis.localStorage;
-    if (!storage) return;
-    const store = readStore();
-    const byDataset = { ...store?.byDataset };
-    let fallback = store?.fallback;
-    if (datasetKey) {
-      byDataset[datasetKey] = {
-        ...byDataset[datasetKey],
-        ...patch,
-        updatedAtMs: Date.now(),
-      };
-      evictLeastRecentlyUpdated(byDataset);
-    } else {
-      fallback = stripDatasetScopedLayoutFields({
-        ...fallback,
-        ...patch,
-      });
-    }
-    const next: PersistedStore = {
-      version: STORAGE_VERSION,
-      fallback,
-      byDataset,
-    };
-    storage.setItem(STORAGE_KEY, JSON.stringify(next));
-  } catch {
-    // Quota exceeded / storage unavailable — persisting layout is a
-    // nicety, never an error path.
+  if (datasetKey) {
+    modalLayoutStore.updateScope(datasetKey, (current) => ({
+      ...current,
+      ...patch,
+    }));
+    return;
   }
+  modalLayoutStore.updateFallback((current) =>
+    stripDatasetScopedLayoutFields({ ...current, ...patch }),
+  );
 }
 
 /** Reads durable 3D conventions for one selected media field. */
@@ -747,13 +686,6 @@ export function writeCameraPreferences(
   );
 }
 
-function layoutFromDatasetEntry(
-  entry: PersistedDatasetEntry,
-): PersistedModalLayout {
-  const { updatedAtMs: _updatedAtMs, ...layout } = entry;
-  return layout;
-}
-
 function stripDatasetScopedLayoutFields(
   layout: Partial<PersistedModalLayout>,
 ): PersistedModalLayout {
@@ -775,18 +707,6 @@ function sanitizedFallbackLayout(
   return Object.values(fallback).some((value) => value !== undefined)
     ? fallback
     : undefined;
-}
-
-/** Drop the least-recently-updated entries beyond the table cap. */
-function evictLeastRecentlyUpdated(
-  byDataset: Record<string, PersistedDatasetEntry>,
-): void {
-  const keys = Object.keys(byDataset);
-  if (keys.length <= MAX_DATASET_ENTRIES) return;
-  keys
-    .sort((a, b) => byDataset[a].updatedAtMs - byDataset[b].updatedAtMs)
-    .slice(0, keys.length - MAX_DATASET_ENTRIES)
-    .forEach((key) => delete byDataset[key]);
 }
 
 /**

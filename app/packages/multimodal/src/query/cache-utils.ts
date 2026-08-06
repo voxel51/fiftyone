@@ -1,4 +1,5 @@
 import { LRUCache } from "lru-cache";
+import type { DecodedOutput } from "../ir";
 
 /**
  * Options for bounded in-memory caches.
@@ -113,6 +114,18 @@ export function estimateFieldSize(
   }
 
   return ESTIMATED_UNKNOWN_FIELD_SIZE_BYTES;
+}
+
+/** Estimates one decoded output for every cache and retention byte ledger. */
+export function decodedOutputSizeBytes(output: DecodedOutput): number {
+  const hintedBytes = output.resourceHints?.sizeBytes;
+  const bytes =
+    hintedBytes === undefined
+      ? estimateFieldSize(output)
+      : hintedBytes +
+        estimateFieldSize(output.attributes) +
+        estimateFieldSize(output.timing);
+  return Number.isSafeInteger(bytes) && bytes > 0 ? bytes : 0;
 }
 
 function normalizeCacheSizeBytes(value: number, minimum: number): number {

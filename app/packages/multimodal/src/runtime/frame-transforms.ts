@@ -1,6 +1,23 @@
 import { Quaternion, Vector3 } from "three";
 
-import { compareBigInt } from "../ir";
+import { maxBigIntPair } from "../utils/bigint";
+import {
+  compareFrameGraphEdges,
+  compareFrameIds,
+  dynamicChildFrameIdsForPlacement,
+  normalizeFrameId,
+  summarizeEpisodeFrameGraph,
+} from "./frame-transform-graph";
+import type {
+  EpisodeFrameGraphEdge,
+  EpisodeFrameGraphSummary,
+} from "./frame-transform-graph";
+import {
+  frameTransformIndexedRangeEndCovering,
+  isFrameTransformRangeIndexed,
+  isFrameTransformTimeIndexed,
+  mergeFrameTransformTimeRanges,
+} from "./frame-transform-ranges";
 import {
   DEFAULT_OBSERVATION_STALE_THRESHOLD_NS,
   DEFAULT_TRANSFORM_INTERPOLATION_GAP_NS,
@@ -27,33 +44,8 @@ const DEFAULT_FRAME_TRANSFORM_POLICY: EpisodeFrameTransformPolicy = {
 };
 const MAX_ADJACENCY_CACHE_ENTRIES = 8;
 
-function nonEmpty(value: string | null | undefined): string | null {
-  const normalized = value?.trim();
-  return normalized ? normalized : null;
-}
-
-export interface EpisodeFrameGraphSummary {
-  /** Bidirectional transform components, normalized and sorted by stable id. */
-  readonly components: readonly (readonly string[])[];
-  readonly dataBearingReachableCountsByFrameId: ReadonlyMap<string, number>;
-  readonly reachableCountsByFrameId: ReadonlyMap<string, number>;
-  readonly roots: readonly string[];
-  readonly tfConnectedFrameIds: readonly string[];
-}
-
-export const EMPTY_EPISODE_FRAME_GRAPH_SUMMARY: EpisodeFrameGraphSummary = {
-  components: [],
-  dataBearingReachableCountsByFrameId: new Map(),
-  reachableCountsByFrameId: new Map(),
-  roots: [],
-  tfConnectedFrameIds: [],
-};
-
-interface EpisodeFrameGraphEdge {
-  readonly childFrameId: string;
-  readonly dynamic: boolean;
-  readonly parentFrameId: string;
-}
+export { EMPTY_EPISODE_FRAME_GRAPH_SUMMARY } from "./frame-transform-graph";
+export type { EpisodeFrameGraphSummary } from "./frame-transform-graph";
 
 type EffectiveDynamicTransformResult =
   | {
@@ -165,30 +157,23 @@ export class EpisodeFrameTransformStore {
         ?.sort(compareFrameTransformSamplesByTimeAndParent);
     }
 
-    this.dynamicRanges = sortAndMergeTimeRanges([...this.dynamicRanges, range]);
+    this.dynamicRanges = mergeFrameTransformTimeRanges([
+      ...this.dynamicRanges,
+      range,
+    ]);
     this.adjacencyCache.clear();
   }
 
   isTimeIndexed(timeNs: bigint): boolean {
-    return this.dynamicRanges.some(
-      (range) => range.startTimeNs <= timeNs && timeNs <= range.endTimeNs,
-    );
+    return isFrameTransformTimeIndexed(this.dynamicRanges, timeNs);
   }
 
   isRangeIndexed(range: EpisodeFrameTransformTimeRange): boolean {
-    return this.dynamicRanges.some(
-      (indexedRange) =>
-        indexedRange.startTimeNs <= range.startTimeNs &&
-        range.endTimeNs <= indexedRange.endTimeNs,
-    );
+    return isFrameTransformRangeIndexed(this.dynamicRanges, range);
   }
 
   indexedRangeEndCovering(timeNs: bigint): bigint | null {
-    const range = this.dynamicRanges.find(
-      (candidate) =>
-        candidate.startTimeNs <= timeNs && timeNs <= candidate.endTimeNs,
-    );
-    return range?.endTimeNs ?? null;
+    return frameTransformIndexedRangeEndCovering(this.dynamicRanges, timeNs);
   }
 
   indexedRanges(): readonly EpisodeFrameTransformTimeRange[] {
@@ -197,7 +182,7 @@ export class EpisodeFrameTransformStore {
 
   /** Dynamic child-frame inventory already observed for this source. */
   dynamicChildFrameIds(): readonly string[] {
-    return [...this.dynamicSamplesByChild.keys()].sort(compareStrings);
+    return [...this.dynamicSamplesByChild.keys()].sort(compareFrameIds);
   }
 
   /**
@@ -238,33 +223,16 @@ export class EpisodeFrameTransformStore {
     readonly frameIds: readonly string[];
     readonly targetFrameId: string;
   }): readonly string[] | null {
-    const target = nonEmpty(targetFrameId);
-    if (!target) return null;
-
-    const adjacency = frameGraphEdgeAdjacency(this.graphEdges());
-    const requiredChildren = new Set<string>();
-    for (const frameId of [...new Set(frameIds)].sort(compareStrings)) {
-      const source = nonEmpty(frameId);
-      if (!source) return null;
-      if (source === target) continue;
-
-      const path = findFrameGraphPath(adjacency, source, target);
-      if (!path) return null;
-      for (const edge of path) {
-        // Runtime resolution gives a dynamic relationship precedence over a
-        // static relationship for the same child. Preserve that invariant even
-        // when the deterministic union-topology path traverses the static edge.
-        if (edge.dynamic || this.dynamicSamplesByChild.has(edge.childFrameId)) {
-          requiredChildren.add(edge.childFrameId);
-        }
-      }
-    }
-
-    return [...requiredChildren].sort(compareStrings);
+    return dynamicChildFrameIdsForPlacement({
+      dynamicChildFrameIds: this.dynamicSamplesByChild,
+      edges: this.graphEdges(),
+      frameIds,
+      targetFrameId,
+    });
   }
 
   frameIds(): readonly string[] {
-    return [...this.frameIdsById].sort(compareStrings);
+    return [...this.frameIdsById].sort(compareFrameIds);
   }
 
   /** Monotonic signal that changes only when a transform edge is first seen. */
@@ -275,63 +243,7 @@ export class EpisodeFrameTransformStore {
   summarizeGraph(
     dataBearingFrameIds: ReadonlySet<string>,
   ): EpisodeFrameGraphSummary {
-    const edges = this.graphEdges();
-    if (edges.length === 0) {
-      return EMPTY_EPISODE_FRAME_GRAPH_SUMMARY;
-    }
-
-    const childFrameIds = new Set<string>();
-    const childrenByParent = new Map<string, string[]>();
-    const undirectedAdjacency = new Map<string, string[]>();
-    const frameIds = new Set<string>();
-    const parentFrameIds = new Set<string>();
-
-    for (const edge of edges) {
-      childFrameIds.add(edge.childFrameId);
-      frameIds.add(edge.childFrameId);
-      frameIds.add(edge.parentFrameId);
-      parentFrameIds.add(edge.parentFrameId);
-      pushAdjacency(childrenByParent, edge.parentFrameId, edge.childFrameId);
-      pushAdjacency(undirectedAdjacency, edge.parentFrameId, edge.childFrameId);
-      pushAdjacency(undirectedAdjacency, edge.childFrameId, edge.parentFrameId);
-    }
-
-    for (const children of childrenByParent.values()) {
-      children.sort(compareStrings);
-    }
-
-    const tfConnectedFrameIds = [...frameIds].sort(compareStrings);
-    const components = connectedComponents(
-      tfConnectedFrameIds,
-      undirectedAdjacency,
-    );
-    const roots = [...parentFrameIds]
-      .filter((frameId) => !childFrameIds.has(frameId))
-      .sort(compareStrings);
-    const reachableCountsByFrameId = new Map<string, number>();
-    const dataBearingReachableCountsByFrameId = new Map<string, number>();
-
-    for (const frameId of tfConnectedFrameIds) {
-      const reachableFrameIds = reachableFrameIdsFrom(
-        frameId,
-        childrenByParent,
-      );
-      reachableCountsByFrameId.set(frameId, reachableFrameIds.length);
-      dataBearingReachableCountsByFrameId.set(
-        frameId,
-        reachableFrameIds.filter((reachableFrameId) =>
-          dataBearingFrameIds.has(reachableFrameId),
-        ).length,
-      );
-    }
-
-    return {
-      components,
-      dataBearingReachableCountsByFrameId,
-      reachableCountsByFrameId,
-      roots,
-      tfConnectedFrameIds,
-    };
+    return summarizeEpisodeFrameGraph(this.graphEdges(), dataBearingFrameIds);
   }
 
   resolve({
@@ -345,8 +257,8 @@ export class EpisodeFrameTransformStore {
     readonly targetFrameId: string;
     readonly timeNs?: bigint;
   }): EpisodeFrameTransformResolution {
-    const source = nonEmpty(sourceFrameId);
-    const target = nonEmpty(targetFrameId);
+    const source = normalizeFrameId(sourceFrameId);
+    const target = normalizeFrameId(targetFrameId);
     if (!source || !target) {
       return {
         sourceFrameId,
@@ -417,7 +329,7 @@ export class EpisodeFrameTransformStore {
     readonly sourceFrameId: string;
     readonly timeNs?: bigint;
   }): EpisodeParentFrameTransformResolution {
-    const source = nonEmpty(sourceFrameId);
+    const source = normalizeFrameId(sourceFrameId);
     if (!source) {
       return { sourceFrameId, status: "missing" };
     }
@@ -571,113 +483,8 @@ export class EpisodeFrameTransformStore {
       });
     }
 
-    return [...edges.values()].sort((left, right) => {
-      const parentOrder = compareStrings(
-        left.parentFrameId,
-        right.parentFrameId,
-      );
-      return parentOrder === 0
-        ? compareStrings(left.childFrameId, right.childFrameId)
-        : parentOrder;
-    });
+    return [...edges.values()].sort(compareFrameGraphEdges);
   }
-}
-
-interface EpisodeFrameGraphTraversalEdge extends EpisodeFrameGraphEdge {
-  readonly nextFrameId: string;
-}
-
-function frameGraphEdgeAdjacency(
-  edges: readonly EpisodeFrameGraphEdge[],
-): ReadonlyMap<string, readonly EpisodeFrameGraphTraversalEdge[]> {
-  const adjacency = new Map<string, EpisodeFrameGraphTraversalEdge[]>();
-  for (const edge of edges) {
-    pushAdjacency(adjacency, edge.childFrameId, {
-      ...edge,
-      nextFrameId: edge.parentFrameId,
-    });
-    pushAdjacency(adjacency, edge.parentFrameId, {
-      ...edge,
-      nextFrameId: edge.childFrameId,
-    });
-  }
-  for (const candidates of adjacency.values()) {
-    candidates.sort((left, right) => {
-      const frameOrder = compareStrings(left.nextFrameId, right.nextFrameId);
-      if (frameOrder !== 0) return frameOrder;
-      if (left.dynamic !== right.dynamic) return left.dynamic ? 1 : -1;
-      return compareStrings(left.childFrameId, right.childFrameId);
-    });
-  }
-  return adjacency;
-}
-
-function findFrameGraphPath(
-  adjacency: ReadonlyMap<string, readonly EpisodeFrameGraphTraversalEdge[]>,
-  sourceFrameId: string,
-  targetFrameId: string,
-): readonly EpisodeFrameGraphTraversalEdge[] | null {
-  const queue = [sourceFrameId];
-  const visited = new Set(queue);
-  const predecessorByFrameId = new Map<
-    string,
-    { readonly edge: EpisodeFrameGraphTraversalEdge; readonly frameId: string }
-  >();
-
-  for (let index = 0; index < queue.length; index += 1) {
-    const frameId = queue[index];
-    if (!frameId) continue;
-    for (const edge of adjacency.get(frameId) ?? []) {
-      if (visited.has(edge.nextFrameId)) continue;
-      visited.add(edge.nextFrameId);
-      predecessorByFrameId.set(edge.nextFrameId, { edge, frameId });
-      if (edge.nextFrameId === targetFrameId) {
-        const path: EpisodeFrameGraphTraversalEdge[] = [];
-        let current = targetFrameId;
-        while (current !== sourceFrameId) {
-          const predecessor = predecessorByFrameId.get(current);
-          if (!predecessor) return null;
-          path.push(predecessor.edge);
-          current = predecessor.frameId;
-        }
-        return path.reverse();
-      }
-      queue.push(edge.nextFrameId);
-    }
-  }
-
-  return null;
-}
-
-function connectedComponents(
-  frameIds: readonly string[],
-  adjacency: ReadonlyMap<string, readonly string[]>,
-): readonly (readonly string[])[] {
-  const components: string[][] = [];
-  const visited = new Set<string>();
-
-  for (const frameId of frameIds) {
-    if (visited.has(frameId)) continue;
-    const component: string[] = [];
-    const stack = [frameId];
-    while (stack.length > 0) {
-      const current = stack.pop();
-      if (!current || visited.has(current)) continue;
-      visited.add(current);
-      component.push(current);
-      const neighbors = adjacency.get(current) ?? [];
-      for (let index = neighbors.length - 1; index >= 0; index -= 1) {
-        const neighbor = neighbors[index];
-        if (neighbor && !visited.has(neighbor)) stack.push(neighbor);
-      }
-    }
-    component.sort(compareStrings);
-    components.push(component);
-  }
-
-  return components.sort((left, right) =>
-    compareStrings(left[0] ?? "", right[0] ?? ""),
-  );
 }
 
 /**
@@ -993,8 +800,8 @@ function heldTransformFromSample({
 }
 
 function cleanSample(sample: EpisodeFrameTransformSample) {
-  const parentFrameId = nonEmpty(sample.parentFrameId);
-  const childFrameId = nonEmpty(sample.childFrameId);
+  const parentFrameId = normalizeFrameId(sample.parentFrameId);
+  const childFrameId = normalizeFrameId(sample.childFrameId);
   if (!parentFrameId || !childFrameId) {
     return null;
   }
@@ -1046,7 +853,7 @@ function compareFrameTransformSamplesByTimeAndParent(
 ) {
   const timeOrder = compareFrameTransformSamplesByTime(left, right);
   return timeOrder === 0
-    ? compareStrings(left.parentFrameId, right.parentFrameId)
+    ? compareFrameIds(left.parentFrameId, right.parentFrameId)
     : timeOrder;
 }
 
@@ -1073,32 +880,6 @@ function hasEffectiveTransformForChild(
   return false;
 }
 
-function sortAndMergeTimeRanges(
-  ranges: readonly EpisodeFrameTransformTimeRange[],
-) {
-  const sorted = [...ranges].sort((left, right) =>
-    left.startTimeNs === right.startTimeNs
-      ? compareBigInt(left.endTimeNs, right.endTimeNs)
-      : compareBigInt(left.startTimeNs, right.startTimeNs),
-  );
-  const merged: EpisodeFrameTransformTimeRange[] = [];
-
-  for (const range of sorted) {
-    const last = merged[merged.length - 1];
-    if (!last || range.startTimeNs > last.endTimeNs + 1n) {
-      merged.push(range);
-      continue;
-    }
-
-    merged[merged.length - 1] = {
-      startTimeNs: last.startTimeNs,
-      endTimeNs: maxBigInt(last.endTimeNs, range.endTimeNs),
-    };
-  }
-
-  return merged;
-}
-
 function pushAdjacency<Value>(
   adjacency: Map<string, Value[]>,
   frameId: string,
@@ -1110,34 +891,6 @@ function pushAdjacency<Value>(
   } else {
     adjacency.set(frameId, [value]);
   }
-}
-
-function reachableFrameIdsFrom(
-  frameId: string,
-  childrenByParent: ReadonlyMap<string, readonly string[]>,
-) {
-  const reachableFrameIds: string[] = [];
-  const visited = new Set<string>();
-  const stack = [frameId];
-
-  while (stack.length > 0) {
-    const current = stack.pop();
-    if (!current || visited.has(current)) {
-      continue;
-    }
-
-    visited.add(current);
-    reachableFrameIds.push(current);
-    const children = childrenByParent.get(current) ?? [];
-    for (let index = children.length - 1; index >= 0; index -= 1) {
-      const childFrameId = children[index];
-      if (childFrameId && !visited.has(childFrameId)) {
-        stack.push(childFrameId);
-      }
-    }
-  }
-
-  return reachableFrameIds;
 }
 
 function composeFrameTransforms(
@@ -1188,18 +941,6 @@ function invertFrameTransform(
   };
 }
 
-function maxBigInt(left: bigint, right: bigint) {
-  return left > right ? left : right;
-}
-
-function compareStrings(left: string, right: string) {
-  if (left === right) {
-    return 0;
-  }
-
-  return left < right ? -1 : 1;
-}
-
 function composeMaxInterpolationGapNs(
   first: bigint | undefined,
   second: bigint | undefined,
@@ -1211,7 +952,7 @@ function composeMaxInterpolationGapNs(
     return { maxInterpolationGapNs: first };
   }
 
-  return { maxInterpolationGapNs: maxBigInt(first, second) };
+  return { maxInterpolationGapNs: maxBigIntPair(first, second) };
 }
 
 function composeHeldEdges(

@@ -1,15 +1,14 @@
-import {
-  McapBoundedReadCancelledError,
-  type McapIndexedReaderLike,
-  type McapReadContinuation,
+import type {
+  McapIndexedReaderLike,
+  McapReadContinuation,
 } from "../../reader/index";
+import { consumeMcapBoundedGrant } from "../../reader/consume-bounded-grant";
 import {
   genericRecordDecoderForChannel,
   mcapChannelForTopic,
 } from "../generic-record-decoder";
 import type { McapTimelineStrategy } from "../timeline";
 import type {
-  McapNumericSeriesField,
   McapNumericSeriesResult,
   McapNumericSeriesSliceResult,
   McapNumericTopicSeries,
@@ -17,6 +16,7 @@ import type {
   McapReadNumericSeriesSliceRequest,
 } from "../../contracts/index";
 import type { ReadWorkUsage } from "../../../../ports";
+import { nsDeltaToSeconds } from "../../../../runtime";
 import { decimateMinMax } from "../numeric-series-decimate";
 import { mcapTimelineRangeFromReader } from "./read-timeline-range";
 
@@ -32,6 +32,16 @@ export const DEFAULT_NUMERIC_SERIES_MAX_POINTS = 4_000;
  * either way the result reports `truncated`.
  */
 const MAX_SCAN_MESSAGES = 500_000;
+
+interface NumericSeriesAccumulator {
+  readonly decodeRecord: (data: Uint8Array) => Record<string, unknown>;
+  readonly fieldPaths: readonly string[];
+  readonly pathSegments: readonly (readonly string[])[];
+  readonly times: number[];
+  readonly topic: string;
+  readonly valuesByField: number[][];
+  messageCount: number;
+}
 
 /**
  * Projects one dotted field path from a decoded message record. Numeric path
@@ -157,9 +167,11 @@ export async function readMcapNumericSeries({
     topics: [request.topic],
   });
 
-  const pathSegments = request.fieldPaths.map((path) => path.split("."));
-  const times: number[] = [];
-  const valuesByField: number[][] = request.fieldPaths.map(() => []);
+  const accumulator = createNumericSeriesAccumulator(
+    request.topic,
+    request.fieldPaths,
+    decodeRecord,
+  );
   let seen = 0;
   let truncated = stride > 1;
 
@@ -172,52 +184,27 @@ export async function readMcapNumericSeries({
     if (stride > 1 && (seen - 1) % stride !== 0) {
       continue;
     }
-    if (times.length >= MAX_SCAN_MESSAGES) {
+    if (accumulator.messageCount >= MAX_SCAN_MESSAGES) {
       truncated = true;
       break;
     }
 
-    const deltaNs = timeline.messageTimeNs(message) - baseTimeNs;
-    // Split whole seconds from the sub-second remainder before casting
-    // so multi-day recordings keep full precision.
-    times.push(
-      Number(deltaNs / 1_000_000_000n) +
-        Number(deltaNs % 1_000_000_000n) / 1_000_000_000,
+    pushNumericSeriesMessage(
+      accumulator,
+      message.data,
+      timeline.messageTimeNs(message),
+      baseTimeNs,
     );
-
-    let record: Record<string, unknown> | undefined;
-    try {
-      record = decodeRecord(message.data);
-    } catch {
-      record = undefined;
-    }
-
-    for (let field = 0; field < pathSegments.length; field += 1) {
-      const value = record
-        ? projectNumericField(record, pathSegments[field])
-        : undefined;
-      valuesByField[field].push(value ?? Number.NaN);
-    }
   }
 
   const maxPoints =
     request.maxPointsPerField ?? DEFAULT_NUMERIC_SERIES_MAX_POINTS;
-  const sharedTimes = Float64Array.from(times);
-  const fields: McapNumericSeriesField[] = request.fieldPaths.map(
-    (path, index) => {
-      const decimated = decimateMinMax(
-        sharedTimes,
-        Float64Array.from(valuesByField[index]),
-        maxPoints,
-      );
-      return { path, timesSec: decimated.times, values: decimated.values };
-    },
-  );
+  const finalized = finalizeNumericSeries(accumulator, maxPoints);
 
   return {
     baseTimeNs,
-    fields,
-    messageCount: times.length,
+    fields: finalized.fields,
+    messageCount: finalized.messageCount,
     topic: request.topic,
     truncated,
   };
@@ -247,15 +234,7 @@ export async function readMcapNumericSeriesSlice({
     throw new Error("MCAP bounded reads are unavailable for numeric series");
   }
 
-  const selectionsByChannelId = new Map<
-    number,
-    {
-      readonly decodeRecord: (data: Uint8Array) => Record<string, unknown>;
-      readonly fieldPaths: readonly string[];
-      readonly pathSegments: readonly (readonly string[])[];
-      readonly topic: string;
-    }
-  >();
+  const selectionsByChannelId = new Map<number, NumericSeriesAccumulator>();
   const seenTopics = new Set<string>();
   for (const selection of request.selections) {
     if (selection.fieldPaths.length === 0) {
@@ -276,12 +255,14 @@ export async function readMcapNumericSeriesSlice({
         `Numeric series extraction does not support encoding '${channel.messageEncoding}'`,
       );
     }
-    selectionsByChannelId.set(channel.id, {
-      decodeRecord,
-      fieldPaths: selection.fieldPaths,
-      pathSegments: selection.fieldPaths.map((path) => path.split(".")),
-      topic: selection.topic,
-    });
+    selectionsByChannelId.set(
+      channel.id,
+      createNumericSeriesAccumulator(
+        selection.topic,
+        selection.fieldPaths,
+        decodeRecord,
+      ),
+    );
   }
 
   const { endTime, startTime } = timeline.messageReadRange({
@@ -323,89 +304,29 @@ export async function readMcapNumericSeriesSlice({
   }
 
   const baseTimeNs = mcapTimelineRangeFromReader(reader, timeline).startTimeNs;
-  const accumulators = new Map<
-    number,
-    {
-      readonly times: number[];
-      readonly valuesByField: number[][];
-      messageCount: number;
-    }
-  >(
-    [...selectionsByChannelId].map(([channelId, selection]) => [
-      channelId,
-      {
-        messageCount: 0,
-        times: [],
-        valuesByField: selection.fieldPaths.map(() => []),
-      },
-    ]),
-  );
-
-  try {
-    await yieldToCancellation();
-    throwIfAborted(signal);
-    for (const [index, message] of bounded.messages.entries()) {
-      if (index > 0 && index % 32 === 0) {
-        await yieldToCancellation();
-      }
-      throwIfAborted(signal);
+  await consumeMcapBoundedGrant({
+    items: bounded.messages,
+    onItem: (message) => {
       const selection = selectionsByChannelId.get(message.channelId);
-      const accumulator = accumulators.get(message.channelId);
-      if (!selection || !accumulator) {
-        continue;
+      if (!selection) {
+        return;
       }
-      const deltaNs = timeline.messageTimeNs(message) - baseTimeNs;
-      accumulator.times.push(
-        Number(deltaNs / 1_000_000_000n) +
-          Number(deltaNs % 1_000_000_000n) / 1_000_000_000,
+      pushNumericSeriesMessage(
+        selection,
+        message.data,
+        timeline.messageTimeNs(message),
+        baseTimeNs,
       );
-      accumulator.messageCount += 1;
-
-      let record: Record<string, unknown> | undefined;
-      try {
-        record = selection.decodeRecord(message.data);
-      } catch {
-        record = undefined;
-      }
-      for (let field = 0; field < selection.pathSegments.length; field += 1) {
-        const value = record
-          ? projectNumericField(record, selection.pathSegments[field])
-          : undefined;
-        accumulator.valuesByField[field].push(value ?? Number.NaN);
-      }
-    }
-  } catch (error) {
-    if (signal?.aborted) {
-      throw new McapBoundedReadCancelledError(usage);
-    }
-    throw error;
-  }
+    },
+    signal,
+    usage: () => usage,
+  });
 
   const maxPoints =
     request.maxPointsPerField ?? DEFAULT_NUMERIC_SERIES_MAX_POINTS;
   const series: McapNumericTopicSeries[] = [];
-  for (const [channelId, selection] of selectionsByChannelId) {
-    const accumulator = accumulators.get(channelId);
-    if (!accumulator) {
-      continue;
-    }
-    const sharedTimes = Float64Array.from(accumulator.times);
-    series.push({
-      fields: selection.fieldPaths.map((path, index) => {
-        const decimated = decimateMinMax(
-          sharedTimes,
-          Float64Array.from(accumulator.valuesByField[index]),
-          maxPoints,
-        );
-        return {
-          path,
-          timesSec: decimated.times,
-          values: decimated.values,
-        };
-      }),
-      messageCount: accumulator.messageCount,
-      topic: selection.topic,
-    });
+  for (const selection of selectionsByChannelId.values()) {
+    series.push(finalizeNumericSeries(selection, maxPoints));
   }
 
   return {
@@ -415,6 +336,64 @@ export async function readMcapNumericSeriesSlice({
     series,
     stopReason: bounded.stopReason,
     usage,
+  };
+}
+
+function createNumericSeriesAccumulator(
+  topic: string,
+  fieldPaths: readonly string[],
+  decodeRecord: (data: Uint8Array) => Record<string, unknown>,
+): NumericSeriesAccumulator {
+  return {
+    decodeRecord,
+    fieldPaths,
+    messageCount: 0,
+    pathSegments: fieldPaths.map((path) => path.split(".")),
+    times: [],
+    topic,
+    valuesByField: fieldPaths.map(() => []),
+  };
+}
+
+function pushNumericSeriesMessage(
+  accumulator: NumericSeriesAccumulator,
+  data: Uint8Array,
+  timeNs: bigint,
+  baseTimeNs: bigint,
+): void {
+  accumulator.times.push(nsDeltaToSeconds(timeNs - baseTimeNs));
+  accumulator.messageCount += 1;
+
+  let record: Record<string, unknown> | undefined;
+  try {
+    record = accumulator.decodeRecord(data);
+  } catch {
+    record = undefined;
+  }
+  for (let field = 0; field < accumulator.pathSegments.length; field += 1) {
+    const value = record
+      ? projectNumericField(record, accumulator.pathSegments[field])
+      : undefined;
+    accumulator.valuesByField[field].push(value ?? Number.NaN);
+  }
+}
+
+function finalizeNumericSeries(
+  accumulator: NumericSeriesAccumulator,
+  maxPoints: number,
+): McapNumericTopicSeries {
+  const sharedTimes = Float64Array.from(accumulator.times);
+  return {
+    fields: accumulator.fieldPaths.map((path, index) => {
+      const decimated = decimateMinMax(
+        sharedTimes,
+        Float64Array.from(accumulator.valuesByField[index]),
+        maxPoints,
+      );
+      return { path, timesSec: decimated.times, values: decimated.values };
+    }),
+    messageCount: accumulator.messageCount,
+    topic: accumulator.topic,
   };
 }
 
@@ -434,19 +413,6 @@ function addReadUsage(
     messagesDecoded: left.messagesDecoded + right.messagesDecoded,
     transferredBytes: left.transferredBytes + right.transferredBytes,
   };
-}
-
-function yieldToCancellation(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
-}
-
-function throwIfAborted(signal: AbortSignal | undefined): void {
-  if (!signal?.aborted) {
-    return;
-  }
-  const error = new Error("MCAP numeric series slice aborted");
-  error.name = "AbortError";
-  throw error;
 }
 
 function channelRecordCount(

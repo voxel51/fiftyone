@@ -7,6 +7,7 @@ import type {
   ByteSourceDescriptor,
 } from "../../../query/bytes";
 import { byteSourceAccessKey, parseByteSize } from "../../../query/bytes";
+import { createAbortError } from "../../../utils/cancellation";
 import { chunkMessageIndexRange } from "./chunk-index-ranges";
 
 export interface McapChunkReadDebugLog {
@@ -266,7 +267,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
     // active request's signal, making cancellation effective on cache hits.
     const activeSignal = signalOverride ?? this.options.readSignal?.current;
     if (activeSignal?.aborted) {
-      throw abortedReadableError();
+      throw createAbortError("MCAP read aborted");
     }
     const sourceSize = this.resolvedSizeBytes ?? sourceSizeBytes(this.source);
     if (sourceSize !== undefined && offset + size > sourceSize) {
@@ -379,12 +380,6 @@ export class ByteClientReadable implements McapTypes.IReadable {
       (this.options.logChunkRead ?? defaultChunkReadLogger)(entry);
     }
   }
-}
-
-function abortedReadableError(): Error {
-  const error = new Error("MCAP read aborted");
-  error.name = "AbortError";
-  return error;
 }
 
 function sourceSizeBytes(source: ByteSourceDescriptor): bigint | undefined {

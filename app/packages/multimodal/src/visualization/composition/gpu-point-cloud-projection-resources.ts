@@ -1,11 +1,17 @@
 import * as THREE from "three";
 
 import type { PointCloudRenderPayload } from "../../ir";
+import { createKeyedLeaseRegistry } from "../keyed-lease-registry";
 import {
   createGpuPointCloudChannelResource,
   updateGpuPointCloudChannelResource,
   type GpuPointCloudChannelResource,
 } from "../scene-3d/gpu/gpu-point-cloud-channel-nodes";
+import {
+  isVisualizationCostObserved,
+  recordVisualizationCost,
+  visualizationCostNowMs,
+} from "../render-cost-observer";
 
 const POINT_COMPONENT_COUNT = 3;
 
@@ -39,25 +45,30 @@ export interface GpuPointCloudProjectionResource {
 
 interface InternalProjectionResource extends GpuPointCloudProjectionResource {
   capacity: number;
-  disposed: boolean;
-  frameUpdateCount: number;
-  retired: boolean;
-  retainCount: number;
 }
-
-interface ProjectionResourceEntry {
-  resource: InternalProjectionResource;
-}
-
-const entries = new Map<string, ProjectionResourceEntry>();
-const retiredResources = new Set<InternalProjectionResource>();
 
 // This registry belongs to the shared image renderer's module lifetime. One
 // entry is reusable frame storage for (recording, topic); camera views hold
 // leases on the same entry and own only their matrices/material uniforms.
-let evictionScheduled = false;
 let totalFrameUpdates = 0;
 let totalResourceAllocations = 0;
+const projectionResourceRegistry = createKeyedLeaseRegistry<
+  string,
+  Omit<GpuPointCloudProjectionResourceInput, "streamKey">,
+  InternalProjectionResource
+>({
+  create: (streamKey, { contentKey, payload }) =>
+    createResource(streamKey, contentKey, payload),
+  dispose: disposeResource,
+  needsGrowth: (resource, { payload }) => payload.capacity > resource.capacity,
+  retentionCap: GPU_PROJECTION_RESOURCE_RETENTION_CAP,
+  touchOnRetain: true,
+  update: (resource, { contentKey, payload }) => {
+    if (resource.contentKey !== contentKey) {
+      updateResource(resource, contentKey, payload);
+    }
+  },
+});
 
 /**
  * Returns one grow-only buffer set per source topic. Frame changes replace the
@@ -70,59 +81,16 @@ export function getGpuPointCloudProjectionResource({
   payload,
   streamKey,
 }: GpuPointCloudProjectionResourceInput): GpuPointCloudProjectionResource {
-  let entry = entries.get(streamKey);
-  if (!entry) {
-    entry = { resource: createResource(streamKey, contentKey, payload) };
-    entries.set(streamKey, entry);
-    scheduleEviction();
-    return entry.resource;
-  }
-
-  touchEntry(streamKey, entry);
-  let resource = entry.resource;
-  if (payload.capacity > resource.capacity) {
-    // Buffer growth changes storage identity captured by TSL materials. Publish
-    // the replacement immediately, but keep the old attributes alive for any
-    // camera scene that still references its committed resource.
-    resource.retired = true;
-    retiredResources.add(resource);
-    resource = createResource(streamKey, contentKey, payload);
-    entry.resource = resource;
-    scheduleRetiredDisposal();
-    return resource;
-  }
-
-  if (resource.contentKey !== contentKey) {
-    updateResource(resource, contentKey, payload);
-  }
-  return resource;
+  return projectionResourceRegistry.get(streamKey, { contentKey, payload });
 }
 
 /** Pins a resource while a scene object/material references its attributes. */
 export function retainGpuPointCloudProjectionResource(
   resource: GpuPointCloudProjectionResource,
 ): () => void {
-  const internal = resource as InternalProjectionResource;
-  if (internal.disposed) {
-    return () => undefined;
-  }
-  internal.retainCount += 1;
-  const current = entries.get(internal.streamKey);
-  if (current?.resource === internal) {
-    touchEntry(internal.streamKey, current);
-  }
-
-  let released = false;
-  return () => {
-    if (released) return;
-    released = true;
-    internal.retainCount = Math.max(0, internal.retainCount - 1);
-    if (internal.retired) {
-      scheduleRetiredDisposal();
-    } else {
-      scheduleEviction();
-    }
-  };
+  return projectionResourceRegistry.retain(
+    resource as InternalProjectionResource,
+  );
 }
 
 /** Returns allocation and retention counters for projection resources. */
@@ -133,14 +101,12 @@ export function gpuPointCloudProjectionResourceStats(): {
   readonly totalFrameUpdates: number;
   readonly totalResourceAllocations: number;
 } {
-  let activeCount = 0;
-  for (const { resource } of entries.values()) {
-    if (resource.retainCount > 0) activeCount++;
-  }
+  const { activeCount, entryCount, retiredCount } =
+    projectionResourceRegistry.stats();
   return {
     activeCount,
-    entryCount: entries.size,
-    retiredCount: retiredResources.size,
+    entryCount,
+    retiredCount,
     totalFrameUpdates,
     totalResourceAllocations,
   };
@@ -148,11 +114,7 @@ export function gpuPointCloudProjectionResourceStats(): {
 
 /** Modal/source/device-loss boundary cleanup. */
 export function releaseGpuPointCloudProjectionResources(): void {
-  for (const { resource } of entries.values()) disposeResource(resource);
-  for (const resource of retiredResources) disposeResource(resource);
-  entries.clear();
-  retiredResources.clear();
-  evictionScheduled = false;
+  projectionResourceRegistry.releaseAll();
 }
 
 /** Retires every topic buffer owned by one recording/source identity. */
@@ -160,13 +122,9 @@ export function releaseGpuPointCloudProjectionResourcesForSource(
   sourceKey: string,
 ): void {
   const prefix = `${sourceKey}\n`;
-  for (const [streamKey, entry] of entries) {
-    if (!streamKey.startsWith(prefix)) continue;
-    entries.delete(streamKey);
-    entry.resource.retired = true;
-    retiredResources.add(entry.resource);
-  }
-  scheduleRetiredDisposal();
+  projectionResourceRegistry.retireWhere((streamKey) =>
+    streamKey.startsWith(prefix),
+  );
 }
 
 /** Clears projection resources and counters between tests. */
@@ -209,22 +167,31 @@ function createResource(
   geometry.setAttribute("projectionSourceIndex", sourceIndexAttribute);
 
   totalResourceAllocations += 1;
-  return {
+  const resource: InternalProjectionResource = {
     capacity: payload.capacity,
     colorChannel,
     contentKey,
-    disposed: false,
-    frameUpdateCount: 0,
     geometry,
     positionAttribute,
-    retired: false,
-    retainCount: 0,
     sampledPointCount: normalizedSampleCount(payload),
     scalarChannels,
     sourceIndexAttribute,
     sourceIndices: payload.sourceIndices,
     streamKey,
   };
+  if (isVisualizationCostObserved()) {
+    const bytes = projectionResourceBytes(resource);
+    recordVisualizationCost({
+      declaredGpuBytesDelta: bytes,
+      measurementStatus: "measured",
+      operation: "point-cloud-projection-storage",
+      residentCpuBytesDelta: bytes,
+      sourceHint: streamKey,
+      sourceHintKind: "stream-key",
+      stage: "resource-allocate",
+    });
+  }
+  return resource;
 }
 
 function updateResource(
@@ -232,6 +199,9 @@ function updateResource(
   contentKey: string,
   payload: PointCloudRenderPayload,
 ): void {
+  const observed = isVisualizationCostObserved();
+  const startMs = observed ? visualizationCostNowMs() : 0;
+  const previousBytes = observed ? projectionResourceBytes(resource) : 0;
   // Swap transferred views rather than copying them. Because every camera
   // shares this BufferAttribute object, needsUpdate produces one upload for
   // the new frame instead of one CPU projection/upload per camera.
@@ -301,8 +271,22 @@ function updateResource(
 
   resource.contentKey = contentKey;
   resource.sampledPointCount = normalizedSampleCount(payload);
-  resource.frameUpdateCount += 1;
   totalFrameUpdates += 1;
+  if (observed) {
+    const nextBytes = projectionResourceBytes(resource);
+    recordVisualizationCost({
+      declaredGpuBytesDelta: nextBytes - previousBytes,
+      durationMs: visualizationCostNowMs() - startMs,
+      inputBytes: nextBytes,
+      measurementStatus: "measured",
+      operation: "point-cloud-projection-storage",
+      outputBytes: nextBytes,
+      residentCpuBytesDelta: nextBytes - previousBytes,
+      sourceHint: resource.streamKey,
+      sourceHintKind: "stream-key",
+      stage: "resource-update",
+    });
+  }
 }
 
 function replaceAttributeArray(
@@ -332,51 +316,33 @@ function normalizedSampleCount(payload: PointCloudRenderPayload): number {
   );
 }
 
-function touchEntry(key: string, entry: ProjectionResourceEntry): void {
-  entries.delete(key);
-  entries.set(key, entry);
-}
-
-function scheduleEviction(): void {
-  if (
-    evictionScheduled ||
-    entries.size <= GPU_PROJECTION_RESOURCE_RETENTION_CAP
-  ) {
-    return;
-  }
-  evictionScheduled = true;
-  // Defer LRU eviction until React layout effects have had a chance to retain
-  // resources created during the current commit.
-  queueMicrotask(() => {
-    evictionScheduled = false;
-    while (entries.size > GPU_PROJECTION_RESOURCE_RETENTION_CAP) {
-      let evicted = false;
-      for (const [key, entry] of entries) {
-        if (entry.resource.retainCount !== 0) continue;
-        entries.delete(key);
-        disposeResource(entry.resource);
-        evicted = true;
-        break;
-      }
-      if (!evicted) break;
-    }
-  });
-}
-
-function scheduleRetiredDisposal(): void {
-  // Retirement and final lease release can occur in either order. A microtask
-  // coalesces both and disposes only resources no committed scene still pins.
-  queueMicrotask(() => {
-    for (const resource of retiredResources) {
-      if (resource.retainCount !== 0) continue;
-      retiredResources.delete(resource);
-      disposeResource(resource);
-    }
-  });
-}
-
 function disposeResource(resource: InternalProjectionResource): void {
-  if (resource.disposed) return;
-  resource.disposed = true;
+  if (isVisualizationCostObserved()) {
+    const bytes = projectionResourceBytes(resource);
+    recordVisualizationCost({
+      declaredGpuBytesDelta: -bytes,
+      measurementStatus: "measured",
+      operation: "point-cloud-projection-storage",
+      residentCpuBytesDelta: -bytes,
+      sourceHint: resource.streamKey,
+      sourceHintKind: "stream-key",
+      stage: "resource-release",
+    });
+  }
   resource.geometry.dispose();
 }
+
+function projectionResourceBytes(
+  resource: GpuPointCloudProjectionResource,
+): number {
+  return (
+    resource.positionAttribute.array.byteLength +
+    resource.sourceIndexAttribute.array.byteLength +
+    (resource.colorChannel?.attribute.array.byteLength ?? 0) +
+    [...resource.scalarChannels.values()].reduce(
+      (sum, channel) => sum + channel.attribute.array.byteLength,
+      0,
+    )
+  );
+}
+

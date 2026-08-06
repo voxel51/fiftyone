@@ -26,6 +26,7 @@ import {
   type ReadRequest,
   type SourceStats,
 } from "../../ports";
+import { createAbortError, throwIfAborted } from "../../utils/cancellation";
 
 const FIXTURE_START_NS = 1_000_000_000n;
 const FIXTURE_DEFAULT_RATE_HZ = 10;
@@ -359,7 +360,7 @@ class FixtureReadScheduler {
         if (this.active === task) this.active = null;
         this.queueDrain();
       };
-      const abort = () => finish(() => reject(abortError()));
+      const abort = () => finish(() => reject(createAbortError()));
       const task: ScheduledRead = {
         cancel: () => finish(() => reject(new EpisodeReadCancelledError())),
         priority,
@@ -671,14 +672,4 @@ function fixturePosterFrame(frame: DecodedFrame): EpisodePosterFrame | null {
     return { image: visualization, kind: "image" };
   }
   return null;
-}
-
-function throwIfAborted(signal: AbortSignal | undefined): void {
-  if (signal?.aborted) throw abortError();
-}
-
-function abortError(): Error {
-  const error = new Error("The operation was aborted");
-  error.name = "AbortError";
-  return error;
 }

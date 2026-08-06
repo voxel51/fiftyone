@@ -9,7 +9,7 @@ import {
   useSetMapTileSettings,
   useToggleMapTileStream,
 } from "./tile-state";
-import { checkboxNoSpaceToggleProps } from "../../settings/controls/settings-keyboard";
+import { settingsBooleanNoSpaceToggleProps } from "../../settings/controls/settings-keyboard";
 import settingsStyles from "../../tiles/Tile.settings.module.css";
 
 const BASE_LAYER_OPTIONS = [
@@ -54,7 +54,7 @@ const MapTileSettings: React.FC = () => {
             checked={settings.followEgo}
             label="Follow playhead"
             onChange={(checked) => setSettings({ followEgo: checked })}
-            {...checkboxNoSpaceToggleProps}
+            {...settingsBooleanNoSpaceToggleProps}
           />
         </div>
       </div>
@@ -72,7 +72,7 @@ const MapTileSettings: React.FC = () => {
                 onChange={(checked) =>
                   toggleStream(source.id, checked, streams)
                 }
-                {...checkboxNoSpaceToggleProps}
+                {...settingsBooleanNoSpaceToggleProps}
               />
               <span className={settingsStyles.metaText}>
                 {source.sourceName}

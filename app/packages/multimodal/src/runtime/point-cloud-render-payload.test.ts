@@ -6,7 +6,7 @@ import {
 } from "./point-cloud-render-payload";
 import { POINT_CLOUD_RGB_ENCODING } from "./point-cloud-channel-encoding";
 
-describe("buildPointCloudRenderPayload", () => {
+describe("point-cloud render payload construction", () => {
   it("aligns deterministic finite samples, colors, scalar values, and statistics", () => {
     const payload = buildPointCloudRenderPayload({
       colors: Float32Array.from([1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, 0.5, 0.75]),

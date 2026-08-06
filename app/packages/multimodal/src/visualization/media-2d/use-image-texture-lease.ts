@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 
 import type { ImageVisualization } from "../../ir";
+import { diagnosticMessage } from "../../utils/errors";
 import type { ImageTextureHandle } from "./Base2dScene";
 import { createImageTexture } from "./image-texture";
 import {
@@ -155,7 +156,7 @@ export function useImageTextureLease({
         setErrorKind(
           error instanceof VideoTextureWaitError ? "waiting" : "failure",
         );
-        setErrorMessage(errorMessageFromUnknown(error));
+        setErrorMessage(diagnosticMessage(error, "Image unavailable"));
         setStatus("error");
       });
 
@@ -249,29 +250,4 @@ function releaseImageTextures(textures: readonly HeldImageTexture[]): void {
   for (const texture of textures) {
     texture.release();
   }
-}
-
-function errorMessageFromUnknown(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  if (typeof error === "string" && error) {
-    return error;
-  }
-  if (hasStringMessage(error)) {
-    return error.message;
-  }
-  return "Image unavailable";
-}
-
-function hasStringMessage(
-  error: unknown,
-): error is { readonly message: string } {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "message" in error &&
-    typeof error.message === "string" &&
-    error.message.length > 0
-  );
 }

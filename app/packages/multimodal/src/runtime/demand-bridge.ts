@@ -22,6 +22,9 @@ export interface DemandHandlers {
   onDemandChanged(): void;
 }
 
+/** Default stand-down after a failed demand read. */
+export const DEMAND_FAILURE_BACKOFF_MS = 5_000;
+
 /** Refcounted demand registry shared by source-scoped runtime providers. */
 export interface DemandRegistry<THandlers extends DemandHandlers> {
   readonly handlersRef: MutableRef<THandlers | null>;
@@ -46,6 +49,12 @@ export interface DemandBridgeFillContext extends DemandBridgeRuntime {
   readonly userInitiated: boolean;
 }
 
+/** Replays provider-owned inventory demand when a bridge epoch becomes ready. */
+export interface DemandInventoryReplay<THandlers extends DemandHandlers> {
+  readonly ensure: (handlers: THandlers) => void;
+  readonly wantedRef: MutableRef<boolean>;
+}
+
 /** Configuration for the shared demand-bridge lifecycle. */
 export interface DemandBridgeOptions<
   THandlers extends DemandHandlers,
@@ -55,6 +64,7 @@ export interface DemandBridgeOptions<
   readonly demandDebounceMs?: number;
   readonly deferredRetryMs: number;
   readonly handlersRef: MutableRef<THandlers | null>;
+  readonly inventoryReplay?: DemandInventoryReplay<THandlers>;
   readonly makeHandlers: (runtime: DemandBridgeRuntime) => THandlers;
   readonly onFill: (context: DemandBridgeFillContext) => void;
   readonly onHandlersReady?: (handlers: THandlers) => void;
@@ -75,6 +85,7 @@ export function startDemandBridge<
   demandDebounceMs = 0,
   deferredRetryMs,
   handlersRef,
+  inventoryReplay,
   makeHandlers,
   onFill,
   onHandlersReady,
@@ -188,6 +199,9 @@ export function startDemandBridge<
   };
   const handlers = makeHandlers(runtime);
   handlersRef.current = handlers;
+  if (inventoryReplay?.wantedRef.current) {
+    inventoryReplay.ensure(handlers);
+  }
   onHandlersReady?.(handlers);
   queueFill();
   const unsubscribePlayhead = playbackStore
@@ -210,4 +224,76 @@ export function startDemandBridge<
 /** Current monotonic timestamp for bridge throttles and retries. */
 export function nowMs(): number {
   return monotonicNowMs();
+}
+
+/** One-shot inventory lifecycle with retry-after-error semantics. */
+export interface DemandInventoryMachine {
+  ensure(): void;
+}
+
+/** Configuration for a source-epoch inventory machine. */
+export interface DemandInventoryMachineOptions<State> {
+  readonly error: State;
+  readonly isCancelled: () => boolean;
+  readonly load: (publish: (state: State) => void) => Promise<void>;
+  readonly loading: State;
+  readonly publish: (state: State) => void;
+}
+
+/** Creates a lazy one-shot inventory reader whose error state is retryable. */
+export function createDemandInventoryMachine<State>({
+  error,
+  isCancelled,
+  load,
+  loading,
+  publish,
+}: DemandInventoryMachineOptions<State>): DemandInventoryMachine {
+  let requested = false;
+  const publishIfActive = (state: State) => {
+    if (!isCancelled()) publish(state);
+  };
+  return {
+    ensure() {
+      if (isCancelled() || requested) return;
+      requested = true;
+      publish(loading);
+      void load(publishIfActive).catch(() => {
+        if (isCancelled()) return;
+        requested = false;
+        publish(error);
+      });
+    },
+  };
+}
+
+/** Failure timestamps and user-initiated bypass for one demand epoch. */
+export interface DemandFailureBackoff<Key> {
+  clear(key: Key): void;
+  isBlocked(key: Key, nowMs: number, userInitiated: boolean): boolean;
+  record(key: Key, nowMs: number): void;
+}
+
+/** Creates a source-local failed-demand backoff ledger. */
+export function createDemandFailureBackoff<Key>(
+  backoffMs = DEMAND_FAILURE_BACKOFF_MS,
+): DemandFailureBackoff<Key> {
+  const failedAtMs = new Map<Key, number>();
+  return {
+    clear: (key) => failedAtMs.delete(key),
+    isBlocked: (key, currentMs, userInitiated) => {
+      if (userInitiated) return false;
+      const failedMs = failedAtMs.get(key);
+      return failedMs !== undefined && currentMs - failedMs < backoffMs;
+    },
+    record: (key, currentMs) => failedAtMs.set(key, currentMs),
+  };
+}
+
+/** Publishes an immutable map snapshot unless its bridge epoch was cancelled. */
+export function publishDemandMapSnapshot<Key, Value>(
+  source: ReadonlyMap<Key, Value>,
+  publish: (snapshot: ReadonlyMap<Key, Value>) => void,
+  isCancelled: () => boolean,
+): void {
+  if (!isCancelled()) publish(new Map(source));
 }

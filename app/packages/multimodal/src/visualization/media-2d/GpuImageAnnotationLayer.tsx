@@ -16,31 +16,16 @@ import {
   type GpuImageAnnotationResource,
   type GpuImageAnnotationSegmentResource,
 } from "./gpu-image-annotation-resources";
+import type {
+  ImageAnnotationNode,
+  ImageAnnotationTslFacade,
+  ImageAnnotationUniformNode,
+} from "../tsl-chainables";
 
 const CULLED_POSITION = 1e9;
 const ANNOTATION_Z = 0.2;
 const DEFAULT_RENDER_ORDER = 20;
 const NOOP_RAYCAST = () => undefined;
-
-interface AnnotationNode {
-  readonly w: AnnotationNode;
-  readonly x: AnnotationNode;
-  readonly y: AnnotationNode;
-  readonly z: AnnotationNode;
-  abs(): AnnotationNode;
-  add(value: AnnotationNode | number): AnnotationNode;
-  atan(value: AnnotationNode): AnnotationNode;
-  div(value: AnnotationNode | number): AnnotationNode;
-  greaterThan(value: AnnotationNode | number): AnnotationNode;
-  length(): AnnotationNode;
-  max(value: AnnotationNode | number): AnnotationNode;
-  mul(value: AnnotationNode | number): AnnotationNode;
-  sub(value: AnnotationNode | number): AnnotationNode;
-}
-
-interface AnnotationUniformNode<T> extends AnnotationNode {
-  value: T;
-}
 
 interface AnnotationNodeMaterial {
   blending: THREE.Blending;
@@ -48,41 +33,15 @@ interface AnnotationNodeMaterial {
   depthWrite: boolean;
   fragmentNode: TSL.Node | null;
   positionNode: TSL.Node | null;
-  rotationNode: AnnotationNode | null;
-  scaleNode: AnnotationNode | null;
-  sizeNode?: AnnotationNode | null;
+  rotationNode: ImageAnnotationNode | null;
+  scaleNode: ImageAnnotationNode | null;
+  sizeNode?: ImageAnnotationNode | null;
   toneMapped: boolean;
   transparent: boolean;
   dispose(): void;
 }
 
-const annotationTsl = TSL as unknown as {
-  Discard(condition: AnnotationNode): void;
-  Fn(callback: () => AnnotationNode): () => AnnotationNode;
-  and(...conditions: readonly AnnotationNode[]): AnnotationNode;
-  greaterThan(
-    left: AnnotationNode,
-    right: AnnotationNode | number,
-  ): AnnotationNode;
-  lessThan(
-    left: AnnotationNode,
-    right: AnnotationNode | number,
-  ): AnnotationNode;
-  or(...conditions: readonly AnnotationNode[]): AnnotationNode;
-  select(
-    condition: AnnotationNode,
-    whenTrue: AnnotationNode,
-    whenFalse: AnnotationNode,
-  ): AnnotationNode;
-  uniform<T extends THREE.Vector2 | THREE.Vector4>(
-    value: T,
-  ): AnnotationUniformNode<T>;
-  uv(): AnnotationNode;
-  vec2(...values: readonly (AnnotationNode | number)[]): AnnotationNode;
-  vec3(...values: readonly (AnnotationNode | number)[]): AnnotationNode;
-  vec4(...values: readonly (AnnotationNode | number)[]): AnnotationNode;
-  viewportUV: AnnotationNode;
-};
+const annotationTsl: ImageAnnotationTslFacade = TSL;
 
 /** Inputs for the instanced point/circle and line-segment render passes. */
 export interface GpuImageAnnotationLayerProps {
@@ -223,10 +182,10 @@ export function GpuImageAnnotationLayer({
 
 /** Node material and mutable view uniforms for one annotation batch. */
 export interface GpuImageAnnotationMaterial {
-  readonly dimensions: AnnotationUniformNode<THREE.Vector2>;
-  readonly imageRect: AnnotationUniformNode<THREE.Vector4>;
+  readonly dimensions: ImageAnnotationUniformNode<THREE.Vector2>;
+  readonly imageRect: ImageAnnotationUniformNode<THREE.Vector4>;
   readonly material: AnnotationNodeMaterial;
-  readonly pixelScale: AnnotationUniformNode<THREE.Vector2>;
+  readonly pixelScale: ImageAnnotationUniformNode<THREE.Vector2>;
 }
 
 /** Builds the procedural disc/ring material for batched points and circles. */
@@ -262,7 +221,7 @@ export function createGpuImageAnnotationPointMaterial(
     );
     annotationTsl.Discard(insideRing);
     return annotationTsl.vec4(color, 1);
-  })() as unknown as TSL.Node;
+  })();
 
   return { dimensions, imageRect, material, pixelScale };
 }
@@ -310,7 +269,7 @@ export function createGpuImageAnnotationSegmentMaterial(
     const distance = annotationTsl.vec2(capOffset, pixelOffset.y).length();
     annotationTsl.Discard(distance.greaterThan(thickness.mul(0.5)));
     return annotationTsl.vec4(color, 1);
-  })() as unknown as TSL.Node;
+  })();
 
   return { dimensions, imageRect, material, pixelScale };
 }
@@ -340,9 +299,9 @@ function configureMaterial(material: AnnotationNodeMaterial): void {
 }
 
 function annotationPosition(
-  point: AnnotationNode,
-  dimensions: AnnotationNode,
-): TSL.Node {
+  point: ImageAnnotationNode,
+  dimensions: ImageAnnotationNode,
+): ImageAnnotationNode {
   const valid = annotationTsl.and(
     annotationTsl.greaterThan(dimensions.x, 0),
     annotationTsl.greaterThan(dimensions.y, 0),
@@ -355,10 +314,10 @@ function annotationPosition(
       ANNOTATION_Z,
     ),
     annotationTsl.vec3(CULLED_POSITION, CULLED_POSITION, ANNOTATION_Z),
-  ) as unknown as TSL.Node;
+  );
 }
 
-function outsideImage(imageRect: AnnotationNode): AnnotationNode {
+function outsideImage(imageRect: ImageAnnotationNode): ImageAnnotationNode {
   return annotationTsl.or(
     annotationTsl.lessThan(annotationTsl.viewportUV.x, imageRect.x),
     annotationTsl.lessThan(annotationTsl.viewportUV.y, imageRect.y),
@@ -370,8 +329,8 @@ function outsideImage(imageRect: AnnotationNode): AnnotationNode {
 function attribute(
   value: THREE.InstancedBufferAttribute,
   type: "float" | "vec2" | "vec3",
-): AnnotationNode {
-  return TSL.instancedBufferAttribute(value, type) as unknown as AnnotationNode;
+): ImageAnnotationNode {
+  return TSL.instancedBufferAttribute<ImageAnnotationNode>(value, type);
 }
 
 function createSprite(

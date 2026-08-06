@@ -6,7 +6,12 @@ import type {
   PointCloudChannelEncoding,
 } from "../../../ir";
 import { pointCloudChannelEncodingKey } from "../../../ir";
-import type { GpuPointCloudNode } from "./gpu-point-cloud-position-nodes";
+import type {
+  PointCloudChannelNode,
+  PointCloudChannelTslFacade,
+  PointCloudColorVectorNode,
+  PointCloudPositionNode,
+} from "../../tsl-chainables";
 
 interface PointCloudChannel {
   readonly encoding: PointCloudChannelEncoding;
@@ -20,39 +25,7 @@ export interface GpuPointCloudChannelResource {
   values: PointCloudChannelArray;
 }
 
-interface GpuChannelNode extends TSL.Node {
-  add(value: GpuChannelNode | number): GpuChannelNode;
-  bitAnd(value: GpuChannelNode | number): GpuChannelNode;
-  div(value: GpuChannelNode | number): GpuChannelNode;
-  equal(value: GpuChannelNode | number): GpuChannelNode;
-  mod(value: GpuChannelNode | number): GpuChannelNode;
-  mul(value: GpuChannelNode | number): GpuChannelNode;
-  shiftLeft(value: GpuChannelNode | number): GpuChannelNode;
-  shiftRight(value: GpuChannelNode | number): GpuChannelNode;
-}
-
-interface GpuChannelStorageNode {
-  element(index: GpuChannelNode): GpuChannelNode;
-  toReadOnly(): GpuChannelStorageNode;
-}
-
-const channelTsl = TSL as unknown as {
-  float(value: GpuChannelNode | number): GpuChannelNode;
-  int(value: GpuChannelNode | number): GpuChannelNode;
-  select(
-    condition: GpuChannelNode,
-    whenTrue: GpuChannelNode,
-    whenFalse: GpuChannelNode,
-  ): GpuChannelNode;
-  storage(
-    attribute: THREE.BufferAttribute,
-    type: "float" | "int" | "uint",
-    count: number,
-  ): GpuChannelStorageNode;
-  uint(value: GpuChannelNode | number): GpuChannelNode;
-  uintBitsToFloat(value: GpuChannelNode): GpuChannelNode;
-  vec3(x: GpuChannelNode, y: GpuChannelNode, z: GpuChannelNode): GpuChannelNode;
-};
+const channelTsl: PointCloudChannelTslFacade = TSL;
 
 /** Creates a byte-preserving storage resource for one encoded channel. */
 export function createGpuPointCloudChannelResource(
@@ -92,54 +65,41 @@ export function updateGpuPointCloudChannelResource(
 /** Reads and decodes one scalar component from compact WGSL storage. */
 export function gpuPointCloudChannelValueNode(
   resource: GpuPointCloudChannelResource,
-  valueIndex: GpuPointCloudNode,
-): GpuPointCloudNode {
+  valueIndex: PointCloudPositionNode,
+): PointCloudChannelNode {
   const encoding = resource.encoding;
   const stored = storedChannelValueNode(
     resource.attribute,
     encoding,
-    valueIndex as GpuChannelNode,
+    valueIndex,
   );
   const decoded = channelTsl
     .float(stored)
     .mul(encoding.scale)
     .add(encoding.origin);
   if (encoding.invalidValue === null) {
-    return decoded as unknown as GpuPointCloudNode;
+    return decoded;
   }
 
   const invalid = integerNode(encoding, encoding.invalidValue);
   const nan = channelTsl.uintBitsToFloat(channelTsl.uint(0x7fc00000));
-  return channelTsl.select(
-    stored.equal(invalid),
-    nan,
-    decoded,
-  ) as unknown as GpuPointCloudNode;
+  return channelTsl.select(stored.equal(invalid), nan, decoded);
 }
 
 /** Reads the three RGB components associated with one sampled point. */
 export function gpuPointCloudRgbNode(
   resource: GpuPointCloudChannelResource,
-  sampleIndex: GpuPointCloudNode,
-): GpuPointCloudNode {
+  sampleIndex: PointCloudPositionNode,
+): PointCloudChannelNode & PointCloudColorVectorNode {
   if (resource.encoding.componentCount !== 3) {
     throw new Error("Point-cloud RGB resources require three components");
   }
-  const offset = (sampleIndex as unknown as GpuChannelNode).mul(3);
+  const offset = sampleIndex.mul(3);
   return channelTsl.vec3(
-    gpuPointCloudChannelValueNode(
-      resource,
-      offset as unknown as GpuPointCloudNode,
-    ) as unknown as GpuChannelNode,
-    gpuPointCloudChannelValueNode(
-      resource,
-      offset.add(1) as unknown as GpuPointCloudNode,
-    ) as unknown as GpuChannelNode,
-    gpuPointCloudChannelValueNode(
-      resource,
-      offset.add(2) as unknown as GpuPointCloudNode,
-    ) as unknown as GpuChannelNode,
-  ) as unknown as GpuPointCloudNode;
+    gpuPointCloudChannelValueNode(resource, offset),
+    gpuPointCloudChannelValueNode(resource, offset.add(1)),
+    gpuPointCloudChannelValueNode(resource, offset.add(2)),
+  );
 }
 
 /** Exact encoded bytes retained by the GPU resource. */
@@ -152,8 +112,8 @@ export function gpuPointCloudChannelResourceBytes(
 function storedChannelValueNode(
   attribute: THREE.BufferAttribute,
   encoding: PointCloudChannelEncoding,
-  valueIndex: GpuChannelNode,
-): GpuChannelNode {
+  valueIndex: PointCloudPositionNode,
+): PointCloudChannelNode {
   if (encoding.storage === "float32") {
     return channelTsl
       .storage(attribute, "float", attribute.count)
@@ -193,7 +153,7 @@ function storedChannelValueNode(
 function integerNode(
   encoding: PointCloudChannelEncoding,
   value: number,
-): GpuChannelNode {
+): PointCloudChannelNode {
   if (encoding.storage === "float32") {
     return channelTsl.float(value);
   }

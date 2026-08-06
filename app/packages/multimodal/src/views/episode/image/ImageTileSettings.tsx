@@ -22,10 +22,7 @@ import {
   POINT_CLOUD_POINT_SIZE_STEP,
   type ImageProjectionSettings,
 } from "../settings/modal/state";
-import {
-  checkboxNoSpaceToggleProps,
-  settingsBooleanNoSpaceToggleProps,
-} from "../settings/controls/settings-keyboard";
+import { settingsBooleanNoSpaceToggleProps } from "../settings/controls/settings-keyboard";
 import { SettingsLabel } from "../settings/controls/SettingsLabel";
 import SidebarGroup from "../settings/controls/SidebarGroup";
 import type {
@@ -345,7 +342,7 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
                       onChange={(checked) =>
                         toggleSceneAnnotationStream(source.id, checked)
                       }
-                      {...checkboxNoSpaceToggleProps}
+                      {...settingsBooleanNoSpaceToggleProps}
                     />
                   ))}
                 </div>
@@ -398,7 +395,7 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
                       onChange={(checked) =>
                         toggleProjectionStream(source.id, checked)
                       }
-                      {...checkboxNoSpaceToggleProps}
+                      {...settingsBooleanNoSpaceToggleProps}
                     />
                   ))}
                 </div>
@@ -443,7 +440,7 @@ function ImageLabelSourceGroup({
             label={source.label}
             checked={selectedStreams.includes(source.id)}
             onChange={(checked) => toggleStream(source.id, checked)}
-            {...checkboxNoSpaceToggleProps}
+            {...settingsBooleanNoSpaceToggleProps}
           />
         ))}
       </div>

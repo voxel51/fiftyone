@@ -1,6 +1,6 @@
 import { IconName } from "@voxel51/voodo";
 import React from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getEpisodeTileExtensions,
   registerEpisodeTileExtension,
@@ -20,6 +20,16 @@ const extension: EpisodeTileExtension = {
 afterEach(resetEpisodeTileExtensionsForTests);
 
 describe("episode tile extension registry", () => {
+  it("shares one registry across duplicate module evaluations", async () => {
+    registerEpisodeTileExtension(extension);
+    vi.resetModules();
+    const reloaded = await import("./registry");
+
+    expect(() =>
+      reloaded.registerEpisodeTileExtension({ ...extension }),
+    ).toThrow("Duplicate episode tile extension id: test:events");
+  });
+
   it("orders contributions explicitly and rejects conflicting ids", () => {
     registerEpisodeTileExtension({ ...extension, id: "test:later", order: 20 });
     registerEpisodeTileExtension(extension);

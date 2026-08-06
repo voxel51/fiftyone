@@ -94,6 +94,34 @@ describe("scene 3D picking layers", () => {
     expect(store.get(hoverEchoAtom)).toBeNull();
   });
 
+  it("does not retract a newer point hover from another surface", () => {
+    const store = createStore();
+    const { result } = renderPickingLayers(store, pointCloudLayer(42n));
+
+    act(() => {
+      result.current.hoverablePointCloudLayers[0]?.onHoverPoint?.({
+        color: [1, 0, 0],
+        pointIndex: 0,
+        worldPosition: [11, 12, 13],
+      });
+    });
+    const newerHover = {
+      color: null,
+      contentTimeNs: 99n,
+      fields: {},
+      kind: "point" as const,
+      pointIndex: 1,
+      position: [9, 9, 9] as const,
+      stream: "/other",
+    };
+    act(() => {
+      store.set(hoverEchoAtom, newerHover);
+      result.current.hoverablePointCloudLayers[0]?.onHoverPoint?.(null);
+    });
+
+    expect(store.get(hoverEchoAtom)).toBe(newerHover);
+  });
+
   it("omits the point marker for image-originated ray correspondence", () => {
     const store = createStore();
     const layer = pointCloudLayer(42n);
@@ -161,6 +189,38 @@ describe("scene 3D picking layers", () => {
       });
     });
     expect(result.current.annotationLayers[0]?.hovered).toBe(true);
+  });
+
+  it("does not retract a newer entity hover from another surface", () => {
+    const store = createStore();
+    const layer = sceneAnnotationLayer();
+    const wrapper = ({ children }: { readonly children: ReactNode }) =>
+      createElement(Provider, { store }, children);
+    const { result } = renderHook(
+      () =>
+        useScene3dPickingLayers({
+          pointCloudLayers: [],
+          pointCloudSources: [],
+          sceneAnnotationLayers: [layer],
+          worldFrameId: "map",
+        }),
+      { wrapper },
+    );
+
+    act(() => {
+      result.current.annotationLayers[0]?.onHoverEntity?.("car-1");
+    });
+    const newerHover = {
+      entityId: "car-2",
+      kind: "scene-annotation" as const,
+      stream: "/other",
+    };
+    act(() => {
+      store.set(hoverEchoAtom, newerHover);
+      result.current.annotationLayers[0]?.onHoverEntity?.(null);
+    });
+
+    expect(store.get(hoverEchoAtom)).toBe(newerHover);
   });
 });
 

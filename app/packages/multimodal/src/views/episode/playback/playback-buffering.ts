@@ -11,6 +11,7 @@ import type {
   SynchronizedFrameWindow,
 } from "../../../ir";
 import {
+  assertValidTimelineTickRateHz,
   DEFAULT_TIMELINE_TICK_RATE_HZ,
   type EpisodeStreamCache,
   type TimelineIndex,
@@ -78,9 +79,7 @@ export function derivePlaybackPolicy(
   policy: PlaybackPolicy,
   tickRateHz = DEFAULT_TIMELINE_TICK_RATE_HZ,
 ): DerivedPlaybackPolicy {
-  if (!Number.isFinite(tickRateHz) || tickRateHz <= 0) {
-    throw new Error("Playback tick rate must be finite and greater than zero");
-  }
+  assertValidTimelineTickRateHz(tickRateHz, "Playback");
   // Keep the amount of media buffered stable as sampling fidelity changes.
   // Tick-count limits are derived from these durations below.
   const startupLookaheadSeconds = policy.startupBufferSeconds;
@@ -452,7 +451,7 @@ export function contiguousBufferedSecondsFromPlayhead({
   if (startIndex === undefined) return 0;
 
   const endNs = index.secToNs(timeSec + maxSeconds);
-  const nominalTickSec = Number(index.stepNs) / 1_000_000_000;
+  const nominalTickSec = index.tickDurationSec;
   let lastCoveredTick: bigint | null = null;
   for (
     let indexPosition = startIndex;
@@ -477,15 +476,6 @@ export function activeStreamsInCaches(
   streams: readonly string[],
 ): string[] {
   return streams.filter((stream) => caches.get(stream)?.isActive);
-}
-
-/** Converts a non-negative nanosecond duration into seconds. */
-export function nsToSeconds(deltaNs: bigint): number {
-  const clamped = deltaNs < 0n ? 0n : deltaNs;
-  return (
-    Number(clamped / 1_000_000_000n) +
-    Number(clamped % 1_000_000_000n) / 1_000_000_000
-  );
 }
 
 /** Returns media age only after it crosses the configured stale threshold. */
@@ -589,7 +579,7 @@ export function computeBufferedRanges({
   indexes.sort((left, right) => left - right);
 
   const ranges: Array<[number, number]> = [];
-  const nominalTickSec = Number(index.stepNs) / 1_000_000_000;
+  const nominalTickSec = index.tickDurationSec;
   const pushRange = (startIndex: number, endIndex: number): void => {
     const startTick = index.tickAt(startIndex);
     const endTick = index.tickAt(endIndex);

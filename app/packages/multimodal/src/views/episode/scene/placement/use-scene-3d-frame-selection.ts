@@ -28,6 +28,10 @@ import type {
   StreamContentFrame,
   StreamPlaybackFrame,
 } from "../../playback/use-stream-values";
+import {
+  compareFrameIds,
+  uniqueSortedFrameIds,
+} from "../../../../utils/frame-ids";
 
 /** Frame names considered ego-centric automatic camera targets, in priority order. */
 export const PREFERRED_CAMERA_TARGET_FRAMES = [
@@ -537,14 +541,4 @@ function observationInventoryKey(
         `${observation.sourceId}:${observation.frameIds.join(",")}`,
     )
     .join("|");
-}
-
-function uniqueSortedFrameIds(frameIds: readonly string[]): readonly string[] {
-  return [...new Set(frameIds.map((id) => id.trim()).filter(Boolean))].sort(
-    compareFrameIds,
-  );
-}
-
-function compareFrameIds(left: string, right: string): number {
-  return left === right ? 0 : left < right ? -1 : 1;
 }

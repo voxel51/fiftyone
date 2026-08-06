@@ -15,6 +15,10 @@ import { VISUALIZATION_KIND } from "../../../ir";
 import { CANONICAL_POINT_CLOUD_SCALAR_COLOR_FIELDS } from "../../../visualization/scene-3d/point-cloud-color-policy";
 import { normalizeIdentifierName } from "../../../visualization/scene-3d/utils";
 import { useStreamCacheSnapshot } from "./cache-sampling";
+import {
+  evictOldestPointCloudChannels,
+  pointCloudChannelKey,
+} from "./point-cloud-channel-cache";
 
 const EMPTY_STREAMS: readonly string[] = [];
 
@@ -210,11 +214,7 @@ export function usePointCloudPlaybackFrames(
             if (current.get(key) === channel) return current;
             const next = new Map(current);
             next.set(key, channel);
-            while (next.size > 64) {
-              const oldest = next.keys().next().value;
-              if (oldest === undefined) break;
-              next.delete(oldest);
-            }
+            evictOldestPointCloudChannels(next);
             return next;
           });
         })
@@ -388,18 +388,6 @@ function pointCloudPayloadHasActiveChannel(
   }
   return payload.scalarFields.some(
     (field) => normalizeIdentifierName(field.name) === normalized,
-  );
-}
-
-function pointCloudChannelKey(
-  sourceKey: string,
-  stream: string,
-  contentTimeNs: bigint,
-  samplePlanKey: string,
-  activeColorBy: string,
-): string {
-  return [sourceKey, stream, contentTimeNs, samplePlanKey, activeColorBy].join(
-    "\0",
   );
 }
 

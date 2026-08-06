@@ -83,12 +83,62 @@ declare module "three/tsl" {
     sub(value: Node | number): Node;
   }
 
+  /** Runtime node shape exposed by the built-in instance index. */
+  export interface InstanceIndexNode extends Node {
+    readonly w: InstanceIndexNode;
+    readonly x: InstanceIndexNode;
+    readonly xy: InstanceIndexNode;
+    readonly xyz: InstanceIndexNode;
+    readonly y: InstanceIndexNode;
+    readonly z: InstanceIndexNode;
+    abs(): InstanceIndexNode;
+    add(value: Node | number): InstanceIndexNode;
+    bitAnd(value: Node | number): InstanceIndexNode;
+    div(value: Node | number): InstanceIndexNode;
+    dot(value: Node): InstanceIndexNode;
+    equal(value: Node | number): InstanceIndexNode;
+    mod(value: Node | number): InstanceIndexNode;
+    mul(value: Node | number): InstanceIndexNode;
+    length(): InstanceIndexNode;
+    max(value: Node | number): InstanceIndexNode;
+    min(value: Node | number): InstanceIndexNode;
+    shiftLeft(value: Node | number): InstanceIndexNode;
+    shiftRight(value: Node | number): InstanceIndexNode;
+    sub(value: Node | number): InstanceIndexNode;
+  }
+
+  /** Runtime node shape exposed by viewport coordinates. */
+  export interface ViewportNode extends Node {
+    readonly w: ViewportNode;
+    readonly x: ViewportNode;
+    readonly y: ViewportNode;
+    readonly z: ViewportNode;
+    abs(): ViewportNode;
+    add(value: Node | number): ViewportNode;
+    atan(value: Node): ViewportNode;
+    div(value: Node | number): ViewportNode;
+    greaterThan(value: Node | number): ViewportNode;
+    length(): ViewportNode;
+    max(value: Node | number): ViewportNode;
+    min(value: Node | number): ViewportNode;
+    mul(value: Node | number): ViewportNode;
+    sub(value: Node | number): ViewportNode;
+  }
+
+  /** Chainable storage binding returned by TSL storage accessors. */
+  export interface StorageNode<NodeType extends Node = Node> {
+    element(index: Node): NodeType;
+    toReadOnly(): StorageNode<NodeType>;
+  }
+
   export const cameraPosition: Node;
+  export const instanceIndex: InstanceIndexNode;
   export const positionGeometry: Node;
   export const positionWorld: Node;
   export const screenUV: Node;
+  export const viewportUV: ViewportNode;
 
-  export function instancedBufferAttribute(
+  export function instancedBufferAttribute<NodeType extends Node = Node>(
     array:
       | import("three").BufferAttribute
       | import("three").InterleavedBuffer
@@ -96,18 +146,60 @@ declare module "three/tsl" {
     type?: string | null,
     stride?: number,
     offset?: number,
-  ): Node;
+  ): NodeType;
 
-  export function abs(value: Node | number): Node;
-  export function clamp(
+  export function Discard(condition: Node): void;
+  export function Fn<NodeType extends Node>(
+    callback: () => NodeType,
+  ): () => NodeType;
+  export function abs<NodeType extends Node = Node>(
+    value: Node | number,
+  ): NodeType;
+  export function and<NodeType extends Node = Node>(
+    ...conditions: readonly Node[]
+  ): NodeType;
+  export function atan<NodeType extends Node = Node>(
+    y: Node,
+    x?: Node,
+  ): NodeType;
+  export function clamp<NodeType extends Node = Node>(
     value: Node | number,
     min: Node | number,
     max: Node | number,
-  ): Node;
-  export function float(value: Node | number): Node;
+  ): NodeType;
+  export function dot<NodeType extends Node = Node>(
+    left: Node,
+    right: Node,
+  ): NodeType;
+  export function equal<NodeType extends Node = Node>(
+    left: Node,
+    right: Node | number,
+  ): NodeType;
+  export function float<NodeType extends Node = Node>(
+    value: Node | number,
+  ): NodeType;
   export function floor(value: Node | number): Node;
   export function fract(value: Node | number): Node;
   export function fwidth(value: Node | number): Node;
+  export function greaterThan<NodeType extends Node = Node>(
+    left: Node,
+    right: Node | number,
+  ): NodeType;
+  export function greaterThanEqual<NodeType extends Node = Node>(
+    left: Node,
+    right: Node | number,
+  ): NodeType;
+  export function int<NodeType extends Node = Node>(
+    value: Node | number,
+  ): NodeType;
+  export function lessThan<NodeType extends Node = Node>(
+    left: Node,
+    right: Node | number,
+  ): NodeType;
+  export function lessThanEqual<NodeType extends Node = Node>(
+    left: Node,
+    right: Node | number,
+  ): NodeType;
   export function log2(value: Node | number): Node;
   export function max(a: Node | number, b: Node | number): Node;
   export function mix(
@@ -115,7 +207,46 @@ declare module "three/tsl" {
     b: Node | number,
     t: Node | number,
   ): Node;
+  export function not<NodeType extends Node = Node>(condition: Node): NodeType;
+  export function or<NodeType extends Node = Node>(
+    ...conditions: readonly Node[]
+  ): NodeType;
   export function pow(a: Node | number, b: Node | number): Node;
-  export function vec2(...values: readonly (Node | number)[]): Node;
-  export function vec3(...values: readonly (Node | number)[]): Node;
+  export function select<NodeType extends Node = Node>(
+    condition: Node,
+    whenTrue: Node | number,
+    whenFalse: Node | number,
+  ): NodeType;
+  export function sqrt<NodeType extends Node = Node>(value: Node): NodeType;
+  export function storage<NodeType extends Node = Node>(
+    attribute: import("three").BufferAttribute,
+    type: "float" | "int" | "uint" | "vec3",
+    count: number,
+  ): StorageNode<NodeType>;
+  export function texture<NodeType extends Node = Node>(
+    texture: import("three").Texture,
+    uv: Node,
+  ): NodeType;
+  export function uint<NodeType extends Node = Node>(
+    value: Node | number,
+  ): NodeType;
+  export function uintBitsToFloat<NodeType extends Node = Node>(
+    value: Node,
+  ): NodeType;
+  export function uniform<T, NodeType extends Node = Node>(
+    value: T,
+  ): NodeType & { value: T };
+  export function uv<NodeType extends Node = Node>(): NodeType;
+  export function uvec4<NodeType extends Node = Node>(
+    ...values: readonly (Node | number)[]
+  ): NodeType;
+  export function vec2<NodeType extends Node = Node>(
+    ...values: readonly (Node | number)[]
+  ): NodeType;
+  export function vec3<NodeType extends Node = Node>(
+    ...values: readonly (Node | number)[]
+  ): NodeType;
+  export function vec4<NodeType extends Node = Node>(
+    ...values: readonly (Node | number)[]
+  ): NodeType;
 }

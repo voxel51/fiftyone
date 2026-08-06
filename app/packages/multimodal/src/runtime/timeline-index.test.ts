@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createTimelineIndex } from "./timeline-index";
+import { createTimelineIndex, nsDeltaToSeconds } from "./timeline-index";
 
 describe("timeline index", () => {
+  it("converts positive and negative nanosecond deltas precisely", () => {
+    expect(nsDeltaToSeconds(86_400_500_000_001n)).toBe(86_400.500000001);
+    expect(nsDeltaToSeconds(-1_500_000_000n)).toBe(-1.5);
+  });
+
   it("represents the default 30 Hz tick grid without materializing it", () => {
     const timeline = createTimelineIndex({ endNs: 100_000_000n, startNs: 0n });
 
@@ -50,6 +55,7 @@ describe("timeline index", () => {
     );
 
     expect(timeline.stepNs).toBe(16_666_667n);
+    expect(timeline.tickDurationSec).toBe(0.016666667);
     expect(timeline.tickRateHz).toBe(60);
     expect(timeline.tickCount).toBe(60);
   });

@@ -286,9 +286,18 @@ describe("indexed MCAP message reader", () => {
     preAborted.abort();
     const cold = createHarness([fixture]);
 
-    await expect(
-      cold.read({ entries: fixture.entries, signal: preAborted.signal }),
-    ).rejects.toMatchObject({ name: "AbortError" });
+    const preWorkError = await cold
+      .read({ entries: fixture.entries, signal: preAborted.signal })
+      .catch((cause: unknown) => cause);
+    expect(preWorkError).toBeInstanceOf(Error);
+    expect(preWorkError).toMatchObject({
+      message: "MCAP indexed message read aborted",
+      name: "AbortError",
+    });
+    expect((preWorkError as Error).constructor).toBe(Error);
+    expect((preWorkError as Error).stack).toContain(
+      "indexed-message-reader.ts",
+    );
     expect(cold.readContained).not.toHaveBeenCalled();
 
     let resolveRead: (value: McapContainedByteRead) => void = () => undefined;
@@ -311,7 +320,10 @@ describe("indexed MCAP message reader", () => {
     controller.abort();
     resolveRead(containedRead(fixture));
 
-    await expect(read).rejects.toMatchObject({ name: "AbortError" });
+    await expect(read).rejects.toMatchObject({
+      message: "MCAP indexed message read aborted",
+      name: "AbortError",
+    });
     expect(inFlight.decompress).not.toHaveBeenCalled();
   });
 });

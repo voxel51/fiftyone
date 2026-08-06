@@ -7,9 +7,10 @@ import {
   type RosMessageDefinition,
 } from "../message-decoders/ros/wire";
 import { protobufFromBinaryDescriptor } from "../compatibility/mcap-support";
-import type {
-  McapIndexedMessageTime,
-  McapIndexedReaderLike,
+import {
+  materializeIndexedEntries,
+  type McapIndexedMessageTime,
+  type McapIndexedReaderLike,
 } from "../reader/index";
 import type {
   McapEnumerateNumericFieldsRequest,
@@ -93,30 +94,6 @@ const ROS_NUMERIC_SCALAR_TYPES: ReadonlySet<string> = new Set([
   "float",
   "double",
 ]);
-
-/**
- * Enumerates numeric leaf field paths of a protobufjs message type in
- * declaration order. Repeated and map fields have data-dependent concrete
- * paths, so this walk leaves them for bounded message sampling during topic
- * enumeration. Nested messages recurse up to
- * `MAX_FIELD_DEPTH` with a cycle guard for self-referential schemas.
- */
-export function walkProtobufNumericFields(
-  type: Type,
-): readonly McapNumericFieldDescriptor[] {
-  return protobufNumericFields(type).fields;
-}
-
-/**
- * Enumerates numeric leaf field paths of parsed ROS message definitions.
- * Arrays are left for bounded message sampling during topic enumeration;
- * nested complex fields recurse up to `MAX_FIELD_DEPTH` with a cycle guard.
- */
-export function walkRosNumericFields(
-  definitions: readonly RosMessageDefinition[],
-): readonly McapNumericFieldDescriptor[] {
-  return rosNumericFields(definitions).fields;
-}
 
 function rosNumericFields(
   definitions: readonly RosMessageDefinition[],
@@ -536,7 +513,7 @@ async function sampleNumericFieldsForTopics(
 
   const samplesByTopic = new Map<string, Record<string, unknown>[]>();
   try {
-    const messages = await reader.readIndexedMessages({ entries });
+    const messages = await materializeIndexedEntries(reader, entries);
     for (const [index, message] of messages.entries()) {
       const entry = entries[index];
       const decoder = entry && decodersByTopic.get(entry.topic);

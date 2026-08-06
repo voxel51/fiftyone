@@ -43,6 +43,7 @@ import {
   createEpisodePlaybackRuntime,
   createTimelineIndex,
   episodeSourceAccessKey,
+  nsDeltaToSeconds,
   type StreamSubscriptionOptions,
   type TimelineIndex,
 } from "../../../runtime";
@@ -60,7 +61,6 @@ import {
   derivePlaybackPolicy,
   type DerivedPlaybackPolicy,
   INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS,
-  nsToSeconds,
   resetPlaybackBuffering,
 } from "./playback-buffering";
 import {
@@ -74,6 +74,10 @@ import { StartupCushionPlanner, type StartupCushion } from "./startup-cushion";
 import { resetStartupCushionState } from "./startup-cushion-state";
 import { EpisodeStreamCache, releaseArrayBuffers } from "../../../runtime";
 import type { StreamPlaybackFrame } from "./use-stream-values";
+import {
+  evictOldestPointCloudChannels,
+  pointCloudChannelKey,
+} from "./point-cloud-channel-cache";
 
 /**
  * Trailing-throttle interval for republishing buffered ranges to the
@@ -490,10 +494,14 @@ export function useRegisterDataStream({
             bound.streamId,
             bound.firstTimestampNs,
           );
-          const startSec =
+          const startDeltaNs =
             bound.firstTimestampNs === null
               ? null
-              : nsToSeconds(bound.firstTimestampNs - range.startNs);
+              : bound.firstTimestampNs - range.startNs;
+          const startSec =
+            startDeltaNs === null
+              ? null
+              : nsDeltaToSeconds(startDeltaNs < 0n ? 0n : startDeltaNs);
           setStreamStartTimeSec(store, bound.streamId, startSec);
         }
         scheduleAutoSeekToFirstData();
@@ -951,13 +959,13 @@ export function useRegisterDataStream({
           samplePlanKey: request.samplePlanKey,
         });
       }
-      const key = [
+      const key = pointCloudChannelKey(
         sourceKey,
         request.stream,
-        request.timestampNs.toString(),
+        request.timestampNs,
         request.samplePlanKey,
         request.activeColorBy,
-      ].join("\0");
+      );
       const cached = pointCloudChannelReadsRef.current.get(key);
       if (cached) return cached;
 
@@ -966,11 +974,7 @@ export function useRegisterDataStream({
         throw error;
       });
       pointCloudChannelReadsRef.current.set(key, read);
-      while (pointCloudChannelReadsRef.current.size > 64) {
-        const oldest = pointCloudChannelReadsRef.current.keys().next().value;
-        if (oldest === undefined) break;
-        pointCloudChannelReadsRef.current.delete(oldest);
-      }
+      evictOldestPointCloudChannels(pointCloudChannelReadsRef.current);
       return read;
     },
     [session, sourceKey],

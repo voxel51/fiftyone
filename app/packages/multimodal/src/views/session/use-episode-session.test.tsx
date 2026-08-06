@@ -102,6 +102,39 @@ describe("useEpisodeSession", () => {
     unmount();
   });
 
+  it("disposes a session that resolves after its request loses ownership", async () => {
+    const firstOpen = deferred<EpisodeSession>();
+    const secondSession = createSession();
+    const firstSource = createSource("sample-a");
+    const secondSource = createSource("sample-b");
+    sessionHarness.openEpisodeSession
+      .mockReturnValueOnce(firstOpen.promise)
+      .mockResolvedValueOnce(secondSession);
+
+    const { rerender, result, unmount } = renderHook(
+      ({ source }: { source: EpisodeSource }) =>
+        useEpisodeSession(
+          { mediaType: "group", path: `${source.episodeId}.mcap` },
+          source,
+        ),
+      { initialProps: { source: firstSource } },
+    );
+
+    await waitFor(() =>
+      expect(sessionHarness.openEpisodeSession).toHaveBeenCalledOnce(),
+    );
+    rerender({ source: secondSource });
+    await waitFor(() => expect(result.current.session).toBe(secondSession));
+
+    const lateSession = createSession();
+    firstOpen.resolve(lateSession);
+    await waitFor(() => expect(lateSession.dispose).toHaveBeenCalledOnce());
+    expect(lateSession.activate).not.toHaveBeenCalled();
+    expect(result.current.session).toBe(secondSession);
+
+    unmount();
+  });
+
   it("disposes a session that fails to activate", async () => {
     const session = createSession();
     const source = createSource("sample-a");
@@ -141,4 +174,15 @@ function createSession(): EpisodeSession {
     activate: vi.fn(),
     dispose: vi.fn(),
   } as unknown as EpisodeSession;
+}
+
+function deferred<T>(): {
+  readonly promise: Promise<T>;
+  readonly resolve: (value: T) => void;
+} {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
 }

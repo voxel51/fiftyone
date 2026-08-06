@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ImageAnnotationsVisualization } from "../../../ir";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import type { DecodedFrame } from "../../../ir";
-import type { TimelineIndex } from "../../../runtime";
+import { nsDeltaToSeconds, type TimelineIndex } from "../../../runtime";
 import {
   DataStreamProvider,
   useSetDataStream,
@@ -78,6 +78,7 @@ function makeTimeline(ticks: readonly bigint[]): TimelineIndex {
     startTimeNs,
     stepNs,
     tickAt: (index) => ticks[index],
+    tickDurationSec: nsDeltaToSeconds(stepNs),
     tickRateHz: 1_000_000_000 / Number(stepNs),
     tickCount: ticks.length,
     secToNs: toNs,

@@ -13,6 +13,10 @@ import type {
   SceneTrianglePrimitive,
 } from "../../../../ir/index";
 import { optionalBigInt, optionalString } from "../foxglove/protobuf/records";
+import {
+  coerceDecodedNumber,
+  ROS_NUMBER_COERCION_POLICY,
+} from "../numeric-coercion";
 import { timingFromContext } from "../foxglove/protobuf/timing";
 import { rosRecordDecoderForPayload } from "./wire";
 
@@ -398,22 +402,7 @@ function firstBigInt(
 }
 
 function numberValue(value: unknown): number | undefined {
-  if (typeof value === "number") {
-    return value;
-  }
-  if (typeof value === "bigint") {
-    return Number(value);
-  }
-  if (
-    value &&
-    typeof value === "object" &&
-    "toNumber" in value &&
-    typeof value.toNumber === "function"
-  ) {
-    return value.toNumber();
-  }
-
-  return undefined;
+  return coerceDecodedNumber(value, ROS_NUMBER_COERCION_POLICY);
 }
 
 function isArrayBufferView(value: unknown): value is ArrayBufferView {

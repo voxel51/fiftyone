@@ -2,41 +2,26 @@ import * as THREE from "three";
 import * as TSL from "three/tsl";
 
 import { POINT_COMPONENT_COUNT } from "../point-cloud-colors";
+import type {
+  PointCloudChannelNode,
+  PointCloudPositionNode,
+  PointCloudPositionTslFacade,
+} from "../../tsl-chainables";
 
 /** Storage layout used by a point-cloud position buffer. */
 export type GpuPointCloudPositionLayout = "flat" | "vec3";
 
 /** TSL node shape used by point-cloud position and sampling helpers. */
-export interface GpuPointCloudNode extends TSL.Node {
-  readonly x: GpuPointCloudNode;
-  readonly y: GpuPointCloudNode;
-  readonly z: GpuPointCloudNode;
-  add(value: GpuPointCloudNode | number): GpuPointCloudNode;
-  mul(value: GpuPointCloudNode | number): GpuPointCloudNode;
-}
+export type GpuPointCloudNode = PointCloudPositionNode;
 
-interface GpuPointCloudStorageNode {
-  element(index: GpuPointCloudNode): GpuPointCloudNode;
-  toReadOnly(): GpuPointCloudStorageNode;
-}
+/** Instance index shape accepted by compact point-cloud channel reads. */
+export type GpuPointCloudSampleIndexNode = PointCloudChannelNode;
 
 // Fiber's bundled Three typings lag the runtime's storage/index TSL exports.
-const pointCloudTsl = TSL as unknown as {
-  readonly instanceIndex: GpuPointCloudNode;
-  storage(
-    attribute: THREE.BufferAttribute,
-    type: "float" | "vec3",
-    count: number,
-  ): GpuPointCloudStorageNode;
-  vec3(
-    x: GpuPointCloudNode,
-    y: GpuPointCloudNode,
-    z: GpuPointCloudNode,
-  ): GpuPointCloudNode;
-};
+const pointCloudTsl: PointCloudPositionTslFacade = TSL;
 
 /** Shader counterpart of `gpuPointCloudSampleIndex`, shared by draw and pick. */
-export function gpuPointCloudSampleIndexNode(): GpuPointCloudNode {
+export function gpuPointCloudSampleIndexNode(): GpuPointCloudSampleIndexNode {
   return pointCloudTsl.instanceIndex;
 }
 

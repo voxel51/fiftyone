@@ -1,11 +1,6 @@
 import type { DecodeContext } from "../../../../decoders/index";
-import type {
-  DecodedAttributeValue,
-  DecodedOutput,
-} from "../../../../ir/index";
-import { resourceHintsForArrayBufferViews } from "../../../../decoders/index";
-import { VISUALIZATION_KIND } from "../../../../ir/index";
-import { decodeImageRgba } from "../image-encodings";
+import type { DecodedOutput } from "../../../../ir/index";
+import { buildNormalizedRawImageOutput } from "../normalized-image";
 import {
   bytesField,
   integerField,
@@ -46,60 +41,23 @@ export function decodeRosImageRecord(
   const encoding = stringField(message, "encoding", "unknown");
   const data = bytesField(message, "data");
   const bigEndian = booleanLikeField(message, "is_bigendian");
-  const baseAttributes: Record<string, DecodedAttributeValue> = {
-    ...rosHeaderAttributes(header),
+  return buildNormalizedRawImageOutput({
+    attributes: {
+      ...rosHeaderAttributes(header),
+      bigEndian,
+    },
     bigEndian,
-    byteLength: data.byteLength,
-    encoding,
-    height,
-    step,
-    width,
-  };
-  const timing = timingFromRosHeader(context, header);
-  const result = decodeImageRgba({
-    bigEndian,
+    coordinateFrameId: frameId,
     data,
     encoding,
     height,
+    messageTimestamp,
+    retainUnsupportedData: false,
     sourceLabel: "ROS Image",
     step,
+    timing: timingFromRosHeader(context, header),
     width,
   });
-  const attributes = {
-    ...baseAttributes,
-    ...result.attributes,
-    ...(result.unsupportedReason
-      ? { unsupportedReason: result.unsupportedReason }
-      : {}),
-  };
-
-  if (!result.rgba) {
-    return {
-      attributes,
-      timing,
-    };
-  }
-
-  return {
-    attributes,
-    resourceHints: resourceHintsForArrayBufferViews(
-      result.rgba,
-      ...(result.depth ? [result.depth.values] : []),
-    ),
-    timing,
-    visualization: {
-      ...(frameId ? { coordinateFrameId: frameId } : {}),
-      ...(result.depth ? { depth: result.depth } : {}),
-      height,
-      kind: VISUALIZATION_KIND.RAW_IMAGE,
-      rgba: result.rgba,
-      sourceEncoding: encoding,
-      ...(messageTimestamp !== undefined
-        ? { timestampNs: messageTimestamp }
-        : {}),
-      width,
-    },
-  };
 }
 
 function booleanLikeField(

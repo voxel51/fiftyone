@@ -13,6 +13,7 @@ import {
   isMcapBoundedReadCancelledError,
   type McapBoundedReadCancelledError,
 } from "./bounded-read-cancellation";
+import { MCAP_BOUNDED_GRANT_YIELD_INTERVAL } from "./consume-bounded-grant";
 import { ByteClientReadable } from "./byte-readable";
 import { createMcapDecompressedChunkCache } from "./decompressed-chunk-cache";
 import type {
@@ -667,7 +668,9 @@ describe("bounded MCAP reader", () => {
     expect(cancellation.usage.chunksOpened).toBe(1);
     expect(cancellation.usage.decompressionCacheHits).toBe(1);
     expect(cancellation.usage.decompressedBytes).toBe(0);
-    expect(cancellation.usage.messagesDecoded).toBe(64);
+    expect(cancellation.usage.messagesDecoded).toBe(
+      MCAP_BOUNDED_GRANT_YIELD_INTERVAL,
+    );
     expect(cancellation.usage.transferredBytes).toBe(0);
     expect(harness.networkReads).toHaveLength(readsAfterWarm);
   });

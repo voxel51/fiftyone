@@ -2,6 +2,7 @@ import * as THREE from "three";
 
 import type { EncodedVideoVisualization } from "../../ir";
 import { h264AccessUnitWithParameterSets } from "../../codecs/h264-annexb";
+import { toError } from "../../utils/errors";
 import type { ImageTextureHandle } from "./Base2dScene";
 
 const VIDEO_DECODE_SESSION_CAP = 6;
@@ -325,7 +326,7 @@ class H264VideoDecodeSession {
     this.configuredCodecString = codecString;
     this.decoder = new Decoder({
       error: (error) => {
-        this.rejectPending(asError(error));
+        this.rejectPending(toError(error));
         this.resetDecoder();
       },
       output: (videoFrame) => {
@@ -401,7 +402,7 @@ class H264VideoDecodeSession {
         clearTimeout(pending.timeout);
         this.pending = this.pending.filter((entry) => entry !== pending);
         this.resetDecoder();
-        reject(asError(error));
+        reject(toError(error));
       }
     });
   }
@@ -536,8 +537,4 @@ function encodedVideoChunkConstructor():
 
 function closeVideoFrame(videoFrame: VideoFrameLike): void {
   videoFrame.close?.();
-}
-
-function asError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(String(error));
 }

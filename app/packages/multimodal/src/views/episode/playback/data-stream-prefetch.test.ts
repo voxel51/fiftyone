@@ -30,6 +30,95 @@ const IMAGE = "/camera";
 const LIDAR = "/lidar";
 
 describe("data stream prefetcher", () => {
+  it.each(["batch", "current"] as const)(
+    "keeps stale-epoch rejection identical for %s delivery",
+    async (lane) => {
+      const read = deferred<SynchronizedFrameWindow>();
+      const batchRead = deferred<readonly SynchronizedFrameWindow[]>();
+      const harness = createHarness({
+        readSynchronized: vi.fn(() => read.promise),
+        readSynchronizedBatch: vi.fn(() => batchRead.promise),
+      });
+      harness.caches.get(IMAGE)?.subscribe();
+
+      expect(fetchLane(harness, lane, 0n, [IMAGE])).toBe(true);
+      harness.sourceEpoch += 1;
+      const window = windowAt(0n, [frame(IMAGE, 0n)]);
+      read.resolve(window);
+      batchRead.resolve([window]);
+      await settle();
+
+      expect(harness.caches.get(IMAGE)?.has(0n)).toBe(false);
+      expect(harness.fetchState.failureStreaks).toEqual(new Map());
+    },
+  );
+
+  it.each(["batch", "current"] as const)(
+    "keeps inactive-stream filtering identical for %s delivery",
+    async (lane) => {
+      const read = deferred<SynchronizedFrameWindow>();
+      const batchRead = deferred<readonly SynchronizedFrameWindow[]>();
+      const harness = createHarness({
+        readSynchronized: vi.fn(() => read.promise),
+        readSynchronizedBatch: vi.fn(() => batchRead.promise),
+      });
+      const release = harness.caches.get(IMAGE)?.subscribe();
+
+      expect(fetchLane(harness, lane, 0n, [IMAGE])).toBe(true);
+      release?.();
+      const window = windowAt(0n, [frame(IMAGE, 0n)]);
+      read.resolve(window);
+      batchRead.resolve([window]);
+      await settle();
+
+      expect(harness.caches.get(IMAGE)?.has(0n)).toBe(false);
+    },
+  );
+
+  it.each(["batch", "current"] as const)(
+    "keeps cancellation filtering identical for %s delivery",
+    async (lane) => {
+      const read = deferred<SynchronizedFrameWindow>();
+      const batchRead = deferred<readonly SynchronizedFrameWindow[]>();
+      const harness = createHarness({
+        readSynchronized: vi.fn(() => read.promise),
+        readSynchronizedBatch: vi.fn(() => batchRead.promise),
+      });
+      harness.caches.get(IMAGE)?.subscribe();
+
+      expect(fetchLane(harness, lane, 0n, [IMAGE])).toBe(true);
+      if (lane === "batch") {
+        batchRead.reject(new EpisodeReadCancelledError());
+      } else {
+        read.reject(new EpisodeReadCancelledError());
+      }
+      await settle();
+
+      expect(harness.fetchState.failureStreaks).toEqual(new Map());
+      expect(harness.prefetcher.isStreamPending("0", IMAGE)).toBe(false);
+    },
+  );
+
+  it.each(["batch", "current"] as const)(
+    "keeps partial decode failure isolation identical for %s delivery",
+    async (lane) => {
+      const window = windowAt(0n, [frame(LIDAR, 0n)], [IMAGE]);
+      const harness = createHarness({
+        readSynchronized: vi.fn(async () => window),
+        readSynchronizedBatch: vi.fn(async () => [window]),
+      });
+      harness.caches.get(IMAGE)?.subscribe();
+      harness.caches.get(LIDAR)?.subscribe();
+
+      expect(fetchLane(harness, lane, 0n, [IMAGE, LIDAR])).toBe(true);
+      await settle();
+
+      expect(harness.fetchState.failureStreaks).toEqual(new Map([[IMAGE, 1]]));
+      expect(harness.caches.get(IMAGE)?.has(0n)).toBe(false);
+      expect(harness.caches.get(LIDAR)?.get(0n)).toEqual(frame(LIDAR, 0n));
+    },
+  );
+
   it("drops stale source results and results for an unsubscribed stream", async () => {
     const staleRead = deferred<readonly SynchronizedFrameWindow[]>();
     const unsubscribedRead = deferred<SynchronizedFrameWindow>();
@@ -293,6 +382,17 @@ function createHarness({
     store,
   });
   return harness;
+}
+
+function fetchLane(
+  harness: ReturnType<typeof createHarness>,
+  lane: "batch" | "current",
+  tick: bigint,
+  streams: string[],
+): boolean {
+  return lane === "batch"
+    ? harness.prefetcher.fetchBatch([tick], streams, "playback-prefetch")
+    : harness.prefetcher.fetchCurrentFrame(tick, streams);
 }
 
 function frame(streamId: string, timestampNs: bigint): DecodedFrame {

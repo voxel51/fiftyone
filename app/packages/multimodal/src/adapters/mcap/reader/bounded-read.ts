@@ -6,6 +6,7 @@ import {
 import type { ByteRange } from "../../../ir";
 import type { ReadWorkBudget, ReadWorkUsage } from "../../../ports";
 import { monotonicNowMs } from "../../../utils/monotonic-time";
+import { throwIfAborted } from "../../../utils/cancellation";
 import { ByteClientReadable } from "./byte-readable";
 import {
   decompressMcapChunkRecord,
@@ -18,6 +19,7 @@ import {
   readChunkIndexedMessageTimes,
 } from "./message-index";
 import { McapBoundedReadCancelledError } from "./bounded-read-cancellation";
+import { MCAP_BOUNDED_GRANT_YIELD_INTERVAL } from "./consume-bounded-grant";
 import type {
   McapBoundedMessageReadRequest,
   McapBoundedMessageReadResult,
@@ -25,10 +27,9 @@ import type {
   McapReadContinuation,
 } from "./types";
 
-const DECODE_CANCELLATION_YIELD_INTERVAL = 64;
-
 type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
 type McapMessage = McapTypes.TypedMcapRecords["Message"];
+const MCAP_BOUNDED_READ_ABORT_MESSAGE = "MCAP bounded read aborted";
 
 interface OrderedMessage {
   readonly chunkStartOffset: bigint;
@@ -131,7 +132,7 @@ export function createMcapBoundedReader({
 
     try {
       while (groupIndex < groups.length) {
-        throwIfAborted(request.signal);
+        throwIfAborted(request.signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
         if (
           request.maxGroups !== undefined &&
           groupsOpened >= request.maxGroups
@@ -226,7 +227,7 @@ export function createMcapBoundedReader({
 
         const groupMessages: OrderedMessage[] = [];
         for (const chunk of group.chunks) {
-          throwIfAborted(request.signal);
+          throwIfAborted(request.signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
           const plannedFill = readable.planReadRange(
             chunk.chunkStartOffset,
             chunk.chunkLength,
@@ -277,7 +278,7 @@ export function createMcapBoundedReader({
             // One precharged decompression is the atomic CPU unit; yield so a
             // worker cancel message can arrive before record parsing begins.
             await yieldToCancellation();
-            throwIfAborted(request.signal);
+            throwIfAborted(request.signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
           } else if (chunk.compression.length > 0) {
             decompressionCacheHits += 1;
           }
@@ -291,11 +292,11 @@ export function createMcapBoundedReader({
           for (const message of messages) {
             if (
               recordOrder > 0 &&
-              recordOrder % DECODE_CANCELLATION_YIELD_INTERVAL === 0
+              recordOrder % MCAP_BOUNDED_GRANT_YIELD_INTERVAL === 0
             ) {
               await yieldToCancellation();
             }
-            throwIfAborted(request.signal);
+            throwIfAborted(request.signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
             if (
               channelIds.has(message.channelId) &&
               isWithinWindow(
@@ -335,7 +336,7 @@ export function createMcapBoundedReader({
         // Give queued foreground work and cancellation a deterministic
         // handoff point between complete ownership groups.
         await yieldToCancellation();
-        throwIfAborted(request.signal);
+        throwIfAborted(request.signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
         if (
           groupIndex < groups.length &&
           wallTimeExpired(nowMs, startedAtMs, request.budget.maxWallTimeMs)
@@ -484,13 +485,13 @@ async function countSelectedIndexedMessages({
 }): Promise<number> {
   let count = 0;
   for (const chunk of group.chunks) {
-    throwIfAborted(request.signal);
+    throwIfAborted(request.signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
     const entries = await readChunkIndexedMessageTimes({
       channelIds,
       chunkIndex: chunk,
       endTimeNs: request.endTimeNs,
       readExact: async (offset, size) => {
-        throwIfAborted(request.signal);
+        throwIfAborted(request.signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
         const plannedRange = readable.planReadRange(offset, size, {
           blockFill: false,
           readahead: false,
@@ -777,15 +778,6 @@ function wallTimeExpired(
 
 function yieldToCancellation(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
-}
-
-function throwIfAborted(signal: AbortSignal | undefined): void {
-  if (!signal?.aborted) {
-    return;
-  }
-  const error = new Error("MCAP bounded read aborted");
-  error.name = "AbortError";
-  throw error;
 }
 
 function validateRequest(request: McapBoundedMessageReadRequest): void {

@@ -21,7 +21,13 @@ import type { CameraModel } from "../spatial/camera-geometry/camera-model";
 
 const mocks = vi.hoisted(() => ({
   dwell: null as PointerDwellOptions | null,
-  setHover: vi.fn(),
+  owned: new Map<string, unknown>(),
+  publisher: {
+    disownAll: vi.fn(),
+    publish: vi.fn(),
+    retract: vi.fn(),
+    retire: vi.fn(),
+  },
 }));
 
 vi.mock("../../../visualization/interaction/pointer-dwell", () => ({
@@ -36,12 +42,37 @@ vi.mock("../interaction/point-hover/hover-echo", async (importOriginal) => {
     await importOriginal<
       typeof import("../interaction/point-hover/hover-echo")
     >();
-  return { ...original, useSetHoverEcho: () => mocks.setHover };
+  return {
+    ...original,
+    useOwnedHoverEchoPublisher: () => mocks.publisher,
+  };
 });
 
 beforeEach(() => {
   mocks.dwell = null;
-  mocks.setHover.mockReset();
+  mocks.owned.clear();
+  mocks.publisher.publish.mockReset();
+  mocks.publisher.publish.mockImplementation((key, hover) => {
+    mocks.owned.set(key, hover);
+  });
+  mocks.publisher.retract.mockReset();
+  mocks.publisher.retract.mockImplementation((key) => {
+    const hover = mocks.owned.get(key);
+    if (!hover) return null;
+    mocks.owned.delete(key);
+    return { cleared: true, hover, key };
+  });
+  mocks.publisher.retire.mockReset();
+  mocks.publisher.retire.mockImplementation((predicate) => {
+    const retired = [];
+    for (const [key, hover] of mocks.owned) {
+      if (!predicate(key, hover)) continue;
+      mocks.owned.delete(key);
+      retired.push({ cleared: true, hover, key });
+    }
+    return retired;
+  });
+  mocks.publisher.disownAll.mockReset();
 });
 
 afterEach(() => cleanup());
@@ -74,7 +105,7 @@ describe("ImageProjectionOverlay", () => {
       targetV: 150,
     });
     await waitFor(() =>
-      expect(mocks.setHover).toHaveBeenCalledWith({
+      expect(mocks.publisher.publish).toHaveBeenCalledWith("image-projection", {
         color: [1, 0, 0],
         contentTimeNs: 42n,
         fields: {},
@@ -126,11 +157,7 @@ describe("ImageProjectionOverlay", () => {
     await act(async () => pending.promise);
 
     expect(picker.invalidate).toHaveBeenCalled();
-    expect(
-      mocks.setHover.mock.calls.some(
-        ([value]) => typeof value === "object" && value?.kind === "point",
-      ),
-    ).toBe(false);
+    expect(mocks.publisher.publish).not.toHaveBeenCalled();
   });
 
   it("clears the published interaction when its point frame changes", async () => {
@@ -151,24 +178,14 @@ describe("ImageProjectionOverlay", () => {
     mockOverlayBounds(rendered.container);
 
     act(() => mocks.dwell?.onDwell(210, 170));
-    await waitFor(() =>
-      expect(
-        mocks.setHover.mock.calls.some(
-          ([value]) => typeof value === "object" && value?.kind === "point",
-        ),
-      ).toBe(true),
-    );
-    const published = mocks.setHover.mock.calls.find(
-      ([value]) => typeof value === "object" && value?.kind === "point",
-    )?.[0];
+    await waitFor(() => expect(mocks.publisher.publish).toHaveBeenCalledOnce());
+    expect(mocks.owned.has("image-projection")).toBe(true);
 
     rendered.rerender(projectionOverlay(projectionLayer(43n), picker));
 
-    await waitFor(() => {
-      const clear = mocks.setHover.mock.calls.at(-1)?.[0];
-      expect(clear).toBeTypeOf("function");
-      expect(clear(published)).toBeNull();
-    });
+    await waitFor(() =>
+      expect(mocks.owned.has("image-projection")).toBe(false),
+    );
     expect(picker.invalidate).toHaveBeenCalled();
     expect(screen.queryByTestId("episode-3d-hover-tooltip")).toBeNull();
   });

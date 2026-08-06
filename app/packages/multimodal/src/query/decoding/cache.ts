@@ -1,6 +1,6 @@
 import {
   createByteBoundedCache,
-  estimateFieldSize,
+  decodedOutputSizeBytes,
   type MemoryCacheOptions,
   serializeCacheKey,
   setByteBoundedEntry,
@@ -45,20 +45,12 @@ export function createMemoryDecodedOutputCache(
       return cache.get(decodedOutputCacheKey(key));
     },
     async put(key, result) {
-      const hintedSize = result.output.resourceHints?.sizeBytes;
-      const resultSizeBytes =
-        hintedSize === undefined
-          ? estimateFieldSize(result.output)
-          : hintedSize +
-            estimateFieldSize(result.output.attributes) +
-            estimateFieldSize(result.output.timing);
-
       setByteBoundedEntry(
         cache,
         options,
         decodedOutputCacheKey(key),
         result,
-        resultSizeBytes,
+        decodedOutputSizeBytes(result.output),
       );
     },
   };

@@ -31,6 +31,7 @@ export {
   parseMcapMessageIndexRecord,
   readIndexedMessageTimesForReader,
 } from "./message-index";
+export { materializeIndexedEntries } from "./materialize-indexed-entries";
 export {
   DEFAULT_MAX_PREDECESSOR_CHUNK_PROBES,
   readLatestIndexedMessageTimesForReader,

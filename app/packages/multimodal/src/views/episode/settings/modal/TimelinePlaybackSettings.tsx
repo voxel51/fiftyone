@@ -38,18 +38,21 @@ export default function TimelinePlaybackSettings({
   readonly rateHz: number;
 }) {
   const preset = timelineSamplingPresetForRate(rateHz);
-  const [selection, setSelection] = useState<SamplingSelection>(
-    preset?.id ?? CUSTOM_PRESET_ID,
+  const [customDraftRateHz, setCustomDraftRateHz] = useState<number | null>(
+    preset ? null : rateHz,
   );
-  const [customRateHz, setCustomRateHz] = useState(rateHz);
+  const selection: SamplingSelection =
+    customDraftRateHz !== null
+      ? CUSTOM_PRESET_ID
+      : (preset?.id ?? CUSTOM_PRESET_ID);
+  const customRateHz = customDraftRateHz ?? rateHz;
 
   // External changes include source/dataset navigation restoring a different
-  // persisted rate. Keep the control synchronized without disturbing an
-  // uncommitted Custom draft for the current rate.
+  // persisted rate. A changed commit replaces any draft; same-rate rerenders
+  // leave an unapplied draft intact.
   useEffect(() => {
     const restoredPreset = timelineSamplingPresetForRate(rateHz);
-    setSelection(restoredPreset?.id ?? CUSTOM_PRESET_ID);
-    setCustomRateHz(rateHz);
+    setCustomDraftRateHz(restoredPreset ? null : rateHz);
   }, [rateHz]);
 
   const summary = preset
@@ -58,15 +61,14 @@ export default function TimelinePlaybackSettings({
 
   const selectSampling = (value: string) => {
     if (value === CUSTOM_PRESET_ID) {
-      setSelection(CUSTOM_PRESET_ID);
-      setCustomRateHz(rateHz);
+      setCustomDraftRateHz(rateHz);
       return;
     }
     const next = TIMELINE_SAMPLING_PRESETS.find(
       (candidate) => candidate.id === value,
     );
     if (!next) return;
-    setSelection(next.id);
+    setCustomDraftRateHz(null);
     onRateChange(next.rateHz);
   };
 
@@ -97,7 +99,7 @@ export default function TimelinePlaybackSettings({
             max={MAX_TIMELINE_SAMPLING_RATE_HZ}
             min={MIN_TIMELINE_SAMPLING_RATE_HZ}
             onCommit={(value) =>
-              setCustomRateHz(normalizeTimelineSamplingRateHz(value))
+              setCustomDraftRateHz(normalizeTimelineSamplingRateHz(value))
             }
             step={1}
             unit="Hz"

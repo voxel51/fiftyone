@@ -114,14 +114,11 @@ export function chooseCalibrationStream(
   let bestScoreTied = false;
   const imageTokens = streamTokens(imageSourceName);
   for (const calibrationSourceName of calibrationSourceNames) {
-    const calibrationTokens = streamTokens(calibrationSourceName);
-    let score =
-      cameraPrefix && isAtOrBelowPrefix(calibrationSourceName, cameraPrefix)
-        ? 10
-        : 0;
-    for (const token of imageTokens) {
-      if (calibrationTokens.has(token)) score += 1;
-    }
+    const score = streamMatchScore(
+      calibrationSourceName,
+      cameraPrefix,
+      imageTokens,
+    );
     if (score > bestScore) {
       bestScore = score;
       bestStream = calibrationSourceName;

@@ -19,8 +19,8 @@ import {
   normalizeReferenceGrid,
   normalizeSceneBackground,
   normalizeStreamList,
+  persistModalSettingsUpdate,
   readModalSettings,
-  writeModalSettings,
   type ImageProjectionSettings,
   type PersistedModalSettings,
   type PinholeCameraSettings,
@@ -50,11 +50,13 @@ export {
   MIN_POINT_CLOUD_POINT_SIZE,
   defaultPointCloudColorForIndex,
   defaultPointCloudColorForSource,
+  resolvePointCloudColorOptions,
   readModalSettings,
   writeModalSettings,
   type ImageProjectionSettings,
   type PersistedModalSettings,
   type PinholeCameraSettings,
+  type PointCloudColorSource,
   type PersistedPointCloudColorSettings,
   type ReferenceGridSettings,
   type SceneBackgroundMode,
@@ -91,9 +93,9 @@ function resolveStreamKeyedMap<Key extends keyof ScopedModalSettings>(
 }
 
 /**
- * Routes one stream-keyed write to the active scope (re-inserted last so
- * pruning drops least-recently-written scopes first), or to the unscoped
- * global map while unscoped.
+ * Routes one stream-keyed write to the active scope, or to the unscoped
+ * global map while unscoped. The persistence engine timestamps only the
+ * touched scope for truthful LRU eviction.
  */
 function updateStreamKeyedSettings<Key extends keyof ScopedModalSettings>(
   get: Getter,
@@ -102,20 +104,24 @@ function updateStreamKeyedSettings<Key extends keyof ScopedModalSettings>(
   updateMap: (current: ScopedModalSettings[Key]) => ScopedModalSettings[Key],
 ): void {
   const scope = get(settingsScopeAtom);
-  updateModalSettings(set, (current) => {
-    if (!scope) {
-      return { ...current, [key]: updateMap(current[key]) };
-    }
-    const previousScoped = current.scoped[scope] ?? EMPTY_SCOPED_SETTINGS;
-    const nextScoped = {
-      ...previousScoped,
-      [key]: updateMap(previousScoped[key]),
-    };
-    const scoped = { ...current.scoped };
-    delete scoped[scope];
-    scoped[scope] = nextScoped;
-    return { ...current, scoped };
-  });
+  updateModalSettings(
+    set,
+    (current) => {
+      if (!scope) {
+        return { ...current, [key]: updateMap(current[key]) };
+      }
+      const previousScoped = current.scoped[scope] ?? EMPTY_SCOPED_SETTINGS;
+      const nextScoped = {
+        ...previousScoped,
+        [key]: updateMap(previousScoped[key]),
+      };
+      return {
+        ...current,
+        scoped: { ...current.scoped, [scope]: nextScoped },
+      };
+    },
+    scope || undefined,
+  );
 }
 
 const pinholeCameraAtom = atom(
@@ -276,14 +282,14 @@ const imageProjectionAtom = atom(
 function updateModalSettings(
   set: Setter,
   resolver: (current: PersistedModalSettings) => PersistedModalSettings,
+  touchedScope?: string,
 ): void {
   set(modalSettingsAtom, (current) => {
     const next = resolver(current);
     if (next === current) {
       return current;
     }
-    writeModalSettings(next);
-    return next;
+    return persistModalSettingsUpdate(next, touchedScope);
   });
 }
 

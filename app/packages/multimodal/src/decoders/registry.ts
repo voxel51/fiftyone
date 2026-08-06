@@ -40,13 +40,6 @@ export class DecoderRegistry {
   find(payload: PayloadDescriptor): Decoder | undefined {
     return this.decodersByPayloadKey.get(payloadDescriptorKey(payload));
   }
-
-  /**
-   * Lists registered decoders.
-   */
-  list(): readonly Decoder[] {
-    return [...this.decodersByPayloadKey.values()];
-  }
 }
 
 function formatDecoderKey(payload: PayloadDescriptor): string {

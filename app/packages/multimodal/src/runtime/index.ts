@@ -10,9 +10,13 @@ export {
 } from "../query/bytes/network-meter";
 /** Public inclusive range and numeric-series bookkeeping. */
 export * from "./numeric-series-window";
+/** Public point-cloud construction, sampling, and channel-encoding policy. */
+export * from "./point-cloud-channel-encoding";
+export * from "./point-cloud-render-payload";
 /** Public lightweight episode-preview pacing policy. */
 export * from "./episode-preview";
 export * from "./frame-transform-types";
+export * from "./frame-transform-ranges";
 export * from "./frame-transforms";
 /** Public semantics-preserving session read policy and acceleration fallbacks. */
 export * from "./read-policy";

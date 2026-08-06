@@ -1,5 +1,6 @@
 import type { McapTypes } from "@mcap/core";
 import { safeNumber } from "../../../query/bytes/bigint-utils";
+import { throwIfAborted } from "../../../utils/cancellation";
 import { ByteClientReadable } from "./byte-readable";
 import {
   decompressMcapChunkRecord,
@@ -15,6 +16,7 @@ import type {
 const MCAP_MESSAGE_OPCODE = 0x05;
 const MCAP_RECORD_HEADER_BYTES = 9;
 const MCAP_MESSAGE_PREFIX_BYTES = 2 + 4 + 8 + 8;
+const MCAP_INDEXED_READ_ABORT_MESSAGE = "MCAP indexed message read aborted";
 
 type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
 type McapMessage = McapTypes.TypedMcapRecords["Message"];
@@ -53,7 +55,7 @@ export function createMcapIndexedMessageReader({
     typeof sourceKey === "function" ? sourceKey() : sourceKey;
 
   return async ({ entries, signal }) => {
-    throwIfAborted(signal);
+    throwIfAborted(signal, MCAP_INDEXED_READ_ABORT_MESSAGE);
     decompressedChunkCache.activateSource(currentSourceKey());
 
     const entriesByChunk = new Map<bigint, McapIndexedMessageTime[]>();
@@ -65,7 +67,7 @@ export function createMcapIndexedMessageReader({
 
     const messagesByEntry = new Map<McapIndexedMessageTime, McapMessage>();
     for (const [chunkStartOffset, selected] of entriesByChunk) {
-      throwIfAborted(signal);
+      throwIfAborted(signal, MCAP_INDEXED_READ_ABORT_MESSAGE);
       const chunk = chunkIndexes.get(chunkStartOffset);
       if (!chunk) {
         throw new Error(
@@ -81,10 +83,10 @@ export function createMcapIndexedMessageReader({
         readable,
         signal,
       });
-      throwIfAborted(signal);
+      throwIfAborted(signal, MCAP_INDEXED_READ_ABORT_MESSAGE);
 
       for (const entry of selected) {
-        throwIfAborted(signal);
+        throwIfAborted(signal, MCAP_INDEXED_READ_ABORT_MESSAGE);
         messagesByEntry.set(entry, parseIndexedMessage(records, entry));
       }
     }
@@ -116,7 +118,7 @@ async function loadChunkRecords({
   readonly readable: ByteClientReadable;
   readonly signal?: AbortSignal;
 }): Promise<Uint8Array> {
-  throwIfAborted(signal);
+  throwIfAborted(signal, MCAP_INDEXED_READ_ABORT_MESSAGE);
   const beforeReadKey = mcapDecompressedChunkKeyForIndex(
     currentSourceKey(),
     chunk,
@@ -134,13 +136,13 @@ async function loadChunkRecords({
     chunk.chunkLength,
     { signal },
   );
-  throwIfAborted(signal);
+  throwIfAborted(signal, MCAP_INDEXED_READ_ABORT_MESSAGE);
   const result = decompressedChunkCache.getOrLoad(
     mcapDecompressedChunkKeyForIndex(currentSourceKey(), chunk),
     "indexed-message-reader",
     () => decompressMcapChunkRecord(body.bytes, chunk, decompressHandlers),
   );
-  throwIfAborted(signal);
+  throwIfAborted(signal, MCAP_INDEXED_READ_ABORT_MESSAGE);
   return result.bytes;
 }
 
@@ -192,13 +194,3 @@ function parseIndexedMessage(
 function dataView(bytes: Uint8Array): DataView {
   return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 }
-
-function throwIfAborted(signal: AbortSignal | undefined): void {
-  if (!signal?.aborted) {
-    return;
-  }
-  const error = new Error("MCAP indexed message read aborted");
-  error.name = "AbortError";
-  throw error;
-}
-

@@ -27,11 +27,6 @@ export interface ByteTimelinePoint {
   readonly startOffsetBytes: bigint;
 }
 
-/** Returns whether an inclusive nanosecond range is coherent. */
-export function isValidNsRange(range: NsRange): boolean {
-  return range.endNs >= range.startNs;
-}
-
 /** Comparator for nanosecond/bigint values suitable for stable array sorting. */
 export function compareBigInt(left: bigint, right: bigint): number {
   return left < right ? -1 : left > right ? 1 : 0;

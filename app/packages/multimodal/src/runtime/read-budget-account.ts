@@ -11,7 +11,7 @@ export interface SourceReadBudgetSnapshot extends ReadWorkBudget {
 }
 
 /** One conservative reservation made before a bounded grant starts. */
-export interface SourceReadBudgetReservation {
+export interface PhysicalReadBudgetReservation {
   readonly budget: ReadWorkBudget;
   readonly maxPhysicalUnits: number;
   commit(
@@ -27,7 +27,7 @@ export interface SourceReadBudgetLedger {
   reserve(
     budget: ReadWorkBudget,
     physicalUnits: number,
-  ): SourceReadBudgetReservation | undefined;
+  ): PhysicalReadBudgetReservation | undefined;
 }
 
 /**

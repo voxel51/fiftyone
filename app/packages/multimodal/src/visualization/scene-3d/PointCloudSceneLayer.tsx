@@ -33,6 +33,10 @@ import {
   gpuPointCloudPositionNode,
   gpuPointCloudSampleIndexNode,
 } from "./gpu/gpu-point-cloud-position-nodes";
+import {
+  createPointCloudSpriteMaterial,
+  type PointCloudInstanceAttributes,
+} from "./gpu/point-cloud-sprite-material";
 import { POINT_COMPONENT_COUNT } from "./point-cloud-colors";
 import {
   GpuPointCloud3dPickerRegistryContext,
@@ -46,6 +50,11 @@ import type {
 } from "./types";
 import { useInvalidateOn } from "./use-invalidate-on";
 
+export {
+  createPointCloudSpriteMaterial,
+  type PointCloudInstanceAttributes,
+} from "./gpu/point-cloud-sprite-material";
+
 // Default point sprite size in pixels. Lives here (not in the panel) so
 // the offscreen snapshot renderer can share it without importing the
 // panel's WebGPU canvas dependency graph.
@@ -57,11 +66,6 @@ export const POINT_CLOUD_POINTS_MATERIAL_PROPS = {
 
 export const WEBGPU_POINT_PRIMITIVE_SIZE_PX = 1;
 const NOOP_RAYCAST = () => undefined;
-
-export interface PointCloudInstanceAttributes {
-  readonly color: THREE.InstancedBufferAttribute;
-  readonly position: THREE.InstancedBufferAttribute;
-}
 
 /** Decoder-owned sampled arrays and resolved style for the zero-copy GPU path. */
 export interface GpuPointCloudSceneData {
@@ -661,42 +665,6 @@ function PointCloudSizedSprites({
   );
 
   return <primitive key={capacity} object={sprite} />;
-}
-
-export function createPointCloudSpriteMaterial(
-  attributes: PointCloudInstanceAttributes,
-  pointSize: number,
-  circular = false,
-) {
-  const material = new PointsNodeMaterial({
-    size: pointSize,
-    sizeAttenuation: false,
-  }) as PointsNodeMaterial & { fragmentNode: TSL.Node | null };
-  material.colorNode = TSL.instancedBufferAttribute(attributes.color, "vec3");
-  material.positionNode = TSL.instancedBufferAttribute(
-    attributes.position,
-    "vec3",
-  );
-  if (circular) {
-    type SpriteNode = TSL.Node & {
-      greaterThan(value: number): SpriteNode;
-      length(): SpriteNode;
-      sub(value: number): SpriteNode;
-    };
-    const tsl = TSL as unknown as {
-      Discard(condition: SpriteNode): void;
-      Fn(callback: () => TSL.Node): () => TSL.Node;
-      uv(): SpriteNode;
-      vec4(color: TSL.Node | null, alpha: number): TSL.Node;
-    };
-    material.fragmentNode = tsl.Fn(() => {
-      const centeredPoint = tsl.uv().sub(0.5) as SpriteNode;
-      const pointRadius = centeredPoint.length() as SpriteNode;
-      tsl.Discard(pointRadius.greaterThan(0.5));
-      return tsl.vec4(material.colorNode, 1);
-    })();
-  }
-  return material;
 }
 
 /**

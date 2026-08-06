@@ -107,7 +107,7 @@ describe("EpisodeStreamCache", () => {
     cache.resize(2);
 
     expect(cache.isActive).toBe(true);
-    expect(cache.stats().entryCount).toBe(2);
+    expect(cache.cachedTicks()).toHaveLength(2);
     expect(cache.get(1n)).toBeUndefined();
     expect(listener).toHaveBeenCalledTimes(4);
     release();
@@ -123,7 +123,7 @@ describe("EpisodeStreamCache", () => {
     expect(cache.has(0n)).toBe(false);
     expect(cache.has(1n)).toBe(true);
     expect(cache.has(2n)).toBe(true);
-    expect(cache.stats().entryCount).toBe(2);
+    expect(cache.cachedTicks()).toHaveLength(2);
   });
 
   it("counts one decoded message once across multiple tick placements", () => {
@@ -133,19 +133,15 @@ describe("EpisodeStreamCache", () => {
     cache.set(2n, MESSAGE);
     cache.set(3n, MESSAGE);
 
-    expect(cache.stats()).toEqual({
-      decodedBytes: 128,
-      entryCount: 3,
-    });
+    expect(cache.decodedBytes).toBe(128);
+    expect(cache.cachedTicks()).toHaveLength(3);
 
     cache.pruneOutsideRanges([{ endTick: 3n, startTick: 3n }]);
-    expect(cache.stats().decodedBytes).toBe(128);
+    expect(cache.decodedBytes).toBe(128);
 
     cache.clear();
-    expect(cache.stats()).toEqual({
-      decodedBytes: 0,
-      entryCount: 0,
-    });
+    expect(cache.decodedBytes).toBe(0);
+    expect(cache.cachedTicks()).toHaveLength(0);
   });
 
   it("enumerates each live transferable backing store once", () => {
@@ -175,19 +171,11 @@ describe("EpisodeStreamCache", () => {
     const first = { ...MESSAGE, recordId: "record:1" };
     const duplicate = { ...MESSAGE, recordId: "record:1" };
 
-    expect(cache.set(1n, first)).toEqual({
-      avoidedDecodedBytes: 0,
-      canonicalized: false,
-      canonicalEligible: true,
-    });
-    expect(cache.set(2n, duplicate)).toEqual({
-      avoidedDecodedBytes: 128,
-      canonicalized: true,
-      canonicalEligible: true,
-    });
+    cache.set(1n, first);
+    cache.set(2n, duplicate);
 
     expect(cache.get(2n)).toBe(first);
-    expect(cache.stats().decodedBytes).toBe(128);
+    expect(cache.decodedBytes).toBe(128);
   });
 
   it("forgets canonical identity after its final placement is released", () => {
@@ -202,7 +190,7 @@ describe("EpisodeStreamCache", () => {
 
     cache.set(1n, first);
     cache.set(2n, replacement);
-    expect(cache.set(3n, reloaded).canonicalized).toBe(false);
+    cache.set(3n, reloaded);
     expect(cache.get(3n)).toBe(reloaded);
   });
 
@@ -211,13 +199,9 @@ describe("EpisodeStreamCache", () => {
     const duplicate = { ...MESSAGE };
 
     cache.set(1n, MESSAGE);
-    expect(cache.set(2n, duplicate)).toEqual({
-      avoidedDecodedBytes: 0,
-      canonicalized: false,
-      canonicalEligible: false,
-    });
+    cache.set(2n, duplicate);
     expect(cache.get(2n)).toBe(duplicate);
-    expect(cache.stats().decodedBytes).toBe(256);
+    expect(cache.decodedBytes).toBe(256);
   });
 
   it("releases unique decoded bytes on replacement, LRU eviction, and clear", () => {
@@ -231,19 +215,17 @@ describe("EpisodeStreamCache", () => {
     };
 
     cache.set(1n, MESSAGE);
-    expect(cache.stats().decodedBytes).toBe(128);
+    expect(cache.decodedBytes).toBe(128);
 
     cache.set(2n, second);
-    expect(cache.stats()).toEqual({
-      decodedBytes: 256,
-      entryCount: 1,
-    });
+    expect(cache.decodedBytes).toBe(256);
+    expect(cache.cachedTicks()).toHaveLength(1);
 
     cache.set(2n, MESSAGE);
-    expect(cache.stats().decodedBytes).toBe(128);
+    expect(cache.decodedBytes).toBe(128);
 
     cache.clear();
-    expect(cache.stats().decodedBytes).toBe(0);
+    expect(cache.decodedBytes).toBe(0);
   });
 
   it("prunes outside disjoint playback-order runways", () => {
@@ -263,7 +245,7 @@ describe("EpisodeStreamCache", () => {
     expect(cache.has(2n)).toBe(true);
     expect(cache.has(3n)).toBe(false);
     expect(cache.has(4n)).toBe(true);
-    expect(cache.stats().decodedBytes).toBe(128);
+    expect(cache.decodedBytes).toBe(128);
   });
 
   it("derives temporal limits from the messages observed by the stream", () => {

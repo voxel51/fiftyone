@@ -486,6 +486,41 @@ describe("useFrameTransforms", () => {
     expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(5);
   });
 
+  it("clears scheduled retries before resetting the source", async () => {
+    vi.useFakeTimers();
+    const source = createSource("retry-cleanup");
+    const client = createFrameTransformClient({
+      readFrameTransformWindow: vi.fn(async () => {
+        throw new Error("temporary tf failure");
+      }),
+    });
+
+    const { rerender } = render(
+      <FrameTransformsHarness
+        client={client}
+        label="frames"
+        source={source}
+        timeNs={100n}
+      />,
+    );
+
+    await flushReactWork();
+    expect(client.readFrameTransformWindow).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(1);
+
+    rerender(
+      <FrameTransformsHarness
+        client={client}
+        label="frames"
+        source={null}
+        timeNs={100n}
+      />,
+    );
+    await flushReactWork();
+
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("treats superseded placement reads as benign", async () => {
     const source = createSource("superseded-placement");
     const staleRead = deferred<EpisodeFrameTransformSet>();

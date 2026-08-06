@@ -1,6 +1,10 @@
 import type { EpisodeComposedFrameTransform } from "../../../../runtime/frame-transform-types";
 import type { EpisodeFrameGraphSummary } from "../../../../runtime/frame-transforms";
 import type { ReferenceSelectionSource } from "../../reference-selection-types";
+import {
+  compareFrameIds,
+  uniqueSortedFrameIds,
+} from "../../../../utils/frame-ids";
 
 const STABLE_REFERENCE_FRAME_IDS = ["map", "world", "odom"] as const;
 const EGO_FRAME_IDS = ["base_link", "ego_vehicle", "ego", "vehicle"] as const;
@@ -236,7 +240,7 @@ export function deriveReferenceDecision(
   userReferenceFrameId?: string,
 ): ReferenceDecision {
   const observations = normalizeObservations(facts.observations);
-  const observedFrameIds = uniqueSorted(
+  const observedFrameIds = uniqueSortedFrameIds(
     observations.flatMap((observation) => observation.frameIds),
   );
   const components = componentsIncludingIsolatedData(
@@ -281,7 +285,7 @@ export function deriveReferenceDecision(
       choosePreferredFrame(component, EGO_FRAME_IDS) ||
       primaryAnchorFrameId ||
       firstNonOptical(component);
-  const allFrameIds = uniqueSorted(
+  const allFrameIds = uniqueSortedFrameIds(
     components.flatMap((candidate) => candidate),
   );
 
@@ -550,7 +554,7 @@ function componentsIncludingIsolatedData(
   graphComponents: readonly (readonly string[])[],
   observedFrameIds: readonly string[],
 ): readonly (readonly string[])[] {
-  const components = graphComponents.map(uniqueSorted);
+  const components = graphComponents.map(uniqueSortedFrameIds);
   const graphFrameIds = new Set(components.flatMap((component) => component));
   for (const frameId of observedFrameIds) {
     if (!graphFrameIds.has(frameId)) components.push([frameId]);
@@ -573,7 +577,7 @@ function normalizeObservations(
   }
   return [...frameIdsBySourceId]
     .map(([sourceId, frameIds]) => ({
-      frameIds: uniqueSorted(frameIds),
+      frameIds: uniqueSortedFrameIds(frameIds),
       sourceId,
     }))
     .filter((observation) => observation.frameIds.length > 0)
@@ -587,20 +591,10 @@ function hasObservedFrames(observations: readonly FrameObservation[]): boolean {
 }
 
 function firstNonOptical(frameIds: readonly string[]): string {
-  const sorted = uniqueSorted(frameIds);
+  const sorted = uniqueSortedFrameIds(frameIds);
   return (
     sorted.find((frameId) => !frameId.toLowerCase().includes("optical")) ??
     sorted[0] ??
     ""
   );
-}
-
-function uniqueSorted(frameIds: readonly string[]): readonly string[] {
-  return [...new Set(frameIds.map((id) => id.trim()).filter(Boolean))].sort(
-    compareFrameIds,
-  );
-}
-
-function compareFrameIds(left: string, right: string): number {
-  return left === right ? 0 : left < right ? -1 : 1;
 }

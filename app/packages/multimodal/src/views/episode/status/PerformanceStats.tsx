@@ -24,7 +24,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -37,16 +36,13 @@ import { imageTextureCacheStats } from "../../../visualization/media-2d/image-te
 import { gpuPointCloudColormapTextureStats } from "../../../visualization/scene-3d/gpu/gpu-point-cloud-colormap-texture";
 import { mapPerformanceStats } from "../map/rendering/performance";
 import styles from "../settings/modal/SettingsSidebar.module.css";
+import type { PointCloudSamplingSummary } from "./health";
+import { useCopyFeedback } from "../../../visualization/panel-ui/use-copy-feedback";
 
 const STATS_REFRESH_INTERVAL_MS = 1_000;
 const PLAYHEAD_REFRESH_INTERVAL_MS = 250;
 const COPY_CONFIRMATION_MS = 1_500;
 const LONG_FRAME_THRESHOLD_MS = 50;
-
-interface PointCloudSamplingSummary {
-  readonly largestFinitePointCount: number;
-  readonly sampledCloudCount: number;
-}
 
 interface BrowserPerformanceMemory {
   readonly jsHeapSizeLimit: number;
@@ -98,8 +94,10 @@ function LivePerformanceStats({
   const bufferingDetail = useBufferingDetail();
   const framePerformance = useFramePerformanceStats();
   const [runtime, setRuntime] = useState(readRuntimeStats);
-  const [copied, setCopied] = useState(false);
-  const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [copied, showCopyFeedback] = useCopyFeedback(
+    false,
+    COPY_CONFIRMATION_MS,
+  );
 
   // This effect samples cumulative runtime counters for the live panel.
   useEffect(() => {
@@ -109,16 +107,6 @@ function LivePerformanceStats({
     );
     return () => clearInterval(interval);
   }, []);
-
-  // This effect clears the copy-feedback timer on unmount.
-  useEffect(
-    () => () => {
-      if (copyResetTimer.current !== null) {
-        clearTimeout(copyResetTimer.current);
-      }
-    },
-    [],
-  );
 
   const snapshotBase = useMemo(
     () => ({
@@ -147,15 +135,8 @@ function LivePerformanceStats({
     } catch {
       return;
     }
-    setCopied(true);
-    if (copyResetTimer.current !== null) {
-      clearTimeout(copyResetTimer.current);
-    }
-    copyResetTimer.current = setTimeout(
-      () => setCopied(false),
-      COPY_CONFIRMATION_MS,
-    );
-  }, [playbackStore, snapshotBase]);
+    showCopyFeedback(true);
+  }, [playbackStore, showCopyFeedback, snapshotBase]);
 
   const {
     environment,
@@ -488,3 +469,4 @@ function formatOptionalBytes(value: number | null): string {
   if (value === null) return "Unavailable";
   return `${formatDecimal(value / (1024 * 1024))} MiB`;
 }
+

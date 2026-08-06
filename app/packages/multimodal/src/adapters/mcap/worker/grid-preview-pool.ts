@@ -1,5 +1,4 @@
 import { byteSourceAccessKey } from "../../../query/bytes";
-import { errorMessage, toError } from "../../../utils/errors";
 import { fnv1aString } from "../fnv1a";
 import { McapGridPreviewTransport } from "./grid-preview-transport";
 import type {
@@ -10,6 +9,7 @@ import type {
 } from "./grid-preview-worker-types";
 import { workerFetchParameters } from "./worker-resource-client";
 import type { McapPlaybackWorkerPriority } from "./playback-worker-types";
+import { createMcapWorkerSlotLifecycle } from "./worker-slot-lifecycle";
 
 // Low-resource machines should not be forced to run multiple MCAP workers.
 const MIN_GRID_PREVIEW_WORKERS = 1;
@@ -48,6 +48,18 @@ export class McapGridPreviewWorkerPool {
   private readonly poolSize: number;
   private refCount = 0;
   private readonly slots: McapGridPreviewWorkerSlot[];
+  private readonly workerLifecycle = createMcapWorkerSlotLifecycle<
+    McapGridPreviewWorkerSlot,
+    McapGridPreviewWorkerRequest,
+    McapGridPreviewWorkerResponse
+  >({
+    createWorker: () => this.createWorker(),
+    disposeRequest: { type: "dispose" },
+    handleResponse: (slot, response) => slot.transport.handleResponse(response),
+    rejectAll: (slot, reason) => slot.transport.rejectAll(reason),
+    startupErrorMessage: "MCAP grid preview worker startup failed",
+    workerErrorMessage: "MCAP grid preview worker error",
+  });
 
   constructor(private readonly options: CreateMcapGridPreviewPoolOptions = {}) {
     this.poolSize = normalizePoolSize(options.poolSize);
@@ -97,38 +109,15 @@ export class McapGridPreviewWorkerPool {
       return slot.worker;
     }
 
-    let worker: Worker | undefined;
-    try {
-      worker = this.createWorker();
-      slot.worker = worker;
-      worker.onmessage = (event: MessageEvent<McapGridPreviewWorkerResponse>) =>
-        slot.transport.handleResponse(event.data);
-      worker.onerror = (event) => {
-        this.resetSlot(slot, event.message || "MCAP grid preview worker error");
-      };
-
-      const initRequest: McapGridPreviewWorkerRequest = {
-        payload: {
-          ...workerFetchParameters(),
-          // Grid previews are ambient work: never the reserved fill slot.
-          fillSlotClass: "background",
-        },
-        type: "init",
-      };
-      worker.postMessage(initRequest);
-    } catch (error) {
-      if (slot.worker === worker) {
-        this.resetSlot(
-          slot,
-          errorMessage(error, "MCAP grid preview worker startup failed"),
-        );
-      } else {
-        disposeWorker(worker);
-      }
-      throw toError(error);
-    }
-
-    return worker;
+    const initRequest: McapGridPreviewWorkerRequest = {
+      payload: {
+        ...workerFetchParameters(),
+        // Grid previews are ambient work: never the reserved fill slot.
+        fillSlotClass: "background",
+      },
+      type: "init",
+    };
+    return this.workerLifecycle.workerForSlot(slot, initRequest);
   }
 
   private createWorker(): Worker {
@@ -148,24 +137,7 @@ export class McapGridPreviewWorkerPool {
   }
 
   private resetSlot(slot: McapGridPreviewWorkerSlot, reason: string) {
-    const worker = slot.worker;
-    delete slot.worker;
-
-    if (worker) {
-      worker.onmessage = null;
-      worker.onerror = null;
-      try {
-        const disposeRequest: McapGridPreviewWorkerRequest = {
-          type: "dispose",
-        };
-        worker.postMessage(disposeRequest);
-      } catch {
-        // The worker may already be gone.
-      }
-      worker.terminate();
-    }
-
-    slot.transport.rejectAll(reason);
+    this.workerLifecycle.resetSlot(slot, reason);
   }
 }
 
@@ -230,14 +202,4 @@ function normalizePoolSize(poolSize: number | undefined): number {
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.max(minimum, Math.min(maximum, value));
-}
-
-function disposeWorker(worker: Worker | undefined) {
-  if (!worker) {
-    return;
-  }
-
-  worker.onmessage = null;
-  worker.onerror = null;
-  worker.terminate();
 }

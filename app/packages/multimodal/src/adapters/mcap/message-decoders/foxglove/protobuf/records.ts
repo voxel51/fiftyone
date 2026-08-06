@@ -1,3 +1,8 @@
+import {
+  coerceDecodedNumber,
+  FOXGLOVE_PROTOBUF_NUMBER_COERCION_POLICY,
+} from "../../numeric-coercion";
+
 /**
  * Small runtime coercion helpers for decoded Foxglove protobuf messages.
  *
@@ -123,9 +128,10 @@ export function numberField(
 ): number {
   const value =
     record?.[field] ?? (fallbackField ? record?.[fallbackField] : undefined);
-  if (typeof value === "number") return value;
-  if (typeof value === "bigint") return Number(value);
-  return defaultValue;
+  return (
+    coerceDecodedNumber(value, FOXGLOVE_PROTOBUF_NUMBER_COERCION_POLICY) ??
+    defaultValue
+  );
 }
 
 /**

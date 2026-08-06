@@ -31,10 +31,7 @@ import type { ImageGeometryMode } from "../../spatial/camera-geometry/camera-mod
 import type { PointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 import { PointCloudStyleSection } from "./PointCloudStyleSection";
 import type { PoseTrajectories } from "../entities/pose-trajectories-context";
-import {
-  checkboxNoSpaceToggleProps,
-  settingsBooleanNoSpaceToggleProps,
-} from "../../settings/controls/settings-keyboard";
+import { settingsBooleanNoSpaceToggleProps } from "../../settings/controls/settings-keyboard";
 import { FrameSelect } from "../../settings/controls/FrameSelect";
 import { SettingsNumberInput } from "../../settings/controls/SettingsNumberInput";
 import { SettingsSelect } from "../../settings/controls/SettingsSelect";
@@ -548,7 +545,7 @@ function SourceGroup({
                 label={s.label}
                 checked={enabled.has(s.id)}
                 onChange={(checked) => toggleSource(s.id, checked)}
-                {...checkboxNoSpaceToggleProps}
+                {...settingsBooleanNoSpaceToggleProps}
               />
               {details.map((detail, index) => (
                 <Text

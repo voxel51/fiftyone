@@ -159,6 +159,12 @@ describe("RawMessageBridge records", () => {
     expect(context.current?.recordsByStream.get("/imu")?.status).toBe("error");
 
     await act(async () => {
+      store.set(playheadAtom, 61);
+      await flushMicrotasks();
+    });
+    expect(client.readRawRecord).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
       context.current?.subscribeRecord("/imu");
       await flushMicrotasks();
     });
@@ -190,6 +196,26 @@ describe("RawMessageBridge records", () => {
     await act(flushMicrotasks);
 
     expect(client.readRawRecord).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears published records when the bridge unmounts", async () => {
+    const client = createClient();
+    const context = createContextRef();
+    const { rerender } = render(
+      <Harness client={client} contextRef={context} />,
+    );
+
+    await act(async () => {
+      context.current?.subscribeRecord("/imu");
+      await flushMicrotasks();
+    });
+    expect(context.current?.recordsByStream.get("/imu")?.status).toBe("ready");
+
+    rerender(<Harness bridge={false} client={client} contextRef={context} />);
+    await act(flushMicrotasks);
+
+    expect(context.current?.recordsByStream.size).toBe(0);
+    expect(context.current?.streams).toEqual({ status: "idle", streams: [] });
   });
 });
 
@@ -229,6 +255,54 @@ describe("RawMessageBridge streams", () => {
         streamId: "/imu",
       },
     ]);
+  });
+
+  it("retries inventory after an error resets the one-shot gate", async () => {
+    const stream = rawStream("/imu", "ros1", null, 1);
+    const client = createClient({
+      listRawRecordStreams: vi
+        .fn<RawRecordCapability["listRawRecordStreams"]>()
+        .mockRejectedValueOnce(new Error("inventory failed"))
+        .mockResolvedValueOnce([stream]),
+    });
+    const context = createContextRef();
+
+    render(<Harness client={client} contextRef={context} />);
+
+    await act(async () => {
+      context.current?.ensureStreams();
+      context.current?.ensureStreams();
+      await flushMicrotasks();
+    });
+    expect(client.listRawRecordStreams).toHaveBeenCalledOnce();
+    expect(context.current?.streams.status).toBe("error");
+
+    await act(async () => {
+      context.current?.ensureStreams();
+      await flushMicrotasks();
+    });
+    expect(client.listRawRecordStreams).toHaveBeenCalledTimes(2);
+    expect(context.current?.streams).toEqual({
+      status: "ready",
+      streams: [stream],
+    });
+  });
+
+  it("replays inventory demand registered before the bridge mounts", async () => {
+    const client = createClient();
+    const context = createContextRef();
+    const { rerender } = render(
+      <Harness bridge={false} client={client} contextRef={context} />,
+    );
+
+    act(() => context.current?.ensureStreams());
+    expect(client.listRawRecordStreams).not.toHaveBeenCalled();
+
+    rerender(<Harness bridge client={client} contextRef={context} />);
+    await act(flushMicrotasks);
+
+    expect(client.listRawRecordStreams).toHaveBeenCalledOnce();
+    expect(context.current?.streams.status).toBe("ready");
   });
 });
 

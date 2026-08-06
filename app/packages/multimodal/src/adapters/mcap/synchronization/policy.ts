@@ -1,4 +1,5 @@
 import { PlaybackSyncMode } from "../../../schemas/v1/index";
+import { maxBigInt, minBigInt } from "../../../utils/bigint";
 import type {
   McapDecodedMessage,
   McapResolvedStreamSyncPolicy,
@@ -12,6 +13,8 @@ import type {
  * Default tolerance for NEAREST-mode synchronized MCAP playback windows.
  */
 export const DEFAULT_MCAP_SYNC_TOLERANCE_NS = 50_000_000n;
+
+export { maxBigInt, minBigInt } from "../../../utils/bigint";
 
 const DEFAULT_STREAM_SYNC_LIMIT = 1;
 
@@ -246,42 +249,6 @@ export function isWithinRange(
     (startTimeNs === undefined || value >= startTimeNs) &&
     (endTimeNs === undefined || value <= endTimeNs)
   );
-}
-
-/**
- * Returns the smallest bigint timestamp, failing on empty input.
- */
-export function minBigInt(values: readonly bigint[]): bigint {
-  if (values.length === 0) {
-    throw new Error("Expected at least one timestamp");
-  }
-
-  let min = values[0];
-  for (const value of values) {
-    if (value < min) {
-      min = value;
-    }
-  }
-
-  return min;
-}
-
-/**
- * Returns the largest bigint timestamp, failing on empty input.
- */
-export function maxBigInt(values: readonly bigint[]): bigint {
-  if (values.length === 0) {
-    throw new Error("Expected at least one timestamp");
-  }
-
-  let max = values[0];
-  for (const value of values) {
-    if (value > max) {
-      max = value;
-    }
-  }
-
-  return max;
 }
 
 function lowerBoundByTimelineTime<Candidate extends SyncCandidate>(

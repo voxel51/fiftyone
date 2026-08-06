@@ -8,6 +8,7 @@ import type {
 } from "../../../ir";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import type { DecodedFrame } from "../../../ir";
+import { lowerBoundBigInt } from "../../../utils/bigint";
 import {
   aabbIoU,
   chamferDistance,
@@ -16,7 +17,6 @@ import {
   interpolateLineList,
   interpolatePointsArray,
   interpolateTexts,
-  lowerBoundBigInt,
   makeGroup,
   matchLineListGroups,
   prepareImageAnnotationInterpolation,
