@@ -1,4 +1,5 @@
 import { EnumType } from "typescript";
+import type { PluginComponentRegistration } from "@fiftyone/plugins";
 import SpaceNode from "./SpaceNode";
 import { Layout, PANEL_AREA } from "./enums";
 
@@ -97,6 +98,15 @@ export type PanelRendererProps = {
 
 export type PanelAreaProps = {
   id: PANEL_AREA;
+  /** The legacy panel placement string associated with this host area. */
+  placement: string;
+  /**
+   * Host-owned context eligibility. Spaces remains independent of operator
+   * scope definitions by accepting a predicate instead of an operator type.
+   */
+  isPanelEligible?: (panel: PluginComponentRegistration) => boolean;
+  /** Enable the one-off renderer compatibility adapter for the right sidebar. */
+  legacySupport?: "right-sidebar";
   resize?: {
     defaultWidth?: number;
     minWidth?: number;

@@ -1,6 +1,6 @@
 import { constants } from "@fiftyone/state";
 import { ReactNode } from "react";
-import { atom, selectorFamily } from "recoil";
+import { atom, atomFamily, selectorFamily } from "recoil";
 import {
   PanelIdToScopeType,
   PanelStateParameter,
@@ -152,9 +152,21 @@ function getStateAtom(local?: boolean, scope?: string) {
   return local || nonGridScope ? panelsLocalStateAtom : panelsStateAtom;
 }
 
+/** @deprecated Right-sidebar legacy renderer compatibility only. */
 export const panelAreaRenderers = new SubscribableMap<string, ReactNode>();
 
+/** @deprecated Right-sidebar legacy renderer compatibility only. */
 export const currentPanelAreasRenderer = atom<Map<string, string>>({
   key: "currentPanelAreasRenderer",
   default: new Map<string, string>(),
+});
+
+export const activePanelForAreaAtom = atomFamily<string | null, string>({
+  key: "activePanelForArea",
+  default: null,
+});
+
+export const panelAreaVisibleAtom = atomFamily<boolean, string>({
+  key: "panelAreaVisible",
+  default: false,
 });

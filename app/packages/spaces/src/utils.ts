@@ -33,14 +33,20 @@ export function warnPanelNotFound(name: SpaceNodeType) {
   return null;
 }
 
+/**
+ * @deprecated Register a panel with `panelOptions.surfaces` instead. This is
+ * retained only by the right-sidebar legacy compatibility adapter.
+ */
 export function registerPanelAreaRenderer(areaId: string, renderer: ReactNode) {
   panelAreaRenderers.set(areaId, renderer);
 }
 
+/** @deprecated See `registerPanelAreaRenderer`. */
 export function unregisterPanelAreaRenderer(areaId: string) {
   panelAreaRenderers.delete(areaId);
 }
 
+/** @deprecated See `registerPanelAreaRenderer`. */
 export function getPanelAreaRenderer(areaId: string) {
   return panelAreaRenderers.get(areaId);
 }

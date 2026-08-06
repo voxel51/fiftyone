@@ -1,3 +1,4 @@
+import type { PluginScope } from "@fiftyone/plugins/src/PluginScope";
 import { ExecutionContext, OperatorResult } from "../operators";
 
 export type ExecutionCallbackOptions = { ctx: ExecutionContext };
@@ -16,6 +17,8 @@ export type OperatorExecutorOptions = {
   skipOutput?: boolean;
   callback?: ExecutionCallback;
   skipErrorNotification?: boolean;
+  // overrides the most recently active scope
+  scope?: PluginScope;
 };
 
 export type ParamsType = Record<string, unknown>;

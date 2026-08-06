@@ -5,7 +5,7 @@ FiftyOne plugins.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import types
+import types as fotypes
 
 from .core import (
     enable_plugin,
@@ -28,10 +28,11 @@ from .definitions import PluginDefinition
 from .context import PluginContext
 from .secrets import PluginSecretsResolver
 from .skills import list_skills
+from .types import PluginScope
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [
     k
     for k, v in globals().items()
-    if not k.startswith("_") and not isinstance(v, types.ModuleType)
+    if not k.startswith("_") and not isinstance(v, fotypes.ModuleType)
 ]

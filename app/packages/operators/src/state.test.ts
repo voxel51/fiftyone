@@ -2,8 +2,17 @@ import { act, renderHook } from "@testing-library/react";
 import React, { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  PluginScope,
+  pluginRequiresDataset,
+} from "@fiftyone/plugins/src/PluginScope";
+import {
   OperatorExecutionOption,
+  assertInScope,
+  getActiveScope,
+  isInScope,
+  setActiveScope,
   useOperatorPromptSubmitOptions,
+  useSetActiveScope,
 } from "./state";
 
 vi.mock("recoil", () => ({
@@ -15,7 +24,7 @@ vi.mock("recoil", () => ({
   useRecoilTransaction_UNSTABLE: vi.fn(),
   useRecoilValue: vi.fn(),
   useRecoilValueLoadable: vi.fn(),
-  useSetRecoilState: vi.fn(),
+  useSetRecoilState: vi.fn(() => vi.fn()),
 }));
 
 vi.mock("@fiftyone/analytics", () => ({
@@ -75,6 +84,212 @@ vi.mock("./utils", () => ({
 vi.mock("./validation", () => ({
   ValidationContext: vi.fn(),
 }));
+
+describe("isInScope", () => {
+  const GRID = PluginScope.DATASET_SAMPLES_GRID;
+  const MODAL = PluginScope.DATASET_SAMPLE_MODAL;
+  const LANDING = PluginScope.FIFTYONE_LANDING_PAGE;
+
+  it("includes an operator declared in the scope", () => {
+    expect(isInScope([GRID, MODAL], MODAL)).toBe(true);
+    expect(isInScope([GRID], GRID)).toBe(true);
+  });
+
+  it("excludes an operator not declared in the scope", () => {
+    expect(isInScope([GRID], MODAL)).toBe(false);
+    expect(isInScope([MODAL], GRID)).toBe(false);
+  });
+
+  it("excludes an operator that declares no scopes", () => {
+    expect(isInScope([], GRID)).toBe(false);
+    expect(isInScope([], MODAL)).toBe(false);
+  });
+
+  it("uses the grid, modal, and landing fallback for undeclared scopes", () => {
+    expect(isInScope(undefined, GRID)).toBe(true);
+    expect(isInScope(undefined, MODAL)).toBe(true);
+    expect(isInScope(undefined, LANDING)).toBe(true);
+  });
+
+  it("filters a grid-only operator from the landing page scope", () => {
+    expect(isInScope([GRID], LANDING)).toBe(false);
+  });
+
+  it("includes an operator declared in all scopes", () => {
+    expect(isInScope([PluginScope.ALL], GRID)).toBe(true);
+    expect(isInScope([PluginScope.ALL], MODAL)).toBe(true);
+  });
+});
+
+describe("pluginRequiresDataset", () => {
+  it("requires a dataset when every declared surface is dataset-backed", () => {
+    expect(
+      pluginRequiresDataset([
+        PluginScope.DATASET_SAMPLES_GRID,
+        PluginScope.DATASET_SAMPLE_MODAL,
+      ]),
+    ).toBe(true);
+  });
+
+  it("allows dataset-less execution on landing, ALL, and legacy local operators", () => {
+    expect(pluginRequiresDataset([PluginScope.FIFTYONE_LANDING_PAGE])).toBe(
+      false,
+    );
+    expect(pluginRequiresDataset([PluginScope.ALL])).toBe(false);
+    expect(pluginRequiresDataset(undefined)).toBe(false);
+  });
+});
+
+describe("assertInScope", () => {
+  const GRID = PluginScope.DATASET_SAMPLES_GRID;
+  const MODAL = PluginScope.DATASET_SAMPLE_MODAL;
+  const URI = "@voxel51/operators/example";
+
+  it("does not throw when the operator declares the scope", () => {
+    expect(() => assertInScope(URI, [GRID, MODAL], MODAL)).not.toThrow();
+  });
+
+  it("does not throw when the operator declares no scopes", () => {
+    expect(() => assertInScope(URI, undefined, MODAL)).not.toThrow();
+  });
+
+  it("throws when the operator is not available in the scope", () => {
+    expect(() => assertInScope(URI, [GRID], MODAL)).toThrow();
+  });
+
+  it("names the operator in the error", () => {
+    expect(() => assertInScope(URI, [GRID], MODAL)).toThrow(
+      `Operator "${URI}" is not supported in this scope`,
+    );
+  });
+});
+
+describe("activeScope", () => {
+  beforeEach(() => {
+    setActiveScope(PluginScope.DATASET_SAMPLES_GRID);
+  });
+
+  it("defaults to the grid scope", () => {
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLES_GRID);
+  });
+
+  it("returns the scope that was last set", () => {
+    setActiveScope(PluginScope.DATASET_SAMPLE_MODAL);
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLE_MODAL);
+  });
+
+  it("is shared globally, so a set is visible to every reader", () => {
+    setActiveScope(PluginScope.DATASET_SAMPLE_MODAL);
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLE_MODAL);
+  });
+});
+
+describe("useSetActiveScope", () => {
+  beforeEach(() => {
+    setActiveScope(PluginScope.DATASET_SAMPLES_GRID);
+  });
+
+  it("activates the given scope on mount", () => {
+    renderHook(() => useSetActiveScope(PluginScope.DATASET_SAMPLE_MODAL));
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLE_MODAL);
+  });
+
+  it("restores the previous scope on unmount when restore is true", () => {
+    const { unmount } = renderHook(() =>
+      useSetActiveScope(PluginScope.DATASET_SAMPLE_MODAL, true),
+    );
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLE_MODAL);
+
+    unmount();
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLES_GRID);
+  });
+
+  it("leaves the scope in place on unmount when restore is false", () => {
+    const { unmount } = renderHook(() =>
+      useSetActiveScope(PluginScope.DATASET_SAMPLE_MODAL, false),
+    );
+    unmount();
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLE_MODAL);
+  });
+
+  it("does not restore by default", () => {
+    const { unmount } = renderHook(() =>
+      useSetActiveScope(PluginScope.DATASET_SAMPLE_MODAL),
+    );
+    unmount();
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLE_MODAL);
+  });
+
+  it("restores whatever was active at mount, not the default", () => {
+    setActiveScope(PluginScope.DATASET_SAMPLE_MODAL);
+    const { unmount } = renderHook(() =>
+      useSetActiveScope(PluginScope.DATASET_SAMPLES_GRID, true),
+    );
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLES_GRID);
+
+    unmount();
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLE_MODAL);
+  });
+
+  it("does not touch the scope when it is already active", () => {
+    setActiveScope(PluginScope.DATASET_SAMPLE_MODAL);
+    const { unmount } = renderHook(() =>
+      useSetActiveScope(PluginScope.DATASET_SAMPLE_MODAL, true),
+    );
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLE_MODAL);
+
+    unmount();
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLE_MODAL);
+  });
+
+  it("survives a double mount of the same scope unmounting out of order", () => {
+    // first declaration owns the transition grid -> modal
+    const first = renderHook(() =>
+      useSetActiveScope(PluginScope.DATASET_SAMPLE_MODAL, true),
+    );
+    // second declares the scope that is already active, so it owns nothing
+    const second = renderHook(() =>
+      useSetActiveScope(PluginScope.DATASET_SAMPLE_MODAL, true),
+    );
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLE_MODAL);
+
+    // the remaining owner keeps its scope active
+    first.unmount();
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLE_MODAL);
+
+    second.unmount();
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLES_GRID);
+  });
+
+  it("restores once when the same scope is declared twice", () => {
+    const first = renderHook(() =>
+      useSetActiveScope(PluginScope.DATASET_SAMPLE_MODAL, true),
+    );
+    const second = renderHook(() =>
+      useSetActiveScope(PluginScope.DATASET_SAMPLE_MODAL, true),
+    );
+
+    second.unmount();
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLE_MODAL);
+
+    first.unmount();
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLES_GRID);
+  });
+
+  it("re-activates and restores across a scope change", () => {
+    const { rerender, unmount } = renderHook(
+      ({ scope }) => useSetActiveScope(scope, true),
+      { initialProps: { scope: PluginScope.DATASET_SAMPLE_MODAL } },
+    );
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLE_MODAL);
+
+    rerender({ scope: PluginScope.DATASET_SAMPLES_GRID });
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLES_GRID);
+
+    unmount();
+    expect(getActiveScope()).toBe(PluginScope.DATASET_SAMPLES_GRID);
+  });
+});
 
 describe("useOperatorPromptSubmitOptions", () => {
   let mockExecute: ReturnType<typeof vi.fn>;

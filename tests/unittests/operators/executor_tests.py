@@ -6,6 +6,8 @@ FiftyOne operation execution tests.
 |
 """
 
+# pylint: disable=no-member,no-name-in-module
+
 import copy
 import unittest
 from unittest import mock
@@ -24,6 +26,7 @@ from fiftyone.operators.executor import (
 )
 from fiftyone.operators.operator import Operator, PipelineOperator
 import fiftyone.operators.types as types
+from fiftyone.plugins import PluginScope
 
 
 class TestOperatorExecutionContext(unittest.TestCase):
@@ -202,6 +205,32 @@ class TestOperatorExecutionContext(unittest.TestCase):
 ECHO_URI = "@voxel51/operators/echo"
 
 
+class TestActiveScope(unittest.TestCase):
+    def test_active_scope_from_string(self):
+        ctx = ExecutionContext(
+            request_params={"active_scope": "dataset_sample_modal"}
+        )
+        self.assertEqual(ctx.active_scope, PluginScope.DATASET_SAMPLE_MODAL)
+
+    def test_active_scope_from_enum(self):
+        ctx = ExecutionContext(
+            request_params={"active_scope": PluginScope.DATASET_SAMPLES_GRID}
+        )
+        self.assertEqual(ctx.active_scope, PluginScope.DATASET_SAMPLES_GRID)
+
+    def test_active_scope_missing_is_none(self):
+        ctx = ExecutionContext(request_params={})
+        self.assertIsNone(ctx.active_scope)
+
+    def test_active_scope_unknown_value_is_none(self):
+        # a newer App may send a scope this version doesn't know about; it
+        # must not break execution
+        ctx = ExecutionContext(
+            request_params={"active_scope": "scope_from_the_future"}
+        )
+        self.assertIsNone(ctx.active_scope)
+
+
 class EchoOperator(Operator):
     @property
     def config(self):
@@ -232,6 +261,54 @@ async def test_execute_or_delegate_operator(list_operators):
     assert isinstance(result, ExecutionResult)
     json_result = result.to_json()
     assert json_result["result"]["message"] == "Hello, World!"
+
+
+class EchoScopeOperator(Operator):
+    @property
+    def config(self):
+        return OperatorConfig(name="echo_scope")
+
+    def execute(self, ctx):
+        return {"scope": ctx.active_scope}
+
+
+@pytest.mark.asyncio
+@patch("fiftyone.operators.registry.OperatorRegistry.list_operators")
+async def test_execute_operator_receives_active_scope(list_operators):
+    list_operators.return_value = [EchoScopeOperator(_builtin=True)]
+    uri = "@voxel51/operators/echo_scope"
+
+    result = await execute_or_delegate_operator(
+        uri,
+        {
+            "dataset_name": "test_dataset",
+            "operator_uri": uri,
+            "params": {},
+            "active_scope": "dataset_sample_modal",
+        },
+    )
+
+    assert isinstance(result, ExecutionResult)
+    assert result.result["scope"] == PluginScope.DATASET_SAMPLE_MODAL
+
+
+@pytest.mark.asyncio
+@patch("fiftyone.operators.registry.OperatorRegistry.list_operators")
+async def test_execute_operator_without_active_scope(list_operators):
+    list_operators.return_value = [EchoScopeOperator(_builtin=True)]
+    uri = "@voxel51/operators/echo_scope"
+
+    result = await execute_or_delegate_operator(
+        uri,
+        {
+            "dataset_name": "test_dataset",
+            "operator_uri": uri,
+            "params": {},
+        },
+    )
+
+    assert isinstance(result, ExecutionResult)
+    assert result.result["scope"] is None
 
 
 @pytest.mark.asyncio

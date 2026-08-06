@@ -1,4 +1,7 @@
-import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
+import {
+  PluginComponentType,
+  registerComponent,
+} from "@fiftyone/plugins/src/registry";
 import { cloneDeep, get, set } from "lodash";
 import { useCallback, useEffect, useRef, useState } from "react";
 import DynamicIO from "./components/DynamicIO";

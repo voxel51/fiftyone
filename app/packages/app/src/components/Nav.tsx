@@ -12,12 +12,21 @@ import {
   iconContainer,
 } from "@fiftyone/components";
 import { ViewBar } from "@fiftyone/core";
-import { OperatorPlacements, types } from "@fiftyone/operators";
+import {
+  OperatorPlacements,
+  isInScope,
+  types,
+  useActiveScope,
+} from "@fiftyone/operators";
+import { PluginScope } from "@fiftyone/plugins";
+import type { PluginComponentRegistration } from "@fiftyone/plugins";
+import { PANEL_AREA, PanelArea } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { useRefresh } from "@fiftyone/state";
+import { constants } from "@fiftyone/utilities";
 import { DarkMode, LightMode } from "@mui/icons-material";
 import { Box, useColorScheme } from "@mui/material";
-import React, { Suspense, useMemo } from "react";
+import React, { Suspense, useCallback, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -27,6 +36,8 @@ import DatasetSelector from "./DatasetSelector";
 import Teams from "./Teams";
 import type { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
 import type { NavFragment$key } from "./__generated__/NavFragment.graphql";
+
+const { IS_APP_MODE_FIFTYONE } = constants;
 
 const getUseSearch = (fragment: NavDatasets$key) => {
   return (search: string) => {
@@ -85,9 +96,15 @@ const Nav: React.FC<
 
   const useSearch = getUseSearch(data);
   const refresh = useRefresh();
+  const activeScope = useActiveScope();
   const { mode, setMode } = useColorScheme();
   const setTheme = useSetRecoilState(fos.theme);
   const trackEvent = useTrackEvent();
+  const isSidebarPanelEligible = useCallback(
+    (panel: PluginComponentRegistration) =>
+      isInScope(panel.panelOptions?.scopes as PluginScope[], activeScope),
+    [activeScope],
+  );
 
   return (
     <>
@@ -130,7 +147,25 @@ const Nav: React.FC<
           </Box>
         </div>
       </Header>
-      {children}
+      <Box
+        sx={{
+          display: "flex",
+          flex: 1,
+          minHeight: 0,
+          overflow: "hidden",
+        }}
+      >
+        {children}
+        {IS_APP_MODE_FIFTYONE && (
+          <PanelArea
+            id={PANEL_AREA.SIDEBAR_RIGHT}
+            placement="sidebar_right"
+            isPanelEligible={isSidebarPanelEligible}
+            legacySupport="right-sidebar"
+            resize={{ direction: "left" }}
+          />
+        )}
+      </Box>
       <Analytics fragment={data} />
     </>
   );

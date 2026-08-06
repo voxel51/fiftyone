@@ -13,7 +13,6 @@ import {
 } from "@fiftyone/core";
 import "@fiftyone/embeddings-v2";
 import "@fiftyone/map";
-import { OperatorCore } from "@fiftyone/operators";
 import "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { datasetQueryContext } from "@fiftyone/state";
@@ -127,7 +126,6 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
           <Starter mode="ADD_SAMPLE" />
         ) : (
           <datasetQueryContext.Provider value={data}>
-            <OperatorCore />
             <Dataset />
           </datasetQueryContext.Provider>
         )}
