@@ -12266,6 +12266,88 @@
             "tags": ["ocr", "detection", "torch"],
             "training_data": [],
             "date_added": "2026-07-13 00:00:00"
+        },
+        {
+            "base_name": "tipsv2-b14-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "TIPSv2 base vision-language encoder for zero-shot image classification and spatially-aware embeddings",
+            "source": "https://huggingface.co/google/tipsv2-b14",
+            "author": "Google DeepMind",
+            "license": "Apache 2.0",
+            "size_bytes": 784561815,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/tipsv2-b14"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=5.14",
+                    "sentencepiece"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "training_data": [],
+            "date_added": "2026-07-22 00:00:00"
+        },
+        {
+            "base_name": "tipsv2-l14-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "TIPSv2 large vision-language encoder for zero-shot image classification and spatially-aware embeddings",
+            "source": "https://huggingface.co/google/tipsv2-l14",
+            "author": "Google DeepMind",
+            "license": "Apache 2.0",
+            "size_bytes": 1952552415,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/tipsv2-l14"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=5.14",
+                    "sentencepiece"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot",
+                "official"
+            ],
+            "training_data": [],
+            "date_added": "2026-07-22 00:00:00"
         }
     ]
 }
