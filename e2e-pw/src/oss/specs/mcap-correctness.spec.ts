@@ -119,7 +119,7 @@ if fo.dataset_exists("${datasetName}"):
       page.getByTestId("selector-episode-grid-stream"),
     ).toHaveAttribute("placeholder", "Stream: Auto");
 
-    await grid.openFirstSample();
+    await openMcapModal(grid, modal);
     await modal.episode.waitForReady("tiny-episode-a.mcap");
     await modal.episode.expectTileTitles(["camera/front", "points", "Logs"]);
     await modal.episode.expectUtcTime("00:00:00.000");
@@ -131,7 +131,7 @@ if fo.dataset_exists("${datasetName}"):
     grid,
     modal,
   }) => {
-    await grid.openFirstSample();
+    await openMcapModal(grid, modal);
     await modal.episode.waitForReady("tiny-episode-a.mcap");
     await modal.episode.setSamplingRate(1);
     await modal.episode.inspectStream("/pose");
@@ -160,7 +160,7 @@ if fo.dataset_exists("${datasetName}"):
     grid,
     modal,
   }) => {
-    await grid.openFirstSample();
+    await openMcapModal(grid, modal);
     await modal.episode.waitForReady("tiny-episode-a.mcap");
     await modal.episode.expectStreams([
       "/camera/front",
@@ -235,7 +235,7 @@ if fo.dataset_exists("${datasetName}"):
     grid,
     modal,
   }) => {
-    await grid.openNthSample(3);
+    await openMcapModal(grid, modal, 3);
     await modal.episode.expectUnsupported();
     await modal.episode.expectNoViewerError();
   });
@@ -244,7 +244,7 @@ if fo.dataset_exists("${datasetName}"):
     grid,
     modal,
   }) => {
-    await grid.openNthSample(2);
+    await openMcapModal(grid, modal, 2);
     await modal.episode.waitForReady("long-mixed-episode.mcap");
     await modal.episode.setSamplingRate(2);
     await modal.episode.expectPlayhead("00:00:00.000 / 01:00:00.000");
@@ -301,6 +301,16 @@ if fo.dataset_exists("${datasetName}"):
     await modal.episode.expectUtcTime("00:59:59.500");
   });
 });
+
+async function openMcapModal(
+  grid: GridPom,
+  modal: ModalPom,
+  sampleIndex = 0,
+): Promise<void> {
+  await grid.openNthSample(sampleIndex);
+  await modal.sidebar.hide();
+  await modal.enterFullscreen();
+}
 
 async function expectDominantColor(
   locator: Locator,

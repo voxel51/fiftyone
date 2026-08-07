@@ -22,6 +22,7 @@ export class ModalPom {
   readonly groupCarousel: Locator;
   readonly locator: Locator;
   readonly looker: Locator;
+  readonly modalContent: Locator;
   readonly modalContainer: Locator;
 
   readonly group: ModalGroupActionsPom;
@@ -46,6 +47,7 @@ export class ModalPom {
 
     this.groupCarousel = this.locator.getByTestId("group-carousel");
     this.looker = this.locator.getByTestId("looker").last();
+    this.modalContent = this.locator.getByTestId("modal-content");
     this.modalContainer = this.locator.getByTestId("modal-looker-container");
 
     this.group = new ModalGroupActionsPom(page, this);
@@ -278,9 +280,26 @@ export class ModalPom {
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
 
+  async enterFullscreen() {
+    await this.modalContent.waitFor({ state: "visible" });
+    if (!(await this.isFullscreen())) {
+      await this.locator.getByTestId("action-toggle-fullscreen").click();
+    }
+    await expect.poll(() => this.isFullscreen()).toBe(true);
+  }
+
   async close({ ignoreError } = { ignoreError: false }) {
     // close by clicking outside of modal
     try {
+      if (!(await this.locator.isVisible())) {
+        return;
+      }
+
+      if (await this.isFullscreen()) {
+        await this.locator.getByTestId("action-toggle-fullscreen").click();
+        await expect.poll(() => this.isFullscreen()).toBe(false);
+      }
+
       await this.page.click("body", { position: { x: 0, y: 0 } });
       await this.locator.waitFor({ state: "hidden" });
     } catch (e) {
@@ -351,6 +370,14 @@ export class ModalPom {
         )?.style.visibility === "visible",
       undefined,
       { timeout: Duration.Seconds(20) },
+    );
+  }
+
+  private async isFullscreen() {
+    return this.modalContent.evaluate(
+      (element) =>
+        (element as HTMLElement).style.width === "100%" &&
+        (element as HTMLElement).style.height === "100%",
     );
   }
 }
