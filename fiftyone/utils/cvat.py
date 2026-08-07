@@ -3153,6 +3153,11 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         coerce_text_attrs (True): whether to coerce CVAT text attributes to
             numeric types during annotation download. Set to False to preserve
             text attribute values as strings
+        rotated_boxes (False): whether to upload closed four-point
+            :class:`fiftyone.core.labels.Polyline` instances whose points
+            define (possibly rotated) rectangles as CVAT rotated rectangles
+            rather than polygons. Rectangles downloaded into polyline fields
+            are converted back to four-point polylines
     """
 
     def __init__(
@@ -3185,6 +3190,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         frame_stop=None,
         frame_step=None,
         coerce_text_attrs=True,
+        rotated_boxes=False,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -3209,6 +3215,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.frame_stop = _validate_frame_arg(frame_stop, "frame_stop")
         self.frame_step = _validate_frame_arg(frame_step, "frame_step")
         self.coerce_text_attrs = coerce_text_attrs
+        self.rotated_boxes = rotated_boxes
 
         # store privately so these aren't serialized
         self._username = username
@@ -4418,6 +4425,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_schema = config.label_schema
         occluded_attr = config.occluded_attr
         group_id_attr = config.group_id_attr
+        rotated_boxes = getattr(config, "rotated_boxes", False)
         task_size = config.task_size
         config.job_reviewers = self._parse_reviewers(config.job_reviewers)
         project_name, project_id = self._parse_project_details(
@@ -4558,6 +4566,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             only_keyframes,
                             occluded_attrs,
                             group_id_attrs,
+                            rotated_boxes,
                         )
 
                         if _tracks and _frame_step is not None:
@@ -5654,6 +5663,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         only_keyframes,
         occluded_attrs,
         group_id_attrs,
+        rotated_boxes=False,
     ):
         is_video = samples_batch.media_type == fom.VIDEO
 
@@ -5691,6 +5701,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 only_keyframes=only_keyframes,
                 occluded_attrs=occluded_attrs,
                 group_id_attrs=group_id_attrs,
+                rotated_boxes=rotated_boxes,
             )
         else:
             # Shape annotations
@@ -5704,6 +5715,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 frame_step,
                 occluded_attrs=occluded_attrs,
                 group_id_attrs=group_id_attrs,
+                rotated_boxes=rotated_boxes,
             )
 
         id_map[label_field].update(_id_map)
@@ -5994,8 +6006,19 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 cvat_shape.id = None
 
             if shape_type == "rectangle":
-                label_type = "detections"
-                label = cvat_shape.to_detection()
+                if expected_label_type in (
+                    "polyline",
+                    "polylines",
+                    "polygon",
+                    "polygons",
+                ):
+                    # A (possibly rotated) box in a polyline field
+                    filled = expected_label_type in ("polygon", "polygons")
+                    label_type = "polylines"
+                    label = cvat_shape.to_rotated_box_polyline(filled=filled)
+                else:
+                    label_type = "detections"
+                    label = cvat_shape.to_detection()
             elif shape_type == "cuboid":
                 label_type = "detections"
                 label = cvat_shape.to_detection()
@@ -6254,6 +6277,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         only_keyframes=False,
         occluded_attrs=None,
         group_id_attrs=None,
+        rotated_boxes=False,
     ):
         label_type = label_info["type"]
         classes = label_info["classes"]
@@ -6341,9 +6365,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     func = self._create_detection_shapes
                 elif label_type in ("polyline", "polygon"):
                     labels = [label]
+                    kwargs["rotated_boxes"] = rotated_boxes
                     func = self._create_polyline_shapes
                 elif label_type in ("polylines", "polygons"):
                     labels = label.polylines
+                    kwargs["rotated_boxes"] = rotated_boxes
                     func = self._create_polyline_shapes
                 elif label_type == "keypoint":
                     labels = [label]
@@ -6731,6 +6757,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         load_tracks=False,
         occluded_attrs=None,
         group_id_attrs=None,
+        rotated_boxes=False,
     ):
         ids = []
         shapes = []
@@ -6762,22 +6789,46 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if poly.filled and len(points) < 3:
                     continue  # CVAT polygons must contain >= 3 points
 
-                abs_points = HasCVATPoints._to_abs_points(points, frame_size)
-                flattened_points = list(
-                    itertools.chain.from_iterable(abs_points)
-                )
+                box_params = None
+                if rotated_boxes and poly.closed and len(frame_size) == 2:
+                    w, h = frame_size
+                    float_abs_points = [(x * w, y * h) for x, y in points]
+                    box_params = _abs_points_to_rotated_box(float_abs_points)
 
-                shape = {
-                    "type": "polygon" if poly.filled else "polyline",
-                    "occluded": is_occluded,
-                    "z_order": 0,
-                    "points": flattened_points,
-                    "label_id": class_name,
-                    "group": group_id,
-                    "frame": frame_id,
-                    "source": "manual",
-                    "attributes": deepcopy(attributes),
-                }
+                if box_params is not None:
+                    xtl, ytl, xbr, ybr, rotation = box_params
+                    shape = {
+                        "type": "rectangle",
+                        "occluded": is_occluded,
+                        "z_order": 0,
+                        "points": [xtl, ytl, xbr, ybr],
+                        "rotation": rotation,
+                        "label_id": class_name,
+                        "group": group_id,
+                        "frame": frame_id,
+                        "source": "manual",
+                        "attributes": deepcopy(attributes),
+                    }
+                else:
+                    abs_points = HasCVATPoints._to_abs_points(
+                        points, frame_size
+                    )
+                    flattened_points = list(
+                        itertools.chain.from_iterable(abs_points)
+                    )
+
+                    shape = {
+                        "type": "polygon" if poly.filled else "polyline",
+                        "occluded": is_occluded,
+                        "z_order": 0,
+                        "points": flattened_points,
+                        "label_id": class_name,
+                        "group": group_id,
+                        "frame": frame_id,
+                        "source": "manual",
+                        "attributes": deepcopy(attributes),
+                    }
+
                 curr_shapes.append(shape)
 
             if not curr_shapes:
@@ -7376,6 +7427,30 @@ class CVATShape(CVATLabel):
         self._set_attributes(label)
         return label
 
+    def to_rotated_box_polyline(self, filled=False):
+        """Converts this (possibly rotated) rectangle shape to a four-point
+        :class:`fiftyone.core.labels.Polyline`.
+
+        Args:
+            filled (False): whether the polyline should be filled
+
+        Returns:
+            a :class:`fiftyone.core.labels.Polyline`
+        """
+        rotation = float(self.attributes.pop("rotation", 0) or 0)
+        xtl, ytl, xbr, ybr = self.points
+        abs_points = _rotated_box_to_abs_points(xtl, ytl, xbr, ybr, rotation)
+        rel_points = HasCVATPoints._to_rel_points(abs_points, self.frame_size)
+        label = fol.Polyline(
+            label=self.label,
+            points=[rel_points],
+            index=self.index,
+            closed=True,
+            filled=filled,
+        )
+        self._set_attributes(label)
+        return label
+
     def to_keypoint(self):
         """Converts this shape to a :class:`fiftyone.core.labels.Keypoint`.
 
@@ -7738,6 +7813,92 @@ def _parse_value(value, attr_type=None):
             return None
 
     return value
+
+
+def _abs_points_to_rotated_box(abs_points, tolerance=0.01):
+    """Determines whether the given absolute points define a (possibly
+    rotated) rectangle.
+
+    Args:
+        abs_points: a list of ``(x, y)`` pairs in absolute coordinates
+        tolerance (0.01): the maximum deviation from a perfect rectangle to
+            allow, as a fraction of the rectangle's max diagonal length
+
+    Returns:
+        a ``(xtl, ytl, xbr, ybr, rotation)`` tuple defining the equivalent
+        CVAT rotated rectangle, or None if the points do not define a
+        rectangle. The ``(xtl, ytl, xbr, ybr)`` coordinates describe the
+        unrotated box and ``rotation`` is in degrees, clockwise, about the
+        box's center
+    """
+    if len(abs_points) != 4:
+        return None
+
+    p = np.asarray(abs_points, dtype=float)
+
+    # A quadrilateral is a rectangle iff its diagonals bisect each other
+    # (parallelogram) and are of equal length
+    mid1 = (p[0] + p[2]) / 2
+    mid2 = (p[1] + p[3]) / 2
+    len1 = np.linalg.norm(p[2] - p[0])
+    len2 = np.linalg.norm(p[3] - p[1])
+
+    max_len = max(len1, len2)
+    if max_len <= 0:
+        return None
+
+    # The floor absorbs pixel quantization noise in small boxes
+    tol = max(tolerance * max_len, 2.0)
+    if np.linalg.norm(mid1 - mid2) > tol or abs(len1 - len2) > tol:
+        return None
+
+    cx, cy = (mid1 + mid2) / 2
+    width = np.linalg.norm(p[1] - p[0])
+    height = np.linalg.norm(p[3] - p[0])
+    rotation = (
+        np.degrees(np.arctan2(p[1][1] - p[0][1], p[1][0] - p[0][0])) % 360
+    )
+
+    xtl = cx - width / 2
+    ytl = cy - height / 2
+    xbr = cx + width / 2
+    ybr = cy + height / 2
+
+    return (
+        float(xtl),
+        float(ytl),
+        float(xbr),
+        float(ybr),
+        float(rotation),
+    )
+
+
+def _rotated_box_to_abs_points(xtl, ytl, xbr, ybr, rotation):
+    """Converts a CVAT rotated rectangle to its four corner points.
+
+    Args:
+        xtl: the top-left x coordinate of the unrotated box
+        ytl: the top-left y coordinate of the unrotated box
+        xbr: the bottom-right x coordinate of the unrotated box
+        ybr: the bottom-right y coordinate of the unrotated box
+        rotation: the rotation of the box, in degrees, clockwise, about the
+            box's center
+
+    Returns:
+        a list of four ``(x, y)`` pairs in absolute coordinates
+    """
+    cx = (xtl + xbr) / 2
+    cy = (ytl + ybr) / 2
+    hw = (xbr - xtl) / 2
+    hh = (ybr - ytl) / 2
+
+    theta = math.radians(rotation)
+    cos, sin = math.cos(theta), math.sin(theta)
+
+    return [
+        (cx + dx * cos - dy * sin, cy + dx * sin + dy * cos)
+        for dx, dy in ((-hw, -hh), (hw, -hh), (hw, hh), (-hw, hh))
+    ]
 
 
 def _parse_occlusion_value(value):

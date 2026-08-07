@@ -556,6 +556,12 @@ provided:
 
     Note that this argument cannot be provided when uploading existing tracks
 
+-   **rotated_boxes** (*False*): whether to upload closed four-point
+    :class:`Polyline <fiftyone.core.labels.Polyline>` instances whose points
+    define (possibly rotated) rectangles as CVAT rotated rectangles rather than
+    polygons, so that they can be edited as boxes in CVAT. Rectangles
+    downloaded into polyline fields are converted back to four-point polylines
+
 .. _cvat-label-schema:
 
 Label schema
@@ -2147,6 +2153,65 @@ attributes between annotation runs.
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
+
+.. _cvat-rotated-boxes:
+
+Annotating rotated bounding boxes
+---------------------------------
+
+In FiftyOne, rotated bounding boxes (e.g., oriented object detections) are
+represented as closed four-point
+:class:`Polyline <fiftyone.core.labels.Polyline>` instances. By default,
+polylines are uploaded to CVAT as polygon or polyline shapes, which cannot be
+edited as boxes in CVAT.
+
+Pass `rotated_boxes=True` to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
+instead upload any closed four-point polylines whose points define (possibly
+rotated) rectangles as CVAT rotated rectangles. In CVAT, these annotations can
+be moved, resized, and rotated like any other box.
+
+When you load your annotations back into FiftyOne, rectangles in polyline
+fields, including any new boxes you created in CVAT, are converted to closed
+four-point polylines, so the rotated box representation round-trips.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    view = dataset.take(1)
+
+    # Convert detections to (axis-aligned) rotated boxes for this example
+    sample = view.first()
+    polylines = sample["ground_truth"].to_polylines(filled=True)
+    sample["rotated_boxes"] = polylines
+    sample.save()
+
+    anno_key = "cvat_rotated_boxes"
+
+    view.annotate(
+        anno_key,
+        label_field="rotated_boxes",
+        label_type="polylines",
+        classes=dataset.distinct("ground_truth.detections.label"),
+        rotated_boxes=True,
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Rotate and edit the boxes in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+.. note::
+
+    Polylines that do not define rectangles, e.g., general polygons or
+    multi-shape polylines, are always uploaded as polygon or polyline shapes,
+    even when `rotated_boxes=True`.
 
 .. _cvat-destination-field:
 
