@@ -82,9 +82,10 @@ describe("useFrameTransforms", () => {
         }),
       );
     });
-    expect(client.readFrameTransformBootstrap).toHaveBeenCalledWith({
-      source,
-    });
+    expect(client.readFrameTransformBootstrap).toHaveBeenCalledWith(
+      { source },
+      { signal: expect.any(AbortSignal) },
+    );
     expect(client.readFrameTransformWindow).not.toHaveBeenCalled();
   });
 
@@ -112,7 +113,7 @@ describe("useFrameTransforms", () => {
           source,
           startTimeNs: 0n,
         },
-        { priority: undefined },
+        { priority: undefined, signal: expect.any(AbortSignal) },
       );
     });
     await waitFor(() => {
@@ -147,7 +148,7 @@ describe("useFrameTransforms", () => {
         source,
         startTimeNs: 0n,
       },
-      { priority: undefined },
+      { priority: undefined, signal: expect.any(AbortSignal) },
     ]);
     await waitFor(() => {
       expect(client.readFrameTransformWindow).toHaveBeenCalledTimes(2);
@@ -159,7 +160,7 @@ describe("useFrameTransforms", () => {
         source,
         startTimeNs: 900_000_100n,
       },
-      { priority: "idle" },
+      { priority: "idle", signal: expect.any(AbortSignal) },
     ]);
     await waitFor(() => {
       expect(screen.getByTestId("frames").textContent).toBe("ready:resolved:");
@@ -197,7 +198,7 @@ describe("useFrameTransforms", () => {
         source,
         startTimeNs: 2_300_000_100n,
       },
-      { priority: "idle" },
+      { priority: "idle", signal: expect.any(AbortSignal) },
     ]);
     expect(
       vi.mocked(client.readFrameTransformWindow).mock.calls,
@@ -208,7 +209,7 @@ describe("useFrameTransforms", () => {
         source,
         startTimeNs: 0n,
       },
-      { priority: "idle" },
+      { priority: "idle", signal: expect.any(AbortSignal) },
     ]);
   });
 
@@ -258,7 +259,7 @@ describe("useFrameTransforms", () => {
         source,
         startTimeNs: 0n,
       },
-      { priority: undefined },
+      { priority: undefined, signal: expect.any(AbortSignal) },
     );
   });
 
@@ -521,6 +522,34 @@ describe("useFrameTransforms", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it("aborts an active transform window on unmount", async () => {
+    const source = createSource("window-cleanup");
+    const pending = deferred<EpisodeFrameTransformSet>();
+    const readFrameTransformWindow = vi.fn<
+      FrameTransformClient["readFrameTransformWindow"]
+    >(() => pending.promise);
+    const client = createFrameTransformClient({ readFrameTransformWindow });
+    const view = render(
+      <FrameTransformsHarness
+        client={client}
+        label="frames"
+        source={source}
+        timeNs={100n}
+      />,
+    );
+    await waitFor(() =>
+      expect(readFrameTransformWindow).toHaveBeenCalledOnce(),
+    );
+    const signal = readFrameTransformWindow.mock.calls[0]?.[1]?.signal;
+    expect(signal?.aborted).toBe(false);
+
+    view.unmount();
+
+    expect(signal?.aborted).toBe(true);
+    pending.resolve({ samples: [] });
+    await flushReactWork();
+  });
+
   it("treats superseded placement reads as benign", async () => {
     const source = createSource("superseded-placement");
     const staleRead = deferred<EpisodeFrameTransformSet>();
@@ -677,6 +706,7 @@ describe("useFrameTransforms", () => {
     await waitFor(() => {
       expect(readFrameTransformPlacement).toHaveBeenCalledExactlyOnceWith({
         requiredDynamicChildFrameIds: ["lidar"],
+        signal: expect.any(AbortSignal),
         timeNs: 2_000_000_000n,
       });
     });
@@ -697,7 +727,7 @@ describe("useFrameTransforms", () => {
         source,
         startTimeNs: 1_900_000_000n,
       },
-      { priority: "playback" },
+      { priority: "playback", signal: expect.any(AbortSignal) },
     );
 
     rerender(
@@ -717,6 +747,7 @@ describe("useFrameTransforms", () => {
     await waitFor(() => {
       expect(readFrameTransformPlacement).toHaveBeenNthCalledWith(2, {
         requiredDynamicChildFrameIds: ["lidar"],
+        signal: expect.any(AbortSignal),
         timeNs: 5_000_000_000n,
       });
     });
@@ -876,7 +907,7 @@ describe("useFrameTransforms", () => {
         source,
         startTimeNs: 1_500_000_000n,
       },
-      { priority: undefined },
+      { priority: undefined, signal: expect.any(AbortSignal) },
     );
   });
 });
@@ -960,14 +991,20 @@ function FrameTransformsHarness({
     () =>
       source
         ? {
-            readBootstrap: async () =>
+            readBootstrap: async (options?: {
+              readonly signal?: AbortSignal;
+            }) =>
               (
-                await client.readFrameTransformBootstrap({ source })
+                await client.readFrameTransformBootstrap(
+                  { source },
+                  { signal: options?.signal },
+                )
               ).samples.map(toIrTransformSample),
             ...(client.readFrameTransformPlacement
               ? {
                   readPlacement: async (request: {
                     readonly requiredDynamicChildFrameIds: readonly string[];
+                    readonly signal?: AbortSignal;
                     readonly timeNs: bigint;
                   }) => {
                     const placement =
@@ -983,6 +1020,7 @@ function FrameTransformsHarness({
               : {}),
             readTransforms: async (request: {
               readonly priority?: "bulk" | "current" | "idle" | "playback";
+              readonly signal?: AbortSignal;
               readonly window: {
                 readonly endNs: bigint;
                 readonly startNs: bigint;
@@ -996,7 +1034,7 @@ function FrameTransformsHarness({
                     source,
                     startTimeNs: request.window.startNs,
                   },
-                  { priority: request.priority },
+                  { priority: request.priority, signal: request.signal },
                 )
               ).samples.map(toIrTransformSample),
           }
@@ -1087,11 +1125,15 @@ function createFrameTransformClient({
 }
 
 interface FrameTransformClient {
-  readFrameTransformBootstrap(request: {
-    readonly source: ByteSourceDescriptor;
-  }): Promise<EpisodeFrameTransformSet>;
+  readFrameTransformBootstrap(
+    request: {
+      readonly source: ByteSourceDescriptor;
+    },
+    options?: { readonly signal?: AbortSignal },
+  ): Promise<EpisodeFrameTransformSet>;
   readFrameTransformPlacement?(request: {
     readonly requiredDynamicChildFrameIds: readonly string[];
+    readonly signal?: AbortSignal;
     readonly timeNs: bigint;
   }): Promise<{
     readonly indexedWindow: {
@@ -1107,7 +1149,10 @@ interface FrameTransformClient {
       readonly source: ByteSourceDescriptor;
       readonly startTimeNs: bigint;
     },
-    options?: { readonly priority?: "bulk" | "current" | "idle" | "playback" },
+    options?: {
+      readonly priority?: "bulk" | "current" | "idle" | "playback";
+      readonly signal?: AbortSignal;
+    },
   ): Promise<EpisodeFrameTransformSet>;
 }
 

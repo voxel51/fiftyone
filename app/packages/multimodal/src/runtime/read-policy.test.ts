@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { STREAM_SYNC_MODE } from "../ir";
-import type { EpisodeSession, FrameBatch, ReadRequest } from "../ports";
 import {
+  EpisodeReadUnsupportedError,
+  type EpisodeSession,
+  type FrameBatch,
+  type ReadRequest,
+} from "../ports";
+import {
+  GENERIC_PLAYBACK_FALLBACK_MAX_MESSAGES_PER_STREAM,
+  GENERIC_TRANSFORM_FALLBACK_MAX_MESSAGES_PER_STREAM,
   createEpisodePlaybackRuntime,
   createEpisodeTransformReadRuntime,
   readFrameBatches,
@@ -125,6 +132,75 @@ describe("session read policy", () => {
     });
   });
 
+  it("returns the correct latest predecessor at the generic boundary", async () => {
+    const frames = Array.from(
+      { length: GENERIC_PLAYBACK_FALLBACK_MAX_MESSAGES_PER_STREAM },
+      (_, index) => BigInt(index),
+    );
+    const session = longHistorySession(frames);
+
+    const [window] = await readSynchronizedPlaybackBatchFallback(session, {
+      streams: ["stream"],
+      timeNs: [BigInt(frames.length + 10)],
+    });
+
+    expect(window?.frames[0]?.timestampNs).toBe(BigInt(frames.length - 1));
+    expect(session.read).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limit: GENERIC_PLAYBACK_FALLBACK_MAX_MESSAGES_PER_STREAM + 1,
+        streams: ["stream"],
+      }),
+    );
+  });
+
+  it("fails explicitly instead of returning an early prefix beyond the generic playback bound", async () => {
+    const frames = Array.from(
+      { length: GENERIC_PLAYBACK_FALLBACK_MAX_MESSAGES_PER_STREAM + 1 },
+      (_, index) => BigInt(index),
+    );
+    const session = longHistorySession(frames);
+
+    await expect(
+      readSynchronizedPlaybackBatchFallback(session, {
+        streams: ["stream"],
+        timeNs: [BigInt(frames.length + 10)],
+      }),
+    ).rejects.toMatchObject({
+      name: "EpisodeReadUnsupportedError",
+      operation: "generic-playback-fallback",
+    } satisfies Partial<EpisodeReadUnsupportedError>);
+  });
+
+  it("forwards cancellation through generic playback reads", async () => {
+    const controller = new AbortController();
+    const session = longHistorySession([1n]);
+
+    await readSynchronizedPlaybackBatchFallback(
+      session,
+      { streams: ["stream"], timeNs: [2n] },
+      { signal: controller.signal },
+    );
+
+    expect(session.read).toHaveBeenCalledWith(
+      expect.objectContaining({ signal: controller.signal }),
+    );
+  });
+
+  it("does not enter a generic playback read after cancellation", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const session = longHistorySession([1n]);
+
+    await expect(
+      readSynchronizedPlaybackBatchFallback(
+        session,
+        { streams: ["stream"], timeNs: [2n] },
+        { signal: controller.signal },
+      ),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(session.read).not.toHaveBeenCalled();
+  });
+
   it("rejects policies the shared runtime cannot interpret consistently", async () => {
     const session = sessionWithBatches([]);
     await expect(
@@ -194,7 +270,85 @@ describe("session read policy", () => {
       transform("static"),
     ]);
   });
+
+  it("bounds generic transform input at the complete-stream boundary", async () => {
+    const boundary = transformHistorySession(
+      GENERIC_TRANSFORM_FALLBACK_MAX_MESSAGES_PER_STREAM,
+    );
+    await expect(
+      readTransformsFallback(boundary, request),
+    ).resolves.toHaveLength(GENERIC_TRANSFORM_FALLBACK_MAX_MESSAGES_PER_STREAM);
+
+    const oversized = transformHistorySession(
+      GENERIC_TRANSFORM_FALLBACK_MAX_MESSAGES_PER_STREAM + 1,
+    );
+    await expect(
+      readTransformsFallback(oversized, request),
+    ).rejects.toMatchObject({
+      name: "EpisodeReadUnsupportedError",
+      operation: "generic-transform-fallback",
+    } satisfies Partial<EpisodeReadUnsupportedError>);
+  });
 });
+
+function longHistorySession(timestamps: readonly bigint[]): EpisodeSession {
+  const read = vi.fn(async function* (readRequest: ReadRequest) {
+    const frames = timestamps
+      .filter(
+        (timestampNs) =>
+          timestampNs >= readRequest.window.startNs &&
+          timestampNs <= readRequest.window.endNs,
+      )
+      .slice(0, readRequest.limit)
+      .map((timestampNs, sequence) => ({
+        output: { resourceHints: { transferables: [] } },
+        sequence,
+        streamId: "stream",
+        timestampNs,
+      }));
+    if (frames.length > 0) yield { frames, stream: "stream" };
+  });
+  return {
+    dispose: vi.fn(),
+    manifest: {
+      episodeId: "long",
+      streams: [
+        {
+          id: "stream",
+          kind: "unknown",
+          payload: { encoding: "test" },
+          sourceName: "stream",
+          timeRange: { endNs: 10_000n, startNs: 0n },
+        },
+      ],
+      timeDomain: { id: "time", kind: "timestamp" },
+      timeRange: { endNs: 10_000n, startNs: 0n },
+    },
+    read,
+  };
+}
+
+function transformHistorySession(messageCount: number): EpisodeSession {
+  const timestamps = Array.from({ length: messageCount }, (_, index) =>
+    BigInt(index),
+  );
+  const base = longHistorySession(timestamps);
+  return {
+    ...base,
+    read: vi.fn(async function* (readRequest) {
+      const frames = timestamps
+        .slice(0, readRequest.limit)
+        .map((timestampNs) => ({
+          output: {
+            transforms: [transform(`frame-${timestampNs}`, timestampNs)],
+          },
+          streamId: "stream",
+          timestampNs,
+        }));
+      if (frames.length > 0) yield { frames, stream: "stream" };
+    }),
+  };
+}
 
 function sessionWithBatches(
   batches: readonly FrameBatch[],

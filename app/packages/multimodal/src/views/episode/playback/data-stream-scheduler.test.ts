@@ -538,6 +538,7 @@ function createSchedulerHarness({
     caches.set(stream, cache);
   }
   const prefetcher = {
+    cancel: vi.fn(),
     collectMissingTicksForStreams: vi.fn<
       DataStreamPrefetcher["collectMissingTicksForStreams"]
     >(() => [9_000_000_000n]),
