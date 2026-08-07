@@ -130,25 +130,31 @@ describe("legendLabels", () => {
 });
 
 describe("soloLabel", () => {
-  it("writes the exclusion of every other class", () => {
+  it("writes an inclusion filter naming only the isolated class", () => {
+    // Exclusion could only name the OTHER known classes, leaving
+    // unlisted values (missing, or past the top-N cap) visible
     expect(soloLabel(null, LABELS, "dog")).toEqual({
-      values: ["cat", "bird"],
-      exclude: true,
+      values: ["dog"],
+      exclude: false,
     });
-  });
-
-  // Identical toggle states must produce identical filters no matter
-  // the click path — otherwise the same legend state renders
-  // differently (sidebar mode, grey/unlisted points) by history
-  it("is exactly equivalent to single-clicking every other class off", () => {
-    const viaSolo = soloLabel(null, LABELS, "dog");
-    let viaToggles = toggleLabel(null, LABELS, "cat");
-    viaToggles = toggleLabel(viaToggles, LABELS, "bird");
-    expect(viaSolo).toEqual(viaToggles);
   });
 
   it("restores all classes when the lone visible class is solo'd again", () => {
     const solo = soloLabel(null, LABELS, "dog");
     expect(soloLabel(solo, LABELS, "dog")).toBeNull();
+  });
+
+  it("recognizes an inclusion filter reached by other means as already solo'd", () => {
+    expect(
+      soloLabel({ values: ["dog"], exclude: false }, LABELS, "dog"),
+    ).toBeNull();
+  });
+
+  it("drops any prior filter's foreign values and extra properties", () => {
+    const filter = { values: ["zebra"], exclude: true, isMatching: true };
+    expect(soloLabel(filter, LABELS, "dog")).toEqual({
+      values: ["dog"],
+      exclude: false,
+    });
   });
 });

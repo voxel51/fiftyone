@@ -1,26 +1,20 @@
 /**
  * Legend click semantics as pure transforms over the App's sidebar
- * filter for the color-by field. The legend keeps no selection state of
- * its own: which classes are "on" derives from that filter, and a click
- * maps the current filter to the next one — so sidebar edits and legend
- * clicks can never disagree. `null` stands for "no filter" (every class
- * on) in both directions.
+ * filter for the color-by field. Which classes are "on" derives from
+ * that filter, not legend state, so sidebar edits and legend clicks can
+ * never disagree. `null` means no filter (every class on).
  *
- * The legend writes EXCLUSION filters, always. The filter is a pure
- * function of the toggle set — identical toggle states produce
- * identical filters no matter the click path, so the sidebar can never
- * flip between "omit" and "show" for the same legend state, and a solo
- * (double-click) is exactly equivalent to single-clicking every other
- * class off. Consequences accepted with that choice: points with no
- * value in the field, and a capped field's unlisted (>top-N) classes,
- * are never hidden by legend clicks — exclusion can't name them.
+ * toggleLabel (single click) writes EXCLUSION: hide a few known
+ * classes, keep everyone else — including values the legend doesn't
+ * know about — visible.
  *
- * Other rules:
- * - Excluded values outside the legend's class list (sidebar entries
- *   for uncapped classes) ride along untouched; an inclusion filter's
- *   foreign values cannot be expressed in exclusion form and are
- *   dropped on the first legend click.
- * - A filter that turns every class back on collapses to `null`.
+ * soloLabel (double click) writes INCLUSION: exclusion can't isolate
+ * one class, since values outside the legend's list (missing, or past
+ * the top-N cap) would stay visible. Solo also drops any prior filter's
+ * foreign values/extra properties; toggle carries them forward where
+ * representable.
+ *
+ * A filter that turns every class back on collapses to `null`.
  */
 import type { ColorMeta } from "./protocol";
 
@@ -88,9 +82,9 @@ export function toggleLabel(
   return build(filter, on, labels);
 }
 
-/** Double click: isolate one class — a bulk toggle, writing the exact
- * filter that single-clicking every other class off would. On the lone
- * visible class, restore all (the escape hatch) */
+/** Double click: isolate one class via inclusion — exclusion could only
+ * name the OTHER known classes, leaving unlisted values visible. On the
+ * lone visible class, restore all (the escape hatch) */
 export function soloLabel(
   filter: CategoricalFilter | null,
   labels: readonly string[],
@@ -98,7 +92,7 @@ export function soloLabel(
 ): CategoricalFilter | null {
   const on = onLabels(filter, labels);
   if (on.size === 1 && on.has(label)) return null;
-  return build(filter, new Set([label]), labels);
+  return { values: [label], exclude: false };
 }
 
 function build(
