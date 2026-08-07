@@ -1,4 +1,4 @@
-import { test as base } from "src/oss/fixtures";
+import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -41,21 +41,16 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 });
 
 test.describe.serial("annotate-multimodal-disabled", () => {
-  test("annotate sidebar is disabled for multimodal datasets", async ({
+  test("the classic sidebar's explore/annotate mode switcher is unavailable for multimodal datasets", async ({
     grid,
     modal,
   }) => {
     await grid.openFirstSample();
 
-    // multimodal media renders through its own viewer, not the looker, so
-    // looker load markers never appear; switching modes auto-waits on the
-    // sidebar tab, which is this test's real precondition
-    await modal.sidebar.switchMode("annotate");
-
-    // the annotate sidebar must refuse to load and explain why, rather than
-    // exposing the annotation tools for an unsupported media type
-    await modal.sidebar.assert.hasDisabledMessage(
-      "supported for multimodal datasets",
-    );
+    // Multimodal media renders through its own MM sidebar (Inspect/Fields
+    // tabs) instead of the classic sidebar entirely, so there's no
+    // explore/annotate mode switcher to switch into "annotate" mode with in
+    // the first place — nothing left to disable.
+    await expect(modal.sidebar.locator).toHaveCount(0);
   });
 });
