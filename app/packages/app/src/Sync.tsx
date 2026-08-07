@@ -33,12 +33,13 @@ import {
   commitMutation,
 } from "relay-runtime";
 import Setup from "./components/Setup";
-import type { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
 import type {
-  DatasetPageQuery,
   DatasetPageQuery$data,
   DatasetPageQuery$variables,
 } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
+// The route union, rather than a hand-listed copy of it, so adding a route
+// doesn't need an edit here.
+import type { Queries } from "./makeRoutes";
 import { type Entry, useRouterContext } from "./routing";
 import useEventSource from "./useEventSource";
 import { AppReadyState } from "./useEvents/registerEvent";
@@ -109,9 +110,9 @@ const dispatchSideEffect = ({
   subscription,
   session,
 }: {
-  currentEntry: Entry<IndexPageQuery | DatasetPageQuery>;
+  currentEntry: Entry<Queries>;
   environment: Environment;
-  nextEntry: Entry<IndexPageQuery | DatasetPageQuery>;
+  nextEntry: Entry<Queries>;
   action: Action | undefined;
   session: Session;
   subscription: string;

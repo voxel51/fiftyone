@@ -20,6 +20,7 @@
         "@fiftyone/core": "*",
         "@fiftyone/events": "*",
         "@fiftyone/feature-flags": "*",
+        "@fiftyone/keymap": "*",
         "@fiftyone/multimodal": "*",
         "@fiftyone/relay": "*",
         "@fiftyone/state": "*",

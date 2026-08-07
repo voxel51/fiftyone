@@ -24,6 +24,7 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import { graphql } from "relay-runtime";
 import Analytics from "./Analytics";
 import DatasetSelector from "./DatasetSelector";
+import SettingsButton from "./Settings";
 import Teams from "./Teams";
 import type { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
 import type { NavFragment$key } from "./__generated__/NavFragment.graphql";
@@ -125,6 +126,7 @@ const Nav: React.FC<
           <DiscordLink />
           <GitHubLink />
           <DocsLink />
+          <SettingsButton />
           <Box ml={1}>
             <OperatorPlacements place={types.Places.HEADER_ACTIONS} />
           </Box>

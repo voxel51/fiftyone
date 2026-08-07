@@ -80,7 +80,8 @@ export const scopeChain = (scope: ScopeId): ScopeId[] => {
 };
 
 /** Distance from the root; the primary precedence key. */
-export const scopeDepth = (scope: ScopeId): number => scopeChain(scope).length - 1;
+export const scopeDepth = (scope: ScopeId): number =>
+  scopeChain(scope).length - 1;
 
 /** True when `ancestor` is a strict ancestor of `scope`. */
 export const isAncestorScope = (ancestor: ScopeId, scope: ScopeId): boolean =>

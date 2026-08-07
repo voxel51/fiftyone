@@ -55,22 +55,28 @@ export const chordFromEvent = (event: KeyboardEvent): Chord => ({
 
 /**
  * Canonical serialization: modifiers in a fixed order, then the code, so two
- * chords are the same binding exactly when their strings are equal. This is
- * the form persisted in overrides and used as a map key.
+ * chords are the same binding exactly when their strings are equal. This is the
+ * form persisted in overrides and used as a map key.
+ *
+ * The order is ctrl → meta → alt → shift, chosen so the way people naturally
+ * write a binding (`ctrl+shift+KeyZ`, `meta+shift+KeyZ`) is already canonical
+ * and a hand-authored manifest entry doesn't silently differ from its stored
+ * form. Note this is *storage* order and deliberately not display order —
+ * `describeChord` uses the platform's convention (`⌃⌥⇧⌘` on Apple) instead.
  */
 export const formatChord = (chord: Chord): string => {
   const parts: string[] = [];
   if (chord.ctrl) {
     parts.push("ctrl");
   }
+  if (chord.meta) {
+    parts.push("meta");
+  }
   if (chord.alt) {
     parts.push("alt");
   }
   if (chord.shift) {
     parts.push("shift");
-  }
-  if (chord.meta) {
-    parts.push("meta");
   }
   parts.push(chord.code);
   return parts.join("+");
@@ -128,7 +134,10 @@ export const chordsEqual = (a: Chord, b: Chord): boolean =>
  * `Shift+Space`. Blender's per-modifier `ANY` is deliberately left out of this
  * POC; it belongs in the same place if we want it.
  */
-export const chordMatchesEvent = (chord: Chord, event: KeyboardEvent): boolean =>
+export const chordMatchesEvent = (
+  chord: Chord,
+  event: KeyboardEvent,
+): boolean =>
   chord.code === event.code &&
   chord.ctrl === event.ctrlKey &&
   chord.alt === event.altKey &&

@@ -13,6 +13,7 @@
         { "path": "packages/events" },
         { "path": "packages/feature-flags" },
         { "path": "packages/flashlight" },
+        { "path": "packages/keymap" },
         { "path": "packages/lighter" },
         { "path": "packages/looker" },
         { "path": "packages/looker-3d" },

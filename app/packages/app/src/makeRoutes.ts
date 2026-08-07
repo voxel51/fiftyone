@@ -5,6 +5,7 @@
 import { createResourceGroup } from "@fiftyone/utilities";
 import type { ConcreteRequest } from "relay-runtime";
 import type { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
+import type { KeymapDemoPageQuery } from "./pages/__generated__/KeymapDemoPageQuery.graphql";
 import type { DatasetPageQuery } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
 import type {
   Route,
@@ -16,9 +17,10 @@ import type {
 interface Routes {
   "/": RouteOptions<IndexPageQuery>;
   "/datasets/:name": RouteOptions<DatasetPageQuery>;
+  "/keymap-demo": RouteOptions<KeymapDemoPageQuery>;
 }
 
-export type Queries = DatasetPageQuery | IndexPageQuery;
+export type Queries = DatasetPageQuery | IndexPageQuery | KeymapDemoPageQuery;
 export type Router = RoutingContext<Queries>;
 const components = createResourceGroup<Route<Queries>>();
 
@@ -42,6 +44,16 @@ const makeRoutes = () => {
         import("./pages/IndexPage").then((module) => module.default),
       query: () =>
         import("./pages/__generated__/IndexPageQuery.graphql").then(
+          (module) => module.default,
+        ),
+    },
+
+    // Showcase route for the keymap POC — see components/KeymapDemo.
+    "/keymap-demo": {
+      component: () =>
+        import("./pages/KeymapDemoPage").then((module) => module.default),
+      query: () =>
+        import("./pages/__generated__/KeymapDemoPageQuery.graphql").then(
           (module) => module.default,
         ),
     },

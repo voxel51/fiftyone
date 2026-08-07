@@ -1607,6 +1607,7 @@ __metadata:
     "@fiftyone/core": "npm:*"
     "@fiftyone/events": "npm:*"
     "@fiftyone/feature-flags": "npm:*"
+    "@fiftyone/keymap": "npm:*"
     "@fiftyone/multimodal": "npm:*"
     "@fiftyone/relay": "npm:*"
     "@fiftyone/state": "npm:*"
@@ -2016,6 +2017,28 @@ __metadata:
     typescript: "catalog:"
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "catalog:"
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/keymap@npm:*, @fiftyone/keymap@workspace:packages/keymap":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/keymap@workspace:packages/keymap"
+  dependencies:
+    "@testing-library/dom": "catalog:"
+    "@testing-library/react": "catalog:"
+    "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
+    "@typescript-eslint/parser": "npm:^6.0.0"
+    eslint: "catalog:"
+    jsdom: "npm:^26.0.0"
+    react: "catalog:"
+    react-dom: "catalog:"
+    typescript: "catalog:"
+    vite: "catalog:"
+    vite-plugin-externals: "catalog:"
+    vitest: "catalog:"
+  peerDependencies:
+    jotai: "*"
+    react: "*"
   languageName: unknown
   linkType: soft
 

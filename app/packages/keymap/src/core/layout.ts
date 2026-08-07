@@ -102,7 +102,9 @@ export const ensureKeyboardLayout = (): void => {
     });
 };
 
-export const subscribeToKeyboardLayout = (listener: () => void): (() => void) => {
+export const subscribeToKeyboardLayout = (
+  listener: () => void,
+): (() => void) => {
   layoutListeners.add(listener);
   return () => {
     layoutListeners.delete(listener);
@@ -113,7 +115,8 @@ export const subscribeToKeyboardLayout = (listener: () => void): (() => void) =>
 export const hasKeyboardLayout = (): boolean => layoutMap !== null;
 
 const isApple = (): boolean =>
-  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+  typeof navigator !== "undefined" &&
+  /Mac|iPhone|iPad/.test(navigator.platform);
 
 /** The glyph for a single physical key, e.g. `KeyS` → `S`, `BracketLeft` → `[`. */
 export const describeCode = (code: string): string => {
@@ -144,22 +147,46 @@ export const describeCode = (code: string): string => {
   return code;
 };
 
-/** Human-readable chord, e.g. `⌘ ⇧ S` on Apple, `Ctrl + Shift + S` elsewhere. */
+/**
+ * Human-readable chord, e.g. `⌃⇧⌘S` on Apple, `Ctrl + Shift + S` elsewhere.
+ *
+ * Modifier order follows each platform's own convention rather than the storage
+ * order in `formatChord`: Apple writes control-option-shift-command, Windows and
+ * Linux put the meta key first and shift last. Getting this wrong is
+ * immediately noticeable to users ("Shift + Win + Z" reads as a typo).
+ */
 export const describeChord = (chord: Chord): string => {
   const apple = isApple();
   const parts: string[] = [];
-  if (chord.ctrl) {
-    parts.push(apple ? "⌃" : "Ctrl");
+
+  if (apple) {
+    if (chord.ctrl) {
+      parts.push("⌃");
+    }
+    if (chord.alt) {
+      parts.push("⌥");
+    }
+    if (chord.shift) {
+      parts.push("⇧");
+    }
+    if (chord.meta) {
+      parts.push("⌘");
+    }
+  } else {
+    if (chord.ctrl) {
+      parts.push("Ctrl");
+    }
+    if (chord.meta) {
+      parts.push("Win");
+    }
+    if (chord.alt) {
+      parts.push("Alt");
+    }
+    if (chord.shift) {
+      parts.push("Shift");
+    }
   }
-  if (chord.alt) {
-    parts.push(apple ? "⌥" : "Alt");
-  }
-  if (chord.shift) {
-    parts.push(apple ? "⇧" : "Shift");
-  }
-  if (chord.meta) {
-    parts.push(apple ? "⌘" : "Win");
-  }
+
   parts.push(describeCode(chord.code));
   return parts.join(apple ? " " : " + ");
 };

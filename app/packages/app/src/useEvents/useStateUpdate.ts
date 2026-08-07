@@ -11,6 +11,9 @@ import { getDatasetName, getParam, resolveURL } from "../utils";
 import { AppReadyState } from "./registerEvent";
 import { appReadyState, processState } from "./utils";
 
+/** See makeRoutes.ts — the keymap POC showcase route. */
+const KEYMAP_DEMO_PATH = "/keymap-demo";
+
 const useStateUpdate: EventHandlerHook = ({
   router,
   readyStateRef,
@@ -20,6 +23,20 @@ const useStateUpdate: EventHandlerHook = ({
 
   return useCallback(
     (payload: { state: { [key: string]: unknown } }) => {
+      // The keymap POC route is not a dataset view, so the server's notion of
+      // the active dataset must not navigate away from it — otherwise the route
+      // is unreachable whenever a dataset is loaded, which is always.
+      if (router.history.location.pathname === KEYMAP_DEMO_PATH) {
+        if (readyStateRef.current !== AppReadyState.OPEN) {
+          // Same path, but with a location state object — `matchPath` calls
+          // `Object.entries(state)` unconditionally, and a fresh navigation has
+          // a null state.
+          router.history.replace(KEYMAP_DEMO_PATH, {});
+          router.load().then(() => setReadyState(AppReadyState.OPEN));
+        }
+        return;
+      }
+
       const state = processState(session.current, payload.state);
       const stateless = env().VITE_NO_STATE;
       const path = resolveURL({
