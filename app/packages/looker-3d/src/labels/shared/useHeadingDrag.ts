@@ -193,7 +193,6 @@ export function useHeadingDrag({
       }
 
       setIsDragging(true);
-      setIsCurrentlyTransforming(true);
       onDragStart();
 
       e.stopPropagation();
@@ -205,7 +204,6 @@ export function useHeadingDrag({
       dimensions,
       orientation,
       onDragStart,
-      setIsCurrentlyTransforming,
       suppressNextClickRef,
     ],
   );
@@ -278,11 +276,9 @@ export function useHeadingDrag({
     }
 
     dragRef.current = null;
-    isClaimingControlsRef.current = false;
     setIsDragging(false);
     setTargetFace(null);
-    setIsCurrentlyTransforming(false);
-  }, [onCancel, onCommit, setTargetFace, setIsCurrentlyTransforming, upVector]);
+  }, [onCancel, onCommit, setTargetFace, upVector]);
 
   // The window listeners are wired through refs so the effect below can depend
   // on `isDragging` alone. Depending on the callbacks directly would mean any

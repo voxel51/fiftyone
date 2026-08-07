@@ -1,4 +1,11 @@
-import { Button, Size, Text, TextColor, TextVariant, Variant } from "@voxel51/voodo";
+import {
+  Button,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  Variant,
+} from "@voxel51/voodo";
 import {
   CUBOID_RESIZE_FACES,
   type CuboidResizeFace,
@@ -34,9 +41,7 @@ export interface HeadingUpVectorFieldsProps {
 }
 
 /**
- * The heading/up face pickers plus the same-axis validation warning — the
- * part of the "Edit heading/up vector" UI that's identical whether it's
- * shown in the arrow's floating popup ({@link HeadingUpVectorEditor}) or
+ * The heading/up face pickers plus the same-axis validation warning, shown
  * inline in the annotation sidebar. Doesn't render any Apply/Cancel chrome;
  * callers decide whether picks apply immediately or need a confirm step.
  */

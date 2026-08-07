@@ -8,11 +8,12 @@ import {
   ORIENTATION_AXES_LENGTH_RATIO,
   ORIENTATION_AXES_MIN_LENGTH,
   getCuboidOrientationMarkerGeometry,
-  getCuboidOrientationMarkerProps,
+  getCuboidOrientationMarkerPropsFromGeometry,
   getFiniteMagnitude,
 } from "./cuboid-orientation-geometry";
 
 export {
+  HEADING_FORWARD_FACE,
   ORIENTATION_AXES_COLORS,
   ORIENTATION_AXES_LENGTH_RATIO,
   ORIENTATION_AXES_MIN_LENGTH,
@@ -61,9 +62,18 @@ export const CuboidOrientationMarker = ({
   onPointerMove,
   highlighted = false,
 }: CuboidOrientationMarkerProps) => {
-  const markerProps = useMemo(
-    () => getCuboidOrientationMarkerProps(dimensions, orientation, upVector),
+  // Computed once and shared below: `markerProps` (the drawn shaft/head) and
+  // `hitVolume` (its pick box) must agree, since the hit volume has to cover
+  // the drawn arrow.
+  const geometry = useMemo(
+    () => getCuboidOrientationMarkerGeometry(dimensions, orientation, upVector),
     [dimensions, orientation, upVector],
+  );
+
+  const markerProps = useMemo(
+    () =>
+      geometry ? getCuboidOrientationMarkerPropsFromGeometry(geometry) : null,
+    [geometry],
   );
 
   const isInteractive = Boolean(
@@ -73,17 +83,7 @@ export const CuboidOrientationMarker = ({
   // Box spanning the whole arrow (shaft start → tip), sized off the arrowhead
   // so it scales with the marker instead of the box.
   const hitVolume = useMemo(() => {
-    if (!isInteractive) {
-      return null;
-    }
-
-    const geometry = getCuboidOrientationMarkerGeometry(
-      dimensions,
-      orientation,
-      upVector,
-    );
-
-    if (!geometry) {
+    if (!isInteractive || !geometry) {
       return null;
     }
 
@@ -105,7 +105,7 @@ export const CuboidOrientationMarker = ({
         anchor.z,
       ] as THREE.Vector3Tuple,
     };
-  }, [dimensions, orientation, upVector, isInteractive]);
+  }, [geometry, isInteractive]);
 
   const headGeometry = useMemo(() => {
     if (!markerProps) {

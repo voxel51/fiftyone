@@ -71,7 +71,7 @@ const crossAxis = (a: SignedAxis, b: SignedAxis): SignedAxis => {
  * axis, right-handing the third slot with the cross product. Shared by
  * {@link computeCuboidHeadingRelabel} (which infers `up` from the world-space
  * up vector) and {@link computeCuboidHeadingAndUpRelabel} (which takes it
- * directly from the popup's face picker).
+ * directly from the sidebar's face picker).
  */
 const buildRelabelFromAxes = (
   dimensions: THREE.Vector3Tuple,
@@ -133,8 +133,8 @@ const buildRelabelFromAxes = (
 /**
  * Whether `headingFace` and `upFace` could serve as the heading and up faces
  * of the same box — i.e. they aren't on the same axis (parallel or
- * antiparallel). Exposed so the popup can disable its Apply button and show a
- * warning without needing dimensions/quaternion.
+ * antiparallel). Exposed so the sidebar can disable its Apply button and show
+ * a warning without needing dimensions/quaternion.
  */
 export function isValidHeadingUpFacePair(
   headingFace: CuboidResizeFace,
@@ -147,10 +147,10 @@ export function isValidHeadingUpFacePair(
 }
 
 /**
- * Explicit heading + up relabel for the "Edit heading/up vector" popup: unlike
- * {@link computeCuboidHeadingRelabel} (which only takes a target heading face
- * and infers `up` from the current world-space up vector), this takes both
- * faces directly from the user's picks.
+ * Explicit heading + up relabel for the "Edit heading/up vector" sidebar
+ * section: unlike {@link computeCuboidHeadingRelabel} (which only takes a
+ * target heading face and infers `up` from the current world-space up
+ * vector), this takes both faces directly from the user's picks.
  */
 export function computeCuboidHeadingAndUpRelabel({
   dimensions,

@@ -595,9 +595,9 @@ export const hoveredHeadingTargetFaceAtom = atom<{
 });
 
 /**
- * The face being hovered in the "Edit heading/up vector" UI — the popup or
- * the sidebar's `HeadingUpVectorFields` — previewing where that arrow would
- * land with no drag in progress. Unlike {@link hoveredHeadingTargetFaceAtom}
+ * The face being hovered in the "Edit heading/up vector" sidebar's
+ * `HeadingUpVectorFields` — previewing where that arrow would land with no
+ * drag in progress. Unlike {@link hoveredHeadingTargetFaceAtom}
  * (an in-progress *drag*'s candidate face, set from a pointer-captured
  * gesture), this comes from a plain DOM `onMouseEnter`/`onMouseLeave` on a
  * button, so there's no "source panel" to disambiguate — only one control can
@@ -613,8 +613,8 @@ export const headingUpPreviewAtom = atom<{
 });
 
 /**
- * Whether the pointer is anywhere over the "Edit heading/up vector" UI as a
- * whole (popup or sidebar section) — not tied to a specific face button like
+ * Whether the pointer is anywhere over the "Edit heading/up vector" sidebar
+ * section as a whole — not tied to a specific face button like
  * {@link headingUpPreviewAtom}, which goes `null` in the gaps between
  * buttons as the pointer crosses them. Gating the gizmo/face-resize
  * suppression on the per-face atom instead would flicker those controls back

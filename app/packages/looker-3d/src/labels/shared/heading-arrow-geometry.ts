@@ -29,7 +29,7 @@ import {
 // Light orange, distinct from the committed arrow's complementary color.
 export const HEADING_GHOST_COLOR = "#ffb266";
 // Cyan, distinct from the heading ghost's orange — used for the "up" preview
-// in the "Edit heading/up vector" popup/sidebar.
+// in the "Edit heading/up vector" sidebar section.
 export const UP_GHOST_COLOR = "#5ce1e6";
 export const HEADING_GHOST_HOVER_OPACITY = 0.6;
 export const HEADING_GHOST_DRAG_OPACITY = 0.8;
@@ -290,12 +290,15 @@ export function getHeadingFaceDotRadius(
 ): number {
   const extents = dimensions.map(finiteMagnitude);
   const smallest = Math.min(...extents);
+  const maxExtent = smallest * FACE_DOT_MAX_EXTENT_RATIO;
 
-  return Math.max(
-    Math.min(
-      smallest * FACE_DOT_RADIUS_RATIO,
-      smallest * FACE_DOT_MAX_EXTENT_RATIO,
-    ),
+  // Floor first so small boxes still get a visible dot, then cap against the
+  // box's own smallest extent so that floor can't blow past a thin box's
+  // face. A fully degenerate (zero-extent) box has no extent to cap against,
+  // so it falls back to the floor instead of collapsing to zero.
+  const withFloor = Math.max(
+    smallest * FACE_DOT_RADIUS_RATIO,
     FACE_DOT_MIN_RADIUS,
   );
+  return maxExtent > 0 ? Math.min(withFloor, maxExtent) : FACE_DOT_MIN_RADIUS;
 }

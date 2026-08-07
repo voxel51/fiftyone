@@ -1,6 +1,12 @@
 import * as THREE from "three";
+import type { CuboidResizeFace } from "../../annotation/cuboid-face-resize";
 
 const DEFAULT_SCENE_UP_VECTOR = new THREE.Vector3(0, 0, 1);
+
+// The shaft and arrowhead built below always run along local +x — this names
+// that assumption for consumers that need to anchor UI (ghost previews,
+// default editor selection) to "the face the heading arrow points at".
+export const HEADING_FORWARD_FACE: CuboidResizeFace = "+x";
 
 // Flat triangular arrowhead, sized relative to the box's arrow scale below.
 // Exported so the drag-preview ghost in `heading-arrow-geometry.ts` shares one
@@ -139,6 +145,40 @@ export const getCuboidOrientationMarkerGeometry = (
 };
 
 /**
+ * Composed (final) local-space points derived from an already-computed
+ * `CuboidOrientationMarkerGeometry`. Split out from `getCuboidOrientationMarkerProps`
+ * so callers that also need the raw geometry (e.g. for a hit volume) can share
+ * one `getCuboidOrientationMarkerGeometry` call instead of computing it twice.
+ */
+export const getCuboidOrientationMarkerPropsFromGeometry = (
+  geometry: CuboidOrientationMarkerGeometry,
+): {
+  shaftStart: THREE.Vector3Tuple;
+  shaftEnd: THREE.Vector3Tuple;
+  headVertices: [THREE.Vector3Tuple, THREE.Vector3Tuple, THREE.Vector3Tuple];
+} => {
+  const { anchor, shaftStart, headLength, headHalfWidth, spreadAlongZ } =
+    geometry;
+  const shaftEndX = anchor.x;
+  const tipX = shaftEndX + headLength;
+  const { y: baseY, z: baseZ } = anchor;
+
+  const apex: THREE.Vector3Tuple = [tipX, baseY, baseZ];
+  const base1: THREE.Vector3Tuple = spreadAlongZ
+    ? [shaftEndX, baseY, baseZ + headHalfWidth]
+    : [shaftEndX, baseY + headHalfWidth, baseZ];
+  const base2: THREE.Vector3Tuple = spreadAlongZ
+    ? [shaftEndX, baseY, baseZ - headHalfWidth]
+    : [shaftEndX, baseY - headHalfWidth, baseZ];
+
+  return {
+    shaftStart,
+    shaftEnd: [shaftEndX, baseY, baseZ],
+    headVertices: [apex, base1, base2],
+  };
+};
+
+/**
  * Composed (final) local-space points for the standalone `CuboidOrientationMarker`
  * component. Built on top of `getCuboidOrientationMarkerGeometry`.
  */
@@ -161,23 +201,5 @@ export const getCuboidOrientationMarkerProps = (
     return null;
   }
 
-  const { anchor, shaftStart, headLength, headHalfWidth, spreadAlongZ } =
-    geometry;
-  const shaftEndX = anchor.x;
-  const tipX = shaftEndX + headLength;
-  const { y: baseY, z: baseZ } = anchor;
-
-  const apex: THREE.Vector3Tuple = [tipX, baseY, baseZ];
-  const base1: THREE.Vector3Tuple = spreadAlongZ
-    ? [shaftEndX, baseY, baseZ + headHalfWidth]
-    : [shaftEndX, baseY + headHalfWidth, baseZ];
-  const base2: THREE.Vector3Tuple = spreadAlongZ
-    ? [shaftEndX, baseY, baseZ - headHalfWidth]
-    : [shaftEndX, baseY - headHalfWidth, baseZ];
-
-  return {
-    shaftStart,
-    shaftEnd: [shaftEndX, baseY, baseZ],
-    headVertices: [apex, base1, base2],
-  };
+  return getCuboidOrientationMarkerPropsFromGeometry(geometry);
 };

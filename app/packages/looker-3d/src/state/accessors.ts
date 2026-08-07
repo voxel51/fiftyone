@@ -114,8 +114,8 @@ export const useIsCurrentlyTransforming = () => {
 };
 
 /**
- * The face being hovered in the heading/up face picker (popup or sidebar),
- * for whichever label owns it — read by the 3D scene to preview a ghost
+ * The face being hovered in the sidebar's heading/up face picker, for
+ * whichever label owns it — read by the 3D scene to preview a ghost
  * arrow/face highlight and suppress other transform controls while hovered.
  */
 export const useHeadingUpPreview = () => {

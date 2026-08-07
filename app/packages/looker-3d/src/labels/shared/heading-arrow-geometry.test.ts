@@ -194,6 +194,12 @@ describe("getHeadingFaceDotRadius", () => {
   it("stays positive for a degenerate box", () => {
     expect(getHeadingFaceDotRadius([0, 0, 0])).toBeGreaterThan(0);
   });
+
+  it("caps the radius on a thin box instead of exceeding its smallest extent", () => {
+    expect(getHeadingFaceDotRadius([4, 0.05, 6])).toBeLessThanOrEqual(
+      0.05 * 0.2,
+    );
+  });
 });
 
 describe("getHeadingFaceAnchor", () => {
