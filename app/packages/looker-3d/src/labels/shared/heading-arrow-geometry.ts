@@ -281,15 +281,20 @@ export function getHeadingFaceDotRadius(
 ): number {
   const extents = dimensions.map(finiteMagnitude);
   const smallest = Math.min(...extents);
-  const maxExtent = smallest * FACE_DOT_MAX_EXTENT_RATIO;
+
+  if (smallest <= 0) {
+    // Every extent zero is a fully degenerate (point) box, which still needs
+    // a visible dot. A zero extent on only *some* axes is a real face with
+    // zero area (e.g. a flat [4, 0, 6] plane) — no dot fits there.
+    return extents.every((extent) => extent <= 0) ? FACE_DOT_MIN_RADIUS : 0;
+  }
 
   // Floor first so small boxes still get a visible dot, then cap against the
   // box's own smallest extent so that floor can't blow past a thin box's
-  // face. A fully degenerate (zero-extent) box has no extent to cap against,
-  // so it falls back to the floor instead of collapsing to zero.
+  // face.
   const withFloor = Math.max(
     smallest * FACE_DOT_RADIUS_RATIO,
     FACE_DOT_MIN_RADIUS,
   );
-  return maxExtent > 0 ? Math.min(withFloor, maxExtent) : FACE_DOT_MIN_RADIUS;
+  return Math.min(withFloor, smallest * FACE_DOT_MAX_EXTENT_RATIO);
 }

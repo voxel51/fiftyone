@@ -189,6 +189,10 @@ describe("getHeadingFaceDotRadius", () => {
       0.05 * 0.2,
     );
   });
+
+  it("is zero for a partially degenerate box (a real face with zero area)", () => {
+    expect(getHeadingFaceDotRadius([4, 0, 6])).toBe(0);
+  });
 });
 
 describe("getHeadingFaceAnchor", () => {
