@@ -6,6 +6,8 @@ import {
   REGRESSION,
   TEMPORAL_DETECTION,
   TEMPORAL_DETECTIONS,
+  VQA,
+  VQAS,
   getCls,
   sizeBytesEstimate,
 } from "@fiftyone/utilities";
@@ -38,6 +40,12 @@ export interface Regression {
 }
 
 export type ClassificationLabel = Classification & Regression;
+
+export type VQALabel = {
+  _cls: "VQA";
+  question?: string;
+  answer?: string;
+} & RegularLabel;
 
 export type Labels<T> = [string, T[]][];
 
@@ -409,6 +417,10 @@ export const getClassificationPoints = (
 const getText = (_cls: string, label) => {
   if (_cls === REGRESSION) {
     return label.value;
+  }
+
+  if (_cls === VQA || _cls === VQAS) {
+    return label.answer ?? "null";
   }
 
   return label.label ?? "null";

@@ -8,6 +8,8 @@ import {
   REGRESSION,
   TEMPORAL_DETECTION,
   TEMPORAL_DETECTIONS,
+  VQA,
+  VQAS,
 } from "@fiftyone/utilities";
 
 export const BASE_ALPHA = 0.7;
@@ -39,6 +41,8 @@ export const MOMENT_CLASSIFICATIONS = [
   CLASSIFICATION,
   CLASSIFICATIONS,
   REGRESSION,
+  VQA,
+  VQAS,
 ];
 
 export const LABEL_TAGS_CLASSES = [
@@ -47,4 +51,6 @@ export const LABEL_TAGS_CLASSES = [
   REGRESSION,
   TEMPORAL_DETECTION,
   TEMPORAL_DETECTIONS,
+  VQA,
+  VQAS,
 ];

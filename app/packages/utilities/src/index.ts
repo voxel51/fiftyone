@@ -164,6 +164,8 @@ export const REGRESSION = "Regression";
 export const SEGMENTATION = "Segmentation";
 export const TEMPORAL_DETECTION = "TemporalDetection";
 export const TEMPORAL_DETECTIONS = "TemporalDetections";
+export const VQA = "VQA";
+export const VQAS = "VQAs";
 
 export const LABEL_LISTS_MAP = {
   [CLASSIFICATIONS]: "classifications",
@@ -171,6 +173,7 @@ export const LABEL_LISTS_MAP = {
   [KEYPOINTS]: "keypoints",
   [POLYLINES]: "polylines",
   [TEMPORAL_DETECTIONS]: "detections",
+  [VQAS]: "vqas",
 };
 
 const RESERVED_FIELD_KEYS_MAP = {
@@ -197,6 +200,8 @@ export const LABELS_MAP = {
   [REGRESSION]: REGRESSION,
   [TEMPORAL_DETECTION]: TEMPORAL_DETECTION,
   [TEMPORAL_DETECTIONS]: TEMPORAL_DETECTIONS,
+  [VQA]: VQA,
+  [VQAS]: VQAS,
 };
 
 export const MASK_LABELS = new Set([DETECTION, SEGMENTATION]);
@@ -222,18 +227,21 @@ export const VALID_OBJECT_TYPES = [
 
 export const VALID_CLASS_TYPES = ["Classification", "Classifications"];
 export const VALID_MASK_TYPES = ["Heatmap", "Segmentation"];
+export const VALID_VQA_TYPES = [VQA, VQAS];
 export const VALID_LIST_TYPES = [
   "Classifications",
   "Detections",
   "Keypoints",
   "Polylines",
   "TemporalDetections",
+  "VQAs",
 ];
 
 export const VALID_LABEL_TYPES = [
   ...VALID_CLASS_TYPES,
   ...VALID_OBJECT_TYPES,
   ...VALID_MASK_TYPES,
+  ...VALID_VQA_TYPES,
   "Regression",
 ];
 
@@ -243,6 +251,7 @@ export const LABEL_LISTS = [
   "Keypoints",
   "Polylines",
   "TemporalDetections",
+  "VQAs",
 ];
 
 export const LABEL_LIST = {
@@ -251,6 +260,7 @@ export const LABEL_LIST = {
   Keypoints: "keypoints",
   Polylines: "polylines",
   TemporalDetections: "detections",
+  VQAs: "vqas",
 };
 
 export const LABEL_LIST_PATH = Object.fromEntries(
