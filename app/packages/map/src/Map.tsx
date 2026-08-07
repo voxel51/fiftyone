@@ -16,6 +16,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import useResizeObserver from "use-resize-observer";
 
 import DrawControl from "./Draw";
+import { filterValidSampleLocations } from "./geo";
 import useFetchGeoLocations, {
   SampleLocationMap,
   sampleLocationMapAtom,
@@ -58,7 +59,7 @@ const fitBounds = (
 const createSourceData = (
   sampleLocationMap: SampleLocationMap,
 ): GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }> => {
-  const entries = Object.entries(sampleLocationMap);
+  const entries = Object.entries(filterValidSampleLocations(sampleLocationMap));
   if (entries.length === 0) return null;
 
   return {
