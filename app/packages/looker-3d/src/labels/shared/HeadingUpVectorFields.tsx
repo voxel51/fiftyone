@@ -13,9 +13,21 @@ import {
 import type { ReactNode } from "react";
 import {
   CUBOID_RESIZE_FACES,
+  getCuboidResizeFaceAxis,
   type CuboidResizeFace,
 } from "../../annotation/cuboid-face-resize";
 import { isValidHeadingUpFacePair } from "../../annotation/cuboid-heading-relabel";
+import { ORIENTATION_AXES_COLORS } from "./CuboidOrientationMarkers";
+
+// Matches the axis colors drawn by the centroid axes gizmo (CuboidAxesMarker):
+// +X red, +Y green, +Z blue — so "up" here can be described the same way the
+// gizmo shows it in the 3D view.
+const AXIS_COLOR_NAMES = ["Red", "Green", "Blue"] as const;
+const AXIS_COLORS = [
+  ORIENTATION_AXES_COLORS.x,
+  ORIENTATION_AXES_COLORS.y,
+  ORIENTATION_AXES_COLORS.z,
+] as const;
 
 const FACE_LABELS: Record<CuboidResizeFace, string> = {
   "+x": "+X",
@@ -74,6 +86,9 @@ export const HeadingUpVectorFields = ({
   disabled = false,
 }: HeadingUpVectorFieldsProps) => {
   const isValid = isValidHeadingUpFacePair(headingFace, upFace);
+  const upAxis = getCuboidResizeFaceAxis(upFace).axis;
+  const upColorName = AXIS_COLOR_NAMES[upAxis];
+  const upColor = AXIS_COLORS[upAxis];
 
   return (
     <div
@@ -97,6 +112,18 @@ export const HeadingUpVectorFields = ({
         onHover={onUpFaceHover}
         disabled={disabled}
         excludeFaces={UP_EXCLUDED_FACES}
+        infoTooltip={
+          <>
+            Up vector is{" "}
+            <Text
+              variant={TextVariant.Xs}
+              style={{ color: upColor, display: "inline" }}
+            >
+              {upColorName}
+            </Text>
+            , matching the axes gizmo shown on the box.
+          </>
+        }
       />
 
       {!isValid && (

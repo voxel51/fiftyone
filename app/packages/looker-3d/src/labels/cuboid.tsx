@@ -658,6 +658,15 @@ export const Cuboid = ({
     [headingUpPreviewRelabel],
   );
 
+  // While hovering a heading/up face button, a second axes gizmo is drawn at
+  // the candidate orientation (see the sibling group below `content`). Hide
+  // the gizmo's current-orientation copy for that span so the box only ever
+  // shows one gizmo at a time — the preview reads as "the gizmo turning to
+  // its new orientation" rather than two overlapping tripods.
+  const isPreviewingOrientation = Boolean(
+    headingUpPreviewRelabel && headingUpPreviewQuaternion,
+  );
+
   // Set while the pointer is anywhere over that same UI *as a whole* — used
   // (instead of the per-face preview above) to hide the gizmo/face-resize
   // handles, since the per-face atom goes null in the gaps between buttons
@@ -1298,7 +1307,9 @@ export const Cuboid = ({
             highlighted={canEditHeading && headingDrag.isActive}
             {...(canEditHeading ? headingDrag.handlers : {})}
           />
-          <CuboidAxesMarker dimensions={displayDimensions} />
+          {!isPreviewingOrientation && (
+            <CuboidAxesMarker dimensions={displayDimensions} />
+          )}
 
           {/* Hover/drag affordances: dots marking every face the heading can
               attach to, plus a ghost arrow tracking the pointer. The committed
@@ -1378,11 +1389,16 @@ export const Cuboid = ({
           quaternion is already expressed in the same (parent-relative) frame as
           the box's own `combinedQuaternion`, so nesting it inside the
           already-rotated content group would double-apply the rotation. */}
-      {showOrientation && headingUpPreviewRelabel && headingUpPreviewQuaternion && (
-        <group position={displayPosition} quaternion={headingUpPreviewQuaternion}>
-          <CuboidAxesMarker dimensions={headingUpPreviewRelabel.dimensions} />
-        </group>
-      )}
+      {showOrientation &&
+        headingUpPreviewRelabel &&
+        headingUpPreviewQuaternion && (
+          <group
+            position={displayPosition}
+            quaternion={headingUpPreviewQuaternion}
+          >
+            <CuboidAxesMarker dimensions={headingUpPreviewRelabel.dimensions} />
+          </group>
+        )}
     </Transformable>
   );
 };
