@@ -56,12 +56,10 @@ import {
   ORIENTATION_AXES_COLORS,
 } from "./shared/CuboidOrientationMarkers";
 import {
-  HEADING_GHOST_COLOR,
   HEADING_GHOST_DRAG_OPACITY,
   HEADING_GHOST_HOVER_OPACITY,
   HeadingFaceDots,
   HeadingGhostArrow,
-  UP_GHOST_COLOR,
 } from "./shared/HeadingArrow";
 import { useDisplayCuboidTransform } from "./shared/useDisplayCuboidTransform";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
@@ -641,6 +639,7 @@ export const Cuboid = ({
       quaternion: orientationQuaternion,
       headingFace: nextHeadingFace,
       upFace: nextUpFace,
+      upVector,
     });
   }, [
     isHeadingUpPreviewActive,
@@ -648,6 +647,7 @@ export const Cuboid = ({
     currentUpFace,
     effectiveDimensions,
     orientationQuaternion,
+    upVector,
   ]);
 
   const headingUpPreviewQuaternion = useMemo(
@@ -1333,34 +1333,6 @@ export const Cuboid = ({
                   headingDrag.isDragging
                     ? HEADING_GHOST_DRAG_OPACITY
                     : HEADING_GHOST_HOVER_OPACITY
-                }
-              />
-            </>
-          )}
-
-          {/* Hovering a face button in the "Edit heading/up vector" sidebar
-              section — same ghost-arrow/face-dot visualization as the drag
-              gesture above, colored by which role (heading vs. up) is being
-              previewed so the two read as distinct. */}
-          {isHeadingUpPreviewActive && headingUpPreview && (
-            <>
-              <HeadingFaceDots
-                dimensions={displayDimensions}
-                activeFace={headingUpPreview.face}
-                color={
-                  headingUpPreview.role === "heading"
-                    ? HEADING_GHOST_COLOR
-                    : UP_GHOST_COLOR
-                }
-              />
-              <HeadingGhostArrow
-                dimensions={displayDimensions}
-                anchorFace={headingUpPreview.face}
-                opacity={HEADING_GHOST_HOVER_OPACITY}
-                color={
-                  headingUpPreview.role === "heading"
-                    ? HEADING_GHOST_COLOR
-                    : UP_GHOST_COLOR
                 }
               />
             </>

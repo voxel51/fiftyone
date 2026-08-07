@@ -1,7 +1,15 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
-import { CUBOID_RESIZE_FACES } from "./cuboid-face-resize";
-import { computeCuboidHeadingRelabel } from "./cuboid-heading-relabel";
+import {
+  CUBOID_RESIZE_FACES,
+  getCuboidResizeFaceFromNormal,
+  type CuboidResizeFace,
+} from "./cuboid-face-resize";
+import {
+  computeCuboidHeadingAndUpRelabel,
+  computeCuboidHeadingRelabel,
+  isValidHeadingUpFacePair,
+} from "./cuboid-heading-relabel";
 
 const DIMENSIONS: THREE.Vector3Tuple = [4, 2, 6];
 const LOCATION = new THREE.Vector3(10, -3, 7);
@@ -267,5 +275,207 @@ describe("computeCuboidHeadingRelabel", () => {
     });
 
     expect(withoutUp).toEqual(withZUp);
+  });
+});
+
+/** Which old-frame face currently reads as "up" for a given orientation. */
+const currentUpFaceOf = (
+  quaternion: THREE.Quaternion,
+  upVector: THREE.Vector3 = new THREE.Vector3(0, 0, 1),
+): CuboidResizeFace | null => {
+  const localUp = upVector.clone().applyQuaternion(quaternion.clone().invert());
+  return getCuboidResizeFaceFromNormal(localUp);
+};
+
+const UP_FACES = ["+y", "-y", "+z", "-z"] as const;
+
+describe("computeCuboidHeadingAndUpRelabel", () => {
+  it("returns null for non-finite dimensions", () => {
+    expect(
+      computeCuboidHeadingAndUpRelabel({
+        dimensions: [4, Number.NaN, 6],
+        quaternion: new THREE.Quaternion(),
+        headingFace: "+x",
+        upFace: "+y",
+      }),
+    ).toBeNull();
+  });
+
+  it("returns null when heading and current-up already read as the same axis", () => {
+    // Heading is always old-X; tilt the box so old-X itself is the axis
+    // closest to world up — there's no distinct old "up" axis left to place.
+    const quaternion = new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(1, 0, 0),
+      new THREE.Vector3(0, 0, 1),
+    );
+    expect(currentUpFaceOf(quaternion)).toMatch(/^[+-]x$/);
+
+    expect(
+      computeCuboidHeadingAndUpRelabel({
+        dimensions: DIMENSIONS,
+        quaternion,
+        headingFace: "+x",
+        upFace: "+z",
+      }),
+    ).toBeNull();
+  });
+
+  describe.each(ORIENTATIONS)("from %s", (_label, quaternion) => {
+    it.each(UP_FACES)(
+      // Regression coverage for a real bug: the old implementation reused a
+      // helper built for the drag case, which only knows how to keep an old
+      // axis's *own* number as its destination — it never looked at which
+      // axis was actually up. Clicking "+Y" or "+Z" was silently a no-op,
+      // and "-Y"/"-Z" both produced the identical 180°-about-heading flip.
+      "results in %s reading as up after the click, regardless of the starting orientation",
+      (upFace) => {
+        const result = computeCuboidHeadingAndUpRelabel({
+          dimensions: DIMENSIONS,
+          quaternion,
+          headingFace: "+x",
+          upFace,
+        });
+
+        // Only the degenerate heading-already-up orientation can null out —
+        // guard so the other three orientations still assert.
+        if (currentUpFaceOf(quaternion)?.replace(/^[+-]/, "") === "x") {
+          expect(result).toBeNull();
+          return;
+        }
+
+        expect(result).not.toBeNull();
+        if (!result) return;
+
+        const nextQuaternion = new THREE.Quaternion(...result.quaternion);
+        expect(currentUpFaceOf(nextQuaternion)).toBe(upFace);
+      },
+    );
+
+    it.each(UP_FACES)(
+      "leaves the box's world corners unchanged when picking %s as up",
+      (upFace) => {
+        if (currentUpFaceOf(quaternion)?.replace(/^[+-]/, "") === "x") {
+          return;
+        }
+
+        const result = computeCuboidHeadingAndUpRelabel({
+          dimensions: DIMENSIONS,
+          quaternion,
+          headingFace: "+x",
+          upFace,
+        });
+
+        expect(result).not.toBeNull();
+        if (!result) return;
+
+        const before = worldCorners(DIMENSIONS, quaternion);
+        const after = worldCorners(
+          result.dimensions,
+          new THREE.Quaternion(...result.quaternion),
+        );
+        expect(sortedCornerKeys(after)).toEqual(sortedCornerKeys(before));
+      },
+    );
+
+    it.each(UP_FACES)(
+      "produces a right-handed basis (no mirroring) when picking %s as up",
+      (upFace) => {
+        if (currentUpFaceOf(quaternion)?.replace(/^[+-]/, "") === "x") {
+          return;
+        }
+
+        const result = computeCuboidHeadingAndUpRelabel({
+          dimensions: DIMENSIONS,
+          quaternion,
+          headingFace: "+x",
+          upFace,
+        });
+
+        expect(result).not.toBeNull();
+        if (!result) return;
+
+        const [x, y, z] = result.basis.map(({ axis, sign }) =>
+          new THREE.Vector3().setComponent(axis, sign),
+        );
+        expect(new THREE.Vector3().crossVectors(x, y).dot(z)).toBeCloseTo(1, 6);
+      },
+    );
+  });
+
+  it("is a no-op when picking the face that's already up", () => {
+    // Identity + Z-up: +Z is already up, so clicking "+z" shouldn't change
+    // anything — a real symptom of the bug was clicking the current face and
+    // getting a spurious flip.
+    const quaternion = new THREE.Quaternion();
+    const result = computeCuboidHeadingAndUpRelabel({
+      dimensions: DIMENSIONS,
+      quaternion,
+      headingFace: "+x",
+      upFace: "+z",
+    });
+
+    expect(result).not.toBeNull();
+    if (!result) return;
+    expect(result.quaternion[0]).toBeCloseTo(0, 6);
+    expect(result.quaternion[1]).toBeCloseTo(0, 6);
+    expect(result.quaternion[2]).toBeCloseTo(0, 6);
+    expect(result.quaternion[3]).toBeCloseTo(1, 6);
+    expect(result.dimensions).toEqual(DIMENSIONS);
+  });
+
+  it("flipping to the opposite sign of the current up face only flips that axis pair", () => {
+    // Identity + Z-up, already up via +Z; picking "-z" should tip the box
+    // over (Z and Y both flip sign) rather than reproducing a Y-axis result.
+    const quaternion = new THREE.Quaternion();
+    const result = computeCuboidHeadingAndUpRelabel({
+      dimensions: DIMENSIONS,
+      quaternion,
+      headingFace: "+x",
+      upFace: "-z",
+    });
+
+    expect(result).not.toBeNull();
+    if (!result) return;
+    expect(result.basis).toEqual([
+      { axis: 0, sign: 1 },
+      { axis: 1, sign: -1 },
+      { axis: 2, sign: -1 },
+    ]);
+  });
+
+  it("uses the real up vector instead of the Z-up fallback when supplied", () => {
+    // Y-up orientation: rotate -90deg about X so old +Y maps to world +Z.
+    const quaternion = new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(1, 0, 0),
+      -Math.PI / 2,
+    );
+    const upVector = new THREE.Vector3(0, 0, 1);
+    expect(currentUpFaceOf(quaternion, upVector)).not.toBeNull();
+
+    const result = computeCuboidHeadingAndUpRelabel({
+      dimensions: DIMENSIONS,
+      quaternion,
+      headingFace: "+x",
+      upFace: "+z",
+      upVector,
+    });
+
+    expect(result).not.toBeNull();
+    if (!result) return;
+    expect(
+      currentUpFaceOf(new THREE.Quaternion(...result.quaternion), upVector),
+    ).toBe("+z");
+  });
+});
+
+describe("isValidHeadingUpFacePair", () => {
+  it("is true when heading and up are on different axes", () => {
+    expect(isValidHeadingUpFacePair("+x", "+y")).toBe(true);
+    expect(isValidHeadingUpFacePair("+x", "-z")).toBe(true);
+  });
+
+  it("is false when heading and up share an axis, regardless of sign", () => {
+    expect(isValidHeadingUpFacePair("+x", "+x")).toBe(false);
+    expect(isValidHeadingUpFacePair("+x", "-x")).toBe(false);
   });
 });

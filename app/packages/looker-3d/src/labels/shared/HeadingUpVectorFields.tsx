@@ -16,7 +16,6 @@ import {
   getCuboidResizeFaceAxis,
   type CuboidResizeFace,
 } from "../../annotation/cuboid-face-resize";
-import { isValidHeadingUpFacePair } from "../../annotation/cuboid-heading-relabel";
 import { ORIENTATION_AXES_COLORS } from "./CuboidOrientationMarkers";
 
 // Matches the axis colors drawn by the centroid axes gizmo (CuboidAxesMarker):
@@ -38,54 +37,39 @@ const FACE_LABELS: Record<CuboidResizeFace, string> = {
   "-z": "−Z",
 };
 
-// The committed heading is always local +X (see `HEADING_FORWARD_FACE` in
-// `cuboid-orientation-geometry.ts`) — relabeling doesn't move the arrow, it
-// changes which face of the box *is* +X. So this button can't be picked away
-// from itself; disabled (rather than omitted) so its position stays stable
-// and the info tooltip below has something to explain.
-const HEADING_DISABLED_FACES: readonly CuboidResizeFace[] = ["+x"];
-
-// Heading always occupies the box's X axis (see above), and heading/up must
-// be on different axes (`isValidHeadingUpFacePair`) — so +X/-X can never be a
-// valid "up" pick. Omitted entirely rather than disabled, since unlike the
-// heading button there's no single fixed face to anchor an explanation to.
+// Heading is always the box's local X axis and isn't user-editable here — up
+// must be on a different axis, so ±X can never be a valid "up" pick. Omitted
+// entirely rather than disabled since there's no single fixed face to anchor
+// an explanation to.
 const UP_EXCLUDED_FACES: readonly CuboidResizeFace[] = ["+x", "-x"];
 
 export interface HeadingUpVectorFieldsProps {
-  headingFace: CuboidResizeFace;
   upFace: CuboidResizeFace;
-  onHeadingChange: (face: CuboidResizeFace) => void;
   onUpChange: (face: CuboidResizeFace) => void;
-  /** Fires as the pointer enters/leaves a heading face button (`null` on leave). */
-  onHeadingFaceHover?: (face: CuboidResizeFace | null) => void;
   /** Fires as the pointer enters/leaves an up face button (`null` on leave). */
   onUpFaceHover?: (face: CuboidResizeFace | null) => void;
   /**
    * Fires as the pointer enters/leaves this component as a whole (not a
    * specific button) — for suppressing other controls without them
-   * flickering back on in the gaps between buttons. See
-   * `onHeadingFaceHover`/`onUpFaceHover` for the per-face hover instead.
+   * flickering back on in the gaps between buttons. See `onUpFaceHover` for
+   * the per-face hover instead.
    */
   onHoverActiveChange?: (active: boolean) => void;
   disabled?: boolean;
 }
 
 /**
- * The heading/up face pickers plus the same-axis validation warning, shown
- * inline in the annotation sidebar. Doesn't render any Apply/Cancel chrome;
- * callers decide whether picks apply immediately or need a confirm step.
+ * The up-vector face picker, shown inline in the annotation sidebar. Doesn't
+ * render any Apply/Cancel chrome; callers decide whether picks apply
+ * immediately or need a confirm step.
  */
 export const HeadingUpVectorFields = ({
-  headingFace,
   upFace,
-  onHeadingChange,
   onUpChange,
-  onHeadingFaceHover,
   onUpFaceHover,
   onHoverActiveChange,
   disabled = false,
 }: HeadingUpVectorFieldsProps) => {
-  const isValid = isValidHeadingUpFacePair(headingFace, upFace);
   const upAxis = getCuboidResizeFaceAxis(upFace).axis;
   const upColorName = AXIS_COLOR_NAMES[upAxis];
   const upColor = AXIS_COLORS[upAxis];
@@ -96,15 +80,6 @@ export const HeadingUpVectorFields = ({
       onMouseEnter={() => onHoverActiveChange?.(true)}
       onMouseLeave={() => onHoverActiveChange?.(false)}
     >
-      <FacePickerSection
-        title="Heading"
-        selected={headingFace}
-        onSelect={onHeadingChange}
-        onHover={onHeadingFaceHover}
-        disabled={disabled}
-        disabledFaces={HEADING_DISABLED_FACES}
-        infoTooltip="+X is always the heading. Changing this changes which face is actually +X."
-      />
       <FacePickerSection
         title="Up"
         selected={upFace}
@@ -125,12 +100,6 @@ export const HeadingUpVectorFields = ({
           </>
         }
       />
-
-      {!isValid && (
-        <Text variant={TextVariant.Xs} color={TextColor.Destructive}>
-          Heading and up must be on different axes.
-        </Text>
-      )}
     </div>
   );
 };

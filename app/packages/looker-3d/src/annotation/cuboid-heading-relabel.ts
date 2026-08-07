@@ -67,26 +67,25 @@ const crossAxis = (a: SignedAxis, b: SignedAxis): SignedAxis => {
 };
 
 /**
- * Builds the relabel from an explicit new-X (heading) axis and a chosen "up"
- * axis, right-handing the third slot with the cross product. Shared by
- * {@link computeCuboidHeadingRelabel} (which infers `up` from the world-space
- * up vector) and {@link computeCuboidHeadingAndUpRelabel} (which takes it
- * directly from the sidebar's face picker).
+ * Builds the relabel that places `newX` at new-slot 0 and `newUp` at new-slot
+ * `upSlot` (1 or 2, chosen by the caller — independent of `newUp`'s own old
+ * axis number), filling the third slot via cross product so the basis stays
+ * right-handed (a proper rotation, not a mirror).
  */
-const buildRelabelFromAxes = (
+const buildRelabelFromExplicitSlots = (
   dimensions: THREE.Vector3Tuple,
   quaternion: THREE.Quaternion,
   newX: SignedAxis,
-  up: SignedAxis,
+  upSlot: 1 | 2,
+  newUp: SignedAxis,
 ): CuboidHeadingRelabel | null => {
-  if (newX.axis === up.axis) {
+  if (newX.axis === newUp.axis) {
     // Same axis (parallel or antiparallel) can't serve both roles.
     return null;
   }
 
-  const upSlot: 1 | 2 = up.axis === 0 ? 2 : (up.axis as 1 | 2);
   const basis: [SignedAxis, SignedAxis, SignedAxis] = [newX, newX, newX];
-  basis[upSlot] = up;
+  basis[upSlot] = newUp;
 
   // Fill the remaining slot with the leftover axis, signed to keep the basis
   // right-handed: Z = X × Y, or Y = Z × X.
@@ -131,6 +130,54 @@ const buildRelabelFromAxes = (
 };
 
 /**
+ * Builds the relabel from an explicit new-X (heading) axis and a chosen "up"
+ * axis, keeping that axis's *own* number as its destination slot (Y stays Y,
+ * Z stays Z), with a fallback to slot 2 when it's old axis 0 (already
+ * claimed by `newX`). Used by {@link computeCuboidHeadingRelabel}, where
+ * `up` is inferred from the world-space up vector and the goal is to
+ * preserve its role with minimal disruption — NOT by
+ * {@link computeCuboidHeadingAndUpRelabel}, where the caller names an
+ * explicit destination slot that may differ from `up`'s own old axis number
+ * (see {@link buildRelabelFromExplicitSlots}).
+ */
+const buildRelabelFromAxes = (
+  dimensions: THREE.Vector3Tuple,
+  quaternion: THREE.Quaternion,
+  newX: SignedAxis,
+  up: SignedAxis,
+): CuboidHeadingRelabel | null => {
+  const upSlot: 1 | 2 = up.axis === 0 ? 2 : (up.axis as 1 | 2);
+  return buildRelabelFromExplicitSlots(
+    dimensions,
+    quaternion,
+    newX,
+    upSlot,
+    up,
+  );
+};
+
+/**
+ * Which old local axis currently points most nearly "up" in world space
+ * (falling back to world +Z when no real up vector is available — e.g. the
+ * DOM annotation sidebar, which has no access to the scene's actual one).
+ */
+const getCurrentUpAxis = (
+  quaternion: THREE.Quaternion,
+  upVector?: THREE.Vector3 | null,
+): SignedAxis => {
+  const effectiveUp =
+    upVector && upVector.lengthSq() > EPSILON
+      ? upVector.clone().normalize()
+      : new THREE.Vector3(0, 0, 1);
+  const localUpFace = getCuboidResizeFaceFromNormal(
+    effectiveUp.clone().applyQuaternion(quaternion.clone().invert()),
+  );
+  return (
+    localUpFace ? getCuboidResizeFaceAxis(localUpFace) : { axis: 2, sign: 1 }
+  ) as SignedAxis;
+};
+
+/**
  * Whether `headingFace` and `upFace` could serve as the heading and up faces
  * of the same box — i.e. they aren't on the same axis (parallel or
  * antiparallel). Exposed so the sidebar can disable its Apply button and show
@@ -151,26 +198,57 @@ export function isValidHeadingUpFacePair(
  * section: unlike {@link computeCuboidHeadingRelabel} (which only takes a
  * target heading face and infers `up` from the current world-space up
  * vector), this takes both faces directly from the user's picks.
+ *
+ * `upFace` names a *destination* (slot + sign) — "I want local +Z to be up"
+ * — not an old axis to preserve. So it can't be handed to
+ * `buildRelabelFromAxes` directly (that function keeps an old axis's *own*
+ * number as its destination, which only makes sense when the caller is
+ * preserving an inferred role rather than naming a slot). Instead: find
+ * whichever old axis is *actually* up right now, then place that old axis at
+ * `upFace`'s slot, with a sign chosen so `upFace`'s own sign is what ends up
+ * pointing up.
  */
 export function computeCuboidHeadingAndUpRelabel({
   dimensions,
   quaternion,
   headingFace,
   upFace,
+  upVector,
 }: {
   dimensions: THREE.Vector3Tuple;
   quaternion: THREE.Quaternion;
   headingFace: CuboidResizeFace;
   upFace: CuboidResizeFace;
+  upVector?: THREE.Vector3 | null;
 }): CuboidHeadingRelabel | null {
   if (!dimensions.every((value) => Number.isFinite(value))) {
     return null;
   }
 
   const newX = getCuboidResizeFaceAxis(headingFace) as SignedAxis;
-  const up = getCuboidResizeFaceAxis(upFace) as SignedAxis;
+  const pickedUp = getCuboidResizeFaceAxis(upFace) as SignedAxis;
+  const currentUp = getCurrentUpAxis(quaternion, upVector);
 
-  return buildRelabelFromAxes(dimensions, quaternion, newX, up);
+  if (currentUp.axis === newX.axis) {
+    // Degenerate: heading and "current up" already read as the same old
+    // axis (e.g. the box is already nose-up) — there's no distinct old "up"
+    // axis left to relabel. Bail rather than guess.
+    return null;
+  }
+
+  const upSlot = pickedUp.axis as 1 | 2;
+  const newUp: SignedAxis = {
+    axis: currentUp.axis,
+    sign: (currentUp.sign * pickedUp.sign) as AxisSign,
+  };
+
+  return buildRelabelFromExplicitSlots(
+    dimensions,
+    quaternion,
+    newX,
+    upSlot,
+    newUp,
+  );
 }
 
 export function computeCuboidHeadingRelabel({
@@ -198,16 +276,7 @@ export function computeCuboidHeadingRelabel({
   // Which local axis currently points most nearly "up" in world space. The
   // relabel tries to preserve this axis's role so the box's up-ness isn't
   // arbitrarily reassigned.
-  const effectiveUp =
-    upVector && upVector.lengthSq() > EPSILON
-      ? upVector.clone().normalize()
-      : new THREE.Vector3(0, 0, 1);
-  const localUpFace = getCuboidResizeFaceFromNormal(
-    effectiveUp.clone().applyQuaternion(quaternion.clone().invert()),
-  );
-  const currentUp = (
-    localUpFace ? getCuboidResizeFaceAxis(localUpFace) : { axis: 2, sign: 1 }
-  ) as SignedAxis;
+  const currentUp = getCurrentUpAxis(quaternion, upVector);
 
   // The new heading claims one axis; `up` fills whichever of the remaining
   // two slots it belongs in (see `buildRelabelFromAxes`) — keeping Y as Y /

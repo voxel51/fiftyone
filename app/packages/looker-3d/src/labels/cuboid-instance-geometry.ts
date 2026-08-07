@@ -174,7 +174,9 @@ export function localToWorld(
  * `UNIT_ARROWHEAD_GEOMETRY`), derived from the same decomposed geometry the
  * standalone `CuboidOrientationMarker` uses (`getCuboidOrientationMarkerGeometry`).
  */
-export function computeArrowheadMatrix(geometry: CuboidGeometry): THREE.Matrix4 {
+export function computeArrowheadMatrix(
+  geometry: CuboidGeometry,
+): THREE.Matrix4 {
   const markerGeometry = getCuboidOrientationMarkerGeometry(
     geometry.dimensions,
   );
