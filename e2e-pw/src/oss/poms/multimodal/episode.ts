@@ -109,6 +109,25 @@ export class EpisodePom {
     return this.tile(title).getByRole("img", { name: "Image" });
   }
 
+  async expectPaused(): Promise<void> {
+    await expect(
+      this.shell.getByRole("button", { name: "Play", exact: true }),
+    ).toBeVisible({ timeout: READY_TIMEOUT });
+    await expect(
+      this.shell.getByRole("button", { name: "Pause", exact: true }),
+    ).toHaveCount(0);
+  }
+
+  async expectTileEmpty(
+    title: string,
+    message: string | RegExp,
+  ): Promise<void> {
+    const tile = this.tile(title);
+    const empty = byDataTestId(tile, "episode-tile-empty-state");
+    await expect(empty).toContainText(message, { timeout: READY_TIMEOUT });
+    await expect(this.image(title)).toHaveCount(0);
+  }
+
   async expectPlayhead(text: string): Promise<void> {
     await expect(this.controls.getByText(text, { exact: true })).toBeVisible({
       timeout: READY_TIMEOUT,
@@ -264,13 +283,29 @@ export class EpisodePom {
   ): Promise<void> {
     await this.openStreams();
     for (const stream of present) {
-      await expect(this.scope.getByText(stream, { exact: true })).toBeVisible();
+      await expect(
+        this.scope.getByRole("button", {
+          name: `Inspect ${stream}`,
+          exact: true,
+        }),
+      ).toBeVisible();
     }
     for (const stream of absent) {
-      await expect(this.scope.getByText(stream, { exact: true })).toHaveCount(
-        0,
-      );
+      await expect(
+        this.scope.getByRole("button", {
+          name: `Inspect ${stream}`,
+          exact: true,
+        }),
+      ).toHaveCount(0);
     }
+  }
+
+  async expectRawSelectionCleared(): Promise<void> {
+    const clearedTile = this.shell
+      .locator("[data-cy=episode-raw-tile]")
+      .filter({ hasText: "Choose a stream in the panel settings" });
+    await expect(clearedTile).toBeVisible({ timeout: READY_TIMEOUT });
+    await expect(byDataTestId(clearedTile, "episode-raw-tree")).toHaveCount(0);
   }
 
   async inspectStream(stream: string): Promise<void> {
@@ -278,6 +313,11 @@ export class EpisodePom {
     await this.scope
       .getByRole("button", { name: "Inspect " + stream, exact: true })
       .click();
+    this.inspectedStream = stream;
+    await expect(this.rawTree).toBeVisible({ timeout: READY_TIMEOUT });
+  }
+
+  async useRawStream(stream: string): Promise<void> {
     this.inspectedStream = stream;
     await expect(this.rawTree).toBeVisible({ timeout: READY_TIMEOUT });
   }
@@ -320,15 +360,27 @@ export class EpisodePom {
     await expect(this.rawMeta).toContainText(value, { timeout: READY_TIMEOUT });
   }
 
-  async expectLog(text: string): Promise<void> {
+  async expectLogs(
+    present: readonly string[],
+    absent: readonly string[] = [],
+  ): Promise<void> {
     const logs = this.tile("Logs");
     await logs.getByRole("button", { name: "Fullscreen", exact: true }).click();
-    await expect(logs.getByText(text, { exact: true })).toBeVisible({
-      timeout: READY_TIMEOUT,
-    });
+    for (const text of present) {
+      await expect(logs.getByText(text, { exact: true })).toBeVisible({
+        timeout: READY_TIMEOUT,
+      });
+    }
+    for (const text of absent) {
+      await expect(logs.getByText(text, { exact: true })).toHaveCount(0);
+    }
     await logs
       .getByRole("button", { name: "Exit fullscreen", exact: true })
       .click();
+  }
+
+  async expectLog(text: string): Promise<void> {
+    await this.expectLogs([text]);
   }
 
   async expectUnsupported(streamCount = 1): Promise<void> {

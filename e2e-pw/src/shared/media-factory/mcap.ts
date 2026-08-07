@@ -13,6 +13,9 @@ const TEXT_ENCODER = new TextEncoder();
 const NANOSECONDS_PER_SECOND = 1_000_000_000n;
 const EPOCH_START_NS = 1_704_067_200_000_000_000n;
 const LONG_DURATION_SECONDS = 3_600;
+const LONG_REAR_FIRST_SECOND = 600;
+const LONG_REAR_LAST_SECOND = 3_000;
+const LONG_REAR_INTERVAL_SECONDS = 2;
 const ABSOLUTE_TIMELINE_METADATA = { timeline_mode: "absolute" } as const;
 
 export const MAX_LONG_MCAP_SIZE_BYTES = 10 * 1024 * 1024;
@@ -314,8 +317,11 @@ function longMixedEpisode(): FixtureDefinition {
     );
   }
 
-  for (let sample = 0; sample < 1_200; sample++) {
-    const second = 600 + sample * 2;
+  for (
+    let second = LONG_REAR_FIRST_SECOND;
+    second <= LONG_REAR_LAST_SECOND;
+    second += LONG_REAR_INTERVAL_SECONDS
+  ) {
     const timeNs = epochSecond(second);
     messages.push(
       jsonMessage(
@@ -378,16 +384,12 @@ function longMixedEpisode(): FixtureDefinition {
   }
   messages.push(jsonMessage(8, epochSecond(3_600), statusMessage(3_600, true)));
 
-  const logSeconds = Array.from({ length: 19 }, (_, index) => index * 200);
-  for (const second of logSeconds) {
+  for (const { message, second } of LONG_LOG_ANCHORS) {
     messages.push(
       jsonMessage(
         9,
         epochSecond(second),
-        rosgraphLogMessage(
-          epochSecond(second),
-          second === 3_600 ? "LONG terminal 01:00:00" : "LONG phase " + second,
-        ),
+        rosgraphLogMessage(epochSecond(second), message),
       ),
     );
   }
@@ -399,6 +401,28 @@ function longMixedEpisode(): FixtureDefinition {
 
   return { channels, messages };
 }
+
+const LONG_LOG_ANCHORS = [
+  { message: "LONG recording start", second: 0 },
+  { message: "LONG phase 200", second: 200 },
+  { message: "LONG phase 400", second: 400 },
+  { message: "LONG rear camera available", second: 600 },
+  { message: "LONG phase 800", second: 800 },
+  { message: "LONG quarter-hour phase", second: 1_000 },
+  { message: "LONG phase 1200", second: 1_200 },
+  { message: "LONG phase 1400", second: 1_400 },
+  { message: "LONG pre-midpoint nominal", second: 1_600 },
+  { message: "LONG midpoint warning", second: 1_800 },
+  { message: "LONG warning sustained", second: 2_000 },
+  { message: "LONG phase 2200", second: 2_200 },
+  { message: "LONG transform phase", second: 2_400 },
+  { message: "LONG phase 2600", second: 2_600 },
+  { message: "LONG phase 2800", second: 2_800 },
+  { message: "LONG rear camera final frame", second: 3_000 },
+  { message: "LONG phase 3200", second: 3_200 },
+  { message: "LONG phase 3400", second: 3_400 },
+  { message: "LONG terminal 01:00:00", second: 3_600 },
+] as const;
 
 function jsonChannel(
   topic: string,

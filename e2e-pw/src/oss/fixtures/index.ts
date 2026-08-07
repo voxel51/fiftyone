@@ -122,7 +122,9 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
         return;
       }
 
-      await use(`http://localhost:${5193}`);
+      await use(
+        `http://localhost:${process.env.FIFTYONE_DEFAULT_APP_PORT ?? 5193}`,
+      );
       return;
     }
 
