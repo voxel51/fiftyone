@@ -78,6 +78,26 @@ function displayedFrameStart(time: number, step: number): number {
 }
 
 /**
+ * Start of the LAST displayed frame within `[0, duration)` — the latest
+ * frame-aligned rest position that still lies inside the media. `duration`
+ * itself is that frame's *exclusive* end: a playhead resting there is one
+ * whole step past the last frame's start, so it reads as a frame beyond the
+ * media (no stream has content for it) while being visually identical to the
+ * last frame — a phantom duplicate. Frame-aligned rest paths (step, settle
+ * snap, snapped scrub) cap here; continuous `seek` keeps the full inclusive
+ * `[0, duration]` range.
+ */
+function lastFrameStart(duration: number, step: number): number {
+  if (!(step > 0) || !(duration > 0)) {
+    return duration;
+  }
+
+  // `ceil - 1` (not `floor`) so an exact-multiple duration lands on the
+  // previous boundary; the epsilon absorbs float error in `duration / step`.
+  return Math.max(0, (Math.ceil(duration / step - 1e-6) - 1) * step);
+}
+
+/**
  * Cap on per-tick `dt` (sec) in the engine's wallclock-driven advance.
  * When the main thread is blocked (memory pressure, GC pause, throttled
  * tab) RAF callbacks pile up and the next `timestamp - lastTimestamp`
@@ -633,7 +653,7 @@ export function usePlaybackEngine({
       const snapped = clamp(
         displayedFrameStart(current, step),
         0,
-        store.get(durationAtom),
+        lastFrameStart(store.get(durationAtom), step),
       );
 
       if (Math.abs(snapped - current) < step * 1e-6) {
@@ -691,7 +711,10 @@ export function usePlaybackEngine({
         // Half-step ties round toward +Infinity per JS `Math.round`, so
         // an exact midpoint cursor tips forward — deterministic and
         // imperceptible in practice (sub-frame mouse precision).
-        const snapped = Math.round(clamped / step) * step;
+        const snapped = Math.min(
+          Math.round(clamped / step) * step,
+          lastFrameStart(store.get(durationAtom), step),
+        );
 
         // Early-return when the snap result matches the current playhead —
         // happens on every sub-frame drag delta that stays within the same
@@ -736,14 +759,11 @@ export function usePlaybackEngine({
         if (pendingPlayRef.current) requestOrStartPlayback(next);
       },
       stepForward: () => {
+        const step = store.get(stepIntervalAtom);
         const next = clamp(
-          frameBoundaryStep(
-            store.get(playheadAtom),
-            store.get(stepIntervalAtom),
-            "forward",
-          ),
+          frameBoundaryStep(store.get(playheadAtom), step, "forward"),
           0,
-          store.get(durationAtom),
+          lastFrameStart(store.get(durationAtom), step),
         );
         store.set(playheadAtom, next);
         fireSeekEvent(next, true);

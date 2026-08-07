@@ -273,11 +273,32 @@ describe("PlaybackProvider engine actions", () => {
       expect(result.current.playhead).toBeCloseTo(1 / 30, 5);
     });
 
-    it("stepForward clamps at duration", () => {
+    it("stepForward clamps at the last frame's start, not duration", () => {
+      // Duration is the last frame's EXCLUSIVE end — resting there would show
+      // a phantom frame past the media. 10s at 1/30 = 300 frames; the last
+      // frame (300) starts at 299/30.
+      const { result } = renderEngine({ duration: 10 });
+      act(() => result.current.api.seek(299 / 30));
+      act(() => result.current.api.stepForward());
+      expect(result.current.playhead).toBeCloseTo(299 / 30, 5);
+    });
+
+    it("stepForward pulls a playhead resting at duration back onto the last frame", () => {
       const { result } = renderEngine({ duration: 10 });
       act(() => result.current.api.seek(10));
       act(() => result.current.api.stepForward());
-      expect(result.current.playhead).toBe(10);
+      expect(result.current.playhead).toBeCloseTo(299 / 30, 5);
+    });
+
+    it("stepForward can enter a partial trailing frame", () => {
+      // 10.02s at 1/30: the final (partial) frame starts at 300/30 = 10.0
+      // and ends at duration. Its start is a valid rest position.
+      const { result } = renderEngine({ duration: 10.02 });
+      act(() => result.current.api.seek(299 / 30));
+      act(() => result.current.api.stepForward());
+      expect(result.current.playhead).toBeCloseTo(300 / 30, 5);
+      act(() => result.current.api.stepForward());
+      expect(result.current.playhead).toBeCloseTo(300 / 30, 5);
     });
 
     it("stepBack subtracts stepInterval", () => {
@@ -740,7 +761,7 @@ describe("PlaybackProvider engine actions", () => {
         }
       });
 
-      it("clamps the target to [0, duration] before snapping", () => {
+      it("clamps the target to the real frame range before snapping", () => {
         const { result } = renderEngine({
           duration: 10,
           snapToFrameOnSettle: true,
@@ -748,8 +769,10 @@ describe("PlaybackProvider engine actions", () => {
         act(() => result.current.api.seekSnapped(-5));
         expect(result.current.playhead).toBe(0);
         act(() => result.current.api.seekSnapped(999));
-        // 10s is already a frame boundary at 1/30 step (300 frames).
-        expect(result.current.playhead).toBeCloseTo(10, 5);
+        // Scrubbing past the end lands on the LAST frame's start (299/30),
+        // not `duration` — 10s is the last frame's exclusive end, one whole
+        // step past its start (a phantom frame with no media behind it).
+        expect(result.current.playhead).toBeCloseTo(299 / 30, 5);
       });
 
       it("crossing frame boundaries during a drag advances the playhead in discrete jumps", () => {
