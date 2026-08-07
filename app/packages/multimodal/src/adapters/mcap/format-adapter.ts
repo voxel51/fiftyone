@@ -98,7 +98,7 @@ export function createMcapFormatAdapter(
   return {
     id: "mcap",
     async open(source, io, openOptions) {
-      const asset = await resolveMcapAsset(source);
+      const asset = await resolveMcapAsset(source, openOptions?.signal);
       if (openOptions?.signal?.aborted) {
         throw new EpisodeReadCancelledError();
       }
@@ -125,11 +125,17 @@ export function createMcapFormatAdapter(
           const [loadedRange, topics] = await Promise.all([
             hintedRange
               ? Promise.resolve(hintedRange)
-              : client.readTimelineRange({
-                  activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-                  source: asset,
-                }),
-            client.readTopics({ source: asset }),
+              : client.readTimelineRange(
+                  {
+                    activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+                    source: asset,
+                  },
+                  { signal: openOptions?.signal },
+                ),
+            client.readTopics(
+              { source: asset },
+              { signal: openOptions?.signal },
+            ),
           ]);
           range = loadedRange;
           manifest = createMcapManifest(source.episodeId, range, topics);
@@ -160,14 +166,15 @@ export function createMcapFormatAdapter(
         throw error;
       }
     },
-    async openPreview(source, _io) {
-      const asset = await resolveMcapAsset(source);
+    async openPreview(source, _io, openOptions) {
+      const asset = await resolveMcapAsset(source, openOptions?.signal);
+      throwIfMcapOpenAborted(openOptions?.signal);
       const pool = (options.getPreviewPool ?? getMcapGridPreviewPool)();
       pool.acquire();
       return new McapEpisodePreviewSession(asset, source.episodeId, pool);
     },
     async prewarm(source, _io, prewarmOptions) {
-      const asset = await resolveMcapAsset(source);
+      const asset = await resolveMcapAsset(source, prewarmOptions?.signal);
       await prewarmMcapSource(asset, { signal: prewarmOptions?.signal });
     },
   };
@@ -447,8 +454,11 @@ export function createMcapRawRecordCapability({
   const streamIdFor = (sourceName: string) =>
     streamIdsBySourceName.get(sourceName) ?? sourceName;
   return {
-    async listRawRecordStreams() {
-      const inventory = await client.readTopics({ source });
+    async listRawRecordStreams(options) {
+      const inventory = await client.readTopics(
+        { source },
+        { signal: options?.signal },
+      );
       return inventory.map((entry) => {
         const sourceName =
           entry.metadata["mcap.topic"] ?? entry.displayName ?? entry.streamId;
@@ -462,14 +472,17 @@ export function createMcapRawRecordCapability({
       });
     },
     async readRawRecord(request) {
-      const result = await client.readRawMessageRecord({
-        activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-        includeFullJson: request.includeFullJson,
-        prune: request.prune,
-        source,
-        timeNs: request.timestampNs,
-        topic: sourceNameFor(request.stream),
-      });
+      const result = await client.readRawMessageRecord(
+        {
+          activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          includeFullJson: request.includeFullJson,
+          prune: request.prune,
+          source,
+          timeNs: request.timestampNs,
+          topic: sourceNameFor(request.stream),
+        },
+        { signal: request.signal },
+      );
       return {
         decodeError: result.decodeError,
         decodeUnavailableReason: result.decodeUnavailableReason,
@@ -502,8 +515,11 @@ export function createMcapRawRecordCapability({
   };
 }
 
-async function resolveMcapAsset(source: EpisodeSource) {
-  const assets = await source.assets.list();
+async function resolveMcapAsset(source: EpisodeSource, signal?: AbortSignal) {
+  throwIfMcapOpenAborted(signal);
+  const openOptions = signal ? { signal } : undefined;
+  const assets = await source.assets.list(openOptions);
+  throwIfMcapOpenAborted(signal);
   const candidate =
     assets.find(
       (asset) =>
@@ -514,7 +530,13 @@ async function resolveMcapAsset(source: EpisodeSource) {
   if (!candidate) {
     throw new Error("MCAP episodes require exactly one recording asset");
   }
-  return source.assets.resolve(candidate.id);
+  const asset = await source.assets.resolve(candidate.id, openOptions);
+  throwIfMcapOpenAborted(signal);
+  return asset;
+}
+
+function throwIfMcapOpenAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new EpisodeReadCancelledError();
 }
 
 export function createMcapManifest(
@@ -690,17 +712,20 @@ class McapEpisodeSession implements EpisodeSession {
       this.pointCloudProjection = {
         readChannel: (request) => {
           this.ensureOpen();
-          return readPointCloudChannel({
-            activeColorBy: request.activeColorBy,
-            activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-            capacity: request.capacity,
-            sampledPointCount: request.sampledPointCount,
-            samplePlanKey: request.samplePlanKey,
-            source: this.source,
-            sourceIndices: request.sourceIndices,
-            timeNs: request.timestampNs,
-            topic: this.sourceNameFor(request.stream),
-          });
+          return readPointCloudChannel(
+            {
+              activeColorBy: request.activeColorBy,
+              activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+              capacity: request.capacity,
+              sampledPointCount: request.sampledPointCount,
+              samplePlanKey: request.samplePlanKey,
+              source: this.source,
+              sourceIndices: request.sourceIndices,
+              timeNs: request.timestampNs,
+              topic: this.sourceNameFor(request.stream),
+            },
+            { signal: request.signal },
+          );
         },
       };
     }
@@ -746,7 +771,7 @@ class McapEpisodeSession implements EpisodeSession {
           startTimeNs: request.window.startNs,
           topics,
         },
-        { priority: request.priority },
+        { priority: request.priority, signal: request.signal },
       )) {
         this.ensureOpen();
         throwIfAborted(request.signal);
@@ -945,17 +970,24 @@ class McapEpisodeSession implements EpisodeSession {
       readSynchronized: async (request) => {
         this.ensureOpen();
         try {
-          const window = await this.client.readSynchronizedMessages({
-            activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-            defaultStreamPolicy: toMcapSyncPolicy(request.defaultStreamPolicy),
-            pointCloudColorByByTopic: this.toMcapPointCloudColorBy(
-              request.pointCloudColorBy,
-            ),
-            source: this.source,
-            streamPolicies: this.toMcapSyncPolicies(request.streamPolicies),
-            timeNs: request.timeNs,
-            topics: request.streams.map((stream) => this.sourceNameFor(stream)),
-          });
+          const window = await this.client.readSynchronizedMessages(
+            {
+              activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+              defaultStreamPolicy: toMcapSyncPolicy(
+                request.defaultStreamPolicy,
+              ),
+              pointCloudColorByByTopic: this.toMcapPointCloudColorBy(
+                request.pointCloudColorBy,
+              ),
+              source: this.source,
+              streamPolicies: this.toMcapSyncPolicies(request.streamPolicies),
+              timeNs: request.timeNs,
+              topics: request.streams.map((stream) =>
+                this.sourceNameFor(stream),
+              ),
+            },
+            { signal: request.signal },
+          );
           return this.fromMcapWindow(window);
         } catch (error) {
           throw this.normalizeReadError(error);
@@ -998,27 +1030,35 @@ class McapEpisodeSession implements EpisodeSession {
 
   private createTransformReadAcceleration(): TransformReadAcceleration {
     return {
-      readBootstrap: async () => {
+      readBootstrap: async (options) => {
         this.ensureOpen();
         try {
-          const result = await this.client.readFrameTransformBootstrap({
-            source: this.source,
-          });
+          const result = await this.client.readFrameTransformBootstrap(
+            { source: this.source },
+            { signal: options?.signal },
+          );
           return result.samples.map(transformSampleFromMcap);
         } catch (error) {
           throw this.normalizeReadError(error);
         }
       },
-      readPlacement: async ({ requiredDynamicChildFrameIds, timeNs }) => {
+      readPlacement: async ({
+        requiredDynamicChildFrameIds,
+        signal,
+        timeNs,
+      }) => {
         this.ensureOpen();
         try {
-          const result = await this.client.readFrameTransformWindow({
-            activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-            endTimeNs: timeNs,
-            requiredDynamicChildFrameIds,
-            source: this.source,
-            startTimeNs: timeNs,
-          });
+          const result = await this.client.readFrameTransformWindow(
+            {
+              activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+              endTimeNs: timeNs,
+              requiredDynamicChildFrameIds,
+              source: this.source,
+              startTimeNs: timeNs,
+            },
+            { signal },
+          );
           const coverage = result.placementCoverage;
           if (!coverage?.complete || coverage.startTimeNs === undefined) {
             return null;
@@ -1044,7 +1084,7 @@ class McapEpisodeSession implements EpisodeSession {
               source: this.source,
               startTimeNs: request.window.startNs,
             },
-            { priority: request.priority },
+            { priority: request.priority, signal: request.signal },
           );
           return result.samples.map(transformSampleFromMcap);
         } catch (error) {

@@ -31,6 +31,7 @@ type PendingRequest<
 };
 
 type PendingStream = {
+  readonly cleanup?: () => void;
   readonly rejectors: Array<(error: Error) => void>;
   readonly resolvers: Array<(result: IteratorResult<unknown, void>) => void>;
   readonly sourceKey: string;
@@ -188,10 +189,27 @@ export class McapPlaybackWorkerTransport {
     type: Type,
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
     priority?: McapPlaybackWorkerPriority,
+    signal?: AbortSignal,
   ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
     const id = this.nextRequestId++;
     const message = createRpcRequest(id, sourceKey, type, payload, priority);
+    const cancel = () => {
+      const pending = this.streams.get(id);
+      if (!pending) return;
+      this.failStream(id, pending, new EpisodeReadCancelledError());
+      try {
+        worker.postMessage({ id, type: "cancel" });
+      } catch {
+        // Local rejection already settled the consumer.
+      }
+    };
+    if (signal?.aborted) {
+      throw new EpisodeReadCancelledError();
+    }
     const stream: PendingStream = {
+      ...(signal
+        ? { cleanup: () => signal.removeEventListener("abort", cancel) }
+        : {}),
       done: false,
       rejectors: [],
       resolvers: [],
@@ -199,17 +217,21 @@ export class McapPlaybackWorkerTransport {
       values: [],
     };
 
+    signal?.addEventListener("abort", cancel, { once: true });
     this.streams.set(id, stream);
     try {
       worker.postMessage(message);
     } catch (error) {
       this.streams.delete(id);
+      stream.cleanup?.();
       throw toError(error);
     }
 
     try {
       while (true) {
+        if (signal?.aborted) throw new EpisodeReadCancelledError();
         const next = await nextStreamValue(stream);
+        if (signal?.aborted) throw new EpisodeReadCancelledError();
         if (next.done) {
           return;
         }
@@ -296,6 +318,7 @@ export class McapPlaybackWorkerTransport {
     }
     this.pending.clear();
     for (const stream of this.streams.values()) {
+      stream.cleanup?.();
       stream.error = error;
       stream.done = true;
       rejectStream(stream, error);
@@ -328,9 +351,12 @@ export class McapPlaybackWorkerTransport {
   }
 
   private cancelStream(worker: Worker, id: number, sourceKey: string) {
-    if (!this.streams.delete(id) || !this.isActiveSource(sourceKey)) {
+    const stream = this.streams.get(id);
+    if (!stream || !this.streams.delete(id)) {
       return;
     }
+    stream.cleanup?.();
+    if (!this.isActiveSource(sourceKey)) return;
 
     worker.postMessage({ id, type: "cancel" });
   }
@@ -338,12 +364,14 @@ export class McapPlaybackWorkerTransport {
   private finishStream(id: number, stream: PendingStream) {
     stream.done = true;
     this.streams.delete(id);
+    stream.cleanup?.();
     resolveStreamDone(stream);
   }
 
   private failStream(id: number, stream: PendingStream, error: Error) {
     stream.error = error;
     this.streams.delete(id);
+    stream.cleanup?.();
     rejectStream(stream, error);
   }
 }

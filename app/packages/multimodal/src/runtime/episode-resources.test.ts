@@ -39,6 +39,10 @@ describe("episode resources", () => {
       { signal: controller.signal },
     );
 
+    expect(resourceHarness.loadFormatAdapter).toHaveBeenCalledWith(
+      { mediaType: "group", path: "sample.mcap" },
+      { signal: controller.signal },
+    );
     expect(openPreview).toHaveBeenCalledWith(
       source,
       resourceHarness.byteResources,

@@ -74,6 +74,7 @@ describe("PoseTrajectoriesBridge", () => {
     expect(session.read).toHaveBeenCalledWith({
       limit: 25_000,
       priority: "bulk",
+      signal: expect.any(AbortSignal),
       streams: ["/pose"],
       window: session.manifest.timeRange,
     });
@@ -93,6 +94,29 @@ describe("PoseTrajectoriesBridge", () => {
 
     await advanceTimers(5_000);
     expect(session.read).not.toHaveBeenCalled();
+  });
+
+  it("aborts an active read as soon as stream demand is removed", async () => {
+    vi.useFakeTimers();
+    const session = createSession(async function* () {
+      yield* [];
+      await new Promise<void>(() => undefined);
+    });
+    const source = createSource("pose");
+    const view = render(
+      <Harness session={session} enabled source={source} streams={["/pose"]} />,
+    );
+
+    await advanceTimers(1_500);
+    const signal = vi.mocked(session.read).mock.calls[0]?.[0].signal;
+    expect(signal?.aborted).toBe(false);
+
+    view.rerender(
+      <Harness session={session} enabled source={source} streams={[]} />,
+    );
+
+    expect(signal?.aborted).toBe(true);
+    expect(screen.getByTestId("trajectories").textContent).toBe("");
   });
 
   it("publishes decimated points, the stream frame, and error status", async () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createInlineMcapResourceClient } from "./inline-client";
 import { MCAP_ACTIVE_TIMELINE } from "../contracts/index";
+import { isEpisodeReadCancelledError } from "../../../ports";
 import {
   collect,
   createChannel,
@@ -96,5 +97,98 @@ describe("MCAP decoded messages", () => {
       ),
     ).resolves.toEqual([]);
     expect(decodeClient.decode).not.toHaveBeenCalled();
+  });
+
+  it("aborts before opening a reader or yielding a message", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const readerFactory = vi.fn(async () => createReader());
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      readerFactory,
+    });
+
+    const next = client
+      .readDecodedMessages(
+        { source: createMcapSourceDescriptor(), topics: ["/topic"] },
+        { signal: controller.signal },
+      )
+      .next();
+
+    await expect(next).rejects.toSatisfy(isEpisodeReadCancelledError);
+    expect(readerFactory).not.toHaveBeenCalled();
+  });
+
+  it("interrupts a blocked byte read with the request signal", async () => {
+    const controller = new AbortController();
+    const readBytes = vi.fn(
+      (request: { readonly signal?: AbortSignal }) =>
+        new Promise<never>((_resolve, reject) => {
+          request.signal?.addEventListener(
+            "abort",
+            () => reject(request.signal?.reason ?? new Error("aborted")),
+            { once: true },
+          );
+        }),
+    );
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes },
+      readerFactory: vi.fn(async (_source, readable) => {
+        await readable.read(0n, 1n);
+        return createReader();
+      }),
+    });
+    const next = client
+      .readDecodedMessages(
+        { source: createMcapSourceDescriptor(), topics: ["/topic"] },
+        { signal: controller.signal },
+      )
+      .next();
+
+    await vi.waitFor(() => expect(readBytes).toHaveBeenCalledOnce());
+    controller.abort();
+
+    await expect(next).rejects.toSatisfy(isEpisodeReadCancelledError);
+    expect(readBytes.mock.calls[0]?.[0].signal).toBe(controller.signal);
+  });
+
+  it("aborts between messages without cancelling a concurrent read", async () => {
+    const firstController = new AbortController();
+    const secondController = new AbortController();
+    const disposals: ReturnType<typeof vi.fn>[] = [];
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () => {
+        const dispose = vi.fn();
+        disposals.push(dispose);
+        return Object.assign(
+          createReader({
+            messages: [
+              createMessage(new Uint8Array([1])),
+              createMessage(new Uint8Array([2])),
+            ],
+          }),
+          { dispose },
+        );
+      }),
+    });
+    const first = client.readDecodedMessages(
+      { source: createMcapSourceDescriptor(), topics: ["/topic"] },
+      { signal: firstController.signal },
+    );
+    const second = client.readDecodedMessages(
+      { source: createMcapSourceDescriptor(), topics: ["/topic"] },
+      { signal: secondController.signal },
+    );
+
+    await expect(first.next()).resolves.toMatchObject({ done: false });
+    firstController.abort();
+
+    await expect(first.next()).rejects.toSatisfy(isEpisodeReadCancelledError);
+    expect(disposals[0]).toHaveBeenCalledOnce();
+    await expect(second.next()).resolves.toMatchObject({ done: false });
+    await second.return(undefined);
+    expect(disposals[1]).toHaveBeenCalledOnce();
   });
 });

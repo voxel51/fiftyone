@@ -162,6 +162,7 @@ export function PoseTrajectoriesBridge({
         for await (const batch of session.read({
           limit: TRAJECTORY_READ_LIMIT,
           priority: "bulk",
+          signal: control.signal,
           streams: [stream],
           window: session.manifest.timeRange,
         })) {

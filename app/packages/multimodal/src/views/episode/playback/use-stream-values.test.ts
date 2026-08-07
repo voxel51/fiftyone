@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type {
   PointCloudRenderChannelPayload,
@@ -13,7 +14,29 @@ import type { DataStream } from "./data-stream-context";
 import {
   applyPointCloudRenderChannel,
   pointCloudFramesAtTime,
+  usePointCloudPlaybackFrames,
 } from "./use-stream-values";
+
+const hookHarness = vi.hoisted(() => ({
+  dataStream: null as DataStream | null,
+  frames: [] as readonly unknown[],
+}));
+
+vi.mock("@fiftyone/playback", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@fiftyone/playback")>()),
+  useStreamValuesSelector: () => hookHarness.frames,
+}));
+
+vi.mock("./data-stream-context", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./data-stream-context")>()),
+  useDataStream: () => hookHarness.dataStream,
+}));
+
+afterEach(() => {
+  cleanup();
+  hookHarness.dataStream = null;
+  hookHarness.frames = [];
+});
 
 describe("point cloud render channel replacement", () => {
   it("reuses the exact geometry buffers when replacing a scalar channel", () => {
@@ -105,6 +128,39 @@ describe("point cloud destination-time sampling", () => {
     ]);
     expect(nearestTick).toHaveBeenCalledWith(10);
     expect(get).toHaveBeenCalledWith(0n);
+  });
+});
+
+describe("point cloud projection lifecycle", () => {
+  it("aborts obsolete color work and the replacement on unmount", async () => {
+    const requests: Array<{ readonly signal?: AbortSignal }> = [];
+    hookHarness.dataStream = {
+      getStreamCache: () => undefined,
+      getTimelineIndex: () => undefined,
+      readPointCloudChannel: vi.fn((request) => {
+        requests.push(request);
+        return new Promise(() => undefined);
+      }),
+      sourceKey: "source",
+      subscribeToStream: () => () => undefined,
+    } as unknown as DataStream;
+    hookHarness.frames = [{ contentTimeNs: 10n, frame: pointCloudFrame() }];
+
+    const { rerender, unmount } = renderHook(
+      ({ colorBy }: { readonly colorBy: readonly string[] }) =>
+        usePointCloudPlaybackFrames(["/lidar"], colorBy),
+      { initialProps: { colorBy: ["ring"] } },
+    );
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0]?.signal?.aborted).toBe(false);
+
+    rerender({ colorBy: ["intensity"] });
+    await waitFor(() => expect(requests).toHaveLength(2));
+    expect(requests[0]?.signal?.aborted).toBe(true);
+    expect(requests[1]?.signal?.aborted).toBe(false);
+
+    unmount();
+    expect(requests[1]?.signal?.aborted).toBe(true);
   });
 });
 

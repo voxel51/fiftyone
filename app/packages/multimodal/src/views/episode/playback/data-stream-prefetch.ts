@@ -72,6 +72,8 @@ export function resetDataStreamFetchState(state: DataStreamFetchState): void {
 
 /** Imperative foreground/background fetch surface consumed by the hook. */
 export interface DataStreamPrefetcher {
+  /** Aborts every fallback/accelerated read owned by this source epoch. */
+  cancel(): void;
   collectMissingTicksForStreams(
     startSec: number,
     endSec: number,
@@ -127,6 +129,12 @@ export function createDataStreamPrefetcher({
   readonly shouldAdmitBatch?: (operation: DataOperation) => boolean;
   readonly store: PlaybackStore;
 }): DataStreamPrefetcher {
+  const activeControllers = new Set<AbortController>();
+  const createReadController = () => {
+    const controller = new AbortController();
+    activeControllers.add(controller);
+    return controller;
+  };
   const isStreamPending = (tickKey: string, stream: string): boolean =>
     fetchState.pendingStreamsByTick.get(tickKey)?.has(stream) ?? false;
 
@@ -290,6 +298,7 @@ export function createDataStreamPrefetcher({
     if (!shouldAdmitBatch(operation)) return false;
 
     markStreamsPending(keys, streamsToFetch);
+    const controller = createReadController();
     void playback
       .readSynchronizedBatch(
         {
@@ -298,7 +307,10 @@ export function createDataStreamPrefetcher({
           streams: streamsToFetch,
           timeNs: toFetch,
         },
-        { priority: batchReadPriority(operation) },
+        {
+          priority: batchReadPriority(operation),
+          signal: controller.signal,
+        },
       )
       .then((windows) => {
         deliverWindows({
@@ -311,7 +323,10 @@ export function createDataStreamPrefetcher({
       .catch((error) =>
         handleRejectedFetch(error, sourceEpoch, toFetch, streamsToFetch),
       )
-      .finally(() => finishFetch(sourceEpoch, keys, streamsToFetch));
+      .finally(() => {
+        activeControllers.delete(controller);
+        finishFetch(sourceEpoch, keys, streamsToFetch);
+      });
 
     return true;
   };
@@ -336,11 +351,13 @@ export function createDataStreamPrefetcher({
     if (streamsToFetch.length === 0) return false;
 
     markStreamsPending([tickKey], streamsToFetch);
+    const controller = createReadController();
     void playback
       .readSynchronized({
         pointCloudColorBy: getPointCloudColorBy(),
         streamPolicies: getStreamPolicies(),
         streams: streamsToFetch,
+        signal: controller.signal,
         timeNs: tick,
       })
       .then((window) => {
@@ -354,7 +371,10 @@ export function createDataStreamPrefetcher({
       .catch((error) =>
         handleRejectedFetch(error, sourceEpoch, [tick], streamsToFetch),
       )
-      .finally(() => finishFetch(sourceEpoch, [tickKey], streamsToFetch));
+      .finally(() => {
+        activeControllers.delete(controller);
+        finishFetch(sourceEpoch, [tickKey], streamsToFetch);
+      });
 
     return true;
   };
@@ -391,6 +411,10 @@ export function createDataStreamPrefetcher({
     };
 
   return {
+    cancel: () => {
+      for (const controller of activeControllers) controller.abort();
+      activeControllers.clear();
+    },
     collectMissingTicksForStreams,
     fetchBatch,
     fetchCurrentFrame,

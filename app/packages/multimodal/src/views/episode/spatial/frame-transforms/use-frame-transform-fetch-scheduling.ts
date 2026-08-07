@@ -33,6 +33,7 @@ import {
 import { EpisodeFrameTransformStore } from "../../../../runtime/frame-transforms";
 import { mergeFrameTransformTimeRanges } from "../../../../runtime/frame-transform-ranges";
 import { shouldDeferIdleWorkForStore } from "../../playback/network-health";
+import { throwIfAborted } from "../../../../utils/cancellation";
 import {
   dynamicChildrenForPlacementScopes,
   type FramePlacementScope,
@@ -138,6 +139,7 @@ export function useFrameTransformFetchScheduling({
   const runwayRangeKeyRef = useRef<string | null>(null);
   const placementScopesRef = useRef(new FramePlacementScopeRegistry());
   const sourceGenerationRef = useRef(0);
+  const activeReadControllersRef = useRef(new Set<AbortController>());
   // Nullable on purpose: callers inside the playback shell provide the store
   // (enabling the idle-work gate); standalone callers and tests get null and
   // keep ungated behavior.
@@ -191,6 +193,11 @@ export function useFrameTransformFetchScheduling({
   // This effect resets transform state when the source changes and loads the
   // initial static transform bootstrap before dynamic windows are requested.
   useEffect(() => {
+    const activeReadControllers = activeReadControllersRef.current;
+    for (const controller of activeReadControllers) {
+      controller.abort();
+    }
+    activeReadControllers.clear();
     const retryTimeouts = retryTimeoutsRef.current;
     clearRetryTimeouts(retryTimeouts);
     runwayRangeKeyRef.current = null;
@@ -228,9 +235,17 @@ export function useFrameTransformFetchScheduling({
       version: sourceGeneration,
     });
 
-    Promise.resolve(capability.readBootstrap?.() ?? [])
+    const bootstrapController = new AbortController();
+    activeReadControllers.add(bootstrapController);
+    Promise.resolve(
+      capability.readBootstrap?.({ signal: bootstrapController.signal }) ?? [],
+    )
       .then((samples) => {
-        if (!active || sourceGeneration !== sourceGenerationRef.current) {
+        if (
+          !active ||
+          bootstrapController.signal.aborted ||
+          sourceGeneration !== sourceGenerationRef.current
+        ) {
           return;
         }
 
@@ -243,7 +258,11 @@ export function useFrameTransformFetchScheduling({
         }));
       })
       .catch((caughtError) => {
-        if (!active || sourceGeneration !== sourceGenerationRef.current) {
+        if (
+          !active ||
+          bootstrapController.signal.aborted ||
+          sourceGeneration !== sourceGenerationRef.current
+        ) {
           return;
         }
 
@@ -253,10 +272,17 @@ export function useFrameTransformFetchScheduling({
           status: "error",
           version: current.version + 1,
         }));
+      })
+      .finally(() => {
+        activeReadControllers.delete(bootstrapController);
       });
 
     return () => {
       active = false;
+      for (const controller of activeReadControllers) {
+        controller.abort();
+      }
+      activeReadControllers.clear();
       clearRetryTimeouts(retryTimeouts);
     };
   }, [capability, dynamicRangeMode, sourceKey]);
@@ -343,6 +369,8 @@ export function useFrameTransformFetchScheduling({
         ...inFlightPlacementRangesRef.current,
         requestedRange,
       ];
+      const controller = new AbortController();
+      activeReadControllersRef.current.add(controller);
       const read: Promise<PlacementReadResult> = (async () => {
         if (
           useExactPlacement &&
@@ -351,19 +379,27 @@ export function useFrameTransformFetchScheduling({
         ) {
           const placement = await readPlacement({
             requiredDynamicChildFrameIds,
+            signal: controller.signal,
             timeNs: requestTimeNs,
           });
+          throwIfAborted(controller.signal);
           return placement
             ? { kind: "exact", placement }
-            : readFallbackPlacement(capability, fallbackRange);
+            : readFallbackPlacement(
+                capability,
+                fallbackRange,
+                controller.signal,
+              );
         }
         const samples = await capability.readTransforms({
+          signal: controller.signal,
           streams: [],
           window: {
             endNs: requestedRange.endTimeNs,
             startNs: requestedRange.startTimeNs,
           },
         });
+        throwIfAborted(controller.signal);
         return {
           indexedRange: requestedRange,
           kind: "window",
@@ -372,7 +408,10 @@ export function useFrameTransformFetchScheduling({
       })();
       read
         .then(async (result) => {
-          if (sourceGeneration !== sourceGenerationRef.current) {
+          if (
+            controller.signal.aborted ||
+            sourceGeneration !== sourceGenerationRef.current
+          ) {
             return;
           }
 
@@ -398,8 +437,14 @@ export function useFrameTransformFetchScheduling({
               const fallback = await readFallbackPlacement(
                 capability,
                 fallbackRange,
+                controller.signal,
               );
-              if (sourceGeneration !== sourceGenerationRef.current) return;
+              if (
+                controller.signal.aborted ||
+                sourceGeneration !== sourceGenerationRef.current
+              ) {
+                return;
+              }
               indexedRange = fallback.indexedRange;
               storeRef.current?.addDynamic(
                 fallback.samples.map(runtimeTransformSample),
@@ -425,7 +470,10 @@ export function useFrameTransformFetchScheduling({
           }));
         })
         .catch((caughtError) => {
-          if (sourceGeneration !== sourceGenerationRef.current) {
+          if (
+            controller.signal.aborted ||
+            sourceGeneration !== sourceGenerationRef.current
+          ) {
             return;
           }
 
@@ -487,6 +535,9 @@ export function useFrameTransformFetchScheduling({
             }));
           }, dynamicTransformRetryDelayMs(nextRetryCount));
           retryTimeoutsRef.current.set(requestedRangeKey, timeout);
+        })
+        .finally(() => {
+          activeReadControllersRef.current.delete(controller);
         });
     },
     [
@@ -564,12 +615,15 @@ export function useFrameTransformFetchScheduling({
       runwayRange,
     ];
     const sourceGeneration = sourceGenerationRef.current;
+    const controller = new AbortController();
+    activeReadControllersRef.current.add(controller);
     capability
       .readTransforms({
         // The first runway segment while Play is pending is demanded startup
         // work. Foreground priority avoids a limited-network deadlock and a
         // priority inversion behind speculative reads.
         priority: playPending ? "playback" : "idle",
+        signal: controller.signal,
         streams: [],
         window: {
           endNs: runwayRange.endTimeNs,
@@ -577,7 +631,10 @@ export function useFrameTransformFetchScheduling({
         },
       })
       .then((samples) => {
-        if (sourceGeneration !== sourceGenerationRef.current) {
+        if (
+          controller.signal.aborted ||
+          sourceGeneration !== sourceGenerationRef.current
+        ) {
           return;
         }
 
@@ -596,7 +653,10 @@ export function useFrameTransformFetchScheduling({
         }));
       })
       .catch((caughtError) => {
-        if (sourceGeneration !== sourceGenerationRef.current) {
+        if (
+          controller.signal.aborted ||
+          sourceGeneration !== sourceGenerationRef.current
+        ) {
           return;
         }
 
@@ -618,6 +678,9 @@ export function useFrameTransformFetchScheduling({
           error: errorMessage(caughtError),
           version: current.version + 1,
         }));
+      })
+      .finally(() => {
+        activeReadControllersRef.current.delete(controller);
       });
   }, [
     capability,
@@ -655,14 +718,17 @@ export function useFrameTransformFetchScheduling({
 async function readFallbackPlacement(
   capability: TransformReadAcceleration,
   range: EpisodeFrameTransformTimeRange,
+  signal?: AbortSignal,
 ) {
   const samples = await capability.readTransforms({
+    signal,
     streams: [],
     window: {
       endNs: range.endTimeNs,
       startNs: range.startTimeNs,
     },
   });
+  throwIfAborted(signal);
   return {
     indexedRange: range,
     kind: "window" as const,

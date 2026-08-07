@@ -173,6 +173,7 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
     }
 
     let cancelled = false;
+    const controller = new AbortController();
     const cachedWindow = fetchedWindowRef.current;
     const reusableWindow =
       cachedWindow?.session === session &&
@@ -231,6 +232,7 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
           for await (const batch of session.read({
             limit: LOG_READ_LIMIT,
             priority: "idle",
+            signal: controller.signal,
             streams: selectedStreams,
             window: { endNs: range.endTimeNs, startNs: range.startTimeNs },
           })) {
@@ -293,6 +295,7 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [
     activeWindow,

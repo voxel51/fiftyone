@@ -7,6 +7,7 @@ import type {
   McapDecodedMessage,
   McapReadDecodedMessagesRequest,
 } from "../../contracts/index";
+import { throwIfAborted } from "../../../../utils/cancellation";
 
 /**
  * Streams decoded MCAP messages for one read request.
@@ -17,13 +18,16 @@ export async function* readMcapDecodedMessages({
   reader,
   request,
   timeline,
+  signal,
 }: {
   readonly decodeClient: DecodeClient;
   readonly readSignal?: { readonly current: AbortSignal | null };
   readonly reader: McapIndexedReaderLike;
   readonly request: McapReadDecodedMessagesRequest;
   readonly timeline: McapTimelineStrategy;
+  readonly signal?: AbortSignal;
 }): AsyncGenerator<McapDecodedMessage, void, void> {
+  throwIfAborted(signal ?? readSignal?.current);
   // Validate before the read/decode loop so bad limits do not decode one item
   // just to discard it afterward.
   if (
@@ -56,11 +60,12 @@ export async function* readMcapDecodedMessages({
     startTime,
     topics: request.topics,
   })) {
+    throwIfAborted(signal ?? readSignal?.current);
     const decodedMessage = await decodeMcapMessage({
       decodeClient,
       message,
       reader,
-      signal: readSignal?.current ?? undefined,
+      signal: signal ?? readSignal?.current ?? undefined,
       source: request.source,
       timeline,
     });
@@ -76,6 +81,8 @@ export async function* readMcapDecodedMessages({
     }
 
     yield decodedMessage;
+
+    throwIfAborted(signal ?? readSignal?.current);
 
     count += 1;
     if (request.limit !== undefined && count >= request.limit) {

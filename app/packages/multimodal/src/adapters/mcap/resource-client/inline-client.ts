@@ -15,8 +15,10 @@ import {
   createDefaultMcapReader,
   createMcapReaderStore,
   type McapChunkReadDebugLog,
+  type McapIndexedReaderLike,
   type McapReaderFactory,
 } from "../reader/index";
+import { ByteClientReadable } from "../reader/byte-readable";
 import { mcapTimelineRangeFromReader } from "./operations/read-timeline-range";
 import {
   readMcapSynchronizedMessageBatch,
@@ -37,7 +39,11 @@ import {
   readMcapNumericSeries,
   readMcapNumericSeriesSlice,
 } from "./operations/read-numeric-series";
-import { readMcapRawMessageRecord } from "./operations/read-raw-message-record";
+import {
+  RAW_RECORD_MAX_WALL_TIME_MS,
+  rawRecordWallTimeError,
+  readMcapRawMessageRecord,
+} from "./operations/read-raw-message-record";
 import { readMcapPointCloudChannel } from "./operations/read-point-cloud-channel";
 import { readMcapTopics } from "./operations/read-topics";
 import { readMcapTopicTimeBounds } from "./operations/read-topic-time-bounds";
@@ -72,6 +78,7 @@ import {
 } from "../contracts/index";
 import type { StreamInventory } from "../../../schemas/v1/index";
 import { memoizedRead } from "./memoized-read";
+import { throwIfAborted } from "../../../utils/cancellation";
 
 const FRAME_TRANSFORM_WINDOW_READ_CACHE_LIMIT = 32;
 const MEMOIZED_READ_CACHE_LIMIT = 32;
@@ -165,6 +172,35 @@ export function createInlineMcapResourceClient(
     }
     return store;
   };
+  const createRequestReader = (
+    source: McapReadTimelineRangeRequest["source"],
+    signal: AbortSignal,
+  ) =>
+    readerFactory(
+      source,
+      new ByteClientReadable(source, byteClient, {
+        debugChunkReads: options.debugChunkReads,
+        logChunkRead: options.logChunkRead,
+        readSignal: { current: signal },
+      }),
+    );
+  const withRequestReader = async <Value>(
+    source: McapReadTimelineRangeRequest["source"],
+    signal: AbortSignal | undefined,
+    read: (reader: McapIndexedReaderLike) => Promise<Value> | Value,
+  ): Promise<Value> => {
+    throwIfAborted(signal);
+    if (!signal) return read(await readerStore.get(source));
+    const reader = await createRequestReader(source, signal);
+    try {
+      throwIfAborted(signal);
+      const value = await read(reader);
+      throwIfAborted(signal);
+      return value;
+    } finally {
+      reader.dispose?.();
+    }
+  };
 
   const client: McapSynchronizedMessageReuseClient = {
     dispose() {
@@ -177,16 +213,30 @@ export function createInlineMcapResourceClient(
 
     async *readDecodedMessages(
       request: McapReadDecodedMessagesRequest,
+      readOptions?: McapResourceReadOptions,
     ): AsyncGenerator<McapDecodedMessage, void, void> {
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
-      const reader = await readerStore.get(request.source);
-      yield* readMcapDecodedMessages({
-        decodeClient,
-        readSignal: options.readSignal,
-        reader,
-        request,
-        timeline,
-      });
+      const signal = readOptions?.signal;
+      throwIfAborted(signal);
+      // @mcap/core does not accept a signal on readMessages(). A signalled
+      // inline read therefore owns a reader whose byte-readable is scoped to
+      // that one request; concurrent reads cannot overwrite each other's
+      // cancellation state. Unsigned reads keep the normal shared reader.
+      const reader = signal
+        ? await createRequestReader(request.source, signal)
+        : await readerStore.get(request.source);
+      try {
+        yield* readMcapDecodedMessages({
+          decodeClient,
+          readSignal: options.readSignal,
+          reader,
+          request,
+          signal,
+          timeline,
+        });
+      } finally {
+        if (signal) reader.dispose?.();
+      }
     },
 
     async readBoundedMessages(
@@ -194,26 +244,40 @@ export function createInlineMcapResourceClient(
       readOptions?: McapResourceReadOptions,
     ): Promise<McapReadBoundedMessagesResult> {
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
-      const reader = await readerStore.get(request.source);
-      return readMcapBoundedMessages({
-        decodeClient,
-        reader,
-        request,
-        signal: readOptions?.signal ?? options.readSignal?.current ?? undefined,
-        timeline,
-      });
+      return withRequestReader(request.source, readOptions?.signal, (reader) =>
+        readMcapBoundedMessages({
+          decodeClient,
+          reader,
+          request,
+          signal:
+            readOptions?.signal ?? options.readSignal?.current ?? undefined,
+          timeline,
+        }),
+      );
     },
 
     async readTimelineRange(
       request: McapReadTimelineRangeRequest,
+      readOptions?: McapResourceReadOptions,
     ): Promise<McapTimelineRange> {
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
-      const reader = await readerStore.get(request.source);
-      return mcapTimelineRangeFromReader(reader, timeline);
+      return withRequestReader(request.source, readOptions?.signal, (reader) =>
+        mcapTimelineRangeFromReader(reader, timeline),
+      );
     },
 
-    async readTopics(request: McapReadTopicsRequest) {
+    async readTopics(
+      request: McapReadTopicsRequest,
+      readOptions?: McapResourceReadOptions,
+    ) {
       const sourceKey = byteSourceAccessKey(request.source);
+      if (readOptions?.signal) {
+        return withRequestReader(
+          request.source,
+          readOptions.signal,
+          readMcapTopics,
+        );
+      }
       return memoizedRead<readonly StreamInventory[]>(
         topicReads,
         sourceKey,
@@ -265,24 +329,51 @@ export function createInlineMcapResourceClient(
 
     async readRawMessageRecord(
       request: McapReadRawMessageRecordRequest,
+      readOptions?: McapResourceReadOptions,
     ): Promise<McapRawMessageRecordResult> {
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
-      const reader = await readerStore.get(request.source);
-      return readMcapRawMessageRecord({ reader, request, timeline });
+      const deadline = createReadDeadline(
+        readOptions?.signal ?? options.readSignal?.current ?? undefined,
+        RAW_RECORD_MAX_WALL_TIME_MS,
+      );
+      try {
+        return await withRequestReader(
+          request.source,
+          deadline.signal,
+          (reader) =>
+            readMcapRawMessageRecord({
+              reader,
+              request,
+              signal: deadline.signal,
+              timeline,
+            }),
+        );
+      } catch (error) {
+        if (deadline.didTimeOut()) {
+          throw rawRecordWallTimeError();
+        }
+        throw error;
+      } finally {
+        deadline.cleanup();
+      }
     },
 
     async readPointCloudChannel(
       request: McapReadPointCloudChannelRequest,
+      readOptions?: McapResourceReadOptions,
     ): Promise<McapPointCloudChannelResult> {
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
-      const reader = await readerStore.get(request.source);
-      return readMcapPointCloudChannel({
-        decoderRegistry,
-        reader,
-        readSignal: options.readSignal,
-        request,
-        timeline,
-      });
+      return withRequestReader(request.source, readOptions?.signal, (reader) =>
+        readMcapPointCloudChannel({
+          decoderRegistry,
+          reader,
+          readSignal: readOptions?.signal
+            ? { current: readOptions.signal }
+            : options.readSignal,
+          request,
+          timeline,
+        }),
+      );
     },
 
     async readTopicTimeBounds(request: McapReadTopicTimeBoundsRequest) {
@@ -301,7 +392,15 @@ export function createInlineMcapResourceClient(
 
     async readFrameTransformBootstrap(
       request: McapReadFrameTransformBootstrapRequest,
+      readOptions?: McapResourceReadOptions,
     ): Promise<McapFrameTransformSet> {
+      if (readOptions?.signal) {
+        return withRequestReader(
+          request.source,
+          readOptions.signal,
+          readMcapFrameTransformBootstrap,
+        );
+      }
       const sourceKey = byteSourceAccessKey(request.source);
       return memoizedRead<McapFrameTransformSet>(
         frameTransformBootstrapReads,
@@ -315,6 +414,7 @@ export function createInlineMcapResourceClient(
 
     async readFrameTransformWindow(
       request: McapReadFrameTransformWindowRequest,
+      readOptions?: McapResourceReadOptions,
     ): Promise<McapFrameTransformSet> {
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
       const sourceKey = byteSourceAccessKey(request.source);
@@ -324,26 +424,50 @@ export function createInlineMcapResourceClient(
         .sort()
         .join("\0");
       const windowKey = `${sourceKey}\0${timeline.id}\0${request.startTimeNs}\0${request.endTimeNs}\0${requiredChildrenKey}`;
+      const readWindow = (reader: McapIndexedReaderLike) =>
+        readMcapFrameTransformWindow({
+          predecessorStore: predecessorStoreForSource(sourceKey),
+          reader,
+          readSignal: readOptions?.signal
+            ? { current: readOptions.signal }
+            : options.readSignal,
+          request,
+          timeline,
+        });
+      if (readOptions?.signal) {
+        return withRequestReader(
+          request.source,
+          readOptions.signal,
+          readWindow,
+        );
+      }
       return memoizedRead<McapFrameTransformSet>(
         frameTransformWindowReads,
         windowKey,
-        () =>
-          readerStore.get(request.source).then((reader) =>
-            readMcapFrameTransformWindow({
-              predecessorStore: predecessorStoreForSource(sourceKey),
-              reader,
-              readSignal: options.readSignal,
-              request,
-              timeline,
-            }),
-          ),
+        () => readerStore.get(request.source).then(readWindow),
       );
     },
 
     async readSynchronizedMessageBatch(
       request: McapReadSynchronizedMessageBatchRequest,
+      readOptions?: McapResourceReadOptions,
     ): Promise<readonly McapSynchronizedMessageWindow[]> {
-      return client.readSynchronizedMessageBatchWithReuse(request);
+      if (request.timeNs.length === 0) return [];
+      if (!readOptions?.signal) {
+        return client.readSynchronizedMessageBatchWithReuse(request);
+      }
+      const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
+      const sourceKey = byteSourceAccessKey(request.source);
+      return withRequestReader(request.source, readOptions.signal, (reader) =>
+        readMcapSynchronizedMessageBatch({
+          decodeClient,
+          predecessorStore: predecessorStoreForSource(sourceKey),
+          reader,
+          readSignal: { current: readOptions.signal ?? null },
+          request,
+          timeline,
+        }),
+      );
     },
 
     async readSynchronizedMessageBatchWithReuse(request, reuseIndexedMessage) {
@@ -368,8 +492,15 @@ export function createInlineMcapResourceClient(
 
     async readSynchronizedMessages(
       request: McapReadSynchronizedMessagesRequest,
+      readOptions?: McapResourceReadOptions,
     ): Promise<McapSynchronizedMessageWindow> {
-      return client.readSynchronizedMessagesWithReuse(request);
+      const windows = await client.readSynchronizedMessageBatch(
+        { ...request, timeNs: [request.timeNs] },
+        readOptions,
+      );
+      const window = windows[0];
+      if (!window) throw new Error("Expected synchronized MCAP window");
+      return window;
     },
 
     async readSynchronizedMessagesWithReuse(request, reuseIndexedMessage) {
@@ -386,4 +517,31 @@ export function createInlineMcapResourceClient(
   };
 
   return client;
+}
+
+function createReadDeadline(
+  parentSignal: AbortSignal | undefined,
+  timeoutMs: number,
+): {
+  cleanup(): void;
+  didTimeOut(): boolean;
+  readonly signal: AbortSignal;
+} {
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromParent = () => controller.abort(parentSignal?.reason);
+  if (parentSignal?.aborted) abortFromParent();
+  else parentSignal?.addEventListener("abort", abortFromParent, { once: true });
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  return {
+    cleanup() {
+      clearTimeout(timeout);
+      parentSignal?.removeEventListener("abort", abortFromParent);
+    },
+    didTimeOut: () => timedOut,
+    signal: controller.signal,
+  };
 }

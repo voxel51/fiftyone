@@ -55,6 +55,25 @@ describe("worker-backed MCAP resource client", () => {
     await expect(range).resolves.toEqual(createTimelineRange(1n, 2n));
   });
 
+  it("preserves an explicit priority on ordinary resource calls", async () => {
+    const { client, workers } = createClientHarness();
+    const request = createTimelineRequest();
+
+    const range = client.readTimelineRange(request, { priority: "bulk" });
+
+    expect(workers[0].messages[1]).toMatchObject({
+      id: 1,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.BULK_HISTORY,
+      type: "readTimelineRange",
+    });
+
+    workers[0].respond({
+      id: 1,
+      ok: true,
+      result: createTimelineRange(1n, 2n),
+    });
+    await expect(range).resolves.toEqual(createTimelineRange(1n, 2n));
+  });
   it("emits worker transport progress by lane", async () => {
     const { client, workers } = createClientHarness();
     const onTransport = vi.fn();
@@ -943,6 +962,32 @@ describe("worker-backed MCAP resource client", () => {
       done: true,
       value: undefined,
     });
+  });
+
+  it("forwards per-stream abort to the worker and ignores a late reply", async () => {
+    const { client, workers } = createClientHarness();
+    const controller = new AbortController();
+    const stream = client.readDecodedMessages(
+      { source: createSource("source:1"), topics: ["/camera"] },
+      { signal: controller.signal },
+    );
+    const first = stream.next();
+    const worker = workers[0];
+
+    controller.abort();
+
+    await expect(first).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
+    expect(worker.messages.at(-1)).toEqual({ id: 1, type: "cancel" });
+    worker.respond({
+      done: false,
+      id: 1,
+      item: createDecodedMessage(1n),
+      ok: true,
+      stream: true,
+    });
+    expect(
+      worker.messages.filter((message) => message.type === "cancel"),
+    ).toHaveLength(1);
   });
 
   it("can demote decoded-message streams to idle-prefetch priority", async () => {

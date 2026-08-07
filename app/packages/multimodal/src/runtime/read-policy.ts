@@ -20,12 +20,20 @@ import type {
   SynchronizedPlaybackReadRequest,
   TransformReadAcceleration,
 } from "../ports";
+import { EpisodeReadUnsupportedError } from "../ports";
 import { maxBigInt, minBigInt } from "../utils/bigint";
+import { throwIfAborted } from "../utils/cancellation";
 
 /** Default symmetric tolerance for nearest-frame presentation. */
 export const DEFAULT_EPISODE_SYNC_TOLERANCE_NS = 50_000_000n;
 
 const DEFAULT_STREAM_SYNC_LIMIT = 1;
+
+/** Complete decoded messages admitted per stream for one generic playback batch. */
+export const GENERIC_PLAYBACK_FALLBACK_MAX_MESSAGES_PER_STREAM = 1_024;
+
+/** Complete decoded messages admitted per stream for one generic transform read. */
+export const GENERIC_TRANSFORM_FALLBACK_MAX_MESSAGES_PER_STREAM = 256;
 
 /** Collects one pull-based session read without changing adapter semantics. */
 export async function readFrameBatches(
@@ -64,7 +72,21 @@ export async function readTransformsFallback(
   session: EpisodeSession,
   request: ReadRequest,
 ): Promise<readonly TransformSample[]> {
-  const batches = await readFrameBatches(session, request);
+  const streams =
+    request.streams.length > 0
+      ? request.streams
+      : session.manifest.streams
+          .filter((stream) => stream.kind === STREAM_KIND.TRANSFORM)
+          .map((stream) => stream.id);
+  const batches = await readCompleteBoundedStreams({
+    maxMessagesPerStream: GENERIC_TRANSFORM_FALLBACK_MAX_MESSAGES_PER_STREAM,
+    operation: "generic-transform-fallback",
+    priority: request.priority,
+    session,
+    signal: request.signal,
+    streams,
+    windowForStream: () => request.window,
+  });
   return batches
     .flatMap((batch) =>
       batch.frames.flatMap((frame) => frame.output.transforms ?? []),
@@ -121,9 +143,9 @@ export function createEpisodeTransformReadRuntime(
   const acceleration = session.transformRead;
   const readPlacement = acceleration?.readPlacement?.bind(acceleration);
   return {
-    readBootstrap: () =>
-      acceleration?.readBootstrap?.() ??
-      readTransformBootstrapFallback(session),
+    readBootstrap: (options) =>
+      acceleration?.readBootstrap?.(options) ??
+      readTransformBootstrapFallback(session, options?.signal),
     ...(readPlacement ? { readPlacement } : {}),
     readTransforms: (request) => readTransformWindow(session, request),
   };
@@ -132,6 +154,7 @@ export function createEpisodeTransformReadRuntime(
 /** Reads timeless transforms from mandatory transform streams. */
 export async function readTransformBootstrapFallback(
   session: EpisodeSession,
+  signal?: AbortSignal,
 ): Promise<readonly TransformSample[]> {
   const streams = session.manifest.streams
     .filter((stream) => stream.kind === STREAM_KIND.TRANSFORM)
@@ -140,6 +163,7 @@ export async function readTransformBootstrapFallback(
 
   const samples = await readTransformsFallback(session, {
     priority: "current",
+    signal,
     streams,
     window: session.manifest.timeRange,
   });
@@ -154,7 +178,7 @@ export async function readSynchronizedPlaybackFallback(
   const windows = await readSynchronizedPlaybackBatchFallback(
     session,
     { ...request, timeNs: [request.timeNs] },
-    { priority: "current" },
+    { priority: "current", signal: request.signal },
   );
   return windows[0] ?? emptyPlaybackWindow(request.timeNs);
 }
@@ -179,12 +203,26 @@ export async function readSynchronizedPlaybackBatchFallback(
       timeNs,
     }),
   );
-  const startNs = minBigInt(resolved.map((window) => window.startNs));
-  const endNs = maxBigInt(resolved.map((window) => window.endNs));
-  const batches = await readFrameBatches(session, {
+  const batches = await readCompleteBoundedStreams({
+    maxMessagesPerStream: GENERIC_PLAYBACK_FALLBACK_MAX_MESSAGES_PER_STREAM,
+    operation: "generic-playback-fallback",
     priority: options.priority,
+    session,
+    signal: options.signal,
     streams: request.streams,
-    window: { endNs, startNs },
+    windowForStream: (stream) => ({
+      endNs: maxBigInt(resolved.map((window) => window.endNs)),
+      startNs: minBigInt(
+        resolved.map((window) =>
+          readStartForPolicy(
+            session.manifest.timeRange.startNs,
+            streamsById,
+            stream,
+            window.streamPolicies[stream],
+          ),
+        ),
+      ),
+    }),
   });
   const framesByStream = collectFramesByStream(batches, request.streams);
   const sourceNames = new Map(
@@ -193,6 +231,54 @@ export async function readSynchronizedPlaybackBatchFallback(
   return resolved.map((window) =>
     selectPlaybackWindow(framesByStream, request.streams, sourceNames, window),
   );
+}
+
+async function readCompleteBoundedStreams({
+  maxMessagesPerStream,
+  operation,
+  priority,
+  session,
+  signal,
+  streams,
+  windowForStream,
+}: {
+  readonly maxMessagesPerStream: number;
+  readonly operation: string;
+  readonly priority: ReadRequest["priority"];
+  readonly session: EpisodeSession;
+  readonly signal?: AbortSignal;
+  readonly streams: readonly string[];
+  readonly windowForStream: (stream: string) => ReadRequest["window"];
+}): Promise<readonly FrameBatch[]> {
+  const batches: FrameBatch[] = [];
+  for (const stream of streams) {
+    throwIfAborted(signal);
+    let messageCount = 0;
+    for await (const batch of session.read({
+      // The extra message is a completeness probe. It is never published.
+      limit: maxMessagesPerStream + 1,
+      priority,
+      signal,
+      streams: [stream],
+      window: windowForStream(stream),
+    })) {
+      const admitted: DecodedFrame[] = [];
+      for (const frame of batch.frames) {
+        throwIfAborted(signal);
+        if (frame.streamId !== stream) continue;
+        messageCount += 1;
+        if (messageCount > maxMessagesPerStream) {
+          throw new EpisodeReadUnsupportedError(
+            operation,
+            `${operation} requires more than ${maxMessagesPerStream} messages for ${stream}; a predecessor-aware or bounded accelerated capability is required`,
+          );
+        }
+        admitted.push(frame);
+      }
+      if (admitted.length > 0) batches.push({ frames: admitted, stream });
+    }
+  }
+  return batches;
 }
 
 interface ResolvedPlaybackWindow {

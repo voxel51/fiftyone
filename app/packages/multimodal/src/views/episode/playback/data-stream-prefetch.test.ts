@@ -188,6 +188,7 @@ describe("data stream prefetcher", () => {
     ).toEqual([]);
     expect(readSynchronizedBatch.mock.calls[0]?.[1]).toEqual({
       priority: "playback",
+      signal: expect.any(AbortSignal),
     });
 
     firstRead.resolve([]);
@@ -197,6 +198,7 @@ describe("data stream prefetcher", () => {
     ).toBe(true);
     expect(readSynchronizedBatch.mock.calls[1]?.[1]).toEqual({
       priority: "idle",
+      signal: expect.any(AbortSignal),
     });
   });
 

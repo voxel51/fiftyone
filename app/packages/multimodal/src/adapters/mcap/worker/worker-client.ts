@@ -233,6 +233,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
       "readDecodedMessages",
       request,
       resourcePriorityToWorkerPriority(options?.priority),
+      options?.signal,
     )) {
       yield message;
     }
@@ -252,14 +253,26 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   readTimelineRange(
     request: McapReadTimelineRangeRequest,
+    options?: McapResourceReadOptions,
   ): Promise<McapTimelineRange> {
-    return this.request("readTimelineRange", request);
+    return this.request(
+      "readTimelineRange",
+      request,
+      resourcePriorityToWorkerPriority(options?.priority),
+      options?.signal,
+    );
   }
 
   readTopics(
     request: McapReadTopicsRequest,
+    options?: McapResourceReadOptions,
   ): Promise<readonly StreamInventory[]> {
-    return this.request("readTopics", request);
+    return this.request(
+      "readTopics",
+      request,
+      resourcePriorityToWorkerPriority(options?.priority),
+      options?.signal,
+    );
   }
 
   readTopicTimeBounds(
@@ -300,22 +313,38 @@ class WorkerMcapResourceClient implements McapResourceClient {
 
   readRawMessageRecord(
     request: McapReadRawMessageRecordRequest,
+    options?: McapResourceReadOptions,
   ): Promise<McapRawMessageRecordResult> {
-    return this.request("readRawMessageRecord", request);
+    return this.request(
+      "readRawMessageRecord",
+      request,
+      resourcePriorityToWorkerPriority(options?.priority),
+      options?.signal,
+    );
   }
 
   readPointCloudChannel(
     request: McapReadPointCloudChannelRequest,
+    options?: McapResourceReadOptions,
   ): Promise<McapPointCloudChannelResult> {
-    return this.request("readPointCloudChannel", request);
+    return this.request(
+      "readPointCloudChannel",
+      request,
+      resourcePriorityToWorkerPriority(options?.priority),
+      options?.signal,
+    );
   }
 
   readFrameTransformBootstrap(
     request: McapReadFrameTransformBootstrapRequest,
+    options?: McapResourceReadOptions,
   ): Promise<McapFrameTransformSet> {
-    return this.request("readFrameTransformBootstrap", request).then(
-      hydrateMcapFrameTransformSet,
-    );
+    return this.request(
+      "readFrameTransformBootstrap",
+      request,
+      resourcePriorityToWorkerPriority(options?.priority),
+      options?.signal,
+    ).then(hydrateMcapFrameTransformSet);
   }
 
   readFrameTransformWindow(
@@ -326,11 +355,13 @@ class WorkerMcapResourceClient implements McapResourceClient {
       "readFrameTransformWindow",
       request,
       resourcePriorityToWorkerPriority(options?.priority),
+      options?.signal,
     ).then(hydrateMcapFrameTransformSet);
   }
 
   readSynchronizedMessages(
     request: McapReadSynchronizedMessagesRequest,
+    options?: McapResourceReadOptions,
   ): Promise<McapSynchronizedMessageWindow> {
     let lease: DecodedRecordLease;
     try {
@@ -342,7 +373,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
       "readSynchronizedMessages",
       request,
       undefined,
-      undefined,
+      options?.signal,
       lease.recordIds,
     )
       .then(
@@ -376,7 +407,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
       "readSynchronizedMessageBatch",
       request,
       resourcePriorityToWorkerPriority(options?.priority),
-      undefined,
+      options?.signal,
       lease.recordIds,
     )
       .then((windows) =>
@@ -457,6 +488,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
     type: Type,
     payload: McapPlaybackWorkerRequestPayloadByType[Type],
     priority?: McapPlaybackWorkerPriority,
+    signal?: AbortSignal,
   ): AsyncGenerator<McapPlaybackWorkerStreamItemByType[Type], void, void> {
     if (this.disposed) {
       throw new Error("MCAP worker client is disposed");
@@ -474,6 +506,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
         type,
         payload,
         effectivePriority,
+        signal,
       );
     } finally {
       this.maybeReleaseBulkLane(lane);
