@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { STREAM_KIND } from "../../ir";
 import type { ByteResources, EpisodeSource } from "../../ports";
 import {
@@ -47,6 +47,26 @@ defineEpisodeSessionContractTests({
 });
 
 describe("fixture adapter pressure controls", () => {
+  it("forwards open cancellation to asset inventory and stops before session creation", async () => {
+    const controller = new AbortController();
+    const list = vi.fn(async (options?: { readonly signal?: AbortSignal }) => {
+      expect(options?.signal).toBe(controller.signal);
+      controller.abort();
+      return [];
+    });
+    const cancellableSource: EpisodeSource = {
+      assets: { list, resolve: vi.fn() },
+      episodeId: "fixture-cancel",
+    };
+
+    await expect(
+      createFixtureFormatAdapter().open(cancellableSource, io, {
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(list).toHaveBeenCalledOnce();
+  });
+
   it("covers every stream kind", async () => {
     const session = await createFixtureFormatAdapter().open(source, io);
     try {

@@ -22,7 +22,7 @@ export async function openEpisodeSession(
   source: EpisodeSource,
   options?: EpisodeOpenOptions,
 ): Promise<EpisodeSession> {
-  const adapter = await loadFormatAdapter(sample);
+  const adapter = await loadFormatAdapter(sample, options);
   if (!adapter) {
     throw new Error("No episode adapter recognized this sample");
   }
@@ -35,7 +35,7 @@ export async function openEpisodePreviewSession(
   source: EpisodeSource,
   options?: EpisodeOpenOptions,
 ): Promise<EpisodePreviewSession | null> {
-  const adapter = await loadFormatAdapter(sample);
+  const adapter = await loadFormatAdapter(sample, options);
   return adapter?.openPreview?.(source, episodeByteResources, options) ?? null;
 }
 
@@ -45,7 +45,7 @@ export async function prewarmEpisodeSource(
   source: EpisodeSource,
   signal?: AbortSignal,
 ): Promise<boolean> {
-  const adapter = await loadFormatAdapter(sample);
+  const adapter = await loadFormatAdapter(sample, { signal });
   if (!adapter?.prewarm) {
     return false;
   }

@@ -88,12 +88,16 @@ export function createFixtureFormatAdapter(
 
   return {
     id: "fixture",
-    async open(source) {
-      await source.assets.list();
+    async open(source, _io, openOptions) {
+      throwIfAborted(openOptions?.signal);
+      await source.assets.list(openOptions);
+      throwIfAborted(openOptions?.signal);
       return openSession(source);
     },
-    async openPreview(source) {
-      await source.assets.list();
+    async openPreview(source, _io, openOptions) {
+      throwIfAborted(openOptions?.signal);
+      await source.assets.list(openOptions);
+      throwIfAborted(openOptions?.signal);
       return new FixtureEpisodePreviewSession(openSession(source));
     },
   };

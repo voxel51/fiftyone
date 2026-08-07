@@ -32,4 +32,50 @@ describe("format adapter registry", () => {
     unregister();
     expect(getFormatAdapterDescriptors()).toEqual([]);
   });
+
+  it("forwards one lifecycle signal through detection and loading", async () => {
+    const controller = new AbortController();
+    const adapter = { id: "fixture", open: vi.fn() };
+    const detect = vi.fn(async () => true);
+    const load = vi.fn(async () => adapter);
+    registerFormatAdapter({ detect, id: "fixture", load });
+
+    await expect(
+      loadFormatAdapter(
+        { path: "episode.fixture" },
+        { signal: controller.signal },
+      ),
+    ).resolves.toBe(adapter);
+    expect(detect).toHaveBeenCalledWith(
+      { path: "episode.fixture" },
+      { signal: controller.signal },
+    );
+    expect(load).toHaveBeenCalledWith({ signal: controller.signal });
+  });
+
+  it("does not continue detection or loading after cancellation", async () => {
+    const controller = new AbortController();
+    const secondDetect = vi.fn(() => true);
+    registerFormatAdapter({
+      detect: async () => {
+        controller.abort();
+        return false;
+      },
+      id: "first",
+      load: vi.fn(),
+    });
+    registerFormatAdapter({
+      detect: secondDetect,
+      id: "second",
+      load: vi.fn(),
+    });
+
+    await expect(
+      loadFormatAdapter(
+        { path: "episode.fixture" },
+        { signal: controller.signal },
+      ),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(secondDetect).not.toHaveBeenCalled();
+  });
 });
