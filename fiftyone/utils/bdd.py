@@ -13,6 +13,7 @@ import warnings
 
 import eta.core.serial as etas
 import eta.core.utils as etau
+import eta.core.web as etaw
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
@@ -22,6 +23,11 @@ import fiftyone.utils.data as foud
 
 
 logger = logging.getLogger(__name__)
+
+
+_BDD100K_IA_BASE = "https://archive.org/download/bdd100k"
+_BDD100K_IMAGES_ZIP = "bdd100k_images.zip"
+_BDD100K_LABELS_ZIP = "bdd100k_labels.zip"
 
 
 class BDDDatasetImporter(
@@ -374,6 +380,155 @@ def load_bdd_annotations(json_path):
     """
     annotations = etas.load_json(json_path)
     return {d["name"]: d for d in annotations}
+
+
+def download_bdd100k_dataset(
+    dataset_dir, scratch_dir=None, source_dir=None, copy_files=True
+):
+    """Downloads the BDD100K dataset from the Internet Archive mirror.
+
+    If ``source_dir`` is provided, an existing download in the legacy 2018
+    layout is used instead of fetching from the network.
+
+    Args:
+        dataset_dir: the directory in which to construct the dataset
+        scratch_dir (None): a scratch directory for downloads and extraction
+        source_dir (None): an existing BDD100K source directory in the
+            legacy 2018 layout
+        copy_files (True): whether to copy (True) or move (False) source
+            files when populating ``dataset_dir``
+
+    Returns:
+        the number of samples added across all splits
+    """
+    if source_dir is not None:
+        parse_bdd100k_dataset(source_dir, dataset_dir, copy_files=copy_files)
+        return _count_split_samples(dataset_dir)
+
+    if scratch_dir is None:
+        scratch_dir = os.path.join(dataset_dir, "scratch")
+
+    etau.ensure_dir(scratch_dir)
+
+    images_zip = os.path.join(scratch_dir, _BDD100K_IMAGES_ZIP)
+    labels_zip = os.path.join(scratch_dir, _BDD100K_LABELS_ZIP)
+
+    extracted_dir = os.path.join(scratch_dir, "bdd100k")
+    extracted_val_images = os.path.join(
+        extracted_dir, "images", "100k", "val"
+    )
+    extracted_val_labels = os.path.join(
+        extracted_dir, "labels", "100k", "val"
+    )
+
+    if not os.path.isfile(images_zip):
+        logger.info("Downloading BDD100K images from %s...", _BDD100K_IA_BASE)
+        etaw.download_file(
+            "%s/%s" % (_BDD100K_IA_BASE, _BDD100K_IMAGES_ZIP),
+            path=images_zip,
+        )
+    else:
+        logger.info("Using existing archive '%s'", images_zip)
+
+    if not os.path.isfile(labels_zip):
+        logger.info("Downloading BDD100K labels from %s...", _BDD100K_IA_BASE)
+        etaw.download_file(
+            "%s/%s" % (_BDD100K_IA_BASE, _BDD100K_LABELS_ZIP),
+            path=labels_zip,
+        )
+    else:
+        logger.info("Using existing archive '%s'", labels_zip)
+
+    if not os.path.isdir(extracted_val_images):
+        logger.info("Extracting images archive...")
+        etau.extract_archive(images_zip, outdir=scratch_dir)
+
+    if not os.path.isdir(extracted_val_labels):
+        logger.info("Extracting labels archive...")
+        etau.extract_archive(labels_zip, outdir=scratch_dir)
+
+    for split in ("train", "val"):
+        mot_dir = os.path.join(extracted_dir, "labels", "100k", split)
+        out_path = os.path.join(
+            extracted_dir,
+            "labels",
+            "bdd100k_labels_images_%s.json" % split,
+        )
+        if os.path.isfile(out_path):
+            logger.info("Using existing consolidated labels '%s'", out_path)
+            continue
+        if not os.path.isdir(mot_dir):
+            logger.warning("MOT labels directory '%s' not found", mot_dir)
+            continue
+        logger.info(
+            "Converting %s per-image labels to legacy layout...", split
+        )
+        _convert_mot_to_legacy_labels(mot_dir, out_path)
+
+    parse_bdd100k_dataset(extracted_dir, dataset_dir, copy_files=copy_files)
+
+    return _count_split_samples(dataset_dir)
+
+
+def _convert_mot_to_legacy_labels(mot_dir, out_path):
+    """Consolidates per-image MOT-style label JSONs at ``mot_dir`` into a
+    single legacy-format JSON at ``out_path``.
+    """
+    entries = []
+    for filename in sorted(etau.list_files(mot_dir)):
+        if not filename.endswith(".json"):
+            continue
+        mot = etas.load_json(os.path.join(mot_dir, filename))
+
+        name = mot.get("name", "")
+        if name and not name.endswith(".jpg"):
+            name = name + ".jpg"
+
+        frames = mot.get("frames") or []
+        raw_objects = frames[0].get("objects", []) if frames else []
+
+        labels = []
+        for obj in raw_objects:
+            converted = {k: v for k, v in obj.items() if k != "poly2d"}
+            if "poly2d" in obj:
+                converted["poly2d"] = _convert_mot_poly2d(
+                    obj["poly2d"], obj.get("category", "")
+                )
+            labels.append(converted)
+
+        entries.append({
+            "name": name,
+            "attributes": mot.get("attributes", {}) or {},
+            "labels": labels,
+        })
+
+    etas.write_json(entries, out_path)
+
+
+def _convert_mot_poly2d(mot_poly2d, category):
+    """Wraps a MOT-style poly2d (list of ``[x, y, type]`` triples) in the
+    legacy structure: ``[{"vertices": [...], "types": "...", "closed": bool}]``.
+
+    ``closed`` is inferred from the category prefix: drivable / alternative
+    areas (``area/*``) are closed polygons; lane markings (``lane/*``) are
+    open polylines.
+    """
+    vertices = [[pt[0], pt[1]] for pt in mot_poly2d]
+    types = "".join(pt[2] for pt in mot_poly2d if len(pt) >= 3)
+    return [{
+        "vertices": vertices,
+        "types": types,
+        "closed": category.startswith("area/"),
+    }]
+
+
+def _count_split_samples(dataset_dir):
+    total = 0
+    for split in ("train", "validation", "test"):
+        split_data_dir = os.path.join(dataset_dir, split, "data")
+        if os.path.isdir(split_data_dir):
+            total += len(etau.list_files(split_data_dir))
+    return total
 
 
 def parse_bdd100k_dataset(

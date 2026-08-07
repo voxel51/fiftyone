@@ -425,8 +425,10 @@ class BDD100KDataset(FiftyOneDataset):
     the videos as described above, together with the image classification,
     detection, and segmentation labels.
 
-    In order to load the BDD100K dataset, you must download the source data
-    manually. The directory should be organized in the following format::
+    The dataset is downloaded automatically from the Internet Archive
+    mirror (the original Berkeley host has been offline). If you have an
+    existing BDD100K download in the legacy 2018 layout, you can pass
+    ``source_dir`` to skip the network fetch::
 
         source_dir/
             labels/
@@ -438,22 +440,12 @@ class BDD100KDataset(FiftyOneDataset):
                     test/
                     val/
 
-    You can register at http://bdd-data.berkeley.edu in order to get links to
-    download the data.
-
     Example usage::
 
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        # The path to the source files that you manually downloaded
-        source_dir = "/path/to/dir-with-bdd100k-files"
-
-        dataset = foz.load_zoo_dataset(
-            "bdd100k",
-            split="validation",
-            source_dir=source_dir,
-        )
+        dataset = foz.load_zoo_dataset("bdd100k", split="validation")
 
         session = fo.launch_app(dataset)
 
@@ -461,11 +453,12 @@ class BDD100KDataset(FiftyOneDataset):
         7.10 GB
 
     Source
-        http://bdd-data.berkeley.edu
+        https://archive.org/details/bdd100k
 
     Args:
-        source_dir (None): the directory containing the manually downloaded
-            BDD100K files
+        source_dir (None): an optional directory containing a pre-downloaded
+            BDD100K source tree in the legacy 2018 layout. If omitted, the
+            dataset is downloaded automatically from the Internet Archive
         copy_files (True): whether to move (False) or create copies (True) of
             the source files when populating the dataset directory
     """
@@ -480,32 +473,26 @@ class BDD100KDataset(FiftyOneDataset):
 
     @property
     def license(self):
-        return "http://bdd-data.berkeley.edu/download.html"
+        return "https://doc.bdd100k.com/license.html"
 
     @property
     def tags(self):
-        return ("image", "multilabel", "automotive", "manual")
+        return ("image", "multilabel", "automotive")
 
     @property
     def supported_splits(self):
         return ("train", "validation", "test")
 
-    @property
-    def requires_manual_download(self):
-        return True
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        #
-        # BDD100K must be manually downloaded by the user in `source_dir`
-        #
-        # The download contains all splits, so we remove the split from
-        # `dataset_dir` here and wrangle the whole dataset (if necessary)
-        #
-        dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
-        split_dir = os.path.join(dataset_dir, split)
+        parent_dir = os.path.dirname(dataset_dir)
+        split_dir = os.path.join(parent_dir, split)
+
         if not os.path.isdir(split_dir):
-            foub.parse_bdd100k_dataset(
-                self.source_dir, dataset_dir, copy_files=self.copy_files
+            foub.download_bdd100k_dataset(
+                parent_dir,
+                scratch_dir=scratch_dir,
+                source_dir=self.source_dir,
+                copy_files=self.copy_files,
             )
 
         logger.info("Parsing dataset metadata")
