@@ -47,6 +47,7 @@ import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking"
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
+import { shouldShowClassicSidebar } from "./utils";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -245,10 +246,10 @@ const Modal = () => {
 
   const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
   const isMultimodal = useIsMediaType(MEDIA_TYPE_MULTIMODAL);
-  // Multimodal viewers use their own right-panel tabs (Inspect/Fields) and
-  // don't populate the classic sidebar's projection/aggregation data, so
-  // mounting it here would only fire redundant queries.
-  const showClassicSidebar = isSidebarVisible && !isMultimodal;
+  const showClassicSidebar = shouldShowClassicSidebar(
+    isSidebarVisible,
+    isMultimodal,
+  );
 
   useKeyBindings(KnownContexts.Modal, [
     {
