@@ -2,7 +2,7 @@
 import { getColor } from "@fiftyone/utilities";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { RecoilRoot, useSetRecoilState } from "recoil";
+import { RecoilRoot } from "recoil";
 import { describe, expect, it, vi } from "vitest";
 import { categoryCss } from "./colors";
 import {
@@ -27,12 +27,17 @@ vi.mock("./protocol", async (importOriginal) => ({
 // real selector exactly — the seeded pool generator the grid also colors
 // its labels with — so grid parity here is a real assertion, not a stub's
 vi.mock("@fiftyone/state", async () => {
-  const { atom, selector } = await import("recoil");
+  const { atom, selector, useSetRecoilState } = await import("recoil");
   const { createColorGenerator } = await import("@fiftyone/utilities");
 
   const colorScheme = atom<Scheme>({
     key: "testColorScheme",
-    default: { colorPool: ["#ee0000", "#00dd00", "#0000cc"], fields: [] },
+    default: {
+      colorPool: ["#ee0000", "#00dd00", "#0000cc"],
+      fields: [],
+      colorscales: [],
+      defaultColorscale: null,
+    },
   });
 
   return {
@@ -41,6 +46,13 @@ vi.mock("@fiftyone/state", async () => {
       key: "testColorMap",
       get: ({ get }) => createColorGenerator(get(colorScheme).colorPool, 0),
     }),
+    // The app-config colorscale fallback; empty here so tests exercise the
+    // scheme-level fallbacks unless a test overrides colorScheme itself
+    coloring: selector({
+      key: "testColoring",
+      get: () => ({ scale: [] }),
+    }),
+    useSetSessionColorScheme: () => useSetRecoilState(colorScheme),
   };
 });
 
@@ -49,6 +61,8 @@ import * as fos from "@fiftyone/state";
 interface Scheme {
   colorPool: string[];
   fields: { path: string; valueColors: { value: string; color: string }[] }[];
+  colorscales?: { path: string; rgb: readonly (readonly number[])[] }[];
+  defaultColorscale?: { rgb: readonly (readonly number[])[] } | null;
 }
 
 const POOL = ["#ee0000", "#00dd00", "#0000cc"];
@@ -78,7 +92,7 @@ const rgbOfHex = (hex: string) =>
 const renderPlotColors = () =>
   renderHook(
     () => {
-      const setColorScheme = useSetRecoilState(fos.colorScheme);
+      const setColorScheme = fos.useSetSessionColorScheme();
       return { ...useColorPalette(FIELD, COLUMN, META), setColorScheme };
     },
     { wrapper },
@@ -169,7 +183,7 @@ const useColumnWithColors = (
   colorField: string | null,
 ) => {
   const column = useColorColumn(datasetName, brainKey, run, colorField);
-  const setColorScheme = useSetRecoilState(fos.colorScheme);
+  const setColorScheme = fos.useSetSessionColorScheme();
   return {
     ...column,
     ...useColorPalette(colorField, column.values, column.meta),

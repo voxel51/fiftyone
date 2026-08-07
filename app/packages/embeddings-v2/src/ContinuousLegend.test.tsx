@@ -39,6 +39,7 @@ describe("ContinuousLegend", () => {
       <ContinuousLegend
         field="uniqueness"
         meta={{ style: "continuous", min: null, max: null }}
+        colorscale={[]}
       />,
     );
     expect(container.firstChild).toBeNull();

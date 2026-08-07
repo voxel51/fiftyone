@@ -1,10 +1,10 @@
 /**
- * Maps v2 color columns to the renderer's flat rgb triplets. The
- * categorical palette comes from the App's color scheme, so it cannot
- * drift from the grid; the continuous ramp is still a placeholder
- * pending integration with the App's colorscales.
+ * Maps v2 color columns to the renderer's flat rgb triplets. Both the
+ * categorical palette and the continuous colorscale come from the App's
+ * color scheme, so neither can drift from the grid.
  */
 import { getRGB, type RGB } from "@fiftyone/utilities";
+import { CSS_COLOR_NAMES } from "./cssColorNames";
 import type { ColorMeta, ColorValues } from "./protocol";
 
 export const MISSING_CATEGORY = 0xffff;
@@ -12,17 +12,25 @@ export const MISSING_CATEGORY = 0xffff;
 /** CSS color per categorical value, aligned to the field's `classes` */
 export type PlotPalette = readonly string[];
 
+/** A resolved continuous colorscale: dense RGB stops, evenly spaced over
+ * [0, 1] — the same shape the App's own colorscale fields already carry
+ * (server-precomputed, not raw named stops), so no re-discretizing here. */
+export type Colorscale = readonly RGB[];
+
 const MISSING_CSS = "#737373";
-// Continuous ramp endpoints (cool blue -> Voxel51 orange)
-const RAMP_LO: RGB = [0.15, 0.4, 0.9];
-const RAMP_HI: RGB = [1.0, 0.65, 0.0];
+// Fallback when no colorscale resolves anywhere (cool blue -> Voxel51 orange)
+const DEFAULT_COLORSCALE: Colorscale = [
+  [0.15, 0.4, 0.9],
+  [1.0, 0.65, 0.0],
+];
 
 /** The label attribute the grid colors by when a field configures none */
 const DEFAULT_ATTRIBUTE = "label";
 
 const toUnitRgb = (css: string | null | undefined): RGB | null => {
   if (typeof css !== "string") return null;
-  const rgb = getRGB(css);
+  const named = CSS_COLOR_NAMES[css.toLowerCase()];
+  const rgb = getRGB(named ?? css);
   if (!rgb.every((channel) => Number.isFinite(channel))) return null;
   return [rgb[0] / 255, rgb[1] / 255, rgb[2] / 255];
 };
@@ -38,23 +46,26 @@ interface FieldSetting {
 /**
  * Per-value overrides that apply to a color-by path: a primitive field
  * carries its own, a label field carries its labels' — the latter only
- * while the grid colors by that same attribute.
+ * while the grid colors by that same attribute. A patches plot's path has
+ * an extra list segment (`ground_truth.detections.label`) between the
+ * scheme's entry (`ground_truth`) and the attribute, so every dotted
+ * prefix is tried, longest first, not just the immediate parent.
  */
 const valueColorsFor = (
   fields: readonly FieldSetting[] | null | undefined,
   path: string,
 ): Map<string, string> => {
-  const dot = path.lastIndexOf(".");
-  const setting =
-    fields?.find((field) => field.path === path) ??
-    (dot > 0
-      ? fields?.find(
-          (field) =>
-            field.path === path.slice(0, dot) &&
-            (field.colorByAttribute ?? DEFAULT_ATTRIBUTE) ===
-              path.slice(dot + 1),
-        )
-      : undefined);
+  const segments = path.split(".");
+  const attribute = segments.at(-1);
+  let setting = fields?.find((field) => field.path === path);
+  for (let i = segments.length - 1; !setting && i > 0; i--) {
+    const prefix = segments.slice(0, i).join(".");
+    setting = fields?.find(
+      (field) =>
+        field.path === prefix &&
+        (field.colorByAttribute ?? DEFAULT_ATTRIBUTE) === attribute,
+    );
+  }
 
   return new Map(
     (setting?.valueColors ?? []).map(({ value, color }) => [
@@ -98,19 +109,82 @@ export function resolvePalette(
 export const categoryCss = (palette: PlotPalette, index: number): string =>
   palette[index] ?? MISSING_CSS;
 
+interface ColorscaleSetting {
+  path?: string | null;
+  /** Server-precomputed dense stops, 0-255 integer per channel (kept loose:
+   * callers pass the generated Relay colorscale-fragment shape, not this
+   * local type). */
+  rgb?: unknown;
+}
+
+/** Normalizes a raw 0-255 integer RGB stop list (the wire format both the
+ * scheme's colorscales and the app config's fallback use) to the 0-1 float
+ * range every other color in this file works in. Returns null for anything
+ * that isn't a non-empty array of 3-plus-number tuples. */
+function normalizeColorscale(raw: unknown): Colorscale | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const stops: RGB[] = [];
+  for (const stop of raw) {
+    if (!Array.isArray(stop) || stop.length < 3) return null;
+    const [r, g, b] = stop;
+    if (![r, g, b].every((channel) => Number.isFinite(channel))) return null;
+    stops.push([r / 255, g / 255, b / 255]);
+  }
+  return stops;
+}
+
 /**
- * The CSS color at position t ∈ [0, 1] on the continuous ramp — the
- * same per-channel interpolation buildColors applies (including its
- * float32 quantization), so a legend gradient built from this cannot
- * drift from the point colors.
+ * The continuous colorscale for a color-by field: a field-specific entry
+ * from the scheme, then the scheme's default, then the app config's — the
+ * same fallback order the grid's own heatmap overlays use, so a plot and
+ * the grid agree on which colorscale describes a given field.
+ *
+ * Every parameter is accepted as `unknown`: the App's own Session type for
+ * `fos.colorScheme` is declared against the mutation INPUT shape (which
+ * omits the server-computed `rgb` field), narrower than what the read
+ * fragment actually returns — so callers pass the live Recoil values
+ * straight through rather than fighting that gap here.
  */
-export const rampCss = (t: number): string => {
-  const at = (channel: number) =>
-    Math.round(
-      Math.fround(
-        RAMP_LO[channel] + t * (RAMP_HI[channel] - RAMP_LO[channel]),
-      ) * 255,
-    );
+export function resolveColorscale(
+  field: string | null,
+  colorscales: unknown,
+  defaultColorscale: unknown,
+  /** `fos.coloring.scale` — the app config's fallback, also raw 0-255 RGB */
+  appScale: unknown,
+): Colorscale {
+  const scales = colorscales as readonly ColorscaleSetting[] | null | undefined;
+  const fieldRaw = field
+    ? scales?.find((entry) => entry.path === field)?.rgb
+    : null;
+  const defaultRaw = (defaultColorscale as ColorscaleSetting | null)?.rgb;
+  const resolved =
+    normalizeColorscale(fieldRaw) ??
+    normalizeColorscale(defaultRaw) ??
+    normalizeColorscale(appScale);
+  return resolved ?? DEFAULT_COLORSCALE;
+}
+
+/** The RGB at position t ∈ [0, 1] in a resolved colorscale — nearest-stop
+ * lookup, matching how the grid's own heatmap overlays read these same
+ * server-precomputed dense arrays (not live multi-stop interpolation). */
+function colorscaleRgbAt(colorscale: Colorscale, t: number): RGB {
+  if (colorscale.length === 1) return colorscale[0];
+  const clamped = Math.min(1, Math.max(0, t));
+  const index = Math.round(clamped * (colorscale.length - 1));
+  return colorscale[index];
+}
+
+/**
+ * The CSS color at position t ∈ [0, 1] on a resolved colorscale — the
+ * same lookup buildColors applies (including its float32 quantization),
+ * so a legend gradient built from this cannot drift from the point colors.
+ */
+export const rampCss = (
+  t: number,
+  colorscale: Colorscale = DEFAULT_COLORSCALE,
+): string => {
+  const rgb = colorscaleRgbAt(colorscale, t);
+  const at = (channel: number) => Math.round(Math.fround(rgb[channel]) * 255);
   return `rgb(${at(0)}, ${at(1)}, ${at(2)})`;
 };
 
@@ -119,6 +193,7 @@ export function buildColors(
   column: ColorValues,
   palette: PlotPalette,
   range?: { min: number | null; max: number | null },
+  colorscale: Colorscale = DEFAULT_COLORSCALE,
 ): Float32Array {
   if (column.style === "categorical") {
     const { indices } = column;
@@ -143,9 +218,7 @@ export function buildColors(
       continue;
     }
     const t = Math.min(1, Math.max(0, (value - lo) / span));
-    colors[i * 3] = RAMP_LO[0] + t * (RAMP_HI[0] - RAMP_LO[0]);
-    colors[i * 3 + 1] = RAMP_LO[1] + t * (RAMP_HI[1] - RAMP_LO[1]);
-    colors[i * 3 + 2] = RAMP_LO[2] + t * (RAMP_HI[2] - RAMP_LO[2]);
+    colors.set(colorscaleRgbAt(colorscale, t), i * 3);
   }
   return colors;
 }

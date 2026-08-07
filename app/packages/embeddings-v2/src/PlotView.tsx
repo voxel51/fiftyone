@@ -164,7 +164,7 @@ export default function PlotView({
   // The palette lives in the App's color scheme, not in the fetched
   // column: editing the pool (or a per-value override) recolors the plot
   // in place, and values match their labels in the grid
-  const { palette, colors } = useColorPalette(
+  const { palette, colorscale, colors } = useColorPalette(
     colorField,
     colorValues,
     colorMeta,
@@ -475,7 +475,11 @@ export default function PlotView({
           />
         )}
         {colorField && colorMeta && colorMeta.style === "continuous" && (
-          <ContinuousLegend field={colorField} meta={colorMeta} />
+          <ContinuousLegend
+            field={colorField}
+            meta={colorMeta}
+            colorscale={colorscale}
+          />
         )}
         {chipCount ? (
           <div className="emb-plot-overlay emb-plot-chip">

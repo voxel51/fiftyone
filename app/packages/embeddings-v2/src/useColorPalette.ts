@@ -8,32 +8,59 @@
 import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { buildColors, resolvePalette, type PlotPalette } from "./colors";
+import {
+  buildColors,
+  resolveColorscale,
+  resolvePalette,
+  type Colorscale,
+  type PlotPalette,
+} from "./colors";
 import type { ColorMeta, ColorValues } from "./protocol";
 
 export function useColorPalette(
   field: string | null,
   values: ColorValues | null,
   meta: ColorMeta | null,
-): { palette: PlotPalette; colors: Float32Array | null } {
+): {
+  palette: PlotPalette;
+  colorscale: Colorscale;
+  colors: Float32Array | null;
+} {
   const colorScheme = useRecoilValue(fos.colorScheme);
   const colorMap = useRecoilValue(fos.colorMap);
+  const appScale = useRecoilValue(fos.coloring).scale;
 
   const palette = useMemo(
     () => resolvePalette(field, meta, colorMap, colorScheme.fields),
     [field, meta, colorMap, colorScheme.fields],
   );
 
+  const colorscale = useMemo(
+    () =>
+      resolveColorscale(
+        field,
+        colorScheme.colorscales,
+        colorScheme.defaultColorscale,
+        appScale,
+      ),
+    [field, colorScheme.colorscales, colorScheme.defaultColorscale, appScale],
+  );
+
   const colors = useMemo(
     () =>
       values
-        ? buildColors(values, palette, {
-            min: meta?.min ?? null,
-            max: meta?.max ?? null,
-          })
+        ? buildColors(
+            values,
+            palette,
+            {
+              min: meta?.min ?? null,
+              max: meta?.max ?? null,
+            },
+            colorscale,
+          )
         : null,
-    [values, meta, palette],
+    [values, meta, palette, colorscale],
   );
 
-  return { palette, colors };
+  return { palette, colorscale, colors };
 }

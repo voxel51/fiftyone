@@ -6,7 +6,7 @@
  * already colors them; this shows what the colors mean.
  */
 import { Text, TextBadge, TextColor, TextVariant } from "@voxel51/voodo";
-import { rampCss } from "./colors";
+import { rampCss, type Colorscale } from "./colors";
 import { FloatingPanel } from "./FloatingPanel";
 import "./panel.css";
 import type { ColorMeta } from "./protocol";
@@ -25,9 +25,11 @@ export function formatRampValue(value: number): string {
 export function ContinuousLegend({
   field,
   meta,
+  colorscale,
 }: {
   field: string;
   meta: ColorMeta;
+  colorscale: Colorscale;
 }) {
   const { min, max } = meta;
   if (meta.style !== "continuous" || min == null || max == null) return null;
@@ -41,9 +43,10 @@ export function ContinuousLegend({
         <div
           className="emb-legend-ramp-track"
           style={{
-            background: `linear-gradient(90deg, ${rampCss(0)}, ${rampCss(
-              0.5,
-            )}, ${rampCss(1)})`,
+            background: `linear-gradient(90deg, ${rampCss(
+              0,
+              colorscale,
+            )}, ${rampCss(0.5, colorscale)}, ${rampCss(1, colorscale)})`,
           }}
         />
         <div className="emb-legend-ramp-labels">

@@ -3,7 +3,10 @@ import {
   buildColors,
   categoryCss,
   MISSING_CATEGORY,
+  rampCss,
+  resolveColorscale,
   resolvePalette,
+  type Colorscale,
 } from "./colors";
 
 const rgbAt = (colors: Float32Array, i: number) => [
@@ -46,6 +49,26 @@ describe("resolvePalette", () => {
           valueColors: [{ value: "cat", color: "#123456" }],
         },
       ]),
+    ).toEqual(["#123456", POOL[0]]);
+  });
+
+  it("finds a label field's override through a list label's extra segment", () => {
+    // Patches plots color by a path under the label list root
+    // (ground_truth.detections.label) while the scheme stores the
+    // setting at the list field itself (ground_truth) — one strip lands
+    // on "ground_truth.detections", which never matches
+    expect(
+      resolvePalette(
+        "ground_truth.detections.label",
+        meta(["cat", "dog"]),
+        pooled,
+        [
+          {
+            path: "ground_truth",
+            valueColors: [{ value: "cat", color: "#123456" }],
+          },
+        ],
+      ),
     ).toEqual(["#123456", POOL[0]]);
   });
 
@@ -96,6 +119,71 @@ describe("resolvePalette", () => {
       resolvePalette("uniqueness", { style: "continuous" }, pooled),
     ).toEqual([]);
   });
+
+  it("accepts a named CSS color as an override", () => {
+    // Named colors never parse as hex/rgb()/hsl() — without a name lookup
+    // this silently fell back to the pool instead of honoring the override.
+    // The palette keeps the original string (like any other valid override);
+    // buildColors resolves it to RGB the same way it resolves hex entries
+    expect(
+      resolvePalette("split", meta(["train"]), pooled, [
+        { path: "split", valueColors: [{ value: "train", color: "red" }] },
+      ]),
+    ).toEqual(["red"]);
+  });
+
+  it("matches a named color case-insensitively", () => {
+    expect(
+      resolvePalette("split", meta(["train"]), pooled, [
+        { path: "split", valueColors: [{ value: "train", color: "Red" }] },
+      ]),
+    ).toEqual(["Red"]);
+  });
+});
+
+describe("resolveColorscale", () => {
+  // The server/app config wire format: 0-255 integer per channel, matching
+  // the same convention the grid's own heatmap overlays consume via
+  // get32BitColor (no /255 there either) — resolveColorscale normalizes
+  // this down to the 0-1 floats the rest of this file works in
+  const FIELD_SCALE_255 = [[10, 10, 10]];
+  const DEFAULT_SCALE_255 = [[20, 20, 20]];
+  const APP_SCALE_255 = [[30, 30, 30]];
+  const normalized = (rgb255: number[][]): Colorscale =>
+    rgb255.map(([r, g, b]) => [r / 255, g / 255, b / 255]);
+
+  it("prefers a field-specific colorscale from the scheme", () => {
+    expect(
+      resolveColorscale(
+        "uniqueness",
+        [{ path: "uniqueness", rgb: FIELD_SCALE_255 }],
+        { rgb: DEFAULT_SCALE_255 },
+        APP_SCALE_255,
+      ),
+    ).toEqual(normalized(FIELD_SCALE_255));
+  });
+
+  it("falls back to the scheme's default colorscale", () => {
+    expect(
+      resolveColorscale(
+        "uniqueness",
+        [{ path: "other_field", rgb: FIELD_SCALE_255 }],
+        { rgb: DEFAULT_SCALE_255 },
+        APP_SCALE_255,
+      ),
+    ).toEqual(normalized(DEFAULT_SCALE_255));
+  });
+
+  it("falls back to the app config's colorscale", () => {
+    expect(resolveColorscale("uniqueness", [], null, APP_SCALE_255)).toEqual(
+      normalized(APP_SCALE_255),
+    );
+  });
+
+  it("falls back to the built-in ramp when nothing resolves", () => {
+    const resolved = resolveColorscale("uniqueness", null, null, null);
+    expect(resolved.length).toBeGreaterThan(0);
+  });
 });
 
 describe("buildColors categorical", () => {
@@ -118,6 +206,14 @@ describe("buildColors categorical", () => {
     const [r, g, b] = rgbAt(colors, 1);
     expect(r).toBe(g);
     expect(g).toBe(b);
+  });
+
+  it("resolves a named color palette entry to its actual RGB", () => {
+    const indices = new Uint16Array([0]);
+    const colors = buildColors({ style: "categorical", indices }, ["red"]);
+    hexToRgb("#ff0000").forEach((channel, c) => {
+      expect(rgbAt(colors, 0)[c]).toBeCloseTo(channel, 6);
+    });
   });
 });
 
@@ -159,5 +255,31 @@ describe("buildColors continuous", () => {
       max: 5,
     });
     expect(Number.isNaN(colors[0])).toBe(false);
+  });
+
+  it("uses a resolved colorscale instead of the built-in ramp", () => {
+    const colorscale: Colorscale = [
+      [0.9, 0.1, 0.1],
+      [0.1, 0.9, 0.1],
+    ];
+    const values = new Float32Array([0, 1]);
+    const colors = buildColors(
+      { style: "continuous", values },
+      [],
+      { min: 0, max: 1 },
+      colorscale,
+    );
+
+    // Float32Array quantizes these, so compare approximately, not exactly
+    rgbAt(colors, 0).forEach((channel, c) => {
+      expect(channel).toBeCloseTo(colorscale[0][c], 6);
+    });
+    rgbAt(colors, 1).forEach((channel, c) => {
+      expect(channel).toBeCloseTo(colorscale[1][c], 6);
+    });
+    // The legend gradient must draw the exact same stops the points get
+    // (Math.fround quantizes 0.9 below its exact value, so 229 not 230)
+    expect(rampCss(0, colorscale)).toBe("rgb(229, 26, 26)");
+    expect(rampCss(1, colorscale)).toBe("rgb(26, 229, 26)");
   });
 });
