@@ -27,7 +27,11 @@ export function resolveFrameCount(
     Number.isFinite(duration) &&
     duration > 0
   ) {
-    return Math.max(1, Math.round(duration * frameRate));
+    // Ceiling, not round: a partial trailing frame (duration not an exact
+    // frame multiple) is still a real frame. The epsilon keeps float error
+    // in `duration * frameRate` at an exact multiple from minting a frame
+    // past the media — mirrors the engine's `lastFrameStart` guard.
+    return Math.max(1, Math.ceil(duration * frameRate - 1e-6));
   }
 
   return null;

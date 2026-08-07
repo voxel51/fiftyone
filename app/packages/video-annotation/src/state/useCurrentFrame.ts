@@ -30,7 +30,7 @@ export const useCurrentFrame = (): number => {
   const playhead = usePlayhead();
   const fps = getModalSampleFrameRate(sample);
 
-  if (!fps || !Number.isFinite(fps)) {
+  if (!fps || !Number.isFinite(fps) || fps <= 0) {
     return -1;
   }
 
