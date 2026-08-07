@@ -89,6 +89,16 @@ export function Streams({
     () => new Map(sources.map((s) => [s.id, s.sourceName])),
     [sources],
   );
+  // An image stream's final indexed observation is a real visual boundary.
+  // Do not carry its last frame beyond that bound; sparse records, maps, and
+  // calibration retain their latest-at-or-before semantics.
+  const endBoundedStreams = useMemo(
+    () =>
+      sources
+        .filter((source) => source.type === SCENE_SOURCE_TYPE.IMAGE)
+        .map((source) => source.id),
+    [sources],
+  );
   const staleWarningStreams = useMemo(
     () =>
       sources
@@ -153,6 +163,7 @@ export function Streams({
 
   useRegisterDataStream({
     blockingStreams,
+    endBoundedStreams,
     onPlayheadDataReady,
     session,
     source,

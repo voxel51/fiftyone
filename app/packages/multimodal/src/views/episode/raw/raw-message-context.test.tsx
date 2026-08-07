@@ -253,6 +253,44 @@ describe("RawMessageBridge records", () => {
     expect(context.current?.streams).toEqual({ status: "idle", streams: [] });
   });
 
+  it("clears the previous record before a new source epoch can paint", async () => {
+    const firstClient = createClient();
+    const pending = deferred<RawRecordResult>();
+    const secondClient = createClient({
+      readRawRecord: vi.fn(() => pending.promise),
+    });
+    const context = createContextRef();
+    const { rerender } = render(
+      <Harness
+        client={firstClient}
+        contextRef={context}
+        sourceKey="source-a"
+      />,
+    );
+
+    await act(async () => {
+      context.current?.subscribeRecord("/imu");
+      await flushMicrotasks();
+    });
+    expect(context.current?.recordsByStream.get("/imu")?.result).toBeDefined();
+
+    rerender(
+      <Harness
+        client={secondClient}
+        contextRef={context}
+        sourceKey="source-b"
+      />,
+    );
+    await act(flushMicrotasks);
+
+    expect(
+      context.current?.recordsByStream.get("/imu")?.result,
+    ).toBeUndefined();
+    expect(context.current?.recordsByStream.get("/imu")?.status).toBe(
+      "loading",
+    );
+  });
+
   it("aborts an active record read on unmount and ignores its late result", async () => {
     const pending = deferred<RawRecordResult>();
     let readSignal: AbortSignal | undefined;
@@ -379,11 +417,13 @@ function Harness({
   bridge = true,
   client,
   contextRef,
+  sourceKey = "test",
   store,
 }: {
   readonly bridge?: boolean;
   readonly client: RawRecordCapability;
   readonly contextRef: { current: RawMessageContextValue | null };
+  readonly sourceKey?: string;
   readonly store?: ReturnType<typeof createStore>;
 }) {
   const body = (
@@ -391,7 +431,7 @@ function Harness({
       <DataStreamProvider>
         <FakeDataStream />
         {bridge ? (
-          <RawMessageBridge capability={client} sourceKey="test" />
+          <RawMessageBridge capability={client} sourceKey={sourceKey} />
         ) : null}
         <ContextProbe contextRef={contextRef} />
       </DataStreamProvider>

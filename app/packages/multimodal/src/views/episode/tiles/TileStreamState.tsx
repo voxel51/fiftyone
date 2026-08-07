@@ -1,4 +1,4 @@
-import { usePlayback } from "@fiftyone/playback";
+import { getPlayhead, usePlayback, usePlaybackStore } from "@fiftyone/playback";
 import { Button, Size, Spinner, Variant } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { useEffect, useMemo, useState } from "react";
@@ -146,7 +146,12 @@ const TileEmptyStateForStreams: React.FC<{
 }> = ({ streams }) => {
   const statuses = useStreamStatuses(streams);
   const startTimes = useStreamStartTimes(streams);
-  const model = buildTileEmptyStateModel({ startTimes, statuses });
+  const store = usePlaybackStore();
+  const model = buildTileEmptyStateModel({
+    playheadSec: getPlayhead(store),
+    startTimes,
+    statuses,
+  });
   const dataStream = useDataStream();
   const { seek } = usePlayback();
   let jumpTargetSec: number | null = null;

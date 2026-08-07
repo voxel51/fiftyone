@@ -133,7 +133,7 @@ describe("MCAP correctness fixtures", () => {
     expect(report.messageCounts).toEqual({
       "/camera/front": 7_200,
       "/camera/front/detections": 1_800,
-      "/camera/rear": 1_200,
+      "/camera/rear": 1_201,
       "/diagnostics": 60,
       "/lidar/points": 1_789,
       "/odometry": 3_600,
@@ -165,6 +165,26 @@ describe("MCAP correctness fixtures", () => {
     expect(new Set(logTimes).size).toBe(logTimes.length);
     expect(logTimes).toContain(EPOCH_START_NS + 1_800n * SECOND_NS);
     expect(logTimes).toContain(EPOCH_START_NS + 3_600n * SECOND_NS);
+    expect(
+      jsonMessages(messages, "/rosout").filter((message) =>
+        [
+          "LONG pre-midpoint nominal",
+          "LONG midpoint warning",
+          "LONG terminal 01:00:00",
+        ].includes(String(message.msg)),
+      ),
+    ).toEqual([
+      expect.objectContaining({ msg: "LONG pre-midpoint nominal" }),
+      expect.objectContaining({ msg: "LONG midpoint warning" }),
+      expect.objectContaining({ msg: "LONG terminal 01:00:00" }),
+    ]);
+    const rearTimes = messages
+      .filter((message) => message.topic === "/camera/rear")
+      .map((message) => message.logTime);
+    expect(rearTimes[0]).toBe(EPOCH_START_NS + 600n * SECOND_NS);
+    expect(rearTimes.at(-1)).toBe(EPOCH_START_NS + 3_000n * SECOND_NS);
+    expect(rearTimes).toContain(EPOCH_START_NS + 2_998n * SECOND_NS);
+    expect(rearTimes).not.toContain(EPOCH_START_NS + 3_000_500_000_000n);
     const lidarTimes = messages
       .filter((message) => message.topic === "/lidar/points")
       .map((message) => message.logTime);
@@ -182,6 +202,31 @@ describe("MCAP correctness fixtures", () => {
     expect(jsonMessages(messages, "/odometry")[1_800]).toMatchObject({
       pose: { pose: { position: { x: 180, y: 0, z: 1 } } },
       twist: { twist: { linear: { x: 10, y: 0, z: 0 } } },
+    });
+    const diagnostics = jsonMessages(messages, "/diagnostics");
+    expect(diagnostics[29]).toMatchObject({
+      status: [
+        {
+          level: 0,
+          message: "nominal",
+          values: [
+            { key: "minute", value: "29" },
+            { key: "phase", value: "ok" },
+          ],
+        },
+      ],
+    });
+    expect(diagnostics[30]).toMatchObject({
+      status: [
+        {
+          level: 1,
+          message: "midpoint warning",
+          values: [
+            { key: "minute", value: "30" },
+            { key: "phase", value: "warning" },
+          ],
+        },
+      ],
     });
   });
 });

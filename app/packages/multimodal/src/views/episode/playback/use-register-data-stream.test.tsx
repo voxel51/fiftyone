@@ -2629,6 +2629,7 @@ function Harness({
   useRegisterDataStream({
     allStreams,
     blockingStreams,
+    endBoundedStreams: [],
     session,
     source,
     staleWarningStreams,

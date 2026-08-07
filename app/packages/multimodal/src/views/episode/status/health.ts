@@ -443,12 +443,16 @@ function formatStartTime(sec: number): string {
 function earliestGapStartSec(
   statuses: readonly StreamStatus[],
   startTimes: readonly (number | null)[],
+  playheadSec?: number,
 ): number | null {
   let earliest: number | null = null;
   statuses.forEach((status, index) => {
     if (status !== "gap") return;
     const start = startTimes[index];
     if (start === null || start === undefined) return;
+    // A gap at or after the known first message is a current/end-of-stream
+    // gap, not a reason to promise that the stream starts in the future.
+    if (playheadSec !== undefined && start <= playheadSec) return;
     if (earliest === null || start < earliest) earliest = start;
   });
   return earliest;
@@ -609,9 +613,11 @@ export type TileEmptyStateModel =
   | { readonly kind: "loading" };
 
 export function buildTileEmptyStateModel({
+  playheadSec,
   startTimes,
   statuses,
 }: {
+  readonly playheadSec?: number;
   readonly startTimes: readonly (number | null)[];
   readonly statuses: readonly StreamStatus[];
 }): TileEmptyStateModel {
@@ -623,7 +629,7 @@ export function buildTileEmptyStateModel({
   if (statuses.some((s) => s === "loading")) {
     return { kind: "loading" };
   }
-  const startSec = earliestGapStartSec(statuses, startTimes);
+  const startSec = earliestGapStartSec(statuses, startTimes, playheadSec);
   return {
     kind: "gap",
     message: emptyStateGapCopy(startSec),

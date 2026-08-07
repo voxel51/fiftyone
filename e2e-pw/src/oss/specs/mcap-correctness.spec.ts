@@ -69,7 +69,9 @@ dataset.persistent = True
 dataset.add_samples([
     fo.Sample(filepath=r"${fixturePaths.a}", name="episode-a"),
     fo.Sample(filepath=r"${fixturePaths.b}", name="episode-b"),
+    fo.Sample(filepath=r"${fixturePaths.a}", name="short-before-long"),
     fo.Sample(filepath=r"${fixturePaths.long}", name="long-episode"),
+    fo.Sample(filepath=r"${fixturePaths.a}", name="short-after-long"),
     fo.Sample(filepath=r"${fixturePaths.unsupported}", name="unsupported-episode"),
 ])
   `);
@@ -241,7 +243,7 @@ if fo.dataset_exists("${datasetName}"):
     grid,
     modal,
   }) => {
-    await openMcapModal(grid, modal, 3);
+    await openMcapModal(grid, modal, 5);
     await modal.episode.expectUnsupported();
     await modal.episode.expectNoViewerError();
   });
@@ -250,7 +252,7 @@ if fo.dataset_exists("${datasetName}"):
     grid,
     modal,
   }) => {
-    await openMcapModal(grid, modal, 2);
+    await openMcapModal(grid, modal, 3);
     await modal.episode.waitForReady("long-mixed-episode.mcap");
     await modal.episode.setSamplingRate(2);
     await modal.episode.expectPlayhead(
@@ -311,6 +313,176 @@ if fo.dataset_exists("${datasetName}"):
     await modal.episode.expectUtcTime("2024-01-01 01:00:00.000");
     await modal.episode.stepBack();
     await modal.episode.expectUtcTime("2024-01-01 00:59:59.500");
+  });
+
+  test("resets duration, streams, playback, seek state, and values short-long-short", async ({
+    grid,
+    modal,
+  }) => {
+    await openMcapModal(grid, modal, 2);
+    await modal.episode.waitForReady("tiny-episode-a.mcap");
+    await modal.episode.setSamplingRate(1);
+    await modal.episode.stepForward();
+    await modal.episode.expectUtcTime("2024-01-01 00:00:01.000");
+    await modal.episode.inspectStream("/pose");
+    await modal.episode.expectRawField("position.x", 10);
+    await expectDominantColor(
+      modal.episode.image("camera/front"),
+      [46, 204, 113],
+    );
+
+    await modal.episode.navigateDatasetSample(
+      "forward",
+      "long-mixed-episode.mcap",
+    );
+    await modal.episode.expectPaused();
+    await modal.episode.expectPlayhead(
+      "2024-01-01 00:00:00.000 / 2024-01-01 01:00:00.000",
+    );
+    await modal.episode.expectStreams(
+      ["/camera/rear", "/odometry", "/status", "/diagnostics"],
+      ["/points", "/log", "/pose"],
+    );
+    await modal.episode.expectTileTitles(["camera/front"], ["/pose"]);
+    await modal.episode.inspectStream("/status");
+    await modal.episode.expectRawField("counter", 0);
+    await expectDominantColor(
+      modal.episode.image("camera/front"),
+      [23, 63, 95],
+    );
+
+    await modal.episode.seekToFraction(0.75);
+    await modal.episode.expectUtcTime("2024-01-01 00:45:00.000");
+    await modal.episode.expectRawField("counter", 540);
+
+    await modal.episode.navigateDatasetSample("forward", "tiny-episode-a.mcap");
+    await modal.episode.expectPaused();
+    await modal.episode.expectPlayhead(
+      "2024-01-01 00:00:00.000 / 2024-01-01 00:00:02.000",
+    );
+    await modal.episode.expectStreams(
+      ["/camera/front", "/points", "/log", "/pose"],
+      ["/camera/rear", "/odometry", "/status", "/diagnostics"],
+    );
+    await modal.episode.expectTileTitles(
+      ["camera/front", "points", "Logs"],
+      ["camera/rear", "/status"],
+    );
+    await modal.episode.expectRawSelectionCleared();
+    await modal.episode.inspectStream("/pose");
+    await modal.episode.expectRawField("position.x", 0);
+    await expectDominantColor(
+      modal.episode.image("camera/front"),
+      [231, 76, 60],
+    );
+  });
+
+  test("honors rear-camera first and last temporal boundaries through seeks and scrubs", async ({
+    grid,
+    modal,
+  }) => {
+    await openMcapModal(grid, modal, 3);
+    await modal.episode.waitForReady("long-mixed-episode.mcap");
+    await modal.episode.setSamplingRate(2);
+
+    await modal.episode.seekToFraction(599.5 / 3_600);
+    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
+      "2024-01-01 00:09:59.500",
+      500,
+    );
+    await modal.episode.expectTileEmpty("camera/rear", "Starts at 10:00.00");
+
+    await modal.episode.scrubToFraction(600 / 3_600);
+    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
+      "2024-01-01 00:10:00.000",
+      500,
+    );
+    await expectDominantColor(modal.episode.image("camera/rear"), [23, 63, 95]);
+
+    await modal.episode.seekToFraction(3_000 / 3_600);
+    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
+      "2024-01-01 00:50:00.000",
+      500,
+    );
+    await expectDominantColor(
+      modal.episode.image("camera/rear"),
+      [246, 213, 92],
+    );
+
+    await modal.episode.scrubToFraction(3_000.5 / 3_600);
+    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
+      "2024-01-01 00:50:00.500",
+      500,
+    );
+    await modal.episode.expectTileEmpty("camera/rear", "No data at this time");
+  });
+
+  test("keeps sparse log and diagnostic predecessor anchors synchronized", async ({
+    grid,
+    modal,
+  }) => {
+    await openMcapModal(grid, modal, 3);
+    await modal.episode.waitForReady("long-mixed-episode.mcap");
+    await modal.episode.setSamplingRate(2);
+
+    await modal.episode.seekToFraction(1_799.5 / 3_600);
+    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
+      "2024-01-01 00:29:59.500",
+      500,
+    );
+    await modal.episode.inspectStream("/diagnostics");
+    await modal.episode.expectRawMeta("t=+1740.000s");
+    await modal.episode.expectRawField("status.0.message", "nominal");
+    await modal.episode.inspectStream("/rosout");
+    await modal.episode.expectRawMeta("t=+1600.000s");
+    await modal.episode.expectRawField("msg", "LONG pre-midpoint nominal");
+    await expectDominantColor(
+      modal.episode.image("camera/front"),
+      [32, 99, 155],
+    );
+
+    await modal.episode.scrubToFraction(1_800 / 3_600);
+    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
+      "2024-01-01 00:30:00.000",
+      500,
+    );
+    await modal.episode.useRawStream("/diagnostics");
+    await modal.episode.expectRawMeta("t=+1800.000s");
+    await modal.episode.expectRawField("status.0.message", "midpoint warning");
+    await modal.episode.expectRawField("status.0.level", 1);
+    await modal.episode.useRawStream("/rosout");
+    await modal.episode.expectRawMeta("t=+1800.000s");
+    await modal.episode.expectRawField("msg", "LONG midpoint warning");
+    await modal.episode.expectLogs([
+      "LONG midpoint warning",
+      "midpoint warning",
+    ]);
+    await expectDominantColor(
+      modal.episode.image("camera/front"),
+      [60, 174, 163],
+    );
+
+    await modal.episode.seekToFraction(1_800.5 / 3_600);
+    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
+      "2024-01-01 00:30:00.500",
+      500,
+    );
+    await modal.episode.useRawStream("/diagnostics");
+    await modal.episode.expectRawMeta("t=+1800.000s");
+    await modal.episode.useRawStream("/rosout");
+    await modal.episode.expectRawMeta("t=+1800.000s");
+
+    await modal.episode.scrubToFraction(1_799.5 / 3_600);
+    await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
+      "2024-01-01 00:29:59.500",
+      500,
+    );
+    await modal.episode.useRawStream("/diagnostics");
+    await modal.episode.expectRawMeta("t=+1740.000s");
+    await modal.episode.expectRawField("status.0.message", "nominal");
+    await modal.episode.useRawStream("/rosout");
+    await modal.episode.expectRawMeta("t=+1600.000s");
+    await modal.episode.expectRawField("msg", "LONG pre-midpoint nominal");
   });
 });
 
