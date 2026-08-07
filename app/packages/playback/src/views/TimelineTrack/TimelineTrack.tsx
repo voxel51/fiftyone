@@ -6,7 +6,6 @@ import {
 import {
   Button,
   ContextMenu,
-  IconName,
   MenuSeparator,
   MenuTextItem,
   Size,
@@ -18,6 +17,7 @@ import {
 import clsx from "clsx";
 import React, { useRef, useState } from "react";
 import styles from "./TimelineTrack.module.css";
+import { ChevronBottomIcon, ChevronRightIcon, PinIcon } from "../stableIcons";
 
 /**
  * One event on a track. A `number` is shorthand for a point at that
@@ -451,9 +451,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
                   variant={Variant.Icon}
                   size={Size.Xs}
                   data-testid={`timeline-track-expand-${id}`}
-                  leadingIcon={
-                    expanded ? IconName.ChevronBottom : IconName.ChevronRight
-                  }
+                  leadingIcon={expanded ? ChevronBottomIcon : ChevronRightIcon}
                   aria-label={
                     expanded ? "Collapse sub-tracks" : "Expand sub-tracks"
                   }
@@ -484,7 +482,7 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
               variant={Variant.Icon}
               size={Size.Xs}
               data-testid={`timeline-track-pin-${id}`}
-              leadingIcon={IconName.Pin}
+              leadingIcon={PinIcon}
               aria-label={pinned ? "Unpin track" : "Pin track"}
               aria-pressed={pinned}
               className={clsx(styles.pinButton, {

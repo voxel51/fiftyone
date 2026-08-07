@@ -3,7 +3,13 @@ import {
   KnownContexts,
   useKeyBindings,
 } from "@fiftyone/commands";
-import { Button, IconName, Size, Spinner, Variant } from "@voxel51/voodo";
+import { Button, Size, Spinner, Variant } from "@voxel51/voodo";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  PauseIcon,
+  PlayIcon,
+} from "../stableIcons";
 import clsx from "clsx";
 import React, { type ReactNode } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
@@ -21,7 +27,7 @@ import {
 import LoopBounds from "../Loop/LoopBounds";
 import PlayheadTime from "../Playhead/PlayheadTime";
 import SpeedControl from "./SpeedControl";
-import { PauseIcon, PlayIcon } from "./timeline-controls-icons";
+import VolumeControl from "./VolumeControl";
 import styles from "./TimelineControls.module.css";
 
 export interface TimelineControlsProps {
@@ -127,7 +133,7 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         variant={Variant.Icon}
         size={Size.Xs}
         data-testid="timeline-controls-step-back"
-        leadingIcon={IconName.ChevronLeft}
+        leadingIcon={ChevronLeftIcon}
         aria-label="Step back"
         onClick={stepBack}
       />
@@ -144,11 +150,12 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
         variant={Variant.Icon}
         size={Size.Xs}
         data-testid="timeline-controls-step-forward"
-        leadingIcon={IconName.ChevronRight}
+        leadingIcon={ChevronRightIcon}
         aria-label="Step forward"
         onClick={stepForward}
       />
       <SpeedControl />
+      <VolumeControl />
 
       {extraControls}
 
