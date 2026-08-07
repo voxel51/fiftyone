@@ -474,7 +474,7 @@ class SimpleEvaluation(SegmentationEvaluation):
                 sample[pre_field] = spre
                 sample[rec_field] = srec
                 if compute_dice:
-                    sample[dice_field] = _compute_dice_score(confusion_matrix)
+                    sample[dice_field] = _compute_dice_score(sample_conf_mat)
 
         if nc > 0:
             missing = classes[0] if values[0] in (0, "#000000") else None
