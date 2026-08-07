@@ -177,6 +177,75 @@ const getCurrentUpAxis = (
   ) as SignedAxis;
 };
 
+const WORLD_AXES = [
+  new THREE.Vector3(1, 0, 0),
+  new THREE.Vector3(0, 1, 0),
+  new THREE.Vector3(0, 0, 1),
+];
+
+/**
+ * The local face that reads as the box's "up": of the two axes that aren't the
+ * heading, whichever points most nearly along world up. Always one of the four
+ * faces the Up picker offers — never the heading's own axis, and never absent.
+ *
+ * Two things it deliberately does *not* do:
+ *
+ * 1. Search all three axes (as `getCurrentUpAxis` does). That returns the
+ *    heading itself once the box is pitched steeply nose-up or nose-down —
+ *    past roughly 55° — and the heading's axis can never be a valid up, since
+ *    heading and up must differ. The picker was left with no face to
+ *    highlight and no relabel to apply.
+ *
+ * 2. Give up when the heading is *exactly* vertical. World up is then parallel
+ *    to the heading, so it says nothing about the remaining two axes — the
+ *    same degeneracy `lookAt` hits with a parallel up vector, and it takes the
+ *    same fix: fall back to a secondary world reference (the world axis least
+ *    aligned with up) and read the remaining axes against that instead.
+ *    Which face that lands on is arbitrary, but it is stable and it *rotates
+ *    with the box*, so a pick still moves the highlight rather than snapping
+ *    back — the control keeps working instead of going inert.
+ */
+export function getCuboidUpFace(
+  quaternion: THREE.Quaternion,
+  headingFace: CuboidResizeFace,
+  upVector?: THREE.Vector3 | null,
+): CuboidResizeFace {
+  const effectiveUp =
+    upVector && upVector.lengthSq() > EPSILON
+      ? upVector.clone().normalize()
+      : new THREE.Vector3(0, 0, 1);
+
+  const headingAxis = getCuboidResizeFaceAxis(headingFace).axis;
+  const inverse = quaternion.clone().invert();
+
+  // The reference, seen in the box's frame with the heading axis removed —
+  // what's left is how that reference leans across the two candidate axes.
+  const flatten = (reference: THREE.Vector3) => {
+    const local = reference.clone().applyQuaternion(inverse);
+    local.setComponent(headingAxis, 0);
+    return local;
+  };
+
+  const fromUp = flatten(effectiveUp);
+  if (fromUp.lengthSq() > EPSILON) {
+    return getCuboidResizeFaceFromNormal(fromUp) ?? "+z";
+  }
+
+  // Heading is parallel to up, so `fromUp` carries no signal. Re-read against
+  // the world axis furthest from up, which by construction is not parallel to
+  // the heading either.
+  const secondary = WORLD_AXES.reduce((furthest, axis) =>
+    Math.abs(axis.dot(effectiveUp)) < Math.abs(furthest.dot(effectiveUp))
+      ? axis
+      : furthest,
+  );
+
+  return (
+    getCuboidResizeFaceFromNormal(flatten(secondary)) ??
+    (headingAxis === 2 ? "+y" : "+z")
+  );
+}
+
 /**
  * Whether `headingFace` and `upFace` could serve as the heading and up faces
  * of the same box — i.e. they aren't on the same axis (parallel or
@@ -227,14 +296,12 @@ export function computeCuboidHeadingAndUpRelabel({
 
   const newX = getCuboidResizeFaceAxis(headingFace) as SignedAxis;
   const pickedUp = getCuboidResizeFaceAxis(upFace) as SignedAxis;
-  const currentUp = getCurrentUpAxis(quaternion, upVector);
-
-  if (currentUp.axis === newX.axis) {
-    // Degenerate: heading and "current up" already read as the same old
-    // axis (e.g. the box is already nose-up) — there's no distinct old "up"
-    // axis left to relabel. Bail rather than guess.
-    return null;
-  }
+  // Excludes the heading's axis, so this never collides with `newX` and a pick
+  // always resolves — at any pitch, including exactly vertical. See
+  // {@link getCuboidUpFace}.
+  const currentUp = getCuboidResizeFaceAxis(
+    getCuboidUpFace(quaternion, headingFace, upVector),
+  ) as SignedAxis;
 
   const upSlot = pickedUp.axis as 1 | 2;
   const newUp: SignedAxis = {

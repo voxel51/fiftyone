@@ -6,6 +6,7 @@ export {
 } from "./annotation/cuboid-face-resize";
 export {
   computeCuboidHeadingAndUpRelabel,
+  getCuboidUpFace,
   isValidHeadingUpFacePair,
 } from "./annotation/cuboid-heading-relabel";
 export type {

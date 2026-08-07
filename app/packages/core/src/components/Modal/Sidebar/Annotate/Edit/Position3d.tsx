@@ -13,7 +13,7 @@ import {
   computeCuboidHeadingAndUpRelabel,
   type CuboidResizeFace,
   formatDegrees,
-  getCuboidResizeFaceFromNormal,
+  getCuboidUpFace,
   HeadingUpVectorFields,
   isValidHeadingUpFacePair,
   quaternionToRadians,
@@ -222,16 +222,19 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
   // anything to pick away from itself, so it isn't state at all.
   const headingFace: CuboidResizeFace = "+x";
 
-  // "Up" isn't stored either — it's whichever local axis currently points
-  // closest to world-up (same world-+Z fallback `computeCuboidHeadingRelabel`
-  // itself uses when it isn't given a real up vector; this DOM sidebar has no
-  // access to the scene's actual one). Derived straight from `transformState`
-  // — the single source of truth also used for the position/rotation fields
-  // above — rather than mirrored into its own `useState`. Two writers racing
-  // to update a mirrored copy (this derivation vs. the optimistic set below)
-  // was exactly the bug: whichever fired last briefly won, so the highlighted
-  // face flickered between right and stale-wrong as the engine's committed/
-  // live updates arrived out of order with the optimistic local write.
+  // "Up" isn't stored either — it's derived from the box's orientation by
+  // `getCuboidUpFace`, the same helper the relabel below uses, so the
+  // highlighted face and the face a click actually applies can't disagree.
+  // (It has no scene up vector to pass — this DOM sidebar has no access to
+  // one — so both sides fall back to world +Z identically.)
+  //
+  // Derived straight from `transformState` — the single source of truth also
+  // used for the position/rotation fields above — rather than mirrored into
+  // its own `useState`. Two writers racing to update a mirrored copy (this
+  // derivation vs. the optimistic set below) was exactly the bug: whichever
+  // fired last briefly won, so the highlighted face flickered between right
+  // and stale-wrong as the engine's committed/live updates arrived out of
+  // order with the optimistic local write.
   const { rx, ry, rz } = transformState.rotation;
   const upFace = useMemo<CuboidResizeFace>(() => {
     if (rx === undefined || ry === undefined || rz === undefined) {
@@ -240,11 +243,8 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
     const quaternion = new THREE.Quaternion(
       ...radiansToQuaternion([rx, ry, rz]),
     );
-    const localUp = new THREE.Vector3(0, 0, 1).applyQuaternion(
-      quaternion.clone().invert(),
-    );
-    return getCuboidResizeFaceFromNormal(localUp) ?? "+z";
-  }, [rx, ry, rz]);
+    return getCuboidUpFace(quaternion, headingFace);
+  }, [rx, ry, rz, headingFace]);
 
   const setHeadingUpPreview = useSetHeadingUpPreview();
   const setHeadingUpEditorHover = useSetHeadingUpEditorHover();

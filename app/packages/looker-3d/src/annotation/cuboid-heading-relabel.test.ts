@@ -8,6 +8,7 @@ import {
 import {
   computeCuboidHeadingAndUpRelabel,
   computeCuboidHeadingRelabel,
+  getCuboidUpFace,
   isValidHeadingUpFacePair,
 } from "./cuboid-heading-relabel";
 
@@ -301,23 +302,81 @@ describe("computeCuboidHeadingAndUpRelabel", () => {
     ).toBeNull();
   });
 
-  it("returns null when heading and current-up already read as the same axis", () => {
-    // Heading is always old-X; tilt the box so old-X itself is the axis
-    // closest to world up — there's no distinct old "up" axis left to place.
-    const quaternion = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(1, 0, 0),
-      new THREE.Vector3(0, 0, 1),
-    );
-    expect(currentUpFaceOf(quaternion)).toMatch(/^[+-]x$/);
+  it.each(UP_FACES)(
+    // Regression coverage for a dead end: with the box tipped nose-up the
+    // heading itself is the axis closest to world up, and deriving "current
+    // up" across all three axes returned ±x — not one of the four
+    // selectable faces. The picker highlighted nothing and every click was
+    // a silent no-op, escapable only by moving the heading off vertical.
+    "resolves %s even when the heading itself points straight up",
+    (upFace) => {
+      const quaternion = new THREE.Quaternion().setFromUnitVectors(
+        new THREE.Vector3(1, 0, 0),
+        new THREE.Vector3(0, 0, 1),
+      );
+      // The all-axes reading that caused the dead end.
+      expect(currentUpFaceOf(quaternion)).toMatch(/^[+-]x$/);
+      // The heading-aware reading still lands on a selectable face.
+      expect(UP_FACES).toContain(getCuboidUpFace(quaternion, "+x"));
 
-    expect(
-      computeCuboidHeadingAndUpRelabel({
+      const result = computeCuboidHeadingAndUpRelabel({
         dimensions: DIMENSIONS,
         quaternion,
         headingFace: "+x",
-        upFace: "+z",
-      }),
-    ).toBeNull();
+        upFace,
+      });
+
+      expect(result).not.toBeNull();
+      if (!result) return;
+
+      // Still a pure relabel — the box itself must not move.
+      const before = worldCorners(DIMENSIONS, quaternion);
+      const after = worldCorners(
+        result.dimensions,
+        new THREE.Quaternion(...result.quaternion),
+      );
+      expect(sortedCornerKeys(after)).toEqual(sortedCornerKeys(before));
+    },
+  );
+
+  it("always resolves to a selectable face, at every pitch", () => {
+    // The old all-axes reading returned an unselectable ±x whenever the
+    // heading was the most up-pointing axis, which is what stranded the
+    // picker. Sweep the full pitch range — including dead vertical, where
+    // world up says nothing about the remaining axes — and assert there is
+    // no orientation without an answer.
+    for (let degrees = -180; degrees <= 180; degrees += 5) {
+      const quaternion = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 1, 0),
+        THREE.MathUtils.degToRad(degrees),
+      );
+      expect(UP_FACES).toContain(getCuboidUpFace(quaternion, "+x"));
+    }
+  });
+
+  it("still resolves a selectable up face when the heading is steeply pitched but not vertical", () => {
+    // 80° nose-up: the old all-axes reading returned ±x here (the heading is
+    // the most vertical axis), stranding the picker even though +z still has
+    // a real up component. This is the class the fix actually recovers.
+    const quaternion = new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(0, 1, 0),
+      THREE.MathUtils.degToRad(-80),
+    );
+    expect(currentUpFaceOf(quaternion)).toMatch(/^[+-]x$/);
+    expect(getCuboidUpFace(quaternion, "+x")).toBe("+z");
+
+    const result = computeCuboidHeadingAndUpRelabel({
+      dimensions: DIMENSIONS,
+      quaternion,
+      headingFace: "+x",
+      upFace: "+y",
+    });
+
+    expect(result).not.toBeNull();
+    if (!result) return;
+    expect(
+      getCuboidUpFace(new THREE.Quaternion(...result.quaternion), "+x"),
+    ).toBe("+y");
   });
 
   describe.each(ORIENTATIONS)("from %s", (_label, quaternion) => {
@@ -336,28 +395,17 @@ describe("computeCuboidHeadingAndUpRelabel", () => {
           upFace,
         });
 
-        // Only the degenerate heading-already-up orientation can null out —
-        // guard so the other three orientations still assert.
-        if (currentUpFaceOf(quaternion)?.replace(/^[+-]/, "") === "x") {
-          expect(result).toBeNull();
-          return;
-        }
-
         expect(result).not.toBeNull();
         if (!result) return;
 
         const nextQuaternion = new THREE.Quaternion(...result.quaternion);
-        expect(currentUpFaceOf(nextQuaternion)).toBe(upFace);
+        expect(getCuboidUpFace(nextQuaternion, "+x")).toBe(upFace);
       },
     );
 
     it.each(UP_FACES)(
       "leaves the box's world corners unchanged when picking %s as up",
       (upFace) => {
-        if (currentUpFaceOf(quaternion)?.replace(/^[+-]/, "") === "x") {
-          return;
-        }
-
         const result = computeCuboidHeadingAndUpRelabel({
           dimensions: DIMENSIONS,
           quaternion,
@@ -380,10 +428,6 @@ describe("computeCuboidHeadingAndUpRelabel", () => {
     it.each(UP_FACES)(
       "produces a right-handed basis (no mirroring) when picking %s as up",
       (upFace) => {
-        if (currentUpFaceOf(quaternion)?.replace(/^[+-]/, "") === "x") {
-          return;
-        }
-
         const result = computeCuboidHeadingAndUpRelabel({
           dimensions: DIMENSIONS,
           quaternion,
