@@ -102,6 +102,7 @@ export function startDemandBridge<
   let deferPending = false;
   let deferredUserInitiated = false;
   let lastPlayheadFillMs = Number.NEGATIVE_INFINITY;
+  let playheadFillPending = false;
   let timelineRetryPending = false;
   let timelineRetryUserInitiated = false;
   const timeouts = new Set<ReturnType<typeof setTimeout>>();
@@ -207,7 +208,20 @@ export function startDemandBridge<
   const unsubscribePlayhead = playbackStore
     ? subscribePlayhead(playbackStore, () => {
         const now = nowMs();
-        if (now - lastPlayheadFillMs < playheadThrottleMs) return;
+        const elapsedMs = now - lastPlayheadFillMs;
+        if (elapsedMs < playheadThrottleMs) {
+          if (!playheadFillPending) {
+            playheadFillPending = true;
+            later(() => {
+              playheadFillPending = false;
+              lastPlayheadFillMs = nowMs();
+              // Read the store at execution time so rapid seeks coalesce to
+              // the final playhead instead of dropping it permanently.
+              fill(false);
+            }, playheadThrottleMs - elapsedMs);
+          }
+          return;
+        }
         lastPlayheadFillMs = now;
         fill(false);
       })
