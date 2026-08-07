@@ -44,6 +44,10 @@ import {
   createTimelineIndex,
   episodeSourceAccessKey,
   nsDeltaToSeconds,
+  type StreamFramePayloadMeasurementQuality,
+  type StreamFrameReadEvidence,
+  type StreamFrameReadRequest,
+  type StreamFrameReadResult,
   type StreamSubscriptionOptions,
   type TimelineIndex,
 } from "../../../runtime";
@@ -925,26 +929,8 @@ export function useRegisterDataStream({
   );
   const getTimelineIndex = useCallback(() => index, [index]);
   const readStreamFrames = useCallback(
-    async ({
-      endTimeNs,
-      startTimeNs,
-      stream,
-    }: {
-      readonly endTimeNs: bigint;
-      readonly startTimeNs: bigint;
-      readonly stream: string;
-    }) => {
-      if (!source || !session) return [];
-      const messages: DecodedFrame[] = [];
-      for await (const batch of session.read({
-        priority: "current",
-        streams: [stream],
-        window: { endNs: endTimeNs, startNs: startTimeNs },
-      })) {
-        messages.push(...batch.frames);
-      }
-      return messages;
-    },
+    (request: StreamFrameReadRequest) =>
+      readStreamFramesWithinBudget(source ? session : null, request),
     [session, source],
   );
   const readPointCloudChannel = useCallback(
@@ -1004,6 +990,162 @@ export function useRegisterDataStream({
     readPointCloudChannel,
     session?.pointCloudProjection,
   ]);
+}
+
+/**
+ * Folds chronological session batches without retaining work beyond the
+ * request-local message or observed-payload ceilings. The payload ceiling is
+ * intentionally evidence-based: exact physical and decompressed source bounds
+ * require a future per-request source-budget account rather than the current
+ * session-wide boundedRead account.
+ */
+export async function readStreamFramesWithinBudget(
+  session: Pick<EpisodeSession, "read"> | null,
+  request: StreamFrameReadRequest,
+): Promise<StreamFrameReadResult<DecodedFrame>> {
+  const startedAtMs = monotonicNowMs();
+  const frames: DecodedFrame[] = [];
+  let observedPayloadBytes = 0;
+  let scannedMessages = 0;
+  let resourceHintMessages = 0;
+  let encodedVideoByteMessages = 0;
+  let unknownPayloadMessages = 0;
+  let deadlineExpired = startedAtMs >= request.budget.deadlineMs;
+  const controller = new AbortController();
+  const abortFromCaller = () => controller.abort();
+  const removeAbortListener = () =>
+    request.signal?.removeEventListener("abort", abortFromCaller);
+  request.signal?.addEventListener("abort", abortFromCaller, { once: true });
+  if (request.signal?.aborted) controller.abort();
+
+  const finish = (
+    stopReason: StreamFrameReadResult<DecodedFrame>["stopReason"],
+  ): StreamFrameReadResult<DecodedFrame> => {
+    const evidence: StreamFrameReadEvidence = {
+      elapsedMs: Math.max(0, monotonicNowMs() - startedAtMs),
+      measurementQuality: payloadMeasurementQuality(
+        resourceHintMessages,
+        encodedVideoByteMessages,
+        unknownPayloadMessages,
+      ),
+      observedPayloadByteOvershoot: Math.max(
+        0,
+        observedPayloadBytes - request.budget.maxObservedPayloadBytes,
+      ),
+      observedPayloadBytes,
+      scannedMessages,
+      unknownPayloadMessages,
+    };
+    return { evidence, frames, stopReason };
+  };
+
+  if (controller.signal.aborted) {
+    removeAbortListener();
+    return finish("aborted");
+  }
+  if (deadlineExpired) {
+    removeAbortListener();
+    return finish("wall-time-ceiling");
+  }
+  if (!session) {
+    removeAbortListener();
+    return finish("complete");
+  }
+
+  const deadlineTimer = setTimeout(
+    () => {
+      deadlineExpired = true;
+      controller.abort();
+    },
+    Math.max(0, request.budget.deadlineMs - startedAtMs),
+  );
+
+  try {
+    for await (const batch of session.read({
+      priority: "current",
+      signal: controller.signal,
+      streams: [request.stream],
+      window: { endNs: request.endTimeNs, startNs: request.startTimeNs },
+    })) {
+      for (const frame of batch.frames) {
+        if (request.signal?.aborted) {
+          controller.abort();
+          return finish("aborted");
+        }
+        if (monotonicNowMs() >= request.budget.deadlineMs) {
+          deadlineExpired = true;
+          controller.abort();
+          return finish("wall-time-ceiling");
+        }
+        if (scannedMessages >= request.budget.maxMessages) {
+          controller.abort();
+          return finish("message-ceiling");
+        }
+
+        scannedMessages += 1;
+        const measurement = observedPayloadSize(frame);
+        observedPayloadBytes += measurement.bytes;
+        resourceHintMessages += measurement.kind === "resource-hints" ? 1 : 0;
+        encodedVideoByteMessages +=
+          measurement.kind === "encoded-video-bytes" ? 1 : 0;
+        unknownPayloadMessages += measurement.kind === "unknown" ? 1 : 0;
+        if (observedPayloadBytes > request.budget.maxObservedPayloadBytes) {
+          controller.abort();
+          return finish("observed-byte-ceiling");
+        }
+        frames.push(frame);
+      }
+    }
+    if (request.signal?.aborted || controller.signal.aborted) {
+      return finish(deadlineExpired ? "wall-time-ceiling" : "aborted");
+    }
+    return finish("complete");
+  } catch (error) {
+    if (isEpisodeReadCancelledError(error)) {
+      return finish(deadlineExpired ? "wall-time-ceiling" : "aborted");
+    }
+    throw error;
+  } finally {
+    clearTimeout(deadlineTimer);
+    removeAbortListener();
+  }
+}
+
+function observedPayloadSize(frame: DecodedFrame): {
+  readonly bytes: number;
+  readonly kind: "encoded-video-bytes" | "resource-hints" | "unknown";
+} {
+  const hintedSize = frame.output.resourceHints?.sizeBytes;
+  if (
+    hintedSize !== undefined &&
+    Number.isFinite(hintedSize) &&
+    hintedSize >= 0
+  ) {
+    return { bytes: hintedSize, kind: "resource-hints" };
+  }
+  const visualization = frame.output.visualization;
+  if (visualization?.kind === "encoded-video") {
+    return {
+      bytes: visualization.bytes.byteLength,
+      kind: "encoded-video-bytes",
+    };
+  }
+  return { bytes: 0, kind: "unknown" };
+}
+
+function payloadMeasurementQuality(
+  resourceHintMessages: number,
+  encodedVideoByteMessages: number,
+  unknownPayloadMessages: number,
+): StreamFramePayloadMeasurementQuality {
+  const evidenceKinds =
+    Number(resourceHintMessages > 0) +
+    Number(encodedVideoByteMessages > 0) +
+    Number(unknownPayloadMessages > 0);
+  if (evidenceKinds > 1) return "mixed";
+  if (resourceHintMessages > 0) return "resource-hints";
+  if (encodedVideoByteMessages > 0) return "encoded-video-bytes";
+  return "unknown";
 }
 
 function preferredPointCloudColorBy(
