@@ -5047,6 +5047,40 @@ class DatasetTests(unittest.TestCase):
                     expected_extrinsics.quaternion[i],
                 )
 
+    @drop_datasets
+    def test_from_dir_with_image_media_type(self):
+        dataset = fo.Dataset()
+
+        with etau.TempDir() as tmp_dir:
+            dataset_dir = os.path.join(tmp_dir, "dataset")
+            dataset.export(dataset_dir, fo.types.FiftyOneDataset)
+            new_dataset = fo.Dataset.from_dir(
+                dataset_dir, fo.types.FiftyOneDataset, media_type=fom.IMAGE
+            )
+
+        assert new_dataset.media_type == fom.IMAGE
+        assert isinstance(new_dataset, fo.Dataset)
+
+    @drop_datasets
+    def test_from_dir_restores_media_type(self):
+        dataset = fo.Dataset(media_type=fom.IMAGE, _create=True)
+
+        with etau.TempDir() as tmp_dir:
+            dataset_dir = os.path.join(tmp_dir, "dataset")
+            dataset.export(dataset_dir, fo.types.FiftyOneDataset)
+            new_dataset = fo.Dataset.from_dir(
+                dataset_dir,
+                fo.types.FiftyOneDataset,
+                name=dataset.name,
+                persistent=True,
+                overwrite=True,
+            )
+
+        assert new_dataset.media_type == fom.IMAGE
+        assert isinstance(new_dataset, fo.Dataset)
+
+        new_dataset.delete()
+
 
 class DatasetExtrasTests(unittest.TestCase):
     @drop_datasets
@@ -8365,6 +8399,7 @@ class DatasetFactoryTests(unittest.TestCase):
         dataset = fo.Dataset.from_images(filepaths)
 
         self.assertEqual(len(dataset), 1)
+        self.assertEqual(dataset.media_type, fom.IMAGE)
 
         with self.assertRaises(ValueError):
             fo.Dataset.from_images(filepaths, name=dataset.name)
@@ -8399,10 +8434,11 @@ class DatasetFactoryTests(unittest.TestCase):
 
     @drop_datasets
     def test_from_videos(self):
-        filepaths = ["image.jpg"]
+        filepaths = ["video.mp4"]
         dataset = fo.Dataset.from_videos(filepaths)
 
         self.assertEqual(len(dataset), 1)
+        self.assertEqual(dataset.media_type, fom.VIDEO)
 
         with self.assertRaises(ValueError):
             fo.Dataset.from_videos(filepaths, name=dataset.name)
@@ -8444,6 +8480,7 @@ class DatasetFactoryTests(unittest.TestCase):
         )
 
         self.assertEqual(dataset.values("ground_truth.label"), ["label"])
+        self.assertEqual(dataset.media_type, fom.IMAGE)
 
         with self.assertRaises(ValueError):
             fo.Dataset.from_labeled_images(
@@ -8472,6 +8509,7 @@ class DatasetFactoryTests(unittest.TestCase):
         )
 
         self.assertEqual(dataset.values("ground_truth.label"), ["label"])
+        self.assertEqual(dataset.media_type, fom.VIDEO)
 
         with self.assertRaises(ValueError):
             fo.Dataset.from_labeled_videos(
