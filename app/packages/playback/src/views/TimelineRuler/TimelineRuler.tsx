@@ -482,6 +482,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         <div className={styles.playheadLine} />
         <div
           className={styles.playheadHandle}
+          data-testid="timeline-playhead-handle"
           {...playheadDrag.handleProps}
           onPointerDown={(e) => {
             e.stopPropagation();

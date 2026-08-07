@@ -139,6 +139,27 @@ describe("demand bridge", () => {
     expect(harness.handlersRef.current).toBeNull();
   });
 
+  it("services the final playhead after coalescing rapid updates", async () => {
+    vi.useFakeTimers();
+    const playbackStore = createStore();
+    const playheads: number[] = [];
+    const harness = createHarness({
+      onFill: ({ playheadSec }) => playheads.push(playheadSec),
+      playbackStore,
+      playheadThrottleMs: 100,
+    });
+    await Promise.resolve();
+
+    playbackStore.set(playheadAtom, 1);
+    playbackStore.set(playheadAtom, 2);
+    playbackStore.set(playheadAtom, 3);
+    expect(playheads).toEqual([0, 1]);
+
+    await vi.advanceTimersByTimeAsync(100);
+    expect(playheads).toEqual([0, 1, 3]);
+    harness.stop();
+  });
+
   it("replays provider inventory demand when handlers become ready", () => {
     interface InventoryHandlers extends DemandHandlers {
       ensureInventory(): void;
@@ -232,6 +253,7 @@ describe("demand bridge", () => {
 interface HarnessOptions {
   readonly dataStream?: TimelineDataStream;
   readonly demandDebounceMs?: number;
+  readonly onFill?: Parameters<typeof startDemandBridge>[0]["onFill"];
   readonly playbackStore?: ReturnType<typeof createStore>;
   readonly playheadThrottleMs?: number;
   readonly requireTimeline?: boolean;
@@ -254,7 +276,8 @@ function createHarness(options: HarnessOptions = {}) {
     deferredRetryMs: 10,
     handlersRef,
     makeHandlers: ({ queueFill }) => ({ onDemandChanged: queueFill }),
-    onFill: ({ userInitiated }) => fills.push(userInitiated),
+    onFill:
+      options.onFill ?? (({ userInitiated }) => fills.push(userInitiated)),
     playbackStore: options.playbackStore ?? null,
     playheadThrottleMs: options.playheadThrottleMs ?? 0,
     refCountsRef: { current: new Map([["stream", 1]]) },

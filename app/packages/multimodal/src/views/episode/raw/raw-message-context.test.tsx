@@ -17,6 +17,7 @@ import {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
 });
 
 describe("RawMessageBridge records", () => {
@@ -136,6 +137,39 @@ describe("RawMessageBridge records", () => {
     expect(client.readRawRecord).toHaveBeenCalledTimes(2);
     expect(client.readRawRecord).toHaveBeenLastCalledWith(
       expect.objectContaining({ timestampNs: 300_000_000_000n }),
+    );
+  });
+
+  it("refetches the final playhead after rapid forward and backward seeks", async () => {
+    vi.useFakeTimers();
+    const client = createClient();
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+
+    render(<Harness client={client} contextRef={context} store={store} />);
+
+    await act(async () => {
+      context.current?.subscribeRecord("/lidar");
+      await flushMicrotasks();
+    });
+    await act(async () => {
+      store.set(playheadAtom, 2_700);
+      await flushMicrotasks();
+    });
+    await act(async () => {
+      store.set(playheadAtom, 1_812);
+      await flushMicrotasks();
+    });
+
+    expect(client.readRawRecord).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PLAYHEAD_THROTTLE_FOR_TEST_MS);
+      await flushMicrotasks();
+    });
+    expect(client.readRawRecord).toHaveBeenCalledTimes(3);
+    expect(client.readRawRecord).toHaveBeenLastCalledWith(
+      expect.objectContaining({ timestampNs: 1_812_000_000_000n }),
     );
   });
 
@@ -435,3 +469,5 @@ async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
 }
+
+const PLAYHEAD_THROTTLE_FOR_TEST_MS = 300;
