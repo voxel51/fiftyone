@@ -67,10 +67,9 @@ describe("McapRightSidebar", () => {
   it("pads the tab list to match the left sidebar's edge inset", () => {
     render(<McapRightSidebar />);
 
-    // `classNameStrategy: "non-scoped"` (vitest.config.ts) resolves CSS
-    // module classes to their plain source name, so this also guards against
-    // the class being renamed/removed from the module without updating here.
-    expect(styles.tabList).toBe("tabList");
+    // Whatever `styles.tabList` resolves to (its plain source name under
+    // this package's own `classNameStrategy: "non-scoped"` vitest config,
+    // or a hashed name under any other), the rendered tablist must carry it.
     expect(screen.getByRole("tablist").className).toContain(styles.tabList);
   });
 
