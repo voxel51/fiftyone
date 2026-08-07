@@ -6,6 +6,7 @@
     "license": "MIT",
     "devDependencies": {
         "@eslint/js": "^9.21.0",
+        "@mcap/core": "2.2.1",
         "@playwright/test": "^1.50.1",
         "@types/node": "^22.13.9",
         "@types/wait-on": "^5.3.4",
@@ -16,6 +17,7 @@
         "eslint-plugin-playwright": "^2.2.0",
         "jimp": "^1.6.0",
         "mongodb": "^6.14.2",
+        "protobufjs": "^7.6.4",
         "tree-kill": "^1.2.2",
         "ts-dedent": "^2.2.0",
         "typescript": "^5.8.2",
