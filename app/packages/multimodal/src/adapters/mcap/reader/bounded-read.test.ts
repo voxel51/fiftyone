@@ -637,6 +637,9 @@ describe("bounded MCAP reader", () => {
   });
 
   it("yields during a warm-cache decode walk and reports partial progress", async () => {
+    const controller = new AbortController();
+    let cancellationArmed = false;
+    let armedYieldCount = 0;
     const fixture = buildFixture([
       {
         compression: "fake",
@@ -647,7 +650,13 @@ describe("bounded MCAP reader", () => {
         })),
       },
     ]);
-    const harness = createHarness(fixture);
+    const harness = createHarness(fixture, ["/selected"], {
+      taskYield: async () => {
+        if (cancellationArmed && ++armedYieldCount === 1) {
+          controller.abort();
+        }
+      },
+    });
     const full = budgetFor(fixture.chunkIndexes, 130);
     const request = requestFor({
       absoluteBudget: full,
@@ -658,8 +667,7 @@ describe("bounded MCAP reader", () => {
     });
     await harness.read(request);
     const readsAfterWarm = harness.networkReads.length;
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 0);
+    cancellationArmed = true;
 
     const cancellation = await captureCancellation(
       harness.read({ ...request, signal: controller.signal }),
@@ -762,6 +770,7 @@ function createHarness(
     readonly onDecompress?: () => void;
     readonly onNetworkRead?: (request: ByteRangeReadRequest) => void;
     readonly sourceKey?: string | (() => string);
+    readonly taskYield?: () => Promise<void>;
   } = {},
 ) {
   const channels = new Map([
@@ -824,6 +833,7 @@ function createHarness(
     readable,
     reader,
     sourceKey: options.sourceKey ?? "bounded-fixture-key",
+    ...(options.taskYield ? { taskYield: options.taskYield } : {}),
   });
   return { networkReads, read };
 }

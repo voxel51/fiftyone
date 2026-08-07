@@ -3,6 +3,7 @@ import {
   type ReadWorkUsage,
 } from "../../../ports";
 import { throwIfAborted } from "../../../utils/cancellation";
+import { yieldToTask } from "../../../utils/task-yield";
 import {
   isMcapBoundedReadCancelledError,
   McapBoundedReadCancelledError,
@@ -26,11 +27,11 @@ export async function consumeMcapBoundedGrant<Item>({
   readonly usage: () => ReadWorkUsage;
 }): Promise<void> {
   try {
-    await yieldToCancellation();
+    await yieldToTask();
     throwIfAborted(signal, MCAP_BOUNDED_GRANT_ABORT_MESSAGE);
     for (const [index, item] of items.entries()) {
       if (index > 0 && index % MCAP_BOUNDED_GRANT_YIELD_INTERVAL === 0) {
-        await yieldToCancellation();
+        await yieldToTask();
       }
       throwIfAborted(signal, MCAP_BOUNDED_GRANT_ABORT_MESSAGE);
       await onItem(item, index);
@@ -46,8 +47,4 @@ export async function consumeMcapBoundedGrant<Item>({
     }
     throw error;
   }
-}
-
-function yieldToCancellation(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
 }

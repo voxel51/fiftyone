@@ -7,6 +7,7 @@ import type { ByteRange } from "../../../ir";
 import type { ReadWorkBudget, ReadWorkUsage } from "../../../ports";
 import { monotonicNowMs } from "../../../utils/monotonic-time";
 import { throwIfAborted } from "../../../utils/cancellation";
+import { yieldToTask } from "../../../utils/task-yield";
 import { ByteClientReadable } from "./byte-readable";
 import {
   decompressMcapChunkRecord,
@@ -52,6 +53,7 @@ export interface CreateMcapBoundedReaderOptions {
   readonly readable: ByteClientReadable;
   readonly reader: McapIndexedReaderLike;
   readonly sourceKey: string | (() => string);
+  readonly taskYield?: () => Promise<void>;
 }
 
 /**
@@ -65,6 +67,7 @@ export function createMcapBoundedReader({
   readable,
   reader,
   sourceKey,
+  taskYield = yieldToTask,
 }: CreateMcapBoundedReaderOptions): (
   request: McapBoundedMessageReadRequest,
 ) => Promise<McapBoundedMessageReadResult> {
@@ -275,7 +278,7 @@ export function createMcapBoundedReader({
 
             // One precharged decompression is the atomic CPU unit; yield so a
             // worker cancel message can arrive before record parsing begins.
-            await yieldToCancellation();
+            await taskYield();
             throwIfAborted(request.signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
           } else if (chunk.compression.length > 0) {
             decompressionCacheHits += 1;
@@ -292,7 +295,7 @@ export function createMcapBoundedReader({
               recordOrder > 0 &&
               recordOrder % MCAP_BOUNDED_GRANT_YIELD_INTERVAL === 0
             ) {
-              await yieldToCancellation();
+              await taskYield();
             }
             throwIfAborted(request.signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
             if (
@@ -331,9 +334,9 @@ export function createMcapBoundedReader({
         groupIndex += 1;
         groupsOpened += 1;
 
-        // Give queued foreground work and cancellation a deterministic
+        // Give queued worker messages and cancellation a deterministic
         // handoff point between complete ownership groups.
-        await yieldToCancellation();
+        await taskYield();
         throwIfAborted(request.signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
         if (
           groupIndex < groups.length &&
@@ -772,10 +775,6 @@ function wallTimeExpired(
   maxWallTimeMs: number,
 ): boolean {
   return nowMs() - startedAtMs >= maxWallTimeMs;
-}
-
-function yieldToCancellation(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 function validateRequest(request: McapBoundedMessageReadRequest): void {
