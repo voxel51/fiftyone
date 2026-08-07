@@ -13,7 +13,12 @@ import { ErrorDisplayMarkup, HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { ModalMode, canAnnotate, useModalMode } from "@fiftyone/state";
+import {
+  ModalMode,
+  canAnnotate,
+  useIsMediaType,
+  useModalMode,
+} from "@fiftyone/state";
 import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
@@ -42,6 +47,7 @@ import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking"
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
+import { shouldShowClassicSidebar } from "./utils";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -239,6 +245,11 @@ const Modal = () => {
   );
 
   const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
+  const isMultimodal = useIsMediaType(MEDIA_TYPE_MULTIMODAL);
+  const showClassicSidebar = shouldShowClassicSidebar(
+    isSidebarVisible,
+    isMultimodal,
+  );
 
   useKeyBindings(KnownContexts.Modal, [
     {
@@ -347,7 +358,7 @@ const Modal = () => {
               <ModalSpace />
               <ModalStatusBar />
             </SpacesContainer>
-            {isSidebarVisible && <Sidebar />}
+            {showClassicSidebar && <Sidebar />}
             <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
 
             {jsonPanel.isOpen && (
