@@ -657,9 +657,7 @@ class BaseRun(Configurable):
             # We use `json_util.dumps` so that run results may contain BSON
             results_bytes = json_util.dumps(run_results.serialize()).encode()
             run_doc.results.put(results_bytes, content_type="application/json")
-            meta = run_results.get_meta()
-            if meta:
-                run_doc.results_meta = dict(meta)
+            run_doc.results_meta = dict(run_results.get_meta() or {})
 
         # Cache the results for future use in this session
         if cache:
