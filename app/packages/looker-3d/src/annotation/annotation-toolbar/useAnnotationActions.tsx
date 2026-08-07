@@ -32,7 +32,11 @@ import {
   useCurrent3dAnnotationMode,
   useResetSelected3dAnnotationLabel,
 } from "../../state/accessors";
-import { isDetection3dOverlay, isPolyline3dOverlay } from "../../types";
+import {
+  isDetection3dDocument,
+  isPolyline3dDocument,
+  isPolyline3dOverlay,
+} from "../../types";
 import {
   useCuboidOperations,
   usePolylineOperations,
@@ -301,7 +305,7 @@ export const useAnnotationActions = () => {
     const workingLabel = workingDoc.labelsById[labelId];
     if (!workingLabel || !isPolyline3dOverlay(workingLabel)) return;
 
-    const points3d = workingLabel.points3d;
+    const points3d = workingLabel.label.points3d;
     if (!points3d) return;
 
     // If the segment doesn't exist or the point doesn't exist, return
@@ -340,9 +344,9 @@ export const useAnnotationActions = () => {
     if (selectedPoint) {
       handleDeleteSelectedPoint();
     } else if (selectedLabelForAnnotation) {
-      if (isPolyline3dOverlay(selectedLabelForAnnotation)) {
+      if (isPolyline3dDocument(selectedLabelForAnnotation)) {
         deletePolyline(selectedLabelForAnnotation._id);
-      } else if (isDetection3dOverlay(selectedLabelForAnnotation)) {
+      } else if (isDetection3dDocument(selectedLabelForAnnotation)) {
         deleteCuboid(selectedLabelForAnnotation._id);
       }
       resetSelectedLabel();

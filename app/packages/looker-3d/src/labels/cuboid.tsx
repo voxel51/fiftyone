@@ -422,23 +422,23 @@ export const Cuboid = ({
   // feedback (handle opacity/scale, face highlight) appears in every panel, not
   // just the one under the cursor.
   const hoveredResizeFace =
-    hoveredResizeFaceState?.labelId === label._id
+    hoveredResizeFaceState?.labelId === label.label._id
       ? hoveredResizeFaceState.face
       : null;
   const setHoveredResizeFace = useCallback(
     (face: CuboidResizeFace | null) => {
       setHoveredResizeFaceState((prev) => {
         if (face) {
-          return { labelId: label._id, face, source: hoverSource };
+          return { labelId: label.label._id, face, source: hoverSource };
         }
         // Only clear if this exact (label, panel) owns the current hover, so a
         // pointer-out or deselect elsewhere can't wipe another panel's hover.
-        return prev?.labelId === label._id && prev?.source === hoverSource
+        return prev?.labelId === label.label._id && prev?.source === hoverSource
           ? null
           : prev;
       });
     },
-    [label._id, hoverSource, setHoveredResizeFaceState],
+    [label.label._id, hoverSource, setHoveredResizeFaceState],
   );
   const [isFaceResizeDragging, setIsFaceResizeDragging] = useState(false);
   const faceResizeDragRef = useRef<FaceResizeDragState | null>(null);
@@ -461,11 +461,11 @@ export const Cuboid = ({
     [],
   );
 
-  const isHovered = hoveredLabel?.id === label._id;
+  const isHovered = hoveredLabel?.id === label.label._id;
 
   const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
   const isSelectedForAnnotation =
-    useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
+    useRecoilValue(selectedLabelForAnnotationAtom)?._id === label.label._id;
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
   const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
     currentArchetypeSelectedForTransformAtom,
@@ -480,11 +480,11 @@ export const Cuboid = ({
   }, [isSelectedForAnnotation, setCurrent3dAnnotationMode]);
 
   const labelWoQuaternion = useMemo(() => {
-    if (!label.quaternion) {
+    if (!label.label.quaternion) {
       return label;
     }
-    const { quaternion: _quaternion, ...rest } = label;
-    return rest;
+    const { quaternion: _quaternion, ...rest } = label.label;
+    return { ...label, label: rest };
   }, [label]);
 
   const {
@@ -561,10 +561,10 @@ export const Cuboid = ({
         return false;
       }
 
-      setHoveredLabel({ id: label._id, source: hoverSource });
+      setHoveredLabel({ id: label.label._id, source: hoverSource });
       return true;
     },
-    [hoverSource, isCurrentlyTransforming, label._id, setHoveredLabel],
+    [hoverSource, isCurrentlyTransforming, label.label._id, setHoveredLabel],
   );
 
   const transformMode = useRecoilValue(transformModeAtom);
@@ -576,7 +576,7 @@ export const Cuboid = ({
     fallbackEuler,
     orientationQuaternion,
   } = useDisplayCuboidTransform({
-    labelId: label._id,
+    labelId: label.label._id,
     effectiveLocation,
     effectiveDimensions,
     effectiveRotation: effectiveRotation as THREE.Vector3Tuple,
@@ -997,7 +997,7 @@ export const Cuboid = ({
     <group
       // By default, quaternion is preferred automatically over euler
       ref={contentRef}
-      userData={{ [FO_USER_DATA.LABEL_ID]: label._id }}
+      userData={{ [FO_USER_DATA.LABEL_ID]: label.label._id }}
       rotation={combinedQuaternion ? undefined : (fallbackEuler ?? undefined)}
       quaternion={combinedQuaternion ?? undefined}
       position={displayPosition}
@@ -1018,7 +1018,7 @@ export const Cuboid = ({
             setCurrentArchetypeSelectedForTransform("cuboid");
           }
 
-          onClick(e);
+          onClick?.(e);
         }}
         onPointerOver={(e) => {
           if (!setHoveredLabelFromPointer(e)) {

@@ -18,44 +18,46 @@ import type {
 
 function createDetection(
   id: string,
-  overrides: Partial<ReconciledDetection3D> = {},
+  overrides: Partial<ReconciledDetection3D["label"]> = {},
 ): ReconciledDetection3D {
   return {
-    _id: id,
-    _cls: "Detection",
-    type: "Detection",
+    label: {
+      _id: id,
+      _cls: "Detection",
+      location: [0, 0, 0],
+      dimensions: [1, 1, 1],
+      rotation: [0, 0, 0],
+      quaternion: [0, 0, 0, 1],
+      tags: [],
+      ...overrides,
+    },
     path: "predictions",
-    location: [0, 0, 0],
-    dimensions: [1, 1, 1],
-    rotation: [0, 0, 0],
-    quaternion: [0, 0, 0, 1],
-    selected: false,
     sampleId: "sample1",
-    tags: [],
-    ...overrides,
+    ui: { selected: false },
   };
 }
 
 function createPolyline(
   id: string,
-  overrides: Partial<ReconciledPolyline3D> = {},
+  overrides: Partial<ReconciledPolyline3D["label"]> = {},
 ): ReconciledPolyline3D {
   return {
-    _id: id,
-    _cls: "Polyline",
-    type: "Polyline",
-    path: "predictions",
-    points3d: [
-      [
-        [0, 0, 0],
-        [1, 0, 0],
-        [1, 1, 0],
+    label: {
+      _id: id,
+      _cls: "Polyline",
+      points3d: [
+        [
+          [0, 0, 0],
+          [1, 0, 0],
+          [1, 1, 0],
+        ],
       ],
-    ],
-    selected: false,
+      tags: [],
+      ...overrides,
+    },
+    path: "predictions",
     sampleId: "sample1",
-    tags: [],
-    ...overrides,
+    ui: { selected: false },
   };
 }
 
@@ -98,8 +100,8 @@ describe("applyTransientToCuboid", () => {
 
     const result = applyTransientToCuboid(detection, transient);
 
-    expect(result.location).toEqual([1, 2, 3]);
-    expect(result.dimensions).toEqual([4, 5, 6]);
+    expect(result.label.location).toEqual([1, 2, 3]);
+    expect(result.label.dimensions).toEqual([4, 5, 6]);
   });
 
   it("applies position delta", () => {
@@ -112,9 +114,9 @@ describe("applyTransientToCuboid", () => {
 
     const result = applyTransientToCuboid(detection, transient);
 
-    expect(result.location).toEqual([11, 22, 33]);
+    expect(result.label.location).toEqual([11, 22, 33]);
     // Original should be unchanged
-    expect(detection.location).toEqual([1, 2, 3]);
+    expect(detection.label.location).toEqual([1, 2, 3]);
   });
 
   it("applies dimensions delta", () => {
@@ -127,7 +129,7 @@ describe("applyTransientToCuboid", () => {
 
     const result = applyTransientToCuboid(detection, transient);
 
-    expect(result.dimensions).toEqual([3, 6, 9]);
+    expect(result.label.dimensions).toEqual([3, 6, 9]);
   });
 
   it("applies quaternion override", () => {
@@ -140,7 +142,7 @@ describe("applyTransientToCuboid", () => {
 
     const result = applyTransientToCuboid(detection, transient);
 
-    expect(result.quaternion).toEqual([0.5, 0.5, 0.5, 0.5]);
+    expect(result.label.quaternion).toEqual([0.5, 0.5, 0.5, 0.5]);
   });
 
   it("applies all transient properties together", () => {
@@ -157,9 +159,9 @@ describe("applyTransientToCuboid", () => {
 
     const result = applyTransientToCuboid(detection, transient);
 
-    expect(result.location).toEqual([11, 22, 33]);
-    expect(result.dimensions).toEqual([3, 6, 9]);
-    expect(result.quaternion).toEqual([0.5, 0.5, 0.5, 0.5]);
+    expect(result.label.location).toEqual([11, 22, 33]);
+    expect(result.label.dimensions).toEqual([3, 6, 9]);
+    expect(result.label.quaternion).toEqual([0.5, 0.5, 0.5, 0.5]);
   });
 
   it("handles negative deltas", () => {
@@ -174,27 +176,27 @@ describe("applyTransientToCuboid", () => {
 
     const result = applyTransientToCuboid(detection, transient);
 
-    expect(result.location).toEqual([5, 10, 15]);
-    expect(result.dimensions).toEqual([4, 3, 2]);
+    expect(result.label.location).toEqual([5, 10, 15]);
+    expect(result.label.dimensions).toEqual([4, 3, 2]);
   });
 
   it("preserves other detection properties", () => {
     const detection = createDetection("det1", {
       location: [1, 2, 3],
-      path: "custom_path",
-      selected: true,
       tags: ["tag1", "tag2"],
     });
+    detection.path = "custom_path";
+    detection.ui.selected = true;
     const transient: TransientCuboidState = {
       positionDelta: [1, 1, 1],
     };
 
     const result = applyTransientToCuboid(detection, transient);
 
-    expect(result._id).toBe("det1");
+    expect(result.label._id).toBe("det1");
     expect(result.path).toBe("custom_path");
-    expect(result.selected).toBe(true);
-    expect(result.tags).toEqual(["tag1", "tag2"]);
+    expect(result.ui.selected).toBe(true);
+    expect(result.label.tags).toEqual(["tag1", "tag2"]);
   });
 });
 
@@ -213,7 +215,7 @@ describe("applyTransientToPolyline", () => {
 
     const result = applyTransientToPolyline(polyline, transient);
 
-    expect(result.points3d).toEqual(polyline.points3d);
+    expect(result.label.points3d).toEqual(polyline.label.points3d);
   });
 
   it("applies position delta to all vertices", () => {
@@ -232,7 +234,7 @@ describe("applyTransientToPolyline", () => {
 
     const result = applyTransientToPolyline(polyline, transient);
 
-    expect(result.points3d).toEqual([
+    expect(result.label.points3d).toEqual([
       [
         [10, 20, 30],
         [11, 20, 30],
@@ -260,7 +262,7 @@ describe("applyTransientToPolyline", () => {
 
     const result = applyTransientToPolyline(polyline, transient);
 
-    expect(result.points3d).toEqual([
+    expect(result.label.points3d).toEqual([
       [
         [5, 5, 5],
         [6, 5, 5],
@@ -290,7 +292,7 @@ describe("applyTransientToPolyline", () => {
 
     const result = applyTransientToPolyline(polyline, transient);
 
-    expect(result.points3d).toEqual([
+    expect(result.label.points3d).toEqual([
       [
         [0, 0, 0],
         [1, 5, 0],
@@ -321,7 +323,7 @@ describe("applyTransientToPolyline", () => {
 
     const result = applyTransientToPolyline(polyline, transient);
 
-    expect(result.points3d).toEqual([
+    expect(result.label.points3d).toEqual([
       [
         [0, 1, 0],
         [1, 0, 0],
@@ -352,7 +354,7 @@ describe("applyTransientToPolyline", () => {
     const result = applyTransientToPolyline(polyline, transient);
 
     // Position delta is applied first, then vertex deltas
-    expect(result.points3d).toEqual([
+    expect(result.label.points3d).toEqual([
       [
         [10, 10, 10],
         [11, 15, 10],
@@ -362,24 +364,24 @@ describe("applyTransientToPolyline", () => {
 
   it("preserves other polyline properties", () => {
     const polyline = createPolyline("poly1", {
-      path: "custom_path",
-      selected: true,
       tags: ["tag1"],
       filled: true,
       closed: true,
     });
+    polyline.path = "custom_path";
+    polyline.ui.selected = true;
     const transient: TransientPolylineState = {
       positionDelta: [1, 1, 1],
     };
 
     const result = applyTransientToPolyline(polyline, transient);
 
-    expect(result._id).toBe("poly1");
+    expect(result.label._id).toBe("poly1");
     expect(result.path).toBe("custom_path");
-    expect(result.selected).toBe(true);
-    expect(result.tags).toEqual(["tag1"]);
-    expect(result.filled).toBe(true);
-    expect(result.closed).toBe(true);
+    expect(result.ui.selected).toBe(true);
+    expect(result.label.tags).toEqual(["tag1"]);
+    expect(result.label.filled).toBe(true);
+    expect(result.label.closed).toBe(true);
   });
 
   it("does not mutate original polyline", () => {
@@ -398,7 +400,7 @@ describe("applyTransientToPolyline", () => {
 
     applyTransientToPolyline(polyline, transient);
 
-    expect(polyline.points3d[0][0]).toEqual([0, 0, 0]);
+    expect(polyline.label.points3d[0][0]).toEqual([0, 0, 0]);
   });
 });
 
@@ -423,7 +425,7 @@ describe("deriveRenderModel", () => {
     const result = deriveRenderModel(workingDoc, transient);
 
     expect(result.detections).toHaveLength(1);
-    expect(result.detections[0]._id).toBe("det1");
+    expect(result.detections[0].label._id).toBe("det1");
     expect(result.polylines).toHaveLength(0);
   });
 
@@ -437,7 +439,7 @@ describe("deriveRenderModel", () => {
     const result = deriveRenderModel(workingDoc, transient);
 
     expect(result.polylines).toHaveLength(1);
-    expect(result.polylines[0]._id).toBe("poly1");
+    expect(result.polylines[0].label._id).toBe("poly1");
     expect(result.detections).toHaveLength(0);
   });
 
@@ -475,7 +477,7 @@ describe("deriveRenderModel", () => {
 
     const result = deriveRenderModel(workingDoc, transient);
 
-    expect(result.detections[0].location).toEqual([5, 10, 15]);
+    expect(result.detections[0].label.location).toEqual([5, 10, 15]);
   });
 
   it("applies transient state to polylines", () => {
@@ -500,7 +502,7 @@ describe("deriveRenderModel", () => {
 
     const result = deriveRenderModel(workingDoc, transient);
 
-    expect(result.polylines[0].points3d).toEqual([
+    expect(result.polylines[0].label.points3d).toEqual([
       [
         [10, 10, 10],
         [11, 10, 10],
@@ -543,15 +545,15 @@ describe("deriveRenderModel", () => {
     expect(result.detections).toHaveLength(2);
     expect(result.polylines).toHaveLength(2);
 
-    const resultDet1 = result.detections.find((d) => d._id === "det1");
-    const resultDet2 = result.detections.find((d) => d._id === "det2");
-    const resultPoly1 = result.polylines.find((p) => p._id === "poly1");
-    const resultPoly2 = result.polylines.find((p) => p._id === "poly2");
+    const resultDet1 = result.detections.find((d) => d.label._id === "det1");
+    const resultDet2 = result.detections.find((d) => d.label._id === "det2");
+    const resultPoly1 = result.polylines.find((p) => p.label._id === "poly1");
+    const resultPoly2 = result.polylines.find((p) => p.label._id === "poly2");
 
-    expect(resultDet1?.location).toEqual([1, 1, 1]);
-    expect(resultDet2?.location).toEqual([10, 10, 10]);
-    expect(resultPoly1?.points3d).toEqual([[[0, 0, 0]]]);
-    expect(resultPoly2?.points3d).toEqual([[[7, 7, 7]]]);
+    expect(resultDet1?.label.location).toEqual([1, 1, 1]);
+    expect(resultDet2?.label.location).toEqual([10, 10, 10]);
+    expect(resultPoly1?.label.points3d).toEqual([[[0, 0, 0]]]);
+    expect(resultPoly2?.label.points3d).toEqual([[[7, 7, 7]]]);
   });
 
   it("handles empty transient state for existing labels", () => {
@@ -569,6 +571,6 @@ describe("deriveRenderModel", () => {
 
     const result = deriveRenderModel(workingDoc, transient);
 
-    expect(result.detections[0].location).toEqual([1, 2, 3]);
+    expect(result.detections[0].label.location).toEqual([1, 2, 3]);
   });
 });

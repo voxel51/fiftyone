@@ -74,16 +74,16 @@ export function resolveCuboidGeometry(
   useLegacyCoordinates: boolean,
   overlayRotationFallback: THREE.Vector3Tuple,
 ): CuboidGeometry {
-  const dimensions = label.dimensions;
-  const [x, rawY, z] = label.location;
+  const dimensions = label.label.dimensions;
+  const [x, rawY, z] = label.label.location;
   // See `useDisplayCuboidTransform` for why legacy-coordinate labels need a
   // half-height offset here.
   const y = useLegacyCoordinates ? rawY - 0.5 * dimensions[1] : rawY;
 
-  const quaternion = label.quaternion
-    ? new THREE.Quaternion(...label.quaternion)
+  const quaternion = label.label.quaternion
+    ? new THREE.Quaternion(...label.label.quaternion)
     : new THREE.Quaternion().setFromEuler(
-        new THREE.Euler(...(label.rotation ?? overlayRotationFallback)),
+        new THREE.Euler(...(label.label.rotation ?? overlayRotationFallback)),
       );
 
   return { position: [x, y, z], dimensions, quaternion };

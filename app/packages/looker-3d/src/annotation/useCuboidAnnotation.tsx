@@ -39,7 +39,7 @@ export const useCuboidAnnotation = ({
   isAnnotateMode,
   isSelectedForAnnotation,
 }: UseCuboidAnnotationProps) => {
-  const labelId = label._id;
+  const labelId = label.label._id;
 
   const workingLabel = useWorkingLabel(labelId);
   const { updateCuboid } = useUpdateTransient();
@@ -72,10 +72,10 @@ export const useCuboidAnnotation = ({
   >(() => {
     if (isDetection3dOverlay(workingLabel)) {
       return [
-        workingLabel.location,
-        workingLabel.dimensions,
-        workingLabel.rotation ?? rotation,
-        workingLabel.quaternion ?? null,
+        workingLabel.label.location,
+        workingLabel.label.dimensions,
+        workingLabel.label.rotation ?? rotation,
+        workingLabel.label.quaternion ?? null,
       ];
     }
     // Fallback to props if not in working store

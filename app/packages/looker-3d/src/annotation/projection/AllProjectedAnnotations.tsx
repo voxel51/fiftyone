@@ -52,11 +52,11 @@ export function AllProjectedAnnotations({
     >
       {renderModel.detections.map((detection) => (
         <ProjectedCuboidItem
-          key={`cuboid-${detection._id}`}
+          key={`cuboid-${detection.label._id}`}
           detection={detection}
           frustumData={frustumData}
-          isSelected={detection._id === selectedId}
-          isHovered={detection._id === hoveredId && !isSameAsSelected}
+          isSelected={detection.label._id === selectedId}
+          isHovered={detection.label._id === hoveredId && !isSameAsSelected}
           isAnyLabelSelected={isAnyLabelSelected}
           showOrientation={showCuboidOrientation}
           upVector={upVector}
@@ -65,11 +65,11 @@ export function AllProjectedAnnotations({
 
       {renderModel.polylines.map((polyline) => (
         <ProjectedPolylineItem
-          key={`polyline-${polyline._id}`}
+          key={`polyline-${polyline.label._id}`}
           polyline={polyline}
           frustumData={frustumData}
-          isSelected={polyline._id === selectedId}
-          isHovered={polyline._id === hoveredId && !isSameAsSelected}
+          isSelected={polyline.label._id === selectedId}
+          isHovered={polyline.label._id === hoveredId && !isSameAsSelected}
           isAnyLabelSelected={isAnyLabelSelected}
         />
       ))}

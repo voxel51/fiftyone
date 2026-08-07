@@ -185,7 +185,7 @@ export const CuboidInstances = ({
   // array upstream (see `ThreeDLabels`), so membership changes are rare,
   // user-driven events (select/deselect/create/delete).
   const membershipKey = useMemo(
-    () => detections.map((label) => label._id).join("|"),
+    () => detections.map((label) => label.label._id).join("|"),
     [detections],
   );
 
@@ -456,7 +456,7 @@ export const CuboidInstances = ({
       if (!label) return;
 
       hoverTrackerRef.current.setHovered(e.instanceId ?? null);
-      setHoveredLabel({ id: label._id, source: hoverSource });
+      setHoveredLabel({ id: label.label._id, source: hoverSource });
       onPointerOverForLabel(label, e);
     },
     [
@@ -516,7 +516,8 @@ export const CuboidInstances = ({
   // overlay) doesn't need instancing — just one conditionally-mounted mesh
   // for whichever label currently matches `hoveredLabelAtom`.
   const hoveredBatchLabel = hoveredLabel
-    ? (labelsByIndex.find((label) => label._id === hoveredLabel.id) ?? null)
+    ? (labelsByIndex.find((label) => label.label._id === hoveredLabel.id) ??
+      null)
     : null;
 
   return (
@@ -572,7 +573,7 @@ export const CuboidInstances = ({
       {outlineGeometry &&
         labelsByIndex.map((label, index) => (
           <CuboidColorSync
-            key={label._id}
+            key={label.label._id}
             label={label}
             index={index}
             baseColor={getColor(label)}
@@ -685,13 +686,11 @@ const CuboidColorSync = ({
   showOrientation,
 }: CuboidColorSyncProps) => {
   const hoveredLabel = useHoveredLabel3d();
-  const isHovered = hoveredLabel?.id === label._id;
+  const isHovered = hoveredLabel?.id === label.label._id;
   const isSimilarLabelHovered = useSimilarLabels3d(label);
   const isSelectedForAnnotation =
-    useCurrentSelected3dAnnotationLabel()?._id === label._id;
-  // ReconciledDetection3D's index signature types `selected` as `unknown`
-  // (see the same narrowing in ThreeDLabels' cuboidOverlays memo).
-  const selected = Boolean((label as { selected?: boolean }).selected);
+    useCurrentSelected3dAnnotationLabel()?._id === label.label._id;
+  const selected = label.ui.selected;
 
   const strokeAndFillColor = use3dLabelColor({
     isSelected: selected,

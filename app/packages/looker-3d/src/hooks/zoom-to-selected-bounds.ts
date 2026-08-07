@@ -316,13 +316,16 @@ export const resolveAnnotationLabelBoundingBox = ({
   const labelId = getLabelId(selectedLabel);
   const renderLabel = labelId
     ? [...renderModel.detections, ...renderModel.polylines].find(
-        (label) => label._id === labelId,
+        (label) => label.label._id === labelId,
       )
     : null;
 
-  return createLabelBoundingBox(renderLabel ?? selectedLabel, {
-    useLegacyCoordinates,
-  });
+  return createLabelBoundingBox(
+    renderLabel ? renderLabel.label : selectedLabel,
+    {
+      useLegacyCoordinates,
+    },
+  );
 };
 
 const ensureMinimumCameraBoxSize = (box: Box3) => {

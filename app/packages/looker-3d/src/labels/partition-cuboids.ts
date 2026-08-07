@@ -12,7 +12,9 @@
  * two paths lands at the identical transform in the same commit — no
  * flicker or jump.
  */
-export function partitionCuboidsByEditedLabel<T extends { _id: string }>(
+export function partitionCuboidsByEditedLabel<
+  T extends { label: { _id: string } },
+>(
   detections: readonly T[],
   editedLabelId: string | undefined,
 ): { standaloneDetections: T[]; instancedDetections: T[] } {
@@ -23,7 +25,9 @@ export function partitionCuboidsByEditedLabel<T extends { _id: string }>(
   const standalone: T[] = [];
   const instanced: T[] = [];
   for (const overlay of detections) {
-    (overlay._id === editedLabelId ? standalone : instanced).push(overlay);
+    (overlay.label._id === editedLabelId ? standalone : instanced).push(
+      overlay,
+    );
   }
   return { standaloneDetections: standalone, instancedDetections: instanced };
 }

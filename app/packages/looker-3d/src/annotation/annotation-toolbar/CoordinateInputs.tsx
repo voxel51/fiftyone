@@ -238,7 +238,7 @@ export const VertexCoordinateInputs = ({
 
   const points3d = useMemo(() => {
     if (workingLabel && isPolyline3dOverlay(workingLabel)) {
-      return workingLabel.points3d;
+      return workingLabel.label.points3d;
     }
     return null;
   }, [workingLabel]);

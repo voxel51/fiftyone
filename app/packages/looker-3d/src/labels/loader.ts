@@ -1,18 +1,24 @@
 import type * as fos from "@fiftyone/looker/src/state";
 import type { ModalSample } from "@fiftyone/state";
-import { LABEL_LIST, type Schema, getCls } from "@fiftyone/utilities";
+import {
+  LABEL_LIST,
+  type LabelData,
+  type Schema,
+  getCls,
+} from "@fiftyone/utilities";
 
 const RENDERABLE = ["Detection", "Polyline"];
 const RENDERABLE_LIST = ["Detections", "Polylines"];
 
-export type OverlayLabel = {
-  _id: string;
-  path: string;
-  selected: boolean;
-  color?: string;
+/**
+ * The persistable document of a 3D overlay — exactly what is stored on the
+ * sample and what the annotation engine's `LabelData` contract carries.
+ * View state never lives here (see {@link Overlay3DUiState}), so user
+ * attributes can use any name without colliding with UI bookkeeping.
+ */
+export type Overlay3DDocument = LabelData & {
   label?: string;
-  sampleId?: string;
-  _cls: string;
+  tags?: string[];
 
   /**
    * Unlike id, instanceId is not guaranteed to be unique across samples.
@@ -24,7 +30,30 @@ export type OverlayLabel = {
     _cls: "Instance";
     _id: string;
   };
-} & Record<string, unknown>;
+};
+
+/**
+ * View state carried alongside (never inside) an overlay's document.
+ */
+export interface Overlay3DUiState {
+  selected: boolean;
+  /** Resolved render color from the coloring scheme. */
+  color?: string;
+  /** True if this label only exists in staged transforms (newly created). */
+  isNew?: boolean;
+}
+
+/**
+ * A loaded 3D overlay: the label document plus addressing and view state,
+ * mirroring the sidebar's `AnnotationLabel` and Lighter's `overlay.label`
+ * pattern — the document nests under `label`, everything else wraps it.
+ */
+export type OverlayLabel = {
+  label: Overlay3DDocument;
+  path: string;
+  sampleId: string;
+  ui: Overlay3DUiState;
+};
 
 export const load3dOverlayForSample = (
   sampleId: string,
@@ -53,11 +82,10 @@ export const load3dOverlayForSample = (
 
     if (RENDERABLE.includes(cls)) {
       overlays.push({
-        ...label,
+        label: label as Overlay3DDocument,
         sampleId,
         path,
-        selected: label._id in selectedLabels,
-        type: cls,
+        ui: { selected: label._id in selectedLabels },
       });
     } else if (RENDERABLE_LIST.includes(cls) && label[LABEL_LIST[cls]]) {
       overlays = [

@@ -58,12 +58,16 @@ export const use3dInteractionAdapter = (): void => {
   const transformModeRef = useRef(transformMode);
   transformModeRef.current = transformMode;
 
-  // selection: anchor → scene selection + transform state
-  const appliedSelection = useRef<string | null>(null);
+  // selection: anchor → scene selection + transform state. Starts UNDEFINED
+  // (not null) so the first run always reconciles: the selection atoms are
+  // global and survive a modal close (no unmount observes the teardown), so a
+  // reopened modal must actively clear the previous session's stale selection
+  // rather than early-return on null === null.
+  const appliedSelection = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     const label = anchor ? workingDoc.labelsById[anchor.instanceId] : undefined;
-    const targetId = label?._id ?? null;
+    const targetId = label?.label._id ?? null;
 
     if (appliedSelection.current === targetId) {
       return;
@@ -93,10 +97,10 @@ export const use3dInteractionAdapter = (): void => {
 
     appliedSelection.current = targetId;
 
-    const selected = { ...label, selected: true };
+    const selected = { ...label, ui: { ...label.ui, selected: true } };
 
     eventBus.dispatch("annotation:3dLabelSelected", {
-      id: label._id,
+      id: label.label._id,
       archetype,
       label: selected,
     });
@@ -107,7 +111,7 @@ export const use3dInteractionAdapter = (): void => {
       return;
     }
 
-    setSelectedLabelForAnnotation(selected);
+    setSelectedLabelForAnnotation(selected.label);
     setCurrent3dAnnotationMode(archetype);
     setCurrentArchetypeSelectedForTransform(archetype);
 
