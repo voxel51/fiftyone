@@ -130,7 +130,7 @@ export class EpisodePom {
     time: string,
     maxStepMs: number,
   ): Promise<void> {
-    const targetMs = utcTimeToMilliseconds(time);
+    const targetMs = utcDateTimeToMilliseconds(time);
     if (targetMs === null) {
       throw new Error(`invalid UTC episode timestamp: ${time}`);
     }
@@ -139,7 +139,7 @@ export class EpisodePom {
         async () => {
           const current = await this.timestampButton.textContent();
           if (!current) return false;
-          const currentMs = utcTimeToMilliseconds(current);
+          const currentMs = utcDateTimeToMilliseconds(current);
           if (currentMs === null) return false;
           const delta = targetMs - currentMs;
           return delta >= 0 && delta <= maxStepMs;
@@ -354,12 +354,18 @@ function byDataTestId(root: Locator, id: string): Locator {
   return root.locator('[data-testid="' + id + '"]');
 }
 
-function utcTimeToMilliseconds(value: string): number | null {
-  const match = /^(\d{2}):(\d{2}):(\d{2})\.(\d{3})$/.exec(value);
+function utcDateTimeToMilliseconds(value: string): number | null {
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\.(\d{3})$/.exec(value);
   if (!match) return null;
-  const [, hours, minutes, seconds, milliseconds] = match;
-  return (
-    ((Number(hours) * 60 + Number(minutes)) * 60 + Number(seconds)) * 1_000 +
-    Number(milliseconds)
+  const [, year, month, day, hours, minutes, seconds, milliseconds] = match;
+  return Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hours),
+    Number(minutes),
+    Number(seconds),
+    Number(milliseconds),
   );
 }

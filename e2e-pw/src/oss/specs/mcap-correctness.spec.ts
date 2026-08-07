@@ -122,8 +122,10 @@ if fo.dataset_exists("${datasetName}"):
     await openMcapModal(grid, modal);
     await modal.episode.waitForReady("tiny-episode-a.mcap");
     await modal.episode.expectTileTitles(["camera/front", "points", "Logs"]);
-    await modal.episode.expectUtcTime("00:00:00.000");
-    await modal.episode.expectPlayhead("00:00:00.000 / 00:00:02.000");
+    await modal.episode.expectUtcTime("2024-01-01 00:00:00.000");
+    await modal.episode.expectPlayhead(
+      "2024-01-01 00:00:00.000 / 2024-01-01 00:00:02.000",
+    );
     await modal.episode.expectNoViewerError();
   });
 
@@ -142,8 +144,10 @@ if fo.dataset_exists("${datasetName}"):
     );
 
     await modal.episode.stepForward();
-    await modal.episode.expectUtcTime("00:00:01.000");
-    await modal.episode.expectPlayhead("00:00:01.000 / 00:00:02.000");
+    await modal.episode.expectUtcTime("2024-01-01 00:00:01.000");
+    await modal.episode.expectPlayhead(
+      "2024-01-01 00:00:01.000 / 2024-01-01 00:00:02.000",
+    );
     await modal.episode.expectRawField("position.x", 10);
     await modal.episode.expectLog("A log 1");
     await expectDominantColor(
@@ -152,7 +156,7 @@ if fo.dataset_exists("${datasetName}"):
     );
 
     await modal.episode.stepBack();
-    await modal.episode.expectUtcTime("00:00:00.000");
+    await modal.episode.expectUtcTime("2024-01-01 00:00:00.000");
     await modal.episode.expectRawField("position.x", 0);
   });
 
@@ -200,11 +204,13 @@ if fo.dataset_exists("${datasetName}"):
       ["camera/front", "points", "Logs"],
       ["camera/rear", "camera/side"],
     );
-    await modal.episode.expectUtcTime("00:00:00.000");
-    await modal.episode.expectPlayhead("00:00:00.000 / 00:00:02.000");
+    await modal.episode.expectUtcTime("2024-01-01 00:00:00.000");
+    await modal.episode.expectPlayhead(
+      "2024-01-01 00:00:00.000 / 2024-01-01 00:00:02.000",
+    );
     await modal.episode.setSamplingRate(1);
     await modal.episode.stepForward();
-    await modal.episode.expectUtcTime("00:00:01.000");
+    await modal.episode.expectUtcTime("2024-01-01 00:00:01.000");
   });
 
   test("mounts, unmounts, validates, and replaces local Explorer recordings", async ({
@@ -215,7 +221,7 @@ if fo.dataset_exists("${datasetName}"):
 
     await explorer.upload(fixturePaths.a);
     await explorer.episode.waitForReady("tiny-episode-a.mcap");
-    await explorer.episode.expectUtcTime("00:00:00.000");
+    await explorer.episode.expectUtcTime("2024-01-01 00:00:00.000");
     await explorer.unmount();
 
     await explorer.upload(fixturePaths.b);
@@ -247,7 +253,9 @@ if fo.dataset_exists("${datasetName}"):
     await openMcapModal(grid, modal, 2);
     await modal.episode.waitForReady("long-mixed-episode.mcap");
     await modal.episode.setSamplingRate(2);
-    await modal.episode.expectPlayhead("00:00:00.000 / 01:00:00.000");
+    await modal.episode.expectPlayhead(
+      "2024-01-01 00:00:00.000 / 2024-01-01 01:00:00.000",
+    );
     await modal.episode.expectStreams([
       "/camera/front",
       "/camera/rear",
@@ -263,13 +271,15 @@ if fo.dataset_exists("${datasetName}"):
     ]);
 
     await modal.episode.stepForward();
-    await modal.episode.expectUtcTime("00:00:00.500");
+    await modal.episode.expectUtcTime("2024-01-01 00:00:00.500");
     await modal.episode.stepBack();
-    await modal.episode.expectUtcTime("00:00:00.000");
+    await modal.episode.expectUtcTime("2024-01-01 00:00:00.000");
 
     await modal.episode.scrubToFraction(0.5);
-    await modal.episode.expectUtcTime("00:30:00.000");
-    await modal.episode.expectPlayhead("00:30:00.000 / 01:00:00.000");
+    await modal.episode.expectUtcTime("2024-01-01 00:30:00.000");
+    await modal.episode.expectPlayhead(
+      "2024-01-01 00:30:00.000 / 2024-01-01 01:00:00.000",
+    );
     await modal.episode.inspectStream("/odometry");
     await modal.episode.expectRawField("pose.pose.position.x", 180);
     await modal.episode.inspectStream("/status");
@@ -279,26 +289,28 @@ if fo.dataset_exists("${datasetName}"):
     await modal.episode.inspectStream("/lidar/points");
     await modal.episode.expectRawMeta("t=+1788.000s");
     await modal.episode.seekToFraction(0.75);
-    await modal.episode.expectUtcTime("00:45:00.000");
+    await modal.episode.expectUtcTime("2024-01-01 00:45:00.000");
     await modal.episode.seekToFraction(1_812 / 3_600);
     await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
-      "00:30:12.000",
+      "2024-01-01 00:30:12.000",
       500,
     );
     await modal.episode.expectRawMeta("t=+1812.000s");
 
     await modal.episode.scrubToFraction(1);
     await modal.episode.expectUtcTimeAfterAtMostOneForwardStep(
-      "01:00:00.000",
+      "2024-01-01 01:00:00.000",
       500,
     );
-    await modal.episode.expectPlayhead("01:00:00.000 / 01:00:00.000");
+    await modal.episode.expectPlayhead(
+      "2024-01-01 01:00:00.000 / 2024-01-01 01:00:00.000",
+    );
     await modal.episode.inspectStream("/status");
     await modal.episode.expectRawField("state", "complete");
     await modal.episode.stepForward();
-    await modal.episode.expectUtcTime("01:00:00.000");
+    await modal.episode.expectUtcTime("2024-01-01 01:00:00.000");
     await modal.episode.stepBack();
-    await modal.episode.expectUtcTime("00:59:59.500");
+    await modal.episode.expectUtcTime("2024-01-01 00:59:59.500");
   });
 });
 

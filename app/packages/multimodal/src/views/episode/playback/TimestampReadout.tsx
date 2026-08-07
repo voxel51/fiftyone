@@ -55,13 +55,13 @@ export function isPlausibleEpochNs(ns: bigint): boolean {
   return ns >= EPOCH_GATE_MIN_NS && ns <= EPOCH_GATE_MAX_NS;
 }
 
-/** Compact wall-clock display for the controls row: `14:03:22.123 UTC`. */
+/** Date-qualified wall-clock display: `2019-09-18 14:03:22.123 UTC`. */
 export function formatWallClock(
   ns: bigint,
   timeZone = DEFAULT_TIME_ZONE,
 ): string {
-  const time = formatWallClockTime(ns, timeZone);
-  return `${time} ${timeZone}`;
+  const dateTime = formatWallClockDateTime(ns, timeZone);
+  return `${dateTime} ${timeZone}`;
 }
 
 export function getTimeZoneOptions(): readonly string[] {
@@ -91,8 +91,10 @@ export function formatTimeZoneOffset(timeZone: string, ns: bigint): string {
   return format(nsToDate(ns), "OOOO", { in: tz(timeZone) });
 }
 
-function formatWallClockTime(ns: bigint, timeZone: string): string {
-  return format(nsToDate(ns), "HH:mm:ss.SSS", { in: tz(timeZone) });
+function formatWallClockDateTime(ns: bigint, timeZone: string): string {
+  return format(nsToDate(ns), "yyyy-MM-dd HH:mm:ss.SSS", {
+    in: tz(timeZone),
+  });
 }
 
 function resolveInferredTimeZone(): string {
@@ -249,7 +251,7 @@ const TimestampReadout: React.FC = () => {
 
   const clampedSec = Math.min(Math.max(playheadSec, 0), index.durationSec);
   const absoluteNs = index.secToNs(clampedSec);
-  const wallClockTime = formatWallClockTime(absoluteNs, timeZone);
+  const wallClockDateTime = formatWallClockDateTime(absoluteNs, timeZone);
   const timeZoneTree = getTimeZoneTree(absoluteNs);
   const selectedTimeZonePath = timeZonePathFor(timeZoneTree, timeZone);
   const timeZonePickerClassName =
@@ -285,7 +287,7 @@ const TimestampReadout: React.FC = () => {
         aria-label="Copy log timestamp"
         onClick={handleCopy}
       >
-        {copied ? "Copied" : wallClockTime}
+        {copied ? "Copied" : wallClockDateTime}
       </button>
       <TreeSelect
         anchor={SelectAnchor.TopStart}

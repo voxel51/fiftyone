@@ -39,13 +39,20 @@ describe("timestamp formatting helpers", () => {
     expect(isPlausibleEpochNs(5_000_000_000_000_000_000n)).toBe(false);
   });
 
-  it("formats a compact UTC wall clock", () => {
-    expect(formatWallClock(EPOCH_START_NS)).toBe("14:03:22.123 UTC");
+  it("formats a date-qualified UTC wall clock", () => {
+    expect(formatWallClock(EPOCH_START_NS)).toBe("2019-09-18 14:03:22.123 UTC");
   });
 
   it("formats the same instant in a selected timezone", () => {
     expect(formatWallClock(EPOCH_START_NS, "America/Los_Angeles")).toBe(
-      "07:03:22.123 America/Los_Angeles",
+      "2019-09-18 07:03:22.123 America/Los_Angeles",
+    );
+  });
+
+  it("formats the date in the selected timezone", () => {
+    const nearMidnightUtcNs = 1_568_768_602_123_456_789n;
+    expect(formatWallClock(nearMidnightUtcNs, "America/Los_Angeles")).toBe(
+      "2019-09-17 18:03:22.123 America/Los_Angeles",
     );
   });
 
@@ -151,7 +158,7 @@ describe("TimestampReadout", () => {
     const readout = getByTestId(container, "episode-timestamp-readout");
 
     expect(getByTestId(container, "episode-timestamp-copy").textContent).toBe(
-      "14:03:22.123",
+      "2019-09-18 14:03:22.123",
     );
     expect(
       readout.querySelector<HTMLInputElement>(
@@ -180,7 +187,7 @@ describe("TimestampReadout", () => {
       targetTimeZone,
     );
     expect(formatWallClock(EPOCH_START_NS, targetTimeZone)).toBe(
-      "17:03:22.123 Africa/Addis_Ababa",
+      "2019-09-18 17:03:22.123 Africa/Addis_Ababa",
     );
   });
 
@@ -210,7 +217,7 @@ describe("TimestampReadout", () => {
       vi.advanceTimersByTime(1500);
     });
     expect(getByTestId(container, "episode-timestamp-copy").textContent).toBe(
-      "14:03:22.123",
+      "2019-09-18 14:03:22.123",
     );
   });
 
