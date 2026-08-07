@@ -12266,6 +12266,35 @@
             "tags": ["ocr", "detection", "torch"],
             "training_data": [],
             "date_added": "2026-07-13 00:00:00"
+        },
+        {
+            "base_name": "paddle-ocr-vl-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "PaddleOCR-VL 1.6, a 0.9B vision-language document parser that detects and reads text in one pass",
+            "source": "https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.6",
+            "author": "PaddlePaddle Authors",
+            "license": "Apache 2.0",
+            "size_bytes": 1930059391,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.paddleocr_vl.PaddleOCRVLModel",
+                "config": {
+                    "name_or_path": "PaddlePaddle/PaddleOCR-VL-1.6",
+                    "task": "spotting"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "transformers>=5.13"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["ocr", "detection", "torch"],
+            "training_data": [],
+            "date_added": "2026-07-21 00:00:00"
         }
     ]
 }
