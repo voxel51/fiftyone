@@ -6,7 +6,10 @@ import { useDataStream } from "../playback/data-stream-context";
 import { useAddFieldToPlot } from "../plots/use-add-field-to-plot";
 import { useNumericSeriesContext } from "../plots/numeric-series-context";
 import { useRawMessageContext } from "./raw-message-context";
-import { useRawTileStream } from "../tiles/raw-message-binding";
+import {
+  useRawTileStream,
+  useSetRawTileStream,
+} from "../tiles/raw-message-binding";
 import type { EpisodeTileProps } from "../tiles/tile-types";
 import StructuredMessageTree from "../../../visualization/message/StructuredMessageTree";
 import rawStyles from "../../../visualization/message/StructuredMessage.module.css";
@@ -34,10 +37,31 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
   );
   useRegisterTileSettings(tileId, settingsRegistration);
   const streamKey = useRawTileStream();
+  const setStreamKey = useSetRawTileStream();
   const setTileTitle = useSetTileTitle();
-  const { recordsByStream, subscribeRecord } = useRawMessageContext();
+  const { ensureStreams, recordsByStream, streams, subscribeRecord } =
+    useRawMessageContext();
   const { ensureEnumeration, enumeration } = useNumericSeriesContext();
   const addFieldToPlot = useAddFieldToPlot();
+
+  // Dataset-scoped layouts intentionally preserve raw panels and their stream
+  // bindings across samples. Validate that binding against each new source so
+  // an absent stream cannot keep the previous source's title or value alive.
+  useEffect(() => {
+    ensureStreams();
+  }, [ensureStreams]);
+  useEffect(() => {
+    if (!streamKey || streams.status !== "ready") {
+      return;
+    }
+    const available = streams.streams.some(
+      (stream) =>
+        stream.streamId === streamKey || stream.sourceName === streamKey,
+    );
+    if (!available) {
+      setStreamKey(null);
+    }
+  }, [setStreamKey, streamKey, streams]);
 
   // This effect declares interest in the selected stream while the tile
   // shows it; the bridge follows the playhead for interested streams.
@@ -56,7 +80,14 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
     }
   }, [ensureEnumeration, streamKey]);
 
-  const state = streamKey ? recordsByStream.get(streamKey) : undefined;
+  const streamAvailable =
+    streams.status !== "ready" ||
+    streams.streams.some(
+      (stream) =>
+        stream.streamId === streamKey || stream.sourceName === streamKey,
+    );
+  const state =
+    streamKey && streamAvailable ? recordsByStream.get(streamKey) : undefined;
   const result = state?.result;
   const selectedSourceName = useMemo(() => {
     if (result?.sourceName) {

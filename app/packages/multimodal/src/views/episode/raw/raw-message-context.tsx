@@ -2,7 +2,13 @@
 // components whose relay fragments cannot evaluate under vitest, and this
 // bridge has direct unit tests (same rule as numeric-series-context).
 import { PlaybackStoreContext } from "@fiftyone/playback/runtime";
-import { useCallback, useContext, useEffect, useMemo, useRef } from "react";
+import {
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 import {
   createDemandFailureBackoff,
   createDemandInventoryMachine,
@@ -178,7 +184,10 @@ export function RawMessageBridge({
   // This effect owns one source epoch: published records, demand
   // handlers, and the playhead-following loop. It re-keys (full reset)
   // when the source changes.
-  useEffect(() => {
+  // Clear the previous epoch before the browser paints the newly presented
+  // source. A passive reset leaves one frame where a persisted raw tile can
+  // display the previous recording's message under the new recording header.
+  useLayoutEffect(() => {
     reset();
     if (!capability || !sourceKey) {
       return undefined;

@@ -14,6 +14,7 @@ import RawMessageTile from "./RawMessageTile";
 const mocks = vi.hoisted(() => ({
   addFieldToPlot: vi.fn(),
   ensureEnumeration: vi.fn(),
+  ensureStreams: vi.fn(),
   enumeration: {
     status: "idle",
     streams: [],
@@ -22,7 +23,20 @@ const mocks = vi.hoisted(() => ({
     vi.fn<(stream: string, timeNs: bigint) => Promise<string>>(),
   recordState: null as RawRecordState | null,
   selectedStream: "/state",
+  setSelectedStream: vi.fn(),
   setTileTitle: vi.fn(),
+  streams: {
+    status: "ready",
+    streams: [
+      {
+        encoding: "json",
+        sampleCount: 1,
+        schemaName: "test.State",
+        sourceName: "/state",
+        streamId: "/state",
+      },
+    ],
+  } as ReturnType<typeof readyRawStreams>,
   writeText: vi.fn<(text: string) => Promise<void>>(),
 }));
 
@@ -72,8 +86,10 @@ vi.mock("../plots/numeric-series-context", () => ({
 
 vi.mock("./raw-message-context", () => ({
   useRawMessageContext: () => ({
+    ensureStreams: mocks.ensureStreams,
     readFullMessageJson: mocks.readFullMessageJson,
     recordsByStream: new Map([[mocks.selectedStream, mocks.recordState]]),
+    streams: mocks.streams,
     subscribeRecord: vi.fn(() => vi.fn()),
   }),
 }));
@@ -84,6 +100,7 @@ vi.mock("../plots/use-add-field-to-plot", () => ({
 
 vi.mock("../tiles/raw-message-binding", () => ({
   useRawTileStream: () => mocks.selectedStream,
+  useSetRawTileStream: () => mocks.setSelectedStream,
 }));
 
 vi.mock("./RawMessageTileSettings", () => ({ default: () => null }));
@@ -91,11 +108,14 @@ vi.mock("./RawMessageTileSettings", () => ({ default: () => null }));
 beforeEach(() => {
   mocks.addFieldToPlot.mockReset();
   mocks.ensureEnumeration.mockReset();
+  mocks.ensureStreams.mockReset();
   mocks.enumeration = { status: "idle", streams: [] };
   mocks.readFullMessageJson.mockReset();
   mocks.recordState = { result: DISPLAYED_RESULT, status: "ready" };
   mocks.selectedStream = "/state";
+  mocks.setSelectedStream.mockReset();
   mocks.setTileTitle.mockReset();
+  mocks.streams = readyRawStreams();
   mocks.writeText.mockReset();
   Object.assign(navigator, { clipboard: { writeText: mocks.writeText } });
 });
@@ -123,6 +143,7 @@ describe("RawMessageTile", () => {
 
   it("offers numeric fields for a canonical stream id", () => {
     mocks.selectedStream = "7";
+    mocks.streams = readyRawStreams("7");
     mocks.enumeration = readyEnumeration();
 
     render(<RawMessageTile />);
@@ -146,6 +167,7 @@ describe("RawMessageTile", () => {
 
   it("names a failed canonical binding by its source name", () => {
     mocks.selectedStream = "7";
+    mocks.streams = readyRawStreams("7");
     mocks.enumeration = readyEnumeration();
     mocks.recordState = { error: "decoder unavailable", status: "error" };
 
@@ -156,7 +178,34 @@ describe("RawMessageTile", () => {
     ).toBeTruthy();
     expect(screen.queryByText(/Could not read 7/)).toBeNull();
   });
+
+  it("clears a persisted binding absent from the current source", async () => {
+    mocks.selectedStream = "/old-state";
+    mocks.recordState = { result: DISPLAYED_RESULT, status: "ready" };
+
+    render(<RawMessageTile />);
+
+    await waitFor(() =>
+      expect(mocks.setSelectedStream).toHaveBeenCalledWith(null),
+    );
+    expect(screen.queryByTestId("episode-raw-tree")).toBeNull();
+  });
 });
+
+function readyRawStreams(streamId = "/state") {
+  return {
+    status: "ready" as const,
+    streams: [
+      {
+        encoding: "json",
+        sampleCount: 1,
+        schemaName: "test.State",
+        sourceName: "/state",
+        streamId,
+      },
+    ],
+  };
+}
 
 function readyEnumeration(): NumericFieldsEnumeration {
   return {
