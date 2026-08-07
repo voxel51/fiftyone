@@ -10,13 +10,13 @@ import ImageTileSettings from "./ImageTileSettings";
 afterEach(cleanup);
 
 describe("ImageTileSettings", () => {
-  it("shows geometry controls only for calibration matches and orders recorded geometry first", () => {
+  it("shows source geometry before view only for calibration matches", () => {
     const props = imageSettingsProps();
     const { rerender } = render(React.createElement(ImageTileSettings, props));
 
     expect(screen.getByLabelText("Calibration")).toBeTruthy();
-    expect(screen.queryByText("Recorded image geometry")).toBeNull();
-    expect(screen.queryByText("Display")).toBeNull();
+    expect(screen.queryByText("Source image geometry")).toBeNull();
+    expect(screen.queryByText("View")).toBeNull();
 
     rerender(
       React.createElement(ImageTileSettings, {
@@ -25,13 +25,35 @@ describe("ImageTileSettings", () => {
         hasCalibrationMatch: true,
       }),
     );
-    const recordedGeometry = screen.getByText("Recorded image geometry");
-    const display = screen.getByText("Display");
+    const sourceGeometry = screen.getByText("Source image geometry");
+    const view = screen.getByText("View");
 
     expect(
-      recordedGeometry.compareDocumentPosition(display) &
+      sourceGeometry.compareDocumentPosition(view) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).not.toBe(0);
+    expect(screen.getByText("Auto-detect (recommended)")).toBeTruthy();
+    expect(screen.getByText("As recorded")).toBeTruthy();
+
+    rerender(
+      React.createElement(ImageTileSettings, {
+        ...props,
+        calibrationSelectionLabel: "Auto · Front calibration",
+        cameraProjection: {
+          ...props.cameraProjection,
+          display: "rectified",
+          geometry: "rectified",
+        },
+        hasCalibrationMatch: true,
+        viewStatus: {
+          message: "Already rectified — no remap needed",
+          severity: "info",
+        },
+      }),
+    );
+    expect(
+      screen.getByText("Already rectified — no remap needed"),
+    ).toBeTruthy();
   });
 
   it("renders tile controls and applies bounded point-size updates", () => {
@@ -82,6 +104,7 @@ describe("ImageTileSettings", () => {
         toggleLabelStream: vi.fn(),
         toggleProjectionStream: vi.fn(),
         toggleSceneAnnotationStream: vi.fn(),
+        viewStatus: null,
       }),
     );
 
@@ -162,6 +185,7 @@ describe("ImageTileSettings", () => {
         toggleLabelStream,
         toggleProjectionStream: vi.fn(),
         toggleSceneAnnotationStream: vi.fn(),
+        viewStatus: null,
       }),
     );
 
@@ -238,6 +262,7 @@ describe("ImageTileSettings", () => {
       toggleLabelStream: vi.fn(),
       toggleProjectionStream: vi.fn(),
       toggleSceneAnnotationStream: vi.fn(),
+      viewStatus: null,
     });
 
     const { rerender } = render(
@@ -317,6 +342,7 @@ describe("ImageTileSettings", () => {
         toggleLabelStream: vi.fn(),
         toggleProjectionStream: vi.fn(),
         toggleSceneAnnotationStream,
+        viewStatus: null,
       }),
     );
 
@@ -408,5 +434,6 @@ function imageSettingsProps(): React.ComponentProps<typeof ImageTileSettings> {
     toggleLabelStream: vi.fn(),
     toggleProjectionStream: vi.fn(),
     toggleSceneAnnotationStream: vi.fn(),
+    viewStatus: null,
   };
 }

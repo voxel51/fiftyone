@@ -6,17 +6,17 @@ import type {
 } from "../spatial/camera-geometry/camera-model";
 import type { RectifiedImageDisplay } from "../spatial/camera-geometry/image-rectification";
 
-/** User-facing names for recorded image geometry choices. */
+/** User-facing names for source image geometry choices. */
 export const IMAGE_GEOMETRY_LABELS: Record<ImageGeometryMode, string> = {
-  auto: "Auto (recommended)",
-  original: "Original camera",
-  rectified: "Rectified",
+  auto: "Auto-detect (recommended)",
+  original: "Original / unrectified",
+  rectified: "Already rectified",
 };
 
 /** User-facing names for image pixel presentation choices. */
 export const IMAGE_DISPLAY_LABELS: Record<ImageDisplayMode, string> = {
-  recorded: "Recorded pixels",
-  rectified: "Rectified view",
+  recorded: "As recorded",
+  rectified: "Rectified / undistorted",
 };
 
 type ImageDimensions = {
@@ -27,8 +27,8 @@ type ImageDimensions = {
 /** Relationship between decoded image pixels and calibration pixels. */
 export type ImageDimensionCompatibility = "exact" | "mismatch" | "proportional";
 
-/** A projection notice and the severity shown by the image panel. */
-export interface ImageProjectionNotice {
+/** Image-control feedback and the severity used to present it. */
+export interface ImageStatusNotice {
   readonly message: string;
   readonly severity: "info" | "warning";
 }
@@ -77,8 +77,7 @@ export function describeCameraGeometry(
 ): string {
   if (!resolution) return "Waiting for camera calibration";
   if (resolution.status === "ready") {
-    const mode =
-      resolution.mode === "original" ? "Original camera" : "Rectified";
+    const mode = IMAGE_GEOMETRY_LABELS[resolution.mode];
     return `${mode} · ${resolution.model.kind}`;
   }
   if (resolution.suggestedMode) {
@@ -100,6 +99,30 @@ export function describeGeometryControl(
     return "Choose geometry";
   }
   return IMAGE_GEOMETRY_LABELS[geometry];
+}
+
+/** Returns inline feedback for an unavailable or no-op rectified view. */
+export function getImageViewStatus({
+  cameraModelResolution,
+  display,
+  issue,
+}: {
+  readonly cameraModelResolution: CameraModelResolution | null;
+  readonly display: ImageDisplayMode;
+  readonly issue: string | null;
+}): ImageStatusNotice | null {
+  if (display !== "rectified") return null;
+  if (issue) return { message: issue, severity: "warning" };
+  if (
+    cameraModelResolution?.status === "ready" &&
+    cameraModelResolution.mode === "rectified"
+  ) {
+    return {
+      message: "Already rectified — no remap needed",
+      severity: "info",
+    };
+  }
+  return null;
 }
 
 /** Explains why a requested rectified presentation cannot be rendered. */
@@ -133,7 +156,7 @@ export function getRectifiedDisplayIssue({
   if (cameraModelResolution?.status !== "ready") {
     return (
       cameraModelResolution?.message ??
-      "Choose the recorded image geometry before rectifying"
+      "Choose the source image geometry before rectifying"
     );
   }
   if (sourceDimensionMismatch && imageDims) {
@@ -164,7 +187,7 @@ export function getProjectionNotice({
   readonly enabled: boolean;
   readonly explicitCalibrationAvailable: boolean;
   readonly imageDims: ImageDimensions | null;
-}): ImageProjectionNotice | null {
+}): ImageStatusNotice | null {
   if (!enabled) return null;
   if (!calibrationStream) {
     return warning("Choose a camera calibration before projecting points");
@@ -208,7 +231,7 @@ function validImageDimensions(dimensions: ImageDimensions): boolean {
   );
 }
 
-function warning(message: string): ImageProjectionNotice {
+function warning(message: string): ImageStatusNotice {
   return { message, severity: "warning" };
 }
 

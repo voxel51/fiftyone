@@ -37,6 +37,7 @@ import type {
 import {
   IMAGE_DISPLAY_LABELS,
   IMAGE_GEOMETRY_LABELS,
+  type ImageStatusNotice,
 } from "./image-camera-status";
 
 const AUTO_CALIBRATION_OPTION_ID = "__episode_auto_calibration__";
@@ -50,11 +51,11 @@ const IMAGE_DISPLAY_MODES: readonly ImageDisplayMode[] = [
   "rectified",
 ];
 const CAMERA_CALIBRATION_HELP =
-  "Calibration stream used for camera geometry. Auto uses a unique scene-inventory image-to-camera match and leaves ambiguous images unmatched; choosing a stream overrides that association for this image and its 3D frustum.";
-const IMAGE_DISPLAY_HELP =
-  "Pixels shown in this tile. Recorded pixels preserves the source image exactly. Rectified view remaps a supported original image into the calibration's rectified pixel space and moves annotations, projections, and picking with it.";
-const RECORDED_IMAGE_GEOMETRY_HELP =
-  "Coordinate system of the recorded image. Auto recognizes canonical image_raw and image_rect stream suffixes, accepts pixel-equivalent models, and withholds ambiguous overlays otherwise. Original camera applies K and lens distortion D. Rectified uses R and P without applying D.";
+  "Calibration stream used for camera geometry. Auto matches this image to a camera from the scene inventory and leaves ambiguous images unmatched. Choosing a stream overrides the match for this tile and its 3D frustum.";
+const IMAGE_VIEW_HELP =
+  "How this tile presents the image. As recorded shows the source pixels unchanged. Rectified / undistorted remaps an original image into the calibration's rectified pixel space; annotations, projections, and picking move with it. An already rectified image needs no remap.";
+const SOURCE_IMAGE_GEOMETRY_HELP =
+  "How the recorded pixels were produced. Auto-detect recognizes canonical image_raw and image_rect stream suffixes, accepts pixel-equivalent camera models, and withholds projections when it cannot tell. Original / unrectified projects with K and lens distortion D; Already rectified projects with R and P. This must match the stream so labels, projections, and picking align.";
 const POINT_CLOUD_PROJECTION_HELP =
   "Projects selected 3D point clouds into this camera image using its calibration and frame transforms. Choose which clouds to overlay and adjust their dot size. These settings affect only this image tile.";
 const LABEL_3D_PROJECTION_HELP =
@@ -102,6 +103,7 @@ interface ImageTileSettingsProps {
     stream: string,
     checked: boolean,
   ) => void;
+  readonly viewStatus: ImageStatusNotice | null;
 }
 
 /** Sidebar controls for one image tile; rendering stays in ImageTile. */
@@ -133,6 +135,7 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
   toggleLabelStream,
   toggleProjectionStream,
   toggleSceneAnnotationStream,
+  viewStatus,
 }) => {
   const imageSourceOptions = useMemo(
     () =>
@@ -221,8 +224,8 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
             <>
               <label className={settingsStyles.field}>
                 <SettingsLabel
-                  label="Recorded image geometry"
-                  tooltip={RECORDED_IMAGE_GEOMETRY_HELP}
+                  label="Source image geometry"
+                  tooltip={SOURCE_IMAGE_GEOMETRY_HELP}
                 />
                 <Dropdown
                   anchor={DropdownAnchor.BottomStart}
@@ -246,7 +249,7 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
                 </span>
               </label>
               <label className={settingsStyles.field}>
-                <SettingsLabel label="Display" tooltip={IMAGE_DISPLAY_HELP} />
+                <SettingsLabel label="View" tooltip={IMAGE_VIEW_HELP} />
                 <Dropdown
                   anchor={DropdownAnchor.BottomStart}
                   trigger={
@@ -264,6 +267,18 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
                     </MenuTextItem>
                   ))}
                 </Dropdown>
+                {viewStatus ? (
+                  <Text
+                    color={
+                      viewStatus.severity === "warning"
+                        ? TextColor.Warning
+                        : TextColor.Secondary
+                    }
+                    variant={TextVariant.Xs}
+                  >
+                    {viewStatus.message}
+                  </Text>
+                ) : null}
               </label>
             </>
           ) : null}

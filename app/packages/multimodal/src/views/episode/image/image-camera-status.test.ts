@@ -6,6 +6,7 @@ import {
   classifyImageDimensions,
   describeCalibrationSelection,
   describeGeometryControl,
+  getImageViewStatus,
   getProjectionNotice,
   getRectifiedDisplayIssue,
 } from "./image-camera-status";
@@ -21,6 +22,15 @@ const ready = resolveCameraModel({
   calibration,
   geometry: "original",
   imageSourceName: "/camera/image_raw",
+});
+const rectifiedReady = resolveCameraModel({
+  calibration: {
+    ...calibration,
+    P: [80, 0, 50, 0, 0, 80, 50, 0, 0, 0, 1, 0],
+    R: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+  },
+  geometry: "rectified",
+  imageSourceName: "/camera/image_rect",
 });
 
 describe("image camera status", () => {
@@ -144,6 +154,36 @@ describe("image camera status", () => {
         rectifiedDisplay: null,
         rectifiedModelResolution: null,
         sourceDimensionMismatch: false,
+      }),
+    ).toBeNull();
+  });
+
+  it("explains no-op and unavailable rectified views inline", () => {
+    expect(
+      getImageViewStatus({
+        cameraModelResolution: rectifiedReady,
+        display: "rectified",
+        issue: null,
+      }),
+    ).toEqual({
+      message: "Already rectified — no remap needed",
+      severity: "info",
+    });
+    expect(
+      getImageViewStatus({
+        cameraModelResolution: ready,
+        display: "rectified",
+        issue: "Rectified view requires a usable projection matrix P",
+      }),
+    ).toEqual({
+      message: "Rectified view requires a usable projection matrix P",
+      severity: "warning",
+    });
+    expect(
+      getImageViewStatus({
+        cameraModelResolution: rectifiedReady,
+        display: "recorded",
+        issue: null,
       }),
     ).toBeNull();
   });

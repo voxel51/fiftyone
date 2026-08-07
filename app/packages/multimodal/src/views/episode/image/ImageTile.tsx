@@ -76,6 +76,7 @@ import {
   describeCalibrationSelection,
   describeCameraGeometry,
   describeGeometryControl,
+  getImageViewStatus,
   getProjectionNotice,
   getRectifiedDisplayIssue,
 } from "./image-camera-status";
@@ -598,6 +599,15 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     rectifiedModelResolution,
     sourceDimensionMismatch,
   });
+  const viewStatus = useMemo(
+    () =>
+      getImageViewStatus({
+        cameraModelResolution,
+        display: cameraProjection.display,
+        issue: rectifiedDisplayIssue,
+      }),
+    [cameraModelResolution, cameraProjection.display, rectifiedDisplayIssue],
+  );
   const projectionNotice = useMemo(
     () =>
       getProjectionNotice({
@@ -675,6 +685,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           toggleLabelStream={toggleLabelStream}
           toggleProjectionStream={toggleProjectionStream}
           toggleSceneAnnotationStream={toggleSceneAnnotationStream}
+          viewStatus={viewStatus}
         />
       ),
       streamStreams: activeStreams,
@@ -707,6 +718,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       toggleLabelStream,
       toggleProjectionStream,
       toggleSceneAnnotationStream,
+      viewStatus,
     ],
   );
   useRegisterTileSettings(tileId, settingsRegistration);
