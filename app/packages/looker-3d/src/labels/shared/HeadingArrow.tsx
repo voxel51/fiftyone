@@ -1,8 +1,9 @@
 import { Line } from "@react-three/drei";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import * as THREE from "three";
 import type { CuboidResizeFace } from "../../annotation/cuboid-face-resize";
 import { FO_USER_DATA } from "../../constants";
+import { ORIENTATION_MARKER_HEAD_SEGMENTS } from "./cuboid-orientation-geometry";
 import {
   FACE_DOT_HOVER_SCALE,
   HEADING_GHOST_COLOR,
@@ -24,6 +25,8 @@ const FACE_DOT_SEGMENTS = 12;
 // Dots idle faint and go solid once they're the snap target.
 const FACE_DOT_IDLE_OPACITY = 0.45;
 const FACE_DOT_ACTIVE_OPACITY = 1;
+// The cone geometry points along its own local +Y by default.
+const CONE_UP_AXIS = new THREE.Vector3(0, 1, 0);
 
 export interface HeadingGhostArrowProps {
   dimensions: THREE.Vector3Tuple;
@@ -68,27 +71,32 @@ export const HeadingGhostArrow = ({
     );
   }, [dimensions, anchorFace]);
 
-  const headGeometry = useMemo(() => {
+  // The cone is centered on its own axis, so it sits at the midpoint between
+  // the base (`shaftEnd`) and the tip, not at `shaftEnd` itself.
+  const headCenter = useMemo(() => {
     if (!geometry) {
       return null;
     }
-
-    const buffer = new THREE.BufferGeometry();
-    buffer.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(geometry.headVertices.flat(), 3),
+    return new THREE.Vector3(...geometry.shaftEnd).addScaledVector(
+      geometry.direction,
+      geometry.headLength / 2,
     );
-    return buffer;
   }, [geometry]);
 
-  // This effect disposes the arrowhead buffer when it's replaced or unmounts.
-  useEffect(() => {
-    return () => {
-      headGeometry?.dispose();
-    };
-  }, [headGeometry]);
+  // `direction` can be any of the box's 6 face normals (unlike the committed
+  // arrow, which is fixed to local +X), so the cone needs a per-face rotation
+  // rather than one baked-in constant.
+  const headQuaternion = useMemo(() => {
+    if (!geometry) {
+      return null;
+    }
+    return new THREE.Quaternion().setFromUnitVectors(
+      CONE_UP_AXIS,
+      geometry.direction,
+    );
+  }, [geometry]);
 
-  if (!geometry || !headGeometry) {
+  if (!geometry || !headCenter || !headQuaternion) {
     return null;
   }
 
@@ -102,12 +110,24 @@ export const HeadingGhostArrow = ({
         transparent
         raycast={() => null}
       />
-      <mesh geometry={headGeometry} renderOrder={4} raycast={() => null}>
+      {/* A cone, not a flat triangle — see `getHeadingGhostArrowGeometry`. */}
+      <mesh
+        position={headCenter}
+        quaternion={headQuaternion}
+        renderOrder={4}
+        raycast={() => null}
+      >
+        <coneGeometry
+          args={[
+            geometry.headRadius,
+            geometry.headLength,
+            ORIENTATION_MARKER_HEAD_SEGMENTS,
+          ]}
+        />
         <meshBasicMaterial
           color={color}
           transparent
           opacity={opacity}
-          side={THREE.DoubleSide}
           depthWrite={false}
         />
       </mesh>

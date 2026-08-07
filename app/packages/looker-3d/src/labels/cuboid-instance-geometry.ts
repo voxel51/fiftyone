@@ -4,7 +4,10 @@
 import * as THREE from "three";
 import type { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
 import type { ReconciledDetection3D } from "../annotation/types";
-import { getCuboidOrientationMarkerGeometry } from "./shared/cuboid-orientation-geometry";
+import {
+  ORIENTATION_MARKER_HEAD_SEGMENTS,
+  getCuboidOrientationMarkerGeometry,
+} from "./shared/cuboid-orientation-geometry";
 
 // Pure geometry/matrix math for `CuboidInstances`, kept dependency-free (no
 // React, no hooks, no event bus) so it can be unit tested without pulling in
@@ -15,32 +18,23 @@ import { getCuboidOrientationMarkerGeometry } from "./shared/cuboid-orientation-
 // needs to be a unit cube.
 export const UNIT_BOX_GEOMETRY = new THREE.BoxGeometry(1, 1, 1);
 
-// Canonical arrowhead triangle: apex at local +X, base corners at local ±Y,
-// unit half-width. Scaled per-instance by (headLength, headHalfWidth,
-// headHalfWidth); rotated 90° about local X when the box's arrowhead spreads
-// along Z instead of Y (see `computeArrowheadMatrix`).
-export const UNIT_ARROWHEAD_GEOMETRY = new THREE.BufferGeometry();
-UNIT_ARROWHEAD_GEOMETRY.setAttribute(
-  "position",
-  new THREE.Float32BufferAttribute(
-    [
-      1,
-      0,
-      0, // apex
-      0,
-      1,
-      0, // base1
-      0,
-      -1,
-      0, // base2
-    ],
-    3,
-  ),
+// Canonical arrowhead cone: unit radius, base at local origin, tip at local
+// +X, unit length. Scaled per-instance by (headLength, headRadius,
+// headRadius) (see `computeArrowheadMatrix`). A cone rather than a flat
+// triangle: it's rotationally symmetric about its own axis, so — unlike a
+// flat shape — it has no edge-on viewing angle that collapses it to an
+// invisible sliver for some combinations of heading/up.
+export const UNIT_ARROWHEAD_GEOMETRY = new THREE.ConeGeometry(
+  1,
+  1,
+  ORIENTATION_MARKER_HEAD_SEGMENTS,
 );
-const SPREAD_TO_Z_QUATERNION = new THREE.Quaternion().setFromAxisAngle(
-  new THREE.Vector3(1, 0, 0),
-  Math.PI / 2,
-);
+// `ConeGeometry` points along +Y, centered on its own axis; rotate so it
+// points along +X instead (matching the arrow's fixed local axis) and
+// re-center so the base sits at the origin and the tip at x=1.
+UNIT_ARROWHEAD_GEOMETRY.rotateZ(-Math.PI / 2);
+UNIT_ARROWHEAD_GEOMETRY.translate(0.5, 0, 0);
+
 const IDENTITY_QUATERNION = new THREE.Quaternion();
 const UNIT_SCALE = new THREE.Vector3(1, 1, 1);
 export const ZERO_SCALE_MATRIX = new THREE.Matrix4().makeScale(0, 0, 0);
@@ -180,24 +174,19 @@ export function localToWorld(
  * `UNIT_ARROWHEAD_GEOMETRY`), derived from the same decomposed geometry the
  * standalone `CuboidOrientationMarker` uses (`getCuboidOrientationMarkerGeometry`).
  */
-export function computeArrowheadMatrix(
-  geometry: CuboidGeometry,
-  upVector: THREE.Vector3 | null,
-): THREE.Matrix4 {
+export function computeArrowheadMatrix(geometry: CuboidGeometry): THREE.Matrix4 {
   const markerGeometry = getCuboidOrientationMarkerGeometry(
     geometry.dimensions,
-    geometry.quaternion,
-    upVector,
   );
   if (!markerGeometry) {
     return ZERO_SCALE_MATRIX.clone();
   }
 
-  const { anchor, headLength, headHalfWidth, spreadAlongZ } = markerGeometry;
+  const { anchor, headLength, headRadius } = markerGeometry;
   const localMatrix = new THREE.Matrix4().compose(
     anchor,
-    spreadAlongZ ? SPREAD_TO_Z_QUATERNION : IDENTITY_QUATERNION,
-    new THREE.Vector3(headLength, headHalfWidth, headHalfWidth),
+    IDENTITY_QUATERNION,
+    new THREE.Vector3(headLength, headRadius, headRadius),
   );
   const boxMatrix = new THREE.Matrix4().compose(
     new THREE.Vector3(...geometry.position),

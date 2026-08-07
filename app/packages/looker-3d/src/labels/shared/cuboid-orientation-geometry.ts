@@ -1,25 +1,31 @@
 import * as THREE from "three";
 import type { CuboidResizeFace } from "../../annotation/cuboid-face-resize";
 
-const DEFAULT_SCENE_UP_VECTOR = new THREE.Vector3(0, 0, 1);
-
 // The shaft and arrowhead built below always run along local +x — this names
 // that assumption for consumers that need to anchor UI (ghost previews,
 // default editor selection) to "the face the heading arrow points at".
 export const HEADING_FORWARD_FACE: CuboidResizeFace = "+x";
 
-// Flat triangular arrowhead, sized relative to the box's arrow scale below.
-// Exported so the drag-preview ghost in `heading-arrow-geometry.ts` shares one
-// set of proportions with the committed arrow rather than mirroring them.
+// Conical arrowhead, sized relative to the box's arrow scale below. Exported
+// so the drag-preview ghost in `heading-arrow-geometry.ts` shares one set of
+// proportions with the committed arrow rather than mirroring them. A cone
+// (rather than a flat triangle) has no edge-on viewing angle that collapses
+// it to an invisible sliver — the orthographic side-panel cameras lock onto
+// the box's own axes and would otherwise view a flat head exactly edge-on
+// for some combinations of heading/up.
 export const ORIENTATION_MARKER_EXTENSION_RATIO = 0.3;
 export const ORIENTATION_MARKER_HEAD_LENGTH_RATIO = 0.16;
 export const ORIENTATION_MARKER_MIN_HEAD_LENGTH = 0.08;
 const ORIENTATION_MARKER_MIN_CROSS_SECTION_RATIO = 0.1;
-// Half-width of the arrowhead base, as a fraction of its length and capped
-// against the cuboid's smaller cross-section so it never overhangs the box.
+// Radius of the arrowhead's base circle, as a fraction of its length and
+// capped against the cuboid's smaller cross-section so it never overhangs
+// the box.
 export const ORIENTATION_MARKER_HEAD_WIDTH_RATIO = 0.7;
 const ORIENTATION_MARKER_HEAD_WIDTH_CROSS_CAP = 0.4;
 export const ORIENTATION_MARKER_MIN_HEAD_WIDTH = 0.03;
+// Radial resolution shared by every arrowhead cone (committed, ghost, and the
+// GPU-instanced unit geometry) so they all read as the same shape.
+export const ORIENTATION_MARKER_HEAD_SEGMENTS = 8;
 
 // RGB orientation axes drawn at the cuboid centroid when orientation is shown.
 // Each axis length is a fraction of its own half-extent so the tripod stays
@@ -58,10 +64,14 @@ export const getHeadingArrowLengthScale = (
 /**
  * Decomposed (pre-composition) form of the orientation arrow's geometry, in
  * the cuboid's local frame. `CuboidInstances` uses this directly to build a
- * per-instance affine matrix (translate to `anchor`, optionally rotate 90°
- * about local X when `spreadAlongZ`, then scale a canonical unit triangle by
- * `(headLength, headHalfWidth, headHalfWidth)`) instead of computing final
- * world-space triangle vertices per box.
+ * per-instance affine matrix (translate to `anchor`, then scale a canonical
+ * unit cone by `(headLength, headRadius, headRadius)`) instead of computing
+ * final world-space geometry per box.
+ *
+ * A function of `dimensions` alone: the arrow always runs along local +X
+ * (see `HEADING_FORWARD_FACE`) and a cone's cross-section is the same from
+ * every angle around that axis, so — unlike the flat triangle this replaced —
+ * nothing here depends on the box's orientation or which way is "up".
  */
 export interface CuboidOrientationMarkerGeometry {
   /** Local-space anchor at the shaft's end / arrowhead base center. */
@@ -69,15 +79,12 @@ export interface CuboidOrientationMarkerGeometry {
   /** Local-space point where the shaft begins (on the cuboid's forward face). */
   shaftStart: THREE.Vector3Tuple;
   headLength: number;
-  headHalfWidth: number;
-  /** True when the arrowhead's base spreads along local Z rather than local Y. */
-  spreadAlongZ: boolean;
+  /** Radius of the arrowhead's (conical) base circle. */
+  headRadius: number;
 }
 
 export const getCuboidOrientationMarkerGeometry = (
   dimensions: THREE.Vector3Tuple,
-  orientation: THREE.Quaternion,
-  upVector?: THREE.Vector3 | null,
 ): CuboidOrientationMarkerGeometry | null => {
   const length = getFiniteMagnitude(dimensions[0]);
 
@@ -108,7 +115,7 @@ export const getCuboidOrientationMarkerGeometry = (
     Math.min(localYExtent, localZExtent),
     length * ORIENTATION_MARKER_MIN_CROSS_SECTION_RATIO,
   );
-  const headHalfWidth = Math.max(
+  const headRadius = Math.max(
     Math.min(
       headLength * ORIENTATION_MARKER_HEAD_WIDTH_RATIO,
       crossSection * ORIENTATION_MARKER_HEAD_WIDTH_CROSS_CAP,
@@ -119,87 +126,33 @@ export const getCuboidOrientationMarkerGeometry = (
   const shaftEndX = basePoint.x + extensionLength;
   const { y: baseY, z: baseZ } = basePoint;
 
-  // Lay the flat arrowhead in the horizontal plane so it reads as a full
-  // triangle from a top-down view: spread it across whichever of local Y/Z
-  // points least along "up". (This used to be inferred from the base point's
-  // offset axis, which no longer works now that it sits at the face center.)
-  const effectiveUp =
-    upVector && upVector.lengthSq() > 0
-      ? upVector.clone().normalize()
-      : DEFAULT_SCENE_UP_VECTOR;
-  const localYAlongUp = Math.abs(
-    new THREE.Vector3(0, 1, 0).applyQuaternion(orientation).dot(effectiveUp),
-  );
-  const localZAlongUp = Math.abs(
-    new THREE.Vector3(0, 0, 1).applyQuaternion(orientation).dot(effectiveUp),
-  );
-  const spreadAlongZ = localZAlongUp <= localYAlongUp;
-
   return {
     anchor: new THREE.Vector3(shaftEndX, baseY, baseZ),
     shaftStart: basePoint.toArray() as THREE.Vector3Tuple,
     headLength,
-    headHalfWidth,
-    spreadAlongZ,
+    headRadius,
   };
 };
 
 /**
- * Composed (final) local-space points derived from an already-computed
- * `CuboidOrientationMarkerGeometry`. Split out from `getCuboidOrientationMarkerProps`
- * so callers that also need the raw geometry (e.g. for a hit volume) can share
- * one `getCuboidOrientationMarkerGeometry` call instead of computing it twice.
+ * Composed (final) local-space points derived from a `CuboidOrientationMarkerGeometry`
+ * — mainly `shaftEnd` as a plain tuple (matching `shaftStart`'s shape) instead
+ * of the raw `anchor` vector, for callers building a `Line` between the two.
  */
 export const getCuboidOrientationMarkerPropsFromGeometry = (
   geometry: CuboidOrientationMarkerGeometry,
 ): {
   shaftStart: THREE.Vector3Tuple;
   shaftEnd: THREE.Vector3Tuple;
-  headVertices: [THREE.Vector3Tuple, THREE.Vector3Tuple, THREE.Vector3Tuple];
+  headLength: number;
+  headRadius: number;
 } => {
-  const { anchor, shaftStart, headLength, headHalfWidth, spreadAlongZ } =
-    geometry;
-  const shaftEndX = anchor.x;
-  const tipX = shaftEndX + headLength;
-  const { y: baseY, z: baseZ } = anchor;
-
-  const apex: THREE.Vector3Tuple = [tipX, baseY, baseZ];
-  const base1: THREE.Vector3Tuple = spreadAlongZ
-    ? [shaftEndX, baseY, baseZ + headHalfWidth]
-    : [shaftEndX, baseY + headHalfWidth, baseZ];
-  const base2: THREE.Vector3Tuple = spreadAlongZ
-    ? [shaftEndX, baseY, baseZ - headHalfWidth]
-    : [shaftEndX, baseY - headHalfWidth, baseZ];
+  const { anchor, shaftStart, headLength, headRadius } = geometry;
 
   return {
     shaftStart,
-    shaftEnd: [shaftEndX, baseY, baseZ],
-    headVertices: [apex, base1, base2],
+    shaftEnd: [anchor.x, anchor.y, anchor.z],
+    headLength,
+    headRadius,
   };
-};
-
-/**
- * Composed (final) local-space points for the standalone `CuboidOrientationMarker`
- * component. Built on top of `getCuboidOrientationMarkerGeometry`.
- */
-export const getCuboidOrientationMarkerProps = (
-  dimensions: THREE.Vector3Tuple,
-  orientation: THREE.Quaternion,
-  upVector?: THREE.Vector3 | null,
-): {
-  shaftStart: THREE.Vector3Tuple;
-  shaftEnd: THREE.Vector3Tuple;
-  headVertices: [THREE.Vector3Tuple, THREE.Vector3Tuple, THREE.Vector3Tuple];
-} | null => {
-  const geometry = getCuboidOrientationMarkerGeometry(
-    dimensions,
-    orientation,
-    upVector,
-  );
-
-  if (!geometry) {
-    return null;
-  }
-
-  return getCuboidOrientationMarkerPropsFromGeometry(geometry);
 };

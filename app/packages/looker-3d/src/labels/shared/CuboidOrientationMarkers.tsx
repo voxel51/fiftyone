@@ -1,12 +1,13 @@
 import { Line } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import * as THREE from "three";
 import { FO_USER_DATA } from "../../constants";
 import {
   ORIENTATION_AXES_COLORS,
   ORIENTATION_AXES_LENGTH_RATIO,
   ORIENTATION_AXES_MIN_LENGTH,
+  ORIENTATION_MARKER_HEAD_SEGMENTS,
   getCuboidOrientationMarkerGeometry,
   getCuboidOrientationMarkerPropsFromGeometry,
   getFiniteMagnitude,
@@ -28,16 +29,19 @@ const ORIENTATION_MARKER_HIGHLIGHT_LINE_WIDTH = 6;
 const ORIENTATION_AXES_LINE_WIDTH = 3;
 const ORIENTATION_AXES_OPACITY = 0.75;
 
-// The arrow itself is a thin line plus a flat triangle — far too small to grab
+// The arrow itself is a thin line plus a small cone — far too small to grab
 // reliably — so when it's interactive we wrap it in an invisible box hit volume
 // spanning shaft-start to tip, inflated past the arrowhead's own width.
 const ORIENTATION_MARKER_HIT_PADDING = 2;
 
+// The cone geometry points along local +Y by default; this rotates it -90°
+// about Z so it points along local +X instead, the arrow's fixed axis (see
+// `HEADING_FORWARD_FACE`).
+const ARROWHEAD_ROTATION: THREE.EulerTuple = [0, 0, -Math.PI / 2];
+
 export interface CuboidOrientationMarkerProps {
   dimensions: THREE.Vector3Tuple;
   color: string;
-  orientation: THREE.Quaternion;
-  upVector?: THREE.Vector3 | null;
   /**
    * Pointer handlers for the heading-drag interaction. When any is supplied an
    * invisible hit volume is added around the arrow; the visible shaft and head
@@ -54,8 +58,6 @@ export interface CuboidOrientationMarkerProps {
 export const CuboidOrientationMarker = ({
   dimensions,
   color,
-  orientation,
-  upVector,
   onPointerDown,
   onPointerOver,
   onPointerOut,
@@ -66,8 +68,8 @@ export const CuboidOrientationMarker = ({
   // `hitVolume` (its pick box) must agree, since the hit volume has to cover
   // the drawn arrow.
   const geometry = useMemo(
-    () => getCuboidOrientationMarkerGeometry(dimensions, orientation, upVector),
-    [dimensions, orientation, upVector],
+    () => getCuboidOrientationMarkerGeometry(dimensions),
+    [dimensions],
   );
 
   const markerProps = useMemo(
@@ -87,7 +89,7 @@ export const CuboidOrientationMarker = ({
       return null;
     }
 
-    const { anchor, shaftStart, headLength, headHalfWidth } = geometry;
+    const { anchor, shaftStart, headLength, headRadius } = geometry;
     const tipX = anchor.x + headLength;
     const length = tipX - shaftStart[0];
 
@@ -95,7 +97,7 @@ export const CuboidOrientationMarker = ({
       return null;
     }
 
-    const thickness = headHalfWidth * 2 * ORIENTATION_MARKER_HIT_PADDING;
+    const thickness = headRadius * 2 * ORIENTATION_MARKER_HIT_PADDING;
 
     return {
       args: [length, thickness, thickness] as THREE.Vector3Tuple,
@@ -107,29 +109,17 @@ export const CuboidOrientationMarker = ({
     };
   }, [geometry, isInteractive]);
 
-  const headGeometry = useMemo(() => {
-    if (!markerProps) {
-      return null;
-    }
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(markerProps.headVertices.flat(), 3),
-    );
-    return geometry;
-  }, [markerProps]);
-
-  // This effect disposes the arrowhead geometry when it is replaced or unmounts.
-  useEffect(() => {
-    return () => {
-      headGeometry?.dispose();
-    };
-  }, [headGeometry]);
-
-  if (!markerProps || !headGeometry) {
+  if (!markerProps) {
     return null;
   }
+
+  // The cone is centered on its own axis, so it sits at the midpoint between
+  // the base (`shaftEnd`) and the tip, not at `shaftEnd` itself.
+  const headCenter: THREE.Vector3Tuple = [
+    markerProps.shaftEnd[0] + markerProps.headLength / 2,
+    markerProps.shaftEnd[1],
+    markerProps.shaftEnd[2],
+  ];
 
   return (
     <group userData={{ [FO_USER_DATA.IS_HELPER]: true }} renderOrder={3}>
@@ -149,12 +139,27 @@ export const CuboidOrientationMarker = ({
         transparent
         raycast={() => null}
       />
-      <mesh geometry={headGeometry} renderOrder={3} raycast={() => null}>
+      {/* A cone, not a flat triangle: unlike a flat shape, it has no edge-on
+          viewing angle that collapses it to an invisible sliver — the
+          orthographic side-panel cameras lock onto the box's own axes and
+          would otherwise view a flat head exactly edge-on from some panels. */}
+      <mesh
+        position={headCenter}
+        rotation={ARROWHEAD_ROTATION}
+        renderOrder={3}
+        raycast={() => null}
+      >
+        <coneGeometry
+          args={[
+            markerProps.headRadius,
+            markerProps.headLength,
+            ORIENTATION_MARKER_HEAD_SEGMENTS,
+          ]}
+        />
         <meshBasicMaterial
           color={color}
           transparent
           opacity={highlighted ? 1 : ORIENTATION_MARKER_OPACITY}
-          side={THREE.DoubleSide}
           depthWrite={false}
         />
       </mesh>

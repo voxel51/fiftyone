@@ -17,6 +17,10 @@ import {
   isValidCuboidResizeDimensions,
   type CuboidResizeFace,
 } from "../annotation/cuboid-face-resize";
+import {
+  computeCuboidHeadingAndUpRelabel,
+  isValidHeadingUpFacePair,
+} from "../annotation/cuboid-heading-relabel";
 import { useCuboidAnnotation } from "../annotation/useCuboidAnnotation";
 import { FO_USER_DATA, PANEL_ID_MAIN, getPanelElementId } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
@@ -597,6 +601,62 @@ export const Cuboid = ({
   // is hovered — previews the ghost arrow/face highlight below.
   const headingUpPreview = useHeadingUpPreview();
   const isHeadingUpPreviewActive = headingUpPreview?.labelId === label._id;
+
+  // Local axis (in the box's own frame) currently closest to world "up" —
+  // fills in the "up" side of the preview below when only heading is being
+  // hovered (and vice versa), since the sidebar hover only ever carries one
+  // face at a time.
+  const currentUpFace = useMemo(() => {
+    const effectiveUp =
+      upVector && upVector.lengthSq() > 0
+        ? upVector.clone().normalize()
+        : new THREE.Vector3(0, 0, 1);
+    const localUp = effectiveUp
+      .clone()
+      .applyQuaternion(orientationQuaternion.clone().invert());
+    return getCuboidResizeFaceFromNormal(localUp) ?? "+z";
+  }, [upVector, orientationQuaternion]);
+
+  // Full candidate orientation for the hovered heading/up combination, so the
+  // axes tripod can preview the resulting frame before committing — alongside
+  // the ghost arrow/face dots' single-face preview below.
+  const headingUpPreviewRelabel = useMemo(() => {
+    if (!isHeadingUpPreviewActive || !headingUpPreview) {
+      return null;
+    }
+
+    const nextHeadingFace =
+      headingUpPreview.role === "heading"
+        ? headingUpPreview.face
+        : HEADING_FORWARD_FACE;
+    const nextUpFace =
+      headingUpPreview.role === "up" ? headingUpPreview.face : currentUpFace;
+
+    if (!isValidHeadingUpFacePair(nextHeadingFace, nextUpFace)) {
+      return null;
+    }
+
+    return computeCuboidHeadingAndUpRelabel({
+      dimensions: effectiveDimensions,
+      quaternion: orientationQuaternion,
+      headingFace: nextHeadingFace,
+      upFace: nextUpFace,
+    });
+  }, [
+    isHeadingUpPreviewActive,
+    headingUpPreview,
+    currentUpFace,
+    effectiveDimensions,
+    orientationQuaternion,
+  ]);
+
+  const headingUpPreviewQuaternion = useMemo(
+    () =>
+      headingUpPreviewRelabel
+        ? new THREE.Quaternion(...headingUpPreviewRelabel.quaternion)
+        : null,
+    [headingUpPreviewRelabel],
+  );
 
   // Set while the pointer is anywhere over that same UI *as a whole* — used
   // (instead of the per-face preview above) to hide the gizmo/face-resize
@@ -1235,8 +1295,6 @@ export const Cuboid = ({
           <CuboidOrientationMarker
             dimensions={displayDimensions}
             color={complementaryColor}
-            orientation={orientationQuaternion}
-            upVector={upVector}
             highlighted={canEditHeading && headingDrag.isActive}
             {...(canEditHeading ? headingDrag.handlers : {})}
           />
@@ -1316,6 +1374,15 @@ export const Cuboid = ({
       explicitObjectRef={contentRef}
     >
       {content}
+      {/* Sibling to `content`, not nested inside it: `headingUpPreviewRelabel`'s
+          quaternion is already expressed in the same (parent-relative) frame as
+          the box's own `combinedQuaternion`, so nesting it inside the
+          already-rotated content group would double-apply the rotation. */}
+      {showOrientation && headingUpPreviewRelabel && headingUpPreviewQuaternion && (
+        <group position={displayPosition} quaternion={headingUpPreviewQuaternion}>
+          <CuboidAxesMarker dimensions={headingUpPreviewRelabel.dimensions} />
+        </group>
+      )}
     </Transformable>
   );
 };

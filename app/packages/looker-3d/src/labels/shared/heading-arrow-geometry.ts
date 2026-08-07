@@ -195,14 +195,22 @@ export function pickNearestHeadingFace(
 export interface HeadingGhostArrowGeometry {
   shaftStart: THREE.Vector3Tuple;
   shaftEnd: THREE.Vector3Tuple;
-  headVertices: [THREE.Vector3Tuple, THREE.Vector3Tuple, THREE.Vector3Tuple];
+  headLength: number;
+  /** Radius of the arrowhead's (conical) base circle. */
+  headRadius: number;
+  /** Unit vector the cone's axis points along, base to tip. */
+  direction: THREE.Vector3;
 }
 
 /**
- * Flat triangular arrow pointing along `direction`, starting from `origin` (a
- * point on the box surface, via {@link getHeadingFaceAnchor}) and extending
- * outward — mirroring how the committed arrow leaves its face. Falls back to the
- * box center when no origin is given.
+ * Conical arrow pointing along `direction`, starting from `origin` (a point
+ * on the box surface, via {@link getHeadingFaceAnchor}) and extending outward
+ * — mirroring how the committed arrow leaves its face. Falls back to the box
+ * center when no origin is given.
+ *
+ * A cone rather than a flat triangle: `direction` can be any of the box's six
+ * face normals, and a flat head has a plane it goes edge-on (invisible) from
+ * — a cone has no such angle, so the ghost stays visible from every camera.
  */
 export function getHeadingGhostArrowGeometry(
   dimensions: THREE.Vector3Tuple,
@@ -229,7 +237,7 @@ export function getHeadingGhostArrowGeometry(
     Math.min(arrowScale * ORIENTATION_MARKER_HEAD_LENGTH_RATIO, extension),
     ORIENTATION_MARKER_MIN_HEAD_LENGTH,
   );
-  const headHalfWidth = Math.max(
+  const headRadius = Math.max(
     headLength * ORIENTATION_MARKER_HEAD_WIDTH_RATIO,
     ORIENTATION_MARKER_MIN_HEAD_WIDTH,
   );
@@ -239,30 +247,13 @@ export function getHeadingGhostArrowGeometry(
   const start = origin ? origin.clone() : new THREE.Vector3();
   const shaftLength = origin ? extension : surfaceDistance + extension;
   const baseCenter = start.clone().add(dir.clone().multiplyScalar(shaftLength));
-  const tip = start
-    .clone()
-    .add(dir.clone().multiplyScalar(shaftLength + headLength));
-
-  // Spread the flat head across whichever axis the direction leans on least,
-  // so the triangle never collapses to a line.
-  const leastAlignedAxis = ([0, 1, 2] as const).reduce((best, axis) =>
-    Math.abs(dir.getComponent(axis)) < Math.abs(dir.getComponent(best))
-      ? axis
-      : best,
-  );
-  const spread = new THREE.Vector3()
-    .crossVectors(dir, new THREE.Vector3().setComponent(leastAlignedAxis, 1))
-    .normalize()
-    .multiplyScalar(headHalfWidth);
 
   return {
     shaftStart: start.toArray() as THREE.Vector3Tuple,
     shaftEnd: baseCenter.toArray() as THREE.Vector3Tuple,
-    headVertices: [
-      tip.toArray() as THREE.Vector3Tuple,
-      baseCenter.clone().add(spread).toArray() as THREE.Vector3Tuple,
-      baseCenter.clone().sub(spread).toArray() as THREE.Vector3Tuple,
-    ],
+    headLength,
+    headRadius,
+    direction: dir,
   };
 }
 

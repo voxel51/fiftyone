@@ -80,13 +80,15 @@ describe("getHeadingGhostArrowGeometry", () => {
     if (!geometry) return;
 
     const shaftEnd = new THREE.Vector3(...geometry.shaftEnd);
-    const tip = new THREE.Vector3(...geometry.headVertices[0]);
+    const tip = shaftEnd
+      .clone()
+      .addScaledVector(geometry.direction, geometry.headLength);
 
     expect(tip.length()).toBeGreaterThan(shaftEnd.length());
     expect(tip.clone().normalize().dot(direction)).toBeCloseTo(1, 6);
   });
 
-  it("builds a non-degenerate head straddling the shaft axis", () => {
+  it("builds a non-degenerate cone pointing along the requested direction", () => {
     for (const direction of [
       new THREE.Vector3(1, 0, 0),
       new THREE.Vector3(0, 1, 0),
@@ -98,27 +100,12 @@ describe("getHeadingGhostArrowGeometry", () => {
       expect(geometry).not.toBeNull();
       if (!geometry) continue;
 
-      const [tip, base1, base2] = geometry.headVertices.map(
-        (v) => new THREE.Vector3(...v),
-      );
-      const shaftEnd = new THREE.Vector3(...geometry.shaftEnd);
-
-      // The two base corners sit either side of the shaft end, equidistant.
-      const offset1 = base1.clone().sub(shaftEnd);
-      const offset2 = base2.clone().sub(shaftEnd);
-      expect(offset1.length()).toBeGreaterThan(0);
-      expect(offset1.length()).toBeCloseTo(offset2.length(), 6);
-      // Opposite directions => the triangle has real area.
-      expect(
-        offset1.clone().normalize().dot(offset2.clone().normalize()),
-      ).toBeCloseTo(-1, 6);
-      // And the spread is perpendicular to the shaft, so the head isn't skewed.
-      expect(offset1.dot(direction)).toBeCloseTo(0, 6);
-      expect(
-        new THREE.Vector3()
-          .crossVectors(base1.clone().sub(tip), base2.clone().sub(tip))
-          .length(),
-      ).toBeGreaterThan(0);
+      expect(geometry.headLength).toBeGreaterThan(0);
+      expect(geometry.headRadius).toBeGreaterThan(0);
+      // A cone has no preferred plane — unlike the flat triangle this
+      // replaced, it stays visible regardless of which axis it leans on.
+      expect(geometry.direction.length()).toBeCloseTo(1, 6);
+      expect(geometry.direction.dot(direction)).toBeCloseTo(1, 6);
     }
   });
 });
@@ -151,7 +138,9 @@ describe("getHeadingGhostArrowGeometry with a surface anchor", () => {
     if (!geometry) return;
 
     const shaftEnd = new THREE.Vector3(...geometry.shaftEnd);
-    const tip = new THREE.Vector3(...geometry.headVertices[0]);
+    const tip = shaftEnd
+      .clone()
+      .addScaledVector(geometry.direction, geometry.headLength);
 
     // Both past the top face, and strictly further out than the anchor.
     expect(shaftEnd.z).toBeGreaterThan(origin.z);
@@ -313,7 +302,10 @@ describe("ghost arrow length normalization", () => {
       anchor.point,
     );
     if (!geometry) return null;
-    const tip = new THREE.Vector3(...geometry.headVertices[0]);
+    const shaftEnd = new THREE.Vector3(...geometry.shaftEnd);
+    const tip = shaftEnd
+      .clone()
+      .addScaledVector(geometry.direction, geometry.headLength);
     return tip.distanceTo(new THREE.Vector3(...geometry.shaftStart));
   };
 

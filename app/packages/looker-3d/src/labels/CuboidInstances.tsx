@@ -16,7 +16,6 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
 import type { ReconciledDetection3D } from "../annotation/types";
 import { PANEL_ID_MAIN } from "../constants";
-import { useFo3dContext } from "../fo3d/context";
 import { use3dLabelColor } from "../hooks/use-3d-label-color";
 import { useSimilarLabels3d } from "../hooks/use-similar-labels-3d";
 import {
@@ -100,7 +99,6 @@ export const CuboidInstances = ({
   showOrientation = false,
   onClick,
 }: CuboidInstancesProps) => {
-  const { upVector } = useFo3dContext();
   const hoveredLabel = useHoveredLabel3d();
   const isCurrentlyTransforming = useIsCurrentlyTransforming();
   const setHoveredLabel = useSetHoveredLabel3d();
@@ -305,8 +303,6 @@ export const CuboidInstances = ({
 
       const markerGeometry = getCuboidOrientationMarkerGeometry(
         geometry.dimensions,
-        geometry.quaternion,
-        upVector,
       );
       const complementaryColor = new THREE.Color(
         getComplementaryColor(getColor(labelsByIndex[i])),
@@ -337,9 +333,7 @@ export const CuboidInstances = ({
       );
 
       arrowMatrices.push(
-        markerGeometry
-          ? computeArrowheadMatrix(geometry, upVector)
-          : ZERO_SCALE_MATRIX,
+        markerGeometry ? computeArrowheadMatrix(geometry) : ZERO_SCALE_MATRIX,
       );
 
       const axesFloatBase = i * axesSegments * 6;
@@ -435,7 +429,6 @@ export const CuboidInstances = ({
     useLegacyCoordinates,
     overlayRotationFallback,
     showOrientation,
-    upVector,
   ]);
 
   // Dispose the last-built geometries on unmount.

@@ -2,52 +2,23 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import {
   getCuboidOrientationMarkerGeometry,
-  getCuboidOrientationMarkerProps,
+  getCuboidOrientationMarkerPropsFromGeometry,
   getHeadingArrowLengthScale,
 } from "./cuboid-orientation-geometry";
 
 describe("getCuboidOrientationMarkerGeometry", () => {
   it("returns null when the box has no heading extent", () => {
-    expect(
-      getCuboidOrientationMarkerGeometry(
-        [0, 2, 2],
-        new THREE.Quaternion(),
-        null,
-      ),
-    ).toBeNull();
+    expect(getCuboidOrientationMarkerGeometry([0, 2, 2])).toBeNull();
   });
 
   it("anchors at the center of the forward face", () => {
-    const geometry = getCuboidOrientationMarkerGeometry(
-      [4, 2, 2],
-      new THREE.Quaternion(),
-      null,
-    );
+    const geometry = getCuboidOrientationMarkerGeometry([4, 2, 2]);
     expect(geometry).not.toBeNull();
     expect(geometry?.shaftStart).toEqual([2, 0, 0]);
-    // Default up is scene Z-up, so local Z is the vertical axis and the flat
-    // head spreads across Y to stay readable from above.
-    expect(geometry?.spreadAlongZ).toBe(false);
-  });
-
-  it("spreads the head across the other axis with a Y-up vector", () => {
-    const geometry = getCuboidOrientationMarkerGeometry(
-      [4, 2, 2],
-      new THREE.Quaternion(),
-      new THREE.Vector3(0, 1, 0),
-    );
-    expect(geometry).not.toBeNull();
-    // The anchor stays at the face center regardless of which way is up.
-    expect(geometry?.shaftStart).toEqual([2, 0, 0]);
-    expect(geometry?.spreadAlongZ).toBe(true);
   });
 
   it("places the anchor beyond the shaft start by the extension length", () => {
-    const geometry = getCuboidOrientationMarkerGeometry(
-      [4, 2, 2],
-      new THREE.Quaternion(),
-      null,
-    );
+    const geometry = getCuboidOrientationMarkerGeometry([4, 2, 2]);
     expect(geometry).not.toBeNull();
     if (!geometry) return;
     const extensionLength = geometry.anchor.x - geometry.shaftStart[0];
@@ -56,63 +27,28 @@ describe("getCuboidOrientationMarkerGeometry", () => {
     expect(geometry.anchor.z).toBeCloseTo(geometry.shaftStart[2], 6);
   });
 
-  it("produces a positive headLength and headHalfWidth", () => {
-    const geometry = getCuboidOrientationMarkerGeometry(
-      [4, 2, 2],
-      new THREE.Quaternion(),
-      null,
-    );
+  it("produces a positive headLength and headRadius", () => {
+    const geometry = getCuboidOrientationMarkerGeometry([4, 2, 2]);
     expect(geometry?.headLength).toBeGreaterThan(0);
-    expect(geometry?.headHalfWidth).toBeGreaterThan(0);
+    expect(geometry?.headRadius).toBeGreaterThan(0);
   });
 });
 
-describe("getCuboidOrientationMarkerProps", () => {
-  it("returns null when the box has no heading extent", () => {
-    expect(
-      getCuboidOrientationMarkerProps([0, 2, 2], new THREE.Quaternion(), null),
-    ).toBeNull();
-  });
-
-  it("derives shaftEnd/headVertices consistently from the decomposed geometry", () => {
-    const decomposed = getCuboidOrientationMarkerGeometry(
-      [4, 2, 2],
-      new THREE.Quaternion(),
-      null,
-    );
-    const composed = getCuboidOrientationMarkerProps(
-      [4, 2, 2],
-      new THREE.Quaternion(),
-      null,
-    );
+describe("getCuboidOrientationMarkerPropsFromGeometry", () => {
+  it("derives shaftEnd from the decomposed geometry's anchor", () => {
+    const decomposed = getCuboidOrientationMarkerGeometry([4, 2, 2]);
     expect(decomposed).not.toBeNull();
-    expect(composed).not.toBeNull();
-    if (!decomposed || !composed) return;
+    if (!decomposed) return;
 
+    const composed = getCuboidOrientationMarkerPropsFromGeometry(decomposed);
     expect(composed.shaftStart).toEqual(decomposed.shaftStart);
     expect(composed.shaftEnd).toEqual([
       decomposed.anchor.x,
       decomposed.anchor.y,
       decomposed.anchor.z,
     ]);
-
-    // The apex sits headLength further along X than the anchor, at the
-    // same Y/Z.
-    const [apex] = composed.headVertices;
-    expect(apex[0] - decomposed.anchor.x).toBeCloseTo(decomposed.headLength, 6);
-    expect(apex[1]).toBeCloseTo(decomposed.anchor.y, 6);
-    expect(apex[2]).toBeCloseTo(decomposed.anchor.z, 6);
-
-    // The base corners straddle the anchor by ±headHalfWidth along whichever
-    // axis spreadAlongZ selects.
-    const [, base1, base2] = composed.headVertices;
-    const spreadAxis = decomposed.spreadAlongZ ? 2 : 1;
-    expect(
-      base1[spreadAxis] - decomposed.anchor.getComponent(spreadAxis),
-    ).toBeCloseTo(decomposed.headHalfWidth, 6);
-    expect(
-      base2[spreadAxis] - decomposed.anchor.getComponent(spreadAxis),
-    ).toBeCloseTo(-decomposed.headHalfWidth, 6);
+    expect(composed.headLength).toBe(decomposed.headLength);
+    expect(composed.headRadius).toBe(decomposed.headRadius);
   });
 });
 
@@ -142,11 +78,7 @@ describe("getHeadingArrowLengthScale", () => {
 
 describe("arrow length normalization", () => {
   const lengthOf = (dimensions: THREE.Vector3Tuple) => {
-    const geometry = getCuboidOrientationMarkerGeometry(
-      dimensions,
-      new THREE.Quaternion(),
-      null,
-    );
+    const geometry = getCuboidOrientationMarkerGeometry(dimensions);
     if (!geometry) return null;
     // Shaft overhang past the face, plus the head.
     return geometry.anchor.x - geometry.shaftStart[0] + geometry.headLength;
@@ -165,11 +97,7 @@ describe("arrow length normalization", () => {
   });
 
   it("keeps the anchor on the forward face regardless of the arrow length", () => {
-    const geometry = getCuboidOrientationMarkerGeometry(
-      [40, 2, 6],
-      new THREE.Quaternion(),
-      null,
-    );
+    const geometry = getCuboidOrientationMarkerGeometry([40, 2, 6]);
     // Face position still comes from the heading extent, not the arrow scale.
     expect(geometry?.shaftStart).toEqual([20, 0, 0]);
   });
