@@ -109,6 +109,58 @@ describe("MCAP format adapter", () => {
     expect(client.activateSource).not.toHaveBeenCalled();
   });
 
+  it("forwards open cancellation through asset resolution and inventory", async () => {
+    const controller = new AbortController();
+    const client = createClient();
+    const list = vi.fn(async () => [
+      { id: "recording", mediaType: "application/x-mcap", role: "recording" },
+    ]);
+    const resolve = vi.fn(async () => sourceDescriptor);
+    const cancellableSource: EpisodeSource = {
+      assets: { list, resolve },
+      episodeId: "mcap-cancellable-open",
+    };
+
+    const session = await createMcapFormatAdapter({
+      createClient: () => client,
+    }).open(cancellableSource, io, { signal: controller.signal });
+
+    expect(list).toHaveBeenCalledWith({ signal: controller.signal });
+    expect(resolve).toHaveBeenCalledWith("recording", {
+      signal: controller.signal,
+    });
+    expect(client.readTimelineRange).toHaveBeenCalledWith(expect.any(Object), {
+      signal: controller.signal,
+    });
+    expect(client.readTopics).toHaveBeenCalledWith(expect.any(Object), {
+      signal: controller.signal,
+    });
+    session.dispose();
+  });
+
+  it("forwards prewarm cancellation into asset inventory", async () => {
+    const controller = new AbortController();
+    const resolve = vi.fn();
+    const prewarmSource: EpisodeSource = {
+      assets: {
+        list: vi.fn(async (options) => {
+          expect(options?.signal).toBe(controller.signal);
+          controller.abort();
+          return [];
+        }),
+        resolve,
+      },
+      episodeId: "mcap-prewarm-cancel",
+    };
+
+    await expect(
+      createMcapFormatAdapter({ createClient }).prewarm?.(prewarmSource, io, {
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: "EpisodeReadCancelledError" });
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
   it("names streams as topics for the shared viewer", async () => {
     const session = await createMcapFormatAdapter({
       createClient,
@@ -650,6 +702,49 @@ describe("MCAP format adapter", () => {
         status: "empty",
         streamId: "camera",
       });
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("forwards per-call cancellation to raw and point-cloud capabilities", async () => {
+    const client = createClient();
+    client.readPointCloudChannel = vi.fn(async () => ({}) as never);
+    const session = await createMcapFormatAdapter({
+      createClient: () => client,
+    }).open(source, io);
+    const controller = new AbortController();
+    try {
+      await session.rawRecords?.listRawRecordStreams({
+        signal: controller.signal,
+      });
+      await session.rawRecords?.readRawRecord({
+        signal: controller.signal,
+        stream: "camera",
+        timestampNs: 1n,
+      });
+      await session.pointCloudProjection?.readChannel({
+        activeColorBy: "ring",
+        capacity: 1,
+        sampledPointCount: 1,
+        samplePlanKey: "1:1",
+        signal: controller.signal,
+        sourceIndices: new Uint32Array([0]),
+        stream: "camera",
+        timestampNs: 1n,
+      });
+
+      expect(client.readTopics).toHaveBeenLastCalledWith(expect.any(Object), {
+        signal: controller.signal,
+      });
+      expect(client.readRawMessageRecord).toHaveBeenCalledWith(
+        expect.any(Object),
+        { signal: controller.signal },
+      );
+      expect(client.readPointCloudChannel).toHaveBeenCalledWith(
+        expect.any(Object),
+        { signal: controller.signal },
+      );
     } finally {
       session.dispose();
     }

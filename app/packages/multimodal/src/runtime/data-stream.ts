@@ -28,6 +28,7 @@ export interface DataStream<
     readonly capacity: number;
     readonly sampledPointCount: number;
     readonly samplePlanKey: string;
+    readonly signal?: AbortSignal;
     readonly sourceIndices: Uint32Array;
     readonly stream: string;
     readonly timestampNs: bigint;

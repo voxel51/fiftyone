@@ -9,7 +9,22 @@ import { describe, expect, it, vi } from "vitest";
 import { rawNodeToJson } from "../../../../ir/index";
 import type { McapIndexedMessageTime } from "../../reader/index";
 import { resolveMcapTimelineStrategy } from "../timeline";
-import { readMcapRawMessageRecord } from "./read-raw-message-record";
+import { createChunkIndex } from "../inline-client.test-fixtures";
+import {
+  assertRawRecordFallbackWorkBound,
+  assertRawRecordIndexedCandidateBound,
+  assertRawRecordMessageInputBound,
+  assertRawRecordSourceWorkBound,
+  RAW_RECORD_FALLBACK_MAX_ENCODED_BYTES,
+  RAW_RECORD_FALLBACK_MAX_MESSAGES,
+  RAW_RECORD_INDEXED_CANDIDATE_MAX_MESSAGES,
+  RAW_RECORD_MAX_MESSAGE_BYTES,
+  RAW_RECORD_MAX_CHUNKS,
+  RAW_RECORD_MAX_SOURCE_BYTES,
+  RAW_RECORD_MAX_UNCOMPRESSED_BYTES,
+  RAW_RECORD_MAX_WALL_TIME_MS,
+  readMcapRawMessageRecord,
+} from "./read-raw-message-record";
 
 const timeline = resolveMcapTimelineStrategy(undefined);
 
@@ -533,6 +548,256 @@ describe("readMcapRawMessageRecord", () => {
       }),
     ).rejects.toThrow("has no channel");
   });
+
+  it("admits each raw-record work bound and rejects the next unit", () => {
+    expect(() =>
+      assertRawRecordFallbackWorkBound(
+        RAW_RECORD_FALLBACK_MAX_MESSAGES,
+        RAW_RECORD_FALLBACK_MAX_ENCODED_BYTES,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertRawRecordFallbackWorkBound(
+        RAW_RECORD_FALLBACK_MAX_MESSAGES + 1,
+        RAW_RECORD_FALLBACK_MAX_ENCODED_BYTES,
+      ),
+    ).toThrow(/per-read bound/);
+    expect(() =>
+      assertRawRecordFallbackWorkBound(
+        RAW_RECORD_FALLBACK_MAX_MESSAGES,
+        RAW_RECORD_FALLBACK_MAX_ENCODED_BYTES + 1,
+      ),
+    ).toThrow(/per-read bound/);
+    expect(() =>
+      assertRawRecordFallbackWorkBound(
+        RAW_RECORD_FALLBACK_MAX_MESSAGES,
+        RAW_RECORD_FALLBACK_MAX_ENCODED_BYTES,
+        RAW_RECORD_MAX_WALL_TIME_MS,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertRawRecordFallbackWorkBound(
+        RAW_RECORD_FALLBACK_MAX_MESSAGES,
+        RAW_RECORD_FALLBACK_MAX_ENCODED_BYTES,
+        RAW_RECORD_MAX_WALL_TIME_MS + 1,
+      ),
+    ).toThrow(/per-read bound/);
+
+    expect(() =>
+      assertRawRecordIndexedCandidateBound(
+        RAW_RECORD_INDEXED_CANDIDATE_MAX_MESSAGES,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertRawRecordIndexedCandidateBound(
+        RAW_RECORD_INDEXED_CANDIDATE_MAX_MESSAGES + 1,
+      ),
+    ).toThrow(/same-timestamp candidates/);
+
+    expect(() =>
+      assertRawRecordMessageInputBound(RAW_RECORD_MAX_MESSAGE_BYTES),
+    ).not.toThrow();
+    expect(() =>
+      assertRawRecordMessageInputBound(RAW_RECORD_MAX_MESSAGE_BYTES + 1),
+    ).toThrow(/per-message input bound/);
+
+    expect(() =>
+      assertRawRecordSourceWorkBound(
+        RAW_RECORD_MAX_CHUNKS,
+        BigInt(RAW_RECORD_MAX_SOURCE_BYTES),
+        BigInt(RAW_RECORD_MAX_UNCOMPRESSED_BYTES),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertRawRecordSourceWorkBound(
+        RAW_RECORD_MAX_CHUNKS + 1,
+        BigInt(RAW_RECORD_MAX_SOURCE_BYTES),
+        BigInt(RAW_RECORD_MAX_UNCOMPRESSED_BYTES),
+      ),
+    ).toThrow(/indexed-source bound/);
+    expect(() =>
+      assertRawRecordSourceWorkBound(
+        RAW_RECORD_MAX_CHUNKS,
+        BigInt(RAW_RECORD_MAX_SOURCE_BYTES + 1),
+        BigInt(RAW_RECORD_MAX_UNCOMPRESSED_BYTES),
+      ),
+    ).toThrow(/indexed-source bound/);
+    expect(() =>
+      assertRawRecordSourceWorkBound(
+        RAW_RECORD_MAX_CHUNKS,
+        BigInt(RAW_RECORD_MAX_SOURCE_BYTES),
+        BigInt(RAW_RECORD_MAX_UNCOMPRESSED_BYTES + 1),
+      ),
+    ).toThrow(/indexed-source bound/);
+  });
+
+  it("keeps a fallback predecessor scan bounded without changing latest semantics", async () => {
+    const messages = Array.from(
+      { length: RAW_RECORD_FALLBACK_MAX_MESSAGES },
+      (_, index) => jsonMessage({ v: index }, BigInt(index + 1)),
+    );
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages,
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        source: createSource(),
+        timeNs: BigInt(RAW_RECORD_FALLBACK_MAX_MESSAGES),
+        topic: "/state",
+      },
+      timeline,
+    });
+
+    expect(result.logTimeNs).toBe(BigInt(RAW_RECORD_FALLBACK_MAX_MESSAGES));
+    expect(rawNodeToJson(rootOf(result))).toEqual({
+      v: RAW_RECORD_FALLBACK_MAX_MESSAGES - 1,
+    });
+
+    const overflowingReader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: [
+        ...messages,
+        jsonMessage(
+          { v: RAW_RECORD_FALLBACK_MAX_MESSAGES },
+          BigInt(RAW_RECORD_FALLBACK_MAX_MESSAGES + 1),
+        ),
+      ],
+    });
+    await expect(
+      readMcapRawMessageRecord({
+        reader: overflowingReader,
+        request: {
+          source: createSource(),
+          timeNs: BigInt(RAW_RECORD_FALLBACK_MAX_MESSAGES + 1),
+          topic: "/state",
+        },
+        timeline,
+      }),
+    ).rejects.toMatchObject({
+      name: "EpisodeReadUnsupportedError",
+      operation: "raw-record-fallback",
+    });
+  });
+
+  it("stops a fallback scan promptly when its signal aborts", async () => {
+    const controller = new AbortController();
+    let yielded = 0;
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: Array.from({ length: 4 }, (_, index) =>
+        jsonMessage({ v: index }, BigInt(index + 1)),
+      ),
+      onYield: () => {
+        yielded += 1;
+        if (yielded === 1) controller.abort();
+      },
+    });
+
+    await expect(
+      readMcapRawMessageRecord({
+        reader,
+        request: {
+          source: createSource(),
+          timeNs: 4n,
+          topic: "/state",
+        },
+        signal: controller.signal,
+        timeline,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(yielded).toBe(1);
+  });
+
+  it("fails the wall-time bound when the fallback iterator never yields", async () => {
+    vi.useFakeTimers();
+    try {
+      const reader = createReader({
+        channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      });
+      reader.readMessages = vi.fn(async function* () {
+        yield* [];
+        await new Promise<void>(() => undefined);
+      });
+      const read = readMcapRawMessageRecord({
+        reader,
+        request: { source: createSource(), timeNs: 1n, topic: "/state" },
+        timeline,
+      });
+      const rejection = expect(read).rejects.toMatchObject({
+        name: "EpisodeReadUnsupportedError",
+        operation: "raw-record-wall-time",
+      });
+
+      await vi.advanceTimersByTimeAsync(RAW_RECORD_MAX_WALL_TIME_MS);
+
+      await rejection;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("refuses oversized indexed source work before scanning messages", async () => {
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      chunkIndexes: [
+        createChunkIndex({
+          chunkLength: BigInt(RAW_RECORD_MAX_SOURCE_BYTES + 1),
+          messageEndTime: 10n,
+          messageStartTime: 0n,
+        }),
+      ],
+      messages: [jsonMessage({ v: 1 }, 1n)],
+    });
+
+    await expect(
+      readMcapRawMessageRecord({
+        reader,
+        request: { source: createSource(), timeNs: 1n, topic: "/state" },
+        timeline,
+      }),
+    ).rejects.toMatchObject({
+      name: "EpisodeReadUnsupportedError",
+      operation: "raw-record-source-work",
+    });
+    expect(reader.readMessages).not.toHaveBeenCalled();
+  });
+
+  it("refuses an oversized predecessor chunk before prefetching it", async () => {
+    const prefetchChunkData = vi.fn(async () => undefined);
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      chunkIndexes: [
+        createChunkIndex({
+          chunkLength: BigInt(RAW_RECORD_MAX_SOURCE_BYTES + 1),
+          chunkStartOffset: 1_000n,
+          messageEndTime: 1n,
+          messageStartTime: 1n,
+        }),
+      ],
+      messages: [jsonMessage({ v: 1 }, 1n)],
+      prefetchChunkData,
+      readLatestIndexedMessageTimes: async () =>
+        new Map([
+          [
+            "/state",
+            [indexedEntry({ chunkStartOffset: 1_000n, logTimeNs: 1n })],
+          ],
+        ]),
+    });
+
+    await expect(
+      readMcapRawMessageRecord({
+        reader,
+        request: { source: createSource(), timeNs: 1n, topic: "/state" },
+        timeline,
+      }),
+    ).rejects.toMatchObject({ operation: "raw-record-source-work" });
+    expect(prefetchChunkData).not.toHaveBeenCalled();
+    expect(reader.readMessages).not.toHaveBeenCalled();
+  });
 });
 
 function protobufMessage(
@@ -575,14 +840,18 @@ function ros2IdlTelemetryMessage(record: Record<string, unknown>): Uint8Array {
 
 function createReader({
   channel = createChannel({ messageEncoding: "protobuf", topic: "/telemetry" }),
+  chunkIndexes = [],
   messages = [],
+  onYield,
   prefetchChunkData,
   readIndexedMessageTimes,
   readLatestIndexedMessageTimes,
   schema = createSchema(TELEMETRY_SCHEMA_DATA),
 }: {
   readonly channel?: McapTypes.TypedMcapRecords["Channel"];
+  readonly chunkIndexes?: readonly McapTypes.TypedMcapRecords["ChunkIndex"][];
   readonly messages?: readonly McapTypes.TypedMcapRecords["Message"][];
+  readonly onYield?: () => void;
   readonly prefetchChunkData?: (request: {
     readonly chunkStartOffsets: readonly bigint[];
   }) => Promise<void>;
@@ -599,7 +868,7 @@ function createReader({
 }) {
   return {
     channelsById: new Map([[channel.id, channel]]),
-    chunkIndexes: [],
+    chunkIndexes,
     prefetchChunkData,
     readIndexedMessageTimes,
     readLatestIndexedMessageTimes,
@@ -614,6 +883,7 @@ function createReader({
         if (args?.endTime !== undefined && message.logTime > args.endTime) {
           continue;
         }
+        onYield?.();
         yield message;
       }
     }),

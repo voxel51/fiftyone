@@ -179,7 +179,9 @@ export interface SynchronizedReadAcceleration {
 
 /** Optional fast path for transform-window assembly. */
 export interface TransformReadAcceleration {
-  readBootstrap?(): Promise<readonly TransformSample[]>;
+  readBootstrap?(options?: {
+    readonly signal?: AbortSignal;
+  }): Promise<readonly TransformSample[]>;
   /**
    * Reads an edge-complete held placement at one timeline time. A null result
    * means completeness could not be proven within the adapter's bounded
@@ -194,6 +196,7 @@ export interface TransformReadAcceleration {
 /** Exact-time transform placement requested from an accelerated adapter. */
 export interface TransformPlacementReadRequest {
   readonly requiredDynamicChildFrameIds: readonly string[];
+  readonly signal?: AbortSignal;
   readonly timeNs: bigint;
 }
 
@@ -210,6 +213,7 @@ export interface SynchronizedPlaybackReadRequest {
   readonly pointCloudColorBy?: Readonly<Record<StreamId, string>>;
   readonly streamPolicies?: StreamSyncPolicies;
   readonly streams: readonly StreamId[];
+  readonly signal?: AbortSignal;
   readonly timeNs: bigint;
 }
 
@@ -226,6 +230,7 @@ export interface SynchronizedPlaybackBatchReadRequest {
 /** Optional controls for a synchronized playback batch. */
 export interface SynchronizedPlaybackReadOptions {
   readonly priority?: ReadPriority;
+  readonly signal?: AbortSignal;
 }
 
 /**
@@ -319,10 +324,13 @@ export interface NumericSeriesSliceResult {
 
 /** Optional semantic capability for bounded raw-record inspection. */
 export interface RawRecordCapability {
-  listRawRecordStreams(): Promise<readonly RawRecordStream[]>;
+  listRawRecordStreams(options?: {
+    readonly signal?: AbortSignal;
+  }): Promise<readonly RawRecordStream[]>;
   readRawRecord(request: {
     readonly includeFullJson?: boolean;
     readonly prune?: RawRecordPruneBudgets;
+    readonly signal?: AbortSignal;
     readonly stream: StreamId;
     readonly timestampNs: bigint;
   }): Promise<RawRecordResult>;
@@ -335,6 +343,7 @@ export interface PointCloudProjectionCapability {
     readonly capacity: number;
     readonly sampledPointCount: number;
     readonly samplePlanKey: string;
+    readonly signal?: AbortSignal;
     readonly sourceIndices: Uint32Array;
     readonly stream: StreamId;
     readonly timestampNs: bigint;

@@ -24,3 +24,22 @@ export function isEpisodeReadCancelledError(error: unknown): boolean {
       ("code" in error && error.code === EPISODE_READ_CANCELLED_CODE))
   );
 }
+
+/** Stable code for a generic read that cannot prove bounded correctness. */
+export const EPISODE_READ_UNSUPPORTED_CODE = "episode-read-unsupported";
+
+/**
+ * Typed failure returned instead of scanning unbounded history or publishing a
+ * semantically incorrect prefix from a generic adapter.
+ */
+export class EpisodeReadUnsupportedError extends Error {
+  readonly code = EPISODE_READ_UNSUPPORTED_CODE;
+
+  constructor(
+    readonly operation: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "EpisodeReadUnsupportedError";
+  }
+}

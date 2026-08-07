@@ -206,6 +206,122 @@ describe("MCAP playback worker transport", () => {
     });
   });
 
+  it("aborts one blocked stream without disturbing a concurrent stream", async () => {
+    const worker = createWorker();
+    const transport = new McapPlaybackWorkerTransport(() => true);
+    const firstController = new AbortController();
+    const secondController = new AbortController();
+    const removeFirst = vi.spyOn(firstController.signal, "removeEventListener");
+    const first = transport.stream(
+      worker,
+      "source:1",
+      "readDecodedMessages",
+      { source: createSource(), topics: ["/first"] },
+      undefined,
+      firstController.signal,
+    );
+    const second = transport.stream(
+      worker,
+      "source:1",
+      "readDecodedMessages",
+      { source: createSource(), topics: ["/second"] },
+      undefined,
+      secondController.signal,
+    );
+    const firstNext = first.next();
+    const secondNext = second.next();
+
+    firstController.abort();
+
+    await expect(firstNext).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
+    expect(worker.postMessage).toHaveBeenCalledWith({ id: 1, type: "cancel" });
+    expect(removeFirst).toHaveBeenCalledWith("abort", expect.any(Function));
+
+    transport.handleResponse({
+      done: false,
+      id: 1,
+      item: createDecodedMessage(1n),
+      ok: true,
+      stream: true,
+    });
+    transport.handleResponse({
+      done: false,
+      id: 2,
+      item: createDecodedMessage(2n),
+      ok: true,
+      stream: true,
+    });
+    await expect(secondNext).resolves.toEqual({
+      done: false,
+      value: createDecodedMessage(2n),
+    });
+    expect(secondController.signal.aborted).toBe(false);
+    await second.return(undefined);
+  });
+
+  it("does not register or post a pre-aborted stream request", async () => {
+    const worker = createWorker();
+    const transport = new McapPlaybackWorkerTransport(() => true);
+    const controller = new AbortController();
+    const add = vi.spyOn(controller.signal, "addEventListener");
+    controller.abort();
+
+    const next = transport
+      .stream(
+        worker,
+        "source:1",
+        "readDecodedMessages",
+        { source: createSource(), topics: ["/camera"] },
+        undefined,
+        controller.signal,
+      )
+      .next();
+
+    await expect(next).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
+    expect(add).not.toHaveBeenCalled();
+    expect(worker.postMessage).not.toHaveBeenCalled();
+    expect(transport.isIdle()).toBe(true);
+  });
+
+  it("does not yield completed worker replies after the consumer aborts between messages", async () => {
+    const worker = createWorker();
+    const transport = new McapPlaybackWorkerTransport(() => true);
+    const controller = new AbortController();
+    const stream = transport.stream(
+      worker,
+      "source:1",
+      "readDecodedMessages",
+      { source: createSource(), topics: ["/camera"] },
+      undefined,
+      controller.signal,
+    );
+    const first = stream.next();
+    transport.handleResponse({
+      done: false,
+      id: 1,
+      item: createDecodedMessage(1n),
+      ok: true,
+      stream: true,
+    });
+    transport.handleResponse({
+      done: false,
+      id: 1,
+      item: createDecodedMessage(2n),
+      ok: true,
+      stream: true,
+    });
+    transport.handleResponse({ done: true, id: 1, ok: true, stream: true });
+
+    await expect(first).resolves.toMatchObject({
+      done: false,
+      value: { timelineTimeNs: 1n },
+    });
+    controller.abort();
+
+    await expect(stream.next()).rejects.toThrow(EPISODE_READ_CANCELLED_MESSAGE);
+    expect(transport.isIdle()).toBe(true);
+  });
+
   it("finishes inactive streams instead of leaving readers pending", async () => {
     const worker = createWorker();
     const transport = new McapPlaybackWorkerTransport(() => false);

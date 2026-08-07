@@ -16,8 +16,11 @@ export interface AssetDescriptor {
 
 /** Resolves one or more physical assets that make up an episode. */
 export interface AssetResolver {
-  list(): Promise<readonly AssetDescriptor[]>;
-  resolve(assetId: string): Promise<ByteSourceDescriptor>;
+  list(options?: EpisodeOpenOptions): Promise<readonly AssetDescriptor[]>;
+  resolve(
+    assetId: string,
+    options?: EpisodeOpenOptions,
+  ): Promise<ByteSourceDescriptor>;
 }
 
 /** Format-neutral source supplied to an adapter. */
@@ -37,8 +40,11 @@ export interface SampleDescriptor {
 /** Tiny lazy-registration record kept at the composition root. */
 export interface AdapterDescriptor {
   readonly id: string;
-  detect(sample: SampleDescriptor): boolean | Promise<boolean>;
-  load(): Promise<FormatAdapter>;
+  detect(
+    sample: SampleDescriptor,
+    options?: EpisodeOpenOptions,
+  ): boolean | Promise<boolean>;
+  load(options?: EpisodeOpenOptions): Promise<FormatAdapter>;
 }
 
 /** One lightweight poster request made before a full episode session opens. */

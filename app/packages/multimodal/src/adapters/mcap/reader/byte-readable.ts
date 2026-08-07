@@ -135,6 +135,8 @@ export class ByteClientReadable implements McapTypes.IReadable {
   }
 
   async size(): Promise<bigint> {
+    const signal = this.options.readSignal?.current ?? undefined;
+    if (signal?.aborted) throw createAbortError("MCAP read aborted");
     const sizeBytes = sourceSizeBytes(this.source);
     if (sizeBytes !== undefined) {
       // Metadata-provided sizes can make a warm persistent-cache session
@@ -152,6 +154,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
     // Prefer cheap transport metadata before doing a tiny ranged GET; many
     // object stores allow range reads but block HEAD, so both paths are needed.
     const statSource = await this.byteClient.stat?.(this.source);
+    if (signal?.aborted) throw createAbortError("MCAP read aborted");
     if (statSource) {
       this.updateSource(statSource);
     }
@@ -162,6 +165,7 @@ export class ByteClientReadable implements McapTypes.IReadable {
 
     const result = await this.byteClient.readBytes({
       range: { length: 1n, offset: 0n },
+      ...(signal ? { signal } : {}),
       source: this.source,
     });
     this.updateSource(result.source);

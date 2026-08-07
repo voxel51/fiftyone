@@ -9,6 +9,7 @@ import {
   createReader,
   createTestDecodeClient,
 } from "./inline-client.test-fixtures";
+import { RAW_RECORD_MAX_WALL_TIME_MS } from "./operations/read-raw-message-record";
 
 describe("MCAP reader lifecycle", () => {
   it("reads log timeline range from chunk indexes without scanning messages", async () => {
@@ -135,5 +136,79 @@ describe("MCAP reader lifecycle", () => {
       startTimeNs: 10n,
     });
     expect(readerFactory).toHaveBeenCalledTimes(2);
+  });
+
+  it("interrupts blocked inventory initialization with its open signal", async () => {
+    const controller = new AbortController();
+    const readBytes = vi.fn(
+      (request: { readonly signal?: AbortSignal }) =>
+        new Promise<never>((_resolve, reject) => {
+          request.signal?.addEventListener(
+            "abort",
+            () => reject(request.signal?.reason),
+            { once: true },
+          );
+        }),
+    );
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes },
+      readerFactory: vi.fn(async (_source, readable) => {
+        await readable.read(0n, 1n);
+        return createReader();
+      }),
+    });
+    const range = client.readTimelineRange(
+      { source: createMcapSourceDescriptor() },
+      { signal: controller.signal },
+    );
+
+    await vi.waitFor(() => expect(readBytes).toHaveBeenCalledOnce());
+    controller.abort();
+
+    await expect(range).rejects.toMatchObject({ name: "AbortError" });
+    expect(readBytes.mock.calls[0]?.[0].signal).toBe(controller.signal);
+  });
+
+  it("aborts blocked raw-record byte work at the wall-time bound", async () => {
+    vi.useFakeTimers();
+    try {
+      let byteSignal: AbortSignal | undefined;
+      const readBytes = vi.fn(
+        (request: { readonly signal?: AbortSignal }) =>
+          new Promise<never>((_resolve, reject) => {
+            byteSignal = request.signal;
+            request.signal?.addEventListener(
+              "abort",
+              () => reject(new Error("byte read aborted")),
+              { once: true },
+            );
+          }),
+      );
+      const client = createInlineMcapResourceClient({
+        byteClient: { readBytes },
+        readerFactory: vi.fn(async (_source, readable) => {
+          await readable.read(0n, 1n);
+          return createReader();
+        }),
+      });
+      const read = client.readRawMessageRecord({
+        source: createMcapSourceDescriptor(),
+        timeNs: 1n,
+        topic: "/state",
+      });
+      const rejection = expect(read).rejects.toMatchObject({
+        name: "EpisodeReadUnsupportedError",
+        operation: "raw-record-wall-time",
+      });
+      await Promise.resolve();
+      expect(readBytes).toHaveBeenCalledOnce();
+
+      await vi.advanceTimersByTimeAsync(RAW_RECORD_MAX_WALL_TIME_MS);
+
+      await rejection;
+      expect(byteSignal?.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -972,6 +972,7 @@ export interface McapResourceClient {
    */
   readTimelineRange(
     request: McapReadTimelineRangeRequest,
+    options?: McapResourceReadOptions,
   ): Promise<McapTimelineRange>;
 
   /**
@@ -979,6 +980,7 @@ export interface McapResourceClient {
    */
   readTopics(
     request: McapReadTopicsRequest,
+    options?: McapResourceReadOptions,
   ): Promise<readonly StreamInventory[]>;
 
   /**
@@ -1024,11 +1026,13 @@ export interface McapResourceClient {
    */
   readRawMessageRecord(
     request: McapReadRawMessageRecordRequest,
+    options?: McapResourceReadOptions,
   ): Promise<McapRawMessageRecordResult>;
 
   /** Projects one replacement point-cloud channel without rebuilding XYZ. */
   readPointCloudChannel?(
     request: McapReadPointCloudChannelRequest,
+    options?: McapResourceReadOptions,
   ): Promise<McapPointCloudChannelResult>;
 
   /**
@@ -1036,6 +1040,7 @@ export interface McapResourceClient {
    */
   readFrameTransformBootstrap(
     request: McapReadFrameTransformBootstrapRequest,
+    options?: McapResourceReadOptions,
   ): Promise<McapFrameTransformSet>;
 
   /**
@@ -1051,6 +1056,7 @@ export interface McapResourceClient {
    */
   readSynchronizedMessages(
     request: McapReadSynchronizedMessagesRequest,
+    options?: McapResourceReadOptions,
   ): Promise<McapSynchronizedMessageWindow>;
 
   /**
