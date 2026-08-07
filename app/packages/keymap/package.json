@@ -1,0 +1,36 @@
+{
+    "name": "@fiftyone/keymap",
+    "version": "1.0.0",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "watch": "nodemon --watch ./src --ext js,jsx,ts,tsx --exec 'yarn build'",
+        "test": "vitest"
+    },
+    "files": [
+        "dist"
+    ],
+    "main": "src/index.ts",
+    "devDependencies": {
+        "@testing-library/dom": "catalog:",
+        "@testing-library/react": "catalog:",
+        "@typescript-eslint/eslint-plugin": "^6.0.0",
+        "@typescript-eslint/parser": "^6.0.0",
+        "eslint": "catalog:",
+        "jsdom": "^26.0.0",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "typescript": "catalog:",
+        "vite": "catalog:",
+        "vite-plugin-externals": "catalog:",
+        "vitest": "catalog:"
+    },
+    "fiftyone": {
+        "script": "dist/index.umd.js"
+    },
+    "peerDependencies": {
+        "jotai": "*",
+        "react": "*"
+    }
+}
