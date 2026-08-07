@@ -12,6 +12,8 @@ export * from "./useBrowserStorage";
 export { default as useClearModal } from "./useClearModal";
 export { default as useCreateLooker } from "./useCreateLooker";
 export { default as useDimensions } from "./useDimensions";
+export { default as useDatasetName } from "./useDatasetName";
+export { default as useFilters } from "./useFilters";
 export * from "./useExpandSample";
 export { default as useExpandSample } from "./useExpandSample";
 export { default as useHelpPanel } from "./useHelpPanel";
@@ -61,6 +63,7 @@ export {
 } from "./useUnboundState";
 export { default as useUpdateSamples } from "./useUpdateSamples";
 export { default as withSuspense } from "./withSuspense";
+export * from "./plugins";
 
 // types
 export * from "./types";

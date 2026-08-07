@@ -26,9 +26,15 @@ import {
   RESOLVE_TYPE_TTL,
 } from "./constants";
 import {
+  FALLBACK_PLUGIN_SCOPES,
+  pluginRequiresDataset,
+  PluginScope,
+} from "@fiftyone/plugins/src/PluginScope";
+import {
   ExecutionContext,
   InvocationRequestQueue,
   OperatorResult,
+  type RawContext,
   executeOperatorWithContext,
   getInvocationRequestQueue,
   getLocalOrRemoteOperator,
@@ -44,6 +50,8 @@ import {
 } from "./ts";
 import { generateOperatorSessionId, optimizeCtx } from "./utils";
 import { ValidationContext } from "./validation";
+import { useOperatorContextSelector } from "@fiftyone/plugins/src/context";
+import type { OperatorContextSelector } from "@fiftyone/plugins/src/Runtime/types";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -95,70 +103,41 @@ export const usePromptOperatorInput = () => {
   return prompt;
 };
 
-const globalContextSelector = selector({
-  key: "globalContext",
-  get: ({ get }) => {
-    const modal = !!get(fos.modal);
-    const datasetName = get(fos.datasetName);
-    const view = get(fos.view);
-    const extended = get(fos.extendedStages);
-    const filters = get(fos.filters);
-    const selectedSamples = get(fos.selectedSamples);
-    const sampleSelectionStyle = get(fos.sampleSelectionStyle);
-    const labelSelectionStyle = get(fos.labelSelectionStyle);
-    const selectedLabels = get(fos.selectedLabels);
-    const viewName = get(fos.viewName);
-    const extendedSelection = get(fos.extendedSelection);
-    const groupSlice = get(fos.groupSlice);
-    const queryPerformance = get(fos.queryPerformance);
-    const spaces = get(fos.sessionSpaces);
-    const workspaceName = spaces?._name;
-    const activeFields = get(fos.activeFields({ modal }));
-
-    return {
-      datasetName,
-      view,
-      extended,
-      filters,
-      selectedSamples,
-      sampleSelectionStyle,
-      labelSelectionStyle,
-      selectedLabels,
-      viewName,
-      extendedSelection,
-      groupSlice,
-      queryPerformance,
-      spaces,
-      workspaceName,
-      activeFields,
-    };
-  },
-});
-
 const currentContextSelector = selectorFamily({
   key: "currentContextSelector",
   get:
-    (operatorName) =>
+    ({
+      contextSelector,
+      operatorName,
+    }: {
+      contextSelector: OperatorContextSelector;
+      operatorName: string;
+    }) =>
     ({ get }) => {
-      const globalContext = get(globalContextSelector);
+      const globalContext = get(contextSelector) as object;
       const params = get(currentOperatorParamsSelector(operatorName));
-      return {
-        ...globalContext,
-        params,
-      };
+      return { ...globalContext, params };
     },
 });
 
 export function useGlobalExecutionContext(): ExecutionContext {
-  const globalCtx = useRecoilValue(globalContextSelector);
+  const contextSelector = useOperatorContextSelector();
+  const globalCtx = useRecoilValue(contextSelector);
+  const activeScope = useRecoilValue(activeScopeAtom);
   const ctx = useMemo(() => {
-    return new ExecutionContext({}, globalCtx);
-  }, [globalCtx]);
+    return new ExecutionContext({}, {
+      ...(globalCtx as Partial<RawContext>),
+      activeScope,
+    } as RawContext);
+  }, [globalCtx, activeScope]);
   return ctx;
 }
 
 const useExecutionContext = (operatorName, hooks = {}) => {
-  const curCtx = useRecoilValue(currentContextSelector(operatorName));
+  const contextSelector = useOperatorContextSelector();
+  const curCtx = useRecoilValue(
+    currentContextSelector({ contextSelector, operatorName }),
+  ) as any;
   const currentSample = useCurrentSample();
   const {
     datasetName,
@@ -179,6 +158,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     activeFields,
   } = curCtx;
   const [analyticsInfo] = useAnalyticsInfo();
+  const activeScope = useRecoilValue(activeScopeAtom);
   const promptingOperator = useRecoilValue(promptingOperatorState);
   const promptId = promptingOperator?.id || null;
   const ctx = useMemo(() => {
@@ -203,6 +183,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         workspaceName,
         promptId,
         activeFields,
+        activeScope,
       },
       hooks,
     );
@@ -227,6 +208,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     workspaceName,
     promptId,
     activeFields,
+    activeScope,
   ]);
 
   return ctx;
@@ -827,6 +809,11 @@ export const operatorsInitializedAtom = atom({
   default: false,
 });
 
+export const activeScopeAtom = atom<PluginScope>({
+  key: "activeScopeAtom",
+  default: PluginScope.DATASET_SAMPLES_GRID,
+});
+
 export const availableOperators = selector({
   key: "availableOperators",
   get: ({ get }) => {
@@ -844,10 +831,31 @@ export const availableOperators = selector({
         icon: operator.config.icon,
         darkIcon: operator.config.darkIcon,
         lightIcon: operator.config.lightIcon,
+        scopes: operator.config.scopes,
       };
     });
   },
 });
+
+export function isInScope(
+  scopes: PluginScope[] | undefined,
+  scope: PluginScope,
+) {
+  const pluginScopes = scopes ?? FALLBACK_PLUGIN_SCOPES;
+  return pluginScopes.includes(scope) || pluginScopes.includes(PluginScope.ALL);
+}
+
+export { pluginRequiresDataset };
+
+export function assertInScope(
+  uri: string,
+  scopes: PluginScope[] | undefined,
+  scope: PluginScope,
+) {
+  if (!isInScope(scopes, scope)) {
+    throw new Error(`Operator "${uri}" is not supported in this scope`);
+  }
+}
 
 export const operatorBrowserVisibleState = atom({
   key: "operatorBrowserVisibleState",
@@ -886,26 +894,31 @@ function sortResults(results, recentlyUsedOperators) {
     });
 }
 
-export const operatorBrowserChoices = selector({
+export const operatorBrowserChoices = selectorFamily({
   key: "operatorBrowserChoices",
-  get: ({ get }) => {
-    const allChoices = get(availableOperators);
-    const query = get(operatorBrowserQueryState);
-    let results = [...allChoices];
-    results = results.filter(({ unlisted }) => !unlisted);
-    if (query && query.length > 0) {
-      results = filterChoicesByQuery(query, results);
-    }
-    return sortResults(results, get(recentlyUsedOperatorsState));
-  },
+  get:
+    (scope: PluginScope) =>
+    ({ get }) => {
+      const allChoices = get(availableOperators);
+      const query = get(operatorBrowserQueryState);
+      let results = [...allChoices];
+      results = results.filter(({ unlisted }) => !unlisted);
+      results = results.filter(({ scopes }) => isInScope(scopes, scope));
+      if (query && query.length > 0) {
+        results = filterChoicesByQuery(query, results);
+      }
+      return sortResults(results, get(recentlyUsedOperatorsState));
+    },
 });
-export const operatorDefaultChoice = selector({
+export const operatorDefaultChoice = selectorFamily({
   key: "operatorDefaultChoice",
-  get: ({ get }) => {
-    const choices = get(operatorBrowserChoices);
-    const firstOperatorName = choices?.[0]?.value;
-    return firstOperatorName || null;
-  },
+  get:
+    (scope: PluginScope) =>
+    ({ get }) => {
+      const choices = get(operatorBrowserChoices(scope));
+      const firstOperatorName = choices?.[0]?.value;
+      return firstOperatorName || null;
+    },
 });
 export const operatorChoiceState = atom({
   key: "operatorChoiceState",
@@ -928,12 +941,57 @@ export function useCurrentSample() {
   return currentSample.state === "hasValue" ? currentSample.contents : null;
 }
 
+let activeScope: PluginScope = PluginScope.DATASET_SAMPLES_GRID;
+const activeScopeStack: { scope: PluginScope; previous: PluginScope }[] = [];
+
+export function getActiveScope(): PluginScope {
+  return activeScope;
+}
+
+export function useActiveScope(): PluginScope {
+  return useRecoilValue(activeScopeAtom);
+}
+
+/**
+ * Declares the scope operators are executed from while the calling component
+ * is mounted. The value rides along on every operator request as
+ * `active_scope`.
+ *
+ * @param scope the scope to activate on mount
+ * @param restore whether to restore the previously active scope on unmount
+ */
+export function useSetActiveScope(scope: PluginScope, restore = false) {
+  const setActiveScopeAtom = useSetRecoilState(activeScopeAtom);
+  useEffect(() => {
+    const previous = getActiveScope();
+    const entry = { scope, previous };
+    activeScopeStack.push(entry);
+    activeScope = scope;
+    setActiveScopeAtom(scope);
+
+    return () => {
+      const index = activeScopeStack.indexOf(entry);
+      const wasActive = index === activeScopeStack.length - 1;
+      if (index !== -1) {
+        if (!wasActive) activeScopeStack[index + 1].previous = previous;
+        activeScopeStack.splice(index, 1);
+      }
+      if (restore && wasActive) {
+        const restoredScope = activeScopeStack.at(-1)?.scope ?? entry.previous;
+        activeScope = restoredScope;
+        setActiveScopeAtom(restoredScope);
+      }
+    };
+  }, [scope, restore, setActiveScopeAtom]);
+}
+
 export function useOperatorBrowser() {
   const [isVisible, setIsVisible] = useRecoilState(operatorBrowserVisibleState);
   const [query, setQuery] = useRecoilState(operatorBrowserQueryState);
   const [selected, setSelected] = useRecoilState(operatorChoiceState);
-  const defaultSelected = useRecoilValue(operatorDefaultChoice);
-  const choices = useRecoilValue(operatorBrowserChoices);
+  const activeScope = useRecoilValue(activeScopeAtom);
+  const defaultSelected = useRecoilValue(operatorDefaultChoice(activeScope));
+  const choices = useRecoilValue(operatorBrowserChoices(activeScope));
   const promptForInput = usePromptOperatorInput();
   const isOperatorPaletteOpened = useRecoilValue(operatorPaletteOpened);
   const editingField = useRecoilValue(fos.editingFieldAtom);
@@ -1164,6 +1222,7 @@ export function useOperatorExecutor(
   const [isDelegated, setIsDelegated] = useState(false);
 
   const [needsOutput, setNeedsOutput] = useState(false);
+  const contextSelector = useOperatorContextSelector();
   const context = useExecutionContext(uri);
   const currentSample = useCurrentSample();
   const hooks = operator?.useHooks?.(context) ?? {};
@@ -1189,16 +1248,26 @@ export function useOperatorExecutor(
         return;
       }
 
-      const { delegationTarget, requestDelegation, skipOutput, callback } =
-        options || {};
+      const {
+        delegationTarget,
+        requestDelegation,
+        skipOutput,
+        callback,
+        scope,
+      } = options || {};
+      const activeScope = scope ?? getActiveScope();
       setIsExecuting(true);
       const { params, ...currentContext } = await state.snapshot.getPromise(
-        currentContextSelector(uri),
+        currentContextSelector({ contextSelector, operatorName: uri }),
       );
 
       const ctx = new ExecutionContext(
         paramOverrides || params,
-        { ...currentContext, currentSample },
+        {
+          ...currentContext,
+          currentSample,
+          activeScope,
+        },
         hooks,
       );
       ctx.state = state;
@@ -1207,6 +1276,7 @@ export function useOperatorExecutor(
       try {
         ctx.hooks = hooks;
         ctx.state = state;
+        assertInScope(uri, operator.config?.scopes, ctx.activeScope);
         const result = await executeOperatorWithContext(uri, ctx);
         setNeedsOutput(
           skipOutput ? false : await operator.needsOutput(ctx, result),
@@ -1245,7 +1315,7 @@ export function useOperatorExecutor(
       setHasExecuted(true);
       setIsExecuting(false);
     },
-    [currentSample, context, loadResult],
+    [contextSelector, currentSample, context, loadResult],
   );
   return {
     isExecuting,

@@ -108,7 +108,7 @@ function getSchema(property, options = {}) {
     typeof options.readOnly === "boolean" ? options.readOnly : options.isOutput;
   const schema = {
     type,
-    view: { readOnly, ...getViewSchema(property) },
+    view: { ...getViewSchema(property), readOnly },
     default: defaultValue,
     onChange: property.onChange,
     required,
@@ -119,10 +119,10 @@ function getSchema(property, options = {}) {
   const computedOptions = { ...options, readOnly: schema.view.readOnly };
 
   if (typeName === "Number") {
-    const { min, max, float } = property.type;
+    const { min, max, float, step } = property.type;
     schema.min = min;
     schema.max = max;
-    schema.multipleOf = float ? 0.01 : 1;
+    schema.multipleOf = step ?? (float ? undefined : 1);
   }
 
   if (typeName === "Object") {
@@ -221,14 +221,21 @@ export function operatorToIOSchema(operatorSchema, options?) {
   return getSchema(operatorSchema, options);
 }
 
-export function getErrorsByPath(errors: []) {
+export type ValidationError = { path: string; [key: string]: unknown };
+
+export function getErrorsByPath(
+  errors: ValidationError[],
+): Record<string, ValidationError[]> {
   if (!Array.isArray(errors)) return {};
-  return errors.reduce((pathErrors, error) => {
-    const { path } = error;
-    if (!pathErrors[path]) pathErrors[path] = [];
-    pathErrors[path].push(error);
-    return pathErrors;
-  }, {});
+  return errors.reduce(
+    (pathErrors, error) => {
+      const { path } = error;
+      if (!pathErrors[path]) pathErrors[path] = [];
+      pathErrors[path].push(error);
+      return pathErrors;
+    },
+    {} as Record<string, ValidationError[]>,
+  );
 }
 
 export function log(...args) {

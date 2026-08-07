@@ -1,7 +1,9 @@
 import {
   Layout,
+  PANEL_AREA,
   SpaceNode,
   useInitializePanel,
+  usePanelArea,
   usePanelTitle,
   usePanels,
   useSetPanelStateById,
@@ -25,6 +27,7 @@ import {
   useSetRecoilState,
 } from "recoil";
 import { loadPlugins } from "@fiftyone/plugins";
+import { PluginScope } from "@fiftyone/plugins/src/PluginScope";
 import { useOperatorExecutor } from ".";
 import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
 import { useRefreshOperators } from "./loader";
@@ -54,6 +57,27 @@ import type {
 const { FIFTYONE_GRID_SPACES_ID, FIFTYONE_MODAL_SPACES_ID, PANEL_SURFACE } =
   fos.constants;
 
+const SAMPLES_PAGE_SCOPES = [
+  PluginScope.DATASET_SAMPLES_GRID,
+  PluginScope.DATASET_SAMPLE_MODAL,
+];
+
+function useTargetPanelSpaces() {
+  const isModalOpen = useRecoilValue(fos.isModalActive);
+  const spacesId = isModalOpen
+    ? FIFTYONE_MODAL_SPACES_ID
+    : FIFTYONE_GRID_SPACES_ID;
+  const { spaces } = useSpaces(spacesId);
+  const openedPanels = useSpaceNodes(spacesId);
+  const surface = isModalOpen ? PANEL_SURFACE.MODAL : PANEL_SURFACE.GRID;
+  return { openedPanels, surface, spaces };
+}
+
+function isPanelOnSurface(panel, surface) {
+  const surfaces = panel?.panelOptions?.surfaces || PANEL_SURFACE.GRID;
+  return surfaces.includes(surface);
+}
+
 //
 // BUILT-IN OPERATORS
 //
@@ -63,6 +87,7 @@ class ReloadSamples extends Operator {
     return new OperatorConfig({
       name: "reload_samples",
       label: "Reload samples from the dataset",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -76,6 +101,7 @@ class ReloadDataset extends Operator {
     return new OperatorConfig({
       name: "reload_dataset",
       label: "Reload the dataset",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks() {
@@ -111,6 +137,7 @@ class ClearSelectedSamples extends Operator {
     return new OperatorConfig({
       name: "clear_selected_samples",
       label: "Clear selected samples",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -125,6 +152,7 @@ class CopyViewAsJSON extends Operator {
     return new OperatorConfig({
       name: "copy_view_as_json",
       label: "Copy view as JSON",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -140,6 +168,7 @@ class ViewFromJSON extends Operator {
     return new OperatorConfig({
       name: "view_from_clipboard",
       label: "Paste view from clipboard",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -160,6 +189,7 @@ class OpenPanel extends Operator {
       name: "open_panel",
       label: "Open a panel",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -183,6 +213,9 @@ class OpenPanel extends Operator {
     const openedGridPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
     const openedModalPanels = useSpaceNodes(FIFTYONE_MODAL_SPACES_ID);
     const initializePanel = useInitializePanel();
+    const { openPanel: openSidebarPanel } = usePanelArea(
+      PANEL_AREA.SIDEBAR_RIGHT,
+    );
 
     return {
       availablePanels,
@@ -192,6 +225,7 @@ class OpenPanel extends Operator {
       openedGridPanels,
       openedModalPanels,
       initializePanel,
+      openSidebarPanel,
     };
   }
   findFirstPanelContainer(node: SpaceNode): SpaceNode | null {
@@ -215,6 +249,7 @@ class OpenPanel extends Operator {
       openedGridPanels,
       openedModalPanels,
       initializePanel,
+      openSidebarPanel,
     } = hooks;
     const {
       data,
@@ -227,19 +262,27 @@ class OpenPanel extends Operator {
     } = params;
     const openedPanels = isModalOpen ? openedModalPanels : openedGridPanels;
     const spaces = isModalOpen ? modalSpaces : gridSpaces;
-    const targetSpace = this.findFirstPanelContainer(spaces.root);
-    if (!targetSpace) {
-      throw new Error("No panel container found");
-    }
     const panel = availablePanels.find((panel) => name === panel.name);
     if (!panel && !force) {
       throw new Error(`Panel with name ${name} does not exist`);
     }
-    const scope = isModalOpen ? PANEL_SURFACE.MODAL : PANEL_SURFACE.GRID;
-    const surfaces = panel?.panelOptions?.surfaces || PANEL_SURFACE.GRID;
-    if (!surfaces.includes(scope)) {
+    const surface = isModalOpen ? PANEL_SURFACE.MODAL : PANEL_SURFACE.GRID;
+    if (
+      panel?.panelOptions?.surfaces?.includes("sidebar_right") &&
+      !isPanelOnSurface(panel, surface)
+    ) {
+      const panelId = `${PANEL_AREA.SIDEBAR_RIGHT}:${name}`;
+      await initializePanel(panelId, "sidebar_right", state, data);
+      openSidebarPanel(name, isActive);
+      return;
+    }
+    const targetSpace = this.findFirstPanelContainer(spaces.root);
+    if (!targetSpace) {
+      throw new Error("No panel container found");
+    }
+    if (!isPanelOnSurface(panel, surface) && !force) {
       throw new Error(
-        `Panel with name ${name} cannot be opened in a ${scope} surface`,
+        `Panel with name ${name} cannot be opened in a ${surface} surface`,
       );
     }
     const openedPanel = openedPanels.find(({ type }) => type === name);
@@ -251,7 +294,7 @@ class OpenPanel extends Operator {
       return;
     }
     const newNode = new SpaceNode();
-    await initializePanel(newNode.id, scope, state, data);
+    await initializePanel(newNode.id, surface, state, data);
     newNode.type = name;
     spaces.addNodeAfter(targetSpace, newNode, isActive);
     if (layout) {
@@ -266,20 +309,23 @@ class OpenAllPanels extends Operator {
     return new OperatorConfig({
       name: "open_all_panel",
       label: "Open all panels",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks(): object {
     const availablePanels = usePanels();
-    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
+    const { openedPanels, surface } = useTargetPanelSpaces();
     const openPanelOperator = useOperatorExecutor("open_panel");
-    return { availablePanels, openedPanels, openPanelOperator };
+    return { availablePanels, openedPanels, openPanelOperator, surface };
   }
   async execute({ hooks }: ExecutionContext) {
-    const { availablePanels, openedPanels, openPanelOperator } = hooks;
+    const { availablePanels, openedPanels, openPanelOperator, surface } = hooks;
     const openedPanelsTypes = openedPanels.map(({ type }) => type);
     for (const panel of availablePanels) {
       const { name } = panel;
       if (openedPanelsTypes.includes(name)) continue;
+      // open_panel throws for a panel that does not support the surface
+      if (!isPanelOnSurface(panel, surface)) continue;
       openPanelOperator.execute({ name, isActive: false });
     }
   }
@@ -292,6 +338,7 @@ class ClosePanel extends Operator {
       name: "close_panel",
       label: "Close a panel",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -311,8 +358,7 @@ class ClosePanel extends Operator {
     return new types.Property(inputs);
   }
   useHooks(): object {
-    const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
-    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
+    const { openedPanels, spaces } = useTargetPanelSpaces();
     return { openedPanels, spaces };
   }
   async execute({ hooks, params }: ExecutionContext) {
@@ -337,10 +383,11 @@ class CloseAllPanels extends Operator {
     return new OperatorConfig({
       name: "close_all_panel",
       label: "Close all panels",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks(): object {
-    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
+    const { openedPanels } = useTargetPanelSpaces();
     const closePanel = useOperatorExecutor("close_panel");
     return { openedPanels, closePanel };
   }
@@ -349,7 +396,7 @@ class CloseAllPanels extends Operator {
     for (const panel of openedPanels) {
       // do not close pinned, root or space panel
       if (panel.pinned || panel.isRoot() || panel.isSpace()) continue;
-      closePanel.execute(panel);
+      closePanel.execute({ id: panel.id, name: panel.type });
     }
   }
 }
@@ -361,6 +408,7 @@ class SplitPanel extends Operator {
       name: "split_panel",
       label: "Split Panel",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -370,8 +418,7 @@ class SplitPanel extends Operator {
     return new types.Property(inputs);
   }
   useHooks(): object {
-    const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
-    const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
+    const { openedPanels, spaces } = useTargetPanelSpaces();
     return { spaces, openedPanels };
   }
   async execute({ hooks, params }: ExecutionContext) {
@@ -391,6 +438,7 @@ class OpenDataset extends Operator {
     return new OperatorConfig({
       name: "open_dataset",
       label: "Open Dataset",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -414,6 +462,7 @@ class ClearView extends Operator {
     return new OperatorConfig({
       name: "clear_view",
       label: "Clear view bar",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -426,6 +475,7 @@ class ClearSidebarFilters extends Operator {
     return new OperatorConfig({
       name: "clear_sidebar_filters",
       label: "Clear sidebar filters",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -439,6 +489,7 @@ class ClearAllStages extends Operator {
     return new OperatorConfig({
       name: "clear_all_stages",
       label: "Clear all selections, filters, and view",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks(): object {
@@ -460,6 +511,7 @@ class RefreshColors extends Operator {
     return new OperatorConfig({
       name: "refresh_colors",
       label: "Refresh colors",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -474,6 +526,7 @@ class ShowSelectedSamples extends Operator {
     return new OperatorConfig({
       name: "show_selected_samples",
       label: "Show selected samples",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -493,6 +546,7 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
     return new OperatorConfig({
       name: "convert_extended_selection_to_selected_samples",
       label: "Convert extended selection to selected samples",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks(): object {
@@ -523,6 +577,7 @@ class SetSelectedSamples extends Operator {
       name: "set_selected_samples",
       label: "Set selected samples",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks(): object {
@@ -554,6 +609,7 @@ class SetSampleSelectionStyle extends Operator {
       name: "set_sample_selection_style",
       label: "Set sample selection style",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async execute({ state, params }: ExecutionContext) {
@@ -573,6 +629,7 @@ class ClearSampleSelectionStyle extends Operator {
       name: "clear_sample_selection_style",
       label: "Clear sample selection style",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -587,6 +644,7 @@ class SetLabelSelectionStyle extends Operator {
       name: "set_label_selection_style",
       label: "Set label selection style",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async execute({ state, params }: ExecutionContext) {
@@ -606,6 +664,7 @@ class ClearLabelSelectionStyle extends Operator {
       name: "clear_label_selection_style",
       label: "Clear label selection style",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -620,6 +679,7 @@ class SetView extends Operator {
       name: "set_view",
       label: "Set view",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks(): object {
@@ -668,6 +728,7 @@ class ShowSamples extends Operator {
       name: "show_samples",
       label: "Show samples",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -714,19 +775,6 @@ class ShowSamples extends Operator {
     hooks.setView(newView);
   }
 }
-
-// class ClearShowSamples extends Operator {
-//   get config(): OperatorConfig {
-//     return new OperatorConfig({
-//       name: "clear_show_samples",
-//       label: "Clear show samples",
-//     });
-//   }
-//   async execute(ctx: ExecutionContext) {
-//     executeOperator("show_samples", { samples: null });
-//   }
-// }
-
 class ConsoleLog extends Operator {
   _builtIn = true;
   get config(): OperatorConfig {
@@ -889,6 +937,7 @@ class SetSelectedLabels extends Operator {
       name: "set_selected_labels",
       label: "Set selected labels",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks(): object {
@@ -917,6 +966,7 @@ class ClearSelectedLabels extends Operator {
     return new OperatorConfig({
       name: "clear_selected_labels",
       label: "Clear selected labels",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -930,6 +980,7 @@ class SetSpaces extends Operator {
       name: "set_spaces",
       label: "Set spaces",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks() {
@@ -1256,6 +1307,7 @@ class SetExtendedSelection extends Operator {
       name: "set_extended_selection",
       label: "Set extended selection",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks(): object {
@@ -1296,6 +1348,7 @@ export class SetActiveFields extends Operator {
       name: "set_active_fields",
       label: "Set active fields",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks(): {
@@ -1329,6 +1382,7 @@ export class ClearActiveFields extends Operator {
     return new OperatorConfig({
       name: "clear_active_fields",
       label: "Clear active fields",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks(): {
@@ -1415,6 +1469,7 @@ export class SetPlayheadState extends Operator {
       name: "set_playhead_state",
       label: "Set playhead state",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -1446,6 +1501,7 @@ class SetFrameNumber extends Operator {
     return new OperatorConfig({
       name: "set_frame_number",
       label: "Set frame number",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -1486,7 +1542,7 @@ export class SetGroupSlice extends Operator {
     return new OperatorConfig({
       name: "set_group_slice",
       label: "Set group slice",
-      // unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks() {
@@ -1510,6 +1566,7 @@ export class DisableQueryPerformance extends Operator {
     return new OperatorConfig({
       name: "disable_query_performance",
       label: "Disable query performance",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
 
@@ -1528,6 +1585,7 @@ export class EnableQueryPerformance extends Operator {
     return new OperatorConfig({
       name: "enable_query_performance",
       label: "Enable query performance",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
 
@@ -1547,6 +1605,7 @@ class OpenSample extends Operator {
       name: "open_sample",
       label: "Open Sample",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -1588,6 +1647,7 @@ class CloseSample extends Operator {
       name: "close_sample",
       label: "Close Sample",
       unlisted: true,
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks(): object {
@@ -1606,6 +1666,7 @@ class ShowSidebar extends Operator {
     return new OperatorConfig({
       name: "show_sidebar",
       label: "Show sidebar",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks(): object {
@@ -1626,6 +1687,7 @@ class HideSidebar extends Operator {
     return new OperatorConfig({
       name: "hide_sidebar",
       label: "Hide sidebar",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks(): object {
@@ -1646,6 +1708,7 @@ class ToggleSidebar extends Operator {
     return new OperatorConfig({
       name: "toggle_sidebar",
       label: "Toggle sidebar",
+      scopes: SAMPLES_PAGE_SCOPES,
     });
   }
   useHooks(): object {

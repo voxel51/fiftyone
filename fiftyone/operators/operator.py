@@ -6,7 +6,9 @@ FiftyOne operators.
 |
 """
 
-from typing import Union
+from typing import Iterable, List, Union
+from fiftyone.plugins import PluginScope
+
 from .types import PromptView, RiskLevel
 
 BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"
@@ -34,6 +36,53 @@ def _normalize_risk_level(
         )
 
     return risk_level
+
+
+def _normalize_scopes(
+    scopes: Union[Iterable[Union[str, PluginScope]], None],
+) -> List[PluginScope]:
+    if scopes is None:
+        return [
+            PluginScope.DATASET_SAMPLES_GRID,
+            PluginScope.DATASET_SAMPLE_MODAL,
+            PluginScope.FIFTYONE_LANDING_PAGE,
+        ]
+
+    return [_normalize_scope(scope) for scope in scopes]
+
+
+def _normalize_scope(
+    scope: Union[str, PluginScope],
+) -> PluginScope:
+    if isinstance(scope, str):
+        try:
+            return PluginScope[scope.upper()]
+        except KeyError as err:
+            raise ValueError(
+                "Invalid scope '%s'. Valid values are: %s"
+                % (scope, [s.value for s in PluginScope])
+            ) from err
+
+    if not isinstance(scope, PluginScope):
+        raise ValueError(
+            "Invalid scope '%s'. Must be a string or PluginScope enum." % scope
+        )
+
+    return scope
+
+
+def scopes_require_dataset(scopes: Iterable[PluginScope]) -> bool:
+    """Whether all declared scopes guarantee a dataset.
+
+    ``ALL`` includes dataset-less profiles, so it is intentionally not
+    dataset-required. This is the backend counterpart to the App's scope
+    profile contract.
+    """
+    dataset_scopes = {
+        PluginScope.DATASET_SAMPLES_GRID,
+        PluginScope.DATASET_SAMPLE_MODAL,
+    }
+    return bool(scopes) and all(scope in dataset_scopes for scope in scopes)
 
 
 class OperatorConfig(object):
@@ -75,7 +124,17 @@ class OperatorConfig(object):
             this operator is mainly used by guardrail systems of an agent to
             classify tool calls. If ``None``, the operator defaults to
             :attr:`RiskLevel.DANGEROUS`
+        scopes (None): a list of :class:`PluginScope` values (or their
+            string equivalents) on which the operator should be available. If
+            ``None``, the operator is made available on the existing
+            :attr:`PluginScope.DATASET_SAMPLES_GRID`,
+            :attr:`PluginScope.DATASET_SAMPLE_MODAL`, and
+            :attr:`PluginScope.FIFTYONE_LANDING_PAGE` scopes. An empty list
+            makes the operator available in no scope.
     """
+
+    scopes: List[PluginScope]
+    requires_dataset: bool
 
     def __init__(
         self,
@@ -99,6 +158,7 @@ class OperatorConfig(object):
         allow_distributed_execution=False,  # Enterprise only
         rerunnable=True,
         risk_level=RiskLevel.DANGEROUS,
+        scopes=None,
         **kwargs
     ):
         self.name = name
@@ -127,11 +187,17 @@ class OperatorConfig(object):
                 resolve_execution_options_on_change
             )
         self.kwargs = kwargs  # unused, placeholder for future extensibility
+        self.scopes = _normalize_scopes(scopes)
 
     @property
     def risk_level(self):
         """The declared :class:`RiskLevel` for this operator."""
         return self._risk_level
+
+    @property
+    def requires_dataset(self):
+        """Whether this operator requires an active dataset to execute."""
+        return scopes_require_dataset(self.scopes)
 
     def to_json(self):
         return {
@@ -155,6 +221,7 @@ class OperatorConfig(object):
             "resolve_execution_options_on_change": self.resolve_execution_options_on_change,
             "allow_distributed_execution": self.allow_distributed_execution,
             "risk_level": self.risk_level.value,
+            "scopes": [s.value for s in self.scopes],
         }
 
 

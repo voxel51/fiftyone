@@ -1,7 +1,7 @@
 .page {
   position: relative;
   width: 100%;
-  height: calc(100% - 74px);
+  height: 100%;
   flex: 1;
 }
 

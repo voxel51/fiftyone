@@ -19,7 +19,6 @@ import fiftyone.core.utils as fou
 import fiftyone.plugins as fop
 
 from fiftyone.operators.decorators import plugins_cache
-from fiftyone.operators.operator import Operator
 
 
 logger = logging.getLogger(__name__)
@@ -172,6 +171,8 @@ class PluginContext(object):
         Returns:
             True/False
         """
+        from fiftyone.operators.operator import Operator
+
         if not isinstance(instance, Operator):
             return False
 

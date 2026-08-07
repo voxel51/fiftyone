@@ -36,6 +36,7 @@ from fiftyone.operators.panel import PanelRef
 from fiftyone.operators.registry import OperatorRegistry
 from fiftyone.operators.store import ExecutionStore
 import fiftyone.operators.types as types
+from fiftyone.plugins import PluginScope
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 import fiftyone.server.view as fosv
 
@@ -149,6 +150,10 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
                 :attr:`fiftyone.core.session.Session.selected_labels`
             -   ``current_sample`` (None): an optional ID of the current sample
                 being processed
+            -   ``active_scope`` (None): an optional
+                :class:`fiftyone.plugins.PluginScope` value (or its
+                string equivalent) identifying the scope from which the
+                operator was invoked
             -   ``extended_selection`` (None): an optional extended selection
                 of the view.
             -   ``params``: a dictionary of parameters for the operator.
@@ -954,6 +959,25 @@ class ExecutionContext(contextlib.AbstractContextManager):
         sample in the modal.
         """
         return self.request_params.get("current_sample", None)
+
+    @property
+    def active_scope(self):
+        """The :class:`fiftyone.plugins.PluginScope` from which
+        the operator was invoked, if any.
+
+        When executed via the FiftyOne App, this is the scope that the user
+        was most recently on, unless the invoking component declared one
+        explicitly.
+        """
+        scope = self.request_params.get("active_scope", None)
+        if scope is None:
+            return None
+
+        try:
+            return PluginScope(scope)
+        except ValueError:
+            # a newer App may send a scope this version doesn't know about
+            return None
 
     @property
     def active_fields(self):

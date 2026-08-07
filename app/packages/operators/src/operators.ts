@@ -5,6 +5,10 @@ import { spaceNodeFromJSON } from "@fiftyone/spaces/src/utils";
 import type { SelectionStyle, SelectionType, State } from "@fiftyone/state";
 import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
+import {
+  normalizePluginScopes,
+  PluginScope,
+} from "@fiftyone/plugins/src/PluginScope";
 import { QueueItemStatus, RiskLevel } from "./constants";
 import * as types from "./types";
 import { ExecutionCallback, OperatorExecutorOptions } from "./ts";
@@ -92,6 +96,7 @@ export type RawContext = {
   selectedLabels: State.SelectedLabel[];
   currentSample: string;
   viewName: string;
+  activeScope?: PluginScope;
   delegationTarget: string;
   requestDelegation: boolean;
   state: CallbackInterface;
@@ -165,6 +170,9 @@ export class ExecutionContext {
   }
   public get activeFields(): string[] {
     return this._currentContext.activeFields;
+  }
+  public get activeScope(): PluginScope {
+    return this._currentContext.activeScope;
   }
   getCurrentPanelId(): string | null {
     return this.params.panel_id || this.currentPanel?.id || null;
@@ -259,6 +267,7 @@ export type OperatorConfigOptions = {
   skipInput?: boolean;
   skipOutput?: boolean;
   riskLevel?: RiskLevel;
+  scopes?: PluginScope[];
 };
 export class OperatorConfig {
   public name: string;
@@ -278,6 +287,7 @@ export class OperatorConfig {
   public skipInput: boolean;
   public skipOutput: boolean;
   public riskLevel: RiskLevel = RiskLevel.LOW;
+  public scopes: PluginScope[];
 
   constructor(options: OperatorConfigOptions) {
     this.name = options.name;
@@ -299,6 +309,7 @@ export class OperatorConfig {
     this.skipInput = options.skipInput || false;
     this.skipOutput = options.skipOutput || false;
     this.riskLevel = options.riskLevel || RiskLevel.LOW;
+    this.scopes = normalizePluginScopes(options.scopes);
   }
   static fromJSON(json) {
     return new OperatorConfig({
@@ -319,6 +330,10 @@ export class OperatorConfig {
       skipInput: json.skip_input,
       skipOutput: json.skip_output,
       riskLevel: json.risk_level,
+      scopes:
+        json.scopes === null
+          ? [PluginScope.ALL]
+          : normalizePluginScopes(json.scopes),
     });
   }
 }
@@ -349,6 +364,9 @@ export class Operator {
   }
   get riskLevel() {
     return this.config.riskLevel || RiskLevel.LOW;
+  }
+  get scopes() {
+    return normalizePluginScopes(this.config.scopes);
   }
   async needsUserInput(ctx: ExecutionContext) {
     const inputs = await this.resolveInput(ctx);
@@ -422,6 +440,11 @@ class OperatorRegistry {
   register(operator: Operator) {
     this.operators.set(operator.uri, operator);
   }
+  replace(operators: Operator[]) {
+    this.operators = new Map(
+      operators.map((operator) => [operator.uri, operator]),
+    );
+  }
   getOperator(uri: string): Operator {
     return this.operators.get(uri);
   }
@@ -432,7 +455,14 @@ class OperatorRegistry {
 
 const localRegistry = new OperatorRegistry();
 const remoteRegistry = new OperatorRegistry();
+let latestRemoteOperatorsRequest = 0;
 export let initializationErrors = [];
+
+export class StaleOperatorsRequestError extends Error {
+  constructor() {
+    super("A newer operator load request superseded this request");
+  }
+}
 
 export function registerOperator(
   OperatorType: typeof Operator,
@@ -447,7 +477,8 @@ export function _registerBuiltInOperator(OperatorType: typeof Operator) {
   localRegistry.register(operator);
 }
 
-export async function loadOperatorsFromServer(datasetName: string) {
+export async function loadOperatorsFromServer(datasetName: string | null) {
+  const request = ++latestRemoteOperatorsRequest;
   initializationErrors = [];
   try {
     const { operators, errors } = await getFetchFunction()(
@@ -458,9 +489,10 @@ export async function loadOperatorsFromServer(datasetName: string) {
     const operatorInstances = operators.map((d: object) =>
       Operator.fromRemoteJSON(d),
     );
-    for (const operator of operatorInstances) {
-      remoteRegistry.register(operator);
+    if (request !== latestRemoteOperatorsRequest) {
+      throw new StaleOperatorsRequestError();
     }
+    remoteRegistry.replace(operatorInstances);
     const pyErrors = errors || [];
     if (pyErrors.length > 0) {
       console.error("Error loading python plugins:");
@@ -477,6 +509,7 @@ export async function loadOperatorsFromServer(datasetName: string) {
       .filter((d: { panel?: { panel_name?: string } }) => d.panel)
       .map((d: { panel?: { panel_name?: string } }) => d.panel);
   } catch (e) {
+    if (e instanceof StaleOperatorsRequestError) throw e;
     initializationErrors.push({
       reason: "Error loading operators from server",
       details: stringifyError(e),
@@ -609,6 +642,10 @@ function formatSelectionPayload(currentContext: RawContext) {
   };
 }
 
+export function activeScopePayload(currentContext: RawContext) {
+  return { active_scope: currentContext.activeScope };
+}
+
 async function executeOperatorAsGenerator(
   operator: Operator,
   ctx: ExecutionContext,
@@ -619,6 +656,7 @@ async function executeOperatorAsGenerator(
     "/operators/execute/generator",
     {
       current_sample: currentContext.currentSample,
+      ...activeScopePayload(currentContext),
       dataset_name: currentContext.datasetName,
       delegation_target: currentContext.delegationTarget,
       extended: currentContext.extended,
@@ -784,6 +822,7 @@ export async function executeOperatorWithContext(
         "/operators/execute",
         {
           current_sample: currentContext.currentSample,
+          ...activeScopePayload(currentContext),
           dataset_name: currentContext.datasetName,
           delegation_target: currentContext.delegationTarget,
           extended: currentContext.extended,
@@ -870,6 +909,7 @@ export async function resolveRemoteType(
     "/operators/resolve-type",
     {
       current_sample: currentContext.currentSample,
+      ...activeScopePayload(currentContext),
       dataset_name: currentContext.datasetName,
       delegation_target: currentContext.delegationTarget,
       extended: currentContext.extended,
@@ -956,6 +996,7 @@ export async function resolveExecutionOptions(
     "/operators/resolve-execution-options",
     {
       current_sample: currentContext.currentSample,
+      ...activeScopePayload(currentContext),
       dataset_name: currentContext.datasetName,
       delegation_target: currentContext.delegationTarget,
       extended: currentContext.extended,
@@ -998,6 +1039,7 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
       filters: currentContext.filters,
       ...formatSelectionPayload(currentContext),
       current_sample: currentContext.currentSample,
+      ...activeScopePayload(currentContext),
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
       query_performance: currentContext.queryPerformance,

@@ -10,5 +10,11 @@ export enum SPACE_TYPES {
 }
 
 export enum PANEL_AREA {
-  GRID_SIDEBAR_RIGHT = "grid-sidebar-right",
+  SIDEBAR_LEFT = "sidebar-left",
+  SIDEBAR_RIGHT = "sidebar-right",
+  BOTTOM_PANEL = "bottom-panel",
+  GRID_SIDEBAR_RIGHT = SIDEBAR_RIGHT,
 }
+
+/** @deprecated Panel areas now render registered panels directly. */
+export const SIDEBAR_PANEL_RENDERER_ID = "sidebar-right-panel-tabs";

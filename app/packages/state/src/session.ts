@@ -138,7 +138,7 @@ type SessionAtomOptions<K extends keyof Session> = {
   effects?: AtomOptions<Session[K]>["effects"];
 };
 
-let sessionRef: Session;
+let sessionRef: Session = SESSION_DEFAULT;
 let setterRef: Setter;
 
 type Setters = Partial<{
