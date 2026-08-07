@@ -71,6 +71,7 @@ interface ImageTileSettingsProps {
   readonly canConfigureCameraGeometry: boolean;
   readonly geometryControlLabel: string;
   readonly geometryStatus: string;
+  readonly hasCalibrationMatch: boolean;
   readonly images: readonly SceneSource[];
   readonly labelSourceGroups: {
     readonly matching: readonly SceneSource[];
@@ -113,6 +114,7 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
   canConfigureCameraGeometry,
   geometryControlLabel,
   geometryStatus,
+  hasCalibrationMatch,
   images,
   labelSourceGroups,
   label3dProjection,
@@ -184,7 +186,11 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
       </SidebarGroup>
       {canConfigureCameraGeometry ? (
         <SidebarGroup
-          summary={`${IMAGE_DISPLAY_LABELS[cameraProjection.display]} · ${geometryControlLabel}`}
+          summary={
+            hasCalibrationMatch
+              ? `${IMAGE_DISPLAY_LABELS[cameraProjection.display]} · ${geometryControlLabel}`
+              : calibrationSelectionLabel
+          }
           title="Camera geometry"
         >
           <label className={settingsStyles.field}>
@@ -211,50 +217,56 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
               zIndex={ZIndex.AboveModal}
             />
           </label>
-          <label className={settingsStyles.field}>
-            <SettingsLabel label="Display" tooltip={IMAGE_DISPLAY_HELP} />
-            <Dropdown
-              anchor={DropdownAnchor.BottomStart}
-              trigger={
-                <DropdownTrigger>
-                  {IMAGE_DISPLAY_LABELS[cameraProjection.display]}
-                </DropdownTrigger>
-              }
-            >
-              {IMAGE_DISPLAY_MODES.map((mode) => (
-                <MenuTextItem
-                  key={mode}
-                  onClick={() => setCameraProjection({ display: mode })}
+          {hasCalibrationMatch ? (
+            <>
+              <label className={settingsStyles.field}>
+                <SettingsLabel
+                  label="Recorded image geometry"
+                  tooltip={RECORDED_IMAGE_GEOMETRY_HELP}
+                />
+                <Dropdown
+                  anchor={DropdownAnchor.BottomStart}
+                  trigger={
+                    <DropdownTrigger>
+                      {IMAGE_GEOMETRY_LABELS[cameraProjection.geometry]}
+                    </DropdownTrigger>
+                  }
                 >
-                  {IMAGE_DISPLAY_LABELS[mode]}
-                </MenuTextItem>
-              ))}
-            </Dropdown>
-          </label>
-          <label className={settingsStyles.field}>
-            <SettingsLabel
-              label="Recorded image geometry"
-              tooltip={RECORDED_IMAGE_GEOMETRY_HELP}
-            />
-            <Dropdown
-              anchor={DropdownAnchor.BottomStart}
-              trigger={
-                <DropdownTrigger>
-                  {IMAGE_GEOMETRY_LABELS[cameraProjection.geometry]}
-                </DropdownTrigger>
-              }
-            >
-              {IMAGE_GEOMETRY_MODES.map((mode) => (
-                <MenuTextItem
-                  key={mode}
-                  onClick={() => setCameraProjection({ geometry: mode })}
+                  {IMAGE_GEOMETRY_MODES.map((mode) => (
+                    <MenuTextItem
+                      key={mode}
+                      onClick={() => setCameraProjection({ geometry: mode })}
+                    >
+                      {IMAGE_GEOMETRY_LABELS[mode]}
+                    </MenuTextItem>
+                  ))}
+                </Dropdown>
+                <span className={settingsStyles.metaText}>
+                  {geometryStatus}
+                </span>
+              </label>
+              <label className={settingsStyles.field}>
+                <SettingsLabel label="Display" tooltip={IMAGE_DISPLAY_HELP} />
+                <Dropdown
+                  anchor={DropdownAnchor.BottomStart}
+                  trigger={
+                    <DropdownTrigger>
+                      {IMAGE_DISPLAY_LABELS[cameraProjection.display]}
+                    </DropdownTrigger>
+                  }
                 >
-                  {IMAGE_GEOMETRY_LABELS[mode]}
-                </MenuTextItem>
-              ))}
-            </Dropdown>
-            <span className={settingsStyles.metaText}>{geometryStatus}</span>
-          </label>
+                  {IMAGE_DISPLAY_MODES.map((mode) => (
+                    <MenuTextItem
+                      key={mode}
+                      onClick={() => setCameraProjection({ display: mode })}
+                    >
+                      {IMAGE_DISPLAY_LABELS[mode]}
+                    </MenuTextItem>
+                  ))}
+                </Dropdown>
+              </label>
+            </>
+          ) : null}
         </SidebarGroup>
       ) : null}
       {annotationSources.length > 0 ? (

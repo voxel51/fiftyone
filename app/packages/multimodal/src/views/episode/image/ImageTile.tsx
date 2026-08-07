@@ -656,6 +656,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           canConfigureCameraGeometry={canConfigureCameraGeometry}
           geometryControlLabel={geometryControlLabel}
           geometryStatus={geometryStatus}
+          hasCalibrationMatch={Boolean(calibrationStream)}
           images={images}
           labelSourceGroups={labelSourceGroups}
           label3dProjection={label3dProjection}
@@ -684,6 +685,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       annotationStreams,
       calibrationSelectionLabel,
       calibrationSources,
+      calibrationStream,
       cameraProjection,
       canConfigureCameraGeometry,
       geometryControlLabel,

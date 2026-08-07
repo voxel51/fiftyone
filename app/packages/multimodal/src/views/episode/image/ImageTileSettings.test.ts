@@ -10,6 +10,30 @@ import ImageTileSettings from "./ImageTileSettings";
 afterEach(cleanup);
 
 describe("ImageTileSettings", () => {
+  it("shows geometry controls only for calibration matches and orders recorded geometry first", () => {
+    const props = imageSettingsProps();
+    const { rerender } = render(React.createElement(ImageTileSettings, props));
+
+    expect(screen.getByLabelText("Calibration")).toBeTruthy();
+    expect(screen.queryByText("Recorded image geometry")).toBeNull();
+    expect(screen.queryByText("Display")).toBeNull();
+
+    rerender(
+      React.createElement(ImageTileSettings, {
+        ...props,
+        calibrationSelectionLabel: "Auto · Front calibration",
+        hasCalibrationMatch: true,
+      }),
+    );
+    const recordedGeometry = screen.getByText("Recorded image geometry");
+    const display = screen.getByText("Display");
+
+    expect(
+      recordedGeometry.compareDocumentPosition(display) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
+  });
+
   it("renders tile controls and applies bounded point-size updates", () => {
     const setPointCloudProjection = vi.fn();
     render(
@@ -29,6 +53,7 @@ describe("ImageTileSettings", () => {
         canConfigureCameraGeometry: true,
         geometryControlLabel: "Auto → Original",
         geometryStatus: "Original camera · pinhole",
+        hasCalibrationMatch: false,
         images: [source("/camera", "Front camera", SCENE_SOURCE_TYPE.IMAGE)],
         labelSourceGroups: { matching: [], remaining: [] },
         label3dProjection: {
@@ -110,6 +135,7 @@ describe("ImageTileSettings", () => {
         canConfigureCameraGeometry: false,
         geometryControlLabel: "Auto",
         geometryStatus: "",
+        hasCalibrationMatch: false,
         images: [image],
         labelSourceGroups: groupImageLabelSources(image, annotationSources),
         label3dProjection: {
@@ -185,6 +211,7 @@ describe("ImageTileSettings", () => {
       canConfigureCameraGeometry: false,
       geometryControlLabel: "Auto",
       geometryStatus: "",
+      hasCalibrationMatch: false,
       images: [image],
       labelSourceGroups,
       label3dProjection: {
@@ -263,6 +290,7 @@ describe("ImageTileSettings", () => {
         canConfigureCameraGeometry: true,
         geometryControlLabel: "Auto",
         geometryStatus: "",
+        hasCalibrationMatch: false,
         images: [camera],
         labelSourceGroups: { matching: [], remaining: [] },
         label3dProjection: {
@@ -323,4 +351,62 @@ function source(
   sourceName = id,
 ): SceneSource {
   return { id, label, sourceName, type };
+}
+
+function imageSettingsProps(): React.ComponentProps<typeof ImageTileSettings> {
+  const camera = source(
+    "/camera",
+    "Front camera",
+    SCENE_SOURCE_TYPE.IMAGE,
+    "/camera/front/image_raw",
+  );
+  const calibration = source(
+    "/calibration",
+    "Front calibration",
+    SCENE_SOURCE_TYPE.CAMERA_CALIBRATION,
+  );
+  return {
+    annotationSources: [],
+    annotationStreams: [],
+    calibrationSelectionLabel: "Auto · no match",
+    calibrationSources: [calibration],
+    cameraProjection: {
+      calibrationStream: null,
+      display: "recorded",
+      enabled: false,
+      geometry: "auto",
+      pointSize: 6,
+      streams: null,
+    },
+    canConfigureCameraGeometry: true,
+    geometryControlLabel: "Auto → Original",
+    geometryStatus: "Original camera · pinhole",
+    hasCalibrationMatch: false,
+    images: [camera],
+    labelSourceGroups: { matching: [], remaining: [] },
+    label3dProjection: {
+      enabled: false,
+      interpolate: false,
+      streams: [],
+    },
+    pointCloudProjection: {
+      enabled: false,
+      pointSize: 6,
+      streams: [],
+    },
+    pointCloudSources: [],
+    sceneAnnotationSources: [],
+    selectedLabelStreams: [],
+    selectedProjectionStreams: [],
+    selectedSceneAnnotationStreams: [],
+    setCameraProjection: vi.fn(),
+    setLabel3dProjection: vi.fn(),
+    setLabelStreams: vi.fn(),
+    setPointCloudProjection: vi.fn(),
+    setStream: vi.fn(),
+    stream: camera.id,
+    toggleLabelStream: vi.fn(),
+    toggleProjectionStream: vi.fn(),
+    toggleSceneAnnotationStream: vi.fn(),
+  };
 }
