@@ -100,6 +100,29 @@ describe("data stream prefetcher", () => {
   );
 
   it.each(["batch", "current"] as const)(
+    "materializes post-range image predecessors as empty for %s delivery",
+    async (lane) => {
+      const requestedTimeNs = 500_000_000n;
+      const heldImage = frame(IMAGE, 400_000_000n);
+      const window = windowAt(requestedTimeNs, [heldImage]);
+      const harness = createHarness({
+        isStreamTimeAvailable: (stream, timeNs) =>
+          stream !== IMAGE || timeNs <= 400_000_000n,
+        readSynchronized: vi.fn(async () => window),
+        readSynchronizedBatch: vi.fn(async () => [window]),
+      });
+      harness.caches.get(IMAGE)?.subscribe();
+
+      expect(fetchLane(harness, lane, requestedTimeNs, [IMAGE])).toBe(true);
+      await settle();
+
+      expect(harness.caches.get(IMAGE)?.has(requestedTimeNs)).toBe(true);
+      expect(harness.caches.get(IMAGE)?.get(requestedTimeNs)).toBeNull();
+      expect(getStreamValue(harness.store, IMAGE)).toBeNull();
+    },
+  );
+
+  it.each(["batch", "current"] as const)(
     "keeps partial decode failure isolation identical for %s delivery",
     async (lane) => {
       const window = windowAt(0n, [frame(LIDAR, 0n)], [IMAGE]);
@@ -333,6 +356,7 @@ describe("data stream prefetcher", () => {
 });
 
 function createHarness({
+  isStreamTimeAvailable,
   readSynchronized = vi.fn<PlaybackReadCapability["readSynchronized"]>(
     async (request) => windowAt(request.timeNs, []),
   ),
@@ -341,6 +365,9 @@ function createHarness({
   >(async () => []),
   shouldAdmitBatch,
 }: {
+  readonly isStreamTimeAvailable?: Parameters<
+    typeof createDataStreamPrefetcher
+  >[0]["isStreamTimeAvailable"];
   readonly readSynchronized?: PlaybackReadCapability["readSynchronized"];
   readonly readSynchronizedBatch?: PlaybackReadCapability["readSynchronizedBatch"];
   readonly shouldAdmitBatch?: Parameters<
@@ -373,6 +400,7 @@ function createHarness({
       createTimelineIndex({ endNs: 1_000_000_000n, startNs: 0n }, 2),
     getSourceEpoch: () => harness.sourceEpoch,
     getStreamPolicies: () => ({}) as StreamSyncPolicies,
+    isStreamTimeAvailable,
     lastFrames,
     playback: {
       readSynchronized,

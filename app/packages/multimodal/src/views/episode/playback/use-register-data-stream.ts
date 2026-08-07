@@ -123,6 +123,8 @@ export function cancelRunwayReads(
 /** Inputs for registering the shared episode playback stream. */
 export interface UseDataStreamOptions {
   blockingStreams: readonly string[];
+  /** Streams whose last indexed message is their presentation boundary. */
+  endBoundedStreams: readonly string[];
   session: EpisodeSession | null;
   /** Called whenever every blocking stream covers the current playhead. */
   onPlayheadDataReady?: () => void;
@@ -151,6 +153,7 @@ export interface UseDataStreamOptions {
  */
 export function useRegisterDataStream({
   blockingStreams,
+  endBoundedStreams,
   session,
   onPlayheadDataReady,
   source,
@@ -242,6 +245,7 @@ export function useRegisterDataStream({
     ((delayMs?: number) => void) | null
   >(null);
   const streamStartTimesNsRef = useRef<Map<string, bigint | null>>(new Map());
+  const streamEndTimesNsRef = useRef<Map<string, bigint | null>>(new Map());
   const pointCloudColorSubscriptionsRef = useRef<
     Map<string, Map<string, number>>
   >(new Map());
@@ -264,6 +268,9 @@ export function useRegisterDataStream({
   const allStreamsRef = useRef(allStreams);
   const blockingStreamsRef = useRef<ReadonlySet<string>>(
     new Set(blockingStreams),
+  );
+  const endBoundedStreamsRef = useRef<ReadonlySet<string>>(
+    new Set(endBoundedStreams),
   );
   const staleWarningStreamsRef = useRef<ReadonlySet<string>>(
     new Set(staleWarningStreams),
@@ -291,6 +298,9 @@ export function useRegisterDataStream({
   useEffect(() => {
     streamPoliciesRef.current = streamPolicies;
   }, [streamPolicies]);
+  useEffect(() => {
+    endBoundedStreamsRef.current = new Set(endBoundedStreams);
+  }, [endBoundedStreams]);
   // This effect keeps buffering diagnostics human-readable without rebuilding
   // the registered playback stream when inventory labels change.
   useEffect(() => {
@@ -446,6 +456,7 @@ export function useRegisterDataStream({
     lastFrameRef.current.clear();
     pointCloudChannelReadsRef.current.clear();
     streamStartTimesNsRef.current.clear();
+    streamEndTimesNsRef.current.clear();
     autoSeekSourceEpochRef.current = null;
     autoSeekScheduleEpochRef.current = null;
     deferredBatchAdmissionRef.current = false;
@@ -496,6 +507,10 @@ export function useRegisterDataStream({
           streamStartTimesNsRef.current.set(
             bound.streamId,
             bound.firstTimestampNs,
+          );
+          streamEndTimesNsRef.current.set(
+            bound.streamId,
+            bound.lastTimestampNs,
           );
           const startDeltaNs =
             bound.firstTimestampNs === null
@@ -594,6 +609,7 @@ export function useRegisterDataStream({
       pointCloudColorSubscriptionsRef.current.clear();
       activePointCloudColorByRef.current.clear();
       streamStartTimesNsRef.current.clear();
+      streamEndTimesNsRef.current.clear();
     },
     [clearPausedIdleWarmupTimer, fetchState],
   );
@@ -669,6 +685,13 @@ export function useRegisterDataStream({
               Object.fromEntries(activePointCloudColorByRef.current),
             getSourceEpoch: () => sourceEpochRef.current,
             getStreamPolicies: () => streamPoliciesRef.current,
+            isStreamTimeAvailable: (stream, timeNs) => {
+              if (!endBoundedStreamsRef.current.has(stream)) return true;
+              const endTimeNs = streamEndTimesNsRef.current.get(stream);
+              return endTimeNs === undefined || endTimeNs === null
+                ? true
+                : timeNs <= endTimeNs;
+            },
             lastFrames: lastFrameRef.current,
             playback,
             publishStreamStatuses,

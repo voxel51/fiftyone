@@ -500,9 +500,13 @@ export function distributeWindowToCaches(
   window: SynchronizedFrameWindow,
   caches: Map<string, EpisodeStreamCache>,
   requestedStreams: readonly string[],
+  isStreamTimeAvailable: (stream: string, timeNs: bigint) => boolean = () =>
+    true,
 ): void {
   for (const stream of requestedStreams) {
-    const messages = window.framesByStream[stream];
+    const messages = isStreamTimeAvailable(stream, window.timeNs)
+      ? window.framesByStream[stream]
+      : undefined;
     caches.get(stream)?.set(window.timeNs, messages?.[0] ?? null);
   }
 }

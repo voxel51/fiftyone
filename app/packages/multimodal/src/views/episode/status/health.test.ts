@@ -622,6 +622,17 @@ describe("buildTileEmptyStateModel", () => {
       message: "No data at this time",
       startSec: null,
     });
+    expect(
+      buildTileEmptyStateModel({
+        playheadSec: 30.5,
+        startTimes: [12],
+        statuses: ["gap"],
+      }),
+    ).toEqual({
+      kind: "gap",
+      message: "No data at this time",
+      startSec: null,
+    });
   });
 });
 

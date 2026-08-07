@@ -102,6 +102,7 @@ export function createDataStreamPrefetcher({
   getPointCloudColorBy = () => EMPTY_POINT_CLOUD_COLOR_BY,
   getSourceEpoch,
   getStreamPolicies,
+  isStreamTimeAvailable = () => true,
   lastFrames,
   playback,
   publishStreamStatuses,
@@ -115,6 +116,8 @@ export function createDataStreamPrefetcher({
   readonly getPointCloudColorBy?: () => Readonly<Record<string, string>>;
   readonly getSourceEpoch: () => number;
   readonly getStreamPolicies: () => StreamSyncPolicies;
+  /** Whether a stream may present content at one requested timeline time. */
+  readonly isStreamTimeAvailable?: (stream: string, timeNs: bigint) => boolean;
   readonly lastFrames: Map<string, StreamPlaybackFrame<unknown>>;
   readonly playback: Pick<
     PlaybackReadCapability,
@@ -236,6 +239,7 @@ export function createDataStreamPrefetcher({
         activeFetchedStreams.filter(
           (stream) => !window.diagnosticsByStream?.[stream],
         ),
+        isStreamTimeAvailable,
       );
     }
     for (const [stream, failure] of decodeFailures) {
