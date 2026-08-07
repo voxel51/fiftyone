@@ -185,10 +185,11 @@ export function RawMessageBridge({
     }
 
     const published = new Map<string, RawRecordState>();
-    const inflight = new Set<string>();
+    const inflight = new Map<string, AbortController>();
     const failures = createDemandFailureBackoff<string>();
+    const epochController = new AbortController();
 
-    return startDemandBridge<
+    const stopBridge = startDemandBridge<
       RawMessageHandlers,
       NonNullable<typeof dataStream>
     >({
@@ -201,7 +202,9 @@ export function RawMessageBridge({
           error: { status: "error", streams: [] },
           isCancelled,
           async load(publish) {
-            const streams = await capability.listRawRecordStreams();
+            const streams = await capability.listRawRecordStreams({
+              signal: epochController.signal,
+            });
             publish({ status: "ready", streams });
           },
           loading: { status: "loading", streams: [] },
@@ -213,6 +216,7 @@ export function RawMessageBridge({
           async readFullMessageJson(stream, timeNs) {
             const result = await capability.readRawRecord({
               includeFullJson: true,
+              signal: epochController.signal,
               stream,
               timestampNs: timeNs,
             });
@@ -237,6 +241,12 @@ export function RawMessageBridge({
         if (!timeline) {
           return;
         }
+        const demanded = new Set(demandKeys);
+        for (const [stream, controller] of inflight) {
+          if (demanded.has(stream)) continue;
+          controller.abort();
+          inflight.delete(stream);
+        }
         const playheadNs = timeline.secToNs(playheadSec);
 
         const now = nowMs();
@@ -256,15 +266,24 @@ export function RawMessageBridge({
           }
           if (failures.isBlocked(stream, now, userInitiated)) continue;
 
-          inflight.add(stream);
+          const controller = new AbortController();
+          inflight.set(stream, controller);
           if (!state) {
             published.set(stream, { status: "loading" });
             publishNeeded = true;
           }
           void capability
-            .readRawRecord({ stream: stream, timestampNs: playheadNs })
+            .readRawRecord({
+              signal: controller.signal,
+              stream: stream,
+              timestampNs: playheadNs,
+            })
             .then((record) => {
-              if (isCancelled()) {
+              if (
+                isCancelled() ||
+                controller.signal.aborted ||
+                inflight.get(stream) !== controller
+              ) {
                 return;
               }
               inflight.delete(stream);
@@ -277,10 +296,12 @@ export function RawMessageBridge({
               queueFill();
             })
             .catch((error: unknown) => {
-              if (isCancelled()) {
+              if (inflight.get(stream) === controller) {
+                inflight.delete(stream);
+              }
+              if (isCancelled() || controller.signal.aborted) {
                 return;
               }
-              inflight.delete(stream);
               failures.record(stream, nowMs());
               // Keep whatever record already rendered; only surface a
               // hard error state when the stream has nothing to show.
@@ -305,6 +326,12 @@ export function RawMessageBridge({
       shouldDeferIdleWork: (store) => shouldDeferIdleWorkForStore(store, null),
       timelineRetryMs: TIMELINE_RETRY_MS,
     });
+    return () => {
+      epochController.abort();
+      for (const controller of inflight.values()) controller.abort();
+      inflight.clear();
+      stopBridge();
+    };
   }, [
     capability,
     handlersRef,

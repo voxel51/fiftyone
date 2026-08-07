@@ -45,6 +45,7 @@ describe("RawMessageBridge records", () => {
     expect(client.readRawRecord).toHaveBeenCalledTimes(1);
     expect(client.readRawRecord).toHaveBeenCalledWith({
       includeFullJson: true,
+      signal: expect.any(AbortSignal),
       stream: "/imu",
       timestampNs: 42_000_000_000n,
     });
@@ -216,6 +217,40 @@ describe("RawMessageBridge records", () => {
 
     expect(context.current?.recordsByStream.size).toBe(0);
     expect(context.current?.streams).toEqual({ status: "idle", streams: [] });
+  });
+
+  it("aborts an active record read on unmount and ignores its late result", async () => {
+    const pending = deferred<RawRecordResult>();
+    let readSignal: AbortSignal | undefined;
+    const client = createClient({
+      readRawRecord: vi.fn(async (request) => {
+        readSignal = request.signal;
+        return pending.promise;
+      }),
+    });
+    const context = createContextRef();
+    const { rerender } = render(
+      <Harness client={client} contextRef={context} />,
+    );
+
+    await act(async () => {
+      context.current?.subscribeRecord("/imu");
+      await flushMicrotasks();
+    });
+    expect(readSignal?.aborted).toBe(false);
+
+    rerender(<Harness bridge={false} client={client} contextRef={context} />);
+    await act(flushMicrotasks);
+    expect(readSignal?.aborted).toBe(true);
+
+    pending.resolve(
+      recordResult({
+        stream: "/imu",
+        timestampNs: 0n,
+      }),
+    );
+    await act(flushMicrotasks);
+    expect(context.current?.recordsByStream.size).toBe(0);
   });
 });
 
@@ -434,4 +469,15 @@ async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
   await Promise.resolve();
+}
+
+function deferred<T>(): {
+  readonly promise: Promise<T>;
+  resolve(value: T): void;
+} {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((next) => {
+    resolve = next;
+  });
+  return { promise, resolve };
 }

@@ -50,6 +50,7 @@ describe("SceneUpdateHistoryBridge", () => {
     expect(session.read).toHaveBeenCalledWith({
       limit: 50_000,
       priority: "bulk",
+      signal: expect.any(AbortSignal),
       streams: ["/markers"],
       window: session.manifest.timeRange,
     });
@@ -103,6 +104,64 @@ describe("SceneUpdateHistoryBridge", () => {
 
     expect(screen.getByTestId("scene-history").textContent).toBe(
       "/markers:error:0:full",
+    );
+  });
+
+  it("aborts an active read and suppresses stale progress after demand removal", async () => {
+    vi.useFakeTimers();
+    let releaseRemainder: () => void = () => undefined;
+    const remainder = new Promise<void>((resolve) => {
+      releaseRemainder = resolve;
+    });
+    const session = createSession(async function* () {
+      yield sceneUpdateMessage(10n);
+      await remainder;
+      yield sceneUpdateMessage(20n);
+    });
+    const source = createSource("markers");
+    const view = render(
+      <Harness session={session} source={source} streams={["/markers"]} />,
+    );
+    await advanceTimers(1_500);
+    const signal = vi.mocked(session.read).mock.calls[0]?.[0].signal;
+    expect(signal?.aborted).toBe(false);
+
+    view.rerender(<Harness session={session} source={source} streams={[]} />);
+    expect(signal?.aborted).toBe(true);
+    releaseRemainder();
+    await act(async () => {
+      await remainder;
+    });
+
+    expect(screen.getByTestId("scene-history").textContent).toBe("");
+  });
+
+  it("publishes progress in bounded message batches", async () => {
+    vi.useFakeTimers();
+    let releaseLast: () => void = () => undefined;
+    const last = new Promise<void>((resolve) => {
+      releaseLast = resolve;
+    });
+    const session = createSession(async function* () {
+      for (let index = 1; index <= 251; index += 1) {
+        yield sceneUpdateMessage(BigInt(index));
+      }
+      await last;
+      yield sceneUpdateMessage(252n);
+    });
+
+    render(<Harness session={session} source={createSource("markers")} />);
+    await advanceTimers(1_500);
+    expect(screen.getByTestId("scene-history").textContent).toBe(
+      "/markers:loading:251:full",
+    );
+
+    releaseLast();
+    await act(async () => {
+      await last;
+    });
+    expect(screen.getByTestId("scene-history").textContent).toBe(
+      "/markers:ready:252:full",
     );
   });
 

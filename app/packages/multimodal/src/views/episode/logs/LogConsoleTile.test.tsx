@@ -1,15 +1,21 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import LogConsoleTile from "./LogConsoleTile";
 
 const mocks = vi.hoisted(() => {
   let releaseRead: () => void = () => undefined;
-  const readGate = new Promise<void>((resolve) => {
-    releaseRead = resolve;
-  });
+  let readGate: Promise<void>;
+  const resetReadGate = () => {
+    readGate = new Promise<void>((resolve) => {
+      releaseRead = resolve;
+    });
+  };
+  resetReadGate();
   const nearestTick = vi.fn(() => 1_000_000_000n);
-  const read = vi.fn(async function* () {
+  const read = vi.fn(async function* (_request: {
+    readonly signal?: AbortSignal;
+  }) {
     await readGate;
     yield* [];
   });
@@ -27,7 +33,8 @@ const mocks = vi.hoisted(() => {
     nearestTick,
     playbackStore: {},
     read,
-    releaseRead,
+    releaseRead: () => releaseRead(),
+    resetReadGate,
     session: { read },
     seek: vi.fn(),
     setLogSettings: vi.fn(),
@@ -75,6 +82,11 @@ vi.mock("./log-tile-state", () => ({
   useSetLogTileSettings: () => mocks.setLogSettings,
 }));
 
+beforeEach(() => {
+  mocks.resetReadGate();
+  mocks.read.mockClear();
+});
+
 afterEach(() => {
   mocks.releaseRead();
   cleanup();
@@ -98,5 +110,23 @@ describe("LogConsoleTile", () => {
       expect(screen.queryByText(/loading/)).toBeNull();
     });
     expect(mocks.nearestTick).toHaveBeenCalledTimes(1);
+  });
+
+  it("aborts the active bounded read on unmount", async () => {
+    const view = render(<LogConsoleTile />);
+    await waitFor(() => expect(mocks.read).toHaveBeenCalledOnce());
+    const request = mocks.read.mock.calls[0]?.[0];
+    if (!request?.signal) throw new Error("Expected a cancellable log read");
+
+    expect(request).toMatchObject({
+      limit: 600,
+      priority: "idle",
+      streams: ["/rosout"],
+    });
+    expect(request.signal.aborted).toBe(false);
+
+    view.unmount();
+
+    expect(request.signal.aborted).toBe(true);
   });
 });

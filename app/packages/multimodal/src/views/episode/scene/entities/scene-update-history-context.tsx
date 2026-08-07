@@ -19,6 +19,8 @@ import {
 import type { SceneUpdateDelta } from "./scene-update-state";
 
 const SCENE_UPDATE_HISTORY_READ_LIMIT = 50_000;
+/** Messages consumed per stream between progressive immutable snapshots. */
+const SCENE_UPDATE_HISTORY_PROGRESS_BATCH_MESSAGES = 250;
 const SCENE_UPDATE_HISTORY_START_DELAY_MS = 1_500;
 const SCENE_UPDATE_HISTORY_DEFERRED_RETRY_MS = 2_000;
 
@@ -96,10 +98,12 @@ export function SceneUpdateHistoryBridge({
       const deltas: SceneUpdateDelta[] = [];
       let loadedThroughNs: bigint | undefined;
       let messageCount = 0;
+      let lastPublishedMessageCount = 0;
       try {
         for await (const batch of session.read({
           limit: SCENE_UPDATE_HISTORY_READ_LIMIT,
           priority: "bulk",
+          signal: control.signal,
           streams: [stream],
           window: session.manifest.timeRange,
         })) {
@@ -121,7 +125,13 @@ export function SceneUpdateHistoryBridge({
               update: visualization,
             });
           }
-          if (loadedThroughNs !== undefined) {
+          if (
+            loadedThroughNs !== undefined &&
+            (lastPublishedMessageCount === 0 ||
+              messageCount - lastPublishedMessageCount >=
+                SCENE_UPDATE_HISTORY_PROGRESS_BATCH_MESSAGES)
+          ) {
+            lastPublishedMessageCount = messageCount;
             commit({
               deltas: [...deltas],
               loadedThroughNs,

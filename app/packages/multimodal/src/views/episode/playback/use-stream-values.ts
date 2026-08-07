@@ -176,6 +176,7 @@ export function usePointCloudPlaybackFrames(
     const readPointCloudChannel = dataStream?.readPointCloudChannel;
     if (!readPointCloudChannel) return undefined;
     let cancelled = false;
+    const controller = new AbortController();
     frames.forEach((playbackFrame, index) => {
       const payload = playbackFrame?.frame.renderPayload;
       const activeColorBy = colorBy[index] ?? "auto";
@@ -204,6 +205,7 @@ export function usePointCloudPlaybackFrames(
         capacity: payload.capacity,
         sampledPointCount: payload.sampledPointCount,
         samplePlanKey,
+        signal: controller.signal,
         sourceIndices: payload.sourceIndices,
         stream,
         timestampNs: playbackFrame.contentTimeNs,
@@ -222,6 +224,7 @@ export function usePointCloudPlaybackFrames(
     });
     return () => {
       cancelled = true;
+      controller.abort();
     };
     // colorSignature captures the supported option content.
     // eslint-disable-next-line react-hooks/exhaustive-deps

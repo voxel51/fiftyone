@@ -75,8 +75,8 @@ import { resetStartupCushionState } from "./startup-cushion-state";
 import { EpisodeStreamCache, releaseArrayBuffers } from "../../../runtime";
 import type { StreamPlaybackFrame } from "./use-stream-values";
 import {
-  evictOldestPointCloudChannels,
   pointCloudChannelKey,
+  readPointCloudChannelWithCache,
 } from "./point-cloud-channel-cache";
 
 /**
@@ -694,6 +694,10 @@ export function useRegisterDataStream({
     ],
   );
 
+  // A source/runtime replacement owns its read cancellation, including the
+  // generic fallback path where no adapter-level source switch exists.
+  useEffect(() => () => prefetcher?.cancel(), [prefetcher]);
+
   const scheduler = useMemo(
     () =>
       prefetcher
@@ -949,6 +953,7 @@ export function useRegisterDataStream({
       readonly capacity: number;
       readonly sampledPointCount: number;
       readonly samplePlanKey: string;
+      readonly signal?: AbortSignal;
       readonly sourceIndices: Uint32Array;
       readonly stream: string;
       readonly timestampNs: bigint;
@@ -967,16 +972,12 @@ export function useRegisterDataStream({
         request.samplePlanKey,
         request.activeColorBy,
       );
-      const cached = pointCloudChannelReadsRef.current.get(key);
-      if (cached) return cached;
-
-      const read = capability.readChannel(request).catch((error) => {
-        pointCloudChannelReadsRef.current.delete(key);
-        throw error;
-      });
-      pointCloudChannelReadsRef.current.set(key, read);
-      evictOldestPointCloudChannels(pointCloudChannelReadsRef.current);
-      return read;
+      return readPointCloudChannelWithCache(
+        pointCloudChannelReadsRef.current,
+        key,
+        request.signal,
+        () => capability.readChannel(request),
+      );
     },
     [session, sourceKey],
   );
