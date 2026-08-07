@@ -16,12 +16,15 @@ import { useOperatorExecutor } from "@fiftyone/operators";
 import { usePanelId, usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { useEffect, useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
 import PlotView from "./PlotView";
+import { fetchRunsStatus } from "./protocol";
 import RunsList from "./RunsList";
 import { useVisualizationRuns } from "./useVisualizationRuns";
 
 const DELETE_RUN_OPERATOR = "@voxel51/operators/delete_brain_run";
+
+/** Poll cadence while the list is showing a pending run */
+const PENDING_POLL_MS = 5_000;
 
 // Panel instances that have already mounted since this page load.
 // Module-scoped on purpose: panel state survives reloads via the
@@ -31,7 +34,8 @@ const DELETE_RUN_OPERATOR = "@voxel51/operators/delete_brain_run";
 const mountedPanels = new Set<string>();
 
 export default function EmbeddingsV2Panel() {
-  const datasetName = useRecoilValue(fos.datasetName) ?? null;
+  const datasetName = fos.useCurrentDatasetName() ?? null;
+  const datasetId = fos.useCurrentDatasetId() ?? null;
   const panelId = usePanelId();
   const [openKeyState, setOpenKey] = usePanelStatePartial<string | null>(
     "openKey",
@@ -71,9 +75,66 @@ export default function EmbeddingsV2Panel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetName]);
 
-  const { runs, error, refresh } = useVisualizationRuns(datasetName);
+  // The runs are coupled to the dataset the page already loads and
+  // should not maintain an independent list.
+  const { runs } = useVisualizationRuns();
+  const refresh = fos.useRefresh();
   const deleteExecutor = useOperatorExecutor(DELETE_RUN_OPERATOR);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // A stale key (deleted run, switched dataset, results not yet
+  // saved) falls back to the list — a pending run has nothing to plot
+  const openRun =
+    runs?.find((r) => r.brainKey === openKey && r.ready && !r.error) ?? null;
+
+  // Polling has no reason to run against the plot (nothing there can
+  // become ready), a fully-ready list, or a backgrounded tab — so it's
+  // gated on all three.
+  const pendingKeys = (runs ?? [])
+    .filter((run) => !run.ready && !run.error)
+    .map((r) => r.brainKey);
+  const pendingSignature = pendingKeys.join(",");
+
+  useEffect(() => {
+    if (openRun || !datasetId || pendingKeys.length === 0) return undefined;
+
+    // `active` guards against a straggling response outliving this effect
+    // (e.g. the user opens a plot while a request is in flight) — without
+    // it, a late `changed` result would still fire the heavy refresh
+    // against a dataset/view the effect no longer applies to. `inFlight`
+    // just skips overlapping ticks if a response is slow
+    let active = true;
+    let inFlight = false;
+
+    const check = () => {
+      if (document.hidden || inFlight) return;
+      inFlight = true;
+      fetchRunsStatus(datasetId)
+        .then((statuses) => {
+          if (!active) return;
+          const changed = statuses.some(
+            (s) => pendingKeys.includes(s.brainKey) && (s.ready || s.error),
+          );
+          if (changed) refresh();
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          inFlight = false;
+        });
+    };
+
+    check();
+    const id = window.setInterval(check, PENDING_POLL_MS);
+    return () => {
+      active = false;
+      window.clearInterval(id);
+    };
+    // openRun/pendingKeys are summarized as Boolean(openRun)/pendingSignature
+    // on purpose: both are new references most renders, and depending on
+    // them directly would restart the interval far more often than the
+    // plot-opened/pending-set-changed transitions this actually needs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Boolean(openRun), pendingSignature, datasetId, refresh]);
 
   const handleOpen = (brainKey: string) => {
     // every run opens uncolored: a carried-over choice can be invalid
@@ -97,10 +158,6 @@ export default function EmbeddingsV2Panel() {
     );
   };
 
-  // A stale key (deleted run, switched dataset, results not yet
-  // saved) falls back to the list — a pending run has nothing to plot
-  const openRun = runs?.find((r) => r.brainKey === openKey && r.ready) ?? null;
-
   if (openRun) {
     return (
       <PlotView
@@ -113,7 +170,6 @@ export default function EmbeddingsV2Panel() {
   return (
     <RunsList
       runs={runs}
-      error={error}
       actionError={actionError}
       onOpen={handleOpen}
       onDelete={handleDelete}

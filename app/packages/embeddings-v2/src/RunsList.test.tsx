@@ -15,6 +15,7 @@ const run = (
   pointsField: null,
   model: "clip-vit-base32-torch",
   ready: true,
+  error: null,
   timestamp: null,
   ...extra,
 });
@@ -30,7 +31,6 @@ describe("RunsList", () => {
     render(
       <RunsList
         runs={[run("clip_umap"), run("viz3d", { dims: 3 })]}
-        error={null}
         onOpen={onOpen}
         onDelete={vi.fn()}
       />,
@@ -49,7 +49,6 @@ describe("RunsList", () => {
     render(
       <RunsList
         runs={[run("cooking", { ready: false })]}
-        error={null}
         onOpen={onOpen}
         onDelete={vi.fn()}
       />,
@@ -64,7 +63,6 @@ describe("RunsList", () => {
     render(
       <RunsList
         runs={[run("clip_umap")]}
-        error={null}
         onOpen={vi.fn()}
         onDelete={vi.fn()}
       />,
@@ -86,7 +84,6 @@ describe("RunsList", () => {
     const { rerender } = render(
       <RunsList
         runs={[run("clip_umap")]}
-        error={null}
         onOpen={vi.fn()}
         onDelete={vi.fn()}
       />,
@@ -97,7 +94,6 @@ describe("RunsList", () => {
     rerender(
       <RunsList
         runs={[run("clip_umap")]}
-        error={null}
         onCreate={onCreate}
         onOpen={vi.fn()}
         onDelete={vi.fn()}
@@ -113,7 +109,6 @@ describe("RunsList", () => {
     render(
       <RunsList
         runs={[run("clip_umap")]}
-        error={null}
         onOpen={onOpen}
         onDelete={onDelete}
       />,
