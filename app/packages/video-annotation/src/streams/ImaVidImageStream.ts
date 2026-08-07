@@ -7,11 +7,18 @@ import {
 } from "./frameBitmapStream";
 import type { FrameReadyMessage } from "./frameWorkerProtocol";
 
+/** Per-frame metadata the ImaVid `/frames` source carries. */
+export interface ImaVidFrameMeta {
+  src: string;
+  /** Source media path of this frame's sample (drives the header filename). */
+  filepath: string;
+}
+
 /**
  * What the ImaVid stream publishes per frame. Alias of the shared
  * {@link FrameBitmap} — kept for the tile's existing import.
  */
-export type ImaVidImageFrame = FrameBitmap;
+export type ImaVidImageFrame = FrameBitmap<ImaVidFrameMeta>;
 
 export interface ImaVidImageStreamOptions extends FrameBitmapStreamOptions {
   /** Current dataset name (POST /frames requires it). */
@@ -20,6 +27,12 @@ export interface ImaVidImageStreamOptions extends FrameBitmapStreamOptions {
   view: Stage[];
   /** Group slice name, when the dataset is grouped. */
   groupSlice?: string | null;
+  /**
+   * Dynamic-group value, when the clip is a dynamic group rather than a video
+   * sample. Routes `/frames` to that group's ordered samples (ImaVid for an
+   * image dataset grouped into a video).
+   */
+  dynamicGroup?: string | null;
 }
 
 /**
@@ -32,16 +45,18 @@ export interface ImaVidImageStreamOptions extends FrameBitmapStreamOptions {
  * / readiness machinery lives in {@link FrameBitmapStream}; this subclass only
  * supplies the `/frames` source.
  */
-export class ImaVidImageStream extends FrameBitmapStream<{ src: string }> {
+export class ImaVidImageStream extends FrameBitmapStream<ImaVidFrameMeta> {
   private readonly dataset: string;
   private readonly view: Stage[];
   private readonly groupSlice: string | null;
+  private readonly dynamicGroup: string | null;
 
   constructor(opts: ImaVidImageStreamOptions) {
     super(opts);
     this.dataset = opts.dataset;
     this.view = opts.view;
     this.groupSlice = opts.groupSlice ?? null;
+    this.dynamicGroup = opts.dynamicGroup ?? null;
   }
 
   protected createWorker(): Worker {
@@ -74,14 +89,16 @@ export class ImaVidImageStream extends FrameBitmapStream<{ src: string }> {
       dataset: this.dataset,
       view: this.view,
       slice: this.groupSlice ?? undefined,
+      dynamicGroup: this.dynamicGroup ?? undefined,
       // The image stream only needs each frame's media path; project to it so
       // `/frames` doesn't ship every label field per frame.
       fields: ["filepath"],
     };
   }
 
-  protected override toMeta(msg: FrameReadyMessage): { src: string } {
-    return { src: (msg.meta as { src?: string } | undefined)?.src ?? "" };
+  protected override toMeta(msg: FrameReadyMessage): ImaVidFrameMeta {
+    const meta = msg.meta as Partial<ImaVidFrameMeta> | undefined;
+    return { src: meta?.src ?? "", filepath: meta?.filepath ?? "" };
   }
 }
 

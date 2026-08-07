@@ -285,7 +285,8 @@ export const useVideoPropagate = () => {
 
       // the track's own frame field — a non-primary track (e.g. a polyline)
       // re-lerps in place; defaults to the stream's primary field
-      const path = pathOverride ?? `frames.${stream.labelsField}`;
+      // (labelsPath: `frames.<field>` for a video, bare for a dynamic group)
+      const path = pathOverride ?? stream.labelsPath;
       const at: FrameReader = (frame) =>
         engine.getLabel({ sample: sampleId, path, instanceId, frame });
 

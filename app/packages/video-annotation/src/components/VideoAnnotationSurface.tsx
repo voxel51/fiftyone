@@ -1,4 +1,8 @@
-import { getSampleSrc, useDimensions } from "@fiftyone/state";
+import {
+  getSampleSrc,
+  useDimensions,
+  useIsImageDynamicGroupVideo,
+} from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
 import React, { useMemo, useState } from "react";
 import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
@@ -127,6 +131,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   sample,
 }) => {
   const labelsMode = useLabelsMode();
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
   const prerequisites = useAnnotatePrerequisites(sample);
 
   // Measure the surface so the timeline body caps at a fraction of it: past the
@@ -145,11 +150,16 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
 
   // Resolved top-level media URL. The `html` tile binds to it and the `extract`
   // source decodes it in a worker; the `fetch` source resolves per-frame URLs
-  // instead and ignores it.
+  // instead and ignores it. A dynamic-group ImaVid sample's URL is an image,
+  // not a video source — never expose it as one.
   const videoSrc = useMemo(() => {
+    if (isImageDynamicGroupVideo) {
+      return null;
+    }
+
     const url = sample.urls?.[0]?.url;
     return url ? getSampleSrc(url) : null;
-  }, [sample]);
+  }, [sample, isImageDynamicGroupVideo]);
 
   // Decide the decode strategy up front. Runs unconditionally (before the gates
   // below) to keep hook order stable across the resolving → resolved transition.
@@ -157,6 +167,7 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
     videoSrc,
     frameCount: prerequisites.frameCount,
     enabled: prerequisites.status === "ready",
+    force: isImageDynamicGroupVideo ? "fetch" : undefined,
   });
 
   // Metadata gate: without a frame count no strategy can mount, so show an

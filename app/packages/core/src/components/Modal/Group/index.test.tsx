@@ -1,9 +1,9 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, waitFor } from "@testing-library/react";
+import { cleanup, render, waitFor } from "@testing-library/react";
 import React from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Group from ".";
 
 const mockState = vi.hoisted(() => ({
@@ -12,8 +12,10 @@ const mockState = vi.hoisted(() => ({
     groupMediaIsCarouselVisibleSetting: false,
     groupMediaIsMain2DViewerVisible: true,
     isDynamicGroup: false,
+    isImageDynamicGroupVideo: false,
     isNestedDynamicGroup: false,
     isOrderedDynamicGroup: false,
+    modalSample: { sample: {} },
     only3d: false,
   },
   group3dState: {
@@ -45,14 +47,20 @@ vi.mock("@fiftyone/state", () => ({
   isDynamicGroup: { key: "isDynamicGroup" },
   isNestedDynamicGroup: { key: "isNestedDynamicGroup" },
   isOrderedDynamicGroup: { key: "isOrderedDynamicGroup" },
+  modalSample: { key: "modalSample" },
   only3d: { key: "only3d" },
   useIs3dVisible: () => mockState.group3dState.is3dVisible,
   useIs3dVisibleSetting: () => mockState.group3dState.is3dVisibleSetting,
   useIs3dPinned: () => mockState.group3dState.isPinned,
+  useIsImageDynamicGroupVideo: () => mockState.values.isImageDynamicGroupVideo,
   useRenderConfig3dActions: () => ({
     setPinned: mockState.setPinned,
   }),
   useModalMode: () => mockState.modalMode,
+}));
+
+vi.mock("@fiftyone/video-annotation", () => ({
+  VideoAnnotationSurface: () => <div>video-annotation-surface</div>,
 }));
 
 vi.mock("recoil", async () => {
@@ -106,8 +114,10 @@ describe("Group", () => {
       groupMediaIsCarouselVisibleSetting: false,
       groupMediaIsMain2DViewerVisible: true,
       isDynamicGroup: false,
+      isImageDynamicGroupVideo: false,
       isNestedDynamicGroup: false,
       isOrderedDynamicGroup: false,
+      modalSample: { sample: {} },
       only3d: false,
     };
     mockState.group3dState = {
@@ -119,6 +129,10 @@ describe("Group", () => {
     mockState.setDynamicGroupsViewMode.mockReset();
     mockState.setMainVisible.mockReset();
     mockState.setPinned.mockReset();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it("pins 3d when the main viewer is hidden and the 3d viewer is visible", async () => {
@@ -137,5 +151,27 @@ describe("Group", () => {
     await waitFor(() => {
       expect(mockState.setPinned).not.toHaveBeenCalled();
     });
+  });
+
+  it("renders the video annotation surface for an image dynamic-group video in annotate mode", () => {
+    mockState.modalMode = "ANNOTATE";
+    mockState.values.isImageDynamicGroupVideo = true;
+    mockState.values.isDynamicGroup = true;
+
+    const { queryByText } = render(<Group />);
+
+    expect(queryByText("video-annotation-surface")).toBeTruthy();
+    expect(queryByText("dynamic-group")).toBeNull();
+  });
+
+  it("renders the normal group view for an image dynamic-group video in explore mode", () => {
+    mockState.modalMode = "EXPLORE";
+    mockState.values.isImageDynamicGroupVideo = true;
+    mockState.values.isDynamicGroup = true;
+
+    const { queryByText } = render(<Group />);
+
+    expect(queryByText("video-annotation-surface")).toBeNull();
+    expect(queryByText("dynamic-group")).toBeTruthy();
   });
 });
