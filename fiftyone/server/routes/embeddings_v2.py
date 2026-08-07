@@ -126,7 +126,7 @@ class EmbeddingsV2RunInfo(HTTPEndpoint):
         info = dataset.get_brain_info(brain_key)
         config = info.config
 
-        # Avoid loading large GridFS blob results for run-into by
+        # Avoid loading large GridFS blob results for run-info by
         # relying on results_meta, which some runs record. However, fallback to
         # laoding the entire results blob for compatibility.
         run_meta = (
