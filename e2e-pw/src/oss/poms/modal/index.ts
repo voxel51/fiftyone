@@ -2,6 +2,7 @@ import { Locator, Page, expect } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 import { Duration } from "../../utils";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
+import { EpisodePom } from "../multimodal/episode";
 import { ModalPanelPom } from "../panels/modal-panel";
 import { UrlPom } from "../url";
 import { ModalAnnotate3dPom } from "./annotate-3d";
@@ -34,6 +35,7 @@ export class ModalPom {
   readonly video: ModalVideoControlsPom;
   readonly videoAnnotate: VideoAnnotatePom;
   readonly annotate3d: ModalAnnotate3dPom;
+  readonly episode: EpisodePom;
 
   constructor(
     private readonly page: Page,
@@ -57,6 +59,7 @@ export class ModalPom {
     this.video = new ModalVideoControlsPom(page, this);
     this.videoAnnotate = new VideoAnnotatePom(page, this);
     this.annotate3d = new ModalAnnotate3dPom(page, this);
+    this.episode = new EpisodePom(page, this.locator);
   }
 
   get modalSamplePluginTitle() {
