@@ -168,6 +168,7 @@ export function resolveColorscale(
  * lookup, matching how the grid's own heatmap overlays read these same
  * server-precomputed dense arrays (not live multi-stop interpolation). */
 function colorscaleRgbAt(colorscale: Colorscale, t: number): RGB {
+  if (colorscale.length === 0) colorscale = DEFAULT_COLORSCALE;
   if (colorscale.length === 1) return colorscale[0];
   const clamped = Math.min(1, Math.max(0, t));
   const index = Math.round(clamped * (colorscale.length - 1));

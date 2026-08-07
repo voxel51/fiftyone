@@ -186,6 +186,14 @@ describe("resolveColorscale", () => {
   });
 });
 
+describe("rampCss", () => {
+  it("falls back to the built-in ramp for an empty colorscale", () => {
+    // An empty array can reach here from a caller that skips
+    // resolveColorscale (which never itself produces one) — must not crash
+    expect(rampCss(0.5, [])).toBe(rampCss(0.5));
+  });
+});
+
 describe("buildColors categorical", () => {
   it("gives legend swatches the exact color the points get", () => {
     // The drift guard: categoryCss (legend) and buildColors (points)
