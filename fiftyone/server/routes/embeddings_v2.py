@@ -37,6 +37,7 @@ from starlette.responses import Response
 
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 import fiftyone.core.stages as fos
 import fiftyone.core.storage as fost
 from fiftyone.core.utils import run_sync_task
