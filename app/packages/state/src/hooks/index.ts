@@ -19,7 +19,6 @@ export { default as useHover } from "./useHover";
 export { useIsMediaType, useIsVideo } from "./useIsMediaType";
 export { default as useHoveredSample } from "./useHoveredSample";
 export { default as useJSONPanel } from "./useJSONPanel";
-export { default as useKeyDown } from "./useKeyDown";
 export * from "./useLookerStore";
 export { default as useLookerStore } from "./useLookerStore";
 export { default as useMutation } from "./useMutation";

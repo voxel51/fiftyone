@@ -15,6 +15,7 @@ import {
   pageParameters,
 } from "./recoil";
 import useEscape from "./useEscape";
+import { useKeymapScope } from "@fiftyone/keymap";
 import useEvents from "./useEvents";
 import useLabelVisibility from "./useLabelVisibility";
 import useLookerCache from "./useLookerCache";
@@ -107,6 +108,10 @@ function Grid() {
     zoom,
   ]);
 
+  // The grid scope is live for as long as the grid is mounted; the selection
+  // sub-scope is what `useEscape` dismisses against.
+  useKeymapScope("grid");
+  useKeymapScope("grid.selection");
   useEscape();
   useEvents({ id, cache, pixels, resizing, set, spotlight });
   useUpdates({ cache, getFontSize, options: lookerOptions, spotlight });

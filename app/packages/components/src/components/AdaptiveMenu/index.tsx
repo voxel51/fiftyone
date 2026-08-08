@@ -1,18 +1,16 @@
-import { escapeKeyHandlerIdsAtom, useKeyDown } from "@fiftyone/state";
+import { useDismissable } from "@fiftyone/keymap";
 import { ExpandMore } from "@mui/icons-material";
 import type { BoxProps } from "@mui/material";
 import { Box } from "@mui/material";
 import { throttle } from "lodash";
 import React, {
   useCallback,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
 } from "react";
 import type { MoveEvent, SortableEvent } from "react-sortablejs";
 import { ReactSortable } from "react-sortablejs";
-import { useSetRecoilState } from "recoil";
 import PillButton from "../PillButton";
 import PopoutButton from "../PopoutButton";
 import { hideOverflowingNodes } from "./utils";
@@ -235,29 +233,19 @@ function MoreItems<T extends AdaptiveMenuItemPropsType>(
 ) {
   const { id, items, onMove, onEnd, onStart, orientation, refresh } = props;
   const [open, setOpen] = React.useState(false);
-  const setEscapeHandlerIds = useSetRecoilState(escapeKeyHandlerIdsAtom);
-
-  useEffect(() => {
-    if (open) {
-      setEscapeHandlerIds((state) => {
-        const updated = new Set([...Array.from(state)]);
-        updated.add(id);
-        return updated;
-      });
-    } else {
-      setEscapeHandlerIds((state) => {
-        const updated = new Set([...Array.from(state)]);
-        updated.delete(id);
-        return updated;
-      });
-    }
-  }, [open, setEscapeHandlerIds, id]);
 
   const close = useCallback(() => {
     setOpen(false);
   }, []);
 
-  useKeyDown("Escape", close);
+  // Was an unguarded `useKeyDown("Escape")` plus a hand-rolled
+  // `escapeKeyHandlerIdsAtom` Set that the grid had to consult so the two
+  // wouldn't both fire. That Set was a dismissal stack with one producer and
+  // one consumer; this is the real thing, so the coordination disappears.
+  useDismissable(`adaptive-menu-${id}`, "Popout menu", "overlay.popout", () => {
+    close();
+    return true;
+  }, open);
 
   return (
     <PopoutButton

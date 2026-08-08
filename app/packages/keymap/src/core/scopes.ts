@@ -33,7 +33,17 @@ export const SCOPE_PARENTS: Record<ScopeId, ScopeId | null> = {
   "panel.embeddings": "app",
   "panel.map": "app",
   viewbar: "app",
-  "overlay.operator-browser": "app",
+
+  // Transient layers that float *above* whatever content is beneath them.
+  // They sit deep in the tree on purpose: dismissal is ordered by scope depth,
+  // and an open popout must take an Escape before the grid selection or the
+  // sample modal does, no matter which of them mounted first. Ties between
+  // overlays fall through to push order, so the most recently opened wins —
+  // which is the right rule for things that open and close over time.
+  overlay: "app",
+  "overlay.popout": "overlay",
+  "overlay.operator-browser": "overlay",
+  "overlay.dialog": "overlay",
 
   // Showcase-only scopes, so the demo route exercises the real resolution path
   // rather than a parallel toy one.
@@ -58,7 +68,10 @@ export const SCOPE_LABELS: Record<ScopeId, string> = {
   "panel.embeddings": "Embeddings panel",
   "panel.map": "Map panel",
   viewbar: "View bar",
+  overlay: "Overlay",
+  "overlay.popout": "Popout menu",
   "overlay.operator-browser": "Operator browser",
+  "overlay.dialog": "Dialog",
   demo: "Demo ▸ Page",
   "demo.canvas": "Demo ▸ Canvas",
   "demo.canvas.tool": "Demo ▸ Canvas ▸ Tool",

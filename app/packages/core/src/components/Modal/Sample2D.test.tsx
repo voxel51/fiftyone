@@ -15,12 +15,15 @@ const harness = vi.hoisted(() => ({
   rendererMounts: 0,
 }));
 
+vi.mock("@fiftyone/keymap", () => ({
+  useKeyBinding: () => undefined,
+}));
+
 vi.mock("@fiftyone/state", () => ({
   ModalMode: { ANNOTATE: "annotate" },
   modalSample: "modal-sample",
   modalSampleId: "modal-sample-id",
   useHoveredSample: () => ({ handlers: {} }),
-  useKeyDown: () => undefined,
   useModalMode: () => "view",
 }));
 

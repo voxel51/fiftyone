@@ -1,10 +1,10 @@
+import { useKeyBinding } from "@fiftyone/keymap";
 import {
   ModalMode,
   ModalSample,
   modalSample,
   modalSampleId,
   useHoveredSample,
-  useKeyDown,
   useModalMode,
 } from "@fiftyone/state";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
@@ -38,10 +38,12 @@ export const SampleWrapper = ({
 
   const timeout: MutableRefObject<number | null> = useRef<number>(null);
 
-  useKeyDown("c", () => {
-    !(document.activeElement instanceof HTMLInputElement) &&
-      setHovering((cur) => !cur);
-  });
+  // The hand-rolled `activeElement instanceof HTMLInputElement` check is gone:
+  // it missed textareas and contenteditable. The bus applies the one shared
+  // text guard to every binding (F4).
+  useKeyBinding("fo.modal.controls.toggle", () =>
+    setHovering((current) => !current),
+  );
 
   const clear = useCallback(() => {
     if (hoveringRef.current) return;

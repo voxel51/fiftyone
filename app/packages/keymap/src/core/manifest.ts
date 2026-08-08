@@ -152,6 +152,14 @@ export const MANIFEST: CommandManifestEntry[] = [
     defaultKeys: ["KeyR"],
   },
   {
+    id: "fo.modal.controls.toggle",
+    label: "Toggle controls",
+    description: "Show or hide the sample viewer's hover controls",
+    category: "Sample viewer",
+    scope: "modal",
+    defaultKeys: ["KeyC"],
+  },
+  {
     id: "fo.modal.json.toggle",
     label: "Toggle JSON",
     category: "Sample viewer",
