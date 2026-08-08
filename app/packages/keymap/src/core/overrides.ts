@@ -29,6 +29,25 @@ export const PRESETS: Record<
   { label: string; overrides: OverrideMap }
 > = {
   [DEFAULT_PRESET]: { label: "FiftyOne (default)", overrides: {} },
+  /**
+   * Every arrow-key default remapped onto the home row.
+   *
+   * Arrow keys are the single most common thing to lose — a dead switch after
+   * a spill, a remapped laptop, a compact keyboard without them, or a screen
+   * reader that claims them. Because arrows are the *default* for sample
+   * navigation, losing them makes the app look broken rather than unbound,
+   * which is exactly the failure remapping exists to fix. Shipping this as a
+   * preset means the fix is one dropdown rather than five rebinds.
+   */
+  "no-arrow-keys": {
+    label: "No arrow keys",
+    overrides: {
+      "fo.modal.previous.sample": ["Semicolon"],
+      "fo.modal.next.sample": ["Quote"],
+      "fo.operator-browser.previous": ["Semicolon"],
+      "fo.operator-browser.next": ["Quote"],
+    },
+  },
   "cvat-compatible": {
     label: "CVAT-compatible (sketch)",
     overrides: {

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { formatChord, parseChord } from "./chords";
 import { describeKeys } from "./layout";
 import { analyzeOverlaps, trueConflicts } from "./conflicts";
+import { lookupCommand } from "./manifest";
 import { DismissalStack } from "./dismiss";
 import { resolveKeymap } from "./overrides";
 import { KeymapRegistry, keymap } from "./registry";
@@ -254,7 +255,11 @@ describe("registry resolution", () => {
     registry.pushScope("demo");
     registry.pushScope("demo.canvas");
 
-    document.dispatchEvent(press("ArrowRight", {}, { repeat: true }));
+    // Read the key from the manifest rather than hardcoding it: this test
+    // previously asserted ArrowRight and broke the moment the default moved,
+    // which is the same drift the manifest exists to prevent.
+    const nudgeKey = lookupCommand("demo.canvas.nudge")!.defaultKeys[0];
+    document.dispatchEvent(press(nudgeKey, {}, { repeat: true }));
     expect(nudge).toHaveBeenCalledTimes(1);
 
     document.dispatchEvent(press("KeyD", {}, { repeat: true }));

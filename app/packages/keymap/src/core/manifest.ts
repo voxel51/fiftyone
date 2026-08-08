@@ -467,10 +467,11 @@ export const MANIFEST: CommandManifestEntry[] = [
   {
     id: "demo.canvas.nudge",
     label: "Nudge (repeatable)",
-    description: "Holds to repeat, unlike every other binding here",
+    description:
+      "Hold to repeat, unlike every other binding here. Deliberately not an arrow key — arrows are a bad default for a demo, since a broken or remapped arrow makes the feature look broken rather than unbound",
     category: "Demo",
     scope: "demo.canvas",
-    defaultKeys: ["ArrowRight"],
+    defaultKeys: ["KeyN"],
     repeatable: true,
   },
   {

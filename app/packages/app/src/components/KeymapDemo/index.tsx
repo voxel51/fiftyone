@@ -47,6 +47,23 @@ const useLog = () => {
 };
 
 /**
+ * Resolves a command's current key for use in prose and log lines. Same reason
+ * the legend derives: a hardcoded "A" becomes a lie the moment anyone rebinds,
+ * and this demo exists partly to be rebound.
+ */
+const useKeyLabel = () => {
+  const view = useKeymapView();
+  return useCallback(
+    (commandId: string) =>
+      describeKeys(
+        view.bindings.find((binding) => binding.entry.id === commandId)?.keys ??
+          [],
+      ),
+    [view],
+  );
+};
+
+/**
  * Legend rows are keyed by *command id*, and the glyph is resolved from the live
  * keymap. Nothing here hardcodes a key label — that is the habit that produced
  * the app's three drifting shortcut tables (F5) and the `shortcut` fields that
@@ -132,9 +149,13 @@ const ToolBox: React.FC<{
 }> = ({ onExit, log }) => {
   const [shape, setShape] = useState(false);
 
+  const keyLabel = useKeyLabel();
+
   useKeymapScope("demo.canvas.tool");
   useKeyBinding("demo.tool.action", () =>
-    log("A → Tool action (deepest active scope won)"),
+    log(
+      `${keyLabel("demo.tool.action")} → Tool action (deepest active scope won)`,
+    ),
   );
   useDismissable("demo-tool", "Active tool", "demo.canvas.tool", () => {
     log("Escape → exited the tool");
@@ -175,6 +196,7 @@ const CanvasBox: React.FC<{
   const [toolActive, setToolActive] = useState(false);
   const [nudge, setNudge] = useState(0);
   const activateKeys = useCommandKeys("demo.tool.activate");
+  const keyLabel = useKeyLabel();
 
   // The scope is pushed only while the canvas is focused — "mounted *and*
   // interactive", per §4.2. Everything below stays registered either way; what
@@ -182,10 +204,16 @@ const CanvasBox: React.FC<{
   useKeymapScope("demo.canvas", focused);
 
   useKeyBinding("demo.canvas.action", () =>
-    log("A → Canvas action (shadowed the Page action)"),
+    log(
+      `${keyLabel("demo.canvas.action")} → Canvas action (shadowed the Page action)`,
+    ),
   );
-  useKeyBinding("demo.canvas.draw", () => log("D → Draw"));
-  useKeyBinding("demo.canvas.duplicate", () => log("D → Duplicate"));
+  useKeyBinding("demo.canvas.draw", () =>
+    log(`${keyLabel("demo.canvas.draw")} → Draw`),
+  );
+  useKeyBinding("demo.canvas.duplicate", () =>
+    log(`${keyLabel("demo.canvas.duplicate")} → Duplicate`),
+  );
   useKeyBinding("demo.canvas.nudge", () => setNudge((current) => current + 8));
   useKeyBinding("demo.tool.activate", () => setToolActive(true));
 
@@ -266,10 +294,13 @@ const CanvasBox: React.FC<{
 
 const InspectorBox: React.FC<{ log: (text: string) => void }> = ({ log }) => {
   const [value, setValue] = useState("");
+  const keyLabel = useKeyLabel();
 
   useKeymapScope("demo.inspector");
   useKeyBinding("demo.inspector.commit", () => {
-    log(`Ctrl/Cmd+Enter → committed "${value}" from inside a text field`);
+    log(
+      `${keyLabel("demo.inspector.commit")} → committed "${value}" from inside a text field`,
+    );
     setValue("");
   });
   useDismissable("demo-inspector", "Inspector", "demo.inspector", () => {
@@ -319,6 +350,7 @@ const KeymapDemo: React.FC = () => {
   const setSettingsOpen = useSetAtom(settingsOpenAtom);
   const setSettingsSection = useSetAtom(settingsSectionAtom);
   const toggleKeys = useCommandKeys("demo.inspector.toggle");
+  const keyLabel = useKeyLabel();
   const actionKeys = useCommandKeys("demo.page.action");
   const drawKeys = useCommandKeys("demo.canvas.draw");
   const view = useKeymapView();
@@ -334,10 +366,14 @@ const KeymapDemo: React.FC = () => {
   useKeyBinding("demo.page.flash", () => {
     setFlash(true);
     window.setTimeout(() => setFlash(false), 250);
-    log("P → Flash (only bound at the page scope, so it always wins)");
+    log(
+      `${keyLabel("demo.page.flash")} → Flash (only bound at the page scope, so it always wins)`,
+    );
   });
   useKeyBinding("demo.page.action", () =>
-    log("A → Page action (no deeper scope was active)"),
+    log(
+      `${keyLabel("demo.page.action")} → Page action (no deeper scope was active)`,
+    ),
   );
   useKeyBinding("demo.inspector.toggle", () =>
     setInspectorOpen((current) => !current),
