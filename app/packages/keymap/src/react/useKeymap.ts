@@ -148,6 +148,21 @@ export const useKeymapView = (): KeymapView => {
   }, [version]);
 };
 
+/**
+ * The keys currently resolved for one command. Use this anywhere a shortcut is
+ * displayed — tooltips, help panels, inline prose — so there is exactly one
+ * source of truth and no string to drift (F5, F6).
+ */
+export const useCommandKeys = (commandId: string): readonly string[] => {
+  const view = useKeymapView();
+  return useMemo(
+    () =>
+      view.bindings.find((binding) => binding.entry.id === commandId)?.keys ??
+      [],
+    [view, commandId],
+  );
+};
+
 /** Mutations, all of which persist only the override layer. */
 export const useKeymapActions = () =>
   useMemo(
@@ -190,6 +205,13 @@ export interface ChordRecorder {
  * recorder sees the keystroke first and `stopPropagation()` genuinely prevents
  * the chord being *executed* as you assign it. This is the same ordering
  * property §4.1 relies on, used here for the opposite purpose.
+ *
+ * Arming this is a *modal* state that swallows every keystroke in the app, so
+ * it must be impossible to leave armed by accident. Anything that means "I'm
+ * doing something else now" cancels it: a pointer press anywhere, the window
+ * losing focus, or the owning component unmounting. Without that, one stray
+ * click on a rebind button silently eats the user's next keypress and writes it
+ * into the keymap — a persisted, invisible, thoroughly confusing breakage.
  */
 export const useChordRecorder = (
   onCapture: (commandId: string, chord: Chord) => void,
@@ -203,6 +225,12 @@ export const useChordRecorder = (
     if (!target) {
       return undefined;
     }
+
+    const disarm = () => {
+      setTarget(null);
+      setCaptured(null);
+    };
+
     const listener = (event: KeyboardEvent) => {
       event.preventDefault();
       event.stopPropagation();
@@ -210,8 +238,7 @@ export const useChordRecorder = (
       // Escape aborts rather than being assignable; it is non-remappable
       // anyway, and this is the conventional escape hatch out of a recorder.
       if (event.code === "Escape") {
-        setTarget(null);
-        setCaptured(null);
+        disarm();
         return;
       }
       // Wait for a real key — a bare modifier press is the user still reaching.
@@ -224,9 +251,18 @@ export const useChordRecorder = (
       onCaptureRef.current(target, chord);
       setTarget(null);
     };
+
+    // Capture-phase pointerdown so clicking *anything* — including the button
+    // that armed it — disarms before that click is handled as something else.
     window.addEventListener("keydown", listener, { capture: true });
+    window.addEventListener("pointerdown", disarm, { capture: true });
+    window.addEventListener("blur", disarm);
     return () => {
       window.removeEventListener("keydown", listener, { capture: true });
+      window.removeEventListener("pointerdown", disarm, { capture: true });
+      window.removeEventListener("blur", disarm);
+      // Unmounting (closing the modal, switching section) must not leave a
+      // dangling armed state behind.
     };
   }, [target]);
 

@@ -3,11 +3,15 @@
  */
 
 import {
+  describeKeys,
   settingsOpenAtom,
   settingsSectionAtom,
   useDismissable,
   useKeyBinding,
+  useCommandKeys,
+  useKeymapActions,
   useKeymapScope,
+  useKeymapView,
 } from "@fiftyone/keymap";
 import {
   Alert,
@@ -19,7 +23,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useSetAtom } from "jotai";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import ResolutionReadout from "./ResolutionReadout";
 import ScopeBox from "./ScopeBox";
 
@@ -42,32 +46,63 @@ const useLog = () => {
   return { entries, log, clear: () => setEntries([]) };
 };
 
-const Legend: React.FC<{ items: [string, string][] }> = ({ items }) => (
-  <Stack spacing={0.25} sx={{ mt: 1 }}>
-    {items.map(([key, description]) => (
-      <Stack key={key} direction="row" spacing={1} alignItems="center">
-        <Box
-          component="kbd"
-          sx={{
-            minWidth: 24,
-            textAlign: "center",
-            px: 0.5,
-            py: 0.25,
-            fontSize: "0.7rem",
-            borderRadius: "3px",
-            border: (theme) => `1px solid ${theme.palette.divider}`,
-            borderBottomWidth: 2,
-          }}
-        >
-          {key}
-        </Box>
-        <Typography variant="caption" color="text.secondary">
-          {description}
-        </Typography>
-      </Stack>
-    ))}
-  </Stack>
-);
+/**
+ * Legend rows are keyed by *command id*, and the glyph is resolved from the live
+ * keymap. Nothing here hardcodes a key label — that is the habit that produced
+ * the app's three drifting shortcut tables (F5) and the `shortcut` fields that
+ * advertise keys nothing is bound to (F6). It also means rebinding a command in
+ * Settings updates this legend immediately, and a command you rebind away shows
+ * "unbound" instead of quietly lying.
+ */
+const Legend: React.FC<{ items: [string, string][] }> = ({ items }) => {
+  const view = useKeymapView();
+  const keysById = useMemo(
+    () =>
+      new Map(view.bindings.map((binding) => [binding.entry.id, binding.keys])),
+    [view],
+  );
+
+  return (
+    <Stack spacing={0.25} sx={{ mt: 1 }}>
+      {items.map(([commandId, description]) => {
+        const keys = keysById.get(commandId) ?? [];
+        const unbound = keys.length === 0;
+        return (
+          <Stack
+            key={commandId}
+            direction="row"
+            spacing={1}
+            alignItems="center"
+          >
+            <Box
+              component="kbd"
+              title={commandId}
+              sx={{
+                minWidth: 24,
+                textAlign: "center",
+                px: 0.5,
+                py: 0.25,
+                fontSize: "0.7rem",
+                borderRadius: "3px",
+                whiteSpace: "nowrap",
+                border: (theme) =>
+                  `1px solid ${unbound ? theme.palette.warning.main : theme.palette.divider}`,
+                borderBottomWidth: 2,
+                color: (theme) =>
+                  unbound ? theme.palette.warning.main : "inherit",
+              }}
+            >
+              {describeKeys(keys)}
+            </Box>
+            <Typography variant="caption" color="text.secondary">
+              {description}
+            </Typography>
+          </Stack>
+        );
+      })}
+    </Stack>
+  );
+};
 
 /** Innermost layer: an in-progress shape, the thing Escape should cancel first. */
 const ShapeLayer: React.FC<{
@@ -123,8 +158,8 @@ const ToolBox: React.FC<{
       </Stack>
       <Legend
         items={[
-          ["A", "Tool action — shadows both Canvas and Page"],
-          ["Esc", "cancels the shape first, then exits the tool"],
+          ["demo.tool.action", "Tool action — shadows both Canvas and Page"],
+          ["fo.dismiss", "cancels the shape first, then exits the tool"],
         ]}
       />
     </ScopeBox>
@@ -139,6 +174,7 @@ const CanvasBox: React.FC<{
 }> = ({ focused, onFocus, onBlur, log }) => {
   const [toolActive, setToolActive] = useState(false);
   const [nudge, setNudge] = useState(0);
+  const activateKeys = useCommandKeys("demo.tool.activate");
 
   // The scope is pushed only while the canvas is focused — "mounted *and*
   // interactive", per §4.2. Everything below stays registered either way; what
@@ -201,16 +237,26 @@ const CanvasBox: React.FC<{
           <ToolBox onExit={() => setToolActive(false)} log={log} />
         ) : (
           <Typography variant="caption" color="text.secondary">
-            Press <b>E</b> to activate the tool and push a third scope.
+            Press <b>{describeKeys(activateKeys)}</b> to activate the tool and
+            push a third scope.
           </Typography>
         )}
 
         <Legend
           items={[
-            ["A", "Canvas action — shadows the Page action while focused"],
-            ["D", "true conflict: Draw and Duplicate, same key, same scope"],
-            ["→", "Nudge — the one repeatable binding here; hold it"],
-            ["E", "activate the tool"],
+            [
+              "demo.canvas.action",
+              "Canvas action — shadows the Page action while focused",
+            ],
+            [
+              "demo.canvas.draw",
+              "true conflict: Draw and Duplicate, same key, same scope",
+            ],
+            [
+              "demo.canvas.nudge",
+              "Nudge — the one repeatable binding here; hold it",
+            ],
+            ["demo.tool.activate", "activate the tool"],
           ]}
         />
       </Stack>
@@ -243,15 +289,21 @@ const InspectorBox: React.FC<{ log: (text: string) => void }> = ({ log }) => {
       <Stack spacing={1}>
         <TextField
           size="small"
-          placeholder="Type here — A, D, E and → all stop working"
+          placeholder="Type here — the canvas bindings all stop working"
           value={value}
           onChange={(event) => setValue(event.target.value)}
           fullWidth
         />
         <Legend
           items={[
-            ["⌘⏎", "Commit — declares allowInTextInput, so it still fires"],
-            ["Esc", "declines, so Escape falls through to an outer layer"],
+            [
+              "demo.inspector.commit",
+              "Commit — declares allowInTextInput, so it still fires",
+            ],
+            [
+              "fo.dismiss",
+              "declines, so Escape falls through to an outer layer",
+            ],
           ]}
         />
       </Stack>
@@ -266,6 +318,17 @@ const KeymapDemo: React.FC = () => {
   const [flash, setFlash] = useState(false);
   const setSettingsOpen = useSetAtom(settingsOpenAtom);
   const setSettingsSection = useSetAtom(settingsSectionAtom);
+  const toggleKeys = useCommandKeys("demo.inspector.toggle");
+  const actionKeys = useCommandKeys("demo.page.action");
+  const drawKeys = useCommandKeys("demo.canvas.draw");
+  const view = useKeymapView();
+  const { restoreAll } = useKeymapActions();
+  // A rebind persists to localStorage, so without this the demo can look
+  // silently broken on a later visit — the exact failure the recorder's
+  // missing cancel path used to cause.
+  const customizedCount = view.bindings.filter(
+    (binding) => binding.isCustomized,
+  ).length;
 
   useKeymapScope("demo");
   useKeyBinding("demo.page.flash", () => {
@@ -317,11 +380,35 @@ const KeymapDemo: React.FC = () => {
         </Box>
 
         <Alert severity="info" sx={{ py: 0 }}>
-          <b>A</b> is bound three times on purpose — Page, Canvas, and Tool.
-          That is <i>shadowing</i>, not a conflict, and it is exactly the case
-          §2.4 found the audit overstating. <b>D</b> is the real conflict: two
-          commands, same key, same scope.
+          <b>{describeKeys(actionKeys)}</b> is bound three times on purpose —
+          Page, Canvas, and Tool. That is <i>shadowing</i>, not a conflict, and
+          it is exactly the case §2.4 found the audit overstating.{" "}
+          <b>{describeKeys(drawKeys)}</b> is the real conflict: two commands,
+          same key, same scope.
         </Alert>
+
+        {customizedCount > 0 && (
+          <Alert
+            severity="warning"
+            sx={{ py: 0 }}
+            action={
+              <Button
+                size="small"
+                color="inherit"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  restoreAll();
+                }}
+              >
+                Reset keymap
+              </Button>
+            }
+          >
+            {customizedCount} shortcut{customizedCount === 1 ? " is" : "s are"}{" "}
+            customized, so the keys below may not match the doc. Overrides
+            persist in localStorage across reloads.
+          </Alert>
+        )}
 
         <Box
           sx={{
@@ -349,19 +436,19 @@ const KeymapDemo: React.FC = () => {
                 <InspectorBox log={log} />
               ) : (
                 <Typography variant="caption" color="text.secondary">
-                  Inspector closed. Press <b>I</b> to reopen it — and note it
-                  stays listed in Settings while closed, which is the thing that
-                  is impossible today.
+                  Inspector closed. Press <b>{describeKeys(toggleKeys)}</b> to
+                  reopen it — and note it stays listed in Settings while closed,
+                  which is the thing that is impossible today.
                 </Typography>
               )}
               <Legend
                 items={[
-                  ["P", "Flash the page"],
+                  ["demo.page.flash", "Flash the page"],
                   [
-                    "A",
+                    "demo.page.action",
                     "Page action — wins only when nothing deeper is active",
                   ],
-                  ["I", "toggle the Inspector"],
+                  ["demo.inspector.toggle", "toggle the Inspector"],
                 ]}
               />
             </Stack>

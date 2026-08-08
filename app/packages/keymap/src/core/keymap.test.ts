@@ -4,6 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { formatChord, parseChord } from "./chords";
+import { describeKeys } from "./layout";
 import { analyzeOverlaps, trueConflicts } from "./conflicts";
 import { DismissalStack } from "./dismiss";
 import { resolveKeymap } from "./overrides";
@@ -361,5 +362,30 @@ describe("registry resolution", () => {
     expect(candidates[1].status).toBe("would-fire");
     expect(candidates[2].entry.id).toBe("demo.page.action");
     expect(candidates[2].status).toBe("shadowed");
+  });
+});
+
+describe("display labels", () => {
+  it("never returns an empty label for an unbound command", () => {
+    // A rebound-away or disabled command must read as "unbound" rather than
+    // rendering nothing, which is how a broken demo looks fine but isn't.
+    expect(describeKeys([])).toBe("unbound");
+  });
+
+  it("labels a chord from its physical code", () => {
+    expect(describeKeys(["KeyS"])).toBe("S");
+    expect(describeKeys(["BracketLeft"])).toBe("[");
+    expect(describeKeys(["ArrowRight"])).toBe("→");
+  });
+
+  it("joins multiple bindings rather than showing only the first", () => {
+    expect(describeKeys(["Delete", "Backspace"])).toBe("Delete or Backspace");
+  });
+
+  it("puts the meta key first off Apple, so it doesn't read as a typo", () => {
+    // "Shift + Win + Z" is what storage order would produce; users read that
+    // as a mistake.
+    expect(describeKeys(["meta+shift+KeyZ"])).toBe("Win + Shift + Z");
+    expect(describeKeys(["ctrl+Enter"])).toBe("Ctrl + Enter");
   });
 });

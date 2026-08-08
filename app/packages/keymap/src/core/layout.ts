@@ -3,6 +3,7 @@
  */
 
 import type { Chord } from "./chords";
+import { tryParseChord } from "./chords";
 
 /**
  * Since bindings are stored as physical `code`s, the only honest way to label
@@ -189,4 +190,25 @@ export const describeChord = (chord: Chord): string => {
 
   parts.push(describeCode(chord.code));
   return parts.join(apple ? " " : " + ");
+};
+
+/**
+ * Label for a command's resolved key list. Any UI that shows a shortcut must
+ * go through this rather than hardcoding a glyph beside the binding — that
+ * habit is precisely what produced the three drifting shortcut tables and the
+ * `shortcut: "p"` that is never actually bound (design doc F5, F6).
+ *
+ * Returns "unbound" for an empty list, so a rebound or disabled command reads
+ * as missing instead of silently rendering nothing.
+ */
+export const describeKeys = (keys: readonly string[]): string => {
+  if (keys.length === 0) {
+    return "unbound";
+  }
+  return keys
+    .map((key) => {
+      const chord = tryParseChord(key);
+      return chord ? describeChord(chord) : key;
+    })
+    .join(" or ");
 };

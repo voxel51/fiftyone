@@ -19,14 +19,16 @@ import {
   useKeymapView,
   worstKind,
 } from "@fiftyone/keymap";
-import AddIcon from "@mui/icons-material/Add";
+import CloseIcon from "@mui/icons-material/Close";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import KeyboardIcon from "@mui/icons-material/Keyboard";
 import LayersIcon from "@mui/icons-material/Layers";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import {
   Alert,
   Box,
+  Button,
   Checkbox,
   Chip,
   FormControlLabel,
@@ -229,7 +231,12 @@ const ShortcutRow: React.FC<{
 
       <Stack direction="row" spacing={0.5} alignItems="center">
         {recording ? (
-          <KeyChip chord="Press any key…" tone="recording" />
+          <Stack direction="row" spacing={0.75} alignItems="center">
+            <KeyChip chord="Press a key…" tone="recording" />
+            <Typography variant="caption" color="text.secondary">
+              Esc or click to cancel
+            </Typography>
+          </Stack>
         ) : keys.length === 0 ? (
           <Typography variant="caption" color="text.disabled" sx={{ pr: 0.5 }}>
             {entry.defaultKeys.length ? "disabled" : "not bound"}
@@ -263,12 +270,13 @@ const ShortcutRow: React.FC<{
                 sx={{ p: 0.25 }}
                 data-cy={`rebind-${entry.id}`}
               >
-                <AddIcon
-                  sx={{
-                    fontSize: 16,
-                    transform: recording ? "rotate(45deg)" : "none",
-                  }}
-                />
+                {/* Not an "add" icon: this replaces the binding, and an Add
+                    glyph invited people to read it as "add a second key". */}
+                {recording ? (
+                  <CloseIcon sx={{ fontSize: 16 }} />
+                ) : (
+                  <KeyboardIcon sx={{ fontSize: 16 }} />
+                )}
               </IconButton>
             </Tooltip>
 
@@ -321,6 +329,11 @@ const ShortcutsSection: React.FC = () => {
     // the common case. Multi-binding lives in the same place if we want it.
     actions.setKeys(commandId, [formatChord(chord)]);
   });
+
+  const customizedCount = useMemo(
+    () => view.bindings.filter((binding) => binding.isCustomized).length,
+    [view],
+  );
 
   const conflictCount = useMemo(
     () =>
@@ -465,13 +478,14 @@ const ShortcutsSection: React.FC = () => {
             event.target.value = "";
           }}
         />
-        <IconButton
+        <Button
           size="small"
+          startIcon={<RestartAltIcon fontSize="small" />}
           onClick={() => actions.restoreAll()}
-          title="Restore all defaults"
+          disabled={customizedCount === 0}
         >
-          <RestartAltIcon fontSize="small" />
-        </IconButton>
+          Reset all{customizedCount > 0 ? ` (${customizedCount})` : ""}
+        </Button>
       </Stack>
 
       <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
