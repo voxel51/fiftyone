@@ -1,4 +1,5 @@
 export { VideoAnnotationSurface } from "./src/components/VideoAnnotationSurface";
+export { useVfcClockSource } from "./src/hooks/useVfcClockSource";
 export { SyntheticLabelStream } from "./src/streams/SyntheticLabelStream";
 export type {
   FrameLabelSnapshot,
