@@ -16,7 +16,7 @@ export const Leva = () => {
   );
 
   useHotkey(
-    "KeyR",
+    "fo.modal.3d.leva.toggle",
     () => {
       setIsLevaPanelOn((prev) => !prev);
     },

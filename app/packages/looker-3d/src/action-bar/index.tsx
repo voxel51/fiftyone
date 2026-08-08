@@ -52,7 +52,7 @@ export const ActionBar = ({
   const helpPanel = fos.useHelpPanel();
 
   useHotkey(
-    "KeyJ",
+    "fo.modal.3d.json.sample",
     () => {
       jsonPanel.toggle(interactionSample);
     },

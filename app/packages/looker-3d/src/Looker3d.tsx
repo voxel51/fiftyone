@@ -1,7 +1,9 @@
+import { useDismissable, useKeymapScope } from "@fiftyone/keymap";
 import * as fos from "@fiftyone/state";
 import { is3d, isDirect3dSamplePath, setContains3d } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import * as recoil from "recoil";
+import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import { ActionBar } from "./action-bar";
 import { Container } from "./containers";
 import { Fo3dErrorBoundary } from "./ErrorBoundary";
@@ -90,87 +92,92 @@ export const Looker3d = () => {
   });
 
   useHotkey(
-    "KeyG",
+    "fo.modal.3d.grid.toggle",
     async ({ set }) => {
       set(isGridOnAtom, (prev) => !prev);
     },
     [],
   );
 
-  useHotkey(
-    "Escape",
-    async ({ snapshot, set }) => {
-      const isTooltipLocked = await snapshot.getPromise(fos.isTooltipLocked);
+  // The 3D Escape ladder, moved onto the dismissal stack (§4.6).
+  //
+  // It was already a ladder — a single handler whose sequential early returns
+  // each meant "I consumed this Escape" — it just had no way to say so to the
+  // other ~19 Escape handlers in the app, which all ran anyway. Each `return`
+  // is now `return true` and the final fall-through is `return false`, so this
+  // interoperates with the modal, popouts and grid instead of racing them.
+  //
+  // Kept as one dismisser rather than split per owner: the ordering below is
+  // load-bearing and undocumented, and decomposing it into per-component
+  // layers is a behavior change that does not belong inside a migration.
+  const dismiss3d = useRecoilCallback(
+    ({ snapshot, set }) =>
+      () => {
+        const read = <T,>(atom: recoil.RecoilValue<T>) =>
+          snapshot.getLoadable(atom).valueMaybe();
 
-      if (isTooltipLocked) {
-        set(fos.isTooltipLocked, false);
-        return;
-      }
-
-      const isColormapModalOpen = await snapshot.getPromise(
-        isColormapModalOpenAtom,
-      );
-      if (isColormapModalOpen) {
-        set(isColormapModalOpenAtom, false);
-        return;
-      }
-
-      const isLevaConfigPanelOn = await snapshot.getPromise(
-        isLevaConfigPanelOnAtom,
-      );
-      if (isLevaConfigPanelOn) {
-        set(isLevaConfigPanelOnAtom, false);
-        return;
-      }
-
-      const panels = await snapshot.getPromise(fos.lookerPanels);
-      const currentAction = await snapshot.getPromise(currentActionAtom);
-
-      if (currentAction) {
-        set(currentActionAtom, null);
-        return;
-      }
-
-      for (const panel of ["help", "json"]) {
-        if (panels[panel].isOpen) {
-          set(fos.lookerPanels, {
-            ...panels,
-            [panel]: { ...panels[panel], isOpen: false },
-          });
-          return;
+        if (read(fos.isTooltipLocked)) {
+          set(fos.isTooltipLocked, false);
+          return true;
         }
-      }
 
-      // don't proceed if sample being hovered on is from looker2d
-      const hovered = await snapshot.getPromise(fos.hoveredSample);
-      const isHoveredSampleNotInLooker3d =
-        hovered &&
-        !Object.values(sampleMap).find((s) => s.sample._id === hovered._id);
+        if (read(isColormapModalOpenAtom)) {
+          set(isColormapModalOpenAtom, false);
+          return true;
+        }
 
-      if (isHoveredSampleNotInLooker3d) {
-        return;
-      }
+        if (read(isLevaConfigPanelOnAtom)) {
+          set(isLevaConfigPanelOnAtom, false);
+          return true;
+        }
 
-      const fullscreen = await snapshot.getPromise(fos.fullscreen);
-      if (fullscreen) {
-        set(fos.fullscreen, false);
-        return;
-      }
+        if (read(currentActionAtom)) {
+          set(currentActionAtom, null);
+          return true;
+        }
 
-      const selectedLabels = await snapshot.getPromise(fos.selectedLabels);
-      if (selectedLabels && selectedLabels.length > 0) {
-        set(fos.selectedLabelMap, {});
-        return;
-      }
+        const panels = read(fos.lookerPanels);
+        for (const panel of ["help", "json"]) {
+          if (panels?.[panel]?.isOpen) {
+            set(fos.lookerPanels, {
+              ...panels,
+              [panel]: { ...panels[panel], isOpen: false },
+            });
+            return true;
+          }
+        }
 
-      set(fos.hiddenLabels, {});
-      set(fos.modalSelector, null);
-    },
+        // Declines when the hovered sample belongs to a 2D looker, so that
+        // looker gets the Escape instead. Previously this `return` was
+        // indistinguishable from the consuming ones.
+        const hovered = read(fos.hoveredSample);
+        if (
+          hovered &&
+          !Object.values(sampleMap).find((s) => s.sample._id === hovered._id)
+        ) {
+          return false;
+        }
+
+        if (read(fos.fullscreen)) {
+          set(fos.fullscreen, false);
+          return true;
+        }
+
+        const selectedLabels = read(fos.selectedLabels);
+        if (selectedLabels && selectedLabels.length > 0) {
+          set(fos.selectedLabelMap, {});
+          return true;
+        }
+
+        set(fos.hiddenLabels, {});
+        set(fos.modalSelector, null);
+        return true;
+      },
     [sampleMap, isHovering],
-    {
-      useTransaction: false,
-    },
   );
+
+  useKeymapScope("modal.3d");
+  useDismissable("looker-3d", "3D viewer", "modal.3d", dismiss3d);
 
   const clear = useCallback(() => {
     if (hoveringRef.current) return;

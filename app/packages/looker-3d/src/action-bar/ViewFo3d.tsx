@@ -31,7 +31,7 @@ export const ViewFo3d = (props: {
   );
 
   useHotkey(
-    "KeyI",
+    "fo.modal.3d.json.fo3d",
     () => {
       setIsJsonPanelOpen((prev) => !prev);
       jsonPanel.toggle(fo3dContent);

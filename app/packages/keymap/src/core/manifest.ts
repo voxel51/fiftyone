@@ -246,6 +246,22 @@ export const MANIFEST: CommandManifestEntry[] = [
     defaultKeys: ["KeyE"],
   },
   {
+    id: "fo.modal.3d.json.fo3d",
+    label: "Toggle fo3d JSON",
+    category: "3D",
+    scope: "modal.3d",
+    defaultKeys: ["KeyI"],
+  },
+  {
+    id: "fo.modal.3d.json.sample",
+    label: "Toggle sample JSON",
+    description:
+      "Shadows the sample viewer's JSON toggle while the 3D viewer is active — legal and expected, per 4.7",
+    category: "3D",
+    scope: "modal.3d",
+    defaultKeys: ["KeyJ"],
+  },
+  {
     id: "fo.modal.3d.leva.toggle",
     label: "Toggle Leva panel",
     category: "3D",
