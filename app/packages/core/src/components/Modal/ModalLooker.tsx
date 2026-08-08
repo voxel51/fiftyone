@@ -9,6 +9,10 @@ import { ImaVidLookerReact } from "./ImaVidLooker";
 import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
 import { ModalSampleRenderer } from "./ModalSampleRenderer";
 import { VideoLookerReact } from "./VideoLooker";
+import {
+  VideoMultiModalPoc,
+  useIsVideoMultiModalPoc,
+} from "./VideoMultiModalPoc";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
 
@@ -97,6 +101,15 @@ const ModalLookerContent = React.memo(
       urls: fos.getNormalizedUrls(sample.urls),
     });
     const isNative = selectedMedia.nativeLookerType !== null;
+    const isVideo = selectedMedia.nativeLookerType === "video";
+
+    // POC opt-in: `?mmtimeline=1` swaps the video Explore surface for the
+    // multimodal playback shell. See VideoMultiModalPoc.tsx.
+    const isMultiModalPoc = useIsVideoMultiModalPoc();
+
+    if (isVideo && isMultiModalPoc && !isAnnotate) {
+      return <VideoMultiModalPoc sample={sample} />;
+    }
 
     if (shouldRenderImavid) {
       return (
@@ -108,7 +121,7 @@ const ModalLookerContent = React.memo(
       );
     }
 
-    if (selectedMedia.nativeLookerType === "video") {
+    if (isVideo) {
       return isAnnotate ? (
         <VideoAnnotationSurface sample={sample} />
       ) : (
