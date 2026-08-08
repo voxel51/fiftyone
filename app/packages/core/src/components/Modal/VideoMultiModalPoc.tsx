@@ -118,7 +118,9 @@ export const VideoMultiModalPoc: React.FC<{ sample: fos.ModalSample }> = ({
     return url ? fos.getSampleSrc(url) : null;
   }, [sample]);
 
-  const frameRate = sample.frameRate;
+  // `frameRate` rides along on the modal sample but isn't on the type —
+  // same targeted cast video-annotation's `getModalSampleFrameRate` uses.
+  const frameRate = (sample as { frameRate?: number }).frameRate;
 
   const fileName = useMemo(() => {
     const path = sample.sample.filepath ?? "";
@@ -168,7 +170,7 @@ export const VideoMultiModalPoc: React.FC<{ sample: fos.ModalSample }> = ({
   return (
     <MultiModalPlayback
       fileName={fileName}
-      headerCaption={{ text: "multimodal timeline POC" }}
+      headerCaption="multimodal timeline POC"
       mode={mode}
       tracks={tracks}
       defaultPinnedTrackIds={tracks.map((t) => t.id)}
