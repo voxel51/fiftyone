@@ -94,6 +94,30 @@ export const MANIFEST: CommandManifestEntry[] = [
     defaultKeys: ["Backquote"],
   },
 
+  {
+    id: "fo.operator-browser.next",
+    label: "Next operator",
+    category: "Operator browser",
+    scope: "overlay.operator-browser",
+    defaultKeys: ["ArrowDown"],
+    repeatable: true,
+  },
+  {
+    id: "fo.operator-browser.previous",
+    label: "Previous operator",
+    category: "Operator browser",
+    scope: "overlay.operator-browser",
+    defaultKeys: ["ArrowUp"],
+    repeatable: true,
+  },
+  {
+    id: "fo.operator-browser.submit",
+    label: "Run selected operator",
+    category: "Operator browser",
+    scope: "overlay.operator-browser",
+    defaultKeys: ["Enter"],
+  },
+
   // ── Grid ─────────────────────────────────────────────────────────────────
   {
     id: "fo.grid.selection.clear",

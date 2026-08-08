@@ -1,3 +1,8 @@
+import {
+  useDismissable,
+  useKeyBinding,
+  useKeymapScope,
+} from "@fiftyone/keymap";
 import { useAnalyticsInfo } from "@fiftyone/analytics";
 import { Markdown } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
@@ -21,7 +26,6 @@ import {
   useSetRecoilState,
 } from "recoil";
 import {
-  BROWSER_CONTROL_KEYS,
   RESOLVE_INPUT_VALIDATION_TTL,
   RESOLVE_TYPE_TTL,
 } from "./constants";
@@ -995,57 +999,44 @@ export function useOperatorBrowser() {
     setSelected(getSelectedPrevAndNext().selectedPrev);
   }, [setSelected, getSelectedPrevAndNext]);
 
-  const onKeyDown = useCallback(
-    (e) => {
-      if (e.key !== "`" && !isVisible) return;
-      if (e.key === "`" && isOperatorPaletteOpened) return;
-      if (BROWSER_CONTROL_KEYS.includes(e.key) && !editingField)
-        e.preventDefault();
-      switch (e.key) {
-        case "ArrowDown":
-          selectNext();
-          break;
-        case "ArrowUp":
-          selectPrevious();
-          break;
-        case "`":
-          if (isOperatorPaletteOpened || editingField) break;
-          if (isVisible) {
-            close();
-          } else {
-            setIsVisible(true);
-          }
-          break;
-        case "Enter":
-          onSubmit();
-          break;
-        case "Escape":
-          close();
-          break;
-      }
-    },
-    [
-      selectNext,
-      selectPrevious,
-      isVisible,
-      onSubmit,
-      close,
-      setIsVisible,
-      isOperatorPaletteOpened,
-      editingField,
-    ],
-  );
-
   const toggle = useCallback(() => {
-    setIsVisible((isVisible) => !isVisible);
+    setIsVisible((current) => !current);
   }, [setIsVisible]);
 
-  useEffect(() => {
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [onKeyDown]);
+  // Migrated off a raw document keydown (§4.1). The split matters: the
+  // backtick toggle is app-wide, but the navigation keys only exist while the
+  // browser is open, so they no longer compete with arrow keys elsewhere —
+  // ArrowUp/Down previously triple-fired with looker's rotate-label and
+  // lighter's Scene2D handler (§2.4).
+  useKeymapScope("overlay");
+  useKeymapScope("overlay.operator-browser", isVisible);
+
+  useKeyBinding(
+    "fo.operator-browser.toggle",
+    () => {
+      if (isVisible) {
+        close();
+      } else {
+        setIsVisible(true);
+      }
+    },
+    { enablement: () => !isOperatorPaletteOpened && !editingField },
+  );
+
+  useKeyBinding("fo.operator-browser.next", selectNext);
+  useKeyBinding("fo.operator-browser.previous", selectPrevious);
+  useKeyBinding("fo.operator-browser.submit", onSubmit);
+
+  useDismissable(
+    "operator-browser",
+    "Operator browser",
+    "overlay.operator-browser",
+    () => {
+      close();
+      return true;
+    },
+    isVisible,
+  );
 
   const setSelectedAndSubmit = useCallback(
     (choice) => {
