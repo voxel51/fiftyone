@@ -3,7 +3,13 @@
  */
 
 import type { Chord } from "./chords";
-import { chordMatchesEvent, formatChord, parseChord } from "./chords";
+import {
+  chordMatchesEvent,
+  chordMatchesHold,
+  formatChord,
+  isModifierCode,
+  parseChord,
+} from "./chords";
 import { DismissalStack } from "./dismiss";
 import type { CommandManifestEntry } from "./manifest";
 import { MANIFEST, MANIFEST_BY_ID } from "./manifest";
@@ -23,6 +29,17 @@ import { isTextEditingTarget } from "./textInput";
  * dismissal stack instead — see §4.6 and `DismissalStack`.
  */
 const DISMISS_COMMAND_ID = "fo.dismiss";
+
+/**
+ * A *held* binding: told when its key goes down and again when it comes up.
+ * This is looker's `ControlEventKeyType.HOLD` (hold Shift to hide overlays),
+ * which the bus previously could not express at all — design doc F9.
+ */
+export interface HoldBinding {
+  commandId: string;
+  onChange: (held: boolean) => void;
+  enablement: () => boolean;
+}
 
 /** A handler attached to a declared command. Declaration ≠ binding (§4.4). */
 export interface Binding {
@@ -73,6 +90,9 @@ export class KeymapRegistry {
   /** Refcounted, because two components may legitimately hold the same scope. */
   private scopeCounts = new Map<ScopeId, number>();
   private bindings = new Map<string, Binding[]>();
+  private holdBindings = new Map<string, HoldBinding[]>();
+  /** Commands currently held down, so keyup only releases what actually fired. */
+  private held = new Set<string>();
   private seq = 0;
 
   private presetName = DEFAULT_PRESET;
@@ -102,6 +122,10 @@ export class KeymapRegistry {
       document.addEventListener("keydown", this.handleKeyDown, {
         capture: true,
       });
+      document.addEventListener("keyup", this.handleKeyUp, { capture: true });
+      // A held key whose keyup we never see — the window lost focus mid-hold,
+      // or the OS ate it — would otherwise stay stuck down forever.
+      window.addEventListener("blur", this.releaseAllHeld);
     }
   }
 
@@ -181,6 +205,49 @@ export class KeymapRegistry {
     };
   }
 
+  /**
+   * Register a held binding. `onChange(true)` on press, `onChange(false)` on
+   * release — replacing looker's `ControlEventKeyType.HOLD`.
+   *
+   * Held bindings deliberately do *not* consume the event. Holding Shift to
+   * peek under the overlays must not stop Shift from modifying whatever else
+   * the user does while it is down.
+   */
+  public bindHold(
+    commandId: string,
+    onChange: (held: boolean) => void,
+    enablement: () => boolean = () => true,
+  ): () => void {
+    if (!MANIFEST_BY_ID.has(commandId)) {
+      throw new Error(
+        `"${commandId}" is not in the command manifest. Declare it in manifest.ts before binding a handler.`,
+      );
+    }
+    const binding: HoldBinding = { commandId, onChange, enablement };
+    const existing = this.holdBindings.get(commandId) ?? [];
+    this.holdBindings.set(commandId, [...existing, binding]);
+    this.notify();
+    return () => {
+      const current = this.holdBindings.get(commandId);
+      if (!current) {
+        return;
+      }
+      // Release before unbinding, so a component that unmounts mid-hold
+      // doesn't leave its overlays hidden forever.
+      if (this.held.has(commandId)) {
+        binding.onChange(false);
+      }
+      const next = current.filter((entry) => entry !== binding);
+      if (next.length === 0) {
+        this.holdBindings.delete(commandId);
+        this.held.delete(commandId);
+      } else {
+        this.holdBindings.set(commandId, next);
+      }
+      this.notify();
+    };
+  }
+
   public isBound(commandId: string): boolean {
     if (commandId === DISMISS_COMMAND_ID) {
       // Its "handler" is the dismissal stack, so it's live whenever some layer
@@ -241,7 +308,8 @@ export class KeymapRegistry {
       return cached;
     }
     try {
-      const chord = parseChord(serialized);
+      // Permissive so a `holdable` command can declare a bare modifier.
+      const chord = parseChord(serialized, { allowModifierKey: true });
       this.chordCache.set(serialized, chord);
       return chord;
     } catch {
@@ -348,7 +416,84 @@ export class KeymapRegistry {
     });
   }
 
+  /** Commands whose resolved chords include a hold-match for this event. */
+  private matchingHoldCommands(event: KeyboardEvent): string[] {
+    const active = this.activeScopes();
+    const matched: string[] = [];
+    for (const binding of this.resolved()) {
+      if (!binding.entry.holdable) {
+        continue;
+      }
+      if (!this.holdBindings.has(binding.entry.id)) {
+        continue;
+      }
+      if (!isScopeReachable(binding.entry.scope, active)) {
+        continue;
+      }
+      for (const key of binding.keys) {
+        const chord = this.chordFor(key);
+        if (chord && chordMatchesHold(chord, event)) {
+          matched.push(binding.entry.id);
+          break;
+        }
+      }
+    }
+    return matched;
+  }
+
+  private setHeld(commandId: string, held: boolean): void {
+    if (held === this.held.has(commandId)) {
+      return;
+    }
+    if (held) {
+      this.held.add(commandId);
+    } else {
+      this.held.delete(commandId);
+    }
+    for (const binding of this.holdBindings.get(commandId) ?? []) {
+      if (binding.enablement()) {
+        binding.onChange(held);
+      }
+    }
+  }
+
+  private releaseAllHeld = (): void => {
+    for (const commandId of [...this.held]) {
+      this.setHeld(commandId, false);
+    }
+  };
+
+  private handleKeyUp = (event: KeyboardEvent): void => {
+    for (const commandId of this.matchingHoldCommands(event)) {
+      this.setHeld(commandId, false);
+    }
+    // Releasing a modifier can strand a hold whose chord required it.
+    if (this.held.size && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      for (const commandId of [...this.held]) {
+        const entry = MANIFEST_BY_ID.get(commandId);
+        if (!entry) {
+          continue;
+        }
+        const stillDown = this.resolved()
+          .find((binding) => binding.entry.id === commandId)
+          ?.keys.some((key) => {
+            const chord = this.chordFor(key);
+            return chord ? !isModifierCode(chord.code) : false;
+          });
+        if (!stillDown) {
+          this.setHeld(commandId, false);
+        }
+      }
+    }
+  };
+
   private handleKeyDown = (event: KeyboardEvent): void => {
+    // Held bindings run first and never consume: holding Shift to peek under
+    // the overlays must not stop Shift modifying anything else.
+    for (const commandId of this.matchingHoldCommands(event)) {
+      this.setHeld(commandId, true);
+    }
+
     const candidates = this.explain(event);
     const winner = candidates.find(
       (candidate) => candidate.status === "would-fire",
@@ -402,6 +547,10 @@ export class KeymapRegistry {
       document.removeEventListener("keydown", this.handleKeyDown, {
         capture: true,
       });
+      document.removeEventListener("keyup", this.handleKeyUp, {
+        capture: true,
+      });
+      window.removeEventListener("blur", this.releaseAllHeld);
     }
     this.listeners.clear();
     if (KeymapRegistry._instance === this) {

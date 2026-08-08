@@ -81,6 +81,37 @@ export const useKeyBinding = (
 };
 
 /**
+ * Registers a *held* binding: `onChange(true)` on press, `onChange(false)` on
+ * release. This is looker's `ControlEventKeyType.HOLD` — hold Shift to hide
+ * overlays — which the bus could not express before (F9).
+ *
+ * Held bindings never consume the event, so the key keeps working as a
+ * modifier for everything else while it is down.
+ */
+export const useHoldBinding = (
+  commandId: string,
+  onChange: (held: boolean) => void,
+  options: KeyBindingOptions = {},
+): void => {
+  const { active = true } = options;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const enablementRef = useRef(options.enablement);
+  enablementRef.current = options.enablement;
+
+  useEffect(() => {
+    if (!active) {
+      return undefined;
+    }
+    return keymap().bindHold(
+      commandId,
+      (held) => onChangeRef.current(held),
+      () => enablementRef.current?.() ?? true,
+    );
+  }, [commandId, active]);
+};
+
+/**
  * Pushes a dismisser while mounted; Escape pops exactly one (§4.6). The scope
  * is what orders the stack — see `DismissalStack.snapshot()`.
  */

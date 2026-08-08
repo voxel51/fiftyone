@@ -28,6 +28,13 @@ export interface CommandManifestEntry {
   repeatable?: boolean;
   /** Survives the text-editing-target guard — Escape, Cmd+Enter submit. */
   allowInTextInput?: boolean;
+  /**
+   * Reports press *and* release rather than firing once, via `bindHold` /
+   * `useHoldBinding`. Replaces looker's `ControlEventKeyType.HOLD` (F9). A
+   * holdable command may declare a bare modifier such as `ShiftLeft`, which
+   * ordinary chords forbid.
+   */
+  holdable?: boolean;
   /** False for keys the user may not rebind. Escape, per §4.6. */
   remappable?: boolean;
   /** Intra-scope tiebreak only; scope depth is the primary axis (§4.3). */
@@ -175,12 +182,13 @@ export const MANIFEST: CommandManifestEntry[] = [
   },
   {
     id: "fo.modal.overlays.hide",
-    label: "Hide overlays (hold Shift)",
+    label: "Hide overlays (hold)",
     description:
-      "A held bare modifier. This POC's chord format cannot express it — a real implementation needs the keyup/hold path the bus lacks (F9). Listed so the pane is honest about it rather than silently omitting it",
+      "Hold to peek at the image underneath the overlays; release to restore them",
     category: "Sample viewer",
     scope: "modal",
-    defaultKeys: [],
+    defaultKeys: ["ShiftLeft", "ShiftRight"],
+    holdable: true,
     remappable: false,
   },
 

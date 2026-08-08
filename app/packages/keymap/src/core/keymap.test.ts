@@ -389,3 +389,81 @@ describe("display labels", () => {
     expect(describeKeys(["ctrl+Enter"])).toBe("Ctrl + Enter");
   });
 });
+
+describe("held bindings (F9)", () => {
+  let registry: KeymapRegistry;
+
+  beforeEach(() => {
+    registry?.dispose();
+    localStorage.clear();
+    registry = keymap();
+  });
+
+  const shiftDown = () =>
+    new KeyboardEvent("keydown", { code: "ShiftLeft", shiftKey: true, bubbles: true });
+  const shiftUp = () =>
+    new KeyboardEvent("keyup", { code: "ShiftLeft", shiftKey: false, bubbles: true });
+
+  it("reports press and release", () => {
+    const changes: boolean[] = [];
+    registry.bindHold("fo.modal.overlays.hide", (held) => changes.push(held));
+    registry.pushScope("modal");
+
+    document.dispatchEvent(shiftDown());
+    document.dispatchEvent(shiftUp());
+    expect(changes).toEqual([true, false]);
+  });
+
+  it("does not consume the event, so the key still modifies other input", () => {
+    // Holding Shift to peek under the overlays must not stop Shift being Shift.
+    const bystander = vi.fn();
+    document.addEventListener("keydown", bystander);
+    registry.bindHold("fo.modal.overlays.hide", () => undefined);
+    registry.pushScope("modal");
+
+    document.dispatchEvent(shiftDown());
+    expect(bystander).toHaveBeenCalledTimes(1);
+    document.removeEventListener("keydown", bystander);
+  });
+
+  it("does not re-fire while the key auto-repeats", () => {
+    const changes: boolean[] = [];
+    registry.bindHold("fo.modal.overlays.hide", (held) => changes.push(held));
+    registry.pushScope("modal");
+
+    document.dispatchEvent(shiftDown());
+    document.dispatchEvent(shiftDown());
+    document.dispatchEvent(shiftDown());
+    expect(changes).toEqual([true]);
+  });
+
+  it("releases on window blur, so a missed keyup can't strand it", () => {
+    const changes: boolean[] = [];
+    registry.bindHold("fo.modal.overlays.hide", (held) => changes.push(held));
+    registry.pushScope("modal");
+
+    document.dispatchEvent(shiftDown());
+    window.dispatchEvent(new Event("blur"));
+    expect(changes).toEqual([true, false]);
+  });
+
+  it("releases when the binding unmounts mid-hold", () => {
+    const changes: boolean[] = [];
+    const unbind = registry.bindHold("fo.modal.overlays.hide", (held) =>
+      changes.push(held),
+    );
+    registry.pushScope("modal");
+
+    document.dispatchEvent(shiftDown());
+    unbind();
+    expect(changes).toEqual([true, false]);
+  });
+
+  it("stays silent when its scope isn't active", () => {
+    const changes: boolean[] = [];
+    registry.bindHold("fo.modal.overlays.hide", (held) => changes.push(held));
+
+    document.dispatchEvent(shiftDown());
+    expect(changes).toEqual([]);
+  });
+});

@@ -19,7 +19,11 @@ export interface Chord {
   meta: boolean;
 }
 
-/** Modifier `code` values, which are never a chord's primary key. */
+/**
+ * Modifier `code` values. These are never a chord's primary key *except* for
+ * held bindings, where "hold Shift" is the whole point — see `parseChord`'s
+ * `allowModifierKey` and `chordMatchesHold`.
+ */
 const MODIFIER_CODES = new Set([
   "ControlLeft",
   "ControlRight",
@@ -82,7 +86,10 @@ export const formatChord = (chord: Chord): string => {
   return parts.join("+");
 };
 
-export const parseChord = (serialized: string): Chord => {
+export const parseChord = (
+  serialized: string,
+  options: { allowModifierKey?: boolean } = {},
+): Chord => {
   const parts = serialized.split("+").filter((part) => part.length > 0);
   if (parts.length === 0) {
     throw new Error(`empty chord: "${serialized}"`);
@@ -106,7 +113,7 @@ export const parseChord = (serialized: string): Chord => {
         throw new Error(`unknown modifier "${part}" in chord "${serialized}"`);
     }
   }
-  if (isModifierCode(chord.code)) {
+  if (!options.allowModifierKey && isModifierCode(chord.code)) {
     throw new Error(`chord "${serialized}" has no non-modifier key`);
   }
   return chord;
@@ -115,7 +122,9 @@ export const parseChord = (serialized: string): Chord => {
 /** Safe variant for user-supplied (imported) data. */
 export const tryParseChord = (serialized: string): Chord | null => {
   try {
-    return parseChord(serialized);
+    // Permissive: a stored keymap may legitimately contain a held modifier
+    // binding, and refusing to parse it would silently drop the user's setting.
+    return parseChord(serialized, { allowModifierKey: true });
   } catch {
     return null;
   }
@@ -143,3 +152,16 @@ export const chordMatchesEvent = (
   chord.alt === event.altKey &&
   chord.shift === event.shiftKey &&
   chord.meta === event.metaKey;
+
+/**
+ * Match for *held* bindings, e.g. looker's hold-Shift-to-hide-overlays
+ * (`ControlEventKeyType.HOLD`).
+ *
+ * Deliberately matches on `code` alone rather than the exact-modifier equality
+ * `chordMatchesEvent` uses. A held binding on `ShiftLeft` can never satisfy
+ * exact equality, because pressing Shift is itself what sets `event.shiftKey` —
+ * the chord would have to match a state it created. Hold asks whether one
+ * physical key is down, not which modifier combination is active.
+ */
+export const chordMatchesHold = (chord: Chord, event: KeyboardEvent): boolean =>
+  chord.code === event.code;
