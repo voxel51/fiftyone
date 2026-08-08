@@ -1,3 +1,4 @@
+import { useKeymapScope } from "@fiftyone/keymap";
 import {
   useAutoSave,
   useRegisterAnnotationEventHandlers,
@@ -115,6 +116,16 @@ const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 
 const Modal = () => {
   useAnnotationStatus();
+
+  // Pushes the sample-viewer scope for as long as the modal is open.
+  //
+  // This is the F1 fix at its most literal: `@fiftyone/commands` hardcodes its
+  // stack to [default, modal, modalAnnotate] and activates all three at
+  // construction, so its modal bindings are live while the modal is closed.
+  // Here the scope exists only while the modal does — which is also what makes
+  // every `modal.*` descendant reachable, since a scope counts as active only
+  // when its whole ancestor chain is pushed.
+  useKeymapScope("modal");
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pointerDownTargetRef = useRef<EventTarget | null>(null);

@@ -103,6 +103,8 @@ export class KeymapRegistry {
   /** Serialized chord → commands, rebuilt only when the keymap changes. */
   private index = new Map<string, CommandManifestEntry[]>();
 
+  /** Dev-only, so the same dead binding warns once rather than every keystroke. */
+  private warnedUnreachable = new Set<string>();
   private listeners = new Set<() => void>();
   private lastDispatch: { chord: string; candidates: Candidate[] } | null =
     null;
@@ -504,6 +506,24 @@ export class KeymapRegistry {
       : null;
 
     if (!winner) {
+      // A bound handler whose scope is never pushed is invisible: the key just
+      // does nothing, with no error anywhere. That is exactly how migrating a
+      // command to `modal.3d` while nothing pushed `modal` silently killed five
+      // shortcuts. Warn once per command so the next one is caught immediately.
+      if (process.env.NODE_ENV !== "production") {
+        for (const candidate of candidates) {
+          if (
+            candidate.status === "scope-inactive" &&
+            this.bindings.has(candidate.entry.id) &&
+            !this.warnedUnreachable.has(candidate.entry.id)
+          ) {
+            this.warnedUnreachable.add(candidate.entry.id);
+            console.warn(
+              `[keymap] "${candidate.entry.id}" has a mounted handler but its scope "${candidate.entry.scope}" is not active, so the binding can never fire. Is an ancestor scope missing a useKeymapScope() call?`,
+            );
+          }
+        }
+      }
       if (candidates.length) {
         this.notify();
       }
