@@ -2,15 +2,23 @@ import { atom, useAtomValue, useSetAtom, type PrimitiveAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef } from "react";
-import { registeredTilesAtom, tileSelectionAtom } from "./atoms";
-import { useTileId, useTiling } from "./TilingProvider";
+import { registeredTilesAtom, tileScopedKey, tileSelectionAtom } from "./atoms";
+import { useTileId, useTileScopeId, useTiling } from "./TilingProvider";
 import type { RegisteredTile, SetTileTitleOptions, TilingTile } from "./types";
 
 // Stable placeholder for use outside a TileIdScope; writes no-op.
 const NO_TILE = "__no-tile__";
 
-/** Transient emphasis for one tile's header title. */
-const tileTitleHighlightedAtom = atomFamily((_tileId: string) => atom(false));
+/** Transient emphasis for one tile's header title. Keyed by scope+tile
+ *  for the same reason `tileSelectionAtom` is — see `atoms.ts`. */
+const tileTitleHighlightedAtom = atomFamily((_scopedKey: string) =>
+  atom(false),
+);
+
+/** Scoped key for the surrounding tile, or the no-op placeholder. */
+function useScopedTileKey(tileId: string | null): string {
+  return tileScopedKey(useTileScopeId(), tileId ?? NO_TILE);
+}
 
 /**
  * A tile body's extra header content (e.g. an Audio tile's mute button).
@@ -30,13 +38,13 @@ const tileHeaderExtraAtom = atomFamily(
 );
 
 export function useTileSelection<T = unknown>(): T | null {
-  const tileId = useTileId();
-  return useAtomValue(tileSelectionAtom(tileId ?? NO_TILE)) as T | null;
+  const key = useScopedTileKey(useTileId());
+  return useAtomValue(tileSelectionAtom(key)) as T | null;
 }
 
 export function useSetTileSelection(): (selection: unknown) => void {
   const tileId = useTileId();
-  const set = useSetAtom(tileSelectionAtom(tileId ?? NO_TILE));
+  const set = useSetAtom(tileSelectionAtom(useScopedTileKey(tileId)));
   return useCallback(
     (selection: unknown) => {
       if (!tileId) return;
@@ -50,7 +58,7 @@ export function useSetTileSelection(): (selection: unknown) => void {
 export function useTileSelectionFor<T = unknown>(
   tileId: string | null,
 ): T | null {
-  return useAtomValue(tileSelectionAtom(tileId ?? NO_TILE)) as T | null;
+  return useAtomValue(tileSelectionAtom(useScopedTileKey(tileId))) as T | null;
 }
 
 export function useTileTitle(): string | null {
@@ -81,15 +89,14 @@ export function useSetTileTitle(): (
 
 /** Whether the surrounding tile's title has transient cross-panel emphasis. */
 export function useTileTitleHighlighted(): boolean {
-  const tileId = useTileId();
-  return useAtomValue(tileTitleHighlightedAtom(tileId ?? NO_TILE));
+  return useAtomValue(tileTitleHighlightedAtom(useScopedTileKey(useTileId())));
 }
 
 /** Sets transient cross-panel emphasis on the surrounding tile's title. */
 export function useSetTileTitleHighlighted(): (highlighted: boolean) => void {
   const tileId = useTileId();
   const setHighlighted = useSetAtom(
-    tileTitleHighlightedAtom(tileId ?? NO_TILE),
+    tileTitleHighlightedAtom(useScopedTileKey(tileId)),
   );
   return useCallback(
     (highlighted: boolean) => {
@@ -131,7 +138,7 @@ export function useSetTileHeaderExtra(): (node: ReactNode) => void {
 }
 
 export function useTileTypes(): RegisteredTile[] {
-  return useAtomValue(registeredTilesAtom);
+  return useAtomValue(registeredTilesAtom(useTileScopeId()));
 }
 
 /**
