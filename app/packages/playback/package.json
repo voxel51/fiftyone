@@ -17,6 +17,7 @@
     },
     "dependencies": {
         "@fiftyone/commands": "workspace:^",
+        "@fiftyone/keymap": "*",
         "@fiftyone/tiling": "*",
         "@voxel51/voodo": "catalog:",
         "jotai": "catalog:",

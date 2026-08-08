@@ -54,6 +54,7 @@
         "@emotion/react": "catalog:",
         "@emotion/styled": "catalog:",
         "@fiftyone/commands": "workspace:^",
+        "@fiftyone/keymap": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
         "@mui/icons-material": "catalog:",

@@ -12,6 +12,7 @@
         "@fiftyone/components": "*",
         "@fiftyone/feature-flags": "*",
         "@fiftyone/flashlight": "*",
+        "@fiftyone/keymap": "*",
         "@fiftyone/looker": "*",
         "@fiftyone/map": "*",
         "@fiftyone/multimodal": "*",

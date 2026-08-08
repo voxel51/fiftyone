@@ -1706,6 +1706,7 @@ __metadata:
     "@emotion/react": "catalog:"
     "@emotion/styled": "catalog:"
     "@fiftyone/commands": "workspace:^"
+    "@fiftyone/keymap": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
     "@mui/icons-material": "catalog:"
@@ -1759,6 +1760,7 @@ __metadata:
     "@fiftyone/components": "npm:*"
     "@fiftyone/feature-flags": "npm:*"
     "@fiftyone/flashlight": "npm:*"
+    "@fiftyone/keymap": "npm:*"
     "@fiftyone/looker": "npm:*"
     "@fiftyone/map": "npm:*"
     "@fiftyone/multimodal": "npm:*"
@@ -1883,6 +1885,7 @@ __metadata:
   dependencies:
     "@fiftyone/aggregations": "npm:*"
     "@fiftyone/components": "npm:*"
+    "@fiftyone/keymap": "npm:*"
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/state": "npm:*"
     "@types/react": "catalog:"
@@ -2046,6 +2049,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/lighter@workspace:packages/lighter"
   dependencies:
+    "@fiftyone/keymap": "npm:*"
     "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
     "@typescript-eslint/parser": "npm:^6.0.0"
     eslint: "catalog:"
@@ -2067,6 +2071,7 @@ __metadata:
   dependencies:
     "@emotion/react": "catalog:"
     "@emotion/styled": "catalog:"
+    "@fiftyone/keymap": "npm:*"
     "@miris-inc/core": "npm:latest"
     "@miris-inc/three": "npm:latest"
     "@react-three/drei": "npm:^9.122.0"
@@ -2104,6 +2109,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/looker@workspace:packages/looker"
   dependencies:
+    "@fiftyone/keymap": "npm:*"
     "@rollup/plugin-inject": "npm:^5.0.2"
     "@types/color-string": "npm:^1.5.0"
     "@types/lru-cache": "npm:^7.10.10"
@@ -2134,6 +2140,7 @@ __metadata:
   dependencies:
     "@fiftyone/aggregations": "npm:*"
     "@fiftyone/components": "npm:*"
+    "@fiftyone/keymap": "npm:*"
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/state": "npm:*"
     "@mapbox/mapbox-gl-draw": "npm:1.4.3"
@@ -2224,6 +2231,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/operators@workspace:packages/operators"
   dependencies:
+    "@fiftyone/keymap": "npm:*"
     "@fiftyone/utilities": "workspace:^"
     "@testing-library/dom": "catalog:"
     "@testing-library/react": "catalog:"
@@ -2245,6 +2253,7 @@ __metadata:
   dependencies:
     "@eslint/compat": "catalog:"
     "@fiftyone/commands": "workspace:^"
+    "@fiftyone/keymap": "npm:*"
     "@fiftyone/tiling": "npm:*"
     "@voxel51/voodo": "catalog:"
     eslint: "catalog:eslint9"
@@ -2373,6 +2382,7 @@ __metadata:
   resolution: "@fiftyone/spotlight@workspace:packages/spotlight"
   dependencies:
     "@af-utils/scrollend-polyfill": "npm:^0.0.13"
+    "@fiftyone/keymap": "npm:*"
     typescript: "catalog:"
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "catalog:"
@@ -2383,6 +2393,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/state@workspace:packages/state"
   dependencies:
+    "@fiftyone/keymap": "npm:*"
     "@fiftyone/looker": "npm:*"
     "@fiftyone/relay": "npm:*"
     "@fiftyone/utilities": "npm:*"

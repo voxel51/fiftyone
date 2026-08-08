@@ -17,6 +17,7 @@
         "type-check": "tsc --noEmit"
     },
     "dependencies": {
+        "@fiftyone/keymap": "*",
         "lru-cache": "catalog:",
         "pixi.js": "^8.13.1"
     },

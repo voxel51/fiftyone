@@ -15,6 +15,7 @@
     "dependencies": {
         "@emotion/react": "catalog:",
         "@emotion/styled": "catalog:",
+        "@fiftyone/keymap": "*",
         "@miris-inc/core": "latest",
         "@miris-inc/three": "latest",
         "@react-three/drei": "^9.122.0",

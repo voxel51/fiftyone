@@ -37,6 +37,7 @@
         "vite": "catalog:"
     },
     "dependencies": {
+        "@fiftyone/keymap": "*",
         "@fiftyone/looker": "*",
         "@fiftyone/relay": "*",
         "@fiftyone/utilities": "*",

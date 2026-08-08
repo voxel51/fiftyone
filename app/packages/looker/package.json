@@ -18,6 +18,7 @@
         "README.md"
     ],
     "dependencies": {
+        "@fiftyone/keymap": "*",
         "@ungap/event-target": "^0.2.2",
         "@xmldom/xmldom": "^0.8.13",
         "copy-to-clipboard": "^3.3.1",

@@ -14,6 +14,7 @@
     "dependencies": {
         "@fiftyone/aggregations": "*",
         "@fiftyone/components": "*",
+        "@fiftyone/keymap": "*",
         "@fiftyone/plugins": "*",
         "@fiftyone/state": "*",
         "plotly.js": "^3.1.1",
