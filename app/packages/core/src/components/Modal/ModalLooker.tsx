@@ -9,10 +9,7 @@ import { ImaVidLookerReact } from "./ImaVidLooker";
 import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
 import { ModalSampleRenderer } from "./ModalSampleRenderer";
 import { VideoLookerReact } from "./VideoLooker";
-import {
-  VideoMultiModalPoc,
-  useIsVideoMultiModalPoc,
-} from "./VideoMultiModalPoc";
+import { VideoTimelinePoc, useIsVideoTimelinePoc } from "./VideoTimelinePoc";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
 
@@ -104,11 +101,11 @@ const ModalLookerContent = React.memo(
     const isVideo = selectedMedia.nativeLookerType === "video";
 
     // POC opt-in: `?mmtimeline=1` swaps the video Explore surface for the
-    // multimodal playback shell. See VideoMultiModalPoc.tsx.
-    const isMultiModalPoc = useIsVideoMultiModalPoc();
+    // player + shared timeline. See VideoTimelinePoc.tsx.
+    const isTimelinePoc = useIsVideoTimelinePoc();
 
-    if (isVideo && isMultiModalPoc && !isAnnotate) {
-      return <VideoMultiModalPoc sample={sample} />;
+    if (isVideo && isTimelinePoc && !isAnnotate) {
+      return <VideoTimelinePoc sample={sample} />;
     }
 
     if (shouldRenderImavid) {
