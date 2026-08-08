@@ -37,11 +37,18 @@ import { useRecoilValue } from "recoil";
 
 const VIDEO_STREAM_ID = "video";
 
-/** Query-param opt-in, read once at mount. */
+/**
+ * On by default while this is the thing under review — append
+ * `?mmtimeline=0` to fall back to the legacy `VideoLookerReact`.
+ *
+ * Read once at mount. The app router preserves unknown query params
+ * (`useWriters/onSetSample.ts` only rewrites `id`/`groupId`), so the
+ * opt-out survives opening the modal and navigating between samples.
+ */
 export function useIsVideoTimelinePoc(): boolean {
   return useMemo(() => {
     if (typeof window === "undefined") return false;
-    return new URLSearchParams(window.location.search).get("mmtimeline") === "1";
+    return new URLSearchParams(window.location.search).get("mmtimeline") !== "0";
   }, []);
 }
 
