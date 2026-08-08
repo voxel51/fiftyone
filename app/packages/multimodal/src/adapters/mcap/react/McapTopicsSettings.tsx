@@ -75,13 +75,15 @@ const McapTopicsSettings: React.FC<{
   );
 
   return (
-    <div className={`${styles.root} ${styles.tabContent}`}>
+    <div
+      className={`${styles.root} ${styles.tabContent} ${styles.topicsTabContent}`}
+    >
       {rows.length === 0 ? (
         <span className={styles.topicEmpty}>No topics found</span>
       ) : (
         <>
           {showSearch ? (
-            <div className={styles.stickyTopicSearch}>
+            <div className={styles.topicSearchBar}>
               <Input
                 aria-label="Search topics"
                 className={styles.topicSearchInput}
