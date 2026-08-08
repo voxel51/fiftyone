@@ -1,4 +1,4 @@
-import MultiModalPlayback from "@fiftyone/multimodal/src/components/MultiModalPlayback/MultiModalPlayback";
+import { PlaybackShell } from "@fiftyone/multimodal";
 import {
   usePlayback,
   useVideoStream,
@@ -40,7 +40,9 @@ const MAIN_TILE_ID = "video-1";
 export function useIsVideoMultiModalPoc(): boolean {
   return useMemo(() => {
     if (typeof window === "undefined") return false;
-    return new URLSearchParams(window.location.search).get("mmtimeline") === "1";
+    return (
+      new URLSearchParams(window.location.search).get("mmtimeline") === "1"
+    );
   }, []);
 }
 
@@ -168,7 +170,7 @@ export const VideoMultiModalPoc: React.FC<{ sample: fos.ModalSample }> = ({
   }
 
   return (
-    <MultiModalPlayback
+    <PlaybackShell
       fileName={fileName}
       headerCaption="multimodal timeline POC"
       mode={mode}
