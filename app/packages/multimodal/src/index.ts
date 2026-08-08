@@ -55,13 +55,6 @@ export {
 export type { RendererFamily, VisualizationKind } from "./visualization";
 
 /**
- * Reusable playback shell — providers plus the four-region layout
- * (header / sidebars / mosaic / timeline) shared by multimodal surfaces.
- */
-export { PlaybackShell } from "./views/episode";
-export type { PlaybackShellProps } from "./views/episode";
-
-/**
  * Scene inventory — discoverable data sources for the current scene.
  */
 export {
