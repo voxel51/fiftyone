@@ -2,6 +2,8 @@
  * Public production surface for episode-backed views.
  */
 export { default as ModalRenderer } from "./shell/ModalRenderer";
+export { default as PlaybackShell } from "./shell/PlaybackShell";
+export type { PlaybackShellProps } from "./shell/PlaybackShell";
 export { GridRenderer } from "./grid/GridRenderer";
 export { GridStreamSelector } from "./grid/GridStreamSelector";
 export { SourcePlayback } from "./shell/SourcePlayback";
