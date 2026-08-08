@@ -1,6 +1,11 @@
 import styles from "./Options.module.css";
 
 import { Link, Selector, useTheme } from "@fiftyone/components";
+import {
+  useDismissable,
+  useKeyBinding,
+  useKeymapScope,
+} from "@fiftyone/keymap";
 import { CenterFocusWeak, Close, Help } from "@mui/icons-material";
 import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -11,7 +16,6 @@ import {
   mapStyle,
   STYLES,
 } from "./state";
-import useEventHandler from "./useEventHandler";
 import { useExternalLink } from "@fiftyone/utilities";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 
@@ -47,15 +51,15 @@ const Options: React.FC<{
     fitData();
   }, [clearSelectionData, fitData]);
 
-  useEventHandler(window, "keydown", ({ key }: KeyboardEvent) => {
-    switch (key) {
-      case "Escape":
-        reset();
-        break;
-      case "f":
-        fitSelectionData();
-        break;
-    }
+  // Was a raw `window` keydown with no input guard and no scope check, so `f`
+  // double-fired with the modal's fullscreen toggle whenever the Map panel was
+  // mounted (§2.4). The scope makes them mutually exclusive; the shared text
+  // guard stops it firing while you type.
+  useKeymapScope("panel.map");
+  useKeyBinding("fo.panel.map.fit-selection", fitSelectionData);
+  useDismissable("map-panel", "Map selection", "panel.map", () => {
+    reset();
+    return true;
   });
 
   return (

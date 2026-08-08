@@ -1,4 +1,9 @@
 import { Loading, useTheme } from "@fiftyone/components";
+import {
+  useDismissable,
+  useKeyBinding,
+  useKeymapScope,
+} from "@fiftyone/keymap";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
@@ -6,7 +11,6 @@ import type { Data } from "plotly.js";
 import Plot from "react-plotly.js";
 import { useRecoilValue } from "recoil";
 import { tracesToData } from "./tracesToData";
-import { useKeyDown } from "./useKeyDown";
 import { usePlot } from "./usePlot";
 import { useResetPlotZoom, useZoomRevision } from "./useResetPlotZoom";
 
@@ -53,19 +57,25 @@ export function EmbeddingsPlot({
     "lasso",
     true,
   );
-  useKeyDown("s", () => setDragMode("lasso"));
-  useKeyDown("g", () => setDragMode("pan"));
-  useKeyDown(
-    "Escape",
-    () => {
-      if (hasSelection) {
-        clearSelection();
-      } else {
-        resetZoom();
-      }
-    },
-    [hasSelection],
-  );
+  // Scope is pushed only while the plot is mounted, so `s` and `g` stop
+  // competing with the modal's `s` and the 3D `g` (§4.2). The old
+  // `useKeyDown` had no text-input guard at all, so typing "s" into any
+  // sidebar filter box flipped the plot into lasso mode — F4's worked example.
+  useKeymapScope("panel.embeddings");
+  useKeyBinding("fo.panel.embeddings.lasso", () => setDragMode("lasso"));
+  useKeyBinding("fo.panel.embeddings.pan", () => setDragMode("pan"));
+
+  // Escape is a dismissal layer, not a binding: it clears the selection if
+  // there is one, otherwise resets the zoom, otherwise declines so an outer
+  // layer (the modal, the grid) gets it instead of everyone firing at once.
+  useDismissable("embeddings-plot", "Embeddings selection", "panel.embeddings", () => {
+    if (hasSelection) {
+      clearSelection();
+      return true;
+    }
+    resetZoom();
+    return true;
+  });
 
   if (labelSelectorLoading || isLoading || !traces)
     return <Loading>Pixelating...</Loading>;
