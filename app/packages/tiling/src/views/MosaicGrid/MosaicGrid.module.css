@@ -32,7 +32,10 @@
   box-shadow: none;
   border-radius: 0;
   border: 1px solid var(--color-content-border-default);
-  background: var(--color-content-bg-card-2);
+  /* Seam for consumers whose tiles sit over an under-canvas stage: they
+     set --mosaic-window-bg (inherited) instead of out-specifying this
+     rule from another chunk, where the winner would be build-order luck */
+  background: var(--mosaic-window-bg, var(--color-content-bg-card-2));
 }
 
 .root :global(.mosaic .mosaic-window-toolbar) {

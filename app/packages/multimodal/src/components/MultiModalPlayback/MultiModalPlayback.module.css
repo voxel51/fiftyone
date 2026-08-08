@@ -19,11 +19,14 @@
   position: relative;
 }
 
-/* The shared canvas sits below the mosaic DOM. Its tracked views can only
-   show through when the window shell stops painting an opaque card; tile
-   bodies that do not use the shared stage retain their own backgrounds. */
-.sharedViewStage :global(.mosaic .mosaic-window) {
-  background: transparent;
+/* The shared canvas sits below the mosaic DOM, so its tracked views can
+   only show through a window shell that paints no opaque card. Set via
+   MosaicGrid's --mosaic-window-bg seam rather than a competing selector:
+   a cross-chunk equal-specificity override is decided by webpack's
+   per-build CSS chunk order, which made production builds paint tiles
+   opaque on an order-decided tie. */
+.sharedViewStage {
+  --mosaic-window-bg: transparent;
 }
 
 /* Width comes from an inline style: the left pane tracks the resizable
