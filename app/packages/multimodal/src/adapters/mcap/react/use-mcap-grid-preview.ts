@@ -27,6 +27,12 @@ export interface UseMcapGridPreviewOptions {
   readonly enabled?: boolean;
   /** Whether this tile is the user's current interactive target. */
   readonly hovered?: boolean;
+  /** Capture time the still frame should show, instead of the recording
+   * start. Set to an embeddings match so the tile posters at the match. */
+  readonly posterStartTimeNs?: bigint | null;
+  /** Stream the poster prefers once it is known previewable — a match on a
+   * fused or non-previewable stream falls back to the automatic pick. */
+  readonly posterStreamTopic?: string | null;
   readonly selectedStreamTopic?: string | null;
   readonly source: ByteSourceDescriptor | null;
 }
@@ -51,16 +57,25 @@ const IDLE_PREVIEW_STATE: McapGridPreviewSnapshot = {
 export function useMcapGridPreview({
   enabled = true,
   hovered = false,
+  posterStartTimeNs = null,
+  posterStreamTopic = null,
   selectedStreamTopic,
   source,
 }: UseMcapGridPreviewOptions): McapGridPreviewState {
   const [state, setState] =
     useState<McapGridPreviewSnapshot>(IDLE_PREVIEW_STATE);
   const [playing, setPlaying] = useState(false);
+  // Bumped whenever the still-frame load below commits a fresh result
+  // (a poster move included) — the hover loop depends on it so a poster
+  // moving out from under an in-progress loop tears the stale loop down
+  // and restarts against the new frame, rather than continuing to chain
+  // frames from the old poster's timeline
+  const [loadGeneration, setLoadGeneration] = useState(0);
   const initialLoadInFlightRef = useRef(false);
   const loadedRequestRef = useRef<{
-    readonly selectedStreamTopic?: string | null;
+    readonly posterStartTimeNs: bigint | null;
     readonly source: ByteSourceDescriptor;
+    readonly streamTopic: string | null;
   } | null>(null);
   const frameTimeNsRef = useRef<bigint | undefined>(undefined);
   const nextStartTimeNsRef = useRef<bigint | undefined>(undefined);
@@ -76,8 +91,19 @@ export function useMcapGridPreview({
     }
   }, [enabled]);
 
-  // Reset only when the requested source/stream changes. Visibility changes
-  // intentionally preserve the last frame so hidden-cache re-entry is free.
+  // An explicit grid selection always wins; the poster's preferred stream
+  // applies only once this source has reported it as previewable, so an
+  // unpreviewable match never requests a topic the worker would refuse.
+  const effectiveStreamTopic =
+    selectedStreamTopic ??
+    (posterStreamTopic && state.streamTopics.includes(posterStreamTopic)
+      ? posterStreamTopic
+      : null);
+
+  // Reset only when the source or the user's stream choice changes. Visibility
+  // changes intentionally preserve the last frame so hidden-cache re-entry is
+  // free, and a moved poster swaps in place rather than flashing a spinner at
+  // every tile the next lasso touches.
   useEffect(() => {
     initialLoadInFlightRef.current = false;
     loadedRequestRef.current = null;
@@ -128,7 +154,8 @@ export function useMcapGridPreview({
     const loadedRequest = loadedRequestRef.current;
     if (
       loadedRequest?.source === source &&
-      loadedRequest.selectedStreamTopic === selectedStreamTopic
+      loadedRequest.streamTopic === effectiveStreamTopic &&
+      loadedRequest.posterStartTimeNs === posterStartTimeNs
     ) {
       return undefined;
     }
@@ -140,9 +167,13 @@ export function useMcapGridPreview({
     frameTimeNsRef.current = undefined;
     nextStartTimeNsRef.current = undefined;
 
-    const request = selectedStreamTopic
-      ? { selectedStreamTopic, source }
-      : { source };
+    const request = {
+      source,
+      ...(effectiveStreamTopic
+        ? { selectedStreamTopic: effectiveStreamTopic }
+        : {}),
+      ...(posterStartTimeNs === null ? {} : { startTimeNs: posterStartTimeNs }),
+    };
     pool
       .request(request, {
         priority: hovered
@@ -153,10 +184,15 @@ export function useMcapGridPreview({
       .then((result) => {
         if (active) {
           publishGridBootstrap(source, result);
-          loadedRequestRef.current = { selectedStreamTopic, source };
+          loadedRequestRef.current = {
+            posterStartTimeNs,
+            source,
+            streamTopic: effectiveStreamTopic,
+          };
           frameTimeNsRef.current = result.frameTimeNs;
           nextStartTimeNsRef.current = result.nextStartTimeNs;
           setState(result.state);
+          setLoadGeneration((g) => g + 1);
         }
       })
       .catch((caughtError) => {
@@ -184,7 +220,7 @@ export function useMcapGridPreview({
       initialLoadInFlightRef.current = false;
       controller.abort();
     };
-  }, [enabled, hovered, selectedStreamTopic, source]);
+  }, [enabled, effectiveStreamTopic, hovered, posterStartTimeNs, source]);
 
   // This effect runs the hover playback loop: while playing, it keeps
   // requesting the next frame, wrapping back to the start when the
@@ -215,9 +251,9 @@ export function useMcapGridPreview({
             break;
           }
 
-          const request = selectedStreamTopic
+          const request = effectiveStreamTopic
             ? {
-                selectedStreamTopic,
+                selectedStreamTopic: effectiveStreamTopic,
                 source,
                 startTimeNs: nextStartTimeNsRef.current,
               }
@@ -297,10 +333,11 @@ export function useMcapGridPreview({
       pool.release();
     };
   }, [
+    effectiveStreamTopic,
     enabled,
     finishBuffering,
+    loadGeneration,
     playing,
-    selectedStreamTopic,
     source,
     startBuffering,
     state.status,

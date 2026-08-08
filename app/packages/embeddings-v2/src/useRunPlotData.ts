@@ -1,0 +1,689 @@
+/**
+ * The run-level composition for one visualization run: the plot shell's
+ * single plot (and any extension-rendered layout over it) share ONE set of
+ * per-run state: geometry stream, color column, visibility masks, the
+ * selection bridge, the legend, and the partial/Update bookkeeping.
+ *
+ * The invariant that makes multi-cell layouts safe lives here: exactly ONE
+ * `useSelectionBridge` instance per run (it writes global singletons — the
+ * override stage, `fos.selectedSamples`, the published selection count — so
+ * a per-cell bridge would race). Cells never own selection state; they
+ * render the SAME `points`/`colors`/`selected` arrays through a per-cell
+ * visibility mask. Charts register their imperative handle via
+ * `registerChart`, and clear/reset fan out to every registered cell.
+ */
+import { usePanelStatePartial } from "@fiftyone/spaces";
+import * as fos from "@fiftyone/state";
+import type { SelectionType } from "@fiftyone/state";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
+import {
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
+import {
+  categoryHex,
+  DEFAULT_RAMP,
+  isRampId,
+  MISSING_CATEGORY,
+  type RampId,
+} from "./colors";
+import { useStoredRunSettings, writeRunSettings } from "./runSettings";
+import { backgroundClickAction } from "./backgroundClick";
+import {
+  legendLabels,
+  soloLabel,
+  toggleLabel,
+  type CategoricalFilter,
+} from "./legendFilter";
+import { type ColorMeta, type VisualizationRun } from "./protocol";
+import type { EmbeddingsViewHandle, HoverHit } from "./renderer";
+import { clearSelectionNonceState, selectionCountState } from "./state";
+import {
+  getEmbeddingsPanelExtension,
+  useFallbackRunFeatures,
+  useFallbackRunSource,
+  type PanelMode,
+  type PublishSelection,
+  type RunFeatures,
+} from "./extensions";
+import { useColorColumn } from "./useColorColumn";
+import { useHoverInfo } from "./useHoverInfo";
+import { useMasks } from "./useMasks";
+import { useRunColumns, type Loaded } from "./useRunColumns";
+import { useSelectionBridge } from "./useSelectionBridge";
+
+/** Select option id for the uncolored state (fields are never empty) */
+export const NONE_FIELD = "";
+
+export interface RunPlotData {
+  // Geometry stream
+  loaded: Loaded | null;
+  total: number;
+  loadedCount: number;
+
+  // Color-by
+  colorField: string | null;
+  setColorField: (value: string | null) => void;
+  choices: string[];
+  colorOptions: { id: string; data: { label: string } }[];
+  colorMeta: ColorMeta | null;
+  colorLoading: boolean;
+  pointColors: Float32Array | null;
+  /** Which palette continuous values map through. A few extreme values pin the
+   * ends of a two-tone ramp and flatten the middle, so the ramp is the user's
+   * choice — the legend and the points read the same one */
+  rampId: RampId;
+  setRampId: (id: RampId) => void;
+  /** The per-point sensor field (patches runs), when present */
+  streamField: string | null;
+  coloredByStream: boolean;
+
+  // Visibility + selection (shared across every rendered cell)
+  plotVisible: Uint8Array | null;
+  visibleCount: number | null;
+  /** The bridge's exact-point selection. */
+  selectedIndices: number[] | null;
+  /** Grid-checkbox selection. */
+  selectedSamples: Map<string, SelectionType>;
+  selectionCount: number | null;
+  chipCount: number | null;
+  handleLasso: (
+    indices: number[],
+    polygon?: Array<[number, number]> | null,
+  ) => void;
+  handlePointClick: (hit: HoverHit) => void;
+  handleBackgroundClick: () => void;
+  clearAll: () => void;
+
+  // Hover
+  hover: ReturnType<typeof useHoverInfo>["hover"];
+  handleHover: ReturnType<typeof useHoverInfo>["handleHover"];
+  keepHover: () => void;
+
+  // The extension's per-run feature surface (masks and slots); the shell
+  // renders its header controls, banner, notice, settings sections and
+  // plot-area layout from here. The fallback is fully inert.
+  features: RunFeatures;
+
+  // Legend (derived from the App's sidebar filter for the color field)
+  legend: ReturnType<typeof legendLabels>;
+  legendFilter: CategoricalFilter | null;
+  handleLegendToggle: (label: string) => void;
+  handleLegendSolo: (label: string) => void;
+
+  // Partial / Update bookkeeping
+  resultsPartial: boolean;
+  canUpdate: boolean;
+  applyAllPoints: () => void;
+  resolvedCount: number;
+
+  // Interaction mode (the renderer's modes plus at most one extension mode)
+  mode: PanelMode;
+  setMode: (mode: PanelMode) => void;
+
+  // Errors (first non-null across the pipeline)
+  error: string | null;
+  /** A cell's renderer failed; surfaces through `error` */
+  onRendererError: (e: Error) => void;
+
+  // Chart registry: each rendered EmbeddingsView registers its imperative
+  // handle here so clear/reset fan out across every rendered cell
+  registerChart: (key: string, handle: EmbeddingsViewHandle | null) => void;
+  resetCameras: () => void;
+  /** Clear all plot filters + selections (not the cameras) */
+  resetAll: () => void;
+}
+
+/**
+ * Composes all per-run state for a visualization run. Only this hook (and
+ * its child hooks) touch App state — atom values in, setters out — so it
+ * renderHook-tests without Recoil the same way the child hooks do.
+ */
+export function useRunPlotData(
+  datasetName: string | null,
+  run: VisualizationRun,
+): RunPlotData {
+  const view = useRecoilValue(fos.view) as unknown[];
+  const filters = useRecoilValue(fos.filters);
+  const setOverrideStage = useSetRecoilState(
+    fos.extendedSelectionOverrideStage,
+  );
+  const resetExtended = fos.useResetExtendedSelection();
+
+  // ONE commit per selection. Written as separate setters, each write
+  // invalidated the App's view on its own and fired a full sidebar
+  // aggregation round — several identical round trips for a single lasso.
+  // Recoil batches every set made inside a callback into one commit, and
+  // the extension's decorator joins the same commit.
+  const publishSelection: PublishSelection = useRecoilCallback(
+    ({ set, reset }) =>
+      (next) => {
+        if (next.stage !== undefined) {
+          set(fos.extendedSelectionOverrideStage, (current) =>
+            current && JSON.stringify(current) === JSON.stringify(next.stage)
+              ? current
+              : (next.stage as never),
+          );
+        }
+        if (next.count !== undefined) {
+          set(selectionCountState, next.count as never);
+        }
+        next.decorate?.({ set, reset });
+      },
+    [],
+  );
+  const [selectedSamples, setSelectedSamples] = useRecoilState(
+    fos.selectedSamples,
+  );
+
+  // Panel state (local: plot-only state must not reload the page query)
+  // survives the remounts that view changes cause. Values normalize to
+  // null: partials are undefined until first set
+  const [colorFieldState, setColorField] = usePanelStatePartial<string | null>(
+    "colorField",
+    null,
+    true,
+  );
+  const colorField = colorFieldState ?? null;
+  const brainKey = run.brainKey;
+
+  // What this run was last read with. Panel state is in-memory, so a reload
+  // dropped every choice; storage supplies the fallback under it and each
+  // setter writes through. Read at render, so the remembered value is the one
+  // the plot opens with rather than a default it corrects afterwards.
+  const stored = useStoredRunSettings(datasetName, brainKey);
+
+  // Validated, not just defaulted: both panel state and storage outlive a
+  // build, so a ramp that was renamed or dropped comes back as a string that
+  // would index RAMPS to undefined and color every point NaN
+  const [rampState, setRampState] = usePanelStatePartial<string | null>(
+    "colorRamp",
+    null,
+    true,
+  );
+  const rampId = isRampId(rampState)
+    ? rampState
+    : isRampId(stored.rampId)
+      ? stored.rampId
+      : DEFAULT_RAMP;
+  const setRampId = useCallback(
+    (id: RampId) => {
+      setRampState(id);
+      writeRunSettings(datasetName, brainKey, { rampId: id });
+    },
+    [setRampState, datasetName, brainKey],
+  );
+
+  // Everything edition-specific reaches this hook through the extension
+  // seam — registered at module load, so the hook identities below are
+  // stable for the app's lifetime (rules of hooks hold; a build without an
+  // extension takes the inert fallbacks). The source hook owns, for a run
+  // the extension claims, the client-side geometry/color loaders.
+  const extension = getEmbeddingsPanelExtension();
+  const useRunSource = extension?.useRunSource ?? useFallbackRunSource;
+  const source = useRunSource(datasetName, brainKey, run.timestamp ?? null);
+
+  const { loaded, error: loadError } = useRunColumns(
+    datasetName,
+    brainKey,
+    source.loadGeometry,
+    source.ownsGeometry,
+  );
+
+  // color/masks/filter resolve per-point data by the client's wire-order
+  // ids. On a large run they resolve against the points loaded SO FAR: the
+  // id column is snapshotted when the operation changes (color field /
+  // filters / view) and frozen as more stream in, so a filter/lasso narrows
+  // to a subset immediately. The rest streams into the pool in the
+  // background; an explicit Update recomputes over everything. We recompute
+  // only at those points, never per landed chunk (the id buffer ref is
+  // stable, so the memo doesn't churn as `loaded` republishes).
+  const idColumn = loaded?.ids ?? null;
+  const total = loaded?.total ?? 0;
+  const loadedCount = loaded?.points.length ?? 0;
+  const loadedCountRef = useRef(0);
+  loadedCountRef.current = loadedCount;
+
+  // Only an active operation (color-by / sidebar filter / view stage)
+  // needs per-point resolution; plain viewing renders every loaded point
+  // with no resolution and no partial/Update chrome
+  const activeFilters =
+    filters && typeof filters === "object" ? Object.keys(filters).length : 0;
+  const hasActiveOp =
+    colorField !== null ||
+    activeFilters > 0 ||
+    (Array.isArray(view) && view.length > 0);
+
+  // Count the resolution was computed over: snapshotted when the op
+  // changes (post-load ops capture everything), frozen as more points
+  // stream in, jumped to `total` only on an explicit Update
+  const [resolvedCount, setResolvedCount] = useState(0);
+  useEffect(() => {
+    setResolvedCount(hasActiveOp ? loadedCountRef.current : 0);
+  }, [brainKey, colorField, filters, view, hasActiveOp]);
+  useEffect(() => {
+    if (hasActiveOp && resolvedCount === 0 && loadedCount > 0) {
+      setResolvedCount(loadedCount);
+    }
+  }, [hasActiveOp, loadedCount, resolvedCount]);
+
+  // Partial only when an op resolved over fewer points than are loaded;
+  // Update becomes available once the whole run is in
+  const resultsPartial =
+    hasActiveOp && resolvedCount > 0 && resolvedCount < loadedCount;
+  const canUpdate = resultsPartial && loadedCount === total;
+  const applyAllPoints = useCallback(() => setResolvedCount(total), [total]);
+
+  const {
+    choices,
+    colors,
+    values: colorValues,
+    meta: colorMeta,
+    loading: colorLoading,
+    error: colorError,
+  } = useColorColumn(
+    datasetName,
+    brainKey,
+    run,
+    colorField,
+    source.colorSource,
+    rampId,
+  );
+
+  // The legend is a view over the App's sidebar filter for the color-by
+  // field; its on/off set drives both plot visibility and grid scope. Read
+  // here (above the visibility mask) so the mask can honor it.
+  const fieldFilter = useRecoilValue(
+    fos.filter({ path: colorField ?? "", modal: false }),
+  );
+  const legendFilter = (fieldFilter ?? null) as CategoricalFilter | null;
+  const legend = useMemo(
+    () => legendLabels(colorMeta, legendFilter),
+    [colorMeta, legendFilter],
+  );
+
+  // The extension's feature surface: locally-evaluated filter masks, the
+  // selection decoration, the shell's slots. Its filters run FIRST — the
+  // masks endpoint resolves through a view builder that does not apply
+  // extension-owned paths, so only the browser can narrow the plot by
+  // them; what it does not own passes through below.
+  const useRunFeatures = extension?.useRunFeatures ?? useFallbackRunFeatures;
+  const features = useRunFeatures({
+    datasetName,
+    brainKey,
+    run,
+    source,
+    filters,
+    colorField,
+    colorValues,
+    colorMeta,
+    loadedIds: idColumn,
+    loadedCount,
+    publishSelection,
+    setOverrideStage,
+    resetExtended,
+  });
+
+  // Filters the extension answered locally are its own; everything else
+  // resolves server-side through the masks endpoint
+  const serverFilters = features.serverFilters;
+  const localMask = features.localMask;
+
+  const {
+    visibleMask,
+    visibleCount,
+    error: masksError,
+  } = useMasks(
+    datasetName,
+    brainKey,
+    view,
+    serverFilters,
+    resolvedCount,
+    localMask,
+    source.serverMasks,
+  );
+  // color covers the resolved prefix; only apply once it covers every
+  // rendered point (the renderer no-ops on a length mismatch anyway)
+  const pointColors = useMemo(() => {
+    if (!colors || !loaded) return null;
+    return colors.length === loaded.points.length * 3 ? colors : null;
+  }, [colors, loaded]);
+  // The visibility mask must span every rendered point: the resolved
+  // prefix drives it and the unresolved tail stays visible until Update.
+  // When the extension owns the color field, the legend's hide/isolate is
+  // applied HERE, straight from the resolved color column — the id-keyed
+  // sidebar filter path can't evaluate an extension-owned field, so
+  // clicking/double-clicking a class otherwise reloaded the grid without
+  // changing the plot.
+  const plotVisible = useMemo(() => {
+    if (!loaded) return null;
+    const n = loaded.points.length;
+
+    const off = legend?.off;
+    const applyLegend =
+      features.foldLegendLocally &&
+      colorField &&
+      off &&
+      off.size > 0 &&
+      colorValues?.style === "categorical" &&
+      colorMeta?.style === "categorical";
+
+    // Nothing narrows the view (no server/client filter AND no legend
+    // isolate) → everything visible
+    if (!visibleMask && !applyLegend) return null;
+
+    let base: Uint8Array;
+    if (!visibleMask) {
+      base = new Uint8Array(n).fill(1);
+    } else if (visibleMask.length === n) {
+      base = visibleMask;
+    } else {
+      base = new Uint8Array(n).fill(1);
+      base.set(visibleMask.subarray(0, Math.min(visibleMask.length, n)));
+    }
+
+    if (!applyLegend) return base;
+
+    // Don't mutate the shared mask from useMasks
+    const out = base === visibleMask ? base.slice() : base;
+    const classes = colorMeta.classes ?? [];
+    const indices = colorValues.indices;
+    const limit = Math.min(n, indices.length);
+    for (let i = 0; i < limit; i++) {
+      const ci = indices[i];
+      if (ci === MISSING_CATEGORY) continue;
+      const label = classes[ci]?.label;
+      if (label !== undefined && off.has(String(label))) out[i] = 0;
+    }
+    return out;
+  }, [
+    visibleMask,
+    loaded,
+    features.foldLegendLocally,
+    colorField,
+    legend,
+    colorValues,
+    colorMeta,
+  ]);
+
+  /** Points actually drawn. Counted from the rendered mask rather than taken
+   * from useMasks: that count knows only about the server/client filters, so
+   * isolating a legend label narrowed the plot without moving the number. */
+  const shownCount = useMemo(() => {
+    if (!plotVisible) return visibleCount;
+    let n = 0;
+    for (let i = 0; i < plotVisible.length; i++) n += plotVisible[i];
+    return n;
+  }, [plotVisible, visibleCount]);
+
+  // The hover card's swatch mirrors the point's rendered color, which
+  // buildColors derives from the same class column
+  const pointSwatch = (index: number): string | null => {
+    if (colorValues?.style !== "categorical") return null;
+    const classIndex = colorValues.indices[index];
+    return classIndex === MISSING_CATEGORY ? null : categoryHex(classIndex);
+  };
+
+  const { hover, handleHover, keepHover } = useHoverInfo(
+    datasetName,
+    brainKey,
+    colorField,
+    fos.getSampleSrc,
+    pointSwatch,
+    features.localDetail,
+  );
+
+  // Charts register their imperative handle here (one per rendered cell, or
+  // a single chart for the plain plot). Clear/reset fan out to every
+  // registered cell so one bridge clears them all. The map is a stable ref;
+  // the aggregate handle closes over it, so it always hits live charts.
+  const chartsRef = useRef(new Map<string, EmbeddingsViewHandle>());
+  const registerChart = useCallback(
+    (key: string, handle: EmbeddingsViewHandle | null) => {
+      if (handle) chartsRef.current.set(key, handle);
+      else chartsRef.current.delete(key);
+    },
+    [],
+  );
+  const resetCameras = useCallback(() => {
+    chartsRef.current.forEach((chart) => chart.resetCamera());
+  }, []);
+  const aggregateChart = useRef<RefObject<EmbeddingsViewHandle | null>>({
+    current: {
+      resetCamera: () =>
+        chartsRef.current.forEach((chart) => chart.resetCamera()),
+      clearSelection: () =>
+        chartsRef.current.forEach((chart) => chart.clearSelection()),
+    },
+  }).current;
+
+  const {
+    selectedIndices,
+    handleSelection,
+    handlePointClick,
+    clearAll,
+    error: selectionError,
+  } = useSelectionBridge({
+    datasetName,
+    brainKey,
+    view,
+    loaded,
+    patchesField: run.patchesField,
+    pointsField: run.pointsField,
+    visible: plotVisible,
+    chart: aggregateChart,
+    resetExtended,
+    selectedSamples,
+    setSelectedSamples,
+    decorateSelection: features.decorateSelection,
+    resolveLassoStage: features.resolveLassoStage,
+    publishSelection,
+  });
+
+  const [mode, setMode] = useState<PanelMode>("explore");
+  const [rendererError, setRendererError] = useState<string | null>(null);
+  const onRendererError = useCallback(
+    (e: Error) => setRendererError(e.message),
+    [],
+  );
+
+  // (legendFilter + legend are computed above, before the visibility mask,
+  // so the mask can honor the legend's hide/isolate.)
+
+  // Writes read the filter from a fresh snapshot, not the render-time
+  // value — rapid clicks must each transform the latest state, or a
+  // click can silently compute from a stale base and drop its
+  // predecessor. A dblclick arrives as click-click-dblclick; the two
+  // toggles cancel (toggle is its own inverse), then the solo lands —
+  // no click timers
+  // The extension syncs its own selection artifacts to the legend filter
+  // (e.g. marking the shown classes on linked views). Ref so the memoized
+  // recoil callback always calls the freshest closure, never a stale one
+  const onLegendFilterChangeRef = useRef(features.onLegendFilterChange);
+  onLegendFilterChangeRef.current = features.onLegendFilterChange;
+
+  const handleLegendClick = useRecoilCallback(
+    ({ snapshot, set, reset }) =>
+      (label: string, solo: boolean) => {
+        if (!colorField || !legend) return;
+        const filterState = fos.filter({ path: colorField, modal: false });
+        const current = (snapshot.getLoadable(filterState).valueMaybe() ??
+          null) as CategoricalFilter | null;
+        const transform = solo ? soloLabel : toggleLabel;
+        const next = transform(current, legend.labels, label);
+        if (next) {
+          set(filterState, next);
+        } else {
+          reset(filterState);
+        }
+        onLegendFilterChangeRef.current(next);
+      },
+    [colorField, legend],
+  );
+  const handleLegendToggle = (label: string) => handleLegendClick(label, false);
+  const handleLegendSolo = (label: string) => handleLegendClick(label, true);
+
+  const resetLegendFilter = useRecoilCallback(
+    ({ reset }) =>
+      () => {
+        if (colorField) {
+          reset(fos.filter({ path: colorField, modal: false }));
+          // Clearing the class filter also clears anything the extension
+          // derived from it (e.g. legend-driven linked-view marks)
+          onLegendFilterChangeRef.current(null);
+        }
+      },
+    [colorField],
+  );
+
+  // Clear everything the plot introduced: the selection (lasso / grid /
+  // extension actions → override stage + decorations) AND the color-by
+  // legend isolate/hide filter. Distinct from resetCameras, which only
+  // recenters.
+  const resetAll = useCallback(() => {
+    clearAll();
+    resetLegendFilter();
+  }, [clearAll, resetLegendFilter]);
+
+  const error =
+    loadError ?? rendererError ?? colorError ?? masksError ?? selectionError;
+
+  const colorOptions = useMemo(
+    () => [
+      { id: NONE_FIELD, data: { label: "None" } },
+      ...choices
+        // A run's own spatial-index field colors by x-coordinate;
+        // not a useful choice
+        .filter((field) => field !== run.pointsField)
+        .map((field) => ({ id: field, data: { label: field } })),
+    ],
+    [choices, run.pointsField],
+  );
+
+  // Patches runs whose labels carry a ``stream`` subfield can color by it:
+  // one hue per stream, and the color legend's toggle/solo then doubles as
+  // a per-stream visibility control — a legend click writes the sidebar
+  // filter for the stream field, which both hides the stream's points here
+  // (via the masks path) and scopes the grid.
+  const streamField = useMemo(() => {
+    if (!run.patchesField) return null;
+    const candidate = `${run.patchesField}.detections.stream`;
+    return choices.includes(candidate) ? candidate : null;
+  }, [choices, run.patchesField]);
+  const coloredByStream = Boolean(streamField && colorField === streamField);
+
+  // A completed lasso returns gestures to the camera, so the selection can
+  // be explored immediately without switching modes. NOT in an extension
+  // mode: a lasso there IS that mode's input (e.g. a query), and dropping
+  // to explore would turn the mode off under the user between gestures
+  const extraMode = features.extraMode;
+  const handleLasso = useCallback(
+    (indices: number[], polygon?: Array<[number, number]> | null) => {
+      // A lasso that caught nothing is not an instruction. Every rendered
+      // cell fires its own selection, so one non-gesture arrives once PER
+      // CELL — nine of them on a 3x3 layout — and treating each as
+      // "deselect everything" wipes a selection made in another cell
+      if (!indices.length) return;
+
+      if (extraMode && mode === extraMode.key) {
+        extraMode.onLasso(indices);
+        return;
+      }
+
+      handleSelection(indices, polygon);
+      setMode("explore");
+    },
+    [mode, handleSelection, extraMode],
+  );
+
+  // The published count IS the count. Every selection — lasso, grid, an
+  // extension action — commits it through `publishSelection`, and the panel
+  // tab's pill (which lives outside this tree) reads the same atom.
+  // Deriving it here and writing it back instead meant the write-back
+  // clobbered what a selection had just published, so the chip never
+  // appeared for anything but a grid checkbox.
+  const publishedCount = useRecoilValue(selectionCountState);
+  const chipCount = publishedCount ?? (selectedSamples.size || null);
+
+  // chipCount is the pre-click value — the chart clears its own lasso layer
+  // before this fires. See backgroundClickAction for which layer comes off
+  const handleBackgroundClick = useCallback(() => {
+    const action = backgroundClickAction({
+      chipCount,
+      origin: features.selectionOrigin,
+      legendFilter: Boolean(legendFilter),
+    });
+    if (action === "clear-all") clearAll();
+    if (action === "reset-legend") resetLegendFilter();
+  }, [
+    chipCount,
+    clearAll,
+    legendFilter,
+    resetLegendFilter,
+    features.selectionOrigin,
+  ]);
+
+  const clearNonce = useRecoilValue(clearSelectionNonceState);
+  const seenClearNonce = useRef(clearNonce);
+  useEffect(() => {
+    if (clearNonce !== seenClearNonce.current) {
+      seenClearNonce.current = clearNonce;
+      clearAll();
+    }
+  }, [clearAll, clearNonce]);
+
+  return {
+    loaded,
+    total,
+    loadedCount,
+    colorField,
+    setColorField,
+    choices,
+    colorOptions,
+    colorMeta,
+    colorLoading,
+    pointColors,
+    rampId,
+    setRampId,
+    streamField,
+    coloredByStream,
+    plotVisible,
+    visibleCount: shownCount,
+    selectedIndices,
+    selectedSamples,
+    selectionCount: chipCount,
+    chipCount,
+    handleLasso,
+    handlePointClick,
+    handleBackgroundClick,
+    clearAll,
+    hover,
+    handleHover,
+    keepHover,
+    features,
+    legend,
+    legendFilter,
+    handleLegendToggle,
+    handleLegendSolo,
+    resultsPartial,
+    canUpdate,
+    applyAllPoints,
+    resolvedCount,
+    mode,
+    setMode,
+    error,
+    onRendererError,
+    registerChart,
+    resetCameras,
+    resetAll,
+  };
+}

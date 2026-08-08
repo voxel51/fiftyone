@@ -102,6 +102,9 @@ export interface McapSourcePlaybackProps {
   readonly decorateTrack?: TemporalTagTimelineProps["decorateTrack"];
   readonly fileName: string;
   readonly headerActions?: React.ReactNode;
+  /** Capture time to open the recording at, ahead of the first-data tick.
+   * Set to an embeddings match so opening a matched tile lands on it. */
+  readonly initialSeekTimeNs?: bigint | null;
   readonly layoutScopeKey?: string;
   /** Host selected a new sample whose media descriptor is still resolving. */
   readonly navigationPending?: boolean;
@@ -131,6 +134,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
   decorateTrack,
   fileName,
   headerActions,
+  initialSeekTimeNs,
   layoutScopeKey,
   navigationPending = false,
   onTagCreate,
@@ -436,6 +440,7 @@ export const McapSourcePlayback: React.FC<McapSourcePlaybackProps> = ({
                             >
                               <McapStreams
                                 client={client}
+                                initialSeekTimeNs={initialSeekTimeNs}
                                 onPlayheadDataReady={handlePlayheadDataReady}
                                 source={playbackSource}
                               />

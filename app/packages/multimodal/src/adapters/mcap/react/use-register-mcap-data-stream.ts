@@ -231,6 +231,9 @@ interface RemoteStartupGateDecision {
 export interface UseMcapDataStreamOptions {
   blockingTopics: readonly string[];
   client: McapResourceClient;
+  /** Capture time to open the recording at, ahead of the first-data tick.
+   * Set to an embeddings match so opening a matched tile lands on it. */
+  initialSeekTimeNs?: bigint | null;
   /** Called whenever every blocking topic covers the current playhead. */
   onPlayheadDataReady?: () => void;
   source: ByteSourceDescriptor | null;
@@ -256,6 +259,7 @@ export interface UseMcapDataStreamOptions {
 export function useRegisterMcapDataStream({
   blockingTopics,
   client,
+  initialSeekTimeNs,
   onPlayheadDataReady,
   source,
   allTopics,
@@ -263,7 +267,8 @@ export function useRegisterMcapDataStream({
   staleWarningTopics,
   streamPolicies,
 }: UseMcapDataStreamOptions): void {
-  const { pause, registerStream, seek, subscribeStream } = usePlayback();
+  const { duration, pause, registerStream, seek, subscribeStream } =
+    usePlayback();
   const store = usePlaybackStore();
   const isPlaying = useIsPlaying();
   const setDataStream = useSetMcapDataStream();
@@ -274,15 +279,35 @@ export function useRegisterMcapDataStream({
     [source],
   );
 
+  // Read through refs so the reset below follows the SOURCE alone — the
+  // engine's actions are stable today, and nothing but a new recording
+  // should rewind a playhead already placed on its opening tick.
+  const pauseRef = useRef(pause);
+  pauseRef.current = pause;
+  const seekRef = useRef(seek);
+  seekRef.current = seek;
+
+  // `seek` clamps to the duration known when it is called, and the timeline
+  // index resolves before any stream has reported one. Without this the
+  // opening seek is silently clamped to zero.
+  const durationRef = useRef(duration);
+  durationRef.current = duration;
+
   // This layout effect resets recording-local time before paint while the
   // playback store—and therefore the modal workspace—survives navigation.
   // The topic-bounds path below may then advance zero to the first data tick.
   useLayoutEffect(() => {
-    pause();
-    seek(0);
-  }, [pause, seek, sourceKey]);
+    pauseRef.current();
+    seekRef.current(0);
+  }, [sourceKey]);
 
   const [index, setIndex] = useState<McapTimelineIndex | null>(null);
+
+  // Held in a ref, not a dependency: the source-reset effect below depends on
+  // the auto-seek callback, so closing over this value directly would tear
+  // down and reload the whole recording whenever the match changed.
+  const initialSeekTimeNsRef = useRef<bigint | null>(null);
+  initialSeekTimeNsRef.current = initialSeekTimeNs ?? null;
 
   // Stable refs — read in RAF/subscribe callbacks without closure capture.
   const topicCachesRef = useRef<Map<string, McapTopicCache>>(new Map());
@@ -502,43 +527,86 @@ export function useRegisterMcapDataStream({
     });
   }, [getActiveBlockingTopics, sourceReadProfile, store]);
 
-  // If a recording's selected renderable topics begin just after the MCAP
-  // timeline start, land the initial playhead on the first sampled tick that
-  // can actually resolve data. This consumes the topic bounds already loaded
-  // for status copy; it never asks the worker for another index/read.
-  const maybeAutoSeekToFirstData = useCallback(() => {
-    const currentEpoch = sourceEpochRef.current;
-    if (autoSeekSourceEpochRef.current === currentEpoch) return;
-    if (getPlayhead(store) !== 0) return;
-
-    const currentIndex = indexRef.current;
-    if (!currentIndex) return;
-
+  // The earliest capture time every active topic can resolve data at, or null
+  // while any of their bounds is still loading.
+  const firstDataTimeNs = useCallback((): bigint | null => {
     const activeTopics = getActiveTopics();
-    if (activeTopics.length === 0) return;
+    if (activeTopics.length === 0) return null;
 
     let firstMessageTimeNs: bigint | null = null;
     for (const topic of activeTopics) {
-      if (!topicStartTimesNsRef.current.has(topic)) return;
+      if (!topicStartTimesNsRef.current.has(topic)) return null;
       const topicStart = topicStartTimesNsRef.current.get(topic);
-      if (topicStart === null || topicStart === undefined) return;
+      if (topicStart === null || topicStart === undefined) return null;
       if (firstMessageTimeNs === null || topicStart < firstMessageTimeNs) {
         firstMessageTimeNs = topicStart;
       }
     }
-    if (firstMessageTimeNs === null) return;
+    return firstMessageTimeNs;
+  }, [getActiveTopics]);
 
-    const tick = currentIndex.tickAt(
-      currentIndex.indexAtOrAfter(firstMessageTimeNs),
-    );
-    if (tick === undefined) return;
+  // If a recording's selected renderable topics begin just after the MCAP
+  // timeline start, land the initial playhead on the first sampled tick that
+  // can actually resolve data. This consumes the topic bounds already loaded
+  // for status copy; it never asks the worker for another index/read. An
+  // embeddings match overrides that target with the matched window, and needs
+  // no topic bounds to do it.
+  const maybeAutoSeekToFirstData = useCallback(() => {
+    const matchNs = initialSeekTimeNsRef.current;
+    // Only for a matched open — an ordinary open would log on every tick
+    const trace = (outcome: string, detail: Record<string, unknown> = {}) => {
+      if (matchNs === null) return;
+      console.debug("[multimodal-embeddings] modal match seek:", {
+        outcome,
+        matchNs: String(matchNs),
+        ...detail,
+      });
+    };
+
+    const currentEpoch = sourceEpochRef.current;
+    if (autoSeekSourceEpochRef.current === currentEpoch) {
+      return trace("already-seeked-this-source");
+    }
+    if (getPlayhead(store) !== 0) {
+      return trace("playhead-moved", { playhead: getPlayhead(store) });
+    }
+
+    const currentIndex = indexRef.current;
+    if (!currentIndex) return trace("no-timeline-index");
+
+    const targetNs = matchNs ?? firstDataTimeNs();
+    if (targetNs === null) return;
+
+    const tick = currentIndex.tickAt(currentIndex.indexAtOrAfter(targetNs));
+    if (tick === undefined) {
+      return trace("target-past-timeline-end", {
+        recordingStartNs: String(currentIndex.startTimeNs),
+        recordingEndNs: String(currentIndex.endTimeNs),
+      });
+    }
 
     const targetSec = currentIndex.nsToSec(tick);
-    if (targetSec <= 0) return;
+    if (targetSec <= 0) {
+      return trace("target-at-or-before-start", {
+        targetSec,
+        recordingStartNs: String(currentIndex.startTimeNs),
+      });
+    }
+
+    // Deliberately unstamped: a seek issued now would clamp to a duration no
+    // stream has published yet, so leave the epoch open and let the retry
+    // below run once the recording's real length is known.
+    if (targetSec > durationRef.current) {
+      return trace("awaiting-duration", {
+        targetSec,
+        duration: durationRef.current,
+      });
+    }
 
     autoSeekSourceEpochRef.current = currentEpoch;
-    seek(targetSec);
-  }, [getActiveTopics, seek, store]);
+    trace("seeking", { targetSec });
+    seekRef.current(targetSec);
+  }, [firstDataTimeNs, store]);
 
   // Pending helpers — wrap the per-tick topic sets so call sites read
   // like simple predicates instead of repeating the get/has dance.
@@ -668,10 +736,12 @@ export function useRegisterMcapDataStream({
   }, [maybeAutoSeekToFirstData, source, store]);
 
   // This effect retries the initial auto-seek once the timeline index is
-  // committed to React state; topic bounds can resolve first.
+  // committed to React state; topic bounds can resolve first. It also retries
+  // on `duration`, which a stream publishes after the index resolves and
+  // which bounds how far the engine will let the opening seek travel.
   useEffect(() => {
     if (index) maybeAutoSeekToFirstData();
-  }, [index, maybeAutoSeekToFirstData]);
+  }, [duration, index, maybeAutoSeekToFirstData]);
 
   // Contiguous [startSec, endSec] ranges where every active topic has the
   // tick cached — i.e. the stretches playback can run through without

@@ -2,10 +2,13 @@ import {
   act,
   cleanup,
   fireEvent,
-  render,
+  render as renderBare,
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { RecoilRoot } from "recoil";
+import { publishMcapEmbeddingSelection } from "../../../extensions/mcap";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   WEBGPU_DEVICE_BUDGET,
@@ -25,6 +28,24 @@ import {
 } from "./GridRenderer";
 import classes from "./GridRenderer.module.css";
 import { useMcapGridPreview } from "./use-mcap-grid-preview";
+
+// The grid mounts custom renderers under a RecoilBridge, which is what lets
+// the tile read the embeddings panel's published match for its episode.
+function render(ui: ReactElement) {
+  return renderBare(ui, { wrapper: RecoilRoot });
+}
+
+type PublishedWindows = Record<
+  string,
+  Array<{ stream: string; startNs: string; endNs: string }>
+>;
+
+function renderWithMatches(ui: ReactElement, byEpisode: PublishedWindows) {
+  // The published selection reaches tiles through the extensions/mcap store
+  // (their own React roots), not through this Recoil tree
+  publishMcapEmbeddingSelection({ byEpisode });
+  return render(ui);
+}
 
 const previewHarness = vi.hoisted(() => ({
   preview: {
@@ -152,6 +173,7 @@ vi.mock("../../../visualization/panels/point-cloud", () => ({
 
 afterEach(() => {
   cleanup();
+  publishMcapEmbeddingSelection(null);
   vi.useRealTimers();
   resetGridLiveLeasesForTests();
   resetWebGpuDeviceRegistryForTests();
@@ -170,6 +192,33 @@ afterEach(() => {
 });
 
 describe("GridRenderer", () => {
+  it("posters at the earliest window the embeddings panel matched", () => {
+    renderWithMatches(<GridRenderer ctx={rendererCtx()} />, {
+      "1": [
+        { stream: "/camera/front", startNs: "1700", endNs: "1800" },
+        { stream: "/lidar/top", startNs: "1200", endNs: "1200" },
+      ],
+    });
+
+    expect(vi.mocked(useMcapGridPreview).mock.lastCall?.[0]).toMatchObject({
+      posterStartTimeNs: 1_200n,
+      posterStreamTopic: "/lidar/top",
+    });
+  });
+
+  it("posters at the recording start when the lasso missed this episode", () => {
+    renderWithMatches(<GridRenderer ctx={rendererCtx()} />, {
+      "other-episode": [
+        { stream: "/camera/front", startNs: "1700", endNs: "1800" },
+      ],
+    });
+
+    expect(vi.mocked(useMcapGridPreview).mock.lastCall?.[0]).toMatchObject({
+      posterStartTimeNs: null,
+      posterStreamTopic: null,
+    });
+  });
+
   it("explains when the recording cannot be found", () => {
     previewHarness.preview.error =
       "Recording not found (HTTP 404). Check that the file still exists at its configured path and is accessible to FiftyOne.";

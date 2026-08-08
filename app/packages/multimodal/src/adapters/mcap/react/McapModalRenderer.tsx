@@ -8,6 +8,7 @@ import {
 import { McapAdjacentSamplePrewarm } from "./McapAdjacentSamplePrewarm";
 import { McapSourcePlayback } from "./McapSourcePlayback";
 import { mcapSourceDisplayName } from "./mcap-source-display-name";
+import { useSampleRendererFirstMatch } from "../../../extensions/mcap";
 import { useMcapResourceClient } from "./use-mcap-resource-client";
 import {
   useFilteredTemporalTagPinnedIds,
@@ -46,6 +47,10 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
     [tagTracks],
   );
 
+  // Opening a tile the embeddings panel matched lands the playhead on the same
+  // window the tile postered at, rather than the recording start.
+  const firstMatch = useSampleRendererFirstMatch(ctx);
+
   return (
     <McapAnnotationTopicsProvider>
       <McapTimelineExtensionHost
@@ -68,6 +73,7 @@ const McapModalRenderer: React.FC<SampleRendererProps> = ({ ctx }) => {
             defaultPinnedTrackIds={defaultPinnedTrackIds}
             decorateTrack={decorateTrack}
             fileName={fileName}
+            initialSeekTimeNs={firstMatch?.startNs ?? null}
             layoutScopeKey={datasetId}
             cameraPreferenceField={ctx.media.field}
             onTagCreate={onTagCreate}

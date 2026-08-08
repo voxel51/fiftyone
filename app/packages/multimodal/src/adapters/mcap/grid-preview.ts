@@ -167,6 +167,8 @@ export interface McapGridPreviewResult {
 export interface McapGridPreviewEntry {
   readonly client: McapResourceClient;
   autoSelection?: McapGridPreviewSelection | null;
+  /** Whether the source's immutable facts have been handed to a caller yet. */
+  bootstrapPublished?: boolean;
   inventory?: readonly StreamInventory[];
   timelineRange?: McapTimelineRange | null;
   topics?: McapGridTopics;
@@ -201,14 +203,27 @@ export async function decodeGridPreview(
   }
 
   const topics = entry.topics;
-  const bootstrapTimelineRange =
-    startTimeNs === undefined ? (entry.timelineRange ?? undefined) : undefined;
-  const bootstrapTopics =
-    startTimeNs === undefined ? entry.inventory : undefined;
+  // Once per entry, not once per un-seeked read: a tile whose first read is
+  // already seeked (an embeddings match posters at its matched window) would
+  // otherwise resolve the range here and discard it, leaving every later
+  // request — all of them seeked — with no way to publish it either. Marked
+  // published only at each return below (not here), so a rejected read
+  // leaves it unpublished for the next retry to pick up.
+  const publishBootstrap = !entry.bootstrapPublished;
+  const bootstrapTimelineRange = publishBootstrap
+    ? (entry.timelineRange ?? undefined)
+    : undefined;
+  const bootstrapTopics = publishBootstrap ? entry.inventory : undefined;
+  const markBootstrapPublished = () => {
+    if (bootstrapTimelineRange || bootstrapTopics) {
+      entry.bootstrapPublished = true;
+    }
+  };
   const previewTopics = topics.previewable;
   const selection = chooseSelection(entry, topics, selectedStreamTopic);
 
   if (selectedStreamTopic && !selection) {
+    markBootstrapPublished();
     return {
       bootstrapTimelineRange,
       bootstrapTopics,
@@ -224,6 +239,7 @@ export async function decodeGridPreview(
   }
 
   if (!selection) {
+    markBootstrapPublished();
     return {
       bootstrapTimelineRange,
       bootstrapTopics,
@@ -246,6 +262,7 @@ export async function decodeGridPreview(
   });
 
   if (!result) {
+    markBootstrapPublished();
     return {
       bootstrapTimelineRange,
       bootstrapTopics,
@@ -260,6 +277,7 @@ export async function decodeGridPreview(
     };
   }
 
+  markBootstrapPublished();
   return {
     bootstrapTimelineRange,
     bootstrapTopics,

@@ -32,6 +32,7 @@
         "@testing-library/dom": "catalog:",
         "@testing-library/react": "catalog:",
         "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
         "@types/three": "^0.182.0",
         "jotai": "catalog:",
         "react": "catalog:",

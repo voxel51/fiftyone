@@ -16,11 +16,30 @@ export function useHoverInfo(
   colorField: string | null,
   mediaUrl: (media: string) => string,
   pointSwatch?: (index: number) => string | null,
+  /** Builds hover content SYNCHRONOUSLY from data the client already holds,
+   * skipping the sample-info fetch. A run whose media is expensive to fetch
+   * and decode (an extension-owned run reading its own storage) shows cheap
+   * per-point detail instead of an image. Returns null to fall through to
+   * the normal fetch path. */
+  localDetail?: (hit: HoverHit) => HoverContent | null,
 ): {
   hover: HoverContent | null;
   handleHover: (hit: HoverHit | null) => void;
+  /** Cancels a pending clear — call when the pointer enters the hover card,
+   * so moving from the point onto the card's actions doesn't dismiss it */
+  keepHover: () => void;
 } {
   const [hover, setHover] = useState<HoverContent | null>(null);
+  // The card doesn't vanish the instant the pointer leaves a point: a short
+  // grace lets the pointer cross the gap onto the card to click an action
+  const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelClear = () => {
+    if (clearTimer.current) {
+      clearTimeout(clearTimer.current);
+      clearTimer.current = null;
+    }
+  };
+  useEffect(() => () => cancelClear(), []);
   const hoverKeyRef = useRef<string | null>(null);
   const infoCache = useRef(new Map<string, SampleInfo>());
 
@@ -33,9 +52,13 @@ export function useHoverInfo(
   const handleHover = (hit: HoverHit | null) => {
     if (!hit || !datasetName || !brainKey) {
       hoverKeyRef.current = null;
-      setHover(null);
+      // Grace-delay the clear so the pointer can reach the card's actions
+      cancelClear();
+      clearTimer.current = setTimeout(() => setHover(null), CLEAR_GRACE_MS);
       return;
     }
+
+    cancelClear();
     // The FULL request identity: a response for the same index but a
     // previous dataset/run/field must not land on the current hover
     const key = `${datasetName}::${brainKey}::${colorField ?? ""}::${hit.index}`;
@@ -64,6 +87,13 @@ export function useHoverInfo(
       });
     };
 
+    // Client-side detail wins: no request, no media decode
+    const local = localDetail?.(hit);
+    if (local) {
+      setHover(local);
+      return;
+    }
+
     const cached = infoCache.current.get(key);
     if (cached) {
       apply(cached);
@@ -77,5 +107,8 @@ export function useHoverInfo(
       .catch(() => undefined);
   };
 
-  return { hover, handleHover };
+  return { hover, handleHover, keepHover: cancelClear };
 }
+
+/** How long the card survives the pointer leaving a point. */
+const CLEAR_GRACE_MS = 260;

@@ -6,6 +6,7 @@ import {
   idAt,
   type IdColumn,
 } from "./protocol";
+import type { GeometryLoader } from "./extensions";
 import type { EmbeddingPoint } from "./renderer";
 
 /** Wire-order slice size for progressive loading */
@@ -28,13 +29,31 @@ export interface Loaded {
 export function useRunColumns(
   datasetName: string | null,
   brainKey: string | null,
+  /** Streams the run's geometry client-side (an extension owns the run's
+   * storage). When set, the server column path below is never entered. */
+  loadGeometry: GeometryLoader | null = null,
+  /** Whether an extension owns this run: gates the wait for its loader, so a
+   * run whose loader is still resolving does not fall through to the server */
+  ownsGeometry = false,
 ): { loaded: Loaded | null; error: string | null } {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
   const loadingKeyRef = useRef<string | null>(null);
+  // Read the freshest loader without depending on its identity: an
+  // extension-supplied loadGeometry can be recreated every render, and
+  // depending on it directly would restart an in-flight load for no reason
+  const loadGeometryRef = useRef(loadGeometry);
+  loadGeometryRef.current = loadGeometry;
+  const hasLoadGeometry = Boolean(loadGeometry);
 
   useEffect(() => {
     if (!datasetName || !brainKey) return undefined;
+    if (ownsGeometry && !loadGeometryRef.current) {
+      // The previous run's points must not linger while this run waits on
+      // its loader
+      setLoaded(null);
+      return undefined;
+    }
     const loadKey = `${datasetName}::${brainKey}`;
     if (loadingKeyRef.current === loadKey) return undefined;
     loadingKeyRef.current = loadKey;
@@ -44,6 +63,18 @@ export function useRunColumns(
     setLoaded(null);
     setError(null);
     (async () => {
+      if (loadGeometryRef.current) {
+        const { points, ids, total } = await loadGeometryRef.current(
+          (partial, buffer, n) => {
+            if (stale) return;
+            setLoaded({ brainKey, points: partial, ids: buffer, total: n });
+          },
+        );
+        if (stale) return;
+        setLoaded({ brainKey, points, ids, total });
+        return;
+      }
+
       // run-info first: reports n AND warms the server's results cache,
       // so the parallel column fetches below don't race a cold load
       const info = await fetchRunInfo(datasetName, brainKey);
@@ -95,7 +126,7 @@ export function useRunColumns(
         loadingKeyRef.current = null;
       }
     };
-  }, [datasetName, brainKey]);
+  }, [datasetName, brainKey, hasLoadGeometry, ownsGeometry]);
 
   return { loaded, error };
 }

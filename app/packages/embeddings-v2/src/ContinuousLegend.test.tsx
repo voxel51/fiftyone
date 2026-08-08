@@ -34,6 +34,36 @@ describe("ContinuousLegend", () => {
     expect(rampCss(1)).toBe(css(3));
   });
 
+  it("labels the ends of the ramp it was given, not the data's bounds", () => {
+    // The zero-centered ramp widens to ±10 so its middle stop is zero; the
+    // labels have to name the values those ends actually got
+    const { getByText, queryByText } = render(
+      <ContinuousLegend
+        field="steering"
+        meta={{ style: "continuous", min: -4, max: 10 }}
+        rampId="coolWarm"
+      />,
+    );
+    getByText("-10");
+    getByText("10");
+    getByText("0");
+    expect(queryByText("-4")).toBeNull();
+  });
+
+  it("labels the data's bounds for a ramp that spans them", () => {
+    const { getByText, queryByText } = render(
+      <ContinuousLegend
+        field="steering"
+        meta={{ style: "continuous", min: -4, max: 10 }}
+        rampId="viridis"
+      />,
+    );
+    getByText("-4");
+    getByText("10");
+    // No zero anchor to point at: viridis spans min..max
+    expect(queryByText("0")).toBeNull();
+  });
+
   it("renders nothing without bounds (all values missing)", () => {
     const { container } = render(
       <ContinuousLegend
