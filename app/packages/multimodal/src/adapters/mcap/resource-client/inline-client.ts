@@ -307,10 +307,16 @@ export function createInlineMcapResourceClient(
 
     async readNumericSeries(
       request: McapReadNumericSeriesRequest,
+      readOptions?: McapResourceReadOptions,
     ): Promise<McapNumericSeriesResult> {
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
       const reader = await readerStore.get(request.source);
-      return readMcapNumericSeries({ reader, request, timeline });
+      return readMcapNumericSeries({
+        reader,
+        request,
+        signal: readOptions?.signal ?? options.readSignal?.current ?? undefined,
+        timeline,
+      });
     },
 
     async readNumericSeriesSlice(

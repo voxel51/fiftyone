@@ -62,6 +62,29 @@ describe("MCAP playback worker transfer collection", () => {
     ).toEqual([scalar.buffer]);
   });
 
+  it("transfers numeric bucket gap metadata with its plotted arrays", () => {
+    const bucketGapMask = Uint8Array.of(2);
+    const timesSec = Float64Array.from([0, 1, 2]);
+    const values = Float64Array.from([1, Number.NaN, 2]);
+
+    expect(
+      transferablesForMcapResult({
+        baseTimeNs: 0n,
+        fields: [
+          {
+            bucketGapMask,
+            path: "speed",
+            timesSec,
+            values,
+          },
+        ],
+        messageCount: 3,
+        topic: "/telemetry",
+        truncated: false,
+      }),
+    ).toEqual([bucketGapMask.buffer, timesSec.buffer, values.buffer]);
+  });
+
   it("keeps timeline ranges cloneable without transferables", () => {
     expect(transferablesForMcapResult(createTimelineRange())).toEqual([]);
   });

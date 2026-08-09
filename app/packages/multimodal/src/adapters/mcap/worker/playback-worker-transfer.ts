@@ -63,6 +63,9 @@ function numericSeriesBuffersFromResult(result: unknown): ArrayBuffer[] {
   // returns subarray views); the caller's Set dedupes.
   return fields.flatMap((field) => {
     const buffers: ArrayBuffer[] = [];
+    if (field.bucketGapMask?.buffer instanceof ArrayBuffer) {
+      buffers.push(field.bucketGapMask.buffer);
+    }
     if (field.timesSec.buffer instanceof ArrayBuffer) {
       buffers.push(field.timesSec.buffer);
     }

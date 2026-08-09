@@ -273,7 +273,13 @@ export type McapNumericFieldAvailability =
  */
 export interface McapTopicNumericFields {
   readonly topic: string;
-  readonly encoding: "protobuf" | "json" | "ros1" | "cdr" | "unsupported";
+  readonly encoding:
+    | "protobuf"
+    | "json"
+    | "ros1"
+    | "cdr"
+    | "mixed"
+    | "unsupported";
   readonly availability: McapNumericFieldAvailability;
 
   /**
@@ -334,6 +340,8 @@ export interface McapReadNumericSeriesRequest {
  * render gaps.
  */
 export interface McapNumericSeriesField {
+  /** Per-decimation-bucket discontinuity bits, when decimation was applied. */
+  readonly bucketGapMask?: Uint8Array;
   readonly path: string;
   readonly timesSec: Float64Array;
   readonly values: Float64Array;
@@ -399,6 +407,8 @@ export interface McapNumericSeriesSliceResult {
   readonly baseTimeNs: bigint;
   readonly continuation?: ReadContinuation;
   readonly coverageByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
+  /** Exact source spans omitted because one atomic unit exceeded the hard ceiling. */
+  readonly skippedByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
   readonly series: readonly McapNumericTopicSeries[];
   readonly stopReason: BudgetedReadStopReason;
   readonly usage: ReadWorkUsage;

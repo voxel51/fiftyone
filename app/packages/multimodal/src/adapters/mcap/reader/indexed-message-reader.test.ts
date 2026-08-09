@@ -326,6 +326,45 @@ describe("indexed MCAP message reader", () => {
     });
     expect(inFlight.decompress).not.toHaveBeenCalled();
   });
+
+  it("cancels a warm-cache indexed parse after bounded selected work", async () => {
+    const fixture = buildChunkFixture({
+      chunkStartOffset: 1_024n,
+      marker: 1,
+      messages: Array.from({ length: 65 }, (_, index) => ({
+        channelId: 7,
+        data: index,
+        logTimeNs: BigInt(index),
+        sequence: index,
+        topic: "/camera",
+      })),
+    });
+    const controller = new AbortController();
+    let cancellationArmed = false;
+    let armedYieldCount = 0;
+    const harness = createHarness([fixture], {
+      taskYield: async () => {
+        if (cancellationArmed && ++armedYieldCount === 1) {
+          controller.abort();
+        }
+      },
+    });
+    await harness.read({ entries: fixture.entries });
+    const readsAfterWarm = harness.readContained.mock.calls.length;
+    const decompressesAfterWarm = harness.decompress.mock.calls.length;
+    cancellationArmed = true;
+
+    await expect(
+      harness.read({ entries: fixture.entries, signal: controller.signal }),
+    ).rejects.toMatchObject({
+      message: "MCAP indexed message read aborted",
+      name: "AbortError",
+    });
+
+    expect(armedYieldCount).toBe(1);
+    expect(harness.readContained).toHaveBeenCalledTimes(readsAfterWarm);
+    expect(harness.decompress).toHaveBeenCalledTimes(decompressesAfterWarm);
+  });
 });
 
 function createHarness(
@@ -341,6 +380,7 @@ function createHarness(
       options: { readonly signal?: AbortSignal },
     ) => Promise<McapContainedByteRead>;
     readonly sourceKey?: string | (() => string);
+    readonly taskYield?: () => Promise<void>;
   } = {},
 ) {
   const byOffset = new Map(
@@ -378,6 +418,7 @@ function createHarness(
     readable: { readContained } as unknown as ByteClientReadable,
     reader: createReader(fixtures.map((fixture) => fixture.chunkIndex)),
     sourceKey: options.sourceKey ?? "source:etag-a",
+    ...(options.taskYield ? { taskYield: options.taskYield } : {}),
   });
 
   return { decompress, read, readContained };

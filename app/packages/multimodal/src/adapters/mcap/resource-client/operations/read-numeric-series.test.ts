@@ -5,8 +5,10 @@ import type { McapTypes } from "@mcap/core";
 import { Root } from "protobufjs";
 import descriptor from "protobufjs/ext/descriptor";
 import { describe, expect, it, vi } from "vitest";
+import type { McapIndexedReaderLike, McapReadContinuation } from "../../reader";
 import { resolveMcapTimelineStrategy } from "../timeline";
 import {
+  numericSeriesSlicePointBudget,
   projectNumericField,
   readMcapNumericSeries,
   readMcapNumericSeriesSlice,
@@ -91,6 +93,54 @@ describe("projectNumericField", () => {
 
 describe("readMcapNumericSeries", () => {
   const timeline = resolveMcapTimelineStrategy(undefined);
+
+  it("decodes each channel of a shared topic with its own schema", async () => {
+    const channelOne = createChannel({
+      id: 1,
+      messageEncoding: "json",
+      schemaId: 0,
+      topic: "/shared",
+    });
+    const channelTwo = createChannel({
+      id: 2,
+      messageEncoding: "protobuf",
+      schemaId: 3,
+      topic: "/shared",
+    });
+    const base = createReader({
+      messages: [
+        createMessage(new TextEncoder().encode('{"jsonValue":7}'), {
+          channelId: 1,
+          logTime: 1_000_000_000n,
+        }),
+        createMessage(
+          TELEMETRY_TYPE.encode(TELEMETRY_TYPE.create({ speed: 9 })).finish(),
+          { channelId: 2, logTime: 2_000_000_000n },
+        ),
+      ],
+    });
+    const reader = {
+      ...base,
+      channelsById: new Map([
+        [1, channelOne],
+        [2, channelTwo],
+      ]),
+    };
+
+    const result = await readMcapNumericSeries({
+      reader,
+      request: {
+        fieldPaths: ["jsonValue", "speed"],
+        source: createSource(),
+        topic: "/shared",
+      },
+      timeline,
+    });
+
+    expect(result.messageCount).toBe(2);
+    expect([...result.fields[0].values]).toEqual([7, Number.NaN]);
+    expect([...result.fields[1].values]).toEqual([Number.NaN, 9]);
+  });
 
   it("extracts packed relative-time series from protobuf messages", async () => {
     const reader = createReader({
@@ -333,6 +383,41 @@ describe("readMcapNumericSeries", () => {
     expect(result.fields[0].values[2]).toBe(70);
   });
 
+  it("checks cancellation incrementally during a legacy topic scan", async () => {
+    const controller = new AbortController();
+    const messages = Array.from({ length: 100 }, (_, index) =>
+      jsonMessage({ value: index }, BigInt(index + 1) * 1_000_000_000n),
+    );
+    const base = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+    });
+    const reader = {
+      ...base,
+      readMessages: vi.fn(async function* () {
+        for (const [index, message] of messages.entries()) {
+          if (index === 64) controller.abort();
+          yield message;
+        }
+      }),
+    };
+
+    await expect(
+      readMcapNumericSeries({
+        reader,
+        request: {
+          fieldPaths: ["value"],
+          source: createSource(),
+          topic: "/state",
+        },
+        signal: controller.signal,
+        timeline,
+      }),
+    ).rejects.toMatchObject({
+      message: "MCAP numeric series read aborted",
+      name: "AbortError",
+    });
+  });
+
   it("applies a stride and reports truncation for very large topics", async () => {
     const reader = createReader({
       channel: createChannel({ messageEncoding: "json", topic: "/state" }),
@@ -413,6 +498,135 @@ describe("readMcapNumericSeriesSlice", () => {
     maxUncompressedBytes: 1_000_000,
     maxWallTimeMs: 1_000,
   };
+
+  it("shares the viewport point budget across continuation coverage", () => {
+    const minute = 60_000_000_000n;
+    const firstSecond = [{ endNs: 999_999_999n, startNs: 0n }];
+    const fullMinute = [{ endNs: minute - 1n, startNs: 0n }];
+
+    expect(
+      numericSeriesSlicePointBudget(4_000, firstSecond, 0n, minute - 1n),
+    ).toBeLessThanOrEqual(72);
+    expect(
+      numericSeriesSlicePointBudget(4_000, fullMinute, 0n, minute - 1n),
+    ).toBeLessThanOrEqual(4_000);
+    expect(
+      numericSeriesSlicePointBudget(4_000, fullMinute, 0n, minute - 1n),
+    ).toBeGreaterThan(3_900);
+    expect(numericSeriesSlicePointBudget(4, firstSecond, 0n, minute - 1n)).toBe(
+      4,
+    );
+  });
+
+  it("escalates a zero-coverage fallback scan to one atomic source unit", async () => {
+    const continuation = {} as McapReadContinuation;
+    const base = createReader({ messages: [] });
+    const readBoundedMessages = vi
+      .fn<NonNullable<McapIndexedReaderLike["readBoundedMessages"]>>()
+      .mockResolvedValueOnce({
+        continuation,
+        coverageByTopic: new Map(),
+        messages: [],
+        stopReason: "budget-exhausted",
+        usage: createUsage({ chunksOpened: 1, messagesDecoded: 50_000 }),
+      })
+      .mockResolvedValueOnce({
+        coverageByTopic: new Map([
+          ["/telemetry", [{ endNs: 2n, startNs: 1n }]],
+        ]),
+        messages: [],
+        stopReason: "source-exhausted",
+        usage: createUsage({ chunksOpened: 1 }),
+      });
+    const reader = { ...base, readBoundedMessages };
+
+    const result = await readMcapNumericSeriesSlice({
+      reader,
+      request: {
+        absoluteBudget: { ...budget, maxMessages: 250_000 },
+        absoluteMaxChunks: 4,
+        budget,
+        endTimeNs: 2n,
+        maxChunks: 1,
+        selections: [{ fieldPaths: ["speed"], topic: "/telemetry" }],
+        source: createSource(),
+        startTimeNs: 1n,
+      },
+      timeline,
+    });
+
+    expect(readBoundedMessages).toHaveBeenCalledTimes(2);
+    expect(readBoundedMessages.mock.calls[1][0]).toEqual(
+      expect.objectContaining({
+        budget: expect.objectContaining({ maxMessages: 250_000 }),
+        continuation: undefined,
+        maxChunks: 4,
+        maxGroups: 1,
+      }),
+    );
+    expect(result.coverageByTopic.get("/telemetry")).toEqual([
+      { endNs: 2n, startNs: 1n },
+    ]);
+  });
+
+  it("merges every channel of a shared topic into one series", async () => {
+    const jsonChannel = createChannel({
+      id: 1,
+      messageEncoding: "json",
+      schemaId: 0,
+      topic: "/shared",
+    });
+    const protobufChannel = createChannel({
+      id: 2,
+      schemaId: 3,
+      topic: "/shared",
+    });
+    const base = createReader({ messages: [] });
+    const reader = {
+      ...base,
+      channelsById: new Map([
+        [1, jsonChannel],
+        [2, protobufChannel],
+      ]),
+      readBoundedMessages: vi.fn(async () => ({
+        coverageByTopic: new Map([
+          ["/shared", [{ endNs: 2_000_000_000n, startNs: 1_000_000_000n }]],
+        ]),
+        messages: [
+          createMessage(new TextEncoder().encode('{"jsonValue":7}'), {
+            channelId: 1,
+            logTime: 1_000_000_000n,
+          }),
+          createMessage(
+            TELEMETRY_TYPE.encode(TELEMETRY_TYPE.create({ speed: 9 })).finish(),
+            { channelId: 2, logTime: 2_000_000_000n },
+          ),
+        ],
+        stopReason: "source-exhausted" as const,
+        usage: createUsage({ chunksOpened: 1, messagesDecoded: 2 }),
+      })),
+    };
+
+    const result = await readMcapNumericSeriesSlice({
+      reader,
+      request: {
+        absoluteBudget: budget,
+        absoluteMaxChunks: 4,
+        budget,
+        endTimeNs: 2_000_000_000n,
+        maxChunks: 2,
+        selections: [{ fieldPaths: ["jsonValue", "speed"], topic: "/shared" }],
+        source: createSource(),
+        startTimeNs: 1_000_000_000n,
+      },
+      timeline,
+    });
+
+    expect(result.series).toHaveLength(1);
+    expect(result.series[0].messageCount).toBe(2);
+    expect([...result.series[0].fields[0].values]).toEqual([7, Number.NaN]);
+    expect([...result.series[0].fields[1].values]).toEqual([Number.NaN, 9]);
+  });
 
   it("projects multiple topics from one bounded traversal", async () => {
     const stateChannel = createChannel({

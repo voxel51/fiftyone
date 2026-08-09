@@ -268,10 +268,10 @@ function walkSampleValue(
  * Protobuf channels walk their binary descriptor and ROS channels walk their
  * parsed message definitions without touching message data. Schemas
  * containing dynamic paths and JSON channels fall back to at most three
- * messages from exactly one indexed chunk. Other encodings return an explicit
- * unsupported-encoding entry. Never throws per topic; schema parse or bounded
- * sampling failures degrade gracefully so one bad channel cannot hide the
- * rest.
+ * messages from one indexed chunk per dynamic channel. Shared chunks are
+ * deduplicated. Other encodings return an explicit unsupported-encoding entry.
+ * Never throws per topic; schema parse or bounded sampling failures degrade
+ * gracefully so one bad channel cannot hide the rest.
  */
 export async function enumerateMcapNumericFields(
   reader: McapIndexedReaderLike,
@@ -281,78 +281,21 @@ export async function enumerateMcapNumericFields(
   >,
 ): Promise<readonly McapTopicNumericFields[]> {
   const requestedTopics = request?.topics && new Set(request.topics);
-  const channelsByTopic = new Map<string, NumericChannel>();
+  const channelsByTopic = new Map<string, NumericChannel[]>();
   for (const channel of reader.channelsById.values()) {
     if (requestedTopics && !requestedTopics.has(channel.topic)) {
       continue;
     }
-    if (!channelsByTopic.has(channel.topic)) {
-      channelsByTopic.set(channel.topic, channel);
-    }
+    const channels = channelsByTopic.get(channel.topic) ?? [];
+    channels.push(channel);
+    channelsByTopic.set(channel.topic, channels);
   }
 
   const plans: NumericTopicPlan[] = [];
-  const results: McapTopicNumericFields[] = [];
-  for (const [topic, channel] of channelsByTopic) {
-    const schema = reader.schemasById.get(channel.schemaId);
-    if (
-      channel.messageEncoding === "protobuf" &&
-      schema?.encoding === "protobuf" &&
-      schema.name &&
-      schema.data.byteLength > 0
-    ) {
-      const schemaFields = protobufFieldsForSchema(schema.data, schema.name);
-      plans.push({
-        channel,
-        encoding: "protobuf",
-        needsSampling: schemaFields.needsSampling,
-        schemaAvailability: schemaFields.availability,
-        schemaFields: schemaFields.fields,
-        topic,
-      });
-      continue;
+  for (const [topic, channels] of channelsByTopic) {
+    for (const channel of channels.sort((left, right) => left.id - right.id)) {
+      plans.push(numericTopicPlan(reader, topic, channel));
     }
-    if (channel.messageEncoding === "protobuf") {
-      results.push({
-        availability: "schema-unavailable",
-        encoding: "protobuf",
-        fields: [],
-        topic,
-      });
-      continue;
-    }
-
-    if (channel.messageEncoding === "json") {
-      plans.push({
-        channel,
-        encoding: "json",
-        needsSampling: true,
-        schemaAvailability: "no-numeric-fields",
-        schemaFields: [],
-        topic,
-      });
-      continue;
-    }
-
-    if (isRosMessageEncoding(channel.messageEncoding)) {
-      const schemaFields = rosFieldsForChannel(reader, channel);
-      plans.push({
-        channel,
-        encoding: channel.messageEncoding,
-        needsSampling: schemaFields.needsSampling,
-        schemaAvailability: schemaFields.availability,
-        schemaFields: schemaFields.fields,
-        topic,
-      });
-      continue;
-    }
-
-    results.push({
-      availability: "unsupported-encoding",
-      encoding: "unsupported",
-      fields: [],
-      topic,
-    });
   }
 
   const sampledFieldsByTopic =
@@ -363,24 +306,111 @@ export async function enumerateMcapNumericFields(
           plans.filter((plan) => plan.needsSampling),
           request?.sampleTimeNs,
         );
-  for (const plan of plans) {
+  const results: McapTopicNumericFields[] = [];
+  for (const [topic] of channelsByTopic) {
+    const topicPlans = plans.filter((plan) => plan.topic === topic);
     const fields = mergeNumericFields(
-      plan.schemaFields,
-      sampledFieldsByTopic.get(plan.topic) ?? [],
+      topicPlans.flatMap((plan) => plan.schemaFields),
+      sampledFieldsByTopic.get(topic) ?? [],
     );
     results.push({
-      availability:
-        plan.schemaAvailability === "schema-unavailable"
-          ? plan.schemaAvailability
-          : availabilityForFields(fields),
-      encoding: plan.encoding,
+      availability: aggregateAvailability(topicPlans, fields),
+      encoding: aggregateEncoding(topicPlans),
       fields,
-      ...(plan.needsSampling ? { sampled: true } : {}),
-      topic: plan.topic,
+      ...(topicPlans.some((plan) => plan.needsSampling)
+        ? { sampled: true }
+        : {}),
+      topic,
     });
   }
 
   return results.sort((a, b) => a.topic.localeCompare(b.topic));
+}
+
+function numericTopicPlan(
+  reader: McapIndexedReaderLike,
+  topic: string,
+  channel: NumericChannel,
+): NumericTopicPlan {
+  const schema = reader.schemasById.get(channel.schemaId);
+  if (
+    channel.messageEncoding === "protobuf" &&
+    schema?.encoding === "protobuf" &&
+    schema.name &&
+    schema.data.byteLength > 0
+  ) {
+    const schemaFields = protobufFieldsForSchema(schema.data, schema.name);
+    return {
+      channel,
+      encoding: "protobuf",
+      needsSampling: schemaFields.needsSampling,
+      schemaAvailability: schemaFields.availability,
+      schemaFields: schemaFields.fields,
+      topic,
+    };
+  }
+  if (channel.messageEncoding === "protobuf") {
+    return {
+      channel,
+      encoding: "protobuf",
+      needsSampling: false,
+      schemaAvailability: "schema-unavailable",
+      schemaFields: [],
+      topic,
+    };
+  }
+  if (channel.messageEncoding === "json") {
+    return {
+      channel,
+      encoding: "json",
+      needsSampling: true,
+      schemaAvailability: "no-numeric-fields",
+      schemaFields: [],
+      topic,
+    };
+  }
+  if (isRosMessageEncoding(channel.messageEncoding)) {
+    const schemaFields = rosFieldsForChannel(reader, channel);
+    return {
+      channel,
+      encoding: channel.messageEncoding,
+      needsSampling: schemaFields.needsSampling,
+      schemaAvailability: schemaFields.availability,
+      schemaFields: schemaFields.fields,
+      topic,
+    };
+  }
+  return {
+    channel,
+    encoding: "unsupported",
+    needsSampling: false,
+    schemaAvailability: "unsupported-encoding",
+    schemaFields: [],
+    topic,
+  };
+}
+
+function aggregateAvailability(
+  plans: readonly NumericTopicPlan[],
+  fields: readonly McapNumericFieldDescriptor[],
+): McapNumericFieldAvailability {
+  if (fields.length > 0) return "ready";
+  if (plans.some((plan) => plan.schemaAvailability === "schema-unavailable")) {
+    return "schema-unavailable";
+  }
+  if (
+    plans.some((plan) => plan.schemaAvailability === "unsupported-encoding")
+  ) {
+    return "unsupported-encoding";
+  }
+  return "no-numeric-fields";
+}
+
+function aggregateEncoding(
+  plans: readonly NumericTopicPlan[],
+): McapTopicNumericFields["encoding"] {
+  const encodings = new Set(plans.map((plan) => plan.encoding));
+  return encodings.size === 1 ? (plans[0]?.encoding ?? "unsupported") : "mixed";
 }
 
 function rosFieldsForChannel(
@@ -456,53 +486,54 @@ async function sampleNumericFieldsForTopics(
     return new Map();
   }
 
-  const decodersByTopic = new Map(
+  const decodersByChannelId = new Map(
     plans.flatMap((plan) => {
       const decoder = genericRecordDecoderForChannel(reader, plan.channel);
-      return decoder ? [[plan.topic, decoder] as const] : [];
+      return decoder ? [[plan.channel.id, decoder] as const] : [];
     }),
   );
   const decodablePlans = plans.filter((plan) =>
-    decodersByTopic.has(plan.topic),
+    decodersByChannelId.has(plan.channel.id),
   );
-  const chunk = selectSampleChunk(
-    reader,
-    decodablePlans.map((plan) => plan.channel),
-    sampleTimeNs,
-  );
-  if (!chunk || decodablePlans.length === 0) {
+  const chunks = new Map<bigint, McapChunkIndex>();
+  for (const plan of decodablePlans) {
+    const chunk = selectSampleChunk(reader, [plan.channel], sampleTimeNs);
+    if (chunk) chunks.set(chunk.chunkStartOffset, chunk);
+  }
+  if (chunks.size === 0 || decodablePlans.length === 0) {
     return new Map();
   }
 
-  const topics = decodablePlans
-    .filter((plan) => chunk.messageIndexOffsets.has(plan.channel.id))
-    .map((plan) => plan.topic);
-  if (topics.length === 0) {
-    return new Map();
-  }
-  const sampleCounts = new Map<string, number>(
-    topics.map((topic) => [topic, 0]),
+  const sampleCounts = new Map<number, number>(
+    decodablePlans.map((plan) => [plan.channel.id, 0]),
   );
-  const saturatedTopics = new Set<string>();
+  const saturatedChannels = new Set<number>();
   const entries: McapIndexedMessageTime[] = [];
   try {
-    for await (const entry of reader.readIndexedMessageTimes({
-      chunkStartOffsets: [chunk.chunkStartOffset],
-      topics,
-    })) {
-      const count = sampleCounts.get(entry.topic);
-      if (count === undefined || count >= FIELD_SAMPLE_MESSAGE_LIMIT) {
-        continue;
+    for (const chunk of chunks.values()) {
+      const topics = [
+        ...new Set(
+          decodablePlans
+            .filter((plan) => chunk.messageIndexOffsets.has(plan.channel.id))
+            .map((plan) => plan.topic),
+        ),
+      ];
+      for await (const entry of reader.readIndexedMessageTimes({
+        chunkStartOffsets: [chunk.chunkStartOffset],
+        topics,
+      })) {
+        const count = sampleCounts.get(entry.channelId);
+        if (count === undefined || count >= FIELD_SAMPLE_MESSAGE_LIMIT) {
+          continue;
+        }
+        entries.push(entry);
+        const nextCount = count + 1;
+        sampleCounts.set(entry.channelId, nextCount);
+        if (nextCount === FIELD_SAMPLE_MESSAGE_LIMIT) {
+          saturatedChannels.add(entry.channelId);
+        }
       }
-      entries.push(entry);
-      const nextCount = count + 1;
-      sampleCounts.set(entry.topic, nextCount);
-      if (nextCount === FIELD_SAMPLE_MESSAGE_LIMIT) {
-        saturatedTopics.add(entry.topic);
-      }
-      if (saturatedTopics.size === topics.length) {
-        break;
-      }
+      if (saturatedChannels.size === sampleCounts.size) break;
     }
   } catch {
     return new Map();
@@ -516,7 +547,7 @@ async function sampleNumericFieldsForTopics(
     const messages = await materializeIndexedEntries(reader, entries);
     for (const [index, message] of messages.entries()) {
       const entry = entries[index];
-      const decoder = entry && decodersByTopic.get(entry.topic);
+      const decoder = entry && decodersByChannelId.get(entry.channelId);
       if (!entry || !decoder) {
         continue;
       }
@@ -542,10 +573,10 @@ async function sampleNumericFieldsForTopics(
 type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
 
 /**
- * Chooses one fallback chunk without racing duplicate reads. The first indexed
- * chunk gives a cheap deterministic baseline; when a playhead is available,
- * its nearest chunk competes by physical chunk length as the best available
- * latency proxy. Either way the caller materializes exactly one chunk.
+ * Chooses one fallback chunk for a set of channels without racing duplicate
+ * reads. Callers use one selection per dynamic channel and deduplicate shared
+ * chunks, so every schema/channel can contribute while physical work remains
+ * explicitly bounded.
  */
 function selectSampleChunk(
   reader: McapIndexedReaderLike,
