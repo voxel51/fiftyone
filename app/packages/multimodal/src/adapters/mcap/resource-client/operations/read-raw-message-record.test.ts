@@ -7,7 +7,10 @@ import { Root } from "protobufjs";
 import descriptor from "protobufjs/ext/descriptor";
 import { describe, expect, it, vi } from "vitest";
 import { rawNodeToJson } from "../../../../ir/index";
-import type { McapIndexedMessageTime } from "../../reader/index";
+import type {
+  McapIndexedMessageTime,
+  McapIndexedReaderLike,
+} from "../../reader/index";
 import { resolveMcapTimelineStrategy } from "../timeline";
 import { createChunkIndex } from "../inline-client.test-fixtures";
 import {
@@ -129,6 +132,51 @@ describe("readMcapRawMessageRecord", () => {
     expect(result.validFromNs).toBe(2_000_000_000n);
     expect(result.messageEncoding).toBe("json");
     expect(rawNodeToJson(rootOf(result))).toEqual({ v: 2 });
+  });
+
+  it("finds a sparse non-indexed predecessor beyond ten seconds", async () => {
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: [jsonMessage({ v: 1 }, 0n)],
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        source: createSource(),
+        timeNs: 15_000_000_000n,
+        topic: "/state",
+      },
+      timeline,
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.logTimeNs).toBe(0n);
+    expect(result.validUntilNs).toBe(15_000_000_001n);
+  });
+
+  it("gives non-indexed results conservative validity before a successor", async () => {
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: [
+        jsonMessage({ v: 1 }, 0n),
+        jsonMessage({ v: 2 }, 100_000_000n),
+      ],
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        source: createSource(),
+        timeNs: 50_000_000n,
+        topic: "/state",
+      },
+      timeline,
+    });
+
+    expect(result.logTimeNs).toBe(0n);
+    expect(result.validUntilNs).toBe(50_000_001n);
+    expect(result.validUntilNs).toBeLessThanOrEqual(100_000_000n);
   });
 
   it("decodes protobuf messages through the schema descriptor", async () => {
@@ -297,6 +345,8 @@ describe("readMcapRawMessageRecord", () => {
     });
 
     expect(readLatestIndexedMessageTimes).toHaveBeenCalledWith({
+      channelIds: [1],
+      limitPerTopic: RAW_RECORD_INDEXED_CANDIDATE_MAX_MESSAGES + 1,
       timeNs: 2_500_000_000n,
       topics: ["/state"],
     });
@@ -306,6 +356,46 @@ describe("readMcapRawMessageRecord", () => {
     // Validity ends at the next indexed message.
     expect(result.validFromNs).toBe(2_000_000_000n);
     expect(result.validUntilNs).toBe(3_000_000_000n);
+  });
+
+  it("materializes only the exact selected indexed entries", async () => {
+    const selected = jsonMessage({ v: "selected" }, 2_000_000_000n);
+    const readIndexedMessages = vi.fn(async () => [selected]);
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: [jsonMessage({ v: "overlap" }, 2_000_000_000n)],
+      readIndexedMessages,
+      readIndexedMessageTimes: async function* () {
+        // No successor.
+      },
+      readLatestIndexedMessageTimes: async () =>
+        new Map([
+          [
+            "/state",
+            [
+              indexedEntry({ logTimeNs: 1_000_000_000n }),
+              indexedEntry({ logTimeNs: 2_000_000_000n }),
+            ],
+          ],
+        ]),
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        source: createSource(),
+        timeNs: 2_000_000_000n,
+        topic: "/state",
+      },
+      timeline,
+    });
+
+    expect(readIndexedMessages).toHaveBeenCalledWith({
+      entries: [indexedEntry({ logTimeNs: 2_000_000_000n })],
+      signal: undefined,
+    });
+    expect(reader.readMessages).not.toHaveBeenCalled();
+    expect(rawNodeToJson(rootOf(result))).toEqual({ v: "selected" });
   });
 
   it("bounds validity to the probe horizon when no next message exists", async () => {
@@ -337,6 +427,40 @@ describe("readMcapRawMessageRecord", () => {
     });
 
     expect(result.validUntilNs).toBe(1_000_000_000n + 60_000_000_000n);
+  });
+
+  it("extends indexed successor observation through a sparse requested time", async () => {
+    const readIndexedMessageTimes = vi.fn(async function* () {
+      // No successor through the requested target.
+    });
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: [jsonMessage({ v: 1 }, 0n)],
+      readIndexedMessageTimes,
+      readLatestIndexedMessageTimes: async () =>
+        new Map([
+          [
+            "/state",
+            [
+              indexedEntry({ logTimeNs: 0n }),
+            ] as readonly McapIndexedMessageTime[],
+          ],
+        ]),
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        source: createSource(),
+        timeNs: 120_000_000_000n,
+        topic: "/state",
+      },
+      timeline,
+    });
+
+    expect(result.logTimeNs).toBe(0n);
+    expect(result.validUntilNs).toBe(120_000_000_001n);
+    expect(result.validUntilNs).toBeGreaterThan(120_000_000_000n);
   });
 
   it("returns empty when the topic has no message at or before the time", async () => {
@@ -798,6 +922,34 @@ describe("readMcapRawMessageRecord", () => {
     expect(prefetchChunkData).not.toHaveBeenCalled();
     expect(reader.readMessages).not.toHaveBeenCalled();
   });
+
+  it("bounds sibling-channel messages in indexed compatibility materialization", async () => {
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: [
+        ...Array.from({ length: RAW_RECORD_FALLBACK_MAX_MESSAGES }, () =>
+          createMessage(new Uint8Array([0]), {
+            channelId: 2,
+            logTime: 1n,
+          }),
+        ),
+        jsonMessage({ v: "selected" }, 1n),
+      ],
+      readLatestIndexedMessageTimes: async () =>
+        new Map([["/state", [indexedEntry({ logTimeNs: 1n })]]]),
+    });
+
+    await expect(
+      readMcapRawMessageRecord({
+        reader,
+        request: { source: createSource(), timeNs: 1n, topic: "/state" },
+        timeline,
+      }),
+    ).rejects.toMatchObject({
+      name: "EpisodeReadUnsupportedError",
+      operation: "raw-record-fallback",
+    });
+  });
 });
 
 function protobufMessage(
@@ -844,6 +996,7 @@ function createReader({
   messages = [],
   onYield,
   prefetchChunkData,
+  readIndexedMessages,
   readIndexedMessageTimes,
   readLatestIndexedMessageTimes,
   schema = createSchema(TELEMETRY_SCHEMA_DATA),
@@ -860,7 +1013,12 @@ function createReader({
     void,
     void
   >;
+  readonly readIndexedMessages?: NonNullable<
+    McapIndexedReaderLike["readIndexedMessages"]
+  >;
   readonly readLatestIndexedMessageTimes?: (args: {
+    readonly channelIds?: readonly number[];
+    readonly limitPerTopic?: number;
     readonly timeNs: bigint;
     readonly topics: readonly string[];
   }) => Promise<ReadonlyMap<string, readonly McapIndexedMessageTime[]>>;
@@ -871,6 +1029,7 @@ function createReader({
     chunkIndexes,
     prefetchChunkData,
     readIndexedMessageTimes,
+    readIndexedMessages,
     readLatestIndexedMessageTimes,
     readMessages: vi.fn(async function* (args?: {
       readonly endTime?: bigint;

@@ -45,6 +45,9 @@ export interface McapIndexedMessageTime {
  * Filters for reading indexed MCAP message timestamps.
  */
 export interface McapReadIndexedMessageTimesRequest {
+  /** Optional exact channel ids, intersected with the topic filter. */
+  readonly channelIds?: readonly number[];
+
   /**
    * Optional exact chunk offsets to inspect. This bounds index work and lets
    * callers guarantee that materialization touches only selected chunks.
@@ -76,6 +79,9 @@ export interface McapReadIndexedMessageTimesRequest {
  * Filters for resolving the newest indexed entries at or before a time.
  */
 export interface McapReadLatestIndexedMessageTimesRequest {
+  /** Optional exact channel ids, intersected with the topic filter. */
+  readonly channelIds?: readonly number[];
+
   /**
    * Inclusive upper bound: return the newest entries with log time at
    * or before this timestamp, however far back they are.

@@ -28,11 +28,11 @@ describe("non-indexed MCAP production contract", () => {
 
     const raw = await readMcapRawMessageRecord({
       reader,
-      request: { source, timeNs: 2_000_000_000n, topic: "/pose" },
+      request: { source, timeNs: 15_000_000_000n, topic: "/pose" },
       timeline,
     });
     expect(raw.status).toBe("ok");
-    expect(raw.logTimeNs).toBe(1_000_000_000n);
+    expect(raw.logTimeNs).toBe(0n);
     expect(raw.root && rawNodeToJson(raw.root)).toMatchObject({
       position: { x: 1, y: 2, z: 3 },
     });
@@ -62,9 +62,7 @@ describe("non-indexed MCAP production contract", () => {
       },
       timeline,
     });
-    expect(windows[0]?.messagesByTopic["/pose"]?.[0]?.timelineTimeNs).toBe(
-      1_000_000_000n,
-    );
+    expect(windows[0]?.messagesByTopic["/pose"]?.[0]?.timelineTimeNs).toBe(0n);
 
     const transforms = await readMcapFrameTransformWindow({
       reader,
@@ -123,8 +121,8 @@ async function createNonIndexedMcapFixture(): Promise<MemoryMcapBuffer> {
     data: new TextEncoder().encode(
       JSON.stringify({ position: { x: 1, y: 2, z: 3 } }),
     ),
-    logTime: 1_000_000_000n,
-    publishTime: 1_000_000_000n,
+    logTime: 0n,
+    publishTime: 0n,
     sequence: 1,
   });
   await writer.addMessage({

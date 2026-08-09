@@ -61,6 +61,7 @@ export async function readLatestIndexedMessageTimesForReader(
         maxChunkProbes,
         readable,
         reader,
+        requestedChannelIds: args.channelIds,
         timeNs: args.timeNs,
         topic,
       }),
@@ -75,6 +76,7 @@ async function latestEntriesForTopic({
   maxChunkProbes,
   readable,
   reader,
+  requestedChannelIds,
   timeNs,
   topic,
 }: {
@@ -82,10 +84,18 @@ async function latestEntriesForTopic({
   readonly maxChunkProbes: number;
   readonly readable: McapTypes.IReadable;
   readonly reader: McapIndexedReaderLike;
+  readonly requestedChannelIds?: readonly number[];
   readonly timeNs: bigint;
   readonly topic: string;
 }): Promise<readonly McapIndexedMessageTime[]> {
-  const channelIds = channelIdsForTopics(reader.channelsById, [topic]);
+  const topicChannelIds = channelIdsForTopics(reader.channelsById, [topic]);
+  const channelIds = requestedChannelIds
+    ? new Set(
+        requestedChannelIds.filter((channelId) =>
+          topicChannelIds.has(channelId),
+        ),
+      )
+    : topicChannelIds;
   if (channelIds.size === 0) {
     return [];
   }

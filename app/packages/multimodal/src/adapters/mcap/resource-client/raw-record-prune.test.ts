@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { rawNodeToJson } from "../../../ir/index";
 import type {
   McapRawArrayNode,
@@ -208,11 +208,118 @@ describe("rawRecordToJsonText", () => {
 
     expect(JSON.parse(text)).toEqual({
       big: "9007199254740993",
-      bytes: [0, 1, 2, 255],
+      bytes: {
+        $binary: { base64: "AAEC/w==", byteLength: 4 },
+      },
       data: Array.from({ length: 100 }, (_, index) => index),
       long: 4_294_967_298,
       note: "x".repeat(600),
     });
+  });
+
+  it("rejects whole-message JSON before exceeding the output bound", () => {
+    expect(() =>
+      rawRecordToJsonText({ note: "x".repeat(100) }, 64),
+    ).toThrowError(
+      expect.objectContaining({
+        name: "EpisodeReadUnsupportedError",
+        operation: "raw-record-json-output",
+      }),
+    );
+  });
+
+  it("preflights byte arrays without expanding them into number arrays", () => {
+    expect(() =>
+      rawRecordToJsonText({ bytes: new Uint8Array(100) }, 100),
+    ).toThrowError(
+      expect.objectContaining({ operation: "raw-record-json-output" }),
+    );
+  });
+
+  it("keeps a one-mebibyte byte payload near base64 size", () => {
+    const text = rawRecordToJsonText({ bytes: new Uint8Array(1024 * 1024) });
+    const parsed = JSON.parse(text) as {
+      readonly bytes: {
+        readonly $binary: {
+          readonly base64: string;
+          readonly byteLength: number;
+        };
+      };
+    };
+
+    expect(parsed.bytes.$binary.byteLength).toBe(1024 * 1024);
+    expect(parsed.bytes.$binary.base64).toHaveLength(1_398_104);
+    expect(text.length).toBeLessThan(1.5 * 1024 * 1024);
+  });
+
+  it("rejects custom toJSON before special-value serialization", () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    Object.defineProperty(bytes, "toJSON", {
+      value: () => "x".repeat(1_000),
+    });
+    const int64Like = {
+      high: 0,
+      low: 42,
+      toJSON: () => "x".repeat(1_000),
+      toNumber: () => 42,
+      toString: () => "42",
+    };
+    const stringify = vi.spyOn(JSON, "stringify");
+    try {
+      for (const value of [bytes, int64Like]) {
+        expect(() => rawRecordToJsonText({ value }, 64)).toThrowError(
+          expect.objectContaining({ operation: "raw-record-json-output" }),
+        );
+      }
+      expect(stringify).not.toHaveBeenCalled();
+    } finally {
+      stringify.mockRestore();
+    }
+  });
+
+  it("preflights lone UTF-16 surrogates at their escaped JSON size", () => {
+    const stringify = vi.spyOn(JSON, "stringify");
+    try {
+      expect(() =>
+        rawRecordToJsonText({ value: "\ud800".repeat(20) }, 64),
+      ).toThrowError(
+        expect.objectContaining({ operation: "raw-record-json-output" }),
+      );
+      expect(stringify).not.toHaveBeenCalled();
+    } finally {
+      stringify.mockRestore();
+    }
+  });
+
+  it("rejects accessor-backed values without invoking them", () => {
+    const getter = vi.fn(() => "x".repeat(1_000));
+    const record: Record<string, unknown> = {};
+    Object.defineProperty(record, "dynamic", {
+      enumerable: true,
+      get: getter,
+    });
+    const stringify = vi.spyOn(JSON, "stringify");
+    try {
+      expect(() => rawRecordToJsonText(record, 64)).toThrowError(
+        expect.objectContaining({ operation: "raw-record-json-output" }),
+      );
+      expect(getter).not.toHaveBeenCalled();
+      expect(stringify).not.toHaveBeenCalled();
+    } finally {
+      stringify.mockRestore();
+    }
+  });
+
+  it("normalizes boxed primitives consistently with the preflight", () => {
+    expect(
+      JSON.parse(
+        rawRecordToJsonText({
+          boolean: Object(true),
+          number: Object(Number.POSITIVE_INFINITY),
+          string: Object("value"),
+        }),
+      ),
+    ).toEqual({ boolean: true, number: "Infinity", string: "value" });
   });
 });
 

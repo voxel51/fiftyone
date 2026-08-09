@@ -7,7 +7,11 @@ import {
   defineEpisodeSessionContractTests,
   collectBatches,
 } from "../../testing/adapter-contract";
-import { createMcapFormatAdapter, createMcapManifest } from "./format-adapter";
+import {
+  createMcapFormatAdapter,
+  createMcapManifest,
+  createMcapRawRecordCapability,
+} from "./format-adapter";
 import { McapBoundedReadCancelledError } from "./reader";
 import {
   MCAP_ACTIVE_TIMELINE,
@@ -707,6 +711,105 @@ describe("MCAP format adapter", () => {
     }
   });
 
+  it("preserves channel identity when two schemas share one topic", async () => {
+    const client = createClient();
+    vi.mocked(client.readTopics).mockResolvedValue([
+      create(StreamInventorySchema, {
+        displayName: "/shared",
+        metadata: {
+          "mcap.channel_id": "1",
+          "mcap.message_encoding": "json",
+          "mcap.schema_name": "SchemaA",
+          "mcap.topic": "/shared",
+        },
+        streamId: "1",
+      }),
+      create(StreamInventorySchema, {
+        displayName: "/shared",
+        metadata: {
+          "mcap.channel_id": "2",
+          "mcap.message_encoding": "protobuf",
+          "mcap.schema_name": "SchemaB",
+          "mcap.topic": "/shared",
+        },
+        streamId: "2",
+      }),
+    ]);
+    vi.mocked(client.readRawMessageRecord).mockImplementation(
+      async (request) => ({
+        messageEncoding: request.channelId === 2 ? "protobuf" : "json",
+        schemaName: request.channelId === 2 ? "SchemaB" : "SchemaA",
+        status: "empty",
+        topic: request.topic,
+        validFromNs: 0n,
+        validUntilNs: 1n,
+      }),
+    );
+    const capability = createMcapRawRecordCapability({
+      client,
+      source: sourceDescriptor,
+    });
+
+    const streams = await capability.listRawRecordStreams();
+    expect(streams).toHaveLength(2);
+    expect(new Set(streams.map((stream) => stream.streamId)).size).toBe(2);
+    expect(streams[0]?.streamId).toContain("mcap-channel:1:");
+
+    const selected = streams[1];
+    if (!selected) throw new Error("expected the second raw channel");
+    const result = await capability.readRawRecord({
+      stream: selected.streamId,
+      timestampNs: 0n,
+    });
+    expect(client.readRawMessageRecord).toHaveBeenLastCalledWith(
+      expect.objectContaining({ channelId: 2, topic: "/shared" }),
+      expect.objectContaining({ priority: "idle" }),
+    );
+    expect(result).toMatchObject({
+      encoding: "protobuf",
+      schemaName: "SchemaB",
+      streamId: selected.streamId,
+    });
+  });
+
+  it("falls back from malformed channel metadata to a numeric inventory id", async () => {
+    const client = createClient();
+    vi.mocked(client.readTopics).mockResolvedValue([
+      create(StreamInventorySchema, {
+        displayName: "/shared",
+        metadata: { "mcap.channel_id": " ", "mcap.topic": "/shared" },
+        streamId: "1",
+      }),
+      create(StreamInventorySchema, {
+        displayName: "/shared",
+        metadata: { "mcap.channel_id": "2", "mcap.topic": "/shared" },
+        streamId: "2",
+      }),
+    ]);
+    vi.mocked(client.readRawMessageRecord).mockResolvedValue({
+      messageEncoding: "json",
+      schemaName: null,
+      status: "empty",
+      topic: "/shared",
+      validFromNs: 0n,
+      validUntilNs: 1n,
+    });
+    const capability = createMcapRawRecordCapability({
+      client,
+      source: sourceDescriptor,
+    });
+
+    const streams = await capability.listRawRecordStreams();
+    const first = streams[0];
+    if (!first) throw new Error("expected the first raw channel");
+    await capability.readRawRecord({ stream: first.streamId, timestampNs: 0n });
+
+    expect(client.readRawMessageRecord).toHaveBeenLastCalledWith(
+      expect.objectContaining({ channelId: 1, topic: "/shared" }),
+      expect.objectContaining({ priority: "idle" }),
+    );
+  });
+
   it("forwards per-call cancellation to raw and point-cloud capabilities", async () => {
     const client = createClient();
     client.readPointCloudChannel = vi.fn(async () => ({}) as never);
@@ -739,7 +842,7 @@ describe("MCAP format adapter", () => {
       });
       expect(client.readRawMessageRecord).toHaveBeenCalledWith(
         expect.any(Object),
-        { signal: controller.signal },
+        { priority: "idle", signal: controller.signal },
       );
       expect(client.readPointCloudChannel).toHaveBeenCalledWith(
         expect.any(Object),
