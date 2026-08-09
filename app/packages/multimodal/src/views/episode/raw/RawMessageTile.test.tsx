@@ -6,7 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { RawRecordResult } from "../../../ir";
+import type { RawRecordResult, RawValueNode } from "../../../ir";
 import rawStyles from "../../../visualization/message/StructuredMessage.module.css";
 import type { NumericFieldsEnumeration } from "../plots/numeric-series-context";
 import type { RawRecordState } from "./raw-message-context";
@@ -329,6 +329,43 @@ describe("RawMessageTile", () => {
     expect(mocks.setTileTitle).toHaveBeenCalledWith("/state", {
       source: "auto",
     });
+  });
+
+  it("does not inspect plot eligibility until a message row renders", () => {
+    let hiddenNodeReads = 0;
+    const hiddenNode: RawValueNode = {
+      get kind() {
+        hiddenNodeReads += 1;
+        return "scalar" as const;
+      },
+      value: "100",
+      valueType: "number",
+    };
+    const entries = Array.from(
+      { length: 100 },
+      (_, index) =>
+        [
+          `field-${index}`,
+          { kind: "scalar", value: String(index), valueType: "number" },
+        ] as const,
+    );
+    mocks.recordState = {
+      result: {
+        ...DISPLAYED_RESULT,
+        root: {
+          entries: [...entries, ["hidden", hiddenNode]],
+          kind: "object",
+        },
+      },
+      status: "ready",
+    };
+
+    render(<RawMessageTile />);
+
+    expect(hiddenNodeReads).toBe(0);
+    fireEvent.click(screen.getByTestId("episode-raw-show-more-$"));
+    expect(hiddenNodeReads).toBeGreaterThan(0);
+    expect(screen.getByTestId("episode-raw-plot-hidden")).toBeTruthy();
   });
 
   it("offers numeric fields for a legacy source-name binding", () => {

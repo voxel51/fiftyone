@@ -293,15 +293,9 @@ describe("StructuredMessageTree", () => {
     expect(entryReads).toBe(readsAfterInitialRender);
   });
 
-  it("shows add-to-plot actions only for plottable scalar numeric leaves", () => {
+  it("shows add-to-plot actions for every rendered scalar numeric leaf", () => {
     render(
-      <StructuredMessageTree
-        onAddNumericFieldToPlot={addToPlot}
-        plottableFieldPaths={
-          new Set(["speed", "sequence", "enabled", "pose.position.x", "data.0"])
-        }
-        root={ROOT}
-      />,
+      <StructuredMessageTree onAddNumericFieldToPlot={addToPlot} root={ROOT} />,
     );
 
     expect(screen.getByTestId("episode-raw-plot-speed")).toBeTruthy();
@@ -309,28 +303,19 @@ describe("StructuredMessageTree", () => {
     expect(screen.getByTestId("episode-raw-plot-pose.position.x")).toBeTruthy();
     expect(screen.queryByTestId("episode-raw-plot-label")).toBeNull();
     expect(screen.queryByTestId("episode-raw-plot-enabled")).toBeNull();
-    expect(screen.queryByTestId("episode-raw-plot-unlisted")).toBeNull();
+    expect(screen.getByTestId("episode-raw-plot-unlisted")).toBeTruthy();
     expect(screen.getByTestId("episode-raw-plot-data.0")).toBeTruthy();
   });
 
   it("hides add-to-plot actions when no handler is available", () => {
-    render(
-      <StructuredMessageTree
-        plottableFieldPaths={new Set(["speed"])}
-        root={ROOT}
-      />,
-    );
+    render(<StructuredMessageTree root={ROOT} />);
 
     expect(screen.queryByTestId("episode-raw-plot-speed")).toBeNull();
   });
 
   it("emits the dotted field path when a plottable row is added", () => {
     render(
-      <StructuredMessageTree
-        onAddNumericFieldToPlot={addToPlot}
-        plottableFieldPaths={new Set(["pose.position.x"])}
-        root={ROOT}
-      />,
+      <StructuredMessageTree onAddNumericFieldToPlot={addToPlot} root={ROOT} />,
     );
 
     fireEvent.click(screen.getByTestId("episode-raw-plot-pose.position.x"));
@@ -344,11 +329,7 @@ describe("StructuredMessageTree", () => {
 
   it("emits an indexed dotted path for numeric array elements", () => {
     render(
-      <StructuredMessageTree
-        onAddNumericFieldToPlot={addToPlot}
-        plottableFieldPaths={new Set(["data.0"])}
-        root={ROOT}
-      />,
+      <StructuredMessageTree onAddNumericFieldToPlot={addToPlot} root={ROOT} />,
     );
 
     fireEvent.click(screen.getByTestId("episode-raw-plot-data.0"));

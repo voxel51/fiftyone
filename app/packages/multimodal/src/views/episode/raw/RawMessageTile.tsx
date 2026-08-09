@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import type { RawObjectNode, RawRecordResult, RawValueNode } from "../../../ir";
+import type { RawRecordResult } from "../../../ir";
 import { useDataStream } from "../playback/data-stream-context";
 import { useAddFieldToPlot } from "../plots/use-add-field-to-plot";
 import { useRawMessageContext } from "./raw-message-context";
@@ -112,13 +112,6 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
     }
   }, [selectedSourceName, setTileTitle, streamKey]);
 
-  const plottableFieldPaths = useMemo(() => {
-    if (!result?.root) return undefined;
-    const paths = new Set<string>();
-    collectNumericLeafPaths(result.root, "", paths);
-    return paths.size > 0 ? paths : undefined;
-  }, [result?.root]);
-
   const handleAddFieldToPlot = useCallback(
     (fieldPath: string) => {
       if (streamKey) {
@@ -177,7 +170,6 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
             ) : null}
             <RecordBody
               onAddNumericFieldToPlot={handleAddFieldToPlot}
-              plottableFieldPaths={plottableFieldPaths}
               result={result}
             />
           </div>
@@ -340,11 +332,9 @@ function MetaRow({
 
 function RecordBody({
   onAddNumericFieldToPlot,
-  plottableFieldPaths,
   result,
 }: {
   readonly onAddNumericFieldToPlot: (path: string) => void;
-  readonly plottableFieldPaths?: ReadonlySet<string>;
   readonly result: RawRecordResult;
 }) {
   if (result.status === "ok" && result.root) {
@@ -352,7 +342,6 @@ function RecordBody({
       <div className={rawStyles.scroll}>
         <StructuredMessageTree
           onAddNumericFieldToPlot={onAddNumericFieldToPlot}
-          plottableFieldPaths={plottableFieldPaths}
           root={result.root}
         />
       </div>
@@ -391,35 +380,6 @@ function formatRelativeSeconds(logTimeNs: bigint, startTimeNs: bigint): string {
     logTimeNs - startTimeNs,
   );
   return `t=${negative ? "-" : "+"}${seconds}.${milliseconds}s`;
-}
-
-/** Numeric leaves already admitted by the bounded inspector decode. */
-function collectNumericLeafPaths(
-  node: RawObjectNode | RawValueNode,
-  path: string,
-  output: Set<string>,
-): void {
-  if (node.kind === "scalar") {
-    if (path && (node.valueType === "number" || node.valueType === "bigint")) {
-      output.add(path);
-    }
-    return;
-  }
-  if (node.kind === "object") {
-    for (const [key, child] of node.entries) {
-      collectNumericLeafPaths(child, path ? `${path}.${key}` : key, output);
-    }
-    return;
-  }
-  if (node.kind === "array") {
-    for (let index = 0; index < node.items.length; index += 1) {
-      collectNumericLeafPaths(
-        node.items[index],
-        path ? `${path}.${index}` : String(index),
-        output,
-      );
-    }
-  }
 }
 
 export default RawMessageTile;

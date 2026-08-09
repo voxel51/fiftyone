@@ -33,7 +33,6 @@ const IDLE_COPY_FEEDBACK: CopyFeedback = { path: null, status: "idle" };
 /** Structured record and optional numeric-field interactions shown by the tree. */
 export interface StructuredMessageTreeProps {
   readonly onAddNumericFieldToPlot?: (path: string) => void;
-  readonly plottableFieldPaths?: ReadonlySet<string>;
   readonly root: RawObjectNode;
 }
 
@@ -46,7 +45,6 @@ export interface StructuredMessageTreeProps {
  */
 const StructuredMessageTree: React.FC<StructuredMessageTreeProps> = ({
   onAddNumericFieldToPlot,
-  plottableFieldPaths,
   root,
 }) => {
   const [expandedOverrides, setExpandedOverrides] = useState<
@@ -122,9 +120,7 @@ const StructuredMessageTree: React.FC<StructuredMessageTreeProps> = ({
     },
     [onAddNumericFieldToPlot, showPlottedPath],
   );
-  const effectivePlottableFieldPaths = onAddNumericFieldToPlot
-    ? plottableFieldPaths
-    : undefined;
+  const effectiveAddToPlot = onAddNumericFieldToPlot ? addToPlot : undefined;
   const visibleRootEntries =
     visibleObjectEntries.get(ROOT_NODE_KEY) ?? OBJECT_ENTRY_PAGE_SIZE;
   const hiddenRootEntries = Math.max(
@@ -136,7 +132,7 @@ const StructuredMessageTree: React.FC<StructuredMessageTreeProps> = ({
     <div className={styles.tree} data-testid="episode-raw-tree">
       {root.entries.slice(0, visibleRootEntries).map(([key, node]) => (
         <TreeRow
-          addToPlot={addToPlot}
+          addToPlot={effectiveAddToPlot}
           copyFeedback={copyFeedback}
           copy={copy}
           depth={0}
@@ -146,7 +142,6 @@ const StructuredMessageTree: React.FC<StructuredMessageTreeProps> = ({
           node={node}
           nodeKey={objectChildNodeKey(ROOT_NODE_KEY, key)}
           path={key}
-          plottableFieldPaths={effectivePlottableFieldPaths}
           plottedPath={plottedPath}
           showMoreObjectEntries={showMoreObjectEntries}
           toggle={toggle}
@@ -173,7 +168,7 @@ const StructuredMessageTree: React.FC<StructuredMessageTreeProps> = ({
 };
 
 interface TreeRowProps {
-  readonly addToPlot: (path: string) => void;
+  readonly addToPlot?: (path: string) => void;
   readonly copyFeedback: CopyFeedback;
   readonly copy: (path: string, node: RawValueNode) => Promise<void>;
   readonly depth: number;
@@ -182,7 +177,6 @@ interface TreeRowProps {
   readonly node: RawValueNode;
   readonly nodeKey: string;
   readonly path: string;
-  readonly plottableFieldPaths?: ReadonlySet<string>;
   readonly plottedPath: string | null;
   readonly showMoreObjectEntries: (path: string) => void;
   readonly toggle: (path: string, expanded: boolean) => void;
@@ -199,7 +193,6 @@ const TreeRow = React.memo(function TreeRow({
   node,
   nodeKey,
   path,
-  plottableFieldPaths,
   plottedPath,
   showMoreObjectEntries,
   toggle,
@@ -209,8 +202,7 @@ const TreeRow = React.memo(function TreeRow({
   const expanded =
     expandedOverrides.get(nodeKey) ?? (expandable && depth < AUTO_EXPAND_DEPTH);
   const indent = { paddingLeft: `${depth * 14}px` };
-  const canAddToPlot =
-    isPlottableScalar(node) && plottableFieldPaths?.has(path);
+  const canAddToPlot = addToPlot !== undefined && isPlottableScalar(node);
   const addToPlotLabel =
     plottedPath === path ? `${path} plotted` : `Add ${path} to plot`;
   const copyLabel =
@@ -256,7 +248,7 @@ const TreeRow = React.memo(function TreeRow({
             aria-label={addToPlotLabel}
             className={styles.copyButton}
             data-testid={`episode-raw-plot-${path}`}
-            onClick={() => addToPlot(path)}
+            onClick={() => addToPlot?.(path)}
             title="Add field to plot"
             type="button"
           >
@@ -295,7 +287,6 @@ const TreeRow = React.memo(function TreeRow({
                 node={child}
                 nodeKey={objectChildNodeKey(nodeKey, childKey)}
                 path={`${path}.${childKey}`}
-                plottableFieldPaths={plottableFieldPaths}
                 plottedPath={plottedPath}
                 showMoreObjectEntries={showMoreObjectEntries}
                 toggle={toggle}
@@ -337,7 +328,6 @@ const TreeRow = React.memo(function TreeRow({
               node={item}
               nodeKey={arrayChildNodeKey(nodeKey, index)}
               path={`${path}.${index}`}
-              plottableFieldPaths={plottableFieldPaths}
               plottedPath={plottedPath}
               showMoreObjectEntries={showMoreObjectEntries}
               toggle={toggle}
