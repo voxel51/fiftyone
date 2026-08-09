@@ -28,8 +28,9 @@ import React, { useMemo, useRef } from "react";
  * there, the same timeline gains a mosaic with one tile per selected
  * video slice, all driven by this same clock.
  *
- * Reached with `?mmtimeline=1` on a video sample. Not flagged, not a
- * shipping path — this exists to make the target concrete and clickable.
+ * On by default for video in Explore while this is under review; append
+ * `?mmtimeline=0` for the legacy player. Not flagged, not a shipping
+ * path — this exists to make the target concrete and clickable.
  */
 
 const VIDEO_STREAM_ID = "video";
