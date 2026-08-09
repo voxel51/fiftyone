@@ -1,5 +1,8 @@
 import {
+  getIsPlayPending,
+  getIsPlaying,
   getPlayhead,
+  seekEventAtom,
   subscribePlayhead,
   type PlaybackStore,
 } from "@fiftyone/playback/runtime";
@@ -37,6 +40,8 @@ export interface DemandBridgeRuntime {
   readonly isCancelled: () => boolean;
   readonly later: (callback: () => void, ms: number) => void;
   readonly nowMs: () => number;
+  /** Queues work for an explicit paused seek, bypassing idle stand-down. */
+  readonly queueExpeditedFill: () => void;
   readonly queueFill: () => void;
   readonly queueImmediateFill: () => void;
 }
@@ -44,6 +49,8 @@ export interface DemandBridgeRuntime {
 /** Fill context for one queued or playhead-driven demand pass. */
 export interface DemandBridgeFillContext extends DemandBridgeRuntime {
   readonly demandKeys: Iterable<string>;
+  /** True only for an explicit seek/step while no play request is active. */
+  readonly expedited: boolean;
   readonly playheadSec: number;
   readonly timeline: TimelineIndex | null;
   readonly userInitiated: boolean;
@@ -63,6 +70,8 @@ export interface DemandBridgeOptions<
   readonly dataStreamRef: MutableRef<TDataStream | null>;
   readonly demandDebounceMs?: number;
   readonly deferredRetryMs: number;
+  /** Makes explicit paused seeks observable as expedited fill intent. */
+  readonly expeditePausedSeeks?: boolean;
   readonly handlersRef: MutableRef<THandlers | null>;
   readonly inventoryReplay?: DemandInventoryReplay<THandlers>;
   readonly makeHandlers: (runtime: DemandBridgeRuntime) => THandlers;
@@ -84,6 +93,7 @@ export function startDemandBridge<
   dataStreamRef,
   demandDebounceMs = 0,
   deferredRetryMs,
+  expeditePausedSeeks = false,
   handlersRef,
   inventoryReplay,
   makeHandlers,
@@ -98,12 +108,15 @@ export function startDemandBridge<
 }: DemandBridgeOptions<THandlers, TDataStream>): () => void {
   let cancelled = false;
   let fillQueued = false;
+  let queuedExpedited = false;
+  let queuedUserInitiated = false;
   let demandFillTimeout: ReturnType<typeof setTimeout> | undefined;
   let deferPending = false;
   let deferredUserInitiated = false;
   let lastPlayheadFillMs = Number.NEGATIVE_INFINITY;
   let playheadFillPending = false;
   let timelineRetryPending = false;
+  let timelineRetryExpedited = false;
   let timelineRetryUserInitiated = false;
   const timeouts = new Set<ReturnType<typeof setTimeout>>();
   const isCancelled = () => cancelled;
@@ -114,9 +127,9 @@ export function startDemandBridge<
     }, ms);
     timeouts.add(timeout);
   };
-  const fill = (userInitiated: boolean) => {
+  const fill = (userInitiated: boolean, expedited: boolean) => {
     if (cancelled || refCountsRef.current.size === 0) return;
-    if (playbackStore && shouldDeferIdleWork?.(playbackStore)) {
+    if (!expedited && playbackStore && shouldDeferIdleWork?.(playbackStore)) {
       deferredUserInitiated ||= userInitiated;
       if (!deferPending) {
         deferPending = true;
@@ -124,35 +137,55 @@ export function startDemandBridge<
           deferPending = false;
           const retryIsUserInitiated = deferredUserInitiated;
           deferredUserInitiated = false;
-          fill(retryIsUserInitiated);
+          fill(retryIsUserInitiated, false);
         }, deferredRetryMs);
       }
       return;
     }
     const timeline = dataStreamRef.current?.getTimelineIndex() ?? null;
     if (requireTimeline && !timeline) {
+      timelineRetryExpedited ||= expedited;
       timelineRetryUserInitiated ||= userInitiated;
       if (!timelineRetryPending) {
         timelineRetryPending = true;
         later(() => {
           timelineRetryPending = false;
+          const retryIsExpedited = timelineRetryExpedited;
           const retryIsUserInitiated = timelineRetryUserInitiated;
+          timelineRetryExpedited = false;
           timelineRetryUserInitiated = false;
-          fill(retryIsUserInitiated);
+          fill(retryIsUserInitiated, retryIsExpedited);
         }, timelineRetryMs);
       }
       return;
     }
     onFill({
       demandKeys: [...refCountsRef.current.keys()],
+      expedited,
       isCancelled,
       later,
       nowMs,
       playheadSec: playbackStore ? getPlayhead(playbackStore) : 0,
+      queueExpeditedFill,
       queueFill,
       queueImmediateFill,
       timeline,
       userInitiated,
+    });
+  };
+  const queueMicrotaskFill = (userInitiated: boolean, expedited: boolean) => {
+    if (cancelled) return;
+    queuedUserInitiated ||= userInitiated;
+    queuedExpedited ||= expedited;
+    if (fillQueued) return;
+    fillQueued = true;
+    queueMicrotask(() => {
+      fillQueued = false;
+      const nextUserInitiated = queuedUserInitiated;
+      const nextExpedited = queuedExpedited;
+      queuedUserInitiated = false;
+      queuedExpedited = false;
+      fill(nextUserInitiated, nextExpedited);
     });
   };
   const queueFill = () => {
@@ -165,36 +198,37 @@ export function startDemandBridge<
       const timeout = setTimeout(() => {
         timeouts.delete(timeout);
         if (demandFillTimeout === timeout) demandFillTimeout = undefined;
-        fill(true);
+        fill(true, false);
       }, demandDebounceMs);
       demandFillTimeout = timeout;
       timeouts.add(timeout);
       return;
     }
-    if (fillQueued) return;
-    fillQueued = true;
-    queueMicrotask(() => {
-      fillQueued = false;
-      fill(true);
-    });
+    queueMicrotaskFill(true, false);
   };
   const queueImmediateFill = () => {
-    if (cancelled || fillQueued) return;
+    if (cancelled) return;
     if (demandFillTimeout !== undefined) {
       clearTimeout(demandFillTimeout);
       timeouts.delete(demandFillTimeout);
       demandFillTimeout = undefined;
     }
-    fillQueued = true;
-    queueMicrotask(() => {
-      fillQueued = false;
-      fill(false);
-    });
+    queueMicrotaskFill(false, false);
+  };
+  const queueExpeditedFill = () => {
+    if (cancelled) return;
+    if (demandFillTimeout !== undefined) {
+      clearTimeout(demandFillTimeout);
+      timeouts.delete(demandFillTimeout);
+      demandFillTimeout = undefined;
+    }
+    queueMicrotaskFill(true, true);
   };
   const runtime: DemandBridgeRuntime = {
     isCancelled,
     later,
     nowMs,
+    queueExpeditedFill,
     queueFill,
     queueImmediateFill,
   };
@@ -217,19 +251,29 @@ export function startDemandBridge<
               lastPlayheadFillMs = nowMs();
               // Read the store at execution time so rapid seeks coalesce to
               // the final playhead instead of dropping it permanently.
-              fill(false);
+              fill(false, false);
             }, playheadThrottleMs - elapsedMs);
           }
           return;
         }
         lastPlayheadFillMs = now;
-        fill(false);
+        fill(false, false);
       })
     : undefined;
+  const unsubscribeExplicitSeek =
+    playbackStore && expeditePausedSeeks
+      ? playbackStore.sub(seekEventAtom, () => {
+          if (getIsPlaying(playbackStore) || getIsPlayPending(playbackStore)) {
+            return;
+          }
+          queueExpeditedFill();
+        })
+      : undefined;
   return () => {
     cancelled = true;
     demandFillTimeout = undefined;
     unsubscribePlayhead?.();
+    unsubscribeExplicitSeek?.();
     for (const timeout of timeouts) clearTimeout(timeout);
     if (handlersRef.current === handlers) handlersRef.current = null;
   };

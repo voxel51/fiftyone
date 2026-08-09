@@ -102,11 +102,13 @@ class WorkerMcapResourceClient implements McapResourceClient {
   >();
   private readonly interactiveLane = this.createLane("interactive");
   private readonly foregroundLane = this.createLane("foreground");
+  private readonly inspectionLane = this.createLane("inspection");
   private readonly idleLane = this.createLane("idle");
   private readonly bulkLane = this.createLane("bulk");
   private readonly lanes = [
     this.interactiveLane,
     this.foregroundLane,
+    this.inspectionLane,
     this.idleLane,
     this.bulkLane,
   ] as const;
@@ -540,6 +542,9 @@ class WorkerMcapResourceClient implements McapResourceClient {
     if (priority === MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH) {
       return this.idleLane;
     }
+    if (priority === MCAP_PLAYBACK_WORKER_PRIORITY.PAUSED_INSPECTION) {
+      return this.inspectionLane;
+    }
     if (priority === MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME) {
       return this.interactiveLane;
     }
@@ -555,9 +560,10 @@ class WorkerMcapResourceClient implements McapResourceClient {
     const initRequest: McapPlaybackWorkerRequest = {
       payload: {
         ...workerFetchParameters(),
-        // Current-frame and ordinary foreground playback remain eligible
-        // for priority fill slots. Idle and bulk work cannot occupy the
-        // reserved slot while either user-visible lane needs the link.
+        // Current-frame and ordinary foreground playback remain eligible for
+        // priority fill slots. Inspection has a responsive isolated worker but
+        // stays on background admission with idle and bulk work, preserving
+        // the reserved slot while playback needs the link.
         fillSlotClass:
           lane.name === "interactive" || lane.name === "foreground"
             ? "priority"
@@ -685,6 +691,8 @@ function resourcePriorityToWorkerPriority(
       return MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME;
     case "idle":
       return MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH;
+    case "inspection":
+      return MCAP_PLAYBACK_WORKER_PRIORITY.PAUSED_INSPECTION;
     case "playback":
       return MCAP_PLAYBACK_WORKER_PRIORITY.PLAYBACK_BATCH;
     case undefined:

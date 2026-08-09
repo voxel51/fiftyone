@@ -78,9 +78,9 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
   },
-  // Idle lane on purpose: a raw read may decode one multi-megabyte message
-  // and must not occupy either user-visible playback lane. Inspection
-  // latency loses to playback smoothness.
+  // Idle by default: active-playback inspection must not occupy a user-visible
+  // playback lane. Explicit paused inspection can opt into its own isolated
+  // background-admission worker; whole-message export is explicitly bulk.
   readRawMessageRecord: {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.IDLE_PREFETCH,

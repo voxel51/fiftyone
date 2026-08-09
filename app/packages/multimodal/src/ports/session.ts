@@ -329,6 +329,12 @@ export interface RawRecordCapability {
   }): Promise<readonly RawRecordStream[]>;
   readRawRecord(request: {
     readonly includeFullJson?: boolean;
+    /**
+     * Scheduling attribution. Paused inspection may use an isolated
+     * responsive lane; continuous playback stays idle and full export stays
+     * bulk so neither can head-of-line block playback.
+     */
+    readonly intent?: "background" | "paused-inspection" | "export";
     readonly prune?: RawRecordPruneBudgets;
     readonly signal?: AbortSignal;
     readonly stream: StreamId;

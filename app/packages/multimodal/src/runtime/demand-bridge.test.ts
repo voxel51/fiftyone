@@ -1,5 +1,10 @@
 import { createStore } from "jotai";
-import { playheadAtom } from "@fiftyone/playback/runtime";
+import {
+  isPlayPendingAtom,
+  isPlayingAtom,
+  playheadAtom,
+  seekEventAtom,
+} from "@fiftyone/playback/runtime";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTimelineIndex } from "./timeline-index";
@@ -91,6 +96,39 @@ describe("demand bridge", () => {
     defer = false;
     await vi.advanceTimersByTimeAsync(10);
     expect(harness.fills).toEqual([true, true]);
+    harness.stop();
+  });
+
+  it("bypasses throttle and idle stand-down only for explicit paused seeks", async () => {
+    vi.useFakeTimers();
+    const playbackStore = createStore();
+    const fills: Array<{ expedited: boolean; playheadSec: number }> = [];
+    const harness = createHarness({
+      expeditePausedSeeks: true,
+      onFill: ({ expedited, playheadSec }) =>
+        fills.push({ expedited, playheadSec }),
+      playbackStore,
+      playheadThrottleMs: 300,
+      shouldDeferIdleWork: () => true,
+    });
+
+    playbackStore.set(playheadAtom, 1);
+    playbackStore.set(seekEventAtom, { seq: 1, time: 1 });
+    await Promise.resolve();
+    expect(fills).toEqual([{ expedited: true, playheadSec: 1 }]);
+
+    playbackStore.set(isPlayingAtom, true);
+    playbackStore.set(playheadAtom, 2);
+    playbackStore.set(seekEventAtom, { seq: 2, time: 2 });
+    await Promise.resolve();
+    expect(fills).toHaveLength(1);
+
+    playbackStore.set(isPlayingAtom, false);
+    playbackStore.set(isPlayPendingAtom, true);
+    playbackStore.set(playheadAtom, 3);
+    playbackStore.set(seekEventAtom, { seq: 3, time: 3 });
+    await Promise.resolve();
+    expect(fills).toHaveLength(1);
     harness.stop();
   });
 
@@ -253,6 +291,7 @@ describe("demand bridge", () => {
 interface HarnessOptions {
   readonly dataStream?: TimelineDataStream;
   readonly demandDebounceMs?: number;
+  readonly expeditePausedSeeks?: boolean;
   readonly onFill?: Parameters<typeof startDemandBridge>[0]["onFill"];
   readonly playbackStore?: ReturnType<typeof createStore>;
   readonly playheadThrottleMs?: number;
@@ -274,6 +313,7 @@ function createHarness(options: HarnessOptions = {}) {
     dataStreamRef,
     demandDebounceMs: options.demandDebounceMs,
     deferredRetryMs: 10,
+    expeditePausedSeeks: options.expeditePausedSeeks,
     handlersRef,
     makeHandlers: ({ queueFill }) => ({ onDemandChanged: queueFill }),
     onFill:

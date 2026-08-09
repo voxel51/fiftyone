@@ -79,10 +79,10 @@ export function byteFillSlotName(
 
 /**
  * First slot a fill class may use. Priority fills (interactive and foreground
- * playback lanes) may take any slot including slot 0; background fills (idle
- * lookahead, bulk history scans, speculative readahead) start at slot 1 — so
- * however deep the background queue grows, the playhead's next fill always
- * has slot 0 waiting for it.
+ * playback lanes) may take any slot including slot 0; background fills
+ * (paused inspection, idle lookahead, bulk history scans, speculative
+ * readahead) start at slot 1 — so however deep the background queue grows, the
+ * playhead's next fill always has slot 0 waiting for it.
  *
  * Lock-ordering invariant: a class with floor 0 must acquire its shape before
  * any slot; a class with floor above 0 must acquire one eligible slot before
