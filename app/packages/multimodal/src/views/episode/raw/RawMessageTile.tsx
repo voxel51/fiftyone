@@ -154,18 +154,22 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
                 className={`${styles.statusBadge} ${rawStyles.staleNotice}`}
                 data-testid="episode-raw-stale"
                 role="status"
+                title="Loading the message at the playhead; showing the previous result"
               >
-                Loading the message at the playhead… showing the previous result
+                Loading… Previous shown.
               </div>
             ) : state?.status === "error" ? (
               <div
                 className={`${styles.statusBadge} ${styles.statusBadgeError} ${rawStyles.staleNotice}`}
                 data-testid="episode-raw-stale"
                 role="status"
+                title={
+                  state.error
+                    ? `Refresh failed: ${state.error}`
+                    : "Refresh failed"
+                }
               >
-                Could not refresh the message
-                {state.error ? `: ${state.error}` : ""}; showing the previous
-                result
+                Refresh failed. Previous shown.
               </div>
             ) : null}
             <RecordBody

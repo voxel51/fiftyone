@@ -312,9 +312,28 @@ describe("RawMessageTile", () => {
     const tree = screen.getByTestId("episode-raw-tree");
     const content = staleNotice.parentElement;
 
-    expect(staleNotice.textContent).toMatch(/showing the previous result/);
+    expect(staleNotice.textContent).toBe("Loading… Previous shown.");
+    expect(staleNotice.getAttribute("title")).toMatch(
+      /showing the previous result/,
+    );
     expect(content?.classList.contains(rawStyles.content)).toBe(true);
     expect(content?.contains(tree)).toBe(true);
+  });
+
+  it("keeps retained refresh failures compact without hiding the error", () => {
+    mocks.recordState = {
+      error: "decoder unavailable",
+      result: DISPLAYED_RESULT,
+      status: "error",
+    };
+
+    render(<RawMessageTile />);
+
+    const staleNotice = screen.getByTestId("episode-raw-stale");
+    expect(staleNotice.textContent).toBe("Refresh failed. Previous shown.");
+    expect(staleNotice.getAttribute("title")).toBe(
+      "Refresh failed: decoder unavailable",
+    );
   });
 
   it("offers numeric fields for a canonical stream id", () => {
