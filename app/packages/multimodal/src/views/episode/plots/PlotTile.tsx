@@ -10,13 +10,17 @@ import {
 import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
 import React, { useCallback, useEffect, useMemo } from "react";
 import type { AlignedData } from "uplot";
+import { addCoveredRange, type NsRange } from "../../../runtime";
 import TimeseriesChart, {
+  type TimeseriesCoverageRange,
   type TimeseriesChartSeries,
+  type TimeseriesViewport,
 } from "../../../visualization/plot/TimeseriesChart";
 import { useDataStream } from "../playback/data-stream-context";
 import {
   numericSeriesKey,
   useNumericSeriesContext,
+  useNumericSeriesStates,
 } from "./numeric-series-context";
 import {
   plotSeriesDisplayName,
@@ -31,11 +35,10 @@ import { useRegisterTileSettings } from "../tiles/tile-settings-context";
 import styles from "../tiles/Tile.module.css";
 
 /**
- * Numeric plot tile: charts enabled stream+field series over the full
- * recording with a playback-synced playhead and click-to-seek. Series
- * selection lives in the per-tile plot state and the settings sidebar;
- * data comes from the shared numeric-series cache (fetched on enable,
- * bulk lane).
+ * Numeric plot tile: charts enabled stream+field series against the recording
+ * timeline with a playback-synced playhead and click-to-seek. The bridge loads
+ * the follow or pinned viewport on demand; exact shading keeps unread source
+ * spans distinct from decoded no-data gaps and unavailable source units.
  */
 const PlotTile: React.FC<EpisodeTileProps> = () => {
   const tileId = useTileId();
@@ -47,8 +50,16 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
   useRegisterTileSettings(tileId, settingsRegistration);
   const seriesConfigs = usePlotTileSeries();
   const setTileTitle = useSetTileTitle();
-  const { ensureEnumeration, enumeration, seriesByKey, subscribeSeries } =
+  const { ensureEnumeration, enumeration, setViewportDemand, subscribeSeries } =
     useNumericSeriesContext();
+  const seriesKeys = useMemo(
+    () =>
+      seriesConfigs.map((config) =>
+        numericSeriesKey(config.stream, config.fieldPath),
+      ),
+    [seriesConfigs],
+  );
+  const seriesByKey = useNumericSeriesStates(seriesKeys);
   const sourceNamesByBinding = useMemo(() => {
     const names = new Map<string, string>();
     for (const stream of enumeration.streams) {
@@ -58,7 +69,8 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
     return names;
   }, [enumeration.streams]);
   const dataStream = useDataStream();
-  const durationSec = dataStream?.getTimelineIndex()?.durationSec ?? 0;
+  const timeline = dataStream?.getTimelineIndex() ?? null;
+  const durationSec = timeline?.durationSec ?? 0;
   const { seek, settleSeek } = usePlayback();
   const store = usePlaybackStore();
 
@@ -76,8 +88,8 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
   }, [seriesConfigs, setTileTitle, sourceNamesByBinding]);
 
   // This effect declares interest in every enabled series while the tile
-  // shows it; the bridge fetches playhead windows for interested signals
-  // and keeps fetched segments cached after unsubscribe.
+  // shows it; the bridge fetches follow/pinned viewports for interested
+  // signals and retains immutable tiles within its source-local budget.
   useEffect(() => {
     const unsubscribes = seriesConfigs.map((config) =>
       subscribeSeries(config.stream, config.fieldPath),
@@ -133,6 +145,42 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
     const joined = joinNumericSeries(ready);
     return [joined.xs, ...joined.ys] as AlignedData;
   }, [ready]);
+  const coverageRanges = useMemo(
+    () =>
+      timeline
+        ? intersectCoverage(
+            resolved.map((entry) => entry.state?.coverage ?? []),
+          ).map((range) => ({
+            endSec: Number(range.endNs - timeline.startTimeNs) / 1e9,
+            startSec: Number(range.startNs - timeline.startTimeNs) / 1e9,
+          }))
+        : [],
+    [resolved, timeline],
+  );
+  const unavailableRanges = useMemo<TimeseriesCoverageRange[]>(
+    () =>
+      timeline
+        ? unionCoverage(
+            resolved.flatMap((entry) => entry.state?.unavailable ?? []),
+          ).map((range) => ({
+            endSec: Number(range.endNs - timeline.startTimeNs) / 1e9,
+            startSec: Number(range.startNs - timeline.startTimeNs) / 1e9,
+          }))
+        : [],
+    [resolved, timeline],
+  );
+  const onViewportChange = useCallback(
+    (viewport: TimeseriesViewport) => {
+      setViewportDemand(String(tileId), viewport);
+    },
+    [setViewportDemand, tileId],
+  );
+
+  // This effect removes pinned demand when the tile leaves the layout.
+  useEffect(
+    () => () => setViewportDemand(String(tileId), null),
+    [setViewportDemand, tileId],
+  );
 
   const registerPlayheadListener = useCallback(
     (listener: (sec: number) => void) => {
@@ -183,9 +231,9 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
   const statusNotes = [
     loadingCount > 0 ? `loading ${loadingCount}` : null,
     incompleteCoverage
-      ? `${Math.floor(incompleteCoverage.coverageSeconds)}s of ${Math.ceil(
-          incompleteCoverage.targetSeconds,
-        )}s`
+      ? `loaded ${Math.floor(
+          incompleteCoverage.coverageSeconds,
+        )}s of visible ${Math.ceil(incompleteCoverage.targetSeconds)}s`
       : null,
     errorCount > 0 ? `${errorCount} failed` : null,
     truncated ? "partial" : null,
@@ -210,14 +258,17 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
         </div>
       ) : ready.length > 0 ? (
         <TimeseriesChart
+          coverageRanges={coverageRanges}
           data={chartData}
           durationSec={durationSec}
           onHoverTime={onHoverTime}
           onSeek={seek}
           onSeekEnd={settleSeek}
+          onViewportChange={onViewportChange}
           registerHoverTimeListener={registerHoverTimeListener}
           registerPlayheadListener={registerPlayheadListener}
           series={chartSeries}
+          unavailableRanges={unavailableRanges}
         />
       ) : (
         <div className={styles.loading}>
@@ -239,3 +290,36 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
 };
 
 export default PlotTile;
+
+function unionCoverage(ranges: readonly NsRange[]): NsRange[] {
+  return ranges.reduce<NsRange[]>(addCoveredRange, []);
+}
+
+function intersectCoverage(
+  rangeSets: readonly (readonly NsRange[])[],
+): NsRange[] {
+  if (rangeSets.length === 0) return [];
+  let intersection = unionCoverage(rangeSets[0] ?? []);
+  for (let setIndex = 1; setIndex < rangeSets.length; setIndex += 1) {
+    const next = unionCoverage(rangeSets[setIndex] ?? []);
+    const out: NsRange[] = [];
+    let left = 0;
+    let right = 0;
+    while (left < intersection.length && right < next.length) {
+      const leftRange = intersection[left];
+      const rightRange = next[right];
+      const startNs =
+        leftRange.startNs > rightRange.startNs
+          ? leftRange.startNs
+          : rightRange.startNs;
+      const endNs =
+        leftRange.endNs < rightRange.endNs ? leftRange.endNs : rightRange.endNs;
+      if (endNs >= startNs) out.push({ endNs, startNs });
+      if (leftRange.endNs < rightRange.endNs) left += 1;
+      else right += 1;
+    }
+    intersection = out;
+    if (intersection.length === 0) break;
+  }
+  return intersection;
+}

@@ -2,6 +2,10 @@ import { Icon, IconName, Size } from "@voxel51/voodo";
 import React, { useEffect, useRef } from "react";
 import uPlot, { type AlignedData } from "uplot";
 import "uplot/dist/uPlot.min.css";
+import {
+  PLOT_WINDOW_QUANTUM_SECONDS,
+  PLOT_WINDOW_SECONDS,
+} from "../../runtime/numeric-series-window";
 import { CLICK_DRAG_TOLERANCE_PX } from "../interaction/interaction";
 import styles from "./TimeseriesChart.module.css";
 import {
@@ -15,6 +19,18 @@ import {
 export interface TimeseriesChartSeries {
   readonly color: string;
   readonly label: string;
+}
+
+export interface TimeseriesViewport {
+  readonly endSec: number;
+  readonly mode: "follow" | "pinned";
+  readonly pixelWidth: number;
+  readonly startSec: number;
+}
+
+export interface TimeseriesCoverageRange {
+  readonly endSec: number;
+  readonly startSec: number;
 }
 
 export interface TimeseriesChartProps {
@@ -36,6 +52,15 @@ export interface TimeseriesChartProps {
 
   /** Called when a click or playhead drag settles on its final seek target. */
   readonly onSeekEnd?: () => void;
+
+  /** Coalesced visible-range demand; user zoom/pan pins, reset follows. */
+  readonly onViewportChange?: (viewport: TimeseriesViewport) => void;
+
+  /** Ranges inspected for every rendered series; complements are unread. */
+  readonly coverageRanges?: readonly TimeseriesCoverageRange[];
+
+  /** Hard-unavailable ranges rendered distinctly from ordinary unread data. */
+  readonly unavailableRanges?: readonly TimeseriesCoverageRange[];
 
   /**
    * Shared hover-time feed: called with a listener that moves the echo
@@ -92,12 +117,28 @@ const yAxisSize: uPlot.Axis.Size = (chart, values) => {
 function resetTimeseriesChart(
   chart: uPlot,
   data: AlignedData,
-  xMax: number,
+  xRange: readonly [number, number],
 ): void {
   chart.batch(() => {
     chart.setData(data, true);
-    chart.setScale("x", { min: 0, max: xMax });
+    chart.setScale("x", { min: xRange[0], max: xRange[1] });
   });
+}
+
+function followTimeseriesRange(
+  playheadSec: number,
+  durationSec: number,
+): readonly [number, number] {
+  if (durationSec <= PLOT_WINDOW_SECONDS) return [0, durationSec];
+  const rawStart = playheadSec - PLOT_WINDOW_SECONDS / 2;
+  const quantizedStart =
+    Math.floor(rawStart / PLOT_WINDOW_QUANTUM_SECONDS) *
+    PLOT_WINDOW_QUANTUM_SECONDS;
+  const start = Math.max(
+    0,
+    Math.min(quantizedStart, durationSec - PLOT_WINDOW_SECONDS),
+  );
+  return [start, start + PLOT_WINDOW_SECONDS];
 }
 
 function positionTimeMarker(
@@ -135,22 +176,153 @@ function positionHoverCaret(
   positionTimeMarker(chart, line, sec, durationSec, suppressed);
 }
 
+function finiteYRange(
+  data: AlignedData,
+  startSec: number,
+  endSec: number,
+): readonly [number, number] | null {
+  const xs = data[0];
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  for (let column = 1; column < data.length; column += 1) {
+    const values = data[column];
+    for (let index = 0; index < xs.length; index += 1) {
+      const x = xs[index];
+      if (x < startSec || x > endSec) continue;
+      const value = values[index];
+      if (typeof value !== "number" || !Number.isFinite(value)) continue;
+      if (value < min) min = value;
+      if (value > max) max = value;
+    }
+  }
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+  if (min === max) {
+    const padding = Math.max(Math.abs(min) * 0.05, 1);
+    return [min - padding, max + padding];
+  }
+  const padding = (max - min) * 0.05;
+  return [min - padding, max + padding];
+}
+
+function setStableYRange(
+  chart: uPlot,
+  data: AlignedData,
+  stableRef: React.MutableRefObject<readonly [number, number] | null>,
+  settingRef: React.MutableRefObject<boolean>,
+  reset: boolean,
+): void {
+  if (reset) stableRef.current = null;
+  const xMin = chart.scales.x.min ?? 0;
+  const xMax = chart.scales.x.max ?? xMin;
+  const candidate = finiteYRange(data, xMin, xMax);
+  if (!candidate) return;
+  const previous = stableRef.current;
+  const stable: readonly [number, number] = previous
+    ? [Math.min(previous[0], candidate[0]), Math.max(previous[1], candidate[1])]
+    : candidate;
+  stableRef.current = stable;
+  settingRef.current = true;
+  chart.setScale("y", { min: stable[0], max: stable[1] });
+  settingRef.current = false;
+}
+
+function renderCoverageBands(
+  chart: uPlot,
+  layer: HTMLDivElement | null,
+  coverage: readonly TimeseriesCoverageRange[],
+  unavailable: readonly TimeseriesCoverageRange[],
+): void {
+  if (!layer) return;
+  layer.replaceChildren();
+  const startSec = chart.scales.x.min ?? 0;
+  const endSec = chart.scales.x.max ?? startSec;
+  const known = mergeCoverageRanges(
+    [...coverage, ...unavailable],
+    startSec,
+    endSec,
+  );
+  let cursor = startSec;
+  for (const range of known) {
+    if (range.startSec > cursor) {
+      appendCoverageBand(chart, layer, cursor, range.startSec, "unread");
+    }
+    cursor = Math.max(cursor, range.endSec);
+  }
+  if (cursor < endSec) {
+    appendCoverageBand(chart, layer, cursor, endSec, "unread");
+  }
+  for (const range of mergeCoverageRanges(unavailable, startSec, endSec)) {
+    appendCoverageBand(
+      chart,
+      layer,
+      range.startSec,
+      range.endSec,
+      "unavailable",
+    );
+  }
+}
+
+function mergeCoverageRanges(
+  ranges: readonly TimeseriesCoverageRange[],
+  startSec: number,
+  endSec: number,
+): TimeseriesCoverageRange[] {
+  const merged: Array<{ endSec: number; startSec: number }> = [];
+  for (const range of [...ranges].sort(
+    (left, right) => left.startSec - right.startSec,
+  )) {
+    const start = Math.max(startSec, range.startSec);
+    const end = Math.min(endSec, range.endSec);
+    if (!(end > start)) continue;
+    const previous = merged.at(-1);
+    if (previous && start <= previous.endSec) {
+      previous.endSec = Math.max(previous.endSec, end);
+    } else {
+      merged.push({ endSec: end, startSec: start });
+    }
+  }
+  return merged;
+}
+
+function appendCoverageBand(
+  chart: uPlot,
+  layer: HTMLDivElement,
+  startSec: number,
+  endSec: number,
+  kind: "unavailable" | "unread",
+): void {
+  if (!(endSec > startSec)) return;
+  const startPx = chart.valToPos(startSec, "x");
+  const endPx = chart.valToPos(endSec, "x");
+  const band = document.createElement("div");
+  band.className =
+    kind === "unavailable" ? styles.unavailableBand : styles.unreadBand;
+  band.dataset.testid = `timeseries-${kind}-band`;
+  band.style.left = `${Math.min(startPx, endPx)}px`;
+  band.style.width = `${Math.abs(endPx - startPx)}px`;
+  layer.appendChild(band);
+}
+
 /**
  * Dense multi-series line chart on uPlot. Renders on the shared dark
  * visualization surface; identity is carried by the always-present
  * legend (live cursor values) plus mark color, never color alone. The
- * x scale starts at the full recording and stays constrained to it while
- * touch gestures or controls change the visible range.
+ * x scale shows the recording timeline while exact overlays distinguish
+ * acquired data from unread and hard-unavailable spans. Touch gestures or
+ * controls pin a viewport whose range and pixel width drive acquisition.
  */
 export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   data,
   durationSec,
+  coverageRanges = [],
   onHoverTime,
   onSeek,
   onSeekEnd,
+  onViewportChange,
   registerHoverTimeListener,
   registerPlayheadListener,
   series,
+  unavailableRanges = [],
 }) => {
   const plotRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<uPlot | null>(null);
@@ -160,6 +332,9 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   const hoverSecRef = useRef<number | null>(null);
   const pointerInsideRef = useRef(false);
   const hasInteractiveScaleRef = useRef(false);
+  const coverageLayerRef = useRef<HTMLDivElement | null>(null);
+  const stableYRangeRef = useRef<readonly [number, number] | null>(null);
+  const settingStableYRef = useRef(false);
   const dataRef = useRef(data);
   dataRef.current = data;
   const seriesRef = useRef(series);
@@ -170,6 +345,12 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   onSeekEndRef.current = onSeekEnd;
   const onHoverTimeRef = useRef(onHoverTime);
   onHoverTimeRef.current = onHoverTime;
+  const onViewportChangeRef = useRef(onViewportChange);
+  onViewportChangeRef.current = onViewportChange;
+  const coverageRangesRef = useRef(coverageRanges);
+  coverageRangesRef.current = coverageRanges;
+  const unavailableRangesRef = useRef(unavailableRanges);
+  unavailableRangesRef.current = unavailableRanges;
   const seriesIdentity = JSON.stringify(series);
   const xMax = Math.max(durationSec, 1e-9);
 
@@ -178,8 +359,8 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     if (!chart) {
       return;
     }
-    zoomTimeseriesChart(chart, TIMESERIES_ZOOM_IN_FACTOR, [0, xMax]);
     hasInteractiveScaleRef.current = true;
+    zoomTimeseriesChart(chart, TIMESERIES_ZOOM_IN_FACTOR, [0, xMax]);
   };
 
   const handleZoomOut = () => {
@@ -187,8 +368,8 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     if (!chart) {
       return;
     }
-    zoomTimeseriesChart(chart, TIMESERIES_ZOOM_OUT_FACTOR, [0, xMax]);
     hasInteractiveScaleRef.current = true;
+    zoomTimeseriesChart(chart, TIMESERIES_ZOOM_OUT_FACTOR, [0, xMax]);
   };
 
   const handleResetZoom = () => {
@@ -197,7 +378,11 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       return;
     }
     hasInteractiveScaleRef.current = false;
-    resetTimeseriesChart(chart, dataRef.current, xMax);
+    resetTimeseriesChart(
+      chart,
+      dataRef.current,
+      followTimeseriesRange(playheadSecRef.current ?? 0, durationSec),
+    );
   };
 
   // This effect owns the uPlot instance lifecycle: create per series
@@ -211,7 +396,22 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       return undefined;
     }
     hasInteractiveScaleRef.current = false;
+    stableYRangeRef.current = null;
     const xLimits = [0, xMax] as const;
+    let viewportFrame: number | undefined;
+    let stableViewportKey = "";
+    const queueViewportPublication = (chart: uPlot) => {
+      if (viewportFrame !== undefined) cancelAnimationFrame(viewportFrame);
+      viewportFrame = requestAnimationFrame(() => {
+        viewportFrame = undefined;
+        onViewportChangeRef.current?.({
+          endSec: chart.scales.x.max ?? xMax,
+          mode: hasInteractiveScaleRef.current ? "pinned" : "follow",
+          pixelWidth: Math.max(chart.over.clientWidth, host.clientWidth, 1),
+          startSec: chart.scales.x.min ?? 0,
+        });
+      });
+    };
 
     const options: uPlot.Options = {
       axes: [
@@ -257,6 +457,43 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
               durationSec,
               pointerInsideRef.current,
             ),
+          (chart) =>
+            renderCoverageBands(
+              chart,
+              coverageLayerRef.current,
+              coverageRangesRef.current,
+              unavailableRangesRef.current,
+            ),
+        ],
+        setScale: [
+          (chart, key) => {
+            if (key === "x") {
+              const viewportKey = `${chart.scales.x.min}:${chart.scales.x.max}`;
+              if (viewportKey !== stableViewportKey) {
+                stableViewportKey = viewportKey;
+                setStableYRange(
+                  chart,
+                  dataRef.current,
+                  stableYRangeRef,
+                  settingStableYRef,
+                  true,
+                );
+              }
+              renderCoverageBands(
+                chart,
+                coverageLayerRef.current,
+                coverageRangesRef.current,
+                unavailableRangesRef.current,
+              );
+              queueViewportPublication(chart);
+            } else if (key === "y" && !settingStableYRef.current) {
+              const min = chart.scales.y.min;
+              const max = chart.scales.y.max;
+              if (min !== undefined && max !== undefined) {
+                stableYRangeRef.current = [min, max];
+              }
+            }
+          },
         ],
         setSelect: [
           () => {
@@ -292,6 +529,24 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     const chart = new uPlot(options, dataRef.current, host);
     chartRef.current = chart;
     chart.setScale("x", { min: 0, max: xMax });
+    const initialYMin = chart.scales.y.min;
+    const initialYMax = chart.scales.y.max;
+    stableYRangeRef.current =
+      initialYMin !== undefined && initialYMax !== undefined
+        ? [initialYMin, initialYMax]
+        : null;
+
+    const coverageLayer = document.createElement("div");
+    coverageLayer.className = styles.coverageLayer;
+    coverageLayer.dataset.testid = "timeseries-coverage-layer";
+    chart.over.appendChild(coverageLayer);
+    coverageLayerRef.current = coverageLayer;
+    renderCoverageBands(
+      chart,
+      coverageLayer,
+      coverageRangesRef.current,
+      unavailableRangesRef.current,
+    );
 
     const line = document.createElement("div");
     line.className = styles.playhead;
@@ -530,6 +785,13 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       const height = host.clientHeight - legendHeight;
       if (width > 0 && height > 40) {
         chart.setSize({ height, width });
+        renderCoverageBands(
+          chart,
+          coverageLayer,
+          coverageRangesRef.current,
+          unavailableRangesRef.current,
+        );
+        queueViewportPublication(chart);
       }
     };
     const observer = new ResizeObserver(resizeChart);
@@ -538,6 +800,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
 
     return () => {
       observer.disconnect();
+      if (viewportFrame !== undefined) cancelAnimationFrame(viewportFrame);
       line.removeEventListener("pointerdown", onPlayheadPointerDown);
       line.removeEventListener("pointermove", onPlayheadPointerMove);
       line.removeEventListener("pointerup", onPlayheadPointerUp);
@@ -562,29 +825,37 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       }
       playheadLineRef.current = null;
       hoverLineRef.current = null;
+      coverageLayerRef.current = null;
       chartRef.current = null;
       chart.destroy();
     };
   }, [durationSec, seriesIdentity, xMax]);
 
-  // This effect pushes new data into the existing instance. Auto-range while
-  // untouched, but preserve a user-controlled viewport across data updates.
+  // This effect pushes progressive data without resetting either viewport.
+  // The y domain may expand to reveal new extrema, but never contracts while
+  // the same viewport fills, avoiding page-by-page scale oscillation.
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) {
       return;
     }
-    if (hasInteractiveScaleRef.current) {
-      // setData with resetScales=false swaps the arrays without committing a
-      // repaint, so newly fetched windows would stay invisible until the next
-      // interaction. redraw() re-applies the current (user-zoomed) x scale,
-      // which re-ranges auto y over the visible window and repaints.
-      chart.setData(data, false);
-      chart.redraw();
-    } else {
-      resetTimeseriesChart(chart, data, xMax);
-    }
-  }, [data, xMax]);
+    chart.setData(data, false);
+    setStableYRange(chart, data, stableYRangeRef, settingStableYRef, false);
+    chart.redraw();
+  }, [data]);
+
+  // This effect redraws exact unread/unavailable overlays without touching
+  // chart data or scales.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    renderCoverageBands(
+      chart,
+      coverageLayerRef.current,
+      coverageRanges,
+      unavailableRanges,
+    );
+  }, [coverageRanges, unavailableRanges]);
 
   // This effect subscribes the echo caret to the shared hover-time feed;
   // caret moves are DOM transforms, never chart redraws.
@@ -616,6 +887,12 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       playheadSecRef.current = sec;
       const chart = chartRef.current;
       if (!chart) return;
+      if (!hasInteractiveScaleRef.current) {
+        const [min, max] = followTimeseriesRange(sec, durationSec);
+        if (chart.scales.x.min !== min || chart.scales.x.max !== max) {
+          chart.setScale("x", { min, max });
+        }
+      }
       positionPlayhead(chart, playheadLineRef.current, sec, durationSec);
     });
   }, [durationSec, registerPlayheadListener]);

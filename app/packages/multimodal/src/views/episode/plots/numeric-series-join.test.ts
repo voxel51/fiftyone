@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { decimateMinMax } from "../../../adapters/mcap/resource-client/numeric-series-decimate";
 import { joinNumericSeries } from "./numeric-series-join";
 
 describe("joinNumericSeries", () => {
@@ -52,6 +53,23 @@ describe("joinNumericSeries", () => {
       },
     ]);
     expect(joined.ys[0]).toEqual([1, null, 3]);
+  });
+
+  it("renders a mixed-bucket decimation gap as visible separation", () => {
+    const times = Float64Array.from({ length: 100 }, (_, index) => index);
+    const values = Float64Array.from({ length: 100 }, () => 1);
+    values[50] = Number.NaN;
+    const decimated = decimateMinMax(times, values, 10);
+
+    const joined = joinNumericSeries([
+      { timesSec: decimated.times, values: decimated.values },
+    ]);
+    const gapIndex = joined.ys[0].indexOf(null);
+
+    expect(gapIndex).toBeGreaterThan(0);
+    expect(gapIndex).toBeLessThan(joined.ys[0].length - 1);
+    expect(joined.ys[0].slice(0, gapIndex).some(Number.isFinite)).toBe(true);
+    expect(joined.ys[0].slice(gapIndex + 1).some(Number.isFinite)).toBe(true);
   });
 
   it("merges unsorted overlaps into ascending unique x values", () => {

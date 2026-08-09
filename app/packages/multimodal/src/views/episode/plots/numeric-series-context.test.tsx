@@ -618,6 +618,155 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
     });
   });
 
+  it("keeps an oversized span unavailable while acquiring later data", async () => {
+    const source = createSource();
+    const continuation = {} as ReadContinuation;
+    const readNumericSeriesSlice = vi
+      .fn<NonNullable<NumericSeriesCapability["readNumericSeriesSlice"]>>()
+      .mockImplementationOnce(async (request) =>
+        sliceResult(request, {
+          continuation,
+          coverage: [{ endNs: 39_999_999_999n, startNs: 30_000_000_000n }],
+          stopReason: "oversized-source-unit",
+          unavailable: [{ endNs: 49_999_999_999n, startNs: 40_000_000_000n }],
+        }),
+      )
+      .mockImplementationOnce(async (request) =>
+        sliceResult(request, {
+          coverage: [{ endNs: 89_999_999_999n, startNs: 50_000_000_000n }],
+          stopReason: "source-exhausted",
+        }),
+      );
+    const client = createClient({ readNumericSeriesSlice });
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+
+    render(
+      <Harness
+        client={client}
+        contextRef={context}
+        durationSec={DURATION_SEC}
+        source={source}
+        store={store}
+      />,
+    );
+    await act(async () => {
+      context.current?.subscribeSeries("/imu", "accel.x");
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+      await flushMicrotasks();
+    });
+
+    expect(readNumericSeriesSlice).toHaveBeenCalledTimes(2);
+    expect(sliceRequestOf(client, 1).continuation).toBe(continuation);
+    const state = context.current?.seriesByKey.get(
+      numericSeriesKey("/imu", "accel.x"),
+    );
+    expect(state?.unavailable).toEqual([
+      { endNs: 49_999_999_999n, startNs: 40_000_000_000n },
+    ]);
+    expect(state?.coverage).toEqual([
+      { endNs: 39_999_999_999n, startNs: 30_000_000_000n },
+      { endNs: 89_999_999_999n, startNs: 50_000_000_000n },
+    ]);
+    expect(state?.truncated).toBe(true);
+  });
+
+  it("backs off an empty continuation instead of spinning", async () => {
+    const continuation = {} as ReadContinuation;
+    const readNumericSeriesSlice = vi.fn(async (request) =>
+      sliceResult(request, {
+        continuation,
+        coverage: [],
+        stopReason: "budget-exhausted",
+        usage: emptyReadUsage({ chunksOpened: 0, messagesDecoded: 0 }),
+      }),
+    );
+    const client = createClient({ readNumericSeriesSlice });
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+
+    render(
+      <Harness
+        client={client}
+        contextRef={context}
+        durationSec={DURATION_SEC}
+        source={createSource()}
+        store={store}
+      />,
+    );
+    await act(async () => {
+      context.current?.subscribeSeries("/imu", "accel.x");
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+      await flushMicrotasks();
+    });
+    expect(readNumericSeriesSlice).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await advanceTimers(4_999);
+      await flushMicrotasks();
+    });
+    expect(readNumericSeriesSlice).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await advanceTimers(1);
+      await flushMicrotasks();
+    });
+    expect(readNumericSeriesSlice).toHaveBeenCalledTimes(2);
+  });
+
+  it("yields a bounded acquisition epoch and resumes its continuation", async () => {
+    const continuation = {} as ReadContinuation;
+    let page = 0n;
+    const readNumericSeriesSlice = vi.fn(async (request) => {
+      const point = request.window.startNs + page;
+      page += 1n;
+      return sliceResult(request, {
+        continuation,
+        coverage: [
+          {
+            endNs: point,
+            startNs: point,
+          },
+        ],
+        stopReason: "budget-exhausted",
+      });
+    });
+    const client = createClient({ readNumericSeriesSlice });
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+    render(
+      <Harness
+        client={client}
+        contextRef={context}
+        durationSec={DURATION_SEC}
+        source={createSource()}
+        store={store}
+      />,
+    );
+
+    await act(async () => {
+      context.current?.subscribeSeries("/imu", "accel.x");
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+      await flushMicrotasks();
+    });
+    expect(readNumericSeriesSlice).toHaveBeenCalledTimes(8);
+
+    await act(async () => {
+      await advanceTimers(4_999);
+    });
+    expect(readNumericSeriesSlice).toHaveBeenCalledTimes(8);
+
+    await act(async () => {
+      await advanceTimers(1);
+      await flushMicrotasks();
+    });
+    expect(readNumericSeriesSlice).toHaveBeenCalledTimes(16);
+    expect(sliceRequestOf(client, 8).continuation).toBe(continuation);
+  });
+
   it("aborts an obsolete slice and starts the seek destination", async () => {
     const source = createSource();
     const readNumericSeriesSlice = vi.fn<
@@ -651,6 +800,141 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
     expect(firstSignal?.aborted).toBe(true);
     expect(readNumericSeriesSlice).toHaveBeenCalledTimes(2);
     expect(sliceRequestOf(client, 1).preferredTimeNs).toBe(1_800_000_000_000n);
+  });
+
+  it("keeps useful in-flight work across transient demand changes", async () => {
+    const readNumericSeriesSlice = vi.fn<
+      NonNullable<NumericSeriesCapability["readNumericSeriesSlice"]>
+    >(() => new Promise(() => undefined));
+    const client = createClient({ readNumericSeriesSlice });
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+    render(
+      <Harness
+        client={client}
+        contextRef={context}
+        durationSec={DURATION_SEC}
+        source={createSource()}
+        store={store}
+      />,
+    );
+
+    let unsubscribe: () => void = () => undefined;
+    await act(async () => {
+      unsubscribe =
+        context.current?.subscribeSeries("/imu", "accel.x") ?? unsubscribe;
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+    const signal = sliceRequestOf(client, 0).signal;
+
+    await act(async () => {
+      context.current?.subscribeSeries("/odom", "speed");
+      unsubscribe();
+      context.current?.subscribeSeries("/imu", "accel.x");
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+
+    expect(signal?.aborted).toBe(false);
+    expect(readNumericSeriesSlice).toHaveBeenCalledOnce();
+  });
+
+  it("loads a pinned viewport instead of following later playhead moves", async () => {
+    const client = createSlicedClient();
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+    render(
+      <Harness
+        client={client}
+        contextRef={context}
+        durationSec={DURATION_SEC}
+        source={createSource()}
+        store={store}
+      />,
+    );
+    await act(async () => {
+      context.current?.subscribeSeries("/imu", "accel.x");
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+
+    await act(async () => {
+      context.current?.setViewportDemand("plot", {
+        endSec: 1_020,
+        mode: "pinned",
+        pixelWidth: 1_000,
+        startSec: 1_000,
+      });
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+    expect(sliceRequestOf(client, 1).window).toEqual({
+      endNs: 1_020_000_000_000n,
+      startNs: 1_000_000_000_000n,
+    });
+
+    await act(async () => {
+      store.set(playheadAtom, 1_800);
+      await advanceTimers(500);
+    });
+    expect(client.readNumericSeriesSlice).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      context.current?.setViewportDemand("plot", null);
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+    expect(sliceRequestOf(client, 2).preferredTimeNs).toBe(1_800_000_000_000n);
+  });
+
+  it("refines a pinned viewport without reusing insufficient resolution", async () => {
+    const client = createSlicedClient();
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+    render(
+      <Harness
+        client={client}
+        contextRef={context}
+        durationSec={DURATION_SEC}
+        source={createSource()}
+        store={store}
+      />,
+    );
+
+    await act(async () => {
+      context.current?.setViewportDemand("plot", {
+        endSec: 1_020,
+        mode: "pinned",
+        pixelWidth: 100,
+        startSec: 1_000,
+      });
+      context.current?.subscribeSeries("/imu", "accel.x");
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+    expect(sliceRequestOf(client, 0).maxPointsPerField).toBe(200);
+
+    await act(async () => {
+      context.current?.setViewportDemand("plot", {
+        endSec: 1_020,
+        mode: "pinned",
+        pixelWidth: 1_000,
+        startSec: 1_000,
+      });
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+    expect(client.readNumericSeriesSlice).toHaveBeenCalledTimes(2);
+    expect(sliceRequestOf(client, 1).maxPointsPerField).toBe(2_000);
+
+    // The finer retained tile is sufficient when demand later coarsens.
+    await act(async () => {
+      context.current?.setViewportDemand("plot", {
+        endSec: 1_020,
+        mode: "pinned",
+        pixelWidth: 500,
+        startSec: 1_000,
+      });
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+    expect(client.readNumericSeriesSlice).toHaveBeenCalledTimes(2);
   });
 
   it("does not debounce a playhead-driven fill", async () => {
@@ -746,7 +1030,7 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
     expect(client.readNumericSeries).toHaveBeenCalledTimes(1);
   });
 
-  it("accumulates disjoint windows as gap-separated segments", async () => {
+  it("publishes only the current viewport after disjoint fills", async () => {
     const source = createSource();
     const client = createClient({
       readNumericSeries: vi.fn(
@@ -796,9 +1080,8 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
       numericSeriesKey("/imu", "accel.x"),
     );
     expect(state?.status).toBe("ready");
-    // One sample per window plus one NaN gap marker between them.
-    expect(state?.timesSec?.length).toBe(3);
-    expect(state?.values?.[1]).toBeNaN();
+    expect([...(state?.timesSec ?? [])]).toEqual([1_770]);
+    expect([...(state?.values ?? [])]).toEqual([1]);
   });
 });
 
@@ -952,6 +1235,11 @@ function sliceResult(
       readonly startNs: bigint;
     }[];
     readonly stopReason: NumericSeriesSliceResult["stopReason"];
+    readonly unavailable?: readonly {
+      readonly endNs: bigint;
+      readonly startNs: bigint;
+    }[];
+    readonly usage?: ReadWorkUsage;
   },
 ): NumericSeriesSliceResult {
   const coverage = options.coverage ?? [request.window];
@@ -960,15 +1248,21 @@ function sliceResult(
     coverageByStream: new Map(
       request.selections.map((selection) => [selection.stream, coverage]),
     ),
+    unavailableByStream: new Map(
+      request.selections.map((selection) => [
+        selection.stream,
+        options.unavailable ?? [],
+      ]),
+    ),
     series: request.selections.map((selection) =>
       seriesResult(selection.stream, selection.fields),
     ),
     stopReason: options.stopReason,
-    usage: emptyReadUsage(),
+    usage: options.usage ?? emptyReadUsage(),
   };
 }
 
-function emptyReadUsage(): ReadWorkUsage {
+function emptyReadUsage(overrides: Partial<ReadWorkUsage> = {}): ReadWorkUsage {
   return {
     chunksOpened: 1,
     decompressedBytes: 0,
@@ -978,6 +1272,7 @@ function emptyReadUsage(): ReadWorkUsage {
     logicalUncompressedBytes: 0,
     messagesDecoded: 1,
     transferredBytes: 0,
+    ...overrides,
   };
 }
 

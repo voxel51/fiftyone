@@ -108,6 +108,38 @@
   z-index: 1;
 }
 
+.coverageLayer {
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+}
+
+.unreadBand,
+.unavailableBand {
+  bottom: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+}
+
+.unreadBand {
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.unavailableBand {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(248, 113, 113, 0.08),
+    rgba(248, 113, 113, 0.08) 4px,
+    rgba(248, 113, 113, 0.2) 4px,
+    rgba(248, 113, 113, 0.2) 6px
+  );
+  border-left: 1px solid rgba(248, 113, 113, 0.42);
+  border-right: 1px solid rgba(248, 113, 113, 0.42);
+}
+
 /* The plot area supports click-to-seek and drag-to-zoom. */
 .root :global(.u-over) {
   cursor: crosshair;
