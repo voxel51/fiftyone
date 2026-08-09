@@ -61,6 +61,9 @@ export interface McapReadIndexedMessageTimesRequest {
    */
   readonly limit?: number;
 
+  /** Cancels index range work owned by this request. */
+  readonly signal?: AbortSignal;
+
   /**
    * Inclusive minimum log timestamp to read, in nanoseconds.
    */
@@ -96,6 +99,9 @@ export interface McapReadLatestIndexedMessageTimesRequest {
    * Per-topic cap on chunk message-index reads during the walk.
    */
   readonly maxChunkProbesPerTopic?: number;
+
+  /** Cancels the predecessor walk and its index range reads. */
+  readonly signal?: AbortSignal;
 }
 
 /**

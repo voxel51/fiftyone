@@ -7,21 +7,27 @@ import { Root } from "protobufjs";
 import descriptor from "protobufjs/ext/descriptor";
 import { describe, expect, it, vi } from "vitest";
 import { rawNodeToJson } from "../../../../ir/index";
-import type { McapIndexedMessageTime } from "../../reader/index";
+import type {
+  McapIndexedMessageTime,
+  McapIndexedReaderLike,
+} from "../../reader/index";
 import { resolveMcapTimelineStrategy } from "../timeline";
 import { createChunkIndex } from "../inline-client.test-fixtures";
+import { mcapMessageCursorForEntry } from "./message-cursor";
+import {
+  assertRawRecordSourceWorkBound,
+  RAW_RECORD_MAX_CHUNKS,
+  RAW_RECORD_MAX_SOURCE_BYTES,
+  RAW_RECORD_MAX_UNCOMPRESSED_BYTES,
+} from "./read-limits";
 import {
   assertRawRecordFallbackWorkBound,
   assertRawRecordIndexedCandidateBound,
   assertRawRecordMessageInputBound,
-  assertRawRecordSourceWorkBound,
   RAW_RECORD_FALLBACK_MAX_ENCODED_BYTES,
   RAW_RECORD_FALLBACK_MAX_MESSAGES,
   RAW_RECORD_INDEXED_CANDIDATE_MAX_MESSAGES,
   RAW_RECORD_MAX_MESSAGE_BYTES,
-  RAW_RECORD_MAX_CHUNKS,
-  RAW_RECORD_MAX_SOURCE_BYTES,
-  RAW_RECORD_MAX_UNCOMPRESSED_BYTES,
   RAW_RECORD_MAX_WALL_TIME_MS,
   readMcapRawMessageRecord,
 } from "./read-raw-message-record";
@@ -306,6 +312,97 @@ describe("readMcapRawMessageRecord", () => {
     // Validity ends at the next indexed message.
     expect(result.validFromNs).toBe(2_000_000_000n);
     expect(result.validUntilNs).toBe(3_000_000_000n);
+  });
+
+  it("returns the exact indexed cursor used to materialize Follow", async () => {
+    const source = createSource();
+    const selectedEntry = indexedEntry({
+      logTimeNs: 2_000_000_000n,
+      messageOffset: 20n,
+    });
+    const selectedMessage = jsonMessage({ sibling: "second" }, 2_000_000_000n);
+    const readIndexedMessages = vi.fn(async () => [selectedMessage]);
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      chunkIndexes: [createChunkIndex({ chunkStartOffset: 1_000n })],
+      messages: [jsonMessage({ sibling: "first" }, 2_000_000_000n)],
+      readIndexedMessages,
+      readIndexedMessageTimes: async function* () {
+        // No later message inside the validity probe horizon.
+      },
+      readLatestIndexedMessageTimes: async () =>
+        new Map([["/state", [selectedEntry]]]),
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: { source, timeNs: 2_000_000_000n, topic: "/state" },
+      timeline,
+    });
+
+    expect(result.cursor).toBe(
+      mcapMessageCursorForEntry(source, selectedEntry),
+    );
+    expect(rawNodeToJson(rootOf(result))).toEqual({ sibling: "second" });
+    expect(readIndexedMessages).toHaveBeenCalledWith({
+      entries: [selectedEntry],
+      signal: undefined,
+    });
+    expect(reader.readMessages).not.toHaveBeenCalled();
+  });
+
+  it("reports schema metadata from the selected channel only", async () => {
+    const selectedEntry = indexedEntry({
+      channelId: 2,
+      logTimeNs: 2_000_000_000n,
+      messageOffset: 20n,
+    });
+    const selectedMessage = createMessage(
+      new TextEncoder().encode(JSON.stringify({ selected: true })),
+      { channelId: 2, logTime: 2_000_000_000n },
+    );
+    const representative = createChannel({
+      id: 1,
+      messageEncoding: "protobuf",
+      schemaId: 3,
+      topic: "/state",
+    });
+    const selectedChannel = createChannel({
+      id: 2,
+      messageEncoding: "json",
+      schemaId: 0,
+      topic: "/state",
+    });
+    const reader: McapIndexedReaderLike = {
+      ...createReader({
+        channel: representative,
+        chunkIndexes: [createChunkIndex({ chunkStartOffset: 1_000n })],
+        readIndexedMessages: vi.fn(async () => [selectedMessage]),
+        readIndexedMessageTimes: async function* () {
+          // No later message inside the validity probe horizon.
+        },
+        readLatestIndexedMessageTimes: async () =>
+          new Map([["/state", [selectedEntry]]]),
+      }),
+      channelsById: new Map([
+        [representative.id, representative],
+        [selectedChannel.id, selectedChannel],
+      ]),
+    };
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        source: createSource(),
+        timeNs: 2_000_000_000n,
+        topic: "/state",
+      },
+      timeline,
+    });
+
+    expect(result.schemaName).toBeNull();
+    expect(result.messageEncoding).toBe("json");
+    expect(rawNodeToJson(rootOf(result))).toEqual({ selected: true });
   });
 
   it("bounds validity to the probe horizon when no next message exists", async () => {
@@ -844,6 +941,7 @@ function createReader({
   messages = [],
   onYield,
   prefetchChunkData,
+  readIndexedMessages,
   readIndexedMessageTimes,
   readLatestIndexedMessageTimes,
   schema = createSchema(TELEMETRY_SCHEMA_DATA),
@@ -855,6 +953,7 @@ function createReader({
   readonly prefetchChunkData?: (request: {
     readonly chunkStartOffsets: readonly bigint[];
   }) => Promise<void>;
+  readonly readIndexedMessages?: McapIndexedReaderLike["readIndexedMessages"];
   readonly readIndexedMessageTimes?: () => AsyncGenerator<
     McapIndexedMessageTime,
     void,
@@ -870,6 +969,7 @@ function createReader({
     channelsById: new Map([[channel.id, channel]]),
     chunkIndexes,
     prefetchChunkData,
+    readIndexedMessages,
     readIndexedMessageTimes,
     readLatestIndexedMessageTimes,
     readMessages: vi.fn(async function* (args?: {

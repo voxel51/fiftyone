@@ -1,6 +1,9 @@
 import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
-import type { McapIndexedReaderLike } from "../../reader";
+import type {
+  McapIndexedMessageTime,
+  McapIndexedReaderLike,
+} from "../../reader";
 import { readMcapTopics } from "./read-topics";
 
 function createChannel(
@@ -29,12 +32,137 @@ function createReader(
           yield message;
         }
       }),
+    readIndexedMessages: options.readIndexedMessages,
+    readIndexedMessageTimes: options.readIndexedMessageTimes,
+    readLatestIndexedMessageTimes: options.readLatestIndexedMessageTimes,
     schemasById: options.schemasById ?? new Map(),
     statistics: options.statistics,
   };
 }
 
 describe("readMcapTopics", () => {
+  it("gates exact browsing on usable per-channel message indexes", () => {
+    const indexedReader = createReader({
+      channelsById: new Map([
+        [1, createChannel({ id: 1, topic: "/indexed" })],
+        [2, createChannel({ id: 2, topic: "/plain" })],
+      ]),
+      chunkIndexes: [
+        {
+          chunkLength: 100n,
+          chunkStartOffset: 10n,
+          compressedSize: 10n,
+          compression: "",
+          messageEndTime: 2n,
+          messageIndexLength: 20n,
+          messageIndexOffsets: new Map([[1, 80n]]),
+          messageStartTime: 1n,
+          type: "ChunkIndex",
+          uncompressedSize: 100n,
+        },
+      ],
+      readIndexedMessageTimes: vi.fn(async function* () {
+        for (const entry of [] as McapIndexedMessageTime[]) yield entry;
+      }),
+      readIndexedMessages: vi.fn(),
+      readLatestIndexedMessageTimes: vi.fn(),
+    });
+
+    const topics = readMcapTopics(indexedReader);
+
+    expect(topics[0]?.metadata["mcap.exact_browsing"]).toBe("true");
+    expect(topics[1]?.metadata["mcap.exact_browsing"]).toBe("false");
+    expect(
+      readMcapTopics(
+        createReader({
+          channelsById: new Map([[1, createChannel({ id: 1 })]]),
+        }),
+      )[0]?.metadata["mcap.exact_browsing"],
+    ).toBe("false");
+  });
+
+  it("does not trust source-authored exact-browsing metadata", () => {
+    const topics = readMcapTopics(
+      createReader({
+        channelsById: new Map([
+          [
+            1,
+            createChannel({
+              id: 1,
+              metadata: new Map([["mcap.exact_browsing", "true"]]),
+            }),
+          ],
+        ]),
+      }),
+    );
+
+    expect(topics[0]?.metadata["mcap.exact_browsing"]).toBe("false");
+  });
+
+  it("requires indexes for every channel sharing a logical topic", () => {
+    const channelsById = new Map([
+      [1, createChannel({ id: 1, topic: "/state" })],
+      [2, createChannel({ id: 2, topic: "/state" })],
+    ]);
+    const indexedMethods = {
+      readIndexedMessageTimes: vi.fn(async function* () {
+        for (const entry of [] as McapIndexedMessageTime[]) yield entry;
+      }),
+      readIndexedMessages: vi.fn(),
+      readLatestIndexedMessageTimes: vi.fn(),
+    };
+    const oneIndexed = readMcapTopics(
+      createReader({
+        channelsById,
+        chunkIndexes: [
+          {
+            chunkLength: 100n,
+            chunkStartOffset: 10n,
+            compressedSize: 10n,
+            compression: "",
+            messageEndTime: 2n,
+            messageIndexLength: 20n,
+            messageIndexOffsets: new Map([[1, 80n]]),
+            messageStartTime: 1n,
+            type: "ChunkIndex",
+            uncompressedSize: 100n,
+          },
+        ],
+        ...indexedMethods,
+      }),
+    );
+    expect(
+      oneIndexed.map((topic) => topic.metadata["mcap.exact_browsing"]),
+    ).toEqual(["false", "false"]);
+
+    const fullyIndexed = readMcapTopics(
+      createReader({
+        channelsById,
+        chunkIndexes: [
+          {
+            chunkLength: 100n,
+            chunkStartOffset: 10n,
+            compressedSize: 10n,
+            compression: "",
+            messageEndTime: 2n,
+            messageIndexLength: 20n,
+            messageIndexOffsets: new Map([
+              [1, 80n],
+              [2, 90n],
+            ]),
+            messageStartTime: 1n,
+            type: "ChunkIndex",
+            uncompressedSize: 100n,
+          },
+        ],
+        ...indexedMethods,
+      }),
+    );
+    expect(
+      fullyIndexed.map((topic) => topic.metadata["mcap.exact_browsing"]),
+    ).toEqual(["true", "true"]);
+  });
+
   it("stamps every topic with the scene's start time", () => {
     const reader = createReader({
       channelsById: new Map([

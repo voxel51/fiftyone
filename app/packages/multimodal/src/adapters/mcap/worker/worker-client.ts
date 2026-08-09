@@ -34,6 +34,7 @@ import type {
   McapEnumerateNumericFieldsRequest,
   McapNumericSeriesResult,
   McapNumericSeriesSliceResult,
+  McapMessageIndexWindowResult,
   McapPointCloudChannelResult,
   McapReadBoundedMessagesRequest,
   McapReadBoundedMessagesResult,
@@ -41,10 +42,12 @@ import type {
   McapReadFrameTransformBootstrapRequest,
   McapReadFrameTransformWindowRequest,
   McapRawMessageRecordResult,
+  McapReadMessageIndexWindowRequest,
   McapReadNumericSeriesRequest,
   McapReadNumericSeriesSliceRequest,
   McapReadPointCloudChannelRequest,
   McapReadRawMessageRecordRequest,
+  McapReadRawMessageAtCursorRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapResourceReadOptions,
@@ -317,6 +320,30 @@ class WorkerMcapResourceClient implements McapResourceClient {
   ): Promise<McapRawMessageRecordResult> {
     return this.request(
       "readRawMessageRecord",
+      request,
+      resourcePriorityToWorkerPriority(options?.priority),
+      options?.signal,
+    );
+  }
+
+  readRawMessageAtCursor(
+    request: McapReadRawMessageAtCursorRequest,
+    options?: McapResourceReadOptions,
+  ): Promise<McapRawMessageRecordResult> {
+    return this.request(
+      "readRawMessageAtCursor",
+      request,
+      resourcePriorityToWorkerPriority(options?.priority),
+      options?.signal,
+    );
+  }
+
+  readMessageIndexWindow(
+    request: McapReadMessageIndexWindowRequest,
+    options?: McapResourceReadOptions,
+  ): Promise<McapMessageIndexWindowResult> {
+    return this.request(
+      "readMessageIndexWindow",
       request,
       resourcePriorityToWorkerPriority(options?.priority),
       options?.signal,

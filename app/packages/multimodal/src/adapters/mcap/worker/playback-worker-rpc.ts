@@ -78,6 +78,16 @@ export const MCAP_PLAYBACK_WORKER_OPERATIONS: McapPlaybackWorkerOperationMap = {
     kind: "unary",
     priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
   },
+  // Explicit Browse actions stay on the interactive lane and bypass the
+  // starved-link/idle demand gate used by Follow mode.
+  readMessageIndexWindow: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+  },
+  readRawMessageAtCursor: {
+    kind: "unary",
+    priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+  },
   // Idle lane on purpose: a raw read may decode one multi-megabyte message
   // and must not occupy either user-visible playback lane. Inspection
   // latency loses to playback smoothness.
@@ -163,6 +173,20 @@ export function runMcapPlaybackWorkerUnaryRequest(
       return client.readPointCloudChannel(message.payload);
     case "readRawMessageRecord":
       return client.readRawMessageRecord(message.payload);
+    case "readRawMessageAtCursor":
+      if (!client.readRawMessageAtCursor) {
+        return Promise.reject(
+          new Error("Exact MCAP message reads are unavailable"),
+        );
+      }
+      return client.readRawMessageAtCursor(message.payload);
+    case "readMessageIndexWindow":
+      if (!client.readMessageIndexWindow) {
+        return Promise.reject(
+          new Error("Exact MCAP message indexes are unavailable"),
+        );
+      }
+      return client.readMessageIndexWindow(message.payload);
     case "readSynchronizedMessageBatch":
       return client.readSynchronizedMessageBatch(message.payload);
     case "readSynchronizedMessages":

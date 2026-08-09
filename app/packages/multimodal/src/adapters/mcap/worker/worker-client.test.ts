@@ -137,6 +137,56 @@ describe("worker-backed MCAP resource client", () => {
     await expect(topics).resolves.toEqual(result);
   });
 
+  it("sends explicit message browsing reads at current-frame priority", async () => {
+    const { client, workers } = createClientHarness();
+    const source = createSource("source:1");
+    const indexResult = {
+      entries: [{ cursor: "cursor-2", logTimeNs: 2n }],
+      hasNext: false,
+      hasPrevious: false,
+      selectedCursor: "cursor-2",
+    };
+
+    const indexWindow = client.readMessageIndexWindow?.({
+      after: 5,
+      anchorCursor: "cursor-2",
+      before: 5,
+      source,
+      topic: "/camera",
+    });
+    const worker = workers[0];
+    expect(worker.messages[1]).toMatchObject({
+      id: 1,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+      type: "readMessageIndexWindow",
+    });
+    worker.respond({ id: 1, ok: true, result: indexResult });
+    await expect(indexWindow).resolves.toEqual(indexResult);
+
+    const exactResult = {
+      cursor: "cursor-2",
+      logTimeNs: 2n,
+      messageEncoding: "json",
+      schemaName: "test.State",
+      status: "ok" as const,
+      topic: "/camera",
+      validFromNs: 2n,
+      validUntilNs: 3n,
+    };
+    const exactRecord = client.readRawMessageAtCursor?.({
+      cursor: "cursor-2",
+      source,
+      topic: "/camera",
+    });
+    expect(worker.messages[2]).toMatchObject({
+      id: 2,
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.CURRENT_FRAME,
+      type: "readRawMessageAtCursor",
+    });
+    worker.respond({ id: 2, ok: true, result: exactResult });
+    await expect(exactRecord).resolves.toEqual(exactResult);
+  });
+
   it("sends frame transform bootstrap reads at idle-prefetch priority", async () => {
     const { client, workers } = createClientHarness();
     const request = {

@@ -4,12 +4,15 @@ import { createInlineMcapResourceClient } from "./inline-client";
 import { MCAP_ACTIVE_TIMELINE } from "../contracts/index";
 import {
   collect,
+  createChannel,
   createChunkIndex,
   createMcapSourceDescriptor,
+  createMessage,
   createReader,
   createTestDecodeClient,
 } from "./inline-client.test-fixtures";
 import { RAW_RECORD_MAX_WALL_TIME_MS } from "./operations/read-raw-message-record";
+import { mcapMessageCursorForEntry } from "./operations/message-cursor";
 
 describe("MCAP reader lifecycle", () => {
   it("reads log timeline range from chunk indexes without scanning messages", async () => {
@@ -210,5 +213,91 @@ describe("MCAP reader lifecycle", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("reuses one cached reader across exact cursor reads", async () => {
+    const source = createMcapSourceDescriptor();
+    const entry = {
+      channelId: 7,
+      chunkStartOffset: 1_000n,
+      logTimeNs: 100n,
+      messageOffset: 12n,
+      topic: "/state",
+    };
+    const message = createMessage(
+      new TextEncoder().encode(JSON.stringify({ exact: true })),
+      { channelId: 7, logTime: 100n },
+    );
+    const readIndexedMessages = vi.fn(async () => [message]);
+    const readerFactory = vi.fn(async () =>
+      createReader({
+        channelsById: new Map([
+          [
+            7,
+            createChannel({
+              id: 7,
+              messageEncoding: "json",
+              schemaId: 0,
+              topic: "/state",
+            }),
+          ],
+        ]),
+        chunkIndexes: [
+          createChunkIndex({
+            chunkStartOffset: 1_000n,
+            messageIndexLength: 32n,
+            messageIndexOffsets: new Map([[7, 1_100n]]),
+          }),
+        ],
+        readIndexedMessages,
+        schemasById: new Map(),
+      }),
+    );
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      readerFactory,
+    });
+    const request = {
+      cursor: mcapMessageCursorForEntry(source, entry),
+      source,
+      topic: "/state",
+    };
+
+    await client.readRawMessageAtCursor?.(request);
+    await client.readRawMessageAtCursor?.(request);
+
+    expect(readerFactory).toHaveBeenCalledOnce();
+    expect(readIndexedMessages).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops waiting for cached-reader initialization when cancelled", async () => {
+    let resolveReader!: (reader: ReturnType<typeof createReader>) => void;
+    const readerFactory = vi.fn(
+      () =>
+        new Promise<ReturnType<typeof createReader>>((resolve) => {
+          resolveReader = resolve;
+        }),
+    );
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      readerFactory,
+    });
+    const controller = new AbortController();
+    const read = client.readRawMessageAtCursor?.(
+      {
+        cursor: "opaque-cursor",
+        source: createMcapSourceDescriptor(),
+        topic: "/state",
+      },
+      { signal: controller.signal },
+    );
+    if (!read) throw new Error("Expected exact reader");
+
+    controller.abort();
+
+    await expect(read).rejects.toMatchObject({ name: "AbortError" });
+    resolveReader(createReader());
+    await Promise.resolve();
+    client.dispose();
   });
 });

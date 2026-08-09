@@ -9,6 +9,7 @@ import {
   type StreamDescriptor,
   type StreamKind,
   type ResolvedStreamSyncPolicy,
+  type RawRecordResult,
   type StreamSyncMode,
   type StreamSyncPolicy,
   type SynchronizedFrameWindow,
@@ -57,6 +58,7 @@ import {
   MCAP_ACTIVE_TIMELINE,
   type McapDecodedMessage,
   type McapResourceClient,
+  type McapRawMessageRecordResult,
   type McapStreamSyncPolicies,
   type McapStreamSyncPolicy,
   type McapTimelineRange,
@@ -468,6 +470,10 @@ export function createMcapRawRecordCapability({
           schemaName: entry.metadata["mcap.schema_name"] ?? null,
           sourceName,
           streamId: streamIdFor(sourceName),
+          supportsExactBrowsing:
+            entry.metadata["mcap.exact_browsing"] === "true" &&
+            client.readMessageIndexWindow !== undefined &&
+            client.readRawMessageAtCursor !== undefined,
         };
       });
     },
@@ -483,35 +489,87 @@ export function createMcapRawRecordCapability({
         },
         { signal: request.signal },
       );
-      return {
-        decodeError: result.decodeError,
-        decodeUnavailableReason: result.decodeUnavailableReason,
-        encoding: result.messageEncoding,
-        fullJson: result.fullJson,
-        payloadBytes: result.encodedPayloadBytes,
-        root: result.root,
-        schemaName: result.schemaName,
-        sequence: result.sequence,
-        sourceName: result.topic,
-        sourceTimestamps:
-          result.logTimeNs !== undefined || result.publishTimeNs !== undefined
-            ? {
-                ...(result.logTimeNs !== undefined
-                  ? { logTime: result.logTimeNs }
-                  : {}),
-                ...(result.publishTimeNs !== undefined
-                  ? { publishTime: result.publishTimeNs }
-                  : {}),
-              }
-            : undefined,
-        status: result.status,
-        streamId: streamIdFor(result.topic),
-        timestampNs: result.logTimeNs,
-        truncated: result.truncated,
-        validFromNs: result.validFromNs,
-        validUntilNs: result.validUntilNs,
-      };
+      return toRawRecordResult(result, request.stream);
     },
+    ...(client.readRawMessageAtCursor && client.readMessageIndexWindow
+      ? {
+          async readRawRecordAtCursor(request) {
+            const result = await client.readRawMessageAtCursor?.(
+              {
+                cursor: request.cursor,
+                includeFullJson: request.includeFullJson,
+                prune: request.prune,
+                source,
+                topic: sourceNameFor(request.stream),
+              },
+              { priority: "current", signal: request.signal },
+            );
+            if (!result) throw new Error("Exact message reader is unavailable");
+            return toRawRecordResult(result, request.stream);
+          },
+          async readRawRecordIndexWindow(request) {
+            const anchor =
+              request.anchorCursor !== undefined
+                ? { anchorCursor: request.anchorCursor }
+                : { anchorTimeNs: request.anchorTimestampNs };
+            const result = await client.readMessageIndexWindow?.(
+              {
+                after: request.after,
+                ...anchor,
+                before: request.before,
+                source,
+                topic: sourceNameFor(request.stream),
+              },
+              { priority: "current", signal: request.signal },
+            );
+            if (!result) throw new Error("Exact message index is unavailable");
+            return {
+              entries: result.entries.map((entry) => ({
+                cursor: entry.cursor,
+                timestampNs: entry.logTimeNs,
+              })),
+              hasNext: result.hasNext,
+              hasPrevious: result.hasPrevious,
+              selectedCursor: result.selectedCursor,
+            };
+          },
+        }
+      : {}),
+  };
+}
+
+function toRawRecordResult(
+  result: McapRawMessageRecordResult,
+  streamId: string,
+): RawRecordResult {
+  return {
+    cursor: result.cursor,
+    decodeError: result.decodeError,
+    decodeUnavailableReason: result.decodeUnavailableReason,
+    encoding: result.messageEncoding,
+    fullJson: result.fullJson,
+    payloadBytes: result.encodedPayloadBytes,
+    root: result.root,
+    schemaName: result.schemaName,
+    sequence: result.sequence,
+    sourceName: result.topic,
+    sourceTimestamps:
+      result.logTimeNs !== undefined || result.publishTimeNs !== undefined
+        ? {
+            ...(result.logTimeNs !== undefined
+              ? { logTime: result.logTimeNs }
+              : {}),
+            ...(result.publishTimeNs !== undefined
+              ? { publishTime: result.publishTimeNs }
+              : {}),
+          }
+        : undefined,
+    status: result.status,
+    streamId,
+    timestampNs: result.logTimeNs,
+    truncated: result.truncated,
+    validFromNs: result.validFromNs,
+    validUntilNs: result.validUntilNs,
   };
 }
 

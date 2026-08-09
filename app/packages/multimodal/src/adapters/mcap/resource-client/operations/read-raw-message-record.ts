@@ -1,8 +1,13 @@
 import type { McapTypes } from "@mcap/core";
-import type { McapIndexedReaderLike } from "../../reader/index";
+import {
+  materializeIndexedEntries,
+  type McapIndexedMessageTime,
+  type McapIndexedReaderLike,
+} from "../../reader/index";
 import type { McapTimelineStrategy } from "../timeline";
 import type {
   McapRawMessageRecordResult,
+  McapReadRawMessageAtCursorRequest,
   McapReadRawMessageRecordRequest,
 } from "../../contracts/index";
 import {
@@ -17,6 +22,11 @@ import {
 } from "../../../../utils/cancellation";
 import { EpisodeReadUnsupportedError } from "../../../../ports";
 import { monotonicNowMs } from "../../../../utils/monotonic-time";
+import {
+  mcapIndexedEntryFromCursor,
+  mcapMessageCursorForEntry,
+} from "./message-cursor";
+import { assertRawRecordSourceWorkBound } from "./read-limits";
 
 /**
  * Forward index probe horizon for the result's validity window. Absence
@@ -37,15 +47,6 @@ export const RAW_RECORD_FALLBACK_MAX_MESSAGES = 1_024;
 
 /** Encoded payload bytes admitted by one non-indexed raw-record scan. */
 export const RAW_RECORD_FALLBACK_MAX_ENCODED_BYTES = 64 * 1024 * 1024;
-
-/** Indexed chunks admitted by one raw-record read. */
-export const RAW_RECORD_MAX_CHUNKS = 256;
-
-/** Physical chunk bytes admitted by one raw-record read. */
-export const RAW_RECORD_MAX_SOURCE_BYTES = 64 * 1024 * 1024;
-
-/** Uncompressed chunk bytes admitted by one raw-record read. */
-export const RAW_RECORD_MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 /** Wall time admitted by one raw-record call. */
 export const RAW_RECORD_MAX_WALL_TIME_MS = 10_000;
@@ -82,24 +83,6 @@ export function assertRawRecordFallbackWorkBound(
   );
 }
 
-export function assertRawRecordSourceWorkBound(
-  chunkCount: number,
-  sourceBytes: bigint,
-  uncompressedBytes: bigint,
-): void {
-  if (
-    chunkCount <= RAW_RECORD_MAX_CHUNKS &&
-    sourceBytes <= BigInt(RAW_RECORD_MAX_SOURCE_BYTES) &&
-    uncompressedBytes <= BigInt(RAW_RECORD_MAX_UNCOMPRESSED_BYTES)
-  ) {
-    return;
-  }
-  throw new EpisodeReadUnsupportedError(
-    "raw-record-source-work",
-    `Raw lookup exceeded its per-read indexed-source bound (${RAW_RECORD_MAX_CHUNKS} chunks, ${RAW_RECORD_MAX_SOURCE_BYTES} source bytes, or ${RAW_RECORD_MAX_UNCOMPRESSED_BYTES} uncompressed bytes)`,
-  );
-}
-
 export function assertRawRecordIndexedCandidateBound(
   candidateCount: number,
 ): void {
@@ -117,6 +100,11 @@ export function assertRawRecordIndexedCandidateBound(
 const FALLBACK_VALIDITY_NS = 1_000_000_000n;
 
 type McapRawMessage = McapTypes.TypedMcapRecords["Message"];
+
+interface SelectedRawMessage {
+  readonly entry?: McapIndexedMessageTime;
+  readonly message: McapRawMessage;
+}
 
 /**
  * Reads the newest message at or before a playback time on one topic
@@ -146,7 +134,7 @@ export async function readMcapRawMessageRecord({
     topic: request.topic,
   };
 
-  const message = await selectMessageAtOrBefore({
+  const selected = await selectMessageAtOrBefore({
     reader,
     timeline,
     timeNs: request.timeNs,
@@ -154,7 +142,7 @@ export async function readMcapRawMessageRecord({
     signal,
   });
 
-  if (!message) {
+  if (!selected) {
     return {
       ...base,
       status: "empty",
@@ -170,8 +158,8 @@ export async function readMcapRawMessageRecord({
     };
   }
 
+  const { entry, message } = selected;
   const messageTimeNs = timeline.messageTimeNs(message);
-  assertRawRecordMessageInputBound(message.data.byteLength);
   const validUntilNs = await probeNextMessageTimeNs({
     afterNs: messageTimeNs,
     fallbackNs: request.timeNs + FALLBACK_VALIDITY_NS,
@@ -181,22 +169,105 @@ export async function readMcapRawMessageRecord({
     signal,
   });
 
-  // Decode with the selected message's own channel: a topic can span
-  // multiple channels with different schemas.
-  const channel = reader.channelsById.get(message.channelId) ?? topicChannel;
+  return rawRecordResultForMessage({
+    base,
+    cursor: entry
+      ? mcapMessageCursorForEntry(request.source, entry)
+      : undefined,
+    includeFullJson: request.includeFullJson,
+    message,
+    prune: request.prune,
+    reader,
+    validFromNs: messageTimeNs,
+    validUntilNs,
+  });
+}
+
+/** Reads and decodes one exact indexed message without time re-selection. */
+export async function readMcapRawMessageAtCursor({
+  reader,
+  request,
+  signal,
+}: {
+  readonly reader: McapIndexedReaderLike;
+  readonly request: McapReadRawMessageAtCursorRequest;
+  readonly signal?: AbortSignal;
+}): Promise<McapRawMessageRecordResult> {
+  throwIfAborted(signal);
+  const entry = mcapIndexedEntryFromCursor(
+    request.cursor,
+    request.source,
+    request.topic,
+  );
+  assertExactIndexedEntryAddressable(reader, entry, request.topic);
+  const [message] = await materializeIndexedEntries(reader, [entry], signal);
+  throwIfAborted(signal);
+  if (!message) throw new Error("MCAP message cursor is stale or invalid");
+  const topicChannel = mcapChannelForTopic(reader, request.topic);
+  const topicSchema = reader.schemasById.get(topicChannel.schemaId);
+  return rawRecordResultForMessage({
+    base: {
+      messageEncoding: topicChannel.messageEncoding,
+      schemaName: topicSchema?.name ?? null,
+      topic: request.topic,
+    },
+    cursor: request.cursor,
+    includeFullJson: request.includeFullJson,
+    message,
+    prune: request.prune,
+    reader,
+    // Cursor selection is identity-based. Keep the time-keyed reuse window
+    // minimal so a later playhead read cannot reuse this exact selection.
+    validFromNs: message.logTime,
+    validUntilNs: message.logTime + 1n,
+  });
+}
+
+function rawRecordResultForMessage({
+  base,
+  cursor,
+  includeFullJson,
+  message,
+  prune,
+  reader,
+  validFromNs,
+  validUntilNs,
+}: {
+  readonly base: {
+    readonly messageEncoding: string;
+    readonly schemaName: string | null;
+    readonly topic: string;
+  };
+  readonly cursor?: string;
+  readonly includeFullJson?: boolean;
+  readonly message: McapRawMessage;
+  readonly prune?: McapReadRawMessageRecordRequest["prune"];
+  readonly reader: McapIndexedReaderLike;
+  readonly validFromNs: bigint;
+  readonly validUntilNs: bigint;
+}): McapRawMessageRecordResult {
+  assertRawRecordMessageInputBound(message.data.byteLength);
+  // A topic can span channels with different schemas; decode the exact
+  // message through its own channel rather than the topic representative.
+  const channel = reader.channelsById.get(message.channelId);
+  if (!channel || channel.topic !== base.topic) {
+    throw new Error(
+      `MCAP message channel ${message.channelId} does not belong to topic ${base.topic}`,
+    );
+  }
   const schema = reader.schemasById.get(channel.schemaId);
   const metadata = {
     ...base,
+    cursor,
     encodedPayloadBytes: message.data.byteLength,
     logTimeNs: message.logTime,
     messageEncoding: channel.messageEncoding,
     publishTimeNs: message.publishTime,
-    schemaName: schema?.name ?? base.schemaName,
+    schemaName: schema?.name ?? null,
     sequence: message.sequence,
-    validFromNs: messageTimeNs,
+    validFromNs,
     validUntilNs,
   };
-
   const decoderResolution = genericRecordDecoderResolutionForChannel(
     reader,
     channel,
@@ -219,11 +290,10 @@ export async function readMcapRawMessageRecord({
       status: "decode-error",
     };
   }
-
-  const pruned = pruneRawRecord(record, request.prune);
+  const pruned = pruneRawRecord(record, prune);
   return {
     ...metadata,
-    fullJson: request.includeFullJson ? rawRecordToJsonText(record) : undefined,
+    fullJson: includeFullJson ? rawRecordToJsonText(record) : undefined,
     root: pruned.root,
     status: "ok",
     truncated: pruned.truncated || undefined,
@@ -248,7 +318,7 @@ async function selectMessageAtOrBefore({
   readonly timeNs: bigint;
   readonly topic: string;
   readonly signal?: AbortSignal;
-}): Promise<McapRawMessage | null> {
+}): Promise<SelectedRawMessage | null> {
   throwIfAborted(signal);
   const indexedMessageTimesRequest = timeline.indexedMessageTimesRequest;
   if (reader.readLatestIndexedMessageTimes && indexedMessageTimesRequest) {
@@ -257,6 +327,7 @@ async function selectMessageAtOrBefore({
     }).endTimeNs;
     if (probeBoundNs !== undefined) {
       const latestByTopic = await reader.readLatestIndexedMessageTimes({
+        ...(signal ? { signal } : {}),
         timeNs: probeBoundNs,
         topics: [topic],
       });
@@ -273,13 +344,23 @@ async function selectMessageAtOrBefore({
       void reader.prefetchChunkData?.({
         chunkStartOffsets: [entry.chunkStartOffset],
       });
-      return readMessageForIndexedEntry({
+      if (reader.readIndexedMessages) {
+        assertExactIndexedEntryAddressable(reader, entry, topic);
+        const [message] = await materializeIndexedEntries(
+          reader,
+          [entry],
+          signal,
+        );
+        return message ? { entry, message } : null;
+      }
+      const message = await readMessageForIndexedEntry({
         channelId: entry.channelId,
         logTimeNs: entry.logTimeNs,
         reader,
         signal,
         topic,
       });
+      return message ? { message } : null;
     }
   }
 
@@ -342,7 +423,7 @@ async function selectMessageAtOrBefore({
     if (returned) void returned.catch(() => undefined);
   }
 
-  return newest;
+  return newest ? { message: newest } : null;
 }
 
 function nextRawFallbackMessage(
@@ -385,7 +466,7 @@ export function rawRecordWallTimeError(): EpisodeReadUnsupportedError {
   );
 }
 
-function assertRawRecordChunksWithinBound(
+export function assertRawRecordChunksWithinBound(
   chunks: readonly McapTypes.TypedMcapRecords["ChunkIndex"][],
   include: (chunk: McapTypes.TypedMcapRecords["ChunkIndex"]) => boolean,
 ): void {
@@ -401,11 +482,23 @@ function assertRawRecordChunksWithinBound(
   }
 }
 
-/**
- * Fetches the full message behind one index entry. Duplicate log times
- * on one channel resolve to a deterministic representative (lowest
- * sequence, then publish time) — same policy as playback selection.
- */
+function assertExactIndexedEntryAddressable(
+  reader: McapIndexedReaderLike,
+  entry: McapIndexedMessageTime,
+  topic: string,
+): void {
+  const channel = reader.channelsById.get(entry.channelId);
+  const chunk = reader.chunkIndexes.find(
+    (candidate: McapTypes.TypedMcapRecords["ChunkIndex"]) =>
+      candidate.chunkStartOffset === entry.chunkStartOffset,
+  );
+  if (!channel || channel.topic !== topic || !chunk) {
+    throw new Error("MCAP message cursor is stale or invalid");
+  }
+  assertRawRecordChunksWithinBound([chunk], () => true);
+}
+
+/** Compatibility path for readers that expose index probes but not offsets. */
 async function readMessageForIndexedEntry({
   channelId,
   logTimeNs,
@@ -419,8 +512,6 @@ async function readMessageForIndexedEntry({
   readonly signal?: AbortSignal;
   readonly topic: string;
 }): Promise<McapRawMessage | null> {
-  // Index entries carry native log times — the same domain readMessages
-  // bounds use — so no timeline mapping applies here.
   let selected: McapRawMessage | null = null;
   let candidateCount = 0;
   for await (const message of reader.readMessages({
@@ -429,9 +520,8 @@ async function readMessageForIndexedEntry({
     topics: [topic],
   })) {
     throwIfAborted(signal);
-    if (message.channelId !== channelId || message.logTime !== logTimeNs) {
+    if (message.channelId !== channelId || message.logTime !== logTimeNs)
       continue;
-    }
     candidateCount += 1;
     assertRawRecordIndexedCandidateBound(candidateCount);
     if (
@@ -443,7 +533,6 @@ async function readMessageForIndexedEntry({
       selected = message;
     }
   }
-
   return selected;
 }
 
@@ -488,6 +577,7 @@ async function probeNextMessageTimeNs({
       topics: [topic],
     }),
     limit: 1,
+    ...(signal ? { signal } : {}),
   })) {
     throwIfAborted(signal);
     return indexedMessageTimeNs(entry);

@@ -42,8 +42,10 @@ import {
 import {
   RAW_RECORD_MAX_WALL_TIME_MS,
   rawRecordWallTimeError,
+  readMcapRawMessageAtCursor,
   readMcapRawMessageRecord,
 } from "./operations/read-raw-message-record";
+import { readMcapMessageIndexWindow } from "./operations/read-message-index-window";
 import { readMcapPointCloudChannel } from "./operations/read-point-cloud-channel";
 import { readMcapTopics } from "./operations/read-topics";
 import { readMcapTopicTimeBounds } from "./operations/read-topic-time-bounds";
@@ -59,10 +61,13 @@ import {
   type McapReadFrameTransformBootstrapRequest,
   type McapReadFrameTransformWindowRequest,
   type McapRawMessageRecordResult,
+  type McapMessageIndexWindowResult,
   type McapPointCloudChannelResult,
   type McapReadNumericSeriesRequest,
   type McapReadNumericSeriesSliceRequest,
   type McapReadRawMessageRecordRequest,
+  type McapReadRawMessageAtCursorRequest,
+  type McapReadMessageIndexWindowRequest,
   type McapReadPointCloudChannelRequest,
   type McapReadSynchronizedMessageBatchRequest,
   type McapReadSynchronizedMessagesRequest,
@@ -78,7 +83,7 @@ import {
 } from "../contracts/index";
 import type { StreamInventory } from "../../../schemas/v1/index";
 import { memoizedRead } from "./memoized-read";
-import { throwIfAborted } from "../../../utils/cancellation";
+import { createAbortError, throwIfAborted } from "../../../utils/cancellation";
 
 const FRAME_TRANSFORM_WINDOW_READ_CACHE_LIMIT = 32;
 const MEMOIZED_READ_CACHE_LIMIT = 32;
@@ -200,6 +205,20 @@ export function createInlineMcapResourceClient(
     } finally {
       reader.dispose?.();
     }
+  };
+  // Exact Browse operations keep one source reader so adjacent selections
+  // share initialized indexes and the reader-owned decompressed-chunk cache.
+  const withCachedReader = async <Value>(
+    source: McapReadTimelineRangeRequest["source"],
+    signal: AbortSignal,
+    read: (reader: McapIndexedReaderLike) => Promise<Value> | Value,
+  ): Promise<Value> => {
+    throwIfAborted(signal);
+    const reader = await waitForValueOrAbort(readerStore.get(source), signal);
+    throwIfAborted(signal);
+    const value = await read(reader);
+    throwIfAborted(signal);
+    return value;
   };
 
   const client: McapSynchronizedMessageReuseClient = {
@@ -332,30 +351,52 @@ export function createInlineMcapResourceClient(
       readOptions?: McapResourceReadOptions,
     ): Promise<McapRawMessageRecordResult> {
       const timeline = resolveMcapTimelineStrategy(request.activeTimeline);
-      const deadline = createReadDeadline(
+      return withRawRecordDeadline(
         readOptions?.signal ?? options.readSignal?.current ?? undefined,
-        RAW_RECORD_MAX_WALL_TIME_MS,
-      );
-      try {
-        return await withRequestReader(
-          request.source,
-          deadline.signal,
-          (reader) =>
+        (signal) =>
+          withRequestReader(request.source, signal, (reader) =>
             readMcapRawMessageRecord({
               reader,
               request,
-              signal: deadline.signal,
+              signal,
               timeline,
             }),
-        );
-      } catch (error) {
-        if (deadline.didTimeOut()) {
-          throw rawRecordWallTimeError();
-        }
-        throw error;
-      } finally {
-        deadline.cleanup();
-      }
+          ),
+      );
+    },
+
+    async readRawMessageAtCursor(
+      request: McapReadRawMessageAtCursorRequest,
+      readOptions?: McapResourceReadOptions,
+    ): Promise<McapRawMessageRecordResult> {
+      return withRawRecordDeadline(
+        readOptions?.signal ?? options.readSignal?.current ?? undefined,
+        (signal) =>
+          withCachedReader(request.source, signal, (reader) =>
+            readMcapRawMessageAtCursor({
+              reader,
+              request,
+              signal,
+            }),
+          ),
+      );
+    },
+
+    async readMessageIndexWindow(
+      request: McapReadMessageIndexWindowRequest,
+      readOptions?: McapResourceReadOptions,
+    ): Promise<McapMessageIndexWindowResult> {
+      return withRawRecordDeadline(
+        readOptions?.signal ?? options.readSignal?.current ?? undefined,
+        (signal) =>
+          withCachedReader(request.source, signal, (reader) =>
+            readMcapMessageIndexWindow({
+              reader,
+              request,
+              signal,
+            }),
+          ),
+      );
     },
 
     async readPointCloudChannel(
@@ -517,6 +558,50 @@ export function createInlineMcapResourceClient(
   };
 
   return client;
+}
+
+function waitForValueOrAbort<Value>(
+  value: Promise<Value>,
+  signal: AbortSignal,
+): Promise<Value> {
+  if (signal.aborted) {
+    return Promise.reject(
+      createAbortError("MCAP cached reader acquisition aborted"),
+    );
+  }
+  return new Promise((resolve, reject) => {
+    const finish = (complete: () => void) => {
+      signal.removeEventListener("abort", onAbort);
+      complete();
+    };
+    const onAbort = () =>
+      finish(() =>
+        reject(createAbortError("MCAP cached reader acquisition aborted")),
+      );
+    signal.addEventListener("abort", onAbort, { once: true });
+    void value.then(
+      (result) => finish(() => resolve(result)),
+      (error: unknown) => finish(() => reject(error)),
+    );
+  });
+}
+
+async function withRawRecordDeadline<Value>(
+  parentSignal: AbortSignal | undefined,
+  read: (signal: AbortSignal) => Promise<Value>,
+): Promise<Value> {
+  const deadline = createReadDeadline(
+    parentSignal,
+    RAW_RECORD_MAX_WALL_TIME_MS,
+  );
+  try {
+    return await read(deadline.signal);
+  } catch (error) {
+    if (deadline.didTimeOut()) throw rawRecordWallTimeError();
+    throw error;
+  } finally {
+    deadline.cleanup();
+  }
 }
 
 function createReadDeadline(

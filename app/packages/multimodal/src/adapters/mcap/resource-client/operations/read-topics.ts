@@ -18,13 +18,20 @@ const MCAP_CHANNEL_METADATA_PREFIX = `${MCAP_METADATA_PREFIX}channel_metadata.`;
 export function readMcapTopics(
   reader: McapIndexedReaderLike,
 ): readonly StreamInventory[] {
+  const exactBrowsingTopics = usableMessageIndexTopics(reader);
   const streams = [...reader.channelsById.entries()].map(
     ([channelId, channel]) => {
       const schema = schemaForChannel(channel, reader.schemasById);
 
       return create(StreamInventorySchema, {
         displayName: channel.topic,
-        metadata: channelMetadata(channelId, channel, reader, schema),
+        metadata: channelMetadata(
+          channelId,
+          channel,
+          reader,
+          schema,
+          exactBrowsingTopics.has(channel.topic),
+        ),
         payload: payloadForChannel(channel, schema),
         recordCount: recordCountForChannel(channelId, reader),
         streamId: channelId.toString(),
@@ -70,6 +77,7 @@ function channelMetadata(
   channel: McapTypes.TypedMcapRecords["Channel"],
   reader: McapIndexedReaderLike,
   schema: McapTypes.TypedMcapRecords["Schema"] | undefined,
+  supportsExactBrowsing: boolean,
 ): Record<string, string> {
   const metadata = Object.fromEntries(channel.metadata.entries());
 
@@ -86,6 +94,9 @@ function channelMetadata(
     "mcap.generic_decode_status",
     genericDecodeStatusForChannel(reader, channel),
   );
+  // Capability metadata is authoritative; source-authored channel metadata
+  // must not opt a stream into exact reads without a usable index.
+  metadata["mcap.exact_browsing"] = supportsExactBrowsing ? "true" : "false";
   // Needed to resolve `absolute`-mode's epoch anchor before the playback
   // engine mounts. Its internal clock is always 0-based from the episode's
   // first message, so mapping back to real wall-clock time requires this value.
@@ -109,6 +120,39 @@ function channelMetadata(
   }
 
   return metadata;
+}
+
+function usableMessageIndexTopics(
+  reader: McapIndexedReaderLike,
+): ReadonlySet<string> {
+  const topics = new Set<string>();
+  if (
+    !reader.readIndexedMessages ||
+    !reader.readIndexedMessageTimes ||
+    !reader.readLatestIndexedMessageTimes
+  ) {
+    return topics;
+  }
+
+  const indexedChannelIds = new Set<number>();
+  for (const chunk of reader.chunkIndexes) {
+    if (chunk.messageIndexLength <= 0n) continue;
+    for (const channelId of chunk.messageIndexOffsets.keys()) {
+      indexedChannelIds.add(channelId);
+    }
+  }
+  const channelIdsByTopic = new Map<string, number[]>();
+  for (const channel of reader.channelsById.values()) {
+    const channelIds = channelIdsByTopic.get(channel.topic) ?? [];
+    channelIds.push(channel.id);
+    channelIdsByTopic.set(channel.topic, channelIds);
+  }
+  for (const [topic, channelIds] of channelIdsByTopic) {
+    if (channelIds.every((channelId) => indexedChannelIds.has(channelId))) {
+      topics.add(topic);
+    }
+  }
+  return topics;
 }
 
 function genericDecodeStatusForChannel(

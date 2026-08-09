@@ -7,7 +7,11 @@ import {
   defineEpisodeSessionContractTests,
   collectBatches,
 } from "../../testing/adapter-contract";
-import { createMcapFormatAdapter, createMcapManifest } from "./format-adapter";
+import {
+  createMcapFormatAdapter,
+  createMcapManifest,
+  createMcapRawRecordCapability,
+} from "./format-adapter";
 import { McapBoundedReadCancelledError } from "./reader";
 import {
   MCAP_ACTIVE_TIMELINE,
@@ -689,6 +693,7 @@ describe("MCAP format adapter", () => {
             schemaName: null,
             sourceName: "/camera",
             streamId: "camera",
+            supportsExactBrowsing: false,
           },
         ],
       );
@@ -705,6 +710,126 @@ describe("MCAP format adapter", () => {
     } finally {
       session.dispose();
     }
+  });
+
+  it("adapts indexed topic browsing onto explicit interactive reads", async () => {
+    const client = createClient();
+    client.readTopics = vi.fn(async () => [
+      create(StreamInventorySchema, {
+        displayName: "Camera",
+        metadata: {
+          "mcap.exact_browsing": "true",
+          "mcap.topic": "/camera",
+        },
+        recordCount: "3",
+        streamId: "camera",
+      }),
+    ]);
+    client.readRawMessageAtCursor = vi.fn(async () => ({
+      cursor: "cursor-2",
+      logTimeNs: 2n,
+      messageEncoding: "json",
+      schemaName: "test.State",
+      status: "ok" as const,
+      topic: "/camera",
+      validFromNs: 2n,
+      validUntilNs: 3n,
+    }));
+    client.readMessageIndexWindow = vi.fn(async () => ({
+      entries: [
+        { cursor: "cursor-1", logTimeNs: 1n },
+        { cursor: "cursor-2", logTimeNs: 2n },
+      ],
+      hasNext: true,
+      hasPrevious: false,
+      selectedCursor: "cursor-2",
+    }));
+    const session = await createMcapFormatAdapter({
+      createClient: () => client,
+    }).open(source, io);
+    const controller = new AbortController();
+    try {
+      await expect(session.rawRecords?.listRawRecordStreams()).resolves.toEqual(
+        [
+          expect.objectContaining({
+            streamId: "camera",
+            supportsExactBrowsing: true,
+          }),
+        ],
+      );
+      await expect(
+        session.rawRecords?.readRawRecordAtCursor?.({
+          cursor: "cursor-2",
+          signal: controller.signal,
+          stream: "camera",
+        }),
+      ).resolves.toMatchObject({ cursor: "cursor-2", streamId: "camera" });
+      await expect(
+        session.rawRecords?.readRawRecordIndexWindow?.({
+          after: 5,
+          anchorCursor: "cursor-2",
+          before: 5,
+          signal: controller.signal,
+          stream: "camera",
+        }),
+      ).resolves.toEqual({
+        entries: [
+          { cursor: "cursor-1", timestampNs: 1n },
+          { cursor: "cursor-2", timestampNs: 2n },
+        ],
+        hasNext: true,
+        hasPrevious: false,
+        selectedCursor: "cursor-2",
+      });
+
+      expect(client.readRawMessageAtCursor).toHaveBeenCalledWith(
+        expect.objectContaining({ cursor: "cursor-2", topic: "/camera" }),
+        { priority: "current", signal: controller.signal },
+      );
+      expect(client.readMessageIndexWindow).toHaveBeenCalledWith(
+        expect.objectContaining({ anchorCursor: "cursor-2", topic: "/camera" }),
+        { priority: "current", signal: controller.signal },
+      );
+    } finally {
+      session.dispose();
+    }
+  });
+
+  it("requires both authoritative metadata and exact client methods", async () => {
+    const metadataOnlyClient = createClient();
+    metadataOnlyClient.readTopics = vi.fn(async () => [
+      create(StreamInventorySchema, {
+        metadata: {
+          "mcap.exact_browsing": "true",
+          "mcap.topic": "/camera",
+        },
+        streamId: "camera",
+      }),
+    ]);
+    const metadataOnly = createMcapRawRecordCapability({
+      client: metadataOnlyClient,
+      source: sourceDescriptor,
+    });
+
+    await expect(metadataOnly.listRawRecordStreams()).resolves.toEqual([
+      expect.objectContaining({ supportsExactBrowsing: false }),
+    ]);
+    expect(metadataOnly.readRawRecordAtCursor).toBeUndefined();
+    expect(metadataOnly.readRawRecordIndexWindow).toBeUndefined();
+
+    const methodsOnlyClient = createClient();
+    methodsOnlyClient.readRawMessageAtCursor = vi.fn();
+    methodsOnlyClient.readMessageIndexWindow = vi.fn();
+    const methodsOnly = createMcapRawRecordCapability({
+      client: methodsOnlyClient,
+      source: sourceDescriptor,
+    });
+
+    await expect(methodsOnly.listRawRecordStreams()).resolves.toEqual([
+      expect.objectContaining({ supportsExactBrowsing: false }),
+    ]);
+    expect(methodsOnly.readRawRecordAtCursor).toBeTypeOf("function");
+    expect(methodsOnly.readRawRecordIndexWindow).toBeTypeOf("function");
   });
 
   it("forwards per-call cancellation to raw and point-cloud capabilities", async () => {

@@ -199,11 +199,22 @@ export class ByteClientReadable implements McapTypes.IReadable {
     return this.readRange(offset, size);
   }
 
-  async readExact(offset: bigint, size: bigint): Promise<Uint8Array> {
-    return this.readRange(offset, size, {
-      blockFill: false,
-      readahead: false,
-    });
+  async readExact(
+    offset: bigint,
+    size: bigint,
+    signal?: AbortSignal,
+  ): Promise<Uint8Array> {
+    return (
+      await this.readRangeResult(
+        offset,
+        size,
+        {
+          blockFill: false,
+          readahead: false,
+        },
+        signal,
+      )
+    ).bytes;
   }
 
   /** Plans the physical cache fill without performing the read. */
@@ -289,17 +300,24 @@ export class ByteClientReadable implements McapTypes.IReadable {
     }
 
     const readKey = readRangeKey(offset, size, cachePolicy);
-    const pending = this.inFlightReads.get(readKey);
+    // A signal-bound request owns its transport cancellation. It must not
+    // join, or become the shared source for, an independently-owned waiter.
+    const pending = signalOverride
+      ? undefined
+      : this.inFlightReads.get(readKey);
     const cacheResult = pending ? "coalesced" : "fetched";
     const signal =
       signalOverride ?? this.options.readSignal?.current ?? undefined;
-    const result = await (pending ??
-      this.startReadRange(readKey, {
-        cachePolicy,
-        range: { length: size, offset },
-        ...(signal ? { signal } : {}),
-        source: this.source,
-      }));
+    const request = {
+      cachePolicy,
+      range: { length: size, offset },
+      ...(signal ? { signal } : {}),
+      source: this.source,
+    };
+    const result = await (signalOverride
+      ? this.byteClient.readBytes(request)
+      : (pending ?? this.startReadRange(readKey, request)));
+    if (signal?.aborted) throw createAbortError("MCAP read aborted");
     this.updateSource(result.source);
     this.registerReadBuffer(result);
     this.logChunkRead(
