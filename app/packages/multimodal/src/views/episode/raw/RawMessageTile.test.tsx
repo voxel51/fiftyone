@@ -242,6 +242,62 @@ describe("RawMessageTile", () => {
     expect(screen.queryByText("first copy failed")).toBeNull();
   });
 
+  it("cancels an export when the displayed record changes", async () => {
+    let requestSignal: AbortSignal | undefined;
+    mocks.readFullMessageJson.mockImplementation(
+      async (_stream, _timeNs, signal) => {
+        requestSignal = signal;
+        await new Promise((_resolve, reject) => {
+          signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        });
+        return "unreachable";
+      },
+    );
+
+    const view = render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy message" }));
+    await waitFor(() => expect(requestSignal).toBeDefined());
+
+    mocks.recordState = {
+      result: {
+        ...DISPLAYED_RESULT,
+        timestampNs: 20_000_000_000n,
+        validFromNs: 20_000_000_000n,
+        validUntilNs: 30_000_000_000n,
+      },
+      status: "ready",
+    };
+    view.rerender(<RawMessageTile />);
+
+    await waitFor(() => expect(requestSignal?.aborted).toBe(true));
+    expect(screen.getByRole("button", { name: "Copy message" })).toBeTruthy();
+    expect(mocks.writeText).not.toHaveBeenCalled();
+  });
+
+  it("does not report copied after cancelling a pending clipboard write", async () => {
+    let resolveWrite: (() => void) | undefined;
+    mocks.readFullMessageJson.mockResolvedValue('{"data":7}');
+    mocks.writeText.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveWrite = resolve;
+        }),
+    );
+
+    render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy message" }));
+    await waitFor(() => expect(mocks.writeText).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole("button", { name: "Cancel copy" }));
+
+    expect(screen.getByRole("button", { name: "Copy message" })).toBeTruthy();
+    resolveWrite?.();
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Copied" })).toBeNull(),
+    );
+  });
+
   it("marks a retained record as stale while the latest target loads", () => {
     mocks.recordState = {
       result: DISPLAYED_RESULT,

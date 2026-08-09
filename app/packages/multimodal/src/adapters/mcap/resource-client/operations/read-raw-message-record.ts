@@ -279,8 +279,10 @@ async function selectMessageAtOrBefore({
         topics: [topic],
       });
       throwIfAborted(signal);
-      const indexedEntries = latestByTopic.get(topic) ?? [];
-      const latestLogTimeNs = indexedEntries.reduce<bigint | null>(
+      const channelEntries = (latestByTopic.get(topic) ?? []).filter(
+        (entry) => entry.channelId === channelId,
+      );
+      const latestLogTimeNs = channelEntries.reduce<bigint | null>(
         (latest, entry) =>
           latest === null || entry.logTimeNs > latest
             ? entry.logTimeNs
@@ -290,9 +292,8 @@ async function selectMessageAtOrBefore({
       if (latestLogTimeNs === null) {
         return null;
       }
-      const candidates = indexedEntries.filter(
-        (entry) =>
-          entry.channelId === channelId && entry.logTimeNs === latestLogTimeNs,
+      const candidates = channelEntries.filter(
+        (entry) => entry.logTimeNs === latestLogTimeNs,
       );
       assertRawRecordIndexedCandidateBound(candidates.length);
       const candidateChunkOffsets = new Set(
@@ -456,6 +457,7 @@ async function readMessageForIndexedEntries({
     let selected: McapRawMessage | null = null;
     for (const message of messages) {
       throwIfAborted(signal);
+      assertRawRecordMessageInputBound(message.data.byteLength);
       if (message.channelId !== channelId) continue;
       if (!selected || isPreferredSameTimeMessage(message, selected)) {
         selected = message;
@@ -529,6 +531,7 @@ function isPreferredSameTimeMessage(
   candidate: McapRawMessage,
   current: McapRawMessage,
 ): boolean {
+  // Stable MCAP playback policy: lowest sequence, then lowest publish time.
   return (
     candidate.sequence < current.sequence ||
     (candidate.sequence === current.sequence &&

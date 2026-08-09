@@ -662,9 +662,12 @@ function parseRawChannelStreamId(
   if (!streamId.startsWith(RAW_CHANNEL_STREAM_PREFIX)) return null;
   const separator = streamId.indexOf(":", RAW_CHANNEL_STREAM_PREFIX.length);
   if (separator < 0) return null;
-  const channelId = Number(
-    streamId.slice(RAW_CHANNEL_STREAM_PREFIX.length, separator),
+  const encodedChannelId = streamId.slice(
+    RAW_CHANNEL_STREAM_PREFIX.length,
+    separator,
   );
+  if (!/^\d+$/.test(encodedChannelId)) return null;
+  const channelId = Number(encodedChannelId);
   if (!Number.isSafeInteger(channelId) || channelId < 0) return null;
   try {
     return {

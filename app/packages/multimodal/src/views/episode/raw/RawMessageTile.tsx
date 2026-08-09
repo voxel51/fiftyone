@@ -201,16 +201,29 @@ function MetaRow({
     "idle" | "copied" | "failed"
   >("idle");
 
-  useEffect(
-    () => () => {
-      copyControllerRef.current?.abort();
-    },
-    [],
-  );
+  useEffect(() => {
+    setCopying(false);
+    setCopyError(null);
+    showCopyFeedback("idle");
+    return () => {
+      const controller = copyControllerRef.current;
+      copyControllerRef.current = null;
+      controller?.abort();
+    };
+  }, [
+    result.sequence,
+    result.timestampNs,
+    result.validFromNs,
+    showCopyFeedback,
+    streamKey,
+  ]);
 
   const handleCopyMessage = useCallback(async () => {
     if (copying) {
-      copyControllerRef.current?.abort();
+      const controller = copyControllerRef.current;
+      copyControllerRef.current = null;
+      controller?.abort();
+      setCopying(false);
       setCopyError(null);
       showCopyFeedback("idle");
       return;
@@ -229,24 +242,27 @@ function MetaRow({
     setCopyError(null);
     showCopyFeedback("idle");
     setCopying(true);
+    const isCurrentCopy = () =>
+      copyControllerRef.current === controller && !controller.signal.aborted;
     try {
       const json = await readFullMessageJson(
         streamKey,
         result.validFromNs,
         controller.signal,
       );
-      if (controller.signal.aborted) return;
+      if (!isCurrentCopy()) return;
       await navigator.clipboard.writeText(json);
+      if (!isCurrentCopy()) return;
       showCopyFeedback("copied");
     } catch (error) {
-      if (controller.signal.aborted) return;
+      if (!isCurrentCopy()) return;
       setCopyError(errorMessage(error, "Copy failed"));
       showCopyFeedback("failed");
     } finally {
-      if (copyControllerRef.current === controller) {
+      if (isCurrentCopy()) {
         copyControllerRef.current = null;
+        setCopying(false);
       }
-      setCopying(false);
     }
   }, [copying, readFullMessageJson, result, showCopyFeedback, streamKey]);
 

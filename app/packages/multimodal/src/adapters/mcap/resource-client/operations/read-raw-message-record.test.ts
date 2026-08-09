@@ -398,6 +398,121 @@ describe("readMcapRawMessageRecord", () => {
     expect(rawNodeToJson(rootOf(result))).toEqual({ v: "selected" });
   });
 
+  it("selects the latest indexed entry from the requested channel", async () => {
+    const selected = jsonMessage({ v: "requested-channel" }, 1_000_000_000n);
+    const readIndexedMessages = vi.fn(async () => [selected]);
+    const requestedEntry = indexedEntry({
+      channelId: 1,
+      logTimeNs: 1_000_000_000n,
+      messageOffset: 1n,
+    });
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: [],
+      readIndexedMessages,
+      readIndexedMessageTimes: async function* () {
+        // No successor.
+      },
+      readLatestIndexedMessageTimes: async () =>
+        new Map([
+          [
+            "/state",
+            [
+              requestedEntry,
+              indexedEntry({
+                channelId: 2,
+                logTimeNs: 2_000_000_000n,
+                messageOffset: 2n,
+              }),
+            ],
+          ],
+        ]),
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: {
+        channelId: 1,
+        source: createSource(),
+        timeNs: 2_000_000_000n,
+        topic: "/state",
+      },
+      timeline,
+    });
+
+    expect(readIndexedMessages).toHaveBeenCalledWith({
+      entries: [requestedEntry],
+      signal: undefined,
+    });
+    expect(result.logTimeNs).toBe(1_000_000_000n);
+    expect(rawNodeToJson(rootOf(result))).toEqual({ v: "requested-channel" });
+  });
+
+  it("uses lowest sequence then publish time for equal indexed log times", async () => {
+    const logTime = 2_000_000_000n;
+    const readIndexedMessages = vi.fn(async () => [
+      createMessage(new TextEncoder().encode('{"v":"sequence-2"}'), {
+        logTime,
+        publishTime: 1n,
+        sequence: 2,
+      }),
+      createMessage(new TextEncoder().encode('{"v":"later-publish"}'), {
+        logTime,
+        publishTime: 5n,
+        sequence: 1,
+      }),
+      createMessage(new TextEncoder().encode('{"v":"selected"}'), {
+        logTime,
+        publishTime: 3n,
+        sequence: 1,
+      }),
+    ]);
+    const entries = [1n, 2n, 3n].map((messageOffset) =>
+      indexedEntry({ logTimeNs: logTime, messageOffset }),
+    );
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: [],
+      readIndexedMessages,
+      readIndexedMessageTimes: async function* () {
+        // No successor.
+      },
+      readLatestIndexedMessageTimes: async () => new Map([["/state", entries]]),
+    });
+
+    const result = await readMcapRawMessageRecord({
+      reader,
+      request: { source: createSource(), timeNs: logTime, topic: "/state" },
+      timeline,
+    });
+
+    expect(result.sequence).toBe(1);
+    expect(result.publishTimeNs).toBe(3n);
+    expect(rawNodeToJson(rootOf(result))).toEqual({ v: "selected" });
+  });
+
+  it("bounds an exact-materialized message before decoding", async () => {
+    const oversized = {
+      ...jsonMessage({ v: 1 }, 1n),
+      data: { byteLength: RAW_RECORD_MAX_MESSAGE_BYTES + 1 } as Uint8Array,
+    };
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: [],
+      readIndexedMessages: async () => [oversized],
+      readLatestIndexedMessageTimes: async () =>
+        new Map([["/state", [indexedEntry({ logTimeNs: 1n })]]]),
+    });
+
+    await expect(
+      readMcapRawMessageRecord({
+        reader,
+        request: { source: createSource(), timeNs: 1n, topic: "/state" },
+        timeline,
+      }),
+    ).rejects.toMatchObject({ operation: "raw-record-message" });
+  });
+
   it("bounds validity to the probe horizon when no next message exists", async () => {
     const reader = createReader({
       channel: createChannel({ messageEncoding: "json", topic: "/state" }),

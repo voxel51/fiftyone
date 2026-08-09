@@ -810,6 +810,41 @@ describe("MCAP format adapter", () => {
     );
   });
 
+  it("does not parse non-decimal synthetic channel ids", async () => {
+    const client = createClient();
+    vi.mocked(client.readRawMessageRecord).mockImplementation(
+      async (request) => ({
+        messageEncoding: "json",
+        schemaName: null,
+        status: "empty",
+        topic: request.topic,
+        validFromNs: 0n,
+        validUntilNs: 1n,
+      }),
+    );
+    const capability = createMcapRawRecordCapability({
+      client,
+      source: sourceDescriptor,
+    });
+
+    for (const stream of [
+      "mcap-channel::%2Fshared",
+      "mcap-channel:+1:%2Fshared",
+      "mcap-channel:-1:%2Fshared",
+      "mcap-channel:1e0:%2Fshared",
+    ]) {
+      await capability.readRawRecord({ stream, timestampNs: 0n });
+      expect(client.readRawMessageRecord).toHaveBeenLastCalledWith(
+        expect.objectContaining({ topic: stream }),
+        expect.objectContaining({ priority: "idle" }),
+      );
+      expect(client.readRawMessageRecord).toHaveBeenLastCalledWith(
+        expect.not.objectContaining({ channelId: expect.anything() }),
+        expect.any(Object),
+      );
+    }
+  });
+
   it("forwards per-call cancellation to raw and point-cloud capabilities", async () => {
     const client = createClient();
     client.readPointCloudChannel = vi.fn(async () => ({}) as never);
