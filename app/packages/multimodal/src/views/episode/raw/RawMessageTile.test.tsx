@@ -20,7 +20,9 @@ const mocks = vi.hoisted(() => ({
     streams: [],
   } as NumericFieldsEnumeration,
   readFullMessageJson:
-    vi.fn<(stream: string, timeNs: bigint) => Promise<string>>(),
+    vi.fn<
+      (stream: string, timeNs: bigint, signal?: AbortSignal) => Promise<string>
+    >(),
   recordState: null as RawRecordState | null,
   selectedStream: "/state",
   setSelectedStream: vi.fn(),
@@ -117,7 +119,10 @@ beforeEach(() => {
   mocks.setTileTitle.mockReset();
   mocks.streams = readyRawStreams();
   mocks.writeText.mockReset();
-  Object.assign(navigator, { clipboard: { writeText: mocks.writeText } });
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText: mocks.writeText },
+  });
 });
 
 afterEach(() => {
@@ -137,19 +142,186 @@ describe("RawMessageTile", () => {
     expect(mocks.readFullMessageJson).toHaveBeenCalledWith(
       "/state",
       DISPLAYED_RESULT.validFromNs,
+      expect.any(AbortSignal),
     );
     expect(screen.getByRole("button", { name: "Copied" })).toBeTruthy();
+  });
+
+  it("reports clipboard rejection instead of claiming the message was copied", async () => {
+    mocks.readFullMessageJson.mockResolvedValue('{"data":7}');
+    mocks.writeText.mockRejectedValue(new Error("clipboard permission denied"));
+
+    render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy message" }));
+
+    expect(
+      await screen.findByRole("button", { name: "Copy failed" }),
+    ).toBeTruthy();
+    expect(screen.getByText("clipboard permission denied")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Copied" })).toBeNull();
+  });
+
+  it("reports unavailable clipboard support without starting an export", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: undefined,
+    });
+
+    render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy message" }));
+
+    expect(
+      await screen.findByText("Clipboard access is unavailable"),
+    ).toBeTruthy();
+    expect(mocks.readFullMessageJson).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Copied" })).toBeNull();
+  });
+
+  it("surfaces whole-message output limits as copy failures", async () => {
+    mocks.readFullMessageJson.mockRejectedValue(
+      new Error(
+        "Complete message JSON exceeds the 8388608-code-unit copy/export limit",
+      ),
+    );
+
+    render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy message" }));
+
+    expect(
+      await screen.findByText(/8388608-code-unit copy\/export limit/),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Copy failed" })).toBeTruthy();
+    expect(mocks.writeText).not.toHaveBeenCalled();
+  });
+
+  it("cancels an in-progress whole-message export", async () => {
+    let requestSignal: AbortSignal | undefined;
+    mocks.readFullMessageJson.mockImplementation(
+      async (_stream, _timeNs, signal) => {
+        requestSignal = signal;
+        await new Promise((_resolve, reject) => {
+          signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        });
+        return "unreachable";
+      },
+    );
+
+    render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy message" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel copy" }));
+
+    await waitFor(() => expect(requestSignal?.aborted).toBe(true));
+    expect(
+      await screen.findByRole("button", { name: "Copy message" }),
+    ).toBeTruthy();
+    expect(mocks.writeText).not.toHaveBeenCalled();
+  });
+
+  it("clears stale copy failure feedback when a retry is cancelled", async () => {
+    mocks.readFullMessageJson
+      .mockRejectedValueOnce(new Error("first copy failed"))
+      .mockImplementationOnce(async (_stream, _timeNs, signal) => {
+        await new Promise((_resolve, reject) => {
+          signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        });
+        return "unreachable";
+      });
+
+    render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy message" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Copy failed" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel copy" }));
+
+    expect(
+      await screen.findByRole("button", { name: "Copy message" }),
+    ).toBeTruthy();
+    expect(screen.queryByText("first copy failed")).toBeNull();
+  });
+
+  it("cancels an export when the displayed record changes", async () => {
+    let requestSignal: AbortSignal | undefined;
+    mocks.readFullMessageJson.mockImplementation(
+      async (_stream, _timeNs, signal) => {
+        requestSignal = signal;
+        await new Promise((_resolve, reject) => {
+          signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        });
+        return "unreachable";
+      },
+    );
+
+    const view = render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy message" }));
+    await waitFor(() => expect(requestSignal).toBeDefined());
+
+    mocks.recordState = {
+      result: {
+        ...DISPLAYED_RESULT,
+        timestampNs: 20_000_000_000n,
+        validFromNs: 20_000_000_000n,
+        validUntilNs: 30_000_000_000n,
+      },
+      status: "ready",
+    };
+    view.rerender(<RawMessageTile />);
+
+    await waitFor(() => expect(requestSignal?.aborted).toBe(true));
+    expect(screen.getByRole("button", { name: "Copy message" })).toBeTruthy();
+    expect(mocks.writeText).not.toHaveBeenCalled();
+  });
+
+  it("does not report copied after cancelling a pending clipboard write", async () => {
+    let resolveWrite: (() => void) | undefined;
+    mocks.readFullMessageJson.mockResolvedValue('{"data":7}');
+    mocks.writeText.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveWrite = resolve;
+        }),
+    );
+
+    render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy message" }));
+    await waitFor(() => expect(mocks.writeText).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole("button", { name: "Cancel copy" }));
+
+    expect(screen.getByRole("button", { name: "Copy message" })).toBeTruthy();
+    resolveWrite?.();
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Copied" })).toBeNull(),
+    );
+  });
+
+  it("marks a retained record as stale while the latest target loads", () => {
+    mocks.recordState = {
+      result: DISPLAYED_RESULT,
+      status: "loading",
+      targetNs: 30_000_000_000n,
+    };
+
+    render(<RawMessageTile />);
+
+    expect(screen.getByTestId("episode-raw-stale").textContent).toMatch(
+      /showing the previous result/,
+    );
+    expect(screen.getByTestId("episode-raw-tree")).toBeTruthy();
   });
 
   it("offers numeric fields for a canonical stream id", () => {
     mocks.selectedStream = "7";
     mocks.streams = readyRawStreams("7");
-    mocks.enumeration = readyEnumeration();
 
     render(<RawMessageTile />);
 
     fireEvent.click(screen.getByTestId("episode-raw-plot-data.0"));
     expect(mocks.addFieldToPlot).toHaveBeenCalledWith("7", "data.0");
+    expect(mocks.ensureEnumeration).not.toHaveBeenCalled();
     expect(mocks.setTileTitle).toHaveBeenCalledWith("/state", {
       source: "auto",
     });
@@ -157,7 +329,6 @@ describe("RawMessageTile", () => {
 
   it("offers numeric fields for a legacy source-name binding", () => {
     mocks.selectedStream = "/state";
-    mocks.enumeration = readyEnumeration();
 
     render(<RawMessageTile />);
 
@@ -168,7 +339,6 @@ describe("RawMessageTile", () => {
   it("names a failed canonical binding by its source name", () => {
     mocks.selectedStream = "7";
     mocks.streams = readyRawStreams("7");
-    mocks.enumeration = readyEnumeration();
     mocks.recordState = { error: "decoder unavailable", status: "error" };
 
     render(<RawMessageTile />);
@@ -202,21 +372,6 @@ function readyRawStreams(streamId = "/state") {
         schemaName: "test.State",
         sourceName: "/state",
         streamId,
-      },
-    ],
-  };
-}
-
-function readyEnumeration(): NumericFieldsEnumeration {
-  return {
-    status: "ready",
-    streams: [
-      {
-        availability: "ready",
-        encoding: "json",
-        fields: [{ path: "data.0", valueType: "number" }],
-        sourceName: "/state",
-        streamId: "7",
       },
     ],
   };

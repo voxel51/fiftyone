@@ -1,10 +1,14 @@
-import { playheadAtom } from "@fiftyone/playback/runtime";
+import { playheadAtom, seekEventAtom } from "@fiftyone/playback/runtime";
 import { PlaybackStoreContext } from "@fiftyone/playback/runtime";
 import { act, cleanup, render } from "@testing-library/react";
 import { createStore } from "jotai";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createTimelineIndex, type DataStream } from "../../../runtime";
+import {
+  createTimelineIndex,
+  DEMAND_FAILURE_BACKOFF_MS,
+  type DataStream,
+} from "../../../runtime";
 import { DataStreamProvider, useSetDataStream } from "../../../runtime/react";
 import type { RawRecordResult, RawRecordStream } from "../../../ir";
 import type { RawRecordCapability } from "../../../ports";
@@ -46,6 +50,7 @@ describe("RawMessageBridge records", () => {
     expect(client.readRawRecord).toHaveBeenCalledTimes(1);
     expect(client.readRawRecord).toHaveBeenCalledWith({
       includeFullJson: true,
+      intent: "export",
       signal: expect.any(AbortSignal),
       stream: "/imu",
       timestampNs: 42_000_000_000n,
@@ -172,6 +177,124 @@ describe("RawMessageBridge records", () => {
     expect(client.readRawRecord).toHaveBeenLastCalledWith(
       expect.objectContaining({ timestampNs: 1_812_000_000_000n }),
     );
+  });
+
+  it("supersedes an in-flight read immediately for a paused frame step", async () => {
+    const first = deferred<RawRecordResult>();
+    const second = deferred<RawRecordResult>();
+    const requests: Parameters<RawRecordCapability["readRawRecord"]>[0][] = [];
+    const client = createClient({
+      readRawRecord: vi.fn((request) => {
+        requests.push(request);
+        return requests.length === 1 ? first.promise : second.promise;
+      }),
+    });
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+
+    render(<Harness client={client} contextRef={context} store={store} />);
+    await act(async () => {
+      context.current?.subscribeRecord("/imu");
+      await flushMicrotasks();
+    });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.intent).toBe("background");
+
+    await act(async () => {
+      store.set(playheadAtom, 300);
+      store.set(seekEventAtom, { seq: 1, time: 300 });
+      await flushMicrotasks();
+    });
+
+    expect(requests[0]?.signal?.aborted).toBe(true);
+    expect(requests).toHaveLength(2);
+    expect(requests[1]).toMatchObject({
+      intent: "paused-inspection",
+      timestampNs: 300_000_000_000n,
+    });
+    expect(context.current?.recordsByStream.get("/imu")).toMatchObject({
+      status: "loading",
+      targetNs: 300_000_000_000n,
+    });
+
+    const firstRequest = requests[0];
+    const secondRequest = requests[1];
+    if (!firstRequest || !secondRequest) {
+      throw new Error("expected both superseded raw requests");
+    }
+    first.resolve(recordResult(firstRequest));
+    await act(flushMicrotasks);
+    expect(
+      context.current?.recordsByStream.get("/imu")?.result,
+    ).toBeUndefined();
+
+    second.resolve(recordResult(secondRequest));
+    await act(flushMicrotasks);
+    expect(context.current?.recordsByStream.get("/imu")).toMatchObject({
+      result: { timestampNs: 300_000_000_000n },
+      status: "ready",
+      targetNs: 300_000_000_000n,
+    });
+  });
+
+  it("does not loop when a reader returns an invalid window for its exact target", async () => {
+    const client = createClient({
+      readRawRecord: vi.fn(async (request) => ({
+        ...recordResult(request),
+        validFromNs: 0n,
+        validUntilNs: 1n,
+      })),
+    });
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+
+    render(<Harness client={client} contextRef={context} store={store} />);
+    await act(async () => {
+      context.current?.subscribeRecord("/imu");
+      await flushMicrotasks();
+    });
+    await act(flushMicrotasks);
+
+    expect(client.readRawRecord).toHaveBeenCalledOnce();
+    expect(context.current?.recordsByStream.get("/imu")).toMatchObject({
+      error: "Message reader returned an invalid validity window",
+      status: "error",
+      targetNs: 60_000_000_000n,
+    });
+  });
+
+  it("retries a paused failed refresh after backoff without another move", async () => {
+    vi.useFakeTimers();
+    const client = createClient({
+      readRawRecord: vi
+        .fn<RawRecordCapability["readRawRecord"]>()
+        .mockRejectedValueOnce(new Error("temporary failure"))
+        .mockImplementation(async (request) => recordResult(request)),
+    });
+    const context = createContextRef();
+
+    render(<Harness client={client} contextRef={context} />);
+    await act(async () => {
+      context.current?.subscribeRecord("/imu");
+      await flushMicrotasks();
+    });
+    expect(context.current?.recordsByStream.get("/imu")?.status).toBe("error");
+    expect(client.readRawRecord).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DEMAND_FAILURE_BACKOFF_MS - 1);
+      await flushMicrotasks();
+    });
+    expect(client.readRawRecord).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+      await flushMicrotasks();
+    });
+    expect(client.readRawRecord).toHaveBeenCalledTimes(2);
+    expect(context.current?.recordsByStream.get("/imu")?.status).toBe("ready");
   });
 
   it("surfaces errors only when nothing is shown and retries on demand", async () => {

@@ -12,6 +12,7 @@ import {
 import {
   createDemandFailureBackoff,
   createDemandInventoryMachine,
+  DEMAND_FAILURE_BACKOFF_MS,
   startDemandBridge,
 } from "../../../runtime";
 import {
@@ -51,14 +52,15 @@ export interface RawStreamsState {
 }
 
 /**
- * One stream's record at the playhead. `ready` keeps the last result
- * visible through refetches; `error` only surfaces when there is
- * nothing older to show.
+ * One stream's record at the playhead. A retained result remains visible
+ * through refetches, while `loading`/`error` honestly mark it stale.
  */
 export interface RawRecordState {
   readonly status: "loading" | "ready" | "error";
   readonly result?: RawRecordResult;
   readonly error?: string;
+  /** Latest coalesced Message-panel target this state is resolving. */
+  readonly targetNs?: bigint;
 }
 
 /**
@@ -74,10 +76,15 @@ export interface RawMessageContextValue {
   ensureStreams(): void;
 
   /**
-   * Reads the complete decoded message behind an inspector result as JSON.
-   * The large payload is fetched only for an explicit copy action.
+   * Reads the complete decoded message behind an inspector result as bounded,
+   * compact JSON. The payload is fetched only for an explicit copy action and
+   * byte buffers use a base64 envelope.
    */
-  readFullMessageJson(stream: string, timeNs: bigint): Promise<string>;
+  readFullMessageJson(
+    stream: string,
+    timeNs: bigint,
+    signal?: AbortSignal,
+  ): Promise<string>;
 
   /**
    * Declares interest in one stream's record while the returned
@@ -88,7 +95,11 @@ export interface RawMessageContextValue {
 }
 
 interface RawMessageHandlers extends DemandContextHandlers {
-  readFullMessageJson(stream: string, timeNs: bigint): Promise<string>;
+  readFullMessageJson(
+    stream: string,
+    timeNs: bigint,
+    signal?: AbortSignal,
+  ): Promise<string>;
 }
 
 const IDLE_STREAMS: RawStreamsState = { status: "idle", streams: [] };
@@ -121,14 +132,14 @@ export function useRawMessageContext(): RawMessageContextValue {
   const { ensureInventory, handlersRef, inventory, subscribeKey, valuesByKey } =
     useInternalValue();
   const readFullMessageJson = useCallback(
-    (stream: string, timeNs: bigint) => {
+    (stream: string, timeNs: bigint, signal?: AbortSignal) => {
       const handlers = handlersRef.current;
       if (!handlers) {
         return Promise.reject(
           new Error("episode message reader is unavailable"),
         );
       }
-      return handlers.readFullMessageJson(stream, timeNs);
+      return handlers.readFullMessageJson(stream, timeNs, signal);
     },
     [handlersRef],
   );
@@ -155,9 +166,10 @@ export function useRawMessageContext(): RawMessageContextValue {
  * client. Reads are single-message and playhead-anchored: each result
  * carries a validity window (`[validFromNs, validUntilNs)`), so a stream
  * only refetches when the playhead leaves the window — paused playback
- * and sparse streams cost zero reads. Reads ride the idle lane (never
- * ahead of current-frame or playback work) and stand down while the
- * link is starved, same gate as the numeric-series bridge.
+ * and sparse streams cost zero reads. Continuous-playback reads ride the idle
+ * lane and stand down while the link is starved. Explicit paused seeks use an
+ * isolated inspection worker with background network admission, so they can
+ * respond promptly without serializing image/3D playback work.
  */
 export function RawMessageBridge({
   capability,
@@ -194,7 +206,17 @@ export function RawMessageBridge({
     }
 
     const published = new Map<string, RawRecordState>();
-    const inflight = new Map<string, AbortController>();
+    const inflight = new Map<
+      string,
+      {
+        readonly controller: AbortController;
+        readonly expedited: boolean;
+        readonly targetNs: bigint;
+      }
+    >();
+    const desiredTargets = new Map<string, bigint>();
+    const desiredExpedited = new Map<string, boolean>();
+    const failureRetryTokens = new Map<string, object>();
     const failures = createDemandFailureBackoff<string>();
     const epochController = new AbortController();
 
@@ -204,6 +226,7 @@ export function RawMessageBridge({
     >({
       dataStreamRef,
       deferredRetryMs: DEFERRED_RETRY_MS,
+      expeditePausedSeeks: true,
       handlersRef,
       inventoryReplay,
       makeHandlers: ({ isCancelled, queueFill }) => {
@@ -222,47 +245,84 @@ export function RawMessageBridge({
         return {
           ensureInventory: inventory.ensure,
           onDemandChanged: queueFill,
-          async readFullMessageJson(stream, timeNs) {
-            const result = await capability.readRawRecord({
-              includeFullJson: true,
-              signal: epochController.signal,
-              stream,
-              timestampNs: timeNs,
-            });
-            if (result.status !== "ok" || result.fullJson === undefined) {
-              throw new Error(
-                `Could not read the complete message for ${stream}`,
-              );
+          async readFullMessageJson(stream, timeNs, signal) {
+            const linked = linkAbortSignals(epochController.signal, signal);
+            try {
+              const result = await capability.readRawRecord({
+                includeFullJson: true,
+                intent: "export",
+                signal: linked.signal,
+                stream,
+                timestampNs: timeNs,
+              });
+              if (result.status !== "ok" || result.fullJson === undefined) {
+                throw new Error(
+                  `Could not read the complete message for ${stream}`,
+                );
+              }
+              return result.fullJson;
+            } finally {
+              linked.cleanup();
             }
-            return result.fullJson;
           },
         };
       },
       onFill({
         demandKeys,
+        expedited,
         isCancelled,
+        later,
         nowMs,
         playheadSec,
-        queueFill,
+        queueExpeditedFill,
+        queueImmediateFill,
         timeline,
         userInitiated,
       }) {
         if (!timeline) {
           return;
         }
-        const demanded = new Set(demandKeys);
-        for (const [stream, controller] of inflight) {
+        const demandedStreams = [...demandKeys];
+        const demanded = new Set(demandedStreams);
+        for (const [stream, read] of inflight) {
           if (demanded.has(stream)) continue;
-          controller.abort();
+          read.controller.abort();
           inflight.delete(stream);
+        }
+        for (const stream of desiredTargets.keys()) {
+          if (demanded.has(stream)) continue;
+          desiredTargets.delete(stream);
+          desiredExpedited.delete(stream);
+          failureRetryTokens.delete(stream);
         }
         const playheadNs = timeline.secToNs(playheadSec);
 
         const now = nowMs();
         let publishNeeded = false;
-        for (const stream of demandKeys) {
-          if (inflight.has(stream)) {
-            continue;
+        for (const stream of demandedStreams) {
+          const previousTarget = desiredTargets.get(stream);
+          desiredTargets.set(stream, playheadNs);
+          desiredExpedited.set(
+            stream,
+            expedited ||
+              (previousTarget === playheadNs &&
+                desiredExpedited.get(stream) === true),
+          );
+
+          const activeRead = inflight.get(stream);
+          if (activeRead) {
+            // Only explicit paused intent supersedes in-flight work. During
+            // playback, letting the idle read finish avoids cancellation
+            // churn; its completion is validated against desiredTargets.
+            if (
+              expedited &&
+              (!activeRead.expedited || activeRead.targetNs !== playheadNs)
+            ) {
+              activeRead.controller.abort();
+              inflight.delete(stream);
+            } else {
+              continue;
+            }
           }
           const state = published.get(stream);
           const result = state?.result;
@@ -271,57 +331,120 @@ export function RawMessageBridge({
             playheadNs >= result.validFromNs &&
             playheadNs < result.validUntilNs
           ) {
+            if (state.status !== "ready" || state.targetNs !== playheadNs) {
+              published.set(stream, {
+                result,
+                status: "ready",
+                targetNs: playheadNs,
+              });
+              publishNeeded = true;
+            }
             continue;
           }
           if (failures.isBlocked(stream, now, userInitiated)) continue;
 
           const controller = new AbortController();
-          inflight.set(stream, controller);
-          if (!state) {
-            published.set(stream, { status: "loading" });
-            publishNeeded = true;
-          }
+          const readExpedited = desiredExpedited.get(stream) === true;
+          inflight.set(stream, {
+            controller,
+            expedited: readExpedited,
+            targetNs: playheadNs,
+          });
+          published.set(stream, {
+            ...(result ? { result } : {}),
+            status: "loading",
+            targetNs: playheadNs,
+          });
+          publishNeeded = true;
           void capability
             .readRawRecord({
+              intent: readExpedited ? "paused-inspection" : "background",
               signal: controller.signal,
-              stream: stream,
+              stream,
               timestampNs: playheadNs,
             })
             .then((record) => {
               if (
                 isCancelled() ||
                 controller.signal.aborted ||
-                inflight.get(stream) !== controller
+                inflight.get(stream)?.controller !== controller
               ) {
                 return;
               }
               inflight.delete(stream);
               failures.clear(stream);
-              published.set(stream, { result: record, status: "ready" });
+              failureRetryTokens.delete(stream);
+              const latestTargetNs = desiredTargets.get(stream);
+              if (latestTargetNs === undefined) {
+                return;
+              }
+              if (
+                latestTargetNs >= record.validFromNs &&
+                latestTargetNs < record.validUntilNs
+              ) {
+                published.set(stream, {
+                  result: record,
+                  status: "ready",
+                  targetNs: latestTargetNs,
+                });
+                publishValues(published, isCancelled);
+                return;
+              }
+
+              // Never present an out-of-window completion as current. Keep
+              // the prior record explicitly stale and admit the latest target
+              // immediately; a paused supersession retains inspection intent.
+              const previous = published.get(stream);
+              if (latestTargetNs === playheadNs) {
+                published.set(stream, {
+                  error: "Message reader returned an invalid validity window",
+                  ...(previous?.result ? { result: previous.result } : {}),
+                  status: "error",
+                  targetNs: latestTargetNs,
+                });
+                publishValues(published, isCancelled);
+                return;
+              }
+              published.set(stream, {
+                ...(previous?.result ? { result: previous.result } : {}),
+                status: "loading",
+                targetNs: latestTargetNs,
+              });
               publishValues(published, isCancelled);
-              // The playhead may have left this result's validity window
-              // while the read was in flight; re-check instead of waiting
-              // for the next playhead move (it may be paused now).
-              queueFill();
+              if (desiredExpedited.get(stream)) queueExpeditedFill();
+              else queueImmediateFill();
             })
             .catch((error: unknown) => {
-              if (inflight.get(stream) === controller) {
+              if (inflight.get(stream)?.controller === controller) {
                 inflight.delete(stream);
               }
               if (isCancelled() || controller.signal.aborted) {
                 return;
               }
               failures.record(stream, nowMs());
-              // Keep whatever record already rendered; only surface a
-              // hard error state when the stream has nothing to show.
               const previous = published.get(stream);
-              if (!previous?.result) {
-                published.set(stream, {
-                  error: errorMessage(error),
-                  status: "error",
-                });
-              }
+              published.set(stream, {
+                error: errorMessage(error),
+                ...(previous?.result ? { result: previous.result } : {}),
+                status: "error",
+                targetNs: desiredTargets.get(stream),
+              });
               publishValues(published, isCancelled);
+
+              const retryToken = {};
+              failureRetryTokens.set(stream, retryToken);
+              later(() => {
+                if (
+                  isCancelled() ||
+                  failureRetryTokens.get(stream) !== retryToken ||
+                  !desiredTargets.has(stream)
+                ) {
+                  return;
+                }
+                failureRetryTokens.delete(stream);
+                if (desiredExpedited.get(stream)) queueExpeditedFill();
+                else queueImmediateFill();
+              }, DEMAND_FAILURE_BACKOFF_MS);
             });
         }
         if (publishNeeded) {
@@ -337,7 +460,7 @@ export function RawMessageBridge({
     });
     return () => {
       epochController.abort();
-      for (const controller of inflight.values()) controller.abort();
+      for (const read of inflight.values()) read.controller.abort();
       inflight.clear();
       stopBridge();
     };
@@ -360,4 +483,30 @@ export function RawMessageBridge({
 
 function useInternalValue() {
   return rawMessageDemandContext.useDemandContext();
+}
+
+/** Links source-epoch and user cancellation without requiring AbortSignal.any. */
+function linkAbortSignals(
+  epochSignal: AbortSignal,
+  requestSignal?: AbortSignal,
+): { readonly cleanup: () => void; readonly signal: AbortSignal } {
+  if (!requestSignal) {
+    return { cleanup: () => undefined, signal: epochSignal };
+  }
+
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (epochSignal.aborted || requestSignal.aborted) {
+    controller.abort();
+  } else {
+    epochSignal.addEventListener("abort", abort, { once: true });
+    requestSignal.addEventListener("abort", abort, { once: true });
+  }
+  return {
+    cleanup: () => {
+      epochSignal.removeEventListener("abort", abort);
+      requestSignal.removeEventListener("abort", abort);
+    },
+    signal: controller.signal,
+  };
 }

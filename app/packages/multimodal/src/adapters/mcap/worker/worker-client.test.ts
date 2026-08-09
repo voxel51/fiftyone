@@ -74,6 +74,58 @@ describe("worker-backed MCAP resource client", () => {
     });
     await expect(range).resolves.toEqual(createTimelineRange(1n, 2n));
   });
+  it("isolates paused inspection from active playback workers", async () => {
+    const { client, workers } = createClientHarness();
+    const source = createSource("source:1");
+    const rawRequest = {
+      source,
+      timeNs: 10n,
+      topic: "/imu",
+    };
+
+    const inspection = client.readRawMessageRecord(rawRequest, {
+      priority: "inspection",
+    });
+    const playback = client.readSynchronizedMessageBatch({
+      source,
+      timeNs: [10n],
+      topics: ["/camera"],
+    });
+
+    expect(workers).toHaveLength(2);
+    expect(workers[0].messages[0]).toMatchObject({
+      payload: { fillSlotClass: "background", lane: "inspection" },
+      type: "init",
+    });
+    expect(workers[0].messages[1]).toMatchObject({
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.PAUSED_INSPECTION,
+      type: "readRawMessageRecord",
+    });
+    expect(workers[1].messages[0]).toMatchObject({
+      payload: { fillSlotClass: "priority", lane: "foreground" },
+      type: "init",
+    });
+    expect(workers[1].messages[1]).toMatchObject({
+      priority: MCAP_PLAYBACK_WORKER_PRIORITY.PLAYBACK_BATCH,
+      type: "readSynchronizedMessageBatch",
+    });
+
+    workers[1].respond({ id: 1, ok: true, result: [] });
+    await expect(playback).resolves.toEqual([]);
+    workers[0].respond({
+      id: 1,
+      ok: true,
+      result: {
+        messageEncoding: "json",
+        schemaName: null,
+        status: "empty",
+        topic: "/imu",
+        validFromNs: 0n,
+        validUntilNs: 11n,
+      },
+    });
+    await expect(inspection).resolves.toMatchObject({ status: "empty" });
+  });
   it("emits worker transport progress by lane", async () => {
     const { client, workers } = createClientHarness();
     const onTransport = vi.fn();

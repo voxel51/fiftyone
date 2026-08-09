@@ -55,7 +55,12 @@ export async function* readIndexedMessageTimesForReader(
     return;
   }
 
-  const channelIds = channelIdsForTopics(reader.channelsById, args.topics);
+  const topicChannelIds = channelIdsForTopics(reader.channelsById, args.topics);
+  const channelIds = args.channelIds
+    ? new Set(
+        args.channelIds.filter((channelId) => topicChannelIds.has(channelId)),
+      )
+    : topicChannelIds;
   if (channelIds.size === 0) {
     return;
   }

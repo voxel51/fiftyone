@@ -1,15 +1,27 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RawObjectNode } from "../../ir";
 import StructuredMessageTree from "./StructuredMessageTree";
 
-const writeText = vi.fn(async (_text: string) => undefined);
+const writeText = vi.fn<(text: string) => Promise<void>>(
+  async (_text: string) => undefined,
+);
 const addToPlot = vi.fn();
 
 beforeEach(() => {
   writeText.mockClear();
   addToPlot.mockClear();
-  Object.assign(navigator, { clipboard: { writeText } });
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText },
+  });
 });
 
 afterEach(() => {
@@ -108,19 +120,177 @@ describe("StructuredMessageTree", () => {
     expect(screen.getByText(/499 more\s+items omitted/)).toBeTruthy();
   });
 
-  it("copies a subtree as JSON with truncation markers", () => {
+  it("copies a subtree as JSON with truncation markers", async () => {
     render(<StructuredMessageTree root={ROOT} />);
 
     fireEvent.click(screen.getByTestId("episode-raw-copy-data"));
 
-    expect(writeText).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(JSON.parse(writeText.mock.calls[0][0])).toEqual([
       7,
       "… 499 more items",
     ]);
-    expect(screen.getByTestId("episode-raw-copy-data").textContent).toBe(
-      "copied",
+    await waitFor(() =>
+      expect(screen.getByTestId("episode-raw-copy-data").textContent).toBe(
+        "copied",
+      ),
     );
+    expect(screen.getByRole("button", { name: "data copied" })).toBeTruthy();
+  });
+
+  it("does not report copied when clipboard writing rejects", async () => {
+    writeText.mockRejectedValueOnce(new Error("permission denied"));
+    render(<StructuredMessageTree root={ROOT} />);
+
+    fireEvent.click(screen.getByTestId("episode-raw-copy-data"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("episode-raw-copy-data").textContent).toBe(
+        "copy failed",
+      ),
+    );
+    expect(
+      screen.getByRole("button", { name: "Copy data failed" }),
+    ).toBeTruthy();
+  });
+
+  it("ignores an older clipboard completion after a newer copy", async () => {
+    let resolveFirst!: () => void;
+    let resolveSecond!: () => void;
+    writeText
+      .mockImplementationOnce(
+        () => new Promise<void>((resolve) => (resolveFirst = resolve)),
+      )
+      .mockImplementationOnce(
+        () => new Promise<void>((resolve) => (resolveSecond = resolve)),
+      );
+    render(<StructuredMessageTree root={ROOT} />);
+
+    fireEvent.click(screen.getByTestId("episode-raw-copy-data"));
+    fireEvent.click(screen.getByTestId("episode-raw-copy-speed"));
+    await act(async () => resolveSecond());
+    expect(screen.getByRole("button", { name: "speed copied" })).toBeTruthy();
+
+    await act(async () => resolveFirst());
+    expect(screen.getByTestId("episode-raw-copy-data").textContent).toBe(
+      "copy",
+    );
+    expect(screen.getByRole("button", { name: "speed copied" })).toBeTruthy();
+  });
+
+  it("does not report copied when clipboard support is unavailable", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: undefined,
+    });
+    render(<StructuredMessageTree root={ROOT} />);
+
+    fireEvent.click(screen.getByTestId("episode-raw-copy-data"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("episode-raw-copy-data").textContent).toBe(
+        "copy failed",
+      ),
+    );
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it("paginates wide objects instead of materializing every row", () => {
+    const wideRoot: RawObjectNode = {
+      entries: Array.from({ length: 250 }, (_, index) => [
+        `field-${index}`,
+        { kind: "scalar", value: String(index), valueType: "number" },
+      ]),
+      kind: "object",
+    };
+    render(<StructuredMessageTree root={wideRoot} />);
+
+    expect(screen.getAllByTestId(/^episode-raw-node-field-/)).toHaveLength(100);
+    expect(screen.getByText("(150 not rendered)")).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("episode-raw-show-more-$"));
+
+    expect(screen.getAllByTestId(/^episode-raw-node-field-/)).toHaveLength(200);
+    expect(screen.getByText("(50 not rendered)")).toBeTruthy();
+  });
+
+  it("keeps root and dotted-key pagination state distinct", () => {
+    const nestedEntries: RawObjectNode["entries"] = Array.from(
+      { length: 150 },
+      (_, index) => [
+        `child-${index}`,
+        { kind: "scalar", value: String(index), valueType: "number" },
+      ],
+    );
+    const collisionRoot: RawObjectNode = {
+      entries: [
+        ["$", { entries: nestedEntries, kind: "object" }],
+        ...Array.from(
+          { length: 150 },
+          (_, index) =>
+            [
+              `root-${index}`,
+              { kind: "scalar", value: String(index), valueType: "number" },
+            ] as const,
+        ),
+      ],
+      kind: "object",
+    };
+    render(<StructuredMessageTree root={collisionRoot} />);
+    const nestedRows = () =>
+      screen.getAllByTestId(/^episode-raw-node-\$\.child-\d+$/);
+
+    expect(nestedRows()).toHaveLength(100);
+    fireEvent.click(screen.getByTestId("episode-raw-show-more-$"));
+    expect(nestedRows()).toHaveLength(100);
+
+    fireEvent.click(
+      screen.getByTestId(
+        `episode-raw-show-more-$root/o:${encodeURIComponent("$")}`,
+      ),
+    );
+    expect(nestedRows()).toHaveLength(150);
+  });
+
+  it("preserves pagination across refreshed record identities", () => {
+    const wideEntries = Array.from(
+      { length: 250 },
+      (_, index) =>
+        [
+          `field-${index}`,
+          { kind: "scalar", value: String(index), valueType: "number" },
+        ] as const,
+    );
+    const view = render(
+      <StructuredMessageTree root={{ entries: wideEntries, kind: "object" }} />,
+    );
+    fireEvent.click(screen.getByTestId("episode-raw-show-more-$"));
+
+    view.rerender(
+      <StructuredMessageTree
+        root={{ entries: [...wideEntries], kind: "object" }}
+      />,
+    );
+
+    expect(screen.getAllByTestId(/^episode-raw-node-field-/)).toHaveLength(200);
+  });
+
+  it("skips tree work when a parent rerenders with the same result identity", () => {
+    let entryReads = 0;
+    const countedRoot: RawObjectNode = {
+      get entries() {
+        entryReads += 1;
+        return ROOT.entries;
+      },
+      kind: "object",
+    };
+    const { rerender } = render(<StructuredMessageTree root={countedRoot} />);
+    const readsAfterInitialRender = entryReads;
+
+    rerender(<StructuredMessageTree root={countedRoot} />);
+
+    expect(readsAfterInitialRender).toBeGreaterThan(0);
+    expect(entryReads).toBe(readsAfterInitialRender);
   });
 
   it("shows add-to-plot actions only for plottable scalar numeric leaves", () => {

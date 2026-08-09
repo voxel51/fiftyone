@@ -1,10 +1,15 @@
 import { humanReadableBytes } from "@fiftyone/utilities";
 import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import type { RawRecordResult } from "../../../ir";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { RawObjectNode, RawRecordResult, RawValueNode } from "../../../ir";
 import { useDataStream } from "../playback/data-stream-context";
 import { useAddFieldToPlot } from "../plots/use-add-field-to-plot";
-import { useNumericSeriesContext } from "../plots/numeric-series-context";
 import { useRawMessageContext } from "./raw-message-context";
 import {
   useRawTileStream,
@@ -18,6 +23,7 @@ import { useRegisterTileSettings } from "../tiles/tile-settings-context";
 import styles from "../tiles/Tile.module.css";
 import { useCopyFeedback } from "../../../visualization/panel-ui/use-copy-feedback";
 import { relativeTimeParts } from "../../../utils/relative-time";
+import { errorMessage } from "../../../utils/errors";
 
 /**
  * Raw message tile: the escape hatch that makes every stream at least
@@ -26,7 +32,7 @@ import { relativeTimeParts } from "../../../utils/relative-time";
  * decode path or usable schema degrade to legible metadata instead of
  * silence. Stream selection lives in the per-tile raw state and the
  * settings sidebar; records come from the shared raw-message cache
- * (playhead-anchored, idle lane).
+ * (playhead-anchored, with an isolated lane for explicit paused seeks).
  */
 const RawMessageTile: React.FC<EpisodeTileProps> = () => {
   const tileId = useTileId();
@@ -41,7 +47,6 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
   const setTileTitle = useSetTileTitle();
   const { ensureStreams, recordsByStream, streams, subscribeRecord } =
     useRawMessageContext();
-  const { ensureEnumeration, enumeration } = useNumericSeriesContext();
   const addFieldToPlot = useAddFieldToPlot();
 
   // Dataset-scoped layouts intentionally preserve raw panels and their stream
@@ -72,14 +77,6 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
     return subscribeRecord(streamKey);
   }, [streamKey, subscribeRecord]);
 
-  // The raw tree only shows "plot" on fields confirmed by the numeric
-  // catalog. While the catalog is idle/loading/error, no affordance is shown.
-  useEffect(() => {
-    if (streamKey) {
-      ensureEnumeration();
-    }
-  }, [ensureEnumeration, streamKey]);
-
   const streamAvailable =
     streams.status !== "ready" ||
     streams.streams.some(
@@ -93,16 +90,16 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
     if (result?.sourceName) {
       return result.sourceName;
     }
-    if (!streamKey || enumeration.status !== "ready") {
+    if (!streamKey || streams.status !== "ready") {
       return null;
     }
     return (
-      enumeration.streams.find(
+      streams.streams.find(
         (stream) =>
           stream.streamId === streamKey || stream.sourceName === streamKey,
       )?.sourceName ?? null
     );
-  }, [enumeration, result?.sourceName, streamKey]);
+  }, [result?.sourceName, streamKey, streams]);
 
   // Keep canonical ids in tile state, but present the source name returned by
   // the adapter or inventory. While both are loading, preserve the title
@@ -116,19 +113,11 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
   }, [selectedSourceName, setTileTitle, streamKey]);
 
   const plottableFieldPaths = useMemo(() => {
-    if (!streamKey || enumeration.status !== "ready") {
-      return undefined;
-    }
-    const streamFields = enumeration.streams.find(
-      (entry) =>
-        (entry.streamId === streamKey || entry.sourceName === streamKey) &&
-        entry.availability === "ready",
-    );
-    if (!streamFields || streamFields.fields.length === 0) {
-      return undefined;
-    }
-    return new Set(streamFields.fields.map((field) => field.path));
-  }, [enumeration, streamKey]);
+    if (!result?.root) return undefined;
+    const paths = new Set<string>();
+    collectNumericLeafPaths(result.root, "", paths);
+    return paths.size > 0 ? paths : undefined;
+  }, [result?.root]);
 
   const handleAddFieldToPlot = useCallback(
     (fieldPath: string) => {
@@ -165,6 +154,25 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
         </div>
       ) : (
         <>
+          {state?.status === "loading" ? (
+            <div
+              className={rawStyles.notice}
+              data-testid="episode-raw-stale"
+              role="status"
+            >
+              Loading the message at the playhead… showing the previous result
+            </div>
+          ) : state?.status === "error" ? (
+            <div
+              className={rawStyles.notice}
+              data-testid="episode-raw-stale"
+              role="status"
+            >
+              Could not refresh the message
+              {state.error ? `: ${state.error}` : ""}; showing the previous
+              result
+            </div>
+          ) : null}
           <MetaRow result={result} streamKey={streamKey} />
           <RecordBody
             onAddNumericFieldToPlot={handleAddFieldToPlot}
@@ -187,28 +195,74 @@ function MetaRow({
   const dataStream = useDataStream();
   const { readFullMessageJson } = useRawMessageContext();
   const [copying, setCopying] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
+  const copyControllerRef = useRef<AbortController | null>(null);
   const [copyFeedback, showCopyFeedback] = useCopyFeedback<
     "idle" | "copied" | "failed"
   >("idle");
 
+  useEffect(() => {
+    setCopying(false);
+    setCopyError(null);
+    showCopyFeedback("idle");
+    return () => {
+      const controller = copyControllerRef.current;
+      copyControllerRef.current = null;
+      controller?.abort();
+    };
+  }, [
+    result.sequence,
+    result.timestampNs,
+    result.validFromNs,
+    showCopyFeedback,
+    streamKey,
+  ]);
+
   const handleCopyMessage = useCallback(async () => {
-    if (!result.root || copying) {
+    if (copying) {
+      const controller = copyControllerRef.current;
+      copyControllerRef.current = null;
+      controller?.abort();
+      setCopying(false);
+      setCopyError(null);
+      showCopyFeedback("idle");
+      return;
+    }
+    if (!result.root) {
       return;
     }
     if (!navigator.clipboard?.writeText) {
+      setCopyError("Clipboard access is unavailable");
       showCopyFeedback("failed");
       return;
     }
 
+    const controller = new AbortController();
+    copyControllerRef.current = controller;
+    setCopyError(null);
+    showCopyFeedback("idle");
     setCopying(true);
+    const isCurrentCopy = () =>
+      copyControllerRef.current === controller && !controller.signal.aborted;
     try {
-      const json = await readFullMessageJson(streamKey, result.validFromNs);
+      const json = await readFullMessageJson(
+        streamKey,
+        result.validFromNs,
+        controller.signal,
+      );
+      if (!isCurrentCopy()) return;
       await navigator.clipboard.writeText(json);
+      if (!isCurrentCopy()) return;
       showCopyFeedback("copied");
-    } catch {
+    } catch (error) {
+      if (!isCurrentCopy()) return;
+      setCopyError(errorMessage(error, "Copy failed"));
       showCopyFeedback("failed");
     } finally {
-      setCopying(false);
+      if (isCurrentCopy()) {
+        copyControllerRef.current = null;
+        setCopying(false);
+      }
     }
   }, [copying, readFullMessageJson, result, showCopyFeedback, streamKey]);
 
@@ -251,22 +305,32 @@ function MetaRow({
         </span>
       ) : null}
       {result.root ? (
-        <button
-          className={rawStyles.copyMessageButton}
-          data-cy="episode-raw-copy-message"
-          disabled={copying}
-          onClick={() => void handleCopyMessage()}
-          title="Copy the whole message as JSON"
-          type="button"
-        >
-          {copying
-            ? "Copying…"
-            : copyFeedback === "copied"
-              ? "Copied"
-              : copyFeedback === "failed"
-                ? "Copy failed"
-                : "Copy message"}
-        </button>
+        <>
+          <button
+            className={rawStyles.copyMessageButton}
+            data-cy="episode-raw-copy-message"
+            onClick={() => void handleCopyMessage()}
+            title={
+              copying
+                ? "Cancel whole-message copy"
+                : "Copy the whole message as compact JSON"
+            }
+            type="button"
+          >
+            {copying
+              ? "Cancel copy"
+              : copyFeedback === "copied"
+                ? "Copied"
+                : copyFeedback === "failed"
+                  ? "Copy failed"
+                  : "Copy message"}
+          </button>
+          {copyError ? (
+            <span className={rawStyles.truncatedText} role="status">
+              {copyError}
+            </span>
+          ) : null}
+        </>
       ) : null}
     </div>
   );
@@ -325,6 +389,35 @@ function formatRelativeSeconds(logTimeNs: bigint, startTimeNs: bigint): string {
     logTimeNs - startTimeNs,
   );
   return `t=${negative ? "-" : "+"}${seconds}.${milliseconds}s`;
+}
+
+/** Numeric leaves already admitted by the bounded inspector decode. */
+function collectNumericLeafPaths(
+  node: RawObjectNode | RawValueNode,
+  path: string,
+  output: Set<string>,
+): void {
+  if (node.kind === "scalar") {
+    if (path && (node.valueType === "number" || node.valueType === "bigint")) {
+      output.add(path);
+    }
+    return;
+  }
+  if (node.kind === "object") {
+    for (const [key, child] of node.entries) {
+      collectNumericLeafPaths(child, path ? `${path}.${key}` : key, output);
+    }
+    return;
+  }
+  if (node.kind === "array") {
+    for (let index = 0; index < node.items.length; index += 1) {
+      collectNumericLeafPaths(
+        node.items[index],
+        path ? `${path}.${index}` : String(index),
+        output,
+      );
+    }
+  }
 }
 
 export default RawMessageTile;

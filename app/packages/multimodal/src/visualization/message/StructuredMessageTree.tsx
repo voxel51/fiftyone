@@ -7,6 +7,29 @@ import { useCopyFeedback } from "../panel-ui/use-copy-feedback";
 /** Levels expanded by default; deeper nodes open on demand. */
 const AUTO_EXPAND_DEPTH = 2;
 
+/** Maximum object fields materialized at once at any one tree level. */
+const OBJECT_ENTRY_PAGE_SIZE = 100;
+
+/** Collision-free state key for the tree root. */
+const ROOT_NODE_KEY = "$root";
+
+function objectChildNodeKey(parent: string, key: string): string {
+  return `${parent}/o:${encodeURIComponent(key)}`;
+}
+
+function arrayChildNodeKey(parent: string, index: number): string {
+  return `${parent}/a:${index}`;
+}
+
+type CopyStatus = "idle" | "copied" | "failed";
+
+interface CopyFeedback {
+  readonly path: string | null;
+  readonly status: CopyStatus;
+}
+
+const IDLE_COPY_FEEDBACK: CopyFeedback = { path: null, status: "idle" };
+
 /** Structured record and optional numeric-field interactions shown by the tree. */
 export interface StructuredMessageTreeProps {
   readonly onAddNumericFieldToPlot?: (path: string) => void;
@@ -29,25 +52,64 @@ const StructuredMessageTree: React.FC<StructuredMessageTreeProps> = ({
   const [expandedOverrides, setExpandedOverrides] = useState<
     ReadonlyMap<string, boolean>
   >(new Map());
-  const [copiedPath, showCopiedPath] = useCopyFeedback<string | null>(null);
+  const [visibleObjectEntries, setVisibleObjectEntries] = useState<
+    ReadonlyMap<string, number>
+  >(new Map());
+  const [copyFeedback, showCopyFeedback] =
+    useCopyFeedback<CopyFeedback>(IDLE_COPY_FEEDBACK);
+  const copyAttemptRef = React.useRef(0);
   const [plottedPath, showPlottedPath] = useCopyFeedback<string | null>(null);
 
-  const toggle = useCallback((path: string, expanded: boolean) => {
+  React.useEffect(
+    () => () => {
+      copyAttemptRef.current += 1;
+    },
+    [],
+  );
+
+  const toggle = useCallback((nodeKey: string, expanded: boolean) => {
     setExpandedOverrides((previous) => {
       const next = new Map(previous);
-      next.set(path, expanded);
+      next.set(nodeKey, expanded);
+      return next;
+    });
+  }, []);
+
+  const showMoreObjectEntries = useCallback((nodeKey: string) => {
+    setVisibleObjectEntries((previous) => {
+      const next = new Map(previous);
+      next.set(
+        nodeKey,
+        (previous.get(nodeKey) ?? OBJECT_ENTRY_PAGE_SIZE) +
+          OBJECT_ENTRY_PAGE_SIZE,
+      );
       return next;
     });
   }, []);
 
   const copy = useCallback(
-    (path: string, node: RawValueNode) => {
-      void navigator.clipboard?.writeText(
-        JSON.stringify(rawNodeToJson(node), null, 2),
-      );
-      showCopiedPath(path);
+    async (path: string, node: RawValueNode) => {
+      const attempt = ++copyAttemptRef.current;
+      if (!navigator.clipboard?.writeText) {
+        if (attempt === copyAttemptRef.current) {
+          showCopyFeedback({ path, status: "failed" });
+        }
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(
+          JSON.stringify(rawNodeToJson(node), null, 2),
+        );
+        if (attempt === copyAttemptRef.current) {
+          showCopyFeedback({ path, status: "copied" });
+        }
+      } catch {
+        if (attempt === copyAttemptRef.current) {
+          showCopyFeedback({ path, status: "failed" });
+        }
+      }
     },
-    [showCopiedPath],
+    [showCopyFeedback],
   );
 
   const addToPlot = useCallback(
@@ -63,25 +125,42 @@ const StructuredMessageTree: React.FC<StructuredMessageTreeProps> = ({
   const effectivePlottableFieldPaths = onAddNumericFieldToPlot
     ? plottableFieldPaths
     : undefined;
+  const visibleRootEntries =
+    visibleObjectEntries.get(ROOT_NODE_KEY) ?? OBJECT_ENTRY_PAGE_SIZE;
+  const hiddenRootEntries = Math.max(
+    0,
+    root.entries.length - visibleRootEntries,
+  );
 
   return (
     <div className={styles.tree} data-testid="episode-raw-tree">
-      {root.entries.map(([key, node]) => (
+      {root.entries.slice(0, visibleRootEntries).map(([key, node]) => (
         <TreeRow
           addToPlot={addToPlot}
-          copiedPath={copiedPath}
+          copyFeedback={copyFeedback}
           copy={copy}
           depth={0}
           expandedOverrides={expandedOverrides}
           key={key}
           label={key}
           node={node}
+          nodeKey={objectChildNodeKey(ROOT_NODE_KEY, key)}
           path={key}
           plottableFieldPaths={effectivePlottableFieldPaths}
           plottedPath={plottedPath}
+          showMoreObjectEntries={showMoreObjectEntries}
           toggle={toggle}
+          visibleObjectEntries={visibleObjectEntries}
         />
       ))}
+      {hiddenRootEntries > 0 ? (
+        <ObjectPaginationRow
+          depth={0}
+          hiddenEntries={hiddenRootEntries}
+          onShowMore={() => showMoreObjectEntries(ROOT_NODE_KEY)}
+          paginationKey="$"
+        />
+      ) : null}
       {root.droppedEntries ? (
         <div className={styles.row}>
           <span className={styles.truncatedText}>
@@ -95,39 +174,59 @@ const StructuredMessageTree: React.FC<StructuredMessageTreeProps> = ({
 
 interface TreeRowProps {
   readonly addToPlot: (path: string) => void;
-  readonly copiedPath: string | null;
-  readonly copy: (path: string, node: RawValueNode) => void;
+  readonly copyFeedback: CopyFeedback;
+  readonly copy: (path: string, node: RawValueNode) => Promise<void>;
   readonly depth: number;
   readonly expandedOverrides: ReadonlyMap<string, boolean>;
   readonly label: string;
   readonly node: RawValueNode;
+  readonly nodeKey: string;
   readonly path: string;
   readonly plottableFieldPaths?: ReadonlySet<string>;
   readonly plottedPath: string | null;
+  readonly showMoreObjectEntries: (path: string) => void;
   readonly toggle: (path: string, expanded: boolean) => void;
+  readonly visibleObjectEntries: ReadonlyMap<string, number>;
 }
 
-function TreeRow({
+const TreeRow = React.memo(function TreeRow({
   addToPlot,
-  copiedPath,
+  copyFeedback,
   copy,
   depth,
   expandedOverrides,
   label,
   node,
+  nodeKey,
   path,
   plottableFieldPaths,
   plottedPath,
+  showMoreObjectEntries,
   toggle,
+  visibleObjectEntries,
 }: TreeRowProps) {
   const expandable = isExpandable(node);
   const expanded =
-    expandedOverrides.get(path) ?? (expandable && depth < AUTO_EXPAND_DEPTH);
+    expandedOverrides.get(nodeKey) ?? (expandable && depth < AUTO_EXPAND_DEPTH);
   const indent = { paddingLeft: `${depth * 14}px` };
   const canAddToPlot =
     isPlottableScalar(node) && plottableFieldPaths?.has(path);
   const addToPlotLabel =
     plottedPath === path ? `${path} plotted` : `Add ${path} to plot`;
+  const copyLabel =
+    copyFeedback.path === path
+      ? copyFeedback.status === "copied"
+        ? `${label} copied`
+        : copyFeedback.status === "failed"
+          ? `Copy ${label} failed`
+          : `Copy ${label}`
+      : `Copy ${label}`;
+  const visibleEntryCount =
+    visibleObjectEntries.get(nodeKey) ?? OBJECT_ENTRY_PAGE_SIZE;
+  const hiddenObjectEntries =
+    node.kind === "object"
+      ? Math.max(0, node.entries.length - visibleEntryCount)
+      : 0;
 
   return (
     <>
@@ -139,7 +238,7 @@ function TreeRow({
               aria-label={`Toggle ${label}`}
               className={styles.chevron}
               data-testid={`episode-raw-toggle-${path}`}
-              onClick={() => toggle(path, !expanded)}
+              onClick={() => toggle(nodeKey, !expanded)}
               type="button"
             >
               {expanded ? "▾" : "▸"}
@@ -165,34 +264,53 @@ function TreeRow({
           </button>
         ) : null}
         <button
-          aria-label={`Copy ${label}`}
+          aria-label={copyLabel}
           className={styles.copyButton}
           data-testid={`episode-raw-copy-${path}`}
-          onClick={() => copy(path, node)}
+          onClick={() => void copy(path, node)}
           title="Copy subtree as JSON"
           type="button"
         >
-          {copiedPath === path ? "copied" : "copy"}
+          {copyFeedback.path === path
+            ? copyFeedback.status === "copied"
+              ? "copied"
+              : copyFeedback.status === "failed"
+                ? "copy failed"
+                : "copy"
+            : "copy"}
         </button>
       </div>
       {expanded && node.kind === "object"
-        ? node.entries.map(([childKey, child]) => (
-            <TreeRow
-              addToPlot={addToPlot}
-              copiedPath={copiedPath}
-              copy={copy}
-              depth={depth + 1}
-              expandedOverrides={expandedOverrides}
-              key={childKey}
-              label={childKey}
-              node={child}
-              path={`${path}.${childKey}`}
-              plottableFieldPaths={plottableFieldPaths}
-              plottedPath={plottedPath}
-              toggle={toggle}
-            />
-          ))
+        ? node.entries
+            .slice(0, visibleEntryCount)
+            .map(([childKey, child]) => (
+              <TreeRow
+                addToPlot={addToPlot}
+                copyFeedback={copyFeedback}
+                copy={copy}
+                depth={depth + 1}
+                expandedOverrides={expandedOverrides}
+                key={childKey}
+                label={childKey}
+                node={child}
+                nodeKey={objectChildNodeKey(nodeKey, childKey)}
+                path={`${path}.${childKey}`}
+                plottableFieldPaths={plottableFieldPaths}
+                plottedPath={plottedPath}
+                showMoreObjectEntries={showMoreObjectEntries}
+                toggle={toggle}
+                visibleObjectEntries={visibleObjectEntries}
+              />
+            ))
         : null}
+      {expanded && node.kind === "object" && hiddenObjectEntries > 0 ? (
+        <ObjectPaginationRow
+          depth={depth + 1}
+          hiddenEntries={hiddenObjectEntries}
+          onShowMore={() => showMoreObjectEntries(nodeKey)}
+          paginationKey={nodeKey}
+        />
+      ) : null}
       {expanded && node.kind === "object" && node.droppedEntries ? (
         <div className={styles.row}>
           <div
@@ -210,17 +328,20 @@ function TreeRow({
         ? node.items.map((item, index) => (
             <TreeRow
               addToPlot={addToPlot}
-              copiedPath={copiedPath}
+              copyFeedback={copyFeedback}
               copy={copy}
               depth={depth + 1}
               expandedOverrides={expandedOverrides}
               key={index}
               label={String(index)}
               node={item}
+              nodeKey={arrayChildNodeKey(nodeKey, index)}
               path={`${path}.${index}`}
               plottableFieldPaths={plottableFieldPaths}
               plottedPath={plottedPath}
+              showMoreObjectEntries={showMoreObjectEntries}
               toggle={toggle}
+              visibleObjectEntries={visibleObjectEntries}
             />
           ))
         : null}
@@ -241,6 +362,40 @@ function TreeRow({
         </div>
       ) : null}
     </>
+  );
+});
+
+function ObjectPaginationRow({
+  depth,
+  hiddenEntries,
+  onShowMore,
+  paginationKey,
+}: {
+  readonly depth: number;
+  readonly hiddenEntries: number;
+  readonly onShowMore: () => void;
+  readonly paginationKey: string;
+}) {
+  return (
+    <div className={styles.row}>
+      <div
+        className={styles.rowMain}
+        style={{ paddingLeft: `${depth * 14}px` }}
+      >
+        <span aria-hidden="true" className={styles.chevronSpacer} />
+        <button
+          className={styles.showMoreButton}
+          data-testid={`episode-raw-show-more-${paginationKey}`}
+          onClick={onShowMore}
+          type="button"
+        >
+          Show {Math.min(OBJECT_ENTRY_PAGE_SIZE, hiddenEntries)} more fields
+        </button>
+        <span className={styles.truncatedText}>
+          ({hiddenEntries.toLocaleString()} not rendered)
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -302,4 +457,4 @@ function valueClassName(node: RawValueNode): string {
   return styles.valueSummary;
 }
 
-export default StructuredMessageTree;
+export default React.memo(StructuredMessageTree);

@@ -453,35 +453,70 @@ export function createMcapRawRecordCapability({
     sourceNamesById.get(stream) ?? stream;
   const streamIdFor = (sourceName: string) =>
     streamIdsBySourceName.get(sourceName) ?? sourceName;
+  const rawTargetsByStreamId = new Map<
+    string,
+    { readonly channelId?: number; readonly topic: string }
+  >();
   return {
     async listRawRecordStreams(options) {
       const inventory = await client.readTopics(
         { source },
         { signal: options?.signal },
       );
+      const topicCounts = new Map<string, number>();
+      for (const entry of inventory) {
+        const topic =
+          entry.metadata["mcap.topic"] ?? entry.displayName ?? entry.streamId;
+        topicCounts.set(topic, (topicCounts.get(topic) ?? 0) + 1);
+      }
+      rawTargetsByStreamId.clear();
       return inventory.map((entry) => {
         const sourceName =
           entry.metadata["mcap.topic"] ?? entry.displayName ?? entry.streamId;
+        const channelId = parseMcapChannelId(entry);
+        const streamId =
+          (topicCounts.get(sourceName) ?? 0) > 1 && channelId !== undefined
+            ? rawChannelStreamId(channelId, sourceName)
+            : streamIdFor(sourceName);
+        rawTargetsByStreamId.set(streamId, {
+          ...(channelId !== undefined ? { channelId } : {}),
+          topic: sourceName,
+        });
         return {
           encoding: entry.metadata["mcap.message_encoding"] ?? "unknown",
           sampleCount: parseRecordCount(entry.recordCount) ?? null,
           schemaName: entry.metadata["mcap.schema_name"] ?? null,
           sourceName,
-          streamId: streamIdFor(sourceName),
+          streamId,
         };
       });
     },
     async readRawRecord(request) {
+      const rawTarget = rawTargetsByStreamId.get(request.stream) ??
+        parseRawChannelStreamId(request.stream) ?? {
+          topic: sourceNameFor(request.stream),
+        };
       const result = await client.readRawMessageRecord(
         {
           activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+          ...(rawTarget.channelId !== undefined
+            ? { channelId: rawTarget.channelId }
+            : {}),
           includeFullJson: request.includeFullJson,
           prune: request.prune,
           source,
           timeNs: request.timestampNs,
-          topic: sourceNameFor(request.stream),
+          topic: rawTarget.topic,
         },
-        { signal: request.signal },
+        {
+          priority:
+            request.intent === "paused-inspection"
+              ? "inspection"
+              : request.intent === "export"
+                ? "bulk"
+                : "idle",
+          signal: request.signal,
+        },
       );
       return {
         decodeError: result.decodeError,
@@ -505,7 +540,7 @@ export function createMcapRawRecordCapability({
               }
             : undefined,
         status: result.status,
-        streamId: streamIdFor(result.topic),
+        streamId: request.stream,
         timestampNs: result.logTimeNs,
         truncated: result.truncated,
         validFromNs: result.validFromNs,
@@ -601,6 +636,47 @@ function parseRecordCount(value: string | undefined): number | undefined {
   if (value === undefined) return undefined;
   const count = Number(value);
   return Number.isSafeInteger(count) && count >= 0 ? count : undefined;
+}
+
+const RAW_CHANNEL_STREAM_PREFIX = "mcap-channel:";
+
+function parseMcapChannelId(entry: {
+  readonly metadata: Readonly<Record<string, string>>;
+  readonly streamId: string;
+}): number | undefined {
+  for (const value of [entry.metadata["mcap.channel_id"], entry.streamId]) {
+    if (value === undefined || !/^\d+$/.test(value)) continue;
+    const channelId = Number(value);
+    if (Number.isSafeInteger(channelId) && channelId >= 0) return channelId;
+  }
+  return undefined;
+}
+
+function rawChannelStreamId(channelId: number, topic: string): string {
+  return `${RAW_CHANNEL_STREAM_PREFIX}${channelId}:${encodeURIComponent(topic)}`;
+}
+
+function parseRawChannelStreamId(
+  streamId: string,
+): { readonly channelId: number; readonly topic: string } | null {
+  if (!streamId.startsWith(RAW_CHANNEL_STREAM_PREFIX)) return null;
+  const separator = streamId.indexOf(":", RAW_CHANNEL_STREAM_PREFIX.length);
+  if (separator < 0) return null;
+  const encodedChannelId = streamId.slice(
+    RAW_CHANNEL_STREAM_PREFIX.length,
+    separator,
+  );
+  if (!/^\d+$/.test(encodedChannelId)) return null;
+  const channelId = Number(encodedChannelId);
+  if (!Number.isSafeInteger(channelId) || channelId < 0) return null;
+  try {
+    return {
+      channelId,
+      topic: decodeURIComponent(streamId.slice(separator + 1)),
+    };
+  } catch {
+    return null;
+  }
 }
 
 function streamKindForPayload(

@@ -162,6 +162,20 @@
   opacity: 1;
 }
 
+.showMoreButton {
+  background: transparent;
+  border: none;
+  color: var(--color-voxel-secondary, #ff8d00);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.showMoreButton:hover,
+.showMoreButton:focus-visible {
+  text-decoration: underline;
+}
+
 .notice {
   color: var(--color-content-text-secondary);
   font-size: 12px;

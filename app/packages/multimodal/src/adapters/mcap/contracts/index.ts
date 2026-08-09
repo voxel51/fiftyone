@@ -521,9 +521,13 @@ export interface McapReadRawMessageRecordRequest {
    */
   readonly activeTimeline?: McapActiveTimeline;
 
+  /** Exact MCAP channel selected by a channel-preserving inventory row. */
+  readonly channelId?: number;
+
   /**
-   * Includes the complete decoded message as JSON. This is intentionally
-   * opt-in because large sensor payloads can produce multi-megabyte strings.
+   * Includes the complete decoded message as bounded compact JSON. This is
+   * intentionally opt-in, uses base64 envelopes for byte buffers, and rejects
+   * output beyond the documented whole-message export limit.
    */
   readonly includeFullJson?: boolean;
 
@@ -775,7 +779,12 @@ export interface McapReadSynchronizedMessageBatchRequest extends Omit<
  * Scheduling priority for resource reads where callers know whether the work
  * is immediately user-visible or opportunistic.
  */
-export type McapResourceReadPriority = "bulk" | "current" | "idle" | "playback";
+export type McapResourceReadPriority =
+  | "bulk"
+  | "current"
+  | "idle"
+  | "inspection"
+  | "playback";
 
 /**
  * Optional scheduling hints for MCAP resource reads.
