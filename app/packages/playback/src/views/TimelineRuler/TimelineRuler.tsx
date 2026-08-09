@@ -9,6 +9,7 @@ import { useTimelineDisplay } from "../../lib/playback/timeline-display";
 import type { TimelineMode } from "../../lib/playback/types";
 import {
   useHoverTime,
+  useInspectionMarker,
   useLoopEnd,
   useLoopStart,
   usePlayhead,
@@ -22,6 +23,7 @@ import styles from "./TimelineRuler.module.css";
 
 const MIN_VIEW = 0.25;
 const CLICK_PX_THRESHOLD = 3;
+const TIMELINE_EPSILON = 1e-9;
 
 // Nice tick spacings in seconds, ascending. We pick the smallest one that
 // keeps the visible tick count at or below TARGET_TICK_DIVISIONS. Without
@@ -81,6 +83,12 @@ function tickLabel(
   return formatTimeOfDay(displayValue as Date);
 }
 
+function isTimeInsideView(time: number, viewStart: number, viewEnd: number) {
+  return (
+    time >= viewStart - TIMELINE_EPSILON && time <= viewEnd + TIMELINE_EPSILON
+  );
+}
+
 export interface TimelineRulerProps {
   /** Width of the label column in pixels, to align with track rows. */
   labelWidth?: number;
@@ -108,6 +116,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const { duration, seekSnapped, setView, setLoop, settleSeek } = usePlayback();
   const { mode, ...displayConversion } = useTimelineDisplay();
   const hoverTime = useHoverTime();
+  const inspectionMarker = useInspectionMarker();
   const store = usePlaybackStore();
 
   // Sequence mode has no such thing as frame 2.5 — `quantizeDuringScrub`
@@ -352,7 +361,8 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
 
   const tickInterval = chooseTickInterval(viewDuration, mode);
   const ticks: number[] = [];
-  const firstTick = Math.ceil(viewStart / tickInterval - 1e-9) * tickInterval;
+  const firstTick =
+    Math.ceil(viewStart / tickInterval - TIMELINE_EPSILON) * tickInterval;
   // `chooseTickInterval` targets ~TARGET_TICK_DIVISIONS ticks per view, but
   // it can't fully protect against a corrupt/mismeasured duration (e.g. a
   // scene whose streams disagree on epoch vs. elapsed time) blowing the
@@ -361,7 +371,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const MAX_TICKS = 500;
   for (
     let t = Math.round(firstTick * 1e4) / 1e4;
-    t <= viewEnd + 1e-9 && ticks.length < MAX_TICKS;
+    t <= viewEnd + TIMELINE_EPSILON && ticks.length < MAX_TICKS;
     t = Math.round((t + tickInterval) * 1e4) / 1e4
   ) {
     ticks.push(t);
@@ -456,9 +466,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         }}
       />
 
-      {hoverTime !== null &&
-      hoverTime >= viewStart - 1e-9 &&
-      hoverTime <= viewEnd + 1e-9 ? (
+      {hoverTime !== null && isTimeInsideView(hoverTime, viewStart, viewEnd) ? (
         <div
           className={styles.hoverCaret}
           data-testid="timeline-hover-caret"
@@ -466,6 +474,29 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
             left: laneLeft(clamp((hoverTime - viewStart) / viewDuration, 0, 1)),
           }}
         />
+      ) : null}
+
+      {inspectionMarker !== null &&
+      isTimeInsideView(inspectionMarker.timeSec, viewStart, viewEnd) ? (
+        <div
+          aria-label="Inspected message time"
+          className={styles.inspectionCaret}
+          data-testid="timeline-inspection-caret"
+          role="img"
+          style={{
+            left: labelWidth,
+            transform: `translate3d(${
+              clamp(
+                (inspectionMarker.timeSec - viewStart) / viewDuration,
+                0,
+                1,
+              ) * 100
+            }%, 0, 0)`,
+            width: `calc(100% - ${labelWidth}px)`,
+          }}
+        >
+          <div className={styles.inspectionCaretCap} />
+        </div>
       ) : null}
 
       {/* Playhead handle + line share one translated wrapper. translate3d

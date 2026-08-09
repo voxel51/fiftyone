@@ -18,6 +18,7 @@ import {
   bufferingStreamsAtom,
   currentTimeAtom,
   hoverTimeAtom,
+  inspectionMarkerAtom,
   isBufferingAtom,
   isPlayPendingAtom,
   isPlayingAtom,
@@ -107,6 +108,26 @@ export function subscribeHoverTime(
   callback: () => void,
 ): () => void {
   return store.sub(hoverTimeAtom, callback);
+}
+
+/** Publishes or moves one owner's persistent visual inspection marker. */
+export function publishInspectionMarker(
+  store: PlaybackStore,
+  ownerId: string,
+  timeSec: number,
+): void {
+  if (!ownerId || !Number.isFinite(timeSec)) return;
+  store.set(inspectionMarkerAtom, { ownerId, timeSec });
+}
+
+/** Clears the marker only when it is still owned by the caller. */
+export function clearInspectionMarker(
+  store: PlaybackStore,
+  ownerId: string,
+): void {
+  store.set(inspectionMarkerAtom, (current) =>
+    current?.ownerId === ownerId ? null : current,
+  );
 }
 
 /**

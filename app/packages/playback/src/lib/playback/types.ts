@@ -383,3 +383,9 @@ export interface PlaybackContextValue {
    */
   setClockSource: (source: PlaybackClockSource | null) => () => void;
 }
+
+/** Visual-only timeline marker owned by one inspection surface. */
+export interface PlaybackInspectionMarker {
+  readonly ownerId: string;
+  readonly timeSec: number;
+}

@@ -21,6 +21,7 @@ import {
   currentTimeAtom,
   durationAtom,
   hoverTimeAtom,
+  inspectionMarkerAtom,
   isBufferingAtom,
   isPlayPendingAtom,
   isPlayingAtom,
@@ -34,7 +35,12 @@ import {
   viewStartAtom,
 } from "./atoms";
 import { usePlaybackStore } from "./playback-store-context";
-import type { BufferedRanges, BufferingStream, SeekEvent } from "./types";
+import type {
+  BufferedRanges,
+  BufferingStream,
+  PlaybackInspectionMarker,
+  SeekEvent,
+} from "./types";
 
 /** Visual playhead position in seconds — updates every RAF tick + on scrub. */
 export function usePlayhead(): number {
@@ -50,6 +56,12 @@ export function usePlayhead(): number {
 export function useHoverTime(): number | null {
   const store = usePlaybackStore();
   return useAtomValue(hoverTimeAtom, { store });
+}
+
+/** Persistent visual inspection marker, independent of hover and playback. */
+export function useInspectionMarker(): PlaybackInspectionMarker | null {
+  const store = usePlaybackStore();
+  return useAtomValue(inspectionMarkerAtom, { store });
 }
 
 /**
