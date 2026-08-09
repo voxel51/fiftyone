@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RawRecordResult } from "../../../ir";
+import rawStyles from "../../../visualization/message/StructuredMessage.module.css";
 import type { NumericFieldsEnumeration } from "../plots/numeric-series-context";
 import type { RawRecordState } from "./raw-message-context";
 import RawMessageTile from "./RawMessageTile";
@@ -307,10 +308,13 @@ describe("RawMessageTile", () => {
 
     render(<RawMessageTile />);
 
-    expect(screen.getByTestId("episode-raw-stale").textContent).toMatch(
-      /showing the previous result/,
-    );
-    expect(screen.getByTestId("episode-raw-tree")).toBeTruthy();
+    const staleNotice = screen.getByTestId("episode-raw-stale");
+    const tree = screen.getByTestId("episode-raw-tree");
+    const content = staleNotice.parentElement;
+
+    expect(staleNotice.textContent).toMatch(/showing the previous result/);
+    expect(content?.classList.contains(rawStyles.content)).toBe(true);
+    expect(content?.contains(tree)).toBe(true);
   });
 
   it("offers numeric fields for a canonical stream id", () => {

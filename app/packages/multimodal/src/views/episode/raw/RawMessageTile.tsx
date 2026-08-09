@@ -154,31 +154,33 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
         </div>
       ) : (
         <>
-          {state?.status === "loading" ? (
-            <div
-              className={rawStyles.notice}
-              data-testid="episode-raw-stale"
-              role="status"
-            >
-              Loading the message at the playhead… showing the previous result
-            </div>
-          ) : state?.status === "error" ? (
-            <div
-              className={rawStyles.notice}
-              data-testid="episode-raw-stale"
-              role="status"
-            >
-              Could not refresh the message
-              {state.error ? `: ${state.error}` : ""}; showing the previous
-              result
-            </div>
-          ) : null}
           <MetaRow result={result} streamKey={streamKey} />
-          <RecordBody
-            onAddNumericFieldToPlot={handleAddFieldToPlot}
-            plottableFieldPaths={plottableFieldPaths}
-            result={result}
-          />
+          <div className={rawStyles.content}>
+            {state?.status === "loading" ? (
+              <div
+                className={`${styles.statusBadge} ${rawStyles.staleNotice}`}
+                data-testid="episode-raw-stale"
+                role="status"
+              >
+                Loading the message at the playhead… showing the previous result
+              </div>
+            ) : state?.status === "error" ? (
+              <div
+                className={`${styles.statusBadge} ${styles.statusBadgeError} ${rawStyles.staleNotice}`}
+                data-testid="episode-raw-stale"
+                role="status"
+              >
+                Could not refresh the message
+                {state.error ? `: ${state.error}` : ""}; showing the previous
+                result
+              </div>
+            ) : null}
+            <RecordBody
+              onAddNumericFieldToPlot={handleAddFieldToPlot}
+              plottableFieldPaths={plottableFieldPaths}
+              result={result}
+            />
+          </div>
         </>
       )}
     </div>

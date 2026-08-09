@@ -10,6 +10,23 @@
   width: 100%;
 }
 
+/* Keep transient refresh status out of normal flow so playhead updates do not
+   push the metadata and structured tree up and down during playback. */
+.content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+
+.staleNotice {
+  line-height: 1.3;
+  max-width: calc(100% - 16px);
+  text-align: left;
+  white-space: normal;
+}
+
 .meta {
   align-items: center;
   border-bottom: 1px solid var(--color-content-border-default, #383835);
