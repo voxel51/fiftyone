@@ -1,20 +1,17 @@
 import {
   PlaybackProvider,
-  TimelineWithTracks,
-  TrackProvider,
   usePlayback,
   useVideoStream,
   useVideoSync,
   type TimelineMode,
-  type Track,
 } from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import {
-  buildTemporalDetectionTracks,
+  FrameLabelsTracks,
+  RegisterFrameLabels,
   useVfcClockSource,
 } from "@fiftyone/video-annotation";
 import React, { useMemo, useRef } from "react";
-import { useRecoilValue } from "recoil";
 
 /**
  * POC: the shared timeline under a single video sample in the modal's
@@ -48,7 +45,9 @@ const VIDEO_STREAM_ID = "video";
 export function useIsVideoTimelinePoc(): boolean {
   return useMemo(() => {
     if (typeof window === "undefined") return false;
-    return new URLSearchParams(window.location.search).get("mmtimeline") !== "0";
+    return (
+      new URLSearchParams(window.location.search).get("mmtimeline") !== "0"
+    );
   }, []);
 }
 
@@ -100,8 +99,6 @@ const PocVideo: React.FC<{ videoSrc: string }> = ({ videoSrc }) => {
 export const VideoTimelinePoc: React.FC<{ sample: fos.ModalSample }> = ({
   sample,
 }) => {
-  const colorScheme = useRecoilValue(fos.colorScheme);
-
   const videoSrc = useMemo(() => {
     const url = sample.urls?.[0]?.url;
     return url ? fos.getSampleSrc(url) : null;
@@ -121,26 +118,16 @@ export const VideoTimelinePoc: React.FC<{ sample: fos.ModalSample }> = ({
     [frameRate],
   );
 
-  // Temporal detections -> timeline tracks, via the same pure builder the
-  // annotate surface uses. Frame-level labels (frames.detections) need
-  // buildPerInstanceTracks and the annotation engine — not wired here, so a
-  // stock quickstart-video shows the timeline with no track rows.
-  const tracks = useMemo<Track[]>(() => {
-    if (!frameRate) return [];
-    return buildTemporalDetectionTracks({
-      sample: sample.sample as unknown as Record<string, unknown>,
-      fps: frameRate,
-      resolveColor: () => colorScheme.colorPool[0] ?? "#ff6d04",
-    });
-  }, [sample, frameRate, colorScheme]);
-
   if (!videoSrc) {
     return <div style={{ padding: 16 }}>No media URL on this sample.</div>;
   }
 
   return (
     <PlaybackProvider mode={mode}>
-      <TrackProvider tracks={tracks} autoPinNewTracks={false}>
+      {/* Registers the /frames-backed label stream. It gates on
+          `useDuration() > 0`, so it must sit inside the provider and
+          outside anything that would remount when duration lands. */}
+      <RegisterFrameLabels sample={sample}>
         <div
           style={{
             width: "100%",
@@ -162,9 +149,12 @@ export const VideoTimelinePoc: React.FC<{ sample: fos.ModalSample }> = ({
           >
             <PocVideo videoSrc={videoSrc} />
           </div>
-          <TimelineWithTracks loaded defaultDrawerOpen={tracks.length > 0} />
+          {/* Owns its own TrackProvider + TimelineWithTracks. Track data is
+              the server label index; the annotation engine contributes only
+              an unsaved-edit overlay, empty in Explore. */}
+          <FrameLabelsTracks sample={sample} />
         </div>
-      </TrackProvider>
+      </RegisterFrameLabels>
     </PlaybackProvider>
   );
 };
