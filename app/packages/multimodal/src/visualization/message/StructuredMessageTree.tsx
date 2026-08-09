@@ -10,6 +10,17 @@ const AUTO_EXPAND_DEPTH = 2;
 /** Maximum object fields materialized at once at any one tree level. */
 const OBJECT_ENTRY_PAGE_SIZE = 100;
 
+/** Collision-free state key for the tree root. */
+const ROOT_NODE_KEY = "$root";
+
+function objectChildNodeKey(parent: string, key: string): string {
+  return `${parent}/o:${encodeURIComponent(key)}`;
+}
+
+function arrayChildNodeKey(parent: string, index: number): string {
+  return `${parent}/a:${index}`;
+}
+
 type CopyStatus = "idle" | "copied" | "failed";
 
 interface CopyFeedback {
@@ -56,20 +67,21 @@ const StructuredMessageTree: React.FC<StructuredMessageTreeProps> = ({
     [],
   );
 
-  const toggle = useCallback((path: string, expanded: boolean) => {
+  const toggle = useCallback((nodeKey: string, expanded: boolean) => {
     setExpandedOverrides((previous) => {
       const next = new Map(previous);
-      next.set(path, expanded);
+      next.set(nodeKey, expanded);
       return next;
     });
   }, []);
 
-  const showMoreObjectEntries = useCallback((path: string) => {
+  const showMoreObjectEntries = useCallback((nodeKey: string) => {
     setVisibleObjectEntries((previous) => {
       const next = new Map(previous);
       next.set(
-        path,
-        (previous.get(path) ?? OBJECT_ENTRY_PAGE_SIZE) + OBJECT_ENTRY_PAGE_SIZE,
+        nodeKey,
+        (previous.get(nodeKey) ?? OBJECT_ENTRY_PAGE_SIZE) +
+          OBJECT_ENTRY_PAGE_SIZE,
       );
       return next;
     });
@@ -114,7 +126,7 @@ const StructuredMessageTree: React.FC<StructuredMessageTreeProps> = ({
     ? plottableFieldPaths
     : undefined;
   const visibleRootEntries =
-    visibleObjectEntries.get("$") ?? OBJECT_ENTRY_PAGE_SIZE;
+    visibleObjectEntries.get(ROOT_NODE_KEY) ?? OBJECT_ENTRY_PAGE_SIZE;
   const hiddenRootEntries = Math.max(
     0,
     root.entries.length - visibleRootEntries,
@@ -132,6 +144,7 @@ const StructuredMessageTree: React.FC<StructuredMessageTreeProps> = ({
           key={key}
           label={key}
           node={node}
+          nodeKey={objectChildNodeKey(ROOT_NODE_KEY, key)}
           path={key}
           plottableFieldPaths={effectivePlottableFieldPaths}
           plottedPath={plottedPath}
@@ -144,8 +157,8 @@ const StructuredMessageTree: React.FC<StructuredMessageTreeProps> = ({
         <ObjectPaginationRow
           depth={0}
           hiddenEntries={hiddenRootEntries}
-          onShowMore={() => showMoreObjectEntries("$")}
-          path="$"
+          onShowMore={() => showMoreObjectEntries(ROOT_NODE_KEY)}
+          paginationKey="$"
         />
       ) : null}
       {root.droppedEntries ? (
@@ -167,6 +180,7 @@ interface TreeRowProps {
   readonly expandedOverrides: ReadonlyMap<string, boolean>;
   readonly label: string;
   readonly node: RawValueNode;
+  readonly nodeKey: string;
   readonly path: string;
   readonly plottableFieldPaths?: ReadonlySet<string>;
   readonly plottedPath: string | null;
@@ -183,6 +197,7 @@ const TreeRow = React.memo(function TreeRow({
   expandedOverrides,
   label,
   node,
+  nodeKey,
   path,
   plottableFieldPaths,
   plottedPath,
@@ -192,7 +207,7 @@ const TreeRow = React.memo(function TreeRow({
 }: TreeRowProps) {
   const expandable = isExpandable(node);
   const expanded =
-    expandedOverrides.get(path) ?? (expandable && depth < AUTO_EXPAND_DEPTH);
+    expandedOverrides.get(nodeKey) ?? (expandable && depth < AUTO_EXPAND_DEPTH);
   const indent = { paddingLeft: `${depth * 14}px` };
   const canAddToPlot =
     isPlottableScalar(node) && plottableFieldPaths?.has(path);
@@ -207,7 +222,7 @@ const TreeRow = React.memo(function TreeRow({
           : `Copy ${label}`
       : `Copy ${label}`;
   const visibleEntryCount =
-    visibleObjectEntries.get(path) ?? OBJECT_ENTRY_PAGE_SIZE;
+    visibleObjectEntries.get(nodeKey) ?? OBJECT_ENTRY_PAGE_SIZE;
   const hiddenObjectEntries =
     node.kind === "object"
       ? Math.max(0, node.entries.length - visibleEntryCount)
@@ -223,7 +238,7 @@ const TreeRow = React.memo(function TreeRow({
               aria-label={`Toggle ${label}`}
               className={styles.chevron}
               data-testid={`episode-raw-toggle-${path}`}
-              onClick={() => toggle(path, !expanded)}
+              onClick={() => toggle(nodeKey, !expanded)}
               type="button"
             >
               {expanded ? "▾" : "▸"}
@@ -278,6 +293,7 @@ const TreeRow = React.memo(function TreeRow({
                 key={childKey}
                 label={childKey}
                 node={child}
+                nodeKey={objectChildNodeKey(nodeKey, childKey)}
                 path={`${path}.${childKey}`}
                 plottableFieldPaths={plottableFieldPaths}
                 plottedPath={plottedPath}
@@ -291,8 +307,8 @@ const TreeRow = React.memo(function TreeRow({
         <ObjectPaginationRow
           depth={depth + 1}
           hiddenEntries={hiddenObjectEntries}
-          onShowMore={() => showMoreObjectEntries(path)}
-          path={path}
+          onShowMore={() => showMoreObjectEntries(nodeKey)}
+          paginationKey={nodeKey}
         />
       ) : null}
       {expanded && node.kind === "object" && node.droppedEntries ? (
@@ -319,6 +335,7 @@ const TreeRow = React.memo(function TreeRow({
               key={index}
               label={String(index)}
               node={item}
+              nodeKey={arrayChildNodeKey(nodeKey, index)}
               path={`${path}.${index}`}
               plottableFieldPaths={plottableFieldPaths}
               plottedPath={plottedPath}
@@ -352,12 +369,12 @@ function ObjectPaginationRow({
   depth,
   hiddenEntries,
   onShowMore,
-  path,
+  paginationKey,
 }: {
   readonly depth: number;
   readonly hiddenEntries: number;
   readonly onShowMore: () => void;
-  readonly path: string;
+  readonly paginationKey: string;
 }) {
   return (
     <div className={styles.row}>
@@ -368,7 +385,7 @@ function ObjectPaginationRow({
         <span aria-hidden="true" className={styles.chevronSpacer} />
         <button
           className={styles.showMoreButton}
-          data-testid={`episode-raw-show-more-${path}`}
+          data-testid={`episode-raw-show-more-${paginationKey}`}
           onClick={onShowMore}
           type="button"
         >

@@ -132,6 +132,34 @@ describe("demand bridge", () => {
     harness.stop();
   });
 
+  it("downgrades paused seek intent when playback starts before its microtask", async () => {
+    vi.useFakeTimers();
+    const playbackStore = createStore();
+    let defer = false;
+    const fills: Array<{ expedited: boolean; userInitiated: boolean }> = [];
+    const harness = createHarness({
+      expeditePausedSeeks: true,
+      onFill: ({ expedited, userInitiated }) =>
+        fills.push({ expedited, userInitiated }),
+      playbackStore,
+      shouldDeferIdleWork: () => defer,
+    });
+    await Promise.resolve();
+    fills.length = 0;
+
+    defer = true;
+    playbackStore.set(seekEventAtom, { seq: 1, time: 1 });
+    playbackStore.set(isPlayingAtom, true);
+    await Promise.resolve();
+
+    expect(fills).toEqual([]);
+    playbackStore.set(isPlayingAtom, false);
+    defer = false;
+    await vi.advanceTimersByTimeAsync(10);
+    expect(fills).toEqual([{ expedited: false, userInitiated: false }]);
+    harness.stop();
+  });
+
   it("coalesces timeline retries and preserves user intent", async () => {
     vi.useFakeTimers();
     let timeline = null as ReturnType<typeof createTimelineIndex> | null;

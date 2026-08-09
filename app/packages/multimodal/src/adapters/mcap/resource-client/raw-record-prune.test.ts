@@ -310,6 +310,25 @@ describe("rawRecordToJsonText", () => {
     }
   });
 
+  it("rejects inherited toJSON accessors without invoking them", () => {
+    const getter = vi.fn(() => () => "x".repeat(1_000));
+    const prototype: Record<string, unknown> = {};
+    Object.defineProperty(prototype, "toJSON", { get: getter });
+    const record = Object.assign(Object.create(prototype) as object, {
+      value: 1,
+    });
+    const stringify = vi.spyOn(JSON, "stringify");
+    try {
+      expect(() => rawRecordToJsonText(record, 64)).toThrowError(
+        expect.objectContaining({ operation: "raw-record-json-output" }),
+      );
+      expect(getter).not.toHaveBeenCalled();
+      expect(stringify).not.toHaveBeenCalled();
+    } finally {
+      stringify.mockRestore();
+    }
+  });
+
   it("normalizes boxed primitives consistently with the preflight", () => {
     expect(
       JSON.parse(
@@ -320,6 +339,17 @@ describe("rawRecordToJsonText", () => {
         }),
       ),
     ).toEqual({ boolean: true, number: "Infinity", string: "value" });
+  });
+
+  it("normalizes safe and unsafe boxed BigInt values", () => {
+    expect(
+      JSON.parse(
+        rawRecordToJsonText({
+          safe: Object(42n),
+          unsafe: Object(9_007_199_254_740_993n),
+        }),
+      ),
+    ).toEqual({ safe: 42, unsafe: "9007199254740993" });
   });
 });
 

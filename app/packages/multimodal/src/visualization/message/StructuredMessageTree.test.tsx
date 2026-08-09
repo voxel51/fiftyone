@@ -214,6 +214,67 @@ describe("StructuredMessageTree", () => {
     expect(screen.getByText("(50 not rendered)")).toBeTruthy();
   });
 
+  it("keeps root and dotted-key pagination state distinct", () => {
+    const nestedEntries: RawObjectNode["entries"] = Array.from(
+      { length: 150 },
+      (_, index) => [
+        `child-${index}`,
+        { kind: "scalar", value: String(index), valueType: "number" },
+      ],
+    );
+    const collisionRoot: RawObjectNode = {
+      entries: [
+        ["$", { entries: nestedEntries, kind: "object" }],
+        ...Array.from(
+          { length: 150 },
+          (_, index) =>
+            [
+              `root-${index}`,
+              { kind: "scalar", value: String(index), valueType: "number" },
+            ] as const,
+        ),
+      ],
+      kind: "object",
+    };
+    render(<StructuredMessageTree root={collisionRoot} />);
+    const nestedRows = () =>
+      screen.getAllByTestId(/^episode-raw-node-\$\.child-\d+$/);
+
+    expect(nestedRows()).toHaveLength(100);
+    fireEvent.click(screen.getByTestId("episode-raw-show-more-$"));
+    expect(nestedRows()).toHaveLength(100);
+
+    fireEvent.click(
+      screen.getByTestId(
+        `episode-raw-show-more-$root/o:${encodeURIComponent("$")}`,
+      ),
+    );
+    expect(nestedRows()).toHaveLength(150);
+  });
+
+  it("preserves pagination across refreshed record identities", () => {
+    const wideEntries = Array.from(
+      { length: 250 },
+      (_, index) =>
+        [
+          `field-${index}`,
+          { kind: "scalar", value: String(index), valueType: "number" },
+        ] as const,
+    );
+    const view = render(
+      <StructuredMessageTree root={{ entries: wideEntries, kind: "object" }} />,
+    );
+    fireEvent.click(screen.getByTestId("episode-raw-show-more-$"));
+
+    view.rerender(
+      <StructuredMessageTree
+        root={{ entries: [...wideEntries], kind: "object" }}
+      />,
+    );
+
+    expect(screen.getAllByTestId(/^episode-raw-node-field-/)).toHaveLength(200);
+  });
+
   it("skips tree work when a parent rerenders with the same result identity", () => {
     let entryReads = 0;
     const countedRoot: RawObjectNode = {

@@ -20,6 +20,7 @@ export const DEFAULT_RAW_PRUNE_BUDGETS: Required<McapRawPruneBudgets> = {
 };
 
 const BYTES_PREVIEW_LENGTH = 16;
+const BOXED_BIGINT_PROTOTYPE = Object.getPrototypeOf(Object(0n)) as object;
 
 /** Maximum UTF-16 code units returned by one whole-message JSON export. */
 export const RAW_RECORD_FULL_JSON_MAX_CODE_UNITS = 8 * 1024 * 1024;
@@ -325,9 +326,11 @@ function measureJsonValue(value: unknown, state: JsonSizeState): void {
     return addJsonSize(state, JSON.stringify(value).length);
   }
   const object = value as Record<string, unknown>;
+  const toJsonDescriptor = propertyDescriptorInChain(object, "toJSON");
   if (
-    "toJSON" in object &&
-    typeof (object as { toJSON?: unknown }).toJSON === "function"
+    toJsonDescriptor &&
+    (!("value" in toJsonDescriptor) ||
+      typeof toJsonDescriptor.value === "function")
   ) {
     throw new EpisodeReadUnsupportedError(
       "raw-record-json-output",
@@ -414,11 +417,29 @@ function measureJsonArrayLike(
   }
 }
 
-function boxedPrimitiveValue(value: object): boolean | number | string | null {
+function boxedPrimitiveValue(
+  value: object,
+): bigint | boolean | number | string | null {
   if (value instanceof Boolean) return Boolean.prototype.valueOf.call(value);
   if (value instanceof Number) return Number.prototype.valueOf.call(value);
   if (value instanceof String) return String.prototype.valueOf.call(value);
+  if (Object.getPrototypeOf(value) === BOXED_BIGINT_PROTOTYPE) {
+    return BigInt.prototype.valueOf.call(value);
+  }
   return null;
+}
+
+function propertyDescriptorInChain(
+  value: object,
+  key: PropertyKey,
+): PropertyDescriptor | undefined {
+  let current: object | null = value;
+  while (current) {
+    const descriptor = Object.getOwnPropertyDescriptor(current, key);
+    if (descriptor) return descriptor;
+    current = Object.getPrototypeOf(current) as object | null;
+  }
+  return undefined;
 }
 
 function throwDynamicJsonValue(): never {

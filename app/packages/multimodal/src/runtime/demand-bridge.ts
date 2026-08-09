@@ -185,7 +185,14 @@ export function startDemandBridge<
       const nextExpedited = queuedExpedited;
       queuedUserInitiated = false;
       queuedExpedited = false;
-      fill(nextUserInitiated, nextExpedited);
+      const playbackStarted =
+        nextExpedited &&
+        playbackStore !== null &&
+        (getIsPlaying(playbackStore) || getIsPlayPending(playbackStore));
+      fill(
+        playbackStarted ? false : nextUserInitiated,
+        playbackStarted ? false : nextExpedited,
+      );
     });
   };
   const queueFill = () => {
