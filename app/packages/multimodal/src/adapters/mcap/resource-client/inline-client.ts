@@ -442,10 +442,8 @@ export function createInlineMcapResourceClient(
       readOptions?: McapResourceReadOptions,
     ): Promise<McapFrameTransformSet> {
       if (readOptions?.signal) {
-        return withRequestReader(
-          request.source,
-          readOptions.signal,
-          readMcapFrameTransformBootstrap,
+        return withRequestReader(request.source, readOptions.signal, (reader) =>
+          readMcapFrameTransformBootstrap(reader, readOptions.signal),
         );
       }
       const sourceKey = byteSourceAccessKey(request.source);

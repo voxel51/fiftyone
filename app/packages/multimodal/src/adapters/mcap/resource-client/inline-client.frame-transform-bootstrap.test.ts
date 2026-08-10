@@ -365,6 +365,171 @@ describe("MCAP frame transform bootstrap", () => {
     },
   );
 
+  it("caps legacy fallback scans without marking the channel complete", async () => {
+    const message = createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
+      channelId: 10,
+    });
+    let bootstrapYields = 0;
+    const readMessages = vi.fn(async function* (
+      request: { readonly startTime?: bigint } = {},
+    ) {
+      if (request.startTime !== undefined) {
+        yield message;
+        return;
+      }
+      for (let index = 0; index < 257; index += 1) {
+        bootstrapYields += 1;
+        yield { ...message, logTime: BigInt(index) };
+      }
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/tf_static",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+        }),
+      ),
+    });
+    const source = createMcapSourceDescriptor();
+
+    const bootstrap = await client.readFrameTransformBootstrap({ source });
+    const window = await client.readFrameTransformWindow({
+      endTimeNs: message.logTime,
+      source,
+      startTimeNs: message.logTime,
+    });
+
+    expect(bootstrap.samples).toHaveLength(256);
+    expect(bootstrapYields).toBe(257);
+    expect(window.samples).toHaveLength(1);
+    expect(readMessages).toHaveBeenCalledTimes(2);
+  });
+
+  it("caps ambiguous-topic classification across sibling-channel messages", async () => {
+    let yielded = 0;
+    const readMessages = vi.fn(async function* () {
+      for (let index = 0; index < 258; index += 1) {
+        yielded += 1;
+        yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
+          channelId: 99,
+          logTime: BigInt(index),
+        });
+      }
+      yield createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
+        channelId: 10,
+      });
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/sensor_calibration",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+          statistics: createStatistics({
+            channelMessageCounts: new Map([[10, 1n]]),
+          }),
+        }),
+      ),
+    });
+
+    const bootstrap = await client.readFrameTransformBootstrap({
+      source: createMcapSourceDescriptor(),
+    });
+
+    expect(bootstrap.samples).toEqual([]);
+    expect(yielded).toBe(258);
+    expect(readMessages).toHaveBeenCalledOnce();
+  });
+
+  it("observes cancellation while scanning legacy fallback messages", async () => {
+    const controller = new AbortController();
+    const message = createMessage(FRAME_TRANSFORM_MESSAGE_WITHOUT_TIMESTAMP, {
+      channelId: 10,
+    });
+    const readMessages = vi.fn(async function* () {
+      yield message;
+      controller.abort();
+      yield message;
+    });
+    const client = createInlineMcapResourceClient({
+      byteClient: { readBytes: vi.fn() },
+      decodeClient: createTestDecodeClient(),
+      readerFactory: vi.fn(async () =>
+        createReader({
+          channelsById: new Map([
+            [
+              10,
+              createChannel({
+                id: 10,
+                schemaId: 10,
+                topic: "/tf_static",
+              }),
+            ],
+          ]),
+          readMessages,
+          schemasById: new Map([
+            [
+              10,
+              createSchema(FRAME_TRANSFORM_SCHEMA_DATA, {
+                id: 10,
+                name: "foxglove.FrameTransform",
+              }),
+            ],
+          ]),
+        }),
+      ),
+    });
+
+    await expect(
+      client.readFrameTransformBootstrap(
+        { source: createMcapSourceDescriptor() },
+        { signal: controller.signal },
+      ),
+    ).rejects.toMatchObject({
+      message: "MCAP frame transform bootstrap aborted",
+      name: "AbortError",
+    });
+  });
+
   it("drains bounded transform bootstrap continuations without partial results", async () => {
     const continuation = {
       nextChunkStartOffset: 2_000n,
@@ -509,6 +674,7 @@ describe("MCAP frame transform bootstrap", () => {
   });
 
   it("defers missing-stat static channels whose indexed messages exceed the cap", async () => {
+    const controller = new AbortController();
     const readIndexedMessageTimes = vi.fn(async function* () {
       for (let index = 0; index < 257; index += 1) {
         yield createIndexedMessageTime(
@@ -561,13 +727,15 @@ describe("MCAP frame transform bootstrap", () => {
       ),
     });
 
-    const set = await client.readFrameTransformBootstrap({
-      source: createMcapSourceDescriptor(),
-    });
+    const set = await client.readFrameTransformBootstrap(
+      { source: createMcapSourceDescriptor() },
+      { signal: controller.signal },
+    );
 
     expect(set.samples).toEqual([]);
     expect(readIndexedMessageTimes).toHaveBeenCalledWith({
       limit: 257,
+      signal: controller.signal,
       topics: ["/tf_static"],
     });
     expect(readBoundedMessages).not.toHaveBeenCalled();

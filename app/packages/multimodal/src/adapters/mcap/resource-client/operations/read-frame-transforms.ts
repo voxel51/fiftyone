@@ -26,6 +26,7 @@ import {
 import { isWithinRange } from "../../synchronization/policy";
 import type { McapReadFrameTransformWindowRequest } from "../../contracts/index";
 import { maxBigInt, minBigInt } from "../../../../utils/bigint";
+import { throwIfAborted } from "../../../../utils/cancellation";
 import {
   discoverFrameTransformChannels,
   isStaticTransformBootstrapTopic,
@@ -49,6 +50,12 @@ const BOOTSTRAP_BOUNDED_MAX_WALL_TIME_MS = 10_000;
 const BOOTSTRAP_CHANNEL_MESSAGE_CAP = 256n;
 const BOOTSTRAP_CHANNEL_MESSAGE_LIMIT =
   Number(BOOTSTRAP_CHANNEL_MESSAGE_CAP) + 1;
+// Legacy readMessages() limits bound yielded decode/retention work only. The
+// underlying indexed reader may still load a larger mixed chunk before yield.
+const BOOTSTRAP_FALLBACK_MAX_MESSAGES = 1_024;
+const BOOTSTRAP_FALLBACK_MAX_ENCODED_BYTES = 64 * 1024 * 1024;
+const FRAME_TRANSFORM_BOOTSTRAP_ABORT_MESSAGE =
+  "MCAP frame transform bootstrap aborted";
 type McapChunkIndex = McapTypes.TypedMcapRecords["ChunkIndex"];
 type McapMessage = McapTypes.TypedMcapRecords["Message"];
 
@@ -79,7 +86,9 @@ const bootstrappedStaticChannelIdsByReader = new WeakMap<
  */
 export async function readMcapFrameTransformBootstrap(
   reader: McapIndexedReaderLike,
+  signal?: AbortSignal,
 ): Promise<McapFrameTransformSet> {
+  throwIfAborted(signal, FRAME_TRANSFORM_BOOTSTRAP_ABORT_MESSAGE);
   const boundedMessages: McapMessage[] = [];
   const completedStaticChannelIds = new Set<number>();
   const windowedSampleChannelIds = new Set<number>();
@@ -88,11 +97,16 @@ export async function readMcapFrameTransformBootstrap(
   // Admission stays per-channel so a missing footer count cannot hide one
   // broad topic inside an otherwise small aggregate read budget.
   for (const entry of discoverFrameTransformChannels(reader)) {
-    if (await frameTransformChannelExceedsBootstrapCap(reader, entry)) {
+    throwIfAborted(signal, FRAME_TRANSFORM_BOOTSTRAP_ABORT_MESSAGE);
+    if (await frameTransformChannelExceedsBootstrapCap(reader, entry, signal)) {
       continue;
     }
 
-    const bounded = await readBoundedFrameTransformChannel(reader, entry);
+    const bounded = await readBoundedFrameTransformChannel(
+      reader,
+      entry,
+      signal,
+    );
     if (bounded.kind === "deferred") {
       continue;
     }
@@ -115,7 +129,7 @@ export async function readMcapFrameTransformBootstrap(
       }
       continue;
     }
-    if (await firstTransformMessageHasStaticSample(reader, entry)) {
+    if (await firstTransformMessageHasStaticSample(reader, entry, signal)) {
       fallbackChannels.push(entry);
       bootstrapChannelsById.set(entry.channel.id, entry);
     }
@@ -141,9 +155,29 @@ export async function readMcapFrameTransformBootstrap(
     });
   }
   if (fallbackChannels.length > 0) {
+    const fallbackMessageLimit = Math.min(
+      BOOTSTRAP_FALLBACK_MAX_MESSAGES,
+      Number(BOOTSTRAP_CHANNEL_MESSAGE_CAP) * fallbackChannels.length,
+    );
+    let fallbackEncodedBytes = 0;
+    let fallbackMessages = 0;
+    let fallbackReadComplete = true;
     for await (const message of reader.readMessages({
-      topics: fallbackChannels.map((entry) => entry.channel.topic),
+      topics: [
+        ...new Set(fallbackChannels.map((entry) => entry.channel.topic)),
+      ],
     })) {
+      throwIfAborted(signal, FRAME_TRANSFORM_BOOTSTRAP_ABORT_MESSAGE);
+      if (
+        fallbackMessages >= fallbackMessageLimit ||
+        fallbackEncodedBytes + message.data.byteLength >
+          BOOTSTRAP_FALLBACK_MAX_ENCODED_BYTES
+      ) {
+        fallbackReadComplete = false;
+        break;
+      }
+      fallbackMessages += 1;
+      fallbackEncodedBytes += message.data.byteLength;
       recordBootstrapMessage({
         channelsById,
         message,
@@ -152,9 +186,11 @@ export async function readMcapFrameTransformBootstrap(
         windowedSampleChannelIds,
       });
     }
-    for (const entry of fallbackChannels) {
-      if (isStaticTransformBootstrapTopic(entry.channel.topic)) {
-        completedStaticChannelIds.add(entry.channel.id);
+    if (fallbackReadComplete) {
+      for (const entry of fallbackChannels) {
+        if (isStaticTransformBootstrapTopic(entry.channel.topic)) {
+          completedStaticChannelIds.add(entry.channel.id);
+        }
       }
     }
   }
@@ -221,6 +257,7 @@ function recordBootstrapMessage({
 async function frameTransformChannelExceedsBootstrapCap(
   reader: McapIndexedReaderLike,
   entry: FrameTransformChannel,
+  signal?: AbortSignal,
 ): Promise<boolean> {
   if (entry.messageCount !== undefined) {
     return entry.messageCount > BOOTSTRAP_CHANNEL_MESSAGE_CAP;
@@ -237,8 +274,10 @@ async function frameTransformChannelExceedsBootstrapCap(
   let indexedMessages = 0;
   for await (const _entry of reader.readIndexedMessageTimes({
     limit: BOOTSTRAP_CHANNEL_MESSAGE_LIMIT,
+    ...(signal ? { signal } : {}),
     topics: [entry.channel.topic],
   })) {
+    throwIfAborted(signal, FRAME_TRANSFORM_BOOTSTRAP_ABORT_MESSAGE);
     indexedMessages += 1;
     if (indexedMessages >= BOOTSTRAP_CHANNEL_MESSAGE_LIMIT) {
       return true;
@@ -258,6 +297,7 @@ type BoundedFrameTransformChannelRead =
 async function readBoundedFrameTransformChannel(
   reader: McapIndexedReaderLike,
   entry: FrameTransformChannel,
+  signal?: AbortSignal,
 ): Promise<BoundedFrameTransformChannelRead> {
   const readBoundedMessages = reader.readBoundedMessages;
   if (!readBoundedMessages || reader.chunkIndexes.length === 0) {
@@ -297,12 +337,14 @@ async function readBoundedFrameTransformChannel(
   const messages: McapMessage[] = [];
   let continuation: McapReadContinuation | undefined;
   for (let grant = 0; grant <= chunks.length; grant += 1) {
+    throwIfAborted(signal, FRAME_TRANSFORM_BOOTSTRAP_ABORT_MESSAGE);
     const result: McapBoundedMessageReadResult = await readBoundedMessages({
       absoluteBudget: budget,
       absoluteMaxChunks: chunks.length,
       budget,
       ...(continuation ? { continuation } : {}),
       maxChunks: chunks.length,
+      signal,
       topics: [entry.channel.topic],
     });
     if (result.stopReason === "oversized-source-unit") {
@@ -363,10 +405,23 @@ function firstMessageHasStaticSample(
 async function firstTransformMessageHasStaticSample(
   reader: McapIndexedReaderLike,
   entry: FrameTransformChannel,
+  signal?: AbortSignal,
 ): Promise<boolean> {
+  let encodedBytes = 0;
+  let messages = 0;
   for await (const message of reader.readMessages({
     topics: [entry.channel.topic],
   })) {
+    throwIfAborted(signal, FRAME_TRANSFORM_BOOTSTRAP_ABORT_MESSAGE);
+    if (
+      messages >= BOOTSTRAP_CHANNEL_MESSAGE_LIMIT ||
+      encodedBytes + message.data.byteLength >
+        BOOTSTRAP_FALLBACK_MAX_ENCODED_BYTES
+    ) {
+      return false;
+    }
+    messages += 1;
+    encodedBytes += message.data.byteLength;
     if (message.channelId !== entry.channel.id) {
       continue;
     }
