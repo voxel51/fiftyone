@@ -58,7 +58,6 @@ describe("BasemapReadinessGate", () => {
     gate.handleError({ sourceId: "episode-location-current" });
     gate.handleSourceData({
       coord: {},
-      sourceDataType: "content",
       sourceId: "provider",
     });
     for (let index = 0; index < 10; index += 1) {
@@ -70,7 +69,7 @@ describe("BasemapReadinessGate", () => {
     gate.dispose();
   });
 
-  it("does not mistake source-loaded metadata for a successful tile", () => {
+  it("does not mistake source content for a successful tile", () => {
     const onReady = vi.fn();
     const gate = new BasemapReadinessGate({
       onFailure: vi.fn(),
@@ -86,7 +85,6 @@ describe("BasemapReadinessGate", () => {
     expect(onReady).not.toHaveBeenCalled();
     gate.handleSourceData({
       coord: {},
-      sourceDataType: "content",
       sourceId: "provider",
     });
     expect(onReady).toHaveBeenCalledOnce();

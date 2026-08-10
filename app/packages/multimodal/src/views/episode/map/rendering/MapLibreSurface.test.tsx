@@ -470,7 +470,6 @@ describe("MapLibreSurface", () => {
     act(() => {
       map?.emit("sourcedata", {
         coord: {},
-        sourceDataType: "content",
         sourceId: "provider",
       });
     });

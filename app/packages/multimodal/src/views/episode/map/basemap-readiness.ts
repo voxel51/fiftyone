@@ -6,7 +6,6 @@ interface BasemapEventLike {
   readonly coord?: unknown;
   readonly error?: { readonly sourceId?: unknown };
   readonly source?: { readonly id?: unknown };
-  readonly sourceDataType?: unknown;
   readonly sourceId?: unknown;
   readonly tile?: { readonly source?: unknown } | unknown;
 }
@@ -121,10 +120,7 @@ function basemapEventSourceId(
 function isFirstTileSuccess(event: unknown): boolean {
   if (!event || typeof event !== "object") return false;
   const candidate = event as BasemapEventLike;
-  return (
-    candidate.sourceDataType === "content" &&
-    (candidate.tile !== undefined || candidate.coord !== undefined)
-  );
+  return candidate.tile !== undefined || candidate.coord !== undefined;
 }
 
 const browserScheduler: BasemapReadinessScheduler = {
