@@ -1,5 +1,6 @@
 import type { MapViewport } from "./cache";
 import type { LocationBounds } from "../tracks/location-track";
+import { normalizeLongitudeIntervalEast, unwrapLongitude } from "../wgs84";
 
 const TILE_SIZE = 512;
 const MAX_MERCATOR_LATITUDE = 85.051129;
@@ -59,15 +60,17 @@ export function mapViewportIsNearEvidence({
   };
   const toScreen = (longitude: number, latitude: number) => {
     const point = project(longitude, latitude, viewport.zoom);
-    const worldSize = TILE_SIZE * 2 ** viewport.zoom;
-    let dx = point.x - center.x;
-    if (dx > worldSize / 2) dx -= worldSize;
-    if (dx < -worldSize / 2) dx += worldSize;
-    return { x: width / 2 + dx, y: height / 2 + point.y - center.y };
+    return {
+      x: width / 2 + point.x - center.x,
+      y: height / 2 + point.y - center.y,
+    };
   };
 
   const markerPoint = validMarker
-    ? toScreen(validMarker.longitude, validMarker.latitude)
+    ? toScreen(
+        unwrapLongitude(validMarker.longitude, viewport.longitude),
+        validMarker.latitude,
+      )
     : null;
   if (
     markerPoint &&
@@ -78,31 +81,31 @@ export function mapViewportIsNearEvidence({
   }
   if (!validBounds) return false;
 
-  const intervals =
-    validBounds.west <= validBounds.east
-      ? [[validBounds.west, validBounds.east] as const]
-      : [[validBounds.west, 180] as const, [-180, validBounds.east] as const];
-  return intervals.some(([west, east]) => {
-    const northwest = toScreen(west, validBounds.north);
-    const southeast = toScreen(east, validBounds.south);
-    if (!pointIsFinite(northwest) || !pointIsFinite(southeast)) return false;
-    return rectanglesIntersect(
-      {
-        bottom: Math.max(northwest.y, southeast.y),
-        left: Math.min(northwest.x, southeast.x),
-        right: Math.max(northwest.x, southeast.x),
-        top: Math.min(northwest.y, southeast.y),
-      },
-      expanded,
-    );
-  });
+  const east = normalizeLongitudeIntervalEast(
+    validBounds.west,
+    validBounds.east,
+  );
+  if (east === null) return false;
+  const boundsCenter = (validBounds.west + east) / 2;
+  const nearestCenter = unwrapLongitude(boundsCenter, viewport.longitude);
+  const shift = nearestCenter - boundsCenter;
+  const northwest = toScreen(validBounds.west + shift, validBounds.north);
+  const southeast = toScreen(east + shift, validBounds.south);
+  if (!pointIsFinite(northwest) || !pointIsFinite(southeast)) return false;
+  return rectanglesIntersect(
+    {
+      bottom: Math.max(northwest.y, southeast.y),
+      left: Math.min(northwest.x, southeast.x),
+      right: Math.max(northwest.x, southeast.x),
+      top: Math.min(northwest.y, southeast.y),
+    },
+    expanded,
+  );
 }
 
 function locationIsValid(longitude: number, latitude: number): boolean {
   return (
     Number.isFinite(longitude) &&
-    longitude >= -180 &&
-    longitude <= 180 &&
     Number.isFinite(latitude) &&
     latitude >= -90 &&
     latitude <= 90
@@ -111,19 +114,20 @@ function locationIsValid(longitude: number, latitude: number): boolean {
 
 function boundsAreValid(bounds: LocationBounds): boolean {
   if (
-    !locationIsValid(bounds.west, bounds.north) ||
-    !locationIsValid(bounds.east, bounds.south) ||
+    !Number.isFinite(bounds.west) ||
+    !Number.isFinite(bounds.east) ||
+    !Number.isFinite(bounds.north) ||
+    !Number.isFinite(bounds.south) ||
+    bounds.north < -90 ||
+    bounds.north > 90 ||
+    bounds.south < -90 ||
+    bounds.south > 90 ||
     bounds.south > bounds.north
   ) {
     return false;
   }
-  const longitudeSpan =
-    bounds.west <= bounds.east
-      ? bounds.east - bounds.west
-      : 180 - bounds.west + (bounds.east + 180);
-  // A route spanning more than half the world is ambiguous after longitude
-  // wrapping. Rejecting the cache is safer than restoring the wrong region.
-  return longitudeSpan <= 180;
+  const east = normalizeLongitudeIntervalEast(bounds.west, bounds.east);
+  return east !== null && east - bounds.west <= 360;
 }
 
 function pointIsFinite(point: { readonly x: number; readonly y: number }) {

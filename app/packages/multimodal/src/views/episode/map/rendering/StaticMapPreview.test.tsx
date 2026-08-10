@@ -45,4 +45,52 @@ describe("StaticMapPreview", () => {
 
     expect(view.container.querySelector("circle")).toBeTruthy();
   });
+
+  it("projects seam-crossing routes and wrapped live fixes into one span", () => {
+    const view = render(
+      <StaticMapPreview
+        liveMarkers={[
+          {
+            color: "#ff6600",
+            label: "GPS",
+            location: { latitude: 0, longitude: -179, timeNs: 2n },
+            stream: "/gps",
+          },
+        ]}
+        tracks={[
+          {
+            ...TRACK,
+            segments: [
+              {
+                points: [
+                  {
+                    latitude: 0,
+                    longitude: 179,
+                    longitudeUnwrapped: true,
+                    timeNs: 1n,
+                  },
+                  {
+                    latitude: 0,
+                    longitude: 181,
+                    longitudeUnwrapped: true,
+                    timeNs: 2n,
+                  },
+                ],
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const points = view.container
+      .querySelector("polyline")
+      ?.getAttribute("points")
+      ?.split(" ")
+      .map((coordinate) => Number(coordinate.split(",")[0]));
+    expect(points).toEqual([4, 96]);
+    expect(
+      Number(view.container.querySelector("circle")?.getAttribute("cx")),
+    ).toBe(96);
+  });
 });

@@ -3,8 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { LocationTrackState } from "../tracks/location-track";
 import {
   activeRouteGradient,
+  cometSourceId,
   createIndexedMapTrack,
+  MAP_ROUTE_PAINT,
   reconcileTrackLayers,
+  routeLayerId,
 } from "./route-layers";
 
 describe("map route layers", () => {
@@ -38,6 +41,16 @@ describe("map route layers", () => {
     expect(addSource).toHaveBeenCalledTimes(2);
     expect(addLayer).toHaveBeenCalledTimes(7);
     expect(installed.has(indexed.key)).toBe(true);
+    const layers = addLayer.mock.calls.map(([layer]) => layer);
+    expect(
+      layers.find(({ id }) => id === routeLayerId(indexed.key, "past"))?.paint,
+    ).toMatchObject({
+      "line-opacity": MAP_ROUTE_PAINT.pastOpacity,
+      "line-width": MAP_ROUTE_PAINT.routeWidth,
+    });
+    expect(
+      layers.find(({ id }) => id === cometSourceId(indexed.key))?.paint,
+    ).toMatchObject({ "line-width": MAP_ROUTE_PAINT.cometWidth });
 
     reconcileTrackLayers(map, [], installed);
     expect(removeLayer).toHaveBeenCalledTimes(7);

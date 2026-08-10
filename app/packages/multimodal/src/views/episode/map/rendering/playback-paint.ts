@@ -72,9 +72,21 @@ export function withLiveMapMarkers(
   const liveByStream = new Map(
     liveMarkers.map((marker) => [marker.stream, marker] as const),
   );
-  const markers = frame.markers.map(
-    (marker) => liveByStream.get(marker.stream) ?? marker,
-  );
+  const markers = frame.markers.map((marker) => {
+    const live = liveByStream.get(marker.stream);
+    if (!live) return marker;
+    const admittedBearing = marker.location.bearingDeg;
+    if (
+      live.location.bearingDeg !== undefined ||
+      admittedBearing === undefined
+    ) {
+      return live;
+    }
+    return {
+      ...live,
+      location: { ...live.location, bearingDeg: admittedBearing },
+    };
+  });
   const existingStreams = new Set(frame.markers.map((marker) => marker.stream));
   for (const marker of liveMarkers) {
     if (!existingStreams.has(marker.stream)) markers.push(marker);
@@ -183,6 +195,13 @@ export function prunePlaybackPaintState(
   }
 }
 
+/** Invalidates style-owned route filters without discarding seek cursors. */
+export function invalidatePlaybackStyleState(
+  state: MapPlaybackPaintState,
+): void {
+  state.routeProgressKeys.clear();
+}
+
 /** Converts markers into the generic point collection used for hover. */
 export function mapMarkerFeatures(
   markers: readonly MapLocationMarker[],
@@ -268,7 +287,7 @@ function updateRouteProgress(
       "line-gradient",
       activeRouteGradient(
         track.color,
-        0.5,
+        MAP_ROUTE_PAINT.pastOpacity,
         MAP_ROUTE_PAINT.futureColor,
         0.3,
         resolved.lineProgress,

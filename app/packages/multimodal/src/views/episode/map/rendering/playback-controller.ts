@@ -29,6 +29,7 @@ export class MapPlaybackController {
   private animationFrame: number | null = null;
   private disposed = false;
   private lastPaintAt = Number.NEGATIVE_INFINITY;
+  private latestPlayheadPaused = true;
   private latestPlayheadNs: bigint | null = null;
   private latestVersion = 0;
   private paintedVersion = 0;
@@ -72,6 +73,22 @@ export class MapPlaybackController {
     if (this.active) this.flushLatest();
   }
 
+  /**
+   * Requests a routine data repaint without bypassing the playback cap. Static
+   * changes remain immediate while paused, and hidden surfaces retain the
+   * request until their single resume paint.
+   */
+  requestRepaint(): void {
+    if (this.disposed) return;
+    this.latestVersion += 1;
+    if (!this.active) return;
+    if (this.latestPlayheadPaused) {
+      this.flushLatest();
+      return;
+    }
+    this.schedulePaint();
+  }
+
   setSurfaceActive(active: boolean): void {
     if (this.disposed || this.active === active) return;
     this.active = active;
@@ -82,12 +99,13 @@ export class MapPlaybackController {
     if (this.latestVersion !== this.paintedVersion) this.flushLatest();
   }
 
-  updatePlayhead(playheadNs: bigint | null, immediate = false): void {
+  updatePlayhead(playheadNs: bigint | null, paused = false): void {
     if (this.disposed) return;
     this.latestPlayheadNs = playheadNs;
+    this.latestPlayheadPaused = paused;
     this.latestVersion += 1;
     if (!this.active) return;
-    if (immediate) {
+    if (paused) {
       this.flushLatest();
       return;
     }

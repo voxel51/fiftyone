@@ -26,6 +26,7 @@ import {
   type DataStream,
   useSetDataStream,
 } from "../../playback/data-stream-context";
+import type { LocationTracks } from "./location-track";
 
 afterEach(() => {
   cleanup();
@@ -252,6 +253,68 @@ describe("LocationTracksBridge", () => {
     expect(read).toHaveBeenCalledTimes(2);
   });
 
+  it("coalesces forward publication but flushes backward seeks and pause", async () => {
+    vi.useFakeTimers();
+    const source = createSource("drive");
+    const session = createSession();
+    const store = createStore();
+    const publications: LocationTracks[] = [];
+    const read = vi.fn<BudgetedReadJob["read"]>().mockResolvedValue(
+      boundedResult({
+        continuation: {},
+        frames: [
+          locationMessage(5_000_000_000n, 37, -122, 0),
+          locationMessage(5_100_000_000n, 37.001, -122.001, 0),
+          locationMessage(5_200_000_000n, 37.002, -122.002, 0),
+          locationMessage(5_300_000_000n, 37.003, -122.003, 0),
+        ],
+        resumeAtNs: 10_000_000_000n,
+        stopReason: "horizon-reached",
+      }),
+    );
+    const budgetAccount = {
+      createJob: () => ({ read }),
+    } as unknown as SourceReadBudgetAccount;
+    render(
+      <Harness
+        budgetAccount={budgetAccount}
+        onTracks={(tracks) => publications.push(tracks)}
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        playheadSec={5}
+        source={source}
+        store={store}
+      />,
+    );
+    await act(async () => Promise.resolve());
+    expect(screen.getByTestId("location-tracks").textContent).toBe(
+      "/gps:ready:1:1:full",
+    );
+
+    publications.length = 0;
+    act(() => store.set(isPlayingAtom, true));
+    act(() => store.set(playheadAtom, 5.1));
+    act(() => store.set(playheadAtom, 5.2));
+    act(() => store.set(playheadAtom, 5.3));
+    expect(publications).toHaveLength(0);
+
+    await advanceTimers(100);
+    expect(publications).toHaveLength(1);
+    expect(publications[0].get("/gps")?.pointCount).toBe(4);
+
+    act(() => store.set(playheadAtom, 5.05));
+    expect(publications).toHaveLength(2);
+    expect(publications[1].get("/gps")?.pointCount).toBe(1);
+
+    act(() => store.set(playheadAtom, 5.3));
+    expect(publications).toHaveLength(2);
+    act(() => store.set(isPlayingAtom, false));
+    expect(publications).toHaveLength(3);
+    expect(publications[2].get("/gps")?.pointCount).toBe(4);
+    await advanceTimers(100);
+    expect(publications).toHaveLength(3);
+  });
+
   it("retains admitted route data across map close and reopen", async () => {
     const source = createSource("drive");
     const session = createSession();
@@ -313,6 +376,165 @@ describe("LocationTracksBridge", () => {
       );
     });
     expect(read).toHaveBeenCalledTimes(1);
+  });
+
+  it("shares per-stream storage across selection reads without sharing jobs", async () => {
+    const source = createSource("drive");
+    const session = createSession();
+    const store = createStore();
+    const read = vi.fn<BudgetedReadJob["read"]>((request) => {
+      const frames = request.streams.includes("/gps-b")
+        ? [
+            locationMessage(1_000_000_000n, 37, -122, 0, "/gps-a"),
+            locationMessage(1_000_000_000n, 39, -120, 0, "/gps-b"),
+          ]
+        : [
+            locationMessage(1_000_000_000n, 37, -122, 0, "/gps-a"),
+            locationMessage(1_000_000_000n, 37, -122, 0, "/gps-a"),
+            locationMessage(1_000_000_000n, 38, -121, 0, "/gps-a"),
+          ];
+      return Promise.resolve(
+        boundedResult({ frames, stopReason: "source-exhausted" }),
+      );
+    });
+    const createJob = vi.fn(() => ({ read }));
+    const budgetAccount = {
+      createJob,
+    } as unknown as SourceReadBudgetAccount;
+    const view = render(
+      <Harness
+        budgetAccount={budgetAccount}
+        session={session}
+        locationSources={[locationSource("/gps-a"), locationSource("/gps-b")]}
+        source={source}
+        store={store}
+        streams={["/gps-a"]}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps-a:ready:2:1:full",
+      );
+    });
+
+    view.rerender(
+      <Harness
+        budgetAccount={budgetAccount}
+        session={session}
+        locationSources={[locationSource("/gps-a"), locationSource("/gps-b")]}
+        source={source}
+        store={store}
+        streams={["/gps-a", "/gps-b"]}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps-a:ready:2:1:full|/gps-b:ready:1:1:full",
+      );
+    });
+
+    expect(createJob).toHaveBeenCalledTimes(2);
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(read.mock.calls.map(([request]) => request.streams)).toEqual([
+      ["/gps-a"],
+      ["/gps-a", "/gps-b"],
+    ]);
+  });
+
+  it("discards a budgeted result that resolves after its selection is aborted", async () => {
+    const source = createSource("drive");
+    const session = createSession();
+    const store = createStore();
+    const publications: LocationTracks[] = [];
+    const onTracks = (tracks: LocationTracks) => publications.push(tracks);
+    let firstSignal: AbortSignal | undefined;
+    let resolveFirst: (result: BudgetedReadResult) => void = () => undefined;
+    let gpsAAttempts = 0;
+    const read = vi.fn<BudgetedReadJob["read"]>((request) => {
+      if (request.streams[0] === "/gps-a") {
+        gpsAAttempts += 1;
+        if (gpsAAttempts === 1) {
+          firstSignal = request.signal;
+          return new Promise<BudgetedReadResult>((resolve) => {
+            resolveFirst = resolve;
+          });
+        }
+      }
+      const stream = request.streams[0] ?? "/gps-a";
+      return Promise.resolve(
+        boundedResult({
+          frames: [locationMessage(1_000_000_000n, 37, -122, 0, stream)],
+          stopReason: "source-exhausted",
+        }),
+      );
+    });
+    const budgetAccount = {
+      createJob: () => ({ read }),
+    } as unknown as SourceReadBudgetAccount;
+    const view = render(
+      <Harness
+        budgetAccount={budgetAccount}
+        onTracks={onTracks}
+        session={session}
+        locationSources={[locationSource("/gps-a"), locationSource("/gps-b")]}
+        source={source}
+        store={store}
+        streams={["/gps-a"]}
+      />,
+    );
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
+
+    view.rerender(
+      <Harness
+        budgetAccount={budgetAccount}
+        onTracks={onTracks}
+        session={session}
+        locationSources={[locationSource("/gps-a"), locationSource("/gps-b")]}
+        source={source}
+        store={store}
+        streams={["/gps-b"]}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps-b:ready:1:1:full",
+      );
+    });
+    expect(firstSignal?.aborted).toBe(true);
+    publications.length = 0;
+
+    await act(async () => {
+      resolveFirst(
+        boundedResult({
+          frames: [locationMessage(1_000_000_000n, 50, 10, 0, "/gps-a")],
+          stopReason: "source-exhausted",
+        }),
+      );
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId("location-tracks").textContent).toBe(
+      "/gps-b:ready:1:1:full",
+    );
+    expect(publications).toHaveLength(0);
+    view.rerender(
+      <Harness
+        budgetAccount={budgetAccount}
+        onTracks={onTracks}
+        session={session}
+        locationSources={[locationSource("/gps-a"), locationSource("/gps-b")]}
+        source={source}
+        store={store}
+        streams={["/gps-a"]}
+      />,
+    );
+
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(3));
+    expect(read.mock.calls[2]?.[0].streams).toEqual(["/gps-a"]);
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps-a:ready:1:1:full",
+      );
+    });
   });
 
   it("lets an admitted grant finish when the playhead seeks backward", async () => {
@@ -658,6 +880,7 @@ describe("LocationTracksBridge", () => {
 
 function Harness({
   budgetAccount,
+  onTracks,
   session,
   locationSources,
   playheadSec = 25,
@@ -666,6 +889,7 @@ function Harness({
   streams,
 }: {
   readonly budgetAccount?: SourceReadBudgetAccount;
+  readonly onTracks?: (tracks: LocationTracks) => void;
   readonly session: EpisodeSession;
   readonly locationSources: readonly SceneSource[];
   readonly playheadSec?: number;
@@ -686,7 +910,7 @@ function Harness({
           sourceKey={source.sourceId}
           streams={streams}
         />
-        <LocationTracksProbe />
+        <LocationTracksProbe onTracks={onTracks} />
       </DataStreamProvider>
     </LocationTracksProvider>
   );
@@ -764,8 +988,15 @@ function boundedResult({
   };
 }
 
-function LocationTracksProbe() {
+function LocationTracksProbe({
+  onTracks,
+}: {
+  readonly onTracks?: (tracks: LocationTracks) => void;
+}) {
   const tracks = useLocationTracksContext();
+  useEffect(() => {
+    onTracks?.(tracks);
+  }, [onTracks, tracks]);
   return (
     <div data-testid="location-tracks">
       {[...tracks.entries()]

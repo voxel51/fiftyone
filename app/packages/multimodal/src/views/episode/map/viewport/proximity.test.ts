@@ -88,6 +88,28 @@ describe("mapViewportIsNearEvidence", () => {
     ).toBe(false);
   });
 
+  it("accepts continuous unwrapped seam bounds near the wrapped viewport", () => {
+    const bounds = { east: 180.2, north: 0.1, south: -0.1, west: 179.8 };
+    expect(
+      mapViewportIsNearEvidence({
+        bounds,
+        height: 600,
+        marker: null,
+        viewport: { latitude: 0, longitude: -179.9, zoom: 5 },
+        width: 800,
+      }),
+    ).toBe(true);
+    expect(
+      mapViewportIsNearEvidence({
+        bounds,
+        height: 600,
+        marker: null,
+        viewport: { latitude: 0, longitude: 0, zoom: 5 },
+        width: 800,
+      }),
+    ).toBe(false);
+  });
+
   it("uses each valid evidence source independently", () => {
     expect(
       mapViewportIsNearEvidence({
@@ -136,6 +158,23 @@ describe("mapViewportIsNearEvidence", () => {
           north: 37.78,
           south: 37.77,
           west: -122.43,
+        },
+        height: 600,
+        marker: null,
+        viewport: SAN_FRANCISCO_VIEWPORT,
+        width: 800,
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects finite bounds whose longitude difference overflows", () => {
+    expect(
+      mapViewportIsNearEvidence({
+        bounds: {
+          east: -Number.MAX_VALUE,
+          north: 1,
+          south: -1,
+          west: Number.MAX_VALUE,
         },
         height: 600,
         marker: null,

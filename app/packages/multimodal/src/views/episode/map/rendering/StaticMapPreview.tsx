@@ -6,6 +6,7 @@ import {
   type LocationTrackState,
 } from "../tracks/location-track";
 import type { MapLocationMarker } from "./playback-paint";
+import { unwrapLongitude } from "../wgs84";
 import styles from "./MapRenderer.module.css";
 
 /** Legend for the currently rendered location tracks. */
@@ -58,8 +59,14 @@ export function StaticMapPreview({
     if (!bounds) return [50, 50];
     const width = bounds.east - bounds.west;
     const height = bounds.north - bounds.south;
+    const continuousLongitude =
+      width <= 180
+        ? unwrapLongitude(longitude, (bounds.west + bounds.east) / 2)
+        : longitude;
     const x =
-      width > 0.000001 ? ((longitude - bounds.west) / width) * 92 + 4 : 50;
+      width > 0.000001
+        ? ((continuousLongitude - bounds.west) / width) * 92 + 4
+        : 50;
     const y =
       height > 0.000001 ? 96 - ((latitude - bounds.south) / height) * 92 : 50;
     return [x, y];
