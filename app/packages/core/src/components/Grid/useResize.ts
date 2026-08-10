@@ -26,7 +26,11 @@ export default (id: string, setResizing: (value: boolean) => void) => {
     // set on grid-mount only. Width changes before a load (e.g. panes
     // applying their sizes) are absorbed by the load's own measurement and
     // must not tear down a grid that is already correctly sized
-    const sync = () => {
+    const sync = (event: Event) => {
+      // only this grid's own mount may re-baseline it
+      if ((event as CustomEvent).detail?.id !== id) {
+        return;
+      }
       const current = el()?.getBoundingClientRect().width;
       if (current !== undefined) {
         width = current;

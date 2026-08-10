@@ -129,16 +129,17 @@ export class GridPom {
   }
 
   /**
-   * Install counters for grid lifecycle events. Counting starts at creation —
-   * arm BEFORE the actions whose grid refreshes should be counted, then
-   * assert on the counters' `read()` after them. Each grid refresh
-   * contributes one unmount and one mount; extra counts indicate a redundant
-   * teardown.
+   * Install counters for grid lifecycle events at document start — arm
+   * BEFORE navigating to the page. Counting from document start makes the
+   * baseline exact: initial page load contributes one mount and no unmount,
+   * and each grid refresh thereafter contributes one unmount and one mount.
+   * Arming after load instead would race the initial mount event, which
+   * dispatches from an effect and can land after the tiles are visible.
    */
   async armLifecycleCounters() {
     return {
-      mounts: await this.eventUtils.counter("grid-mount"),
-      unmounts: await this.eventUtils.counter("grid-unmount"),
+      mounts: await this.eventUtils.initCounter("grid-mount"),
+      unmounts: await this.eventUtils.initCounter("grid-unmount"),
     };
   }
 

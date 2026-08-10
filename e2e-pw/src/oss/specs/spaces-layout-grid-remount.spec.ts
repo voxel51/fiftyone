@@ -42,9 +42,11 @@ test("grid remounts exactly once per spaces layout change", async ({
   page,
   panel,
 }) => {
+  // counters install at document start, so the initial page load's single
+  // grid mount is always observed — arming after load would race it
+  const { mounts, unmounts } = await grid.armLifecycleCounters();
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 
-  const { mounts, unmounts } = await grid.armLifecycleCounters();
   const now = () => page.evaluate(() => performance.now());
   const assertCycles = async (n: number, context: Record<string, number>) => {
     const message = JSON.stringify({
@@ -52,7 +54,8 @@ test("grid remounts exactly once per spaces layout change", async ({
       mounts: await mounts.timeline(),
       unmounts: await unmounts.timeline(),
     });
-    expect(await mounts.read(), message).toBe(n);
+    // n refresh cycles plus the initial page-load mount
+    expect(await mounts.read(), message).toBe(n + 1);
     expect(await unmounts.read(), message).toBe(n);
   };
 
