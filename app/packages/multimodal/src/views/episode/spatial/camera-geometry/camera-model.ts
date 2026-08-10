@@ -22,6 +22,15 @@ export type ImageGeometryMode = "auto" | "original" | "rectified";
 /** User-selectable image presentation; geometry describes the recorded input. */
 export type ImageDisplayMode = "recorded" | "rectified";
 
+/** Pixel dimensions of a decoded image or effective camera calibration. */
+export interface ImageDimensions {
+  readonly height: number;
+  readonly width: number;
+}
+
+/** Relationship between decoded image pixels and calibration pixels. */
+export type ImageDimensionCompatibility = "exact" | "mismatch" | "proportional";
+
 /** Image geometry modes that resolve to concrete camera projection math. */
 export type ResolvedImageGeometryMode = Exclude<ImageGeometryMode, "auto">;
 
@@ -184,23 +193,68 @@ export function effectiveCameraCalibration(
   };
 }
 
+/**
+ * Classifies whether image and calibration pixels differ only by proportional
+ * scaling. The cross-product tolerance permits one decoded-image pixel of
+ * dimension rounding without accepting a material aspect-ratio change.
+ */
+export function classifyImageDimensions(
+  image: ImageDimensions,
+  calibration: ImageDimensions,
+): ImageDimensionCompatibility {
+  if (
+    image.width === calibration.width &&
+    image.height === calibration.height
+  ) {
+    return "exact";
+  }
+  if (
+    !validDimensions(image.width, image.height) ||
+    !validDimensions(calibration.width, calibration.height)
+  ) {
+    return "mismatch";
+  }
+
+  const aspectDelta = Math.abs(
+    image.width * calibration.height - image.height * calibration.width,
+  );
+  const roundingTolerance = Math.max(calibration.width, calibration.height);
+  return aspectDelta <= roundingTolerance ? "proportional" : "mismatch";
+}
+
 /** Resolves Auto/original/rectified into trustworthy projection behavior. */
 export function resolveCameraModel({
   calibration,
   geometry,
+  imageDimensions,
   imageSourceName,
 }: {
   readonly calibration: CameraCalibrationVisualization;
   readonly geometry: ImageGeometryMode;
+  /** Optional decoded-image pixel space to which calibration is adapted. */
+  readonly imageDimensions?: ImageDimensions;
   readonly imageSourceName: string;
 }): CameraModelResolution {
-  const effective = effectiveCameraCalibration(calibration);
-  if (!effective) {
+  const nativeCalibration = effectiveCameraCalibration(calibration);
+  if (!nativeCalibration) {
     return resolutionFailure(
       "invalid",
       "Camera calibration is incomplete or invalid",
     );
   }
+  const dimensionCompatibility = imageDimensions
+    ? classifyImageDimensions(imageDimensions, nativeCalibration)
+    : "exact";
+  if (imageDimensions && dimensionCompatibility === "mismatch") {
+    return resolutionFailure(
+      "invalid",
+      `Image is ${imageDimensions.width}×${imageDimensions.height}, but calibration is ${nativeCalibration.width}×${nativeCalibration.height}; aspect ratios differ`,
+    );
+  }
+  const effective =
+    imageDimensions && dimensionCompatibility === "proportional"
+      ? scaleEffectiveCameraCalibration(nativeCalibration, imageDimensions)
+      : nativeCalibration;
 
   const { equivalentDisplacementPx, original, rectified } =
     cachedCameraModels(effective);
@@ -274,6 +328,39 @@ export function resolveCameraModel({
     message: `${capitalize(availableMode)} projection is available, but Auto cannot prove the image uses it: ${unavailable.message}`,
     status: unavailable.status === "unsupported" ? "unsupported" : "ambiguous",
     suggestedMode: availableMode,
+  };
+}
+
+function scaleEffectiveCameraCalibration(
+  calibration: EffectiveCameraCalibration,
+  imageDimensions: ImageDimensions,
+): EffectiveCameraCalibration {
+  const scaleX = imageDimensions.width / calibration.width;
+  const scaleY = imageDimensions.height / calibration.height;
+  const K = [...calibration.K];
+  for (let index = 0; index < 3; index += 1) {
+    K[index] *= scaleX;
+  }
+  for (let index = 3; index < 6; index += 1) {
+    K[index] *= scaleY;
+  }
+
+  const P = calibration.P ? [...calibration.P] : undefined;
+  if (P) {
+    for (let index = 0; index < 4; index += 1) {
+      P[index] *= scaleX;
+    }
+    for (let index = 4; index < 8; index += 1) {
+      P[index] *= scaleY;
+    }
+  }
+
+  return {
+    ...calibration,
+    height: imageDimensions.height,
+    K,
+    ...(P ? { P } : {}),
+    width: imageDimensions.width,
   };
 }
 
