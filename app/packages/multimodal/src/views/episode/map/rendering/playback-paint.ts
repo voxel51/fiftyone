@@ -195,6 +195,13 @@ export function prunePlaybackPaintState(
   }
 }
 
+/** Invalidates style-owned route filters without discarding seek cursors. */
+export function invalidatePlaybackStyleState(
+  state: MapPlaybackPaintState,
+): void {
+  state.routeProgressKeys.clear();
+}
+
 /** Converts markers into the generic point collection used for hover. */
 export function mapMarkerFeatures(
   markers: readonly MapLocationMarker[],
@@ -280,7 +287,7 @@ function updateRouteProgress(
       "line-gradient",
       activeRouteGradient(
         track.color,
-        0.5,
+        MAP_ROUTE_PAINT.pastOpacity,
         MAP_ROUTE_PAINT.futureColor,
         0.3,
         resolved.lineProgress,

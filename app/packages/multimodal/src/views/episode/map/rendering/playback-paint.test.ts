@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { LocationTrackState } from "../tracks/location-track";
 import {
+  invalidatePlaybackStyleState,
   mapPlaybackFrameAt,
   prunePlaybackPaintState,
   withLiveMapMarkers,
@@ -156,6 +157,19 @@ describe("map playback paint", () => {
 
     expect([...state.cursors.keys()]).toEqual([kept.key]);
     expect([...state.routeProgressKeys.keys()]).toEqual([kept.key]);
+  });
+
+  it("invalidates style-owned filters without discarding seek cursors", () => {
+    const cursor = { pointIndex: 0, segmentIndex: 0, timeNs: 0n };
+    const state = {
+      cursors: new Map([["track", cursor]]),
+      routeProgressKeys: new Map([["track", "0:active"]]),
+    };
+
+    invalidatePlaybackStyleState(state);
+
+    expect(state.cursors.get("track")).toBe(cursor);
+    expect(state.routeProgressKeys.size).toBe(0);
   });
 });
 

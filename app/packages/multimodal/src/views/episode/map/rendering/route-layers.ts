@@ -13,7 +13,11 @@ const COMET_ID_PREFIX = "episode-location-comet:";
 const ROUTE_ID_PREFIX = "episode-location-route:";
 const FUTURE_ROUTE_COLOR = "#8b98a9";
 const ROUTE_CASING_COLOR = "#0b1220";
-const COMET_TAIL_ALPHA = 0.35;
+const ROUTE_CASING_WIDTH = 6;
+const ROUTE_COLOR_WIDTH = 4;
+const ROUTE_PAST_OPACITY = 0.9;
+const COMET_TAIL_ALPHA = 0.55;
+const COMET_WIDTH = 4.5;
 
 /** Minimal GeoJSON feature shape accepted by the map rendering helpers. */
 export interface MapGeoJsonFeature {
@@ -106,6 +110,28 @@ export function reconcileTrackLayers(
   }
 }
 
+/** Restores current structural geometry after MapLibre replaces its style. */
+export function rehydrateTrackLayers(
+  map: MapLibreMap,
+  tracks: readonly IndexedMapTrack[],
+  installed: Map<string, LocationTrackState>,
+): void {
+  for (const { key } of tracks) {
+    if (installed.has(key) && !hasTrackLayerResources(map, key)) {
+      removeTrackLayers(map, key);
+      installed.delete(key);
+    }
+  }
+  reconcileTrackLayers(map, tracks, installed);
+  for (const indexedTrack of tracks) {
+    setGeoJsonSourceData(
+      map,
+      routeSourceId(indexedTrack.key),
+      staticRouteFeatures(indexedTrack),
+    );
+  }
+}
+
 function addTrackRouteLayers(
   map: MapLibreMap,
   indexedTrack: IndexedMapTrack,
@@ -132,7 +158,7 @@ function addTrackRouteLayers(
       paint: {
         "line-color": ROUTE_CASING_COLOR,
         "line-opacity": 0.55,
-        "line-width": 4.5,
+        "line-width": ROUTE_CASING_WIDTH,
       },
     } as never,
     ACCURACY_LAYER_ID,
@@ -147,7 +173,7 @@ function addTrackRouteLayers(
       paint: {
         "line-color": FUTURE_ROUTE_COLOR,
         "line-opacity": 0.3,
-        "line-width": 2.5,
+        "line-width": ROUTE_COLOR_WIDTH,
       },
     } as never,
     ACCURACY_LAYER_ID,
@@ -162,7 +188,7 @@ function addTrackRouteLayers(
       paint: {
         "line-color": ROUTE_CASING_COLOR,
         "line-opacity": 0.85,
-        "line-width": 4.5,
+        "line-width": ROUTE_CASING_WIDTH,
       },
     } as never,
     ACCURACY_LAYER_ID,
@@ -176,8 +202,8 @@ function addTrackRouteLayers(
       layout,
       paint: {
         "line-color": track.color,
-        "line-opacity": 0.5,
-        "line-width": 2.5,
+        "line-opacity": ROUTE_PAST_OPACITY,
+        "line-width": ROUTE_COLOR_WIDTH,
       },
     } as never,
     ACCURACY_LAYER_ID,
@@ -197,7 +223,7 @@ function addTrackRouteLayers(
           0.55,
           0,
         ),
-        "line-width": 4.5,
+        "line-width": ROUTE_CASING_WIDTH,
       },
     } as never,
     ACCURACY_LAYER_ID,
@@ -212,12 +238,12 @@ function addTrackRouteLayers(
       paint: {
         "line-gradient": activeRouteGradient(
           track.color,
-          0.5,
+          ROUTE_PAST_OPACITY,
           FUTURE_ROUTE_COLOR,
           0.3,
           0,
         ),
-        "line-width": 2.5,
+        "line-width": ROUTE_COLOR_WIDTH,
       },
     } as never,
     ACCURACY_LAYER_ID,
@@ -247,7 +273,7 @@ function addCometLayer(map: MapLibreMap, indexedTrack: IndexedMapTrack): void {
           1,
           indexedTrack.track.color,
         ],
-        "line-width": 2.5,
+        "line-width": COMET_WIDTH,
       },
     } as never,
     PULSE_LAYER_ID,
@@ -270,6 +296,26 @@ function removeTrackLayers(map: MapLibreMap, key: string): void {
   for (const source of [routeSourceId(key), cometSourceId(key)]) {
     if (map.getSource(source)) map.removeSource(source);
   }
+}
+
+function hasTrackLayerResources(map: MapLibreMap, key: string): boolean {
+  if (
+    !map.getSource(routeSourceId(key)) ||
+    !map.getSource(cometSourceId(key))
+  ) {
+    return false;
+  }
+  return (
+    [
+      "active",
+      "active-casing",
+      "past",
+      "past-casing",
+      "future",
+      "future-casing",
+    ].every((kind) => Boolean(map.getLayer(routeLayerId(key, kind)))) &&
+    Boolean(map.getLayer(cometSourceId(key)))
+  );
 }
 
 function staticRouteFeatures(
@@ -355,6 +401,10 @@ export function setGeoJsonSourceData(
 /** Shared route and comet styling constants used by static and live paint. */
 export const MAP_ROUTE_PAINT = {
   casingColor: ROUTE_CASING_COLOR,
+  casingWidth: ROUTE_CASING_WIDTH,
   cometTrailNs: 15_000_000_000n,
+  cometWidth: COMET_WIDTH,
   futureColor: FUTURE_ROUTE_COLOR,
+  pastOpacity: ROUTE_PAST_OPACITY,
+  routeWidth: ROUTE_COLOR_WIDTH,
 } as const;

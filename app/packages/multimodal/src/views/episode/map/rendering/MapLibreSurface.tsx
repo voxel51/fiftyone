@@ -52,6 +52,7 @@ import {
 import {
   emptyMapPlaybackFrame,
   indexedTrackMarkersAt,
+  invalidatePlaybackStyleState,
   mapMarkerFeatures,
   mapPlaybackFrameAt,
   paintMapPlaybackFrame,
@@ -65,6 +66,7 @@ import {
 import {
   createIndexedMapTrack,
   EMPTY_MAP_FEATURE_COLLECTION,
+  rehydrateTrackLayers,
   reconcileTrackLayers,
   setGeoJsonSourceData,
   type IndexedMapTrack,
@@ -336,6 +338,19 @@ export function MapLibreSurface({
           loadedRef.current = true;
           addMapSourcesAndLayers(map);
           setLoaded(true);
+        });
+        map.on("style.load", () => {
+          if (!loadedRef.current) return;
+          const indexed = indexedTracksRef.current;
+          ensureCurrentPuckImages(map, indexed, liveMarkersRef.current);
+          rehydrateTrackLayers(map, indexed, installedTrackLayers);
+          setGeoJsonSourceData(
+            map,
+            HIT_SOURCE_ID,
+            hitPointFeatures(indexed.map(({ track }) => track)),
+          );
+          invalidatePlaybackStyleState(playbackPaintStateRef.current);
+          playbackControllerRef.current?.invalidate();
         });
         map.on("error", () => {
           if (!loadedRef.current) {

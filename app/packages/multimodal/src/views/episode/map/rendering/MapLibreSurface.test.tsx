@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LocationTrackState } from "../tracks/location-track";
 import { BASEMAP_RETRY_DELAYS_MS } from "../basemap-readiness";
 import { HIT_SOURCE_ID } from "./map-sources";
+import { routeSourceId } from "./route-layers";
 import { MAP_BASE_LAYER } from "./types";
 import { MapLibreSurface } from "./MapLibreSurface";
 
@@ -241,6 +242,64 @@ describe("MapLibreSurface", () => {
       expect(map?.hasImage).toHaveBeenCalledWith("episode-puck-dot-#00ff00");
     });
     expect(hitSetData).toHaveBeenCalledOnce();
+  });
+
+  it("rehydrates structural geometry once after a replacement style loads", async () => {
+    const playback = {
+      clearHover: vi.fn(),
+      readHoverTimeNs: () => null,
+      readPlayhead: () => ({ paused: true, timeNs: 5n }),
+      subscribeHover: vi.fn(() => vi.fn()),
+      subscribePlayhead: vi.fn(() => vi.fn()),
+    };
+    const track = createTrack();
+    render(
+      <MapLibreSurface
+        baseLayer={MAP_BASE_LAYER.NONE}
+        basemapStatus="disabled"
+        bounds={null}
+        fitRouteNonce={0}
+        followEgo={false}
+        locationEvidencePending={false}
+        liveMarkers={[]}
+        measureArmed={false}
+        measurement={null}
+        onBasemapStatusChange={vi.fn()}
+        onHoverTimeNs={vi.fn()}
+        onMeasurePick={vi.fn()}
+        onSeekTimeNs={vi.fn()}
+        onUserMove={vi.fn()}
+        playback={playback}
+        pulseActive={false}
+        recenterNonce={0}
+        sourceKey="recording"
+        tracks={[track]}
+        viewportScope={null}
+      />,
+    );
+
+    await waitFor(() => expect(mapLibre.instances).toHaveLength(1));
+    const map = mapLibre.instances[0];
+    act(() => map?.emit("load"));
+    await waitFor(() => {
+      expect(map?.getSource(HIT_SOURCE_ID)?.setData).toHaveBeenCalledOnce();
+    });
+    const routeSetData = map?.getSource(
+      routeSourceId(`${track.color}:${track.stream}`),
+    )?.setData;
+    const hitSetData = map?.getSource(HIT_SOURCE_ID)?.setData;
+    expect(routeSetData).not.toHaveBeenCalled();
+
+    act(() => {
+      map?.emit("styledata");
+      map?.emit("styledata");
+    });
+    expect(routeSetData).not.toHaveBeenCalled();
+    expect(hitSetData).toHaveBeenCalledOnce();
+
+    act(() => map?.emit("style.load"));
+    expect(routeSetData).toHaveBeenCalledOnce();
+    expect(hitSetData).toHaveBeenCalledTimes(2);
   });
 
   it("ignores overlay errors and makes provider readiness monotonic", async () => {
