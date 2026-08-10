@@ -521,6 +521,7 @@ export function MapLibreSurface({
       const retryDelayMs = basemapRetryDelayMs(attempt);
       if (retryDelayMs !== null) {
         retryCycle.attempt = attempt + 1;
+        restoreLocalFallback();
         retryTimer = setTimeout(() => {
           retryTimer = undefined;
           if (!cancelled) setBasemapAutoRetryNonce((value) => value + 1);

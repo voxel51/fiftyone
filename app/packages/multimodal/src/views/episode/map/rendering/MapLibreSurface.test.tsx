@@ -2,6 +2,7 @@ import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { LocationTrackState } from "../tracks/location-track";
+import { BASEMAP_RETRY_DELAYS_MS } from "../basemap-readiness";
 import { HIT_SOURCE_ID } from "./map-sources";
 import { MAP_BASE_LAYER } from "./types";
 import { MapLibreSurface } from "./MapLibreSurface";
@@ -62,15 +63,33 @@ const mapLibre = vi.hoisted(() => {
     readonly resize = vi.fn();
     readonly setFilter = vi.fn();
     readonly setPaintProperty = vi.fn();
-    readonly setStyle = vi.fn();
+    readonly setStyle = vi.fn(
+      (
+        style: unknown,
+        options?: {
+          readonly transformStyle?: (
+            previous: unknown,
+            next: unknown,
+          ) => unknown;
+        },
+      ) => {
+        this.style = options?.transformStyle
+          ? options.transformStyle(this.style, style)
+          : style;
+        this.emit("styledata");
+        return this;
+      },
+    );
     readonly sources = new Map<string, { setData: ReturnType<typeof vi.fn> }>();
+    style: unknown;
     readonly triggerRepaint = vi.fn();
 
     emit(event: string, ...args: unknown[]): void {
       for (const listener of this.events.get(event) ?? []) listener(...args);
     }
 
-    constructor() {
+    constructor(options?: { readonly style?: unknown }) {
+      this.style = options?.style;
       instances.push(this);
     }
   }
@@ -311,7 +330,7 @@ describe("MapLibreSurface", () => {
       subscribeHover: vi.fn(() => vi.fn()),
       subscribePlayhead: vi.fn(() => vi.fn()),
     };
-    render(
+    const rendered = render(
       <MapLibreSurface
         baseLayer={MAP_BASE_LAYER.DEFAULT}
         basemapStatus="loading"
@@ -349,14 +368,20 @@ describe("MapLibreSurface", () => {
       });
     };
     failAttempt();
-    await act(async () => vi.advanceTimersByTimeAsync(500));
-    await vi.waitFor(() => expect(map?.setStyle).toHaveBeenCalledTimes(2));
-    failAttempt();
-    await act(async () => vi.advanceTimersByTimeAsync(1_500));
+    expect(map?.setStyle).toHaveBeenCalledTimes(2);
+    await act(async () =>
+      vi.advanceTimersByTimeAsync(BASEMAP_RETRY_DELAYS_MS[0]),
+    );
     await vi.waitFor(() => expect(map?.setStyle).toHaveBeenCalledTimes(3));
     failAttempt();
-
     expect(map?.setStyle).toHaveBeenCalledTimes(4);
+    await act(async () =>
+      vi.advanceTimersByTimeAsync(BASEMAP_RETRY_DELAYS_MS[1]),
+    );
+    await vi.waitFor(() => expect(map?.setStyle).toHaveBeenCalledTimes(5));
+    failAttempt();
+
+    expect(map?.setStyle).toHaveBeenCalledTimes(6);
     expect(map?.setStyle.mock.calls.at(-1)?.[0]).toMatchObject({
       sources: {},
       version: 8,
@@ -365,6 +390,44 @@ describe("MapLibreSurface", () => {
       MAP_BASE_LAYER.DEFAULT,
       "error",
     );
+
+    rendered.rerender(
+      <MapLibreSurface
+        baseLayer={MAP_BASE_LAYER.DEFAULT}
+        basemapRetryNonce={1}
+        basemapStatus="error"
+        bounds={null}
+        fitRouteNonce={0}
+        followEgo={false}
+        locationEvidencePending={false}
+        liveMarkers={[]}
+        measureArmed={false}
+        measurement={null}
+        onBasemapStatusChange={onBasemapStatusChange}
+        onHoverTimeNs={vi.fn()}
+        onMeasurePick={vi.fn()}
+        onSeekTimeNs={vi.fn()}
+        onUserMove={vi.fn()}
+        playback={playback}
+        pulseActive={false}
+        recenterNonce={0}
+        sourceKey="recording"
+        tracks={[]}
+        viewportScope={null}
+      />,
+    );
+    await vi.waitFor(() => expect(map?.setStyle).toHaveBeenCalledTimes(7));
+    failAttempt();
+    expect(map?.setStyle).toHaveBeenCalledTimes(8);
+    expect(
+      onBasemapStatusChange.mock.calls.filter(
+        ([, status]) => status === "error",
+      ),
+    ).toHaveLength(1);
+    await act(async () =>
+      vi.advanceTimersByTimeAsync(BASEMAP_RETRY_DELAYS_MS[0]),
+    );
+    await vi.waitFor(() => expect(map?.setStyle).toHaveBeenCalledTimes(9));
   });
 });
 

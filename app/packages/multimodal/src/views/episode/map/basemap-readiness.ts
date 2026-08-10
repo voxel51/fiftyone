@@ -5,7 +5,6 @@ export const BASEMAP_RETRY_DELAYS_MS = [500, 1_500] as const;
 interface BasemapEventLike {
   readonly coord?: unknown;
   readonly error?: { readonly sourceId?: unknown };
-  readonly isSourceLoaded?: unknown;
   readonly source?: { readonly id?: unknown };
   readonly sourceDataType?: unknown;
   readonly sourceId?: unknown;
@@ -124,9 +123,7 @@ function isFirstTileSuccess(event: unknown): boolean {
   const candidate = event as BasemapEventLike;
   return (
     candidate.sourceDataType === "content" &&
-    (candidate.tile !== undefined ||
-      candidate.coord !== undefined ||
-      candidate.isSourceLoaded === true)
+    (candidate.tile !== undefined || candidate.coord !== undefined)
   );
 }
 

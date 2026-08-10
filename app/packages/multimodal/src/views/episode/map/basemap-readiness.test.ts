@@ -70,6 +70,29 @@ describe("BasemapReadinessGate", () => {
     gate.dispose();
   });
 
+  it("does not mistake source-loaded metadata for a successful tile", () => {
+    const onReady = vi.fn();
+    const gate = new BasemapReadinessGate({
+      onFailure: vi.fn(),
+      onReady,
+      sourceIds: ["provider"],
+    });
+
+    gate.handleSourceData({
+      isSourceLoaded: true,
+      sourceDataType: "content",
+      sourceId: "provider",
+    });
+    expect(onReady).not.toHaveBeenCalled();
+    gate.handleSourceData({
+      coord: {},
+      sourceDataType: "content",
+      sourceId: "provider",
+    });
+    expect(onReady).toHaveBeenCalledOnce();
+    gate.dispose();
+  });
+
   it("cleans its watchdog and exposes bounded retry delays", () => {
     vi.useFakeTimers();
     const onFailure = vi.fn();
