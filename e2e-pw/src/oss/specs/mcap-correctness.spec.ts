@@ -1,12 +1,12 @@
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { Jimp } from "jimp";
 import { test as base, expect, Locator } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { McapExplorerPom } from "src/oss/poms/multimodal/mcap-explorer";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { getLocatorDominantColorShare } from "src/oss/utils/screenshot";
 
 const datasetName = getUniqueDatasetNameWithPrefix("mcap-correctness");
 const fixtureDir = path.join(os.tmpdir(), datasetName);
@@ -502,31 +502,8 @@ async function expectDominantColor(
 ): Promise<void> {
   await expect(locator).toBeVisible();
   await expect
-    .poll(
-      async () => {
-        const image = await Jimp.read(await locator.screenshot());
-        let matches = 0;
-        let sampled = 0;
-        for (let y = 0; y < image.bitmap.height; y += 4) {
-          for (let x = 0; x < image.bitmap.width; x += 4) {
-            const offset = (y * image.bitmap.width + x) * 4;
-            const [red, green, blue] = image.bitmap.data.subarray(
-              offset,
-              offset + 3,
-            );
-            sampled += 1;
-            if (
-              Math.abs(red - expected[0]) <= 12 &&
-              Math.abs(green - expected[1]) <= 12 &&
-              Math.abs(blue - expected[2]) <= 12
-            ) {
-              matches += 1;
-            }
-          }
-        }
-        return matches / sampled;
-      },
-      { timeout: 20_000 },
-    )
+    .poll(() => getLocatorDominantColorShare(locator, expected), {
+      timeout: 20_000,
+    })
     .toBeGreaterThan(0.15);
 }
