@@ -33,6 +33,7 @@ export class VideoGopIndex {
       timeNs: unit.timeNs,
     };
     this.keyframes.splice(insertionIndex, 0, inserted);
+    let retainedIndex = insertionIndex;
     if (this.keyframes.length > this.keyframeCap) {
       // Retain the bounded neighborhood around the most recently observed
       // seek position. Forward playback drops the oldest entry; a historical
@@ -41,9 +42,9 @@ export class VideoGopIndex {
         this.keyframes.pop();
       } else {
         this.keyframes.shift();
+        retainedIndex -= 1;
       }
     }
-    const retainedIndex = this.keyframes.indexOf(inserted);
     if (retainedIndex >= 0) this.reassignEpochsFrom(retainedIndex);
   }
 
@@ -150,11 +151,11 @@ export class EncodedAccessUnitCache {
     if (previous) {
       this.bytes -= previous.frame.bytes.byteLength;
       this.entries.delete(unit.timeNs);
-      this.onEvict(unit.timeNs);
     }
     if (unit.frame.bytes.byteLength > this.byteCap) {
       if (previous) {
         this.removeSortedTime(unit.timeNs);
+        this.onEvict(unit.timeNs);
       }
       return;
     }

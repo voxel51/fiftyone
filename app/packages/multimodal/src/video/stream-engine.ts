@@ -14,7 +14,11 @@ import type {
   VideoPlaybackIntent,
   VideoStreamSnapshot,
 } from "./types";
-import { VideoDependencyWaitError, VideoIntentCancelledError } from "./types";
+import {
+  VIDEO_INTENT_PRIORITY_WEIGHT,
+  VideoDependencyWaitError,
+  VideoIntentCancelledError,
+} from "./types";
 
 const NS_PER_SECOND = 1_000_000_000n;
 const MAX_DIRECT_FORWARD_GAP_NS = 500_000_000n;
@@ -89,7 +93,8 @@ export class VideoStreamEngine {
         this.requestedPriority = this.latestIntent.priority;
       } else if (
         this.requestedPriority === null ||
-        priorityWeight(intent.priority) > priorityWeight(this.requestedPriority)
+        VIDEO_INTENT_PRIORITY_WEIGHT[intent.priority] >
+          VIDEO_INTENT_PRIORITY_WEIGHT[this.requestedPriority]
       ) {
         this.requestedPriority = intent.priority;
         if (this.activeController) {
@@ -593,16 +598,8 @@ function strongerIntent(
   current: VideoPlaybackIntent,
   candidate: VideoPlaybackIntent,
 ): VideoPlaybackIntent {
-  return priorityWeight(candidate.priority) > priorityWeight(current.priority)
+  return VIDEO_INTENT_PRIORITY_WEIGHT[candidate.priority] >
+    VIDEO_INTENT_PRIORITY_WEIGHT[current.priority]
     ? candidate
     : current;
-}
-
-function priorityWeight(priority: VideoPlaybackIntent["priority"]): number {
-  const weight: Record<VideoPlaybackIntent["priority"], number> = {
-    background: 0,
-    playing: 2,
-    visible: 1,
-  };
-  return weight[priority];
 }

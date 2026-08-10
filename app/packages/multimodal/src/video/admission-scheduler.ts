@@ -1,11 +1,9 @@
 import type { VideoIntentPriority } from "./types";
-import { VideoIntentCancelledError, VideoSchedulerClosedError } from "./types";
-
-const PRIORITY_WEIGHT: Readonly<Record<VideoIntentPriority, number>> = {
-  background: 0,
-  visible: 1,
-  playing: 2,
-};
+import {
+  VIDEO_INTENT_PRIORITY_WEIGHT,
+  VideoIntentCancelledError,
+  VideoSchedulerClosedError,
+} from "./types";
 
 interface Waiter {
   readonly abortListener: () => void;
@@ -81,7 +79,8 @@ export class VideoSeekAdmissionScheduler {
     );
     if (
       waiter &&
-      PRIORITY_WEIGHT[priority] > PRIORITY_WEIGHT[waiter.priority]
+      VIDEO_INTENT_PRIORITY_WEIGHT[priority] >
+        VIDEO_INTENT_PRIORITY_WEIGHT[waiter.priority]
     ) {
       waiter.priority = priority;
     }
@@ -111,7 +110,7 @@ export class VideoSeekAdmissionScheduler {
       const now = this.nowMs();
       // One priority level of aging every two seconds prevents starvation.
       const score = (waiter: Waiter) =>
-        PRIORITY_WEIGHT[waiter.priority] +
+        VIDEO_INTENT_PRIORITY_WEIGHT[waiter.priority] +
         Math.floor((now - waiter.enqueuedAt) / 2_000);
       let bestIndex = 0;
       for (let index = 1; index < this.waiters.length; index += 1) {

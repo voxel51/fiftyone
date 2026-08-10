@@ -76,7 +76,7 @@ describe("EncodedAccessUnitCache", () => {
     cache.put(original);
     cache.put(replacement);
 
-    expect(onEvict).toHaveBeenCalledWith(1n);
+    expect(onEvict).not.toHaveBeenCalled();
     expect(cache.retainedBytes).toBe(3);
     expect(cache.range(1n, 1n)).toEqual([replacement]);
 

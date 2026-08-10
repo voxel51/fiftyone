@@ -68,6 +68,15 @@ export interface VideoStreamSnapshot {
 
 export type VideoIntentPriority = "background" | "visible" | "playing";
 
+/** Shared ordering for admission and latest-intent conflation. */
+export const VIDEO_INTENT_PRIORITY_WEIGHT: Readonly<
+  Record<VideoIntentPriority, number>
+> = {
+  background: 0,
+  visible: 1,
+  playing: 2,
+};
+
 /** Latest-wins playback intent from one or more mounted consumers. */
 export interface VideoPlaybackIntent extends H264AccessUnit {
   readonly priority: VideoIntentPriority;
