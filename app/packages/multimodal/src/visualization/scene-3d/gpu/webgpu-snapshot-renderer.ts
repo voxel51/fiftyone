@@ -451,7 +451,11 @@ function buildSnapshotScene(
   // snapshot matches what an uncontrolled live panel would first show.
   const pose =
     job.cameraPose ??
-    cameraPoseForBounds(sceneBoundsForLayers(renderLayers, []));
+    cameraPoseForBounds(
+      sceneBoundsForLayers(renderLayers, []),
+      PERSPECTIVE_POINT_CAMERA.fov,
+      width / height,
+    );
   const camera = new THREE.PerspectiveCamera(
     PERSPECTIVE_POINT_CAMERA.fov,
     width / height,

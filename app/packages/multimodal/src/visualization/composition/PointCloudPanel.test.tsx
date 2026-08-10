@@ -19,15 +19,24 @@ import * as sceneObjectInteraction from "../scene-3d/use-scene-object-interactio
 import { PointCloudPanel } from "./PointCloudPanel";
 
 const webGpuCanvasRender = vi.hoisted(() => vi.fn());
+const threeHarness = vi.hoisted(() => ({ height: 400, width: 800 }));
 
 vi.mock("@react-three/fiber", () => ({
   useFrame: vi.fn(),
   useThree: (
     selector: (state: {
+      camera: unknown;
       invalidate: () => void;
+      size: { height: number; width: number };
       viewport: { dpr: number };
     }) => unknown,
-  ) => selector({ invalidate: vi.fn(), viewport: { dpr: 1 } }),
+  ) =>
+    selector({
+      camera: undefined,
+      invalidate: vi.fn(),
+      size: threeHarness,
+      viewport: { dpr: 1 },
+    }),
 }));
 
 vi.mock("../scene-3d/Base3dScene", () => ({
@@ -86,6 +95,8 @@ vi.mock("../webgpu/WebGpuCanvas", () => ({
 
 beforeEach(() => {
   webGpuCanvasRender.mockClear();
+  threeHarness.height = 400;
+  threeHarness.width = 800;
   resetImageTextureCacheForTests();
 });
 
@@ -1311,6 +1322,88 @@ describe("PointCloudPanel", () => {
     expect(fitPose.target[2]).toBeCloseTo(0);
   });
 
+  it("keeps initial fit one-shot across resize but recenters with the latest aspect", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const onCameraPoseChange = vi.fn();
+    const layer = {
+      frame: {
+        fields: [],
+        kind: VISUALIZATION_KIND.POINT_CLOUD,
+        pointCount: 2,
+        positions: new Float32Array([0, 0, 0, 10, 0, 0]),
+      },
+      id: "/points",
+    } as const;
+    const { rerender } = render(
+      <PointCloudPanel
+        layers={[layer]}
+        onCameraPoseChange={onCameraPoseChange}
+      />,
+    );
+    const initialPose = JSON.parse(
+      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose") ??
+        "null",
+    );
+
+    threeHarness.height = 400;
+    threeHarness.width = 200;
+    rerender(
+      <PointCloudPanel
+        layers={[layer]}
+        onCameraPoseChange={onCameraPoseChange}
+        showGizmo={false}
+      />,
+    );
+
+    // Resizing does not silently take camera ownership in initial-fit mode.
+    expect(
+      JSON.parse(
+        screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose") ??
+          "null",
+      ),
+    ).toEqual(initialPose);
+
+    fireEvent.click(screen.getByLabelText("Recenter view"));
+    const recentered = onCameraPoseChange.mock.calls[0]?.[0];
+    expect(recentered).toBeTruthy();
+    expect(cameraPoseDistance(recentered)).toBeGreaterThan(
+      cameraPoseDistance(initialPose),
+    );
+  });
+
+  it("recomputes frame fit when the live viewport aspect changes", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const layer = {
+      frame: {
+        fields: [],
+        kind: VISUALIZATION_KIND.POINT_CLOUD,
+        pointCount: 2,
+        positions: new Float32Array([0, 0, 0, 10, 0, 0]),
+      },
+      id: "/points",
+    } as const;
+    const { rerender } = render(
+      <PointCloudPanel fit="frame" layers={[layer]} />,
+    );
+    const landscapePose = JSON.parse(
+      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose") ??
+        "null",
+    );
+
+    threeHarness.width = 200;
+    rerender(
+      <PointCloudPanel fit="frame" layers={[layer]} showGizmo={false} />,
+    );
+    const portraitPose = JSON.parse(
+      screen.getByTestId("base-3d-scene").getAttribute("data-camera-pose") ??
+        "null",
+    );
+
+    expect(cameraPoseDistance(portraitPose)).toBeGreaterThan(
+      cameraPoseDistance(landscapePose),
+    );
+  });
+
   it("arms the measurement tool and walks the readout through the picks", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
 
@@ -1667,6 +1760,15 @@ function pointCloudLayer(
     },
     id,
   };
+}
+
+function cameraPoseDistance(pose: {
+  readonly position: readonly [number, number, number];
+  readonly target: readonly [number, number, number];
+}): number {
+  return new THREE.Vector3(...pose.position).distanceTo(
+    new THREE.Vector3(...pose.target),
+  );
 }
 
 function gpuPointCloudLayer(

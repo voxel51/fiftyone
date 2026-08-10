@@ -255,7 +255,12 @@ describe("renderPointCloudSnapshot", () => {
   it("auto-fits with the live panel's fit math when the pose is null", async () => {
     const frame = pointCloudFrame();
     const result = renderPointCloudSnapshot(
-      job({ cameraPose: null, layers: layersFor(frame) }),
+      job({
+        cameraPose: null,
+        height: 64,
+        layers: layersFor(frame),
+        width: 32,
+      }),
     );
     await flushMicrotasks();
 
@@ -274,6 +279,8 @@ describe("renderPointCloudSnapshot", () => {
         ],
         [],
       ),
+      PERSPECTIVE_POINT_CAMERA.fov,
+      0.5,
     );
     const { camera } = fake.captures[0];
     if (!expectedPose) {
