@@ -5,6 +5,7 @@ import {
   horizontalAccuracyM,
   indexedLocationTrailCoordinates,
   indexLocationTrack,
+  IncrementalLocationSegmentBuilder,
   interpolateLocationAtTime,
   isValidLocationPoint,
   locationTrailCoordinates,
@@ -55,10 +56,37 @@ describe("segmentLocationTrack", () => {
     ]);
     expect(interpolateLocationAtTime(segments, 2_000_000_000n)).toBeNull();
   });
+
+  it("incrementally appends, preserves stable segments, and rolls back suffixes", () => {
+    const builder = new IncrementalLocationSegmentBuilder();
+    builder.appendMany([point(0), point(1), point(2, { fixStatus: -1 })]);
+    const first = builder.snapshot();
+    builder.appendMany([point(3), point(4)]);
+    const second = builder.snapshot();
+
+    expect(second[0]).toBe(first[0]);
+    expect(
+      second.map((segment) => segment.points.map((p) => p.timeNs)),
+    ).toEqual([
+      [0n, 1_000_000_000n],
+      [3_000_000_000n, 4_000_000_000n],
+    ]);
+
+    builder.truncate(4);
+    expect(builder.snapshot().map((segment) => segment.points)).toEqual([
+      [point(0), point(1)],
+      [point(3)],
+    ]);
+    builder.truncate(2);
+    builder.append(point(2));
+    expect(builder.snapshot()).toEqual([
+      { points: [point(0), point(1), point(2)] },
+    ]);
+  });
 });
 
 describe("decimateLocationTrackSegments", () => {
-  it("uses a global stride and keeps segment endpoints", () => {
+  it("uses a deterministic power-of-two stride and keeps the live tail", () => {
     const segments = segmentLocationTrack(
       Array.from({ length: 101 }, (_, index) => point(index)),
     );
@@ -66,9 +94,10 @@ describe("decimateLocationTrackSegments", () => {
 
     expect(result.truncated).toBe(true);
     expect(result.pointCount).toBe(101);
-    expect(result.segments[0].points).toHaveLength(11);
+    expect(result.stride).toBe(16);
+    expect(result.segments[0].points).toHaveLength(8);
     expect(result.segments[0].points[0]).toBe(segments[0].points[0]);
-    expect(result.segments[0].points[10]).toBe(segments[0].points[100]);
+    expect(result.segments[0].points.at(-1)).toBe(segments[0].points[100]);
   });
 
   it("keeps the returned segments under the requested render cap", () => {
@@ -90,6 +119,35 @@ describe("decimateLocationTrackSegments", () => {
     expect(result.segments[result.segments.length - 1].points.at(-1)).toBe(
       segments[segments.length - 1].points[1],
     );
+  });
+
+  it("keeps settled samples append-stable until a stride transition", () => {
+    const atSeventeen = segmentLocationTrack(
+      Array.from({ length: 17 }, (_, index) => point(index)),
+    );
+    const atEighteen = segmentLocationTrack(
+      Array.from({ length: 18 }, (_, index) => point(index)),
+    );
+    const atTwenty = segmentLocationTrack(
+      Array.from({ length: 20 }, (_, index) => point(index)),
+    );
+    const first = decimateLocationTrackSegments(atSeventeen, 10);
+    const appended = decimateLocationTrackSegments(atEighteen, 10);
+    const transitioned = decimateLocationTrackSegments(atTwenty, 10);
+
+    expect(first.stride).toBe(2);
+    expect(appended.stride).toBe(2);
+    expect(appended.segments[0].points.slice(0, -1)).toEqual(
+      first.segments[0].points,
+    );
+    expect(transitioned.stride).toBe(4);
+    expect(
+      transitioned.segments.reduce(
+        (total, segment) => total + segment.points.length,
+        0,
+      ),
+    ).toBeLessThanOrEqual(10);
+    expect(decimateLocationTrackSegments(atTwenty, 10)).toEqual(transitioned);
   });
 });
 
@@ -121,6 +179,18 @@ describe("interpolateLocationAtTime", () => {
 });
 
 describe("indexed location lookup", () => {
+  it("reuses distance indexes for stable segments while replacing only the tail", () => {
+    const stable = { points: [point(0), point(1)] };
+    const first = indexLocationTrack([stable, { points: [point(3)] }]);
+    const appended = indexLocationTrack([
+      stable,
+      { points: [point(3), point(4)] },
+    ]);
+
+    expect(appended.segments[0]).toBe(first.segments[0]);
+    expect(appended.segments[1]).not.toBe(first.segments[1]);
+  });
+
   it("advances a cursor, preserves no-fix gaps, and resets on backwards seeks", () => {
     const segments = segmentLocationTrack([
       point(0),

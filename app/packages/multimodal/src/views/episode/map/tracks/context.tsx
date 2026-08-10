@@ -1,7 +1,7 @@
 // Deep imports on purpose: the playback package root barrel pulls view
 // components whose relay fragments cannot evaluate under vitest, and this
 // bridge mirrors the pose-trajectory bulk fetch path.
-import { PlaybackStoreContext } from "@fiftyone/playback/runtime";
+import { PlaybackStoreContext, useIsPlaying } from "@fiftyone/playback/runtime";
 import React, {
   createContext,
   useContext,
@@ -27,10 +27,10 @@ import { useOptionalPlayhead } from "../../playback/use-optional-playhead";
 import { FULL_HISTORY_RETENTION_MS } from "../../playback/use-demand-driven-history";
 import {
   decimateLocationTrackSegments,
+  IncrementalLocationSegmentBuilder,
   isValidLocationPoint,
   locationPointFromVisualization,
   locationTrackColor,
-  segmentLocationTrack,
   type LocationTrackPoint,
   type LocationTrackSegment,
   type LocationTracks,
@@ -40,8 +40,10 @@ import {
 const LOCATION_TRACK_READ_LIMIT = 25_000;
 const LOCATION_TRACK_CACHE_MESSAGE_LIMIT = 250_000;
 const LOCATION_TRACK_SELECTION_CACHE_LIMIT = 4;
+const LOCATION_TRACK_RETAINED_POINT_LIMIT = 250_000;
 const LOCATION_TRACK_DEFERRED_RETRY_MS = 2_000;
 const LOCATION_TRACK_PROGRESS_MESSAGE_INTERVAL = 250;
+const LOCATION_TRACK_PUBLICATION_INTERVAL_MS = 100;
 const LOCATION_TRACK_GRANT_BUDGET = {
   maxMessages: 5_000,
   maxSourceBytes: 32 * 1024 * 1024,
@@ -61,6 +63,7 @@ interface BoundedLocationTrackProgress {
     string,
     Omit<LocationTrackState, "pointCount" | "segments" | "status">
   >;
+  readonly buildersByStream: Map<string, IncrementalLocationSegmentBuilder>;
   readonly job?: BudgetedReadJob;
   readonly key: string;
   readonly pointsByStream: Map<string, LocationTrackPoint[]>;
@@ -72,6 +75,9 @@ interface BoundedLocationTrackProgress {
   hasRead: boolean;
   lastUsed: number;
   lastProgressPublishedMessageCount: number;
+  lastPublicationAtMs: number;
+  publishedStatus?: LocationTrackState["status"];
+  publicationTimer?: ReturnType<typeof setTimeout>;
   messageCount: number;
   publicationKey?: string;
   publishedTracks?: LocationTracks;
@@ -83,6 +89,7 @@ interface BoundedLocationTrackProgress {
       readonly truncated: boolean;
     }
   >;
+  readonly renderedRevisionByStream: Map<string, number>;
   resumeAtNs?: bigint;
   retryTimer?: ReturnType<typeof setTimeout>;
   settledThroughNs?: bigint;
@@ -175,6 +182,7 @@ export function LocationTracksBridge({
 }) {
   const { setTracks } = useContextValue();
   const playbackStore = useContext(PlaybackStoreContext);
+  const isPlaying = useIsPlaying();
   const dataStream = useDataStream();
   const requestedStreams =
     streams ?? locationSources.map((locationSource) => locationSource.id);
@@ -247,6 +255,7 @@ export function LocationTracksBridge({
       epoch.demandedKey = null;
       if (previous) {
         previous.active?.controller.abort();
+        cancelProgressPublication(previous);
         if (previous.error) {
           cancelProgress(previous);
           epoch.selections.delete(previous.key);
@@ -278,11 +287,6 @@ export function LocationTracksBridge({
       clearTimeout(progress.evictionTimer);
       progress.evictionTimer = undefined;
     }
-    if (progress.retryTimer !== undefined) {
-      clearTimeout(progress.retryTimer);
-      progress.retryTimer = undefined;
-    }
-
     if (epoch.demandedKey !== requestedStreamsKey) {
       const previous =
         epoch.demandedKey === null
@@ -290,6 +294,7 @@ export function LocationTracksBridge({
           : epoch.selections.get(epoch.demandedKey);
       if (previous) {
         previous.active?.controller.abort();
+        cancelProgressPublication(previous);
         if (previous.error) {
           cancelProgress(previous);
           epoch.selections.delete(previous.key);
@@ -299,18 +304,38 @@ export function LocationTracksBridge({
         }
       }
       epoch.demandedKey = requestedStreamsKey;
+      if (progress.retryTimer !== undefined) {
+        clearTimeout(progress.retryTimer);
+        progress.retryTimer = undefined;
+      }
     }
     const selectedProgress = progress;
 
     if (horizonNs === undefined) {
-      publishProgress(epoch, selectedProgress, undefined, setTracks);
+      requestProgressPublication(
+        epoch,
+        selectedProgress,
+        undefined,
+        setTracks,
+        true,
+      );
       return;
     }
+    const previousHorizonNs = selectedProgress.targetHorizonNs;
     selectedProgress.targetHorizonNs = horizonNs;
-    publishProgress(epoch, selectedProgress, horizonNs, setTracks);
+    requestProgressPublication(
+      epoch,
+      selectedProgress,
+      horizonNs,
+      setTracks,
+      !isPlaying ||
+        previousHorizonNs === undefined ||
+        horizonNs < previousHorizonNs,
+    );
     if (
       !progressNeedsRead(selectedProgress, horizonNs) ||
-      selectedProgress.active
+      selectedProgress.active ||
+      selectedProgress.retryTimer !== undefined
     ) {
       return;
     }
@@ -332,12 +357,13 @@ export function LocationTracksBridge({
       ? pumpBoundedProgress({
           epoch,
           progress: selectedProgress,
-          publish: () =>
-            publishProgress(
+          publish: (immediate) =>
+            requestProgressPublication(
               epoch,
               selectedProgress,
               selectedProgress.targetHorizonNs,
               setTracks,
+              immediate,
             ),
           shouldStandDown: () => shouldDeferBulkHistory(playbackStore),
           signal: controller.signal,
@@ -345,12 +371,13 @@ export function LocationTracksBridge({
       : pumpFallbackProgress({
           epoch,
           progress: selectedProgress,
-          publish: () =>
-            publishProgress(
+          publish: (immediate) =>
+            requestProgressPublication(
               epoch,
               selectedProgress,
               selectedProgress.targetHorizonNs,
               setTracks,
+              immediate,
             ),
           shouldStandDown: () => shouldDeferBulkHistory(playbackStore),
           signal: controller.signal,
@@ -365,11 +392,12 @@ export function LocationTracksBridge({
           return;
         }
         selectedProgress.error = true;
-        publishProgress(
+        requestProgressPublication(
           epoch,
           selectedProgress,
           selectedProgress.targetHorizonNs,
           setTracks,
+          true,
         );
       })
       .finally(() => {
@@ -383,6 +411,7 @@ export function LocationTracksBridge({
   }, [
     budgetAccount,
     horizonNs,
+    isPlaying,
     locationSources,
     playbackStore,
     pumpNonce,
@@ -432,18 +461,26 @@ function createProgress({
   return {
     active: undefined,
     baseByStream,
+    buildersByStream: new Map(
+      streams.map((stream) => [
+        stream,
+        new IncrementalLocationSegmentBuilder(),
+      ]),
+    ),
     error: false,
     hasRead: false,
     ...(budgetAccount ? { job: budgetAccount.createJob() } : {}),
     key,
     lastUsed: 0,
     lastProgressPublishedMessageCount: 0,
+    lastPublicationAtMs: Number.NEGATIVE_INFINITY,
     messageCount: 0,
     pointsByStream: new Map(
       streams.map((stream) => [stream, [] as LocationTrackPoint[]]),
     ),
     renderRevision: 0,
     renderedByStream: new Map(),
+    renderedRevisionByStream: new Map(),
     skipOversizedSourceUnit: false,
     streams,
     terminal: false,
@@ -463,7 +500,7 @@ async function pumpBoundedProgress({
 }: {
   readonly epoch: LocationTrackCacheEpoch;
   readonly progress: BoundedLocationTrackProgress;
-  readonly publish: () => void;
+  readonly publish: (immediate?: boolean) => void;
   readonly shouldStandDown: () => boolean;
   readonly signal: AbortSignal;
 }): Promise<void> {
@@ -491,12 +528,18 @@ async function pumpBoundedProgress({
     if (epoch.disposed) return;
     progress.skipOversizedSourceUnit = false;
     consumeBatches(progress, result.batches);
-    refreshRenderedSegments(progress);
+    pruneRetainedPointCache(epoch);
     progress.hasRead = true;
     progress.continuation = result.continuation;
     progress.resumeAtNs = result.resumeAtNs;
     const madeProgress =
       result.batches.length > 0 || result.usage.chunksOpened > 0;
+    const firstProgressPublication =
+      progress.lastProgressPublishedMessageCount === 0 &&
+      progress.messageCount > 0;
+    if (firstProgressPublication) {
+      progress.lastProgressPublishedMessageCount = progress.messageCount;
+    }
     if ((result.unavailableByStream?.size ?? 0) > 0) {
       progress.truncated = true;
     }
@@ -504,7 +547,7 @@ async function pumpBoundedProgress({
     if (progress.messageCount >= LOCATION_TRACK_CACHE_MESSAGE_LIMIT) {
       progress.terminal = true;
       progress.truncated = true;
-      publish();
+      publish(true);
       return;
     }
     if (result.stopReason === "horizon-reached") {
@@ -512,31 +555,31 @@ async function pumpBoundedProgress({
         progress.settledThroughNs,
         horizonNs,
       );
-      publish();
+      publish(true);
       return;
     }
     if (result.stopReason === "source-exhausted") {
       progress.terminal = true;
       progress.settledThroughNs = timeRange.endNs;
-      publish();
+      publish(true);
       return;
     }
     if (result.stopReason === "account-exhausted") {
       progress.terminal = true;
       progress.truncated = true;
       markLocationReadCompleted(progress);
-      publish();
+      publish(true);
       return;
     }
     if (result.stopReason === "oversized-source-unit") {
       progress.truncated = true;
       if (progress.continuation) {
-        publish();
+        publish(firstProgressPublication);
         continue;
       }
       progress.terminal = true;
       markLocationReadCompleted(progress);
-      publish();
+      publish(true);
       return;
     }
     if (
@@ -556,10 +599,10 @@ async function pumpBoundedProgress({
     ) {
       progress.terminal = true;
       progress.truncated = true;
-      publish();
+      publish(true);
       return;
     }
-    publish();
+    publish(firstProgressPublication);
   }
 }
 
@@ -572,7 +615,7 @@ async function pumpFallbackProgress({
 }: {
   readonly epoch: LocationTrackCacheEpoch;
   readonly progress: BoundedLocationTrackProgress;
-  readonly publish: () => void;
+  readonly publish: (immediate?: boolean) => void;
   readonly shouldStandDown: () => boolean;
   readonly signal: AbortSignal;
 }): Promise<void> {
@@ -589,7 +632,7 @@ async function pumpFallbackProgress({
   if (horizonNs < startNs) {
     progress.hasRead = true;
     progress.settledThroughNs = maxBigInt(progress.settledThroughNs, horizonNs);
-    publish();
+    publish(true);
     return;
   }
 
@@ -601,7 +644,7 @@ async function pumpFallbackProgress({
   if (limit === 0) {
     progress.terminal = true;
     progress.truncated = true;
-    publish();
+    publish(true);
     return;
   }
   const initial = {
@@ -630,15 +673,17 @@ async function pumpFallbackProgress({
       if (signal.aborted || epoch.disposed) return;
       readMessages += batch.frames.length;
       consumeBatches(progress, [batch]);
+      pruneRetainedPointCache(epoch);
       progress.hasRead = true;
       if (
         progress.lastProgressPublishedMessageCount === 0 ||
         progress.messageCount - progress.lastProgressPublishedMessageCount >=
           LOCATION_TRACK_PROGRESS_MESSAGE_INTERVAL
       ) {
+        const firstProgressPublication =
+          progress.lastProgressPublishedMessageCount === 0;
         progress.lastProgressPublishedMessageCount = progress.messageCount;
-        refreshRenderedSegments(progress);
-        publish();
+        publish(firstProgressPublication);
       }
       if (progress.messageCount >= LOCATION_TRACK_CACHE_MESSAGE_LIMIT) break;
     }
@@ -650,13 +695,12 @@ async function pumpFallbackProgress({
       progress.terminal = true;
       progress.truncated = true;
     }
-    refreshRenderedSegments(progress);
-    publish();
+    publish(true);
     completed = true;
   } finally {
     if (!completed) {
       rollbackFallbackProgress(progress, initial);
-      if (!epoch.disposed) publish();
+      if (!epoch.disposed) publish(true);
     }
   }
 }
@@ -679,8 +723,8 @@ function rollbackFallbackProgress(
   for (const [stream, length] of initial.pointLengths) {
     progress.pointsByStream.get(stream)?.splice(length);
     progress.validPointCountPrefixByStream.get(stream)?.splice(length);
+    progress.buildersByStream.get(stream)?.truncate(length);
   }
-  refreshRenderedSegments(progress);
 }
 
 function consumeBatches(
@@ -692,7 +736,8 @@ function consumeBatches(
     const validPointCountPrefix = progress.validPointCountPrefixByStream.get(
       batch.stream,
     );
-    if (!points || !validPointCountPrefix) continue;
+    const builder = progress.buildersByStream.get(batch.stream);
+    if (!points || !validPointCountPrefix || !builder) continue;
     for (const frame of batch.frames) {
       if (progress.messageCount >= LOCATION_TRACK_CACHE_MESSAGE_LIMIT) {
         progress.truncated = true;
@@ -706,6 +751,7 @@ function consumeBatches(
         frame.timestampNs,
       );
       points.push(point);
+      builder.append(point);
       validPointCountPrefix.push(
         (validPointCountPrefix.at(-1) ?? 0) +
           (isValidLocationPoint(point) ? 1 : 0),
@@ -715,16 +761,24 @@ function consumeBatches(
 }
 
 function refreshRenderedSegments(progress: BoundedLocationTrackProgress): void {
+  let changed = false;
   for (const stream of progress.streams) {
-    const rendered = decimateLocationTrackSegments(
-      segmentLocationTrack(progress.pointsByStream.get(stream) ?? []),
-    );
+    const builder = progress.buildersByStream.get(stream);
+    if (!builder) continue;
+    if (
+      progress.renderedRevisionByStream.get(stream) === builder.renderRevision
+    ) {
+      continue;
+    }
+    const rendered = decimateLocationTrackSegments(builder.snapshot());
     progress.renderedByStream.set(stream, {
       segments: rendered.segments,
       truncated: rendered.truncated,
     });
+    progress.renderedRevisionByStream.set(stream, builder.renderRevision);
+    changed = true;
   }
-  progress.renderRevision += 1;
+  if (changed) progress.renderRevision += 1;
 }
 
 function progressNeedsRead(
@@ -750,6 +804,50 @@ function progressNeedsRead(
   return true;
 }
 
+function requestProgressPublication(
+  epoch: LocationTrackCacheEpoch,
+  progress: BoundedLocationTrackProgress,
+  horizonNs: bigint | undefined,
+  setTracks: LocationTracksContextValue["setTracks"],
+  immediate = false,
+): void {
+  if (
+    epoch.disposed ||
+    epoch.demandedKey !== progress.key ||
+    !epoch.sourceKey
+  ) {
+    return;
+  }
+  const status = progressStatus(progress, horizonNs);
+  if (
+    immediate ||
+    !progress.publishedTracks ||
+    progress.publishedStatus !== status
+  ) {
+    cancelProgressPublication(progress);
+    publishProgress(epoch, progress, horizonNs, setTracks);
+    return;
+  }
+  if (progress.publicationTimer !== undefined) return;
+  const elapsedMs = Date.now() - progress.lastPublicationAtMs;
+  const delayMs = Math.max(
+    0,
+    LOCATION_TRACK_PUBLICATION_INTERVAL_MS - elapsedMs,
+  );
+  progress.publicationTimer = setTimeout(() => {
+    progress.publicationTimer = undefined;
+    publishProgress(epoch, progress, progress.targetHorizonNs, setTracks);
+  }, delayMs);
+}
+
+function cancelProgressPublication(
+  progress: BoundedLocationTrackProgress,
+): void {
+  if (progress.publicationTimer === undefined) return;
+  clearTimeout(progress.publicationTimer);
+  progress.publicationTimer = undefined;
+}
+
 function publishProgress(
   epoch: LocationTrackCacheEpoch,
   progress: BoundedLocationTrackProgress,
@@ -763,7 +861,10 @@ function publishProgress(
   ) {
     return;
   }
+  refreshRenderedSegments(progress);
   const status = progressStatus(progress, horizonNs);
+  progress.lastPublicationAtMs = Date.now();
+  progress.publishedStatus = status;
   const visibleCounts = progress.streams.map((stream) =>
     horizonNs === undefined
       ? 0
@@ -885,6 +986,31 @@ function pruneSelectionCache(epoch: LocationTrackCacheEpoch): void {
   }
 }
 
+function pruneRetainedPointCache(epoch: LocationTrackCacheEpoch): void {
+  let retainedPoints = [...epoch.selections.values()].reduce(
+    (total, progress) => total + progressRetainedPointCount(progress),
+    0,
+  );
+  while (retainedPoints > LOCATION_TRACK_RETAINED_POINT_LIMIT) {
+    const candidate = [...epoch.selections.values()]
+      .filter((progress) => progress.key !== epoch.demandedKey)
+      .sort((left, right) => left.lastUsed - right.lastUsed)[0];
+    if (!candidate) return;
+    retainedPoints -= progressRetainedPointCount(candidate);
+    cancelProgress(candidate);
+    epoch.selections.delete(candidate.key);
+    if (epoch.publishedKey === candidate.key) epoch.publishedKey = null;
+  }
+}
+
+function progressRetainedPointCount(
+  progress: BoundedLocationTrackProgress,
+): number {
+  let count = 0;
+  for (const points of progress.pointsByStream.values()) count += points.length;
+  return count;
+}
+
 function cancelProgress(progress: BoundedLocationTrackProgress): void {
   progress.active?.controller.abort();
   progress.active = undefined;
@@ -896,6 +1022,7 @@ function cancelProgress(progress: BoundedLocationTrackProgress): void {
     clearTimeout(progress.retryTimer);
     progress.retryTimer = undefined;
   }
+  cancelProgressPublication(progress);
 }
 
 function maxBigInt(current: bigint | undefined, candidate: bigint): bigint {

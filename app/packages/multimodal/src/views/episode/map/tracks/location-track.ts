@@ -103,6 +103,102 @@ export interface LocationBounds {
   readonly west: number;
 }
 
+export interface DecimatedLocationTrack {
+  readonly pointCount: number;
+  readonly segments: readonly LocationTrackSegment[];
+  readonly stride: number;
+  readonly truncated: boolean;
+}
+
+interface MutableLocationTrackSegment {
+  readonly points: LocationTrackPoint[];
+  published?: LocationTrackSegment;
+  publishedLength: number;
+}
+
+/**
+ * Incrementally preserves no-fix boundaries while points append. Rollback is
+ * proportional to the discarded suffix, so an interrupted read never forces
+ * the retained prefix through a full resegmentation pass.
+ */
+export class IncrementalLocationSegmentBuilder {
+  private current: MutableLocationTrackSegment | null = null;
+  private readonly operations: Array<MutableLocationTrackSegment | null> = [];
+  private readonly mutableSegments: MutableLocationTrackSegment[] = [];
+  private revision = 0;
+  private snapshotRevision = -1;
+  private snapshotValue: readonly LocationTrackSegment[] = [];
+
+  append(point: LocationTrackPoint): void {
+    if (!isValidLocationPoint(point)) {
+      this.current = null;
+      this.operations.push(null);
+      this.revision += 1;
+      return;
+    }
+    if (!this.current) {
+      this.current = { points: [], publishedLength: -1 };
+      this.mutableSegments.push(this.current);
+    }
+    this.current.points.push(point);
+    this.operations.push(this.current);
+    this.revision += 1;
+  }
+
+  appendMany(points: readonly LocationTrackPoint[]): void {
+    for (const point of points) this.append(point);
+  }
+
+  get inputPointCount(): number {
+    return this.operations.length;
+  }
+
+  get renderRevision(): number {
+    return this.revision;
+  }
+
+  snapshot(): readonly LocationTrackSegment[] {
+    if (this.snapshotRevision === this.revision) return this.snapshotValue;
+    this.snapshotValue = this.mutableSegments.map((segment) => {
+      if (
+        segment.published &&
+        segment.publishedLength === segment.points.length
+      ) {
+        return segment.published;
+      }
+      segment.published = { points: segment.points.slice() };
+      segment.publishedLength = segment.points.length;
+      return segment.published;
+    });
+    this.snapshotRevision = this.revision;
+    return this.snapshotValue;
+  }
+
+  truncate(inputPointCount: number): void {
+    const wanted = Math.max(
+      0,
+      Math.min(inputPointCount, this.operations.length),
+    );
+    if (wanted === this.operations.length) return;
+    while (this.operations.length > wanted) {
+      const segment = this.operations.pop();
+      if (!segment) continue;
+      segment.points.pop();
+      segment.published = undefined;
+      segment.publishedLength = -1;
+      if (segment.points.length === 0) {
+        const removed = this.mutableSegments.pop();
+        if (removed !== segment) {
+          throw new Error("location segment rollback order is inconsistent");
+        }
+      }
+    }
+    const lastOperation = this.operations.at(-1);
+    this.current = lastOperation ?? null;
+    this.revision += 1;
+  }
+}
+
 export function locationPointFromVisualization(
   visualization: LocationVisualization,
   timelineTimeNs: bigint,
@@ -165,47 +261,40 @@ export function isValidLocationPoint(point: LocationTrackPoint): boolean {
 export function segmentLocationTrack(
   points: readonly LocationTrackPoint[],
 ): readonly LocationTrackSegment[] {
-  const segments: LocationTrackSegment[] = [];
-  let current: LocationTrackPoint[] = [];
-
-  for (const point of points) {
-    if (!isValidLocationPoint(point)) {
-      if (current.length > 0) {
-        segments.push({ points: current });
-        current = [];
-      }
-      continue;
-    }
-    current.push(point);
-  }
-
-  if (current.length > 0) {
-    segments.push({ points: current });
-  }
-
-  return segments;
+  const builder = new IncrementalLocationSegmentBuilder();
+  builder.appendMany(points);
+  return builder.snapshot();
 }
 
 export function decimateLocationTrackSegments(
   segments: readonly LocationTrackSegment[],
   maxPoints = MAX_LOCATION_TRACK_RENDER_POINTS,
-): {
-  readonly pointCount: number;
-  readonly segments: readonly LocationTrackSegment[];
-  readonly truncated: boolean;
-} {
+): DecimatedLocationTrack {
   const pointCount = countLocationTrackPoints(segments);
-  if (pointCount <= maxPoints) {
-    return { pointCount, segments, truncated: false };
+  const normalizedMaxPoints = Math.max(0, Math.floor(maxPoints));
+  if (normalizedMaxPoints === 0) {
+    return { pointCount, segments: [], stride: 1, truncated: pointCount > 0 };
   }
-
-  const decimated = decimateSegmentsByGlobalIndex(
+  if (pointCount <= maxPoints) {
+    return { pointCount, segments, stride: 1, truncated: false };
+  }
+  if (normalizedMaxPoints === 1) {
+    const last = lastLocationPoint(segments);
+    return {
+      pointCount,
+      segments: last ? [{ points: [last] }] : [],
+      stride: nextPowerOfTwo(pointCount),
+      truncated: true,
+    };
+  }
+  const stride = appendStableDecimationStride(pointCount, normalizedMaxPoints);
+  const decimated = decimateSegmentsByStableStride(
     segments,
     pointCount,
-    maxPoints,
+    stride,
   );
 
-  return { pointCount, segments: decimated, truncated: true };
+  return { pointCount, segments: decimated, stride, truncated: true };
 }
 
 export function countLocationTrackPoints(
@@ -221,29 +310,7 @@ export function indexLocationTrack(
   const indexedSegments: IndexedLocationTrackSegment[] = [];
   for (const segment of segments) {
     if (segment.points.length === 0) continue;
-    const cumulativeDistanceM = [0];
-    const coordinates: [number, number][] = [];
-    const timesNs: bigint[] = [];
-    for (let index = 0; index < segment.points.length; index += 1) {
-      const point = segment.points[index];
-      coordinates.push([point.longitude, point.latitude]);
-      timesNs.push(point.timeNs);
-      if (index > 0) {
-        cumulativeDistanceM.push(
-          cumulativeDistanceM[index - 1] +
-            haversineDistanceMeters(segment.points[index - 1], point),
-        );
-      }
-    }
-    indexedSegments.push({
-      coordinates,
-      cumulativeDistanceM,
-      endTimeNs: timesNs[timesNs.length - 1],
-      points: segment.points,
-      startTimeNs: timesNs[0],
-      timesNs,
-      totalDistanceM: cumulativeDistanceM[cumulativeDistanceM.length - 1],
-    });
+    indexedSegments.push(indexLocationTrackSegment(segment));
   }
   return {
     firstPoint: indexedSegments[0]?.points[0] ?? null,
@@ -451,30 +518,7 @@ export function locationTrailCoordinates(
 export function locationBounds(
   segments: readonly LocationTrackSegment[],
 ): LocationBounds | null {
-  let west = Number.POSITIVE_INFINITY;
-  let east = Number.NEGATIVE_INFINITY;
-  let south = Number.POSITIVE_INFINITY;
-  let north = Number.NEGATIVE_INFINITY;
-
-  for (const segment of segments) {
-    for (const point of segment.points) {
-      west = Math.min(west, point.longitude);
-      east = Math.max(east, point.longitude);
-      south = Math.min(south, point.latitude);
-      north = Math.max(north, point.latitude);
-    }
-  }
-
-  if (
-    west === Number.POSITIVE_INFINITY ||
-    east === Number.NEGATIVE_INFINITY ||
-    south === Number.POSITIVE_INFINITY ||
-    north === Number.NEGATIVE_INFINITY
-  ) {
-    return null;
-  }
-
-  return { east, north, south, west };
+  return combineLocationBounds(segments.map(locationSegmentBounds));
 }
 
 export function combineLocationBounds(
@@ -713,32 +757,17 @@ function lastLocationPoint(
   return null;
 }
 
-function decimateSegmentsByGlobalIndex(
+function decimateSegmentsByStableStride(
   segments: readonly LocationTrackSegment[],
   pointCount: number,
-  maxPoints: number,
+  stride: number,
 ): readonly LocationTrackSegment[] {
-  if (maxPoints <= 0) {
-    return [];
-  }
-
-  const wantedIndices = new Set<number>();
-  if (maxPoints === 1) {
-    wantedIndices.add(0);
-  } else {
-    for (let sampleIndex = 0; sampleIndex < maxPoints; sampleIndex += 1) {
-      wantedIndices.add(
-        Math.round((sampleIndex * (pointCount - 1)) / (maxPoints - 1)),
-      );
-    }
-  }
-
   let globalIndex = 0;
   const decimated: LocationTrackSegment[] = [];
   for (const segment of segments) {
     const points: LocationTrackPoint[] = [];
     for (const point of segment.points) {
-      if (wantedIndices.has(globalIndex)) {
+      if (globalIndex % stride === 0 || globalIndex === pointCount - 1) {
         points.push(point);
       }
       globalIndex += 1;
@@ -748,6 +777,93 @@ function decimateSegmentsByGlobalIndex(
     }
   }
   return decimated;
+}
+
+function appendStableDecimationStride(
+  pointCount: number,
+  maxPoints: number,
+): number {
+  let stride = 1;
+  while (stableDecimatedPointCount(pointCount, stride) > maxPoints) {
+    stride *= 2;
+  }
+  return stride;
+}
+
+function stableDecimatedPointCount(pointCount: number, stride: number): number {
+  if (pointCount <= 0) return 0;
+  const lastIndex = pointCount - 1;
+  const regularSamples = Math.floor(lastIndex / stride) + 1;
+  return regularSamples + (lastIndex % stride === 0 ? 0 : 1);
+}
+
+function nextPowerOfTwo(value: number): number {
+  let result = 1;
+  while (result < value) result *= 2;
+  return result;
+}
+
+const indexedLocationTrackSegmentCache = new WeakMap<
+  LocationTrackSegment,
+  IndexedLocationTrackSegment
+>();
+
+function indexLocationTrackSegment(
+  segment: LocationTrackSegment,
+): IndexedLocationTrackSegment {
+  const cached = indexedLocationTrackSegmentCache.get(segment);
+  if (cached) return cached;
+  const cumulativeDistanceM = [0];
+  const coordinates: [number, number][] = [];
+  const timesNs: bigint[] = [];
+  for (let index = 0; index < segment.points.length; index += 1) {
+    const point = segment.points[index];
+    coordinates.push([point.longitude, point.latitude]);
+    timesNs.push(point.timeNs);
+    if (index > 0) {
+      cumulativeDistanceM.push(
+        cumulativeDistanceM[index - 1] +
+          haversineDistanceMeters(segment.points[index - 1], point),
+      );
+    }
+  }
+  const indexed = {
+    coordinates,
+    cumulativeDistanceM,
+    endTimeNs: timesNs[timesNs.length - 1],
+    points: segment.points,
+    startTimeNs: timesNs[0],
+    timesNs,
+    totalDistanceM: cumulativeDistanceM[cumulativeDistanceM.length - 1],
+  };
+  indexedLocationTrackSegmentCache.set(segment, indexed);
+  return indexed;
+}
+
+const locationSegmentBoundsCache = new WeakMap<
+  LocationTrackSegment,
+  LocationBounds | null
+>();
+
+function locationSegmentBounds(
+  segment: LocationTrackSegment,
+): LocationBounds | null {
+  const cached = locationSegmentBoundsCache.get(segment);
+  if (cached !== undefined) return cached;
+  let west = Number.POSITIVE_INFINITY;
+  let east = Number.NEGATIVE_INFINITY;
+  let south = Number.POSITIVE_INFINITY;
+  let north = Number.NEGATIVE_INFINITY;
+  for (const point of segment.points) {
+    west = Math.min(west, point.longitude);
+    east = Math.max(east, point.longitude);
+    south = Math.min(south, point.latitude);
+    north = Math.max(north, point.latitude);
+  }
+  const bounds =
+    west === Number.POSITIVE_INFINITY ? null : { east, north, south, west };
+  locationSegmentBoundsCache.set(segment, bounds);
+  return bounds;
 }
 
 function finiteOrUndefined(value: number | undefined): number | undefined {
