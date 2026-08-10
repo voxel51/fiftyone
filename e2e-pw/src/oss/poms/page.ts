@@ -61,10 +61,9 @@ class PageAsserter {
    * which is a regression.
    */
   async hasHadOnlyOneGlobalLoadingScreen(counter: EventCounter) {
-    expect(
-      await counter.read(),
-      JSON.stringify(await counter.timeline()),
-    ).toBe(1);
+    expect(await counter.read(), JSON.stringify(await counter.timeline())).toBe(
+      1,
+    );
   }
 
   async verifyPage(pagename: string) {
