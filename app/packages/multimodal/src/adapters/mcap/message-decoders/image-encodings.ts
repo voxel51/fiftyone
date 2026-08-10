@@ -1,8 +1,9 @@
 /**
  * Raw image pixel-encoding conversion shared by the ROS `sensor_msgs/Image`
  * and Foxglove `RawImage` decoders. Converts source pixel buffers into
- * display-ready RGBA with per-encoding handling for color, mono, depth,
- * packed-YUV, and Bayer layouts.
+ * display-ready RGBA with per-encoding handling for color, mono, packed-YUV,
+ * and Bayer layouts. Depth encodings retain their native-width samples for
+ * GPU rendering and materialize RGBA only in GPU-free consumers.
  */
 import type {
   DecodedAttributeValue,
@@ -12,6 +13,8 @@ import type {
 const RGBA_CHANNEL_COUNT = 4;
 const UINT8_MAX = 255;
 const UINT16_MAX = 65_535;
+const HOST_IS_LITTLE_ENDIAN =
+  new Uint8Array(new Uint16Array([1]).buffer)[0] === 1;
 
 type BayerPattern = "bggr" | "gbrg" | "grbg" | "rggb";
 type BayerColor = "b" | "g" | "r";
@@ -95,9 +98,9 @@ export function decodeImageRgba({
     case "mono16":
       return mono16Rgba({ data, height, littleEndian, step, width });
     case "16uc1":
-      return depth16Rgba({ data, height, littleEndian, step, width });
+      return depth16Result({ data, height, littleEndian, step, width });
     case "32fc1":
-      return depth32Rgba({ data, height, littleEndian, step, width });
+      return depth32Result({ data, height, littleEndian, step, width });
     case "uyvy":
     case "yuv422":
       return yuv422Result(
@@ -309,7 +312,7 @@ function mono16Rgba({
   return { rgba };
 }
 
-function depth16Rgba({
+function depth16Result({
   data,
   height,
   littleEndian,
@@ -320,14 +323,14 @@ function depth16Rgba({
 }): DecodeImageResult {
   const { max, min, values } = readDepthValues(
     { data, height, littleEndian, step, width },
-    new Uint16Array(width * height),
+    Uint16Array,
     2,
     (view, offset, isLittleEndian) => view.getUint16(offset, isLittleEndian),
   );
-  return depthRgba(values, 0.001, min, max);
+  return depthResult(values, 0.001, min, max);
 }
 
-function depth32Rgba({
+function depth32Result({
   data,
   height,
   littleEndian,
@@ -338,12 +341,17 @@ function depth32Rgba({
 }): DecodeImageResult {
   const { max, min, values } = readDepthValues(
     { data, height, littleEndian, step, width },
-    new Float32Array(width * height),
+    Float32Array,
     4,
     (view, offset, isLittleEndian) => view.getFloat32(offset, isLittleEndian),
   );
-  return depthRgba(values, 1, min, max);
+  return depthResult(values, 1, min, max);
 }
+
+type DepthArrayConstructor<T extends Uint16Array | Float32Array> = {
+  new (length: number): T;
+  new (buffer: ArrayBuffer, byteOffset: number, length: number): T;
+};
 
 function readDepthValues<T extends Uint16Array | Float32Array>(
   {
@@ -355,49 +363,54 @@ function readDepthValues<T extends Uint16Array | Float32Array>(
   }: ImageLayout & {
     readonly littleEndian: boolean;
   },
-  values: T,
+  ArrayType: DepthArrayConstructor<T>,
   elementByteStride: number,
   read: (view: DataView, offset: number, littleEndian: boolean) => number,
 ): { readonly max: number; readonly min: number; readonly values: T } {
-  const view = dataView(data);
+  const pixelCount = width * height;
+  const packed = step === width * elementByteStride;
+  const aligned = data.byteOffset % elementByteStride === 0;
+  const compatibleEndian = littleEndian === HOST_IS_LITTLE_ENDIAN;
+  const values =
+    packed && aligned && compatibleEndian && data.buffer instanceof ArrayBuffer
+      ? new ArrayType(data.buffer, data.byteOffset, pixelCount)
+      : new ArrayType(pixelCount);
+  const view =
+    values.buffer === data.buffer && values.byteOffset === data.byteOffset
+      ? null
+      : dataView(data);
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
-  for (let y = 0; y < height; y++) {
-    const rowOffset = y * step;
-    for (let x = 0; x < width; x++) {
-      const pixelIndex = y * width + x;
-      const value = read(view, rowOffset + x * elementByteStride, littleEndian);
-      values[pixelIndex] = value;
-      if (value > 0 && Number.isFinite(value)) {
-        min = Math.min(min, value);
-        max = Math.max(max, value);
+  if (view) {
+    for (let y = 0; y < height; y++) {
+      const rowOffset = y * step;
+      for (let x = 0; x < width; x++) {
+        const pixelIndex = y * width + x;
+        values[pixelIndex] = read(
+          view,
+          rowOffset + x * elementByteStride,
+          littleEndian,
+        );
       }
+    }
+  }
+  for (let index = 0; index < values.length; index += 1) {
+    const value = values[index] ?? Number.NaN;
+    if (value > 0 && Number.isFinite(value)) {
+      min = Math.min(min, value);
+      max = Math.max(max, value);
     }
   }
   return { max, min, values };
 }
 
-function depthRgba(
+function depthResult(
   values: Uint16Array | Float32Array,
   metersPerUnit: number,
   min: number,
   max: number,
 ): DecodeImageResult {
-  const pixelCount = values.length;
-  const rgba = new Uint8Array(pixelCount * RGBA_CHANNEL_COUNT);
   const hasRange = Number.isFinite(min) && Number.isFinite(max);
-  for (let index = 0; index < pixelCount; index++) {
-    const value = values[index] ?? Number.NaN;
-    if (!(value > 0) || !Number.isFinite(value) || !hasRange) {
-      writeGray(rgba, index, 0, 0);
-      continue;
-    }
-
-    const shade =
-      min === max ? UINT8_MAX : ((value - min) / (max - min)) * UINT8_MAX;
-    writeGray(rgba, index, clampUint8(shade), UINT8_MAX);
-  }
-
   return {
     attributes: hasRange
       ? {
@@ -405,8 +418,12 @@ function depthRgba(
           depthMin: min,
         }
       : undefined,
-    depth: { metersPerUnit, values },
-    rgba,
+    depth: {
+      maxValue: hasRange ? max : null,
+      metersPerUnit,
+      minValue: hasRange ? min : null,
+      values,
+    },
   };
 }
 

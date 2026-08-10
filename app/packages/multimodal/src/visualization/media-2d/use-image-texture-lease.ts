@@ -261,7 +261,8 @@ export function hasImageData(
   if (frame.kind === "encoded-video") {
     return frame.bytes.byteLength > 0;
   }
-  return frame.rgba.byteLength > 0 && frame.width > 0 && frame.height > 0;
+  const rawBytes = frame.depth?.values.byteLength ?? frame.rgba.byteLength;
+  return rawBytes > 0 && frame.width > 0 && frame.height > 0;
 }
 
 export function imageIdentity(
@@ -270,7 +271,9 @@ export function imageIdentity(
   if (!frame) {
     return frame;
   }
-  return frame.kind === "raw-image" ? frame.rgba : frame.bytes;
+  return frame.kind === "raw-image"
+    ? (frame.depth?.values ?? frame.rgba)
+    : frame.bytes;
 }
 
 function replaceHeldTexture(

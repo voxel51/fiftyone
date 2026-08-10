@@ -97,6 +97,84 @@ describe("acquireImageTexture (shared keys)", () => {
     });
   });
 
+  it("accounts native depth retention and leased GPU bytes at source width", async () => {
+    const observations: VisualizationCostObservation[] = [];
+    setVisualizationCostObserver((observation) =>
+      observations.push(observation),
+    );
+    const values = new Uint16Array([0, 1_000, 2_000]);
+    const texture = new THREE.DataTexture(
+      values,
+      3,
+      1,
+      THREE.RedFormat,
+      THREE.UnsignedShortType,
+    ) as THREE.DataTexture & { normalized: boolean };
+    texture.normalized = true;
+    const handle: ImageTextureHandle = {
+      aspectRatio: 3,
+      decodedByteLength: 6,
+      depthDisplay: {
+        maxSampleValue: 2_000 / 65_535,
+        minSampleValue: 1_000 / 65_535,
+      },
+      dispose: vi.fn(),
+      imageHeight: 1,
+      imageWidth: 3,
+      texture,
+    };
+    const lease = acquireImageTexture("depth", async () => handle);
+    const leased = await lease.promise;
+
+    expect(leased.decodedByteLength).toBe(6);
+    expect(leased.depthDisplay).toEqual(handle.depthDisplay);
+    expect((leased.texture as typeof texture).normalized).toBe(true);
+    expect(leased.texture.format).toBe(THREE.RedFormat);
+    expect((leased.texture as THREE.DataTexture).image.data).toBe(values);
+    expect(
+      observations.find(
+        (observation) =>
+          observation.operation === "image-texture-lease" &&
+          observation.declaredGpuBytesDelta === 6,
+      ),
+    ).toBeDefined();
+
+    lease.release();
+    expect(imageTextureCacheStats().retainedDecodedBytes).toBe(6);
+    expect(
+      observations.find(
+        (observation) =>
+          observation.operation === "image-texture-retention-add",
+      ),
+    ).toMatchObject({ retainedDecodedBytesDelta: 6 });
+  });
+
+  it("never accounts a negative decoded byte length", async () => {
+    const observations: VisualizationCostObservation[] = [];
+    setVisualizationCostObserver((observation) =>
+      observations.push(observation),
+    );
+    const decoded = makeHandle();
+    const handle: ImageTextureHandle = {
+      ...decoded.handle,
+      decodedByteLength: -1,
+    };
+    const lease = acquireImageTexture("invalid-bytes", async () => handle);
+    await lease.promise;
+
+    expect(
+      observations.find(
+        (observation) =>
+          observation.operation === "image-texture-lease" &&
+          observation.declaredGpuBytesDelta === Number.MAX_SAFE_INTEGER,
+      ),
+    ).toBeDefined();
+
+    lease.release();
+    expect(imageTextureCacheStats().retainedDecodedBytes).toBe(0);
+    expect(decoded.dispose).toHaveBeenCalledTimes(1);
+  });
+
   it("disposes an entry exactly once when it ages out of retention", async () => {
     const { dispose: firstDispose, handle: firstHandle } = makeHandle();
     const first = acquireImageTexture("k-0", async () => firstHandle);

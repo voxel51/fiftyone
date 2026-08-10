@@ -23,10 +23,14 @@ export interface EncodedImageVisualization {
   readonly mimeType?: string;
 }
 
-/** Full-precision depth samples retained alongside a display-ready raw image. */
+/** Full-precision depth samples and the native GPU display range. */
 export interface RawImageDepthData {
+  /** Largest finite positive stored sample, or `null` when none are valid. */
+  readonly maxValue: number | null;
   /** Converts one stored sample into meters. */
   readonly metersPerUnit: number;
+  /** Smallest finite positive stored sample, or `null` when none are valid. */
+  readonly minValue: number | null;
   /** Contiguous row-major samples from the source image's top-left pixel. */
   readonly values: Uint16Array | Float32Array;
 }
@@ -66,8 +70,10 @@ export type EncodedVideoVisualization =
     });
 
 /**
- * Raw image pixels normalized by a decoder into display-ready RGBA.
- * `rgba` is row-major from the source image's top-left pixel.
+ * Raw image pixels normalized by a decoder. Ordinary color images carry
+ * display-ready `rgba`. Depth images keep that array empty so the WebGPU path
+ * can upload `depth.values` directly; GPU-free consumers materialize RGBA
+ * lazily from the retained full-precision samples.
  */
 export interface RawImageVisualization {
   readonly kind: typeof VISUALIZATION_KIND.RAW_IMAGE;
@@ -77,6 +83,7 @@ export interface RawImageVisualization {
   readonly coordinateFrameId?: string;
   readonly depth?: RawImageDepthData;
   readonly height: number;
+  /** Display-ready RGBA, or an empty array for native depth frames. */
   readonly rgba: Uint8Array;
   readonly sourceEncoding: string;
   readonly timestampNs?: bigint;

@@ -11,6 +11,7 @@ import {
 import * as THREE from "three";
 
 import { fittedImageSize } from "./image-fit";
+import { createDepthImageMaterial } from "./depth-image-material";
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../panel-ui/style-tokens";
 
 /**
@@ -43,6 +44,13 @@ export interface ImageDisplayRect extends ImageDisplaySize {
  */
 export interface ImageTextureHandle {
   readonly aspectRatio: number;
+  /** GPU-sampled range for a native single-channel depth texture. */
+  readonly depthDisplay?: {
+    readonly maxSampleValue: number | null;
+    readonly minSampleValue: number | null;
+  };
+  /** Decoded texture-source bytes retained/uploaded by this handle. */
+  readonly decodedByteLength?: number;
   readonly imageWidth: number;
   readonly imageHeight: number;
   readonly dispose: () => void;
@@ -133,8 +141,20 @@ export function ImageTexturePlane({
     () => (textureMesh ? imageTextureMeshGeometry(textureMesh) : null),
     [textureMesh],
   );
+  const depthMaterial = useMemo(
+    () =>
+      textureHandle?.depthDisplay
+        ? createDepthImageMaterial(textureHandle, {
+            depthTest: false,
+            depthWrite: false,
+          })
+        : null,
+    [textureHandle],
+  );
   // This effect disposes the texture-remap mesh when it is replaced.
   useEffect(() => () => remapGeometry?.dispose(), [remapGeometry]);
+  // Node materials are renderer resources just like the texture lease.
+  useEffect(() => () => depthMaterial?.dispose(), [depthMaterial]);
   const planeScale = useMemo(
     () =>
       imagePlaneScale(
@@ -193,13 +213,17 @@ export function ImageTexturePlane({
           ) : (
             <planeGeometry args={[1, 1]} />
           )}
-          <meshBasicMaterial
-            depthTest={false}
-            depthWrite={false}
-            ref={bindMaterial}
-            toneMapped={false}
-            transparent
-          />
+          {depthMaterial ? (
+            <primitive attach="material" object={depthMaterial} />
+          ) : (
+            <meshBasicMaterial
+              depthTest={false}
+              depthWrite={false}
+              ref={bindMaterial}
+              toneMapped={false}
+              transparent
+            />
+          )}
         </mesh>
         {children}
       </group>

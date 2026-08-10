@@ -5,6 +5,7 @@ import * as THREE from "three";
 
 import type { CameraCalibrationVisualization } from "../../ir";
 import { useImageTextureLease } from "../media-2d/use-image-texture-lease";
+import { createDepthImageMaterial } from "../media-2d/depth-image-material";
 import { POINT_PICK_BLOCKING_USER_DATA } from "../scene-3d/point-picking";
 import { useScenePicking } from "../scene-3d/scene-interactivity";
 import { pointCloudObjectTransform } from "../scene-3d/transforms";
@@ -153,6 +154,17 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
     onLoaded: () => invalidate(),
     textureKey: layer.imageTextureKey,
   });
+  const depthImageMaterial = useMemo(
+    () =>
+      imageHandle?.depthDisplay
+        ? createDepthImageMaterial(imageHandle, {
+            depthWrite: false,
+            opacity: renderOpacity,
+            side: THREE.DoubleSide,
+          })
+        : null,
+    [imageHandle, renderOpacity],
+  );
   // This effect publishes image-plane failures without hiding the wireframe.
   useEffect(() => {
     const textureError =
@@ -181,6 +193,8 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
   useEffect(() => () => imagePlaneGeometry?.dispose(), [imagePlaneGeometry]);
   // This effect disposes the camera-axis marker when it is replaced.
   useEffect(() => () => axisGeometry.dispose(), [axisGeometry]);
+  // Native depth textures use a per-consumer node material in the frustum.
+  useEffect(() => () => depthImageMaterial?.dispose(), [depthImageMaterial]);
   // Publish an active hover through each new callback instance so live
   // parent-frame metadata keeps the visible tooltip in sync. A replacement
   // callback owns the same keyed frustum, so publishing `false` through the
@@ -284,12 +298,16 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
       {imageMap && imagePlaneGeometry ? (
         <mesh frustumCulled={false}>
           <primitive attach="geometry" object={imagePlaneGeometry} />
-          <meshBasicMaterial
-            map={imageMap}
-            opacity={renderOpacity}
-            side={THREE.DoubleSide}
-            transparent
-          />
+          {depthImageMaterial ? (
+            <primitive attach="material" object={depthImageMaterial} />
+          ) : (
+            <meshBasicMaterial
+              map={imageMap}
+              opacity={renderOpacity}
+              side={THREE.DoubleSide}
+              transparent
+            />
+          )}
         </mesh>
       ) : null}
     </group>

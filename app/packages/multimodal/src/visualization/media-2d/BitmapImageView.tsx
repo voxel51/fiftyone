@@ -31,10 +31,11 @@ import {
   useState,
 } from "react";
 
-import type {
-  EncodedVideoVisualization,
-  ImageVisualization,
-  RawImageVisualization,
+import {
+  rawImageRgba,
+  type EncodedVideoVisualization,
+  type ImageVisualization,
+  type RawImageVisualization,
 } from "../../ir";
 import { useLatestRef } from "../../utils/use-latest-ref";
 import { fittedImageSize } from "./image-fit";
@@ -818,10 +819,6 @@ function canvasFromRawImage(
   container: BitmapDrawSize,
   fit: "contain" | "cover",
 ): void {
-  if (frame.rgba.byteLength < frame.width * frame.height * 4) {
-    throw new Error("Raw image frame has too few RGBA bytes");
-  }
-
   const options = bitmapDecodeOptions(
     container,
     { height: frame.height, width: frame.width },
@@ -851,9 +848,10 @@ function copyRawImagePreview(
   targetWidth: number,
   targetHeight: number,
 ): void {
+  const rgba = rawImageRgba(frame);
   const sourceLength = frame.width * frame.height * 4;
   if (targetWidth === frame.width && targetHeight === frame.height) {
-    target.set(frame.rgba.subarray(0, sourceLength));
+    target.set(rgba.subarray(0, sourceLength));
     return;
   }
 
@@ -871,10 +869,10 @@ function copyRawImagePreview(
       );
       const sourceOffset = (sourceY * frame.width + sourceX) * 4;
       const targetOffset = (targetY * targetWidth + targetX) * 4;
-      target[targetOffset] = frame.rgba[sourceOffset];
-      target[targetOffset + 1] = frame.rgba[sourceOffset + 1];
-      target[targetOffset + 2] = frame.rgba[sourceOffset + 2];
-      target[targetOffset + 3] = frame.rgba[sourceOffset + 3];
+      target[targetOffset] = rgba[sourceOffset];
+      target[targetOffset + 1] = rgba[sourceOffset + 1];
+      target[targetOffset + 2] = rgba[sourceOffset + 2];
+      target[targetOffset + 3] = rgba[sourceOffset + 3];
     }
   }
 }

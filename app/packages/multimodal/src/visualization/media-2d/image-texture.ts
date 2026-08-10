@@ -17,6 +17,12 @@ import {
   type EncodedVideoSessionOwner,
 } from "./video-texture";
 
+type TextureWithNormalized = THREE.DataTexture & {
+  normalized: boolean;
+};
+
+const UINT16_MAX = 65_535;
+
 /**
  * Decodes an image visualization into a disposable texture handle.
  */
@@ -90,6 +96,9 @@ async function createEncodedImageTexture(
 function createRawImageTexture(
   frame: RawImageVisualization,
 ): ImageTextureHandle {
+  if (frame.depth) {
+    return createDepthImageTexture(frame);
+  }
   const expectedByteLength = frame.width * frame.height * 4;
   if (frame.rgba.byteLength < expectedByteLength) {
     throw new Error("Raw image frame has too few RGBA bytes");
@@ -111,6 +120,52 @@ function createRawImageTexture(
 
   return {
     aspectRatio: frame.width / Math.max(1, frame.height),
+    imageWidth: frame.width,
+    imageHeight: frame.height,
+    dispose: () => texture.dispose(),
+    texture,
+  };
+}
+
+function createDepthImageTexture(
+  frame: RawImageVisualization,
+): ImageTextureHandle {
+  const depth = frame.depth;
+  if (!depth || depth.values.length !== frame.width * frame.height) {
+    throw new Error("Raw depth frame has the wrong number of samples");
+  }
+
+  const isUint16 = depth.values instanceof Uint16Array;
+  const texture = new THREE.DataTexture(
+    depth.values,
+    frame.width,
+    frame.height,
+    THREE.RedFormat,
+    isUint16 ? THREE.UnsignedShortType : THREE.FloatType,
+  ) as TextureWithNormalized;
+  // UnsignedShort + RedFormat maps to r16unorm on WebGPU. Float32 maps to
+  // r32float. Both keep the source samples single-channel and native-width.
+  texture.normalized = isUint16;
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.flipY = true;
+  texture.generateMipmaps = false;
+  // r32float is unfilterable; nearest also keeps invalid pixels from blending
+  // into neighboring valid depth before the shader's alpha decision.
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.unpackAlignment = 1;
+  texture.needsUpdate = true;
+
+  const sampleScale = isUint16 ? 1 / UINT16_MAX : 1;
+  return {
+    aspectRatio: frame.width / Math.max(1, frame.height),
+    decodedByteLength: depth.values.byteLength,
+    depthDisplay: {
+      maxSampleValue:
+        depth.maxValue === null ? null : depth.maxValue * sampleScale,
+      minSampleValue:
+        depth.minValue === null ? null : depth.minValue * sampleScale,
+    },
     imageWidth: frame.width,
     imageHeight: frame.height,
     dispose: () => texture.dispose(),

@@ -51,7 +51,7 @@ const RGBA_BYTES_PER_PIXEL = 4;
 /** Maximum number of zero-ref decoded image sources retained. */
 export const IMAGE_TEXTURE_RETENTION_CAP = 32;
 
-/** Maximum RGBA-equivalent bytes retained across zero-ref image sources. */
+/** Maximum decoded texture-source bytes retained across zero-ref images. */
 export const IMAGE_TEXTURE_RETENTION_BYTE_CAP = 128 * 1024 * 1024;
 
 /**
@@ -71,7 +71,7 @@ export interface ImageTextureCacheStats {
   readonly entryCount: number;
   /** Zero-ref entries currently held in the retention LRU. */
   readonly retainedCount: number;
-  /** RGBA-equivalent decoded bytes held by zero-ref retained entries. */
+  /** Decoded texture-source bytes held by zero-ref retained entries. */
   readonly retainedDecodedBytes: number;
 }
 
@@ -400,8 +400,11 @@ function decodedImageBytes(handle: ImageTextureHandle): number {
   ) {
     return 0;
   }
-  const bytes = imageWidth * imageHeight * RGBA_BYTES_PER_PIXEL;
-  return Number.isSafeInteger(bytes) ? bytes : Number.MAX_SAFE_INTEGER;
+  const bytes =
+    handle.decodedByteLength ?? imageWidth * imageHeight * RGBA_BYTES_PER_PIXEL;
+  return Number.isSafeInteger(bytes) && bytes >= 0
+    ? bytes
+    : Number.MAX_SAFE_INTEGER;
 }
 
 function createLeasedImageTextureHandle(
@@ -412,6 +415,10 @@ function createLeasedImageTextureHandle(
     const texture = cloneDataTexture(template);
     return {
       aspectRatio: handle.aspectRatio,
+      ...(handle.decodedByteLength !== undefined
+        ? { decodedByteLength: handle.decodedByteLength }
+        : {}),
+      ...(handle.depthDisplay ? { depthDisplay: handle.depthDisplay } : {}),
       imageHeight: handle.imageHeight,
       imageWidth: handle.imageWidth,
       dispose: () => texture.dispose(),
@@ -452,6 +459,10 @@ function createLeasedImageTextureHandle(
   texture.needsUpdate = true;
   return {
     aspectRatio: handle.aspectRatio,
+    ...(handle.decodedByteLength !== undefined
+      ? { decodedByteLength: handle.decodedByteLength }
+      : {}),
+    ...(handle.depthDisplay ? { depthDisplay: handle.depthDisplay } : {}),
     imageHeight: handle.imageHeight,
     imageWidth: handle.imageWidth,
     dispose: () => texture.dispose(),
@@ -482,6 +493,9 @@ function cloneDataTexture(template: THREE.DataTexture): THREE.DataTexture {
   texture.name = template.name;
   texture.channel = template.channel;
   texture.internalFormat = template.internalFormat;
+  (texture as TextureWithNormalized).normalized = (
+    template as TextureWithNormalized
+  ).normalized;
   texture.offset.copy(template.offset);
   texture.repeat.copy(template.repeat);
   texture.center.copy(template.center);

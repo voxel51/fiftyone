@@ -114,11 +114,19 @@ function depthFrame(
   values: Uint16Array | Float32Array,
   metersPerUnit: number,
 ): RawImageVisualization {
+  const validValues = Array.from(values).filter(
+    (value) => value > 0 && Number.isFinite(value),
+  );
   return {
-    depth: { metersPerUnit, values },
+    depth: {
+      maxValue: validValues.length > 0 ? Math.max(...validValues) : null,
+      metersPerUnit,
+      minValue: validValues.length > 0 ? Math.min(...validValues) : null,
+      values,
+    },
     height,
     kind: VISUALIZATION_KIND.RAW_IMAGE,
-    rgba: new Uint8Array(width * height * 4),
+    rgba: new Uint8Array(0),
     sourceEncoding: values instanceof Uint16Array ? "16UC1" : "32FC1",
     width,
   };

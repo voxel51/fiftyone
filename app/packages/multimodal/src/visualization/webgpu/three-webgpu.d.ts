@@ -167,6 +167,10 @@ declare module "three/tsl" {
     min: Node | number,
     max: Node | number,
   ): NodeType;
+  export function colorSpaceToWorking<NodeType extends Node = Node>(
+    value: Node,
+    colorSpace: import("three").ColorSpace,
+  ): NodeType;
   export function dot<NodeType extends Node = Node>(
     left: Node,
     right: Node,
