@@ -196,6 +196,7 @@ export interface McapReadIndexedMessagesRequest {
 export interface McapBoundedMessageReadResult {
   readonly continuation?: McapReadContinuation;
   readonly coverageByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
+  /** Messages ordered globally by log time with deterministic source tie-breaks. */
   readonly messages: readonly McapTypes.TypedMcapRecords["Message"][];
   readonly resumeAtNs?: bigint;
   /** Atomic source spans intentionally skipped because they exceed the hard ceiling. */

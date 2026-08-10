@@ -419,6 +419,9 @@ export function createMcapBoundedReader({
         }
       }
 
+      // Preferred-time admission visits ownership groups center-out, but
+      // downstream consumers require one chronological message sequence.
+      orderedMessages.sort(compareOrderedMessages);
       const usage = usageSnapshot();
       assertUsageWithinGrant(usage, request);
 

@@ -285,6 +285,45 @@ describe("bounded MCAP reader", () => {
     expect(sequences).toEqual([5, 6, 4, 7, 3, 8, 2, 9, 1, 0]);
   });
 
+  it("returns each center-out grant in global log-time order", async () => {
+    const fixture = buildFixture(
+      Array.from({ length: 5 }, (_, index) => ({
+        messages: [
+          {
+            channelId: 1,
+            logTime: BigInt(index * 10),
+            sequence: index,
+          },
+        ],
+      })),
+    );
+    const harness = createHarness(fixture);
+    const full = budgetFor(fixture.chunkIndexes, 5);
+    const request = requestFor({
+      absoluteBudget: full,
+      absoluteMaxChunks: 5,
+      budget: full,
+      maxChunks: 5,
+      maxGroups: 4,
+      preferredTimeNs: 25n,
+    });
+
+    const first = await harness.read(request);
+
+    expect(first.stopReason).toBe("budget-exhausted");
+    expect(first.messages.map((message) => message.sequence)).toEqual([
+      1, 2, 3, 4,
+    ]);
+    expect(first.continuation).toBeDefined();
+
+    const second = await harness.read({
+      ...request,
+      continuation: first.continuation,
+    });
+    expect(second.messages.map((message) => message.sequence)).toEqual([0]);
+    expect(second.stopReason).toBe("source-exhausted");
+  });
+
   it("rejects continuations reused after source, topic, or window changes", async () => {
     const fixture = buildFixture([
       { messages: [{ channelId: 1, logTime: 0n }] },
