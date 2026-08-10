@@ -72,9 +72,21 @@ export function withLiveMapMarkers(
   const liveByStream = new Map(
     liveMarkers.map((marker) => [marker.stream, marker] as const),
   );
-  const markers = frame.markers.map(
-    (marker) => liveByStream.get(marker.stream) ?? marker,
-  );
+  const markers = frame.markers.map((marker) => {
+    const live = liveByStream.get(marker.stream);
+    if (!live) return marker;
+    const admittedBearing = marker.location.bearingDeg;
+    if (
+      live.location.bearingDeg !== undefined ||
+      admittedBearing === undefined
+    ) {
+      return live;
+    }
+    return {
+      ...live,
+      location: { ...live.location, bearingDeg: admittedBearing },
+    };
+  });
   const existingStreams = new Set(frame.markers.map((marker) => marker.stream));
   for (const marker of liveMarkers) {
     if (!existingStreams.has(marker.stream)) markers.push(marker);

@@ -34,9 +34,66 @@ describe("map playback paint", () => {
 
     const frame = withLiveMapMarkers(routeFrame, [live]);
 
-    expect(frame.markers).toEqual([live]);
+    expect(frame.markers).toEqual([
+      {
+        ...live,
+        location: {
+          ...live.location,
+          bearingDeg: routeFrame.markers[0]?.location.bearingDeg,
+        },
+      },
+    ]);
     expect(frame.comets).toBe(routeFrame.comets);
     expect(frame.resolutions).toBe(routeFrame.resolutions);
+  });
+
+  it("prefers a live bearing over the admitted route bearing", () => {
+    const indexed = createIndexedMapTrack(createTrack());
+    const routeFrame = mapPlaybackFrameAt([indexed], 8n, new Map());
+    const live = {
+      color: "#fff",
+      label: "live gps",
+      location: {
+        bearingDeg: 271,
+        latitude: 10,
+        longitude: 20,
+        timeNs: 8n,
+      },
+      stream: "/gps",
+    };
+
+    expect(withLiveMapMarkers(routeFrame, [live]).markers).toEqual([live]);
+  });
+
+  it("keeps live-only and no-fix-gap markers as headingless dots", () => {
+    const indexed = createIndexedMapTrack({
+      ...createTrack(),
+      pointCount: 4,
+      segments: [
+        { points: [{ latitude: 0, longitude: 0, timeNs: 0n }] },
+        { points: [{ latitude: 10, longitude: 10, timeNs: 10n }] },
+      ],
+    });
+    const routeGap = mapPlaybackFrameAt([indexed], 5n, new Map());
+    const gapLive = {
+      color: "#fff",
+      label: "gap gps",
+      location: { latitude: 5, longitude: 5, timeNs: 5n },
+      stream: "/gps",
+    };
+    const liveOnly = {
+      ...gapLive,
+      label: "other gps",
+      stream: "/other-gps",
+    };
+
+    const frame = withLiveMapMarkers(routeGap, [gapLive, liveOnly]);
+
+    expect(routeGap.markers).toEqual([]);
+    expect(frame.markers).toEqual([gapLive, liveOnly]);
+    expect(
+      frame.markers.every((marker) => marker.location.bearingDeg == null),
+    ).toBe(true);
   });
 
   it("prunes cursor and filter state for removed tracks", () => {

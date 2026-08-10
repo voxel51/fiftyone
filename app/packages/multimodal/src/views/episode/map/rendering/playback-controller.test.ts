@@ -188,6 +188,66 @@ describe("MapPlaybackController", () => {
     ]);
   });
 
+  it("coalesces routine repaint requests at the playback cap", () => {
+    const scheduler = new ManualScheduler();
+    const paints: Array<{ nowMs: number; playheadNs: bigint | null }> = [];
+    const controller = new MapPlaybackController({
+      maxUpdatesPerSecond: 30,
+      onPaint: (playheadNs, nowMs) => paints.push({ nowMs, playheadNs }),
+      scheduler,
+    });
+
+    controller.updatePlayhead(0n);
+    scheduler.runAnimationFrame(0);
+    scheduler.setTime(5);
+    controller.requestRepaint();
+    controller.requestRepaint();
+    scheduler.setTime(10);
+    controller.requestRepaint();
+    scheduler.runAnimationFrame(34);
+
+    expect(paints).toEqual([
+      { nowMs: 0, playheadNs: 0n },
+      { nowMs: 34, playheadNs: 0n },
+    ]);
+  });
+
+  it("paints routine changes immediately while paused", () => {
+    const scheduler = new ManualScheduler();
+    const paints: Array<{ nowMs: number; playheadNs: bigint | null }> = [];
+    const controller = new MapPlaybackController({
+      onPaint: (playheadNs, nowMs) => paints.push({ nowMs, playheadNs }),
+      scheduler,
+    });
+
+    controller.updatePlayhead(2n, true);
+    scheduler.setTime(5);
+    controller.requestRepaint();
+
+    expect(paints).toEqual([
+      { nowMs: 0, playheadNs: 2n },
+      { nowMs: 5, playheadNs: 2n },
+    ]);
+  });
+
+  it("retains coalesced routine work while inactive and flushes on resume", () => {
+    const scheduler = new ManualScheduler();
+    const paints: Array<bigint | null> = [];
+    const controller = new MapPlaybackController({
+      onPaint: (playheadNs) => paints.push(playheadNs),
+      scheduler,
+    });
+
+    controller.updatePlayhead(1n, true);
+    controller.setSurfaceActive(false);
+    controller.requestRepaint();
+    controller.requestRepaint();
+    controller.updatePlayhead(2n);
+    controller.setSurfaceActive(true);
+
+    expect(paints).toEqual([1n, 2n]);
+  });
+
   it("lets paused seeks bypass the ordinary cadence", () => {
     const scheduler = new ManualScheduler();
     const paints: Array<{ nowMs: number; playheadNs: bigint | null }> = [];
@@ -223,6 +283,7 @@ describe("MapPlaybackController", () => {
     scheduler.runAnimationFrame(100);
     controller.updatePlayhead(2n, true);
     controller.invalidate();
+    controller.requestRepaint();
     controller.setSurfaceActive(false);
     controller.setSurfaceActive(true);
     controller.flushLatest();

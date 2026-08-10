@@ -25,7 +25,7 @@ import {
   type LocationTrackState,
 } from "../tracks/location-track";
 import { useDataStream } from "../../playback/data-stream-context";
-import { useStreamPlaybackFrames } from "../../playback/use-stream-values";
+import { useStreamContentFrames } from "../../playback/use-stream-values";
 import type { EpisodeTileProps } from "../../tiles/tile-types";
 import { useRegisterTileSettings } from "../../tiles/tile-settings-context";
 import {
@@ -77,7 +77,7 @@ const MapTile: React.FC<EpisodeTileProps> = () => {
   );
   usePublishFullHistoryStreams("location", visibleStreams);
   const locationFrames =
-    useStreamPlaybackFrames<LocationVisualization>(visibleStreams);
+    useStreamContentFrames<LocationVisualization>(visibleStreams);
   const liveMarkers = useMemo<readonly MapLocationMarker[]>(() => {
     const markers: MapLocationMarker[] = [];
     visibleStreams.forEach((stream, index) => {

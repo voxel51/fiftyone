@@ -687,13 +687,15 @@ export function MapLibreSurface({
   }, [playback]);
 
   // This effect publishes track-static sources, images, and layer membership.
+  // Live-marker commits must not reconcile these structures or re-upload the
+  // full interaction source.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
-    ensurePuckImages(map, [
-      ...indexedTracks.map(({ track }) => track.color),
-      ...liveMarkers.map((marker) => marker.color),
-    ]);
+    ensurePuckImages(
+      map,
+      indexedTracks.map(({ track }) => track.color),
+    );
     reconcileTrackLayers(map, indexedTracks, installedTrackLayersRef.current);
     setGeoJsonSourceData(
       map,
@@ -701,8 +703,21 @@ export function MapLibreSurface({
       hitPointFeatures(indexedTracks.map(({ track }) => track)),
     );
     prunePlaybackPaintState(playbackPaintStateRef.current, indexedTracks);
-    playbackControllerRef.current?.invalidate();
-  }, [indexedTracks, liveMarkers, loaded]);
+    playbackControllerRef.current?.requestRepaint();
+  }, [indexedTracks, loaded]);
+
+  // This effect updates only marker assets/presentation. The controller reads
+  // the latest marker ref at paint time, so repeated live fixes coalesce while
+  // playback is running and still paint synchronously while paused.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    ensurePuckImages(
+      map,
+      liveMarkers.map((marker) => marker.color),
+    );
+    playbackControllerRef.current?.requestRepaint();
+  }, [liveMarkers, loaded]);
 
   // This effect isolates hover subscription updates to the hover source.
   useEffect(() => {
@@ -762,7 +777,7 @@ export function MapLibreSurface({
         true,
       );
     } else {
-      playbackControllerRef.current?.invalidate();
+      playbackControllerRef.current?.requestRepaint();
     }
   }, [loaded, playback, pulseActive]);
 
