@@ -18,7 +18,10 @@ import React, {
 import PlaybackShell from "./PlaybackShell";
 import type { ByteSourceDescriptor, StreamDescriptor } from "../../../ir";
 import type { SceneSource } from "../../../scene-inventory";
-import { episodeSourceAccessKey } from "../../../runtime";
+import {
+  createScheduledSourceReadBudgetAccount,
+  episodeSourceAccessKey,
+} from "../../../runtime";
 import { EpisodePlaybackStoreProvider } from "../../../runtime/react";
 import { releaseRetainedImageTextures } from "../../../visualization/media-2d/image-texture-cache";
 import {
@@ -186,10 +189,10 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
     () => (source ? episodeSourceAccessKey(source) : ""),
     [source],
   );
-  const sourceReadBudgetAccount = useMemo(
-    () => session?.boundedRead?.openAccount() ?? null,
-    [session],
-  );
+  const sourceReadBudgetAccount = useMemo(() => {
+    const account = session?.boundedRead?.openAccount();
+    return account ? createScheduledSourceReadBudgetAccount(account) : null;
+  }, [session]);
   const previousSourceKeyRef = useRef(sourceKey);
   const hasNavigatedRef = useRef(false);
   if (navigationPending || previousSourceKeyRef.current !== sourceKey) {
@@ -366,6 +369,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                 <NumericSeriesProvider>
                   <RawMessageProvider>
                     <LogConsoleProvider
+                      budgetAccount={sourceReadBudgetAccount}
                       session={readyInventory ? session : null}
                       sourceKey={playbackSource ? sourceAccessKey : null}
                     >

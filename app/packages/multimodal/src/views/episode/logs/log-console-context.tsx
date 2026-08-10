@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useMemo } from "react";
-import type { EpisodeSession } from "../../../ports";
+import type { EpisodeSession, SourceReadBudgetAccount } from "../../../ports";
 
 export interface LogConsoleContextValue {
+  readonly budgetAccount: SourceReadBudgetAccount | null;
   readonly session: EpisodeSession | null;
   readonly sourceKey: string | null;
 }
@@ -9,11 +10,15 @@ export interface LogConsoleContextValue {
 const LogConsoleContext = createContext<LogConsoleContextValue | null>(null);
 
 export const LogConsoleProvider: React.FC<{
+  readonly budgetAccount?: SourceReadBudgetAccount | null;
   readonly children: React.ReactNode;
   readonly session: EpisodeSession | null;
   readonly sourceKey: string | null;
-}> = ({ children, session, sourceKey }) => {
-  const value = useMemo(() => ({ session, sourceKey }), [session, sourceKey]);
+}> = ({ budgetAccount = null, children, session, sourceKey }) => {
+  const value = useMemo(
+    () => ({ budgetAccount, session, sourceKey }),
+    [budgetAccount, session, sourceKey],
+  );
   return (
     <LogConsoleContext.Provider value={value}>
       {children}

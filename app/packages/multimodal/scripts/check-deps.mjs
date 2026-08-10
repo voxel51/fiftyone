@@ -154,19 +154,9 @@ assert.equal(
     .join("\n")}`,
 );
 
-// Whole-manifest aggregate reads predate the bounded-read substrate. Keep the
-// remaining migrations explicit: a new view-owned `session.read()` over the
-// manifest range must use a bounded job instead of joining this allowlist.
-const legacyManifestWideReads = new Map([
-  [
-    "packages/multimodal/src/views/episode/scene/entities/pose-trajectories-context.tsx",
-    1,
-  ],
-  [
-    "packages/multimodal/src/views/episode/scene/entities/scene-update-history-context.tsx",
-    1,
-  ],
-]);
+// Whole-manifest view reads must use the source-budgeted progressive history
+// substrate. Keep the empty allowlist explicit so regressions fail this check.
+const legacyManifestWideReads = new Map();
 const discoveredManifestWideReads = new Map();
 for (const module of graph.modules) {
   const source = module.source;

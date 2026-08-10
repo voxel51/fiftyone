@@ -1,6 +1,5 @@
 import { PlaybackStoreContext } from "@fiftyone/playback/runtime";
 import React, {
-  useCallback,
   createContext,
   useContext,
   useEffect,
@@ -9,18 +8,27 @@ import React, {
   useState,
 } from "react";
 
-import type { EpisodeSession } from "../../../../ports/index";
+import type {
+  EpisodeSession,
+  FrameBatch,
+  SourceReadBudgetAccount,
+} from "../../../../ports/index";
 import { VISUALIZATION_KIND } from "../../../../visualization/index";
 import { shouldDeferBulkHistory } from "../../playback/bulk-stream-lifecycle";
-import {
-  useDemandDrivenHistory,
-  type DemandDrivenHistoryLoader,
-} from "../../playback/use-demand-driven-history";
+import { useProgressiveHistory } from "../../playback/use-progressive-history";
 import type { SceneUpdateDelta } from "./scene-update-state";
 
-const SCENE_UPDATE_HISTORY_READ_LIMIT = 50_000;
-/** Messages consumed per stream between progressive immutable snapshots. */
-const SCENE_UPDATE_HISTORY_PROGRESS_BATCH_MESSAGES = 250;
+const SCENE_UPDATE_FALLBACK_TILE_READ_LIMIT = 50_000;
+// Scene deltas retain complete visualization payloads. This doubles the old
+// one-shot ceiling while keeping the session-retained heap guard conservative.
+const SCENE_UPDATE_HISTORY_ITEM_LIMIT = 100_000;
+const SCENE_UPDATE_FALLBACK_TILE_NS = 5_000_000_000n;
+const SCENE_UPDATE_GRANT_BUDGET = {
+  maxMessages: 10_000,
+  maxSourceBytes: 32 * 1024 * 1024,
+  maxUncompressedBytes: 64 * 1024 * 1024,
+  maxWallTimeMs: 750,
+} as const;
 const SCENE_UPDATE_HISTORY_START_DELAY_MS = 1_500;
 const SCENE_UPDATE_HISTORY_DEFERRED_RETRY_MS = 2_000;
 
@@ -76,95 +84,86 @@ export function useSceneUpdateHistoryContext(): SceneUpdateHistory {
 
 /** Loads selected scene-update histories and publishes chronological prefixes. */
 export function SceneUpdateHistoryBridge({
+  budgetAccount,
   sceneAnnotationStreams,
   session,
   sourceKey,
 }: {
+  readonly budgetAccount?: SourceReadBudgetAccount | null;
   readonly sceneAnnotationStreams: readonly string[];
   readonly session: EpisodeSession | null;
   readonly sourceKey: string | null;
 }) {
   const { history: publishedHistory, setHistory } = useContextValue();
   const playbackStore = useContext(PlaybackStoreContext);
-  const loadStream = useCallback(
-    async ({
-      commit,
-      control,
-      stream,
-    }: DemandDrivenHistoryLoader<SceneUpdateHistoryStream>) => {
-      if (!session) return;
-      commit({ deltas: [], status: "loading" });
-
-      const deltas: SceneUpdateDelta[] = [];
-      let loadedThroughNs: bigint | undefined;
-      let messageCount = 0;
-      let lastPublishedMessageCount = 0;
-      try {
-        for await (const batch of session.read({
-          limit: SCENE_UPDATE_HISTORY_READ_LIMIT,
-          priority: "bulk",
-          signal: control.signal,
-          streams: [stream],
-          window: session.manifest.timeRange,
-        })) {
-          for (const frame of batch.frames) {
-            if (control.isCancelled() || control.standDown()) return;
-            messageCount += 1;
-            if (
-              loadedThroughNs === undefined ||
-              frame.timestampNs > loadedThroughNs
-            ) {
-              loadedThroughNs = frame.timestampNs;
-            }
-            const visualization = frame.output.visualization;
-            if (visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE) {
-              continue;
-            }
-            deltas.push({
-              timeNs: frame.timestampNs,
-              update: visualization,
-            });
-          }
-          if (
-            loadedThroughNs !== undefined &&
-            (lastPublishedMessageCount === 0 ||
-              messageCount - lastPublishedMessageCount >=
-                SCENE_UPDATE_HISTORY_PROGRESS_BATCH_MESSAGES)
-          ) {
-            lastPublishedMessageCount = messageCount;
-            commit({
-              deltas: [...deltas],
-              loadedThroughNs,
-              status: "loading",
-            });
-          }
-        }
-
-        const truncated = messageCount >= SCENE_UPDATE_HISTORY_READ_LIMIT;
-        if (control.isCancelled()) return;
-        commit({
-          deltas,
-          ...(loadedThroughNs !== undefined ? { loadedThroughNs } : {}),
-          status: truncated ? "truncated" : "ready",
-          ...(truncated ? { truncated: true } : {}),
-        });
-      } catch {
-        if (control.isCancelled()) return;
-        commit({ deltas: [], status: "error" });
-      }
-    },
+  const streamsKey = [...new Set(sceneAnnotationStreams)].sort().join("\0");
+  const normalizedStreams = useMemo(
+    () => (streamsKey ? streamsKey.split("\0") : []),
+    [streamsKey],
+  );
+  const timeRange = useMemo(
+    () => session?.manifest.timeRange ?? { endNs: 0n, startNs: 0n },
     [session],
   );
-  const history = useDemandDrivenHistory({
+  const config = useMemo(
+    () => ({
+      accumulator: SCENE_UPDATE_HISTORY_ACCUMULATOR,
+      budget: SCENE_UPDATE_GRANT_BUDGET,
+      fallback: {
+        maxMessagesPerStream: SCENE_UPDATE_FALLBACK_TILE_READ_LIMIT,
+        tileDurationNs: SCENE_UPDATE_FALLBACK_TILE_NS,
+      },
+      family: "scene-update" as const,
+      key: streamsKey,
+      maxItems: SCENE_UPDATE_HISTORY_ITEM_LIMIT,
+      priority: "bulk" as const,
+      streams: normalizedStreams,
+      traversal: "chronological" as const,
+      window: timeRange,
+    }),
+    [normalizedStreams, streamsKey, timeRange],
+  );
+  const progress = useProgressiveHistory({
+    account: budgetAccount,
+    config,
+    enabled: normalizedStreams.length > 0,
     initialDelayMs: SCENE_UPDATE_HISTORY_START_DELAY_MS,
-    isRetainable: isCompletedSceneUpdateHistory,
-    loadStream,
-    readIdentity: session,
     retryDelayMs: SCENE_UPDATE_HISTORY_DEFERRED_RETRY_MS,
+    session,
     shouldStandDown: () => shouldDeferBulkHistory(playbackStore),
-    sourceKey,
-    streams: sceneAnnotationStreams,
   });
+  const history = useMemo<SceneUpdateHistory>(() => {
+    if (!sourceKey || normalizedStreams.length === 0) return EMPTY_HISTORY;
+    return new Map(
+      normalizedStreams.map((stream) => {
+        const unavailable = progress.unavailableByStream.get(stream) ?? [];
+        const loadedThroughNs = sceneUpdateLoadedThrough({
+          coverage: progress.coverageByStream.get(stream) ?? [],
+          nextUnreadNs: progress.nextUnreadNs,
+          timeRange,
+          unavailable,
+        });
+        const deltas = progress.value.deltasByStream.get(stream) ?? [];
+        const status: SceneUpdateHistoryStream["status"] =
+          progress.status === "complete"
+            ? "ready"
+            : progress.status === "error"
+              ? "error"
+              : progress.status === "truncated"
+                ? "truncated"
+                : "loading";
+        return [
+          stream,
+          {
+            deltas,
+            ...(loadedThroughNs !== undefined ? { loadedThroughNs } : {}),
+            status,
+            ...(progress.truncated ? { truncated: true } : {}),
+          } satisfies SceneUpdateHistoryStream,
+        ];
+      }),
+    );
+  }, [normalizedStreams, progress, sourceKey, timeRange]);
 
   // This effect publishes the source-scoped cache to mounted 3D tiles.
   useLayoutEffect(() => {
@@ -188,10 +187,94 @@ export function SceneUpdateHistoryBridge({
   return null;
 }
 
-function isCompletedSceneUpdateHistory(
-  history: SceneUpdateHistoryStream,
-): boolean {
-  return history.status === "ready" || history.status === "truncated";
+interface SceneUpdateHistoryAccumulator {
+  readonly deltasByStream: ReadonlyMap<string, readonly SceneUpdateDelta[]>;
+  readonly itemCount: number;
+}
+
+const SCENE_UPDATE_HISTORY_ACCUMULATOR = {
+  initialValue: {
+    deltasByStream: new Map(),
+    itemCount: 0,
+  } satisfies SceneUpdateHistoryAccumulator,
+  consume(
+    current: SceneUpdateHistoryAccumulator,
+    batches: readonly FrameBatch[],
+  ): {
+    readonly itemCount: number;
+    readonly value: SceneUpdateHistoryAccumulator;
+  } {
+    const deltasByStream = new Map(current.deltasByStream);
+    const copiedStreams = new Set<string>();
+    let itemCount = current.itemCount;
+    for (const batch of batches) {
+      let deltas: SceneUpdateDelta[];
+      if (copiedStreams.has(batch.stream)) {
+        deltas = deltasByStream.get(batch.stream) as SceneUpdateDelta[];
+      } else {
+        deltas = [...(deltasByStream.get(batch.stream) ?? [])];
+        copiedStreams.add(batch.stream);
+        deltasByStream.set(batch.stream, deltas);
+      }
+      for (const frame of batch.frames) {
+        const visualization = frame.output.visualization;
+        if (visualization?.kind !== VISUALIZATION_KIND.SCENE_UPDATE) continue;
+        deltas.push({ timeNs: frame.timestampNs, update: visualization });
+        itemCount += 1;
+      }
+    }
+    return { itemCount, value: { deltasByStream, itemCount } };
+  },
+};
+
+function sceneUpdateLoadedThrough({
+  coverage,
+  nextUnreadNs,
+  timeRange,
+  unavailable,
+}: {
+  readonly coverage: readonly {
+    readonly endNs: bigint;
+    readonly startNs: bigint;
+  }[];
+  readonly nextUnreadNs: bigint | undefined;
+  readonly timeRange: { readonly endNs: bigint; readonly startNs: bigint };
+  readonly unavailable: readonly {
+    readonly endNs: bigint;
+    readonly startNs: bigint;
+  }[];
+}): bigint | undefined {
+  let loadedThroughNs =
+    nextUnreadNs !== undefined && nextUnreadNs > timeRange.startNs
+      ? nextUnreadNs - 1n
+      : undefined;
+  let cursor = timeRange.startNs;
+  // Progressive history normalizes coverage into sorted, merged ranges, so
+  // this walk proves only the contiguous prefix from the manifest start.
+  for (const range of coverage) {
+    if (range.startNs > cursor) break;
+    if (range.endNs >= cursor) cursor = range.endNs + 1n;
+  }
+  if (cursor > timeRange.startNs) {
+    const coveredThroughNs = cursor - 1n;
+    loadedThroughNs =
+      loadedThroughNs === undefined || coveredThroughNs > loadedThroughNs
+        ? coveredThroughNs
+        : loadedThroughNs;
+  }
+  if (loadedThroughNs === undefined) return undefined;
+  const provenThroughNs = loadedThroughNs;
+  const firstUnavailable = unavailable
+    .filter((range) => range.startNs <= provenThroughNs)
+    .sort((left, right) =>
+      left.startNs < right.startNs ? -1 : left.startNs > right.startNs ? 1 : 0,
+    )[0];
+  if (firstUnavailable) {
+    const cappedNs = firstUnavailable.startNs - 1n;
+    if (cappedNs < timeRange.startNs) return undefined;
+    return cappedNs < provenThroughNs ? cappedNs : provenThroughNs;
+  }
+  return provenThroughNs;
 }
 
 function useContextValue(): SceneUpdateHistoryContextValue {

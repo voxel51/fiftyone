@@ -179,6 +179,7 @@ export function Streams({
     <>
       <FrameTransformsBridge capability={transformRead} source={source} />
       <PoseTrajectoriesStartupGate
+        budgetAccount={budgetAccount}
         poseStreams={poseStreams}
         session={session}
         sourceKey={sourceKey}
@@ -191,6 +192,7 @@ export function Streams({
         streams={locationStreams}
       />
       <SceneUpdateHistoryBridge
+        budgetAccount={budgetAccount}
         sceneAnnotationStreams={sceneAnnotationStreams}
         session={session}
         sourceKey={sourceKey}

@@ -55,11 +55,11 @@ describe("SceneUpdateHistoryBridge", () => {
       window: session.manifest.timeRange,
     });
     expect(screen.getByTestId("scene-history").textContent).toBe(
-      "/markers:ready:1:full",
+      "/markers:ready:1:full:100",
     );
   });
 
-  it("publishes a covered chronological prefix before the full read finishes", async () => {
+  it("publishes only a completed generic tile as a covered prefix", async () => {
     vi.useFakeTimers();
     let releaseRemainder: () => void = () => undefined;
     const remainder = new Promise<void>((resolve) => {
@@ -80,7 +80,7 @@ describe("SceneUpdateHistoryBridge", () => {
     );
     await advanceTimers(1_500);
     expect(screen.getByTestId("scene-history").textContent).toBe(
-      "/markers:loading:1:full",
+      "/markers:loading:0:full:none",
     );
 
     releaseRemainder();
@@ -88,7 +88,7 @@ describe("SceneUpdateHistoryBridge", () => {
       await remainder;
     });
     expect(screen.getByTestId("scene-history").textContent).toBe(
-      "/markers:ready:2:full",
+      "/markers:ready:2:full:100",
     );
   });
 
@@ -103,7 +103,7 @@ describe("SceneUpdateHistoryBridge", () => {
     await advanceTimers(1_500);
 
     expect(screen.getByTestId("scene-history").textContent).toBe(
-      "/markers:error:0:full",
+      "/markers:error:0:full:none",
     );
   });
 
@@ -136,7 +136,7 @@ describe("SceneUpdateHistoryBridge", () => {
     expect(screen.getByTestId("scene-history").textContent).toBe("");
   });
 
-  it("publishes progress in bounded message batches", async () => {
+  it("does not publish an unproven generic prefix mid-tile", async () => {
     vi.useFakeTimers();
     let releaseLast: () => void = () => undefined;
     const last = new Promise<void>((resolve) => {
@@ -153,7 +153,7 @@ describe("SceneUpdateHistoryBridge", () => {
     render(<Harness session={session} source={createSource("markers")} />);
     await advanceTimers(1_500);
     expect(screen.getByTestId("scene-history").textContent).toBe(
-      "/markers:loading:251:full",
+      "/markers:loading:0:full:none",
     );
 
     releaseLast();
@@ -161,7 +161,7 @@ describe("SceneUpdateHistoryBridge", () => {
       await last;
     });
     expect(screen.getByTestId("scene-history").textContent).toBe(
-      "/markers:ready:252:full",
+      "/markers:ready:252:full:100",
     );
   });
 
@@ -206,7 +206,9 @@ function HistoryProbe() {
             ":" +
             state.deltas.length +
             ":" +
-            (state.truncated ? "truncated" : "full"),
+            (state.truncated ? "truncated" : "full") +
+            ":" +
+            (state.loadedThroughNs?.toString() ?? "none"),
         )
         .join("|")}
     </div>

@@ -1,5 +1,5 @@
 import type { EpisodeLogConsoleRow } from "../../../visualization/logs/log-console-rows";
-import { compareBigInt } from "../../../ir";
+import { compareBigInt, type LogLevel } from "../../../ir";
 
 /** Inclusive timeline range represented by a log read or cache window. */
 export interface LogReadRange {
@@ -157,6 +157,22 @@ export function mergeBoundedLogRows(
     rows: rows.slice(rows.length - rowLimit),
     truncated: true,
   };
+}
+
+/** Applies the visible-level filter before the browser-side row ceiling. */
+export function mergeSelectedBoundedLogRows(
+  current: readonly EpisodeLogConsoleRow[],
+  incoming: readonly EpisodeLogConsoleRow[],
+  activeWindow: LogReadRange,
+  rowLimit: number,
+  selectedLevels: ReadonlySet<LogLevel>,
+): BoundedLogRows {
+  return mergeBoundedLogRows(
+    current.filter((row) => selectedLevels.has(row.level)),
+    incoming.filter((row) => selectedLevels.has(row.level)),
+    activeWindow,
+    rowLimit,
+  );
 }
 
 /** Retains rows that still fall inside the inclusive active window. */

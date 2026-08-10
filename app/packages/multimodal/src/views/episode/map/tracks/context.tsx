@@ -86,6 +86,7 @@ interface BoundedLocationTrackProgress {
   resumeAtNs?: bigint;
   retryTimer?: ReturnType<typeof setTimeout>;
   settledThroughNs?: bigint;
+  skipOversizedSourceUnit: boolean;
   targetHorizonNs?: bigint;
   terminal: boolean;
   truncated: boolean;
@@ -443,6 +444,7 @@ function createProgress({
     ),
     renderRevision: 0,
     renderedByStream: new Map(),
+    skipOversizedSourceUnit: false,
     streams,
     terminal: false,
     truncated: false,
@@ -476,15 +478,18 @@ async function pumpBoundedProgress({
       return;
     }
     if (shouldStandDown()) return;
+    const skipOversizedSourceUnit = progress.skipOversizedSourceUnit;
     const result: BudgetedReadResult = await job.read({
       admissionEndNs: horizonNs,
       budget: LOCATION_TRACK_GRANT_BUDGET,
       ...(progress.continuation ? { continuation: progress.continuation } : {}),
+      ...(skipOversizedSourceUnit ? { skipOversizedSourceUnit: true } : {}),
       signal,
       streams: progress.streams,
       window: timeRange,
     });
     if (epoch.disposed) return;
+    progress.skipOversizedSourceUnit = false;
     consumeBatches(progress, result.batches);
     refreshRenderedSegments(progress);
     progress.hasRead = true;
@@ -492,6 +497,9 @@ async function pumpBoundedProgress({
     progress.resumeAtNs = result.resumeAtNs;
     const madeProgress =
       result.batches.length > 0 || result.usage.chunksOpened > 0;
+    if ((result.unavailableByStream?.size ?? 0) > 0) {
+      progress.truncated = true;
+    }
 
     if (progress.messageCount >= LOCATION_TRACK_CACHE_MESSAGE_LIMIT) {
       progress.terminal = true;
@@ -513,8 +521,35 @@ async function pumpBoundedProgress({
       publish();
       return;
     }
+    if (result.stopReason === "account-exhausted") {
+      progress.terminal = true;
+      progress.truncated = true;
+      markLocationReadCompleted(progress);
+      publish();
+      return;
+    }
+    if (result.stopReason === "oversized-source-unit") {
+      progress.truncated = true;
+      if (progress.continuation) {
+        publish();
+        continue;
+      }
+      progress.terminal = true;
+      markLocationReadCompleted(progress);
+      publish();
+      return;
+    }
     if (
-      result.stopReason === "oversized-source-unit" ||
+      result.stopReason === "budget-exhausted" &&
+      !madeProgress &&
+      progress.continuation &&
+      !skipOversizedSourceUnit
+    ) {
+      progress.skipOversizedSourceUnit = true;
+      publish();
+      continue;
+    }
+    if (
       !madeProgress ||
       !progress.continuation ||
       progress.messageCount >= LOCATION_TRACK_CACHE_MESSAGE_LIMIT
