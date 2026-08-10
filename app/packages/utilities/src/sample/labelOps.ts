@@ -160,8 +160,8 @@ export interface ClassifyLabelOpsArgs {
   postSample?: unknown;
   /** Field-level fast path: the single label the patch targets. */
   labelId?: string;
-  /** Field-level fast path: "mutate" | "delete". */
-  opType?: string;
+  /** Field-level fast path: only "delete" changes classification. */
+  opType?: "mutate" | "delete" | "add";
 }
 
 /**
@@ -229,7 +229,12 @@ export const classifyLabelOps = ({
     const element = elementSegments(segments);
     const exactlyElement = element.length === segments.length;
     const last = element[element.length - 1];
-    const isListElement = element.length > 1 && isElementSegment(last);
+    // A bare /frames/<n> is the frame CONTAINER, not a label list element:
+    // resolving it as one would fabricate the frame document's id. Let the
+    // whole-field branches collect the labels it contains instead.
+    const isWholeFrame = element.length === 2 && element[0] === "frames";
+    const isListElement =
+      element.length > 1 && isElementSegment(last) && !isWholeFrame;
     const ids = isListElement ? idsFor(element.slice(0, -1)) : null;
     const index =
       last === "-" ? (ids ? ids.length : -1) : Number.parseInt(last, 10);
@@ -266,7 +271,7 @@ export const classifyLabelOps = ({
     } else if (delta.op === "remove" && exactlyElement) {
       // Deleted label(s): the SHIFTED array state names a list element; a
       // whole-field remove names every label still in the pre-patch field.
-      let opIds = shifted
+      const opIds = shifted
         ? [shifted]
         : isListElement
           ? []
@@ -286,21 +291,26 @@ export const classifyLabelOps = ({
       // (a classification "set" on a pre-existing null field lands here).
       // The op value may be a skeleton without ids — the post-patch
       // sample is the fallback source for what now lives in the field.
-      const preIds = new Set(collectLabelIds(getAtPath(preSample, element)));
-      let postIds = collectLabelIds((delta as { value?: unknown }).value);
+      const preNode = getAtPath(preSample, element);
+      const preIds = new Set(collectLabelIds(preNode));
+      let postNode: unknown = (delta as { value?: unknown }).value;
+      let postIds = collectLabelIds(postNode);
       if (!postIds.length) {
-        postIds = collectLabelIds(getAtPath(postSample, element));
+        postNode = getAtPath(postSample, element);
+        postIds = collectLabelIds(postNode);
       }
       for (const id of postIds) {
         if (preIds.has(id)) modified.add(id);
         else added.add(id);
-        fieldOf[id] = element[0];
+        fieldOf[id] = opField;
+        noteInstance(id, postNode);
       }
       const postSet = new Set(postIds);
       for (const id of preIds) {
         if (!postSet.has(id)) {
           deleted.add(id);
-          fieldOf[id] = element[0];
+          fieldOf[id] = opField;
+          noteInstance(id, preNode);
         }
       }
     } else {

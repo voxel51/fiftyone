@@ -14,9 +14,10 @@ export type { IdAlignedDeltaSpec } from "./diff";
 export { applyDeltas } from "./apply";
 // Sample's canonical value-equality (collapses DateTime shapes); reused by
 // reconcilers to decide whether a change is a no-op echo of Sample's truth.
-export { classifyLabelOps, isEmptyLabelOps } from "./labelOps";
-export type { LabelOpsSummary } from "./labelOps";
 export { equalsNormalized } from "./normalize";
+// Per-label classification of persisted RFC-6902 patches.
+export { classifyLabelOps, isEmptyLabelOps } from "./labelOps";
+export type { ClassifyLabelOpsArgs, LabelOpsSummary } from "./labelOps";
 export { Sample, SampleChangeKind } from "./sample";
 export type {
   SampleChange,

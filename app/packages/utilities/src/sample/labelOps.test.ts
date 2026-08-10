@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyLabelOps } from "./labelOps";
+import { classifyLabelOps, isEmptyLabelOps } from "./labelOps";
 import type { JSONDeltas } from "../types";
 
 const sample = {
@@ -185,45 +185,51 @@ describe("classifyLabelOps", () => {
   });
 });
 
-it("attributes sequential removes through the index shift", () => {
-  // RFC-6902 applies ops in order: removing index 1 twice deletes the
-  // ORIGINAL n2 then n3 (which shifted into slot 1).
-  const pre = {
-    ground_truth: {
-      detections: [{ _id: "n1" }, { _id: "n2" }, { _id: "n3" }],
-    },
-  };
-  const ops = classifyLabelOps({
-    deltas: [
-      { op: "remove", path: "/ground_truth/detections/1" },
-      { op: "remove", path: "/ground_truth/detections/1" },
-    ],
-    preSample: pre,
-  });
-  expect(ops.deleted.sort()).toEqual(["n2", "n3"]);
-  expect(ops.added).toEqual([]);
-  expect(ops.modified).toEqual([]);
-});
-
-it("attributes labels nested under video frames", () => {
-  const pre = {
-    frames: {
-      "1": {
-        detections: { detections: [{ _id: "f1" }, { _id: "f2" }] },
+describe("sequential index replay", () => {
+  it("attributes sequential removes through the index shift", () => {
+    // RFC-6902 applies ops in order: removing index 1 twice deletes the
+    // ORIGINAL n2 then n3 (which shifted into slot 1).
+    const pre = {
+      ground_truth: {
+        detections: [{ _id: "n1" }, { _id: "n2" }, { _id: "n3" }],
       },
-    },
-  };
-  const ops = classifyLabelOps({
-    deltas: [
-      { op: "remove", path: "/frames/1/detections/detections/0" },
-      { op: "replace", path: "/frames/1/detections/detections/0/label" },
-    ],
-    preSample: pre,
+    };
+    const ops = classifyLabelOps({
+      deltas: [
+        { op: "remove", path: "/ground_truth/detections/1" },
+        { op: "remove", path: "/ground_truth/detections/1" },
+      ],
+      preSample: pre,
+    });
+    expect(ops.deleted.sort()).toEqual(["n2", "n3"]);
+    expect(ops.added).toEqual([]);
+    expect(ops.modified).toEqual([]);
   });
-  // Sequential shift: the remove takes f1; the replace then edits f2
-  // (which shifted into slot 0).
-  expect(ops.deleted).toEqual(["f1"]);
-  expect(ops.modified).toEqual(["f2"]);
+
+  it("attributes labels nested under video frames", () => {
+    const pre = {
+      frames: {
+        "1": {
+          detections: { detections: [{ _id: "f1" }, { _id: "f2" }] },
+        },
+      },
+    };
+    const ops = classifyLabelOps({
+      deltas: [
+        { op: "remove", path: "/frames/1/detections/detections/0" },
+        {
+          op: "replace",
+          path: "/frames/1/detections/detections/0/label",
+          value: "bus",
+        },
+      ],
+      preSample: pre,
+    });
+    // Sequential shift: the remove takes f1; the replace then edits f2
+    // (which shifted into slot 0).
+    expect(ops.deleted).toEqual(["f1"]);
+    expect(ops.modified).toEqual(["f2"]);
+  });
 });
 
 describe("whole-field ops (FOEPD-4344)", () => {
@@ -520,5 +526,67 @@ describe("video temporal labels identify by instance (FOEPD-4344 follow-up)", ()
     expect([...ops.modified].sort()).toEqual(["f1", "f2"]);
     expect(ops.instanceOf.f1).toBe("aaaa000011112222aaaa0001");
     expect(ops.instanceOf.f2).toBe("aaaa000011112222aaaa0001");
+  });
+
+  it("attributes a whole-frame-field replace to the frame's field", () => {
+    const pre = {
+      _id: "smp",
+      frames: [
+        null,
+        { weather: { _id: "w1", label: "sunny", instance: inst } },
+      ],
+    };
+    const ops = classifyLabelOps({
+      deltas: [
+        {
+          op: "replace",
+          path: "/frames/1/weather",
+          value: { _id: "w1", label: "rain", instance: inst },
+        },
+      ] as JSONDeltas,
+      preSample: pre,
+    });
+    expect(ops.modified).toEqual(["w1"]);
+    expect(ops.fieldOf.w1).toBe("weather");
+    expect(ops.instanceOf.w1).toBe("aaaa000011112222aaaa0001");
+  });
+});
+
+describe("isEmptyLabelOps", () => {
+  it("is true when no operations were classified", () => {
+    expect(
+      isEmptyLabelOps(classifyLabelOps({ deltas: [], preSample: sample })),
+    ).toBe(true);
+    expect(
+      isEmptyLabelOps({
+        added: [],
+        deleted: [],
+        modified: [],
+        fieldOf: {},
+        instanceOf: {},
+      }),
+    ).toBe(true);
+  });
+
+  it("is false when any operation set is populated", () => {
+    expect(
+      isEmptyLabelOps({
+        added: [],
+        deleted: ["n1"],
+        modified: [],
+        fieldOf: { n1: "ground_truth" },
+        instanceOf: {},
+      }),
+    ).toBe(false);
+    expect(
+      isEmptyLabelOps(
+        classifyLabelOps({
+          deltas: [
+            { op: "remove", path: "/ground_truth/detections/0" },
+          ] as JSONDeltas,
+          preSample: sample,
+        }),
+      ),
+    ).toBe(false);
   });
 });

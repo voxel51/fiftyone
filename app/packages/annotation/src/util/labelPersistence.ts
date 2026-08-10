@@ -51,10 +51,13 @@ export interface PatchPersistedInfo {
   postSample: unknown;
   isGenerated: boolean;
   labelId?: string;
-  opType?: string;
+  labelPath?: string;
+  opType?: OpType;
 }
 
-type PatchPersistedListener = (info: PatchPersistedInfo) => void;
+type PatchPersistedListener = (
+  info: PatchPersistedInfo,
+) => void | Promise<void>;
 
 const patchListeners = new Set<PatchPersistedListener>();
 
@@ -172,11 +175,16 @@ export const doPatchSample = async ({
       postSample,
       isGenerated: Boolean(isGenerated),
       labelId,
+      labelPath,
       opType,
     };
     for (const listener of patchListeners) {
       try {
-        listener(info);
+        // Async listeners are not awaited — persistence never blocks on
+        // observers — but their rejections must not surface as unhandled.
+        Promise.resolve(listener(info)).catch((err) => {
+          console.debug("patch listener failed", err);
+        });
       } catch (err) {
         console.debug("patch listener failed", err);
       }
