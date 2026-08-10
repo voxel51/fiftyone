@@ -40,6 +40,12 @@ export interface Scene3dCameraRigInputs {
    * can never re-apply after mode or frame round-trips.
    */
   readonly adoptAnchor: Scene3dCameraTrackingAnchor | null;
+  /**
+   * Stable identity for the recording/source whose coordinates the current
+   * camera traffic belongs to. The mounted controller survives source hops,
+   * so this epoch is the boundary for every source-local imperative latch.
+   */
+  readonly cameraEpoch: string;
   readonly mode: Scene3dTrackingMode;
   readonly sceneUpAxis: Scene3dUpAxis;
   readonly targetFrameId: string;
@@ -140,7 +146,20 @@ export class Scene3dCameraRigController {
     if (this.disposed) {
       return;
     }
+    const epochChanged = inputs.cameraEpoch !== this.inputs.cameraEpoch;
     this.inputs = inputs;
+
+    if (epochChanged) {
+      // The controls and controller survive recording navigation. A trailing
+      // gesture write, dirty flag, or matching-looking frame anchor from the
+      // outgoing recording must not cross this source boundary. Reset before
+      // processing inputs so a separately compatibility-gated adoptAnchor can
+      // deliberately seed the new epoch in this same sync.
+      this.cancelPendingCommit();
+      this.anchor = null;
+      this.anchorDirty = false;
+      this.lastAdoptedAnchor = null;
+    }
 
     if (!isFollowTrackingMode(inputs.mode)) {
       if (this.anchor) {

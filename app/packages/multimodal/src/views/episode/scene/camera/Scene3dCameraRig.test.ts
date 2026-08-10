@@ -6,6 +6,7 @@ import {
 
 const PROPS: Scene3dCameraRigProps = {
   adoptAnchor: null,
+  cameraEpoch: "source-a",
   mode: "free",
   onCommit: vi.fn(),
   onGestureStart: vi.fn(),
@@ -38,5 +39,16 @@ describe("Scene3dCameraRigStore", () => {
 
     expect(listener).toHaveBeenCalledTimes(1);
     expect(store.getSnapshot()).toBe(next);
+  });
+
+  it("publishes source epochs even when frame ids and resolution are reused", () => {
+    const store = createScene3dCameraRigStore(PROPS);
+    const listener = vi.fn();
+    store.subscribe(listener);
+
+    store.publish({ ...PROPS, cameraEpoch: "source-b" });
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(store.getSnapshot().cameraEpoch).toBe("source-b");
   });
 });

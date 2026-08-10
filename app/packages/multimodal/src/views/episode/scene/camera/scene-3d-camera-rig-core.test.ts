@@ -219,6 +219,39 @@ describe("Scene3dCameraRigController gesture commits", () => {
     expect(scene.callbacks.onGestureStart).toHaveBeenCalledTimes(2);
   });
 
+  it("cancels an outgoing source commit inside the debounce window", () => {
+    const scene = createScene();
+    scene.setCamera([5, 0, 10], [5, 0, 0]);
+    const controller = createController(scene);
+    controller.sync(
+      rigInputs({
+        cameraEpoch: "source-a",
+        targetResolution: resolvedTarget(0, 0, 0),
+      }),
+    );
+
+    scene.emit("start");
+    scene.emit("end");
+    vi.advanceTimersByTime(RIG_COMMIT_DEBOUNCE_MS / 2);
+    controller.sync(
+      rigInputs({
+        cameraEpoch: "source-b",
+        // Reused semantic frame ids must not make A's timer or anchor valid.
+        targetFrameId: "base_link",
+        targetResolution: resolvedTarget(100, 0, 0),
+        worldFrameId: "map",
+      }),
+    );
+    vi.advanceTimersByTime(RIG_COMMIT_DEBOUNCE_MS);
+
+    expect(scene.callbacks.onCommit).not.toHaveBeenCalled();
+    expect(controller.getAnchor()).toMatchObject({
+      relativePosition: [-95, 0, 10],
+      targetFrameId: "base_link",
+      worldFrameId: "map",
+    });
+  });
+
   it("cancels a pending commit on dispose — the unmount recorder owns the final write", () => {
     const scene = createScene();
     const controller = createController(scene);
@@ -331,6 +364,68 @@ describe("Scene3dCameraRigController anchor adoption", () => {
 
     expect(controller.getAnchor()).not.toBe(adopt);
   });
+
+  it("drops a reused-frame anchor on an incompatible source epoch", () => {
+    const scene = createScene();
+    scene.setCamera([5, 0, 10], [5, 0, 0]);
+    const controller = createController(scene);
+    controller.sync(
+      rigInputs({
+        cameraEpoch: "source-a",
+        targetResolution: resolvedTarget(0, 0, 0),
+      }),
+    );
+    const outgoingAnchor = controller.getAnchor();
+
+    controller.sync(
+      rigInputs({
+        cameraEpoch: "source-b",
+        targetFrameId: "base_link",
+        targetResolution: resolvedTarget(100, 0, 0),
+        worldFrameId: "map",
+      }),
+    );
+
+    expect(controller.getAnchor()).not.toBe(outgoingAnchor);
+    expect(scene.cameraPose()).toEqual({
+      position: [5, 0, 10],
+      target: [5, 0, 0],
+    });
+  });
+
+  it("re-applies a compatible gate-checked carry after an epoch reset", () => {
+    const scene = createScene();
+    const controller = createController(scene);
+    const carried = {
+      mode: "position",
+      relativePosition: [1, 2, 3],
+      relativeTarget: [1, 2, 0],
+      sceneUpAxis: "z",
+      targetFrameId: "base_link",
+      worldFrameId: "map",
+    } as const;
+    controller.sync(
+      rigInputs({
+        adoptAnchor: carried,
+        cameraEpoch: "source-a",
+        targetResolution: resolvedTarget(10, 0, 0),
+      }),
+    );
+
+    controller.sync(
+      rigInputs({
+        adoptAnchor: carried,
+        cameraEpoch: "source-b",
+        targetResolution: resolvedTarget(20, 0, 0),
+      }),
+    );
+
+    expect(controller.getAnchor()).toBe(carried);
+    expect(scene.cameraPose()).toEqual({
+      position: [21, 2, 3],
+      target: [21, 2, 0],
+    });
+  });
 });
 
 interface FakeVectorHandle {
@@ -412,6 +507,7 @@ function rigInputs(
 ): Scene3dCameraRigInputs {
   return {
     adoptAnchor: null,
+    cameraEpoch: "source-a",
     mode: "position",
     sceneUpAxis: "z",
     targetFrameId: "base_link",

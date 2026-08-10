@@ -86,6 +86,7 @@ export function Scene3dCameraRigFromStore({
 function rigInputs(props: Scene3dCameraRigProps): Scene3dCameraRigInputs {
   return {
     adoptAnchor: props.adoptAnchor,
+    cameraEpoch: props.cameraEpoch,
     mode: props.mode,
     sceneUpAxis: props.sceneUpAxis,
     targetFrameId: props.targetFrameId,
@@ -100,6 +101,7 @@ function cameraRigInputsEqual(
 ): boolean {
   return (
     left.adoptAnchor === right.adoptAnchor &&
+    left.cameraEpoch === right.cameraEpoch &&
     left.mode === right.mode &&
     left.sceneUpAxis === right.sceneUpAxis &&
     left.targetFrameId === right.targetFrameId &&

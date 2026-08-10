@@ -210,6 +210,9 @@ export function useScene3dCameraTracking({
   const [cameraCommandSourceKey, setCameraCommandSourceKey] =
     useState(sourceKey);
   const sourceChanged = cameraCommandSourceKey !== sourceKey;
+  // The provider's temporary unbound interval is not a source hop. Keep the
+  // last non-empty source epoch until the incoming recording is available.
+  const cameraRigEpoch = sourceKey || activeSourceKeyRef.current;
   // Pending camera restore intents, captured once at mount. They die on
   // apply, on any deliberate camera/mode change, or with the mount itself.
   const pendingCameraViewRestoreRef = useRef<Scene3dCameraViewSnapshot | null>(
@@ -993,6 +996,7 @@ export function useScene3dCameraTracking({
   const rig = useMemo(
     () => ({
       adoptAnchor: sourceChanged ? null : adoptAnchor,
+      cameraEpoch: cameraRigEpoch,
       mode: effectiveTrackingMode,
       onCommit,
       onGestureStart,
@@ -1004,6 +1008,7 @@ export function useScene3dCameraTracking({
     }),
     [
       adoptAnchor,
+      cameraRigEpoch,
       cameraTargetFrameId,
       cameraTargetResolution,
       onCommit,
