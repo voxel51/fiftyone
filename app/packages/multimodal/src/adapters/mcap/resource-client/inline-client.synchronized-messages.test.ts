@@ -229,6 +229,14 @@ describe("MCAP synchronized messages", () => {
 
     expect(windows[0]?.messages).toHaveLength(2);
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
+    const rawRecordIds = vi
+      .mocked(decodeClient.decode)
+      .mock.calls.map(([request]) => request.cache?.recordId);
+    expect(rawRecordIds).toEqual([
+      expect.stringMatching(/^7:100:101:2:1:[0-9a-f]{8}$/),
+      expect.stringMatching(/^7:100:101:2:1:[0-9a-f]{8}$/),
+    ]);
+    expect(rawRecordIds[0]).not.toBe(rawRecordIds[1]);
   });
 
   it("shares synchronized worker decodes without inspecting payload bytes", async () => {
@@ -269,7 +277,9 @@ describe("MCAP synchronized messages", () => {
 
   it("uses indexed message times to read only selected synchronized messages", async () => {
     const source = createMcapSourceDescriptor();
-    const camera = createMessage(new Uint8Array([1]), {
+    const cameraBytes = new Uint8Array([1]);
+    const cameraPayloadIteration = vi.spyOn(cameraBytes, Symbol.iterator);
+    const camera = createMessage(cameraBytes, {
       channelId: 7,
       logTime: 90n,
       publishTime: 91n,
@@ -365,6 +375,18 @@ describe("MCAP synchronized messages", () => {
     });
     expect(readMessages).not.toHaveBeenCalled();
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
+    expect(decodeClient.decode).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        cache: expect.objectContaining({
+          decoderOptionsKey: "activeTimeline=log",
+          recordId: "/camera\u00007\u000090\u00001000\u0000900",
+          streamId: "/camera",
+          timeNs: 90n,
+        }),
+      }),
+    );
+    expect(cameraPayloadIteration).not.toHaveBeenCalled();
   });
 
   it("keeps the indexed synchronized-read fallback for readers without exact lookup", async () => {

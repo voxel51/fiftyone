@@ -51,6 +51,19 @@ export function mintIndexedRecordIdentity(
     readonly pointCloudColorBy?: string;
   },
 ): string {
+  return mintIndexedRecordIdentityFromPhysical(
+    indexedCandidateRecordId(candidate),
+    options,
+  );
+}
+
+function mintIndexedRecordIdentityFromPhysical(
+  physicalRecordIdentity: string,
+  options: {
+    readonly cacheKeySuffix: string;
+    readonly pointCloudColorBy?: string;
+  },
+): string {
   const decoderOptionParts = [
     options.cacheKeySuffix,
     options.pointCloudColorBy ?? "auto",
@@ -65,7 +78,7 @@ export function mintIndexedRecordIdentity(
   ) {
     throw new Error("Indexed record decoder options cannot contain NUL bytes");
   }
-  return [indexedCandidateRecordId(candidate), ...decoderOptionParts].join(
+  return [physicalRecordIdentity, ...decoderOptionParts].join(
     INDEXED_LOOKUP_KEY_SEPARATOR,
   );
 }
@@ -863,11 +876,11 @@ async function decodeIndexedCandidate<
   readonly source: McapReadSynchronizedMessageBatchRequest["source"];
   readonly timeline: McapTimelineStrategy;
 }): Promise<McapDecodedMessage | ReusedMessage> {
-  const recordId = indexedCandidateReuseIdentity({
+  const { physicalRecordIdentity, recordId } = indexedCandidateReuseIdentity({
     candidate,
     pointCloudColorBy,
     timeline,
-  }).recordId;
+  });
   let decoded = indexedDecodeCache.get(recordId);
 
   if (!decoded) {
@@ -886,6 +899,7 @@ async function decodeIndexedCandidate<
               candidate: rawCandidate,
               decodeCache: rawDecodeCache,
               decodeClient,
+              physicalRecordId: physicalRecordIdentity,
               pointCloudColorBy,
               signal,
               source,
@@ -908,8 +922,10 @@ function indexedCandidateReuseIdentity({
   readonly pointCloudColorBy?: string;
   readonly timeline: McapTimelineStrategy;
 }) {
+  const physicalRecordIdentity = indexedCandidateRecordId(candidate);
   return {
-    recordId: mintIndexedRecordIdentity(candidate, {
+    physicalRecordIdentity,
+    recordId: mintIndexedRecordIdentityFromPhysical(physicalRecordIdentity, {
       cacheKeySuffix: timeline.cacheKeySuffix,
       pointCloudColorBy,
     }),
@@ -1068,6 +1084,7 @@ async function decodeRawCandidate({
   candidate,
   decodeCache,
   decodeClient,
+  physicalRecordId,
   pointCloudColorBy,
   signal,
   source,
@@ -1076,6 +1093,7 @@ async function decodeRawCandidate({
   readonly candidate: McapRawMessageCandidate;
   readonly decodeCache: McapRawDecodeCache;
   readonly decodeClient: DecodeClient;
+  readonly physicalRecordId?: string;
   readonly pointCloudColorBy?: string;
   readonly signal?: AbortSignal;
   readonly source: McapReadSynchronizedMessageBatchRequest["source"];
@@ -1095,6 +1113,7 @@ async function decodeRawCandidate({
       channel: candidate.channel,
       decodeClient,
       message: candidate.message,
+      physicalRecordId,
       pointCloudColorBy,
       schema: candidate.schema,
       signal,
