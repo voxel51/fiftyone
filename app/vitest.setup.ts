@@ -3,6 +3,25 @@
  * This file is executed before running tests to set up the test environment
  */
 
+import * as streamWeb from "node:stream/web";
+
+// the vmThreads pool runs each file in a VM context that has neither Node's
+// web-stream globals nor jsdom equivalents
+globalThis.ReadableStream ??=
+  streamWeb.ReadableStream as unknown as typeof globalThis.ReadableStream;
+globalThis.WritableStream ??=
+  streamWeb.WritableStream as unknown as typeof globalThis.WritableStream;
+globalThis.TransformStream ??=
+  streamWeb.TransformStream as unknown as typeof globalThis.TransformStream;
+globalThis.TextEncoderStream ??=
+  streamWeb.TextEncoderStream as unknown as typeof globalThis.TextEncoderStream;
+globalThis.TextDecoderStream ??=
+  streamWeb.TextDecoderStream as unknown as typeof globalThis.TextDecoderStream;
+globalThis.CompressionStream ??=
+  streamWeb.CompressionStream as unknown as typeof globalThis.CompressionStream;
+globalThis.DecompressionStream ??=
+  streamWeb.DecompressionStream as unknown as typeof globalThis.DecompressionStream;
+
 // Mock window.URL.createObjectURL and revokeObjectURL
 // These are browser APIs that aren't available in jsdom but are required by
 // libraries like plotly.js/mapbox-gl
