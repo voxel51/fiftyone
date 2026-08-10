@@ -198,6 +198,8 @@ export interface McapBoundedMessageReadResult {
   readonly coverageByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
   readonly messages: readonly McapTypes.TypedMcapRecords["Message"][];
   readonly resumeAtNs?: bigint;
+  /** Atomic source spans intentionally skipped because they exceed the hard ceiling. */
+  readonly skippedByTopic?: ReadonlyMap<string, readonly TimeWindow[]>;
   readonly stopReason: BudgetedReadStopReason;
   readonly usage: ReadWorkUsage;
 }

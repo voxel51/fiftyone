@@ -320,6 +320,8 @@ export interface NumericSeriesSliceRequest {
 export interface NumericSeriesSliceResult {
   readonly continuation?: ReadContinuation;
   readonly coverageByStream: ReadonlyMap<StreamId, readonly TimeWindow[]>;
+  /** Exact unreadable source spans, distinct from successfully inspected coverage. */
+  readonly unavailableByStream?: ReadonlyMap<StreamId, readonly TimeWindow[]>;
   readonly series: readonly NumericSeriesResult[];
   readonly stopReason: BudgetedReadStopReason;
   readonly usage: ReadWorkUsage;

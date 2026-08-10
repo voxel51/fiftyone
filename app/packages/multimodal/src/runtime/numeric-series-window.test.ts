@@ -179,6 +179,26 @@ describe("flattenSeriesSegments", () => {
     expect([...flat.values.slice(3)]).toEqual([50, 60]);
   });
 
+  it("does not invent a gap between abutting immutable parts", () => {
+    const flat = flattenSeriesSegments([
+      {
+        endNs: 20n,
+        startNs: 10n,
+        timesSec: Float64Array.from([1, 2]),
+        values: Float64Array.from([10, 20]),
+      },
+      {
+        endNs: 30n,
+        startNs: 21n,
+        timesSec: Float64Array.from([3]),
+        values: Float64Array.from([30]),
+      },
+    ]);
+
+    expect([...flat.timesSec]).toEqual([1, 2, 3]);
+    expect([...flat.values]).toEqual([10, 20, 30]);
+  });
+
   it("skips empty segments", () => {
     const flat = flattenSeriesSegments([
       {

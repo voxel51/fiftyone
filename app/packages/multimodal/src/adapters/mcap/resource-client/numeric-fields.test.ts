@@ -187,6 +187,179 @@ describe("ROS numeric schema enumeration", () => {
 });
 
 describe("enumerateMcapNumericFields", () => {
+  it("unions numeric paths from every schema carried by one topic", async () => {
+    const speedRoot = Root.fromJSON({
+      nested: {
+        Speed: { fields: { speed: { id: 1, type: "double" } } },
+      },
+    });
+    const temperatureRoot = Root.fromJSON({
+      nested: {
+        Temperature: {
+          fields: { temperature: { id: 1, type: "float" } },
+        },
+      },
+    });
+    const topics = await enumerateMcapNumericFields(
+      createReader({
+        channelsById: new Map([
+          [1, createChannel({ id: 1, schemaId: 10, topic: "/shared" })],
+          [2, createChannel({ id: 2, schemaId: 20, topic: "/shared" })],
+        ]),
+        schemasById: new Map([
+          [
+            10,
+            createSchema(protobufDescriptorData(speedRoot), {
+              id: 10,
+              name: "Speed",
+            }),
+          ],
+          [
+            20,
+            createSchema(protobufDescriptorData(temperatureRoot), {
+              id: 20,
+              name: "Temperature",
+            }),
+          ],
+        ]),
+      }),
+      { includeDataFallback: false },
+    );
+
+    expect(topics).toEqual([
+      {
+        availability: "ready",
+        encoding: "protobuf",
+        fields: [
+          { path: "speed", valueType: "double" },
+          { path: "temperature", valueType: "float" },
+        ],
+        topic: "/shared",
+      },
+    ]);
+  });
+
+  it("does not claim no data when another channel schema is unreadable", async () => {
+    const topics = await enumerateMcapNumericFields(
+      createReader({
+        channelsById: new Map([
+          [
+            1,
+            createChannel({
+              id: 1,
+              messageEncoding: "json",
+              schemaId: 0,
+              topic: "/shared",
+            }),
+          ],
+          [
+            2,
+            createChannel({
+              id: 2,
+              messageEncoding: "protobuf",
+              schemaId: 99,
+              topic: "/shared",
+            }),
+          ],
+        ]),
+        schemasById: new Map(),
+      }),
+      { includeDataFallback: false },
+    );
+
+    expect(topics).toEqual([
+      {
+        availability: "schema-unavailable",
+        encoding: "mixed",
+        fields: [],
+        sampled: true,
+        topic: "/shared",
+      },
+    ]);
+  });
+
+  it("samples dynamic paths from separate chunks for every shared-topic channel", async () => {
+    const channelsById = new Map([
+      [
+        1,
+        createChannel({
+          id: 1,
+          messageEncoding: "json",
+          schemaId: 0,
+          topic: "/shared",
+        }),
+      ],
+      [
+        2,
+        createChannel({
+          id: 2,
+          messageEncoding: "json",
+          schemaId: 0,
+          topic: "/shared",
+        }),
+      ],
+    ]);
+    const messages = new Map([
+      [1_000n, createMessage(jsonBytes({ left: 1 }), { channelId: 1 })],
+      [2_000n, createMessage(jsonBytes({ right: 2 }), { channelId: 2 })],
+    ]);
+    const base = createReader({ channelsById, schemasById: new Map() });
+    const readIndexedMessageTimes = vi.fn(async function* (args?: {
+      readonly chunkStartOffsets?: readonly bigint[];
+    }) {
+      const chunkStartOffset = args?.chunkStartOffsets?.[0];
+      const message = chunkStartOffset && messages.get(chunkStartOffset);
+      if (!chunkStartOffset || !message) return;
+      yield {
+        channelId: message.channelId,
+        chunkStartOffset,
+        logTimeNs: message.logTime,
+        messageOffset: 0n,
+        topic: "/shared",
+      };
+    });
+    const readIndexedMessages = vi.fn(
+      async (request: {
+        readonly entries: readonly {
+          readonly chunkStartOffset: bigint;
+        }[];
+      }) =>
+        request.entries.flatMap((entry) => {
+          const message = messages.get(entry.chunkStartOffset);
+          return message ? [message] : [];
+        }),
+    );
+    const reader = Object.assign(base, {
+      chunkIndexes: [
+        createChunkIndex({
+          chunkStartOffset: 1_000n,
+          messageIndexOffsets: new Map([[1, 10_000n]]),
+        }),
+        createChunkIndex({
+          chunkStartOffset: 2_000n,
+          messageIndexOffsets: new Map([[2, 20_000n]]),
+        }),
+      ],
+      readIndexedMessages,
+      readIndexedMessageTimes,
+    });
+
+    expect(await enumerateMcapNumericFields(reader)).toEqual([
+      {
+        availability: "ready",
+        encoding: "json",
+        fields: [
+          { path: "left", valueType: "number" },
+          { path: "right", valueType: "number" },
+        ],
+        sampled: true,
+        topic: "/shared",
+      },
+    ]);
+    expect(readIndexedMessageTimes).toHaveBeenCalledTimes(2);
+    expect(readIndexedMessages).toHaveBeenCalledOnce();
+  });
+
   it("classifies json, and unsupported channels; samples json messages", async () => {
     const reader = createReader({
       channelsById: new Map([

@@ -2,22 +2,35 @@
 // components whose relay fragments cannot evaluate under vitest, and this
 // bridge has direct unit tests.
 import { getPlayhead, PlaybackStoreContext } from "@fiftyone/playback/runtime";
-import { useCallback, useContext, useEffect, useMemo, useRef } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import {
   addCoveredRange,
   coveredNumericSeriesSeconds,
   createDemandFailureBackoff,
   createDemandInventoryMachine,
+  createNumericSeriesTileCache,
   DEMAND_FAILURE_BACKOFF_MS,
   flattenSeriesSegments,
   FULL_NUMERIC_SERIES_COVERAGE,
-  insertSeriesSegment,
   nearestNumericSeriesRange,
+  NUMERIC_SERIES_MAX_BUCKET_SURVIVORS,
   numericSeriesKey,
   numericSeriesRangeDurationSeconds,
   numericSeriesRangesOverlap,
   numericSeriesWindowPointBudget,
   PLOT_WINDOW_SECONDS,
+  createPlotPublicationStore,
+  type PlotPublicationStore,
   quantizedNumericSeriesWindow,
   removeCoveredRange,
   sliceNumericFieldToRange,
@@ -25,7 +38,8 @@ import {
   startDemandBridge,
   subtractCoveredRanges,
   type NsRange,
-  type NumericSeriesSegment,
+  type NumericSeriesTileCache,
+  type TimelineIndex,
 } from "../../../runtime";
 import {
   createDemandContextProvider,
@@ -65,6 +79,11 @@ const DEFERRED_RETRY_MS = 2_000;
 /** The timeline index lands moments after stream registration; wait for
  * it instead of falling back to an unbounded scan. */
 const TIMELINE_RETRY_MS = 250;
+
+/** Prevents a long continuation chain from monopolizing one demand epoch. */
+const MAX_NUMERIC_SLICE_PAGES_PER_EPOCH = 8;
+const NUMERIC_TILE_CACHE_MAX_BYTES = 64 * 1024 * 1024;
+const NUMERIC_TILE_CACHE_MAX_TILES = 2_048;
 
 const MIB = 1024 * 1024;
 
@@ -106,20 +125,29 @@ export interface NumericFieldsEnumeration {
 }
 
 /**
- * One signal's accumulated samples. Times are seconds relative to the
- * recording start; NaN values mark gaps (missing fields, undecodable
- * messages, and the boundaries between non-adjacent fetched windows).
- * Arrays grow as more of the recording is covered; covered ranges are
- * never refetched.
+ * One signal's visible samples. Times are seconds relative to the recording
+ * start; NaN values mark decoded gaps. Arrays are assembled only for the
+ * current follow/pinned viewport from immutable resolution-keyed tiles.
  */
 export interface NumericSeriesState {
   readonly status: "loading" | "ready" | "error";
+  /** Source ranges proven readable or empty, excluding unavailable units. */
+  readonly coverage?: readonly NsRange[];
   readonly coverageSeconds?: number;
   readonly timesSec?: Float64Array;
   readonly targetSeconds?: number;
   readonly values?: Float64Array;
   readonly truncated?: boolean;
+  /** Exact source ranges skipped because an atomic unit exceeded hard limits. */
+  readonly unavailable?: readonly NsRange[];
   readonly error?: string;
+}
+
+export interface NumericSeriesViewportDemand {
+  readonly endSec: number;
+  readonly mode: "follow" | "pinned";
+  readonly pixelWidth: number;
+  readonly startSec: number;
 }
 
 /**
@@ -137,17 +165,28 @@ export interface NumericSeriesContextValue {
 
   /**
    * Declares interest in one signal while the returned unsubscribe is
-   * outstanding. Interested signals are fetched in playhead-anchored
-   * windows and cached as segments; dropping interest keeps the cache.
+   * outstanding. Interested signals are fetched for follow/pinned viewports;
+   * dropping interest leaves retained tiles subject to the cache budget.
    */
   subscribeSeries(stream: string, fieldPath: string): () => void;
+
+  /** Updates one plot tile's follow/pinned visible-range demand. */
+  setViewportDemand(
+    demandId: string,
+    demand: NumericSeriesViewportDemand | null,
+  ): void;
 }
 
 type NumericSeriesHandlers = DemandContextHandlers;
 
 interface NumericSliceJob {
+  readonly bucketDurationNs: bigint;
   readonly continuation?: ReadContinuation;
+  readonly horizon: NsRange;
   readonly horizonKey: string;
+  readonly maxPointsPerField: number;
+  readonly notBeforeMs?: number;
+  readonly pageCount: number;
   readonly preferredTimeNs: bigint;
   readonly range: NsRange;
   readonly selections: readonly NumericSeriesSliceSelection[];
@@ -171,48 +210,137 @@ const numericSeriesDemandContext = createDemandContextProvider<
     "episode numeric series must be used inside <NumericSeriesProvider>",
 });
 
+interface NumericSeriesPublicationContextValue {
+  readonly store: PlotPublicationStore<string, NumericSeriesState>;
+  readonly valuesByKey: Map<string, NumericSeriesState>;
+  readonly viewports: Map<string, NumericSeriesViewportDemand>;
+}
+
+const numericSeriesPublicationContext =
+  createContext<NumericSeriesPublicationContextValue | null>(null);
+
 /**
  * Shares numeric-series data with plot tiles. The provider lives outside
  * the playback shell and holds state plus the interest registry;
  * `NumericSeriesBridge` inside the shell owns the client/source and
- * services demand, so each signal is fetched once per covered range
- * regardless of how many plot tiles show it.
+ * services demand, so each signal/resolution is fetched once per covered
+ * range regardless of how many plot tiles show it.
  */
-export const NumericSeriesProvider = numericSeriesDemandContext.Provider;
+export function NumericSeriesProvider({
+  children,
+}: {
+  readonly children: ReactNode;
+}) {
+  const [publication] = useState<NumericSeriesPublicationContextValue>(() => ({
+    store: createPlotPublicationStore({
+      scheduleFrame: scheduleNumericSeriesFrame,
+    }),
+    valuesByKey: new Map(),
+    viewports: new Map(),
+  }));
+  return (
+    <numericSeriesDemandContext.Provider>
+      <numericSeriesPublicationContext.Provider value={publication}>
+        {children}
+      </numericSeriesPublicationContext.Provider>
+    </numericSeriesDemandContext.Provider>
+  );
+}
 
 /**
  * Reads the numeric-series cache and demand hooks for plot tiles.
  */
 export function useNumericSeriesContext(): NumericSeriesContextValue {
-  const { ensureInventory, inventory, subscribeKey, valuesByKey } =
+  const { ensureInventory, handlersRef, inventory, subscribeKey } =
     useInternalValue();
+  const publication = usePublicationValue();
+  const { valuesByKey } = publication;
   const subscribeSeries = useCallback(
     (stream: string, fieldPath: string) =>
       subscribeKey(numericSeriesKey(stream, fieldPath)),
     [subscribeKey],
+  );
+  const setViewportDemand = useCallback(
+    (demandId: string, demand: NumericSeriesViewportDemand | null) => {
+      const previous = publication.viewports.get(demandId);
+      if (sameViewportDemand(previous, demand)) return;
+      if (demand) publication.viewports.set(demandId, demand);
+      else publication.viewports.delete(demandId);
+      // Follow motion is already driven by the throttled playhead feed. Only
+      // pin/unpin or a pinned resize/range change needs a demand fill here.
+      if (demand?.mode === "pinned" || previous?.mode === "pinned") {
+        handlersRef.current?.onDemandChanged();
+      }
+    },
+    [handlersRef, publication],
   );
   return useMemo(
     () => ({
       ensureEnumeration: ensureInventory,
       enumeration: inventory,
       seriesByKey: valuesByKey,
+      setViewportDemand,
       subscribeSeries,
     }),
-    [ensureInventory, inventory, subscribeSeries, valuesByKey],
+    [
+      ensureInventory,
+      inventory,
+      setViewportDemand,
+      subscribeSeries,
+      valuesByKey,
+    ],
   );
+}
+
+/** Subscribes one plot to only the series keys it currently renders. */
+export function useNumericSeriesStates(
+  keys: readonly string[],
+): ReadonlyMap<string, NumericSeriesState> {
+  const { store } = usePublicationValue();
+  const subscription = useMemo(() => {
+    let revision = 0;
+    return {
+      getSnapshot: () => revision,
+      subscribe: (listener: () => void) => {
+        const unsubscribes = keys.map((key) =>
+          store.subscribe(key, () => {
+            revision += 1;
+            listener();
+          }),
+        );
+        return () => {
+          for (const unsubscribe of unsubscribes) unsubscribe();
+        };
+      },
+    };
+  }, [keys, store]);
+  const revision = useSyncExternalStore(
+    subscription.subscribe,
+    subscription.getSnapshot,
+    subscription.getSnapshot,
+  );
+  return useMemo(() => {
+    // The store owns values outside React; the revision invalidates this
+    // selected-key snapshot after its frame-coalesced publication.
+    void revision;
+    return new Map(
+      keys.flatMap((key) => {
+        const state = store.getSnapshot(key);
+        return state ? [[key, state] as const] : [];
+      }),
+    );
+  }, [keys, revision, store]);
 }
 
 /**
  * Bridge that services numeric-series demand against the shared resource
  * client, respecting the same bounded-reach principle as the rest of the
- * playback system: it fetches quantized windows centered on the playhead
- * (`PLOT_WINDOW_SECONDS`), tracks per-signal coverage so no range is
- * ever fetched or decoded twice, stitches fetched segments into growing
- * series, and stands down while the link is starved (same gate as pose
- * trajectories). All reads ride the bulk lane; the byte layer's shared
- * cache means these chunks are the same ones playback pulls for tiles in
- * this region. Without a playback store (standalone/tests) it falls back
- * to one unbounded fetch per signal.
+ * playback system: it fetches a quantized follow window or the pinned chart
+ * viewport, keys retained tiles by resolution, assembles only visible parts,
+ * and stands down while the link is starved (same gate as pose trajectories).
+ * All reads ride the bulk lane; the byte layer's shared cache remains shared
+ * with playback. Without a playback store it falls back to one compatibility
+ * result per signal.
  */
 export function NumericSeriesBridge({
   capability,
@@ -221,14 +349,9 @@ export function NumericSeriesBridge({
   readonly capability: NumericSeriesCapability | null;
   readonly sourceKey: string | null;
 }) {
-  const {
-    handlersRef,
-    inventoryReplay,
-    publishValues,
-    refCountsRef,
-    reset,
-    setInventory,
-  } = useInternalValue();
+  const { handlersRef, inventoryReplay, refCountsRef, reset, setInventory } =
+    useInternalValue();
+  const publication = usePublicationValue();
   // Nullable on purpose: callers inside the playback shell provide the
   // store (enabling windowing and the network-health gate); standalone
   // callers and tests get null and unbounded single fetches.
@@ -237,13 +360,15 @@ export function NumericSeriesBridge({
   const dataStreamRef = useRef(dataStream);
   dataStreamRef.current = dataStream;
 
-  // This effect owns one source epoch: coverage/segment caches, demand
-  // handlers, and the playhead-following fill loop. It re-keys (full
-  // reset) when the source changes; fetched signal data is cached for
-  // the life of the source, never refetched, and dropped on unmount.
+  // This effect owns one source epoch: resolution tiles, demand handlers, and
+  // the follow/pinned fill loop. It fully resets when the source changes;
+  // retained data stays within the source-local LRU budget.
   useEffect(() => {
     reset();
+    publication.valuesByKey.clear();
+    const publicationEpoch = publication.store.beginSourceEpoch();
     if (!capability || !sourceKey) {
+      publicationEpoch.cancel();
       return undefined;
     }
 
@@ -255,11 +380,31 @@ export function NumericSeriesBridge({
       | undefined;
     let pendingSlice: NumericSliceJob | undefined;
     const legacyControllers = new Set<AbortController>();
-    const coverage = new Map<string, NsRange[]>();
-    const segments = new Map<string, NumericSeriesSegment[]>();
-    const published = new Map<string, NumericSeriesState>();
+    const legacyCoverage = new Map<string, NsRange[]>();
+    const pinnedCacheKeys = new Set<string>();
+    let tileCache: NumericSeriesTileCache | undefined;
+    let tileOriginNs: bigint | undefined;
+    const published = publication.valuesByKey;
+    const setPublished = (key: string, state: NumericSeriesState) => {
+      published.set(key, state);
+      publicationEpoch.set(key, state);
+    };
     const truncatedKeys = new Set<string>();
     const failures = createDemandFailureBackoff<string>();
+    const cacheForOrigin = (timeOriginNs: bigint) => {
+      if (tileCache && tileOriginNs !== timeOriginNs) {
+        throw new Error("Numeric series tile origin changed within one source");
+      }
+      if (!tileCache) {
+        tileOriginNs = timeOriginNs;
+        tileCache = createNumericSeriesTileCache({
+          maxBytes: NUMERIC_TILE_CACHE_MAX_BYTES,
+          maxTiles: NUMERIC_TILE_CACHE_MAX_TILES,
+          timeOriginNs,
+        });
+      }
+      return tileCache;
+    };
     const abortActiveWork = () => {
       activeSlice?.controller.abort();
       activeSlice = undefined;
@@ -269,14 +414,16 @@ export function NumericSeriesBridge({
       }
       legacyControllers.clear();
     };
-    const publishResult = ({
+    const putResult = ({
       baseTimeNs,
+      bucketDurationNs,
       fields,
       ranges,
       stream,
       truncated,
     }: {
       readonly baseTimeNs: bigint;
+      readonly bucketDurationNs: bigint;
       readonly fields: readonly {
         readonly path: string;
         readonly timesSec: Float64Array;
@@ -286,59 +433,164 @@ export function NumericSeriesBridge({
       readonly stream: string;
       readonly truncated: boolean;
     }) => {
+      const cache = cacheForOrigin(baseTimeNs);
       for (const field of fields) {
         const key = numericSeriesKey(stream, field.path);
         failures.clear(key);
         if (truncated) {
           truncatedKeys.add(key);
         }
-        let keySegments = segments.get(key) ?? [];
         for (const range of ranges) {
-          const sliced = sliceNumericFieldToRange(field, baseTimeNs, range);
-          if (sliced.timesSec.length === 0) {
-            continue;
+          const missingRanges = cache.assembleVisible({
+            bucketDurationNs,
+            range,
+            seriesKey: key,
+          }).unreadRanges;
+          for (const missingRange of missingRanges) {
+            const sliced = sliceNumericFieldToRange(
+              field,
+              baseTimeNs,
+              missingRange,
+            );
+            cache.put({
+              bucketDurationNs,
+              coverageRanges: [missingRange],
+              range: missingRange,
+              seriesKey: key,
+              timesSec: sliced.timesSec,
+              unavailableRanges: [],
+              values: sliced.values,
+            });
           }
-          keySegments = insertSeriesSegment(keySegments, {
-            endNs: range.endNs,
-            startNs: range.startNs,
-            timesSec: sliced.timesSec,
-            values: sliced.values,
-          });
         }
-        if (keySegments.length > 0) {
-          segments.set(key, keySegments);
-        }
-        const flat = flattenSeriesSegments(keySegments);
-        published.set(key, {
-          status: "ready",
-          timesSec: flat.timesSec,
-          truncated: truncatedKeys.has(key) || undefined,
-          values: flat.values,
-        });
       }
     };
-    const publishCoverageProgress = (
+    const putUnavailable = (
+      selections: readonly NumericSeriesSliceSelection[],
+      rangesByStream: ReadonlyMap<string, readonly NsRange[]>,
+      bucketDurationNs: bigint,
+      timeOriginNs: bigint,
+    ) => {
+      const cache = cacheForOrigin(timeOriginNs);
+      for (const selection of selections) {
+        const ranges = rangesByStream.get(selection.stream) ?? [];
+        for (const field of selection.fields) {
+          const key = numericSeriesKey(selection.stream, field);
+          for (const range of ranges) {
+            const missingRanges = cache.assembleVisible({
+              bucketDurationNs,
+              range,
+              seriesKey: key,
+            }).unreadRanges;
+            for (const missingRange of missingRanges) {
+              cache.put({
+                bucketDurationNs,
+                coverageRanges: [],
+                range: missingRange,
+                seriesKey: key,
+                timesSec: new Float64Array(),
+                unavailableRanges: [missingRange],
+                values: new Float64Array(),
+              });
+            }
+          }
+        }
+      }
+    };
+    const putKnownEmpty = (
+      selections: readonly NumericSeriesSliceSelection[],
+      rangesByStream: ReadonlyMap<string, readonly NsRange[]>,
+      bucketDurationNs: bigint,
+      timeOriginNs: bigint,
+    ) => {
+      const cache = cacheForOrigin(timeOriginNs);
+      for (const selection of selections) {
+        const ranges = rangesByStream.get(selection.stream) ?? [];
+        for (const field of selection.fields) {
+          const key = numericSeriesKey(selection.stream, field);
+          for (const range of ranges) {
+            const missingRanges = cache.assembleVisible({
+              bucketDurationNs,
+              range,
+              seriesKey: key,
+            }).unreadRanges;
+            for (const missingRange of missingRanges) {
+              cache.put({
+                bucketDurationNs,
+                coverageRanges: [missingRange],
+                range: missingRange,
+                seriesKey: key,
+                timesSec: new Float64Array(),
+                unavailableRanges: [],
+                values: new Float64Array(),
+              });
+            }
+          }
+        }
+      }
+    };
+    const publishVisible = (
       selections: readonly NumericSeriesSliceSelection[],
       horizon: NsRange,
+      bucketDurationNs: bigint,
     ) => {
+      const cache = tileCache;
+      if (!cache) return;
       const targetSeconds = numericSeriesRangeDurationSeconds(horizon);
       for (const selection of selections) {
         for (const field of selection.fields) {
           const key = numericSeriesKey(selection.stream, field);
-          const state = published.get(key);
-          if (!state) {
-            continue;
-          }
-          published.set(key, {
-            ...state,
+          const assembled = cache.assembleVisible({
+            bucketDurationNs,
+            range: horizon,
+            seriesKey: key,
+          });
+          const flat = flattenSeriesSegments(
+            assembled.parts.map((part) => ({
+              endNs: part.range.endNs,
+              startNs: part.range.startNs,
+              timesSec: part.timesSec,
+              values: part.values,
+            })),
+          );
+          setPublished(key, {
+            coverage: assembled.coverageRanges,
             coverageSeconds: coveredNumericSeriesSeconds(
-              coverage.get(key) ?? [],
+              assembled.coverageRanges,
               horizon,
             ),
+            status: "ready",
             targetSeconds,
+            timesSec: flat.timesSec,
+            truncated: truncatedKeys.has(key) || undefined,
+            unavailable: assembled.unavailableRanges,
+            values: flat.values,
           });
         }
       }
+    };
+    const syncPinnedCacheDemand = (
+      keys: ReadonlySet<string>,
+      horizon: NsRange,
+      bucketDurationNs: bigint,
+      timeOriginNs: bigint,
+    ) => {
+      const cache = cacheForOrigin(timeOriginNs);
+      const nextPins = new Set<string>();
+      for (const key of keys) {
+        const pinId = `visible:${key}`;
+        nextPins.add(pinId);
+        cache.setPinnedDemand(pinId, {
+          bucketDurationNs,
+          range: horizon,
+          seriesKey: key,
+        });
+      }
+      for (const pinId of pinnedCacheKeys) {
+        if (!nextPins.has(pinId)) cache.setPinnedDemand(pinId, null);
+      }
+      pinnedCacheKeys.clear();
+      for (const pinId of nextPins) pinnedCacheKeys.add(pinId);
     };
 
     const stopBridge = startDemandBridge<
@@ -389,7 +641,6 @@ export function NumericSeriesBridge({
         return {
           ensureInventory: inventory.ensure,
           onDemandChanged() {
-            abortActiveWork();
             queueFill();
           },
         };
@@ -400,14 +651,17 @@ export function NumericSeriesBridge({
         later,
         nowMs,
         playheadSec,
-        queueFill,
         queueImmediateFill,
         timeline,
         userInitiated,
       }) {
         const window =
           playbackStore && timeline
-            ? quantizedNumericSeriesWindow(timeline, playheadSec)
+            ? numericSeriesDemandWindow(
+                timeline,
+                playheadSec,
+                publication.viewports.values(),
+              )
             : null;
         const demandedKeys = new Set(demandKeys);
         const now = nowMs();
@@ -423,13 +677,12 @@ export function NumericSeriesBridge({
             string,
             { fields: Set<string>; range: NsRange; stream: string }
           >();
-          let publishNeeded = false;
           for (const key of demandedKeys) {
             if (failures.isBlocked(key, now, userInitiated)) continue;
             const [stream, fieldPath] = splitNumericSeriesKey(key);
             for (const range of subtractCoveredRanges(
               fallbackRange,
-              coverage.get(key) ?? [],
+              legacyCoverage.get(key) ?? [],
             )) {
               const batchKey = `${stream}\0${range.startNs}:${range.endNs}`;
               let batch = batches.get(batchKey);
@@ -438,18 +691,14 @@ export function NumericSeriesBridge({
                 batches.set(batchKey, batch);
               }
               batch.fields.add(fieldPath);
-              coverage.set(
+              legacyCoverage.set(
                 key,
-                addCoveredRange(coverage.get(key) ?? [], range),
+                addCoveredRange(legacyCoverage.get(key) ?? [], range),
               );
               if (!published.has(key)) {
-                published.set(key, { status: "loading" });
-                publishNeeded = true;
+                setPublished(key, { status: "loading" });
               }
             }
-          }
-          if (publishNeeded) {
-            publishValues(published, isCancelled);
           }
           for (const batch of batches.values()) {
             const fields = [...batch.fields];
@@ -471,14 +720,27 @@ export function NumericSeriesBridge({
                 if (isCancelled() || controller.signal.aborted) {
                   return;
                 }
-                publishResult({
+                const bucketDurationNs = numericSeriesBucketDurationNs(
+                  batch.range,
+                  numericSeriesWindowPointBudget(
+                    batch.range,
+                    timeline?.durationSec,
+                  ),
+                );
+                putResult({
                   baseTimeNs: result.baseTimeNs,
+                  bucketDurationNs,
                   fields: result.fields,
                   ranges: [batch.range],
                   stream: batch.stream,
                   truncated: result.truncated,
                 });
-                publishValues(published, isCancelled);
+                publishVisible(
+                  [{ fields, stream: batch.stream }],
+                  batch.range,
+                  bucketDurationNs,
+                );
+                queueImmediateFill();
               })
               .catch((error: unknown) => {
                 legacyControllers.delete(controller);
@@ -489,19 +751,21 @@ export function NumericSeriesBridge({
                 const failedNow = nowMs();
                 for (const fieldPath of fields) {
                   const key = numericSeriesKey(batch.stream, fieldPath);
-                  coverage.set(
+                  legacyCoverage.set(
                     key,
-                    removeCoveredRange(coverage.get(key) ?? [], batch.range),
+                    removeCoveredRange(
+                      legacyCoverage.get(key) ?? [],
+                      batch.range,
+                    ),
                   );
                   if (refCountsRef.current.has(key)) {
                     failures.record(key, failedNow);
-                    if (!segments.has(key)) {
-                      published.set(key, { error: message, status: "error" });
+                    if (!published.get(key)?.timesSec?.length) {
+                      setPublished(key, { error: message, status: "error" });
                     }
                   }
                 }
-                publishValues(published, isCancelled);
-                later(queueFill, DEMAND_FAILURE_BACKOFF_MS);
+                later(queueImmediateFill, DEMAND_FAILURE_BACKOFF_MS);
               });
           }
           return;
@@ -509,9 +773,30 @@ export function NumericSeriesBridge({
         if (!timeline) {
           return;
         }
-        const preferredTimeNs = timeline.secToNs(playheadSec);
-
-        const horizonKey = `${window.startNs}:${window.endNs}`;
+        const maxPointsPerField = numericSeriesDemandPointBudget(
+          window,
+          timeline.durationSec,
+          publication.viewports.values(),
+        );
+        const bucketDurationNs = numericSeriesBucketDurationNs(
+          window,
+          maxPointsPerField,
+        );
+        const rawPreferredTimeNs = timeline.secToNs(playheadSec);
+        const preferredTimeNs =
+          rawPreferredTimeNs < window.startNs
+            ? window.startNs
+            : rawPreferredTimeNs > window.endNs
+              ? window.endNs
+              : rawPreferredTimeNs;
+        const horizonKey = `${window.startNs}:${window.endNs}:${bucketDurationNs}`;
+        const cache = cacheForOrigin(timeline.startTimeNs);
+        syncPinnedCacheDemand(
+          demandedKeys,
+          window,
+          bucketDurationNs,
+          timeline.startTimeNs,
+        );
         if (activeSlice) {
           if (activeSlice.job.horizonKey === horizonKey) {
             return;
@@ -536,31 +821,37 @@ export function NumericSeriesBridge({
           pendingSlice = undefined;
         }
 
+        if (job?.notBeforeMs !== undefined && now < job.notBeforeMs) {
+          later(queueImmediateFill, job.notBeforeMs - now);
+          return;
+        }
+
         if (!job) {
           const missing = new Map<string, readonly NsRange[]>();
           const candidates: NsRange[] = [];
-          let publishNeeded = false;
           for (const key of demandedKeys) {
             if (failures.isBlocked(key, now, userInitiated)) continue;
-            const ranges = subtractCoveredRanges(
-              window,
-              coverage.get(key) ?? [],
-            );
+            const ranges = cache.assembleVisible({
+              bucketDurationNs,
+              range: window,
+              seriesKey: key,
+            }).unreadRanges;
             if (ranges.length === 0) {
               continue;
             }
             missing.set(key, ranges);
             candidates.push(...ranges);
             if (!published.has(key)) {
-              published.set(key, { status: "loading" });
-              publishNeeded = true;
+              setPublished(key, { status: "loading" });
             }
-          }
-          if (publishNeeded) {
-            publishValues(published, isCancelled);
           }
           const range = nearestNumericSeriesRange(candidates, preferredTimeNs);
           if (!range) {
+            publishVisible(
+              selectionsForNumericSeriesKeys(demandedKeys),
+              window,
+              bucketDurationNs,
+            );
             return;
           }
           const fieldsByStream = new Map<string, Set<string>>();
@@ -581,7 +872,11 @@ export function NumericSeriesBridge({
             fields.add(field);
           }
           job = {
+            bucketDurationNs,
+            horizon: window,
             horizonKey,
+            maxPointsPerField,
+            pageCount: 0,
             preferredTimeNs,
             range,
             selections: [...fieldsByStream].map(([stream, fields]) => ({
@@ -591,7 +886,7 @@ export function NumericSeriesBridge({
           };
         }
 
-        const sliceJob = job;
+        const sliceJob: NumericSliceJob = job;
         pendingSlice = undefined;
         const controller = new AbortController();
         activeSlice = { controller, job: sliceJob };
@@ -607,10 +902,7 @@ export function NumericSeriesBridge({
             maxChunks: isFirstPage
               ? FIRST_NUMERIC_SLICE_MAX_CHUNKS
               : STEADY_NUMERIC_SLICE_MAX_CHUNKS,
-            maxPointsPerField: numericSeriesWindowPointBudget(
-              sliceJob.range,
-              timeline.durationSec,
-            ),
+            maxPointsPerField: sliceJob.maxPointsPerField,
             preferredTimeNs: sliceJob.preferredTimeNs,
             selections: sliceJob.selections,
             signal: controller.signal,
@@ -625,75 +917,124 @@ export function NumericSeriesBridge({
               return;
             }
             activeSlice = undefined;
-            if (
-              result.stopReason === "budget-exhausted" &&
-              !result.continuation &&
-              result.usage.chunksOpened === 0
-            ) {
+            const hasNewProgress = sliceJob.selections.some((selection) => {
+              const reported = [
+                ...(result.coverageByStream.get(selection.stream) ?? []),
+                ...(result.unavailableByStream?.get(selection.stream) ?? []),
+              ];
+              return selection.fields.some((field) => {
+                const seriesKey = numericSeriesKey(selection.stream, field);
+                return reported.some(
+                  (range) =>
+                    cache.assembleVisible({
+                      bucketDurationNs: sliceJob.bucketDurationNs,
+                      range,
+                      seriesKey,
+                    }).unreadRanges.length > 0,
+                );
+              });
+            });
+            if (result.continuation && !hasNewProgress) {
               throw new Error("Numeric series slice made no bounded progress");
             }
 
-            const terminal =
-              result.stopReason === "source-exhausted" ||
-              result.stopReason === "oversized-source-unit";
+            const timeOriginNs =
+              result.series[0]?.baseTimeNs ?? timeline.startTimeNs;
             for (const selection of sliceJob.selections) {
-              const ranges =
-                result.coverageByStream.get(selection.stream) ?? [];
+              const skipped =
+                result.unavailableByStream?.get(selection.stream) ?? [];
               for (const field of selection.fields) {
                 const key = numericSeriesKey(selection.stream, field);
-                let covered = coverage.get(key) ?? [];
-                for (const range of ranges) {
-                  covered = addCoveredRange(covered, range);
-                }
-                if (terminal) {
-                  covered = addCoveredRange(covered, sliceJob.range);
-                }
-                coverage.set(key, covered);
                 failures.clear(key);
-                if (result.stopReason === "oversized-source-unit") {
+                if (skipped.length > 0) {
                   truncatedKeys.add(key);
                 }
               }
             }
 
-            const returnedStreams = new Set<string>();
             for (const series of result.series) {
-              returnedStreams.add(series.streamId);
-              publishResult({
+              putResult({
                 baseTimeNs: series.baseTimeNs,
+                bucketDurationNs: sliceJob.bucketDurationNs,
                 fields: series.fields,
-                ranges: result.coverageByStream.get(series.streamId) ?? [
-                  sliceJob.range,
-                ],
+                ranges: result.coverageByStream.get(series.streamId) ?? [],
                 stream: series.streamId,
                 truncated:
                   series.truncated ||
-                  result.stopReason === "oversized-source-unit",
+                  (result.unavailableByStream?.get(series.streamId)?.length ??
+                    0) > 0,
               });
             }
-            for (const selection of sliceJob.selections) {
-              if (returnedStreams.has(selection.stream)) {
-                continue;
-              }
-              publishResult({
-                baseTimeNs: 0n,
-                fields: selection.fields.map((path) => ({
-                  path,
-                  timesSec: new Float64Array(),
-                  values: new Float64Array(),
-                })),
-                ranges: [],
-                stream: selection.stream,
-                truncated: result.stopReason === "oversized-source-unit",
-              });
+            putKnownEmpty(
+              sliceJob.selections,
+              result.coverageByStream,
+              sliceJob.bucketDurationNs,
+              timeOriginNs,
+            );
+            putUnavailable(
+              sliceJob.selections,
+              result.unavailableByStream ?? new Map(),
+              sliceJob.bucketDurationNs,
+              timeOriginNs,
+            );
+            if (
+              !result.continuation &&
+              (result.stopReason === "source-exhausted" ||
+                result.stopReason === "oversized-source-unit")
+            ) {
+              putKnownEmpty(
+                sliceJob.selections,
+                new Map(
+                  sliceJob.selections.map((selection) => [
+                    selection.stream,
+                    [sliceJob.range],
+                  ]),
+                ),
+                sliceJob.bucketDurationNs,
+                timeOriginNs,
+              );
             }
-            publishCoverageProgress(sliceJob.selections, sliceJob.range);
-            publishValues(published, isCancelled);
+            publishVisible(
+              sliceJob.selections,
+              sliceJob.horizon,
+              sliceJob.bucketDurationNs,
+            );
 
-            pendingSlice = result.continuation
-              ? { ...sliceJob, continuation: result.continuation }
-              : undefined;
-            queueImmediateFill();
+            const nextPageCount = sliceJob.pageCount + 1;
+            if (
+              result.continuation &&
+              nextPageCount < MAX_NUMERIC_SLICE_PAGES_PER_EPOCH
+            ) {
+              pendingSlice = {
+                ...sliceJob,
+                continuation: result.continuation,
+                notBeforeMs: undefined,
+                pageCount: nextPageCount,
+              };
+              queueImmediateFill();
+            } else {
+              pendingSlice = undefined;
+              if (result.continuation) {
+                const pausedAt = nowMs();
+                pendingSlice = {
+                  ...sliceJob,
+                  continuation: result.continuation,
+                  notBeforeMs: pausedAt + DEMAND_FAILURE_BACKOFF_MS,
+                  pageCount: 0,
+                };
+                for (const selection of sliceJob.selections) {
+                  for (const field of selection.fields) {
+                    failures.record(
+                      numericSeriesKey(selection.stream, field),
+                      pausedAt,
+                    );
+                  }
+                }
+                later(queueImmediateFill, DEMAND_FAILURE_BACKOFF_MS);
+              } else {
+                queueImmediateFill();
+              }
+            }
           })
           .catch((error: unknown) => {
             if (activeSlice?.controller === controller) {
@@ -714,14 +1055,13 @@ export function NumericSeriesBridge({
                 const key = numericSeriesKey(selection.stream, field);
                 if (refCountsRef.current.has(key)) {
                   failures.record(key, failedNow);
-                  if (!segments.has(key)) {
-                    published.set(key, { error: message, status: "error" });
+                  if (!published.get(key)?.timesSec?.length) {
+                    setPublished(key, { error: message, status: "error" });
                   }
                 }
               }
             }
-            publishValues(published, isCancelled);
-            later(queueFill, DEMAND_FAILURE_BACKOFF_MS);
+            later(queueImmediateFill, DEMAND_FAILURE_BACKOFF_MS);
           });
       },
       playbackStore,
@@ -735,13 +1075,16 @@ export function NumericSeriesBridge({
     return () => {
       abortActiveWork();
       stopBridge();
+      publicationEpoch.cancel();
+      publication.store.reset();
+      publication.valuesByKey.clear();
     };
   }, [
     capability,
     handlersRef,
     inventoryReplay,
     playbackStore,
-    publishValues,
+    publication,
     refCountsRef,
     reset,
     setInventory,
@@ -755,4 +1098,104 @@ export function NumericSeriesBridge({
 
 function useInternalValue() {
   return numericSeriesDemandContext.useDemandContext();
+}
+
+function usePublicationValue(): NumericSeriesPublicationContextValue {
+  const value = useContext(numericSeriesPublicationContext);
+  if (!value) {
+    throw new Error(
+      "episode numeric series must be used inside <NumericSeriesProvider>",
+    );
+  }
+  return value;
+}
+
+function scheduleNumericSeriesFrame(publish: () => void): () => void {
+  if (typeof requestAnimationFrame === "function") {
+    const frame = requestAnimationFrame(publish);
+    return () => cancelAnimationFrame(frame);
+  }
+  const timeout = setTimeout(publish, 16);
+  return () => clearTimeout(timeout);
+}
+
+function numericSeriesDemandWindow(
+  timeline: TimelineIndex,
+  playheadSec: number,
+  viewports: Iterable<NumericSeriesViewportDemand>,
+): NsRange {
+  const pinned = smallestPinnedViewport(viewports);
+  if (!pinned) return quantizedNumericSeriesWindow(timeline, playheadSec);
+  const startSec = Math.max(0, Math.min(pinned.startSec, pinned.endSec));
+  const endSec = Math.min(
+    timeline.durationSec,
+    Math.max(pinned.startSec, pinned.endSec),
+  );
+  const startNs = timeline.secToNs(startSec);
+  const endNs = timeline.secToNs(endSec);
+  return endNs >= startNs ? { endNs, startNs } : { endNs: startNs, startNs };
+}
+
+function numericSeriesDemandPointBudget(
+  range: NsRange,
+  durationSec: number,
+  viewports: Iterable<NumericSeriesViewportDemand>,
+): number {
+  const pinned = smallestPinnedViewport(viewports);
+  if (!pinned) return numericSeriesWindowPointBudget(range, durationSec);
+  return Math.max(200, Math.min(4_000, Math.round(pinned.pixelWidth * 2)));
+}
+
+function numericSeriesBucketDurationNs(
+  range: NsRange,
+  maxPoints: number,
+): bigint {
+  const spanNs = range.endNs - range.startNs + 1n;
+  const buckets = BigInt(
+    Math.max(
+      1,
+      Math.floor((maxPoints - 2) / NUMERIC_SERIES_MAX_BUCKET_SURVIVORS),
+    ),
+  );
+  return (spanNs + buckets - 1n) / buckets;
+}
+
+function smallestPinnedViewport(
+  viewports: Iterable<NumericSeriesViewportDemand>,
+): NumericSeriesViewportDemand | undefined {
+  return [...viewports]
+    .filter((viewport) => viewport.mode === "pinned")
+    .sort(
+      (left, right) =>
+        left.endSec - left.startSec - (right.endSec - right.startSec),
+    )[0];
+}
+
+function selectionsForNumericSeriesKeys(
+  keys: Iterable<string>,
+): readonly NumericSeriesSliceSelection[] {
+  const fieldsByStream = new Map<string, string[]>();
+  for (const key of keys) {
+    const [stream, field] = splitNumericSeriesKey(key);
+    const fields = fieldsByStream.get(stream) ?? [];
+    fields.push(field);
+    fieldsByStream.set(stream, fields);
+  }
+  return [...fieldsByStream].map(([stream, fields]) => ({ fields, stream }));
+}
+
+function sameViewportDemand(
+  left: NumericSeriesViewportDemand | undefined,
+  right: NumericSeriesViewportDemand | null,
+): boolean {
+  return (
+    left === right ||
+    (left === undefined && right === null) ||
+    (left !== undefined &&
+      right !== null &&
+      left.endSec === right.endSec &&
+      left.mode === right.mode &&
+      left.pixelWidth === right.pixelWidth &&
+      left.startSec === right.startSec)
+  );
 }

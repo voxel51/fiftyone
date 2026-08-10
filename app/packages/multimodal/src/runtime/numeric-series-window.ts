@@ -20,6 +20,12 @@ export type { NsRange } from "../ir";
 /** Width of the plot fetch horizon centered on the playhead. */
 export const PLOT_WINDOW_SECONDS = 60;
 
+/** Alignment quantum shared by follow-mode rendering and acquisition. */
+export const PLOT_WINDOW_QUANTUM_SECONDS = 15;
+
+/** Maximum retained samples for one gap-preserving M4 bucket. */
+export const NUMERIC_SERIES_MAX_BUCKET_SURVIVORS = 5;
+
 /** Coverage sentinel for adapters without bounded numeric-series slices. */
 export const FULL_NUMERIC_SERIES_COVERAGE: NsRange = {
   endNs: 1n << 62n,
@@ -27,7 +33,7 @@ export const FULL_NUMERIC_SERIES_COVERAGE: NsRange = {
 };
 
 const WINDOW_HALF_NS = BigInt(PLOT_WINDOW_SECONDS / 2) * 1_000_000_000n;
-const WINDOW_QUANTUM_NS = 15_000_000_000n;
+const WINDOW_QUANTUM_NS = BigInt(PLOT_WINDOW_QUANTUM_SECONDS) * 1_000_000_000n;
 const FULL_RANGE_POINT_BUDGET = 4_000;
 const MIN_WINDOW_POINT_BUDGET = 200;
 
@@ -312,7 +318,13 @@ export function flattenSeriesSegments(
     return { timesSec: new Float64Array(0), values: new Float64Array(0) };
   }
 
-  const separators = nonEmpty.length - 1;
+  const separators = nonEmpty.reduce(
+    (count, segment, index) =>
+      index > 0 && nonEmpty[index - 1].endNs + 1n < segment.startNs
+        ? count + 1
+        : count,
+    0,
+  );
   const total =
     nonEmpty.reduce((sum, segment) => sum + segment.timesSec.length, 0) +
     separators;
@@ -324,9 +336,10 @@ export function flattenSeriesSegments(
     timesSec.set(segment.timesSec, offset);
     values.set(segment.values, offset);
     offset += segment.timesSec.length;
-    if (index < nonEmpty.length - 1) {
+    const next = nonEmpty[index + 1];
+    if (next && segment.endNs + 1n < next.startNs) {
       const previousLast = segment.timesSec[segment.timesSec.length - 1];
-      const nextFirst = nonEmpty[index + 1].timesSec[0];
+      const nextFirst = next.timesSec[0];
       timesSec[offset] = (previousLast + nextFirst) / 2;
       values[offset] = Number.NaN;
       offset += 1;

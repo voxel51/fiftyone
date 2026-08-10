@@ -14,6 +14,7 @@ import {
   mcapDecompressedChunkKeyForIndex,
 } from "./chunk-records";
 import { type McapDecompressedChunkCache } from "./decompressed-chunk-cache";
+import { parseMcapIndexedMessage } from "./indexed-message-reader";
 import {
   channelIdsForTopics,
   collectChunkMessageIndexReadRanges,
@@ -24,6 +25,7 @@ import { MCAP_BOUNDED_GRANT_YIELD_INTERVAL } from "./consume-bounded-grant";
 import type {
   McapBoundedMessageReadRequest,
   McapBoundedMessageReadResult,
+  McapIndexedMessageTime,
   McapIndexedReaderLike,
   McapReadContinuation,
 } from "./types";
@@ -35,13 +37,19 @@ const MCAP_BOUNDED_READ_ABORT_MESSAGE = "MCAP bounded read aborted";
 interface OrderedMessage {
   readonly chunkStartOffset: bigint;
   readonly message: McapMessage;
-  readonly recordOrder: number;
+  readonly recordOrder: bigint;
 }
 
 interface ChunkGroup {
   readonly chunks: readonly McapChunkIndex[];
   readonly endTimeNs: bigint;
   readonly startTimeNs: bigint;
+}
+
+interface ChunkMessageSelection {
+  /** Null when this chunk has no message indexes and requires a full scan. */
+  readonly entries: readonly McapIndexedMessageTime[] | null;
+  readonly chunk: McapChunkIndex;
 }
 
 /** Dependencies for one source-bound bounded MCAP executor. */
@@ -105,6 +113,13 @@ export function createMcapBoundedReader({
     });
     const logicalRanges: ByteRange[] = [];
     const coverageByTopic = new Map<
+      string,
+      Array<{
+        readonly endNs: bigint;
+        readonly startNs: bigint;
+      }>
+    >();
+    const skippedByTopic = new Map<
       string,
       Array<{
         readonly endNs: bigint;
@@ -188,6 +203,14 @@ export function createMcapBoundedReader({
           groupLogicalSourceBytes > request.absoluteBudget.maxSourceBytes ||
           groupUncompressedBytes > request.absoluteBudget.maxUncompressedBytes
         ) {
+          recordCoverage({
+            channelIds,
+            coverageByTopic: skippedByTopic,
+            group,
+            reader,
+            request,
+          });
+          groupIndex += 1;
           stopReason = "oversized-source-unit";
           break;
         }
@@ -201,7 +224,7 @@ export function createMcapBoundedReader({
           break;
         }
 
-        const indexedMessageCount = await countSelectedIndexedMessages({
+        const chunkSelections = await readSelectedIndexedMessageEntries({
           channelIds,
           group,
           onRead: (range, transferred) => {
@@ -212,11 +235,23 @@ export function createMcapBoundedReader({
           reader,
           request,
         });
+        const indexedMessageCount = chunkSelections.reduce(
+          (count, selection) => count + (selection.entries?.length ?? 0),
+          0,
+        );
         if (wallTimeExpired(nowMs, startedAtMs, request.budget.maxWallTimeMs)) {
           stopReason = "budget-exhausted";
           break;
         }
         if (indexedMessageCount > request.absoluteBudget.maxMessages) {
+          recordCoverage({
+            channelIds,
+            coverageByTopic: skippedByTopic,
+            group,
+            reader,
+            request,
+          });
+          groupIndex += 1;
           stopReason = "oversized-source-unit";
           break;
         }
@@ -229,7 +264,13 @@ export function createMcapBoundedReader({
         }
 
         const groupMessages: OrderedMessage[] = [];
-        for (const chunk of group.chunks) {
+        let selectedEntriesParsed = 0;
+        let fallbackStopReason:
+          | "budget-exhausted"
+          | "oversized-source-unit"
+          | undefined;
+        for (const selection of chunkSelections) {
+          const { chunk } = selection;
           throwIfAborted(request.signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
           const plannedFill = readable.planReadRange(
             chunk.chunkStartOffset,
@@ -284,42 +325,73 @@ export function createMcapBoundedReader({
             decompressionCacheHits += 1;
           }
 
-          const messages = parseChunkMessages({
-            bytes: decompressed.bytes,
-            channelPreamble,
-          });
-
-          let recordOrder = 0;
-          for (const message of messages) {
-            if (
-              recordOrder > 0 &&
-              recordOrder % MCAP_BOUNDED_GRANT_YIELD_INTERVAL === 0
-            ) {
-              await taskYield();
-            }
-            throwIfAborted(request.signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
-            if (
-              channelIds.has(message.channelId) &&
-              isWithinWindow(
-                message.logTime,
-                request.startTimeNs,
-                request.endTimeNs,
-              )
-            ) {
+          if (selection.entries) {
+            for (const entry of selection.entries) {
+              if (
+                selectedEntriesParsed > 0 &&
+                selectedEntriesParsed % MCAP_BOUNDED_GRANT_YIELD_INTERVAL === 0
+              ) {
+                await taskYield();
+              }
+              throwIfAborted(request.signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
+              const message = parseMcapIndexedMessage(
+                decompressed.bytes,
+                entry,
+              );
               groupMessages.push({
                 chunkStartOffset: chunk.chunkStartOffset,
                 message,
-                recordOrder,
+                recordOrder: entry.messageOffset,
               });
               messagesDecoded += 1;
+              selectedEntriesParsed += 1;
             }
-            recordOrder += 1;
+            continue;
+          }
+
+          const remainingGrantMessages =
+            request.budget.maxMessages - messagesDecoded;
+          const remainingAbsoluteGroupMessages =
+            request.absoluteBudget.maxMessages - groupMessages.length;
+          const maxSelectedMessages = Math.max(
+            0,
+            Math.min(remainingGrantMessages, remainingAbsoluteGroupMessages),
+          );
+          const fallback = await parseChunkMessagesFallback({
+            bytes: decompressed.bytes,
+            channelIds,
+            channelPreamble,
+            chunkStartOffset: chunk.chunkStartOffset,
+            endTimeNs: request.endTimeNs,
+            maxSelectedMessages,
+            signal: request.signal,
+            startTimeNs: request.startTimeNs,
+            taskYield,
+          });
+          groupMessages.push(...fallback.messages);
+          messagesDecoded += fallback.messages.length;
+          if (!fallback.complete) {
+            fallbackStopReason =
+              remainingAbsoluteGroupMessages <= remainingGrantMessages
+                ? "oversized-source-unit"
+                : "budget-exhausted";
+            break;
           }
         }
-        if (groupMessages.length !== indexedMessageCount) {
-          throw new Error(
-            `MCAP bounded read index/data mismatch: indexed ${indexedMessageCount}, decoded ${groupMessages.length}`,
-          );
+
+        if (fallbackStopReason) {
+          if (fallbackStopReason === "oversized-source-unit") {
+            recordCoverage({
+              channelIds,
+              coverageByTopic: skippedByTopic,
+              group,
+              reader,
+              request,
+            });
+            groupIndex += 1;
+          }
+          stopReason = fallbackStopReason;
+          break;
         }
 
         groupMessages.sort(compareOrderedMessages);
@@ -351,7 +423,7 @@ export function createMcapBoundedReader({
       assertUsageWithinGrant(usage, request);
 
       return {
-        ...(stopReason !== "oversized-source-unit" && groupIndex < groups.length
+        ...(groupIndex < groups.length
           ? {
               continuation: continuationFor({
                 endTimeNs: request.endTimeNs,
@@ -375,6 +447,12 @@ export function createMcapBoundedReader({
           ? { resumeAtNs: groups[groupIndex].startTimeNs }
           : {}),
         stopReason,
+        skippedByTopic: new Map(
+          [...skippedByTopic].map(([topic, windows]) => [
+            topic,
+            mergeCoverage(windows),
+          ]),
+        ),
         usage,
       };
     } catch (error) {
@@ -469,7 +547,7 @@ function distanceToGroup(group: ChunkGroup, preferredTimeNs: bigint): bigint {
   return 0n;
 }
 
-async function countSelectedIndexedMessages({
+async function readSelectedIndexedMessageEntries({
   channelIds,
   group,
   onRead,
@@ -483,10 +561,14 @@ async function countSelectedIndexedMessages({
   readonly readable: ByteClientReadable;
   readonly reader: McapIndexedReaderLike;
   readonly request: McapBoundedMessageReadRequest;
-}): Promise<number> {
-  let count = 0;
+}): Promise<readonly ChunkMessageSelection[]> {
+  const selections: ChunkMessageSelection[] = [];
   for (const chunk of group.chunks) {
     throwIfAborted(request.signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
+    if (chunk.messageIndexOffsets.size === 0) {
+      selections.push({ chunk, entries: null });
+      continue;
+    }
     const entries = await readChunkIndexedMessageTimes({
       channelIds,
       chunkIndex: chunk,
@@ -509,18 +591,35 @@ async function countSelectedIndexedMessages({
       reader,
       startTimeNs: request.startTimeNs,
     });
-    count += entries.length;
+    selections.push({ chunk, entries });
   }
-  return count;
+  return selections;
 }
 
-function parseChunkMessages({
+async function parseChunkMessagesFallback({
   bytes,
+  channelIds,
   channelPreamble,
+  chunkStartOffset,
+  endTimeNs,
+  maxSelectedMessages,
+  signal,
+  startTimeNs,
+  taskYield,
 }: {
   readonly bytes: Uint8Array;
+  readonly channelIds: ReadonlySet<number>;
   readonly channelPreamble: Uint8Array;
-}): readonly McapMessage[] {
+  readonly chunkStartOffset: bigint;
+  readonly endTimeNs: bigint | undefined;
+  readonly maxSelectedMessages: number;
+  readonly signal: AbortSignal | undefined;
+  readonly startTimeNs: bigint | undefined;
+  readonly taskYield: () => Promise<void>;
+}): Promise<{
+  readonly complete: boolean;
+  readonly messages: readonly OrderedMessage[];
+}> {
   const stream = new McapStreamReader({
     noMagicPrefix: true,
     validateCrcs: true,
@@ -530,19 +629,38 @@ function parseChunkMessages({
     // Prime channel identity before the standalone Chunk record.
   }
   stream.append(bytes);
-  const messages: McapMessage[] = [];
-  let record: McapTypes.TypedMcapRecord | undefined;
-  while ((record = stream.nextRecord())) {
-    if (record.type === "Message") {
-      messages.push(record);
+  const messages: OrderedMessage[] = [];
+  let recordOrder = 0;
+  throwIfAborted(signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
+  let record = stream.nextRecord();
+  while (record) {
+    if (
+      record.type === "Message" &&
+      channelIds.has(record.channelId) &&
+      isWithinWindow(record.logTime, startTimeNs, endTimeNs)
+    ) {
+      if (messages.length >= maxSelectedMessages) {
+        return { complete: false, messages };
+      }
+      messages.push({
+        chunkStartOffset,
+        message: record,
+        recordOrder: BigInt(recordOrder),
+      });
     }
+    recordOrder += 1;
+    if (recordOrder % MCAP_BOUNDED_GRANT_YIELD_INTERVAL === 0) {
+      await taskYield();
+    }
+    throwIfAborted(signal, MCAP_BOUNDED_READ_ABORT_MESSAGE);
+    record = stream.nextRecord();
   }
   if (stream.bytesRemaining() !== 0) {
     throw new Error(
       `MCAP bounded chunk parser retained ${stream.bytesRemaining()} bytes`,
     );
   }
-  return messages;
+  return { complete: true, messages };
 }
 
 function serializeChannelPreamble(
@@ -630,7 +748,11 @@ function recordCoverage({
       request.endTimeNs < chunk.messageEndTime
         ? request.endTimeNs
         : chunk.messageEndTime;
-    for (const channelId of chunk.messageIndexOffsets.keys()) {
+    const coveredChannelIds =
+      chunk.messageIndexOffsets.size > 0
+        ? chunk.messageIndexOffsets.keys()
+        : channelIds;
+    for (const channelId of coveredChannelIds) {
       if (!channelIds.has(channelId)) {
         continue;
       }
@@ -677,7 +799,7 @@ function compareOrderedMessages(
     return left.chunkStartOffset < right.chunkStartOffset ? -1 : 1;
   }
   if (left.recordOrder !== right.recordOrder) {
-    return left.recordOrder - right.recordOrder;
+    return left.recordOrder < right.recordOrder ? -1 : 1;
   }
   return left.message.channelId - right.message.channelId;
 }
@@ -721,8 +843,13 @@ function chunkHasSelectedChannel(
   chunk: McapChunkIndex,
   channelIds: ReadonlySet<number>,
 ): boolean {
-  if (chunk.messageIndexOffsets.size === 0) {
+  if (channelIds.size === 0) {
     return false;
+  }
+  if (chunk.messageIndexOffsets.size === 0) {
+    // Without per-channel indexes the chunk remains an unknown candidate and
+    // must take the cooperative full-record fallback after physical admission.
+    return true;
   }
   for (const channelId of chunk.messageIndexOffsets.keys()) {
     if (channelIds.has(channelId)) {

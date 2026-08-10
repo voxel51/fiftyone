@@ -10,6 +10,10 @@ export {
 } from "../query/bytes/network-meter";
 /** Public inclusive range and numeric-series bookkeeping. */
 export * from "./numeric-series-window";
+/** Public source-epoch numeric-series tile retention and assembly. */
+export * from "./numeric-series-tile-cache";
+/** Public per-key, frame-coalesced plot publication state. */
+export * from "./plot-publication-store";
 /** Public point-cloud construction, sampling, and channel-encoding policy. */
 export * from "./point-cloud-channel-encoding";
 export * from "./point-cloud-render-payload";

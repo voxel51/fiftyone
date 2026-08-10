@@ -421,6 +421,12 @@ export function createMcapNumericSeriesCapability({
             windows,
           ]),
         ),
+        unavailableByStream: new Map(
+          [...result.skippedByTopic].map(([topic, windows]) => [
+            streamsByTopic.get(topic) ?? topic,
+            windows,
+          ]),
+        ),
         series: result.series.map((entry) => ({
           baseTimeNs: result.baseTimeNs,
           fields: entry.fields,

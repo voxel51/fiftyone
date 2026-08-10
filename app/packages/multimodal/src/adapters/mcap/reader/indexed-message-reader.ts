@@ -1,12 +1,14 @@
 import type { McapTypes } from "@mcap/core";
 import { safeNumber } from "../../../query/bytes/bigint-utils";
 import { throwIfAborted } from "../../../utils/cancellation";
+import { yieldToTask } from "../../../utils/task-yield";
 import { ByteClientReadable } from "./byte-readable";
 import {
   decompressMcapChunkRecord,
   mcapDecompressedChunkKeyForIndex,
 } from "./chunk-records";
 import { type McapDecompressedChunkCache } from "./decompressed-chunk-cache";
+import { MCAP_BOUNDED_GRANT_YIELD_INTERVAL } from "./consume-bounded-grant";
 import type {
   McapIndexedMessageTime,
   McapIndexedReaderLike,
@@ -32,6 +34,7 @@ export interface CreateMcapIndexedMessageReaderOptions {
   readonly readable: ByteClientReadable;
   readonly reader: McapIndexedReaderLike;
   readonly sourceKey: string | (() => string);
+  readonly taskYield?: () => Promise<void>;
 }
 
 /**
@@ -44,6 +47,7 @@ export function createMcapIndexedMessageReader({
   readable,
   reader,
   sourceKey,
+  taskYield = yieldToTask,
 }: CreateMcapIndexedMessageReaderOptions): McapIndexedMessageReader {
   const chunkIndexes = new Map<bigint, McapChunkIndex>(
     reader.chunkIndexes.map((chunk: McapChunkIndex) => [
@@ -66,6 +70,7 @@ export function createMcapIndexedMessageReader({
     }
 
     const messagesByEntry = new Map<McapIndexedMessageTime, McapMessage>();
+    let parsedEntries = 0;
     for (const [chunkStartOffset, selected] of entriesByChunk) {
       throwIfAborted(signal, MCAP_INDEXED_READ_ABORT_MESSAGE);
       const chunk = chunkIndexes.get(chunkStartOffset);
@@ -86,8 +91,15 @@ export function createMcapIndexedMessageReader({
       throwIfAborted(signal, MCAP_INDEXED_READ_ABORT_MESSAGE);
 
       for (const entry of selected) {
+        if (
+          parsedEntries > 0 &&
+          parsedEntries % MCAP_BOUNDED_GRANT_YIELD_INTERVAL === 0
+        ) {
+          await taskYield();
+        }
         throwIfAborted(signal, MCAP_INDEXED_READ_ABORT_MESSAGE);
-        messagesByEntry.set(entry, parseIndexedMessage(records, entry));
+        messagesByEntry.set(entry, parseMcapIndexedMessage(records, entry));
+        parsedEntries += 1;
       }
     }
 
@@ -142,7 +154,7 @@ async function loadChunkRecords({
   return result.bytes;
 }
 
-function parseIndexedMessage(
+export function parseMcapIndexedMessage(
   records: Uint8Array,
   entry: McapIndexedMessageTime,
 ): McapMessage {

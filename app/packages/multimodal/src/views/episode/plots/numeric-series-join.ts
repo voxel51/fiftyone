@@ -17,13 +17,7 @@ export function joinNumericSeries(
     readonly values: Float64Array;
   }[],
 ): JoinedNumericSeries {
-  const merged = new Set<number>();
-  for (const entry of series) {
-    for (const time of entry.timesSec) {
-      merged.add(time);
-    }
-  }
-  const xs = [...merged].sort((a, b) => a - b);
+  const xs = mergeSortedTimestamps(series.map((entry) => entry.timesSec));
 
   const ys = series.map((entry) => {
     const column: (number | null)[] = new Array(xs.length).fill(null);
@@ -45,4 +39,77 @@ export function joinNumericSeries(
   });
 
   return { xs, ys };
+}
+
+interface TimestampCursor {
+  readonly column: number;
+  readonly index: number;
+  readonly time: number;
+}
+
+/** K-way merge of already-sorted viewport inputs; no full-history Set/sort. */
+function mergeSortedTimestamps(columns: readonly Float64Array[]): number[] {
+  const heap: TimestampCursor[] = [];
+  for (let column = 0; column < columns.length; column += 1) {
+    if (columns[column].length > 0) {
+      pushTimestamp(heap, { column, index: 0, time: columns[column][0] });
+    }
+  }
+
+  const merged: number[] = [];
+  while (heap.length > 0) {
+    const cursor = popTimestamp(heap);
+    if (merged.at(-1) !== cursor.time) merged.push(cursor.time);
+    const nextIndex = cursor.index + 1;
+    const column = columns[cursor.column];
+    if (nextIndex < column.length) {
+      pushTimestamp(heap, {
+        column: cursor.column,
+        index: nextIndex,
+        time: column[nextIndex],
+      });
+    }
+  }
+  return merged;
+}
+
+function pushTimestamp(heap: TimestampCursor[], cursor: TimestampCursor): void {
+  let index = heap.length;
+  heap.push(cursor);
+  while (index > 0) {
+    const parent = (index - 1) >>> 1;
+    if (!timestampCursorBefore(heap[index], heap[parent])) break;
+    [heap[index], heap[parent]] = [heap[parent], heap[index]];
+    index = parent;
+  }
+}
+
+function popTimestamp(heap: TimestampCursor[]): TimestampCursor {
+  const first = heap[0];
+  const last = heap.pop();
+  if (!last || heap.length === 0) return first;
+  heap[0] = last;
+  let index = 0;
+  for (;;) {
+    const left = index * 2 + 1;
+    if (left >= heap.length) break;
+    const right = left + 1;
+    const child =
+      right < heap.length && timestampCursorBefore(heap[right], heap[left])
+        ? right
+        : left;
+    if (!timestampCursorBefore(heap[child], heap[index])) break;
+    [heap[index], heap[child]] = [heap[child], heap[index]];
+    index = child;
+  }
+  return first;
+}
+
+function timestampCursorBefore(
+  left: TimestampCursor,
+  right: TimestampCursor,
+): boolean {
+  if (left.time !== right.time) return left.time < right.time;
+  if (left.column !== right.column) return left.column < right.column;
+  return left.index < right.index;
 }

@@ -26,15 +26,18 @@ import type {
 interface MessageSpec {
   readonly channelId: number;
   readonly data?: Uint8Array;
+  readonly indexLogTime?: bigint;
   readonly logTime: bigint;
   readonly sequence?: number;
 }
 
 interface ChunkSpec {
   readonly compression?: "" | "fake";
+  readonly corruptRecordSequence?: number;
   readonly indexEndTime?: bigint;
   readonly indexStartTime?: bigint;
   readonly messages: readonly MessageSpec[];
+  readonly omitMessageIndexes?: boolean;
 }
 
 interface BuiltFixture {
@@ -462,6 +465,66 @@ describe("bounded MCAP reader", () => {
     expect(harness.networkReads).toHaveLength(0);
   });
 
+  it("reports and skips only an oversized span before continuing", async () => {
+    const fixture = buildFixture([
+      {
+        messages: [{ channelId: 1, logTime: 10n, sequence: 1 }],
+      },
+      {
+        messages: [
+          {
+            channelId: 1,
+            data: new Uint8Array(16 * 1024),
+            logTime: 20n,
+            sequence: 2,
+          },
+        ],
+      },
+      {
+        messages: [{ channelId: 1, logTime: 30n, sequence: 3 }],
+      },
+    ]);
+    const harness = createHarness(fixture);
+    const ordinary = budgetFor(
+      [fixture.chunkIndexes[0], fixture.chunkIndexes[2]],
+      3,
+    );
+    const request = requestFor({
+      absoluteBudget: ordinary,
+      absoluteMaxChunks: 3,
+      budget: ordinary,
+      maxChunks: 3,
+    });
+
+    const first = await harness.read(request);
+    expect(first.stopReason).toBe("oversized-source-unit");
+    expect(first.messages.map((message) => message.sequence)).toEqual([1]);
+    expect(first.coverageByTopic.get("/selected")).toEqual([
+      { endNs: 10n, startNs: 10n },
+    ]);
+    expect(first.skippedByTopic?.get("/selected")).toEqual([
+      { endNs: 20n, startNs: 20n },
+    ]);
+    expect(first.continuation).toBeDefined();
+    expect(
+      chunkBodyReads(harness.networkReads, fixture.chunkIndexes).map(
+        (read) => read.range.offset,
+      ),
+    ).toEqual([fixture.chunkIndexes[0].chunkStartOffset]);
+
+    const second = await harness.read({
+      ...request,
+      continuation: first.continuation,
+    });
+    expect(second.stopReason).toBe("source-exhausted");
+    expect(second.messages.map((message) => message.sequence)).toEqual([3]);
+    expect(second.coverageByTopic.get("/selected")).toEqual([
+      { endNs: 30n, startNs: 30n },
+    ]);
+    expect(second.skippedByTopic?.size).toBe(0);
+    expect(second.continuation).toBeUndefined();
+  });
+
   it("charges widened chunk fills while keeping message-index reads exact", async () => {
     const fixture = buildFixture([
       { messages: [{ channelId: 1, logTime: 0n }] },
@@ -683,6 +746,132 @@ describe("bounded MCAP reader", () => {
     expect(harness.networkReads).toHaveLength(readsAfterWarm);
   });
 
+  it("parses only selected indexed offsets", async () => {
+    const messages = [
+      { channelId: 1, logTime: 1n, sequence: 1 },
+      { channelId: 3, logTime: 2n, sequence: 99 },
+      { channelId: 1, logTime: 3n, sequence: 2 },
+    ] satisfies readonly MessageSpec[];
+    const fixture = buildFixture([
+      {
+        corruptRecordSequence: 99,
+        messages,
+      },
+    ]);
+    const harness = createHarness(fixture);
+
+    const result = await harness.read(requestFor({ endTimeNs: 3n }));
+
+    expect(result.messages.map((message) => message.sequence)).toEqual([1, 2]);
+    expect(result.usage.messagesDecoded).toBe(2);
+
+    const unindexedFixture = buildFixture([
+      {
+        corruptRecordSequence: 99,
+        messages,
+        omitMessageIndexes: true,
+      },
+    ]);
+    await expect(
+      createHarness(unindexedFixture).read(requestFor({ endTimeNs: 3n })),
+    ).rejects.toThrow();
+  });
+
+  it("validates selected index entries against message records", async () => {
+    const fixture = buildFixture([
+      {
+        messages: [
+          {
+            channelId: 1,
+            indexLogTime: 2n,
+            logTime: 1n,
+            sequence: 1,
+          },
+        ],
+      },
+    ]);
+    const harness = createHarness(fixture);
+
+    await expect(harness.read(requestFor({ endTimeNs: 2n }))).rejects.toThrow(
+      "MCAP message index/data mismatch",
+    );
+  });
+
+  it("falls back to a full cooperative scan when indexes are unavailable", async () => {
+    const fixture = buildFixture([
+      {
+        messages: [
+          { channelId: 1, logTime: 1n, sequence: 1 },
+          { channelId: 3, logTime: 2n, sequence: 99 },
+          { channelId: 1, logTime: 3n, sequence: 2 },
+        ],
+        omitMessageIndexes: true,
+      },
+    ]);
+    const harness = createHarness(fixture);
+
+    const result = await harness.read(requestFor({ endTimeNs: 3n }));
+
+    expect(result.messages.map((message) => message.sequence)).toEqual([1, 2]);
+    expect(result.usage.messagesDecoded).toBe(2);
+    expect(result.coverageByTopic.get("/selected")).toEqual([
+      { endNs: 3n, startNs: 1n },
+    ]);
+    expect(
+      harness.networkReads.filter(
+        (request) => request.cachePolicy?.blockFill === false,
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("cancels a warm-cache fallback scan after bounded record work", async () => {
+    const controller = new AbortController();
+    let cancellationArmed = false;
+    let armedYieldCount = 0;
+    const fixture = buildFixture([
+      {
+        compression: "fake",
+        messages: [
+          ...Array.from({ length: 130 }, (_, index) => ({
+            channelId: 3,
+            logTime: BigInt(index),
+            sequence: index,
+          })),
+          { channelId: 1, logTime: 130n, sequence: 1_000 },
+        ],
+        omitMessageIndexes: true,
+      },
+    ]);
+    const harness = createHarness(fixture, ["/selected"], {
+      taskYield: async () => {
+        if (cancellationArmed && ++armedYieldCount === 1) {
+          controller.abort();
+        }
+      },
+    });
+    const full = budgetFor(fixture.chunkIndexes, 1);
+    const request = requestFor({
+      absoluteBudget: full,
+      absoluteMaxChunks: 1,
+      budget: full,
+      endTimeNs: 130n,
+      maxChunks: 1,
+    });
+    await harness.read(request);
+    const readsAfterWarm = harness.networkReads.length;
+    cancellationArmed = true;
+
+    const cancellation = await captureCancellation(
+      harness.read({ ...request, signal: controller.signal }),
+    );
+
+    expect(cancellation.usage.chunksOpened).toBe(1);
+    expect(cancellation.usage.decompressionCacheHits).toBe(1);
+    expect(cancellation.usage.messagesDecoded).toBe(0);
+    expect(cancellation.usage.transferredBytes).toBe(0);
+    expect(harness.networkReads).toHaveLength(readsAfterWarm);
+  });
+
   it("reports independent coverage for streams with different chunk density", async () => {
     const fixture = buildFixture([
       { messages: [{ channelId: 1, logTime: 0n }] },
@@ -870,23 +1059,39 @@ function buildFixture(specs: readonly ChunkSpec[]): BuiltFixture {
   for (const spec of specs) {
     const recordsBuilder = new McapRecordBuilder();
     const messageIndexes = new Map<number, Array<readonly [bigint, bigint]>>();
+    const messageOffsetsBySequence = new Map<number, bigint>();
     for (const message of spec.messages) {
       const messageOffset = BigInt(recordsBuilder.length);
+      const sequence = message.sequence ?? Number(message.logTime);
       recordsBuilder.writeMessage({
         channelId: message.channelId,
         data: message.data ?? new Uint8Array([message.channelId]),
         logTime: message.logTime,
         publishTime: message.logTime,
-        sequence: message.sequence ?? Number(message.logTime),
+        sequence,
       });
+      messageOffsetsBySequence.set(sequence, messageOffset);
+      if (spec.omitMessageIndexes) {
+        continue;
+      }
       let entries = messageIndexes.get(message.channelId);
       if (!entries) {
         entries = [];
         messageIndexes.set(message.channelId, entries);
       }
-      entries.push([message.logTime, messageOffset]);
+      entries.push([message.indexLogTime ?? message.logTime, messageOffset]);
     }
     const records = recordsBuilder.buffer.slice();
+    if (spec.corruptRecordSequence !== undefined) {
+      const offset = messageOffsetsBySequence.get(spec.corruptRecordSequence);
+      if (offset === undefined) {
+        throw new Error(
+          `missing record sequence ${spec.corruptRecordSequence} to corrupt`,
+        );
+      }
+      const recordOffset = Number(offset);
+      records.fill(0xff, recordOffset + 1, recordOffset + 9);
+    }
     const compression = spec.compression ?? "";
     const storedRecords =
       compression === "fake" ? new Uint8Array([0xfa]) : records;

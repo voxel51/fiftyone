@@ -26,6 +26,8 @@ export interface NumericStreamFields {
 
 /** Packed recording-relative values for one requested numeric field. */
 export interface NumericSeriesField {
+  /** Per-decimation-bucket discontinuity bits, when supplied by the adapter. */
+  readonly bucketGapMask?: Uint8Array;
   readonly path: string;
   readonly timesSec: Float64Array;
   readonly values: Float64Array;

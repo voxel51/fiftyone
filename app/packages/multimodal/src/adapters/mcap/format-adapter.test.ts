@@ -650,8 +650,26 @@ describe("MCAP format adapter", () => {
   });
 
   it("exposes numeric-series and raw-record semantic capabilities", async () => {
+    const client = createClient();
+    client.readNumericSeriesSlice = vi.fn(async () => ({
+      baseTimeNs: 1n,
+      coverageByTopic: new Map([["/camera", [{ endNs: 1n, startNs: 1n }]]]),
+      series: [],
+      skippedByTopic: new Map([["/camera", [{ endNs: 2n, startNs: 2n }]]]),
+      stopReason: "oversized-source-unit" as const,
+      usage: {
+        chunksOpened: 0,
+        decompressedBytes: 0,
+        decompressionCacheHits: 0,
+        elapsedMs: 1,
+        logicalSourceBytes: 0,
+        logicalUncompressedBytes: 0,
+        messagesDecoded: 0,
+        transferredBytes: 0,
+      },
+    }));
     const session = await createMcapFormatAdapter({
-      createClient,
+      createClient: () => client,
     }).open(source, io);
     try {
       await expect(
@@ -685,6 +703,26 @@ describe("MCAP format adapter", () => {
         streamId: "camera",
         truncated: false,
       });
+      const budget = {
+        maxMessages: 10,
+        maxSourceBytes: 1_000,
+        maxUncompressedBytes: 1_000,
+        maxWallTimeMs: 100,
+      };
+      const slice = await session.numericSeries?.readNumericSeriesSlice?.({
+        absoluteBudget: budget,
+        absoluteMaxChunks: 2,
+        budget,
+        maxChunks: 1,
+        selections: [{ fields: ["exposure"], stream: "camera" }],
+        window: session.manifest.timeRange,
+      });
+      expect(slice?.coverageByStream.get("camera")).toEqual([
+        { endNs: 1n, startNs: 1n },
+      ]);
+      expect(slice?.unavailableByStream?.get("camera")).toEqual([
+        { endNs: 2n, startNs: 2n },
+      ]);
       await expect(session.rawRecords?.listRawRecordStreams()).resolves.toEqual(
         [
           {

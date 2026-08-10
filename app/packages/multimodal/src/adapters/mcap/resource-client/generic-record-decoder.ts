@@ -99,11 +99,18 @@ export function mcapChannelForTopic(
   reader: McapIndexedReaderLike,
   topic: string,
 ) {
-  for (const channel of reader.channelsById.values()) {
-    if (channel.topic === topic) {
-      return channel;
-    }
-  }
+  const channel = mcapChannelsForTopic(reader, topic)[0];
+  if (channel) return channel;
 
   throw new Error(`MCAP topic '${topic}' has no channel`);
+}
+
+/** Resolves every summary channel behind one topic, in channel-id order. */
+export function mcapChannelsForTopic(
+  reader: McapIndexedReaderLike,
+  topic: string,
+) {
+  return [...reader.channelsById.values()]
+    .filter((channel) => channel.topic === topic)
+    .sort((left, right) => left.id - right.id);
 }
