@@ -64,6 +64,31 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     lease.release();
   });
 
+  it("fills a skipped forward access unit instead of decoding a broken delta chain", async () => {
+    const harness = createHarness();
+    const units = [
+      accessUnit(0, true),
+      accessUnit(100),
+      accessUnit(200),
+      accessUnit(300),
+    ];
+    const manager = new VideoPlaybackManager("source", harness.dependencies);
+    manager.setReader(rangeReader(units));
+    const lease = manager.acquire("/camera");
+    lease.request({ ...units[0], priority: "playing" });
+    await presented(lease, 0n);
+    lease.request({ ...units[1], priority: "playing" });
+    await presented(lease, 100n);
+
+    lease.request({ ...units[3], priority: "playing" });
+    await presented(lease, 300n);
+    expect(
+      harness.decoders[0].decodeCalls.at(-1)?.units.map((unit) => unit.timeNs),
+    ).toEqual([200n, 300n]);
+    expect(harness.decoders[0].resetCount).toBe(0);
+    lease.release();
+  });
+
   it("waits instead of decoding a reader-less delta across a cursor gap", async () => {
     const harness = createHarness();
     const manager = new VideoPlaybackManager("source", harness.dependencies);
@@ -339,8 +364,13 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     await presented(lease, 10n);
     lease.request({ ...accessUnit(11), priority: "playing" });
     await presented(lease, 11n);
+    lease.request({ ...accessUnit(12), priority: "playing" });
+    await presented(lease, 12n);
 
-    expect(read).not.toHaveBeenCalled();
+    expect(read).toHaveBeenCalledOnce();
+    expect(read).toHaveBeenCalledWith(
+      expect.objectContaining({ endTimeNs: 11n, startTimeNs: 11n }),
+    );
     lease.release();
   });
 

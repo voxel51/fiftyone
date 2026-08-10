@@ -47,6 +47,7 @@ export class VideoStreamEngine {
   private readonly gopIndex: VideoGopIndex;
   private latestIntent: VideoPlaybackIntent | null = null;
   private readonly listeners = new Set<() => void>();
+  private nominalForwardStepNs: bigint | null = null;
   private processing = false;
   private requestedPriority: VideoPlaybackIntent["priority"] | null = null;
   private requestedTargetTimeNs: bigint | null = null;
@@ -178,10 +179,20 @@ export class VideoStreamEngine {
     let releaseAdmission: (() => void) | null = null;
     try {
       const cursorTimeNs = this.decoder.cursorTimeNs;
+      const forwardGapNs =
+        cursorTimeNs !== null && intent.timeNs > cursorTimeNs
+          ? intent.timeNs - cursorTimeNs
+          : null;
+      const cadenceAllowsDirect =
+        forwardGapNs !== null &&
+        this.nominalForwardStepNs !== null &&
+        forwardGapNs <=
+          this.nominalForwardStepNs + this.nominalForwardStepNs / 2n;
       const directForward =
         cursorTimeNs !== null &&
-        intent.timeNs > cursorTimeNs &&
-        intent.timeNs - cursorTimeNs <= MAX_DIRECT_FORWARD_GAP_NS &&
+        forwardGapNs !== null &&
+        forwardGapNs <= MAX_DIRECT_FORWARD_GAP_NS &&
+        (!this.reader() || cadenceAllowsDirect) &&
         !this.continuityUncertain;
       const directKeyframe =
         intent.frame.keyframe &&
@@ -225,6 +236,7 @@ export class VideoStreamEngine {
             phase: "seeking.reading",
           });
           units = await this.readForwardChain(cursorTimeNs, intent, signal);
+          this.observeForwardCadence(cursorTimeNs, units);
           const knownSameEpoch = this.gopIndex.sameEpoch(
             cursorTimeNs,
             intent.timeNs,
@@ -239,6 +251,7 @@ export class VideoStreamEngine {
             phase: "seeking.locating",
           });
           units = await this.buildSeekRunway(intent, signal, generation);
+          this.observeForwardCadence(null, units);
           this.decoder.resetForDiscontinuity();
         }
         this.continuityUncertain = false;
@@ -254,6 +267,7 @@ export class VideoStreamEngine {
         generation,
         signal,
       );
+      if (directForward) this.observeForwardCadence(cursorTimeNs, units);
       if (signal.aborted || generation !== this.generation) {
         decoded.close();
         throw new VideoIntentCancelledError();
@@ -359,6 +373,26 @@ export class VideoStreamEngine {
       );
     }
     return units;
+  }
+
+  /** Learns the smallest complete positive access-unit step for this stream. */
+  private observeForwardCadence(
+    previousTimeNs: bigint | null,
+    units: readonly H264AccessUnit[],
+  ): void {
+    let previous = previousTimeNs;
+    for (const unit of units) {
+      if (previous !== null && unit.timeNs > previous) {
+        const step = unit.timeNs - previous;
+        if (
+          this.nominalForwardStepNs === null ||
+          step < this.nominalForwardStepNs
+        ) {
+          this.nominalForwardStepNs = step;
+        }
+      }
+      previous = unit.timeNs;
+    }
   }
 
   private async buildSeekRunway(
