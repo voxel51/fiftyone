@@ -9,6 +9,7 @@ import type {
   DisplayListener,
   LabelChange,
   LabelStore,
+  PersistenceAdapter,
   StoreSnapshot,
 } from "../store/types";
 import { wholeSampleReset } from "../store/types";
@@ -82,6 +83,7 @@ export class AnnotationEngine {
   private signals: SignalPipe;
 
   private stores = new Map<string, LabelStore>();
+  private persistenceAdapters = new Map<string, PersistenceAdapter>();
   private displayListeners = new Set<DisplayListener>();
   private changeListeners = new Set<ChangeListener>();
   private bookkeepingHooks = new Set<BookkeepingHook>();
@@ -224,6 +226,35 @@ export class AnnotationEngine {
       );
       this.emitUndoDrop(this.undos.dropSample(store.sample));
     };
+  }
+
+  /**
+   * Register a custom persistence transport for a store's deltas
+   * (mount-scoped, like the store itself). Persistence routes a dirty
+   * store's patch through its adapter when one is registered; otherwise it
+   * falls back to the standard modal-sample PATCH. Lets a surface whose
+   * store spans multiple documents (e.g. a dynamic group played as video,
+   * one document per frame) own the fan-out without the engine knowing.
+   */
+  registerPersistenceAdapter(
+    sample: string,
+    adapter: PersistenceAdapter,
+  ): () => void {
+    if (this.persistenceAdapters.has(sample)) {
+      throw new Error(
+        `a persistence adapter for sample '${sample}' is registered`,
+      );
+    }
+
+    this.persistenceAdapters.set(sample, adapter);
+
+    return () => {
+      this.persistenceAdapters.delete(sample);
+    };
+  }
+
+  getPersistenceAdapter(sample: string): PersistenceAdapter | undefined {
+    return this.persistenceAdapters.get(sample);
   }
 
   // ---- routed reads ----
