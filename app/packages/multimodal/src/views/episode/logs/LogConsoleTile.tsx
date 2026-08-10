@@ -12,11 +12,18 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { LOG_LEVELS, SCENE_SOURCE_TYPE, type LogLevel } from "../../../ir";
+import {
+  LOG_LEVELS,
+  SCENE_SOURCE_TYPE,
+  type LogLevel,
+  type SceneSource,
+} from "../../../ir";
 import type { FrameBatch } from "../../../ports";
 import type { ProgressiveHistoryAccumulator } from "../../../runtime/progressive-history";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
-import LogConsole from "../../../visualization/logs/LogConsole";
+import LogConsole, {
+  type LogConsoleViewMode,
+} from "../../../visualization/logs/LogConsole";
 import { DiagnosticStateProjector } from "../../../visualization/logs/diagnostic-console-state";
 import {
   logConsoleRowsFromDecodedMessage,
@@ -99,29 +106,35 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
   const lastPlayheadPublishMsRef = useRef(0);
   const recordingStartNs = session?.manifest.timeRange.startNs ?? 0n;
   const centerTimeNs = horizon?.playheadTimeNs;
-  const allSourceIds = useMemo(
-    () => logSources.map((source) => source.id),
-    [logSources],
-  );
-  const allDiagnosticStreamIds = useMemo(
-    () => diagnosticStreamIds(session, allSourceIds),
-    [allSourceIds, session],
-  );
-  const diagnosticStreamIdSet = useMemo(
-    () => new Set(allDiagnosticStreamIds),
-    [allDiagnosticStreamIds],
-  );
-  const sources = useMemo(
-    () =>
-      logSources.filter((source) =>
-        viewMode === "diagnostics"
-          ? diagnosticStreamIdSet.has(source.id)
-          : !diagnosticStreamIdSet.has(source.id),
+  const sourcesByViewMode = useMemo(() => {
+    if (!session) return { diagnostics: [], logs: [] };
+    const diagnosticIds = new Set(
+      diagnosticStreamIds(
+        session,
+        logSources.map((source) => source.id),
       ),
-    [diagnosticStreamIdSet, logSources, viewMode],
-  );
+    );
+    const diagnostics: SceneSource[] = [];
+    const logs: SceneSource[] = [];
+    for (const source of logSources) {
+      (diagnosticIds.has(source.id) ? diagnostics : logs).push(source);
+    }
+    return { diagnostics, logs };
+  }, [logSources, session]);
+  const availableViewModes = useMemo(() => {
+    const modes: LogConsoleViewMode[] = [];
+    if (sourcesByViewMode.logs.length > 0) modes.push("logs");
+    if (sourcesByViewMode.diagnostics.length > 0) modes.push("diagnostics");
+    return modes;
+  }, [sourcesByViewMode]);
+  const activeViewMode = availableViewModes.includes(viewMode)
+    ? viewMode
+    : (availableViewModes[0] ?? viewMode);
+  const sources = sourcesByViewMode[activeViewMode];
   const configuredStreams =
-    viewMode === "diagnostics" ? enabledDiagnosticStreams : enabledStreams;
+    activeViewMode === "diagnostics"
+      ? enabledDiagnosticStreams
+      : enabledStreams;
   const selectedStreams = useMemo(() => {
     const ids = sources.map((source) => source.id);
     if (configuredStreams === undefined) return ids;
@@ -134,7 +147,7 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
     () => [...selectedStreams].sort().join("\0"),
     [selectedStreams],
   );
-  const sourceScopeKey = `${sourceKey ?? ""}\0${viewMode}\0${selectedStreamsKey}`;
+  const sourceScopeKey = `${sourceKey ?? ""}\0${activeViewMode}\0${selectedStreamsKey}`;
 
   const moveHorizon = useCallback(
     (playheadTimeNs: bigint, forceNewGeneration = false) => {
@@ -243,7 +256,7 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
   const logProgress = useProgressiveHistories({
     account: budgetAccount,
     configs: logJobConfigs,
-    enabled: viewMode === "diagnostics" || selectedLevels.length > 0,
+    enabled: activeViewMode === "diagnostics" || selectedLevels.length > 0,
     retryDelayMs: LOG_HISTORY_RETRY_MS,
     session,
     shouldStandDown: () => shouldDeferBulkHistory(store),
@@ -263,7 +276,7 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
       return INITIAL_EVIDENCE;
     }
     const historyEnabled =
-      viewMode === "diagnostics" || selectedLevels.length > 0;
+      activeViewMode === "diagnostics" || selectedLevels.length > 0;
     if (!historyEnabled) {
       return {
         orderedEvents,
@@ -297,7 +310,7 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
     selectedStreams.length,
     session,
     sourceKey,
-    viewMode,
+    activeViewMode,
   ]);
   const logRows = useMemo(
     () =>
@@ -317,7 +330,7 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
   );
   const diagnosticGeneration = `${sourceScopeKey}\0${horizon?.generation ?? 0}`;
   const diagnosticSeed = useDiagnosticSeed({
-    enabled: viewMode === "diagnostics" && sourceScopeReady,
+    enabled: activeViewMode === "diagnostics" && sourceScopeReady,
     generation: diagnosticGeneration,
     seedTimeNs: horizon?.seedTimeNs,
     session,
@@ -326,7 +339,7 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
   const diagnosticCoverage = diagnosticCoverageState(evidence, diagnosticSeed);
   const diagnostics = useMemo(
     () =>
-      viewMode !== "diagnostics" ||
+      activeViewMode !== "diagnostics" ||
       !sourceScopeReady ||
       centerTimeNs === undefined
         ? []
@@ -345,17 +358,17 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
       sourceScopeReady,
       diagnosticSeed.rows,
       evidence.orderedEvents,
-      viewMode,
+      activeViewMode,
     ],
   );
   const windowStartNs = visibleWindow?.startTimeNs ?? recordingStartNs;
   const panelStatus =
-    viewMode === "diagnostics" &&
+    activeViewMode === "diagnostics" &&
     (!sourceScopeReady || diagnosticSeed.status === "loading")
       ? "loading"
       : evidence.status;
   const panelError =
-    viewMode === "diagnostics"
+    activeViewMode === "diagnostics"
       ? (evidence.error ?? diagnosticSeed.error)
       : evidence.error;
 
@@ -371,12 +384,12 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
   const handleStreamsChange = useCallback(
     (streams: readonly string[]) => {
       setLogSettings(
-        viewMode === "diagnostics"
+        activeViewMode === "diagnostics"
           ? { enabledDiagnosticStreams: streams }
           : { enabledStreams: streams },
       );
     },
-    [setLogSettings, viewMode],
+    [activeViewMode, setLogSettings],
   );
 
   const handleLevelsChange = useCallback(
@@ -396,6 +409,7 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
   const timeOriginNs = timelineIndex?.startTimeNs;
   return (
     <LogConsole
+      availableViewModes={availableViewModes}
       diagnosticSeedIncomplete={
         diagnosticStreams.length > 0 &&
         (horizon?.seedTimeNs !== undefined || diagnosticSeed.status === "error")
@@ -422,7 +436,7 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
       timeOriginNs={timeOriginNs}
       windowLabel={LOG_WINDOW_LABEL}
       windowStartNs={windowStartNs}
-      viewMode={viewMode}
+      viewMode={activeViewMode}
     />
   );
 };

@@ -360,6 +360,41 @@ describe("LogConsoleTile", () => {
     });
   });
 
+  it("hides Diagnostics when ordinary logs are the only available mode", async () => {
+    render(<LogConsoleTile />);
+
+    await waitFor(() => expect(mocks.read).toHaveBeenCalled());
+    expect(
+      screen.getByRole("button", { name: "Logs" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(screen.queryByRole("button", { name: "Diagnostics" })).toBeNull();
+  });
+
+  it("opens Diagnostics directly when it is the only available mode", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(1_000);
+    mocks.getPlayhead.mockReturnValue(40);
+    mocks.setViewMode("logs");
+    mocks.setLogSources([{ id: "/diagnostics", label: "ROS diagnostics" }]);
+    mocks.resetSession({ endNs: 100_000_000_000n, startNs: 0n }, true);
+
+    render(<LogConsoleTile />);
+
+    await waitFor(() => expect(mocks.read).toHaveBeenCalled());
+    expect(mocks.read.mock.calls[0]?.[0]).toMatchObject({
+      streams: ["/diagnostics"],
+    });
+    expect(screen.queryByRole("button", { name: "Logs" })).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Diagnostics" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(
+      screen.getByRole("option", { name: "ROS diagnostics" }),
+    ).toBeTruthy();
+    expect(mocks.setLogSettings).not.toHaveBeenCalled();
+  });
+
   it("bootstraps quiet diagnostic state before the visible history window", async () => {
     vi.spyOn(Date, "now").mockReturnValue(1_000);
     mocks.getPlayhead.mockReturnValue(40);

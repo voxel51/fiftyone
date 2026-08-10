@@ -132,20 +132,40 @@ describe("LogConsole", () => {
     expect(onStreamsChange).toHaveBeenCalledWith(["/rosout", "/app"]);
   });
 
-  it("keeps mode navigation available when the current mode has no sources", () => {
-    const onViewModeChange = vi.fn();
+  it("shows only Diagnostics when the recording has no log streams", () => {
     render(
       <LogConsole
         {...defaultProps({ firstRows: [] })}
-        onViewModeChange={onViewModeChange}
+        availableViewModes={["diagnostics"]}
+        selectedStreams={["/diagnostics"]}
+        sources={[{ id: "/diagnostics", label: "ROS diagnostics" }]}
+        viewMode="diagnostics"
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Logs" })).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Diagnostics" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
+  it("shows one truthful empty state when no console streams are available", () => {
+    render(
+      <LogConsole
+        {...defaultProps({ firstRows: [] })}
+        availableViewModes={[]}
         selectedStreams={[]}
         sources={[]}
       />,
     );
 
-    expect(screen.getByText("No log streams in this recording")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Diagnostics" }));
-    expect(onViewModeChange).toHaveBeenCalledWith("diagnostics");
+    expect(screen.queryByRole("button", { name: "Logs" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Diagnostics" })).toBeNull();
+    expect(
+      screen.getByText("No log or diagnostic streams in this recording"),
+    ).toBeTruthy();
   });
 
   it("anchors Follow to the live tail, suspends on scroll-away, and resumes immediately", () => {
@@ -309,6 +329,7 @@ function defaultProps({
   readonly onFollowPlayheadChange?: (follow: boolean) => void;
 }): LogConsoleProps {
   return {
+    availableViewModes: ["logs", "diagnostics"],
     diagnosticSeedIncomplete: false,
     diagnostics: [],
     followPlayhead: true,

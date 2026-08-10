@@ -29,6 +29,7 @@ export interface LogConsoleSource {
 
 /** Prepared log rows, filters, and host interactions consumed by the console. */
 export interface LogConsoleProps {
+  readonly availableViewModes: readonly LogConsoleViewMode[];
   readonly diagnosticSeedIncomplete: boolean;
   readonly diagnostics: readonly EpisodeDiagnosticState[];
   readonly error?: string;
@@ -58,6 +59,7 @@ export interface LogConsoleProps {
 
 /** Displays prepared log rows and controls without reading episode data. */
 export const LogConsole: React.FC<LogConsoleProps> = ({
+  availableViewModes,
   diagnosticSeedIncomplete,
   diagnostics,
   error,
@@ -212,26 +214,28 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
     <div className={styles.body} data-testid="episode-log-console-tile">
       <div className={styles.toolbar}>
         <div className={styles.toolbarPrimary}>
-          <div
-            aria-label="Log console view"
-            className={styles.tabs}
-            role="group"
-          >
-            {(["logs", "diagnostics"] as const).map((mode) => (
-              <button
-                aria-pressed={viewMode === mode}
-                className={clsx(
-                  styles.tab,
-                  viewMode === mode && styles.tabActive,
-                )}
-                key={mode}
-                onClick={() => onViewModeChange(mode)}
-                type="button"
-              >
-                {mode === "logs" ? "Logs" : "Diagnostics"}
-              </button>
-            ))}
-          </div>
+          {availableViewModes.length > 0 ? (
+            <div
+              aria-label="Log console view"
+              className={styles.tabs}
+              role="group"
+            >
+              {availableViewModes.map((mode) => (
+                <button
+                  aria-pressed={viewMode === mode}
+                  className={clsx(
+                    styles.tab,
+                    viewMode === mode && styles.tabActive,
+                  )}
+                  key={mode}
+                  onClick={() => onViewModeChange(mode)}
+                  type="button"
+                >
+                  {mode === "logs" ? "Logs" : "Diagnostics"}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div className={styles.controlGroup}>
             <Checkbox
               checked={followPlayhead}
@@ -294,20 +298,23 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
       </div>
       {status === "error" ? (
         <div className={styles.errorState}>
-          Could not read logs{error ? `: ${error}` : ""}
+          Could not read {viewMode === "logs" ? "logs" : "diagnostics"}
+          {error ? `: ${error}` : ""}
         </div>
       ) : rowCount === 0 ? (
         <div className={styles.empty}>
-          {sources.length === 0
-            ? viewMode === "logs"
-              ? "No log streams in this recording"
-              : "No diagnostic streams in this recording"
-            : selectedStreams.length === 0 ||
-                (viewMode === "logs" && selectedLevels.length === 0)
-              ? "No filters selected"
-              : viewMode === "logs"
-                ? "No log rows in this time window"
-                : "No diagnostic states at this playhead"}
+          {availableViewModes.length === 0
+            ? "No log or diagnostic streams in this recording"
+            : sources.length === 0
+              ? viewMode === "logs"
+                ? "No log streams in this recording"
+                : "No diagnostic streams in this recording"
+              : selectedStreams.length === 0 ||
+                  (viewMode === "logs" && selectedLevels.length === 0)
+                ? "No filters selected"
+                : viewMode === "logs"
+                  ? "No log rows in this time window"
+                  : "No diagnostic states at this playhead"}
         </div>
       ) : (
         <div
