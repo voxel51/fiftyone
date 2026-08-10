@@ -29,6 +29,7 @@ const sessionHarness = vi.hoisted(() => ({
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  vi.unstubAllGlobals();
   resetSourceBootstrapCacheForTests();
 });
 
@@ -136,6 +137,32 @@ describe("useGridPreview", () => {
         "error:0:no-frame:boom",
       );
     });
+  });
+
+  it("isolates an initial result observer failure from preview state", async () => {
+    const observerError = new Error("observer failed");
+    const reportError = vi.fn();
+    vi.stubGlobal("reportError", reportError);
+    sessionHarness.session.read.mockResolvedValueOnce(
+      readyResult({ bytes: [1] }),
+    );
+
+    render(
+      <PreviewHarness
+        id="initial-observer-error"
+        onReadResult={() => {
+          throw observerError;
+        }}
+        source={sourceForId("initial-observer-error")}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("preview-initial-observer-error").textContent,
+      ).toBe("ready:1:frame:");
+    });
+    expect(reportError).toHaveBeenCalledWith(observerError);
   });
 
   it("plays additional preview frames on hover", async () => {
@@ -256,6 +283,52 @@ describe("useGridPreview", () => {
 
     expect(onReadResult).toHaveBeenCalledTimes(4);
     expect(firstImageByte(latestState.current?.frame ?? null)).toBe(1);
+    act(() => latestState.current?.pause());
+  });
+
+  it("continues hover playback when a result observer throws", async () => {
+    const latestState = { current: null as GridPreviewState | null };
+    const observerError = new Error("observer failed");
+    const reportError = vi.fn();
+    const pending = deferred<EpisodePreviewReadResult>();
+    vi.stubGlobal("reportError", reportError);
+    sessionHarness.session.read
+      .mockResolvedValueOnce(
+        readyResult({ bytes: [1], frameTimeNs: 0n, nextStartTimeNs: 1n }),
+      )
+      .mockResolvedValueOnce(
+        readyResult({
+          bytes: [2],
+          frameTimeNs: 100_000_000n,
+          nextStartTimeNs: 100_000_001n,
+        }),
+      )
+      .mockReturnValue(pending.promise);
+
+    render(
+      <PreviewHarness
+        id="hover-observer-error"
+        onReadResult={(result) => {
+          if (firstImageByte(result.frame) === 2) throw observerError;
+        }}
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        source={sourceForId("hover-observer-error")}
+      />,
+    );
+    await waitFor(() => expect(latestState.current?.status).toBe("ready"));
+
+    act(() => latestState.current?.play());
+    await waitFor(() => {
+      expect(firstImageByte(latestState.current?.frame ?? null)).toBe(2);
+    });
+    expect(reportError).toHaveBeenCalledWith(observerError);
+    expect(latestState.current?.status).toBe("ready");
+    expect(latestState.current?.error).toBeNull();
+    await waitFor(() =>
+      expect(sessionHarness.session.read).toHaveBeenCalledTimes(3),
+    );
     act(() => latestState.current?.pause());
   });
 

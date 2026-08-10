@@ -205,7 +205,7 @@ export function useGridPreview({
       })
       .then((result) => {
         if (active) {
-          onReadResultRef.current?.(result);
+          notifyReadResult(onReadResultRef.current, result);
           publishGridBootstrap(source, result);
           loadedRequestRef.current = { selectedSourceName, source };
           frameTimeNsRef.current = result.frameTimeNs;
@@ -287,7 +287,7 @@ export function useGridPreview({
             break;
           }
 
-          onReadResultRef.current?.(result);
+          notifyReadResult(onReadResultRef.current, result);
 
           if (!result.frame) {
             frameTimeNsRef.current = undefined;
@@ -360,6 +360,27 @@ export function useGridPreview({
   ]);
 
   return { ...state, isBuffering, pause, play };
+}
+
+function notifyReadResult(
+  listener: UseGridPreviewOptions["onReadResult"],
+  result: EpisodePreviewReadResult,
+): void {
+  if (!listener) return;
+  try {
+    listener(result);
+  } catch (error) {
+    const reportError = (
+      globalThis as typeof globalThis & {
+        reportError?: (reportedError: unknown) => void;
+      }
+    ).reportError;
+    if (typeof reportError === "function") {
+      reportError(error);
+    } else {
+      console.error("Grid preview result observer failed", error);
+    }
+  }
 }
 
 function useGridPreviewBufferingIndicator() {
