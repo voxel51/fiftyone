@@ -207,6 +207,11 @@ export function useVideoDecodeRunways(
       ) {
         abortRunwayRequest(stream, activeRequest);
         inFlightStreamsRef.current.delete(stream);
+        if (
+          attemptedTargetsRef.current.get(stream) === activeRequest.targetTimeNs
+        ) {
+          attemptedTargetsRef.current.delete(stream);
+        }
       }
 
       if (!stream || !playbackFrame || frame?.kind !== "encoded-video") return;
