@@ -67,12 +67,13 @@ class Frames(HTTPEndpoint):
 
             post_pipeline = [{"$project": projection}]
 
-        frames = await foo.aggregate(
+        cursor = await foo.aggregate(
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
             view._pipeline(
                 frames_only=True, support=support, post_pipeline=post_pipeline
             ),
-        ).to_list(end_frame - start_frame + 1)
+        )
+        frames = await cursor.to_list(end_frame - start_frame + 1)
 
         return JSONResponse(
             {

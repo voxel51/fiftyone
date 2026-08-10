@@ -66,13 +66,12 @@ setup(
         "Jinja2>=3,<4",
         "jsonpatch>=1,<2",
         "mongoengine~=0.29.1",  # Keep small bounds on mongo-related libraries
-        "motor~=3.6.0",  # Keep small bounds on mongo-related libraries
         "Pillow>=12.2",
         "plotly>=6.1.1,<7",
         "pprintpp>=0.1,<0.5",
         "psutil>=5,<8",
         "pydash>=6,<9",
-        "pymongo~=4.9.2",  # Keep small bounds on mongo-related libraries
+        "pymongo~=4.15.2",  # Keep small bounds on mongo-related libraries
         "pytz",  # Doesn't follow semver, keep unconstrained
         "PyYAML>=4,<7",
         "regex",  # Doesn't follow semver, keep unconstrained
