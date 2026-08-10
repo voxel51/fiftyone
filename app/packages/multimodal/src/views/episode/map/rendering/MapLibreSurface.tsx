@@ -505,7 +505,8 @@ export function MapLibreSurface({
 
     const retryKey = `${baseLayer}:${basemapRetryNonce}`;
     const retryCycle = basemapRetryCycleRef.current;
-    if (retryCycle.key !== retryKey) {
+    const retryKeyChanged = retryCycle.key !== retryKey;
+    if (retryKeyChanged) {
       retryCycle.key = retryKey;
       retryCycle.attempt = 0;
     }
@@ -578,17 +579,22 @@ export function MapLibreSurface({
       };
     }
 
-    if (!cameraReady) {
-      report("loading");
+    // Camera readiness is recording-scoped, while a successful provider
+    // style and a terminal local fallback belong to the map instance. Retain
+    // either settled state across sample transitions; only an explicit retry
+    // key change may start the provider lifecycle again.
+    const basemapReady =
+      installedBaseLayerRef.current === baseLayer &&
+      basemapStatusRef.current === "ready";
+    const terminalFallbackRetained = basemapStatusRef.current === "error";
+    if (!retryKeyChanged && (basemapReady || terminalFallbackRetained)) {
       return () => {
         cancelled = true;
       };
     }
-    if (
-      attempt === 0 &&
-      installedBaseLayerRef.current === baseLayer &&
-      basemapStatusRef.current === "ready"
-    ) {
+
+    if (!cameraReady) {
+      report("loading");
       return () => {
         cancelled = true;
       };

@@ -423,13 +423,13 @@ describe("MapLibreSurface", () => {
       subscribeHover: vi.fn(() => vi.fn()),
       subscribePlayhead: vi.fn(() => vi.fn()),
     };
-    const rendered = render(
+    const surface = (sourceKey: string, locationEvidencePending: boolean) => (
       <MapLibreSurface
         baseLayer={MAP_BASE_LAYER.DEFAULT}
         bounds={null}
         fitRouteNonce={0}
         followEgo={false}
-        locationEvidencePending={false}
+        locationEvidencePending={locationEvidencePending}
         liveMarkers={[]}
         measureArmed={false}
         measurement={null}
@@ -441,11 +441,12 @@ describe("MapLibreSurface", () => {
         playback={playback}
         pulseActive={false}
         recenterNonce={0}
-        sourceKey="recording"
+        sourceKey={sourceKey}
         tracks={[]}
         viewportScope={null}
-      />,
+      />
     );
+    const rendered = render(surface("recording", false));
 
     expect(rendered.container.querySelector("svg")).not.toBeNull();
     await waitFor(() => expect(mapLibre.instances).toHaveLength(1));
@@ -492,6 +493,20 @@ describe("MapLibreSurface", () => {
     expect(map?.off).toHaveBeenCalledWith("error", expect.any(Function));
     expect(map?.off).toHaveBeenCalledWith("sourcedata", expect.any(Function));
     expect(map?.off).toHaveBeenCalledWith("styledata", expect.any(Function));
+
+    const statusCallCount = onBasemapStatusChange.mock.calls.length;
+    rendered.rerender(surface("next-recording", true));
+    await waitFor(() =>
+      expect(rendered.container.querySelector("svg")).not.toBeNull(),
+    );
+    rendered.rerender(surface("next-recording", false));
+    await waitFor(() =>
+      expect(rendered.container.querySelector("svg")).toBeNull(),
+    );
+
+    expect(basemap.loadStyle).toHaveBeenCalledOnce();
+    expect(map?.setStyle).toHaveBeenCalledOnce();
+    expect(onBasemapStatusChange).toHaveBeenCalledTimes(statusCallCount);
   });
 
   it("retries pre-ready failures with bounded backoff then restores local style", async () => {
@@ -504,13 +519,22 @@ describe("MapLibreSurface", () => {
       subscribeHover: vi.fn(() => vi.fn()),
       subscribePlayhead: vi.fn(() => vi.fn()),
     };
-    const rendered = render(
+    const surface = ({
+      locationEvidencePending = false,
+      retryNonce = 0,
+      sourceKey = "recording",
+    }: {
+      readonly locationEvidencePending?: boolean;
+      readonly retryNonce?: number;
+      readonly sourceKey?: string;
+    } = {}) => (
       <MapLibreSurface
         baseLayer={MAP_BASE_LAYER.DEFAULT}
+        basemapRetryNonce={retryNonce}
         bounds={null}
         fitRouteNonce={0}
         followEgo={false}
-        locationEvidencePending={false}
+        locationEvidencePending={locationEvidencePending}
         liveMarkers={[]}
         measureArmed={false}
         measurement={null}
@@ -522,11 +546,12 @@ describe("MapLibreSurface", () => {
         playback={playback}
         pulseActive={false}
         recenterNonce={0}
-        sourceKey="recording"
+        sourceKey={sourceKey}
         tracks={[]}
         viewportScope={null}
-      />,
+      />
     );
+    const rendered = render(surface());
 
     await vi.waitFor(() => expect(mapLibre.instances).toHaveLength(1));
     const map = mapLibre.instances[0];
@@ -564,30 +589,18 @@ describe("MapLibreSurface", () => {
       "error",
     );
 
+    const statusCallCount = onBasemapStatusChange.mock.calls.length;
     rendered.rerender(
-      <MapLibreSurface
-        baseLayer={MAP_BASE_LAYER.DEFAULT}
-        basemapRetryNonce={1}
-        bounds={null}
-        fitRouteNonce={0}
-        followEgo={false}
-        locationEvidencePending={false}
-        liveMarkers={[]}
-        measureArmed={false}
-        measurement={null}
-        onBasemapStatusChange={onBasemapStatusChange}
-        onHoverTimeNs={vi.fn()}
-        onMeasurePick={vi.fn()}
-        onSeekTimeNs={vi.fn()}
-        onUserMove={vi.fn()}
-        playback={playback}
-        pulseActive={false}
-        recenterNonce={0}
-        sourceKey="recording"
-        tracks={[]}
-        viewportScope={null}
-      />,
+      surface({
+        locationEvidencePending: true,
+        sourceKey: "next-recording",
+      }),
     );
+    rendered.rerender(surface({ sourceKey: "next-recording" }));
+    expect(map?.setStyle).toHaveBeenCalledTimes(6);
+    expect(onBasemapStatusChange).toHaveBeenCalledTimes(statusCallCount);
+
+    rendered.rerender(surface({ retryNonce: 1, sourceKey: "next-recording" }));
     await vi.waitFor(() => expect(map?.setStyle).toHaveBeenCalledTimes(7));
     failAttempt();
     expect(map?.setStyle).toHaveBeenCalledTimes(8);
