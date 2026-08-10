@@ -139,7 +139,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
   close(): void {
     if (this.closed) return;
     this.closed = true;
-    this.disposeDecoder(new Error("Video decoder closed"));
+    this.disposeDecoder(new Error("Video decoder closed"), false);
     this.sps = undefined;
     this.pps = undefined;
   }
@@ -336,13 +336,15 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
     this.disposeDecoder(failure);
   }
 
-  private disposeDecoder(error: Error): void {
+  private disposeDecoder(error: Error, reset = true): void {
     for (const pending of this.pending.splice(0)) pending.reject(error);
     const decoder = this.decoder;
-    try {
-      decoder?.reset();
-    } catch {
-      // The WebCodecs actor may already be closed after an error callback.
+    if (reset) {
+      try {
+        decoder?.reset();
+      } catch {
+        // The WebCodecs actor may already be closed after an error callback.
+      }
     }
     try {
       decoder?.close();

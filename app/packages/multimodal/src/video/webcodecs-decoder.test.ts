@@ -178,6 +178,20 @@ describe("WebCodecsH264Decoder", () => {
     actor.close();
   });
 
+  it("closes explicit source ownership without an unnecessary reset", async () => {
+    const harness = fakeWebCodecs();
+    const actor = new WebCodecsH264Decoder(harness.environment);
+    const output = await actor.decode([unit(0, true)], {
+      signal: new AbortController().signal,
+      targetTimeNs: 0n,
+    });
+    output.close();
+
+    actor.close();
+    expect(harness.instances[0].reset).not.toHaveBeenCalled();
+    expect(harness.instances[0].close).toHaveBeenCalledOnce();
+  });
+
   it("fails stalled progress and closes an already-retained output", async () => {
     vi.useFakeTimers();
     const harness = fakeWebCodecs({

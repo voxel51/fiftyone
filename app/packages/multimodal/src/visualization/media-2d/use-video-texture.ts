@@ -3,6 +3,7 @@ import * as THREE from "three";
 
 import type { VideoPresentation } from "../../video/types";
 import type { ImageTextureHandle } from "./Base2dScene";
+import { recordVisualizationCost } from "../render-cost-observer";
 
 interface HeldVideoTexture {
   readonly handle: ImageTextureHandle;
@@ -30,6 +31,13 @@ export function useVideoTexture(
     texture.magFilter = THREE.LinearFilter;
     texture.minFilter = THREE.LinearFilter;
     texture.needsUpdate = true;
+    const decodedBytes = lease.width * lease.height * 4;
+    recordVisualizationCost({
+      declaredGpuBytesDelta: decodedBytes,
+      measurementStatus: "derived",
+      operation: "image-texture-lease",
+      stage: "resource-allocate",
+    });
     let disposed = false;
     const next: HeldVideoTexture = {
       handle: {
@@ -39,6 +47,12 @@ export function useVideoTexture(
           disposed = true;
           texture.dispose();
           lease.release();
+          recordVisualizationCost({
+            declaredGpuBytesDelta: -decodedBytes,
+            measurementStatus: "derived",
+            operation: "image-texture-lease",
+            stage: "resource-release",
+          });
         },
         imageHeight: lease.height,
         imageWidth: lease.width,
