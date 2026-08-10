@@ -71,14 +71,11 @@ test("patch tiles show the patch label as a tag bubble", async ({ grid }) => {
 
 test("attribute eyes control bubble text; the last shown attribute locks", async ({
   grid,
-  page,
   sidebar,
 }) => {
-  const labelEye = page.getByTestId(
-    "shown-attribute-predictions.detections.label",
-  );
-  const confidenceEye = page.getByTestId(
-    "shown-attribute-predictions.detections.confidence",
+  const labelEye = sidebar.shownAttributeToggle("predictions.detections.label");
+  const confidenceEye = sidebar.shownAttributeToggle(
+    "predictions.detections.confidence",
   );
 
   await sidebar.clickFieldDropdown("predictions");
