@@ -46,24 +46,35 @@ describe("toggleLabel", () => {
     expect(toggleLabel(once, LABELS, "dog")).toBeNull();
   });
 
-  // Representation is a pure function of the toggle set: an inclusion
-  // filter (e.g. hand-written in the sidebar) converts to the
-  // equivalent exclusion on the first legend click
-  it("converts inclusion filters to exclusion", () => {
-    const included = { values: ["cat"], exclude: false };
-    expect(toggleLabel(included, LABELS, "dog")).toEqual({
-      values: ["bird"],
-      exclude: true,
+  // The clicks after a double click must go on editing its inclusion —
+  // rewriting it as an exclusion is what un-isolated the solo'd class
+  it("keeps editing an inclusion filter as an inclusion", () => {
+    const solo = soloLabel(null, LABELS, "dog");
+    const two = toggleLabel(solo, LABELS, "cat");
+    expect(two).toEqual({ values: ["cat", "dog"], exclude: false });
+    expect(toggleLabel(two, LABELS, "cat")).toEqual({
+      values: ["dog"],
+      exclude: false,
     });
   });
 
-  it("collapses to no filter when every class is back on", () => {
+  it("clears the filter when the last shown class is clicked off", () => {
+    // An empty inclusion reads as no filter at all, so it can't be
+    // written — and an exclusion here would undo the solo
+    const solo = soloLabel(null, LABELS, "dog");
+    expect(toggleLabel(solo, LABELS, "dog")).toBeNull();
+  });
+
+  it("collapses to no filter when an exclusion turns every class back on", () => {
     expect(
       toggleLabel({ values: ["cat"], exclude: true }, LABELS, "cat"),
     ).toBeNull();
+  });
+
+  it("stays an inclusion when it grows to every class", () => {
     expect(
       toggleLabel({ values: ["cat", "dog"], exclude: false }, LABELS, "bird"),
-    ).toBeNull();
+    ).toEqual({ values: LABELS, exclude: false });
   });
 
   it("allows toggling every class off", () => {
@@ -86,13 +97,11 @@ describe("toggleLabel", () => {
     });
   });
 
-  it("drops an inclusion filter's foreign values", () => {
-    // Inclusion of an unlisted value cannot survive in exclusion form —
-    // carrying "zebra" into the exclusion list would invert its meaning
+  it("preserves included sidebar values outside the legend's class list", () => {
     const filter = { values: ["zebra"], exclude: false };
     expect(toggleLabel(filter, LABELS, "cat")).toEqual({
-      values: ["dog", "bird"],
-      exclude: true,
+      values: ["cat", "zebra"],
+      exclude: false,
     });
   });
 
@@ -130,25 +139,31 @@ describe("legendLabels", () => {
 });
 
 describe("soloLabel", () => {
-  it("writes the exclusion of every other class", () => {
+  it("writes an inclusion filter naming only the isolated class", () => {
+    // Exclusion could only name the OTHER known classes, leaving
+    // unlisted values (missing, or past the top-N cap) visible
     expect(soloLabel(null, LABELS, "dog")).toEqual({
-      values: ["cat", "bird"],
-      exclude: true,
+      values: ["dog"],
+      exclude: false,
     });
-  });
-
-  // Identical toggle states must produce identical filters no matter
-  // the click path — otherwise the same legend state renders
-  // differently (sidebar mode, grey/unlisted points) by history
-  it("is exactly equivalent to single-clicking every other class off", () => {
-    const viaSolo = soloLabel(null, LABELS, "dog");
-    let viaToggles = toggleLabel(null, LABELS, "cat");
-    viaToggles = toggleLabel(viaToggles, LABELS, "bird");
-    expect(viaSolo).toEqual(viaToggles);
   });
 
   it("restores all classes when the lone visible class is solo'd again", () => {
     const solo = soloLabel(null, LABELS, "dog");
     expect(soloLabel(solo, LABELS, "dog")).toBeNull();
+  });
+
+  it("recognizes an inclusion filter reached by other means as already solo'd", () => {
+    expect(
+      soloLabel({ values: ["dog"], exclude: false }, LABELS, "dog"),
+    ).toBeNull();
+  });
+
+  it("drops any prior filter's foreign values and extra properties", () => {
+    const filter = { values: ["zebra"], exclude: true, isMatching: true };
+    expect(soloLabel(filter, LABELS, "dog")).toEqual({
+      values: ["dog"],
+      exclude: false,
+    });
   });
 });
