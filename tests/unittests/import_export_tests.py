@@ -6,6 +6,7 @@ FiftyOne import/export-related unit tests.
 |
 """
 
+import importlib.util
 import os
 import pathlib
 import random
@@ -35,6 +36,10 @@ from decorators import drop_collection, drop_datasets
 
 skipwindows = pytest.mark.skipif(
     os.name == "nt", reason="Windows hangs in workflows, fix me"
+)
+skiptf = pytest.mark.skipif(
+    importlib.util.find_spec("tensorflow") is None,
+    reason="tensorflow is not installed",
 )
 drop_tags = drop_collection(fota.TAGS_COLLECTION_NAME)
 
@@ -973,6 +978,7 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
         # <class>/_images/<filename>
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
 
+    @skiptf
     @drop_datasets
     def test_tf_image_classification_dataset(self):
         dataset = self._make_dataset()
@@ -1316,6 +1322,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         # _images/<filename>
         self.assertEqual(len(relpath.split(os.path.sep)), 2)
 
+    @skiptf
     @drop_datasets
     def test_tf_object_detection_dataset(self):
         dataset = self._make_dataset()
