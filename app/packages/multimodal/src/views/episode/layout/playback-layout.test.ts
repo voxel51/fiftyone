@@ -151,6 +151,44 @@ describe("resolvePlaybackLayout", () => {
     ]);
   });
 
+  it("fills default tiles with non-depth sources before one depth source", () => {
+    const { tiles } = resolvePlaybackLayout({
+      capabilities: STRONG_LOCAL,
+      readProfile: "local",
+      sources: [
+        imageSource("depth-1", 500, "/camera/front/depth"),
+        imageSource("depth-2", 300, "/camera/rear/disparity"),
+        imageSource("color", 240, "/camera/front/image_rgb"),
+        imageSource("infrared", 120, "/camera/front/ir"),
+      ],
+    });
+
+    expect(tiles.map((tile) => tile.initialSourceId)).toEqual([
+      "color",
+      "infrared",
+      "depth-1",
+    ]);
+  });
+
+  it("opens one default image tile for a depth-only scene", () => {
+    const { tiles } = resolvePlaybackLayout({
+      capabilities: STRONG_LOCAL,
+      readProfile: "local",
+      sources: [
+        imageSource("front", 240, "/camera/front/depth"),
+        imageSource("rear", 240, "/camera/rear/depth"),
+        imageSource("left", 240, "/camera/left/depth"),
+        POINT_CLOUD,
+      ],
+    });
+
+    expect(
+      tiles
+        .filter((tile) => tile.tileType === "image")
+        .map((tile) => tile.initialSourceId),
+    ).toEqual(["front"]);
+  });
+
   it("caps image tiles by cpu budget on weak machines", () => {
     const { tiles } = resolvePlaybackLayout({
       capabilities: { ...STRONG_LOCAL, cpuCores: 2 },

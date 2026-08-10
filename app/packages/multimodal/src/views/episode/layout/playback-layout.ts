@@ -108,7 +108,8 @@ export function collectPlaybackDeviceCapabilities(): PlaybackDeviceCapabilities 
 
 // Stream tokens that mark a non-color image representation. Only a
 // tiebreak: a dense depth stream still outranks a single RGB keyframe.
-const NON_COLOR_IMAGE_TOKENS = new Set(["depth", "disparity", "ir"]);
+const DEPTH_IMAGE_TOKENS = new Set(["depth", "disparity"]);
+const NON_COLOR_IMAGE_TOKENS = new Set([...DEPTH_IMAGE_TOKENS, "ir"]);
 
 /**
  * Image sources ranked for tile binding: densest stream first
@@ -152,16 +153,45 @@ export function rankDefaultImageSources(
 }
 
 function isNonColorImageSource(source: SceneSource): boolean {
+  return imageSourceNameHasToken(source, NON_COLOR_IMAGE_TOKENS);
+}
+
+// TODO: Retire this topic-name heuristic once adapters expose image semantics
+// from a bounded first-message probe. MCAP summary metadata does not include
+// ROS/Foxglove pixel encoding, so unnamed depth streams remain unknown here.
+function isDepthImageSource(source: SceneSource): boolean {
+  return imageSourceNameHasToken(source, DEPTH_IMAGE_TOKENS);
+}
+
+function imageSourceNameHasToken(
+  source: SceneSource,
+  tokens: ReadonlySet<string>,
+): boolean {
   return source.sourceName
     .toLowerCase()
     .split(/[^a-z0-9]+/)
-    .some((token) => NON_COLOR_IMAGE_TOKENS.has(token));
+    .some((token) => tokens.has(token));
+}
+
+function selectDefaultImageSources(
+  rankedSources: readonly SceneSource[],
+  budget: number,
+): readonly SceneSource[] {
+  const nonDepth = rankedSources
+    .filter((source) => !isDepthImageSource(source))
+    .slice(0, budget);
+  if (nonDepth.length === budget) {
+    return nonDepth;
+  }
+
+  const depth = rankedSources.find(isDepthImageSource);
+  return depth ? [...nonDepth, depth] : nonDepth;
 }
 
 /**
  * Decides the default playback workspace for a scene: how many image
- * tiles to open (bound to default-preferred sources) next to one fused
- * 3D tile.
+ * tiles to open (non-depth sources first, then at most one depth source)
+ * next to one fused 3D tile.
  *
  * Heuristic budgets, all combined with `min` and clamped to the number
  * of image sources:
@@ -196,22 +226,21 @@ export function resolvePlaybackLayout({
   const hasLogs = sources.some(
     (source) => source.type === SCENE_SOURCE_TYPE.LOG,
   );
-  const imageTileCount =
+  const tileBudget =
     rankedImages.length === 0
       ? 0
       : Math.min(
           rankedImages.length,
           imageTileBudget({ capabilities, has3d, readProfile }),
         );
+  const defaultImages = selectDefaultImageSources(rankedImages, tileBudget);
 
-  const tiles: PlaybackLayoutTile[] = rankedImages
-    .slice(0, imageTileCount)
-    .map((source, index) => ({
-      id: `${TILE_TYPE.IMAGE}-${index + 1}`,
-      initialSourceId: source.id,
-      tileType: TILE_TYPE.IMAGE,
-      title: source.label,
-    }));
+  const tiles: PlaybackLayoutTile[] = defaultImages.map((source, index) => ({
+    id: `${TILE_TYPE.IMAGE}-${index + 1}`,
+    initialSourceId: source.id,
+    tileType: TILE_TYPE.IMAGE,
+    title: source.label,
+  }));
   if (has3d) {
     tiles.push({
       id: THREE_D_TILE_ID,
