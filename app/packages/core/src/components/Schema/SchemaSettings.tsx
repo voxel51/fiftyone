@@ -1,4 +1,5 @@
 import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
+import { useDismissable } from "@fiftyone/keymap";
 import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
 import CloseIcon from "@mui/icons-material/Close";
@@ -82,23 +83,21 @@ const SchemaSettings = () => {
     close();
   });
 
-  const keyboardHandler = useCallback(
-    (e: KeyboardEvent) => {
-      const active = document.activeElement;
-      if (active?.tagName === "INPUT") {
-        if ((active as HTMLInputElement).type === "text") {
-          return;
-        }
-      }
-      if (e.key === "Escape") {
-        setSettingsModal({ open: false });
-      }
-    },
-    [setSettingsModal],
-  );
-  fos.useEventHandler(document, "keydown", keyboardHandler);
-
   const { open: isSettingsModalOpen } = settingModal || {};
+
+  // Pushed only while the modal is open, so a stray Escape elsewhere in the app
+  // no longer runs this handler at all — it used to be live unconditionally.
+  useDismissable(
+    "schema-settings",
+    "Field visibility",
+    "overlay.dialog",
+    () => {
+      setSettingsModal({ open: false });
+      return true;
+    },
+    Boolean(isSettingsModalOpen),
+  );
+
   if (!isSettingsModalOpen) {
     return null;
   }

@@ -675,3 +675,218 @@ describe("arrow keys", () => {
     expect(next).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * The executable half of BASELINE.md.
+ *
+ * P2 replaces a global numeric priority ladder with scope depth plus the
+ * dismissal stack. These tests assert the *new* model can reproduce the old
+ * resolution order, for every state combination the annotation surface has —
+ * before any annotation code is touched. Passing is necessary, not sufficient:
+ * the manual walk in BASELINE.md is what confirms the states themselves.
+ */
+describe("annotation ladder (P2 baseline)", () => {
+  let registry: KeymapRegistry;
+
+  beforeEach(() => {
+    registry?.dispose();
+    localStorage.clear();
+    registry = keymap();
+    // The annotation surface is only reachable with the whole chain pushed —
+    // the F1 trap that silently killed five 3D shortcuts during the POC.
+    registry.pushScope("modal");
+    registry.pushScope("modal.3d");
+    registry.pushScope("modal.annotate");
+  });
+
+  describe("transform keys fall through when there is no target", () => {
+    /**
+     * Today: gizmo at priority 100, viewer binding at default, both enabled
+     * predicates deciding. Under the new model the gizmo is simply deeper, so
+     * the fall-through is structural rather than numeric.
+     */
+    const cases = [
+      {
+        key: "KeyS",
+        gizmo: "fo.modal.annotate.3d.scale",
+        viewer: "fo.modal.sidebar.toggle",
+      },
+      {
+        key: "KeyT",
+        gizmo: "fo.modal.annotate.3d.translate",
+        viewer: "fo.modal.3d.view.top",
+      },
+      {
+        key: "KeyR",
+        gizmo: "fo.modal.annotate.3d.rotate",
+        viewer: "fo.modal.3d.leva.toggle",
+      },
+      {
+        key: "KeyC",
+        gizmo: "fo.modal.annotate.3d.cuboid",
+        viewer: "fo.modal.controls.toggle",
+      },
+    ];
+
+    for (const { key, gizmo, viewer } of cases) {
+      it(`${key}: gizmo with a target, viewer without`, () => {
+        let hasTarget = false;
+        const onGizmo = vi.fn();
+        const onViewer = vi.fn();
+
+        registry.pushScope("modal.annotate.3d");
+        registry.bind(gizmo, onGizmo, () => hasTarget);
+        registry.bind(viewer, onViewer);
+
+        document.dispatchEvent(press(key));
+        expect(onViewer).toHaveBeenCalledTimes(1);
+        expect(onGizmo).not.toHaveBeenCalled();
+
+        hasTarget = true;
+        document.dispatchEvent(press(key));
+        expect(onGizmo).toHaveBeenCalledTimes(1);
+        expect(onViewer).toHaveBeenCalledTimes(1);
+      });
+    }
+  });
+
+  it("resolves the three-way s, deepest applicable binding first", () => {
+    const shape = vi.fn();
+    const scale = vi.fn();
+    const sidebar = vi.fn();
+    let hasTransformTarget = false;
+
+    registry.bind("fo.modal.sidebar.toggle", sidebar);
+    registry.bind(
+      "fo.modal.annotate.3d.scale",
+      scale,
+      () => hasTransformTarget,
+    );
+    registry.bind("fo.modal.annotate.seg.brush.shape", shape);
+
+    // Neither sub-surface active: the sidebar keeps s.
+    document.dispatchEvent(press("KeyS"));
+    expect(sidebar).toHaveBeenCalledTimes(1);
+
+    // Segmentation active, no transform target: brush shape.
+    const popSegmentation = registry.pushScope("modal.annotate.segmentation");
+    document.dispatchEvent(press("KeyS"));
+    expect(shape).toHaveBeenCalledTimes(1);
+    expect(sidebar).toHaveBeenCalledTimes(1);
+
+    // Transform target selected. Both are depth 3, so this is the case the
+    // numbers used to arbitrate — BASELINE.md §4 flags it for confirmation.
+    popSegmentation();
+    registry.pushScope("modal.annotate.3d");
+    hasTransformTarget = true;
+    document.dispatchEvent(press("KeyS"));
+    expect(scale).toHaveBeenCalledTimes(1);
+  });
+
+  it("reproduces the Escape ladder's press-by-press order", () => {
+    // Rungs 1-3 share the `modal.annotate.3d` scope, so depth cannot separate
+    // them and push order does. This is the riskiest detail in P2: push them
+    // outermost-first, because the stack takes the most recently pushed layer
+    // within a scope as the innermost one.
+    const fired: string[] = [];
+    let editing = true;
+    let vertexSelected = true;
+    let segmenting = true;
+
+    registry.pushScope("modal.annotate.3d");
+
+    registry.dismissal.push({
+      id: "exit-edit-mode",
+      label: "Exit edit mode",
+      scope: "modal.annotate.3d",
+      dismiss: () => {
+        if (!editing) return false;
+        editing = false;
+        fired.push("exit-edit-mode");
+        return true;
+      },
+    });
+    registry.dismissal.push({
+      id: "clear-selected-vertex",
+      label: "Deselect vertex",
+      scope: "modal.annotate.3d",
+      dismiss: () => {
+        if (!vertexSelected) return false;
+        vertexSelected = false;
+        fired.push("clear-vertex");
+        return true;
+      },
+    });
+    registry.dismissal.push({
+      id: "cancel-segment",
+      label: "Cancel polyline",
+      scope: "modal.annotate.3d",
+      dismiss: () => {
+        if (!segmenting) return false;
+        segmenting = false;
+        fired.push("cancel-segment");
+        return true;
+      },
+    });
+
+    // Outermost layer: the modal itself, at depth 1.
+    const closeModal = vi.fn(() => true);
+    registry.dismissal.push({
+      id: "modal",
+      label: "Sample viewer",
+      scope: "modal",
+      dismiss: closeModal,
+    });
+
+    document.dispatchEvent(press("Escape"));
+    document.dispatchEvent(press("Escape"));
+    document.dispatchEvent(press("Escape"));
+    expect(fired).toEqual(["cancel-segment", "clear-vertex", "exit-edit-mode"]);
+    expect(closeModal).not.toHaveBeenCalled();
+
+    // Only once every annotation layer has declined does the modal close.
+    document.dispatchEvent(press("Escape"));
+    expect(closeModal).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps brush size on the key while the legacy bus would drop the repeat", () => {
+    // BASELINE.md §4 flags this as a deliberate behavior *change*: today the
+    // bus drops event.repeat globally, so holding `[` steps once. Declaring
+    // the command repeatable is the fix, and this pins the new behavior.
+    const smaller = vi.fn();
+    registry.pushScope("modal.annotate.segmentation");
+    registry.bind("fo.modal.annotate.seg.brush.smaller", smaller);
+
+    document.dispatchEvent(press("BracketLeft"));
+    document.dispatchEvent(press("BracketLeft", {}, { repeat: true }));
+    document.dispatchEvent(press("BracketLeft", {}, { repeat: true }));
+
+    expect(smaller).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not fire segmentation tools while segmentation is inactive", () => {
+    // The enablement predicates are what stop `b`, `p`, `e` colliding with 3D
+    // background, preferences and ego view. Under the new model the scope does
+    // it structurally, so the predicate becomes a second line of defence.
+    const brush = vi.fn();
+    registry.bind("fo.modal.annotate.seg.tool.brush", brush);
+
+    document.dispatchEvent(press("KeyB"));
+    expect(brush).not.toHaveBeenCalled();
+
+    registry.pushScope("modal.annotate.segmentation");
+    document.dispatchEvent(press("KeyB"));
+    expect(brush).toHaveBeenCalledTimes(1);
+  });
+
+  it("delete fires exactly one handler", () => {
+    // The audit found five Delete handlers and a "reconcile" comment. Whatever
+    // the app does today, the migrated behavior is one.
+    const remove = vi.fn();
+    registry.bind("fo.modal.annotate.delete", remove);
+
+    document.dispatchEvent(press("Delete"));
+    document.dispatchEvent(press("Backspace"));
+    expect(remove).toHaveBeenCalledTimes(2);
+  });
+});

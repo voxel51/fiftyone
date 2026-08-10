@@ -1,4 +1,5 @@
 import { scrollable } from "@fiftyone/components";
+import { useDismissable, useKeyBinding } from "@fiftyone/keymap";
 import {
   Dialog,
   DialogActions,
@@ -6,16 +7,9 @@ import {
   DialogProps,
   DialogTitle,
 } from "@mui/material";
-import {
-  PropsWithChildren,
-  ReactElement,
-  useCallback,
-  useEffect,
-  useRef,
-} from "react";
+import { PropsWithChildren, ReactElement, useRef } from "react";
 import OperatorPromptFooter from "./components/OperatorPromptFooter";
 import OperatorPromptHeader from "./components/OperatorPromptHeader";
-import { PALETTE_CONTROL_KEYS } from "./constants";
 
 export default function OperatorPalette(props: OperatorPaletteProps) {
   const paletteElem = useRef<HTMLDivElement>(null);
@@ -26,44 +20,42 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     onClose,
     onOutsideClick,
     isExecuting,
-    allowPropagation,
     submitOnControlEnter,
     title,
     dialogProps,
   } = props;
   const hideActions = !onSubmit && !onCancel;
   const scroll = "paper";
-  const keyDownHandler = useCallback(
-    (event) => {
-      const { key } = event;
-      if (PALETTE_CONTROL_KEYS.includes(key) && !allowPropagation) {
-        event.stopPropagation();
+  // The palette is a dismissal layer: Escape closes and cancels it, and nothing
+  // behind it also sees that press. The `allowPropagation` prop and the manual
+  // `stopPropagation()` over `PALETTE_CONTROL_KEYS` were both standing in for
+  // arbitration the bus now does — a consumed key is suppressed for everyone.
+  useDismissable(
+    "operator-palette",
+    "Operator palette",
+    "overlay.dialog",
+    () => {
+      if (!onClose && !onCancel) {
+        return false;
       }
-      switch (key) {
-        case "Escape":
-          if (onClose) onClose();
-          if (onCancel) onCancel();
-          break;
-        case "Enter":
-          if (
-            onSubmit &&
-            (event.metaKey || event.ctrlKey || !submitOnControlEnter)
-          )
-            onSubmit();
-          break;
-        default:
-          break;
-      }
+      onClose?.();
+      onCancel?.();
+      return true;
     },
-    [onClose, onCancel, onSubmit, allowPropagation, submitOnControlEnter],
   );
 
-  useEffect(() => {
-    document.addEventListener("keydown", keyDownHandler);
-    return () => {
-      document.removeEventListener("keydown", keyDownHandler);
-    };
-  }, [paletteElem, keyDownHandler]);
+  // Enter, or Control/Command+Enter where the palette asks for it. The modifier
+  // check stays in the handler because both spellings are one command — the
+  // pane should offer one row to rebind, not two.
+  useKeyBinding(
+    "fo.operator-palette.submit",
+    (event) => {
+      if (event.metaKey || event.ctrlKey || !submitOnControlEnter) {
+        onSubmit?.();
+      }
+    },
+    { enablement: () => Boolean(onSubmit) },
+  );
 
   const handleClose = (
     _event: React.MouseEvent<HTMLDivElement, MouseEvent>,
@@ -144,7 +136,6 @@ export type OperatorPaletteProps = PropsWithChildren & {
   submitButtonText?: string;
   cancelButtonText?: string;
   maxWidth?: DialogProps["maxWidth"];
-  allowPropagation?: boolean;
   submitOnControlEnter?: boolean;
   title?: ReactElement;
   disableSubmit?: boolean;

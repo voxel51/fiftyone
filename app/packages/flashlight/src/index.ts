@@ -34,11 +34,6 @@ export interface FlashlightConfig<K> {
   options: FlashlightOptions;
   elementId?: string;
   containerId?: string;
-  enableHorizontalKeyNavigation?: {
-    navigationCallback: (isPrev: boolean) => Promise<void>;
-    previousKey: string;
-    nextKey: string;
-  };
   onItemClick?: OnItemClick;
   onResize?: OnResize;
   onItemResize?: OnItemResize;
@@ -66,25 +61,6 @@ export default class Flashlight<K> {
     this.state = this.getEmptyState(config);
 
     document.addEventListener("visibilitychange", () => this.render());
-
-    if (config.enableHorizontalKeyNavigation && config.horizontal) {
-      const keyDownEventListener = (e) => {
-        if (!this.isAttached()) {
-          document.removeEventListener("keydown", keyDownEventListener);
-          return;
-        }
-
-        if (e.key === config.enableHorizontalKeyNavigation.previousKey) {
-          e.preventDefault();
-          config.enableHorizontalKeyNavigation.navigationCallback(true);
-        } else if (e.key === config.enableHorizontalKeyNavigation.nextKey) {
-          e.preventDefault();
-          config.enableHorizontalKeyNavigation.navigationCallback(false);
-        }
-      };
-
-      document.addEventListener("keydown", keyDownEventListener);
-    }
 
     this.resizeObserver = new ResizeObserver(
       ([

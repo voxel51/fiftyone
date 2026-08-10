@@ -16,9 +16,9 @@
 packages/commands/src/context/CommandContextManager.ts
 
 # Looker and lighter: the largest remaining consumers, and P2's real work.
+# (flashlight's entry is gone — its listener was dead config with no callers.)
 packages/lighter/src/core/Scene2D.ts
 packages/lighter/src/interaction/InteractionManager.ts
-packages/flashlight/src/index.ts
 
 # 3D annotation — the priority 100/200/300 Escape ladder and the transform
 # gizmos. Blocked on the regression baseline the design doc's §5 asks for.
@@ -46,10 +46,6 @@ packages/multimodal/src/adapters/mcap/react/use-mcap-3d-view-shortcuts.ts
 packages/multimodal/src/adapters/mcap/react/use-mcap-3d-view-shortcuts.test.tsx
 packages/multimodal/src/visualization/panels/point-cloud/PointCloudPanel.tsx
 
-# Assorted single-key Escape and shortcut handlers.
-packages/components/src/components/JSONPanel/JSONPanel.tsx
-packages/core/src/components/Modal/TooltipInfo.tsx
-packages/core/src/components/Sidebar/ViewSelection/index.tsx
+# Assorted single-key handlers. DashboardView's Escape moved to the dismissal
+# stack; its copy/paste/delete keys are still here.
 packages/core/src/plugins/SchemaIO/components/DashboardView.tsx
-packages/embeddings-v2/src/useSelectionBridge.ts
-packages/operators/src/OperatorPalette.tsx

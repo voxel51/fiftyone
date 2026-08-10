@@ -5,6 +5,7 @@ import {
   scrollableSm,
   useTheme,
 } from "@fiftyone/components";
+import { useDismissable } from "@fiftyone/keymap";
 import * as fos from "@fiftyone/state";
 import CloseIcon from "@mui/icons-material/Close";
 import Typography from "@mui/material/Typography";
@@ -43,22 +44,13 @@ const ColorModal = () => {
   const [width, setWidth] = useState(860);
   const [height, setHeight] = useState(680);
 
-  const keyboardHandler = useCallback(
-    (e: KeyboardEvent) => {
-      const active = document.activeElement;
-      if (active?.tagName === "INPUT") {
-        if ((active as HTMLInputElement).type === "text") {
-          return;
-        }
-      }
-      if (e.key === "Escape") {
-        resetEntry();
-      }
-    },
-    [resetEntry],
-  );
-
-  fos.useEventHandler(document, "keydown", keyboardHandler);
+  // The hand-rolled `tagName === "INPUT" && type === "text"` guard is gone: it
+  // missed textareas and contenteditable, and the bus applies the one shared
+  // text-editing guard to every binding.
+  useDismissable("color-modal", "Color scheme", "overlay.dialog", () => {
+    resetEntry();
+    return true;
+  });
 
   if (targetContainer) {
     return ReactDOM.createPortal(

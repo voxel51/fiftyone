@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { ThemeProvider, useTheme } from "@fiftyone/components";
+import { useDismissable } from "@fiftyone/keymap";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot } from "recoil";
 import usePanelEvent from "@fiftyone/operators/src/usePanelEvent";
@@ -1204,10 +1205,9 @@ export default function DashboardView(props: ViewPropsType) {
       ) {
         deleteSelectedItems();
       }
-      // Check if Escape is pressed to deselect (only in edit mode)
-      if (event.key === "Escape" && isEditMode) {
-        handleItemDeselect();
-      }
+      // Escape is handled by the dismissal stack below, not here — it is the
+      // one key in this handler that other layers also want. Copy, paste and
+      // delete stay because nothing competes for them.
     };
 
     // Add event listener
@@ -1233,6 +1233,23 @@ export default function DashboardView(props: ViewPropsType) {
     handlePaste,
     deleteSelectedItems,
   ]);
+
+  // Deselecting dashboard items is a dismissal. It declines when there is
+  // nothing selected, so Escape falls through to whatever is behind the
+  // dashboard rather than being absorbed by an edit-mode panel.
+  useDismissable(
+    `dashboard-${panelId}`,
+    "Dashboard selection",
+    "overlay.popout",
+    () => {
+      if (!selectedItemIds.size) {
+        return false;
+      }
+      handleItemDeselect();
+      return true;
+    },
+    isEditMode,
+  );
 
   const handleClosePopover = () => {
     setAnchorEl(null);

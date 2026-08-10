@@ -1,4 +1,5 @@
 import { IconButton, Tooltip } from "@fiftyone/components";
+import { useDismissable, useHoldBinding } from "@fiftyone/keymap";
 import * as fos from "@fiftyone/state";
 import { ModalMode, useModalMode } from "@fiftyone/state";
 import { isHoveringAnyLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
@@ -321,40 +322,37 @@ export const TooltipInfo = React.memo(() => {
   });
   const Component = detail ? OVERLAY_INFO[detail.type] : null;
 
-  useLayoutEffect(() => {
-    if (!isTooltipLocked) {
-      return;
+  /**
+   * A locked tooltip is the innermost dismissal layer, so Escape releases it
+   * before anything else — which is what the previous implementation was
+   * reaching for with `stopImmediatePropagation()` on **keyup**, commented
+   * "looker's esc handler doesn't always work".
+   *
+   * Two things change. The hack is gone: the stack arbitrates, so there is
+   * nothing to out-race. And it moves from keyup to keydown, which means a
+   * single Escape now unlocks the tooltip *or* reaches looker, not both — the
+   * old pair of handlers on two different events could each fire once.
+   */
+  useDismissable(
+    "tooltip-lock",
+    "Locked tooltip",
+    "overlay.tooltip",
+    () => {
+      setIsTooltipLocked(false);
+      return true;
+    },
+    isTooltipLocked,
+  );
+
+  // Holding Control pins the tooltip. Registered as a held binding because a
+  // bare modifier cannot be an ordinary chord — pressing Control is itself what
+  // sets `event.ctrlKey`, so exact modifier matching could never match it. Held
+  // bindings never consume, so Control keeps modifying everything else.
+  useHoldBinding("fo.modal.tooltip.lock", (held) => {
+    if (held) {
+      setIsTooltipLocked(true);
     }
-
-    // set esc handler to unlock tooltip
-    // because looker's esc handler doesn't always work
-    const unlockTooltip = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsTooltipLocked(false);
-        e.stopImmediatePropagation();
-      }
-    };
-
-    document.addEventListener("keyup", unlockTooltip);
-
-    return () => {
-      document.removeEventListener("keyup", unlockTooltip);
-    };
-  }, [isTooltipLocked]);
-
-  useLayoutEffect(() => {
-    const lockTooltip = (e: KeyboardEvent) => {
-      if (e.key === "Control") {
-        setIsTooltipLocked(true);
-      }
-    };
-
-    document.addEventListener("keydown", lockTooltip);
-
-    return () => {
-      document.removeEventListener("keydown", lockTooltip);
-    };
-  }, []);
+  });
 
   const tooltipDiv = useMemo(() => {
     if (!detail) {

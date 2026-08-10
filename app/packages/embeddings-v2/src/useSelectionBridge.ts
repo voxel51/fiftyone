@@ -1,12 +1,6 @@
+import { useDismissable } from "@fiftyone/keymap";
 import type { SelectionType } from "@fiftyone/state";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type RefObject,
-} from "react";
+import { useCallback, useMemo, useRef, useState, type RefObject } from "react";
 import type { SetterOrUpdater } from "recoil";
 import { buildIdIndex, fetchLassoStage, fetchSampleInfo } from "./protocol";
 import type { EmbeddingsViewHandle, HoverHit } from "./renderer";
@@ -66,7 +60,7 @@ export function useSelectionBridge({
   // overwrite a newer selection (or resurrect one that was cleared)
   const lassoSeq = useRef(0);
 
-  // Stable because the Esc effect below depends on it
+  // Stable because the dismisser below closes over it
   const clearAll = useCallback(() => {
     lassoSeq.current++;
     resetExtended();
@@ -76,15 +70,23 @@ export function useSelectionBridge({
     chart.current?.clearSelection();
   }, [resetExtended, setSelectedSamples, chart]);
 
-  // Esc clears every selection layer (App state + the chart's local dim)
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+  // Esc clears every selection layer (App state + the chart's local dim).
+  //
+  // Declines when there is nothing selected, so the press falls through to an
+  // outer layer instead of being swallowed. As a raw listener this fired
+  // unconditionally, including while typing in a filter box.
+  useDismissable(
+    "embeddings-v2-selection",
+    "Plot selection",
+    "panel.embeddings",
+    () => {
+      if (!selectedSamples.size && selectionCount === null) {
+        return false;
+      }
       clearAll();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [clearAll]);
+      return true;
+    },
+  );
 
   // Grid/checkbox selections style the plot (id -> wire index). The map
   // is built lazily — only when a grid selection actually exists — and

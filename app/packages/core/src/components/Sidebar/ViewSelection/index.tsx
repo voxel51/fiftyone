@@ -1,4 +1,5 @@
 import { useTrackEvent } from "@fiftyone/analytics";
+import { useKeyBinding } from "@fiftyone/keymap";
 import { default as useRefetchableSavedViews } from "../../../hooks/useRefetchableSavedViews";
 import * as fos from "@fiftyone/state";
 import { Suspense, useEffect, useMemo } from "react";
@@ -147,24 +148,12 @@ export default function ViewSelection() {
     }
   }, [savedViewParam]);
 
-  useEffect(() => {
-    const callback = (event: KeyboardEvent) => {
-      if (disabled) {
-        return;
-      }
-      if ((event.metaKey || event.ctrlKey) && event.code === "KeyS") {
-        event.preventDefault();
-        if (!isEmptyView) {
-          setIsOpen(true);
-        }
-      }
-    };
-
-    document.addEventListener("keydown", callback);
-    return () => {
-      document.removeEventListener("keydown", callback);
-    };
-  }, [isEmptyView, disabled]);
+  // Ctrl/Cmd+S to save the current view. The raw listener this replaces had no
+  // text-input guard, so it also fired while typing in the view name field it
+  // opens.
+  useKeyBinding("fo.grid.view.save", () => setIsOpen(true), {
+    enablement: () => !disabled && !isEmptyView,
+  });
 
   return (
     <Suspense fallback="Loading saved views...">

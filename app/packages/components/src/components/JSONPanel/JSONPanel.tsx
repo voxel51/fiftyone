@@ -7,7 +7,8 @@ import {
   JSONViewer,
   scrollable,
 } from "@fiftyone/components";
-import React, { useEffect } from "react";
+import { useDismissable } from "@fiftyone/keymap";
+import React from "react";
 import jsonStyles from "./json.module.css";
 import panelStyles from "./panel.module.css";
 
@@ -15,17 +16,13 @@ export default function JSONPanel(props: JSONPanelPropsType) {
   const { containerRef, onClose, onCopy, json } = props;
   const parsed = JSON.parse(json);
 
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => {
-      window.removeEventListener("keydown", handleEsc);
-    };
-  }, [onClose]);
+  // An open JSON panel is a dismissal layer, not an Escape shortcut. As a raw
+  // `window` listener this closed the panel *and* let the same Escape reach the
+  // modal and the grid, because nothing arbitrated between them.
+  useDismissable("json-panel", "JSON panel", "overlay.dialog", () => {
+    onClose();
+    return true;
+  });
 
   return (
     <div

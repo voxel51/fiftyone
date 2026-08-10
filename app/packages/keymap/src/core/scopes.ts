@@ -44,6 +44,11 @@ export const SCOPE_PARENTS: Record<ScopeId, ScopeId | null> = {
   "overlay.popout": "overlay",
   "overlay.operator-browser": "overlay",
   "overlay.dialog": "overlay",
+  // A locked tooltip is the most transient thing on screen, and the design doc
+  // names it as the innermost dismissal layer. It gets its own scope rather
+  // than borrowing `overlay.dialog` so that ordering is stated rather than
+  // implied by which sibling happens to be listed first.
+  "overlay.tooltip": "overlay",
 
   // Showcase-only scopes, so the demo route exercises the real resolution path
   // rather than a parallel toy one.
@@ -72,6 +77,7 @@ export const SCOPE_LABELS: Record<ScopeId, string> = {
   "overlay.popout": "Popout menu",
   "overlay.operator-browser": "Operator browser",
   "overlay.dialog": "Dialog",
+  "overlay.tooltip": "Locked tooltip",
   demo: "Demo ▸ Page",
   "demo.canvas": "Demo ▸ Canvas",
   "demo.canvas.tool": "Demo ▸ Canvas ▸ Tool",

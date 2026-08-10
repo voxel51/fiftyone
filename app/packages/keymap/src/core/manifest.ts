@@ -162,6 +162,19 @@ export const MANIFEST: CommandManifestEntry[] = [
     defaultKeys: ["Enter"],
   },
 
+  {
+    id: "fo.operator-palette.submit",
+    label: "Submit operator form",
+    description:
+      "Some palettes require Control/Command + Enter, so the handler checks the modifier — the binding covers both",
+    category: "Operator browser",
+    scope: "overlay.dialog",
+    defaultKeys: ["Enter", "ctrl+Enter", "meta+Enter"],
+    // The palette is mostly form fields, so a guard on text input would stop
+    // it submitting from the field you just typed in.
+    allowInTextInput: true,
+  },
+
   // ── Grid ─────────────────────────────────────────────────────────────────
   {
     id: "fo.grid.selection.clear",
@@ -266,6 +279,18 @@ export const MANIFEST: CommandManifestEntry[] = [
     holdable: true,
     remappable: false,
     legacyOwner: "@fiftyone/looker",
+  },
+
+  {
+    id: "fo.modal.tooltip.lock",
+    label: "Lock tooltip",
+    description:
+      "Hold Control to pin the hover tooltip in place; Escape releases it",
+    category: "Sample viewer",
+    scope: "modal",
+    defaultKeys: ["ControlLeft", "ControlRight"],
+    holdable: true,
+    remappable: false,
   },
 
   // ── Video ────────────────────────────────────────────────────────────────

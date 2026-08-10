@@ -17,6 +17,7 @@
     },
     "dependencies": {
         "@fiftyone/components": "*",
+        "@fiftyone/keymap": "*",
         "@fiftyone/operators": "*",
         "@fiftyone/plugins": "*",
         "@fiftyone/spaces": "*",
