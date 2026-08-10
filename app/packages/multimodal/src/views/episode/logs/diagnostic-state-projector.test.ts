@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { DiagnosticStateProjector } from "./diagnostic-console-state";
+import { DiagnosticStateProjector } from "./diagnostic-state-projector";
 import {
   diagnosticConsoleIdentity,
   type EpisodeLogConsoleRow,
-} from "./log-console-rows";
+} from "../../../visualization/logs/log-console-rows";
 
 describe("DiagnosticStateProjector", () => {
   it("holds a predecessor state older than the log window and reports its age", () => {

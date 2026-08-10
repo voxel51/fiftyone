@@ -5,7 +5,7 @@ import {
   seekEventAtom,
   subscribePlayhead,
   type PlaybackStore,
-} from "@fiftyone/playback/runtime";
+} from "@fiftyone/playback/headless";
 import { monotonicNowMs } from "../utils/monotonic-time";
 import type { TimelineIndex } from "./timeline-index";
 

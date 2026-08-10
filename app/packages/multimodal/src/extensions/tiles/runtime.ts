@@ -1,2 +1,2 @@
 /** Format-neutral data facade for tile extension implementations. */
-export * from "../runtime";
+export * from "../host/runtime";

@@ -5,7 +5,7 @@ import {
   SCENE_SOURCE_TYPE,
   type StreamDescriptor,
 } from "../ir";
-import { sceneSourcesFromStreamDescriptors } from "./stream-inventory";
+import { sceneSourcesFromStreamDescriptors } from "./scene-sources";
 
 describe("sceneSourcesFromStreamDescriptors", () => {
   it("keeps camera suffixes out of labels without collapsing sibling streams", () => {
@@ -60,7 +60,7 @@ describe("sceneSourcesFromStreamDescriptors", () => {
 function stream(
   streamId: string,
   sourceName: string,
-  type: string,
+  type: (typeof SCENE_SOURCE_TYPE)[keyof typeof SCENE_SOURCE_TYPE],
 ): StreamDescriptor {
   return {
     count: 1,

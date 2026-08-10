@@ -4,7 +4,7 @@
  * maximum preserves spikes — the whole point of plotting telemetry.
  */
 
-import { NUMERIC_SERIES_MAX_BUCKET_SURVIVORS } from "../../../runtime/numeric-series-window";
+import { NUMERIC_SERIES_MAX_BUCKET_SURVIVORS } from "../../../ports/numeric-series";
 
 /** Gap positions recorded for each source bucket. */
 export const NUMERIC_SERIES_BUCKET_GAP = {

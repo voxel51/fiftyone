@@ -3160,7 +3160,7 @@ __metadata:
 
 "@mcap/core@patch:@mcap/core@npm%3A2.2.1#~/.yarn/patches/@mcap-core-npm-2.2.1-fdbe7fc61b.patch":
   version: 2.2.1
-  resolution: "@mcap/core@patch:@mcap/core@npm%3A2.2.1#~/.yarn/patches/@mcap-core-npm-2.2.1-fdbe7fc61b.patch::version=2.2.1&hash=a94956"
+  resolution: "@mcap/core@patch:@mcap/core@npm%3A2.2.1#~/.yarn/patches/@mcap-core-npm-2.2.1-fdbe7fc61b.patch::version=2.2.1&hash=b8344b"
   dependencies:
     "@foxglove/crc": "npm:^0.0.3"
     heap-js: "npm:^2.2.0"

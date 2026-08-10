@@ -13,9 +13,9 @@ import {
   type GpuCameraProjectionBindings,
 } from "./gpu-camera-projection";
 import {
-  gpuProjectionImagePlaneSize,
-  gpuProjectionViewportRect,
-} from "./gpu-point-cloud-projection";
+  imagePlaneSize as fittedImagePlaneSize,
+  imagePlaneViewportRect as fittedImagePlaneViewportRect,
+} from "../media-2d/image-plane-viewport";
 import {
   retainGpuPointCloudProjectionResource,
   type GpuPointCloudProjectionResource,
@@ -116,7 +116,7 @@ export function GpuPointCloudProjectionLayer({
   const colorNodeKey = gpuPointCloudColorNodeKey(color);
   const imagePlaneSize = useMemo(
     () =>
-      gpuProjectionImagePlaneSize({
+      fittedImagePlaneSize({
         containerHeight: size.height,
         containerWidth: size.width,
         fit,
@@ -127,7 +127,7 @@ export function GpuPointCloudProjectionLayer({
   );
   const imageRect = useMemo(
     () =>
-      gpuProjectionViewportRect({
+      fittedImagePlaneViewportRect({
         containerHeight: size.height,
         containerWidth: size.width,
         fit,

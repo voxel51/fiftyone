@@ -37,7 +37,6 @@ export function RawMessageBrowser({
   markerOwnerId,
   onAddNumericFieldToPlot,
   onExit,
-  plottableFieldPaths,
   renderMeta,
   streamKey,
 }: {
@@ -45,7 +44,6 @@ export function RawMessageBrowser({
   readonly markerOwnerId: string;
   readonly onAddNumericFieldToPlot: (path: string) => void;
   readonly onExit: () => void;
-  readonly plottableFieldPaths?: ReadonlySet<string>;
   readonly renderMeta: (
     result: RawRecordResult,
     options: {
@@ -476,7 +474,6 @@ export function RawMessageBrowser({
             {displayed.status === "ok" && displayed.root ? (
               <StructuredMessageTree
                 onAddNumericFieldToPlot={onAddNumericFieldToPlot}
-                plottableFieldPaths={plottableFieldPaths}
                 root={displayed.root}
               />
             ) : (

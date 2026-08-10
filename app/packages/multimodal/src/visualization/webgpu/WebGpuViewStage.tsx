@@ -22,8 +22,8 @@ import {
   type HTMLAttributes,
 } from "react";
 import * as THREE from "three";
-import { DEFAULT_MAX_RENDERED_POINTS } from "../scene-3d/point-cloud-colors";
 import {
+  DEFAULT_MAX_RENDERED_POINTS,
   EMPTY_POINT_CLOUD_BUDGET,
   PointCloudCanvasBudget,
 } from "./point-cloud-canvas-budget";

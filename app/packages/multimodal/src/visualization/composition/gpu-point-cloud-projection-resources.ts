@@ -7,6 +7,11 @@ import {
   updateGpuPointCloudChannelResource,
   type GpuPointCloudChannelResource,
 } from "../scene-3d/gpu/gpu-point-cloud-channel-nodes";
+import {
+  isVisualizationCostObserved,
+  recordVisualizationCost,
+  visualizationCostNowMs,
+} from "../../observability/visualization-cost";
 
 const POINT_COMPONENT_COUNT = 3;
 

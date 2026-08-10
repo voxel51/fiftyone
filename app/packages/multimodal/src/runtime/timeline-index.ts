@@ -1,4 +1,5 @@
 import type { TimeWindow } from "../ir";
+import { nsDeltaToSeconds } from "../utils/nanoseconds";
 
 const NANOSECONDS_PER_SECOND = 1_000_000_000n;
 const NANOSECONDS_PER_SECOND_NUMBER = 1_000_000_000;
@@ -136,12 +137,4 @@ export function assertValidTimelineTickRateHz(
   if (!Number.isFinite(tickRateHz) || tickRateHz <= 0) {
     throw new Error(`${owner} tick rate must be finite and greater than zero`);
   }
-}
-
-/** Converts a nanosecond delta to seconds without losing sub-second precision. */
-export function nsDeltaToSeconds(deltaNs: bigint): number {
-  return (
-    Number(deltaNs / NANOSECONDS_PER_SECOND) +
-    Number(deltaNs % NANOSECONDS_PER_SECOND) / NANOSECONDS_PER_SECOND_NUMBER
-  );
 }

@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import type { LogLevel } from "../../ir";
 import { relativeTimeParts } from "../../utils/relative-time";
-import { booleanNoSpaceToggleProps } from "../../utils/keyboard";
+import { booleanNoSpaceToggleProps } from "../panel-ui/boolean-keyboard";
 import type { EpisodeDiagnosticState } from "./diagnostic-console-state";
 import type { EpisodeLogConsoleRow } from "./log-console-rows";
 import { virtualLogRowRange } from "./log-console-virtualization";

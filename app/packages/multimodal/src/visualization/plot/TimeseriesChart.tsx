@@ -2,10 +2,6 @@ import { Icon, IconName, Size } from "@voxel51/voodo";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import uPlot, { type AlignedData } from "uplot";
 import "uplot/dist/uPlot.min.css";
-import {
-  PLOT_WINDOW_QUANTUM_SECONDS,
-  PLOT_WINDOW_SECONDS,
-} from "../../runtime/numeric-series-window";
 import { CLICK_DRAG_TOLERANCE_PX } from "../interaction/interaction";
 import styles from "./TimeseriesChart.module.css";
 import {
@@ -39,6 +35,12 @@ export interface TimeseriesChartProps {
 
   /** Fixed x range end (recording duration, seconds). */
   readonly durationSec: number;
+
+  /** Acquisition-owned follow horizon supplied by the product composition. */
+  readonly followWindowSeconds: number;
+
+  /** Acquisition-owned alignment quantum for the follow horizon. */
+  readonly followWindowQuantumSeconds: number;
 
   /**
    * Hover publication: called with the x value (seconds) under the
@@ -131,17 +133,18 @@ function resetTimeseriesChart(
 function followTimeseriesRange(
   playheadSec: number,
   durationSec: number,
+  windowSeconds: number,
+  windowQuantumSeconds: number,
 ): readonly [number, number] {
-  if (durationSec <= PLOT_WINDOW_SECONDS) return [0, durationSec];
-  const rawStart = playheadSec - PLOT_WINDOW_SECONDS / 2;
+  if (durationSec <= windowSeconds) return [0, durationSec];
+  const rawStart = playheadSec - windowSeconds / 2;
   const quantizedStart =
-    Math.floor(rawStart / PLOT_WINDOW_QUANTUM_SECONDS) *
-    PLOT_WINDOW_QUANTUM_SECONDS;
+    Math.floor(rawStart / windowQuantumSeconds) * windowQuantumSeconds;
   const start = Math.max(
     0,
-    Math.min(quantizedStart, durationSec - PLOT_WINDOW_SECONDS),
+    Math.min(quantizedStart, durationSec - windowSeconds),
   );
-  return [start, start + PLOT_WINDOW_SECONDS];
+  return [start, start + windowSeconds];
 }
 
 function positionTimeMarker(
@@ -329,6 +332,8 @@ function appendCoverageBand(
 export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   data,
   durationSec,
+  followWindowQuantumSeconds,
+  followWindowSeconds,
   coverageRanges = [],
   onHoverTime,
   onSeek,
@@ -402,7 +407,12 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     resetTimeseriesChart(
       chart,
       dataRef.current,
-      followTimeseriesRange(playheadSecRef.current ?? 0, durationSec),
+      followTimeseriesRange(
+        playheadSecRef.current ?? 0,
+        durationSec,
+        followWindowSeconds,
+        followWindowQuantumSeconds,
+      ),
     );
     if (!pointerInsideRef.current) {
       syncLegendCursor(
@@ -411,7 +421,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
         durationSec,
       );
     }
-  }, [durationSec]);
+  }, [durationSec, followWindowQuantumSeconds, followWindowSeconds]);
 
   // This effect owns the uPlot instance lifecycle: create per series
   // identity / duration change, resize with the tile, destroy on
@@ -946,7 +956,12 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       const chart = chartRef.current;
       if (!chart) return;
       if (!hasInteractiveScaleRef.current) {
-        const [min, max] = followTimeseriesRange(sec, durationSec);
+        const [min, max] = followTimeseriesRange(
+          sec,
+          durationSec,
+          followWindowSeconds,
+          followWindowQuantumSeconds,
+        );
         if (chart.scales.x.min !== min || chart.scales.x.max !== max) {
           chart.setScale("x", { min, max });
         }
@@ -959,7 +974,12 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
         syncLegendCursor(chart, sec, durationSec);
       }
     });
-  }, [durationSec, registerPlayheadListener]);
+  }, [
+    durationSec,
+    followWindowQuantumSeconds,
+    followWindowSeconds,
+    registerPlayheadListener,
+  ]);
 
   return (
     <div className={styles.root} data-testid="timeseries-chart">

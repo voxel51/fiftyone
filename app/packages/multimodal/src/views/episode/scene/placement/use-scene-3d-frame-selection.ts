@@ -13,7 +13,11 @@ import type {
   PoseVisualization,
   SceneUpdateVisualization,
 } from "../../../../ir/index";
-import type { Scene3dViewStateStore } from "../camera/scene-3d-view-state";
+import { markEpisodeLatencyEvent } from "../../../../observability/episode-latency";
+import {
+  nextScene3dViewStateRestoreOnceKey,
+  type Scene3dViewStateStore,
+} from "../camera/scene-3d-view-state";
 import { useScene3dViewStateStore } from "../camera/scene-3d-view-state-context";
 import {
   chooseCameraTarget,

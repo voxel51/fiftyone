@@ -1,5 +1,9 @@
 import type { McapTypes } from "@mcap/core";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  setMcapDecompressionCacheSink,
+  type McapDecompressionCacheSample,
+} from "../instrumentation/meters/decompression-cache";
 import {
   createMcapDecompressedChunkCache,
   serializeMcapDecompressedChunkKey,
@@ -71,15 +75,28 @@ describe("MCAP decompressed chunk cache", () => {
     expect(load).toHaveBeenCalledTimes(1);
   });
 
-  it("evicts by decompressed bytes", () => {
+  it("evicts by decompressed bytes and reports exact residency", () => {
+    const samples: McapDecompressionCacheSample[] = [];
+    setMcapDecompressionCacheSink((sample) => samples.push(sample));
     const cache = createMcapDecompressedChunkCache(12);
-    const load = vi.fn(() => ({ bytes: new Uint8Array(8) }));
+    const load = () => ({ bytes: new Uint8Array(8), durationMs: 1 });
 
-    cache.getOrLoad(key(), load);
-    cache.getOrLoad(key({ compressedOffset: 200n }), load);
-    cache.getOrLoad(key(), load);
+    cache.getOrLoad(key(), "bounded-reader", load);
+    cache.getOrLoad(
+      key({ compressedOffset: 200n }),
+      "indexed-message-reader",
+      load,
+    );
 
-    expect(load).toHaveBeenCalledTimes(3);
+    expect(samples.at(-1)).toMatchObject({
+      cacheCapacityBytes: 12,
+      cacheEvictedBytes: 8,
+      cacheEvictions: 1,
+      cacheResidentBytes: 8,
+      chunkIdentity: expect.any(String),
+      chunkIdentityStable: true,
+    });
+    expect(samples.at(-1)?.cacheOwnerId).toMatch(/^shared-reader-\d+$/);
   });
 
   it("does not retain failures or aborted loads", () => {

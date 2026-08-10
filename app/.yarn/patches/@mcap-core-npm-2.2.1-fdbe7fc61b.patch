@@ -156,10 +156,7 @@ diff --git a/src/types.ts b/src/types.ts
 index 92f5105d602964478664232fb8912cfcbe588e9b..0b8acb3c72b3231e8e90cfaaf1ad88ac63a06079 100644
 --- a/src/types.ts
 +++ b/src/types.ts
-@@ -129,8 +129,23 @@ type Values<T> = T[keyof T];
- export type TypedMcapRecord = Values<TypedMcapRecords>;
- export type McapRecord = Values<McapRecords>;
- 
+@@ -132,3 +132,18 @@ export type McapRecord = Values<McapRecords>;
 +/** Stable source and range metadata for an indexed chunk decompression. */
 +export type ChunkDecompressionContext = {
 +  chunkLength: bigint;
@@ -179,8 +176,6 @@ index 92f5105d602964478664232fb8912cfcbe588e9b..0b8acb3c72b3231e8e90cfaaf1ad88ac
 +    context?: ChunkDecompressionContext,
 +  ) => Uint8Array;
  };
- 
- /**
 @@ -139,4 +154,6 @@ export type DecompressHandlers = {
  export interface IReadable {
    size(): Promise<bigint>;

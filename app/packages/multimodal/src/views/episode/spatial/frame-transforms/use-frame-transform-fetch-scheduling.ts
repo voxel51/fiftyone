@@ -32,6 +32,11 @@ import {
 } from "../../../../ports";
 import { EpisodeFrameTransformStore } from "../../../../runtime/frame-transforms";
 import { mergeFrameTransformTimeRanges } from "../../../../runtime/frame-transform-ranges";
+import {
+  episodeLatencyDurationMs,
+  episodeLatencyNowMs,
+  markEpisodeLatencyEvent,
+} from "../../../../observability/episode-latency";
 import { shouldDeferIdleWorkForStore } from "../../playback/network-health";
 import { throwIfAborted } from "../../../../utils/cancellation";
 import {
@@ -235,8 +240,12 @@ export function useFrameTransformFetchScheduling({
       version: sourceGeneration,
     });
 
+    const bootstrapStartMs = episodeLatencyNowMs();
     const bootstrapController = new AbortController();
     activeReadControllers.add(bootstrapController);
+    markEpisodeLatencyEvent("frame transform bootstrap request", undefined, {
+      onceKey: "frame-transform-bootstrap-request",
+    });
     Promise.resolve(
       capability.readBootstrap?.({ signal: bootstrapController.signal }) ?? [],
     )
@@ -365,10 +374,19 @@ export function useFrameTransformFetchScheduling({
         : fallbackRange;
       const requestedRangeKey = frameTransformRangeKey(requestedRange);
       const sourceGeneration = sourceGenerationRef.current;
+      const requestedRangeStartMs = episodeLatencyNowMs();
       inFlightPlacementRangesRef.current = [
         ...inFlightPlacementRangesRef.current,
         requestedRange,
       ];
+      markEpisodeLatencyEvent(
+        "frame transform current window request",
+        {
+          endTimeNs: requestedRange.endTimeNs,
+          startTimeNs: requestedRange.startTimeNs,
+        },
+        { onceKey: "first-frame-transform-current-window-request" },
+      );
       const controller = new AbortController();
       activeReadControllersRef.current.add(controller);
       const read: Promise<PlacementReadResult> = (async () => {
@@ -446,6 +464,7 @@ export function useFrameTransformFetchScheduling({
                 return;
               }
               indexedRange = fallback.indexedRange;
+              sampleCount += fallback.samples.length;
               storeRef.current?.addDynamic(
                 fallback.samples.map(runtimeTransformSample),
                 indexedRange,
@@ -615,8 +634,18 @@ export function useFrameTransformFetchScheduling({
       runwayRange,
     ];
     const sourceGeneration = sourceGenerationRef.current;
+    const runwayRangeStartMs = episodeLatencyNowMs();
+    markEpisodeLatencyEvent(
+      "frame transform runway request",
+      {
+        endTimeNs: runwayRange.endTimeNs,
+        startTimeNs: runwayRange.startTimeNs,
+      },
+      { onceKey: "first-frame-transform-runway-request" },
+    );
     const controller = new AbortController();
     activeReadControllersRef.current.add(controller);
+
     capability
       .readTransforms({
         // The first runway segment while Play is pending is demanded startup

@@ -362,6 +362,8 @@ export interface RawRecordCapability {
   readRawRecordAtCursor?(request: {
     readonly cursor: RawRecordCursor;
     readonly includeFullJson?: boolean;
+    /** Whole-message JSON export remains on the bounded bulk lane. */
+    readonly intent?: "browse" | "export";
     readonly prune?: RawRecordPruneBudgets;
     readonly signal?: AbortSignal;
     readonly stream: StreamId;

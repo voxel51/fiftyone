@@ -28,7 +28,7 @@
 import { useEffect, useReducer, useRef } from "react";
 import type { DecodedDiagnostic } from "../../../ir";
 import { INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS } from "../playback/playback-buffering";
-import type { ReferenceSelectionSource } from "../reference-selection-types";
+import type { ReferenceSelectionSource } from "../contracts/reference-selection";
 import type { StreamStatus } from "../playback/stream-status-state";
 
 /** One visible source placed through a held transform past its stale threshold. */
@@ -49,7 +49,7 @@ export interface UnresolvedPoseUsage {
 }
 
 export type TrackingMode = "free" | "heading" | "pose" | "position";
-export type { ReferenceSelectionSource } from "../reference-selection-types";
+export type { ReferenceSelectionSource } from "../contracts/reference-selection";
 
 export type HealthSeverity = "error" | "info" | "warning";
 export type HealthScope = "scene" | "tile" | "stream";

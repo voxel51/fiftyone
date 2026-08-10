@@ -44,16 +44,17 @@ import { emptyReadWorkUsage } from "../../ports/read-work-usage";
 import {
   createSourceReadBudgetLedger,
   type SourceReadBudgetLedger,
-} from "../../runtime/read-budget-account";
+} from "./acquisition/source-read-budget";
 import { PlaybackSyncMode } from "../../schemas/v1";
 import { isEpisodeReadCancelledError } from "../../ports";
 import { throwIfAborted } from "../../utils/cancellation";
+import { sceneSourcesFromStreamDescriptors } from "../../stream-selection";
 import type { McapGridPreviewResult } from "./resource-client/grid-preview";
 import { prewarmMcapSource } from "./prewarm-mcap-source";
 import {
   acquireSharedMcapResourceClient,
   createMcapResourceClient,
-} from "./resource-client/index";
+} from "./resource-client-factory";
 import {
   MCAP_ACTIVE_TIMELINE,
   type McapDecodedMessage,
@@ -63,12 +64,21 @@ import {
   type McapStreamSyncPolicy,
   type McapTimelineRange,
 } from "./contracts/index";
-import { getMcapGridPreviewPool } from "./worker";
+import { getMcapGridPreviewPool } from "./worker-host";
 import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
   type McapPlaybackWorkerPriority,
 } from "./worker/playback-worker-types";
 import { isMcapBoundedReadCancelledError } from "./reader/bounded-read-cancellation";
+import {
+  recordMcapCostEvent,
+  startMcapCostSourceSession,
+} from "./instrumentation/host/mcap-cost-debug";
+import { buildMcapCostSourceRegistrations } from "./instrumentation/host/mcap-cost-source-catalog";
+import {
+  isMcapCostDebugEnabled,
+  isMcapLatencyDebugEnabled,
+} from "./instrumentation/host/mcap-debug-flags";
 
 type McapGridPreviewPool = Pick<
   ReturnType<typeof getMcapGridPreviewPool>,

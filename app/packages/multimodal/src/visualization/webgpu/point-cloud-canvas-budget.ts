@@ -1,3 +1,7 @@
+// Beyond roughly 120k points per canvas, GPU cost outweighs the visual gain
+// for typical LiDAR frames. Shared and independent canvases use one owner.
+export const DEFAULT_MAX_RENDERED_POINTS = 120_000;
+
 /** One point-cloud draw competing for a canvas-owned point budget. */
 export interface PointCloudBudgetDemand {
   readonly id: string;

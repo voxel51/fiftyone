@@ -14,7 +14,7 @@ import type {
   ThreeCameraPoseChangeSource,
   ThreeSceneBackground,
   ThreeSceneUpAxis,
-} from "./Base3dScene";
+} from "./scene-shell-types";
 import type { PointCloudColormap } from "./colormap-types";
 import type { PanelNotice } from "../panel-ui/PanelNotices";
 

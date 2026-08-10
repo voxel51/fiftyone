@@ -1,10 +1,8 @@
 import { useMemo } from "react";
 import type { StreamDescriptor } from "../../../ir/index";
 import type { LoadStatus } from "../../../runtime/index";
-import {
-  sceneSourcesFromStreamDescriptors,
-  type SceneSource,
-} from "../../../scene-inventory/index";
+import type { SceneSource } from "../../../scene-inventory/index";
+import { sceneSourcesFromStreamDescriptors } from "../../../stream-selection/scene-sources";
 import { useStreams, type UseStreamsOptions } from "./use-streams";
 
 export type SceneInventoryStatus = LoadStatus;

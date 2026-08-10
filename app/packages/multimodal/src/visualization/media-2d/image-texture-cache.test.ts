@@ -1,7 +1,19 @@
 import * as THREE from "three";
-import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mock,
+} from "vitest";
 
 import type { ImageTextureHandle } from "./Base2dScene";
+import {
+  setVisualizationCostObserver,
+  type VisualizationCostObservation,
+} from "../../observability/visualization-cost";
 import {
   acquireImageTexture,
   IMAGE_TEXTURE_RETENTION_BYTE_CAP,
@@ -95,6 +107,51 @@ describe("acquireImageTexture (shared keys)", () => {
       retainedCount: 0,
       retainedDecodedBytes: 0,
     });
+    expect(
+      observations.find(
+        (observation) =>
+          observation.operation === "image-texture-retention-ineligible",
+      ),
+    ).toMatchObject({ retainedDecodedBytesDelta: 0 });
+  });
+
+  it("reports stable retained-byte deltas for add, hit, and flush", async () => {
+    const observations: VisualizationCostObservation[] = [];
+    setVisualizationCostObserver((observation) =>
+      observations.push(observation),
+    );
+    const { handle } = makeHandle({ height: 10, width: 20 });
+    const decode = vi.fn(async () => handle);
+
+    const first = acquireImageTexture("recording\n/topic\n1", decode);
+    await first.promise;
+    first.release();
+    const second = acquireImageTexture("recording\n/topic\n1", decode);
+    await second.promise;
+    second.release();
+    releaseRetainedImageTextures();
+
+    const retention = observations.filter((observation) =>
+      observation.operation.startsWith("image-texture-retention-"),
+    );
+    expect(
+      retention.map((observation) => [
+        observation.operation,
+        observation.retainedDecodedBytesDelta,
+      ]),
+    ).toEqual([
+      ["image-texture-retention-add", 800],
+      ["image-texture-retention-hit", -800],
+      ["image-texture-retention-add", 800],
+      ["image-texture-retention-flush", -800],
+    ]);
+    expect(
+      retention.every(
+        (observation) =>
+          observation.sourceHint === "recording\n/topic\n1" &&
+          observation.measurementStatus === "derived",
+      ),
+    ).toBe(true);
   });
 
   it("accounts native depth retention and leased GPU bytes at source width", async () => {

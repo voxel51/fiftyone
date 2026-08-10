@@ -1,15 +1,15 @@
 import { byteSourceAccessKey } from "../../../query/bytes";
-import { fnv1aString } from "../fnv1a";
-import { McapGridPreviewTransport } from "./grid-preview-transport";
+import { fnv1aString } from "../../../utils/fnv1a";
+import { McapGridPreviewTransport } from "../worker/grid-preview-transport";
 import type {
   McapGridPreviewRequestPayload,
   McapGridPreviewResult,
   McapGridPreviewWorkerRequest,
   McapGridPreviewWorkerResponse,
-} from "./grid-preview-worker-types";
-import { workerFetchParameters } from "./worker-resource-client";
-import type { McapPlaybackWorkerPriority } from "./playback-worker-types";
-import { createMcapWorkerSlotLifecycle } from "./worker-slot-lifecycle";
+} from "../worker/grid-preview-worker-types";
+import { workerFetchParameters } from "../worker/worker-resource-client";
+import type { McapPlaybackWorkerPriority } from "../worker/playback-worker-types";
+import { createMcapWorkerSlotLifecycle } from "../worker/worker-slot-lifecycle";
 
 // Low-resource machines should not be forced to run multiple MCAP workers.
 const MIN_GRID_PREVIEW_WORKERS = 1;
@@ -125,9 +125,12 @@ export class McapGridPreviewWorkerPool {
       return this.options.workerFactory();
     }
 
-    return new Worker(new URL("./grid-preview-worker.ts", import.meta.url), {
-      type: "module",
-    });
+    return new Worker(
+      new URL("../worker/grid-preview-worker.ts", import.meta.url),
+      {
+        type: "module",
+      },
+    );
   }
 
   private resetSlots(reason: string) {

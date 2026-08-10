@@ -5,7 +5,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ImageAnnotationsVisualization } from "../../../ir";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import type { DecodedFrame } from "../../../ir";
-import { nsDeltaToSeconds, type TimelineIndex } from "../../../runtime";
+import type { TimelineIndex } from "../../../runtime";
+import { nsDeltaToSeconds } from "../../../utils/nanoseconds";
 import {
   DataStreamProvider,
   useSetDataStream,

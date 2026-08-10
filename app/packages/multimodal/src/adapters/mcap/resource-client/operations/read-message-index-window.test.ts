@@ -51,6 +51,34 @@ describe("exact MCAP message browsing", () => {
     expect(result.hasNext).toBe(false);
   });
 
+  it("keeps a channel-preserving stream inside its selected channel", async () => {
+    const entries = [
+      entry({ channelId: 1, logTimeNs: 1n, messageOffset: 1n }),
+      entry({ channelId: 2, logTimeNs: 2n, messageOffset: 2n }),
+      entry({ channelId: 1, logTimeNs: 3n, messageOffset: 3n }),
+      entry({ channelId: 2, logTimeNs: 4n, messageOffset: 4n }),
+    ];
+    const reader = createReader(entries);
+    const anchor = entries[1];
+    if (!anchor) throw new Error("expected channel anchor");
+
+    const result = await readMcapMessageIndexWindow({
+      reader,
+      request: {
+        after: 2,
+        anchorCursor: mcapMessageCursorForEntry(source, anchor),
+        before: 2,
+        channelId: 2,
+        source,
+        topic: "/state",
+      },
+    });
+
+    expect(
+      result.entries.map((row) => cursorEntry(row.cursor).channelId),
+    ).toEqual([2, 2]);
+  });
+
   it("anchors at or before time and reports first/last boundaries", async () => {
     const entries = [
       entry({ logTimeNs: 1n, messageOffset: 1n }),
@@ -302,6 +330,17 @@ describe("exact MCAP message browsing", () => {
       sibling: "second",
       values: [1, "… 2 more items"],
     });
+    await expect(
+      readMcapRawMessageAtCursor({
+        reader,
+        request: {
+          channelId: 1,
+          cursor: mcapMessageCursorForEntry(source, second),
+          source,
+          topic: "/state",
+        },
+      }),
+    ).rejects.toThrow("different channel");
   });
 
   it("rejects exact cursors whose channel or chunk is no longer addressable", async () => {
@@ -381,10 +420,14 @@ function createReader(
     const chunkFilter = request.chunkStartOffsets
       ? new Set(request.chunkStartOffsets)
       : null;
+    const channelFilter = request.channelIds
+      ? new Set(request.channelIds)
+      : null;
     let count = 0;
     for (const value of entries) {
       throwIfAborted(request.signal);
       if (chunkFilter && !chunkFilter.has(value.chunkStartOffset)) continue;
+      if (channelFilter && !channelFilter.has(value.channelId)) continue;
       if (request.topics && !request.topics.includes(value.topic)) continue;
       if (
         request.startTimeNs !== undefined &&
@@ -409,7 +452,10 @@ function createReader(
           entries
             .filter(
               (value) =>
-                value.topic === topic && value.logTimeNs <= request.timeNs,
+                value.topic === topic &&
+                value.logTimeNs <= request.timeNs &&
+                (!request.channelIds ||
+                  request.channelIds.includes(value.channelId)),
             )
             .slice(-(request.limitPerTopic ?? 1)),
         ]),

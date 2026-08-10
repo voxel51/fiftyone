@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ReadWorkBudget, ReadWorkUsage } from "../ports";
-import { createSourceReadBudgetLedger } from "./read-budget-account";
+import type { ReadWorkBudget, ReadWorkUsage } from "../../../ports";
+import { createSourceReadBudgetLedger } from "./source-read-budget";
 
 const allowance: ReadWorkBudget = {
   maxMessages: 20,

@@ -3,7 +3,7 @@ import {
   type SceneSource,
   type StreamDescriptor,
 } from "../ir";
-import { streamPrefix } from "../stream-selection";
+import { streamPrefix } from "./stream-selection";
 
 /** Builds renderer-facing scene sources from adapter-normalized inventory. */
 export function sceneSourcesFromStreamDescriptors(

@@ -23,7 +23,6 @@ import {
   flattenSeriesSegments,
   FULL_NUMERIC_SERIES_COVERAGE,
   nearestNumericSeriesRange,
-  NUMERIC_SERIES_MAX_BUCKET_SURVIVORS,
   numericSeriesKey,
   numericSeriesRangeDurationSeconds,
   numericSeriesRangesOverlap,
@@ -41,6 +40,7 @@ import {
   type NumericSeriesTileCache,
   type TimelineIndex,
 } from "../../../runtime";
+import { NUMERIC_SERIES_MAX_BUCKET_SURVIVORS } from "../../../ports";
 import {
   createDemandContextProvider,
   useResetDemandContextOnUnmount,

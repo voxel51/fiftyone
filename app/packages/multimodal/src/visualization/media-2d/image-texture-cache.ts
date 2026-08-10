@@ -34,6 +34,10 @@
 import * as THREE from "three";
 
 import type { ImageTextureHandle } from "./Base2dScene";
+import {
+  isVisualizationCostObserved,
+  recordVisualizationCost,
+} from "../../observability/visualization-cost";
 
 type TextureWithNormalized = THREE.Texture & {
   normalized?: boolean;
@@ -390,21 +394,25 @@ function decodedImageBytes(handle: ImageTextureHandle): number {
 
 function createLeasedImageTextureHandle(
   handle: ImageTextureHandle,
+  sourceHint: string,
 ): ImageTextureHandle {
   const template = handle.texture;
   if (template instanceof THREE.DataTexture) {
     const texture = cloneDataTexture(template);
-    return {
-      aspectRatio: handle.aspectRatio,
-      ...(handle.decodedByteLength !== undefined
-        ? { decodedByteLength: handle.decodedByteLength }
-        : {}),
-      ...(handle.depthDisplay ? { depthDisplay: handle.depthDisplay } : {}),
-      imageHeight: handle.imageHeight,
-      imageWidth: handle.imageWidth,
-      dispose: () => texture.dispose(),
-      texture,
-    };
+    return observeLeasedImageTexture(
+      {
+        aspectRatio: handle.aspectRatio,
+        ...(handle.decodedByteLength !== undefined
+          ? { decodedByteLength: handle.decodedByteLength }
+          : {}),
+        ...(handle.depthDisplay ? { depthDisplay: handle.depthDisplay } : {}),
+        imageHeight: handle.imageHeight,
+        imageWidth: handle.imageWidth,
+        dispose: () => texture.dispose(),
+        texture,
+      },
+      sourceHint,
+    );
   }
 
   // Three.Texture.clone() shares its Source, which can share renderer
@@ -438,16 +446,52 @@ function createLeasedImageTextureHandle(
   texture.flipY = template.flipY;
   texture.unpackAlignment = template.unpackAlignment;
   texture.needsUpdate = true;
+  return observeLeasedImageTexture(
+    {
+      aspectRatio: handle.aspectRatio,
+      ...(handle.decodedByteLength !== undefined
+        ? { decodedByteLength: handle.decodedByteLength }
+        : {}),
+      ...(handle.depthDisplay ? { depthDisplay: handle.depthDisplay } : {}),
+      imageHeight: handle.imageHeight,
+      imageWidth: handle.imageWidth,
+      dispose: () => texture.dispose(),
+      texture,
+    },
+    sourceHint,
+  );
+}
+
+function observeLeasedImageTexture(
+  handle: ImageTextureHandle,
+  sourceHint: string,
+): ImageTextureHandle {
+  if (!isVisualizationCostObserved()) return handle;
+  const bytes = decodedImageBytes(handle);
+  recordVisualizationCost({
+    declaredGpuBytesDelta: bytes,
+    measurementStatus: "derived",
+    operation: "image-texture-lease",
+    sourceHint,
+    sourceHintKind: "image-texture-key",
+    stage: "resource-allocate",
+  });
+  let disposed = false;
   return {
-    aspectRatio: handle.aspectRatio,
-    ...(handle.decodedByteLength !== undefined
-      ? { decodedByteLength: handle.decodedByteLength }
-      : {}),
-    ...(handle.depthDisplay ? { depthDisplay: handle.depthDisplay } : {}),
-    imageHeight: handle.imageHeight,
-    imageWidth: handle.imageWidth,
-    dispose: () => texture.dispose(),
-    texture,
+    ...handle,
+    dispose: () => {
+      if (disposed) return;
+      disposed = true;
+      handle.dispose();
+      recordVisualizationCost({
+        declaredGpuBytesDelta: -bytes,
+        measurementStatus: "derived",
+        operation: "image-texture-lease",
+        sourceHint,
+        sourceHintKind: "image-texture-key",
+        stage: "resource-release",
+      });
+    },
   };
 }
 

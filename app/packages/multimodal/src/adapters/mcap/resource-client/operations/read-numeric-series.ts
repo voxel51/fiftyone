@@ -19,8 +19,8 @@ import type {
   McapReadNumericSeriesSliceRequest,
 } from "../../contracts/index";
 import type { ReadWorkUsage } from "../../../../ports";
-import { NUMERIC_SERIES_MAX_BUCKET_SURVIVORS } from "../../../../runtime/numeric-series-window";
-import { nsDeltaToSeconds } from "../../../../runtime/timeline-index";
+import { NUMERIC_SERIES_MAX_BUCKET_SURVIVORS } from "../../../../ports/numeric-series";
+import { nsDeltaToSeconds } from "../../../../utils/nanoseconds";
 import { decimateMinMax } from "../numeric-series-decimate";
 import { mcapTimelineRangeFromReader } from "./read-timeline-range";
 import { throwIfAborted } from "../../../../utils/cancellation";

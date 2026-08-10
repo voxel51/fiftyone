@@ -7,6 +7,7 @@ import {
   type MutableRefObject,
 } from "react";
 
+import { markEpisodeLatencyEvent } from "../../../observability/episode-latency";
 import {
   startBulkStreamLifecycle,
   type BulkStreamControl,

@@ -1,9 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import type { ByteClient } from "../../../query/bytes/index";
+import type { ByteClient } from "../../query/bytes/index";
 import {
   acquireSharedMcapResourceClient,
   createMcapResourceClient,
-} from "./index";
+} from "./resource-client-factory";
 
 const workerHarness = vi.hoisted(() => {
   const workerClient = {
@@ -28,7 +28,7 @@ const workerHarness = vi.hoisted(() => {
   };
 });
 
-vi.mock("../worker/index", () => ({
+vi.mock("./worker-host/index", () => ({
   createWorkerMcapResourceClient: workerHarness.createWorkerMcapResourceClient,
 }));
 

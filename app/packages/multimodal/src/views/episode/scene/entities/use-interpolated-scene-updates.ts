@@ -3,6 +3,11 @@ import { useMemo } from "react";
 import type { SceneUpdateVisualization } from "../../../../ir/index";
 import type { DecodedFrame } from "../../../../ir/index";
 import {
+  isVisualizationCostObserved,
+  recordVisualizationCost,
+  visualizationCostNowMs,
+} from "../../../../observability/visualization-cost";
+import {
   interpolationFraction,
   nextDistinctCachedMessage,
   useStreamCacheSnapshot,

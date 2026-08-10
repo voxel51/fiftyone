@@ -17,11 +17,9 @@ import {
   cameraPoseForBounds,
   sceneBoundsForLayers,
 } from "../camera-fit-bounds";
-import {
-  DEFAULT_MAX_RENDERED_POINTS,
-  buildPointCloudRenderData,
-} from "../point-cloud-colors";
+import { buildPointCloudRenderData } from "../point-cloud-colors";
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../panel-ui/style-tokens";
+import { DEFAULT_MAX_RENDERED_POINTS } from "../../webgpu/point-cloud-canvas-budget";
 import {
   resetWebGpuDeviceRegistryForTests,
   webGpuDeviceStats,

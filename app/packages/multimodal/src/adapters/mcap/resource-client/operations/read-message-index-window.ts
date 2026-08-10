@@ -61,14 +61,23 @@ export async function readMcapMessageIndexWindow({
       request.anchorCursor,
       request.source,
       request.topic,
+      request.channelId,
     );
     await assertIndexedEntryExists(reader, anchor, signal);
   } else {
     anchor = await indexedAnchorAtOrBefore(reader, request, signal);
   }
+  const channelIds = new Set(
+    request.channelId !== undefined
+      ? [request.channelId]
+      : [...reader.channelsById.values()]
+          .filter((channel) => channel.topic === request.topic)
+          .map((channel) => channel.id),
+  );
 
   const previous = await readSide({
     anchor,
+    channelIds,
     direction: "previous",
     limit: request.before + 2,
     reader,
@@ -76,6 +85,7 @@ export async function readMcapMessageIndexWindow({
   });
   const next = await readSide({
     anchor,
+    channelIds,
     direction: "next",
     limit: request.after + 1,
     reader,
@@ -111,6 +121,9 @@ async function indexedAnchorAtOrBefore(
     throw new Error("An exact message window requires one anchor");
   }
   const entries = await reader.readLatestIndexedMessageTimes?.({
+    ...(request.channelId !== undefined
+      ? { channelIds: [request.channelId] }
+      : {}),
     limitPerTopic: 1,
     ...(signal ? { signal } : {}),
     timeNs: request.anchorTimeNs,
@@ -138,6 +151,7 @@ async function assertIndexedEntryExists(
   if (!chunk) throw new Error("MCAP message cursor is stale or invalid");
   assertRawRecordSourceWorkBound(1, chunk.messageIndexLength, 0n);
   for await (const entry of read({
+    channelIds: [expected.channelId],
     chunkStartOffsets: [expected.chunkStartOffset],
     endTimeNs: expected.logTimeNs,
     ...(signal ? { signal } : {}),
@@ -152,12 +166,14 @@ async function assertIndexedEntryExists(
 
 async function readSide({
   anchor,
+  channelIds,
   direction,
   limit,
   reader,
   signal,
 }: {
   readonly anchor: McapIndexedMessageTime;
+  readonly channelIds: ReadonlySet<number>;
   readonly direction: "next" | "previous";
   readonly limit: number;
   readonly reader: McapIndexedReaderLike;
@@ -166,11 +182,6 @@ async function readSide({
   if (limit <= 0) return [];
   const read = reader.readIndexedMessageTimes;
   if (!read) throw new Error("MCAP message indexes are unavailable");
-  const channelIds = new Set(
-    [...reader.channelsById.values()]
-      .filter((channel) => channel.topic === anchor.topic)
-      .map((channel) => channel.id),
-  );
   const chunks = reader.chunkIndexes
     .filter((chunk: McapChunkIndex) => chunkHasTopicIndex(chunk, channelIds))
     .filter((chunk: McapChunkIndex) =>
@@ -201,6 +212,7 @@ async function readSide({
       0n,
     );
     for await (const entry of read({
+      channelIds: [...channelIds],
       chunkStartOffsets: [chunk.chunkStartOffset],
       ...(direction === "previous"
         ? { endTimeNs: anchor.logTimeNs }

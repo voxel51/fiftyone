@@ -54,7 +54,6 @@ export {
 /** Public format-neutral episode resource orchestration. */
 export * from "./episode-resources";
 /** Public source-scoped bounded-read accounting. */
-export * from "./read-budget-account";
 export * from "./scheduled-read-budget-account";
 export * from "./progressive-history";
 /** Public decoded episode stream cache. */

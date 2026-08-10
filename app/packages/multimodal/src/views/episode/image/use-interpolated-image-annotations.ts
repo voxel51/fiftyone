@@ -2,6 +2,11 @@ import { useEffect, useMemo, useRef } from "react";
 
 import type { ImageAnnotationsVisualization } from "../../../ir";
 import type { ImageAnnotationRenderMetadata } from "../../../visualization/media-2d/image-annotation-render-metadata";
+import {
+  isVisualizationCostObserved,
+  recordVisualizationCost,
+  visualizationCostNowMs,
+} from "../../../observability/visualization-cost";
 import type { TimelineIndex } from "../../../runtime";
 import {
   prepareImageAnnotationInterpolation,

@@ -12,6 +12,10 @@ import {
   createMcapManifest,
   createMcapRawRecordCapability,
 } from "./format-adapter";
+import {
+  initMcapCostDebugBridge,
+  resetMcapCostDebugForTests,
+} from "./instrumentation/host/mcap-cost-debug";
 import { McapBoundedReadCancelledError } from "./reader";
 import {
   MCAP_ACTIVE_TIMELINE,

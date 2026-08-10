@@ -35,10 +35,10 @@ import {
   sceneBoundsForLayers,
 } from "../camera-fit-bounds";
 import {
-  DEFAULT_MAX_RENDERED_POINTS,
   POINT_COMPONENT_COUNT,
   buildPointCloudRenderData,
 } from "../point-cloud-colors";
+import { DEFAULT_MAX_RENDERED_POINTS } from "../../webgpu/point-cloud-canvas-budget";
 import {
   DEFAULT_POINT_SIZE,
   POINT_CLOUD_POINTS_MATERIAL_PROPS,

@@ -13,6 +13,7 @@ import type {
   PointCloudFrameTransform,
   PointCloudSceneBoundsSummary,
 } from "../../../../visualization/scene-3d/index";
+import { markEpisodeLatencyEvent } from "../../../../observability/episode-latency";
 import {
   cameraTargetPoseFromFrameTransform,
   DEFAULT_SCENE_3D_TRACKING_MODE,
@@ -213,6 +214,7 @@ export function useScene3dCameraTracking({
   // The provider's temporary unbound interval is not a source hop. Keep the
   // last non-empty source epoch until the incoming recording is available.
   const cameraRigEpoch = sourceKey || activeSourceKeyRef.current;
+  const cameraEpochRef = useRef(nextScene3dViewStateRestoreOnceKey());
   // Pending camera restore intents, captured once at mount. They die on
   // apply, on any deliberate camera/mode change, or with the mount itself.
   const pendingCameraViewRestoreRef = useRef<Scene3dCameraViewSnapshot | null>(

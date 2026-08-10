@@ -255,28 +255,36 @@ These edits implement documented sub-findings without selecting new policy:
 
 Validation ran from
 `/Users/sashankaryal/fiftyone/code/voxel51/wt-mm-slop-cleanup/app` unless
-noted.
+noted. The post-merge validation ran from
+`/Users/sashankaryal/fiftyone/code/voxel51/wt-mm-jul-pass/app`.
 
-| Validation                                                | Result                                                                                                       |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Baseline `yarn workspace @fiftyone/multimodal check`      | **Pass** before cleanup                                                                                      |
-| Incremental `check:deps`                                  | **Pass**                                                                                                     |
-| Incremental `check:types`                                 | **Pass** after removing newly exposed unused imports                                                         |
-| Incremental `check:lint`                                  | **Pass**; latest-ref dependency warnings were resolved without suppressions                                  |
-| Focused adapter/runtime Vitest batch                      | **15 files, 196 tests passed**                                                                               |
-| Focused view/visualization Vitest batch                   | **17 files, 221 tests passed**                                                                               |
-| Final camera/persistence/measurement/WebGPU Vitest batch  | **8 files, 102 tests passed**                                                                                |
-| Additional focused layout persistence                     | **53 tests passed**                                                                                          |
-| Additional focused SourcePlayback                         | **4 tests passed**                                                                                           |
-| Standalone frame-transform focused file                   | **One unchanged fake-timer mismatch:** expected 5 calls, observed 6; identifier-only diff, no test weakening |
-| Final `yarn workspace @fiftyone/multimodal check`         | **Pass**: dependency architecture, lint, package-local TypeScript                                            |
-| `git diff --check` before this audit update               | **Pass**                                                                                                     |
-| Approved interaction focused Vitest batch                 | **8 files, 87 tests passed**: shared lifecycle, entities, cubes, frustums, tooltip stack, picking, panel     |
-| Post-approval `yarn workspace @fiftyone/multimodal check` | **Pass**: dependency architecture, lint, package-local TypeScript                                            |
+| Validation                                                | Result                                                                                                                                     |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Baseline `yarn workspace @fiftyone/multimodal check`      | **Pass** before cleanup                                                                                                                    |
+| Incremental `check:deps`                                  | **Pass**                                                                                                                                   |
+| Incremental `check:types`                                 | **Pass** after removing newly exposed unused imports                                                                                       |
+| Incremental `check:lint`                                  | **Pass**; latest-ref dependency warnings were resolved without suppressions                                                                |
+| Focused adapter/runtime Vitest batch                      | **15 files, 196 tests passed**                                                                                                             |
+| Focused view/visualization Vitest batch                   | **17 files, 221 tests passed**                                                                                                             |
+| Final camera/persistence/measurement/WebGPU Vitest batch  | **8 files, 102 tests passed**                                                                                                              |
+| Additional focused layout persistence                     | **53 tests passed**                                                                                                                        |
+| Additional focused SourcePlayback                         | **4 tests passed**                                                                                                                         |
+| Standalone frame-transform focused file                   | **One unchanged fake-timer mismatch:** expected 5 calls, observed 6; identifier-only diff, no test weakening                               |
+| Final `yarn workspace @fiftyone/multimodal check`         | **Pass**: dependency architecture, lint, package-local TypeScript                                                                          |
+| `git diff --check` before this audit update               | **Pass**                                                                                                                                   |
+| Approved interaction focused Vitest batch                 | **8 files, 87 tests passed**: shared lifecycle, entities, cubes, frustums, tooltip stack, picking, panel                                   |
+| Post-approval `yarn workspace @fiftyone/multimodal check` | **Pass**: dependency architecture, lint, package-local TypeScript                                                                          |
+| Post-replay focused Vitest batch                          | **12 files, 148 tests passed**: approved interaction plus numeric-series, SourcePlayback, placement, and frame-transform conflict surfaces |
+| Post-replay `yarn workspace @fiftyone/multimodal check`   | **Pass**: dependency architecture, lint, package-local TypeScript                                                                          |
+| Post-merge focused Vitest batch                           | **12 files, 148 tests passed** from the destination worktree                                                                               |
+| Post-merge `yarn workspace @fiftyone/multimodal check`    | **Pass** from the destination worktree: dependency architecture, lint, package-local TypeScript                                            |
+| Post-merge `git diff --check`                             | **Pass** after updating this validation record                                                                                             |
 
-Focused test runs used a temporary Node local-storage file because Node 22's
-ambient `localStorage` otherwise throws before the persistence tests execute.
-This changes only the test process environment.
+Earlier focused test runs used a temporary Node local-storage file because Node
+22's ambient `localStorage` otherwise throws before the persistence tests
+execute. The post-replay and post-merge batches ran without that file, emitted
+Node's expected experimental local-storage warning, and passed. Test-process
+environment changes do not affect product code.
 
 ## What remains and suggested order
 

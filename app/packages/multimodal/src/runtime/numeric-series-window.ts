@@ -13,7 +13,8 @@
  */
 
 import type { NsRange } from "../ir";
-import { nsDeltaToSeconds, type TimelineIndex } from "./timeline-index";
+import { nsDeltaToSeconds } from "../utils/nanoseconds";
+import type { TimelineIndex } from "./timeline-index";
 
 export type { NsRange } from "../ir";
 
@@ -22,9 +23,6 @@ export const PLOT_WINDOW_SECONDS = 60;
 
 /** Alignment quantum shared by follow-mode rendering and acquisition. */
 export const PLOT_WINDOW_QUANTUM_SECONDS = 15;
-
-/** Maximum retained samples for one gap-preserving M4 bucket. */
-export const NUMERIC_SERIES_MAX_BUCKET_SURVIVORS = 5;
 
 /** Coverage sentinel for adapters without bounded numeric-series slices. */
 export const FULL_NUMERIC_SERIES_COVERAGE: NsRange = {

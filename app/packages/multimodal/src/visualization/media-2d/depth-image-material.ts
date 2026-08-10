@@ -2,7 +2,7 @@ import * as THREE from "three";
 import * as TSL from "three/tsl";
 import { MeshBasicNodeMaterial } from "three/webgpu";
 
-import type { ImageTextureHandle } from "./Base2dScene";
+import type { ImageTextureHandle } from "./image-scene-types";
 
 const MAX_FINITE_FLOAT32 = 3.4028234663852886e38;
 const UINT8_MAX = 255;

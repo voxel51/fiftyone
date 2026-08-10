@@ -1,16 +1,33 @@
 import { create } from "@bufbuild/protobuf";
 import { Quaternion, Vector3 } from "three";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import * as debugFlags from "../instrumentation/host/mcap-debug-flags";
 import { StreamInventorySchema } from "../../../schemas/v1";
 import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
   type McapPlaybackWorkerRequest,
   type McapPlaybackWorkerResponse,
-} from "./playback-worker-types";
+} from "../worker/playback-worker-types";
 import { createWorkerMcapResourceClient } from "./worker-client";
 import { dehydrateMcapFrameTransformSet } from "../transforms/wire";
 import type { McapFrameTransformSet } from "../transforms/types";
 import { EPISODE_READ_CANCELLED_MESSAGE } from "../../../ports";
+
+vi.mock("../instrumentation/host/mcap-debug-flags", async (loadOriginal) => ({
+  ...(await loadOriginal<typeof debugFlags>()),
+  isMcapCostDebugEnabled: vi.fn(() => false),
+  isMcapLatencyDebugEnabled: vi.fn(() => false),
+  isMcapRecordOwnershipDebugEnabled: vi.fn(() => false),
+}));
+
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(debugFlags.isMcapCostDebugEnabled).mockReturnValue(false);
+  vi.mocked(debugFlags.isMcapLatencyDebugEnabled).mockReturnValue(false);
+  vi.mocked(debugFlags.isMcapRecordOwnershipDebugEnabled).mockReturnValue(
+    false,
+  );
+});
 
 vi.mock("@fiftyone/utilities", () => ({
   getFetchParameters: () => ({
@@ -32,8 +49,12 @@ describe("worker-backed MCAP resource client", () => {
 
     expect(worker.messages[0]).toEqual({
       payload: {
+        costDebug: false,
         fillSlotClass: "priority",
         headers: { Authorization: "token" },
+        lane: "interactive",
+        latencyDebug: false,
+        recordOwnershipDebug: false,
         origin: "http://localhost:5151",
         pathPrefix: "/proxy",
       },
@@ -74,6 +95,7 @@ describe("worker-backed MCAP resource client", () => {
     });
     await expect(range).resolves.toEqual(createTimelineRange(1n, 2n));
   });
+
   it("isolates paused inspection from active playback workers", async () => {
     const { client, workers } = createClientHarness();
     const source = createSource("source:1");
@@ -126,6 +148,51 @@ describe("worker-backed MCAP resource client", () => {
     });
     await expect(inspection).resolves.toMatchObject({ status: "empty" });
   });
+
+  it("propagates enabled debug flags through worker init payloads", async () => {
+    vi.mocked(debugFlags.isMcapLatencyDebugEnabled).mockReturnValue(true);
+    vi.mocked(debugFlags.isMcapRecordOwnershipDebugEnabled).mockReturnValue(
+      true,
+    );
+    const latencyOnly = createClientHarness();
+    const latencyRead = latencyOnly.client.readTimelineRange(
+      createTimelineRequest(),
+    );
+    expect(latencyOnly.workers[0].messages[0]).toMatchObject({
+      payload: {
+        costDebug: false,
+        latencyDebug: true,
+        recordOwnershipDebug: false,
+      },
+      type: "init",
+    });
+    latencyOnly.workers[0].respond({
+      id: 1,
+      ok: true,
+      result: createTimelineRange(1n, 2n),
+    });
+    await latencyRead;
+
+    vi.mocked(debugFlags.isMcapCostDebugEnabled).mockReturnValue(true);
+    const costCapture = createClientHarness();
+    const costRead = costCapture.client.readTimelineRange(
+      createTimelineRequest(),
+    );
+    expect(costCapture.workers[0].messages[0]).toMatchObject({
+      payload: {
+        costDebug: true,
+        recordOwnershipDebug: true,
+      },
+      type: "init",
+    });
+    costCapture.workers[0].respond({
+      id: 1,
+      ok: true,
+      result: createTimelineRange(1n, 2n),
+    });
+    await costRead;
+  });
+
   it("emits worker transport progress by lane", async () => {
     const { client, workers } = createClientHarness();
     const onTransport = vi.fn();

@@ -17,6 +17,11 @@ import { useMemo } from "react";
 import type { DecodedDiagnostic } from "../../../ir";
 import type { EpisodeStreamCache, TimelineIndex } from "../../../runtime";
 import {
+  isEpisodeBufferCostObserved,
+  recordEpisodeBufferCost,
+} from "../../../observability/episode-buffer-cost";
+import { monotonicNowMs } from "../../../utils/monotonic-time";
+import {
   bufferWindowCoverage,
   staleAgeForMessage,
   type DerivedPlaybackPolicy,

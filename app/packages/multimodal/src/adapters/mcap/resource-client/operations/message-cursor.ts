@@ -1,6 +1,6 @@
 import type { McapIndexedMessageTime } from "../../reader";
 import type { McapMessageCursor } from "../../contracts";
-import { fnv1aFingerprint } from "../../fnv1a";
+import { fnv1aFingerprint } from "../../../../utils/fnv1a";
 import {
   byteSourceAccessKey,
   type ByteSourceDescriptor,
@@ -39,6 +39,7 @@ export function mcapIndexedEntryFromCursor(
   cursor: McapMessageCursor,
   source: ByteSourceDescriptor,
   topic: string,
+  channelId?: number,
 ): McapIndexedMessageTime {
   if (!cursor.startsWith(CURSOR_PREFIX)) {
     throw new Error("Invalid MCAP message cursor");
@@ -58,6 +59,9 @@ export function mcapIndexedEntryFromCursor(
   }
   if (value.topic !== topic) {
     throw new Error("MCAP message cursor belongs to a different topic");
+  }
+  if (channelId !== undefined && value.channelId !== channelId) {
+    throw new Error("MCAP message cursor belongs to a different channel");
   }
 
   return {

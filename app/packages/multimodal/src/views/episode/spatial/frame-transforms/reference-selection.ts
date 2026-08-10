@@ -1,6 +1,6 @@
 import type { EpisodeComposedFrameTransform } from "../../../../runtime/frame-transform-types";
 import type { EpisodeFrameGraphSummary } from "../../../../runtime/frame-transforms";
-import type { ReferenceSelectionSource } from "../../reference-selection-types";
+import type { ReferenceSelectionSource } from "../../contracts/reference-selection";
 import {
   compareFrameIds,
   uniqueSortedFrameIds,
@@ -9,7 +9,7 @@ import {
 const STABLE_REFERENCE_FRAME_IDS = ["map", "world", "odom"] as const;
 const EGO_FRAME_IDS = ["base_link", "ego_vehicle", "ego", "vehicle"] as const;
 
-export type { ReferenceSelectionSource } from "../../reference-selection-types";
+export type { ReferenceSelectionSource } from "../../contracts/reference-selection";
 
 /** Coordinate frames observed for one selected source. */
 export interface FrameObservation {

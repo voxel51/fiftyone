@@ -4,7 +4,6 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { mix, screenUV, vec3 } from "three/tsl";
 import {
-  type ReactNode,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -19,6 +18,21 @@ import {
 } from "./CameraOrientationGizmo";
 import { perspectiveCameraDistanceForRadius } from "./camera-fit-bounds";
 import type { MutableVectorHandle } from "./mutable-vector-handle";
+import type {
+  Base3dSceneProps,
+  ThreeCameraPose,
+  ThreeCameraPoseChangeSource,
+  ThreeSceneBackground,
+  ThreeSceneUpAxis,
+} from "./scene-shell-types";
+
+export type {
+  Base3dSceneProps,
+  ThreeCameraPose,
+  ThreeCameraPoseChangeSource,
+  ThreeSceneBackground,
+  ThreeSceneUpAxis,
+} from "./scene-shell-types";
 
 const DEFAULT_AMBIENT_LIGHT_INTENSITY = 0.8;
 const GIZMO_TWEEN_DURATION_SECONDS = 0.3;
@@ -28,7 +42,6 @@ const FOCUS_PADDING = 1.2;
 const MIN_FOCUS_RADIUS = 1;
 
 type VectorTuple = readonly [number, number, number];
-export type ThreeSceneUpAxis = "x" | "y" | "z";
 
 const SCENE_UP_AXES: Record<
   ThreeSceneUpAxis,
@@ -73,50 +86,10 @@ interface CameraGizmoTween {
   readonly target: THREE.Vector3;
 }
 
-/**
- * Controlled camera pose for shared 3D views.
- */
-export interface ThreeCameraPose {
-  readonly position: VectorTuple;
-  readonly target: VectorTuple;
-}
-
-/**
- * Scene backdrop fill: one flat color, or a vertical screen-space
- * gradient from `top` to `bottom`.
- */
-export type ThreeSceneBackground =
-  | { readonly color: string; readonly kind: "solid" }
-  | {
-      readonly bottom: string;
-      readonly kind: "gradient";
-      readonly top: string;
-    };
-
 const DEFAULT_SCENE_BACKGROUND: ThreeSceneBackground = {
   color: VISUALIZATION_PANEL_BACKGROUND_COLOR,
   kind: "solid",
 };
-
-export type ThreeCameraPoseChangeSource = "focus" | "initial" | "interaction";
-
-/**
- * Props for the shared 3D visualization scene shell.
- */
-export interface Base3dSceneProps {
-  /** Backdrop fill; defaults to the shared dark panel color. */
-  readonly background?: ThreeSceneBackground;
-  readonly cameraPose?: ThreeCameraPose | null;
-  readonly children?: ReactNode;
-  readonly focusSceneRequestKey?: number;
-  readonly onCameraPoseChange?: (
-    pose: ThreeCameraPose,
-    source: ThreeCameraPoseChangeSource,
-  ) => void;
-  readonly showGizmo?: boolean;
-  /** World axis OrbitControls and the camera treat as up. @default "z" */
-  readonly up?: ThreeSceneUpAxis;
-}
 
 /**
  * Base 3D R3F scene with reusable navigation, axes, and scene-up coordinates.

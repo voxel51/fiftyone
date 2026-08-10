@@ -24,7 +24,7 @@ import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import LogConsole, {
   type LogConsoleViewMode,
 } from "../../../visualization/logs/LogConsole";
-import { DiagnosticStateProjector } from "../../../visualization/logs/diagnostic-console-state";
+import { DiagnosticStateProjector } from "./diagnostic-state-projector";
 import {
   logConsoleRowsFromDecodedMessage,
   type EpisodeLogConsoleRow,

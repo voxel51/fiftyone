@@ -30,7 +30,6 @@ import { CameraFrustumSceneLayer } from "./CameraFrustumSceneLayer";
 import { GridSceneLayer } from "../scene-3d/GridSceneLayer";
 import { styles } from "../scene-3d/panel-styles";
 import {
-  DEFAULT_MAX_RENDERED_POINTS,
   EMPTY_POINT_CLOUD_BOUNDS_SIZE,
   buildPointCloudRenderData,
   type PointCloudColorOptions,
@@ -41,7 +40,10 @@ import {
   GpuPointCloud3dPickerRegistryContext,
 } from "../scene-3d/gpu/gpu-point-cloud-3d-picker";
 import { gpuPointCloudDrawCount } from "../scene-3d/gpu/gpu-point-cloud-sampling";
-import { allocatePointCloudCanvasBudget } from "../webgpu/point-cloud-canvas-budget";
+import {
+  allocatePointCloudCanvasBudget,
+  DEFAULT_MAX_RENDERED_POINTS,
+} from "../webgpu/point-cloud-canvas-budget";
 import {
   DEFAULT_POINT_SIZE,
   PointCloudSceneLayer,

@@ -10,6 +10,11 @@ import { humanReadableBytes } from "@fiftyone/utilities";
 import React, { useEffect, useRef } from "react";
 import type { PlaybackReadCapability } from "../../../ports";
 import {
+  isEpisodeLatencyObserved,
+  recordEpisodeLatencyMetric,
+} from "../../../observability/episode-latency";
+import { monotonicNowMs } from "../../../utils/monotonic-time";
+import {
   createNetworkHealthEstimator,
   shouldPublishNetworkHealth,
 } from "../playback/network-health-estimator";

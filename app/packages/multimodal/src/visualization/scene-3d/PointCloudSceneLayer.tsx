@@ -49,6 +49,11 @@ import type {
   PointCloudRenderData,
 } from "./types";
 import { useInvalidateOn } from "./use-invalidate-on";
+import {
+  isVisualizationCostObserved,
+  recordVisualizationCost,
+  visualizationCostNowMs,
+} from "../../observability/visualization-cost";
 
 export {
   createPointCloudSpriteMaterial,

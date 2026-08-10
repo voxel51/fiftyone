@@ -1,18 +1,32 @@
 import { byteSourceAccessKey } from "../../../query/bytes";
+import {
+  isMcapCostDebugEnabled,
+  isMcapLatencyDebugEnabled,
+  isMcapRecordOwnershipDebugEnabled,
+} from "../instrumentation/host/mcap-debug-flags";
+import { recordMcapCostEvent } from "../instrumentation/host/mcap-cost-debug";
+import { fnv1aFingerprint } from "../../../utils/fnv1a";
+import {
+  recordMcapCostWorkerAttribution,
+  recordMcapCostWorkerCancellation,
+  type McapCostWorkerCancellationReason,
+} from "../instrumentation/host/mcap-cost-worker-attribution";
+import { recordMcapWorkerAttribution } from "../instrumentation/host/mcap-latency-debug";
 import { hydrateMcapFrameTransformSet } from "../transforms/wire";
-import { mcapPlaybackWorkerOperation } from "./playback-worker-rpc";
-import { McapPlaybackWorkerTransport } from "./playback-worker-transport";
+import { mcapPlaybackWorkerOperation } from "../worker/playback-worker-rpc";
+import { McapPlaybackWorkerTransport } from "../worker/playback-worker-transport";
 import {
   DecodedRecordStore,
   isRetainedDecodedMessageReference,
   type DecodedRecordLease,
-} from "./decoded-record-store";
+  type DecodedRecordStoreEvent,
+} from "../worker/decoded-record-store";
 import type {
   McapLaneTransportSnapshot,
   McapTransportLane,
   McapTransportSnapshot,
-} from "./transport-meter";
-import { workerFetchParameters } from "./worker-resource-client";
+} from "../worker/transport-meter";
+import { workerFetchParameters } from "../worker/worker-resource-client";
 import {
   MCAP_PLAYBACK_WORKER_PRIORITY,
   type McapPlaybackWorkerPriority,
@@ -25,7 +39,7 @@ import {
   type McapPlaybackWorkerStreamItemByType,
   type McapPlaybackWorkerStreamType,
   type McapPlaybackWorkerUnaryType,
-} from "./playback-worker-types";
+} from "../worker/playback-worker-types";
 import { errorMessage } from "../../../utils/errors";
 import { EpisodeReadCancelledError } from "../../../ports";
 import type { McapFrameTransformSet } from "../transforms/types";
@@ -64,8 +78,8 @@ import type { StreamInventory } from "../../../schemas/v1";
 import {
   haveMcapSupersessionKeyOverlap,
   mcapForegroundSupersessionKeys,
-} from "./playback-worker-supersession";
-import { createMcapWorkerSlotLifecycle } from "./worker-slot-lifecycle";
+} from "../worker/playback-worker-supersession";
+import { createMcapWorkerSlotLifecycle } from "../worker/worker-slot-lifecycle";
 
 type WorkerLane = {
   readonly name: McapTransportLane;
@@ -99,7 +113,9 @@ class WorkerMcapResourceClient implements McapResourceClient {
   private foregroundGeneration = 0;
   private disposed = false;
   private explicitOwnership = false;
-  private readonly decodedRecords = new DecodedRecordStore();
+  private readonly decodedRecords = new DecodedRecordStore({
+    onEvent: (event) => this.recordDecodedRecordStoreEvent(event),
+  });
   private readonly transportListeners = new Set<
     (sample: McapLaneTransportSnapshot) => void
   >();
@@ -207,7 +223,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
         ...lane.transport.cancelPending(() => true),
         ...lane.transport.cancelStreams(),
       ];
-      this.postCancelRequests(lane, cancelledIds);
+      this.postCancelRequests(lane, cancelledIds, "source-switch");
     }
   }
 
@@ -220,14 +236,18 @@ class WorkerMcapResourceClient implements McapResourceClient {
         pending.type === "readSynchronizedMessageBatch" ||
         pending.type === "readFrameTransformWindow",
     );
-    this.postCancelRequests(this.idleLane, cancelledIds);
+    this.postCancelRequests(this.idleLane, cancelledIds, "idle-preemption");
   }
 
   cancelRunwayReads() {
     const cancelledIds = this.foregroundLane.transport.cancelPending(
       (pending) => pending.type === "readSynchronizedMessageBatch",
     );
-    this.postCancelRequests(this.foregroundLane, cancelledIds);
+    this.postCancelRequests(
+      this.foregroundLane,
+      cancelledIds,
+      "seek-preemption",
+    );
   }
 
   async *readDecodedMessages(
@@ -495,7 +515,7 @@ class WorkerMcapResourceClient implements McapResourceClient {
           supersessionKeys,
         ),
       );
-      this.postCancelRequests(lane, cancelledIds);
+      this.postCancelRequests(lane, cancelledIds, "superseded");
       // A burst of obsolete presentation work is also a seek/scrub signal.
       // Give the byte link back to the newest foreground frame immediately;
       // useful playback-runway work remains on its separate foreground lane.
@@ -584,9 +604,11 @@ class WorkerMcapResourceClient implements McapResourceClient {
     }
 
     this.resetLane(lane, "MCAP worker reset for a different source");
+    const costDebug = isMcapCostDebugEnabled();
     const initRequest: McapPlaybackWorkerRequest = {
       payload: {
         ...workerFetchParameters(),
+        costDebug,
         // Current-frame and ordinary foreground playback remain eligible for
         // priority fill slots. Inspection has a responsive isolated worker but
         // stays on background admission with idle and bulk work, preserving
@@ -595,6 +617,9 @@ class WorkerMcapResourceClient implements McapResourceClient {
           lane.name === "interactive" || lane.name === "foreground"
             ? "priority"
             : "background",
+        lane: lane.name,
+        latencyDebug: isMcapLatencyDebugEnabled(),
+        recordOwnershipDebug: costDebug && isMcapRecordOwnershipDebugEnabled(),
       },
       type: "init",
     };
@@ -606,9 +631,12 @@ class WorkerMcapResourceClient implements McapResourceClient {
       return this.options.workerFactory();
     }
 
-    return new Worker(new URL("./playback-worker.ts", import.meta.url), {
-      type: "module",
-    });
+    return new Worker(
+      new URL("../worker/playback-worker.ts", import.meta.url),
+      {
+        type: "module",
+      },
+    );
   }
 
   private createLane(name: McapTransportLane): WorkerLane {
@@ -617,6 +645,10 @@ class WorkerMcapResourceClient implements McapResourceClient {
       transport: new McapPlaybackWorkerTransport(
         (sourceKey) => this.activeSourceKey === sourceKey,
         (snapshot) => this.emitTransport(name, snapshot),
+        (attribution) => {
+          recordMcapWorkerAttribution(attribution);
+          recordMcapCostWorkerAttribution(attribution);
+        },
       ),
     };
   }
@@ -635,7 +667,39 @@ class WorkerMcapResourceClient implements McapResourceClient {
     }
   }
 
-  private postCancelRequests(lane: WorkerLane, ids: readonly number[]): void {
+  private recordDecodedRecordStoreEvent(event: DecodedRecordStoreEvent): void {
+    if (!isMcapRecordOwnershipDebugEnabled()) return;
+    const operation =
+      event.kind === "hit"
+        ? "record-index-hit"
+        : event.kind === "insert"
+          ? "record-index-admit"
+          : event.kind === "evict-capacity"
+            ? "record-index-evict-capacity"
+            : event.kind === "evict-clear"
+              ? "record-index-evict-clear"
+              : "record-index-skip-capacity";
+    recordMcapCostEvent({
+      count: 1,
+      measurementStatus: "measured",
+      operation,
+      outputBytes: event.kind === "hit" ? event.sizeBytes : undefined,
+      recordIdentity: fnv1aFingerprint("record", event.recordId),
+      sourceTopics: [event.topic],
+      stage: "record-ownership",
+    });
+  }
+
+  private postCancelRequests(
+    lane: WorkerLane,
+    ids: readonly number[],
+    reason: McapCostWorkerCancellationReason,
+  ): void {
+    recordMcapCostWorkerCancellation({
+      count: ids.length,
+      lane: lane.name,
+      reason,
+    });
     const worker = lane.worker;
     if (!worker) {
       return;

@@ -204,6 +204,7 @@ describe("TimeseriesChart interactions", () => {
     vi.useFakeTimers();
     const { rerender, unmount } = render(
       <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
         data={DATA}
         durationSec={20}
         resetZoomRevision={0}
@@ -216,6 +217,7 @@ describe("TimeseriesChart interactions", () => {
 
     rerender(
       <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
         data={DATA}
         durationSec={20}
         resetZoomRevision={1}
@@ -246,6 +248,7 @@ describe("TimeseriesChart interactions", () => {
     ] as AlignedData;
     rerender(
       <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
         data={nextData}
         durationSec={20}
         onSeek={onSeek}
@@ -273,6 +276,7 @@ describe("TimeseriesChart interactions", () => {
     ] as AlignedData;
     rerender(
       <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
         data={narrower}
         durationSec={20}
         series={[{ color: "#f00", label: "speed" }]}
@@ -289,6 +293,7 @@ describe("TimeseriesChart interactions", () => {
     ] as AlignedData;
     rerender(
       <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
         data={wider}
         durationSec={20}
         series={[{ color: "#f00", label: "speed" }]}
@@ -308,6 +313,7 @@ describe("TimeseriesChart interactions", () => {
     ] as AlignedData;
     const { unmount } = render(
       <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
         coverageRanges={[{ endSec: 5, startSec: 0 }]}
         data={data}
         durationSec={20}
@@ -331,6 +337,7 @@ describe("TimeseriesChart interactions", () => {
   it("keeps coverage overlays stable across canvas-only redraws", () => {
     const { unmount } = render(
       <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
         coverageRanges={[{ endSec: 5, startSec: 0 }]}
         data={DATA}
         durationSec={20}
@@ -360,6 +367,7 @@ describe("TimeseriesChart interactions", () => {
     const onViewportChange = vi.fn();
     const { unmount } = render(
       <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
         data={DATA}
         durationSec={20}
         onViewportChange={onViewportChange}
@@ -446,6 +454,7 @@ describe("TimeseriesChart interactions", () => {
     const onSeekEnd = vi.fn();
     const { unmount } = render(
       <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
         data={DATA}
         durationSec={20}
         onSeek={onSeek}
@@ -489,6 +498,7 @@ describe("TimeseriesChart interactions", () => {
     } = {};
     const { unmount } = render(
       <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
         data={DATA}
         durationSec={20}
         registerHoverTimeListener={(listener) => {
@@ -542,6 +552,7 @@ describe("TimeseriesChart interactions", () => {
     } = {};
     const { unmount } = render(
       <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
         data={DATA}
         durationSec={20}
         registerHoverTimeListener={(listener) => {
@@ -589,6 +600,7 @@ describe("TimeseriesChart interactions", () => {
     let publishPlayhead: ((sec: number) => void) | undefined;
     const { unmount } = render(
       <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
         data={DATA}
         durationSec={120}
         registerPlayheadListener={(listener) => {
@@ -616,10 +628,15 @@ const DATA = [
   [0, 20],
   [1, 2],
 ] as AlignedData;
+const FOLLOW_POLICY_PROPS = {
+  followWindowQuantumSeconds: 15,
+  followWindowSeconds: 60,
+} as const;
 
 function renderChart(onSeek = vi.fn(), onSeekEnd?: () => void) {
   return render(
     <TimeseriesChart
+      {...FOLLOW_POLICY_PROPS}
       data={DATA}
       durationSec={20}
       onSeek={onSeek}

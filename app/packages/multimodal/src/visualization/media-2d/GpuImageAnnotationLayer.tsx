@@ -7,9 +7,9 @@ import { PointsNodeMaterial, SpriteNodeMaterial } from "three/webgpu";
 
 import type { ImageViewTransform } from "./Base2dScene";
 import {
-  gpuProjectionImagePlaneSize,
-  gpuProjectionViewportRect,
-} from "../composition/gpu-point-cloud-projection";
+  imagePlaneSize as fittedImagePlaneSize,
+  imagePlaneViewportRect as fittedImagePlaneViewportRect,
+} from "./image-plane-viewport";
 import {
   retainGpuImageAnnotationResource,
   type GpuImageAnnotationPointResource,
@@ -69,7 +69,7 @@ export function GpuImageAnnotationLayer({
   const size = useThree((state) => state.size);
   const imagePlaneSize = useMemo(
     () =>
-      gpuProjectionImagePlaneSize({
+      fittedImagePlaneSize({
         containerHeight: size.height,
         containerWidth: size.width,
         fit,
@@ -80,7 +80,7 @@ export function GpuImageAnnotationLayer({
   );
   const imageRect = useMemo(
     () =>
-      gpuProjectionViewportRect({
+      fittedImagePlaneViewportRect({
         containerHeight: size.height,
         containerWidth: size.width,
         fit,

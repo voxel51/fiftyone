@@ -1,4 +1,4 @@
-import type { ReadWorkBudget, ReadWorkUsage } from "../ports";
+import type { ReadWorkBudget, ReadWorkUsage } from "../../../ports";
 
 /** Adapter-private physical-unit limits layered under the neutral byte budget. */
 export interface SourceReadBudgetPhysicalLimits {
@@ -21,7 +21,7 @@ export interface PhysicalReadBudgetReservation {
   ): void;
 }
 
-/** Runtime-owned source budget ledger used by format adapters. */
+/** MCAP-owned source budget ledger used by bounded acquisition. */
 export interface SourceReadBudgetLedger {
   remaining(): SourceReadBudgetSnapshot;
   reserve(

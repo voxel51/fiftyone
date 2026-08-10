@@ -5,7 +5,7 @@ import {
   STREAM_METADATA,
   type StreamDescriptor,
 } from "../../../ir/index";
-import { sceneSourcesFromStreamDescriptors } from "../../../scene-inventory/index";
+import { sceneSourcesFromStreamDescriptors } from "../../../stream-selection";
 import {
   STREAM_CAPABILITY,
   STREAM_CATEGORY,

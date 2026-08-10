@@ -12,9 +12,11 @@ const EPISODE = `${SRC}views/episode/`;
 const EPISODE_INDEX = `${EPISODE}index\\.ts$`;
 const EPISODE_MAP_RENDERING = `${EPISODE}map/rendering/`;
 const EXTENSIONS = `${SRC}extensions/`;
+const EXTENSION_HOST = `${EXTENSIONS}host/`;
 const INJECT = `${SRC}inject/`;
 const INJECT_ENTRY = `${INJECT}index\\.ts$`;
 const IR = `${SRC}ir/`;
+const OBSERVABILITY = `${SRC}observability/`;
 const PORTS = `${SRC}ports/`;
 const QUERY = `${SRC}query/`;
 const RUNTIME = `${SRC}runtime/`;
@@ -42,15 +44,20 @@ const TEAMS =
   "^@fiftyone/teams-multimodal$";
 const REACT_UI =
   "(^|/)node_modules/(react(?:-dom)?|@react-three/[^/]+|@voxel51/voodo)(/|$)|" +
-  "^packages/(components|tiling)/|^packages/playback/index\\.ts$";
+  "^packages/(components|tiling)/|^packages/playback/(?!headless\\.ts$)";
 
 const MCAP = `${ADAPTERS}mcap/`;
-const MCAP_FOUNDATIONS = `${MCAP}(compatibility|contracts|normalization|synchronization|transforms)/`;
+const MCAP_INSTRUMENTATION = `${MCAP}instrumentation/`;
+const MCAP_INSTRUMENTATION_HOST = `${MCAP_INSTRUMENTATION}host/`;
+const MCAP_METERS = `${MCAP_INSTRUMENTATION}meters/`;
+const MCAP_FOUNDATIONS =
+  `${MCAP}(acquisition|compatibility|contracts|instrumentation/meters|` +
+  `normalization|synchronization|transforms)/`;
 const MCAP_MESSAGE_DECODERS = `${MCAP}message-decoders/`;
 const MCAP_READER = `${MCAP}reader/`;
 const MCAP_RESOURCE_CLIENT = `${MCAP}resource-client/`;
-const MCAP_RESOURCE_CLIENT_ENTRY = `${MCAP_RESOURCE_CLIENT}index\\.ts$`;
 const MCAP_WORKER = `${MCAP}worker/`;
+const MCAP_WORKER_HOST = `${MCAP}worker-host/`;
 
 const VISUALIZATION_FAMILIES = `${VISUALIZATION}(media-2d|logs|message|plot|scene-3d)/`;
 
@@ -201,7 +208,8 @@ module.exports = {
       from: { path: EPISODE_MAP_RENDERING, pathNot: TEST_MODULE },
       to: {
         path: SRC,
-        pathNot: `${EPISODE}map/|${VISUALIZATION}|${IR}|${UTILS}`,
+        pathNot:
+          `${EPISODE}map/|${VISUALIZATION}|${IR}|${OBSERVABILITY}|${UTILS}`,
       },
     },
     {
@@ -224,7 +232,7 @@ module.exports = {
       from: { path: ADAPTERS, pathNot: TEST_MODULE },
       to: {
         path: SRC,
-        pathNot: `${SRC}(adapters|codecs|decoders|ir|ports|query|schemas|stream-selection|utils)/`,
+        pathNot: `${SRC}(adapters|codecs|decoders|ir|observability|ports|query|schemas|stream-selection|utils)/`,
       },
     },
     {
@@ -292,7 +300,21 @@ module.exports = {
       name: "runtime-imports-only-runtime-foundations",
       severity: "error",
       from: { path: RUNTIME, pathNot: TEST_MODULE },
-      to: { path: SRC, pathNot: `${SRC}(runtime|ports|query|ir|utils)/` },
+      to: {
+        path: SRC,
+        pathNot: `${SRC}(runtime|observability|ports|query|ir|utils)/`,
+      },
+    },
+    {
+      // Observation seams are neutral, headless leaves. Producers and adapter
+      // sinks meet here without introducing a dependency between their owners.
+      name: "observability-imports-only-neutral-foundations",
+      severity: "error",
+      from: { path: OBSERVABILITY, pathNot: TEST_MODULE },
+      to: {
+        path: SRC,
+        pathNot: `${SRC}(observability|ir|ports|utils)/`,
+      },
     },
     {
       // Keep scene inventory a small format-neutral policy domain over IR and
@@ -327,7 +349,7 @@ module.exports = {
       name: "temporal-tags-import-only-temporal-foundations",
       severity: "error",
       from: { path: TEMPORAL_TAGS, pathNot: TEST_MODULE },
-      to: { path: SRC, pathNot: `${SRC}(temporal-tags|runtime|ir)/` },
+      to: { path: SRC, pathNot: `${SRC}(temporal-tags|runtime|ir|utils)/` },
     },
     {
       // Keep utilities truly domain-free so any namespace may import them
@@ -345,7 +367,7 @@ module.exports = {
       from: { path: VIEWS, pathNot: TEST_MODULE },
       to: {
         path: SRC,
-        pathNot: `${SRC}(views|runtime|ports|scene-inventory|visualization|video|extensions|temporal-tags|ir|stream-selection|utils)/`,
+        pathNot: `${SRC}(views|runtime|observability|ports|scene-inventory|visualization|video|extensions|temporal-tags|ir|stream-selection|utils)/`,
       },
     },
     {
@@ -356,7 +378,7 @@ module.exports = {
       from: { path: VISUALIZATION, pathNot: TEST_MODULE },
       to: {
         path: SRC,
-        pathNot: `${SRC}(visualization|video|ir|codecs|utils)/`,
+        pathNot: `${SRC}(visualization|video|observability|ir|codecs|utils)/`,
       },
     },
     {
@@ -413,14 +435,30 @@ module.exports = {
       to: { path: REACT_UI },
     },
     {
-      // Keep MCAP implementation layers headless; host-specific composition is
-      // confined to the adapter facade files above these sublayers.
+      // Neutral observation contracts remain safe in workers and headless tests.
+      name: "observability-is-headless",
+      severity: "error",
+      from: { path: OBSERVABILITY, pathNot: TEST_MODULE },
+      to: { path: REACT_UI },
+    },
+    {
+      // Keep MCAP implementation layers headless. Main-thread coordination and
+      // browser reporting are explicitly owned by worker-host/ and
+      // instrumentation/host/, which are intentionally excluded here.
       name: "mcap-core-layers-are-headless",
       severity: "error",
       from: {
-        path: `${MCAP}(compatibility|contracts|message-decoders|normalization|reader|resource-client|synchronization|transforms|worker)/`,
+        path: `${MCAP}(acquisition|compatibility|contracts|instrumentation/meters|message-decoders|normalization|reader|resource-client|synchronization|transforms|worker)/`,
         pathNot: TEST_MODULE,
       },
+      to: { path: REACT_UI },
+    },
+    {
+      // LeRobot decoding and resource access must remain usable outside React
+      // and browser-owned UI composition.
+      name: "lerobot-adapter-is-headless",
+      severity: "error",
+      from: { path: `${ADAPTERS}lerobot/`, pathNot: TEST_MODULE },
       to: { path: REACT_UI },
     },
 
@@ -488,8 +526,22 @@ module.exports = {
       // contracts rather than importing a sibling contribution implementation.
       name: "extension-families-do-not-import-each-other",
       severity: "error",
-      from: { path: `${EXTENSIONS}([^/]+)/`, pathNot: TEST_MODULE },
-      to: { path: EXTENSIONS, pathNot: `${EXTENSIONS}$1/` },
+      from: {
+        path: `${EXTENSIONS}(?!host/)([^/]+)/`,
+        pathNot: TEST_MODULE,
+      },
+      to: {
+        path: EXTENSIONS,
+        pathNot: `${EXTENSIONS}$1/|${EXTENSION_HOST}`,
+      },
+    },
+    {
+      // Host contracts are the foundation shared by extension families. The
+      // host must never acquire a dependency on a concrete contribution.
+      name: "extension-host-does-not-import-families",
+      severity: "error",
+      from: { path: EXTENSION_HOST, pathNot: TEST_MODULE },
+      to: { path: EXTENSIONS, pathNot: EXTENSION_HOST },
     },
     {
       // Keep episode features, settings, and persistence off the concrete tile
@@ -512,6 +564,22 @@ module.exports = {
       to: { path: MCAP, pathNot: MCAP_FOUNDATIONS },
     },
     {
+      // Keep all MCAP instrumentation below the adapter facade. Worker-safe
+      // meters are constrained further by the foundation rule above; host
+      // reporters may interpret lower-layer observations but cannot compose
+      // the adapter facade.
+      name: "mcap-instrumentation-imports-only-instrumentation-foundations",
+      severity: "error",
+      from: { path: MCAP_INSTRUMENTATION, pathNot: TEST_MODULE },
+      to: {
+        path: MCAP,
+        pathNot:
+          `${MCAP_INSTRUMENTATION}|${MCAP}(worker|resource-client|reader|` +
+          `message-decoders|acquisition|compatibility|contracts|normalization|` +
+          `synchronization|transforms)/`,
+      },
+    },
+    {
       // Keep concrete MCAP message decoders below readers, the resource client,
       // workers, and the adapter facade.
       name: "mcap-message-decoders-import-only-decoder-foundations",
@@ -519,7 +587,9 @@ module.exports = {
       from: { path: MCAP_MESSAGE_DECODERS, pathNot: TEST_MODULE },
       to: {
         path: MCAP,
-        pathNot: `${MCAP}(message-decoders|compatibility|contracts|normalization|synchronization|transforms)/`,
+        pathNot:
+          `${MCAP}(message-decoders|compatibility|contracts|normalization|` +
+          `synchronization|transforms)/|${MCAP_METERS}`,
       },
     },
     {
@@ -530,7 +600,9 @@ module.exports = {
       from: { path: MCAP_READER, pathNot: TEST_MODULE },
       to: {
         path: MCAP,
-        pathNot: `${MCAP}(reader|message-decoders|compatibility|contracts|normalization|synchronization|transforms)/`,
+        pathNot:
+          `${MCAP}(reader|message-decoders|compatibility|contracts|` +
+          `normalization|synchronization|transforms)/|${MCAP_METERS}`,
       },
     },
     {
@@ -538,13 +610,12 @@ module.exports = {
       // decoders without reaching upward into worker or facade composition.
       name: "mcap-resource-client-imports-only-resource-foundations",
       severity: "error",
-      from: {
-        path: MCAP_RESOURCE_CLIENT,
-        pathNot: `${TEST_MODULE}|${MCAP_RESOURCE_CLIENT_ENTRY}`,
-      },
+      from: { path: MCAP_RESOURCE_CLIENT, pathNot: TEST_MODULE },
       to: {
         path: MCAP,
-        pathNot: `${MCAP}(resource-client|reader|message-decoders|compatibility|contracts|normalization|synchronization|transforms)/`,
+        pathNot:
+          `${MCAP}(resource-client|reader|message-decoders|compatibility|` +
+          `contracts|normalization|synchronization|transforms)/|${MCAP_METERS}`,
       },
     },
     {
@@ -555,7 +626,25 @@ module.exports = {
       from: { path: MCAP_WORKER, pathNot: TEST_MODULE },
       to: {
         path: MCAP,
-        pathNot: `${MCAP}(worker|resource-client|reader|message-decoders|compatibility|contracts|normalization|synchronization|transforms)/`,
+        pathNot:
+          `${MCAP}(worker|resource-client|reader|message-decoders|` +
+          `compatibility|contracts|normalization|synchronization|transforms)/|` +
+          MCAP_METERS,
+      },
+    },
+    {
+      // Main-thread worker coordination may consume the worker transport,
+      // lower MCAP strata, and host instrumentation, but not the adapter
+      // facade or unrelated root-level composition.
+      name: "mcap-worker-host-imports-only-host-foundations",
+      severity: "error",
+      from: { path: MCAP_WORKER_HOST, pathNot: TEST_MODULE },
+      to: {
+        path: MCAP,
+        pathNot:
+          `${MCAP}(worker-host|worker|resource-client|reader|message-decoders|` +
+          `acquisition|compatibility|contracts|normalization|synchronization|` +
+          `transforms)/|${MCAP_INSTRUMENTATION_HOST}|${MCAP_METERS}`,
       },
     },
   ],

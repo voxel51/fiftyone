@@ -26,6 +26,7 @@ import {
 import { isEpisodeReadCancelledError } from "../../../../ports";
 import type { SceneSource } from "../../../../scene-inventory";
 import { VISUALIZATION_KIND } from "../../../../visualization";
+import { markEpisodeLatencyEvent } from "../../../../observability/episode-latency";
 import { shouldDeferBulkHistory } from "../../playback/bulk-stream-lifecycle";
 import { useDataStream } from "../../playback/data-stream-context";
 import {
@@ -79,8 +80,10 @@ interface BoundedLocationTrackProgress {
   readonly job?: BudgetedReadJob;
   readonly key: string;
   readonly streams: readonly string[];
+  completedEvent: boolean;
   continuation?: ReadContinuation;
   coveredThroughNs?: bigint;
+  downsampledEvent: boolean;
   error: boolean;
   evictionTimer?: ReturnType<typeof setTimeout>;
   hasRead: boolean;
@@ -96,6 +99,7 @@ interface BoundedLocationTrackProgress {
   retryTimer?: ReturnType<typeof setTimeout>;
   settledThroughNs?: bigint;
   skipOversizedSourceUnit: boolean;
+  startedEvent: boolean;
   targetHorizonNs?: bigint;
   terminal: boolean;
   truncated: boolean;
@@ -548,6 +552,8 @@ function createProgress({
   return {
     active: undefined,
     baseByStream,
+    completedEvent: false,
+    downsampledEvent: false,
     error: false,
     fallbackAfterAccountExhaustion,
     hasRead: false,
@@ -557,6 +563,7 @@ function createProgress({
     lastProgressPublishedMessageCount: 0,
     lastPublicationAtMs: Number.NEGATIVE_INFINITY,
     messageCount: 0,
+    startedEvent: false,
     skipOversizedSourceUnit: false,
     streams,
     terminal: false,
@@ -589,6 +596,7 @@ async function pumpBoundedProgress({
       return;
     }
     if (shouldStandDown()) return;
+    markLocationReadStarted(progress);
     const skipOversizedSourceUnit = progress.skipOversizedSourceUnit;
     const result: BudgetedReadResult = await job.read({
       admissionEndNs: horizonNs,
@@ -620,6 +628,7 @@ async function pumpBoundedProgress({
     if (progress.messageCount >= LOCATION_TRACK_CACHE_MESSAGE_LIMIT) {
       progress.terminal = true;
       progress.truncated = true;
+      markLocationReadCompleted(progress);
       publish(true);
       return;
     }
@@ -634,6 +643,7 @@ async function pumpBoundedProgress({
     if (result.stopReason === "source-exhausted") {
       progress.terminal = true;
       progress.settledThroughNs = timeRange.endNs;
+      markLocationReadCompleted(progress);
       publish(true);
       return;
     }
@@ -646,6 +656,7 @@ async function pumpBoundedProgress({
       }
       progress.terminal = true;
       progress.truncated = true;
+      markLocationReadCompleted(progress);
       publish(true);
       return;
     }
@@ -656,6 +667,7 @@ async function pumpBoundedProgress({
         continue;
       }
       progress.terminal = true;
+      markLocationReadCompleted(progress);
       publish(true);
       return;
     }
@@ -676,6 +688,7 @@ async function pumpBoundedProgress({
     ) {
       progress.terminal = true;
       progress.truncated = true;
+      markLocationReadCompleted(progress);
       publish(true);
       return;
     }
@@ -721,6 +734,7 @@ async function pumpFallbackProgress({
   if (limit === 0) {
     progress.terminal = true;
     progress.truncated = true;
+    markLocationReadCompleted(progress);
     publish(true);
     return;
   }
@@ -770,6 +784,7 @@ async function pumpFallbackProgress({
     if (readMessages >= limit) {
       progress.terminal = true;
       progress.truncated = true;
+      markLocationReadCompleted(progress);
     }
     for (const transaction of transactionsByStream.values()) {
       transaction.commit();
@@ -982,6 +997,12 @@ function publishProgress(
       status,
       ...(progress.truncated || store.truncated ? { truncated: true } : {}),
     });
+    if (rendered.truncated && !progress.downsampledEvent) {
+      progress.downsampledEvent = true;
+      markEpisodeLatencyEvent("location track downsampled", {
+        points: store.validPointCountAt(store.pointCount),
+      });
+    }
   });
   progress.publicationKey = publicationKey;
   progress.publishedTracks = tracks;

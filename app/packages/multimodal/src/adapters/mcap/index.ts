@@ -6,7 +6,7 @@ export { detectMcapSample, mcapAdapterDescriptor } from "./descriptor";
 /**
  * Public MCAP resource client factory.
  */
-export { createMcapResourceClient } from "./resource-client/index";
+export { createMcapResourceClient } from "./resource-client-factory";
 
 /** Shared MCAP stream classification helpers. */
 export {
@@ -26,6 +26,14 @@ export type { McapPreviewTopics } from "./resource-client/stream-topics";
  */
 export { DEFAULT_MCAP_SYNC_TOLERANCE_NS } from "./synchronization/policy";
 
+/** Versioned, diagnosis-only render-cost observability types. */
+export type {
+  FiftyOneMcapCostBridgeV1,
+  McapCostEventV1,
+  McapCostSnapshotV1,
+  McapCostSourceV1,
+} from "./instrumentation/host/mcap-cost-debug";
+
 /**
  * MCAP timeline constants used by playback clocks.
  */
@@ -34,7 +42,7 @@ export { MCAP_ACTIVE_TIMELINE } from "./contracts/index";
 /**
  * Options for constructing an MCAP resource client.
  */
-export type { CreateMcapResourceClientOptions } from "./resource-client/index";
+export type { CreateMcapResourceClientOptions } from "./resource-client-factory";
 
 /**
  * Reader contracts exposed for tests and advanced adapter wiring.
@@ -65,9 +73,9 @@ export type {
 /**
  * Worker-backed MCAP resource client facade.
  */
-export { createWorkerMcapResourceClient } from "./worker";
+export { createWorkerMcapResourceClient } from "./worker-host";
 
 /**
  * Options for creating a worker-backed MCAP resource client.
  */
-export type { CreateWorkerMcapResourceClientOptions } from "./worker";
+export type { CreateWorkerMcapResourceClientOptions } from "./worker-host";

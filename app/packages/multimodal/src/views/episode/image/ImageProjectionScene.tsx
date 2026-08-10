@@ -29,8 +29,10 @@ import {
 import type { CameraModel } from "../spatial/camera-geometry/camera-model";
 import { toGpuCameraProjection } from "../spatial/camera-geometry/gpu-camera-projection";
 import type { ImageProjectionLayer } from "./use-image-projection-layers";
-import { allocatePointCloudCanvasBudget } from "../../../visualization/webgpu/point-cloud-canvas-budget";
-import { DEFAULT_MAX_RENDERED_POINTS } from "../../../visualization/scene-3d/point-cloud-colors";
+import {
+  allocatePointCloudCanvasBudget,
+  DEFAULT_MAX_RENDERED_POINTS,
+} from "../../../visualization/webgpu/point-cloud-canvas-budget";
 import { useWebGpuViewPointCloudBudget } from "../../../visualization/webgpu/WebGpuViewStage";
 
 /** Inputs required to render and inspect projected point clouds for one image. */

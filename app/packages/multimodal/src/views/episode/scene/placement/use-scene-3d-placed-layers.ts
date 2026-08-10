@@ -6,6 +6,11 @@ import type {
   PointCloudVisualization,
   SceneUpdateVisualization,
 } from "../../../../ir";
+import {
+  isVisualizationCostObserved,
+  recordVisualizationCost,
+  visualizationCostNowMs,
+} from "../../../../observability/visualization-cost";
 import type {
   StreamContentFrame,
   StreamPlaybackFrame,

@@ -1,5 +1,5 @@
 import type { EpisodeTileExtension, EpisodeTileExtensionId } from "./types";
-import { createExtensionRegistry } from "../registry";
+import { createExtensionRegistry } from "../host/registry";
 
 const REGISTRY_KEY = Symbol.for(
   "@fiftyone/multimodal:episode-tile-extension-registry",

@@ -2,7 +2,7 @@ import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { VideoPresentation } from "../../video/types";
-import { setVisualizationCostObserver } from "../render-cost-observer";
+import { setVisualizationCostObserver } from "../../observability/visualization-cost";
 import {
   useVideoTexture,
   VIDEO_TEXTURE_RETIRE_FALLBACK_MS,

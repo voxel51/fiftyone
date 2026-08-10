@@ -1,7 +1,7 @@
-import { createInlineMcapResourceClient } from "./inline-client";
-import type { ByteClient } from "../../../query/bytes/index";
-import type { McapResourceClient } from "../contracts/index";
-import { createWorkerMcapResourceClient } from "../worker/index";
+import type { ByteClient } from "../../query/bytes/index";
+import type { McapResourceClient } from "./contracts/index";
+import { createInlineMcapResourceClient } from "./resource-client/inline-client";
+import { createWorkerMcapResourceClient } from "./worker-host/index";
 
 /**
  * Options for constructing an MCAP resource client.

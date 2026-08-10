@@ -19,8 +19,8 @@
 //   helpers wrap.
 // ---------------------------------------------------------------------------
 
-import { atom, type PrimitiveAtom } from "jotai";
-import { atomFamily } from "jotai/utils";
+import { atom, type PrimitiveAtom } from "jotai/vanilla";
+import { atomFamily } from "jotai/vanilla/utils";
 import type {
   BufferedRanges,
   BufferingStream,

@@ -2,11 +2,16 @@ import type { McapTypes } from "@mcap/core";
 import type { ByteSourceDescriptor } from "../../../query/bytes/index";
 import type { DecodeClient } from "../../../query/decoding/index";
 import { isEpisodeReadCancelledError } from "../../../ports/index";
+import {
+  isMcapDecodeStageMeterEnabled,
+  mcapDecodeStageNowMs,
+  recordMcapDecodeStage,
+} from "../instrumentation/meters/decode-stage";
 import { McapTopicDecodeError } from "../normalization/errors";
 import type { McapIndexedReaderLike } from "../reader/index";
 import type { McapTimelineStrategy } from "./timeline";
 import type { McapDecodedMessage } from "../contracts/index";
-import { fnv1aBytesHex } from "../fnv1a";
+import { fnv1aBytesHex } from "../../../utils/fnv1a";
 
 /**
  * Inputs needed to decode one MCAP message into the adapter's playback shape.
@@ -78,7 +83,7 @@ export async function decodeMcapMessage({
                 .filter(Boolean)
                 .join(";"),
               recordId:
-                physicalRecordId ?? mcapMessageRecordId(message),
+                physicalRecordId ?? meteredMessageRecordId(message, topic),
               source,
               streamId: topic,
               timeNs: timelineTimeNs,

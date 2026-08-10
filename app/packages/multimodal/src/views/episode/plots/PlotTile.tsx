@@ -11,6 +11,10 @@ import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
 import React, { useCallback, useEffect, useMemo } from "react";
 import type { AlignedData } from "uplot";
 import { addCoveredRange, type NsRange } from "../../../runtime";
+import {
+  PLOT_WINDOW_QUANTUM_SECONDS,
+  PLOT_WINDOW_SECONDS,
+} from "../../../runtime/numeric-series-window";
 import TimeseriesChart, {
   type TimeseriesCoverageRange,
   type TimeseriesChartSeries,
@@ -265,6 +269,8 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
           coverageRanges={coverageRanges}
           data={chartData}
           durationSec={durationSec}
+          followWindowQuantumSeconds={PLOT_WINDOW_QUANTUM_SECONDS}
+          followWindowSeconds={PLOT_WINDOW_SECONDS}
           onHoverTime={onHoverTime}
           onSeek={seek}
           onSeekEnd={settleSeek}

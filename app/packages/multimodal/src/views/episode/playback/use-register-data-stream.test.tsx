@@ -33,6 +33,7 @@ import type {
 } from "../../../ir";
 import { EpisodeReadCancelledError, type EpisodeSession } from "../../../ports";
 import type { DecodeResult } from "../../../query/decoding";
+import { setEpisodeLatencyObserver } from "../../../observability/episode-latency";
 import {
   DataStreamProvider,
   useDataStream,

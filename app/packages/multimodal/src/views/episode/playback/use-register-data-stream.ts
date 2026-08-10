@@ -39,11 +39,11 @@ import {
   type EpisodeSession,
 } from "../../../ports";
 import { monotonicNowMs } from "../../../utils/monotonic-time";
+import { nsDeltaToSeconds } from "../../../utils/nanoseconds";
 import {
   createEpisodePlaybackRuntime,
   createTimelineIndex,
   episodeSourceAccessKey,
-  nsDeltaToSeconds,
   type StreamFramePayloadMeasurementQuality,
   type StreamFrameReadEvidence,
   type StreamFrameReadRequest,
@@ -51,6 +51,11 @@ import {
   type StreamSubscriptionOptions,
   type TimelineIndex,
 } from "../../../runtime";
+import {
+  episodeLatencyDurationMs,
+  episodeLatencyNowMs,
+  markEpisodeLatencyEvent,
+} from "../../../observability/episode-latency";
 import { useSetDataStream } from "./data-stream-context";
 import {
   decodedCacheBudgetBytes,

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { markEpisodeLatencyEvent } from "../../../../observability/episode-latency";
 import {
   type LocationBounds,
   type LocationTrackState,

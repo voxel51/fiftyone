@@ -571,6 +571,8 @@ export type McapMessageCursor = string;
 
 /** Request for one exact indexed message. */
 export interface McapReadRawMessageAtCursorRequest {
+  /** Exact MCAP channel selected by a channel-preserving inventory row. */
+  readonly channelId?: number;
   readonly cursor: McapMessageCursor;
   readonly includeFullJson?: boolean;
   readonly prune?: McapRawPruneBudgets;
@@ -582,6 +584,8 @@ export interface McapReadRawMessageAtCursorRequest {
 export type McapReadMessageIndexWindowRequest = {
   readonly after: number;
   readonly before: number;
+  /** Exact MCAP channel selected by a channel-preserving inventory row. */
+  readonly channelId?: number;
   readonly source: ByteSourceDescriptor;
   readonly topic: string;
 } & (

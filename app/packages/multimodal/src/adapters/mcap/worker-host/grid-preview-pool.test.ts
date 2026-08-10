@@ -3,7 +3,7 @@ import type {
   McapGridPreviewWorkerRequest,
   McapGridPreviewWorkerResponse,
   McapGridPreviewWorkerRpcRequest,
-} from "./grid-preview-worker-types";
+} from "../worker/grid-preview-worker-types";
 import {
   getMcapGridPreviewPool,
   resetMcapGridPreviewPoolForTests,

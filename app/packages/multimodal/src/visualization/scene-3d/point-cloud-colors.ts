@@ -30,9 +30,6 @@ import {
   normalizeIdentifierName,
 } from "./utils";
 
-// Render budget: beyond ~120k points the GPU cost outweighs the visual gain
-// for typical LiDAR frames. Points are uniformly sampled down to this limit.
-export const DEFAULT_MAX_RENDERED_POINTS = 120_000;
 // Side length of the synthetic unit cube used when a cloud has no spread
 // (e.g. a single point), so the camera has a non-zero target to frame.
 export const EMPTY_POINT_CLOUD_BOUNDS_SIZE = 1;

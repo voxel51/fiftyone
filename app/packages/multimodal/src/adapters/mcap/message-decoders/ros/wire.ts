@@ -4,7 +4,7 @@ import { MessageReader as Ros1MessageReader } from "@foxglove/rosmsg-serializati
 import { MessageReader as Ros2MessageReader } from "@foxglove/rosmsg2-serialization";
 import type { McapTypes } from "@mcap/core";
 import type { PayloadDescriptor } from "../../../../ir/index";
-import { fnv1aBytesHex } from "../../fnv1a";
+import { fnv1aBytesHex } from "../../../../utils/fnv1a";
 
 const TEXT_DECODER = new TextDecoder();
 const MAX_PARSED_SCHEMA_CACHE_ENTRIES = 256;

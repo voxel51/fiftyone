@@ -43,7 +43,7 @@ import {
   useOptionalVideoPlaybackManager,
   useVideoStreamPresentation,
 } from "../../video/react";
-import { useLatestRef } from "../../utils/use-latest-ref";
+import { useLatestRef } from "./use-latest-ref";
 import { fittedImageSize } from "./image-fit";
 
 const DEFAULT_MIME_TYPE = "image/jpeg";

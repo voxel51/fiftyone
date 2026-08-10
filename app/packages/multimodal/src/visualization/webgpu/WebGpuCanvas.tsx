@@ -9,6 +9,11 @@ import {
   registerWebGpuRenderer,
   type WebGpuRendererRegistration,
 } from "./webgpu-device-registry";
+import {
+  isVisualizationCostObserved,
+  recordVisualizationCost,
+  visualizationCostNowMs,
+} from "../../observability/visualization-cost";
 import { errorMessage } from "../../utils/errors";
 
 type WebGpuRootState = RootState & {

@@ -3,7 +3,7 @@ import * as THREE from "three";
 
 import type { VideoPresentation } from "../../video/types";
 import type { ImageTextureHandle } from "./Base2dScene";
-import { recordVisualizationCost } from "../render-cost-observer";
+import { recordVisualizationCost } from "../../observability/visualization-cost";
 
 interface HeldVideoTexture {
   readonly handle: ImageTextureHandle;

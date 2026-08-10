@@ -137,6 +137,7 @@ describe("RawMessageBridge records", () => {
     expect(readRawRecordAtCursor).toHaveBeenLastCalledWith({
       cursor: "cursor-42",
       includeFullJson: true,
+      intent: "export",
       signal: expect.any(AbortSignal),
       stream: "/imu",
     });

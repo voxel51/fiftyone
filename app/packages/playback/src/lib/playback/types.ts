@@ -3,7 +3,7 @@
 // based timeline in use-timeline.ts / state.ts).
 // ---------------------------------------------------------------------------
 
-import type { createStore } from "jotai";
+import type { createStore } from "jotai/vanilla";
 
 /** Opaque handle to the scoped Jotai store owned by a PlaybackProvider instance. */
 export type PlaybackStore = ReturnType<typeof createStore>;

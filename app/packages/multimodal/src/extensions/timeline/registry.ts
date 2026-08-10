@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { createExtensionRegistry } from "../registry";
+import { createExtensionRegistry } from "../host/registry";
 import type { TimelineExtension } from "./types";
 
 const REGISTRY_KEY = Symbol.for(

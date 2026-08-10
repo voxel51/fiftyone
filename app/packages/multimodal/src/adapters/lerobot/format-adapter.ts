@@ -23,7 +23,7 @@ import {
   type ReadRequest,
   type SourceStats,
 } from "../../ports";
-import { nsDeltaToSeconds } from "../../runtime";
+import { nsDeltaToSeconds } from "../../utils/nanoseconds";
 import { throwIfAborted } from "../../utils/cancellation";
 import { toError } from "../../utils/errors";
 
