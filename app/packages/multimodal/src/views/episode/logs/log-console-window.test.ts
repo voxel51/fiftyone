@@ -4,6 +4,7 @@ import {
   coveredLogReadRange,
   logWindowForCenter,
   mergeBoundedLogRows,
+  mergeSelectedBoundedLogRows,
   mergeLogReadRanges,
   missingLogReadRanges,
   pruneLogRows,
@@ -79,6 +80,22 @@ describe("episode log console window", () => {
     );
 
     expect(merged.rows).toEqual([replacement]);
+    expect(merged.truncated).toBe(false);
+  });
+
+  it("filters levels before applying the visible-row limit", () => {
+    const olderInfo = row(1);
+    const newerDebug = { ...row(2), level: "debug" as const };
+
+    const merged = mergeSelectedBoundedLogRows(
+      [],
+      [olderInfo, newerDebug],
+      { endTimeNs: 10n, startTimeNs: 0n },
+      1,
+      new Set(["info"]),
+    );
+
+    expect(merged.rows).toEqual([olderInfo]);
     expect(merged.truncated).toBe(false);
   });
 

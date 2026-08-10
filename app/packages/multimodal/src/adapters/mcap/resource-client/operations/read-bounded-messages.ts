@@ -39,7 +39,13 @@ export async function readMcapBoundedMessages({
     continuation: request.continuation as McapReadContinuation | undefined,
     endTimeNs: request.endTimeNs,
     maxChunks: request.maxChunks,
+    ...(request.preferredTimeNs !== undefined
+      ? { preferredTimeNs: request.preferredTimeNs }
+      : {}),
     signal,
+    ...(request.skipOversizedSourceUnit
+      ? { skipOversizedSourceUnit: true }
+      : {}),
     startTimeNs: request.startTimeNs,
     topics: request.topics,
   });
@@ -76,5 +82,8 @@ export async function readMcapBoundedMessages({
       ...result.usage,
       messagesDecoded: messages.length,
     },
+    ...(result.skippedByTopic && result.skippedByTopic.size > 0
+      ? { unavailableByTopic: result.skippedByTopic }
+      : {}),
   };
 }

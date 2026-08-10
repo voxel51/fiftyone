@@ -1,23 +1,25 @@
 // Deep imports on purpose: the playback package root barrel pulls view
 // components whose relay fragments cannot evaluate under vitest, and this
 // bridge has direct unit tests.
-import { PlaybackStoreContext } from "@fiftyone/playback/runtime";
+import { getPlayhead, PlaybackStoreContext } from "@fiftyone/playback/runtime";
 import React, {
-  useCallback,
   createContext,
   useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
-import type { EpisodeSession } from "../../../../ports/index";
+import type {
+  EpisodeSession,
+  FrameBatch,
+  SourceReadBudgetAccount,
+} from "../../../../ports/index";
 import { VISUALIZATION_KIND } from "../../../../visualization/index";
 import { shouldDeferBulkHistory } from "../../playback/bulk-stream-lifecycle";
-import {
-  useDemandDrivenHistory,
-  type DemandDrivenHistoryLoader,
-} from "../../playback/use-demand-driven-history";
+import { useDataStream } from "../../playback/data-stream-context";
+import { useProgressiveHistory } from "../../playback/use-progressive-history";
 import { useFrameTransformsContext } from "../../spatial/frame-transforms/context";
 import {
   decimateTrajectory,
@@ -26,7 +28,15 @@ import {
 
 // Hard cap on one stream's history read: a runaway high-rate stream stops
 // here instead of exhausting memory (~50Hz over 8 minutes).
-const TRAJECTORY_READ_LIMIT = 25_000;
+const TRAJECTORY_FALLBACK_TILE_READ_LIMIT = 25_000;
+const TRAJECTORY_HISTORY_ITEM_LIMIT = 250_000;
+const TRAJECTORY_FALLBACK_TILE_NS = 10_000_000_000n;
+const TRAJECTORY_GRANT_BUDGET = {
+  maxMessages: 10_000,
+  maxSourceBytes: 32 * 1024 * 1024,
+  maxUncompressedBytes: 64 * 1024 * 1024,
+  maxWallTimeMs: 750,
+} as const;
 // Full-history reads run on their own worker but share the physical link
 // with first-paint fetches: hold them until the initial image/point-cloud
 // burst has cleared the network.
@@ -40,7 +50,8 @@ const TRAJECTORY_DEFERRED_RETRY_MS = 2_000;
  */
 export interface PoseTrajectoryState {
   readonly points: readonly PoseTrajectoryPoint[];
-  readonly status: "loading" | "ready" | "error";
+  readonly status: "loading" | "ready" | "truncated" | "error";
+  readonly truncated?: boolean;
   /**
    * Frame id declared by the stream's own messages, when any message
    * carried one. Frameless streams (JSON odometry) leave this unset and
@@ -100,10 +111,12 @@ export function usePoseTrajectoriesContext(): PoseTrajectories {
  * first meaningful 3D render never waits behind full-file context reads.
  */
 export function PoseTrajectoriesStartupGate({
+  budgetAccount,
   poseStreams,
   session,
   sourceKey,
 }: {
+  readonly budgetAccount?: SourceReadBudgetAccount | null;
   readonly poseStreams: readonly string[];
   readonly session: EpisodeSession | null;
   readonly sourceKey: string | null;
@@ -116,6 +129,7 @@ export function PoseTrajectoriesStartupGate({
   const enabled = status === "ready" || status === "error";
   return (
     <PoseTrajectoriesBridge
+      budgetAccount={budgetAccount}
       enabled={enabled}
       poseStreams={poseStreams}
       session={session}
@@ -130,11 +144,13 @@ export function PoseTrajectoriesStartupGate({
  * briefly when their final consumer closes.
  */
 export function PoseTrajectoriesBridge({
+  budgetAccount,
   enabled = true,
   poseStreams,
   session,
   sourceKey,
 }: {
+  readonly budgetAccount?: SourceReadBudgetAccount | null;
   readonly enabled?: boolean;
   readonly poseStreams: readonly string[];
   readonly session: EpisodeSession | null;
@@ -146,64 +162,133 @@ export function PoseTrajectoriesBridge({
   // (enabling the network-health gate); standalone callers and tests get
   // null and keep ungated behavior.
   const playbackStore = useContext(PlaybackStoreContext);
-
-  const loadStream = useCallback(
-    async ({
-      commit,
-      control,
-      stream,
-    }: DemandDrivenHistoryLoader<PoseTrajectoryState>) => {
-      if (!session) return;
-      commit({ points: [], status: "loading" });
-
-      const points: PoseTrajectoryPoint[] = [];
-      let streamFrameId: string | undefined;
-      try {
-        for await (const batch of session.read({
-          limit: TRAJECTORY_READ_LIMIT,
-          priority: "bulk",
-          signal: control.signal,
-          streams: [stream],
-          window: session.manifest.timeRange,
-        })) {
-          for (const frame of batch.frames) {
-            if (control.isCancelled() || control.standDown()) return;
-            const visualization = frame.output.visualization;
-            if (visualization?.kind !== VISUALIZATION_KIND.POSE) continue;
-            if (!streamFrameId && visualization.coordinateFrameId) {
-              streamFrameId = visualization.coordinateFrameId;
-            }
-            points.push({
-              position: visualization.position,
-              timeNs: frame.timestampNs,
-            });
-          }
-        }
-
-        if (control.isCancelled()) return;
-        commit({
-          points: decimateTrajectory(points),
-          status: "ready",
-          ...(streamFrameId ? { streamFrameId } : {}),
-        });
-      } catch {
-        if (control.isCancelled()) return;
-        commit({ points: [], status: "error" });
-      }
-    },
-    [session],
+  const dataStream = useDataStream();
+  const streamsKey = [...new Set(poseStreams)].sort().join("\0");
+  const normalizedStreams = useMemo(
+    () => (streamsKey ? streamsKey.split("\0") : []),
+    [streamsKey],
   );
-  const trajectories = useDemandDrivenHistory({
-    enabled,
+  // The playhead is sampled only when a new source/selection needs an anchor;
+  // the retained traversal must not re-anchor or re-render on playback ticks.
+  const playheadSec = playbackStore ? getPlayhead(playbackStore) : 0;
+  const timeline = dataStream?.getTimelineIndex() ?? null;
+  const preferredTimeNs = timeline?.secToNs(playheadSec);
+  const preferredAnchorRef = useRef<{
+    readonly session: EpisodeSession | null;
+    readonly sourceKey: string | null;
+    readonly streamsKey: string;
+    readonly timeNs: bigint | undefined;
+  }>();
+  const anchorIdentityChanged =
+    preferredAnchorRef.current?.session !== session ||
+    preferredAnchorRef.current?.sourceKey !== sourceKey ||
+    preferredAnchorRef.current?.streamsKey !== streamsKey;
+  if (anchorIdentityChanged) {
+    // Freeze one center-out traversal anchor for the retained job. Seeks do
+    // not restart already-paid history work; a source or selection change does.
+    preferredAnchorRef.current = {
+      session,
+      sourceKey,
+      streamsKey,
+      timeNs: preferredTimeNs ?? session?.manifest.timeRange.startNs,
+    };
+  }
+  const preferredAnchorNs = preferredAnchorRef.current?.timeNs;
+  const config = useMemo(
+    () => ({
+      accumulator: POSE_HISTORY_ACCUMULATOR,
+      budget: TRAJECTORY_GRANT_BUDGET,
+      fallback: {
+        maxMessagesPerStream: TRAJECTORY_FALLBACK_TILE_READ_LIMIT,
+        tileDurationNs: TRAJECTORY_FALLBACK_TILE_NS,
+      },
+      family: "pose" as const,
+      key: streamsKey,
+      maxItems: TRAJECTORY_HISTORY_ITEM_LIMIT,
+      ...(preferredAnchorNs !== undefined
+        ? { preferredTimeNs: preferredAnchorNs }
+        : {}),
+      priority: "bulk" as const,
+      streams: normalizedStreams,
+      traversal: "center-out" as const,
+      window: session?.manifest.timeRange ?? { endNs: 0n, startNs: 0n },
+    }),
+    [
+      normalizedStreams,
+      preferredAnchorNs,
+      session?.manifest.timeRange,
+      streamsKey,
+    ],
+  );
+  const progress = useProgressiveHistory({
+    account: budgetAccount,
+    config,
+    enabled: enabled && normalizedStreams.length > 0,
     initialDelayMs: TRAJECTORY_START_DELAY_MS,
-    isRetainable: isCompletedPoseTrajectory,
-    loadStream,
-    readIdentity: session,
     retryDelayMs: TRAJECTORY_DEFERRED_RETRY_MS,
+    session,
     shouldStandDown: () => shouldDeferBulkHistory(playbackStore),
-    sourceKey,
-    streams: poseStreams,
   });
+  const renderedPointsCacheRef = useRef<Map<
+    string,
+    {
+      readonly points: readonly PoseTrajectoryPoint[];
+      readonly source: readonly PoseTrajectoryPoint[];
+    }
+  > | null>(null);
+  if (!renderedPointsCacheRef.current) {
+    renderedPointsCacheRef.current = new Map();
+  }
+  const renderedPointsCache = renderedPointsCacheRef.current;
+  const trajectories = useMemo<PoseTrajectories>(() => {
+    if (!sourceKey || normalizedStreams.length === 0) return EMPTY_TRAJECTORIES;
+    const status =
+      progress.status === "complete"
+        ? "ready"
+        : progress.status === "error"
+          ? "error"
+          : progress.status === "truncated"
+            ? "truncated"
+            : "loading";
+    const activeStreams = new Set(normalizedStreams);
+    for (const stream of renderedPointsCache.keys()) {
+      if (!activeStreams.has(stream)) renderedPointsCache.delete(stream);
+    }
+    return new Map(
+      normalizedStreams.map((stream) => {
+        const rawPoints = progress.value.pointsByStream.get(stream) ?? [];
+        const cached = renderedPointsCache.get(stream);
+        const points =
+          cached?.source === rawPoints
+            ? cached.points
+            : decimateTrajectory(
+                [...rawPoints].sort((left, right) =>
+                  left.timeNs < right.timeNs
+                    ? -1
+                    : left.timeNs > right.timeNs
+                      ? 1
+                      : 0,
+                ),
+              );
+        if (cached?.source !== rawPoints) {
+          renderedPointsCache.set(stream, {
+            points,
+            source: rawPoints,
+          });
+        }
+        const streamFrameId = progress.value.frameByStream.get(stream);
+        return [
+          stream,
+          {
+            points,
+            status,
+            ...(progress.truncated ? { truncated: true } : {}),
+            ...(streamFrameId ? { streamFrameId } : {}),
+          } satisfies PoseTrajectoryState,
+        ];
+      }),
+    );
+  }, [normalizedStreams, progress, renderedPointsCache, sourceKey]);
 
   // This effect publishes the source-scoped cache to mounted 3D tiles.
   useLayoutEffect(() => {
@@ -227,9 +312,59 @@ export function PoseTrajectoriesBridge({
   return null;
 }
 
-function isCompletedPoseTrajectory(trajectory: PoseTrajectoryState): boolean {
-  return trajectory.status === "ready";
+interface PoseHistoryAccumulator {
+  readonly frameByStream: ReadonlyMap<string, string>;
+  readonly itemCount: number;
+  readonly pointsByStream: ReadonlyMap<string, readonly PoseTrajectoryPoint[]>;
 }
+
+const EMPTY_POSE_HISTORY: PoseHistoryAccumulator = {
+  frameByStream: new Map(),
+  itemCount: 0,
+  pointsByStream: new Map(),
+};
+
+const POSE_HISTORY_ACCUMULATOR = {
+  initialValue: EMPTY_POSE_HISTORY,
+  consume(
+    current: PoseHistoryAccumulator,
+    batches: readonly FrameBatch[],
+  ): { readonly itemCount: number; readonly value: PoseHistoryAccumulator } {
+    const frameByStream = new Map(current.frameByStream);
+    const pointsByStream = new Map(current.pointsByStream);
+    const copiedStreams = new Set<string>();
+    let itemCount = current.itemCount;
+    for (const batch of batches) {
+      let points: PoseTrajectoryPoint[];
+      if (copiedStreams.has(batch.stream)) {
+        points = pointsByStream.get(batch.stream) as PoseTrajectoryPoint[];
+      } else {
+        points = [...(pointsByStream.get(batch.stream) ?? [])];
+        copiedStreams.add(batch.stream);
+        pointsByStream.set(batch.stream, points);
+      }
+      for (const frame of batch.frames) {
+        const visualization = frame.output.visualization;
+        if (visualization?.kind !== VISUALIZATION_KIND.POSE) continue;
+        if (
+          !frameByStream.has(batch.stream) &&
+          visualization.coordinateFrameId
+        ) {
+          frameByStream.set(batch.stream, visualization.coordinateFrameId);
+        }
+        points.push({
+          position: visualization.position,
+          timeNs: frame.timestampNs,
+        });
+        itemCount += 1;
+      }
+    }
+    return {
+      itemCount,
+      value: { frameByStream, itemCount, pointsByStream },
+    };
+  },
+};
 
 function useContextValue(): PoseTrajectoriesContextValue {
   const value = useContext(PoseTrajectoriesContext);
