@@ -26,7 +26,10 @@ import {
   plotSeriesDisplayName,
   plotTileDisplayTitle,
 } from "./plot-series-display";
-import { usePlotTileSeries } from "./plot-tile-state";
+import {
+  usePlotTileResetZoomRevision,
+  usePlotTileSeries,
+} from "./plot-tile-state";
 import type { EpisodeTileProps } from "../tiles/tile-types";
 import { joinNumericSeries } from "./numeric-series-join";
 import plotStyles from "./PlotTile.module.css";
@@ -42,6 +45,7 @@ import styles from "../tiles/Tile.module.css";
  */
 const PlotTile: React.FC<EpisodeTileProps> = () => {
   const tileId = useTileId();
+  const resetZoomRevision = usePlotTileResetZoomRevision();
   // Settings render through the sidebar's tile-settings registry, not here.
   const settingsRegistration = useMemo(
     () => ({ content: <PlotTileSettings /> }),
@@ -267,6 +271,7 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
           onViewportChange={onViewportChange}
           registerHoverTimeListener={registerHoverTimeListener}
           registerPlayheadListener={registerPlayheadListener}
+          resetZoomRevision={resetZoomRevision}
           series={chartSeries}
           unavailableRanges={unavailableRanges}
         />

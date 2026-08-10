@@ -7,7 +7,11 @@ import {
 import { useSetAtom } from "jotai";
 import { useCallback, useRef } from "react";
 import type { MosaicNode } from "react-mosaic-component";
-import { addPlotSeriesToTile, plotTileSeriesAtom } from "./plot-tile-state";
+import {
+  addPlotSeriesToTile,
+  plotTileResetZoomRevisionAtom,
+  plotTileSeriesAtom,
+} from "./plot-tile-state";
 import PlotTile from "./PlotTile";
 import { TILE_TYPE } from "../tiles/tile-types";
 
@@ -21,6 +25,7 @@ export function useAddFieldToPlot(): (
 ) => void {
   const { addTile, focusedTileId, layout, setFocusedTileId, tiles } =
     useTiling();
+  const setResetZoomRevision = useSetAtom(plotTileResetZoomRevisionAtom);
   const setPlotTileSeries = useSetAtom(plotTileSeriesAtom);
   const stateRef = useRef({ focusedTileId, layout, tiles });
   stateRef.current = { focusedTileId, layout, tiles };
@@ -51,10 +56,12 @@ export function useAddFieldToPlot(): (
       setPlotTileSeries((previous) =>
         addPlotSeriesToTile(previous, targetTileId, stream, fieldPath),
       );
+      setResetZoomRevision((previous) => ({
+        ...previous,
+        [targetTileId]: (previous[targetTileId] ?? 0) + 1,
+      }));
     },
-    // setPlotTileSeries is a stable useSetAtom setter; omitted from deps.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [addTile, setFocusedTileId],
+    [addTile, setFocusedTileId, setPlotTileSeries, setResetZoomRevision],
   );
 }
 

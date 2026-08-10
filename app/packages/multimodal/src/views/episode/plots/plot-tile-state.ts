@@ -40,6 +40,14 @@ export const plotTileSeriesAtom = atom<
 >({});
 
 /**
+ * Per-tile revision bumped by external "plot this field" actions. Plot
+ * settings do not touch it, so ordinary series toggles preserve the viewport.
+ */
+export const plotTileResetZoomRevisionAtom = atom<
+  Readonly<Record<string, number>>
+>({});
+
+/**
  * Adds one stream+field series to a specific plot tile. Existing series
  * are left untouched so repeated "add to plot" actions are idempotent.
  */
@@ -73,6 +81,13 @@ export function usePlotTileSeries(): readonly PlotSeriesConfig[] {
     () => (tileId ? (byTile[tileId] ?? []) : []),
     [byTile, tileId],
   );
+}
+
+/** Subscribe to external reset requests for the surrounding plot tile. */
+export function usePlotTileResetZoomRevision(): number {
+  const tileId = useTileId();
+  const byTile = useAtomValue(plotTileResetZoomRevisionAtom);
+  return tileId ? (byTile[tileId] ?? 0) : 0;
 }
 
 /**

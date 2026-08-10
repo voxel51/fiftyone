@@ -157,6 +157,10 @@
   text-align: left;
 }
 
+.root :global(.u-legend) .timeLegendRow {
+  display: none;
+}
+
 .root :global(.u-legend .u-marker) {
   border-radius: 2px;
 }

@@ -43,7 +43,10 @@ interface MockOptions {
       readonly range?: readonly [number, number];
     };
   };
-  readonly series?: readonly { readonly label?: string }[];
+  readonly series?: readonly {
+    readonly class?: string;
+    readonly label?: string;
+  }[];
 }
 
 interface MockChart {
@@ -62,6 +65,7 @@ interface MockChart {
     readonly y: { max: number; min: number };
   };
   readonly redraw: ReturnType<typeof vi.fn>;
+  readonly setCursor: ReturnType<typeof vi.fn>;
   readonly setData: ReturnType<typeof vi.fn>;
   readonly setScale: ReturnType<typeof vi.fn>;
 }
@@ -87,6 +91,7 @@ vi.mock("uplot", () => ({
       y: { max: 10, min: 0 },
     };
     redraw = vi.fn();
+    setCursor = vi.fn();
     setData = vi.fn((data: unknown, _resetScales?: boolean) => {
       this.data = data;
     });
@@ -157,6 +162,7 @@ vi.mock("@voxel51/voodo", () => ({
 afterEach(() => {
   uPlotMock.instances.length = 0;
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe("TimeseriesChart interactions", () => {
@@ -187,6 +193,37 @@ describe("TimeseriesChart interactions", () => {
 
     fireEvent.click(screen.getByLabelText("Reset zoom"));
     expect(chart.setData).toHaveBeenCalledWith(DATA, true);
+    unmount();
+  });
+
+  it("delays an external reset request until the plot settles", () => {
+    vi.useFakeTimers();
+    const { rerender, unmount } = render(
+      <TimeseriesChart
+        data={DATA}
+        durationSec={20}
+        resetZoomRevision={0}
+        series={[{ color: "#f00", label: "speed" }]}
+      />,
+    );
+    const chart = lastChart();
+    fireEvent.click(screen.getByLabelText("Zoom in"));
+    chart.setData.mockClear();
+
+    rerender(
+      <TimeseriesChart
+        data={DATA}
+        durationSec={20}
+        resetZoomRevision={1}
+        series={[{ color: "#f00", label: "speed" }]}
+      />,
+    );
+    vi.advanceTimersByTime(99);
+    expect(chart.setData).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+    expect(chart.setData).toHaveBeenCalledWith(DATA, true);
+    expect(chart.scales.x).toEqual({ min: 0, max: 20 });
     unmount();
   });
 
@@ -359,7 +396,10 @@ describe("TimeseriesChart interactions", () => {
       y: true,
     });
     expect(chart.options.scales?.x?.range).toBeUndefined();
-    expect(chart.options.series?.[0]?.label).toBe("Time");
+    expect(chart.options.series?.[0]).toEqual({
+      class: expect.any(String),
+      label: "Time",
+    });
 
     const size = chart.options.axes?.[1]?.size;
     if (typeof size !== "function") {
@@ -410,18 +450,81 @@ describe("TimeseriesChart interactions", () => {
         series={[{ color: "#f00", label: "speed" }]}
       />,
     );
+    const chart = lastChart();
     const playhead = screen.getByTestId("timeseries-playhead");
+    chart.setCursor.mockClear();
 
     dispatchPointer(playhead, "pointerdown", 5, 5);
     expect(playhead.className).toContain("playheadDragging");
+    expect(chart.setCursor).toHaveBeenLastCalledWith(
+      { left: 5, top: 0 },
+      false,
+    );
 
     dispatchPointer(playhead, "pointermove", 12, 5);
     dispatchPointer(playhead, "pointermove", 15, 5);
     expect(onSeek.mock.calls).toEqual([[12], [15]]);
+    expect(chart.setCursor).toHaveBeenLastCalledWith(
+      { left: 15, top: 0 },
+      false,
+    );
 
     dispatchPointer(playhead, "pointerup", 15, 5);
     expect(playhead.className).not.toContain("playheadDragging");
     expect(onSeekEnd).toHaveBeenCalledOnce();
+    unmount();
+  });
+
+  it("keeps legend values on shared hover or playhead outside the plot", () => {
+    const feeds: {
+      hover?: (sec: number | null) => void;
+      playhead?: (sec: number) => void;
+    } = {};
+    const { unmount } = render(
+      <TimeseriesChart
+        data={DATA}
+        durationSec={20}
+        registerHoverTimeListener={(listener) => {
+          feeds.hover = listener;
+          return vi.fn();
+        }}
+        registerPlayheadListener={(listener) => {
+          feeds.playhead = listener;
+          listener(5);
+          return vi.fn();
+        }}
+        series={[{ color: "#f00", label: "speed" }]}
+      />,
+    );
+    const chart = lastChart();
+    expect(chart.setCursor).toHaveBeenLastCalledWith(
+      { left: 5, top: 0 },
+      false,
+    );
+
+    feeds.hover?.(8);
+    expect(chart.setCursor).toHaveBeenLastCalledWith(
+      { left: 8, top: 0 },
+      false,
+    );
+
+    feeds.hover?.(null);
+    expect(chart.setCursor).toHaveBeenLastCalledWith(
+      { left: 5, top: 0 },
+      false,
+    );
+
+    dispatchPointer(chart.over, "pointerenter", 5, 5);
+    chart.setCursor.mockClear();
+    feeds.playhead?.(6);
+    expect(chart.setCursor).not.toHaveBeenCalled();
+
+    dispatchPointer(chart.over, "pointerleave", 5, 5);
+    chart.over.dispatchEvent(new MouseEvent("mouseleave"));
+    expect(chart.setCursor).toHaveBeenLastCalledWith(
+      { left: 6, top: 0 },
+      false,
+    );
     unmount();
   });
 

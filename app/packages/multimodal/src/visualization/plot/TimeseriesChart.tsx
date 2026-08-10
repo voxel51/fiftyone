@@ -1,5 +1,5 @@
 import { Icon, IconName, Size } from "@voxel51/voodo";
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import uPlot, { type AlignedData } from "uplot";
 import "uplot/dist/uPlot.min.css";
 import {
@@ -80,6 +80,9 @@ export interface TimeseriesChartProps {
   readonly registerPlayheadListener?: (
     listener: (sec: number) => void,
   ) => () => void;
+
+  /** External request revision; positive changes reset zoom after 100 ms. */
+  readonly resetZoomRevision?: number;
 
   /**
    * Drawn series. Label, color, or order changes rebuild the chart.
@@ -174,6 +177,18 @@ function positionHoverCaret(
   suppressed: boolean,
 ): void {
   positionTimeMarker(chart, line, sec, durationSec, suppressed);
+}
+
+function syncLegendCursor(
+  chart: uPlot,
+  sec: number | null,
+  durationSec: number,
+): void {
+  const left =
+    sec === null || sec < 0 || sec > durationSec
+      ? -10
+      : chart.valToPos(sec, "x");
+  chart.setCursor({ left, top: 0 }, false);
 }
 
 function finiteYRange(
@@ -321,6 +336,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   onViewportChange,
   registerHoverTimeListener,
   registerPlayheadListener,
+  resetZoomRevision = 0,
   series,
   unavailableRanges = [],
 }) => {
@@ -331,6 +347,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   const hoverLineRef = useRef<HTMLDivElement | null>(null);
   const hoverSecRef = useRef<number | null>(null);
   const pointerInsideRef = useRef(false);
+  const playheadDraggingRef = useRef(false);
   const hasInteractiveScaleRef = useRef(false);
   const coverageLayerRef = useRef<HTMLDivElement | null>(null);
   const stableYRangeRef = useRef<readonly [number, number] | null>(null);
@@ -372,7 +389,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     zoomTimeseriesChart(chart, TIMESERIES_ZOOM_OUT_FACTOR, [0, xMax]);
   };
 
-  const handleResetZoom = () => {
+  const handleResetZoom = useCallback(() => {
     const chart = chartRef.current;
     if (!chart) {
       return;
@@ -383,7 +400,14 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       dataRef.current,
       followTimeseriesRange(playheadSecRef.current ?? 0, durationSec),
     );
-  };
+    if (!pointerInsideRef.current) {
+      syncLegendCursor(
+        chart,
+        hoverSecRef.current ?? playheadSecRef.current,
+        durationSec,
+      );
+    }
+  }, [durationSec]);
 
   // This effect owns the uPlot instance lifecycle: create per series
   // identity / duration change, resize with the tile, destroy on
@@ -507,7 +531,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
         x: { time: false },
       },
       series: [
-        { label: "Time" },
+        { class: styles.timeLegendRow, label: "Time" },
         ...currentSeries.map((entry) => ({
           label: entry.label,
           points: { show: false },
@@ -589,7 +613,9 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
         drag.startPositionPx + event.clientX - drag.startClientX;
       const sec = chart.posToVal(positionPx, "x");
       if (Number.isFinite(sec)) {
-        seek(Math.min(Math.max(sec, 0), durationSec));
+        const clampedSec = Math.min(Math.max(sec, 0), durationSec);
+        syncLegendCursor(chart, clampedSec, durationSec);
+        seek(clampedSec);
       }
     };
 
@@ -601,6 +627,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       event.preventDefault();
       event.stopPropagation();
       playheadDrag = null;
+      playheadDraggingRef.current = false;
       line.classList.remove(styles.playheadDragging);
       if (line.hasPointerCapture?.(event.pointerId)) {
         line.releasePointerCapture(event.pointerId);
@@ -625,6 +652,8 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
         startClientX: event.clientX,
         startPositionPx: chart.valToPos(sec, "x"),
       };
+      playheadDraggingRef.current = true;
+      syncLegendCursor(chart, sec, durationSec);
       line.classList.add(styles.playheadDragging);
       line.setPointerCapture?.(event.pointerId);
     };
@@ -647,6 +676,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
         return;
       }
       playheadDrag = null;
+      playheadDraggingRef.current = false;
       line.classList.remove(styles.playheadDragging);
       onSeekEndRef.current?.();
     };
@@ -748,6 +778,13 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       );
       onHoverTimeRef.current?.(null);
     };
+    const onMouseLeave = () => {
+      syncLegendCursor(
+        chart,
+        hoverSecRef.current ?? playheadSecRef.current,
+        durationSec,
+      );
+    };
     // uPlot resets its scales on double click. In this surface a double click
     // is also two seek clicks, so keep seek semantics and make reset an
     // explicit control instead.
@@ -766,6 +803,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     over.addEventListener("pointerenter", onPointerEnter);
     over.addEventListener("pointermove", onPointerMove);
     over.addEventListener("pointerleave", onPointerLeave);
+    over.addEventListener("mouseleave", onMouseLeave);
     over.addEventListener("dblclick", onDoubleClickCapture, true);
 
     // The chart fills the tile; the legend below the canvas is part of
@@ -809,6 +847,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       over.removeEventListener("pointerenter", onPointerEnter);
       over.removeEventListener("pointermove", onPointerMove);
       over.removeEventListener("pointerleave", onPointerLeave);
+      over.removeEventListener("mouseleave", onMouseLeave);
       over.removeEventListener("dblclick", onDoubleClickCapture, true);
       // A chart torn down mid-hover must not leave a stale caret in
       // sibling surfaces.
@@ -816,6 +855,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
         pointerInsideRef.current = false;
         onHoverTimeRef.current?.(null);
       }
+      playheadDraggingRef.current = false;
       playheadLineRef.current = null;
       hoverLineRef.current = null;
       coverageLayerRef.current = null;
@@ -835,7 +875,22 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     chart.setData(data, false);
     setStableYRange(chart, data, stableYRangeRef, settingStableYRef, false);
     chart.redraw();
-  }, [data]);
+    if (!pointerInsideRef.current) {
+      syncLegendCursor(
+        chart,
+        hoverSecRef.current ?? playheadSecRef.current,
+        durationSec,
+      );
+    }
+  }, [data, durationSec]);
+
+  // This effect delays external message-panel reset requests until the
+  // selected series and any newly created plot tile have settled.
+  useEffect(() => {
+    if (resetZoomRevision <= 0) return undefined;
+    const timeoutId = window.setTimeout(handleResetZoom, 100);
+    return () => window.clearTimeout(timeoutId);
+  }, [handleResetZoom, resetZoomRevision]);
 
   // This effect redraws exact unread/unavailable overlays without touching
   // chart data or scales.
@@ -867,6 +922,9 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
         durationSec,
         pointerInsideRef.current,
       );
+      if (!pointerInsideRef.current) {
+        syncLegendCursor(chart, sec ?? playheadSecRef.current, durationSec);
+      }
     });
   }, [durationSec, registerHoverTimeListener]);
 
@@ -887,6 +945,12 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
         }
       }
       positionPlayhead(chart, playheadLineRef.current, sec, durationSec);
+      if (
+        playheadDraggingRef.current ||
+        (!pointerInsideRef.current && hoverSecRef.current === null)
+      ) {
+        syncLegendCursor(chart, sec, durationSec);
+      }
     });
   }, [durationSec, registerPlayheadListener]);
 

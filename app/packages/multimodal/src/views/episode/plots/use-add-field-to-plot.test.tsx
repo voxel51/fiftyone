@@ -4,7 +4,10 @@ import { useAtomValue } from "jotai";
 import React from "react";
 import type { MosaicNode } from "react-mosaic-component";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { plotTileSeriesAtom } from "./plot-tile-state";
+import {
+  plotTileResetZoomRevisionAtom,
+  plotTileSeriesAtom,
+} from "./plot-tile-state";
 import { TILE_TYPE } from "../tiles/tile-types";
 import { useAddFieldToPlot } from "./use-add-field-to-plot";
 
@@ -13,6 +16,7 @@ vi.mock("./PlotTile", () => ({ default: () => null }));
 const Probe: React.FC = () => {
   const addFieldToPlot = useAddFieldToPlot();
   const { focusedTileId, tiles } = useTiling();
+  const resetZoomRevisions = useAtomValue(plotTileResetZoomRevisionAtom);
   const series = useAtomValue(plotTileSeriesAtom);
 
   return (
@@ -35,6 +39,7 @@ const Probe: React.FC = () => {
       <span data-testid="probe">
         {JSON.stringify({
           focusedTileId,
+          resetZoomRevisions,
           series,
           types: Object.fromEntries(
             Object.entries(tiles).map(([id, tile]) => [id, tile.type]),
@@ -72,6 +77,7 @@ describe("useAddFieldToPlot", () => {
 
     expect(probeState()).toMatchObject({
       focusedTileId: "plot-2",
+      resetZoomRevisions: { "plot-2": 1 },
       series: {
         "plot-2": [
           {
@@ -156,6 +162,7 @@ function renderProbe({
 
 function probeState(): {
   readonly focusedTileId: string | null;
+  readonly resetZoomRevisions: Record<string, number>;
   readonly series: Record<
     string,
     readonly { readonly fieldPath: string; readonly stream: string }[]
