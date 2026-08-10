@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { AlignedData } from "uplot";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -169,9 +169,12 @@ describe("TimeseriesChart interactions", () => {
   it("renders zoom controls and resets only from the explicit button", () => {
     const { unmount } = renderChart();
     const chart = lastChart();
+    const resetZoom = screen.getByLabelText("Reset zoom");
     chart.setData.mockClear();
+    expect(resetZoom.getAttribute("data-active")).toBeNull();
 
     fireEvent.click(screen.getByLabelText("Zoom in"));
+    expect(resetZoom.getAttribute("data-active")).toBe("true");
     expect(chart.scales.x).toEqual({ min: 2, max: 18 });
     expect(chart.scales.y).toEqual({ min: 1, max: 9 });
     expect(chart.setScale).toHaveBeenCalledWith("x", {
@@ -191,8 +194,9 @@ describe("TimeseriesChart interactions", () => {
     chart.over.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
     expect(chart.setData).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByLabelText("Reset zoom"));
+    fireEvent.click(resetZoom);
     expect(chart.setData).toHaveBeenCalledWith(DATA, true);
+    expect(resetZoom.getAttribute("data-active")).toBeNull();
     unmount();
   });
 
@@ -363,7 +367,10 @@ describe("TimeseriesChart interactions", () => {
       />,
     );
     const chart = lastChart();
-    runHooks(chart.options.hooks?.setSelect, chart);
+    act(() => runHooks(chart.options.hooks?.setSelect, chart));
+    expect(
+      screen.getByLabelText("Reset zoom").getAttribute("data-active"),
+    ).toBe("true");
     chart.scales.x.min = 4;
     chart.scales.x.max = 12;
     runHooks(chart.options.hooks?.setScale, chart, "x");

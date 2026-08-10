@@ -50,6 +50,10 @@
   width: 10px;
 }
 
+.controlButtonActive .controlIcon {
+  color: var(--color-brand-primary);
+}
+
 .controlButton:hover,
 .controlButton:focus-visible {
   background: rgba(30, 41, 59, 0.9);

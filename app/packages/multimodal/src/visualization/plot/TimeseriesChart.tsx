@@ -1,5 +1,5 @@
 import { Icon, IconName, Size } from "@voxel51/voodo";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import uPlot, { type AlignedData } from "uplot";
 import "uplot/dist/uPlot.min.css";
 import {
@@ -349,6 +349,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   const pointerInsideRef = useRef(false);
   const playheadDraggingRef = useRef(false);
   const hasInteractiveScaleRef = useRef(false);
+  const [zoomConstrained, setZoomConstrained] = useState(false);
   const coverageLayerRef = useRef<HTMLDivElement | null>(null);
   const stableYRangeRef = useRef<readonly [number, number] | null>(null);
   const settingStableYRef = useRef(false);
@@ -377,6 +378,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       return;
     }
     hasInteractiveScaleRef.current = true;
+    setZoomConstrained(true);
     zoomTimeseriesChart(chart, TIMESERIES_ZOOM_IN_FACTOR, [0, xMax]);
   };
 
@@ -386,6 +388,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       return;
     }
     hasInteractiveScaleRef.current = true;
+    setZoomConstrained(true);
     zoomTimeseriesChart(chart, TIMESERIES_ZOOM_OUT_FACTOR, [0, xMax]);
   };
 
@@ -395,6 +398,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       return;
     }
     hasInteractiveScaleRef.current = false;
+    setZoomConstrained(false);
     resetTimeseriesChart(
       chart,
       dataRef.current,
@@ -420,6 +424,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       return undefined;
     }
     hasInteractiveScaleRef.current = false;
+    setZoomConstrained(false);
     stableYRangeRef.current = null;
     const xLimits = [0, xMax] as const;
     let viewportFrame: number | undefined;
@@ -515,6 +520,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
         setSelect: [
           () => {
             hasInteractiveScaleRef.current = true;
+            setZoomConstrained(true);
           },
         ],
       },
@@ -523,6 +529,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
         touchZoomPanPlugin({
           onInteraction: () => {
             hasInteractiveScaleRef.current = true;
+            setZoomConstrained(true);
           },
           xLimits,
         }),
@@ -969,6 +976,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
             onClick={handleZoomOut}
           />
           <ChartControl
+            active={zoomConstrained}
             icon={IconName.Fullscreen}
             label="Reset zoom"
             onClick={handleResetZoom}
@@ -980,19 +988,24 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
 };
 
 interface ChartControlProps {
+  readonly active?: boolean;
   readonly icon: IconName;
   readonly label: string;
   readonly onClick: () => void;
 }
 
 const ChartControl: React.FC<ChartControlProps> = ({
+  active = false,
   icon,
   label,
   onClick,
 }) => (
   <button
     aria-label={label}
-    className={styles.controlButton}
+    className={`${styles.controlButton} ${
+      active ? styles.controlButtonActive : ""
+    }`}
+    data-active={active ? "true" : undefined}
     onClick={onClick}
     onPointerDown={(event) => event.stopPropagation()}
     title={label}
