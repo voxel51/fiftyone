@@ -12,6 +12,7 @@ import {
   fo3dPerformanceStatsAtom,
   headingUpEditorHoverAtom,
   headingUpPreviewAtom,
+  hoveredHeadingTargetFaceAtom,
   hoveredLabelAtom,
   isActivelySegmentingSelector,
   isCreatingCuboidAtom,
@@ -111,6 +112,29 @@ export const useSetFo3dPerformanceStats = () => {
  */
 export const useIsCurrentlyTransforming = () => {
   return useRecoilValue(isCurrentlyTransformingAtom);
+};
+
+export const useSetIsCurrentlyTransforming = () => {
+  return useSetRecoilState(isCurrentlyTransformingAtom);
+};
+
+/**
+ * The active transform gizmo mode (translate/rotate/scale).
+ */
+export const useTransformMode = () => {
+  return useRecoilValue(transformModeAtom);
+};
+
+/**
+ * The candidate face during a heading drag, shared across panels so the
+ * highlight shows wherever the label is drawn.
+ */
+export const useHoveredHeadingTargetFace = () => {
+  return useRecoilValue(hoveredHeadingTargetFaceAtom);
+};
+
+export const useSetHoveredHeadingTargetFace = () => {
+  return useSetRecoilState(hoveredHeadingTargetFaceAtom);
 };
 
 /**

@@ -77,7 +77,7 @@ describe("useImageNaturalSize", () => {
   });
 
   it("warns and leaves size unset on a failed load", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const { result } = renderHook(() => useImageNaturalSize("broken.jpg"));
 
     act(() => {
