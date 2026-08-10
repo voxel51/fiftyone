@@ -131,6 +131,33 @@ export class EventUtils {
 
     return new EventCounter(this.page, key);
   }
+
+  /**
+   * Install a counter for a document-level CustomEvent at document start,
+   * before any application code runs. Unlike {@link counter}, events fired
+   * during initial page load are observed — create the counter BEFORE the
+   * navigation whose load it should watch. Each navigation starts a fresh
+   * document, resetting the records to empty.
+   */
+  public async initCounter(eventName: string): Promise<EventCounter> {
+    const key = getFunctionNameWithRandomSuffix(`counter_${eventName}`);
+
+    await this.page.addInitScript(
+      ({ eventName_, key_ }) => {
+        const store = (window.__EVENT_COUNTS__ ??= {});
+        const records: { t: number; detail?: unknown }[] = (store[key_] = []);
+        document.addEventListener(eventName_, (e: Event) => {
+          records.push({
+            t: performance.now(),
+            detail: (e as CustomEvent).detail,
+          });
+        });
+      },
+      { eventName_: eventName, key_: key },
+    );
+
+    return new EventCounter(this.page, key);
+  }
 }
 
 const getFunctionNameWithRandomSuffix = (name: string) =>
