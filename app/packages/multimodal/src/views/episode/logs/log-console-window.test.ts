@@ -64,7 +64,11 @@ describe("episode log console window", () => {
       3,
     );
 
-    expect(merged.rows.map((entry) => entry.timeNs)).toEqual([4n, 5n, 6n]);
+    expect(merged.rows.map((entry) => entry.timelineTimeNs)).toEqual([
+      4n,
+      5n,
+      6n,
+    ]);
     expect(merged.truncated).toBe(true);
   });
 
@@ -104,20 +108,71 @@ describe("episode log console window", () => {
 
     expect(pruneLogRows(rows, { endTimeNs: 10n, startTimeNs: 0n })).toBe(rows);
   });
+
+  it("uses playback time for windowing and ordering despite divergent payload stamps", () => {
+    const rows = [
+      row(8, "eight", "eight", "warn", 0n),
+      row(2, "two", "two", "error", 9_000n),
+      row(5, "five", "five", "warn"),
+      row(20, "outside", "outside", "error", 4n),
+    ];
+
+    const merged = mergeBoundedLogRows(
+      [],
+      rows,
+      { endTimeNs: 10n, startTimeNs: 1n },
+      10,
+    );
+
+    expect(merged.rows.map((entry) => entry.id)).toEqual([
+      "two",
+      "five",
+      "eight",
+    ]);
+    expect(merged.rows.map((entry) => entry.messageTimeNs)).toEqual([
+      9_000n,
+      undefined,
+      0n,
+    ]);
+  });
+
+  it("filters before bounding so newer info cannot evict warn/error matches", () => {
+    const important = [
+      row(1, "warn", "warn", "warn"),
+      row(2, "error", "error", "error"),
+    ];
+    const noisyInfo = Array.from({ length: 6 }, (_, index) =>
+      row(index + 3, `info-${index}`, `info-${index}`, "info"),
+    );
+
+    const merged = mergeSelectedBoundedLogRows(
+      [],
+      [...important, ...noisyInfo],
+      { endTimeNs: 20n, startTimeNs: 0n },
+      3,
+      new Set(["warn", "error"]),
+    );
+
+    expect(merged.rows.map((entry) => entry.id)).toEqual(["warn", "error"]);
+    expect(merged.truncated).toBe(false);
+  });
 });
 
 function row(
   time: number,
   id = `row-${time}`,
   message = `message-${time}`,
+  level: EpisodeLogConsoleRow["level"] = "info",
+  messageTimeNs?: bigint,
 ): EpisodeLogConsoleRow {
   return {
     details: [],
     id,
     kind: "log",
-    level: "info",
+    level,
     message,
-    timeNs: BigInt(time),
+    messageTimeNs,
     stream: "/diagnostics",
+    timelineTimeNs: BigInt(time),
   };
 }

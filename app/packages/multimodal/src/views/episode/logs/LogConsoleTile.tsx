@@ -12,27 +12,26 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { LOG_LEVELS, SCENE_SOURCE_TYPE, type LogLevel } from "../../../ir";
+import type { FrameBatch } from "../../../ports";
+import type { ProgressiveHistoryAccumulator } from "../../../runtime/progressive-history";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
-import { LOG_LEVELS, type LogLevel } from "../../../ir";
-import { useLogTileSettings, useSetLogTileSettings } from "./log-tile-state";
-import { SCENE_SOURCE_TYPE } from "../../../ir";
-import { useDataStream } from "../playback/data-stream-context";
+import LogConsole from "../../../visualization/logs/LogConsole";
 import {
   logConsoleRowsFromDecodedMessage,
   type EpisodeLogConsoleRow,
 } from "../../../visualization/logs/log-console-rows";
-import LogConsole from "../../../visualization/logs/LogConsole";
+import { shouldDeferBulkHistory } from "../playback/bulk-stream-lifecycle";
+import { useDataStream } from "../playback/data-stream-context";
+import { useProgressiveHistories } from "../playback/use-progressive-history";
+import type { EpisodeTileProps } from "../tiles/tile-types";
 import { useLogConsoleContext } from "./log-console-context";
 import {
   logWindowForCenter,
   mergeSelectedBoundedLogRows,
   type LogReadRange,
 } from "./log-console-window";
-import type { EpisodeTileProps } from "../tiles/tile-types";
-import type { FrameBatch } from "../../../ports";
-import type { ProgressiveHistoryAccumulator } from "../../../runtime/progressive-history";
-import { shouldDeferBulkHistory } from "../playback/bulk-stream-lifecycle";
-import { useProgressiveHistories } from "../playback/use-progressive-history";
+import { useLogTileSettings, useSetLogTileSettings } from "./log-tile-state";
 
 const PLAYHEAD_REFRESH_MS = 500;
 const LOG_WINDOW_BEFORE_NS = 30_000_000_000n;
@@ -42,7 +41,7 @@ const LOG_WINDOW_LABEL = `${
   (LOG_WINDOW_BEFORE_NS + LOG_WINDOW_AFTER_NS) / NANOSECONDS_PER_SECOND
 }s`;
 const LOG_FALLBACK_TILE_READ_LIMIT = 600;
-const LOG_ROW_LIMIT = 2_000;
+const LOG_SELECTED_ROW_LIMIT = 2_000;
 const LOG_HISTORY_TILE_NS = 4_000_000_000n;
 const LOG_HISTORY_TILE_ITEM_LIMIT = 5_000;
 const LOG_HISTORY_RETRY_MS = 2_000;
@@ -56,14 +55,16 @@ const LOG_HISTORY_GRANT_BUDGET = {
 interface LogRowsState {
   readonly error?: string;
   readonly rawRows: readonly EpisodeLogConsoleRow[];
+  readonly retentionTruncated: boolean;
+  readonly searchIncomplete: boolean;
   readonly status: "idle" | "loading" | "ready" | "error";
-  readonly truncated: boolean;
 }
 
 const INITIAL_ROWS: LogRowsState = {
   rawRows: [],
+  retentionTruncated: false,
+  searchIncomplete: false,
   status: "idle",
-  truncated: false,
 };
 
 const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
@@ -80,7 +81,6 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
   const [centerTimeNs, setCenterTimeNs] = useState<bigint | undefined>();
   const lastPlayheadPublishMsRef = useRef(0);
 
-  // This effect keeps the automatic tile title aligned with the panel's role.
   useEffect(() => {
     setTileTitle("Logs", { source: "auto" });
   }, [setTileTitle]);
@@ -92,24 +92,18 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
     return valid.length > 0 ? valid : ids;
   }, [enabledStreams, logSources]);
 
-  // This effect resets the throttle when follow mode or playback ownership
-  // changes; fetch-state transitions intentionally preserve it.
   useEffect(() => {
     lastPlayheadPublishMsRef.current = 0;
   }, [followPlayhead, store, timelineIndex]);
 
-  // This effect follows the playhead at a bounded refresh rate. Stable tile
-  // jobs deduplicate overlap, so updates may continue while older grants land.
+  // Stable progressive-history jobs deduplicate overlap, so Follow can keep
+  // advancing while older bounded grants land.
   useEffect(() => {
-    if (!followPlayhead || !timelineIndex) {
-      return undefined;
-    }
+    if (!followPlayhead || !timelineIndex) return undefined;
 
     const publish = () => {
       const now = Date.now();
-      if (now - lastPlayheadPublishMsRef.current < PLAYHEAD_REFRESH_MS) {
-        return;
-      }
+      if (now - lastPlayheadPublishMsRef.current < PLAYHEAD_REFRESH_MS) return;
       lastPlayheadPublishMsRef.current = now;
       setCenterTimeNs(timelineIndex.nearestTick(getPlayhead(store)));
     };
@@ -118,12 +112,13 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
     return subscribePlayhead(store, publish);
   }, [followPlayhead, store, timelineIndex]);
 
-  // This effect seeds the first log window from the recording timeline.
+  // A non-following tile still opens around the current visible playhead. In
+  // Follow mode the subscription effect above owns this same initialization.
   useEffect(() => {
-    if (centerTimeNs === undefined && timelineIndex) {
-      setCenterTimeNs(timelineIndex.startTimeNs);
+    if (centerTimeNs === undefined && timelineIndex && !followPlayhead) {
+      setCenterTimeNs(timelineIndex.nearestTick(getPlayhead(store)));
     }
-  }, [centerTimeNs, timelineIndex]);
+  }, [centerTimeNs, followPlayhead, store, timelineIndex]);
 
   const selectedLevelSet = useMemo(
     () => new Set(selectedLevels),
@@ -198,14 +193,15 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
       [],
       logProgress.flatMap((progress) => progress.value),
       activeWindow,
-      LOG_ROW_LIMIT,
+      LOG_SELECTED_ROW_LIMIT,
       selectedLevelSet,
     );
     if (selectedLevels.length === 0) {
       return {
         rawRows: merged.rows,
+        retentionTruncated: merged.truncated,
+        searchIncomplete: false,
         status: "ready",
-        truncated: merged.truncated,
       };
     }
     const error = logProgress.find((progress) => progress.error)?.error;
@@ -215,14 +211,16 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
     return {
       ...(error ? { error } : {}),
       rawRows: merged.rows,
+      retentionTruncated: merged.truncated,
+      // A terminal progressive-history truncation means some part of the
+      // source window was not searched, independent of the visible row cap.
+      searchIncomplete: logProgress.some((progress) => progress.truncated),
       status:
         error && merged.rows.length === 0
           ? "error"
           : loading
             ? "loading"
             : "ready",
-      truncated:
-        merged.truncated || logProgress.some((progress) => progress.truncated),
     };
   }, [
     activeWindow,
@@ -240,18 +238,17 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
       state.rawRows.filter(
         (row) =>
           windowEndNs === undefined ||
-          (row.timeNs >= windowStartNs && row.timeNs <= windowEndNs),
+          (row.timelineTimeNs >= windowStartNs &&
+            row.timelineTimeNs <= windowEndNs),
       ),
     [state.rawRows, windowEndNs, windowStartNs],
   );
 
   const handleRowClick = useCallback(
     (row: EpisodeLogConsoleRow) => {
-      if (!timelineIndex) {
-        return;
-      }
-      setCenterTimeNs(row.timeNs);
-      seek(timelineIndex.nsToSec(row.timeNs));
+      if (!timelineIndex) return;
+      setCenterTimeNs(row.timelineTimeNs);
+      seek(timelineIndex.nsToSec(row.timelineTimeNs));
     },
     [seek, timelineIndex],
   );
@@ -290,13 +287,15 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
       onLevelChange={toggleLevel}
       onRowClick={handleRowClick}
       onStreamChange={toggleStream}
+      retentionTruncated={state.retentionTruncated}
       rows={rows}
+      searchIncomplete={state.searchIncomplete}
       selectedLevels={selectedLevels}
       selectedStreams={selectedStreams}
       sources={logSources}
       status={state.status}
+      tailTimeNs={centerTimeNs}
       timeOriginNs={timeOriginNs}
-      truncated={state.truncated}
       windowLabel={LOG_WINDOW_LABEL}
       windowStartNs={windowStartNs}
     />
@@ -357,8 +356,9 @@ function logHistoryTileWindows(
   return windows.sort((left, right) => {
     const leftDistance = distanceToLogWindow(left, preferredTimeNs);
     const rightDistance = distanceToLogWindow(right, preferredTimeNs);
-    if (leftDistance !== rightDistance)
+    if (leftDistance !== rightDistance) {
       return leftDistance < rightDistance ? -1 : 1;
+    }
     return left.startNs < right.startNs
       ? -1
       : left.startNs > right.startNs

@@ -7,7 +7,13 @@ import {
 } from "../../ir";
 import type { DecodedFrame } from "../../ir";
 
-/** One normalized row ready for display by a format-neutral log console. */
+/**
+ * One normalized row ready for display by a format-neutral log console.
+ *
+ * `timelineTimeNs` is the source/playback position and owns every operational
+ * decision (windowing, retention, ordering, and seeking). `messageTimeNs` is
+ * embedded payload metadata and is only suitable for display.
+ */
 export interface EpisodeLogConsoleRow {
   readonly details: readonly { readonly key: string; readonly value: string }[];
   readonly file?: string;
@@ -20,10 +26,11 @@ export interface EpisodeLogConsoleRow {
   readonly levelNumber?: number;
   readonly line?: number;
   readonly message: string;
+  readonly messageTimeNs?: bigint;
   readonly name?: string;
   readonly status?: string;
-  readonly timeNs: bigint;
   readonly stream: string;
+  readonly timelineTimeNs: bigint;
 }
 
 const LOG_LEVEL_SET = new Set(LOG_LEVELS);
@@ -91,10 +98,11 @@ function buildRow({
     levelNumber: numberValue(record.levelNumber),
     line: numberValue(record.line),
     message: stringValue(record.message) ?? "",
+    messageTimeNs: bigintValue(record.timestampNs),
     name,
     status: stringValue(record.status),
-    timeNs: bigintValue(record.timestampNs) ?? message.timestampNs,
     stream: message.streamId,
+    timelineTimeNs: message.timestampNs,
   };
 }
 

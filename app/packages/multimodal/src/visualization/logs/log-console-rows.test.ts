@@ -31,14 +31,15 @@ describe("logConsoleRowsFromDecodedMessage", () => {
         kind: "diagnostic",
         level: "error",
         message: "packet drops",
+        messageTimeNs: 7_000_000_009n,
         status: "ERROR",
-        timeNs: 7_000_000_009n,
         stream: "/diagnostics",
+        timelineTimeNs: 1n,
       }),
     ]);
   });
 
-  it("falls back to top-level message attributes and timeline time", () => {
+  it("keeps an absent payload stamp distinct from playback timeline time", () => {
     const rows = logConsoleRowsFromDecodedMessage(
       decodedMessage({
         attributes: {
@@ -56,10 +57,43 @@ describe("logConsoleRowsFromDecodedMessage", () => {
         groupLabel: "controller",
         level: "warn",
         message: "tracking degraded",
-        timeNs: 5_000_000_004n,
+        messageTimeNs: undefined,
         stream: "/rosout",
+        timelineTimeNs: 5_000_000_004n,
       }),
     ]);
+  });
+
+  it("preserves zero and far-future payload stamps as display-only metadata", () => {
+    const zeroStamp = logConsoleRowsFromDecodedMessage(
+      decodedMessage({
+        attributes: {
+          logRows: [{ level: "info", message: "zero", timestampNs: 0n }],
+        },
+        timelineTimeNs: 10n,
+        stream: "/rosout",
+      }),
+    )[0];
+    const futureStamp = logConsoleRowsFromDecodedMessage(
+      decodedMessage({
+        attributes: {
+          logRows: [
+            { level: "warn", message: "future", timestampNs: 9_000_000n },
+          ],
+        },
+        timelineTimeNs: 20n,
+        stream: "/diagnostics",
+      }),
+    )[0];
+
+    expect(zeroStamp).toMatchObject({
+      messageTimeNs: 0n,
+      timelineTimeNs: 10n,
+    });
+    expect(futureStamp).toMatchObject({
+      messageTimeNs: 9_000_000n,
+      timelineTimeNs: 20n,
+    });
   });
 
   it("returns no rows when logRows is empty and no fallback message exists", () => {

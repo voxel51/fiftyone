@@ -66,14 +66,14 @@ export function missingLogReadRanges(
 export function coveredLogReadRange(
   range: LogReadRange,
   messageCount: number,
-  lastMessageTimeNs: bigint | undefined,
+  lastTimelineTimeNs: bigint | undefined,
   readLimit: number,
 ): LogReadRange {
-  if (messageCount >= readLimit && lastMessageTimeNs !== undefined) {
+  if (messageCount >= readLimit && lastTimelineTimeNs !== undefined) {
     return {
       endTimeNs:
-        lastMessageTimeNs < range.endTimeNs
-          ? lastMessageTimeNs
+        lastTimelineTimeNs < range.endTimeNs
+          ? lastTimelineTimeNs
           : range.endTimeNs,
       startTimeNs: range.startTimeNs,
     };
@@ -126,7 +126,7 @@ export function mergeLogReadRanges(
 /**
  * Merges one ordered read into the active log window while keeping browser
  * work bounded. The newest rows win because follow mode is a live tail; older
- * rows remain available in the episode source but are not retained in the tile.
+ * rows remain available in the retained progressive history for refiltering.
  */
 export function mergeBoundedLogRows(
   current: readonly EpisodeLogConsoleRow[],
@@ -147,7 +147,7 @@ export function mergeBoundedLogRows(
   }
 
   const rows = Array.from(rowsById.values()).sort((left, right) =>
-    compareBigInt(left.timeNs, right.timeNs),
+    compareBigInt(left.timelineTimeNs, right.timelineTimeNs),
   );
   if (rows.length <= rowLimit) {
     return { rows, truncated: false };
@@ -189,7 +189,7 @@ function logRowInWindow(
   activeWindow: LogReadRange,
 ): boolean {
   return (
-    row.timeNs >= activeWindow.startTimeNs &&
-    row.timeNs <= activeWindow.endTimeNs
+    row.timelineTimeNs >= activeWindow.startTimeNs &&
+    row.timelineTimeNs <= activeWindow.endTimeNs
   );
 }

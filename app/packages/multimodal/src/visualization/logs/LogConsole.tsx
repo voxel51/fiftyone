@@ -37,8 +37,13 @@ export interface LogConsoleProps {
   readonly selectedStreams: readonly string[];
   readonly sources: readonly LogConsoleSource[];
   readonly status: "idle" | "loading" | "ready" | "error";
+  /** Current playback anchor; changes keep an active Follow view at the tail. */
+  readonly tailTimeNs?: bigint;
   readonly timeOriginNs?: bigint;
-  readonly truncated: boolean;
+  /** Selected-level matches were dropped by bounded browser retention. */
+  readonly retentionTruncated: boolean;
+  /** Progressive source history did not prove full coverage of this window. */
+  readonly searchIncomplete: boolean;
   readonly windowLabel: string;
   readonly windowStartNs: bigint;
 }
@@ -55,14 +60,18 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
   rows,
   selectedLevels,
   selectedStreams,
+  searchIncomplete,
   sources,
   status,
+  tailTimeNs,
   timeOriginNs,
-  truncated,
+  retentionTruncated,
   windowLabel,
   windowStartNs,
 }) => {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const followSuspendedRef = useRef(false);
+  const previousFollowRef = useRef(followPlayhead);
   const [viewport, setViewport] = useState({ height: 0, scrollTop: 0 });
   const showRowList = status !== "error" && rows.length > 0;
   const visibleRange = useMemo(
@@ -98,12 +107,42 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
     return () => observer.disconnect();
   }, [showRowList]);
 
-  const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-    setViewport({
-      height: event.currentTarget.clientHeight,
-      scrollTop: event.currentTarget.scrollTop,
-    });
-  }, []);
+  // Active Follow owns the live tail. A user scroll away suspends it locally
+  // before the persisted Follow setting updates, so incoming rows cannot fight
+  // the gesture. Re-enabling Follow immediately clears the suspension.
+  useLayoutEffect(() => {
+    const resumed = followPlayhead && !previousFollowRef.current;
+    previousFollowRef.current = followPlayhead;
+    if (resumed) followSuspendedRef.current = false;
+    if (!followPlayhead || followSuspendedRef.current || !showRowList) return;
+
+    const element = scrollRef.current;
+    if (!element) return;
+    const scrollTop = Math.max(0, element.scrollHeight - element.clientHeight);
+    element.scrollTop = scrollTop;
+    setViewport((current) =>
+      current.height === element.clientHeight && current.scrollTop === scrollTop
+        ? current
+        : { height: element.clientHeight, scrollTop },
+    );
+  }, [followPlayhead, rows, showRowList, tailTimeNs]);
+
+  const handleScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const element = event.currentTarget;
+      setViewport({
+        height: element.clientHeight,
+        scrollTop: element.scrollTop,
+      });
+      const distanceFromTail =
+        element.scrollHeight - element.clientHeight - element.scrollTop;
+      if (followPlayhead && distanceFromTail > 1) {
+        followSuspendedRef.current = true;
+        onFollowPlayheadChange(false);
+      }
+    },
+    [followPlayhead, onFollowPlayheadChange],
+  );
 
   if (sources.length === 0) {
     return (
@@ -149,11 +188,12 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
           </div>
         ) : null}
         <span className={styles.meta}>
-          {status === "loading"
-            ? "loading"
-            : truncated
-              ? `latest ${rows.length.toLocaleString()}`
-              : rows.length.toLocaleString()}{" "}
+          {logConsoleResultSummary({
+            retentionTruncated,
+            rowCount: rows.length,
+            searchIncomplete,
+            status,
+          })}{" "}
           · {windowLabel}
         </span>
       </div>
@@ -168,7 +208,12 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
             : "No log rows in this time window"}
         </div>
       ) : (
-        <div className={styles.scroll} onScroll={handleScroll} ref={scrollRef}>
+        <div
+          className={styles.scroll}
+          data-testid="log-console-scroll"
+          onScroll={handleScroll}
+          ref={scrollRef}
+        >
           <div
             className={styles.virtualSpacer}
             style={{ height: rows.length * LOG_ROW_HEIGHT_PX }}
@@ -187,8 +232,14 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
                 >
                   <span className={styles.time}>
                     {timeOriginNs !== undefined
-                      ? formatRelativeTime(row.timeNs, timeOriginNs)
-                      : formatWindowOffset(row.timeNs, windowStartNs)}
+                      ? formatRelativeTime(
+                          row.messageTimeNs ?? row.timelineTimeNs,
+                          timeOriginNs,
+                        )
+                      : formatWindowOffset(
+                          row.messageTimeNs ?? row.timelineTimeNs,
+                          windowStartNs,
+                        )}
                   </span>
                   <span className={clsx(styles.level, styles[row.level])}>
                     {row.status ?? row.level}
@@ -206,6 +257,32 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
     </div>
   );
 };
+
+/** Concise, truthful description of searched and retained matching rows. */
+export function logConsoleResultSummary({
+  retentionTruncated,
+  rowCount,
+  searchIncomplete,
+  status,
+}: {
+  readonly retentionTruncated: boolean;
+  readonly rowCount: number;
+  readonly searchIncomplete: boolean;
+  readonly status: LogConsoleProps["status"];
+}): string {
+  if (status === "loading") return "loading";
+  const count = rowCount.toLocaleString();
+  if (searchIncomplete && retentionTruncated) {
+    return `${count} retained · partial search and retention may omit matches`;
+  }
+  if (searchIncomplete) {
+    return `${count} retained · window partially searched; matches may be missing`;
+  }
+  if (retentionTruncated) {
+    return `latest ${count} retained · older matching rows omitted`;
+  }
+  return count;
+}
 
 function formatRelativeTime(timeNs: bigint, originNs: bigint): string {
   const { milliseconds, negative, seconds } = relativeTimeParts(
