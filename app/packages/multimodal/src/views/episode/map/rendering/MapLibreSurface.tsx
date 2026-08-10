@@ -23,6 +23,10 @@ import {
   readMapViewport,
 } from "../viewport/cache";
 import { mapViewportIsNearEvidence } from "../viewport/proximity";
+import {
+  BasemapReadinessGate,
+  basemapRetryDelayMs,
+} from "../basemap-readiness";
 import { MapPlaybackController } from "./playback-controller";
 import { noteMapPlaybackPaint, noteMapReactCommit } from "./performance";
 import { StaticMapPreview } from "./StaticMapPreview";
@@ -119,6 +123,7 @@ export interface MapRendererPlayback {
 /** Owns the MapLibre instance, event wiring, and imperative playback surface. */
 export function MapLibreSurface({
   baseLayer,
+  basemapRetryNonce = 0,
   basemapStatus,
   bounds,
   fitRouteNonce,
@@ -140,6 +145,7 @@ export function MapLibreSurface({
   viewportScope,
 }: {
   readonly baseLayer: MapBaseLayer;
+  readonly basemapRetryNonce?: number;
   readonly basemapStatus: MapBasemapStatus;
   readonly bounds: LocationBounds | null;
   readonly fitRouteNonce: number;
@@ -187,6 +193,7 @@ export function MapLibreSurface({
   const installedTrackLayersRef = useRef(new Map<string, LocationTrackState>());
   const installedBaseLayerRef = useRef<MapBaseLayer>(MAP_BASE_LAYER.NONE);
   const basemapStatusRef = useRef<MapBasemapStatus>("disabled");
+  const basemapRetryCycleRef = useRef({ attempt: 0, key: "" });
   const playbackPaintStateRef = useRef<MapPlaybackPaintState>({
     cursors: new Map(),
     routeProgressKeys: new Map(),
@@ -206,6 +213,7 @@ export function MapLibreSurface({
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+  const [basemapAutoRetryNonce, setBasemapAutoRetryNonce] = useState(0);
   const showStaticPreview = shouldShowMapStaticPreview({
     basemapStatus,
     cameraReady,
@@ -463,45 +471,98 @@ export function MapLibreSurface({
     setFailed(false);
   }, [baseLayer]);
 
-  // This effect keeps the local trajectory style live while the provider style
-  // and its initial sources load. It waits for the route-derived camera before
-  // installing the remote style, avoiding throwaway Null Island tile work.
+  // This effect keeps the local trajectory style live while the provider earns
+  // readiness with its first successful tile. Only active provider-source
+  // errors participate, and readiness is monotonic for the installed attempt.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current) return undefined;
 
+    const retryKey = `${baseLayer}:${basemapRetryNonce}`;
+    const retryCycle = basemapRetryCycleRef.current;
+    if (retryCycle.key !== retryKey) {
+      retryCycle.key = retryKey;
+      retryCycle.attempt = 0;
+    }
+    const attempt = retryCycle.attempt;
     let cancelled = false;
-    let removeReadinessListeners: () => void = () => undefined;
+    let gate: BasemapReadinessGate | null = null;
+    let listenersInstalled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     const report = (status: MapBasemapStatus) => {
-      if (cancelled) return;
+      if (cancelled || basemapStatusRef.current === status) return;
       basemapStatusRef.current = status;
       onBasemapStatusChange(baseLayer, status);
     };
+    const removeAttemptListeners = () => {
+      gate?.dispose();
+      gate = null;
+      if (!listenersInstalled) return;
+      map.off("error", handleProviderError);
+      map.off("sourcedata", handleSourceData);
+      map.off("styledata", handleStyleData);
+      listenersInstalled = false;
+    };
+    const restoreLocalFallback = () => {
+      installedBaseLayerRef.current = MAP_BASE_LAYER.NONE;
+      map.setStyle(NO_TILE_STYLE, {
+        transformStyle: mergeMapOverlaysIntoStyle,
+      });
+      ensureCurrentPuckImages(
+        map,
+        indexedTracksRef.current,
+        liveMarkersRef.current,
+      );
+      playbackControllerRef.current?.invalidate();
+    };
+    const failAttempt = () => {
+      if (cancelled) return;
+      removeAttemptListeners();
+      const retryDelayMs = basemapRetryDelayMs(attempt);
+      if (retryDelayMs !== null) {
+        retryCycle.attempt = attempt + 1;
+        retryTimer = setTimeout(() => {
+          retryTimer = undefined;
+          if (!cancelled) setBasemapAutoRetryNonce((value) => value + 1);
+        }, retryDelayMs);
+        return;
+      }
+      restoreLocalFallback();
+      report("error");
+    };
+    const handleProviderError = (event: unknown) => gate?.handleError(event);
+    const handleSourceData = (event: unknown) => gate?.handleSourceData(event);
+    const handleStyleData = () => {
+      ensureCurrentPuckImages(
+        map,
+        indexedTracksRef.current,
+        liveMarkersRef.current,
+      );
+      playbackControllerRef.current?.invalidate();
+    };
 
     if (baseLayer === MAP_BASE_LAYER.NONE) {
-      report("disabled");
+      retryCycle.attempt = 0;
       if (installedBaseLayerRef.current !== MAP_BASE_LAYER.NONE) {
-        installedBaseLayerRef.current = MAP_BASE_LAYER.NONE;
-        map.setStyle(NO_TILE_STYLE, {
-          transformStyle: mergeMapOverlaysIntoStyle,
-        });
-        ensureCurrentPuckImages(
-          map,
-          indexedTracksRef.current,
-          liveMarkersRef.current,
-        );
-        playbackControllerRef.current?.invalidate();
+        restoreLocalFallback();
       }
+      report("disabled");
       return () => {
         cancelled = true;
       };
     }
 
+    if (!cameraReady) {
+      report("loading");
+      return () => {
+        cancelled = true;
+      };
+    }
     if (
+      attempt === 0 &&
       installedBaseLayerRef.current === baseLayer &&
       basemapStatusRef.current === "ready"
     ) {
-      report("ready");
       return () => {
         cancelled = true;
       };
@@ -511,64 +572,51 @@ export function MapLibreSurface({
     void loadOpenFreeMapStyle()
       .then((style) => {
         if (cancelled) return;
-        const styleAlreadyInstalled =
-          installedBaseLayerRef.current === baseLayer;
-        if (!styleAlreadyInstalled && !cameraReady) return;
         const sourceIds = mapBasemapSourceIds(style);
-        let overlaysRestored = false;
-        const restoreOverlays = () => {
-          if (overlaysRestored || cancelled) return;
-          ensureCurrentPuckImages(
-            map,
-            indexedTracksRef.current,
-            liveMarkersRef.current,
-          );
-          playbackControllerRef.current?.invalidate();
-          overlaysRestored = true;
-        };
-        const markReadyWhenLoaded = () => {
-          if (
-            cancelled ||
-            sourceIds.some(
-              (id) => !map.getSource(id) || !map.isSourceLoaded(id),
-            )
-          ) {
-            return;
-          }
-          restoreOverlays();
-          report("ready");
-          removeReadinessListeners();
-        };
-        const handleStyleData = () => {
-          restoreOverlays();
-          markReadyWhenLoaded();
-        };
-        removeReadinessListeners = () => {
-          map.off("sourcedata", markReadyWhenLoaded);
-          map.off("styledata", handleStyleData);
-          removeReadinessListeners = () => undefined;
-        };
-        map.on("sourcedata", markReadyWhenLoaded);
-        map.on("styledata", handleStyleData);
-        if (!styleAlreadyInstalled) {
-          installedBaseLayerRef.current = baseLayer;
+        installedBaseLayerRef.current = baseLayer;
+        if (sourceIds.length === 0) {
           map.setStyle(style, {
             transformStyle: mergeMapOverlaysIntoStyle,
           });
+          handleStyleData();
+          retryCycle.attempt = 0;
+          report("ready");
+          return;
         }
-        markReadyWhenLoaded();
+        gate = new BasemapReadinessGate({
+          onFailure: failAttempt,
+          onReady: () => {
+            if (cancelled) return;
+            handleStyleData();
+            retryCycle.attempt = 0;
+            report("ready");
+            removeAttemptListeners();
+          },
+          sourceIds,
+        });
+        map.on("error", handleProviderError);
+        map.on("sourcedata", handleSourceData);
+        map.on("styledata", handleStyleData);
+        listenersInstalled = true;
+        map.setStyle(style, {
+          transformStyle: mergeMapOverlaysIntoStyle,
+        });
       })
-      .catch(() => {
-        if (cancelled) return;
-        installedBaseLayerRef.current = MAP_BASE_LAYER.NONE;
-        report("error");
-      });
+      .catch(failAttempt);
 
     return () => {
       cancelled = true;
-      removeReadinessListeners();
+      if (retryTimer !== undefined) clearTimeout(retryTimer);
+      removeAttemptListeners();
     };
-  }, [baseLayer, cameraReady, loaded, onBasemapStatusChange]);
+  }, [
+    baseLayer,
+    basemapAutoRetryNonce,
+    basemapRetryNonce,
+    cameraReady,
+    loaded,
+    onBasemapStatusChange,
+  ]);
 
   // This effect invalidates automatic camera work from the previous
   // recording. The validated warm-start effect below makes the map visible

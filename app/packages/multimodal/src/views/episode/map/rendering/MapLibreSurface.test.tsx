@@ -19,7 +19,7 @@ const mapLibre = vi.hoisted(() => {
       this.sources.set(id, { setData: vi.fn() });
     });
     readonly canvas = document.createElement("canvas");
-    readonly events = new Map<string, Array<(...args: never[]) => void>>();
+    readonly events = new Map<string, Array<(...args: unknown[]) => void>>();
     readonly getCanvas = vi.fn(() => this.canvas);
     readonly getCenter = vi.fn(() => ({ lat: 0, lng: 0 }));
     readonly getLayer = vi.fn((id: string) =>
@@ -32,7 +32,7 @@ const mapLibre = vi.hoisted(() => {
     readonly jumpTo = vi.fn();
     readonly layers = new Set<string>();
     readonly off = vi.fn(
-      (event: string, listener: (...args: never[]) => void) => {
+      (event: string, listener: (...args: unknown[]) => void) => {
         const listeners = this.events.get(event);
         if (!listeners) return this;
         this.events.set(
@@ -45,8 +45,8 @@ const mapLibre = vi.hoisted(() => {
     readonly on = vi.fn(
       (
         event: string,
-        layerOrListener: string | ((...args: never[]) => void),
-        layerListener?: (...args: never[]) => void,
+        layerOrListener: string | ((...args: unknown[]) => void),
+        layerListener?: (...args: unknown[]) => void,
       ) => {
         const listener =
           typeof layerOrListener === "function"
@@ -62,11 +62,12 @@ const mapLibre = vi.hoisted(() => {
     readonly resize = vi.fn();
     readonly setFilter = vi.fn();
     readonly setPaintProperty = vi.fn();
+    readonly setStyle = vi.fn();
     readonly sources = new Map<string, { setData: ReturnType<typeof vi.fn> }>();
     readonly triggerRepaint = vi.fn();
 
-    emit(event: string): void {
-      for (const listener of this.events.get(event) ?? []) listener();
+    emit(event: string, ...args: unknown[]): void {
+      for (const listener of this.events.get(event) ?? []) listener(...args);
     }
 
     constructor() {
@@ -76,6 +77,21 @@ const mapLibre = vi.hoisted(() => {
 
   return { instances, MockMap };
 });
+
+const basemap = vi.hoisted(() => ({
+  loadStyle: vi.fn(async () => ({
+    layers: [],
+    sources: {
+      provider: { type: "vector", url: "https://tiles.example.test" },
+    },
+    version: 8 as const,
+  })),
+}));
+
+vi.mock("../basemap", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../basemap")>()),
+  loadOpenFreeMapStyle: basemap.loadStyle,
+}));
 
 vi.mock("maplibre-gl", () => ({
   Map: mapLibre.MockMap,
@@ -88,7 +104,9 @@ vi.mock("maplibre-gl/dist/maplibre-gl.css?url", () => ({
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   mapLibre.instances.length = 0;
+  basemap.loadStyle.mockClear();
 });
 
 describe("MapLibreSurface", () => {
@@ -204,6 +222,149 @@ describe("MapLibreSurface", () => {
       expect(map?.hasImage).toHaveBeenCalledWith("episode-puck-dot-#00ff00");
     });
     expect(hitSetData).toHaveBeenCalledOnce();
+  });
+
+  it("ignores overlay errors and makes provider readiness monotonic", async () => {
+    const onBasemapStatusChange = vi.fn();
+    const playback = {
+      clearHover: vi.fn(),
+      readHoverTimeNs: () => null,
+      readPlayhead: () => ({ paused: true, timeNs: null }),
+      subscribeHover: vi.fn(() => vi.fn()),
+      subscribePlayhead: vi.fn(() => vi.fn()),
+    };
+    render(
+      <MapLibreSurface
+        baseLayer={MAP_BASE_LAYER.DEFAULT}
+        basemapStatus="loading"
+        bounds={null}
+        fitRouteNonce={0}
+        followEgo={false}
+        locationEvidencePending={false}
+        liveMarkers={[]}
+        measureArmed={false}
+        measurement={null}
+        onBasemapStatusChange={onBasemapStatusChange}
+        onHoverTimeNs={vi.fn()}
+        onMeasurePick={vi.fn()}
+        onSeekTimeNs={vi.fn()}
+        onUserMove={vi.fn()}
+        playback={playback}
+        pulseActive={false}
+        recenterNonce={0}
+        sourceKey="recording"
+        tracks={[]}
+        viewportScope={null}
+      />,
+    );
+
+    await waitFor(() => expect(mapLibre.instances).toHaveLength(1));
+    const map = mapLibre.instances[0];
+    act(() => map?.emit("load"));
+    await waitFor(() => expect(map?.setStyle).toHaveBeenCalled());
+
+    act(() => {
+      for (let index = 0; index < 5; index += 1) {
+        map?.emit("error", { sourceId: "episode-location-current" });
+      }
+    });
+    expect(onBasemapStatusChange).not.toHaveBeenCalledWith(
+      MAP_BASE_LAYER.DEFAULT,
+      "error",
+    );
+
+    act(() => {
+      map?.emit("sourcedata", {
+        coord: {},
+        sourceDataType: "content",
+        sourceId: "provider",
+      });
+    });
+    await waitFor(() => {
+      expect(onBasemapStatusChange).toHaveBeenCalledWith(
+        MAP_BASE_LAYER.DEFAULT,
+        "ready",
+      );
+    });
+    act(() => {
+      for (let index = 0; index < 5; index += 1) {
+        map?.emit("error", { sourceId: "provider" });
+      }
+    });
+
+    expect(onBasemapStatusChange).not.toHaveBeenCalledWith(
+      MAP_BASE_LAYER.DEFAULT,
+      "error",
+    );
+    expect(map?.off).toHaveBeenCalledWith("error", expect.any(Function));
+    expect(map?.off).toHaveBeenCalledWith("sourcedata", expect.any(Function));
+    expect(map?.off).toHaveBeenCalledWith("styledata", expect.any(Function));
+  });
+
+  it("retries pre-ready failures with bounded backoff then restores local style", async () => {
+    vi.useFakeTimers();
+    const onBasemapStatusChange = vi.fn();
+    const playback = {
+      clearHover: vi.fn(),
+      readHoverTimeNs: () => null,
+      readPlayhead: () => ({ paused: true, timeNs: null }),
+      subscribeHover: vi.fn(() => vi.fn()),
+      subscribePlayhead: vi.fn(() => vi.fn()),
+    };
+    render(
+      <MapLibreSurface
+        baseLayer={MAP_BASE_LAYER.DEFAULT}
+        basemapStatus="loading"
+        bounds={null}
+        fitRouteNonce={0}
+        followEgo={false}
+        locationEvidencePending={false}
+        liveMarkers={[]}
+        measureArmed={false}
+        measurement={null}
+        onBasemapStatusChange={onBasemapStatusChange}
+        onHoverTimeNs={vi.fn()}
+        onMeasurePick={vi.fn()}
+        onSeekTimeNs={vi.fn()}
+        onUserMove={vi.fn()}
+        playback={playback}
+        pulseActive={false}
+        recenterNonce={0}
+        sourceKey="recording"
+        tracks={[]}
+        viewportScope={null}
+      />,
+    );
+
+    await vi.waitFor(() => expect(mapLibre.instances).toHaveLength(1));
+    const map = mapLibre.instances[0];
+    act(() => map?.emit("load"));
+    await vi.waitFor(() => expect(map?.setStyle).toHaveBeenCalledTimes(1));
+
+    const failAttempt = () => {
+      act(() => {
+        for (let index = 0; index < 3; index += 1) {
+          map?.emit("error", { sourceId: "provider" });
+        }
+      });
+    };
+    failAttempt();
+    await act(async () => vi.advanceTimersByTimeAsync(500));
+    await vi.waitFor(() => expect(map?.setStyle).toHaveBeenCalledTimes(2));
+    failAttempt();
+    await act(async () => vi.advanceTimersByTimeAsync(1_500));
+    await vi.waitFor(() => expect(map?.setStyle).toHaveBeenCalledTimes(3));
+    failAttempt();
+
+    expect(map?.setStyle).toHaveBeenCalledTimes(4);
+    expect(map?.setStyle.mock.calls.at(-1)?.[0]).toMatchObject({
+      sources: {},
+      version: 8,
+    });
+    expect(onBasemapStatusChange).toHaveBeenCalledWith(
+      MAP_BASE_LAYER.DEFAULT,
+      "error",
+    );
   });
 });
 

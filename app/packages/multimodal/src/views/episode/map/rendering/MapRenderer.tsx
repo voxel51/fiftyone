@@ -76,6 +76,7 @@ export const MapRenderer: React.FC<MapRendererProps> = ({
   });
   const [recenterNonce, setRecenterNonce] = useState(0);
   const [fitRouteNonce, setFitRouteNonce] = useState(0);
+  const [basemapRetryNonce, setBasemapRetryNonce] = useState(0);
   const [measureArmed, setMeasureArmed] = useState(false);
   const [measurement, setMeasurement] = useState<MapMeasurementState | null>(
     null,
@@ -160,6 +161,7 @@ export const MapRenderer: React.FC<MapRendererProps> = ({
     <div className={styles.body} data-testid="episode-map-tile">
       <MapLibreSurface
         baseLayer={baseLayer}
+        basemapRetryNonce={basemapRetryNonce}
         basemapStatus={basemapStatus}
         bounds={bounds}
         fitRouteNonce={fitRouteNonce}
@@ -185,6 +187,15 @@ export const MapRenderer: React.FC<MapRendererProps> = ({
           <span aria-live="polite" className={styles.statusBadge} role="status">
             {statusText}
           </span>
+        ) : null}
+        {basemapStatus === "error" ? (
+          <button
+            className={styles.controlButton}
+            onClick={() => setBasemapRetryNonce((value) => value + 1)}
+            type="button"
+          >
+            Retry basemap
+          </button>
         ) : null}
         {tracks.length > 0 || liveMarkers.length > 0 ? (
           <button
