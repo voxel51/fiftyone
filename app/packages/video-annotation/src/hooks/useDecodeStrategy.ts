@@ -26,6 +26,8 @@ import { useSampledFramesProbe } from "./useSampledFramesProbe";
 export interface DecodeResolution {
   status: "resolving" | "resolved";
   strategy?: DecodeStrategy;
+  /** Audio-track presence from the probe; undefined = unknown. */
+  hasAudio?: boolean;
 }
 
 export interface DecodeStrategyInput {
@@ -88,12 +90,15 @@ export function useDecodeStrategy(
       nativeDecodable: native.decodable,
       hasFrames: framesState === "sampled",
     }),
+    hasAudio: native.hasAudio,
   };
 }
 
 interface NativeDecodableState {
   checking: boolean;
   decodable: boolean;
+  /** Audio-track presence from the probe; undefined = unknown. */
+  hasAudio?: boolean;
 }
 
 interface NativeDecodableInput {
@@ -132,7 +137,11 @@ function useNativeDecodable(input: NativeDecodableInput): NativeDecodableState {
 
     const cached = nativeDecodeCache.getSampleVerdict(dataset, sampleId);
     if (cached) {
-      setState({ checking: false, decodable: cached.decodable });
+      setState({
+        checking: false,
+        decodable: cached.decodable,
+        hasAudio: cached.hasAudio,
+      });
       return undefined;
     }
 
@@ -153,10 +162,15 @@ function useNativeDecodable(input: NativeDecodableInput): NativeDecodableState {
           nativeDecodeCache.setSampleVerdict(dataset, sampleId, {
             codec: result.codec,
             decodable: result.decodable,
+            hasAudio: result.hasAudio,
           });
         }
 
-        setState({ checking: false, decodable: result.decodable });
+        setState({
+          checking: false,
+          decodable: result.decodable,
+          hasAudio: result.hasAudio,
+        });
       },
     );
 

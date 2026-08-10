@@ -135,6 +135,180 @@ describe("computeTagData", () => {
       "and 1 more",
     ]);
   });
+
+  describe("showPatchLabels", () => {
+    it("renders labels for spatial label list fields when enabled", () => {
+      const result = computeTagData(
+        makeInput({ activePaths: ["ground_truth"], showPatchLabels: true }),
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        path: "ground_truth",
+        value: "cat",
+        title: "ground_truth: cat",
+      });
+      expect(result[1]).toMatchObject({ value: "dog" });
+    });
+
+    it("renders nothing for spatial label fields when disabled", () => {
+      const result = computeTagData(
+        makeInput({ activePaths: ["ground_truth"] }),
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it("skips spatial labels without a label value", () => {
+      const result = computeTagData(
+        makeInput({
+          activePaths: ["ground_truth"],
+          sample: {
+            ground_truth: {
+              _cls: "Detections",
+              detections: [
+                { _cls: "Detection" },
+                { _cls: "Detection", label: "dog" },
+              ],
+            },
+          },
+          showPatchLabels: true,
+        }),
+      );
+
+      expect(result.map((item) => item.value)).toEqual(["dog"]);
+    });
+
+    it("truncates spatial labels after three items", () => {
+      const result = computeTagData(
+        makeInput({
+          activePaths: ["ground_truth"],
+          sample: {
+            ground_truth: {
+              _cls: "Detections",
+              detections: ["a", "b", "c", "d", "e"].map((label) => ({
+                _cls: "Detection",
+                label,
+              })),
+            },
+          },
+          showPatchLabels: true,
+        }),
+      );
+
+      expect(result.map((item) => item.value)).toEqual([
+        "a",
+        "b",
+        "c",
+        "and 2 more",
+      ]);
+    });
+
+    it("renders configured attributes comma separated", () => {
+      const result = computeTagData(
+        makeInput({
+          activePaths: ["ground_truth"],
+          sample: {
+            ground_truth: {
+              _cls: "Detections",
+              detections: [
+                { _cls: "Detection", label: "cat", confidence: 0.95 },
+              ],
+            },
+          },
+          showPatchLabels: true,
+          shownLabelAttributes: { ground_truth: ["label", "confidence"] },
+        }),
+      );
+
+      expect(result.map((item) => item.value)).toEqual(["cat, 0.95"]);
+    });
+
+    it("renders labels for polylines fields", () => {
+      const schema: Schema = {
+        polylines: makeField("polylines", {
+          embeddedDocType: "fiftyone.core.labels.Polylines",
+          ftype: EMBEDDED_DOCUMENT_FIELD,
+          fields: {
+            polylines: makeField("polylines", {
+              ftype: LIST_FIELD,
+              path: "polylines.polylines",
+              subfield: EMBEDDED_DOCUMENT_FIELD,
+            }),
+          },
+        }),
+      };
+      const result = computeTagData(
+        makeInput({
+          activePaths: ["polylines"],
+          fieldSchema: schema,
+          sample: {
+            polylines: {
+              _cls: "Polylines",
+              polylines: [{ _cls: "Polyline", label: "lane" }],
+            },
+          },
+          showPatchLabels: true,
+        }),
+      );
+
+      expect(result.map((item) => item.value)).toEqual(["lane"]);
+    });
+  });
+
+  describe("shownLabelAttributes for classifications", () => {
+    const schema: Schema = {
+      predictions: makeField("predictions", {
+        embeddedDocType: "fiftyone.core.labels.Classification",
+        ftype: EMBEDDED_DOCUMENT_FIELD,
+      }),
+    };
+    const sample = {
+      predictions: {
+        _cls: "Classification",
+        label: "cat",
+        confidence: 0.5,
+      },
+    };
+
+    it("renders the label attribute without a setting", () => {
+      const result = computeTagData(
+        makeInput({
+          activePaths: ["predictions"],
+          fieldSchema: schema,
+          sample,
+        }),
+      );
+
+      expect(result.map((item) => item.value)).toEqual(["cat"]);
+    });
+
+    it("renders configured attributes comma separated", () => {
+      const result = computeTagData(
+        makeInput({
+          activePaths: ["predictions"],
+          fieldSchema: schema,
+          sample,
+          shownLabelAttributes: { predictions: ["label", "confidence"] },
+        }),
+      );
+
+      expect(result.map((item) => item.value)).toEqual(["cat, 0.5"]);
+    });
+
+    it("falls back to null when configured attributes are missing", () => {
+      const result = computeTagData(
+        makeInput({
+          activePaths: ["predictions"],
+          fieldSchema: schema,
+          sample,
+          shownLabelAttributes: { predictions: ["missing"] },
+        }),
+      );
+
+      expect(result.map((item) => item.value)).toEqual(["null"]);
+    });
+  });
 });
 
 describe("computeLabelTagCounts", () => {

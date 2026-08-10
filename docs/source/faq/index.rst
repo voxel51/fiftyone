@@ -114,6 +114,10 @@ built-in App configuration, when working in a cloud notebook a
 Can I use FiftyOne in a remote notebook?
 ----------------------------------------
 
+.. customavailablein::
+    :oss_version: 0.7.2
+    :enterprise_version: 1.0
+
 Yes! It is possible to work with a Jupyter notebook in your local browser that
 is served from a remote machine.
 

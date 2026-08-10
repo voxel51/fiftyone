@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, cleanup, render, renderHook } from "@testing-library/react";
 import { useAtomValue } from "jotai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -18,11 +18,12 @@ import {
 } from "./atoms";
 import {
   PlaybackProvider,
+  useMode,
   usePlayback,
   usePlaybackStore,
 } from "./PlaybackProvider";
 import { bumpStreamRangesVersion, setBufferedRanges } from "./store-access";
-import type { PlaybackStream } from "./types";
+import type { PlaybackStream, TimelineMode } from "./types";
 import { MAX_SPEED } from "../constants";
 
 interface RenderOpts {
@@ -1150,6 +1151,57 @@ describe("PlaybackProvider engine actions", () => {
       });
       // No step declared → still the provider fallback.
       expect(result.current.store.get(stepIntervalAtom)).toBeCloseTo(1 / 30, 6);
+    });
+  });
+
+  describe("timeline mode", () => {
+    // useMode()'s value must stay fixed for the provider's lifetime — the
+    // engine's stepInterval fallback is captured once at mount (see
+    // usePlaybackEngine's mount-scoped store useMemo), so a `mode` prop
+    // change without a remount must NOT update what useMode() returns;
+    // otherwise consumers would see a new display domain while the engine's
+    // mode-dependent state stays stale. Callers that need a new mode must
+    // remount the provider (e.g. keyed on the resolved mode).
+    it("freezes the resolved mode at mount despite a later prop change", () => {
+      function Probe({ onRender }: { onRender: (m: TimelineMode) => void }) {
+        onRender(useMode());
+        return null;
+      }
+      const seen: TimelineMode[] = [];
+      const { rerender } = render(
+        <PlaybackProvider duration={10} mode={{ kind: "sequence", fps: 30 }}>
+          <Probe onRender={(m) => seen.push(m)} />
+        </PlaybackProvider>,
+      );
+      expect(seen.at(-1)).toEqual({ kind: "sequence", fps: 30 });
+
+      rerender(
+        <PlaybackProvider duration={10} mode={{ kind: "sequence", fps: 60 }}>
+          <Probe onRender={(m) => seen.push(m)} />
+        </PlaybackProvider>,
+      );
+      expect(seen.at(-1)).toEqual({ kind: "sequence", fps: 30 });
+
+      rerender(
+        <PlaybackProvider
+          duration={10}
+          mode={{ kind: "absolute", epochAnchorMs: 12345 }}
+        >
+          <Probe onRender={(m) => seen.push(m)} />
+        </PlaybackProvider>,
+      );
+      expect(seen.at(-1)).toEqual({ kind: "sequence", fps: 30 });
+    });
+
+    it("falls back to duration mode when the mount-time fps is invalid", () => {
+      const { result } = renderHook(() => useMode(), {
+        wrapper: ({ children }) => (
+          <PlaybackProvider duration={10} mode={{ kind: "sequence", fps: 0 }}>
+            {children}
+          </PlaybackProvider>
+        ),
+      });
+      expect(result.current).toEqual({ kind: "duration" });
     });
   });
 

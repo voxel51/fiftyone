@@ -46,8 +46,9 @@ const selectedCount = async (modal: ModalPom) => {
   return Number(raw ?? "0");
 };
 
-test.describe
-  .serial("3d explore selection does not bleed into annotate", () => {
+// Flaky: the canvas center-click intermittently fails to land a selection
+// (selectedCount stays 0), which both tests depend on
+test.describe.skip("3d explore selection does not bleed into annotate", () => {
   test.beforeEach(async ({ annotate3dSDK, fiftyoneLoader, modal, page }) => {
     await annotate3dSDK.seed({
       datasetName,

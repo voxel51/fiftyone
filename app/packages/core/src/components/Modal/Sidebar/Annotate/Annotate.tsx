@@ -1,12 +1,18 @@
 import { useRegisterAIAnnotationEventHandlers } from "@fiftyone/annotation/src/agents/hooks/useRegisterAIAnnotationEventHandlers";
 import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
-import { LoadingSpinner } from "@fiftyone/components";
-import { useCurrentSampleId, useIsGroupDataset } from "@fiftyone/state";
+import { EnterpriseUpsellCallout, LoadingSpinner } from "@fiftyone/components";
+import {
+  useBrowserStorage,
+  useCurrentSampleId,
+  useIsGroupDataset,
+  useIsVideo,
+} from "@fiftyone/state";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import React, { useEffect } from "react";
 import styled from "styled-components";
 import Actions from "./Actions";
+import AIAnnotationPanel from "./AIAnnotationPanel";
 import Edit from "./Edit";
 import useDelete from "./Edit/useDelete";
 import { useAnnotationContext } from "./Edit/useAnnotationContext";
@@ -30,6 +36,10 @@ import {
 import { useLighterAnnotationBridge } from "./useLighterAnnotationBridge";
 import { useLooker3dAnnotationBridge } from "./useLooker3dAnnotationBridge";
 import { useSyncAnnotationSliceMediaType } from "./useSyncAnnotationSliceMediaType";
+import { Box } from "@mui/material";
+
+/** Persists (per browser) the user's dismissal of the video-AI upsell. */
+const AI_UPSELL_DISMISSED_KEY = "fo-annotate-video-ai-upsell-dismissed";
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -120,13 +130,29 @@ const AnnotationBody = ({
   const isGroupDataset = useIsGroupDataset();
   const disabledMessage = useDisabledMessage(disabledReason);
   const showSetup = useShowImportSchema(!!disabledReason, requiredField);
+  const isVideo = useIsVideo();
+  const [upsellDismissed, setUpsellDismissed] = useBrowserStorage<boolean>(
+    AI_UPSELL_DISMISSED_KEY,
+    false,
+  );
 
   return (
     <>
       {isGroupDataset && !disabledReason && (
         <GroupAnnotation onSliceSelected={loadSchemas} />
       )}
+      {!showSetup && !disabledReason && isVideo && !upsellDismissed && (
+        <Box sx={{ m: 2 }}>
+          <EnterpriseUpsellCallout
+            data-cy="annotate-video-ai-upsell"
+            title="More powerful AI in Enterprise"
+            description="Annotate with built-in AI – segment, detect, and track objects right now. Upgrade to FiftyOne Enterprise to switch to more powerful models and unlock the full AI toolset across every annotation type."
+            onDismiss={() => setUpsellDismissed(true)}
+          />
+        </Box>
+      )}
       {!showSetup && <Actions key="actions" hidden={isEditingValue} />}
+      {!showSetup && <AIAnnotationPanel key="ai-panel" />}
       {isEditingValue && <Edit key="edit" />}
       {showSetup ? (
         <ImportSchema

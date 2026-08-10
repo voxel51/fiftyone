@@ -29,8 +29,9 @@ export default defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI
     ? // blob reports are merged across shards into the authoritative PR
-      // comment and combined HTML report (see e2e-report in e2e.yml)
-      [["line"], ["blob"], ["github"]]
+      // comment and combined HTML report (see e2e-report in e2e.yml); no
+      // github reporter — its per-shard run summaries duplicate both
+      [["line"], ["blob"]]
     : process.env.IS_UTILITY_DOCKER
       ? [["line"], ["html", { open: "never" }]]
       : [["line", { printSteps: true }]],

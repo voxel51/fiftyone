@@ -5,13 +5,29 @@ import { PlaybackProvider, usePlayback } from "./PlaybackProvider";
 import { PlaybackStreamBase } from "./stream-base";
 import type { BufferReadiness } from "./types";
 import {
+  useActivateStream,
   useStream,
+  useStreamValue,
   useStreamValueSelector,
   useStreamValuesSelector,
 } from "./use-stream";
 
 class StaticStream extends PlaybackStreamBase<{ at: number }> {
   bufferState(): BufferReadiness {
+    return "ready";
+  }
+  prefetch(): void {}
+  getValue(time: number): { at: number } {
+    return { at: time };
+  }
+}
+
+/** Counts readiness checks so tests can tell "driven" from "skipped". */
+class CountingStream extends PlaybackStreamBase<{ at: number }> {
+  bufferStateCalls = 0;
+
+  bufferState(): BufferReadiness {
+    this.bufferStateCalls++;
     return "ready";
   }
   prefetch(): void {}
@@ -43,6 +59,88 @@ const CAMERA_STREAM_IDS = ["camera"] as const;
 const wrap = ({ children }: { children: React.ReactNode }) => (
   <PlaybackProvider duration={10}>{children}</PlaybackProvider>
 );
+
+describe("useActivateStream", () => {
+  afterEach(() => cleanup());
+
+  it("leaves a registered stream dormant when nothing subscribes", () => {
+    const stream = new CountingStream("camera");
+    const { result } = renderHook(
+      () => {
+        // Non-activating read, so registration is the only thing in play.
+        const value = useStreamValue<{ at: number }>("camera");
+        const { registerStream, seek } = usePlayback();
+        return { value, registerStream, seek };
+      },
+      { wrapper: wrap },
+    );
+
+    act(() => {
+      result.current.registerStream(stream);
+    });
+    act(() => {
+      result.current.seek(3.5);
+    });
+
+    // The engine neither consults readiness nor publishes for a dormant stream.
+    expect(stream.bufferStateCalls).toBe(0);
+    expect(result.current.value).toBeNull();
+  });
+
+  it("activates a stream whose committed value has no consumer", () => {
+    const stream = new CountingStream("camera");
+    const { result } = renderHook(
+      () => {
+        useActivateStream("camera");
+        const value = useStreamValue<{ at: number }>("camera");
+        const { registerStream, seek } = usePlayback();
+        return { value, registerStream, seek };
+      },
+      { wrapper: wrap },
+    );
+
+    act(() => {
+      result.current.registerStream(stream);
+    });
+    act(() => {
+      result.current.seek(3.5);
+    });
+
+    expect(stream.bufferStateCalls).toBeGreaterThan(0);
+    expect(result.current.value).toEqual({ at: 3.5 });
+  });
+
+  it("returns the stream to dormancy when activation stops", () => {
+    const stream = new CountingStream("camera");
+    const { result, rerender } = renderHook(
+      // An empty id is the documented no-op, so this toggles activation without
+      // conditionally calling the hook.
+      ({ id }: { id: string }) => {
+        useActivateStream(id);
+        const { registerStream, seek } = usePlayback();
+        return { registerStream, seek };
+      },
+      { wrapper: wrap, initialProps: { id: "camera" } },
+    );
+
+    act(() => {
+      result.current.registerStream(stream);
+    });
+    act(() => {
+      result.current.seek(1);
+    });
+
+    const driven = stream.bufferStateCalls;
+    expect(driven).toBeGreaterThan(0);
+
+    rerender({ id: "" });
+    act(() => {
+      result.current.seek(2);
+    });
+
+    expect(stream.bufferStateCalls).toBe(driven);
+  });
+});
 
 describe("useStream", () => {
   afterEach(() => cleanup());

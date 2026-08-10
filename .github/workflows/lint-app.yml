@@ -21,10 +21,8 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Enable corepack
-        run: corepack enable
-      - name: Prepare yarn 4
-        run: corepack prepare yarn@4.9.1 --activate
+      - name: Prepare yarn
+        uses: ./.github/actions/setup-yarn
 
       - name: Cache Node Modules
         id: node-cache
@@ -38,18 +36,19 @@ jobs:
       - name: Install Dependencies
         run: cd app && yarn install
 
-      - name: Lint ESLint packages
-        run: |
-          cd app
-          ESLINT_PACKAGES=$(grep -v '^#' ./eslint-packages.txt | xargs)
-          yarn eslint $ESLINT_PACKAGES
+      - parallel:
+          - name: Lint ESLint packages
+            run: |
+              cd app
+              ESLINT_PACKAGES=$(grep -v '^#' ./eslint-packages.txt | xargs)
+              yarn eslint $ESLINT_PACKAGES
 
-      - name: Check formatting
-        run: |
-          cd app
-          yarn format:check
+          - name: Check formatting
+            run: |
+              cd app
+              yarn format:check
 
-      - name: Check multimodal package
-        run: |
-          cd app
-          yarn check
+          - name: Check strict packages (multimodal, embeddings-v2)
+            run: |
+              cd app
+              yarn check

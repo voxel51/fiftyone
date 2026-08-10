@@ -1,16 +1,10 @@
 import * as fos from "@fiftyone/state";
 import { Line, useCursor } from "@react-three/drei";
-import {
-  extend,
-  useFrame,
-  useThree,
-  type ThreeEvent,
-} from "@react-three/fiber";
+import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
-import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
 import {
   CUBOID_RESIZE_FACES,
@@ -20,11 +14,13 @@ import {
   getCuboidResizeFaceAxis,
   getCuboidResizeFaceFromNormal,
   getCuboidResizeFaceWorldNormal,
-  getCuboidResizeQuaternion,
   isValidCuboidResizeDimensions,
   type CuboidResizeFace,
 } from "../annotation/cuboid-face-resize";
-import { useTransientCuboid } from "../annotation/store";
+import {
+  computeCuboidHeadingAndUpRelabel,
+  isValidHeadingUpFacePair,
+} from "../annotation/cuboid-heading-relabel";
 import { useCuboidAnnotation } from "../annotation/useCuboidAnnotation";
 import { FO_USER_DATA, PANEL_ID_MAIN, getPanelElementId } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
@@ -38,10 +34,14 @@ import {
   selectedLabelForAnnotationAtom,
   transformModeAtom,
 } from "../state";
-import { useSetCurrent3dAnnotationMode } from "../state/accessors";
+import {
+  useHeadingUpEditorHover,
+  useHeadingUpPreview,
+  useIsCurrentlyTransforming,
+  useSetCurrent3dAnnotationMode,
+} from "../state/accessors";
 import {
   getComplementaryColor,
-  getCuboidForwardFaceBasePoint,
   getPlaneIntersection,
   toNDC,
   toNDCForElement,
@@ -49,10 +49,24 @@ import {
 import { getCameraVisibleWorldHeightAtPoint } from "../utils/side-panel-camera-sync";
 import type { HoveredLabelSource } from "../types";
 import type { OverlayProps } from "./shared";
+import {
+  CuboidAxesMarker,
+  CuboidOrientationMarker,
+  HEADING_FORWARD_FACE,
+  ORIENTATION_AXES_COLORS,
+} from "./shared/CuboidOrientationMarkers";
+import {
+  HEADING_GHOST_DRAG_OPACITY,
+  HEADING_GHOST_HOVER_OPACITY,
+  HeadingFaceDots,
+  HeadingGhostArrow,
+} from "./shared/HeadingArrow";
+import { useDisplayCuboidTransform } from "./shared/useDisplayCuboidTransform";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
+import "./shared/registerLineElements";
+import { shouldSuppressHoverOnPointer } from "./shared/shouldSuppressHoverOnPointer";
+import { useHeadingDrag } from "./shared/useHeadingDrag";
 import { Transformable } from "./shared/TransformControls";
-
-extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
 
 const FACE_RESIZE_EDGE_COLOR = "#ff2f2f";
 const FACE_RESIZE_HIGHLIGHT_OPACITY = 0.78;
@@ -62,18 +76,6 @@ const FACE_RESIZE_EDGE_LINE_WIDTH = 2;
 // dashSize is the edge length over this count (with a floor for tiny faces).
 const FACE_RESIZE_DASHED_EDGE_SEGMENTS = 22;
 const FACE_RESIZE_DASHED_EDGE_MIN_DASH = 0.01;
-const ORIENTATION_MARKER_LINE_WIDTH = 4;
-const ORIENTATION_MARKER_OPACITY = 0.95;
-// Flat triangular arrowhead, sized relative to the cuboid's heading length.
-const ORIENTATION_MARKER_EXTENSION_RATIO = 0.3;
-const ORIENTATION_MARKER_HEAD_LENGTH_RATIO = 0.16;
-const ORIENTATION_MARKER_MIN_HEAD_LENGTH = 0.08;
-const ORIENTATION_MARKER_MIN_CROSS_SECTION_RATIO = 0.1;
-// Half-width of the arrowhead base, as a fraction of its length and capped
-// against the cuboid's smaller cross-section so it never overhangs the box.
-const ORIENTATION_MARKER_HEAD_WIDTH_RATIO = 0.7;
-const ORIENTATION_MARKER_HEAD_WIDTH_CROSS_CAP = 0.4;
-const ORIENTATION_MARKER_MIN_HEAD_WIDTH = 0.03;
 
 // Face-pull scaling handles (visible only in scale mode). A small cuboid "knob"
 // of the complementary color sits at the end of a thin shaft poking straight
@@ -100,20 +102,6 @@ const FACE_RESIZE_HANDLE_HOVER_SCALE = 1.3;
 const FACE_RESIZE_HANDLE_OPACITY = 0.5;
 const FACE_RESIZE_HANDLE_HOVER_OPACITY = 1;
 const FACE_RESIZE_HANDLE_SHAFT_RADIAL_SEGMENTS = 8;
-
-// RGB orientation axes drawn at the cuboid centroid when orientation is shown.
-// Each axis length is a fraction of its own half-extent so the tripod stays
-// inside the box and reflects its proportions (red = +X heading, green = +Y,
-// blue = +Z).
-const ORIENTATION_AXES_LENGTH_RATIO = 0.55;
-const ORIENTATION_AXES_MIN_LENGTH = 0.04;
-const ORIENTATION_AXES_LINE_WIDTH = 3;
-const ORIENTATION_AXES_OPACITY = 0.75;
-const ORIENTATION_AXES_COLORS = {
-  x: "#ff4136",
-  y: "#2ecc40",
-  z: "#1e90ff",
-} as const;
 
 // Indexed by axis (0 = x, 1 = y, 2 = z) so face-pull shafts can be tinted to
 // match the centroid RGB axes marker.
@@ -294,189 +282,10 @@ export interface CuboidProps extends OverlayProps {
   itemRotation: THREE.Vector3Tuple;
   lineWidth?: number;
   enableFaceResize?: boolean;
+  enableHeadingEdit?: boolean;
   hoverSource?: HoveredLabelSource;
   showOrientation?: boolean;
 }
-
-interface CuboidOrientationMarkerProps {
-  dimensions: THREE.Vector3Tuple;
-  color: string;
-  orientation: THREE.Quaternion;
-  upVector?: THREE.Vector3 | null;
-}
-
-const getFiniteMagnitude = (value: number) =>
-  Number.isFinite(value) ? Math.abs(value) : 0;
-
-const getCuboidOrientationMarkerProps = (
-  dimensions: THREE.Vector3Tuple,
-  orientation: THREE.Quaternion,
-  upVector?: THREE.Vector3 | null,
-): {
-  shaftStart: THREE.Vector3Tuple;
-  shaftEnd: THREE.Vector3Tuple;
-  headVertices: [THREE.Vector3Tuple, THREE.Vector3Tuple, THREE.Vector3Tuple];
-} | null => {
-  const length = getFiniteMagnitude(dimensions[0]);
-
-  if (length <= 0) {
-    return null;
-  }
-
-  const basePoint = getCuboidForwardFaceBasePoint({
-    dimensions,
-    orientation,
-    upVector,
-  });
-
-  if (!basePoint) {
-    return null;
-  }
-
-  const localYExtent = getFiniteMagnitude(dimensions[1]);
-  const localZExtent = getFiniteMagnitude(dimensions[2]);
-  const faceX = length / 2;
-  const extensionLength = length * ORIENTATION_MARKER_EXTENSION_RATIO;
-  const headLength = Math.max(
-    Math.min(length * ORIENTATION_MARKER_HEAD_LENGTH_RATIO, extensionLength),
-    ORIENTATION_MARKER_MIN_HEAD_LENGTH,
-  );
-  const crossSection = Math.max(
-    Math.min(localYExtent, localZExtent),
-    length * ORIENTATION_MARKER_MIN_CROSS_SECTION_RATIO,
-  );
-  const headHalfWidth = Math.max(
-    Math.min(
-      headLength * ORIENTATION_MARKER_HEAD_WIDTH_RATIO,
-      crossSection * ORIENTATION_MARKER_HEAD_WIDTH_CROSS_CAP,
-    ),
-    ORIENTATION_MARKER_MIN_HEAD_WIDTH,
-  );
-
-  const shaftEndX = faceX + extensionLength;
-  const tipX = shaftEndX + headLength;
-  const { y: baseY, z: baseZ } = basePoint;
-
-  // The base point sits on the cuboid's lowest face, so its non-zero offset
-  // axis is the "up" axis. Lay the flat arrowhead in the perpendicular
-  // (horizontal) plane so it reads as a full triangle from a top-down view.
-  const spreadAlongZ = Math.abs(baseY) >= Math.abs(baseZ);
-
-  const apex: THREE.Vector3Tuple = [tipX, baseY, baseZ];
-  const base1: THREE.Vector3Tuple = spreadAlongZ
-    ? [shaftEndX, baseY, baseZ + headHalfWidth]
-    : [shaftEndX, baseY + headHalfWidth, baseZ];
-  const base2: THREE.Vector3Tuple = spreadAlongZ
-    ? [shaftEndX, baseY, baseZ - headHalfWidth]
-    : [shaftEndX, baseY - headHalfWidth, baseZ];
-
-  return {
-    shaftStart: basePoint.toArray() as THREE.Vector3Tuple,
-    shaftEnd: [shaftEndX, baseY, baseZ],
-    headVertices: [apex, base1, base2],
-  };
-};
-
-const CuboidOrientationMarker = ({
-  dimensions,
-  color,
-  orientation,
-  upVector,
-}: CuboidOrientationMarkerProps) => {
-  const markerProps = useMemo(
-    () => getCuboidOrientationMarkerProps(dimensions, orientation, upVector),
-    [dimensions, orientation, upVector],
-  );
-
-  const headGeometry = useMemo(() => {
-    if (!markerProps) {
-      return null;
-    }
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(markerProps.headVertices.flat(), 3),
-    );
-    return geometry;
-  }, [markerProps]);
-
-  // This effect disposes the arrowhead geometry when it is replaced or unmounts.
-  useEffect(() => {
-    return () => {
-      headGeometry?.dispose();
-    };
-  }, [headGeometry]);
-
-  if (!markerProps || !headGeometry) {
-    return null;
-  }
-
-  return (
-    <group userData={{ [FO_USER_DATA.IS_HELPER]: true }} renderOrder={3}>
-      <Line
-        points={[markerProps.shaftStart, markerProps.shaftEnd]}
-        color={color}
-        lineWidth={ORIENTATION_MARKER_LINE_WIDTH}
-        opacity={ORIENTATION_MARKER_OPACITY}
-        transparent
-        depthTest={false}
-        raycast={() => null}
-      />
-      <mesh geometry={headGeometry} renderOrder={3} raycast={() => null}>
-        <meshBasicMaterial
-          color={color}
-          transparent
-          opacity={ORIENTATION_MARKER_OPACITY}
-          side={THREE.DoubleSide}
-          depthTest={false}
-          depthWrite={false}
-        />
-      </mesh>
-    </group>
-  );
-};
-
-interface CuboidAxesMarkerProps {
-  dimensions: THREE.Vector3Tuple;
-}
-
-// Basic RGB axes drawn at the cuboid centroid. Rendered in the cuboid's local
-// frame (the parent group already carries its orientation), so the axes track
-// the box's heading: +X red, +Y green, +Z blue.
-const CuboidAxesMarker = ({ dimensions }: CuboidAxesMarkerProps) => {
-  const axes = useMemo(() => {
-    const half = (axis: 0 | 1 | 2) =>
-      Math.max(
-        (getFiniteMagnitude(dimensions[axis]) / 2) *
-          ORIENTATION_AXES_LENGTH_RATIO,
-        ORIENTATION_AXES_MIN_LENGTH,
-      );
-
-    return [
-      { color: ORIENTATION_AXES_COLORS.x, end: [half(0), 0, 0] },
-      { color: ORIENTATION_AXES_COLORS.y, end: [0, half(1), 0] },
-      { color: ORIENTATION_AXES_COLORS.z, end: [0, 0, half(2)] },
-    ] as { color: string; end: THREE.Vector3Tuple }[];
-  }, [dimensions]);
-
-  return (
-    <group userData={{ [FO_USER_DATA.IS_HELPER]: true }} renderOrder={3}>
-      {axes.map(({ color, end }) => (
-        <Line
-          key={color}
-          points={[[0, 0, 0], end] as THREE.Vector3Tuple[]}
-          color={color}
-          lineWidth={ORIENTATION_AXES_LINE_WIDTH}
-          opacity={ORIENTATION_AXES_OPACITY}
-          transparent
-          depthTest={false}
-          raycast={() => null}
-        />
-      ))}
-    </group>
-  );
-};
 
 interface CuboidFaceResizeHandleProps {
   face: CuboidResizeFace;
@@ -594,6 +403,7 @@ export const Cuboid = ({
   color,
   useLegacyCoordinates,
   enableFaceResize = false,
+  enableHeadingEdit = false,
   hoverSource = PANEL_ID_MAIN,
   showOrientation = false,
 }: CuboidProps) => {
@@ -606,7 +416,7 @@ export const Cuboid = ({
   const isCreatingCuboidPointerDown = useRecoilValue(
     isCreatingCuboidPointerDownAtom,
   );
-  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
+  const isCurrentlyTransforming = useIsCurrentlyTransforming();
   const setIsCurrentlyTransforming = useSetRecoilState(
     isCurrentlyTransformingAtom,
   );
@@ -619,6 +429,10 @@ export const Cuboid = ({
     hoveredResizeFaceState?.labelId === label._id
       ? hoveredResizeFaceState.face
       : null;
+  const clearHoveredResizeFace = useCallback(
+    () => setHoveredResizeFaceState(null),
+    [setHoveredResizeFaceState],
+  );
   const setHoveredResizeFace = useCallback(
     (face: CuboidResizeFace | null) => {
       setHoveredResizeFaceState((prev) => {
@@ -677,12 +491,42 @@ export const Cuboid = ({
     if (!label.quaternion) {
       return label;
     }
-    const { quaternion, ...rest } = label;
+    const { quaternion: _quaternion, ...rest } = label;
     return rest;
   }, [label]);
 
-  const { onPointerOver, onPointerOut, ...restEventHandlers } =
-    useEventHandlers(labelWoQuaternion);
+  const {
+    onPointerOver: onPointerOverForLabel,
+    onPointerOut: onPointerOutForLabel,
+    onPointerMove: onPointerMoveForLabel,
+    onPointerMissed,
+  } = useEventHandlers();
+
+  // `useEventHandlers()` takes the label as a call-time argument so it can be
+  // shared across an instanced batch; curry our own label once here so the
+  // rest of this component can call these exactly as before.
+  const onPointerOver = useCallback(
+    (e?: ThreeEvent<PointerEvent>) =>
+      onPointerOverForLabel(labelWoQuaternion, e),
+    [onPointerOverForLabel, labelWoQuaternion],
+  );
+  const onPointerOut = useCallback(
+    () => onPointerOutForLabel(labelWoQuaternion),
+    [onPointerOutForLabel, labelWoQuaternion],
+  );
+  // Destructuring `onPointerMissed` directly (rather than rest-spreading the
+  // remainder of `useEventHandlers()`'s return value) keeps it a stable
+  // reference across renders, so this `useMemo` actually memoizes instead of
+  // rebuilding every render (a plain object rest-spread always allocates a
+  // new object, which would otherwise poison the dependency array below).
+  const restEventHandlers = useMemo(
+    () => ({
+      onPointerMissed,
+      onPointerMove: (e: ThreeEvent<PointerEvent>) =>
+        onPointerMoveForLabel(labelWoQuaternion, e),
+    }),
+    [onPointerMissed, onPointerMoveForLabel, labelWoQuaternion],
+  );
 
   const { strokeAndFillColor, isSimilarLabelHovered } = useLabelColor(
     { selected, color },
@@ -704,6 +548,9 @@ export const Cuboid = ({
     handleFaceResizeStart,
     handleFaceResizeChange,
     handleFaceResizeEnd,
+    handleHeadingDragStart,
+    handleHeadingRelabelCommit,
+    handleHeadingDragCancel,
   } = useCuboidAnnotation({
     label,
     location,
@@ -715,97 +562,118 @@ export const Cuboid = ({
 
   const setHoveredLabelFromPointer = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
-      if (hoverSource === PANEL_ID_MAIN && e.nativeEvent.buttons !== 0) {
+      if (
+        shouldSuppressHoverOnPointer(
+          hoverSource,
+          isCurrentlyTransforming,
+          e.nativeEvent.buttons,
+        )
+      ) {
         return false;
       }
 
       setHoveredLabel({ id: label._id, source: hoverSource });
       return true;
     },
-    [hoverSource, label._id, setHoveredLabel],
+    [hoverSource, isCurrentlyTransforming, label._id, setHoveredLabel],
   );
 
   const transformMode = useRecoilValue(transformModeAtom);
 
-  // Transient state for live drag preview
-  const transientState = useTransientCuboid(label._id);
-
-  // Compute display dimensions: apply transient delta if present
-  const displayDimensions = useMemo(() => {
-    if (transientState?.dimensionsDelta) {
-      return [
-        effectiveDimensions[0] + transientState.dimensionsDelta[0],
-        effectiveDimensions[1] + transientState.dimensionsDelta[1],
-        effectiveDimensions[2] + transientState.dimensionsDelta[2],
-      ] as THREE.Vector3Tuple;
-    }
-    return effectiveDimensions;
-  }, [effectiveDimensions, transientState?.dimensionsDelta]);
-
-  // Compute display position: apply transient delta if present
-  const displayPosition = useMemo(() => {
-    let [x, y, z] = effectiveLocation;
-
-    // In legacy coordinate system, location was stored as the top-center of the cuboid
-    // (half-height above the geometric center), so we adjust Y downward by half the height
-    // to position the cuboid correctly. In the new coordinate system, location is stored
-    // as the geometric center, matching Three.js BoxGeometry's center, so no adjustment is needed.
-    if (useLegacyCoordinates) {
-      y -= 0.5 * displayDimensions[1];
-    }
-
-    if (transientState?.positionDelta) {
-      return [
-        x + transientState.positionDelta[0],
-        y + transientState.positionDelta[1],
-        z + transientState.positionDelta[2],
-      ] as THREE.Vector3Tuple;
-    }
-    return [x, y, z] as const;
-  }, [
-    effectiveLocation,
+  const {
     displayDimensions,
-    useLegacyCoordinates,
-    transientState?.positionDelta,
-  ]);
-
-  // When quaternion is present (transient or working), use it directly to avoid euler conversion issues
-  // (gimbal lock, precision loss). We convert to euler only on final save.
-  // Priority: transientState.quaternionOverride > effectiveQuaternion (working) > euler fallback
-  const combinedQuaternion = useMemo(() => {
-    // During active rotation, prefer transient quaternion override
-    if (transformMode === "rotate" && transientState?.quaternionOverride) {
-      return new THREE.Quaternion(...transientState.quaternionOverride);
-    }
-    // Otherwise use effective (working) quaternion if available
-    if (effectiveQuaternion) {
-      return new THREE.Quaternion(...effectiveQuaternion);
-    }
-    return null;
-  }, [
-    transientState?.quaternionOverride,
+    displayPosition,
+    combinedQuaternion,
+    fallbackEuler,
+    orientationQuaternion,
+  } = useDisplayCuboidTransform({
+    labelId: label._id,
+    effectiveLocation,
+    effectiveDimensions,
+    effectiveRotation: effectiveRotation as THREE.Vector3Tuple,
     effectiveQuaternion,
-    rotation,
-    transformMode,
+    useLegacyCoordinates,
+  });
+
+  // Set while a face button in the "Edit heading/up vector" sidebar section
+  // is hovered — previews the ghost arrow/face highlight below.
+  const headingUpPreview = useHeadingUpPreview();
+  const isHeadingUpPreviewActive = headingUpPreview?.labelId === label._id;
+
+  // Local axis (in the box's own frame) currently closest to world "up" —
+  // fills in the "up" side of the preview below when only heading is being
+  // hovered (and vice versa), since the sidebar hover only ever carries one
+  // face at a time.
+  const currentUpFace = useMemo(() => {
+    const effectiveUp =
+      upVector && upVector.lengthSq() > 0
+        ? upVector.clone().normalize()
+        : new THREE.Vector3(0, 0, 1);
+    const localUp = effectiveUp
+      .clone()
+      .applyQuaternion(orientationQuaternion.clone().invert());
+    return getCuboidResizeFaceFromNormal(localUp) ?? "+z";
+  }, [upVector, orientationQuaternion]);
+
+  // Full candidate orientation for the hovered heading/up combination, so the
+  // axes tripod can preview the resulting frame before committing — alongside
+  // the ghost arrow/face dots' single-face preview below.
+  const headingUpPreviewRelabel = useMemo(() => {
+    if (!isHeadingUpPreviewActive || !headingUpPreview) {
+      return null;
+    }
+
+    const nextHeadingFace =
+      headingUpPreview.role === "heading"
+        ? headingUpPreview.face
+        : HEADING_FORWARD_FACE;
+    const nextUpFace =
+      headingUpPreview.role === "up" ? headingUpPreview.face : currentUpFace;
+
+    if (!isValidHeadingUpFacePair(nextHeadingFace, nextUpFace)) {
+      return null;
+    }
+
+    return computeCuboidHeadingAndUpRelabel({
+      dimensions: effectiveDimensions,
+      quaternion: orientationQuaternion,
+      headingFace: nextHeadingFace,
+      upFace: nextUpFace,
+      upVector,
+    });
+  }, [
+    isHeadingUpPreviewActive,
+    headingUpPreview,
+    currentUpFace,
+    effectiveDimensions,
+    orientationQuaternion,
+    upVector,
   ]);
 
-  // Fallback to euler-based rotation when no quaternion available
-  const fallbackEuler = useMemo(() => {
-    if (combinedQuaternion) {
-      return undefined;
-    }
-    return new THREE.Euler(...(effectiveRotation as THREE.Vector3Tuple));
-  }, [combinedQuaternion, effectiveRotation]);
+  const headingUpPreviewQuaternion = useMemo(
+    () =>
+      headingUpPreviewRelabel
+        ? new THREE.Quaternion(...headingUpPreviewRelabel.quaternion)
+        : null,
+    [headingUpPreviewRelabel],
+  );
 
-  const orientationQuaternion = useMemo(() => {
-    if (combinedQuaternion) {
-      return combinedQuaternion.clone();
-    }
+  // While hovering a heading/up face button, a second axes gizmo is drawn at
+  // the candidate orientation (see the sibling group below `content`). Hide
+  // the gizmo's current-orientation copy for that span so the box only ever
+  // shows one gizmo at a time — the preview reads as "the gizmo turning to
+  // its new orientation" rather than two overlapping tripods.
+  const isPreviewingOrientation = Boolean(
+    headingUpPreviewRelabel && headingUpPreviewQuaternion,
+  );
 
-    return getCuboidResizeQuaternion({
-      rotation: effectiveRotation as THREE.Vector3Tuple,
-    });
-  }, [combinedQuaternion, effectiveRotation]);
+  // Set while the pointer is anywhere over that same UI *as a whole* — used
+  // (instead of the per-face preview above) to hide the gizmo/face-resize
+  // handles, since the per-face atom goes null in the gaps between buttons
+  // and would otherwise flicker those controls back on as the pointer
+  // crosses them.
+  const headingUpEditorHover = useHeadingUpEditorHover();
+  const isHeadingUpEditorHovered = headingUpEditorHover?.labelId === label._id;
 
   const isFaceResizeControlActive =
     Boolean(hoveredResizeFace) || isFaceResizeDragging;
@@ -816,12 +684,51 @@ export const Cuboid = ({
     transformMode === "scale" &&
     !isCreatingCuboidPointerDown &&
     !isActivelySegmenting &&
+    !isHeadingUpEditorHovered &&
     isValidCuboidResizeDimensions(displayDimensions) &&
     (!isCurrentlyTransforming || isFaceResizeControlActive);
 
+  // The heading arrow is its own handle rather than part of the gizmo, so
+  // unlike face-resize it isn't tied to a particular transform mode — it just
+  // needs the label selected in annotate mode with the arrow visible.
+  //
+  // Deliberately free of hover/`isCurrentlyTransforming` state: hovering
+  // anywhere on the box arms a resize face, which raises that flag, and a gate
+  // that reacted to it would be false at the moment the arrow is pressed (the
+  // pointer-down and the hover-driven re-render race), silently dropping the
+  // grab. Face-resize's own *drag* is excluded since that owns the pointer.
+  const canEditHeading =
+    enableHeadingEdit &&
+    showOrientation &&
+    isAnnotateMode &&
+    isSelectedForAnnotation &&
+    !isCreatingCuboidPointerDown &&
+    !isActivelySegmenting &&
+    !isFaceResizeDragging &&
+    isValidCuboidResizeDimensions(displayDimensions);
+
+  const headingDrag = useHeadingDrag({
+    labelId: label._id,
+    hoverSource,
+    enabled: canEditHeading,
+    dimensions: displayDimensions,
+    orientation: orientationQuaternion,
+    upVector,
+    contentRef,
+    panelElementRef,
+    onDragStart: handleHeadingDragStart,
+    onCommit: handleHeadingRelabelCommit,
+    onCancel: handleHeadingDragCancel,
+    // The arrow stands off the forward face, right where that face's own resize
+    // handle sits; clearing that hover stops the two competing for the drag.
+    onArrowEnter: clearHoveredResizeFace,
+    suppressNextClickRef,
+  });
+
   useCursor(
-    canFaceResize && isFaceResizeControlActive,
-    isFaceResizeDragging ? "grabbing" : "grab",
+    (canFaceResize && isFaceResizeControlActive) ||
+      (canEditHeading && headingDrag.isActive),
+    isFaceResizeDragging || headingDrag.isDragging ? "grabbing" : "grab",
     "auto",
   );
 
@@ -1164,14 +1071,7 @@ export const Cuboid = ({
         color: strokeAndFillColor,
         linewidth: lineWidth,
       }),
-    [
-      selected,
-      lineWidth,
-      opacity,
-      isHovered,
-      isSimilarLabelHovered,
-      strokeAndFillColor,
-    ],
+    [lineWidth, opacity, strokeAndFillColor],
   );
 
   // This effect cleans up geometries and material on unmount
@@ -1233,7 +1133,6 @@ export const Cuboid = ({
       position={displayPosition}
     >
       {/* Outline */}
-      {/* @ts-ignore */}
       <lineSegments2 geometry={lineSegmentsGeometry} material={material} />
 
       {/* Clickable volume */}
@@ -1405,10 +1304,39 @@ export const Cuboid = ({
           <CuboidOrientationMarker
             dimensions={displayDimensions}
             color={complementaryColor}
-            orientation={orientationQuaternion}
-            upVector={upVector}
+            highlighted={canEditHeading && headingDrag.isActive}
+            {...(canEditHeading ? headingDrag.handlers : {})}
           />
-          <CuboidAxesMarker dimensions={displayDimensions} />
+          {!isPreviewingOrientation && (
+            <CuboidAxesMarker dimensions={displayDimensions} />
+          )}
+
+          {/* Hover/drag affordances: dots marking every face the heading can
+              attach to, plus a ghost arrow tracking the pointer. The committed
+              arrow above stays put until the drop. */}
+          {canEditHeading && headingDrag.isActive && (
+            <>
+              <HeadingFaceDots
+                dimensions={displayDimensions}
+                activeFace={
+                  headingDrag.isDragging ? headingDrag.targetFace : null
+                }
+              />
+              <HeadingGhostArrow
+                dimensions={displayDimensions}
+                // Stands on the face it would move to, perpendicular to it.
+                anchorFace={
+                  (headingDrag.isDragging ? headingDrag.targetFace : null) ??
+                  HEADING_FORWARD_FACE
+                }
+                opacity={
+                  headingDrag.isDragging
+                    ? HEADING_GHOST_DRAG_OPACITY
+                    : HEADING_GHOST_HOVER_OPACITY
+                }
+              />
+            </>
+          )}
         </>
       )}
     </group>
@@ -1418,7 +1346,9 @@ export const Cuboid = ({
     <Transformable
       archetype="cuboid"
       isSelectedForTransform={
-        isSelectedForAnnotation && transformMode !== "scale"
+        isSelectedForAnnotation &&
+        transformMode !== "scale" &&
+        !isHeadingUpEditorHovered
       }
       transformControlsRef={transformControlsRef}
       onTransformStart={handleTransformStart}
@@ -1427,6 +1357,20 @@ export const Cuboid = ({
       explicitObjectRef={contentRef}
     >
       {content}
+      {/* Sibling to `content`, not nested inside it: `headingUpPreviewRelabel`'s
+          quaternion is already expressed in the same (parent-relative) frame as
+          the box's own `combinedQuaternion`, so nesting it inside the
+          already-rotated content group would double-apply the rotation. */}
+      {showOrientation &&
+        headingUpPreviewRelabel &&
+        headingUpPreviewQuaternion && (
+          <group
+            position={displayPosition}
+            quaternion={headingUpPreviewQuaternion}
+          >
+            <CuboidAxesMarker dimensions={headingUpPreviewRelabel.dimensions} />
+          </group>
+        )}
     </Transformable>
   );
 };

@@ -18,6 +18,7 @@ import { Fo3dBackground } from "./Background";
 import { useFo3dContext } from "./context";
 import { Fbx } from "./mesh/Fbx";
 import { Gltf } from "./mesh/Gltf";
+import { MirisStream } from "./mesh/MirisStream";
 import { Obj } from "./mesh/Obj";
 import { Ply } from "./mesh/Ply";
 import { Stl } from "./mesh/Stl";
@@ -30,6 +31,7 @@ import {
   type FoScene,
   type FoSceneNode,
   GltfAsset,
+  MirisStreamAsset,
   ObjAsset,
   PcdAsset,
   PlaneGeometryAsset,
@@ -46,6 +48,7 @@ import {
   requiresCovarianceSplatTransform,
 } from "./splat/GaussianSplat";
 import { SparkRendererProvider } from "./splat/SparkRendererRoot";
+import { useFo3dVisibilityPreferences } from "../hooks/use-fo3d-visibility-preferences";
 import { getLabelForSceneNode, getVisibilityMapFromFo3dParsed } from "./utils";
 
 interface FoSceneProps {
@@ -263,6 +266,19 @@ const getAssetJsx = (
         {children}
       </Plane>
     );
+  } else if (node.asset instanceof MirisStreamAsset) {
+    return (
+      <MirisStream
+        key={key}
+        name={node.name}
+        asset={node.asset as MirisStreamAsset}
+        position={node.position}
+        quaternion={node.quaternion}
+        scale={node.scale}
+      >
+        {children}
+      </MirisStream>
+    );
   }
 
   return null;
@@ -372,10 +388,10 @@ const SceneR3f = memo(SceneR3fComponent);
 
 /** Renders a parsed FO3D scene and its asset-specific controls. */
 export const FoSceneComponent = ({ scene, pointCloudCrop }: FoSceneProps) => {
-  const defaultVisibilityMap = useMemo(
-    () => getVisibilityMapFromFo3dParsed(scene),
-    [scene],
-  );
+  // Seeded from browser storage, so hiding a node (a point cloud, say) survives
+  // a refresh instead of leva rebuilding the panel from the scene's defaults.
+  const { visibilitySchema, persistVisibility } =
+    useFo3dVisibilityPreferences(scene);
 
   const { isSceneInitialized, fo3dRoot } = useFo3dContext();
 
@@ -383,16 +399,21 @@ export const FoSceneComponent = ({ scene, pointCloudCrop }: FoSceneProps) => {
 
   const visibilityMap = useControls(
     "Visibility",
-    defaultVisibilityMap ?? {},
+    visibilitySchema ?? {},
     {
       order: PANEL_ORDER_VISIBILITY,
       // note: if there's only one object in the scene, we don't need to show the visibility panel
       // instead, we can expand the panel of the "main object" by default
       // this saves an extra click for the user
-      collapsed: Object.keys(defaultVisibilityMap).length < 2,
+      collapsed: Object.keys(visibilitySchema ?? {}).length < 2,
     },
-    [defaultVisibilityMap],
+    [visibilitySchema],
   );
+
+  // This effect writes the panel's toggles back to storage as they change.
+  useEffect(() => {
+    persistVisibility(visibilityMap);
+  }, [visibilityMap, persistVisibility]);
 
   const isFo3dBackgroundOn = useRecoilValue(isFo3dBackgroundOnAtom);
 

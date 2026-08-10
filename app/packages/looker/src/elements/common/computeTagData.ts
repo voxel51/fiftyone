@@ -7,15 +7,21 @@ import {
   CLASSIFICATIONS,
   DATE_FIELD,
   DATE_TIME_FIELD,
+  DETECTION,
+  DETECTIONS,
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   FLOAT_FIELD,
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
+  KEYPOINT,
+  KEYPOINTS,
   LABEL_LIST_PATH,
   LABELS_PATH,
   LIST_FIELD,
   OBJECT_ID_FIELD,
+  POLYLINE,
+  POLYLINES,
   REGRESSION,
   type Schema,
   STRING_FIELD,
@@ -31,7 +37,11 @@ import type {
   Regression,
   TemporalDetectionLabel,
 } from "../../overlays/classifications";
-import { isValidColor, shouldShowLabelTag } from "../../overlays/util";
+import {
+  getLabelAttributesText,
+  isValidColor,
+  shouldShowLabelTag,
+} from "../../overlays/util";
 import type { BaseState, LabelTagColor, NONFINITE, Sample } from "../../state";
 import { getBubbles, getField } from "./bubbles";
 import { getAssignedColor } from "./util";
@@ -140,6 +150,8 @@ export type ComputeTagDataInput = {
   labelTagColors: LabelTagColor;
   sample: Readonly<Sample> | Record<string, unknown>;
   selectedLabelTags?: BaseState["options"]["selectedLabelTags"];
+  showPatchLabels?: boolean;
+  shownLabelAttributes?: BaseState["options"]["shownLabelAttributes"];
   timeZone: BaseState["options"]["timeZone"];
 };
 
@@ -153,6 +165,8 @@ export const computeTagData = ({
   labelTagColors,
   sample,
   selectedLabelTags,
+  showPatchLabels,
+  shownLabelAttributes,
   timeZone,
 }: ComputeTagDataInput): TagData[] => {
   const elements: TagData[] = [];
@@ -305,7 +319,10 @@ export const computeTagData = ({
   };
 
   const CLASSIFICATION_RENDERER = (path, param: Classification): TagData => {
-    const label = param.label ?? "null";
+    const attributes = shownLabelAttributes?.[path];
+    const label = attributes
+      ? getLabelAttributesText(param, attributes) || "null"
+      : (param.label ?? "null");
 
     return {
       path,
@@ -408,7 +425,44 @@ export const computeTagData = ({
     };
   };
 
+  const PATCH_LABEL_RENDERER = (
+    path: string,
+    param: Classification,
+  ): TagData | null => {
+    const text = getLabelAttributesText(
+      param,
+      shownLabelAttributes?.[path] ?? ["label"],
+    );
+    if (!text) {
+      return null;
+    }
+
+    return {
+      path,
+      value: text,
+      title: `${path}: ${text}`,
+      color: getAssignedColor({
+        coloring,
+        path,
+        param,
+        isTagged: shouldShowLabelTag(selectedLabelTags, param.tags),
+        labelTagColors,
+        customizeColorSetting,
+        isValidColor,
+      }),
+    };
+  };
+
+  const PATCH_LABEL_RENDERERS: Renderers = showPatchLabels
+    ? Object.fromEntries(
+        [DETECTION, DETECTIONS, KEYPOINT, KEYPOINTS, POLYLINE, POLYLINES].map(
+          (cls) => [withPath(LABELS_PATH, cls), PATCH_LABEL_RENDERER],
+        ),
+      )
+    : {};
+
   const LABEL_RENDERERS: Renderers = {
+    ...PATCH_LABEL_RENDERERS,
     [DYNAMIC_EMBEDDED_DOCUMENT_PATH]: EMBEDDED_DOCUMENT_RENDERER,
     [withPath(LABELS_PATH, CLASSIFICATION)]: CLASSIFICATION_RENDERER,
     [withPath(LABELS_PATH, CLASSIFICATIONS)]: CLASSIFICATION_RENDERER,
@@ -493,7 +547,11 @@ export const computeTagData = ({
         for (let listIndex = 0; listIndex < value?.length; listIndex++) {
           const result = renderer(path, value[listIndex]);
 
-          if (result && count < 3) {
+          if (!result) {
+            continue;
+          }
+
+          if (count < 3) {
             count++;
             elements.push(result);
           } else {

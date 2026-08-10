@@ -1,13 +1,10 @@
 import {
-  CLASSIFICATIONS,
   EMBEDDED_DOCUMENT_FIELD,
   type Field,
-  LABELS_PATH,
+  LABEL_LIST_PATH,
   LIST_FIELD,
   type Schema,
-  TEMPORAL_DETECTIONS,
   VALID_PRIMITIVE_TYPES,
-  withPath,
 } from "@fiftyone/utilities";
 import type { Sample } from "../..";
 
@@ -53,16 +50,10 @@ export const getBubbles = (
       }
     }
 
-    if (field.embeddedDocType === withPath(LABELS_PATH, CLASSIFICATIONS)) {
+    const listFieldName = LABEL_LIST_PATH[field.embeddedDocType];
+    if (listFieldName) {
       out.values = unwind(field.dbField, out.values).flatMap(
-        (value) => value.classifications || [],
-      ) as Sample[];
-      break;
-    }
-
-    if (field.embeddedDocType === withPath(LABELS_PATH, TEMPORAL_DETECTIONS)) {
-      out.values = unwind(field.dbField, out.values).flatMap(
-        (value) => value.detections || [],
+        (value) => value[listFieldName] || [],
       ) as Sample[];
       break;
     }

@@ -5,6 +5,9 @@ Dataset Versioning
 
 .. default-role:: code
 
+.. customavailablein::
+    :enterprise_version: 1.4.0
+
 FiftyOne Enterprise provides native support for versioning your datasets!
 
 Dataset Versioning allows you to capture the state of your dataset in time so
@@ -153,6 +156,9 @@ been re-materialized but kept in cold storage also).
 
 Snapshot archival
 -----------------
+
+.. customavailablein::
+    :enterprise_version: 1.5.0
 
 Snapshot your datasets easier knowing your database won't be overrun!
 

@@ -1,0 +1,163 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
+import {
+  useActiveSampleId,
+  useAnnotationEngine,
+  useEngineSelector,
+} from "@fiftyone/annotation";
+import type { Track } from "@fiftyone/playback";
+import type { LabelData } from "@fiftyone/utilities";
+import { useMemo } from "react";
+import { useVideoLabelsIndex } from "../hooks/useVideoLabelsIndex";
+import {
+  useFrameLabelFields,
+  useVisibleLabelSchemas,
+} from "../state/accessors";
+import { useFrameLabelsStream } from "../streams/frameLabelsStream";
+import {
+  buildTracksFromIndex,
+  type FrameOverlay,
+  type PerInstanceLabel,
+} from "./frameTracks";
+
+/** Resolves the row color for a per-frame object track. */
+export type ObjectTrackColorResolver = (
+  label: PerInstanceLabel,
+  path: string,
+) => string;
+
+/**
+ * Build the per-instance object tracks from the server distribution index
+ * merged with the engine's edited-frame overlay — no whole-clip walk.
+ * `resolved` flips true once the index settles, gating the pin bootstrap.
+ */
+export function useFrameDerivedTracks(
+  resolveColor: ObjectTrackColorResolver,
+  getDynamicAttributes: (path: string | null) => string[],
+): {
+  tracks: Track[];
+  resolved: boolean;
+} {
+  const stream = useFrameLabelsStream();
+  const engine = useAnnotationEngine();
+  const sampleId = useActiveSampleId();
+  const visible = useVisibleLabelSchemas();
+  const labelTypes = useFrameLabelFields();
+
+  // Fetch the index for every declared frame label field (stable per dataset/
+  // view) so visibility toggles filter client-side without re-fetching.
+  const allFields = useMemo(() => Object.keys(labelTypes), [labelTypes]);
+
+  // Each field's declared dynamic attributes, scoped per path so a field
+  // without dynamic attributes gets no sub-tracks.
+  const dynamicByPath = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const path of allFields) {
+      map[path] = getDynamicAttributes(path);
+    }
+    return map;
+  }, [allFields, getDynamicAttributes]);
+
+  // The fetch takes the union across fields — the backend returns attribute
+  // segments only for the fields that actually declare each attribute.
+  const allDynamicAttributes = useMemo(
+    () => Array.from(new Set(Object.values(dynamicByPath).flat())),
+    [dynamicByPath],
+  );
+
+  // Gate each frame field's tracks on the sidebar's visible set — deactivating
+  // a field in the schema manager hides its timeline rows, matching the canvas
+  // + sidebar.
+  const paths = useMemo(
+    () => allFields.filter((p) => visible.has(p)),
+    [allFields, visible],
+  );
+
+  const { indexByPath, loaded } = useVideoLabelsIndex(
+    stream,
+    allFields,
+    allDynamicAttributes,
+  );
+
+  // No visible frame field, or the index hasn't settled: no rows. Tracks build
+  // per visible field from that field's index ⊕ its dirty-frame overlay, then
+  // concatenate — instance ids are unique across fields, so the rows just merge.
+  //
+  // Selected through the engine (version bumps re-run the read) with
+  // structural equality, NOT re-rendered per raw version: label ingest —
+  // chunk warmup, stream re-seeds — bumps the display version with
+  // track-identical results, and a raw-version subscription re-rendered the
+  // entire timeline subtree on every bump. Only a rebuild that actually moves
+  // a row reaches React.
+  const tracks = useEngineSelector(
+    engine,
+    () => {
+      if (!stream || !sampleId || !loaded || paths.length === 0) {
+        return EMPTY_TRACKS;
+      }
+
+      return paths.flatMap((path) =>
+        buildTracksFromIndex({
+          path,
+          index: indexByPath[path] ?? [],
+          overlay: readEngineOverlay(engine, sampleId, path),
+          fps: stream.fps,
+          resolveColor,
+          dynamicAttributes: dynamicByPath[path] ?? [],
+        }),
+      );
+    },
+    tracksEqual,
+  );
+
+  return { tracks, resolved: loaded };
+}
+
+const EMPTY_TRACKS: Track[] = [];
+
+/**
+ * Structural equality over rebuilt rows. Track/event payloads are plain JSON
+ * data (`ObjectTrackEventData`, attribute segment values), so serialized
+ * comparison is exact.
+ */
+export function tracksEqual(a: Track[], b: Track[]): boolean {
+  if (a === b) {
+    return true;
+  }
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  return a.every((track, i) => {
+    const other = b[i];
+    return (
+      track.id === other.id && JSON.stringify(track) === JSON.stringify(other)
+    );
+  });
+}
+
+/**
+ * The engine's materialized frames + their live labels, keyed by frame number —
+ * the overlay that shadows the server index. Reads every loaded frame, not just
+ * the dirty set: a successful autosave folds edits into the seed and clears the
+ * dirty set, so a dirty-only overlay would revert the timeline to the stale
+ * index after each save. The engine is authoritative for every frame it holds,
+ * so overlaying all of them keeps the timeline correct post-save and composes
+ * index (unloaded) ⊕ engine (loaded window) once the seed is windowed. Bounded
+ * by the loaded window, which today is the whole clip (see `warmupAll`).
+ */
+function readEngineOverlay(
+  engine: ReturnType<typeof useAnnotationEngine>,
+  sample: string,
+  path: string,
+): FrameOverlay {
+  const overlay: FrameOverlay = new Map<number, LabelData[]>();
+
+  for (const frame of engine.loadedFrames(sample)) {
+    overlay.set(frame, engine.listLabels({ sample, path, frame }));
+  }
+
+  return overlay;
+}

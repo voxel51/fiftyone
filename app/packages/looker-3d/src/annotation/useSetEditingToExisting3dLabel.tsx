@@ -47,7 +47,7 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
       resetCurrentEditing();
       clear();
     };
-  }, [resetCurrentEditing]);
+  }, [resetCurrentEditing, clear]);
 
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
 
@@ -99,6 +99,14 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
       // explicit set(savedLabel, effectiveLabel) wrote.
       select(currentEditingAtom as unknown as Parameters<typeof select>[0]);
     },
-    [workingDoc],
+    [
+      workingDoc,
+      isCuboid,
+      labelType,
+      currentEditingAtom,
+      setCurrentEditing,
+      clearTransformState,
+      select,
+    ],
   );
 }

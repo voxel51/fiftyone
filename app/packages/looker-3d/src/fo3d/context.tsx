@@ -34,12 +34,16 @@ interface Fo3dContextT {
   setHoverMetadata: Dispatch<SetStateAction<HoverMetadata | null>>;
 }
 
+const noop = () => {
+  // default context setters are inert until the provider mounts
+};
+
 const defaultContext: Fo3dContextT = {
   cameraLifecycleState: FO3D_CAMERA_LIFECYCLE.WAITING_FOR_SCENE,
   isSceneInitialized: false,
   numPrimaryAssets: 0,
   upVector: null,
-  setUpVector: () => {},
+  setUpVector: noop,
   isComputingSceneBoundingBox: false,
   sceneBoundingBox: null,
   cursorBounds: null,
@@ -48,14 +52,14 @@ const defaultContext: Fo3dContextT = {
   fo3dRoot: null,
   loadingManager: null,
   autoRotate: false,
-  setAutoRotate: () => {},
+  setAutoRotate: noop,
   pointCloudSettings: {
     enableTooltip: false,
     selectedCuboidCropMargin: DEFAULT_SELECTED_CUBOID_CROP_MARGIN,
   },
-  setPointCloudSettings: () => {},
+  setPointCloudSettings: noop,
   hoverMetadata: null,
-  setHoverMetadata: () => {},
+  setHoverMetadata: noop,
 };
 
 export const Fo3dSceneContext = createContext<Fo3dContextT>(defaultContext);

@@ -7,6 +7,7 @@ import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { isInKeypointsField } from "../state";
 import useIncompleteResults from "../use-incomplete-results";
+import useLabelAttributeIcon from "../use-label-attribute-icon";
 import useQueryPerformanceIcon from "../use-query-performance-icon";
 import useQueryPerformanceTimeout from "../use-query-performance-timeout";
 import Checkboxes from "./Checkboxes";
@@ -92,6 +93,7 @@ const StringFilter = ({
 
   const footer = useIncompleteResults(path);
   const icon = useQueryPerformanceIcon(modal, named, path, color);
+  const attributeIcon = useLabelAttributeIcon(modal, named, path, color);
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   if (named && (!queryPerformance || modal) && !results?.count) {
     return null;
@@ -110,7 +112,10 @@ const StringFilter = ({
           template={({ label, hoverTarget }) => (
             <NamedStringFilterHeader>
               <span ref={hoverTarget}>{label}</span>
-              {icon}
+              <span style={{ alignItems: "center", display: "flex" }}>
+                {icon}
+                {attributeIcon}
+              </span>
             </NamedStringFilterHeader>
           )}
         />

@@ -218,13 +218,17 @@ async function initSampleTable(
  */
 async function handleProbe(msg: NativeInitMessage): Promise<void> {
   try {
-    const { file, track } = await streamMoov(msg.videoSrc, msg.headers);
+    const { file, track, hasAudio } = await streamMoov(
+      msg.videoSrc,
+      msg.headers,
+    );
     const cfg = buildDecoderConfig(file, track);
     const support = await VideoDecoder.isConfigSupported(cfg);
     postCapability(
       Boolean(support.supported),
       cfg.codec,
       support.supported ? undefined : `codec unsupported: ${cfg.codec}`,
+      hasAudio,
     );
   } catch (error) {
     postCapability(false, undefined, errorMessage(error));
@@ -243,7 +247,12 @@ async function handleProbe(msg: NativeInitMessage): Promise<void> {
 async function streamMoov(
   src: string,
   headers?: Record<string, string>,
-): Promise<{ file: ISOFile; track: Movie["videoTracks"][number] }> {
+): Promise<{
+  file: ISOFile;
+  track: Movie["videoTracks"][number];
+  /** Whether the `moov`'s track table lists an audio track. */
+  hasAudio: boolean;
+}> {
   // `<video src>` semantics: cors, default credentials, no custom auth headers.
   const resp = await fetch(src, { mode: "cors", headers });
   if (!resp.ok) {
@@ -252,6 +261,7 @@ async function streamMoov(
 
   const file = createFile();
   let videoTrack: Movie["videoTracks"][number] | null = null;
+  let hasAudio = false;
   let readyError: string | null = null;
 
   file.onError = (error: string) => {
@@ -259,6 +269,8 @@ async function streamMoov(
   };
 
   file.onReady = (info: Movie) => {
+    hasAudio = (info.audioTracks?.length ?? 0) > 0;
+
     const track = info.videoTracks[0];
     if (!track) {
       readyError = "no video track";
@@ -302,7 +314,7 @@ async function streamMoov(
     throw new Error("demux produced no video track");
   }
 
-  return { file, track: videoTrack };
+  return { file, track: videoTrack, hasAudio };
 }
 
 /**
@@ -646,12 +658,14 @@ function postCapability(
   decodable: boolean,
   codec?: string,
   reason?: string,
+  hasAudio?: boolean,
 ): void {
   const msg: CapabilityMessage = {
     type: "capability",
     decodable,
     codec,
     reason,
+    hasAudio,
   };
   post(msg);
 }
