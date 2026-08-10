@@ -22,6 +22,10 @@ import { episodeSourceAccessKey } from "../../../runtime";
 import { EpisodePlaybackStoreProvider } from "../../../runtime/react";
 import { releaseRetainedImageTextures } from "../../../visualization/media-2d/image-texture-cache";
 import {
+  releaseGpuImageAnnotationResources,
+  releaseGpuImageAnnotationResourcesForSource,
+} from "../../../visualization/media-2d/gpu-image-annotation-resources";
+import {
   releaseGpuPointCloudProjectionResources,
   releaseGpuPointCloudProjectionResourcesForSource,
 } from "../../../visualization/composition/gpu-point-cloud-projection-resources";
@@ -166,6 +170,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
   // view snapshot intentionally outlives this host in its scoped registry.
   useEffect(() => {
     return () => {
+      releaseGpuImageAnnotationResources();
       releaseGpuPointCloudColormapTextures();
       releaseGpuPointCloudProjectionResources();
       releaseRetainedImageTextures();
@@ -374,7 +379,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                           playbackSource ? sourceAccessKey : null
                         }
                       >
-                        <ProjectionResourceBoundary />
+                        <SourceResourceBoundary />
                         <Scene3dViewSettingsProvider
                           defaultTrackingMode={defaultTrackingMode}
                           preferredCameraTargetFrameId={
@@ -545,13 +550,14 @@ function ExtensionRuntimeBoundary({
   );
 }
 
-/** Retires only the previous recording's GPU buffers on an in-place swap. */
-function ProjectionResourceBoundary() {
+/** Retires only the previous recording's GPU resources on an in-place swap. */
+function SourceResourceBoundary() {
   const sourceKey = useDataStream()?.sourceKey;
   // This effect releases projection buffers when its recording boundary changes.
   useEffect(
     () => () => {
       if (sourceKey) {
+        releaseGpuImageAnnotationResourcesForSource(sourceKey);
         releaseGpuPointCloudProjectionResourcesForSource(sourceKey);
       }
     },

@@ -2,20 +2,30 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 
-import type { RawImageVisualization } from "../../ir";
+import type {
+  EncodedImageVisualization,
+  RawImageVisualization,
+} from "../../ir";
 import { VISUALIZATION_KIND } from "../visualization-registry";
 import type { ImageTextureHandle } from "./Base2dScene";
 import { useImageTextureLease } from "./use-image-texture-lease";
 import { VideoTextureWaitError } from "./video-texture";
+import { resetStillImageDecodeSchedulerForTests } from "./still-image-decode-scheduler";
 
-const leases = vi.hoisted(() => [] as TestLease[]);
+const cacheHarness = vi.hoisted(() => {
+  const leases: TestLease[] = [];
+  return {
+    acquire: vi.fn(() => {
+      const lease = leases.shift();
+      if (!lease) throw new Error("missing test image lease");
+      return lease;
+    }),
+    leases,
+  };
+});
 
 vi.mock("./image-texture-cache", () => ({
-  acquireImageTexture: () => {
-    const lease = leases.shift();
-    if (!lease) throw new Error("missing test image lease");
-    return lease;
-  },
+  acquireImageTexture: cacheHarness.acquire,
 }));
 
 interface TestLease {
@@ -25,12 +35,14 @@ interface TestLease {
 
 describe("useImageTextureLease", () => {
   afterEach(() => {
-    leases.length = 0;
+    cacheHarness.leases.length = 0;
+    cacheHarness.acquire.mockClear();
+    resetStillImageDecodeSchedulerForTests();
     vi.restoreAllMocks();
   });
 
   it("classifies expected decoder waits without inspecting message text", async () => {
-    leases.push({
+    cacheHarness.leases.push({
       promise: Promise.reject(
         new VideoTextureWaitError("Decoder prerequisites pending"),
       ),
@@ -56,7 +68,7 @@ describe("useImageTextureLease", () => {
     ],
     ["opaque errors", null, "Image unavailable"],
   ])("renders %s", async (_label, error, expected) => {
-    leases.push({
+    cacheHarness.leases.push({
       promise: Promise.reject(error),
       release: vi.fn(),
     });
@@ -73,7 +85,7 @@ describe("useImageTextureLease", () => {
     const pending = deferred<ImageTextureHandle>();
     const requested = vi.fn();
     const replacement = vi.fn();
-    leases.push({ promise: pending.promise, release: vi.fn() });
+    cacheHarness.leases.push({ promise: pending.promise, release: vi.fn() });
 
     const rendered = renderHook(
       ({ onLoaded }) =>
@@ -104,7 +116,7 @@ describe("useImageTextureLease", () => {
     const second = deferred<ImageTextureHandle>();
     const handlesAtRelease: Array<ImageTextureHandle | null> = [];
     let observedHandle: ImageTextureHandle | null = null;
-    leases.push(
+    cacheHarness.leases.push(
       {
         promise: first.promise,
         release: () => handlesAtRelease.push(observedHandle),
@@ -145,6 +157,46 @@ describe("useImageTextureLease", () => {
 
     rendered.unmount();
   });
+
+  it("conflates rapid still-image churn before acquiring cache leases", async () => {
+    const first = deferred<ImageTextureHandle>();
+    const latest = deferred<ImageTextureHandle>();
+    const releaseFirst = vi.fn();
+    const releaseLatest = vi.fn();
+    cacheHarness.leases.push(
+      { promise: first.promise, release: releaseFirst },
+      { promise: latest.promise, release: releaseLatest },
+    );
+    const rendered = renderHook(
+      ({ id }) =>
+        useImageTextureLease({
+          frame: encodedFrame(id),
+          identity: id,
+          textureKey: `recording\n/camera\n${id}`,
+        }),
+      { initialProps: { id: 1 } },
+    );
+
+    rendered.rerender({ id: 2 });
+    rendered.rerender({ id: 3 });
+
+    expect(cacheHarness.acquire).toHaveBeenCalledTimes(1);
+    expect(releaseFirst).toHaveBeenCalledOnce();
+
+    const staleHandle = textureHandle();
+    await act(() => first.resolve(staleHandle));
+    await waitFor(() => expect(cacheHarness.acquire).toHaveBeenCalledTimes(2));
+    expect(rendered.result.current.handle).toBeNull();
+
+    const latestHandle = textureHandle();
+    await act(() => latest.resolve(latestHandle));
+    await waitFor(() =>
+      expect(rendered.result.current.handle).toBe(latestHandle),
+    );
+    expect(releaseLatest).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
 });
 
 function rawFrame(): RawImageVisualization {
@@ -154,6 +206,13 @@ function rawFrame(): RawImageVisualization {
     rgba: Uint8Array.of(255, 0, 0, 255),
     sourceEncoding: "rgba8",
     width: 1,
+  };
+}
+
+function encodedFrame(id: number): EncodedImageVisualization {
+  return {
+    bytes: Uint8Array.of(id),
+    kind: VISUALIZATION_KIND.ENCODED_IMAGE,
   };
 }
 

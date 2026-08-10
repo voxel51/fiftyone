@@ -8,6 +8,7 @@ import type {
 import { VISUALIZATION_KIND } from "../visualization-registry";
 import { imageDisplayRect } from "./Base2dScene";
 import {
+  BITMAP_IMAGE_RESIZE_DEBOUNCE_MS,
   BitmapCanvasHost,
   BitmapImageFrameView,
   BitmapImageView,
@@ -20,6 +21,7 @@ import { resetVideoTextureDecodersForTests } from "./video-texture";
 afterEach(() => {
   cleanup();
   resetVideoTextureDecodersForTests();
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -193,6 +195,49 @@ describe("BitmapImageFrameView", () => {
     await waitFor(() => expect(drawImage).toHaveBeenCalledTimes(2));
     expect(drawImage.mock.calls[1]?.[0]).toBe(source);
   });
+
+  it("retains only a tile-sized raw staging surface with exact sampled RGBA", async () => {
+    stubElementSize(200, 200);
+    const context = sharedMockContext();
+    const drawImage = vi.spyOn(context, "drawImage");
+    vi.spyOn(context, "createImageData").mockReturnValue({
+      data: new Uint8ClampedArray(400 * 200 * 4),
+      height: 200,
+      width: 400,
+    } as ImageData);
+    const putImageData = vi
+      .spyOn(context, "putImageData")
+      .mockImplementation(() => undefined);
+    const onBitmapRetainedBytesChange = vi.fn();
+    const onImageLoaded = vi.fn();
+    const rgba = new Uint8Array(4_000 * 2_000 * 4);
+    rgba.set([255, 10, 20, 255], (5 * 4_000 + 5) * 4);
+    rgba.set([30, 40, 255, 255], (1_995 * 4_000 + 3_995) * 4);
+
+    const rendered = render(
+      <BitmapImageFrameView
+        frame={rawFrameWithDimensions(rgba, 4_000, 2_000)}
+        onBitmapRetainedBytesChange={onBitmapRetainedBytesChange}
+        onImageLoaded={onImageLoaded}
+      />,
+    );
+
+    await waitFor(() => expect(putImageData).toHaveBeenCalledOnce());
+    expect(context.createImageData).toHaveBeenCalledWith(400, 200);
+    const preview = putImageData.mock.calls[0]?.[0];
+    expect(Array.from(preview.data.subarray(0, 4))).toEqual([255, 10, 20, 255]);
+    expect(Array.from(preview.data.slice(-4))).toEqual([30, 40, 255, 255]);
+    expect(onImageLoaded).toHaveBeenCalledWith(4_000, 2_000);
+    expect(onBitmapRetainedBytesChange).toHaveBeenCalledWith(400 * 200 * 4);
+
+    const stagingCanvas = drawImage.mock.calls[0]?.[0] as HTMLCanvasElement;
+    expect(stagingCanvas.width).toBe(400);
+    expect(stagingCanvas.height).toBe(200);
+    expect(drawImage).toHaveBeenCalledWith(stagingCanvas, -100, 0, 400, 200);
+    rendered.unmount();
+    expect(stagingCanvas.width).toBe(0);
+    expect(stagingCanvas.height).toBe(0);
+  });
 });
 
 describe("BitmapImageView", () => {
@@ -253,6 +298,76 @@ describe("BitmapImageView", () => {
     expect(vi.mocked(createImageBitmap).mock.calls[1]?.[1]).toMatchObject({
       resizeHeight: 100,
       resizeWidth: 200,
+    });
+  });
+
+  it("coalesces a resize burst into one decode at the final tile size", async () => {
+    vi.useFakeTimers({ toFake: ["clearTimeout", "setTimeout"] });
+    const decodes = stubCreateImageBitmap();
+    let width = 100;
+    let height = 50;
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+      () =>
+        ({
+          bottom: height,
+          height,
+          left: 0,
+          right: width,
+          top: 0,
+          width,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        }) as DOMRect,
+    );
+    let resize: ResizeObserverCallback | null = null;
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resize = callback;
+        }
+        disconnect() {
+          // no-op in the test observer
+        }
+        observe() {
+          // no-op in the test observer
+        }
+        unobserve() {
+          // no-op in the test observer
+        }
+      },
+    );
+    sharedMockContext();
+    const bytes = new Uint8Array(24);
+    bytes.set([0x89, 0x50, 0x4e, 0x47], 0);
+    bytes.set([0x49, 0x48, 0x44, 0x52], 12);
+    bytes.set([0, 0, 0x0f, 0xa0], 16);
+    bytes.set([0, 0, 0x07, 0xd0], 20);
+
+    render(<BitmapImageView bytes={bytes} />);
+    expect(createImageBitmap).toHaveBeenCalledTimes(1);
+    decodes.settle(0, fakeBitmap(100, 50));
+    await act(async () => undefined);
+
+    for (const [nextWidth, nextHeight] of [
+      [120, 60],
+      [160, 80],
+      [240, 120],
+    ]) {
+      width = nextWidth;
+      height = nextHeight;
+      act(() => resize?.([], {} as ResizeObserver));
+    }
+
+    expect(createImageBitmap).toHaveBeenCalledTimes(1);
+    act(() => vi.advanceTimersByTime(BITMAP_IMAGE_RESIZE_DEBOUNCE_MS - 1));
+    expect(createImageBitmap).toHaveBeenCalledTimes(1);
+    act(() => vi.advanceTimersByTime(1));
+    expect(createImageBitmap).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(createImageBitmap).mock.calls[1]?.[1]).toMatchObject({
+      resizeHeight: 120,
+      resizeWidth: 240,
     });
   });
 
@@ -321,7 +436,7 @@ describe("BitmapImageView", () => {
     expect(onImageLoaded).toHaveBeenCalledWith(200, 200);
   });
 
-  it("ignores an out-of-order decode that settles after a newer one", async () => {
+  it("bounds rapid frame churn and commits only the latest queued decode", async () => {
     const decodes = stubCreateImageBitmap();
     stubElementSize(100, 50);
     const context = sharedMockContext();
@@ -340,28 +455,37 @@ describe("BitmapImageView", () => {
         onImageLoaded={onImageLoaded}
       />,
     );
+    rerender(
+      <BitmapImageView
+        bytes={new Uint8Array([3])}
+        onImageLoaded={onImageLoaded}
+      />,
+    );
 
-    // Newer decode settles first and commits.
-    const newer = fakeBitmap(20, 20);
-    decodes.settle(1, newer);
-    await waitFor(() => expect(drawImage).toHaveBeenCalledTimes(1));
-
-    // The superseded decode settles late: never committed, closes itself.
+    // createImageBitmap cannot abort the running decode, but intermediate
+    // frames never start and the queue remains one latest request deep.
+    expect(createImageBitmap).toHaveBeenCalledTimes(1);
     const stale = fakeBitmap(10, 10);
     decodes.settle(0, stale);
     await waitFor(() => expect(stale.close).toHaveBeenCalledTimes(1));
+    expect(drawImage).not.toHaveBeenCalled();
+    expect(createImageBitmap).toHaveBeenCalledTimes(2);
+
+    const latest = fakeBitmap(30, 30);
+    decodes.settle(1, latest);
+    await waitFor(() => expect(drawImage).toHaveBeenCalledTimes(1));
 
     expect(drawImage).toHaveBeenCalledTimes(1);
     expect(drawImage).toHaveBeenCalledWith(
-      newer,
+      latest,
       expect.anything(),
       expect.anything(),
       expect.anything(),
       expect.anything(),
     );
-    expect(newer.close).not.toHaveBeenCalled();
+    expect(latest.close).not.toHaveBeenCalled();
     expect(onImageLoaded).toHaveBeenCalledTimes(1);
-    expect(onImageLoaded).toHaveBeenCalledWith(20, 20);
+    expect(onImageLoaded).toHaveBeenCalledWith(30, 30);
   });
 
   it("closes the previous bitmap on replacement and the last one on unmount", async () => {
@@ -583,6 +707,20 @@ function rawFrame(rgba: readonly number[]): RawImageVisualization {
     rgba: new Uint8Array(rgba),
     sourceEncoding: "rgb8",
     width: 2,
+  };
+}
+
+function rawFrameWithDimensions(
+  rgba: Uint8Array,
+  width: number,
+  height: number,
+): RawImageVisualization {
+  return {
+    height,
+    kind: VISUALIZATION_KIND.RAW_IMAGE,
+    rgba,
+    sourceEncoding: "rgba8",
+    width,
   };
 }
 
