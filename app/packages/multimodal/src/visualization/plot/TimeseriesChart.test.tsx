@@ -393,7 +393,7 @@ describe("TimeseriesChart interactions", () => {
       dist: 4,
       setScale: true,
       x: true,
-      y: true,
+      y: false,
     });
     expect(chart.options.scales?.x?.range).toBeUndefined();
     expect(chart.options.series?.[0]).toEqual({

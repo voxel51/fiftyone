@@ -459,7 +459,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
           dist: CLICK_DRAG_TOLERANCE_PX,
           setScale: true,
           x: true,
-          y: true,
+          y: false,
         },
         y: false,
       },
