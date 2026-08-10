@@ -12,6 +12,7 @@ import type {
 } from "../../../../runtime";
 import { useDataStream, type DataStream } from "../data-stream-context";
 import type { StreamContentFrame } from "../use-stream-values";
+import { MAX_H264_DECODE_RUNWAY_FRAMES } from "../../../../codecs/h264-decode-policy";
 
 const NS_PER_SECOND = 1_000_000_000n;
 const EMPTY_RUNWAY: readonly ImageVisualization[] = [];
@@ -19,7 +20,7 @@ const EMPTY_RUNWAY: readonly ImageVisualization[] = [];
 /** Request-local limits for reconstructing one H.264 dependency runway. */
 export const VIDEO_DECODE_RUNWAY_POLICY = {
   initialLookbackNs: 15n * NS_PER_SECOND,
-  maxDecodeFrames: 1_024,
+  maxDecodeFrames: MAX_H264_DECODE_RUNWAY_FRAMES,
   maxLookbackNs: 120n * NS_PER_SECOND,
   maxMessages: 4_096,
   maxObservedPayloadBytes: 128 * 1024 * 1024,

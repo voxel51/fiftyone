@@ -23,8 +23,11 @@
  *   re-acquired without re-decoding. This kills the per-frame decode churn on
  *   playback batch re-delivery and short seeks without sharing renderer-owned
  *   texture state.
- * - Releasing the last lease mid-decode never cancels or disposes: the
- *   decode settles, then the entry is retained/evicted normally.
+ * - Releasing the last lease mid-decode aborts that obsolete attempt. A
+ *   producer that cannot cancel work already submitted disposes on settle.
+ * - A stronger same-key request (for example, an H.264 request that gained a
+ *   keyframe runway) restarts the pending attempt behind the same shared
+ *   promise, so every waiter observes the stronger result.
  * - Failed decodes evict the entry (no poisoned keys) and the rejection
  *   propagates to every waiter.
  * - An `undefined` key opts out of sharing: the lease wraps a private
@@ -73,13 +76,35 @@ export interface ImageTextureCacheStats {
 }
 
 interface ImageTextureCacheEntry {
+  abortController: AbortController;
+  attempt: symbol;
+  decodeStrength: number;
   decodedBytes: number;
   handle: ImageTextureHandle | null;
   readonly key: string;
   promise: Promise<ImageTextureHandle>;
+  readonly reject: (error: unknown) => void;
   refCount: number;
   readonly retentionGeneration: number;
+  readonly resolve: (handle: ImageTextureHandle) => void;
   state: "pending" | "rejected" | "resolved";
+}
+
+/** A decode attempt receives cancellation when it is obsolete before settle. */
+export type ImageTextureDecode = (
+  signal: AbortSignal,
+) => Promise<ImageTextureHandle>;
+
+/** Stronger pending requests may restart a same-key decode in place. */
+export interface AcquireImageTextureOptions {
+  readonly decodeStrength?: number;
+}
+
+export class ImageTextureDecodeCancelledError extends Error {
+  constructor() {
+    super("Image texture decode request was superseded");
+    this.name = "ImageTextureDecodeCancelledError";
+  }
 }
 
 // Every tracked entry, keyed by the opaque cache key.
@@ -114,16 +139,24 @@ export function imageTextureCacheKey(
  */
 export function acquireImageTexture(
   key: string | undefined,
-  decode: () => Promise<ImageTextureHandle>,
+  decode: ImageTextureDecode,
+  options: AcquireImageTextureOptions = {},
 ): ImageTextureLease {
   if (key === undefined) {
     return acquirePrivateTexture(decode);
   }
 
+  const decodeStrength = options.decodeStrength ?? 0;
   let entry = entries.get(key);
   if (!entry) {
-    entry = createEntry(key, decode);
+    entry = createEntry(key, decode, decodeStrength);
     entries.set(key, entry);
+  } else if (
+    entry.state === "pending" &&
+    decodeStrength > entry.decodeStrength
+  ) {
+    entry.decodeStrength = decodeStrength;
+    startDecodeAttempt(entry, decode);
   } else if (entry.refCount === 0) {
     // Re-acquired from retention — leased entries live outside the LRU.
     removeRetainedEntry(entry);
@@ -191,6 +224,7 @@ export function releaseRetainedImageTextures(): void {
  */
 export function resetImageTextureCacheForTests(): void {
   for (const entry of entries.values()) {
+    entry.abortController.abort();
     entry.handle?.dispose();
     entry.handle = null;
   }
@@ -203,28 +237,58 @@ export function resetImageTextureCacheForTests(): void {
 
 function createEntry(
   key: string,
-  decode: () => Promise<ImageTextureHandle>,
+  decode: ImageTextureDecode,
+  decodeStrength: number,
 ): ImageTextureCacheEntry {
+  let resolve!: (handle: ImageTextureHandle) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<ImageTextureHandle>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
   const entry: ImageTextureCacheEntry = {
+    abortController: new AbortController(),
+    attempt: Symbol("image-texture-decode"),
+    decodeStrength,
     decodedBytes: 0,
     handle: null,
     key,
-    promise: undefined as unknown as Promise<ImageTextureHandle>,
+    promise,
+    reject,
     refCount: 0,
     retentionGeneration,
+    resolve,
     state: "pending",
   };
 
+  startDecodeAttempt(entry, decode);
+  return entry;
+}
+
+function startDecodeAttempt(
+  entry: ImageTextureCacheEntry,
+  decode: ImageTextureDecode,
+): void {
+  entry.abortController.abort();
+  const controller = new AbortController();
+  const attempt = Symbol("image-texture-decode");
+  entry.abortController = controller;
+  entry.attempt = attempt;
   decodeCount += 1;
-  // Bookkeeping is folded into the shared promise so consumers observing
-  // settlement always see the entry's final state.
-  entry.promise = decode().then(
+  // All leases await one stable entry promise. A stronger same-key request can
+  // abort and replace only this underlying attempt without stranding weak
+  // waiters on a stale promise.
+  let attemptPromise: Promise<ImageTextureHandle>;
+  try {
+    attemptPromise = decode(controller.signal);
+  } catch (error) {
+    attemptPromise = Promise.reject(error);
+  }
+  void attemptPromise.then(
     (handle) => {
-      if (entries.get(key) !== entry) {
-        // The cache was reset while this decode was in flight (tests).
-        // Nothing tracks the handle anymore, so dispose it here.
+      if (entry.attempt !== attempt || entries.get(entry.key) !== entry) {
         handle.dispose();
-        return handle;
+        return;
       }
       entry.decodedBytes = decodedImageBytes(handle);
       entry.handle = handle;
@@ -234,19 +298,18 @@ function createEntry(
         // straight to retention (or eviction) instead of being dropped.
         retainEntry(entry);
       }
-      return handle;
+      entry.resolve(handle);
     },
     (error) => {
+      if (entry.attempt !== attempt) return;
       // Evict so the key is never poisoned; the next acquire re-decodes.
       entry.state = "rejected";
-      if (entries.get(key) === entry) {
-        entries.delete(key);
+      if (entries.get(entry.key) === entry) {
+        entries.delete(entry.key);
       }
-      throw error;
+      entry.reject(error);
     },
   );
-
-  return entry;
 }
 
 function releaseEntry(entry: ImageTextureCacheEntry): void {
@@ -254,8 +317,12 @@ function releaseEntry(entry: ImageTextureCacheEntry): void {
   if (entry.refCount > 0) return;
   if (entry.state === "resolved" && entries.get(entry.key) === entry) {
     retainEntry(entry);
+  } else if (entry.state === "pending" && entries.get(entry.key) === entry) {
+    entries.delete(entry.key);
+    entry.state = "rejected";
+    entry.abortController.abort();
+    entry.reject(new ImageTextureDecodeCancelledError());
   }
-  // pending: the settle handler retains/evicts once the decode lands.
   // rejected: the entry was already evicted at rejection time.
 }
 
@@ -434,14 +501,13 @@ function cloneDataTexture(template: THREE.DataTexture): THREE.DataTexture {
  * disposes the handle — immediately when settled, or on settle when the
  * consumer released mid-decode (today's cancel semantics).
  */
-function acquirePrivateTexture(
-  decode: () => Promise<ImageTextureHandle>,
-): ImageTextureLease {
+function acquirePrivateTexture(decode: ImageTextureDecode): ImageTextureLease {
+  const controller = new AbortController();
   let handle: ImageTextureHandle | null = null;
   let released = false;
 
   decodeCount += 1;
-  const promise = decode().then((decoded) => {
+  const promise = decode(controller.signal).then((decoded) => {
     if (released) {
       decoded.dispose();
     } else {
@@ -455,6 +521,7 @@ function acquirePrivateTexture(
     release: () => {
       if (released) return;
       released = true;
+      controller.abort();
       handle?.dispose();
       handle = null;
     },

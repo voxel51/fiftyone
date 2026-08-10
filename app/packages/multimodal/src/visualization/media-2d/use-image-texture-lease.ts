@@ -9,7 +9,12 @@ import {
   type ImageTextureLease,
 } from "./image-texture-cache";
 import { scheduleStillImageTextureLease } from "./still-image-decode-scheduler";
-import { VideoTextureWaitError } from "./video-texture";
+import {
+  acquireEncodedVideoSession,
+  encodedVideoSessionKey,
+  type EncodedVideoSessionOwner,
+  VideoTextureWaitError,
+} from "./video-texture";
 
 const EMPTY_IMAGE_DECODE_RUNWAY: readonly ImageVisualization[] = [];
 
@@ -56,6 +61,7 @@ export function useImageTextureLease({
   const heldTextureRef = useRef<HeldImageTexture | null>(null);
   const retiredTexturesRef = useRef<HeldImageTexture[]>([]);
   const stillImageDecodeOwnerRef = useRef<object>({});
+  const videoSessionOwnerRef = useRef<EncodedVideoSessionOwner | null>(null);
   const hasVisibleTextureRef = useRef(false);
   const onLoadedRef = useRef(onLoaded);
   onLoadedRef.current = onLoaded;
@@ -67,6 +73,30 @@ export function useImageTextureLease({
   const [status, setStatus] = useState<ImageTextureLeaseStatus>(() =>
     enabled && hasImageData(frame) ? "loading" : disabledStatus,
   );
+  const requestedVideoSessionKey =
+    frame?.kind === "encoded-video"
+      ? encodedVideoSessionKey(textureKey, frame)
+      : null;
+
+  // Decoder ownership follows the mounted view's source/stream identity, not
+  // its frame props. Frame rerenders reuse the same session; a stream switch or
+  // unmount releases exactly one ref on the shared registry entry.
+  useEffect(() => {
+    if (!requestedVideoSessionKey || frame?.kind !== "encoded-video") {
+      videoSessionOwnerRef.current = null;
+      return undefined;
+    }
+    const owner = acquireEncodedVideoSession(frame, textureKey);
+    videoSessionOwnerRef.current = owner;
+    return () => {
+      if (videoSessionOwnerRef.current === owner) {
+        videoSessionOwnerRef.current = null;
+      }
+      owner.release();
+    };
+    // The session key deliberately excludes per-frame identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedVideoSessionKey]);
 
   // This effect retires the held texture lease on unmount — release, not
   // dispose: keyed texture sources may be retained by the cache for instant
@@ -127,12 +157,20 @@ export function useImageTextureLease({
     }
 
     const acquire = () =>
-      acquireImageTexture(textureKey, () =>
-        createImageTexture(frame, textureKey, decodeRunway),
+      acquireImageTexture(
+        textureKey,
+        (signal) =>
+          createImageTexture(
+            frame,
+            textureKey,
+            decodeRunway,
+            videoSessionOwnerRef.current ?? undefined,
+            signal,
+          ),
+        { decodeStrength: imageDecodeStrength(frame, decodeRunway) },
       );
-    // createImageBitmap cannot abort work already handed to the browser. Only
-    // compressed still images use the bounded latest-wins runway; raw textures
-    // are synchronous and H.264/video retains its existing decoder lifecycle.
+    // Browser still-image work is globally bounded; H.264 work is serialized
+    // and abortable before submission by its mounted stream owner.
     const lease =
       frame.kind === "encoded-image"
         ? scheduleStillImageTextureLease(
@@ -178,9 +216,10 @@ export function useImageTextureLease({
 
     return () => {
       cancelled = true;
-      if (frame.kind === "encoded-image" && !settled) {
-        // Drops a queued request before it enters the refcounted cache. A
-        // running browser decode remains bounded and releases its cache lease.
+      if (!settled) {
+        // Releasing the final cache waiter aborts an obsolete pending attempt.
+        // Work already submitted to createImageBitmap/WebCodecs settles under
+        // its producer's cancellation guard and can never commit stale pixels.
         lease.release();
       }
     };
@@ -190,6 +229,24 @@ export function useImageTextureLease({
   }, [decodeRunway, disabledStatus, enabled, identity, textureKey]);
 
   return { errorKind, errorMessage, handle, status };
+}
+
+function imageDecodeStrength(
+  frame: ImageVisualization,
+  decodeRunway: readonly ImageVisualization[],
+): number {
+  if (frame.kind !== "encoded-video" || frame.codec !== "h264") return 0;
+  const firstH264Frame = decodeRunway.find(
+    (candidate) =>
+      candidate.kind === "encoded-video" &&
+      candidate.codec === "h264" &&
+      candidate.h264?.hasFrame,
+  );
+  return firstH264Frame?.kind === "encoded-video" &&
+    firstH264Frame.codec === "h264" &&
+    firstH264Frame.keyframe
+    ? 1
+    : 0;
 }
 
 export function hasImageData(

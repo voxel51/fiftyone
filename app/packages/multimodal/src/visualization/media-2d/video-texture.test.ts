@@ -4,10 +4,14 @@ import type { EncodedVideoVisualization } from "../../ir";
 import { VISUALIZATION_KIND } from "../visualization-registry";
 import { createImageTexture } from "./image-texture";
 import {
+  acquireEncodedVideoSession,
   createEncodedVideoCanvas,
   createEncodedVideoTexture,
   releaseEncodedVideoSession,
+  releaseEncodedVideoSessionsForSource,
   resetVideoTextureDecodersForTests,
+  VIDEO_DECODE_SESSION_CAP,
+  videoTextureDecoderStats,
 } from "./video-texture";
 
 interface FakeChunk {
@@ -66,18 +70,19 @@ describe("createEncodedVideoTexture", () => {
   });
 
   it("reuses per-topic decoder sessions and cached parameter sets", async () => {
-    const keyframe = await createEncodedVideoTexture(
-      h264Frame({ keyframe: true, timestampNs: 1000n }),
+    const firstFrame = h264Frame({ keyframe: true, timestampNs: 1000n });
+    const owner = acquireEncodedVideoSession(
+      firstFrame,
       "rec\n/camera/video\n1000",
     );
-    const delta = await createEncodedVideoTexture(
+    const keyframe = await owner.decodeTexture(firstFrame);
+    const delta = await owner.decodeTexture(
       h264Frame({
         bytes: Uint8Array.of(0, 0, 1, 0x41, 0xc0),
         hasParameterSets: false,
         keyframe: false,
         timestampNs: 2000n,
       }),
-      "rec\n/camera/video\n2000",
     );
 
     expect(fakeDecoderInstances).toHaveLength(1);
@@ -91,6 +96,7 @@ describe("createEncodedVideoTexture", () => {
 
     keyframe.dispose();
     delta.dispose();
+    owner.release();
   });
 
   it("rejects delta frames until a keyframe has configured the session", async () => {
@@ -162,6 +168,7 @@ describe("createEncodedVideoTexture", () => {
 
     const second = createEncodedVideoTexture(
       h264Frame({
+        bytes: Uint8Array.of(0, 0, 1, 0x41, 0xc0),
         hasParameterSets: false,
         keyframe: false,
         timestampNs: 4000n,
@@ -190,23 +197,29 @@ describe("createEncodedVideoTexture", () => {
     expect(decoder.outputFrames[3]?.close).toHaveBeenCalledTimes(1);
   });
 
-  it("bounds prerequisite replay to the latest 600 video frames", async () => {
-    const runway = Array.from({ length: 601 }, (_, index) =>
+  it("consumes a complete 600-frame runway without truncating its keyframe", async () => {
+    const runway = Array.from({ length: 600 }, (_, index) =>
       h264Frame({
-        keyframe: true,
+        hasParameterSets: index === 0,
+        keyframe: index === 0,
         timestampNs: BigInt(index + 1) * 1_000n,
       }),
     );
-    const target = h264Frame({ keyframe: true, timestampNs: 602_000n });
+    const target = h264Frame({
+      hasParameterSets: false,
+      keyframe: false,
+      timestampNs: 601_000n,
+    });
 
     const handle = await createImageTexture(
       target,
-      "rec\n/camera/video\n602000",
+      "rec\n/camera/video\n601000",
       runway,
     );
 
     expect(fakeDecoderInstances[0].decodeCalls).toHaveLength(601);
-    expect(fakeDecoderInstances[0].decodeCalls[0]?.timestamp).toBe(2);
+    expect(fakeDecoderInstances[0].decodeCalls[0]?.type).toBe("key");
+    expect(fakeDecoderInstances[0].decodeCalls[0]?.timestamp).toBe(1);
     handle.dispose();
   });
 
@@ -229,7 +242,7 @@ describe("createEncodedVideoTexture", () => {
 
     await expect(
       createImageTexture(target, "rec\n/camera/video\n602000", runway),
-    ).rejects.toThrow("Waiting for H.264 keyframe");
+    ).rejects.toThrow("Waiting for a bounded H.264 keyframe runway");
     expect(fakeDecoderInstances).toHaveLength(0);
   });
 
@@ -249,40 +262,43 @@ describe("createEncodedVideoTexture", () => {
   });
 
   it("resets decoder state on backwards timestamps", async () => {
-    const keyframe = await createEncodedVideoTexture(
-      h264Frame({ keyframe: true, timestampNs: 2000n }),
+    const firstFrame = h264Frame({ keyframe: true, timestampNs: 2000n });
+    const owner = acquireEncodedVideoSession(
+      firstFrame,
       "rec\n/camera/video\n2000",
     );
+    const keyframe = await owner.decodeTexture(firstFrame);
 
     await expect(
-      createEncodedVideoTexture(
+      owner.decodeTexture(
         h264Frame({
           bytes: Uint8Array.of(0, 0, 1, 0x41, 0xc0),
           hasParameterSets: false,
           keyframe: false,
           timestampNs: 1000n,
         }),
-        "rec\n/camera/video\n1000",
       ),
     ).rejects.toThrow("Waiting for H.264 keyframe");
     expect(fakeDecoderInstances[0].resetCalls).toBe(1);
 
     keyframe.dispose();
+    owner.release();
   });
 
   it("reconfigures on keyframes with a new H.264 codec string", async () => {
-    const first = await createEncodedVideoTexture(
-      h264Frame({ keyframe: true, timestampNs: 1000n }),
+    const firstFrame = h264Frame({ keyframe: true, timestampNs: 1000n });
+    const owner = acquireEncodedVideoSession(
+      firstFrame,
       "rec\n/camera/video\n1000",
     );
-    const second = await createEncodedVideoTexture(
+    const first = await owner.decodeTexture(firstFrame);
+    const second = await owner.decodeTexture(
       h264Frame({
         codecString: "avc1.64001F",
         keyframe: true,
         sps: Uint8Array.of(0x67, 0x64, 0x00, 0x1f),
         timestampNs: 2000n,
       }),
-      "rec\n/camera/video\n2000",
     );
 
     expect(fakeDecoderInstances).toHaveLength(2);
@@ -291,6 +307,7 @@ describe("createEncodedVideoTexture", () => {
 
     first.dispose();
     second.dispose();
+    owner.release();
   });
 
   it("rejects pending textures when the decoder reports an error", async () => {
@@ -380,6 +397,121 @@ describe("createEncodedVideoTexture", () => {
     expect(decoder.outputFrames[1]?.close).toHaveBeenCalledOnce();
   });
 
+  it("drops a stale queued request while preserving its delta dependency", async () => {
+    FakeVideoDecoder.decodeBehavior = "hold";
+    const keyframe = h264Frame({ keyframe: true, timestampNs: 1_000n });
+    const owner = acquireEncodedVideoSession(
+      keyframe,
+      "rec\n/camera/video\n1000",
+    );
+    const first = owner.decodeTexture(keyframe);
+    await vi.waitFor(() => {
+      expect(fakeDecoderInstances[0]?.decodeCalls).toHaveLength(1);
+    });
+
+    const firstStaleController = new AbortController();
+    const firstStale = owner.decodeTexture(
+      h264Frame({
+        hasParameterSets: false,
+        keyframe: false,
+        timestampNs: 2_000n,
+      }),
+      [],
+      firstStaleController.signal,
+    );
+    const secondStaleController = new AbortController();
+    const secondStale = owner.decodeTexture(
+      h264Frame({
+        hasParameterSets: false,
+        keyframe: false,
+        timestampNs: 3_000n,
+      }),
+      [],
+      secondStaleController.signal,
+    );
+    const firstStaleExpectation =
+      expect(firstStale).rejects.toThrow("superseded");
+    const secondStaleExpectation =
+      expect(secondStale).rejects.toThrow("superseded");
+    secondStaleController.abort();
+    firstStaleController.abort();
+    const latest = owner.decodeTexture(
+      h264Frame({
+        hasParameterSets: false,
+        keyframe: false,
+        timestampNs: 4_000n,
+      }),
+    );
+    await Promise.all([firstStaleExpectation, secondStaleExpectation]);
+    expect(fakeDecoderInstances[0].decodeCalls).toHaveLength(1);
+
+    fakeDecoderInstances[0].outputNext();
+    const firstHandle = await first;
+    await vi.waitFor(() => {
+      expect(fakeDecoderInstances[0].decodeCalls).toHaveLength(4);
+    });
+    expect(
+      fakeDecoderInstances[0].decodeCalls
+        .slice(1)
+        .map((call) => call.timestamp),
+    ).toEqual([2, 3, 4]);
+    fakeDecoderInstances[0].outputNext();
+    fakeDecoderInstances[0].outputNext();
+    fakeDecoderInstances[0].outputNext();
+    const latestHandle = await latest;
+
+    firstHandle.dispose();
+    latestHandle.dispose();
+    owner.release();
+  });
+
+  it("bounds batch submission and treats decoded outputs as timeout progress", async () => {
+    vi.useFakeTimers();
+    FakeVideoDecoder.decodeBehavior = "hold";
+    const keyframe = h264Frame({ keyframe: true, timestampNs: 1_000n });
+    const runway = [
+      keyframe,
+      ...Array.from({ length: 8 }, (_, index) =>
+        h264Frame({
+          hasParameterSets: false,
+          keyframe: false,
+          timestampNs: BigInt(index + 2) * 1_000n,
+        }),
+      ),
+    ];
+    const target = h264Frame({
+      hasParameterSets: false,
+      keyframe: false,
+      timestampNs: 10_000n,
+    });
+    const owner = acquireEncodedVideoSession(
+      target,
+      "rec\n/camera/video\n10000",
+    );
+    const texture = owner.decodeTexture(target, runway);
+    await vi.advanceTimersByTimeAsync(0);
+
+    const decoder = fakeDecoderInstances[0];
+    expect(decoder.decodeCalls).toHaveLength(8);
+    await vi.advanceTimersByTimeAsync(2_500);
+    decoder.outputNext();
+    await vi.advanceTimersByTimeAsync(2_500);
+    for (let index = 0; index < 7; index += 1) decoder.outputNext();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(decoder.decodeCalls).toHaveLength(10);
+
+    await vi.advanceTimersByTimeAsync(2_500);
+    decoder.outputNext();
+    await vi.advanceTimersByTimeAsync(2_500);
+    decoder.outputNext();
+    const handle = await texture;
+
+    expect(decoder.resetCalls).toBe(0);
+    handle.dispose();
+    owner.release();
+  });
+
   it("rejects pending textures and resets the decoder on decode timeout", async () => {
     vi.useFakeTimers();
     FakeVideoDecoder.decodeBehavior = "hold";
@@ -391,7 +523,7 @@ describe("createEncodedVideoTexture", () => {
     await Promise.resolve();
 
     const expectation = expect(texture).rejects.toThrow(
-      "Timed out waiting for H.264 frame decode",
+      "Timed out waiting for H.264 decode progress",
     );
     await vi.advanceTimersByTimeAsync(3000);
 
@@ -420,19 +552,108 @@ describe("createEncodedVideoCanvas", () => {
     expect(frame?.close).toHaveBeenCalledTimes(1);
   });
 
-  it("evicts least-recently-used decoder sessions from canvas previews", async () => {
+  it("never closes active work when a seventh live stream reaches the cap", async () => {
     stubVideoCanvasContext();
+    FakeVideoDecoder.decodeBehavior = "hold";
+    const owners = Array.from(
+      { length: VIDEO_DECODE_SESSION_CAP + 1 },
+      (_, index) => {
+        const frame = h264Frame({
+          keyframe: true,
+          timestampNs: BigInt(index + 1),
+        });
+        const key = `rec\n/camera/${index}\n${index}`;
+        return {
+          frame,
+          owner: acquireEncodedVideoSession(frame, key),
+        };
+      },
+    );
 
-    for (let index = 0; index < 7; index += 1) {
-      await createEncodedVideoCanvas(
-        h264Frame({ keyframe: true, timestampNs: BigInt(index + 1) }),
-        `rec\n/camera/${index}\n${index}`,
-      );
+    const canvases = owners.map(({ frame, owner }) =>
+      owner.decodeCanvas(frame),
+    );
+    await vi.waitFor(() =>
+      expect(fakeDecoderInstances).toHaveLength(VIDEO_DECODE_SESSION_CAP),
+    );
+    expect(videoTextureDecoderStats()).toMatchObject({
+      decoderSlotCount: VIDEO_DECODE_SESSION_CAP,
+      ownerCount: VIDEO_DECODE_SESSION_CAP + 1,
+      sessionCount: VIDEO_DECODE_SESSION_CAP + 1,
+      waitingSessionCount: 1,
+    });
+    expect(
+      fakeDecoderInstances.every((decoder) => decoder.closeCalls === 0),
+    ).toBe(true);
+
+    fakeDecoderInstances[0].outputNext();
+    await canvases[0];
+    await vi.waitFor(() =>
+      expect(fakeDecoderInstances).toHaveLength(VIDEO_DECODE_SESSION_CAP + 1),
+    );
+    expect(fakeDecoderInstances[0].closeCalls).toBe(1);
+    expect(
+      fakeDecoderInstances
+        .slice(1)
+        .every((decoder) => decoder.closeCalls === 0),
+    ).toBe(true);
+
+    for (let index = 1; index < fakeDecoderInstances.length; index += 1) {
+      fakeDecoderInstances[index].outputNext();
     }
+    await Promise.all(canvases.slice(1));
 
-    expect(fakeDecoderInstances).toHaveLength(7);
+    const resumed = owners[0].owner.decodeCanvas(
+      h264Frame({
+        bytes: Uint8Array.of(0, 0, 1, 0x41, 0xc0),
+        hasParameterSets: false,
+        keyframe: false,
+        timestampNs: 1_000n,
+      }),
+    );
+    await vi.waitFor(() =>
+      expect(fakeDecoderInstances).toHaveLength(VIDEO_DECODE_SESSION_CAP + 2),
+    );
+    expect(
+      fakeDecoderInstances[VIDEO_DECODE_SESSION_CAP + 1].decodeCalls.map(
+        (call) => call.type,
+      ),
+    ).toEqual(["key", "delta"]);
+    fakeDecoderInstances[VIDEO_DECODE_SESSION_CAP + 1].outputNext();
+    fakeDecoderInstances[VIDEO_DECODE_SESSION_CAP + 1].outputNext();
+    await resumed;
+
+    for (const { owner } of owners) owner.release();
+  });
+
+  it("cleans up only the ended source while preserving shared owners", async () => {
+    stubVideoCanvasContext();
+    const frameA = h264Frame({ keyframe: true, timestampNs: 1_000n });
+    const frameB = h264Frame({ keyframe: true, timestampNs: 2_000n });
+    const ownerA1 = acquireEncodedVideoSession(frameA, "source-a\n/camera\n1");
+    const ownerA2 = acquireEncodedVideoSession(frameA, "source-a\n/camera\n2");
+    const ownerB = acquireEncodedVideoSession(frameB, "source-b\n/camera\n2");
+    await Promise.all([
+      ownerA1.decodeCanvas(frameA),
+      ownerB.decodeCanvas(frameB),
+    ]);
+
+    expect(fakeDecoderInstances).toHaveLength(2);
+    expect(videoTextureDecoderStats()).toMatchObject({
+      ownerCount: 3,
+      sessionCount: 2,
+    });
+    releaseEncodedVideoSessionsForSource("source-a");
+
     expect(fakeDecoderInstances[0].closeCalls).toBe(1);
     expect(fakeDecoderInstances[1].closeCalls).toBe(0);
+    expect(videoTextureDecoderStats()).toMatchObject({
+      ownerCount: 1,
+      sessionCount: 1,
+    });
+    ownerA1.release();
+    ownerA2.release();
+    ownerB.release();
   });
 });
 

@@ -589,6 +589,67 @@ describe("BitmapImageFrameView", () => {
     expect(drawImage.mock.calls[1]?.slice(1)).toEqual([0, -12.5, 100, 75]);
   });
 
+  it("keeps one decoder session across keyframe-to-delta rerenders", async () => {
+    const decoder = stubVideoDecoder();
+    stubElementSize(100, 50);
+    sharedMockContext();
+    const onImageLoaded = vi.fn();
+
+    const rendered = render(
+      <BitmapImageFrameView
+        frame={videoFrame()}
+        onImageLoaded={onImageLoaded}
+      />,
+    );
+    await waitFor(() => expect(onImageLoaded).toHaveBeenCalledTimes(1));
+
+    rendered.rerender(
+      <BitmapImageFrameView
+        frame={deltaVideoFrame()}
+        onImageLoaded={onImageLoaded}
+      />,
+    );
+    await waitFor(() => expect(onImageLoaded).toHaveBeenCalledTimes(2));
+
+    expect(decoder.instances).toHaveLength(1);
+    expect(decoder.instances[0].decodeCalls.map((chunk) => chunk.type)).toEqual(
+      ["key", "delta"],
+    );
+    expect(decoder.instances[0].close).not.toHaveBeenCalled();
+
+    rendered.unmount();
+    expect(decoder.instances[0].close).toHaveBeenCalledOnce();
+  });
+
+  it("releases the preview decoder when its source/stream key changes", async () => {
+    const decoder = stubVideoDecoder();
+    stubElementSize(100, 50);
+    sharedMockContext();
+    const onImageLoaded = vi.fn();
+
+    const rendered = render(
+      <BitmapImageFrameView
+        frame={videoFrame()}
+        onImageLoaded={onImageLoaded}
+        videoSessionKey={"source-a\n/camera"}
+      />,
+    );
+    await waitFor(() => expect(onImageLoaded).toHaveBeenCalledTimes(1));
+
+    rendered.rerender(
+      <BitmapImageFrameView
+        frame={videoFrame()}
+        onImageLoaded={onImageLoaded}
+        videoSessionKey={"source-b\n/camera"}
+      />,
+    );
+    await waitFor(() => expect(onImageLoaded).toHaveBeenCalledTimes(2));
+
+    expect(decoder.instances).toHaveLength(2);
+    expect(decoder.instances[0].close).toHaveBeenCalledOnce();
+    expect(decoder.instances[1].close).not.toHaveBeenCalled();
+  });
+
   it("reports encoded video preview decode failures", async () => {
     vi.stubGlobal("EncodedVideoChunk", undefined);
     vi.stubGlobal("VideoDecoder", undefined);
@@ -741,33 +802,60 @@ function videoFrame(): EncodedVideoVisualization {
   };
 }
 
+function deltaVideoFrame(): EncodedVideoVisualization {
+  return {
+    bytes: Uint8Array.of(0, 0, 1, 0x41),
+    codec: "h264",
+    format: "h264",
+    h264: { hasFrame: true },
+    keyframe: false,
+    kind: VISUALIZATION_KIND.ENCODED_VIDEO,
+    timestampNs: 2_000n,
+  };
+}
+
 function stubVideoDecoder() {
   class FakeEncodedVideoChunk {
-    constructor(readonly init: unknown) {}
+    readonly data: BufferSource;
+    readonly timestamp: number;
+    readonly type: "key" | "delta";
+
+    constructor(init: {
+      readonly data: BufferSource;
+      readonly timestamp: number;
+      readonly type: "key" | "delta";
+    }) {
+      this.data = init.data;
+      this.timestamp = init.timestamp;
+      this.type = init.type;
+    }
   }
 
+  const instances: FakeVideoDecoder[] = [];
   class FakeVideoDecoder {
     static isConfigSupported = vi.fn(async () => ({ supported: true }));
+    readonly close = vi.fn();
+    readonly decodeCalls: FakeEncodedVideoChunk[] = [];
 
     constructor(
       private readonly init: {
         readonly output: (frame: unknown) => void;
       },
-    ) {}
-
-    close(): void {
-      // no-op in the fake
+    ) {
+      instances.push(this);
     }
 
     configure(): void {
       // no-op in the fake
     }
 
-    decode(): void {
+    decode(chunk: FakeEncodedVideoChunk): void {
+      this.decodeCalls.push(chunk);
       this.init.output({
         close: vi.fn(),
         displayHeight: 480,
         displayWidth: 640,
+        timestamp: chunk.timestamp,
       });
     }
 
@@ -779,6 +867,7 @@ function stubVideoDecoder() {
   vi.stubGlobal("EncodedVideoChunk", FakeEncodedVideoChunk);
   vi.stubGlobal("VideoDecoder", FakeVideoDecoder);
   vi.stubGlobal("isSecureContext", true);
+  return { instances };
 }
 
 /**
