@@ -157,11 +157,13 @@ const McapSettingsSidebar: React.FC<{
     <div className={styles.sidebarRoot}>
       <ToggleSwitch
         key={hasPanelTab ? "with-panel" : "scene-only"}
+        className={styles.toggleSwitchRoot}
         defaultIndex={defaultIndex}
         fullWidth
         onChange={handleTabChange}
         size={Size.Sm}
         tabListClassName={styles.stickyTabList}
+        tabPanelClassName={styles.tabPanelGroup}
         tabs={tabs}
       />
     </div>

@@ -1,6 +1,5 @@
 import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
 import type { Native2dLabel } from "./types";
 
 /**
@@ -15,10 +14,10 @@ import type { Native2dLabel } from "./types";
 export const useVisibleNative2dLabels = (
   labels: Native2dLabel[],
 ): Native2dLabel[] => {
-  const activeFields = useRecoilValue(fos.activeFields({ modal: true }));
-  const knownLabelFields = useRecoilValue(
-    fos.labelFields({ space: fos.State.SPACE.SAMPLE }),
-  );
+  const activeFields = fos.useActiveFields({ modal: true });
+  const knownLabelFields = fos.useLabelFields({
+    space: fos.State.SPACE.SAMPLE,
+  });
 
   return useMemo(() => {
     const active = new Set(activeFields);
