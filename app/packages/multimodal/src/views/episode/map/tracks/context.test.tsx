@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ByteSourceDescriptor } from "../../../../query/bytes";
 import type { SceneSource } from "../../../../scene-inventory";
 import { VISUALIZATION_KIND } from "../../../../visualization";
-import type { DecodedFrame } from "../../../../ir";
+import type { DecodedFrame, LocationVisualization } from "../../../../ir";
 import { createTimelineIndex } from "../../../../runtime";
 import type {
   BudgetedReadJob,
@@ -27,6 +27,7 @@ import {
   useSetDataStream,
 } from "../../playback/data-stream-context";
 import type { LocationTracks } from "./location-track";
+import type { StreamContentFrame } from "../../playback/use-stream-values";
 
 afterEach(() => {
   cleanup();
@@ -604,6 +605,71 @@ describe("LocationTracksBridge", () => {
     expect(session.read).not.toHaveBeenCalled();
   });
 
+  it("extends partial remote routes with admitted current frames", async () => {
+    const source = createSource("remote-drive");
+    const session = createSession();
+    const store = createStore();
+    const read = vi.fn<BudgetedReadJob["read"]>().mockResolvedValue(
+      boundedResult({
+        frames: [locationMessage(1_000_000_000n, 37, -122, 0)],
+        stopReason: "account-exhausted",
+      }),
+    );
+    const budgetAccount = {
+      createJob: () => ({ read }),
+    } as unknown as SourceReadBudgetAccount;
+    const view = render(
+      <Harness
+        budgetAccount={budgetAccount}
+        liveFrames={[liveLocationFrame(10_000_000_000n, 37.001, -122.001)]}
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        source={source}
+        store={store}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:ready:2:1:truncated",
+      );
+    });
+    view.rerender(
+      <Harness
+        budgetAccount={budgetAccount}
+        liveFrames={[liveLocationFrame(20_000_000_000n, 37.002, -122.002)]}
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        source={source}
+        store={store}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:ready:3:1:truncated",
+      );
+    });
+
+    view.rerender(
+      <Harness
+        budgetAccount={budgetAccount}
+        liveFrames={[liveLocationFrame(20_000_000_000n, 37.002, -122.002)]}
+        playheadSec={5}
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        source={source}
+        store={store}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:ready:1:1:truncated",
+      );
+    });
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(session.read).not.toHaveBeenCalled();
+  });
+
   it("lets an admitted grant finish when the playhead seeks backward", async () => {
     const source = createSource("drive");
     const session = createSession();
@@ -947,6 +1013,7 @@ describe("LocationTracksBridge", () => {
 
 function Harness({
   budgetAccount,
+  liveFrames,
   onTracks,
   session,
   locationSources,
@@ -956,6 +1023,7 @@ function Harness({
   streams,
 }: {
   readonly budgetAccount?: SourceReadBudgetAccount;
+  readonly liveFrames?: readonly (StreamContentFrame<LocationVisualization> | null)[];
   readonly onTracks?: (tracks: LocationTracks) => void;
   readonly session: EpisodeSession;
   readonly locationSources: readonly SceneSource[];
@@ -972,6 +1040,7 @@ function Harness({
         <FakeDataStream session={session} sourceKey={source.sourceId} />
         <LocationTracksBridge
           budgetAccount={budgetAccount}
+          liveFrames={liveFrames}
           session={session}
           locationSources={locationSources}
           sourceReadProfile={source.readProfile}
@@ -987,6 +1056,19 @@ function Harness({
       {body}
     </PlaybackStoreContext.Provider>
   );
+}
+
+function liveLocationFrame(
+  timeNs: bigint,
+  latitude: number,
+  longitude: number,
+): StreamContentFrame<LocationVisualization> {
+  const visualization = locationMessage(timeNs, latitude, longitude, 0).output
+    .visualization;
+  if (!visualization || visualization.kind !== VISUALIZATION_KIND.LOCATION) {
+    throw new Error("expected a location visualization");
+  }
+  return { contentTimeNs: timeNs, frame: visualization };
 }
 
 function FakeDataStream({

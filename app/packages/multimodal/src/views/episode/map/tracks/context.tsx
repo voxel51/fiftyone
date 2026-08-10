@@ -20,6 +20,7 @@ import type {
 } from "../../../../ports";
 import {
   BYTE_SOURCE_READ_PROFILE,
+  type LocationVisualization,
   type ByteSourceReadProfile,
 } from "../../../../ir";
 import { isEpisodeReadCancelledError } from "../../../../ports";
@@ -27,6 +28,10 @@ import type { SceneSource } from "../../../../scene-inventory";
 import { VISUALIZATION_KIND } from "../../../../visualization";
 import { shouldDeferBulkHistory } from "../../playback/bulk-stream-lifecycle";
 import { useDataStream } from "../../playback/data-stream-context";
+import {
+  useStreamContentFrames,
+  type StreamContentFrame,
+} from "../../playback/use-stream-values";
 import { useOptionalPlayhead } from "../../playback/use-optional-playhead";
 import { FULL_HISTORY_RETENTION_MS } from "../../playback/use-demand-driven-history";
 import {
@@ -40,6 +45,7 @@ import {
 } from "./location-track";
 import {
   SharedLocationPointStore,
+  type LocationPointStoreAddResult,
   type SharedLocationPointTransaction,
 } from "./shared-location-point-store";
 
@@ -168,6 +174,7 @@ export function useLocationTracksSourceKey(): string | null {
  */
 export function LocationTracksBridge({
   budgetAccount,
+  liveFrames: liveFramesOverride,
   locationSources,
   session,
   sourceReadProfile,
@@ -175,6 +182,8 @@ export function LocationTracksBridge({
   streams,
 }: {
   readonly budgetAccount?: SourceReadBudgetAccount | null;
+  /** Test seam for already-admitted current frames. */
+  readonly liveFrames?: readonly (StreamContentFrame<LocationVisualization> | null)[];
   readonly locationSources: readonly SceneSource[];
   readonly session: EpisodeSession | null;
   readonly sourceReadProfile?: ByteSourceReadProfile;
@@ -185,8 +194,13 @@ export function LocationTracksBridge({
   const playbackStore = useContext(PlaybackStoreContext);
   const isPlaying = useIsPlaying();
   const dataStream = useDataStream();
-  const requestedStreams =
-    streams ?? locationSources.map((locationSource) => locationSource.id);
+  const requestedStreams = useMemo(
+    () => streams ?? locationSources.map((locationSource) => locationSource.id),
+    [locationSources, streams],
+  );
+  const subscribedLiveFrames =
+    useStreamContentFrames<LocationVisualization>(requestedStreams);
+  const liveFrames = liveFramesOverride ?? subscribedLiveFrames;
   const requestedStreamsKey = [...new Set(requestedStreams)].sort().join("\0");
   const playheadSec = useOptionalPlayhead(requestedStreamsKey.length > 0);
   const timeline = dataStream?.getTimelineIndex() ?? null;
@@ -429,6 +443,64 @@ export function LocationTracksBridge({
     setTracks,
     sourceReadProfile,
     sourceKey,
+  ]);
+
+  // A bounded remote scan can exhaust its shared source account before the
+  // playhead reaches the admitted route tail. Current frames are already paid
+  // for by playback, so retain them in the same per-stream store. This grows a
+  // truthful trail without bypassing the remote history budget; gaps and
+  // backward seeks still use the same segment builder and horizon filter.
+  useEffect(() => {
+    const epoch = cacheEpochRef.current;
+    const progress = epoch?.selections.get(requestedStreamsKey);
+    if (
+      !epoch ||
+      epoch.disposed ||
+      epoch.demandedKey !== requestedStreamsKey ||
+      !progress ||
+      horizonNs === undefined
+    ) {
+      return;
+    }
+
+    let changed = false;
+    liveFrames.forEach((frame, index) => {
+      const stream = requestedStreams[index];
+      if (
+        !frame ||
+        !stream ||
+        frame.contentTimeNs > horizonNs ||
+        frame.contentTimeNs <
+          (epoch.timeRange?.startNs ?? frame.contentTimeNs) ||
+        frame.contentTimeNs > (epoch.timeRange?.endNs ?? frame.contentTimeNs) ||
+        frame.frame.kind !== VISUALIZATION_KIND.LOCATION
+      ) {
+        return;
+      }
+      const point = locationPointFromVisualization(
+        frame.frame,
+        frame.contentTimeNs,
+      );
+      changed =
+        retainLocationPoint(epoch, progress, stream, point) === "inserted" ||
+        changed;
+    });
+    if (changed) {
+      requestProgressPublication(
+        epoch,
+        progress,
+        horizonNs,
+        setTracks,
+        !isPlaying,
+      );
+    }
+  }, [
+    horizonNs,
+    isPlaying,
+    liveFrames,
+    requestedStreams,
+    requestedStreamsKey,
+    setTracks,
   ]);
 
   // The provider outlives source bridges, so explicitly clear on final unmount.
@@ -1016,7 +1088,7 @@ function retainLocationPoint(
   stream: string,
   point: LocationTrackPoint,
   transaction?: SharedLocationPointTransaction,
-): void {
+): LocationPointStoreAddResult {
   const store = getOrCreatePointStore(epoch, stream);
   store.lastUsed = ++epoch.lastUsed;
   const duplicate = store.hasPoint(point);
@@ -1028,6 +1100,7 @@ function retainLocationPoint(
     : store.addCommitted(point, retain);
   if (result === "inserted") epoch.retainedPointCount += 1;
   if (result === "rejected-cap") progress.truncated = true;
+  return result;
 }
 
 function makeRetainedPointCapacity(epoch: LocationTrackCacheEpoch): void {
