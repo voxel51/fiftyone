@@ -48,6 +48,7 @@ import {
 import { ColorLegend } from "./ColorLegend";
 import { ContinuousLegend } from "./ContinuousLegend";
 import { categoryHex, MISSING_CATEGORY } from "./colors";
+import { gridFilterPath } from "./filterPath";
 import HoverCard from "./HoverCard";
 import {
   legendLabels,
@@ -130,6 +131,7 @@ export default function PlotView({
 }) {
   const view = useRecoilValue(fos.view) as unknown[];
   const filters = useRecoilValue(fos.filters);
+  const isPatchesView = useRecoilValue(fos.isPatchesView);
   const setOverrideStage = useSetRecoilState(
     fos.extendedSelectionOverrideStage,
   );
@@ -147,6 +149,13 @@ export default function PlotView({
     true,
   );
   const colorField = colorFieldState ?? null;
+  // The color-by endpoint speaks root-dataset paths, but the grid
+  // resolves filters against its CURRENT view's schema — so the filter
+  // atom is keyed by view vocabulary: the root path in a samples view,
+  // the re-rooted patch path in a patches view (see filterPath.ts)
+  const filterPath = colorField
+    ? gridFilterPath(colorField, run.patchesField ?? null, isPatchesView)
+    : null;
   const brainKey = run.brainKey;
 
   const plotRef = useRef<HTMLDivElement>(null);
@@ -166,7 +175,7 @@ export default function PlotView({
   // rest ships to the masks endpoint, identity-stable
   const { localMask, serverFilters } = useLocalColorMask(
     filters,
-    colorField,
+    filterPath,
     colorValues,
     colorMeta,
   );
@@ -228,7 +237,7 @@ export default function PlotView({
   // only: the sidebar's numeric filters are range-shaped, not value
   // lists, so numeric-class legends render inert
   const fieldFilter = useRecoilValue(
-    fos.filter({ path: colorField ?? "", modal: false }),
+    fos.filter({ path: filterPath ?? "", modal: false }),
   );
   const legendFilter = (fieldFilter ?? null) as CategoricalFilter | null;
 
@@ -240,14 +249,14 @@ export default function PlotView({
   // Writes read the filter from a fresh snapshot, not the render-time
   // value — rapid clicks must each transform the latest state, or a
   // click can silently compute from a stale base and drop its
-  // predecessor. A dblclick arrives as click-click-dblclick; the two
-  // toggles cancel (toggle is its own inverse), then the solo lands —
-  // no click timers
+  // predecessor. (Double-click handling lives in ColorLegend, which
+  // defers single-click toggles and cancels them when the second
+  // click arrives)
   const handleLegendClick = useRecoilCallback(
     ({ snapshot, set, reset }) =>
       (label: string, solo: boolean) => {
-        if (!colorField || !legend) return;
-        const filterState = fos.filter({ path: colorField, modal: false });
+        if (!filterPath || !legend) return;
+        const filterState = fos.filter({ path: filterPath, modal: false });
         const current = (snapshot.getLoadable(filterState).valueMaybe() ??
           null) as CategoricalFilter | null;
         const transform = solo ? soloLabel : toggleLabel;
@@ -258,7 +267,7 @@ export default function PlotView({
           reset(filterState);
         }
       },
-    [colorField, legend],
+    [filterPath, legend],
   );
   const handleLegendToggle = (label: string) => handleLegendClick(label, false);
   const handleLegendSolo = (label: string) => handleLegendClick(label, true);
@@ -266,11 +275,11 @@ export default function PlotView({
   const resetLegendFilter = useRecoilCallback(
     ({ reset }) =>
       () => {
-        if (colorField) {
-          reset(fos.filter({ path: colorField, modal: false }));
+        if (filterPath) {
+          reset(fos.filter({ path: filterPath, modal: false }));
         }
       },
-    [colorField],
+    [filterPath],
   );
 
   const error =
