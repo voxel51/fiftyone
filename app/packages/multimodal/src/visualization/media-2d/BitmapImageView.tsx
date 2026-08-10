@@ -572,9 +572,17 @@ function BitmapEncodedVideoView({
 
   useEffect(() => {
     const presentation = snapshot.presentation;
-    if (!presentation) return undefined;
+    if (!presentation) {
+      videoCanvasRef.current = null;
+      onBitmapRetainedBytesChangeRef.current?.(0);
+      return undefined;
+    }
     const lease = presentation.acquire();
-    if (!lease) return undefined;
+    if (!lease) {
+      videoCanvasRef.current = null;
+      onBitmapRetainedBytesChangeRef.current?.(0);
+      return undefined;
+    }
     try {
       let source = videoCanvasRef.current;
       if (!source) {

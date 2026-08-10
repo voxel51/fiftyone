@@ -109,7 +109,11 @@ export function Media2dPanelShell({
         </WebGpuCanvas>
       )}
 
-      {!canvasError ? status : null}
+      {!canvasError && status ? (
+        <div aria-live="polite" role="status">
+          {status}
+        </div>
+      ) : null}
       {!canvasError && resetReady && onResetView ? (
         <div style={styles.resetControls}>
           <button

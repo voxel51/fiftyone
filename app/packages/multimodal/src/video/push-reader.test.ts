@@ -107,6 +107,20 @@ describe("PushVideoAccessUnitReader", () => {
       stopReason: "push-budget",
       units: [unit(0, true)],
     });
+
+    await expect(
+      reader.read({
+        budget: { ...budget, maxObservedPayloadBytes: 5 },
+        endTimeNs: 1n,
+        signal: new AbortController().signal,
+        startTimeNs: 0n,
+        stream: "camera",
+      }),
+    ).resolves.toMatchObject({
+      complete: false,
+      stopReason: "push-budget",
+      units: [unit(0, true)],
+    });
   });
 
   it("isolates stream spans under global eviction", async () => {

@@ -683,22 +683,29 @@ describe("BitmapImageFrameView", () => {
     stubElementSize(100, 50);
     sharedMockContext();
     const onImageLoaded = vi.fn();
+    const onBitmapRetainedBytesChange = vi.fn();
 
     const rendered = render(
       <BitmapImageFrameView
         frame={videoFrame()}
+        onBitmapRetainedBytesChange={onBitmapRetainedBytesChange}
         onImageLoaded={onImageLoaded}
         videoSessionKey={"source-a\n/camera"}
       />,
     );
     await waitFor(() => expect(onImageLoaded).toHaveBeenCalledTimes(1));
+    onBitmapRetainedBytesChange.mockClear();
 
     rendered.rerender(
       <BitmapImageFrameView
         frame={videoFrame()}
+        onBitmapRetainedBytesChange={onBitmapRetainedBytesChange}
         onImageLoaded={onImageLoaded}
         videoSessionKey={"source-b\n/camera"}
       />,
+    );
+    await waitFor(() =>
+      expect(onBitmapRetainedBytesChange).toHaveBeenCalledWith(0),
     );
     await waitFor(() => expect(onImageLoaded).toHaveBeenCalledTimes(2));
 
