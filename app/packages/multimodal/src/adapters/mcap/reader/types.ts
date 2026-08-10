@@ -181,6 +181,7 @@ export interface McapBoundedMessageReadRequest {
   readonly maxChunks: number;
   readonly maxGroups?: number;
   readonly preferredTimeNs?: bigint;
+  readonly skipOversizedSourceUnit?: boolean;
   readonly signal?: AbortSignal;
   readonly startTimeNs?: bigint;
   readonly topics?: readonly string[];

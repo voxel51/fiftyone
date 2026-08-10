@@ -16,12 +16,17 @@ export class EpisodeReadCancelledError extends Error {
 
 /** Returns whether an error represents deliberate episode-read cancellation. */
 export function isEpisodeReadCancelledError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as {
+    readonly code?: unknown;
+    readonly message?: unknown;
+    readonly name?: unknown;
+  };
   return (
-    error instanceof Error &&
-    (error.name === "AbortError" ||
-      error.name === "EpisodeReadCancelledError" ||
-      error.message === EPISODE_READ_CANCELLED_MESSAGE ||
-      ("code" in error && error.code === EPISODE_READ_CANCELLED_CODE))
+    candidate.name === "AbortError" ||
+    candidate.name === "EpisodeReadCancelledError" ||
+    candidate.message === EPISODE_READ_CANCELLED_MESSAGE ||
+    candidate.code === EPISODE_READ_CANCELLED_CODE
   );
 }
 

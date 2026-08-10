@@ -86,6 +86,7 @@ export interface ReadWorkUsage {
 
 /** Why a bounded grant returned control to its caller. */
 export type BudgetedReadStopReason =
+  | "account-exhausted"
   | "budget-exhausted"
   | "horizon-reached"
   | "oversized-source-unit"
@@ -112,6 +113,16 @@ export interface BudgetedReadRequest {
   readonly admissionEndNs?: bigint;
   readonly budget: ReadWorkBudget;
   readonly continuation?: ReadContinuation;
+  /**
+   * Stable center for a source-defined center-out traversal. The value is
+   * continuation-bound and must not change while a job is resumed.
+   */
+  readonly preferredTimeNs?: bigint;
+  /**
+   * Advances past an atomic source unit that cannot fit this grant, recording
+   * it as unavailable instead of returning the same zero-progress cursor.
+   */
+  readonly skipOversizedSourceUnit?: boolean;
   readonly signal?: AbortSignal;
   readonly streams: readonly StreamId[];
   readonly window: TimeWindow;
@@ -122,10 +133,12 @@ export interface BudgetedReadResult {
   readonly batches: readonly FrameBatch[];
   readonly continuation?: ReadContinuation;
   readonly coverageByStream: ReadonlyMap<StreamId, readonly TimeWindow[]>;
-  /** Earliest atomic-group start that can resume a horizon-stopped read. */
+  /** Earliest atomic-group start still behind the continuation. */
   readonly resumeAtNs?: bigint;
   readonly stopReason: BudgetedReadStopReason;
   readonly usage: ReadWorkUsage;
+  /** Exact source spans skipped because an atomic unit exceeded a hard grant. */
+  readonly unavailableByStream?: ReadonlyMap<StreamId, readonly TimeWindow[]>;
 }
 
 /** One independently resumable job sharing its source account's allowance. */

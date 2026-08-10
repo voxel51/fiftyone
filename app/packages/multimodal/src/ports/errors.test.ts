@@ -14,6 +14,9 @@ describe("isEpisodeReadCancelledError", () => {
     const abortError = new Error("The operation was aborted");
     abortError.name = "AbortError";
     expect(isEpisodeReadCancelledError(abortError)).toBe(true);
+    expect(
+      isEpisodeReadCancelledError(new DOMException("Aborted", "AbortError")),
+    ).toBe(true);
   });
 
   it("does not treat wrapped cancellation text as benign", () => {

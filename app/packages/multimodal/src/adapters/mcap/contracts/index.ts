@@ -135,6 +135,8 @@ export interface McapReadBoundedMessagesRequest {
   readonly continuation?: ReadContinuation;
   readonly endTimeNs?: bigint;
   readonly maxChunks: number;
+  readonly preferredTimeNs?: bigint;
+  readonly skipOversizedSourceUnit?: boolean;
   readonly source: ByteSourceDescriptor;
   readonly startTimeNs?: bigint;
   readonly topics: readonly string[];
@@ -148,6 +150,7 @@ export interface McapReadBoundedMessagesResult {
   readonly resumeAtNs?: bigint;
   readonly stopReason: BudgetedReadStopReason;
   readonly usage: ReadWorkUsage;
+  readonly unavailableByTopic?: ReadonlyMap<string, readonly TimeWindow[]>;
 }
 
 /**

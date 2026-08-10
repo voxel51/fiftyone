@@ -202,6 +202,32 @@ describe("bounded MCAP reader", () => {
     ).rejects.toThrow("admissionEndNs cannot be combined with preferredTimeNs");
   });
 
+  it("reports the earliest unread time during a center-out traversal", async () => {
+    const fixture = buildFixture([
+      { messages: [{ channelId: 1, logTime: 0n, sequence: 1 }] },
+      { messages: [{ channelId: 1, logTime: 40n, sequence: 2 }] },
+      { messages: [{ channelId: 1, logTime: 50n, sequence: 3 }] },
+      { messages: [{ channelId: 1, logTime: 100n, sequence: 4 }] },
+    ]);
+    const harness = createHarness(fixture);
+    const absolute = budgetFor(fixture.chunkIndexes, 4);
+    const grant = budgetFor([fixture.chunkIndexes[2]], 1);
+
+    const result = await harness.read(
+      requestFor({
+        absoluteBudget: absolute,
+        absoluteMaxChunks: 4,
+        budget: grant,
+        maxChunks: 1,
+        preferredTimeNs: 50n,
+      }),
+    );
+
+    expect(result.messages.map((message) => message.sequence)).toEqual([3]);
+    expect(result.stopReason).toBe("budget-exhausted");
+    expect(result.resumeAtNs).toBe(0n);
+  });
+
   it("opens no more chunks than one grant and resumes without omissions", async () => {
     const fixture = buildFixture(
       Array.from({ length: 100 }, (_, index) => ({
@@ -438,6 +464,93 @@ describe("bounded MCAP reader", () => {
     expect(result.stopReason).toBe("budget-exhausted");
     expect(result.usage.logicalSourceBytes).toBe(0);
     expect(harness.networkReads).toHaveLength(0);
+  });
+
+  it("can skip a grant-sized dense group with exact unavailable coverage", async () => {
+    const fixture = buildFixture([
+      {
+        messages: [
+          { channelId: 1, logTime: 10n, sequence: 1 },
+          { channelId: 1, logTime: 11n, sequence: 2 },
+        ],
+      },
+      { messages: [{ channelId: 1, logTime: 20n, sequence: 3 }] },
+    ]);
+    const harness = createHarness(fixture);
+    const absolute = budgetFor(fixture.chunkIndexes, 3);
+    const smallGrant = { ...absolute, maxMessages: 1 };
+
+    const skipped = await harness.read(
+      requestFor({
+        absoluteBudget: absolute,
+        absoluteMaxChunks: 2,
+        budget: smallGrant,
+        maxChunks: 2,
+        skipOversizedSourceUnit: true,
+      }),
+    );
+
+    expect(skipped.stopReason).toBe("oversized-source-unit");
+    expect(skipped.messages).toEqual([]);
+    expect(skipped.skippedByTopic?.get("/selected")).toEqual([
+      { endNs: 11n, startNs: 10n },
+    ]);
+    expect(skipped.resumeAtNs).toBe(20n);
+    expect(skipped.continuation).toBeDefined();
+
+    const resumed = await harness.read({
+      ...requestFor({
+        absoluteBudget: absolute,
+        absoluteMaxChunks: 2,
+        budget: smallGrant,
+        maxChunks: 2,
+      }),
+      continuation: skipped.continuation,
+    });
+    expect(resumed.stopReason).toBe("source-exhausted");
+    expect(resumed.messages.map((message) => message.sequence)).toEqual([3]);
+  });
+
+  it("does not skip a later group that fits a fresh grant", async () => {
+    const fixture = buildFixture([
+      { messages: [{ channelId: 1, logTime: 10n, sequence: 1 }] },
+      {
+        messages: [
+          { channelId: 1, logTime: 20n, sequence: 2 },
+          { channelId: 1, logTime: 21n, sequence: 3 },
+        ],
+      },
+    ]);
+    const harness = createHarness(fixture);
+    const absolute = budgetFor(fixture.chunkIndexes, 3);
+    const twoMessageGrant = { ...absolute, maxMessages: 2 };
+
+    const first = await harness.read(
+      requestFor({
+        absoluteBudget: absolute,
+        absoluteMaxChunks: 2,
+        budget: twoMessageGrant,
+        maxChunks: 2,
+        skipOversizedSourceUnit: true,
+      }),
+    );
+
+    expect(first.stopReason).toBe("budget-exhausted");
+    expect(first.messages.map((message) => message.sequence)).toEqual([1]);
+    expect(first.skippedByTopic?.size).toBe(0);
+    expect(first.continuation).toBeDefined();
+
+    const resumed = await harness.read({
+      ...requestFor({
+        absoluteBudget: absolute,
+        absoluteMaxChunks: 2,
+        budget: twoMessageGrant,
+        maxChunks: 2,
+      }),
+      continuation: first.continuation,
+    });
+    expect(resumed.stopReason).toBe("source-exhausted");
+    expect(resumed.messages.map((message) => message.sequence)).toEqual([2, 3]);
   });
 
   it("rejects an absolute oversized unit before fetching it", async () => {

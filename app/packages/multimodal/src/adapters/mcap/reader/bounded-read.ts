@@ -220,6 +220,22 @@ export function createMcapBoundedReader({
           logicalUncompressedBytes + groupUncompressedBytes >
             request.budget.maxUncompressedBytes
         ) {
+          const groupExceedsCompleteGrant =
+            group.chunks.length > request.maxChunks ||
+            groupLogicalSourceBytes > request.budget.maxSourceBytes ||
+            groupUncompressedBytes > request.budget.maxUncompressedBytes;
+          if (request.skipOversizedSourceUnit && groupExceedsCompleteGrant) {
+            recordCoverage({
+              channelIds,
+              coverageByTopic: skippedByTopic,
+              group,
+              reader,
+              request,
+            });
+            groupIndex += 1;
+            stopReason = "oversized-source-unit";
+            break;
+          }
           stopReason = "budget-exhausted";
           break;
         }
@@ -259,10 +275,26 @@ export function createMcapBoundedReader({
           messagesDecoded + indexedMessageCount >
           request.budget.maxMessages
         ) {
+          if (
+            request.skipOversizedSourceUnit &&
+            indexedMessageCount > request.budget.maxMessages
+          ) {
+            recordCoverage({
+              channelIds,
+              coverageByTopic: skippedByTopic,
+              group,
+              reader,
+              request,
+            });
+            groupIndex += 1;
+            stopReason = "oversized-source-unit";
+            break;
+          }
           stopReason = "budget-exhausted";
           break;
         }
 
+        const messagesDecodedBeforeGroup = messagesDecoded;
         const groupMessages: OrderedMessage[] = [];
         let selectedEntriesParsed = 0;
         let fallbackStopReason:
@@ -380,7 +412,11 @@ export function createMcapBoundedReader({
         }
 
         if (fallbackStopReason) {
-          if (fallbackStopReason === "oversized-source-unit") {
+          if (
+            fallbackStopReason === "oversized-source-unit" ||
+            (request.skipOversizedSourceUnit &&
+              messagesDecodedBeforeGroup === 0)
+          ) {
             recordCoverage({
               channelIds,
               coverageByTopic: skippedByTopic,
@@ -389,6 +425,7 @@ export function createMcapBoundedReader({
               request,
             });
             groupIndex += 1;
+            fallbackStopReason = "oversized-source-unit";
           }
           stopReason = fallbackStopReason;
           break;
@@ -421,6 +458,16 @@ export function createMcapBoundedReader({
 
       const usage = usageSnapshot();
       assertUsageWithinGrant(usage, request);
+      const resumeAtNs =
+        groupIndex < groups.length
+          ? groups
+              .slice(groupIndex)
+              .reduce(
+                (earliest, group) =>
+                  group.startTimeNs < earliest ? group.startTimeNs : earliest,
+                groups[groupIndex].startTimeNs,
+              )
+          : undefined;
 
       return {
         ...(groupIndex < groups.length
@@ -443,9 +490,7 @@ export function createMcapBoundedReader({
           ]),
         ),
         messages: orderedMessages.map((entry) => entry.message),
-        ...(stopReason === "horizon-reached" && groupIndex < groups.length
-          ? { resumeAtNs: groups[groupIndex].startTimeNs }
-          : {}),
+        ...(resumeAtNs !== undefined ? { resumeAtNs } : {}),
         stopReason,
         skippedByTopic: new Map(
           [...skippedByTopic].map(([topic, windows]) => [

@@ -1011,7 +1011,7 @@ class McapEpisodeSession implements EpisodeSession {
         batches: [],
         ...(request.continuation ? { continuation: request.continuation } : {}),
         coverageByStream: new Map(),
-        stopReason: "budget-exhausted",
+        stopReason: "account-exhausted",
         usage: emptyReadWorkUsage(),
       };
     }
@@ -1033,8 +1033,14 @@ class McapEpisodeSession implements EpisodeSession {
           continuation: request.continuation,
           endTimeNs: request.window.endNs,
           maxChunks: reservation.maxPhysicalUnits,
+          ...(request.preferredTimeNs !== undefined
+            ? { preferredTimeNs: request.preferredTimeNs }
+            : {}),
           source: this.source,
           startTimeNs: request.window.startNs,
+          ...(request.skipOversizedSourceUnit
+            ? { skipOversizedSourceUnit: true }
+            : {}),
           topics,
         },
         { priority: "bulk", signal: request.signal },
@@ -1071,6 +1077,16 @@ class McapEpisodeSession implements EpisodeSession {
           : {}),
         stopReason: result.stopReason,
         usage: result.usage,
+        ...(result.unavailableByTopic
+          ? {
+              unavailableByStream: new Map(
+                [...result.unavailableByTopic].map(([topic, windows]) => [
+                  this.streamIdFor(topic),
+                  windows,
+                ]),
+              ),
+            }
+          : {}),
       };
     } catch (error) {
       const cancelled =
