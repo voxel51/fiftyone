@@ -101,7 +101,9 @@
     },
     "scripts": {
         "lint": "yarn check",
-        "check": "concurrently -g \"yarn:check:lint\" \"yarn:check:deps\" \"yarn:check:types\"",
+        "check": "concurrently -g \"yarn:check:lint\" \"yarn:check:deps\" \"yarn:check:architecture\" \"yarn:check:bounded-reads\" \"yarn:check:types\"",
+        "check:architecture": "node ./scripts/check-architecture.mjs",
+        "check:bounded-reads": "node ./scripts/check-bounded-reads.mjs",
         "check:types": "node ./scripts/check-types.mjs",
         "check:lint": "node ./scripts/check-lint.mjs",
         "check:deps": "node ./scripts/check-deps.mjs"
