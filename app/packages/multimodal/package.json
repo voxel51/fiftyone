@@ -122,6 +122,7 @@
         "@foxglove/rosmsg2-serialization": "^3.1.2",
         "@mcap/core": "patch:@mcap/core@npm%3A2.2.1#~/.yarn/patches/@mcap-core-npm-2.2.1-fdbe7fc61b.patch",
         "@mcap/support": "^1.1.0",
+        "@mui/icons-material": "catalog:",
         "@react-three/drei": "9.105.4",
         "@react-three/fiber": "catalog:",
         "@voxel51/voodo": "^0.1.0",

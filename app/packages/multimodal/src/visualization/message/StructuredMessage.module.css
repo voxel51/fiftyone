@@ -56,24 +56,46 @@
   padding: 1px 6px;
 }
 
-.copyMessageButton {
+.messageActions {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.messageActionButton {
+  align-items: center;
   background: transparent;
   border: 1px solid var(--color-content-border-default, #383835);
   border-radius: 4px;
   color: var(--color-content-text-secondary);
   cursor: pointer;
-  font-size: 11px;
-  margin-left: auto;
-  padding: 2px 8px;
+  display: inline-flex;
+  height: 22px;
+  justify-content: center;
+  padding: 0;
+  width: 22px;
 }
 
-.copyMessageButton:hover {
+.messageActionButton:hover,
+.messageActionButton:focus-visible {
+  border-color: var(--color-content-text-secondary);
   color: var(--color-content-text-primary);
 }
 
-.copyMessageButton:disabled {
-  cursor: wait;
-  opacity: 0.7;
+.messageActionButton:focus-visible {
+  outline: 2px solid var(--color-voxel-secondary, #ff8d00);
+  outline-offset: 1px;
+}
+
+.messageActionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.messageActionIcon {
+  height: 12px;
+  width: 12px;
 }
 
 .scroll {

@@ -2114,6 +2114,7 @@ __metadata:
     "@foxglove/rosmsg2-serialization": "npm:^3.1.2"
     "@mcap/core": "patch:@mcap/core@npm%3A2.2.1#~/.yarn/patches/@mcap-core-npm-2.2.1-fdbe7fc61b.patch"
     "@mcap/support": "npm:^1.1.0"
+    "@mui/icons-material": "catalog:"
     "@react-three/drei": "npm:9.105.4"
     "@react-three/fiber": "catalog:"
     "@types/three": "npm:^0.182.0"

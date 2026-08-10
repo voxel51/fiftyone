@@ -24,7 +24,6 @@ const mocks = vi.hoisted(() => ({
     getTimelineIndex: () => ({ startTimeNs: 0n }),
     sourceKey: "source-1",
   },
-  expandedTileId: null as string | null,
   ensureEnumeration: vi.fn(),
   ensureStreams: vi.fn(),
   enumeration: {
@@ -90,7 +89,6 @@ const DISPLAYED_RESULT: RawRecordResult = {
 vi.mock("@fiftyone/tiling", () => ({
   useSetTileTitle: () => mocks.setTileTitle,
   useTileId: () => "raw-1",
-  useTiling: () => ({ expandedTileId: mocks.expandedTileId }),
 }));
 
 vi.mock("@fiftyone/playback/runtime", () => ({
@@ -164,7 +162,6 @@ beforeEach(() => {
     getTimelineIndex: () => ({ startTimeNs: 0n }),
     sourceKey: "source-1",
   };
-  mocks.expandedTileId = null;
   mocks.ensureEnumeration.mockReset();
   mocks.ensureStreams.mockReset();
   mocks.enumeration = { status: "idle", streams: [] };
@@ -445,7 +442,7 @@ describe("RawMessageTile", () => {
     expect(screen.getByTestId("episode-raw-plot-hidden")).toBeTruthy();
   });
 
-  it("offers Browse only for a maximized exact-indexed stream", () => {
+  it("offers Browse for an exact-indexed stream without maximizing", () => {
     mocks.recordState = {
       result: { ...DISPLAYED_RESULT, cursor: "cursor-10" },
       status: "ready",
@@ -453,15 +450,14 @@ describe("RawMessageTile", () => {
     mocks.streams = readyRawStreams("/state", true);
 
     const { rerender } = render(<RawMessageTile />);
-    expect(
-      screen.queryByRole("button", { name: "Browse messages" }),
-    ).toBeNull();
-
-    mocks.expandedTileId = "raw-1";
-    rerender(<RawMessageTile />);
-    expect(
-      screen.getByRole("button", { name: "Browse messages" }),
-    ).toBeTruthy();
+    const browseButton = screen.getByRole("button", {
+      name: "Browse messages",
+    });
+    const copyButton = screen.getByRole("button", { name: "Copy message" });
+    expect(browseButton.querySelector("svg")).toBeTruthy();
+    expect(copyButton.querySelector("svg")).toBeTruthy();
+    expect(browseButton.textContent).toBe("");
+    expect(copyButton.textContent).toBe("");
 
     mocks.streams = readyRawStreams("/state", false);
     rerender(<RawMessageTile />);
@@ -471,7 +467,6 @@ describe("RawMessageTile", () => {
   });
 
   it("pauses and anchors Browse to the displayed exact cursor", () => {
-    mocks.expandedTileId = "raw-1";
     mocks.recordState = {
       result: { ...DISPLAYED_RESULT, cursor: "cursor-10" },
       status: "ready",
@@ -487,8 +482,7 @@ describe("RawMessageTile", () => {
     );
   });
 
-  it("exits Browse when playback starts or the tile is unmaximized", () => {
-    mocks.expandedTileId = "raw-1";
+  it("exits Browse when playback starts", () => {
     mocks.recordState = {
       result: { ...DISPLAYED_RESULT, cursor: "cursor-10" },
       status: "ready",
@@ -502,18 +496,9 @@ describe("RawMessageTile", () => {
     mocks.isPlaying = true;
     rerender(<RawMessageTile />);
     expect(screen.queryByTestId("raw-message-browser")).toBeNull();
-
-    mocks.isPlaying = false;
-    rerender(<RawMessageTile />);
-    fireEvent.click(screen.getByRole("button", { name: "Browse messages" }));
-    expect(screen.getByTestId("raw-message-browser")).toBeTruthy();
-    mocks.expandedTileId = null;
-    rerender(<RawMessageTile />);
-    expect(screen.queryByTestId("raw-message-browser")).toBeNull();
   });
 
   it("exits Browse as soon as Play becomes pending", () => {
-    mocks.expandedTileId = "raw-1";
     mocks.recordState = {
       result: { ...DISPLAYED_RESULT, cursor: "cursor-10" },
       status: "ready",
@@ -529,7 +514,6 @@ describe("RawMessageTile", () => {
   });
 
   it("exits Browse when the selected stream changes", () => {
-    mocks.expandedTileId = "raw-1";
     mocks.recordState = {
       result: { ...DISPLAYED_RESULT, cursor: "cursor-10" },
       status: "ready",
@@ -547,7 +531,6 @@ describe("RawMessageTile", () => {
   });
 
   it("exits Browse when the source changes under the same stream", () => {
-    mocks.expandedTileId = "raw-1";
     mocks.recordState = {
       result: { ...DISPLAYED_RESULT, cursor: "cursor-10" },
       status: "ready",
@@ -568,7 +551,6 @@ describe("RawMessageTile", () => {
 
   it("copies a browsable result by its exact cursor", async () => {
     const fullJson = JSON.stringify({ exact: true });
-    mocks.expandedTileId = "raw-1";
     mocks.recordState = {
       result: { ...DISPLAYED_RESULT, cursor: "cursor-10" },
       status: "ready",
@@ -593,7 +575,6 @@ describe("RawMessageTile", () => {
 
   it("disables exact copy while the selected record is still loading", () => {
     mocks.browserCopyDisabled = true;
-    mocks.expandedTileId = "raw-1";
     mocks.recordState = {
       result: { ...DISPLAYED_RESULT, cursor: "cursor-10" },
       status: "ready",
@@ -610,7 +591,6 @@ describe("RawMessageTile", () => {
   });
 
   it("keeps Browse active for a legacy source-name binding", () => {
-    mocks.expandedTileId = "raw-1";
     mocks.selectedStream = "/state";
     mocks.recordState = {
       result: {

@@ -4,7 +4,9 @@ import {
   useIsPlayPending,
   usePlayback,
 } from "@fiftyone/playback/runtime";
-import { useSetTileTitle, useTileId, useTiling } from "@fiftyone/tiling";
+import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
+import ZoomInIcon from "@mui/icons-material/ZoomIn";
+import { Icon, IconName, Size } from "@voxel51/voodo";
 import React, {
   useCallback,
   useEffect,
@@ -42,7 +44,6 @@ import { formatRawMessageTime } from "./raw-message-time";
  */
 const RawMessageTile: React.FC<EpisodeTileProps> = () => {
   const tileId = useTileId();
-  const { expandedTileId } = useTiling();
   const { pause } = usePlayback();
   const isPlaying = useIsPlaying();
   const isPlayPending = useIsPlayPending();
@@ -108,17 +109,15 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
             stream.streamId === streamKey || stream.sourceName === streamKey,
         )
       : undefined;
-  const isMaximized = tileId !== null && expandedTileId === tileId;
   const canBrowse = Boolean(
-    isMaximized && selectedStream?.supportsExactBrowsing && result?.cursor,
+    selectedStream?.supportsExactBrowsing && result?.cursor,
   );
 
   // This effect exits ephemeral Browse state when its owning conditions end.
   useEffect(() => {
     if (
       browseAnchor &&
-      (!isMaximized ||
-        isPlaying ||
+      (isPlaying ||
         isPlayPending ||
         browseSourceKeyRef.current !== sourceKey ||
         (browseAnchor.streamId !== streamKey &&
@@ -129,7 +128,6 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
     }
   }, [
     browseAnchor,
-    isMaximized,
     isPlayPending,
     isPlaying,
     selectedStream?.supportsExactBrowsing,
@@ -226,11 +224,14 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
             action={
               canBrowse ? (
                 <button
-                  className={rawStyles.copyMessageButton}
+                  aria-label="Browse messages"
+                  className={rawStyles.messageActionButton}
                   onClick={enterBrowse}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  title="Browse messages"
                   type="button"
                 >
-                  Browse messages
+                  <ZoomInIcon className={rawStyles.messageActionIcon} />
                 </button>
               ) : null
             }
@@ -374,6 +375,20 @@ function MetaRow({
     result.timestampNs !== undefined && startTimeNs !== undefined
       ? formatRawMessageTime(result.timestampNs, startTimeNs)
       : null;
+  const copyButtonLabel = copying
+    ? "Cancel copy"
+    : copyFeedback === "copied"
+      ? "Copied"
+      : copyFeedback === "failed"
+        ? "Copy failed"
+        : "Copy message";
+  const copyButtonIcon = copying
+    ? IconName.Close
+    : copyFeedback === "copied"
+      ? IconName.Check
+      : copyFeedback === "failed"
+        ? IconName.Error
+        : IconName.ContentCopy;
 
   return (
     <div className={rawStyles.meta} data-cy="episode-raw-meta">
@@ -407,36 +422,42 @@ function MetaRow({
           truncated
         </span>
       ) : null}
-      {result.root ? (
-        <>
-          <button
-            className={rawStyles.copyMessageButton}
-            data-cy="episode-raw-copy-message"
-            disabled={copyDisabled}
-            onClick={() => void handleCopyMessage()}
-            title={
-              copying
-                ? "Cancel whole-message copy"
-                : "Copy the whole message as compact JSON"
-            }
-            type="button"
-          >
-            {copying
-              ? "Cancel copy"
-              : copyFeedback === "copied"
-                ? "Copied"
-                : copyFeedback === "failed"
-                  ? "Copy failed"
-                  : "Copy message"}
-          </button>
-          {copyError ? (
-            <span className={rawStyles.truncatedText} role="status">
-              {copyError}
-            </span>
-          ) : null}
-        </>
+      {copyError ? (
+        <span className={rawStyles.truncatedText} role="status">
+          {copyError}
+        </span>
       ) : null}
-      {action}
+      {result.root || action ? (
+        <div className={rawStyles.messageActions}>
+          {result.root ? (
+            <button
+              aria-label={copyButtonLabel}
+              className={rawStyles.messageActionButton}
+              data-cy="episode-raw-copy-message"
+              disabled={copyDisabled}
+              onClick={() => void handleCopyMessage()}
+              onPointerDown={(event) => event.stopPropagation()}
+              title={
+                copying
+                  ? "Cancel whole-message copy"
+                  : copyFeedback === "copied"
+                    ? "Message copied"
+                    : copyFeedback === "failed"
+                      ? "Copy failed"
+                      : "Copy the whole message as compact JSON"
+              }
+              type="button"
+            >
+              <Icon
+                className={rawStyles.messageActionIcon}
+                name={copyButtonIcon}
+                size={Size.Xs}
+              />
+            </button>
+          ) : null}
+          {action}
+        </div>
+      ) : null}
     </div>
   );
 }
