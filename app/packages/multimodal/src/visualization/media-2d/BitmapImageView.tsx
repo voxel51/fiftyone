@@ -44,6 +44,8 @@ import {
 } from "./video-texture";
 
 const DEFAULT_MIME_TYPE = "image/jpeg";
+/** Trailing coalescing window for compressed grid-preview resize decodes. */
+export const BITMAP_IMAGE_RESIZE_DEBOUNCE_MS = 100;
 
 /**
  * CSS-pixel dimensions used by the draw-rect helper.
@@ -118,6 +120,80 @@ type CanvasDrawable = (HTMLCanvasElement | ImageBitmap) & {
   readonly width: number;
   close?: () => void;
 };
+
+interface EncodedBitmapDecodeRequest {
+  cancelled: boolean;
+  readonly onError: (error: unknown) => void;
+  readonly onSuccess: (bitmap: ImageBitmap) => void;
+  readonly options: ImageBitmapOptions;
+  readonly source: Blob;
+}
+
+/** One running browser decode plus one replaceable latest request. */
+class LatestEncodedBitmapDecoder {
+  private active: EncodedBitmapDecodeRequest | null = null;
+  private pending: EncodedBitmapDecodeRequest | null = null;
+
+  request(
+    source: Blob,
+    options: ImageBitmapOptions,
+    onSuccess: (bitmap: ImageBitmap) => void,
+    onError: (error: unknown) => void,
+  ): () => void {
+    const request: EncodedBitmapDecodeRequest = {
+      cancelled: false,
+      onError,
+      onSuccess,
+      options,
+      source,
+    };
+    if (this.active) {
+      if (this.pending) this.pending.cancelled = true;
+      this.pending = request;
+    } else {
+      this.start(request);
+    }
+
+    return () => {
+      request.cancelled = true;
+      if (this.pending === request) this.pending = null;
+    };
+  }
+
+  private start(request: EncodedBitmapDecodeRequest): void {
+    this.active = request;
+    createImageBitmap(request.source, request.options).then(
+      (bitmap) => {
+        try {
+          if (request.cancelled) {
+            bitmap.close();
+          } else {
+            request.onSuccess(bitmap);
+          }
+        } catch (error) {
+          if (!request.cancelled) request.onError(error);
+        } finally {
+          this.finish(request);
+        }
+      },
+      (error) => {
+        try {
+          if (!request.cancelled) request.onError(error);
+        } finally {
+          this.finish(request);
+        }
+      },
+    );
+  }
+
+  private finish(request: EncodedBitmapDecodeRequest): void {
+    if (this.active !== request) return;
+    this.active = null;
+    const pending = this.pending;
+    this.pending = null;
+    if (pending && !pending.cancelled) this.start(pending);
+  }
+}
 
 /**
  * Destination rect for drawing an image of `image` size into `container`,
@@ -284,6 +360,11 @@ export function BitmapImageView({
   style,
 }: BitmapImageViewProps) {
   const { canvasRef, commit, cssSize } = useBitmapCanvas(fit, true);
+  const decodeSize = useDebouncedBitmapDecodeSize(cssSize);
+  const decoderRef = useRef<LatestEncodedBitmapDecoder | null>(null);
+  if (decoderRef.current === null) {
+    decoderRef.current = new LatestEncodedBitmapDecoder();
+  }
   const onErrorRef = useLatestRef(onError);
   const onImageLoadedRef = useLatestRef(onImageLoaded);
   const onBitmapRetainedBytesChangeRef = useLatestRef(
@@ -295,25 +376,18 @@ export function BitmapImageView({
   // request may commit — a superseded decode (newer bytes arrived, or
   // unmount) closes its own bitmap and leaves the previous frame drawn.
   useEffect(() => {
-    if (!cssSize) {
+    if (!decodeSize) {
       return undefined;
     }
 
-    let cancelled = false;
     const imageSize = encodedImageDimensions(bytes);
     const options = imageSize
-      ? bitmapDecodeOptions(cssSize, imageSize, fit)
+      ? bitmapDecodeOptions(decodeSize, imageSize, fit)
       : ({ colorSpaceConversion: "none" } satisfies ImageBitmapOptions);
-    createImageBitmap(
+    return decoderRef.current?.request(
       new Blob([bytes as BlobPart], { type: mimeType ?? DEFAULT_MIME_TYPE }),
       options,
-    )
-      .then((bitmap) => {
-        if (cancelled) {
-          bitmap.close();
-          return;
-        }
-
+      (bitmap) => {
         commit(bitmap);
         onBitmapRetainedBytesChangeRef.current?.(
           bitmap.width * bitmap.height * 4,
@@ -322,23 +396,16 @@ export function BitmapImageView({
           imageSize?.width ?? bitmap.width,
           imageSize?.height ?? bitmap.height,
         );
-      })
-      .catch((error) => {
-        if (cancelled) {
-          return;
-        }
-
+      },
+      (error) => {
         // Keep the last good frame; only report.
         onErrorRef.current?.(error);
-      });
-
-    return () => {
-      cancelled = true;
-    };
+      },
+    );
   }, [
     bytes,
     commit,
-    cssSize,
+    decodeSize,
     fit,
     mimeType,
     onBitmapRetainedBytesChangeRef,
@@ -481,7 +548,8 @@ function BitmapRawImageView({
 }: Omit<BitmapImageFrameViewProps, "frame"> & {
   readonly frame: RawImageVisualization;
 }) {
-  const { canvasRef, commit } = useBitmapCanvas(fit);
+  const { canvasRef, commit, cssSize } = useBitmapCanvas(fit, true);
+  const previewSize = useDebouncedBitmapDecodeSize(cssSize);
   const onErrorRef = useLatestRef(onError);
   const onImageLoadedRef = useLatestRef(onImageLoaded);
   const onBitmapRetainedBytesChangeRef = useLatestRef(
@@ -490,13 +558,14 @@ function BitmapRawImageView({
   const sourceCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
+    if (!previewSize) return;
     try {
       let source = sourceCanvasRef.current;
       if (!source) {
         source = document.createElement("canvas");
         sourceCanvasRef.current = source;
       }
-      canvasFromRawImage(frame, source);
+      canvasFromRawImage(frame, source, previewSize, fit);
       commit(source);
       onBitmapRetainedBytesChangeRef.current?.(
         source.width * source.height * 4,
@@ -507,11 +576,26 @@ function BitmapRawImageView({
     }
   }, [
     commit,
+    fit,
     frame,
     onBitmapRetainedBytesChangeRef,
     onErrorRef,
     onImageLoadedRef,
+    previewSize,
   ]);
+
+  // This effect explicitly releases the tile-sized staging backing store.
+  useEffect(
+    () => () => {
+      const source = sourceCanvasRef.current;
+      sourceCanvasRef.current = null;
+      if (source) {
+        source.width = 0;
+        source.height = 0;
+      }
+    },
+    [],
+  );
 
   return (
     <canvas
@@ -545,6 +629,36 @@ export function bitmapDecodeOptions(
       ? { resizeHeight, resizeQuality: "high", resizeWidth }
       : {}),
   };
+}
+
+function useDebouncedBitmapDecodeSize(
+  size: BitmapDrawSize | null,
+): BitmapDrawSize | null {
+  const [debouncedSize, setDebouncedSize] = useState<BitmapDrawSize | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!size) return undefined;
+    if (!debouncedSize) {
+      setDebouncedSize(size);
+      return undefined;
+    }
+    if (
+      debouncedSize.width === size.width &&
+      debouncedSize.height === size.height
+    ) {
+      return undefined;
+    }
+
+    const timer = setTimeout(
+      () => setDebouncedSize(size),
+      BITMAP_IMAGE_RESIZE_DEBOUNCE_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [debouncedSize, size]);
+
+  return debouncedSize;
 }
 
 /** Reads intrinsic JPEG, PNG, or WebP dimensions without decoding pixels. */
@@ -671,25 +785,68 @@ function readUint24Le(bytes: Uint8Array, offset: number): number {
 function canvasFromRawImage(
   frame: RawImageVisualization,
   canvas: HTMLCanvasElement,
+  container: BitmapDrawSize,
+  fit: "contain" | "cover",
 ): void {
   if (frame.rgba.byteLength < frame.width * frame.height * 4) {
     throw new Error("Raw image frame has too few RGBA bytes");
   }
 
-  if (canvas.width !== frame.width) {
-    canvas.width = frame.width;
+  const options = bitmapDecodeOptions(
+    container,
+    { height: frame.height, width: frame.width },
+    fit,
+  );
+  const previewWidth = options.resizeWidth ?? frame.width;
+  const previewHeight = options.resizeHeight ?? frame.height;
+  if (canvas.width !== previewWidth) {
+    canvas.width = previewWidth;
   }
-  if (canvas.height !== frame.height) {
-    canvas.height = frame.height;
+  if (canvas.height !== previewHeight) {
+    canvas.height = previewHeight;
   }
   const context = canvas.getContext("2d");
   if (!context) {
     throw new Error("Unable to create raw image canvas context");
   }
 
-  const imageData = context.createImageData(frame.width, frame.height);
-  imageData.data.set(frame.rgba.subarray(0, frame.width * frame.height * 4));
+  const imageData = context.createImageData(previewWidth, previewHeight);
+  copyRawImagePreview(frame, imageData.data, previewWidth, previewHeight);
   context.putImageData(imageData, 0, 0);
+}
+
+function copyRawImagePreview(
+  frame: RawImageVisualization,
+  target: Uint8ClampedArray,
+  targetWidth: number,
+  targetHeight: number,
+): void {
+  const sourceLength = frame.width * frame.height * 4;
+  if (targetWidth === frame.width && targetHeight === frame.height) {
+    target.set(frame.rgba.subarray(0, sourceLength));
+    return;
+  }
+
+  // Center-sampled nearest-neighbor reduction preserves exact raw channel
+  // bytes while avoiding a second full-resolution RGBA backing store.
+  for (let targetY = 0; targetY < targetHeight; targetY += 1) {
+    const sourceY = Math.min(
+      frame.height - 1,
+      Math.floor(((targetY + 0.5) * frame.height) / targetHeight),
+    );
+    for (let targetX = 0; targetX < targetWidth; targetX += 1) {
+      const sourceX = Math.min(
+        frame.width - 1,
+        Math.floor(((targetX + 0.5) * frame.width) / targetWidth),
+      );
+      const sourceOffset = (sourceY * frame.width + sourceX) * 4;
+      const targetOffset = (targetY * targetWidth + targetX) * 4;
+      target[targetOffset] = frame.rgba[sourceOffset];
+      target[targetOffset + 1] = frame.rgba[sourceOffset + 1];
+      target[targetOffset + 2] = frame.rgba[sourceOffset + 2];
+      target[targetOffset + 3] = frame.rgba[sourceOffset + 3];
+    }
+  }
 }
 
 /**
