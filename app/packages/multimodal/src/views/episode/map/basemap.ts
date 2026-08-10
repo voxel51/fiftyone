@@ -23,11 +23,8 @@ export function initialMapBasemapStatus(
   return baseLayer === MAP_BASE_LAYER.NONE ? "disabled" : "loading";
 }
 
-/** Returns provider-labelled user-facing status text when action is pending. */
+/** Returns provider-labelled user-facing status text when action is needed. */
 export function mapBasemapStatusText(status: MapBasemapStatus): string | null {
-  if (status === "loading") {
-    return `Loading basemap from ${OPENFREEMAP_PROVIDER_NAME}`;
-  }
   if (status === "error") {
     return `Basemap unavailable from ${OPENFREEMAP_PROVIDER_NAME}`;
   }

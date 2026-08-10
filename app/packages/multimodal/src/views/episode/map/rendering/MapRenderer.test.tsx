@@ -45,12 +45,12 @@ describe("MapRenderer basemap recovery", () => {
       <MapRenderer
         baseLayer={MAP_BASE_LAYER.DEFAULT}
         downsampled={false}
-        enabledStreamCount={0}
+        enabledStreamCount={1}
         errorCount={0}
         followEgo={false}
-        loadingCount={0}
+        loadingCount={1}
         locationEvidencePending={false}
-        locationStreamCount={0}
+        locationStreamCount={1}
         liveMarkers={[]}
         onFollowEgoChange={vi.fn()}
         onHoverTimeNs={vi.fn()}
@@ -70,6 +70,7 @@ describe("MapRenderer basemap recovery", () => {
       />,
     );
 
+    expect(screen.queryByRole("status")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Fail basemap" }));
     fireEvent.click(screen.getByRole("button", { name: "Retry basemap" }));
 

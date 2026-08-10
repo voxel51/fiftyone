@@ -78,10 +78,8 @@ describe("episode map basemap lifecycle", () => {
     expect(mapBasemapSourceIds(merged)).toEqual(["openmaptiles"]);
   });
 
-  it("names the provider while loading or unavailable", () => {
-    expect(mapBasemapStatusText("loading")).toBe(
-      "Loading basemap from OpenFreeMap",
-    );
+  it("names the provider only when unavailable", () => {
+    expect(mapBasemapStatusText("loading")).toBeNull();
     expect(mapBasemapStatusText("error")).toBe(
       "Basemap unavailable from OpenFreeMap",
     );

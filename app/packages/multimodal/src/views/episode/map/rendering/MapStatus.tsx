@@ -2,12 +2,11 @@ import React from "react";
 
 import styles from "./MapRenderer.module.css";
 
-/** Summarizes per-stream map loading, failure, and downsampling state. */
+/** Summarizes actionable per-stream failure and route-fidelity state. */
 export function mapStatusText({
   downsampled,
   enabledStreamCount,
   errorCount,
-  loadingCount,
   locationStreamCount,
   readyTrackCount,
   truncated,
@@ -15,14 +14,12 @@ export function mapStatusText({
   readonly downsampled: boolean;
   readonly enabledStreamCount: number;
   readonly errorCount: number;
-  readonly loadingCount: number;
   readonly locationStreamCount: number;
   readonly readyTrackCount: number;
   readonly truncated: boolean;
 }): string | null {
   if (locationStreamCount === 0 || enabledStreamCount === 0) return null;
   const notes = [
-    loadingCount > 0 ? `loading ${loadingCount}` : null,
     errorCount > 0 ? `${errorCount} failed` : null,
     readyTrackCount > 0 && truncated ? "partial route" : null,
     readyTrackCount > 0 && downsampled ? "downsampled" : null,

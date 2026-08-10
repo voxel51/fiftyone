@@ -136,7 +136,6 @@ export const MapRenderer: React.FC<MapRendererProps> = ({
     downsampled,
     enabledStreamCount,
     errorCount,
-    loadingCount,
     locationStreamCount,
     readyTrackCount: tracks.length,
     truncated,

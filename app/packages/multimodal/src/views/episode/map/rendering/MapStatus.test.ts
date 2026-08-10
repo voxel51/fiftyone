@@ -7,7 +7,6 @@ describe("mapStatusText", () => {
     const state = {
       enabledStreamCount: 1,
       errorCount: 0,
-      loadingCount: 0,
       locationStreamCount: 1,
       readyTrackCount: 1,
     };
