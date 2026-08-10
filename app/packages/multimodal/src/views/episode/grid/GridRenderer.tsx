@@ -247,7 +247,7 @@ function useGridVideoPlayback(sourceKey: string | null): {
     ) {
       return;
     }
-    const timeNs = result.frameTimeNs ?? image.timestampNs;
+    const timeNs = image.timestampNs ?? result.frameTimeNs;
     if (timeNs === undefined) return;
     controller.reader.push(stream, { frame: image, timeNs });
 
@@ -258,7 +258,6 @@ function useGridVideoPlayback(sourceKey: string | null): {
       lease = controller.manager.acquire(stream);
       controller.leases.set(stream, lease);
     }
-    lease.request({ frame: image, priority: "visible", timeNs });
   }, []);
 
   return { manager, onReadResult };

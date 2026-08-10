@@ -7,6 +7,7 @@ import type {
   H264AccessUnit,
   VideoAccessUnitReader,
 } from "../../../video/types";
+import { VISUALIZATION_KIND } from "../../../visualization";
 import { useDataStream } from "./data-stream-context";
 
 /** Binds the source manager to the current bounded episode read port. */
@@ -43,7 +44,7 @@ export function SourceVideoPlaybackProvider({
         for (const decoded of result.frames) {
           const visualization = decoded.output.visualization;
           if (
-            visualization?.kind !== "encoded-video" ||
+            visualization?.kind !== VISUALIZATION_KIND.ENCODED_VIDEO ||
             visualization.codec !== "h264" ||
             visualization.h264.hasFrame === false
           ) {
