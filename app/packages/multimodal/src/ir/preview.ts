@@ -1,4 +1,4 @@
-import type { ImageVisualization, PointCloudVisualization } from "./frames";
+import type { CameraVisualization, PointCloudVisualization } from "./frames";
 import type { EpisodeManifest, StreamId } from "./manifest";
 import type { EpisodeTimeline } from "./playback";
 import type { TimeWindow } from "./time";
@@ -6,7 +6,7 @@ import type { TimeWindow } from "./time";
 /** Lightweight render-ready poster handed from an episode grid to its modal. */
 export type EpisodePosterFrame =
   | {
-      readonly image: ImageVisualization;
+      readonly image: CameraVisualization;
       readonly kind: "image";
     }
   | {

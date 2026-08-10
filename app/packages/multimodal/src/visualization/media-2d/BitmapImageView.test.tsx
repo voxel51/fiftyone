@@ -16,11 +16,9 @@ import {
   bitmapDrawRect,
   encodedImageDimensions,
 } from "./BitmapImageView";
-import { resetVideoTextureDecodersForTests } from "./video-texture";
 
 afterEach(() => {
   cleanup();
-  resetVideoTextureDecodersForTests();
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -601,13 +599,14 @@ describe("BitmapImageFrameView", () => {
 
     await waitFor(() => expect(onImageLoaded).toHaveBeenCalledWith(640, 480));
 
-    expect(drawImage).toHaveBeenCalledTimes(2);
+    expect(drawImage).toHaveBeenCalledTimes(3);
     expect(drawImage.mock.calls[0]?.[0]).toMatchObject({
       displayHeight: 480,
       displayWidth: 640,
     });
     expect(drawImage.mock.calls[1]?.[0]).toBeInstanceOf(HTMLCanvasElement);
-    expect(drawImage.mock.calls[1]?.slice(1)).toEqual([0, -12.5, 100, 75]);
+    expect(drawImage.mock.calls[2]?.[0]).toBeInstanceOf(HTMLCanvasElement);
+    expect(drawImage.mock.calls[2]?.slice(1)).toEqual([0, -12.5, 100, 75]);
   });
 
   it("keeps one decoder session across keyframe-to-delta rerenders", async () => {
@@ -642,27 +641,71 @@ describe("BitmapImageFrameView", () => {
     expect(decoder.instances[0].close).toHaveBeenCalledOnce();
   });
 
+  it("waits for a keyframe before bootstrapping a private preview", async () => {
+    const decoder = stubVideoDecoder();
+    stubElementSize(100, 50);
+    sharedMockContext();
+    const onError = vi.fn();
+    const onImageLoaded = vi.fn();
+
+    const rendered = render(
+      <BitmapImageFrameView
+        frame={deltaVideoFrame()}
+        onError={onError}
+        onImageLoaded={onImageLoaded}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(onError).toHaveBeenCalledWith(
+        new Error("H.264 preview is waiting for a keyframe"),
+      ),
+    );
+    expect(decoder.instances).toHaveLength(0);
+    expect(onImageLoaded).not.toHaveBeenCalled();
+
+    rendered.rerender(
+      <BitmapImageFrameView
+        frame={videoFrame()}
+        onError={onError}
+        onImageLoaded={onImageLoaded}
+      />,
+    );
+    await waitFor(() => expect(onImageLoaded).toHaveBeenCalledTimes(1));
+    expect(decoder.instances).toHaveLength(1);
+    expect(decoder.instances[0].decodeCalls.map((chunk) => chunk.type)).toEqual(
+      ["key"],
+    );
+  });
+
   it("releases the preview decoder when its source/stream key changes", async () => {
     const decoder = stubVideoDecoder();
     stubElementSize(100, 50);
     sharedMockContext();
     const onImageLoaded = vi.fn();
+    const onBitmapRetainedBytesChange = vi.fn();
 
     const rendered = render(
       <BitmapImageFrameView
         frame={videoFrame()}
+        onBitmapRetainedBytesChange={onBitmapRetainedBytesChange}
         onImageLoaded={onImageLoaded}
         videoSessionKey={"source-a\n/camera"}
       />,
     );
     await waitFor(() => expect(onImageLoaded).toHaveBeenCalledTimes(1));
+    onBitmapRetainedBytesChange.mockClear();
 
     rendered.rerender(
       <BitmapImageFrameView
         frame={videoFrame()}
+        onBitmapRetainedBytesChange={onBitmapRetainedBytesChange}
         onImageLoaded={onImageLoaded}
         videoSessionKey={"source-b\n/camera"}
       />,
+    );
+    await waitFor(() =>
+      expect(onBitmapRetainedBytesChange).toHaveBeenCalledWith(0),
     );
     await waitFor(() => expect(onImageLoaded).toHaveBeenCalledTimes(2));
 
@@ -687,7 +730,7 @@ describe("BitmapImageFrameView", () => {
 
     await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
     expect(onError.mock.calls[0]?.[0]).toEqual(
-      new Error("WebCodecs video decoding is unavailable"),
+      new Error("WebCodecs H.264 decoding is unavailable"),
     );
     expect(onImageLoaded).not.toHaveBeenCalled();
   });

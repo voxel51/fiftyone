@@ -33,17 +33,18 @@ import {
 
 import {
   rawImageRgba,
+  type CameraVisualization,
   type EncodedVideoVisualization,
-  type ImageVisualization,
   type RawImageVisualization,
 } from "../../ir";
+import { VideoPlaybackManager } from "../../video/playback-manager";
+import { PushVideoAccessUnitReader } from "../../video/push-reader";
+import {
+  useOptionalVideoPlaybackManager,
+  useVideoStreamPresentation,
+} from "../../video/react";
 import { useLatestRef } from "../../utils/use-latest-ref";
 import { fittedImageSize } from "./image-fit";
-import {
-  acquireEncodedVideoSession,
-  createEncodedVideoCanvas,
-  type EncodedVideoSessionOwner,
-} from "./video-texture";
 
 const DEFAULT_MIME_TYPE = "image/jpeg";
 /** Trailing coalescing window for compressed grid-preview resize decodes. */
@@ -106,7 +107,7 @@ export interface BitmapCanvasHostProps {
 export interface BitmapImageFrameViewProps {
   readonly className?: string;
   readonly fit?: "contain" | "cover";
-  readonly frame: ImageVisualization;
+  readonly frame: CameraVisualization;
   /**
    * Reports a decode or canvas-paint failure. The previously committed frame
    * stays visible — errors never blank the canvas.
@@ -499,64 +500,164 @@ function BitmapEncodedVideoView({
   );
   const fallbackPreviewTextureKey = useId();
   const previewTextureKey = videoSessionKey ?? fallbackPreviewTextureKey;
-  const videoSessionOwnerRef = useRef<EncodedVideoSessionOwner | null>(null);
-
-  // The grid view owns one decoder claim for its mounted lifetime. Updating
-  // `frame` must not tear down the keyframe state needed by the next delta.
+  const contextManager = useOptionalVideoPlaybackManager();
+  const [ownedManager, setOwnedManager] = useState<{
+    readonly key: string;
+    readonly manager: VideoPlaybackManager;
+    readonly reader: PushVideoAccessUnitReader;
+  } | null>(null);
+  const videoCanvasRef = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
-    const owner = acquireEncodedVideoSession(frame, previewTextureKey);
-    videoSessionOwnerRef.current = owner;
+    if (contextManager) {
+      setOwnedManager(null);
+      return undefined;
+    }
+    const owned = new VideoPlaybackManager(
+      `bitmap-preview:${previewTextureKey}`,
+    );
+    const reader = new PushVideoAccessUnitReader();
+    owned.setReader(reader);
+    const registration = { key: previewTextureKey, manager: owned, reader };
+    setOwnedManager(registration);
     return () => {
-      if (videoSessionOwnerRef.current === owner) {
-        videoSessionOwnerRef.current = null;
-      }
-      owner.release();
+      owned.close();
+      reader.clear();
+      setOwnedManager((current) => (current === registration ? null : current));
     };
-    // The React id is the mounted preview stream identity; frame changes are
-    // decoded through the existing claim.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewTextureKey]);
-
+  }, [contextManager, previewTextureKey]);
+  const localManager =
+    ownedManager?.key === previewTextureKey ? ownedManager.manager : null;
+  const manager = contextManager ?? localManager;
+  const targetTimeNs = frame.timestampNs ?? null;
+  const hasPrivateRunway =
+    targetTimeNs !== null &&
+    (frame.keyframe ||
+      ownedManager?.reader.hasRetainedKeyframeAtOrBefore(
+        previewTextureKey,
+        targetTimeNs,
+      ) === true);
   useEffect(() => {
-    let cancelled = false;
-    const controller = new AbortController();
-
-    createEncodedVideoCanvas(
+    if (
+      contextManager ||
+      ownedManager?.key !== previewTextureKey ||
+      frame.codec !== "h264" ||
+      targetTimeNs === null ||
+      !hasPrivateRunway
+    ) {
+      return;
+    }
+    ownedManager.reader.push(previewTextureKey, {
       frame,
-      previewTextureKey,
-      videoSessionOwnerRef.current ?? undefined,
-      controller.signal,
-    )
-      .then((source) => {
-        if (cancelled) {
-          closeDrawable(source);
-          return;
-        }
+      timeNs: targetTimeNs,
+    });
+  }, [
+    contextManager,
+    frame,
+    hasPrivateRunway,
+    ownedManager,
+    previewTextureKey,
+    targetTimeNs,
+  ]);
+  const snapshot = useVideoStreamPresentation({
+    enabled:
+      frame.codec === "h264" &&
+      targetTimeNs !== null &&
+      (contextManager !== null || hasPrivateRunway),
+    frame: frame.codec === "h264" ? frame : null,
+    manager,
+    priority: "visible",
+    stream: previewTextureKey,
+    targetTimeNs,
+  });
 
-        commit(source);
-        onBitmapRetainedBytesChangeRef.current?.(
-          source.width * source.height * 4,
-        );
-        onImageLoadedRef.current?.(source.width, source.height);
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          onErrorRef.current?.(error);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
+  useEffect(() => {
+    const presentation = snapshot.presentation;
+    if (!presentation) {
+      videoCanvasRef.current = null;
+      onBitmapRetainedBytesChangeRef.current?.(0);
+      return undefined;
+    }
+    const lease = presentation.acquire();
+    if (!lease) {
+      videoCanvasRef.current = null;
+      onBitmapRetainedBytesChangeRef.current?.(0);
+      return undefined;
+    }
+    try {
+      let source = videoCanvasRef.current;
+      if (!source) {
+        source = document.createElement("canvas");
+        videoCanvasRef.current = source;
+      }
+      if (source.width !== lease.width) source.width = lease.width;
+      if (source.height !== lease.height) source.height = lease.height;
+      const context = source.getContext("2d");
+      if (!context) throw new Error("Unable to create video preview canvas");
+      context.drawImage(lease.source, 0, 0, lease.width, lease.height);
+      commit(source);
+      onBitmapRetainedBytesChangeRef.current?.(
+        source.width * source.height * 4,
+      );
+      onImageLoadedRef.current?.(source.width, source.height);
+    } catch (error) {
+      onErrorRef.current?.(error);
+    } finally {
+      lease.release();
+    }
+    return undefined;
   }, [
     commit,
-    frame,
     onBitmapRetainedBytesChangeRef,
     onErrorRef,
     onImageLoadedRef,
-    previewTextureKey,
+    snapshot.presentation,
   ]);
+
+  useEffect(() => {
+    if (frame.codec !== "h264") {
+      onErrorRef.current?.(
+        new Error(`Video codec ${frame.codec} is unsupported`),
+      );
+      return;
+    }
+    if (frame.codec === "h264" && targetTimeNs === null) {
+      onErrorRef.current?.(
+        new Error("H.264 preview frame is missing a presentation timestamp"),
+      );
+      return;
+    }
+    if (
+      frame.codec === "h264" &&
+      targetTimeNs !== null &&
+      contextManager === null &&
+      localManager !== null &&
+      !hasPrivateRunway
+    ) {
+      onErrorRef.current?.(
+        new Error("H.264 preview is waiting for a keyframe"),
+      );
+      return;
+    }
+    if (snapshot.diagnostic?.severity === "error") {
+      onErrorRef.current?.(new Error(snapshot.diagnostic.message));
+    }
+  }, [
+    contextManager,
+    frame.codec,
+    hasPrivateRunway,
+    localManager,
+    onErrorRef,
+    snapshot.diagnostic,
+    targetTimeNs,
+  ]);
+
+  useEffect(
+    () => () => {
+      videoCanvasRef.current = null;
+      onBitmapRetainedBytesChangeRef.current?.(0);
+    },
+    [onBitmapRetainedBytesChangeRef],
+  );
 
   return (
     <canvas

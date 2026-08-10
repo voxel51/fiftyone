@@ -13,7 +13,6 @@ import {
   imageIdentity,
   useImageTextureLease,
 } from "./use-image-texture-lease";
-import { VideoTextureWaitError } from "./video-texture";
 import { resetStillImageDecodeSchedulerForTests } from "./still-image-decode-scheduler";
 
 const cacheHarness = vi.hoisted(() => {
@@ -63,25 +62,6 @@ describe("useImageTextureLease", () => {
 
     expect(hasImageData(frame)).toBe(true);
     expect(imageIdentity(frame)).toBe(values);
-  });
-
-  it("classifies expected decoder waits without inspecting message text", async () => {
-    cacheHarness.leases.push({
-      promise: Promise.reject(
-        new VideoTextureWaitError("Decoder prerequisites pending"),
-      ),
-      release: vi.fn(),
-    });
-
-    const rendered = renderHook(() =>
-      useImageTextureLease({ frame: rawFrame(), identity: 1 }),
-    );
-
-    await waitFor(() => expect(rendered.result.current.status).toBe("error"));
-    expect(rendered.result.current.errorKind).toBe("waiting");
-    expect(rendered.result.current.errorMessage).toBe(
-      "Decoder prerequisites pending",
-    );
   });
 
   it.each([

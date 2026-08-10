@@ -12,7 +12,7 @@ import { usePublishFullHistoryStreams } from "../../playback/full-history-intere
 import type {
   CameraCalibrationVisualization,
   GridVisualization,
-  ImageVisualization,
+  CameraVisualization,
   LocationVisualization,
   PoseVisualization,
   SceneUpdateVisualization,
@@ -96,7 +96,6 @@ import {
   usePointCloudPlaybackFrames,
   useStreamPlaybackFrames,
 } from "../../playback/use-stream-values";
-import { useVideoDecodeRunways } from "../../playback/video-decode-runway/use-video-decode-runways";
 import {
   scene3dSnapshotHasLayers,
   useScene3dSnapshot,
@@ -248,11 +247,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     [referenceGrid, sceneUpAxis],
   );
   const frustumImageFrames =
-    useStreamPlaybackFrames<ImageVisualization>(frustumImageStreams);
-  const frustumImageDecodeRunways = useVideoDecodeRunways(
-    frustumImageStreams,
-    frustumImageFrames,
-  );
+    useStreamPlaybackFrames<CameraVisualization>(frustumImageStreams);
   const pointCloudColorBy = useMemo(
     () =>
       pointCloudStreams.map(
@@ -483,7 +478,6 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     cameraSources,
     cameraStreams,
     focusedTileId,
-    frustumImageDecodeRunways,
     frustumImageFrames,
     frustumImageStreams,
     imageSources,

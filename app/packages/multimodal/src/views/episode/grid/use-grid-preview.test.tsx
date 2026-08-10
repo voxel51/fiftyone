@@ -29,6 +29,7 @@ const sessionHarness = vi.hoisted(() => ({
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  vi.unstubAllGlobals();
   resetSourceBootstrapCacheForTests();
 });
 
@@ -138,6 +139,32 @@ describe("useGridPreview", () => {
     });
   });
 
+  it("isolates an initial result observer failure from preview state", async () => {
+    const observerError = new Error("observer failed");
+    const reportError = vi.fn();
+    vi.stubGlobal("reportError", reportError);
+    sessionHarness.session.read.mockResolvedValueOnce(
+      readyResult({ bytes: [1] }),
+    );
+
+    render(
+      <PreviewHarness
+        id="initial-observer-error"
+        onReadResult={() => {
+          throw observerError;
+        }}
+        source={sourceForId("initial-observer-error")}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("preview-initial-observer-error").textContent,
+      ).toBe("ready:1:frame:");
+    });
+    expect(reportError).toHaveBeenCalledWith(observerError);
+  });
+
   it("plays additional preview frames on hover", async () => {
     const latestState = { current: null as GridPreviewState | null };
     const hover = deferred<EpisodePreviewReadResult>();
@@ -200,6 +227,109 @@ describe("useGridPreview", () => {
     act(() => {
       latestState.current?.pause();
     });
+  });
+
+  it("delivers every H.264 dependency frame even when UI pacing skips it", async () => {
+    vi.useFakeTimers({ toFake: ["clearTimeout", "performance", "setTimeout"] });
+    const latestState = { current: null as GridPreviewState | null };
+    const onReadResult = vi.fn();
+    const pending = deferred<EpisodePreviewReadResult>();
+    sessionHarness.session.read
+      .mockResolvedValueOnce(
+        readyResult({ bytes: [1], frameTimeNs: 0n, nextStartTimeNs: 1n }),
+      )
+      .mockResolvedValueOnce(
+        readyResult({
+          bytes: [2],
+          frameTimeNs: 33_000_000n,
+          nextStartTimeNs: 33_000_001n,
+        }),
+      )
+      .mockResolvedValueOnce(
+        readyResult({
+          bytes: [3],
+          frameTimeNs: 66_000_000n,
+          nextStartTimeNs: 66_000_001n,
+        }),
+      )
+      .mockResolvedValueOnce(
+        readyResult({
+          bytes: [4],
+          frameTimeNs: 99_000_000n,
+          nextStartTimeNs: 99_000_001n,
+        }),
+      )
+      .mockReturnValue(pending.promise);
+
+    render(
+      <PreviewHarness
+        id="dependencies"
+        onReadResult={onReadResult}
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        source={sourceForId("dependencies")}
+      />,
+    );
+    await act(async () => undefined);
+    expect(onReadResult).toHaveBeenCalledTimes(1);
+
+    act(() => latestState.current?.play());
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(onReadResult).toHaveBeenCalledTimes(4);
+    expect(firstImageByte(latestState.current?.frame ?? null)).toBe(1);
+    act(() => latestState.current?.pause());
+  });
+
+  it("continues hover playback when a result observer throws", async () => {
+    const latestState = { current: null as GridPreviewState | null };
+    const observerError = new Error("observer failed");
+    const reportError = vi.fn();
+    const pending = deferred<EpisodePreviewReadResult>();
+    vi.stubGlobal("reportError", reportError);
+    sessionHarness.session.read
+      .mockResolvedValueOnce(
+        readyResult({ bytes: [1], frameTimeNs: 0n, nextStartTimeNs: 1n }),
+      )
+      .mockResolvedValueOnce(
+        readyResult({
+          bytes: [2],
+          frameTimeNs: 100_000_000n,
+          nextStartTimeNs: 100_000_001n,
+        }),
+      )
+      .mockReturnValue(pending.promise);
+
+    render(
+      <PreviewHarness
+        id="hover-observer-error"
+        onReadResult={(result) => {
+          if (firstImageByte(result.frame) === 2) throw observerError;
+        }}
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        source={sourceForId("hover-observer-error")}
+      />,
+    );
+    await waitFor(() => expect(latestState.current?.status).toBe("ready"));
+
+    act(() => latestState.current?.play());
+    await waitFor(() => {
+      expect(firstImageByte(latestState.current?.frame ?? null)).toBe(2);
+    });
+    expect(reportError).toHaveBeenCalledWith(observerError);
+    expect(latestState.current?.status).toBe("ready");
+    expect(latestState.current?.error).toBeNull();
+    await waitFor(() =>
+      expect(sessionHarness.session.read).toHaveBeenCalledTimes(3),
+    );
+    act(() => latestState.current?.pause());
   });
 
   it("reports buffering only when a hover frame read stays pending", async () => {
@@ -435,6 +565,7 @@ function PreviewHarness({
   enabled,
   hovered,
   id,
+  onReadResult,
   onState,
   selectedSourceName,
   source,
@@ -442,6 +573,7 @@ function PreviewHarness({
   readonly enabled?: boolean;
   readonly hovered?: boolean;
   readonly id: string;
+  readonly onReadResult?: (result: EpisodePreviewReadResult) => void;
   readonly onState?: (state: GridPreviewState) => void;
   readonly selectedSourceName?: string | null;
   readonly source: ByteSourceDescriptor | null;
@@ -449,6 +581,7 @@ function PreviewHarness({
   const state = useGridPreview({
     enabled,
     hovered,
+    onReadResult,
     previewSession: sessionHarness.session as EpisodePreviewSession,
     previewSessionStatus: "ready",
     selectedSourceName,

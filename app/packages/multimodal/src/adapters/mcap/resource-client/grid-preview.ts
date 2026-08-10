@@ -4,7 +4,7 @@ import {
 } from "../../../ir/index";
 import type {
   PointCloudRenderPayload,
-  ImageVisualization,
+  CameraVisualization,
   PointCloudVisualization,
 } from "../../../ir/index";
 import type { ByteSourceDescriptor } from "../../../query/bytes/index";
@@ -106,7 +106,7 @@ export type McapGridPreviewSelection =
  * Render-ready image preview frame.
  */
 export interface McapGridImagePreviewFrame {
-  readonly image: ImageVisualization;
+  readonly image: CameraVisualization;
   readonly kind: "image";
 }
 
@@ -471,10 +471,15 @@ async function readNextMessage({
   return null;
 }
 
-function imageFrame(message: McapDecodedMessage): ImageVisualization | null {
+function imageFrame(message: McapDecodedMessage): CameraVisualization | null {
   const visualization = message.decoded.output.visualization;
+  if (visualization?.kind === VISUALIZATION_KIND.ENCODED_VIDEO) {
+    return {
+      ...visualization,
+      timestampNs: visualization.timestampNs ?? message.timelineTimeNs,
+    };
+  }
   return visualization?.kind === VISUALIZATION_KIND.ENCODED_IMAGE ||
-    visualization?.kind === VISUALIZATION_KIND.ENCODED_VIDEO ||
     visualization?.kind === VISUALIZATION_KIND.RAW_IMAGE
     ? visualization
     : null;

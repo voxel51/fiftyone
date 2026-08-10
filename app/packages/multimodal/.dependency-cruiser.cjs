@@ -24,6 +24,7 @@ const STREAM_SELECTION = `${SRC}stream-selection/`;
 const TEMPORAL_TAGS = `${SRC}temporal-tags/`;
 const TESTING = `${SRC}testing/`;
 const UTILS = `${SRC}utils/`;
+const VIDEO = `${SRC}video/`;
 const VIEWS = `${SRC}views/`;
 const VIEWS_ENTRY = `${VIEWS}entry\\.tsx$`;
 const VIEW_SESSION = `${VIEWS}session/`;
@@ -55,6 +56,17 @@ const VISUALIZATION_FAMILIES = `${VISUALIZATION}(media-2d|logs|message|plot|scen
 
 module.exports = {
   forbidden: [
+    {
+      // Keep the stateful video engine framework-independent except for its
+      // explicit React subscription adapter.
+      name: "video-imports-only-video-foundations",
+      severity: "error",
+      from: { path: VIDEO, pathNot: TEST_MODULE },
+      to: {
+        path: SRC,
+        pathNot: `${SRC}(?:video/(?!react\\.tsx$)|(?:ir|codecs|utils)/)`,
+      },
+    },
     {
       // Reject missing targets before architecture rules run so an unresolved
       // import cannot disappear from the graph and create a false pass.
@@ -333,7 +345,7 @@ module.exports = {
       from: { path: VIEWS, pathNot: TEST_MODULE },
       to: {
         path: SRC,
-        pathNot: `${SRC}(views|runtime|ports|scene-inventory|visualization|extensions|temporal-tags|ir|stream-selection|utils)/`,
+        pathNot: `${SRC}(views|runtime|ports|scene-inventory|visualization|video|extensions|temporal-tags|ir|stream-selection|utils)/`,
       },
     },
     {
@@ -342,7 +354,10 @@ module.exports = {
       name: "visualization-imports-only-rendering-foundations",
       severity: "error",
       from: { path: VISUALIZATION, pathNot: TEST_MODULE },
-      to: { path: SRC, pathNot: `${SRC}(visualization|ir|codecs|utils)/` },
+      to: {
+        path: SRC,
+        pathNot: `${SRC}(visualization|video|ir|codecs|utils)/`,
+      },
     },
     {
       // Let cross-layer integration tests assemble production boundaries while
@@ -352,10 +367,21 @@ module.exports = {
       from: { path: TESTING },
       to: {
         path: SRC,
-        pathNot: `${SRC}(testing|adapters|codecs|decoders|extensions|ir|ports|query|runtime|scene-inventory|schemas|stream-selection|temporal-tags|utils|views|visualization)/`,
+        pathNot: `${SRC}(testing|adapters|codecs|decoders|extensions|ir|ports|query|runtime|scene-inventory|schemas|stream-selection|temporal-tags|utils|video|views|visualization)/`,
       },
     },
 
+    {
+      // The video state machine and decoder actor stay usable in headless tests;
+      // React context/hooks live only in the named adapter.
+      name: "video-core-is-headless",
+      severity: "error",
+      from: {
+        path: VIDEO,
+        pathNot: `${VIDEO}react\\.tsx$|${TEST_MODULE}`,
+      },
+      to: { path: REACT_UI },
+    },
     {
       // Keep runtime core usable in workers and headless tests; framework hooks
       // belong only in the explicitly named runtime/react integration path.

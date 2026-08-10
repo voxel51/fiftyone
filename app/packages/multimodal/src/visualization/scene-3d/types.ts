@@ -3,6 +3,7 @@ import * as THREE from "three";
 
 import type {
   CameraCalibrationVisualization,
+  EncodedH264VideoVisualization,
   GridVisualization,
   ImageVisualization,
   PointCloudVisualization,
@@ -292,14 +293,14 @@ export interface CameraFrustumPanelLayer {
   /** Withhold the frustum instead of falling back to a pinhole approximation. */
   readonly requireCameraRayModel?: boolean;
   readonly contentTimeNs?: bigint;
-  /** Ordered H.264 frames needed to initialize decoding before `image`. */
-  readonly imageDecodeRunway?: readonly ImageVisualization[];
   /** Why the image plane is unavailable while the wireframe remains usable. */
   readonly imageUnavailableReason?: string;
   readonly frame: CameraCalibrationVisualization;
   readonly frameTransform?: PointCloudFrameTransform;
   readonly id: string;
   readonly image?: ImageVisualization;
+  /** H.264 content is presented by the source-scoped video engine. */
+  readonly video?: EncodedH264VideoVisualization;
   readonly imageContentTimeNs?: bigint;
   /**
    * Presentational distance from optical center to image plane, in scene

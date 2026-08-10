@@ -16,6 +16,7 @@ import type { EpisodeSession } from "../../ports";
 import { errorMessage } from "../../utils/errors";
 import { PointCloudPanel } from "../../visualization/composition";
 import { ImagePanel } from "../../visualization/media-2d/ImagePanel";
+import { BitmapImageFrameView } from "../../visualization/media-2d/BitmapImageView";
 
 const PLAYBACK_TICK_MS = 50;
 const NANOSECONDS_PER_MILLISECOND = 1_000_000n;
@@ -235,6 +236,15 @@ function VisualizationFrame({
       />
     );
   }
+  if (visualization.kind === VISUALIZATION_KIND.ENCODED_VIDEO) {
+    return (
+      <BitmapImageFrameView
+        frame={visualization}
+        style={styles.visualization}
+        videoSessionKey={`${frame.streamId}\nfixture`}
+      />
+    );
+  }
   if (visualization.kind === VISUALIZATION_KIND.POINT_CLOUD) {
     return (
       <PointCloudPanel
@@ -284,8 +294,7 @@ function isImageVisualization(
 ): visualization is ImageVisualization {
   return (
     visualization.kind === VISUALIZATION_KIND.RAW_IMAGE ||
-    visualization.kind === VISUALIZATION_KIND.ENCODED_IMAGE ||
-    visualization.kind === VISUALIZATION_KIND.ENCODED_VIDEO
+    visualization.kind === VISUALIZATION_KIND.ENCODED_IMAGE
   );
 }
 

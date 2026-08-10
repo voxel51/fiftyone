@@ -24,7 +24,6 @@ import {
 } from "../../../runtime";
 import { EpisodePlaybackStoreProvider } from "../../../runtime/react";
 import { releaseRetainedImageTextures } from "../../../visualization/media-2d/image-texture-cache";
-import { releaseEncodedVideoSessionsForSource } from "../../../visualization/media-2d/video-texture";
 import {
   releaseGpuImageAnnotationResources,
   releaseGpuImageAnnotationResourcesForSource,
@@ -65,6 +64,7 @@ import InspectorSidebar from "../scene/picking/InspectorSidebar";
 import styles from "./ModalRenderer.module.css";
 import { NetworkHealthTracker, NetworkStatusPill } from "./NetworkStatus";
 import { FullHistoryInterestsProvider } from "../playback/full-history-interests";
+import { SourceVideoPlaybackProvider } from "../playback/video-playback-provider";
 import { PanelVisibilityProvider } from "../tiles/panel-visibility";
 import SettingsSidebar from "../settings/modal/SettingsSidebar";
 import { Streams } from "./Streams";
@@ -385,127 +385,135 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                           playbackSource ? sourceAccessKey : null
                         }
                       >
-                        <SourceResourceBoundary />
-                        <Scene3dViewSettingsProvider
-                          defaultTrackingMode={defaultTrackingMode}
-                          preferredCameraTargetFrameId={
-                            preferredCameraTargetFrameId
-                          }
-                          preferredWorldFrameId={preferredWorldFrameId}
-                          sceneUpAxis={sceneUpAxis}
-                          setDefaultTrackingMode={onDefaultTrackingModeChange}
-                          setPreferredCameraTargetFrameId={
-                            onPreferredCameraTargetFrameIdChange
-                          }
-                          setPreferredWorldFrameId={
-                            onPreferredWorldFrameIdChange
-                          }
-                          setSceneUpAxis={onSceneUpAxisChange}
+                        <SourceVideoPlaybackProvider
+                          sourceKey={playbackSource ? sourceAccessKey : null}
                         >
-                          <ImageAspectRatioProvider
-                            onChange={onImageAspectRatioChange}
+                          <SourceResourceBoundary />
+                          <Scene3dViewSettingsProvider
+                            defaultTrackingMode={defaultTrackingMode}
+                            preferredCameraTargetFrameId={
+                              preferredCameraTargetFrameId
+                            }
+                            preferredWorldFrameId={preferredWorldFrameId}
+                            sceneUpAxis={sceneUpAxis}
+                            setDefaultTrackingMode={onDefaultTrackingModeChange}
+                            setPreferredCameraTargetFrameId={
+                              onPreferredCameraTargetFrameIdChange
+                            }
+                            setPreferredWorldFrameId={
+                              onPreferredWorldFrameIdChange
+                            }
+                            setSceneUpAxis={onSceneUpAxisChange}
                           >
-                            <PlaybackShell
-                              key={timelineModeKey}
-                              fileName={fileName}
-                              decorateTrack={decorateTrack}
-                              headerCaption={headerCaption}
-                              headerActions={
-                                <HeaderActions actions={headerActions} />
-                              }
-                              addTileMenu={
-                                <AddTileMenu tileTypes={availableTileTypes} />
-                              }
-                              timelineExtraActions={<TimestampReadout />}
-                              sceneSources={shellSources}
-                              mode={timelineMode}
-                              deselectFocusedTileOnRepeatSelect={false}
-                              initialTiles={initialTiles}
-                              initialManualTileTitles={initialManualTileTitles}
-                              autoLayoutStrategy={autoLayoutStrategy}
-                              initialLayout={initialLayout}
-                              initialExpandedTileId={initialExpandedTileId}
-                              resetTiles={resetTiles}
-                              resetManualTileTitles={EMPTY_MANUAL_TILE_TITLES}
-                              resetLayoutStrategy={autoLayoutStrategy}
-                              tracks={
-                                tracks && tracks.length > 0
-                                  ? [...tracks]
-                                  : undefined
-                              }
-                              defaultPinnedTrackIds={
-                                defaultPinnedTrackIds &&
-                                defaultPinnedTrackIds.length > 0
-                                  ? [...defaultPinnedTrackIds]
-                                  : undefined
-                              }
-                              onTagDelete={onTagDelete}
-                              leftSidebar={
-                                <SettingsSidebar
-                                  onTimelineSamplingRateChange={
-                                    onTimelineSamplingRateChange
-                                  }
-                                  streams={shellStreams}
-                                  terminology={shellInventory?.terminology}
+                            <ImageAspectRatioProvider
+                              onChange={onImageAspectRatioChange}
+                            >
+                              <PlaybackShell
+                                key={timelineModeKey}
+                                fileName={fileName}
+                                decorateTrack={decorateTrack}
+                                headerCaption={headerCaption}
+                                headerActions={
+                                  <HeaderActions actions={headerActions} />
+                                }
+                                addTileMenu={
+                                  <AddTileMenu tileTypes={availableTileTypes} />
+                                }
+                                timelineExtraActions={<TimestampReadout />}
+                                sceneSources={shellSources}
+                                mode={timelineMode}
+                                deselectFocusedTileOnRepeatSelect={false}
+                                initialTiles={initialTiles}
+                                initialManualTileTitles={
+                                  initialManualTileTitles
+                                }
+                                autoLayoutStrategy={autoLayoutStrategy}
+                                initialLayout={initialLayout}
+                                initialExpandedTileId={initialExpandedTileId}
+                                resetTiles={resetTiles}
+                                resetManualTileTitles={EMPTY_MANUAL_TILE_TITLES}
+                                resetLayoutStrategy={autoLayoutStrategy}
+                                tracks={
+                                  tracks && tracks.length > 0
+                                    ? [...tracks]
+                                    : undefined
+                                }
+                                defaultPinnedTrackIds={
+                                  defaultPinnedTrackIds &&
+                                  defaultPinnedTrackIds.length > 0
+                                    ? [...defaultPinnedTrackIds]
+                                    : undefined
+                                }
+                                onTagDelete={onTagDelete}
+                                leftSidebar={
+                                  <SettingsSidebar
+                                    onTimelineSamplingRateChange={
+                                      onTimelineSamplingRateChange
+                                    }
+                                    streams={shellStreams}
+                                    terminology={shellInventory?.terminology}
+                                    timelineSamplingRateHz={
+                                      timelineSamplingRateHz
+                                    }
+                                  />
+                                }
+                                mainOverlay={
+                                  hasTerminalTransition ? (
+                                    <PlaybackState
+                                      error={status === "error"}
+                                      text={transitionMessage}
+                                    />
+                                  ) : !isModalNavigation &&
+                                    presentedSourceKey !== sourceKey ? (
+                                    <PosterOverlay
+                                      fileName={fileName}
+                                      poster={poster}
+                                      posterStream={bootstrap?.posterStreamId}
+                                      sourceKey={sourceAccessKey}
+                                      statusText={transitionMessage}
+                                    />
+                                  ) : null
+                                }
+                                rightSidebar={<InspectorSidebar />}
+                                sharedImageWebGpuViews
+                                defaultRightOpen={false}
+                                defaultLeftOpen={defaultLeftOpen}
+                                onLeftOpenChange={onLeftOpenChange}
+                                leftSidebarWidth={defaultLeftSidebarWidth}
+                                onLeftSidebarWidthChange={
+                                  onLeftSidebarWidthChange
+                                }
+                                onTagCreate={onTagCreate}
+                                onTagUpdate={onTagUpdate}
+                                onTimelineDrawerOpenChange={
+                                  onTimelineDrawerOpenChange
+                                }
+                                timelineDrawerMaxSize={timelineDrawerMaxSize}
+                              >
+                                <Streams
+                                  availableTileTypes={availableTileTypes}
+                                  budgetAccount={sourceReadBudgetAccount}
+                                  onPlayheadDataReady={handlePlayheadDataReady}
+                                  session={readyInventory ? session : null}
+                                  source={playbackSource}
                                   timelineSamplingRateHz={
                                     timelineSamplingRateHz
                                   }
                                 />
-                              }
-                              mainOverlay={
-                                hasTerminalTransition ? (
-                                  <PlaybackState
-                                    error={status === "error"}
-                                    text={transitionMessage}
-                                  />
-                                ) : !isModalNavigation &&
-                                  presentedSourceKey !== sourceKey ? (
-                                  <PosterOverlay
-                                    fileName={fileName}
-                                    poster={poster}
-                                    posterStream={bootstrap?.posterStreamId}
-                                    sourceKey={sourceAccessKey}
-                                    statusText={transitionMessage}
-                                  />
-                                ) : null
-                              }
-                              rightSidebar={<InspectorSidebar />}
-                              sharedImageWebGpuViews
-                              defaultRightOpen={false}
-                              defaultLeftOpen={defaultLeftOpen}
-                              onLeftOpenChange={onLeftOpenChange}
-                              leftSidebarWidth={defaultLeftSidebarWidth}
-                              onLeftSidebarWidthChange={
-                                onLeftSidebarWidthChange
-                              }
-                              onTagCreate={onTagCreate}
-                              onTagUpdate={onTagUpdate}
-                              onTimelineDrawerOpenChange={
-                                onTimelineDrawerOpenChange
-                              }
-                              timelineDrawerMaxSize={timelineDrawerMaxSize}
-                            >
-                              <Streams
-                                availableTileTypes={availableTileTypes}
-                                budgetAccount={sourceReadBudgetAccount}
-                                onPlayheadDataReady={handlePlayheadDataReady}
-                                session={readyInventory ? session : null}
-                                source={playbackSource}
-                                timelineSamplingRateHz={timelineSamplingRateHz}
-                              />
-                              <NetworkHealthTracker
-                                playback={session?.playback ?? null}
-                              />
-                              <SelectionHotkeys />
-                              <ExtensionRuntimeBoundary>
-                                {children}
-                              </ExtensionRuntimeBoundary>
-                              <ModalLayoutPersistence
-                                datasetId={effectiveLayoutScopeKey}
-                              />
-                            </PlaybackShell>
-                          </ImageAspectRatioProvider>
-                        </Scene3dViewSettingsProvider>
+                                <NetworkHealthTracker
+                                  playback={session?.playback ?? null}
+                                />
+                                <SelectionHotkeys />
+                                <ExtensionRuntimeBoundary>
+                                  {children}
+                                </ExtensionRuntimeBoundary>
+                                <ModalLayoutPersistence
+                                  datasetId={effectiveLayoutScopeKey}
+                                />
+                              </PlaybackShell>
+                            </ImageAspectRatioProvider>
+                          </Scene3dViewSettingsProvider>
+                        </SourceVideoPlaybackProvider>
                       </DataStreamProvider>
                     </LogConsoleProvider>
                   </RawMessageProvider>
@@ -566,7 +574,6 @@ function SourceResourceBoundary() {
       if (sourceKey) {
         releaseGpuImageAnnotationResourcesForSource(sourceKey);
         releaseGpuPointCloudProjectionResourcesForSource(sourceKey);
-        releaseEncodedVideoSessionsForSource(sourceKey);
       }
     },
     [sourceKey],

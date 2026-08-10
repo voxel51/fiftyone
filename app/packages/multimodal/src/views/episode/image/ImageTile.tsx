@@ -4,6 +4,7 @@ import {
   useTileDuplicator,
   useTileId,
 } from "@fiftyone/tiling";
+import { useIsPlaying } from "@fiftyone/playback";
 import { useStore } from "jotai";
 import React, {
   useCallback,
@@ -14,13 +15,14 @@ import React, {
 } from "react";
 import { usePublishAnnotationStreams } from "../../../extensions/timeline";
 import type {
+  CameraVisualization,
   CameraCalibrationVisualization,
-  ImageVisualization,
 } from "../../../ir";
 import { SCENE_SOURCE_METADATA, SCENE_SOURCE_TYPE } from "../../../ir";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { ImagePanel } from "../../../visualization/media-2d/ImagePanel";
+import { VideoPanel } from "../../../visualization/media-2d/VideoPanel";
 import GpuImageAnnotationLayer from "../../../visualization/media-2d/GpuImageAnnotationLayer";
 import { GpuImageAnnotationPicker } from "../../../visualization/media-2d/GpuImageAnnotationPicker";
 import { imageTextureCacheKey } from "../../../visualization/media-2d/image-texture-cache";
@@ -61,7 +63,6 @@ import {
   useStreamContentFrame,
   usePlaybackStreamValue,
 } from "../playback/use-stream-values";
-import { useVideoDecodeRunway } from "../playback/video-decode-runway/use-video-decode-runways";
 import { useImageProjectionLayers } from "./use-image-projection-layers";
 import {
   classifyImageDimensions,
@@ -89,6 +90,7 @@ const EMPTY_PROJECTION_STREAMS: readonly string[] = [];
 /** Renders one image stream with labels, projections, and camera controls. */
 const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
   const tileId = useTileId();
+  const isPlaying = useIsPlaying();
   const [imageDims, setImageDims] = useState<{
     width: number;
     height: number;
@@ -190,15 +192,14 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
 
   // Keep the playback wrapper: `contentTimeNs` is the message identity the
   // shared image-texture cache key needs (bytes identity churns per batch).
-  const playbackFrame = useStreamContentFrame<ImageVisualization>(stream);
+  const playbackFrame = useStreamContentFrame<CameraVisualization>(stream);
   const frame = playbackFrame?.frame ?? null;
-  const decodeRunway = useVideoDecodeRunway(stream, playbackFrame);
   const sourceKey = useDataStream()?.sourceKey ?? "";
   // Shared texture key per (recording, stream, frame). The 3D tile's
   // frustum image planes form the same key, so both surfaces share one
   // decode and one GPU texture for the same camera frame.
   const textureKey =
-    playbackFrame && sourceKey
+    playbackFrame && sourceKey && frame?.kind !== "encoded-video"
       ? imageTextureCacheKey(sourceKey, stream, playbackFrame.contentTimeNs)
       : undefined;
   const requestedImageContentTimeNs = playbackFrame?.contentTimeNs ?? null;
@@ -751,10 +752,77 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     ],
   );
   useRegisterTileSettings(tileId, settingsRegistration);
+  const panelSceneChildren = useMemo(
+    () =>
+      projectionScene || activeImageAnnotations ? (
+        <>
+          {projectionScene ? (
+            <ImageProjectionScene
+              cameraModel={projectionScene.cameraModel}
+              fit={IMAGE_FIT}
+              imageHeight={projectionScene.imageDims.height}
+              imageWidth={projectionScene.imageDims.width}
+              hoveredPoint={sharedHover}
+              layers={projectionLayers}
+              pointSize={pointCloudProjection.pointSize}
+              ref={projectionPickerRef}
+              renderedStreams={
+                activeProjection
+                  ? selectedProjectionStreams
+                  : EMPTY_PROJECTION_STREAMS
+              }
+              sourceKey={sourceKey || "episode-session"}
+              viewTransform={imagePanZoom.viewTransform}
+            />
+          ) : null}
+          {activeImageAnnotations && effectiveImageDims ? (
+            <>
+              <GpuImageAnnotationLayer
+                fit={IMAGE_FIT}
+                imageHeight={effectiveImageDims.height}
+                imageWidth={effectiveImageDims.width}
+                resource={imageAnnotations.resource}
+                viewTransform={imagePanZoom.viewTransform}
+              />
+              <GpuImageAnnotationLayer
+                fit={IMAGE_FIT}
+                imageHeight={effectiveImageDims.height}
+                imageWidth={effectiveImageDims.width}
+                renderOrder={30}
+                resource={imageAnnotations.highlightResource}
+                viewTransform={imagePanZoom.viewTransform}
+              />
+              <GpuImageAnnotationPicker
+                imageHeight={effectiveImageDims.height}
+                imageWidth={effectiveImageDims.width}
+                ref={imageAnnotations.pickerRef}
+                resource={imageAnnotations.resource}
+              />
+            </>
+          ) : null}
+        </>
+      ) : undefined,
+    [
+      activeImageAnnotations,
+      activeProjection,
+      effectiveImageDims,
+      imageAnnotations.highlightResource,
+      imageAnnotations.pickerRef,
+      imageAnnotations.resource,
+      imagePanZoom.viewTransform,
+      pointCloudProjection.pointSize,
+      projectionLayers,
+      projectionPickerRef,
+      projectionScene,
+      selectedProjectionStreams,
+      sharedHover,
+      sourceKey,
+    ],
+  );
 
   return (
     <>
-      {frame ? (
+      {frame && playbackFrame ? (
         <div
           className={styles.imageStack}
           {...hoverProps}
@@ -765,71 +833,47 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           ref={imagePanZoom.surfaceRef}
           style={imagePanZoom.surfaceStyle}
         >
-          <ImagePanel
-            canvasSurface="modal-image"
-            decodeRunway={decodeRunway}
-            frame={frame}
-            className={styles.panel}
-            fit={IMAGE_FIT}
-            onImageLoaded={handleImageLoaded}
-            onResetView={imagePanZoom.resetView}
-            notices={imageNotices}
-            sceneChildren={
-              projectionScene || activeImageAnnotations ? (
-                <>
-                  {projectionScene ? (
-                    <ImageProjectionScene
-                      cameraModel={projectionScene.cameraModel}
-                      fit={IMAGE_FIT}
-                      imageHeight={projectionScene.imageDims.height}
-                      imageWidth={projectionScene.imageDims.width}
-                      hoveredPoint={sharedHover}
-                      layers={projectionLayers}
-                      pointSize={pointCloudProjection.pointSize}
-                      ref={projectionPickerRef}
-                      renderedStreams={
-                        activeProjection
-                          ? selectedProjectionStreams
-                          : EMPTY_PROJECTION_STREAMS
-                      }
-                      sourceKey={sourceKey || "episode-session"}
-                      viewTransform={imagePanZoom.viewTransform}
-                    />
-                  ) : null}
-                  {activeImageAnnotations && effectiveImageDims ? (
-                    <>
-                      <GpuImageAnnotationLayer
-                        fit={IMAGE_FIT}
-                        imageHeight={effectiveImageDims.height}
-                        imageWidth={effectiveImageDims.width}
-                        resource={imageAnnotations.resource}
-                        viewTransform={imagePanZoom.viewTransform}
-                      />
-                      <GpuImageAnnotationLayer
-                        fit={IMAGE_FIT}
-                        imageHeight={effectiveImageDims.height}
-                        imageWidth={effectiveImageDims.width}
-                        renderOrder={30}
-                        resource={imageAnnotations.highlightResource}
-                        viewTransform={imagePanZoom.viewTransform}
-                      />
-                      <GpuImageAnnotationPicker
-                        imageHeight={effectiveImageDims.height}
-                        imageWidth={effectiveImageDims.width}
-                        ref={imageAnnotations.pickerRef}
-                        resource={imageAnnotations.resource}
-                      />
-                    </>
-                  ) : null}
-                </>
-              ) : undefined
-            }
-            textureMesh={
-              rectifiedViewActive ? rectifiedDisplay?.textureMesh : null
-            }
-            textureKey={textureKey}
-            viewTransform={imagePanZoom.viewTransform}
-          />
+          {frame.kind === "encoded-video" ? (
+            frame.codec === "h264" ? (
+              <VideoPanel
+                canvasSurface="modal-image"
+                className={styles.panel}
+                fit={IMAGE_FIT}
+                frame={frame}
+                notices={imageNotices}
+                onImageLoaded={handleImageLoaded}
+                onResetView={imagePanZoom.resetView}
+                priority={isPlaying ? "playing" : "visible"}
+                sceneChildren={panelSceneChildren}
+                stream={stream}
+                targetTimeNs={playbackFrame.contentTimeNs}
+                textureMesh={
+                  rectifiedViewActive ? rectifiedDisplay?.textureMesh : null
+                }
+                viewTransform={imagePanZoom.viewTransform}
+              />
+            ) : (
+              <div className={styles.panel} role="alert">
+                Video codec {frame.codec} is unsupported
+              </div>
+            )
+          ) : (
+            <ImagePanel
+              canvasSurface="modal-image"
+              className={styles.panel}
+              fit={IMAGE_FIT}
+              frame={frame}
+              notices={imageNotices}
+              onImageLoaded={handleImageLoaded}
+              onResetView={imagePanZoom.resetView}
+              sceneChildren={panelSceneChildren}
+              textureMesh={
+                rectifiedViewActive ? rectifiedDisplay?.textureMesh : null
+              }
+              textureKey={textureKey}
+              viewTransform={imagePanZoom.viewTransform}
+            />
+          )}
           {activeDepthHover ? (
             <DepthHoverOverlay
               {...activeDepthHover}

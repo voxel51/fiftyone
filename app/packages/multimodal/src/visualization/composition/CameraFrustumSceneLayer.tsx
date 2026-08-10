@@ -11,7 +11,9 @@ import {
 import * as THREE from "three";
 
 import type { CameraCalibrationVisualization } from "../../ir";
+import { useVideoStreamPresentation } from "../../video/react";
 import { useImageTextureLease } from "../media-2d/use-image-texture-lease";
+import { useVideoTexture } from "../media-2d/use-video-texture";
 import {
   createDepthImageMaterial,
   updateDepthImageMaterial,
@@ -62,7 +64,7 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
   readonly onTextureError?: (layerId: string, message: string | null) => void;
 }) {
   const invalidate = useThree((state) => state.invalidate);
-  const { cameraRayModel, frame, frameTransform, image } = layer;
+  const { cameraRayModel, frame, frameTransform, image, video } = layer;
   const requireCameraRayModel = layer.requireCameraRayModel === true;
   const objectTransform = useMemo(
     () => pointCloudObjectTransform(frameTransform),
@@ -157,20 +159,34 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
     handle: imageHandle,
     status: imageStatus,
   } = useImageTextureLease({
-    decodeRunway: layer.imageDecodeRunway,
     enabled: Boolean(image),
     frame: image,
     identity: imageIdentity,
     onLoaded: () => invalidate(),
     textureKey: layer.imageTextureKey,
   });
-  const depthTextureType = imageHandle?.depthDisplay
-    ? imageHandle.texture.type
+  const videoSnapshot = useVideoStreamPresentation({
+    enabled: Boolean(
+      video && layer.imageStream && layer.imageContentTimeNs !== undefined,
+    ),
+    frame: video ?? null,
+    priority: "visible",
+    stream: layer.imageStream ?? layer.id,
+    targetTimeNs: layer.imageContentTimeNs ?? null,
+  });
+  const videoHandle = useVideoTexture(videoSnapshot.presentation, () =>
+    invalidate(),
+  );
+  const activeImageHandle = videoSnapshot.presentation
+    ? (videoHandle ?? imageHandle)
+    : imageHandle;
+  const depthTextureType = activeImageHandle?.depthDisplay
+    ? activeImageHandle.texture.type
     : null;
   const depthImageMaterial = useMemo(
     () =>
-      imageHandle?.depthDisplay
-        ? createDepthImageMaterial(imageHandle, {
+      activeImageHandle?.depthDisplay
+        ? createDepthImageMaterial(activeImageHandle, {
             depthWrite: false,
             opacity: renderOpacity,
             side: THREE.DoubleSide,
@@ -181,17 +197,23 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
     [depthTextureType],
   );
   useLayoutEffect(() => {
-    if (!depthImageMaterial || !imageHandle?.depthDisplay) return;
-    updateDepthImageMaterial(depthImageMaterial, imageHandle, renderOpacity);
+    if (!depthImageMaterial || !activeImageHandle?.depthDisplay) return;
+    updateDepthImageMaterial(
+      depthImageMaterial,
+      activeImageHandle,
+      renderOpacity,
+    );
     invalidate();
-  }, [depthImageMaterial, imageHandle, invalidate, renderOpacity]);
+  }, [activeImageHandle, depthImageMaterial, invalidate, renderOpacity]);
   // This effect publishes image-plane failures without hiding the wireframe.
   useEffect(() => {
     const textureError =
       layer.imageUnavailableReason ??
       (imageStatus === "error"
         ? (imageErrorMessage ?? "Camera texture unavailable")
-        : null);
+        : videoSnapshot.diagnostic?.severity === "error"
+          ? videoSnapshot.diagnostic.message
+          : null);
     onTextureError?.(layer.id, textureError);
   }, [
     imageErrorMessage,
@@ -199,6 +221,7 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
     layer.id,
     layer.imageUnavailableReason,
     onTextureError,
+    videoSnapshot.diagnostic,
   ]);
   // This effect removes the layer's published texture failure on unmount.
   useEffect(
@@ -241,14 +264,16 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
     emphasized,
     selected,
     geometry,
-    imageHandle,
+    activeImageHandle,
     imagePlaneGeometry,
     objectTransform,
   ]);
 
   // Cast, not a type: fiber's bundled three `Texture` type is out of sync
   // with the app's pinned three version — see GridSceneLayer's textureMap.
-  const imageMap = imageHandle ? (imageHandle.texture as never) : null;
+  const imageMap = activeImageHandle
+    ? (activeImageHandle.texture as never)
+    : null;
   if (!geometry) {
     return null;
   }

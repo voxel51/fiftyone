@@ -25,9 +25,6 @@
  *   texture state.
  * - Releasing the last lease mid-decode aborts that obsolete attempt. A
  *   producer that cannot cancel work already submitted disposes on settle.
- * - A stronger same-key request (for example, an H.264 request that gained a
- *   keyframe runway) restarts the pending attempt behind the same shared
- *   promise, so every waiter observes the stronger result.
  * - Failed decodes evict the entry (no poisoned keys) and the rejection
  *   propagates to every waiter.
  * - An `undefined` key opts out of sharing: the lease wraps a private
@@ -78,7 +75,6 @@ export interface ImageTextureCacheStats {
 interface ImageTextureCacheEntry {
   abortController: AbortController;
   attempt: symbol;
-  decodeStrength: number;
   decodedBytes: number;
   handle: ImageTextureHandle | null;
   readonly key: string;
@@ -94,11 +90,6 @@ interface ImageTextureCacheEntry {
 export type ImageTextureDecode = (
   signal: AbortSignal,
 ) => Promise<ImageTextureHandle>;
-
-/** Stronger pending requests may restart a same-key decode in place. */
-export interface AcquireImageTextureOptions {
-  readonly decodeStrength?: number;
-}
 
 export class ImageTextureDecodeCancelledError extends Error {
   constructor() {
@@ -140,23 +131,15 @@ export function imageTextureCacheKey(
 export function acquireImageTexture(
   key: string | undefined,
   decode: ImageTextureDecode,
-  options: AcquireImageTextureOptions = {},
 ): ImageTextureLease {
   if (key === undefined) {
     return acquirePrivateTexture(decode);
   }
 
-  const decodeStrength = options.decodeStrength ?? 0;
   let entry = entries.get(key);
   if (!entry) {
-    entry = createEntry(key, decode, decodeStrength);
+    entry = createEntry(key, decode);
     entries.set(key, entry);
-  } else if (
-    entry.state === "pending" &&
-    decodeStrength > entry.decodeStrength
-  ) {
-    entry.decodeStrength = decodeStrength;
-    startDecodeAttempt(entry, decode);
   } else if (entry.refCount === 0) {
     // Re-acquired from retention — leased entries live outside the LRU.
     removeRetainedEntry(entry);
@@ -238,7 +221,6 @@ export function resetImageTextureCacheForTests(): void {
 function createEntry(
   key: string,
   decode: ImageTextureDecode,
-  decodeStrength: number,
 ): ImageTextureCacheEntry {
   let resolve!: (handle: ImageTextureHandle) => void;
   let reject!: (error: unknown) => void;
@@ -249,7 +231,6 @@ function createEntry(
   const entry: ImageTextureCacheEntry = {
     abortController: new AbortController(),
     attempt: Symbol("image-texture-decode"),
-    decodeStrength,
     decodedBytes: 0,
     handle: null,
     key,

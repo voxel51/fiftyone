@@ -90,13 +90,15 @@ export interface RawImageVisualization {
   readonly width: number;
 }
 
-/**
- * Image-like visualizations rendered by the multimodal image panel.
- */
+/** Still-image visualizations accepted by image decode/cache APIs. */
 export type ImageVisualization =
-  | EncodedVideoVisualization
   | EncodedImageVisualization
   | RawImageVisualization;
+
+/** Camera content routed to either the still ImagePanel or dedicated VideoPanel. */
+export type CameraVisualization =
+  | ImageVisualization
+  | EncodedVideoVisualization;
 
 /**
  * Structured metadata for one source field packed into a point cloud message.
@@ -621,6 +623,7 @@ export interface ImageAnnotationsVisualization {
  */
 export type DecodedVisualization =
   | CameraCalibrationVisualization
+  | EncodedVideoVisualization
   | ImageVisualization
   | GridVisualization
   | ImageAnnotationsVisualization
