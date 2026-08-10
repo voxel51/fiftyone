@@ -457,13 +457,6 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
               durationSec,
               pointerInsideRef.current,
             ),
-          (chart) =>
-            renderCoverageBands(
-              chart,
-              coverageLayerRef.current,
-              coverageRangesRef.current,
-              unavailableRangesRef.current,
-            ),
         ],
         setScale: [
           (chart, key) => {

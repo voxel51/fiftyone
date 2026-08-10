@@ -287,6 +287,24 @@ describe("TimeseriesChart interactions", () => {
     unmount();
   });
 
+  it("keeps coverage overlays stable across canvas-only redraws", () => {
+    const { unmount } = render(
+      <TimeseriesChart
+        coverageRanges={[{ endSec: 5, startSec: 0 }]}
+        data={DATA}
+        durationSec={20}
+        series={[{ color: "#f00", label: "speed" }]}
+      />,
+    );
+    const chart = lastChart();
+    const unread = screen.getByTestId("timeseries-unread-band");
+
+    runHooks(chart.options.hooks?.draw, chart);
+
+    expect(screen.getByTestId("timeseries-unread-band")).toBe(unread);
+    unmount();
+  });
+
   it("coalesces viewport publication and marks interaction as pinned", () => {
     const frames = new Map<number, FrameRequestCallback>();
     let nextFrame = 1;

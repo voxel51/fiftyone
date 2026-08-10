@@ -2,13 +2,13 @@
  * Aligns independently-timed numeric series onto one shared x vector
  * for uPlot's `AlignedData`. Each input keeps its own timestamps
  * (fields can be missing per message and decimation diverges per
- * field); the join merges all timestamps and null-fills where a series
- * has no sample. NaN values (gap markers from extraction) also become
- * null so charts render gaps instead of interpolating through them.
+ * field); the join merges all timestamps and leaves alignment-only
+ * positions undefined. NaN values (gap markers from extraction) become
+ * null so uPlot renders real gaps instead of interpolating through them.
  */
 export interface JoinedNumericSeries {
   readonly xs: number[];
-  readonly ys: (number | null)[][];
+  readonly ys: (number | null | undefined)[][];
 }
 
 export function joinNumericSeries(
@@ -20,7 +20,9 @@ export function joinNumericSeries(
   const xs = mergeSortedTimestamps(series.map((entry) => entry.timesSec));
 
   const ys = series.map((entry) => {
-    const column: (number | null)[] = new Array(xs.length).fill(null);
+    const column: (number | null | undefined)[] = new Array(xs.length).fill(
+      undefined,
+    );
     let cursor = 0;
     for (let i = 0; i < entry.timesSec.length; i += 1) {
       const time = entry.timesSec[i];
@@ -32,7 +34,14 @@ export function joinNumericSeries(
       }
       if (xs[cursor] === time) {
         const value = entry.values[i];
-        column[cursor] = Number.isNaN(value) ? null : value;
+        if (Number.isNaN(value)) {
+          // A real sample at the same timestamp is stronger evidence than a
+          // gap marker. Otherwise retain the gap for uPlot.
+          if (column[cursor] === undefined) column[cursor] = null;
+        } else {
+          // For duplicate finite samples, the later input wins.
+          column[cursor] = value;
+        }
       }
     }
     return column;

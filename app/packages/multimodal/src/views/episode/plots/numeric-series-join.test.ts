@@ -27,7 +27,7 @@ describe("joinNumericSeries", () => {
     ]);
   });
 
-  it("null-fills where a series has no sample", () => {
+  it("uses undefined for alignment-only missing samples", () => {
     const joined = joinNumericSeries([
       {
         timesSec: Float64Array.from([0, 2]),
@@ -40,8 +40,27 @@ describe("joinNumericSeries", () => {
     ]);
     expect(joined.xs).toEqual([0, 1, 2]);
     expect(joined.ys).toEqual([
-      [1, null, 3],
-      [null, 7, 8],
+      [1, undefined, 3],
+      [undefined, 7, 8],
+    ]);
+  });
+
+  it("keeps real gaps distinct from alignment-only missing samples", () => {
+    const joined = joinNumericSeries([
+      {
+        timesSec: Float64Array.from([0, 2, 4]),
+        values: Float64Array.from([1, Number.NaN, 3]),
+      },
+      {
+        timesSec: Float64Array.from([1, 3]),
+        values: Float64Array.from([7, 8]),
+      },
+    ]);
+
+    expect(joined.xs).toEqual([0, 1, 2, 3, 4]);
+    expect(joined.ys).toEqual([
+      [1, undefined, null, undefined, 3],
+      [undefined, 7, undefined, 8, undefined],
     ]);
   });
 
@@ -53,6 +72,18 @@ describe("joinNumericSeries", () => {
       },
     ]);
     expect(joined.ys[0]).toEqual([1, null, 3]);
+  });
+
+  it("keeps finite samples over gap markers at duplicate timestamps", () => {
+    const joined = joinNumericSeries([
+      {
+        timesSec: Float64Array.from([0, 0, 1, 1, 2, 2]),
+        values: Float64Array.from([1, Number.NaN, Number.NaN, 2, 3, 4]),
+      },
+    ]);
+
+    expect(joined.xs).toEqual([0, 1, 2]);
+    expect(joined.ys[0]).toEqual([1, 2, 4]);
   });
 
   it("renders a mixed-bucket decimation gap as visible separation", () => {
@@ -85,8 +116,8 @@ describe("joinNumericSeries", () => {
     ]);
     expect(joined.xs).toEqual([1, 5, 10]);
     expect(joined.ys).toEqual([
-      [null, 1, 2],
-      [3, 4, null],
+      [undefined, 1, 2],
+      [3, 4, undefined],
     ]);
   });
 });
