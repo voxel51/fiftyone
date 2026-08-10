@@ -1,9 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { PreparedImageAnnotations } from "./gpu-image-annotation-preparation";
 import {
   getGpuImageAnnotationResource,
+  releaseGpuImageAnnotationResourcesForSource,
   resetGpuImageAnnotationResourcesForTests,
+  retainGpuImageAnnotationResource,
 } from "./gpu-image-annotation-resources";
 
 afterEach(() => resetGpuImageAnnotationResourcesForTests());
@@ -44,6 +46,54 @@ describe("GPU image annotation resources", () => {
       resource.points.centerAttribute,
     );
     expect(replacement.points.count).toBe(5);
+  });
+
+  it("retires only one source and waits for its live tile to release", async () => {
+    const previous = getGpuImageAnnotationResource(
+      "recording-a\ntile-a\n/camera",
+      payload(1, 1, 1, 0),
+    );
+    const current = getGpuImageAnnotationResource(
+      "recording-b\ntile-b\n/camera",
+      payload(1, 1, 1, 10),
+    );
+    const releasePrevious = retainGpuImageAnnotationResource(previous);
+    const previousDispose = vi.fn();
+    const currentDispose = vi.fn();
+    previous.points.geometry.addEventListener("dispose", previousDispose);
+    current.points.geometry.addEventListener("dispose", currentDispose);
+
+    releaseGpuImageAnnotationResourcesForSource("recording-a");
+    await Promise.resolve();
+
+    expect(previousDispose).not.toHaveBeenCalled();
+    expect(currentDispose).not.toHaveBeenCalled();
+    expect(
+      getGpuImageAnnotationResource(
+        "recording-b\ntile-b\n/camera",
+        payload(1, 1, 1, 20),
+      ),
+    ).toBe(current);
+
+    releasePrevious();
+    await Promise.resolve();
+
+    expect(previousDispose).toHaveBeenCalledOnce();
+    expect(currentDispose).not.toHaveBeenCalled();
+  });
+
+  it("disposes unleased source buffers after source teardown", async () => {
+    const resource = getGpuImageAnnotationResource(
+      "recording-a\ntile-a\n/camera",
+      payload(1, 1, 1, 0),
+    );
+    const dispose = vi.fn();
+    resource.points.geometry.addEventListener("dispose", dispose);
+
+    releaseGpuImageAnnotationResourcesForSource("recording-a");
+    await Promise.resolve();
+
+    expect(dispose).toHaveBeenCalledOnce();
   });
 });
 

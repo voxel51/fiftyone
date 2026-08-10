@@ -113,8 +113,19 @@ export function retainGpuImageAnnotationResource(
   return imageAnnotationResourceRegistry.retain(resource as InternalResource);
 }
 
-function releaseGpuImageAnnotationResources(): void {
+/** Modal/device-loss boundary cleanup for every retained annotation buffer. */
+export function releaseGpuImageAnnotationResources(): void {
   imageAnnotationResourceRegistry.releaseAll();
+}
+
+/** Retires only annotation buffers owned by one recording/source identity. */
+export function releaseGpuImageAnnotationResourcesForSource(
+  sourceKey: string,
+): void {
+  const prefix = `${sourceKey}\n`;
+  imageAnnotationResourceRegistry.retireWhere((resourceKey) =>
+    resourceKey.startsWith(prefix),
+  );
 }
 
 /** Clears all retained resources and counters between unit tests. */
