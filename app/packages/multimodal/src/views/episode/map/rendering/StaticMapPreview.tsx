@@ -29,8 +29,8 @@ export function MapLegend({
           />
           <span className={styles.legendLabel}>{track.label}</span>
           <span className={styles.legendMeta}>
-            {track.pointCount.toLocaleString()}
-            {track.truncated ? " sampled" : ""}
+            {track.pointCount.toLocaleString()}{" "}
+            {track.pointCount === 1 ? "point" : "points"}
           </span>
         </div>
       ))}

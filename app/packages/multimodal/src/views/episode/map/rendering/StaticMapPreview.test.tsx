@@ -22,6 +22,8 @@ describe("MapLegend", () => {
 
     expect(screen.getByTitle("/gps/fix")).toBeTruthy();
     expect(screen.queryByTitle("7")).toBeNull();
+    expect(screen.getByText("2 points")).toBeTruthy();
+    expect(screen.queryByText(/sampled/)).toBeNull();
   });
 });
 

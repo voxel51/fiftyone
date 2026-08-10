@@ -44,6 +44,7 @@ describe("MapRenderer basemap recovery", () => {
     render(
       <MapRenderer
         baseLayer={MAP_BASE_LAYER.DEFAULT}
+        downsampled={false}
         enabledStreamCount={0}
         errorCount={0}
         followEgo={false}

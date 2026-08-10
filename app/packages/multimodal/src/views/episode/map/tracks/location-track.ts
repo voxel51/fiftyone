@@ -86,12 +86,15 @@ export interface ResolvedLocationTrackPosition {
 
 export interface LocationTrackState {
   readonly color: string;
+  /** Render geometry was decimated while preserving the admitted route. */
+  readonly downsampled?: boolean;
   readonly label: string;
   readonly pointCount: number;
   readonly segments: readonly LocationTrackSegment[];
   readonly sourceName: string;
   readonly status: "loading" | "ready" | "error";
   readonly stream: string;
+  /** Some source evidence could not be retained or read. */
   readonly truncated?: boolean;
 }
 

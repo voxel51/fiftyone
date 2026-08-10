@@ -189,6 +189,7 @@ const MapTile: React.FC<EpisodeTileProps> = () => {
   return (
     <MapRenderer
       baseLayer={settings.baseLayer}
+      downsampled={renderableTracks.some((track) => track.downsampled)}
       enabledStreamCount={visibleStreams.length}
       errorCount={errorCount}
       followEgo={settings.followEgo}

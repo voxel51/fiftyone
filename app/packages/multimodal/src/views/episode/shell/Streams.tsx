@@ -188,6 +188,7 @@ export function Streams({
         budgetAccount={budgetAccount}
         locationSources={locationSources}
         session={session}
+        sourceReadProfile={source?.readProfile}
         sourceKey={sourceKey}
         streams={locationStreams}
       />

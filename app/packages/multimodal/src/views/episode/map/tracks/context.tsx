@@ -18,6 +18,10 @@ import type {
   ReadContinuation,
   SourceReadBudgetAccount,
 } from "../../../../ports";
+import {
+  BYTE_SOURCE_READ_PROFILE,
+  type ByteSourceReadProfile,
+} from "../../../../ir";
 import { isEpisodeReadCancelledError } from "../../../../ports";
 import type { SceneSource } from "../../../../scene-inventory";
 import { VISUALIZATION_KIND } from "../../../../visualization";
@@ -56,6 +60,7 @@ const LOCATION_TRACK_GRANT_BUDGET = {
 const EMPTY_LOCATION_TRACKS: LocationTracks = new Map();
 
 interface BoundedLocationTrackProgress {
+  readonly fallbackAfterAccountExhaustion: boolean;
   active:
     | {
         readonly controller: AbortController;
@@ -88,6 +93,7 @@ interface BoundedLocationTrackProgress {
   targetHorizonNs?: bigint;
   terminal: boolean;
   truncated: boolean;
+  useFallbackRead: boolean;
 }
 
 interface LocationTrackCacheEpoch {
@@ -164,12 +170,14 @@ export function LocationTracksBridge({
   budgetAccount,
   locationSources,
   session,
+  sourceReadProfile,
   sourceKey,
   streams,
 }: {
   readonly budgetAccount?: SourceReadBudgetAccount | null;
   readonly locationSources: readonly SceneSource[];
   readonly session: EpisodeSession | null;
+  readonly sourceReadProfile?: ByteSourceReadProfile;
   readonly sourceKey: string | null;
   readonly streams?: readonly string[];
 }) {
@@ -272,6 +280,8 @@ export function LocationTracksBridge({
       progress = createProgress({
         budgetAccount,
         epoch,
+        fallbackAfterAccountExhaustion:
+          sourceReadProfile === BYTE_SOURCE_READ_PROFILE.LOCAL,
         key: requestedStreamsKey,
         locationSources,
         streams,
@@ -351,35 +361,36 @@ export function LocationTracksBridge({
     const controller = new AbortController();
     const active = { controller } as const;
     selectedProgress.active = active;
-    const pump = selectedProgress.job
-      ? pumpBoundedProgress({
-          epoch,
-          progress: selectedProgress,
-          publish: (immediate) =>
-            requestProgressPublication(
-              epoch,
-              selectedProgress,
-              selectedProgress.targetHorizonNs,
-              setTracks,
-              immediate,
-            ),
-          shouldStandDown: () => shouldDeferBulkHistory(playbackStore),
-          signal: controller.signal,
-        })
-      : pumpFallbackProgress({
-          epoch,
-          progress: selectedProgress,
-          publish: (immediate) =>
-            requestProgressPublication(
-              epoch,
-              selectedProgress,
-              selectedProgress.targetHorizonNs,
-              setTracks,
-              immediate,
-            ),
-          shouldStandDown: () => shouldDeferBulkHistory(playbackStore),
-          signal: controller.signal,
-        });
+    const pump =
+      selectedProgress.job && !selectedProgress.useFallbackRead
+        ? pumpBoundedProgress({
+            epoch,
+            progress: selectedProgress,
+            publish: (immediate) =>
+              requestProgressPublication(
+                epoch,
+                selectedProgress,
+                selectedProgress.targetHorizonNs,
+                setTracks,
+                immediate,
+              ),
+            shouldStandDown: () => shouldDeferBulkHistory(playbackStore),
+            signal: controller.signal,
+          })
+        : pumpFallbackProgress({
+            epoch,
+            progress: selectedProgress,
+            publish: (immediate) =>
+              requestProgressPublication(
+                epoch,
+                selectedProgress,
+                selectedProgress.targetHorizonNs,
+                setTracks,
+                immediate,
+              ),
+            shouldStandDown: () => shouldDeferBulkHistory(playbackStore),
+            signal: controller.signal,
+          });
     void pump
       .catch((error: unknown) => {
         if (
@@ -416,6 +427,7 @@ export function LocationTracksBridge({
     requestedStreamsKey,
     session,
     setTracks,
+    sourceReadProfile,
     sourceKey,
   ]);
 
@@ -433,12 +445,14 @@ export function LocationTracksBridge({
 function createProgress({
   budgetAccount,
   epoch,
+  fallbackAfterAccountExhaustion,
   key,
   locationSources,
   streams,
 }: {
   readonly budgetAccount: SourceReadBudgetAccount | null | undefined;
   readonly epoch: LocationTrackCacheEpoch;
+  readonly fallbackAfterAccountExhaustion: boolean;
   readonly key: string;
   readonly locationSources: readonly SceneSource[];
   readonly streams: readonly string[];
@@ -463,6 +477,7 @@ function createProgress({
     active: undefined,
     baseByStream,
     error: false,
+    fallbackAfterAccountExhaustion,
     hasRead: false,
     ...(budgetAccount ? { job: budgetAccount.createJob() } : {}),
     key,
@@ -474,6 +489,7 @@ function createProgress({
     streams,
     terminal: false,
     truncated: false,
+    useFallbackRead: false,
   };
 }
 
@@ -550,6 +566,12 @@ async function pumpBoundedProgress({
       return;
     }
     if (result.stopReason === "account-exhausted") {
+      if (progress.fallbackAfterAccountExhaustion) {
+        progress.continuation = undefined;
+        progress.resumeAtNs = undefined;
+        progress.useFallbackRead = true;
+        return;
+      }
       progress.terminal = true;
       progress.truncated = true;
       publish(true);
@@ -882,12 +904,11 @@ function publishProgress(
         : locationSegmentsThrough(rendered.segments, horizonNs);
     tracks.set(stream, {
       ...base,
+      ...(rendered.truncated ? { downsampled: true } : {}),
       pointCount: store.validPointCountAt(visibleCount),
       segments: visibleSegments,
       status,
-      ...(progress.truncated || store.truncated || rendered.truncated
-        ? { truncated: true }
-        : {}),
+      ...(progress.truncated || store.truncated ? { truncated: true } : {}),
     });
   });
   progress.publicationKey = publicationKey;

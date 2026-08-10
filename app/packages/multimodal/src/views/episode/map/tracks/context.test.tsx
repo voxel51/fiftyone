@@ -537,6 +537,73 @@ describe("LocationTracksBridge", () => {
     });
   });
 
+  it("falls back to exact local reads when the shared account is exhausted", async () => {
+    const source = {
+      ...createSource("local-drive"),
+      readProfile: "local" as const,
+    };
+    const session = createSession(async function* () {
+      yield locationMessage(1_000_000_000n, 37, -122, 0);
+      yield locationMessage(2_000_000_000n, 37.001, -122.001, 0);
+    });
+    const read = vi.fn<BudgetedReadJob["read"]>().mockResolvedValue(
+      boundedResult({
+        frames: [locationMessage(1_000_000_000n, 37, -122, 0)],
+        stopReason: "account-exhausted",
+      }),
+    );
+    const budgetAccount = {
+      createJob: () => ({ read }),
+    } as unknown as SourceReadBudgetAccount;
+
+    render(
+      <Harness
+        budgetAccount={budgetAccount}
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        source={source}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:ready:2:1:full",
+      );
+    });
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(session.read).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports exhausted remote history as partial without bypassing its budget", async () => {
+    const source = createSource("remote-drive");
+    const session = createSession();
+    const read = vi.fn<BudgetedReadJob["read"]>().mockResolvedValue(
+      boundedResult({
+        frames: [locationMessage(1_000_000_000n, 37, -122, 0)],
+        stopReason: "account-exhausted",
+      }),
+    );
+    const budgetAccount = {
+      createJob: () => ({ read }),
+    } as unknown as SourceReadBudgetAccount;
+
+    render(
+      <Harness
+        budgetAccount={budgetAccount}
+        session={session}
+        locationSources={[locationSource("/gps")]}
+        source={source}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps:ready:1:1:truncated",
+      );
+    });
+    expect(session.read).not.toHaveBeenCalled();
+  });
+
   it("lets an admitted grant finish when the playhead seeks backward", async () => {
     const source = createSource("drive");
     const session = createSession();
@@ -907,6 +974,7 @@ function Harness({
           budgetAccount={budgetAccount}
           session={session}
           locationSources={locationSources}
+          sourceReadProfile={source.readProfile}
           sourceKey={source.sourceId}
           streams={streams}
         />

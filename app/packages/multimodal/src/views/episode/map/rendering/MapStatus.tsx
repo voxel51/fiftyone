@@ -4,6 +4,7 @@ import styles from "./MapRenderer.module.css";
 
 /** Summarizes per-stream map loading, failure, and downsampling state. */
 export function mapStatusText({
+  downsampled,
   enabledStreamCount,
   errorCount,
   loadingCount,
@@ -11,6 +12,7 @@ export function mapStatusText({
   readyTrackCount,
   truncated,
 }: {
+  readonly downsampled: boolean;
   readonly enabledStreamCount: number;
   readonly errorCount: number;
   readonly loadingCount: number;
@@ -22,7 +24,8 @@ export function mapStatusText({
   const notes = [
     loadingCount > 0 ? `loading ${loadingCount}` : null,
     errorCount > 0 ? `${errorCount} failed` : null,
-    readyTrackCount > 0 && truncated ? "downsampled" : null,
+    readyTrackCount > 0 && truncated ? "partial route" : null,
+    readyTrackCount > 0 && downsampled ? "downsampled" : null,
   ].filter(Boolean);
   return notes.length > 0 ? notes.join(" · ") : null;
 }

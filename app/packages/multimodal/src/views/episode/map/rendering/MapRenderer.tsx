@@ -32,6 +32,7 @@ import type { MapRendererPlayback } from "./MapLibreSurface";
 /** Prepared geographic evidence and host interactions consumed by the map. */
 export interface MapRendererProps {
   readonly baseLayer: MapBaseLayer;
+  readonly downsampled: boolean;
   readonly enabledStreamCount: number;
   readonly errorCount: number;
   readonly followEgo: boolean;
@@ -53,6 +54,7 @@ export interface MapRendererProps {
 /** Composes map status, controls, measurement state, and the MapLibre host. */
 export const MapRenderer: React.FC<MapRendererProps> = ({
   baseLayer,
+  downsampled,
   enabledStreamCount,
   errorCount,
   followEgo,
@@ -131,6 +133,7 @@ export const MapRenderer: React.FC<MapRendererProps> = ({
         ? "Pick the second map point"
         : "Pick two map points";
   const trackStatusText = mapStatusText({
+    downsampled,
     enabledStreamCount,
     errorCount,
     loadingCount,
