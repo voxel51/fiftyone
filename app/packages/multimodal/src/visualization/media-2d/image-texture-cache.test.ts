@@ -6,6 +6,7 @@ import {
   acquireImageTexture,
   IMAGE_TEXTURE_RETENTION_BYTE_CAP,
   IMAGE_TEXTURE_RETENTION_CAP,
+  ImageTextureDecodeCancelledError,
   imageTextureCacheKey,
   imageTextureCacheStats,
   releaseRetainedImageTextures,
@@ -238,10 +239,14 @@ describe("acquireImageTexture (shared keys)", () => {
     const lease = acquireImageTexture("pending-session", pending.decode);
 
     releaseRetainedImageTextures();
+    const expectation = expect(lease.promise).rejects.toBeInstanceOf(
+      ImageTextureDecodeCancelledError,
+    );
     lease.release();
     const decoded = makeHandle({ height: 20, width: 10 });
     pending.resolve(decoded.handle);
-    await lease.promise;
+    await expectation;
+    await Promise.resolve();
 
     expect(decoded.dispose).toHaveBeenCalledTimes(1);
     expect(imageTextureCacheStats()).toMatchObject({
@@ -293,23 +298,69 @@ describe("acquireImageTexture (shared keys)", () => {
     expect(imageTextureCacheStats().retainedCount).toBe(1);
   });
 
-  it("retains a decode whose every lease was released before it settled", async () => {
+  it("cancels a pending decode whose every lease was released", async () => {
     const { decode, resolve } = deferredDecode();
 
     const lease = acquireImageTexture("k", decode);
+    const expectation = expect(lease.promise).rejects.toBeInstanceOf(
+      ImageTextureDecodeCancelledError,
+    );
     lease.release();
 
     const { dispose, handle } = makeHandle();
     resolve(handle);
-    await lease.promise;
-    expect(dispose).not.toHaveBeenCalled();
-    expect(imageTextureCacheStats().retainedCount).toBe(1);
+    await expectation;
+    await Promise.resolve();
+    expect(dispose).toHaveBeenCalledOnce();
+    expect(imageTextureCacheStats().retainedCount).toBe(0);
 
-    const reacquired = acquireImageTexture("k", decode);
+    const fresh = makeHandle();
+    const reacquired = acquireImageTexture("k", async () => fresh.handle);
     await reacquired.promise;
-    expect(decode).toHaveBeenCalledTimes(1);
+    expect(imageTextureCacheStats().decodeCount).toBe(2);
 
     reacquired.release();
+  });
+
+  it("restarts one pending promise when a runway-bearing request is stronger", async () => {
+    const weak = deferredDecode();
+    const strong = deferredDecode();
+    const attempts = [weak, strong];
+    const signals: AbortSignal[] = [];
+    const decode = vi.fn((signal: AbortSignal) => {
+      signals.push(signal);
+      const attempt = attempts.shift();
+      if (!attempt) throw new Error("missing decode attempt");
+      return attempt.decode();
+    });
+
+    const weakLease = acquireImageTexture("same-frame", decode, {
+      decodeStrength: 0,
+    });
+    const strongLease = acquireImageTexture("same-frame", decode, {
+      decodeStrength: 1,
+    });
+
+    expect(decode).toHaveBeenCalledTimes(2);
+    expect(signals[0].aborted).toBe(true);
+    expect(signals[1].aborted).toBe(false);
+    const stale = makeHandle({ height: 2, width: 2 });
+    weak.resolve(stale.handle);
+    await Promise.resolve();
+    expect(stale.dispose).toHaveBeenCalledOnce();
+
+    const ready = makeHandle({ height: 8, width: 16 });
+    strong.resolve(ready.handle);
+    const [weakHandle, strongHandle] = await Promise.all([
+      weakLease.promise,
+      strongLease.promise,
+    ]);
+    expect(weakHandle.imageWidth).toBe(16);
+    expect(strongHandle.imageWidth).toBe(16);
+    expect(imageTextureCacheStats().decodeCount).toBe(2);
+
+    weakLease.release();
+    strongLease.release();
   });
 
   it("treats release as idempotent per lease", async () => {

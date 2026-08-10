@@ -39,8 +39,9 @@ import type {
 import { useLatestRef } from "../../utils/use-latest-ref";
 import { fittedImageSize } from "./image-fit";
 import {
+  acquireEncodedVideoSession,
   createEncodedVideoCanvas,
-  releaseEncodedVideoSession,
+  type EncodedVideoSessionOwner,
 } from "./video-texture";
 
 const DEFAULT_MIME_TYPE = "image/jpeg";
@@ -113,6 +114,8 @@ export interface BitmapImageFrameViewProps {
   readonly onBitmapRetainedBytesChange?: (retainedBytes: number) => void;
   readonly onImageLoaded?: (width: number, height: number) => void;
   readonly style?: CSSProperties;
+  /** Stable source/stream owner key for encoded-video decoder cleanup. */
+  readonly videoSessionKey?: string;
 }
 
 type CanvasDrawable = (HTMLCanvasElement | ImageBitmap) & {
@@ -434,6 +437,7 @@ export function BitmapImageFrameView({
   onError,
   onImageLoaded,
   style,
+  videoSessionKey,
 }: BitmapImageFrameViewProps) {
   if (frame.kind === "encoded-video") {
     return (
@@ -445,6 +449,7 @@ export function BitmapImageFrameView({
         onBitmapRetainedBytesChange={onBitmapRetainedBytesChange}
         onImageLoaded={onImageLoaded}
         style={style}
+        videoSessionKey={videoSessionKey}
       />
     );
   }
@@ -481,6 +486,7 @@ function BitmapEncodedVideoView({
   onBitmapRetainedBytesChange,
   onImageLoaded,
   style,
+  videoSessionKey,
 }: Omit<BitmapImageFrameViewProps, "frame"> & {
   readonly frame: EncodedVideoVisualization;
 }) {
@@ -490,12 +496,36 @@ function BitmapEncodedVideoView({
   const onBitmapRetainedBytesChangeRef = useLatestRef(
     onBitmapRetainedBytesChange,
   );
-  const previewTextureKey = useId();
+  const fallbackPreviewTextureKey = useId();
+  const previewTextureKey = videoSessionKey ?? fallbackPreviewTextureKey;
+  const videoSessionOwnerRef = useRef<EncodedVideoSessionOwner | null>(null);
+
+  // The grid view owns one decoder claim for its mounted lifetime. Updating
+  // `frame` must not tear down the keyframe state needed by the next delta.
+  useEffect(() => {
+    const owner = acquireEncodedVideoSession(frame, previewTextureKey);
+    videoSessionOwnerRef.current = owner;
+    return () => {
+      if (videoSessionOwnerRef.current === owner) {
+        videoSessionOwnerRef.current = null;
+      }
+      owner.release();
+    };
+    // The React id is the mounted preview stream identity; frame changes are
+    // decoded through the existing claim.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewTextureKey]);
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
 
-    createEncodedVideoCanvas(frame, previewTextureKey)
+    createEncodedVideoCanvas(
+      frame,
+      previewTextureKey,
+      videoSessionOwnerRef.current ?? undefined,
+      controller.signal,
+    )
       .then((source) => {
         if (cancelled) {
           closeDrawable(source);
@@ -516,7 +546,7 @@ function BitmapEncodedVideoView({
 
     return () => {
       cancelled = true;
-      releaseEncodedVideoSession(frame, previewTextureKey);
+      controller.abort();
     };
   }, [
     commit,

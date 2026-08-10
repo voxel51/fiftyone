@@ -380,6 +380,41 @@ describe("useVideoDecodeRunways lifecycle", () => {
     expect(controlled.reads[1].request.signal?.aborted).toBe(false);
   });
 
+  it("retries the same delta target after a transient missing frame", async () => {
+    const controlled = controlledDataStream();
+    vi.mocked(useDataStream).mockReturnValue(controlled.dataStream);
+    const target = playbackFrame(6n, false);
+    const initialProps: {
+      current: ReturnType<typeof playbackFrame> | null;
+    } = { current: target };
+    const { result, rerender } = renderHook(
+      ({ current }) => useVideoDecodeRunway(STREAM, current),
+      { initialProps },
+    );
+    await waitFor(() => expect(controlled.reads).toHaveLength(1));
+
+    rerender({ current: null });
+    expect(controlled.reads[0].request.signal?.aborted).toBe(true);
+
+    rerender({ current: target });
+    await waitFor(() => expect(controlled.reads).toHaveLength(2));
+    expect(controlled.reads[1].request.signal?.aborted).toBe(false);
+
+    await act(async () => {
+      controlled.reads[0].resolve(readResult([message(frame(1n, true))]));
+    });
+    expect(result.current).toEqual([]);
+
+    const keyframe = frame(3n, true);
+    const delta = frame(5n, false);
+    await act(async () => {
+      controlled.reads[1].resolve(
+        readResult([message(keyframe), message(delta)]),
+      );
+    });
+    await waitFor(() => expect(result.current).toEqual([keyframe, delta]));
+  });
+
   it("aborts on stream removal, rejoin, DataStream swap, and unmount", async () => {
     const first = controlledDataStream("first");
     vi.mocked(useDataStream).mockReturnValue(first.dataStream);

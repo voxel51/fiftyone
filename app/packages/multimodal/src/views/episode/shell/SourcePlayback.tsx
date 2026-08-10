@@ -24,6 +24,7 @@ import {
 } from "../../../runtime";
 import { EpisodePlaybackStoreProvider } from "../../../runtime/react";
 import { releaseRetainedImageTextures } from "../../../visualization/media-2d/image-texture-cache";
+import { releaseEncodedVideoSessionsForSource } from "../../../visualization/media-2d/video-texture";
 import {
   releaseGpuImageAnnotationResources,
   releaseGpuImageAnnotationResourcesForSource,
@@ -333,6 +334,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
         fileName={fileName}
         poster={poster}
         posterStream={bootstrap?.posterStreamId}
+        sourceKey={sourceAccessKey}
       />
     );
   }
@@ -462,6 +464,7 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = ({
                                     fileName={fileName}
                                     poster={poster}
                                     posterStream={bootstrap?.posterStreamId}
+                                    sourceKey={sourceAccessKey}
                                     statusText={transitionMessage}
                                   />
                                 ) : null
@@ -563,6 +566,7 @@ function SourceResourceBoundary() {
       if (sourceKey) {
         releaseGpuImageAnnotationResourcesForSource(sourceKey);
         releaseGpuPointCloudProjectionResourcesForSource(sourceKey);
+        releaseEncodedVideoSessionsForSource(sourceKey);
       }
     },
     [sourceKey],
@@ -604,10 +608,12 @@ function PreparingPlayback({
   fileName,
   poster,
   posterStream,
+  sourceKey,
 }: {
   readonly fileName: string;
   readonly poster?: PosterImage;
   readonly posterStream?: string;
+  readonly sourceKey: string;
 }) {
   return (
     <div
@@ -621,7 +627,11 @@ function PreparingPlayback({
         <span className={styles.preparingStatus}>Preparing viewer</span>
       </div>
       <div className={styles.preparingTiles}>
-        <PosterCard poster={poster} posterStream={posterStream} />
+        <PosterCard
+          poster={poster}
+          posterStream={posterStream}
+          sourceKey={sourceKey}
+        />
         <div className={styles.preparingTile} />
         <div className={styles.preparingTile} />
       </div>
@@ -634,11 +644,13 @@ function PosterOverlay({
   fileName,
   poster,
   posterStream,
+  sourceKey,
   statusText,
 }: {
   readonly fileName: string;
   readonly poster?: PosterImage;
   readonly posterStream?: string;
+  readonly sourceKey: string;
   readonly statusText?: string;
 }) {
   return (
@@ -650,6 +662,7 @@ function PosterOverlay({
       <PosterCard
         poster={poster}
         posterStream={posterStream}
+        sourceKey={sourceKey}
         statusText={statusText}
       />
     </div>
@@ -659,10 +672,12 @@ function PosterOverlay({
 function PosterCard({
   poster,
   posterStream,
+  sourceKey,
   statusText,
 }: {
   readonly poster?: PosterImage;
   readonly posterStream?: string;
+  readonly sourceKey: string;
   readonly statusText?: string;
 }) {
   return (
@@ -672,6 +687,7 @@ function PosterCard({
           className={styles.posterImage}
           fit="cover"
           frame={poster.image}
+          videoSessionKey={`${sourceKey}\n${posterStream ?? "preview"}`}
         />
       ) : (
         <Spinner size={Size.Lg} />

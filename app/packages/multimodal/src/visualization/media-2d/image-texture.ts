@@ -12,9 +12,10 @@ import type {
   RawImageVisualization,
 } from "../../ir";
 import type { ImageTextureHandle } from "./Base2dScene";
-import { createEncodedVideoTexture } from "./video-texture";
-
-const MAX_VIDEO_DECODE_PREREQUISITES = 600;
+import {
+  createEncodedVideoTexture,
+  type EncodedVideoSessionOwner,
+} from "./video-texture";
 
 /**
  * Decodes an image visualization into a disposable texture handle.
@@ -23,6 +24,8 @@ export async function createImageTexture(
   frame: ImageVisualization,
   textureKey?: string,
   decodeRunway: readonly ImageVisualization[] = [],
+  videoSessionOwner?: EncodedVideoSessionOwner,
+  signal?: AbortSignal,
 ): Promise<ImageTextureHandle> {
   if (frame.kind === "raw-image") {
     return createRawImageTexture(frame);
@@ -32,8 +35,13 @@ export async function createImageTexture(
       (prerequisite): prerequisite is EncodedVideoVisualization =>
         prerequisite.kind === "encoded-video" && prerequisite.codec === "h264",
     );
-    const prerequisites = h264Runway.slice(-MAX_VIDEO_DECODE_PREREQUISITES);
-    return createEncodedVideoTexture(frame, textureKey, prerequisites);
+    return createEncodedVideoTexture(
+      frame,
+      textureKey,
+      h264Runway,
+      videoSessionOwner,
+      signal,
+    );
   }
   return createEncodedImageTexture(frame);
 }
