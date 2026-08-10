@@ -90,18 +90,16 @@ describe("episode map basemap lifecycle", () => {
     expect(initialMapBasemapStatus(MAP_BASE_LAYER.DEFAULT)).toBe("loading");
   });
 
-  it("keeps the static route visible until the provider map can take over", () => {
+  it("keeps the static route visible only until the interactive map is framed", () => {
     expect(
       shouldShowMapStaticPreview({
-        basemapStatus: "loading",
         cameraReady: true,
         failed: false,
-        mapLoaded: true,
+        mapLoaded: false,
       }),
     ).toBe(true);
     expect(
       shouldShowMapStaticPreview({
-        basemapStatus: "ready",
         cameraReady: false,
         failed: false,
         mapLoaded: true,
@@ -109,7 +107,6 @@ describe("episode map basemap lifecycle", () => {
     ).toBe(true);
     expect(
       shouldShowMapStaticPreview({
-        basemapStatus: "ready",
         cameraReady: true,
         failed: false,
         mapLoaded: true,
@@ -120,7 +117,6 @@ describe("episode map basemap lifecycle", () => {
   it("falls back to the static route when MapLibre fails", () => {
     expect(
       shouldShowMapStaticPreview({
-        basemapStatus: "error",
         cameraReady: true,
         failed: true,
         mapLoaded: false,
@@ -128,7 +124,6 @@ describe("episode map basemap lifecycle", () => {
     ).toBe(true);
     expect(
       shouldShowMapStaticPreview({
-        basemapStatus: "error",
         cameraReady: true,
         failed: false,
         mapLoaded: true,

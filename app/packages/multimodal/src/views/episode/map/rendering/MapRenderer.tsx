@@ -165,7 +165,6 @@ export const MapRenderer: React.FC<MapRendererProps> = ({
       <MapLibreSurface
         baseLayer={baseLayer}
         basemapRetryNonce={basemapRetryNonce}
-        basemapStatus={basemapStatus}
         bounds={bounds}
         fitRouteNonce={fitRouteNonce}
         followEgo={followEgo}

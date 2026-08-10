@@ -133,7 +133,6 @@ export interface MapRendererPlayback {
 export function MapLibreSurface({
   baseLayer,
   basemapRetryNonce = 0,
-  basemapStatus,
   bounds,
   fitRouteNonce,
   followEgo,
@@ -155,7 +154,6 @@ export function MapLibreSurface({
 }: {
   readonly baseLayer: MapBaseLayer;
   readonly basemapRetryNonce?: number;
-  readonly basemapStatus: MapBasemapStatus;
   readonly bounds: LocationBounds | null;
   readonly fitRouteNonce: number;
   readonly followEgo: boolean;
@@ -229,7 +227,6 @@ export function MapLibreSurface({
   const [cameraReady, setCameraReady] = useState(false);
   const [basemapAutoRetryNonce, setBasemapAutoRetryNonce] = useState(0);
   const showStaticPreview = shouldShowMapStaticPreview({
-    basemapStatus,
     cameraReady,
     failed,
     mapLoaded: loaded,

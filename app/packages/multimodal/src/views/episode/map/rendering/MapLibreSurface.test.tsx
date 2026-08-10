@@ -145,7 +145,6 @@ describe("MapLibreSurface", () => {
     const rendered = render(
       <MapLibreSurface
         baseLayer={MAP_BASE_LAYER.NONE}
-        basemapStatus="disabled"
         bounds={null}
         fitRouteNonce={0}
         followEgo={false}
@@ -196,7 +195,6 @@ describe("MapLibreSurface", () => {
     };
     const props = {
       baseLayer: MAP_BASE_LAYER.NONE,
-      basemapStatus: "disabled" as const,
       bounds: null,
       fitRouteNonce: 0,
       followEgo: false,
@@ -260,7 +258,6 @@ describe("MapLibreSurface", () => {
     const initialBounds = { east: 10, north: 45, south: 45, west: 10 };
     const props = {
       baseLayer: MAP_BASE_LAYER.NONE,
-      basemapStatus: "disabled" as const,
       fitRouteNonce: 0,
       followEgo: false,
       locationEvidencePending: false,
@@ -372,7 +369,6 @@ describe("MapLibreSurface", () => {
     render(
       <MapLibreSurface
         baseLayer={MAP_BASE_LAYER.NONE}
-        basemapStatus="disabled"
         bounds={null}
         fitRouteNonce={0}
         followEgo={false}
@@ -418,7 +414,7 @@ describe("MapLibreSurface", () => {
     expect(hitSetData).toHaveBeenCalledTimes(2);
   });
 
-  it("ignores overlay errors and makes provider readiness monotonic", async () => {
+  it("exposes the local map while provider readiness remains monotonic", async () => {
     const onBasemapStatusChange = vi.fn();
     const playback = {
       clearHover: vi.fn(),
@@ -427,10 +423,9 @@ describe("MapLibreSurface", () => {
       subscribeHover: vi.fn(() => vi.fn()),
       subscribePlayhead: vi.fn(() => vi.fn()),
     };
-    render(
+    const rendered = render(
       <MapLibreSurface
         baseLayer={MAP_BASE_LAYER.DEFAULT}
-        basemapStatus="loading"
         bounds={null}
         fitRouteNonce={0}
         followEgo={false}
@@ -452,10 +447,14 @@ describe("MapLibreSurface", () => {
       />,
     );
 
+    expect(rendered.container.querySelector("svg")).not.toBeNull();
     await waitFor(() => expect(mapLibre.instances).toHaveLength(1));
     const map = mapLibre.instances[0];
     act(() => map?.emit("load"));
     await waitFor(() => expect(map?.setStyle).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(rendered.container.querySelector("svg")).toBeNull(),
+    );
 
     act(() => {
       for (let index = 0; index < 5; index += 1) {
@@ -508,7 +507,6 @@ describe("MapLibreSurface", () => {
     const rendered = render(
       <MapLibreSurface
         baseLayer={MAP_BASE_LAYER.DEFAULT}
-        basemapStatus="loading"
         bounds={null}
         fitRouteNonce={0}
         followEgo={false}
@@ -570,7 +568,6 @@ describe("MapLibreSurface", () => {
       <MapLibreSurface
         baseLayer={MAP_BASE_LAYER.DEFAULT}
         basemapRetryNonce={1}
-        basemapStatus="error"
         bounds={null}
         fitRouteNonce={0}
         followEgo={false}

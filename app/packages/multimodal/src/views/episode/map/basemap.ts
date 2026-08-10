@@ -36,20 +36,18 @@ export function mapBasemapStatusText(status: MapBasemapStatus): string | null {
 
 /**
  * Keeps the dependency-free route preview visible until the interactive map
- * is framed and its selected provider has loaded enough tiles to take over.
+ * is framed. Basemap readiness must not cover a usable local map fallback.
  */
 export function shouldShowMapStaticPreview({
-  basemapStatus,
   cameraReady,
   failed,
   mapLoaded,
 }: {
-  readonly basemapStatus: MapBasemapStatus;
   readonly cameraReady: boolean;
   readonly failed: boolean;
   readonly mapLoaded: boolean;
 }): boolean {
-  return failed || !mapLoaded || !cameraReady || basemapStatus === "loading";
+  return failed || !mapLoaded || !cameraReady;
 }
 
 /**
