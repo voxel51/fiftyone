@@ -311,6 +311,7 @@ export function MapLibreSurface({
           container: containerRef.current,
           interactive: true,
           pitchWithRotate: false,
+          renderWorldCopies: true,
           style: NO_TILE_STYLE,
           zoom: 1,
         });

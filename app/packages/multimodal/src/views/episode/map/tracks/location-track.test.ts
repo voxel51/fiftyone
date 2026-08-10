@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  combineLocationBounds,
   createLocationTrackCursor,
   decimateLocationTrackSegments,
   horizontalAccuracyM,
@@ -8,9 +9,11 @@ import {
   IncrementalLocationSegmentBuilder,
   interpolateLocationAtTime,
   isValidLocationPoint,
+  locationBounds,
   locationTrailCoordinates,
   resolveIndexedLocationAtTime,
   segmentLocationTrack,
+  unwrapLocationTrackPoint,
   type LocationTrackPoint,
 } from "./location-track";
 import { bearingDegrees } from "../wgs84";
@@ -35,6 +38,15 @@ describe("isValidLocationPoint", () => {
       false,
     );
     expect(isValidLocationPoint(point(0, { fixStatus: -1 }))).toBe(false);
+  });
+
+  it("unwraps a live fix only against the admitted tail", () => {
+    const live = point(2, { latitude: 0, longitude: -179 });
+
+    expect(unwrapLocationTrackPoint(live, { longitude: 179 }).longitude).toBe(
+      181,
+    );
+    expect(unwrapLocationTrackPoint(live, null).longitude).toBe(-179);
   });
 });
 
@@ -175,6 +187,53 @@ describe("interpolateLocationAtTime", () => {
     expect(location?.altitude).toBeCloseTo(15);
     expect(location?.accuracyM).toBeCloseTo(6);
     expect(location?.bearingDeg).toBeDefined();
+  });
+
+  it("interpolates and trails continuously across the antimeridian", () => {
+    const segments = segmentLocationTrack([
+      point(0, {
+        latitude: 0,
+        longitude: 179,
+        longitudeUnwrapped: true,
+      }),
+      point(10, {
+        latitude: 0,
+        longitude: 181,
+        longitudeUnwrapped: true,
+      }),
+    ]);
+
+    expect(interpolateLocationAtTime(segments, 5_000_000_000n)?.longitude).toBe(
+      180,
+    );
+    expect(
+      locationTrailCoordinates(segments, 5_000_000_000n, 5_000_000_000n),
+    ).toEqual([
+      [179, 0],
+      [180, 0],
+    ]);
+  });
+});
+
+describe("location bounds", () => {
+  it("chooses a minimal circular union for independently unwrapped streams", () => {
+    const combined = combineLocationBounds([
+      { east: 181, north: 1, south: 0, west: 179 },
+      { east: -178, north: 2, south: -1, west: -179 },
+    ]);
+
+    expect(combined).toEqual({ east: 182, north: 2, south: -1, west: 179 });
+  });
+
+  it("keeps genuinely broad routes bounded to one safe world", () => {
+    expect(
+      combineLocationBounds([{ east: 400, north: 1, south: -1, west: -20 }]),
+    ).toEqual({ east: 370, north: 1, south: -1, west: 10 });
+  });
+
+  it("reuses cached bounds for a stable segment", () => {
+    const segment = { points: [point(0), point(1)] };
+    expect(locationBounds([segment])).toBe(locationBounds([segment]));
   });
 });
 

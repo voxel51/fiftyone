@@ -2,6 +2,7 @@ import {
   decimateLocationTrackSegments,
   IncrementalLocationSegmentBuilder,
   isValidLocationPoint,
+  unwrapLocationTrackPoint,
   type DecimatedLocationTrack,
   type LocationTrackPoint,
 } from "./location-track";
@@ -41,7 +42,8 @@ export class SharedLocationPointStore {
     point: LocationTrackPoint,
     retain = true,
   ): LocationPointStoreAddResult {
-    const key = locationPointKey(point);
+    const normalizedPoint = this.normalizeIngestPoint(point);
+    const key = locationPointKey(normalizedPoint);
     const existing = this.entriesByKey.get(key);
     if (existing) {
       existing.committed = true;
@@ -51,7 +53,12 @@ export class SharedLocationPointStore {
       this.truncated = true;
       return "rejected-cap";
     }
-    this.insert({ claims: new Set(), committed: true, key, point });
+    this.insert({
+      claims: new Set(),
+      committed: true,
+      key,
+      point: normalizedPoint,
+    });
     return "inserted";
   }
 
@@ -64,7 +71,9 @@ export class SharedLocationPointStore {
   }
 
   hasPoint(point: LocationTrackPoint): boolean {
-    return this.entriesByKey.has(locationPointKey(point));
+    return this.entriesByKey.has(
+      locationPointKey(this.normalizeIngestPoint(point)),
+    );
   }
 
   get points(): readonly LocationTrackPoint[] {
@@ -101,7 +110,8 @@ export class SharedLocationPointStore {
     readonly entry?: StoredLocationPoint;
     readonly result: LocationPointStoreAddResult;
   } {
-    const key = locationPointKey(point);
+    const normalizedPoint = this.normalizeIngestPoint(point);
+    const key = locationPointKey(normalizedPoint);
     const existing = this.entriesByKey.get(key);
     if (existing) {
       if (!existing.committed) existing.claims.add(transactionId);
@@ -115,7 +125,7 @@ export class SharedLocationPointStore {
       claims: new Set([transactionId]),
       committed: false,
       key,
-      point,
+      point: normalizedPoint,
     };
     this.insert(entry);
     return { entry, result: "inserted" };
@@ -137,6 +147,20 @@ export class SharedLocationPointStore {
     }
     this.entries.splice(index, 0, entry);
     this.rebuildDerivedState();
+  }
+
+  private normalizeIngestPoint(point: LocationTrackPoint): LocationTrackPoint {
+    if (point.longitudeUnwrapped) return point;
+    const insertionIndex = upperBoundEntryTime(this.entries, point.timeNs);
+    let reference: LocationTrackPoint | undefined;
+    for (let index = insertionIndex - 1; index >= 0; index -= 1) {
+      const candidate = this.entries[index].point;
+      if (isValidLocationPoint(candidate)) {
+        reference = candidate;
+        break;
+      }
+    }
+    return unwrapLocationTrackPoint(point, reference);
   }
 
   private settleTransaction(

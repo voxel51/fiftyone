@@ -37,10 +37,14 @@ export function writeMapViewport(
   scopeKey: string | null,
   viewport: MapViewport,
 ): void {
-  if (!scopeKey || !isValidViewport(viewport)) return;
+  const normalized = {
+    ...viewport,
+    longitude: wrapLongitude(viewport.longitude),
+  };
+  if (!scopeKey || !isValidViewport(normalized)) return;
 
   viewportByScope.delete(scopeKey);
-  viewportByScope.set(scopeKey, { ...viewport });
+  viewportByScope.set(scopeKey, normalized);
   while (viewportByScope.size > MAX_VIEWPORT_SCOPES) {
     const oldest = viewportByScope.keys().next().value as string | undefined;
     if (oldest === undefined) return;
@@ -66,3 +70,4 @@ function isValidViewport(viewport: MapViewport): boolean {
     viewport.zoom <= 24
   );
 }
+import { wrapLongitude } from "../wgs84";

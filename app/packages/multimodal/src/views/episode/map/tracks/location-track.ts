@@ -1,7 +1,11 @@
 import type { LocationVisualization } from "../../../../ir";
 import { lowerBoundBigInt } from "../../../../utils/bigint";
 import { voxel51PrimaryColor } from "../rendering/puck";
-import { bearingDegrees, haversineDistanceMeters } from "../wgs84";
+import {
+  bearingDegrees,
+  haversineDistanceMeters,
+  unwrapLongitude,
+} from "../wgs84";
 
 // Brand orange leads so the (near-universal) single-GPS case reads as
 // "the ego"; the rest are visually distant from it and from each other.
@@ -31,6 +35,8 @@ export interface LocationTrackPoint {
   readonly fixStatus?: number;
   readonly latitude: number;
   readonly longitude: number;
+  /** Internal continuous-world coordinate produced at stream ingest. */
+  readonly longitudeUnwrapped?: boolean;
   readonly timeNs: bigint;
 }
 
@@ -252,10 +258,32 @@ export function isValidLocationPoint(point: LocationTrackPoint): boolean {
     Number.isFinite(point.longitude) &&
     point.latitude >= -90 &&
     point.latitude <= 90 &&
-    point.longitude >= -180 &&
-    point.longitude <= 180 &&
+    (point.longitudeUnwrapped ||
+      (point.longitude >= -180 && point.longitude <= 180)) &&
     point.fixStatus !== NO_FIX_STATUS
   );
+}
+
+/** Converts one external wrapped fix to the nearest admitted world copy. */
+export function unwrapLocationTrackPoint(
+  point: LocationTrackPoint,
+  reference?: { readonly longitude: number } | null,
+): LocationTrackPoint {
+  if (
+    point.longitudeUnwrapped ||
+    !Number.isFinite(point.longitude) ||
+    point.longitude < -180 ||
+    point.longitude > 180
+  ) {
+    return point;
+  }
+  return {
+    ...point,
+    longitude: reference
+      ? unwrapLongitude(point.longitude, reference.longitude)
+      : point.longitude,
+    longitudeUnwrapped: true,
+  };
 }
 
 export function segmentLocationTrack(
@@ -518,25 +546,55 @@ export function locationTrailCoordinates(
 export function locationBounds(
   segments: readonly LocationTrackSegment[],
 ): LocationBounds | null {
+  if (segments.length === 1) return locationSegmentBounds(segments[0]);
   return combineLocationBounds(segments.map(locationSegmentBounds));
 }
 
 export function combineLocationBounds(
   bounds: readonly (LocationBounds | null)[],
 ): LocationBounds | null {
-  let combined: LocationBounds | null = null;
-  for (const bound of bounds) {
-    if (!bound) continue;
-    combined = combined
-      ? {
-          east: Math.max(combined.east, bound.east),
-          north: Math.max(combined.north, bound.north),
-          south: Math.min(combined.south, bound.south),
-          west: Math.min(combined.west, bound.west),
-        }
-      : bound;
+  const intervals = bounds.flatMap((bound) => {
+    if (
+      !bound ||
+      !Number.isFinite(bound.west) ||
+      !Number.isFinite(bound.east) ||
+      !Number.isFinite(bound.south) ||
+      !Number.isFinite(bound.north) ||
+      bound.south > bound.north
+    ) {
+      return [];
+    }
+    let east = bound.east;
+    while (east < bound.west) east += 360;
+    const width = east - bound.west;
+    if (width <= 360) return [{ ...bound, east }];
+    const center = (bound.west + east) / 2;
+    return [{ ...bound, east: center + 180, west: center - 180 }];
+  });
+  if (intervals.length === 0) return null;
+
+  let best: LocationBounds | null = null;
+  for (const anchor of intervals.map(
+    (bound) => (bound.west + bound.east) / 2,
+  )) {
+    let west = Number.POSITIVE_INFINITY;
+    let east = Number.NEGATIVE_INFINITY;
+    let south = Number.POSITIVE_INFINITY;
+    let north = Number.NEGATIVE_INFINITY;
+    for (const bound of intervals) {
+      const center = (bound.west + bound.east) / 2;
+      const shift = 360 * Math.round((anchor - center) / 360);
+      west = Math.min(west, bound.west + shift);
+      east = Math.max(east, bound.east + shift);
+      south = Math.min(south, bound.south);
+      north = Math.max(north, bound.north);
+    }
+    const candidate = { east, north, south, west };
+    if (!best || east - west < best.east - best.west) best = candidate;
   }
-  return combined;
+  if (!best || best.east - best.west <= 360) return best;
+  const center = (best.west + best.east) / 2;
+  return { ...best, east: center + 180, west: center - 180 };
 }
 
 function emptyResolvedPosition(): ResolvedLocationTrackPosition {

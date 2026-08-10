@@ -55,6 +55,20 @@ describe("mcap map viewport cache", () => {
     expect(readMapViewport("dataset-a")).toBeNull();
   });
 
+  it("wraps continuous world-copy centers before caching", () => {
+    writeMapViewport("dataset-a", {
+      latitude: 0,
+      longitude: 181,
+      zoom: 8,
+    });
+
+    expect(readMapViewport("dataset-a")).toEqual({
+      latitude: 0,
+      longitude: -179,
+      zoom: 8,
+    });
+  });
+
   it("keeps only the most recent dataset scopes", () => {
     for (let index = 0; index < 17; index += 1) {
       writeMapViewport(`dataset-${index}`, {

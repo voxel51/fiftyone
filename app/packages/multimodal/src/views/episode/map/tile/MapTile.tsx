@@ -22,6 +22,7 @@ import {
   isValidLocationPoint,
   locationPointFromVisualization,
   locationTrackColor,
+  unwrapLocationTrackPoint,
   type LocationTrackState,
 } from "../tracks/location-track";
 import { useDataStream } from "../../playback/data-stream-context";
@@ -87,9 +88,13 @@ const MapTile: React.FC<EpisodeTileProps> = () => {
       );
       const source = locationSources[sourceIndex];
       if (!frame || !source || sourceIndex < 0) return;
-      const location = locationPointFromVisualization(
-        frame.frame,
-        frame.contentTimeNs,
+      const admittedTrack =
+        sourceKey && tracksSourceKey === sourceKey
+          ? tracksByStream.get(stream)
+          : undefined;
+      const location = unwrapLocationTrackPoint(
+        locationPointFromVisualization(frame.frame, frame.contentTimeNs),
+        admittedTrack ? lastTrackPoint(admittedTrack) : null,
       );
       if (!isValidLocationPoint(location)) return;
       markers.push({
@@ -100,7 +105,14 @@ const MapTile: React.FC<EpisodeTileProps> = () => {
       });
     });
     return markers;
-  }, [locationFrames, locationSources, visibleStreams]);
+  }, [
+    locationFrames,
+    locationSources,
+    sourceKey,
+    tracksByStream,
+    tracksSourceKey,
+    visibleStreams,
+  ]);
   const tracks = useMemo(() => {
     if (!sourceKey || tracksSourceKey !== sourceKey) return [];
     return visibleStreams
@@ -204,6 +216,14 @@ function mapTileTitle(
   if (readyTracks.length === 1) return readyTracks[0].label;
   if (locationStreamCount > 1) return `Map (${locationStreamCount})`;
   return "Map";
+}
+
+function lastTrackPoint(track: LocationTrackState) {
+  for (let index = track.segments.length - 1; index >= 0; index -= 1) {
+    const point = track.segments[index].points.at(-1);
+    if (point) return point;
+  }
+  return null;
 }
 
 export default MapTile;

@@ -22,6 +22,49 @@ describe("map playback paint", () => {
     expect(backward.comets[0]?.coordinates.length).toBeGreaterThan(0);
   });
 
+  it("keeps route, comet, and live geometry continuous across the seam", () => {
+    const indexed = createIndexedMapTrack({
+      ...createTrack(),
+      segments: [
+        {
+          points: [
+            {
+              latitude: 0,
+              longitude: 179,
+              longitudeUnwrapped: true,
+              timeNs: 0n,
+            },
+            {
+              latitude: 0,
+              longitude: 181,
+              longitudeUnwrapped: true,
+              timeNs: 10n,
+            },
+          ],
+        },
+      ],
+    });
+    const routeFrame = mapPlaybackFrameAt([indexed], 5n, new Map());
+    const live = {
+      color: "#fff",
+      label: "GPS",
+      location: { latitude: 0, longitude: 181, timeNs: 5n },
+      stream: "/gps",
+    };
+    const frame = withLiveMapMarkers(routeFrame, [live]);
+
+    expect(indexed.index.segments[0].coordinates).toEqual([
+      [179, 0],
+      [181, 0],
+    ]);
+    expect(routeFrame.markers[0]?.location.longitude).toBe(180);
+    expect(routeFrame.comets[0]?.coordinates).toEqual([
+      [179, 0],
+      [180, 0],
+    ]);
+    expect(frame.markers[0]?.location.longitude).toBe(181);
+  });
+
   it("uses exact current-frame markers while route history is incomplete", () => {
     const indexed = createIndexedMapTrack(createTrack());
     const routeFrame = mapPlaybackFrameAt([indexed], 8n, new Map());

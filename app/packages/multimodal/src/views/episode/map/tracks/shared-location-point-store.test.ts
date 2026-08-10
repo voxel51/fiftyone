@@ -39,7 +39,7 @@ describe("SharedLocationPointStore", () => {
 
     expect(store.addCommitted({ ...first }, false)).toBe("duplicate");
     expect(store.addCommitted(point(2n), false)).toBe("rejected-cap");
-    expect(store.points).toEqual([first]);
+    expect(store.points).toMatchObject([first]);
     expect(store.truncated).toBe(true);
   });
 
@@ -53,12 +53,12 @@ describe("SharedLocationPointStore", () => {
     committed.commit();
 
     expect(abandoned.rollback()).toBe(0);
-    expect(store.points).toEqual([shared]);
+    expect(store.points).toMatchObject([shared]);
 
     const isolated = store.beginTransaction();
     isolated.add(point(2n));
     expect(isolated.rollback()).toBe(1);
-    expect(store.points).toEqual([shared]);
+    expect(store.points).toMatchObject([shared]);
   });
 
   it("rebuilds no-fix segmentation deterministically after late inserts", () => {
@@ -73,5 +73,19 @@ describe("SharedLocationPointStore", () => {
         .segments.map((segment) => segment.points.map((value) => value.timeNs)),
     ).toEqual([[1n], [3n]]);
     expect(store.validPointCountAt(3)).toBe(2);
+  });
+
+  it("unwraps seam crossings against the admitted stream tail", () => {
+    const store = new SharedLocationPointStore();
+    store.addCommitted(point(1n, { longitude: 179 }));
+    store.addCommitted(point(2n, { longitude: -179 }));
+    store.addCommitted(point(3n, { longitude: -178 }));
+
+    expect(store.points.map((value) => value.longitude)).toEqual([
+      179, 181, 182,
+    ]);
+    expect(
+      store.renderedTrack().segments[0].points.map((value) => value.longitude),
+    ).toEqual([179, 181, 182]);
   });
 });

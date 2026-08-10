@@ -88,6 +88,28 @@ describe("mapViewportIsNearEvidence", () => {
     ).toBe(false);
   });
 
+  it("accepts continuous unwrapped seam bounds near the wrapped viewport", () => {
+    const bounds = { east: 180.2, north: 0.1, south: -0.1, west: 179.8 };
+    expect(
+      mapViewportIsNearEvidence({
+        bounds,
+        height: 600,
+        marker: null,
+        viewport: { latitude: 0, longitude: -179.9, zoom: 5 },
+        width: 800,
+      }),
+    ).toBe(true);
+    expect(
+      mapViewportIsNearEvidence({
+        bounds,
+        height: 600,
+        marker: null,
+        viewport: { latitude: 0, longitude: 0, zoom: 5 },
+        width: 800,
+      }),
+    ).toBe(false);
+  });
+
   it("uses each valid evidence source independently", () => {
     expect(
       mapViewportIsNearEvidence({

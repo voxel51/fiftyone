@@ -1,8 +1,35 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createFollowCameraState, updateFollowCamera } from "./follow-camera";
+import {
+  createFollowCameraState,
+  playbackCameraTarget,
+  updateFollowCamera,
+} from "./follow-camera";
 
 describe("map follow camera", () => {
+  it("keeps seam-crossing comet bounds in one continuous world copy", () => {
+    expect(
+      playbackCameraTarget(
+        null,
+        [],
+        [
+          {
+            color: "#fff",
+            coordinates: [
+              [179, 0],
+              [181, 1],
+            ],
+            key: "gps",
+          },
+        ],
+      ),
+    ).toEqual({
+      bounds: { east: 181, north: 1, south: 0, west: 179 },
+      kind: "bounds",
+      padding: 80,
+    });
+  });
+
   it("follows meaningful movement, throttles, and respects recenter guards", () => {
     const jumpTo = vi.fn();
     const map = {

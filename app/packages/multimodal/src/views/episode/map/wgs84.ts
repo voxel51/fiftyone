@@ -10,6 +10,22 @@ export interface GeoPoint {
 
 const MEAN_EARTH_RADIUS_M = 6_371_008.8;
 
+/** Canonical longitude persisted outside the continuous map representation. */
+export function wrapLongitude(longitude: number): number {
+  if (!Number.isFinite(longitude)) return longitude;
+  if (longitude >= -180 && longitude < 180) return longitude;
+  return ((((longitude + 180) % 360) + 360) % 360) - 180;
+}
+
+/** Nearest world-copy longitude to a continuous reference longitude. */
+export function unwrapLongitude(longitude: number, reference: number): number {
+  if (!Number.isFinite(longitude) || !Number.isFinite(reference)) {
+    return longitude;
+  }
+  const wrapped = wrapLongitude(longitude);
+  return wrapped + 360 * Math.round((reference - wrapped) / 360);
+}
+
 export function degreesToRadians(degrees: number): number {
   return degrees * (Math.PI / 180);
 }
