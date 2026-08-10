@@ -8,6 +8,7 @@ import {
   acquireImageTexture,
   type ImageTextureLease,
 } from "./image-texture-cache";
+import { scheduleStillImageTextureLease } from "./still-image-decode-scheduler";
 import { VideoTextureWaitError } from "./video-texture";
 
 const EMPTY_IMAGE_DECODE_RUNWAY: readonly ImageVisualization[] = [];
@@ -54,6 +55,7 @@ export function useImageTextureLease({
 } {
   const heldTextureRef = useRef<HeldImageTexture | null>(null);
   const retiredTexturesRef = useRef<HeldImageTexture[]>([]);
+  const stillImageDecodeOwnerRef = useRef<object>({});
   const hasVisibleTextureRef = useRef(false);
   const onLoadedRef = useRef(onLoaded);
   onLoadedRef.current = onLoaded;
@@ -113,6 +115,7 @@ export function useImageTextureLease({
     }
 
     let cancelled = false;
+    let settled = false;
     // Associate completion with the callback from the render that requested
     // this texture. This lets callers commit timestamp-coupled overlays with
     // the decoded image, even if a later render supplies another callback.
@@ -123,11 +126,23 @@ export function useImageTextureLease({
       setStatus("loading");
     }
 
-    const lease = acquireImageTexture(textureKey, () =>
-      createImageTexture(frame, textureKey, decodeRunway),
-    );
+    const acquire = () =>
+      acquireImageTexture(textureKey, () =>
+        createImageTexture(frame, textureKey, decodeRunway),
+      );
+    // createImageBitmap cannot abort work already handed to the browser. Only
+    // compressed still images use the bounded latest-wins runway; raw textures
+    // are synchronous and H.264/video retains its existing decoder lifecycle.
+    const lease =
+      frame.kind === "encoded-image"
+        ? scheduleStillImageTextureLease(
+            stillImageDecodeOwnerRef.current,
+            acquire,
+          )
+        : acquire();
     lease.promise
       .then((decodedHandle) => {
+        settled = true;
         if (cancelled) {
           lease.release();
           return;
@@ -146,6 +161,7 @@ export function useImageTextureLease({
         onLoadedForRequest?.(decodedHandle);
       })
       .catch((error: unknown) => {
+        settled = true;
         lease.release();
         if (cancelled) {
           return;
@@ -162,6 +178,11 @@ export function useImageTextureLease({
 
     return () => {
       cancelled = true;
+      if (frame.kind === "encoded-image" && !settled) {
+        // Drops a queued request before it enters the refcounted cache. A
+        // running browser decode remains bounded and releases its cache lease.
+        lease.release();
+      }
     };
     // `identity`, not the frame object, is the requested lifecycle key. Keyed
     // Episode callers deliberately keep identity stable across fresh wrappers.
