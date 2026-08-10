@@ -4,15 +4,16 @@
  * that filter, not legend state, so sidebar edits and legend clicks can
  * never disagree. `null` means no filter (every class on).
  *
- * toggleLabel (single click) writes EXCLUSION: hide a few known
- * classes, keep everyone else — including values the legend doesn't
- * know about — visible.
- *
  * soloLabel (double click) writes INCLUSION: exclusion can't isolate
  * one class, since values outside the legend's list (missing, or past
  * the top-N cap) would stay visible. Solo also drops any prior filter's
- * foreign values/extra properties; toggle carries them forward where
- * representable.
+ * foreign values/extra properties.
+ *
+ * toggleLabel (single click) keeps whichever form the filter is already
+ * in, so the clicks after a solo go on editing its inclusion instead of
+ * undoing it. With no filter to follow it writes EXCLUSION: hide a few
+ * known classes, keep everyone else — including values the legend
+ * doesn't know about — visible.
  *
  * A filter that turns every class back on collapses to `null`.
  */
@@ -101,16 +102,18 @@ function build(
   labels: readonly string[],
 ): CategoricalFilter | null {
   const known = new Set(labels);
-  // Only exclusions can carry foreign values forward — an inclusion
-  // filter's foreign values would invert meaning in exclusion form
-  const foreign =
-    base?.exclude === true
-      ? (base.values ?? []).filter(
-          (value) => !(typeof value === "string" && known.has(value)),
-        )
-      : [];
-  const off = labels.filter((label) => !on.has(label));
-  if (!off.length && !foreign.length) return null;
+  // The form follows the filter being edited: the inclusion a solo left
+  // behind goes on naming what is shown, everything else names what is
+  // hidden. Foreign values ride along in either form — their meaning
+  // only inverts if the form changes under them
+  const include = Boolean(base?.values) && base?.exclude !== true;
+  const foreign = (base?.values ?? []).filter(
+    (value) => !(typeof value === "string" && known.has(value)),
+  );
+  const values = labels.filter((label) =>
+    include ? on.has(label) : !on.has(label),
+  );
+  if (!values.length && !foreign.length) return null;
 
-  return { ...base, values: [...off, ...foreign], exclude: true };
+  return { ...base, values: [...values, ...foreign], exclude: !include };
 }
