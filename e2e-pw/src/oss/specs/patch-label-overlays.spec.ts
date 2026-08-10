@@ -73,10 +73,10 @@ test("attribute eyes control bubble text; the last shown attribute locks", async
   grid,
   sidebar,
 }) => {
-  const labelEye = sidebar.shownAttributeToggle("predictions.detections.label");
-  const confidenceEye = sidebar.shownAttributeToggle(
-    "predictions.detections.confidence",
-  );
+  // patch samples flatten `Detections` to a single `Detection`, so attribute
+  // paths are `predictions.<attr>`
+  const labelEye = sidebar.shownAttributeToggle("predictions.label");
+  const confidenceEye = sidebar.shownAttributeToggle("predictions.confidence");
 
   await sidebar.clickFieldDropdown("predictions");
 
