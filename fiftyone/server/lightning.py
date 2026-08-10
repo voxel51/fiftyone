@@ -184,6 +184,7 @@ def _resolve_lightning_path_queries(
     AsyncCollection,
     t.Union[DistinctQuery, t.List[t.Dict]],
     t.Callable,
+    bool,
 ]:
     field_path = path.path
     field = dataset.get_field(field_path)
@@ -386,7 +387,7 @@ async def _do_distinct_queries(
     query: t.Union[DistinctQuery, t.List[t.Dict]],
     match_filter: t.Optional[t.Mapping[str, str]],
     is_frames: bool,
-):
+) -> t.List[t.Any]:
     if query.filters or not query.index:
         return await _do_distinct_lazy_pipeline(
             dataset, collection, query, match_filter, is_frames

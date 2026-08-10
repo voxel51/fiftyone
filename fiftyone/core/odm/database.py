@@ -276,7 +276,7 @@ def _disconnect():
     mongoengine.disconnect_all()
 
 
-def _close_async_client(client):
+def _close_async_client(client) -> None:
     # AsyncMongoClient.close() is a coroutine, but disconnects happen in
     # sync contexts
     try:

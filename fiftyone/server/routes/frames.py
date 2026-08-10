@@ -39,6 +39,13 @@ class Frames(HTTPEndpoint):
             dataset, stages=stages, extended_stages=extended, awaitable=True
         )
         end_frame = min(num_frames + start_frame, frame_count)
+        if end_frame < start_frame:
+            # an empty range would produce a to_list() length < 1, which
+            # pymongo rejects
+            return JSONResponse(
+                {"frames": [], "range": [start_frame, end_frame]}
+            )
+
         support = None if stages else [start_frame, end_frame]
 
         def run(view):
