@@ -7,8 +7,16 @@ import {
 } from "../../ir";
 import type { DecodedFrame } from "../../ir";
 
-/** One normalized row ready for display by a format-neutral log console. */
+/**
+ * One normalized row ready for display by a format-neutral log console.
+ *
+ * `timelineTimeNs` is the source/playback position and owns every operational
+ * decision (windowing, retention, ordering, and seeking). `messageTimeNs` is
+ * embedded payload metadata and is only suitable for display.
+ */
 export interface EpisodeLogConsoleRow {
+  /** Stable state identity for diagnostic upserts; absent for ordinary logs. */
+  readonly diagnosticId?: string;
   readonly details: readonly { readonly key: string; readonly value: string }[];
   readonly file?: string;
   readonly functionName?: string;
@@ -20,10 +28,11 @@ export interface EpisodeLogConsoleRow {
   readonly levelNumber?: number;
   readonly line?: number;
   readonly message: string;
+  readonly messageTimeNs?: bigint;
   readonly name?: string;
   readonly status?: string;
-  readonly timeNs: bigint;
   readonly stream: string;
+  readonly timelineTimeNs: bigint;
 }
 
 const LOG_LEVEL_SET = new Set(LOG_LEVELS);
@@ -71,8 +80,13 @@ function buildRow({
 }): EpisodeLogConsoleRow {
   const hardwareId = stringValue(record.hardwareId);
   const name = stringValue(record.name);
+  const kind = stringValue(record.kind) === "diagnostic" ? "diagnostic" : "log";
 
   return {
+    diagnosticId:
+      kind === "diagnostic"
+        ? diagnosticConsoleIdentity(message.streamId, hardwareId, name)
+        : undefined,
     details: arrayValue(record.details)
       .map(recordValue)
       .filter(isRecord)
@@ -86,16 +100,33 @@ function buildRow({
     groupLabel: logGroupLabel(hardwareId, name),
     hardwareId,
     id: `${message.streamId}:${message.timestampNs.toString()}:${message.sequence ?? ""}:${index}`,
-    kind: stringValue(record.kind) === "diagnostic" ? "diagnostic" : "log",
+    kind,
     level: logLevelValue(record.level),
     levelNumber: numberValue(record.levelNumber),
     line: numberValue(record.line),
     message: stringValue(record.message) ?? "",
+    messageTimeNs: bigintValue(record.timestampNs),
     name,
     status: stringValue(record.status),
-    timeNs: bigintValue(record.timestampNs) ?? message.timestampNs,
     stream: message.streamId,
+    timelineTimeNs: message.timestampNs,
   };
+}
+
+/**
+ * ROS diagnostic identity is source-local name plus optional hardware id.
+ * Length prefixes avoid delimiter collisions while keeping the key opaque to
+ * presentation code. Malformed rows with neither field degrade to one held
+ * stream-level state instead of disappearing from Diagnostics.
+ */
+export function diagnosticConsoleIdentity(
+  stream: string,
+  hardwareId: string | undefined,
+  name: string | undefined,
+): string {
+  return [stream, hardwareId ?? "", name ?? ""]
+    .map((part) => `${part.length}:${part}`)
+    .join("");
 }
 
 function logGroupLabel(

@@ -746,6 +746,7 @@ function compactLogSettings(
     const isDefault =
       settings.followPlayhead === DEFAULT_LOG_TILE_SETTINGS.followPlayhead &&
       settings.selectedLevels === DEFAULT_LOG_TILE_SETTINGS.selectedLevels &&
+      settings.viewMode === DEFAULT_LOG_TILE_SETTINGS.viewMode &&
       settings.enabledStreams === undefined;
     if (isDefault) {
       continue;
@@ -753,6 +754,7 @@ function compactLogSettings(
     compact[tileId] = {
       followPlayhead: settings.followPlayhead,
       selectedLevels: settings.selectedLevels,
+      viewMode: settings.viewMode,
       ...(settings.enabledStreams !== undefined
         ? { enabledStreams: settings.enabledStreams }
         : {}),

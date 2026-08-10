@@ -565,6 +565,7 @@ describe("layout-persistence", () => {
         followPlayhead: false,
         // Canonical severity order, as the sanitizer normalizes it.
         selectedLevels: ["warn", "error"],
+        viewMode: "diagnostics",
       },
     };
 
@@ -600,12 +601,14 @@ describe("layout-persistence", () => {
           enabledStreams: ["/rosout"],
           followPlayhead: false,
           selectedLevels: ["error"],
+          viewMode: "logs",
         },
         // Non-boolean follow falls back to the default; an explicitly
         // empty level selection survives — all-off is a deliberate view.
         "log-2": {
           followPlayhead: true,
           selectedLevels: [],
+          viewMode: "logs",
         },
       });
     });
