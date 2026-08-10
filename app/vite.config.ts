@@ -14,7 +14,13 @@ export default defineConfig({
     pool: "vmThreads",
     server: {
       deps: {
-        inline: ["plotly.js", "react-plotly.js", "@rjsf/mui", "@rjsf/core"],
+        inline: [
+          "plotly.js",
+          "react-plotly.js",
+          "@rjsf/mui",
+          "@rjsf/core",
+          "react-datepicker",
+        ],
       },
     },
     coverage: {
