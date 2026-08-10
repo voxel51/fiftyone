@@ -2819,10 +2819,7 @@ class PromptView(View):
 
 
 def _append_scope(description, scope_description):
-    if not scope_description or not description:
-        return description
-
-    return f"{description} {scope_description}"
+    return " ".join(filter(None, (description, scope_description)))
 
 
 class ViewTargetOptions(object):
@@ -2918,47 +2915,36 @@ class ViewTargetOptions(object):
         """
         super().__init__()
 
-        # Resolve descriptions for the various target views
+        # Resolve descriptions for the various target views, with the slice
+        # scope each target resolves to appended for grouped datasets
         action_description = action_description or "Process"
-        dataset_description = (
-            dataset_description or f"{action_description} the entire dataset"
-        )
-        base_view_description = (
-            base_view_description or f"{action_description} the base view"
-        )
-        current_view_description = (
-            current_view_description
-            or f"{action_description} the current view"
-        )
-        dataset_view_description = (
-            dataset_view_description
-            or f"{action_description} the dataset view"
-        )
-        selected_samples_description = selected_samples_description or (
-            f"{action_description} only the selected samples"
-        )
-        selected_labels_description = selected_labels_description or (
-            f"{action_description} only the selected labels"
-        )
-
-        # grouped datasets append the slice scope each target resolves to
         dataset_description = _append_scope(
-            dataset_description, dataset_scope_description
+            dataset_description or f"{action_description} the entire dataset",
+            dataset_scope_description,
         )
         base_view_description = _append_scope(
-            base_view_description, scope_description
+            base_view_description or f"{action_description} the base view",
+            scope_description,
         )
         current_view_description = _append_scope(
-            current_view_description, scope_description
+            current_view_description
+            or f"{action_description} the current view",
+            scope_description,
         )
         dataset_view_description = _append_scope(
-            dataset_view_description, scope_description
+            dataset_view_description
+            or f"{action_description} the dataset view",
+            scope_description,
         )
         selected_samples_description = _append_scope(
-            selected_samples_description, scope_description
+            selected_samples_description
+            or f"{action_description} only the selected samples",
+            scope_description,
         )
         selected_labels_description = _append_scope(
-            selected_labels_description, scope_description
+            selected_labels_description
+            or f"{action_description} only the selected labels",
+            scope_description,
         )
 
         self.choices_view = choices_view
@@ -3223,8 +3209,8 @@ class ViewTargetProperty(Property):
 
         # Determine which target views are available
         has_base_view = (
-            ctx.view._is_generated  # pylint: disable=protected-access
-        )
+            ctx.view._is_generated
+        )  # pylint: disable=protected-access
         if has_base_view:
             has_view = ctx.view != ctx.view._base_view
         else:
