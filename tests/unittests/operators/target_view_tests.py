@@ -424,26 +424,36 @@ class TestGroupedDatasetTargetView(unittest.TestCase):
         self.assertEqual(target.media_type, "point-cloud")
         self.assertEqual(len(target), 2)
 
-    def test_non_flat_slice_selection_raises(self):
+    def test_non_flat_slice_selection_is_used_as_is(self):
+        # the view already selects slices, so it defines its own scope and the
+        # active slice is not appended
         stage = fo.SelectGroupSlices(["left", "lidar"], flat=False)
         ctx = self._ctx(group_slice="left", view=[stage._serialize()])
 
-        with self.assertRaises(ValueError):
-            ctx.target_view(require_flat=True)
+        target = ctx.target_view(require_flat=True)
+        self.assertEqual(target.media_type, "group")
+        self.assertEqual(len(target), len(ctx.view))
 
-    def test_non_flat_slice_selection_invalidates_view_target_property(self):
+    def test_non_flat_slice_selection_keeps_the_property_valid(self):
         stage = fo.SelectGroupSlices(["left", "lidar"], flat=False)
         ctx = self._ctx(group_slice="left", view=[stage._serialize()])
 
-        inputs = types.Object()
-        prop = inputs.view_target(ctx, require_flat=True)
-        self.assertTrue(prop.invalid)
-        self.assertIn("flattened view", prop.error_message)
+        for kwargs in ({"require_flat": True}, {}):
+            inputs = types.Object()
+            prop = inputs.view_target(ctx, **kwargs)
+            self.assertFalse(prop.invalid)
 
-        # without require_flat, the property remains valid
-        inputs = types.Object()
-        prop = inputs.view_target(ctx)
-        self.assertFalse(prop.invalid)
+    def test_selected_samples_resolve_when_the_view_selects_slices(self):
+        # selections are made against the view, so its ids are in scope
+        stage = fo.SelectGroupSlices(["left", "lidar"], flat=False)
+        ctx = self._ctx(group_slice="left", view=[stage._serialize()])
+        selected = ctx.view.values("id")[:1]
+
+        ctx.request_params["selected"] = selected
+        ctx.params["view_target"] = foo.constants.ViewTarget.SELECTED_SAMPLES
+
+        target = ctx.target_view(require_flat=True)
+        self.assertListEqual(target.values("id"), selected)
 
 
 class TestGroupSliceOverrideTargetView(unittest.TestCase):

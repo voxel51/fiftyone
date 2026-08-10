@@ -2936,12 +2936,12 @@ class ViewTargetOptions(object):
         )
         selected_samples_description = _append_scope(
             selected_samples_description
-            or f"{action_description} only the selected samples",
+            or f"{action_description} the selected samples",
             scope_description,
         )
         selected_labels_description = _append_scope(
             selected_labels_description
-            or f"{action_description} only the selected labels",
+            or f"{action_description} the selected labels",
             scope_description,
         )
 
@@ -3163,20 +3163,10 @@ class ViewTargetProperty(Property):
                 "selected labels" target view. If ``None``, a default
                 description is generated
             require_flat (False): whether the operation requires a flattened
-                (non-grouped) collection. When ``True``, grouped views that
-                cannot be automatically scoped to the active group slice
-                invalidate this property
+                (non-grouped) collection. When ``True``, grouped collections
+                are scoped to the active group slice, unless the view already
+                selects slices
         """
-        # surface unflattenable grouped views as a form validation error
-        # rather than an execution failure
-        invalid_error = None
-        if require_flat:
-            try:
-                # pylint: disable-next-line=protected-access
-                ctx._get_active_view(ctx.view, require_flat=True, probe=True)
-            except ValueError as e:
-                invalid_error = str(e)
-
         # grouped datasets surface the slice scope each target resolves to
         # pylint: disable-next-line=protected-access
         scope, dataset_scope = ctx._get_group_slice_scopes(
@@ -3239,8 +3229,7 @@ class ViewTargetProperty(Property):
         _type = Enum(vals)
 
         if not vals:
-            # every target is unavailable, so there is nothing to default to;
-            # the unflattenable view that caused it already set invalid_error
+            # every target is unavailable, so there is nothing to default to
             default_target = None
         elif not default_target or default_target not in vals:
             default_target = vals[-1]  # last option
@@ -3256,10 +3245,6 @@ class ViewTargetProperty(Property):
             view=choice_view,
             **kwargs,
         )
-
-        if invalid_error is not None:
-            self.invalid = True
-            self.error_message = invalid_error
 
     @property
     def options(self):

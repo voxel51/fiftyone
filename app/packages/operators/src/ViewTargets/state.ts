@@ -4,16 +4,13 @@ import { selector, useRecoilValue } from "recoil";
 import { ViewTarget } from "../types";
 
 /**
- * Reasons a target cannot be processed, matching the conditions
+ * Reason a target cannot be processed, matching the condition
  * ``ctx.target_view(require_flat=True)`` rejects in
  * ``fiftyone/operators/executor.py``. The wording is written for a radio
- * subtitle rather than reused verbatim from the Python errors.
+ * subtitle rather than reused verbatim from the Python error.
  */
 export const GROUPED_DATASET_TARGET_REASON =
   "Not available for grouped datasets";
-export const GROUPED_VIEW_TARGET_REASON =
-  "Not available for views that select group slices";
-
 /**
  * A view target offered to the user.
  */
@@ -93,6 +90,8 @@ export const useGetViewTargetCount = (): ((target: ViewTarget) => number) => {
         case ViewTarget.SELECTED_SAMPLES:
           return selectionSampleCount;
         default:
+          // scoped to the active slice, which is what the run processes once
+          // select_group_slices is applied
           return viewSampleCount ?? 0;
       }
     },
@@ -108,17 +107,15 @@ const useViewTargetConstraints = () => {
   // valid target, even when a flattened view is loaded
   const isGroup = useRecoilValue(fos.isGroup);
   const parentMediaType = useRecoilValue(fos.parentMediaTypeSelector);
-  const unflattenedGroupView = useRecoilValue(fos.isUnflattenedGroupView);
   const viewSelectsSlices = useRecoilValue(fos.viewSelectsGroupSlices);
 
   const isGroupedDataset = isGroup || parentMediaType === "group";
 
   return {
     isGroupedDataset,
-    unflattenedGroupView,
     // a view that selects its own slices is run as-is, so the active slice
     // does not scope it
-    scopedToCurrentSlice: isGroupedDataset && !viewSelectsSlices,
+    viewSelectsSlices,
   };
 };
 
@@ -135,30 +132,38 @@ export const useViewTargets = (): {
   targets: ViewTargetMeta[];
   defaultTarget: ViewTarget;
 } => {
-  const { isGroupedDataset, unflattenedGroupView, scopedToCurrentSlice } =
-    useViewTargetConstraints();
+  const { isGroupedDataset, viewSelectsSlices } = useViewTargetConstraints();
   const slice = useRecoilValue(fos.groupSlice);
 
   return useMemo(() => {
     const resolved = DEFAULT_TARGETS.map((target) => {
       const { label, description } = TARGET_LABELS[target];
 
-      // the whole dataset spans every slice, so only view-based targets are
-      // scoped to the active one
-      const scoped = scopedToCurrentSlice && target !== ViewTarget.DATASET;
+      const unavailableReason =
+        target === ViewTarget.DATASET && isGroupedDataset
+          ? GROUPED_DATASET_TARGET_REASON
+          : undefined;
+
+      // for grouped datasets the subtext names the slices the run will
+      // process: the ones the view already selects, or the active slice that
+      // select_group_slices appends. An unavailable target names none,
+      // because it processes nothing
+      const scope =
+        !isGroupedDataset || unavailableReason
+          ? undefined
+          : viewSelectsSlices
+            ? "in the group slices this view selects"
+            : `in the current slice (${slice})`;
+
+      // the subtext states the slice scope the target resolves to, plus the
+      // reason it cannot be used when it is disabled
+      const scoped = [description, scope].filter(Boolean).join(" ");
 
       return {
         target,
         label,
-        description: scoped
-          ? `${description} in the current slice (${slice})`
-          : description,
-        unavailableReason:
-          target === ViewTarget.DATASET && isGroupedDataset
-            ? GROUPED_DATASET_TARGET_REASON
-            : target === ViewTarget.CURRENT_VIEW && unflattenedGroupView
-              ? GROUPED_VIEW_TARGET_REASON
-              : undefined,
+        description: [scoped, unavailableReason].filter(Boolean).join(". "),
+        unavailableReason,
       };
     });
 
@@ -170,5 +175,5 @@ export const useViewTargets = (): {
       ViewTarget.DATASET;
 
     return { targets: resolved, defaultTarget };
-  }, [isGroupedDataset, unflattenedGroupView, scopedToCurrentSlice, slice]);
+  }, [isGroupedDataset, viewSelectsSlices, slice]);
 };

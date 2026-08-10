@@ -639,11 +639,6 @@ def resolve_placement(operator, request_params):
 
 UNGROUPED_TARGET_ERROR = "Not available for grouped datasets"
 
-UNFLATTENED_VIEW_ERROR = (
-    "This operation requires a flattened view. Apply "
-    "select_group_slices(flat=True) to flatten the grouped view"
-)
-
 
 class ExecutionContext(contextlib.AbstractContextManager):
     """Represents the execution context of an operator.
@@ -842,8 +837,6 @@ class ExecutionContext(contextlib.AbstractContextManager):
         ) = self._get_target_collection(target)
 
         if scoped_by_active_slice:
-            # scoping to the active slice compiles to a no-op pipeline, so the
-            # ordering relative to the selections below is immaterial
             sample_collection = self._get_active_view(
                 sample_collection, require_flat=require_flat
             )
@@ -950,9 +943,10 @@ class ExecutionContext(contextlib.AbstractContextManager):
         probe=False,
     ):
         # when a flat collection is required, grouped collections are scoped
-        # to the active group slice, unless the view already selects slices.
-        # ``probe`` callers only ask whether this would succeed, so they do not
-        # announce a scope no one receives
+        # to the active group slice, unless the view already selects slices, in
+        # which case it defines its own scope and the selected ids are already
+        # in it. ``probe`` callers only ask whether this would succeed, so they
+        # do not announce a scope no one receives
         if sample_collection is None:
             sample_collection = self.dataset
 
@@ -965,7 +959,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
 
         stages = getattr(sample_collection, "_stages", None) or []
         if any(isinstance(s, fosg.SelectGroupSlices) for s in stages):
-            raise ValueError(UNFLATTENED_VIEW_ERROR)
+            return sample_collection
 
         if slices or media_type:
             return sample_collection.select_group_slices(

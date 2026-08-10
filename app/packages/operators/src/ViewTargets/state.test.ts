@@ -18,7 +18,6 @@ vi.mock("recoil", () => ({
 vi.mock("@fiftyone/state", () => ({
   isGroup: { key: "isGroup" },
   parentMediaTypeSelector: { key: "parentMediaTypeSelector" },
-  isUnflattenedGroupView: { key: "isUnflattenedGroupView" },
   viewSelectsGroupSlices: { key: "viewSelectsGroupSlices" },
   groupSlice: { key: "groupSlice" },
   datasetSampleCount: { key: "datasetSampleCount" },
@@ -104,18 +103,21 @@ describe("useViewTargets", () => {
     expect(dataset.unavailableReason).toBe(GROUPED_DATASET_TARGET_REASON);
   });
 
-  it("marks the current view unavailable for unflattenable grouped views", async () => {
+  it("keeps the current view available when it selects its own slices", async () => {
+    // the backend uses such a view as-is, so it is a valid target
     await mockState({
       isGroup: true,
-      isUnflattenedGroupView: true,
       viewSelectsGroupSlices: true,
       groupSlice: "left",
     });
 
     const { result } = renderHook(() => useViewTargets());
+    const [dataset, currentView, selected] = result.current.targets;
 
-    expect(result.current.targets[1].unavailableReason).toBeDefined();
-    expect(result.current.defaultTarget).toBe("SELECTED_SAMPLES");
+    expect(dataset.unavailableReason).toBe(GROUPED_DATASET_TARGET_REASON);
+    expect(currentView.unavailableReason).toBeUndefined();
+    expect(selected.unavailableReason).toBeUndefined();
+    expect(result.current.defaultTarget).toBe("CURRENT_VIEW");
   });
 });
 
