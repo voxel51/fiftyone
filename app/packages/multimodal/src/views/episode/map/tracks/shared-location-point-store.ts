@@ -6,12 +6,13 @@ import {
   type DecimatedLocationTrack,
   type LocationTrackPoint,
 } from "./location-track";
+import { wrapLongitude } from "../wgs84";
 
 interface StoredLocationPoint {
   readonly claims: Set<symbol>;
   committed: boolean;
   readonly key: string;
-  readonly point: LocationTrackPoint;
+  point: LocationTrackPoint;
 }
 
 export type LocationPointStoreAddResult =
@@ -24,6 +25,7 @@ export type LocationPointStoreAddResult =
  * entry, while distinct fixes at the same timestamp remain ordered evidence.
  */
 export class SharedLocationPointStore {
+  private activeTransactionCount = 0;
   private builder = new IncrementalLocationSegmentBuilder();
   private readonly entries: StoredLocationPoint[] = [];
   private readonly entriesByKey = new Map<string, StoredLocationPoint>();
@@ -43,7 +45,7 @@ export class SharedLocationPointStore {
     retain = true,
   ): LocationPointStoreAddResult {
     const normalizedPoint = this.normalizeIngestPoint(point);
-    const key = locationPointKey(normalizedPoint);
+    const key = locationPointKey(point);
     const existing = this.entriesByKey.get(key);
     if (existing) {
       existing.committed = true;
@@ -63,17 +65,24 @@ export class SharedLocationPointStore {
   }
 
   beginTransaction(): SharedLocationPointTransaction {
+    this.activeTransactionCount += 1;
     return new SharedLocationPointTransaction(this);
+  }
+
+  get hasActiveTransactions(): boolean {
+    return this.activeTransactionCount > 0;
   }
 
   get pointCount(): number {
     return this.entries.length;
   }
 
+  countThrough(timeNs: bigint): number {
+    return upperBoundEntryTime(this.entries, timeNs);
+  }
+
   hasPoint(point: LocationTrackPoint): boolean {
-    return this.entriesByKey.has(
-      locationPointKey(this.normalizeIngestPoint(point)),
-    );
+    return this.entriesByKey.has(locationPointKey(point));
   }
 
   get points(): readonly LocationTrackPoint[] {
@@ -111,14 +120,13 @@ export class SharedLocationPointStore {
     readonly result: LocationPointStoreAddResult;
   } {
     const normalizedPoint = this.normalizeIngestPoint(point);
-    const key = locationPointKey(normalizedPoint);
+    const key = locationPointKey(point);
     const existing = this.entriesByKey.get(key);
     if (existing) {
       if (!existing.committed) existing.claims.add(transactionId);
       return { entry: existing, result: "duplicate" };
     }
     if (!retain) {
-      this.truncated = true;
       return { result: "rejected-cap" };
     }
     const entry = {
@@ -150,7 +158,6 @@ export class SharedLocationPointStore {
   }
 
   private normalizeIngestPoint(point: LocationTrackPoint): LocationTrackPoint {
-    if (point.longitudeUnwrapped) return point;
     const insertionIndex = upperBoundEntryTime(this.entries, point.timeNs);
     let reference: LocationTrackPoint | undefined;
     for (let index = insertionIndex - 1; index >= 0; index -= 1) {
@@ -160,7 +167,7 @@ export class SharedLocationPointStore {
         break;
       }
     }
-    return unwrapLocationTrackPoint(point, reference);
+    return normalizePointAgainst(point, reference);
   }
 
   private settleTransaction(
@@ -187,9 +194,14 @@ export class SharedLocationPointStore {
     this.builder = new IncrementalLocationSegmentBuilder();
     this.validPointCountPrefix = [];
     let validPointCount = 0;
+    let reference: LocationTrackPoint | undefined;
     for (const entry of this.entries) {
+      entry.point = normalizePointAgainst(entry.point, reference);
       this.builder.append(entry.point);
-      if (isValidLocationPoint(entry.point)) validPointCount += 1;
+      if (isValidLocationPoint(entry.point)) {
+        validPointCount += 1;
+        reference = entry.point;
+      }
       this.validPointCountPrefix.push(validPointCount);
     }
     this.watermarkNs = this.entries.at(-1)?.point.timeNs;
@@ -210,8 +222,14 @@ export class SharedLocationPointStore {
     transactionId: symbol,
     entries: ReadonlySet<StoredLocationPoint>,
     commit: boolean,
+    rejectedCap: boolean,
   ): number {
-    return this.settleTransaction(transactionId, entries, commit);
+    try {
+      if (commit && rejectedCap) this.truncated = true;
+      return this.settleTransaction(transactionId, entries, commit);
+    } finally {
+      this.activeTransactionCount -= 1;
+    }
   }
 }
 
@@ -219,6 +237,7 @@ export class SharedLocationPointStore {
 export class SharedLocationPointTransaction {
   private readonly entries = new Set<StoredLocationPoint>();
   private readonly id = Symbol("location-point-transaction");
+  private rejectedCap = false;
   private settled = false;
 
   constructor(private readonly store: SharedLocationPointStore) {}
@@ -227,19 +246,30 @@ export class SharedLocationPointTransaction {
     if (this.settled) throw new Error("location point transaction is settled");
     const { entry, result } = this.store._addClaimed(this.id, point, retain);
     if (entry && !entry.committed) this.entries.add(entry);
+    if (result === "rejected-cap") this.rejectedCap = true;
     return result;
   }
 
   commit(): void {
     if (this.settled) return;
     this.settled = true;
-    this.store._settleTransaction(this.id, this.entries, true);
+    this.store._settleTransaction(
+      this.id,
+      this.entries,
+      true,
+      this.rejectedCap,
+    );
   }
 
   rollback(): number {
     if (this.settled) return 0;
     this.settled = true;
-    return this.store._settleTransaction(this.id, this.entries, false);
+    return this.store._settleTransaction(
+      this.id,
+      this.entries,
+      false,
+      this.rejectedCap,
+    );
   }
 }
 
@@ -261,12 +291,26 @@ function locationPointKey(point: LocationTrackPoint): string {
   return [
     point.timeNs.toString(),
     numberKey(point.latitude),
-    numberKey(point.longitude),
+    numberKey(wrapLongitude(point.longitude)),
     numberKey(point.altitude),
     numberKey(point.accuracyM),
     numberKey(point.fixService),
     numberKey(point.fixStatus),
   ].join("\0");
+}
+
+function normalizePointAgainst(
+  point: LocationTrackPoint,
+  reference: LocationTrackPoint | undefined,
+): LocationTrackPoint {
+  return unwrapLocationTrackPoint(
+    {
+      ...point,
+      longitude: wrapLongitude(point.longitude),
+      longitudeUnwrapped: undefined,
+    },
+    reference,
+  );
 }
 
 function numberKey(value: number | undefined): string {

@@ -26,6 +26,19 @@ export function unwrapLongitude(longitude: number, reference: number): number {
   return wrapped + 360 * Math.round((reference - wrapped) / 360);
 }
 
+/** Constant-time east edge at or after west for a circular interval. */
+export function normalizeLongitudeIntervalEast(
+  west: number,
+  east: number,
+): number | null {
+  const difference = east - west;
+  if (!Number.isFinite(difference)) return null;
+  if (difference >= 0) return east;
+  const span = ((difference % 360) + 360) % 360;
+  const normalizedEast = west + span;
+  return Number.isFinite(normalizedEast) ? normalizedEast : null;
+}
+
 export function degreesToRadians(degrees: number): number {
   return degrees * (Math.PI / 180);
 }

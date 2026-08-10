@@ -10,6 +10,7 @@ import {
   interpolateLocationAtTime,
   isValidLocationPoint,
   locationBounds,
+  locationTrackSegmentPrefix,
   locationTrailCoordinates,
   resolveIndexedLocationAtTime,
   segmentLocationTrack,
@@ -94,6 +95,26 @@ describe("segmentLocationTrack", () => {
     expect(builder.snapshot()).toEqual([
       { points: [point(0), point(1), point(2)] },
     ]);
+  });
+
+  it("copies only the bounded mutable tail when publishing a long segment", () => {
+    const builder = new IncrementalLocationSegmentBuilder();
+    builder.appendMany(
+      Array.from({ length: 1_024 }, (_, index) => point(index)),
+    );
+    const settled = builder.snapshot()[0].points;
+
+    expect(builder.lastSnapshotCopiedPointCount).toBe(0);
+    builder.append(point(1_024));
+    const appended = builder.snapshot()[0].points;
+    expect(builder.lastSnapshotCopiedPointCount).toBe(1);
+    expect(appended).toHaveLength(1_025);
+    expect(appended[1_024]).toEqual(point(1_024));
+    expect(settled).toHaveLength(1_024);
+
+    builder.truncate(1_024);
+    expect(builder.snapshot()[0].points).toHaveLength(1_024);
+    expect(settled).toHaveLength(1_024);
   });
 });
 
@@ -231,6 +252,19 @@ describe("location bounds", () => {
     ).toEqual({ east: 370, north: 1, south: -1, west: 10 });
   });
 
+  it("normalizes a broad single segment to one safe world", () => {
+    expect(
+      locationBounds([
+        {
+          points: [
+            point(0, { longitude: -20, longitudeUnwrapped: true }),
+            point(1, { longitude: 400, longitudeUnwrapped: true }),
+          ],
+        },
+      ]),
+    ).toEqual({ east: 370, north: 37.001, south: 37, west: 10 });
+  });
+
   it("reuses cached bounds for a stable segment", () => {
     const segment = { points: [point(0), point(1)] };
     expect(locationBounds([segment])).toBe(locationBounds([segment]));
@@ -248,6 +282,39 @@ describe("indexed location lookup", () => {
 
     expect(appended.segments[0]).toBe(first.segments[0]);
     expect(appended.segments[1]).not.toBe(first.segments[1]);
+  });
+
+  it("extends an active segment index from its immutable published prefix", () => {
+    const builder = new IncrementalLocationSegmentBuilder();
+    builder.appendMany(Array.from({ length: 512 }, (_, index) => point(index)));
+    const first = indexLocationTrack(builder.snapshot()).segments[0];
+
+    builder.append(point(512));
+    const appended = indexLocationTrack(builder.snapshot()).segments[0];
+
+    expect(first.buildPointCount).toBe(512);
+    expect(appended.buildPointCount).toBe(1);
+    expect(first.coordinates).toHaveLength(512);
+    expect(appended.coordinates).toHaveLength(513);
+    expect(appended.cumulativeDistanceM[511]).toBe(
+      first.cumulativeDistanceM[511],
+    );
+  });
+
+  it("extends indexes across successive immutable horizon prefixes", () => {
+    const builder = new IncrementalLocationSegmentBuilder();
+    builder.appendMany(Array.from({ length: 768 }, (_, index) => point(index)));
+    const segment = builder.snapshot()[0];
+    const first = indexLocationTrack([locationTrackSegmentPrefix(segment, 512)])
+      .segments[0];
+    const advanced = indexLocationTrack([
+      locationTrackSegmentPrefix(segment, 640),
+    ]).segments[0];
+
+    expect(first.buildPointCount).toBe(512);
+    expect(advanced.buildPointCount).toBe(128);
+    expect(first.coordinates).toHaveLength(512);
+    expect(advanced.coordinates).toHaveLength(640);
   });
 
   it("advances a cursor, preserves no-fix gaps, and resets on backwards seeks", () => {

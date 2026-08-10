@@ -1,3 +1,5 @@
+import { wrapLongitude } from "../wgs84";
+
 const MAX_VIEWPORT_SCOPES = 16;
 
 /** Serializable map camera state retained between nearby modal samples. */
@@ -70,4 +72,3 @@ function isValidViewport(viewport: MapViewport): boolean {
     viewport.zoom <= 24
   );
 }
-import { wrapLongitude } from "../wgs84";

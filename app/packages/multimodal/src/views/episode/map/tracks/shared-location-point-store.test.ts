@@ -29,6 +29,8 @@ describe("SharedLocationPointStore", () => {
     expect(store.points.map((value) => value.latitude)).toEqual([
       37.001, 37.002, 45,
     ]);
+    expect(store.countThrough(1n)).toBe(1);
+    expect(store.countThrough(2n)).toBe(3);
     expect(store.watermarkNs).toBe(2n);
   });
 
@@ -47,6 +49,7 @@ describe("SharedLocationPointStore", () => {
     const store = new SharedLocationPointStore();
     const abandoned = store.beginTransaction();
     const committed = store.beginTransaction();
+    expect(store.hasActiveTransactions).toBe(true);
     const shared = point(1n);
     abandoned.add(shared);
     committed.add({ ...shared });
@@ -58,7 +61,21 @@ describe("SharedLocationPointStore", () => {
     const isolated = store.beginTransaction();
     isolated.add(point(2n));
     expect(isolated.rollback()).toBe(1);
+    expect(store.hasActiveTransactions).toBe(false);
     expect(store.points).toMatchObject([shared]);
+  });
+
+  it("commits transactional capacity truncation but rolls it back on abort", () => {
+    const store = new SharedLocationPointStore();
+    const abandoned = store.beginTransaction();
+    expect(abandoned.add(point(1n), false)).toBe("rejected-cap");
+    abandoned.rollback();
+    expect(store.truncated).toBe(false);
+
+    const committed = store.beginTransaction();
+    expect(committed.add(point(1n), false)).toBe("rejected-cap");
+    committed.commit();
+    expect(store.truncated).toBe(true);
   });
 
   it("rebuilds no-fix segmentation deterministically after late inserts", () => {
@@ -87,5 +104,16 @@ describe("SharedLocationPointStore", () => {
     expect(
       store.renderedTrack().segments[0].points.map((value) => value.longitude),
     ).toEqual([179, 181, 182]);
+  });
+
+  it("re-unwraps the retained suffix after a genuinely late fix", () => {
+    const store = new SharedLocationPointStore();
+    store.addCommitted(point(1n, { longitude: 0 }));
+    store.addCommitted(point(3n, { longitude: 170 }));
+    store.addCommitted(point(2n, { longitude: -170 }));
+
+    expect(store.points.map((value) => value.longitude)).toEqual([
+      0, -170, -190,
+    ]);
   });
 });

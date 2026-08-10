@@ -311,6 +311,8 @@ describe("LocationTracksBridge", () => {
     act(() => store.set(isPlayingAtom, false));
     expect(publications).toHaveLength(3);
     expect(publications[2].get("/gps")?.pointCount).toBe(4);
+    await advanceTimers(100);
+    expect(publications).toHaveLength(3);
   });
 
   it("retains admitted route data across map close and reopen", async () => {
@@ -437,6 +439,102 @@ describe("LocationTracksBridge", () => {
       ["/gps-a"],
       ["/gps-a", "/gps-b"],
     ]);
+  });
+
+  it("discards a budgeted result that resolves after its selection is aborted", async () => {
+    const source = createSource("drive");
+    const session = createSession();
+    const store = createStore();
+    const publications: LocationTracks[] = [];
+    const onTracks = (tracks: LocationTracks) => publications.push(tracks);
+    let firstSignal: AbortSignal | undefined;
+    let resolveFirst: (result: BudgetedReadResult) => void = () => undefined;
+    let gpsAAttempts = 0;
+    const read = vi.fn<BudgetedReadJob["read"]>((request) => {
+      if (request.streams[0] === "/gps-a") {
+        gpsAAttempts += 1;
+        if (gpsAAttempts === 1) {
+          firstSignal = request.signal;
+          return new Promise<BudgetedReadResult>((resolve) => {
+            resolveFirst = resolve;
+          });
+        }
+      }
+      const stream = request.streams[0] ?? "/gps-a";
+      return Promise.resolve(
+        boundedResult({
+          frames: [locationMessage(1_000_000_000n, 37, -122, 0, stream)],
+          stopReason: "source-exhausted",
+        }),
+      );
+    });
+    const budgetAccount = {
+      createJob: () => ({ read }),
+    } as unknown as SourceReadBudgetAccount;
+    const view = render(
+      <Harness
+        budgetAccount={budgetAccount}
+        onTracks={onTracks}
+        session={session}
+        locationSources={[locationSource("/gps-a"), locationSource("/gps-b")]}
+        source={source}
+        store={store}
+        streams={["/gps-a"]}
+      />,
+    );
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
+
+    view.rerender(
+      <Harness
+        budgetAccount={budgetAccount}
+        onTracks={onTracks}
+        session={session}
+        locationSources={[locationSource("/gps-a"), locationSource("/gps-b")]}
+        source={source}
+        store={store}
+        streams={["/gps-b"]}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps-b:ready:1:1:full",
+      );
+    });
+    expect(firstSignal?.aborted).toBe(true);
+    publications.length = 0;
+
+    await act(async () => {
+      resolveFirst(
+        boundedResult({
+          frames: [locationMessage(1_000_000_000n, 50, 10, 0, "/gps-a")],
+          stopReason: "source-exhausted",
+        }),
+      );
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId("location-tracks").textContent).toBe(
+      "/gps-b:ready:1:1:full",
+    );
+    expect(publications).toHaveLength(0);
+    view.rerender(
+      <Harness
+        budgetAccount={budgetAccount}
+        onTracks={onTracks}
+        session={session}
+        locationSources={[locationSource("/gps-a"), locationSource("/gps-b")]}
+        source={source}
+        store={store}
+        streams={["/gps-a"]}
+      />,
+    );
+
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(3));
+    expect(read.mock.calls[2]?.[0].streams).toEqual(["/gps-a"]);
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps-a:ready:1:1:full",
+      );
+    });
   });
 
   it("lets an admitted grant finish when the playhead seeks backward", async () => {

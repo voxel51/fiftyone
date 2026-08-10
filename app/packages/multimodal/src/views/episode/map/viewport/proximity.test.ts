@@ -167,6 +167,23 @@ describe("mapViewportIsNearEvidence", () => {
     ).toBe(false);
   });
 
+  it("rejects finite bounds whose longitude difference overflows", () => {
+    expect(
+      mapViewportIsNearEvidence({
+        bounds: {
+          east: -Number.MAX_VALUE,
+          north: 1,
+          south: -1,
+          west: Number.MAX_VALUE,
+        },
+        height: 600,
+        marker: null,
+        viewport: SAN_FRANCISCO_VIEWPORT,
+        width: 800,
+      }),
+    ).toBe(false);
+  });
+
   it("rejects evidence when the viewport has no measurable surface", () => {
     expect(
       mapViewportIsNearEvidence({

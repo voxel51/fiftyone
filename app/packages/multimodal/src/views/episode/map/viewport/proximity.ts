@@ -1,6 +1,6 @@
 import type { MapViewport } from "./cache";
 import type { LocationBounds } from "../tracks/location-track";
-import { unwrapLongitude } from "../wgs84";
+import { normalizeLongitudeIntervalEast, unwrapLongitude } from "../wgs84";
 
 const TILE_SIZE = 512;
 const MAX_MERCATOR_LATITUDE = 85.051129;
@@ -81,8 +81,11 @@ export function mapViewportIsNearEvidence({
   }
   if (!validBounds) return false;
 
-  let east = validBounds.east;
-  while (east < validBounds.west) east += 360;
+  const east = normalizeLongitudeIntervalEast(
+    validBounds.west,
+    validBounds.east,
+  );
+  if (east === null) return false;
   const boundsCenter = (validBounds.west + east) / 2;
   const nearestCenter = unwrapLongitude(boundsCenter, viewport.longitude);
   const shift = nearestCenter - boundsCenter;
@@ -123,9 +126,8 @@ function boundsAreValid(bounds: LocationBounds): boolean {
   ) {
     return false;
   }
-  let east = bounds.east;
-  while (east < bounds.west) east += 360;
-  return east - bounds.west <= 360;
+  const east = normalizeLongitudeIntervalEast(bounds.west, bounds.east);
+  return east !== null && east - bounds.west <= 360;
 }
 
 function pointIsFinite(point: { readonly x: number; readonly y: number }) {

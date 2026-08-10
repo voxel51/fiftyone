@@ -27,6 +27,7 @@ import { useOptionalPlayhead } from "../../playback/use-optional-playhead";
 import { FULL_HISTORY_RETENTION_MS } from "../../playback/use-demand-driven-history";
 import {
   locationPointFromVisualization,
+  locationTrackSegmentPrefix,
   locationTrackColor,
   type LocationTrackPoint,
   type LocationTrackSegment,
@@ -97,6 +98,7 @@ interface LocationTrackCacheEpoch {
   retainedPointCount: number;
   readonly selections: Map<string, BoundedLocationTrackProgress>;
   readonly session: EpisodeSession | null;
+  readonly setTracks: LocationTracksContextValue["setTracks"];
   readonly sourceKey: string | null;
   readonly storesByStream: Map<string, SharedLocationPointStore>;
   readonly timeRange: EpisodeSession["manifest"]["timeRange"] | null;
@@ -204,6 +206,7 @@ export function LocationTracksBridge({
       retainedPointCount: 0,
       selections: new Map(),
       session,
+      setTracks,
       sourceKey,
       storesByStream: new Map(),
       timeRange: manifestTimeRange,
@@ -508,7 +511,7 @@ async function pumpBoundedProgress({
       streams: progress.streams,
       window: timeRange,
     });
-    if (epoch.disposed) return;
+    if (signal.aborted || epoch.disposed) return;
     progress.skipOversizedSourceUnit = false;
     consumeBatches(epoch, progress, result.batches);
     progress.hasRead = true;
@@ -716,7 +719,15 @@ function consumeBatches(
 ): void {
   for (const batch of batches) {
     const store = epoch.storesByStream.get(batch.stream);
-    if (!store) continue;
+    if (!store) {
+      progress.truncated = true;
+      progress.messageCount = Math.min(
+        LOCATION_TRACK_CACHE_MESSAGE_LIMIT,
+        progress.messageCount + batch.frames.length,
+      );
+      if (progress.messageCount >= LOCATION_TRACK_CACHE_MESSAGE_LIMIT) return;
+      continue;
+    }
     store.lastUsed = ++epoch.lastUsed;
     for (const frame of batch.frames) {
       if (progress.messageCount >= LOCATION_TRACK_CACHE_MESSAGE_LIMIT) {
@@ -778,7 +789,8 @@ function requestProgressPublication(
   ) {
     return;
   }
-  const status = progressStatus(progress, horizonNs);
+  const publicationHorizonNs = immediate ? horizonNs : progress.targetHorizonNs;
+  const status = progressStatus(progress, publicationHorizonNs);
   if (
     immediate ||
     !progress.publishedTracks ||
@@ -827,13 +839,11 @@ function publishProgress(
   const visibleCounts = progress.streams.map((stream) =>
     horizonNs === undefined
       ? 0
-      : upperBoundLocationTime(
-          epoch.storesByStream.get(stream)?.points ?? [],
-          horizonNs,
-        ),
+      : (epoch.storesByStream.get(stream)?.countThrough(horizonNs) ?? 0),
   );
   const renderRevisions = progress.streams.map(
-    (stream) => epoch.storesByStream.get(stream)?.renderRevision ?? 0,
+    (stream) =>
+      epoch.storesByStream.get(stream)?.renderRevision ?? "missing-store",
   );
   const publicationKey = [
     status,
@@ -853,7 +863,17 @@ function publishProgress(
   progress.streams.forEach((stream, index) => {
     const base = progress.baseByStream.get(stream);
     const store = epoch.storesByStream.get(stream);
-    if (!base || !store) return;
+    if (!base) return;
+    if (!store) {
+      tracks.set(stream, {
+        ...base,
+        pointCount: 0,
+        segments: [],
+        status,
+        truncated: true,
+      });
+      return;
+    }
     const visibleCount = visibleCounts[index] ?? 0;
     const rendered = store.renderedTrack();
     const visibleSegments =
@@ -887,7 +907,7 @@ function locationSegmentsThrough(
     visible.push(
       count === segment.points.length
         ? segment
-        : { points: segment.points.slice(0, count) },
+        : locationTrackSegmentPrefix(segment, count),
     );
   }
   return visible;
@@ -995,7 +1015,10 @@ function makeRetainedPointCapacity(epoch: LocationTrackCacheEpoch): void {
   );
   while (epoch.retainedPointCount >= LOCATION_TRACK_RETAINED_POINT_LIMIT) {
     const candidate = [...epoch.storesByStream.entries()]
-      .filter(([stream]) => !demandedStreams.has(stream))
+      .filter(
+        ([stream, store]) =>
+          !demandedStreams.has(stream) && !store.hasActiveTransactions,
+      )
       .sort((left, right) => left[1].lastUsed - right[1].lastUsed)[0];
     if (!candidate) return;
     evictPointStore(epoch, candidate[0], candidate[1]);
@@ -1018,7 +1041,10 @@ function evictPointStore(
     }
     cancelProgress(progress);
     epoch.selections.delete(progress.key);
-    if (epoch.publishedKey === progress.key) epoch.publishedKey = null;
+    if (epoch.publishedKey === progress.key) {
+      epoch.publishedKey = null;
+      epoch.setTracks(epoch.sourceKey, EMPTY_LOCATION_TRACKS);
+    }
   }
 }
 
