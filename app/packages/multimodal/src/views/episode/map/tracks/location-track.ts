@@ -28,6 +28,9 @@ export const LOCATION_TRACK_SEGMENT_CHUNK_SIZE = 256;
 
 const NO_FIX_STATUS = -1;
 const MAX_FORWARD_CURSOR_STEPS = 64;
+const TRAILING_HEADING_MAX_POINTS = 32;
+const TRAILING_HEADING_MIN_DISPLACEMENT_M = 1;
+const TRAILING_HEADING_MIN_DIRECTNESS = 0.5;
 
 export interface LocationTrackPoint {
   /** 95% (2σ) horizontal accuracy in meters, when the fix carried one. */
@@ -511,7 +514,10 @@ export function resolveIndexedLocationAtTime(
     return {
       boundarySegmentIndex: segments.length,
       lineProgress: null,
-      location: locationFromPoint(lastPoint),
+      location: locationWithTrailingHeading(
+        segments[segmentIndex].points,
+        locationFromPoint(lastPoint),
+      ),
       pointIndex: null,
       segmentIndex: null,
       state: "after",
@@ -537,7 +543,10 @@ export function resolveIndexedLocationAtTime(
 
   const segment = segments[segmentIndex];
   const pointIndex = resolvePointIndex(segment, segmentIndex, timeNs, cursor);
-  const location = locationAtIndexedPoint(segment, pointIndex, timeNs);
+  const location = locationWithTrailingHeading(
+    segment.points,
+    locationAtIndexedPoint(segment, pointIndex, timeNs),
+  );
   updateCursor(cursor, segmentIndex, pointIndex, timeNs);
   return {
     boundarySegmentIndex: segmentIndex,
@@ -935,6 +944,66 @@ function locationFromPoint(
     longitude: point.longitude,
     timeNs: point.timeNs,
   };
+}
+
+/**
+ * Estimates a stable course from recent admitted fixes. The endpoint vector
+ * must be meaningful relative to the path actually travelled, so stationary
+ * jitter and loops remain headingless dots. Only points at or before the
+ * resolved location participate.
+ */
+function locationWithTrailingHeading(
+  points: readonly LocationTrackPoint[],
+  location: InterpolatedLocation,
+): InterpolatedLocation {
+  const endExclusive = upperBoundPointTime(points, location.timeNs);
+  if (endExclusive === 0) return { ...location, bearingDeg: undefined };
+
+  const endIndex = endExclusive - 1;
+  const end = points[endIndex];
+  const currentIsStoredPoint =
+    end.timeNs === location.timeNs &&
+    end.latitude === location.latitude &&
+    end.longitude === location.longitude;
+  const storedPointLimit = currentIsStoredPoint
+    ? TRAILING_HEADING_MAX_POINTS
+    : TRAILING_HEADING_MAX_POINTS - 1;
+  const startIndex = Math.max(0, endExclusive - storedPointLimit);
+  const start = points[startIndex];
+
+  let pathDistanceM = 0;
+  for (let index = startIndex + 1; index <= endIndex; index += 1) {
+    pathDistanceM += haversineDistanceMeters(points[index - 1], points[index]);
+  }
+  if (!currentIsStoredPoint) {
+    pathDistanceM += haversineDistanceMeters(end, location);
+  }
+  const displacementM = haversineDistanceMeters(start, location);
+  if (
+    displacementM < TRAILING_HEADING_MIN_DISPLACEMENT_M ||
+    pathDistanceM <= 0 ||
+    displacementM / pathDistanceM < TRAILING_HEADING_MIN_DIRECTNESS
+  ) {
+    return { ...location, bearingDeg: undefined };
+  }
+  return {
+    ...location,
+    bearingDeg: bearingDegrees(start, location),
+  };
+}
+
+function upperBoundPointTime(
+  points: readonly LocationTrackPoint[],
+  timeNs: bigint,
+): number {
+  let low = 0;
+  let high = points.length;
+  while (low < high) {
+    const middle = low + Math.floor((high - low) / 2);
+    if (points[middle].timeNs <= timeNs) low = middle + 1;
+    else high = middle;
+  }
+  return low;
 }
 
 function firstLocationPoint(

@@ -109,6 +109,32 @@ describe("map playback paint", () => {
     expect(withLiveMapMarkers(routeFrame, [live]).markers).toEqual([live]);
   });
 
+  it("gives a live puck the admitted route's trailing heading", () => {
+    const indexed = createIndexedMapTrack({
+      ...createTrack(),
+      segments: [
+        {
+          points: [
+            { latitude: 0, longitude: 0, timeNs: 0n },
+            { latitude: 0, longitude: 0.001, timeNs: 1n },
+            { latitude: 0, longitude: 0.002, timeNs: 2n },
+          ],
+        },
+      ],
+    });
+    const routeFrame = mapPlaybackFrameAt([indexed], 3n, new Map());
+    const live = {
+      color: "#fff",
+      label: "live gps",
+      location: { latitude: 0, longitude: 0.0021, timeNs: 3n },
+      stream: "/gps",
+    };
+
+    expect(
+      withLiveMapMarkers(routeFrame, [live]).markers[0]?.location.bearingDeg,
+    ).toBeCloseTo(90);
+  });
+
   it("keeps live-only and no-fix-gap markers as headingless dots", () => {
     const indexed = createIndexedMapTrack({
       ...createTrack(),
