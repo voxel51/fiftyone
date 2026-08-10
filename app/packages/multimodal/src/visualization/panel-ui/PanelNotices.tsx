@@ -9,6 +9,7 @@ import {
 
 /** Severity used to color a panel notice's compact status icon. */
 export type PanelNoticeSeverity = "error" | "info" | "warning";
+export type PanelNoticeScope = "image" | "scene" | "video";
 
 /** One diagnostic shown in a panel's compact expandable notice control. */
 export interface PanelNotice {
@@ -27,7 +28,7 @@ export function PanelNotices({
   scope,
 }: {
   readonly notices: readonly PanelNotice[];
-  readonly scope: "image" | "scene";
+  readonly scope: PanelNoticeScope;
 }) {
   const [expanded, setExpanded] = useState(false);
 

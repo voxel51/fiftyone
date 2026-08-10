@@ -47,6 +47,8 @@ export interface UseGridPreviewOptions {
   readonly enabled?: boolean;
   /** Whether this tile is the user's current interactive target. */
   readonly hovered?: boolean;
+  /** Receives every adapter result, including frames skipped by UI pacing. */
+  readonly onReadResult?: (result: EpisodePreviewReadResult) => void;
   readonly previewSession: EpisodePreviewSession | null;
   readonly previewSessionError?: string | null;
   readonly previewSessionStatus?:
@@ -79,6 +81,7 @@ const IDLE_PREVIEW_STATE: GridPreviewSnapshot = {
 export function useGridPreview({
   enabled = true,
   hovered = false,
+  onReadResult,
   previewSession,
   previewSessionError = null,
   previewSessionStatus = "idle",
@@ -88,6 +91,8 @@ export function useGridPreview({
   const [state, setState] = useState<GridPreviewSnapshot>(IDLE_PREVIEW_STATE);
   const [playing, setPlaying] = useState(false);
   const initialLoadInFlightRef = useRef(false);
+  const onReadResultRef = useRef(onReadResult);
+  onReadResultRef.current = onReadResult;
   const loadedRequestRef = useRef<{
     readonly selectedSourceName?: string | null;
     readonly source: ByteSourceDescriptor;
@@ -200,6 +205,7 @@ export function useGridPreview({
       })
       .then((result) => {
         if (active) {
+          onReadResultRef.current?.(result);
           publishGridBootstrap(source, result);
           loadedRequestRef.current = { selectedSourceName, source };
           frameTimeNsRef.current = result.frameTimeNs;
@@ -280,6 +286,8 @@ export function useGridPreview({
           if (!active) {
             break;
           }
+
+          onReadResultRef.current?.(result);
 
           if (!result.frame) {
             frameTimeNsRef.current = undefined;
@@ -427,9 +435,20 @@ function publishGridBootstrap(
 function snapshotFromResult(
   result: EpisodePreviewReadResult,
 ): GridPreviewSnapshot {
+  const frame = result.frame;
+  const timestampedFrame =
+    frame?.kind === "image" &&
+    frame.image.kind === "encoded-video" &&
+    frame.image.timestampNs === undefined &&
+    result.frameTimeNs !== undefined
+      ? {
+          ...frame,
+          image: { ...frame.image, timestampNs: result.frameTimeNs },
+        }
+      : frame;
   return {
     error: null,
-    frame: result.frame,
+    frame: timestampedFrame,
     hasPreviewStreams: result.streamSourceNames.length > 0,
     streamId: result.streamId,
     streamSourceNames: result.streamSourceNames,

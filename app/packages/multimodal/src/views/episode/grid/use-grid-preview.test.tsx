@@ -202,6 +202,63 @@ describe("useGridPreview", () => {
     });
   });
 
+  it("delivers every H.264 dependency frame even when UI pacing skips it", async () => {
+    vi.useFakeTimers({ toFake: ["clearTimeout", "performance", "setTimeout"] });
+    const latestState = { current: null as GridPreviewState | null };
+    const onReadResult = vi.fn();
+    const pending = deferred<EpisodePreviewReadResult>();
+    sessionHarness.session.read
+      .mockResolvedValueOnce(
+        readyResult({ bytes: [1], frameTimeNs: 0n, nextStartTimeNs: 1n }),
+      )
+      .mockResolvedValueOnce(
+        readyResult({
+          bytes: [2],
+          frameTimeNs: 33_000_000n,
+          nextStartTimeNs: 33_000_001n,
+        }),
+      )
+      .mockResolvedValueOnce(
+        readyResult({
+          bytes: [3],
+          frameTimeNs: 66_000_000n,
+          nextStartTimeNs: 66_000_001n,
+        }),
+      )
+      .mockResolvedValueOnce(
+        readyResult({
+          bytes: [4],
+          frameTimeNs: 99_000_000n,
+          nextStartTimeNs: 99_000_001n,
+        }),
+      )
+      .mockReturnValue(pending.promise);
+
+    render(
+      <PreviewHarness
+        id="dependencies"
+        onReadResult={onReadResult}
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        source={sourceForId("dependencies")}
+      />,
+    );
+    await act(async () => undefined);
+    expect(onReadResult).toHaveBeenCalledTimes(1);
+
+    act(() => latestState.current?.play());
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(onReadResult).toHaveBeenCalledTimes(4);
+    expect(firstImageByte(latestState.current?.frame ?? null)).toBe(1);
+    act(() => latestState.current?.pause());
+  });
+
   it("reports buffering only when a hover frame read stays pending", async () => {
     vi.useFakeTimers({ toFake: ["clearTimeout", "performance", "setTimeout"] });
     const latestState = { current: null as GridPreviewState | null };
@@ -435,6 +492,7 @@ function PreviewHarness({
   enabled,
   hovered,
   id,
+  onReadResult,
   onState,
   selectedSourceName,
   source,
@@ -442,6 +500,7 @@ function PreviewHarness({
   readonly enabled?: boolean;
   readonly hovered?: boolean;
   readonly id: string;
+  readonly onReadResult?: (result: EpisodePreviewReadResult) => void;
   readonly onState?: (state: GridPreviewState) => void;
   readonly selectedSourceName?: string | null;
   readonly source: ByteSourceDescriptor | null;
@@ -449,6 +508,7 @@ function PreviewHarness({
   const state = useGridPreview({
     enabled,
     hovered,
+    onReadResult,
     previewSession: sessionHarness.session as EpisodePreviewSession,
     previewSessionStatus: "ready",
     selectedSourceName,

@@ -16,11 +16,9 @@ import {
   bitmapDrawRect,
   encodedImageDimensions,
 } from "./BitmapImageView";
-import { resetVideoTextureDecodersForTests } from "./video-texture";
 
 afterEach(() => {
   cleanup();
-  resetVideoTextureDecodersForTests();
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -601,13 +599,14 @@ describe("BitmapImageFrameView", () => {
 
     await waitFor(() => expect(onImageLoaded).toHaveBeenCalledWith(640, 480));
 
-    expect(drawImage).toHaveBeenCalledTimes(2);
+    expect(drawImage).toHaveBeenCalledTimes(3);
     expect(drawImage.mock.calls[0]?.[0]).toMatchObject({
       displayHeight: 480,
       displayWidth: 640,
     });
     expect(drawImage.mock.calls[1]?.[0]).toBeInstanceOf(HTMLCanvasElement);
-    expect(drawImage.mock.calls[1]?.slice(1)).toEqual([0, -12.5, 100, 75]);
+    expect(drawImage.mock.calls[2]?.[0]).toBeInstanceOf(HTMLCanvasElement);
+    expect(drawImage.mock.calls[2]?.slice(1)).toEqual([0, -12.5, 100, 75]);
   });
 
   it("keeps one decoder session across keyframe-to-delta rerenders", async () => {
@@ -687,7 +686,7 @@ describe("BitmapImageFrameView", () => {
 
     await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
     expect(onError.mock.calls[0]?.[0]).toEqual(
-      new Error("WebCodecs video decoding is unavailable"),
+      new Error("WebCodecs H.264 decoding is unavailable"),
     );
     expect(onImageLoaded).not.toHaveBeenCalled();
   });

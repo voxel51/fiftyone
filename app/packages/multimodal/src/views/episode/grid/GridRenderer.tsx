@@ -12,8 +12,12 @@ import {
   BitmapCanvasHost,
   BitmapImageFrameView,
 } from "../../../visualization/media-2d/BitmapImageView";
-import type { EpisodePosterFrame } from "../../../ir";
+import type { EpisodePosterFrame, EpisodePreviewReadResult } from "../../../ir";
 import { retainedBinaryBytes } from "../../../runtime";
+import { VideoPlaybackManager } from "../../../video/playback-manager";
+import { PushVideoAccessUnitReader } from "../../../video/push-reader";
+import { VideoPlaybackManagerProvider } from "../../../video/react";
+import type { VideoStreamLease } from "../../../video/playback-manager";
 import { PointCloudPanel } from "../../../visualization/composition";
 import { acquireGridLiveLease } from "../../../visualization/webgpu/webgpu-live-lease";
 import { renderPointCloudSnapshot } from "../../../visualization/scene-3d/gpu/webgpu-snapshot-renderer";
@@ -71,6 +75,7 @@ export function GridRenderer({
     return sample._id ?? sample.id;
   }, [ctx.sample.sample]);
   const [selectedStream] = useGridSelectedStream(ctx.dataset.name);
+  const gridVideoPlayback = useGridVideoPlayback(source?.sourceId ?? null);
   const previewSession = useEpisodePreviewSession(
     sampleDescriptorFromContext(ctx),
     episodeSource,
@@ -79,6 +84,7 @@ export function GridRenderer({
   const preview = useGridPreview({
     enabled: visible,
     hovered,
+    onReadResult: gridVideoPlayback.onReadResult,
     previewSession: previewSession.session,
     previewSessionError: previewSession.error,
     previewSessionStatus: previewSession.status,
@@ -147,15 +153,18 @@ export function GridRenderer({
       ref={setRootElement}
     >
       {preview.frame ? (
-        <PreviewFrame
-          // Image dimensions are per camera stream; remount to drop stale
-          // dimensions when the source or selected stream changes.
-          key={`${source?.sourceId ?? ""}:${preview.streamId ?? ""}`}
-          active={visible}
-          cameraScopeKey={gridCameraScopeKey}
-          frame={preview.frame}
-          onSurfaceRetainedBytesChange={handleSurfaceRetainedBytesChange}
-        />
+        <VideoPlaybackManagerProvider manager={gridVideoPlayback.manager}>
+          <PreviewFrame
+            // Image dimensions are per camera stream; remount to drop stale
+            // dimensions when the source or selected stream changes.
+            key={`${source?.sourceId ?? ""}:${preview.streamId ?? ""}`}
+            active={visible}
+            cameraScopeKey={gridCameraScopeKey}
+            frame={preview.frame}
+            onSurfaceRetainedBytesChange={handleSurfaceRetainedBytesChange}
+            videoStream={preview.streamId}
+          />
+        </VideoPlaybackManagerProvider>
       ) : (
         <PreviewStatus
           error={preview.error}
@@ -173,6 +182,86 @@ export function GridRenderer({
       ) : null}
     </div>
   );
+}
+
+interface GridVideoPlaybackController {
+  readonly leases: Map<string, VideoStreamLease>;
+  readonly manager: VideoPlaybackManager;
+  readonly reader: PushVideoAccessUnitReader;
+  readonly sourceKey: string;
+}
+
+/**
+ * Pushes every H.264 access unit into one mounted source/stream engine, even
+ * when the 12fps grid presentation policy skips the corresponding React
+ * frame. The bitmap consumer then subscribes to that same engine.
+ */
+function useGridVideoPlayback(sourceKey: string | null): {
+  readonly manager: VideoPlaybackManager | null;
+  readonly onReadResult: (result: EpisodePreviewReadResult) => void;
+} {
+  const controllerRef = useRef<GridVideoPlaybackController | null>(null);
+  const [binding, setBinding] = useState<GridVideoPlaybackController | null>(
+    null,
+  );
+  const manager = binding?.sourceKey === sourceKey ? binding.manager : null;
+
+  useEffect(() => {
+    if (!sourceKey) {
+      controllerRef.current = null;
+      setBinding(null);
+      return undefined;
+    }
+    const manager = new VideoPlaybackManager(`grid:${sourceKey}`);
+    const reader = new PushVideoAccessUnitReader();
+    manager.setReader(reader);
+    const controller: GridVideoPlaybackController = {
+      leases: new Map(),
+      manager,
+      reader,
+      sourceKey,
+    };
+    controllerRef.current = controller;
+    setBinding(controller);
+    return () => {
+      if (controllerRef.current === controller) controllerRef.current = null;
+      for (const lease of controller.leases.values()) lease.release();
+      controller.leases.clear();
+      controller.manager.close();
+      controller.reader.clear();
+      setBinding((current) => (current === controller ? null : current));
+    };
+  }, [sourceKey]);
+
+  const onReadResult = useCallback((result: EpisodePreviewReadResult) => {
+    const controller = controllerRef.current;
+    const image = result.frame?.kind === "image" ? result.frame.image : null;
+    const stream = result.streamId;
+    if (
+      !controller ||
+      !image ||
+      image.kind !== "encoded-video" ||
+      image.codec !== "h264" ||
+      image.h264.hasFrame === false ||
+      !stream
+    ) {
+      return;
+    }
+    const timeNs = result.frameTimeNs ?? image.timestampNs;
+    if (timeNs === undefined) return;
+    controller.reader.push(stream, { frame: image, timeNs });
+
+    let lease = controller.leases.get(stream);
+    if (!lease) {
+      for (const previous of controller.leases.values()) previous.release();
+      controller.leases.clear();
+      lease = controller.manager.acquire(stream);
+      controller.leases.set(stream, lease);
+    }
+    lease.request({ frame: image, priority: "visible", timeNs });
+  }, []);
+
+  return { manager, onReadResult };
 }
 
 function useGridRendererVisibility(
@@ -276,11 +365,13 @@ function PreviewFrame({
   cameraScopeKey,
   frame,
   onSurfaceRetainedBytesChange,
+  videoStream,
 }: {
   readonly active: boolean;
   readonly cameraScopeKey: string;
   readonly frame: EpisodePosterFrame;
   readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
+  readonly videoStream: string | null;
 }) {
   return frame.kind === "point-cloud" ? (
     <PointCloudPreviewFrame
@@ -293,6 +384,7 @@ function PreviewFrame({
     <ImagePreviewFrame
       frame={frame}
       onSurfaceRetainedBytesChange={onSurfaceRetainedBytesChange}
+      videoStream={videoStream}
     />
   );
 }
@@ -577,9 +669,11 @@ function PointCloudPreviewFrame({
 function ImagePreviewFrame({
   frame,
   onSurfaceRetainedBytesChange,
+  videoStream,
 }: {
   readonly frame: Extract<EpisodePosterFrame, { kind: "image" }>;
   readonly onSurfaceRetainedBytesChange: (bytes: number) => void;
+  readonly videoStream: string | null;
 }) {
   // GPU-free bitmap path: image preview cells hold zero WebGPU devices (the
   // modal's ImagePanel is untouched).
@@ -589,6 +683,7 @@ function ImagePreviewFrame({
       fit={IMAGE_FIT}
       frame={frame.image}
       onBitmapRetainedBytesChange={onSurfaceRetainedBytesChange}
+      videoSessionKey={videoStream ?? undefined}
     />
   );
 }

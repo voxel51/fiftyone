@@ -6,23 +6,13 @@ import type { ImageTextureHandle } from "./Base2dScene";
 import { createImageTexture } from "./image-texture";
 import {
   acquireImageTexture,
+  ImageTextureDecodeCancelledError,
   type ImageTextureLease,
 } from "./image-texture-cache";
 import { scheduleStillImageTextureLease } from "./still-image-decode-scheduler";
-import {
-  acquireEncodedVideoSession,
-  encodedVideoSessionKey,
-  type EncodedVideoSessionOwner,
-  VideoTextureWaitError,
-} from "./video-texture";
-
-const EMPTY_IMAGE_DECODE_RUNWAY: readonly ImageVisualization[] = [];
 
 /** Loading state for an encoded-image texture lease. */
 export type ImageTextureLeaseStatus = "idle" | "loading" | "loaded" | "error";
-
-/** Whether a texture error is terminal or awaiting more stream data. */
-export type ImageTextureLeaseErrorKind = "failure" | "waiting";
 
 interface HeldImageTexture {
   readonly handle: ImageTextureHandle;
@@ -31,7 +21,6 @@ interface HeldImageTexture {
 
 /** Inputs for `useImageTextureLease`, including cache identity and decode data. */
 export interface UseImageTextureLeaseOptions {
-  readonly decodeRunway?: readonly ImageVisualization[];
   readonly disabledStatus?: ImageTextureLeaseStatus;
   readonly enabled?: boolean;
   readonly frame: ImageVisualization | null | undefined;
@@ -45,7 +34,6 @@ export interface UseImageTextureLeaseOptions {
  * releases the previous lease when the requested image changes.
  */
 export function useImageTextureLease({
-  decodeRunway = EMPTY_IMAGE_DECODE_RUNWAY,
   disabledStatus = "idle",
   enabled = true,
   frame,
@@ -53,7 +41,6 @@ export function useImageTextureLease({
   onLoaded,
   textureKey,
 }: UseImageTextureLeaseOptions): {
-  readonly errorKind: ImageTextureLeaseErrorKind | null;
   readonly errorMessage: string | null;
   readonly handle: ImageTextureHandle | null;
   readonly status: ImageTextureLeaseStatus;
@@ -61,43 +48,14 @@ export function useImageTextureLease({
   const heldTextureRef = useRef<HeldImageTexture | null>(null);
   const retiredTexturesRef = useRef<HeldImageTexture[]>([]);
   const stillImageDecodeOwnerRef = useRef<object>({});
-  const videoSessionOwnerRef = useRef<EncodedVideoSessionOwner | null>(null);
   const hasVisibleTextureRef = useRef(false);
   const onLoadedRef = useRef(onLoaded);
   onLoadedRef.current = onLoaded;
-  const [errorKind, setErrorKind] = useState<ImageTextureLeaseErrorKind | null>(
-    null,
-  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [handle, setHandle] = useState<ImageTextureHandle | null>(null);
   const [status, setStatus] = useState<ImageTextureLeaseStatus>(() =>
     enabled && hasImageData(frame) ? "loading" : disabledStatus,
   );
-  const requestedVideoSessionKey =
-    frame?.kind === "encoded-video"
-      ? encodedVideoSessionKey(textureKey, frame)
-      : null;
-
-  // Decoder ownership follows the mounted view's source/stream identity, not
-  // its frame props. Frame rerenders reuse the same session; a stream switch or
-  // unmount releases exactly one ref on the shared registry entry.
-  useEffect(() => {
-    if (!requestedVideoSessionKey || frame?.kind !== "encoded-video") {
-      videoSessionOwnerRef.current = null;
-      return undefined;
-    }
-    const owner = acquireEncodedVideoSession(frame, textureKey);
-    videoSessionOwnerRef.current = owner;
-    return () => {
-      if (videoSessionOwnerRef.current === owner) {
-        videoSessionOwnerRef.current = null;
-      }
-      owner.release();
-    };
-    // The session key deliberately excludes per-frame identity.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestedVideoSessionKey]);
-
   // This effect retires the held texture lease on unmount — release, not
   // dispose: keyed texture sources may be retained by the cache for instant
   // re-acquire; keyless private leases dispose themselves on release. The
@@ -138,7 +96,6 @@ export function useImageTextureLease({
     if (!enabled || !hasImageData(frame)) {
       hasVisibleTextureRef.current = false;
       replaceHeldTexture(null, heldTextureRef, retiredTexturesRef, setHandle);
-      setErrorKind(null);
       setErrorMessage(null);
       setStatus(disabledStatus);
       return undefined;
@@ -151,26 +108,23 @@ export function useImageTextureLease({
     // the decoded image, even if a later render supplies another callback.
     const onLoadedForRequest = onLoadedRef.current;
     if (!hasVisibleTextureRef.current) {
-      setErrorKind(null);
       setErrorMessage(null);
       setStatus("loading");
     }
 
     const acquire = () =>
-      acquireImageTexture(
-        textureKey,
-        (signal) =>
-          createImageTexture(
-            frame,
-            textureKey,
-            decodeRunway,
-            videoSessionOwnerRef.current ?? undefined,
-            signal,
-          ),
-        { decodeStrength: imageDecodeStrength(frame, decodeRunway) },
-      );
-    // Browser still-image work is globally bounded; H.264 work is serialized
-    // and abortable before submission by its mounted stream owner.
+      acquireImageTexture(textureKey, async (signal) => {
+        if (signal.aborted) throw new ImageTextureDecodeCancelledError();
+        const decoded = await createImageTexture(frame, textureKey);
+        if (signal.aborted) {
+          decoded.dispose();
+          throw new ImageTextureDecodeCancelledError();
+        }
+        return decoded;
+      });
+    // Browser still-image work is globally bounded. Releasing the final cache
+    // waiter aborts the producer contract; createImageBitmap itself has no
+    // AbortSignal overload, so a submitted decode is disposed when it settles.
     const lease =
       frame.kind === "encoded-image"
         ? scheduleStillImageTextureLease(
@@ -193,7 +147,6 @@ export function useImageTextureLease({
           setHandle,
         );
         hasVisibleTextureRef.current = true;
-        setErrorKind(null);
         setErrorMessage(null);
         setStatus("loaded");
         onLoadedForRequest?.(decodedHandle);
@@ -207,9 +160,6 @@ export function useImageTextureLease({
 
         hasVisibleTextureRef.current = false;
         replaceHeldTexture(null, heldTextureRef, retiredTexturesRef, setHandle);
-        setErrorKind(
-          error instanceof VideoTextureWaitError ? "waiting" : "failure",
-        );
         setErrorMessage(diagnosticMessage(error, "Image unavailable"));
         setStatus("error");
       });
@@ -218,35 +168,17 @@ export function useImageTextureLease({
       cancelled = true;
       if (!settled) {
         // Releasing the final cache waiter aborts an obsolete pending attempt.
-        // Work already submitted to createImageBitmap/WebCodecs settles under
-        // its producer's cancellation guard and can never commit stale pixels.
+        // Work already submitted to createImageBitmap settles under its
+        // producer's cancellation guard and can never commit stale pixels.
         lease.release();
       }
     };
     // `identity`, not the frame object, is the requested lifecycle key. Keyed
     // Episode callers deliberately keep identity stable across fresh wrappers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [decodeRunway, disabledStatus, enabled, identity, textureKey]);
+  }, [disabledStatus, enabled, identity, textureKey]);
 
-  return { errorKind, errorMessage, handle, status };
-}
-
-function imageDecodeStrength(
-  frame: ImageVisualization,
-  decodeRunway: readonly ImageVisualization[],
-): number {
-  if (frame.kind !== "encoded-video" || frame.codec !== "h264") return 0;
-  const firstH264Frame = decodeRunway.find(
-    (candidate) =>
-      candidate.kind === "encoded-video" &&
-      candidate.codec === "h264" &&
-      candidate.h264?.hasFrame,
-  );
-  return firstH264Frame?.kind === "encoded-video" &&
-    firstH264Frame.codec === "h264" &&
-    firstH264Frame.keyframe
-    ? 1
-    : 0;
+  return { errorMessage, handle, status };
 }
 
 export function hasImageData(
@@ -256,9 +188,6 @@ export function hasImageData(
     return false;
   }
   if (frame.kind === "encoded-image") {
-    return frame.bytes.byteLength > 0;
-  }
-  if (frame.kind === "encoded-video") {
     return frame.bytes.byteLength > 0;
   }
   const rawBytes = frame.depth?.values.byteLength ?? frame.rgba.byteLength;

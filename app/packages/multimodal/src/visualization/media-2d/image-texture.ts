@@ -7,15 +7,10 @@ import * as THREE from "three";
 
 import type {
   EncodedImageVisualization,
-  EncodedVideoVisualization,
   ImageVisualization,
   RawImageVisualization,
 } from "../../ir";
 import type { ImageTextureHandle } from "./Base2dScene";
-import {
-  createEncodedVideoTexture,
-  type EncodedVideoSessionOwner,
-} from "./video-texture";
 
 type NativeDepthTexture = THREE.DataTexture & {
   normalized: boolean;
@@ -27,25 +22,9 @@ type NativeDepthTexture = THREE.DataTexture & {
 export async function createImageTexture(
   frame: ImageVisualization,
   textureKey?: string,
-  decodeRunway: readonly ImageVisualization[] = [],
-  videoSessionOwner?: EncodedVideoSessionOwner,
-  signal?: AbortSignal,
 ): Promise<ImageTextureHandle> {
   if (frame.kind === "raw-image") {
     return createRawImageTexture(frame);
-  }
-  if (frame.kind === "encoded-video") {
-    const h264Runway = decodeRunway.filter(
-      (prerequisite): prerequisite is EncodedVideoVisualization =>
-        prerequisite.kind === "encoded-video" && prerequisite.codec === "h264",
-    );
-    return createEncodedVideoTexture(
-      frame,
-      textureKey,
-      h264Runway,
-      videoSessionOwner,
-      signal,
-    );
   }
   return createEncodedImageTexture(frame);
 }

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { ImageVisualization, SceneSource } from "../../../../ir";
+import type { CameraVisualization, SceneSource } from "../../../../ir";
 import { imageTextureCacheKey } from "../../../../visualization/media-2d/image-texture-cache";
 import { useKeyedIdentityMap } from "../../../../visualization/panel-ui/use-keyed-identity-map";
 import type { CameraFrustumPanelLayer } from "../../../../visualization/scene-3d/types";
@@ -40,8 +40,7 @@ interface BuildFrustumLayerOptions extends FrustumLayerActions {
   readonly focused: boolean;
   readonly geometry: ImageGeometryMode;
   readonly hovered: boolean;
-  readonly imageDecodeRunway?: readonly ImageVisualization[];
-  readonly imageFrame: StreamPlaybackFrame<ImageVisualization> | null;
+  readonly imageFrame: StreamPlaybackFrame<CameraVisualization> | null;
   readonly imageLabel: string;
   readonly imagePlaneDepthM: number;
   readonly imageSourceName: string;
@@ -62,7 +61,6 @@ export function buildScene3dFrustumLayer({
   focused,
   geometry,
   hovered,
-  imageDecodeRunway,
   imageFrame,
   imageLabel,
   imagePlaneDepthM,
@@ -127,19 +125,27 @@ export function buildScene3dFrustumLayer({
     : {};
   const imageProps: Partial<CameraFrustumPanelLayer> = imageFrame
     ? cameraModelResolution.status === "ready"
-      ? {
-          image: imageFrame.frame,
-          imageContentTimeNs: imageFrame.contentTimeNs,
-          ...(imageDecodeRunway?.length ? { imageDecodeRunway } : {}),
-          imageTextureKey:
-            sourceKey && imageStream
-              ? imageTextureCacheKey(
-                  sourceKey,
-                  imageStream,
-                  imageFrame.contentTimeNs,
-                )
-              : undefined,
-        }
+      ? imageFrame.frame.kind === "encoded-video"
+        ? imageFrame.frame.codec === "h264"
+          ? {
+              imageContentTimeNs: imageFrame.contentTimeNs,
+              video: imageFrame.frame,
+            }
+          : {
+              imageUnavailableReason: `Video codec ${imageFrame.frame.codec} is unsupported`,
+            }
+        : {
+            image: imageFrame.frame,
+            imageContentTimeNs: imageFrame.contentTimeNs,
+            imageTextureKey:
+              sourceKey && imageStream
+                ? imageTextureCacheKey(
+                    sourceKey,
+                    imageStream,
+                    imageFrame.contentTimeNs,
+                  )
+                : undefined,
+          }
       : { imageUnavailableReason: cameraModelResolution.message }
     : {};
 
@@ -160,7 +166,6 @@ export function useScene3dFrustumLayers({
   cameraSources,
   cameraStreams,
   focusedTileId,
-  frustumImageDecodeRunways,
   frustumImageFrames,
   frustumImageStreams,
   imagePlaneDepthM,
@@ -174,8 +179,7 @@ export function useScene3dFrustumLayers({
   readonly cameraSources: readonly SceneSource[];
   readonly cameraStreams: readonly string[];
   readonly focusedTileId: string | null | undefined;
-  readonly frustumImageDecodeRunways: readonly (readonly ImageVisualization[])[];
-  readonly frustumImageFrames: readonly (StreamPlaybackFrame<ImageVisualization> | null)[];
+  readonly frustumImageFrames: readonly (StreamPlaybackFrame<CameraVisualization> | null)[];
   readonly frustumImageStreams: readonly string[];
   readonly imagePlaneDepthM: number;
   readonly imageProjectionSettings: Readonly<
@@ -222,8 +226,6 @@ export function useScene3dFrustumLayers({
         focused: focusedImageStream === imageStream,
         geometry: imageStream ? projectionSettings.geometry : "original",
         hovered: hoveredImageStream === imageStream,
-        imageDecodeRunway:
-          index >= 0 ? frustumImageDecodeRunways[index] : undefined,
         imageFrame: index >= 0 ? (frustumImageFrames[index] ?? null) : null,
         imageLabel: imageSource?.label ?? "Unknown image source",
         imagePlaneDepthM,
@@ -246,7 +248,6 @@ export function useScene3dFrustumLayers({
         ...frameTransformIdentityInputs(layer.frameTransform),
         ...frustumParentPositionIdentityInputs(layer.parentPosition),
         index >= 0 ? frustumImageFrames[index] : null,
-        index >= 0 ? frustumImageDecodeRunways[index] : null,
         imageStream,
         cameraSourcesById.get(layer.id)?.sourceName ?? "",
         imageSourcesById.get(imageStream)?.label ?? "",

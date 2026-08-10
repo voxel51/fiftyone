@@ -1005,51 +1005,6 @@ describe("PointCloudPanel", () => {
     expect(imageTextureCacheStats().decodeCount).toBe(1);
   });
 
-  it("keeps the frustum visible and surfaces video decoder errors", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
-
-    const { container } = render(
-      <PointCloudPanel
-        frustumLayers={[
-          {
-            frame: {
-              height: 1080,
-              K: [700, 0, 720, 0, 700, 540, 0, 0, 1],
-              kind: VISUALIZATION_KIND.CAMERA_CALIBRATION,
-              width: 1440,
-            },
-            id: "/camera/front_right/camera_info",
-            image: {
-              bytes: new Uint8Array([0, 0, 0, 1, 0x61]),
-              codec: "h264",
-              format: "h264",
-              h264: { hasFrame: true },
-              keyframe: false,
-              kind: VISUALIZATION_KIND.ENCODED_VIDEO,
-              timestampNs: 100n,
-            },
-            imageContentTimeNs: 100n,
-            imageTextureKey: "rec\n/camera/front_right/image\n100",
-            imageStream: "/camera/front_right/image",
-          },
-        ]}
-        layers={[]}
-        showHud={false}
-      />,
-    );
-
-    const noticeToggle = await screen.findByRole("button", {
-      name: "1 scene notice",
-    });
-    expect(screen.queryByText("Waiting for H.264 keyframe")).toBeNull();
-    expect(container.querySelector("linesegments")).toBeTruthy();
-    expect(container.querySelector("mesh")).toBeNull();
-
-    fireEvent.click(noticeToggle);
-    expect(screen.getByText("Waiting for H.264 keyframe")).toBeTruthy();
-    expect(screen.getByText("/camera/front_right/image")).toBeTruthy();
-  });
-
   it("keeps the frustum visible when image geometry needs a user choice", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { container } = render(
