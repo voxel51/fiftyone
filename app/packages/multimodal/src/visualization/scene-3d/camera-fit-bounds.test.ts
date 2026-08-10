@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+import * as THREE from "three";
 
 import type { SceneEntityVisualization } from "../../ir";
 import { VISUALIZATION_KIND } from "../visualization-registry";
-import { sceneBoundsForLayers } from "./camera-fit-bounds";
+import { cameraPoseForBounds, sceneBoundsForLayers } from "./camera-fit-bounds";
 import type { SceneAnnotationPanelLayer } from "./types";
 
 describe("sceneBoundsForLayers", () => {
@@ -64,3 +65,36 @@ describe("sceneBoundsForLayers", () => {
     expect(bounds?.max.toArray()).toEqual([1, 1, 1]);
   });
 });
+
+describe("cameraPoseForBounds", () => {
+  it("uses horizontal FOV for portrait viewports", () => {
+    const bounds = new THREE.Box3(
+      new THREE.Vector3(-5, -2, -1),
+      new THREE.Vector3(5, 2, 1),
+    );
+    const portrait = cameraPoseForBounds(bounds, 50, 0.5);
+    const square = cameraPoseForBounds(bounds, 50, 1);
+    const landscape = cameraPoseForBounds(bounds, 50, 2);
+    if (!portrait || !square || !landscape) {
+      throw new Error("expected fitted camera poses");
+    }
+
+    expect(cameraPoseDistance(portrait)).toBeGreaterThan(
+      cameraPoseDistance(square),
+    );
+    // Vertical FOV remains the tighter axis once the viewport is square or
+    // wider, so landscape does not over-zoom the scene.
+    expect(cameraPoseDistance(landscape)).toBeCloseTo(
+      cameraPoseDistance(square),
+    );
+  });
+});
+
+function cameraPoseDistance(pose: {
+  readonly position: readonly [number, number, number];
+  readonly target: readonly [number, number, number];
+}): number {
+  return new THREE.Vector3(...pose.position).distanceTo(
+    new THREE.Vector3(...pose.target),
+  );
+}

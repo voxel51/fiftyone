@@ -280,6 +280,7 @@ export function worldBoundsForLayer(
 export function cameraPoseForBounds(
   bounds: THREE.Box3 | null,
   fovDegrees = PERSPECTIVE_POINT_CAMERA.fov,
+  aspect = 1,
 ): PointCloudCameraPose | null {
   if (!bounds) {
     return null;
@@ -288,8 +289,12 @@ export function cameraPoseForBounds(
   const center = bounds.getCenter(new THREE.Vector3());
   const size = bounds.getSize(new THREE.Vector3());
   const radius = Math.max(EMPTY_POINT_CLOUD_BOUNDS_SIZE, size.length() / 2);
-  const fovRad = THREE.MathUtils.degToRad(fovDegrees);
-  const distance = (radius / Math.sin(fovRad / 2)) * CAMERA_FIT_PADDING;
+  const distance = perspectiveCameraDistanceForRadius({
+    aspect,
+    fovDegrees,
+    padding: CAMERA_FIT_PADDING,
+    radius,
+  });
   const direction = new THREE.Vector3(...PERSPECTIVE_POINT_CAMERA.position)
     .normalize()
     .multiplyScalar(distance);
@@ -299,4 +304,24 @@ export function cameraPoseForBounds(
     position: [position.x, position.y, position.z],
     target: [center.x, center.y, center.z],
   };
+}
+
+/** Distance required to contain a sphere in both perspective FOV axes. */
+export function perspectiveCameraDistanceForRadius({
+  aspect,
+  fovDegrees,
+  padding = 1,
+  radius,
+}: {
+  readonly aspect: number;
+  readonly fovDegrees: number;
+  readonly padding?: number;
+  readonly radius: number;
+}): number {
+  const verticalFov = THREE.MathUtils.degToRad(fovDegrees);
+  const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1;
+  const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * safeAspect);
+  const verticalDistance = radius / Math.sin(verticalFov / 2);
+  const horizontalDistance = radius / Math.sin(horizontalFov / 2);
+  return Math.max(verticalDistance, horizontalDistance) * padding;
 }

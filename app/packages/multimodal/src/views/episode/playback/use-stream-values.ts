@@ -22,6 +22,14 @@ import {
 
 const EMPTY_STREAMS: readonly string[] = [];
 
+interface PointCloudChannelRequestOwner {
+  readonly controller: AbortController;
+  readonly dataStream: DataStream;
+  readonly generation: number;
+  readonly samplePlanKey: string;
+  readonly sourceKey: string;
+}
+
 /** One committed stream value plus its source content time. */
 export interface StreamContentFrame<T = unknown> {
   readonly contentTimeNs: bigint;
@@ -168,15 +176,31 @@ export function usePointCloudPlaybackFrames(
   const [channels, setChannels] = useState<
     ReadonlyMap<string, PointCloudRenderChannelPayload>
   >(() => new Map());
+  const channelsRef = useRef(channels);
+  channelsRef.current = channels;
+  const channelRequestsRef = useRef(
+    new Map<string, PointCloudChannelRequestOwner>(),
+  );
+  const channelRequestGenerationRef = useRef(0);
   const colorSignature = colorBy.join("|");
 
   // This effect projects a missing color channel for each committed geometry
   // frame and caches the replacement independently from playback ownership.
+  // Each key owns its own controller: one completion must never cancel an
+  // unrelated sibling that is still decoding.
   useEffect(() => {
     const readPointCloudChannel = dataStream?.readPointCloudChannel;
-    if (!readPointCloudChannel) return undefined;
-    let cancelled = false;
-    const controller = new AbortController();
+    const sourceKey = dataStream?.sourceKey;
+    const desiredRequests = new Map<
+      string,
+      {
+        readonly activeColorBy: string;
+        readonly payload: PointCloudRenderPayload;
+        readonly playbackFrame: StreamContentFrame<PointCloudVisualization>;
+        readonly samplePlanKey: string;
+        readonly stream: string;
+      }
+    >();
     frames.forEach((playbackFrame, index) => {
       const payload = playbackFrame?.frame.renderPayload;
       const activeColorBy = colorBy[index] ?? "auto";
@@ -184,6 +208,7 @@ export function usePointCloudPlaybackFrames(
       if (
         !playbackFrame ||
         !payload ||
+        !sourceKey ||
         !stream ||
         pointCloudPayloadHasActiveChannel(payload, activeColorBy)
       ) {
@@ -192,26 +217,70 @@ export function usePointCloudPlaybackFrames(
       const samplePlanKey = payload.samplePlanKey;
       if (!samplePlanKey) return;
       const key = pointCloudChannelKey(
-        dataStream.sourceKey,
+        sourceKey,
         stream,
         playbackFrame.contentTimeNs,
         samplePlanKey,
         activeColorBy,
       );
-      if (channels.has(key)) return;
-
-      void readPointCloudChannel({
+      if (channelsRef.current.has(key)) return;
+      desiredRequests.set(key, {
         activeColorBy,
-        capacity: payload.capacity,
-        sampledPointCount: payload.sampledPointCount,
+        payload,
+        playbackFrame,
         samplePlanKey,
-        signal: controller.signal,
-        sourceIndices: payload.sourceIndices,
         stream,
-        timestampNs: playbackFrame.contentTimeNs,
+      });
+    });
+
+    const inFlight = channelRequestsRef.current;
+    for (const [key, owner] of inFlight) {
+      if (
+        owner.dataStream !== dataStream ||
+        owner.sourceKey !== dataStream?.sourceKey ||
+        !desiredRequests.has(key)
+      ) {
+        owner.controller.abort();
+        inFlight.delete(key);
+      }
+    }
+    if (!dataStream || !readPointCloudChannel) return;
+
+    for (const [key, request] of desiredRequests) {
+      if (inFlight.has(key)) continue;
+      const controller = new AbortController();
+      const generation = channelRequestGenerationRef.current + 1;
+      channelRequestGenerationRef.current = generation;
+      const owner: PointCloudChannelRequestOwner = {
+        controller,
+        dataStream,
+        generation,
+        samplePlanKey: request.samplePlanKey,
+        sourceKey: dataStream.sourceKey,
+      };
+      inFlight.set(key, owner);
+      void readPointCloudChannel({
+        activeColorBy: request.activeColorBy,
+        capacity: request.payload.capacity,
+        sampledPointCount: request.payload.sampledPointCount,
+        samplePlanKey: owner.samplePlanKey,
+        signal: controller.signal,
+        sourceIndices: request.payload.sourceIndices,
+        stream: request.stream,
+        timestampNs: request.playbackFrame.contentTimeNs,
       })
         .then((channel) => {
-          if (cancelled || channel.samplePlanKey !== samplePlanKey) return;
+          const currentOwner = inFlight.get(key);
+          if (
+            controller.signal.aborted ||
+            currentOwner?.generation !== generation ||
+            currentOwner.dataStream !== dataStream ||
+            currentOwner.sourceKey !== dataStream.sourceKey ||
+            channel.samplePlanKey !== owner.samplePlanKey
+          ) {
+            return;
+          }
+          inFlight.delete(key);
           setChannels((current) => {
             if (current.get(key) === channel) return current;
             const next = new Map(current);
@@ -220,15 +289,27 @@ export function usePointCloudPlaybackFrames(
             return next;
           });
         })
-        .catch(() => undefined);
-    });
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
+        .catch(() => {
+          if (inFlight.get(key)?.generation === generation) {
+            inFlight.delete(key);
+          }
+        });
+    }
     // colorSignature captures the supported option content.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channels, colorSignature, dataStream, frames, streams]);
+  }, [colorSignature, dataStream, dataStream?.sourceKey, frames, streams]);
+
+  // This effect owns final cancellation. Render-to-render reconciliation
+  // above aborts only keys that became obsolete.
+  useEffect(
+    () => () => {
+      for (const owner of channelRequestsRef.current.values()) {
+        owner.controller.abort();
+      }
+      channelRequestsRef.current.clear();
+    },
+    [],
+  );
 
   return useMemo(
     () =>

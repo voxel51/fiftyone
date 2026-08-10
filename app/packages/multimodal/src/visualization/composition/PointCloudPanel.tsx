@@ -258,9 +258,20 @@ export function PointCloudPanel({
     () => sceneBoundsForLayers(renderLayers, annotationLayers, gridLayers),
     [annotationLayers, gridLayers, renderLayers],
   );
+  const [viewportAspect, setViewportAspect] = useState(1);
+  const handleViewportAspectChange = useCallback((nextAspect: number) => {
+    setViewportAspect((current) =>
+      current === nextAspect ? current : nextAspect,
+    );
+  }, []);
   const frameFitPose = useMemo(
-    () => cameraPoseForBounds(frameFitBounds, cameraProjection.fovDegrees),
-    [cameraProjection.fovDegrees, frameFitBounds],
+    () =>
+      cameraPoseForBounds(
+        frameFitBounds,
+        cameraProjection.fovDegrees,
+        viewportAspect,
+      ),
+    [cameraProjection.fovDegrees, frameFitBounds, viewportAspect],
   );
   const sceneBoundsSummary = useMemo(() => {
     if (!frameFitBounds) return undefined;
@@ -476,6 +487,7 @@ export function PointCloudPanel({
         onCameraPoseChange={onCameraPoseChange}
         onCanvasError={setCanvasError}
         onMeasurePick={handleMeasurePick}
+        onViewportAspectChange={handleViewportAspectChange}
         pointPickerRegistry={pointPickerRegistry}
         pointSize={pointSize}
         rayLayers={rayLayers}
@@ -569,6 +581,7 @@ interface PointCloudCanvasProps {
   readonly onCameraPoseChange: PointCloudPanelProps["onCameraPoseChange"];
   readonly onCanvasError: (error: string | null) => void;
   readonly onMeasurePick: (point: MeasurementPoint) => void;
+  readonly onViewportAspectChange: (aspect: number) => void;
   readonly pointPickerRegistry: ReturnType<
     typeof createGpuPointCloud3dPickerRegistry
   >;
@@ -609,6 +622,7 @@ const PointCloudCanvas = memo(function PointCloudCanvas(
     onCameraPoseChange,
     onCanvasError,
     onMeasurePick,
+    onViewportAspectChange,
     pointPickerRegistry,
     pointSize,
     rayLayers,
@@ -629,7 +643,10 @@ const PointCloudCanvas = memo(function PointCloudCanvas(
       }
       surface={canvasSurface}
     >
-      <PerspectiveCameraProjection projection={cameraProjection} />
+      <PerspectiveCameraProjection
+        onViewportAspectChange={onViewportAspectChange}
+        projection={cameraProjection}
+      />
       <Base3dScene
         background={background}
         cameraPose={cameraPose}
@@ -697,12 +714,24 @@ const PointCloudCanvas = memo(function PointCloudCanvas(
 });
 
 function PerspectiveCameraProjection({
+  onViewportAspectChange,
   projection,
 }: {
+  readonly onViewportAspectChange: (aspect: number) => void;
   readonly projection: PointCloudCameraProjection;
 }) {
   const camera = useThree((state) => state.camera);
   const invalidate = useThree((state) => state.invalidate);
+  const viewportHeight = useThree((state) => state.size.height);
+  const viewportWidth = useThree((state) => state.size.width);
+
+  useLayoutEffect(() => {
+    onViewportAspectChange(
+      viewportHeight > 0 && viewportWidth > 0
+        ? viewportWidth / viewportHeight
+        : 1,
+    );
+  }, [onViewportAspectChange, viewportHeight, viewportWidth]);
 
   // This layout effect updates the Three camera before the next frame paints.
   useLayoutEffect(() => {

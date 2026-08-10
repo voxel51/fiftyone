@@ -1,5 +1,5 @@
 import { Quaternion, Vector3 } from "three";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   dehydrateEpisodeFrameTransformSet,
   hydrateEpisodeFrameTransformSet,
@@ -118,6 +118,88 @@ describe("episode frame transform store", () => {
         translation: { x: 2.5, y: 0, z: 0 },
       },
     });
+  });
+
+  it("reuses a topology path across timestamps while evaluating fresh edge values", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("map", "base_link", { x: 1, y: 0, z: 0 }, 100n),
+        sample("map", "base_link", { x: 3, y: 0, z: 0 }, 300n),
+      ],
+      staticSamples: [sample("base_link", "lidar", { x: 0, y: 2, z: 0 })],
+    });
+    const buildIndex = vi.spyOn(
+      store as unknown as {
+        buildTransformIndex: (...args: unknown[]) => unknown;
+      },
+      "buildTransformIndex",
+    );
+
+    const first = store.resolve({
+      sourceFrameId: "lidar",
+      targetFrameId: "map",
+      timeNs: 100n,
+    });
+    const second = store.resolve({
+      sourceFrameId: "lidar",
+      targetFrameId: "map",
+      timeNs: 200n,
+    });
+
+    expect(first).toMatchObject({
+      status: "resolved",
+      transform: { resolutionKind: "exact", translation: { x: 1, y: 2 } },
+    });
+    expect(second).toMatchObject({
+      status: "resolved",
+      transform: {
+        resolutionKind: "interpolated",
+        translation: { x: 2, y: 2 },
+      },
+    });
+    expect(buildIndex).toHaveBeenCalledTimes(1);
+  });
+
+  it("rebuilds a cached route when a dynamic child changes parents", () => {
+    const store = createStore({
+      dynamicRange: { endTimeNs: 300n, startTimeNs: 0n },
+      dynamicSamples: [
+        sample("base_link", "lidar", { x: 1, y: 0, z: 0 }, 0n),
+        sample("base_link", "lidar", { x: 2, y: 0, z: 0 }, 100n),
+        sample("map", "lidar", { x: 20, y: 0, z: 0 }, 200n),
+        sample("map", "lidar", { x: 30, y: 0, z: 0 }, 300n),
+      ],
+      staticSamples: [sample("map", "base_link", { x: 10, y: 0, z: 0 })],
+    });
+    const buildIndex = vi.spyOn(
+      store as unknown as {
+        buildTransformIndex: (...args: unknown[]) => unknown;
+      },
+      "buildTransformIndex",
+    );
+
+    expect(
+      store.resolve({
+        sourceFrameId: "lidar",
+        targetFrameId: "map",
+        timeNs: 100n,
+      }),
+    ).toMatchObject({
+      status: "resolved",
+      transform: { translation: { x: 12 } },
+    });
+    expect(
+      store.resolve({
+        sourceFrameId: "lidar",
+        targetFrameId: "map",
+        timeNs: 200n,
+      }),
+    ).toMatchObject({
+      status: "resolved",
+      transform: { resolutionKind: "exact", translation: { x: 20 } },
+    });
+    expect(buildIndex).toHaveBeenCalledTimes(2);
   });
 
   it("carries the largest interpolation gap through composed paths", () => {
@@ -714,6 +796,43 @@ describe("episode frame transform store", () => {
 
     store.addStatic([sample("base_link", "lidar", { x: 0, y: 0, z: 0 })]);
     expect(store.topologyRevision()).toBe(2);
+  });
+
+  it("invalidates cached paths on graph mutation and bounds retained routes", () => {
+    const store = new EpisodeFrameTransformStore();
+    store.addStatic([
+      sample("map", "base_link", { x: 10, y: 0, z: 0 }),
+      sample("base_link", "lidar", { x: 1, y: 0, z: 0 }),
+    ]);
+    const buildIndex = vi.spyOn(
+      store as unknown as {
+        buildTransformIndex: (...args: unknown[]) => unknown;
+      },
+      "buildTransformIndex",
+    );
+    store.resolve({ sourceFrameId: "lidar", targetFrameId: "map" });
+    store.resolve({ sourceFrameId: "lidar", targetFrameId: "map" });
+    expect(buildIndex).toHaveBeenCalledTimes(1);
+
+    store.addStatic([sample("map", "lidar", { x: 99, y: 0, z: 0 })]);
+    expect(
+      store.resolve({ sourceFrameId: "lidar", targetFrameId: "map" }),
+    ).toMatchObject({ transform: { translation: { x: 99 } } });
+    expect(buildIndex).toHaveBeenCalledTimes(2);
+
+    const starSamples = Array.from({ length: 80 }, (_, index) =>
+      sample("map", `sensor-${index}`),
+    );
+    store.addStatic(starSamples);
+    for (let index = 0; index < starSamples.length; index += 1) {
+      store.resolve({ sourceFrameId: `sensor-${index}`, targetFrameId: "map" });
+    }
+    const topologyPathCache = (
+      store as unknown as {
+        topologyPathCache: ReadonlyMap<string, unknown>;
+      }
+    ).topologyPathCache;
+    expect(topologyPathCache.size).toBeLessThanOrEqual(64);
   });
 
   it("falls back deterministically when every frame is in a cycle", () => {

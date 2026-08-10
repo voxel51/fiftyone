@@ -17,6 +17,7 @@ import {
   CameraOrientationGizmo,
   type CameraOrientationDirection,
 } from "./CameraOrientationGizmo";
+import { perspectiveCameraDistanceForRadius } from "./camera-fit-bounds";
 import type { MutableVectorHandle } from "./mutable-vector-handle";
 
 const DEFAULT_AMBIENT_LIGHT_INTENSITY = 0.8;
@@ -525,17 +526,16 @@ function focusDistanceForCamera({
   readonly viewportWidth: number;
 }) {
   if (camera.isPerspectiveCamera === true && typeof camera.fov === "number") {
-    const verticalFov = THREE.MathUtils.degToRad(camera.fov);
     const aspect =
       viewportHeight > 0 && viewportWidth > 0
         ? viewportWidth / viewportHeight
         : 1;
-    const horizontalFov =
-      2 * Math.atan(Math.tan(verticalFov / 2) * Math.max(aspect, 0.000001));
-    const verticalDistance = radius / Math.sin(verticalFov / 2);
-    const horizontalDistance = radius / Math.sin(horizontalFov / 2);
-
-    return Math.max(verticalDistance, horizontalDistance) * FOCUS_PADDING;
+    return perspectiveCameraDistanceForRadius({
+      aspect,
+      fovDegrees: camera.fov,
+      padding: FOCUS_PADDING,
+      radius,
+    });
   }
 
   return radius * 3 * FOCUS_PADDING;

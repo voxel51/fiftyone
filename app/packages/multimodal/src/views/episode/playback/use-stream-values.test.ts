@@ -1,4 +1,4 @@
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type {
@@ -132,6 +132,89 @@ describe("point cloud destination-time sampling", () => {
 });
 
 describe("point cloud projection lifecycle", () => {
+  it("keeps staggered sibling channel reads in flight without relaunching them", async () => {
+    const lidar = deferred<PointCloudRenderChannelPayload>();
+    const radar = deferred<PointCloudRenderChannelPayload>();
+    const requests: Array<{
+      readonly signal?: AbortSignal;
+      readonly stream: string;
+    }> = [];
+    hookHarness.dataStream = {
+      getStreamCache: () => undefined,
+      getTimelineIndex: () => undefined,
+      readPointCloudChannel: vi.fn((request) => {
+        requests.push(request);
+        return request.stream === "/lidar" ? lidar.promise : radar.promise;
+      }),
+      sourceKey: "source",
+      subscribeToStream: () => () => undefined,
+    } as unknown as DataStream;
+    const lidarFrame = pointCloudFrame();
+    const radarFrame = pointCloudFrame();
+    hookHarness.frames = [
+      { contentTimeNs: 10n, frame: lidarFrame },
+      { contentTimeNs: 20n, frame: radarFrame },
+    ];
+
+    const { result } = renderHook(() =>
+      usePointCloudPlaybackFrames(["/lidar", "/radar"], ["ring", "intensity"]),
+    );
+    await waitFor(() => expect(requests).toHaveLength(2));
+
+    await act(async () => {
+      lidar.resolve({ kind: "none", samplePlanKey: "4:2" });
+      await lidar.promise;
+    });
+    await waitFor(() => expect(result.current[0]?.frame).not.toBe(lidarFrame));
+    expect(requests).toHaveLength(2);
+    expect(requests[1]?.signal?.aborted).toBe(false);
+
+    await act(async () => {
+      radar.resolve({ kind: "none", samplePlanKey: "4:2" });
+      await radar.promise;
+    });
+    await waitFor(() => expect(result.current[1]?.frame).not.toBe(radarFrame));
+    expect(requests).toHaveLength(2);
+  });
+
+  it("aborts only the sibling whose channel option became obsolete", async () => {
+    const requests: Array<{
+      readonly signal?: AbortSignal;
+      readonly stream: string;
+    }> = [];
+    hookHarness.dataStream = {
+      getStreamCache: () => undefined,
+      getTimelineIndex: () => undefined,
+      readPointCloudChannel: vi.fn((request) => {
+        requests.push(request);
+        return new Promise(() => undefined);
+      }),
+      sourceKey: "source",
+      subscribeToStream: () => () => undefined,
+    } as unknown as DataStream;
+    hookHarness.frames = [
+      { contentTimeNs: 10n, frame: pointCloudFrame() },
+      { contentTimeNs: 20n, frame: pointCloudFrame() },
+    ];
+
+    const { rerender } = renderHook(
+      ({ colorBy }: { readonly colorBy: readonly string[] }) =>
+        usePointCloudPlaybackFrames(["/lidar", "/radar"], colorBy),
+      { initialProps: { colorBy: ["ring", "ring"] } },
+    );
+    await waitFor(() => expect(requests).toHaveLength(2));
+
+    rerender({ colorBy: ["intensity", "ring"] });
+    await waitFor(() => expect(requests).toHaveLength(3));
+
+    expect(requests[0]?.stream).toBe("/lidar");
+    expect(requests[0]?.signal?.aborted).toBe(true);
+    expect(requests[1]?.stream).toBe("/radar");
+    expect(requests[1]?.signal?.aborted).toBe(false);
+    expect(requests[2]?.stream).toBe("/lidar");
+    expect(requests[2]?.signal?.aborted).toBe(false);
+  });
+
   it("aborts obsolete color work and the replacement on unmount", async () => {
     const requests: Array<{ readonly signal?: AbortSignal }> = [];
     hookHarness.dataStream = {
@@ -194,4 +277,14 @@ function pointCloudFrame(): PointCloudVisualization {
       sourcePointCount: 4,
     },
   };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, reject, resolve };
 }
