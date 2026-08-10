@@ -28,9 +28,7 @@ export const LOCATION_TRACK_SEGMENT_CHUNK_SIZE = 256;
 
 const NO_FIX_STATUS = -1;
 const MAX_FORWARD_CURSOR_STEPS = 64;
-const TRAILING_HEADING_MAX_POINTS = 32;
 const TRAILING_HEADING_MIN_DISPLACEMENT_M = 1;
-const TRAILING_HEADING_MIN_DIRECTNESS = 0.5;
 
 export interface LocationTrackPoint {
   /** 95% (2σ) horizontal accuracy in meters, when the fix carried one. */
@@ -947,10 +945,9 @@ function locationFromPoint(
 }
 
 /**
- * Estimates a stable course from recent admitted fixes. The endpoint vector
- * must be meaningful relative to the path actually travelled, so stationary
- * jitter and loops remain headingless dots. Only points at or before the
- * resolved location participate.
+ * Estimates course from the previous admitted position to the resolved one.
+ * Only points at or before the resolved location participate, and sub-meter
+ * motion remains a headingless dot.
  */
 function locationWithTrailingHeading(
   points: readonly LocationTrackPoint[],
@@ -965,30 +962,17 @@ function locationWithTrailingHeading(
     end.timeNs === location.timeNs &&
     end.latitude === location.latitude &&
     end.longitude === location.longitude;
-  const storedPointLimit = currentIsStoredPoint
-    ? TRAILING_HEADING_MAX_POINTS
-    : TRAILING_HEADING_MAX_POINTS - 1;
-  const startIndex = Math.max(0, endExclusive - storedPointLimit);
-  const start = points[startIndex];
-
-  let pathDistanceM = 0;
-  for (let index = startIndex + 1; index <= endIndex; index += 1) {
-    pathDistanceM += haversineDistanceMeters(points[index - 1], points[index]);
-  }
-  if (!currentIsStoredPoint) {
-    pathDistanceM += haversineDistanceMeters(end, location);
-  }
-  const displacementM = haversineDistanceMeters(start, location);
+  const previous = currentIsStoredPoint ? points[endIndex - 1] : end;
   if (
-    displacementM < TRAILING_HEADING_MIN_DISPLACEMENT_M ||
-    pathDistanceM <= 0 ||
-    displacementM / pathDistanceM < TRAILING_HEADING_MIN_DIRECTNESS
+    !previous ||
+    haversineDistanceMeters(previous, location) <
+      TRAILING_HEADING_MIN_DISPLACEMENT_M
   ) {
     return { ...location, bearingDeg: undefined };
   }
   return {
     ...location,
-    bearingDeg: bearingDegrees(start, location),
+    bearingDeg: bearingDegrees(previous, location),
   };
 }
 

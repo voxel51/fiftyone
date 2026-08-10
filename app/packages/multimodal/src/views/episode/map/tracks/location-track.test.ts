@@ -382,39 +382,34 @@ describe("indexed location lookup", () => {
     });
   });
 
-  it("estimates heading from recent admitted motion without future fixes", () => {
-    const indexed = indexLocationTrack([
-      {
-        points: [
-          { latitude: 0, longitude: 0, timeNs: 0n },
-          { latitude: 0, longitude: 0.001, timeNs: 1n },
-          { latitude: 0, longitude: 0.002, timeNs: 2n },
-          // This future turn must not affect the heading at 2ns.
-          { latitude: 0.001, longitude: 0.002, timeNs: 3n },
-        ],
-      },
-    ]);
-
-    expect(
-      resolveIndexedLocationAtTime(indexed, 2n).location?.bearingDeg,
-    ).toBeCloseTo(90);
-  });
-
-  it("keeps stationary loops headingless", () => {
+  it("estimates heading from only the last two positions", () => {
     const indexed = indexLocationTrack([
       {
         points: [
           { latitude: 0, longitude: 0, timeNs: 0n },
           { latitude: 0, longitude: 0.001, timeNs: 1n },
           { latitude: 0.001, longitude: 0.001, timeNs: 2n },
-          { latitude: 0.001, longitude: 0, timeNs: 3n },
-          { latitude: 0, longitude: 0, timeNs: 4n },
         ],
       },
     ]);
 
     expect(
-      resolveIndexedLocationAtTime(indexed, 5n).location?.bearingDeg,
+      resolveIndexedLocationAtTime(indexed, 2n).location?.bearingDeg,
+    ).toBeCloseTo(0);
+  });
+
+  it("does not use a future fix to estimate heading", () => {
+    const indexed = indexLocationTrack([
+      {
+        points: [
+          { latitude: 0, longitude: 0, timeNs: 0n },
+          { latitude: 0, longitude: 0.001, timeNs: 1n },
+        ],
+      },
+    ]);
+
+    expect(
+      resolveIndexedLocationAtTime(indexed, 0n).location?.bearingDeg,
     ).toBeUndefined();
   });
 
