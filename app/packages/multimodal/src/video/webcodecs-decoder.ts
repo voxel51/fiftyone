@@ -34,7 +34,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
   private decoder: VideoDecoder | null = null;
   private failed: Error | null = null;
   private lastOutputTimeNs: bigint | null = null;
-  private nextSubmissionTimestampUs = 0;
+  private lastSubmissionTimestampUs: number | null = null;
   private readonly pending: PendingOutput[] = [];
   private pps: Uint8Array | undefined;
   private sps: Uint8Array | undefined;
@@ -263,11 +263,15 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
       pps: unit.frame.h264.pps ? undefined : this.pps,
       sps: unit.frame.h264.sps ? undefined : this.sps,
     });
-    // WebCodecs correlates output through the chunk timestamp. Source
-    // nanoseconds can collide when truncated to microseconds, so give every
-    // submission its own monotonic internal timestamp and retain the original
-    // nanoseconds in PendingOutput for cursor semantics.
-    const submissionTimestampUs = this.nextSubmissionTimestampUs++;
+    // Preserve source PTS for browser-level observability. Adjacent source
+    // nanoseconds can collide when truncated to WebCodecs microseconds, so
+    // nudge only collisions forward while preserving monotonic decode order.
+    const sourceTimestampUs = Number(unit.timeNs / 1_000n);
+    const submissionTimestampUs =
+      this.lastSubmissionTimestampUs === null
+        ? sourceTimestampUs
+        : Math.max(sourceTimestampUs, this.lastSubmissionTimestampUs + 1);
+    this.lastSubmissionTimestampUs = submissionTimestampUs;
     return new Promise<VideoFrame | undefined>((resolve, reject) => {
       const pending: PendingOutput = {
         reject,
@@ -354,6 +358,7 @@ export class WebCodecsH264Decoder implements VideoDecoderActor {
     this.decoder = null;
     this.codecString = null;
     this.lastOutputTimeNs = null;
+    this.lastSubmissionTimestampUs = null;
   }
 }
 

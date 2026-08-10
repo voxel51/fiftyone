@@ -125,7 +125,7 @@ describe("WebCodecsH264Decoder", () => {
     const timestamps = harness.instances[0].decode.mock.calls.map(
       ([chunk]) => (chunk as { readonly timestamp: number }).timestamp,
     );
-    expect(new Set(timestamps).size).toBe(2);
+    expect(timestamps).toEqual([1, 2]);
     expect(actor.cursorTimeNs).toBe(1_999n);
     output.close();
     actor.close();
