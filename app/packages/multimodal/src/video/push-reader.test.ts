@@ -72,6 +72,18 @@ describe("PushVideoAccessUnitReader", () => {
     ).rejects.toBeInstanceOf(VideoIntentCancelledError);
   });
 
+  it("reports whether a retained keyframe can bootstrap a target", () => {
+    const reader = new PushVideoAccessUnitReader();
+    reader.push("camera", unit(2));
+
+    expect(reader.hasRetainedKeyframeAtOrBefore("camera", 2n)).toBe(false);
+    reader.push("camera", unit(3, true));
+    expect(reader.hasRetainedKeyframeAtOrBefore("camera", 2n)).toBe(false);
+    expect(reader.hasRetainedKeyframeAtOrBefore("camera", 3n)).toBe(true);
+    reader.push("camera", unit(4));
+    expect(reader.hasRetainedKeyframeAtOrBefore("camera", 4n)).toBe(true);
+  });
+
   it("bounds replacements and reports a truncated read budget", async () => {
     const reader = new PushVideoAccessUnitReader(2, 1_024);
     reader.push("camera", unit(0, true));

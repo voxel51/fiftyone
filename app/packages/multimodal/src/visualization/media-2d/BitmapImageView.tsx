@@ -529,12 +529,20 @@ function BitmapEncodedVideoView({
     ownedManager?.key === previewTextureKey ? ownedManager.manager : null;
   const manager = contextManager ?? localManager;
   const targetTimeNs = frame.timestampNs ?? null;
+  const hasPrivateRunway =
+    targetTimeNs !== null &&
+    (frame.keyframe ||
+      ownedManager?.reader.hasRetainedKeyframeAtOrBefore(
+        previewTextureKey,
+        targetTimeNs,
+      ) === true);
   useEffect(() => {
     if (
       contextManager ||
       ownedManager?.key !== previewTextureKey ||
       frame.codec !== "h264" ||
-      targetTimeNs === null
+      targetTimeNs === null ||
+      !hasPrivateRunway
     ) {
       return;
     }
@@ -542,9 +550,19 @@ function BitmapEncodedVideoView({
       frame,
       timeNs: targetTimeNs,
     });
-  }, [contextManager, frame, ownedManager, previewTextureKey, targetTimeNs]);
+  }, [
+    contextManager,
+    frame,
+    hasPrivateRunway,
+    ownedManager,
+    previewTextureKey,
+    targetTimeNs,
+  ]);
   const snapshot = useVideoStreamPresentation({
-    enabled: frame.codec === "h264" && targetTimeNs !== null,
+    enabled:
+      frame.codec === "h264" &&
+      targetTimeNs !== null &&
+      (contextManager !== null || hasPrivateRunway),
     frame: frame.codec === "h264" ? frame : null,
     manager,
     priority: "visible",
@@ -600,10 +618,30 @@ function BitmapEncodedVideoView({
       );
       return;
     }
+    if (
+      frame.codec === "h264" &&
+      targetTimeNs !== null &&
+      contextManager === null &&
+      localManager !== null &&
+      !hasPrivateRunway
+    ) {
+      onErrorRef.current?.(
+        new Error("H.264 preview is waiting for a keyframe"),
+      );
+      return;
+    }
     if (snapshot.diagnostic?.severity === "error") {
       onErrorRef.current?.(new Error(snapshot.diagnostic.message));
     }
-  }, [frame.codec, onErrorRef, snapshot.diagnostic, targetTimeNs]);
+  }, [
+    contextManager,
+    frame.codec,
+    hasPrivateRunway,
+    localManager,
+    onErrorRef,
+    snapshot.diagnostic,
+    targetTimeNs,
+  ]);
 
   useEffect(
     () => () => {

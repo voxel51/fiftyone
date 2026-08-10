@@ -641,6 +641,43 @@ describe("BitmapImageFrameView", () => {
     expect(decoder.instances[0].close).toHaveBeenCalledOnce();
   });
 
+  it("waits for a keyframe before bootstrapping a private preview", async () => {
+    const decoder = stubVideoDecoder();
+    stubElementSize(100, 50);
+    sharedMockContext();
+    const onError = vi.fn();
+    const onImageLoaded = vi.fn();
+
+    const rendered = render(
+      <BitmapImageFrameView
+        frame={deltaVideoFrame()}
+        onError={onError}
+        onImageLoaded={onImageLoaded}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(onError).toHaveBeenCalledWith(
+        new Error("H.264 preview is waiting for a keyframe"),
+      ),
+    );
+    expect(decoder.instances).toHaveLength(0);
+    expect(onImageLoaded).not.toHaveBeenCalled();
+
+    rendered.rerender(
+      <BitmapImageFrameView
+        frame={videoFrame()}
+        onError={onError}
+        onImageLoaded={onImageLoaded}
+      />,
+    );
+    await waitFor(() => expect(onImageLoaded).toHaveBeenCalledTimes(1));
+    expect(decoder.instances).toHaveLength(1);
+    expect(decoder.instances[0].decodeCalls.map((chunk) => chunk.type)).toEqual(
+      ["key"],
+    );
+  });
+
   it("releases the preview decoder when its source/stream key changes", async () => {
     const decoder = stubVideoDecoder();
     stubElementSize(100, 50);

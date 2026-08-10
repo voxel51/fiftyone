@@ -64,6 +64,20 @@ export class PushVideoAccessUnitReader implements VideoAccessUnitReader {
     return this.units;
   }
 
+  hasRetainedKeyframeAtOrBefore(stream: string, timeNs: bigint): boolean {
+    const history = this.streams.get(stream);
+    if (!history) return false;
+    for (
+      let index = lowerBound(history.sortedTimes, timeNs + 1n) - 1;
+      index >= 0;
+      index -= 1
+    ) {
+      const entry = history.entries.get(history.sortedTimes[index]);
+      if (entry?.unit.frame.keyframe) return true;
+    }
+    return false;
+  }
+
   push(stream: string, unit: H264AccessUnit): void {
     let history = this.streams.get(stream);
     if (!history) {
