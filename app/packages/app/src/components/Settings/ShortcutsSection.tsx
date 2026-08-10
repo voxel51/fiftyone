@@ -4,10 +4,13 @@
 
 import type { Overlap, OverlapKind, ResolvedBinding } from "@fiftyone/keymap";
 import {
+  LEGACY_OWNER_LABELS,
   PRESETS,
   formatChord,
   fromDocument,
   hasKeyboardLayout,
+  isRemappable,
+  notYetMigrated,
   scopeLabel,
   shortcutActiveOnlyAtom,
   shortcutConflictsOnlyAtom,
@@ -161,11 +164,26 @@ const ShortcutRow: React.FC<{
               scope not active
             </Typography>
           )}
-          {reachable && !bound && (
+          {reachable && !bound && !entry.legacyOwner && (
             <Tooltip title="Declared in the manifest, but nothing is currently listening. The row is still listed and still editable — that is the point of separating declaration from binding.">
               <Typography variant="caption" color="text.disabled">
                 no handler mounted
               </Typography>
+            </Tooltip>
+          )}
+          {entry.legacyOwner && (
+            <Tooltip
+              title={`This key works, but ${
+                LEGACY_OWNER_LABELS[entry.legacyOwner]
+              } still dispatches it rather than the keymap. Rebinding is disabled because the override would be saved and then ignored. Migrating it here is what makes the row editable.`}
+            >
+              <Chip
+                size="small"
+                variant="outlined"
+                color="info"
+                label={`via ${entry.legacyOwner}`}
+                sx={{ height: 18, fontSize: "0.65rem" }}
+              />
             </Tooltip>
           )}
           {source === "preset" && (
@@ -251,14 +269,22 @@ const ShortcutRow: React.FC<{
           ))
         )}
 
-        {entry.remappable === false ? (
-          <Tooltip title="Not remappable by design. Escape is arbitrated by the dismissal stack, not bound as an ordinary shortcut.">
+        {!isRemappable(entry) ? (
+          <Tooltip
+            title={
+              entry.legacyOwner
+                ? `Not remappable until this command moves onto the keymap; ${
+                    LEGACY_OWNER_LABELS[entry.legacyOwner]
+                  } would ignore the override.`
+                : "Not remappable by design. Escape is arbitrated by the dismissal stack, not bound as an ordinary shortcut."
+            }
+          >
             <Typography
               variant="caption"
               color="text.disabled"
               sx={{ px: 0.5 }}
             >
-              fixed
+              {entry.legacyOwner ? "not yet" : "fixed"}
             </Typography>
           </Tooltip>
         ) : (
@@ -342,6 +368,10 @@ const ShortcutsSection: React.FC = () => {
         .filter((overlap) => overlap.kind === "conflict").length / 2,
     [view.overlaps],
   );
+
+  // Counted from the manifest rather than the filtered rows: it's a statement
+  // about the app, not about what the search box is currently showing.
+  const legacyCount = useMemo(() => notYetMigrated().length, []);
 
   const groups = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -525,6 +555,16 @@ const ShortcutsSection: React.FC = () => {
           {conflictCount} true conflict{conflictCount === 1 ? "" : "s"} — same
           key, same scope. Shadowing across scopes is listed separately and is
           legal.
+        </Alert>
+      )}
+
+      {legacyCount > 0 && (
+        <Alert severity="info" sx={{ py: 0 }}>
+          {legacyCount} command{legacyCount === 1 ? "" : "s"} listed here{" "}
+          {legacyCount === 1 ? "is" : "are"} still dispatched by an older key
+          handler. {legacyCount === 1 ? "It works" : "They work"}, but{" "}
+          {legacyCount === 1 ? "it can" : "they can"}'t be rebound until the
+          owning code moves onto the keymap.
         </Alert>
       )}
 

@@ -32,8 +32,7 @@ export function EmbeddingsPlot({
   const fieldColorscale =
     (
       colorscheme.colorscales.find((item) => item.path === labelField) as
-        | WithRgb
-        | undefined
+        WithRgb | undefined
     )?.rgb ??
     (colorscheme.defaultColorscale as WithRgb)?.rgb ??
     configColorscale;
@@ -68,14 +67,19 @@ export function EmbeddingsPlot({
   // Escape is a dismissal layer, not a binding: it clears the selection if
   // there is one, otherwise resets the zoom, otherwise declines so an outer
   // layer (the modal, the grid) gets it instead of everyone firing at once.
-  useDismissable("embeddings-plot", "Embeddings selection", "panel.embeddings", () => {
-    if (hasSelection) {
-      clearSelection();
+  useDismissable(
+    "embeddings-plot",
+    "Embeddings selection",
+    "panel.embeddings",
+    () => {
+      if (hasSelection) {
+        clearSelection();
+        return true;
+      }
+      resetZoom();
       return true;
-    }
-    resetZoom();
-    return true;
-  });
+    },
+  );
 
   if (labelSelectorLoading || isLoading || !traces)
     return <Loading>Pixelating...</Loading>;

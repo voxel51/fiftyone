@@ -25,10 +25,7 @@ import {
   useRecoilValueLoadable,
   useSetRecoilState,
 } from "recoil";
-import {
-  RESOLVE_INPUT_VALIDATION_TTL,
-  RESOLVE_TYPE_TTL,
-} from "./constants";
+import { RESOLVE_INPUT_VALIDATION_TTL, RESOLVE_TYPE_TTL } from "./constants";
 import {
   ExecutionContext,
   InvocationRequestQueue,

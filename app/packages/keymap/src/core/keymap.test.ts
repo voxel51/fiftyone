@@ -3,14 +3,24 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { formatChord, parseChord } from "./chords";
+import {
+  formatChord,
+  isModifierCode,
+  parseChord,
+  tryParseChord,
+} from "./chords";
 import { describeKeys } from "./layout";
 import { analyzeOverlaps, trueConflicts } from "./conflicts";
-import { lookupCommand } from "./manifest";
+import {
+  MANIFEST,
+  isRemappable,
+  lookupCommand,
+  notYetMigrated,
+} from "./manifest";
 import { DismissalStack } from "./dismiss";
-import { resolveKeymap } from "./overrides";
+import { DEFAULT_PRESET, PRESETS, resolveKeymap } from "./overrides";
 import { KeymapRegistry, keymap } from "./registry";
-import { isAncestorScope, scopeDepth } from "./scopes";
+import { SCOPE_PARENTS, isAncestorScope, scopeDepth } from "./scopes";
 
 const press = (
   code: string,
@@ -405,9 +415,17 @@ describe("held bindings (F9)", () => {
   });
 
   const shiftDown = () =>
-    new KeyboardEvent("keydown", { code: "ShiftLeft", shiftKey: true, bubbles: true });
+    new KeyboardEvent("keydown", {
+      code: "ShiftLeft",
+      shiftKey: true,
+      bubbles: true,
+    });
   const shiftUp = () =>
-    new KeyboardEvent("keyup", { code: "ShiftLeft", shiftKey: false, bubbles: true });
+    new KeyboardEvent("keyup", {
+      code: "ShiftLeft",
+      shiftKey: false,
+      bubbles: true,
+    });
 
   it("reports press and release", () => {
     const changes: boolean[] = [];
@@ -470,5 +488,190 @@ describe("held bindings (F9)", () => {
 
     document.dispatchEvent(shiftDown());
     expect(changes).toEqual([]);
+  });
+});
+
+/**
+ * The gate the design doc's §4.7 asks for: because the manifest is static, a
+ * true conflict is knowable without running the app, so CI can refuse one
+ * rather than leaving a user to discover that a key does nothing.
+ *
+ * Only same-scope collisions count. Shadowing across scopes is legal and
+ * expected — it is what scoping is *for* — so gating on it would fail the build
+ * for correct code and the gate would be deleted within a week.
+ */
+describe("manifest integrity", () => {
+  const demoOnly = (id: string) => id.startsWith("demo.");
+
+  it("ships no true conflicts outside the demo route", () => {
+    const conflicts = trueConflicts(
+      analyzeOverlaps(resolveKeymap(DEFAULT_PRESET, {})),
+    ).filter((overlap) => !demoOnly(overlap.otherId));
+
+    expect(conflicts).toEqual([]);
+  });
+
+  it("keeps the demo's deliberate conflict, since the pane needs one to render", () => {
+    const conflicts = trueConflicts(
+      analyzeOverlaps(resolveKeymap(DEFAULT_PRESET, {})),
+    ).filter((overlap) => demoOnly(overlap.otherId));
+
+    expect(conflicts.map((overlap) => overlap.otherId).sort()).toEqual([
+      "demo.canvas.draw",
+      "demo.canvas.duplicate",
+    ]);
+  });
+
+  it("ships no conflicts under any preset either", () => {
+    // A preset rebinds commands wholesale, so it is exactly the thing that can
+    // introduce a collision nobody notices — the defaults stay clean while the
+    // preset quietly breaks a key.
+    for (const presetName of Object.keys(PRESETS)) {
+      const conflicts = trueConflicts(
+        analyzeOverlaps(resolveKeymap(presetName, {})),
+      ).filter((overlap) => !demoOnly(overlap.otherId));
+
+      expect({ presetName, conflicts }).toEqual({ presetName, conflicts: [] });
+    }
+  });
+
+  it("gives every command a scope that exists in the tree", () => {
+    const unknown = MANIFEST.filter(
+      (entry) => !(entry.scope in SCOPE_PARENTS),
+    ).map((entry) => entry.id);
+
+    expect(unknown).toEqual([]);
+  });
+
+  it("parses every default key it declares", () => {
+    const unparseable = MANIFEST.flatMap((entry) =>
+      entry.defaultKeys
+        .filter((key) => tryParseChord(key) === null)
+        .map((key) => `${entry.id}:${key}`),
+    );
+
+    expect(unparseable).toEqual([]);
+  });
+
+  it("only lets a holdable command declare a bare modifier", () => {
+    // A non-holdable binding on `ShiftLeft` can never fire, because exact
+    // modifier matching means the chord would have to match a state it created.
+    const bad = MANIFEST.filter(
+      (entry) =>
+        !entry.holdable &&
+        entry.defaultKeys.some((key) =>
+          isModifierCode(parseChord(key, { allowModifierKey: true }).code),
+        ),
+    ).map((entry) => entry.id);
+
+    expect(bad).toEqual([]);
+  });
+
+  it("refuses to offer a rebind for a command another system dispatches", () => {
+    // The override would be written, persisted, and then ignored by whatever is
+    // actually listening — the pane's worst possible failure mode, because the
+    // user's own change is what appears to be broken.
+    for (const entry of notYetMigrated()) {
+      expect({ id: entry.id, remappable: isRemappable(entry) }).toEqual({
+        id: entry.id,
+        remappable: false,
+      });
+    }
+  });
+});
+
+describe("legacy-owned commands", () => {
+  let registry: KeymapRegistry;
+
+  beforeEach(() => {
+    registry?.dispose();
+    localStorage.clear();
+    registry = keymap();
+  });
+
+  it("reports them as legacy-owned rather than unbound", () => {
+    registry.pushScope("modal");
+    const candidates = registry.explain(press("KeyF"));
+    const fullscreen = candidates.find(
+      (candidate) => candidate.entry.id === "fo.modal.fullscreen.toggle",
+    );
+
+    expect(fullscreen?.status).toBe("legacy-owned");
+  });
+
+  it("does not consume the event, so the owning system still sees it", () => {
+    registry.pushScope("modal");
+    const event = press("KeyF");
+    document.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("still reports a plain unbound command as unbound", () => {
+    registry.pushScope("modal");
+    // Migrated onto the bus, so nothing else owns it — with no handler mounted
+    // it is genuinely unbound.
+    const candidates = registry.explain(press("ArrowRight"));
+    const next = candidates.find(
+      (candidate) => candidate.entry.id === "fo.modal.next.sample",
+    );
+
+    expect(next?.status).toBe("unbound");
+  });
+});
+
+describe("arrow keys", () => {
+  let registry: KeymapRegistry;
+
+  beforeEach(() => {
+    registry?.dispose();
+    localStorage.clear();
+    registry = keymap();
+  });
+
+  it("dispatches sample navigation and repeats while held", () => {
+    const next = vi.fn();
+    registry.bind("fo.modal.next.sample", next);
+    registry.pushScope("modal");
+
+    document.dispatchEvent(press("ArrowRight"));
+    document.dispatchEvent(press("ArrowRight", {}, { repeat: true }));
+
+    expect(next).toHaveBeenCalledTimes(2);
+  });
+
+  it("labels arrows layout-independently, so getLayoutMap can't move them", () => {
+    expect(describeKeys(["ArrowLeft"])).toBe("←");
+    expect(describeKeys(["ArrowUp"])).toBe("↑");
+  });
+
+  it("keeps modal arrows and operator-browser arrows apart by scope", () => {
+    const sample = vi.fn();
+    const operator = vi.fn();
+    registry.bind("fo.modal.next.sample", sample);
+    registry.bind("fo.operator-browser.next", operator);
+    registry.pushScope("modal");
+
+    document.dispatchEvent(press("ArrowRight"));
+    expect(sample).toHaveBeenCalledTimes(1);
+    expect(operator).not.toHaveBeenCalled();
+
+    registry.pushScope("overlay");
+    registry.pushScope("overlay.operator-browser");
+    document.dispatchEvent(press("ArrowDown"));
+    expect(operator).toHaveBeenCalledTimes(1);
+  });
+
+  it("survives the no-arrow-keys preset by moving, not disappearing", () => {
+    const next = vi.fn();
+    registry.bind("fo.modal.next.sample", next);
+    registry.pushScope("modal");
+    registry.setPreset("no-arrow-keys");
+
+    document.dispatchEvent(press("ArrowRight"));
+    expect(next).not.toHaveBeenCalled();
+
+    document.dispatchEvent(press("Quote"));
+    expect(next).toHaveBeenCalledTimes(1);
   });
 });

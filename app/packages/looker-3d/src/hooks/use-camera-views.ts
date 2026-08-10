@@ -1,4 +1,5 @@
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
+import { useKeyBinding } from "@fiftyone/keymap";
 import * as fos from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect } from "react";
@@ -259,29 +260,13 @@ export const useCameraViews = ({
         return;
       }
 
-      if (
-        !event.metaKey &&
-        event.code === "KeyT" &&
-        !shouldReserveTForTransform
-      ) {
-        setCameraViewStatus({
-          viewName: "Top view",
-          timestamp: Date.now(),
-        });
-        event.preventDefault();
-        window.dispatchEvent(new CustomEvent(SET_TOP_VIEW_EVENT));
-        return;
-      }
-
-      if (!event.metaKey && event.code === "KeyE") {
-        setCameraViewStatus({
-          viewName: "Ego view",
-          timestamp: Date.now(),
-        });
-        event.preventDefault();
-        window.dispatchEvent(new CustomEvent(SET_EGO_VIEW_EVENT));
-        return;
-      }
+      // Top view (KeyT) and ego view (KeyE) are handled by the keymap bus
+      // below, not here. They were the two camera views declared in the command
+      // manifest, and leaving them in this listener meant the shortcuts pane
+      // listed keys that worked while claiming nothing was bound to them. The
+      // remaining views (crop, background, the axis digits) are still handled
+      // here and deliberately not declared, so the pane makes no claim about
+      // them at all.
 
       // exclude ctrlKey so Windows Ctrl+Z falls through to undo
       if (!event.metaKey && !event.ctrlKey && event.code === "KeyZ") {
@@ -448,13 +433,32 @@ export const useCameraViews = ({
       setCameraViewStatus,
       annotationPlane,
       enableAnnotationPlaneCameraView,
-      shouldReserveTForTransform,
       selectedLabelForAnnotation,
       setIsFo3dBackgroundOn,
       workingLabel,
       cameraControlsRef,
     ],
   );
+
+  const topView = useCallback(() => {
+    setCameraViewStatus({ viewName: "Top view", timestamp: Date.now() });
+    window.dispatchEvent(new CustomEvent(SET_TOP_VIEW_EVENT));
+  }, [setCameraViewStatus]);
+
+  const egoView = useCallback(() => {
+    setCameraViewStatus({ viewName: "Ego view", timestamp: Date.now() });
+    window.dispatchEvent(new CustomEvent(SET_EGO_VIEW_EVENT));
+  }, [setCameraViewStatus]);
+
+  // The `!event.metaKey` guards these used to carry are gone because they are
+  // now redundant: the bus matches modifiers exactly, so a binding on `KeyT`
+  // declines `Cmd+T` rather than having to check for it. The T-vs-transform
+  // reservation survives as an enablement predicate, which is the same
+  // condition expressed where the pane can see it.
+  useKeyBinding("fo.modal.3d.view.top", topView, {
+    enablement: () => !shouldReserveTForTransform,
+  });
+  useKeyBinding("fo.modal.3d.view.ego", egoView);
 
   // This effect registers and cleans up keyboard shortcuts for camera views.
   useEffect(() => {

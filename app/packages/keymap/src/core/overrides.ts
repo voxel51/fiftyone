@@ -57,6 +57,14 @@ export const PRESETS: Record<
       "fo.modal.next.sample": ["KeyF"],
       "fo.modal.previous.sample": ["KeyD"],
       "fo.modal.sidebar.toggle": ["KeyB"],
+      /**
+       * Moved because CVAT's F is next-sample, and leaving fullscreen on F
+       * would put two commands on one key in one scope — a true conflict, not
+       * shadowing. The manifest-integrity test caught it, which is the case
+       * that gate exists for: a preset rebinds in bulk, so it is exactly where
+       * a collision hides. F11 is the platform convention anyway.
+       */
+      "fo.modal.fullscreen.toggle": ["F11"],
     },
   },
 };

@@ -56,6 +56,8 @@ export type CandidateStatus =
   | "would-fire"
   | "scope-inactive"
   | "unbound"
+  /** Declared here, still dispatched by the system named in `legacyOwner`. */
+  | "legacy-owned"
   | "disabled"
   | "suppressed-in-text-input"
   | "suppressed-not-repeatable"
@@ -403,7 +405,9 @@ export class KeymapRegistry {
         const bindings = this.bindings.get(entry.id) ?? [];
         const enabled = bindings.filter((binding) => binding.enablement());
         if (bindings.length === 0) {
-          status = "unbound";
+          // A legacy-owned command still works — just not through here. Saying
+          // "unbound" would be the pane's most misleading possible answer.
+          status = entry.legacyOwner ? "legacy-owned" : "unbound";
         } else if (enabled.length === 0) {
           status = "disabled";
         } else if (winnerFound) {
@@ -470,7 +474,13 @@ export class KeymapRegistry {
       this.setHeld(commandId, false);
     }
     // Releasing a modifier can strand a hold whose chord required it.
-    if (this.held.size && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    if (
+      this.held.size &&
+      !event.shiftKey &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
       for (const commandId of [...this.held]) {
         const entry = MANIFEST_BY_ID.get(commandId);
         if (!entry) {

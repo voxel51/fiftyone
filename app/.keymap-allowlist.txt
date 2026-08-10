@@ -1,0 +1,55 @@
+# Shrinking allow-list for the keyboard-shortcuts consolidation.
+#
+# Every file here still attaches its own keydown/keyup listener to document,
+# window, or an element. The keymap design doc's §4.1 requires a single
+# capture-phase listener owned by @fiftyone/keymap, and the reason is concrete:
+# the old bus listens on the bubble phase, so its stopPropagation() cannot stop
+# these siblings, and three separate authors independently worked around that
+# with {capture: true} and stopImmediatePropagation().
+#
+# The eslint rule that reads this file warns on any new listener outside the
+# list. Remove entries as their owners migrate onto useKeyBinding /
+# useDismissable; do not add to it.
+#
+# The old command bus, which still owns the keys marked `legacyOwner:
+# "@fiftyone/commands"` in the manifest.
+packages/commands/src/context/CommandContextManager.ts
+
+# Looker and lighter: the largest remaining consumers, and P2's real work.
+packages/lighter/src/core/Scene2D.ts
+packages/lighter/src/interaction/InteractionManager.ts
+packages/flashlight/src/index.ts
+
+# 3D annotation — the priority 100/200/300 Escape ladder and the transform
+# gizmos. Blocked on the regression baseline the design doc's §5 asks for.
+packages/looker-3d/src/annotation/AnnotationPlane.tsx
+packages/looker-3d/src/annotation/CreateCuboidRenderer.tsx
+packages/looker-3d/src/annotation/PolylinePointMarker.tsx
+packages/looker-3d/src/annotation/SegmentPolylineRenderer.tsx
+packages/looker-3d/src/annotation/annotation-toolbar/useAnnotationActions.tsx
+packages/looker-3d/src/labels/index.tsx
+packages/looker-3d/src/labels/shared/TransformControls.tsx
+
+# Camera views: KeyT and KeyE are on the bus; crop, background and the axis
+# digits are still handled here and deliberately not declared in the manifest.
+packages/looker-3d/src/hooks/use-camera-views.ts
+
+# Playback and temporal tagging.
+packages/playback/src/views/TemporalTag/TemporalTagButton.tsx
+packages/playback/src/views/TemporalTag/TemporalTagPopup.tsx
+packages/playback/src/views/TemporalTag/TemporalTagRangeOverlay.tsx
+
+# Multimodal / MCAP, including one of the two capture-phase Escape hacks.
+packages/multimodal/src/adapters/mcap/react/McapMapTile.tsx
+packages/multimodal/src/adapters/mcap/react/mcap-selected-object.ts
+packages/multimodal/src/adapters/mcap/react/use-mcap-3d-view-shortcuts.ts
+packages/multimodal/src/adapters/mcap/react/use-mcap-3d-view-shortcuts.test.tsx
+packages/multimodal/src/visualization/panels/point-cloud/PointCloudPanel.tsx
+
+# Assorted single-key Escape and shortcut handlers.
+packages/components/src/components/JSONPanel/JSONPanel.tsx
+packages/core/src/components/Modal/TooltipInfo.tsx
+packages/core/src/components/Sidebar/ViewSelection/index.tsx
+packages/core/src/plugins/SchemaIO/components/DashboardView.tsx
+packages/embeddings-v2/src/useSelectionBridge.ts
+packages/operators/src/OperatorPalette.tsx

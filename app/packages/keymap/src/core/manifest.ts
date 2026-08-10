@@ -42,13 +42,55 @@ export interface CommandManifestEntry {
   /** Declares that the handler may decline at runtime, so the pane can say
    * "conditional" instead of lying about what the key does (§4.3). */
   mayDecline?: boolean;
+  /**
+   * The system still handling this key, for commands declared here but not yet
+   * migrated onto the bus.
+   *
+   * Without this the pane lies in the most damaging direction available: the
+   * key works, and the pane says "unbound". Worse, the row offers a rebind that
+   * silently does nothing, because the system actually listening has never
+   * heard of the override. Declaring the owner lets the pane show the real key,
+   * say who owns it, and refuse the rebind — which is honest, and doubles as
+   * the migration checklist.
+   */
+  legacyOwner?: LegacyOwner;
 }
+
+/** Systems that still own keys the manifest declares. */
+export type LegacyOwner =
+  "@fiftyone/commands" | "@fiftyone/looker" | "annotation" | "raw-listener";
+
+export const LEGACY_OWNER_LABELS: Record<LegacyOwner, string> = {
+  "@fiftyone/commands": "the legacy command bus",
+  "@fiftyone/looker": "looker's ControlMap",
+  annotation: "the annotation action hooks",
+  "raw-listener": "a raw document listener",
+};
+
+/**
+ * Whether the shortcuts pane may offer a rebind. A legacy-owned command is not
+ * remappable *yet* for a mechanical reason rather than a design one: the
+ * override would be written and persisted, and the system actually listening
+ * would carry on using its hardcoded key.
+ */
+export const isRemappable = (entry: CommandManifestEntry): boolean =>
+  entry.remappable !== false && entry.legacyOwner === undefined;
+
+/** Declared but not yet dispatched by the bus — the P2 migration checklist. */
+export const notYetMigrated = (): readonly CommandManifestEntry[] =>
+  MANIFEST.filter((entry) => entry.legacyOwner !== undefined);
 
 /**
  * A representative slice of the ~120 bindings inventoried in the doc's
  * Appendix A — enough to exercise every case the settings pane has to render,
- * not an exhaustive port. Nothing here is wired to a real handler; this POC is
- * about the editing and conflict surface, not the migration.
+ * not an exhaustive port.
+ *
+ * Entries fall into two groups. Most are bound to a real handler through
+ * `useKeyBinding`, and the bus is what dispatches them. The rest carry a
+ * `legacyOwner`: declared so the pane can list them, still dispatched by the
+ * system named there until P2 migrates it. Removing a `legacyOwner` is the last
+ * step of migrating that command, and the count of them is the honest measure
+ * of how far the migration has actually got.
  */
 export const MANIFEST: CommandManifestEntry[] = [
   // ── Application ──────────────────────────────────────────────────────────
@@ -59,6 +101,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Application",
     scope: "app",
     defaultKeys: ["ctrl+KeyZ", "meta+KeyZ"],
+    legacyOwner: "@fiftyone/commands",
   },
   {
     id: "fo.redo",
@@ -67,6 +110,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Application",
     scope: "app",
     defaultKeys: ["ctrl+shift+KeyZ", "meta+shift+KeyZ", "meta+KeyY"],
+    legacyOwner: "@fiftyone/commands",
   },
   {
     id: "fo.dismiss",
@@ -134,6 +178,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Grid",
     scope: "grid",
     defaultKeys: ["ctrl+KeyS", "meta+KeyS"],
+    legacyOwner: "raw-listener",
   },
 
   // ── Sample viewer ────────────────────────────────────────────────────────
@@ -143,6 +188,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Sample viewer",
     scope: "modal",
     defaultKeys: ["KeyF"],
+    legacyOwner: "@fiftyone/commands",
   },
   {
     id: "fo.modal.sidebar.toggle",
@@ -151,6 +197,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Sample viewer",
     scope: "modal",
     defaultKeys: ["KeyS"],
+    legacyOwner: "@fiftyone/commands",
   },
   {
     id: "fo.modal.select",
@@ -158,6 +205,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Sample viewer",
     scope: "modal",
     defaultKeys: ["KeyX"],
+    legacyOwner: "@fiftyone/commands",
   },
   {
     id: "fo.modal.next.sample",
@@ -181,6 +229,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Sample viewer",
     scope: "modal",
     defaultKeys: ["KeyR"],
+    legacyOwner: "@fiftyone/looker",
   },
   {
     id: "fo.modal.controls.toggle",
@@ -196,6 +245,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Sample viewer",
     scope: "modal",
     defaultKeys: ["KeyJ"],
+    legacyOwner: "@fiftyone/looker",
   },
   {
     id: "fo.modal.help",
@@ -203,6 +253,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Sample viewer",
     scope: "modal",
     defaultKeys: ["Slash", "shift+Slash"],
+    legacyOwner: "@fiftyone/looker",
   },
   {
     id: "fo.modal.overlays.hide",
@@ -214,6 +265,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     defaultKeys: ["ShiftLeft", "ShiftRight"],
     holdable: true,
     remappable: false,
+    legacyOwner: "@fiftyone/looker",
   },
 
   // ── Video ────────────────────────────────────────────────────────────────
@@ -223,6 +275,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Video",
     scope: "modal.video",
     defaultKeys: ["Space"],
+    legacyOwner: "@fiftyone/commands",
   },
   {
     id: "fo.modal.step.forward",
@@ -231,6 +284,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     scope: "modal.video",
     defaultKeys: ["Period"],
     repeatable: true,
+    legacyOwner: "@fiftyone/commands",
   },
   {
     id: "fo.modal.step.back",
@@ -239,6 +293,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     scope: "modal.video",
     defaultKeys: ["Comma"],
     repeatable: true,
+    legacyOwner: "@fiftyone/commands",
   },
   {
     id: "fo.modal.video.mute",
@@ -246,6 +301,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Video",
     scope: "modal.video",
     defaultKeys: ["KeyM"],
+    legacyOwner: "@fiftyone/looker",
   },
   {
     id: "fo.modal.video.temporal-tag",
@@ -253,6 +309,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Video",
     scope: "modal.video",
     defaultKeys: ["shift+KeyT"],
+    legacyOwner: "raw-listener",
   },
 
   // ── 3D ───────────────────────────────────────────────────────────────────
@@ -308,6 +365,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Annotate",
     scope: "modal.annotate",
     defaultKeys: ["Delete", "Backspace"],
+    legacyOwner: "annotation",
   },
   {
     id: "fo.modal.annotate.keyframe",
@@ -315,6 +373,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Annotate",
     scope: "modal.annotate",
     defaultKeys: ["KeyK"],
+    legacyOwner: "annotation",
   },
 
   // ── Annotate ▸ Segmentation ──────────────────────────────────────────────
@@ -324,6 +383,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Annotate ▸ Segmentation",
     scope: "modal.annotate.segmentation",
     defaultKeys: ["KeyB"],
+    legacyOwner: "annotation",
   },
   {
     id: "fo.modal.annotate.seg.tool.pen",
@@ -331,6 +391,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Annotate ▸ Segmentation",
     scope: "modal.annotate.segmentation",
     defaultKeys: ["KeyP"],
+    legacyOwner: "annotation",
   },
   {
     id: "fo.modal.annotate.seg.brush.shape",
@@ -338,6 +399,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Annotate ▸ Segmentation",
     scope: "modal.annotate.segmentation",
     defaultKeys: ["KeyS"],
+    legacyOwner: "annotation",
   },
   {
     id: "fo.modal.annotate.seg.brush.smaller",
@@ -346,6 +408,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     scope: "modal.annotate.segmentation",
     defaultKeys: ["BracketLeft"],
     repeatable: true,
+    legacyOwner: "annotation",
   },
   {
     id: "fo.modal.annotate.seg.brush.bigger",
@@ -354,6 +417,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     scope: "modal.annotate.segmentation",
     defaultKeys: ["BracketRight"],
     repeatable: true,
+    legacyOwner: "annotation",
   },
 
   // ── Annotate ▸ 3D ────────────────────────────────────────────────────────
@@ -363,6 +427,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Annotate ▸ 3D",
     scope: "modal.annotate.3d",
     defaultKeys: ["KeyT"],
+    legacyOwner: "annotation",
   },
   {
     id: "fo.modal.annotate.3d.scale",
@@ -370,6 +435,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Annotate ▸ 3D",
     scope: "modal.annotate.3d",
     defaultKeys: ["KeyS"],
+    legacyOwner: "annotation",
   },
   {
     id: "fo.modal.annotate.3d.rotate",
@@ -377,6 +443,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Annotate ▸ 3D",
     scope: "modal.annotate.3d",
     defaultKeys: ["KeyR"],
+    legacyOwner: "annotation",
   },
   {
     id: "fo.modal.annotate.3d.cuboid",
@@ -384,6 +451,7 @@ export const MANIFEST: CommandManifestEntry[] = [
     category: "Annotate ▸ 3D",
     scope: "modal.annotate.3d",
     defaultKeys: ["KeyC"],
+    legacyOwner: "annotation",
   },
 
   // ── Panels ───────────────────────────────────────────────────────────────

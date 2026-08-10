@@ -24,9 +24,7 @@ const useEscape = () => {
     ({ reset, snapshot }) =>
       () => {
         const modal = snapshot.getLoadable(fos.modalSelector).valueMaybe();
-        const selected = snapshot
-          .getLoadable(fos.selectedSamples)
-          .valueMaybe();
+        const selected = snapshot.getLoadable(fos.selectedSamples).valueMaybe();
 
         // Preserved from the original, including its caveat: `modal` reads as
         // null immediately after the modal closes, so this is not quite the

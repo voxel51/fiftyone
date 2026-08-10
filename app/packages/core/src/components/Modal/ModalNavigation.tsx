@@ -10,12 +10,9 @@ import styled from "styled-components";
 import useExit from "./Sidebar/Annotate/Edit/useExit";
 import useSave from "./Sidebar/Annotate/Edit/useSave";
 import { createDebouncedNavigator } from "./debouncedNavigator";
-import {
-  KnownCommands,
-  KnownContexts,
-  useKeyBindings,
-  useUndoRedo,
-} from "@fiftyone/commands";
+// Undo/redo still lives on the old bus; only the arrow-key bindings moved.
+import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
+import { useKeyBinding } from "@fiftyone/keymap";
 
 const Arrow = styled.span<{
   $isRight?: boolean;
@@ -146,22 +143,17 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
     previousNavigator.navigate();
   }, [previousNavigator, onSave, onExit]);
 
-  useKeyBindings(KnownContexts.Modal, [
-    {
-      commandId: KnownCommands.ModalPreviousSample,
-      sequence: "ArrowLeft",
-      handler: previous,
-      label: "Previous",
-      description: "Previous Sample",
-    },
-    {
-      commandId: KnownCommands.ModalNextSample,
-      sequence: "ArrowRight",
-      handler: next,
-      label: "Next",
-      description: "Next Sample",
-    },
-  ]);
+  // Sample navigation on the keymap bus. The keys, labels and descriptions
+  // that used to be written here now live in the manifest, so the shortcuts
+  // pane can show ← / → and let the user move them — which is the whole point
+  // of the split: this call site supplies only the handler.
+  //
+  // Arrow keys work exactly like any other binding. They are stored by physical
+  // `code` (`ArrowLeft`), matched on `code`, and labelled from a
+  // layout-independent glyph table, so they never depend on the user's layout.
+  // Both are `repeatable`, so holding one walks the samples.
+  useKeyBinding("fo.modal.previous.sample", previous);
+  useKeyBinding("fo.modal.next.sample", next);
 
   if (!modal) {
     return null;

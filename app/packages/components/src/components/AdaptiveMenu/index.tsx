@@ -3,12 +3,7 @@ import { ExpandMore } from "@mui/icons-material";
 import type { BoxProps } from "@mui/material";
 import { Box } from "@mui/material";
 import { throttle } from "lodash";
-import React, {
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-} from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import type { MoveEvent, SortableEvent } from "react-sortablejs";
 import { ReactSortable } from "react-sortablejs";
 import PillButton from "../PillButton";
@@ -242,10 +237,16 @@ function MoreItems<T extends AdaptiveMenuItemPropsType>(
   // `escapeKeyHandlerIdsAtom` Set that the grid had to consult so the two
   // wouldn't both fire. That Set was a dismissal stack with one producer and
   // one consumer; this is the real thing, so the coordination disappears.
-  useDismissable(`adaptive-menu-${id}`, "Popout menu", "overlay.popout", () => {
-    close();
-    return true;
-  }, open);
+  useDismissable(
+    `adaptive-menu-${id}`,
+    "Popout menu",
+    "overlay.popout",
+    () => {
+      close();
+      return true;
+    },
+    open,
+  );
 
   return (
     <PopoutButton

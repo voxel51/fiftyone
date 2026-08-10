@@ -6,11 +6,28 @@ const path = require("path");
 // Shrinking allow-list for the Recoil->Jotai migration. See
 // .recoil-allowlist.txt for the rationale; remove files from it as they're
 // migrated instead of adding to it.
-const recoilAllowlist = fs
-  .readFileSync(path.join(__dirname, ".recoil-allowlist.txt"), "utf-8")
-  .split("\n")
-  .map((line) => line.trim())
-  .filter((line) => line && !line.startsWith("#"));
+const readAllowlist = (name) =>
+  fs
+    .readFileSync(path.join(__dirname, name), "utf-8")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"));
+
+const recoilAllowlist = readAllowlist(".recoil-allowlist.txt");
+
+// Shrinking allow-list for the keyboard-shortcuts consolidation. Files here
+// still own a raw key listener; everything else must register with
+// @fiftyone/keymap. See .keymap-allowlist.txt.
+const keymapAllowlist = readAllowlist(".keymap-allowlist.txt");
+
+const NO_RAW_KEY_LISTENERS = [
+  {
+    selector:
+      "CallExpression[callee.property.name=/^(add|remove)EventListener$/] > Literal[value=/^key(down|up|press)$/]",
+    message:
+      "Key handling belongs on the keymap bus, not a raw listener: a listener registered here can't be seen, listed, or remapped by Settings ▸ Keyboard Shortcuts, and can't be arbitrated against the other handlers for the same key. Use useKeyBinding / useHoldBinding / useDismissable from @fiftyone/keymap. See .keymap-allowlist.txt.",
+  },
+];
 
 module.exports = {
   env: {
@@ -74,6 +91,7 @@ module.exports = {
       },
     ],
     "react/prop-types": 0,
+    "no-restricted-syntax": ["warn", ...NO_RAW_KEY_LISTENERS],
     "no-restricted-imports": [
       "warn",
       {
@@ -155,6 +173,21 @@ module.exports = {
       files: recoilAllowlist,
       rules: {
         "no-restricted-imports": "off",
+      },
+    },
+    {
+      // @fiftyone/keymap *is* the single listener the rule exists to protect.
+      files: ["packages/keymap/**"],
+      rules: {
+        "no-restricted-syntax": "off",
+      },
+    },
+    {
+      // Files that still own a raw key listener. Shrink
+      // .keymap-allowlist.txt as each surface migrates.
+      files: keymapAllowlist,
+      rules: {
+        "no-restricted-syntax": "off",
       },
     },
   ],

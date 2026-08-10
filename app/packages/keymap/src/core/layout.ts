@@ -115,9 +115,31 @@ export const subscribeToKeyboardLayout = (
 /** True when labels come from the real layout rather than the QWERTY guess. */
 export const hasKeyboardLayout = (): boolean => layoutMap !== null;
 
-const isApple = (): boolean =>
-  typeof navigator !== "undefined" &&
-  /Mac|iPhone|iPad/.test(navigator.platform);
+interface NavigatorWithUAData extends Navigator {
+  userAgentData?: { platform?: string };
+}
+
+/**
+ * `navigator.platform` is deprecated and, on iPadOS, actively lies — it reports
+ * "MacIntel". `userAgentData.platform` is the supported replacement but is
+ * Chromium-only, and it reports "macOS" for iPads too, so both paths need the
+ * touch check. Worst case we get the modifier glyphs wrong on an unusual
+ * browser, which is a label bug rather than a binding one.
+ */
+const isApple = (): boolean => {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  const uaPlatform = (navigator as NavigatorWithUAData).userAgentData?.platform;
+  if (uaPlatform) {
+    return /mac|ios|iphone|ipad/i.test(uaPlatform);
+  }
+
+  // Legacy fallback for Firefox and Safari, which have no `userAgentData`.
+  const legacy: string = navigator.platform ?? navigator.userAgent ?? "";
+  return /Mac|iPhone|iPad|iPod/.test(legacy);
+};
 
 /** The glyph for a single physical key, e.g. `KeyS` → `S`, `BracketLeft` → `[`. */
 export const describeCode = (code: string): string => {

@@ -20,10 +20,7 @@ import { isAncestorScope } from "./scopes";
  *    treats this as normal and so do we. Information, not a warning.
  */
 export type OverlapKind =
-  | "conflict"
-  | "shadows-ancestor"
-  | "shadowed-by-descendant"
-  | "shadows";
+  "conflict" | "shadows-ancestor" | "shadowed-by-descendant" | "shadows";
 
 export interface Overlap {
   kind: OverlapKind;
