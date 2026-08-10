@@ -42,7 +42,7 @@ const ZERO_VECTOR = new Vector3();
 const DEFAULT_FRAME_TRANSFORM_POLICY: EpisodeFrameTransformPolicy = {
   boundaryClampNs: 50_000_000n,
 };
-const MAX_ADJACENCY_CACHE_ENTRIES = 8;
+const MAX_TOPOLOGY_PATH_CACHE_ENTRIES = 64;
 
 export { EMPTY_EPISODE_FRAME_GRAPH_SUMMARY } from "./frame-transform-graph";
 export type { EpisodeFrameGraphSummary } from "./frame-transform-graph";
@@ -57,12 +57,23 @@ type EffectiveDynamicTransformResult =
 interface EpisodeFrameTransformIndex {
   readonly adjacency: ReadonlyMap<
     string,
-    readonly EpisodeComposedFrameTransform[]
+    readonly EpisodeFrameTransformTraversal[]
   >;
-  readonly parentTransformsByChildFrameId: ReadonlyMap<
-    string,
-    EpisodeComposedFrameTransform
-  >;
+}
+
+interface EpisodeFrameTransformTopologyPathStep {
+  readonly childFrameId: string;
+  readonly direction: "child-to-parent" | "parent-to-child";
+  readonly parentFrameId: string;
+}
+
+interface EpisodeFrameTransformTraversal extends EpisodeFrameTransformTopologyPathStep {
+  readonly transform: EpisodeComposedFrameTransform;
+}
+
+interface EpisodeFrameTransformPathResolution {
+  readonly path: readonly EpisodeFrameTransformTopologyPathStep[];
+  readonly transform: EpisodeComposedFrameTransform;
 }
 
 /**
@@ -84,13 +95,17 @@ export class EpisodeFrameTransformStore {
   private dynamicRanges: readonly EpisodeFrameTransformTimeRange[] = [];
   private graphRevision = 0;
   private readonly frameIdsById = new Set<string>();
-  private readonly adjacencyCache = new Map<
+  private readonly topologyPathCache = new Map<
     string,
-    EpisodeFrameTransformIndex
+    readonly EpisodeFrameTransformTopologyPathStep[]
   >();
   private readonly staticSamplesByEdge = new Map<
     string,
     EpisodeFrameTransformSample
+  >();
+  private readonly staticSamplesByChild = new Map<
+    string,
+    EpisodeFrameTransformSample[]
   >();
 
   addStatic(samples: readonly EpisodeFrameTransformSample[]): void {
@@ -102,11 +117,21 @@ export class EpisodeFrameTransformStore {
           !this.staticSamplesByEdge.has(key) &&
           !this.dynamicSamplesByEdge.has(key)
         ) {
-          this.graphRevision += 1;
+          this.advanceTopologyRevision();
         }
         this.staticSamplesByEdge.set(key, normalized);
+        const childSamples =
+          this.staticSamplesByChild.get(normalized.childFrameId) ?? [];
+        const existingIndex = childSamples.findIndex(
+          (candidate) => frameTransformEdgeKey(candidate) === key,
+        );
+        if (existingIndex >= 0) {
+          childSamples[existingIndex] = normalized;
+        } else {
+          childSamples.push(normalized);
+        }
+        this.staticSamplesByChild.set(normalized.childFrameId, childSamples);
         this.addFrameIds(normalized);
-        this.adjacencyCache.clear();
       }
     }
   }
@@ -129,7 +154,7 @@ export class EpisodeFrameTransformStore {
         !this.dynamicSamplesByEdge.has(key) &&
         !this.staticSamplesByEdge.has(key)
       ) {
-        this.graphRevision += 1;
+        this.advanceTopologyRevision();
       }
       const edgeSamples = this.dynamicSamplesByEdge.get(key) ?? [];
       edgeSamples.push(normalized);
@@ -161,7 +186,6 @@ export class EpisodeFrameTransformStore {
       ...this.dynamicRanges,
       range,
     ]);
-    this.adjacencyCache.clear();
   }
 
   isTimeIndexed(timeNs: bigint): boolean {
@@ -283,13 +307,24 @@ export class EpisodeFrameTransformStore {
       };
     }
 
-    const adjacency = this.buildAdjacency(timeNs, policy);
-    const transform = resolveComposedTransform({
-      adjacency,
+    const cachedTransform = this.resolveCachedTopologyPath({
+      policy,
       sourceFrameId: source,
       targetFrameId: target,
+      timeNs,
     });
-    if (transform) {
+    const resolved =
+      cachedTransform ??
+      resolveComposedTransform({
+        adjacency: this.buildTransformIndex(timeNs, policy).adjacency,
+        sourceFrameId: source,
+        targetFrameId: target,
+      });
+    if (resolved) {
+      if (!cachedTransform) {
+        this.rememberTopologyPath(source, target, resolved.path);
+      }
+      const transform = resolved.transform;
       return {
         ...(transform.heldEdges?.length
           ? { heldEdges: transform.heldEdges }
@@ -334,10 +369,8 @@ export class EpisodeFrameTransformStore {
       return { sourceFrameId, status: "missing" };
     }
 
-    const transform = this.buildTransformIndex(
-      timeNs,
-      policy,
-    ).parentTransformsByChildFrameId.get(source);
+    const transforms = this.effectiveTransformsForChild(source, timeNs, policy);
+    const transform = transforms[transforms.length - 1];
     if (transform) {
       return {
         parentFrameId: transform.targetFrameId,
@@ -357,54 +390,101 @@ export class EpisodeFrameTransformStore {
     return { sourceFrameId: source, status: "missing" };
   }
 
-  private buildAdjacency(
-    timeNs: bigint | undefined,
-    policy: EpisodeFrameTransformPolicy,
-  ) {
-    return this.buildTransformIndex(timeNs, policy).adjacency;
-  }
-
   private buildTransformIndex(
     timeNs: bigint | undefined,
     policy: EpisodeFrameTransformPolicy,
   ): EpisodeFrameTransformIndex {
-    const timeKey = frameTransformTimeKey(timeNs, policy);
-    const cached = this.adjacencyCache.get(timeKey);
-    if (cached) {
-      this.adjacencyCache.delete(timeKey);
-      this.adjacencyCache.set(timeKey, cached);
-      return cached;
-    }
-
-    const adjacency = new Map<string, EpisodeComposedFrameTransform[]>();
-    const parentTransformsByChildFrameId = new Map<
-      string,
-      EpisodeComposedFrameTransform
-    >();
+    const adjacency = new Map<string, EpisodeFrameTransformTraversal[]>();
     for (const childToParent of this.effectiveTransformsForTime(
       timeNs,
       policy,
     )) {
-      parentTransformsByChildFrameId.set(
-        childToParent.sourceFrameId,
-        childToParent,
-      );
-      pushAdjacency(adjacency, childToParent.sourceFrameId, childToParent);
-      pushAdjacency(
-        adjacency,
-        childToParent.targetFrameId,
-        invertFrameTransform(childToParent),
-      );
+      const childFrameId = childToParent.sourceFrameId;
+      const parentFrameId = childToParent.targetFrameId;
+      pushAdjacency(adjacency, childFrameId, {
+        childFrameId,
+        direction: "child-to-parent",
+        parentFrameId,
+        transform: childToParent,
+      });
+      pushAdjacency(adjacency, parentFrameId, {
+        childFrameId,
+        direction: "parent-to-child",
+        parentFrameId,
+        transform: invertFrameTransform(childToParent),
+      });
     }
 
-    const index = { adjacency, parentTransformsByChildFrameId };
-    this.adjacencyCache.set(timeKey, index);
-    if (this.adjacencyCache.size > MAX_ADJACENCY_CACHE_ENTRIES) {
-      const oldestKey = this.adjacencyCache.keys().next().value;
-      if (oldestKey !== undefined) this.adjacencyCache.delete(oldestKey);
-    }
+    return { adjacency };
+  }
 
-    return index;
+  private resolveCachedTopologyPath({
+    policy,
+    sourceFrameId,
+    targetFrameId,
+    timeNs,
+  }: {
+    readonly policy: EpisodeFrameTransformPolicy;
+    readonly sourceFrameId: string;
+    readonly targetFrameId: string;
+    readonly timeNs: bigint | undefined;
+  }): EpisodeFrameTransformPathResolution | null {
+    const key = this.topologyPathKey(sourceFrameId, targetFrameId);
+    const path = this.topologyPathCache.get(key);
+    if (!path) return null;
+    this.topologyPathCache.delete(key);
+    this.topologyPathCache.set(key, path);
+
+    let transform: EpisodeComposedFrameTransform = {
+      resolutionKind: "identity",
+      rotation: IDENTITY_QUATERNION.clone(),
+      sourceFrameId,
+      targetFrameId: sourceFrameId,
+      translation: ZERO_VECTOR.clone(),
+    };
+    for (const step of path) {
+      const childToParent = this.effectiveTransformsForChild(
+        step.childFrameId,
+        timeNs,
+        policy,
+      ).find((candidate) => candidate.targetFrameId === step.parentFrameId);
+      if (!childToParent) return null;
+      const edge =
+        step.direction === "child-to-parent"
+          ? childToParent
+          : invertFrameTransform(childToParent);
+      if (edge.sourceFrameId !== transform.targetFrameId) return null;
+      transform = composeFrameTransforms(transform, edge);
+    }
+    if (transform.targetFrameId !== targetFrameId) return null;
+
+    return {
+      path,
+      transform: { ...transform, sourceFrameId, targetFrameId },
+    };
+  }
+
+  private rememberTopologyPath(
+    sourceFrameId: string,
+    targetFrameId: string,
+    path: readonly EpisodeFrameTransformTopologyPathStep[],
+  ): void {
+    const key = this.topologyPathKey(sourceFrameId, targetFrameId);
+    this.topologyPathCache.delete(key);
+    this.topologyPathCache.set(key, path);
+    if (this.topologyPathCache.size > MAX_TOPOLOGY_PATH_CACHE_ENTRIES) {
+      const oldestKey = this.topologyPathCache.keys().next().value;
+      if (oldestKey !== undefined) this.topologyPathCache.delete(oldestKey);
+    }
+  }
+
+  private topologyPathKey(sourceFrameId: string, targetFrameId: string) {
+    return `${this.graphRevision}\0${sourceFrameId}\0${targetFrameId}`;
+  }
+
+  private advanceTopologyRevision(): void {
+    this.graphRevision += 1;
+    this.topologyPathCache.clear();
   }
 
   private effectiveTransformsForTime(
@@ -453,6 +533,38 @@ export class EpisodeFrameTransformStore {
     }
 
     return [...transforms.values()];
+  }
+
+  private effectiveTransformsForChild(
+    childFrameId: string,
+    timeNs: bigint | undefined,
+    policy: EpisodeFrameTransformPolicy,
+  ): readonly EpisodeComposedFrameTransform[] {
+    const staticTransforms = (
+      this.staticSamplesByChild.get(childFrameId) ?? []
+    ).map((sample) => transformFromSample(sample, "static"));
+    if (timeNs === undefined) return staticTransforms;
+
+    const childSamples = this.dynamicSamplesByChild.get(childFrameId);
+    if (!childSamples?.length) return staticTransforms;
+    const { after, before } = bracketSamplesForTime(childSamples, timeNs);
+    const activeSample = before ?? after;
+    if (!activeSample) return staticTransforms;
+    if (!before && after && staticTransforms.length > 0) {
+      return staticTransforms;
+    }
+    const edgeKey = frameTransformEdgeKey(activeSample);
+    const cadence = this.dynamicCadenceByEdge.get(edgeKey);
+    const result = effectiveDynamicTransformForTime(
+      { after, before },
+      timeNs,
+      policy,
+      cadence?.interpolationGapLimitNs() ??
+        DEFAULT_TRANSFORM_INTERPOLATION_GAP_NS,
+      cadence?.observationStaleThresholdNs() ??
+        DEFAULT_OBSERVATION_STALE_THRESHOLD_NS,
+    );
+    return result.status === "resolved" ? [result.transform] : staticTransforms;
   }
 
   private addFrameIds(sample: EpisodeFrameTransformSample): void {
@@ -565,18 +677,21 @@ function resolveComposedTransform({
 }: {
   readonly adjacency: ReadonlyMap<
     string,
-    readonly EpisodeComposedFrameTransform[]
+    readonly EpisodeFrameTransformTraversal[]
   >;
   readonly sourceFrameId: string;
   readonly targetFrameId: string;
-}): EpisodeComposedFrameTransform | null {
-  const queue: EpisodeComposedFrameTransform[] = [
+}): EpisodeFrameTransformPathResolution | null {
+  const queue: EpisodeFrameTransformPathResolution[] = [
     {
-      resolutionKind: "identity",
-      rotation: IDENTITY_QUATERNION.clone(),
-      sourceFrameId,
-      targetFrameId: sourceFrameId,
-      translation: ZERO_VECTOR.clone(),
+      path: [],
+      transform: {
+        resolutionKind: "identity",
+        rotation: IDENTITY_QUATERNION.clone(),
+        sourceFrameId,
+        targetFrameId: sourceFrameId,
+        translation: ZERO_VECTOR.clone(),
+      },
     },
   ];
   const visited = new Set([sourceFrameId]);
@@ -587,23 +702,35 @@ function resolveComposedTransform({
       continue;
     }
 
-    const edges = adjacency.get(current.targetFrameId) ?? [];
-    for (const edge of edges) {
+    const edges = adjacency.get(current.transform.targetFrameId) ?? [];
+    for (const traversal of edges) {
+      const edge = traversal.transform;
       if (visited.has(edge.targetFrameId)) {
         continue;
       }
 
-      const composed = composeFrameTransforms(current, edge);
+      const composed = composeFrameTransforms(current.transform, edge);
+      const path = [
+        ...current.path,
+        {
+          childFrameId: traversal.childFrameId,
+          direction: traversal.direction,
+          parentFrameId: traversal.parentFrameId,
+        },
+      ];
       if (composed.targetFrameId === targetFrameId) {
         return {
-          ...composed,
-          sourceFrameId,
-          targetFrameId,
+          path,
+          transform: {
+            ...composed,
+            sourceFrameId,
+            targetFrameId,
+          },
         };
       }
 
       visited.add(edge.targetFrameId);
-      queue.push(composed);
+      queue.push({ path, transform: composed });
     }
   }
 
@@ -988,14 +1115,4 @@ function composeResolutionKinds(
   if (kinds.includes("static")) return "static";
   if (kinds.includes("identity")) return "identity";
   return undefined;
-}
-
-function frameTransformTimeKey(
-  timeNs: bigint | undefined,
-  policy: EpisodeFrameTransformPolicy,
-) {
-  return [
-    timeNs === undefined ? "static" : timeNs.toString(),
-    policy.boundaryClampNs.toString(),
-  ].join(":");
 }
