@@ -84,6 +84,33 @@ const elementSegments = (segments: string[]): string[] => {
   return segments.slice(0, 1);
 };
 
+/**
+ * Resolve a path against a sample document. Frame deltas address frames by
+ * frame NUMBER (`/frames/<n>/…`), but the modal sample carries `frames` as a
+ * positional array — often holding only the head frame — so a plain pointer
+ * walk reads the wrong frame (or none). Dereference the frame by its
+ * `frame_number` when frames is an array; positional and map-keyed shapes
+ * fall through to the plain walk.
+ */
+const getAtSamplePath = (root: unknown, segments: string[]): unknown => {
+  if (segments.length >= 2 && segments[0] === "frames" && root) {
+    const frames = (root as Record<string, unknown>).frames;
+    if (Array.isArray(frames)) {
+      const frameNumber = Number.parseInt(segments[1], 10);
+      const frame = frames.find(
+        (candidate) =>
+          candidate &&
+          typeof candidate === "object" &&
+          (candidate as Record<string, unknown>).frame_number === frameNumber,
+      );
+      if (frame !== undefined) {
+        return getAtPath(frame, segments.slice(2));
+      }
+    }
+  }
+  return getAtPath(root, segments);
+};
+
 const labelIdOf = (candidate: unknown): string | null => {
   if (candidate && typeof candidate === "object") {
     const record = candidate as Record<string, unknown>;
@@ -152,6 +179,26 @@ const collectLabelIds = (node: unknown, depth = 2): string[] => {
   return out;
 };
 
+/**
+ * Bounded search for a label id anywhere in a sample document. Generated
+ * (patches) views emit deltas rooted at the LABEL — no field prefix — so the
+ * fast path cannot locate the label's container from an op path; presence of
+ * the id anywhere in the pre-patch document is what distinguishes an edit
+ * from a creation there.
+ */
+const containsLabelId = (
+  node: unknown,
+  labelId: string,
+  depth = 8,
+): boolean => {
+  if (depth < 0 || !node || typeof node !== "object") return false;
+  if (labelIdOf(node) === labelId) return true;
+  const children = Array.isArray(node)
+    ? node
+    : Object.values(node as Record<string, unknown>);
+  return children.some((child) => containsLabelId(child, labelId, depth - 1));
+};
+
 export interface ClassifyLabelOpsArgs {
   deltas: JSONDeltas;
   /** The sample BEFORE the patch (source for deleted/modified ids). */
@@ -160,6 +207,12 @@ export interface ClassifyLabelOpsArgs {
   postSample?: unknown;
   /** Field-level fast path: the single label the patch targets. */
   labelId?: string;
+  /**
+   * Field-level fast path: dotted path to the label's field (e.g.
+   * `ground_truth.detections`). Authoritative for field attribution when
+   * the deltas are label-rooted (generated views).
+   */
+  labelPath?: string;
   /** Field-level fast path: only "delete" changes classification. */
   opType?: "mutate" | "delete" | "add";
 }
@@ -172,6 +225,7 @@ export const classifyLabelOps = ({
   preSample,
   postSample,
   labelId,
+  labelPath,
   opType,
 }: ClassifyLabelOpsArgs): LabelOpsSummary => {
   const added = new Set<string>();
@@ -201,7 +255,12 @@ export const classifyLabelOps = ({
     } else {
       modified.add(labelId);
     }
-    const field = deltas.length ? segmentsOf(deltas[0].path)[0] : undefined;
+    // labelPath is authoritative: generated views root their deltas at the
+    // LABEL, so the op path's head segment is a label attribute ("label",
+    // "bounding_box"), not a sample field.
+    const field = labelPath
+      ? fieldOfLabelPath(labelPath)
+      : fieldOfDeltaPath(deltas);
     if (field) fieldOf[labelId] = field;
     return toSummary(added, deleted, modified, fieldOf, instanceOf);
   }
@@ -216,7 +275,7 @@ export const classifyLabelOps = ({
     const key = prefix.join("/");
     const cached = arrayIds.get(key);
     if (cached) return cached;
-    const node = getAtPath(preSample, prefix);
+    const node = getAtSamplePath(preSample, prefix);
     if (!Array.isArray(node)) return null;
     const ids = node.map((entry) => labelIdOf(entry));
     arrayIds.set(key, ids);
@@ -226,9 +285,30 @@ export const classifyLabelOps = ({
   for (const delta of deltas) {
     const segments = segmentsOf(delta.path);
     if (segments.length === 0) continue;
-    const element = elementSegments(segments);
+    let element = elementSegments(segments);
+    let last = element[element.length - 1];
+    // A numeric segment is only a list-label boundary when the container it
+    // indexes is a list of LABELS. On a single-label field a numeric index
+    // addresses an attribute array (`/gt_det/bounding_box/3` — a bbox drag),
+    // and the element is the owning field itself; treating the coordinate as
+    // a list entry silently drops the edit.
+    if (element.length > 1 && NUMERIC.test(last)) {
+      const container =
+        getAtSamplePath(preSample, element.slice(0, -1)) ??
+        getAtSamplePath(postSample, element.slice(0, -1));
+      if (
+        Array.isArray(container) &&
+        container.length > 0 &&
+        !container.some((entry) => labelIdOf(entry))
+      ) {
+        element =
+          element[0] === "frames"
+            ? element.slice(0, Math.min(3, element.length))
+            : element.slice(0, 1);
+        last = element[element.length - 1];
+      }
+    }
     const exactlyElement = element.length === segments.length;
-    const last = element[element.length - 1];
     // A bare /frames/<n> is the frame CONTAINER, not a label list element:
     // resolving it as one would fabricate the frame document's id. Let the
     // whole-field branches collect the labels it contains instead.
@@ -261,7 +341,7 @@ export const classifyLabelOps = ({
         if (resolved) opIds = [resolved];
       }
       if (opIds.length === 1) {
-        noteInstance(opIds[0], value ?? getAtPath(postSample, element));
+        noteInstance(opIds[0], value ?? getAtSamplePath(postSample, element));
       }
       for (const id of opIds) {
         added.add(id);
@@ -275,9 +355,9 @@ export const classifyLabelOps = ({
         ? [shifted]
         : isListElement
           ? []
-          : collectLabelIds(getAtPath(preSample, element));
+          : collectLabelIds(getAtSamplePath(preSample, element));
       if (opIds.length === 1) {
-        noteInstance(opIds[0], getAtPath(preSample, element));
+        noteInstance(opIds[0], getAtSamplePath(preSample, element));
       }
       for (const id of opIds) {
         deleted.add(id);
@@ -291,12 +371,12 @@ export const classifyLabelOps = ({
       // (a classification "set" on a pre-existing null field lands here).
       // The op value may be a skeleton without ids — the post-patch
       // sample is the fallback source for what now lives in the field.
-      const preNode = getAtPath(preSample, element);
+      const preNode = getAtSamplePath(preSample, element);
       const preIds = new Set(collectLabelIds(preNode));
       let postNode: unknown = (delta as { value?: unknown }).value;
       let postIds = collectLabelIds(postNode);
       if (!postIds.length) {
-        postNode = getAtPath(postSample, element);
+        postNode = getAtSamplePath(postSample, element);
         postIds = collectLabelIds(postNode);
       }
       for (const id of postIds) {
@@ -324,7 +404,8 @@ export const classifyLabelOps = ({
       if (id) {
         noteInstance(
           id,
-          getAtPath(preSample, element) ?? getAtPath(postSample, element),
+          getAtSamplePath(preSample, element) ??
+            getAtSamplePath(postSample, element),
         );
         if (preId) {
           modified.add(id);
@@ -342,6 +423,21 @@ export const classifyLabelOps = ({
 const isElementTail = (segments: string[]): boolean =>
   segments.length > 0 && isElementSegment(segments[segments.length - 1]);
 
+/** The sample field of a dotted label path ("frames.dets.detections" → "dets"). */
+const fieldOfLabelPath = (labelPath: string): string | undefined => {
+  const segments = labelPath.split(".");
+  return segments[0] === "frames" ? segments[1] : segments[0];
+};
+
+/** The frame-aware sample field of the patch's first delta path. */
+const fieldOfDeltaPath = (deltas: JSONDeltas): string | undefined => {
+  if (!deltas.length) return undefined;
+  const element = elementSegments(segmentsOf(deltas[0].path));
+  return element[0] === "frames" && element.length >= 3
+    ? element[2]
+    : element[0];
+};
+
 /** Whether the fast path's label already exists in the pre-patch sample. */
 const fastPathPreExisting = (
   deltas: JSONDeltas,
@@ -354,12 +450,18 @@ const fastPathPreExisting = (
     element.length > 1 && isElementSegment(element[element.length - 1])
       ? element.slice(0, -1)
       : element;
-  return collectLabelIds(getAtPath(preSample, container)).includes(labelId);
+  return (
+    collectLabelIds(getAtSamplePath(preSample, container)).includes(labelId) ||
+    // Label-rooted deltas (generated views) name no container the sample
+    // can resolve — the label pre-exists if its id appears anywhere in the
+    // pre-patch document.
+    containsLabelId(preSample, labelId)
+  );
 };
 
 const resolveId = (sample: unknown, element: string[]): string | null => {
   if (!sample) return null;
-  const node = getAtPath(sample, element);
+  const node = getAtSamplePath(sample, element);
   const direct = labelIdOf(node);
   if (direct) return direct;
   // Single-label fields sometimes nest the label one level down

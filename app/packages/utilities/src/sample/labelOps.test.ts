@@ -552,6 +552,132 @@ describe("video temporal labels identify by instance (FOEPD-4344 follow-up)", ()
   });
 });
 
+describe("generated-view fast path (label-rooted deltas)", () => {
+  // Patches views emit deltas rooted at the LABEL — no field prefix — and
+  // route persistence via {labelId, labelPath}. The patch sample carries
+  // the label under its field, so the id is present in the pre state even
+  // though no op path can locate its container.
+  const patchSample = {
+    _id: "patch1",
+    _sample_id: "smp1",
+    ground_truth: {
+      _id: "p1",
+      _cls: "Detection",
+      label: "car",
+      bounding_box: [0.1, 0.2, 0.3, 0.4],
+    },
+  };
+
+  it("classifies an edit of a pre-existing label as a modify, not an add", () => {
+    const ops = classifyLabelOps({
+      deltas: [
+        { op: "replace", path: "/label", value: "truck" },
+        { op: "replace", path: "/bounding_box/3", value: 0.5 },
+      ] as JSONDeltas,
+      preSample: patchSample,
+      labelId: "p1",
+      labelPath: "ground_truth.detections",
+      opType: "mutate",
+    });
+    expect(ops.modified).toEqual(["p1"]);
+    expect(ops.added).toEqual([]);
+  });
+
+  it("attributes the label to the labelPath field, not the op path head", () => {
+    const ops = classifyLabelOps({
+      deltas: [{ op: "replace", path: "/label", value: "truck" }] as JSONDeltas,
+      preSample: patchSample,
+      labelId: "p1",
+      labelPath: "ground_truth.detections",
+      opType: "mutate",
+    });
+    expect(ops.fieldOf.p1).toBe("ground_truth");
+  });
+});
+
+describe("frame paths resolve by frame_number (modal frames array)", () => {
+  // The modal sample carries frames as a positional array — often only the
+  // head frame — while deltas address frames by frame NUMBER.
+  it("resolves a frame remove when the frame is not at its positional index", () => {
+    const pre = {
+      _id: "smp",
+      frames: [{ frame_number: 3, dets: { detections: [{ _id: "f9" }] } }],
+    };
+    const ops = classifyLabelOps({
+      deltas: [{ op: "remove", path: "/frames/3/dets/detections/0" }],
+      preSample: pre,
+    });
+    expect(ops.deleted).toEqual(["f9"]);
+  });
+
+  it("attributes edits to the numbered frame, not the array position", () => {
+    const pre = {
+      _id: "smp",
+      frames: [
+        { frame_number: 1, dets: { detections: [{ _id: "a1" }] } },
+        { frame_number: 2, dets: { detections: [{ _id: "b1" }] } },
+      ],
+    };
+    const ops = classifyLabelOps({
+      deltas: [
+        {
+          op: "replace",
+          path: "/frames/2/dets/detections/0/label",
+          value: "bus",
+        },
+      ] as JSONDeltas,
+      preSample: pre,
+    });
+    // positional frames[2] is out of range; frame_number 2 is index 1
+    expect(ops.modified).toEqual(["b1"]);
+    expect(ops.added).toEqual([]);
+  });
+});
+
+describe("numeric attribute indices on single-label fields", () => {
+  it("classifies a bbox drag on a plain Detection field as one modify", () => {
+    const pre = {
+      _id: "smp",
+      gt_det: {
+        _id: "d1",
+        _cls: "Detection",
+        label: "car",
+        bounding_box: [0.1, 0.2, 0.3, 0.4],
+      },
+    };
+    const ops = classifyLabelOps({
+      deltas: [
+        { op: "replace", path: "/gt_det/bounding_box/3", value: 0.5 },
+        { op: "replace", path: "/gt_det/bounding_box/2", value: 0.6 },
+      ] as JSONDeltas,
+      preSample: pre,
+    });
+    expect(ops.modified).toEqual(["d1"]);
+    expect(ops.added).toEqual([]);
+    expect(ops.fieldOf.d1).toBe("gt_det");
+  });
+
+  it("classifies attribute-array edits on a frame single-label field", () => {
+    const pre = {
+      _id: "smp",
+      frames: [
+        {
+          frame_number: 1,
+          gt_det: { _id: "fd1", bounding_box: [0.1, 0.2, 0.3, 0.4] },
+        },
+      ],
+    };
+    const ops = classifyLabelOps({
+      deltas: [
+        { op: "replace", path: "/frames/1/gt_det/bounding_box/0", value: 0.9 },
+      ] as JSONDeltas,
+      preSample: pre,
+    });
+    expect(ops.modified).toEqual(["fd1"]);
+    expect(ops.fieldOf.fd1).toBe("gt_det");
+  });
+});
+
 describe("isEmptyLabelOps", () => {
   it("is true when no operations were classified", () => {
     expect(
