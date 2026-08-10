@@ -108,15 +108,16 @@ describe("acquireImageTexture (shared keys)", () => {
       3,
       1,
       THREE.RedFormat,
-      THREE.UnsignedShortType,
+      THREE.UnsignedIntType,
     ) as THREE.DataTexture & { normalized: boolean };
-    texture.normalized = true;
+    texture.internalFormat = "r16uint" as THREE.PixelFormatGPU;
+    texture.normalized = false;
     const handle: ImageTextureHandle = {
       aspectRatio: 3,
       decodedByteLength: 6,
       depthDisplay: {
-        maxSampleValue: 2_000 / 65_535,
-        minSampleValue: 1_000 / 65_535,
+        maxSampleValue: 2_000,
+        minSampleValue: 1_000,
       },
       dispose: vi.fn(),
       imageHeight: 1,
@@ -128,7 +129,8 @@ describe("acquireImageTexture (shared keys)", () => {
 
     expect(leased.decodedByteLength).toBe(6);
     expect(leased.depthDisplay).toEqual(handle.depthDisplay);
-    expect((leased.texture as typeof texture).normalized).toBe(true);
+    expect((leased.texture as typeof texture).normalized).toBe(false);
+    expect(leased.texture.internalFormat).toBe("r16uint");
     expect(leased.texture.format).toBe(THREE.RedFormat);
     expect((leased.texture as THREE.DataTexture).image.data).toBe(values);
     expect(

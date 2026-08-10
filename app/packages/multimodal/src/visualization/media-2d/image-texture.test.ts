@@ -3,7 +3,10 @@ import * as THREE from "three";
 
 import type { RawImageVisualization } from "../../ir";
 import { VISUALIZATION_KIND } from "../visualization-registry";
-import { createDepthImageMaterial } from "./depth-image-material";
+import {
+  createDepthImageMaterial,
+  updateDepthImageMaterial,
+} from "./depth-image-material";
 import { createImageTexture } from "./image-texture";
 
 describe("createImageTexture", () => {
@@ -13,7 +16,7 @@ describe("createImageTexture", () => {
     ).rejects.toThrow("Raw image frame has too few RGBA bytes");
   });
 
-  it("uploads 16UC1 as a normalized native-width red texture", async () => {
+  it("uploads 16UC1 as a native-width unsigned integer red texture", async () => {
     const frame = depthFrame(new Uint16Array([0, 1_000, 2_000]), 1_000, 2_000);
     const handle = await createImageTexture(frame);
     const texture = handle.texture as THREE.DataTexture & {
@@ -21,14 +24,16 @@ describe("createImageTexture", () => {
     };
 
     expect(texture.format).toBe(THREE.RedFormat);
-    expect(texture.type).toBe(THREE.UnsignedShortType);
-    expect(texture.normalized).toBe(true);
+    expect(texture.type).toBe(THREE.UnsignedIntType);
+    expect(texture.internalFormat).toBe("r16uint");
+    expect(texture.normalized).toBe(false);
     expect(texture.image.data).toBe(frame.depth?.values);
+    expect(texture.flipY).toBe(false);
     expect(texture.unpackAlignment).toBe(1);
     expect(handle.decodedByteLength).toBe(6);
     expect(handle.depthDisplay).toEqual({
-      maxSampleValue: 2_000 / 65_535,
-      minSampleValue: 1_000 / 65_535,
+      maxSampleValue: 2_000,
+      minSampleValue: 1_000,
     });
 
     const material = createDepthImageMaterial(handle, {
@@ -37,7 +42,21 @@ describe("createImageTexture", () => {
     });
     expect(material.colorNode).not.toBeNull();
     expect(material.opacityNode).not.toBeNull();
+    expect(textureSamplerMode(material.opacityNode, texture)).toBe(false);
     expect(material.side).toBe(THREE.DoubleSide);
+    const colorNode = material.colorNode;
+    const opacityNode = material.opacityNode;
+    const nextHandle = await createImageTexture(
+      depthFrame(new Uint16Array([500, 1_500, 2_500]), 500, 2_500),
+    );
+    updateDepthImageMaterial(material, nextHandle, 0.75);
+    expect(material.colorNode).toBe(colorNode);
+    expect(material.opacityNode).toBe(opacityNode);
+    expect(textureSamplerMode(material.opacityNode, nextHandle.texture)).toBe(
+      false,
+    );
+    expect(material.opacity).toBe(0.75);
+    nextHandle.dispose();
     material.dispose();
     handle.dispose();
   });
@@ -56,6 +75,9 @@ describe("createImageTexture", () => {
       maxSampleValue: 3,
       minSampleValue: 1.5,
     });
+    const material = createDepthImageMaterial(handle);
+    expect(textureSamplerMode(material.opacityNode, texture)).toBe(false);
+    material.dispose();
     handle.dispose();
   });
 
@@ -70,10 +92,7 @@ describe("createImageTexture", () => {
     });
     const material = createDepthImageMaterial(handle);
     expect(material.colorNode).not.toBeNull();
-    expect(
-      (material.opacityNode as unknown as { node: { value: number } }).node
-        .value,
-    ).toBe(0);
+    expect(material.opacity).toBe(0);
     material.dispose();
     handle.dispose();
   });
@@ -107,4 +126,31 @@ function depthFrame(
     sourceEncoding: values instanceof Uint16Array ? "16UC1" : "32FC1",
     width: values.length,
   };
+}
+
+function textureSamplerMode(
+  root: unknown,
+  texture: THREE.Texture,
+): boolean | null {
+  const seen = new WeakSet<object>();
+  const visit = (value: unknown): boolean | null => {
+    if (!value || typeof value !== "object" || seen.has(value)) {
+      return null;
+    }
+    seen.add(value);
+    if (
+      "value" in value &&
+      value.value === texture &&
+      "sampler" in value &&
+      typeof value.sampler === "boolean"
+    ) {
+      return value.sampler;
+    }
+    for (const child of Object.values(value)) {
+      const sampler = visit(child);
+      if (sampler !== null) return sampler;
+    }
+    return null;
+  };
+  return visit(root);
 }

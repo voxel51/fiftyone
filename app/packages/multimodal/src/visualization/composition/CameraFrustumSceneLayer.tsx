@@ -1,11 +1,21 @@
 /* eslint-disable react/no-unknown-property */
 import { useThree, type ThreeEvent } from "@react-three/fiber";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import * as THREE from "three";
 
 import type { CameraCalibrationVisualization } from "../../ir";
 import { useImageTextureLease } from "../media-2d/use-image-texture-lease";
-import { createDepthImageMaterial } from "../media-2d/depth-image-material";
+import {
+  createDepthImageMaterial,
+  updateDepthImageMaterial,
+} from "../media-2d/depth-image-material";
 import { POINT_PICK_BLOCKING_USER_DATA } from "../scene-3d/point-picking";
 import { useScenePicking } from "../scene-3d/scene-interactivity";
 import { pointCloudObjectTransform } from "../scene-3d/transforms";
@@ -154,6 +164,9 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
     onLoaded: () => invalidate(),
     textureKey: layer.imageTextureKey,
   });
+  const depthTextureType = imageHandle?.depthDisplay
+    ? imageHandle.texture.type
+    : null;
   const depthImageMaterial = useMemo(
     () =>
       imageHandle?.depthDisplay
@@ -163,8 +176,15 @@ export const CameraFrustumSceneLayer = memo(function CameraFrustumSceneLayer({
             side: THREE.DoubleSide,
           })
         : null,
-    [imageHandle, renderOpacity],
+    // The node graph is encoding-specific but its texture/range are uniforms.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [depthTextureType],
   );
+  useLayoutEffect(() => {
+    if (!depthImageMaterial || !imageHandle?.depthDisplay) return;
+    updateDepthImageMaterial(depthImageMaterial, imageHandle, renderOpacity);
+    invalidate();
+  }, [depthImageMaterial, imageHandle, invalidate, renderOpacity]);
   // This effect publishes image-plane failures without hiding the wireframe.
   useEffect(() => {
     const textureError =

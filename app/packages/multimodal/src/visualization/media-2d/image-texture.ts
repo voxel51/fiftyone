@@ -17,11 +17,9 @@ import {
   type EncodedVideoSessionOwner,
 } from "./video-texture";
 
-type TextureWithNormalized = THREE.DataTexture & {
+type NativeDepthTexture = THREE.DataTexture & {
   normalized: boolean;
 };
-
-const UINT16_MAX = 65_535;
 
 /**
  * Decodes an image visualization into a disposable texture handle.
@@ -141,13 +139,20 @@ function createDepthImageTexture(
     frame.width,
     frame.height,
     THREE.RedFormat,
-    isUint16 ? THREE.UnsignedShortType : THREE.FloatType,
-  ) as TextureWithNormalized;
-  // UnsignedShort + RedFormat maps to r16unorm on WebGPU. Float32 maps to
-  // r32float. Both keep the source samples single-channel and native-width.
-  texture.normalized = isUint16;
+    // Three only declares unsigned integer texture bindings for
+    // UnsignedIntType. The internal format below keeps the actual upload at
+    // 16 bits and its uploader selects Uint16Array from that format.
+    isUint16 ? THREE.UnsignedIntType : THREE.FloatType,
+  ) as NativeDepthTexture;
+  // r16uint and r32float keep source samples single-channel and native-width.
+  // Three's public internal-format type only lists WebGL names today.
+  if (isUint16) texture.internalFormat = "r16uint" as THREE.PixelFormatGPU;
+  texture.normalized = false;
   texture.colorSpace = THREE.NoColorSpace;
-  texture.flipY = true;
+  // Avoid Three's render-pass-based WebGPU flip, which cannot target integer
+  // formats and would add a hidden full-frame GPU copy. The depth material
+  // maps display UVs back to top-left source rows instead.
+  texture.flipY = false;
   texture.generateMipmaps = false;
   // r32float is unfilterable; nearest also keeps invalid pixels from blending
   // into neighboring valid depth before the shader's alpha decision.
@@ -156,15 +161,12 @@ function createDepthImageTexture(
   texture.unpackAlignment = 1;
   texture.needsUpdate = true;
 
-  const sampleScale = isUint16 ? 1 / UINT16_MAX : 1;
   return {
     aspectRatio: frame.width / Math.max(1, frame.height),
     decodedByteLength: depth.values.byteLength,
     depthDisplay: {
-      maxSampleValue:
-        depth.maxValue === null ? null : depth.maxValue * sampleScale,
-      minSampleValue:
-        depth.minValue === null ? null : depth.minValue * sampleScale,
+      maxSampleValue: depth.maxValue,
+      minSampleValue: depth.minValue,
     },
     imageWidth: frame.width,
     imageHeight: frame.height,

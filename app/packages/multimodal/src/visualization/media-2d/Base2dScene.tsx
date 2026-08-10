@@ -11,7 +11,10 @@ import {
 import * as THREE from "three";
 
 import { fittedImageSize } from "./image-fit";
-import { createDepthImageMaterial } from "./depth-image-material";
+import {
+  createDepthImageMaterial,
+  updateDepthImageMaterial,
+} from "./depth-image-material";
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../panel-ui/style-tokens";
 
 /**
@@ -141,6 +144,9 @@ export function ImageTexturePlane({
     () => (textureMesh ? imageTextureMeshGeometry(textureMesh) : null),
     [textureMesh],
   );
+  const depthTextureType = textureHandle?.depthDisplay
+    ? textureHandle.texture.type
+    : null;
   const depthMaterial = useMemo(
     () =>
       textureHandle?.depthDisplay
@@ -149,7 +155,9 @@ export function ImageTexturePlane({
             depthWrite: false,
           })
         : null,
-    [textureHandle],
+    // The node graph is encoding-specific but its texture/range are uniforms.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [depthTextureType],
   );
   // This effect disposes the texture-remap mesh when it is replaced.
   useEffect(() => () => remapGeometry?.dispose(), [remapGeometry]);
@@ -183,6 +191,11 @@ export function ImageTexturePlane({
 
   // This layout effect binds the decoded texture before the browser paints.
   useLayoutEffect(() => {
+    if (depthMaterial && textureHandle?.depthDisplay) {
+      updateDepthImageMaterial(depthMaterial, textureHandle);
+      invalidate();
+      return;
+    }
     const material = materialRef.current;
     const texture = textureHandle?.texture ?? null;
     if (!material || !texture) {
@@ -191,7 +204,7 @@ export function ImageTexturePlane({
 
     replaceImageMaterialTexture(material, texture);
     invalidate();
-  }, [invalidate, textureHandle?.texture]);
+  }, [depthMaterial, invalidate, textureHandle]);
 
   if (!textureHandle) {
     return null;

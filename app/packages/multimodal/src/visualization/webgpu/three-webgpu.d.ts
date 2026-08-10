@@ -196,6 +196,9 @@ declare module "three/tsl" {
   export function int<NodeType extends Node = Node>(
     value: Node | number,
   ): NodeType;
+  export function ivec2<NodeType extends Node = Node>(
+    ...values: readonly (Node | number)[]
+  ): NodeType;
   export function lessThan<NodeType extends Node = Node>(
     left: Node,
     right: Node | number,
@@ -230,6 +233,10 @@ declare module "three/tsl" {
   export function texture<NodeType extends Node = Node>(
     texture: import("three").Texture,
     uv: Node,
+  ): NodeType;
+  export function textureLoad<NodeType extends Node = Node>(
+    texture: import("three").Texture,
+    coordinates: Node,
   ): NodeType;
   export function uint<NodeType extends Node = Node>(
     value: Node | number,

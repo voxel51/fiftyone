@@ -7,6 +7,24 @@ import type { ImageTextureHandle } from "./Base2dScene";
 const MAX_FINITE_FLOAT32 = 3.4028234663852886e38;
 const UINT8_MAX = 255;
 
+type TextureNode = TSL.Node & { value: THREE.Texture };
+
+interface DepthImageMaterialBinding {
+  readonly degenerateRange: ReturnType<typeof TSL.uniform<number>>;
+  readonly hasRange: ReturnType<typeof TSL.uniform<number>>;
+  readonly imageSize: ReturnType<typeof TSL.uniform<THREE.Vector2>>;
+  readonly minSampleValue: ReturnType<typeof TSL.uniform<number>>;
+  readonly opacity: ReturnType<typeof TSL.uniform<number>>;
+  readonly rangeSpan: ReturnType<typeof TSL.uniform<number>>;
+  readonly textureNode: TextureNode;
+  readonly textureType: THREE.TextureDataType;
+}
+
+const bindings = new WeakMap<
+  MeshBasicNodeMaterial,
+  DepthImageMaterialBinding
+>();
+
 export interface DepthImageMaterialOptions {
   readonly depthTest?: boolean;
   readonly depthWrite?: boolean;
@@ -18,6 +36,10 @@ export interface DepthImageMaterialOptions {
  * Builds the WebGPU material for a native single-channel depth texture.
  * Invalid values remain transparent and valid samples use the decoder's
  * per-frame min/max grayscale mapping, including its uint8 quantization.
+ *
+ * The graph and material remain stable across same-encoding frames. Call
+ * `updateDepthImageMaterial` to replace texture/range uniforms without making
+ * Three compile a new shader pipeline for every image.
  */
 export function createDepthImageMaterial(
   handle: ImageTextureHandle,
@@ -28,10 +50,7 @@ export function createDepthImageMaterial(
     side = THREE.FrontSide,
   }: DepthImageMaterialOptions = {},
 ): MeshBasicNodeMaterial {
-  const range = handle.depthDisplay;
-  if (!range) {
-    throw new Error("Depth image material requires a depth texture handle");
-  }
+  requireDepthRange(handle);
 
   const material = new MeshBasicNodeMaterial();
   material.depthTest = depthTest;
@@ -40,25 +59,47 @@ export function createDepthImageMaterial(
   material.toneMapped = false;
   material.transparent = true;
 
-  const sample = TSL.texture(handle.texture, TSL.uv()).x;
-  const hasRange =
-    range.minSampleValue !== null && range.maxSampleValue !== null;
+  const imageSize = TSL.uniform(
+    new THREE.Vector2(handle.imageWidth, handle.imageHeight),
+  );
+  const minSampleValue = TSL.uniform(0);
+  const rangeSpan = TSL.uniform(1);
+  const hasRange = TSL.uniform(0);
+  const degenerateRange = TSL.uniform(0);
+  const opacityUniform = TSL.uniform(opacity);
+
+  // r16uint is integer-sampled and r32float is unfilterable on the target
+  // WebGPU stack. Use texel loads so neither is paired with a filtering
+  // sampler.
+  const displayUv = TSL.uv();
+  const sourceUv = TSL.vec2(displayUv.x, TSL.float(1).sub(displayUv.y));
+  const texelCoordinates = TSL.ivec2(
+    TSL.clamp(
+      TSL.floor(sourceUv.mul(imageSize)),
+      TSL.vec2(0),
+      imageSize.sub(1),
+    ),
+  );
+  const textureNode = TSL.textureLoad(
+    handle.texture,
+    texelCoordinates,
+  ) as TextureNode;
+  const loadedSample = textureNode.x;
+  const sample =
+    handle.texture.type === THREE.UnsignedIntType
+      ? TSL.float(loadedSample)
+      : loadedSample;
   const valid = TSL.and(
+    TSL.greaterThan(hasRange, 0.5),
     TSL.greaterThan(sample, 0),
     TSL.equal(sample, sample),
     TSL.lessThanEqual(TSL.abs(sample), MAX_FINITE_FLOAT32),
   );
-  const normalized = !hasRange
-    ? TSL.float(0)
-    : range.minSampleValue === range.maxSampleValue
-      ? TSL.float(1)
-      : TSL.clamp(
-          sample
-            .sub(range.minSampleValue)
-            .div(range.maxSampleValue - range.minSampleValue),
-          0,
-          1,
-        );
+  const normalized = TSL.select(
+    TSL.greaterThan(degenerateRange, 0.5),
+    1,
+    TSL.clamp(sample.sub(minSampleValue).div(rangeSpan), 0, 1),
+  );
   // Math.round is half-up; shader round may use ties-to-even.
   const byteShade = TSL.floor(normalized.mul(UINT8_MAX).add(0.5)).div(
     UINT8_MAX,
@@ -69,8 +110,57 @@ export function createDepthImageMaterial(
     TSL.vec3(byteShade),
     THREE.SRGBColorSpace,
   );
-  material.opacityNode = hasRange
-    ? TSL.select(valid, opacity, 0)
-    : TSL.float(0);
+  material.opacityNode = TSL.select(valid, opacityUniform, 0);
+
+  bindings.set(material, {
+    degenerateRange,
+    hasRange,
+    imageSize,
+    minSampleValue,
+    opacity: opacityUniform,
+    rangeSpan,
+    textureNode,
+    textureType: handle.texture.type,
+  });
+  updateDepthImageMaterial(material, handle, opacity);
   return material;
+}
+
+/** Rebinds one frame without rebuilding its encoding-specific shader graph. */
+export function updateDepthImageMaterial(
+  material: MeshBasicNodeMaterial,
+  handle: ImageTextureHandle,
+  opacity = 1,
+): void {
+  const range = requireDepthRange(handle);
+  const binding = bindings.get(material);
+  if (!binding) {
+    throw new Error("Depth image material was not created by this module");
+  }
+  if (handle.texture.type !== binding.textureType) {
+    throw new Error("Depth image texture type changed for a stable material");
+  }
+
+  const hasRange =
+    range.minSampleValue !== null && range.maxSampleValue !== null;
+  const minSampleValue = range.minSampleValue ?? 0;
+  const maxSampleValue = range.maxSampleValue ?? minSampleValue;
+  const degenerateRange = hasRange && minSampleValue === maxSampleValue;
+  binding.textureNode.value = handle.texture;
+  binding.imageSize.value.set(handle.imageWidth, handle.imageHeight);
+  binding.minSampleValue.value = minSampleValue;
+  binding.rangeSpan.value = degenerateRange
+    ? 1
+    : Math.max(Number.MIN_VALUE, maxSampleValue - minSampleValue);
+  binding.hasRange.value = hasRange ? 1 : 0;
+  binding.degenerateRange.value = degenerateRange ? 1 : 0;
+  binding.opacity.value = opacity;
+  material.opacity = hasRange ? opacity : 0;
+}
+
+function requireDepthRange(handle: ImageTextureHandle) {
+  if (!handle.depthDisplay) {
+    throw new Error("Depth image material requires a depth texture handle");
+  }
+  return handle.depthDisplay;
 }
