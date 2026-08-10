@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 import { bin } from "./process.mjs";
+import { dependencyCruiserGate } from "./dependency-cruiser-gate.mjs";
 
 const appRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const require = createRequire(import.meta.url);
@@ -31,6 +32,24 @@ assert.equal(
   `top-level namespaces need a direct dependency rule: ${undeclaredNamespaces.join(", ")}`,
 );
 
+const mcapDirectory = new URL("../src/adapters/mcap/", import.meta.url);
+const mcapStratumRules = dependencyConfig.forbidden.filter((rule) =>
+  /^mcap-.*-imports?-only-/.test(rule.name),
+);
+const mcapStrata = readdirSync(mcapDirectory, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name);
+const undeclaredMcapStrata = mcapStrata.filter((stratum) => {
+  const path = `packages/multimodal/src/adapters/mcap/${stratum}/`;
+  return !mcapStratumRules.some((rule) => new RegExp(rule.from.path).test(path));
+});
+
+assert.equal(
+  undeclaredMcapStrata.length,
+  0,
+  `MCAP directories need an import-stratum rule: ${undeclaredMcapStrata.join(", ")}`,
+);
+
 const cruiseArgs = [
   "exec",
   "depcruise",
@@ -55,6 +74,19 @@ if (cruise.status !== 0) {
 }
 
 const graph = JSON.parse(cruise.stdout);
+const gate = dependencyCruiserGate(graph);
+if (gate.exitCode !== 0) {
+  const report = spawnSync(
+    bin("yarn"),
+    [...cruiseArgs, "--output-type", "err"],
+    { cwd: appRoot, stdio: "inherit" },
+  );
+  if (report.error) throw report.error;
+  console.error(
+    `Multimodal dependency architecture failed: ${gate.error} error(s), ${gate.warn} warning(s)`,
+  );
+  process.exit(gate.exitCode);
+}
 
 const sourcePrefix = "packages/multimodal/src/";
 const dependencies = graph.modules.flatMap((module) =>
