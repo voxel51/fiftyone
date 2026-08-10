@@ -1,4 +1,4 @@
-import { Checkbox } from "@voxel51/voodo";
+import { Checkbox, FormField, Select } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, {
   useCallback,
@@ -35,9 +35,9 @@ export interface LogConsoleProps {
   readonly followPlayhead: boolean;
   readonly levels: readonly LogLevel[];
   readonly onFollowPlayheadChange: (follow: boolean) => void;
-  readonly onLevelChange: (level: LogLevel, checked: boolean) => void;
+  readonly onLevelsChange: (levels: readonly LogLevel[]) => void;
   readonly onRowClick: (row: EpisodeLogConsoleRow) => void;
-  readonly onStreamChange: (stream: string, checked: boolean) => void;
+  readonly onStreamsChange: (streams: readonly string[]) => void;
   readonly onViewModeChange: (viewMode: LogConsoleViewMode) => void;
   readonly rows: readonly EpisodeLogConsoleRow[];
   readonly selectedLevels: readonly LogLevel[];
@@ -64,9 +64,9 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
   followPlayhead,
   levels,
   onFollowPlayheadChange,
-  onLevelChange,
+  onLevelsChange,
   onRowClick,
-  onStreamChange,
+  onStreamsChange,
   onViewModeChange,
   rows,
   selectedLevels,
@@ -107,6 +107,44 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
   const visibleDiagnostics = diagnostics.slice(
     visibleRange.startIndex,
     visibleRange.endIndex,
+  );
+  const levelOptions = useMemo(
+    () => levels.map((level) => ({ data: { label: level }, id: level })),
+    [levels],
+  );
+  const sourceOptions = useMemo(
+    () =>
+      sources.map((source) => ({
+        data: { label: source.label },
+        id: source.id,
+      })),
+    [sources],
+  );
+  const selectedLevelValues = useMemo(
+    () => [...selectedLevels],
+    [selectedLevels],
+  );
+  const selectedStreamValues = useMemo(
+    () => [...selectedStreams],
+    [selectedStreams],
+  );
+  const handleLevelSelection = useCallback(
+    (value: string | string[] | null) => {
+      const values = Array.isArray(value) ? value : value ? [value] : [];
+      const validLevels = new Set(levels);
+      onLevelsChange(
+        values.filter((level): level is LogLevel =>
+          validLevels.has(level as LogLevel),
+        ),
+      );
+    },
+    [levels, onLevelsChange],
+  );
+  const handleStreamSelection = useCallback(
+    (value: string | string[] | null) => {
+      onStreamsChange(Array.isArray(value) ? value : value ? [value] : []);
+    },
+    [onStreamsChange],
   );
 
   // This effect tracks the scroll viewport used to calculate visible rows.
@@ -170,83 +208,89 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
     [followPlayhead, onFollowPlayheadChange, viewMode],
   );
 
-  if (sources.length === 0) {
-    return (
-      <div className={styles.body} data-testid="episode-log-console-tile">
-        <div className={styles.empty}>No log streams in this recording</div>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.body} data-testid="episode-log-console-tile">
       <div className={styles.toolbar}>
-        <div aria-label="Log console view" className={styles.tabs} role="group">
-          {(["logs", "diagnostics"] as const).map((mode) => (
-            <button
-              aria-pressed={viewMode === mode}
-              className={clsx(
-                styles.tab,
-                viewMode === mode && styles.tabActive,
-              )}
-              key={mode}
-              onClick={() => onViewModeChange(mode)}
-              type="button"
-            >
-              {mode === "logs" ? "Logs" : "Diagnostics"}
-            </button>
-          ))}
-        </div>
-        <div className={styles.controlGroup}>
-          <Checkbox
-            checked={followPlayhead}
-            label="Follow"
-            onChange={onFollowPlayheadChange}
-            {...booleanNoSpaceToggleProps}
-          />
-        </div>
-        {viewMode === "logs" ? (
-          <div className={styles.controlGroup}>
-            {levels.map((level) => (
-              <Checkbox
-                key={level}
-                checked={selectedLevels.includes(level)}
-                label={level}
-                onChange={(checked) => onLevelChange(level, checked)}
-                {...booleanNoSpaceToggleProps}
-              />
+        <div className={styles.toolbarPrimary}>
+          <div
+            aria-label="Log console view"
+            className={styles.tabs}
+            role="group"
+          >
+            {(["logs", "diagnostics"] as const).map((mode) => (
+              <button
+                aria-pressed={viewMode === mode}
+                className={clsx(
+                  styles.tab,
+                  viewMode === mode && styles.tabActive,
+                )}
+                key={mode}
+                onClick={() => onViewModeChange(mode)}
+                type="button"
+              >
+                {mode === "logs" ? "Logs" : "Diagnostics"}
+              </button>
             ))}
           </div>
-        ) : null}
-        {sources.length > 1 ? (
           <div className={styles.controlGroup}>
-            {sources.map((source) => (
-              <Checkbox
-                key={source.id}
-                checked={selectedStreams.includes(source.id)}
-                label={source.label}
-                onChange={(checked) => onStreamChange(source.id, checked)}
-                {...booleanNoSpaceToggleProps}
-              />
-            ))}
+            <Checkbox
+              checked={followPlayhead}
+              label="Follow"
+              onChange={onFollowPlayheadChange}
+              {...booleanNoSpaceToggleProps}
+            />
           </div>
-        ) : null}
-        <span className={styles.meta}>
-          {viewMode === "logs"
-            ? logConsoleResultSummary({
-                retentionTruncated,
-                rowCount: rows.length,
-                searchIncomplete,
-                status,
-              })
-            : diagnosticConsoleResultSummary({
-                rowCount: diagnostics.length,
-                searchIncomplete,
-                seedIncomplete: diagnosticSeedIncomplete,
-                status,
-              })}{" "}
-          · {windowLabel}
-        </span>
+          <span className={styles.meta}>
+            {viewMode === "logs"
+              ? logConsoleResultSummary({
+                  retentionTruncated,
+                  rowCount: rows.length,
+                  searchIncomplete,
+                  status,
+                })
+              : diagnosticConsoleResultSummary({
+                  rowCount: diagnostics.length,
+                  searchIncomplete,
+                  seedIncomplete: diagnosticSeedIncomplete,
+                  status,
+                })}{" "}
+            · {windowLabel}
+          </span>
+        </div>
+        <div className={styles.filters}>
+          {viewMode === "logs" ? (
+            <FormField
+              className={styles.filterField}
+              control={
+                <Select
+                  className={styles.filterSelect}
+                  data-testid="log-level-select"
+                  onChange={handleLevelSelection}
+                  options={levelOptions}
+                  portal
+                  value={selectedLevelValues}
+                />
+              }
+              label="Levels"
+            />
+          ) : null}
+          {sources.length > 0 ? (
+            <FormField
+              className={styles.filterField}
+              control={
+                <Select
+                  className={styles.filterSelect}
+                  data-testid="log-source-select"
+                  onChange={handleStreamSelection}
+                  options={sourceOptions}
+                  portal
+                  value={selectedStreamValues}
+                />
+              }
+              label={viewMode === "logs" ? "Log sources" : "Diagnostic sources"}
+            />
+          ) : null}
+        </div>
       </div>
       {status === "error" ? (
         <div className={styles.errorState}>
@@ -254,12 +298,16 @@ export const LogConsole: React.FC<LogConsoleProps> = ({
         </div>
       ) : rowCount === 0 ? (
         <div className={styles.empty}>
-          {selectedStreams.length === 0 ||
-          (viewMode === "logs" && selectedLevels.length === 0)
-            ? "No filters selected"
-            : viewMode === "logs"
-              ? "No log rows in this time window"
-              : "No diagnostic states at this playhead"}
+          {sources.length === 0
+            ? viewMode === "logs"
+              ? "No log streams in this recording"
+              : "No diagnostic streams in this recording"
+            : selectedStreams.length === 0 ||
+                (viewMode === "logs" && selectedLevels.length === 0)
+              ? "No filters selected"
+              : viewMode === "logs"
+                ? "No log rows in this time window"
+                : "No diagnostic states at this playhead"}
         </div>
       ) : (
         <div

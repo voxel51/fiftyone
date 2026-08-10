@@ -6,6 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import LogConsoleTile from "./LogConsoleTile";
@@ -16,6 +17,8 @@ const mocks = vi.hoisted(() => {
   let readFrames: readonly unknown[] = [];
   let seedFrames: readonly unknown[] = [];
   let logSources = [{ id: "/rosout", label: "ROS logs" }];
+  let enabledDiagnosticStreams: readonly string[] | undefined;
+  let enabledStreams: readonly string[] | undefined;
   let viewMode: "diagnostics" | "logs" = "logs";
   let playheadSubscriber: () => void = () => undefined;
   const resetReadGate = () => {
@@ -83,6 +86,12 @@ const mocks = vi.hoisted(() => {
     get logSources() {
       return logSources;
     },
+    get enabledDiagnosticStreams() {
+      return enabledDiagnosticStreams;
+    },
+    get enabledStreams() {
+      return enabledStreams;
+    },
     get viewMode() {
       return viewMode;
     },
@@ -97,19 +106,18 @@ const mocks = vi.hoisted(() => {
         readonly endNs: bigint;
         readonly startNs: bigint;
       },
-      diagnostics: boolean | string = false,
+      diagnostics: boolean | string | readonly string[] = false,
     ) => {
-      const diagnosticStream =
-        typeof diagnostics === "string" ? diagnostics : "/diagnostics";
+      const diagnosticStreams = Array.isArray(diagnostics)
+        ? diagnostics
+        : [typeof diagnostics === "string" ? diagnostics : "/diagnostics"];
       session = {
         manifest: {
           streams: diagnostics
-            ? ([
-                {
-                  id: diagnosticStream,
-                  payload: { schema: "diagnostic_msgs/msg/DiagnosticArray" },
-                },
-              ] as never)
+            ? (diagnosticStreams.map((id) => ({
+                id,
+                payload: { schema: "diagnostic_msgs/msg/DiagnosticArray" },
+              })) as never)
             : [],
           timeRange: timeRange ?? {
             endNs: 100_000_000_000n,
@@ -144,6 +152,12 @@ const mocks = vi.hoisted(() => {
     setLogSources: (sources: typeof logSources) => {
       logSources = sources;
     },
+    setEnabledDiagnosticStreams: (streams: readonly string[] | undefined) => {
+      enabledDiagnosticStreams = streams;
+    },
+    setEnabledStreams: (streams: readonly string[] | undefined) => {
+      enabledStreams = streams;
+    },
     setViewMode: (mode: typeof viewMode) => {
       viewMode = mode;
     },
@@ -174,6 +188,56 @@ vi.mock("@fiftyone/tiling", () => ({
 
 vi.mock("@voxel51/voodo", () => ({
   Checkbox: ({ label }: { readonly label: string }) => <span>{label}</span>,
+  FormField: ({
+    control,
+    label,
+  }: {
+    readonly control: ReactNode;
+    readonly label: ReactNode;
+  }) => (
+    <label>
+      {label}
+      {control}
+    </label>
+  ),
+  Select: ({
+    className,
+    "data-testid": testId,
+    onChange,
+    options = [],
+    value = [],
+  }: {
+    readonly className?: string;
+    readonly "data-testid"?: string;
+    readonly onChange?: (value: string[]) => void;
+    readonly options?: readonly {
+      readonly data: { readonly label: string };
+      readonly id: string;
+    }[];
+    readonly portal?: boolean;
+    readonly value?: string | readonly string[];
+  }) => (
+    <select
+      className={className}
+      data-testid={testId}
+      multiple
+      onChange={(event) =>
+        onChange?.(
+          Array.from(
+            event.currentTarget.selectedOptions,
+            (option) => option.value,
+          ),
+        )
+      }
+      value={typeof value === "string" ? [value] : value}
+    >
+      {options.map((option) => (
+        <option key={option.id} value={option.id}>
+          {option.data.label}
+        </option>
+      ))}
+    </select>
+  ),
 }));
 
 vi.mock("../../../scene-inventory/react", () => ({
@@ -198,6 +262,8 @@ vi.mock("./log-console-context", () => ({
 
 vi.mock("./log-tile-state", () => ({
   useLogTileSettings: () => ({
+    enabledDiagnosticStreams: mocks.enabledDiagnosticStreams,
+    enabledStreams: mocks.enabledStreams,
     followPlayhead: true,
     selectedLevels: ["info"],
     viewMode: mocks.viewMode,
@@ -212,6 +278,8 @@ beforeEach(() => {
   mocks.setReadFrames([]);
   mocks.setSeedFrames([]);
   mocks.setLogSources([{ id: "/rosout", label: "ROS logs" }]);
+  mocks.setEnabledDiagnosticStreams(undefined);
+  mocks.setEnabledStreams(undefined);
   mocks.setViewMode("logs");
   mocks.read.mockClear();
   mocks.readSynchronized.mockClear();
@@ -220,6 +288,7 @@ beforeEach(() => {
   mocks.getPlayhead.mockReturnValue(1);
   mocks.seek.mockClear();
   mocks.subscribePlayhead.mockClear();
+  mocks.setLogSettings.mockClear();
 });
 
 afterEach(() => {
@@ -368,16 +437,27 @@ describe("LogConsoleTile", () => {
     vi.spyOn(Date, "now").mockReturnValue(1_000);
     mocks.getPlayhead.mockReturnValue(40);
     mocks.setViewMode("logs");
-    mocks.setLogSources([{ id: "/diagnostics", label: "ROS diagnostics" }]);
+    mocks.setLogSources([
+      { id: "/rosout", label: "ROS logs" },
+      { id: "/diagnostics", label: "ROS diagnostics" },
+    ]);
     mocks.resetSession({ endNs: 100_000_000_000n, startNs: 0n }, true);
     const view = render(<LogConsoleTile />);
 
     await waitFor(() => expect(mocks.read).toHaveBeenCalled());
+    expect(mocks.read.mock.calls[0]?.[0]).toMatchObject({
+      streams: ["/rosout"],
+    });
+    expect(screen.getByRole("option", { name: "ROS logs" })).toBeTruthy();
+    expect(
+      screen.queryByRole("option", { name: "ROS diagnostics" }),
+    ).toBeNull();
     expect(mocks.readSynchronized).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Diagnostics" }));
     expect(mocks.setLogSettings).toHaveBeenCalledWith({
       viewMode: "diagnostics",
     });
+    expect(mocks.setLogSettings).toHaveBeenCalledTimes(1);
 
     mocks.setViewMode("diagnostics");
     view.rerender(<LogConsoleTile />);
@@ -386,6 +466,38 @@ describe("LogConsoleTile", () => {
     expect(mocks.readSynchronized.mock.calls[0]?.[0]).toMatchObject({
       streams: ["/diagnostics"],
       timeNs: 9_999_999_999n,
+    });
+  });
+
+  it("keeps diagnostic source selection independent and honors explicit empty", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(1_000);
+    mocks.getPlayhead.mockReturnValue(40);
+    mocks.setViewMode("diagnostics");
+    mocks.setLogSources([
+      { id: "/diagnostics", label: "Diagnostics" },
+      { id: "/diagnostics_agg", label: "Diagnostics aggregate" },
+    ]);
+    mocks.setEnabledDiagnosticStreams([]);
+    mocks.resetSession({ endNs: 100_000_000_000n, startNs: 0n }, [
+      "/diagnostics",
+      "/diagnostics_agg",
+    ]);
+    const view = render(<LogConsoleTile />);
+
+    expect(await screen.findByText("No filters selected")).toBeTruthy();
+    expect(mocks.read).not.toHaveBeenCalled();
+    expect(mocks.readSynchronized).not.toHaveBeenCalled();
+
+    mocks.setEnabledDiagnosticStreams(["/diagnostics"]);
+    view.rerender(<LogConsoleTile />);
+
+    await waitFor(() => expect(mocks.read).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.readSynchronized).toHaveBeenCalled());
+    expect(mocks.read.mock.calls[0]?.[0]).toMatchObject({
+      streams: ["/diagnostics"],
+    });
+    expect(mocks.readSynchronized.mock.calls[0]?.[0]).toMatchObject({
+      streams: ["/diagnostics"],
     });
   });
 

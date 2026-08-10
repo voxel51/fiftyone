@@ -86,25 +86,55 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
   const store = usePlaybackStore();
   const { seek } = usePlayback();
   const setTileTitle = useSetTileTitle();
-  const { enabledStreams, followPlayhead, selectedLevels, viewMode } =
-    useLogTileSettings();
+  const {
+    enabledDiagnosticStreams,
+    enabledStreams,
+    followPlayhead,
+    selectedLevels,
+    viewMode,
+  } = useLogTileSettings();
   const setLogSettings = useSetLogTileSettings();
   const [horizon, setHorizon] = useState<LogHorizon | undefined>();
   const [diagnosticProjector] = useState(() => new DiagnosticStateProjector());
   const lastPlayheadPublishMsRef = useRef(0);
   const recordingStartNs = session?.manifest.timeRange.startNs ?? 0n;
   const centerTimeNs = horizon?.playheadTimeNs;
+  const allSourceIds = useMemo(
+    () => logSources.map((source) => source.id),
+    [logSources],
+  );
+  const allDiagnosticStreamIds = useMemo(
+    () => diagnosticStreamIds(session, allSourceIds),
+    [allSourceIds, session],
+  );
+  const diagnosticStreamIdSet = useMemo(
+    () => new Set(allDiagnosticStreamIds),
+    [allDiagnosticStreamIds],
+  );
+  const sources = useMemo(
+    () =>
+      logSources.filter((source) =>
+        viewMode === "diagnostics"
+          ? diagnosticStreamIdSet.has(source.id)
+          : !diagnosticStreamIdSet.has(source.id),
+      ),
+    [diagnosticStreamIdSet, logSources, viewMode],
+  );
+  const configuredStreams =
+    viewMode === "diagnostics" ? enabledDiagnosticStreams : enabledStreams;
   const selectedStreams = useMemo(() => {
-    const ids = logSources.map((entry) => entry.id);
-    if (enabledStreams === undefined) return ids;
-    const valid = enabledStreams.filter((stream) => ids.includes(stream));
-    return valid.length > 0 ? valid : ids;
-  }, [enabledStreams, logSources]);
+    const ids = sources.map((source) => source.id);
+    if (configuredStreams === undefined) return ids;
+    const validIds = new Set(ids);
+    // An explicit empty list means no streams. Never turn a deliberate
+    // deselection into "all", which previously coupled diagnostics topics.
+    return configuredStreams.filter((stream) => validIds.has(stream));
+  }, [configuredStreams, sources]);
   const selectedStreamsKey = useMemo(
     () => [...selectedStreams].sort().join("\0"),
     [selectedStreams],
   );
-  const diagnosticScopeKey = `${sourceKey ?? ""}\0${selectedStreamsKey}`;
+  const sourceScopeKey = `${sourceKey ?? ""}\0${viewMode}\0${selectedStreamsKey}`;
 
   const moveHorizon = useCallback(
     (playheadTimeNs: bigint, forceNewGeneration = false) => {
@@ -114,11 +144,11 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
           playheadTimeNs,
           recordingStartNs,
           forceNewGeneration,
-          diagnosticScopeKey,
+          sourceScopeKey,
         ),
       );
     },
-    [diagnosticScopeKey, recordingStartNs],
+    [recordingStartNs, sourceScopeKey],
   );
 
   useEffect(() => {
@@ -159,13 +189,15 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
     () => new Set(selectedLevels),
     [selectedLevels],
   );
-  const previousDiagnosticScopeRef = useRef(diagnosticScopeKey);
-  const diagnosticScopeReady = horizon?.scopeKey === diagnosticScopeKey;
+  const previousSourceScopeRef = useRef(sourceScopeKey);
+  const sourceScopeReady = horizon?.scopeKey === sourceScopeKey;
+  // This effect invalidates retained history when the active view or source
+  // selection changes.
   useEffect(() => {
-    if (previousDiagnosticScopeRef.current === diagnosticScopeKey) return;
-    previousDiagnosticScopeRef.current = diagnosticScopeKey;
+    if (previousSourceScopeRef.current === sourceScopeKey) return;
+    previousSourceScopeRef.current = sourceScopeKey;
     if (centerTimeNs !== undefined) moveHorizon(centerTimeNs, true);
-  }, [centerTimeNs, diagnosticScopeKey, moveHorizon]);
+  }, [centerTimeNs, moveHorizon, sourceScopeKey]);
   const readWindow = useMemo(
     () =>
       centerTimeNs === undefined
@@ -283,9 +315,9 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
     () => diagnosticStreamIds(session, selectedStreams),
     [selectedStreams, session],
   );
-  const diagnosticGeneration = `${diagnosticScopeKey}\0${horizon?.generation ?? 0}`;
+  const diagnosticGeneration = `${sourceScopeKey}\0${horizon?.generation ?? 0}`;
   const diagnosticSeed = useDiagnosticSeed({
-    enabled: viewMode === "diagnostics" && diagnosticScopeReady,
+    enabled: viewMode === "diagnostics" && sourceScopeReady,
     generation: diagnosticGeneration,
     seedTimeNs: horizon?.seedTimeNs,
     session,
@@ -295,7 +327,7 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
   const diagnostics = useMemo(
     () =>
       viewMode !== "diagnostics" ||
-      !diagnosticScopeReady ||
+      !sourceScopeReady ||
       centerTimeNs === undefined
         ? []
         : diagnosticProjector.project({
@@ -310,7 +342,7 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
       diagnosticCoverage,
       diagnosticGeneration,
       diagnosticProjector,
-      diagnosticScopeReady,
+      sourceScopeReady,
       diagnosticSeed.rows,
       evidence.orderedEvents,
       viewMode,
@@ -319,7 +351,7 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
   const windowStartNs = visibleWindow?.startTimeNs ?? recordingStartNs;
   const panelStatus =
     viewMode === "diagnostics" &&
-    (!diagnosticScopeReady || diagnosticSeed.status === "loading")
+    (!sourceScopeReady || diagnosticSeed.status === "loading")
       ? "loading"
       : evidence.status;
   const panelError =
@@ -336,36 +368,29 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
     [moveHorizon, seek, timelineIndex],
   );
 
-  const toggleStream = useCallback(
-    (stream: string, checked: boolean) => {
-      setLogSettings({
-        enabledStreams: checked
-          ? [...new Set([...selectedStreams, stream])]
-          : selectedStreams.filter((entry) => entry !== stream),
-      });
+  const handleStreamsChange = useCallback(
+    (streams: readonly string[]) => {
+      setLogSettings(
+        viewMode === "diagnostics"
+          ? { enabledDiagnosticStreams: streams }
+          : { enabledStreams: streams },
+      );
     },
-    [selectedStreams, setLogSettings],
+    [setLogSettings, viewMode],
   );
 
-  const toggleLevel = useCallback(
-    (level: LogLevel, checked: boolean) => {
-      setLogSettings({
-        selectedLevels: checked
-          ? [...new Set([...selectedLevels, level])]
-          : selectedLevels.filter((entry) => entry !== level),
-      });
+  const handleLevelsChange = useCallback(
+    (levels: readonly LogLevel[]) => {
+      setLogSettings({ selectedLevels: levels });
     },
-    [selectedLevels, setLogSettings],
+    [setLogSettings],
   );
 
   const handleViewModeChange = useCallback(
     (nextViewMode: "diagnostics" | "logs") => {
-      if (nextViewMode === "diagnostics" && centerTimeNs !== undefined) {
-        moveHorizon(centerTimeNs, true);
-      }
       setLogSettings({ viewMode: nextViewMode });
     },
-    [centerTimeNs, moveHorizon, setLogSettings],
+    [setLogSettings],
   );
 
   const timeOriginNs = timelineIndex?.startTimeNs;
@@ -382,16 +407,16 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
       onFollowPlayheadChange={(follow) =>
         setLogSettings({ followPlayhead: follow })
       }
-      onLevelChange={toggleLevel}
+      onLevelsChange={handleLevelsChange}
       onRowClick={handleRowClick}
-      onStreamChange={toggleStream}
+      onStreamsChange={handleStreamsChange}
       onViewModeChange={handleViewModeChange}
       retentionTruncated={logRows.truncated}
       rows={logRows.rows}
       searchIncomplete={evidence.searchIncomplete}
       selectedLevels={selectedLevels}
       selectedStreams={selectedStreams}
-      sources={logSources}
+      sources={sources}
       status={panelStatus}
       tailTimeNs={centerTimeNs}
       timeOriginNs={timeOriginNs}

@@ -11,10 +11,15 @@ import { LOG_LEVELS, type LogLevel } from "../../../ir";
  */
 export interface LogTileSettings {
   /**
-   * `undefined` means "all log streams currently present". Once the user
-   * edits stream visibility, this becomes the explicit visible list.
+   * `undefined` means "all ordinary log streams currently present". Once the
+   * user edits log visibility, this becomes the explicit visible list.
    */
   readonly enabledStreams?: readonly string[];
+  /**
+   * `undefined` means "all diagnostic streams currently present". Diagnostic
+   * selection is independent so switching views never changes log selection.
+   */
+  readonly enabledDiagnosticStreams?: readonly string[];
   /** Keep the visible window following the playhead. */
   readonly followPlayhead: boolean;
   readonly selectedLevels: readonly LogLevel[];
@@ -67,6 +72,7 @@ export function useSetLogTileSettings(): (
         };
         const next = { ...current, ...patch };
         if (
+          next.enabledDiagnosticStreams === current.enabledDiagnosticStreams &&
           next.enabledStreams === current.enabledStreams &&
           next.followPlayhead === current.followPlayhead &&
           next.selectedLevels === current.selectedLevels &&

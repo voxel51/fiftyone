@@ -44,7 +44,10 @@ export function selectBoundedLogRows(
   let truncated = false;
   for (let index = endIndex - 1; index >= startIndex; index -= 1) {
     const row = orderedRows[index] as EpisodeLogConsoleRow;
-    if (!selectedLevels.has(row.level)) continue;
+    // DiagnosticArray messages share the history pipeline for Diagnostics,
+    // but they are never ordinary log rows. Keep that invariant here as a
+    // final projection guard even if source metadata is incomplete.
+    if (row.kind !== "log" || !selectedLevels.has(row.level)) continue;
     if (newestFirst.length >= rowLimit) {
       truncated = true;
       break;

@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { EpisodeLogConsoleRow } from "./log-console-rows";
@@ -29,6 +30,56 @@ vi.mock("@voxel51/voodo", () => ({
       {label}
     </label>
   ),
+  FormField: ({
+    control,
+    label,
+  }: {
+    readonly control: ReactNode;
+    readonly label: ReactNode;
+  }) => (
+    <label>
+      {label}
+      {control}
+    </label>
+  ),
+  Select: ({
+    className,
+    "data-testid": testId,
+    onChange,
+    options = [],
+    value = [],
+  }: {
+    readonly className?: string;
+    readonly "data-testid"?: string;
+    readonly onChange?: (value: string[]) => void;
+    readonly options?: readonly {
+      readonly data: { readonly label: string };
+      readonly id: string;
+    }[];
+    readonly portal?: boolean;
+    readonly value?: string | readonly string[];
+  }) => (
+    <select
+      className={className}
+      data-testid={testId}
+      multiple
+      onChange={(event) =>
+        onChange?.(
+          Array.from(
+            event.currentTarget.selectedOptions,
+            (option) => option.value,
+          ),
+        )
+      }
+      value={typeof value === "string" ? [value] : value}
+    >
+      {options.map((option) => (
+        <option key={option.id} value={option.id}>
+          {option.data.label}
+        </option>
+      ))}
+    </select>
+  ),
 }));
 
 afterEach(cleanup);
@@ -43,6 +94,56 @@ describe("LogConsole", () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Diagnostics" }));
+    expect(onViewModeChange).toHaveBeenCalledWith("diagnostics");
+  });
+
+  it("uses full-width multi-select filters instead of checkbox grids", () => {
+    const onLevelsChange = vi.fn();
+    const onStreamsChange = vi.fn();
+    render(
+      <LogConsole
+        {...defaultProps({ firstRows: [] })}
+        levels={["debug", "info", "warn"]}
+        onLevelsChange={onLevelsChange}
+        onStreamsChange={onStreamsChange}
+        selectedLevels={["info"]}
+        selectedStreams={["/rosout"]}
+        sources={[
+          { id: "/rosout", label: "ROS logs" },
+          { id: "/app", label: "Application logs" },
+        ]}
+      />,
+    );
+
+    expect(screen.getAllByRole("checkbox")).toHaveLength(1);
+    const levelSelect = screen.getByTestId("log-level-select");
+    const sourceSelect = screen.getByTestId("log-source-select");
+    const debug = screen.getByRole("option", { name: "debug" });
+    const info = screen.getByRole("option", { name: "info" });
+    const app = screen.getByRole("option", { name: "Application logs" });
+    (debug as HTMLOptionElement).selected = true;
+    (info as HTMLOptionElement).selected = false;
+    fireEvent.change(levelSelect);
+    (app as HTMLOptionElement).selected = true;
+    fireEvent.change(sourceSelect);
+
+    expect(onLevelsChange).toHaveBeenCalledWith(["debug"]);
+    expect(onStreamsChange).toHaveBeenCalledWith(["/rosout", "/app"]);
+  });
+
+  it("keeps mode navigation available when the current mode has no sources", () => {
+    const onViewModeChange = vi.fn();
+    render(
+      <LogConsole
+        {...defaultProps({ firstRows: [] })}
+        onViewModeChange={onViewModeChange}
+        selectedStreams={[]}
+        sources={[]}
+      />,
+    );
+
+    expect(screen.getByText("No log streams in this recording")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Diagnostics" }));
     expect(onViewModeChange).toHaveBeenCalledWith("diagnostics");
   });
@@ -213,9 +314,9 @@ function defaultProps({
     followPlayhead: true,
     levels: ["info"],
     onFollowPlayheadChange,
-    onLevelChange: vi.fn(),
+    onLevelsChange: vi.fn(),
     onRowClick: vi.fn(),
-    onStreamChange: vi.fn(),
+    onStreamsChange: vi.fn(),
     onViewModeChange: vi.fn(),
     retentionTruncated: false,
     rows: firstRows,

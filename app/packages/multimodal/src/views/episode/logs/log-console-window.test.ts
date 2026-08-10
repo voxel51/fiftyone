@@ -178,6 +178,24 @@ describe("episode log console window", () => {
       10n,
     ]);
   });
+
+  it("never projects diagnostic rows into the Logs view", () => {
+    const log = row(8, "log", "ordinary log");
+    const diagnostic = {
+      ...row(9, "diagnostic", "diagnostic status", "error"),
+      diagnosticId: "lidar",
+      kind: "diagnostic" as const,
+    };
+
+    const visible = selectBoundedLogRows(
+      orderedUniqueLogRows([[log, diagnostic]]),
+      { endTimeNs: 10n, startTimeNs: 0n },
+      10,
+      new Set(["info", "error"]),
+    );
+
+    expect(visible.rows).toEqual([log]);
+  });
 });
 
 function row(

@@ -11,10 +11,11 @@
 }
 
 .toolbar {
-  align-items: center;
+  align-items: stretch;
   border-bottom: 1px solid var(--color-content-border-default, #383835);
   color: var(--color-content-text-secondary);
   display: flex;
+  flex-direction: column;
   flex: none;
   flex-wrap: wrap;
   font-size: 11px;
@@ -23,12 +24,35 @@
   padding: 6px 10px;
 }
 
+.toolbarPrimary {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-width: 0;
+  width: 100%;
+}
+
 .controlGroup {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   min-width: 0;
+}
+
+.filters {
+  display: grid;
+  gap: 8px 12px;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  width: 100%;
+}
+
+.filterField,
+.filterSelect {
+  min-width: 0;
+  width: 100%;
 }
 
 .tabs {

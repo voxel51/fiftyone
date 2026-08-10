@@ -546,6 +546,9 @@ export function sanitizeLogSettings(
     }
 
     const record = settings as Record<string, unknown>;
+    const enabledDiagnosticStreams = sanitizeStreamList(
+      record.enabledDiagnosticStreams,
+    );
     const enabledStreams = sanitizeStreamList(record.enabledStreams);
     const followPlayhead =
       typeof record.followPlayhead === "boolean"
@@ -561,6 +564,9 @@ export function sanitizeLogSettings(
       followPlayhead,
       selectedLevels,
       viewMode,
+      ...(enabledDiagnosticStreams !== undefined
+        ? { enabledDiagnosticStreams }
+        : {}),
       ...(enabledStreams !== undefined ? { enabledStreams } : {}),
     };
     tileCount += 1;

@@ -561,6 +561,7 @@ describe("layout-persistence", () => {
   describe("logSettings", () => {
     const SETTINGS = {
       "log-1": {
+        enabledDiagnosticStreams: ["/diagnostics"],
         enabledStreams: ["/rosout"],
         followPlayhead: false,
         // Canonical severity order, as the sanitizer normalizes it.
@@ -579,6 +580,7 @@ describe("layout-persistence", () => {
         {
           logSettings: {
             "log-1": {
+              enabledDiagnosticStreams: ["/diagnostics", "", "/diagnostics", 5],
               enabledStreams: ["/rosout", "", "/rosout", 5],
               followPlayhead: false,
               selectedLevels: ["error", "shout"],
@@ -588,6 +590,7 @@ describe("layout-persistence", () => {
               selectedLevels: ["info"],
             },
             "log-2": {
+              enabledDiagnosticStreams: [],
               followPlayhead: "yes",
               selectedLevels: [],
             },
@@ -598,6 +601,7 @@ describe("layout-persistence", () => {
 
       expect(readModalLayout("ds-a")?.logSettings).toEqual({
         "log-1": {
+          enabledDiagnosticStreams: ["/diagnostics"],
           enabledStreams: ["/rosout"],
           followPlayhead: false,
           selectedLevels: ["error"],
@@ -606,6 +610,7 @@ describe("layout-persistence", () => {
         // Non-boolean follow falls back to the default; an explicitly
         // empty level selection survives — all-off is a deliberate view.
         "log-2": {
+          enabledDiagnosticStreams: [],
           followPlayhead: true,
           selectedLevels: [],
           viewMode: "logs",

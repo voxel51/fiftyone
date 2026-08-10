@@ -747,6 +747,7 @@ function compactLogSettings(
       settings.followPlayhead === DEFAULT_LOG_TILE_SETTINGS.followPlayhead &&
       settings.selectedLevels === DEFAULT_LOG_TILE_SETTINGS.selectedLevels &&
       settings.viewMode === DEFAULT_LOG_TILE_SETTINGS.viewMode &&
+      settings.enabledDiagnosticStreams === undefined &&
       settings.enabledStreams === undefined;
     if (isDefault) {
       continue;
@@ -755,6 +756,9 @@ function compactLogSettings(
       followPlayhead: settings.followPlayhead,
       selectedLevels: settings.selectedLevels,
       viewMode: settings.viewMode,
+      ...(settings.enabledDiagnosticStreams !== undefined
+        ? { enabledDiagnosticStreams: settings.enabledDiagnosticStreams }
+        : {}),
       ...(settings.enabledStreams !== undefined
         ? { enabledStreams: settings.enabledStreams }
         : {}),
