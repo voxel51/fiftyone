@@ -143,12 +143,14 @@ function cameraModel(): CameraModel {
 function depthFrame(): RawImageVisualization {
   return {
     depth: {
+      maxValue: 2_000,
       metersPerUnit: 0.001,
+      minValue: 2_000,
       values: new Uint16Array([0, 0, 0, 0, 0, 2_000, 0, 0, 0]),
     },
     height: 3,
     kind: VISUALIZATION_KIND.RAW_IMAGE,
-    rgba: new Uint8Array(3 * 3 * 4),
+    rgba: new Uint8Array(0),
     sourceEncoding: "16UC1",
     width: 3,
   };

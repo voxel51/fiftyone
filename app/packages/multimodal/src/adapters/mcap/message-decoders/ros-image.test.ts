@@ -147,7 +147,12 @@ describe("ROS image and camera decoders", () => {
     if (depth16.visualization?.kind !== VISUALIZATION_KIND.RAW_IMAGE) {
       throw new Error("Expected raw depth image visualization");
     }
+    expect(depth16.visualization.rgba).toHaveLength(0);
     expect(depth16.visualization.depth?.metersPerUnit).toBe(0.001);
+    expect(depth16.visualization.depth).toMatchObject({
+      maxValue: 2000,
+      minValue: 1000,
+    });
     expect(depth16.visualization.depth?.values).toBeInstanceOf(Uint16Array);
     expect(Array.from(depth16.visualization.depth?.values ?? [])).toEqual([
       0, 1000, 2000, 1000,
@@ -165,7 +170,12 @@ describe("ROS image and camera decoders", () => {
     if (depth32.visualization?.kind !== VISUALIZATION_KIND.RAW_IMAGE) {
       throw new Error("Expected raw depth image visualization");
     }
+    expect(depth32.visualization.rgba).toHaveLength(0);
     expect(depth32.visualization.depth?.metersPerUnit).toBe(1);
+    expect(depth32.visualization.depth).toMatchObject({
+      maxValue: 3,
+      minValue: 1.5,
+    });
     expect(depth32.visualization.depth?.values).toBeInstanceOf(Float32Array);
     expect(Array.from(depth32.visualization.depth?.values ?? [])).toEqual([
       Number.NaN,

@@ -238,6 +238,27 @@ describe("BitmapImageFrameView", () => {
     expect(stagingCanvas.width).toBe(0);
     expect(stagingCanvas.height).toBe(0);
   });
+
+  it("materializes native depth RGBA only for the bitmap fallback", async () => {
+    stubElementSize(100, 50);
+    const context = sharedMockContext();
+    const imageData = {
+      data: new Uint8ClampedArray(8),
+      height: 1,
+      width: 2,
+    } as ImageData;
+    vi.spyOn(context, "createImageData").mockReturnValue(imageData);
+    const putImageData = vi
+      .spyOn(context, "putImageData")
+      .mockImplementation(() => undefined);
+
+    render(<BitmapImageFrameView frame={depthFrame()} />);
+
+    await waitFor(() => expect(putImageData).toHaveBeenCalledOnce());
+    expect(Array.from(imageData.data)).toEqual([
+      0, 0, 0, 0, 255, 255, 255, 255,
+    ]);
+  });
 });
 
 describe("BitmapImageView", () => {
@@ -782,6 +803,22 @@ function rawFrameWithDimensions(
     rgba,
     sourceEncoding: "rgba8",
     width,
+  };
+}
+
+function depthFrame(): RawImageVisualization {
+  return {
+    depth: {
+      maxValue: 2_000,
+      metersPerUnit: 0.001,
+      minValue: 2_000,
+      values: new Uint16Array([0, 2_000]),
+    },
+    height: 1,
+    kind: VISUALIZATION_KIND.RAW_IMAGE,
+    rgba: new Uint8Array(0),
+    sourceEncoding: "16UC1",
+    width: 2,
   };
 }
 

@@ -167,6 +167,10 @@ declare module "three/tsl" {
     min: Node | number,
     max: Node | number,
   ): NodeType;
+  export function colorSpaceToWorking<NodeType extends Node = Node>(
+    value: Node,
+    colorSpace: import("three").ColorSpace,
+  ): NodeType;
   export function dot<NodeType extends Node = Node>(
     left: Node,
     right: Node,
@@ -191,6 +195,9 @@ declare module "three/tsl" {
   ): NodeType;
   export function int<NodeType extends Node = Node>(
     value: Node | number,
+  ): NodeType;
+  export function ivec2<NodeType extends Node = Node>(
+    ...values: readonly (Node | number)[]
   ): NodeType;
   export function lessThan<NodeType extends Node = Node>(
     left: Node,
@@ -226,6 +233,10 @@ declare module "three/tsl" {
   export function texture<NodeType extends Node = Node>(
     texture: import("three").Texture,
     uv: Node,
+  ): NodeType;
+  export function textureLoad<NodeType extends Node = Node>(
+    texture: import("three").Texture,
+    coordinates: Node,
   ): NodeType;
   export function uint<NodeType extends Node = Node>(
     value: Node | number,

@@ -17,6 +17,10 @@ import {
   type EncodedVideoSessionOwner,
 } from "./video-texture";
 
+type NativeDepthTexture = THREE.DataTexture & {
+  normalized: boolean;
+};
+
 /**
  * Decodes an image visualization into a disposable texture handle.
  */
@@ -90,6 +94,9 @@ async function createEncodedImageTexture(
 function createRawImageTexture(
   frame: RawImageVisualization,
 ): ImageTextureHandle {
+  if (frame.depth) {
+    return createDepthImageTexture(frame);
+  }
   const expectedByteLength = frame.width * frame.height * 4;
   if (frame.rgba.byteLength < expectedByteLength) {
     throw new Error("Raw image frame has too few RGBA bytes");
@@ -111,6 +118,56 @@ function createRawImageTexture(
 
   return {
     aspectRatio: frame.width / Math.max(1, frame.height),
+    imageWidth: frame.width,
+    imageHeight: frame.height,
+    dispose: () => texture.dispose(),
+    texture,
+  };
+}
+
+function createDepthImageTexture(
+  frame: RawImageVisualization,
+): ImageTextureHandle {
+  const depth = frame.depth;
+  if (!depth || depth.values.length !== frame.width * frame.height) {
+    throw new Error("Raw depth frame has the wrong number of samples");
+  }
+
+  const isUint16 = depth.values instanceof Uint16Array;
+  const texture = new THREE.DataTexture(
+    depth.values,
+    frame.width,
+    frame.height,
+    THREE.RedFormat,
+    // Three only declares unsigned integer texture bindings for
+    // UnsignedIntType. The internal format below keeps the actual upload at
+    // 16 bits and its uploader selects Uint16Array from that format.
+    isUint16 ? THREE.UnsignedIntType : THREE.FloatType,
+  ) as NativeDepthTexture;
+  // r16uint and r32float keep source samples single-channel and native-width.
+  // Three's public internal-format type only lists WebGL names today.
+  if (isUint16) texture.internalFormat = "r16uint" as THREE.PixelFormatGPU;
+  texture.normalized = false;
+  texture.colorSpace = THREE.NoColorSpace;
+  // Avoid Three's render-pass-based WebGPU flip, which cannot target integer
+  // formats and would add a hidden full-frame GPU copy. The depth material
+  // maps display UVs back to top-left source rows instead.
+  texture.flipY = false;
+  texture.generateMipmaps = false;
+  // r32float is unfilterable; nearest also keeps invalid pixels from blending
+  // into neighboring valid depth before the shader's alpha decision.
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.unpackAlignment = 1;
+  texture.needsUpdate = true;
+
+  return {
+    aspectRatio: frame.width / Math.max(1, frame.height),
+    decodedByteLength: depth.values.byteLength,
+    depthDisplay: {
+      maxSampleValue: depth.maxValue,
+      minSampleValue: depth.minValue,
+    },
     imageWidth: frame.width,
     imageHeight: frame.height,
     dispose: () => texture.dispose(),

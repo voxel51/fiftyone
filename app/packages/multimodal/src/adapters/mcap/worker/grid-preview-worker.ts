@@ -123,7 +123,9 @@ function transferablesForResponse(
   const frame = response.result.state.frame;
   if (frame?.kind === "image") {
     return transferableBuffers(
-      frame.image.kind === "raw-image" ? frame.image.rgba : frame.image.bytes,
+      frame.image.kind === "raw-image"
+        ? (frame.image.depth?.values ?? frame.image.rgba)
+        : frame.image.bytes,
     );
   }
 

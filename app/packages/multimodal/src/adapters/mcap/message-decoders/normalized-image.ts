@@ -7,6 +7,8 @@ import type {
 import { VISUALIZATION_KIND } from "../../../ir/index";
 import { decodeImageRgba } from "./image-encodings";
 
+const EMPTY_RGBA = new Uint8Array(0);
+
 /** Wire-neutral inputs for constructing a normalized raw-image output. */
 export interface NormalizedRawImageInput {
   readonly attributes?: Readonly<Record<string, DecodedAttributeValue>>;
@@ -62,7 +64,7 @@ export function buildNormalizedRawImageOutput({
       : {}),
   };
 
-  if (!result.rgba) {
+  if (!result.rgba && !result.depth) {
     return {
       attributes,
       ...(retainUnsupportedData
@@ -75,7 +77,7 @@ export function buildNormalizedRawImageOutput({
   return {
     attributes,
     resourceHints: resourceHintsForArrayBufferViews(
-      result.rgba,
+      ...(result.rgba ? [result.rgba] : []),
       ...(result.depth ? [result.depth.values] : []),
     ),
     timing,
@@ -84,7 +86,7 @@ export function buildNormalizedRawImageOutput({
       ...(result.depth ? { depth: result.depth } : {}),
       height,
       kind: VISUALIZATION_KIND.RAW_IMAGE,
-      rgba: result.rgba,
+      rgba: result.rgba ?? EMPTY_RGBA,
       sourceEncoding: encoding,
       ...(messageTimestamp !== undefined
         ? { timestampNs: messageTimestamp }

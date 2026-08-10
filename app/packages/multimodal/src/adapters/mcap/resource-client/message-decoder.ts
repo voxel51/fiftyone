@@ -15,6 +15,11 @@ export interface DecodeMcapMessageRequest {
   readonly channel?: McapTypes.TypedMcapRecords["Channel"];
   readonly decodeClient: DecodeClient;
   readonly message: McapTypes.TypedMcapRecords["Message"];
+  /**
+   * Exact indexed identity of the physical MCAP record, when available.
+   * Supplying it avoids hashing the full payload solely to mint a cache key.
+   */
+  readonly physicalRecordId?: string;
   readonly pointCloudColorBy?: string;
   readonly reader?: McapIndexedReaderLike;
   readonly schema?: McapTypes.TypedMcapRecords["Schema"];
@@ -30,6 +35,7 @@ export async function decodeMcapMessage({
   channel,
   decodeClient,
   message,
+  physicalRecordId,
   pointCloudColorBy,
   reader,
   schema,
@@ -56,10 +62,9 @@ export async function decodeMcapMessage({
   try {
     decoded = await decodeClient.decode({
       bytes: message.data,
-      // Cache identity costs a full-payload record-id hash per message; a
-      // client with a declared-noop cache (the playback worker: decoded
-      // buffers are transferred, so worker-side reuse is impossible) never
-      // reads it — skip building it.
+      // Raw-message cache identity costs a full-payload record-id hash. An
+      // indexed caller supplies the physical record identity instead, while a
+      // client with a declared-noop cache never needs either form.
       cache:
         decodeClient.cachesDecodedOutput === false
           ? undefined
@@ -72,7 +77,8 @@ export async function decodeMcapMessage({
               ]
                 .filter(Boolean)
                 .join(";"),
-              recordId: mcapMessageRecordId(message),
+              recordId:
+                physicalRecordId ?? mcapMessageRecordId(message),
               source,
               streamId: topic,
               timeNs: timelineTimeNs,

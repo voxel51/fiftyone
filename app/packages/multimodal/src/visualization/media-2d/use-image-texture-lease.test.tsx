@@ -8,7 +8,11 @@ import type {
 } from "../../ir";
 import { VISUALIZATION_KIND } from "../visualization-registry";
 import type { ImageTextureHandle } from "./Base2dScene";
-import { useImageTextureLease } from "./use-image-texture-lease";
+import {
+  hasImageData,
+  imageIdentity,
+  useImageTextureLease,
+} from "./use-image-texture-lease";
 import { VideoTextureWaitError } from "./video-texture";
 import { resetStillImageDecodeSchedulerForTests } from "./still-image-decode-scheduler";
 
@@ -39,6 +43,26 @@ describe("useImageTextureLease", () => {
     cacheHarness.acquire.mockClear();
     resetStillImageDecodeSchedulerForTests();
     vi.restoreAllMocks();
+  });
+
+  it("uses native depth samples for availability and private identity", () => {
+    const values = new Uint16Array([1_000]);
+    const frame: RawImageVisualization = {
+      depth: {
+        maxValue: 1_000,
+        metersPerUnit: 0.001,
+        minValue: 1_000,
+        values,
+      },
+      height: 1,
+      kind: VISUALIZATION_KIND.RAW_IMAGE,
+      rgba: new Uint8Array(0),
+      sourceEncoding: "16UC1",
+      width: 1,
+    };
+
+    expect(hasImageData(frame)).toBe(true);
+    expect(imageIdentity(frame)).toBe(values);
   });
 
   it("classifies expected decoder waits without inspecting message text", async () => {
