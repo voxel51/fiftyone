@@ -647,6 +647,51 @@ describe("MCAP indexed message times", () => {
     );
   });
 
+  it("isolates cancellation for concurrent signal-bound exact reads", async () => {
+    type ReadResult = Awaited<ReturnType<ByteClient["readBytes"]>>;
+    const pendingReads = [deferred<ReadResult>(), deferred<ReadResult>()];
+    let nextRead = 0;
+    const readBytes = vi.fn(
+      (request: Parameters<ByteClient["readBytes"]>[0]) => {
+        const pending = pendingReads[nextRead++];
+        if (!pending) throw new Error("Unexpected exact read");
+        request.signal?.addEventListener(
+          "abort",
+          () => pending.reject(request.signal?.reason),
+          { once: true },
+        );
+        return pending.promise;
+      },
+    );
+    const source = {
+      sizeBytes: "1024",
+      sourceId: "source:1",
+      url: "mcap-source://sample",
+    };
+    const readable = new ByteClientReadable(source, { readBytes });
+    const firstController = new AbortController();
+    const secondController = new AbortController();
+
+    const first = readable.readExact(128n, 16n, firstController.signal);
+    const second = readable.readExact(128n, 16n, secondController.signal);
+
+    expect(readBytes).toHaveBeenCalledTimes(2);
+    const firstRejection = expect(first).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    firstController.abort();
+    await firstRejection;
+
+    pendingReads[1]?.resolve({
+      bytes: new Uint8Array(16),
+      range: { length: 16n, offset: 128n },
+      source,
+    });
+    await expect(second).resolves.toEqual(new Uint8Array(16));
+    expect(readBytes.mock.calls[0]?.[0].signal).toBe(firstController.signal);
+    expect(readBytes.mock.calls[1]?.[0].signal).toBe(secondController.signal);
+  });
+
   it("does not cache copied decompressor inputs without stable context", () => {
     const decompress = vi.fn((buffer: Uint8Array, decompressedSize: bigint) => {
       const output = new Uint8Array(Number(decompressedSize));

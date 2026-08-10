@@ -21,7 +21,12 @@
 
 import { atom, type PrimitiveAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
-import type { BufferedRanges, BufferingStream, SeekEvent } from "./types";
+import type {
+  BufferedRanges,
+  BufferingStream,
+  PlaybackInspectionMarker,
+  SeekEvent,
+} from "./types";
 
 /**
  * Per-stream reactive value atom, keyed by stream id. Lazily created on first
@@ -60,6 +65,14 @@ export const playheadAtom = atom(0);
 export const hoverTimeAtom = atom<number | null>(null) as PrimitiveAtom<
   number | null
 >;
+
+/**
+ * Persistent visual inspection time, separate from hover and the engine clock.
+ * Ownership prevents a stale tile cleanup from clearing a newer publisher.
+ */
+export const inspectionMarkerAtom = atom<PlaybackInspectionMarker | null>(
+  null,
+) as PrimitiveAtom<PlaybackInspectionMarker | null>;
 
 /**
  * The last time the engine confirmed all blocking streams were ready and

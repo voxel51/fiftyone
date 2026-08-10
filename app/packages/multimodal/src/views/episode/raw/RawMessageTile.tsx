@@ -1,5 +1,10 @@
 import { humanReadableBytes } from "@fiftyone/utilities";
-import { useSetTileTitle, useTileId } from "@fiftyone/tiling";
+import {
+  useIsPlaying,
+  useIsPlayPending,
+  usePlayback,
+} from "@fiftyone/playback/runtime";
+import { useSetTileTitle, useTileId, useTiling } from "@fiftyone/tiling";
 import React, {
   useCallback,
   useEffect,
@@ -7,7 +12,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import type { RawRecordResult } from "../../../ir";
+import type { RawRecordCursor, RawRecordResult } from "../../../ir";
 import { useDataStream } from "../playback/data-stream-context";
 import { useAddFieldToPlot } from "../plots/use-add-field-to-plot";
 import { useRawMessageContext } from "./raw-message-context";
@@ -22,8 +27,9 @@ import RawMessageTileSettings from "./RawMessageTileSettings";
 import { useRegisterTileSettings } from "../tiles/tile-settings-context";
 import styles from "../tiles/Tile.module.css";
 import { useCopyFeedback } from "../../../visualization/panel-ui/use-copy-feedback";
-import { relativeTimeParts } from "../../../utils/relative-time";
 import { errorMessage } from "../../../utils/errors";
+import { RawMessageBrowser } from "./RawMessageBrowser";
+import { formatRawMessageTime } from "./raw-message-time";
 
 /**
  * Raw message tile: the escape hatch that makes every stream at least
@@ -36,6 +42,10 @@ import { errorMessage } from "../../../utils/errors";
  */
 const RawMessageTile: React.FC<EpisodeTileProps> = () => {
   const tileId = useTileId();
+  const { expandedTileId } = useTiling();
+  const { pause } = usePlayback();
+  const isPlaying = useIsPlaying();
+  const isPlayPending = useIsPlayPending();
   // Settings render through the sidebar's tile-settings registry, not here.
   const settingsRegistration = useMemo(
     () => ({ content: <RawMessageTileSettings /> }),
@@ -48,6 +58,11 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
   const { ensureStreams, recordsByStream, streams, subscribeRecord } =
     useRawMessageContext();
   const addFieldToPlot = useAddFieldToPlot();
+  const sourceKey = useDataStream()?.sourceKey ?? null;
+  const [browseAnchor, setBrowseAnchor] = useState<
+    (RawRecordResult & { readonly cursor: RawRecordCursor }) | null
+  >(null);
+  const browseSourceKeyRef = useRef<string | null>(null);
 
   // Dataset-scoped layouts intentionally preserve raw panels and their stream
   // bindings across samples. Validate that binding against each new source so
@@ -86,6 +101,41 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
   const state =
     streamKey && streamAvailable ? recordsByStream.get(streamKey) : undefined;
   const result = state?.result;
+  const selectedStream =
+    streams.status === "ready"
+      ? streams.streams.find(
+          (stream) =>
+            stream.streamId === streamKey || stream.sourceName === streamKey,
+        )
+      : undefined;
+  const isMaximized = tileId !== null && expandedTileId === tileId;
+  const canBrowse = Boolean(
+    isMaximized && selectedStream?.supportsExactBrowsing && result?.cursor,
+  );
+
+  // This effect exits ephemeral Browse state when its owning conditions end.
+  useEffect(() => {
+    if (
+      browseAnchor &&
+      (!isMaximized ||
+        isPlaying ||
+        isPlayPending ||
+        browseSourceKeyRef.current !== sourceKey ||
+        (browseAnchor.streamId !== streamKey &&
+          browseAnchor.sourceName !== streamKey) ||
+        !selectedStream?.supportsExactBrowsing)
+    ) {
+      setBrowseAnchor(null);
+    }
+  }, [
+    browseAnchor,
+    isMaximized,
+    isPlayPending,
+    isPlaying,
+    selectedStream?.supportsExactBrowsing,
+    sourceKey,
+    streamKey,
+  ]);
   const selectedSourceName = useMemo(() => {
     if (result?.sourceName) {
       return result.sourceName;
@@ -121,6 +171,15 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
     [addFieldToPlot, streamKey],
   );
 
+  const enterBrowse = useCallback(() => {
+    if (!canBrowse || !result?.cursor) return;
+    pause();
+    browseSourceKeyRef.current = sourceKey;
+    setBrowseAnchor(
+      result as RawRecordResult & { readonly cursor: RawRecordCursor },
+    );
+  }, [canBrowse, pause, result, sourceKey]);
+
   return (
     <div className={rawStyles.body} data-cy="episode-raw-tile">
       {!streamKey ? (
@@ -145,9 +204,39 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
               : "Loading message…"}
           </span>
         </div>
+      ) : browseAnchor ? (
+        <RawMessageBrowser
+          anchor={browseAnchor}
+          markerOwnerId={`raw-message-browser:${tileId ?? "unknown"}`}
+          onAddNumericFieldToPlot={handleAddFieldToPlot}
+          onExit={() => setBrowseAnchor(null)}
+          renderMeta={(record, options) => (
+            <MetaRow
+              copyAnchor={options.copyCursor}
+              copyDisabled={options.copyDisabled}
+              result={record}
+              streamKey={streamKey}
+            />
+          )}
+          streamKey={streamKey}
+        />
       ) : (
         <>
-          <MetaRow result={result} streamKey={streamKey} />
+          <MetaRow
+            action={
+              canBrowse ? (
+                <button
+                  className={rawStyles.copyMessageButton}
+                  onClick={enterBrowse}
+                  type="button"
+                >
+                  Browse messages
+                </button>
+              ) : null
+            }
+            result={result}
+            streamKey={streamKey}
+          />
           <div className={rawStyles.content}>
             {state?.status === "loading" ? (
               <div
@@ -184,9 +273,15 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
 };
 
 function MetaRow({
+  action,
+  copyAnchor,
+  copyDisabled = false,
   result,
   streamKey,
 }: {
+  readonly action?: React.ReactNode;
+  readonly copyAnchor?: bigint | RawRecordCursor;
+  readonly copyDisabled?: boolean;
   readonly result: RawRecordResult;
   readonly streamKey: string;
 }) {
@@ -209,6 +304,8 @@ function MetaRow({
       controller?.abort();
     };
   }, [
+    copyAnchor,
+    result.cursor,
     result.sequence,
     result.timestampNs,
     result.validFromNs,
@@ -226,7 +323,7 @@ function MetaRow({
       showCopyFeedback("idle");
       return;
     }
-    if (!result.root) {
+    if (!result.root || copyDisabled) {
       return;
     }
     if (!navigator.clipboard?.writeText) {
@@ -245,7 +342,7 @@ function MetaRow({
     try {
       const json = await readFullMessageJson(
         streamKey,
-        result.validFromNs,
+        copyAnchor ?? result.cursor ?? result.validFromNs,
         controller.signal,
       );
       if (!isCurrentCopy()) return;
@@ -262,12 +359,20 @@ function MetaRow({
         setCopying(false);
       }
     }
-  }, [copying, readFullMessageJson, result, showCopyFeedback, streamKey]);
+  }, [
+    copyAnchor,
+    copyDisabled,
+    copying,
+    readFullMessageJson,
+    result,
+    showCopyFeedback,
+    streamKey,
+  ]);
 
   const startTimeNs = dataStream?.getTimelineIndex()?.startTimeNs;
   const relativeTime =
     result.timestampNs !== undefined && startTimeNs !== undefined
-      ? formatRelativeSeconds(result.timestampNs, startTimeNs)
+      ? formatRawMessageTime(result.timestampNs, startTimeNs)
       : null;
 
   return (
@@ -307,6 +412,7 @@ function MetaRow({
           <button
             className={rawStyles.copyMessageButton}
             data-cy="episode-raw-copy-message"
+            disabled={copyDisabled}
             onClick={() => void handleCopyMessage()}
             title={
               copying
@@ -330,6 +436,7 @@ function MetaRow({
           ) : null}
         </>
       ) : null}
+      {action}
     </div>
   );
 }
@@ -377,13 +484,6 @@ function noticeText(result: RawRecordResult): string {
     default:
       return "No decoded payload for this message";
   }
-}
-
-function formatRelativeSeconds(logTimeNs: bigint, startTimeNs: bigint): string {
-  const { milliseconds, negative, seconds } = relativeTimeParts(
-    logTimeNs - startTimeNs,
-  );
-  return `t=${negative ? "-" : "+"}${seconds}.${milliseconds}s`;
 }
 
 export default RawMessageTile;

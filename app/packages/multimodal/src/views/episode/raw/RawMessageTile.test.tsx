@@ -5,8 +5,13 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { RawRecordResult, RawValueNode } from "../../../ir";
+import type {
+  RawRecordCursor,
+  RawRecordResult,
+  RawValueNode,
+} from "../../../ir";
 import rawStyles from "../../../visualization/message/StructuredMessage.module.css";
 import type { NumericFieldsEnumeration } from "../plots/numeric-series-context";
 import type { RawRecordState } from "./raw-message-context";
@@ -14,15 +19,28 @@ import RawMessageTile from "./RawMessageTile";
 
 const mocks = vi.hoisted(() => ({
   addFieldToPlot: vi.fn(),
+  browserCopyDisabled: false,
+  dataStream: {
+    getTimelineIndex: () => ({ startTimeNs: 0n }),
+    sourceKey: "source-1",
+  },
+  expandedTileId: null as string | null,
   ensureEnumeration: vi.fn(),
   ensureStreams: vi.fn(),
   enumeration: {
     status: "idle",
     streams: [],
   } as NumericFieldsEnumeration,
+  isPlaying: false,
+  isPlayPending: false,
+  pause: vi.fn(),
   readFullMessageJson:
     vi.fn<
-      (stream: string, timeNs: bigint, signal?: AbortSignal) => Promise<string>
+      (
+        stream: string,
+        anchor: bigint | string,
+        signal?: AbortSignal,
+      ) => Promise<string>
     >(),
   recordState: null as RawRecordState | null,
   selectedStream: "/state",
@@ -72,12 +90,17 @@ const DISPLAYED_RESULT: RawRecordResult = {
 vi.mock("@fiftyone/tiling", () => ({
   useSetTileTitle: () => mocks.setTileTitle,
   useTileId: () => "raw-1",
+  useTiling: () => ({ expandedTileId: mocks.expandedTileId }),
+}));
+
+vi.mock("@fiftyone/playback/runtime", () => ({
+  useIsPlaying: () => mocks.isPlaying,
+  useIsPlayPending: () => mocks.isPlayPending,
+  usePlayback: () => ({ pause: mocks.pause }),
 }));
 
 vi.mock("../playback/data-stream-context", () => ({
-  useDataStream: () => ({
-    getTimelineIndex: () => ({ startTimeNs: 0n }),
-  }),
+  useDataStream: () => mocks.dataStream,
 }));
 
 vi.mock("../plots/numeric-series-context", () => ({
@@ -108,12 +131,47 @@ vi.mock("../tiles/raw-message-binding", () => ({
 
 vi.mock("./RawMessageTileSettings", () => ({ default: () => null }));
 
+vi.mock("./RawMessageBrowser", () => ({
+  RawMessageBrowser: ({
+    anchor,
+    onExit,
+    renderMeta,
+  }: {
+    anchor: RawRecordResult & { cursor: RawRecordCursor };
+    onExit: () => void;
+    renderMeta: (
+      result: RawRecordResult,
+      options: { copyCursor: RawRecordCursor; copyDisabled: boolean },
+    ) => ReactNode;
+  }) => (
+    <div data-testid="raw-message-browser">
+      <span>{anchor.cursor}</span>
+      {renderMeta(anchor, {
+        copyCursor: anchor.cursor,
+        copyDisabled: mocks.browserCopyDisabled,
+      })}
+      <button onClick={onExit} type="button">
+        Return to playback
+      </button>
+    </div>
+  ),
+}));
+
 beforeEach(() => {
   mocks.addFieldToPlot.mockReset();
+  mocks.browserCopyDisabled = false;
+  mocks.dataStream = {
+    getTimelineIndex: () => ({ startTimeNs: 0n }),
+    sourceKey: "source-1",
+  };
+  mocks.expandedTileId = null;
   mocks.ensureEnumeration.mockReset();
   mocks.ensureStreams.mockReset();
   mocks.enumeration = { status: "idle", streams: [] };
   mocks.readFullMessageJson.mockReset();
+  mocks.isPlaying = false;
+  mocks.isPlayPending = false;
+  mocks.pause.mockReset();
   mocks.recordState = { result: DISPLAYED_RESULT, status: "ready" };
   mocks.selectedStream = "/state";
   mocks.setSelectedStream.mockReset();
@@ -387,6 +445,189 @@ describe("RawMessageTile", () => {
     expect(screen.getByTestId("episode-raw-plot-hidden")).toBeTruthy();
   });
 
+  it("offers Browse only for a maximized exact-indexed stream", () => {
+    mocks.recordState = {
+      result: { ...DISPLAYED_RESULT, cursor: "cursor-10" },
+      status: "ready",
+    };
+    mocks.streams = readyRawStreams("/state", true);
+
+    const { rerender } = render(<RawMessageTile />);
+    expect(
+      screen.queryByRole("button", { name: "Browse messages" }),
+    ).toBeNull();
+
+    mocks.expandedTileId = "raw-1";
+    rerender(<RawMessageTile />);
+    expect(
+      screen.getByRole("button", { name: "Browse messages" }),
+    ).toBeTruthy();
+
+    mocks.streams = readyRawStreams("/state", false);
+    rerender(<RawMessageTile />);
+    expect(
+      screen.queryByRole("button", { name: "Browse messages" }),
+    ).toBeNull();
+  });
+
+  it("pauses and anchors Browse to the displayed exact cursor", () => {
+    mocks.expandedTileId = "raw-1";
+    mocks.recordState = {
+      result: { ...DISPLAYED_RESULT, cursor: "cursor-10" },
+      status: "ready",
+    };
+    mocks.streams = readyRawStreams("/state", true);
+
+    render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Browse messages" }));
+
+    expect(mocks.pause).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("raw-message-browser").textContent).toContain(
+      "cursor-10",
+    );
+  });
+
+  it("exits Browse when playback starts or the tile is unmaximized", () => {
+    mocks.expandedTileId = "raw-1";
+    mocks.recordState = {
+      result: { ...DISPLAYED_RESULT, cursor: "cursor-10" },
+      status: "ready",
+    };
+    mocks.streams = readyRawStreams("/state", true);
+
+    const { rerender } = render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Browse messages" }));
+    expect(screen.getByTestId("raw-message-browser")).toBeTruthy();
+
+    mocks.isPlaying = true;
+    rerender(<RawMessageTile />);
+    expect(screen.queryByTestId("raw-message-browser")).toBeNull();
+
+    mocks.isPlaying = false;
+    rerender(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Browse messages" }));
+    expect(screen.getByTestId("raw-message-browser")).toBeTruthy();
+    mocks.expandedTileId = null;
+    rerender(<RawMessageTile />);
+    expect(screen.queryByTestId("raw-message-browser")).toBeNull();
+  });
+
+  it("exits Browse as soon as Play becomes pending", () => {
+    mocks.expandedTileId = "raw-1";
+    mocks.recordState = {
+      result: { ...DISPLAYED_RESULT, cursor: "cursor-10" },
+      status: "ready",
+    };
+    mocks.streams = readyRawStreams("/state", true);
+
+    const { rerender } = render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Browse messages" }));
+    mocks.isPlayPending = true;
+    rerender(<RawMessageTile />);
+
+    expect(screen.queryByTestId("raw-message-browser")).toBeNull();
+  });
+
+  it("exits Browse when the selected stream changes", () => {
+    mocks.expandedTileId = "raw-1";
+    mocks.recordState = {
+      result: { ...DISPLAYED_RESULT, cursor: "cursor-10" },
+      status: "ready",
+    };
+    mocks.streams = readyRawStreams("/state", true);
+
+    const { rerender } = render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Browse messages" }));
+
+    mocks.selectedStream = "/other";
+    mocks.streams = readyRawStreams("/other", true);
+    rerender(<RawMessageTile />);
+
+    expect(screen.queryByTestId("raw-message-browser")).toBeNull();
+  });
+
+  it("exits Browse when the source changes under the same stream", () => {
+    mocks.expandedTileId = "raw-1";
+    mocks.recordState = {
+      result: { ...DISPLAYED_RESULT, cursor: "cursor-10" },
+      status: "ready",
+    };
+    mocks.streams = readyRawStreams("/state", true);
+
+    const { rerender } = render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Browse messages" }));
+
+    mocks.dataStream = {
+      getTimelineIndex: () => ({ startTimeNs: 0n }),
+      sourceKey: "source-2",
+    };
+    rerender(<RawMessageTile />);
+
+    expect(screen.queryByTestId("raw-message-browser")).toBeNull();
+  });
+
+  it("copies a browsable result by its exact cursor", async () => {
+    const fullJson = JSON.stringify({ exact: true });
+    mocks.expandedTileId = "raw-1";
+    mocks.recordState = {
+      result: { ...DISPLAYED_RESULT, cursor: "cursor-10" },
+      status: "ready",
+    };
+    mocks.streams = readyRawStreams("/state", true);
+    mocks.readFullMessageJson.mockResolvedValue(fullJson);
+    mocks.writeText.mockResolvedValue(undefined);
+
+    render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Browse messages" }));
+    fireEvent.click(screen.getByRole("button", { name: "Copy message" }));
+
+    await waitFor(() =>
+      expect(mocks.readFullMessageJson).toHaveBeenCalledWith(
+        "/state",
+        "cursor-10",
+        expect.any(AbortSignal),
+      ),
+    );
+    expect(mocks.writeText).toHaveBeenCalledWith(fullJson);
+  });
+
+  it("disables exact copy while the selected record is still loading", () => {
+    mocks.browserCopyDisabled = true;
+    mocks.expandedTileId = "raw-1";
+    mocks.recordState = {
+      result: { ...DISPLAYED_RESULT, cursor: "cursor-10" },
+      status: "ready",
+    };
+    mocks.streams = readyRawStreams("/state", true);
+
+    render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Browse messages" }));
+
+    expect(screen.getByRole("button", { name: "Copy message" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+  });
+
+  it("keeps Browse active for a legacy source-name binding", () => {
+    mocks.expandedTileId = "raw-1";
+    mocks.selectedStream = "/state";
+    mocks.recordState = {
+      result: {
+        ...DISPLAYED_RESULT,
+        cursor: "cursor-10",
+        streamId: "7",
+      },
+      status: "ready",
+    };
+    mocks.streams = readyRawStreams("7", true);
+
+    render(<RawMessageTile />);
+    fireEvent.click(screen.getByRole("button", { name: "Browse messages" }));
+
+    expect(screen.getByTestId("raw-message-browser")).toBeTruthy();
+  });
+
   it("offers numeric fields for a legacy source-name binding", () => {
     mocks.selectedStream = "/state";
 
@@ -422,7 +663,7 @@ describe("RawMessageTile", () => {
   });
 });
 
-function readyRawStreams(streamId = "/state") {
+function readyRawStreams(streamId = "/state", supportsExactBrowsing = false) {
   return {
     status: "ready" as const,
     streams: [
@@ -432,6 +673,7 @@ function readyRawStreams(streamId = "/state") {
         schemaName: "test.State",
         sourceName: "/state",
         streamId,
+        supportsExactBrowsing,
       },
     ],
   };

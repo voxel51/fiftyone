@@ -5,6 +5,7 @@ import type {
   McapEnumerateNumericFieldsRequest,
   McapNumericSeriesResult,
   McapNumericSeriesSliceResult,
+  McapMessageIndexWindowResult,
   McapPointCloudChannelResult,
   McapRawMessageRecordResult,
   McapReadBoundedMessagesRequest,
@@ -16,6 +17,8 @@ import type {
   McapReadNumericSeriesSliceRequest,
   McapReadPointCloudChannelRequest,
   McapReadRawMessageRecordRequest,
+  McapReadRawMessageAtCursorRequest,
+  McapReadMessageIndexWindowRequest,
   McapReadSynchronizedMessageBatchRequest,
   McapReadSynchronizedMessagesRequest,
   McapReadTopicsRequest,
@@ -99,6 +102,8 @@ export type McapPlaybackWorkerRequestPayloadByType = {
   readonly readNumericSeries: McapReadNumericSeriesRequest;
   readonly readNumericSeriesSlice: McapReadNumericSeriesSliceRequest;
   readonly readPointCloudChannel: McapReadPointCloudChannelRequest;
+  readonly readMessageIndexWindow: McapReadMessageIndexWindowRequest;
+  readonly readRawMessageAtCursor: McapReadRawMessageAtCursorRequest;
   readonly readRawMessageRecord: McapReadRawMessageRecordRequest;
   readonly readSynchronizedMessageBatch: McapReadSynchronizedMessageBatchRequest;
   readonly readSynchronizedMessages: McapReadSynchronizedMessagesRequest;
@@ -133,6 +138,8 @@ export type McapPlaybackWorkerResultByType = {
   readonly readNumericSeries: McapNumericSeriesResult;
   readonly readNumericSeriesSlice: McapNumericSeriesSliceResult;
   readonly readPointCloudChannel: McapPointCloudChannelResult;
+  readonly readMessageIndexWindow: McapMessageIndexWindowResult;
+  readonly readRawMessageAtCursor: McapRawMessageRecordResult;
   readonly readRawMessageRecord: McapRawMessageRecordResult;
   readonly readSynchronizedMessageBatch: readonly McapPlaybackWorkerSynchronizedWindow[];
   readonly readSynchronizedMessages: McapPlaybackWorkerSynchronizedWindow;

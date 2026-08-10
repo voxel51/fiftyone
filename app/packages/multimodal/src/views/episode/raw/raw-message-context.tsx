@@ -20,7 +20,13 @@ import {
   useResetDemandContextOnUnmount,
   type DemandContextHandlers,
 } from "../../../runtime/react";
-import type { RawRecordResult, RawRecordStream } from "../../../ir";
+import type {
+  RawRecordCursor,
+  RawRecordIndexWindow,
+  RawRecordIndexWindowRequest,
+  RawRecordResult,
+  RawRecordStream,
+} from "../../../ir";
 import type { RawRecordCapability } from "../../../ports";
 import { errorMessage } from "../../../utils/errors";
 import { shouldDeferIdleWorkForStore } from "../playback/network-health";
@@ -82,9 +88,23 @@ export interface RawMessageContextValue {
    */
   readFullMessageJson(
     stream: string,
-    timeNs: bigint,
+    anchor: bigint | RawRecordCursor,
     signal?: AbortSignal,
   ): Promise<string>;
+
+  /** Reads a selected exact record on the explicit interactive lane. */
+  readRecordAtCursor(
+    stream: string,
+    cursor: RawRecordCursor,
+    signal?: AbortSignal,
+  ): Promise<RawRecordResult>;
+
+  /** Reads a bounded exact index window without decoding its rows. */
+  readRecordIndexWindow(
+    stream: string,
+    request: RawRecordIndexWindowRequest,
+    signal?: AbortSignal,
+  ): Promise<RawRecordIndexWindow>;
 
   /**
    * Declares interest in one stream's record while the returned
@@ -94,13 +114,11 @@ export interface RawMessageContextValue {
   subscribeRecord(stream: string): () => void;
 }
 
-interface RawMessageHandlers extends DemandContextHandlers {
-  readFullMessageJson(
-    stream: string,
-    timeNs: bigint,
-    signal?: AbortSignal,
-  ): Promise<string>;
-}
+type RawMessageHandlers = DemandContextHandlers &
+  Pick<
+    RawMessageContextValue,
+    "readFullMessageJson" | "readRecordAtCursor" | "readRecordIndexWindow"
+  >;
 
 const IDLE_STREAMS: RawStreamsState = { status: "idle", streams: [] };
 const EMPTY_RECORDS: ReadonlyMap<string, RawRecordState> = new Map();
@@ -132,14 +150,40 @@ export function useRawMessageContext(): RawMessageContextValue {
   const { ensureInventory, handlersRef, inventory, subscribeKey, valuesByKey } =
     useInternalValue();
   const readFullMessageJson = useCallback(
-    (stream: string, timeNs: bigint, signal?: AbortSignal) => {
+    (
+      stream: string,
+      anchor: bigint | RawRecordCursor,
+      signal?: AbortSignal,
+    ) => {
       const handlers = handlersRef.current;
       if (!handlers) {
         return Promise.reject(
           new Error("episode message reader is unavailable"),
         );
       }
-      return handlers.readFullMessageJson(stream, timeNs, signal);
+      return handlers.readFullMessageJson(stream, anchor, signal);
+    },
+    [handlersRef],
+  );
+  const readRecordAtCursor = useCallback(
+    (stream: string, cursor: RawRecordCursor, signal?: AbortSignal) => {
+      const handlers = handlersRef.current;
+      return handlers
+        ? handlers.readRecordAtCursor(stream, cursor, signal)
+        : Promise.reject(new Error("episode message reader is unavailable"));
+    },
+    [handlersRef],
+  );
+  const readRecordIndexWindow = useCallback(
+    (
+      stream: string,
+      request: Parameters<RawMessageHandlers["readRecordIndexWindow"]>[1],
+      signal?: AbortSignal,
+    ) => {
+      const handlers = handlersRef.current;
+      return handlers
+        ? handlers.readRecordIndexWindow(stream, request, signal)
+        : Promise.reject(new Error("episode message index is unavailable"));
     },
     [handlersRef],
   );
@@ -147,6 +191,8 @@ export function useRawMessageContext(): RawMessageContextValue {
     () => ({
       ensureStreams: ensureInventory,
       readFullMessageJson,
+      readRecordAtCursor,
+      readRecordIndexWindow,
       recordsByStream: valuesByKey,
       streams: inventory,
       subscribeRecord: subscribeKey,
@@ -155,6 +201,8 @@ export function useRawMessageContext(): RawMessageContextValue {
       ensureInventory,
       inventory,
       readFullMessageJson,
+      readRecordAtCursor,
+      readRecordIndexWindow,
       subscribeKey,
       valuesByKey,
     ],
@@ -245,22 +293,82 @@ export function RawMessageBridge({
         return {
           ensureInventory: inventory.ensure,
           onDemandChanged: queueFill,
-          async readFullMessageJson(stream, timeNs, signal) {
+          async readFullMessageJson(stream, anchor, signal) {
             const linked = linkAbortSignals(epochController.signal, signal);
             try {
-              const result = await capability.readRawRecord({
-                includeFullJson: true,
-                intent: "export",
-                signal: linked.signal,
-                stream,
-                timestampNs: timeNs,
-              });
-              if (result.status !== "ok" || result.fullJson === undefined) {
+              if (
+                typeof anchor === "string" &&
+                !capability.readRawRecordAtCursor
+              ) {
+                throw new Error(
+                  `Exact message reads are unavailable for ${stream}`,
+                );
+              }
+              const result =
+                typeof anchor === "string"
+                  ? await capability.readRawRecordAtCursor?.({
+                      cursor: anchor,
+                      includeFullJson: true,
+                      intent: "export",
+                      signal: linked.signal,
+                      stream,
+                    })
+                  : await capability.readRawRecord({
+                      includeFullJson: true,
+                      intent: "export",
+                      signal: linked.signal,
+                      stream,
+                      timestampNs: anchor,
+                    });
+              if (
+                !result ||
+                result.status !== "ok" ||
+                result.fullJson === undefined
+              ) {
                 throw new Error(
                   `Could not read the complete message for ${stream}`,
                 );
               }
+              if (typeof anchor === "string" && result.cursor !== anchor) {
+                throw new Error(
+                  `Exact message copy returned a different cursor for ${stream}`,
+                );
+              }
               return result.fullJson;
+            } finally {
+              linked.cleanup();
+            }
+          },
+          async readRecordAtCursor(stream, cursor, signal) {
+            if (!capability.readRawRecordAtCursor) {
+              throw new Error(
+                `Exact message reads are unavailable for ${stream}`,
+              );
+            }
+            const linked = linkAbortSignals(epochController.signal, signal);
+            try {
+              return await capability.readRawRecordAtCursor({
+                cursor,
+                signal: linked.signal,
+                stream,
+              });
+            } finally {
+              linked.cleanup();
+            }
+          },
+          async readRecordIndexWindow(stream, request, signal) {
+            if (!capability.readRawRecordIndexWindow) {
+              throw new Error(
+                `Exact message indexes are unavailable for ${stream}`,
+              );
+            }
+            const linked = linkAbortSignals(epochController.signal, signal);
+            try {
+              return await capability.readRawRecordIndexWindow({
+                ...request,
+                signal: linked.signal,
+                stream,
+              });
             } finally {
               linked.cleanup();
             }

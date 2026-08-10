@@ -57,6 +57,110 @@ describe("RawMessageBridge records", () => {
     });
   });
 
+  it("routes exact Browse reads directly through the capability", async () => {
+    const exactResult: RawRecordResult = {
+      ...recordResult({ stream: "/imu", timestampNs: 42n }),
+      cursor: "cursor-42",
+      fullJson: '{"exact":true}',
+    };
+    const readRawRecordAtCursor = vi.fn(async () => exactResult);
+    const indexResult = {
+      entries: [{ cursor: "cursor-42", timestampNs: 42n }],
+      hasNext: false,
+      hasPrevious: false,
+      selectedCursor: "cursor-42",
+    };
+    let resolveIndex!: (result: typeof indexResult) => void;
+    const readRawRecordIndexWindow = vi.fn<
+      (
+        request: Parameters<
+          NonNullable<RawRecordCapability["readRawRecordIndexWindow"]>
+        >[0],
+      ) => Promise<typeof indexResult>
+    >(
+      (_request) =>
+        new Promise<typeof indexResult>((resolve) => {
+          resolveIndex = resolve;
+        }),
+    );
+    const client = createClient({
+      readRawRecordAtCursor,
+      readRawRecordIndexWindow,
+    });
+    const context = createContextRef();
+    const controller = new AbortController();
+
+    render(<Harness client={client} contextRef={context} />);
+    await act(flushMicrotasks);
+    const rawContext = context.current;
+    if (!rawContext) throw new Error("Expected raw message context");
+    let indexRead!: Promise<unknown>;
+    await act(async () => {
+      indexRead = rawContext.readRecordIndexWindow(
+        "/imu",
+        { after: 10, anchorCursor: "cursor-42", before: 10 },
+        controller.signal,
+      );
+      await flushMicrotasks();
+    });
+    const forwardedIndexSignal = readRawRecordIndexWindow.mock.calls[0]?.[0]
+      .signal as AbortSignal | undefined;
+    expect(forwardedIndexSignal?.aborted).toBe(false);
+
+    controller.abort();
+    expect(forwardedIndexSignal?.aborted).toBe(true);
+    resolveIndex(indexResult);
+    await act(async () => indexRead);
+
+    const exactController = new AbortController();
+    await act(async () => {
+      await rawContext.readRecordAtCursor(
+        "/imu",
+        "cursor-42",
+        exactController.signal,
+      );
+      await rawContext.readFullMessageJson(
+        "/imu",
+        "cursor-42",
+        exactController.signal,
+      );
+    });
+
+    expect(readRawRecordIndexWindow).toHaveBeenCalledWith({
+      after: 10,
+      anchorCursor: "cursor-42",
+      before: 10,
+      signal: expect.any(AbortSignal),
+      stream: "/imu",
+    });
+    expect(readRawRecordAtCursor).toHaveBeenCalledTimes(2);
+    expect(readRawRecordAtCursor).toHaveBeenLastCalledWith({
+      cursor: "cursor-42",
+      includeFullJson: true,
+      signal: expect.any(AbortSignal),
+      stream: "/imu",
+    });
+    expect(client.readRawRecord).not.toHaveBeenCalled();
+  });
+
+  it("rejects exact copy JSON returned for a different cursor", async () => {
+    const client = createClient({
+      readRawRecordAtCursor: vi.fn(async () => ({
+        ...recordResult({ stream: "/imu", timestampNs: 43n }),
+        cursor: "cursor-43",
+        fullJson: '{"wrong":true}',
+      })),
+    });
+    const context = createContextRef();
+
+    render(<Harness client={client} contextRef={context} />);
+    await act(flushMicrotasks);
+
+    await expect(
+      context.current?.readFullMessageJson("/imu", "cursor-42"),
+    ).rejects.toThrow("Exact message copy returned a different cursor");
+  });
+
   it("fetches the subscribed stream's record at the playhead", async () => {
     const client = createClient();
     const context = createContextRef();

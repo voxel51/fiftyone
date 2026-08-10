@@ -9,6 +9,9 @@ import type {
   EpisodeTimeline,
   LaneTransportSnapshot,
   RawRecordPruneBudgets,
+  RawRecordCursor,
+  RawRecordIndexWindow,
+  RawRecordIndexWindowRequest,
   RawRecordResult,
   RawRecordStream,
   StreamId,
@@ -340,6 +343,21 @@ export interface RawRecordCapability {
     readonly stream: StreamId;
     readonly timestampNs: bigint;
   }): Promise<RawRecordResult>;
+  /** Reads one exact indexed record without consulting the playback clock. */
+  readRawRecordAtCursor?(request: {
+    readonly cursor: RawRecordCursor;
+    readonly includeFullJson?: boolean;
+    readonly prune?: RawRecordPruneBudgets;
+    readonly signal?: AbortSignal;
+    readonly stream: StreamId;
+  }): Promise<RawRecordResult>;
+  /** Reads a bounded index-only window around a time or exact record. */
+  readRawRecordIndexWindow?(
+    request: RawRecordIndexWindowRequest & {
+      readonly signal?: AbortSignal;
+      readonly stream: StreamId;
+    },
+  ): Promise<RawRecordIndexWindow>;
 }
 
 /** On-demand point-cloud channel projection over an immutable geometry plan. */

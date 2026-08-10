@@ -553,6 +553,49 @@ export interface McapReadRawMessageRecordRequest {
   readonly topic: string;
 }
 
+/** Opaque physical identity of one MCAP message in one source epoch. */
+export type McapMessageCursor = string;
+
+/** Request for one exact indexed message. */
+export interface McapReadRawMessageAtCursorRequest {
+  readonly cursor: McapMessageCursor;
+  readonly includeFullJson?: boolean;
+  readonly prune?: McapRawPruneBudgets;
+  readonly source: ByteSourceDescriptor;
+  readonly topic: string;
+}
+
+/** Request for a bounded index-only window around a time or exact message. */
+export type McapReadMessageIndexWindowRequest = {
+  readonly after: number;
+  readonly before: number;
+  readonly source: ByteSourceDescriptor;
+  readonly topic: string;
+} & (
+  | {
+      readonly anchorCursor: McapMessageCursor;
+      readonly anchorTimeNs?: never;
+    }
+  | {
+      readonly anchorCursor?: never;
+      readonly anchorTimeNs: bigint;
+    }
+);
+
+/** One index-only message row. */
+export interface McapMessageIndexEntry {
+  readonly cursor: McapMessageCursor;
+  readonly logTimeNs: bigint;
+}
+
+/** Bounded exact-message index window. */
+export interface McapMessageIndexWindowResult {
+  readonly entries: readonly McapMessageIndexEntry[];
+  readonly hasNext: boolean;
+  readonly hasPrevious: boolean;
+  readonly selectedCursor: McapMessageCursor;
+}
+
 /** Request for one color channel aligned with an existing geometry payload. */
 export interface McapReadPointCloudChannelRequest {
   readonly activeColorBy: string;
@@ -585,6 +628,8 @@ export type McapRawMessageRecordStatus =
  * One topic's message record (or its degrade) at a playback time.
  */
 export interface McapRawMessageRecordResult {
+  /** Exact physical identity, present only for indexed selections. */
+  readonly cursor?: McapMessageCursor;
   readonly status: McapRawMessageRecordStatus;
   readonly topic: string;
   readonly messageEncoding: string;
@@ -1037,6 +1082,18 @@ export interface McapResourceClient {
     request: McapReadRawMessageRecordRequest,
     options?: McapResourceReadOptions,
   ): Promise<McapRawMessageRecordResult>;
+
+  /** Reads one exact indexed message on the interactive inspection lane. */
+  readRawMessageAtCursor?(
+    request: McapReadRawMessageAtCursorRequest,
+    options?: McapResourceReadOptions,
+  ): Promise<McapRawMessageRecordResult>;
+
+  /** Reads a bounded index-only window for interactive inspection. */
+  readMessageIndexWindow?(
+    request: McapReadMessageIndexWindowRequest,
+    options?: McapResourceReadOptions,
+  ): Promise<McapMessageIndexWindowResult>;
 
   /** Projects one replacement point-cloud channel without rebuilding XYZ. */
   readPointCloudChannel?(

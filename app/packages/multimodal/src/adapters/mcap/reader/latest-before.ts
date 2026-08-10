@@ -1,5 +1,6 @@
 import type { McapTypes } from "@mcap/core";
 import { compareBigInt } from "../../../ir";
+import { throwIfAborted } from "../../../utils/cancellation";
 import {
   channelIdsForTopics,
   compareIndexedMessageTimes,
@@ -36,6 +37,7 @@ export async function readLatestIndexedMessageTimesForReader(
   readable: McapTypes.IReadable,
   args: McapReadLatestIndexedMessageTimesRequest,
 ): Promise<ReadonlyMap<string, readonly McapIndexedMessageTime[]>> {
+  throwIfAborted(args.signal);
   const limit = args.limitPerTopic ?? 1;
   if (!Number.isFinite(limit) || !Number.isInteger(limit) || limit < 1) {
     throw new Error(
@@ -62,6 +64,7 @@ export async function readLatestIndexedMessageTimesForReader(
         readable,
         reader,
         requestedChannelIds: args.channelIds,
+        signal: args.signal,
         timeNs: args.timeNs,
         topic,
       }),
@@ -77,6 +80,7 @@ async function latestEntriesForTopic({
   readable,
   reader,
   requestedChannelIds,
+  signal,
   timeNs,
   topic,
 }: {
@@ -85,6 +89,7 @@ async function latestEntriesForTopic({
   readonly readable: McapTypes.IReadable;
   readonly reader: McapIndexedReaderLike;
   readonly requestedChannelIds?: readonly number[];
+  readonly signal?: AbortSignal;
   readonly timeNs: bigint;
   readonly topic: string;
 }): Promise<readonly McapIndexedMessageTime[]> {
@@ -119,6 +124,7 @@ async function latestEntriesForTopic({
   let probes = 0;
 
   for (const chunkIndex of memberChunks) {
+    throwIfAborted(signal);
     // Strict inequality: a chunk ending exactly at the N-th best time
     // can still hold equal-time entries that win on tie-break order.
     if (
@@ -141,8 +147,10 @@ async function latestEntriesForTopic({
       endTimeNs: timeNs,
       readable,
       reader,
+      signal,
       startTimeNs: undefined,
     });
+    throwIfAborted(signal);
     if (entries.length === 0) {
       continue;
     }

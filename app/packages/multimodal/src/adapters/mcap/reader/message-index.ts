@@ -1,5 +1,6 @@
 import { McapStreamReader, type McapTypes } from "@mcap/core";
 import { compareBigInt } from "../../../ir";
+import { throwIfAborted } from "../../../utils/cancellation";
 import { errorMessage } from "../../../utils/errors";
 import type {
   McapIndexedMessageTime,
@@ -46,6 +47,7 @@ export async function* readIndexedMessageTimesForReader(
   readable: McapTypes.IReadable,
   args: McapReadIndexedMessageTimesRequest = {},
 ): AsyncGenerator<McapIndexedMessageTime, void, void> {
+  throwIfAborted(args.signal);
   if (
     args.limit !== undefined &&
     (!Number.isFinite(args.limit) ||
@@ -83,6 +85,7 @@ export async function* readIndexedMessageTimesForReader(
     let count = 0;
 
     for (const chunkIndex of chunkIndexes) {
+      throwIfAborted(args.signal);
       if (!chunkOverlapsRange(chunkIndex, args.startTimeNs, args.endTimeNs)) {
         if (
           args.endTimeNs !== undefined &&
@@ -99,8 +102,10 @@ export async function* readIndexedMessageTimesForReader(
         endTimeNs: args.endTimeNs,
         readable,
         reader,
+        signal: args.signal,
         startTimeNs: args.startTimeNs,
       });
+      throwIfAborted(args.signal);
 
       for (const entry of chunkEntries) {
         yield entry;
@@ -118,6 +123,7 @@ export async function* readIndexedMessageTimesForReader(
   const entries: McapIndexedMessageTime[] = [];
 
   for (const chunkIndex of chunkIndexes) {
+    throwIfAborted(args.signal);
     if (!chunkOverlapsRange(chunkIndex, args.startTimeNs, args.endTimeNs)) {
       continue;
     }
@@ -129,6 +135,7 @@ export async function* readIndexedMessageTimesForReader(
         endTimeNs: args.endTimeNs,
         readable,
         reader,
+        signal: args.signal,
         startTimeNs: args.startTimeNs,
       })),
     );
@@ -230,14 +237,20 @@ export async function readChunkIndexedMessageTimes({
   readExact,
   readable,
   reader,
+  signal,
   startTimeNs,
 }: {
   readonly channelIds: ReadonlySet<number>;
   readonly chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"];
   readonly endTimeNs: bigint | undefined;
-  readonly readExact?: (offset: bigint, size: bigint) => Promise<Uint8Array>;
+  readonly readExact?: (
+    offset: bigint,
+    size: bigint,
+    signal?: AbortSignal,
+  ) => Promise<Uint8Array>;
   readonly readable: McapTypes.IReadable;
   readonly reader: McapIndexedReaderLike;
+  readonly signal?: AbortSignal;
   readonly startTimeNs: bigint | undefined;
 }): Promise<readonly McapIndexedMessageTime[]> {
   const entries: McapIndexedMessageTime[] = [];
@@ -248,14 +261,23 @@ export async function readChunkIndexedMessageTimes({
   });
 
   for (const batch of batchMessageIndexReads(reads)) {
+    throwIfAborted(signal);
     const batchEnd = batch.reduce((end, read) => {
       const readEnd = read.range.offset + read.range.length;
       return readEnd > end ? readEnd : end;
     }, batch[0].range.offset);
     const batchOffset = batch[0].range.offset;
     const batchBytes = readExact
-      ? await readExact(batchOffset, batchEnd - batchOffset)
-      : await readExactRange(readable, batchOffset, batchEnd - batchOffset);
+      ? await (signal
+          ? readExact(batchOffset, batchEnd - batchOffset, signal)
+          : readExact(batchOffset, batchEnd - batchOffset))
+      : await readExactRange(
+          readable,
+          batchOffset,
+          batchEnd - batchOffset,
+          signal,
+        );
+    throwIfAborted(signal);
 
     for (const { channel, range } of batch) {
       const relativeOffset = Number(range.offset - batchOffset);
@@ -371,14 +393,21 @@ function readExactRange(
   readable: McapTypes.IReadable,
   offset: bigint,
   size: bigint,
+  signal?: AbortSignal,
 ): Promise<Uint8Array> {
-  return (
-    (
-      readable as McapTypes.IReadable & {
-        readExact?(offset: bigint, size: bigint): Promise<Uint8Array>;
-      }
-    ).readExact?.(offset, size) ?? readable.read(offset, size)
-  );
+  const readExact = (
+    readable as McapTypes.IReadable & {
+      readExact?(
+        offset: bigint,
+        size: bigint,
+        signal?: AbortSignal,
+      ): Promise<Uint8Array>;
+    }
+  ).readExact;
+  if (!readExact) return readable.read(offset, size);
+  return signal
+    ? readExact.call(readable, offset, size, signal)
+    : readExact.call(readable, offset, size);
 }
 
 /**

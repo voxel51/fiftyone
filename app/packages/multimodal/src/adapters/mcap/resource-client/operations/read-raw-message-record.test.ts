@@ -13,18 +13,21 @@ import type {
 } from "../../reader/index";
 import { resolveMcapTimelineStrategy } from "../timeline";
 import { createChunkIndex } from "../inline-client.test-fixtures";
+import { mcapMessageCursorForEntry } from "./message-cursor";
+import {
+  assertRawRecordSourceWorkBound,
+  RAW_RECORD_MAX_CHUNKS,
+  RAW_RECORD_MAX_SOURCE_BYTES,
+  RAW_RECORD_MAX_UNCOMPRESSED_BYTES,
+} from "./read-limits";
 import {
   assertRawRecordFallbackWorkBound,
   assertRawRecordIndexedCandidateBound,
   assertRawRecordMessageInputBound,
-  assertRawRecordSourceWorkBound,
   RAW_RECORD_FALLBACK_MAX_ENCODED_BYTES,
   RAW_RECORD_FALLBACK_MAX_MESSAGES,
   RAW_RECORD_INDEXED_CANDIDATE_MAX_MESSAGES,
   RAW_RECORD_MAX_MESSAGE_BYTES,
-  RAW_RECORD_MAX_CHUNKS,
-  RAW_RECORD_MAX_SOURCE_BYTES,
-  RAW_RECORD_MAX_UNCOMPRESSED_BYTES,
   RAW_RECORD_MAX_WALL_TIME_MS,
   readMcapRawMessageRecord,
 } from "./read-raw-message-record";
@@ -359,6 +362,8 @@ describe("readMcapRawMessageRecord", () => {
   });
 
   it("materializes only the exact selected indexed entries", async () => {
+    const source = createSource();
+    const selectedEntry = indexedEntry({ logTimeNs: 2_000_000_000n });
     const selected = jsonMessage({ v: "selected" }, 2_000_000_000n);
     const readIndexedMessages = vi.fn(async () => [selected]);
     const reader = createReader({
@@ -372,10 +377,7 @@ describe("readMcapRawMessageRecord", () => {
         new Map([
           [
             "/state",
-            [
-              indexedEntry({ logTimeNs: 1_000_000_000n }),
-              indexedEntry({ logTimeNs: 2_000_000_000n }),
-            ],
+            [indexedEntry({ logTimeNs: 1_000_000_000n }), selectedEntry],
           ],
         ]),
     });
@@ -383,7 +385,7 @@ describe("readMcapRawMessageRecord", () => {
     const result = await readMcapRawMessageRecord({
       reader,
       request: {
-        source: createSource(),
+        source,
         timeNs: 2_000_000_000n,
         topic: "/state",
       },
@@ -391,10 +393,13 @@ describe("readMcapRawMessageRecord", () => {
     });
 
     expect(readIndexedMessages).toHaveBeenCalledWith({
-      entries: [indexedEntry({ logTimeNs: 2_000_000_000n })],
+      entries: [selectedEntry],
       signal: undefined,
     });
     expect(reader.readMessages).not.toHaveBeenCalled();
+    expect(result.cursor).toBe(
+      mcapMessageCursorForEntry(source, selectedEntry),
+    );
     expect(rawNodeToJson(rootOf(result))).toEqual({ v: "selected" });
   });
 
@@ -449,6 +454,7 @@ describe("readMcapRawMessageRecord", () => {
   });
 
   it("uses lowest sequence then publish time for equal indexed log times", async () => {
+    const source = createSource();
     const logTime = 2_000_000_000n;
     const readIndexedMessages = vi.fn(async () => [
       createMessage(new TextEncoder().encode('{"v":"sequence-2"}'), {
@@ -470,6 +476,8 @@ describe("readMcapRawMessageRecord", () => {
     const entries = [1n, 2n, 3n].map((messageOffset) =>
       indexedEntry({ logTimeNs: logTime, messageOffset }),
     );
+    const expectedEntry = entries[2];
+    if (!expectedEntry) throw new Error("expected selected index entry");
     const reader = createReader({
       channel: createChannel({ messageEncoding: "json", topic: "/state" }),
       messages: [],
@@ -482,10 +490,13 @@ describe("readMcapRawMessageRecord", () => {
 
     const result = await readMcapRawMessageRecord({
       reader,
-      request: { source: createSource(), timeNs: logTime, topic: "/state" },
+      request: { source, timeNs: logTime, topic: "/state" },
       timeline,
     });
 
+    expect(result.cursor).toBe(
+      mcapMessageCursorForEntry(source, expectedEntry),
+    );
     expect(result.sequence).toBe(1);
     expect(result.publishTimeNs).toBe(3n);
     expect(rawNodeToJson(rootOf(result))).toEqual({ v: "selected" });
@@ -1143,8 +1154,8 @@ function createReader({
     channelsById: new Map([[channel.id, channel]]),
     chunkIndexes,
     prefetchChunkData,
-    readIndexedMessageTimes,
     readIndexedMessages,
+    readIndexedMessageTimes,
     readLatestIndexedMessageTimes,
     readMessages: vi.fn(async function* (args?: {
       readonly endTime?: bigint;

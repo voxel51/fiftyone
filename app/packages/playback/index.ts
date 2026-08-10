@@ -15,6 +15,7 @@ export type {
   BufferedRanges,
   BufferingStream,
   PlaybackStore,
+  PlaybackInspectionMarker,
   PlaybackStream,
   SeekEvent,
   TimelineMode,

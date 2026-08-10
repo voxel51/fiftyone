@@ -60,12 +60,48 @@ export interface RawRecordStream {
   readonly schemaName: string | null;
   readonly sourceName: string;
   readonly streamId: StreamId;
+  /** True when this source epoch can address records by exact index position. */
+  readonly supportsExactBrowsing?: boolean;
 }
+
+/** Opaque, source-epoch-scoped identity for one exact indexed record. */
+export type RawRecordCursor = string;
+
+/** Index-only row used by bounded exact-record browsing. */
+export interface RawRecordIndexEntry {
+  readonly cursor: RawRecordCursor;
+  readonly timestampNs: bigint;
+}
+
+/** Bounded index window around one exact record. */
+export interface RawRecordIndexWindow {
+  readonly entries: readonly RawRecordIndexEntry[];
+  readonly hasNext: boolean;
+  readonly hasPrevious: boolean;
+  readonly selectedCursor: RawRecordCursor;
+}
+
+/** One exact cursor or timestamp anchor for a bounded index-window read. */
+export type RawRecordIndexWindowRequest = {
+  readonly after: number;
+  readonly before: number;
+} & (
+  | {
+      readonly anchorCursor: RawRecordCursor;
+      readonly anchorTimestampNs?: never;
+    }
+  | {
+      readonly anchorCursor?: never;
+      readonly anchorTimestampNs: bigint;
+    }
+);
 
 export type RawRecordStatus = "decode-error" | "empty" | "ok" | "unsupported";
 
 /** One raw stream record, or a legible degraded outcome, at a playback time. */
 export interface RawRecordResult {
+  /** Present only when the selected record has exact indexed identity. */
+  readonly cursor?: RawRecordCursor;
   readonly decodeError?: string;
   readonly decodeUnavailableReason?:
     | "schema-unavailable"
