@@ -376,6 +376,69 @@ describe("LocationTracksBridge", () => {
     expect(read).toHaveBeenCalledTimes(1);
   });
 
+  it("shares per-stream storage across selection reads without sharing jobs", async () => {
+    const source = createSource("drive");
+    const session = createSession();
+    const store = createStore();
+    const read = vi.fn<BudgetedReadJob["read"]>((request) => {
+      const frames = request.streams.includes("/gps-b")
+        ? [
+            locationMessage(1_000_000_000n, 37, -122, 0, "/gps-a"),
+            locationMessage(1_000_000_000n, 39, -120, 0, "/gps-b"),
+          ]
+        : [
+            locationMessage(1_000_000_000n, 37, -122, 0, "/gps-a"),
+            locationMessage(1_000_000_000n, 37, -122, 0, "/gps-a"),
+            locationMessage(1_000_000_000n, 38, -121, 0, "/gps-a"),
+          ];
+      return Promise.resolve(
+        boundedResult({ frames, stopReason: "source-exhausted" }),
+      );
+    });
+    const createJob = vi.fn(() => ({ read }));
+    const budgetAccount = {
+      createJob,
+    } as unknown as SourceReadBudgetAccount;
+    const view = render(
+      <Harness
+        budgetAccount={budgetAccount}
+        session={session}
+        locationSources={[locationSource("/gps-a"), locationSource("/gps-b")]}
+        source={source}
+        store={store}
+        streams={["/gps-a"]}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps-a:ready:2:1:full",
+      );
+    });
+
+    view.rerender(
+      <Harness
+        budgetAccount={budgetAccount}
+        session={session}
+        locationSources={[locationSource("/gps-a"), locationSource("/gps-b")]}
+        source={source}
+        store={store}
+        streams={["/gps-a", "/gps-b"]}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location-tracks").textContent).toBe(
+        "/gps-a:ready:2:1:full|/gps-b:ready:1:1:full",
+      );
+    });
+
+    expect(createJob).toHaveBeenCalledTimes(2);
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(read.mock.calls.map(([request]) => request.streams)).toEqual([
+      ["/gps-a"],
+      ["/gps-a", "/gps-b"],
+    ]);
+  });
+
   it("lets an admitted grant finish when the playhead seeks backward", async () => {
     const source = createSource("drive");
     const session = createSession();
