@@ -13,6 +13,48 @@ export interface BoundedLogRows {
   readonly truncated: boolean;
 }
 
+/** Deduplicates retained read tiles once and orders them by playback time. */
+export function orderedUniqueLogRows(
+  rowGroups: readonly (readonly EpisodeLogConsoleRow[])[],
+): readonly EpisodeLogConsoleRow[] {
+  const rowsById = new Map<string, EpisodeLogConsoleRow>();
+  for (const rows of rowGroups) {
+    for (const row of rows) rowsById.set(row.id, row);
+  }
+  return [...rowsById.values()].sort(compareLogRows);
+}
+
+/**
+ * Projects the newest selected-level matches from an already ordered cache.
+ * Scanning newest-first means a dense window stops after the cap plus one
+ * proof row instead of materializing every match on each Follow tick.
+ */
+export function selectBoundedLogRows(
+  orderedRows: readonly EpisodeLogConsoleRow[],
+  activeWindow: LogReadRange,
+  rowLimit: number,
+  selectedLevels: ReadonlySet<LogLevel>,
+): BoundedLogRows {
+  if (rowLimit <= 0 || selectedLevels.size === 0) {
+    return { rows: [], truncated: false };
+  }
+  const startIndex = lowerTimelineBound(orderedRows, activeWindow.startTimeNs);
+  const endIndex = upperTimelineBound(orderedRows, activeWindow.endTimeNs);
+  const newestFirst: EpisodeLogConsoleRow[] = [];
+  let truncated = false;
+  for (let index = endIndex - 1; index >= startIndex; index -= 1) {
+    const row = orderedRows[index] as EpisodeLogConsoleRow;
+    if (!selectedLevels.has(row.level)) continue;
+    if (newestFirst.length >= rowLimit) {
+      truncated = true;
+      break;
+    }
+    newestFirst.push(row);
+  }
+  newestFirst.reverse();
+  return { rows: newestFirst, truncated };
+}
+
 /** Returns the clamped beginning of a log window centered on a timeline tick. */
 export function logWindowStartNs(
   centerTimeNs: bigint,
@@ -147,7 +189,7 @@ export function mergeBoundedLogRows(
   }
 
   const rows = Array.from(rowsById.values()).sort((left, right) =>
-    compareBigInt(left.timelineTimeNs, right.timelineTimeNs),
+    compareLogRows(left, right),
   );
   if (rows.length <= rowLimit) {
     return { rows, truncated: false };
@@ -192,4 +234,48 @@ function logRowInWindow(
     row.timelineTimeNs >= activeWindow.startTimeNs &&
     row.timelineTimeNs <= activeWindow.endTimeNs
   );
+}
+
+function compareLogRows(
+  left: EpisodeLogConsoleRow,
+  right: EpisodeLogConsoleRow,
+): number {
+  return (
+    compareBigInt(left.timelineTimeNs, right.timelineTimeNs) ||
+    left.id.localeCompare(right.id)
+  );
+}
+
+function lowerTimelineBound(
+  rows: readonly EpisodeLogConsoleRow[],
+  timeNs: bigint,
+): number {
+  let low = 0;
+  let high = rows.length;
+  while (low < high) {
+    const middle = low + Math.floor((high - low) / 2);
+    if ((rows[middle] as EpisodeLogConsoleRow).timelineTimeNs < timeNs) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
+  return low;
+}
+
+function upperTimelineBound(
+  rows: readonly EpisodeLogConsoleRow[],
+  timeNs: bigint,
+): number {
+  let low = 0;
+  let high = rows.length;
+  while (low < high) {
+    const middle = low + Math.floor((high - low) / 2);
+    if ((rows[middle] as EpisodeLogConsoleRow).timelineTimeNs <= timeNs) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
+  return low;
 }

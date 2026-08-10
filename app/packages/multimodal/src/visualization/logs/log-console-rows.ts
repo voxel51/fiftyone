@@ -15,6 +15,8 @@ import type { DecodedFrame } from "../../ir";
  * embedded payload metadata and is only suitable for display.
  */
 export interface EpisodeLogConsoleRow {
+  /** Stable state identity for diagnostic upserts; absent for ordinary logs. */
+  readonly diagnosticId?: string;
   readonly details: readonly { readonly key: string; readonly value: string }[];
   readonly file?: string;
   readonly functionName?: string;
@@ -78,8 +80,13 @@ function buildRow({
 }): EpisodeLogConsoleRow {
   const hardwareId = stringValue(record.hardwareId);
   const name = stringValue(record.name);
+  const kind = stringValue(record.kind) === "diagnostic" ? "diagnostic" : "log";
 
   return {
+    diagnosticId:
+      kind === "diagnostic"
+        ? diagnosticConsoleIdentity(message.streamId, hardwareId, name)
+        : undefined,
     details: arrayValue(record.details)
       .map(recordValue)
       .filter(isRecord)
@@ -93,7 +100,7 @@ function buildRow({
     groupLabel: logGroupLabel(hardwareId, name),
     hardwareId,
     id: `${message.streamId}:${message.timestampNs.toString()}:${message.sequence ?? ""}:${index}`,
-    kind: stringValue(record.kind) === "diagnostic" ? "diagnostic" : "log",
+    kind,
     level: logLevelValue(record.level),
     levelNumber: numberValue(record.levelNumber),
     line: numberValue(record.line),
@@ -104,6 +111,22 @@ function buildRow({
     stream: message.streamId,
     timelineTimeNs: message.timestampNs,
   };
+}
+
+/**
+ * ROS diagnostic identity is source-local name plus optional hardware id.
+ * Length prefixes avoid delimiter collisions while keeping the key opaque to
+ * presentation code. Malformed rows with neither field degrade to one held
+ * stream-level state instead of disappearing from Diagnostics.
+ */
+export function diagnosticConsoleIdentity(
+  stream: string,
+  hardwareId: string | undefined,
+  name: string | undefined,
+): string {
+  return [stream, hardwareId ?? "", name ?? ""]
+    .map((part) => `${part.length}:${part}`)
+    .join("");
 }
 
 function logGroupLabel(

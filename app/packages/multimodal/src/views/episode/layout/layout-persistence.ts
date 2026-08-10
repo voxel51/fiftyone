@@ -552,10 +552,15 @@ export function sanitizeLogSettings(
         ? record.followPlayhead
         : DEFAULT_LOG_TILE_SETTINGS.followPlayhead;
     const selectedLevels = sanitizeLogLevels(record.selectedLevels);
+    const viewMode =
+      record.viewMode === "diagnostics" || record.viewMode === "logs"
+        ? record.viewMode
+        : DEFAULT_LOG_TILE_SETTINGS.viewMode;
 
     result[tileId] = {
       followPlayhead,
       selectedLevels,
+      viewMode,
       ...(enabledStreams !== undefined ? { enabledStreams } : {}),
     };
     tileCount += 1;

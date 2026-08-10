@@ -17,6 +17,7 @@ import type { FrameBatch } from "../../../ports";
 import type { ProgressiveHistoryAccumulator } from "../../../runtime/progressive-history";
 import { useSceneSourcesByType } from "../../../scene-inventory/react";
 import LogConsole from "../../../visualization/logs/LogConsole";
+import { DiagnosticStateProjector } from "../../../visualization/logs/diagnostic-console-state";
 import {
   logConsoleRowsFromDecodedMessage,
   type EpisodeLogConsoleRow,
@@ -28,18 +29,23 @@ import type { EpisodeTileProps } from "../tiles/tile-types";
 import { useLogConsoleContext } from "./log-console-context";
 import {
   logWindowForCenter,
-  mergeSelectedBoundedLogRows,
+  logWindowStartNs,
+  orderedUniqueLogRows,
+  selectBoundedLogRows,
   type LogReadRange,
 } from "./log-console-window";
 import { useLogTileSettings, useSetLogTileSettings } from "./log-tile-state";
+import {
+  diagnosticStreamIds,
+  type DiagnosticSeedState,
+  useDiagnosticSeed,
+} from "./use-diagnostic-seed";
 
 const PLAYHEAD_REFRESH_MS = 500;
 const LOG_WINDOW_BEFORE_NS = 30_000_000_000n;
-const LOG_WINDOW_AFTER_NS = 2_000_000_000n;
+const LOG_PREFETCH_AFTER_NS = 2_000_000_000n;
 const NANOSECONDS_PER_SECOND = 1_000_000_000n;
-const LOG_WINDOW_LABEL = `${
-  (LOG_WINDOW_BEFORE_NS + LOG_WINDOW_AFTER_NS) / NANOSECONDS_PER_SECOND
-}s`;
+const LOG_WINDOW_LABEL = `${LOG_WINDOW_BEFORE_NS / NANOSECONDS_PER_SECOND}s history`;
 const LOG_FALLBACK_TILE_READ_LIMIT = 600;
 const LOG_SELECTED_ROW_LIMIT = 2_000;
 const LOG_HISTORY_TILE_NS = 4_000_000_000n;
@@ -52,20 +58,25 @@ const LOG_HISTORY_GRANT_BUDGET = {
   maxWallTimeMs: 500,
 } as const;
 
-interface LogRowsState {
+interface LogEvidenceState {
   readonly error?: string;
-  readonly rawRows: readonly EpisodeLogConsoleRow[];
-  readonly retentionTruncated: boolean;
+  readonly orderedEvents: readonly EpisodeLogConsoleRow[];
   readonly searchIncomplete: boolean;
   readonly status: "idle" | "loading" | "ready" | "error";
 }
 
-const INITIAL_ROWS: LogRowsState = {
-  rawRows: [],
-  retentionTruncated: false,
+const INITIAL_EVIDENCE: LogEvidenceState = {
+  orderedEvents: [],
   searchIncomplete: false,
   status: "idle",
 };
+
+interface LogHorizon {
+  readonly generation: number;
+  readonly playheadTimeNs: bigint;
+  readonly seedTimeNs?: bigint;
+  readonly scopeKey: string;
+}
 
 const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
   const logSources = useSceneSourcesByType(SCENE_SOURCE_TYPE.LOG);
@@ -75,22 +86,44 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
   const store = usePlaybackStore();
   const { seek } = usePlayback();
   const setTileTitle = useSetTileTitle();
-  const { enabledStreams, followPlayhead, selectedLevels } =
+  const { enabledStreams, followPlayhead, selectedLevels, viewMode } =
     useLogTileSettings();
   const setLogSettings = useSetLogTileSettings();
-  const [centerTimeNs, setCenterTimeNs] = useState<bigint | undefined>();
+  const [horizon, setHorizon] = useState<LogHorizon | undefined>();
+  const [diagnosticProjector] = useState(() => new DiagnosticStateProjector());
   const lastPlayheadPublishMsRef = useRef(0);
-
-  useEffect(() => {
-    setTileTitle("Logs", { source: "auto" });
-  }, [setTileTitle]);
-
+  const recordingStartNs = session?.manifest.timeRange.startNs ?? 0n;
+  const centerTimeNs = horizon?.playheadTimeNs;
   const selectedStreams = useMemo(() => {
     const ids = logSources.map((entry) => entry.id);
     if (enabledStreams === undefined) return ids;
     const valid = enabledStreams.filter((stream) => ids.includes(stream));
     return valid.length > 0 ? valid : ids;
   }, [enabledStreams, logSources]);
+  const selectedStreamsKey = useMemo(
+    () => [...selectedStreams].sort().join("\0"),
+    [selectedStreams],
+  );
+  const diagnosticScopeKey = `${sourceKey ?? ""}\0${selectedStreamsKey}`;
+
+  const moveHorizon = useCallback(
+    (playheadTimeNs: bigint, forceNewGeneration = false) => {
+      setHorizon((current) =>
+        nextLogHorizon(
+          current,
+          playheadTimeNs,
+          recordingStartNs,
+          forceNewGeneration,
+          diagnosticScopeKey,
+        ),
+      );
+    },
+    [diagnosticScopeKey, recordingStartNs],
+  );
+
+  useEffect(() => {
+    setTileTitle("Logs / Diagnostics", { source: "auto" });
+  }, [setTileTitle]);
 
   useEffect(() => {
     lastPlayheadPublishMsRef.current = 0;
@@ -105,50 +138,59 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
       const now = Date.now();
       if (now - lastPlayheadPublishMsRef.current < PLAYHEAD_REFRESH_MS) return;
       lastPlayheadPublishMsRef.current = now;
-      setCenterTimeNs(timelineIndex.nearestTick(getPlayhead(store)));
+      const playheadTimeNs = timelineIndex.nearestTick(getPlayhead(store));
+      if (playheadTimeNs !== undefined) moveHorizon(playheadTimeNs);
     };
 
     publish();
     return subscribePlayhead(store, publish);
-  }, [followPlayhead, store, timelineIndex]);
+  }, [followPlayhead, moveHorizon, store, timelineIndex]);
 
   // A non-following tile still opens around the current visible playhead. In
   // Follow mode the subscription effect above owns this same initialization.
   useEffect(() => {
     if (centerTimeNs === undefined && timelineIndex && !followPlayhead) {
-      setCenterTimeNs(timelineIndex.nearestTick(getPlayhead(store)));
+      const playheadTimeNs = timelineIndex.nearestTick(getPlayhead(store));
+      if (playheadTimeNs !== undefined) moveHorizon(playheadTimeNs);
     }
-  }, [centerTimeNs, followPlayhead, store, timelineIndex]);
+  }, [centerTimeNs, followPlayhead, moveHorizon, store, timelineIndex]);
 
   const selectedLevelSet = useMemo(
     () => new Set(selectedLevels),
     [selectedLevels],
   );
-  const selectedStreamsKey = useMemo(
-    () => [...selectedStreams].sort().join("\0"),
-    [selectedStreams],
-  );
-  const activeWindow = useMemo(
+  const previousDiagnosticScopeRef = useRef(diagnosticScopeKey);
+  const diagnosticScopeReady = horizon?.scopeKey === diagnosticScopeKey;
+  useEffect(() => {
+    if (previousDiagnosticScopeRef.current === diagnosticScopeKey) return;
+    previousDiagnosticScopeRef.current = diagnosticScopeKey;
+    if (centerTimeNs !== undefined) moveHorizon(centerTimeNs, true);
+  }, [centerTimeNs, diagnosticScopeKey, moveHorizon]);
+  const readWindow = useMemo(
     () =>
       centerTimeNs === undefined
         ? null
         : logWindowForCenter(
             centerTimeNs,
             LOG_WINDOW_BEFORE_NS,
-            LOG_WINDOW_AFTER_NS,
+            LOG_PREFETCH_AFTER_NS,
           ),
     [centerTimeNs],
   );
+  const visibleWindow = useMemo(
+    () =>
+      centerTimeNs === undefined
+        ? null
+        : logWindowForCenter(centerTimeNs, LOG_WINDOW_BEFORE_NS, 0n),
+    [centerTimeNs],
+  );
   const logJobConfigs = useMemo(() => {
-    if (!activeWindow || !session || selectedStreams.length === 0) return [];
+    if (!readWindow || !session || selectedStreams.length === 0) return [];
     return logHistoryTileWindows(
-      activeWindow,
-      session.manifest?.timeRange ?? {
-        endNs: activeWindow.endTimeNs,
-        startNs: activeWindow.startTimeNs,
-      },
+      readWindow,
+      session.manifest.timeRange,
       LOG_HISTORY_TILE_NS,
-      centerTimeNs ?? activeWindow.startTimeNs,
+      centerTimeNs ?? readWindow.startTimeNs,
     ).map((window) => ({
       accumulator: LOG_HISTORY_ACCUMULATOR,
       budget: LOG_HISTORY_GRANT_BUDGET,
@@ -165,41 +207,34 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
       traversal: "center-out" as const,
       window,
     }));
-  }, [
-    activeWindow,
-    centerTimeNs,
-    selectedStreams,
-    selectedStreamsKey,
-    session,
-  ]);
+  }, [centerTimeNs, readWindow, selectedStreams, selectedStreamsKey, session]);
   const logProgress = useProgressiveHistories({
     account: budgetAccount,
     configs: logJobConfigs,
-    enabled: selectedLevels.length > 0,
+    enabled: viewMode === "diagnostics" || selectedLevels.length > 0,
     retryDelayMs: LOG_HISTORY_RETRY_MS,
     session,
     shouldStandDown: () => shouldDeferBulkHistory(store),
   });
-  const state = useMemo<LogRowsState>(() => {
+  const hasReadWindow = readWindow !== null;
+  const orderedEvents = useMemo(
+    () => orderedUniqueLogRows(logProgress.map((progress) => progress.value)),
+    [logProgress],
+  );
+  const evidence = useMemo<LogEvidenceState>(() => {
     if (
       !session ||
       !sourceKey ||
-      !activeWindow ||
+      !hasReadWindow ||
       selectedStreams.length === 0
     ) {
-      return INITIAL_ROWS;
+      return INITIAL_EVIDENCE;
     }
-    const merged = mergeSelectedBoundedLogRows(
-      [],
-      logProgress.flatMap((progress) => progress.value),
-      activeWindow,
-      LOG_SELECTED_ROW_LIMIT,
-      selectedLevelSet,
-    );
-    if (selectedLevels.length === 0) {
+    const historyEnabled =
+      viewMode === "diagnostics" || selectedLevels.length > 0;
+    if (!historyEnabled) {
       return {
-        rawRows: merged.rows,
-        retentionTruncated: merged.truncated,
+        orderedEvents,
         searchIncomplete: false,
         status: "ready",
       };
@@ -210,47 +245,95 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
     );
     return {
       ...(error ? { error } : {}),
-      rawRows: merged.rows,
-      retentionTruncated: merged.truncated,
+      orderedEvents,
       // A terminal progressive-history truncation means some part of the
       // source window was not searched, independent of the visible row cap.
-      searchIncomplete: logProgress.some((progress) => progress.truncated),
+      searchIncomplete:
+        Boolean(error) || logProgress.some((progress) => progress.truncated),
       status:
-        error && merged.rows.length === 0
+        error && orderedEvents.length === 0
           ? "error"
           : loading
             ? "loading"
             : "ready",
     };
   }, [
-    activeWindow,
+    hasReadWindow,
     logProgress,
-    selectedLevelSet,
+    orderedEvents,
     selectedLevels.length,
     selectedStreams.length,
     session,
     sourceKey,
+    viewMode,
   ]);
-  const windowStartNs = activeWindow?.startTimeNs ?? 0n;
-  const windowEndNs = activeWindow?.endTimeNs;
-  const rows = useMemo(
+  const logRows = useMemo(
     () =>
-      state.rawRows.filter(
-        (row) =>
-          windowEndNs === undefined ||
-          (row.timelineTimeNs >= windowStartNs &&
-            row.timelineTimeNs <= windowEndNs),
-      ),
-    [state.rawRows, windowEndNs, windowStartNs],
+      visibleWindow
+        ? selectBoundedLogRows(
+            evidence.orderedEvents,
+            visibleWindow,
+            LOG_SELECTED_ROW_LIMIT,
+            selectedLevelSet,
+          )
+        : { rows: [], truncated: false },
+    [evidence.orderedEvents, selectedLevelSet, visibleWindow],
   );
+  const diagnosticStreams = useMemo(
+    () => diagnosticStreamIds(session, selectedStreams),
+    [selectedStreams, session],
+  );
+  const diagnosticGeneration = `${diagnosticScopeKey}\0${horizon?.generation ?? 0}`;
+  const diagnosticSeed = useDiagnosticSeed({
+    enabled: viewMode === "diagnostics" && diagnosticScopeReady,
+    generation: diagnosticGeneration,
+    seedTimeNs: horizon?.seedTimeNs,
+    session,
+    streams: diagnosticStreams,
+  });
+  const diagnosticCoverage = diagnosticCoverageState(evidence, diagnosticSeed);
+  const diagnostics = useMemo(
+    () =>
+      viewMode !== "diagnostics" ||
+      !diagnosticScopeReady ||
+      centerTimeNs === undefined
+        ? []
+        : diagnosticProjector.project({
+            generation: diagnosticGeneration,
+            orderedEvents: evidence.orderedEvents,
+            playheadTimeNs: centerTimeNs,
+            seedEvents: diagnosticSeed.rows,
+            sourceCoverage: diagnosticCoverage,
+          }),
+    [
+      centerTimeNs,
+      diagnosticCoverage,
+      diagnosticGeneration,
+      diagnosticProjector,
+      diagnosticScopeReady,
+      diagnosticSeed.rows,
+      evidence.orderedEvents,
+      viewMode,
+    ],
+  );
+  const windowStartNs = visibleWindow?.startTimeNs ?? recordingStartNs;
+  const panelStatus =
+    viewMode === "diagnostics" &&
+    (!diagnosticScopeReady || diagnosticSeed.status === "loading")
+      ? "loading"
+      : evidence.status;
+  const panelError =
+    viewMode === "diagnostics"
+      ? (evidence.error ?? diagnosticSeed.error)
+      : evidence.error;
 
   const handleRowClick = useCallback(
     (row: EpisodeLogConsoleRow) => {
       if (!timelineIndex) return;
-      setCenterTimeNs(row.timelineTimeNs);
+      moveHorizon(row.timelineTimeNs, true);
       seek(timelineIndex.nsToSec(row.timelineTimeNs));
     },
-    [seek, timelineIndex],
+    [moveHorizon, seek, timelineIndex],
   );
 
   const toggleStream = useCallback(
@@ -275,10 +358,25 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
     [selectedLevels, setLogSettings],
   );
 
+  const handleViewModeChange = useCallback(
+    (nextViewMode: "diagnostics" | "logs") => {
+      if (nextViewMode === "diagnostics" && centerTimeNs !== undefined) {
+        moveHorizon(centerTimeNs, true);
+      }
+      setLogSettings({ viewMode: nextViewMode });
+    },
+    [centerTimeNs, moveHorizon, setLogSettings],
+  );
+
   const timeOriginNs = timelineIndex?.startTimeNs;
   return (
     <LogConsole
-      error={state.error}
+      diagnosticSeedIncomplete={
+        diagnosticStreams.length > 0 &&
+        (horizon?.seedTimeNs !== undefined || diagnosticSeed.status === "error")
+      }
+      diagnostics={diagnostics}
+      error={panelError}
       followPlayhead={followPlayhead}
       levels={LOG_LEVELS}
       onFollowPlayheadChange={(follow) =>
@@ -287,20 +385,71 @@ const LogConsoleTile: React.FC<EpisodeTileProps> = () => {
       onLevelChange={toggleLevel}
       onRowClick={handleRowClick}
       onStreamChange={toggleStream}
-      retentionTruncated={state.retentionTruncated}
-      rows={rows}
-      searchIncomplete={state.searchIncomplete}
+      onViewModeChange={handleViewModeChange}
+      retentionTruncated={logRows.truncated}
+      rows={logRows.rows}
+      searchIncomplete={evidence.searchIncomplete}
       selectedLevels={selectedLevels}
       selectedStreams={selectedStreams}
       sources={logSources}
-      status={state.status}
+      status={panelStatus}
       tailTimeNs={centerTimeNs}
       timeOriginNs={timeOriginNs}
       windowLabel={LOG_WINDOW_LABEL}
       windowStartNs={windowStartNs}
+      viewMode={viewMode}
     />
   );
 };
+
+function nextLogHorizon(
+  current: LogHorizon | undefined,
+  playheadTimeNs: bigint,
+  recordingStartNs: bigint,
+  forceNewGeneration: boolean,
+  scopeKey: string,
+): LogHorizon {
+  const visibleStartNs = logWindowStartNs(playheadTimeNs, LOG_WINDOW_BEFORE_NS);
+  const continuous =
+    !forceNewGeneration &&
+    current !== undefined &&
+    current.scopeKey === scopeKey &&
+    playheadTimeNs >= current.playheadTimeNs &&
+    visibleStartNs <= current.playheadTimeNs;
+  if (continuous) {
+    return { ...current, playheadTimeNs };
+  }
+  return {
+    generation: (current?.generation ?? 0) + 1,
+    playheadTimeNs,
+    scopeKey,
+    ...(visibleStartNs > recordingStartNs
+      ? { seedTimeNs: visibleStartNs - 1n }
+      : {}),
+  };
+}
+
+function diagnosticCoverageState(
+  evidence: LogEvidenceState,
+  seed: DiagnosticSeedState,
+): "complete" | "incomplete" | "pending" {
+  if (
+    evidence.searchIncomplete ||
+    evidence.status === "error" ||
+    seed.status === "error"
+  ) {
+    return "incomplete";
+  }
+  if (
+    evidence.status === "idle" ||
+    evidence.status === "loading" ||
+    seed.status === "idle" ||
+    seed.status === "loading"
+  ) {
+    return "pending";
+  }
+  return "complete";
+}
 
 const LOG_HISTORY_ACCUMULATOR = {
   initialValue: [] as readonly EpisodeLogConsoleRow[],

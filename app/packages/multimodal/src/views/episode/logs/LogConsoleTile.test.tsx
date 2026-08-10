@@ -1,4 +1,11 @@
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import LogConsoleTile from "./LogConsoleTile";
@@ -7,6 +14,9 @@ const mocks = vi.hoisted(() => {
   let releaseRead: () => void = () => undefined;
   let readGate: Promise<void>;
   let readFrames: readonly unknown[] = [];
+  let seedFrames: readonly unknown[] = [];
+  let logSources = [{ id: "/rosout", label: "ROS logs" }];
+  let viewMode: "diagnostics" | "logs" = "logs";
   let playheadSubscriber: () => void = () => undefined;
   const resetReadGate = () => {
     readGate = new Promise<void>((resolve) => {
@@ -30,12 +40,37 @@ const mocks = vi.hoisted(() => {
     nsToSec: (timeNs: bigint) => Number(timeNs) / 1_000_000_000,
     startTimeNs: 0n,
   };
+  const readSynchronized = vi.fn(
+    async (request: { readonly timeNs: bigint }) => ({
+      endNs: request.timeNs,
+      frames: seedFrames,
+      framesByStream: {},
+      startNs: 0n,
+      streamPolicies: {},
+      timeNs: request.timeNs,
+    }),
+  );
   let session: {
-    readonly manifest?: {
+    readonly manifest: {
+      readonly streams: readonly [];
       readonly timeRange: { readonly endNs: bigint; readonly startNs: bigint };
     };
+    readonly playback?: {
+      readonly readSynchronized: typeof readSynchronized;
+      readonly timeline: {
+        readonly endNs: bigint;
+        readonly startNs: bigint;
+        readonly timeDomainId: string;
+      };
+    };
     readonly read: typeof read;
-  } = { read };
+  } = {
+    manifest: {
+      streams: [],
+      timeRange: { endNs: 100_000_000_000n, startNs: 0n },
+    },
+    read,
+  };
   let budgetAccount: unknown = null;
   return {
     get budgetAccount() {
@@ -45,17 +80,56 @@ const mocks = vi.hoisted(() => {
       getTimelineIndex: () => timelineIndex,
     },
     getPlayhead: vi.fn(() => 1),
-    logSources: [{ id: "/rosout", label: "ROS logs" }],
+    get logSources() {
+      return logSources;
+    },
+    get viewMode() {
+      return viewMode;
+    },
     nearestTick,
     playbackStore: {},
     read,
+    readSynchronized,
     releaseRead: () => releaseRead(),
     resetReadGate,
-    resetSession: (timeRange?: {
-      readonly endNs: bigint;
-      readonly startNs: bigint;
-    }) => {
-      session = timeRange ? { manifest: { timeRange }, read } : { read };
+    resetSession: (
+      timeRange?: {
+        readonly endNs: bigint;
+        readonly startNs: bigint;
+      },
+      diagnostics: boolean | string = false,
+    ) => {
+      const diagnosticStream =
+        typeof diagnostics === "string" ? diagnostics : "/diagnostics";
+      session = {
+        manifest: {
+          streams: diagnostics
+            ? ([
+                {
+                  id: diagnosticStream,
+                  payload: { schema: "diagnostic_msgs/msg/DiagnosticArray" },
+                },
+              ] as never)
+            : [],
+          timeRange: timeRange ?? {
+            endNs: 100_000_000_000n,
+            startNs: 0n,
+          },
+        },
+        ...(diagnostics
+          ? {
+              playback: {
+                readSynchronized,
+                timeline: {
+                  endNs: timeRange?.endNs ?? 100_000_000_000n,
+                  startNs: timeRange?.startNs ?? 0n,
+                  timeDomainId: "test",
+                },
+              },
+            }
+          : {}),
+        read,
+      };
     },
     runPlayheadSubscriber: () => playheadSubscriber(),
     setBudgetAccount: (account: unknown) => {
@@ -63,6 +137,15 @@ const mocks = vi.hoisted(() => {
     },
     setReadFrames: (frames: readonly unknown[]) => {
       readFrames = frames;
+    },
+    setSeedFrames: (frames: readonly unknown[]) => {
+      seedFrames = frames;
+    },
+    setLogSources: (sources: typeof logSources) => {
+      logSources = sources;
+    },
+    setViewMode: (mode: typeof viewMode) => {
+      viewMode = mode;
     },
     get session() {
       return session;
@@ -117,6 +200,7 @@ vi.mock("./log-tile-state", () => ({
   useLogTileSettings: () => ({
     followPlayhead: true,
     selectedLevels: ["info"],
+    viewMode: mocks.viewMode,
   }),
   useSetLogTileSettings: () => mocks.setLogSettings,
 }));
@@ -126,7 +210,11 @@ beforeEach(() => {
   mocks.resetReadGate();
   mocks.resetSession();
   mocks.setReadFrames([]);
+  mocks.setSeedFrames([]);
+  mocks.setLogSources([{ id: "/rosout", label: "ROS logs" }]);
+  mocks.setViewMode("logs");
   mocks.read.mockClear();
+  mocks.readSynchronized.mockClear();
   mocks.nearestTick.mockClear();
   mocks.getPlayhead.mockReset();
   mocks.getPlayhead.mockReturnValue(1);
@@ -203,6 +291,104 @@ describe("LogConsoleTile", () => {
     });
   });
 
+  it("bootstraps quiet diagnostic state before the visible history window", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(1_000);
+    mocks.getPlayhead.mockReturnValue(40);
+    mocks.setViewMode("diagnostics");
+    mocks.setLogSources([{ id: "/diagnostics", label: "ROS diagnostics" }]);
+    mocks.setSeedFrames([
+      {
+        output: {
+          attributes: {
+            logRows: [
+              {
+                hardwareId: "robot",
+                kind: "diagnostic",
+                level: "info",
+                message: "quiet sensor",
+                name: "lidar",
+                status: "OK",
+              },
+            ],
+          },
+        },
+        sequence: 1,
+        streamId: "/diagnostics",
+        timestampNs: 5_000_000_000n,
+      },
+    ]);
+    mocks.resetSession({ endNs: 100_000_000_000n, startNs: 0n }, true);
+
+    render(<LogConsoleTile />);
+
+    await waitFor(() => expect(mocks.readSynchronized).toHaveBeenCalled());
+    expect(mocks.readSynchronized.mock.calls[0]?.[0]).toMatchObject({
+      streams: ["/diagnostics"],
+      timeNs: 9_999_999_999n,
+    });
+    act(() => mocks.releaseRead());
+    expect(await screen.findByText("quiet sensor")).toBeTruthy();
+    expect(screen.getByText("stale · 35s")).toBeTruthy();
+    expect(screen.getByText(/earlier identities may be missing/)).toBeTruthy();
+  });
+
+  it("restarts diagnostic seeding when the selected stream scope changes", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(1_000);
+    mocks.getPlayhead.mockReturnValue(40);
+    mocks.setViewMode("diagnostics");
+    mocks.setLogSources([{ id: "/diagnostics", label: "ROS diagnostics" }]);
+    mocks.resetSession(
+      { endNs: 100_000_000_000n, startNs: 0n },
+      "/diagnostics",
+    );
+    const view = render(<LogConsoleTile />);
+    await waitFor(() =>
+      expect(mocks.readSynchronized).toHaveBeenCalledTimes(1),
+    );
+
+    mocks.setLogSources([
+      { id: "/diagnostics_alt", label: "Alternate diagnostics" },
+    ]);
+    mocks.resetSession(
+      { endNs: 100_000_000_000n, startNs: 0n },
+      "/diagnostics_alt",
+    );
+    view.rerender(<LogConsoleTile />);
+
+    await waitFor(() =>
+      expect(mocks.readSynchronized).toHaveBeenCalledTimes(2),
+    );
+    expect(mocks.readSynchronized.mock.calls[1]?.[0]).toMatchObject({
+      streams: ["/diagnostics_alt"],
+      timeNs: 9_999_999_999n,
+    });
+  });
+
+  it("seeds the current horizon when switching from logs to diagnostics", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(1_000);
+    mocks.getPlayhead.mockReturnValue(40);
+    mocks.setViewMode("logs");
+    mocks.setLogSources([{ id: "/diagnostics", label: "ROS diagnostics" }]);
+    mocks.resetSession({ endNs: 100_000_000_000n, startNs: 0n }, true);
+    const view = render(<LogConsoleTile />);
+
+    await waitFor(() => expect(mocks.read).toHaveBeenCalled());
+    expect(mocks.readSynchronized).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Diagnostics" }));
+    expect(mocks.setLogSettings).toHaveBeenCalledWith({
+      viewMode: "diagnostics",
+    });
+
+    mocks.setViewMode("diagnostics");
+    view.rerender(<LogConsoleTile />);
+
+    await waitFor(() => expect(mocks.readSynchronized).toHaveBeenCalledOnce());
+    expect(mocks.readSynchronized.mock.calls[0]?.[0]).toMatchObject({
+      streams: ["/diagnostics"],
+      timeNs: 9_999_999_999n,
+    });
+  });
+
   it("preserves the follow throttle while a history read is loading", async () => {
     vi.spyOn(Date, "now").mockReturnValue(1_000);
     render(<LogConsoleTile />);
@@ -232,10 +418,36 @@ describe("LogConsoleTile", () => {
     await waitFor(() => expect(mocks.read).toHaveBeenCalledTimes(2));
     expect(mocks.read.mock.calls[1]?.[0]).toMatchObject({
       window: {
-        endNs: 7_000_000_000n,
+        endNs: 7_999_999_999n,
         startNs: 4_000_000_000n,
       },
     });
+  });
+
+  it("prefetches future rows without displaying them before the playhead", async () => {
+    let now = 1_000;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    mocks.setReadFrames([
+      {
+        output: {
+          attributes: { level: "info", message: "prefetched future" },
+        },
+        sequence: 1,
+        streamId: "/rosout",
+        timestampNs: 2_000_000_000n,
+      },
+    ]);
+    render(<LogConsoleTile />);
+    await waitFor(() => expect(mocks.read).toHaveBeenCalledOnce());
+    act(() => mocks.releaseRead());
+
+    await waitFor(() => expect(screen.queryByText(/loading/)).toBeNull());
+    expect(screen.queryByText("prefetched future")).toBeNull();
+
+    now = 2_000;
+    mocks.getPlayhead.mockReturnValue(2);
+    act(() => mocks.runPlayheadSubscriber());
+    expect(await screen.findByText("prefetched future")).toBeTruthy();
   });
 
   it("seeks with playback time when the displayed payload stamp diverges", async () => {

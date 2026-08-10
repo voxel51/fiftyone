@@ -27,6 +27,7 @@ describe("logConsoleRowsFromDecodedMessage", () => {
     expect(rows).toEqual([
       expect.objectContaining({
         details: [{ key: "drop_rate", value: "0.2" }],
+        diagnosticId: "12:/diagnostics9:lidar-top6:driver",
         groupLabel: "lidar-top / driver",
         kind: "diagnostic",
         level: "error",

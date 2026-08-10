@@ -18,13 +18,17 @@ export interface LogTileSettings {
   /** Keep the visible window following the playhead. */
   readonly followPlayhead: boolean;
   readonly selectedLevels: readonly LogLevel[];
+  readonly viewMode: LogConsoleViewMode;
 }
+
+export type LogConsoleViewMode = "diagnostics" | "logs";
 
 export type LogTileSettingsByTile = Readonly<Record<string, LogTileSettings>>;
 
 export const DEFAULT_LOG_TILE_SETTINGS: LogTileSettings = {
   followPlayhead: true,
   selectedLevels: LOG_LEVELS,
+  viewMode: "logs",
 };
 
 /**
@@ -65,7 +69,8 @@ export function useSetLogTileSettings(): (
         if (
           next.enabledStreams === current.enabledStreams &&
           next.followPlayhead === current.followPlayhead &&
-          next.selectedLevels === current.selectedLevels
+          next.selectedLevels === current.selectedLevels &&
+          next.viewMode === current.viewMode
         ) {
           return previous;
         }

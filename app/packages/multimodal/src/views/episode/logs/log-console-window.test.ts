@@ -7,7 +7,9 @@ import {
   mergeSelectedBoundedLogRows,
   mergeLogReadRanges,
   missingLogReadRanges,
+  orderedUniqueLogRows,
   pruneLogRows,
+  selectBoundedLogRows,
 } from "./log-console-window";
 
 describe("episode log console window", () => {
@@ -155,6 +157,26 @@ describe("episode log console window", () => {
 
     expect(merged.rows.map((entry) => entry.id)).toEqual(["warn", "error"]);
     expect(merged.truncated).toBe(false);
+  });
+
+  it("keeps prefetched future events cached but outside the visible projection", () => {
+    const cached = orderedUniqueLogRows([
+      [row(8), row(10), row(11, "prefetched")],
+      [row(10)],
+    ]);
+
+    const visible = selectBoundedLogRows(
+      cached,
+      { endTimeNs: 10n, startTimeNs: 0n },
+      10,
+      new Set(["info"]),
+    );
+
+    expect(cached.map((entry) => entry.id)).toContain("prefetched");
+    expect(visible.rows.map((entry) => entry.timelineTimeNs)).toEqual([
+      8n,
+      10n,
+    ]);
   });
 });
 

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { EpisodeLogConsoleRow } from "./log-console-rows";
 import {
+  diagnosticConsoleResultSummary,
   LogConsole,
   type LogConsoleProps,
   logConsoleResultSummary,
@@ -33,6 +34,19 @@ vi.mock("@voxel51/voodo", () => ({
 afterEach(cleanup);
 
 describe("LogConsole", () => {
+  it("switches between the Logs and Diagnostics projections", () => {
+    const onViewModeChange = vi.fn();
+    render(
+      <LogConsole
+        {...defaultProps({ firstRows: [] })}
+        onViewModeChange={onViewModeChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Diagnostics" }));
+    expect(onViewModeChange).toHaveBeenCalledWith("diagnostics");
+  });
+
   it("anchors Follow to the live tail, suspends on scroll-away, and resumes immediately", () => {
     const onFollowPlayheadChange = vi.fn();
     const firstRows = Array.from({ length: 20 }, (_, index) => row(index));
@@ -125,6 +139,65 @@ describe("LogConsole", () => {
       }),
     ).toContain("partial search and retention may omit matches");
   });
+
+  it("renders latest diagnostic status and freshness as separate signals", () => {
+    const diagnosticRow = row(4, {
+      diagnosticId: "diagnostic",
+      groupLabel: "lidar-top / driver",
+      kind: "diagnostic",
+      level: "error",
+      message: "packet drops",
+      status: "ERROR",
+      stream: "/diagnostics",
+    });
+
+    render(
+      <LogConsole
+        {...defaultProps({ firstRows: [] })}
+        diagnostics={[
+          {
+            ageNs: 12_000_000_000n,
+            freshness: "stale",
+            id: "diagnostic",
+            row: diagnosticRow,
+            staleAfterNs: 3_000_000_000n,
+          },
+        ]}
+        viewMode="diagnostics"
+      />,
+    );
+
+    expect(screen.getByText("ERROR")).toBeTruthy();
+    expect(screen.getByText("lidar-top / driver")).toBeTruthy();
+    expect(screen.getByText("stale · 12s")).toBeTruthy();
+  });
+
+  it("reports incomplete diagnostic search and seed semantics truthfully", () => {
+    expect(
+      diagnosticConsoleResultSummary({
+        rowCount: 3,
+        searchIncomplete: true,
+        seedIncomplete: false,
+        status: "ready",
+      }),
+    ).toContain("latest states may be missing");
+    expect(
+      diagnosticConsoleResultSummary({
+        rowCount: 3,
+        searchIncomplete: false,
+        seedIncomplete: true,
+        status: "ready",
+      }),
+    ).toContain("earlier identities may be missing");
+    expect(
+      diagnosticConsoleResultSummary({
+        rowCount: 3,
+        searchIncomplete: true,
+        seedIncomplete: true,
+        status: "ready",
+      }),
+    ).toContain("latest states and earlier identities may be missing");
+  });
 });
 
 function defaultProps({
@@ -135,12 +208,15 @@ function defaultProps({
   readonly onFollowPlayheadChange?: (follow: boolean) => void;
 }): LogConsoleProps {
   return {
+    diagnosticSeedIncomplete: false,
+    diagnostics: [],
     followPlayhead: true,
     levels: ["info"],
     onFollowPlayheadChange,
     onLevelChange: vi.fn(),
     onRowClick: vi.fn(),
     onStreamChange: vi.fn(),
+    onViewModeChange: vi.fn(),
     retentionTruncated: false,
     rows: firstRows,
     searchIncomplete: false,
@@ -150,7 +226,8 @@ function defaultProps({
     status: "ready",
     tailTimeNs: 1n,
     timeOriginNs: 0n,
-    windowLabel: "32s",
+    viewMode: "logs",
+    windowLabel: "30s history",
     windowStartNs: 0n,
   };
 }
