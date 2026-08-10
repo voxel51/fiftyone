@@ -3,6 +3,10 @@ import {
   type LocationBounds,
   type LocationTrackState,
 } from "../tracks/location-track";
+import {
+  haversineDistanceMeters,
+  normalizeLongitudeIntervalEast,
+} from "../wgs84";
 import { ensurePuckImages } from "./puck";
 import {
   type MapMeasurementPoint,
@@ -86,6 +90,9 @@ import {
 type MapLibreModule = typeof import("maplibre-gl");
 type MapLibreMap = import("maplibre-gl").Map;
 type MapLibreStyle = import("maplibre-gl").StyleSpecification;
+
+const PROGRESSIVE_ROUTE_FIT_MIN_SPAN_M = 20;
+const PROGRESSIVE_ROUTE_FIT_GROWTH_FACTOR = 2;
 
 interface MapSurfaceActivity {
   documentVisible: boolean;
@@ -191,6 +198,11 @@ export function MapLibreSurface({
   const userInteractedRef = useRef(false);
   const recenterGuardUntilRef = useRef(0);
   const suppressViewportWriteRef = useRef(false);
+  const progressiveRouteFitRef = useRef({
+    cameraEpoch: null as string | null,
+    enabled: false,
+    lastFitSpanM: 0,
+  });
   const playbackControllerRef = useRef<MapPlaybackController | null>(null);
   const installedTrackLayersRef = useRef(new Map<string, LocationTrackState>());
   const installedBaseLayerRef = useRef<MapBaseLayer>(MAP_BASE_LAYER.NONE);
@@ -360,6 +372,7 @@ export function MapLibreSurface({
         const handleUserMove = (event: { originalEvent?: unknown }) => {
           if (event.originalEvent) {
             userInteractedRef.current = true;
+            progressiveRouteFitRef.current.enabled = false;
             onUserMoveRef.current();
           }
         };
@@ -661,6 +674,11 @@ export function MapLibreSurface({
       cameraEpochRef.current = cameraEpoch;
       initialFrameEpochRef.current = null;
       warmStartEpochRef.current = null;
+      progressiveRouteFitRef.current = {
+        cameraEpoch,
+        enabled: false,
+        lastFitSpanM: 0,
+      };
       userInteractedRef.current = false;
       if (!preserveLiveCamera) {
         cameraReadyRef.current = false;
@@ -871,6 +889,7 @@ export function MapLibreSurface({
     if (!marker && !bounds) {
       if (locationEvidencePending) return;
       warmStartEpochRef.current = cameraEpoch;
+      progressiveRouteFitRef.current.enabled = false;
       cameraReadyRef.current = true;
       setCameraReady(true);
       playbackControllerRef.current?.invalidate();
@@ -878,6 +897,12 @@ export function MapLibreSurface({
     }
 
     warmStartEpochRef.current = cameraEpoch;
+    const initialRouteSpanM = mapRouteBoundsSpanMeters(bounds);
+    progressiveRouteFitRef.current = {
+      cameraEpoch,
+      enabled: initialRouteSpanM < PROGRESSIVE_ROUTE_FIT_MIN_SPAN_M,
+      lastFitSpanM: initialRouteSpanM,
+    };
     const viewport = readMapViewport(viewportScope);
     const warmStartApplies =
       viewport !== null &&
@@ -914,6 +939,38 @@ export function MapLibreSurface({
     viewportScope,
   ]);
 
+  // Remote history may initially expose only one location fix. Keep expanding
+  // that automatic frame at logarithmic thresholds until the growing trail is
+  // actually visible. Any explicit camera/follow interaction ends this startup
+  // behavior, so later publications never fight the user.
+  useEffect(() => {
+    const map = mapRef.current;
+    const state = progressiveRouteFitRef.current;
+    if (followEgo) {
+      state.enabled = false;
+      return;
+    }
+    if (
+      !map ||
+      !bounds ||
+      !loadedRef.current ||
+      !cameraReady ||
+      !state.enabled ||
+      state.cameraEpoch !== cameraEpoch ||
+      userInteractedRef.current
+    ) {
+      return;
+    }
+    const spanM = mapRouteBoundsSpanMeters(bounds);
+    const nextFitSpanM = Math.max(
+      PROGRESSIVE_ROUTE_FIT_MIN_SPAN_M,
+      state.lastFitSpanM * PROGRESSIVE_ROUTE_FIT_GROWTH_FACTOR,
+    );
+    if (spanM < nextFitSpanM) return;
+    state.lastFitSpanM = spanM;
+    applyMapCameraTarget(map, mapRouteCameraTarget(bounds), 240);
+  }, [bounds, cameraEpoch, cameraReady, followEgo]);
+
   // This effect applies each explicit Recenter request exactly once. It fits
   // the recent trail when one exists, then falls back to the marker or route.
   useEffect(() => {
@@ -921,6 +978,7 @@ export function MapLibreSurface({
     if (recenterNonce === 0 || !map || !loadedRef.current) {
       return;
     }
+    progressiveRouteFitRef.current.enabled = false;
     initialFrameEpochRef.current = cameraEpoch;
     recenterGuardUntilRef.current = performance.now() + RECENTER_GUARD_MS;
     const frame = latestPlaybackFrameRef.current;
@@ -942,6 +1000,7 @@ export function MapLibreSurface({
     if (fitRouteNonce === 0 || !map || !loadedRef.current || !bounds) {
       return;
     }
+    progressiveRouteFitRef.current.enabled = false;
     applyMapCameraTarget(map, mapRouteCameraTarget(bounds), 400);
     // Bounds grow as track data arrives, but only another button press should
     // move a camera the user may have adjusted in the meantime.
@@ -962,6 +1021,18 @@ export function MapLibreSurface({
 
 function isMapSurfaceActive(activity: MapSurfaceActivity): boolean {
   return activity.documentVisible && activity.hasSize && activity.intersects;
+}
+
+function mapRouteBoundsSpanMeters(bounds: LocationBounds | null): number {
+  if (!bounds) return 0;
+  const east = normalizeLongitudeIntervalEast(bounds.west, bounds.east);
+  if (east === null || east - bounds.west >= 180) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return haversineDistanceMeters(
+    { latitude: bounds.south, longitude: bounds.west },
+    { latitude: bounds.north, longitude: east },
+  );
 }
 
 function ensureCurrentPuckImages(

@@ -31,6 +31,8 @@ const mapLibre = vi.hoisted(() => {
     readonly getZoom = vi.fn(() => 1);
     readonly hasImage = vi.fn(() => false);
     readonly isSourceLoaded = vi.fn(() => true);
+    readonly easeTo = vi.fn();
+    readonly fitBounds = vi.fn();
     readonly jumpTo = vi.fn();
     readonly layers = new Set<string>();
     readonly off = vi.fn(
@@ -242,6 +244,120 @@ describe("MapLibreSurface", () => {
       expect(map?.hasImage).toHaveBeenCalledWith("episode-puck-dot-#00ff00");
     });
     expect(hitSetData).toHaveBeenCalledOnce();
+  });
+
+  it("progressively fits a route that grows from a single remote fix", async () => {
+    const playback = {
+      clearHover: vi.fn(),
+      readHoverTimeNs: () => null,
+      readPlayhead: () => ({ paused: true, timeNs: 0n }),
+      subscribeHover: vi.fn(() => vi.fn()),
+      subscribePlayhead: vi.fn(() => vi.fn()),
+    };
+    const initialTrack = createTrackWithPoints([
+      { latitude: 45, longitude: 10, timeNs: 0n },
+    ]);
+    const initialBounds = { east: 10, north: 45, south: 45, west: 10 };
+    const props = {
+      baseLayer: MAP_BASE_LAYER.NONE,
+      basemapStatus: "disabled" as const,
+      fitRouteNonce: 0,
+      followEgo: false,
+      locationEvidencePending: false,
+      liveMarkers: [],
+      measureArmed: false,
+      measurement: null,
+      onBasemapStatusChange: vi.fn(),
+      onHoverTimeNs: vi.fn(),
+      onMeasurePick: vi.fn(),
+      onSeekTimeNs: vi.fn(),
+      onUserMove: vi.fn(),
+      playback,
+      pulseActive: false,
+      recenterNonce: 0,
+      sourceKey: "recording",
+      viewportScope: null,
+    };
+    const rendered = render(
+      <MapLibreSurface
+        {...props}
+        bounds={initialBounds}
+        tracks={[initialTrack]}
+      />,
+    );
+
+    await waitFor(() => expect(mapLibre.instances).toHaveLength(1));
+    const map = mapLibre.instances[0];
+    act(() => map?.emit("load"));
+    await waitFor(() => expect(map?.fitBounds).toHaveBeenCalled());
+    const initialFitCount = map?.fitBounds.mock.calls.length ?? 0;
+
+    const firstGrowthBounds = {
+      east: 10.0005,
+      north: 45,
+      south: 45,
+      west: 10,
+    };
+    rendered.rerender(
+      <MapLibreSurface
+        {...props}
+        bounds={firstGrowthBounds}
+        tracks={[
+          createTrackWithPoints([
+            { latitude: 45, longitude: 10, timeNs: 0n },
+            { latitude: 45, longitude: 10.0005, timeNs: 1n },
+          ]),
+        ]}
+      />,
+    );
+    await waitFor(() =>
+      expect(map?.fitBounds).toHaveBeenCalledTimes(initialFitCount + 1),
+    );
+
+    rendered.rerender(
+      <MapLibreSurface
+        {...props}
+        bounds={{ ...firstGrowthBounds, east: 10.0007 }}
+        tracks={[
+          createTrackWithPoints([
+            { latitude: 45, longitude: 10, timeNs: 0n },
+            { latitude: 45, longitude: 10.0007, timeNs: 2n },
+          ]),
+        ]}
+      />,
+    );
+    expect(map?.fitBounds).toHaveBeenCalledTimes(initialFitCount + 1);
+
+    rendered.rerender(
+      <MapLibreSurface
+        {...props}
+        bounds={{ ...firstGrowthBounds, east: 10.0011 }}
+        tracks={[
+          createTrackWithPoints([
+            { latitude: 45, longitude: 10, timeNs: 0n },
+            { latitude: 45, longitude: 10.0011, timeNs: 3n },
+          ]),
+        ]}
+      />,
+    );
+    await waitFor(() =>
+      expect(map?.fitBounds).toHaveBeenCalledTimes(initialFitCount + 2),
+    );
+
+    act(() => map?.emit("zoomstart", { originalEvent: {} }));
+    rendered.rerender(
+      <MapLibreSurface
+        {...props}
+        bounds={{ ...firstGrowthBounds, east: 10.005 }}
+        tracks={[
+          createTrackWithPoints([
+            { latitude: 45, longitude: 10, timeNs: 0n },
+            { latitude: 45, longitude: 10.005, timeNs: 4n },
+          ]),
+        ]}
+      />,
+    );
+    expect(map?.fitBounds).toHaveBeenCalledTimes(initialFitCount + 2);
   });
 
   it("rehydrates structural geometry once after a replacement style loads", async () => {
@@ -491,18 +607,20 @@ describe("MapLibreSurface", () => {
 });
 
 function createTrack(): LocationTrackState {
+  return createTrackWithPoints([
+    { latitude: 0, longitude: 0, timeNs: 0n },
+    { latitude: 10, longitude: 10, timeNs: 10n },
+  ]);
+}
+
+function createTrackWithPoints(
+  points: LocationTrackState["segments"][number]["points"],
+): LocationTrackState {
   return {
     color: "#ff6600",
     label: "GPS",
-    pointCount: 2,
-    segments: [
-      {
-        points: [
-          { latitude: 0, longitude: 0, timeNs: 0n },
-          { latitude: 10, longitude: 10, timeNs: 10n },
-        ],
-      },
-    ],
+    pointCount: points.length,
+    segments: [{ points }],
     sourceName: "/gps/fix",
     status: "ready",
     stream: "/gps",
