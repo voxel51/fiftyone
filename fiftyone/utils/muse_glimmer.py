@@ -36,11 +36,13 @@ transformers = fou.lazy_import("transformers", callback=_ensure_muse_glimmer)
 from PIL import Image as PILImage
 
 DEFAULT_MUSE_GLIMMER_MODEL = "meta-models/Muse-Glimmer-30B"
-DEFAULT_DETECTION_PROMPT = (
-    "Detect all objects in this image. "
+_BBOX_FORMAT_INSTRUCTION = (
     "Report bbox coordinates in JSON format as a list of "
     '{"label": "<class>", "bbox_2d": [x1, y1, x2, y2]} objects, '
     "where coordinates are normalized to 0-1000 with x first."
+)
+DEFAULT_DETECTION_PROMPT = (
+    "Detect all objects in this image. " + _BBOX_FORMAT_INSTRUCTION
 )
 
 # Muse Glimmer emits reasoning on a `to=self` channel closed by `<|eom|>`
@@ -165,10 +167,13 @@ class MuseGlimmerOutputProcessor(fout.OutputProcessor):
             label = obj.get("label", "object")
             bbox = obj.get("bbox_2d")
 
-            if bbox is None or len(bbox) != 4:
+            if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
                 continue
 
-            x1, y1, x2, y2 = bbox
+            try:
+                x1, y1, x2, y2 = (float(v) for v in bbox)
+            except (TypeError, ValueError):
+                continue
             # Muse Glimmer reports bbox_2d on a 0-1000 normalized scale
             # with x first; convert to 0-1
             x1 = float(np.clip(x1 / 1000.0, 0.0, 1.0))
@@ -309,9 +314,7 @@ class MuseGlimmerModel(fout.TorchImageModel):
             classes_str = ", ".join(self.config.classes)
             return (
                 f"Detect all instances of: {classes_str}. "
-                "Report bbox coordinates in JSON format as a list of "
-                '{"label": "<class>", "bbox_2d": [x1, y1, x2, y2]} objects, '
-                "where coordinates are normalized to 0-1000 with x first."
+                + _BBOX_FORMAT_INSTRUCTION
             )
 
         return DEFAULT_DETECTION_PROMPT
@@ -370,7 +373,11 @@ class MuseGlimmerModel(fout.TorchImageModel):
         if isinstance(img, torch.Tensor):
             img = img.cpu().numpy()
             # Transpose CHW to HWC if first dim is channels and last dim is not
-            if img.shape[0] in (1, 3, 4) and img.shape[2] not in (1, 3, 4):
+            if (
+                img.ndim == 3
+                and img.shape[0] in (1, 3, 4)
+                and img.shape[2] not in (1, 3, 4)
+            ):
                 img = np.transpose(img, (1, 2, 0))
 
         if isinstance(img, np.ndarray) and np.issubdtype(

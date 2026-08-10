@@ -203,6 +203,24 @@ class TestMuseGlimmerDetectionParsing:
 
         assert len(detections) == 0
 
+    def test_parse_non_sequence_bbox(self):
+        processor = MuseGlimmerOutputProcessor()
+
+        for raw in (
+            '[{"label": "cat", "bbox_2d": 500}]',
+            '[{"label": "cat", "bbox_2d": "0, 0, 500, 500"}]',
+            '[{"label": "cat", "bbox_2d": {"x1": 0, "y1": 0}}]',
+        ):
+            detections = processor._parse_detections(raw, (1000, 1000))
+            assert len(detections) == 0, f"Expected empty for: {raw}"
+
+    def test_parse_non_numeric_bbox_elements(self):
+        processor = MuseGlimmerOutputProcessor()
+        raw = '[{"label": "cat", "bbox_2d": ["100", null, 300, 400]}]'
+        detections = processor._parse_detections(raw, (1000, 1000))
+
+        assert len(detections) == 0
+
     def test_clamp_out_of_range(self):
         processor = MuseGlimmerOutputProcessor()
         raw = '[{"label": "cat", "bbox_2d": [-100, -100, 1100, 1100]}]'
