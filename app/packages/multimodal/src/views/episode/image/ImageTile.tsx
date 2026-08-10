@@ -64,6 +64,7 @@ import {
 import { useVideoDecodeRunway } from "../playback/video-decode-runway/use-video-decode-runways";
 import { useImageProjectionLayers } from "./use-image-projection-layers";
 import {
+  classifyImageDimensions,
   effectiveCameraCalibration,
   resolveCameraModel,
 } from "../spatial/camera-geometry/camera-model";
@@ -72,10 +73,10 @@ import ImageTileSettings from "./ImageTileSettings";
 import { useImageAnnotationLayer } from "./use-image-annotation-layer";
 import { useProjectedSceneAnnotations } from "./use-projected-scene-annotations";
 import {
-  classifyImageDimensions,
   describeCalibrationSelection,
   describeCameraGeometry,
   describeGeometryControl,
+  getCalibrationAdaptationStatus,
   getImageViewStatus,
   getProjectionNotice,
   getRectifiedDisplayIssue,
@@ -268,16 +269,32 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     () => (calibration ? effectiveCameraCalibration(calibration) : null),
     [calibration],
   );
+  const dimensionCompatibility =
+    imageDims && effectiveCalibration
+      ? classifyImageDimensions(imageDims, effectiveCalibration)
+      : null;
+  const modelImageDimensions =
+    imageDims &&
+    (dimensionCompatibility === "exact" ||
+      dimensionCompatibility === "proportional")
+      ? imageDims
+      : undefined;
   const cameraModelResolution = useMemo(
     () =>
       calibration
         ? resolveCameraModel({
             calibration,
             geometry: cameraProjection.geometry,
+            imageDimensions: modelImageDimensions,
             imageSourceName: selectedImageSource?.sourceName ?? "",
           })
         : null,
-    [calibration, cameraProjection.geometry, selectedImageSource?.sourceName],
+    [
+      calibration,
+      cameraProjection.geometry,
+      modelImageDimensions,
+      selectedImageSource?.sourceName,
+    ],
   );
   const rectifiedModelResolution = useMemo(
     () =>
@@ -285,20 +302,13 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
         ? resolveCameraModel({
             calibration,
             geometry: "rectified",
+            imageDimensions: modelImageDimensions,
             imageSourceName: selectedImageSource?.sourceName ?? "",
           })
         : null,
-    [calibration, selectedImageSource?.sourceName],
+    [calibration, modelImageDimensions, selectedImageSource?.sourceName],
   );
-  const dimensionCompatibility =
-    imageDims && cameraModelResolution?.status === "ready"
-      ? classifyImageDimensions(imageDims, cameraModelResolution.model)
-      : null;
-  // Rectification still requires exact pixel coordinates. Point-cloud
-  // projection may also use proportional dimensions because its render and
-  // pick paths normalize through calibration pixels.
-  const sourceDimensionMismatch =
-    dimensionCompatibility !== null && dimensionCompatibility !== "exact";
+  const sourceDimensionMismatch = dimensionCompatibility === "mismatch";
   const projectionDimensionMismatch = dimensionCompatibility === "mismatch";
   const rectifiedDisplay = useMemo(() => {
     if (
@@ -588,6 +598,23 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     calibrationSources,
   );
   const geometryStatus = describeCameraGeometry(cameraModelResolution);
+  const calibrationAdaptationStatus = useMemo(
+    () =>
+      getCalibrationAdaptationStatus({
+        calibrationDims: effectiveCalibration,
+        dimensionCompatibility:
+          cameraModelResolution?.status === "ready"
+            ? dimensionCompatibility
+            : null,
+        imageDims,
+      }),
+    [
+      cameraModelResolution?.status,
+      dimensionCompatibility,
+      effectiveCalibration,
+      imageDims,
+    ],
+  );
   const rectifiedDisplayIssue = getRectifiedDisplayIssue({
     calibration,
     calibrationStream,
@@ -660,6 +687,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
         <ImageTileSettings
           annotationSources={annotationSources}
           annotationStreams={annotationStreams}
+          calibrationAdaptationStatus={calibrationAdaptationStatus}
           calibrationSelectionLabel={calibrationSelectionLabel}
           calibrationSources={calibrationSources}
           cameraProjection={cameraProjection}
@@ -694,6 +722,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       activeStreams,
       annotationSources,
       annotationStreams,
+      calibrationAdaptationStatus,
       calibrationSelectionLabel,
       calibrationSources,
       calibrationStream,

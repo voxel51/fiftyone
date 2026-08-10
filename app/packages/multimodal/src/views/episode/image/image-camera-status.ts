@@ -1,6 +1,8 @@
 import type { CameraCalibrationVisualization } from "../../../ir";
 import type {
   CameraModelResolution,
+  ImageDimensionCompatibility,
+  ImageDimensions,
   ImageDisplayMode,
   ImageGeometryMode,
 } from "../spatial/camera-geometry/camera-model";
@@ -19,44 +21,10 @@ export const IMAGE_DISPLAY_LABELS: Record<ImageDisplayMode, string> = {
   rectified: "Rectified / undistorted",
 };
 
-type ImageDimensions = {
-  readonly height: number;
-  readonly width: number;
-};
-
-/** Relationship between decoded image pixels and calibration pixels. */
-export type ImageDimensionCompatibility = "exact" | "mismatch" | "proportional";
-
 /** Image-control feedback and the severity used to present it. */
 export interface ImageStatusNotice {
   readonly message: string;
   readonly severity: "info" | "warning";
-}
-
-/**
- * Classifies whether image and calibration pixels differ only by uniform
- * scaling. The cross-product tolerance permits one decoded-image pixel of
- * dimension rounding without accepting a material aspect-ratio change.
- */
-export function classifyImageDimensions(
-  image: ImageDimensions,
-  calibration: ImageDimensions,
-): ImageDimensionCompatibility {
-  if (
-    image.width === calibration.width &&
-    image.height === calibration.height
-  ) {
-    return "exact";
-  }
-  if (!validImageDimensions(image) || !validImageDimensions(calibration)) {
-    return "mismatch";
-  }
-
-  const aspectDelta = Math.abs(
-    image.width * calibration.height - image.height * calibration.width,
-  );
-  const roundingTolerance = Math.max(calibration.width, calibration.height);
-  return aspectDelta <= roundingTolerance ? "proportional" : "mismatch";
 }
 
 /** Describes the explicit or inventory-selected camera calibration. */
@@ -99,6 +67,29 @@ export function describeGeometryControl(
     return "Choose geometry";
   }
   return IMAGE_GEOMETRY_LABELS[geometry];
+}
+
+/** Reports a successful per-image calibration scale without treating it as an issue. */
+export function getCalibrationAdaptationStatus({
+  calibrationDims,
+  dimensionCompatibility,
+  imageDims,
+}: {
+  readonly calibrationDims: ImageDimensions | null;
+  readonly dimensionCompatibility: ImageDimensionCompatibility | null;
+  readonly imageDims: ImageDimensions | null;
+}): ImageStatusNotice | null {
+  if (
+    dimensionCompatibility !== "proportional" ||
+    !calibrationDims ||
+    !imageDims
+  ) {
+    return null;
+  }
+  return {
+    message: `Calibration scaled from ${calibrationDims.width}×${calibrationDims.height} to match ${imageDims.width}×${imageDims.height} image`,
+    severity: "info",
+  };
 }
 
 /** Returns inline feedback for an unavailable or no-op rectified view. */
@@ -161,7 +152,7 @@ export function getRectifiedDisplayIssue({
   }
   if (sourceDimensionMismatch && imageDims) {
     const model = cameraModelResolution.model;
-    return `Cannot rectify ${imageDims.width}×${imageDims.height} pixels with ${model.width}×${model.height} calibration`;
+    return `Image is ${imageDims.width}×${imageDims.height}, but calibration is ${model.width}×${model.height}; aspect ratios differ`;
   }
   if (cameraModelResolution.mode === "rectified") return null;
   if (rectifiedModelResolution?.status !== "ready") {
@@ -209,26 +200,10 @@ export function getProjectionNotice({
   if (dimensionCompatibility === "mismatch" && imageDims) {
     const model = cameraModelResolution.model;
     return warning(
-      `Image is ${imageDims.width}×${imageDims.height}, but calibration resolves to ${model.width}×${model.height}`,
+      `Image is ${imageDims.width}×${imageDims.height}, but calibration is ${model.width}×${model.height}; aspect ratios differ`,
     );
   }
-  if (dimensionCompatibility === "proportional" && imageDims) {
-    const model = cameraModelResolution.model;
-    return {
-      message: `Image is ${imageDims.width}×${imageDims.height}; using ${model.width}×${model.height} calibration with proportional scaling`,
-      severity: "info",
-    };
-  }
   return null;
-}
-
-function validImageDimensions(dimensions: ImageDimensions): boolean {
-  return (
-    Number.isInteger(dimensions.width) &&
-    dimensions.width > 0 &&
-    Number.isInteger(dimensions.height) &&
-    dimensions.height > 0
-  );
 }
 
 function warning(message: string): ImageStatusNotice {

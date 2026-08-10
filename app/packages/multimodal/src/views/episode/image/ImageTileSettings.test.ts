@@ -21,6 +21,10 @@ describe("ImageTileSettings", () => {
     rerender(
       React.createElement(ImageTileSettings, {
         ...props,
+        calibrationAdaptationStatus: {
+          message: "Calibration scaled from 1920×1280 to match 960×640 image",
+          severity: "info",
+        },
         calibrationSelectionLabel: "Auto · Front calibration",
         hasCalibrationMatch: true,
       }),
@@ -38,6 +42,10 @@ describe("ImageTileSettings", () => {
     rerender(
       React.createElement(ImageTileSettings, {
         ...props,
+        calibrationAdaptationStatus: {
+          message: "Calibration scaled from 1920×1280 to match 960×640 image",
+          severity: "info",
+        },
         calibrationSelectionLabel: "Auto · Front calibration",
         cameraProjection: {
           ...props.cameraProjection,
@@ -54,6 +62,11 @@ describe("ImageTileSettings", () => {
     expect(
       screen.getByText("Already rectified — no remap needed"),
     ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Calibration scaled from 1920×1280 to match 960×640 image",
+      ),
+    ).toBeTruthy();
   });
 
   it("renders tile controls and applies bounded point-size updates", () => {
@@ -62,6 +75,7 @@ describe("ImageTileSettings", () => {
       React.createElement(ImageTileSettings, {
         annotationSources: [],
         annotationStreams: [],
+        calibrationAdaptationStatus: null,
         calibrationSelectionLabel: "Auto · no match",
         calibrationSources: [],
         cameraProjection: {
@@ -145,6 +159,7 @@ describe("ImageTileSettings", () => {
       React.createElement(ImageTileSettings, {
         annotationSources,
         annotationStreams: annotationSources.map((source) => source.id),
+        calibrationAdaptationStatus: null,
         calibrationSelectionLabel: "Auto · no match",
         calibrationSources: [],
         cameraProjection: {
@@ -222,6 +237,7 @@ describe("ImageTileSettings", () => {
     ): React.ComponentProps<typeof ImageTileSettings> => ({
       annotationSources,
       annotationStreams: annotationSources.map((source) => source.id),
+      calibrationAdaptationStatus: null,
       calibrationSelectionLabel: "Auto · no match",
       calibrationSources: [],
       cameraProjection: {
@@ -302,6 +318,7 @@ describe("ImageTileSettings", () => {
       React.createElement(ImageTileSettings, {
         annotationSources: [],
         annotationStreams: [],
+        calibrationAdaptationStatus: null,
         calibrationSelectionLabel: "Auto · no match",
         calibrationSources: [],
         cameraProjection: {
@@ -394,6 +411,7 @@ function imageSettingsProps(): React.ComponentProps<typeof ImageTileSettings> {
   return {
     annotationSources: [],
     annotationStreams: [],
+    calibrationAdaptationStatus: null,
     calibrationSelectionLabel: "Auto · no match",
     calibrationSources: [calibration],
     cameraProjection: {

@@ -1,11 +1,14 @@
 import { VISUALIZATION_KIND } from "../../../ir";
 import { describe, expect, it } from "vitest";
 
-import { resolveCameraModel } from "../spatial/camera-geometry/camera-model";
 import {
   classifyImageDimensions,
+  resolveCameraModel,
+} from "../spatial/camera-geometry/camera-model";
+import {
   describeCalibrationSelection,
   describeGeometryControl,
+  getCalibrationAdaptationStatus,
   getImageViewStatus,
   getProjectionNotice,
   getRectifiedDisplayIssue,
@@ -106,7 +109,17 @@ describe("image camera status", () => {
     ).toBeNull();
   });
 
-  it("reports proportional projection scaling as information", () => {
+  it("reports proportional calibration scaling inline, not as a projection issue", () => {
+    expect(
+      getCalibrationAdaptationStatus({
+        calibrationDims: { height: 1280, width: 1920 },
+        dimensionCompatibility: "proportional",
+        imageDims: { height: 640, width: 960 },
+      }),
+    ).toEqual({
+      message: "Calibration scaled from 1920×1280 to match 960×640 image",
+      severity: "info",
+    });
     expect(
       getProjectionNotice({
         calibration,
@@ -117,11 +130,7 @@ describe("image camera status", () => {
         explicitCalibrationAvailable: true,
         imageDims: { height: 400, width: 400 },
       }),
-    ).toEqual({
-      message:
-        "Image is 400×400; using 100×100 calibration with proportional scaling",
-      severity: "info",
-    });
+    ).toBeNull();
   });
 
   it("keeps incompatible projection dimensions as a warning", () => {
@@ -136,7 +145,8 @@ describe("image camera status", () => {
         imageDims: { height: 300, width: 400 },
       }),
     ).toEqual({
-      message: "Image is 400×300, but calibration resolves to 100×100",
+      message:
+        "Image is 400×300, but calibration is 100×100; aspect ratios differ",
       severity: "warning",
     });
   });
@@ -156,6 +166,24 @@ describe("image camera status", () => {
         sourceDimensionMismatch: false,
       }),
     ).toBeNull();
+  });
+
+  it("reports only true aspect-ratio mismatches as rectification issues", () => {
+    expect(
+      getRectifiedDisplayIssue({
+        calibration,
+        calibrationStream: "/calibration",
+        cameraModelResolution: ready,
+        display: "rectified",
+        explicitCalibrationAvailable: true,
+        imageDims: { height: 300, width: 400 },
+        rectifiedDisplay: null,
+        rectifiedModelResolution: rectifiedReady,
+        sourceDimensionMismatch: true,
+      }),
+    ).toBe(
+      "Image is 400×300, but calibration is 100×100; aspect ratios differ",
+    );
   });
 
   it("explains no-op and unavailable rectified views inline", () => {

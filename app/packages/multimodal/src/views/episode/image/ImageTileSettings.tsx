@@ -66,6 +66,7 @@ const LABEL_3D_INTERPOLATION_HELP =
 interface ImageTileSettingsProps {
   readonly annotationSources: readonly SceneSource[];
   readonly annotationStreams: readonly string[];
+  readonly calibrationAdaptationStatus: ImageStatusNotice | null;
   readonly calibrationSelectionLabel: string;
   readonly calibrationSources: readonly SceneSource[];
   readonly cameraProjection: ImageProjectionSettings;
@@ -110,6 +111,7 @@ interface ImageTileSettingsProps {
 const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
   annotationSources,
   annotationStreams,
+  calibrationAdaptationStatus,
   calibrationSelectionLabel,
   calibrationSources,
   cameraProjection,
@@ -247,6 +249,11 @@ const ImageTileSettings: React.FC<ImageTileSettingsProps> = ({
                 <span className={settingsStyles.metaText}>
                   {geometryStatus}
                 </span>
+                {calibrationAdaptationStatus ? (
+                  <Text color={TextColor.Secondary} variant={TextVariant.Xs}>
+                    {calibrationAdaptationStatus.message}
+                  </Text>
+                ) : null}
               </label>
               <label className={settingsStyles.field}>
                 <SettingsLabel label="View" tooltip={IMAGE_VIEW_HELP} />
