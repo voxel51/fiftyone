@@ -111,3 +111,58 @@ describe("currentGroupSliceNames", () => {
     expect(testCurrentGroupSliceNames()).toStrictEqual([]);
   });
 });
+
+describe("viewSelectsGroupSlices", () => {
+  const testViewSelectsGroupSlices = <
+    TestSelector<typeof groups.viewSelectsGroupSlices>
+  >(<unknown>groups.viewSelectsGroupSlices);
+
+  const selectGroupSlicesStage = (flat: boolean) => ({
+    _cls: "fiftyone.core.stages.SelectGroupSlices",
+    kwargs: [
+      ["slices", ["left"]],
+      ["flat", flat],
+    ],
+  });
+
+  it("detects flattened slice selections", () => {
+    setMockAtoms({
+      isGroup: true,
+      _view__setter: [selectGroupSlicesStage(true)],
+    });
+    expect(testViewSelectsGroupSlices()).toBe(true);
+  });
+
+  it("detects unflattened slice selections", () => {
+    setMockAtoms({
+      isGroup: true,
+      _view__setter: [selectGroupSlicesStage(false)],
+    });
+    expect(testViewSelectsGroupSlices()).toBe(true);
+  });
+
+  it("is false for views without a slice selection", () => {
+    setMockAtoms({
+      isGroup: true,
+      _view__setter: [
+        { _cls: "fiftyone.core.stages.Limit", kwargs: [["limit", 1]] },
+      ],
+    });
+    expect(testViewSelectsGroupSlices()).toBe(false);
+  });
+
+  it("detects selections that flatten the dataset out of being grouped", () => {
+    // a flattening selection leaves the view with its slices' media type, so
+    // the dataset no longer reads as grouped
+    setMockAtoms({
+      isGroup: false,
+      _view__setter: [selectGroupSlicesStage(true)],
+    });
+    expect(testViewSelectsGroupSlices()).toBe(true);
+  });
+
+  it("is false for empty views", () => {
+    setMockAtoms({ isGroup: true, _view__setter: [] });
+    expect(testViewSelectsGroupSlices()).toBe(false);
+  });
+});

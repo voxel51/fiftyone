@@ -264,6 +264,45 @@ export const hasGroupSlices = selector<boolean>({
   },
 });
 
+const SELECT_GROUP_SLICES_STAGE = "fiftyone.core.stages.SelectGroupSlices";
+
+/**
+ * Whether the current view remains grouped due to an explicit non-flat
+ * {@link SELECT_GROUP_SLICES_STAGE} stage, i.e. it cannot be automatically
+ * scoped to the active group slice
+ */
+export const isUnflattenedGroupView = selector<boolean>({
+  key: "isUnflattenedGroupView",
+  get: ({ get }) => {
+    if (!get(isGroup)) {
+      return false;
+    }
+
+    return (get(viewAtoms.view) ?? []).some(
+      (stage) =>
+        stage._cls === SELECT_GROUP_SLICES_STAGE &&
+        stage.kwargs?.find((kwarg) => kwarg[0] === "flat")?.[1] === false,
+    );
+  },
+});
+
+/**
+ * Whether the current view explicitly selects group slices, in which case the
+ * view already defines its own slice scope and the App's active slice does not
+ * apply.
+ *
+ * Deliberately independent of {@link isGroup}: a flattening selection leaves
+ * the view with the media type of its slices, so the dataset no longer reads
+ * as grouped
+ */
+export const viewSelectsGroupSlices = selector<boolean>({
+  key: "viewSelectsGroupSlices",
+  get: ({ get }) =>
+    (get(viewAtoms.view) ?? []).some(
+      (stage) => stage._cls === SELECT_GROUP_SLICES_STAGE,
+    ),
+});
+
 export const currentSlice = selectorFamily<string | null, boolean>({
   key: "currentSlice",
   get:

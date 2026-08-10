@@ -50,3 +50,15 @@ class ViewTarget:
     When using this option, specify 'custom_view_target' in the
     operator parameters with a list of JSON-serialized view stages to apply.
     """
+
+
+VIEW_TARGETS = (
+    ViewTarget.DATASET,
+    ViewTarget.BASE_VIEW,
+    ViewTarget.DATASET_VIEW,
+    ViewTarget.CURRENT_VIEW,
+    ViewTarget.SELECTED_SAMPLES,
+    ViewTarget.SELECTED_LABELS,
+    ViewTarget.CUSTOM_VIEW_TARGET,
+)
+"""All :class:`ViewTarget` values."""

@@ -637,6 +637,36 @@ def resolve_placement(operator, request_params):
         return ExecutionResult(error=str(e))
 
 
+UNGROUPED_TARGET_ERROR = "Not available for grouped datasets"
+
+UNFLATTENED_VIEW_ERROR = (
+    "This operation requires a flattened view. Apply "
+    "select_group_slices(flat=True) to flatten the grouped view"
+)
+
+
+def _describe_slices(group_slices=None, group_media_type=None):
+    # an empty override selects no slices, so it carries no description
+    if group_media_type:
+        media_types = (
+            [group_media_type]
+            if isinstance(group_media_type, str)
+            else list(group_media_type)
+        )
+        return f"in all {', '.join(media_types)} slices"
+
+    if group_slices:
+        slices = (
+            [group_slices]
+            if isinstance(group_slices, str)
+            else list(group_slices)
+        )
+        plural = "s" if len(slices) > 1 else ""
+        return f"in the {', '.join(slices)} slice{plural}"
+
+    return None
+
+
 class ExecutionContext(contextlib.AbstractContextManager):
     """Represents the execution context of an operator.
 
@@ -774,7 +804,13 @@ class ExecutionContext(contextlib.AbstractContextManager):
 
         return self._view
 
-    def target_view(self, param_name="view_target", require_flat=False):
+    def target_view(
+        self,
+        param_name="view_target",
+        require_flat=False,
+        group_slices=None,
+        group_media_type=None,
+    ):
         """The target view for the operator being executed.
 
         Args:
@@ -783,42 +819,82 @@ class ExecutionContext(contextlib.AbstractContextManager):
             require_flat (False): whether the operation requires a flattened
                 (non-grouped) collection. When ``False``, grouped collections
                 are returned as-is. When ``True``, grouped collections are
-                flattened to the current active slice.
+                flattened to the current active slice
+            group_slices (None): the group slice(s) that grouped collections
+                are flattened to, instead of the current active slice. Unlike
+                ``require_flat``, this also scopes the "entire dataset" target
+            group_media_type (None): the group slice media type(s) that grouped
+                collections are flattened to, instead of the current active
+                slice. Unlike ``require_flat``, this also scopes the "entire
+                dataset" target
 
         Returns:
             a :class:`fiftyone.core.collections.SampleCollection`
         """
-        target = self.params.get(param_name)
+        return self._resolve_target_view(
+            self.params.get(param_name),
+            require_flat=require_flat,
+            group_slices=group_slices,
+            group_media_type=group_media_type,
+        )
 
+    def _get_target_collection(self, target):
+        # the collection a target names, plus whether the App's active slice
+        # scopes it: targets that name a whole dataset or a caller-built view
+        # are resolved as-is
         match target:
             case constants.ViewTarget.DATASET:
-                return self.dataset
+                return self.dataset, False
             case constants.ViewTarget.BASE_VIEW:
                 # pylint: disable-next-line=protected-access
-                return self.view._base_view
+                return self.view._base_view, False
             case constants.ViewTarget.CUSTOM_VIEW_TARGET if (
                 view_stages := self.params.get("custom_view_target")
             ) is not None:
                 # pylint: disable-next-line=protected-access
-                return fov.DatasetView._build(self.dataset, view_stages)
+                return (
+                    fov.DatasetView._build(self.dataset, view_stages),
+                    False,
+                )
             case constants.ViewTarget.DATASET_VIEW:
-                sample_collection = self.dataset.view()
+                return self.dataset.view(), True
             case (
                 constants.ViewTarget.CURRENT_VIEW
                 | constants.ViewTarget.SELECTED_SAMPLES
                 | constants.ViewTarget.SELECTED_LABELS
             ):
-                sample_collection = self.view
+                return self.view, True
             case _:
-                sample_collection = (
+                return (
                     self.view if self.has_custom_view else self.dataset
-                )
+                ), True
 
-        # scoping to the active slice compiles to a no-op pipeline, so the
-        # ordering relative to the selections below is immaterial
-        sample_collection = self._get_active_view(
-            sample_collection, require_flat=require_flat
-        )
+    def _resolve_target_view(
+        self,
+        target,
+        require_flat=False,
+        group_slices=None,
+        group_media_type=None,
+    ):
+        (
+            sample_collection,
+            scoped_by_active_slice,
+        ) = self._get_target_collection(target)
+        has_slice_override = bool(group_slices or group_media_type)
+
+        if scoped_by_active_slice or has_slice_override:
+            # scoping to the active slice compiles to a no-op pipeline, so the
+            # ordering relative to the selections below is immaterial
+            sample_collection = self._get_active_view(
+                sample_collection,
+                require_flat=require_flat,
+                group_slices=group_slices,
+                group_media_type=group_media_type,
+            )
+        elif require_flat and sample_collection.media_type == fom.GROUP:
+            # an operation that cannot process groups must reject a grouped
+            # target rather than silently receive one
+            raise ValueError(UNGROUPED_TARGET_ERROR)
 
         if target == constants.ViewTarget.SELECTED_SAMPLES:
             return sample_collection.select(self.selected)
@@ -828,30 +904,205 @@ class ExecutionContext(contextlib.AbstractContextManager):
 
         return sample_collection
 
+    def get_unavailable_view_targets(
+        self, require_flat=False, group_slices=None, group_media_type=None
+    ):
+        """The view targets that this operation cannot process, mapped to the
+        reason why.
+
+        Targets that resolve to a grouped collection are unavailable to
+        operations that require a flattened one, so that panels and operator
+        forms can offer them with an explanation rather than fail at execution.
+
+        Every known target is considered, so the result may name targets that
+        the caller does not offer.
+
+        Args:
+            require_flat (False): whether the operation requires a flattened
+                (non-grouped) collection
+            group_slices (None): the group slice(s) the operation always runs
+                on
+            group_media_type (None): the group slice media type(s) the
+                operation always runs on
+
+        Returns:
+            a dict mapping view targets to reasons
+        """
+        has_slice_override = bool(group_slices or group_media_type)
+        if not require_flat and not has_slice_override:
+            return {}
+
+        if self.dataset is None or self.dataset.media_type != fom.GROUP:
+            return {}
+
+        unavailable = {}
+        for target in constants.VIEW_TARGETS:
+            if (
+                target == constants.ViewTarget.CUSTOM_VIEW_TARGET
+                and self.params.get("custom_view_target") is None
+            ):
+                continue
+
+            try:
+                collection, scoped = self._get_target_collection(target)
+                if scoped or has_slice_override:
+                    collection = self._get_active_view(
+                        collection,
+                        require_flat=require_flat,
+                        group_slices=group_slices,
+                        group_media_type=group_media_type,
+                        probe=True,
+                    )
+            except ValueError as e:
+                unavailable[target] = str(e)
+                continue
+
+            if collection.media_type == fom.GROUP:
+                unavailable[target] = UNGROUPED_TARGET_ERROR
+
+        return unavailable
+
     # Alias for common word reversal
     view_target = target_view
 
-    def _get_active_view(self, sample_collection=None, require_flat=False):
+    def flatten_group_slices(
+        self, sample_collection=None, group_slices=None, group_media_type=None
+    ):
+        """Flattens the given grouped collection to the requested group
+        slice(s), or to the active group slice if none are requested.
+
+        Non-grouped collections and views that already select slices are
+        returned as-is. Views that select slices without flattening them raise
+        a ``ValueError``.
+
+        Args:
+            sample_collection (None): the
+                :class:`fiftyone.core.collections.SampleCollection` to flatten.
+                By default, the dataset is used
+            group_slices (None): the group slice(s) to flatten to
+            group_media_type (None): the group slice media type(s) to flatten
+                to
+
+        Returns:
+            a :class:`fiftyone.core.collections.SampleCollection`
+        """
+        return self._get_active_view(
+            sample_collection,
+            require_flat=True,
+            group_slices=group_slices,
+            group_media_type=group_media_type,
+        )
+
+    def _get_active_view(
+        self,
+        sample_collection=None,
+        require_flat=False,
+        group_slices=None,
+        group_media_type=None,
+        probe=False,
+    ):
         # when a flat collection is required, grouped collections are scoped
-        # to the active group slice, unless the view already selects slices
+        # to the active group slice, unless the view already selects slices.
+        # ``probe`` callers only ask whether this would succeed, so they do not
+        # announce a scope no one receives
         if sample_collection is None:
             sample_collection = self.dataset
 
-        if (
-            not require_flat
-            or self.group_slice is None
-            or sample_collection.media_type != fom.GROUP
-        ):
+        # an empty override selects no slices, so it follows the default path
+        has_slice_override = bool(group_slices or group_media_type)
+
+        if sample_collection.media_type != fom.GROUP:
+            return sample_collection
+
+        if not require_flat and not has_slice_override:
             return sample_collection
 
         stages = getattr(sample_collection, "_stages", None) or []
         if any(isinstance(s, fosg.SelectGroupSlices) for s in stages):
-            raise ValueError(
-                "This operation requires a flattened view. Apply "
-                "select_group_slices(flat=True) to flatten the grouped view"
+            raise ValueError(UNFLATTENED_VIEW_ERROR)
+
+        if has_slice_override:
+            return sample_collection.select_group_slices(
+                slices=group_slices, media_type=group_media_type
             )
 
-        return sample_collection.select_group_slices(self.group_slice)
+        # the App always sends the active slice, but a caller that omits it
+        # still gets a flat collection: the collection resolves its own slice,
+        # falling back to the dataset default
+        group_slice = self.group_slice or sample_collection.group_slice
+
+        if not probe:
+            # the scope is chosen for the caller, so say so
+            logger.info(
+                "Scoping grouped collection to the active group slice '%s'",
+                group_slice,
+            )
+
+        return sample_collection.select_group_slices(group_slice)
+
+    def describe_group_slice_scope(
+        self,
+        sample_collection=None,
+        require_flat=False,
+        group_slices=None,
+        group_media_type=None,
+    ):
+        """A short description of the group slice(s) that view-based targets
+        resolve to, e.g. ``"in the current slice (left)"``, or ``None`` if the
+        collection carries no slice scope.
+
+        Args:
+            sample_collection (None): the
+                :class:`fiftyone.core.collections.SampleCollection` the
+                operation runs on. By default, the current view is used
+            require_flat (False): whether the operation requires a flattened
+                (non-grouped) collection
+            group_slices (None): the group slice(s) the operation always runs
+                on
+            group_media_type (None): the group slice media type(s) the
+                operation always runs on
+
+        Returns:
+            a string, or ``None``
+        """
+        scope, _ = self._get_group_slice_scopes(
+            sample_collection,
+            require_flat=require_flat,
+            group_slices=group_slices,
+            group_media_type=group_media_type,
+        )
+        return scope
+
+    def _get_group_slice_scopes(
+        self,
+        sample_collection=None,
+        require_flat=False,
+        group_slices=None,
+        group_media_type=None,
+    ):
+        # short descriptions of the slice(s) that view-based targets and the
+        # dataset target resolve to, so that operator forms and panels can
+        # surface the default behavior for grouped datasets
+        if sample_collection is None:
+            sample_collection = self.view
+
+        if self.dataset is None or self.dataset.media_type != fom.GROUP:
+            return None, None
+
+        if sample_collection.media_type != fom.GROUP:
+            # the collection already selects slices, so it defines its own
+            # scope
+            return None, None
+
+        override = _describe_slices(group_slices, group_media_type)
+        if override is not None:
+            return override, override
+
+        if require_flat:
+            slice_name = self.group_slice or sample_collection.group_slice
+            return f"in the current slice ({slice_name})", "in all slices"
+
+        return "in all slices", "in all slices"
 
     @property
     def has_custom_view(self):

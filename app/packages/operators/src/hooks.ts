@@ -9,6 +9,7 @@ import {
   fetchRemotePlacements,
   listLocalAndRemoteOperators,
   resolveLocalPlacements,
+  type RawContext,
 } from "./operators";
 import {
   activePanelsEventCountAtom,
@@ -46,7 +47,7 @@ function useOperatorThrottledContextSetter() {
     setThrottledContext({
       datasetName,
       view,
-      extendedStages,
+      extended: extendedStages,
       filters,
       selectedSamples,
       sampleSelectionStyle,
@@ -88,7 +89,9 @@ export function useOperatorPlacementsResolver() {
     async function updateOperatorPlacementsAtom() {
       setResolving(true);
       try {
-        const ctx = new ExecutionContext({}, context);
+        // placements resolve from the throttled context, which carries only
+        // the subset the setter above publishes
+        const ctx = new ExecutionContext({}, context as RawContext);
         const remotePlacements = await fetchRemotePlacements(ctx);
         const localPlacements = await resolveLocalPlacements(ctx);
         const placements = [...remotePlacements, ...localPlacements];

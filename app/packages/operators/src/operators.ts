@@ -84,7 +84,8 @@ class Panel {
 
 export type RawContext = {
   datasetName: string;
-  extended: boolean;
+  // the extended stages, as ``get_view(extended_stages=...)`` takes them
+  extended: object;
   view: string;
   filters: object;
   selectedSamples: Map<string, SelectionType>;
@@ -127,7 +128,7 @@ export class ExecutionContext {
   public get view(): string {
     return this._currentContext.view;
   }
-  public get extended(): boolean {
+  public get extended(): object {
     return this._currentContext.extended;
   }
   public get filters(): object {
@@ -594,11 +595,23 @@ function formatSelectedLabels(selectedLabels) {
   return labels;
 }
 
-function formatSelectionPayload(currentContext: RawContext) {
+/**
+ * The selected sample IDs, as `ctx.selected` expects them.
+ *
+ * The selection is a `Map<id, SelectionType>`, so `Array.from` on it yields
+ * `[id, type]` pairs rather than IDs. Every payload that carries `selected`
+ * must go through here, since the backend passes it straight to `Select`,
+ * which requires bare ID strings.
+ */
+export function formatSelectedSampleIds(
+  selectedSamples: Map<string, SelectionType> | undefined | null,
+): string[] {
+  return selectedSamples ? Array.from(selectedSamples.keys()) : [];
+}
+
+export function formatSelectionPayload(currentContext: Partial<RawContext>) {
   return {
-    selected: currentContext.selectedSamples
-      ? Array.from(currentContext.selectedSamples.keys())
-      : [],
+    selected: formatSelectedSampleIds(currentContext.selectedSamples),
     selected_samples: currentContext.selectedSamples
       ? Array.from(currentContext.selectedSamples.entries()).map(
           ([id, type]) => ({ id, type }),
