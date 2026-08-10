@@ -67,7 +67,9 @@ class TestResolveOperatorTargetViewInputs(unittest.TestCase):
                     foo.constants.ViewTarget.SELECTED_LABELS,
                 ],
             )
-            self.assertEqual(prop.default, foo.constants.ViewTarget.SELECTED_SAMPLES)
+            self.assertEqual(
+                prop.default, foo.constants.ViewTarget.SELECTED_SAMPLES
+            )
             self.assertIsInstance(prop.view, types.RadioGroup)
             self.assertListEqual(
                 [choice.label for choice in prop.view.choices],
@@ -269,13 +271,15 @@ class TestGroupedDatasetTargetView(unittest.TestCase):
         # a caller that does not send the active slice still gets a flat
         # collection, scoped to the dataset default
         ctx = self._ctx()
-        self.assertEqual(ctx.target_view(require_flat=True).media_type, fom.IMAGE)
+        self.assertEqual(
+            ctx.target_view(require_flat=True).media_type, fom.IMAGE
+        )
         self.assertEqual(ctx.flatten_group_slices().media_type, fom.IMAGE)
         self.assertListEqual(
             ctx.target_view(require_flat=True).values("filepath"),
-            self.dataset.select_group_slices(self.dataset.default_group_slice).values(
-                "filepath"
-            ),
+            self.dataset.select_group_slices(
+                self.dataset.default_group_slice
+            ).values("filepath"),
         )
 
     def test_default_is_not_scoped_without_require_flat(self):
@@ -287,7 +291,9 @@ class TestGroupedDatasetTargetView(unittest.TestCase):
         self.assertEqual(ctx.target_view().media_type, "group")
 
     def test_active_media_type_follows_active_slice(self):
-        self.assertEqual(self._ctx(group_slice="left").active_media_type, "image")
+        self.assertEqual(
+            self._ctx(group_slice="left").active_media_type, "image"
+        )
         self.assertEqual(
             self._ctx(group_slice="lidar").active_media_type, "point-cloud"
         )
@@ -304,7 +310,9 @@ class TestGroupedDatasetTargetView(unittest.TestCase):
     def test_automatic_slice_scoping_is_logged_once(self):
         ctx = self._ctx(group_slice="left")
 
-        with self.assertLogs("fiftyone.operators.executor", level="INFO") as logs:
+        with self.assertLogs(
+            "fiftyone.operators.executor", level="INFO"
+        ) as logs:
             ctx.target_view(require_flat=True)
 
         self.assertEqual(len(logs.records), 1)
@@ -325,7 +333,7 @@ class TestGroupedDatasetTargetView(unittest.TestCase):
         ctx = self._ctx(group_slice="left")
 
         with self.assertNoLogs("fiftyone.operators.executor", level="INFO"):
-            ctx.flatten_group_slices(group_media_type="image")
+            ctx.flatten_group_slices(media_type="image")
 
     def test_current_view_target_is_scoped_to_active_slice(self):
         ctx = self._ctx(group_slice="lidar")
@@ -350,18 +358,6 @@ class TestGroupedDatasetTargetView(unittest.TestCase):
 
         # without require_flat, the grouped dataset is returned as-is
         self.assertEqual(ctx.target_view(), self.dataset)
-
-    def test_dataset_target_is_scoped_by_a_slice_override(self):
-        ctx = self._ctx(group_slice="lidar")
-        ctx.params["view_target"] = foo.constants.ViewTarget.DATASET
-
-        target = ctx.target_view(require_flat=True, group_slices="left")
-        self.assertEqual(target.media_type, "image")
-        self.assertEqual(len(target), 2)
-        self.assertEqual(
-            ctx.get_unavailable_view_targets(require_flat=True, group_slices="left"),
-            {},
-        )
 
     def test_base_view_target_is_unavailable_when_grouped(self):
         ctx = self._ctx(
@@ -513,32 +509,14 @@ class TestGroupSliceOverrideTargetView(unittest.TestCase):
     def test_media_type_override_ignores_active_slice(self):
         ctx = self._ctx(group_slice="lidar")
 
-        target = ctx.target_view(group_media_type="image")
+        target = ctx.flatten_group_slices(media_type="image")
         self.assertEqual(target.media_type, "image")
         self.assertEqual(len(target), 4)
-
-    def test_media_type_override_scopes_dataset_target(self):
-        ctx = self._ctx(group_slice="lidar")
-        ctx.params["view_target"] = foo.constants.ViewTarget.DATASET
-
-        target = ctx.target_view(group_media_type="image")
-        self.assertEqual(target.media_type, "image")
-        self.assertEqual(len(target), 4)
-
-    def test_slices_override_selects_named_slices(self):
-        ctx = self._ctx(group_slice="lidar")
-
-        target = ctx.target_view(group_slices="left")
-        self.assertEqual(len(target), 2)
-        self.assertSetEqual(
-            {os.path.basename(f) for f in target.values("filepath")},
-            {"left1.jpg", "left2.jpg"},
-        )
 
     def test_flatten_group_slices_scopes_dataset(self):
         ctx = self._ctx(group_slice="lidar")
 
-        target = ctx.flatten_group_slices(ctx.dataset, group_media_type="image")
+        target = ctx.flatten_group_slices(ctx.dataset, media_type="image")
         self.assertEqual(target.media_type, "image")
         self.assertEqual(len(target), 4)
 
@@ -551,7 +529,7 @@ class TestGroupSliceOverrideTargetView(unittest.TestCase):
         stage = fo.SelectGroupSlices("lidar")
         ctx = self._ctx(group_slice="lidar", view=[stage._serialize()])
 
-        target = ctx.target_view(group_media_type="image")
+        target = ctx.flatten_group_slices(ctx.view, media_type="image")
         self.assertEqual(target.media_type, "point-cloud")
 
 
@@ -623,7 +601,9 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
 
         # the current view is the active slice, so it is offered without a
         # view applied, and the whole grouped dataset is not selectable
-        self.assertListEqual(prop.options.values(), ["DATASET", "CURRENT_VIEW"])
+        self.assertListEqual(
+            prop.options.values(), ["DATASET", "CURRENT_VIEW"]
+        )
         self.assertListEqual(prop.options.available_values(), ["CURRENT_VIEW"])
         self.assertEqual(prop.default, "CURRENT_VIEW")
         self.assertIsInstance(prop.view, types.RadioGroup)
@@ -639,10 +619,14 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         ctx = self._ctx(group_slice="left")
         prop, _ = self._descriptions(ctx, require_flat=True)
 
-        self.assertEqual(prop.options.unavailable, {"DATASET": UNGROUPED_TARGET_ERROR})
+        self.assertEqual(
+            prop.options.unavailable, {"DATASET": UNGROUPED_TARGET_ERROR}
+        )
         self.assertListEqual(prop.options.available_values(), ["CURRENT_VIEW"])
         choices = {c.value: c for c in prop.options.choices_view.choices}
-        self.assertEqual(choices["DATASET"].description, UNGROUPED_TARGET_ERROR)
+        self.assertEqual(
+            choices["DATASET"].description, UNGROUPED_TARGET_ERROR
+        )
 
     def test_no_active_slice_still_offers_the_default_slice(self):
         # the active slice is resolved from the dataset when the caller does
@@ -651,7 +635,9 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         prop, descriptions = self._descriptions(ctx, require_flat=True)
 
         self.assertListEqual(prop.options.available_values(), ["CURRENT_VIEW"])
-        self.assertEqual(prop.options.unavailable, {"DATASET": UNGROUPED_TARGET_ERROR})
+        self.assertEqual(
+            prop.options.unavailable, {"DATASET": UNGROUPED_TARGET_ERROR}
+        )
         self.assertEqual(prop.default, "CURRENT_VIEW")
         self.assertFalse(prop.invalid)
         self.assertEqual(
@@ -680,28 +666,14 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
             ],
         )
 
-    def test_slice_overrides_describe_and_enable_every_target(self):
+    def test_named_slices_override(self):
+        # panels supply their own scope, so both of
+        # ``select_group_slices()``'s selectors are available
         ctx = self._ctx(group_slice="left")
-        prop, descriptions = self._descriptions(ctx, group_media_type="image")
 
-        # the override scopes the dataset target too, so nothing is disabled
-        self.assertEqual(prop.options.unavailable, {})
-        self.assertListEqual(
-            descriptions,
-            [
-                "Process the entire dataset in all image slices",
-                "Process the current view in all image slices",
-            ],
-        )
-
-        _, descriptions = self._descriptions(ctx, group_slices=["left", "right"])
-        self.assertListEqual(
-            descriptions,
-            [
-                "Process the entire dataset in the left, right slices",
-                "Process the current view in the left, right slices",
-            ],
-        )
+        target = ctx.flatten_group_slices(ctx.dataset, slices="lidar")
+        self.assertEqual(target.media_type, "point-cloud")
+        self.assertEqual(len(target), 1)
 
     def test_no_scope_for_views_that_select_slices(self):
         stage = fo.SelectGroupSlices("left")
@@ -738,7 +710,9 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         try:
             ctx = foo.ExecutionContext(
                 operator_uri="test_operator",
-                request_params=dict(dataset_name=ds.name, dataset_id=ds._doc.id),
+                request_params=dict(
+                    dataset_name=ds.name, dataset_id=ds._doc.id
+                ),
             )
             prop, descriptions = self._descriptions(ctx, require_flat=True)
             self.assertIsInstance(prop.view, types.HiddenView)

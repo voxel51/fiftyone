@@ -751,6 +751,7 @@ class Object(BaseType):
         selected_samples_description=None,
         selected_labels_label="Selected labels",
         selected_labels_description=None,
+        require_flat=False,
         **kwargs,
     ):
         """Defines a view target input property.
@@ -867,10 +868,6 @@ class Object(BaseType):
                     description is generated
                 require_flat (False): whether the operation requires a
                     flattened (non-grouped) collection
-                group_slices (None): the group slice(s) the operation always
-                    runs on
-                group_media_type (None): the group slice media type(s) the
-                    operation always runs on
 
             Returns:
                 a :class:`ViewTargetProperty`
@@ -897,6 +894,7 @@ class Object(BaseType):
             selected_samples_description=selected_samples_description,
             selected_labels_label=selected_labels_label,
             selected_labels_description=selected_labels_description,
+            require_flat=require_flat,
             **kwargs,
         )
         self.add_property(name, _property)
@@ -2862,15 +2860,6 @@ class ViewTargetOptions(object):
             action_description (Process): a short description of the action
                 being performed, used to generate default descriptions for the
                 various target views
-            scope_description (None): a group slice scope to append to the
-                view-based target descriptions, e.g.
-                ``"in the current slice (left)"``
-            dataset_scope_description (None): a group slice scope to append to
-                the "entire dataset" target description
-            unavailable (None): a dict mapping view targets that the operation
-                cannot process to the reason why. These targets are offered as
-                disabled choices carrying the reason, and are excluded from
-                :meth:`available_values`
             include_base_view (False): whether to include "base view"
                 as an option
             include_current_view (False): whether to include "current view"
@@ -2912,6 +2901,15 @@ class ViewTargetOptions(object):
             selected_labels_description (None): the description for the
                 "selected labels" target view. If ``None``, a default
                 description is generated
+            scope_description (None): a group slice scope to append to the
+                view-based target descriptions, e.g.
+                ``"in the current slice (left)"``
+            dataset_scope_description (None): a group slice scope to append to
+                the "entire dataset" target description
+            unavailable (None): a dict mapping view targets that the operation
+                cannot process to the reason why. These targets are offered as
+                disabled choices carrying the reason, and are excluded from
+                :meth:`available_values`
         """
         super().__init__()
 
@@ -3114,8 +3112,6 @@ class ViewTargetProperty(Property):
         selected_labels_label="Selected labels",
         selected_labels_description=None,
         require_flat=False,
-        group_slices=None,
-        group_media_type=None,
         **kwargs,
     ):
         """Initializes instance
@@ -3170,41 +3166,24 @@ class ViewTargetProperty(Property):
                 (non-grouped) collection. When ``True``, grouped views that
                 cannot be automatically scoped to the active group slice
                 invalidate this property
-            group_slices (None): the group slice(s) the operation always runs
-                on, as accepted by :meth:`ctx.target_view()
-                <fiftyone.operators.ExecutionContext.target_view>`
-            group_media_type (None): the group slice media type(s) the
-                operation always runs on, as accepted by
-                :meth:`ctx.target_view()
-                <fiftyone.operators.ExecutionContext.target_view>`
         """
         # surface unflattenable grouped views as a form validation error
         # rather than an execution failure
         invalid_error = None
-        if require_flat or group_slices or group_media_type:
+        if require_flat:
             try:
                 # pylint: disable-next-line=protected-access
-                ctx._get_active_view(
-                    ctx.view,
-                    require_flat=True,
-                    group_slices=group_slices,
-                    group_media_type=group_media_type,
-                    probe=True,
-                )
+                ctx._get_active_view(ctx.view, require_flat=True, probe=True)
             except ValueError as e:
                 invalid_error = str(e)
 
         # grouped datasets surface the slice scope each target resolves to
         # pylint: disable-next-line=protected-access
         scope, dataset_scope = ctx._get_group_slice_scopes(
-            require_flat=require_flat,
-            group_slices=group_slices,
-            group_media_type=group_media_type,
+            require_flat=require_flat
         )
         unavailable = ctx.get_unavailable_view_targets(
-            require_flat=require_flat,
-            group_slices=group_slices,
-            group_media_type=group_media_type,
+            require_flat=require_flat
         )
 
         # Determine which target views are available
