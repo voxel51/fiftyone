@@ -516,7 +516,12 @@ def _overlay_expressions(value, envelope):
             for item, item_envelope in zip(value, envelope)
         ]
 
-    return _decode_expressions(envelope)
+    if not foea.is_envelope(envelope):
+        return value
+
+    # Unlike `_decode_expressions`, an unreadable envelope raises here — the
+    # caller holds the lowered MongoDB value and falls back to it
+    return foea.from_envelope(envelope)
 
 
 def _decode_expressions(value):

@@ -4423,7 +4423,7 @@ class ViewStageTests(unittest.TestCase):
         )
         self.assertNotIn(
             "_expr_asts",
-            fosg.SortBy([("num", 1), (F("num") * 2, -1)])._serialize(
+            fosg.SortBy([("num", 1), ("filepath", -1)])._serialize(
                 include_uuid=False
             ),
         )
