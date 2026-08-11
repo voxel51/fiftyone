@@ -1,4 +1,3 @@
-import type { McapTypes } from "@mcap/core";
 import type { DecodeClient } from "../../../../query/decoding/index";
 import { compareBigInt } from "../../../../ir/index";
 import { EpisodeReadCancelledError } from "../../../../ports/index";
@@ -17,8 +16,11 @@ import {
 import { decodeMcapMessage } from "../message-decoder";
 import {
   materializeIndexedEntries,
+  type McapChannel,
   type McapIndexedMessageTime,
   type McapIndexedReaderLike,
+  type McapMessage,
+  type McapSchema,
 } from "../../reader/index";
 import type { McapTimelineStrategy } from "../timeline";
 import type {
@@ -115,9 +117,9 @@ export function parseIndexedRecordIdentity(
 const RAW_PREDECESSOR_LOOKBACK_NS = 10_000_000_000n;
 
 interface McapRawMessageCandidate {
-  readonly channel: McapTypes.TypedMcapRecords["Channel"];
-  readonly message: McapTypes.TypedMcapRecords["Message"];
-  readonly schema?: McapTypes.TypedMcapRecords["Schema"];
+  readonly channel: McapChannel;
+  readonly message: McapMessage;
+  readonly schema?: McapSchema;
   readonly timelineTimeNs: bigint;
   readonly topic: string;
 }
@@ -152,7 +154,7 @@ type McapSettledTopicDecode<Message> =
 // through rawReadCache. Object identity avoids payload scans while the nested
 // map preserves point-cloud color variants.
 type McapRawDecodeCache = Map<
-  McapTypes.TypedMcapRecords["Message"],
+  McapMessage,
   Map<string, Promise<McapDecodedMessage>>
 >;
 
@@ -368,8 +370,9 @@ async function backfillIndexedPredecessors({
   >;
   readonly timeline: McapTimelineStrategy;
 }): Promise<void> {
-  const indexedMessageTimeNs = timeline.indexedMessageTimeNs;
-  const indexedMessageTimesRequest = timeline.indexedMessageTimesRequest;
+  const indexedMessageTimeNs = timeline.indexedMessageTimeNs?.bind(timeline);
+  const indexedMessageTimesRequest =
+    timeline.indexedMessageTimesRequest?.bind(timeline);
   if (
     !reader.readLatestIndexedMessageTimes ||
     !indexedMessageTimeNs ||
@@ -821,7 +824,7 @@ function rawCandidateFromMessage({
   reader,
   timeline,
 }: {
-  readonly message: McapTypes.TypedMcapRecords["Message"];
+  readonly message: McapMessage;
   readonly reader: McapIndexedReaderLike;
   readonly timeline: McapTimelineStrategy;
 }): McapRawMessageCandidate {
@@ -1004,8 +1007,7 @@ async function materializeIndexedSelection({
   readonly signal?: AbortSignal;
   readonly timeline: McapTimelineStrategy;
 }): Promise<ReadonlyMap<McapIndexedMessageCandidate, McapRawMessageCandidate>> {
-  const readIndexedMessages = reader.readIndexedMessages;
-  if (!readIndexedMessages || candidates.length === 0) {
+  if (!reader.readIndexedMessages || candidates.length === 0) {
     return new Map();
   }
 

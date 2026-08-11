@@ -1,7 +1,6 @@
-import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 import { PlaybackSyncMode } from "../../../schemas/v1/index";
-import type { McapIndexedReaderLike } from "../reader/index";
+import type { McapIndexedReaderLike, McapMessage } from "../reader/index";
 import { createInlineMcapResourceClient } from "./inline-client";
 import {
   createChannel,
@@ -11,6 +10,8 @@ import {
   createReader,
   createTestDecodeClient,
   createTestDecodedOutput,
+  asyncValues,
+  mockReaderFactory,
 } from "./inline-client.test-fixtures";
 
 describe("MCAP synchronized messages", () => {
@@ -34,15 +35,11 @@ describe("MCAP synchronized messages", () => {
       }),
     ];
     const decodeClient = createTestDecodeClient();
-    const readMessages = vi.fn(async function* () {
-      for (const message of messages) {
-        yield message;
-      }
-    });
+    const readMessages = vi.fn(() => asyncValues(messages));
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient,
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [7, createChannel({ id: 7, topic: "/camera" })],
@@ -91,7 +88,7 @@ describe("MCAP synchronized messages", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [7, createChannel({ id: 7, topic: "/camera" })],
@@ -129,25 +126,23 @@ describe("MCAP synchronized messages", () => {
       }),
     ];
     const decodeClient = createTestDecodeClient();
-    vi.mocked(decodeClient.decode).mockImplementation(async (request) => {
+    vi.mocked(decodeClient.decode).mockImplementation((request) => {
       if (request.context.streamId === "/camera") {
-        throw new Error("invalid camera calibration");
+        return Promise.reject(new Error("invalid camera calibration"));
       }
-      return {
+      return Promise.resolve({
         context: request.context,
         decoderId: "test-decoder",
         decoderVersion: "1",
         output: createTestDecodedOutput(),
         payload: request.payload,
-      };
+      });
     });
-    const readMessages = vi.fn(async function* () {
-      for (const message of messages) yield message;
-    });
+    const readMessages = vi.fn(() => asyncValues(messages));
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient,
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [7, createChannel({ id: 7, topic: "/camera" })],
@@ -210,7 +205,7 @@ describe("MCAP synchronized messages", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient,
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           messages,
         }),
@@ -254,7 +249,7 @@ describe("MCAP synchronized messages", () => {
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient,
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           messages: [message],
         }),
@@ -295,42 +290,41 @@ describe("MCAP synchronized messages", () => {
       publishTime: 131n,
     });
     const decodeClient = createTestDecodeClient();
-    const readIndexedMessageTimes = vi.fn(async function* () {
-      yield createIndexedMessageTime("/camera", 7, 90n, 900n);
-      yield createIndexedMessageTime("/lidar", 8, 108n, 1080n);
-      yield createIndexedMessageTime("/camera", 7, 130n, 1300n);
-    });
+    const readIndexedMessageTimes = vi.fn(() =>
+      asyncValues([
+        createIndexedMessageTime("/camera", 7, 90n, 900n),
+        createIndexedMessageTime("/lidar", 8, 108n, 1080n),
+        createIndexedMessageTime("/camera", 7, 130n, 1300n),
+      ]),
+    );
     const messagesByTime = new Map([
       [90n, camera],
       [108n, lidar],
       [130n, lateCamera],
     ]);
     const readIndexedMessages = vi.fn(
-      async ({
+      ({
         entries,
       }: Parameters<
         NonNullable<McapIndexedReaderLike["readIndexedMessages"]>
-      >[0]) => {
-        return entries.map((entry) => {
-          const message = messagesByTime.get(entry.logTimeNs);
-          if (!message) {
-            throw new Error(`Missing test message at ${entry.logTimeNs}`);
-          }
-          return message;
-        });
-      },
+      >[0]) =>
+        Promise.resolve(
+          entries.map((entry) => {
+            const message = messagesByTime.get(entry.logTimeNs);
+            if (!message) {
+              throw new Error(`Missing test message at ${entry.logTimeNs}`);
+            }
+            return message;
+          }),
+        ),
     );
-    const readMessages = vi.fn(async function* () {
-      for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
-        yield message;
-      }
-    });
+    const readMessages = vi.fn(() => asyncValues<McapMessage>([]));
     const controller = new AbortController();
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient,
       readSignal: { current: controller.signal },
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [7, createChannel({ id: 7, topic: "/camera" })],
@@ -375,17 +369,12 @@ describe("MCAP synchronized messages", () => {
     });
     expect(readMessages).not.toHaveBeenCalled();
     expect(decodeClient.decode).toHaveBeenCalledTimes(2);
-    expect(decodeClient.decode).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        cache: expect.objectContaining({
-          decoderOptionsKey: "activeTimeline=log",
-          recordId: "/camera\u00007\u000090\u00001000\u0000900",
-          streamId: "/camera",
-          timeNs: 90n,
-        }),
-      }),
-    );
+    expect(decodeClient.decode.mock.calls[0]?.[0].cache).toMatchObject({
+      decoderOptionsKey: "activeTimeline=log",
+      recordId: "/camera\u00007\u000090\u00001000\u0000900",
+      streamId: "/camera",
+      timeNs: 90n,
+    });
     expect(cameraPayloadIteration).not.toHaveBeenCalled();
   });
 
@@ -395,16 +384,14 @@ describe("MCAP synchronized messages", () => {
       logTime: 90n,
       publishTime: 91n,
     });
-    const readIndexedMessageTimes = vi.fn(async function* () {
-      yield createIndexedMessageTime("/topic", 7, 90n, 900n);
-    });
-    const readMessages = vi.fn(async function* () {
-      yield message;
-    });
+    const readIndexedMessageTimes = vi.fn(() =>
+      asyncValues([createIndexedMessageTime("/topic", 7, 90n, 900n)]),
+    );
+    const readMessages = vi.fn(() => asyncValues([message]));
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           readIndexedMessageTimes,
           readMessages,
@@ -433,18 +420,18 @@ describe("MCAP synchronized messages", () => {
 
   it("reuses an indexed decoded record before chunk materialization", async () => {
     const indexed = createIndexedMessageTime("/topic", 7, 90n, 900n);
-    const readIndexedMessageTimes = vi.fn(async function* () {
-      yield indexed;
-    });
-    const readIndexedMessages = vi.fn(async () => {
-      throw new Error("retained records must not materialize their chunk");
-    });
-    const prefetchChunkData = vi.fn(async () => undefined);
+    const readIndexedMessageTimes = vi.fn(() => asyncValues([indexed]));
+    const readIndexedMessages = vi.fn(() =>
+      Promise.reject(
+        new Error("retained records must not materialize their chunk"),
+      ),
+    );
+    const prefetchChunkData = vi.fn(() => Promise.resolve());
     const decodeClient = createTestDecodeClient();
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient,
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           prefetchChunkData,
           readIndexedMessages,
@@ -495,27 +482,27 @@ describe("MCAP synchronized messages", () => {
       logTime: 0n,
       publishTime: 1n,
     });
-    const readIndexedMessageTimes = vi.fn(async function* () {
-      // Nothing in the scan window — the topic is sparse around the batch.
-    });
-    const readLatestIndexedMessageTimes = vi.fn(async () => {
-      return new Map([
-        ["/topic", [createIndexedMessageTime("/topic", 7, 0n, 0n)]],
-      ]);
-    });
-    const readMessages = vi.fn(async function* (args?: {
-      readonly endTime?: bigint;
-      readonly startTime?: bigint;
-      readonly topics?: readonly string[];
-    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
-      if (args?.startTime === 0n && args?.endTime === 0n) {
-        yield old;
-      }
-    });
+    const readIndexedMessageTimes = vi.fn(() => asyncValues([]));
+    const readLatestIndexedMessageTimes = vi.fn(() =>
+      Promise.resolve(
+        new Map([["/topic", [createIndexedMessageTime("/topic", 7, 0n, 0n)]]]),
+      ),
+    );
+    const readMessages = vi.fn(
+      (args?: {
+        readonly endTime?: bigint;
+        readonly startTime?: bigint;
+        readonly topics?: readonly string[];
+      }): AsyncGenerator<McapMessage, void, void> => {
+        return asyncValues(
+          args?.startTime === 0n && args.endTime === 0n ? [old] : [],
+        );
+      },
+    );
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           readIndexedMessageTimes,
           readLatestIndexedMessageTimes,
@@ -561,35 +548,37 @@ describe("MCAP synchronized messages", () => {
       logTime: 90n,
       publishTime: 91n,
     });
-    const readIndexedMessageTimes = vi.fn(async function* () {
-      yield createIndexedMessageTime("/topic", 7, 90n, 900n);
-    });
-    const readLatestIndexedMessageTimes = vi.fn(async () => {
-      return new Map([
-        [
-          "/topic",
+    const readIndexedMessageTimes = vi.fn(() =>
+      asyncValues([createIndexedMessageTime("/topic", 7, 90n, 900n)]),
+    );
+    const readLatestIndexedMessageTimes = vi.fn(() =>
+      Promise.resolve(
+        new Map([
           [
-            createIndexedMessageTime("/topic", 7, 90n, 900n),
-            createIndexedMessageTime("/topic", 7, 80n, 800n),
+            "/topic",
+            [
+              createIndexedMessageTime("/topic", 7, 90n, 900n),
+              createIndexedMessageTime("/topic", 7, 80n, 800n),
+            ],
           ],
-        ],
-      ]);
-    });
-    const readMessages = vi.fn(async function* (args?: {
-      readonly endTime?: bigint;
-      readonly startTime?: bigint;
-    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
-      if (args?.startTime === 80n && args?.endTime === 80n) {
-        yield older;
-      }
-      if (args?.startTime === 90n && args?.endTime === 90n) {
-        yield newer;
-      }
-    });
+        ]),
+      ),
+    );
+    const readMessages = vi.fn(
+      (args?: {
+        readonly endTime?: bigint;
+        readonly startTime?: bigint;
+      }): AsyncGenerator<McapMessage, void, void> => {
+        return asyncValues([
+          ...(args?.startTime === 80n && args.endTime === 80n ? [older] : []),
+          ...(args?.startTime === 90n && args.endTime === 90n ? [newer] : []),
+        ]);
+      },
+    );
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           readIndexedMessageTimes,
           readLatestIndexedMessageTimes,
@@ -629,33 +618,36 @@ describe("MCAP synchronized messages", () => {
       logTime: 4_000n,
       publishTime: 4_001n,
     });
-    const readIndexedMessageTimes = vi.fn(async function* () {
-      // Every scan window misses the lone message at 4_000n.
-    });
+    const readIndexedMessageTimes = vi.fn(() => asyncValues([]));
     const readLatestIndexedMessageTimes = vi.fn(
-      async (args: { readonly timeNs: bigint }) => {
-        return new Map([
-          [
-            "/topic",
-            args.timeNs >= 4_000n
-              ? [createIndexedMessageTime("/topic", 7, 4_000n, 0n)]
-              : [],
-          ],
-        ]);
+      (args: { readonly timeNs: bigint }) =>
+        Promise.resolve(
+          new Map([
+            [
+              "/topic",
+              args.timeNs >= 4_000n
+                ? [createIndexedMessageTime("/topic", 7, 4_000n, 0n)]
+                : [],
+            ],
+          ]),
+        ),
+    );
+    const readMessages = vi.fn(
+      (args?: {
+        readonly endTime?: bigint;
+        readonly startTime?: bigint;
+      }): AsyncGenerator<McapMessage, void, void> => {
+        return asyncValues(
+          args?.startTime === 4_000n && args.endTime === 4_000n
+            ? [message]
+            : [],
+        );
       },
     );
-    const readMessages = vi.fn(async function* (args?: {
-      readonly endTime?: bigint;
-      readonly startTime?: bigint;
-    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
-      if (args?.startTime === 4_000n && args?.endTime === 4_000n) {
-        yield message;
-      }
-    });
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           readIndexedMessageTimes,
           readLatestIndexedMessageTimes,
@@ -714,22 +706,26 @@ describe("MCAP synchronized messages", () => {
       logTime: 90n,
       publishTime: 91n,
     });
-    const readIndexedMessageTimes = vi.fn(async function* () {
-      yield createIndexedMessageTime("/camera", 7, 90n, 900n);
-    });
-    const readLatestIndexedMessageTimes = vi.fn(async () => new Map());
-    const readMessages = vi.fn(async function* (args?: {
-      readonly endTime?: bigint;
-      readonly startTime?: bigint;
-    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
-      if (args?.startTime === 90n && args?.endTime === 90n) {
-        yield camera;
-      }
-    });
+    const readIndexedMessageTimes = vi.fn(() =>
+      asyncValues([createIndexedMessageTime("/camera", 7, 90n, 900n)]),
+    );
+    const readLatestIndexedMessageTimes = vi.fn(() =>
+      Promise.resolve(new Map()),
+    );
+    const readMessages = vi.fn(
+      (args?: {
+        readonly endTime?: bigint;
+        readonly startTime?: bigint;
+      }): AsyncGenerator<McapMessage, void, void> => {
+        return asyncValues(
+          args?.startTime === 90n && args.endTime === 90n ? [camera] : [],
+        );
+      },
+    );
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           channelsById: new Map([
             [7, createChannel({ id: 7, topic: "/camera" })],
@@ -770,16 +766,14 @@ describe("MCAP synchronized messages", () => {
 
   it("surfaces predecessor probe failures as batch failures", async () => {
     const source = createMcapSourceDescriptor();
-    const readIndexedMessageTimes = vi.fn(async function* () {
-      // empty scan forces the probe
-    });
-    const readLatestIndexedMessageTimes = vi.fn(async () => {
-      throw new Error("index read failed");
-    });
+    const readIndexedMessageTimes = vi.fn(() => asyncValues([]));
+    const readLatestIndexedMessageTimes = vi.fn(() =>
+      Promise.reject(new Error("index read failed")),
+    );
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           readIndexedMessageTimes,
           readLatestIndexedMessageTimes,
@@ -803,23 +797,23 @@ describe("MCAP synchronized messages", () => {
       logTime: 1_000n,
       publishTime: 1_001n,
     });
-    const readMessages = vi.fn(async function* (args?: {
-      readonly endTime?: bigint;
-      readonly startTime?: bigint;
-    }): AsyncGenerator<McapTypes.TypedMcapRecords["Message"], void, void> {
-      if (
-        args?.startTime !== undefined &&
-        args?.endTime !== undefined &&
-        old.logTime >= args.startTime &&
-        old.logTime <= args.endTime
-      ) {
-        yield old;
-      }
-    });
+    const readMessages = vi.fn(
+      (args?: {
+        readonly endTime?: bigint;
+        readonly startTime?: bigint;
+      }): AsyncGenerator<McapMessage, void, void> => {
+        const inRange =
+          args?.startTime !== undefined &&
+          args.endTime !== undefined &&
+          old.logTime >= args.startTime &&
+          old.logTime <= args.endTime;
+        return asyncValues(inRange ? [old] : []);
+      },
+    );
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient: createTestDecodeClient(),
-      readerFactory: vi.fn(async () => createReader({ readMessages })),
+      readerFactory: mockReaderFactory(() => createReader({ readMessages })),
     });
 
     const windows = await client.readSynchronizedMessageBatch({
@@ -854,20 +848,18 @@ describe("MCAP synchronized messages", () => {
       publishTime: 92n,
       sequence: 2,
     });
-    const readIndexedMessageTimes = vi.fn(async function* () {
-      // Duplicate index entries for the duplicate messages.
-      yield createIndexedMessageTime("/topic", 7, 90n, 900n);
-      yield createIndexedMessageTime("/topic", 7, 90n, 901n);
-    });
-    const readMessages = vi.fn(async function* () {
-      yield first;
-      yield second;
-    });
+    const readIndexedMessageTimes = vi.fn(() =>
+      asyncValues([
+        createIndexedMessageTime("/topic", 7, 90n, 900n),
+        createIndexedMessageTime("/topic", 7, 90n, 901n),
+      ]),
+    );
+    const readMessages = vi.fn(() => asyncValues([first, second]));
     const decodeClient = createTestDecodeClient();
     const client = createInlineMcapResourceClient({
       byteClient: { readBytes: vi.fn() },
       decodeClient,
-      readerFactory: vi.fn(async () =>
+      readerFactory: mockReaderFactory(() =>
         createReader({
           readIndexedMessageTimes,
           readMessages,
