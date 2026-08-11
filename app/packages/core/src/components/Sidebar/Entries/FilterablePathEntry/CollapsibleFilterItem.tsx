@@ -11,13 +11,19 @@ import { PathEntryCounts } from "../EntryCounts";
 import FilterItem from "./FilterItem";
 import Loading from "./Loading";
 
-const Header = styled.div`
+const Header = styled.button.attrs({ type: "button" })`
   align-items: center;
+  background: none;
+  border: none;
+  color: inherit;
   cursor: pointer;
   display: flex;
+  font: inherit;
   justify-content: space-between;
   padding: 2px 0;
+  text-align: left;
   user-select: none;
+  width: 100%;
 `;
 
 const Name = styled.span`
@@ -66,6 +72,7 @@ const CollapsibleFilterItem = ({
   return (
     <>
       <Header
+        aria-expanded={expanded}
         data-cy={`sidebar-filter-field-${path}`}
         onClick={() => setExpanded((current) => !current)}
       >
@@ -78,11 +85,13 @@ const CollapsibleFilterItem = ({
           )}
         />
         <Right>
-          {/* In the grid this is gated on the path's expanded state, so a
-              collapsed row pays for no aggregation. */}
-          <Suspense>
-            <PathEntryCounts modal={modal} path={path} />
-          </Suspense>
+          {/* Mounted only once open: the count subscribes per row, which a
+              container of hundreds would otherwise pay before any intent. */}
+          {expanded && (
+            <Suspense>
+              <PathEntryCounts modal={modal} path={path} />
+            </Suspense>
+          )}
           {icon}
           <Arrow
             data-cy={`sidebar-filter-field-arrow-${path}`}

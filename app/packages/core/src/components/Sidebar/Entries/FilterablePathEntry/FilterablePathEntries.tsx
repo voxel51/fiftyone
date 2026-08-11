@@ -1,5 +1,4 @@
 import * as fos from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
 import CollapsibleFilterItem from "./CollapsibleFilterItem";
 import FilterItem from "./FilterItem";
 import useFilterData from "./useFilterData";
@@ -15,7 +14,7 @@ const FilterablePathEntries = ({
   path: string;
 }) => {
   const { data } = useFilterData(modal, path);
-  const color = useRecoilValue(fos.pathColor(path));
+  const color = fos.usePathColor(path);
 
   // Label fields carry a handful of well-known attributes and stay open.
   // Every other embedded document collapses, declared or not: nothing bounds
