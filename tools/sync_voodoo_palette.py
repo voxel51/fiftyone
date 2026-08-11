@@ -80,8 +80,8 @@ def _read_tokens():
             cwd=APP_DIR,
             text=True,
         )
-    except FileNotFoundError:
-        raise SystemExit("node is required to read @voxel51/voodo")
+    except FileNotFoundError as error:
+        raise SystemExit("node is required to read @voxel51/voodo") from error
 
     if result.returncode != 0:
         raise SystemExit(
