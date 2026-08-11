@@ -28,8 +28,10 @@ describe("memoized read", () => {
           rejectOld = reject;
         }),
     );
-    await memoizedRead<number>(cache, "other", async () => 1);
-    const replacement = memoizedRead<number>(cache, "same", async () => 2);
+    await memoizedRead<number>(cache, "other", () => Promise.resolve(1));
+    const replacement = memoizedRead<number>(cache, "same", () =>
+      Promise.resolve(2),
+    );
 
     rejectOld?.(new Error("old failure"));
     await expect(old).rejects.toThrow("old failure");

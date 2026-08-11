@@ -86,7 +86,7 @@ function pruneValue(
       return { kind: "scalar", value: String(value), valueType: "string" };
   }
 
-  const objectValue = value as object;
+  const objectValue = value;
 
   if (objectValue instanceof Uint8Array) {
     return {

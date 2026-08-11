@@ -93,7 +93,8 @@ export function createMcapPredecessorStore(): McapPredecessorStore {
     },
 
     record(topic, entry) {
-      const topicMemos = memos.get(topic) ?? new Map();
+      const topicMemos =
+        memos.get(topic) ?? new Map<number, McapPredecessorMemoEntry>();
       topicMemos.set(entry.limitPerTopic, entry);
       memos.set(topic, topicMemos);
     },

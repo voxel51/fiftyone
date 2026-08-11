@@ -1,6 +1,7 @@
-import type { McapTypes } from "@mcap/core";
 import type {
+  McapChunkIndex,
   McapIndexedMessageTime,
+  McapMessage,
   McapReadIndexedMessageTimesRequest,
 } from "../reader/index";
 import {
@@ -30,14 +31,12 @@ export interface McapTimelineStrategy {
   /**
    * Returns the chunk-level inclusive end time for this timeline.
    */
-  chunkEndTimeNs(chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"]): bigint;
+  chunkEndTimeNs(chunkIndex: McapChunkIndex): bigint;
 
   /**
    * Returns the chunk-level inclusive start time for this timeline.
    */
-  chunkStartTimeNs(
-    chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"],
-  ): bigint;
+  chunkStartTimeNs(chunkIndex: McapChunkIndex): bigint;
 
   /**
    * Returns the timeline time for one indexed message entry, when supported.
@@ -67,7 +66,7 @@ export interface McapTimelineStrategy {
   /**
    * Returns the timeline time for one decoded MCAP message.
    */
-  messageTimeNs(message: McapTypes.TypedMcapRecords["Message"]): bigint;
+  messageTimeNs(message: McapMessage): bigint;
 }
 
 const MCAP_LOG_TIMELINE_STRATEGY: McapTimelineStrategy = {
