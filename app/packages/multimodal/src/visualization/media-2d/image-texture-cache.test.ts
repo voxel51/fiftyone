@@ -58,7 +58,7 @@ describe("acquireImageTexture (shared keys)", () => {
 
   it("re-acquires a released texture from retention without re-decoding", async () => {
     const { dispose, handle } = makeHandle();
-    const decode = vi.fn(async () => handle);
+    const decode = vi.fn(() => Promise.resolve(handle));
 
     const first = acquireImageTexture("k", decode);
     const firstHandle = await first.promise;
@@ -84,7 +84,7 @@ describe("acquireImageTexture (shared keys)", () => {
   it("releases retention-ineligible decoded sources after their final lease", async () => {
     const decoded = makeHandle({ height: 480, width: 640 });
     const handle = { ...decoded.handle, retainWhenUnused: false };
-    const lease = acquireImageTexture("video", async () => handle);
+    const lease = acquireImageTexture("video", () => Promise.resolve(handle));
     await lease.promise;
 
     lease.release();
@@ -120,7 +120,7 @@ describe("acquireImageTexture (shared keys)", () => {
       imageWidth: 3,
       texture,
     };
-    const lease = acquireImageTexture("depth", async () => handle);
+    const lease = acquireImageTexture("depth", () => Promise.resolve(handle));
     const leased = await lease.promise;
 
     expect(leased.decodedByteLength).toBe(6);
@@ -139,7 +139,9 @@ describe("acquireImageTexture (shared keys)", () => {
       ...decoded.handle,
       decodedByteLength: -1,
     };
-    const lease = acquireImageTexture("invalid-bytes", async () => handle);
+    const lease = acquireImageTexture("invalid-bytes", () =>
+      Promise.resolve(handle),
+    );
     await lease.promise;
 
     lease.release();
@@ -149,14 +151,18 @@ describe("acquireImageTexture (shared keys)", () => {
 
   it("disposes an entry exactly once when it ages out of retention", async () => {
     const { dispose: firstDispose, handle: firstHandle } = makeHandle();
-    const first = acquireImageTexture("k-0", async () => firstHandle);
+    const first = acquireImageTexture("k-0", () =>
+      Promise.resolve(firstHandle),
+    );
     await first.promise;
     first.release();
 
     // Fill the retention LRU past its cap; "k-0" is the oldest entry.
     for (let index = 1; index <= IMAGE_TEXTURE_RETENTION_CAP; index += 1) {
       const { handle } = makeHandle();
-      const lease = acquireImageTexture(`k-${index}`, async () => handle);
+      const lease = acquireImageTexture(`k-${index}`, () =>
+        Promise.resolve(handle),
+      );
       await lease.promise;
       lease.release();
     }
@@ -168,7 +174,9 @@ describe("acquireImageTexture (shared keys)", () => {
 
     // The evicted key decodes fresh on the next acquire.
     const { handle: freshHandle } = makeHandle();
-    const reacquired = acquireImageTexture("k-0", async () => freshHandle);
+    const reacquired = acquireImageTexture("k-0", () =>
+      Promise.resolve(freshHandle),
+    );
     await reacquired.promise;
     reacquired.release();
     expect(firstDispose).toHaveBeenCalledTimes(1);
@@ -179,15 +187,16 @@ describe("acquireImageTexture (shared keys)", () => {
     expect(IMAGE_TEXTURE_RETENTION_BYTE_CAP / bytesPerFrame).toBe(16);
 
     const first = makeHandle({ height: 1024, width: 2048 });
-    const firstLease = acquireImageTexture("byte-0", async () => first.handle);
+    const firstLease = acquireImageTexture("byte-0", () =>
+      Promise.resolve(first.handle),
+    );
     await firstLease.promise;
     firstLease.release();
 
     for (let index = 1; index <= 16; index += 1) {
       const next = makeHandle({ height: 1024, width: 2048 });
-      const lease = acquireImageTexture(
-        `byte-${index}`,
-        async () => next.handle,
+      const lease = acquireImageTexture(`byte-${index}`, () =>
+        Promise.resolve(next.handle),
       );
       await lease.promise;
       lease.release();
@@ -203,9 +212,8 @@ describe("acquireImageTexture (shared keys)", () => {
 
   it("does not retain one decoded image larger than the byte cap", async () => {
     const oversized = makeHandle({ height: 8192, width: 8192 });
-    const lease = acquireImageTexture(
-      "oversized",
-      async () => oversized.handle,
+    const lease = acquireImageTexture("oversized", () =>
+      Promise.resolve(oversized.handle),
     );
     await lease.promise;
 
@@ -223,14 +231,15 @@ describe("acquireImageTexture (shared keys)", () => {
 
   it("never evicts a live lease to satisfy the retained-byte budget", async () => {
     const live = makeHandle({ height: 8192, width: 8192 });
-    const liveLease = acquireImageTexture("live", async () => live.handle);
+    const liveLease = acquireImageTexture("live", () =>
+      Promise.resolve(live.handle),
+    );
     await liveLease.promise;
 
     for (let index = 0; index < 4; index += 1) {
       const retained = makeHandle({ height: 1024, width: 2048 });
-      const lease = acquireImageTexture(
-        `retained-${index}`,
-        async () => retained.handle,
+      const lease = acquireImageTexture(`retained-${index}`, () =>
+        Promise.resolve(retained.handle),
       );
       await lease.promise;
       lease.release();
@@ -250,7 +259,9 @@ describe("acquireImageTexture (shared keys)", () => {
 
   it("clears retained byte accounting at a session boundary", async () => {
     const cached = makeHandle({ height: 20, width: 10 });
-    const lease = acquireImageTexture("session", async () => cached.handle);
+    const lease = acquireImageTexture("session", () =>
+      Promise.resolve(cached.handle),
+    );
     await lease.promise;
     lease.release();
     expect(imageTextureCacheStats().retainedDecodedBytes).toBe(800);
@@ -266,9 +277,8 @@ describe("acquireImageTexture (shared keys)", () => {
 
   it("does not re-retain a live frame released after its session closes", async () => {
     const active = makeHandle({ height: 20, width: 10 });
-    const lease = acquireImageTexture(
-      "active-session",
-      async () => active.handle,
+    const lease = acquireImageTexture("active-session", () =>
+      Promise.resolve(active.handle),
     );
     await lease.promise;
 
@@ -322,7 +332,7 @@ describe("acquireImageTexture (shared keys)", () => {
 
     // The key is not poisoned: the next acquire decodes again.
     const { handle } = makeHandle();
-    const retry = acquireImageTexture("k", async () => handle);
+    const retry = acquireImageTexture("k", () => Promise.resolve(handle));
     const retryHandle = await retry.promise;
     expect(retryHandle).not.toBe(handle);
     retry.release();
@@ -365,7 +375,9 @@ describe("acquireImageTexture (shared keys)", () => {
     expect(imageTextureCacheStats().retainedCount).toBe(0);
 
     const fresh = makeHandle();
-    const reacquired = acquireImageTexture("k", async () => fresh.handle);
+    const reacquired = acquireImageTexture("k", () =>
+      Promise.resolve(fresh.handle),
+    );
     await reacquired.promise;
     expect(imageTextureCacheStats().decodeCount).toBe(2);
 
@@ -374,7 +386,7 @@ describe("acquireImageTexture (shared keys)", () => {
 
   it("treats release as idempotent per lease", async () => {
     const { handle } = makeHandle();
-    const decode = vi.fn(async () => handle);
+    const decode = vi.fn(() => Promise.resolve(handle));
 
     const leaseA = acquireImageTexture("k", decode);
     const leaseB = acquireImageTexture("k", decode);
@@ -398,9 +410,9 @@ describe("acquireImageTexture (shared keys)", () => {
     });
 
     const { handle: handleA } = makeHandle();
-    const leaseA = acquireImageTexture("a", async () => handleA);
+    const leaseA = acquireImageTexture("a", () => Promise.resolve(handleA));
     const { handle: handleB } = makeHandle();
-    const leaseB = acquireImageTexture("b", async () => handleB);
+    const leaseB = acquireImageTexture("b", () => Promise.resolve(handleB));
     await Promise.all([leaseA.promise, leaseB.promise]);
 
     expect(imageTextureCacheStats()).toEqual({
@@ -427,7 +439,12 @@ describe("acquireImageTexture (keyless)", () => {
     const first = makeHandle();
     const second = makeHandle();
     const handles = [first.handle, second.handle];
-    const decode = vi.fn(async () => handles.shift() as ImageTextureHandle);
+    const decode = vi.fn(() => {
+      const handle = handles.shift();
+      return handle
+        ? Promise.resolve(handle)
+        : Promise.reject(new Error("No private image texture handle remains"));
+    });
 
     const leaseA = acquireImageTexture(undefined, decode);
     const leaseB = acquireImageTexture(undefined, decode);

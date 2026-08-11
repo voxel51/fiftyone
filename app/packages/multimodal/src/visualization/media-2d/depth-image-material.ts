@@ -80,10 +80,10 @@ export function createDepthImageMaterial(
       imageSize.sub(1),
     ),
   );
-  const textureNode = TSL.textureLoad(
+  const textureNode: TextureNode = TSL.textureLoad(
     handle.texture,
     texelCoordinates,
-  ) as TextureNode;
+  );
   const loadedSample = textureNode.x;
   const sample =
     handle.texture.type === THREE.UnsignedIntType

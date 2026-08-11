@@ -198,11 +198,13 @@ describe("BitmapImageFrameView", () => {
     stubElementSize(200, 200);
     const context = sharedMockContext();
     const drawImage = vi.spyOn(context, "drawImage");
-    vi.spyOn(context, "createImageData").mockReturnValue({
-      data: new Uint8ClampedArray(400 * 200 * 4),
-      height: 200,
-      width: 400,
-    } as ImageData);
+    const createImageData = vi
+      .spyOn(context, "createImageData")
+      .mockReturnValue({
+        data: new Uint8ClampedArray(400 * 200 * 4),
+        height: 200,
+        width: 400,
+      } as ImageData);
     const putImageData = vi
       .spyOn(context, "putImageData")
       .mockImplementation(() => undefined);
@@ -221,7 +223,7 @@ describe("BitmapImageFrameView", () => {
     );
 
     await waitFor(() => expect(putImageData).toHaveBeenCalledOnce());
-    expect(context.createImageData).toHaveBeenCalledWith(400, 200);
+    expect(createImageData).toHaveBeenCalledWith(400, 200);
     const preview = putImageData.mock.calls[0]?.[0];
     expect(Array.from(preview.data.subarray(0, 4))).toEqual([255, 10, 20, 255]);
     expect(Array.from(preview.data.slice(-4))).toEqual([30, 40, 255, 255]);
@@ -367,7 +369,9 @@ describe("BitmapImageView", () => {
     render(<BitmapImageView bytes={bytes} />);
     expect(createImageBitmap).toHaveBeenCalledTimes(1);
     decodes.settle(0, fakeBitmap(100, 50));
-    await act(async () => undefined);
+    await act(async () => {
+      await Promise.resolve();
+    });
 
     for (const [nextWidth, nextHeight] of [
       [120, 60],
@@ -380,9 +384,13 @@ describe("BitmapImageView", () => {
     }
 
     expect(createImageBitmap).toHaveBeenCalledTimes(1);
-    act(() => vi.advanceTimersByTime(BITMAP_IMAGE_RESIZE_DEBOUNCE_MS - 1));
+    act(() => {
+      vi.advanceTimersByTime(BITMAP_IMAGE_RESIZE_DEBOUNCE_MS - 1);
+    });
     expect(createImageBitmap).toHaveBeenCalledTimes(1);
-    act(() => vi.advanceTimersByTime(1));
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
     expect(createImageBitmap).toHaveBeenCalledTimes(2);
     expect(vi.mocked(createImageBitmap).mock.calls[1]?.[1]).toMatchObject({
       resizeHeight: 120,
@@ -913,7 +921,9 @@ function stubVideoDecoder() {
 
   const instances: FakeVideoDecoder[] = [];
   class FakeVideoDecoder {
-    static isConfigSupported = vi.fn(async () => ({ supported: true }));
+    static isConfigSupported = vi.fn(() =>
+      Promise.resolve({ supported: true }),
+    );
     readonly close = vi.fn();
     readonly decodeCalls: FakeEncodedVideoChunk[] = [];
 

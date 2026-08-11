@@ -18,7 +18,9 @@ describe("StillImageDecodeScheduler", () => {
 
     const firstScheduled = scheduler.schedule(owner, firstAcquire);
     const skippedScheduled = scheduler.schedule(owner, skippedAcquire);
-    const skippedFailure = skippedScheduled.promise.catch((error) => error);
+    const skippedFailure = skippedScheduled.promise.catch(
+      (error: unknown) => error,
+    );
     const latestScheduled = scheduler.schedule(owner, latestAcquire);
 
     expect(firstAcquire).toHaveBeenCalledOnce();
@@ -75,7 +77,9 @@ describe("StillImageDecodeScheduler", () => {
     const queued = deferredLease();
     const runningScheduled = scheduler.schedule({}, () => running.lease);
     const queuedScheduled = scheduler.schedule({}, () => queued.lease);
-    const queuedFailure = queuedScheduled.promise.catch((error) => error);
+    const queuedFailure = queuedScheduled.promise.catch(
+      (error: unknown) => error,
+    );
 
     runningScheduled.release();
     runningScheduled.release();

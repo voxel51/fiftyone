@@ -206,11 +206,13 @@ function loadedFrame(): EncodedImageVisualization {
 }
 
 function mockImageBitmap() {
-  const createBitmap = vi.fn(async () => ({
-    close: vi.fn(),
-    height: 12,
-    width: 16,
-  }));
+  const createBitmap = vi.fn(() =>
+    Promise.resolve({
+      close: vi.fn(),
+      height: 12,
+      width: 16,
+    }),
+  );
   vi.stubGlobal("createImageBitmap", createBitmap);
   return createBitmap;
 }

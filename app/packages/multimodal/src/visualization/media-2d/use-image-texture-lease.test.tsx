@@ -103,7 +103,10 @@ describe("useImageTextureLease", () => {
 
     rendered.rerender({ onLoaded: replacement });
     const handle = textureHandle();
-    await act(() => pending.resolve(handle));
+    await act(async () => {
+      pending.resolve(handle);
+      await pending.promise;
+    });
 
     expect(requested).toHaveBeenCalledWith(handle);
     expect(replacement).not.toHaveBeenCalled();
@@ -141,14 +144,20 @@ describe("useImageTextureLease", () => {
     );
 
     const firstHandle = textureHandle();
-    await act(() => first.resolve(firstHandle));
+    await act(async () => {
+      first.resolve(firstHandle);
+      await first.promise;
+    });
     await waitFor(() =>
       expect(rendered.result.current.handle).toBe(firstHandle),
     );
 
     rendered.rerender({ id: 2 });
     const secondHandle = textureHandle();
-    await act(() => second.resolve(secondHandle));
+    await act(async () => {
+      second.resolve(secondHandle);
+      await second.promise;
+    });
     await waitFor(() =>
       expect(rendered.result.current.handle).toBe(secondHandle),
     );
@@ -188,12 +197,18 @@ describe("useImageTextureLease", () => {
     expect(releaseFirst).toHaveBeenCalledOnce();
 
     const staleHandle = textureHandle();
-    await act(() => first.resolve(staleHandle));
+    await act(async () => {
+      first.resolve(staleHandle);
+      await first.promise;
+    });
     await waitFor(() => expect(cacheHarness.acquire).toHaveBeenCalledTimes(2));
     expect(rendered.result.current.handle).toBeNull();
 
     const latestHandle = textureHandle();
-    await act(() => latest.resolve(latestHandle));
+    await act(async () => {
+      latest.resolve(latestHandle);
+      await latest.promise;
+    });
     await waitFor(() =>
       expect(rendered.result.current.handle).toBe(latestHandle),
     );
