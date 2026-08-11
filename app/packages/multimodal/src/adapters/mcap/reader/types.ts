@@ -1,9 +1,15 @@
 import type { McapIndexedReader, McapTypes } from "@mcap/core";
+import type { TimeWindow } from "../../../ir";
+import type {
+  BudgetedReadStopReason,
+  ReadWorkBudget,
+  ReadWorkUsage,
+} from "../../../ports";
 import type { ByteSourceDescriptor } from "../../../query/bytes";
 import type {
   McapPrefetchChunkDataRequest,
   McapPrefetchWindowRequest,
-} from "./chunk-prefetch";
+} from "./prefetch-types";
 
 /**
  * One timestamp and byte offset entry from an MCAP message index.
@@ -39,6 +45,15 @@ export interface McapIndexedMessageTime {
  * Filters for reading indexed MCAP message timestamps.
  */
 export interface McapReadIndexedMessageTimesRequest {
+  /** Optional exact channel ids, intersected with the topic filter. */
+  readonly channelIds?: readonly number[];
+
+  /**
+   * Optional exact chunk offsets to inspect. This bounds index work and lets
+   * callers guarantee that materialization touches only selected chunks.
+   */
+  readonly chunkStartOffsets?: readonly bigint[];
+
   /**
    * Inclusive maximum log timestamp to read, in nanoseconds.
    */
@@ -48,6 +63,9 @@ export interface McapReadIndexedMessageTimesRequest {
    * Maximum number of indexed entries to yield.
    */
   readonly limit?: number;
+
+  /** Cancels index range work owned by this request. */
+  readonly signal?: AbortSignal;
 
   /**
    * Inclusive minimum log timestamp to read, in nanoseconds.
@@ -64,6 +82,9 @@ export interface McapReadIndexedMessageTimesRequest {
  * Filters for resolving the newest indexed entries at or before a time.
  */
 export interface McapReadLatestIndexedMessageTimesRequest {
+  /** Optional exact channel ids, intersected with the topic filter. */
+  readonly channelIds?: readonly number[];
+
   /**
    * Inclusive upper bound: return the newest entries with log time at
    * or before this timestamp, however far back they are.
@@ -84,6 +105,9 @@ export interface McapReadLatestIndexedMessageTimesRequest {
    * Per-topic cap on chunk message-index reads during the walk.
    */
   readonly maxChunkProbesPerTopic?: number;
+
+  /** Cancels the predecessor walk and its index range reads. */
+  readonly signal?: AbortSignal;
 }
 
 /**
@@ -135,10 +159,63 @@ export type McapReaderFactory = (
   readable: McapTypes.IReadable,
 ) => Promise<McapIndexedReaderLike>;
 
+/** Adapter-private exact position between atomic MCAP admission groups. */
+export interface McapReadContinuation {
+  readonly endTimeNs?: bigint;
+  readonly nextChunkStartOffset: bigint;
+  readonly preferredTimeNs?: bigint;
+  readonly sourceKey: string;
+  readonly startTimeNs?: bigint;
+  readonly topicsKey: string;
+  readonly version: 1;
+}
+
+/** One hard-bounded raw MCAP read issued below the decoded resource client. */
+export interface McapBoundedMessageReadRequest {
+  readonly absoluteBudget: ReadWorkBudget;
+  readonly absoluteMaxChunks: number;
+  readonly admissionEndNs?: bigint;
+  readonly budget: ReadWorkBudget;
+  readonly continuation?: McapReadContinuation;
+  readonly endTimeNs?: bigint;
+  readonly maxChunks: number;
+  readonly maxGroups?: number;
+  readonly preferredTimeNs?: bigint;
+  readonly skipOversizedSourceUnit?: boolean;
+  readonly signal?: AbortSignal;
+  readonly startTimeNs?: bigint;
+  readonly topics?: readonly string[];
+}
+
+/** Raw-message materialization for already-selected message-index entries. */
+export interface McapReadIndexedMessagesRequest {
+  readonly entries: readonly McapIndexedMessageTime[];
+  readonly signal?: AbortSignal;
+}
+
+/** Raw messages and work evidence returned by the bounded MCAP executor. */
+export interface McapBoundedMessageReadResult {
+  readonly continuation?: McapReadContinuation;
+  readonly coverageByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
+  /** Messages ordered globally by log time with deterministic source tie-breaks. */
+  readonly messages: readonly McapTypes.TypedMcapRecords["Message"][];
+  readonly resumeAtNs?: bigint;
+  /** Atomic source spans intentionally skipped because they exceed the hard ceiling. */
+  readonly skippedByTopic?: ReadonlyMap<string, readonly TimeWindow[]>;
+  readonly stopReason: BudgetedReadStopReason;
+  readonly usage: ReadWorkUsage;
+}
+
 /**
  * Indexed MCAP reader surface used by this adapter.
  */
 export interface McapIndexedReaderLike {
+  /** Releases all source-bound caches owned by this reader. */
+  dispose?(): void;
+
+  /** Attachment summary indexes retained during reader initialization. */
+  readonly attachmentIndexes?: McapIndexedReader["attachmentIndexes"];
+
   /**
    * Summary channels keyed by numeric channel id.
    */
@@ -149,6 +226,12 @@ export interface McapIndexedReaderLike {
    */
   readonly chunkIndexes: McapIndexedReader["chunkIndexes"];
 
+  /** MCAP header retained during reader initialization. */
+  readonly header?: McapIndexedReader["header"];
+
+  /** Metadata summary indexes retained during reader initialization. */
+  readonly metadataIndexes?: McapIndexedReader["metadataIndexes"];
+
   /**
    * Summary schemas keyed by numeric schema id.
    */
@@ -158,6 +241,22 @@ export interface McapIndexedReaderLike {
    * Optional summary statistics from the MCAP footer section.
    */
   readonly statistics?: McapIndexedReader["statistics"];
+
+  /**
+   * Reads admitted chunks directly instead of delegating an unbounded window
+   * to `readMessages()`.
+   */
+  readBoundedMessages?(
+    request: McapBoundedMessageReadRequest,
+  ): Promise<McapBoundedMessageReadResult>;
+
+  /**
+   * Resolves exact selected offsets through a stable decompressed-chunk cache.
+   * Results correspond positionally to the requested entries.
+   */
+  readIndexedMessages?(
+    request: McapReadIndexedMessagesRequest,
+  ): Promise<readonly McapTypes.TypedMcapRecords["Message"][]>;
 
   /**
    * Reads timestamp-only message-index entries without decoding chunk records.

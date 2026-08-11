@@ -1,5 +1,6 @@
 import { setFetchFunction } from "@fiftyone/utilities";
-import { MCAP_READ_CANCELLED_MESSAGE, mcapErrorMessage } from "../errors";
+import { errorMessage } from "../../../utils/errors";
+import { EPISODE_READ_CANCELLED_MESSAGE } from "../../../ports";
 import {
   isMcapPlaybackWorkerStreamRequest,
   runMcapPlaybackWorkerStreamRequest,
@@ -10,6 +11,11 @@ import {
   type McapPlaybackWorkerRunContext,
 } from "./playback-worker-scheduler";
 import type { ByteReadDebugLog } from "../../../query/bytes";
+import {
+  emptyMcapBoundedReadUsage,
+  isMcapBoundedReadCancelledError,
+  McapBoundedReadCancelledError,
+} from "../reader/bounded-read-cancellation";
 import { createMcapTransportMeter } from "./transport-meter";
 import { transferablesForMcapResult } from "./playback-worker-transfer";
 import {
@@ -44,6 +50,9 @@ const TRANSPORT_PROGRESS_INTERVAL_MS = 500;
 // the active request's abort signal without threading it through the
 // reader stack (@mcap/core reads carry no signal parameter).
 const activeReadSignal: { current: AbortSignal | null } = { current: null };
+const activeRetainedDecodedRecordIds: {
+  current: ReadonlySet<string> | null;
+} = { current: null };
 let lastTransportProgressAtMs = -Infinity;
 
 let activeSourceKey = "";
@@ -70,7 +79,22 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
   }
 
   if (message.type === "cancel") {
-    scheduler.cancel(message.id);
+    const cancellation = scheduler.cancel(message.id);
+    if (cancellation.state === "queued") {
+      postResponse({
+        ...(cancellation.operation === "readBoundedMessages"
+          ? {
+              boundedReadCancellation: {
+                usage: emptyMcapBoundedReadUsage(),
+              },
+            }
+          : {}),
+        error: EPISODE_READ_CANCELLED_MESSAGE,
+        id: message.id,
+        ok: false,
+        transport: transportMeter.snapshot(),
+      });
+    }
     return;
   }
 
@@ -78,6 +102,13 @@ workerScope.onmessage = (event: MessageEvent<McapPlaybackWorkerRequest>) => {
     scheduler.dispose();
     disposeAllClients();
     workerScope.close();
+    return;
+  }
+
+  if (message.type === "releaseRetainedResources") {
+    disposeAllClients();
+    activeSourceKey = "";
+    mcap = createMcapClient();
     return;
   }
 
@@ -95,15 +126,28 @@ async function runAndRespond(
   context: McapPlaybackWorkerRunContext,
 ) {
   activeReadSignal.current = context.signal;
+  activeRetainedDecodedRecordIds.current =
+    message.retainedDecodedRecordIds === undefined
+      ? null
+      : new Set(message.retainedDecodedRecordIds);
 
   try {
+    throwIfWorkerRequestCancelled(context.signal);
     ensureActiveSource(message.sourceKey);
     if (isMcapPlaybackWorkerStreamRequest(message)) {
-      await streamRequest(message);
+      await streamRequest(message, context.signal);
       return;
     }
 
     const result = await runMcapPlaybackWorkerUnaryRequest(mcap, message);
+    if (
+      context.signal.aborted &&
+      message.type === "readBoundedMessages" &&
+      "usage" in result
+    ) {
+      throw new McapBoundedReadCancelledError(result.usage);
+    }
+    throwIfWorkerRequestCancelled(context.signal);
     const transferables = transferablesForMcapResult(result);
     postResponse(
       {
@@ -117,28 +161,38 @@ async function runAndRespond(
   } catch (error) {
     // A cancelled request reports the canonical marker no matter which read
     // the abort surfaced through, so consumers can treat it as benign.
-    const errorMessage = context.signal.aborted
-      ? MCAP_READ_CANCELLED_MESSAGE
-      : mcapErrorMessage(error);
+    const messageText = context.signal.aborted
+      ? EPISODE_READ_CANCELLED_MESSAGE
+      : errorMessage(error);
     postResponse({
-      error: errorMessage,
+      ...(isMcapBoundedReadCancelledError(error)
+        ? {
+            boundedReadCancellation: {
+              usage: error.usage,
+            },
+          }
+        : {}),
+      error: messageText,
       id: message.id,
       ok: false,
       transport: transportMeter.snapshot(),
     });
   } finally {
     activeReadSignal.current = null;
+    activeRetainedDecodedRecordIds.current = null;
   }
 }
 
 async function streamRequest(
   message: McapPlaybackWorkerRpcRequest<McapPlaybackWorkerStreamType>,
+  signal: AbortSignal,
 ) {
   let batch: McapPlaybackWorkerStreamItemByType[McapPlaybackWorkerStreamType][] =
     [];
   let batchBytes = 0;
 
   for await (const item of runMcapPlaybackWorkerStreamRequest(mcap, message)) {
+    throwIfWorkerRequestCancelled(signal);
     const transferables = transferablesForMcapResult(item);
     // Transferable buffers must keep their per-item ownership boundary. Plain
     // decoded records can share one postMessage to reduce main-thread churn.
@@ -185,6 +239,7 @@ async function streamRequest(
       batchBytes = 0;
     }
   }
+  throwIfWorkerRequestCancelled(signal);
   postStreamBatch(message.id, batch);
 
   postResponse({
@@ -194,6 +249,12 @@ async function streamRequest(
     stream: true,
     transport: transportMeter.snapshot(),
   });
+}
+
+function throwIfWorkerRequestCancelled(signal: AbortSignal): void {
+  if (signal.aborted) {
+    throw new Error(EPISODE_READ_CANCELLED_MESSAGE);
+  }
 }
 
 function postStreamBatch(
@@ -261,6 +322,7 @@ function createMcapClient() {
     ...(fillSlotClass ? { fillSlotClass } : {}),
     onByteRead: handleByteRead,
     readSignal: activeReadSignal,
+    retainedDecodedRecordIds: activeRetainedDecodedRecordIds,
   });
 }
 

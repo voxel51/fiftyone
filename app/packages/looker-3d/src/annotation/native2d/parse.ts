@@ -20,8 +20,11 @@ const oid = (value: unknown): string | undefined => {
   return undefined;
 };
 
+const str = (value: unknown): string | undefined =>
+  typeof value === "string" ? value : undefined;
+
 const detectionFrom = (
-  raw: Record<string, any>,
+  raw: Record<string, unknown>,
   path: string,
 ): Native2dLabel | null => {
   const _id = oid(raw?._id) ?? oid(raw?.id);
@@ -31,13 +34,13 @@ const detectionFrom = (
     _id,
     _cls: "Detection",
     path,
-    label: raw.label,
+    label: str(raw.label),
     boundingBox: [bbox[0], bbox[1], bbox[2], bbox[3]],
   };
 };
 
 const polylineFrom = (
-  raw: Record<string, any>,
+  raw: Record<string, unknown>,
   path: string,
 ): Native2dLabel | null => {
   const _id = oid(raw?._id) ?? oid(raw?.id);
@@ -46,10 +49,10 @@ const polylineFrom = (
     _id,
     _cls: "Polyline",
     path,
-    label: raw.label,
+    label: str(raw.label),
     points: raw.points as [number, number][][],
-    closed: raw.closed,
-    filled: raw.filled,
+    closed: typeof raw.closed === "boolean" ? raw.closed : undefined,
+    filled: typeof raw.filled === "boolean" ? raw.filled : undefined,
   };
 };
 
@@ -68,7 +71,7 @@ const polylineFrom = (
  *   omitted every top-level field is considered.
  */
 export const extractNative2dLabels = (
-  sliceData: Record<string, any> | undefined | null,
+  sliceData: Record<string, unknown> | undefined | null,
   labelPaths?: string[],
 ): Native2dLabel[] => {
   if (!sliceData) return [];
@@ -84,30 +87,31 @@ export const extractNative2dLabels = (
     const value = sliceData[path];
     if (!value || typeof value !== "object") continue;
 
-    switch (value._cls) {
+    const field = value as Record<string, unknown>;
+    switch (field._cls) {
       case DETECTIONS:
-        if (Array.isArray(value.detections)) {
-          for (const d of value.detections) {
+        if (Array.isArray(field.detections)) {
+          for (const d of field.detections) {
             const label = detectionFrom(d, path);
             if (label) out.push(label);
           }
         }
         break;
       case DETECTION: {
-        const label = detectionFrom(value, path);
+        const label = detectionFrom(field, path);
         if (label) out.push(label);
         break;
       }
       case POLYLINES:
-        if (Array.isArray(value.polylines)) {
-          for (const p of value.polylines) {
+        if (Array.isArray(field.polylines)) {
+          for (const p of field.polylines) {
             const label = polylineFrom(p, path);
             if (label) out.push(label);
           }
         }
         break;
       case POLYLINE: {
-        const label = polylineFrom(value, path);
+        const label = polylineFrom(field, path);
         if (label) out.push(label);
         break;
       }

@@ -36,10 +36,26 @@ const mocks = vi.hoisted(() => ({
   pickSpy: vi.fn(),
 }));
 
-vi.mock("../../state", () => ({
-  hoveredHeadingTargetFaceAtom: mocks.atoms.hoveredHeadingTargetFaceAtom,
-  isCurrentlyTransformingAtom: mocks.atoms.isCurrentlyTransformingAtom,
-}));
+vi.mock("../../state", async () => {
+  // resolves to the mocked recoil below, so the accessor hooks share its
+  // reactive stand-in and the `mocks.setAtom` spy
+  const { useRecoilValue, useSetRecoilState } =
+    (await import("recoil")) as unknown as {
+      useRecoilValue: (atom: symbol) => unknown;
+      useSetRecoilState: (atom: symbol) => (value: unknown) => void;
+    };
+
+  return {
+    hoveredHeadingTargetFaceAtom: mocks.atoms.hoveredHeadingTargetFaceAtom,
+    isCurrentlyTransformingAtom: mocks.atoms.isCurrentlyTransformingAtom,
+    useHoveredHeadingTargetFace: () =>
+      useRecoilValue(mocks.atoms.hoveredHeadingTargetFaceAtom),
+    useSetHoveredHeadingTargetFace: () =>
+      useSetRecoilState(mocks.atoms.hoveredHeadingTargetFaceAtom),
+    useSetIsCurrentlyTransforming: () =>
+      useSetRecoilState(mocks.atoms.isCurrentlyTransformingAtom),
+  };
+});
 
 // A minimally reactive recoil stand-in: writes notify subscribers so consumers
 // re-render and re-read, which is what makes the shared target-face atom

@@ -1,0 +1,128 @@
+.browser {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.message {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.toolbar {
+  align-items: center;
+  border-bottom: 1px solid var(--color-content-border-default, #383835);
+  color: var(--color-content-text-secondary);
+  display: flex;
+  flex: none;
+  font-size: 11px;
+  gap: 6px;
+  min-height: 34px;
+  padding: 5px 10px;
+}
+
+.toolbarButton {
+  background: transparent;
+  border: 1px solid var(--color-content-border-default, #383835);
+  border-radius: 4px;
+  color: var(--color-content-text-secondary);
+  cursor: pointer;
+  font: inherit;
+  padding: 3px 8px;
+}
+
+.toolbarButton:hover {
+  color: var(--color-content-text-primary);
+}
+
+.toolbarButton:focus-visible {
+  color: var(--color-content-text-primary);
+  outline: 1px solid var(--color-voxel-secondary, #ff8d00);
+  outline-offset: 1px;
+}
+
+.toolbarButton:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.status {
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.error {
+  color: var(--color-content-text-error, #ff837a);
+}
+
+.rail {
+  border-right: 1px solid var(--color-content-border-default, #383835);
+  flex: 0 0 190px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.rail:focus-visible {
+  outline: 1px solid var(--color-voxel-secondary, #ff8d00);
+  outline-offset: -1px;
+}
+
+.railSpacer {
+  position: relative;
+  width: 100%;
+}
+
+.railRows {
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.railRow {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid
+    color-mix(
+      in srgb,
+      var(--color-content-border-default, #383835) 45%,
+      transparent
+    );
+  color: var(--color-content-text-secondary);
+  cursor: pointer;
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  height: 30px;
+  overflow: hidden;
+  padding: 7px 9px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.railRow:hover {
+  background: color-mix(
+    in srgb,
+    var(--color-content-text-secondary) 8%,
+    transparent
+  );
+  color: var(--color-content-text-primary);
+  outline: none;
+}
+
+.selectedRow {
+  background: color-mix(
+    in srgb,
+    var(--color-voxel-secondary, #ff8d00) 16%,
+    transparent
+  );
+  color: var(--color-content-text-primary);
+  box-shadow: inset 3px 0 var(--color-voxel-secondary, #ff8d00);
+}

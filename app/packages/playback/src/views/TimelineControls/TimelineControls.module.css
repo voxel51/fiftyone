@@ -6,9 +6,9 @@
   border-bottom: 1px solid var(--color-content-border-default);
 }
 
-/* Suppress focus rings from pointer clicks on the row itself and its children.
-   Keyboard rings still show via :focus-visible so accessibility is preserved. */
-.root:focus:not(:focus-visible),
+/* Suppress focus rings from pointer clicks on the row's children. Keyboard
+   rings still show via :focus-visible so accessibility is preserved. The row
+   itself is no longer a tab stop, so it never rings as a whole. */
 .root :focus:not(:focus-visible) {
   outline: none;
 }
@@ -91,6 +91,39 @@
   margin: 0 6px;
 }
 
+/* Trailing group pinned to the right edge: caller-supplied buttons (behind
+   their own divider) followed by the drawer chevron, which always sits
+   last so its position doesn't shift as buttons come and go. Only
+   `trailingActions` lives here — the time readouts and `extraActions` stay
+   in the left-hand run. */
+.trailing {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  margin-left: auto;
+}
+
+/* Caller buttons read as one cluster — slightly wider gap than the transport
+   buttons so they don't merge with the chevron beside them. */
+.trailingActions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+/* One chevron rotated between states rather than two swapped icons, so the
+   open/closed change animates. voodo's Button wraps its icon in a div —
+   the same handle `.pinButtonActive` uses over in TimelineTrack. */
+.toggle > div {
+  transition: var(--transition-preset-transform);
+}
+
+.toggleExpanded > div {
+  transform: rotate(180deg);
+}
+
 .buffering {
   align-items: center;
   color: var(--color-content-text-secondary);
@@ -99,5 +132,35 @@
   font-size: 11px;
   gap: 4px;
   margin-left: 6px;
+  white-space: nowrap;
+}
+
+.bufferingTooltipTrigger {
+  display: inline-flex;
+}
+
+.bufferingTooltip {
+  max-width: min(440px, calc(100vw - 24px));
+}
+
+.bufferingDetails {
+  min-width: 260px;
+}
+
+.bufferingSummary,
+.bufferingStreamState {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.bufferingStreamRow {
+  min-width: 0;
+}
+
+.bufferingStreamName {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }

@@ -21,9 +21,11 @@ import {
   audioVolumeAtom,
   bufferedRangesAtom,
   bufferingDetailAtom,
+  bufferingStreamsAtom,
   currentTimeAtom,
   durationAtom,
   hoverTimeAtom,
+  inspectionMarkerAtom,
   isBufferingAtom,
   isPlayPendingAtom,
   isPlayingAtom,
@@ -37,7 +39,12 @@ import {
   viewStartAtom,
 } from "./atoms";
 import { usePlaybackStore } from "./playback-store-context";
-import type { BufferedRanges, SeekEvent } from "./types";
+import type {
+  BufferedRanges,
+  BufferingStream,
+  PlaybackInspectionMarker,
+  SeekEvent,
+} from "./types";
 
 /** Visual playhead position in seconds — updates every RAF tick + on scrub. */
 export function usePlayhead(): number {
@@ -53,6 +60,12 @@ export function usePlayhead(): number {
 export function useHoverTime(): number | null {
   const store = usePlaybackStore();
   return useAtomValue(hoverTimeAtom, { store });
+}
+
+/** Persistent visual inspection marker, independent of hover and playback. */
+export function useInspectionMarker(): PlaybackInspectionMarker | null {
+  const store = usePlaybackStore();
+  return useAtomValue(inspectionMarkerAtom, { store });
 }
 
 /**
@@ -104,6 +117,12 @@ export function useAudioAvailable(): AudioAvailability {
 export function useBufferingDetail(): string | null {
   const store = usePlaybackStore();
   return useAtomValue(bufferingDetailAtom, { store });
+}
+
+/** Blocking stream readiness behind the current buffering indicator. */
+export function useBufferingStreams(): readonly BufferingStream[] {
+  const store = usePlaybackStore();
+  return useAtomValue(bufferingStreamsAtom, { store });
 }
 
 /**

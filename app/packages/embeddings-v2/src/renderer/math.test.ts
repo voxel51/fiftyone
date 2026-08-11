@@ -135,6 +135,48 @@ describe("zoomRect / panRect / clampToHome", () => {
     });
   });
 
+  // Zooming from an overpanned view must not yank the view back to
+  // the data — the give bounds zoom exactly as they bound pan
+  it("zoom preserves an overpanned offset within the give", () => {
+    const offset: Rect = { x0: 3, y0: 0, x1: 13, y1: 10 };
+
+    // Zoom in around (8, 5): focus keeps its relative spot, no slide
+    expect(zoomRect(offset, home, [8, 5], 2, 50, 0.5)).toEqual({
+      x0: 5.5,
+      y0: 2.5,
+      x1: 10.5,
+      y1: 7.5,
+    });
+    // Without give, the strict clamp slides the same zoom back inside
+    expect(zoomRect(offset, home, [8, 5], 2, 50)).toEqual({
+      x0: 5,
+      y0: 2.5,
+      x1: 10,
+      y1: 7.5,
+    });
+  });
+
+  // FOEPD-4318: with no give, panning at full zoom-out is a no-op —
+  // the drag feels dead. Give lets the view slide, bounded so the
+  // data's edge stops at the viewport's center (give 0.5)
+  it("pans at full zoom-out within the give", () => {
+    expect(panRect(home, home, 3, 0)).toEqual(home);
+
+    expect(panRect(home, home, 3, 0, 0.5)).toEqual({
+      x0: 3,
+      y0: 0,
+      x1: 13,
+      y1: 10,
+    });
+    // The give is the cap: a huge delta stops half a viewport out
+    expect(panRect(home, home, 100, 0, 0.5)).toEqual({
+      x0: 5,
+      y0: 0,
+      x1: 15,
+      y1: 10,
+    });
+  });
+
   it("slides an out-of-bounds rect back inside home", () => {
     expect(clampToHome({ x0: -1, y0: 3, x1: 1, y1: 5 }, home)).toEqual({
       x0: 0,
