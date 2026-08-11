@@ -11,12 +11,12 @@ import {
   type Mock,
   vi,
 } from "vitest";
-import type { DecodedDiagnostic } from "../../../../ir/index";
 import type { SceneSource } from "../../../../scene-inventory/index";
 import { SCENE_SOURCE_TYPE } from "../../../../ir/index";
 import Scene3dTileSettings, {
   type Scene3dTileSettingsProps,
 } from "./Scene3dTileSettings";
+import type { CameraSourceStatus } from "./camera-source-status";
 import {
   __resetModalSettingsForTests,
   readModalSettings,
@@ -171,22 +171,65 @@ describe("Scene3dTileSettings", () => {
     expect(props.toggleSource).toHaveBeenCalledWith(CAM_FRONT.id, false);
   });
 
-  it("shows camera capability diagnostics beside the affected source", () => {
+  it("shows combined camera capability and placement status", () => {
     renderSettings({
-      cameraDiagnosticsByStream: [
+      cameraStatusBySourceId: new Map([
         [
-          {
-            capability: "camera-calibration",
-            code: "camera-calibration-unavailable",
-            message: "Camera calibration is unavailable",
-            severity: "warning",
-          },
+          CAM_FRONT.id,
+          cameraStatus({
+            placement: {
+              frameId: "camera_front",
+              kind: "disconnected",
+              targetFrameId: "velodyne",
+            },
+          }),
         ],
-        [],
-      ],
+      ]),
     });
 
-    expect(screen.getByText("Camera calibration is unavailable")).toBeTruthy();
+    expect(
+      screen.getByText("Calibration available · Image paired: CAM/image_raw"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "No transform path connects camera frame camera_front to reference frame velodyne.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("marks unavailable cameras while keeping their selection removable", () => {
+    const props = renderSettings({
+      cameraStatusBySourceId: new Map([
+        [
+          CAM_FRONT.id,
+          cameraStatus({
+            calibration: "unavailable",
+            diagnostics: ["No usable camera calibration"],
+            placement: { kind: "calibration-unavailable" },
+          }),
+        ],
+      ]),
+    });
+
+    const unavailable = screen.getByRole("checkbox", {
+      name: `${CAM_FRONT.label} (frustum unavailable)`,
+    });
+    expect(unavailable.hasAttribute("disabled")).toBe(false);
+    expect(screen.getByText("No usable camera calibration")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Frustum unavailable because camera calibration is required.",
+      ),
+    ).toBeTruthy();
+
+    fireEvent.click(unavailable);
+    expect(props.toggleSource).toHaveBeenCalledWith(CAM_FRONT.id, false);
+
+    fireEvent.click(screen.getByRole("switch", { name: "Toggle cameras" }));
+    expect(props.setSourcesEnabled).toHaveBeenCalledWith(
+      [CAM_FRONT.id, CAM_BACK.id],
+      false,
+    );
   });
 
   it("hides source groups that have no sources", () => {
@@ -803,7 +846,7 @@ function selectVoodooOption(combobox: HTMLElement, query: string) {
 }
 
 interface SettingsTestProps {
-  readonly cameraDiagnosticsByStream: readonly (readonly DecodedDiagnostic[])[];
+  readonly cameraStatusBySourceId: ReadonlyMap<string, CameraSourceStatus>;
   readonly cameraSources: readonly SceneSource[];
   readonly cameraImageStreams: readonly string[];
   readonly cameraTargetFrameId: string;
@@ -866,7 +909,7 @@ function settingsProps(
   overrides: Partial<SettingsTestProps> = {},
 ): SettingsTestProps {
   return {
-    cameraDiagnosticsByStream: [[], []],
+    cameraStatusBySourceId: new Map(),
     cameraSources: [CAM_FRONT, CAM_BACK],
     cameraImageStreams: ["CAM_FRONT/image_raw", "CAM_BACK/image_raw"],
     cameraTargetFrameId: "",
@@ -923,8 +966,8 @@ function seedModalSettings(props: SettingsTestProps) {
 function componentProps(props: SettingsTestProps): Scene3dTileSettingsProps {
   return {
     cameraInputs: {
-      diagnosticsByStream: props.cameraDiagnosticsByStream,
       imageStreams: props.cameraImageStreams,
+      statusBySourceId: props.cameraStatusBySourceId,
     },
     frameControls: {
       cameraTargetFrameId: props.cameraTargetFrameId,
@@ -974,6 +1017,22 @@ function componentProps(props: SettingsTestProps): Scene3dTileSettingsProps {
       mode: props.trackingMode,
       setMode: props.setTrackingMode,
     },
+  };
+}
+
+function cameraStatus(
+  overrides: Partial<CameraSourceStatus> = {},
+): CameraSourceStatus {
+  return {
+    calibration: "available",
+    diagnostics: [],
+    imageStream: "CAM/image_raw",
+    placement: {
+      frameId: "camera",
+      kind: "placed",
+      targetFrameId: "map",
+    },
+    ...overrides,
   };
 }
 

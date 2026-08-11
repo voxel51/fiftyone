@@ -102,7 +102,7 @@ export function decodeRosCameraInfoRecord(
       context,
       header,
       message:
-        "Camera calibration is explicitly unavailable (zero dimensions and matrices)",
+        "No usable camera calibration: CameraInfo has zero calibration dimensions and no intrinsic matrix. The image stream may still be available.",
     });
   }
 
@@ -122,7 +122,7 @@ export function decodeRosCameraInfoRecord(
       message:
         pMatrix.shape === "usable"
           ? "P-only camera calibration is not supported"
-          : "Camera calibration is explicitly unavailable (all-zero K)",
+          : "No usable camera calibration: CameraInfo has an all-zero intrinsic matrix. The image stream may still be available.",
     });
   }
 

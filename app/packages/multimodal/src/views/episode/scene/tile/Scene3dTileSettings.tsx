@@ -11,7 +11,6 @@ import {
 } from "@voxel51/voodo";
 import type { Descriptor } from "@voxel51/voodo";
 import React, { useMemo } from "react";
-import type { DecodedDiagnostic } from "../../../../ir/index";
 import type { SceneSource } from "../../../../scene-inventory/index";
 import {
   isFollowTrackingMode,
@@ -44,6 +43,10 @@ import {
   useScene3dTilePlaybackSettings,
   useSetScene3dTilePlaybackSettings,
 } from "./scene-3d-tile-state";
+import {
+  cameraSourceStatusDetails,
+  type CameraSourceStatus,
+} from "./camera-source-status";
 
 /**
  * One source group shown in the 3D settings sidebar.
@@ -86,8 +89,8 @@ export interface Scene3dTileSettingsPointCloudInputs {
 
 /** Image streams paired with the currently selected camera calibrations. */
 export interface Scene3dTileSettingsCameraInputs {
-  readonly diagnosticsByStream: readonly (readonly DecodedDiagnostic[])[];
   readonly imageStreams: readonly string[];
+  readonly statusBySourceId: ReadonlyMap<string, CameraSourceStatus>;
 }
 
 /**
@@ -183,14 +186,21 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
   const cameraDetailsBySourceId = useMemo(
     () =>
       new Map(
-        cameraStreams.map((stream, index) => [
+        [...cameraInputs.statusBySourceId].map(([stream, status]) => [
           stream,
-          (cameraInputs.diagnosticsByStream[index] ?? []).map(
-            (diagnostic) => diagnostic.message,
-          ),
+          cameraSourceStatusDetails(status),
         ]),
       ),
-    [cameraInputs.diagnosticsByStream, cameraStreams],
+    [cameraInputs.statusBySourceId],
+  );
+  const unavailableCameraSourceIds = useMemo(
+    () =>
+      new Set(
+        [...cameraInputs.statusBySourceId]
+          .filter(([, status]) => status.calibration === "unavailable")
+          .map(([stream]) => stream),
+      ),
+    [cameraInputs.statusBySourceId],
   );
   const sceneAnnotationSources = sourceGroups.sceneAnnotation.sources;
   const sceneAnnotationStreams = sourceGroups.sceneAnnotation.streams;
@@ -270,9 +280,12 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
         title="Cameras"
         toggleAriaLabel="Toggle cameras"
         toggleSource={toggleSource}
+        unavailableSourceIds={unavailableCameraSourceIds}
       />
 
-      {cameraSources.length > 0 ? (
+      {cameraSources.some(
+        (source) => !unavailableCameraSourceIds.has(source.id),
+      ) ? (
         <SidebarGroup
           defaultExpanded={false}
           summary={`${pinholeCamera.imagePlaneDepthM} m · ${pinholeCamera.opacityPercent}%`}
@@ -299,6 +312,7 @@ const Scene3dTileSettings: React.FC<Scene3dTileSettingsProps> = ({
             value={pinholeCamera.opacityPercent}
           />
           {cameraStreams.map((cameraStream, index) => {
+            if (unavailableCameraSourceIds.has(cameraStream)) return null;
             const imageStream = cameraInputs.imageStreams[index];
             if (!imageStream) return null;
             const cameraLabel =
@@ -502,6 +516,7 @@ function SourceGroup({
   title,
   toggleAriaLabel,
   toggleSource,
+  unavailableSourceIds = EMPTY_SOURCE_IDS,
 }: {
   readonly beforeSources?: React.ReactNode;
   readonly children?: React.ReactNode;
@@ -516,21 +531,29 @@ function SourceGroup({
   readonly title: string;
   readonly toggleAriaLabel: string;
   readonly toggleSource: (id: string, checked: boolean) => void;
+  readonly unavailableSourceIds?: ReadonlySet<string>;
 }) {
   if (sources.length === 0) {
     return null;
   }
+  const unavailableCount = sources.filter((source) =>
+    unavailableSourceIds.has(source.id),
+  ).length;
 
   return (
     <SidebarGroup
-      summary={`${selectedCount} of ${sources.length} on`}
+      summary={
+        unavailableCount > 0
+          ? `${selectedCount} on · ${unavailableCount} unavailable`
+          : `${selectedCount} of ${sources.length} on`
+      }
       title={title}
       toggle={{
         ariaLabel: toggleAriaLabel,
         checked: selectedCount > 0,
         onChange: (checked) =>
           setSourcesEnabled(
-            sources.map((s) => s.id),
+            sources.map((source) => source.id),
             checked,
           ),
       }}
@@ -539,10 +562,13 @@ function SourceGroup({
       <div className={settingsStyles.optionStack}>
         {sources.map((s) => {
           const details = detailsBySourceId?.get(s.id) ?? [];
+          const unavailable = unavailableSourceIds.has(s.id);
           return (
             <div key={s.id}>
               <Checkbox
-                label={s.label}
+                label={
+                  unavailable ? `${s.label} (frustum unavailable)` : s.label
+                }
                 checked={enabled.has(s.id)}
                 onChange={(checked) => toggleSource(s.id, checked)}
                 {...settingsBooleanNoSpaceToggleProps}
@@ -564,6 +590,8 @@ function SourceGroup({
     </SidebarGroup>
   );
 }
+
+const EMPTY_SOURCE_IDS: ReadonlySet<string> = new Set();
 
 function TrackingModeSelect({
   onChange,

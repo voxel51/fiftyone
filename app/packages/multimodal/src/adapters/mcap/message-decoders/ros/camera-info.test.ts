@@ -22,6 +22,9 @@ describe("ROS CameraInfo classification", () => {
     expect(output.diagnostics).toEqual([
       expect.objectContaining({
         code: "camera-calibration-unavailable",
+        message: expect.stringMatching(
+          /CameraInfo has zero calibration dimensions.*image stream may still be available/i,
+        ),
       }),
     ]);
   });

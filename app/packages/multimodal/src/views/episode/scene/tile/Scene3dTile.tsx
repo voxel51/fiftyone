@@ -31,6 +31,7 @@ import {
   Scene3dCameraRigFromStore,
 } from "../camera/Scene3dCameraRig";
 import Scene3dTileSettings from "./Scene3dTileSettings";
+import { buildCameraSourceStatuses } from "./camera-source-status";
 import { Scene3dViewControls } from "../camera/Scene3dViewControls";
 import type { Scene3dHeldSceneReason } from "../entities/scene-3d-scene-snapshot";
 import { useScene3dViewSettings } from "../../spatial/view-settings-context";
@@ -420,6 +421,26 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     tileId,
     worldFrameId,
   });
+  const currentCameraSourceStatuses = buildCameraSourceStatuses({
+    calibrationDiagnostics,
+    calibrationFrames,
+    cameraFrustumLayerIds: cameraFrustumLayers.map((layer) => layer.id),
+    cameraStreams,
+    imageStreams: frustumImageStreams,
+    pendingFrustumFrameIds,
+    unresolvedPoseUsages,
+    worldFrameId,
+  });
+  const cameraSourceStatusKey = JSON.stringify([
+    ...currentCameraSourceStatuses,
+  ]);
+  const cameraSourceStatuses = useMemo(
+    () => currentCameraSourceStatuses,
+    // The semantic key keeps settings registration stable across playback
+    // ticks whose camera capability and placement state did not change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cameraSourceStatusKey],
+  );
   const sourceLabelsById = useMemo(
     () =>
       new Map(
@@ -804,8 +825,8 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       content: (
         <Scene3dTileSettings
           cameraInputs={{
-            diagnosticsByStream: calibrationDiagnostics,
             imageStreams: frustumImageStreams,
+            statusBySourceId: cameraSourceStatuses,
           }}
           frameControls={{
             cameraTargetFrameId,
@@ -847,7 +868,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       cameraSources,
       cameraTargetFrameId,
       cameraStreams,
-      calibrationDiagnostics,
+      cameraSourceStatuses,
       frustumImageStreams,
       enabled,
       frameIds,
