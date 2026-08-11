@@ -881,10 +881,11 @@ export const isHiddenCheckboxPath = selectorFamily<boolean, string>({
           ? sidebarField.subfield
           : sidebarField.ftype;
 
-      if (
-        ftype !== EMBEDDED_DOCUMENT_FIELD &&
-        ftype !== DYNAMIC_EMBEDDED_DOCUMENT_FIELD
-      ) {
+      // Only open-schema containers. A declared embedded document keeps its
+      // checkbox: it may draw nothing today, but the path is a stable thing a
+      // user can reasonably expect to toggle, and narrowing here avoids
+      // changing that meaning before there is something better to mean.
+      if (ftype !== DYNAMIC_EMBEDDED_DOCUMENT_FIELD) {
         return false;
       }
 

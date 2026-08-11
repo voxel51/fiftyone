@@ -707,8 +707,9 @@ describe("isHiddenCheckboxPath", () => {
     expect(resolve("signals.readings")()).toBe(true);
   });
 
-  it("hides the checkbox on a static embedded document with no labels", () => {
-    // Static as opposed to dynamic — both container ftypes reach the walk.
+  it("keeps the checkbox on a declared embedded document", () => {
+    // Only open-schema containers lose it; a declared document's path is a
+    // stable thing to toggle even when it draws nothing today.
     setMockAtoms({
       field: () => ({
         ftype: "fiftyone.core.fields.EmbeddedDocumentField",
@@ -720,7 +721,7 @@ describe("isHiddenCheckboxPath", () => {
       }),
     });
 
-    expect(resolve("camera")()).toBe(true);
+    expect(resolve("camera")()).toBe(false);
   });
 
   it("leaves primitives alone — their active state drives the modal", () => {
