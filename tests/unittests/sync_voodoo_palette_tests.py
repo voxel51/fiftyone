@@ -102,57 +102,66 @@ class LoadPaletteTests(unittest.TestCase):
                 fosvp._load_palette(path)
 
 
-class RenderTests(unittest.TestCase):
-    def test_block_is_marked_and_ordered(self):
-        block = fosvp._render(
+class RenderPythonTests(unittest.TestCase):
+    def test_emits_an_importable_module(self):
+        module = fosvp._render_python(
             [("#AAAAAA", "red 500"), ("#BBBBBB", "blue 500")]
         )
 
-        self.assertTrue(block.startswith(fosvp.BEGIN_MARKER))
-        self.assertTrue(block.endswith(fosvp.END_MARKER))
-        self.assertIn('    "#AAAAAA",  # 1: red 500', block)
-        self.assertIn('    "#BBBBBB",  # 2: blue 500', block)
+        # The generated module is imported by constants.py, so it has to be
+        # valid Python exposing COLOR_POOL -- exec it and check the binding
+        namespace = {}
+        exec(compile(module, "_voodoo_palette.py", "exec"), namespace)
 
-    def test_block_fits_black_line_length(self):
+        self.assertEqual(namespace["COLOR_POOL"], ["#AAAAAA", "#BBBBBB"])
+
+    def test_labels_each_entry(self):
+        module = fosvp._render_python([("#AAAAAA", "red 500")])
+
+        self.assertIn('    "#AAAAAA",  # 1: red 500', module)
+
+    def test_warns_against_hand_editing(self):
+        module = fosvp._render_python([("#AAAAAA", "red 500")])
+
+        self.assertIn("AUTO-GENERATED", module)
+
+    def test_fits_black_line_length(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = _write_tokens(tmpdir, _tokens())
-            block = fosvp._render(fosvp._load_palette(path))
+            module = fosvp._render_python(fosvp._load_palette(path))
 
-        for line in block.split("\n"):
+        for line in module.split("\n"):
             self.assertLessEqual(len(line), 79)
 
 
-class SpliceTests(unittest.TestCase):
-    def _source(self, body):
-        return "before\n%s\n%s\n%s\nafter\n" % (
-            fosvp.BEGIN_MARKER,
-            body,
-            fosvp.END_MARKER,
+class RenderTypeScriptTests(unittest.TestCase):
+    def test_exports_a_typed_readonly_array(self):
+        module = fosvp._render_typescript([("#AAAAAA", "red 500")])
+
+        self.assertIn(
+            "export const VOODOO_COLOR_POOL: readonly string[] = [", module
         )
 
-    def test_replaces_only_the_marked_block(self):
-        source = self._source("DEFAULT_APP_COLOR_POOL = []")
-        block = fosvp._render([("#AAAAAA", "red 500")])
+    def test_labels_each_entry(self):
+        module = fosvp._render_typescript(
+            [("#AAAAAA", "red 500"), ("#BBBBBB", "blue 500")]
+        )
 
-        updated = fosvp._splice(source, block)
+        self.assertIn('  "#AAAAAA", // 1: red 500', module)
+        self.assertIn('  "#BBBBBB", // 2: blue 500', module)
 
-        self.assertTrue(updated.startswith("before\n"))
-        self.assertTrue(updated.endswith("after\n"))
-        self.assertIn('"#AAAAAA"', updated)
-        self.assertNotIn("DEFAULT_APP_COLOR_POOL = []", updated)
+    def test_warns_against_hand_editing(self):
+        module = fosvp._render_typescript([("#AAAAAA", "red 500")])
 
-    def test_is_idempotent(self):
-        block = fosvp._render([("#AAAAAA", "red 500")])
-        source = self._source("DEFAULT_APP_COLOR_POOL = []")
+        self.assertIn("AUTO-GENERATED", module)
 
-        once = fosvp._splice(source, block)
-        twice = fosvp._splice(once, block)
 
-        self.assertEqual(once, twice)
+class TargetsTests(unittest.TestCase):
+    def test_covers_both_consumers(self):
+        targets = fosvp._targets([("#AAAAAA", "red 500")])
+        paths = [path for path, _ in targets]
 
-    def test_missing_markers_raise(self):
-        with self.assertRaises(SystemExit):
-            fosvp._splice("no markers here\n", "block")
+        self.assertEqual(paths, [fosvp.PYTHON_TARGET, fosvp.TYPESCRIPT_TARGET])
 
 
 class FindTokensTests(unittest.TestCase):
@@ -184,63 +193,99 @@ class FindTokensTests(unittest.TestCase):
 
 
 class MainTests(unittest.TestCase):
-    def _run(self, argv, constants_body="DEFAULT_APP_COLOR_POOL = []"):
-        """Runs ``main()`` against a throwaway constants file.
+    def _run(self, argv, python_body=None, typescript_body=None):
+        """Runs ``main()`` against throwaway output files.
+
+        Args:
+            argv: extra command-line arguments
+            python_body (None): initial contents of the Python target
+            typescript_body (None): initial contents of the TypeScript target
 
         Returns:
-            an ``(exit_code, contents)`` tuple
+            an ``(exit_code, python_contents, typescript_contents)`` tuple
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             tokens = _write_tokens(tmpdir, _tokens())
-            constants = os.path.join(tmpdir, "constants.py")
-            with open(constants, "wt") as f:
-                f.write(
-                    "before\n%s\n%s\n%s\nafter\n"
-                    % (
-                        fosvp.BEGIN_MARKER,
-                        constants_body,
-                        fosvp.END_MARKER,
-                    )
-                )
+            py_path = os.path.join(tmpdir, "_voodoo_palette.py")
+            ts_path = os.path.join(tmpdir, "voodooPalette.ts")
+
+            for path, body in (
+                (py_path, python_body),
+                (ts_path, typescript_body),
+            ):
+                if body is not None:
+                    with open(path, "wt") as f:
+                        f.write(body)
 
             argv = ["sync_voodoo_palette.py", "--tokens", tokens] + argv
-            with patch.object(fosvp, "CONSTANTS_PATH", constants):
-                with patch("sys.argv", argv):
-                    code = fosvp.main()
+            with patch.object(fosvp, "PYTHON_TARGET", py_path):
+                with patch.object(fosvp, "TYPESCRIPT_TARGET", ts_path):
+                    with patch("sys.argv", argv):
+                        code = fosvp.main()
 
-            with open(constants, "rt") as f:
-                return code, f.read()
+            return (
+                code,
+                self._read(py_path),
+                self._read(ts_path),
+            )
 
-    def test_write_updates_the_file(self):
-        code, contents = self._run([])
+    def _read(self, path):
+        if not os.path.isfile(path):
+            return None
+
+        with open(path, "rt") as f:
+            return f.read()
+
+    def test_write_creates_both_modules(self):
+        code, python, typescript = self._run([])
 
         self.assertEqual(code, 0)
-        self.assertNotIn("DEFAULT_APP_COLOR_POOL = []", contents)
-        self.assertIn(fosvp.BEGIN_MARKER, contents)
+        self.assertIn("COLOR_POOL = [", python)
+        self.assertIn("VOODOO_COLOR_POOL", typescript)
 
     def test_check_fails_when_out_of_date(self):
-        code, contents = self._run(["--check"])
+        code, python, _ = self._run(["--check"], python_body="stale\n")
 
         self.assertEqual(code, 1)
-        self.assertIn(
-            "DEFAULT_APP_COLOR_POOL = []", contents, "--check must not write"
-        )
+        self.assertEqual(python, "stale\n", "--check must not write")
 
-    def test_check_passes_when_in_sync(self):
-        block = fosvp._render(
-            [("#00000%d" % (i % 10), "unmapped") for i in range(1, 13)]
-        )
-        body = "\n".join(block.split("\n")[1:-1])
+    def test_check_fails_when_a_module_is_missing(self):
+        code, _, _ = self._run(["--check"])
 
-        code, _ = self._run(["--check"], constants_body=body)
+        self.assertEqual(code, 1)
+
+    def test_check_passes_when_both_are_in_sync(self):
+        pool = [("#00000%d" % (i % 10), "unmapped") for i in range(1, 13)]
+
+        code, _, _ = self._run(
+            ["--check"],
+            python_body=fosvp._render_python(pool),
+            typescript_body=fosvp._render_typescript(pool),
+        )
 
         self.assertEqual(code, 0)
 
     def test_print_does_not_write(self):
-        code, contents = self._run(["--print"])
+        code, python, typescript = self._run(["--print"])
 
         self.assertEqual(code, 0)
-        self.assertIn("DEFAULT_APP_COLOR_POOL = []", contents)
+        self.assertIsNone(python)
+        self.assertIsNone(typescript)
+
+    def test_skip_if_missing_is_a_noop(self):
+        # The CI drift check depends on this branch: with no tokens installed
+        # it must succeed and write nothing, rather than failing the job
+        with tempfile.TemporaryDirectory() as tmpdir:
+            py_path = os.path.join(tmpdir, "_voodoo_palette.py")
+            argv = ["sync_voodoo_palette.py", "--check", "--skip-if-missing"]
+
+            with patch.dict(os.environ, {}, clear=True):
+                with patch.object(fosvp, "TOKENS_CANDIDATES", []):
+                    with patch.object(fosvp, "PYTHON_TARGET", py_path):
+                        with patch("sys.argv", argv):
+                            self.assertEqual(fosvp.main(), 0)
+
+            self.assertFalse(os.path.exists(py_path))
 
 
 if __name__ == "__main__":
