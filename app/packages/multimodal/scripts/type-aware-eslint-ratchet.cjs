@@ -46,6 +46,7 @@ const migratedPaths = [
   "packages/multimodal/src/views/episode/status/**/*.{ts,tsx}",
   "packages/multimodal/src/views/episode/tiles/**/*.{ts,tsx}",
   "packages/multimodal/src/views/session/**/*.{ts,tsx}",
+  "packages/multimodal/src/views/mcap-explorer/**/*.{ts,tsx}",
 ];
 
 module.exports = { migratedPaths, typeAwareRules };
