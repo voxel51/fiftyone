@@ -28,8 +28,10 @@ export {
 export { materializeIndexedEntries } from "./materialize-indexed-entries";
 
 export type {
+  McapAttachmentIndex,
   McapIndexedMessageTime,
   McapMessage,
+  McapMetadataIndex,
   McapSchema,
   McapChannel,
   McapChunkIndex,

@@ -1,18 +1,17 @@
-import type { McapTypes } from "@mcap/core";
 import { describe, expect, it, vi } from "vitest";
 import type {
+  McapChannel,
   McapIndexedMessageTime,
   McapIndexedReaderLike,
 } from "../../reader";
+import { asyncValues } from "../inline-client.test-fixtures";
 import { readMcapTopics } from "./read-topics";
 
-function createChannel(
-  options: Partial<McapTypes.TypedMcapRecords["Channel"]> = {},
-): McapTypes.TypedMcapRecords["Channel"] {
+function createChannel(options: Partial<McapChannel> = {}): McapChannel {
   return {
     id: options.id ?? 1,
     messageEncoding: options.messageEncoding ?? "json",
-    metadata: options.metadata ?? new Map(),
+    metadata: options.metadata ?? new Map<string, string>(),
     schemaId: options.schemaId ?? 0,
     topic: options.topic ?? "/topic",
     type: "Channel",
@@ -28,13 +27,7 @@ function createReader(
     chunkIndexes: options.chunkIndexes ?? [],
     header: options.header,
     metadataIndexes: options.metadataIndexes,
-    readMessages:
-      options.readMessages ??
-      vi.fn(async function* () {
-        for (const message of [] as McapTypes.TypedMcapRecords["Message"][]) {
-          yield message;
-        }
-      }),
+    readMessages: options.readMessages ?? vi.fn(() => asyncValues([])),
     readIndexedMessages: options.readIndexedMessages,
     readIndexedMessageTimes: options.readIndexedMessageTimes,
     readLatestIndexedMessageTimes: options.readLatestIndexedMessageTimes,
@@ -265,9 +258,9 @@ describe("readMcapTopics", () => {
           uncompressedSize: 100n,
         },
       ],
-      readIndexedMessageTimes: vi.fn(async function* () {
-        for (const entry of [] as McapIndexedMessageTime[]) yield entry;
-      }),
+      readIndexedMessageTimes: vi.fn(() =>
+        asyncValues<McapIndexedMessageTime>([]),
+      ),
       readIndexedMessages: vi.fn(),
       readLatestIndexedMessageTimes: vi.fn(),
     });
@@ -309,9 +302,9 @@ describe("readMcapTopics", () => {
       [2, createChannel({ id: 2, topic: "/state" })],
     ]);
     const indexedMethods = {
-      readIndexedMessageTimes: vi.fn(async function* () {
-        for (const entry of [] as McapIndexedMessageTime[]) yield entry;
-      }),
+      readIndexedMessageTimes: vi.fn(() =>
+        asyncValues<McapIndexedMessageTime>([]),
+      ),
       readIndexedMessages: vi.fn(),
       readLatestIndexedMessageTimes: vi.fn(),
     };

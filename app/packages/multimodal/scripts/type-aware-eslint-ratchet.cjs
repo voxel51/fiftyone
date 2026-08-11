@@ -39,6 +39,7 @@ const migratedPaths = [
   "packages/multimodal/src/adapters/mcap/resource-client/inline-client.reader.test.ts",
   "packages/multimodal/src/adapters/mcap/resource-client/inline-client.decoded-messages.test.ts",
   "packages/multimodal/src/adapters/mcap/resource-client/operations/read-message-index-window*.ts",
+  "packages/multimodal/src/adapters/mcap/resource-client/operations/read-topics*.ts",
   "packages/multimodal/src/adapters/fixture/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/lerobot/**/*.{ts,tsx}",
   "packages/multimodal/src/adapters/mcap/compatibility/**/*.{ts,tsx}",

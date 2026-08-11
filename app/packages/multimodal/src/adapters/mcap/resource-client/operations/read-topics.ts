@@ -1,7 +1,12 @@
 import { create } from "@bufbuild/protobuf";
-import type { McapTypes } from "@mcap/core";
 import { StreamInventorySchema } from "../../../../schemas/v1/index";
-import type { McapIndexedReaderLike } from "../../reader/index";
+import type {
+  McapAttachmentIndex,
+  McapChannel,
+  McapIndexedReaderLike,
+  McapMetadataIndex,
+  McapSchema,
+} from "../../reader/index";
 import {
   SCENE_SOURCE_METADATA,
   STREAM_METADATA,
@@ -86,9 +91,9 @@ export function readMcapTopics(
 
 function channelMetadata(
   channelId: number,
-  channel: McapTypes.TypedMcapRecords["Channel"],
+  channel: McapChannel,
   reader: McapIndexedReaderLike,
-  schema: McapTypes.TypedMcapRecords["Schema"] | undefined,
+  schema: McapSchema | undefined,
   supportsExactBrowsing: boolean,
 ): Record<string, string> {
   const metadata = Object.fromEntries(channel.metadata.entries());
@@ -274,14 +279,14 @@ function recordingFacts(
   }
   const channelCount = reader.channelsById.size;
   const attachments = reader.attachmentIndexes?.map(
-    (attachment: McapTypes.TypedMcapRecords["AttachmentIndex"]) => ({
+    (attachment: McapAttachmentIndex) => ({
       dataSizeBytes: attachment.dataSize.toString(),
       mediaType: attachment.mediaType,
       name: attachment.name,
     }),
   );
   const metadataRecordNames = reader.metadataIndexes?.map(
-    (metadata: McapTypes.TypedMcapRecords["MetadataIndex"]) => metadata.name,
+    (metadata: McapMetadataIndex) => metadata.name,
   );
 
   return {
@@ -370,18 +375,15 @@ function medianBigInt(values: readonly bigint[]): bigint {
 
 function genericDecodeStatusForChannel(
   reader: McapIndexedReaderLike,
-  channel: Pick<
-    McapTypes.TypedMcapRecords["Channel"],
-    "messageEncoding" | "schemaId"
-  >,
+  channel: Pick<McapChannel, "messageEncoding" | "schemaId">,
 ): "decodable" | "schema-unavailable" | "unsupported-encoding" {
   const resolution = genericRecordDecoderResolutionForChannel(reader, channel);
   return resolution.status === "ok" ? "decodable" : resolution.reason;
 }
 
 function payloadForChannel(
-  channel: McapTypes.TypedMcapRecords["Channel"],
-  schema: McapTypes.TypedMcapRecords["Schema"] | undefined,
+  channel: McapChannel,
+  schema: McapSchema | undefined,
 ) {
   return {
     encoding: channel.messageEncoding,
@@ -391,9 +393,9 @@ function payloadForChannel(
 }
 
 function schemaForChannel(
-  channel: McapTypes.TypedMcapRecords["Channel"],
-  schemasById: ReadonlyMap<number, McapTypes.TypedMcapRecords["Schema"]>,
-): McapTypes.TypedMcapRecords["Schema"] | undefined {
+  channel: McapChannel,
+  schemasById: ReadonlyMap<number, McapSchema>,
+): McapSchema | undefined {
   return channel.schemaId === 0 ? undefined : schemasById.get(channel.schemaId);
 }
 

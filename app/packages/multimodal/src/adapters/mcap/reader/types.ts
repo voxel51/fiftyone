@@ -50,6 +50,26 @@ export interface McapSchema {
   readonly type: "Schema";
 }
 
+/** Attachment summary fields consumed by recording inventory. */
+export interface McapAttachmentIndex {
+  readonly createTime: bigint;
+  readonly dataSize: bigint;
+  readonly length: bigint;
+  readonly logTime: bigint;
+  readonly mediaType: string;
+  readonly name: string;
+  readonly offset: bigint;
+  readonly type: "AttachmentIndex";
+}
+
+/** Metadata summary fields consumed by recording inventory. */
+export interface McapMetadataIndex {
+  readonly length: bigint;
+  readonly name: string;
+  readonly offset: bigint;
+  readonly type: "MetadataIndex";
+}
+
 export interface McapStatistics {
   readonly attachmentCount: number;
   readonly channelCount: number;
@@ -272,7 +292,7 @@ export interface McapIndexedReaderLike {
   dispose?(): void;
 
   /** Attachment summary indexes retained during reader initialization. */
-  readonly attachmentIndexes?: readonly unknown[];
+  readonly attachmentIndexes?: readonly McapAttachmentIndex[];
 
   /**
    * Summary channels keyed by numeric channel id.
@@ -292,7 +312,7 @@ export interface McapIndexedReaderLike {
   }>;
 
   /** Metadata summary indexes retained during reader initialization. */
-  readonly metadataIndexes?: readonly unknown[];
+  readonly metadataIndexes?: readonly McapMetadataIndex[];
 
   /**
    * Summary schemas keyed by numeric schema id.
